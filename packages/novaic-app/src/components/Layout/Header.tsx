@@ -1,0 +1,52 @@
+import { Settings, User, Maximize2, Minimize2 } from 'lucide-react';
+import { useState } from 'react';
+
+export function Header(props: { onOpenSettings: () => void }) {
+  const [isMaximized, setIsMaximized] = useState(false);
+
+  return (
+    <header className="h-12 bg-nb-surface border-b border-nb-border flex items-center px-4 no-select" data-tauri-drag-region>
+      {/* Logo */}
+      <div className="flex items-center gap-2">
+        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-nb-accent to-purple-500 flex items-center justify-center">
+          <span className="text-white font-bold text-sm">NC</span>
+        </div>
+        <span className="font-semibold text-nb-text">NB-CC</span>
+      </div>
+
+      {/* Spacer */}
+      <div className="flex-1" data-tauri-drag-region />
+
+      {/* Actions */}
+      <div className="flex items-center gap-2">
+        {/* User */}
+        <button className="p-2 hover:bg-nb-surface-2 rounded-lg transition-colors">
+          <User size={18} className="text-nb-text-muted" />
+        </button>
+        
+        {/* Settings */}
+        <button
+          className="p-2 hover:bg-nb-surface-2 rounded-lg transition-colors"
+          onClick={props.onOpenSettings}
+        >
+          <Settings size={18} className="text-nb-text-muted" />
+        </button>
+
+        {/* Window controls (for custom titlebar) */}
+        <div className="flex items-center ml-2 gap-1">
+          <button
+            onClick={() => setIsMaximized(!isMaximized)}
+            className="p-1.5 hover:bg-nb-surface-2 rounded transition-colors"
+          >
+            {isMaximized ? (
+              <Minimize2 size={14} className="text-nb-text-muted" />
+            ) : (
+              <Maximize2 size={14} className="text-nb-text-muted" />
+            )}
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+}
+
