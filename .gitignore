@@ -164,3 +164,6 @@ chroma/
 *.img
 rootfs/
 
+# Documentation and paper (internal only)
+docs/
+paper/
