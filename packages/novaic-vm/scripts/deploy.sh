@@ -140,10 +140,11 @@ echo ""
 echo "[5/6] 复制代码..."
 
 # 清理旧代码
-$SSH_CMD "rm -rf /opt/novaic-core/src /opt/novaic-core/pyproject.toml"
+$SSH_CMD "rm -rf /opt/novaic-core/src /opt/novaic-core/skills /opt/novaic-core/pyproject.toml"
 
 # 复制新代码
 $SCP_CMD -r "$NOVAIC_CORE_DIR/src" "$SSH_USER@$SSH_HOST:/opt/novaic-core/"
+$SCP_CMD -r "$NOVAIC_CORE_DIR/skills" "$SSH_USER@$SSH_HOST:/opt/novaic-core/" 2>/dev/null || true
 $SCP_CMD "$NOVAIC_CORE_DIR/pyproject.toml" "$SSH_USER@$SSH_HOST:/opt/novaic-core/"
 $SCP_CMD "$NOVAIC_CORE_DIR/README.md" "$SSH_USER@$SSH_HOST:/opt/novaic-core/" 2>/dev/null || true
 
@@ -209,6 +210,33 @@ fi
 
 echo "  ✓ 依赖安装完成"
 
+# 更新 systemd 服务文件 (FastMCP 版本)
+echo "  更新服务配置..."
+sudo tee /etc/systemd/system/novaic.service > /dev/null << 'SERVICE_EOF'
+[Unit]
+Description=NovAIC Core - MCP Server (FastMCP)
+After=network.target display-manager.service x11vnc.service
+Wants=display-manager.service
+
+[Service]
+Type=simple
+User=ubuntu
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/ubuntu/.Xauthority
+Environment=HOME=/home/ubuntu
+Environment=PATH=/opt/novaic-venv/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PYTHONPATH=/opt/novaic-core/src
+Environment=NOVAIC_HOST=0.0.0.0
+Environment=NOVAIC_PORT=8080
+WorkingDirectory=/opt/novaic-core
+ExecStart=/opt/novaic-venv/bin/python -c "from novaic_core.main import mcp; mcp.run(transport='sse', host='0.0.0.0', port=8080)"
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+SERVICE_EOF
+
 # 启动服务
 echo "  启动服务..."
 sudo systemctl daemon-reload
@@ -234,15 +262,15 @@ sleep 2
 
 MCP_PORT="${NOVAIC_MCP_PORT:-8080}"
 
-if curl -s "http://localhost:$MCP_PORT/health" 2>/dev/null | grep -q "healthy"; then
+# 检查服务状态
+if $SSH_CMD "systemctl is-active --quiet novaic.service"; then
     echo ""
     echo "════════════════════════════════════════════"
     echo "  ✅ 部署成功!"
     echo "════════════════════════════════════════════"
     echo ""
-    echo "MCP Server:"
-    echo "  端点: http://localhost:$MCP_PORT/sse"
-    echo "  文档: http://localhost:$MCP_PORT/docs"
+    echo "MCP Server (FastMCP):"
+    echo "  SSE 端点: http://localhost:$MCP_PORT/sse"
     echo ""
     echo "Cursor 配置 (.cursor/mcp.json):"
     echo '  {'

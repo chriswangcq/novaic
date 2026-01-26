@@ -359,7 +359,7 @@ write_files:
   - path: /etc/systemd/system/novaic.service
     content: |
       [Unit]
-      Description=NovAIC Core - MCP Server
+      Description=NovAIC Core - MCP Server (FastMCP)
       After=network.target display-manager.service x11vnc.service
       Wants=display-manager.service
 
@@ -370,10 +370,11 @@ write_files:
       Environment=XAUTHORITY=/home/ubuntu/.Xauthority
       Environment=HOME=/home/ubuntu
       Environment=PATH=/opt/novaic-venv/bin:/usr/local/bin:/usr/bin:/bin
+      Environment=PYTHONPATH=/opt/novaic-core/src
       Environment=NOVAIC_HOST=0.0.0.0
       Environment=NOVAIC_PORT=8080
       WorkingDirectory=/opt/novaic-core
-      ExecStart=/opt/novaic-venv/bin/python -m uvicorn novaic_core.main:app --host 0.0.0.0 --port 8080
+      ExecStart=/opt/novaic-venv/bin/python -c "from novaic_core.main import mcp; mcp.run(transport='sse', host='0.0.0.0', port=8080)"
       Restart=always
       RestartSec=3
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "novaic"
-version = "0.1.0"
+version = "0.2.0"
 description = "NovAIC - The AI Computer Engine. PC is for humans, AIC is for AI."
 readme = "README.md"
 license = {text = "MIT"}
@@ -25,6 +25,7 @@ classifiers = [
 ]
 
 dependencies = [
+    "fastmcp>=2.14.0",
     "fastapi>=0.109.0",
     "uvicorn[standard]>=0.27.0",
     "pydantic>=2.6.0",

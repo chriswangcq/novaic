@@ -12,11 +12,13 @@ PC 是给人用的电脑，AIC 是给 AI 用的电脑。
 - 操作窗口
 - 持久化记忆
 - 感知环境
+
+Built with FastMCP for standards-compliant MCP implementation.
+Skills-based architecture for modular, extensible instructions.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
-from .main import app, MCP_TOOLS, execute_tool
+from .main import mcp
 
-__all__ = ["app", "MCP_TOOLS", "execute_tool", "__version__"]
-
+__all__ = ["mcp", "__version__"]
