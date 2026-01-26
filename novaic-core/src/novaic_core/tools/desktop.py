@@ -804,7 +804,17 @@ class DesktopTools:
                     "x_end": vis_x_end,
                     "y_end": vis_y_end
                 }
-                result["hint"] = f"ZOOMED VIEW: Grid shows system coordinates ({vis_x_start}-{vis_x_end}, {vis_y_start}-{vis_y_end}). Read the RED numbers on grid lines to find target (x,y). Use those exact numbers in mouse(x=NUMBER, y=NUMBER)."
+                result["center"] = {"x": center_x, "y": center_y}
+                result["hint"] = f"""ZOOMED VIEW centered at ({center_x}, {center_y}).
+
+🎯 CROSSHAIR CHECK: The MAGENTA CROSSHAIR at the center shows EXACTLY where you will click.
+- Is the crosshair PRECISELY on your intended target? 
+- If YES → click using mouse(action="click", x={center_x}, y={center_y})
+- If NO → estimate new coordinates and call screenshot(center={{"x":NEW_X, "y":NEW_Y}}, zoom_factor={zoom_factor}) to re-aim
+
+⚠️ DO NOT CLICK until the crosshair is confirmed to be on the target center!
+
+Visible area: x={vis_x_start}~{vis_x_end}, y={vis_y_start}~{vis_y_end}"""
             elif region:
                 # Region screenshot
                 result["visible_region"] = {

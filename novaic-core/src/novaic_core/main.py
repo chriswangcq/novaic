@@ -15,10 +15,12 @@ Features:
 """
 
 import json
+import base64
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Union
 
 from fastmcp import FastMCP
+from fastmcp.utilities.types import Image
 
 from .config import settings
 from .tools.desktop import DesktopTools
@@ -160,14 +162,46 @@ async def screenshot(
     zoom_factor: Optional[float] = None,
     region: Optional[Dict[str, int]] = None,
     grid_density: Optional[str] = None
-) -> Dict[str, Any]:
+) -> Union[List[Any], Dict[str, Any]]:
     """Capture desktop screenshot with coordinate grid"""
-    return await DesktopTools.screenshot(
+    result = await DesktopTools.screenshot(
         region=region,
         center=center,
         zoom_factor=zoom_factor,
         grid_density=grid_density
     )
+    
+    # 如果成功，返回 [Image, 说明文字]
+    if result.get("success") and result.get("screenshot"):
+        image_bytes = base64.b64decode(result["screenshot"])
+        image = Image(data=image_bytes, format="png")
+        
+        # 构建易读的说明文字
+        info_parts = []
+        
+        # hint 是最重要的使用说明
+        if result.get("hint"):
+            info_parts.append(result["hint"])
+        
+        # 图片尺寸
+        if result.get("width") and result.get("height"):
+            info_parts.append(f"图片尺寸: {result['width']}x{result['height']}")
+        
+        # 可见区域（zoom/region 模式）
+        if result.get("visible_region"):
+            vr = result["visible_region"]
+            info_parts.append(f"坐标范围: x={vr['x_start']}~{vr['x_end']}, y={vr['y_start']}~{vr['y_end']}")
+        
+        # 缩放信息
+        if result.get("scale") and result["scale"] != 1.0:
+            info_parts.append(f"缩放比例: {result['scale']:.2f}x (原图 {result.get('original_width')}x{result.get('original_height')})")
+        
+        info_text = "\n".join(info_parts) if info_parts else "截图成功"
+        
+        return [image, info_text]
+    
+    # 失败时返回错误信息
+    return result
 
 
 @mcp.tool(
@@ -269,10 +303,28 @@ async def browser_type(
 @mcp.tool(description="Capture browser viewport screenshot")
 async def browser_screenshot(
     full_page: bool = False
-) -> Dict[str, Any]:
+) -> Union[List[Any], Dict[str, Any]]:
     """Take browser screenshot"""
     browser = get_browser_tools()
-    return await browser.screenshot(full_page)
+    result = await browser.screenshot(full_page)
+    
+    # 如果成功，返回 [Image, 说明文字]
+    if result.get("success") and result.get("screenshot"):
+        image_bytes = base64.b64decode(result["screenshot"])
+        image = Image(data=image_bytes, format="png")
+        
+        # 构建易读的说明
+        info_parts = []
+        if result.get("width") and result.get("height"):
+            info_parts.append(f"浏览器截图: {result['width']}x{result['height']}")
+        if result.get("url"):
+            info_parts.append(f"当前页面: {result['url']}")
+        
+        info_text = "\n".join(info_parts) if info_parts else "浏览器截图成功"
+        
+        return [image, info_text]
+    
+    return result
 
 
 @mcp.tool(description="Scroll browser page")

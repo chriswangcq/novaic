@@ -218,27 +218,43 @@ impl VmManager {
 
     /// 检查 MCP Server 健康状态 (NovAIC Core)
     async fn check_executor_health(&self) -> Result<bool, String> {
-        // 使用 /health 端点检查
-        let url = format!("http://127.0.0.1:{}/health", self.config.executor_port);
-        println!("[VM] Checking executor health at: {}", url);
+        // FastMCP 使用 /sse 端点，检查它是否可访问
+        // 先尝试 /health，如果失败再尝试 /sse
+        let health_url = format!("http://127.0.0.1:{}/health", self.config.executor_port);
+        let sse_url = format!("http://127.0.0.1:{}/sse", self.config.executor_port);
         
         // 使用本地服务客户端（不走代理）
         let client = crate::http_client::local_client_with_timeout(10)
             .build()
             .map_err(|e| e.to_string())?;
 
-        match client.get(&url).send().await {
+        // 先检查 /health 端点
+        println!("[VM] Checking executor health at: {}", health_url);
+        match client.get(&health_url).send().await {
             Ok(response) => {
                 let status = response.status();
                 println!("[VM] Executor health response status: {}", status);
                 if status.is_success() {
                     if let Ok(text) = response.text().await {
-                        let is_healthy = text.contains("healthy");
+                        let is_healthy = text.contains("healthy") || text.contains("ok");
                         println!("[VM] Executor health response: {}, healthy={}", text, is_healthy);
                         return Ok(is_healthy);
                     }
                 }
-                Ok(false)
+            },
+            Err(e) => {
+                println!("[VM] /health check failed: {}", e);
+            },
+        }
+        
+        // 如果 /health 失败，检查 /sse 端点（FastMCP 的主要端点）
+        println!("[VM] Checking executor SSE at: {}", sse_url);
+        match client.get(&sse_url).send().await {
+            Ok(response) => {
+                let status = response.status();
+                println!("[VM] Executor SSE response status: {}", status);
+                // SSE 端点返回 200 即表示服务在运行
+                Ok(status.is_success() || status.as_u16() == 405) // 405 Method Not Allowed 也说明端点存在
             },
             Err(e) => {
                 println!("[VM] Executor health check error: {}", e);
