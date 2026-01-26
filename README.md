@@ -144,16 +144,30 @@ novaic serve
 
 ## 演示
 
-AI 通过 NovAIC 发送微信消息：
+AI 自动完成数据分析任务：
 
 ```
-User: 帮我给公主发个消息 "hi --from ai"
+User: 分析 ~/data/sales.csv，生成可视化报告
 
-NovAIC: 
-1. 启动微信应用
-2. 搜索联系人 "公主"
-3. 输入消息 "hi --from ai"
-4. 发送成功 ✅
+NovAIC:
+1. screenshot() → 查看当前桌面状态
+2. run_command("python3 -c '...pandas...matplotlib...'") → 数据处理
+3. launch_app("firefox") → 打开浏览器预览 HTML 报告
+4. screenshot() → 确认报告生成成功
+   → 报告已保存至 ~/data/report.html ✅
+```
+
+AI 自动化 GUI 操作：
+
+```
+User: 打开 VS Code，创建一个 Python 项目
+
+NovAIC:
+1. screenshot() → 定位任务栏
+2. mouse(action="click", x=520, y=750) → 点击 VS Code 图标
+3. keyboard(action="hotkey", keys=["ctrl", "shift", "n"]) → 新建窗口
+4. keyboard(action="type", text="main.py") → 创建文件
+5. screenshot() → 确认项目创建完成 ✅
 ```
 
 ## 文档
