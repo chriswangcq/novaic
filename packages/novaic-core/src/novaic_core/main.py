@@ -51,6 +51,100 @@ class MCPCallRequest(BaseModel):
     arguments: Dict[str, Any]
 
 
+# ==================== Server Instructions ====================
+
+SERVER_INSTRUCTIONS = """# NovAIC - AI Computer Engine 使用指南
+
+NovAIC 提供 44+ MCP 工具，让你能够控制桌面、浏览器、文件系统等。请遵循以下策略以获得最佳效果。
+
+## 🖥️ 桌面操作策略 (Desktop)
+
+### 点击前必须确认准星位置！
+这是最重要的规则。盲目点击会导致操作失败。
+
+**强制工作流程：**
+1. `screenshot()` → 获取全屏截图，估算目标坐标 (X, Y)
+2. `screenshot(center={"x":X, "y":Y}, zoom_factor=2)` → 放大查看，确认 MAGENTA 准星是否在目标上
+3. 准星在目标上？ → 执行 `mouse(action="click", x=X, y=Y)`
+4. 准星不在目标上？ → 调整坐标，重复步骤 2-3
+
+### Zoom Factor 选择
+- 大按钮: zoom_factor=2
+- 中等图标: zoom_factor=3
+- 小元素: zoom_factor=4-5
+
+## 🌐 浏览器 vs 桌面
+
+| 场景 | 推荐工具 |
+|------|----------|
+| 网页操作 | `browser_*` 系列（更可靠） |
+| 本地应用（微信、VSCode等） | `screenshot` + `mouse` + `keyboard` |
+| 需要看到页面 | `browser_screenshot` 或 `screenshot` |
+
+### 浏览器工具使用
+- 优先用选择器：`browser_click(selector="text=登录")` 比坐标点击更可靠
+- 等待加载：`browser_navigate(url, wait_until="networkidle")`
+
+## 🧠 记忆系统策略 (Memory)
+
+### 何时保存记忆
+- 重要上下文：项目信息、用户偏好
+- 多步骤任务的中间状态
+- 需要跨会话保持的信息
+
+```
+memory_save("project_context", {"name": "xxx", "tech_stack": [...]})
+memory_recall("project_context")  # 下次对话时回忆
+```
+
+### 目标跟踪
+复杂任务使用 goal 系列工具：
+```
+goal_set("完成用户认证模块", subtasks=["设计数据库", "实现API", "测试"])
+goal_progress(completed_subtask="设计数据库")
+goal_complete(summary="已完成所有子任务")
+```
+
+## 📁 文件操作
+
+- 读取前检查文件是否存在：`list_files(path)`
+- 大文件会被截断，使用 `result_get(result_id)` 获取完整内容
+
+## 🪟 窗口管理
+
+1. 先 `list_windows()` 获取窗口列表
+2. 使用 `window_id` 进行操作：`focus_window`, `maximize_window` 等
+3. 启动应用：`launch_app("firefox")` 是非阻塞的
+
+## 💻 Shell 命令
+
+- GUI 应用必须后台运行：`run_command(command="firefox", background=True)`
+- 长时间命令设置超时：`run_command(command="...", timeout=120)`
+
+## 📦 结果缓存
+
+当输出被截断时，会返回 `result_id`：
+```
+result_get(result_id="xxx", start_line=1, end_line=100)  # 按行获取
+result_get(result_id="xxx", start_char=0, length=5000, mode="chars")  # 按字符获取
+```
+
+## 🔍 环境感知
+
+开始任务前，了解当前状态：
+- `system_snapshot()` - 系统全貌（窗口、资源、剪贴板）
+- `directory_snapshot()` - 项目结构分析
+- `environment_info()` - 开发环境信息
+
+## ⚠️ 常见错误避免
+
+1. ❌ 不要盲目点击，总是先截图确认
+2. ❌ 不要在 browser_* 和 desktop 工具之间混用坐标
+3. ❌ 不要忘记 GUI 应用需要 background=True
+4. ✅ 操作失败时，先截图查看当前状态再重试
+"""
+
+
 # ==================== Tool Definitions ====================
 
 MCP_TOOLS: List[MCPTool] = [
@@ -949,12 +1043,13 @@ async def sse_event_generator(request: Request, connection_id: str):
             "params": {
                 "protocolVersion": "2024-11-05",
                 "serverInfo": {
-                    "name": "linux2mcp",
+                    "name": "novaic",
                     "version": "0.1.0"
                 },
                 "capabilities": {
                     "tools": {}
-                }
+                },
+                "instructions": SERVER_INSTRUCTIONS
             }
         }
         yield f"data: {json.dumps(init_msg)}\n\n"
@@ -985,7 +1080,7 @@ async def sse_endpoint(request: Request):
     配置方式 (~/.cursor/mcp.json):
     {
         "mcpServers": {
-            "linux2mcp": {
+            "novaic": {
                 "url": "http://localhost:8081/sse"
             }
         }
@@ -1023,12 +1118,13 @@ async def sse_message(request: Request):
             "result": {
                 "protocolVersion": "2024-11-05",
                 "serverInfo": {
-                    "name": "linux2mcp",
+                    "name": "novaic",
                     "version": "0.1.0"
                 },
                 "capabilities": {
                     "tools": {}
-                }
+                },
+                "instructions": SERVER_INSTRUCTIONS
             }
         }
     

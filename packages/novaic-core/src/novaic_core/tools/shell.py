@@ -173,7 +173,7 @@ echo ""
 echo "=== Command finished (exit code: $?) ==="
 sleep 3
 """
-        script_path = f"/tmp/linux2mcp_visible_{os.getpid()}.sh"
+        script_path = f"/tmp/novaic_visible_{os.getpid()}.sh"
         with open(script_path, 'w') as f:
             f.write(script_content)
         os.chmod(script_path, 0o755)
@@ -223,7 +223,7 @@ sleep 3
             visible: If true, run in visible terminal
         """
         # Write code to temp file
-        script_path = f"/tmp/linux2mcp_python_{os.getpid()}.py"
+        script_path = f"/tmp/novaic_python_{os.getpid()}.py"
         with open(script_path, 'w') as f:
             f.write(code)
         

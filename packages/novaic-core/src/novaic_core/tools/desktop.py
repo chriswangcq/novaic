@@ -921,7 +921,18 @@ class DesktopTools:
             if action == "type":
                 if not text:
                     return {"success": False, "error": "type requires text"}
-                cmd = ["xdotool", "type", "--clearmodifiers", text]
+                
+                # Check if text contains non-ASCII characters (Chinese, etc.)
+                has_non_ascii = any(ord(c) > 127 for c in text)
+                
+                if has_non_ascii:
+                    # For non-ASCII text (Chinese, etc.), add delay between characters
+                    # xdotool needs more time to process Unicode via XIM
+                    # 100ms delay is needed for reliable Chinese character input
+                    cmd = ["xdotool", "type", "--clearmodifiers", "--delay", "100", text]
+                else:
+                    # For ASCII-only text, use faster input
+                    cmd = ["xdotool", "type", "--clearmodifiers", text]
                 
             elif action == "key":
                 if not keys:

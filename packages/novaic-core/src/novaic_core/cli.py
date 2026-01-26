@@ -69,7 +69,7 @@ def main():
     
     elif args.command == "version":
         from . import __version__
-        print(f"linux2mcp {__version__}")
+        print(f"novaic {__version__}")
     
     elif args.command == "info":
         from .main import MCP_TOOLS
