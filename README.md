@@ -26,8 +26,9 @@
 cd packages/novaic-vm
 ./setup.sh
 
-# 2. 配置 Cursor
-# 在 ~/.cursor/mcp.json 中添加：
+# 2. 配置 MCP 客户端
+# Claude Desktop: ~/Library/Application Support/Claude/claude_desktop_config.json
+# 或其他支持 MCP 的客户端
 {
   "mcpServers": {
     "novaic": {
@@ -62,8 +63,8 @@ novaic serve
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌────────────────┐  │
-│  │  NovAIC App     │  │  Cursor / CLI   │  │  Any MCP Host  │  │
-│  │  (Tauri)        │  │                 │  │                │  │
+│  │  NovAIC App     │  │ Claude Desktop  │  │  Any MCP Host  │  │
+│  │  (Tauri)        │  │    / CLI        │  │                │  │
 │  └────────┬────────┘  └────────┬────────┘  └───────┬────────┘  │
 │           │                    │                   │            │
 │           └────────────────────┼───────────────────┘            │

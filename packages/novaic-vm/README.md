@@ -88,9 +88,9 @@ export UBUNTU_MIRROR="https://mirrors.tuna.tsinghua.edu.cn/ubuntu-cloud-images"
 ./scripts/create-vm.sh
 ```
 
-## 在 Cursor 中使用
+## 在 MCP 客户端中使用
 
-配置 `.cursor/mcp.json`:
+配置 MCP 客户端（如 Claude Desktop）:
 
 ```json
 {
@@ -178,8 +178,8 @@ rm -rf images/ iso/cloud-init-seed.iso
 │    SSH:2222           VNC:5900          MCP:8081           │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────┐   │
-│  │  Cursor IDE + AI                                    │   │
-│  │  → MCP Client → http://localhost:8081/sse          │   │
+│  │  MCP Client (Claude Desktop / etc)                 │   │
+│  │  → MCP Protocol → http://localhost:8081/sse        │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
