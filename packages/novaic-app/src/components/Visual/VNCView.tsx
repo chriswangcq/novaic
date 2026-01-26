@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAppStore } from '../../store';
-import { Monitor, RefreshCw, ExternalLink, Play, Square, Loader2 } from 'lucide-react';
+import { Monitor, RefreshCw, Play, Loader2, Lock, Unlock, Settings } from 'lucide-react';
 import { vmService } from '../../services/vm';
 import RFB from 'novnc-rfb';
+import { LayoutToggle } from '../Layout/LayoutToggle';
 
 // 配置
 const CONFIG = {
@@ -13,8 +14,12 @@ const CONFIG = {
 
 type VncStatus = 'unknown' | 'stopped' | 'starting' | 'running' | 'error';
 
-export function VNCView() {
-  const { setVncConnected } = useAppStore();
+interface VNCViewProps {
+  isThumbnail?: boolean;
+}
+
+export function VNCView({ isThumbnail = false }: VNCViewProps) {
+  const { setVncConnected, vncLocked, setVncLocked, setSettingsOpen } = useAppStore();
   const [status, setStatus] = useState<VncStatus>('unknown');
   const [errorMsg, setErrorMsg] = useState('');
   const [wsReady, setWsReady] = useState(false);
@@ -467,6 +472,7 @@ export function VNCView() {
         rfb.clipViewport = true;
         rfb.resizeSession = false;
         rfb.focusOnClick = true;
+        rfb.viewOnly = vncLocked;
 
         rfb.addEventListener('connect', () => {
           if (disposed) return;
@@ -510,7 +516,14 @@ export function VNCView() {
         rfbRef.current = null;
       }
     };
-  }, [status, wsReady, setVncConnected]);
+  }, [status, wsReady, setVncConnected, vncLocked]);
+
+  // Update viewOnly when vncLocked changes
+  useEffect(() => {
+    if (rfbRef.current) {
+      rfbRef.current.viewOnly = vncLocked;
+    }
+  }, [vncLocked]);
 
   const getStatusDisplay = () => {
     switch (status) {
@@ -529,71 +542,80 @@ export function VNCView() {
 
   const statusDisplay = getStatusDisplay();
 
+  // Thumbnail mode: simplified view without toolbar
+  if (isThumbnail) {
+    return (
+      <div className="h-full w-full relative overflow-hidden bg-black">
+        {status === 'running' && wsReady ? (
+          <div ref={rfbContainerRef} className="absolute inset-0 pointer-events-none" />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center">
+              <Monitor size={24} className="mx-auto mb-1 text-nb-text-muted/50" />
+              <span className="text-[10px] text-nb-text-muted/50">{statusDisplay.text}</span>
+            </div>
+          </div>
+        )}
+        {/* Status indicator */}
+        <div className="absolute top-2 left-2">
+          <span className={`w-2 h-2 rounded-full ${statusDisplay.color} block`} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full flex flex-col bg-nb-bg">
-      {/* Toolbar */}
-      <div className="h-10 px-4 flex items-center gap-2 bg-nb-surface border-b border-nb-border shrink-0">
-        <div className="flex items-center gap-2">
-          <span className={`w-2 h-2 rounded-full ${statusDisplay.color}`} />
-          <span className="text-xs text-nb-text-muted">{statusDisplay.text}</span>
-        </div>
+      {/* Toolbar - simplified */}
+      <div className="h-10 px-3 flex items-center gap-2 bg-nb-surface border-b border-nb-border shrink-0">
+        {/* Layout toggle - left side */}
+        <LayoutToggle />
 
         <div className="flex-1" />
 
-        {/* 控制按钮 */}
+        {/* Main actions - right side */}
         {status === 'stopped' || status === 'unknown' || status === 'error' ? (
           <button
             onClick={startVnc}
-            className="flex items-center gap-1.5 px-2 py-1 bg-nb-success hover:bg-nb-success/80 text-white rounded text-xs transition-colors"
-            title="启动 VNC"
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-nb-success hover:bg-nb-success/80 text-white rounded text-[11px] font-medium transition-colors"
+            title="Start VM"
           >
             <Play size={12} />
             <span>Start</span>
           </button>
         ) : status === 'running' ? (
           <>
+            {/* Lock toggle button */}
             <button
-              onClick={restartXfce4}
-              className="flex items-center gap-1.5 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs transition-colors"
-              title="重启 xfce4 桌面环境（修复黑屏）"
+              onClick={() => setVncLocked(!vncLocked)}
+              className={`p-1.5 rounded transition-colors ${
+                vncLocked 
+                  ? 'bg-amber-500/20 text-amber-400' 
+                  : 'hover:bg-white/[0.06] text-nb-text-muted'
+              }`}
+              title={vncLocked ? 'Unlock (enable interaction)' : 'Lock (view-only mode)'}
             >
-              <RefreshCw size={12} />
-              <span>Fix Desktop</span>
+              {vncLocked ? <Lock size={14} /> : <Unlock size={14} />}
             </button>
+
+            {/* Refresh button */}
             <button
-              onClick={restartVnc}
-              className="flex items-center gap-1.5 px-2 py-1 bg-nb-warning hover:bg-nb-warning/80 text-white rounded text-xs transition-colors"
-              title="重启所有 VNC 服务"
+              onClick={checkVncStatus}
+              className="p-1.5 hover:bg-white/[0.06] rounded transition-colors"
+              title="Refresh status"
             >
-              <RefreshCw size={12} />
-              <span>Restart All</span>
-            </button>
-            <button
-              onClick={stopVnc}
-              className="flex items-center gap-1.5 px-2 py-1 bg-nb-error hover:bg-nb-error/80 text-white rounded text-xs transition-colors"
-              title="停止 VNC"
-            >
-              <Square size={12} />
-              <span>Stop</span>
+              <RefreshCw size={14} className={`text-nb-text-muted ${status === 'starting' ? 'animate-spin' : ''}`} />
             </button>
           </>
         ) : null}
 
+        {/* Settings */}
         <button
-          onClick={checkVncStatus}
-          className="p-1.5 hover:bg-nb-surface-2 rounded transition-colors"
-          title="刷新状态"
+          onClick={() => setSettingsOpen(true)}
+          className="p-1.5 hover:bg-white/[0.06] rounded transition-colors"
+          title="Settings"
         >
-          <RefreshCw size={14} className={`text-nb-text-muted ${status === 'starting' ? 'animate-spin' : ''}`} />
-        </button>
-
-        <button
-          onClick={openVncClient}
-          className="flex items-center gap-1.5 px-2 py-1 bg-nb-accent hover:bg-nb-accent/80 text-white rounded text-xs transition-colors"
-          title="在 VNC 客户端中打开"
-        >
-          <ExternalLink size={12} />
-          <span>VNC</span>
+          <Settings size={14} className="text-nb-text-muted" />
         </button>
       </div>
 

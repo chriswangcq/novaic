@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { Message, AgentEvent } from '../../types';
 import { ThinkingBlock } from './ThinkingBlock';
 import { ToolCallCard } from './ToolCallCard';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Copy, Check } from 'lucide-react';
 
 interface AssistantMessageProps {
   message: Message;
@@ -43,20 +44,15 @@ export function AssistantMessage({ message }: AssistantMessageProps) {
   const processedToolEnds = new Set<number>();
 
   return (
-    <div className="group">
-      {/* Assistant label */}
-      <div className="flex items-center gap-2 mb-2">
-        <div className="w-5 h-5 rounded-md bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center">
-          <Sparkles size={12} className="text-white" />
-        </div>
-        <span className="text-xs font-medium text-white/40">Agent</span>
-        <span className="text-xs text-white/20">
-          {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </span>
+    <div className="group py-2">
+      {/* Header: icon + label */}
+      <div className="flex items-center gap-1.5 mb-1">
+        <Sparkles size={12} className="text-violet-400" />
+        <span className="text-[11px] font-medium text-white/40 uppercase tracking-wide">Agent</span>
       </div>
       
       {/* 按事件顺序渲染 */}
-      <div className="space-y-3 pl-7">
+      <div className="space-y-2 pl-[18px]">
         {events.map((event, index) => {
           switch (event.type) {
             case 'thinking': {
@@ -112,7 +108,7 @@ export function AssistantMessage({ message }: AssistantMessageProps) {
               const content = extractContent(event.data);
               if (!content) return null;
               return (
-                <div key={`text-${index}`} className="text-[14px] text-white/90 leading-relaxed whitespace-pre-wrap">
+                <div key={`text-${index}`} className="text-[13px] text-white/90 leading-relaxed whitespace-pre-wrap">
                   <FormattedText text={content} />
                 </div>
               );
@@ -121,8 +117,8 @@ export function AssistantMessage({ message }: AssistantMessageProps) {
             case 'warning': {
               const content = extractContent(event.data);
               return (
-                <div key={`warning-${index}`} className="flex items-start gap-2 px-3 py-2 rounded-md bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-sm">
-                  <span>⚠️</span>
+                <div key={`warning-${index}`} className="flex items-start gap-2 px-2.5 py-1.5 rounded bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-[12px]">
+                  <span className="shrink-0">⚠</span>
                   <span>{content}</span>
                 </div>
               );
@@ -131,8 +127,8 @@ export function AssistantMessage({ message }: AssistantMessageProps) {
             case 'error': {
               const content = extractContent(event.data);
               return (
-                <div key={`error-${index}`} className="flex items-start gap-2 px-3 py-2 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-                  <span>❌</span>
+                <div key={`error-${index}`} className="flex items-start gap-2 px-2.5 py-1.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 text-[12px]">
+                  <span className="shrink-0">✕</span>
                   <span>{content}</span>
                 </div>
               );
@@ -145,19 +141,17 @@ export function AssistantMessage({ message }: AssistantMessageProps) {
         
         {/* 最终响应（如果有且不在 events 中） */}
         {message.content && !events.some(e => e.type === 'final') && (
-          <div className="text-[14px] text-white/90 leading-relaxed whitespace-pre-wrap">
+          <div className="text-[13px] text-white/90 leading-relaxed whitespace-pre-wrap">
             <FormattedText text={message.content} />
           </div>
         )}
         
         {/* Streaming 指示器 */}
         {isStreaming && events.length === 0 && (
-          <div className="flex items-center gap-2 text-white/40 text-sm">
-            <span className="inline-flex">
-              <span className="animate-pulse">●</span>
-              <span className="animate-pulse" style={{ animationDelay: '150ms' }}>●</span>
-              <span className="animate-pulse" style={{ animationDelay: '300ms' }}>●</span>
-            </span>
+          <div className="flex items-center gap-1 text-white/30 text-[12px]">
+            <span className="animate-pulse">●</span>
+            <span className="animate-pulse" style={{ animationDelay: '150ms' }}>●</span>
+            <span className="animate-pulse" style={{ animationDelay: '300ms' }}>●</span>
           </div>
         )}
       </div>
@@ -166,13 +160,57 @@ export function AssistantMessage({ message }: AssistantMessageProps) {
 }
 
 /**
- * 简单的文本格式化（处理代码块）
+ * Code block with language label and copy button (Cursor style)
+ */
+function CodeBlock({ code, language }: { code: string; language: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="my-2 rounded-md bg-[#1e1e1e] border border-white/[0.06] overflow-hidden group/code">
+      {/* Header with language and copy button */}
+      <div className="flex items-center justify-between px-3 py-1.5 bg-white/[0.02] border-b border-white/[0.04]">
+        <span className="text-[10px] text-white/30 uppercase tracking-wider font-medium">{language}</span>
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-white/30 hover:text-white/60 hover:bg-white/[0.04] transition-colors"
+        >
+          {copied ? (
+            <>
+              <Check size={10} />
+              <span>Copied</span>
+            </>
+          ) : (
+            <>
+              <Copy size={10} />
+              <span>Copy</span>
+            </>
+          )}
+        </button>
+      </div>
+      {/* Code content */}
+      <pre className="px-3 py-2.5 overflow-x-auto">
+        <code className="text-[12px] text-emerald-400/90 font-mono leading-relaxed">
+          {code}
+        </code>
+      </pre>
+    </div>
+  );
+}
+
+/**
+ * 文本格式化（处理代码块）- Cursor style
  */
 function FormattedText({ text }: { text: string }) {
   const codeBlockRegex = /```(\w+)?\n?([\s\S]*?)```/g;
   const inlineCodeRegex = /`([^`]+)`/g;
   
-  const parts: Array<{ type: 'text' | 'code-block' | 'inline-code'; content: string; language?: string }> = [];
+  const parts: Array<{ type: 'text' | 'code-block'; content: string; language?: string }> = [];
   let lastIndex = 0;
   let match;
   
@@ -183,7 +221,7 @@ function FormattedText({ text }: { text: string }) {
     parts.push({ 
       type: 'code-block', 
       content: match[2].trim(), 
-      language: match[1] || 'plaintext' 
+      language: match[1] || 'text' 
     });
     lastIndex = match.index + match[0].length;
   }
@@ -196,21 +234,16 @@ function FormattedText({ text }: { text: string }) {
     <>
       {parts.map((part, i) => {
         if (part.type === 'code-block') {
-          return (
-            <pre key={i} className="my-2 px-3 py-2 rounded-md bg-black/40 border border-white/[0.06] overflow-x-auto">
-              <code className="text-[13px] text-emerald-400/90 font-mono">
-                {part.content}
-              </code>
-            </pre>
-          );
+          return <CodeBlock key={i} code={part.content} language={part.language || 'text'} />;
         }
         
+        // Process inline code
         const textParts = part.content.split(inlineCodeRegex);
         return (
           <span key={i}>
             {textParts.map((t, j) => 
               j % 2 === 1 ? (
-                <code key={j} className="px-1.5 py-0.5 rounded bg-white/[0.06] text-[13px] font-mono text-violet-300">
+                <code key={j} className="px-1 py-0.5 rounded bg-white/[0.06] text-[12px] font-mono text-violet-300">
                   {t}
                 </code>
               ) : t

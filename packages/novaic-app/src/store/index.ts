@@ -7,8 +7,40 @@ import {
   Message, 
   LogEntry, 
   AppState, 
-  AgentEvent
+  AgentEvent,
+  LayoutMode,
+  LayoutSettings
 } from '../types';
+
+// Layout persistence key
+const LAYOUT_STORAGE_KEY = 'novaic-layout';
+const DEFAULT_LEFT_WIDTH = 400;
+
+// Load layout settings from localStorage
+function loadLayoutSettings(): LayoutSettings {
+  try {
+    const saved = localStorage.getItem(LAYOUT_STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved) as Partial<LayoutSettings>;
+      return {
+        mode: parsed.mode || 'normal',
+        leftWidth: parsed.leftWidth || DEFAULT_LEFT_WIDTH,
+      };
+    }
+  } catch (e) {
+    console.warn('[Store] Failed to load layout settings:', e);
+  }
+  return { mode: 'normal', leftWidth: DEFAULT_LEFT_WIDTH };
+}
+
+// Save layout settings to localStorage
+function saveLayoutSettings(settings: LayoutSettings): void {
+  try {
+    localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(settings));
+  } catch (e) {
+    console.warn('[Store] Failed to save layout settings:', e);
+  }
+}
 
 interface AppStore extends AppState {
   initialize: () => Promise<void>;
@@ -22,6 +54,11 @@ interface AppStore extends AppState {
   setExecuting: (executing: boolean) => void;
   setVncConnected: (connected: boolean) => void;
   setVncInteractive: (interactive: boolean) => void;
+  setVncLocked: (locked: boolean) => void;
+  setSettingsOpen: (open: boolean) => void;
+  // Layout actions
+  setLayoutMode: (mode: LayoutMode) => void;
+  setLeftPanelWidth: (width: number) => void;
 }
 
 // SSE event from Agent API
@@ -45,6 +82,9 @@ function toLogData(d: unknown): LogData {
   return { content: String(d) };
 }
 
+// Load initial layout
+const initialLayout = loadLayoutSettings();
+
 export const useAppStore = create<AppStore>((set, get) => ({
   // Initial state
   messages: [],
@@ -53,7 +93,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
   isInitialized: false,
   vncConnected: false,
   vncInteractive: false,
+  vncLocked: false,
+  settingsOpen: false,
   user: null,
+  // Layout state (loaded from localStorage)
+  layoutMode: initialLayout.mode,
+  leftPanelWidth: initialLayout.leftWidth,
 
   // Initialize app
   initialize: async () => {
@@ -220,5 +265,26 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   setVncInteractive: (interactive: boolean) => {
     set({ vncInteractive: interactive });
+  },
+
+  setVncLocked: (locked: boolean) => {
+    set({ vncLocked: locked });
+  },
+
+  setSettingsOpen: (open: boolean) => {
+    set({ settingsOpen: open });
+  },
+
+  // Layout actions
+  setLayoutMode: (mode: LayoutMode) => {
+    set({ layoutMode: mode });
+    const { leftPanelWidth } = get();
+    saveLayoutSettings({ mode, leftWidth: leftPanelWidth });
+  },
+
+  setLeftPanelWidth: (width: number) => {
+    set({ leftPanelWidth: width });
+    const { layoutMode } = get();
+    saveLayoutSettings({ mode: layoutMode, leftWidth: width });
   },
 }));

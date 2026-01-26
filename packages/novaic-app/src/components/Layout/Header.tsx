@@ -8,10 +8,10 @@ export function Header(props: { onOpenSettings: () => void }) {
     <header className="h-12 bg-nb-surface border-b border-nb-border flex items-center px-4 no-select" data-tauri-drag-region>
       {/* Logo */}
       <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-nb-accent to-purple-500 flex items-center justify-center">
-          <span className="text-white font-bold text-sm">NC</span>
+        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+          <span className="text-white font-bold text-[11px]">NA</span>
         </div>
-        <span className="font-semibold text-nb-text">NB-CC</span>
+        <span className="font-semibold text-nb-text text-[14px]">NovAIC</span>
       </div>
 
       {/* Spacer */}

@@ -5,7 +5,7 @@ import { useAppStore } from '../../store';
 import { Sparkles, Trash2 } from 'lucide-react';
 
 export function ChatPanel() {
-  const { messages, isExecuting, sendMessage } = useAppStore();
+  const { messages, isExecuting, sendMessage, clearMessages } = useAppStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto scroll to bottom
@@ -13,24 +13,31 @@ export function ChatPanel() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleClear = () => {
-    // TODO: Add clear messages action
-  };
-
   return (
-    <div className="flex flex-col h-full bg-[#0d0d0d]">
-      {/* Header - 极简 */}
-      <div className="h-11 px-4 flex items-center justify-between border-b border-white/[0.06] bg-[#0d0d0d]">
-        <div className="flex items-center gap-2">
-          <Sparkles size={14} className="text-violet-400" />
-          <span className="text-[13px] font-medium text-white/90">Agent</span>
+    <div className="flex flex-col h-full bg-[#0a0a0a]">
+      {/* Header with Logo */}
+      <div className="h-10 px-3 flex items-center justify-between border-b border-white/[0.04] bg-[#0f0f0f] shrink-0" data-tauri-drag-region>
+        {/* Logo + Agent */}
+        <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 rounded bg-gradient-to-br from-violet-500/90 to-purple-600/90 flex items-center justify-center">
+              <span className="text-white font-semibold text-[8px]">NA</span>
+            </div>
+            <span className="font-medium text-white/80 text-[12px]">NovAIC</span>
+          </div>
+          <div className="w-px h-3 bg-white/[0.06]" />
+          <div className="flex items-center gap-1">
+            <Sparkles size={10} className="text-violet-400/70" />
+            <span className="text-[11px] text-white/40">Agent</span>
+          </div>
         </div>
+        {/* Clear button */}
         <button 
-          onClick={handleClear}
+          onClick={clearMessages}
           className="p-1.5 rounded hover:bg-white/[0.06] transition-colors"
           title="Clear chat"
         >
-          <Trash2 size={14} className="text-white/40" />
+          <Trash2 size={12} className="text-white/30" />
         </button>
       </div>
 

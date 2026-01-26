@@ -169,31 +169,50 @@ export function ToolCallCard({ toolCall }: ToolCallCardProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Get short preview for collapsed state
+  const getShortPreview = () => {
+    if (toolCall.tool === 'run_command') {
+      const cmd = toolCall.input.command as string;
+      return cmd.length > 40 ? cmd.slice(0, 40) + '...' : cmd;
+    }
+    if (toolCall.tool === 'run_python') {
+      const code = toolCall.input.code as string;
+      const firstLine = code.split('\n')[0];
+      return firstLine.length > 40 ? firstLine.slice(0, 40) + '...' : firstLine;
+    }
+    if (toolCall.tool === 'browser_navigate') {
+      return toolCall.input.url as string;
+    }
+    return null;
+  };
+
+  const shortPreview = getShortPreview();
+
   return (
-    <div className={`rounded-lg ${status.bg} border ${status.border} overflow-hidden transition-colors`}>
-      {/* Header */}
+    <div className={`rounded ${status.bg} border ${status.border} overflow-hidden transition-colors`}>
+      {/* Header - compact single line */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/[0.02] transition-colors text-left"
+        className="w-full flex items-center gap-1.5 px-2 py-1.5 hover:bg-white/[0.02] transition-colors text-left"
       >
         <ChevronRight 
-          size={14} 
-          className={`text-white/30 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+          size={12} 
+          className={`text-white/30 transition-transform shrink-0 ${isExpanded ? 'rotate-90' : ''}`}
         />
-        <Icon size={14} className={status.color} />
-        <span className={`text-xs font-medium ${status.color}`}>{displayName}</span>
+        <Icon size={12} className={status.color} />
+        <span className={`text-[11px] font-medium ${status.color}`}>{displayName}</span>
         
         {/* Inline preview when collapsed */}
-        {!isExpanded && inputDisplay && (
-          <code className="flex-1 text-xs text-white/40 font-mono truncate ml-1">
-            {inputDisplay.slice(0, 50)}{inputDisplay.length > 50 ? '...' : ''}
+        {!isExpanded && shortPreview && (
+          <code className="flex-1 text-[11px] text-white/30 font-mono truncate">
+            {shortPreview}
           </code>
         )}
         
         {/* Status indicator */}
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="flex items-center gap-1.5 ml-auto shrink-0">
           {duration && (
-            <span className="text-[10px] text-white/30">{duration}ms</span>
+            <span className="text-[10px] text-white/20">{duration}ms</span>
           )}
           {status.icon && <span className={status.color}>{status.icon}</span>}
         </div>
@@ -203,37 +222,37 @@ export function ToolCallCard({ toolCall }: ToolCallCardProps) {
       {isExpanded && (
         <div className="border-t border-white/[0.04]">
           {/* Input */}
-          <div className="px-3 py-2">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] uppercase tracking-wider text-white/30">Input</span>
+          <div className="px-2 py-1.5">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[9px] uppercase tracking-wider text-white/25 font-medium">Input</span>
               <button
                 onClick={(e) => { e.stopPropagation(); copyToClipboard(inputDisplay); }}
-                className="p-1 hover:bg-white/[0.06] rounded transition-colors"
+                className="p-0.5 hover:bg-white/[0.06] rounded transition-colors"
               >
                 {copied 
-                  ? <CheckCheck size={12} className="text-emerald-400" /> 
-                  : <Copy size={12} className="text-white/30" />
+                  ? <CheckCheck size={10} className="text-emerald-400" /> 
+                  : <Copy size={10} className="text-white/25" />
                 }
               </button>
             </div>
-            <pre className="text-[12px] text-white/70 font-mono whitespace-pre-wrap break-all bg-black/20 rounded px-2 py-1.5 max-h-32 overflow-auto">
+            <pre className="text-[11px] text-white/60 font-mono whitespace-pre-wrap break-all bg-black/20 rounded px-2 py-1.5 max-h-28 overflow-auto">
               {inputDisplay}
             </pre>
           </div>
 
           {/* Output */}
           {toolCall.result && (
-            <div className="px-3 py-2 border-t border-white/[0.04]">
-              <div className="flex items-center gap-2 mb-1.5">
-                <span className="text-[10px] uppercase tracking-wider text-white/30">Output</span>
+            <div className="px-2 py-1.5 border-t border-white/[0.04]">
+              <div className="flex items-center gap-1.5 mb-1">
+                <span className="text-[9px] uppercase tracking-wider text-white/25 font-medium">Output</span>
                 {exitCode !== undefined && (
-                  <span className={`text-[10px] ${exitCode === 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    exit: {exitCode}
+                  <span className={`text-[9px] ${exitCode === 0 ? 'text-emerald-400/70' : 'text-red-400/70'}`}>
+                    exit {exitCode}
                   </span>
                 )}
               </div>
               {outputDisplay && (
-                <pre className="text-[12px] text-white/70 font-mono whitespace-pre-wrap break-all bg-black/20 rounded px-2 py-1.5 max-h-48 overflow-auto">
+                <pre className="text-[11px] text-white/60 font-mono whitespace-pre-wrap break-all bg-black/20 rounded px-2 py-1.5 max-h-40 overflow-auto">
                   {outputDisplay}
                 </pre>
               )}

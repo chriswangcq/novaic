@@ -115,6 +115,15 @@ export interface ToolInfo {
   input_schema: Record<string, unknown>;
 }
 
+// Layout Mode
+export type LayoutMode = 'full' | 'normal' | 'mini';
+
+// Layout Settings (persisted)
+export interface LayoutSettings {
+  mode: LayoutMode;
+  leftWidth: number;
+}
+
 // App State
 export interface AppState {
   messages: Message[];
@@ -123,7 +132,12 @@ export interface AppState {
   isInitialized: boolean;
   vncConnected: boolean;
   vncInteractive: boolean;
+  vncLocked: boolean;  // View-only mode for VNC
+  settingsOpen: boolean;
   user: User | null;
+  // Layout
+  layoutMode: LayoutMode;
+  leftPanelWidth: number;
 }
 
 // API Response Types
