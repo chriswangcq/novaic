@@ -807,10 +807,14 @@ class DesktopTools:
                 result["center"] = {"x": center_x, "y": center_y}
                 result["hint"] = f"""ZOOMED VIEW centered at ({center_x}, {center_y}).
 
+📐 HOW TO READ COORDINATES:
+- X coordinate: Look at the RED numbers on TOP/BOTTOM edges
+- Y coordinate: Look at the RED numbers on LEFT/RIGHT edges
+
 🎯 CROSSHAIR CHECK: The MAGENTA CROSSHAIR at the center shows EXACTLY where you will click.
 - Is the crosshair PRECISELY on your intended target? 
 - If YES → click using mouse(action="click", x={center_x}, y={center_y})
-- If NO → estimate new coordinates and call screenshot(center={{"x":NEW_X, "y":NEW_Y}}, zoom_factor={zoom_factor}) to re-aim
+- If NO → estimate new coordinates from the grid markers and call screenshot(center={{"x":NEW_X, "y":NEW_Y}}, zoom_factor={zoom_factor}) to re-aim
 
 ⚠️ DO NOT CLICK until the crosshair is confirmed to be on the target center!
 
@@ -823,11 +827,32 @@ Visible area: x={vis_x_start}~{vis_x_end}, y={vis_y_start}~{vis_y_end}"""
                     "x_end": offset_x + capture_width,
                     "y_end": offset_y + capture_height
                 }
-                result["hint"] = f"REGION VIEW: Grid shows system coordinates ({offset_x}-{offset_x+capture_width}, {offset_y}-{offset_y+capture_height}). Read the RED numbers on grid lines to find target (x,y). Use those exact numbers in mouse(x=NUMBER, y=NUMBER)."
+                result["hint"] = f"""REGION VIEW ({offset_x}-{offset_x+capture_width}, {offset_y}-{offset_y+capture_height}).
+
+📐 HOW TO READ COORDINATES:
+- X coordinate: Look at the RED numbers on TOP/BOTTOM edges
+- Y coordinate: Look at the RED numbers on LEFT/RIGHT edges
+
+⚠️ BEFORE CLICKING: You MUST verify your target with zoom mode first!
+Call screenshot(center={{"x":YOUR_X, "y":YOUR_Y}}, zoom_factor=2) to confirm the crosshair is on target.
+DO NOT click directly without zoom verification - you may miss the target!"""
             else:
                 # Full screen
                 result["screen_size"] = {"width": screen_width, "height": screen_height}
-                result["hint"] = f"FULL SCREEN ({screen_width}x{screen_height}): Grid shows system coordinates. Read the RED numbers on grid lines (e.g., x=500, y=300). Use those exact numbers in mouse(x=500, y=300)."
+                result["hint"] = f"""FULL SCREEN ({screen_width}x{screen_height}).
+
+📐 HOW TO READ COORDINATES:
+- X coordinate: Look at the RED numbers on TOP/BOTTOM edges of the image
+- Y coordinate: Look at the RED numbers on LEFT/RIGHT edges of the image
+- Find where your target aligns with these grid markers to estimate (x, y)
+
+⚠️ BEFORE CLICKING: You MUST verify your target with zoom mode first!
+1. Estimate coordinates from grid markers (e.g., target at x≈600, y≈450)
+2. Call screenshot(center={{"x":600, "y":450}}, zoom_factor=2) to zoom in and verify
+3. Check if the MAGENTA CROSSHAIR is exactly on your target
+4. Only click after crosshair confirmation
+
+DO NOT click directly from full screen view - always use zoom to verify first!"""
             
             # Add scale info if image was resized
             if HAS_PIL and width > 0 and height > 0 and scale != 1.0:
@@ -932,6 +957,29 @@ Visible area: x={vis_x_start}~{vis_x_end}, y={vis_y_start}~{vis_y_end}"""
                 if not text:
                     return {"success": False, "error": "type requires text"}
                 
+                # Handle newlines: split text by \n and type each part with Enter between
+                if "\n" in text:
+                    lines = text.split("\n")
+                    for i, line in enumerate(lines):
+                        if line:  # Only type non-empty lines
+                            has_non_ascii = any(ord(c) > 127 for c in line)
+                            if has_non_ascii:
+                                cmd = ["xdotool", "type", "--clearmodifiers", "--delay", "100", line]
+                            else:
+                                cmd = ["xdotool", "type", "--clearmodifiers", line]
+                            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+                            if result.returncode != 0:
+                                return {"success": False, "error": result.stderr}
+                        
+                        # Press Enter after each line except the last
+                        if i < len(lines) - 1:
+                            subprocess.run(["xdotool", "key", "Return"], capture_output=True, timeout=5)
+                            import time
+                            time.sleep(0.05)  # Small delay for reliability
+                    
+                    return {"success": True, "typed": text, "lines": len(lines)}
+                
+                # No newlines - simple case
                 # Check if text contains non-ASCII characters (Chinese, etc.)
                 has_non_ascii = any(ord(c) > 127 for c in text)
                 

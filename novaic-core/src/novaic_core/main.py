@@ -171,10 +171,12 @@ async def screenshot(
         grid_density=grid_density
     )
     
-    # 如果成功，返回 [Image, 说明文字]
+    # 如果成功，返回 [ImageContent, 说明文字]
     if result.get("success") and result.get("screenshot"):
         image_bytes = base64.b64decode(result["screenshot"])
         image = Image(data=image_bytes, format="png")
+        # 转换为 MCP ImageContent 类型
+        image_content = image.to_image_content()
         
         # 构建易读的说明文字
         info_parts = []
@@ -198,7 +200,7 @@ async def screenshot(
         
         info_text = "\n".join(info_parts) if info_parts else "截图成功"
         
-        return [image, info_text]
+        return [image_content, info_text]
     
     # 失败时返回错误信息
     return result
@@ -245,13 +247,22 @@ async def mouse(
 
 
 @mcp.tool(
-    description="""Type text or press hotkeys.
+    description="""Type text or press keys/hotkeys.
 
-Modes:
-- type: keyboard(action="type", text="Hello")
-- key: keyboard(action="key", keys=["ctrl","s"])
+ONLY 2 actions supported:
+1. action="type" - Type text string
+   keyboard(action="type", text="Hello World")
 
-Keys: ctrl, alt, shift, super, enter, tab, escape, backspace, delete, arrows, f1-f12"""
+2. action="key" - Press single key or key combination  
+   keyboard(action="key", keys=["Return"])        # Press Enter
+   keyboard(action="key", keys=["ctrl", "s"])     # Ctrl+S
+   keyboard(action="key", keys=["ctrl", "shift", "t"])  # Ctrl+Shift+T
+
+Available keys: Return, Tab, Escape, BackSpace, Delete, space,
+ctrl, alt, shift, super, Up, Down, Left, Right, Home, End, 
+Page_Up, Page_Down, F1-F12, a-z, 0-9
+
+⚠️ DO NOT use action="press" or action="hotkey" - they don't exist!"""
 )
 async def keyboard(
     action: str,
@@ -308,10 +319,12 @@ async def browser_screenshot(
     browser = get_browser_tools()
     result = await browser.screenshot(full_page)
     
-    # 如果成功，返回 [Image, 说明文字]
+    # 如果成功，返回 [ImageContent, 说明文字]
     if result.get("success") and result.get("screenshot"):
         image_bytes = base64.b64decode(result["screenshot"])
         image = Image(data=image_bytes, format="png")
+        # 转换为 MCP ImageContent 类型
+        image_content = image.to_image_content()
         
         # 构建易读的说明
         info_parts = []
@@ -322,7 +335,7 @@ async def browser_screenshot(
         
         info_text = "\n".join(info_parts) if info_parts else "浏览器截图成功"
         
-        return [image, info_text]
+        return [image_content, info_text]
     
     return result
 
