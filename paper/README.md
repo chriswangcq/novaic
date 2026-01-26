@@ -323,12 +323,12 @@ AimClick在真实交互环境（novaic）中表现优秀，但在静态图片ben
 已在novaic项目中实现：
 
 ```
-packages/novaic-core/src/novaic_core/
+novaic-core/src/novaic_core/
 ├── main.py          # screenshot工具：支持zoom、自适应网格、准星
 └── tools/
     └── desktop.py   # 截图实现
 
-packages/novaic-agent/core/
+novaic-agent/core/
 └── session.py       # System prompt：AimClick工作流规则
 ```
 

@@ -1,0 +1,1 @@
+{"main-cap":{"identifier":"main-cap","description":"Allow frontend to listen to Tauri events for streaming chat.","local":true,"windows":["main"],"permissions":["core:event:default","core:event:allow-listen"]}}

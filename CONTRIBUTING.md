@@ -35,12 +35,12 @@ git checkout -b feature/your-feature-name
 
 ```bash
 # novaic-core
-cd packages/novaic-core
+cd novaic-core
 pip install -e ".[dev]"
 pytest
 
 # novaic-app
-cd packages/novaic-app
+cd novaic-app
 npm install
 npm run build
 npm run lint
@@ -82,18 +82,18 @@ git push origin feature/your-feature-name
 
 ```bash
 # Python (novaic-core, novaic-agent, novaic-cloud)
-cd packages/novaic-core
+cd novaic-core
 python -m py_compile src/novaic_core/main.py
 black --check .
 isort --check .
 
 # TypeScript (novaic-app)
-cd packages/novaic-app
+cd novaic-app
 npm run lint
 npm run build
 
 # Rust (novaic-app/src-tauri)
-cd packages/novaic-app/src-tauri
+cd novaic-app/src-tauri
 cargo check
 cargo clippy
 ```
@@ -141,7 +141,6 @@ cargo clippy
 ## 项目结构
 
 ```
-packages/
 ├── novaic-core/      # MCP 工具服务器
 ├── novaic-agent/     # AI Agent 服务
 ├── novaic-app/       # 桌面客户端

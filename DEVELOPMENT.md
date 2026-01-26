@@ -6,8 +6,7 @@
 
 ```
 nb-cc/
-├── packages/
-│   ├── novaic-core/          # MCP 工具服务器 (Python)
+├── │   ├── novaic-core/          # MCP 工具服务器 (Python)
 │   │   └── src/novaic_core/
 │   │       ├── tools/        # 工具实现
 │   │       │   ├── desktop.py    # 桌面控制 (screenshot, mouse, keyboard)
@@ -82,7 +81,7 @@ brew install python@3.11 node@20 rust qemu
 #### 1. 启动虚拟机
 
 ```bash
-cd packages/novaic-vm
+cd novaic-vm
 
 # 首次运行：创建 VM
 ./setup.sh
@@ -101,7 +100,7 @@ cd packages/novaic-vm
 #### 2. 部署 MCP Server
 
 ```bash
-cd packages/novaic-vm
+cd novaic-vm
 ./scripts/deploy.sh
 ```
 
@@ -111,22 +110,22 @@ cd packages/novaic-vm
 
 ```bash
 # 终端 1: 启动 VM（如果还没启动）
-cd packages/novaic-vm && ./scripts/start-vm.sh -d
+cd novaic-vm && ./scripts/start-vm.sh -d
 
 # 终端 2: 启动 Cloud 服务
-cd packages/novaic-cloud
+cd novaic-cloud
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 python main.py
 
 # 终端 3: 启动 Agent 服务
-cd packages/novaic-agent
+cd novaic-agent
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 python main.py
 
 # 终端 4: 启动桌面 App（Tauri）
-cd packages/novaic-app
+cd novaic-app
 npm install
 npm run tauri:dev
 ```
@@ -138,7 +137,7 @@ npm run tauri:dev
 # MCP Server 自动运行在 http://localhost:8081/sse
 
 # 方式 2: 本地运行 MCP Server
-cd packages/novaic-core
+cd novaic-core
 pip install -e .
 novaic serve
 ```
@@ -218,7 +217,7 @@ ssh -p 2222 ubuntu@localhost
 
 ```bash
 # 1. 检查 VM 是否运行
-cd packages/novaic-vm
+cd novaic-vm
 ./scripts/status-vm.sh
 
 # 2. 检查 VNC 服务
@@ -239,7 +238,7 @@ sudo systemctl status novaic
 sudo journalctl -u novaic -f
 
 # 3. 重新部署
-cd packages/novaic-vm
+cd novaic-vm
 ./scripts/deploy.sh
 ```
 
@@ -298,7 +297,7 @@ mypy .
 ### TypeScript
 
 ```bash
-cd packages/novaic-app
+cd novaic-app
 
 # 格式化
 npm run format
@@ -310,7 +309,7 @@ npm run lint
 ### Rust
 
 ```bash
-cd packages/novaic-app/src-tauri
+cd novaic-app/src-tauri
 
 # 格式化
 cargo fmt

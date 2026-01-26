@@ -16,10 +16,10 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
-          cache-dependency-path: packages/novaic-app/package-lock.json
+          cache-dependency-path: novaic-app/package-lock.json
 
       - name: Frontend build
-        working-directory: packages/novaic-app
+        working-directory: novaic-app
         run: |
           npm ci
           npm run build
@@ -28,7 +28,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Tauri (Rust) check
-        working-directory: packages/novaic-app/src-tauri
+        working-directory: novaic-app/src-tauri
         run: cargo check
 
       - name: Setup Python
@@ -38,5 +38,5 @@ jobs:
 
       - name: Python syntax check
         run: |
-          python -m py_compile packages/novaic-agent/main.py packages/novaic-cloud/main.py
-          python -m compileall packages/novaic-agent packages/novaic-cloud packages/novaic-core
+          python -m py_compile novaic-agent/main.py novaic-cloud/main.py
+          python -m compileall novaic-agent novaic-cloud novaic-core

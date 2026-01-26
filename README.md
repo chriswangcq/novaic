@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="packages/novaic-app/public/icon.svg" width="120" alt="NovAIC Logo">
+  <img src="novaic-app/public/icon.svg" width="120" alt="NovAIC Logo">
 </p>
 
 <h1 align="center">NovAIC</h1>
@@ -45,7 +45,7 @@ Unlike temporary sandboxes that reset after each session, NovAIC maintains state
 
 ```bash
 # 1. One-command VM setup
-cd packages/novaic-vm
+cd novaic-vm
 ./setup.sh
 
 # 2. Configure your MCP client (e.g., Claude Desktop)
@@ -105,11 +105,11 @@ novaic serve
 
 | Package | Description | Path |
 |---------|-------------|------|
-| **[novaic-core](packages/novaic-core)** | MCP tool server with 44+ tools | `packages/novaic-core` |
-| **[novaic-agent](packages/novaic-agent)** | LLM agent framework with tool calling | `packages/novaic-agent` |
-| **[novaic-app](packages/novaic-app)** | Desktop client (Tauri + React + VNC) | `packages/novaic-app` |
-| **[novaic-cloud](packages/novaic-cloud)** | Cloud service (auth, subscription, LLM proxy) | `packages/novaic-cloud` |
-| **[novaic-vm](packages/novaic-vm)** | QEMU VM runtime with Ubuntu desktop | `packages/novaic-vm` |
+| **[novaic-core](novaic-core)** | MCP tool server with 44+ tools | `novaic-core` |
+| **[novaic-agent](novaic-agent)** | LLM agent framework with tool calling | `novaic-agent` |
+| **[novaic-app](novaic-app)** | Desktop client (Tauri + React + VNC) | `novaic-app` |
+| **[novaic-cloud](novaic-cloud)** | Cloud service (auth, subscription, LLM proxy) | `novaic-cloud` |
+| **[novaic-vm](novaic-vm)** | QEMU VM runtime with Ubuntu desktop | `novaic-vm` |
 
 ## MCP Tools
 
