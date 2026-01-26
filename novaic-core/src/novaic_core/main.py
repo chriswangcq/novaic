@@ -207,19 +207,32 @@ async def screenshot(
 
 
 @mcp.tool(
-    description="""Control mouse: click, double-click, drag, scroll.
+    description="""Control mouse: click, double-click, drag, scroll, move.
 
-🚨 CRITICAL: You MUST confirm the crosshair is ON THE TARGET before clicking!
+🚨 BEFORE CLICKING: Use zoom mode to verify crosshair is on target!
 
-MANDATORY WORKFLOW:
-1. screenshot() → estimate target at (X, Y)
-2. screenshot(center={"x":X, "y":Y}, zoom_factor=2) → check CROSSHAIR position
-3. CONFIRM: Is the MAGENTA CROSSHAIR exactly on the target?
-   - YES → proceed to click
-   - NO → adjust coordinates, zoom again, repeat
-4. mouse(action="click", x=X, y=Y) → click ONLY after confirmation
+SUPPORTED ACTIONS:
 
-Actions: click | double | drag | scroll | move"""
+1. action="click" - Single click at (x, y)
+   mouse(action="click", x=500, y=300)
+   mouse(action="click", x=500, y=300, button="right")  # right-click
+
+2. action="double" - Double click at (x, y)
+   mouse(action="double", x=500, y=300)
+
+3. action="move" - Move cursor to (x, y) without clicking
+   mouse(action="move", x=500, y=300)
+
+4. action="drag" - Drag from (x, y) to (to_x, to_y)
+   mouse(action="drag", x=100, y=100, to_x=400, to_y=400)
+
+5. action="scroll" - Scroll at position (x, y)
+   mouse(action="scroll", x=500, y=300, direction="down", amount=5)
+   mouse(action="scroll", x=500, y=300, direction="up", amount=3)
+   direction: up | down | left | right
+   amount: number of scroll steps (default 3)
+
+⚠️ DO NOT use parameters like scroll_x or scroll_y - they don't exist!"""
 )
 async def mouse(
     action: str,

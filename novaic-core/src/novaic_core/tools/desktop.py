@@ -808,8 +808,10 @@ class DesktopTools:
                 result["hint"] = f"""ZOOMED VIEW centered at ({center_x}, {center_y}).
 
 📐 HOW TO READ COORDINATES:
-- X coordinate: Look at the RED numbers on TOP/BOTTOM edges
-- Y coordinate: Look at the RED numbers on LEFT/RIGHT edges
+- X coordinate: Look at the RED numbers on TOP/BOTTOM edges (increases going RIGHT →)
+- Y coordinate: Look at the RED numbers on LEFT/RIGHT edges (increases going DOWN ↓)
+- To move RIGHT: increase X | To move LEFT: decrease X
+- To move DOWN: increase Y | To move UP: decrease Y
 
 🎯 CROSSHAIR CHECK: The MAGENTA CROSSHAIR at the center shows EXACTLY where you will click.
 - Is the crosshair PRECISELY on your intended target? 
@@ -830,8 +832,10 @@ Visible area: x={vis_x_start}~{vis_x_end}, y={vis_y_start}~{vis_y_end}"""
                 result["hint"] = f"""REGION VIEW ({offset_x}-{offset_x+capture_width}, {offset_y}-{offset_y+capture_height}).
 
 📐 HOW TO READ COORDINATES:
-- X coordinate: Look at the RED numbers on TOP/BOTTOM edges
-- Y coordinate: Look at the RED numbers on LEFT/RIGHT edges
+- X coordinate: Look at the RED numbers on TOP/BOTTOM edges (increases going RIGHT →)
+- Y coordinate: Look at the RED numbers on LEFT/RIGHT edges (increases going DOWN ↓)
+- To move RIGHT: increase X | To move LEFT: decrease X
+- To move DOWN: increase Y | To move UP: decrease Y
 
 ⚠️ BEFORE CLICKING: You MUST verify your target with zoom mode first!
 Call screenshot(center={{"x":YOUR_X, "y":YOUR_Y}}, zoom_factor=2) to confirm the crosshair is on target.
@@ -842,9 +846,10 @@ DO NOT click directly without zoom verification - you may miss the target!"""
                 result["hint"] = f"""FULL SCREEN ({screen_width}x{screen_height}).
 
 📐 HOW TO READ COORDINATES:
-- X coordinate: Look at the RED numbers on TOP/BOTTOM edges of the image
-- Y coordinate: Look at the RED numbers on LEFT/RIGHT edges of the image
-- Find where your target aligns with these grid markers to estimate (x, y)
+- X coordinate: Look at the RED numbers on TOP/BOTTOM edges (increases going RIGHT →)
+- Y coordinate: Look at the RED numbers on LEFT/RIGHT edges (increases going DOWN ↓)
+- To move RIGHT: increase X | To move LEFT: decrease X
+- To move DOWN: increase Y | To move UP: decrease Y
 
 ⚠️ BEFORE CLICKING: You MUST verify your target with zoom mode first!
 1. Estimate coordinates from grid markers (e.g., target at x≈600, y≈450)
