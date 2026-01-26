@@ -44,7 +44,7 @@ $SSH_CMD "sudo systemctl start novaic"
 sleep 2
 
 # 验证
-MCP_PORT="${NOVAIC_MCP_PORT:-8081}"
+MCP_PORT="${NOVAIC_MCP_PORT:-8080}"
 if curl -s "http://localhost:$MCP_PORT/health" 2>/dev/null | grep -q "healthy"; then
     echo ""
     echo "✅ 快速部署完成!"

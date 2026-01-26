@@ -45,7 +45,10 @@ pub async fn upload_file(local_path: String, vm_path: Option<String>) -> Result<
         .await
         .map_err(|e| format!("Failed to read file: {}", e))?;
     
-    let client = reqwest::Client::new();
+    // 使用本地服务客户端（不走代理）
+    let client = crate::http_client::local_client()
+        .build()
+        .map_err(|e| format!("Failed to create client: {}", e))?;
     
     let form = reqwest::multipart::Form::new()
         .part(
@@ -79,7 +82,10 @@ pub async fn upload_file(local_path: String, vm_path: Option<String>) -> Result<
 /// Download a file from the VM
 #[tauri::command]
 pub async fn download_file(vm_path: String, local_path: String) -> Result<String, String> {
-    let client = reqwest::Client::new();
+    // 使用本地服务客户端（不走代理）
+    let client = crate::http_client::local_client()
+        .build()
+        .map_err(|e| format!("Failed to create client: {}", e))?;
     
     let response = client
         .get(format!("{}/api/download", AGENT_BASE_URL))
@@ -107,7 +113,10 @@ pub async fn download_file(vm_path: String, local_path: String) -> Result<String
 /// List files in a VM directory
 #[tauri::command]
 pub async fn list_vm_files(path: Option<String>) -> Result<FileListResponse, String> {
-    let client = reqwest::Client::new();
+    // 使用本地服务客户端（不走代理）
+    let client = crate::http_client::local_client()
+        .build()
+        .map_err(|e| format!("Failed to create client: {}", e))?;
     
     let mut url = format!("{}/api/files", AGENT_BASE_URL);
     if let Some(dir_path) = path {

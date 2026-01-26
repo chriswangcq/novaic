@@ -9,6 +9,11 @@ NovAIC Agent - LLM Agent 服务
 不包含执行逻辑，执行由 Executor 服务负责。
 """
 
+import os
+# 设置 no_proxy 排除本地地址，避免系统代理干扰本地服务通信
+os.environ['no_proxy'] = 'localhost,127.0.0.1,::1'
+os.environ['NO_PROXY'] = 'localhost,127.0.0.1,::1'
+
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

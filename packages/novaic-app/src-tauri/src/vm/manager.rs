@@ -21,11 +21,11 @@ impl Default for VmConfig {
         Self {
             memory: "4096".to_string(),
             cpus: 4,
-            vnc_port: 5900,      // 宿主机 VNC 端口 (映射到 VM 的 5901)
-            agent_port: 8080,    // Agent API 端口 (宿主机)
-            executor_port: 8081, // MCP Server 端口 (映射到 VM 的 8080)
-            websocket_port: 6080,// WebSocket 端口 (VNC over WebSocket)
-            ssh_port: 2222,      // SSH 端口
+            vnc_port: 5900,      // VNC 端口 (宿主机 5900 → VM 5900)
+            agent_port: 9000,    // Agent API 端口 (宿主机本地)
+            executor_port: 8080, // MCP Server 端口 (宿主机 8080 → VM 8080)
+            websocket_port: 6080,// WebSocket 端口 (宿主机 6080 → VM 6080)
+            ssh_port: 2222,      // SSH 端口 (宿主机 2222 → VM 22)
         }
     }
 }
@@ -54,13 +54,16 @@ impl VmManager {
 
     /// 获取镜像路径
     fn get_image_path(&self) -> PathBuf {
-        // 优先使用 ubuntu-linux2mcp.qcow2，如果不存在则使用 nb-cc-vm.qcow2
+        // 优先使用 novaic-vm.qcow2，其次是 ubuntu-linux2mcp.qcow2，最后是 nb-cc-vm.qcow2
+        let novaic_image = self.vm_dir.join("images").join("novaic-vm.qcow2");
+        if novaic_image.exists() {
+            return novaic_image;
+        }
         let ubuntu_image = self.vm_dir.join("images").join("ubuntu-linux2mcp.qcow2");
         if ubuntu_image.exists() {
-            ubuntu_image
-        } else {
-            self.vm_dir.join("images").join("nb-cc-vm.qcow2")
+            return ubuntu_image;
         }
+        self.vm_dir.join("images").join("nb-cc-vm.qcow2")
     }
 
     /// 获取固件路径 (仅 ARM64 需要)
@@ -98,10 +101,10 @@ impl VmManager {
             return Ok(());
         }
 
-        // 检查 Executor 端口（8081）是否被占用 - 用于检测 VM 是否在运行
-        // Agent 现在在宿主机运行，不再用于检测 VM 状态
-        if TcpStream::connect("127.0.0.1:8081").is_ok() {
-            println!("[VM] VM already running (detected via Executor port 8081), skipping start");
+        // 检查 Executor 端口（8080）是否被占用 - 用于检测 VM 是否在运行
+        // Agent 现在在宿主机运行（端口 9000），不再用于检测 VM 状态
+        if TcpStream::connect(format!("127.0.0.1:{}", self.config.executor_port)).is_ok() {
+            println!("[VM] VM already running (detected via Executor port {}), skipping start", self.config.executor_port);
             // 等待 websockify 就绪
             self.wait_for_websockify().await?;
             return Ok(());
@@ -217,24 +220,30 @@ impl VmManager {
     async fn check_executor_health(&self) -> Result<bool, String> {
         // 使用 /health 端点检查
         let url = format!("http://127.0.0.1:{}/health", self.config.executor_port);
+        println!("[VM] Checking executor health at: {}", url);
         
-        let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(10))  // 增加超时时间
-            .connect_timeout(Duration::from_secs(5))  // 连接超时
+        // 使用本地服务客户端（不走代理）
+        let client = crate::http_client::local_client_with_timeout(10)
             .build()
             .map_err(|e| e.to_string())?;
 
         match client.get(&url).send().await {
             Ok(response) => {
-                if response.status().is_success() {
-                    // 验证响应内容
+                let status = response.status();
+                println!("[VM] Executor health response status: {}", status);
+                if status.is_success() {
                     if let Ok(text) = response.text().await {
-                        return Ok(text.contains("healthy"));
+                        let is_healthy = text.contains("healthy");
+                        println!("[VM] Executor health response: {}, healthy={}", text, is_healthy);
+                        return Ok(is_healthy);
                     }
                 }
                 Ok(false)
             },
-            Err(_) => Ok(false),
+            Err(e) => {
+                println!("[VM] Executor health check error: {}", e);
+                Ok(false)
+            },
         }
     }
     
@@ -242,7 +251,8 @@ impl VmManager {
     async fn check_agent_health(&self) -> Result<bool, String> {
         let url = format!("http://127.0.0.1:{}/api/health", self.config.agent_port);
         
-        let client = reqwest::Client::builder()
+        // 使用本地服务客户端（不走代理）
+        let client = crate::http_client::local_client()
             .timeout(Duration::from_secs(2))
             .build()
             .map_err(|e| e.to_string())?;
@@ -359,13 +369,13 @@ impl VmManager {
     fn build_qemu_args(&self) -> Result<Vec<String>, String> {
         let image_path = self.get_image_path();
         
-        // 网络端口转发
-        // - vnc: VNC 端口 (VM 内 5901 -> 宿主机 5900)
-        // - mcp: MCP Server (VM 内 8080 -> 宿主机 8081)
-        // - ws: websockify (VM 内 6080 -> 宿主机 6080)
-        // - ssh: SSH 访问 (VM 内 22 -> 宿主机 2222)
+        // 网络端口转发 (全部 1:1 映射，除了 SSH)
+        // - vnc: VNC 端口 (VM 5900 → 宿主机 5900)
+        // - mcp: MCP Server (VM 8080 → 宿主机 8080)
+        // - ws: websockify (VM 6080 → 宿主机 6080)
+        // - ssh: SSH 访问 (VM 22 → 宿主机 2222)
         let port_forward = format!(
-            "hostfwd=tcp::{vnc}-:5901,hostfwd=tcp::{mcp}-:8080,hostfwd=tcp::{ws}-:6080,hostfwd=tcp::{ssh}-:22",
+            "hostfwd=tcp::{vnc}-:{vnc},hostfwd=tcp::{mcp}-:{mcp},hostfwd=tcp::{ws}-:{ws},hostfwd=tcp::{ssh}-:22",
             vnc = self.config.vnc_port,
             mcp = self.config.executor_port,  // MCP Server 端口
             ws = self.config.websocket_port,

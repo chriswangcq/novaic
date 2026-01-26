@@ -280,6 +280,7 @@ packages:
   # VNC 服务
   - x11vnc
   - xvfb
+  - python3-websockify
   
   # 浏览器
   - chromium-browser
@@ -316,7 +317,7 @@ write_files:
       autologin-user-timeout=0
       user-session=xfce
 
-  # x11vnc 服务
+  # x11vnc 服务 (无密码模式)
   - path: /etc/systemd/system/x11vnc.service
     content: |
       [Unit]
@@ -329,23 +330,32 @@ write_files:
       User=ubuntu
       Environment=DISPLAY=:0
       ExecStartPre=/bin/sleep 5
-      ExecStart=/usr/bin/x11vnc -display :0 -auth guess -forever -loop -noxdamage -repeat -rfbport 5900 -shared -rfbauth /home/ubuntu/.vnc/passwd
+      ExecStart=/usr/bin/x11vnc -display :0 -auth guess -forever -loop -noxdamage -repeat -rfbport 5900 -shared -nopw
       Restart=always
       RestartSec=3
 
       [Install]
       WantedBy=multi-user.target
 
-  # VNC 密码设置脚本 (密码: 1)
-  - path: /home/ubuntu/setup-vnc.sh
-    permissions: '0755'
+  # websockify 服务 (noVNC WebSocket 代理)
+  - path: /etc/systemd/system/websockify.service
     content: |
-      #!/bin/bash
-      mkdir -p /home/ubuntu/.vnc
-      x11vnc -storepasswd 1 /home/ubuntu/.vnc/passwd
-      chmod 600 /home/ubuntu/.vnc/passwd
+      [Unit]
+      Description=Websockify VNC WebSocket Proxy
+      After=x11vnc.service
+      Requires=x11vnc.service
 
-  # NovAIC 服务 (预留，部署时启用)
+      [Service]
+      Type=simple
+      User=ubuntu
+      ExecStart=/usr/bin/websockify 6080 localhost:5900
+      Restart=always
+      RestartSec=3
+
+      [Install]
+      WantedBy=multi-user.target
+
+  # NovAIC 服务 (MCP Server)
   - path: /etc/systemd/system/novaic.service
     content: |
       [Unit]
@@ -361,9 +371,9 @@ write_files:
       Environment=HOME=/home/ubuntu
       Environment=PATH=/opt/novaic-venv/bin:/usr/local/bin:/usr/bin:/bin
       Environment=NOVAIC_HOST=0.0.0.0
-      Environment=NOVAIC_PORT=8081
+      Environment=NOVAIC_PORT=8080
       WorkingDirectory=/opt/novaic-core
-      ExecStart=/opt/novaic-venv/bin/python -m uvicorn novaic_core.main:app --host 0.0.0.0 --port 8081
+      ExecStart=/opt/novaic-venv/bin/python -m uvicorn novaic_core.main:app --host 0.0.0.0 --port 8080
       Restart=always
       RestartSec=3
 
@@ -388,9 +398,6 @@ runcmd:
   # 修复 /home/ubuntu 目录权限 (重要!)
   - chown -R ubuntu:ubuntu /home/ubuntu
   
-  # 设置 VNC 密码
-  - su - ubuntu -c '/home/ubuntu/setup-vnc.sh'
-  
   # 创建 xfce4 配置目录
   - mkdir -p /home/ubuntu/.config/xfce4/xfconf/xfce-perchannel-xml
   - chown -R ubuntu:ubuntu /home/ubuntu/.config
@@ -408,11 +415,15 @@ runcmd:
   - systemctl daemon-reload
   - systemctl enable lightdm
   - systemctl enable x11vnc
+  - systemctl enable websockify
+  - systemctl enable novaic
   - systemctl start lightdm
   
-  # 等待桌面启动后启动 VNC
+  # 等待桌面启动后启动 VNC 和 websockify
   - sleep 10
   - systemctl start x11vnc
+  - sleep 2
+  - systemctl start websockify
   
   # 完成标记
   - echo "NovAIC VM cloud-init completed at $(date)" > /var/log/novaic-init-done.log
@@ -422,7 +433,8 @@ final_message: |
   NovAIC VM 配置完成!
   =====================================================
   
-  VNC: vnc://localhost:5900 (密码: 1)
+  VNC: vnc://localhost:5900 (无密码)
+  WebSocket: ws://localhost:6080
   SSH: ssh -p 2222 ubuntu@localhost (密码: ubuntu)
   
   请运行 deploy.sh 部署 MCP Server

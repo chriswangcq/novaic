@@ -18,9 +18,9 @@ PID_FILE="$VM_DIR/.vm.pid"
 MEMORY="${NOVAIC_VM_MEMORY:-4096}"
 CPUS="${NOVAIC_VM_CPUS:-4}"
 
-# 端口配置 (宿主机端口)
+# 端口配置 (宿主机端口，1:1 映射到 VM 内)
 VNC_PORT="${NOVAIC_VNC_PORT:-5900}"
-MCP_PORT="${NOVAIC_MCP_PORT:-8081}"
+MCP_PORT="${NOVAIC_MCP_PORT:-8080}"
 SSH_PORT="${NOVAIC_SSH_PORT:-2222}"
 WEBSOCKET_PORT="${NOVAIC_WS_PORT:-6080}"
 
@@ -90,22 +90,22 @@ else
     echo "架构: Intel (x86_64)"
 fi
 
-# 网络端口转发 (主机端口 → VM端口，统一使用相同端口号)
-NET_FWD="hostfwd=tcp::${VNC_PORT}-:5900"
-NET_FWD="$NET_FWD,hostfwd=tcp::${MCP_PORT}-:8081"
+# 网络端口转发 (1:1 映射，除了 SSH)
+NET_FWD="hostfwd=tcp::${VNC_PORT}-:${VNC_PORT}"
+NET_FWD="$NET_FWD,hostfwd=tcp::${MCP_PORT}-:${MCP_PORT}"
 NET_FWD="$NET_FWD,hostfwd=tcp::${SSH_PORT}-:22"
-NET_FWD="$NET_FWD,hostfwd=tcp::${WEBSOCKET_PORT}-:6080"
+NET_FWD="$NET_FWD,hostfwd=tcp::${WEBSOCKET_PORT}-:${WEBSOCKET_PORT}"
 
 echo ""
 echo "配置:"
 echo "  内存: ${MEMORY}MB"
 echo "  CPU:  ${CPUS} 核心"
 echo ""
-echo "端口映射:"
-echo "  VNC:       localhost:$VNC_PORT → VM:5900"
-echo "  MCP:       localhost:$MCP_PORT → VM:8081"
+echo "端口映射 (1:1):"
+echo "  VNC:       localhost:$VNC_PORT → VM:$VNC_PORT"
+echo "  MCP:       localhost:$MCP_PORT → VM:$MCP_PORT"
 echo "  SSH:       localhost:$SSH_PORT → VM:22"
-echo "  WebSocket: localhost:$WEBSOCKET_PORT → VM:6080"
+echo "  WebSocket: localhost:$WEBSOCKET_PORT → VM:$WEBSOCKET_PORT"
 echo ""
 
 # 启动模式

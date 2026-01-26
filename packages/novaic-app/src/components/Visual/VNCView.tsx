@@ -6,7 +6,7 @@ import RFB from 'novnc-rfb';
 
 // 配置
 const CONFIG = {
-  agentPort: 8080,    // Agent API 端口
+  agentPort: 9000,    // Agent API 端口 (宿主机本地)
   vncPort: 5900,      // VNC 端口
   wsPort: 6080,       // websockify 端口
 };

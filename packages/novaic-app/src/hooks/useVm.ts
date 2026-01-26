@@ -17,12 +17,12 @@ const DEFAULT_STATUS: VmStatus = {
   mcp_healthy: false,
   websockify_running: false,
   vnc_port: 5900,
-  agent_port: 8080,
-  mcp_port: 8081,
+  agent_port: 9000,
+  mcp_port: 8080,
   websocket_port: 6080,
   vnc_url: 'ws://localhost:6080/websockify',
-  agent_url: 'http://localhost:8080',
-  mcp_url: 'http://localhost:8081',
+  agent_url: 'http://localhost:9000',
+  mcp_url: 'http://localhost:8080',
 };
 
 export function useVm(): UseVmReturn {

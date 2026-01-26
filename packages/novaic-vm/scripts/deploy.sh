@@ -232,7 +232,7 @@ echo ""
 echo "验证服务..."
 sleep 2
 
-MCP_PORT="${NOVAIC_MCP_PORT:-8081}"
+MCP_PORT="${NOVAIC_MCP_PORT:-8080}"
 
 if curl -s "http://localhost:$MCP_PORT/health" 2>/dev/null | grep -q "healthy"; then
     echo ""

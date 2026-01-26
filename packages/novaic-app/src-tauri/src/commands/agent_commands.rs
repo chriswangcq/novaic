@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use tauri::Emitter;
 
 // Use 127.0.0.1 instead of localhost to avoid IPv6 connection issues
-const AGENT_BASE_URL: &str = "http://127.0.0.1:8080";
+const AGENT_BASE_URL: &str = "http://127.0.0.1:9000";
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct InitResponse {
@@ -32,7 +32,8 @@ pub struct ChatResult {
 /// Initialize the agent with user token
 #[tauri::command]
 pub async fn init_agent(token: String, cloud_api_base: Option<String>) -> Result<InitResponse, String> {
-    let client = reqwest::Client::builder()
+    // 使用本地服务客户端（不走代理）
+    let client = crate::http_client::local_client()
         .timeout(std::time::Duration::from_secs(30))
         .pool_max_idle_per_host(0)
         .build()
@@ -168,7 +169,8 @@ pub async fn send_message(message: String) -> Result<ChatResponse, String> {
 /// Get agent health status
 #[tauri::command]
 pub async fn get_health() -> Result<HealthResponse, String> {
-    let client = reqwest::Client::builder()
+    // 使用本地服务客户端（不走代理）
+    let client = crate::http_client::local_client()
         .timeout(std::time::Duration::from_secs(10))
         .pool_max_idle_per_host(0)
         .build()

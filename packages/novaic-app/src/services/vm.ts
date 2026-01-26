@@ -96,7 +96,7 @@ class VmService {
     } catch (error) {
       console.error('[VM Service] Get Agent URL failed:', error);
       // 返回默认 URL
-      return 'http://localhost:8080';
+      return 'http://localhost:9000';
     }
   }
 

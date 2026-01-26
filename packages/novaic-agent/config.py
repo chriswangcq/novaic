@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     
     # Server
     host: str = "0.0.0.0"
-    port: int = 8080
+    port: int = 9000  # Agent 端口 (宿主机本地)
     debug: bool = False
     
     # LLM API Settings
@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     enable_thinking: bool = False
     
     # Executor Service (执行代理)
-    executor_url: str = "http://127.0.0.1:8081"  # Executor 运行在 8081 端口
+    executor_url: str = "http://127.0.0.1:8080"  # MCP Server (VM 内) 端口
     
     # Legacy: Execution Settings
     work_dir: str = "/tmp/novaic-workspace"

@@ -51,8 +51,9 @@ class ToolExecutor:
     async def _get_client(self) -> httpx.AsyncClient:
         """获取或创建 HTTP 客户端"""
         if self._client is None:
-            # 禁用连接池复用，避免缓存失败的连接
-            self._client = httpx.AsyncClient(
+            # 使用本地服务客户端（不走代理）
+            from core.http_client import local_client
+            self._client = local_client(
                 timeout=60.0,
                 limits=httpx.Limits(max_keepalive_connections=0)  # 不保持连接
             )

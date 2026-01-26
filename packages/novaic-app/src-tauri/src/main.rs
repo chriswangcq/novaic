@@ -6,6 +6,7 @@ mod vm;
 mod files;
 mod error;
 mod app_config;
+mod http_client;
 
 use commands::{vm_commands, file_commands, agent_commands, config_commands};
 use vm::manager::VmManager;
@@ -55,8 +56,8 @@ impl AgentProcess {
         let child = Command::new(&python_cmd)
             .arg(&main_py)
             .current_dir(agent_dir)
-            .env("NBCC_EXECUTOR_URL", "http://127.0.0.1:8081")  // VM Executor
-            .env("NBCC_PORT", "8080")
+            .env("NBCC_EXECUTOR_URL", "http://127.0.0.1:8080")  // VM Executor (MCP Server)
+            .env("NBCC_PORT", "9000")  // Agent 端口
             .env("NBCC_HOST", "127.0.0.1")
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
@@ -85,6 +86,11 @@ impl Drop for AgentProcess {
 }
 
 fn main() {
+    // 设置 NO_PROXY 环境变量，让本地地址不走系统代理
+    // reqwest 和其他 HTTP 库会自动读取这个环境变量
+    std::env::set_var("NO_PROXY", "localhost,127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16");
+    std::env::set_var("no_proxy", "localhost,127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16");
+    
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
@@ -131,19 +137,17 @@ fn main() {
             // 存储托盘引用到 app state 防止被 drop
             app.manage(tray);
             
-            // 确定 VM 目录路径 (runtime 目录)
+            // 确定 VM 目录路径 (packages/novaic-vm 目录)
             let vm_dir = if cfg!(debug_assertions) {
-                // 开发模式: 使用项目根目录下的 runtime 目录
+                // 开发模式: 使用 packages/novaic-vm 目录
                 // CARGO_MANIFEST_DIR = packages/novaic-app/src-tauri
-                // 需要向上 3 级到项目根目录
+                // 需要向上到 packages 目录，然后进入 novaic-vm
                 let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-                let project_root = manifest_dir
+                let vm_path = manifest_dir
                     .parent()  // packages/novaic-app
                     .and_then(|p| p.parent())  // packages
-                    .and_then(|p| p.parent())  // project root (nb-cc)
-                    .map(|p| p.to_path_buf())
-                    .unwrap_or_else(|| PathBuf::from("../../.."));
-                let vm_path = project_root.join("runtime");
+                    .map(|p| p.join("novaic-vm"))
+                    .unwrap_or_else(|| PathBuf::from("../novaic-vm"));
                 println!("Development mode - VM directory: {:?}", vm_path);
                 vm_path
             } else {

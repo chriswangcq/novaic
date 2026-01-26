@@ -65,7 +65,9 @@ class NBCCAgent:
         for attempt in range(retries):
             try:
                 print(f"[Agent] Health check attempt {attempt + 1}/{retries}...")
-                async with httpx.AsyncClient(timeout=5.0) as client:
+                # 使用本地服务客户端（不走代理）
+                from core.http_client import local_client
+                async with local_client(timeout=5.0) as client:
                     resp = await client.get(url)
                     print(f"[Agent] Health check response: status={resp.status_code}")
                     if resp.status_code == 200:

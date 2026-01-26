@@ -1081,7 +1081,7 @@ async def sse_endpoint(request: Request):
     {
         "mcpServers": {
             "novaic": {
-                "url": "http://localhost:8081/sse"
+                "url": "http://localhost:8080/sse"
             }
         }
     }

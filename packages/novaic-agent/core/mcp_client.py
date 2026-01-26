@@ -22,10 +22,12 @@ class MCPServer:
     async def _get_client(self) -> httpx.AsyncClient:
         """获取 HTTP 客户端"""
         if self._client is None:
+            # 使用本地服务客户端（不走代理）
+            from core.http_client import local_client
             # 明确设置各类超时：connect=10s, read=120s, write=30s
             # navigate 等操作可能需要较长时间（页面加载+JS渲染）
             timeout = httpx.Timeout(connect=10.0, read=120.0, write=30.0, pool=10.0)
-            self._client = httpx.AsyncClient(timeout=timeout)
+            self._client = local_client(timeout=timeout)
         return self._client
     
     async def list_tools(self) -> List[Dict[str, Any]]:
