@@ -23,6 +23,9 @@ UBUNTU_MIRROR="${UBUNTU_MIRROR:-https://cloud-images.ubuntu.com}"
 VM_DISK_SIZE="${VM_DISK_SIZE:-40G}"
 VM_NAME="novaic-vm"
 
+# 镜像源配置：USE_CN_MIRRORS=1 使用中国镜像源
+USE_CN_MIRRORS="${USE_CN_MIRRORS:-0}"
+
 # ============================================================
 # SSH 公钥检测与生成函数
 # ============================================================
@@ -74,6 +77,27 @@ else
     UBUNTU_ARCH="amd64"
     CLOUD_IMAGE="${UBUNTU_CODENAME}-server-cloudimg-amd64.img"
     echo "架构: Intel (x86_64)"
+fi
+
+# 显示镜像源配置
+if [ "$USE_CN_MIRRORS" = "1" ]; then
+    echo "镜像源: 中国 (阿里云)"
+    if [ "$ARCH" = "arm64" ]; then
+        APT_MIRROR="mirrors.aliyun.com/ubuntu-ports"
+    else
+        APT_MIRROR="mirrors.aliyun.com/ubuntu"
+    fi
+    PIP_INDEX_URL="https://mirrors.aliyun.com/pypi/simple/"
+    PIP_TRUSTED_HOST="mirrors.aliyun.com"
+else
+    echo "镜像源: 官方 (全球)"
+    if [ "$ARCH" = "arm64" ]; then
+        APT_MIRROR="ports.ubuntu.com/ubuntu-ports"
+    else
+        APT_MIRROR="archive.ubuntu.com/ubuntu"
+    fi
+    PIP_INDEX_URL="https://pypi.org/simple/"
+    PIP_TRUSTED_HOST="pypi.org"
 fi
 echo ""
 
@@ -223,6 +247,17 @@ chpasswd:
 
 # SSH 配置
 ssh_pwauth: true
+
+# APT 源配置
+apt:
+  primary:
+    - arches: [default]
+      uri: http://${APT_MIRROR}
+  sources_list: |
+    deb http://${APT_MIRROR} ${UBUNTU_CODENAME} main restricted universe multiverse
+    deb http://${APT_MIRROR} ${UBUNTU_CODENAME}-updates main restricted universe multiverse
+    deb http://${APT_MIRROR} ${UBUNTU_CODENAME}-backports main restricted universe multiverse
+    deb http://${APT_MIRROR} ${UBUNTU_CODENAME}-security main restricted universe multiverse
 EOF
 
 # 追加其余配置（使用单引号防止变量展开）
@@ -348,194 +383,6 @@ write_files:
         </property>
       </channel>
 
-# 镜像源测速配置脚本
-  - path: /home/ubuntu/setup-mirrors.sh
-    permissions: '0755'
-    content: |
-      #!/bin/bash
-      # NovAIC VM - 镜像源测速与配置
-      set -e
-      
-      echo "════════════════════════════════════════════"
-      echo "  NovAIC VM - 镜像源测速与配置"
-      echo "════════════════════════════════════════════"
-      
-      # 检测架构
-      ARCH=$(uname -m)
-      CODENAME=$(lsb_release -cs)
-      
-      # 定义镜像列表
-      declare -A MIRRORS
-      declare -A MIRROR_NAMES
-      
-      if [ "$ARCH" = "aarch64" ]; then
-          MIRRORS=(
-              ["official"]="ports.ubuntu.com"
-              ["aliyun"]="mirrors.aliyun.com"
-              ["tsinghua"]="mirrors.tuna.tsinghua.edu.cn"
-              ["ustc"]="mirrors.ustc.edu.cn"
-              ["huawei"]="mirrors.huaweicloud.com"
-              ["tencent"]="mirrors.cloud.tencent.com"
-          )
-          MIRROR_NAMES=(
-              ["official"]="Ubuntu Official"
-              ["aliyun"]="Aliyun"
-              ["tsinghua"]="Tsinghua"
-              ["ustc"]="USTC"
-              ["huawei"]="Huawei"
-              ["tencent"]="Tencent"
-          )
-          REPO_PATH="ubuntu-ports"
-      else
-          MIRRORS=(
-              ["official"]="archive.ubuntu.com"
-              ["aliyun"]="mirrors.aliyun.com"
-              ["tsinghua"]="mirrors.tuna.tsinghua.edu.cn"
-              ["ustc"]="mirrors.ustc.edu.cn"
-              ["huawei"]="mirrors.huaweicloud.com"
-              ["tencent"]="mirrors.cloud.tencent.com"
-          )
-          MIRROR_NAMES=(
-              ["official"]="Ubuntu Official"
-              ["aliyun"]="Aliyun"
-              ["tsinghua"]="Tsinghua"
-              ["ustc"]="USTC"
-              ["huawei"]="Huawei"
-              ["tencent"]="Tencent"
-          )
-          REPO_PATH="ubuntu"
-      fi
-      
-      echo ""
-      echo "[1/3] Testing APT mirror speeds..."
-      
-      BEST_TIME=99999
-      BEST_KEY=""
-      BEST_MIRROR=""
-      BEST_NAME=""
-      
-      for key in "${!MIRRORS[@]}"; do
-          mirror="${MIRRORS[$key]}"
-          name="${MIRROR_NAMES[$key]}"
-          url="http://${mirror}/${REPO_PATH}/dists/${CODENAME}/Release"
-          
-          start_ms=$(date +%s%3N)
-          http_code=$(curl -s -o /dev/null -m 5 -w "%{http_code}" "$url" 2>/dev/null || echo "000")
-          end_ms=$(date +%s%3N)
-          
-          if [ "$http_code" = "200" ]; then
-              time_ms=$((end_ms - start_ms))
-              printf "  %-20s %4d ms  ✓\n" "$name" "$time_ms"
-              
-              if [ "$time_ms" -lt "$BEST_TIME" ]; then
-                  BEST_TIME=$time_ms
-                  BEST_KEY=$key
-                  BEST_MIRROR=$mirror
-                  BEST_NAME=$name
-              fi
-          else
-              printf "  %-20s timeout\n" "$name"
-          fi
-      done
-      
-      if [ -z "$BEST_MIRROR" ]; then
-          echo "All mirrors failed, using default"
-          exit 0
-      fi
-      
-      echo ""
-      echo "Best APT mirror: $BEST_NAME ($BEST_TIME ms)"
-      
-      # 配置 APT 源
-      echo ""
-      echo "[2/3] Configuring APT sources..."
-      
-      sudo tee /etc/apt/sources.list > /dev/null << EOF
-      # NovAIC VM - Auto-configured mirror: $BEST_NAME
-      deb http://$BEST_MIRROR/$REPO_PATH $CODENAME main restricted universe multiverse
-      deb http://$BEST_MIRROR/$REPO_PATH $CODENAME-updates main restricted universe multiverse
-      deb http://$BEST_MIRROR/$REPO_PATH $CODENAME-backports main restricted universe multiverse
-      deb http://$BEST_MIRROR/$REPO_PATH $CODENAME-security main restricted universe multiverse
-      EOF
-      
-      # 禁用 DEB822 格式
-      if [ -f /etc/apt/sources.list.d/ubuntu.sources ]; then
-          sudo mv /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list.d/ubuntu.sources.disabled
-      fi
-      
-      echo "  ✓ APT configured: $BEST_NAME"
-      
-      # 测试 pip 镜像源
-      echo ""
-      echo "[3/3] Testing pip mirror speeds..."
-      
-      declare -A PIP_MIRRORS
-      declare -A PIP_NAMES
-      PIP_MIRRORS=(
-          ["pypi"]="https://pypi.org/simple/"
-          ["aliyun"]="https://mirrors.aliyun.com/pypi/simple/"
-          ["tsinghua"]="https://pypi.tuna.tsinghua.edu.cn/simple/"
-          ["ustc"]="https://pypi.mirrors.ustc.edu.cn/simple/"
-          ["huawei"]="https://repo.huaweicloud.com/repository/pypi/simple/"
-          ["tencent"]="https://mirrors.cloud.tencent.com/pypi/simple/"
-      )
-      PIP_NAMES=(
-          ["pypi"]="PyPI Official"
-          ["aliyun"]="Aliyun"
-          ["tsinghua"]="Tsinghua"
-          ["ustc"]="USTC"
-          ["huawei"]="Huawei"
-          ["tencent"]="Tencent"
-      )
-      
-      BEST_PIP_TIME=99999
-      BEST_PIP_URL=""
-      BEST_PIP_NAME=""
-      BEST_PIP_HOST=""
-      
-      for key in "${!PIP_MIRRORS[@]}"; do
-          url="${PIP_MIRRORS[$key]}"
-          name="${PIP_NAMES[$key]}"
-          
-          start_ms=$(date +%s%3N)
-          http_code=$(curl -s -o /dev/null -m 5 -w "%{http_code}" "$url" 2>/dev/null || echo "000")
-          end_ms=$(date +%s%3N)
-          
-          if [ "$http_code" = "200" ]; then
-              time_ms=$((end_ms - start_ms))
-              printf "  %-20s %4d ms  ✓\n" "$name" "$time_ms"
-              
-              if [ "$time_ms" -lt "$BEST_PIP_TIME" ]; then
-                  BEST_PIP_TIME=$time_ms
-                  BEST_PIP_URL=$url
-                  BEST_PIP_NAME=$name
-                  # 提取 host
-                  BEST_PIP_HOST=$(echo "$url" | sed -E 's|https?://([^/]+)/.*|\1|')
-              fi
-          else
-              printf "  %-20s timeout\n" "$name"
-          fi
-      done
-      
-      if [ -n "$BEST_PIP_URL" ]; then
-          echo ""
-          echo "Best pip mirror: $BEST_PIP_NAME ($BEST_PIP_TIME ms)"
-          
-          mkdir -p /home/ubuntu/.pip
-          cat > /home/ubuntu/.pip/pip.conf << EOF
-      [global]
-      index-url = $BEST_PIP_URL
-      trusted-host = $BEST_PIP_HOST
-      EOF
-          chown -R ubuntu:ubuntu /home/ubuntu/.pip
-          echo "  ✓ pip configured: $BEST_PIP_NAME"
-      fi
-      
-      echo ""
-      echo "════════════════════════════════════════════"
-      echo "  Mirror configuration completed!"
-      echo "════════════════════════════════════════════"
-
 # 启动命令
 runcmd:
   # 修复 /home/ubuntu 目录权限 (重要!)
@@ -548,12 +395,10 @@ runcmd:
   - mkdir -p /home/ubuntu/.config/xfce4/xfconf/xfce-perchannel-xml
   - chown -R ubuntu:ubuntu /home/ubuntu/.config
   
-  # 运行镜像源测速配置 (首次启动时自动选择最快源)
-  - echo "Running mirror speed test..."
-  - /home/ubuntu/setup-mirrors.sh 2>&1 | tee /var/log/novaic-mirrors.log || true
-  
-  # 更新软件包列表
-  - apt-get update -qq || true
+  # 等待网络就绪
+  - echo "Waiting for network..."
+  - until ping -c 1 -W 3 8.8.8.8 > /dev/null 2>&1; do sleep 2; done
+  - echo "Network ready."
   
   # 创建 novaic 目录
   - mkdir -p /opt/novaic-core /opt/novaic-venv
@@ -577,7 +422,7 @@ final_message: |
   NovAIC VM 配置完成!
   =====================================================
   
-  VNC: vnc://localhost:5900 (密码: novaic)
+  VNC: vnc://localhost:5900 (密码: 1)
   SSH: ssh -p 2222 ubuntu@localhost (密码: ubuntu)
   
   请运行 deploy.sh 部署 MCP Server

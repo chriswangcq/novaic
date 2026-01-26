@@ -16,8 +16,10 @@ SSH_PORT="${NOVAIC_SSH_PORT:-2222}"
 SSH_USER="${SSH_USER:-ubuntu}"
 SSH_HOST="${SSH_HOST:-127.0.0.1}"
 
-SSH_CMD="ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -p $SSH_PORT $SSH_USER@$SSH_HOST"
-SCP_CMD="scp -o StrictHostKeyChecking=no -P $SSH_PORT"
+# SSH 选项：跳过 host key 检查（VM 重建后 key 会变）
+SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=10"
+SSH_CMD="ssh $SSH_OPTS -p $SSH_PORT $SSH_USER@$SSH_HOST"
+SCP_CMD="scp $SSH_OPTS -P $SSH_PORT"
 
 echo ""
 echo "════════════════════════════════════════════"
@@ -43,46 +45,99 @@ if [ ! -f "$NOVAIC_CORE_DIR/pyproject.toml" ]; then
 fi
 
 # ============================================================
-# Step 1: 检查 VM 连接
+# Step 1: 检查 VM 连接（失败后重试）
 # ============================================================
-echo "[1/5] 检查 VM 连接..."
+echo "[1/6] 检查 VM 连接..."
 
-if ! $SSH_CMD "echo 'connected'" 2>/dev/null; then
-    echo "❌ 错误: 无法连接到 VM"
-    echo ""
-    echo "请确保:"
-    echo "  1. VM 已启动: ./scripts/start-vm.sh"
-    echo "  2. cloud-init 已完成配置"
-    echo ""
-    echo "手动测试: ssh -p $SSH_PORT $SSH_USER@$SSH_HOST"
-    exit 1
-fi
+max_retries=10
+retry_interval=20
+retry_count=0
+
+while ! $SSH_CMD "echo 'connected'" 2>/dev/null; do
+    retry_count=$((retry_count + 1))
+    if [ $retry_count -ge $max_retries ]; then
+        echo "❌ 错误: 无法连接到 VM (已重试 $max_retries 次)"
+        echo ""
+        echo "请确保:"
+        echo "  1. VM 已启动: ./scripts/start-vm.sh"
+        echo "  2. cloud-init 已完成配置"
+        echo ""
+        echo "手动测试: ssh -p $SSH_PORT $SSH_USER@$SSH_HOST"
+        exit 1
+    fi
+    echo "  连接失败，${retry_interval}秒后重试 ($retry_count/$max_retries)..."
+    sleep $retry_interval
+done
 echo "  ✓ VM 连接成功"
 
+# 等待 cloud-init 完成（实时显示日志）
+echo ""
+echo "[1.5/6] 等待 cloud-init 完成..."
+echo ""
+echo "════════════════════════════════════════════"
+echo "  cloud-init 日志 (实时)"
+echo "════════════════════════════════════════════"
+
+# 后台启动 tail -f 显示 cloud-init 日志
+$SSH_CMD "tail -f /var/log/cloud-init-output.log 2>/dev/null" &
+TAIL_PID=$!
+
+# 等待完成标记文件出现
+while ! $SSH_CMD "test -f /var/log/novaic-init-done.log" 2>/dev/null; do
+    sleep 5
+done
+
+# 停止 tail 进程
+kill $TAIL_PID 2>/dev/null || true
+wait $TAIL_PID 2>/dev/null || true
+
+echo ""
+echo "════════════════════════════════════════════"
+echo "  ✓ cloud-init 已完成"
+echo "════════════════════════════════════════════"
+
 # ============================================================
-# Step 2: 创建目录
+# Step 2: 配置 pip 源
 # ============================================================
 echo ""
-echo "[2/5] 创建目录..."
+echo "[2/6] 配置 pip 源..."
+
+# 根据 USE_CN_MIRRORS 环境变量决定 pip 源
+USE_CN_MIRRORS="${USE_CN_MIRRORS:-0}"
+if [ "$USE_CN_MIRRORS" = "1" ]; then
+    PIP_INDEX_URL="https://mirrors.aliyun.com/pypi/simple/"
+    PIP_TRUSTED_HOST="mirrors.aliyun.com"
+    echo "  ✓ 使用中国镜像源 (阿里云)"
+else
+    PIP_INDEX_URL="https://pypi.org/simple/"
+    PIP_TRUSTED_HOST="pypi.org"
+    echo "  ✓ 使用官方源"
+fi
+
+# ============================================================
+# Step 3: 创建目录
+# ============================================================
+echo ""
+echo "[3/6] 创建目录..."
 
 $SSH_CMD "sudo mkdir -p /opt/novaic-core && sudo chown $SSH_USER:$SSH_USER /opt/novaic-core"
 echo "  ✓ 目录已创建"
 
 # ============================================================
-# Step 3: 停止现有服务
+# Step 4: 停止现有服务
 # ============================================================
 echo ""
-echo "[3/5] 停止现有服务..."
+echo "[4/6] 停止现有服务..."
 
 $SSH_CMD "sudo systemctl stop novaic 2>/dev/null || pkill -f 'novaic_core' 2>/dev/null || true"
 sleep 1
 echo "  ✓ 已停止旧服务"
 
 # ============================================================
-# Step 4: 复制代码
+# Step 5: 复制代码
 # ============================================================
 echo ""
-echo "[4/5] 复制代码..."
+echo "[5/6] 复制代码..."
 
 # 清理旧代码
 $SSH_CMD "rm -rf /opt/novaic-core/src /opt/novaic-core/pyproject.toml"
@@ -95,13 +150,32 @@ $SCP_CMD "$NOVAIC_CORE_DIR/README.md" "$SSH_USER@$SSH_HOST:/opt/novaic-core/" 2>
 echo "  ✓ 代码已复制"
 
 # ============================================================
-# Step 5: 安装依赖并启动服务
+# Step 6: 安装依赖并启动服务
 # ============================================================
 echo ""
-echo "[5/5] 安装依赖并启动服务..."
+echo "[6/6] 安装依赖并启动服务..."
 
-$SSH_CMD << 'INSTALL_SCRIPT'
+# 传递 pip 源配置到 VM
+$SSH_CMD "PIP_INDEX_URL='$PIP_INDEX_URL' PIP_TRUSTED_HOST='$PIP_TRUSTED_HOST' bash -s" << 'INSTALL_SCRIPT'
 set -e
+
+# 等待 apt/dpkg 进程结束（cloud-init 可能还在运行）
+echo "  检查 apt 进程..."
+max_wait=300
+waited=0
+while pgrep -x "apt-get\|apt\|dpkg\|unattended-upgr" > /dev/null 2>&1; do
+    if [ $waited -eq 0 ]; then
+        echo "  等待 apt 进程结束 (cloud-init 可能还在运行)..."
+    fi
+    sleep 5
+    waited=$((waited + 5))
+    echo "    已等待 ${waited}s... ($(pgrep -x 'apt-get\|apt\|dpkg' | wc -l | tr -d ' ') 个进程)"
+    if [ $waited -ge $max_wait ]; then
+        echo "  ⚠️ 等待超时，继续尝试..."
+        break
+    fi
+done
+echo "  ✓ apt 进程已结束"
 
 echo "  检查 python3-venv..."
 if ! dpkg -s python3-venv &> /dev/null; then
@@ -120,15 +194,15 @@ fi
 
 source /opt/novaic-venv/bin/activate
 
-echo "  安装依赖..."
-pip install --upgrade pip -q
+echo "  安装依赖 (源: $PIP_INDEX_URL)..."
+pip install --upgrade pip -q -i "$PIP_INDEX_URL" --trusted-host "$PIP_TRUSTED_HOST"
 cd /opt/novaic-core
-pip install -e . -q
+pip install -e . -q -i "$PIP_INDEX_URL" --trusted-host "$PIP_TRUSTED_HOST"
 
 # 安装 Playwright
 echo "  配置 Playwright..."
 if ! playwright --version &> /dev/null 2>&1; then
-    pip install playwright -q
+    pip install playwright -q -i "$PIP_INDEX_URL" --trusted-host "$PIP_TRUSTED_HOST"
     playwright install chromium
     sudo playwright install-deps chromium 2>/dev/null || true
 fi
