@@ -1,24 +1,84 @@
 # Security Policy
 
-## Reporting a Vulnerability
+## 报告安全漏洞
 
-If you discover a security issue, please **do not** open a public GitHub issue.
+如果你发现安全问题，请**不要**在公开的 GitHub Issue 中报告。
 
-Instead, report it privately with:
+请通过以下方式私下报告：
 
-- A clear description of the issue and impact
-- Steps to reproduce (proof-of-concept if possible)
-- Affected versions/commits (if known)
-- Any suggested remediation
+1. **GitHub Security Advisories**: 使用 GitHub 的 Security 标签页创建私密报告
+2. **Email**: 发送邮件至项目维护者
 
-## Scope
+## 报告内容
 
-Typical sensitive issues include:
+请在报告中包含：
 
-- Credential / token leakage
-- RCE / command injection
-- Sandbox escape (VM / host boundary)
-- Path traversal / arbitrary file read-write
-- Authentication / authorization bypass
+- 漏洞的清晰描述及影响范围
+- 复现步骤（如有可能，提供 PoC）
+- 受影响的版本/提交
+- 建议的修复方案（可选）
 
+## 安全问题范围
 
+以下类型的问题属于安全漏洞：
+
+| 类型 | 说明 |
+|------|------|
+| **凭证泄露** | API Key、Token、密码等敏感信息泄露 |
+| **远程代码执行** | RCE、命令注入等 |
+| **沙箱逃逸** | 虚拟机与宿主机的隔离被突破 |
+| **路径遍历** | 任意文件读写 |
+| **认证绕过** | 身份验证/授权机制被绕过 |
+| **敏感信息泄露** | 用户数据、系统信息等泄露 |
+
+## 安全设计
+
+NovAIC 的安全架构包括：
+
+### 虚拟机隔离
+
+- AI 的所有操作在 QEMU 虚拟机内执行
+- VM 与宿主机网络隔离（仅端口转发）
+- 文件系统完全隔离
+
+### 代码执行安全
+
+- MCP Server 运行在隔离的 VM 环境中
+- 危险命令检测和告警
+- 执行日志完整记录
+
+### 认证与授权
+
+- 云服务使用 JWT 认证
+- API Key 加密存储
+- 请求限流保护
+
+### 数据安全
+
+- 本地执行，数据不出本机
+- 传输层 TLS 加密
+- 敏感配置使用环境变量
+
+## 安全最佳实践
+
+使用 NovAIC 时的建议：
+
+1. **定期更新** - 保持 NovAIC 和 VM 镜像更新
+2. **最小权限** - 不要给 VM 不必要的宿主机访问权限
+3. **隔离使用** - 不要在 VM 中存储生产环境凭证
+4. **监控日志** - 定期检查执行日志
+5. **备份数据** - 重要数据及时备份
+
+## 响应流程
+
+收到安全报告后，我们会：
+
+1. **确认收到** - 24 小时内确认
+2. **评估影响** - 评估漏洞的严重性
+3. **开发修复** - 准备安全补丁
+4. **发布更新** - 发布修复版本
+5. **公开披露** - 在修复发布后公开披露（如适用）
+
+## 致谢
+
+感谢所有帮助改进 NovAIC 安全性的研究人员。我们会在修复发布后公开致谢（除非你希望匿名）。

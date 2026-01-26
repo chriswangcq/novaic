@@ -1,114 +1,179 @@
 # NovAIC 开发指南
 
+本文档介绍如何搭建本地开发环境。
+
 ## 项目结构
 
 ```
-novaic/
-├── app/                    # Tauri 桌面应用
-│   ├── src/               # React 前端
-│   │   ├── components/    # UI 组件
-│   │   ├── hooks/         # React Hooks
-│   │   ├── services/      # API 服务
-│   │   ├── store/         # 状态管理
-│   │   └── types/         # TypeScript 类型
-│   └── src-tauri/         # Rust 后端
-│       └── src/
-│           ├── commands/  # Tauri 命令
-│           └── vm/        # VM 管理
-├── agent/                  # AI Agent 服务
-│   ├── api/               # HTTP API
-│   ├── core/              # 核心逻辑
-│   └── tools/             # 工具执行器
-├── cloud/                  # 云服务
-│   └── api/               # API 端点
-├── vm/                     # 虚拟机相关
-│   ├── scripts/           # 构建和管理脚本
-│   ├── config/            # 配置文件
-│   └── images/            # VM 镜像 (gitignored)
-└── docs/                   # 文档
+nb-cc/
+├── packages/
+│   ├── novaic-core/          # MCP 工具服务器 (Python)
+│   │   └── src/novaic_core/
+│   │       ├── tools/        # 工具实现
+│   │       │   ├── desktop.py    # 桌面控制 (screenshot, mouse, keyboard)
+│   │       │   ├── browser.py    # 浏览器自动化
+│   │       │   ├── shell.py      # Shell 执行
+│   │       │   ├── files.py      # 文件操作
+│   │       │   ├── windows.py    # 窗口管理
+│   │       │   ├── memory.py     # 记忆系统
+│   │       │   └── context.py    # 环境感知
+│   │       ├── main.py       # MCP Server 入口
+│   │       └── cli.py        # CLI 命令
+│   │
+│   ├── novaic-agent/         # AI Agent 服务 (Python FastAPI)
+│   │   ├── api/              # HTTP API
+│   │   │   ├── routes.py     # 对话 API
+│   │   │   └── vnc_routes.py # VNC 管理 API
+│   │   ├── core/             # 核心逻辑
+│   │   │   ├── agent.py      # Agent 主类
+│   │   │   ├── llm_client.py # LLM 客户端
+│   │   │   └── session.py    # 会话管理
+│   │   └── main.py           # 入口
+│   │
+│   ├── novaic-app/           # 桌面客户端 (Tauri + React)
+│   │   ├── src/              # React 前端
+│   │   │   ├── components/   # UI 组件
+│   │   │   ├── hooks/        # React Hooks
+│   │   │   ├── services/     # API 服务
+│   │   │   └── store/        # 状态管理 (Zustand)
+│   │   └── src-tauri/        # Rust 后端
+│   │       └── src/
+│   │           ├── commands/ # Tauri 命令
+│   │           └── vm/       # VM 管理
+│   │
+│   ├── novaic-cloud/         # 云服务 (Python FastAPI)
+│   │   └── api/
+│   │       ├── auth.py       # 认证
+│   │       ├── llm.py        # LLM 代理
+│   │       └── subscription.py # 订阅管理
+│   │
+│   └── novaic-vm/            # QEMU VM 运行时
+│       └── scripts/
+│           ├── create-vm.sh  # 创建 VM
+│           ├── start-vm.sh   # 启动 VM
+│           ├── stop-vm.sh    # 停止 VM
+│           └── deploy.sh     # 部署 MCP Server
+│
+├── docs/                     # 文档
+└── paper/                    # 案例研究
 ```
 
 ## 开发环境配置
 
 ### 前置依赖
 
+**macOS:**
+
 ```bash
-# macOS
-brew install qemu python node rust
+# 安装 Homebrew（如果没有）
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# 安装依赖
+brew install python@3.11 node@20 rust qemu
 ```
+
+**Python 版本:** 3.11+
+**Node.js 版本:** 20+
+**Rust 版本:** 1.70+
+**QEMU 版本:** 8.x+
 
 ### 启动开发环境
 
-#### 1. 构建虚拟机镜像 (首次)
+#### 1. 启动虚拟机
 
 ```bash
-# 下载 Ubuntu ISO
-./vm/scripts/create-ubuntu-vm.sh
+cd packages/novaic-vm
 
-# 构建基础镜像
-./vm/scripts/build-image.sh
+# 首次运行：创建 VM
+./setup.sh
 
-# 配置桌面环境
-./vm/scripts/setup-desktop.sh
-
-# 配置 Agent 服务
-./vm/scripts/setup-agent.sh
-```
-
-#### 2. 启动虚拟机
-
-```bash
-# 前台模式 (带窗口)
-./vm/scripts/start-vm.sh
-
-# 后台模式
-./vm/scripts/start-vm.sh -d
+# 后续启动
+./scripts/start-vm.sh      # 前台模式（带窗口）
+./scripts/start-vm.sh -d   # 后台模式
 
 # 查看状态
-./vm/scripts/status-vm.sh
+./scripts/status-vm.sh
 
 # 停止
-./vm/scripts/stop-vm.sh
+./scripts/stop-vm.sh
+```
+
+#### 2. 部署 MCP Server
+
+```bash
+cd packages/novaic-vm
+./scripts/deploy.sh
 ```
 
 #### 3. 启动各服务
 
-**仅支持完整模式 (使用虚拟机):**
+**完整模式（推荐）**
 
 ```bash
-# 终端 1: 启动 VM
-./vm/scripts/start-vm.sh -d
+# 终端 1: 启动 VM（如果还没启动）
+cd packages/novaic-vm && ./scripts/start-vm.sh -d
 
 # 终端 2: 启动 Cloud 服务
-cd cloud && source venv/bin/activate && python main.py
+cd packages/novaic-cloud
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+python main.py
 
-# 终端 3: 启动 websockify (如果 VM 未自动启动)
-./vm/scripts/start-websockify.sh
+# 终端 3: 启动 Agent 服务
+cd packages/novaic-agent
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+python main.py
 
 # 终端 4: 启动桌面 App（Tauri）
-cd app && npm run tauri:dev
+cd packages/novaic-app
+npm install
+npm run tauri:dev
+```
+
+**仅 MCP Server 模式**
+
+```bash
+# 方式 1: 使用 VM 中的 MCP Server（已通过 deploy.sh 部署）
+# MCP Server 自动运行在 http://localhost:8081/sse
+
+# 方式 2: 本地运行 MCP Server
+cd packages/novaic-core
+pip install -e .
+novaic serve
 ```
 
 ## 端口映射
 
 | 服务 | 端口 | 说明 |
 |------|------|------|
-| VNC Server | 5900 | 虚拟机 VNC (原生) |
-| WebSocket | 6080 | websockify (noVNC 代理) |
+| VNC Server | 5900 | 虚拟机桌面 |
+| SSH | 2222 | VM SSH 访问 |
+| MCP Server | 8081 | MCP 工具服务 |
 | Agent API | 8080 | Agent HTTP API |
-| Cloud API | 8000 | Cloud 服务 |
+| Cloud API | 8000 | 云服务 API |
 | Frontend | 1420 | Vite 开发服务器 |
 
 ## VNC 连接
 
+**方式 1：直接连接**
+```
+vnc://localhost:5900
+密码: novaic
+```
+
+**方式 2：通过 noVNC（App 内置）**
+
 前端通过 noVNC 库连接到虚拟机:
-
-1. **websockify** 在端口 6080 监听 WebSocket 连接
-2. **websockify** 将 WebSocket 转发到 VNC 端口 5900
-3. **noVNC (RFB)** 通过 WebSocket 显示 VNC 画面
-
 ```
 Frontend (noVNC) --[WebSocket]--> websockify:6080 --[TCP]--> VNC:5900
+```
+
+## SSH 访问
+
+```bash
+ssh -p 2222 ubuntu@localhost
+# 密码: ubuntu
 ```
 
 ## 架构流程
@@ -118,7 +183,7 @@ Frontend (noVNC) --[WebSocket]--> websockify:6080 --[TCP]--> VNC:5900
   │
   ▼
 ┌──────────────────┐
-│   NovAIC.app      │  ← Tauri 桌面应用
+│   NovAIC.app     │  ← Tauri 桌面应用
 │  ┌────────────┐  │
 │  │  React UI  │  │  ← 聊天界面 + VNC 画面
 │  └────────────┘  │
@@ -129,16 +194,16 @@ Frontend (noVNC) --[WebSocket]--> websockify:6080 --[TCP]--> VNC:5900
         │
         ▼ HTTP/WebSocket
 ┌──────────────────┐
-│   虚拟机 (QEMU)   │
+│   虚拟机 (QEMU)  │
 │  ┌────────────┐  │
-│  │ Agent API  │  │  ← Python FastAPI
+│  │ MCP Server │  │  ← novaic-core (44+ 工具)
 │  └────────────┘  │
 │  ┌────────────┐  │
-│  │ VNC Server │  │  ← TigerVNC + XFCE
+│  │ VNC Server │  │  ← x11vnc + XFCE
 │  └────────────┘  │
 └──────────────────┘
         │
-        ▼ HTTPS
+        ▼ HTTPS (可选)
 ┌──────────────────┐
 │   Cloud Service  │
 │  ├── 用户认证    │
@@ -151,18 +216,56 @@ Frontend (noVNC) --[WebSocket]--> websockify:6080 --[TCP]--> VNC:5900
 
 ### VNC 连不上
 
-1. 检查 VM 是否运行: `./vm/scripts/status-vm.sh`
-2. 检查 websockify 是否运行: `lsof -i :6080`
-3. 检查 VNC 服务: `lsof -i :5900`
+```bash
+# 1. 检查 VM 是否运行
+cd packages/novaic-vm
+./scripts/status-vm.sh
+
+# 2. 检查 VNC 服务
+ssh -p 2222 ubuntu@localhost
+sudo systemctl status x11vnc
+sudo systemctl restart x11vnc
+```
+
+### MCP Server 无响应
+
+```bash
+# 1. 检查服务状态
+curl http://localhost:8081/health
+
+# 2. 进入 VM 检查
+ssh -p 2222 ubuntu@localhost
+sudo systemctl status novaic
+sudo journalctl -u novaic -f
+
+# 3. 重新部署
+cd packages/novaic-vm
+./scripts/deploy.sh
+```
 
 ### Agent API 无响应
 
-1. 检查 Agent 日志: `curl http://localhost:8080/api/health`
-2. 进入 VM 检查: `ssh -p 2222 user@localhost`
+```bash
+# 检查日志
+curl http://localhost:8080/api/health
 
-### 开发模式 vs 生产模式
+# 确保 VM 已启动并且 MCP Server 正常
+```
 
-NovAIC 仅支持 **完整模式**：Agent 在 VM 内运行，更安全隔离。
+## 测试 MCP Server
+
+```bash
+# 健康检查
+curl http://localhost:8081/health
+
+# 获取工具列表
+curl http://localhost:8081/tools
+
+# 测试截图
+curl -X POST http://localhost:8081/call \
+  -H "Content-Type: application/json" \
+  -d '{"tool": "screenshot", "arguments": {}}'
+```
 
 ## 测试 LLM 代理
 
@@ -179,9 +282,47 @@ curl -X POST http://localhost:8000/api/llm/chat \
   -d '{"messages":[{"role":"user","content":"Hello"}]}'
 ```
 
+## 代码风格
+
+### Python
+
+```bash
+# 格式化
+black .
+isort .
+
+# 类型检查
+mypy .
+```
+
+### TypeScript
+
+```bash
+cd packages/novaic-app
+
+# 格式化
+npm run format
+
+# 检查
+npm run lint
+```
+
+### Rust
+
+```bash
+cd packages/novaic-app/src-tauri
+
+# 格式化
+cargo fmt
+
+# 检查
+cargo clippy
+```
+
 ## 版本信息
 
 - **Node.js**: 20.x
 - **Python**: 3.11+
 - **Rust**: 1.70+
 - **QEMU**: 8.x
+- **Ubuntu VM**: 24.04 LTS
