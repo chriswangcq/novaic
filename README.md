@@ -1,34 +1,55 @@
-# NovAIC - The AI Computer
+<p align="center">
+  <img src="packages/novaic-app/public/icon.svg" width="120" alt="NovAIC Logo">
+</p>
 
-> PC 是给人用的电脑，AIC 是给 AI 用的电脑。
->
-> NovAIC 是你的 AI 专属电脑 —— 它记得你、理解你、为你持续工作。
+<h1 align="center">NovAIC</h1>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Node.js 20+](https://img.shields.io/badge/node-20+-green.svg)](https://nodejs.org/)
+<p align="center">
+  <strong>The AI Computer — A persistent, visual desktop environment for AI agents</strong>
+</p>
 
-## 特性
+<p align="center">
+  <em>PC is for humans. AIC is for AI. NovAIC is your AI's dedicated computer.</em>
+</p>
 
-- **完整桌面控制** - 44+ MCP 工具，操作任何 Linux GUI 应用
-- **持久化记忆** - AI 记得上下文，跨会话保持状态
-- **环境感知** - 智能理解系统状态和项目结构
-- **结果管理** - 长结果自动截断，分段查询
-- **隐私优先** - 本地虚拟机部署，数据不出本机
-- **开源自由** - MIT 协议，完全可定制
+<p align="center">
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.11+-blue.svg" alt="Python 3.11+"></a>
+  <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/node-20+-green.svg" alt="Node.js 20+"></a>
+  <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/rust-1.70+-orange.svg" alt="Rust 1.70+"></a>
+</p>
 
-## 快速开始
+---
 
-### 方式一：使用 MCP Server（推荐）
+## What is NovAIC?
+
+NovAIC provides AI agents with a **persistent, visual desktop environment** — a complete Linux VM with 44+ MCP tools for desktop control, browser automation, file operations, and more.
+
+Unlike temporary sandboxes that reset after each session, NovAIC maintains state across sessions. Your AI remembers context, keeps files, and continues work exactly where it left off.
+
+### Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **Full Desktop Control** | 44+ MCP tools for mouse, keyboard, screenshots, window management |
+| **Browser Automation** | Navigate, click, type, scroll — AI controls the browser like a human |
+| **Persistent Environment** | QCOW2 disk images preserve everything between sessions |
+| **Memory System** | Key-value storage + goal tracking for cross-session context |
+| **Context Awareness** | System snapshots, directory analysis, app state detection |
+| **Privacy First** | Runs locally in QEMU VM — your data never leaves your machine |
+| **Open Source** | MIT license, fully customizable, works with any LLM |
+
+## Quick Start
+
+### Option 1: MCP Server (Recommended)
 
 ```bash
-# 1. 一键安装虚拟机
+# 1. One-command VM setup
 cd packages/novaic-vm
 ./setup.sh
 
-# 2. 配置 MCP 客户端
-# Claude Desktop: ~/Library/Application Support/Claude/claude_desktop_config.json
-# 或其他支持 MCP 的客户端
+# 2. Configure your MCP client (e.g., Claude Desktop)
+# ~/Library/Application Support/Claude/claude_desktop_config.json
 {
   "mcpServers": {
     "novaic": {
@@ -38,155 +59,174 @@ cd packages/novaic-vm
 }
 ```
 
-### 方式二：安装 Python 包
+### Option 2: Python Package
 
 ```bash
 pip install novaic-core
 novaic serve
 ```
 
-## 组件
-
-| 组件 | 说明 | 路径 |
-|------|------|------|
-| **novaic-core** | MCP 工具服务器 (44+ 工具) | `packages/novaic-core` |
-| **novaic-agent** | AI 智能体框架 | `packages/novaic-agent` |
-| **novaic-app** | 桌面客户端 (Tauri + React) | `packages/novaic-app` |
-| **novaic-cloud** | 云服务 (认证/订阅/LLM代理) | `packages/novaic-cloud` |
-| **novaic-vm** | QEMU VM 运行时 | `packages/novaic-vm` |
-
-## 架构
+## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        NovAIC Platform                          │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌────────────────┐  │
-│  │  NovAIC App     │  │ Claude Desktop  │  │  Any MCP Host  │  │
-│  │  (Tauri)        │  │    / CLI        │  │                │  │
-│  └────────┬────────┘  └────────┬────────┘  └───────┬────────┘  │
-│           │                    │                   │            │
-│           └────────────────────┼───────────────────┘            │
-│                                │ MCP Protocol                   │
-│                                ▼                                │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │                     NovAIC Core                          │   │
-│  │                MCP Server (44+ Tools)                    │   │
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐   │   │
-│  │  │ Desktop  │ │ Browser  │ │  Shell   │ │  Files   │   │   │
-│  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘   │   │
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐               │   │
-│  │  │ Windows  │ │  Memory  │ │ Context  │               │   │
-│  │  └──────────┘ └──────────┘ └──────────┘               │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                │                                │
-│                                ▼                                │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │                    NovAIC VM Runtime                     │   │
-│  │     Ubuntu 24.04 (QEMU) + XFCE + VNC + SSH              │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                         NovAIC Platform                              │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐         │
+│  │  NovAIC App    │  │ Claude Desktop │  │  Any MCP Host  │         │
+│  │  (Tauri)       │  │     / CLI      │  │                │         │
+│  └───────┬────────┘  └───────┬────────┘  └───────┬────────┘         │
+│          │                   │                   │                   │
+│          └───────────────────┼───────────────────┘                   │
+│                              │ MCP Protocol                          │
+│                              ▼                                       │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │                       NovAIC Core                              │  │
+│  │                  MCP Server (44+ Tools)                        │  │
+│  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐  │  │
+│  │  │ Desktop │ │ Browser │ │  Shell  │ │  Files  │ │ Windows │  │  │
+│  │  └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘  │  │
+│  │  ┌─────────┐ ┌─────────┐ ┌─────────┐                          │  │
+│  │  │ Memory  │ │ Context │ │  Cache  │                          │  │
+│  │  └─────────┘ └─────────┘ └─────────┘                          │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+│                              │                                       │
+│                              ▼                                       │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │                     NovAIC VM Runtime                          │  │
+│  │          Ubuntu 24.04 (QEMU) + XFCE + VNC + SSH               │  │
+│  └───────────────────────────────────────────────────────────────┘  │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-## MCP 工具
+## Packages
 
-### 桌面控制
-| 工具 | 说明 |
-|------|------|
-| `screenshot` | 截取屏幕，支持网格坐标 |
-| `mouse` | 鼠标操作 (移动、点击、拖拽、滚动) |
-| `keyboard` | 键盘输入，支持热键组合 |
+| Package | Description | Path |
+|---------|-------------|------|
+| **[novaic-core](packages/novaic-core)** | MCP tool server with 44+ tools | `packages/novaic-core` |
+| **[novaic-agent](packages/novaic-agent)** | LLM agent framework with tool calling | `packages/novaic-agent` |
+| **[novaic-app](packages/novaic-app)** | Desktop client (Tauri + React + VNC) | `packages/novaic-app` |
+| **[novaic-cloud](packages/novaic-cloud)** | Cloud service (auth, subscription, LLM proxy) | `packages/novaic-cloud` |
+| **[novaic-vm](packages/novaic-vm)** | QEMU VM runtime with Ubuntu desktop | `packages/novaic-vm` |
 
-### 浏览器自动化
-| 工具 | 说明 |
-|------|------|
-| `browser_navigate` | 导航到 URL |
-| `browser_click` | 点击元素 |
-| `browser_type` | 输入文本 |
-| `browser_screenshot` | 浏览器截图 |
+## MCP Tools
 
-### Shell 执行
-| 工具 | 说明 |
-|------|------|
-| `run_command` | 执行 Shell 命令 |
-| `run_python` | 执行 Python 代码 |
+### Desktop Control
+| Tool | Description |
+|------|-------------|
+| `screenshot` | Capture screen with optional grid coordinates |
+| `mouse` | Move, click, drag, scroll |
+| `keyboard` | Type text, hotkeys, key combinations |
 
-### 文件操作
-| 工具 | 说明 |
-|------|------|
-| `read_file` | 读取文件 |
-| `write_file` | 写入文件 |
-| `list_files` | 列出目录 |
+### Browser Automation
+| Tool | Description |
+|------|-------------|
+| `browser_navigate` | Navigate to URL |
+| `browser_click` | Click element by selector |
+| `browser_type` | Type into input fields |
+| `browser_screenshot` | Capture browser viewport |
+| `browser_scroll` | Scroll page |
+| `browser_eval` | Execute JavaScript |
 
-### 窗口管理
-| 工具 | 说明 |
-|------|------|
-| `list_windows` | 列出窗口 |
-| `focus_window` | 聚焦窗口 |
-| `launch_app` | 启动应用 |
+### Shell Execution
+| Tool | Description |
+|------|-------------|
+| `run_command` | Execute shell commands |
+| `run_python` | Execute Python code |
 
-### 记忆系统
-| 工具 | 说明 |
-|------|------|
-| `memory_save` | 保存记忆 |
-| `memory_recall` | 回忆记忆 |
-| `goal_set` | 设置目标 |
-| `session_state` | 会话状态 |
+### File Operations
+| Tool | Description |
+|------|-------------|
+| `read_file` | Read file contents |
+| `write_file` | Write to file |
+| `list_files` | List directory contents |
+| `file_info` | Get file metadata |
 
-### 环境感知
-| 工具 | 说明 |
-|------|------|
-| `system_snapshot` | 系统快照 |
-| `directory_snapshot` | 目录分析 |
-| `app_state` | 应用状态 |
+### Window Management
+| Tool | Description |
+|------|-------------|
+| `list_windows` | List all windows |
+| `focus_window` | Focus a window |
+| `launch_app` | Launch application |
+| `maximize_window` | Maximize window |
+| `close_window` | Close window |
 
-## 演示
+### Memory System
+| Tool | Description |
+|------|-------------|
+| `memory_save` | Save key-value data |
+| `memory_recall` | Recall saved data |
+| `goal_set` | Set a goal |
+| `goal_progress` | Update goal progress |
+| `session_state` | Get session state |
 
-AI 自动完成数据分析任务：
+### Context Awareness
+| Tool | Description |
+|------|-------------|
+| `system_snapshot` | System overview (CPU, memory, disk, windows) |
+| `directory_snapshot` | Analyze project structure |
+| `app_state` | Get application state |
+| `clipboard_get/set` | Clipboard operations |
+
+## Demo
+
+**AI performs data analysis:**
 
 ```
-User: 分析 ~/data/sales.csv，生成可视化报告
+User: Analyze ~/data/sales.csv and create a visualization report
 
 NovAIC:
-1. screenshot() → 查看当前桌面状态
-2. run_command("python3 -c '...pandas...matplotlib...'") → 数据处理
-3. launch_app("firefox") → 打开浏览器预览 HTML 报告
-4. screenshot() → 确认报告生成成功
-   → 报告已保存至 ~/data/report.html ✅
+1. screenshot() → Check current desktop state
+2. run_command("python3 -c '...pandas...matplotlib...'") → Process data
+3. launch_app("firefox") → Open browser to preview HTML report
+4. screenshot() → Confirm report generated
+   → Report saved to ~/data/report.html ✅
 ```
 
-AI 自动化 GUI 操作：
+**AI automates GUI operations:**
 
 ```
-User: 打开 VS Code，创建一个 Python 项目
+User: Open VS Code and create a new Python project
 
 NovAIC:
-1. screenshot() → 定位任务栏
-2. mouse(action="click", x=520, y=750) → 点击 VS Code 图标
-3. keyboard(action="hotkey", keys=["ctrl", "shift", "n"]) → 新建窗口
-4. keyboard(action="type", text="main.py") → 创建文件
-5. screenshot() → 确认项目创建完成 ✅
+1. screenshot() → Locate taskbar
+2. mouse(action="click", x=520, y=750) → Click VS Code icon
+3. keyboard(action="hotkey", keys=["ctrl", "shift", "n"]) → New window
+4. keyboard(action="type", text="main.py") → Create file
+5. screenshot() → Confirm project created ✅
 ```
 
-## 文档
+## Documentation
 
-- [开发指南](DEVELOPMENT.md) - 本地开发环境搭建
-- [贡献指南](CONTRIBUTING.md) - 如何参与贡献
-- [产品愿景](docs/novaic-vision.md) - 产品定位与愿景
-- [产品需求](docs/PRD.md) - 详细产品需求文档
-- [技术设计](docs/tech-design.md) - 技术架构设计
-- [路线图](docs/novaic-roadmap.md) - 开发路线图
+- [Development Guide](DEVELOPMENT.md) — Local development setup
+- [Contributing Guide](CONTRIBUTING.md) — How to contribute
+- [Product Vision](docs/novaic-vision.md) — Product positioning and vision
+- [Product Requirements](docs/PRD.md) — Detailed requirements document
+- [Technical Design](docs/tech-design.md) — Architecture and design
+- [Roadmap](docs/novaic-roadmap.md) — Development roadmap
 
-## 贡献
+## Requirements
 
-欢迎贡献！请查看 [CONTRIBUTING.md](CONTRIBUTING.md)。
+- **macOS** (Apple Silicon or Intel) or **Linux**
+- **Python** 3.11+
+- **Node.js** 20+
+- **Rust** 1.70+ (for desktop app)
+- **QEMU** 8.x+ (for VM runtime)
+- **8GB+ RAM** (VM uses 4GB)
+- **50GB+ disk space**
 
-## 许可证
+## Contributing
 
-MIT License - 详见 [LICENSE](LICENSE)
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## License
+
+MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-**NovAIC** - The AI Computer
+<p align="center">
+  <strong>NovAIC</strong> — The AI Computer
+</p>
