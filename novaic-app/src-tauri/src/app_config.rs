@@ -224,6 +224,7 @@ pub struct ApiKeyEntryUpdate {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelToggle {
     pub model_id: String,
+    pub api_key_id: Option<String>,  // Optional for backward compatibility
     pub enabled: bool,
 }
 

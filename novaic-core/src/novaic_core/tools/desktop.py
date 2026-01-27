@@ -1,13 +1,21 @@
 """
 Desktop Tools - Mouse, Keyboard, Screenshot
 Uses xdotool for input and scrot/import for screenshots
+
+New Design (v2):
+- screenshot: Pure viewing (area, grid)
+- mouse: Two-phase operation (aim → execute)
+  - aim: Returns aim_id + screenshot + recommendation
+  - execute: Uses aim_id, no direct coordinates
 """
 
 import subprocess
 import base64
 import tempfile
 import os
-from typing import Dict, Any, Optional, List, Literal
+import time
+import secrets
+from typing import Dict, Any, Optional, List, Literal, Union
 from io import BytesIO
 
 try:
@@ -15,6 +23,61 @@ try:
     HAS_PIL = True
 except ImportError:
     HAS_PIL = False
+
+
+class AimCache:
+    """Cache for aim positions with TTL"""
+    
+    def __init__(self, ttl_seconds: int = 600):  # 10 minutes
+        self._cache: Dict[str, Dict[str, Any]] = {}
+        self._ttl = ttl_seconds
+    
+    def create(self, x: int, y: int, zoom: float) -> str:
+        """Create a new aim_id and store position"""
+        aim_id = f"aim_{secrets.token_hex(4)}"
+        self._cache[aim_id] = {
+            "x": x,
+            "y": y,
+            "zoom": zoom,
+            "created_at": time.time()
+        }
+        self._cleanup()
+        return aim_id
+    
+    def get(self, aim_id: str) -> Optional[Dict[str, Any]]:
+        """Get position for aim_id, returns None if expired or not found"""
+        self._cleanup()
+        if aim_id not in self._cache:
+            return None
+        entry = self._cache[aim_id]
+        if time.time() - entry["created_at"] > self._ttl:
+            del self._cache[aim_id]
+            return None
+        return entry
+    
+    def consume(self, aim_id: str) -> Optional[Dict[str, Any]]:
+        """Get and remove aim_id (one-time use)"""
+        entry = self.get(aim_id)
+        if entry and aim_id in self._cache:
+            del self._cache[aim_id]
+        return entry
+    
+    def _cleanup(self):
+        """Remove expired entries"""
+        now = time.time()
+        expired = [k for k, v in self._cache.items() if now - v["created_at"] > self._ttl]
+        for k in expired:
+            del self._cache[k]
+
+
+# Global aim cache instance (10 minutes TTL)
+_aim_cache = AimCache(ttl_seconds=600)
+
+# Mouse state for down/up operations
+_mouse_state = {
+    "is_down": False,
+    "position": None  # {"x": int, "y": int}
+}
 
 
 class DesktopTools:
@@ -805,22 +868,10 @@ class DesktopTools:
                     "y_end": vis_y_end
                 }
                 result["center"] = {"x": center_x, "y": center_y}
-                result["hint"] = f"""ZOOMED VIEW centered at ({center_x}, {center_y}).
-
-📐 HOW TO READ COORDINATES:
-- X coordinate: Look at the RED numbers on TOP/BOTTOM edges (increases going RIGHT →)
-- Y coordinate: Look at the RED numbers on LEFT/RIGHT edges (increases going DOWN ↓)
-- To move RIGHT: increase X | To move LEFT: decrease X
-- To move DOWN: increase Y | To move UP: decrease Y
-
-🎯 CROSSHAIR CHECK: The MAGENTA CROSSHAIR at the center shows EXACTLY where you will click.
-- Is the crosshair PRECISELY on your intended target? 
-- If YES → click using mouse(action="click", x={center_x}, y={center_y})
-- If NO → estimate new coordinates from the grid markers and call screenshot(center={{"x":NEW_X, "y":NEW_Y}}, zoom_factor={zoom_factor}) to re-aim
-
-⚠️ DO NOT CLICK until the crosshair is confirmed to be on the target center!
-
-Visible area: x={vis_x_start}~{vis_x_end}, y={vis_y_start}~{vis_y_end}"""
+                
+                # Zoomed view hint (used internally by mouse aim action)
+                result["hint"] = f"""ZOOMED VIEW at ({center_x}, {center_y}), zoom={zoom_factor}x.
+Visible: x={vis_x_start}~{vis_x_end}, y={vis_y_start}~{vis_y_end}"""
             elif region:
                 # Region screenshot
                 result["visible_region"] = {
@@ -831,33 +882,16 @@ Visible area: x={vis_x_start}~{vis_x_end}, y={vis_y_start}~{vis_y_end}"""
                 }
                 result["hint"] = f"""REGION VIEW ({offset_x}-{offset_x+capture_width}, {offset_y}-{offset_y+capture_height}).
 
-📐 HOW TO READ COORDINATES:
-- X coordinate: Look at the RED numbers on TOP/BOTTOM edges (increases going RIGHT →)
-- Y coordinate: Look at the RED numbers on LEFT/RIGHT edges (increases going DOWN ↓)
-- To move RIGHT: increase X | To move LEFT: decrease X
-- To move DOWN: increase Y | To move UP: decrease Y
-
-⚠️ BEFORE CLICKING: You MUST verify your target with zoom mode first!
-Call screenshot(center={{"x":YOUR_X, "y":YOUR_Y}}, zoom_factor=2) to confirm the crosshair is on target.
-DO NOT click directly without zoom verification - you may miss the target!"""
+⚠️ To click, use mouse(action='aim', x=TARGET_X, y=TARGET_Y) first."""
             else:
                 # Full screen
                 result["screen_size"] = {"width": screen_width, "height": screen_height}
                 result["hint"] = f"""FULL SCREEN ({screen_width}x{screen_height}).
 
-📐 HOW TO READ COORDINATES:
-- X coordinate: Look at the RED numbers on TOP/BOTTOM edges (increases going RIGHT →)
-- Y coordinate: Look at the RED numbers on LEFT/RIGHT edges (increases going DOWN ↓)
-- To move RIGHT: increase X | To move LEFT: decrease X
-- To move DOWN: increase Y | To move UP: decrease Y
-
-⚠️ BEFORE CLICKING: You MUST verify your target with zoom mode first!
-1. Estimate coordinates from grid markers (e.g., target at x≈600, y≈450)
-2. Call screenshot(center={{"x":600, "y":450}}, zoom_factor=2) to zoom in and verify
-3. Check if the MAGENTA CROSSHAIR is exactly on your target
-4. Only click after crosshair confirmation
-
-DO NOT click directly from full screen view - always use zoom to verify first!"""
+⚠️ TO CLICK:
+1. Estimate target coordinates (X, Y) from the grid
+2. mouse(action='aim', x=X, y=Y) to aim and verify
+3. Follow the recommendation in aim result"""
             
             # Add scale info if image was resized
             if HAS_PIL and width > 0 and height > 0 and scale != 1.0:
@@ -874,73 +908,267 @@ DO NOT click directly from full screen view - always use zoom to verify first!""
     
     @staticmethod
     async def mouse(
-        action: Literal["move", "click", "double", "drag", "scroll"],
-        x: int,
-        y: int,
-        button: Literal["left", "middle", "right"] = "left",
-        to_x: Optional[int] = None,
-        to_y: Optional[int] = None,
+        action: Literal["aim", "click", "double", "right_click", "down", "move", "up", "scroll"],
+        # For aim action
+        x: Optional[int] = None,
+        y: Optional[int] = None,
+        zoom: float = 2.0,
+        # For execute actions (click, double, right_click, down, move, scroll)
+        aim_id: Optional[str] = None,
+        # For scroll action
         direction: Optional[Literal["up", "down", "left", "right"]] = None,
         amount: int = 3
     ) -> Dict[str, Any]:
         """
-        Control mouse using xdotool
+        Two-phase mouse control: aim first, then execute.
+        
+        Actions:
+            aim: Aim at position, returns aim_id + screenshot + recommendation
+            click: Single click at aim_id position
+            double: Double click at aim_id position
+            right_click: Right click at aim_id position
+            down: Press mouse button at aim_id position (for drag start)
+            move: Move to aim_id position (while button pressed)
+            up: Release mouse button (at current position)
+            scroll: Scroll at aim_id position
         
         Args:
-            action: move, click, double, drag, scroll
-            x, y: Target coordinates
-            button: Mouse button
-            to_x, to_y: Drag target (for drag action)
+            action: The action to perform
+            x, y: Target coordinates (only for aim action)
+            zoom: Zoom factor for aim screenshot (default 2.0)
+            aim_id: The aim_id from previous aim action (required for execute actions)
             direction: Scroll direction (for scroll action)
-            amount: Scroll amount
+            amount: Scroll amount (for scroll action)
         """
+        global _mouse_state
+        
         try:
+            # ========== AIM ACTION ==========
+            if action == "aim":
+                if x is None or y is None:
+                    return {"success": False, "error": "aim requires x and y coordinates"}
+                
+                # Create aim_id
+                aim_id = _aim_cache.create(x, y, zoom)
+                
+                # Take zoomed screenshot centered at (x, y) with grid (aim always shows grid)
+                screenshot_result = await DesktopTools.screenshot(
+                    center={"x": x, "y": y},
+                    zoom_factor=zoom,
+                    grid_density="normal"  # aim always has grid for coordinate reference
+                )
+                
+                if not screenshot_result.get("success"):
+                    return screenshot_result
+                
+                # Build hint with judgment guide for the model
+                hint = f"""🎯 AIMED at ({x}, {y}), zoom={zoom}x
+aim_id: {aim_id}
+
+📋 JUDGMENT CHECKLIST (you decide):
+1. Is the MAGENTA CROSSHAIR on your intended target?
+2. If target is a large button: crosshair anywhere on it = OK to click
+3. If target is small (icon/link): crosshair should be near center
+
+🔍 YOUR DECISION:
+- Crosshair ON target → mouse(action='click', aim_id='{aim_id}')
+- Crosshair CLOSE but off (~50px) → mouse(action='aim', x=ADJUSTED_X, y=ADJUSTED_Y, zoom={max(zoom, 4)})
+- Crosshair FAR from target (>100px) → mouse(action='aim', x=NEW_X, y=NEW_Y, zoom=2)
+- Target NOT VISIBLE in view → mouse(action='aim', x=..., y=..., zoom=2) with corrected coordinates"""
+                
+                return {
+                    "success": True,
+                    "aim_id": aim_id,
+                    "position": {"x": x, "y": y},
+                    "zoom": zoom,
+                    "screenshot": screenshot_result.get("screenshot"),
+                    "width": screenshot_result.get("width"),
+                    "height": screenshot_result.get("height"),
+                    "hint": hint
+                }
+            
+            # ========== EXECUTE ACTIONS (require aim_id) ==========
+            
+            # Check if action requires aim_id
+            actions_requiring_aim_id = ["click", "double", "right_click", "down", "move", "scroll"]
+            
+            if action in actions_requiring_aim_id:
+                if not aim_id:
+                    return {
+                        "success": False, 
+                        "error": f"'{action}' requires aim_id. Use mouse(action='aim', x=..., y=...) first."
+                    }
+                
+                # Get position from aim_id
+                aim_data = _aim_cache.get(aim_id)
+                if not aim_data:
+                    return {
+                        "success": False,
+                        "error": f"Invalid or expired aim_id: {aim_id}. Please aim again."
+                    }
+                
+                pos_x = aim_data["x"]
+                pos_y = aim_data["y"]
+            
             btn_map = {"left": "1", "middle": "2", "right": "3"}
             
-            if action == "move":
-                cmd = ["xdotool", "mousemove", str(x), str(y)]
+            # ========== CLICK ==========
+            if action == "click":
+                # Consume aim_id (one-time use)
+                _aim_cache.consume(aim_id)
                 
-            elif action == "click":
-                cmd = [
-                    "xdotool", "mousemove", str(x), str(y),
-                    "click", btn_map[button]
-                ]
+                cmd = ["xdotool", "mousemove", str(pos_x), str(pos_y), "click", "1"]
+                result = subprocess.run(cmd, capture_output=True, text=True)
                 
+                if result.returncode != 0:
+                    return {"success": False, "error": f"Click failed: {result.stderr}"}
+                
+                return {
+                    "success": True,
+                    "action": "click",
+                    "position": {"x": pos_x, "y": pos_y},
+                    "hint": f"Clicked at ({pos_x}, {pos_y}). Use screenshot() to verify result."
+                }
+            
+            # ========== DOUBLE CLICK ==========
             elif action == "double":
-                cmd = [
-                    "xdotool", "mousemove", str(x), str(y),
-                    "click", "--repeat", "2", "--delay", "100", btn_map[button]
-                ]
+                _aim_cache.consume(aim_id)
                 
-            elif action == "drag":
-                if to_x is None or to_y is None:
-                    return {"success": False, "error": "drag requires to_x and to_y"}
-                cmd = [
-                    "xdotool", "mousemove", str(x), str(y),
-                    "mousedown", "1",
-                    "mousemove", str(to_x), str(to_y),
-                    "mouseup", "1"
-                ]
+                cmd = ["xdotool", "mousemove", str(pos_x), str(pos_y), 
+                       "click", "--repeat", "2", "--delay", "100", "1"]
+                result = subprocess.run(cmd, capture_output=True, text=True)
                 
+                if result.returncode != 0:
+                    return {"success": False, "error": f"Double click failed: {result.stderr}"}
+                
+                return {
+                    "success": True,
+                    "action": "double_click",
+                    "position": {"x": pos_x, "y": pos_y},
+                    "hint": f"Double-clicked at ({pos_x}, {pos_y}). Use screenshot() to verify result."
+                }
+            
+            # ========== RIGHT CLICK ==========
+            elif action == "right_click":
+                _aim_cache.consume(aim_id)
+                
+                cmd = ["xdotool", "mousemove", str(pos_x), str(pos_y), "click", "3"]
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                
+                if result.returncode != 0:
+                    return {"success": False, "error": f"Right click failed: {result.stderr}"}
+                
+                return {
+                    "success": True,
+                    "action": "right_click",
+                    "position": {"x": pos_x, "y": pos_y},
+                    "hint": f"Right-clicked at ({pos_x}, {pos_y}). Use screenshot() to verify result."
+                }
+            
+            # ========== DOWN (for drag start) ==========
+            elif action == "down":
+                if _mouse_state["is_down"]:
+                    return {
+                        "success": False,
+                        "error": "Mouse already held down. Call mouse(action='up') first."
+                    }
+                
+                # Don't consume aim_id for down, allow re-use for debugging
+                cmd = ["xdotool", "mousemove", str(pos_x), str(pos_y), "mousedown", "1"]
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                
+                if result.returncode != 0:
+                    return {"success": False, "error": f"Mouse down failed: {result.stderr}"}
+                
+                _mouse_state["is_down"] = True
+                _mouse_state["position"] = {"x": pos_x, "y": pos_y}
+                
+                return {
+                    "success": True,
+                    "action": "down",
+                    "position": {"x": pos_x, "y": pos_y},
+                    "hint": f"Mouse down at ({pos_x}, {pos_y}). Now aim for destination, then mouse(action='move', aim_id=...) and mouse(action='up')."
+                }
+            
+            # ========== MOVE (while button pressed) ==========
+            elif action == "move":
+                # Move doesn't consume aim_id
+                cmd = ["xdotool", "mousemove", str(pos_x), str(pos_y)]
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                
+                if result.returncode != 0:
+                    return {"success": False, "error": f"Mouse move failed: {result.stderr}"}
+                
+                _mouse_state["position"] = {"x": pos_x, "y": pos_y}
+                
+                hint = f"Moved to ({pos_x}, {pos_y})."
+                if _mouse_state["is_down"]:
+                    hint += " Mouse still held. Call mouse(action='up') to release."
+                
+                return {
+                    "success": True,
+                    "action": "move",
+                    "position": {"x": pos_x, "y": pos_y},
+                    "is_down": _mouse_state["is_down"],
+                    "hint": hint
+                }
+            
+            # ========== UP (release) ==========
+            elif action == "up":
+                if not _mouse_state["is_down"]:
+                    return {
+                        "success": False,
+                        "error": "Mouse not held down. Nothing to release."
+                    }
+                
+                cmd = ["xdotool", "mouseup", "1"]
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                
+                if result.returncode != 0:
+                    return {"success": False, "error": f"Mouse up failed: {result.stderr}"}
+                
+                released_pos = _mouse_state["position"]
+                _mouse_state["is_down"] = False
+                _mouse_state["position"] = None
+                
+                return {
+                    "success": True,
+                    "action": "up",
+                    "released_at": released_pos,
+                    "hint": f"Mouse released at ({released_pos['x']}, {released_pos['y']}). Drag complete."
+                }
+            
+            # ========== SCROLL ==========
             elif action == "scroll":
                 if direction is None:
-                    return {"success": False, "error": "scroll requires direction"}
+                    return {"success": False, "error": "scroll requires direction (up/down/left/right)"}
+                
                 # Move to position first
-                subprocess.run(["xdotool", "mousemove", str(x), str(y)])
+                subprocess.run(["xdotool", "mousemove", str(pos_x), str(pos_y)])
+                
                 # Scroll buttons: 4=up, 5=down, 6=left, 7=right
                 scroll_btn = {"up": "4", "down": "5", "left": "6", "right": "7"}[direction]
                 cmd = ["xdotool", "click", "--repeat", str(amount), scroll_btn]
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                
+                if result.returncode != 0:
+                    return {"success": False, "error": f"Scroll failed: {result.stderr}"}
+                
+                return {
+                    "success": True,
+                    "action": "scroll",
+                    "position": {"x": pos_x, "y": pos_y},
+                    "direction": direction,
+                    "amount": amount,
+                    "hint": f"Scrolled {direction} {amount} times at ({pos_x}, {pos_y})."
+                }
+            
             else:
                 return {"success": False, "error": f"Unknown action: {action}"}
             
-            result = subprocess.run(cmd, capture_output=True, text=True)
-            
-            if result.returncode != 0:
-                return {"success": False, "error": f"xdotool failed: {result.stderr}"}
-            
-            return {"success": True}
-            
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             return {"success": False, "error": str(e)}
     
     @staticmethod

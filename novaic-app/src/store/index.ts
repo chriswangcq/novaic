@@ -251,11 +251,23 @@ export const useAppStore = create<AppStore>((set, get) => ({
         });
       });
       
-      // 开始流式请求 - 传递选中的模型和模式
+      // 开始流式请求 - 传递选中的模型ID和API Key ID
+      // selectedModel 格式: {api_key_id}:{model_id}
+      // Note: model_id may contain colons, so only split on FIRST colon
       const { selectedModel, chatMode } = get();
+      let modelId: string | null = null;
+      let apiKeyId: string | null = null;
+      if (selectedModel) {
+        const colonIndex = selectedModel.indexOf(':');
+        if (colonIndex !== -1) {
+          apiKeyId = selectedModel.substring(0, colonIndex);
+          modelId = selectedModel.substring(colonIndex + 1);
+        }
+      }
       await invoke('send_message_stream', { 
         message: content,
-        model: selectedModel || null,
+        modelId,
+        apiKeyId,
         mode: chatMode || 'agent'
       });
       

@@ -92,8 +92,13 @@ class InitResponse(BaseModel):
 class ChatRequest(BaseModel):
     """Chat request"""
     message: str = Field(..., description="User message")
-    model: Optional[str] = Field(None, description="Model to use for this request")
+    model: str = Field(..., description="Model to use (required - each model is bound to a provider)")
     mode: Optional[str] = Field("agent", description="Chat mode: 'agent' or 'chat'")
+    
+    # API配置 - 每个模型绑定到一个具体的Provider配置
+    provider: str = Field(..., description="Provider type: 'openai' | 'anthropic' | 'google' | 'azure'")
+    api_base: str = Field(..., description="API base URL for this provider")
+    api_key: str = Field(..., description="API key for this provider")
 
 
 class ToolUseInfo(BaseModel):

@@ -75,9 +75,18 @@ export function ChatInput({
     return map;
   }, [apiKeys]);
 
-  // Get current model info
-  const currentModel = availableModels.find(m => m.id === selectedModel);
-  const displayModelName = currentModel?.name || selectedModel || 'Select model';
+  // Get current model info - selectedModel is composite ID: {api_key_id}:{model_id}
+  // Note: model_id may contain colons, so only split on FIRST colon
+  const currentModel = useMemo(() => {
+    if (!selectedModel) return null;
+    const colonIndex = selectedModel.indexOf(':');
+    if (colonIndex === -1) return null;
+    const apiKeyId = selectedModel.substring(0, colonIndex);
+    const modelId = selectedModel.substring(colonIndex + 1);
+    if (!apiKeyId || !modelId) return null;
+    return availableModels.find(m => m.api_key_id === apiKeyId && m.id === modelId);
+  }, [selectedModel, availableModels]);
+  const displayModelName = currentModel?.name || (selectedModel?.includes(':') ? selectedModel.substring(selectedModel.indexOf(':') + 1) : selectedModel) || 'Select model';
 
   // Group models by API Key (not provider)
   const modelsByApiKey = useMemo(() => {
@@ -261,23 +270,27 @@ export function ChatInput({
                       <div className="px-3 py-1.5 text-[10px] font-medium text-white/40 uppercase tracking-wide bg-white/[0.02] sticky top-0">
                         {apiKeyNameMap[apiKeyId] || 'Unknown'}
                       </div>
-                      {models.map((model) => (
-                        <button
-                          key={model.id}
-                          onClick={() => {
-                            setSelectedModel(model.id);
-                            // Don't auto-close dropdown - user can manually close it
-                          }}
-                          className={`w-full text-left px-3 py-2 hover:bg-white/[0.06] transition-colors flex items-center justify-between gap-2 ${
-                            model.id === selectedModel ? 'bg-violet-500/20 border-l-2 border-violet-500' : ''
-                          }`}
-                        >
-                          <span className="text-xs text-white/80 truncate">{model.name}</span>
-                          <span className="text-[9px] text-white/30 bg-white/[0.04] px-1.5 py-0.5 rounded flex-shrink-0">
-                            {apiKeyNameMap[model.api_key_id] || model.provider}
-                          </span>
-                        </button>
-                      ))}
+                      {models.map((model) => {
+                        // Use composite ID: {api_key_id}:{model_id} to uniquely identify
+                        const compositeId = `${model.api_key_id}:${model.id}`;
+                        return (
+                          <button
+                            key={compositeId}
+                            onClick={() => {
+                              setSelectedModel(compositeId);
+                              // Don't auto-close dropdown - user can manually close it
+                            }}
+                            className={`w-full text-left px-3 py-2 hover:bg-white/[0.06] transition-colors flex items-center justify-between gap-2 ${
+                              compositeId === selectedModel ? 'bg-violet-500/20 border-l-2 border-violet-500' : ''
+                            }`}
+                          >
+                            <span className="text-xs text-white/80 truncate">{model.name}</span>
+                            <span className="text-[9px] text-white/30 bg-white/[0.04] px-1.5 py-0.5 rounded flex-shrink-0">
+                              {apiKeyNameMap[model.api_key_id] || model.provider}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   ))
                 )}

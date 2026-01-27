@@ -1,70 +1,96 @@
 ---
 name: novaic-desktop
-description: Desktop control with screenshot verification workflow. Use when operating local applications like WeChat, VSCode, or any desktop software through mouse and keyboard automation.
+description: Desktop control with two-phase mouse workflow (aim → execute). Use when operating local applications like WeChat, VSCode, or any desktop software through mouse and keyboard automation.
 ---
 
 # Desktop Control
 
 控制桌面应用程序的核心工具：screenshot、mouse、keyboard。
 
-## 🚨 关键规则：点击前必须确认准星位置
+## 🚨 核心规则：AIM → EXECUTE 二段式操作
 
-**这是最重要的规则。盲目点击会导致操作失败。**
+**所有鼠标点击必须先 aim 获取 aim_id，然后用 aim_id 执行！**
+
+❌ 禁止：`mouse(action="click", x=500, y=300)`
+✅ 正确：`mouse(action="aim", ...)` → `mouse(action="click", aim_id="...")`
 
 ## 强制工作流程
 
 ```
-1. screenshot() → 获取全屏截图，估算目标坐标 (X, Y)
-2. screenshot(center={"x":X, "y":Y}, zoom_factor=2) → 放大查看
-3. 确认 MAGENTA 准星是否在目标上？
-   - YES → 执行 mouse(action="click", x=X, y=Y)
-   - NO → 调整坐标，重复步骤 2-3
+1. screenshot() → 全屏截图，估算目标坐标 (X, Y)
+2. mouse(action='aim', x=X, y=Y) → 获取 aim_id + 放大截图
+3. 你来判断（看 MAGENTA 准星位置）：
+   - 准星在目标上 → mouse(action='click', aim_id='...')
+   - 准星接近但偏了 → 调整坐标重新 aim
+   - 准星离目标很远 → 用 zoom=2 重新 aim
 ```
 
-## Zoom Factor 选择
+## Zoom 策略（你来判断）
 
-| 元素大小 | zoom_factor |
-|----------|-------------|
-| 大按钮 | 2 |
-| 中等图标 | 3 |
-| 小元素 | 4-5 |
+| 准星与目标距离 | 建议 zoom | 说明 |
+|--------------|----------|------|
+| 初次定位 | 2 | 默认值，视野范围大 |
+| 较远 (>100px) | 2 | 保持视野，先调大方向 |
+| 接近 (~50px) | 4-6 | 放大精细微调 |
+| 小元素精确点击 | 6-8 | 高倍确保准确 |
+
+**判断要点：**
+- 大按钮：准星在按钮范围内即可点击
+- 小图标/链接：准星需要接近中心
 
 ## 可用工具
 
 ### screenshot
 
-截取桌面截图，带红色坐标网格。
+纯查看工具。
 
 ```python
-# 全屏截图
+# 全屏截图（默认带网格）
 screenshot()
 
-# 放大指定区域
-screenshot(center={"x": 600, "y": 450}, zoom_factor=2)
+# 指定区域
+screenshot(area={"x": 100, "y": 100, "width": 500, "height": 300})
 
-# 网格密度：fine=100px, normal=200px, coarse=400px
-screenshot(grid_density="fine")
+# 不显示网格
+screenshot(grid=False)
 ```
+
+注意：`mouse(action='aim')` 返回的截图**始终带网格**，无需手动指定。
 
 ### mouse
 
-鼠标操作：点击、双击、拖拽、滚动。
+二段式鼠标操作。
 
+**瞄准（返回 aim_id + 截图 + 判断方法）：**
 ```python
-# 单击
-mouse(action="click", x=450, y=320)
+mouse(action="aim", x=600, y=450)        # 默认 zoom=2
+mouse(action="aim", x=600, y=450, zoom=4)  # 更高放大
+```
 
-# 双击
-mouse(action="double", x=450, y=320)
+**执行（必须使用 aim_id）：**
+```python
+mouse(action="click", aim_id="aim_abc123")       # 单击
+mouse(action="double", aim_id="aim_abc123")      # 双击
+mouse(action="right_click", aim_id="aim_abc123") # 右键
+mouse(action="scroll", aim_id="aim_abc123", direction="down", amount=3)
+```
 
-# 右键
-mouse(action="click", x=450, y=320, button="right")
+**拖拽（down → move → up）：**
+```python
+# 1. 瞄准起点
+mouse(action="aim", x=100, y=100)  # → aim_id_1
 
-# 拖拽
-mouse(action="drag", x=100, y=100, to_x=500, to_y=500)
+# 2. 按下
+mouse(action="down", aim_id="aim_id_1")
 
-# 滚动
-mouse(action="scroll", x=450, y=320, direction="down", amount=3)
+# 3. 瞄准终点
+mouse(action="aim", x=500, y=500)  # → aim_id_2
+
+# 4. 移动到终点
+mouse(action="move", aim_id="aim_id_2")
+
+# 5. 松开
+mouse(action="up")
 ```
 
 ### keyboard
@@ -84,6 +110,7 @@ keyboard(action="key", keys=["ctrl", "shift", "p"])
 
 ## ⚠️ 常见错误
 
-1. ❌ 不要盲目点击，总是先截图确认
-2. ❌ 不要在操作失败后立即重试，先截图查看当前状态
-3. ✅ 操作后截图验证结果
+1. ❌ 直接传 x/y 给 click → 使用 aim_id
+2. ❌ aim_id 过期后继续使用 → 重新 aim（10分钟有效）
+3. ❌ 不看准星位置就点击 → 仔细判断准星是否在目标上
+4. ✅ 操作后 screenshot() 验证结果

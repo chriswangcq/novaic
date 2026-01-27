@@ -234,31 +234,119 @@ pub async fn get_health() -> Result<HealthResponse, String> {
 
 /// Send a message to the agent with streaming response via Tauri events
 /// Uses curl with unbuffered output to handle SSE stream
+/// 
+/// model_id: The selected model ID
+/// api_key_id: The API key ID that provides this model (required to uniquely identify the model)
 #[tauri::command]
 pub async fn send_message_stream(
     app: tauri::AppHandle,
     message: String,
-    model: Option<String>,
+    model_id: Option<String>,
+    api_key_id: Option<String>,
     mode: Option<String>
 ) -> Result<(), String> {
     use tokio::process::Command;
     use tokio::io::{AsyncBufReadExt, BufReader};
     
+    // Load config to get model and API key info
+    let cfg = crate::app_config::read_config(&app).await?;
+    
+    // Find the selected model and its API key configuration
+    let (model_name, provider, api_base, api_key) = match (&model_id, &api_key_id) {
+        (Some(mid), Some(kid)) => {
+            // Find the model by both model_id AND api_key_id (unique combination)
+            let model = cfg.available_models.iter()
+                .find(|m| m.id == *mid && m.api_key_id == *kid && m.enabled)
+                .ok_or_else(|| format!("Model '{}' with API key '{}' not found or not enabled", mid, kid))?;
+            
+            // Find the API key entry
+            let api_key_entry = cfg.api_keys.iter()
+                .find(|k| k.id == *kid)
+                .ok_or_else(|| format!("API key '{}' not found", kid))?;
+            
+            let key = api_key_entry.api_key.clone()
+                .ok_or_else(|| "API key not configured".to_string())?;
+            
+            let base = api_key_entry.api_base.clone()
+                .or_else(|| api_key_entry.provider.default_base_url().map(String::from))
+                .unwrap_or_else(|| "https://api.openai.com/v1".to_string());
+            
+            let prov = match api_key_entry.provider {
+                crate::app_config::ProviderType::Openai => "openai",
+                crate::app_config::ProviderType::Anthropic => "anthropic",
+                crate::app_config::ProviderType::Google => "google",
+                crate::app_config::ProviderType::Azure => "azure",
+                crate::app_config::ProviderType::OpenaiCompatible => "openai",
+            }.to_string();
+            
+            (model.id.clone(), prov, base, key)
+        }
+        (Some(mid), None) => {
+            // Only model_id provided - find first matching enabled model
+            let model = cfg.available_models.iter()
+                .find(|m| m.id == *mid && m.enabled)
+                .ok_or_else(|| format!("Model '{}' not found or not enabled", mid))?;
+            
+            let api_key_entry = cfg.api_keys.iter()
+                .find(|k| k.id == model.api_key_id)
+                .ok_or_else(|| format!("API key '{}' not found for model '{}'", model.api_key_id, mid))?;
+            
+            let key = api_key_entry.api_key.clone()
+                .ok_or_else(|| "API key not configured".to_string())?;
+            
+            let base = api_key_entry.api_base.clone()
+                .or_else(|| api_key_entry.provider.default_base_url().map(String::from))
+                .unwrap_or_else(|| "https://api.openai.com/v1".to_string());
+            
+            let prov = match api_key_entry.provider {
+                crate::app_config::ProviderType::Openai => "openai",
+                crate::app_config::ProviderType::Anthropic => "anthropic",
+                crate::app_config::ProviderType::Google => "google",
+                crate::app_config::ProviderType::Azure => "azure",
+                crate::app_config::ProviderType::OpenaiCompatible => "openai",
+            }.to_string();
+            
+            (model.id.clone(), prov, base, key)
+        }
+        _ => {
+            // No model specified, use default from config
+            let api_key_entry = cfg.api_keys.iter()
+                .find(|k| k.api_key.as_ref().map(|s| !s.trim().is_empty()).unwrap_or(false))
+                .ok_or_else(|| "No API key configured".to_string())?;
+            
+            let key = api_key_entry.api_key.clone().unwrap();
+            let base = api_key_entry.api_base.clone()
+                .or_else(|| api_key_entry.provider.default_base_url().map(String::from))
+                .unwrap_or_else(|| "https://api.openai.com/v1".to_string());
+            let prov = match api_key_entry.provider {
+                crate::app_config::ProviderType::Openai => "openai",
+                crate::app_config::ProviderType::Anthropic => "anthropic",
+                crate::app_config::ProviderType::Google => "google",
+                crate::app_config::ProviderType::Azure => "azure",
+                crate::app_config::ProviderType::OpenaiCompatible => "openai",
+            }.to_string();
+            let model_name = if cfg.default_model.is_empty() {
+                "gpt-4o".to_string()
+            } else {
+                cfg.default_model.clone()
+            };
+            
+            (model_name, prov, base, key)
+        }
+    };
+    
     println!("[Agent] Starting streaming message via curl to {}/api/chat/stream", AGENT_BASE_URL);
-    println!("[Agent] Model: {:?}, Mode: {:?}", model, mode);
+    println!("[Agent] Model: {}, Provider: {}, API Base: {}", model_name, provider, api_base);
     
-    // Escape the message for JSON (handle backslash, quotes, newlines, tabs, etc.)
-    let escaped_message = message
-        .replace('\\', "\\\\")
-        .replace('"', "\\\"")
-        .replace('\n', "\\n")
-        .replace('\r', "\\r")
-        .replace('\t', "\\t");
-    
-    // Build JSON body with optional model and mode
-    let model_field = model.as_ref().map(|m| format!(r#","model":"{}""#, m)).unwrap_or_default();
-    let mode_field = mode.as_ref().map(|m| format!(r#","mode":"{}""#, m)).unwrap_or_default();
-    let json_body = format!(r#"{{"message":"{}"{}{}}}"#, escaped_message, model_field, mode_field);
+    // Build JSON body with all required fields
+    let json_body = serde_json::json!({
+        "message": message,
+        "model": model_name,
+        "mode": mode.unwrap_or_else(|| "agent".to_string()),
+        "provider": provider,
+        "api_base": api_base,
+        "api_key": api_key
+    }).to_string();
     
     // Use curl with unbuffered output (-N) to stream SSE events
     let mut child = Command::new("curl")

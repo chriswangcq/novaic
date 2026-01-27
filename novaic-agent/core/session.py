@@ -18,22 +18,34 @@ class SessionManager:
     # System prompt - 简洁版，工具细节在 MCP 描述里
     SYSTEM_PROMPT = """You are GhostPC Agent, an AI assistant with access to a virtual computer.
 
-## 🚨🚨🚨 HIGHEST PRIORITY RULE 🚨🚨🚨
+## 🚨 MOUSE CONTROL: AIM → EXECUTE (Two-Phase)
 
-### BEFORE EVERY MOUSE CLICK, YOU MUST:
+### ALL mouse clicks MUST use aim_id. NO direct coordinates allowed!
 
-1. **ZOOM to verify** → `screenshot(center={"x":X, "y":Y}, zoom_factor=2)`
-2. **CONFIRM crosshair is ON TARGET** → Look at the MAGENTA CROSSHAIR position
-3. **If crosshair is NOT on target** → Adjust coordinates and zoom again, REPEAT until confirmed
-4. **ONLY click after confirmation** → `mouse(action="click", x=X, y=Y)`
+**WORKFLOW:**
+```
+screenshot() → estimate target at (X, Y)
+     ↓
+mouse(action='aim', x=X, y=Y) → get aim_id + zoomed screenshot
+     ↓
+YOU JUDGE (look at the MAGENTA CROSSHAIR):
+  - Crosshair ON target → mouse(action='click', aim_id='...')
+  - Crosshair CLOSE but off → re-aim with adjusted coordinates
+  - Crosshair FAR from target → re-aim with zoom=2
+```
 
-### ⛔ VIOLATION = FAILED OPERATION
+### ⛔ FORBIDDEN:
+- mouse(action='click', x=500, y=300)  ← WRONG! No direct x/y!
+- Clicking without aim_id
 
-- **DO NOT** click without zoom verification
-- **DO NOT** click if crosshair is off-target
-- **DO NOT** skip this rule - skipping causes MORE failures and wastes time
+### ✅ CORRECT:
+```python
+# Step 1: Aim
+mouse(action='aim', x=500, y=300)  # Returns aim_id='aim_abc123'
 
-### THIS RULE HAS NO EXCEPTIONS
+# Step 2: Execute (if crosshair on target)
+mouse(action='click', aim_id='aim_abc123')
+```
 
 ---
 
@@ -41,15 +53,7 @@ class SessionManager:
 
 1. **Think first** - Before each action, briefly explain what you're doing and why
 2. **One step at a time** - Execute one tool, observe result, then decide next step
-3. **Use tool descriptions** - Each tool has detailed usage instructions, follow them
-
-## Desktop GUI Workflow (MUST FOLLOW)
-
-```
-screenshot() → estimate (X,Y) → screenshot(zoom) → CONFIRM crosshair on target → click
-```
-
-If crosshair is not on target, adjust coordinates and zoom again before clicking!
+3. **You judge** - Look at the crosshair position and decide: execute or re-aim
 
 ## Browser Interaction
 
@@ -57,14 +61,13 @@ When using browser tools:
 - `browser_navigate` returns collapsed HTML and a list of **expandable paths**
 - Use `browser_expand(path)` to see details of a collapsed area
 - Use paths like `body>div>div[1]>a[0]` for click/type (from expandable list)
-- If you can't find an element, use `browser_expand` to drill down
 
 ## Quick Reference
 
+- Desktop GUI: screenshot → aim → (you judge crosshair) → execute
 - Web: browser_navigate → browser_expand → browser_click/type
 - Shell: run_command
 - Files: read_file, write_file
-- Desktop GUI: screenshot → zoom+confirm → mouse/keyboard
 """
     
     def __init__(self, max_messages: int = 50):
@@ -73,7 +76,10 @@ When using browser tools:
         self._created_at = datetime.now()
     
     def add_user_message(self, content: str) -> None:
-        """Add a user message to history"""
+        """Add a user message to history. Skips empty content."""
+        # Skip empty content to avoid API errors
+        if not content:
+            return
         self.messages.append({
             "role": "user",
             "content": content,
@@ -82,7 +88,10 @@ When using browser tools:
         self._trim_history()
     
     def add_assistant_message(self, content: Any) -> None:
-        """Add an assistant message to history"""
+        """Add an assistant message to history. Skips empty content."""
+        # Skip empty content to avoid API errors
+        if not content and content != 0:
+            return
         self.messages.append({
             "role": "assistant",
             "content": content,
@@ -109,13 +118,18 @@ When using browser tools:
         """
         Get messages formatted for LLM API call.
         Includes system prompt and strips timestamps.
+        Filters out messages with empty content (except final assistant message).
         """
         llm_messages = []
         
         for msg in self.messages:
+            content = msg["content"]
+            # Skip messages with empty content (API requirement)
+            if not content and content != 0:  # Allow 0 but not empty string/None
+                continue
             llm_messages.append({
                 "role": msg["role"],
-                "content": msg["content"]
+                "content": content
             })
         
         return llm_messages

@@ -143,38 +143,38 @@ def skill_list() -> str:
 # ==================== Desktop Tools ====================
 
 @mcp.tool(
-    description="""Capture desktop screenshot with RED coordinate grid overlay.
+    description="""Capture desktop screenshot for viewing the screen.
 
-HOW TO USE COORDINATES:
-1. Look at the RED numbers on grid lines
-2. Find where your target intersects with grid lines
-3. Use those EXACT numbers in mouse(x=..., y=...)
+PURPOSE: View the screen to find target elements and estimate coordinates.
 
-🚨 CRITICAL: MUST CONFIRM CROSSHAIR ON TARGET BEFORE CLICKING!
+PARAMETERS:
+- area: "full" (default) or {"x":, "y":, "width":, "height":} for specific region
+- grid: true (default) to show coordinate grid, false to hide
 
-Use zoom to verify - the MAGENTA CROSSHAIR shows exactly where you'll click:
-  screenshot(center={"x":TARGET_X, "y":TARGET_Y}, zoom_factor=2)
-
-MANDATORY WORKFLOW:
-1. screenshot() → full view, estimate button at (600, 450)
-2. screenshot(center={"x":600,"y":450}, zoom_factor=2) → check crosshair
-3. CONFIRM: Is crosshair EXACTLY on the target center?
-   - YES → proceed to mouse(action="click", x=600, y=450)
-   - NO → estimate new coordinates, zoom again, repeat until confirmed
-4. Click ONLY after confirming crosshair is on target"""
+WORKFLOW:
+1. screenshot() → View full screen with grid, estimate target at (X, Y)
+2. mouse(action='aim', x=X, y=Y) → Aim and get zoomed screenshot with crosshair
+3. You judge: crosshair on target? → Execute or re-aim"""
 )
 async def screenshot(
-    center: Optional[Dict[str, int]] = None,
-    zoom_factor: Optional[float] = None,
-    region: Optional[Dict[str, int]] = None,
-    grid_density: Optional[str] = None
+    area: Union[str, Dict[str, int]] = "full",
+    grid: bool = True
 ) -> Union[List[Any], Dict[str, Any]]:
-    """Capture desktop screenshot with coordinate grid"""
+    """Capture desktop screenshot with optional coordinate grid"""
+    # Convert new API to internal parameters
+    region = None
+    if isinstance(area, dict):
+        region = area
+    
+    # grid=True uses default auto grid, grid=False passes None (no grid logic change needed)
+    # The actual grid_density logic is handled in DesktopTools.screenshot
+    grid_density = "normal" if grid else None
+    
     result = await DesktopTools.screenshot(
         region=region,
-        center=center,
-        zoom_factor=zoom_factor,
-        grid_density=grid_density
+        center=None,
+        zoom_factor=None,
+        grid_density=grid_density if grid else None
     )
     
     # 如果成功，返回 [ImageContent, 说明文字]
@@ -213,56 +213,71 @@ async def screenshot(
 
 
 @mcp.tool(
-    description="""Control mouse: click, double-click, drag, scroll, move.
+    description="""Two-phase mouse control: AIM first, then EXECUTE.
 
-🚨 BEFORE CLICKING: Use zoom mode to verify crosshair is on target!
+🚨 ALL mouse actions require aim_id! No direct x/y coordinates allowed.
 
-SUPPORTED ACTIONS:
+PHASE 1 - AIM (returns aim_id + zoomed screenshot + recommendation):
+   mouse(action='aim', x=500, y=300)           # Default zoom=2
+   mouse(action='aim', x=500, y=300, zoom=4)   # Higher zoom for precision
 
-1. action="click" - Single click at (x, y)
-   mouse(action="click", x=500, y=300)
-   mouse(action="click", x=500, y=300, button="right")  # right-click
+PHASE 2 - EXECUTE (uses aim_id from Phase 1):
+   mouse(action='click', aim_id='aim_xxx')       # Single click
+   mouse(action='double', aim_id='aim_xxx')      # Double click  
+   mouse(action='right_click', aim_id='aim_xxx') # Right click
+   mouse(action='scroll', aim_id='aim_xxx', direction='down', amount=3)
 
-2. action="double" - Double click at (x, y)
-   mouse(action="double", x=500, y=300)
+DRAG WORKFLOW:
+   mouse(action='aim', x=100, y=100)    # Aim start point → aim_id_1
+   mouse(action='down', aim_id='aim_id_1')  # Press down
+   mouse(action='aim', x=500, y=500)    # Aim end point → aim_id_2
+   mouse(action='move', aim_id='aim_id_2')  # Move to end
+   mouse(action='up')                    # Release
 
-3. action="move" - Move cursor to (x, y) without clicking
-   mouse(action="move", x=500, y=300)
-
-4. action="drag" - Drag from (x, y) to (to_x, to_y)
-   mouse(action="drag", x=100, y=100, to_x=400, to_y=400)
-
-5. action="scroll" - Scroll at position (x, y)
-   mouse(action="scroll", x=500, y=300, direction="down", amount=5)
-   mouse(action="scroll", x=500, y=300, direction="up", amount=3)
-   direction: up | down | left | right
-   amount: number of scroll steps (default 3)
-
-⚠️ DO NOT use parameters like scroll_x or scroll_y - they don't exist!"""
+JUDGMENT (you decide):
+- aim returns screenshot with MAGENTA CROSSHAIR at the aimed position
+- Check if crosshair is on your intended target
+- Decide: execute (click), re-aim with adjustment, or re-aim with different zoom"""
 )
 async def mouse(
     action: str,
-    x: int,
-    y: int,
-    button: Optional[str] = None,
-    to_x: Optional[int] = None,
-    to_y: Optional[int] = None,
+    # For aim action
+    x: Optional[int] = None,
+    y: Optional[int] = None,
+    zoom: float = 2.0,
+    # For execute actions
+    aim_id: Optional[str] = None,
+    # For scroll
     direction: Optional[str] = None,
-    amount: Optional[int] = None
-) -> Dict[str, Any]:
-    """Control mouse actions"""
-    kwargs = {"action": action, "x": x, "y": y}
-    if button:
-        kwargs["button"] = button
-    if to_x is not None:
-        kwargs["to_x"] = to_x
-    if to_y is not None:
-        kwargs["to_y"] = to_y
-    if direction:
-        kwargs["direction"] = direction
-    if amount is not None:
-        kwargs["amount"] = amount
-    return await DesktopTools.mouse(**kwargs)
+    amount: int = 3
+) -> Union[List[Any], Dict[str, Any]]:
+    """Two-phase mouse control: aim then execute"""
+    result = await DesktopTools.mouse(
+        action=action,
+        x=x,
+        y=y,
+        zoom=zoom,
+        aim_id=aim_id,
+        direction=direction,
+        amount=amount
+    )
+    
+    # If aim action returns screenshot, format it with image
+    if result.get("success") and result.get("screenshot") and action == "aim":
+        image_bytes = base64.b64decode(result["screenshot"])
+        image = Image(data=image_bytes, format="png")
+        image_content = image.to_image_content()
+        
+        # Build info text
+        info_parts = []
+        if result.get("hint"):
+            info_parts.append(result["hint"])
+        
+        info_text = "\n".join(info_parts) if info_parts else "Aim successful"
+        
+        return [image_content, info_text]
+    
+    return result
 
 
 @mcp.tool(

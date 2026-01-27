@@ -47,6 +47,57 @@ class BedrockConfig(BaseModel):
     default_model: Optional[str] = None  # e.g. anthropic.claude-3-5-sonnet-20241022-v2:0
 
 
+# ==================== Model to Provider Mapping ====================
+
+# 模型名称前缀/关键词到Provider的映射
+MODEL_PROVIDER_MAPPING = {
+    # OpenAI models
+    "gpt-4": "openai",
+    "gpt-3.5": "openai",
+    "gpt-5": "openai",
+    "o1": "openai",
+    "o3": "openai",
+    "chatgpt": "openai",
+    
+    # Anthropic models
+    "claude": "anthropic",
+    
+    # Google models
+    "gemini": "google",
+    "palm": "google",
+    
+    # Azure (需要显式指定，因为模型名可能和OpenAI相同)
+    # Azure通过provider参数显式指定
+    
+    # 其他OpenAI兼容的模型（如Doubao等）通过默认fallback处理
+}
+
+
+def infer_provider_from_model(model: str, default_provider: str = "openai") -> str:
+    """
+    根据模型名称推断对应的Provider
+    
+    Args:
+        model: 模型名称
+        default_provider: 如果无法推断，使用的默认provider
+        
+    Returns:
+        provider名称: "openai" | "anthropic" | "google" | "azure" | "bedrock"
+    """
+    if not model:
+        return default_provider
+    
+    model_lower = model.lower()
+    
+    # 按前缀/关键词匹配
+    for prefix, provider in MODEL_PROVIDER_MAPPING.items():
+        if prefix in model_lower:
+            return provider
+    
+    # 未匹配到，返回默认provider
+    return default_provider
+
+
 # ==================== Main Settings ====================
 
 class Settings(BaseSettings):

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { ChevronDown, ChevronRight, Search, Plus, X, Star } from 'lucide-react';
+import { ChevronDown, ChevronRight, Search, Plus, X } from 'lucide-react';
 
 // ==================== Types ====================
 
@@ -156,19 +156,17 @@ function FormField({
 function ModelSection({
   apiKeyId,
   models,
-  defaultModel,
   onToggle,
-  onSetDefault,
   onAddCustomModel,
+  onDeleteModel,
   onFetchModels,
   fetching,
 }: {
   apiKeyId: string;
   models: AvailableModel[];
-  defaultModel: string;
-  onToggle: (modelId: string, enabled: boolean) => void;
-  onSetDefault: (modelId: string) => void;
+  onToggle: (modelId: string, apiKeyId: string, enabled: boolean) => void;
   onAddCustomModel: (apiKeyId: string, modelId: string, modelName: string) => void;
+  onDeleteModel?: (modelId: string, apiKeyId: string) => void;
   onFetchModels: () => void;
   fetching: boolean;
 }) {
@@ -278,11 +276,10 @@ function ModelSection({
           {filteredModels && filteredModels.length > 0 ? (
             filteredModels.map(model => (
               <ModelItem
-                key={model.id}
+                key={`${model.api_key_id}:${model.id}`}
                 model={model}
-                isDefault={model.id === defaultModel}
                 onToggle={onToggle}
-                onSetDefault={onSetDefault}
+                onDelete={onDeleteModel}
               />
             ))
           ) : null}
@@ -317,11 +314,10 @@ function ModelSection({
               <div className="space-y-0.5 max-h-[120px] overflow-y-auto">
                 {enabledModels.map(model => (
                   <ModelItem
-                    key={model.id}
+                    key={`${model.api_key_id}:${model.id}`}
                     model={model}
-                    isDefault={model.id === defaultModel}
                     onToggle={onToggle}
-                    onSetDefault={onSetDefault}
+                    onDelete={onDeleteModel}
                   />
                 ))}
               </div>
@@ -337,11 +333,10 @@ function ModelSection({
               <div className="space-y-0.5 max-h-[120px] overflow-y-auto">
                 {recommendedModels.map(model => (
                   <ModelItem
-                    key={model.id}
+                    key={`${model.api_key_id}:${model.id}`}
                     model={model}
-                    isDefault={model.id === defaultModel}
                     onToggle={onToggle}
-                    onSetDefault={onSetDefault}
+                    onDelete={onDeleteModel}
                   />
                 ))}
               </div>
@@ -377,9 +372,8 @@ function ModelSection({
       {showAllModels && (
         <AllModelsModal
           models={models}
-          defaultModel={defaultModel}
           onToggle={onToggle}
-          onSetDefault={onSetDefault}
+          onDelete={onDeleteModel}
           onClose={() => setShowAllModels(false)}
         />
       )}
@@ -391,21 +385,19 @@ function ModelSection({
 
 function ModelItem({
   model,
-  isDefault,
   onToggle,
-  onSetDefault,
+  onDelete,
 }: {
   model: AvailableModel;
-  isDefault: boolean;
-  onToggle: (modelId: string, enabled: boolean) => void;
-  onSetDefault: (modelId: string) => void;
+  onToggle: (modelId: string, apiKeyId: string, enabled: boolean) => void;
+  onDelete?: (modelId: string, apiKeyId: string) => void;
 }) {
   return (
     <div className="flex items-center justify-between py-1.5 px-2 rounded hover:bg-nb-surface-2/50 group">
       <div className="flex items-center gap-2 min-w-0 flex-1">
         <Toggle
           checked={model.enabled}
-          onChange={(enabled) => onToggle(model.id, enabled)}
+          onChange={(enabled) => onToggle(model.id, model.api_key_id, enabled)}
         />
         <span className="text-sm text-nb-text truncate" title={model.id}>
           {model.name}
@@ -415,17 +407,14 @@ function ModelItem({
             Custom
           </span>
         )}
-        {isDefault && (
-          <Star size={12} className="text-yellow-500 fill-yellow-500 flex-shrink-0" />
-        )}
       </div>
       
-      {model.enabled && !isDefault && (
+      {model.is_custom && onDelete && (
         <button
-          onClick={() => onSetDefault(model.id)}
-          className="text-[10px] text-nb-text-muted hover:text-nb-accent opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+          onClick={() => onDelete(model.id, model.api_key_id)}
+          className="text-[10px] text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
         >
-          Set default
+          Delete
         </button>
       )}
     </div>
@@ -436,15 +425,13 @@ function ModelItem({
 
 function AllModelsModal({
   models,
-  defaultModel,
   onToggle,
-  onSetDefault,
+  onDelete,
   onClose,
 }: {
   models: AvailableModel[];
-  defaultModel: string;
-  onToggle: (modelId: string, enabled: boolean) => void;
-  onSetDefault: (modelId: string) => void;
+  onToggle: (modelId: string, apiKeyId: string, enabled: boolean) => void;
+  onDelete?: (modelId: string, apiKeyId: string) => void;
   onClose: () => void;
 }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -499,11 +486,10 @@ function AllModelsModal({
               </div>
               {enabledModels.map(model => (
                 <ModelItem
-                  key={model.id}
+                  key={`${model.api_key_id}:${model.id}`}
                   model={model}
-                  isDefault={model.id === defaultModel}
                   onToggle={onToggle}
-                  onSetDefault={onSetDefault}
+                  onDelete={onDelete}
                 />
               ))}
             </div>
@@ -516,11 +502,10 @@ function AllModelsModal({
               </div>
               {disabledModels.map(model => (
                 <ModelItem
-                  key={model.id}
+                  key={`${model.api_key_id}:${model.id}`}
                   model={model}
-                  isDefault={model.id === defaultModel}
                   onToggle={onToggle}
-                  onSetDefault={onSetDefault}
+                  onDelete={onDelete}
                 />
               ))}
             </div>
@@ -542,27 +527,25 @@ function AllModelsModal({
 function ApiKeyCard({ 
   entry,
   models,
-  defaultModel,
   onEdit, 
   onDelete, 
   onTest,
   onFetchModels,
   onToggleModel,
-  onSetDefaultModel,
   onAddCustomModel,
+  onDeleteModel,
   testing,
   fetching
 }: { 
   entry: ApiKeyEntryPublic;
   models: AvailableModel[];
-  defaultModel: string;
   onEdit: () => void;
   onDelete: () => void;
   onTest: () => void;
   onFetchModels: () => void;
-  onToggleModel: (modelId: string, enabled: boolean) => void;
-  onSetDefaultModel: (modelId: string) => void;
+  onToggleModel: (modelId: string, apiKeyId: string, enabled: boolean) => void;
   onAddCustomModel: (apiKeyId: string, modelId: string, modelName: string) => void;
+  onDeleteModel?: (modelId: string, apiKeyId: string) => void;
   testing: boolean;
   fetching: boolean;
 }) {
@@ -622,10 +605,9 @@ function ApiKeyCard({
       <ModelSection
         apiKeyId={entry.id}
         models={models}
-        defaultModel={defaultModel}
         onToggle={onToggleModel}
-        onSetDefault={onSetDefaultModel}
         onAddCustomModel={onAddCustomModel}
+        onDeleteModel={onDeleteModel}
         onFetchModels={onFetchModels}
         fetching={fetching}
       />
@@ -926,20 +908,21 @@ export function SettingsModal(props: { open: boolean; onClose: () => void }) {
     }
   };
 
-  const handleToggleModel = async (modelId: string, enabled: boolean) => {
+  const handleToggleModel = async (modelId: string, apiKeyId: string, enabled: boolean) => {
     setError(null);
     try {
-      await invoke('toggle_model', { toggle: { model_id: modelId, enabled } });
+      await invoke('toggle_model', { toggle: { model_id: modelId, api_key_id: apiKeyId, enabled } });
       await loadConfig();
     } catch (e) {
       setError(String(e));
     }
   };
 
-  const handleSetDefaultModel = async (modelId: string) => {
+  const handleDeleteModel = async (modelId: string, apiKeyId: string) => {
+    if (!confirm(`Delete custom model "${modelId}"?`)) return;
     setError(null);
     try {
-      await invoke('set_default_model', { modelId });
+      await invoke('delete_model', { modelId, apiKeyId });
       await loadConfig();
     } catch (e) {
       setError(String(e));
@@ -957,7 +940,7 @@ export function SettingsModal(props: { open: boolean; onClose: () => void }) {
         isCustom: true  // Mark as custom model so it won't be removed on refresh
       });
       // Enable the custom model immediately after adding
-      await invoke('toggle_model', { toggle: { model_id: modelId, enabled: true } });
+      await invoke('toggle_model', { toggle: { model_id: modelId, api_key_id: apiKeyId, enabled: true } });
       setInfo(`Added custom model: ${modelId}`);
       await loadConfig();
     } catch (e) {
@@ -1030,14 +1013,13 @@ export function SettingsModal(props: { open: boolean; onClose: () => void }) {
                       key={entry.id}
                       entry={entry}
                       models={getModelsForKey(entry.id)}
-                      defaultModel={config.default_model}
                       onEdit={() => setEditingKeyId(entry.id)}
                       onDelete={() => handleDeleteKey(entry.id)}
                       onTest={() => handleTestKey(entry.id)}
                       onFetchModels={() => handleFetchModels(entry.id)}
                       onToggleModel={handleToggleModel}
-                      onSetDefaultModel={handleSetDefaultModel}
                       onAddCustomModel={handleAddCustomModel}
+                      onDeleteModel={handleDeleteModel}
                       testing={testingKeyId === entry.id}
                       fetching={fetchingKeyId === entry.id}
                     />

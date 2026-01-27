@@ -101,20 +101,15 @@ async def init_agent(request: InitRequest):
     if request.api_base:
         settings.llm_api_base = request.api_base
     
-    # Determine which provider to use and get API key
-    settings.default_provider = provider
+    # Create agent (LLM clients are created lazily based on chat configurations)
+    print(f"[Init] Creating Agent...")
     
-    # Create agent with the selected provider
-    print(f"[Init] Creating Agent with provider={provider}, model={settings.default_model}")
-    
-    _agent = NBCCAgent(
-        provider=provider
-    )
+    _agent = NBCCAgent()
     
     print(f"[Init] Agent initialized successfully")
     return InitResponse(
         status="ok",
-        message=f"Agent initialized with {provider} provider, model {settings.default_model}"
+        message=f"Agent initialized. LLM clients will be created per chat request."
     )
 
 
@@ -142,17 +137,13 @@ async def chat_stream(request: ChatRequest):
     Returns events as they happen.
     """
     print(f"[Chat] Received message: {request.message[:100]}...")
-    print(f"[Chat] Request model: {request.model}, mode: {request.mode}")
-    print(f"[Chat] Current settings: api_style={settings.api_style}, model={settings.default_model}")
+    print(f"[Chat] Model: {request.model}, Provider: {request.provider}, API Base: {request.api_base}")
     
     agent = get_agent()
     
-    # Override model if specified in request
-    model_override = request.model if request.model else settings.default_model
     chat_mode = request.mode or "agent"
     
-    print(f"[Chat] Using model: {model_override}, mode: {chat_mode}")
-    print(f"[Chat] Agent api_base: {agent.api_base}")
+    print(f"[Chat] Using model: {request.model}, provider: {request.provider}, mode: {chat_mode}")
     
     async def event_generator():
         try:
@@ -162,14 +153,26 @@ async def chat_stream(request: ChatRequest):
             # Use different chat method based on mode
             if chat_mode == "chat":
                 # Simple chat mode - no tools
-                async for event in agent.simple_chat(request.message, model=model_override):
+                async for event in agent.simple_chat(
+                    request.message, 
+                    model=request.model,
+                    provider=request.provider,
+                    api_base=request.api_base,
+                    api_key=request.api_key
+                ):
                     event_count += 1
                     event["timestamp"] = datetime.now().isoformat()
                     print(f"[Chat] Event #{event_count}: type={event.get('type')}")
                     yield f"data: {json.dumps(event)}\n\n"
             else:
                 # Agent mode - with tools
-                async for event in agent.chat_with_logs(request.message, model=model_override):
+                async for event in agent.chat_with_logs(
+                    request.message, 
+                    model=request.model,
+                    provider=request.provider,
+                    api_base=request.api_base,
+                    api_key=request.api_key
+                ):
                     event_count += 1
                     event["timestamp"] = datetime.now().isoformat()
                     print(f"[Chat] Event #{event_count}: type={event.get('type')}")

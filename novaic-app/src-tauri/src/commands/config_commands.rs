@@ -178,6 +178,7 @@ pub async fn delete_api_key(app: tauri::AppHandle, id: String) -> Result<AppConf
 // ==================== Model Management ====================
 
 /// Toggle a model's enabled status
+/// Uses api_key_id + model_id to uniquely identify a model
 #[tauri::command]
 pub async fn toggle_model(
     app: tauri::AppHandle,
@@ -185,10 +186,51 @@ pub async fn toggle_model(
 ) -> Result<AppConfigPublic, String> {
     let mut cfg = app_config::read_config(&app).await?;
 
-    if let Some(model) = cfg.available_models.iter_mut().find(|m| m.id == toggle.model_id) {
+    // Find by both api_key_id and model_id if api_key_id is provided
+    let model = if let Some(ref key_id) = toggle.api_key_id {
+        cfg.available_models.iter_mut()
+            .find(|m| m.id == toggle.model_id && m.api_key_id == *key_id)
+    } else {
+        // Fallback: find by model_id only (backward compatibility)
+        cfg.available_models.iter_mut()
+            .find(|m| m.id == toggle.model_id)
+    };
+    
+    if let Some(model) = model {
         model.enabled = toggle.enabled;
     } else {
         return Err(format!("Model {} not found", toggle.model_id));
+    }
+
+    app_config::write_config(&app, &cfg).await?;
+    Ok(AppConfigPublic::from(&cfg))
+}
+
+/// Delete a custom model
+#[tauri::command]
+pub async fn delete_model(
+    app: tauri::AppHandle,
+    model_id: String,
+    api_key_id: String,
+) -> Result<AppConfigPublic, String> {
+    let mut cfg = app_config::read_config(&app).await?;
+
+    // Find the model
+    let model_index = cfg.available_models.iter()
+        .position(|m| m.id == model_id && m.api_key_id == api_key_id);
+    
+    match model_index {
+        Some(idx) => {
+            let model = &cfg.available_models[idx];
+            // Only allow deleting custom models
+            if !model.is_custom {
+                return Err("Only custom models can be deleted".to_string());
+            }
+            cfg.available_models.remove(idx);
+        }
+        None => {
+            return Err(format!("Model '{}' not found", model_id));
+        }
     }
 
     app_config::write_config(&app, &cfg).await?;

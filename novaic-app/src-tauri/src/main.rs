@@ -240,6 +240,7 @@ fn main() {
             config_commands::update_api_key,
             config_commands::delete_api_key,
             config_commands::toggle_model,
+            config_commands::delete_model,
             config_commands::set_default_model,
             config_commands::fetch_models_for_key,
             config_commands::save_models_for_key,
