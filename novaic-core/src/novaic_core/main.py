@@ -47,7 +47,7 @@ mcp = FastMCP(
 - 记忆系统：使用 memory_* 保存跨会话信息
 - 环境感知：使用 system_snapshot, directory_snapshot 了解当前状态
 
-详细指南请查看各 skill 资源：skill://desktop, skill://browser, skill://memory 等
+详细指南请查看各 skill 资源：skill://desktop, skill://browser, skill://memory, skill://software 等
 """
 )
 
@@ -106,6 +106,12 @@ def skill_files() -> str:
 def skill_windows() -> str:
     """Window management skill - listing, focusing, resizing windows"""
     return _load_skill("windows")
+
+
+@mcp.resource("skill://software")
+def skill_software() -> str:
+    """Software management skill - installation and troubleshooting"""
+    return _load_skill("software")
 
 
 @mcp.resource("skill://list")

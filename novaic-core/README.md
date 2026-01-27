@@ -239,6 +239,7 @@ Each tool category has detailed skill documentation in the `skills/` directory:
 - [Windows Skills](skills/windows/SKILL.md) — Window management
 - [Memory Skills](skills/memory/SKILL.md) — Memory system usage
 - [Context Skills](skills/context/SKILL.md) — Context awareness
+- [Software Skills](skills/software/SKILL.md) — Installing and troubleshooting software
 
 ## Development
 
