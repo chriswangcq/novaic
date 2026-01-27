@@ -9,7 +9,10 @@ import {
   AppState, 
   AgentEvent,
   LayoutMode,
-  LayoutSettings
+  LayoutSettings,
+  AvailableModel,
+  ApiKeyInfo,
+  ChatMode
 } from '../types';
 
 // Layout persistence key
@@ -59,6 +62,11 @@ interface AppStore extends AppState {
   // Layout actions
   setLayoutMode: (mode: LayoutMode) => void;
   setLeftPanelWidth: (width: number) => void;
+  // Model & Mode actions
+  setAvailableModels: (models: AvailableModel[]) => void;
+  setSelectedModel: (model: string) => void;
+  setChatMode: (mode: ChatMode) => void;
+  loadModelsFromConfig: () => Promise<void>;
 }
 
 // SSE event from Agent API
@@ -85,6 +93,26 @@ function toLogData(d: unknown): LogData {
 // Load initial layout
 const initialLayout = loadLayoutSettings();
 
+// Model selection persistence
+const MODEL_STORAGE_KEY = 'novaic-selected-model';
+const MODE_STORAGE_KEY = 'novaic-chat-mode';
+
+function loadSelectedModel(): string {
+  try {
+    return localStorage.getItem(MODEL_STORAGE_KEY) || '';
+  } catch {
+    return '';
+  }
+}
+
+function loadChatMode(): ChatMode {
+  try {
+    const saved = localStorage.getItem(MODE_STORAGE_KEY);
+    if (saved === 'agent' || saved === 'chat') return saved;
+  } catch {}
+  return 'agent';
+}
+
 export const useAppStore = create<AppStore>((set, get) => ({
   // Initial state
   messages: [],
@@ -99,11 +127,20 @@ export const useAppStore = create<AppStore>((set, get) => ({
   // Layout state (loaded from localStorage)
   layoutMode: initialLayout.mode,
   leftPanelWidth: initialLayout.leftWidth,
+  // Model selection state
+  availableModels: [],
+  apiKeys: [],
+  selectedModel: loadSelectedModel(),
+  chatMode: loadChatMode(),
 
   // Initialize app
   initialize: async () => {
+    const { loadModelsFromConfig } = get();
     const maxRetries = 5;
     const retryDelay = 2000;
+    
+    // Load available models from config first
+    await loadModelsFromConfig();
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -113,7 +150,16 @@ export const useAppStore = create<AppStore>((set, get) => ({
         console.log('[Store] Agent initialized successfully');
         return;
       } catch (error) {
+        const errorStr = String(error);
         console.error(`[Store] Init attempt ${attempt} failed:`, error);
+        
+        // If no API key configured, open settings and stop retrying
+        if (errorStr.includes('No API key') || errorStr.includes('not configured')) {
+          console.log('[Store] No API key configured, opening settings...');
+          set({ settingsOpen: true });
+          return;
+        }
+        
         if (attempt < maxRetries) {
           await new Promise(resolve => setTimeout(resolve, retryDelay));
         }
@@ -128,6 +174,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
     
     if (!isInitialized) {
       await initialize();
+      // Check again after initialize attempt
+      if (!get().isInitialized) {
+        // Still not initialized, settings should be open
+        console.log('[Store] Agent not initialized, cannot send message');
+        return;
+      }
     }
     
     // Add user message
@@ -199,8 +251,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
         });
       });
       
-      // 开始流式请求
-      await invoke('send_message_stream', { message: content });
+      // 开始流式请求 - 传递选中的模型和模式
+      const { selectedModel, chatMode } = get();
+      await invoke('send_message_stream', { 
+        message: content,
+        model: selectedModel || null,
+        mode: chatMode || 'agent'
+      });
       
       // 最终更新
       updateMessage(assistantId, {
@@ -286,5 +343,58 @@ export const useAppStore = create<AppStore>((set, get) => ({
     set({ leftPanelWidth: width });
     const { layoutMode } = get();
     saveLayoutSettings({ mode: layoutMode, leftWidth: width });
+  },
+
+  // Model & Mode actions
+  setAvailableModels: (models: AvailableModel[]) => {
+    set({ availableModels: models });
+  },
+
+  setSelectedModel: (model: string) => {
+    set({ selectedModel: model });
+    try {
+      localStorage.setItem(MODEL_STORAGE_KEY, model);
+    } catch {}
+  },
+
+  setChatMode: (mode: ChatMode) => {
+    set({ chatMode: mode });
+    try {
+      localStorage.setItem(MODE_STORAGE_KEY, mode);
+    } catch {}
+  },
+
+  loadModelsFromConfig: async () => {
+    try {
+      const config = await invoke<{
+        available_models: AvailableModel[];
+        api_keys: Array<{ id: string; name: string; provider: string }>;
+        default_model: string;
+      }>('get_app_config');
+      
+      // Filter only enabled models
+      const enabledModels = (config.available_models || []).filter(m => m.enabled);
+      
+      // Extract API key info
+      const apiKeys: ApiKeyInfo[] = (config.api_keys || []).map(k => ({
+        id: k.id,
+        name: k.name,
+        provider: k.provider as ApiKeyInfo['provider'],
+      }));
+      
+      set({ availableModels: enabledModels, apiKeys });
+      
+      // Set default model if not already selected
+      const { selectedModel } = get();
+      if (!selectedModel && config.default_model) {
+        set({ selectedModel: config.default_model });
+      } else if (!selectedModel && enabledModels.length > 0) {
+        set({ selectedModel: enabledModels[0].id });
+      }
+      
+      console.log('[Store] Loaded models:', enabledModels.length, 'apiKeys:', apiKeys.length);
+    } catch (error) {
+      console.error('[Store] Failed to load models from config:', error);
+    }
   },
 }));

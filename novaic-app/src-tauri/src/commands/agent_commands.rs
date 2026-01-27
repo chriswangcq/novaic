@@ -66,34 +66,74 @@ pub async fn init_agent(token: String, cloud_api_base: Option<String>) -> Result
 #[tauri::command]
 pub async fn init_agent_with_app_config(app: tauri::AppHandle) -> Result<InitResponse, String> {
     use tokio::process::Command;
+    use crate::app_config::ProviderType;
     
     let cfg = crate::app_config::read_config(&app).await?;
 
-    let api_key = cfg
-        .llm_api_key
-        .as_ref()
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-        .ok_or_else(|| "LLM API key not configured. Open Settings and set it first.".to_string())?;
+    // Find the first API key with credentials configured
+    // Prefer OpenAI/OpenAI-compatible for backward compatibility
+    let api_key_entry = cfg.api_keys.iter()
+        .find(|k| {
+            matches!(k.provider, ProviderType::Openai | ProviderType::OpenaiCompatible) 
+            && k.api_key.as_ref().map(|s| !s.trim().is_empty()).unwrap_or(false)
+        })
+        .or_else(|| cfg.api_keys.iter().find(|k| {
+            k.api_key.as_ref().map(|s| !s.trim().is_empty()).unwrap_or(false)
+        }))
+        .ok_or_else(|| "No API key configured. Open Settings and add one first.".to_string())?;
 
-    let api_base = cfg.llm_api_base.trim().to_string();
-    let model = cfg.llm_model.trim().to_string();
-    let max_tokens = cfg.llm_max_tokens;
+    let api_key = api_key_entry.api_key.clone().unwrap();
+    let provider = format!("{:?}", api_key_entry.provider).to_lowercase();
+    
+    // Determine API base
+    let api_base = api_key_entry.api_base.clone()
+        .or_else(|| api_key_entry.provider.default_base_url().map(String::from))
+        .unwrap_or_else(|| "https://api.openai.com/v1".to_string());
 
-    // Build JSON body - escape special characters
-    let json_body = serde_json::json!({
-        "api_key": api_key,
-        "api_base": api_base,
-        "model": model,
-        "api_style": cfg.api_style,
-        "enable_prefix_caching": cfg.enable_prefix_caching,
-        "enable_thinking": cfg.enable_thinking,
-        "max_tokens": max_tokens,
+    // Build init request based on provider type
+    let mut init_data = serde_json::json!({
+        "provider": provider,
+        "model": cfg.default_model,
+        "max_tokens": cfg.max_tokens,
         "max_iterations": cfg.max_iterations,
         "visible_shell": cfg.visible_shell
-    }).to_string();
+    });
 
-    println!("[Agent] Initializing agent via curl to {}/api/init", AGENT_BASE_URL);
+    // Add provider-specific config
+    match api_key_entry.provider {
+        ProviderType::Openai | ProviderType::OpenaiCompatible => {
+            init_data["openai"] = serde_json::json!({
+                "enabled": true,
+                "api_key": api_key,
+                "api_base": api_base,
+                "override_base_url": api_key_entry.api_base.is_some()
+            });
+        }
+        ProviderType::Anthropic => {
+            init_data["anthropic"] = serde_json::json!({
+                "api_key": api_key,
+                "api_base": api_key_entry.api_base
+            });
+        }
+        ProviderType::Google => {
+            init_data["google"] = serde_json::json!({
+                "api_key": api_key,
+                "api_base": api_key_entry.api_base
+            });
+        }
+        ProviderType::Azure => {
+            init_data["azure"] = serde_json::json!({
+                "enabled": true,
+                "api_key": api_key,
+                "api_base": api_key_entry.api_base,
+                "deployment_name": api_key_entry.deployment_name,
+                "api_version": api_key_entry.api_version.as_deref().unwrap_or("2024-02-01")
+            });
+        }
+    }
+
+    let json_body = init_data.to_string();
+    println!("[Agent] Initializing agent via curl to {}/api/init with provider: {}", AGENT_BASE_URL, provider);
 
     // Use curl command to make the request (works reliably)
     let output = Command::new("curl")
@@ -197,12 +237,15 @@ pub async fn get_health() -> Result<HealthResponse, String> {
 #[tauri::command]
 pub async fn send_message_stream(
     app: tauri::AppHandle,
-    message: String
+    message: String,
+    model: Option<String>,
+    mode: Option<String>
 ) -> Result<(), String> {
     use tokio::process::Command;
     use tokio::io::{AsyncBufReadExt, BufReader};
     
     println!("[Agent] Starting streaming message via curl to {}/api/chat/stream", AGENT_BASE_URL);
+    println!("[Agent] Model: {:?}, Mode: {:?}", model, mode);
     
     // Escape the message for JSON (handle backslash, quotes, newlines, tabs, etc.)
     let escaped_message = message
@@ -211,7 +254,11 @@ pub async fn send_message_stream(
         .replace('\n', "\\n")
         .replace('\r', "\\r")
         .replace('\t', "\\t");
-    let json_body = format!(r#"{{"message":"{}"}}"#, escaped_message);
+    
+    // Build JSON body with optional model and mode
+    let model_field = model.as_ref().map(|m| format!(r#","model":"{}""#, m)).unwrap_or_default();
+    let mode_field = mode.as_ref().map(|m| format!(r#","mode":"{}""#, m)).unwrap_or_default();
+    let json_body = format!(r#"{{"message":"{}"{}{}}}"#, escaped_message, model_field, mode_field);
     
     // Use curl with unbuffered output (-N) to stream SSE events
     let mut child = Command::new("curl")

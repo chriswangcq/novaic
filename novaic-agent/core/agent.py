@@ -8,7 +8,7 @@ from typing import AsyncGenerator, Dict, Any, List, Optional
 import asyncio
 import json
 
-from .llm_client import LLMClient, LLMError
+from .llm_client import LLMError, create_llm_client, BaseLLMClient, OpenAIClient
 from .session import SessionManager
 from .mcp_client import MCPClient
 from config import settings
@@ -23,19 +23,30 @@ class NBCCAgent:
     - Session management
     """
     
-    def __init__(self, api_base: str, api_key: str):
+    def __init__(self, provider: str = None, api_base: str = None, api_key: str = None):
         """
-        Initialize the Agent.
+        Initialize the Agent with multi-provider support.
         
         Args:
-            api_base: LLM API base URL
-            api_key: LLM API key
+            provider: LLM provider name ("openai", "anthropic", "google", "azure", "bedrock")
+            api_base: LLM API base URL (legacy, for backward compatibility)
+            api_key: LLM API key (legacy, for backward compatibility)
         """
-        self.api_base = api_base
-        self.api_key = api_key
+        # Determine provider
+        self.provider = provider or settings.default_provider
         
-        # Initialize components
-        self.llm_client = LLMClient(api_base=api_base, api_key=api_key)
+        # Legacy compatibility: if api_base and api_key are provided, use OpenAI-compatible
+        if api_base and api_key and not provider:
+            self.api_base = api_base
+            self.api_key = api_key
+            self.llm_client = OpenAIClient(api_base=api_base, api_key=api_key)
+        else:
+            # Use factory to create appropriate client
+            self.llm_client = create_llm_client(self.provider)
+            self.api_base = getattr(self.llm_client, 'api_base', 'N/A')
+            self.api_key = getattr(self.llm_client, 'api_key', 'N/A')
+        
+        # Initialize other components
         self.session = SessionManager()
         self.mcp_client = MCPClient()
         
@@ -119,10 +130,59 @@ class NBCCAgent:
             "work_dir": settings.work_dir,
         }
     
-    async def chat(self, user_message: str) -> AsyncGenerator[Dict[str, Any], None]:
+    async def _call_llm_with_retry(
+        self, 
+        messages: List[Dict[str, Any]], 
+        tools: Optional[List[Dict[str, Any]]] = None,
+        model: str = None
+    ) -> Dict[str, Any]:
+        """
+        Call LLM with automatic retry on timeout.
+        
+        Uses settings.llm_max_retries for retry count.
+        Exponential backoff between retries.
+        """
+        max_retries = settings.llm_max_retries
+        last_error = None
+        
+        for attempt in range(1, max_retries + 1):
+            try:
+                print(f"[Agent] LLM call attempt {attempt}/{max_retries}")
+                response = await self.llm_client.chat(
+                    messages=messages,
+                    tools=tools,
+                    model=model
+                )
+                return response
+            except LLMError as e:
+                last_error = e
+                error_str = str(e).lower()
+                
+                # Only retry on timeout or rate limit errors
+                if 'timeout' in error_str or 'rate' in error_str or '429' in error_str:
+                    if attempt < max_retries:
+                        wait_time = 2 ** attempt  # Exponential backoff: 2, 4, 8 seconds
+                        print(f"[Agent] LLM request failed (attempt {attempt}): {e}")
+                        print(f"[Agent] Retrying in {wait_time} seconds...")
+                        await asyncio.sleep(wait_time)
+                    else:
+                        print(f"[Agent] LLM request failed after {max_retries} attempts: {e}")
+                        raise
+                else:
+                    # Non-retryable error
+                    raise
+        
+        # Should not reach here, but just in case
+        raise last_error or LLMError("Unknown error")
+    
+    async def chat(self, user_message: str, model: str = None) -> AsyncGenerator[Dict[str, Any], None]:
         """
         Process a user message and return responses.
         Dispatches to appropriate API style based on configuration.
+        
+        Args:
+            user_message: The user's message
+            model: Optional model override
         """
         self._interrupted = False
         
@@ -141,17 +201,21 @@ class NBCCAgent:
         # Dispatch based on api_style configuration
         if settings.api_style == "responses":
             print(f"[Agent] Using Doubao responses API style")
-            async for event in self._chat_responses_style(user_message):
+            async for event in self._chat_responses_style(user_message, model=model):
                 yield event
         else:
             print(f"[Agent] Using OpenAI chat/completions API style")
-            async for event in self._chat_completions_style(user_message):
+            async for event in self._chat_completions_style(user_message, model=model):
                 yield event
     
-    async def _chat_completions_style(self, user_message: str) -> AsyncGenerator[Dict[str, Any], None]:
+    async def _chat_completions_style(self, user_message: str, model: str = None) -> AsyncGenerator[Dict[str, Any], None]:
         """
         OpenAI chat/completions style - sends full message history each time.
         ReAct Loop: Reason -> Act -> Observe -> Repeat
+        
+        Args:
+            user_message: The user's message
+            model: Optional model override
         """
         # Add user message to history
         self.session.add_user_message(user_message)
@@ -169,10 +233,11 @@ class NBCCAgent:
             iteration += 1
             
             try:
-                # 【推理】调用 LLM
-                response = await self.llm_client.chat(
+                # 【推理】调用 LLM (with retry)
+                response = await self._call_llm_with_retry(
                     messages=messages,
-                    tools=self.tools
+                    tools=self.tools,
+                    model=model
                 )
                 
                 # Parse response
@@ -295,10 +360,14 @@ class NBCCAgent:
                 "data": "⚠️ Maximum iterations reached. Task may be incomplete."
             }
     
-    async def _chat_responses_style(self, user_message: str) -> AsyncGenerator[Dict[str, Any], None]:
+    async def _chat_responses_style(self, user_message: str, model: str = None) -> AsyncGenerator[Dict[str, Any], None]:
         """
         Doubao responses API style - uses previous_response_id for conversation chaining.
         ReAct Loop: Reason -> Act -> Observe -> Repeat
+        
+        Args:
+            user_message: The user's message
+            model: Optional model override (not used in responses API)
         """
         # Add user message to session (for history tracking)
         self.session.add_user_message(user_message)
@@ -664,9 +733,14 @@ class NBCCAgent:
         
         return content, tool_calls, finish_reason
     
-    async def chat_with_logs(self, user_message: str) -> AsyncGenerator[Dict[str, Any], None]:
-        """Chat with detailed execution logs."""
-        async for event in self.chat(user_message):
+    async def chat_with_logs(self, user_message: str, model: str = None) -> AsyncGenerator[Dict[str, Any], None]:
+        """Chat with detailed execution logs.
+        
+        Args:
+            user_message: The user's message
+            model: Optional model override
+        """
+        async for event in self.chat(user_message, model=model):
             yield event
             
             if event["type"] == "tool_start":
@@ -685,6 +759,55 @@ class NBCCAgent:
                         "message": f"{status} {event['data']['tool']} completed"
                     }
                 }
+
+    async def simple_chat(self, user_message: str, model: str = None) -> AsyncGenerator[Dict[str, Any], None]:
+        """Simple chat mode without tools - just conversation.
+        
+        Args:
+            user_message: The user's message
+            model: Optional model override
+        """
+        self._interrupted = False
+        
+        # Add user message to history
+        self.session.add_user_message(user_message)
+        
+        # Build messages for LLM (no system prompt about tools)
+        simple_system = """You are a helpful AI assistant. Provide clear, concise, and accurate responses.
+You do not have access to any tools in this mode - just engage in conversation."""
+        
+        messages = [
+            {"role": "system", "content": simple_system}
+        ] + self.session.get_messages_for_llm()
+        
+        try:
+            # Call LLM without tools (with retry)
+            response = await self._call_llm_with_retry(
+                messages=messages,
+                tools=None,  # No tools in simple chat mode
+                model=model
+            )
+            
+            # Parse response
+            choice = response.get("choices", [{}])[0]
+            message = choice.get("message", {})
+            content = message.get("content") or ""
+            
+            # Add assistant response to session
+            self.session.add_assistant_message(content)
+            
+            # Yield final response
+            yield {
+                "type": "final",
+                "data": {"content": content}
+            }
+            
+        except Exception as e:
+            print(f"[Agent] Simple chat error: {e}")
+            yield {
+                "type": "error",
+                "data": {"error": str(e)}
+            }
     
     def interrupt(self) -> None:
         """Interrupt current execution"""
@@ -700,7 +823,9 @@ class NBCCAgent:
         self.session.clear()
         # Reset response chain for Doubao responses API
         self._response_id = None
-        self.llm_client.reset_response_chain()
+        # Only reset response chain if client supports it (OpenAI-compatible)
+        if hasattr(self.llm_client, 'reset_response_chain'):
+            self.llm_client.reset_response_chain()
     
     async def close(self) -> None:
         """Clean up resources"""

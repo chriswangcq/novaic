@@ -118,6 +118,29 @@ export interface ToolInfo {
 // Layout Mode
 export type LayoutMode = 'full' | 'normal' | 'mini';
 
+// Chat Mode
+export type ChatMode = 'agent' | 'chat';
+
+// Provider Type
+export type ProviderType = 'openai' | 'anthropic' | 'google' | 'azure' | 'openai_compatible';
+
+// Available Model
+export interface AvailableModel {
+  id: string;
+  name: string;
+  provider: ProviderType;
+  api_key_id: string;
+  enabled: boolean;
+  is_custom?: boolean;  // Whether this is a custom model (manually added)
+}
+
+// API Key Info (public, for display)
+export interface ApiKeyInfo {
+  id: string;
+  name: string;
+  provider: ProviderType;
+}
+
 // Layout Settings (persisted)
 export interface LayoutSettings {
   mode: LayoutMode;
@@ -138,6 +161,11 @@ export interface AppState {
   // Layout
   layoutMode: LayoutMode;
   leftPanelWidth: number;
+  // Model selection
+  availableModels: AvailableModel[];
+  apiKeys: ApiKeyInfo[];
+  selectedModel: string;
+  chatMode: ChatMode;
 }
 
 // API Response Types

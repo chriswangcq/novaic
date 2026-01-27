@@ -38,48 +38,83 @@ def get_agent() -> NBCCAgent:
 
 @router.post("/init", response_model=InitResponse)
 async def init_agent(request: InitRequest):
-    """Initialize the Agent with API key"""
+    """Initialize the Agent with multi-provider support"""
     global _agent
     
-    print(f"[Init] Received request: api_base={request.api_base}, model={request.model}, api_style={request.api_style}")
+    provider = request.provider
+    print(f"[Init] Received request: provider={provider}, model={request.model}")
     
-    # Update settings if model specified
+    # Update common settings
     if request.model:
         settings.default_model = request.model
-    
-    # Update API style settings
-    if request.api_style is not None:
-        settings.api_style = request.api_style
-    if request.enable_prefix_caching is not None:
-        settings.enable_prefix_caching = request.enable_prefix_caching
-    if request.enable_thinking is not None:
-        settings.enable_thinking = request.enable_thinking
     if request.max_tokens is not None:
         settings.max_tokens = request.max_tokens
     if request.max_iterations is not None:
         settings.max_iterations = request.max_iterations
     if request.visible_shell is not None:
         settings.visible_shell = request.visible_shell
-
-    api_key = request.api_key or settings.llm_api_key
-    if not api_key:
-        raise HTTPException(
-            status_code=400,
-            detail="LLM API key not configured. Provide api_key or set NBCC_LLM_API_KEY."
-        )
     
-    print(f"[Init] Creating Agent with api_base={request.api_base}, api_style={settings.api_style}")
+    # Update provider-specific settings
+    if request.openai:
+        if request.openai.api_key:
+            settings.openai_api_key = request.openai.api_key
+        settings.openai_override_base_url = request.openai.override_base_url
+        if request.openai.api_base:
+            settings.openai_api_base = request.openai.api_base
+    
+    if request.anthropic:
+        if request.anthropic.api_key:
+            settings.anthropic_api_key = request.anthropic.api_key
+        if request.anthropic.api_base:
+            settings.anthropic_api_base = request.anthropic.api_base
+    
+    if request.google:
+        if request.google.api_key:
+            settings.google_api_key = request.google.api_key
+        if request.google.api_base:
+            settings.google_api_base = request.google.api_base
+    
+    if request.azure:
+        settings.azure_enabled = request.azure.enabled
+        if request.azure.api_base:
+            settings.azure_api_base = request.azure.api_base
+        if request.azure.deployment_name:
+            settings.azure_deployment_name = request.azure.deployment_name
+        if request.azure.api_key:
+            settings.azure_api_key = request.azure.api_key
+        if request.azure.api_version:
+            settings.azure_api_version = request.azure.api_version
+    
+    # Legacy settings support
+    if request.api_style is not None:
+        settings.api_style = request.api_style
+    if request.enable_prefix_caching is not None:
+        settings.enable_prefix_caching = request.enable_prefix_caching
+    if request.enable_thinking is not None:
+        settings.enable_thinking = request.enable_thinking
+    
+    # Handle legacy api_key/api_base (for backward compatibility)
+    if request.api_key:
+        settings.llm_api_key = request.api_key
+        if not settings.openai_api_key:
+            settings.openai_api_key = request.api_key
+    if request.api_base:
+        settings.llm_api_base = request.api_base
+    
+    # Determine which provider to use and get API key
+    settings.default_provider = provider
+    
+    # Create agent with the selected provider
+    print(f"[Init] Creating Agent with provider={provider}, model={settings.default_model}")
     
     _agent = NBCCAgent(
-        api_base=request.api_base,
-        api_key=api_key
+        provider=provider
     )
     
-    api_style_info = f", api_style={settings.api_style}" if settings.api_style == "responses" else ""
     print(f"[Init] Agent initialized successfully")
     return InitResponse(
         status="ok",
-        message=f"Agent initialized with model {settings.default_model}{api_style_info}"
+        message=f"Agent initialized with {provider} provider, model {settings.default_model}"
     )
 
 
@@ -107,20 +142,39 @@ async def chat_stream(request: ChatRequest):
     Returns events as they happen.
     """
     print(f"[Chat] Received message: {request.message[:100]}...")
+    print(f"[Chat] Request model: {request.model}, mode: {request.mode}")
     print(f"[Chat] Current settings: api_style={settings.api_style}, model={settings.default_model}")
     
     agent = get_agent()
+    
+    # Override model if specified in request
+    model_override = request.model if request.model else settings.default_model
+    chat_mode = request.mode or "agent"
+    
+    print(f"[Chat] Using model: {model_override}, mode: {chat_mode}")
     print(f"[Chat] Agent api_base: {agent.api_base}")
     
     async def event_generator():
         try:
             print(f"[Chat] Starting chat_with_logs...")
             event_count = 0
-            async for event in agent.chat_with_logs(request.message):
-                event_count += 1
-                event["timestamp"] = datetime.now().isoformat()
-                print(f"[Chat] Event #{event_count}: type={event.get('type')}")
-                yield f"data: {json.dumps(event)}\n\n"
+            
+            # Use different chat method based on mode
+            if chat_mode == "chat":
+                # Simple chat mode - no tools
+                async for event in agent.simple_chat(request.message, model=model_override):
+                    event_count += 1
+                    event["timestamp"] = datetime.now().isoformat()
+                    print(f"[Chat] Event #{event_count}: type={event.get('type')}")
+                    yield f"data: {json.dumps(event)}\n\n"
+            else:
+                # Agent mode - with tools
+                async for event in agent.chat_with_logs(request.message, model=model_override):
+                    event_count += 1
+                    event["timestamp"] = datetime.now().isoformat()
+                    print(f"[Chat] Event #{event_count}: type={event.get('type')}")
+                    yield f"data: {json.dumps(event)}\n\n"
+                    
             print(f"[Chat] Finished. Total events: {event_count}")
         except Exception as e:
             import traceback

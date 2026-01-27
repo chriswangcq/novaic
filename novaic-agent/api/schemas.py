@@ -7,32 +7,59 @@ from typing import Optional, List, Any, Literal
 from datetime import datetime
 
 
+# ==================== Provider Configs ====================
+
+class OpenAIProviderConfig(BaseModel):
+    """OpenAI provider configuration"""
+    enabled: bool = False
+    api_key: Optional[str] = None
+    override_base_url: bool = False
+    api_base: Optional[str] = None
+
+
+class AnthropicProviderConfig(BaseModel):
+    """Anthropic provider configuration"""
+    api_key: Optional[str] = None
+    api_base: Optional[str] = None  # Default: https://api.anthropic.com
+
+
+class GoogleProviderConfig(BaseModel):
+    """Google AI provider configuration"""
+    api_key: Optional[str] = None
+    api_base: Optional[str] = None  # Default: https://generativelanguage.googleapis.com/v1beta
+
+
+class AzureProviderConfig(BaseModel):
+    """Azure OpenAI provider configuration"""
+    enabled: bool = False
+    api_base: Optional[str] = None
+    deployment_name: Optional[str] = None
+    api_key: Optional[str] = None
+    api_version: Optional[str] = "2024-02-01"
+
+
 # ==================== Init ====================
 
 class InitRequest(BaseModel):
-    """Agent initialization request"""
-    api_key: Optional[str] = Field(default=None, description="LLM API key (optional if provided via env)")
-    api_base: str = Field(
-        default="https://api.nuwaapi.com",
-        description="LLM API base URL"
+    """Agent initialization request - supports multiple LLM providers"""
+    
+    # Provider selection: "openai" | "anthropic" | "google" | "azure" | "bedrock"
+    provider: str = Field(
+        default="openai",
+        description="LLM provider to use"
     )
     model: Optional[str] = Field(
         default=None,
         description="LLM model to use"
     )
-    # API Style settings
-    api_style: Optional[str] = Field(
-        default=None,
-        description="API style: 'chat_completions' (OpenAI) or 'responses' (Doubao)"
-    )
-    enable_prefix_caching: Optional[bool] = Field(
-        default=None,
-        description="Enable prefix caching (Doubao only)"
-    )
-    enable_thinking: Optional[bool] = Field(
-        default=None,
-        description="Enable thinking mode (Doubao only)"
-    )
+    
+    # Provider-specific configurations
+    openai: Optional[OpenAIProviderConfig] = Field(default=None)
+    anthropic: Optional[AnthropicProviderConfig] = Field(default=None)
+    google: Optional[GoogleProviderConfig] = Field(default=None)
+    azure: Optional[AzureProviderConfig] = Field(default=None)
+    
+    # Common settings
     max_tokens: Optional[int] = Field(
         default=None,
         description="Max tokens for LLM response"
@@ -45,6 +72,13 @@ class InitRequest(BaseModel):
         default=None,
         description="Show shell execution in GUI terminal (default: false)"
     )
+    
+    # Legacy fields (for backward compatibility)
+    api_key: Optional[str] = Field(default=None, description="[Legacy] LLM API key")
+    api_base: Optional[str] = Field(default=None, description="[Legacy] LLM API base URL")
+    api_style: Optional[str] = Field(default=None, description="[Legacy] API style")
+    enable_prefix_caching: Optional[bool] = Field(default=None, description="[Legacy] Enable prefix caching")
+    enable_thinking: Optional[bool] = Field(default=None, description="[Legacy] Enable thinking mode")
 
 
 class InitResponse(BaseModel):
@@ -58,6 +92,8 @@ class InitResponse(BaseModel):
 class ChatRequest(BaseModel):
     """Chat request"""
     message: str = Field(..., description="User message")
+    model: Optional[str] = Field(None, description="Model to use for this request")
+    mode: Optional[str] = Field("agent", description="Chat mode: 'agent' or 'chat'")
 
 
 class ToolUseInfo(BaseModel):

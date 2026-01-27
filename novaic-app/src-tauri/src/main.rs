@@ -235,9 +235,16 @@ fn main() {
             agent_commands::get_health,
             // Config commands
             config_commands::get_app_config,
-            config_commands::set_app_config,
+            config_commands::update_common_settings,
+            config_commands::add_api_key,
+            config_commands::update_api_key,
+            config_commands::delete_api_key,
+            config_commands::toggle_model,
+            config_commands::set_default_model,
+            config_commands::fetch_models_for_key,
+            config_commands::save_models_for_key,
+            config_commands::test_api_key_connection,
             config_commands::test_llm_connection,
-            config_commands::fetch_models,
             // File commands
             file_commands::upload_file,
             file_commands::download_file,
