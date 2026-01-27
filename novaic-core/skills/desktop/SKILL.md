@@ -7,110 +7,103 @@ description: Desktop control with two-phase mouse workflow (aim → execute). Us
 
 控制桌面应用程序的核心工具：screenshot、mouse、keyboard。
 
-## 🚨 核心规则：AIM → EXECUTE 二段式操作
+## 核心概念
 
-**所有鼠标点击必须先 aim 获取 aim_id，然后用 aim_id 执行！**
+### 坐标系统
+- 屏幕使用像素坐标，左上角是 (0, 0)
+- 截图上的红色网格标注的是**系统坐标**（真实像素位置）
+- 不管 zoom 多少，网格数字始终是系统坐标
 
-❌ 禁止：`mouse(action="click", x=500, y=300)`
-✅ 正确：`mouse(action="aim", ...)` → `mouse(action="click", aim_id="...")`
+### zoom 的作用
+```
+zoom = 放大倍数，决定截图显示屏幕的多大区域
 
-## 强制工作流程
+zoom=2 → 显示屏幕 1/2 区域（视野大，网格稀疏）
+zoom=4 → 显示屏幕 1/4 区域（视野小，网格更密）
+zoom=6 → 显示屏幕 1/6 区域（视野更小，网格很密）
+
+视野越小 → 看得越清楚 → 网格越密 → 越容易精确定位
+```
+
+### delta 微调
+当准星接近目标但需要微调时，可以用 delta 相对位移：
+```python
+# 初次定位
+mouse(action='aim', x=600, y=400)  # → aim_id_1
+
+# 微调：向左移 50px，向上移 20px
+mouse(action='aim', aim_id='aim_id_1', delta_x=-50, delta_y=-20, zoom=4)
+# 新位置 = (600-50, 400-20) = (550, 380)
+```
+
+**计算 delta 的方法：**
+1. 读网格，找到准星当前坐标（如 x=600）
+2. 读网格，找到目标的坐标（如 x=550）
+3. delta_x = 目标x - 准星x = 550 - 600 = -50
+
+## 工作流程
 
 ```
-1. screenshot() → 全屏截图，估算目标坐标 (X, Y)
-2. mouse(action='aim', x=X, y=Y) → 获取 aim_id + 放大截图
-3. 你来判断（看 MAGENTA 准星位置）：
-   - 准星在目标上 → mouse(action='click', aim_id='...')
-   - 准星接近但偏了 → 调整坐标 + **增大 zoom (4-6)** 重新 aim
-   - 准星离目标很远 → 用 zoom=2 重新 aim
+screenshot() → 看全屏，估算目标位置 (X, Y)
+      ↓
+mouse(action='aim', x=X, y=Y) → 获取 aim_id，看准星位置
+      ↓
+判断准星是否在目标上？
+  ├─ 是 → mouse(action='click', aim_id='...')
+  └─ 否 → 根据偏差调整：
+           - 用 delta 微调坐标
+           - 根据需要调整 zoom
+           - 重新 aim
 ```
 
-## Zoom 策略（你来判断）
-
-| 准星与目标距离 | 建议 zoom | 说明 |
-|--------------|----------|------|
-| 初次定位 | 2 | 默认值，视野范围大 |
-| 较远 (>100px) | 2 | 保持视野，先调大方向 |
-| 接近 (~50px) | 4-6 | 放大精细微调 |
-| 小元素精确点击 | 6-8 | 高倍确保准确 |
-
-**判断要点：**
-- 大按钮：准星在按钮范围内即可点击
-- 小图标/链接：准星需要接近中心
-
-## 可用工具
+## API 参考
 
 ### screenshot
-
-纯查看工具。
-
 ```python
-# 全屏截图（默认带网格）
-screenshot()
-
-# 指定区域
-screenshot(area={"x": 100, "y": 100, "width": 500, "height": 300})
-
-# 不显示网格
-screenshot(grid=False)
+screenshot()                    # 全屏，带网格
+screenshot(grid=False)          # 全屏，不带网格
+screenshot(area={...})          # 指定区域
 ```
-
-注意：`mouse(action='aim')` 返回的截图**始终带网格**，无需手动指定。
 
 ### mouse
 
-二段式鼠标操作。
-
-**瞄准（返回 aim_id + 截图 + 判断方法）：**
+**瞄准：**
 ```python
-mouse(action="aim", x=600, y=450)        # 默认 zoom=2
-mouse(action="aim", x=600, y=450, zoom=4)  # 更高放大
+# 绝对坐标定位
+mouse(action='aim', x=600, y=400)
+mouse(action='aim', x=600, y=400, zoom=4)  # 指定放大倍数
+
+# delta 微调（基于上次 aim 位置）
+mouse(action='aim', aim_id='aim_xxx', delta_x=-50, delta_y=20, zoom=4)
 ```
 
-**执行（必须使用 aim_id）：**
+**执行（必须用 aim_id）：**
 ```python
-mouse(action="click", aim_id="aim_abc123")       # 单击
-mouse(action="double", aim_id="aim_abc123")      # 双击
-mouse(action="right_click", aim_id="aim_abc123") # 右键
-mouse(action="scroll", aim_id="aim_abc123", direction="down", amount=3)
+mouse(action='click', aim_id='aim_xxx')
+mouse(action='double', aim_id='aim_xxx')
+mouse(action='right_click', aim_id='aim_xxx')
+mouse(action='scroll', aim_id='aim_xxx', direction='down', amount=3)
 ```
 
-**拖拽（down → move → up）：**
+**拖拽：**
 ```python
-# 1. 瞄准起点
-mouse(action="aim", x=100, y=100)  # → aim_id_1
-
-# 2. 按下
-mouse(action="down", aim_id="aim_id_1")
-
-# 3. 瞄准终点
-mouse(action="aim", x=500, y=500)  # → aim_id_2
-
-# 4. 移动到终点
-mouse(action="move", aim_id="aim_id_2")
-
-# 5. 松开
-mouse(action="up")
+mouse(action='aim', x=100, y=100)           # 起点
+mouse(action='down', aim_id='aim_1')
+mouse(action='aim', x=500, y=500)           # 终点（或用 delta）
+mouse(action='move', aim_id='aim_2')
+mouse(action='up')
 ```
 
 ### keyboard
-
-键盘输入和快捷键。
-
 ```python
-# 输入文本
-keyboard(action="type", text="Hello World")
-
-# 快捷键
-keyboard(action="key", keys=["ctrl", "s"])
-keyboard(action="key", keys=["ctrl", "shift", "p"])
+keyboard(action='type', text='Hello')
+keyboard(action='key', keys=['ctrl', 's'])
 ```
 
-支持的特殊键：ctrl, alt, shift, super, enter, tab, escape, backspace, delete, up, down, left, right, f1-f12
+## 技巧
 
-## ⚠️ 常见错误
-
-1. ❌ 直接传 x/y 给 click → 使用 aim_id
-2. ❌ aim_id 过期后继续使用 → 重新 aim（10分钟有效）
-3. ❌ 不看准星位置就点击 → 仔细判断准星是否在目标上
-4. ✅ 操作后 screenshot() 验证结果
+1. **初次定位用低 zoom (2)**：视野大，容易找到目标
+2. **微调时增大 zoom (4-6)**：网格更密，容易精确调整
+3. **用 delta 而不是重新估算坐标**：更准确，不容易算错
+4. **大按钮容错大**：准星在按钮任意位置都能点击
+5. **小图标要精确**：准星需要接近中心

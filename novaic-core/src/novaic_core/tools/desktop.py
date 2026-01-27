@@ -909,10 +909,13 @@ Visible: x={vis_x_start}~{vis_x_end}, y={vis_y_start}~{vis_y_end}"""
     @staticmethod
     async def mouse(
         action: Literal["aim", "click", "double", "right_click", "down", "move", "up", "scroll"],
-        # For aim action
+        # For aim action - absolute positioning
         x: Optional[int] = None,
         y: Optional[int] = None,
         zoom: float = 2.0,
+        # For aim action - delta adjustment (relative to previous aim)
+        delta_x: Optional[int] = None,
+        delta_y: Optional[int] = None,
         # For execute actions (click, double, right_click, down, move, scroll)
         aim_id: Optional[str] = None,
         # For scroll action
@@ -923,66 +926,77 @@ Visible: x={vis_x_start}~{vis_x_end}, y={vis_y_start}~{vis_y_end}"""
         Two-phase mouse control: aim first, then execute.
         
         Actions:
-            aim: Aim at position, returns aim_id + screenshot + recommendation
-            click: Single click at aim_id position
-            double: Double click at aim_id position
-            right_click: Right click at aim_id position
-            down: Press mouse button at aim_id position (for drag start)
-            move: Move to aim_id position (while button pressed)
-            up: Release mouse button (at current position)
+            aim: Aim at position (absolute x,y or delta from previous aim)
+            click/double/right_click: Click at aim_id position
+            down/move/up: Drag operations
             scroll: Scroll at aim_id position
         
-        Args:
-            action: The action to perform
-            x, y: Target coordinates (only for aim action)
-            zoom: Zoom factor for aim screenshot (default 2.0)
-            aim_id: The aim_id from previous aim action (required for execute actions)
-            direction: Scroll direction (for scroll action)
-            amount: Scroll amount (for scroll action)
+        Aim modes:
+            Absolute: mouse(action='aim', x=600, y=400, zoom=2)
+            Delta: mouse(action='aim', aim_id='...', delta_x=-50, delta_y=20, zoom=4)
         """
         global _mouse_state
         
         try:
             # ========== AIM ACTION ==========
             if action == "aim":
-                if x is None or y is None:
-                    return {"success": False, "error": "aim requires x and y coordinates"}
+                # Determine target position
+                if delta_x is not None or delta_y is not None:
+                    # Delta mode: adjust from previous aim position
+                    if not aim_id:
+                        return {"success": False, "error": "delta adjustment requires aim_id from previous aim"}
+                    
+                    prev_aim = _aim_cache.get(aim_id)
+                    if not prev_aim:
+                        return {"success": False, "error": f"Invalid or expired aim_id: {aim_id}"}
+                    
+                    # Calculate new position
+                    x = prev_aim["x"] + (delta_x or 0)
+                    y = prev_aim["y"] + (delta_y or 0)
+                    
+                elif x is not None and y is not None:
+                    # Absolute mode: use provided coordinates
+                    pass
+                else:
+                    return {"success": False, "error": "aim requires either (x, y) or (aim_id with delta_x/delta_y)"}
                 
-                # Create aim_id
-                aim_id = _aim_cache.create(x, y, zoom)
+                # Create new aim_id
+                new_aim_id = _aim_cache.create(x, y, zoom)
                 
-                # Take zoomed screenshot centered at (x, y) with grid (aim always shows grid)
+                # Take zoomed screenshot centered at (x, y)
                 screenshot_result = await DesktopTools.screenshot(
                     center={"x": x, "y": y},
                     zoom_factor=zoom,
-                    grid_density="normal"  # aim always has grid for coordinate reference
+                    grid_density="normal"
                 )
                 
                 if not screenshot_result.get("success"):
                     return screenshot_result
                 
-                # Build hint with judgment guide for the model
-                # Suggest higher zoom when current zoom is low and likely needs fine-tuning
-                next_zoom = max(zoom + 2, 4) if zoom < 6 else zoom
+                # Get grid spacing info for hint
+                grid_spacing = screenshot_result.get("grid_spacing", 100)
                 
-                hint = f"""🎯 AIMED at ({x}, {y}), zoom={zoom}x
-aim_id: {aim_id}
+                # Build educational hint
+                hint = f"""Position: ({x}, {y}) | zoom: {zoom}x | aim_id: {new_aim_id}
 
-📋 CHECK THE CROSSHAIR:
-- Is the MAGENTA CROSSHAIR on your target?
-- Large button: anywhere on it = OK
-- Small icon/link: should be near center
+Check: Is the MAGENTA CROSSHAIR on your target?
 
-🔍 YOUR NEXT ACTION:
-✅ ON target → mouse(action='click', aim_id='{aim_id}')
-🔄 CLOSE but off → mouse(action='aim', x=..., y=..., zoom={next_zoom})  ⚠️ MUST increase zoom for fine-tuning!
-↩️ FAR off → mouse(action='aim', x=..., y=..., zoom=2)"""
+To adjust, calculate delta from grid:
+- Read crosshair position from grid (current: x={x}, y={y})
+- Read target position from grid
+- delta = target - crosshair
+
+Example: target at x≈550, crosshair at x=600 → delta_x = 550-600 = -50
+→ mouse(action='aim', aim_id='{new_aim_id}', delta_x=-50, delta_y=0, zoom={max(zoom, 4)})
+
+Ready to click: mouse(action='click', aim_id='{new_aim_id}')"""
                 
                 return {
                     "success": True,
-                    "aim_id": aim_id,
+                    "aim_id": new_aim_id,
                     "position": {"x": x, "y": y},
                     "zoom": zoom,
+                    "grid_spacing": grid_spacing,
                     "screenshot": screenshot_result.get("screenshot"),
                     "width": screenshot_result.get("width"),
                     "height": screenshot_result.get("height"),

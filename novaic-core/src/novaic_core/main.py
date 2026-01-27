@@ -215,38 +215,31 @@ async def screenshot(
 @mcp.tool(
     description="""Two-phase mouse control: AIM first, then EXECUTE.
 
-🚨 ALL mouse actions require aim_id! No direct x/y coordinates allowed.
+AIM (get aim_id + zoomed screenshot):
+  Absolute: mouse(action='aim', x=500, y=300, zoom=2)
+  Delta:    mouse(action='aim', aim_id='...', delta_x=-50, delta_y=20, zoom=4)
 
-PHASE 1 - AIM (returns aim_id + zoomed screenshot + recommendation):
-   mouse(action='aim', x=500, y=300)           # Default zoom=2
-   mouse(action='aim', x=500, y=300, zoom=4)   # Higher zoom for precision
+EXECUTE (use aim_id):
+  mouse(action='click', aim_id='...')
+  mouse(action='double', aim_id='...')
+  mouse(action='scroll', aim_id='...', direction='down', amount=3)
 
-PHASE 2 - EXECUTE (uses aim_id from Phase 1):
-   mouse(action='click', aim_id='aim_xxx')       # Single click
-   mouse(action='double', aim_id='aim_xxx')      # Double click  
-   mouse(action='right_click', aim_id='aim_xxx') # Right click
-   mouse(action='scroll', aim_id='aim_xxx', direction='down', amount=3)
+DRAG: aim → down → aim → move → up
 
-DRAG WORKFLOW:
-   mouse(action='aim', x=100, y=100)    # Aim start point → aim_id_1
-   mouse(action='down', aim_id='aim_id_1')  # Press down
-   mouse(action='aim', x=500, y=500)    # Aim end point → aim_id_2
-   mouse(action='move', aim_id='aim_id_2')  # Move to end
-   mouse(action='up')                    # Release
-
-JUDGMENT (you decide):
-- aim returns screenshot with MAGENTA CROSSHAIR at the aimed position
-- Check if crosshair is on your intended target:
-  * ON target → click
-  * CLOSE but off → re-aim with HIGHER zoom (4-6) for fine-tuning
-  * FAR off → re-aim with zoom=2 to see wider area"""
+Key concepts:
+- zoom controls magnification (2=wide view, 4-6=fine tuning)
+- delta_x/delta_y = offset from previous aim position
+- Calculate delta by reading grid: delta = target_coord - crosshair_coord"""
 )
 async def mouse(
     action: str,
-    # For aim action
+    # For aim action - absolute positioning
     x: Optional[int] = None,
     y: Optional[int] = None,
     zoom: float = 2.0,
+    # For aim action - delta adjustment
+    delta_x: Optional[int] = None,
+    delta_y: Optional[int] = None,
     # For execute actions
     aim_id: Optional[str] = None,
     # For scroll
@@ -259,6 +252,8 @@ async def mouse(
         x=x,
         y=y,
         zoom=zoom,
+        delta_x=delta_x,
+        delta_y=delta_y,
         aim_id=aim_id,
         direction=direction,
         amount=amount
