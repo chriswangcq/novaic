@@ -1,4 +1,4 @@
-# NB-CC Agent Dependencies
+# NovAIC Agent Dependencies
 # Python 3.11+
 
 # Web Framework
@@ -7,7 +7,14 @@ uvicorn[standard]>=0.27.0
 
 # HTTP Client
 httpx>=0.26.0
+httpx-sse>=0.4.0
 aiohttp>=3.9.0
+
+# MCP SDK - Model Context Protocol
+mcp>=1.0.0
+
+# Async support
+anyio>=4.0.0
 
 # Pydantic for data validation
 pydantic>=2.6.0

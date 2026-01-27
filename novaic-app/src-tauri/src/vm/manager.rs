@@ -218,46 +218,39 @@ impl VmManager {
 
     /// 检查 MCP Server 健康状态 (NovAIC Core)
     async fn check_executor_health(&self) -> Result<bool, String> {
-        // FastMCP 使用 /sse 端点，检查它是否可访问
-        // 先尝试 /health，如果失败再尝试 /sse
-        let health_url = format!("http://127.0.0.1:{}/health", self.config.executor_port);
-        let sse_url = format!("http://127.0.0.1:{}/sse", self.config.executor_port);
+        // FastMCP 使用 Streamable HTTP transport，端点是 /mcp
+        // POST /mcp 用于 MCP 消息，GET /mcp 可能返回各种错误码（表示端点存在）
+        let mcp_url = format!("http://127.0.0.1:{}/mcp", self.config.executor_port);
         
         // 使用本地服务客户端（不走代理）
         let client = crate::http_client::local_client_with_timeout(10)
             .build()
             .map_err(|e| e.to_string())?;
 
-        // 先检查 /health 端点
-        println!("[VM] Checking executor health at: {}", health_url);
-        match client.get(&health_url).send().await {
+        // 检查 /mcp 端点
+        println!("[VM] Checking executor MCP endpoint at: {}", mcp_url);
+        match client.get(&mcp_url).send().await {
             Ok(response) => {
                 let status = response.status();
-                println!("[VM] Executor health response status: {}", status);
-                if status.is_success() {
-                    if let Ok(text) = response.text().await {
-                        let is_healthy = text.contains("healthy") || text.contains("ok");
-                        println!("[VM] Executor health response: {}, healthy={}", text, is_healthy);
-                        return Ok(is_healthy);
-                    }
+                let status_code = status.as_u16();
+                println!("[VM] Executor MCP response status: {}", status);
+                // MCP 端点存在时，GET 请求可能返回：
+                // - 200: 正常响应
+                // - 405 Method Not Allowed: streamable-http 只接受 POST
+                // - 406 Not Acceptable: 请求头不满足要求
+                // - 415 Unsupported Media Type: Content-Type 不对
+                // 这些都表示端点存在且服务在运行
+                let is_healthy = status.is_success() 
+                    || status_code == 405 
+                    || status_code == 406 
+                    || status_code == 415;
+                if is_healthy {
+                    println!("[VM] Executor is healthy (status {} indicates endpoint exists)", status_code);
                 }
+                Ok(is_healthy)
             },
             Err(e) => {
-                println!("[VM] /health check failed: {}", e);
-            },
-        }
-        
-        // 如果 /health 失败，检查 /sse 端点（FastMCP 的主要端点）
-        println!("[VM] Checking executor SSE at: {}", sse_url);
-        match client.get(&sse_url).send().await {
-            Ok(response) => {
-                let status = response.status();
-                println!("[VM] Executor SSE response status: {}", status);
-                // SSE 端点返回 200 即表示服务在运行
-                Ok(status.is_success() || status.as_u16() == 405) // 405 Method Not Allowed 也说明端点存在
-            },
-            Err(e) => {
-                println!("[VM] Executor health check error: {}", e);
+                println!("[VM] MCP endpoint check failed: {}", e);
                 Ok(false)
             },
         }

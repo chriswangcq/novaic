@@ -39,10 +39,13 @@ impl AgentProcess {
         
         println!("[Agent] Starting Python Agent from {:?}", agent_dir);
         
-        // 检查 venv 是否存在
+        // 检查 venv 是否存在（支持 venv 和 .venv 两种命名）
         let venv_python = agent_dir.join("venv/bin/python");
+        let dot_venv_python = agent_dir.join(".venv/bin/python");
         let python_cmd = if venv_python.exists() {
             venv_python.to_string_lossy().to_string()
+        } else if dot_venv_python.exists() {
+            dot_venv_python.to_string_lossy().to_string()
         } else {
             "python3".to_string()
         };

@@ -53,77 +53,71 @@ class NBCCAgent:
         # For responses API mode: track response chain
         self._response_id: Optional[str] = None
     
-    async def check_executor_health(self, retries: int = 3, delay: float = 1.0) -> Dict[str, Any]:
-        """检查 Executor 服务健康状态（带重试）"""
-        import httpx
-        import asyncio
+    async def check_executor_health(self) -> Dict[str, Any]:
+        """
+        检查 Executor (MCP Server) 健康状态
         
-        url = f"{settings.executor_url}/health"
-        print(f"[Agent] Checking Executor health at {url} (retries={retries})")
+        通过 MCP Client 连接状态判断。
+        """
+        # 如果 MCP 客户端已连接并发现了工具，说明健康
+        if self._tools_initialized and len(self.tools) > 0:
+            self._executor_healthy = True
+            return {"healthy": True, "tools_count": len(self.tools)}
         
-        last_error = None
-        for attempt in range(retries):
-            try:
-                print(f"[Agent] Health check attempt {attempt + 1}/{retries}...")
-                # 使用本地服务客户端（不走代理）
-                from core.http_client import local_client
-                async with local_client(timeout=5.0) as client:
-                    resp = await client.get(url)
-                    print(f"[Agent] Health check response: status={resp.status_code}")
-                    if resp.status_code == 200:
-                        self._executor_healthy = True
-                        print(f"[Agent] Executor is healthy!")
-                        return {"healthy": True, "data": resp.json()}
-                    else:
-                        last_error = f"Status {resp.status_code}"
-            except Exception as e:
-                import traceback
-                last_error = f"{type(e).__name__}: {str(e)}"
-                print(f"[Agent] Health check failed: {last_error}")
-                traceback.print_exc()
-            
-            # 如果不是最后一次尝试，等待后重试
-            if attempt < retries - 1:
-                await asyncio.sleep(delay)
+        # 尝试初始化 MCP 连接
+        try:
+            await self.initialize()
+            if len(self.tools) > 0:
+                self._executor_healthy = True
+                return {"healthy": True, "tools_count": len(self.tools)}
+        except Exception as e:
+            print(f"[Agent] MCP connection failed: {e}")
         
-        print(f"[Agent] Executor unhealthy after {retries} attempts: {last_error}")
         self._executor_healthy = False
-        return {"healthy": False, "error": last_error}
+        return {"healthy": False, "error": "MCP Server not available"}
     
     async def initialize(self) -> None:
         """
         初始化 Agent：从 MCP Server 发现工具
         
         必须在第一次调用 chat() 之前调用，或者在 chat() 中自动调用。
+        连接失败不会抛出异常，而是记录警告并继续（工具列表为空）。
         """
         if self._tools_initialized:
             return
         
-        # 注册 Executor MCP Server
-        await self.mcp_client.register_server("executor", settings.executor_url)
+        try:
+            # 注册 Executor MCP Server
+            await self.mcp_client.register_server("executor", settings.executor_url)
+            
+            # 发现所有工具（使用标准 MCP 协议）
+            tools = await self.mcp_client.list_all_tools()
+            
+            # 转换为 LLM 工具格式
+            self.tools = self.mcp_client.to_llm_tools_format(tools)
+            
+            if len(self.tools) > 0:
+                self._executor_healthy = True
+                print(f"[Agent] Initialized with MCP: discovered {len(self.tools)} tools")
+            else:
+                self._executor_healthy = False
+                print(f"[Agent] MCP Server connected but no tools discovered")
+                
+        except Exception as e:
+            print(f"[Agent] Failed to initialize MCP connection: {e}")
+            self._executor_healthy = False
+            self.tools = []
         
-        # 发现所有工具
-        tools = await self.mcp_client.list_all_tools()
-        
-        # 转换为 LLM 工具格式
-        self.tools = self.mcp_client.to_llm_tools_format(tools)
-        
-        print(f"[Agent] Initialized with MCP: discovered {len(self.tools)} tools")
         self._tools_initialized = True
     
     async def get_environment_info(self) -> Dict[str, Any]:
         """获取当前环境信息（感知）"""
-        info = {
+        return {
             "executor_url": settings.executor_url,
             "executor_healthy": self._executor_healthy,
+            "tools_count": len(self.tools),
             "work_dir": settings.work_dir,
         }
-        
-        # 检查 Executor 健康
-        health = await self.check_executor_health()
-        info["executor_healthy"] = health["healthy"]
-        
-        return info
     
     async def chat(self, user_message: str) -> AsyncGenerator[Dict[str, Any], None]:
         """
@@ -132,16 +126,16 @@ class NBCCAgent:
         """
         self._interrupted = False
         
-        # 确保工具已初始化
+        # 确保工具已初始化（包含 MCP 连接）
         if not self._tools_initialized:
             await self.initialize()
         
         # 【感知】检查环境
         env_info = await self.get_environment_info()
-        if not env_info["executor_healthy"]:
+        if not env_info["executor_healthy"] or env_info["tools_count"] == 0:
             yield {
                 "type": "warning",
-                "data": f"⚠️ Executor service not available at {settings.executor_url}"
+                "data": f"⚠️ Executor service not available at {settings.executor_url} (MCP tools: {env_info['tools_count']})"
             }
         
         # Dispatch based on api_style configuration

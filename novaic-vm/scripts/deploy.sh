@@ -210,7 +210,7 @@ fi
 
 echo "  ✓ 依赖安装完成"
 
-# 更新 systemd 服务文件 (FastMCP 版本)
+# 更新 systemd 服务文件 (FastMCP 版本 - Streamable HTTP)
 echo "  更新服务配置..."
 sudo tee /etc/systemd/system/novaic.service > /dev/null << 'SERVICE_EOF'
 [Unit]
@@ -229,7 +229,7 @@ Environment=PYTHONPATH=/opt/novaic-core/src
 Environment=NOVAIC_HOST=0.0.0.0
 Environment=NOVAIC_PORT=8080
 WorkingDirectory=/opt/novaic-core
-ExecStart=/opt/novaic-venv/bin/python -c "from novaic_core.main import mcp; mcp.run(transport='sse', host='0.0.0.0', port=8080)"
+ExecStart=/opt/novaic-venv/bin/python -c "from novaic_core.main import mcp; mcp.run(transport='streamable-http', host='0.0.0.0', port=8080)"
 Restart=always
 RestartSec=3
 
@@ -269,14 +269,14 @@ if $SSH_CMD "systemctl is-active --quiet novaic.service"; then
     echo "  ✅ 部署成功!"
     echo "════════════════════════════════════════════"
     echo ""
-    echo "MCP Server (FastMCP):"
-    echo "  SSE 端点: http://localhost:$MCP_PORT/sse"
+    echo "MCP Server (FastMCP - Streamable HTTP):"
+    echo "  MCP 端点: http://localhost:$MCP_PORT/mcp"
     echo ""
     echo "Cursor 配置 (.cursor/mcp.json):"
     echo '  {'
     echo '    "mcpServers": {'
     echo '      "novaic": {'
-    echo "        \"url\": \"http://localhost:$MCP_PORT/sse\""
+    echo "        \"url\": \"http://localhost:$MCP_PORT/mcp\""
     echo '      }'
     echo '    }'
     echo '  }'

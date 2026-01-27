@@ -696,18 +696,18 @@ def main():
     print(f"""
 ╔═══════════════════════════════════════════════════════════════╗
 ║                                                               ║
-║   🐧 NovAIC - Linux Desktop MCP Server (FastMCP)            ║
+║   🐧 NovAIC - Linux Desktop MCP Server (FastMCP)             ║
 ║                                                               ║
-║   SSE Endpoint: http://{settings.host}:{settings.port}/sse   ║
-║   Health Check: http://{settings.host}:{settings.port}/health║
+║   MCP Endpoint: http://{settings.host}:{settings.port}/mcp    ║
+║   Transport: Streamable HTTP                                  ║
 ║                                                               ║
-║   Skills: {skills_count} loaded                                          ║
+║   Skills: {skills_count} loaded                                           ║
 ║                                                               ║
 ╚═══════════════════════════════════════════════════════════════╝
     """)
     
-    # 使用 FastMCP 的 run 方法
-    mcp.run(transport="sse", host=settings.host, port=settings.port)
+    # 使用 FastMCP 的 run 方法 - streamable-http 是推荐的 transport
+    mcp.run(transport="streamable-http", host=settings.host, port=settings.port)
 
 
 if __name__ == "__main__":
