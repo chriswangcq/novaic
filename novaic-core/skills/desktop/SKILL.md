@@ -21,7 +21,7 @@ description: Desktop control with two-phase mouse workflow (aim → execute). Us
 2. mouse(action='aim', x=X, y=Y) → 获取 aim_id + 放大截图
 3. 你来判断（看 MAGENTA 准星位置）：
    - 准星在目标上 → mouse(action='click', aim_id='...')
-   - 准星接近但偏了 → 调整坐标重新 aim
+   - 准星接近但偏了 → 调整坐标 + **增大 zoom (4-6)** 重新 aim
    - 准星离目标很远 → 用 zoom=2 重新 aim
 ```
 

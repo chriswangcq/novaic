@@ -29,9 +29,9 @@ screenshot() → estimate target at (X, Y)
 mouse(action='aim', x=X, y=Y) → get aim_id + zoomed screenshot
      ↓
 YOU JUDGE (look at the MAGENTA CROSSHAIR):
-  - Crosshair ON target → mouse(action='click', aim_id='...')
-  - Crosshair CLOSE but off → re-aim with adjusted coordinates
-  - Crosshair FAR from target → re-aim with zoom=2
+  - ON target → mouse(action='click', aim_id='...')
+  - CLOSE but off → re-aim with zoom=4+ (MUST increase zoom!)
+  - FAR from target → re-aim with zoom=2
 ```
 
 ### ⛔ FORBIDDEN:

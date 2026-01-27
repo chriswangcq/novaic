@@ -236,8 +236,10 @@ DRAG WORKFLOW:
 
 JUDGMENT (you decide):
 - aim returns screenshot with MAGENTA CROSSHAIR at the aimed position
-- Check if crosshair is on your intended target
-- Decide: execute (click), re-aim with adjustment, or re-aim with different zoom"""
+- Check if crosshair is on your intended target:
+  * ON target → click
+  * CLOSE but off → re-aim with HIGHER zoom (4-6) for fine-tuning
+  * FAR off → re-aim with zoom=2 to see wider area"""
 )
 async def mouse(
     action: str,

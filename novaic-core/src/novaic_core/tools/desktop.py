@@ -962,19 +962,21 @@ Visible: x={vis_x_start}~{vis_x_end}, y={vis_y_start}~{vis_y_end}"""
                     return screenshot_result
                 
                 # Build hint with judgment guide for the model
+                # Suggest higher zoom when current zoom is low and likely needs fine-tuning
+                next_zoom = max(zoom + 2, 4) if zoom < 6 else zoom
+                
                 hint = f"""🎯 AIMED at ({x}, {y}), zoom={zoom}x
 aim_id: {aim_id}
 
-📋 JUDGMENT CHECKLIST (you decide):
-1. Is the MAGENTA CROSSHAIR on your intended target?
-2. If target is a large button: crosshair anywhere on it = OK to click
-3. If target is small (icon/link): crosshair should be near center
+📋 CHECK THE CROSSHAIR:
+- Is the MAGENTA CROSSHAIR on your target?
+- Large button: anywhere on it = OK
+- Small icon/link: should be near center
 
-🔍 YOUR DECISION:
-- Crosshair ON target → mouse(action='click', aim_id='{aim_id}')
-- Crosshair CLOSE but off (~50px) → mouse(action='aim', x=ADJUSTED_X, y=ADJUSTED_Y, zoom={max(zoom, 4)})
-- Crosshair FAR from target (>100px) → mouse(action='aim', x=NEW_X, y=NEW_Y, zoom=2)
-- Target NOT VISIBLE in view → mouse(action='aim', x=..., y=..., zoom=2) with corrected coordinates"""
+🔍 YOUR NEXT ACTION:
+✅ ON target → mouse(action='click', aim_id='{aim_id}')
+🔄 CLOSE but off → mouse(action='aim', x=..., y=..., zoom={next_zoom})  ⚠️ MUST increase zoom for fine-tuning!
+↩️ FAR off → mouse(action='aim', x=..., y=..., zoom=2)"""
                 
                 return {
                     "success": True,
