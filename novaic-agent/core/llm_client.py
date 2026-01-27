@@ -53,7 +53,7 @@ class BaseLLMClient(ABC):
     
     def _convert_tools_to_openai(self, tools: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Convert tools to OpenAI format (nested function)"""
-            return tools
+        return tools
         
     def _convert_tools_to_anthropic(self, tools: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Convert tools to Anthropic format"""
