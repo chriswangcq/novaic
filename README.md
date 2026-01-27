@@ -39,31 +39,209 @@ Unlike temporary sandboxes that reset after each session, NovAIC maintains state
 | **Privacy First** | Runs locally in QEMU VM — your data never leaves your machine |
 | **Open Source** | MIT license, fully customizable, works with any LLM |
 
-## Quick Start
+## Installation Guide
 
-### Option 1: MCP Server (Recommended)
+### Prerequisites
+
+Before installing NovAIC, ensure you have the following:
+
+| Requirement | Version | Check Command |
+|-------------|---------|---------------|
+| **macOS** | Apple Silicon or Intel | — |
+| **Homebrew** | Latest | `brew --version` |
+| **Python** | 3.11+ | `python3 --version` |
+| **Node.js** | 20+ | `node --version` |
+| **Rust** | 1.70+ | `rustc --version` |
+| **RAM** | 8GB+ | — |
+| **Disk** | 50GB+ free | — |
+
+### Step 1: Clone the Repository
 
 ```bash
-# 1. One-command VM setup
+git clone https://github.com/chriswangcq/novaic.git
+cd novaic
+```
+
+### Step 2: Setup the Virtual Machine
+
+The VM provides a persistent Linux desktop environment for AI agents.
+
+```bash
 cd novaic-vm
 ./setup.sh
+```
 
-# 2. Configure your MCP client (e.g., Claude Desktop)
-# ~/Library/Application Support/Claude/claude_desktop_config.json
+This script will:
+- Install QEMU and dependencies via Homebrew
+- Download Ubuntu 24.04 Cloud Image
+- Create and configure the VM (4GB RAM, 4 CPUs)
+- Start the VM
+
+**Wait for initial configuration** (5-10 minutes on first boot):
+
+```bash
+# Monitor progress
+ssh -p 2222 ubuntu@localhost  # Password: ubuntu
+tail -f /var/log/cloud-init-output.log
+```
+
+### Step 3: Deploy MCP Server to VM
+
+```bash
+./scripts/deploy.sh
+```
+
+This deploys NovAIC Core (MCP Server) into the VM. After deployment:
+
+| Service | Address | Credentials |
+|---------|---------|-------------|
+| **VNC** | `vnc://localhost:5900` | Password: `novaic` |
+| **SSH** | `ssh -p 2222 ubuntu@localhost` | Password: `ubuntu` |
+| **MCP** | `http://localhost:8080/mcp` | — |
+
+### Step 4: Setup the Desktop App (Optional)
+
+If you want to use the NovAIC desktop application:
+
+```bash
+# Go back to project root
+cd ../novaic-app
+
+# Install frontend dependencies
+npm install
+
+# Setup Python agent
+cd ../novaic-agent
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Start the app (from novaic-app directory)
+cd ../novaic-app
+npm run tauri:dev
+```
+
+### Step 5: Configure Your MCP Client
+
+#### Claude Desktop
+
+Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
 {
   "mcpServers": {
     "novaic": {
-      "url": "http://localhost:8081/sse"
+      "url": "http://localhost:8080/mcp"
     }
   }
 }
 ```
 
-### Option 2: Python Package
+#### Cursor IDE
+
+Add to your MCP settings:
+
+```json
+{
+  "novaic": {
+    "url": "http://localhost:8080/mcp"
+  }
+}
+```
+
+---
+
+## Quick Start (MCP Server Only)
+
+If you just want to use NovAIC as an MCP server:
+
+```bash
+# 1. Setup VM
+cd novaic-vm
+./setup.sh
+
+# 2. Deploy MCP Server
+./scripts/deploy.sh
+
+# 3. Connect your MCP client to http://localhost:8080/mcp
+```
+
+## Quick Start (Python Package)
 
 ```bash
 pip install novaic-core
 novaic serve
+```
+
+---
+
+## VM Management Commands
+
+```bash
+cd novaic-vm
+
+# Start/Stop
+./scripts/start-vm.sh      # Start VM (foreground)
+./scripts/start-vm.sh -d   # Start VM (background)
+./scripts/stop-vm.sh       # Stop VM
+
+# Management
+./scripts/status-vm.sh     # Check status
+./scripts/deploy.sh        # Deploy/update MCP Server
+./scripts/deploy-quick.sh  # Quick deploy (code only)
+
+# Reset
+./scripts/reset-vm.sh      # Reset to clean state
+./scripts/clean-vm.sh      # Remove completely
+```
+
+## Troubleshooting
+
+### Port Already in Use
+
+```bash
+# Check what's using the port
+lsof -i :9000  # Agent port
+lsof -i :8080  # MCP port
+lsof -i :5900  # VNC port
+
+# Kill the process
+kill $(lsof -t -i:9000)
+```
+
+### MCP Server Not Responding
+
+```bash
+# Check service in VM
+ssh -p 2222 ubuntu@localhost
+sudo systemctl status novaic
+sudo journalctl -u novaic -f
+
+# Redeploy
+cd novaic-vm
+./scripts/deploy.sh
+```
+
+### VNC Shows Black Screen
+
+```bash
+ssh -p 2222 ubuntu@localhost
+sudo systemctl restart lightdm
+sudo systemctl restart x11vnc
+```
+
+### VM Won't Start
+
+```bash
+# Stop any existing instance
+./scripts/stop-vm.sh
+
+# Check status
+./scripts/status-vm.sh
+
+# Reset if needed
+./scripts/reset-vm.sh
+./setup.sh
 ```
 
 ## Architecture
