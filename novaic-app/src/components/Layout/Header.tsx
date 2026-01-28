@@ -8,7 +8,8 @@ interface HeaderProps {
   onBackToDashboard?: () => void;
 }
 
-export function Header({ onOpenSettings, onBackToDashboard }: HeaderProps) {
+export function Header(props: HeaderProps) {
+  const { onOpenSettings, onBackToDashboard } = props;
   const { createAgentModalOpen, setCreateAgentModalOpen, clearMessages } = useAppStore();
 
   return (
@@ -57,7 +58,7 @@ export function Header({ onOpenSettings, onBackToDashboard }: HeaderProps) {
           {/* Settings */}
           <button
             className="p-1.5 hover:bg-nb-surface-2 rounded-lg transition-colors"
-            onClick={props.onOpenSettings}
+            onClick={onOpenSettings}
             title="Settings"
           >
             <Settings size={15} className="text-nb-text-muted" />

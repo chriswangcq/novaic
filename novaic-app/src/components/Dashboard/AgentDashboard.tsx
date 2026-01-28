@@ -34,7 +34,13 @@ interface AgentCardProps {
 }
 
 // 状态配置
-const statusConfig = {
+const statusConfig: Record<string, {
+  color: string;
+  textColor: string;
+  label: string;
+  icon: typeof Circle;
+  animate?: boolean;
+}> = {
   stopped: {
     color: 'bg-gray-500',
     textColor: 'text-gray-400',
@@ -172,7 +178,7 @@ interface AgentDashboardProps {
 export function AgentDashboard({ onEnterWorkspace }: AgentDashboardProps) {
   const { agents, currentAgentId, selectAgent, deleteAgent, loadAgents } = useAppStore();
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [loading, setLoading] = useState<string | null>(null);
+  const [, setLoading] = useState<string | null>(null);
 
   const handleStartAgent = async (agentId: string) => {
     setLoading(agentId);

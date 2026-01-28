@@ -78,8 +78,6 @@ function App() {
     setLeftPanelWidth,
     settingsOpen,
     setSettingsOpen,
-    agents,
-    currentAgentId,
     loadAgents
   } = useAppStore();
 
