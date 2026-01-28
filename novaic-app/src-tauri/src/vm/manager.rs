@@ -384,6 +384,20 @@ impl VmManager {
         }
     }
 
+    /// Public method to stop VM gracefully (for app exit)
+    /// Only sends SIGTERM, lets QEMU handle graceful shutdown
+    pub fn stop_sync_public(&self) {
+        let qemu_guard = self.qemu_process.lock().unwrap();
+        if let Some(ref child) = *qemu_guard {
+            println!("[VM] Sending SIGTERM to QEMU (PID: {})...", child.id());
+            #[cfg(unix)]
+            unsafe {
+                libc::kill(child.id() as i32, libc::SIGTERM);
+            }
+            println!("[VM] SIGTERM sent, QEMU will shut down gracefully");
+        }
+    }
+
     /// Check if VM is running
     pub async fn is_running(&self) -> bool {
         {

@@ -448,8 +448,15 @@ fn main() {
                         });
                     }
                     
-                    // Note: VM is managed separately and not killed on app exit
-                    // Users may want to keep VM running in background
+                    // Stop VM gracefully
+                    if let Some(vm_manager) = app_handle.try_state::<Arc<Mutex<VmManager>>>() {
+                        println!("[VM] Stopping VM gracefully...");
+                        let vm = vm_manager.inner().clone();
+                        tauri::async_runtime::block_on(async {
+                            let manager = vm.lock().await;
+                            manager.stop_sync_public();
+                        });
+                    }
                 }
                 // macOS: Reopen window on Dock click
                 tauri::RunEvent::Reopen { has_visible_windows, .. } => {
