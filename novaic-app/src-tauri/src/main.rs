@@ -1,96 +1,249 @@
 // Prevents additional console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod commands;
 mod vm;
-mod files;
 mod error;
-mod app_config;
+mod commands;
 mod http_client;
+mod gateway_client;
 
-use commands::{vm_commands, file_commands, agent_commands, config_commands};
+use gateway_client::GatewayClient;
+
 use vm::manager::VmManager;
+use commands::vm_commands::{start_vm, stop_vm, get_vm_status, restart_vm, get_vnc_url, get_agent_url};
+
 use std::sync::Arc;
 use std::path::PathBuf;
-use std::process::{Command, Child, Stdio};
+use std::process::{Child, Command, Stdio};
 use tokio::sync::Mutex;
 use tauri::{
+    AppHandle,
     Manager, 
     WindowEvent,
     tray::TrayIconBuilder,
     menu::{Menu, MenuItem},
 };
 
-/// Agent 进程管理
-struct AgentProcess {
-    child: Option<Child>,
+/// Gateway process manager
+struct GatewayProcess {
+    process: Option<Child>,
+    port: u16,
 }
 
-impl AgentProcess {
+impl GatewayProcess {
     fn new() -> Self {
-        Self { child: None }
+        Self {
+            process: None,
+            port: 9000,
+        }
     }
-    
-    fn start(&mut self, agent_dir: &PathBuf) -> Result<(), String> {
-        if self.child.is_some() {
-            println!("[Agent] Already running");
+
+    fn base_url(&self) -> String {
+        format!("http://127.0.0.1:{}", self.port)
+    }
+
+    fn start(&mut self, gateway_path: &PathBuf, is_binary: bool) -> Result<(), String> {
+        if self.process.is_some() {
+            println!("[Gateway] Already running");
             return Ok(());
         }
-        
-        println!("[Agent] Starting Python Agent from {:?}", agent_dir);
-        
-        // 检查 venv 是否存在（支持 venv 和 .venv 两种命名）
-        let venv_python = agent_dir.join("venv/bin/python");
-        let dot_venv_python = agent_dir.join(".venv/bin/python");
-        let python_cmd = if venv_python.exists() {
-            venv_python.to_string_lossy().to_string()
-        } else if dot_venv_python.exists() {
-            dot_venv_python.to_string_lossy().to_string()
+
+        println!("[Gateway] Starting Gateway from {:?}", gateway_path);
+        println!("[Gateway] Port: {}", self.port);
+        println!("[Gateway] Mode: {}", if is_binary { "binary" } else { "python" });
+
+        let child = if is_binary {
+            // Production mode: run bundled binary
+            if !gateway_path.exists() {
+                return Err(format!("Gateway binary not found at {:?}", gateway_path));
+            }
+            
+            Command::new(gateway_path)
+                .env("NOVAIC_PORT", self.port.to_string())
+                .env("NOVAIC_HOST", "127.0.0.1")
+                .env("NO_PROXY", "localhost,127.0.0.1,::1")
+                .env("no_proxy", "localhost,127.0.0.1,::1")
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .map_err(|e| format!("Failed to start Gateway binary: {}", e))?
         } else {
-            "python3".to_string()
+            // Development mode: run Python with venv
+            let gateway_dir = gateway_path;
+            let venv_python = gateway_dir.join("venv/bin/python");
+            let python = if venv_python.exists() {
+                venv_python.to_string_lossy().to_string()
+            } else if cfg!(target_os = "windows") {
+                "python".to_string()
+            } else {
+                "python3".to_string()
+            };
+
+            let main_py = gateway_dir.join("main.py");
+            if !main_py.exists() {
+                return Err(format!("Gateway main.py not found at {:?}", main_py));
+            }
+
+            println!("[Gateway] Using Python: {}", python);
+
+            Command::new(&python)
+                .arg(&main_py)
+                .current_dir(gateway_dir)
+                .env("NOVAIC_PORT", self.port.to_string())
+                .env("NOVAIC_HOST", "127.0.0.1")
+                .env("NO_PROXY", "localhost,127.0.0.1,::1")
+                .env("no_proxy", "localhost,127.0.0.1,::1")
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .map_err(|e| format!("Failed to start Gateway: {}", e))?
         };
-        
-        let main_py = agent_dir.join("main.py");
-        if !main_py.exists() {
-            return Err(format!("Agent main.py not found: {:?}", main_py));
-        }
-        
-        // 启动 Agent 进程
-        let child = Command::new(&python_cmd)
-            .arg(&main_py)
-            .current_dir(agent_dir)
-            .env("NBCC_EXECUTOR_URL", "http://127.0.0.1:8080")  // VM Executor (MCP Server)
-            .env("NBCC_PORT", "9000")  // Agent 端口
-            .env("NBCC_HOST", "127.0.0.1")
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .spawn()
-            .map_err(|e| format!("Failed to start Agent: {}", e))?;
-        
-        println!("[Agent] Started with PID: {}", child.id());
-        self.child = Some(child);
+
+        self.process = Some(child);
+        println!("[Gateway] Started on port {}", self.port);
         Ok(())
     }
-    
+
     fn stop(&mut self) {
-        if let Some(mut child) = self.child.take() {
-            println!("[Agent] Stopping Agent (PID: {})", child.id());
-            let _ = child.kill();
-            let _ = child.wait();
-            println!("[Agent] Agent stopped");
+        if let Some(mut process) = self.process.take() {
+            println!("[Gateway] Stopping...");
+            let _ = process.kill();
+            let _ = process.wait();
+            println!("[Gateway] Stopped");
+        }
+    }
+
+    fn is_running(&mut self) -> bool {
+        if let Some(ref mut process) = self.process {
+            match process.try_wait() {
+                Ok(Some(_)) => {
+                    // Process has exited
+                    self.process = None;
+                    false
+                }
+                Ok(None) => true,
+                Err(_) => false,
+            }
+        } else {
+            false
         }
     }
 }
 
-impl Drop for AgentProcess {
+impl Drop for GatewayProcess {
     fn drop(&mut self) {
         self.stop();
     }
 }
 
+type GatewayState = Arc<Mutex<GatewayProcess>>;
+
+/// Get Gateway path and whether it's a binary
+/// Returns (path, is_binary)
+fn get_gateway_info(_app: &AppHandle) -> (PathBuf, bool) {
+    // 暂时写死路径用于测试
+    // 使用 Python 源码版本
+    (PathBuf::from("/Users/wangchaoqun/novaic/novaic-gateway"), false)
+}
+
+/// Tauri command: Start Gateway
+#[tauri::command]
+async fn start_gateway(
+    gateway: tauri::State<'_, GatewayState>,
+    app: AppHandle,
+) -> Result<String, String> {
+    let (gateway_path, is_binary) = get_gateway_info(&app);
+    let mut gw = gateway.lock().await;
+    gw.start(&gateway_path, is_binary)?;
+    Ok(format!("Gateway started on port {}", gw.port))
+}
+
+/// Tauri command: Stop Gateway
+#[tauri::command]
+async fn stop_gateway(
+    gateway: tauri::State<'_, GatewayState>,
+) -> Result<String, String> {
+    let mut gw = gateway.lock().await;
+    gw.stop();
+    Ok("Gateway stopped".to_string())
+}
+
+/// Tauri command: Get Gateway status
+#[tauri::command]
+async fn get_gateway_status(
+    gateway: tauri::State<'_, GatewayState>,
+) -> Result<bool, String> {
+    let mut gw = gateway.lock().await;
+    Ok(gw.is_running())
+}
+
+/// Tauri command: Get Gateway URL
+#[tauri::command]
+async fn get_gateway_url(
+    gateway: tauri::State<'_, GatewayState>,
+) -> Result<String, String> {
+    let gw = gateway.lock().await;
+    Ok(gw.base_url())
+}
+
+/// Tauri command: Gateway API GET request
+#[tauri::command]
+async fn gateway_get(
+    gateway: tauri::State<'_, GatewayState>,
+    path: String,
+) -> Result<serde_json::Value, String> {
+    let gw = gateway.lock().await;
+    let client = GatewayClient::new(gw.base_url());
+    client.get(&path).await
+}
+
+/// Tauri command: Gateway API POST request
+#[tauri::command]
+async fn gateway_post(
+    gateway: tauri::State<'_, GatewayState>,
+    path: String,
+    body: Option<serde_json::Value>,
+) -> Result<serde_json::Value, String> {
+    let gw = gateway.lock().await;
+    let client = GatewayClient::new(gw.base_url());
+    client.post(&path, body).await
+}
+
+/// Tauri command: Gateway API PATCH request
+#[tauri::command]
+async fn gateway_patch(
+    gateway: tauri::State<'_, GatewayState>,
+    path: String,
+    body: Option<serde_json::Value>,
+) -> Result<serde_json::Value, String> {
+    let gw = gateway.lock().await;
+    let client = GatewayClient::new(gw.base_url());
+    client.patch(&path, body).await
+}
+
+/// Tauri command: Gateway API DELETE request
+#[tauri::command]
+async fn gateway_delete(
+    gateway: tauri::State<'_, GatewayState>,
+    path: String,
+) -> Result<serde_json::Value, String> {
+    let gw = gateway.lock().await;
+    let client = GatewayClient::new(gw.base_url());
+    client.delete(&path).await
+}
+
+/// Tauri command: Check Gateway health
+#[tauri::command]
+async fn gateway_health(
+    gateway: tauri::State<'_, GatewayState>,
+) -> Result<bool, String> {
+    let gw = gateway.lock().await;
+    let client = GatewayClient::new(gw.base_url());
+    client.health_check().await
+}
+
 fn main() {
-    // 设置 NO_PROXY 环境变量，让本地地址不走系统代理
-    // reqwest 和其他 HTTP 库会自动读取这个环境变量
+    // Set NO_PROXY to avoid proxy issues with local services
     std::env::set_var("NO_PROXY", "localhost,127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16");
     std::env::set_var("no_proxy", "localhost,127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16");
     
@@ -100,20 +253,19 @@ fn main() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_process::init())
         .setup(|app| {
-            println!("NB-CC starting...");
+            println!("NovAIC starting...");
             
-            // 创建托盘菜单 - macOS 上左键点击托盘图标会显示此菜单
+            // Create tray menu
             let show_item = MenuItem::with_id(app, "show", "显示窗口", true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
             
-            // 创建托盘图标
-            // macOS: 左键点击显示菜单，通过菜单操作窗口
-            let tray = TrayIconBuilder::with_id("main-tray")
+            // Create tray icon
+            let _tray = TrayIconBuilder::with_id("main-tray")
                 .icon(app.default_window_icon().unwrap().clone())
                 .menu(&menu)
-                .menu_on_left_click(true)  // macOS 标准行为：左键显示菜单
-                .tooltip("NB-CC - 点击显示菜单")
+                .show_menu_on_left_click(true)
+                .tooltip("NovAIC")
                 .on_menu_event(|app, event| {
                     println!("[Tray] Menu event: {:?}", event.id.as_ref());
                     match event.id.as_ref() {
@@ -126,10 +278,6 @@ fn main() {
                         }
                         "quit" => {
                             println!("[App] Quit from tray, stopping services...");
-                            // Agent 会在 Drop 时自动停止
-                            let _ = Command::new("pkill")
-                                .args(["-f", "qemu-system"])
-                                .output();
                             std::process::exit(0);
                         }
                         _ => {}
@@ -137,68 +285,39 @@ fn main() {
                 })
                 .build(app)?;
             
-            // 存储托盘引用到 app state 防止被 drop
-            app.manage(tray);
-            
-            // 确定 VM 目录路径 (packages/novaic-vm 目录)
-            let vm_dir = if cfg!(debug_assertions) {
-                // 开发模式: 使用 packages/novaic-vm 目录
-                // CARGO_MANIFEST_DIR = packages/novaic-app/src-tauri
-                // 需要向上到 packages 目录，然后进入 novaic-vm
-                let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-                let vm_path = manifest_dir
-                    .parent()  // packages/novaic-app
-                    .and_then(|p| p.parent())  // packages
-                    .map(|p| p.join("novaic-vm"))
-                    .unwrap_or_else(|| PathBuf::from("../novaic-vm"));
-                println!("Development mode - VM directory: {:?}", vm_path);
-                vm_path
-            } else {
-                // 生产模式: 使用 app data 目录
-                let app_dir = app.path().app_data_dir()
-                    .unwrap_or_else(|_| PathBuf::from("."));
-                let vm_path = app_dir.join("runtime");
-                std::fs::create_dir_all(&vm_path).ok();
-                println!("Production mode - VM directory: {:?}", vm_path);
-                vm_path
-            };
+            // VM directory path - 暂时写死路径用于测试
+            let vm_dir = PathBuf::from("/Users/wangchaoqun/novaic/novaic-vm");
             
             println!("VM directory: {:?}", vm_dir);
             
-            // 初始化 VM Manager 并注入到 app state
+            // Initialize VM Manager
             let vm_manager = Arc::new(Mutex::new(VmManager::new(vm_dir.clone())));
             app.manage(vm_manager.clone());
             
-            // 初始化 Agent 进程管理
-            let agent_process = Arc::new(std::sync::Mutex::new(AgentProcess::new()));
-            app.manage(agent_process.clone());
+            // Initialize Gateway Manager
+            let gateway = Arc::new(Mutex::new(GatewayProcess::new()));
+            app.manage(gateway.clone());
             
-            // 确定 Agent 目录
-            let agent_dir = if cfg!(debug_assertions) {
-                // CARGO_MANIFEST_DIR = packages/novaic-app/src-tauri
-                // Agent 在 packages/novaic-agent
-                let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-                manifest_dir.parent().and_then(|p| p.parent())  // packages
-                    .map(|p| p.join("novaic-agent"))
-                    .unwrap_or_else(|| PathBuf::from("../../novaic-agent"))
-            } else {
-                vm_dir.parent().map(|p| p.join("novaic-agent")).unwrap_or_else(|| PathBuf::from("novaic-agent"))
-            };
+            // Auto-start Gateway
+            let (gateway_path, is_binary) = get_gateway_info(app.handle());
+            println!("[Gateway] Gateway path: {:?}", gateway_path);
+            println!("[Gateway] Is binary: {}", is_binary);
             
-            // 启动 Python Agent (宿主机)
-            println!("[Agent] Starting Python Agent on host...");
-            {
-                let mut agent = agent_process.lock().unwrap();
-                match agent.start(&agent_dir) {
-                    Ok(_) => println!("[Agent] Python Agent started on host"),
-                    Err(e) => println!("[Agent] Failed to start Agent: {}", e),
+            let gateway_for_start = gateway.clone();
+            tauri::async_runtime::spawn(async move {
+                let mut gw = gateway_for_start.lock().await;
+                match gw.start(&gateway_path, is_binary) {
+                    Ok(_) => println!("[Gateway] Auto-started successfully"),
+                    Err(e) => println!("[Gateway] Failed to auto-start: {}", e),
                 }
-            }
+            });
             
-            // 自动启动 QEMU VM (在后台异步执行)
+            // Auto-start QEMU VM
             println!("[VM] Auto-starting QEMU VM...");
             let vm_manager_for_start = vm_manager.clone();
             tauri::async_runtime::spawn(async move {
+                // Wait a bit for Gateway to start
+                tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
                 let manager = vm_manager_for_start.lock().await;
                 match manager.start().await {
                     Ok(_) => println!("[VM] QEMU VM started successfully"),
@@ -209,76 +328,65 @@ fn main() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            // macOS 标准交互：点击红色 X 只隐藏窗口，不退出 App
+            // macOS: Hide window on close instead of quitting
             #[cfg(target_os = "macos")]
             if let WindowEvent::CloseRequested { api, .. } = event {
-                // 阻止默认的关闭行为
                 api.prevent_close();
-                // 隐藏窗口
                 let _ = window.hide();
                 println!("[App] Window hidden (macOS style)");
             }
         })
         .invoke_handler(tauri::generate_handler![
             // VM commands
-            vm_commands::start_vm,
-            vm_commands::stop_vm,
-            vm_commands::get_vm_status,
-            vm_commands::restart_vm,
-            vm_commands::get_vnc_url,
-            vm_commands::get_agent_url,
-            // Agent commands
-            agent_commands::init_agent,
-            agent_commands::init_agent_with_app_config,
-            agent_commands::send_message,
-            agent_commands::send_message_stream,
-            agent_commands::get_health,
-            // Config commands
-            config_commands::get_app_config,
-            config_commands::update_common_settings,
-            config_commands::add_api_key,
-            config_commands::update_api_key,
-            config_commands::delete_api_key,
-            config_commands::toggle_model,
-            config_commands::delete_model,
-            config_commands::set_default_model,
-            config_commands::fetch_models_for_key,
-            config_commands::save_models_for_key,
-            config_commands::test_api_key_connection,
-            config_commands::test_llm_connection,
-            // File commands
-            file_commands::upload_file,
-            file_commands::download_file,
-            file_commands::list_vm_files,
+            start_vm,
+            stop_vm,
+            get_vm_status,
+            restart_vm,
+            get_vnc_url,
+            get_agent_url,
+            // Gateway commands
+            start_gateway,
+            stop_gateway,
+            get_gateway_status,
+            get_gateway_url,
+            // Gateway API proxy
+            gateway_get,
+            gateway_post,
+            gateway_patch,
+            gateway_delete,
+            gateway_health,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {
             match event {
-                // Cmd+Q 或真正退出时停止 QEMU 和 Agent
+                // Stop services on exit
                 tauri::RunEvent::Exit => {
                     println!("[App] Exiting, stopping services...");
                     
-                    // 停止 Agent
-                    if let Some(agent_process) = app_handle.try_state::<Arc<std::sync::Mutex<AgentProcess>>>() {
-                        let mut agent = agent_process.lock().unwrap();
-                        agent.stop();
+                    // Stop Gateway
+                    if let Some(gateway) = app_handle.try_state::<GatewayState>() {
+                        let gateway_clone = gateway.inner().clone();
+                        tauri::async_runtime::block_on(async {
+                            let mut gw = gateway_clone.lock().await;
+                            gw.stop();
+                        });
                     }
                     
-                    // 停止 QEMU
+                    // Stop QEMU
                     println!("[VM] Stopping QEMU VM...");
                     let _ = Command::new("pkill")
                         .args(["-f", "qemu-system"])
                         .output();
                     println!("[VM] QEMU VM stop command sent");
                 }
-                // macOS: 点击 Dock 图标重新打开窗口 (Tauri 2.0 支持!)
+                // macOS: Reopen window on Dock click
                 tauri::RunEvent::Reopen { has_visible_windows, .. } => {
                     if !has_visible_windows {
                         if let Some(window) = app_handle.get_webview_window("main") {
                             let _ = window.show();
                             let _ = window.set_focus();
-                            println!("[App] Window shown (Dock click - Reopen)");
+                            println!("[App] Window shown (Dock click)");
                         }
                     }
                 }

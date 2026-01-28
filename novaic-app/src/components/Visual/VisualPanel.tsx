@@ -6,7 +6,7 @@ interface VisualPanelProps {
 }
 
 export function VisualPanel({ isThumbnail = false }: VisualPanelProps) {
-  const { logs, isExecuting, layoutMode, setLayoutMode } = useAppStore();
+  const { setLayoutMode } = useAppStore();
 
   // Thumbnail mode: just show VNC, click to expand
   if (isThumbnail) {

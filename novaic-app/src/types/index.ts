@@ -23,7 +23,7 @@ export type AgentEventType =
 
 export interface AgentEvent {
   type: AgentEventType;
-  timestamp?: string;
+  timestamp: string;
   data: any;
 }
 

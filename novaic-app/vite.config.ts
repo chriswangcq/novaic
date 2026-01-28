@@ -17,6 +17,17 @@ export default defineConfig({
     fs: {
       allow: [path.resolve(__dirname, '..')],
     },
+    // Proxy API and WebSocket requests to Gateway
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:9000',
+        changeOrigin: true,
+      },
+      '/ws': {
+        target: 'ws://127.0.0.1:9000',
+        ws: true,
+      },
+    },
   },
   
   // Env variables starting with TAURI_ will be available

@@ -167,3 +167,7 @@ rootfs/
 # Documentation and paper (internal only)
 docs/
 paper/
+
+# Build artifacts
+*.dmg
+.cursor/

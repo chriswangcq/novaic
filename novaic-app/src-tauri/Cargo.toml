@@ -28,6 +28,9 @@ dirs = "5.0"
 uuid = { version = "1.6", features = ["v4"] }
 urlencoding = "2.1.3"
 chrono = { version = "0.4", features = ["serde"] }
+# Future: Unix socket support (currently using TCP)
+# hyper = { version = "1.4", features = ["client", "http1"] }
+# hyperlocal = "0.9"
 
 [features]
 default = ["custom-protocol"]

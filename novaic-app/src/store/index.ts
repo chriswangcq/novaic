@@ -1,8 +1,12 @@
+/**
+ * NovAIC Web Store
+ * 
+ * Zustand store that uses Gateway API and WebSocket instead of Tauri invoke.
+ */
+
 import { create } from 'zustand';
-import { invoke } from '@tauri-apps/api/core';
-import { listen } from '@tauri-apps/api/event';
+import { api, gateway } from '../services';
 import { 
-  AgentEventType, 
   LogData, 
   Message, 
   LogEntry, 
@@ -69,21 +73,6 @@ interface AppStore extends AppState {
   loadModelsFromConfig: () => Promise<void>;
 }
 
-// SSE event from Agent API
-interface SSEEvent {
-  type: string;
-  data: unknown;
-  timestamp?: string;
-}
-
-// 转换事件类型
-function toAgentEventType(t: string): AgentEventType {
-  const validTypes: AgentEventType[] = [
-    'text', 'thinking', 'tool_start', 'tool_end', 
-    'status', 'warning', 'final', 'error'
-  ];
-  return validTypes.includes(t as AgentEventType) ? (t as AgentEventType) : 'status';
-}
 
 function toLogData(d: unknown): LogData {
   if (d && typeof d === 'object') return d as LogData;
@@ -113,6 +102,11 @@ function loadChatMode(): ChatMode {
   return 'agent';
 }
 
+// Track current message being streamed
+let currentAssistantId: string | null = null;
+let currentEvents: AgentEvent[] = [];
+let currentFinalContent = '';
+
 export const useAppStore = create<AppStore>((set, get) => ({
   // Initial state
   messages: [],
@@ -133,51 +127,191 @@ export const useAppStore = create<AppStore>((set, get) => ({
   selectedModel: loadSelectedModel(),
   chatMode: loadChatMode(),
 
-  // Initialize app
+  // Initialize app - connect to Gateway WebSocket
   initialize: async () => {
-    const { loadModelsFromConfig } = get();
-    const maxRetries = 5;
-    const retryDelay = 2000;
+    const { loadModelsFromConfig, addLog, updateMessage, setExecuting } = get();
     
-    // Load available models from config first
-    await loadModelsFromConfig();
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`[Store] Initializing agent (attempt ${attempt}/${maxRetries})...`);
-        await invoke('init_agent_with_app_config');
-        set({ isInitialized: true });
-        console.log('[Store] Agent initialized successfully');
-        return;
-      } catch (error) {
-        const errorStr = String(error);
-        console.error(`[Store] Init attempt ${attempt} failed:`, error);
-        
-        // If no API key configured, open settings and stop retrying
-        if (errorStr.includes('No API key') || errorStr.includes('not configured')) {
-          console.log('[Store] No API key configured, opening settings...');
-          set({ settingsOpen: true });
-          return;
+    try {
+      console.log('[Store] Waiting for Gateway to be ready...');
+      
+      // Wait for Gateway to be ready (poll health endpoint)
+      const maxAttempts = 30;
+      const delayMs = 1000;
+      let gatewayReady = false;
+      
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          const health = await api.getHealth();
+          if (health.status === 'healthy') {
+            gatewayReady = true;
+            console.log('[Store] Gateway is ready');
+            break;
+          }
+        } catch (e) {
+          console.log(`[Store] Gateway not ready (attempt ${attempt}/${maxAttempts})`);
         }
         
-        if (attempt < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, retryDelay));
+        if (attempt < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, delayMs));
         }
       }
+      
+      if (!gatewayReady) {
+        console.error('[Store] Gateway failed to start');
+        set({ settingsOpen: true });
+        return;
+      }
+      
+      // Connect to WebSocket
+      await gateway.connect();
+      console.log('[Store] WebSocket connected');
+      
+      // Set up event listeners
+      gateway.on('thinking', (data) => {
+        if (currentAssistantId) {
+          const event: AgentEvent = {
+            type: 'thinking',
+            data,
+            timestamp: new Date().toISOString(),
+          };
+          currentEvents = [...currentEvents, event];
+          addLog({ type: 'thinking', timestamp: event.timestamp, data: toLogData(data) });
+          updateMessage(currentAssistantId, { events: [...currentEvents] });
+        }
+      });
+      
+      gateway.on('tool_start', (data) => {
+        if (currentAssistantId) {
+          const event: AgentEvent = {
+            type: 'tool_start',
+            data,
+            timestamp: new Date().toISOString(),
+          };
+          currentEvents = [...currentEvents, event];
+          addLog({ type: 'tool_start', timestamp: event.timestamp, data: toLogData(data) });
+          updateMessage(currentAssistantId, { events: [...currentEvents] });
+        }
+      });
+      
+      gateway.on('tool_end', (data) => {
+        if (currentAssistantId) {
+          const event: AgentEvent = {
+            type: 'tool_end',
+            data,
+            timestamp: new Date().toISOString(),
+          };
+          currentEvents = [...currentEvents, event];
+          addLog({ type: 'tool_end', timestamp: event.timestamp, data: toLogData(data) });
+          updateMessage(currentAssistantId, { events: [...currentEvents] });
+        }
+      });
+      
+      gateway.on('status', (data) => {
+        if (currentAssistantId) {
+          const event: AgentEvent = {
+            type: 'status',
+            data,
+            timestamp: new Date().toISOString(),
+          };
+          currentEvents = [...currentEvents, event];
+          addLog({ type: 'status', timestamp: event.timestamp, data: toLogData(data) });
+          updateMessage(currentAssistantId, { events: [...currentEvents] });
+        }
+      });
+      
+      gateway.on('warning', (data) => {
+        if (currentAssistantId) {
+          const event: AgentEvent = {
+            type: 'warning',
+            data,
+            timestamp: new Date().toISOString(),
+          };
+          currentEvents = [...currentEvents, event];
+          addLog({ type: 'warning', timestamp: event.timestamp, data: toLogData(data) });
+          updateMessage(currentAssistantId, { events: [...currentEvents] });
+        }
+      });
+      
+      gateway.on('final', (data) => {
+        if (currentAssistantId) {
+          // Extract content from data
+          if (typeof data === 'string') {
+            currentFinalContent = data;
+          } else if (data && typeof data === 'object') {
+            currentFinalContent = String((data as Record<string, unknown>).content || 
+                                        (data as Record<string, unknown>).data || data);
+          }
+          
+          const event: AgentEvent = {
+            type: 'final',
+            data,
+            timestamp: new Date().toISOString(),
+          };
+          currentEvents = [...currentEvents, event];
+          addLog({ type: 'final', timestamp: event.timestamp, data: toLogData(data) });
+          
+          // Final update
+          updateMessage(currentAssistantId, {
+            content: currentFinalContent,
+            events: [...currentEvents],
+            isStreaming: false,
+          });
+          
+          // Reset state
+          currentAssistantId = null;
+          currentEvents = [];
+          currentFinalContent = '';
+          setExecuting(false);
+        }
+      });
+      
+      gateway.on('error', (data) => {
+        if (currentAssistantId) {
+          const errorMsg = typeof data === 'string' ? data : 
+                          (data as Record<string, unknown>)?.error || 'Unknown error';
+          
+          const event: AgentEvent = {
+            type: 'error',
+            data,
+            timestamp: new Date().toISOString(),
+          };
+          currentEvents = [...currentEvents, event];
+          addLog({ type: 'error', timestamp: event.timestamp, data: toLogData(data) });
+          
+          updateMessage(currentAssistantId, {
+            content: `Error: ${errorMsg}`,
+            events: [...currentEvents],
+            isStreaming: false,
+          });
+          
+          currentAssistantId = null;
+          currentEvents = [];
+          currentFinalContent = '';
+          setExecuting(false);
+        }
+      });
+      
+      // Load models from config
+      await loadModelsFromConfig();
+      
+      set({ isInitialized: true });
+      console.log('[Store] Initialized successfully');
+      
+    } catch (error) {
+      console.error('[Store] Initialization failed:', error);
+      // Open settings if connection fails
+      set({ settingsOpen: true });
     }
-    console.error('[Store] Failed to initialize after all retries');
   },
 
-  // Send message - 简化版，核心是按顺序累积 events
+  // Send message via WebSocket
   sendMessage: async (content: string) => {
-    const { addMessage, updateMessage, addLog, setExecuting, isInitialized, initialize } = get();
+    const { addMessage, setExecuting, isInitialized, initialize, selectedModel, chatMode } = get();
     
     if (!isInitialized) {
       await initialize();
-      // Check again after initialize attempt
       if (!get().isInitialized) {
-        // Still not initialized, settings should be open
-        console.log('[Store] Agent not initialized, cannot send message');
+        console.log('[Store] Not initialized, cannot send message');
         return;
       }
     }
@@ -192,9 +326,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
     addMessage(userMessage);
     
     // Create assistant message
-    const assistantId = `assistant-${Date.now()}`;
+    currentAssistantId = `assistant-${Date.now()}`;
+    currentEvents = [];
+    currentFinalContent = '';
+    
     addMessage({
-      id: assistantId,
+      id: currentAssistantId,
       role: 'assistant',
       content: '',
       timestamp: new Date(),
@@ -205,98 +342,31 @@ export const useAppStore = create<AppStore>((set, get) => ({
     set({ logs: [] });
     setExecuting(true);
     
-    // 核心：按顺序累积所有事件
-    let events: AgentEvent[] = [];
-    let finalContent = '';
-    let unlistenEvent: (() => void) | null = null;
+    // Parse selected model
+    let modelId: string | undefined;
+    let apiKeyId: string | undefined;
     
-    try {
-      unlistenEvent = await listen<SSEEvent>('chat-event', (event) => {
-        const sseEvent = event.payload;
-        const ts = sseEvent.timestamp || new Date().toISOString();
-        const eventType = toAgentEventType(sseEvent.type);
-        
-        // 创建事件对象
-        const agentEvent: AgentEvent = {
-          type: eventType,
-          data: sseEvent.data,
-          timestamp: ts,
-        };
-        
-        // 添加到事件列表（保持顺序！）
-        events = [...events, agentEvent];
-        
-        // 添加到日志
-        addLog({
-          type: eventType,
-          timestamp: ts,
-          data: toLogData(sseEvent.data),
-        });
-        
-        // 提取最终内容
-        if (eventType === 'final' || eventType === 'text') {
-          const data = sseEvent.data;
-          if (typeof data === 'string') {
-            finalContent = data;
-          } else if (data && typeof data === 'object') {
-            finalContent = String((data as Record<string, unknown>).content || 
-                                  (data as Record<string, unknown>).data || '');
-          }
-        }
-        
-        // 实时更新 - 只更新 events 和 content
-        updateMessage(assistantId, {
-          content: finalContent,
-          events: [...events],
-        });
-      });
-      
-      // 开始流式请求 - 传递选中的模型ID和API Key ID
-      // selectedModel 格式: {api_key_id}:{model_id}
-      // Note: model_id may contain colons, so only split on FIRST colon
-      const { selectedModel, chatMode } = get();
-      let modelId: string | null = null;
-      let apiKeyId: string | null = null;
-      if (selectedModel) {
-        const colonIndex = selectedModel.indexOf(':');
-        if (colonIndex !== -1) {
-          apiKeyId = selectedModel.substring(0, colonIndex);
-          modelId = selectedModel.substring(colonIndex + 1);
-        }
+    if (selectedModel) {
+      const colonIndex = selectedModel.indexOf(':');
+      if (colonIndex !== -1) {
+        apiKeyId = selectedModel.substring(0, colonIndex);
+        modelId = selectedModel.substring(colonIndex + 1);
+      } else {
+        modelId = selectedModel;
       }
-      await invoke('send_message_stream', { 
-        message: content,
-        modelId,
-        apiKeyId,
-        mode: chatMode || 'agent'
-      });
-      
-      // 最终更新
-      updateMessage(assistantId, {
-        content: finalContent,
-        events,
-        isStreaming: false,
-      });
-      
-    } catch (error) {
-      console.error('Send message error:', error);
-      updateMessage(assistantId, {
-        content: `Error: ${String(error)}`,
-        isStreaming: false,
-        events: [...events, {
-          type: 'error',
-          data: { error: String(error) },
-          timestamp: new Date().toISOString(),
-        }],
-      });
-    } finally {
-      if (unlistenEvent) unlistenEvent();
-      setExecuting(false);
     }
+    
+    // Send via WebSocket
+    gateway.sendChat(content, {
+      model: modelId,
+      mode: chatMode || 'agent',
+      apiKeyId,
+    });
   },
 
   stopExecution: () => {
     console.log('[Store] Stop execution requested');
+    gateway.sendInterrupt();
     set({ isExecuting: false });
   },
 
@@ -321,6 +391,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   clearMessages: () => {
+    gateway.sendClear();
     set({ messages: [], logs: [] });
   },
 
@@ -378,11 +449,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   loadModelsFromConfig: async () => {
     try {
-      const config = await invoke<{
-        available_models: AvailableModel[];
-        api_keys: Array<{ id: string; name: string; provider: string }>;
-        default_model: string;
-      }>('get_app_config');
+      const config = await api.getConfig();
       
       // Filter only enabled models
       const enabledModels = (config.available_models || []).filter(m => m.enabled);
@@ -394,14 +461,16 @@ export const useAppStore = create<AppStore>((set, get) => ({
         provider: k.provider as ApiKeyInfo['provider'],
       }));
       
-      set({ availableModels: enabledModels, apiKeys });
+      set({ availableModels: enabledModels as AvailableModel[], apiKeys });
       
       // Set default model if not already selected
       const { selectedModel } = get();
       if (!selectedModel && config.default_model) {
         set({ selectedModel: config.default_model });
       } else if (!selectedModel && enabledModels.length > 0) {
-        set({ selectedModel: enabledModels[0].id });
+        // Use api_key_id:model_id format
+        const firstModel = enabledModels[0];
+        set({ selectedModel: `${firstModel.api_key_id}:${firstModel.id}` });
       }
       
       console.log('[Store] Loaded models:', enabledModels.length, 'apiKeys:', apiKeys.length);

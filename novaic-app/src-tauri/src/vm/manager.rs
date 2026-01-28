@@ -362,10 +362,23 @@ impl VmManager {
 
     /// 获取 QEMU 命令
     fn get_qemu_command(&self) -> String {
-        if Self::is_arm64() {
-            "qemu-system-aarch64".to_string()
+        // macOS 上使用 Homebrew 安装的 QEMU 完整路径
+        // 从 Finder 启动应用时 PATH 不包含 /opt/homebrew/bin
+        if cfg!(target_os = "macos") {
+            if Self::is_arm64() {
+                // Apple Silicon Mac
+                "/opt/homebrew/bin/qemu-system-aarch64".to_string()
+            } else {
+                // Intel Mac
+                "/usr/local/bin/qemu-system-x86_64".to_string()
+            }
         } else {
-            "qemu-system-x86_64".to_string()
+            // Linux 等系统使用系统路径
+            if Self::is_arm64() {
+                "qemu-system-aarch64".to_string()
+            } else {
+                "qemu-system-x86_64".to_string()
+            }
         }
     }
 
@@ -442,8 +455,28 @@ impl VmManager {
             Ok(args)
         } else {
             // x86_64 配置
-            Ok(vec![
+            let mut args = vec![
                 "-name".to_string(), "novaic-vm".to_string(),
+            ];
+            
+            // 添加硬件加速 (关键！没有加速会非常慢)
+            // macOS: hvf, Linux: kvm, Windows: whpx 或 hax
+            #[cfg(target_os = "macos")]
+            {
+                args.extend(vec!["-accel".to_string(), "hvf".to_string()]);
+            }
+            #[cfg(target_os = "linux")]
+            {
+                args.extend(vec!["-enable-kvm".to_string()]);
+            }
+            #[cfg(target_os = "windows")]
+            {
+                // Windows: 优先尝试 WHPX (Hyper-V), 需要用户开启 Windows Hypervisor Platform
+                args.extend(vec!["-accel".to_string(), "whpx".to_string()]);
+            }
+            
+            args.extend(vec![
+                "-cpu".to_string(), "host".to_string(),
                 "-m".to_string(), self.config.memory.clone(),
                 "-smp".to_string(), self.config.cpus.to_string(),
                 "-hda".to_string(), image_path.to_str().unwrap().to_string(),
@@ -451,7 +484,9 @@ impl VmManager {
                 "-net".to_string(), "nic".to_string(),
                 "-net".to_string(), format!("user,{}", port_forward),
                 "-display".to_string(), "none".to_string(),
-            ])
+            ]);
+            
+            Ok(args)
         }
     }
 }

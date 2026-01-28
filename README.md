@@ -105,21 +105,41 @@ This deploys NovAIC Core (MCP Server) into the VM. After deployment:
 If you want to use the NovAIC desktop application:
 
 ```bash
-# Go back to project root
-cd ../novaic-app
-
-# Install frontend dependencies
-npm install
-
-# Setup Python agent
-cd ../novaic-agent
+# Setup Gateway (Python backend)
+cd novaic-gateway
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
-# Start the app (from novaic-app directory)
+# Setup App (frontend + Tauri)
 cd ../novaic-app
-npm run tauri:dev
+npm install
+
+# Start development mode
+npm run tauri dev
+```
+
+The Tauri app will automatically manage Gateway and VM lifecycle.
+
+#### Build for Distribution
+
+```bash
+# Build Gateway binary (PyInstaller)
+cd novaic-gateway
+./venv/bin/python build.py
+
+# Copy to Tauri resources
+cp dist/novaic-gateway ../novaic-app/src-tauri/resources/
+
+# Build Tauri app
+cd ../novaic-app
+npm run tauri build
+```
+
+Or use the all-in-one build script:
+
+```bash
+./build.sh
 ```
 
 ### Step 5: Configure Your MCP Client
@@ -252,16 +272,30 @@ sudo systemctl restart x11vnc
 │                         NovAIC Platform                              │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                      │
-│  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐         │
-│  │  NovAIC App    │  │ Claude Desktop │  │  Any MCP Host  │         │
-│  │  (Tauri)       │  │     / CLI      │  │                │         │
-│  └───────┬────────┘  └───────┬────────┘  └───────┬────────┘         │
-│          │                   │                   │                   │
-│          └───────────────────┼───────────────────┘                   │
-│                              │ MCP Protocol                          │
-│                              ▼                                       │
+│  ┌──────────────────────────────────────┐  ┌────────────────────┐   │
+│  │           NovAIC App (Tauri)          │  │  Claude Desktop /  │   │
+│  │  ┌─────────────┐  ┌───────────────┐  │  │   Cursor / Any     │   │
+│  │  │   Web UI    │  │ Gateway Mgmt  │  │  │   MCP Client       │   │
+│  │  │  (React)    │  │  (Rust IPC)   │  │  │                    │   │
+│  │  └──────┬──────┘  └───────┬───────┘  │  └─────────┬──────────┘   │
+│  │         │                 │          │            │              │
+│  │         │    Tauri IPC    │          │            │              │
+│  │         └────────┬────────┘          │            │              │
+│  └──────────────────┼───────────────────┘            │              │
+│                     │                                │              │
+│                     ▼                                │              │
+│  ┌───────────────────────────────────────────────────┼───────────┐  │
+│  │                NovAIC Gateway (Python)            │           │  │
+│  │           FastAPI + WebSocket + Agent Core        │           │  │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌──────────┐  │           │  │
+│  │  │ REST API    │  │  WebSocket  │  │  Agent   │◄─┘           │  │
+│  │  │ /api/*      │  │   /ws/*     │  │  Loop    │  MCP Client  │  │
+│  │  └─────────────┘  └─────────────┘  └────┬─────┘              │  │
+│  └─────────────────────────────────────────┼────────────────────┘  │
+│                                            │ MCP Protocol          │
+│                                            ▼                       │
 │  ┌───────────────────────────────────────────────────────────────┐  │
-│  │                       NovAIC Core                              │  │
+│  │                       NovAIC Core (in VM)                      │  │
 │  │                  MCP Server (44+ Tools)                        │  │
 │  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐  │  │
 │  │  │ Desktop │ │ Browser │ │  Shell  │ │  Files  │ │ Windows │  │  │
@@ -284,10 +318,11 @@ sudo systemctl restart x11vnc
 
 | Package | Description | Path |
 |---------|-------------|------|
-| **[novaic-core](novaic-core)** | MCP tool server with 44+ tools | `novaic-core` |
-| **[novaic-agent](novaic-agent)** | LLM agent framework with tool calling | `novaic-agent` |
+| **[novaic-core](novaic-core)** | MCP tool server with 44+ tools (runs in VM) | `novaic-core` |
+| **[novaic-gateway](novaic-gateway)** | Python Gateway: REST API + WebSocket + Agent | `novaic-gateway` |
 | **[novaic-app](novaic-app)** | Desktop client (Tauri + React + VNC) | `novaic-app` |
-| **[novaic-cloud](novaic-cloud)** | Cloud service (auth, subscription, LLM proxy) | `novaic-cloud` |
+| **[novaic-web](novaic-web)** | Standalone Web UI (for browser access) | `novaic-web` |
+| **[novaic-agent](novaic-agent)** | Legacy agent (deprecated, use gateway) | `novaic-agent` |
 | **[novaic-vm](novaic-vm)** | QEMU VM runtime with Ubuntu desktop | `novaic-vm` |
 
 ## MCP Tools

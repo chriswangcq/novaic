@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { invoke } from '@tauri-apps/api/core';
 import { ChevronDown, ChevronRight, Search, Plus, X } from 'lucide-react';
+import { api } from '../../services';
 
 // ==================== Types ====================
 
@@ -34,22 +34,6 @@ interface AppConfigPublic {
   max_tokens: number;
   max_iterations: number;
   visible_shell: boolean;
-}
-
-interface ModelInfo {
-  id: string;
-  name: string;
-}
-
-interface FetchModelsResult {
-  ok: boolean;
-  models: ModelInfo[];
-  message: string;
-}
-
-interface TestConnectionResult {
-  ok: boolean;
-  message: string;
 }
 
 // ==================== Provider Info ====================
@@ -785,7 +769,7 @@ export function SettingsModal(props: { open: boolean; onClose: () => void }) {
     setLoading(true);
     setError(null);
     try {
-      const cfg = await invoke<AppConfigPublic>('get_app_config');
+      const cfg = await api.getConfig() as AppConfigPublic;
       setConfig(cfg);
     } catch (e) {
       setError(String(e));
@@ -812,11 +796,9 @@ export function SettingsModal(props: { open: boolean; onClose: () => void }) {
     setSubmitting(true);
     setError(null);
     try {
-      const result = await invoke<{ id: string }>('add_api_key', { 
-        create: { 
-          provider: newProvider, 
-          ...data 
-        } 
+      const result = await api.addApiKey({ 
+        provider: newProvider, 
+        ...data 
       });
       setShowAddForm(false);
       setNewProvider('openai');
@@ -826,10 +808,10 @@ export function SettingsModal(props: { open: boolean; onClose: () => void }) {
       // Auto-fetch models for the new key
       if (result?.id && data.api_key) {
         try {
-          const modelsResult = await invoke<FetchModelsResult>('fetch_models_for_key', { apiKeyId: result.id });
-          if (modelsResult.ok && modelsResult.models.length > 0) {
-            await invoke('save_models_for_key', { apiKeyId: result.id, models: modelsResult.models });
-            setInfo(`Added ${modelsResult.models.length} models.`);
+          const models = await api.fetchModelsForKey(result.id);
+          if (models.length > 0) {
+            await api.saveModelsForKey(result.id, models);
+            setInfo(`Added ${models.length} models.`);
             await loadConfig();
           }
         } catch {
@@ -847,7 +829,7 @@ export function SettingsModal(props: { open: boolean; onClose: () => void }) {
     setSubmitting(true);
     setError(null);
     try {
-      await invoke('update_api_key', { update: { id, ...data } });
+      await api.updateApiKey(id, data);
       setEditingKeyId(null);
       setInfo('API key updated');
       await loadConfig();
@@ -862,7 +844,7 @@ export function SettingsModal(props: { open: boolean; onClose: () => void }) {
     if (!confirm('Delete this API key and all its models?')) return;
     setError(null);
     try {
-      await invoke('delete_api_key', { id });
+      await api.deleteApiKey(id);
       setInfo('API key deleted');
       await loadConfig();
     } catch (e) {
@@ -875,11 +857,11 @@ export function SettingsModal(props: { open: boolean; onClose: () => void }) {
     setError(null);
     setInfo(null);
     try {
-      const result = await invoke<TestConnectionResult>('test_api_key_connection', { apiKeyId: id });
-      if (result.ok) {
-        setInfo(`✓ ${result.message}`);
+      const result = await api.testApiKeyConnection(id);
+      if (result.success) {
+        setInfo('✓ Connection successful');
       } else {
-        setError(`✗ ${result.message}`);
+        setError(`✗ ${result.error || 'Connection failed'}`);
       }
     } catch (e) {
       setError(String(e));
@@ -893,13 +875,13 @@ export function SettingsModal(props: { open: boolean; onClose: () => void }) {
     setError(null);
     setInfo(null);
     try {
-      const result = await invoke<FetchModelsResult>('fetch_models_for_key', { apiKeyId: id });
-      if (result.ok && result.models.length > 0) {
-        await invoke('save_models_for_key', { apiKeyId: id, models: result.models });
-        setInfo(`Found ${result.models.length} models`);
+      const models = await api.fetchModelsForKey(id);
+      if (models.length > 0) {
+        await api.saveModelsForKey(id, models);
+        setInfo(`Found ${models.length} models`);
         await loadConfig();
       } else {
-        setError(result.message || 'No models found');
+        setError('No models found');
       }
     } catch (e) {
       setError(String(e));
@@ -911,7 +893,7 @@ export function SettingsModal(props: { open: boolean; onClose: () => void }) {
   const handleToggleModel = async (modelId: string, apiKeyId: string, enabled: boolean) => {
     setError(null);
     try {
-      await invoke('toggle_model', { toggle: { model_id: modelId, api_key_id: apiKeyId, enabled } });
+      await api.toggleModel(modelId, apiKeyId, enabled);
       await loadConfig();
     } catch (e) {
       setError(String(e));
@@ -922,7 +904,7 @@ export function SettingsModal(props: { open: boolean; onClose: () => void }) {
     if (!confirm(`Delete custom model "${modelId}"?`)) return;
     setError(null);
     try {
-      await invoke('delete_model', { modelId, apiKeyId });
+      await api.deleteModel(apiKeyId, modelId);
       await loadConfig();
     } catch (e) {
       setError(String(e));
@@ -933,14 +915,16 @@ export function SettingsModal(props: { open: boolean; onClose: () => void }) {
     setError(null);
     try {
       // Add single custom model (enabled by default since user manually adds it)
-      await invoke('save_models_for_key', { 
-        apiKeyId, 
-        models: [{ id: modelId, name: modelName }],
-        append: true,
-        isCustom: true  // Mark as custom model so it won't be removed on refresh
-      });
+      await api.saveModelsForKey(apiKeyId, [{ 
+        id: modelId, 
+        name: modelName,
+        provider: 'openai', // Will be overridden by gateway
+        api_key_id: apiKeyId,
+        enabled: true,
+        is_custom: true
+      }]);
       // Enable the custom model immediately after adding
-      await invoke('toggle_model', { toggle: { model_id: modelId, api_key_id: apiKeyId, enabled: true } });
+      await api.toggleModel(modelId, apiKeyId, true);
       setInfo(`Added custom model: ${modelId}`);
       await loadConfig();
     } catch (e) {
@@ -952,7 +936,7 @@ export function SettingsModal(props: { open: boolean; onClose: () => void }) {
     setError(null);
     setInfo(null);
     try {
-      await invoke('init_agent_with_app_config');
+      await api.initAgent();
       setInfo('Agent initialized!');
       setTimeout(() => onClose(), 800);
     } catch (e) {

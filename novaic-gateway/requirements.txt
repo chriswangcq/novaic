@@ -1,0 +1,22 @@
+# NovAIC Gateway Dependencies
+
+# Web framework
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.9
+
+# HTTP client
+httpx>=0.26.0
+
+# Data validation
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# WebSocket support (included in uvicorn[standard])
+websockets>=12.0
+
+# Async support
+anyio>=4.0.0
+
+# Optional: for async file operations
+aiofiles>=23.0.0

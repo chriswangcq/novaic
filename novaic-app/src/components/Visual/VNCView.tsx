@@ -206,134 +206,6 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
     }
   }, [checkWebsockify]);
 
-  // 停止 VNC
-  const stopVnc = useCallback(async () => {
-    try {
-      await fetch(`http://localhost:${CONFIG.agentPort}/api/vnc/stop`, {
-        method: 'POST',
-      });
-      setStatus('stopped');
-      setWsReady(false);
-      setVncConnected(false);
-    } catch (e) {
-      console.error('Failed to stop VNC:', e);
-    }
-  }, [setVncConnected]);
-
-  // 重启 xfce4（专门修复桌面环境黑屏）
-  const restartXfce4 = useCallback(async () => {
-    const startTime = Date.now();
-    const log = (msg: string) => console.log(`[VNC restartXfce4 ${((Date.now() - startTime) / 1000).toFixed(1)}s] ${msg}`);
-    
-    log('=== restartXfce4() BEGIN ===');
-    setStatus('starting');
-    setErrorMsg('');
-    
-    try {
-      log('Calling /api/vnc/restart-xfce4...');
-      const res = await fetch(`http://localhost:${CONFIG.agentPort}/api/vnc/restart-xfce4`, {
-        method: 'POST',
-      });
-      
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.detail || `HTTP ${res.status}`);
-      }
-      
-      const data = await res.json();
-      log(`/api/vnc/restart-xfce4 response: ${JSON.stringify(data)}`);
-      
-      setStatus('running');
-      log('=== restartXfce4() SUCCESS ===');
-      
-      // 提示用户刷新连接
-      setErrorMsg('xfce4 已重启，请等待几秒后刷新 VNC 连接');
-      
-      // 3秒后清除提示
-      setTimeout(() => {
-        setErrorMsg('');
-      }, 3000);
-    } catch (e: any) {
-      log(`=== restartXfce4() ERROR: ${e.message} ===`);
-      setStatus('error');
-      setErrorMsg(e.message || 'Failed to restart xfce4');
-    }
-  }, []);
-
-  // 重启 VNC（修复黑屏问题）
-  const restartVnc = useCallback(async () => {
-    const startTime = Date.now();
-    const log = (msg: string) => console.log(`[VNC restartVnc ${((Date.now() - startTime) / 1000).toFixed(1)}s] ${msg}`);
-    
-    log('=== restartVnc() BEGIN ===');
-    setStatus('starting');
-    setErrorMsg('');
-    setWsReady(false);
-    setVncConnected(false);
-    
-    try {
-      log('Calling /api/vnc/restart...');
-      const res = await fetch(`http://localhost:${CONFIG.agentPort}/api/vnc/restart`, {
-        method: 'POST',
-      });
-      
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.detail || `HTTP ${res.status}`);
-      }
-      
-      const data = await res.json();
-      log(`/api/vnc/restart response: ${JSON.stringify(data)}`);
-      
-      setStatus('running');
-      
-      // 等待服务就绪
-      log('Waiting for services to be ready...');
-      let wsConnected = false;
-      for (let i = 0; i < 20; i++) {
-        try {
-          const wsUrl = wsUrlRef.current || (await vmService.getVncUrl());
-          wsUrlRef.current = wsUrl;
-          const ws = new WebSocket(wsUrl);
-          await new Promise<void>((resolve, reject) => {
-            const timeout = setTimeout(() => {
-              ws.close();
-              reject(new Error('timeout'));
-            }, 1000);
-            ws.onopen = () => {
-              clearTimeout(timeout);
-              ws.close();
-              resolve();
-            };
-            ws.onerror = () => {
-              clearTimeout(timeout);
-              reject(new Error('ws error'));
-            };
-          });
-          wsConnected = true;
-          log(`WebSocket connected after ${i + 1} attempts!`);
-          break;
-        } catch {
-          // 继续等待
-        }
-        await new Promise(r => setTimeout(r, 500));
-      }
-      
-      if (wsConnected) {
-        log('=== restartVnc() SUCCESS ===');
-        setWsReady(true);
-        setVncConnected(true);
-      } else {
-        log('WebSocket not ready after 10s, will retry in background');
-        checkWebsockify();
-      }
-    } catch (e: any) {
-      log(`=== restartVnc() ERROR: ${e.message} ===`);
-      setStatus('error');
-      setErrorMsg(e.message || 'Failed to restart VNC');
-    }
-  }, [checkWebsockify, setVncConnected]);
-
   // 初始化：优先直接连接 websockify，不依赖 Agent
   useEffect(() => {
     let intervalId: ReturnType<typeof setInterval> | null = null;
@@ -439,10 +311,6 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
       if (intervalId) clearInterval(intervalId);
     };
   }, [checkVncStatus, checkWebsockify, startVnc, setVncConnected, wsReady]);
-
-  const openVncClient = () => {
-    window.open(`vnc://localhost:${CONFIG.vncPort}`, '_blank');
-  };
 
   // Connect/disconnect RFB inside the app
   useEffect(() => {
@@ -604,7 +472,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
               className="p-1.5 hover:bg-white/[0.06] rounded transition-colors"
               title="Refresh status"
             >
-              <RefreshCw size={14} className={`text-nb-text-muted ${status === 'starting' ? 'animate-spin' : ''}`} />
+              <RefreshCw size={14} className="text-nb-text-muted" />
             </button>
           </>
         ) : null}
