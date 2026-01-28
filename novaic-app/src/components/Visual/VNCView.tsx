@@ -19,7 +19,7 @@ interface VNCViewProps {
 }
 
 export function VNCView({ isThumbnail = false }: VNCViewProps) {
-  const { setVncConnected, vncLocked, setVncLocked, setSettingsOpen } = useAppStore();
+  const { setVncConnected, vncLocked, setVncLocked, setSettingsOpen, currentAgentId } = useAppStore();
   const [status, setStatus] = useState<VncStatus>('unknown');
   const [errorMsg, setErrorMsg] = useState('');
   const [wsReady, setWsReady] = useState(false);
@@ -102,9 +102,9 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
     
     try {
       // Step 1: 先启动 QEMU VM
-      log('Step 1: Starting QEMU VM...');
+      log(`Step 1: Starting QEMU VM... (agentId: ${currentAgentId})`);
       try {
-        await vmService.start();
+        await vmService.start(currentAgentId || undefined);
         log('QEMU VM started');
       } catch (vmError: any) {
         // Tauri 返回的错误可能是字符串或 Error 对象
@@ -204,7 +204,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
       setStatus('error');
       setErrorMsg(e.message || 'Failed to start VM or VNC');
     }
-  }, [checkWebsockify]);
+  }, [checkWebsockify, currentAgentId, setVncConnected]);
 
   // 初始化：优先直接连接 websockify，不依赖 Agent
   useEffect(() => {

@@ -46,7 +46,8 @@ pub struct SetupProgress {
 }
 
 /// Get cloud image download URL
-fn get_cloud_image_url(os_type: &str, os_version: &str, arch: &str, use_cn_mirrors: bool) -> Result<String, String> {
+/// Note: Always use official Ubuntu source as Chinese mirrors may have different structure or be unavailable
+fn get_cloud_image_url(os_type: &str, os_version: &str, arch: &str, _use_cn_mirrors: bool) -> Result<String, String> {
     match os_type {
         "ubuntu" => {
             let codename = match os_version {
@@ -62,15 +63,10 @@ fn get_cloud_image_url(os_type: &str, os_version: &str, arch: &str, use_cn_mirro
                 _ => return Err(format!("Unsupported architecture: {}", arch)),
             };
             
-            let mirror = if use_cn_mirrors {
-                "https://mirrors.aliyun.com/ubuntu-cloud-images"
-            } else {
-                "https://cloud-images.ubuntu.com"
-            };
-            
+            // Use official Ubuntu cloud images (mirrors often have issues)
             Ok(format!(
-                "{}/{}/current/{}-server-cloudimg-{}.img",
-                mirror, codename, codename, arch_suffix
+                "https://cloud-images.ubuntu.com/{}/current/{}-server-cloudimg-{}.img",
+                codename, codename, arch_suffix
             ))
         }
         "debian" => {
@@ -171,14 +167,17 @@ pub async fn download_cloud_image(
     let url = get_cloud_image_url(&os_type, &os_version, arch, use_cn_mirrors)?;
     println!("[Setup] Downloading cloud image from: {}", url);
     
-    // Create HTTP client
+    // Create HTTP client with User-Agent (some servers reject requests without UA)
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(3600))  // 1 hour timeout for large files
+        .user_agent("NovAIC/0.3.0 (https://github.com/chriswangcq/novaic)")
         .build()
         .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
     
     // Start download
-    let response = client.get(&url).send().await
+    let response = client.get(&url)
+        .header("Accept", "*/*")
+        .send().await
         .map_err(|e| format!("Failed to start download: {}", e))?;
     
     if !response.status().is_success() {

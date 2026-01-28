@@ -30,7 +30,6 @@ interface AppConfigPublic {
   version: number;
   api_keys: ApiKeyEntryPublic[];
   available_models: AvailableModel[];
-  default_model: string;
   max_tokens: number;
   max_iterations: number;
   visible_shell: boolean;
@@ -914,17 +913,7 @@ export function SettingsModal(props: { open: boolean; onClose: () => void }) {
   const handleAddCustomModel = async (apiKeyId: string, modelId: string, modelName: string) => {
     setError(null);
     try {
-      // Add single custom model (enabled by default since user manually adds it)
-      await api.saveModelsForKey(apiKeyId, [{ 
-        id: modelId, 
-        name: modelName,
-        provider: 'openai', // Will be overridden by gateway
-        api_key_id: apiKeyId,
-        enabled: true,
-        is_custom: true
-      }]);
-      // Enable the custom model immediately after adding
-      await api.toggleModel(modelId, apiKeyId, true);
+      await api.addModel(apiKeyId, modelId, modelName);
       setInfo(`Added custom model: ${modelId}`);
       await loadConfig();
     } catch (e) {
@@ -1063,12 +1052,7 @@ export function SettingsModal(props: { open: boolean; onClose: () => void }) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-t border-nb-border px-4 py-3 flex-shrink-0">
-          <div className="text-xs text-nb-text-muted">
-            {config?.default_model && (
-              <>Default: <span className="text-nb-text">{config.default_model}</span></>
-            )}
-          </div>
+        <div className="flex items-center justify-end border-t border-nb-border px-4 py-3 flex-shrink-0">
           <button
             onClick={handleInitAgent}
             disabled={!config || totalEnabledModels === 0}

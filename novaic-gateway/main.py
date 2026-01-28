@@ -171,7 +171,10 @@ if __name__ == "__main__":
                 app,
                 host=HOST,
                 port=PORT,
-                log_level="info"
+                log_level="info",
+                timeout_keep_alive=30,  # Keep-alive timeout
+                ws_ping_interval=20,    # WebSocket ping interval
+                ws_ping_timeout=20,     # WebSocket ping timeout
             )
         else:
             uvicorn.run(
@@ -179,5 +182,8 @@ if __name__ == "__main__":
                 host=HOST,
                 port=PORT,
                 reload=DEBUG,
-                log_level="info"
+                log_level="info",
+                timeout_keep_alive=30,
+                ws_ping_interval=20,
+                ws_ping_timeout=20,
             )

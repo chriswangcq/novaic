@@ -110,8 +110,12 @@ impl GatewayProcess {
         if let Some(mut process) = self.process.take() {
             println!("[Gateway] Stopping...");
             let _ = process.kill();
-            let _ = process.wait();
-            println!("[Gateway] Stopped");
+            // 不阻塞等待，避免退出时卡死
+            // 使用 try_wait 检查是否已退出，但不阻塞
+            match process.try_wait() {
+                Ok(Some(_)) => println!("[Gateway] Stopped immediately"),
+                _ => println!("[Gateway] Kill signal sent, not waiting"),
+            }
         }
     }
 

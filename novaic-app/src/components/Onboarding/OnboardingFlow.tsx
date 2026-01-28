@@ -147,7 +147,20 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         (progress) => setSetupProgress(progress)
       );
 
-      // Start VM and deploy
+      // Start the VM before deploying
+      setSetupProgress({
+        stage: 'Starting VM',
+        progress: 90,
+        message: 'Starting virtual machine...',
+      });
+      
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('start_vm', { agentId: agent.id });
+      
+      // Wait a moment for VM to boot
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      // Deploy code to VM
       await deployCode(agent.vm.ports.ssh);
     } catch (err) {
       console.error('Create agent failed:', err);

@@ -1931,6 +1931,7 @@ dependencies = [
  "chrono",
  "dirs 5.0.1",
  "futures-util",
+ "libc",
  "reqwest 0.11.27",
  "serde",
  "serde_json",

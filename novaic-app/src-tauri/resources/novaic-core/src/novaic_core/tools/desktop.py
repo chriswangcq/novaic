@@ -285,6 +285,29 @@ class DesktopTools:
             original_height = height
             scale = 1.0
             
+            # Check if this is a plain fullscreen screenshot (no zoom, no region)
+            # In this case, return the raw screenshot without any grid/labels/processing
+            is_plain_fullscreen = zoom_factor is None and region is None
+            
+            if is_plain_fullscreen:
+                # Plain fullscreen: return raw screenshot without any processing
+                print(f"[DesktopTools] Plain fullscreen mode - returning raw screenshot")
+                os.unlink(temp_path)
+                
+                return {
+                    "success": True,
+                    "screenshot": base64.b64encode(screenshot_bytes).decode('utf-8'),
+                    "width": width,
+                    "height": height,
+                    "screen_size": {"width": screen_width, "height": screen_height},
+                    "hint": f"""FULL SCREEN ({screen_width}x{screen_height}).
+
+⚠️ TO CLICK:
+1. Estimate target coordinates (X, Y) from the image
+2. mouse(action='aim', x=X, y=Y) to aim and verify
+3. Follow the recommendation in aim result"""
+                }
+            
             if HAS_PIL and width > 0 and height > 0:
                 try:
                     # Open image
@@ -498,59 +521,8 @@ class DesktopTools:
                             except:
                                 delta_font = ImageFont.load_default()
                         
-                        # ===== Draw vertical grid lines (parallel to Y-axis) =====
-                        # Left side of crosshair (negative delta_x)
-                        pos_x = crosshair_x - grid_spacing_pixels
-                        delta_val = -grid_spacing_system
-                        while pos_x >= label_padding_left:
-                            # Draw full vertical grid line
-                            draw.line(
-                                [(pos_x, label_padding_top), (pos_x, label_padding_top + height)],
-                                fill=grid_color,
-                                width=1
-                            )
-                            pos_x -= grid_spacing_pixels
-                            delta_val -= grid_spacing_system
-                        
-                        # Right side of crosshair (positive delta_x)
-                        pos_x = crosshair_x + grid_spacing_pixels
-                        delta_val = grid_spacing_system
-                        while pos_x <= label_padding_left + width:
-                            # Draw full vertical grid line
-                            draw.line(
-                                [(pos_x, label_padding_top), (pos_x, label_padding_top + height)],
-                                fill=grid_color,
-                                width=1
-                            )
-                            pos_x += grid_spacing_pixels
-                            delta_val += grid_spacing_system
-                        
-                        # ===== Draw horizontal grid lines (parallel to X-axis) =====
-                        # Above crosshair (negative delta_y)
-                        pos_y = crosshair_y - grid_spacing_pixels
-                        delta_val = -grid_spacing_system
-                        while pos_y >= label_padding_top:
-                            # Draw full horizontal grid line
-                            draw.line(
-                                [(label_padding_left, pos_y), (label_padding_left + width, pos_y)],
-                                fill=grid_color,
-                                width=1
-                            )
-                            pos_y -= grid_spacing_pixels
-                            delta_val -= grid_spacing_system
-                        
-                        # Below crosshair (positive delta_y)
-                        pos_y = crosshair_y + grid_spacing_pixels
-                        delta_val = grid_spacing_system
-                        while pos_y <= label_padding_top + height:
-                            # Draw full horizontal grid line
-                            draw.line(
-                                [(label_padding_left, pos_y), (label_padding_left + width, pos_y)],
-                                fill=grid_color,
-                                width=1
-                            )
-                            pos_y += grid_spacing_pixels
-                            delta_val += grid_spacing_system
+                        # ===== Grid lines removed to reduce visual clutter =====
+                        # Only keeping coordinate axes and tick marks with labels
                         
                         # ===== Draw main axes (X-axis and Y-axis through crosshair) =====
                         axis_width = 2

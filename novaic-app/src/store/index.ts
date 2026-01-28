@@ -474,12 +474,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
       
       set({ availableModels: enabledModels as AvailableModel[], apiKeys });
       
-      // Set default model if not already selected
+      // Auto-select first enabled model if not already selected
       const { selectedModel } = get();
-      if (!selectedModel && config.default_model) {
-        set({ selectedModel: config.default_model });
-      } else if (!selectedModel && enabledModels.length > 0) {
-        // Use api_key_id:model_id format
+      if (!selectedModel && enabledModels.length > 0) {
         const firstModel = enabledModels[0];
         set({ selectedModel: `${firstModel.api_key_id}:${firstModel.id}` });
       }

@@ -3,6 +3,7 @@ use std::process::{Child, Command, Stdio};
 use tokio::sync::Mutex;
 use tokio::time::{sleep, Duration};
 use std::net::TcpStream;
+use std::sync::Mutex as StdMutex;
 
 /// VM 配置
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
@@ -41,7 +42,7 @@ impl Default for VmConfig {
 /// VM Manager - handles QEMU virtual machine lifecycle
 /// websockify 运行在 VM 内部，通过 QEMU 端口转发访问
 pub struct VmManager {
-    qemu_process: Mutex<Option<Child>>,
+    qemu_process: StdMutex<Option<Child>>,  // 使用 std::sync::Mutex 以支持 Drop
     vm_dir: PathBuf,        // VM 目录 (包含镜像、固件等)
     config: Mutex<VmConfig>,
     current_agent_id: Mutex<Option<String>>,
@@ -50,7 +51,7 @@ pub struct VmManager {
 impl VmManager {
     pub fn new(vm_dir: PathBuf) -> Self {
         Self {
-            qemu_process: Mutex::new(None),
+            qemu_process: StdMutex::new(None),
             vm_dir,
             config: Mutex::new(VmConfig::default()),
             current_agent_id: Mutex::new(None),
@@ -73,6 +74,17 @@ impl VmManager {
     /// Get current agent ID
     pub async fn get_current_agent_id(&self) -> Option<String> {
         self.current_agent_id.lock().await.clone()
+    }
+
+    /// Get VM directory path
+    pub fn vm_dir(&self) -> &PathBuf {
+        &self.vm_dir
+    }
+
+    /// Set image path for VM
+    pub async fn set_image_path(&self, path: Option<String>) {
+        let mut config = self.config.lock().await;
+        config.image_path = path;
     }
 
     #[allow(dead_code)]
@@ -104,13 +116,30 @@ impl VmManager {
     }
 
     /// 获取固件路径 (仅 ARM64 需要)
-    fn get_firmware_path(&self) -> PathBuf {
+    /// 优先从 image_path 同级目录查找，回退到 vm_dir/firmware
+    fn get_firmware_path(&self, image_path: &PathBuf) -> PathBuf {
+        // 优先使用 image_path 同级目录的 UEFI 文件 (agent 目录)
+        if let Some(parent) = image_path.parent() {
+            let agent_firmware = parent.join("QEMU_EFI.fd");
+            if agent_firmware.exists() {
+                return agent_firmware;
+            }
+        }
+        // 回退到传统路径
         self.vm_dir.join("firmware").join("QEMU_EFI.fd")
     }
 
     /// 获取 UEFI 变量路径 (仅 ARM64 需要)
-    fn get_uefi_vars_path(&self) -> PathBuf {
-        // 优先使用 Ubuntu 专用的 UEFI 变量文件
+    /// 优先从 image_path 同级目录查找，回退到 vm_dir/firmware
+    fn get_uefi_vars_path(&self, image_path: &PathBuf) -> PathBuf {
+        // 优先使用 image_path 同级目录的 UEFI 变量文件 (agent 目录)
+        if let Some(parent) = image_path.parent() {
+            let agent_vars = parent.join("QEMU_VARS.fd");
+            if agent_vars.exists() {
+                return agent_vars;
+            }
+        }
+        // 回退到传统路径
         let ubuntu_vars = self.vm_dir.join("firmware").join("QEMU_VARS_ubuntu.fd");
         if ubuntu_vars.exists() {
             ubuntu_vars
@@ -132,11 +161,13 @@ impl VmManager {
             ));
         }
 
-        let mut qemu_guard = self.qemu_process.lock().await;
-        
-        if qemu_guard.is_some() {
-            println!("[VM] VM process already tracked, skipping start");
-            return Ok(());
+        // 检查是否已有进程在跟踪
+        {
+            let qemu_guard = self.qemu_process.lock().unwrap();
+            if qemu_guard.is_some() {
+                println!("[VM] VM process already tracked, skipping start");
+                return Ok(());
+            }
         }
 
         // 检查 websockify 端口是否被占用 - 用于检测 VM 是否在运行
@@ -144,7 +175,6 @@ impl VmManager {
         if TcpStream::connect(format!("127.0.0.1:{}", config.websocket_port)).is_ok() {
             println!("[VM] VM already running (detected via websockify port {}), skipping start", config.websocket_port);
             // 等待 websockify 就绪
-            drop(qemu_guard);
             self.wait_for_websockify().await?;
             return Ok(());
         }
@@ -167,8 +197,11 @@ impl VmManager {
             .spawn()
             .map_err(|e| format!("Failed to start QEMU: {}. Make sure QEMU is installed.", e))?;
 
-        *qemu_guard = Some(child);
-        drop(qemu_guard);
+        // 存储子进程
+        {
+            let mut qemu_guard = self.qemu_process.lock().unwrap();
+            *qemu_guard = Some(child);
+        }
 
         // 等待 QEMU 启动
         println!("[VM] Waiting for QEMU to start...");
@@ -255,27 +288,110 @@ impl VmManager {
         }
     }
 
-    /// Stop the virtual machine
+    /// Stop the virtual machine gracefully
+    /// 1. Try SSH poweroff (gives VM time to sync filesystems)
+    /// 2. Wait for VM to shutdown
+    /// 3. If timeout, force kill
     pub async fn stop(&self) -> Result<(), String> {
-        println!("[VM] Stopping virtual machine...");
-
-        // 停止 QEMU (websockify 在 VM 内，会随 VM 一起停止)
-        let mut qemu_guard = self.qemu_process.lock().await;
-        if let Some(mut child) = qemu_guard.take() {
-            // 尝试优雅关闭
-            let _ = child.kill();
-            let _ = child.wait();
+        println!("[VM] Stopping virtual machine gracefully...");
+        
+        let config = self.config.lock().await.clone();
+        
+        // Step 1: Try graceful shutdown via SSH
+        println!("[VM] Sending poweroff command via SSH...");
+        let ssh_result = Command::new("ssh")
+            .args([
+                "-o", "StrictHostKeyChecking=no",
+                "-o", "ConnectTimeout=3",
+                "-p", &config.ssh_port.to_string(),
+                "ubuntu@127.0.0.1",
+                "sudo poweroff"
+            ])
+            .output();
+        
+        match ssh_result {
+            Ok(_) => println!("[VM] Poweroff command sent"),
+            Err(e) => println!("[VM] SSH poweroff failed: {}, will force stop", e),
         }
-
+        
+        // Step 2: Wait for VM to shutdown (max 10 seconds)
+        println!("[VM] Waiting for VM to shutdown...");
+        for i in 0..10 {
+            sleep(Duration::from_secs(1)).await;
+            
+            // Check if QEMU process has exited
+            let mut qemu_guard = self.qemu_process.lock().unwrap();
+            if let Some(ref mut child) = *qemu_guard {
+                match child.try_wait() {
+                    Ok(Some(_)) => {
+                        println!("[VM] VM shutdown gracefully after {}s", i + 1);
+                        *qemu_guard = None;
+                        return Ok(());
+                    }
+                    Ok(None) => {
+                        // Still running, continue waiting
+                    }
+                    Err(_) => break,
+                }
+            } else {
+                println!("[VM] VM already stopped");
+                return Ok(());
+            }
+        }
+        
+        // Step 3: Force kill if still running
+        println!("[VM] VM didn't shutdown in time, forcing stop...");
+        self.stop_sync();
         println!("[VM] Virtual machine stopped");
         Ok(())
     }
 
+    /// 同步停止 VM（用于 Drop，发送 SIGTERM 并短暂等待）
+    fn stop_sync(&self) {
+        let mut qemu_guard = self.qemu_process.lock().unwrap();
+        if let Some(mut child) = qemu_guard.take() {
+            println!("[VM] Sending SIGTERM to QEMU...");
+            
+            // 先发送 SIGTERM（优雅终止）
+            #[cfg(unix)]
+            unsafe {
+                libc::kill(child.id() as i32, libc::SIGTERM);
+            }
+            #[cfg(not(unix))]
+            {
+                let _ = child.kill();
+            }
+            
+            // 等待最多 3 秒
+            for _ in 0..6 {
+                match child.try_wait() {
+                    Ok(Some(_)) => {
+                        println!("[VM] QEMU terminated gracefully");
+                        return;
+                    }
+                    Ok(None) => {
+                        std::thread::sleep(std::time::Duration::from_millis(500));
+                    }
+                    Err(_) => break,
+                }
+            }
+            
+            // 如果还没退出，强制杀死
+            println!("[VM] QEMU didn't respond to SIGTERM, sending SIGKILL...");
+            let _ = child.kill();
+            let _ = child.try_wait();
+            println!("[VM] QEMU force killed");
+        }
+    }
+
     /// Check if VM is running
     pub async fn is_running(&self) -> bool {
-        let qemu_guard = self.qemu_process.lock().await;
-        if qemu_guard.is_none() {
-            return false;
+        {
+            let qemu_guard = self.qemu_process.lock().unwrap();
+            if qemu_guard.is_none() {
+                return false;
+            }
+            // qemu_guard 在这里被 drop
         }
 
         let config = self.config.lock().await.clone();
@@ -383,7 +499,16 @@ impl VmManager {
     }
 
     /// 获取 cloud-init ISO 路径
-    fn get_seed_iso_path(&self) -> PathBuf {
+    /// 优先从 image_path 同级目录查找，回退到 vm_dir/iso
+    fn get_seed_iso_path(&self, image_path: &PathBuf) -> PathBuf {
+        // 优先使用 image_path 同级目录的 seed ISO (agent 目录)
+        if let Some(parent) = image_path.parent() {
+            let agent_seed = parent.join("cloud-init-seed.iso");
+            if agent_seed.exists() {
+                return agent_seed;
+            }
+        }
+        // 回退到传统路径
         self.vm_dir.join("iso").join("cloud-init-seed.iso")
     }
 
@@ -405,9 +530,9 @@ impl VmManager {
 
         if Self::is_arm64() {
             // ARM64 (Apple Silicon) 配置
-            let firmware_path = self.get_firmware_path();
-            let uefi_vars_path = self.get_uefi_vars_path();
-            let seed_iso_path = self.get_seed_iso_path();
+            let firmware_path = self.get_firmware_path(image_path);
+            let uefi_vars_path = self.get_uefi_vars_path(image_path);
+            let seed_iso_path = self.get_seed_iso_path(image_path);
 
             if !firmware_path.exists() {
                 return Err(format!("UEFI firmware not found: {}", firmware_path.display()));
@@ -519,6 +644,14 @@ impl Default for VmManager {
         };
         
         Self::new(vm_dir)
+    }
+}
+
+/// 确保退出时清理 QEMU 进程
+impl Drop for VmManager {
+    fn drop(&mut self) {
+        println!("[VM] VmManager dropping, cleaning up QEMU...");
+        self.stop_sync();
     }
 }
 

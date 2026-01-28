@@ -10,7 +10,6 @@ export interface AppConfig {
   version: number;
   api_keys: ApiKeyInfo[];
   available_models: AvailableModel[];
-  default_model: string;
   max_tokens: number;
   max_iterations: number;
   visible_shell: boolean;
@@ -123,7 +122,6 @@ export const api = {
    * Update settings
    */
   async updateSettings(settings: Partial<{
-    default_model: string;
     max_tokens: number;
     max_iterations: number;
     visible_shell: boolean;
@@ -194,7 +192,7 @@ export const api = {
   },
 
   /**
-   * Save models for API key
+   * Save models for API key (merges with existing, keeps custom models)
    */
   async saveModelsForKey(keyId: string, models: AvailableModel[]): Promise<void> {
     await invoke('gateway_post', { 
@@ -204,12 +202,12 @@ export const api = {
   },
 
   /**
-   * Set default model
+   * Add a single custom model
    */
-  async setDefaultModel(modelId: string): Promise<void> {
+  async addModel(keyId: string, modelId: string, modelName: string): Promise<void> {
     await invoke('gateway_post', { 
-      path: '/api/config/default-model', 
-      body: { model_id: modelId } 
+      path: `/api/config/api-keys/${keyId}/models/add`, 
+      body: { id: modelId, name: modelName }
     });
   },
 

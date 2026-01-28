@@ -349,7 +349,7 @@ class ConfigManager:
         return False
     
     def save_models_for_key(self, api_key_id: str, models: List[dict]) -> None:
-        """Save/replace all models for an API key"""
+        """Save/merge models for an API key (keeps existing custom models)"""
         config = self.load()
         
         # Get the API key to determine provider
@@ -357,14 +357,23 @@ class ConfigManager:
         if not api_key:
             return
         
-        # Remove existing models for this key
+        # Keep existing custom models for this key
+        existing_custom = [m for m in config.available_models 
+                          if m.api_key_id == api_key_id and m.is_custom]
+        
+        # Remove all existing models for this key
         config.available_models = [m for m in config.available_models if m.api_key_id != api_key_id]
+        
+        # Track new model IDs to avoid duplicates
+        new_model_ids = set()
         
         # Add new models
         for model_data in models:
+            model_id = model_data.get("id", "")
+            new_model_ids.add(model_id)
             model = AvailableModel(
-                id=model_data.get("id", ""),
-                name=model_data.get("name", model_data.get("id", "")),
+                id=model_id,
+                name=model_data.get("name", model_id),
                 provider=api_key.provider,
                 api_key_id=api_key_id,
                 enabled=model_data.get("enabled", True),
@@ -372,7 +381,39 @@ class ConfigManager:
             )
             config.available_models.append(model)
         
+        # Re-add existing custom models that weren't in the new list
+        for custom_model in existing_custom:
+            if custom_model.id not in new_model_ids:
+                config.available_models.append(custom_model)
+        
         self.save(config)
+    
+    def add_model(self, api_key_id: str, model_id: str, model_name: str) -> bool:
+        """Add a single custom model"""
+        config = self.load()
+        
+        # Get the API key to determine provider
+        api_key = config.get_api_key_by_id(api_key_id)
+        if not api_key:
+            return False
+        
+        # Check if model already exists
+        for m in config.available_models:
+            if m.api_key_id == api_key_id and m.id == model_id:
+                return False  # Already exists
+        
+        # Add new custom model
+        model = AvailableModel(
+            id=model_id,
+            name=model_name,
+            provider=api_key.provider,
+            api_key_id=api_key_id,
+            enabled=True,
+            is_custom=True,
+        )
+        config.available_models.append(model)
+        self.save(config)
+        return True
     
     # ==================== Settings ====================
     

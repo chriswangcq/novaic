@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { vmService, VmStatus } from '../services/vm';
+import { useAppStore } from '../store';
 
 interface UseVmReturn {
   status: VmStatus | null;
@@ -29,6 +30,7 @@ export function useVm(): UseVmReturn {
   const [status, setStatus] = useState<VmStatus | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const currentAgentId = useAppStore((state) => state.currentAgentId);
 
   // 刷新状态
   const refreshStatus = useCallback(async () => {
@@ -48,19 +50,25 @@ export function useVm(): UseVmReturn {
     setIsLoading(true);
     setError(null);
     
+    console.log('[useVm] startVm called, currentAgentId:', currentAgentId);
+    
     try {
-      await vmService.start();
+      // 传入当前 agent ID，用于定位 agent 专属的 VM 磁盘
+      const agentId = currentAgentId || undefined;
+      console.log('[useVm] Calling vmService.start with agentId:', agentId);
+      await vmService.start(agentId);
       // 等待 VM 就绪
       await vmService.waitForReady(15, 2000);
       await refreshStatus();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to start VM';
+      console.error('[useVm] startVm error:', errorMessage);
       setError(errorMessage);
       throw err;
     } finally {
       setIsLoading(false);
     }
-  }, [refreshStatus]);
+  }, [refreshStatus, currentAgentId]);
 
   // 停止 VM
   const stopVm = useCallback(async () => {

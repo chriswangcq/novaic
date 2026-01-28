@@ -62,23 +62,10 @@ echo "  novaic-core packaged to: $RESOURCES_DIR/novaic-core/"
 echo ""
 echo "[4/4] Building Tauri App..."
 cd novaic-app
-npm run build
-cd src-tauri
-cargo build --release
+npm run tauri build
 
-# Bundle
 echo ""
-echo "[4/4] Creating DMG..."
-cd target/release/bundle
-
-# Create .app bundle manually if needed
-if [ -d "macos/NovAIC.app" ]; then
-    hdiutil create -volname "NovAIC" -srcfolder macos/NovAIC.app -ov -format UDZO NovAIC_complete.dmg
-    echo ""
-    echo "=== Build Complete ==="
-    echo "Output: novaic-app/src-tauri/target/release/bundle/NovAIC_complete.dmg"
-    ls -lh NovAIC_complete.dmg
-else
-    echo "Error: .app bundle not found"
-    exit 1
-fi
+echo "=== Build Complete ==="
+echo "Output files:"
+ls -lh src-tauri/target/release/bundle/dmg/*.dmg 2>/dev/null || echo "  DMG not found"
+ls -lh src-tauri/target/release/bundle/macos/*.app 2>/dev/null || echo "  APP not found"

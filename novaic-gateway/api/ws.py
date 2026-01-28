@@ -164,7 +164,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
     agent = connection_manager.get_agent(client_id)
     if agent is None:
         config = get_config_manager().load()
-        agent = NovAICAgent(cid=config.vsock_cid)
+        agent = NovAICAgent(mcp_port=config.mcp_port)
         agent.max_iterations = config.max_iterations
         agent.max_tokens = config.max_tokens
         connection_manager.set_agent(client_id, agent)
@@ -213,6 +213,8 @@ async def handle_chat(client_id: str, agent, data: dict):
     mode = data.get("mode", "agent")
     api_key_id = data.get("api_key_id")
     
+    print(f"[WS] handle_chat: model={model_id}, api_key_id={api_key_id}, mode={mode}")
+    
     if not message:
         await connection_manager.send_event(client_id, "error", {"error": "Empty message"})
         return
@@ -232,6 +234,7 @@ async def handle_chat(client_id: str, agent, data: dict):
             provider = key_entry.provider.value
             api_base = key_entry.get_effective_base_url()
             api_key = key_entry.api_key
+            print(f"[WS] Using specified API key: {api_key_id}, provider={provider}")
     
     if not api_key:
         # Find first API key with credentials
@@ -240,6 +243,7 @@ async def handle_chat(client_id: str, agent, data: dict):
                 provider = key_entry.provider.value
                 api_base = key_entry.get_effective_base_url()
                 api_key = key_entry.api_key
+                print(f"[WS] Using fallback API key: {key_entry.id}, provider={provider}")
                 break
     
     if not api_key:
@@ -249,6 +253,9 @@ async def handle_chat(client_id: str, agent, data: dict):
     # Use default model if not specified
     if not model_id:
         model_id = config.default_model
+        print(f"[WS] No model specified, using default: {model_id}")
+    
+    print(f"[WS] Final: model={model_id}, provider={provider}, api_base={api_base}")
     
     # Execute chat
     try:

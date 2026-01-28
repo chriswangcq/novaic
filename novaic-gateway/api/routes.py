@@ -149,9 +149,131 @@ async def delete_model(api_key_id: str, model_id: str):
 
 @router.post("/config/api-keys/{key_id}/models")
 async def save_models_for_key(key_id: str, models: List[dict]):
-    """Save/replace all models for an API key"""
+    """Save/merge models for an API key (keeps existing custom models)"""
     get_config_manager().save_models_for_key(key_id, models)
     return {"status": "ok"}
+
+
+@router.post("/config/api-keys/{key_id}/models/add")
+async def add_model(key_id: str, data: dict):
+    """Add a single custom model"""
+    model_id = data.get("id")
+    model_name = data.get("name", model_id)
+    
+    if not model_id:
+        raise HTTPException(status_code=400, detail="Model ID required")
+    
+    if not get_config_manager().add_model(key_id, model_id, model_name):
+        raise HTTPException(status_code=400, detail="Model already exists or API key not found")
+    
+    return {"status": "ok"}
+
+
+@router.post("/config/api-keys/{key_id}/test")
+async def test_api_key(key_id: str):
+    """Test API key connection by making a simple API call"""
+    import httpx
+    
+    config = get_config_manager().load()
+    entry = config.get_api_key_by_id(key_id)
+    if entry is None:
+        raise HTTPException(status_code=404, detail=f"API key not found: {key_id}")
+    
+    if not entry.api_key:
+        return {"success": False, "error": "No API key configured"}
+    
+    try:
+        base_url = entry.get_effective_base_url()
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # Try a simple models list request
+            if entry.provider.value == "openai":
+                url = f"{base_url}/models"
+                headers = {"Authorization": f"Bearer {entry.api_key}"}
+            elif entry.provider.value == "anthropic":
+                # Anthropic doesn't have a models endpoint, test with a minimal request
+                url = f"{base_url}/messages"
+                headers = {
+                    "x-api-key": entry.api_key,
+                    "anthropic-version": entry.api_version or "2024-02-01",
+                    "Content-Type": "application/json"
+                }
+                # Send minimal request to check auth
+                response = await client.post(url, headers=headers, json={
+                    "model": "claude-3-haiku-20240307",
+                    "max_tokens": 1,
+                    "messages": [{"role": "user", "content": "hi"}]
+                })
+                # 400 means auth worked but request was invalid - that's ok
+                if response.status_code in [200, 400]:
+                    return {"success": True}
+                elif response.status_code == 401:
+                    return {"success": False, "error": "Invalid API key"}
+                else:
+                    return {"success": False, "error": f"HTTP {response.status_code}"}
+            else:
+                url = f"{base_url}/models"
+                headers = {"Authorization": f"Bearer {entry.api_key}"}
+            
+            response = await client.get(url, headers=headers)
+            if response.status_code == 200:
+                return {"success": True}
+            elif response.status_code == 401:
+                return {"success": False, "error": "Invalid API key"}
+            else:
+                return {"success": False, "error": f"HTTP {response.status_code}"}
+    except httpx.TimeoutException:
+        return {"success": False, "error": "Connection timeout"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/config/api-keys/{key_id}/fetch-models")
+async def fetch_models_for_key(key_id: str):
+    """Fetch available models from the provider API"""
+    import httpx
+    
+    config = get_config_manager().load()
+    entry = config.get_api_key_by_id(key_id)
+    if entry is None:
+        raise HTTPException(status_code=404, detail=f"API key not found: {key_id}")
+    
+    if not entry.api_key:
+        return []
+    
+    try:
+        base_url = entry.get_effective_base_url()
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            if entry.provider.value in ["openai", "azure"]:
+                url = f"{base_url}/models"
+                headers = {"Authorization": f"Bearer {entry.api_key}"}
+                response = await client.get(url, headers=headers)
+                if response.status_code == 200:
+                    data = response.json()
+                    models = data.get("data", [])
+                    return [
+                        {
+                            "id": m.get("id"),
+                            "name": m.get("id"),
+                            "provider": entry.provider.value,
+                            "api_key_id": key_id,
+                            "enabled": False,
+                            "is_custom": False
+                        }
+                        for m in models if m.get("id")
+                    ]
+            elif entry.provider.value == "anthropic":
+                # Anthropic doesn't have a models list API, return common models
+                return [
+                    {"id": "claude-sonnet-4-20250514", "name": "Claude Sonnet 4", "provider": "anthropic", "api_key_id": key_id, "enabled": False, "is_custom": False},
+                    {"id": "claude-opus-4-20250514", "name": "Claude Opus 4", "provider": "anthropic", "api_key_id": key_id, "enabled": False, "is_custom": False},
+                    {"id": "claude-3-5-sonnet-20241022", "name": "Claude 3.5 Sonnet", "provider": "anthropic", "api_key_id": key_id, "enabled": False, "is_custom": False},
+                    {"id": "claude-3-opus-20240229", "name": "Claude 3 Opus", "provider": "anthropic", "api_key_id": key_id, "enabled": False, "is_custom": False},
+                    {"id": "claude-3-haiku-20240307", "name": "Claude 3 Haiku", "provider": "anthropic", "api_key_id": key_id, "enabled": False, "is_custom": False},
+                ]
+        return []
+    except Exception as e:
+        print(f"[API] Error fetching models: {e}")
+        return []
 
 
 @router.post("/config/default-model")

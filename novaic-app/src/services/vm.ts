@@ -20,11 +20,12 @@ export interface VmStatus {
 class VmService {
   /**
    * 启动虚拟机
+   * @param agentId - 可选的 Agent ID，用于定位 agent 专属的 VM 磁盘
    */
-  async start(): Promise<string> {
+  async start(agentId?: string): Promise<string> {
     try {
-      const result = await invoke<string>('start_vm');
-      console.log('[VM Service] Start:', result);
+      const result = await invoke<string>('start_vm', { agentId });
+      console.log('[VM Service] Start:', result, 'agentId:', agentId);
       return result;
     } catch (error) {
       console.error('[VM Service] Start failed:', error);

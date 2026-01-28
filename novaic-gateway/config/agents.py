@@ -199,6 +199,12 @@ class AgentConfigManager:
             print(f"[AgentConfig] Copying image from {source_image} to {dest_image}")
             shutil.copy2(source_image, dest_image)
         
+        # Copy UEFI firmware from Homebrew QEMU (ARM64 only)
+        self._setup_uefi_firmware(vm_dir)
+        
+        # Create cloud-init seed ISO
+        self._create_seed_iso(vm_dir)
+        
         # Add to config
         config.agents.append(agent)
         
@@ -314,6 +320,105 @@ class AgentConfigManager:
         """Allocate unique ports for a new agent (deprecated, use _allocate_resources)"""
         ports, _, _ = self._allocate_resources(config)
         return ports
+    
+    def _setup_uefi_firmware(self, vm_dir: Path) -> None:
+        """Copy UEFI firmware from Homebrew QEMU to VM directory (ARM64 only)"""
+        import platform
+        import subprocess
+        
+        if platform.machine() != "arm64":
+            return
+        
+        # Homebrew QEMU UEFI paths
+        homebrew_paths = [
+            Path("/opt/homebrew/share/qemu/edk2-aarch64-code.fd"),
+            Path("/usr/local/share/qemu/edk2-aarch64-code.fd"),
+        ]
+        
+        # Find UEFI firmware
+        src_firmware = None
+        for p in homebrew_paths:
+            if p.exists():
+                src_firmware = p
+                break
+        
+        if not src_firmware:
+            print("[AgentConfig] Warning: UEFI firmware not found from Homebrew QEMU")
+            return
+        
+        # Copy firmware (read-only)
+        dest_firmware = vm_dir / "QEMU_EFI.fd"
+        if not dest_firmware.exists():
+            shutil.copy2(src_firmware, dest_firmware)
+            print(f"[AgentConfig] Copied UEFI firmware to {dest_firmware}")
+        
+        # Create empty VARS file (writable, for NVRAM)
+        dest_vars = vm_dir / "QEMU_VARS.fd"
+        if not dest_vars.exists():
+            # Create 64MB empty file for NVRAM
+            with open(dest_vars, "wb") as f:
+                f.write(b"\x00" * (64 * 1024 * 1024))
+            print(f"[AgentConfig] Created UEFI VARS at {dest_vars}")
+    
+    def _create_seed_iso(self, vm_dir: Path) -> None:
+        """Create cloud-init seed ISO for VM initialization"""
+        import subprocess
+        
+        seed_iso = vm_dir / "seed.iso"
+        if seed_iso.exists():
+            return
+        
+        # Create cloud-init directory
+        ci_dir = vm_dir / "cloud-init"
+        ci_dir.mkdir(exist_ok=True)
+        
+        # Get SSH public key
+        ssh_pubkey = ""
+        ssh_key_paths = [
+            Path.home() / ".ssh" / "id_ed25519.pub",
+            Path.home() / ".ssh" / "id_rsa.pub",
+        ]
+        for key_path in ssh_key_paths:
+            if key_path.exists():
+                ssh_pubkey = key_path.read_text().strip()
+                break
+        
+        # meta-data
+        (ci_dir / "meta-data").write_text("instance-id: novaic-vm\nlocal-hostname: novaic\n")
+        
+        # user-data
+        user_data = f"""#cloud-config
+hostname: novaic
+users:
+  - name: ubuntu
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - {ssh_pubkey}
+chpasswd:
+  list: |
+    ubuntu:ubuntu
+  expire: false
+ssh_pwauth: true
+"""
+        (ci_dir / "user-data").write_text(user_data)
+        
+        # Create ISO using hdiutil (macOS) or genisoimage (Linux)
+        try:
+            result = subprocess.run(
+                ["hdiutil", "makehybrid", "-o", str(seed_iso), "-hfs", "-joliet",
+                 "-iso", "-default-volume-name", "cidata", str(ci_dir)],
+                capture_output=True, text=True
+            )
+            if result.returncode == 0:
+                print(f"[AgentConfig] Created seed ISO at {seed_iso}")
+            else:
+                print(f"[AgentConfig] Warning: Failed to create seed ISO: {result.stderr}")
+        except Exception as e:
+            print(f"[AgentConfig] Warning: Failed to create seed ISO: {e}")
+        
+        # Cleanup
+        shutil.rmtree(ci_dir, ignore_errors=True)
     
     def get_available_images(self) -> List[Dict[str, Any]]:
         """

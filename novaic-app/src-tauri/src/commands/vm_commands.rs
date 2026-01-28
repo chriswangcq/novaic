@@ -1,5 +1,6 @@
 use crate::vm::manager::{VmManager, VmStatus};
 use std::sync::Arc;
+use std::path::PathBuf;
 use tauri::State;
 use tokio::sync::Mutex;
 
@@ -7,23 +8,46 @@ use tokio::sync::Mutex;
 pub type VmManagerState = Arc<Mutex<VmManager>>;
 
 /// Start the virtual machine
+/// If agent_id is provided, uses the agent's VM directory
 #[tauri::command]
 pub async fn start_vm(
     vm_manager: State<'_, VmManagerState>,
+    agent_id: Option<String>,
 ) -> Result<String, String> {
-    println!("[Command] start_vm called");
+    println!("[Command] start_vm called, agent_id: {:?}", agent_id);
     
     let manager = vm_manager.lock().await;
     
     // 检查是否已在运行
-    if manager.is_running().await {
+    let is_running = manager.is_running().await;
+    println!("[Command] is_running: {}", is_running);
+    if is_running {
         return Err("VM is already running".to_string());
     }
     
-    // 启动 VM
-    manager.start().await?;
+    // 如果提供了 agent_id，设置镜像路径
+    if let Some(id) = agent_id {
+        let agent_disk = manager.vm_dir().join(&id).join("disk.qcow2");
+        if agent_disk.exists() {
+            println!("[Command] Using agent disk: {:?}", agent_disk);
+            manager.set_image_path(agent_disk.to_str().map(|s| s.to_string())).await;
+        } else {
+            return Err(format!("Agent disk not found: {:?}", agent_disk));
+        }
+    }
     
-    Ok("VM started successfully".to_string())
+    // 启动 VM
+    println!("[Command] Calling manager.start()...");
+    match manager.start().await {
+        Ok(()) => {
+            println!("[Command] VM started successfully");
+            Ok("VM started successfully".to_string())
+        }
+        Err(e) => {
+            println!("[Command] VM start failed: {}", e);
+            Err(e)
+        }
+    }
 }
 
 /// Stop the virtual machine
