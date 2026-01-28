@@ -39,10 +39,10 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": [
-      "resources/novaic-gateway/**/*",
-      "resources/novaic-core/**/*"
-    ],
+    "resources": {
+      "resources/novaic-gateway": "novaic-gateway",
+      "resources/novaic-core": "novaic-core"
+    },
     "macOS": {
       "minimumSystemVersion": "10.15"
     },

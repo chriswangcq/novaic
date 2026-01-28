@@ -171,3 +171,6 @@ paper/
 # Build artifacts
 *.dmg
 .cursor/
+
+# Tauri bundled resources (copied during build)
+novaic-app/src-tauri/resources/novaic-gateway/

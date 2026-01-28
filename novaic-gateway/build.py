@@ -28,6 +28,7 @@ def main():
     cmd = [
         sys.executable, "-m", "PyInstaller",
         "--onedir",
+        "--noconfirm",  # Overwrite output without asking
         "--name", "novaic-gateway",
         "--distpath", "dist",
         "--workpath", "build",

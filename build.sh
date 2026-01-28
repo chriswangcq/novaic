@@ -64,6 +64,8 @@ echo "  novaic-core packaged to: $RESOURCES_DIR/novaic-core/"
 echo ""
 echo "[4/4] Building Tauri App..."
 cd novaic-app
+# Unset CI env var as tauri CLI doesn't accept CI=1 (only true/false)
+unset CI
 npm run tauri build
 
 echo ""
