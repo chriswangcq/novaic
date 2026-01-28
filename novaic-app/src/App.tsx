@@ -5,7 +5,7 @@ import { Resizer } from './components/Layout/Resizer';
 import { Header } from './components/Layout/Header';
 import { useAppStore } from './store';
 import { SettingsModal } from './components/Settings/SettingsModal';
-import { OnboardingFlow } from './components/Onboarding';
+import { AgentDashboard } from './components/Dashboard';
 import { Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
 
 // Layout constraints
@@ -79,18 +79,19 @@ function App() {
     settingsOpen,
     setSettingsOpen,
     agents,
+    currentAgentId,
     loadAgents
   } = useAppStore();
 
   const [isLoadingAgents, setIsLoadingAgents] = useState(true);
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [inWorkspace, setInWorkspace] = useState(false);
 
   useEffect(() => {
     // Initialize app on mount
     initialize();
   }, [initialize]);
 
-  // Load agents and check if we need to show onboarding
+  // Load agents after gateway is initialized
   useEffect(() => {
     const checkAgents = async () => {
       setIsLoadingAgents(true);
@@ -103,20 +104,10 @@ function App() {
       }
     };
     
-    // Only check agents after gateway is initialized
     if (isInitialized) {
       checkAgents();
     }
   }, [isInitialized, loadAgents]);
-
-  // Show onboarding if no agents after loading
-  useEffect(() => {
-    if (!isLoadingAgents && agents.length === 0 && isInitialized) {
-      setShowOnboarding(true);
-    } else {
-      setShowOnboarding(false);
-    }
-  }, [isLoadingAgents, agents.length, isInitialized]);
 
   // Handle resize with constraints
   const handleResize = useCallback((delta: number) => {
@@ -135,13 +126,18 @@ function App() {
     setLeftPanelWidth(400);
   }, [setLeftPanelWidth]);
 
-  // Handle onboarding completion
-  const handleOnboardingComplete = useCallback(async () => {
-    setShowOnboarding(false);
-    await loadAgents();
-  }, [loadAgents]);
+  // Enter workspace for an agent
+  const handleEnterWorkspace = useCallback((agentId: string) => {
+    console.log('[App] Entering workspace for agent:', agentId);
+    setInWorkspace(true);
+  }, []);
 
-  // Show loading screen while checking agents
+  // Back to dashboard
+  const handleBackToDashboard = useCallback(() => {
+    setInWorkspace(false);
+  }, []);
+
+  // Show loading screen while initializing
   if (!isInitialized || isLoadingAgents) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-nb-bg">
@@ -153,15 +149,18 @@ function App() {
     );
   }
 
-  // Show onboarding flow if no agents
-  if (showOnboarding) {
-    return <OnboardingFlow onComplete={handleOnboardingComplete} />;
+  // Show Dashboard (agent list) if not in workspace
+  if (!inWorkspace) {
+    return <AgentDashboard onEnterWorkspace={handleEnterWorkspace} />;
   }
 
   return (
     <div className="h-screen flex flex-col bg-nb-bg">
       {/* Header with Agent Selector */}
-      <Header onOpenSettings={() => setSettingsOpen(true)} />
+      <Header 
+        onOpenSettings={() => setSettingsOpen(true)} 
+        onBackToDashboard={handleBackToDashboard}
+      />
 
       {/* Main Content */}
       <main className="flex-1 flex overflow-hidden relative">

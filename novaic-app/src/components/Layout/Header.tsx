@@ -1,14 +1,31 @@
-import { Settings, Trash2 } from 'lucide-react';
+import { Settings, Trash2, ChevronLeft } from 'lucide-react';
 import { AgentSelector } from './AgentSelector';
 import { CreateAgentModal } from '../Agent/CreateAgentModal';
 import { useAppStore } from '../../store';
 
-export function Header(props: { onOpenSettings: () => void }) {
+interface HeaderProps {
+  onOpenSettings: () => void;
+  onBackToDashboard?: () => void;
+}
+
+export function Header({ onOpenSettings, onBackToDashboard }: HeaderProps) {
   const { createAgentModalOpen, setCreateAgentModalOpen, clearMessages } = useAppStore();
 
   return (
     <>
       <header className="h-10 bg-nb-surface border-b border-nb-border flex items-center px-3 no-select shrink-0" data-tauri-drag-region>
+        {/* Back to Dashboard */}
+        {onBackToDashboard && (
+          <button
+            onClick={onBackToDashboard}
+            className="flex items-center gap-1 px-2 py-1 hover:bg-nb-surface-2 rounded-lg transition-colors mr-2 text-nb-text-secondary hover:text-nb-text"
+            title="Back to Dashboard"
+          >
+            <ChevronLeft size={16} />
+            <span className="text-xs">Dashboard</span>
+          </button>
+        )}
+
         {/* Logo */}
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">

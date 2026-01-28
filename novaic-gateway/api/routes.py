@@ -37,16 +37,17 @@ def get_agent() -> NovAICAgent:
 
 @router.get("/health", response_model=HealthResponse)
 async def health_check():
-    """Health check endpoint"""
+    """Health check endpoint - returns immediately without blocking on MCP"""
     agent = get_agent()
-    health = await agent.check_executor_health()
     
+    # Don't block on MCP connection - just return current state
+    # MCP initialization happens lazily on first chat request
     return HealthResponse(
         status="healthy",
         version="0.3.0",
         agent_initialized=agent._tools_initialized,
-        mcp_healthy=health.get("healthy", False),
-        tools_count=health.get("tools_count", 0)
+        mcp_healthy=agent._executor_healthy or False,
+        tools_count=len(agent.tools)
     )
 
 

@@ -172,10 +172,10 @@ type GatewayState = Arc<Mutex<GatewayProcess>>;
 /// Returns (path, is_binary)
 fn get_gateway_info(app: &AppHandle) -> (PathBuf, bool) {
     // Try to use bundled binary first (production mode)
-    // onedir mode: binary is at resources/novaic-gateway/novaic-gateway
+    // onedir mode: binary is at novaic-gateway/novaic-gateway (relative to resource_dir)
     if let Ok(resource_dir) = app.path().resource_dir() {
-        // Check onedir structure first (resources/novaic-gateway/novaic-gateway)
-        let onedir_path = resource_dir.join("resources/novaic-gateway/novaic-gateway");
+        // Check onedir structure first (novaic-gateway/novaic-gateway)
+        let onedir_path = resource_dir.join("novaic-gateway/novaic-gateway");
         println!("[Gateway] Checking onedir binary at: {:?}", onedir_path);
         if onedir_path.exists() {
             println!("[Gateway] Found onedir binary, using production mode");
@@ -183,7 +183,7 @@ fn get_gateway_info(app: &AppHandle) -> (PathBuf, bool) {
         }
         
         // Fallback: check single file (legacy onefile mode)
-        let binary_path = resource_dir.join("resources/novaic-gateway");
+        let binary_path = resource_dir.join("novaic-gateway");
         println!("[Gateway] Checking single file binary at: {:?}", binary_path);
         if binary_path.is_file() {
             println!("[Gateway] Found single file binary, using production mode");
