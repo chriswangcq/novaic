@@ -2,6 +2,7 @@ import { useEffect, useCallback } from 'react';
 import { ChatPanel } from './components/Chat/ChatPanel';
 import { VisualPanel } from './components/Visual/VisualPanel';
 import { Resizer } from './components/Layout/Resizer';
+import { Header } from './components/Layout/Header';
 import { useAppStore } from './store';
 import { SettingsModal } from './components/Settings/SettingsModal';
 
@@ -45,6 +46,9 @@ function App() {
 
   return (
     <div className="h-screen flex flex-col bg-nb-bg">
+      {/* Header with Agent Selector */}
+      <Header onOpenSettings={() => setSettingsOpen(true)} />
+
       {/* Main Content */}
       <main className="flex-1 flex overflow-hidden relative">
         {/* Full mode: only VM */}
