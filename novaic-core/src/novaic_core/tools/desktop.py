@@ -88,7 +88,8 @@ class DesktopTools:
         region: Optional[Dict[str, int]] = None,
         center: Optional[Dict[str, int]] = None,
         zoom_factor: Optional[float] = None,
-        grid_density: Optional[str] = None
+        grid_density: Optional[str] = None,
+        prev_center: Optional[Dict[str, int]] = None
     ) -> Dict[str, Any]:
         """
         Take a desktop screenshot with optional coordinate grid overlay
@@ -100,6 +101,7 @@ class DesktopTools:
                         When provided with center, captures area centered at center point
             grid_density: Optional grid density - "fine" (100px), "normal" (200px), "coarse" (400px)
                          If None, auto-selects based on screenshot size
+            prev_center: Optional {x, y} previous aim point (for showing delta movement arrow)
         """
         try:
             # First, always capture full screen to get dimensions
@@ -445,285 +447,607 @@ class DesktopTools:
                         width=2
                     )
                     
-                    # Calculate which grid lines to draw based on system coordinates
-                    # Since we resized the image, we need to convert system coordinates to resized pixel positions
-                    # original_grid_spacing is defined in original (system) coordinates (e.g., 50, 100, 200)
-                    # Conversion: pixel_x = (sys_x - offset_x) * scale
+                    # AIM MODE: Draw crosshair coordinate axes with delta scale
+                    # Normal mode: Draw traditional grid
+                    is_aim_mode = zoom_factor is not None and center is not None
                     
-                    # Find the first grid line that's >= offset_x (in system coordinates)
-                    # Round UP to nearest grid line (ensures integer coordinates)
-                    start_x = ((offset_x + original_grid_spacing - 1) // original_grid_spacing) * original_grid_spacing
-                    
-                    # Calculate the actual system coordinate range for the visible area
-                    # When needs_padding, offset_x/offset_y now represent the desired region start
-                    visible_start_x_system = offset_x
-                    visible_end_x_system = offset_x + original_width
-                    pixel_offset_x = 0  # No pixel offset needed, padding is already in the image
-                    
-                    # Vertical lines - draw system coordinates
-                    # Iterate through system coordinates, convert to resized pixels
-                    end_x_system = visible_end_x_system
-                    
-                    # Helper function to draw dashed line
-                    def draw_dashed_line(draw, start, end, color, width=1, dash_length=8, gap_length=4):
-                        """Draw a dashed line from start to end"""
-                        x1, y1 = start
-                        x2, y2 = end
-                        # Calculate line length and direction
-                        dx = x2 - x1
-                        dy = y2 - y1
-                        length = (dx**2 + dy**2) ** 0.5
-                        if length == 0:
-                            return
-                        # Normalize direction
-                        dx, dy = dx / length, dy / length
-                        # Draw dashes
-                        pos = 0
-                        while pos < length:
-                            dash_end = min(pos + dash_length, length)
-                            draw.line(
-                                [(x1 + dx * pos, y1 + dy * pos), (x1 + dx * dash_end, y1 + dy * dash_end)],
-                                fill=color,
-                                width=width
-                            )
-                            pos += dash_length + gap_length
-                    
-                    # First draw secondary lines (if needed) - they go behind primary lines
-                    if need_secondary_lines:
-                        # Secondary lines at half of primary intervals, but skip positions that are primary lines
-                        secondary_start_x = ((offset_x + secondary_grid_spacing - 1) // secondary_grid_spacing) * secondary_grid_spacing
-                        for sys_x in range(secondary_start_x, end_x_system + 1, secondary_grid_spacing):
-                            # Skip if this is a primary line position (divisible by primary_grid_spacing)
-                            if sys_x % primary_grid_spacing == 0:
-                                continue
-                            # Calculate pixel position in resized screenshot
-                            pixel_x_in_screenshot = int((sys_x - visible_start_x_system) * scale)
-                            if 0 <= pixel_x_in_screenshot <= width:
-                                actual_x = label_padding_left + pixel_x_in_screenshot
-                                # Draw secondary vertical line as dashed (no label)
-                                draw_dashed_line(
-                                    draw,
-                                    (actual_x, label_padding_top),
-                                    (actual_x, label_padding_top + height),
-                                    secondary_line_color,
-                                    secondary_line_width
-                                )
-                    
-                    # Now draw primary lines with labels
-                    for sys_x in range(start_x, end_x_system + 1, original_grid_spacing):
-                        # Calculate pixel position in resized screenshot
-                        pixel_x_in_screenshot = int((sys_x - visible_start_x_system) * scale)
-                        if 0 <= pixel_x_in_screenshot <= width:
-                            # Actual x position in new image (with label padding)
-                            actual_x = label_padding_left + pixel_x_in_screenshot
-                            
-                            # Draw primary vertical line through screenshot area
-                            draw.line(
-                                [(actual_x, label_padding_top), (actual_x, label_padding_top + height)],
-                                fill=primary_line_color,
-                                width=primary_line_width
-                            )
-                            
-                            # Draw coordinate label at top (outside screenshot, in padding area)
-                            coord_text = str(sys_x)
-                            bbox = draw.textbbox((0, 0), coord_text, font=font)
-                            text_width = bbox[2] - bbox[0]
-                            text_height = bbox[3] - bbox[1]
-                            
-                            # Draw label above screenshot area
-                            label_y = label_padding_top - text_height - 5
-                            draw.rectangle(
-                                [actual_x - text_width // 2 - 3, label_y - 2, actual_x + text_width // 2 + 3, label_y + text_height + 2],
-                                fill=text_bg_color,
-                                outline=(200, 200, 200, 255),
-                                width=1
-                            )
-                            draw.text(
-                                (actual_x - text_width // 2, label_y),
-                                coord_text,
-                                fill=text_color,
-                                font=font
-                            )
-                            
-                            # Draw coordinate label at bottom (outside screenshot, in padding area)
-                            label_y_bottom = label_padding_top + height + 5
-                            draw.rectangle(
-                                [actual_x - text_width // 2 - 3, label_y_bottom - 2, actual_x + text_width // 2 + 3, label_y_bottom + text_height + 2],
-                                fill=text_bg_color,
-                                outline=(200, 200, 200, 255),
-                                width=1
-                            )
-                            draw.text(
-                                (actual_x - text_width // 2, label_y_bottom),
-                                coord_text,
-                                fill=text_color,
-                                font=font
-                            )
-                    
-                    # Find the first grid line that's >= offset_y (in system coordinates)
-                    # Round UP to nearest grid line (ensures integer coordinates)
-                    start_y = ((offset_y + original_grid_spacing - 1) // original_grid_spacing) * original_grid_spacing
-                    
-                    # Calculate the actual system coordinate range for the visible area (Y axis)
-                    visible_start_y_system = offset_y
-                    visible_end_y_system = offset_y + original_height
-                    pixel_offset_y = 0  # No pixel offset needed, padding is already in the image
-                    
-                    # Horizontal lines - draw system coordinates
-                    # Iterate through system coordinates, convert to resized pixels
-                    end_y_system = visible_end_y_system
-                    
-                    # First draw secondary horizontal lines (if needed) - they go behind primary lines
-                    if need_secondary_lines:
-                        # Secondary lines at half of primary intervals, but skip positions that are primary lines
-                        secondary_start_y = ((offset_y + secondary_grid_spacing - 1) // secondary_grid_spacing) * secondary_grid_spacing
-                        for sys_y in range(secondary_start_y, end_y_system + 1, secondary_grid_spacing):
-                            # Skip if this is a primary line position (divisible by primary_grid_spacing)
-                            if sys_y % primary_grid_spacing == 0:
-                                continue
-                            # Calculate pixel position in resized screenshot
-                            pixel_y_in_screenshot = int((sys_y - visible_start_y_system) * scale)
-                            if 0 <= pixel_y_in_screenshot <= height:
-                                actual_y = label_padding_top + pixel_y_in_screenshot
-                                # Draw secondary horizontal line as dashed (no label)
-                                draw_dashed_line(
-                                    draw,
-                                    (label_padding_left, actual_y),
-                                    (label_padding_left + width, actual_y),
-                                    secondary_line_color,
-                                    secondary_line_width
-                                )
-                    
-                    # Now draw primary lines with labels
-                    for sys_y in range(start_y, end_y_system + 1, original_grid_spacing):
-                        # Calculate pixel position in resized screenshot
-                        pixel_y_in_screenshot = int((sys_y - visible_start_y_system) * scale)
-                        if 0 <= pixel_y_in_screenshot <= height:
-                            # Actual y position in new image (with label padding)
-                            actual_y = label_padding_top + pixel_y_in_screenshot
-                            
-                            # Draw primary horizontal line through screenshot area
-                            draw.line(
-                                [(label_padding_left, actual_y), (label_padding_left + width, actual_y)],
-                                fill=primary_line_color,
-                                width=primary_line_width
-                            )
-                            
-                            # Draw coordinate label on left (outside screenshot, in padding area)
-                            coord_text = str(sys_y)
-                            bbox = draw.textbbox((0, 0), coord_text, font=font)
-                            text_width = bbox[2] - bbox[0]
-                            text_height = bbox[3] - bbox[1]
-                            
-                            # Draw label to the left of screenshot area
-                            label_x = label_padding_left - text_width - 8
-                            draw.rectangle(
-                                [label_x - 3, actual_y - text_height // 2 - 2, label_x + text_width + 3, actual_y + text_height // 2 + 2],
-                                fill=text_bg_color,
-                                outline=(200, 200, 200, 255),
-                                width=1
-                            )
-                            draw.text(
-                                (label_x, actual_y - text_height // 2),
-                                coord_text,
-                                fill=text_color,
-                                font=font
-                            )
-                            
-                            # Draw coordinate label on right (outside screenshot, in padding area)
-                            label_x_right = label_padding_left + width + 8
-                            draw.rectangle(
-                                [label_x_right - 3, actual_y - text_height // 2 - 2, label_x_right + text_width + 3, actual_y + text_height // 2 + 2],
-                                fill=text_bg_color,
-                                outline=(200, 200, 200, 255),
-                                width=1
-                            )
-                            draw.text(
-                                (label_x_right, actual_y - text_height // 2),
-                                coord_text,
-                                fill=text_color,
-                                font=font
-                            )
-                    
-                    # Count grid lines drawn
-                    num_primary_vertical = len([x for x in range(start_x, end_x_system + 1, original_grid_spacing) if visible_start_x_system <= x <= visible_end_x_system])
-                    num_primary_horizontal = len([y for y in range(start_y, end_y_system + 1, original_grid_spacing) if visible_start_y_system <= y <= visible_end_y_system])
-                    
-                    if need_secondary_lines:
-                        secondary_start_x_count = ((offset_x + secondary_grid_spacing - 1) // secondary_grid_spacing) * secondary_grid_spacing
-                        secondary_start_y_count = ((offset_y + secondary_grid_spacing - 1) // secondary_grid_spacing) * secondary_grid_spacing
-                        num_secondary_vertical = len([x for x in range(secondary_start_x_count, end_x_system + 1, secondary_grid_spacing) if visible_start_x_system <= x <= visible_end_x_system and x % primary_grid_spacing != 0])
-                        num_secondary_horizontal = len([y for y in range(secondary_start_y_count, end_y_system + 1, secondary_grid_spacing) if visible_start_y_system <= y <= visible_end_y_system and y % primary_grid_spacing != 0])
-                        print(f"[DesktopTools] Adaptive Grid: {num_primary_vertical}+{num_secondary_vertical} vertical, {num_primary_horizontal}+{num_secondary_horizontal} horizontal (primary+secondary)")
-                    else:
-                        print(f"[DesktopTools] Grid: {num_primary_vertical} vertical, {num_primary_horizontal} horizontal (primary only, spacing: {original_grid_spacing}px)")
-                    print(f"[DesktopTools] Padded image size: {new_width}x{new_height} (original: {width}x{height})")
-                    if needs_padding:
-                        print(f"[DesktopTools] Center mode with padding: center=({center_x}, {center_y}), zoom_factor={zoom_factor}")
-                        print(f"[DesktopTools] Capture region: ({offset_x}, {offset_y}) size {capture_width}x{capture_height}")
-                    
-                    # Draw crosshair at center point when using center+zoom mode (aiming mode)
-                    if zoom_factor is not None and center is not None:
-                        # Calculate center point position in the final image
-                        # center_x, center_y are in system coordinates
+                    if is_aim_mode:
+                        # ========== AIM MODE: Full Grid + Delta Scale on Axes ==========
+                        # Draw full grid lines with delta scale labels on X/Y axes
+                        
                         crosshair_sys_x = center_x
                         crosshair_sys_y = center_y
                         
-                        # Convert to pixel position in resized screenshot
+                        # Convert aim point to pixel position in resized screenshot
+                        visible_start_x_system = offset_x
+                        visible_start_y_system = offset_y
                         crosshair_pixel_x = int((crosshair_sys_x - visible_start_x_system) * scale)
                         crosshair_pixel_y = int((crosshair_sys_y - visible_start_y_system) * scale)
                         
-                        # Add padding offset
+                        # Add padding offset to get position in final image
                         crosshair_x = label_padding_left + crosshair_pixel_x
                         crosshair_y = label_padding_top + crosshair_pixel_y
                         
-                        # Draw crosshair (star pattern)
-                        crosshair_color = (255, 0, 255, 255)  # Magenta for visibility
-                        crosshair_size = 20  # Length of each arm
-                        crosshair_width = 2
+                        # Colors
+                        axis_color = (255, 0, 255, 255)  # Magenta for main axes
+                        grid_color = (255, 0, 255, 100)  # Light magenta for grid lines
+                        origin_color = (255, 0, 255, 255)  # Magenta for origin marker
                         
-                        # Horizontal line
-                        draw.line(
-                            [(crosshair_x - crosshair_size, crosshair_y), (crosshair_x + crosshair_size, crosshair_y)],
-                            fill=crosshair_color,
-                            width=crosshair_width
-                        )
-                        # Vertical line
-                        draw.line(
-                            [(crosshair_x, crosshair_y - crosshair_size), (crosshair_x, crosshair_y + crosshair_size)],
-                            fill=crosshair_color,
-                            width=crosshair_width
-                        )
-                        # Draw small circle at center
-                        circle_radius = 5
-                        draw.ellipse(
-                            [crosshair_x - circle_radius, crosshair_y - circle_radius, 
-                             crosshair_x + circle_radius, crosshair_y + circle_radius],
-                            outline=crosshair_color,
-                            width=crosshair_width
-                        )
+                        # Calculate grid spacing based on zoom level
+                        # Aim mode uses 2x denser grid for precise positioning
+                        if zoom_factor >= 10:
+                            grid_spacing_system = 5   # Ultra fine
+                        elif zoom_factor >= 6:
+                            grid_spacing_system = 10  # Very fine
+                        elif zoom_factor >= 4:
+                            grid_spacing_system = 25  # Fine
+                        elif zoom_factor >= 2:
+                            grid_spacing_system = 50  # Normal
+                        else:
+                            grid_spacing_system = 100
                         
-                        # Add coordinate label next to crosshair
-                        coord_label = f"({crosshair_sys_x}, {crosshair_sys_y})"
+                        grid_spacing_pixels = int(grid_spacing_system * scale)
+                        
+                        # Load font for delta labels
+                        delta_font_size = 24
                         try:
-                            coord_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 12)
+                            delta_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", delta_font_size)
+                        except:
+                            try:
+                                delta_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", delta_font_size)
+                            except:
+                                delta_font = ImageFont.load_default()
+                        
+                        # ===== Draw vertical grid lines (parallel to Y-axis) =====
+                        # Left side of crosshair (negative delta_x)
+                        pos_x = crosshair_x - grid_spacing_pixels
+                        delta_val = -grid_spacing_system
+                        while pos_x >= label_padding_left:
+                            # Draw full vertical grid line
+                            draw.line(
+                                [(pos_x, label_padding_top), (pos_x, label_padding_top + height)],
+                                fill=grid_color,
+                                width=1
+                            )
+                            pos_x -= grid_spacing_pixels
+                            delta_val -= grid_spacing_system
+                        
+                        # Right side of crosshair (positive delta_x)
+                        pos_x = crosshair_x + grid_spacing_pixels
+                        delta_val = grid_spacing_system
+                        while pos_x <= label_padding_left + width:
+                            # Draw full vertical grid line
+                            draw.line(
+                                [(pos_x, label_padding_top), (pos_x, label_padding_top + height)],
+                                fill=grid_color,
+                                width=1
+                            )
+                            pos_x += grid_spacing_pixels
+                            delta_val += grid_spacing_system
+                        
+                        # ===== Draw horizontal grid lines (parallel to X-axis) =====
+                        # Above crosshair (negative delta_y)
+                        pos_y = crosshair_y - grid_spacing_pixels
+                        delta_val = -grid_spacing_system
+                        while pos_y >= label_padding_top:
+                            # Draw full horizontal grid line
+                            draw.line(
+                                [(label_padding_left, pos_y), (label_padding_left + width, pos_y)],
+                                fill=grid_color,
+                                width=1
+                            )
+                            pos_y -= grid_spacing_pixels
+                            delta_val -= grid_spacing_system
+                        
+                        # Below crosshair (positive delta_y)
+                        pos_y = crosshair_y + grid_spacing_pixels
+                        delta_val = grid_spacing_system
+                        while pos_y <= label_padding_top + height:
+                            # Draw full horizontal grid line
+                            draw.line(
+                                [(label_padding_left, pos_y), (label_padding_left + width, pos_y)],
+                                fill=grid_color,
+                                width=1
+                            )
+                            pos_y += grid_spacing_pixels
+                            delta_val += grid_spacing_system
+                        
+                        # ===== Draw main axes (X-axis and Y-axis through crosshair) =====
+                        axis_width = 2
+                        # X-axis (horizontal through aim point)
+                        draw.line(
+                            [(label_padding_left, crosshair_y), (label_padding_left + width, crosshair_y)],
+                            fill=axis_color,
+                            width=axis_width
+                        )
+                        # Y-axis (vertical through aim point)
+                        draw.line(
+                            [(crosshair_x, label_padding_top), (crosshair_x, label_padding_top + height)],
+                            fill=axis_color,
+                            width=axis_width
+                        )
+                        
+                        # ===== Draw delta labels on X-axis =====
+                        tick_length = 8
+                        # Label every other grid line to avoid clutter
+                        label_spacing_system = grid_spacing_system * 2
+                        
+                        # Left side (negative delta_x)
+                        pos_x = crosshair_x - grid_spacing_pixels
+                        delta_val = -grid_spacing_system
+                        while pos_x >= label_padding_left:
+                            # Draw tick mark on X-axis
+                            draw.line(
+                                [(pos_x, crosshair_y - tick_length), (pos_x, crosshair_y + tick_length)],
+                                fill=axis_color,
+                                width=2
+                            )
+                            # Only label every other tick
+                            if abs(delta_val) % label_spacing_system == 0:
+                                label_text = str(delta_val)
+                                bbox = draw.textbbox((0, 0), label_text, font=delta_font)
+                                text_width = bbox[2] - bbox[0]
+                                text_height = bbox[3] - bbox[1]
+                                label_x = pos_x - text_width // 2
+                                label_y = crosshair_y + tick_length + 3
+                                if label_y + text_height < label_padding_top + height:
+                                    draw.rectangle(
+                                        [label_x - 2, label_y - 1, label_x + text_width + 2, label_y + text_height + 1],
+                                        fill=(255, 255, 255, 230)
+                                    )
+                                    draw.text((label_x, label_y), label_text, fill=axis_color, font=delta_font)
+                            pos_x -= grid_spacing_pixels
+                            delta_val -= grid_spacing_system
+                        
+                        # Right side (positive delta_x)
+                        pos_x = crosshair_x + grid_spacing_pixels
+                        delta_val = grid_spacing_system
+                        while pos_x <= label_padding_left + width:
+                            # Draw tick mark on X-axis
+                            draw.line(
+                                [(pos_x, crosshair_y - tick_length), (pos_x, crosshair_y + tick_length)],
+                                fill=axis_color,
+                                width=2
+                            )
+                            # Only label every other tick
+                            if delta_val % label_spacing_system == 0:
+                                label_text = f"+{delta_val}"
+                                bbox = draw.textbbox((0, 0), label_text, font=delta_font)
+                                text_width = bbox[2] - bbox[0]
+                                text_height = bbox[3] - bbox[1]
+                                label_x = pos_x - text_width // 2
+                                label_y = crosshair_y + tick_length + 3
+                                if label_y + text_height < label_padding_top + height:
+                                    draw.rectangle(
+                                        [label_x - 2, label_y - 1, label_x + text_width + 2, label_y + text_height + 1],
+                                        fill=(255, 255, 255, 230)
+                                    )
+                                    draw.text((label_x, label_y), label_text, fill=axis_color, font=delta_font)
+                            pos_x += grid_spacing_pixels
+                            delta_val += grid_spacing_system
+                        
+                        # ===== Draw delta labels on Y-axis =====
+                        # Above crosshair (negative delta_y)
+                        pos_y = crosshair_y - grid_spacing_pixels
+                        delta_val = -grid_spacing_system
+                        while pos_y >= label_padding_top:
+                            # Draw tick mark on Y-axis
+                            draw.line(
+                                [(crosshair_x - tick_length, pos_y), (crosshair_x + tick_length, pos_y)],
+                                fill=axis_color,
+                                width=2
+                            )
+                            # Only label every other tick
+                            if abs(delta_val) % label_spacing_system == 0:
+                                label_text = str(delta_val)
+                                bbox = draw.textbbox((0, 0), label_text, font=delta_font)
+                                text_width = bbox[2] - bbox[0]
+                                text_height = bbox[3] - bbox[1]
+                                label_x = crosshair_x + tick_length + 3
+                                label_y = pos_y - text_height // 2
+                                if label_x + text_width < label_padding_left + width:
+                                    draw.rectangle(
+                                        [label_x - 2, label_y - 1, label_x + text_width + 2, label_y + text_height + 1],
+                                        fill=(255, 255, 255, 230)
+                                    )
+                                    draw.text((label_x, label_y), label_text, fill=axis_color, font=delta_font)
+                            pos_y -= grid_spacing_pixels
+                            delta_val -= grid_spacing_system
+                        
+                        # Below crosshair (positive delta_y)
+                        pos_y = crosshair_y + grid_spacing_pixels
+                        delta_val = grid_spacing_system
+                        while pos_y <= label_padding_top + height:
+                            # Draw tick mark on Y-axis
+                            draw.line(
+                                [(crosshair_x - tick_length, pos_y), (crosshair_x + tick_length, pos_y)],
+                                fill=axis_color,
+                                width=2
+                            )
+                            # Only label every other tick
+                            if delta_val % label_spacing_system == 0:
+                                label_text = f"+{delta_val}"
+                                bbox = draw.textbbox((0, 0), label_text, font=delta_font)
+                                text_width = bbox[2] - bbox[0]
+                                text_height = bbox[3] - bbox[1]
+                                label_x = crosshair_x + tick_length + 3
+                                label_y = pos_y - text_height // 2
+                                if label_x + text_width < label_padding_left + width:
+                                    draw.rectangle(
+                                        [label_x - 2, label_y - 1, label_x + text_width + 2, label_y + text_height + 1],
+                                        fill=(255, 255, 255, 230)
+                                    )
+                                    draw.text((label_x, label_y), label_text, fill=axis_color, font=delta_font)
+                            pos_y += grid_spacing_pixels
+                            delta_val += grid_spacing_system
+                        
+                        # ===== Draw previous position and movement arrow (if delta adjustment) =====
+                        if prev_center is not None:
+                            prev_sys_x = prev_center.get("x", 0)
+                            prev_sys_y = prev_center.get("y", 0)
+                            
+                            # Convert prev position to pixel coordinates
+                            prev_pixel_x = int((prev_sys_x - visible_start_x_system) * scale)
+                            prev_pixel_y = int((prev_sys_y - visible_start_y_system) * scale)
+                            prev_x = label_padding_left + prev_pixel_x
+                            prev_y = label_padding_top + prev_pixel_y
+                            
+                            # Only draw if prev position is within visible area
+                            if (label_padding_left <= prev_x <= label_padding_left + width and
+                                label_padding_top <= prev_y <= label_padding_top + height):
+                                
+                                # Draw previous position marker (X shape in blue/cyan)
+                                prev_color = (0, 180, 255, 255)  # Cyan
+                                prev_size = 12
+                                prev_width = 3
+                                # Draw X
+                                draw.line(
+                                    [(prev_x - prev_size, prev_y - prev_size), 
+                                     (prev_x + prev_size, prev_y + prev_size)],
+                                    fill=prev_color, width=prev_width
+                                )
+                                draw.line(
+                                    [(prev_x - prev_size, prev_y + prev_size), 
+                                     (prev_x + prev_size, prev_y - prev_size)],
+                                    fill=prev_color, width=prev_width
+                                )
+                                
+                                # Draw arrow from prev to current
+                                arrow_color = (0, 180, 255, 200)
+                                arrow_width = 2
+                                
+                                # Calculate arrow direction
+                                dx = crosshair_x - prev_x
+                                dy = crosshair_y - prev_y
+                                distance = (dx**2 + dy**2) ** 0.5
+                                
+                                if distance > 30:  # Only draw arrow if significant movement
+                                    # Normalize direction
+                                    if distance > 0:
+                                        nx, ny = dx / distance, dy / distance
+                                    else:
+                                        nx, ny = 0, 0
+                                    
+                                    # Arrow starts from prev marker edge, ends before current marker
+                                    start_offset = prev_size + 5
+                                    end_offset = 15  # Distance from crosshair center
+                                    
+                                    arrow_start_x = prev_x + nx * start_offset
+                                    arrow_start_y = prev_y + ny * start_offset
+                                    arrow_end_x = crosshair_x - nx * end_offset
+                                    arrow_end_y = crosshair_y - ny * end_offset
+                                    
+                                    # Draw main arrow line
+                                    draw.line(
+                                        [(arrow_start_x, arrow_start_y), (arrow_end_x, arrow_end_y)],
+                                        fill=arrow_color, width=arrow_width
+                                    )
+                                    
+                                    # Draw arrowhead
+                                    arrow_head_size = 10
+                                    # Perpendicular direction
+                                    px, py = -ny, nx
+                                    # Arrowhead points
+                                    head_x1 = arrow_end_x - nx * arrow_head_size + px * arrow_head_size * 0.5
+                                    head_y1 = arrow_end_y - ny * arrow_head_size + py * arrow_head_size * 0.5
+                                    head_x2 = arrow_end_x - nx * arrow_head_size - px * arrow_head_size * 0.5
+                                    head_y2 = arrow_end_y - ny * arrow_head_size - py * arrow_head_size * 0.5
+                                    
+                                    draw.polygon(
+                                        [(arrow_end_x, arrow_end_y), (head_x1, head_y1), (head_x2, head_y2)],
+                                        fill=arrow_color
+                                    )
+                                
+                                # Label for previous position
+                                prev_label = "prev"
+                                try:
+                                    small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 14)
+                                except:
+                                    small_font = ImageFont.load_default()
+                                bbox = draw.textbbox((0, 0), prev_label, font=small_font)
+                                text_w = bbox[2] - bbox[0]
+                                text_h = bbox[3] - bbox[1]
+                                label_px = prev_x - text_w // 2
+                                label_py = prev_y + prev_size + 3
+                                draw.rectangle(
+                                    [label_px - 2, label_py - 1, label_px + text_w + 2, label_py + text_h + 1],
+                                    fill=(255, 255, 255, 230)
+                                )
+                                draw.text((label_px, label_py), prev_label, fill=prev_color, font=small_font)
+                                
+                                print(f"[DesktopTools] Drew movement arrow from ({prev_sys_x}, {prev_sys_y}) to ({crosshair_sys_x}, {crosshair_sys_y})")
+                        
+                        # ===== Draw origin marker (double circle at crosshair) =====
+                        # Outer ring - more visible
+                        outer_radius = 20
+                        draw.ellipse(
+                            [crosshair_x - outer_radius, crosshair_y - outer_radius,
+                             crosshair_x + outer_radius, crosshair_y + outer_radius],
+                            outline=origin_color,
+                            width=3
+                        )
+                        # Inner ring
+                        inner_radius = 8
+                        draw.ellipse(
+                            [crosshair_x - inner_radius, crosshair_y - inner_radius,
+                             crosshair_x + inner_radius, crosshair_y + inner_radius],
+                            outline=origin_color,
+                            width=3
+                        )
+                        # Draw "0" label at origin (offset to avoid overlap)
+                        zero_label = "0"
+                        bbox = draw.textbbox((0, 0), zero_label, font=delta_font)
+                        text_width = bbox[2] - bbox[0]
+                        text_height = bbox[3] - bbox[1]
+                        # Position in top-left quadrant of crosshair (outside outer ring)
+                        zero_x = crosshair_x - outer_radius - text_width - 5
+                        zero_y = crosshair_y - outer_radius - text_height - 5
+                        draw.rectangle(
+                            [zero_x - 2, zero_y - 1, zero_x + text_width + 2, zero_y + text_height + 1],
+                            fill=(255, 255, 255, 230)
+                        )
+                        draw.text((zero_x, zero_y), zero_label, fill=origin_color, font=delta_font)
+                        
+                        # Show absolute coordinates in corner (for reference)
+                        coord_label = f"aim: ({crosshair_sys_x}, {crosshair_sys_y})"
+                        coord_font_size = 16
+                        try:
+                            coord_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", coord_font_size)
                         except:
                             coord_font = ImageFont.load_default()
                         bbox = draw.textbbox((0, 0), coord_label, font=coord_font)
                         text_width = bbox[2] - bbox[0]
                         text_height = bbox[3] - bbox[1]
-                        label_x = crosshair_x + crosshair_size + 5
-                        label_y = crosshair_y - text_height // 2
-                        # Background for label
+                        # Top-left corner
                         draw.rectangle(
-                            [label_x - 2, label_y - 2, label_x + text_width + 2, label_y + text_height + 2],
+                            [label_padding_left + 5, label_padding_top + 5,
+                             label_padding_left + text_width + 15, label_padding_top + text_height + 15],
                             fill=(255, 255, 255, 230)
                         )
-                        draw.text((label_x, label_y), coord_label, fill=crosshair_color, font=coord_font)
+                        draw.text((label_padding_left + 10, label_padding_top + 10), coord_label, fill=(100, 100, 100, 255), font=coord_font)
                         
-                        print(f"[DesktopTools] Drew crosshair at center ({crosshair_sys_x}, {crosshair_sys_y})")
+                        print(f"[DesktopTools] Drew aim grid at ({crosshair_sys_x}, {crosshair_sys_y}), grid spacing: {grid_spacing_system}px")
+                        
+                    else:
+                        # ========== NORMAL MODE: Traditional Grid ==========
+                        # Calculate which grid lines to draw based on system coordinates
+                        # Since we resized the image, we need to convert system coordinates to resized pixel positions
+                        # original_grid_spacing is defined in original (system) coordinates (e.g., 50, 100, 200)
+                        # Conversion: pixel_x = (sys_x - offset_x) * scale
+                        
+                        # Find the first grid line that's >= offset_x (in system coordinates)
+                        # Round UP to nearest grid line (ensures integer coordinates)
+                        start_x = ((offset_x + original_grid_spacing - 1) // original_grid_spacing) * original_grid_spacing
+                        
+                        # Calculate the actual system coordinate range for the visible area
+                        # When needs_padding, offset_x/offset_y now represent the desired region start
+                        visible_start_x_system = offset_x
+                        visible_end_x_system = offset_x + original_width
+                        pixel_offset_x = 0  # No pixel offset needed, padding is already in the image
+                        
+                        # Vertical lines - draw system coordinates
+                        # Iterate through system coordinates, convert to resized pixels
+                        end_x_system = visible_end_x_system
+                        
+                        # Helper function to draw dashed line
+                        def draw_dashed_line(draw, start, end, color, width=1, dash_length=8, gap_length=4):
+                            """Draw a dashed line from start to end"""
+                            x1, y1 = start
+                            x2, y2 = end
+                            # Calculate line length and direction
+                            dx = x2 - x1
+                            dy = y2 - y1
+                            length = (dx**2 + dy**2) ** 0.5
+                            if length == 0:
+                                return
+                            # Normalize direction
+                            dx, dy = dx / length, dy / length
+                            # Draw dashes
+                            pos = 0
+                            while pos < length:
+                                dash_end = min(pos + dash_length, length)
+                                draw.line(
+                                    [(x1 + dx * pos, y1 + dy * pos), (x1 + dx * dash_end, y1 + dy * dash_end)],
+                                    fill=color,
+                                    width=width
+                                )
+                                pos += dash_length + gap_length
+                        
+                        # First draw secondary lines (if needed) - they go behind primary lines
+                        if need_secondary_lines:
+                            # Secondary lines at half of primary intervals, but skip positions that are primary lines
+                            secondary_start_x = ((offset_x + secondary_grid_spacing - 1) // secondary_grid_spacing) * secondary_grid_spacing
+                            for sys_x in range(secondary_start_x, end_x_system + 1, secondary_grid_spacing):
+                                # Skip if this is a primary line position (divisible by primary_grid_spacing)
+                                if sys_x % primary_grid_spacing == 0:
+                                    continue
+                                # Calculate pixel position in resized screenshot
+                                pixel_x_in_screenshot = int((sys_x - visible_start_x_system) * scale)
+                                if 0 <= pixel_x_in_screenshot <= width:
+                                    actual_x = label_padding_left + pixel_x_in_screenshot
+                                    # Draw secondary vertical line as dashed (no label)
+                                    draw_dashed_line(
+                                        draw,
+                                        (actual_x, label_padding_top),
+                                        (actual_x, label_padding_top + height),
+                                        secondary_line_color,
+                                        secondary_line_width
+                                    )
+                        
+                        # Now draw primary lines with labels
+                        for sys_x in range(start_x, end_x_system + 1, original_grid_spacing):
+                            # Calculate pixel position in resized screenshot
+                            pixel_x_in_screenshot = int((sys_x - visible_start_x_system) * scale)
+                            if 0 <= pixel_x_in_screenshot <= width:
+                                # Actual x position in new image (with label padding)
+                                actual_x = label_padding_left + pixel_x_in_screenshot
+                                
+                                # Draw primary vertical line through screenshot area
+                                draw.line(
+                                    [(actual_x, label_padding_top), (actual_x, label_padding_top + height)],
+                                    fill=primary_line_color,
+                                    width=primary_line_width
+                                )
+                                
+                                # Draw coordinate label at top (outside screenshot, in padding area)
+                                coord_text = str(sys_x)
+                                bbox = draw.textbbox((0, 0), coord_text, font=font)
+                                text_width = bbox[2] - bbox[0]
+                                text_height = bbox[3] - bbox[1]
+                                
+                                # Draw label above screenshot area
+                                label_y = label_padding_top - text_height - 5
+                                draw.rectangle(
+                                    [actual_x - text_width // 2 - 3, label_y - 2, actual_x + text_width // 2 + 3, label_y + text_height + 2],
+                                    fill=text_bg_color,
+                                    outline=(200, 200, 200, 255),
+                                    width=1
+                                )
+                                draw.text(
+                                    (actual_x - text_width // 2, label_y),
+                                    coord_text,
+                                    fill=text_color,
+                                    font=font
+                                )
+                                
+                                # Draw coordinate label at bottom (outside screenshot, in padding area)
+                                label_y_bottom = label_padding_top + height + 5
+                                draw.rectangle(
+                                    [actual_x - text_width // 2 - 3, label_y_bottom - 2, actual_x + text_width // 2 + 3, label_y_bottom + text_height + 2],
+                                    fill=text_bg_color,
+                                    outline=(200, 200, 200, 255),
+                                    width=1
+                                )
+                                draw.text(
+                                    (actual_x - text_width // 2, label_y_bottom),
+                                    coord_text,
+                                    fill=text_color,
+                                    font=font
+                                )
+                        
+                        # Find the first grid line that's >= offset_y (in system coordinates)
+                        # Round UP to nearest grid line (ensures integer coordinates)
+                        start_y = ((offset_y + original_grid_spacing - 1) // original_grid_spacing) * original_grid_spacing
+                        
+                        # Calculate the actual system coordinate range for the visible area (Y axis)
+                        visible_start_y_system = offset_y
+                        visible_end_y_system = offset_y + original_height
+                        pixel_offset_y = 0  # No pixel offset needed, padding is already in the image
+                        
+                        # Horizontal lines - draw system coordinates
+                        # Iterate through system coordinates, convert to resized pixels
+                        end_y_system = visible_end_y_system
+                        
+                        # First draw secondary horizontal lines (if needed) - they go behind primary lines
+                        if need_secondary_lines:
+                            # Secondary lines at half of primary intervals, but skip positions that are primary lines
+                            secondary_start_y = ((offset_y + secondary_grid_spacing - 1) // secondary_grid_spacing) * secondary_grid_spacing
+                            for sys_y in range(secondary_start_y, end_y_system + 1, secondary_grid_spacing):
+                                # Skip if this is a primary line position (divisible by primary_grid_spacing)
+                                if sys_y % primary_grid_spacing == 0:
+                                    continue
+                                # Calculate pixel position in resized screenshot
+                                pixel_y_in_screenshot = int((sys_y - visible_start_y_system) * scale)
+                                if 0 <= pixel_y_in_screenshot <= height:
+                                    actual_y = label_padding_top + pixel_y_in_screenshot
+                                    # Draw secondary horizontal line as dashed (no label)
+                                    draw_dashed_line(
+                                        draw,
+                                        (label_padding_left, actual_y),
+                                        (label_padding_left + width, actual_y),
+                                        secondary_line_color,
+                                        secondary_line_width
+                                    )
+                        
+                        # Now draw primary lines with labels
+                        for sys_y in range(start_y, end_y_system + 1, original_grid_spacing):
+                            # Calculate pixel position in resized screenshot
+                            pixel_y_in_screenshot = int((sys_y - visible_start_y_system) * scale)
+                            if 0 <= pixel_y_in_screenshot <= height:
+                                # Actual y position in new image (with label padding)
+                                actual_y = label_padding_top + pixel_y_in_screenshot
+                                
+                                # Draw primary horizontal line through screenshot area
+                                draw.line(
+                                    [(label_padding_left, actual_y), (label_padding_left + width, actual_y)],
+                                    fill=primary_line_color,
+                                    width=primary_line_width
+                                )
+                                
+                                # Draw coordinate label on left (outside screenshot, in padding area)
+                                coord_text = str(sys_y)
+                                bbox = draw.textbbox((0, 0), coord_text, font=font)
+                                text_width = bbox[2] - bbox[0]
+                                text_height = bbox[3] - bbox[1]
+                                
+                                # Draw label to the left of screenshot area
+                                label_x = label_padding_left - text_width - 8
+                                draw.rectangle(
+                                    [label_x - 3, actual_y - text_height // 2 - 2, label_x + text_width + 3, actual_y + text_height // 2 + 2],
+                                    fill=text_bg_color,
+                                    outline=(200, 200, 200, 255),
+                                    width=1
+                                )
+                                draw.text(
+                                    (label_x, actual_y - text_height // 2),
+                                    coord_text,
+                                    fill=text_color,
+                                    font=font
+                                )
+                                
+                                # Draw coordinate label on right (outside screenshot, in padding area)
+                                label_x_right = label_padding_left + width + 8
+                                draw.rectangle(
+                                    [label_x_right - 3, actual_y - text_height // 2 - 2, label_x_right + text_width + 3, actual_y + text_height // 2 + 2],
+                                    fill=text_bg_color,
+                                    outline=(200, 200, 200, 255),
+                                    width=1
+                                )
+                                draw.text(
+                                    (label_x_right, actual_y - text_height // 2),
+                                    coord_text,
+                                    fill=text_color,
+                                    font=font
+                                )
+                        
+                        # Count grid lines drawn
+                        num_primary_vertical = len([x for x in range(start_x, end_x_system + 1, original_grid_spacing) if visible_start_x_system <= x <= visible_end_x_system])
+                        num_primary_horizontal = len([y for y in range(start_y, end_y_system + 1, original_grid_spacing) if visible_start_y_system <= y <= visible_end_y_system])
+                        
+                        if need_secondary_lines:
+                            secondary_start_x_count = ((offset_x + secondary_grid_spacing - 1) // secondary_grid_spacing) * secondary_grid_spacing
+                            secondary_start_y_count = ((offset_y + secondary_grid_spacing - 1) // secondary_grid_spacing) * secondary_grid_spacing
+                            num_secondary_vertical = len([x for x in range(secondary_start_x_count, end_x_system + 1, secondary_grid_spacing) if visible_start_x_system <= x <= visible_end_x_system and x % primary_grid_spacing != 0])
+                            num_secondary_horizontal = len([y for y in range(secondary_start_y_count, end_y_system + 1, secondary_grid_spacing) if visible_start_y_system <= y <= visible_end_y_system and y % primary_grid_spacing != 0])
+                            print(f"[DesktopTools] Adaptive Grid: {num_primary_vertical}+{num_secondary_vertical} vertical, {num_primary_horizontal}+{num_secondary_horizontal} horizontal (primary+secondary)")
+                        else:
+                            print(f"[DesktopTools] Grid: {num_primary_vertical} vertical, {num_primary_horizontal} horizontal (primary only, spacing: {original_grid_spacing}px)")
+                        print(f"[DesktopTools] Padded image size: {new_width}x{new_height} (original: {width}x{height})")
+                        if needs_padding:
+                            print(f"[DesktopTools] Center mode with padding: center=({center_x}, {center_y}), zoom_factor={zoom_factor}")
+                            print(f"[DesktopTools] Capture region: ({offset_x}, {offset_y}) size {capture_width}x{capture_height}")
                     
-                    # Use the new image with padding and grid
+                    # Use the new image with padding and grid/crosshair
                     img = new_img
                     
                     # Add thumbnail in bottom-right corner unless showing full screen
@@ -940,6 +1264,9 @@ Visible: x={vis_x_start}~{vis_x_end}, y={vis_y_start}~{vis_y_end}"""
         try:
             # ========== AIM ACTION ==========
             if action == "aim":
+                # Track previous position for delta visualization
+                prev_center_for_screenshot = None
+                
                 # Determine target position
                 if delta_x is not None or delta_y is not None:
                     # Delta mode: adjust from previous aim position
@@ -949,6 +1276,9 @@ Visible: x={vis_x_start}~{vis_x_end}, y={vis_y_start}~{vis_y_end}"""
                     prev_aim = _aim_cache.get(aim_id)
                     if not prev_aim:
                         return {"success": False, "error": f"Invalid or expired aim_id: {aim_id}"}
+                    
+                    # Save previous position for arrow visualization
+                    prev_center_for_screenshot = {"x": prev_aim["x"], "y": prev_aim["y"]}
                     
                     # Calculate new position
                     x = prev_aim["x"] + (delta_x or 0)
@@ -967,7 +1297,8 @@ Visible: x={vis_x_start}~{vis_x_end}, y={vis_y_start}~{vis_y_end}"""
                 screenshot_result = await DesktopTools.screenshot(
                     center={"x": x, "y": y},
                     zoom_factor=zoom,
-                    grid_density="normal"
+                    grid_density="normal",
+                    prev_center=prev_center_for_screenshot
                 )
                 
                 if not screenshot_result.get("success"):
@@ -976,20 +1307,17 @@ Visible: x={vis_x_start}~{vis_x_end}, y={vis_y_start}~{vis_y_end}"""
                 # Get grid spacing info for hint
                 grid_spacing = screenshot_result.get("grid_spacing", 100)
                 
-                # Build educational hint
-                hint = f"""Position: ({x}, {y}) | zoom: {zoom}x | aim_id: {new_aim_id}
+                # Build hint based on crosshair coordinate axes
+                hint = f"""aim: ({x}, {y}) | zoom: {zoom}x | grid: {grid_spacing}px | aim_id: {new_aim_id}
 
-Check: Is the MAGENTA CROSSHAIR on your target?
+Crosshair is at origin (0). Read target position from grid → that's your delta.
 
-To adjust, calculate delta from grid:
-- Read crosshair position from grid (current: x={x}, y={y})
-- Read target position from grid
-- delta = target - crosshair
+Tips:
+- Target close (delta < 50)? Increase zoom first (6-10) for finer grid
+- Keep delta smaller than grid spacing to avoid overshooting
 
-Example: target at x≈550, crosshair at x=600 → delta_x = 550-600 = -50
-→ mouse(action='aim', aim_id='{new_aim_id}', delta_x=-50, delta_y=0, zoom={max(zoom, 4)})
-
-Ready to click: mouse(action='click', aim_id='{new_aim_id}')"""
+Adjust: mouse(action='aim', aim_id='{new_aim_id}', delta_x=?, delta_y=?, zoom=...)
+Click:  mouse(action='click', aim_id='{new_aim_id}')"""
                 
                 return {
                     "success": True,

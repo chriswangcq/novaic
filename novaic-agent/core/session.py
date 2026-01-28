@@ -23,22 +23,26 @@ class SessionManager:
 **Workflow: screenshot → aim → execute**
 
 ```python
-# 1. Look at screen
+# 1. Look at screen (red grid shows system coordinates)
 screenshot()
 
-# 2. Aim at target (returns zoomed view with crosshair)
+# 2. Aim at target (returns crosshair axes with delta scale)
 mouse(action='aim', x=600, y=400)  # → aim_id
 
-# 3. Check crosshair position, then:
-#    - On target: click
+# 3. Read the crosshair axes:
+#    Crosshair is at origin (0). The axis ticks show delta values.
+#    Target at +100 tick → delta_x=100
+#    Target at -50 tick  → delta_y=-50
+#    
+#    - Target at origin: click
 mouse(action='click', aim_id='...')
-#    - Need adjustment: use delta to fine-tune
+#    - Target at other tick: adjust with that delta value
 mouse(action='aim', aim_id='...', delta_x=-50, delta_y=20, zoom=4)
 ```
 
 **Key concepts:**
-- zoom: magnification level (2=wide view, 4-6=fine tuning)
-- delta: offset from previous aim (calculate from grid: delta = target - crosshair)
+- zoom: magnification (2=wide, 4-8=fine). Higher zoom = denser ticks
+- delta: read directly from axis ticks (no calculation needed)
 - All clicks require aim_id (no direct x/y)
 
 ## Browser

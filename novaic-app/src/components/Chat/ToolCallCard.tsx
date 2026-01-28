@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ToolCallEvent } from '../../types';
+import { ImagePreview } from './ImagePreview';
 import { 
   ChevronRight, 
   Terminal, 
@@ -89,6 +90,26 @@ export function ToolCallCard({ toolCall }: ToolCallCardProps) {
     return JSON.stringify(toolCall.input, null, 2);
   };
 
+  // Extract screenshot from result (checks multiple locations)
+  const getScreenshot = (): string | null => {
+    const result = toolCall.result;
+    if (!result) return null;
+
+    // Check top level
+    if (result.screenshot && typeof result.screenshot === 'string' && result.screenshot.length > 100) {
+      return result.screenshot;
+    }
+    // Check observation
+    if (result.observation?.screenshot && typeof result.observation.screenshot === 'string') {
+      return result.observation.screenshot;
+    }
+    // Check output
+    if (result.output?.screenshot && typeof result.output.screenshot === 'string') {
+      return result.output.screenshot;
+    }
+    return null;
+  };
+
   // Format output for display
   const getOutputDisplay = () => {
     const result = toolCall.result;
@@ -160,6 +181,7 @@ export function ToolCallCard({ toolCall }: ToolCallCardProps) {
 
   const inputDisplay = getInputDisplay();
   const outputDisplay = getOutputDisplay();
+  const screenshot = getScreenshot();
   const exitCode = toolCall.result?.output?.exit_code ?? toolCall.result?.observation?.exit_code;
   const duration = toolCall.result?.duration_ms;
 
@@ -251,6 +273,15 @@ export function ToolCallCard({ toolCall }: ToolCallCardProps) {
                   </span>
                 )}
               </div>
+              {/* Screenshot preview */}
+              {screenshot && (
+                <div className="mb-2">
+                  <ImagePreview 
+                    src={screenshot} 
+                    alt={`${toolCall.tool} result`}
+                  />
+                </div>
+              )}
               {outputDisplay && (
                 <pre className="text-[11px] text-white/60 font-mono whitespace-pre-wrap break-all bg-black/20 rounded px-2 py-1.5 max-h-40 overflow-auto">
                   {outputDisplay}

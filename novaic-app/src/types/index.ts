@@ -37,6 +37,14 @@ export interface ToolCallEvent {
   endTime?: number;
   result?: {
     success: boolean;
+    // Screenshot can be at top level or nested
+    screenshot?: string;  // base64
+    // Browser/HTML related
+    html?: string;
+    expandable?: string[];
+    state_id?: string;
+    url?: string;
+    title?: string;
     output?: {
       stdout?: string;
       stderr?: string;
@@ -50,6 +58,7 @@ export interface ToolCallEvent {
     observation?: Record<string, any>;
     error?: string;
     duration_ms?: number;
+    [key: string]: any;
   };
 }
 
