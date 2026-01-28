@@ -1,14 +1,15 @@
 """
-MCP Client - Unix Socket 实现
+MCP Client - HTTP 实现
 
-通过 Unix socket 与 VM 内的 MCP Server 通信。
-QEMU 使用 virtio-serial 将 Unix socket 连接到 VM 内的代理。
+通过 HTTP 与 VM 内的 MCP Server 通信。
+QEMU 使用端口转发将 VM 的 8080 端口映射到宿主机。
 
 架构:
-  Gateway -> Unix socket -> QEMU chardev -> virtio-serial -> VM Proxy -> MCP Server
+  Gateway -> HTTP -> QEMU port forward -> VM MCP Server
 
 特性:
-- Unix socket: 跨平台 (macOS + Linux)
+- HTTP: 简单可靠
+- 端口绑定到 127.0.0.1，只有本地可访问
 - 自动重试: 网络错误时自动重试
 - Session 恢复: Session 失效时自动重新初始化
 - 健康检查: 定期检查连接状态
@@ -32,28 +33,29 @@ SESSION_ERROR_MESSAGES = [
 ]
 
 
-def get_socket_path(cid: int) -> str:
-    """获取 Unix socket 路径"""
-    return f"/tmp/novaic-mcp-{cid}.sock"
+def get_mcp_url(port: int) -> str:
+    """获取 MCP Server URL"""
+    return f"http://127.0.0.1:{port}/mcp"
 
 
 class MCPServerConnection:
     """
     单个 MCP Server 的连接管理
     
-    通过 Unix socket 与 VM 内的 MCP Server 通信。
+    通过 HTTP 与 VM 内的 MCP Server 通信。
     """
     
-    def __init__(self, name: str, socket_path: str):
+    def __init__(self, name: str, port: int):
         """
         初始化 MCP Server 连接
         
         Args:
             name: Server 名称
-            socket_path: Unix socket 路径
+            port: 宿主机端口
         """
         self.name = name
-        self.socket_path = socket_path
+        self.port = port
+        self.url = get_mcp_url(port)
         
         self._tools_cache: Optional[List[Dict[str, Any]]] = None
         self._request_id = 0
@@ -61,11 +63,11 @@ class MCPServerConnection:
         self._protocol_version = "2024-11-05"
     
     def _create_client(self) -> httpx.AsyncClient:
-        """创建通过 Unix socket 的 HTTP 客户端"""
-        transport = httpx.AsyncHTTPTransport(uds=self.socket_path)
+        """创建 HTTP 客户端"""
         return httpx.AsyncClient(
-            transport=transport,
             timeout=httpx.Timeout(connect=10.0, read=60.0, write=30.0, pool=10.0),
+            transport=httpx.AsyncHTTPTransport(proxy=None),
+            trust_env=False,
         )
     
     def _next_request_id(self) -> int:
@@ -74,7 +76,7 @@ class MCPServerConnection:
     
     async def _send_request(self, method: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
         """
-        发送 JSON-RPC 请求 (通过 Unix socket)
+        发送 JSON-RPC 请求
         
         Args:
             method: MCP 方法名
@@ -99,14 +101,12 @@ class MCPServerConnection:
         if self._session_id:
             headers["mcp-session-id"] = self._session_id
         
-        print(f"[MCP] Unix socket {self.socket_path} method={method}")
+        print(f"[MCP] HTTP {self.url} method={method}")
         
         try:
             async with self._create_client() as client:
-                # httpx 通过 Unix socket 发送 HTTP 请求
-                # URL 中的 host 无关紧要，只是占位
                 response = await client.post(
-                    "http://localhost/mcp",
+                    self.url,
                     json=payload,
                     headers=headers,
                 )
@@ -128,7 +128,7 @@ class MCPServerConnection:
                     return response.json()
                     
         except Exception as e:
-            logger.error(f"[MCP] Unix socket request failed: {e}")
+            logger.error(f"[MCP] HTTP request failed: {e}")
             return {"error": {"message": str(e)}}
     
     def _parse_sse_response(self, text: str, request_id: int) -> Dict[str, Any]:
@@ -173,8 +173,6 @@ class MCPServerConnection:
             return False
         
         try:
-            # 使用较短的超时时间
-            old_timeout = None
             async with httpx.AsyncClient(
                 timeout=httpx.Timeout(connect=timeout, read=timeout, write=timeout, pool=timeout),
                 transport=httpx.AsyncHTTPTransport(proxy=None),
@@ -215,24 +213,7 @@ class MCPServerConnection:
 
     async def initialize(self, max_retries: int = 3, retry_delay: float = 2.0) -> bool:
         """初始化 MCP 连接（带重试）"""
-        import os
-        
-        # 检查 socket 文件是否存在
-        if not os.path.exists(self.socket_path):
-            print(f"[MCP] Socket not found: {self.socket_path}")
-            print(f"[MCP] Waiting for VM to start...")
-        
         for attempt in range(max_retries):
-            # 等待 socket 文件出现
-            if not os.path.exists(self.socket_path):
-                if attempt < max_retries - 1:
-                    print(f"[MCP] Socket not ready, waiting... (attempt {attempt + 1}/{max_retries})")
-                    await asyncio.sleep(retry_delay)
-                    continue
-                else:
-                    print(f"[MCP] Socket still not available after {max_retries} attempts")
-                    return False
-            
             try:
                 result = await self._send_request("initialize", {
                     "protocolVersion": self._protocol_version,
@@ -244,7 +225,7 @@ class MCPServerConnection:
                 })
                 
                 if "result" in result:
-                    print(f"[MCP] Connected to {self.name} via {self.socket_path}: {result['result'].get('serverInfo', {})}")
+                    print(f"[MCP] Connected to {self.name} via {self.url}: {result['result'].get('serverInfo', {})}")
                     
                     # 发送 initialized 通知
                     await self._send_notification("notifications/initialized", {})
@@ -439,28 +420,27 @@ class MCPServerConnection:
 
 
 class MCPClient:
-    """MCP Client - 管理多个 MCP Server (Unix socket)"""
+    """MCP Client - 管理多个 MCP Server"""
     
     def __init__(self):
         self.servers: Dict[str, MCPServerConnection] = {}
         self._tools_cache: Optional[List[Dict[str, Any]]] = None
         self._tool_server_map: Dict[str, str] = {}
     
-    async def register_server(self, name: str, cid: int):
+    async def register_server(self, name: str, port: int):
         """
         注册 MCP Server
         
         Args:
             name: Server 名称
-            cid: VM 的 CID（用于生成 socket 路径）
+            port: 宿主机端口 (QEMU 转发的端口)
         """
-        socket_path = get_socket_path(cid)
-        server = MCPServerConnection(name=name, socket_path=socket_path)
+        server = MCPServerConnection(name=name, port=port)
         self.servers[name] = server
         self._tools_cache = None
         self._tool_server_map.clear()
         
-        logger.info(f"[MCPClient] Registered server: {name} ({socket_path})")
+        logger.info(f"[MCPClient] Registered server: {name} ({server.url})")
     
     async def list_all_tools(self, use_cache: bool = True) -> List[Dict[str, Any]]:
         """从所有 Server 收集工具"""

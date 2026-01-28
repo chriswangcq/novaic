@@ -31,9 +31,11 @@ class VmConfig(BaseModel):
     memory: str = "4096"   # Memory in MB
     cpus: int = 4          # CPU cores
     ports: PortConfig = Field(default_factory=PortConfig)
-    # VSOCK 配置 (用于 MCP 通信，替代端口转发)
-    vsock_cid: int = 3     # VSOCK Context ID (3+, 0/1/2 保留)
-    vsock_port: int = 8080 # VSOCK 端口
+    # MCP 通信配置
+    mcp_host_port: int = 8081  # 宿主机 MCP 端口 (QEMU 端口转发: 宿主机 -> VM 8080)
+    mcp_vm_port: int = 8080    # VM 内部 MCP 端口 (固定)
+    # 兼容性字段 (保留)
+    vsock_cid: int = 3         # 用于 Agent ID 和端口分配偏移
 
 
 class AICAgent(BaseModel):
@@ -58,9 +60,10 @@ class AgentsConfig(BaseModel):
 BASE_PORTS = {
     "vnc": 5900,
     "websocket": 6080,
-    "ssh": 2222
+    "ssh": 2222,
+    "mcp": 8081,  # MCP 宿主机端口起始值 (8081, 8082, ...)
 }
-BASE_VSOCK_CID = 3  # CID 0/1/2 是保留值
+BASE_VSOCK_CID = 3  # 用于 Agent ID 偏移
 
 
 class AgentConfigManager:
@@ -164,8 +167,8 @@ class AgentConfigManager:
         """
         config = self.load()
         
-        # Allocate resources (ports + VSOCK CID)
-        ports, vsock_cid = self._allocate_resources(config)
+        # Allocate resources (ports + MCP port + CID offset)
+        ports, mcp_host_port, vsock_cid = self._allocate_resources(config)
         
         # Create agent
         agent_id = str(uuid.uuid4())
@@ -179,8 +182,9 @@ class AgentConfigManager:
                 memory=memory,
                 cpus=cpus,
                 ports=ports,
+                mcp_host_port=mcp_host_port,  # 宿主机 MCP 端口 (8081, 8082, ...)
+                mcp_vm_port=8080,  # VM 内部固定端口
                 vsock_cid=vsock_cid,
-                vsock_port=8080,  # MCP Server 的 VSOCK 端口
                 image_path=str(self._get_agent_vm_dir(agent_id) / f"{os_type}-{os_version}.qcow2"),
             )
         )
@@ -278,10 +282,10 @@ class AgentConfigManager:
     
     def _allocate_resources(self, config: AgentsConfig) -> tuple:
         """
-        Allocate unique ports and VSOCK CID for a new agent
+        Allocate unique ports for a new agent
         
         Returns:
-            (PortConfig, vsock_cid)
+            (PortConfig, mcp_host_port, vsock_cid)
         """
         # Collect used offsets (based on VNC port or VSOCK CID)
         used_offsets = set()
@@ -301,13 +305,14 @@ class AgentConfigManager:
             ssh=BASE_PORTS["ssh"] + offset,
         )
         
+        mcp_host_port = BASE_PORTS["mcp"] + offset  # 8081, 8082, 8083...
         vsock_cid = BASE_VSOCK_CID + offset
         
-        return ports, vsock_cid
+        return ports, mcp_host_port, vsock_cid
     
     def _allocate_ports(self, config: AgentsConfig) -> PortConfig:
         """Allocate unique ports for a new agent (deprecated, use _allocate_resources)"""
-        ports, _ = self._allocate_resources(config)
+        ports, _, _ = self._allocate_resources(config)
         return ports
     
     def get_available_images(self) -> List[Dict[str, Any]]:

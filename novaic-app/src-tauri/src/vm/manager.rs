@@ -14,9 +14,10 @@ pub struct VmConfig {
     pub websocket_port: u16, // WebSocket 端口 (VM 内的 websockify 提供)
     pub ssh_port: u16,       // SSH 端口
     pub image_path: Option<String>,  // 自定义镜像路径 (可选)
-    // VSOCK 配置 (替代 executor_port)
-    pub vsock_cid: u32,      // VSOCK Context ID (3+, 0/1/2 是保留值)
-    pub mcp_vsock_port: u32, // VSOCK 端口 (VM 内 MCP Server 监听)
+    // MCP 通信配置
+    pub mcp_host_port: u16,  // 宿主机 MCP 端口 (QEMU 转发: 宿主机 -> VM 8080)
+    pub mcp_vm_port: u16,    // VM 内部 MCP 端口 (固定 8080)
+    pub vsock_cid: u32,      // 用于 Agent ID 和端口偏移
 }
 
 impl Default for VmConfig {
@@ -29,9 +30,10 @@ impl Default for VmConfig {
             websocket_port: 6080,// WebSocket 端口 (宿主机 6080 → VM 6080)
             ssh_port: 2222,      // SSH 端口 (宿主机 2222 → VM 22)
             image_path: None,    // 使用默认镜像
-            // VSOCK 配置
+            // MCP 配置
+            mcp_host_port: 8081, // 宿主机 MCP 端口 (第一个 VM)
+            mcp_vm_port: 8080,   // VM 内部 MCP 端口 (固定)
             vsock_cid: 3,        // 默认 CID=3 (第一个 VM)
-            mcp_vsock_port: 8080,// MCP Server 在 VSOCK 上的端口
         }
     }
 }
@@ -208,23 +210,19 @@ impl VmManager {
         Ok(())
     }
 
-    /// 等待 MCP Server 可用（在 VM 内运行，通过 VSOCK 通信）
-    /// 注意：实际的 VSOCK 连接由 Gateway 处理，这里只等待一个合理的启动时间
+    /// 等待 MCP Server 可用（在 VM 内运行，通过 QEMU 端口转发通信）
     async fn wait_for_executor(&self) -> Result<(), String> {
         let config = self.config.lock().await.clone();
         let start = std::time::Instant::now();
-        println!("[VM] Waiting for MCP Server (VSOCK CID={}, port={})...", 
-            config.vsock_cid, config.mcp_vsock_port);
+        println!("[VM] Waiting for MCP Server (port={})...", config.mcp_host_port);
         
         // VM 启动后，给 systemd 服务一些时间启动
-        // VSOCK 连接由 Gateway 侧的 Python 代码处理
-        // 这里只等待一个合理的时间让 VM 内的服务启动
         let wait_secs = 15;
         println!("[VM] Waiting {}s for VM services to start...", wait_secs);
         sleep(Duration::from_secs(wait_secs)).await;
         
         println!("[VM] MCP Server should be ready (elapsed: {:.1}s)", start.elapsed().as_secs_f32());
-        println!("[VM] Note: MCP communication uses VSOCK, health check done by Gateway");
+        println!("[VM] MCP URL: http://127.0.0.1:{}/mcp", config.mcp_host_port);
         Ok(())
     }
 
@@ -297,38 +295,37 @@ impl VmManager {
             format!("127.0.0.1:{}", config.websocket_port)
         ).is_ok();
 
+        // 检查 MCP 端口是否可用 (通过 QEMU 端口转发)
+        let mcp_running = TcpStream::connect(
+            format!("127.0.0.1:{}", config.mcp_host_port)
+        ).is_ok();
+
         VmStatus {
             running: is_running || websockify_running,  // 如果 websockify 运行，则 VM 在运行
             agent_healthy,
-            mcp_healthy: websockify_running,  // 假设 MCP 与 VM 一起运行
+            mcp_healthy: mcp_running,  // 检查 MCP 端口
             websockify_running,
             vnc_port: config.vnc_port,
             agent_port: config.agent_port,
-            vsock_cid: config.vsock_cid,
-            mcp_vsock_port: config.mcp_vsock_port,
+            mcp_host_port: config.mcp_host_port,
             websocket_port: config.websocket_port,
             vnc_url: format!("ws://localhost:{}/websockify", config.websocket_port),
             agent_url: format!("http://localhost:{}", config.agent_port),
+            mcp_url: format!("http://127.0.0.1:{}/mcp", config.mcp_host_port),
             agent_id,
         }
     }
 
-    /// Get VSOCK CID for MCP Server
-    pub async fn get_vsock_cid(&self) -> u32 {
+    /// Get MCP host port (for QEMU port forward)
+    pub async fn get_mcp_host_port(&self) -> u16 {
         let config = self.config.lock().await;
-        config.vsock_cid
+        config.mcp_host_port
     }
     
-    /// Get VSOCK port for MCP Server
-    pub async fn get_mcp_vsock_port(&self) -> u32 {
+    /// Get MCP URL
+    pub async fn get_mcp_url(&self) -> String {
         let config = self.config.lock().await;
-        config.mcp_vsock_port
-    }
-    
-    /// Get MCP connection info (VSOCK)
-    pub async fn get_mcp_info(&self) -> (u32, u32) {
-        let config = self.config.lock().await;
-        (config.vsock_cid, config.mcp_vsock_port)
+        format!("http://127.0.0.1:{}/mcp", config.mcp_host_port)
     }
 
     /// Get VNC WebSocket URL (for noVNC)
@@ -392,15 +389,18 @@ impl VmManager {
 
     /// 构建 QEMU 参数
     fn build_qemu_args(&self, config: &VmConfig, image_path: &PathBuf) -> Result<Vec<String>, String> {
-        // 网络端口转发 (简化：MCP 通过 VSOCK，不需要端口转发)
+        // 网络端口转发
         // - vnc: VNC 端口 (VM 5900 → 宿主机 5900)
         // - ws: websockify (VM 6080 → 宿主机 6080)
         // - ssh: SSH 访问 (VM 22 → 宿主机 2222)
+        // - mcp: MCP Server (VM 8080 → 宿主机 mcp_host_port, 仅本地 127.0.0.1 访问)
         let port_forward = format!(
-            "hostfwd=tcp::{vnc}-:{vnc},hostfwd=tcp::{ws}-:{ws},hostfwd=tcp::{ssh}-:22",
+            "hostfwd=tcp::{vnc}-:{vnc},hostfwd=tcp::{ws}-:{ws},hostfwd=tcp::{ssh}-:22,hostfwd=tcp:127.0.0.1:{mcp}-:{mcp_vm}",
             vnc = config.vnc_port,
             ws = config.websocket_port,
             ssh = config.ssh_port,
+            mcp = config.mcp_host_port,
+            mcp_vm = config.mcp_vm_port,
         );
 
         if Self::is_arm64() {
@@ -531,10 +531,10 @@ pub struct VmStatus {
     pub websockify_running: bool,  // VNC WebSocket
     pub vnc_port: u16,
     pub agent_port: u16,
-    pub vsock_cid: u32,            // VSOCK CID for MCP
-    pub mcp_vsock_port: u32,       // VSOCK port for MCP
+    pub mcp_host_port: u16,        // 宿主机 MCP 端口 (QEMU 转发)
     pub websocket_port: u16,
     pub vnc_url: String,
     pub agent_url: String,
+    pub mcp_url: String,           // MCP Server URL
     pub agent_id: Option<String>,  // 当前运行的 Agent ID
 }

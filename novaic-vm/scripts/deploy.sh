@@ -211,6 +211,9 @@ fi
 echo "  ✓ 依赖安装完成"
 
 # 更新 systemd 服务文件 (FastMCP 版本 - Streamable HTTP)
+# 绑定到 0.0.0.0 以便 QEMU 端口转发可以访问
+# 安全性：VM 使用 user networking，没有外部网络接口
+# 宿主机端口转发绑定到 127.0.0.1，外部无法访问
 echo "  更新服务配置..."
 sudo tee /etc/systemd/system/novaic.service > /dev/null << 'SERVICE_EOF'
 [Unit]
@@ -226,10 +229,8 @@ Environment=XAUTHORITY=/home/ubuntu/.Xauthority
 Environment=HOME=/home/ubuntu
 Environment=PATH=/opt/novaic-venv/bin:/usr/local/bin:/usr/bin:/bin
 Environment=PYTHONPATH=/opt/novaic-core/src
-Environment=NOVAIC_HOST=127.0.0.1
-Environment=NOVAIC_PORT=8080
 WorkingDirectory=/opt/novaic-core
-ExecStart=/opt/novaic-venv/bin/python -c "from novaic_core.main import mcp; mcp.run(transport='streamable-http', host='127.0.0.1', port=8080)"
+ExecStart=/opt/novaic-venv/bin/python -c "from novaic_core.main import mcp; mcp.run(transport='streamable-http', host='0.0.0.0', port=8080)"
 Restart=always
 RestartSec=3
 
@@ -237,37 +238,13 @@ RestartSec=3
 WantedBy=multi-user.target
 SERVICE_EOF
 
-# 创建 virtio-serial 代理服务 (用于从宿主机通信)
-sudo tee /etc/systemd/system/novaic-virtio-proxy.service > /dev/null << 'VIRTIO_SERVICE_EOF'
-[Unit]
-Description=NovAIC Virtio-Serial Proxy - Host to MCP communication
-After=network.target novaic.service
-Wants=novaic.service
-
-[Service]
-Type=simple
-User=ubuntu
-Environment=PATH=/opt/novaic-venv/bin:/usr/local/bin:/usr/bin:/bin
-Environment=PYTHONPATH=/opt/novaic-core/src
-Environment=NOVAIC_VIRTIO_PORT=/dev/virtio-ports/mcp
-Environment=NOVAIC_MCP_HOST=127.0.0.1
-Environment=NOVAIC_MCP_PORT=8080
-WorkingDirectory=/opt/novaic-core
-ExecStart=/opt/novaic-venv/bin/python -m novaic_core.virtio_proxy
-Restart=always
-RestartSec=3
-
-[Install]
-WantedBy=multi-user.target
-VIRTIO_SERVICE_EOF
-
 # 启动服务
 echo "  启动服务..."
 sudo systemctl daemon-reload
 sudo systemctl enable novaic.service
-sudo systemctl enable novaic-virtio-proxy.service
+sudo systemctl stop novaic-virtio-proxy.service 2>/dev/null || true
+sudo systemctl disable novaic-virtio-proxy.service 2>/dev/null || true
 sudo systemctl restart novaic.service
-sudo systemctl restart novaic-virtio-proxy.service
 
 sleep 3
 
@@ -275,12 +252,6 @@ if systemctl is-active --quiet novaic.service; then
     echo "  ✓ novaic 服务已启动"
 else
     echo "  ⚠️ novaic 服务启动中..."
-fi
-
-if systemctl is-active --quiet novaic-virtio-proxy.service; then
-    echo "  ✓ virtio-serial 代理已启动"
-else
-    echo "  ⚠️ virtio-serial 代理启动中..."
 fi
 INSTALL_SCRIPT
 

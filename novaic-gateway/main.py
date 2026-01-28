@@ -46,7 +46,7 @@ async def lifespan(app: FastAPI):
     else:
         print(f"🚀 NovAIC Gateway starting on http://{HOST}:{PORT}")
     print(f"📋 Config: {get_config_manager().config_file}")
-    print(f"🔧 MCP Server: /tmp/novaic-mcp-{config.vsock_cid}.sock")
+    print(f"🔧 MCP Server: http://127.0.0.1:{config.mcp_port}/mcp")
     print(f"🤖 Default model: {config.default_model}")
     
     yield

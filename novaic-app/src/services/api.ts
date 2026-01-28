@@ -14,8 +14,7 @@ export interface AppConfig {
   max_tokens: number;
   max_iterations: number;
   visible_shell: boolean;
-  vsock_cid: number;
-  vsock_port: number;
+  mcp_port: number;  // 宿主机 MCP 端口 (QEMU 转发)
 }
 
 export interface ApiKeyInfo {

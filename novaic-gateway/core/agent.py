@@ -22,14 +22,14 @@ class NovAICAgent:
     - Session management
     """
     
-    def __init__(self, cid: int):
+    def __init__(self, mcp_port: int):
         """
         Initialize the Agent.
         
         Args:
-            cid: VM 的 CID (用于生成 socket 路径)
+            mcp_port: MCP Server 端口 (QEMU 转发的端口)
         """
-        self.cid = cid
+        self.mcp_port = mcp_port
         
         # Cache for LLM clients (cache_key -> client)
         self._llm_clients: Dict[str, BaseLLMClient] = {}
@@ -108,14 +108,14 @@ class NovAICAgent:
             return
         
         try:
-            # 注册 MCP Server (Unix socket)
-            await self.mcp_client.register_server(name="executor", cid=self.cid)
+            # 注册 MCP Server (HTTP)
+            await self.mcp_client.register_server(name="executor", port=self.mcp_port)
             tools = await self.mcp_client.list_all_tools()
             self.tools = self.mcp_client.to_llm_tools_format(tools)
             
             if len(self.tools) > 0:
                 self._executor_healthy = True
-                print(f"[Agent] Initialized with MCP (CID={self.cid}): discovered {len(self.tools)} tools")
+                print(f"[Agent] Initialized with MCP (port={self.mcp_port}): discovered {len(self.tools)} tools")
             else:
                 self._executor_healthy = False
                 print(f"[Agent] MCP Server connected but no tools discovered")
@@ -129,10 +129,10 @@ class NovAICAgent:
     
     async def get_environment_info(self) -> Dict[str, Any]:
         """Get current environment info."""
-        from .mcp_client import get_socket_path
+        from .mcp_client import get_mcp_url
         return {
-            "cid": self.cid,
-            "socket_path": get_socket_path(self.cid),
+            "mcp_port": self.mcp_port,
+            "mcp_url": get_mcp_url(self.mcp_port),
             "executor_healthy": self._executor_healthy,
             "tools_count": len(self.tools),
         }
@@ -200,7 +200,7 @@ class NovAICAgent:
         if not env_info["executor_healthy"] or env_info["tools_count"] == 0:
             yield {
                 "type": "warning",
-                "data": f"⚠️ Executor service not available (socket: {env_info['socket_path']}, tools: {env_info['tools_count']})"
+                "data": f"⚠️ Executor service not available at {env_info['mcp_url']} (MCP tools: {env_info['tools_count']})"
             }
         
         if self.api_style == "responses":

@@ -8,8 +8,9 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     """Server settings"""
     
-    # Server - 只绑定本地，外部通过 VSOCK 代理访问
-    host: str = "127.0.0.1"
+    # Server - 绑定到所有地址，但通过 QEMU 端口转发只暴露到宿主机 127.0.0.1
+    # 安全性：VM 使用 user networking，没有外部网络接口
+    host: str = "0.0.0.0"
     port: int = 8080
     
     # Work directory

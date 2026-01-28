@@ -108,8 +108,8 @@ class AppConfig(BaseModel):
     visible_shell: bool = False
     
     # MCP Server 配置
-    # CID 用于生成 Unix socket 路径: /tmp/novaic-mcp-{cid}.sock
-    vsock_cid: int = 3       # VM Context ID (3+)
+    # 宿主机端口 (QEMU 转发: 宿主机 mcp_port -> VM 8080)
+    mcp_port: int = 8081     # 宿主机 MCP 端口
     
     def to_public(self) -> dict:
         """Return public version (hides API keys)"""
@@ -121,7 +121,7 @@ class AppConfig(BaseModel):
             "max_tokens": self.max_tokens,
             "max_iterations": self.max_iterations,
             "visible_shell": self.visible_shell,
-            "cid": self.vsock_cid,
+            "mcp_port": self.mcp_port,
         }
     
     def get_api_key_by_id(self, key_id: str) -> Optional[ApiKeyEntry]:
@@ -382,7 +382,7 @@ class ConfigManager:
         max_tokens: Optional[int] = None,
         max_iterations: Optional[int] = None,
         visible_shell: Optional[bool] = None,
-        cid: Optional[int] = None,
+        mcp_port: Optional[int] = None,
     ) -> None:
         """Update common settings"""
         config = self.load()
@@ -395,8 +395,8 @@ class ConfigManager:
             config.max_iterations = max_iterations
         if visible_shell is not None:
             config.visible_shell = visible_shell
-        if cid is not None:
-            config.vsock_cid = cid
+        if mcp_port is not None:
+            config.mcp_port = mcp_port
         
         self.save(config)
     

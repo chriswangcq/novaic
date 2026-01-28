@@ -13,7 +13,6 @@ import os
 import sys
 import signal
 import socket
-import select
 import threading
 from pathlib import Path
 
@@ -37,7 +36,7 @@ class VirtioSerialProxy:
         self.mcp_host = mcp_host
         self.mcp_port = mcp_port
         self.running = False
-        self._virtio_fd = None
+        self._virtio_file = None
     
     def _wait_for_port(self):
         """Wait for virtio port to appear"""
@@ -89,6 +88,39 @@ class VirtioSerialProxy:
             print(f"[VirtioProxy] Forward error: {e}")
             return b"HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n"
     
+    def _read_http_request(self, f) -> bytes:
+        """Read a complete HTTP request from file-like object"""
+        data = b""
+        headers_done = False
+        content_length = 0
+        
+        # Read headers
+        while not headers_done:
+            chunk = f.read(1)
+            if not chunk:
+                if data:
+                    return data
+                import time
+                time.sleep(0.01)  # Small delay to avoid busy-wait
+                continue
+            data += chunk
+            
+            if data.endswith(b"\r\n\r\n"):
+                headers_done = True
+                # Parse Content-Length from headers
+                headers_text = data.decode('utf-8', errors='ignore')
+                for line in headers_text.split("\r\n"):
+                    if line.lower().startswith("content-length:"):
+                        content_length = int(line.split(":")[1].strip())
+                        break
+        
+        # Read body
+        if content_length > 0:
+            body = f.read(content_length)
+            data += body
+        
+        return data
+    
     def run(self):
         """Run the proxy (blocking)"""
         print(f"""
@@ -108,47 +140,50 @@ class VirtioSerialProxy:
         print(f"[VirtioProxy] Opening {self.virtio_port}")
         
         try:
-            # Open virtio-serial port
-            self._virtio_fd = os.open(self.virtio_port, os.O_RDWR)
+            # Open virtio-serial port as file (binary mode, unbuffered)
+            self._virtio_file = open(self.virtio_port, 'r+b', buffering=0)
             
             print(f"[VirtioProxy] Listening for requests...")
             
             while self.running:
-                # Use select to wait for data
-                readable, _, _ = select.select([self._virtio_fd], [], [], 1.0)
-                
-                if self._virtio_fd in readable:
-                    # Read request from host
-                    try:
-                        data = os.read(self._virtio_fd, BUFFER_SIZE)
-                        if data:
-                            print(f"[VirtioProxy] Received {len(data)} bytes from host")
-                            
-                            # Forward to MCP server
-                            response = self._forward_request(data)
-                            
-                            # Send response back to host
-                            print(f"[VirtioProxy] Sending {len(response)} bytes to host")
-                            os.write(self._virtio_fd, response)
-                    except OSError as e:
-                        if e.errno == 11:  # EAGAIN
-                            continue
-                        raise
+                try:
+                    # Read HTTP request (blocking)
+                    data = self._read_http_request(self._virtio_file)
+                    
+                    if data:
+                        print(f"[VirtioProxy] Received {len(data)} bytes from host")
+                        
+                        # Forward to MCP server
+                        response = self._forward_request(data)
+                        
+                        # Send response back to host
+                        print(f"[VirtioProxy] Sending {len(response)} bytes to host")
+                        self._virtio_file.write(response)
+                        self._virtio_file.flush()
+                        
+                except IOError as e:
+                    if e.errno == 11:  # EAGAIN
+                        import time
+                        time.sleep(0.01)
+                        continue
+                    raise
                         
         except Exception as e:
             print(f"[VirtioProxy] Error: {e}")
+            import traceback
+            traceback.print_exc()
         finally:
             self.stop()
     
     def stop(self):
         """Stop the proxy"""
         self.running = False
-        if self._virtio_fd is not None:
+        if self._virtio_file is not None:
             try:
-                os.close(self._virtio_fd)
+                self._virtio_file.close()
             except:
                 pass
-            self._virtio_fd = None
+            self._virtio_file = None
         print("[VirtioProxy] Stopped")
 
 
