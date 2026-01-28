@@ -2,6 +2,10 @@
 NovAIC Gateway - WebSocket Handler
 
 Provides real-time bidirectional communication for chat and events.
+
+Features:
+- Heartbeat: Server periodically pings clients to detect zombie connections
+- Auto-cleanup: Disconnected clients are automatically removed
 """
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -9,31 +13,87 @@ from typing import Dict, Optional, Any
 from datetime import datetime
 import asyncio
 import json
+import time
 
 from core.agent import NovAICAgent
 from config.manager import get_config_manager
 
 router = APIRouter()
 
+# Heartbeat configuration
+HEARTBEAT_INTERVAL = 30  # seconds between heartbeats
+HEARTBEAT_TIMEOUT = 10   # seconds to wait for pong response
+
 
 class ConnectionManager:
-    """Manages WebSocket connections"""
+    """Manages WebSocket connections with heartbeat support"""
     
     def __init__(self):
         self.active_connections: Dict[str, WebSocket] = {}
         self._agents: Dict[str, Any] = {}  # client_id -> agent instance
+        self._last_pong: Dict[str, float] = {}  # client_id -> last pong timestamp
+        self._heartbeat_task: Optional[asyncio.Task] = None
     
     async def connect(self, websocket: WebSocket, client_id: str):
         """Accept and register a new WebSocket connection"""
         await websocket.accept()
         self.active_connections[client_id] = websocket
+        self._last_pong[client_id] = time.time()  # Initialize pong time
         print(f"[WS] Client {client_id} connected. Total: {len(self.active_connections)}")
+        
+        # Start heartbeat loop if not running
+        if self._heartbeat_task is None or self._heartbeat_task.done():
+            self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
     
     def disconnect(self, client_id: str):
         """Remove a WebSocket connection"""
         self.active_connections.pop(client_id, None)
         self._agents.pop(client_id, None)
+        self._last_pong.pop(client_id, None)
         print(f"[WS] Client {client_id} disconnected. Total: {len(self.active_connections)}")
+    
+    def record_pong(self, client_id: str):
+        """Record that we received a pong from client"""
+        self._last_pong[client_id] = time.time()
+    
+    async def _heartbeat_loop(self):
+        """
+        Background task that sends heartbeat pings to all clients.
+        Detects and removes zombie connections.
+        """
+        print("[WS] Heartbeat loop started")
+        while self.active_connections:
+            await asyncio.sleep(HEARTBEAT_INTERVAL)
+            
+            if not self.active_connections:
+                break
+            
+            current_time = time.time()
+            disconnected = []
+            
+            for client_id, ws in list(self.active_connections.items()):
+                # Check if client missed too many heartbeats
+                last_pong = self._last_pong.get(client_id, 0)
+                if current_time - last_pong > HEARTBEAT_INTERVAL + HEARTBEAT_TIMEOUT:
+                    print(f"[WS] Client {client_id} heartbeat timeout, disconnecting...")
+                    disconnected.append(client_id)
+                    continue
+                
+                # Send ping
+                try:
+                    await ws.send_json({
+                        "type": "ping",
+                        "timestamp": datetime.now().isoformat()
+                    })
+                except Exception as e:
+                    print(f"[WS] Failed to send heartbeat to {client_id}: {e}")
+                    disconnected.append(client_id)
+            
+            # Clean up disconnected clients
+            for client_id in disconnected:
+                self.disconnect(client_id)
+        
+        print("[WS] Heartbeat loop stopped (no active connections)")
     
     async def send_event(self, client_id: str, event_type: str, data: Any):
         """Send an event to a specific client"""
@@ -116,7 +176,13 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
             msg_type = data.get("type", "")
             
             if msg_type == "ping":
+                # Client initiated ping
                 await connection_manager.send_event(client_id, "pong", None)
+                connection_manager.record_pong(client_id)  # Also counts as activity
+                
+            elif msg_type == "pong":
+                # Response to server heartbeat
+                connection_manager.record_pong(client_id)
                 
             elif msg_type == "chat":
                 await handle_chat(client_id, agent, data)

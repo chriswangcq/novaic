@@ -3,14 +3,29 @@ MCP Client - 简单 HTTP 实现
 
 直接使用 HTTP POST 发送 JSON-RPC 请求，兼容 FastMCP 的 streamable-http transport。
 不依赖复杂的 MCP SDK 流机制，更可靠。
+
+特性:
+- 自动重试: 网络错误时自动重试
+- Session 恢复: Session 失效时自动重新初始化
+- 健康检查: 定期检查连接状态
 """
 
 from typing import Dict, List, Any, Optional
 import logging
 import json
+import asyncio
 import httpx
 
 logger = logging.getLogger(__name__)
+
+# 常见的 Session 失效错误消息
+SESSION_ERROR_MESSAGES = [
+    "session not found",
+    "session expired",
+    "invalid session",
+    "unknown session",
+    "session_id",
+]
 
 
 class MCPServerConnection:
@@ -109,10 +124,76 @@ class MCPServerConnection:
                         continue
         return {"error": {"message": "No valid response in SSE stream"}}
     
+    def _is_session_error(self, result: Dict[str, Any]) -> bool:
+        """检查是否是 Session 相关错误"""
+        error = result.get("error", {})
+        error_msg = str(error.get("message", "")).lower()
+        error_code = error.get("code", 0)
+        
+        # 检查常见的 session 错误
+        for msg in SESSION_ERROR_MESSAGES:
+            if msg in error_msg:
+                return True
+        
+        # HTTP 401/403 通常也表示 session 问题
+        if error_code in [-32001, -32002, 401, 403]:
+            return True
+        
+        return False
+    
+    async def health_check(self, timeout: float = 5.0) -> bool:
+        """
+        检查 MCP 连接是否健康
+        
+        Returns:
+            True if connection is healthy, False otherwise
+        """
+        if not self._session_id:
+            return False
+        
+        try:
+            # 使用较短的超时时间
+            old_timeout = None
+            async with httpx.AsyncClient(
+                timeout=httpx.Timeout(connect=timeout, read=timeout, write=timeout, pool=timeout),
+                transport=httpx.AsyncHTTPTransport(proxy=None),
+                trust_env=False,
+            ) as client:
+                headers = {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json, text/event-stream",
+                    "mcp-session-id": self._session_id,
+                }
+                # 发送一个简单的 tools/list 请求作为健康检查
+                payload = {
+                    "jsonrpc": "2.0",
+                    "method": "tools/list",
+                    "id": self._next_request_id(),
+                    "params": {}
+                }
+                response = await client.post(self.url, json=payload, headers=headers)
+                return response.status_code == 200
+        except Exception as e:
+            logger.debug(f"[MCP] Health check failed for {self.name}: {e}")
+            return False
+    
+    async def ensure_connected(self) -> bool:
+        """
+        确保连接可用，必要时重新初始化
+        
+        Returns:
+            True if connected, False otherwise
+        """
+        if self._session_id and await self.health_check():
+            return True
+        
+        # Session 不存在或不健康，重新初始化
+        logger.info(f"[MCP] Reconnecting to {self.name}...")
+        self._session_id = None
+        return await self.initialize()
+
     async def initialize(self, max_retries: int = 3, retry_delay: float = 2.0) -> bool:
         """初始化 MCP 连接（带重试）"""
-        import asyncio
-        
         for attempt in range(max_retries):
             try:
                 result = await self._send_request("initialize", {
@@ -207,28 +288,78 @@ class MCPServerConnection:
         
         return []
     
-    async def call_tool(self, name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """调用工具"""
-        try:
-            # 确保已初始化
-            if not self._session_id:
-                if not await self.initialize():
-                    return {"success": False, "error": "Failed to initialize MCP connection"}
-            
-            result = await self._send_request("tools/call", {
-                "name": name,
-                "arguments": arguments
-            })
-            
-            if "result" in result:
-                return self._convert_tool_result(result["result"])
-            else:
-                error = result.get("error", {})
-                return {"success": False, "error": error.get("message", "Unknown error")}
+    async def call_tool(
+        self, 
+        name: str, 
+        arguments: Dict[str, Any],
+        max_retries: int = 3,
+        retry_delay: float = 1.0
+    ) -> Dict[str, Any]:
+        """
+        调用工具（带重试和 Session 恢复）
+        
+        Args:
+            name: 工具名称
+            arguments: 工具参数
+            max_retries: 最大重试次数
+            retry_delay: 重试延迟（秒），使用指数退避
+        
+        Returns:
+            工具执行结果
+        """
+        last_error = None
+        
+        for attempt in range(max_retries):
+            try:
+                # 确保已初始化
+                if not self._session_id:
+                    if not await self.initialize():
+                        last_error = "Failed to initialize MCP connection"
+                        if attempt < max_retries - 1:
+                            await asyncio.sleep(retry_delay * (attempt + 1))
+                            continue
+                        return {"success": False, "error": last_error}
                 
-        except Exception as e:
-            logger.error(f"[MCP] Failed to call tool {name}: {e}")
-            return {"success": False, "error": str(e)}
+                result = await self._send_request("tools/call", {
+                    "name": name,
+                    "arguments": arguments
+                })
+                
+                # 检查是否是 Session 错误
+                if self._is_session_error(result):
+                    logger.warning(f"[MCP] Session error detected, reconnecting... (attempt {attempt + 1}/{max_retries})")
+                    self._session_id = None  # 清除旧 session
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(retry_delay)
+                        continue
+                    return {"success": False, "error": "Session expired and reconnection failed"}
+                
+                if "result" in result:
+                    return self._convert_tool_result(result["result"])
+                else:
+                    error = result.get("error", {})
+                    error_msg = error.get("message", "Unknown error")
+                    # 非 session 错误，直接返回（不重试业务错误）
+                    return {"success": False, "error": error_msg}
+                    
+            except (httpx.ConnectError, httpx.ReadTimeout, httpx.WriteTimeout, httpx.PoolTimeout) as e:
+                # 网络错误，重试
+                last_error = str(e)
+                logger.warning(f"[MCP] Network error calling {name} (attempt {attempt + 1}/{max_retries}): {e}")
+                self._session_id = None  # 网络错误后清除 session
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(retry_delay * (attempt + 1))  # 指数退避
+                    continue
+                    
+            except Exception as e:
+                # 其他错误
+                last_error = str(e)
+                logger.error(f"[MCP] Failed to call tool {name}: {e}")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(retry_delay)
+                    continue
+        
+        return {"success": False, "error": f"Failed after {max_retries} attempts: {last_error}"}
     
     def _convert_tool_result(self, result: Dict[str, Any]) -> Dict[str, Any]:
         """转换 MCP 工具结果为标准格式"""
@@ -353,6 +484,30 @@ class MCPClient:
         self._tool_server_map.clear()
         for server in self.servers.values():
             server.clear_cache()
+    
+    async def health_check(self) -> Dict[str, bool]:
+        """
+        检查所有 Server 的健康状态
+        
+        Returns:
+            Dict mapping server name to health status
+        """
+        results = {}
+        for name, server in self.servers.items():
+            results[name] = await server.health_check()
+        return results
+    
+    async def ensure_all_connected(self) -> Dict[str, bool]:
+        """
+        确保所有 Server 都已连接
+        
+        Returns:
+            Dict mapping server name to connection status
+        """
+        results = {}
+        for name, server in self.servers.items():
+            results[name] = await server.ensure_connected()
+        return results
     
     async def close(self):
         """关闭"""
