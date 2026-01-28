@@ -87,6 +87,12 @@ impl VmManager {
         config.image_path = path;
     }
 
+    /// Set current agent ID
+    pub async fn set_agent_id(&self, agent_id: Option<String>) {
+        let mut aid = self.current_agent_id.lock().await;
+        *aid = agent_id;
+    }
+
     #[allow(dead_code)]
     pub fn with_config(self, _config: VmConfig) -> Self {
         // Deprecated: use set_config instead

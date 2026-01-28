@@ -25,12 +25,14 @@ pub async fn start_vm(
         return Err("VM is already running".to_string());
     }
     
-    // 如果提供了 agent_id，设置镜像路径
-    if let Some(id) = agent_id {
-        let agent_disk = manager.vm_dir().join(&id).join("disk.qcow2");
+    // 如果提供了 agent_id，设置镜像路径和 agent_id
+    if let Some(ref id) = agent_id {
+        let agent_disk = manager.vm_dir().join(id).join("disk.qcow2");
         if agent_disk.exists() {
             println!("[Command] Using agent disk: {:?}", agent_disk);
             manager.set_image_path(agent_disk.to_str().map(|s| s.to_string())).await;
+            // Set current agent ID so status can be tracked
+            manager.set_agent_id(agent_id.clone()).await;
         } else {
             return Err(format!("Agent disk not found: {:?}", agent_disk));
         }
@@ -59,6 +61,9 @@ pub async fn stop_vm(
     
     let manager = vm_manager.lock().await;
     manager.stop().await?;
+    
+    // Clear agent ID when stopped
+    manager.set_agent_id(None).await;
     
     Ok("VM stopped successfully".to_string())
 }
