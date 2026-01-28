@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, Component, ReactNode, ErrorInfo } from 'react';
 import { ChatPanel } from './components/Chat/ChatPanel';
 import { VisualPanel } from './components/Visual/VisualPanel';
 import { Resizer } from './components/Layout/Resizer';
@@ -6,12 +6,68 @@ import { Header } from './components/Layout/Header';
 import { useAppStore } from './store';
 import { SettingsModal } from './components/Settings/SettingsModal';
 import { OnboardingFlow } from './components/Onboarding';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
 
 // Layout constraints
 const MIN_CHAT_WIDTH = 300;
 const MAX_CHAT_WIDTH = 800;
 const MIN_VM_WIDTH = 400;
+
+// Global Error Boundary
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+  errorInfo?: ErrorInfo;
+}
+
+class AppErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryState> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('[App] Uncaught error:', error, errorInfo);
+    this.setState({ errorInfo });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="h-screen flex flex-col items-center justify-center bg-[#0a0a0a] text-white p-8">
+          <AlertTriangle size={48} className="text-red-500 mb-4" />
+          <h1 className="text-xl font-bold mb-2">Something went wrong</h1>
+          <p className="text-white/60 mb-4 text-center max-w-md">
+            {this.state.error?.message || 'An unexpected error occurred'}
+          </p>
+          <button
+            onClick={() => {
+              this.setState({ hasError: false, error: undefined, errorInfo: undefined });
+              window.location.reload();
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+          >
+            <RefreshCw size={16} />
+            Reload App
+          </button>
+          {this.state.errorInfo && (
+            <details className="mt-4 text-[11px] text-white/40 max-w-lg overflow-auto">
+              <summary className="cursor-pointer">Error Details</summary>
+              <pre className="mt-2 p-2 bg-black/50 rounded text-left whitespace-pre-wrap">
+                {this.state.error?.stack}
+              </pre>
+            </details>
+          )}
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function App() {
   const { 
@@ -172,5 +228,14 @@ function App() {
   );
 }
 
-export default App;
+// Wrap App with Error Boundary
+function AppWithErrorBoundary() {
+  return (
+    <AppErrorBoundary>
+      <App />
+    </AppErrorBoundary>
+  );
+}
+
+export default AppWithErrorBoundary;
 

@@ -73,21 +73,27 @@ export function ToolCallCard({ toolCall }: ToolCallCardProps) {
 
   const status = statusConfig[toolCall.status] || statusConfig.pending;
 
-  // Format input for display
+  // Format input for display (with safety checks)
   const getInputDisplay = () => {
-    if (toolCall.tool === 'run_command') {
-      return toolCall.input.command as string;
+    try {
+      const input = toolCall.input || {};
+      if (toolCall.tool === 'run_command' && input.command) {
+        return String(input.command);
+      }
+      if (toolCall.tool === 'run_python' && input.code) {
+        return String(input.code);
+      }
+      if (toolCall.tool === 'browser_navigate' && input.url) {
+        return String(input.url);
+      }
+      if ((toolCall.tool === 'browser_click' || toolCall.tool === 'browser_type') && input.selector) {
+        return String(input.selector);
+      }
+      return JSON.stringify(input, null, 2);
+    } catch (e) {
+      console.error('[ToolCallCard] getInputDisplay error:', e);
+      return '(unable to display input)';
     }
-    if (toolCall.tool === 'run_python') {
-      return toolCall.input.code as string;
-    }
-    if (toolCall.tool === 'browser_navigate') {
-      return toolCall.input.url as string;
-    }
-    if (toolCall.tool === 'browser_click' || toolCall.tool === 'browser_type') {
-      return toolCall.input.selector as string;
-    }
-    return JSON.stringify(toolCall.input, null, 2);
   };
 
   // Extract screenshot from result (checks multiple locations)
@@ -191,21 +197,27 @@ export function ToolCallCard({ toolCall }: ToolCallCardProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Get short preview for collapsed state
+  // Get short preview for collapsed state (with safety checks)
   const getShortPreview = () => {
-    if (toolCall.tool === 'run_command') {
-      const cmd = toolCall.input.command as string;
-      return cmd.length > 40 ? cmd.slice(0, 40) + '...' : cmd;
+    try {
+      const input = toolCall.input || {};
+      if (toolCall.tool === 'run_command' && input.command) {
+        const cmd = String(input.command);
+        return cmd.length > 40 ? cmd.slice(0, 40) + '...' : cmd;
+      }
+      if (toolCall.tool === 'run_python' && input.code) {
+        const code = String(input.code);
+        const firstLine = code.split('\n')[0] || '';
+        return firstLine.length > 40 ? firstLine.slice(0, 40) + '...' : firstLine;
+      }
+      if (toolCall.tool === 'browser_navigate' && input.url) {
+        return String(input.url);
+      }
+      return null;
+    } catch (e) {
+      console.error('[ToolCallCard] getShortPreview error:', e);
+      return null;
     }
-    if (toolCall.tool === 'run_python') {
-      const code = toolCall.input.code as string;
-      const firstLine = code.split('\n')[0];
-      return firstLine.length > 40 ? firstLine.slice(0, 40) + '...' : firstLine;
-    }
-    if (toolCall.tool === 'browser_navigate') {
-      return toolCall.input.url as string;
-    }
-    return null;
   };
 
   const shortPreview = getShortPreview();

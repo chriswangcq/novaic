@@ -1,23 +1,71 @@
-import { useState } from 'react';
+import { useState, Component, ReactNode, ErrorInfo } from 'react';
 import { Message, AgentEvent } from '../../types';
 import { ThinkingBlock } from './ThinkingBlock';
 import { ToolCallCard } from './ToolCallCard';
-import { Sparkles, Copy, Check } from 'lucide-react';
+import { Sparkles, Copy, Check, AlertTriangle } from 'lucide-react';
 
 interface AssistantMessageProps {
   message: Message;
 }
 
 /**
- * 从 event.data 提取文本内容
+ * Error Boundary for catching render errors
+ */
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+}
+
+class MessageErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryState> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('[AssistantMessage] Render error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex items-start gap-2 px-2.5 py-1.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 text-[12px]">
+          <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+          <div>
+            <div className="font-medium">Render Error</div>
+            <div className="text-[11px] opacity-70">{this.state.error?.message || 'Unknown error'}</div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+/**
+ * 从 event.data 提取文本内容 (with safety checks)
  */
 function extractContent(data: unknown): string {
-  if (typeof data === 'string') return data;
-  if (data && typeof data === 'object') {
-    const obj = data as Record<string, unknown>;
-    return String(obj.content || obj.data || obj.text || obj.error || '');
+  try {
+    if (data === null || data === undefined) return '';
+    if (typeof data === 'string') return data;
+    if (typeof data === 'number' || typeof data === 'boolean') return String(data);
+    if (data && typeof data === 'object') {
+      const obj = data as Record<string, unknown>;
+      const content = obj.content || obj.data || obj.text || obj.error || obj.message;
+      if (content !== undefined && content !== null) {
+        return typeof content === 'string' ? content : JSON.stringify(content);
+      }
+    }
+    return '';
+  } catch (e) {
+    console.error('[extractContent] Error:', e);
+    return '';
   }
-  return '';
 }
 
 /**
@@ -44,118 +92,131 @@ export function AssistantMessage({ message }: AssistantMessageProps) {
   const processedToolEnds = new Set<number>();
 
   return (
-    <div className="group py-2">
-      {/* Header: icon + label */}
-      <div className="flex items-center gap-1.5 mb-1">
-        <Sparkles size={12} className="text-violet-400" />
-        <span className="text-[11px] font-medium text-white/40 uppercase tracking-wide">Agent</span>
-      </div>
-      
-      {/* 按事件顺序渲染 */}
-      <div className="space-y-2 pl-[18px]">
-        {events.map((event, index) => {
-          switch (event.type) {
-            case 'thinking': {
-              const content = extractContent(event.data);
-              if (!content || content.length < 5) return null;
-              return <ThinkingBlock key={`thinking-${index}`} content={content} />;
-            }
-            
-            case 'tool_start': {
-              const data = event.data as Record<string, unknown>;
-              const toolName = String(data?.tool || 'unknown');
-              const toolInput = (data?.input || {}) as Record<string, unknown>;
-              const toolId = String(data?.id || `tool-${index}`);
+    <MessageErrorBoundary>
+      <div className="group py-2">
+        {/* Header: icon + label */}
+        <div className="flex items-center gap-1.5 mb-1">
+          <Sparkles size={12} className="text-violet-400" />
+          <span className="text-[11px] font-medium text-white/40 uppercase tracking-wide">Agent</span>
+        </div>
+        
+        {/* 按事件顺序渲染 */}
+        <div className="space-y-2 pl-[18px]">
+          {events.map((event, index) => {
+            try {
+              if (!event || !event.type) return null;
               
-              // 查找对应的 tool_end
-              const toolEnd = findToolEnd(events, index, toolName);
-              const toolEndIndex = toolEnd ? events.indexOf(toolEnd) : -1;
-              if (toolEndIndex >= 0) {
-                processedToolEnds.add(toolEndIndex);
+              switch (event.type) {
+                case 'thinking': {
+                  const content = extractContent(event.data);
+                  if (!content || content.length < 5) return null;
+                  return <ThinkingBlock key={`thinking-${index}`} content={content} />;
+                }
+                
+                case 'tool_start': {
+                  const data = (event.data || {}) as Record<string, unknown>;
+                  const toolName = String(data?.tool || 'unknown');
+                  const toolInput = (data?.input && typeof data.input === 'object' ? data.input : {}) as Record<string, unknown>;
+                  const toolId = String(data?.id || `tool-${index}`);
+                  
+                  // 查找对应的 tool_end
+                  const toolEnd = findToolEnd(events, index, toolName);
+                  const toolEndIndex = toolEnd ? events.indexOf(toolEnd) : -1;
+                  if (toolEndIndex >= 0) {
+                    processedToolEnds.add(toolEndIndex);
+                  }
+                  
+                  const endData = (toolEnd?.data || {}) as Record<string, unknown>;
+                  const resultData = (endData?.result && typeof endData.result === 'object' ? endData.result : undefined) as Record<string, unknown> | undefined;
+                  const isSuccess = resultData?.success === true;
+                  const isRunning = !toolEnd;
+                  
+                  return (
+                    <ToolCallCard
+                      key={`tool-${index}`}
+                      toolCall={{
+                        id: toolId,
+                        tool: toolName,
+                        input: toolInput,
+                        status: isRunning ? 'running' : (isSuccess ? 'success' : 'error'),
+                        result: resultData ? {
+                          success: Boolean(resultData.success),
+                          ...resultData,
+                        } : undefined,
+                        startTime: Date.now(),
+                        endTime: toolEnd ? Date.now() : undefined,
+                      }}
+                    />
+                  );
+                }
+                
+                case 'tool_end': {
+                  // 已经在 tool_start 中处理，跳过
+                  return null;
+                }
+                
+                case 'text':
+                case 'final': {
+                  const content = extractContent(event.data);
+                  if (!content) return null;
+                  return (
+                    <div key={`text-${index}`} className="text-[13px] text-white/90 leading-relaxed whitespace-pre-wrap">
+                      <FormattedText text={content} />
+                    </div>
+                  );
+                }
+                
+                case 'warning': {
+                  const content = extractContent(event.data);
+                  return (
+                    <div key={`warning-${index}`} className="flex items-start gap-2 px-2.5 py-1.5 rounded bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-[12px]">
+                      <span className="shrink-0">⚠</span>
+                      <span>{content || 'Warning'}</span>
+                    </div>
+                  );
+                }
+                
+                case 'error': {
+                  const content = extractContent(event.data);
+                  return (
+                    <div key={`error-${index}`} className="flex items-start gap-2 px-2.5 py-1.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 text-[12px]">
+                      <span className="shrink-0">✕</span>
+                      <span>{content || 'Error'}</span>
+                    </div>
+                  );
+                }
+                
+                default:
+                  return null;
               }
-              
-              const endData = toolEnd?.data as Record<string, unknown> | undefined;
-              const resultData = endData?.result as Record<string, unknown> | undefined;
-              const isSuccess = resultData?.success === true;
-              const isRunning = !toolEnd;
-              
+            } catch (e) {
+              console.error(`[AssistantMessage] Error rendering event ${index}:`, e, event);
               return (
-                <ToolCallCard
-                  key={`tool-${index}`}
-                  toolCall={{
-                    id: toolId,
-                    tool: toolName,
-                    input: toolInput,
-                    status: isRunning ? 'running' : (isSuccess ? 'success' : 'error'),
-                    result: resultData ? {
-                      success: Boolean(resultData.success),
-                      ...resultData,
-                    } : undefined,
-                    startTime: Date.now(),
-                    endTime: toolEnd ? Date.now() : undefined,
-                  }}
-                />
-              );
-            }
-            
-            case 'tool_end': {
-              // 已经在 tool_start 中处理，跳过
-              return null;
-            }
-            
-            case 'text':
-            case 'final': {
-              const content = extractContent(event.data);
-              if (!content) return null;
-              return (
-                <div key={`text-${index}`} className="text-[13px] text-white/90 leading-relaxed whitespace-pre-wrap">
-                  <FormattedText text={content} />
+                <div key={`error-${index}`} className="text-[11px] text-red-400/60">
+                  [Render error for event {index}]
                 </div>
               );
             }
-            
-            case 'warning': {
-              const content = extractContent(event.data);
-              return (
-                <div key={`warning-${index}`} className="flex items-start gap-2 px-2.5 py-1.5 rounded bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-[12px]">
-                  <span className="shrink-0">⚠</span>
-                  <span>{content}</span>
-                </div>
-              );
-            }
-            
-            case 'error': {
-              const content = extractContent(event.data);
-              return (
-                <div key={`error-${index}`} className="flex items-start gap-2 px-2.5 py-1.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 text-[12px]">
-                  <span className="shrink-0">✕</span>
-                  <span>{content}</span>
-                </div>
-              );
-            }
-            
-            default:
-              return null;
-          }
-        })}
-        
-        {/* 最终响应（如果有且不在 events 中） */}
-        {message.content && !events.some(e => e.type === 'final') && (
-          <div className="text-[13px] text-white/90 leading-relaxed whitespace-pre-wrap">
-            <FormattedText text={message.content} />
-          </div>
-        )}
-        
-        {/* Streaming 指示器 */}
-        {isStreaming && events.length === 0 && (
-          <div className="flex items-center gap-1 text-white/30 text-[12px]">
-            <span className="animate-pulse">●</span>
-            <span className="animate-pulse" style={{ animationDelay: '150ms' }}>●</span>
-            <span className="animate-pulse" style={{ animationDelay: '300ms' }}>●</span>
-          </div>
-        )}
+          })}
+          
+          {/* 最终响应（如果有且不在 events 中） */}
+          {message.content && !events.some(e => e?.type === 'final') && (
+            <div className="text-[13px] text-white/90 leading-relaxed whitespace-pre-wrap">
+              <FormattedText text={message.content} />
+            </div>
+          )}
+          
+          {/* Streaming 指示器 */}
+          {isStreaming && events.length === 0 && (
+            <div className="flex items-center gap-1 text-white/30 text-[12px]">
+              <span className="animate-pulse">●</span>
+              <span className="animate-pulse" style={{ animationDelay: '150ms' }}>●</span>
+              <span className="animate-pulse" style={{ animationDelay: '300ms' }}>●</span>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </MessageErrorBoundary>
   );
 }
 
