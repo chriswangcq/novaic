@@ -177,12 +177,20 @@ interface AgentDashboardProps {
   onEnterWorkspace: (agentId: string) => void;
 }
 
-// VM status from Tauri
+// VM status from Tauri (must match Rust VmStatus struct)
 interface VmStatus {
-  is_running: boolean;
-  pid: number | null;
+  running: boolean;
+  agent_healthy: boolean;
+  mcp_healthy: boolean;
+  websockify_running: boolean;
   vnc_port: number;
-  vnc_ws_port: number;
+  agent_port: number;
+  mcp_host_port: number;
+  websocket_port: number;
+  vnc_url: string;
+  agent_url: string;
+  mcp_url: string;
+  agent_id: string | null;
 }
 
 export function AgentDashboard({ onEnterWorkspace }: AgentDashboardProps) {
@@ -212,8 +220,17 @@ export function AgentDashboard({ onEnterWorkspace }: AgentDashboardProps) {
   const getAgentStatus = (agent: AICAgent): AICAgent['status'] => {
     if (!vmStatus) return 'stopped';
     if (loadingAgent === agent.id) return 'starting';
-    // If this agent is selected and VM is running, it's running
-    if (agent.id === currentAgentId && vmStatus.is_running) return 'running';
+    
+    // Check if this agent's VM is running
+    if (vmStatus.agent_id === agent.id && vmStatus.running) {
+      return 'running';
+    }
+    
+    // VM is running but for a different agent
+    if (vmStatus.running && vmStatus.agent_id !== agent.id) {
+      return 'stopped';
+    }
+    
     return 'stopped';
   };
 
