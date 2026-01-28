@@ -8,8 +8,8 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     """Server settings"""
     
-    # Server
-    host: str = "0.0.0.0"
+    # Server - 只绑定本地，外部通过 VSOCK 代理访问
+    host: str = "127.0.0.1"
     port: int = 8080
     
     # Work directory

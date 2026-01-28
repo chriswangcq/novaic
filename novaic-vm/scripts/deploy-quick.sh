@@ -54,10 +54,10 @@ Environment=XAUTHORITY=/home/ubuntu/.Xauthority
 Environment=HOME=/home/ubuntu
 Environment=PATH=/opt/novaic-venv/bin:/usr/local/bin:/usr/bin:/bin
 Environment=PYTHONPATH=/opt/novaic-core/src
-Environment=NOVAIC_HOST=0.0.0.0
+Environment=NOVAIC_HOST=127.0.0.1
 Environment=NOVAIC_PORT=8080
 WorkingDirectory=/opt/novaic-core
-ExecStart=/opt/novaic-venv/bin/python -c "from novaic_core.main import mcp; mcp.run(transport='sse', host='0.0.0.0', port=8080)"
+ExecStart=/opt/novaic-venv/bin/python -c "from novaic_core.main import mcp; mcp.run(transport='streamable-http', host='127.0.0.1', port=8080)"
 Restart=always
 RestartSec=3
 
