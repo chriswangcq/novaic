@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from api.routes import router as api_router
 from api.ws import router as ws_router
+from api.agents import router as agents_router
 from config.manager import get_config_manager
 
 
@@ -71,6 +72,9 @@ app.add_middleware(
 
 # API routes
 app.include_router(api_router, prefix="/api")
+
+# Agents API routes (already has /api/agents prefix)
+app.include_router(agents_router)
 
 # WebSocket routes
 app.include_router(ws_router)

@@ -156,6 +156,32 @@ export interface LayoutSettings {
   leftWidth: number;
 }
 
+// AIC Agent Types
+export interface PortConfig {
+  vnc: number;
+  mcp: number;
+  websocket: number;
+  ssh: number;
+}
+
+export interface VmConfig {
+  backend: string;
+  image_path: string;
+  os_type: string;
+  os_version: string;
+  memory: string;
+  cpus: number;
+  ports: PortConfig;
+}
+
+export interface AICAgent {
+  id: string;
+  name: string;
+  created_at: string;
+  vm: VmConfig;
+  status: 'stopped' | 'starting' | 'running' | 'error';
+}
+
 // App State
 export interface AppState {
   messages: Message[];
@@ -175,6 +201,10 @@ export interface AppState {
   apiKeys: ApiKeyInfo[];
   selectedModel: string;
   chatMode: ChatMode;
+  // AIC Agents
+  agents: AICAgent[];
+  currentAgentId: string | null;
+  createAgentModalOpen: boolean;
 }
 
 // API Response Types

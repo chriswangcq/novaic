@@ -6,6 +6,7 @@
 
 import { create } from 'zustand';
 import { api, gateway } from '../services';
+import type { AICAgent, CreateAgentRequest } from '../services/api';
 import { 
   LogData, 
   Message, 
@@ -71,6 +72,12 @@ interface AppStore extends AppState {
   setSelectedModel: (model: string) => void;
   setChatMode: (mode: ChatMode) => void;
   loadModelsFromConfig: () => Promise<void>;
+  // Agent actions
+  loadAgents: () => Promise<void>;
+  selectAgent: (agentId: string) => Promise<void>;
+  createAgent: (data: CreateAgentRequest) => Promise<AICAgent>;
+  deleteAgent: (agentId: string) => Promise<void>;
+  setCreateAgentModalOpen: (open: boolean) => void;
 }
 
 
@@ -126,6 +133,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
   apiKeys: [],
   selectedModel: loadSelectedModel(),
   chatMode: loadChatMode(),
+  // Agent state
+  agents: [],
+  currentAgentId: null,
+  createAgentModalOpen: false,
 
   // Initialize app - connect to Gateway WebSocket
   initialize: async () => {
@@ -477,5 +488,61 @@ export const useAppStore = create<AppStore>((set, get) => ({
     } catch (error) {
       console.error('[Store] Failed to load models from config:', error);
     }
+  },
+
+  // ==================== Agent Actions ====================
+
+  loadAgents: async () => {
+    try {
+      const response = await api.listAgents();
+      set({ 
+        agents: response.agents,
+        currentAgentId: response.current_agent_id 
+      });
+      console.log('[Store] Loaded agents:', response.agents.length);
+    } catch (error) {
+      console.error('[Store] Failed to load agents:', error);
+    }
+  },
+
+  selectAgent: async (agentId: string) => {
+    try {
+      await api.setCurrentAgent(agentId);
+      set({ currentAgentId: agentId });
+      console.log('[Store] Selected agent:', agentId);
+      // Note: VM switch is handled by Tauri, not here
+    } catch (error) {
+      console.error('[Store] Failed to select agent:', error);
+      throw error;
+    }
+  },
+
+  createAgent: async (data: CreateAgentRequest) => {
+    try {
+      const agent = await api.createAgent(data);
+      const { loadAgents } = get();
+      await loadAgents();
+      console.log('[Store] Created agent:', agent.id);
+      return agent;
+    } catch (error) {
+      console.error('[Store] Failed to create agent:', error);
+      throw error;
+    }
+  },
+
+  deleteAgent: async (agentId: string) => {
+    try {
+      await api.deleteAgent(agentId);
+      const { loadAgents } = get();
+      await loadAgents();
+      console.log('[Store] Deleted agent:', agentId);
+    } catch (error) {
+      console.error('[Store] Failed to delete agent:', error);
+      throw error;
+    }
+  },
+
+  setCreateAgentModalOpen: (open: boolean) => {
+    set({ createAgentModalOpen: open });
   },
 }));

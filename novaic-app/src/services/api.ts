@@ -45,6 +45,55 @@ export interface HealthStatus {
   tools_count: number;
 }
 
+// ==================== AIC Agent Types ====================
+
+export interface PortConfig {
+  vnc: number;
+  mcp: number;
+  websocket: number;
+  ssh: number;
+}
+
+export interface VmConfig {
+  backend: string;
+  image_path: string;
+  os_type: string;
+  os_version: string;
+  memory: string;
+  cpus: number;
+  ports: PortConfig;
+}
+
+export interface AICAgent {
+  id: string;
+  name: string;
+  created_at: string;
+  vm: VmConfig;
+  status: 'stopped' | 'starting' | 'running' | 'error';
+}
+
+export interface AgentListResponse {
+  agents: AICAgent[];
+  current_agent_id: string | null;
+}
+
+export interface CreateAgentRequest {
+  name: string;
+  backend?: string;
+  os_type?: string;
+  os_version?: string;
+  memory?: string;
+  cpus?: number;
+  source_image?: string;
+}
+
+export interface AvailableImage {
+  path: string;
+  name: string;
+  size: number;
+  source: string;
+}
+
 /**
  * Gateway API client using Tauri IPC → Unix Socket
  */
@@ -228,6 +277,73 @@ export const api = {
 
   async getGatewayStatus(): Promise<boolean> {
     return invoke<boolean>('get_gateway_status');
+  },
+
+  // ==================== AIC Agent API ====================
+
+  /**
+   * List all AIC agents
+   */
+  async listAgents(): Promise<AgentListResponse> {
+    return invoke<AgentListResponse>('gateway_get', { path: '/api/agents' });
+  },
+
+  /**
+   * Get current agent
+   */
+  async getCurrentAgent(): Promise<AICAgent | null> {
+    return invoke<AICAgent | null>('gateway_get', { path: '/api/agents/current' });
+  },
+
+  /**
+   * Set current agent
+   */
+  async setCurrentAgent(agentId: string): Promise<void> {
+    await invoke('gateway_post', { 
+      path: '/api/agents/current', 
+      body: { agent_id: agentId } 
+    });
+  },
+
+  /**
+   * Get agent by ID
+   */
+  async getAgent(agentId: string): Promise<AICAgent> {
+    return invoke<AICAgent>('gateway_get', { path: `/api/agents/${agentId}` });
+  },
+
+  /**
+   * Create a new agent
+   */
+  async createAgent(data: CreateAgentRequest): Promise<AICAgent> {
+    return invoke<AICAgent>('gateway_post', { 
+      path: '/api/agents', 
+      body: data 
+    });
+  },
+
+  /**
+   * Update an agent
+   */
+  async updateAgent(agentId: string, data: Partial<{ name: string; vm: Partial<VmConfig> }>): Promise<AICAgent> {
+    return invoke<AICAgent>('gateway_patch', { 
+      path: `/api/agents/${agentId}`, 
+      body: data 
+    });
+  },
+
+  /**
+   * Delete an agent
+   */
+  async deleteAgent(agentId: string): Promise<void> {
+    await invoke('gateway_delete', { path: `/api/agents/${agentId}` });
+  },
+
+  /**
+   * Get available VM images
+   */
+  async getAvailableImages(): Promise<AvailableImage[]> {
+    return invoke<AvailableImage[]>('gateway_get', { path: '/api/agents/images' });
   },
 };
 

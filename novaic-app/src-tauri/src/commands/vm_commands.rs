@@ -76,7 +76,7 @@ pub async fn get_vnc_url(
     vm_manager: State<'_, VmManagerState>,
 ) -> Result<String, String> {
     let manager = vm_manager.lock().await;
-    Ok(manager.get_vnc_url())
+    Ok(manager.get_vnc_url().await)
 }
 
 /// Get Agent API URL
@@ -85,5 +85,5 @@ pub async fn get_agent_url(
     vm_manager: State<'_, VmManagerState>,
 ) -> Result<String, String> {
     let manager = vm_manager.lock().await;
-    Ok(manager.get_agent_url())
+    Ok(manager.get_agent_url().await)
 }
