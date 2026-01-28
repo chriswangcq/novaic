@@ -13,15 +13,67 @@ QEMU 使用端口转发将 VM 的 8080 端口映射到宿主机。
 - 自动重试: 网络错误时自动重试
 - Session 恢复: Session 失效时自动重新初始化
 - 健康检查: 定期检查连接状态
+- MCP 三元组: Tools, Resources, Prompts 完整支持
 """
 
 from typing import Dict, List, Any, Optional
+from dataclasses import dataclass, field
+from datetime import datetime
 import logging
 import json
 import asyncio
 import httpx
 
 logger = logging.getLogger(__name__)
+
+
+# ==================== Data Classes ====================
+
+@dataclass
+class MCPResource:
+    """MCP Resource 数据类"""
+    uri: str
+    name: str
+    description: str = ""
+    mime_type: str = "text/plain"
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "MCPResource":
+        return cls(
+            uri=data.get("uri", ""),
+            name=data.get("name", ""),
+            description=data.get("description", ""),
+            mime_type=data.get("mimeType", "text/plain")
+        )
+
+
+@dataclass
+class MCPPrompt:
+    """MCP Prompt 数据类"""
+    name: str
+    description: str = ""
+    arguments: List[Dict[str, Any]] = field(default_factory=list)
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "MCPPrompt":
+        return cls(
+            name=data.get("name", ""),
+            description=data.get("description", ""),
+            arguments=data.get("arguments", [])
+        )
+
+
+@dataclass
+class MCPSkill:
+    """MCP Skill - 从 Resources 中提取的技能定义"""
+    name: str
+    uri: str
+    description: str
+    content: str = ""
+    loaded_at: Optional[datetime] = None
+    
+    def is_loaded(self) -> bool:
+        return bool(self.content)
 
 # 常见的 Session 失效错误消息
 SESSION_ERROR_MESSAGES = [
@@ -43,6 +95,7 @@ class MCPServerConnection:
     单个 MCP Server 的连接管理
     
     通过 HTTP 与 VM 内的 MCP Server 通信。
+    支持 MCP 三元组: Tools, Resources, Prompts
     """
     
     def __init__(self, name: str, port: int):
@@ -57,7 +110,12 @@ class MCPServerConnection:
         self.port = port
         self.url = get_mcp_url(port)
         
+        # Caches
         self._tools_cache: Optional[List[Dict[str, Any]]] = None
+        self._resources_cache: Optional[List[MCPResource]] = None
+        self._prompts_cache: Optional[List[MCPPrompt]] = None
+        self._skills_cache: Dict[str, MCPSkill] = {}  # uri -> skill
+        
         self._request_id = 0
         self._session_id: Optional[str] = None
         self._protocol_version = "2024-11-05"
@@ -267,45 +325,269 @@ class MCPServerConnection:
     
     async def list_tools(self, use_cache: bool = True, max_retries: int = 3) -> List[Dict[str, Any]]:
         """获取工具列表（带重试）"""
-        import asyncio
+        print(f"[MCP] list_tools called: use_cache={use_cache}, cache_exists={self._tools_cache is not None}")
         
         if use_cache and self._tools_cache is not None:
+            print(f"[MCP] Returning cached tools: {len(self._tools_cache)} tools")
             return self._tools_cache
         
         for attempt in range(max_retries):
             try:
                 # 先初始化
                 if not self._session_id:
-                    print(f"[MCP] Initializing connection to {self.name} at {self.url}...")
-                    if not await self.initialize():
-                        print(f"[MCP] Failed to initialize {self.name}")
+                    print(f"[MCP] No session, initializing connection to {self.name} at {self.url}...")
+                    init_result = await self.initialize()
+                    if not init_result:
+                        print(f"[MCP] ✗ Failed to initialize {self.name}")
                         if attempt < max_retries - 1:
+                            print(f"[MCP] Retrying in 2s... (attempt {attempt + 1}/{max_retries})")
                             await asyncio.sleep(2.0)
                             continue
                         return []
-                    print(f"[MCP] Initialized {self.name}, session_id: {self._session_id}")
+                    print(f"[MCP] ✓ Initialized {self.name}, session_id: {self._session_id[:20]}...")
+                else:
+                    print(f"[MCP] Using existing session: {self._session_id[:20]}...")
                 
-                print(f"[MCP] Listing tools from {self.name}...")
+                print(f"[MCP] Sending tools/list request to {self.name}...")
                 result = await self._send_request("tools/list", {})
-                print(f"[MCP] tools/list response: {str(result)[:500]}")
                 
                 if "result" in result:
                     tools = result["result"].get("tools", [])
                     self._tools_cache = tools
-                    print(f"[MCP] Discovered {len(tools)} tools from {self.name}")
+                    print(f"[MCP] ✓ Discovered {len(tools)} tools from {self.name}")
+                    if tools:
+                        tool_names = [t.get('name', 'unknown') for t in tools[:5]]
+                        print(f"[MCP] First 5 tools: {tool_names}")
                     return tools
                 else:
-                    print(f"[MCP] List tools failed: {result.get('error', {})}")
+                    error = result.get('error', {})
+                    print(f"[MCP] ✗ List tools failed: code={error.get('code')}, message={error.get('message')}")
                     
             except Exception as e:
-                print(f"[MCP] Failed to list tools from {self.name} (attempt {attempt + 1}/{max_retries}): {e}")
+                import traceback
+                print(f"[MCP] ✗ Exception listing tools from {self.name} (attempt {attempt + 1}/{max_retries}): {e}")
+                print(f"[MCP] Traceback:\n{traceback.format_exc()}")
             
             # 重试前重置 session
+            print(f"[MCP] Resetting session for retry...")
             self._session_id = None
             if attempt < max_retries - 1:
                 await asyncio.sleep(2.0)
         
+        print(f"[MCP] ✗ All {max_retries} attempts failed, returning empty list")
         return []
+    
+    # ==================== Resources API ====================
+    
+    async def list_resources(self, use_cache: bool = True) -> List[MCPResource]:
+        """
+        获取 Resources 列表
+        
+        Returns:
+            MCPResource 列表
+        """
+        if use_cache and self._resources_cache is not None:
+            return self._resources_cache
+        
+        try:
+            if not self._session_id:
+                if not await self.initialize():
+                    return []
+            
+            result = await self._send_request("resources/list", {})
+            
+            if "result" in result:
+                resources_data = result["result"].get("resources", [])
+                self._resources_cache = [MCPResource.from_dict(r) for r in resources_data]
+                print(f"[MCP] Discovered {len(self._resources_cache)} resources from {self.name}")
+                return self._resources_cache
+            else:
+                logger.warning(f"[MCP] List resources failed: {result.get('error', {})}")
+                
+        except Exception as e:
+            logger.error(f"[MCP] Failed to list resources from {self.name}: {e}")
+        
+        return []
+    
+    async def read_resource(self, uri: str) -> str:
+        """
+        读取 Resource 内容
+        
+        Args:
+            uri: Resource URI (e.g., "skill://desktop")
+        
+        Returns:
+            Resource 内容文本
+        """
+        try:
+            if not self._session_id:
+                if not await self.initialize():
+                    return ""
+            
+            result = await self._send_request("resources/read", {"uri": uri})
+            
+            if "result" in result:
+                contents = result["result"].get("contents", [])
+                if contents:
+                    # 通常只有一个 content
+                    return contents[0].get("text", "")
+            else:
+                logger.warning(f"[MCP] Read resource failed for {uri}: {result.get('error', {})}")
+                
+        except Exception as e:
+            logger.error(f"[MCP] Failed to read resource {uri}: {e}")
+        
+        return ""
+    
+    # ==================== Prompts API ====================
+    
+    async def list_prompts(self, use_cache: bool = True) -> List[MCPPrompt]:
+        """
+        获取 Prompts 列表
+        
+        Returns:
+            MCPPrompt 列表
+        """
+        if use_cache and self._prompts_cache is not None:
+            return self._prompts_cache
+        
+        try:
+            if not self._session_id:
+                if not await self.initialize():
+                    return []
+            
+            result = await self._send_request("prompts/list", {})
+            
+            if "result" in result:
+                prompts_data = result["result"].get("prompts", [])
+                self._prompts_cache = [MCPPrompt.from_dict(p) for p in prompts_data]
+                print(f"[MCP] Discovered {len(self._prompts_cache)} prompts from {self.name}")
+                return self._prompts_cache
+            else:
+                # Prompts 可能不被所有 server 支持，静默处理
+                logger.debug(f"[MCP] List prompts not supported or failed: {result.get('error', {})}")
+                
+        except Exception as e:
+            logger.debug(f"[MCP] Failed to list prompts from {self.name}: {e}")
+        
+        return []
+    
+    async def get_prompt(self, name: str, arguments: Dict[str, Any] = None) -> str:
+        """
+        获取 Prompt 内容
+        
+        Args:
+            name: Prompt 名称
+            arguments: Prompt 参数
+        
+        Returns:
+            Prompt 渲染后的内容
+        """
+        try:
+            if not self._session_id:
+                if not await self.initialize():
+                    return ""
+            
+            params = {"name": name}
+            if arguments:
+                params["arguments"] = arguments
+            
+            result = await self._send_request("prompts/get", params)
+            
+            if "result" in result:
+                messages = result["result"].get("messages", [])
+                # 合并所有消息内容
+                content_parts = []
+                for msg in messages:
+                    msg_content = msg.get("content", {})
+                    if isinstance(msg_content, dict) and msg_content.get("type") == "text":
+                        content_parts.append(msg_content.get("text", ""))
+                    elif isinstance(msg_content, str):
+                        content_parts.append(msg_content)
+                return "\n".join(content_parts)
+            else:
+                logger.warning(f"[MCP] Get prompt failed for {name}: {result.get('error', {})}")
+                
+        except Exception as e:
+            logger.error(f"[MCP] Failed to get prompt {name}: {e}")
+        
+        return ""
+    
+    # ==================== Skills API (基于 Resources) ====================
+    
+    async def discover_skills(self, uri_prefix: str = "skill://") -> List[MCPSkill]:
+        """
+        发现并缓存 Skills (从 Resources 中筛选)
+        
+        Args:
+            uri_prefix: Skill URI 前缀
+        
+        Returns:
+            MCPSkill 列表
+        """
+        resources = await self.list_resources()
+        skills = []
+        
+        for resource in resources:
+            if resource.uri.startswith(uri_prefix):
+                skill = MCPSkill(
+                    name=resource.name,
+                    uri=resource.uri,
+                    description=resource.description
+                )
+                self._skills_cache[resource.uri] = skill
+                skills.append(skill)
+        
+        print(f"[MCP] Discovered {len(skills)} skills from {self.name}")
+        return skills
+    
+    async def load_skill(self, uri: str) -> Optional[MCPSkill]:
+        """
+        加载 Skill 内容
+        
+        Args:
+            uri: Skill URI
+        
+        Returns:
+            加载了内容的 MCPSkill，如果失败返回 None
+        """
+        # 先检查缓存
+        if uri in self._skills_cache and self._skills_cache[uri].is_loaded():
+            return self._skills_cache[uri]
+        
+        # 读取内容
+        content = await self.read_resource(uri)
+        if not content:
+            return None
+        
+        # 更新或创建 skill
+        if uri in self._skills_cache:
+            self._skills_cache[uri].content = content
+            self._skills_cache[uri].loaded_at = datetime.now()
+        else:
+            self._skills_cache[uri] = MCPSkill(
+                name=uri.replace("skill://", ""),
+                uri=uri,
+                description="",
+                content=content,
+                loaded_at=datetime.now()
+            )
+        
+        return self._skills_cache[uri]
+    
+    async def get_skill_content(self, skill_name: str) -> str:
+        """
+        获取 Skill 内容（便捷方法）
+        
+        Args:
+            skill_name: Skill 名称（不含 skill:// 前缀）
+        
+        Returns:
+            Skill 内容
+        """
+        uri = f"skill://{skill_name}"
+        skill = await self.load_skill(uri)
+        return skill.content if skill else ""
     
     async def call_tool(
         self, 
@@ -415,17 +697,36 @@ class MCPServerConnection:
         return output
     
     def clear_cache(self):
-        """清除缓存"""
+        """清除所有缓存"""
         self._tools_cache = None
+        self._resources_cache = None
+        self._prompts_cache = None
+        self._skills_cache.clear()
 
 
 class MCPClient:
-    """MCP Client - 管理多个 MCP Server"""
+    """
+    MCP Client - 管理多个 MCP Server
+    
+    支持 MCP 三元组完整功能:
+    - Tools: 可执行的动作
+    - Resources: 可读的数据源（包括 Skills）
+    - Prompts: 预定义的交互模板
+    """
     
     def __init__(self):
         self.servers: Dict[str, MCPServerConnection] = {}
+        
+        # Tools
         self._tools_cache: Optional[List[Dict[str, Any]]] = None
         self._tool_server_map: Dict[str, str] = {}
+        
+        # Resources & Skills
+        self._resources_cache: Optional[List[MCPResource]] = None
+        self._skills_cache: Dict[str, MCPSkill] = {}  # uri -> skill
+        
+        # Prompts
+        self._prompts_cache: Optional[List[MCPPrompt]] = None
     
     async def register_server(self, name: str, port: int):
         """
@@ -437,10 +738,17 @@ class MCPClient:
         """
         server = MCPServerConnection(name=name, port=port)
         self.servers[name] = server
-        self._tools_cache = None
-        self._tool_server_map.clear()
+        self._clear_all_caches()
         
         logger.info(f"[MCPClient] Registered server: {name} ({server.url})")
+    
+    def _clear_all_caches(self):
+        """清除所有缓存"""
+        self._tools_cache = None
+        self._tool_server_map.clear()
+        self._resources_cache = None
+        self._skills_cache.clear()
+        self._prompts_cache = None
     
     async def list_all_tools(self, use_cache: bool = True) -> List[Dict[str, Any]]:
         """从所有 Server 收集工具"""
@@ -483,26 +791,73 @@ class MCPClient:
         return await server.call_tool(tool_name, arguments)
     
     def to_llm_tools_format(self, tools: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
-        """转换为 LLM 工具格式"""
+        """
+        转换为 LLM 工具格式
+        
+        确保 required 字段正确设置，让 LLM 知道哪些参数是必需的
+        """
         if tools is None:
             tools = self._tools_cache or []
         
-        return [
-            {
+        result = []
+        for tool in tools:
+            input_schema = tool.get("inputSchema", {"type": "object", "properties": {}})
+            
+            # 确保 schema 有正确的 required 字段
+            # FastMCP 可能不总是设置这个字段
+            parameters = self._ensure_required_fields(input_schema)
+            
+            result.append({
                 "type": "function",
                 "function": {
                     "name": tool["name"],
                     "description": tool["description"],
-                    "parameters": tool["inputSchema"]
+                    "parameters": parameters
                 }
-            }
-            for tool in tools
-        ]
+            })
+        
+        return result
+    
+    def _ensure_required_fields(self, schema: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        确保 JSON Schema 有正确的 required 字段
+        
+        规则:
+        - 如果参数没有 default，则为 required
+        - 如果参数的类型不包含 null，则为 required
+        """
+        if schema.get("type") != "object":
+            return schema
+        
+        properties = schema.get("properties", {})
+        existing_required = schema.get("required", [])
+        
+        # 如果已经有 required 字段，使用它
+        if existing_required:
+            return schema
+        
+        # 推断 required 字段
+        required = []
+        for prop_name, prop_schema in properties.items():
+            # 没有 default 的参数通常是必需的
+            if "default" not in prop_schema:
+                # 检查是否是可选类型 (anyOf 包含 null)
+                any_of = prop_schema.get("anyOf", [])
+                is_nullable = any(t.get("type") == "null" for t in any_of)
+                
+                if not is_nullable:
+                    required.append(prop_name)
+        
+        if required:
+            result = schema.copy()
+            result["required"] = required
+            return result
+        
+        return schema
     
     def clear_cache(self):
         """清除缓存"""
-        self._tools_cache = None
-        self._tool_server_map.clear()
+        self._clear_all_caches()
         for server in self.servers.values():
             server.clear_cache()
     
@@ -530,8 +885,212 @@ class MCPClient:
             results[name] = await server.ensure_connected()
         return results
     
+    # ==================== Resources API ====================
+    
+    async def list_all_resources(self, use_cache: bool = True) -> List[MCPResource]:
+        """
+        从所有 Server 收集 Resources
+        
+        Returns:
+            所有 MCPResource 列表
+        """
+        if use_cache and self._resources_cache is not None:
+            return self._resources_cache
+        
+        all_resources = []
+        for server_name, server in self.servers.items():
+            resources = await server.list_resources(use_cache=use_cache)
+            all_resources.extend(resources)
+        
+        self._resources_cache = all_resources
+        return all_resources
+    
+    async def read_resource(self, uri: str) -> str:
+        """
+        读取 Resource 内容
+        
+        Args:
+            uri: Resource URI
+        
+        Returns:
+            Resource 内容
+        """
+        # 尝试从每个 server 读取
+        for server in self.servers.values():
+            content = await server.read_resource(uri)
+            if content:
+                return content
+        return ""
+    
+    # ==================== Skills API ====================
+    
+    async def discover_all_skills(self, uri_prefix: str = "skill://") -> List[MCPSkill]:
+        """
+        从所有 Server 发现 Skills
+        
+        Args:
+            uri_prefix: Skill URI 前缀
+        
+        Returns:
+            所有 MCPSkill 列表
+        """
+        all_skills = []
+        for server_name, server in self.servers.items():
+            skills = await server.discover_skills(uri_prefix)
+            for skill in skills:
+                self._skills_cache[skill.uri] = skill
+            all_skills.extend(skills)
+        
+        print(f"[MCPClient] Total skills discovered: {len(all_skills)}")
+        return all_skills
+    
+    async def load_skill(self, uri_or_name: str) -> Optional[MCPSkill]:
+        """
+        加载 Skill 内容
+        
+        Args:
+            uri_or_name: Skill URI 或名称
+        
+        Returns:
+            加载了内容的 MCPSkill
+        """
+        # 规范化 URI
+        uri = uri_or_name if uri_or_name.startswith("skill://") else f"skill://{uri_or_name}"
+        
+        # 检查缓存
+        if uri in self._skills_cache and self._skills_cache[uri].is_loaded():
+            return self._skills_cache[uri]
+        
+        # 从 servers 加载
+        for server in self.servers.values():
+            skill = await server.load_skill(uri)
+            if skill and skill.is_loaded():
+                self._skills_cache[uri] = skill
+                return skill
+        
+        return None
+    
+    async def get_skill_content(self, skill_name: str) -> str:
+        """
+        获取 Skill 内容（便捷方法）
+        
+        Args:
+            skill_name: Skill 名称
+        
+        Returns:
+            Skill 内容
+        """
+        skill = await self.load_skill(skill_name)
+        return skill.content if skill else ""
+    
+    async def load_relevant_skills(self, task: str, max_skills: int = 3) -> List[MCPSkill]:
+        """
+        根据任务加载相关的 Skills
+        
+        Args:
+            task: 用户任务描述
+            max_skills: 最多加载的 skill 数量
+        
+        Returns:
+            相关的 MCPSkill 列表
+        """
+        # 确保 skills 已发现
+        if not self._skills_cache:
+            await self.discover_all_skills()
+        
+        task_lower = task.lower()
+        relevant = []
+        
+        # 关键词匹配
+        skill_keywords = {
+            "desktop": ["screenshot", "click", "mouse", "keyboard", "screen", "gui", "桌面", "截图", "点击"],
+            "browser": ["browser", "web", "navigate", "url", "page", "网页", "浏览器"],
+            "shell": ["command", "shell", "terminal", "bash", "run", "命令", "终端"],
+            "files": ["file", "read", "write", "save", "文件", "读取", "写入"],
+            "memory": ["remember", "recall", "memory", "save", "记忆", "保存"],
+            "software": ["app", "application", "launch", "open", "软件", "应用", "打开"],
+            "wechat": ["wechat", "微信", "聊天", "消息"],
+        }
+        
+        for uri, skill in self._skills_cache.items():
+            skill_name = skill.name.replace("skill_", "")
+            if skill_name in skill_keywords:
+                keywords = skill_keywords[skill_name]
+                if any(kw in task_lower for kw in keywords):
+                    loaded_skill = await self.load_skill(uri)
+                    if loaded_skill:
+                        relevant.append(loaded_skill)
+                        if len(relevant) >= max_skills:
+                            break
+        
+        # 如果没有匹配，加载默认的 desktop skill
+        if not relevant:
+            desktop_skill = await self.load_skill("skill://desktop")
+            if desktop_skill:
+                relevant.append(desktop_skill)
+        
+        return relevant
+    
+    # ==================== Prompts API ====================
+    
+    async def list_all_prompts(self, use_cache: bool = True) -> List[MCPPrompt]:
+        """
+        从所有 Server 收集 Prompts
+        
+        Returns:
+            所有 MCPPrompt 列表
+        """
+        if use_cache and self._prompts_cache is not None:
+            return self._prompts_cache
+        
+        all_prompts = []
+        for server_name, server in self.servers.items():
+            prompts = await server.list_prompts(use_cache=use_cache)
+            all_prompts.extend(prompts)
+        
+        self._prompts_cache = all_prompts
+        return all_prompts
+    
+    async def get_prompt(self, name: str, arguments: Dict[str, Any] = None) -> str:
+        """
+        获取 Prompt 内容
+        
+        Args:
+            name: Prompt 名称
+            arguments: Prompt 参数
+        
+        Returns:
+            Prompt 渲染后的内容
+        """
+        for server in self.servers.values():
+            content = await server.get_prompt(name, arguments)
+            if content:
+                return content
+        return ""
+    
+    # ==================== Full Discovery ====================
+    
+    async def full_discovery(self) -> Dict[str, Any]:
+        """
+        完整发现: Tools, Resources, Skills, Prompts
+        
+        Returns:
+            包含所有发现结果的字典
+        """
+        tools = await self.list_all_tools(use_cache=False)
+        resources = await self.list_all_resources(use_cache=False)
+        skills = await self.discover_all_skills()
+        prompts = await self.list_all_prompts(use_cache=False)
+        
+        return {
+            "tools_count": len(tools),
+            "resources_count": len(resources),
+            "skills_count": len(skills),
+            "prompts_count": len(prompts),
+            "skills": [{"name": s.name, "uri": s.uri, "description": s.description} for s in skills]
+        }
+    
     async def close(self):
         """关闭"""
         self.servers.clear()
-        self._tools_cache = None
-        self._tool_server_map.clear()
+        self._clear_all_caches()

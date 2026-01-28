@@ -8,9 +8,68 @@ Unified control plane that serves:
 """
 
 import os
+import sys
+import logging
+from datetime import datetime
+
 # Set no_proxy to avoid proxy issues with local services
 os.environ['no_proxy'] = 'localhost,127.0.0.1,::1'
 os.environ['NO_PROXY'] = 'localhost,127.0.0.1,::1'
+
+# ==================== Logging Setup ====================
+# Log directory: ~/.novaic/logs/
+LOG_DIR = os.path.expanduser("~/.novaic/logs")
+os.makedirs(LOG_DIR, exist_ok=True)
+
+# Log file with date
+LOG_FILE = os.path.join(LOG_DIR, f"gateway-{datetime.now().strftime('%Y%m%d')}.log")
+
+# Open log file for appending
+_log_file_handle = open(LOG_FILE, 'a', encoding='utf-8', buffering=1)  # line buffered
+
+# Custom stream that writes to both file and original stdout
+class TeeStream:
+    def __init__(self, file, stream):
+        self.file = file
+        self.stream = stream
+    def write(self, data):
+        if data:
+            self.file.write(data)
+            self.file.flush()
+            if self.stream:
+                try:
+                    self.stream.write(data)
+                    self.stream.flush()
+                except:
+                    pass  # Ignore if stdout is closed
+    def flush(self):
+        self.file.flush()
+        if self.stream:
+            try:
+                self.stream.flush()
+            except:
+                pass
+    def isatty(self):
+        return False
+    def fileno(self):
+        return self.file.fileno()
+
+# Redirect stdout and stderr to log file (captures all print statements)
+sys.stdout = TeeStream(_log_file_handle, sys.__stdout__)
+sys.stderr = TeeStream(_log_file_handle, sys.__stderr__)
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+
+logger = logging.getLogger("gateway")
+logger.info(f"Log file: {LOG_FILE}")
+print(f"[Gateway] Stdout/stderr redirected to {LOG_FILE}")
 
 import uvicorn
 from fastapi import FastAPI
