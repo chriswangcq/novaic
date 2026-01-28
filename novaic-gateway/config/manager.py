@@ -107,7 +107,11 @@ class AppConfig(BaseModel):
     # Execution display
     visible_shell: bool = False
     
-    # MCP Server URL
+    # MCP Server 配置
+    # VSOCK (优先) - 用于与 VM 通信
+    vsock_cid: Optional[int] = 3       # VSOCK Context ID (None = 禁用)
+    vsock_port: int = 8080             # VSOCK 端口
+    # HTTP (回退) - 用于开发或 VSOCK 不可用时
     executor_url: str = "http://127.0.0.1:8080"
     
     def to_public(self) -> dict:

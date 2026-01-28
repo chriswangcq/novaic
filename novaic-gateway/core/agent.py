@@ -22,14 +22,23 @@ class NovAICAgent:
     - Session management
     """
     
-    def __init__(self, executor_url: str = "http://127.0.0.1:8080"):
+    def __init__(
+        self, 
+        executor_url: Optional[str] = None,
+        vsock_cid: Optional[int] = None,
+        vsock_port: int = 8080,
+    ):
         """
         Initialize the Agent.
         
         Args:
-            executor_url: MCP Server URL (novaic-core)
+            executor_url: MCP Server URL (HTTP fallback)
+            vsock_cid: VSOCK Context ID (优先使用)
+            vsock_port: VSOCK 端口 (默认 8080)
         """
         self.executor_url = executor_url
+        self.vsock_cid = vsock_cid
+        self.vsock_port = vsock_port
         
         # Cache for LLM clients (cache_key -> client)
         self._llm_clients: Dict[str, BaseLLMClient] = {}
@@ -108,7 +117,13 @@ class NovAICAgent:
             return
         
         try:
-            await self.mcp_client.register_server("executor", self.executor_url)
+            # 注册 MCP Server（优先 VSOCK，回退到 HTTP）
+            await self.mcp_client.register_server(
+                name="executor",
+                base_url=self.executor_url,
+                vsock_cid=self.vsock_cid,
+                vsock_port=self.vsock_port,
+            )
             tools = await self.mcp_client.list_all_tools()
             self.tools = self.mcp_client.to_llm_tools_format(tools)
             

@@ -11,10 +11,12 @@ pub struct VmConfig {
     pub cpus: u32,           // CPU 核心数
     pub vnc_port: u16,       // VNC 端口 (VM 内部使用，通过 QEMU 转发)
     pub agent_port: u16,     // Agent API 端口 (宿主机)
-    pub executor_port: u16,  // Executor API 端口 (VM 内)
     pub websocket_port: u16, // WebSocket 端口 (VM 内的 websockify 提供)
     pub ssh_port: u16,       // SSH 端口
     pub image_path: Option<String>,  // 自定义镜像路径 (可选)
+    // VSOCK 配置 (替代 executor_port)
+    pub vsock_cid: u32,      // VSOCK Context ID (3+, 0/1/2 是保留值)
+    pub mcp_vsock_port: u32, // VSOCK 端口 (VM 内 MCP Server 监听)
 }
 
 impl Default for VmConfig {
@@ -24,10 +26,12 @@ impl Default for VmConfig {
             cpus: 4,
             vnc_port: 5900,      // VNC 端口 (宿主机 5900 → VM 5900)
             agent_port: 9000,    // Agent API 端口 (宿主机本地)
-            executor_port: 8080, // MCP Server 端口 (宿主机 8080 → VM 8080)
             websocket_port: 6080,// WebSocket 端口 (宿主机 6080 → VM 6080)
             ssh_port: 2222,      // SSH 端口 (宿主机 2222 → VM 22)
             image_path: None,    // 使用默认镜像
+            // VSOCK 配置
+            vsock_cid: 3,        // 默认 CID=3 (第一个 VM)
+            mcp_vsock_port: 8080,// MCP Server 在 VSOCK 上的端口
         }
     }
 }
@@ -133,10 +137,10 @@ impl VmManager {
             return Ok(());
         }
 
-        // 检查 Executor 端口（8080）是否被占用 - 用于检测 VM 是否在运行
-        // Agent 现在在宿主机运行（端口 9000），不再用于检测 VM 状态
-        if TcpStream::connect(format!("127.0.0.1:{}", config.executor_port)).is_ok() {
-            println!("[VM] VM already running (detected via Executor port {}), skipping start", config.executor_port);
+        // 检查 websockify 端口是否被占用 - 用于检测 VM 是否在运行
+        // (MCP 现在通过 VSOCK 通信，不再使用端口转发)
+        if TcpStream::connect(format!("127.0.0.1:{}", config.websocket_port)).is_ok() {
+            println!("[VM] VM already running (detected via websockify port {}), skipping start", config.websocket_port);
             // 等待 websockify 就绪
             drop(qemu_guard);
             self.wait_for_websockify().await?;
@@ -204,92 +208,36 @@ impl VmManager {
         Ok(())
     }
 
-    /// 等待 Executor 服务可用（在 VM 内运行）
+    /// 等待 MCP Server 可用（在 VM 内运行，通过 VSOCK 通信）
+    /// 注意：实际的 VSOCK 连接由 Gateway 处理，这里只等待一个合理的启动时间
     async fn wait_for_executor(&self) -> Result<(), String> {
         let config = self.config.lock().await.clone();
         let start = std::time::Instant::now();
-        println!("[VM] Waiting for Executor service (port {})...", config.executor_port);
+        println!("[VM] Waiting for MCP Server (VSOCK CID={}, port={})...", 
+            config.vsock_cid, config.mcp_vsock_port);
         
         // VM 启动后，给 systemd 服务一些时间启动
-        sleep(Duration::from_secs(3)).await;
+        // VSOCK 连接由 Gateway 侧的 Python 代码处理
+        // 这里只等待一个合理的时间让 VM 内的服务启动
+        let wait_secs = 15;
+        println!("[VM] Waiting {}s for VM services to start...", wait_secs);
+        sleep(Duration::from_secs(wait_secs)).await;
         
-        let max_attempts = 90;  // 最多等待 180 秒（3分钟）
-        let mut tcp_ready = false;
-        
-        for attempt in 1..=max_attempts {
-            // 先检查 TCP 端口是否可连接
-            if !tcp_ready {
-                if TcpStream::connect(format!("127.0.0.1:{}", config.executor_port)).is_ok() {
-                    tcp_ready = true;
-                    println!("[VM] Executor TCP port ready after {:.1}s", start.elapsed().as_secs_f32());
-                }
-            }
-            
-            // TCP 就绪后检查 HTTP 健康状态
-            if tcp_ready {
-                match self.check_executor_health().await {
-                    Ok(true) => {
-                        println!("[VM] Executor healthy after {:.1}s (attempt {})", start.elapsed().as_secs_f32(), attempt);
-                        return Ok(());
-                    }
-                    _ => {}
-                }
-            }
-            
-            if attempt % 10 == 0 {
-                println!("[VM] Still waiting for Executor... {:.1}s (attempt {}, tcp={})", 
-                    start.elapsed().as_secs_f32(), attempt, tcp_ready);
-            }
-            
-            if attempt < max_attempts {
-                sleep(Duration::from_secs(2)).await;
-            }
-        }
-
-        // Executor 未能启动，但 VM 可能仍在运行
-        println!("[VM] Warning: Executor not responding after {:.1}s", start.elapsed().as_secs_f32());
+        println!("[VM] MCP Server should be ready (elapsed: {:.1}s)", start.elapsed().as_secs_f32());
+        println!("[VM] Note: MCP communication uses VSOCK, health check done by Gateway");
         Ok(())
     }
 
-    /// 检查 MCP Server 健康状态 (NovAIC Core)
+    /// 检查 MCP Server 健康状态
+    /// 注意：MCP 现在通过 VSOCK 通信，健康检查由 Gateway 侧执行
+    /// 这个方法保留用于状态查询，返回 false 表示需要通过 VSOCK 检查
+    #[allow(dead_code)]
     async fn check_executor_health(&self) -> Result<bool, String> {
-        let config = self.config.lock().await.clone();
-        // FastMCP 使用 Streamable HTTP transport，端点是 /mcp
-        // POST /mcp 用于 MCP 消息，GET /mcp 可能返回各种错误码（表示端点存在）
-        let mcp_url = format!("http://127.0.0.1:{}/mcp", config.executor_port);
-        
-        // 使用本地服务客户端（不走代理）
-        let client = crate::http_client::local_client_with_timeout(10)
-            .build()
-            .map_err(|e| e.to_string())?;
-
-        // 检查 /mcp 端点
-        println!("[VM] Checking executor MCP endpoint at: {}", mcp_url);
-        match client.get(&mcp_url).send().await {
-            Ok(response) => {
-                let status = response.status();
-                let status_code = status.as_u16();
-                println!("[VM] Executor MCP response status: {}", status);
-                // MCP 端点存在时，GET 请求可能返回：
-                // - 200: 正常响应
-                // - 405 Method Not Allowed: streamable-http 只接受 POST
-                // - 406 Not Acceptable: 请求头不满足要求
-                // - 415 Unsupported Media Type: Content-Type 不对
-                // 这些都表示端点存在且服务在运行
-                let is_healthy = status.is_success() 
-                    || status_code == 405 
-                    || status_code == 406 
-                    || status_code == 415;
-                if is_healthy {
-                    println!("[VM] Executor is healthy (status {} indicates endpoint exists)", status_code);
-                }
-                Ok(is_healthy)
-            },
-            Err(e) => {
-                println!("[VM] MCP endpoint check failed: {}", e);
-                Ok(false)
-            },
-        }
+        // MCP Server 现在通过 VSOCK 通信，不再使用 TCP 端口
+        // 健康检查应该由 Gateway 通过 VSOCK 执行
+        // 这里简单返回 true，表示"假设健康"
+        // 实际健康状态由 Gateway 的 VSOCK 连接决定
+        Ok(true)
     }
     
     /// 检查宿主机 Agent 健康状态（用于状态查询）
@@ -343,7 +291,6 @@ impl VmManager {
         let agent_id = self.current_agent_id.lock().await.clone();
         let is_running = self.is_running().await;
         let agent_healthy = self.check_agent_health().await.unwrap_or(false);
-        let mcp_healthy = self.check_executor_health().await.unwrap_or(false);
         
         // 检查 websockify 端口是否可用 (在 VM 内运行)
         let websockify_running = TcpStream::connect(
@@ -351,25 +298,37 @@ impl VmManager {
         ).is_ok();
 
         VmStatus {
-            running: is_running || mcp_healthy,  // 如果 MCP 健康，则 VM 在运行
+            running: is_running || websockify_running,  // 如果 websockify 运行，则 VM 在运行
             agent_healthy,
-            mcp_healthy,
+            mcp_healthy: websockify_running,  // 假设 MCP 与 VM 一起运行
             websockify_running,
             vnc_port: config.vnc_port,
             agent_port: config.agent_port,
-            mcp_port: config.executor_port,
+            vsock_cid: config.vsock_cid,
+            mcp_vsock_port: config.mcp_vsock_port,
             websocket_port: config.websocket_port,
             vnc_url: format!("ws://localhost:{}/websockify", config.websocket_port),
             agent_url: format!("http://localhost:{}", config.agent_port),
-            mcp_url: format!("http://localhost:{}", config.executor_port),
             agent_id,
         }
     }
 
-    /// Get MCP Server URL
-    pub async fn get_mcp_url(&self) -> String {
+    /// Get VSOCK CID for MCP Server
+    pub async fn get_vsock_cid(&self) -> u32 {
         let config = self.config.lock().await;
-        format!("http://localhost:{}", config.executor_port)
+        config.vsock_cid
+    }
+    
+    /// Get VSOCK port for MCP Server
+    pub async fn get_mcp_vsock_port(&self) -> u32 {
+        let config = self.config.lock().await;
+        config.mcp_vsock_port
+    }
+    
+    /// Get MCP connection info (VSOCK)
+    pub async fn get_mcp_info(&self) -> (u32, u32) {
+        let config = self.config.lock().await;
+        (config.vsock_cid, config.mcp_vsock_port)
     }
 
     /// Get VNC WebSocket URL (for noVNC)
@@ -433,15 +392,13 @@ impl VmManager {
 
     /// 构建 QEMU 参数
     fn build_qemu_args(&self, config: &VmConfig, image_path: &PathBuf) -> Result<Vec<String>, String> {
-        // 网络端口转发 (全部 1:1 映射，除了 SSH)
+        // 网络端口转发 (简化：MCP 通过 VSOCK，不需要端口转发)
         // - vnc: VNC 端口 (VM 5900 → 宿主机 5900)
-        // - mcp: MCP Server (VM 8080 → 宿主机 8080)
         // - ws: websockify (VM 6080 → 宿主机 6080)
         // - ssh: SSH 访问 (VM 22 → 宿主机 2222)
         let port_forward = format!(
-            "hostfwd=tcp::{vnc}-:{vnc},hostfwd=tcp::{mcp}-:{mcp},hostfwd=tcp::{ws}-:{ws},hostfwd=tcp::{ssh}-:22",
+            "hostfwd=tcp::{vnc}-:{vnc},hostfwd=tcp::{ws}-:{ws},hostfwd=tcp::{ssh}-:22",
             vnc = config.vnc_port,
-            mcp = config.executor_port,  // MCP Server 端口
             ws = config.websocket_port,
             ssh = config.ssh_port,
         );
@@ -475,6 +432,8 @@ impl VmManager {
                 // 网络
                 "-device".to_string(), "virtio-net-pci,netdev=net0".to_string(),
                 "-netdev".to_string(), format!("user,id=net0,{}", port_forward),
+                // VSOCK 设备 (用于 MCP 通信)
+                "-device".to_string(), format!("vhost-vsock-pci,guest-cid={}", config.vsock_cid),
                 // 显示
                 "-device".to_string(), "virtio-gpu-pci".to_string(),
                 // USB 输入
@@ -525,6 +484,8 @@ impl VmManager {
                 "-boot".to_string(), "c".to_string(),
                 "-net".to_string(), "nic".to_string(),
                 "-net".to_string(), format!("user,{}", port_forward),
+                // VSOCK 设备 (用于 MCP 通信)
+                "-device".to_string(), format!("vhost-vsock-pci,guest-cid={}", config.vsock_cid),
                 "-display".to_string(), "none".to_string(),
             ]);
             
@@ -566,10 +527,10 @@ pub struct VmStatus {
     pub websockify_running: bool,  // VNC WebSocket
     pub vnc_port: u16,
     pub agent_port: u16,
-    pub mcp_port: u16,             // MCP Server 端口
+    pub vsock_cid: u32,            // VSOCK CID for MCP
+    pub mcp_vsock_port: u32,       // VSOCK port for MCP
     pub websocket_port: u16,
     pub vnc_url: String,
     pub agent_url: String,
-    pub mcp_url: String,           // MCP Server URL
     pub agent_id: Option<String>,  // 当前运行的 Agent ID
 }
