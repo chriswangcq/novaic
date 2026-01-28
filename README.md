@@ -37,7 +37,8 @@ Unlike temporary sandboxes that reset after each session, NovAIC maintains state
 | **Memory System** | Key-value storage + goal tracking for cross-session context |
 | **Context Awareness** | System snapshots, directory analysis, app state detection |
 | **Privacy First** | Runs locally in QEMU VM — your data never leaves your machine |
-| **Open Source** | MIT license, fully customizable, works with any LLM |
+| **Multi-Provider LLM** | OpenAI, Anthropic, Google, Azure, or any OpenAI-compatible API |
+| **Open Source** | MIT license, fully customizable |
 
 ## Installation Guide
 

@@ -216,17 +216,48 @@ NovAIC App (React)
     → LLM API + MCP Tools
 ```
 
+## Multi-Provider LLM Support
+
+NovAIC Agent supports multiple LLM providers out of the box:
+
+| Provider | Models | Configuration |
+|----------|--------|---------------|
+| **OpenAI** | GPT-4o, GPT-4, o1, o3 | API key + optional custom base URL |
+| **Anthropic** | Claude 4, Claude 3.5 | API key |
+| **Google** | Gemini 2.0, Gemini 1.5 | API key |
+| **Azure OpenAI** | GPT-4, GPT-3.5 deployments | Endpoint + deployment name + API key |
+| **OpenAI-compatible** | Any compatible API | Custom base URL + API key |
+
+The agent automatically infers the provider from model name (e.g., `claude-*` → Anthropic, `gpt-*` → OpenAI, `gemini-*` → Google).
+
+### Provider Configuration
+
+Configure via the NovAIC App settings or programmatically:
+
+```python
+# Provider configs are set at runtime via InitRequest
+{
+    "openai_api_key": "sk-...",
+    "anthropic_api_key": "sk-ant-...",
+    "google_api_key": "AIza...",
+    "azure_api_base": "https://{resource}.openai.azure.com",
+    "azure_api_key": "...",
+    "azure_deployment_name": "gpt-4"
+}
+```
+
 ## Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `HOST` | `0.0.0.0` | Server host |
-| `PORT` | `8080` | Server port |
-| `DEBUG` | `false` | Debug mode |
-| `LLM_API_BASE` | — | LLM API base URL |
-| `LLM_API_KEY` | — | LLM API key |
-| `DEFAULT_MODEL` | `claude-sonnet-4-20250514` | Default model |
-| `EXECUTOR_URL` | `http://localhost:8081` | MCP Server URL |
+| `NBCC_HOST` | `0.0.0.0` | Server host |
+| `NBCC_PORT` | `9000` | Server port |
+| `NBCC_DEBUG` | `false` | Debug mode |
+| `NBCC_DEFAULT_PROVIDER` | `openai` | Default LLM provider |
+| `NBCC_DEFAULT_MODEL` | `gpt-4o` | Default model |
+| `NBCC_EXECUTOR_URL` | `http://127.0.0.1:8080` | MCP Server URL |
+| `NBCC_MAX_ITERATIONS` | `20` | Max agent loop iterations |
+| `NBCC_LLM_TIMEOUT` | `300` | LLM request timeout (seconds) |
 
 ## License
 
