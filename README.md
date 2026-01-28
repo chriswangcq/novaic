@@ -33,11 +33,13 @@ Unlike temporary sandboxes that reset after each session, NovAIC maintains state
 |---------|-------------|
 | **Full Desktop Control** | 44+ MCP tools for mouse, keyboard, screenshots, window management |
 | **Browser Automation** | Navigate, click, type, scroll — AI controls the browser like a human |
+| **Multi-Agent System** | Create and manage multiple AI agents, each with isolated VM disk |
 | **Persistent Environment** | QCOW2 disk images preserve everything between sessions |
 | **Memory System** | Key-value storage + goal tracking for cross-session context |
 | **Context Awareness** | System snapshots, directory analysis, app state detection |
 | **Privacy First** | Runs locally in QEMU VM — your data never leaves your machine |
 | **Multi-Provider LLM** | OpenAI, Anthropic, Google, Azure, or any OpenAI-compatible API |
+| **Graceful VM Lifecycle** | Automatic UEFI/cloud-init setup, graceful shutdown via SSH |
 | **Open Source** | MIT license, fully customizable |
 
 ## Installation Guide
@@ -100,9 +102,9 @@ This deploys NovAIC Core (MCP Server) into the VM. After deployment:
 | **SSH** | `ssh -p 2222 ubuntu@localhost` | Password: `ubuntu` |
 | **MCP** | `http://localhost:8080/mcp` | — |
 
-### Step 4: Setup the Desktop App (Optional)
+### Step 4: Setup the Desktop App (Recommended)
 
-If you want to use the NovAIC desktop application:
+The NovAIC desktop application provides a complete GUI experience with multi-agent management:
 
 ```bash
 # Setup Gateway (Python backend)
@@ -119,7 +121,13 @@ npm install
 npm run tauri dev
 ```
 
-The Tauri app will automatically manage Gateway and VM lifecycle.
+**Key Features of Desktop App:**
+
+- **Onboarding Flow**: First-time setup wizard for creating your first agent
+- **Agent Selector**: Switch between multiple AI agents (each has isolated VM)
+- **VNC Viewer**: Built-in visual access to the VM desktop
+- **Auto Lifecycle**: Tauri manages Gateway and VM startup/shutdown automatically
+- **Graceful Shutdown**: VMs shut down cleanly via SSH before force-kill
 
 #### Build for Distribution
 
@@ -172,9 +180,31 @@ Add to your MCP settings:
 
 ---
 
+## Quick Start (Desktop App — Recommended)
+
+The easiest way to get started with full multi-agent support:
+
+```bash
+# 1. Clone and build
+git clone https://github.com/chriswangcq/novaic.git
+cd novaic
+./build.sh
+
+# 2. Run the app
+open novaic-app/src-tauri/target/release/bundle/macos/NovAIC.app
+
+# 3. Follow the onboarding wizard to create your first agent
+```
+
+The app will automatically:
+- Download Ubuntu cloud image
+- Create VM with UEFI and cloud-init
+- Deploy NovAIC Core (MCP Server)
+- Start the VM and connect VNC
+
 ## Quick Start (MCP Server Only)
 
-If you just want to use NovAIC as an MCP server:
+If you just want to use NovAIC as an MCP server without the desktop app:
 
 ```bash
 # 1. Setup VM
@@ -196,7 +226,17 @@ novaic serve
 
 ---
 
-## VM Management Commands
+## VM Management
+
+### Desktop App (Automatic)
+
+When using the desktop app, VM lifecycle is fully managed:
+
+- **Start**: VM starts when you select an agent or complete onboarding
+- **Stop**: Graceful shutdown (SSH poweroff → wait → force kill)
+- **Cleanup**: VmManager Drop trait ensures cleanup on app exit
+
+### Manual Commands
 
 ```bash
 cd novaic-vm
@@ -277,6 +317,8 @@ sudo systemctl restart x11vnc
 │  │  ┌─────────────┐  ┌───────────────┐  │  │   Cursor / Any     │   │
 │  │  │   Web UI    │  │ Gateway Mgmt  │  │  │   MCP Client       │   │
 │  │  │  (React)    │  │  (Rust IPC)   │  │  │                    │   │
+│  │  │ + Agent     │  │ + VM Manager  │  │  │                    │   │
+│  │  │   Selector  │  │   (QEMU)      │  │  │                    │   │
 │  │  └──────┬──────┘  └───────┬───────┘  │  └─────────┬──────────┘   │
 │  │         │                 │          │            │              │
 │  │         │    Tauri IPC    │          │            │              │
@@ -292,27 +334,33 @@ sudo systemctl restart x11vnc
 │  │  │ /api/*      │  │   /ws/*     │  │  Loop    │  MCP Client  │  │
 │  │  └─────────────┘  └─────────────┘  └────┬─────┘              │  │
 │  └─────────────────────────────────────────┼────────────────────┘  │
-│                                            │ MCP Protocol          │
-│                                            ▼                       │
-│  ┌───────────────────────────────────────────────────────────────┐  │
-│  │                       NovAIC Core (in VM)                      │  │
-│  │                  MCP Server (44+ Tools)                        │  │
-│  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐  │  │
-│  │  │ Desktop │ │ Browser │ │  Shell  │ │  Files  │ │ Windows │  │  │
-│  │  └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘  │  │
-│  │  ┌─────────┐ ┌─────────┐ ┌─────────┐                          │  │
-│  │  │ Memory  │ │ Context │ │  Cache  │                          │  │
-│  │  └─────────┘ └─────────┘ └─────────┘                          │  │
-│  └───────────────────────────────────────────────────────────────┘  │
-│                              │                                       │
-│                              ▼                                       │
-│  ┌───────────────────────────────────────────────────────────────┐  │
-│  │                     NovAIC VM Runtime                          │  │
-│  │          Ubuntu 24.04 (QEMU) + XFCE + VNC + SSH               │  │
-│  └───────────────────────────────────────────────────────────────┘  │
-│                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
+│                                            │ Port Forward (8081+)  │
+│                    ┌───────────────────────┼───────────────────┐   │
+│                    │        Per-Agent VMs (Isolated)           │   │
+│                    │                       │                   │   │
+│  ┌─────────────────┼───────────────────────┼───────────────────┼─┐ │
+│  │   Agent A VM    ▼                       ▼    Agent B VM     │ │ │
+│  │  ┌───────────────────┐    ┌───────────────────┐             │ │ │
+│  │  │  NovAIC Core      │    │  NovAIC Core      │   ...       │ │ │
+│  │  │  MCP :8080        │    │  MCP :8080        │             │ │ │
+│  │  │  (44+ Tools)      │    │  (44+ Tools)      │             │ │ │
+│  │  │  Port Fwd :8081   │    │  Port Fwd :8082   │             │ │ │
+│  │  └───────────────────┘    └───────────────────┘             │ │ │
+│  │  disk-a.qcow2             disk-b.qcow2                      │ │ │
+│  │  Ubuntu 24.04 + XFCE + VNC + SSH                            │ │ │
+│  └─────────────────────────────────────────────────────────────┘ │ │
+│                                                                    │
+└────────────────────────────────────────────────────────────────────┘
 ```
+
+### Multi-Agent Architecture
+
+Each agent runs in an isolated QEMU VM with:
+
+- **Dedicated Disk Image**: `~/.novaic/agents/{agent-id}/disk.qcow2`
+- **UEFI Firmware**: Auto-copied from Homebrew QEMU on ARM64
+- **Cloud-Init ISO**: Auto-generated with SSH keys for secure access
+- **Port Allocation**: MCP ports auto-assigned (8081, 8082, 8083...)
 
 ## Packages
 
