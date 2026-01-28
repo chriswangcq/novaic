@@ -448,12 +448,8 @@ fn main() {
                         });
                     }
                     
-                    // Stop QEMU
-                    println!("[VM] Stopping QEMU VM...");
-                    let _ = Command::new("pkill")
-                        .args(["-f", "qemu-system"])
-                        .output();
-                    println!("[VM] QEMU VM stop command sent");
+                    // Note: VM is managed separately and not killed on app exit
+                    // Users may want to keep VM running in background
                 }
                 // macOS: Reopen window on Dock click
                 tauri::RunEvent::Reopen { has_visible_windows, .. } => {
