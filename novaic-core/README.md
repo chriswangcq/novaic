@@ -37,9 +37,11 @@ pip install -e .
 # Start the MCP server
 novaic serve
 
-# Or with uvicorn directly
-python -m uvicorn novaic_core.main:app --host 0.0.0.0 --port 8080
+# Or run directly
+python -m novaic_core.main
 ```
+
+The server starts at `http://localhost:8080/mcp` (Streamable HTTP transport).
 
 ## Configuration
 
@@ -59,13 +61,25 @@ Config directory: `~/.novaic/`
 
 | Tool | Description | Parameters |
 |------|-------------|------------|
-| `screenshot` | Take a screenshot | `region?`, `show_grid?` |
-| `mouse` | Mouse actions | `action`, `x?`, `y?`, `button?` |
+| `screenshot` | Take a screenshot | `area?`, `grid?` |
+| `mouse` | Two-phase mouse control | `action`, `x?`, `y?`, `zoom?`, `aim_id?`, `delta_x?`, `delta_y?` |
 | `keyboard` | Keyboard input | `action`, `text?`, `keys?` |
 
-**Mouse actions:** `move`, `click`, `double_click`, `right_click`, `drag`, `scroll`
+**Mouse workflow (aim → execute):**
+```python
+# 1. Aim at target (returns aim_id + zoomed screenshot with crosshair)
+mouse(action='aim', x=500, y=300, zoom=2)
 
-**Keyboard actions:** `type`, `press`, `hotkey`
+# 2. Execute with aim_id
+mouse(action='click', aim_id='aim_xxx')
+mouse(action='double', aim_id='aim_xxx')
+mouse(action='scroll', aim_id='aim_xxx', direction='down', amount=3)
+
+# Delta adjustment (fine-tune from crosshair position)
+mouse(action='aim', aim_id='aim_xxx', delta_x=-50, delta_y=20, zoom=4)
+```
+
+**Keyboard actions:** `type` (text input), `key` (key combinations)
 
 ### Browser Tools
 
@@ -147,60 +161,57 @@ Config directory: `~/.novaic/`
 
 ## API Endpoints
 
+NovAIC Core uses [FastMCP](https://github.com/jlowin/fastmcp) with Streamable HTTP transport:
+
 | Endpoint | Method | Description |
 |----------|--------|-------------|
+| `/mcp` | POST | MCP protocol endpoint (tools, resources) |
 | `/health` | GET | Health check |
-| `/tools` | GET | List available tools |
-| `/call` | POST | Call a tool |
-| `/sse` | GET | Server-Sent Events (MCP protocol) |
+
+**MCP Resources:**
+- `skill://desktop` — Desktop control guidance
+- `skill://browser` — Browser automation guidance
+- `skill://wechat` — WeChat operation guidance
+- `skill://list` — List all available skills
 
 ## Example Usage
 
-### Screenshot with Grid
+NovAIC Core is designed to be used via MCP protocol. Connect your MCP client to `http://localhost:8080/mcp`.
 
-```python
-import httpx
+### With Claude Desktop
 
-response = httpx.post("http://localhost:8080/call", json={
-    "tool": "screenshot",
-    "arguments": {"show_grid": True}
-})
-result = response.json()
-# Returns base64 encoded image
+Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "novaic": {
+      "url": "http://localhost:8080/mcp"
+    }
+  }
+}
 ```
 
-### Run Python Code
+### With Cursor IDE
 
-```python
-response = httpx.post("http://localhost:8080/call", json={
-    "tool": "run_python",
-    "arguments": {
-        "code": """
-import pandas as pd
-df = pd.read_csv('data.csv')
-print(df.describe())
-"""
-    }
-})
+Add to your MCP settings:
+
+```json
+{
+  "novaic": {
+    "url": "http://localhost:8080/mcp"
+  }
+}
 ```
 
-### Save and Recall Memory
+### CLI Testing
 
-```python
-# Save
-httpx.post("http://localhost:8080/call", json={
-    "tool": "memory_save",
-    "arguments": {
-        "key": "project_context",
-        "value": {"name": "My Project", "status": "in_progress"}
-    }
-})
+```bash
+# List available tools
+novaic info
 
-# Recall
-response = httpx.post("http://localhost:8080/call", json={
-    "tool": "memory_recall",
-    "arguments": {"key": "project_context"}
-})
+# List skills
+novaic skills
 ```
 
 ## Project Structure
@@ -232,14 +243,17 @@ novaic-core/
 
 Each tool category has detailed skill documentation in the `skills/` directory:
 
-- [Desktop Skills](skills/desktop/SKILL.md) — Screenshot, mouse, keyboard guidance
-- [Browser Skills](skills/browser/SKILL.md) — Browser automation best practices
-- [Shell Skills](skills/shell/SKILL.md) — Command execution guidelines
-- [Files Skills](skills/files/SKILL.md) — File operation patterns
-- [Windows Skills](skills/windows/SKILL.md) — Window management
-- [Memory Skills](skills/memory/SKILL.md) — Memory system usage
-- [Context Skills](skills/context/SKILL.md) — Context awareness
-- [Software Skills](skills/software/SKILL.md) — Installing and troubleshooting software
+| Skill | Description |
+|-------|-------------|
+| [Desktop](skills/desktop/SKILL.md) | Two-phase mouse workflow (aim → execute), keyboard, screenshots |
+| [Browser](skills/browser/SKILL.md) | Browser automation with Playwright |
+| [Shell](skills/shell/SKILL.md) | Command execution and Python code |
+| [Files](skills/files/SKILL.md) | File operations (read, write, list) |
+| [Windows](skills/windows/SKILL.md) | Window management (focus, maximize, close) |
+| [Memory](skills/memory/SKILL.md) | Persistent key-value storage and goal tracking |
+| [Context](skills/context/SKILL.md) | System snapshots and environment awareness |
+| [Software](skills/software/SKILL.md) | Installing and troubleshooting software |
+| [WeChat](skills/wechat/SKILL.md) | WeChat messaging operations |
 
 ## Development
 

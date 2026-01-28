@@ -294,9 +294,11 @@ sudo systemctl restart x11vnc
 ### Desktop Control
 | Tool | Description |
 |------|-------------|
-| `screenshot` | Capture screen with optional grid coordinates |
-| `mouse` | Move, click, drag, scroll |
-| `keyboard` | Type text, hotkeys, key combinations |
+| `screenshot` | Capture screen with coordinate grid overlay |
+| `mouse` | Two-phase control: `aim` (position + zoom) → `click/double/scroll` |
+| `keyboard` | `type` text or press `key` combinations |
+
+> **Note:** Mouse uses aim-then-execute workflow. First `aim` to position crosshair with zoom, then `click` using the returned `aim_id`.
 
 ### Browser Automation
 | Tool | Description |
@@ -369,11 +371,12 @@ NovAIC:
 User: Open VS Code and create a new Python project
 
 NovAIC:
-1. screenshot() → Locate taskbar
-2. mouse(action="click", x=520, y=750) → Click VS Code icon
-3. keyboard(action="hotkey", keys=["ctrl", "shift", "n"]) → New window
-4. keyboard(action="type", text="main.py") → Create file
-5. screenshot() → Confirm project created ✅
+1. screenshot() → Locate taskbar, estimate VS Code icon at (520, 750)
+2. mouse(action="aim", x=520, y=750) → Position crosshair, get aim_id
+3. mouse(action="click", aim_id="aim_xxx") → Click VS Code icon
+4. keyboard(action="key", keys=["ctrl", "shift", "n"]) → New window
+5. keyboard(action="type", text="main.py") → Create file
+6. screenshot() → Confirm project created ✅
 ```
 
 ## Documentation
