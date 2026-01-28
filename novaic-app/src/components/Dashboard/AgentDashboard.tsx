@@ -5,7 +5,8 @@
  * 展示状态：stopped | starting | running | error
  */
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '../../store';
 import { AICAgent } from '../../services/api';
 import { 
@@ -25,6 +26,7 @@ import { CreateAgentModal } from '../Agent/CreateAgentModal';
 
 interface AgentCardProps {
   agent: AICAgent;
+  status: AICAgent['status'];  // Computed status from VM
   isSelected: boolean;
   onSelect: () => void;
   onStart: () => void;
@@ -68,11 +70,11 @@ const statusConfig: Record<string, {
   },
 };
 
-function AgentCard({ agent, isSelected, onSelect, onStart, onStop, onDelete, onEnter }: AgentCardProps) {
-  const status = statusConfig[agent.status] || statusConfig.stopped;
+function AgentCard({ agent, status: agentStatus, isSelected, onSelect, onStart, onStop, onDelete, onEnter }: AgentCardProps) {
+  const status = statusConfig[agentStatus] || statusConfig.stopped;
   const StatusIcon = status.icon;
-  const isRunning = agent.status === 'running';
-  const isStarting = agent.status === 'starting';
+  const isRunning = agentStatus === 'running';
+  const isStarting = agentStatus === 'starting';
 
   return (
     <div 
@@ -175,35 +177,84 @@ interface AgentDashboardProps {
   onEnterWorkspace: (agentId: string) => void;
 }
 
+// VM status from Tauri
+interface VmStatus {
+  is_running: boolean;
+  pid: number | null;
+  vnc_port: number;
+  vnc_ws_port: number;
+}
+
 export function AgentDashboard({ onEnterWorkspace }: AgentDashboardProps) {
   const { agents, currentAgentId, selectAgent, deleteAgent, loadAgents } = useAppStore();
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [, setLoading] = useState<string | null>(null);
+  const [loadingAgent, setLoadingAgent] = useState<string | null>(null);
+  const [vmStatus, setVmStatus] = useState<VmStatus | null>(null);
+
+  // Poll VM status
+  const refreshVmStatus = useCallback(async () => {
+    try {
+      const status = await invoke<VmStatus>('get_vm_status');
+      setVmStatus(status);
+    } catch (error) {
+      console.error('Failed to get VM status:', error);
+    }
+  }, []);
+
+  // Poll status periodically
+  useEffect(() => {
+    refreshVmStatus();
+    const interval = setInterval(refreshVmStatus, 3000);
+    return () => clearInterval(interval);
+  }, [refreshVmStatus]);
+
+  // Derive agent status from VM status
+  const getAgentStatus = (agent: AICAgent): AICAgent['status'] => {
+    if (!vmStatus) return 'stopped';
+    if (loadingAgent === agent.id) return 'starting';
+    // If this agent is selected and VM is running, it's running
+    if (agent.id === currentAgentId && vmStatus.is_running) return 'running';
+    return 'stopped';
+  };
 
   const handleStartAgent = async (agentId: string) => {
-    setLoading(agentId);
+    setLoadingAgent(agentId);
     try {
+      // First select this agent
       await selectAgent(agentId);
-      // TODO: 调用 Tauri 命令启动 VM
-      // await invoke('start_vm', { agentId });
+      
+      // Call Tauri to start VM
+      console.log('[Dashboard] Starting VM for agent:', agentId);
+      await invoke('start_vm', { agentId });
+      console.log('[Dashboard] VM started');
+      
+      // Refresh status
+      await refreshVmStatus();
       await loadAgents();
     } catch (error) {
       console.error('Failed to start agent:', error);
+      alert(`Failed to start VM: ${error}`);
     } finally {
-      setLoading(null);
+      setLoadingAgent(null);
     }
   };
 
-  const handleStopAgent = async (agentId: string) => {
-    setLoading(agentId);
+  const handleStopAgent = async (_agentId: string) => {
+    setLoadingAgent(_agentId);
     try {
-      // TODO: 调用 Tauri 命令停止 VM
-      // await invoke('stop_vm', { agentId });
+      // Call Tauri to stop VM
+      console.log('[Dashboard] Stopping VM');
+      await invoke('stop_vm');
+      console.log('[Dashboard] VM stopped');
+      
+      // Refresh status
+      await refreshVmStatus();
       await loadAgents();
     } catch (error) {
       console.error('Failed to stop agent:', error);
+      alert(`Failed to stop VM: ${error}`);
     } finally {
-      setLoading(null);
+      setLoadingAgent(null);
     }
   };
 
@@ -280,6 +331,7 @@ export function AgentDashboard({ onEnterWorkspace }: AgentDashboardProps) {
                 <AgentCard
                   key={agent.id}
                   agent={agent}
+                  status={getAgentStatus(agent)}
                   isSelected={agent.id === currentAgentId}
                   onSelect={() => selectAgent(agent.id)}
                   onStart={() => handleStartAgent(agent.id)}
