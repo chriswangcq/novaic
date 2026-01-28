@@ -4,6 +4,8 @@
 //! - 本地地址 (localhost, 127.0.0.1, 内网 IP) 不走代理
 //! - 外网地址 使用系统代理
 
+#![allow(dead_code)]
+
 use reqwest::{Client, ClientBuilder};
 use std::time::Duration;
 

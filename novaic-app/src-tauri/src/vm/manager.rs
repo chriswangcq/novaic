@@ -47,6 +47,7 @@ impl VmManager {
         }
     }
 
+    #[allow(dead_code)]
     pub fn with_config(mut self, config: VmConfig) -> Self {
         self.config = config;
         self
