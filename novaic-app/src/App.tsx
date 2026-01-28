@@ -1,10 +1,12 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { ChatPanel } from './components/Chat/ChatPanel';
 import { VisualPanel } from './components/Visual/VisualPanel';
 import { Resizer } from './components/Layout/Resizer';
 import { Header } from './components/Layout/Header';
 import { useAppStore } from './store';
 import { SettingsModal } from './components/Settings/SettingsModal';
+import { OnboardingFlow } from './components/Onboarding';
+import { Loader2 } from 'lucide-react';
 
 // Layout constraints
 const MIN_CHAT_WIDTH = 300;
@@ -19,13 +21,46 @@ function App() {
     leftPanelWidth, 
     setLeftPanelWidth,
     settingsOpen,
-    setSettingsOpen
+    setSettingsOpen,
+    agents,
+    loadAgents
   } = useAppStore();
+
+  const [isLoadingAgents, setIsLoadingAgents] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     // Initialize app on mount
     initialize();
   }, [initialize]);
+
+  // Load agents and check if we need to show onboarding
+  useEffect(() => {
+    const checkAgents = async () => {
+      setIsLoadingAgents(true);
+      try {
+        await loadAgents();
+      } catch (error) {
+        console.error('Failed to load agents:', error);
+      } finally {
+        setIsLoadingAgents(false);
+      }
+    };
+    
+    // Only check agents after gateway is initialized
+    if (isInitialized) {
+      checkAgents();
+    }
+  }, [isInitialized, loadAgents]);
+
+  // Show onboarding if no agents after loading
+  useEffect(() => {
+    if (!isLoadingAgents && agents.length === 0 && isInitialized) {
+      setShowOnboarding(true);
+    } else {
+      setShowOnboarding(false);
+    }
+  }, [isLoadingAgents, agents.length, isInitialized]);
 
   // Handle resize with constraints
   const handleResize = useCallback((delta: number) => {
@@ -43,6 +78,29 @@ function App() {
   const handleResetWidth = useCallback(() => {
     setLeftPanelWidth(400);
   }, [setLeftPanelWidth]);
+
+  // Handle onboarding completion
+  const handleOnboardingComplete = useCallback(async () => {
+    setShowOnboarding(false);
+    await loadAgents();
+  }, [loadAgents]);
+
+  // Show loading screen while checking agents
+  if (!isInitialized || isLoadingAgents) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-nb-bg">
+        <Loader2 size={32} className="animate-spin text-blue-500 mb-4" />
+        <p className="text-nb-text-secondary">
+          {!isInitialized ? 'Connecting to services...' : 'Loading...'}
+        </p>
+      </div>
+    );
+  }
+
+  // Show onboarding flow if no agents
+  if (showOnboarding) {
+    return <OnboardingFlow onComplete={handleOnboardingComplete} />;
+  }
 
   return (
     <div className="h-screen flex flex-col bg-nb-bg">

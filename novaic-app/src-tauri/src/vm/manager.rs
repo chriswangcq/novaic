@@ -31,7 +31,7 @@ impl Default for VmConfig {
             ssh_port: 2222,      // SSH 端口 (宿主机 2222 → VM 22)
             image_path: None,    // 使用默认镜像
             // MCP 配置
-            mcp_host_port: 8081, // 宿主机 MCP 端口 (第一个 VM)
+            mcp_host_port: 8080, // 宿主机 MCP 端口 (第一个 VM)
             mcp_vm_port: 8080,   // VM 内部 MCP 端口 (固定)
             vsock_cid: 3,        // 默认 CID=3 (第一个 VM)
         }

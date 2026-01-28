@@ -134,7 +134,7 @@ npm run tauri:dev
 
 ```bash
 # 方式 1: 使用 VM 中的 MCP Server（已通过 deploy.sh 部署）
-# MCP Server 自动运行在 http://localhost:8081/sse
+# MCP Server 自动运行在 http://localhost:8080/sse
 
 # 方式 2: 本地运行 MCP Server
 cd novaic-core
@@ -148,7 +148,7 @@ novaic serve
 |------|------|------|
 | VNC Server | 5900 | 虚拟机桌面 |
 | SSH | 2222 | VM SSH 访问 |
-| MCP Server | 8081 | MCP 工具服务 |
+| MCP Server | 8080 | MCP 工具服务 |
 | Agent API | 8080 | Agent HTTP API |
 | Cloud API | 8000 | 云服务 API |
 | Frontend | 1420 | Vite 开发服务器 |
@@ -230,7 +230,7 @@ sudo systemctl restart x11vnc
 
 ```bash
 # 1. 检查服务状态
-curl http://localhost:8081/health
+curl http://localhost:8080/health
 
 # 2. 进入 VM 检查
 ssh -p 2222 ubuntu@localhost
@@ -255,13 +255,13 @@ curl http://localhost:8080/api/health
 
 ```bash
 # 健康检查
-curl http://localhost:8081/health
+curl http://localhost:8080/health
 
 # 获取工具列表
-curl http://localhost:8081/tools
+curl http://localhost:8080/tools
 
 # 测试截图
-curl -X POST http://localhost:8081/call \
+curl -X POST http://localhost:8080/call \
   -H "Content-Type: application/json" \
   -d '{"tool": "screenshot", "arguments": {}}'
 ```

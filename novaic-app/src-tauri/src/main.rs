@@ -10,6 +10,8 @@ mod gateway_client;
 use gateway_client::GatewayClient;
 
 use vm::manager::VmManager;
+use vm::setup::{check_cloud_image, download_cloud_image, setup_vm, get_ssh_pubkey, generate_ssh_key};
+use vm::deploy::{deploy_agent, quick_deploy_agent};
 use commands::vm_commands::{start_vm, stop_vm, get_vm_status, restart_vm, get_vnc_url, get_agent_url};
 
 use std::sync::Arc;
@@ -140,10 +142,42 @@ type GatewayState = Arc<Mutex<GatewayProcess>>;
 
 /// Get Gateway path and whether it's a binary
 /// Returns (path, is_binary)
-fn get_gateway_info(_app: &AppHandle) -> (PathBuf, bool) {
-    // 暂时写死路径用于测试
-    // 使用 Python 源码版本
-    (PathBuf::from("/Users/wangchaoqun/novaic/novaic-gateway"), false)
+fn get_gateway_info(app: &AppHandle) -> (PathBuf, bool) {
+    // Try to use bundled binary first (production mode)
+    if let Ok(resource_dir) = app.path().resource_dir() {
+        let binary_path = resource_dir.join("resources/novaic-gateway");
+        println!("[Gateway] Checking bundled binary at: {:?}", binary_path);
+        if binary_path.exists() {
+            println!("[Gateway] Found bundled binary, using production mode");
+            return (binary_path, true);
+        }
+        println!("[Gateway] Bundled binary not found");
+    } else {
+        println!("[Gateway] Could not get resource_dir");
+    }
+    
+    // Fallback to development mode - check relative to executable
+    // In dev mode, executable is at: novaic-app/src-tauri/target/release/novaic
+    // Gateway source is at: novaic-gateway (4 levels up from executable)
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            // exe_dir = .../novaic-app/src-tauri/target/release/
+            // Go up 4 levels to project root, then into novaic-gateway
+            let dev_path = exe_dir
+                .join("../../../..")  // Go to project root (novaic/)
+                .join("novaic-gateway");
+            
+            if dev_path.exists() && dev_path.join("main.py").exists() {
+                let canonical = dev_path.canonicalize().unwrap_or(dev_path);
+                println!("[Gateway] Using development source: {:?}", canonical);
+                return (canonical, false);
+            }
+            println!("[Gateway] Dev path not found: {:?}", dev_path);
+        }
+    }
+    
+    println!("[Gateway] ERROR: No gateway found! Please ensure novaic-gateway is bundled with the app.");
+    (PathBuf::from("/tmp/novaic-gateway-not-found"), false)
 }
 
 /// Tauri command: Start Gateway
@@ -285,12 +319,14 @@ fn main() {
                 })
                 .build(app)?;
             
-            // VM directory path - 暂时写死路径用于测试
-            let vm_dir = PathBuf::from("/Users/wangchaoqun/novaic/novaic-vm");
+            // VM directory path - use app data directory
+            let vm_dir = app.path().app_data_dir()
+                .unwrap_or_else(|_| PathBuf::from("."))
+                .join("vms");
             
-            println!("VM directory: {:?}", vm_dir);
+            println!("[App] VM directory: {:?}", vm_dir);
             
-            // Initialize VM Manager
+            // Initialize VM Manager (but don't auto-start VM)
             let vm_manager = Arc::new(Mutex::new(VmManager::new(vm_dir.clone())));
             app.manage(vm_manager.clone());
             
@@ -298,7 +334,7 @@ fn main() {
             let gateway = Arc::new(Mutex::new(GatewayProcess::new()));
             app.manage(gateway.clone());
             
-            // Auto-start Gateway
+            // Auto-start Gateway only
             let (gateway_path, is_binary) = get_gateway_info(app.handle());
             println!("[Gateway] Gateway path: {:?}", gateway_path);
             println!("[Gateway] Is binary: {}", is_binary);
@@ -312,18 +348,9 @@ fn main() {
                 }
             });
             
-            // Auto-start QEMU VM
-            println!("[VM] Auto-starting QEMU VM...");
-            let vm_manager_for_start = vm_manager.clone();
-            tauri::async_runtime::spawn(async move {
-                // Wait a bit for Gateway to start
-                tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-                let manager = vm_manager_for_start.lock().await;
-                match manager.start().await {
-                    Ok(_) => println!("[VM] QEMU VM started successfully"),
-                    Err(e) => println!("[VM] Failed to start QEMU VM: {}", e),
-                }
-            });
+            // Note: VM is NOT auto-started anymore
+            // VM will be started when user creates an agent through the onboarding flow
+            // or when selecting an existing agent
             
             Ok(())
         })
@@ -344,6 +371,15 @@ fn main() {
             restart_vm,
             get_vnc_url,
             get_agent_url,
+            // VM Setup commands
+            check_cloud_image,
+            download_cloud_image,
+            setup_vm,
+            get_ssh_pubkey,
+            generate_ssh_key,
+            // VM Deploy commands
+            deploy_agent,
+            quick_deploy_agent,
             // Gateway commands
             start_gateway,
             stop_gateway,

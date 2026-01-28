@@ -74,7 +74,7 @@ LLM_API_KEY=your-api-key
 DEFAULT_MODEL=claude-sonnet-4-20250514
 
 # Executor (MCP Server)
-EXECUTOR_URL=http://localhost:8081
+EXECUTOR_URL=http://localhost:8080
 ```
 
 ## Quick Start

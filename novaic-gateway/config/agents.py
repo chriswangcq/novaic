@@ -32,7 +32,7 @@ class VmConfig(BaseModel):
     cpus: int = 4          # CPU cores
     ports: PortConfig = Field(default_factory=PortConfig)
     # MCP 通信配置
-    mcp_host_port: int = 8081  # 宿主机 MCP 端口 (QEMU 端口转发: 宿主机 -> VM 8080)
+    mcp_host_port: int = 8080  # 宿主机 MCP 端口 (QEMU 端口转发: 宿主机 -> VM 8080)
     mcp_vm_port: int = 8080    # VM 内部 MCP 端口 (固定)
     # 兼容性字段 (保留)
     vsock_cid: int = 3         # 用于 Agent ID 和端口分配偏移
@@ -61,7 +61,7 @@ BASE_PORTS = {
     "vnc": 5900,
     "websocket": 6080,
     "ssh": 2222,
-    "mcp": 8081,  # MCP 宿主机端口起始值 (8081, 8082, ...)
+    "mcp": 8080,  # MCP 宿主机端口起始值 (8080, 8081, ...)
 }
 BASE_VSOCK_CID = 3  # 用于 Agent ID 偏移
 

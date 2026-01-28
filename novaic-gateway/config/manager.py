@@ -109,7 +109,7 @@ class AppConfig(BaseModel):
     
     # MCP Server 配置
     # 宿主机端口 (QEMU 转发: 宿主机 mcp_port -> VM 8080)
-    mcp_port: int = 8081     # 宿主机 MCP 端口
+    mcp_port: int = 8080     # 宿主机 MCP 端口
     
     def to_public(self) -> dict:
         """Return public version (hides API keys)"""

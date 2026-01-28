@@ -6,6 +6,7 @@
 
 export { api, type AppConfig, type ApiKeyInfo, type AvailableModel, type HealthStatus } from './api';
 export { gateway, type WSEvent, type EventCallback } from './websocket';
+export * as setup from './setup';
 
 // Re-export defaults
 export { default as apiClient } from './api';

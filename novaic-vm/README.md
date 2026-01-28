@@ -65,7 +65,7 @@ tail -f /var/log/cloud-init-output.log
 |---------|---------|-------------|
 | **VNC** | `vnc://localhost:5900` | Password: `novaic` |
 | **SSH** | `ssh -p 2222 ubuntu@localhost` | Password: `ubuntu` |
-| **MCP** | `http://localhost:8081/sse` | — |
+| **MCP** | `http://localhost:8080/sse` | — |
 
 ## Management Commands
 
@@ -104,7 +104,7 @@ tail -f /var/log/cloud-init-output.log
 | `NOVAIC_VM_MEMORY` | `4096` | VM memory (MB) |
 | `NOVAIC_VM_CPUS` | `4` | VM CPU cores |
 | `NOVAIC_VNC_PORT` | `5900` | VNC port (host) |
-| `NOVAIC_MCP_PORT` | `8081` | MCP Server port (host) |
+| `NOVAIC_MCP_PORT` | `8080` | MCP Server port (host) |
 | `NOVAIC_SSH_PORT` | `2222` | SSH port (host) |
 
 ### Custom Ubuntu Mirror
@@ -124,7 +124,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 {
   "mcpServers": {
     "novaic": {
-      "url": "http://localhost:8081/sse"
+      "url": "http://localhost:8080/sse"
     }
   }
 }
@@ -136,7 +136,7 @@ The MCP server can be used with Cursor's MCP support for AI-assisted development
 
 ### Any MCP-Compatible Client
 
-The SSE endpoint `http://localhost:8081/sse` follows the MCP protocol specification.
+The SSE endpoint `http://localhost:8080/sse` follows the MCP protocol specification.
 
 ## Architecture
 
@@ -154,11 +154,11 @@ The SSE endpoint `http://localhost:8081/sse` follows the MCP protocol specificat
 │  │                                                               │  │
 │  └─────────────────────────────────────────────────────────────┘  │
 │         ↑                  ↑                    ↑                  │
-│    SSH :2222          VNC :5900           MCP :8081               │
+│    SSH :2222          VNC :5900           MCP :8080               │
 │                                                                    │
 │  ┌─────────────────────────────────────────────────────────────┐  │
 │  │  MCP Client (Claude Desktop / Cursor / etc)                  │  │
-│  │  → MCP Protocol → http://localhost:8081/sse                  │  │
+│  │  → MCP Protocol → http://localhost:8080/sse                  │  │
 │  └─────────────────────────────────────────────────────────────┘  │
 │                                                                    │
 └───────────────────────────────────────────────────────────────────┘
@@ -228,7 +228,7 @@ cd novaic-vm
 ```bash
 # Check what's using the port
 lsof -i :5900
-lsof -i :8081
+lsof -i :8080
 lsof -i :2222
 
 # Kill the process or use different ports
@@ -265,7 +265,7 @@ The VM comes with:
 |-------------|-----------|---------|
 | 5900 | 5901 | VNC |
 | 2222 | 22 | SSH |
-| 8081 | 8080 | MCP Server |
+| 8080 | 8080 | MCP Server |
 
 ## License
 

@@ -1,26 +1,24 @@
-import { Settings, Maximize2, Minimize2 } from 'lucide-react';
-import { useState } from 'react';
+import { Settings, Trash2 } from 'lucide-react';
 import { AgentSelector } from './AgentSelector';
 import { CreateAgentModal } from '../Agent/CreateAgentModal';
 import { useAppStore } from '../../store';
 
 export function Header(props: { onOpenSettings: () => void }) {
-  const [isMaximized, setIsMaximized] = useState(false);
-  const { createAgentModalOpen, setCreateAgentModalOpen } = useAppStore();
+  const { createAgentModalOpen, setCreateAgentModalOpen, clearMessages } = useAppStore();
 
   return (
     <>
-      <header className="h-12 bg-nb-surface border-b border-nb-border flex items-center px-4 no-select" data-tauri-drag-region>
+      <header className="h-10 bg-nb-surface border-b border-nb-border flex items-center px-3 no-select shrink-0" data-tauri-drag-region>
         {/* Logo */}
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-            <span className="text-white font-bold text-[11px]">NA</span>
+          <div className="w-6 h-6 rounded bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+            <span className="text-white font-bold text-[9px]">NA</span>
           </div>
-          <span className="font-semibold text-nb-text text-[14px]">NovAIC</span>
+          <span className="font-semibold text-nb-text text-[13px]">NovAIC</span>
         </div>
 
         {/* Divider */}
-        <div className="w-px h-5 bg-nb-border mx-3" />
+        <div className="w-px h-4 bg-nb-border mx-2.5" />
 
         {/* Agent Selector */}
         <AgentSelector onCreateNew={() => setCreateAgentModalOpen(true)} />
@@ -29,28 +27,24 @@ export function Header(props: { onOpenSettings: () => void }) {
         <div className="flex-1" data-tauri-drag-region />
 
         {/* Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
+          {/* Clear chat */}
+          <button
+            className="p-1.5 hover:bg-nb-surface-2 rounded-lg transition-colors"
+            onClick={clearMessages}
+            title="Clear chat"
+          >
+            <Trash2 size={15} className="text-nb-text-muted" />
+          </button>
+          
           {/* Settings */}
           <button
-            className="p-2 hover:bg-nb-surface-2 rounded-lg transition-colors"
+            className="p-1.5 hover:bg-nb-surface-2 rounded-lg transition-colors"
             onClick={props.onOpenSettings}
+            title="Settings"
           >
-            <Settings size={18} className="text-nb-text-muted" />
+            <Settings size={15} className="text-nb-text-muted" />
           </button>
-
-          {/* Window controls (for custom titlebar) */}
-          <div className="flex items-center ml-2 gap-1">
-            <button
-              onClick={() => setIsMaximized(!isMaximized)}
-              className="p-1.5 hover:bg-nb-surface-2 rounded transition-colors"
-            >
-              {isMaximized ? (
-                <Minimize2 size={14} className="text-nb-text-muted" />
-              ) : (
-                <Maximize2 size={14} className="text-nb-text-muted" />
-              )}
-            </button>
-          </div>
         </div>
       </header>
 
