@@ -24,9 +24,12 @@ import {
 } from 'lucide-react';
 import { CreateAgentModal } from '../Agent/CreateAgentModal';
 
+// Extended status type for UI (includes 'stopping')
+type AgentDisplayStatus = AICAgent['status'] | 'stopping';
+
 interface AgentCardProps {
   agent: AICAgent;
-  status: AICAgent['status'];  // Computed status from VM
+  status: AgentDisplayStatus;  // Computed status from VM
   isSelected: boolean;
   onSelect: () => void;
   onStart: () => void;
@@ -56,6 +59,13 @@ const statusConfig: Record<string, {
     icon: Loader2,
     animate: true,
   },
+  stopping: {
+    color: 'bg-orange-500',
+    textColor: 'text-orange-400',
+    label: 'Stopping...',
+    icon: Loader2,
+    animate: true,
+  },
   running: {
     color: 'bg-green-500',
     textColor: 'text-green-400',
@@ -75,6 +85,8 @@ function AgentCard({ agent, status: agentStatus, isSelected, onSelect, onStart, 
   const StatusIcon = status.icon;
   const isRunning = agentStatus === 'running';
   const isStarting = agentStatus === 'starting';
+  const isStopping = agentStatus === 'stopping';
+  const isLoading = isStarting || isStopping;
 
   return (
     <div 
@@ -117,28 +129,34 @@ function AgentCard({ agent, status: agentStatus, isSelected, onSelect, onStart, 
 
       {/* 操作按钮 */}
       <div className="flex items-center gap-3">
-        {isRunning ? (
+        {(isRunning || isStopping) ? (
           <>
             <button
               onClick={(e) => { e.stopPropagation(); onEnter(); }}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+              disabled={isStopping}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white rounded-lg transition-colors font-medium"
             >
               <Monitor size={18} />
               Enter Workspace
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onStop(); }}
-              className="px-4 py-2.5 bg-nb-surface-hover hover:bg-red-500/20 text-nb-text-secondary hover:text-red-400 rounded-lg transition-colors border border-nb-border"
+              disabled={isStopping}
+              className="px-4 py-2.5 bg-nb-surface-hover hover:bg-red-500/20 text-nb-text-secondary hover:text-red-400 disabled:opacity-50 rounded-lg transition-colors border border-nb-border"
               title="Stop VM"
             >
-              <Square size={18} />
+              {isStopping ? (
+                <Loader2 size={18} className="animate-spin" />
+              ) : (
+                <Square size={18} />
+              )}
             </button>
           </>
         ) : (
           <>
             <button
               onClick={(e) => { e.stopPropagation(); onStart(); }}
-              disabled={isStarting}
+              disabled={isLoading}
               className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 disabled:bg-green-600/50 text-white rounded-lg transition-colors font-medium"
             >
               {isStarting ? (
@@ -155,7 +173,7 @@ function AgentCard({ agent, status: agentStatus, isSelected, onSelect, onStart, 
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              disabled={isStarting}
+              disabled={isLoading}
               className="px-4 py-2.5 bg-nb-surface-hover hover:bg-red-500/20 text-nb-text-secondary hover:text-red-400 disabled:opacity-50 rounded-lg transition-colors border border-nb-border"
               title="Delete Agent"
             >
@@ -196,7 +214,7 @@ interface VmStatus {
 export function AgentDashboard({ onEnterWorkspace }: AgentDashboardProps) {
   const { agents, currentAgentId, selectAgent, deleteAgent, loadAgents } = useAppStore();
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [loadingAgent, setLoadingAgent] = useState<string | null>(null);
+  const [loadingAction, setLoadingAction] = useState<{ agentId: string; action: 'starting' | 'stopping' } | null>(null);
   const [vmStatus, setVmStatus] = useState<VmStatus | null>(null);
 
   // Poll VM status
@@ -217,25 +235,24 @@ export function AgentDashboard({ onEnterWorkspace }: AgentDashboardProps) {
   }, [refreshVmStatus]);
 
   // Derive agent status from VM status
-  const getAgentStatus = (agent: AICAgent): AICAgent['status'] => {
+  const getAgentStatus = (agent: AICAgent): AgentDisplayStatus => {
+    // Check if there's a loading action for this agent
+    if (loadingAction?.agentId === agent.id) {
+      return loadingAction.action;
+    }
+    
     if (!vmStatus) return 'stopped';
-    if (loadingAgent === agent.id) return 'starting';
     
     // Check if this agent's VM is running
     if (vmStatus.agent_id === agent.id && vmStatus.running) {
       return 'running';
     }
     
-    // VM is running but for a different agent
-    if (vmStatus.running && vmStatus.agent_id !== agent.id) {
-      return 'stopped';
-    }
-    
     return 'stopped';
   };
 
   const handleStartAgent = async (agentId: string) => {
-    setLoadingAgent(agentId);
+    setLoadingAction({ agentId, action: 'starting' });
     try {
       // First select this agent
       await selectAgent(agentId);
@@ -252,12 +269,12 @@ export function AgentDashboard({ onEnterWorkspace }: AgentDashboardProps) {
       console.error('Failed to start agent:', error);
       alert(`Failed to start VM: ${error}`);
     } finally {
-      setLoadingAgent(null);
+      setLoadingAction(null);
     }
   };
 
-  const handleStopAgent = async (_agentId: string) => {
-    setLoadingAgent(_agentId);
+  const handleStopAgent = async (agentId: string) => {
+    setLoadingAction({ agentId, action: 'stopping' });
     try {
       // Call Tauri to stop VM
       console.log('[Dashboard] Stopping VM');
@@ -271,7 +288,7 @@ export function AgentDashboard({ onEnterWorkspace }: AgentDashboardProps) {
       console.error('Failed to stop agent:', error);
       alert(`Failed to stop VM: ${error}`);
     } finally {
-      setLoadingAgent(null);
+      setLoadingAction(null);
     }
   };
 
