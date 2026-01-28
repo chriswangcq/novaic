@@ -243,10 +243,12 @@ async def fetch_models_for_key(key_id: str):
     try:
         base_url = entry.get_effective_base_url()
         async with httpx.AsyncClient(timeout=30.0) as client:
-            if entry.provider.value in ["openai", "azure"]:
+            if entry.provider.value in ["openai", "azure", "openai_compatible"]:
                 url = f"{base_url}/models"
                 headers = {"Authorization": f"Bearer {entry.api_key}"}
+                print(f"[API] Fetching models from {url}")
                 response = await client.get(url, headers=headers)
+                print(f"[API] Models response: {response.status_code}")
                 if response.status_code == 200:
                     data = response.json()
                     models = data.get("data", [])
@@ -261,6 +263,8 @@ async def fetch_models_for_key(key_id: str):
                         }
                         for m in models if m.get("id")
                     ]
+                else:
+                    print(f"[API] Models fetch failed: {response.text}")
             elif entry.provider.value == "anthropic":
                 # Anthropic doesn't have a models list API, return common models
                 return [

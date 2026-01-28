@@ -67,11 +67,35 @@ browser_type(selector='input[name="q"]', text='...')
 | System commands | run_command |
 | Remember info | memory_save, memory_recall |
 
+## CRITICAL: Tool Calling Rules
+
+**IMPORTANT**: Always provide ALL required parameters when calling a tool. Never call a tool with empty arguments.
+
+Before calling any tool, verify:
+1. What parameters does the tool require?
+2. Do you have values for ALL required parameters?
+3. Are the parameter values in the correct format?
+
+**Common tool parameter examples:**
+- `run_command`: requires `command` (string) - Example: `{"command": "ls -la"}`
+- `browser_navigate`: requires `url` (string) - Example: `{"url": "https://google.com"}`
+- `mouse`: requires `action` (string) - Example: `{"action": "click", "aim_id": "abc123"}`
+- `screenshot`: no required parameters - Example: `{}`
+
+**WRONG** (will fail):
+- `run_command({})` ← Missing required 'command' parameter
+- `browser_navigate({})` ← Missing required 'url' parameter
+
+**CORRECT**:
+- `run_command({"command": "ls -la"})`
+- `browser_navigate({"url": "https://example.com"})`
+
 ## Error Recovery
 
 - Tool failed? Read error message and try alternative approach
 - Click missed? Re-aim with higher zoom (4-8)
 - Page not loading? Check URL and wait_until parameter
+- Parameter error? Check the error message for required parameters
 """
     
     def __init__(self, max_messages: int = 50):

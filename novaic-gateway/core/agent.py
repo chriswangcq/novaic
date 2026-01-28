@@ -421,6 +421,54 @@ class NovAICAgent:
                 return tool.get("function", {}).get("parameters", {})
         return None
     
+    def _parse_tool_arguments(self, func: Dict[str, Any], tool_name: str) -> Dict[str, Any]:
+        """
+        安全解析工具调用的 arguments
+        
+        处理各种边界情况：
+        - arguments 是 None
+        - arguments 是空字符串
+        - arguments 不是有效的 JSON
+        - arguments 解析后不是 dict
+        
+        Args:
+            func: LLM 返回的 function 对象
+            tool_name: 工具名称（用于日志）
+        
+        Returns:
+            解析后的参数字典
+        """
+        raw_args = func.get("arguments")
+        
+        # 调试日志：打印原始 arguments
+        print(f"[Agent] Tool '{tool_name}' raw arguments: {repr(raw_args)}")
+        
+        # 处理 None、空字符串、非字符串的情况
+        if raw_args is None:
+            print(f"[Agent] Warning: '{tool_name}' arguments is None")
+            return {}
+        
+        if not isinstance(raw_args, str):
+            # 如果已经是 dict，直接返回
+            if isinstance(raw_args, dict):
+                return raw_args
+            print(f"[Agent] Warning: '{tool_name}' arguments is not a string: {type(raw_args)}")
+            return {}
+        
+        if not raw_args.strip():
+            print(f"[Agent] Warning: '{tool_name}' arguments is empty string")
+            return {}
+        
+        try:
+            parsed = json.loads(raw_args)
+            if not isinstance(parsed, dict):
+                print(f"[Agent] Warning: '{tool_name}' parsed arguments is not a dict: {type(parsed)}")
+                return {}
+            return parsed
+        except json.JSONDecodeError as e:
+            print(f"[Agent] Error parsing '{tool_name}' arguments: {e}, raw: {repr(raw_args)}")
+            return {}
+    
     def _validate_tool_input(self, tool_name: str, tool_input: Dict[str, Any]) -> tuple[bool, str]:
         """
         验证工具输入参数
@@ -651,7 +699,8 @@ class NovAICAgent:
                 current_step.reasoning = content
                 
                 print(f"[Agent] LLM response - iteration: {iteration}, "
-                      f"content: {content[:200] if content else '(empty)'}, tool_calls: {len(tool_calls)}")
+                      f"content: {content[:200] if content else '(empty)'}, "
+                      f"tool_calls: {len(tool_calls)}, finish_reason: {finish_reason}")
                 
                 if tool_calls:
                     if content:
@@ -660,7 +709,9 @@ class NovAICAgent:
                         tool_names = [tc.get("function", {}).get("name", "unknown") for tc in tool_calls]
                         yield {"type": "thinking", "data": f"Executing: {', '.join(tool_names)}"}
                 
-                if finish_reason == "tool_calls" and tool_calls:
+                # 修复：有些 API 返回 finish_reason 可能不是 "tool_calls"
+                # 只要有 tool_calls 就应该执行
+                if tool_calls:
                     messages.append({
                         "role": "assistant",
                         "content": content,
@@ -673,13 +724,10 @@ class NovAICAgent:
                         
                         func = tool_call.get("function", {})
                         tool_name = func.get("name")
-                        tool_args_str = func.get("arguments", "{}")
                         tool_id = tool_call.get("id")
                         
-                        try:
-                            tool_input = json.loads(tool_args_str)
-                        except json.JSONDecodeError:
-                            tool_input = {}
+                        # 安全解析 arguments（修复空参数 bug）
+                        tool_input = self._parse_tool_arguments(func, tool_name)
                         
                         # 开始工具调用追踪
                         tool_trace = self._add_tool_call_to_step(
@@ -814,13 +862,10 @@ class NovAICAgent:
                         
                         func = tool_call.get("function", {})
                         tool_name = func.get("name")
-                        tool_args_str = func.get("arguments", "{}")
                         tool_id = tool_call.get("id")
                         
-                        try:
-                            tool_input = json.loads(tool_args_str)
-                        except json.JSONDecodeError:
-                            tool_input = {}
+                        # 安全解析 arguments（修复空参数 bug）
+                        tool_input = self._parse_tool_arguments(func, tool_name)
                         
                         # 开始工具调用追踪
                         tool_trace = self._add_tool_call_to_step(

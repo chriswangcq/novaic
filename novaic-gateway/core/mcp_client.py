@@ -761,10 +761,17 @@ class MCPClient:
         for server_name, server in self.servers.items():
             tools = await server.list_tools(use_cache=use_cache)
             for tool in tools:
+                input_schema = tool.get("inputSchema", {"type": "object", "properties": {}})
+                
+                # 调试日志：打印 MCP Server 返回的原始 schema
+                if len(all_tools) < 5:
+                    print(f"[MCP] Raw tool from server: name={tool.get('name')}")
+                    print(f"[MCP] Raw inputSchema: {json.dumps(input_schema, indent=2)}")
+                
                 tool_dict = {
                     "name": tool.get("name", ""),
                     "description": tool.get("description", ""),
-                    "inputSchema": tool.get("inputSchema", {"type": "object", "properties": {}}),
+                    "inputSchema": input_schema,
                     "_server": server_name
                 }
                 all_tools.append(tool_dict)
@@ -794,7 +801,10 @@ class MCPClient:
         """
         转换为 LLM 工具格式
         
-        确保 required 字段正确设置，让 LLM 知道哪些参数是必需的
+        遵循 Codex/Cursor 最佳实践：
+        - 清理和规范化 schema
+        - 确保 required 字段正确设置
+        - 设置 additionalProperties: false
         """
         if tools is None:
             tools = self._tools_cache or []
@@ -803,9 +813,16 @@ class MCPClient:
         for tool in tools:
             input_schema = tool.get("inputSchema", {"type": "object", "properties": {}})
             
-            # 确保 schema 有正确的 required 字段
-            # FastMCP 可能不总是设置这个字段
-            parameters = self._ensure_required_fields(input_schema)
+            # 清理和规范化 schema（对齐 Codex 实现）
+            sanitized = self._sanitize_json_schema(input_schema)
+            
+            # 确保 required 字段正确设置
+            parameters = self._ensure_required_fields(sanitized)
+            
+            # 调试日志：打印前 5 个工具的 schema
+            if len(result) < 5:
+                print(f"[MCP] Tool '{tool['name']}' schema: required={parameters.get('required', [])}, "
+                      f"properties={list(parameters.get('properties', {}).keys())}")
             
             result.append({
                 "type": "function",
@@ -818,42 +835,101 @@ class MCPClient:
         
         return result
     
+    def _sanitize_json_schema(self, schema: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        清理和规范化 JSON Schema（对齐 Codex 实现）
+        
+        功能：
+        - 确保每个 schema 有 type 字段
+        - 确保 object 有 properties
+        - 确保 array 有 items
+        - 设置 additionalProperties: false（防止意外参数）
+        """
+        if not isinstance(schema, dict):
+            return {"type": "string"}
+        
+        schema = schema.copy()
+        schema_type = schema.get("type")
+        
+        # 推断 type
+        if not schema_type:
+            if "properties" in schema or "required" in schema:
+                schema_type = "object"
+            elif "items" in schema:
+                schema_type = "array"
+            else:
+                schema_type = "string"
+            schema["type"] = schema_type
+        
+        # 确保 object 有 properties
+        if schema_type == "object":
+            if "properties" not in schema:
+                schema["properties"] = {}
+            # 禁止额外属性（关键！防止 LLM 传递意外参数）
+            schema["additionalProperties"] = False
+            # 递归清理 properties
+            cleaned_props = {}
+            for name, prop_schema in schema.get("properties", {}).items():
+                if isinstance(prop_schema, dict):
+                    cleaned_props[name] = self._sanitize_json_schema(prop_schema)
+                else:
+                    cleaned_props[name] = prop_schema
+            schema["properties"] = cleaned_props
+        
+        # 确保 array 有 items
+        if schema_type == "array" and "items" not in schema:
+            schema["items"] = {"type": "string"}
+        
+        return schema
+    
     def _ensure_required_fields(self, schema: Dict[str, Any]) -> Dict[str, Any]:
         """
         确保 JSON Schema 有正确的 required 字段
         
-        规则:
+        规则：
         - 如果参数没有 default，则为 required
-        - 如果参数的类型不包含 null，则为 required
+        - 如果参数的类型不包含 null（nullable），则为 required
+        - 如果 description 不包含 "optional"，则为 required
         """
         if schema.get("type") != "object":
             return schema
         
         properties = schema.get("properties", {})
-        existing_required = schema.get("required", [])
+        existing_required = schema.get("required")
         
-        # 如果已经有 required 字段，使用它
-        if existing_required:
+        # 如果已经有非空的 required 字段，使用它
+        if existing_required and len(existing_required) > 0:
             return schema
         
         # 推断 required 字段
         required = []
         for prop_name, prop_schema in properties.items():
-            # 没有 default 的参数通常是必需的
-            if "default" not in prop_schema:
-                # 检查是否是可选类型 (anyOf 包含 null)
-                any_of = prop_schema.get("anyOf", [])
-                is_nullable = any(t.get("type") == "null" for t in any_of)
-                
-                if not is_nullable:
-                    required.append(prop_name)
+            if not isinstance(prop_schema, dict):
+                required.append(prop_name)
+                continue
+            
+            # 检查是否有 default
+            has_default = "default" in prop_schema
+            
+            # 检查是否是可选类型 (anyOf 包含 null)
+            any_of = prop_schema.get("anyOf", [])
+            is_nullable = any(
+                isinstance(t, dict) and t.get("type") == "null" 
+                for t in any_of
+            )
+            
+            # 检查 description 中的 optional 提示
+            desc = str(prop_schema.get("description", "")).lower()
+            is_optional_hint = "optional" in desc
+            
+            # 如果没有 default、不是 nullable、也没有 optional 提示，则为 required
+            if not has_default and not is_nullable and not is_optional_hint:
+                required.append(prop_name)
         
-        if required:
-            result = schema.copy()
-            result["required"] = required
-            return result
-        
-        return schema
+        # 总是设置 required 字段（即使为空也显式设置）
+        result = schema.copy()
+        result["required"] = required
+        return result
     
     def clear_cache(self):
         """清除缓存"""

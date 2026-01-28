@@ -67,10 +67,16 @@ class BaseLLMClient(ABC):
         for tool in tools:
             if tool.get("type") == "function" and "function" in tool:
                 func = tool["function"]
+                input_schema = func.get("parameters", {})
+                
+                # 调试日志：打印前 3 个工具的 schema
+                if len(converted) < 3:
+                    print(f"[Anthropic] Tool '{func.get('name')}' input_schema: {json.dumps(input_schema, indent=2)}")
+                
                 converted.append({
                     "name": func.get("name"),
                     "description": func.get("description"),
-                    "input_schema": func.get("parameters", {})
+                    "input_schema": input_schema
                 })
             else:
                 converted.append(tool)
@@ -112,7 +118,14 @@ class OpenAIClient(BaseLLMClient):
         }
         
         if tools:
-            payload["tools"] = self._convert_tools_to_openai(tools)
+            converted_tools = self._convert_tools_to_openai(tools)
+            payload["tools"] = converted_tools
+            
+            # 调试日志：打印发送的 tool 定义
+            for t in converted_tools:
+                if t.get("function", {}).get("name") == "browser_navigate":
+                    print(f"[OpenAI] Sending browser_navigate tool:")
+                    print(json.dumps(t, indent=2))
         
         url = f"{self.api_base}/chat/completions"
         print(f"[OpenAI] Calling {url} with model {payload['model']}")
@@ -141,7 +154,17 @@ class OpenAIClient(BaseLLMClient):
             print(f"[OpenAI] Error response: {response.text}")
             raise LLMError(f"API error: {response.status_code} - {response.text}")
         
-        return response.json()
+        result = response.json()
+        
+        # 调试日志：打印 tool_calls
+        choices = result.get("choices", [])
+        if choices:
+            message = choices[0].get("message", {})
+            tool_calls = message.get("tool_calls", [])
+            for tc in tool_calls[:2]:  # 只打印前 2 个
+                print(f"[OpenAI] Raw tool_call: {json.dumps(tc, ensure_ascii=False)}")
+        
+        return result
     
     async def chat_stream(
         self,
@@ -419,12 +442,17 @@ class AnthropicClient(BaseLLMClient):
             if block.get("type") == "text":
                 text_content += block.get("text", "")
             elif block.get("type") == "tool_use":
+                tool_input = block.get("input", {})
+                
+                # 调试日志：打印 Anthropic 返回的 tool_use 原始数据
+                print(f"[Anthropic] Raw tool_use block: name={block.get('name')}, input={tool_input}")
+                
                 tool_calls.append({
                     "id": block.get("id"),
                     "type": "function",
                     "function": {
                         "name": block.get("name"),
-                        "arguments": json.dumps(block.get("input", {}))
+                        "arguments": json.dumps(tool_input)
                     }
                 })
         
@@ -473,7 +501,15 @@ class AnthropicClient(BaseLLMClient):
             payload["system"] = system_prompt
         
         if tools:
-            payload["tools"] = self._convert_tools_to_anthropic(tools)
+            converted_tools = self._convert_tools_to_anthropic(tools)
+            payload["tools"] = converted_tools
+            
+            # 调试日志：打印发送给 Anthropic 的工具定义
+            print(f"[Anthropic] Sending {len(converted_tools)} tools to API")
+            for t in converted_tools:
+                if t.get('name') == 'browser_navigate':
+                    print(f"[Anthropic] browser_navigate FULL schema:")
+                    print(json.dumps(t, indent=2))
         
         url = f"{self.api_base}/v1/messages"
         print(f"[Anthropic] Calling {url} with model {payload['model']}")
@@ -500,7 +536,16 @@ class AnthropicClient(BaseLLMClient):
             print(f"[Anthropic] Error response: {response.text}")
             raise LLMError(f"API error: {response.status_code} - {response.text}")
         
-        return self._convert_response_to_openai(response.json())
+        raw_response = response.json()
+        
+        # 调试日志：打印完整的 API 响应
+        content = raw_response.get("content", [])
+        for block in content:
+            if block.get("type") == "tool_use":
+                print(f"[Anthropic] Raw tool_use FULL block:")
+                print(json.dumps(block, indent=2, ensure_ascii=False))
+        
+        return self._convert_response_to_openai(raw_response)
     
     async def chat_stream(
         self,
