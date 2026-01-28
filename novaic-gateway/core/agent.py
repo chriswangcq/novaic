@@ -22,21 +22,14 @@ class NovAICAgent:
     - Session management
     """
     
-    def __init__(
-        self, 
-        executor_url: Optional[str] = None,
-        vsock_cid: Optional[int] = None,
-        vsock_port: int = 8080,
-    ):
+    def __init__(self, vsock_cid: int, vsock_port: int = 8080):
         """
         Initialize the Agent.
         
         Args:
-            executor_url: MCP Server URL (HTTP fallback)
-            vsock_cid: VSOCK Context ID (优先使用)
+            vsock_cid: VSOCK Context ID (用于 VM 通信)
             vsock_port: VSOCK 端口 (默认 8080)
         """
-        self.executor_url = executor_url
         self.vsock_cid = vsock_cid
         self.vsock_port = vsock_port
         
@@ -117,10 +110,9 @@ class NovAICAgent:
             return
         
         try:
-            # 注册 MCP Server（优先 VSOCK，回退到 HTTP）
+            # 注册 MCP Server (VSOCK)
             await self.mcp_client.register_server(
                 name="executor",
-                base_url=self.executor_url,
                 vsock_cid=self.vsock_cid,
                 vsock_port=self.vsock_port,
             )
@@ -129,7 +121,7 @@ class NovAICAgent:
             
             if len(self.tools) > 0:
                 self._executor_healthy = True
-                print(f"[Agent] Initialized with MCP: discovered {len(self.tools)} tools")
+                print(f"[Agent] Initialized with MCP via VSOCK CID={self.vsock_cid}: discovered {len(self.tools)} tools")
             else:
                 self._executor_healthy = False
                 print(f"[Agent] MCP Server connected but no tools discovered")
@@ -144,7 +136,8 @@ class NovAICAgent:
     async def get_environment_info(self) -> Dict[str, Any]:
         """Get current environment info."""
         return {
-            "executor_url": self.executor_url,
+            "vsock_cid": self.vsock_cid,
+            "vsock_port": self.vsock_port,
             "executor_healthy": self._executor_healthy,
             "tools_count": len(self.tools),
         }

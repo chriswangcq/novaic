@@ -107,12 +107,9 @@ class AppConfig(BaseModel):
     # Execution display
     visible_shell: bool = False
     
-    # MCP Server 配置
-    # VSOCK (优先) - 用于与 VM 通信
-    vsock_cid: Optional[int] = 3       # VSOCK Context ID (None = 禁用)
-    vsock_port: int = 8080             # VSOCK 端口
-    # HTTP (回退) - 用于开发或 VSOCK 不可用时
-    executor_url: str = "http://127.0.0.1:8080"
+    # MCP Server 配置 (VSOCK)
+    vsock_cid: int = 3       # VSOCK Context ID (3+)
+    vsock_port: int = 8080   # VSOCK 端口
     
     def to_public(self) -> dict:
         """Return public version (hides API keys)"""
@@ -124,7 +121,8 @@ class AppConfig(BaseModel):
             "max_tokens": self.max_tokens,
             "max_iterations": self.max_iterations,
             "visible_shell": self.visible_shell,
-            "executor_url": self.executor_url,
+            "vsock_cid": self.vsock_cid,
+            "vsock_port": self.vsock_port,
         }
     
     def get_api_key_by_id(self, key_id: str) -> Optional[ApiKeyEntry]:
@@ -385,7 +383,8 @@ class ConfigManager:
         max_tokens: Optional[int] = None,
         max_iterations: Optional[int] = None,
         visible_shell: Optional[bool] = None,
-        executor_url: Optional[str] = None,
+        vsock_cid: Optional[int] = None,
+        vsock_port: Optional[int] = None,
     ) -> None:
         """Update common settings"""
         config = self.load()
@@ -398,8 +397,10 @@ class ConfigManager:
             config.max_iterations = max_iterations
         if visible_shell is not None:
             config.visible_shell = visible_shell
-        if executor_url is not None:
-            config.executor_url = executor_url
+        if vsock_cid is not None:
+            config.vsock_cid = vsock_cid
+        if vsock_port is not None:
+            config.vsock_port = vsock_port
         
         self.save(config)
     
