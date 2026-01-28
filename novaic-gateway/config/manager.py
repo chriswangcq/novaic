@@ -107,9 +107,9 @@ class AppConfig(BaseModel):
     # Execution display
     visible_shell: bool = False
     
-    # MCP Server 配置 (VSOCK)
-    vsock_cid: int = 3       # VSOCK Context ID (3+)
-    vsock_port: int = 8080   # VSOCK 端口
+    # MCP Server 配置
+    # CID 用于生成 Unix socket 路径: /tmp/novaic-mcp-{cid}.sock
+    vsock_cid: int = 3       # VM Context ID (3+)
     
     def to_public(self) -> dict:
         """Return public version (hides API keys)"""
@@ -121,8 +121,7 @@ class AppConfig(BaseModel):
             "max_tokens": self.max_tokens,
             "max_iterations": self.max_iterations,
             "visible_shell": self.visible_shell,
-            "vsock_cid": self.vsock_cid,
-            "vsock_port": self.vsock_port,
+            "cid": self.vsock_cid,
         }
     
     def get_api_key_by_id(self, key_id: str) -> Optional[ApiKeyEntry]:
@@ -383,8 +382,7 @@ class ConfigManager:
         max_tokens: Optional[int] = None,
         max_iterations: Optional[int] = None,
         visible_shell: Optional[bool] = None,
-        vsock_cid: Optional[int] = None,
-        vsock_port: Optional[int] = None,
+        cid: Optional[int] = None,
     ) -> None:
         """Update common settings"""
         config = self.load()
@@ -397,10 +395,8 @@ class ConfigManager:
             config.max_iterations = max_iterations
         if visible_shell is not None:
             config.visible_shell = visible_shell
-        if vsock_cid is not None:
-            config.vsock_cid = vsock_cid
-        if vsock_port is not None:
-            config.vsock_port = vsock_port
+        if cid is not None:
+            config.vsock_cid = cid
         
         self.save(config)
     

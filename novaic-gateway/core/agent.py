@@ -22,16 +22,14 @@ class NovAICAgent:
     - Session management
     """
     
-    def __init__(self, vsock_cid: int, vsock_port: int = 8080):
+    def __init__(self, cid: int):
         """
         Initialize the Agent.
         
         Args:
-            vsock_cid: VSOCK Context ID (用于 VM 通信)
-            vsock_port: VSOCK 端口 (默认 8080)
+            cid: VM 的 CID (用于生成 socket 路径)
         """
-        self.vsock_cid = vsock_cid
-        self.vsock_port = vsock_port
+        self.cid = cid
         
         # Cache for LLM clients (cache_key -> client)
         self._llm_clients: Dict[str, BaseLLMClient] = {}
@@ -110,18 +108,14 @@ class NovAICAgent:
             return
         
         try:
-            # 注册 MCP Server (VSOCK)
-            await self.mcp_client.register_server(
-                name="executor",
-                vsock_cid=self.vsock_cid,
-                vsock_port=self.vsock_port,
-            )
+            # 注册 MCP Server (Unix socket)
+            await self.mcp_client.register_server(name="executor", cid=self.cid)
             tools = await self.mcp_client.list_all_tools()
             self.tools = self.mcp_client.to_llm_tools_format(tools)
             
             if len(self.tools) > 0:
                 self._executor_healthy = True
-                print(f"[Agent] Initialized with MCP via VSOCK CID={self.vsock_cid}: discovered {len(self.tools)} tools")
+                print(f"[Agent] Initialized with MCP (CID={self.cid}): discovered {len(self.tools)} tools")
             else:
                 self._executor_healthy = False
                 print(f"[Agent] MCP Server connected but no tools discovered")
@@ -135,9 +129,10 @@ class NovAICAgent:
     
     async def get_environment_info(self) -> Dict[str, Any]:
         """Get current environment info."""
+        from .mcp_client import get_socket_path
         return {
-            "vsock_cid": self.vsock_cid,
-            "vsock_port": self.vsock_port,
+            "cid": self.cid,
+            "socket_path": get_socket_path(self.cid),
             "executor_healthy": self._executor_healthy,
             "tools_count": len(self.tools),
         }
@@ -205,7 +200,7 @@ class NovAICAgent:
         if not env_info["executor_healthy"] or env_info["tools_count"] == 0:
             yield {
                 "type": "warning",
-                "data": f"⚠️ Executor service not available via VSOCK CID={self.vsock_cid} (MCP tools: {env_info['tools_count']})"
+                "data": f"⚠️ Executor service not available (socket: {env_info['socket_path']}, tools: {env_info['tools_count']})"
             }
         
         if self.api_style == "responses":

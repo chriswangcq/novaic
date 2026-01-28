@@ -27,10 +27,7 @@ def get_agent() -> NovAICAgent:
     global _agent
     if _agent is None:
         config = get_config_manager().load()
-        _agent = NovAICAgent(
-            vsock_cid=config.vsock_cid,
-            vsock_port=config.vsock_port,
-        )
+        _agent = NovAICAgent(cid=config.vsock_cid)
         _agent.max_iterations = config.max_iterations
         _agent.max_tokens = config.max_tokens
     return _agent

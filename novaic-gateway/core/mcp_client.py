@@ -1,11 +1,14 @@
 """
-MCP Client - VSOCK 实现
+MCP Client - Unix Socket 实现
 
-通过 VSOCK (AF_VSOCK) 与 VM 内的 MCP Server 通信。
-无需端口转发，每个 VM 通过唯一 CID 标识。
+通过 Unix socket 与 VM 内的 MCP Server 通信。
+QEMU 使用 virtio-serial 将 Unix socket 连接到 VM 内的代理。
+
+架构:
+  Gateway -> Unix socket -> QEMU chardev -> virtio-serial -> VM Proxy -> MCP Server
 
 特性:
-- VSOCK 通信: 高性能虚拟机套接字
+- Unix socket: 跨平台 (macOS + Linux)
 - 自动重试: 网络错误时自动重试
 - Session 恢复: Session 失效时自动重新初始化
 - 健康检查: 定期检查连接状态
@@ -15,18 +18,9 @@ from typing import Dict, List, Any, Optional
 import logging
 import json
 import asyncio
-import socket
+import httpx
 
 logger = logging.getLogger(__name__)
-
-# Check if VSOCK is supported
-VSOCK_SUPPORTED = hasattr(socket, 'AF_VSOCK')
-if VSOCK_SUPPORTED:
-    AF_VSOCK = socket.AF_VSOCK
-    VMADDR_CID_HOST = 2
-else:
-    AF_VSOCK = None
-    VMADDR_CID_HOST = 2
 
 # 常见的 Session 失效错误消息
 SESSION_ERROR_MESSAGES = [
@@ -38,106 +32,41 @@ SESSION_ERROR_MESSAGES = [
 ]
 
 
-class VSockTransport:
-    """
-    VSOCK 传输层
-    
-    通过 AF_VSOCK 与 VM 内的 MCP Server 通信。
-    """
-    
-    def __init__(self, cid: int, port: int = 8080):
-        """
-        初始化 VSOCK 传输
-        
-        Args:
-            cid: VM 的 Context ID (通常是 3+)
-            port: VSOCK 端口 (默认 8080)
-        """
-        self.cid = cid
-        self.port = port
-    
-    @staticmethod
-    def is_supported() -> bool:
-        """检查系统是否支持 VSOCK"""
-        return VSOCK_SUPPORTED
-    
-    async def send_request(self, data: bytes, timeout: float = 60.0) -> bytes:
-        """
-        发送请求并接收响应
-        
-        通过 VSOCK 发送 HTTP 请求格式（VM 内代理转发到 MCP Server）
-        """
-        if not VSOCK_SUPPORTED:
-            raise RuntimeError("VSOCK not supported on this system")
-        
-        sock = None
-        try:
-            sock = socket.socket(AF_VSOCK, socket.SOCK_STREAM)
-            sock.settimeout(timeout)
-            sock.connect((self.cid, self.port))
-            
-            # 发送 HTTP 请求
-            sock.sendall(data)
-            
-            # 接收响应
-            response = b""
-            while True:
-                chunk = sock.recv(65536)
-                if not chunk:
-                    break
-                response += chunk
-                # 检查是否收到完整的 HTTP 响应
-                if b"\r\n\r\n" in response:
-                    header_end = response.find(b"\r\n\r\n")
-                    headers = response[:header_end].decode('utf-8', errors='ignore')
-                    body_start = header_end + 4
-                    
-                    content_length = 0
-                    for line in headers.split("\r\n"):
-                        if line.lower().startswith("content-length:"):
-                            content_length = int(line.split(":")[1].strip())
-                            break
-                    
-                    if len(response) >= body_start + content_length:
-                        break
-            
-            return response
-            
-        finally:
-            if sock:
-                try:
-                    sock.close()
-                except:
-                    pass
+def get_socket_path(cid: int) -> str:
+    """获取 Unix socket 路径"""
+    return f"/tmp/novaic-mcp-{cid}.sock"
 
 
 class MCPServerConnection:
     """
     单个 MCP Server 的连接管理
     
-    通过 VSOCK 与 VM 内的 MCP Server 通信。
+    通过 Unix socket 与 VM 内的 MCP Server 通信。
     """
     
-    def __init__(self, name: str, vsock_cid: int, vsock_port: int = 8080):
+    def __init__(self, name: str, socket_path: str):
         """
         初始化 MCP Server 连接
         
         Args:
             name: Server 名称
-            vsock_cid: VSOCK CID
-            vsock_port: VSOCK 端口 (默认 8080)
+            socket_path: Unix socket 路径
         """
         self.name = name
-        self.vsock_cid = vsock_cid
-        self.vsock_port = vsock_port
-        
-        # VSOCK 传输
-        self._vsock_transport = VSockTransport(vsock_cid, vsock_port)
+        self.socket_path = socket_path
         
         self._tools_cache: Optional[List[Dict[str, Any]]] = None
         self._request_id = 0
         self._session_id: Optional[str] = None
         self._protocol_version = "2024-11-05"
+    
+    def _create_client(self) -> httpx.AsyncClient:
+        """创建通过 Unix socket 的 HTTP 客户端"""
+        transport = httpx.AsyncHTTPTransport(uds=self.socket_path)
+        return httpx.AsyncClient(
+            transport=transport,
+            timeout=httpx.Timeout(connect=10.0, read=60.0, write=30.0, pool=10.0),
+        )
     
     def _next_request_id(self) -> int:
         self._request_id += 1
@@ -145,7 +74,7 @@ class MCPServerConnection:
     
     async def _send_request(self, method: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
         """
-        发送 JSON-RPC 请求 (通过 VSOCK)
+        发送 JSON-RPC 请求 (通过 Unix socket)
         
         Args:
             method: MCP 方法名
@@ -163,56 +92,43 @@ class MCPServerConnection:
         if params:
             payload["params"] = params
         
-        # 构建 HTTP 请求（VM 内代理会转发到 MCP Server）
-        body = json.dumps(payload).encode('utf-8')
-        
-        headers_list = [
-            "POST /mcp HTTP/1.1",
-            "Host: localhost",
-            "Content-Type: application/json",
-            "Accept: application/json, text/event-stream",
-            f"Content-Length: {len(body)}",
-        ]
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+        }
         if self._session_id:
-            headers_list.append(f"mcp-session-id: {self._session_id}")
-        headers_list.append("")
-        headers_list.append("")
+            headers["mcp-session-id"] = self._session_id
         
-        request = "\r\n".join(headers_list).encode('utf-8') + body
-        
-        print(f"[MCP] VSOCK CID={self.vsock_cid}:{self.vsock_port} method={method}")
+        print(f"[MCP] Unix socket {self.socket_path} method={method}")
         
         try:
-            response = await self._vsock_transport.send_request(request)
-            
-            # 解析 HTTP 响应
-            response_str = response.decode('utf-8', errors='ignore')
-            
-            if "\r\n\r\n" in response_str:
-                header_part, body_part = response_str.split("\r\n\r\n", 1)
-            else:
-                return {"error": {"message": "Invalid HTTP response"}}
-            
-            # 提取 session ID
-            for line in header_part.split("\r\n"):
-                if line.lower().startswith("mcp-session-id:"):
-                    self._session_id = line.split(":", 1)[1].strip()
-            
-            print(f"[MCP] Response body length: {len(body_part)}")
-            
-            # 检查 content type
-            content_type = ""
-            for line in header_part.split("\r\n"):
-                if line.lower().startswith("content-type:"):
-                    content_type = line.split(":", 1)[1].strip()
-            
-            if "text/event-stream" in content_type:
-                return self._parse_sse_response(body_part, request_id)
-            else:
-                return json.loads(body_part)
+            async with self._create_client() as client:
+                # httpx 通过 Unix socket 发送 HTTP 请求
+                # URL 中的 host 无关紧要，只是占位
+                response = await client.post(
+                    "http://localhost/mcp",
+                    json=payload,
+                    headers=headers,
+                )
                 
+                print(f"[MCP] Response status: {response.status_code}")
+                
+                # 保存 session ID
+                if "mcp-session-id" in response.headers:
+                    self._session_id = response.headers["mcp-session-id"]
+                
+                # 解析响应
+                content_type = response.headers.get("content-type", "")
+                text = response.text
+                print(f"[MCP] Response body length: {len(text)}")
+                
+                if "text/event-stream" in content_type:
+                    return self._parse_sse_response(text, request_id)
+                else:
+                    return response.json()
+                    
         except Exception as e:
-            logger.error(f"[MCP] VSOCK request failed: {e}")
+            logger.error(f"[MCP] Unix socket request failed: {e}")
             return {"error": {"message": str(e)}}
     
     def _parse_sse_response(self, text: str, request_id: int) -> Dict[str, Any]:
@@ -299,11 +215,24 @@ class MCPServerConnection:
 
     async def initialize(self, max_retries: int = 3, retry_delay: float = 2.0) -> bool:
         """初始化 MCP 连接（带重试）"""
-        if not VSOCK_SUPPORTED:
-            print(f"[MCP] VSOCK not supported on this system")
-            return False
+        import os
+        
+        # 检查 socket 文件是否存在
+        if not os.path.exists(self.socket_path):
+            print(f"[MCP] Socket not found: {self.socket_path}")
+            print(f"[MCP] Waiting for VM to start...")
         
         for attempt in range(max_retries):
+            # 等待 socket 文件出现
+            if not os.path.exists(self.socket_path):
+                if attempt < max_retries - 1:
+                    print(f"[MCP] Socket not ready, waiting... (attempt {attempt + 1}/{max_retries})")
+                    await asyncio.sleep(retry_delay)
+                    continue
+                else:
+                    print(f"[MCP] Socket still not available after {max_retries} attempts")
+                    return False
+            
             try:
                 result = await self._send_request("initialize", {
                     "protocolVersion": self._protocol_version,
@@ -315,7 +244,7 @@ class MCPServerConnection:
                 })
                 
                 if "result" in result:
-                    print(f"[MCP] Connected to {self.name} via VSOCK CID={self.vsock_cid}: {result['result'].get('serverInfo', {})}")
+                    print(f"[MCP] Connected to {self.name} via {self.socket_path}: {result['result'].get('serverInfo', {})}")
                     
                     # 发送 initialized 通知
                     await self._send_notification("notifications/initialized", {})
@@ -510,32 +439,28 @@ class MCPServerConnection:
 
 
 class MCPClient:
-    """MCP Client - 管理多个 MCP Server (VSOCK)"""
+    """MCP Client - 管理多个 MCP Server (Unix socket)"""
     
     def __init__(self):
         self.servers: Dict[str, MCPServerConnection] = {}
         self._tools_cache: Optional[List[Dict[str, Any]]] = None
         self._tool_server_map: Dict[str, str] = {}
     
-    async def register_server(self, name: str, vsock_cid: int, vsock_port: int = 8080):
+    async def register_server(self, name: str, cid: int):
         """
         注册 MCP Server
         
         Args:
             name: Server 名称
-            vsock_cid: VSOCK CID
-            vsock_port: VSOCK 端口 (默认 8080)
+            cid: VM 的 CID（用于生成 socket 路径）
         """
-        server = MCPServerConnection(
-            name=name,
-            vsock_cid=vsock_cid,
-            vsock_port=vsock_port,
-        )
+        socket_path = get_socket_path(cid)
+        server = MCPServerConnection(name=name, socket_path=socket_path)
         self.servers[name] = server
         self._tools_cache = None
         self._tool_server_map.clear()
         
-        logger.info(f"[MCPClient] Registered server: {name} (VSOCK CID={vsock_cid}:{vsock_port})")
+        logger.info(f"[MCPClient] Registered server: {name} ({socket_path})")
     
     async def list_all_tools(self, use_cache: bool = True) -> List[Dict[str, Any]]:
         """从所有 Server 收集工具"""

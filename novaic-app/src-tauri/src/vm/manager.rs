@@ -432,8 +432,10 @@ impl VmManager {
                 // 网络
                 "-device".to_string(), "virtio-net-pci,netdev=net0".to_string(),
                 "-netdev".to_string(), format!("user,id=net0,{}", port_forward),
-                // VSOCK 设备 (用于 MCP 通信)
-                "-device".to_string(), format!("vhost-vsock-pci,guest-cid={}", config.vsock_cid),
+                // virtio-serial 用于 MCP 通信 (跨平台，替代 VSOCK)
+                "-device".to_string(), "virtio-serial-pci".to_string(),
+                "-chardev".to_string(), format!("socket,id=mcp,path=/tmp/novaic-mcp-{}.sock,server=on,wait=off", config.vsock_cid),
+                "-device".to_string(), "virtserialport,chardev=mcp,name=mcp".to_string(),
                 // 显示
                 "-device".to_string(), "virtio-gpu-pci".to_string(),
                 // USB 输入
@@ -484,8 +486,10 @@ impl VmManager {
                 "-boot".to_string(), "c".to_string(),
                 "-net".to_string(), "nic".to_string(),
                 "-net".to_string(), format!("user,{}", port_forward),
-                // VSOCK 设备 (用于 MCP 通信)
-                "-device".to_string(), format!("vhost-vsock-pci,guest-cid={}", config.vsock_cid),
+                // virtio-serial 用于 MCP 通信 (跨平台)
+                "-device".to_string(), "virtio-serial-pci".to_string(),
+                "-chardev".to_string(), format!("socket,id=mcp,path=/tmp/novaic-mcp-{}.sock,server=on,wait=off", config.vsock_cid),
+                "-device".to_string(), "virtserialport,chardev=mcp,name=mcp".to_string(),
                 "-display".to_string(), "none".to_string(),
             ]);
             
