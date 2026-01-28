@@ -205,7 +205,7 @@ class NovAICAgent:
         if not env_info["executor_healthy"] or env_info["tools_count"] == 0:
             yield {
                 "type": "warning",
-                "data": f"⚠️ Executor service not available at {self.executor_url} (MCP tools: {env_info['tools_count']})"
+                "data": f"⚠️ Executor service not available via VSOCK CID={self.vsock_cid} (MCP tools: {env_info['tools_count']})"
             }
         
         if self.api_style == "responses":

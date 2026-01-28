@@ -164,7 +164,10 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
     agent = connection_manager.get_agent(client_id)
     if agent is None:
         config = get_config_manager().load()
-        agent = NovAICAgent(executor_url=config.executor_url)
+        agent = NovAICAgent(
+            vsock_cid=config.vsock_cid,
+            vsock_port=config.vsock_port,
+        )
         agent.max_iterations = config.max_iterations
         agent.max_tokens = config.max_tokens
         connection_manager.set_agent(client_id, agent)

@@ -70,7 +70,6 @@ async def update_settings(settings: SettingsUpdate):
         max_tokens=settings.max_tokens,
         max_iterations=settings.max_iterations,
         visible_shell=settings.visible_shell,
-        executor_url=settings.executor_url,
     )
     
     # Update agent settings
@@ -78,7 +77,6 @@ async def update_settings(settings: SettingsUpdate):
     config = get_config_manager().load()
     agent.max_iterations = config.max_iterations
     agent.max_tokens = config.max_tokens
-    agent.executor_url = config.executor_url
     
     return {"status": "ok"}
 

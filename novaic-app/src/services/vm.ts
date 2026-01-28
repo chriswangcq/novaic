@@ -8,11 +8,12 @@ export interface VmStatus {
   websockify_running: boolean;
   vnc_port: number;
   agent_port: number;
-  mcp_port: number;              // MCP Server 端口
+  vsock_cid: number;             // VSOCK CID for MCP
+  mcp_vsock_port: number;        // VSOCK port for MCP
   websocket_port: number;
   vnc_url: string;
   agent_url: string;
-  mcp_url: string;               // MCP Server URL
+  agent_id?: string;             // 当前运行的 Agent ID
 }
 
 // VM 服务类

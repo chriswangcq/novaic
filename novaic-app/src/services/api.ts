@@ -14,7 +14,8 @@ export interface AppConfig {
   max_tokens: number;
   max_iterations: number;
   visible_shell: boolean;
-  executor_url: string;
+  vsock_cid: number;
+  vsock_port: number;
 }
 
 export interface ApiKeyInfo {
@@ -127,7 +128,6 @@ export const api = {
     max_tokens: number;
     max_iterations: number;
     visible_shell: boolean;
-    executor_url: string;
   }>): Promise<void> {
     await invoke('gateway_patch', { 
       path: '/api/config/settings', 

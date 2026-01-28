@@ -68,7 +68,6 @@ class SettingsUpdate(BaseModel):
     max_tokens: Optional[int] = None
     max_iterations: Optional[int] = None
     visible_shell: Optional[bool] = None
-    executor_url: Optional[str] = None
 
 
 # ==================== Health ====================
