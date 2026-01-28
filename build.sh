@@ -28,8 +28,10 @@ cd "$SCRIPT_DIR"
 echo ""
 echo "[2/4] Copying Gateway to Tauri resources..."
 mkdir -p "$RESOURCES_DIR"
-cp novaic-gateway/dist/novaic-gateway "$RESOURCES_DIR/"
-echo "  Copied to: $RESOURCES_DIR/"
+# onedir mode: copy the entire directory
+rm -rf "$RESOURCES_DIR/novaic-gateway"
+cp -r novaic-gateway/dist/novaic-gateway "$RESOURCES_DIR/"
+echo "  Copied to: $RESOURCES_DIR/novaic-gateway/"
 
 # Step 3: Copy novaic-core to Tauri resources
 echo ""

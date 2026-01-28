@@ -24,9 +24,10 @@ def main():
         subprocess.run([sys.executable, "-m", "pip", "install", "pyinstaller"], check=True)
     
     # PyInstaller command
+    # Use --onedir for faster startup (no extraction needed)
     cmd = [
         sys.executable, "-m", "PyInstaller",
-        "--onefile",
+        "--onedir",
         "--name", "novaic-gateway",
         "--distpath", "dist",
         "--workpath", "build",

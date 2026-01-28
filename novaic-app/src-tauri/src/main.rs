@@ -108,13 +108,37 @@ impl GatewayProcess {
 
     fn stop(&mut self) {
         if let Some(mut process) = self.process.take() {
-            println!("[Gateway] Stopping...");
-            let _ = process.kill();
-            // 不阻塞等待，避免退出时卡死
-            // 使用 try_wait 检查是否已退出，但不阻塞
+            let pid = process.id();
+            println!("[Gateway] Stopping process (PID: {})...", pid);
+            
+            // First try SIGTERM for graceful shutdown
+            #[cfg(unix)]
+            unsafe {
+                libc::kill(pid as i32, libc::SIGTERM);
+            }
+            #[cfg(unix)]
+            println!("[Gateway] SIGTERM sent to PID {}", pid);
+            
+            // Wait a bit for graceful shutdown
+            std::thread::sleep(std::time::Duration::from_millis(500));
+            
+            // Check if process exited
             match process.try_wait() {
-                Ok(Some(_)) => println!("[Gateway] Stopped immediately"),
-                _ => println!("[Gateway] Kill signal sent, not waiting"),
+                Ok(Some(status)) => {
+                    println!("[Gateway] Stopped gracefully with status: {:?}", status);
+                    return;
+                }
+                Ok(None) => {
+                    // Still running, force kill
+                    println!("[Gateway] Process still running, sending SIGKILL...");
+                    let _ = process.kill();
+                    let _ = process.wait(); // Wait for cleanup
+                    println!("[Gateway] Force killed");
+                }
+                Err(e) => {
+                    println!("[Gateway] Error checking process status: {}", e);
+                    let _ = process.kill();
+                }
             }
         }
     }
@@ -148,11 +172,21 @@ type GatewayState = Arc<Mutex<GatewayProcess>>;
 /// Returns (path, is_binary)
 fn get_gateway_info(app: &AppHandle) -> (PathBuf, bool) {
     // Try to use bundled binary first (production mode)
+    // onedir mode: binary is at resources/novaic-gateway/novaic-gateway
     if let Ok(resource_dir) = app.path().resource_dir() {
+        // Check onedir structure first (resources/novaic-gateway/novaic-gateway)
+        let onedir_path = resource_dir.join("resources/novaic-gateway/novaic-gateway");
+        println!("[Gateway] Checking onedir binary at: {:?}", onedir_path);
+        if onedir_path.exists() {
+            println!("[Gateway] Found onedir binary, using production mode");
+            return (onedir_path, true);
+        }
+        
+        // Fallback: check single file (legacy onefile mode)
         let binary_path = resource_dir.join("resources/novaic-gateway");
-        println!("[Gateway] Checking bundled binary at: {:?}", binary_path);
-        if binary_path.exists() {
-            println!("[Gateway] Found bundled binary, using production mode");
+        println!("[Gateway] Checking single file binary at: {:?}", binary_path);
+        if binary_path.is_file() {
+            println!("[Gateway] Found single file binary, using production mode");
             return (binary_path, true);
         }
         println!("[Gateway] Bundled binary not found");
@@ -315,8 +349,9 @@ fn main() {
                             }
                         }
                         "quit" => {
-                            println!("[App] Quit from tray, stopping services...");
-                            std::process::exit(0);
+                            println!("[App] Quit from tray, triggering app exit...");
+                            // Use app.exit() to trigger proper cleanup via RunEvent::Exit
+                            app.exit(0);
                         }
                         _ => {}
                     }
