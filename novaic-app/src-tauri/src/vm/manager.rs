@@ -523,9 +523,12 @@ impl VmManager {
     fn get_seed_iso_path(&self, image_path: &PathBuf) -> PathBuf {
         // 优先使用 image_path 同级目录的 seed ISO (agent 目录)
         if let Some(parent) = image_path.parent() {
-            let agent_seed = parent.join("cloud-init-seed.iso");
-            if agent_seed.exists() {
-                return agent_seed;
+            // 尝试多种文件名
+            for name in &["seed.iso", "cloud-init-seed.iso"] {
+                let agent_seed = parent.join(name);
+                if agent_seed.exists() {
+                    return agent_seed;
+                }
             }
         }
         // 回退到传统路径
