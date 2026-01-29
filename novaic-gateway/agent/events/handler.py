@@ -109,18 +109,61 @@ class AgentEventHandler:
             current_state = self.state_manager.get_state()
             
             if current_state == AgentState.SLEEP:
-                # Agent is sleeping, skip unless it's a high priority event
-                if event.priority.value > EventPriority.HIGH.value:
-                    logger.debug(f"[EventHandler] Skipping event {event.id} - agent is sleeping")
+                # Agent is sleeping, check wake triggers
+                should_wake = False
+                wake_reason = None
+                
+                # Check if rest state has wake triggers
+                rest_state = self._get_rest_state()
+                if rest_state and rest_state.get("is_resting"):
+                    wake_triggers = rest_state.get("wake_triggers", [])
+                    
+                    for trigger in wake_triggers:
+                        trigger_type = trigger.get("type")
+                        
+                        # user_response: wake on any user message (deterministic, no model)
+                        if trigger_type == "user_response" and event.type == EventType.USER_MESSAGE:
+                            should_wake = True
+                            wake_reason = "用户消息触发唤醒"
+                            break
+                        
+                        # user_message with pattern: check message content
+                        if trigger_type == "user_message" and event.type == EventType.USER_MESSAGE:
+                            pattern = trigger.get("pattern", "")
+                            content = event.payload.get("content", "")
+                            if pattern and pattern.lower() in content.lower():
+                                should_wake = True
+                                wake_reason = f"消息匹配模式 '{pattern}'"
+                                break
+                        
+                        # keyword: check for urgent keywords
+                        if trigger_type == "keyword":
+                            import re
+                            pattern = trigger.get("pattern", "")
+                            content = self._extract_message(event)
+                            if pattern and re.search(pattern, content, re.IGNORECASE):
+                                should_wake = True
+                                wake_reason = f"关键词匹配 '{pattern}'"
+                                break
+                
+                # Also wake for high priority events
+                if not should_wake and event.priority.value <= EventPriority.HIGH.value:
+                    should_wake = True
+                    wake_reason = "高优先级事件"
+                
+                if should_wake:
+                    self.state_manager.set_state(AgentState.AWAKE)
+                    logger.info(f"[EventHandler] Agent woken: {wake_reason}")
+                    # Notify via wake API
+                    asyncio.create_task(self._notify_wake(wake_reason, rest_state))
+                else:
+                    logger.debug(f"[EventHandler] Skipping event {event.id} - agent is sleeping, no matching trigger")
                     self._stats["events_skipped"] += 1
                     return EventResult(
                         event_id=event.id,
                         success=False,
                         error="Agent is sleeping"
                     )
-                else:
-                    # Wake up the agent for high priority events
-                    self.state_manager.set_state(AgentState.AWAKE)
             
             elif current_state == AgentState.BUSY:
                 # Agent is busy, queue the event
@@ -259,6 +302,29 @@ class AgentEventHandler:
                 await self._handle_event(event)
             except asyncio.QueueEmpty:
                 break
+    
+    def _get_rest_state(self) -> Optional[Dict[str, Any]]:
+        """Get current rest state from main module."""
+        try:
+            from main import _agent_rest_state
+            return _agent_rest_state
+        except ImportError:
+            return None
+    
+    async def _notify_wake(self, reason: str, previous_rest_state: Optional[Dict] = None) -> None:
+        """Notify wake via API to clear rest state and send notification."""
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=5.0, trust_env=False) as client:
+                await client.post(
+                    "http://127.0.0.1:9000/api/agent/wake",
+                    json={
+                        "reason": reason,
+                        "auto_triggered": True,
+                    }
+                )
+        except Exception as e:
+            logger.warning(f"[EventHandler] Failed to notify wake: {e}")
     
     def get_stats(self) -> Dict[str, Any]:
         """Get handler statistics."""
