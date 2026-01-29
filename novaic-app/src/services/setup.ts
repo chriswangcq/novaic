@@ -104,7 +104,7 @@ export async function setupVm(
 }
 
 /**
- * Deploy novaic-core to VM
+ * Deploy novaic-vm-tools to VM
  */
 export async function deployAgent(
   sshPort: number,
