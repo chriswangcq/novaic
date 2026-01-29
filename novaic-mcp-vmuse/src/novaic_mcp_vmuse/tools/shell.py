@@ -43,7 +43,13 @@ class ShellTools:
         Args:
             command: Shell command to execute
             cwd: Working directory
-            timeout: Timeout in seconds. None = no timeout (wait until completion)
+            timeout: How long to WAIT (block) before returning, in seconds.
+                     - None: wait 3s (default)
+                     - timeout=10: wait up to 10s before returning
+                     - timeout=60: wait up to 60s before returning
+                     If task completes within timeout, returns status="completed"
+                     If task still running after timeout, returns status="running"
+                     Background task will continue running indefinitely (no kill)
             visible: If true, run in visible terminal (for GUI apps)
         
         Returns:
@@ -81,6 +87,10 @@ class ShellTools:
         """
         Run command with unified task tracking.
         Always returns task_id + tail, whether completed quickly or moved to background.
+        
+        Args:
+            timeout: If provided, wait up to this many seconds for completion.
+                     If None, use default AUTO_BACKGROUND_TIMEOUT (3s).
         """
         env = ShellTools._get_env_with_display()
         task_id = str(uuid.uuid4())[:8]
@@ -109,11 +119,15 @@ class ShellTools:
             "finished_at": None
         }
         
+        # Use timeout parameter to control wait time
+        # If timeout is provided by user, use it; otherwise use default 3s
+        wait_timeout = timeout if timeout is not None else ShellTools.AUTO_BACKGROUND_TIMEOUT
+        
         try:
-            # Try to complete within AUTO_BACKGROUND_TIMEOUT
+            # Try to complete within wait_timeout
             stdout, stderr = await asyncio.wait_for(
                 process.communicate(),
-                timeout=ShellTools.AUTO_BACKGROUND_TIMEOUT
+                timeout=wait_timeout
             )
             
             # Completed quickly - update task and return
@@ -149,7 +163,8 @@ class ShellTools:
             
         except asyncio.TimeoutError:
             # Took too long, start background monitor
-            asyncio.create_task(ShellTools._monitor_task_streaming(task_id, process, timeout))
+            # Pass None as timeout to let task run indefinitely in background
+            asyncio.create_task(ShellTools._monitor_task_streaming(task_id, process, background_timeout=None))
             
             return {
                 "success": True,
@@ -159,7 +174,7 @@ class ShellTools:
                 "stderr_tail": "",
                 "stdout_total_lines": 0,
                 "stderr_total_lines": 0,
-                "message": f"Running in background (>{ShellTools.AUTO_BACKGROUND_TIMEOUT}s). Use query_task('{task_id}') to check.",
+                "message": f"Running in background (waited {wait_timeout}s). Use query_task('{task_id}') to check progress.",
             }
     
     @staticmethod
@@ -187,8 +202,13 @@ class ShellTools:
             pass
     
     @staticmethod
-    async def _monitor_task_streaming(task_id: str, process: asyncio.subprocess.Process, timeout: Optional[int]):
-        """Monitor background task with streaming output"""
+    async def _monitor_task_streaming(task_id: str, process: asyncio.subprocess.Process, background_timeout: Optional[int]):
+        """
+        Monitor background task with streaming output.
+        
+        Args:
+            background_timeout: Max time for background task to run (None = indefinite)
+        """
         task = _background_tasks.get(task_id)
         if not task:
             return
@@ -202,11 +222,10 @@ class ShellTools:
                 ShellTools._read_stream(process.stderr, task["stderr_lines"], "stderr_total", task)
             )
             
-            # Wait for process to complete (with optional timeout)
-            if timeout is not None:
-                remaining_timeout = timeout - ShellTools.AUTO_BACKGROUND_TIMEOUT
+            # Wait for process to complete (with optional timeout for background)
+            if background_timeout is not None:
                 try:
-                    await asyncio.wait_for(process.wait(), timeout=max(remaining_timeout, 1))
+                    await asyncio.wait_for(process.wait(), timeout=background_timeout)
                 except asyncio.TimeoutError:
                     process.terminate()
                     await asyncio.sleep(0.5)

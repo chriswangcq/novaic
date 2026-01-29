@@ -477,15 +477,39 @@ async def browser_close_tab(index: Optional[int] = None) -> Dict[str, Any]:
 @mcp.tool(
     description="""Execute shell command. Always returns task_id + stdout/stderr tail.
 
-- All commands return unified format: { task_id, status, stdout_tail, stderr_tail, ... }
-- Commands completing in <3s: status="completed", includes exit_code
-- Commands taking >3s: status="running", use query_task(task_id) to check progress
-- Use query_task(task_id) to get more output lines
+**Return format:** { task_id, status, stdout_tail, stderr_tail, exit_code?, ... }
+- status="completed": Command finished, check exit_code
+- status="running": Command still running, use query_task(task_id) to check
+
+**The timeout parameter controls how long to WAIT before returning:**
+- No timeout (default): Wait 3 seconds, then return if not done
+- timeout=10: Wait up to 10 seconds, then return if not done
+- timeout=60: Wait up to 60 seconds, then return if not done
+
+**How to use timeout effectively:**
+Instead of calling query_task repeatedly, use timeout to "sleep and wait":
+
+Bad pattern (old way):
+  run_command("wget file")  # Returns immediately after 3s
+  query_task(id)  # Query after 2s
+  query_task(id)  # Query after 2s
+  query_task(id)  # Query after 2s... (wasteful!)
+
+Good pattern (new way):
+  run_command("wget file", timeout=15)  # Wait 15s before returning
+  # If status="running", then query_task after another 15s
+  query_task(id)  # Check once after appropriate interval
+
+**Recommended timeout values:**
+- Quick commands: timeout=5 (or omit for default 3s)
+- Package installs: timeout=30
+- Large downloads: timeout=20-30
+- Builds/compiles: timeout=60
 
 Examples:
-- run_command(command="ls -la")
-- run_command(command="pip install pandas")
-- run_command(command="make", timeout=300)"""
+- run_command(command="ls -la")  # Fast, uses default 3s
+- run_command(command="wget large.zip", timeout=20)  # Wait 20s
+- run_command(command="apt install pkg", timeout=30)  # Wait 30s"""
 )
 async def run_command(
     command: str,
@@ -506,7 +530,20 @@ async def run_python(
     return await ShellTools.run_python(code, visible)
 
 
-@mcp.tool(description="Query task status and output tail. Works for running tasks and completed tasks within TTL (5 min). Use tail_lines to get more output.")
+@mcp.tool(description="""Query task status and output tail. Works for running tasks and completed tasks within TTL (5 min).
+
+IMPORTANT: This is a synchronous query - it returns immediately with current state.
+Do NOT call this in a tight loop. Instead:
+1. Estimate task duration based on the command type
+2. Query at appropriate intervals (see run_command best practices)
+3. Use exponential backoff if no progress is seen
+
+Example workflow:
+- Task starts: run_command returns status="running"
+- Wait ~10 seconds before first query (make other tool calls if needed)
+- Query: query_task(task_id)
+- If still running and output changed: wait another interval
+- If still running but no change: increase wait time (exponential backoff)""")
 def query_task(task_id: str, tail_lines: int = 50) -> Dict[str, Any]:
     """Query task status and result (returns tail of output)"""
     return ShellTools.query_task(task_id, tail_lines)

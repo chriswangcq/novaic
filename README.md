@@ -23,19 +23,22 @@
 
 ## What is NovAIC?
 
-NovAIC provides AI agents with a **persistent, visual desktop environment** — a complete Linux VM with 44+ MCP tools for desktop control, browser automation, file operations, and more.
+NovAIC provides AI agents with a **persistent, visual desktop environment** — a complete Linux VM with 35+ MCP tools for desktop control, browser automation, file operations, and more.
 
-Unlike temporary sandboxes that reset after each session, NovAIC maintains state across sessions. Your AI remembers context, keeps files, and continues work exactly where it left off.
+Unlike temporary sandboxes that reset after each session, NovAIC maintains state across sessions with SQLite-based persistence. Your AI remembers context, keeps files, and continues work exactly where it left off.
 
 ### Key Features
 
 | Feature | Description |
 |---------|-------------|
-| **Full Desktop Control** | 44+ MCP tools for mouse, keyboard, screenshots, window management |
+| **Full Desktop Control** | 35+ MCP tools for mouse, keyboard, screenshots, window management |
 | **Browser Automation** | Navigate, click, type, scroll — AI controls the browser like a human |
 | **Multi-Agent System** | Create and manage multiple AI agents, each with isolated VM disk |
-| **Persistent Environment** | QCOW2 disk images preserve everything between sessions |
-| **Memory System** | Key-value storage + goal tracking for cross-session context |
+| **Persistent State** | SQLite + QCOW2 disk images preserve everything between sessions |
+| **Self-Scheduling** | Agents can autonomously check inbox, wake on triggers, run micro-agents |
+| **Memory System** | Host-based key-value storage + goal tracking for cross-session context |
+| **Agent-User Communication** | Dedicated MCP server for questions, answers, and notifications |
+| **Event-Driven Architecture** | EventBus with publish/subscribe for system-wide event handling |
 | **Context Awareness** | System snapshots, directory analysis, app state detection |
 | **Privacy First** | Runs locally in QEMU VM — your data never leaves your machine |
 | **Multi-Provider LLM** | OpenAI, Anthropic, Google, Azure, or any OpenAI-compatible API |
@@ -94,7 +97,7 @@ tail -f /var/log/cloud-init-output.log
 ./scripts/deploy.sh
 ```
 
-This deploys NovAIC Core (MCP Server) into the VM. After deployment:
+This deploys novaic-mcp-vmuse (MCP Server with 35+ tools) into the VM. After deployment:
 
 | Service | Address | Credentials |
 |---------|---------|-------------|
@@ -199,7 +202,8 @@ open novaic-app/src-tauri/target/release/bundle/macos/NovAIC.app
 The app will automatically:
 - Download Ubuntu cloud image
 - Create VM with UEFI and cloud-init
-- Deploy NovAIC Core (MCP Server)
+- Deploy novaic-mcp-vmuse (MCP Server)
+- Start 5 host-based MCP servers (session, memory, chat, local, qemudebug)
 - Start the VM and connect VNC
 
 ## Quick Start (MCP Server Only)
@@ -308,74 +312,116 @@ sudo systemctl restart x11vnc
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         NovAIC Platform                              │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  ┌──────────────────────────────────────┐  ┌────────────────────┐   │
-│  │           NovAIC App (Tauri)          │  │  Claude Desktop /  │   │
-│  │  ┌─────────────┐  ┌───────────────┐  │  │   Cursor / Any     │   │
-│  │  │   Web UI    │  │ Gateway Mgmt  │  │  │   MCP Client       │   │
-│  │  │  (React)    │  │  (Rust IPC)   │  │  │                    │   │
-│  │  │ + Agent     │  │ + VM Manager  │  │  │                    │   │
-│  │  │   Selector  │  │   (QEMU)      │  │  │                    │   │
-│  │  └──────┬──────┘  └───────┬───────┘  │  └─────────┬──────────┘   │
-│  │         │                 │          │            │              │
-│  │         │    Tauri IPC    │          │            │              │
-│  │         └────────┬────────┘          │            │              │
-│  └──────────────────┼───────────────────┘            │              │
-│                     │                                │              │
-│                     ▼                                │              │
-│  ┌───────────────────────────────────────────────────┼───────────┐  │
-│  │                NovAIC Gateway (Python)            │           │  │
-│  │           FastAPI + WebSocket + Agent Core        │           │  │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌──────────┐  │           │  │
-│  │  │ REST API    │  │  WebSocket  │  │  Agent   │◄─┘           │  │
-│  │  │ /api/*      │  │   /ws/*     │  │  Loop    │  MCP Client  │  │
-│  │  └─────────────┘  └─────────────┘  └────┬─────┘              │  │
-│  └─────────────────────────────────────────┼────────────────────┘  │
-│                                            │ Port Forward (8081+)  │
-│                    ┌───────────────────────┼───────────────────┐   │
-│                    │        Per-Agent VMs (Isolated)           │   │
-│                    │                       │                   │   │
-│  ┌─────────────────┼───────────────────────┼───────────────────┼─┐ │
-│  │   Agent A VM    ▼                       ▼    Agent B VM     │ │ │
-│  │  ┌───────────────────┐    ┌───────────────────┐             │ │ │
-│  │  │  NovAIC Core      │    │  NovAIC Core      │   ...       │ │ │
-│  │  │  MCP :8080        │    │  MCP :8080        │             │ │ │
-│  │  │  (44+ Tools)      │    │  (44+ Tools)      │             │ │ │
-│  │  │  Port Fwd :8081   │    │  Port Fwd :8082   │             │ │ │
-│  │  └───────────────────┘    └───────────────────┘             │ │ │
-│  │  disk-a.qcow2             disk-b.qcow2                      │ │ │
-│  │  Ubuntu 24.04 + XFCE + VNC + SSH                            │ │ │
-│  └─────────────────────────────────────────────────────────────┘ │ │
-│                                                                    │
-└────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         NovAIC Platform                                  │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌──────────────────────────────────────┐  ┌────────────────────┐       │
+│  │        NovAIC App (Tauri)             │  │  Claude Desktop /  │       │
+│  │  ┌─────────────┐  ┌───────────────┐  │  │   Cursor / Any     │       │
+│  │  │  Dashboard  │  │ Gateway Mgmt  │  │  │   MCP Client       │       │
+│  │  │  + Chat UI  │  │  (Rust IPC)   │  │  │                    │       │
+│  │  │  + VNC View │  │ + VM Manager  │  │  │                    │       │
+│  │  │             │  │   (QEMU)      │  │  │                    │       │
+│  │  └──────┬──────┘  └───────┬───────┘  │  └─────────┬──────────┘       │
+│  │         │                 │          │            │                  │
+│  │         │    Tauri IPC    │          │            │                  │
+│  │         └────────┬────────┘          │            │                  │
+│  └──────────────────┼───────────────────┘            │                  │
+│                     │                                │                  │
+│                     ▼                                │                  │
+│  ┌───────────────────────────────────────────────────┼───────────────┐  │
+│  │              NovAIC Gateway (Python)              │               │  │
+│  │        FastAPI + SQLite + SSE + Agent Core        │               │  │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌──────────┐  │               │  │
+│  │  │ REST API    │  │     SSE     │  │  Agent   │◄─┘               │  │
+│  │  │ /api/*      │  │ /sse/chat   │  │  ReAct   │  MCP Clients     │  │
+│  │  └─────────────┘  └─────────────┘  └────┬─────┘                  │  │
+│  │  ┌─────────────────────────────────────┐ │                        │  │
+│  │  │        ToolRegistry (Aggregator)     │ │                        │  │
+│  │  │  Routes to: vmuse, session, memory,  │ │                        │  │
+│  │  │             chat, local, qemudebug   │ │                        │  │
+│  │  └──────────────────┬──────────────────┘ │                        │  │
+│  │  ┌─────────────────────────────────────┐ │                        │  │
+│  │  │    EventBus (Publish/Subscribe)      │ │                        │  │
+│  │  │  Events: message, tool, wake, etc.   │ │                        │  │
+│  │  └─────────────────────────────────────┘ │                        │  │
+│  │  ┌─────────────────────────────────────┐ │                        │  │
+│  │  │      SQLite Database (State)         │ │                        │  │
+│  │  │  messages, execution_logs, config    │ │                        │  │
+│  │  └─────────────────────────────────────┘ │                        │  │
+│  └──────────────────────────────────────────┼────────────────────────┘  │
+│                                             │ HTTP to MCP Servers       │
+│  ┌──────────────────────────────────────────┼────────────────────────┐  │
+│  │                Host MCP Servers          │                        │  │
+│  │  ┌─────────────────┐ ┌────────────────┐ │                        │  │
+│  │  │ novaic-mcp-     │ │ novaic-mcp-    │ │                        │  │
+│  │  │ session         │ │ memory         │ │                        │  │
+│  │  │ :20001          │ │ :20002         │ │                        │  │
+│  │  └─────────────────┘ └────────────────┘ │                        │  │
+│  │  ┌─────────────────┐ ┌────────────────┐ │                        │  │
+│  │  │ novaic-mcp-     │ │ novaic-mcp-    │ │                        │  │
+│  │  │ chat            │ │ local          │ │                        │  │
+│  │  │ :20003          │ │ :20004         │ │                        │  │
+│  │  └─────────────────┘ └────────────────┘ │                        │  │
+│  │  ┌─────────────────┐                    │                        │  │
+│  │  │ novaic-mcp-     │                    │                        │  │
+│  │  │ qemudebug       │                    │                        │  │
+│  │  │ :20005          │                    │                        │  │
+│  │  └─────────────────┘                    │                        │  │
+│  └──────────────────────────────────────────┼────────────────────────┘  │
+│                                             │ Port Forward            │
+│  ┌──────────────────────────────────────────┼────────────────────────┐  │
+│  │                  Per-Agent VMs           ▼                        │  │
+│  │  ┌────────────────────────┐    ┌────────────────────────┐        │  │
+│  │  │  Agent A VM            │    │  Agent B VM            │  ...   │  │
+│  │  │  ┌──────────────────┐  │    │  ┌──────────────────┐  │        │  │
+│  │  │  │ novaic-mcp-vmuse │  │    │  │ novaic-mcp-vmuse │  │        │  │
+│  │  │  │ MCP :8080        │  │    │  │ MCP :8080        │  │        │  │
+│  │  │  │ (35+ Tools)      │  │    │  │ (35+ Tools)      │  │        │  │
+│  │  │  │ Fwd to :20000    │  │    │  │ Fwd to :20020    │  │        │  │
+│  │  │  └──────────────────┘  │    │  └──────────────────┘  │        │  │
+│  │  │  disk-a.qcow2          │    │  disk-b.qcow2          │        │  │
+│  │  │  Ubuntu 24.04 + XFCE   │    │  Ubuntu 24.04 + XFCE   │        │  │
+│  │  │  + VNC + SSH           │    │  + VNC + SSH           │        │  │
+│  │  └────────────────────────┘    └────────────────────────┘        │  │
+│  └───────────────────────────────────────────────────────────────────┘  │
+│                                                                          │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Multi-Agent Architecture
 
 Each agent runs in an isolated QEMU VM with:
 
-- **Dedicated Disk Image**: `~/.novaic/agents/{agent-id}/disk.qcow2`
+- **Dedicated Disk Image**: `~/.novaic/vms/{agent-id}/disk.qcow2`
 - **UEFI Firmware**: Auto-copied from Homebrew QEMU on ARM64
 - **Cloud-Init ISO**: Auto-generated with SSH keys for secure access
-- **Port Allocation**: MCP ports auto-assigned (8081, 8082, 8083...)
+- **Port Allocation**: 20 ports per agent (Agent 0: 20000-20019, Agent 1: 20020-20039, etc.)
+- **MCP Servers**: 6 MCP servers (1 in VM + 5 on host) per agent
+- **SQLite State**: Persistent state in `~/.novaic/gateway.db`
 
 ## Packages
 
 | Package | Description | Path |
 |---------|-------------|------|
-| **[novaic-core](novaic-core)** | MCP tool server with 44+ tools (runs in VM) | `novaic-core` |
-| **[novaic-gateway](novaic-gateway)** | Python Gateway: REST API + WebSocket + Agent | `novaic-gateway` |
-| **[novaic-app](novaic-app)** | Desktop client (Tauri + React + VNC) | `novaic-app` |
-| **[novaic-web](novaic-web)** | Standalone Web UI (for browser access) | `novaic-web` |
-| **[novaic-agent](novaic-agent)** | Legacy agent (deprecated, use gateway) | `novaic-agent` |
+| **[novaic-gateway](novaic-gateway)** | Control plane: REST API + SSE + ReAct Agent + SQLite | `novaic-gateway` |
+| **[novaic-app](novaic-app)** | Desktop client (Tauri + React + VNC + Dashboard) | `novaic-app` |
+| **[novaic-mcp-vmuse](novaic-mcp-vmuse)** | VM-based MCP server with 35+ tools (desktop, browser, shell, files) | `novaic-mcp-vmuse` |
+| **[novaic-mcp-session](novaic-mcp-session)** | Host-based session management MCP server | `novaic-mcp-session` |
+| **[novaic-mcp-memory](novaic-mcp-memory)** | Host-based memory system MCP server (key-value + goals) | `novaic-mcp-memory` |
+| **[novaic-mcp-chat](novaic-mcp-chat)** | Agent↔User communication MCP server (questions, answers, notifications) | `novaic-mcp-chat` |
+| **[novaic-mcp-local](novaic-mcp-local)** | Host-based local file access MCP server | `novaic-mcp-local` |
+| **[novaic-mcp-qemudebug](novaic-mcp-qemudebug)** | QEMU debugging and VM inspection MCP server | `novaic-mcp-qemudebug` |
 | **[novaic-vm](novaic-vm)** | QEMU VM runtime with Ubuntu desktop | `novaic-vm` |
+| **[novaic-web](novaic-web)** | Standalone Web UI (for browser access) | `novaic-web` |
+| **[novaic-agent](novaic-agent)** | Legacy standalone agent (deprecated, migrated to gateway) | `novaic-agent` |
 
-## MCP Tools
+## MCP Tools (35+ Tools across 6 MCP Servers)
 
-### Desktop Control
+### novaic-mcp-vmuse (VM-based, 35+ tools)
+
+#### Desktop Control
 | Tool | Description |
 |------|-------------|
 | `screenshot` | Capture screen with coordinate grid overlay |
@@ -384,7 +430,7 @@ Each agent runs in an isolated QEMU VM with:
 
 > **Note:** Mouse uses aim-then-execute workflow. First `aim` to position crosshair with zoom, then `click` using the returned `aim_id`.
 
-### Browser Automation
+#### Browser Automation
 | Tool | Description |
 |------|-------------|
 | `browser_navigate` | Navigate to URL |
@@ -394,21 +440,23 @@ Each agent runs in an isolated QEMU VM with:
 | `browser_scroll` | Scroll page |
 | `browser_eval` | Execute JavaScript |
 
-### Shell Execution
+#### Shell Execution
 | Tool | Description |
 |------|-------------|
-| `run_command` | Execute shell commands |
-| `run_python` | Execute Python code |
+| `run_command` | Execute shell commands with timeout |
+| `run_python` | Execute Python code in subprocess |
+| `run_code` | Execute code in various languages |
 
-### File Operations
+#### File Operations
 | Tool | Description |
 |------|-------------|
 | `read_file` | Read file contents |
 | `write_file` | Write to file |
 | `list_files` | List directory contents |
 | `file_info` | Get file metadata |
+| `search_files` | Search files by pattern |
 
-### Window Management
+#### Window Management
 | Tool | Description |
 |------|-------------|
 | `list_windows` | List all windows |
@@ -417,22 +465,56 @@ Each agent runs in an isolated QEMU VM with:
 | `maximize_window` | Maximize window |
 | `close_window` | Close window |
 
-### Memory System
-| Tool | Description |
-|------|-------------|
-| `memory_save` | Save key-value data |
-| `memory_recall` | Recall saved data |
-| `goal_set` | Set a goal |
-| `goal_progress` | Update goal progress |
-| `session_state` | Get session state |
-
-### Context Awareness
+#### Context Awareness
 | Tool | Description |
 |------|-------------|
 | `system_snapshot` | System overview (CPU, memory, disk, windows) |
 | `directory_snapshot` | Analyze project structure |
 | `app_state` | Get application state |
 | `clipboard_get/set` | Clipboard operations |
+
+### novaic-mcp-session (Host-based)
+| Tool | Description |
+|------|-------------|
+| `session_list` | List all sessions |
+| `session_get` | Get session details |
+| `session_create` | Create new session |
+| `session_messages` | Get session messages |
+
+### novaic-mcp-memory (Host-based)
+| Tool | Description |
+|------|-------------|
+| `memory_save` | Save key-value data |
+| `memory_recall` | Recall saved data |
+| `memory_delete` | Delete memory entry |
+| `memory_list` | List all memory keys |
+| `goal_set` | Set a goal |
+| `goal_get` | Get goal status |
+| `goal_progress` | Update goal progress |
+| `goal_complete` | Mark goal as complete |
+
+### novaic-mcp-chat (Host-based)
+| Tool | Description |
+|------|-------------|
+| `ask_user` | Ask user a question and wait for answer |
+| `notify_user` | Send notification to user |
+| `chat_history` | Get chat history with user |
+
+### novaic-mcp-local (Host-based)
+| Tool | Description |
+|------|-------------|
+| `local_read_file` | Read file from host machine |
+| `local_write_file` | Write file to host machine |
+| `local_list_files` | List files on host machine |
+| `local_execute` | Execute command on host |
+
+### novaic-mcp-qemudebug (Host-based)
+| Tool | Description |
+|------|-------------|
+| `qemu_status` | Get QEMU VM status |
+| `qemu_info` | Get VM information |
+| `ssh_exec` | Execute command via SSH |
+| `port_check` | Check if port is accessible |
 
 ## Demo
 
@@ -462,6 +544,42 @@ NovAIC:
 5. keyboard(action="type", text="main.py") → Create file
 6. screenshot() → Confirm project created ✅
 ```
+
+## Key Features Explained
+
+### SQLite-Based State Management
+All agent state (messages, execution logs, configuration) is persisted in SQLite database at `~/.novaic/gateway.db`. This enables:
+- Stateless architecture (Gateway can restart without losing state)
+- Cross-session persistence
+- Efficient querying and filtering
+- Transaction safety
+
+### Server-Sent Events (SSE)
+Real-time updates from Gateway to UI via SSE (`/sse/chat/{agent_id}`):
+- Replaces WebSocket with simpler HTTP-based streaming
+- Auto-reconnection support
+- Message types: `user`, `assistant`, `tool_call`, `tool_result`, `error`, `thinking`
+
+### Agent Self-Scheduling
+Agents can autonomously manage their workflow:
+- **Inbox**: Check for pending events (questions, notifications, tasks)
+- **Wake Triggers**: Schedule future actions (cron-like, webhook, keyword-based)
+- **Micro Agents**: Lightweight rule-based agents for filtering and routing
+- **Sub-Agents**: Delegate subtasks to specialized agents
+
+### ToolRegistry (Unified Tool Management)
+Single entry point for all MCP tools:
+- Aggregates tools from 6 MCP servers
+- Auto-discovery and registration
+- Health checks and reconnection
+- Conflict resolution (priority-based)
+
+### EventBus (Publish/Subscribe)
+System-wide event handling:
+- Event types: `USER_MESSAGE`, `TOOL_START`, `TOOL_END`, `WAKE_TRIGGER`, etc.
+- Subscribers: WakeController, MicroAgentEngine, SessionManager, etc.
+- Priority-based event processing
+- Async event handlers
 
 ## Documentation
 
