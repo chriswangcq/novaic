@@ -312,7 +312,15 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   addMessage: (message: Message) => {
-    set((state) => ({ messages: [...state.messages, message] }));
+    set((state) => {
+      // Check if message already exists (prevent duplicates from SSE)
+      const exists = state.messages.some(m => m.id === message.id);
+      if (exists) {
+        console.log('[Store] Message already exists, skipping:', message.id);
+        return state;
+      }
+      return { messages: [...state.messages, message] };
+    });
   },
 
   updateMessage: (id: string, updates: Partial<Message>) => {
