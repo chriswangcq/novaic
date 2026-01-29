@@ -49,7 +49,8 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
       case 'text':
         return log.data.content || String(log.data);
       case 'final':
-        return 'Task completed';
+        // Display the final response content from agent
+        return String(log.data || '');
       case 'error':
         return `Error: ${log.data.error || 'Unknown error'}`;
       default:
