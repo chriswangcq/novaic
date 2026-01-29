@@ -20,7 +20,7 @@ from fastmcp import FastMCP
 # QEMU configuration (via environment)
 QEMU_SSH_HOST = os.environ.get("QEMU_SSH_HOST", "127.0.0.1")
 QEMU_SSH_PORT = int(os.environ.get("QEMU_SSH_PORT", "2222"))
-QEMU_SSH_USER = os.environ.get("QEMU_SSH_USER", "novaic")
+QEMU_SSH_USER = os.environ.get("QEMU_SSH_USER", "ubuntu")
 QEMU_SSH_KEY = os.environ.get("QEMU_SSH_KEY", os.path.expanduser("~/.ssh/novaic_vm"))
 
 QEMU_VNC_HOST = os.environ.get("QEMU_VNC_HOST", "127.0.0.1")
