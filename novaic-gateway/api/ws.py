@@ -164,7 +164,16 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
     agent = connection_manager.get_agent(client_id)
     if agent is None:
         config = get_config_manager().load()
-        agent = NovAICAgent(mcp_port=config.mcp_port)
+        
+        # Try to get ToolRegistry from main
+        tool_registry = None
+        try:
+            from main import get_tool_registry
+            tool_registry = get_tool_registry()
+        except ImportError:
+            pass
+        
+        agent = NovAICAgent(mcp_port=config.mcp_port, tool_registry=tool_registry)
         agent.max_iterations = config.max_iterations
         agent.max_tokens = config.max_tokens
         connection_manager.set_agent(client_id, agent)

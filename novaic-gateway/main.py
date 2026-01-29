@@ -113,6 +113,38 @@ micro_engine: MicroAgentEngine = None
 subagent_manager: SubAgentManager = None
 
 
+# ==================== Component Accessors ====================
+
+def get_tool_registry() -> ToolRegistry:
+    """Get the global ToolRegistry instance."""
+    return tool_registry
+
+
+def get_event_bus() -> EventBus:
+    """Get the global EventBus instance."""
+    return event_bus
+
+
+def get_state_manager() -> StateManager:
+    """Get the global StateManager instance."""
+    return state_manager
+
+
+def get_wake_controller() -> WakeController:
+    """Get the global WakeController instance."""
+    return wake_controller
+
+
+def get_micro_engine() -> MicroAgentEngine:
+    """Get the global MicroAgentEngine instance."""
+    return micro_engine
+
+
+def get_subagent_manager() -> SubAgentManager:
+    """Get the global SubAgentManager instance."""
+    return subagent_manager
+
+
 async def initialize_systems(config):
     """Initialize all system components."""
     global event_bus, state_manager, tool_registry, wake_controller, micro_engine, subagent_manager

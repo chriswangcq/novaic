@@ -23,11 +23,23 @@ _agent: Optional[NovAICAgent] = None
 
 
 def get_agent() -> NovAICAgent:
-    """Get the global agent instance, creating if needed"""
+    """Get the global agent instance, creating if needed.
+    
+    Uses ToolRegistry if available (multi-MCP server mode).
+    """
     global _agent
     if _agent is None:
         config = get_config_manager().load()
-        _agent = NovAICAgent(mcp_port=config.mcp_port)
+        
+        # Try to get ToolRegistry from main
+        tool_registry = None
+        try:
+            from main import get_tool_registry
+            tool_registry = get_tool_registry()
+        except ImportError:
+            pass
+        
+        _agent = NovAICAgent(mcp_port=config.mcp_port, tool_registry=tool_registry)
         _agent.max_iterations = config.max_iterations
         _agent.max_tokens = config.max_tokens
     return _agent

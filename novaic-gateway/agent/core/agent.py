@@ -21,6 +21,7 @@ import uuid
 from .llm_client import LLMError, BaseLLMClient, OpenAIClient, AnthropicClient, GoogleAIClient
 from ..session.manager import SessionManager
 from executor.mcp_client import MCPClient, MCPSkill, get_mcp_url
+from executor.registry import ToolRegistry
 
 
 # ==================== Data Classes ====================
@@ -104,23 +105,27 @@ class NovAICAgent:
     - Skills (Resources) 提供领域知识
     """
     
-    def __init__(self, mcp_port: int):
+    def __init__(self, mcp_port: int, tool_registry: Optional[ToolRegistry] = None):
         """
         Initialize the Agent.
         
         Args:
             mcp_port: MCP Server 端口 (QEMU 转发的端口)
+            tool_registry: Optional unified tool registry (aggregates multiple MCP servers)
         """
         self.mcp_port = mcp_port
+        
+        # ToolRegistry for unified tool access (if provided)
+        self.tool_registry = tool_registry
         
         # Cache for LLM clients (cache_key -> client)
         self._llm_clients: Dict[str, BaseLLMClient] = {}
         
         # Initialize other components
         self.session = SessionManager()
-        self.mcp_client = MCPClient()
+        self.mcp_client = MCPClient()  # Fallback direct client
         
-        # Tools list (dynamically loaded from MCP)
+        # Tools list (dynamically loaded from MCP/Registry)
         self.tools: List[Dict[str, Any]] = []
         self._tools_initialized = False
         
@@ -176,6 +181,24 @@ class NovAICAgent:
         self._llm_clients[cache_key] = client
         return client
     
+    async def _execute_tool(self, tool_name: str, tool_input: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Execute a tool using ToolRegistry (if available) or direct MCPClient.
+        
+        Args:
+            tool_name: Name of the tool to execute
+            tool_input: Tool arguments
+        
+        Returns:
+            Tool execution result
+        """
+        if self.tool_registry:
+            # Use unified ToolRegistry (supports multiple MCP servers)
+            return await self.tool_registry.execute(tool_name, tool_input)
+        else:
+            # Fallback to direct MCPClient
+            return await self.mcp_client.call_tool(tool_name, tool_input)
+    
     async def check_executor_health(self) -> Dict[str, Any]:
         """Check Executor (MCP Server) health status."""
         if self._tools_initialized and len(self.tools) > 0:
@@ -195,41 +218,70 @@ class NovAICAgent:
     
     async def initialize(self) -> None:
         """
-        Initialize Agent: discover tools and skills from MCP Server.
+        Initialize Agent: discover tools and skills from MCP Server(s).
         
         MCP 三元组完整初始化:
         - Tools: 可执行的动作
         - Resources/Skills: 领域知识和工作流指导
         - Prompts: 预定义模板（如果有）
+        
+        If tool_registry is provided, uses unified registry for multiple MCP servers.
+        Otherwise falls back to direct MCPClient for single server.
         """
         if self._tools_initialized and len(self.tools) > 0:
             print(f"[Agent] Already initialized with {len(self.tools)} tools")
             return
         
-        mcp_url = get_mcp_url(self.mcp_port)
         print(f"[Agent] ========== MCP Initialize Start ==========")
-        print(f"[Agent] MCP URL: {mcp_url}")
-        print(f"[Agent] MCP Port: {self.mcp_port}")
         
         try:
-            # 注册 MCP Server (HTTP)
-            print(f"[Agent] Registering MCP server 'executor' at port {self.mcp_port}...")
-            await self.mcp_client.register_server(name="executor", port=self.mcp_port)
-            print(f"[Agent] MCP server registered")
-            
-            # 发现 Tools
-            print(f"[Agent] Discovering tools...")
-            tools = await self.mcp_client.list_all_tools()
-            print(f"[Agent] Raw tools discovered: {len(tools)}")
-            
-            self.tools = self.mcp_client.to_llm_tools_format(tools)
-            print(f"[Agent] LLM-formatted tools: {len(self.tools)}")
+            if self.tool_registry:
+                # Use unified ToolRegistry (multiple MCP servers)
+                print(f"[Agent] Using ToolRegistry (unified mode)")
+                
+                # Discover tools from all registered servers
+                print(f"[Agent] Discovering tools from registry...")
+                raw_tools = await self.tool_registry.discover_all_tools(use_cache=False)
+                print(f"[Agent] Raw tools discovered: {len(raw_tools)}")
+                
+                # Convert to LLM format
+                self.tools = self.tool_registry.to_llm_tools_format(raw_tools)
+                print(f"[Agent] LLM-formatted tools: {len(self.tools)}")
+                
+                # Get registry stats
+                stats = self.tool_registry.get_stats()
+                print(f"[Agent] Tools by server: {stats.get('tools_by_server', {})}")
+                
+                # Also initialize direct MCPClient for skills (skills from primary VM server)
+                mcp_url = get_mcp_url(self.mcp_port)
+                print(f"[Agent] Registering primary MCP server for skills at port {self.mcp_port}...")
+                await self.mcp_client.register_server(name="executor", port=self.mcp_port)
+                
+            else:
+                # Direct MCPClient mode (single server)
+                mcp_url = get_mcp_url(self.mcp_port)
+                print(f"[Agent] Using direct MCPClient mode")
+                print(f"[Agent] MCP URL: {mcp_url}")
+                print(f"[Agent] MCP Port: {self.mcp_port}")
+                
+                # 注册 MCP Server (HTTP)
+                print(f"[Agent] Registering MCP server 'executor' at port {self.mcp_port}...")
+                await self.mcp_client.register_server(name="executor", port=self.mcp_port)
+                print(f"[Agent] MCP server registered")
+                
+                # 发现 Tools
+                print(f"[Agent] Discovering tools...")
+                tools = await self.mcp_client.list_all_tools()
+                print(f"[Agent] Raw tools discovered: {len(tools)}")
+                
+                self.tools = self.mcp_client.to_llm_tools_format(tools)
+                print(f"[Agent] LLM-formatted tools: {len(self.tools)}")
             
             if self.tools:
                 tool_names = [t.get('function', {}).get('name', 'unknown') for t in self.tools[:10]]
                 print(f"[Agent] First 10 tools: {tool_names}")
             
-            # 发现 Skills (从 Resources)
+            # 发现 Skills (从 Resources) - always from primary MCP server
             print(f"[Agent] Discovering skills...")
             await self._discover_skills()
             
@@ -240,7 +292,6 @@ class NovAICAgent:
             else:
                 self._executor_healthy = False
                 print(f"[Agent] ✗ MCP Server connected but NO TOOLS discovered!")
-                print(f"[Agent] Check if MCP server is running at {mcp_url}")
                 
         except Exception as e:
             import traceback
@@ -746,8 +797,8 @@ class NovAICAgent:
                             tool_content = json.dumps(result, ensure_ascii=False)
                             self._complete_tool_call_trace(tool_trace, result, False, validation_error)
                         else:
-                            # 执行工具调用
-                            mcp_result = await self.mcp_client.call_tool(tool_name, tool_input)
+                            # 执行工具调用 (via ToolRegistry or direct MCPClient)
+                            mcp_result = await self._execute_tool(tool_name, tool_input)
                             result = self._convert_mcp_result(mcp_result)
                             tool_content = self._convert_result_to_llm_content(result)
                             
@@ -884,8 +935,8 @@ class NovAICAgent:
                             tool_content = json.dumps(result, ensure_ascii=False)
                             self._complete_tool_call_trace(tool_trace, result, False, validation_error)
                         else:
-                            # 执行工具调用
-                            mcp_result = await self.mcp_client.call_tool(tool_name, tool_input)
+                            # 执行工具调用 (via ToolRegistry or direct MCPClient)
+                            mcp_result = await self._execute_tool(tool_name, tool_input)
                             result = self._convert_mcp_result(mcp_result)
                             tool_content = self._convert_result_to_llm_content(result)
                             
