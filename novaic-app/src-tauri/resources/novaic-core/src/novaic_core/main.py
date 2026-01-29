@@ -7,8 +7,7 @@ A MCP (Model Context Protocol) server that exposes desktop capabilities to AI ag
 Built with FastMCP for standards-compliant MCP implementation.
 
 Features:
-- 44+ MCP tools for desktop, browser, shell, files, windows
-- Persistent memory system
+- 34+ MCP tools for desktop, browser, shell, files, windows
 - Context awareness (system snapshot, directory analysis)
 - Skills-based instructions (modular, extensible)
 - Result caching for large outputs
@@ -28,7 +27,6 @@ from .tools.browser import BrowserTools, get_browser_tools
 from .tools.shell import ShellTools
 from .tools.files import FileTools
 from .tools.windows import WindowTools
-from .tools.memory import MemoryTools, get_memory_tools
 from .tools.context import ContextTools, get_context_tools
 from .tools.result_cache import ResultCache, get_result_cache, truncate_if_needed
 
@@ -39,15 +37,14 @@ mcp = FastMCP(
     name="novaic",
     instructions="""NovAIC - AI Computer Engine
 
-提供 44+ MCP 工具，让你能够控制桌面、浏览器、文件系统等。
+提供 34+ MCP 工具，让你能够控制桌面、浏览器、文件系统等。
 
 快速指南：
 - 桌面操作：使用 screenshot + mouse + keyboard，点击前必须确认准星位置
 - 浏览器操作：使用 browser_* 系列工具，优先用选择器
-- 记忆系统：使用 memory_* 保存跨会话信息
 - 环境感知：使用 system_snapshot, directory_snapshot 了解当前状态
 
-详细指南请查看各 skill 资源：skill://desktop, skill://browser, skill://memory, skill://software, skill://wechat 等
+详细指南请查看各 skill 资源：skill://desktop, skill://browser, skill://software, skill://wechat 等
 """
 )
 
@@ -76,12 +73,6 @@ def skill_desktop() -> str:
 def skill_browser() -> str:
     """Browser automation skill - Playwright-based web operations"""
     return _load_skill("browser")
-
-
-@mcp.resource("skill://memory")
-def skill_memory() -> str:
-    """Memory system skill - persistent storage and goal tracking"""
-    return _load_skill("memory")
 
 
 @mcp.resource("skill://context")
@@ -517,95 +508,6 @@ async def resize_window(
 async def launch_app(app_name: str) -> Dict[str, Any]:
     """Launch application"""
     return await WindowTools.launch_app(app_name)
-
-
-# ==================== Memory Tools ====================
-
-@mcp.tool(description="Save data to persistent memory")
-async def memory_save(
-    key: str,
-    value: Any,
-    namespace: str = "default",
-    persistent: bool = True
-) -> Dict[str, Any]:
-    """Save to memory"""
-    memory = get_memory_tools()
-    return await memory.memory_save(key, value, namespace, persistent)
-
-
-@mcp.tool(description="Retrieve memory. Omit key to get all in namespace")
-async def memory_recall(
-    key: Optional[str] = None,
-    namespace: str = "default"
-) -> Dict[str, Any]:
-    """Recall from memory"""
-    memory = get_memory_tools()
-    return await memory.memory_recall(key, namespace)
-
-
-@mcp.tool(description="Delete memory by key")
-async def memory_delete(
-    key: str,
-    namespace: str = "default"
-) -> Dict[str, Any]:
-    """Delete from memory"""
-    memory = get_memory_tools()
-    return await memory.memory_delete(key, namespace)
-
-
-@mcp.tool(description="Log action for history tracking")
-async def task_log(
-    action: str,
-    details: Optional[str] = None,
-    status: str = "completed"
-) -> Dict[str, Any]:
-    """Log task"""
-    memory = get_memory_tools()
-    return await memory.task_log(action, details, status)
-
-
-@mcp.tool(description="Get logged action history")
-async def task_history(
-    limit: int = 20,
-    status_filter: Optional[str] = None
-) -> Dict[str, Any]:
-    """Get task history"""
-    memory = get_memory_tools()
-    return await memory.task_history(limit, status_filter)
-
-
-@mcp.tool(description="Set goal with subtasks for complex operations")
-async def goal_set(
-    goal: str,
-    subtasks: Optional[List[str]] = None
-) -> Dict[str, Any]:
-    """Set goal"""
-    memory = get_memory_tools()
-    return await memory.goal_set(goal, subtasks)
-
-
-@mcp.tool(description="Update goal progress")
-async def goal_progress(
-    completed_subtask: Optional[str] = None,
-    progress_note: Optional[str] = None
-) -> Dict[str, Any]:
-    """Update goal progress"""
-    memory = get_memory_tools()
-    return await memory.goal_progress(completed_subtask, progress_note)
-
-
-@mcp.tool(description="Mark goal as completed")
-async def goal_complete(summary: Optional[str] = None) -> Dict[str, Any]:
-    """Complete goal"""
-    memory = get_memory_tools()
-    return await memory.goal_complete(summary)
-
-
-@mcp.tool(description="Get session overview: goal, recent actions, stats")
-async def session_state() -> Dict[str, Any]:
-    """Get session state"""
-    memory = get_memory_tools()
-    return await memory.session_state()
 
 
 # ==================== Context Tools ====================
