@@ -91,6 +91,7 @@ from config.manager import get_config_manager
 # Import new components
 from agent.events.bus import EventBus
 from agent.events.handler import AgentEventHandler
+from agent.events.models import AgentEvent, EventType, EventPriority
 from agent.core.state import StateManager, AgentState
 from executor.registry import ToolRegistry
 from agent.wake.controller import WakeController
@@ -111,6 +112,7 @@ tool_registry: ToolRegistry = None
 wake_controller: WakeController = None
 micro_engine: MicroAgentEngine = None
 subagent_manager: SubAgentManager = None
+event_handler: AgentEventHandler = None
 
 
 # ==================== Component Accessors ====================
@@ -145,9 +147,38 @@ def get_subagent_manager() -> SubAgentManager:
     return subagent_manager
 
 
+def get_event_handler() -> AgentEventHandler:
+    """Get the global AgentEventHandler instance."""
+    return event_handler
+
+
+async def publish_user_event(
+    message: str,
+    session_id: str = "main",
+    source: str = "http",
+    reply_channel: str = "http"
+) -> None:
+    """
+    Publish a user message event to the EventBus.
+    
+    This allows tracking of all user interactions through the event system.
+    """
+    if not event_bus:
+        return
+    
+    event = AgentEvent(
+        type=EventType.USER_MESSAGE,
+        source=source,
+        session_id=session_id,
+        payload={"content": message},
+        reply_channel=reply_channel,
+    )
+    await event_bus.publish(event)
+
+
 async def initialize_systems(config):
     """Initialize all system components."""
-    global event_bus, state_manager, tool_registry, wake_controller, micro_engine, subagent_manager
+    global event_bus, state_manager, tool_registry, wake_controller, micro_engine, subagent_manager, event_handler
     
     # Initialize EventBus
     event_bus = EventBus()
@@ -229,6 +260,34 @@ async def initialize_systems(config):
         max_concurrent=5,
     )
     print("[Gateway] SubAgentManager initialized")
+    
+    # Initialize EventHandler with agent callback
+    async def agent_callback(message: str, session_id: str) -> str:
+        """Callback to process messages through the agent."""
+        from api.routes import get_agent
+        agent = get_agent()
+        config_mgr = get_config_manager().load()
+        
+        # Collect full response from agent
+        full_response = ""
+        async for event in agent.chat_with_logs(
+            message,
+            model=config_mgr.default_model,
+            provider=None,  # Use default
+            api_base=None,
+            api_key=None,
+        ):
+            if event.get("type") == "final":
+                full_response = event.get("data", "")
+                break
+        return full_response
+    
+    event_handler = AgentEventHandler(
+        event_bus=event_bus,
+        state_manager=state_manager,
+        agent_callback=agent_callback,
+    )
+    print("[Gateway] EventHandler initialized")
     
     # Start EventBus
     await event_bus.start()

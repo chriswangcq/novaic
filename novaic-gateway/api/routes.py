@@ -312,6 +312,13 @@ async def chat(request: ChatRequest):
     agent = get_agent()
     config = get_config_manager().load()
     
+    # Get state manager for tracking
+    try:
+        from main import get_state_manager, publish_user_event
+        state_manager = get_state_manager()
+    except ImportError:
+        state_manager = None
+    
     # Resolve API configuration
     provider, api_base, api_key = resolve_api_config(config, request)
     
@@ -320,25 +327,42 @@ async def chat(request: ChatRequest):
     
     model = request.model or config.default_model
     
+    # Track state: set to BUSY while processing
+    if state_manager:
+        from agent.core.state import AgentState
+        state_manager.set_state(AgentState.BUSY)
+        state_manager.record_activity()
+    
+    # Publish event for tracking (non-blocking)
+    try:
+        await publish_user_event(request.message, source="http", reply_channel="http")
+    except Exception:
+        pass  # Don't fail on event publishing errors
+    
     results = []
-    if request.mode == "chat":
-        async for event in agent.simple_chat(
-            request.message, model=model, provider=provider, api_base=api_base, api_key=api_key
-        ):
-            results.append(ChatResult(
-                type=event["type"], 
-                data=event["data"],
-                timestamp=datetime.now().isoformat()
-            ))
-    else:
-        async for event in agent.chat_with_logs(
-            request.message, model=model, provider=provider, api_base=api_base, api_key=api_key
-        ):
-            results.append(ChatResult(
-                type=event["type"], 
-                data=event["data"],
-                timestamp=datetime.now().isoformat()
-            ))
+    try:
+        if request.mode == "chat":
+            async for event in agent.simple_chat(
+                request.message, model=model, provider=provider, api_base=api_base, api_key=api_key
+            ):
+                results.append(ChatResult(
+                    type=event["type"], 
+                    data=event["data"],
+                    timestamp=datetime.now().isoformat()
+                ))
+        else:
+            async for event in agent.chat_with_logs(
+                request.message, model=model, provider=provider, api_base=api_base, api_key=api_key
+            ):
+                results.append(ChatResult(
+                    type=event["type"], 
+                    data=event["data"],
+                    timestamp=datetime.now().isoformat()
+                ))
+    finally:
+        # Return to AWAKE state
+        if state_manager:
+            state_manager.set_state(AgentState.AWAKE)
     
     return ChatResponse(results=results)
 
