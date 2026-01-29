@@ -1,14 +1,11 @@
-"""Agent core module - ReAct loop, state management, LLM client."""
+"""Agent core module - state management."""
 
-from .agent import NovAICAgent, TaskStatus, TaskTrace, AgentStep, ToolCallTrace
+# Only export state management here
+# NovAICAgent is in core/agent.py (not agent/core/) to avoid circular imports
+# Import directly: from core.agent import NovAICAgent
 from .state import AgentState, StateManager
 
 __all__ = [
-    "NovAICAgent",
-    "TaskStatus",
-    "TaskTrace",
-    "AgentStep",
-    "ToolCallTrace",
     "AgentState",
     "StateManager",
 ]

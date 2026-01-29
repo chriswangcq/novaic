@@ -1,117 +1,116 @@
 ---
 name: novaic-shell
-description: Shell command execution and Python code running. Use for executing terminal commands, running scripts, and system operations.
+description: Shell command execution with unified task tracking. All commands return task_id + tail format.
 ---
 
 # Shell Commands
 
-Shell 命令执行和 Python 代码运行。
+Shell 命令执行。**统一返回格式：task_id + stdout/stderr tail**。
+
+## 核心机制
+
+```
+run_command("任意命令")
+    │
+    └─ 始终返回: { task_id, status, stdout_tail, stderr_tail, ... }
+           │
+           ├─ <3秒完成 → status="completed", 包含 exit_code
+           │
+           └─ >3秒未完成 → status="running", 用 query_task 继续查询
+```
+
+**所有命令返回统一格式，需要更多输出就 query_task。**
 
 ## 可用工具
 
 ### run_command
 
-执行 Shell 命令。
+执行 Shell 命令，返回 task_id + tail。
 
 ```python
-# 基本执行
-run_command(command="ls -la")
+# 所有命令都返回统一格式
+result = run_command(command="ls -la")
+# → { task_id: "abc123", status: "completed", stdout_tail: "...", exit_code: 0 }
+
+result = run_command(command="pip install tensorflow")
+# → { task_id: "def456", status: "running", stdout_tail: "", message: "..." }
 
 # 指定工作目录
 run_command(command="npm install", cwd="/home/user/project")
 
-# 设置超时（秒）
-run_command(command="long_running_task", timeout=120)
-
-# GUI 应用必须后台运行！
-run_command(command="firefox", background=True)
+# 设置超时
+run_command(command="build_project", timeout=300)
 
 # 在 xterm 窗口中显示
 run_command(command="htop", visible=True)
 ```
 
-### run_python
+### query_task
 
-直接执行 Python 代码。
+查询任务状态，获取更多输出（tail）。
 
 ```python
-# 执行 Python 代码
+# 查询任务
+query_task(task_id="abc123")
+# → { status: "running", stdout_tail: "Installing...", elapsed_seconds: 15.2 }
+
+# 查询更多行
+query_task(task_id="abc123", tail_lines=100)
+
+# 完成后
+# → { status: "completed", stdout_tail: "...", exit_code: 0, duration_seconds: 45.3 }
+```
+
+### list_tasks / clear_tasks
+
+```python
+list_tasks()      # 列出所有任务
+clear_tasks()     # 清理已完成的任务
+```
+
+### run_python
+
+执行 Python 代码（同样返回 task_id + tail）。
+
+```python
 run_python(code="""
 import os
-print(os.getcwd())
 for f in os.listdir('.'):
     print(f)
 """)
-
-# 在可见窗口中执行
-run_python(code="print('Hello')", visible=True)
 ```
 
-## ⚠️ 重要注意事项
-
-### GUI 应用必须后台运行
+## 使用模式
 
 ```python
-# ❌ 错误 - 会阻塞
-run_command(command="firefox")
+# 执行命令
+result = run_command(command="pip install pandas")
 
-# ✅ 正确 - 后台运行
-run_command(command="firefox", background=True)
-```
-
-### 长时间命令设置超时
-
-```python
-# 默认超时 60 秒
-run_command(command="some_long_task")
-
-# 延长超时
-run_command(command="build_project", timeout=300)
+# 检查状态
+if result["status"] == "completed":
+    print(result["stdout_tail"])
+    print(f"Exit code: {result['exit_code']}")
+else:
+    # 还在运行，继续查询
+    while True:
+        status = query_task(result["task_id"])
+        print(status["stdout_tail"])
+        if status["status"] != "running":
+            break
 ```
 
 ## 常见用例
 
-### 项目操作
-
 ```python
-# 安装依赖
-run_command(command="pip install -r requirements.txt", cwd="/path/to/project")
-
-# 运行测试
-run_command(command="pytest", cwd="/path/to/project", timeout=120)
-
-# 启动开发服务器（后台）
-run_command(command="npm run dev", cwd="/path/to/frontend", background=True)
-```
-
-### 系统操作
-
-```python
-# 查看进程
+# 快速命令
+run_command(command="ls -la")
 run_command(command="ps aux | grep python")
 
-# 查看磁盘使用
-run_command(command="df -h")
+# 慢命令（自动后台）
+result = run_command(command="pip install tensorflow")
+query_task(result["task_id"])  # 查看进度
 
-# 查看网络连接
-run_command(command="netstat -tlnp")
-```
-
-### Python 脚本
-
-```python
-# 数据处理
-run_python(code="""
-import json
-with open('data.json') as f:
-    data = json.load(f)
-print(f"Records: {len(data)}")
-""")
-
-# 文件操作
-run_python(code="""
-from pathlib import Path
-for p in Path('.').glob('**/*.py'):
-    print(p)
-""")
+# GUI 应用（会一直 running）
+run_command(command="firefox")
+# 不需要等它完成，继续做其他事
 ```

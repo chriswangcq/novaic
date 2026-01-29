@@ -32,14 +32,14 @@ npm run build
 cp -r dist ../novaic-gateway/web/
 ```
 
-The Gateway serves the built files at `http://127.0.0.1:9000/`.
+The Gateway serves the built files at `http://127.0.0.1:19999/`.
 
 ## Development
 
 ### Environment Variables
 
-- `VITE_GATEWAY_URL` - Gateway API URL (default: http://127.0.0.1:9000)
-- `VITE_GATEWAY_WS` - Gateway WebSocket URL (default: ws://127.0.0.1:9000/ws)
+- `VITE_GATEWAY_URL` - Gateway API URL (default: http://127.0.0.1:19999)
+- `VITE_GATEWAY_WS` - Gateway WebSocket URL (default: ws://127.0.0.1:19999/ws)
 
 ### Running with Gateway
 

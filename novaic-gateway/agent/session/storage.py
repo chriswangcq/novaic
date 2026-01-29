@@ -27,13 +27,19 @@ class SessionStorage:
     - Special entries: compaction_summary, session_metadata
     """
     
-    def __init__(self, storage_dir: str = "storage/sessions"):
+    def __init__(self, storage_dir: Optional[str] = None):
         """
         Initialize the storage.
         
         Args:
-            storage_dir: Directory to store session files
+            storage_dir: Directory to store session files. 
+                        If None, uses NOVAIC_DATA_DIR/sessions
         """
+        if storage_dir is None:
+            # Use NOVAIC_DATA_DIR environment variable (set by App)
+            data_dir = os.environ.get("NOVAIC_DATA_DIR", ".")
+            storage_dir = os.path.join(data_dir, "sessions")
+        
         self.storage_dir = Path(storage_dir)
         self.storage_dir.mkdir(parents=True, exist_ok=True)
     

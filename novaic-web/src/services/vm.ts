@@ -1,17 +1,26 @@
 import { invoke } from '@tauri-apps/api/core';
 
-// VM 状态类型
+// Port configuration - matches Rust PortConfig
+export interface PortConfig {
+  vm: number;
+  session: number;
+  local: number;
+  memory: number;
+  chat: number;
+  qemudebug: number;
+  vnc: number;
+  websocket: number;
+  ssh: number;
+}
+
+// VM 状态类型 - matches Rust VmStatus
 export interface VmStatus {
   running: boolean;
   agent_healthy: boolean;
   mcp_healthy: boolean;          // NovAIC MCP Server 健康状态
   websockify_running: boolean;
-  vnc_port: number;
-  agent_port: number;
-  mcp_port: number;              // MCP Server 端口
-  websocket_port: number;
+  ports: PortConfig;             // 完整端口配置
   vnc_url: string;
-  agent_url: string;
   mcp_url: string;               // MCP Server URL
 }
 
@@ -96,7 +105,7 @@ class VmService {
     } catch (error) {
       console.error('[VM Service] Get Agent URL failed:', error);
       // 返回默认 URL
-      return 'http://localhost:9000';
+      return 'http://localhost:19999';
     }
   }
 

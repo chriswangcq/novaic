@@ -18,10 +18,16 @@ from datetime import datetime
 from fastmcp import FastMCP
 
 # Configuration
-MEMORY_DIR = Path(os.environ.get(
-    "NOVAIC_MEMORY_DIR",
-    os.path.expanduser("~/.novaic/memory")
-))
+# Priority: NOVAIC_MEMORY_DIR > NOVAIC_DATA_DIR/memory
+def _get_memory_dir() -> Path:
+    if os.environ.get("NOVAIC_MEMORY_DIR"):
+        return Path(os.environ["NOVAIC_MEMORY_DIR"])
+    elif os.environ.get("NOVAIC_DATA_DIR"):
+        return Path(os.environ["NOVAIC_DATA_DIR"]) / "memory"
+    else:
+        raise RuntimeError("NOVAIC_DATA_DIR or NOVAIC_MEMORY_DIR environment variable is required")
+
+MEMORY_DIR = _get_memory_dir()
 MEMORY_DIR.mkdir(parents=True, exist_ok=True)
 
 mcp = FastMCP(
@@ -107,7 +113,7 @@ session_state()
 ## 注意事项
 
 - persistent=True (默认) 会保存到磁盘
-- 记忆存储在 ~/.novaic/memory/
+- 记忆存储在 $NOVAIC_DATA_DIR/memory/
 - task_history 最多保留 100 条
 """
 )
@@ -615,9 +621,10 @@ def main():
     """Run the MCP server."""
     import sys
     
+    # Default port 20003 = BASE_PORT(20000) + Agent0(0*20) + MEMORY_OFFSET(3)
     transport = os.environ.get("MCP_TRANSPORT", "streamable-http")
     host = os.environ.get("MCP_HOST", "0.0.0.0")
-    port = int(os.environ.get("MCP_PORT", "8084"))
+    port = int(os.environ.get("MCP_PORT", "20003"))
     
     if transport == "streamable-http":
         mcp.run(transport="streamable-http", host=host, port=port)

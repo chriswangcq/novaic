@@ -39,7 +39,16 @@ def get_agent() -> NovAICAgent:
         except ImportError:
             pass
         
-        _agent = NovAICAgent(mcp_port=config.mcp_port, tool_registry=tool_registry)
+        # Get MCP port from current agent config or use default (Agent 0)
+        from config.agents import get_agent_config_manager, allocate_ports_for_agent
+        try:
+            agent_mgr = get_agent_config_manager()
+            current_agent = agent_mgr.get_current_agent()
+            mcp_port = current_agent.vm.ports.vm if current_agent else allocate_ports_for_agent(0).vm
+        except Exception:
+            mcp_port = allocate_ports_for_agent(0).vm  # Default to Agent 0 VM port (20000)
+        
+        _agent = NovAICAgent(mcp_port=mcp_port, tool_registry=tool_registry, session_key="main")
         _agent.max_iterations = config.max_iterations
         _agent.max_tokens = config.max_tokens
         
@@ -61,7 +70,7 @@ def get_agent() -> NovAICAgent:
             import httpx
             async def get_inbox():
                 async with httpx.AsyncClient(timeout=5.0, trust_env=False) as client:
-                    resp = await client.get("http://127.0.0.1:9000/api/agent/inbox")
+                    resp = await client.get("http://127.0.0.1:19999/api/agent/inbox")
                     if resp.status_code == 200:
                         return resp.json()
                     return {"pending_count": 0, "events": []}
@@ -517,22 +526,35 @@ def _check_port(port: int, host: str = "127.0.0.1", timeout: float = 0.5) -> boo
     except:
         return False
 
-# VNC ports (these are forwarded from QEMU)
-VNC_PORT = 5900
-WS_PORT = 6080
+def _get_vnc_ports():
+    """Get VNC/WebSocket ports from current agent config"""
+    from config.agents import get_agent_config_manager, allocate_ports_for_agent
+    
+    try:
+        agent_mgr = get_agent_config_manager()
+        current_agent = agent_mgr.get_current_agent()
+        if current_agent:
+            return current_agent.vm.ports.vnc, current_agent.vm.ports.websocket
+    except Exception:
+        pass
+    
+    # Fallback to Agent 0 defaults
+    ports = allocate_ports_for_agent(0)
+    return ports.vnc, ports.websocket
 
 
 @router.get("/vnc/status")
 async def vnc_status():
     """Get VNC status by checking ports"""
-    vnc_ready = _check_port(VNC_PORT)
-    ws_ready = _check_port(WS_PORT)
+    vnc_port, ws_port = _get_vnc_ports()
+    vnc_ready = _check_port(vnc_port)
+    ws_ready = _check_port(ws_port)
     
     return {
         "running": vnc_ready,
         "websockify_running": ws_ready,
-        "port": VNC_PORT if vnc_ready else None,
-        "ws_port": WS_PORT if ws_ready else None,
+        "port": vnc_port if vnc_ready else None,
+        "ws_port": ws_port if ws_ready else None,
         "ready": vnc_ready and ws_ready
     }
 

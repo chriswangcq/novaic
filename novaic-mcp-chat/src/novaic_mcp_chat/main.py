@@ -17,7 +17,7 @@ from typing import Optional, List, Dict, Any
 from fastmcp import FastMCP
 
 # Gateway API endpoint
-GATEWAY_URL = os.environ.get("NOVAIC_GATEWAY_URL", "http://127.0.0.1:9000")
+GATEWAY_URL = os.environ.get("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
 
 mcp = FastMCP(
     name="novaic-chat",
@@ -381,9 +381,10 @@ def main():
     """Run the MCP server."""
     import sys
     
+    # Default port 20004 = BASE_PORT(20000) + Agent0(0*20) + CHAT_OFFSET(4)
     transport = os.environ.get("MCP_TRANSPORT", "streamable-http")
     host = os.environ.get("MCP_HOST", "0.0.0.0")
-    port = int(os.environ.get("MCP_PORT", "8085"))
+    port = int(os.environ.get("MCP_PORT", "20004"))
     
     if transport == "streamable-http":
         mcp.run(transport="streamable-http", host=host, port=port)

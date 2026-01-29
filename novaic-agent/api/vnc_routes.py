@@ -11,11 +11,15 @@ import os
 
 router = APIRouter(prefix="/api/vnc", tags=["vnc"])
 
-VNC_PORT = 5900
-WEBSOCKET_PORT = 6080
+# Default ports for Agent 0 (BASE_PORT=20000):
+# VNC: 20006 = BASE_PORT + OFFSET_VNC(6)
+# WebSocket: 20007 = BASE_PORT + OFFSET_WEBSOCKET(7)
+# SSH: 20008 = BASE_PORT + OFFSET_SSH(8)
+VNC_PORT = int(os.getenv("VM_VNC_PORT", "20006"))
+WEBSOCKET_PORT = int(os.getenv("VM_WEBSOCKET_PORT", "20007"))
 
-# SSH 配置（从环境变量读取，默认值）
-SSH_PORT = int(os.getenv("VM_SSH_PORT", "2222"))
+# SSH 配置（从环境变量读取，默认值为Agent 0端口）
+SSH_PORT = int(os.getenv("VM_SSH_PORT", "20008"))
 SSH_USER = os.getenv("VM_SSH_USER", "user")
 SSH_HOST = os.getenv("VM_SSH_HOST", "localhost")
 

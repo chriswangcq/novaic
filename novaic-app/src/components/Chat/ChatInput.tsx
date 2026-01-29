@@ -101,7 +101,8 @@ export function ChatInput({
 
   const handleSend = () => {
     const trimmed = content.trim();
-    if (trimmed && !isLoading) {
+    if (trimmed) {
+      // Fire-and-forget: allow sending even when agent is busy
       onSend(trimmed);
       setContent('');
       resetHeight();
@@ -164,31 +165,31 @@ export function ChatInput({
             placeholder={placeholder}
             className="w-full bg-transparent text-white/85 placeholder-white/30 text-[13px] resize-none focus:outline-none h-[32px] max-h-[80px] py-[6px] px-4 leading-[20px]"
             rows={1}
-            disabled={isLoading}
           />
         </div>
 
-        {/* Send/Stop button */}
-        {isLoading ? (
+        {/* Send button - always available (fire-and-forget mode) */}
+        <button
+          onClick={handleSend}
+          disabled={!content.trim()}
+          className={`w-[32px] h-[32px] rounded-full transition-all flex items-center justify-center shrink-0 ${
+            content.trim()
+              ? 'bg-violet-500 hover:bg-violet-600 text-white'
+              : 'bg-white/[0.04] text-white/25 cursor-not-allowed border border-white/[0.06]'
+          }`}
+          title="Send"
+        >
+          <ArrowUp size={14} strokeWidth={2.5} />
+        </button>
+
+        {/* Stop button - only show when agent is executing */}
+        {isLoading && (
           <button
             onClick={handleStop}
             className="w-[32px] h-[32px] rounded-full bg-red-500/15 hover:bg-red-500/25 transition-all flex items-center justify-center shrink-0 border border-red-500/20"
-            title="Stop"
+            title="Stop Agent"
           >
             <StopCircle size={14} className="text-red-400" />
-          </button>
-        ) : (
-          <button
-            onClick={handleSend}
-            disabled={!content.trim()}
-            className={`w-[32px] h-[32px] rounded-full transition-all flex items-center justify-center shrink-0 ${
-              content.trim()
-                ? 'bg-violet-500 hover:bg-violet-600 text-white'
-                : 'bg-white/[0.04] text-white/25 cursor-not-allowed border border-white/[0.06]'
-            }`}
-            title="Send"
-          >
-            <ArrowUp size={14} strokeWidth={2.5} />
           </button>
         )}
       </div>

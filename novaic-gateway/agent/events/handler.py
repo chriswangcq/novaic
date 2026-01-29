@@ -317,7 +317,7 @@ class AgentEventHandler:
             import httpx
             async with httpx.AsyncClient(timeout=5.0, trust_env=False) as client:
                 await client.post(
-                    "http://127.0.0.1:9000/api/agent/wake",
+                    "http://127.0.0.1:19999/api/agent/wake",
                     json={
                         "reason": reason,
                         "auto_triggered": True,

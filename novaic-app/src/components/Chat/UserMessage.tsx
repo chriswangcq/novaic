@@ -1,5 +1,6 @@
 import { Message, MessageStatus } from '../../types';
 import { User, Check, CheckCheck, Clock, AlertCircle } from 'lucide-react';
+import { Markdown } from './Markdown';
 
 interface UserMessageProps {
   message: Message;
@@ -21,26 +22,26 @@ export function UserMessage({ message }: UserMessageProps) {
   
   return (
     <div className="group py-2">
-      {/* Header: icon + label */}
-      <div className="flex items-center gap-1.5 mb-1">
-        <User size={12} className="text-white/30" />
+      {/* Header: icon + label - right aligned */}
+      <div className="flex items-center gap-1.5 mb-1 justify-end">
         <span className="text-[11px] font-medium text-white/40 uppercase tracking-wide">You</span>
+        <User size={12} className="text-white/30" />
       </div>
       
-      {/* Message content - no bubble, just text */}
-      <div className="text-[13px] text-white/90 leading-relaxed whitespace-pre-wrap pl-[18px]">
-        {message.content}
+      {/* Message content with bubble style */}
+      <div className="bg-violet-600/20 border border-violet-500/20 rounded-lg px-3 py-2">
+        <Markdown content={message.content} />
       </div>
 
-      {/* Message status */}
-      <div className={`flex items-center gap-1 mt-1 pl-[18px] text-[10px] ${statusInfo.className}`}>
+      {/* Message status - right aligned */}
+      <div className={`flex items-center gap-1 mt-1 justify-end text-[10px] ${statusInfo.className}`}>
         <StatusIcon size={12} className={status === 'sending' ? 'animate-pulse' : ''} />
         <span>{statusInfo.text}</span>
       </div>
 
-      {/* Attachments */}
+      {/* Attachments - right aligned */}
       {message.attachments && message.attachments.length > 0 && (
-        <div className="mt-1.5 pl-[18px] flex flex-wrap gap-1.5">
+        <div className="mt-1.5 flex flex-wrap gap-1.5 justify-end">
           {message.attachments.map((attachment) => (
             <div
               key={attachment.id}

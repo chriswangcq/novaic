@@ -5,11 +5,12 @@ import { vmService } from '../../services/vm';
 import RFB from 'novnc-rfb';
 import { LayoutToggle } from '../Layout/LayoutToggle';
 
-// 配置
+// 配置 - 默认使用 Agent 0 的端口 (BASE_PORT=20000)
+// 实际端口应从 VM status 获取
 const CONFIG = {
-  agentPort: 9000,    // Agent API 端口 (宿主机本地)
-  vncPort: 5900,      // VNC 端口
-  wsPort: 6080,       // websockify 端口
+  gatewayPort: 19999,  // Gateway API 端口 (固定)
+  vncPort: 20006,     // VNC 端口 (Agent 0: 20006)
+  wsPort: 20007,      // websockify 端口 (Agent 0: 20007)
 };
 
 type VncStatus = 'unknown' | 'stopped' | 'starting' | 'running' | 'error';
@@ -29,7 +30,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
   // 检查 Agent 的 VNC 状态 (使用新的 ready 字段)
   const checkVncStatus = useCallback(async () => {
     try {
-      const res = await fetch(`http://localhost:${CONFIG.agentPort}/api/vnc/status`, {
+      const res = await fetch(`http://localhost:${CONFIG.gatewayPort}/api/vnc/status`, {
         signal: AbortSignal.timeout(3000),
       });
       const data = await res.json();
@@ -121,7 +122,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
       let agentReady = false;
       for (let i = 0; i < 30; i++) {
         try {
-          const healthRes = await fetch(`http://localhost:${CONFIG.agentPort}/api/health`, {
+          const healthRes = await fetch(`http://localhost:${CONFIG.gatewayPort}/api/health`, {
             method: 'GET',
             signal: AbortSignal.timeout(3000),
           });
@@ -145,7 +146,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
       
       // Step 3: 调用 Agent 启动 VNC
       log('Step 3: Calling /api/vnc/start...');
-      const res = await fetch(`http://localhost:${CONFIG.agentPort}/api/vnc/start`, {
+      const res = await fetch(`http://localhost:${CONFIG.gatewayPort}/api/vnc/start`, {
         method: 'POST',
       });
       const data = await res.json();
@@ -249,7 +250,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
       // 策略 2: 如果直接连接失败，尝试通过 Agent API
       try {
         log('Step 2: Checking Agent VNC status...');
-        const res = await fetch(`http://localhost:${CONFIG.agentPort}/api/vnc/status`, {
+        const res = await fetch(`http://localhost:${CONFIG.gatewayPort}/api/vnc/status`, {
           signal: AbortSignal.timeout(3000),
         });
         const data = await res.json();

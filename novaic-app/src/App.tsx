@@ -6,7 +6,9 @@ import { Header } from './components/Layout/Header';
 import { useAppStore } from './store';
 import { SettingsModal } from './components/Settings/SettingsModal';
 import { AgentDashboard } from './components/Dashboard';
+import { SetupWorkspace } from './components/Setup';
 import { Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
+import type { SetupConfig } from './components/Agent/CreateAgentModal';
 
 // Layout constraints
 const MIN_CHAT_WIDTH = 300;
@@ -82,7 +84,11 @@ function App() {
   } = useAppStore();
 
   const [isLoadingAgents, setIsLoadingAgents] = useState(true);
-  const [inWorkspace, setInWorkspace] = useState(false);
+  
+  // Page state: 'dashboard' | 'setup' | 'workspace'
+  const [currentPage, setCurrentPage] = useState<'dashboard' | 'setup' | 'workspace'>('dashboard');
+  const [currentAgentIdLocal, setCurrentAgentIdLocal] = useState<string | null>(null);
+  const [setupConfig, setSetupConfig] = useState<SetupConfig | null>(null);
 
   useEffect(() => {
     // Initialize app on mount
@@ -127,12 +133,30 @@ function App() {
   // Enter workspace for an agent
   const handleEnterWorkspace = useCallback((agentId: string) => {
     console.log('[App] Entering workspace for agent:', agentId);
-    setInWorkspace(true);
+    setCurrentAgentIdLocal(agentId);
+    setCurrentPage('workspace');
+  }, []);
+
+  // Enter setup workspace for an agent
+  const handleEnterSetup = useCallback((agentId: string, config: SetupConfig) => {
+    console.log('[App] Entering setup for agent:', agentId);
+    setCurrentAgentIdLocal(agentId);
+    setSetupConfig(config);
+    setCurrentPage('setup');
+  }, []);
+
+  // Setup complete - enter workspace
+  const handleSetupComplete = useCallback(() => {
+    console.log('[App] Setup complete, entering workspace');
+    setSetupConfig(null);
+    setCurrentPage('workspace');
   }, []);
 
   // Back to dashboard
   const handleBackToDashboard = useCallback(() => {
-    setInWorkspace(false);
+    setCurrentPage('dashboard');
+    setSetupConfig(null);
+    setCurrentAgentIdLocal(null);
   }, []);
 
   // Show loading screen while initializing
@@ -147,9 +171,30 @@ function App() {
     );
   }
 
-  // Show Dashboard (agent list) if not in workspace
-  if (!inWorkspace) {
-    return <AgentDashboard onEnterWorkspace={handleEnterWorkspace} />;
+  // Get current agent from store
+  const currentAgent = useAppStore.getState().agents.find(a => a.id === currentAgentIdLocal);
+
+  // Show Dashboard (agent list)
+  if (currentPage === 'dashboard') {
+    return (
+      <AgentDashboard 
+        onEnterWorkspace={handleEnterWorkspace} 
+        onEnterSetup={handleEnterSetup}
+      />
+    );
+  }
+
+  // Show Setup Workspace
+  if (currentPage === 'setup' && setupConfig && currentAgent) {
+    return (
+      <SetupWorkspace
+        agent={currentAgent}
+        sourceImage={setupConfig.sourceImage}
+        useCnMirrors={setupConfig.useCnMirrors}
+        onComplete={handleSetupComplete}
+        onBack={handleBackToDashboard}
+      />
+    );
   }
 
   return (
@@ -158,6 +203,7 @@ function App() {
       <Header 
         onOpenSettings={() => setSettingsOpen(true)} 
         onBackToDashboard={handleBackToDashboard}
+        onAgentCreated={(config) => handleEnterSetup(config.agent.id, config)}
       />
 
       {/* Main Content */}

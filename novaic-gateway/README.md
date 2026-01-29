@@ -41,11 +41,13 @@ pip install -r requirements.txt
 python main.py
 ```
 
-Gateway runs on http://127.0.0.1:9000 by default.
+Gateway runs on http://127.0.0.1:19999 by default.
 
 ## Configuration
 
-Configuration is stored in `~/.novaic/config.json`. You can configure:
+Configuration is stored in `$NOVAIC_DATA_DIR/config.json`. On macOS, this is typically `~/Library/Application Support/com.novaic.app/config.json` when running through the NovAIC app.
+
+You can configure:
 
 - API keys (OpenAI, Anthropic, Google, Azure, OpenAI-compatible)
 - Available models
@@ -69,7 +71,7 @@ Configuration is stored in `~/.novaic/config.json`. You can configure:
 
 ### WebSocket
 
-Connect to `ws://127.0.0.1:9000/ws/{client_id}` for real-time chat.
+Connect to `ws://127.0.0.1:19999/ws/{client_id}` for real-time chat.
 
 **Client -> Server:**
 ```json
@@ -92,7 +94,7 @@ Connect to `ws://127.0.0.1:9000/ws/{client_id}` for real-time chat.
 ## Environment Variables
 
 - `NOVAIC_HOST` - Host to bind to (default: 127.0.0.1)
-- `NOVAIC_PORT` - Port to listen on (default: 9000)
+- `NOVAIC_PORT` - Port to listen on (default: 19999)
 - `NOVAIC_DEBUG` - Enable debug mode (default: false)
 
 ## Development
@@ -113,4 +115,4 @@ The simplified Tauri app (`novaic-app`) acts as a lightweight WebView wrapper:
 1. Start the Gateway: `./start.sh`
 2. Start Tauri: `cd ../novaic-app && npm run tauri dev`
 
-The Tauri app loads `http://127.0.0.1:9000` directly.
+The Tauri app loads `http://127.0.0.1:19999` directly.

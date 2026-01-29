@@ -1,6 +1,7 @@
 //! VM Setup Module
 //! 
 //! Handles VM creation including:
+//! - Environment detection (QEMU, etc.)
 //! - Cloud image download
 //! - VM disk creation (qcow2)
 //! - Cloud-init ISO generation
@@ -11,6 +12,342 @@ use std::process::Command;
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
 use tokio::io::AsyncWriteExt;
+
+/// Environment check result for a single dependency
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct DependencyStatus {
+    pub name: String,
+    pub installed: bool,
+    pub version: Option<String>,
+    pub path: Option<String>,
+    pub install_command: Option<String>,
+    pub install_url: Option<String>,
+}
+
+/// Full environment check result
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct EnvironmentCheckResult {
+    pub ready: bool,
+    pub platform: String,
+    pub arch: String,
+    pub dependencies: Vec<DependencyStatus>,
+    pub message: Option<String>,
+}
+
+/// Find QEMU system binary path
+fn find_qemu_system() -> Option<(String, String)> {
+    let arch_suffix = if cfg!(target_arch = "aarch64") {
+        "aarch64"
+    } else {
+        "x86_64"
+    };
+    
+    let binary_name = format!("qemu-system-{}", arch_suffix);
+    
+    let paths = [
+        format!("/opt/homebrew/bin/{}", binary_name),  // Apple Silicon homebrew
+        format!("/usr/local/bin/{}", binary_name),      // Intel homebrew
+        format!("/usr/bin/{}", binary_name),            // System
+    ];
+    
+    for path in paths {
+        if std::path::Path::new(&path).exists() {
+            // Try to get version
+            if let Ok(output) = Command::new(&path).arg("--version").output() {
+                if output.status.success() {
+                    let version = String::from_utf8_lossy(&output.stdout)
+                        .lines()
+                        .next()
+                        .unwrap_or("")
+                        .to_string();
+                    return Some((path, version));
+                }
+            }
+            return Some((path, String::new()));
+        }
+    }
+    
+    // Try PATH
+    if let Ok(output) = Command::new(&binary_name).arg("--version").output() {
+        if output.status.success() {
+            let version = String::from_utf8_lossy(&output.stdout)
+                .lines()
+                .next()
+                .unwrap_or("")
+                .to_string();
+            return Some((binary_name, version));
+        }
+    }
+    
+    None
+}
+
+/// Find qemu-img binary and get version
+fn find_qemu_img_with_version() -> Option<(String, String)> {
+    let paths = [
+        "/opt/homebrew/bin/qemu-img",
+        "/usr/local/bin/qemu-img",
+        "/usr/bin/qemu-img",
+    ];
+    
+    for path in paths {
+        if std::path::Path::new(path).exists() {
+            if let Ok(output) = Command::new(path).arg("--version").output() {
+                if output.status.success() {
+                    let version = String::from_utf8_lossy(&output.stdout)
+                        .lines()
+                        .next()
+                        .unwrap_or("")
+                        .to_string();
+                    return Some((path.to_string(), version));
+                }
+            }
+            return Some((path.to_string(), String::new()));
+        }
+    }
+    
+    // Try PATH
+    if let Ok(output) = Command::new("qemu-img").arg("--version").output() {
+        if output.status.success() {
+            let version = String::from_utf8_lossy(&output.stdout)
+                .lines()
+                .next()
+                .unwrap_or("")
+                .to_string();
+            return Some(("qemu-img".to_string(), version));
+        }
+    }
+    
+    None
+}
+
+/// Check if UEFI firmware is available (ARM64 only)
+fn check_uefi_firmware() -> Option<String> {
+    if !cfg!(target_arch = "aarch64") {
+        return Some("Not required (x86_64)".to_string());
+    }
+    
+    let paths = [
+        "/opt/homebrew/share/qemu/edk2-aarch64-code.fd",
+        "/usr/local/share/qemu/edk2-aarch64-code.fd",
+        "/usr/share/qemu/edk2-aarch64-code.fd",
+    ];
+    
+    for path in paths {
+        if std::path::Path::new(path).exists() {
+            return Some(path.to_string());
+        }
+    }
+    
+    None
+}
+
+/// Check if ISO creation tool is available
+fn check_iso_tool() -> Option<(String, String)> {
+    // Check mkisofs
+    if let Ok(output) = Command::new("mkisofs").arg("--version").output() {
+        // mkisofs may exit with error but still show version
+        let out = String::from_utf8_lossy(&output.stdout);
+        let err = String::from_utf8_lossy(&output.stderr);
+        let version = if !out.is_empty() { out } else { err };
+        let version_line = version.lines().next().unwrap_or("").to_string();
+        
+        // Check if mkisofs is actually available
+        for path in ["/opt/homebrew/bin/mkisofs", "/usr/local/bin/mkisofs", "/usr/bin/mkisofs"] {
+            if std::path::Path::new(path).exists() {
+                return Some((path.to_string(), version_line));
+            }
+        }
+        return Some(("mkisofs".to_string(), version_line));
+    }
+    
+    // Check genisoimage (Linux alternative)
+    if let Ok(output) = Command::new("genisoimage").arg("--version").output() {
+        let version = String::from_utf8_lossy(&output.stdout)
+            .lines()
+            .next()
+            .unwrap_or("")
+            .to_string();
+        return Some(("genisoimage".to_string(), version));
+    }
+    
+    // On macOS, hdiutil is always available as fallback
+    if cfg!(target_os = "macos") {
+        return Some(("hdiutil".to_string(), "Built-in macOS tool".to_string()));
+    }
+    
+    None
+}
+
+/// Check all environment dependencies
+#[tauri::command]
+pub async fn check_environment() -> Result<EnvironmentCheckResult, String> {
+    let mut dependencies = Vec::new();
+    let mut all_ready = true;
+    
+    let platform = if cfg!(target_os = "macos") {
+        "macOS"
+    } else if cfg!(target_os = "linux") {
+        "Linux"
+    } else if cfg!(target_os = "windows") {
+        "Windows"
+    } else {
+        "Unknown"
+    };
+    
+    let arch = if cfg!(target_arch = "aarch64") {
+        "arm64"
+    } else {
+        "x86_64"
+    };
+    
+    // 1. Check QEMU system
+    let qemu_status = match find_qemu_system() {
+        Some((path, version)) => DependencyStatus {
+            name: format!("QEMU (qemu-system-{})", arch),
+            installed: true,
+            version: if version.is_empty() { None } else { Some(version) },
+            path: Some(path),
+            install_command: None,
+            install_url: None,
+        },
+        None => {
+            all_ready = false;
+            DependencyStatus {
+                name: format!("QEMU (qemu-system-{})", arch),
+                installed: false,
+                version: None,
+                path: None,
+                install_command: Some(if cfg!(target_os = "macos") {
+                    "brew install qemu".to_string()
+                } else {
+                    "sudo apt install qemu-system".to_string()
+                }),
+                install_url: Some("https://www.qemu.org/download/".to_string()),
+            }
+        }
+    };
+    dependencies.push(qemu_status);
+    
+    // 2. Check qemu-img
+    let qemu_img_status = match find_qemu_img_with_version() {
+        Some((path, version)) => DependencyStatus {
+            name: "qemu-img".to_string(),
+            installed: true,
+            version: if version.is_empty() { None } else { Some(version) },
+            path: Some(path),
+            install_command: None,
+            install_url: None,
+        },
+        None => {
+            all_ready = false;
+            DependencyStatus {
+                name: "qemu-img".to_string(),
+                installed: false,
+                version: None,
+                path: None,
+                install_command: Some(if cfg!(target_os = "macos") {
+                    "brew install qemu".to_string()
+                } else {
+                    "sudo apt install qemu-utils".to_string()
+                }),
+                install_url: Some("https://www.qemu.org/download/".to_string()),
+            }
+        }
+    };
+    dependencies.push(qemu_img_status);
+    
+    // 3. Check UEFI firmware (ARM64 only)
+    if cfg!(target_arch = "aarch64") {
+        let uefi_status = match check_uefi_firmware() {
+            Some(path) => DependencyStatus {
+                name: "UEFI Firmware (EDK2)".to_string(),
+                installed: true,
+                version: None,
+                path: Some(path),
+                install_command: None,
+                install_url: None,
+            },
+            None => {
+                all_ready = false;
+                DependencyStatus {
+                    name: "UEFI Firmware (EDK2)".to_string(),
+                    installed: false,
+                    version: None,
+                    path: None,
+                    install_command: Some(if cfg!(target_os = "macos") {
+                        "brew install qemu".to_string()
+                    } else {
+                        "sudo apt install qemu-efi-aarch64".to_string()
+                    }),
+                    install_url: Some("https://github.com/tianocore/edk2".to_string()),
+                }
+            }
+        };
+        dependencies.push(uefi_status);
+    }
+    
+    // 4. Check ISO creation tool
+    let iso_status = match check_iso_tool() {
+        Some((path, version)) => DependencyStatus {
+            name: "ISO Creation Tool".to_string(),
+            installed: true,
+            version: if version.is_empty() { None } else { Some(version) },
+            path: Some(path),
+            install_command: None,
+            install_url: None,
+        },
+        None => {
+            all_ready = false;
+            DependencyStatus {
+                name: "ISO Creation Tool".to_string(),
+                installed: false,
+                version: None,
+                path: None,
+                install_command: Some(if cfg!(target_os = "macos") {
+                    "brew install cdrtools".to_string()
+                } else {
+                    "sudo apt install genisoimage".to_string()
+                }),
+                install_url: None,
+            }
+        }
+    };
+    dependencies.push(iso_status);
+    
+    let message = if all_ready {
+        None
+    } else {
+        Some("Some dependencies are missing. Please install them before creating an agent.".to_string())
+    };
+    
+    Ok(EnvironmentCheckResult {
+        ready: all_ready,
+        platform: platform.to_string(),
+        arch: arch.to_string(),
+        dependencies,
+        message,
+    })
+}
+
+/// Find qemu-img binary path
+/// GUI apps on macOS don't inherit shell PATH, so we check common locations
+fn find_qemu_img() -> String {
+    let paths = [
+        "/opt/homebrew/bin/qemu-img",  // Apple Silicon homebrew
+        "/usr/local/bin/qemu-img",      // Intel homebrew
+        "/usr/bin/qemu-img",            // System
+    ];
+    
+    for path in paths {
+        if std::path::Path::new(path).exists() {
+            return path.to_string();
+        }
+    }
+    
+    // Fallback to PATH (may work in dev mode)
+    "qemu-img".to_string()
+}
 
 /// Download progress information
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -114,9 +451,7 @@ pub async fn check_cloud_image(
     os_type: String,
     os_version: String,
 ) -> Result<ImageCheckResult, String> {
-    let data_dir = app.path().app_data_dir()
-        .map_err(|e| format!("Failed to get app data dir: {}", e))?;
-    
+    let data_dir = get_data_directory(&app)?;
     let images_dir = data_dir.join("images");
     let arch = get_current_arch();
     let image_name = format!("{}-{}-{}.img", os_type, os_version, arch);
@@ -140,6 +475,65 @@ pub async fn check_cloud_image(
     }
 }
 
+/// Get or create a reliable data directory with multiple fallbacks
+fn get_data_directory(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    // Try 1: Tauri's app_data_dir
+    if let Ok(data_dir) = app.path().app_data_dir() {
+        println!("[Setup] Trying Tauri app_data_dir: {}", data_dir.display());
+        if let Ok(()) = std::fs::create_dir_all(&data_dir) {
+            if data_dir.exists() {
+                println!("[Setup] Using Tauri app_data_dir: {}", data_dir.display());
+                return Ok(data_dir);
+            }
+        }
+        println!("[Setup] Warning: Tauri app_data_dir not usable, trying fallback...");
+    }
+    
+    // Try 2: Manual ~/Library/Application Support/com.novaic.app (macOS)
+    // or ~/.local/share/com.novaic.app (Linux)
+    if let Some(home) = dirs::home_dir() {
+        let manual_path = if cfg!(target_os = "macos") {
+            home.join("Library/Application Support/com.novaic.app")
+        } else {
+            home.join(".local/share/com.novaic.app")
+        };
+        
+        println!("[Setup] Trying manual path: {}", manual_path.display());
+        if let Ok(()) = std::fs::create_dir_all(&manual_path) {
+            if manual_path.exists() {
+                println!("[Setup] Using manual path: {}", manual_path.display());
+                return Ok(manual_path);
+            }
+        }
+        println!("[Setup] Warning: Manual path not usable, trying fallback...");
+    }
+    
+    // Try 3: Fallback to home directory directly
+    if let Some(home) = dirs::home_dir() {
+        let fallback_path = home.join(".novaic");
+        println!("[Setup] Trying home fallback: {}", fallback_path.display());
+        if let Ok(()) = std::fs::create_dir_all(&fallback_path) {
+            if fallback_path.exists() {
+                println!("[Setup] Using home fallback: {}", fallback_path.display());
+                return Ok(fallback_path);
+            }
+        }
+    }
+    
+    // Try 4: Last resort - temp directory
+    let temp_path = std::env::temp_dir().join("novaic-data");
+    println!("[Setup] Trying temp fallback: {}", temp_path.display());
+    std::fs::create_dir_all(&temp_path)
+        .map_err(|e| format!("All directory options failed. Last error: {}", e))?;
+    
+    if temp_path.exists() {
+        println!("[Setup] WARNING: Using temp directory (data may be lost on reboot): {}", temp_path.display());
+        return Ok(temp_path);
+    }
+    
+    Err("Failed to create any data directory. Check disk permissions.".to_string())
+}
+
 /// Download cloud image with progress reporting
 #[tauri::command]
 pub async fn download_cloud_image(
@@ -149,14 +543,25 @@ pub async fn download_cloud_image(
     use_cn_mirrors: bool,
     on_progress: tauri::ipc::Channel<DownloadProgress>,
 ) -> Result<String, String> {
-    let data_dir = app.path().app_data_dir()
-        .map_err(|e| format!("Failed to get app data dir: {}", e))?;
-    
+    // Get a reliable data directory with fallbacks
+    let data_dir = get_data_directory(&app)?;
     let images_dir = data_dir.join("images");
     
-    // Ensure images directory exists
+    println!("[Setup] Data dir: {}", data_dir.display());
+    println!("[Setup] Images dir: {}", images_dir.display());
+    
+    // Create images directory
     std::fs::create_dir_all(&images_dir)
-        .map_err(|e| format!("Failed to create images directory: {}", e))?;
+        .map_err(|e| format!("Failed to create images directory {}: {} (check disk space and permissions)", images_dir.display(), e))?;
+    
+    // Double-check it exists
+    if !images_dir.exists() {
+        return Err(format!(
+            "Images directory does not exist after creation attempt: {}. \
+            This might be a permission issue or disk is full.",
+            images_dir.display()
+        ));
+    }
     
     let arch = get_current_arch();
     let image_name = format!("{}-{}-{}.img", os_type, os_version, arch);
@@ -247,9 +652,36 @@ pub async fn download_cloud_image(
         .map_err(|e| format!("Failed to flush file: {}", e))?;
     drop(file);
     
+    // Small delay to ensure file is fully written (especially on network drives or slow storage)
+    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    
+    // Verify temp file exists and has content
+    if !temp_path.exists() {
+        return Err(format!("Temp file not found after download: {}", temp_path.display()));
+    }
+    
+    let temp_size = std::fs::metadata(&temp_path)
+        .map(|m| m.len())
+        .unwrap_or(0);
+    println!("[Setup] Temp file size: {} bytes", temp_size);
+    
+    if temp_size == 0 {
+        return Err("Downloaded file is empty".to_string());
+    }
+    
+    // Ensure target directory still exists (in case it was deleted during download)
+    if let Some(parent) = image_path.parent() {
+        if !parent.exists() {
+            println!("[Setup] Re-creating target directory: {}", parent.display());
+            std::fs::create_dir_all(parent)
+                .map_err(|e| format!("Failed to create target directory {}: {}", parent.display(), e))?;
+        }
+    }
+    
     // Rename temp file to final name
+    println!("[Setup] Renaming {} -> {}", temp_path.display(), image_path.display());
     std::fs::rename(&temp_path, &image_path)
-        .map_err(|e| format!("Failed to rename temp file: {}", e))?;
+        .map_err(|e| format!("Failed to rename temp file: {} (from: {}, to: {})", e, temp_path.display(), image_path.display()))?;
     
     println!("[Setup] Download complete: {}", image_path.display());
     
@@ -275,9 +707,7 @@ pub async fn setup_vm(
     use_cn_mirrors: bool,
     on_progress: tauri::ipc::Channel<SetupProgress>,
 ) -> Result<VmSetupResult, String> {
-    let data_dir = app.path().app_data_dir()
-        .map_err(|e| format!("Failed to get app data dir: {}", e))?;
-    
+    let data_dir = get_data_directory(&app)?;
     let vm_dir = data_dir.join("vms").join(&agent_id);
     
     // Create VM directory
@@ -336,8 +766,11 @@ pub async fn setup_vm(
 fn create_vm_disk(source_image: &str, dest_path: &PathBuf, disk_size: &str) -> Result<(), String> {
     println!("[Setup] Creating VM disk from {} to {}", source_image, dest_path.display());
     
+    let qemu_img = find_qemu_img();
+    println!("[Setup] Using qemu-img: {}", qemu_img);
+    
     // Convert image
-    let output = Command::new("qemu-img")
+    let output = Command::new(&qemu_img)
         .args(["convert", "-f", "qcow2", "-O", "qcow2", source_image, dest_path.to_str().unwrap()])
         .output()
         .map_err(|e| format!("Failed to run qemu-img convert: {}", e))?;
@@ -350,7 +783,7 @@ fn create_vm_disk(source_image: &str, dest_path: &PathBuf, disk_size: &str) -> R
     }
     
     // Resize disk
-    let output = Command::new("qemu-img")
+    let output = Command::new(&qemu_img)
         .args(["resize", dest_path.to_str().unwrap(), disk_size])
         .output()
         .map_err(|e| format!("Failed to run qemu-img resize: {}", e))?;
@@ -385,6 +818,13 @@ fn create_cloud_init(vm_dir: &PathBuf, iso_path: &PathBuf, ssh_pubkey: &str, use
         } else {
             "archive.ubuntu.com/ubuntu"
         }
+    };
+    
+    // Determine pip mirror
+    let (apt_mirror_pip, apt_mirror_pip_host) = if use_cn_mirrors {
+        ("mirrors.aliyun.com/pypi/simple/", "mirrors.aliyun.com")
+    } else {
+        ("pypi.org/simple/", "pypi.org")
     };
     
     // Ubuntu codename (default to noble for 24.04)
@@ -582,6 +1022,20 @@ runcmd:
   - mkdir -p /opt/novaic-mcp-vmuse /opt/novaic-venv
   - chown -R ubuntu:ubuntu /opt/novaic-mcp-vmuse /opt/novaic-venv
   
+  # =====================================================
+  # Install Python dependencies (so deploy only copies code)
+  # =====================================================
+  - echo "Creating Python virtual environment..."
+  - sudo -u ubuntu python3 -m venv /opt/novaic-venv
+  
+  - echo "Installing Python dependencies..."
+  - sudo -u ubuntu /opt/novaic-venv/bin/pip install --upgrade pip -q -i "http://{apt_mirror_pip}" --trusted-host "{apt_mirror_pip_host}"
+  - sudo -u ubuntu /opt/novaic-venv/bin/pip install -q -i "http://{apt_mirror_pip}" --trusted-host "{apt_mirror_pip_host}" fastmcp fastapi "uvicorn[standard]" pydantic pydantic-settings playwright httpx python-dotenv Pillow
+  
+  - echo "Installing Playwright Chromium..."
+  - sudo -u ubuntu /opt/novaic-venv/bin/playwright install chromium
+  - /opt/novaic-venv/bin/playwright install-deps chromium || true
+  
   # Enable services
   - systemctl daemon-reload
   - systemctl enable lightdm
@@ -604,15 +1058,20 @@ final_message: |
   NovAIC VM configuration complete!
   =====================================================
   
-  VNC: vnc://localhost:5900 (no password)
-  WebSocket: ws://localhost:6080
-  SSH: ssh -p 2222 ubuntu@localhost (password: ubuntu)
+  VM internal ports (mapped to dynamic host ports via QEMU):
+  - VNC: 5900 (no password)
+  - WebSocket: 6080
+  - MCP: 8080
+  - SSH: 22
   
-  Please run deploy to install MCP Server
+  Check NovAIC app for actual host port mappings.
+  Please run deploy to install MCP Server.
 "#, 
         ssh_pubkey = ssh_pubkey,
         apt_mirror = apt_mirror,
         ubuntu_codename = ubuntu_codename,
+        apt_mirror_pip = apt_mirror_pip,
+        apt_mirror_pip_host = apt_mirror_pip_host,
     );
     
     let user_data_path = config_dir.join("user-data");

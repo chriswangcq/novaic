@@ -2,13 +2,13 @@
  * Agent Dashboard - 一级管理页面
  * 
  * 显示所有 Agent 的列表，每个 Agent 占一个大 Banner
- * 展示状态：stopped | starting | running | error
+ * 展示状态：setup phases (pending/downloading/creating/deploying) + runtime (stopped/starting/running/error)
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '../../store';
-import { AICAgent } from '../../services/api';
+import { AICAgent, AgentStatus } from '../../services/api';
 import { 
   Plus, 
   Play, 
@@ -20,12 +20,16 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
-  Circle
+  Circle,
+  Download,
+  Upload,
+  Settings,
+  X
 } from 'lucide-react';
-import { CreateAgentModal } from '../Agent/CreateAgentModal';
+import { CreateAgentModal, SetupConfig } from '../Agent/CreateAgentModal';
 
 // Extended status type for UI (includes 'stopping')
-type AgentDisplayStatus = AICAgent['status'] | 'stopping';
+type AgentDisplayStatus = AgentStatus | 'stopping';
 
 interface AgentCardProps {
   agent: AICAgent;
@@ -36,6 +40,7 @@ interface AgentCardProps {
   onStop: () => void;
   onDelete: () => void;
   onEnter: () => void;
+  onContinueSetup: () => void;  // For setup-in-progress agents
 }
 
 // 状态配置
@@ -45,7 +50,47 @@ const statusConfig: Record<string, {
   label: string;
   icon: typeof Circle;
   animate?: boolean;
+  isSetup?: boolean;  // Whether this is a setup phase
 }> = {
+  // Setup phases
+  pending: {
+    color: 'bg-blue-500',
+    textColor: 'text-blue-400',
+    label: 'Pending Setup',
+    icon: Settings,
+    isSetup: true,
+  },
+  downloading: {
+    color: 'bg-blue-500',
+    textColor: 'text-blue-400',
+    label: 'Downloading...',
+    icon: Download,
+    animate: true,
+    isSetup: true,
+  },
+  creating: {
+    color: 'bg-blue-500',
+    textColor: 'text-blue-400',
+    label: 'Creating VM...',
+    icon: HardDrive,
+    animate: true,
+    isSetup: true,
+  },
+  deploying: {
+    color: 'bg-blue-500',
+    textColor: 'text-blue-400',
+    label: 'Deploying...',
+    icon: Upload,
+    animate: true,
+    isSetup: true,
+  },
+  ready: {
+    color: 'bg-gray-500',
+    textColor: 'text-gray-400',
+    label: 'Ready',
+    icon: CheckCircle2,
+  },
+  // Runtime phases
   stopped: {
     color: 'bg-gray-500',
     textColor: 'text-gray-400',
@@ -80,13 +125,14 @@ const statusConfig: Record<string, {
   },
 };
 
-function AgentCard({ agent, status: agentStatus, isSelected, onSelect, onStart, onStop, onDelete, onEnter }: AgentCardProps) {
+function AgentCard({ agent, status: agentStatus, isSelected, onSelect, onStart, onStop, onDelete, onEnter, onContinueSetup }: AgentCardProps) {
   const status = statusConfig[agentStatus] || statusConfig.stopped;
   const StatusIcon = status.icon;
   const isRunning = agentStatus === 'running';
   const isStarting = agentStatus === 'starting';
   const isStopping = agentStatus === 'stopping';
   const isLoading = isStarting || isStopping;
+  const isSetupPhase = status.isSetup || false;
 
   return (
     <div 
@@ -129,7 +175,35 @@ function AgentCard({ agent, status: agentStatus, isSelected, onSelect, onStart, 
 
       {/* 操作按钮 */}
       <div className="flex items-center gap-3">
-        {(isRunning || isStopping) ? (
+        {isSetupPhase ? (
+          // Setup in progress
+          <>
+            <button
+              onClick={(e) => { e.stopPropagation(); onContinueSetup(); }}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+            >
+              {agentStatus === 'pending' ? (
+                <>
+                  <Play size={18} />
+                  Start Setup
+                </>
+              ) : (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  Continue Setup
+                </>
+              )}
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className="px-4 py-2.5 bg-nb-surface-hover hover:bg-red-500/20 text-nb-text-secondary hover:text-red-400 rounded-lg transition-colors border border-nb-border"
+              title="Cancel Setup"
+            >
+              <Trash2 size={18} />
+            </button>
+          </>
+        ) : (isRunning || isStopping) ? (
+          // Running or stopping
           <>
             <button
               onClick={(e) => { e.stopPropagation(); onEnter(); }}
@@ -153,6 +227,7 @@ function AgentCard({ agent, status: agentStatus, isSelected, onSelect, onStart, 
             </button>
           </>
         ) : (
+          // Ready or stopped
           <>
             <button
               onClick={(e) => { e.stopPropagation(); onStart(); }}
@@ -193,29 +268,42 @@ function AgentCard({ agent, status: agentStatus, isSelected, onSelect, onStart, 
 
 interface AgentDashboardProps {
   onEnterWorkspace: (agentId: string) => void;
+  onEnterSetup: (agentId: string, config: SetupConfig) => void;
 }
 
 // VM status from Tauri (must match Rust VmStatus struct)
+interface PortConfig {
+  vm: number;
+  session: number;
+  local: number;
+  memory: number;
+  chat: number;
+  qemudebug: number;
+  vnc: number;
+  websocket: number;
+  ssh: number;
+}
+
 interface VmStatus {
   running: boolean;
   agent_healthy: boolean;
   mcp_healthy: boolean;
   websockify_running: boolean;
-  vnc_port: number;
-  agent_port: number;
-  mcp_host_port: number;
-  websocket_port: number;
+  ports: PortConfig;
   vnc_url: string;
-  agent_url: string;
   mcp_url: string;
   agent_id: string | null;
 }
 
-export function AgentDashboard({ onEnterWorkspace }: AgentDashboardProps) {
+export function AgentDashboard({ onEnterWorkspace, onEnterSetup }: AgentDashboardProps) {
   const { agents, currentAgentId, selectAgent, deleteAgent, loadAgents } = useAppStore();
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [loadingAction, setLoadingAction] = useState<{ agentId: string; action: 'starting' | 'stopping' } | null>(null);
   const [vmStatus, setVmStatus] = useState<VmStatus | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ agentId: string; agentName: string } | null>(null);
+  
+  // Store setup configs for agents that need setup
+  const [setupConfigs, setSetupConfigs] = useState<Record<string, SetupConfig>>({});
 
   // Poll VM status
   const refreshVmStatus = useCallback(async () => {
@@ -234,21 +322,28 @@ export function AgentDashboard({ onEnterWorkspace }: AgentDashboardProps) {
     return () => clearInterval(interval);
   }, [refreshVmStatus]);
 
-  // Derive agent status from VM status
+  // Derive agent status from agent.status and VM status
   const getAgentStatus = (agent: AICAgent): AgentDisplayStatus => {
     // Check if there's a loading action for this agent
     if (loadingAction?.agentId === agent.id) {
       return loadingAction.action;
     }
     
-    if (!vmStatus) return 'stopped';
+    // If agent is in setup phase, return its setup status
+    const setupStatuses = ['pending', 'downloading', 'creating', 'deploying'];
+    if (setupStatuses.includes(agent.status)) {
+      return agent.status;
+    }
+    
+    // Otherwise, derive from VM status
+    if (!vmStatus) return agent.status === 'ready' ? 'stopped' : agent.status;
     
     // Check if this agent's VM is running
     if (vmStatus.agent_id === agent.id && vmStatus.running) {
       return 'running';
     }
     
-    return 'stopped';
+    return agent.status === 'ready' ? 'stopped' : agent.status;
   };
 
   const handleStartAgent = async (agentId: string) => {
@@ -292,14 +387,19 @@ export function AgentDashboard({ onEnterWorkspace }: AgentDashboardProps) {
     }
   };
 
-  const handleDeleteAgent = async (agentId: string) => {
-    if (!confirm('Are you sure you want to delete this agent? This action cannot be undone.')) {
-      return;
-    }
+  const handleDeleteAgent = (agentId: string) => {
+    const agent = agents.find(a => a.id === agentId);
+    setDeleteConfirm({ agentId, agentName: agent?.name || 'Agent' });
+  };
+
+  const confirmDeleteAgent = async () => {
+    if (!deleteConfirm) return;
     try {
-      await deleteAgent(agentId);
+      await deleteAgent(deleteConfirm.agentId);
     } catch (error) {
       console.error('Failed to delete agent:', error);
+    } finally {
+      setDeleteConfirm(null);
     }
   };
 
@@ -311,6 +411,33 @@ export function AgentDashboard({ onEnterWorkspace }: AgentDashboardProps) {
   const handleCreateComplete = async () => {
     setCreateModalOpen(false);
     await loadAgents();
+  };
+
+  // Called when agent is created from modal
+  const handleAgentCreated = (config: SetupConfig) => {
+    // Store the setup config
+    setSetupConfigs(prev => ({
+      ...prev,
+      [config.agent.id]: config,
+    }));
+    
+    // Immediately enter setup workspace
+    onEnterSetup(config.agent.id, config);
+  };
+
+  // Continue setup for an agent
+  const handleContinueSetup = (agentId: string) => {
+    const agent = agents.find(a => a.id === agentId);
+    if (!agent) return;
+
+    // Get stored config or create default
+    const config = setupConfigs[agentId] || {
+      agent,
+      sourceImage: '',
+      useCnMirrors: navigator.language?.startsWith('zh') || false,
+    };
+
+    onEnterSetup(agentId, config);
   };
 
   return (
@@ -372,6 +499,7 @@ export function AgentDashboard({ onEnterWorkspace }: AgentDashboardProps) {
                   onStop={() => handleStopAgent(agent.id)}
                   onDelete={() => handleDeleteAgent(agent.id)}
                   onEnter={() => handleEnterWorkspace(agent.id)}
+                  onContinueSetup={() => handleContinueSetup(agent.id)}
                 />
               ))}
             </div>
@@ -388,7 +516,64 @@ export function AgentDashboard({ onEnterWorkspace }: AgentDashboardProps) {
       <CreateAgentModal 
         isOpen={createModalOpen} 
         onClose={handleCreateComplete}
+        onCreated={handleAgentCreated}
       />
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setDeleteConfirm(null)}
+          />
+          
+          {/* Modal */}
+          <div className="relative bg-nb-card border border-nb-border rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+            {/* Close button */}
+            <button
+              onClick={() => setDeleteConfirm(null)}
+              className="absolute top-4 right-4 p-1 text-nb-text-muted hover:text-nb-text transition-colors"
+            >
+              <X size={20} />
+            </button>
+
+            {/* Icon */}
+            <div className="flex justify-center mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
+                <Trash2 size={24} className="text-red-500" />
+              </div>
+            </div>
+
+            {/* Title */}
+            <h3 className="text-lg font-semibold text-nb-text text-center mb-2">
+              Delete Agent
+            </h3>
+
+            {/* Message */}
+            <p className="text-nb-text-muted text-center mb-6">
+              Are you sure you want to delete <span className="text-nb-text font-medium">"{deleteConfirm.agentName}"</span>? 
+              This will permanently remove the agent and all its data. This action cannot be undone.
+            </p>
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="flex-1 px-4 py-2.5 bg-nb-bg hover:bg-nb-border text-nb-text rounded-lg transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteAgent}
+                className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

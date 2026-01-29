@@ -15,6 +15,8 @@ impl GatewayClient {
     pub fn new(base_url: String) -> Self {
         let client = reqwest::Client::builder()
             .no_proxy()  // Bypass system proxy for localhost
+            .timeout(std::time::Duration::from_secs(30))  // 30s timeout to avoid infinite wait
+            .connect_timeout(std::time::Duration::from_secs(10))  // 10s connect timeout
             .build()
             .unwrap_or_default();
         

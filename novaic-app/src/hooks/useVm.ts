@@ -12,18 +12,25 @@ interface UseVmReturn {
   refreshStatus: () => Promise<void>;
 }
 
+// Default status with Agent 0 ports (BASE_PORT=20000)
 const DEFAULT_STATUS: VmStatus = {
   running: false,
   agent_healthy: false,
   mcp_healthy: false,
   websockify_running: false,
-  vnc_port: 5900,
-  agent_port: 9000,
-  mcp_host_port: 8080,
-  websocket_port: 6080,
-  vnc_url: 'ws://localhost:6080/websockify',
-  agent_url: 'http://localhost:9000',
-  mcp_url: 'http://127.0.0.1:8080/mcp',
+  ports: {
+    vm: 20000,
+    session: 20001,
+    local: 20002,
+    memory: 20003,
+    chat: 20004,
+    qemudebug: 20005,
+    vnc: 20006,
+    websocket: 20007,
+    ssh: 20008,
+  },
+  vnc_url: 'ws://localhost:20007/websockify',
+  mcp_url: 'http://127.0.0.1:20000/mcp',
 };
 
 export function useVm(): UseVmReturn {

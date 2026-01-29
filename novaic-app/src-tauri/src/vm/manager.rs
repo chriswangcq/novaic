@@ -5,20 +5,80 @@ use tokio::time::{sleep, Duration};
 use std::net::TcpStream;
 use std::sync::Mutex as StdMutex;
 
+// Centralized port allocation constants
+// Must match Python side: novaic-gateway/config/agents.py
+pub const BASE_PORT: u16 = 20000;
+pub const PORTS_PER_AGENT: u16 = 20;
+pub const MAX_AGENTS: u16 = 100;
+
+// Service port offsets within each agent's port block
+pub const OFFSET_VM: u16 = 0;        // VM内MCP (vmuse)
+pub const OFFSET_SESSION: u16 = 1;   // 会话管理MCP
+pub const OFFSET_LOCAL: u16 = 2;     // 本地文件MCP
+pub const OFFSET_MEMORY: u16 = 3;    // 记忆管理MCP
+pub const OFFSET_CHAT: u16 = 4;      // 用户通信MCP
+pub const OFFSET_QEMUDEBUG: u16 = 5; // QEMU调试MCP
+pub const OFFSET_VNC: u16 = 6;       // VNC服务
+pub const OFFSET_WEBSOCKET: u16 = 7; // noVNC WebSocket
+pub const OFFSET_SSH: u16 = 8;       // SSH转发
+
+/// Calculate port for a service based on agent index
+pub fn get_agent_port(agent_index: u16, offset: u16) -> u16 {
+    BASE_PORT + agent_index * PORTS_PER_AGENT + offset
+}
+
+/// Complete port configuration for an agent
+/// Matches Python PortConfig in novaic-gateway/config/agents.py
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct PortConfig {
+    // MCP服务端口
+    pub vm: u16,           // VM内MCP (vmuse)
+    pub session: u16,      // 会话管理MCP
+    pub local: u16,        // 本地文件MCP
+    pub memory: u16,       // 记忆管理MCP
+    pub chat: u16,         // 用户通信MCP
+    pub qemudebug: u16,    // QEMU调试MCP
+    // VM连接端口
+    pub vnc: u16,          // VNC服务
+    pub websocket: u16,    // noVNC WebSocket
+    pub ssh: u16,          // SSH转发
+}
+
+impl PortConfig {
+    /// Create port config for an agent based on its index
+    pub fn for_agent(agent_index: u16) -> Self {
+        Self {
+            vm: get_agent_port(agent_index, OFFSET_VM),
+            session: get_agent_port(agent_index, OFFSET_SESSION),
+            local: get_agent_port(agent_index, OFFSET_LOCAL),
+            memory: get_agent_port(agent_index, OFFSET_MEMORY),
+            chat: get_agent_port(agent_index, OFFSET_CHAT),
+            qemudebug: get_agent_port(agent_index, OFFSET_QEMUDEBUG),
+            vnc: get_agent_port(agent_index, OFFSET_VNC),
+            websocket: get_agent_port(agent_index, OFFSET_WEBSOCKET),
+            ssh: get_agent_port(agent_index, OFFSET_SSH),
+        }
+    }
+}
+
+impl Default for PortConfig {
+    fn default() -> Self {
+        Self::for_agent(0)  // Default to Agent 0
+    }
+}
+
 /// VM 配置
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct VmConfig {
-    pub memory: String,      // 内存大小, e.g., "4G"
-    pub cpus: u32,           // CPU 核心数
-    pub vnc_port: u16,       // VNC 端口 (VM 内部使用，通过 QEMU 转发)
-    pub agent_port: u16,     // Agent API 端口 (宿主机)
-    pub websocket_port: u16, // WebSocket 端口 (VM 内的 websockify 提供)
-    pub ssh_port: u16,       // SSH 端口
+    pub memory: String,           // 内存大小, e.g., "4G"
+    pub cpus: u32,                // CPU 核心数
     pub image_path: Option<String>,  // 自定义镜像路径 (可选)
-    // MCP 通信配置
-    pub mcp_host_port: u16,  // 宿主机 MCP 端口 (QEMU 转发: 宿主机 -> VM 8080)
-    pub mcp_vm_port: u16,    // VM 内部 MCP 端口 (固定 8080)
-    pub vsock_cid: u32,      // 用于 Agent ID 和端口偏移
+    pub agent_index: u16,         // Agent索引，用于端口分配
+    pub ports: PortConfig,        // 所有宿主机端口
+    // VM 内部端口 (固定，通过QEMU端口转发映射到宿主机动态端口)
+    pub mcp_vm_port: u16,         // VM 内部 MCP 端口 (固定 8080)
+    pub vnc_vm_port: u16,         // VM 内部 VNC 端口 (固定 5900)
+    pub ws_vm_port: u16,          // VM 内部 WebSocket 端口 (固定 6080)
 }
 
 impl Default for VmConfig {
@@ -26,15 +86,13 @@ impl Default for VmConfig {
         Self {
             memory: "4096".to_string(),
             cpus: 4,
-            vnc_port: 5900,      // VNC 端口 (宿主机 5900 → VM 5900)
-            agent_port: 9000,    // Agent API 端口 (宿主机本地)
-            websocket_port: 6080,// WebSocket 端口 (宿主机 6080 → VM 6080)
-            ssh_port: 2222,      // SSH 端口 (宿主机 2222 → VM 22)
-            image_path: None,    // 使用默认镜像
-            // MCP 配置
-            mcp_host_port: 8080, // 宿主机 MCP 端口 (第一个 VM)
-            mcp_vm_port: 8080,   // VM 内部 MCP 端口 (固定)
-            vsock_cid: 3,        // 默认 CID=3 (第一个 VM)
+            image_path: None,
+            agent_index: 0,
+            ports: PortConfig::default(),
+            // VM 内部端口 (固定)
+            mcp_vm_port: 8080,
+            vnc_vm_port: 5900,
+            ws_vm_port: 6080,
         }
     }
 }
@@ -178,16 +236,16 @@ impl VmManager {
 
         // 检查 websockify 端口是否被占用 - 用于检测 VM 是否在运行
         // (MCP 现在通过 VSOCK 通信，不再使用端口转发)
-        if TcpStream::connect(format!("127.0.0.1:{}", config.websocket_port)).is_ok() {
-            println!("[VM] VM already running (detected via websockify port {}), skipping start", config.websocket_port);
+        if TcpStream::connect(format!("127.0.0.1:{}", config.ports.websocket)).is_ok() {
+            println!("[VM] VM already running (detected via websockify port {}), skipping start", config.ports.websocket);
             // 等待 websockify 就绪
             self.wait_for_websockify().await?;
             return Ok(());
         }
         
         // 确保端口可用
-        self.check_port_available(config.vnc_port)?;
-        self.check_port_available(config.websocket_port)?;
+        self.check_port_available(config.ports.vnc)?;
+        self.check_port_available(config.ports.websocket)?;
 
         // 根据操作系统和架构选择 QEMU 命令和参数
         let qemu_cmd = self.get_qemu_command();
@@ -228,11 +286,11 @@ impl VmManager {
     async fn wait_for_websockify(&self) -> Result<(), String> {
         let config = self.config.lock().await.clone();
         let start = std::time::Instant::now();
-        println!("[VM] Waiting for websockify service (port {})...", config.websocket_port);
+        println!("[VM] Waiting for websockify service (port {})...", config.ports.websocket);
         
         let max_attempts = 30;
         for attempt in 1..=max_attempts {
-            if TcpStream::connect(format!("127.0.0.1:{}", config.websocket_port)).is_ok() {
+            if TcpStream::connect(format!("127.0.0.1:{}", config.ports.websocket)).is_ok() {
                 println!("[VM] Websockify TCP ready after {:.1}s (attempt {})", start.elapsed().as_secs_f32(), attempt);
                 return Ok(());
             }
@@ -253,7 +311,7 @@ impl VmManager {
     async fn wait_for_executor(&self) -> Result<(), String> {
         let config = self.config.lock().await.clone();
         let start = std::time::Instant::now();
-        println!("[VM] Waiting for MCP Server (port={})...", config.mcp_host_port);
+        println!("[VM] Waiting for MCP Server (port={})...", config.ports.vm);
         
         // VM 启动后，给 systemd 服务一些时间启动
         let wait_secs = 15;
@@ -261,7 +319,7 @@ impl VmManager {
         sleep(Duration::from_secs(wait_secs)).await;
         
         println!("[VM] MCP Server should be ready (elapsed: {:.1}s)", start.elapsed().as_secs_f32());
-        println!("[VM] MCP URL: http://127.0.0.1:{}/mcp", config.mcp_host_port);
+        println!("[VM] MCP URL: http://127.0.0.1:{}/mcp", config.ports.vm);
         Ok(())
     }
 
@@ -277,10 +335,10 @@ impl VmManager {
         Ok(true)
     }
     
-    /// 检查宿主机 Agent 健康状态（用于状态查询）
+    /// 检查宿主机 Gateway 健康状态（用于状态查询）
     async fn check_agent_health(&self) -> Result<bool, String> {
-        let config = self.config.lock().await.clone();
-        let url = format!("http://127.0.0.1:{}/api/health", config.agent_port);
+        // Gateway runs on fixed port 19999
+        let url = "http://127.0.0.1:19999/api/health".to_string();
         
         // 使用本地服务客户端（不走代理）
         let client = crate::http_client::local_client()
@@ -309,7 +367,7 @@ impl VmManager {
             .args([
                 "-o", "StrictHostKeyChecking=no",
                 "-o", "ConnectTimeout=3",
-                "-p", &config.ssh_port.to_string(),
+                "-p", &config.ports.ssh.to_string(),
                 "ubuntu@127.0.0.1",
                 "sudo poweroff"
             ])
@@ -414,9 +472,8 @@ impl VmManager {
             // qemu_guard 在这里被 drop
         }
 
-        let config = self.config.lock().await.clone();
-        // 检查 Agent 端口是否可连接
-        TcpStream::connect(format!("127.0.0.1:{}", config.agent_port)).is_ok()
+        // 检查 Gateway 端口是否可连接 (固定端口 19999)
+        TcpStream::connect("127.0.0.1:19999").is_ok()
     }
 
     /// Get VM status
@@ -428,12 +485,12 @@ impl VmManager {
         
         // 检查 websockify 端口是否可用 (在 VM 内运行)
         let websockify_running = TcpStream::connect(
-            format!("127.0.0.1:{}", config.websocket_port)
+            format!("127.0.0.1:{}", config.ports.websocket)
         ).is_ok();
 
         // 检查 MCP 端口是否可用 (通过 QEMU 端口转发)
         let mcp_running = TcpStream::connect(
-            format!("127.0.0.1:{}", config.mcp_host_port)
+            format!("127.0.0.1:{}", config.ports.vm)
         ).is_ok();
 
         VmStatus {
@@ -441,13 +498,9 @@ impl VmManager {
             agent_healthy,
             mcp_healthy: mcp_running,  // 检查 MCP 端口
             websockify_running,
-            vnc_port: config.vnc_port,
-            agent_port: config.agent_port,
-            mcp_host_port: config.mcp_host_port,
-            websocket_port: config.websocket_port,
-            vnc_url: format!("ws://localhost:{}/websockify", config.websocket_port),
-            agent_url: format!("http://localhost:{}", config.agent_port),
-            mcp_url: format!("http://127.0.0.1:{}/mcp", config.mcp_host_port),
+            ports: config.ports.clone(),
+            vnc_url: format!("ws://localhost:{}/websockify", config.ports.websocket),
+            mcp_url: format!("http://127.0.0.1:{}/mcp", config.ports.vm),
             agent_id,
         }
     }
@@ -455,25 +508,30 @@ impl VmManager {
     /// Get MCP host port (for QEMU port forward)
     pub async fn get_mcp_host_port(&self) -> u16 {
         let config = self.config.lock().await;
-        config.mcp_host_port
+        config.ports.vm
     }
     
     /// Get MCP URL
     pub async fn get_mcp_url(&self) -> String {
         let config = self.config.lock().await;
-        format!("http://127.0.0.1:{}/mcp", config.mcp_host_port)
+        format!("http://127.0.0.1:{}/mcp", config.ports.vm)
     }
 
     /// Get VNC WebSocket URL (for noVNC)
     pub async fn get_vnc_url(&self) -> String {
         let config = self.config.lock().await;
-        format!("ws://localhost:{}/websockify", config.websocket_port)
+        format!("ws://localhost:{}/websockify", config.ports.websocket)
     }
 
-    /// Get Agent API URL
-    pub async fn get_agent_url(&self) -> String {
+    /// Get PortConfig
+    pub async fn get_ports(&self) -> PortConfig {
         let config = self.config.lock().await;
-        format!("http://localhost:{}", config.agent_port)
+        config.ports.clone()
+    }
+
+    /// Get Gateway URL (fixed port 19999)
+    pub async fn get_agent_url(&self) -> String {
+        "http://127.0.0.1:19999".to_string()
     }
 
     /// 检查端口是否可用
@@ -537,17 +595,19 @@ impl VmManager {
 
     /// 构建 QEMU 参数
     fn build_qemu_args(&self, config: &VmConfig, image_path: &PathBuf) -> Result<Vec<String>, String> {
-        // 网络端口转发
-        // - vnc: VNC 端口 (VM 5900 → 宿主机 5900)
-        // - ws: websockify (VM 6080 → 宿主机 6080)
-        // - ssh: SSH 访问 (VM 22 → 宿主机 2222)
-        // - mcp: MCP Server (VM 8080 → 宿主机 mcp_host_port, 仅本地 127.0.0.1 访问)
+        // 网络端口转发 (宿主机动态端口 → VM内部固定端口)
+        // - vnc: VNC 端口 (VM vnc_vm_port → 宿主机 ports.vnc)
+        // - ws: websockify (VM ws_vm_port → 宿主机 ports.websocket)
+        // - ssh: SSH 访问 (VM 22 → 宿主机 ports.ssh)
+        // - mcp: MCP Server (VM mcp_vm_port → 宿主机 ports.vm, 仅本地 127.0.0.1 访问)
         let port_forward = format!(
-            "hostfwd=tcp::{vnc}-:{vnc},hostfwd=tcp::{ws}-:{ws},hostfwd=tcp::{ssh}-:22,hostfwd=tcp:127.0.0.1:{mcp}-:{mcp_vm}",
-            vnc = config.vnc_port,
-            ws = config.websocket_port,
-            ssh = config.ssh_port,
-            mcp = config.mcp_host_port,
+            "hostfwd=tcp::{vnc}-:{vnc_vm},hostfwd=tcp::{ws}-:{ws_vm},hostfwd=tcp::{ssh}-:22,hostfwd=tcp:127.0.0.1:{mcp}-:{mcp_vm}",
+            vnc = config.ports.vnc,
+            vnc_vm = config.vnc_vm_port,
+            ws = config.ports.websocket,
+            ws_vm = config.ws_vm_port,
+            ssh = config.ports.ssh,
+            mcp = config.ports.vm,
             mcp_vm = config.mcp_vm_port,
         );
 
@@ -582,7 +642,7 @@ impl VmManager {
                 "-netdev".to_string(), format!("user,id=net0,{}", port_forward),
                 // virtio-serial 用于 MCP 通信 (跨平台，替代 VSOCK)
                 "-device".to_string(), "virtio-serial-pci".to_string(),
-                "-chardev".to_string(), format!("socket,id=mcp,path=/tmp/novaic-mcp-{}.sock,server=on,wait=off", config.vsock_cid),
+                "-chardev".to_string(), format!("socket,id=mcp,path=/tmp/novaic-mcp-{}.sock,server=on,wait=off", config.agent_index),
                 "-device".to_string(), "virtserialport,chardev=mcp,name=mcp".to_string(),
                 // 显示
                 "-device".to_string(), "virtio-gpu-pci".to_string(),
@@ -636,7 +696,7 @@ impl VmManager {
                 "-net".to_string(), format!("user,{}", port_forward),
                 // virtio-serial 用于 MCP 通信 (跨平台)
                 "-device".to_string(), "virtio-serial-pci".to_string(),
-                "-chardev".to_string(), format!("socket,id=mcp,path=/tmp/novaic-mcp-{}.sock,server=on,wait=off", config.vsock_cid),
+                "-chardev".to_string(), format!("socket,id=mcp,path=/tmp/novaic-mcp-{}.sock,server=on,wait=off", config.agent_index),
                 "-device".to_string(), "virtserialport,chardev=mcp,name=mcp".to_string(),
                 "-display".to_string(), "none".to_string(),
             ]);
@@ -685,12 +745,8 @@ pub struct VmStatus {
     pub agent_healthy: bool,       // 宿主机 Agent
     pub mcp_healthy: bool,         // VM 内 MCP Server (NovAIC Core)
     pub websockify_running: bool,  // VNC WebSocket
-    pub vnc_port: u16,
-    pub agent_port: u16,
-    pub mcp_host_port: u16,        // 宿主机 MCP 端口 (QEMU 转发)
-    pub websocket_port: u16,
+    pub ports: PortConfig,         // 完整端口配置
     pub vnc_url: String,
-    pub agent_url: String,
     pub mcp_url: String,           // MCP Server URL
     pub agent_id: Option<String>,  // 当前运行的 Agent ID
 }

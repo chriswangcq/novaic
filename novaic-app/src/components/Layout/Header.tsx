@@ -1,15 +1,16 @@
 import { Settings, Trash2, ChevronLeft } from 'lucide-react';
 import { AgentSelector } from './AgentSelector';
-import { CreateAgentModal } from '../Agent/CreateAgentModal';
+import { CreateAgentModal, SetupConfig } from '../Agent/CreateAgentModal';
 import { useAppStore } from '../../store';
 
 interface HeaderProps {
   onOpenSettings: () => void;
   onBackToDashboard?: () => void;
+  onAgentCreated?: (config: SetupConfig) => void;
 }
 
 export function Header(props: HeaderProps) {
-  const { onOpenSettings, onBackToDashboard } = props;
+  const { onOpenSettings, onBackToDashboard, onAgentCreated } = props;
   const { createAgentModalOpen, setCreateAgentModalOpen, clearMessages } = useAppStore();
 
   return (
@@ -69,7 +70,8 @@ export function Header(props: HeaderProps) {
       {/* Create Agent Modal */}
       <CreateAgentModal 
         isOpen={createAgentModalOpen} 
-        onClose={() => setCreateAgentModalOpen(false)} 
+        onClose={() => setCreateAgentModalOpen(false)}
+        onCreated={onAgentCreated}
       />
     </>
   );

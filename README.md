@@ -262,12 +262,12 @@ cd novaic-vm
 
 ```bash
 # Check what's using the port
-lsof -i :9000  # Agent port
+lsof -i :19999  # Gateway port
 lsof -i :8080  # MCP port
 lsof -i :5900  # VNC port
 
 # Kill the process
-kill $(lsof -t -i:9000)
+kill $(lsof -t -i:19999)
 ```
 
 ### MCP Server Not Responding

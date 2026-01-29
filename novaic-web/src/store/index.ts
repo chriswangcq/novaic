@@ -1,11 +1,11 @@
 /**
  * NovAIC Web Store
  * 
- * Zustand store that uses Gateway API and WebSocket instead of Tauri invoke.
+ * Zustand store that uses Gateway HTTP API and SSE for real-time updates.
  */
 
 import { create } from 'zustand';
-import { api, gateway, type AvailableModel as ApiAvailableModel, type ApiKeyInfo as ApiKeyInfoType } from '../services';
+import { api, type AvailableModel as ApiAvailableModel, type ApiKeyInfo as ApiKeyInfoType } from '../services';
 import { 
   AgentEventType, 
   LogData, 
@@ -337,17 +337,27 @@ export const useAppStore = create<AppStore>((set, get) => ({
       }
     }
     
-    // Send via WebSocket
-    gateway.sendChat(content, {
-      model: modelId,
-      mode: chatMode || 'agent',
-      apiKeyId,
-    });
+    // Send via HTTP API (fire-and-forget style)
+    try {
+      await api.sendChatMessage(content, {
+        model: modelId,
+        mode: chatMode || 'agent',
+        api_key_id: apiKeyId,
+      });
+      console.log('[Store] Message sent via HTTP API');
+    } catch (e) {
+      console.error('[Store] Failed to send message:', e);
+    }
   },
 
-  stopExecution: () => {
+  stopExecution: async () => {
     console.log('[Store] Stop execution requested');
-    gateway.sendInterrupt();
+    try {
+      await api.interruptAgent();
+      console.log('[Store] Agent interrupted via HTTP API');
+    } catch (e) {
+      console.error('[Store] Failed to interrupt agent:', e);
+    }
     set({ isExecuting: false });
   },
 
@@ -372,7 +382,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   clearMessages: () => {
-    gateway.sendClear();
+    // Only clear local state (no server-side clear needed)
     set({ messages: [], logs: [] });
   },
 

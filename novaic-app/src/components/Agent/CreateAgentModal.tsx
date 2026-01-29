@@ -2,18 +2,32 @@
  * Create Agent Modal
  * 
  * Modal dialog for creating a new AIC agent with VM configuration.
+ * Includes environment check step before showing configuration.
+ * Only collects configuration - actual setup happens in SetupWorkspace.
  */
 
 import { useState, useEffect } from 'react';
-import { X, Loader2, HardDrive, Cpu, MemoryStick } from 'lucide-react';
+import { X, Loader2, HardDrive, Cpu, MemoryStick, ChevronRight } from 'lucide-react';
 import { useAppStore } from '../../store';
 import { api } from '../../services';
-import type { AvailableImage } from '../../services/api';
+import { EnvironmentCheck } from '../Setup';
+import type { AvailableImage, AICAgent } from '../../services/api';
+
+// Setup config returned when agent is created
+export interface SetupConfig {
+  agent: AICAgent;
+  sourceImage: string;
+  useCnMirrors: boolean;
+}
 
 interface CreateAgentModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onCreated?: (config: SetupConfig) => void;  // Called when agent is created with setup config
 }
+
+// Modal steps
+type ModalStep = 'environment' | 'configure';
 
 // OS options
 const OS_OPTIONS = [
@@ -38,8 +52,11 @@ const MEMORY_OPTIONS = [
 // CPU options
 const CPU_OPTIONS = [2, 4, 6, 8];
 
-export function CreateAgentModal({ isOpen, onClose }: CreateAgentModalProps) {
+export function CreateAgentModal({ isOpen, onClose, onCreated }: CreateAgentModalProps) {
   const { createAgent, loadAgents } = useAppStore();
+  
+  // Step state
+  const [step, setStep] = useState<ModalStep>('environment');
   
   // Form state
   const [name, setName] = useState('');
@@ -49,18 +66,27 @@ export function CreateAgentModal({ isOpen, onClose }: CreateAgentModalProps) {
   const [memory, setMemory] = useState('4096');
   const [cpus, setCpus] = useState(4);
   const [sourceImage, setSourceImage] = useState('');
+  const [useCnMirrors, setUseCnMirrors] = useState(false);
   
   // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [availableImages, setAvailableImages] = useState<AvailableImage[]>([]);
   const [error, setError] = useState('');
 
-  // Load available images
+  // Auto-detect locale for mirror selection
   useEffect(() => {
-    if (isOpen) {
+    const locale = navigator.language || '';
+    if (locale.startsWith('zh')) {
+      setUseCnMirrors(true);
+    }
+  }, []);
+
+  // Load available images when entering configure step
+  useEffect(() => {
+    if (isOpen && step === 'configure') {
       loadImages();
     }
-  }, [isOpen]);
+  }, [isOpen, step]);
 
   const loadImages = async () => {
     try {
@@ -78,6 +104,7 @@ export function CreateAgentModal({ isOpen, onClose }: CreateAgentModalProps) {
   // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
+      setStep('environment');  // Always start with environment check
       setName('');
       setBackend('qemu');
       setOsType('ubuntu');
@@ -87,6 +114,11 @@ export function CreateAgentModal({ isOpen, onClose }: CreateAgentModalProps) {
       setError('');
     }
   }, [isOpen]);
+
+  // Handle environment check passed
+  const handleEnvironmentReady = () => {
+    setStep('configure');
+  };
 
   // Get available versions for selected OS
   const availableVersions = OS_OPTIONS.find(os => os.type === osType)?.versions || [];
@@ -103,7 +135,8 @@ export function CreateAgentModal({ isOpen, onClose }: CreateAgentModalProps) {
     setError('');
 
     try {
-      await createAgent({
+      // Create agent with pending status
+      const agent = await createAgent({
         name: name.trim(),
         backend,
         os_type: osType,
@@ -113,6 +146,16 @@ export function CreateAgentModal({ isOpen, onClose }: CreateAgentModalProps) {
         source_image: sourceImage || undefined,
       });
       await loadAgents();
+      
+      // Call onCreated with setup config (triggers setup flow)
+      if (onCreated) {
+        onCreated({
+          agent,
+          sourceImage: sourceImage || '',
+          useCnMirrors,
+        });
+      }
+      
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create agent');
@@ -122,6 +165,18 @@ export function CreateAgentModal({ isOpen, onClose }: CreateAgentModalProps) {
   };
 
   if (!isOpen) return null;
+
+  // Get modal title based on step
+  const getModalTitle = () => {
+    switch (step) {
+      case 'environment':
+        return 'Create New Agent';
+      case 'configure':
+        return 'Configure Agent';
+      default:
+        return 'Create New Agent';
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -135,7 +190,15 @@ export function CreateAgentModal({ isOpen, onClose }: CreateAgentModalProps) {
       <div className="relative bg-nb-surface border border-nb-border rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-nb-border">
-          <h2 className="text-lg font-semibold text-nb-text">Create New Agent</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-nb-text">{getModalTitle()}</h2>
+            {/* Step indicator */}
+            <div className="flex items-center gap-1 ml-3">
+              <div className={`w-2 h-2 rounded-full ${step === 'environment' ? 'bg-blue-500' : 'bg-green-500'}`} />
+              <ChevronRight size={14} className="text-nb-text-secondary" />
+              <div className={`w-2 h-2 rounded-full ${step === 'configure' ? 'bg-blue-500' : 'bg-nb-border'}`} />
+            </div>
+          </div>
           <button
             onClick={onClose}
             className="p-1 rounded-md hover:bg-nb-hover text-nb-text-secondary hover:text-nb-text transition-colors"
@@ -144,6 +207,17 @@ export function CreateAgentModal({ isOpen, onClose }: CreateAgentModalProps) {
           </button>
         </div>
 
+        {/* Step: Environment Check */}
+        {step === 'environment' && (
+          <EnvironmentCheck 
+            onReady={handleEnvironmentReady}
+            onBack={onClose}
+          />
+        )}
+
+        {/* Step: Configure */}
+        {step === 'configure' && (
+          <>
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto max-h-[calc(90vh-140px)]">
           {/* Error Message */}
@@ -295,16 +369,29 @@ export function CreateAgentModal({ isOpen, onClose }: CreateAgentModalProps) {
               </select>
             </div>
           </div>
+
+          {/* Mirror Selection */}
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={useCnMirrors}
+                onChange={(e) => setUseCnMirrors(e.target.checked)}
+                className="w-4 h-4 rounded border-nb-border"
+              />
+              <span className="text-sm text-nb-text">Use China mirrors (faster for users in China)</span>
+            </label>
+          </div>
         </form>
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-nb-border">
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => setStep('environment')}
             className="px-4 py-2 text-sm text-nb-text-secondary hover:text-nb-text transition-colors"
           >
-            Cancel
+            Back
           </button>
           <button
             onClick={handleSubmit}
@@ -315,6 +402,8 @@ export function CreateAgentModal({ isOpen, onClose }: CreateAgentModalProps) {
             Create Agent
           </button>
         </div>
+          </>
+        )}
       </div>
     </div>
   );

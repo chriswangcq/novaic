@@ -5,44 +5,64 @@ Browser Tools - Playwright-based browser automation
 import asyncio
 import base64
 from typing import Dict, Any, Optional, List
-from playwright.async_api import async_playwright, Browser, Page, BrowserContext
+from playwright.async_api import async_playwright, Page, BrowserContext
 
 from ..config import settings
 
 
 class BrowserTools:
-    """Browser automation using Playwright"""
+    """Browser automation using Playwright with persistent user data (shares with system chromium)"""
     
     def __init__(self):
         self._playwright = None
-        self._browser: Optional[Browser] = None
-        self._context: Optional[BrowserContext] = None
+        self._context: Optional[BrowserContext] = None  # persistent context (no separate browser)
         self._page: Optional[Page] = None
+        self._new_tab_info: Optional[Dict[str, Any]] = None  # Track new tab events
+    
+    def _on_new_page(self, page: Page):
+        """Callback when a new page/tab is opened"""
+        self._new_tab_info = {
+            "url": page.url,
+            "message": f"New tab opened: {page.url}"
+        }
+        # Auto-switch to new tab for better UX
+        self._page = page
+        print(f"[Browser] New tab opened and switched: {page.url}")
     
     async def _ensure_browser(self) -> Page:
-        """Ensure browser is running and return the page"""
+        """Ensure browser is running and return the page (uses persistent context for login data)"""
         if self._page is not None:
             return self._page
         
         if self._playwright is None:
             self._playwright = await async_playwright().start()
         
-        if self._browser is None:
-            self._browser = await self._playwright.chromium.launch(
+        if self._context is None:
+            import os
+            # Ensure user data directory exists
+            user_data_dir = settings.browser_user_data_dir
+            os.makedirs(user_data_dir, exist_ok=True)
+            
+            # Use launch_persistent_context to share login data with system chromium
+            # WARNING: Cannot run system chromium and Playwright simultaneously (lock conflict)
+            print(f"[Browser] Using persistent user data: {user_data_dir}")
+            self._context = await self._playwright.chromium.launch_persistent_context(
+                user_data_dir=user_data_dir,
                 headless=settings.browser_headless,
+                viewport={"width": 1280, "height": 720},
                 args=[
                     "--no-sandbox",
                     "--disable-setuid-sandbox",
                     "--disable-dev-shm-usage",
                 ]
             )
+            # Listen for new tabs
+            self._context.on("page", self._on_new_page)
         
-        if self._context is None:
-            self._context = await self._browser.new_context(
-                viewport={"width": 1280, "height": 720}
-            )
-        
-        if self._page is None:
+        # Get existing page or create new one
+        if self._context.pages:
+            self._page = self._context.pages[0]
+        else:
             self._page = await self._context.new_page()
         
         return self._page
@@ -108,6 +128,7 @@ class BrowserTools:
         """
         try:
             page = await self._ensure_browser()
+            self._new_tab_info = None  # Reset new tab tracking
             
             # Try different selector strategies
             try:
@@ -119,7 +140,15 @@ class BrowserTools:
             # Wait for any navigation or network activity
             await asyncio.sleep(0.5)
             
-            return {"success": True, "url": page.url}
+            result = {"success": True, "url": self._page.url}
+            
+            # Include new tab info if a new tab was opened
+            if self._new_tab_info:
+                result["new_tab"] = self._new_tab_info
+                result["note"] = "A new tab was opened and is now active"
+                self._new_tab_info = None
+            
+            return result
             
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -230,22 +259,33 @@ class BrowserTools:
             return {"success": False, "error": str(e)}
     
     async def get_tabs(self) -> Dict[str, Any]:
-        """Get all open tabs"""
+        """Get all open tabs with current tab highlighted"""
         try:
             if self._context is None:
-                return {"success": True, "tabs": []}
+                return {"success": True, "tabs": [], "total": 0, "current_index": -1}
             
             pages = self._context.pages
             tabs = []
+            current_index = -1
+            
             for i, p in enumerate(pages):
+                is_active = p == self._page
+                if is_active:
+                    current_index = i
                 tabs.append({
                     "index": i,
                     "url": p.url,
                     "title": await p.title(),
-                    "active": p == self._page
+                    "active": is_active
                 })
             
-            return {"success": True, "tabs": tabs}
+            return {
+                "success": True, 
+                "tabs": tabs,
+                "total": len(tabs),
+                "current_index": current_index,
+                "hint": f"Currently on tab {current_index}. Use browser_switch_tab(index) to switch." if len(tabs) > 1 else None
+            }
             
         except Exception as e:
             return {"success": False, "error": str(e)}
@@ -301,14 +341,11 @@ class BrowserTools:
     async def close(self):
         """Close browser and cleanup"""
         if self._page:
-            await self._page.close()
+            # Don't close page individually, context.close() handles it
             self._page = None
         if self._context:
             await self._context.close()
             self._context = None
-        if self._browser:
-            await self._browser.close()
-            self._browser = None
         if self._playwright:
             await self._playwright.stop()
             self._playwright = None

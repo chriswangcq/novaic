@@ -17,6 +17,8 @@ pub struct DeployProgress {
     pub stage: String,
     pub progress: u32,
     pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub log_line: Option<String>,  // Real-time log line from cloud-init
 }
 
 /// SSH configuration
@@ -114,29 +116,104 @@ fn check_cloud_init_done(ssh_config: &SshConfig) -> bool {
     }
 }
 
-/// Wait for cloud-init to complete
-async fn wait_for_cloud_init(ssh_config: &SshConfig) -> Result<(), String> {
-    println!("[Deploy] Waiting for cloud-init to complete...");
+/// Wait for cloud-init to complete with real-time log streaming
+async fn wait_for_cloud_init(
+    ssh_config: &SshConfig,
+    on_progress: &tauri::ipc::Channel<DeployProgress>,
+) -> Result<(), String> {
+    println!("[Deploy] Waiting for cloud-init to complete (this may take 10-30 minutes)...");
 
-    let max_wait_secs = 600; // 10 minutes
     let check_interval_secs = 5;
-    let mut elapsed = 0;
+    let mut elapsed: u64 = 0;
+    let mut last_line_count: usize = 0;
 
-    while elapsed < max_wait_secs {
+    loop {
+        // Check if cloud-init is done
         if check_cloud_init_done(ssh_config) {
             println!("[Deploy] cloud-init completed after {}s", elapsed);
+            let _ = on_progress.send(DeployProgress {
+                stage: "Initializing".to_string(),
+                progress: 20,
+                message: format!("cloud-init completed after {}s", elapsed),
+                log_line: None,
+            });
             return Ok(());
+        }
+
+        // Try to get new log lines since last read
+        if let Ok(new_lines) = get_cloud_init_new_lines(ssh_config, last_line_count) {
+            let lines: Vec<&str> = new_lines.lines().collect();
+            
+            // Send new log lines to frontend
+            for line in &lines {
+                if !line.trim().is_empty() {
+                    let _ = on_progress.send(DeployProgress {
+                        stage: "Initializing".to_string(),
+                        progress: 15,
+                        message: format!("Installing packages... ({}min elapsed)", elapsed / 60),
+                        log_line: Some(line.to_string()),
+                    });
+                }
+            }
+            
+            // Update line count: get actual total from file
+            if let Ok(total) = get_cloud_init_line_count(ssh_config) {
+                last_line_count = total;
+            }
         }
 
         tokio::time::sleep(tokio::time::Duration::from_secs(check_interval_secs)).await;
         elapsed += check_interval_secs;
 
-        if elapsed % 30 == 0 {
-            println!("[Deploy] Still waiting for cloud-init... {}s elapsed", elapsed);
+        // Send progress update every minute
+        if elapsed % 60 == 0 {
+            println!("[Deploy] Still waiting for cloud-init... {}min elapsed", elapsed / 60);
+            let _ = on_progress.send(DeployProgress {
+                stage: "Initializing".to_string(),
+                progress: 15,
+                message: format!("Installing packages... ({}min elapsed)", elapsed / 60),
+                log_line: None,
+            });
         }
     }
+}
 
-    Err(format!("cloud-init did not complete within {}s", max_wait_secs))
+/// Get total line count of cloud-init log
+fn get_cloud_init_line_count(ssh_config: &SshConfig) -> Result<usize, String> {
+    let mut args = ssh_config.ssh_args();
+    args.push("wc -l < /var/log/cloud-init-output.log 2>/dev/null || echo 0".to_string());
+
+    let output = Command::new("ssh")
+        .args(&args)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|e| format!("Failed to get line count: {}", e))?;
+
+    let count_str = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    count_str.parse::<usize>().map_err(|_| "Invalid line count".to_string())
+}
+
+/// Get new lines from cloud-init log since last read
+fn get_cloud_init_new_lines(ssh_config: &SshConfig, from_line: usize) -> Result<String, String> {
+    let mut args = ssh_config.ssh_args();
+    // Use sed to get lines from `from_line + 1` to end
+    let cmd = if from_line > 0 {
+        format!("sed -n '{},$p' /var/log/cloud-init-output.log 2>/dev/null", from_line + 1)
+    } else {
+        // First read: get last 30 lines to show some initial context
+        "tail -n 30 /var/log/cloud-init-output.log 2>/dev/null".to_string()
+    };
+    args.push(cmd);
+
+    let output = Command::new("ssh")
+        .args(&args)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|e| format!("Failed to get cloud-init logs: {}", e))?;
+
+    Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
 /// Run SSH command on VM
@@ -214,7 +291,7 @@ fn scp_file(ssh_config: &SshConfig, src: &PathBuf, dest: &str) -> Result<(), Str
     }
 }
 
-/// Install dependencies and start service
+/// Install dependencies and start service (check-style: skip if already installed)
 fn install_and_start_service(ssh_config: &SshConfig, use_cn_mirrors: bool) -> Result<(), String> {
     // Configure pip source
     let (pip_index_url, pip_trusted_host) = if use_cn_mirrors {
@@ -223,24 +300,25 @@ fn install_and_start_service(ssh_config: &SshConfig, use_cn_mirrors: bool) -> Re
         ("https://pypi.org/simple/", "pypi.org")
     };
 
-    // Installation script
+    // Installation script with check-style install (cloud-init should have installed deps)
     let install_script = format!(r#"
 set -e
 
-# Wait for apt lock
-echo "Waiting for apt..."
-while pgrep -x "apt-get|apt|dpkg|unattended-upgr" > /dev/null 2>&1; do
-    sleep 5
-done
-
-# Install python3-venv if needed
-if ! dpkg -s python3-venv &> /dev/null; then
-    sudo apt-get update -qq
-    sudo apt-get install -y -qq python3-venv
-fi
-
-# Create virtual environment
+# Check if venv exists (should be created by cloud-init)
 if [ ! -f /opt/novaic-venv/bin/activate ]; then
+    echo "Creating venv (cloud-init may have failed)..."
+    
+    # Wait for apt lock
+    while pgrep -x "apt-get|apt|dpkg|unattended-upgr" > /dev/null 2>&1; do
+        sleep 5
+    done
+    
+    # Install python3-venv if needed
+    if ! dpkg -s python3-venv &> /dev/null; then
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq python3-venv
+    fi
+    
     sudo rm -rf /opt/novaic-venv
     sudo mkdir -p /opt/novaic-venv
     sudo chown $USER:$USER /opt/novaic-venv
@@ -249,18 +327,27 @@ fi
 
 source /opt/novaic-venv/bin/activate
 
-# Install dependencies
-echo "Installing dependencies..."
-pip install --upgrade pip -q -i "{pip_index_url}" --trusted-host "{pip_trusted_host}"
-cd /opt/novaic-mcp-vmuse
-pip install -e . -q -i "{pip_index_url}" --trusted-host "{pip_trusted_host}"
+# Check if fastmcp is installed (indicator that deps are installed)
+if ! python -c "import fastmcp" &> /dev/null 2>&1; then
+    echo "Installing dependencies (cloud-init may have failed)..."
+    pip install --upgrade pip -q -i "{pip_index_url}" --trusted-host "{pip_trusted_host}"
+    cd /opt/novaic-mcp-vmuse
+    pip install -e . -q -i "{pip_index_url}" --trusted-host "{pip_trusted_host}"
+else
+    echo "Dependencies already installed, skipping..."
+    # Still install in editable mode to link the code
+    cd /opt/novaic-mcp-vmuse
+    pip install -e . -q --no-deps 2>/dev/null || true
+fi
 
-# Install Playwright
-echo "Installing Playwright..."
-if ! playwright --version &> /dev/null 2>&1; then
-    pip install playwright -q -i "{pip_index_url}" --trusted-host "{pip_trusted_host}"
+# Check if Playwright chromium is installed
+if [ ! -d ~/.cache/ms-playwright/chromium-* ]; then
+    echo "Installing Playwright chromium (cloud-init may have failed)..."
+    pip install playwright -q -i "{pip_index_url}" --trusted-host "{pip_trusted_host}" 2>/dev/null || true
     playwright install chromium
     sudo playwright install-deps chromium 2>/dev/null || true
+else
+    echo "Playwright chromium already installed, skipping..."
 fi
 
 # Reload and start service
@@ -290,24 +377,36 @@ pub async fn deploy_agent(
         stage: "Connecting".to_string(),
         progress: 0,
         message: "Waiting for SSH connection...".to_string(),
+        log_line: None,
     });
 
     wait_for_ssh(&ssh_config, 15, 20).await?;
 
-    // Step 2: Wait for cloud-init
-    let _ = on_progress.send(DeployProgress {
-        stage: "Initializing".to_string(),
-        progress: 15,
-        message: "Waiting for cloud-init to complete...".to_string(),
-    });
-
-    wait_for_cloud_init(&ssh_config).await?;
+    // Step 2: Check if cloud-init already completed (skip waiting if done)
+    if check_cloud_init_done(&ssh_config) {
+        println!("[Deploy] cloud-init already completed, skipping wait");
+        let _ = on_progress.send(DeployProgress {
+            stage: "Initializing".to_string(),
+            progress: 20,
+            message: "cloud-init already completed".to_string(),
+            log_line: None,
+        });
+    } else {
+        let _ = on_progress.send(DeployProgress {
+            stage: "Initializing".to_string(),
+            progress: 15,
+            message: "First boot: waiting for cloud-init (10-30 min)...".to_string(),
+            log_line: None,
+        });
+        wait_for_cloud_init(&ssh_config, &on_progress).await?;
+    }
 
     // Step 3: Get novaic-mcp-vmuse resource path
     let _ = on_progress.send(DeployProgress {
         stage: "Preparing".to_string(),
         progress: 30,
         message: "Preparing to copy code...".to_string(),
+        log_line: None,
     });
 
     // Try to get novaic-mcp-vmuse from resources, fallback to development path
@@ -338,6 +437,7 @@ pub async fn deploy_agent(
         stage: "Creating directories".to_string(),
         progress: 35,
         message: "Creating directories on VM...".to_string(),
+        log_line: None,
     });
 
     ssh_run(&ssh_config, "sudo mkdir -p /opt/novaic-mcp-vmuse && sudo chown ubuntu:ubuntu /opt/novaic-mcp-vmuse")?;
@@ -347,6 +447,7 @@ pub async fn deploy_agent(
         stage: "Stopping service".to_string(),
         progress: 40,
         message: "Stopping existing service...".to_string(),
+        log_line: None,
     });
 
     let _ = ssh_run(&ssh_config, "sudo systemctl stop novaic 2>/dev/null || true");
@@ -359,6 +460,7 @@ pub async fn deploy_agent(
         stage: "Copying code".to_string(),
         progress: 50,
         message: "Copying novaic-mcp-vmuse to VM...".to_string(),
+        log_line: None,
     });
 
     // Copy src directory
@@ -384,35 +486,97 @@ pub async fn deploy_agent(
         stage: "Installing".to_string(),
         progress: 70,
         message: "Installing dependencies (this may take a few minutes)...".to_string(),
+        log_line: None,
     });
 
     install_and_start_service(&ssh_config, use_cn_mirrors)?;
 
-    // Step 9: Verify service is running
+    // Step 9: Wait for service to be ready
     let _ = on_progress.send(DeployProgress {
         stage: "Verifying".to_string(),
-        progress: 95,
-        message: "Verifying service status...".to_string(),
+        progress: 90,
+        message: "Waiting for service to start...".to_string(),
+        log_line: None,
     });
 
-    tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+    // Wait for service to become active (with retries)
+    let max_service_wait = 60; // 60 seconds
+    let check_interval = 5;
+    let mut service_ready = false;
+    let mut elapsed = 0;
 
-    let status = ssh_run(&ssh_config, "systemctl is-active novaic.service 2>/dev/null || echo 'inactive'")
-        .unwrap_or_else(|_| "unknown".to_string());
+    while elapsed < max_service_wait {
+        tokio::time::sleep(tokio::time::Duration::from_secs(check_interval)).await;
+        elapsed += check_interval;
 
-    if status.trim() == "active" {
+        let status = ssh_run(&ssh_config, "systemctl is-active novaic.service 2>/dev/null || echo 'inactive'")
+            .unwrap_or_else(|_| "unknown".to_string());
+
         let _ = on_progress.send(DeployProgress {
-            stage: "Complete".to_string(),
-            progress: 100,
-            message: "Deployment complete! Service is running.".to_string(),
+            stage: "Verifying".to_string(),
+            progress: 90 + (elapsed as u32 * 8 / max_service_wait as u32).min(8),
+            message: format!("Checking service status... ({}s)", elapsed),
+            log_line: None,
         });
-    } else {
-        let _ = on_progress.send(DeployProgress {
-            stage: "Complete".to_string(),
-            progress: 100,
-            message: format!("Deployment complete. Service status: {}", status.trim()),
-        });
+
+        if status.trim() == "active" {
+            println!("[Deploy] Service is active after {}s", elapsed);
+            service_ready = true;
+            break;
+        }
+
+        println!("[Deploy] Service status: {}, waiting... ({}s)", status.trim(), elapsed);
     }
+
+    if !service_ready {
+        // Get service logs for debugging
+        let logs = ssh_run(&ssh_config, "journalctl -u novaic.service -n 20 --no-pager 2>/dev/null || echo 'no logs'")
+            .unwrap_or_else(|_| "Failed to get logs".to_string());
+        println!("[Deploy] Service failed to start. Logs:\n{}", logs);
+        
+        return Err(format!("Service failed to start within {}s. Check service logs.", max_service_wait));
+    }
+
+    // Step 10: Verify MCP server is responding
+    let _ = on_progress.send(DeployProgress {
+        stage: "Verifying".to_string(),
+        progress: 98,
+        message: "Verifying MCP server...".to_string(),
+        log_line: None,
+    });
+
+    // Wait for MCP HTTP server to be ready (port 8080 in VM)
+    let max_mcp_wait = 30;
+    let mut mcp_ready = false;
+    elapsed = 0;
+
+    while elapsed < max_mcp_wait {
+        let check = ssh_run(&ssh_config, "curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/mcp/ 2>/dev/null || echo '000'")
+            .unwrap_or_else(|_| "000".to_string());
+        
+        let http_code = check.trim();
+        if http_code == "200" || http_code == "404" || http_code == "405" {
+            // 200 = ok, 404/405 = server running but different endpoint - both mean server is up
+            println!("[Deploy] MCP server responding (HTTP {})", http_code);
+            mcp_ready = true;
+            break;
+        }
+
+        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+        elapsed += 3;
+        println!("[Deploy] MCP server not ready (HTTP {}), waiting... ({}s)", http_code, elapsed);
+    }
+
+    if !mcp_ready {
+        println!("[Deploy] Warning: MCP server not responding, but service is active. Continuing...");
+    }
+
+    let _ = on_progress.send(DeployProgress {
+        stage: "Complete".to_string(),
+        progress: 100,
+        message: "Deployment complete! Service is running.".to_string(),
+        log_line: None,
+    });
 
     println!("[Deploy] Deployment complete");
     Ok(())
@@ -432,6 +596,7 @@ pub async fn quick_deploy_agent(
         stage: "Connecting".to_string(),
         progress: 0,
         message: "Connecting to VM...".to_string(),
+        log_line: None,
     });
 
     if !check_ssh(&ssh_config) {
@@ -462,6 +627,7 @@ pub async fn quick_deploy_agent(
         stage: "Stopping".to_string(),
         progress: 20,
         message: "Stopping service...".to_string(),
+        log_line: None,
     });
 
     let _ = ssh_run(&ssh_config, "sudo systemctl stop novaic 2>/dev/null || true");
@@ -471,6 +637,7 @@ pub async fn quick_deploy_agent(
         stage: "Copying".to_string(),
         progress: 40,
         message: "Copying code...".to_string(),
+        log_line: None,
     });
 
     ssh_run(&ssh_config, "rm -rf /opt/novaic-mcp-vmuse/src /opt/novaic-mcp-vmuse/skills")?;
@@ -490,6 +657,7 @@ pub async fn quick_deploy_agent(
         stage: "Restarting".to_string(),
         progress: 80,
         message: "Restarting service...".to_string(),
+        log_line: None,
     });
 
     ssh_run(&ssh_config, "sudo systemctl restart novaic.service")?;
@@ -498,6 +666,7 @@ pub async fn quick_deploy_agent(
         stage: "Complete".to_string(),
         progress: 100,
         message: "Quick deploy complete!".to_string(),
+        log_line: None,
     });
 
     Ok(())

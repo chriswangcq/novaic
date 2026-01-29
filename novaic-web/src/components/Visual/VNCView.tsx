@@ -7,7 +7,7 @@ import { LayoutToggle } from '../Layout/LayoutToggle';
 
 // 配置
 const CONFIG = {
-  agentPort: 9000,    // Agent API 端口 (宿主机本地)
+  agentPort: 19999,    // Gateway API 端口 (固定)
   vncPort: 5900,      // VNC 端口
   wsPort: 6080,       // websockify 端口
 };

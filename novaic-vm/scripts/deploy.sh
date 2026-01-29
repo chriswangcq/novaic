@@ -12,7 +12,7 @@ PROJECT_ROOT="$(dirname "$VM_DIR")"
 NOVAIC_MCP_VMUSE_DIR="${NOVAIC_MCP_VMUSE_DIR:-$PROJECT_ROOT/novaic-mcp-vmuse}"
 
 # SSH 配置
-SSH_PORT="${NOVAIC_SSH_PORT:-2222}"
+SSH_PORT="${NOVAIC_SSH_PORT:-20008}"
 SSH_USER="${SSH_USER:-ubuntu}"
 SSH_HOST="${SSH_HOST:-127.0.0.1}"
 
@@ -160,55 +160,64 @@ echo "[6/6] 安装依赖并启动服务..."
 $SSH_CMD "PIP_INDEX_URL='$PIP_INDEX_URL' PIP_TRUSTED_HOST='$PIP_TRUSTED_HOST' bash -s" << 'INSTALL_SCRIPT'
 set -e
 
-# 等待 apt/dpkg 进程结束（cloud-init 可能还在运行）
-echo "  检查 apt 进程..."
-max_wait=300
-waited=0
-while pgrep -x "apt-get\|apt\|dpkg\|unattended-upgr" > /dev/null 2>&1; do
-    if [ $waited -eq 0 ]; then
-        echo "  等待 apt 进程结束 (cloud-init 可能还在运行)..."
-    fi
-    sleep 5
-    waited=$((waited + 5))
-    echo "    已等待 ${waited}s... ($(pgrep -x 'apt-get\|apt\|dpkg' | wc -l | tr -d ' ') 个进程)"
-    if [ $waited -ge $max_wait ]; then
-        echo "  ⚠️ 等待超时，继续尝试..."
-        break
-    fi
-done
-echo "  ✓ apt 进程已结束"
-
-echo "  检查 python3-venv..."
-if ! dpkg -s python3-venv &> /dev/null; then
-    echo "  安装 python3-venv..."
-    sudo apt-get update -qq
-    sudo apt-get install -y -qq python3-venv
-fi
-
-echo "  创建虚拟环境..."
+# 检查 venv 是否存在（cloud-init 应该已经创建）
 if [ ! -f /opt/novaic-venv/bin/activate ]; then
+    echo "  创建 venv (cloud-init 可能失败了)..."
+    
+    # 等待 apt/dpkg 进程结束
+    max_wait=300
+    waited=0
+    while pgrep -x "apt-get\|apt\|dpkg\|unattended-upgr" > /dev/null 2>&1; do
+        if [ $waited -eq 0 ]; then
+            echo "  等待 apt 进程结束..."
+        fi
+        sleep 5
+        waited=$((waited + 5))
+        if [ $waited -ge $max_wait ]; then
+            echo "  ⚠️ 等待超时，继续尝试..."
+            break
+        fi
+    done
+    
+    if ! dpkg -s python3-venv &> /dev/null; then
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq python3-venv
+    fi
+    
     sudo rm -rf /opt/novaic-venv
     sudo mkdir -p /opt/novaic-venv
     sudo chown $USER:$USER /opt/novaic-venv
     python3 -m venv /opt/novaic-venv
+else
+    echo "  ✓ venv 已存在"
 fi
 
 source /opt/novaic-venv/bin/activate
 
-echo "  安装依赖 (源: $PIP_INDEX_URL)..."
-pip install --upgrade pip -q -i "$PIP_INDEX_URL" --trusted-host "$PIP_TRUSTED_HOST"
-cd /opt/novaic-mcp-vmuse
-pip install -e . -q -i "$PIP_INDEX_URL" --trusted-host "$PIP_TRUSTED_HOST"
-
-# 安装 Playwright
-echo "  配置 Playwright..."
-if ! playwright --version &> /dev/null 2>&1; then
-    pip install playwright -q -i "$PIP_INDEX_URL" --trusted-host "$PIP_TRUSTED_HOST"
-    playwright install chromium
-    sudo playwright install-deps chromium 2>/dev/null || true
+# 检查 fastmcp 是否安装（作为依赖安装的指示器）
+if ! python -c "import fastmcp" &> /dev/null 2>&1; then
+    echo "  安装依赖 (cloud-init 可能失败了)..."
+    pip install --upgrade pip -q -i "$PIP_INDEX_URL" --trusted-host "$PIP_TRUSTED_HOST"
+    cd /opt/novaic-mcp-vmuse
+    pip install -e . -q -i "$PIP_INDEX_URL" --trusted-host "$PIP_TRUSTED_HOST"
+else
+    echo "  ✓ 依赖已安装，跳过"
+    # 仍然用 editable 模式链接代码
+    cd /opt/novaic-mcp-vmuse
+    pip install -e . -q --no-deps 2>/dev/null || true
 fi
 
-echo "  ✓ 依赖安装完成"
+# 检查 Playwright chromium 是否安装
+if [ ! -d ~/.cache/ms-playwright/chromium-* ]; then
+    echo "  安装 Playwright chromium (cloud-init 可能失败了)..."
+    pip install playwright -q -i "$PIP_INDEX_URL" --trusted-host "$PIP_TRUSTED_HOST" 2>/dev/null || true
+    playwright install chromium
+    sudo playwright install-deps chromium 2>/dev/null || true
+else
+    echo "  ✓ Playwright chromium 已安装，跳过"
+fi
+
+echo "  ✓ 依赖检查完成"
 
 # 更新 systemd 服务文件 (FastMCP 版本 - Streamable HTTP)
 # 绑定到 0.0.0.0 以便 QEMU 端口转发可以访问

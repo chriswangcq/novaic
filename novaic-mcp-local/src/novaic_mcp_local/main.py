@@ -252,9 +252,10 @@ def main():
     import sys
     
     # Default to streamable HTTP transport
+    # Default port 20002 = BASE_PORT(20000) + Agent0(0*20) + LOCAL_OFFSET(2)
     transport = os.environ.get("MCP_TRANSPORT", "streamable-http")
     host = os.environ.get("MCP_HOST", "0.0.0.0")
-    port = int(os.environ.get("MCP_PORT", "8082"))
+    port = int(os.environ.get("MCP_PORT", "20002"))
     
     if transport == "streamable-http":
         mcp.run(transport="streamable-http", host=host, port=port)

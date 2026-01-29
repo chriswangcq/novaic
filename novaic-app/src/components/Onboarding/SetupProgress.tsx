@@ -5,9 +5,11 @@
  * - Download progress with speed
  * - Stage indicators
  * - Progress messages
+ * - Real-time cloud-init logs during deployment
  */
 
-import { Download, HardDrive, Upload, CheckCircle, Loader2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Download, HardDrive, Upload, CheckCircle, Loader2, Terminal } from 'lucide-react';
 import type { DownloadProgress, SetupProgress as SetupProgressType, DeployProgress } from '../../services/setup';
 
 interface SetupProgressProps {
@@ -25,6 +27,35 @@ const STEPS = [
 ];
 
 export function SetupProgress({ step, downloadProgress, setupProgress, deployProgress }: SetupProgressProps) {
+  // Log lines for real-time display
+  const [logLines, setLogLines] = useState<string[]>([]);
+  const logContainerRef = useRef<HTMLDivElement>(null);
+
+  // Collect log lines from deployProgress
+  useEffect(() => {
+    if (deployProgress?.log_line) {
+      setLogLines(prev => {
+        const newLines = [...prev, deployProgress.log_line!];
+        // Keep last 100 lines
+        return newLines.slice(-100);
+      });
+    }
+  }, [deployProgress?.log_line]);
+
+  // Reset logs when step changes away from deploying
+  useEffect(() => {
+    if (step !== 'deploying') {
+      setLogLines([]);
+    }
+  }, [step]);
+
+  // Auto-scroll log container
+  useEffect(() => {
+    if (logContainerRef.current) {
+      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+    }
+  }, [logLines]);
+
   // Determine current step index
   const currentStepIndex = 
     step === 'checking' || step === 'downloading' ? 0 :
@@ -162,6 +193,26 @@ export function SetupProgress({ step, downloadProgress, setupProgress, deployPro
         )}
       </div>
 
+      {/* Real-time logs during deployment */}
+      {step === 'deploying' && logLines.length > 0 && (
+        <div className="mt-6">
+          <div className="flex items-center gap-2 mb-2">
+            <Terminal size={14} className="text-nb-text-secondary" />
+            <span className="text-xs text-nb-text-secondary">Installation Log</span>
+          </div>
+          <div 
+            ref={logContainerRef}
+            className="bg-black/50 rounded-lg p-3 h-40 overflow-y-auto font-mono text-xs"
+          >
+            {logLines.map((line, i) => (
+              <div key={i} className="text-green-400/80 leading-relaxed">
+                {line}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Tips */}
       <div className="mt-8 p-4 bg-nb-surface rounded-lg">
         <p className="text-xs text-nb-text-secondary text-center">
@@ -170,7 +221,7 @@ export function SetupProgress({ step, downloadProgress, setupProgress, deployPro
           ) : step === 'creating' ? (
             'Creating the virtual machine disk and configuration. This usually takes about 1-2 minutes.'
           ) : step === 'deploying' ? (
-            'Deploying code and starting services. First boot may take 5-10 minutes for system configuration.'
+            'Installing packages and starting services. This may take 10-30 minutes on first boot.'
           ) : (
             'Please wait while we set up your AI Computer...'
           )}

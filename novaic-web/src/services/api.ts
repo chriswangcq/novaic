@@ -4,7 +4,7 @@
  * Replaces Tauri invoke calls with direct HTTP requests to the Gateway.
  */
 
-const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'http://127.0.0.1:9000';
+const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || 'http://127.0.0.1:19999';
 
 export interface AppConfig {
   version: number;
@@ -197,11 +197,46 @@ export const api = {
   },
 
   /**
-   * Interrupt current execution
+   * Interrupt current execution (legacy endpoint)
    */
   async interrupt(): Promise<void> {
     const res = await fetch(`${GATEWAY_URL}/api/interrupt`, { method: 'POST' });
     if (!res.ok) throw new Error(`Interrupt failed: ${res.status}`);
+  },
+
+  /**
+   * Send a chat message (async, fire-and-forget style)
+   */
+  async sendChatMessage(message: string, options?: {
+    model?: string;
+    mode?: 'agent' | 'chat';
+    api_key_id?: string;
+  }): Promise<{ success: boolean; message_id: string; status: string; timestamp: string }> {
+    const res = await fetch(`${GATEWAY_URL}/api/chat/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message,
+        model: options?.model,
+        mode: options?.mode || 'agent',
+        api_key_id: options?.api_key_id,
+      })
+    });
+    if (!res.ok) throw new Error(`Send chat message failed: ${res.status}`);
+    return res.json();
+  },
+
+  /**
+   * Interrupt agent execution (new endpoint)
+   */
+  async interruptAgent(): Promise<{ success: boolean; message?: string; error?: string }> {
+    const res = await fetch(`${GATEWAY_URL}/api/agent/interrupt`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    if (!res.ok) throw new Error(`Interrupt agent failed: ${res.status}`);
+    return res.json();
   },
 
   /**

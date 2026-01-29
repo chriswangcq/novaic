@@ -2,7 +2,8 @@
 AIC Agent Configuration Manager
 
 Manages multiple AIC agents, each with its own VM configuration.
-Storage: ~/.novaic/agents.json
+Storage: $NOVAIC_DATA_DIR/agents.json
+NOVAIC_DATA_DIR is required (passed from Tauri app).
 """
 
 from typing import Dict, List, Optional, Any
@@ -13,13 +14,38 @@ import json
 import uuid
 import os
 import shutil
+import platform
 
 
 class PortConfig(BaseModel):
-    """Port configuration for an agent's VM (仅用于 VNC/websockify/SSH)"""
-    vnc: int = 5900
-    websocket: int = 6080
-    ssh: int = 2222
+    """
+    Complete port configuration for an agent.
+    
+    Each agent gets a contiguous block of 20 ports starting from BASE_PORT + agent_index * 20.
+    
+    Port layout (offsets 0-19):
+        0: vm        - VM内MCP服务 (vmuse)
+        1: session   - 会话管理MCP
+        2: local     - 本地文件MCP
+        3: memory    - 记忆管理MCP
+        4: chat      - 用户通信MCP
+        5: qemudebug - QEMU调试MCP
+        6: vnc       - VNC服务
+        7: websocket - noVNC WebSocket
+        8: ssh       - SSH转发
+        9-19: reserved - 预留扩展
+    """
+    # MCP服务端口
+    vm: int = 20000           # VM内MCP (vmuse)
+    session: int = 20001      # 会话管理MCP
+    local: int = 20002        # 本地文件MCP
+    memory: int = 20003       # 记忆管理MCP
+    chat: int = 20004         # 用户通信MCP
+    qemudebug: int = 20005    # QEMU调试MCP
+    # VM连接端口
+    vnc: int = 20006          # VNC服务
+    websocket: int = 20007    # noVNC WebSocket
+    ssh: int = 20008          # SSH转发
 
 
 class VmConfig(BaseModel):
@@ -31,11 +57,12 @@ class VmConfig(BaseModel):
     memory: str = "4096"   # Memory in MB
     cpus: int = 4          # CPU cores
     ports: PortConfig = Field(default_factory=PortConfig)
-    # MCP 通信配置
-    mcp_host_port: int = 8080  # 宿主机 MCP 端口 (QEMU 端口转发: 宿主机 -> VM 8080)
+    # VM 内部端口 (固定，通过QEMU端口转发映射到宿主机动态端口)
     mcp_vm_port: int = 8080    # VM 内部 MCP 端口 (固定)
-    # 兼容性字段 (保留)
-    vsock_cid: int = 3         # 用于 Agent ID 和端口分配偏移
+    vnc_vm_port: int = 5900    # VM 内部 VNC 端口 (固定)
+    ws_vm_port: int = 6080     # VM 内部 WebSocket 端口 (固定)
+    # 兼容性字段 (用于Agent索引计算)
+    agent_index: int = 0       # Agent索引，用于端口分配
 
 
 class AICAgent(BaseModel):
@@ -45,8 +72,10 @@ class AICAgent(BaseModel):
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     vm: VmConfig = Field(default_factory=VmConfig)
     
-    # Runtime status (not persisted)
-    status: str = "stopped"  # stopped, starting, running, error
+    # Runtime status (not persisted, default to stopped for loaded agents)
+    # pending = newly created, awaiting setup
+    # stopped/starting/running/error = runtime states
+    status: str = "stopped"
 
 
 class AgentsConfig(BaseModel):
@@ -56,14 +85,76 @@ class AgentsConfig(BaseModel):
     agents: List[AICAgent] = []
 
 
-# Base values for resource allocation
-BASE_PORTS = {
-    "vnc": 5900,
-    "websocket": 6080,
-    "ssh": 2222,
-    "mcp": 8080,  # MCP 宿主机端口起始值 (8080, 8081, ...)
+# Centralized port allocation configuration
+# Port layout:
+#   19999         - Gateway (固定)
+#   20000-21999   - Agents (100个 × 20端口)
+GATEWAY_PORT = 19999        # Gateway 固定端口
+BASE_PORT = 20000           # Agent 基础端口号
+PORTS_PER_AGENT = 20        # 每个Agent分配的端口数量
+MAX_AGENTS = 100            # 最大支持的Agent数量
+
+# 服务端口偏移量 (相对于Agent基础端口)
+SERVICE_OFFSETS = {
+    "vm": 0,           # VM内MCP (vmuse)
+    "session": 1,      # 会话管理MCP
+    "local": 2,        # 本地文件MCP
+    "memory": 3,       # 记忆管理MCP
+    "chat": 4,         # 用户通信MCP
+    "qemudebug": 5,    # QEMU调试MCP
+    "vnc": 6,          # VNC服务
+    "websocket": 7,    # noVNC WebSocket
+    "ssh": 8,          # SSH转发
+    # 9-19: 预留扩展
 }
-BASE_VSOCK_CID = 3  # 用于 Agent ID 偏移
+
+
+def get_agent_port(agent_index: int, service: str) -> int:
+    """
+    Calculate the port for a specific service of an agent.
+    
+    Args:
+        agent_index: Agent index (0, 1, 2, ...)
+        service: Service name (vm, session, local, memory, chat, qemudebug, vnc, websocket, ssh)
+    
+    Returns:
+        Port number
+        
+    Example:
+        Agent 0: vm=20000, session=20001, ..., ssh=20008
+        Agent 1: vm=20020, session=20021, ..., ssh=20028
+    """
+    if service not in SERVICE_OFFSETS:
+        raise ValueError(f"Unknown service: {service}. Valid services: {list(SERVICE_OFFSETS.keys())}")
+    if agent_index < 0 or agent_index >= MAX_AGENTS:
+        raise ValueError(f"Agent index must be between 0 and {MAX_AGENTS - 1}")
+    
+    base = BASE_PORT + agent_index * PORTS_PER_AGENT
+    return base + SERVICE_OFFSETS[service]
+
+
+def allocate_ports_for_agent(agent_index: int) -> PortConfig:
+    """
+    Allocate all ports for an agent based on its index.
+    
+    Args:
+        agent_index: Agent index (0, 1, 2, ...)
+    
+    Returns:
+        PortConfig with all ports assigned
+    """
+    base = BASE_PORT + agent_index * PORTS_PER_AGENT
+    return PortConfig(
+        vm=base + SERVICE_OFFSETS["vm"],
+        session=base + SERVICE_OFFSETS["session"],
+        local=base + SERVICE_OFFSETS["local"],
+        memory=base + SERVICE_OFFSETS["memory"],
+        chat=base + SERVICE_OFFSETS["chat"],
+        qemudebug=base + SERVICE_OFFSETS["qemudebug"],
+        vnc=base + SERVICE_OFFSETS["vnc"],
+        websocket=base + SERVICE_OFFSETS["websocket"],
+        ssh=base + SERVICE_OFFSETS["ssh"],
+    )
 
 
 class AgentConfigManager:
@@ -71,12 +162,16 @@ class AgentConfigManager:
     Manages AIC Agent configurations.
     
     Storage:
-    - Config: ~/.novaic/agents.json
-    - VMs: ~/.novaic/vms/{agent-id}/
+    - Config: $NOVAIC_DATA_DIR/agents.json
+    - VMs: $NOVAIC_DATA_DIR/vms/{agent-id}/
+    
+    NOVAIC_DATA_DIR is required (passed from Tauri app).
     """
     
     def __init__(self):
-        self._config_dir = Path.home() / ".novaic"
+        if not os.environ.get("NOVAIC_DATA_DIR"):
+            raise RuntimeError("NOVAIC_DATA_DIR environment variable is required")
+        self._config_dir = Path(os.environ["NOVAIC_DATA_DIR"])
         self._config_file = self._config_dir / "agents.json"
         self._vms_dir = self._config_dir / "vms"
         self._cache: Optional[AgentsConfig] = None
@@ -167,14 +262,16 @@ class AgentConfigManager:
         """
         config = self.load()
         
-        # Allocate resources (ports + MCP port + CID offset)
-        ports, mcp_host_port, vsock_cid = self._allocate_resources(config)
+        # Allocate resources (find next available agent index)
+        agent_index = self._find_next_agent_index(config)
+        ports = allocate_ports_for_agent(agent_index)
         
-        # Create agent
+        # Create agent with pending status (needs setup)
         agent_id = str(uuid.uuid4())
         agent = AICAgent(
             id=agent_id,
             name=name,
+            status="pending",  # New agent needs setup
             vm=VmConfig(
                 backend=backend,
                 os_type=os_type,
@@ -182,9 +279,10 @@ class AgentConfigManager:
                 memory=memory,
                 cpus=cpus,
                 ports=ports,
-                mcp_host_port=mcp_host_port,  # 宿主机 MCP 端口 (8081, 8082, ...)
-                mcp_vm_port=8080,  # VM 内部固定端口
-                vsock_cid=vsock_cid,
+                mcp_vm_port=8080,   # VM 内部 MCP 端口 (固定)
+                vnc_vm_port=5900,   # VM 内部 VNC 端口 (固定)
+                ws_vm_port=6080,    # VM 内部 WebSocket 端口 (固定)
+                agent_index=agent_index,
                 image_path=str(self._get_agent_vm_dir(agent_id) / f"{os_type}-{os_version}.qcow2"),
             )
         )
@@ -202,8 +300,8 @@ class AgentConfigManager:
         # Copy UEFI firmware from Homebrew QEMU (ARM64 only)
         self._setup_uefi_firmware(vm_dir)
         
-        # Create cloud-init seed ISO
-        self._create_seed_iso(vm_dir)
+        # Note: cloud-init seed ISO is created by novaic-app/src-tauri/src/vm/setup.rs
+        # Do NOT create seed.iso here, it would override the complete version
         
         # Add to config
         config.agents.append(agent)
@@ -286,40 +384,34 @@ class AgentConfigManager:
         """Get VM directory for an agent"""
         return self._vms_dir / agent_id
     
-    def _allocate_resources(self, config: AgentsConfig) -> tuple:
+    def _find_next_agent_index(self, config: AgentsConfig) -> int:
         """
-        Allocate unique ports for a new agent
+        Find the next available agent index for port allocation.
+        
+        This finds gaps in the sequence to reuse indices from deleted agents.
         
         Returns:
-            (PortConfig, mcp_host_port, vsock_cid)
+            Next available agent index (0, 1, 2, ...)
         """
-        # Collect used offsets (based on VNC port or VSOCK CID)
-        used_offsets = set()
+        # Collect used indices
+        used_indices = set()
         for agent in config.agents:
-            # Calculate offset from base
-            offset = agent.vm.vsock_cid - BASE_VSOCK_CID
-            used_offsets.add(offset)
+            used_indices.add(agent.vm.agent_index)
         
-        # Find next available offset
-        offset = 0
-        while offset in used_offsets:
-            offset += 1
+        # Find next available index (fill gaps first)
+        index = 0
+        while index in used_indices:
+            index += 1
         
-        ports = PortConfig(
-            vnc=BASE_PORTS["vnc"] + offset,
-            websocket=BASE_PORTS["websocket"] + offset,
-            ssh=BASE_PORTS["ssh"] + offset,
-        )
+        if index >= MAX_AGENTS:
+            raise RuntimeError(f"Maximum number of agents ({MAX_AGENTS}) reached")
         
-        mcp_host_port = BASE_PORTS["mcp"] + offset  # 8081, 8082, 8083...
-        vsock_cid = BASE_VSOCK_CID + offset
-        
-        return ports, mcp_host_port, vsock_cid
+        return index
     
     def _allocate_ports(self, config: AgentsConfig) -> PortConfig:
-        """Allocate unique ports for a new agent (deprecated, use _allocate_resources)"""
-        ports, _, _ = self._allocate_resources(config)
-        return ports
+        """Allocate unique ports for a new agent"""
+        agent_index = self._find_next_agent_index(config)
+        return allocate_ports_for_agent(agent_index)
     
     def _setup_uefi_firmware(self, vm_dir: Path) -> None:
         """Copy UEFI firmware from Homebrew QEMU to VM directory (ARM64 only)"""
@@ -360,97 +452,34 @@ class AgentConfigManager:
                 f.write(b"\x00" * (64 * 1024 * 1024))
             print(f"[AgentConfig] Created UEFI VARS at {dest_vars}")
     
-    def _create_seed_iso(self, vm_dir: Path) -> None:
-        """Create cloud-init seed ISO for VM initialization"""
-        import subprocess
-        
-        seed_iso = vm_dir / "seed.iso"
-        if seed_iso.exists():
-            return
-        
-        # Create cloud-init directory
-        ci_dir = vm_dir / "cloud-init"
-        ci_dir.mkdir(exist_ok=True)
-        
-        # Get SSH public key
-        ssh_pubkey = ""
-        ssh_key_paths = [
-            Path.home() / ".ssh" / "id_ed25519.pub",
-            Path.home() / ".ssh" / "id_rsa.pub",
-        ]
-        for key_path in ssh_key_paths:
-            if key_path.exists():
-                ssh_pubkey = key_path.read_text().strip()
-                break
-        
-        # meta-data
-        (ci_dir / "meta-data").write_text("instance-id: novaic-vm\nlocal-hostname: novaic\n")
-        
-        # user-data
-        user_data = f"""#cloud-config
-hostname: novaic
-users:
-  - name: ubuntu
-    sudo: ALL=(ALL) NOPASSWD:ALL
-    shell: /bin/bash
-    ssh_authorized_keys:
-      - {ssh_pubkey}
-chpasswd:
-  list: |
-    ubuntu:ubuntu
-  expire: false
-ssh_pwauth: true
-"""
-        (ci_dir / "user-data").write_text(user_data)
-        
-        # Create ISO using hdiutil (macOS) or genisoimage (Linux)
-        try:
-            result = subprocess.run(
-                ["hdiutil", "makehybrid", "-o", str(seed_iso), "-hfs", "-joliet",
-                 "-iso", "-default-volume-name", "cidata", str(ci_dir)],
-                capture_output=True, text=True
-            )
-            if result.returncode == 0:
-                print(f"[AgentConfig] Created seed ISO at {seed_iso}")
-            else:
-                print(f"[AgentConfig] Warning: Failed to create seed ISO: {result.stderr}")
-        except Exception as e:
-            print(f"[AgentConfig] Warning: Failed to create seed ISO: {e}")
-        
-        # Cleanup
-        shutil.rmtree(ci_dir, ignore_errors=True)
-    
     def get_available_images(self) -> List[Dict[str, Any]]:
         """
-        Get list of available VM images.
+        Get list of available base images (cloud images) for cloning.
         
-        Returns images from:
+        Returns .img files from:
         - novaic-vm/images/ (development)
-        - ~/.novaic/images/ (user downloaded)
+        - $NOVAIC_DATA_DIR/images/ (user downloaded)
         """
         images = []
         
-        # Check novaic-vm/images (development path)
-        dev_images_dir = Path.home() / "novaic" / "novaic-vm" / "images"
-        if dev_images_dir.exists():
-            for img in dev_images_dir.glob("*.qcow2"):
+        def scan_directory(directory: Path, source: str):
+            if not directory.exists():
+                return
+            for img in directory.glob("*.img"):
                 images.append({
                     "path": str(img),
                     "name": img.stem,
                     "size": img.stat().st_size,
-                    "source": "development"
+                    "source": source
                 })
         
-        # Check ~/.novaic/images (user images)
+        # Check novaic-vm/images (development path)
+        dev_images_dir = Path.home() / "novaic" / "novaic-vm" / "images"
+        scan_directory(dev_images_dir, "development")
+        
+        # Check $NOVAIC_DATA_DIR/images (user images)
         user_images_dir = self._config_dir / "images"
-        if user_images_dir.exists():
-            for img in user_images_dir.glob("*.qcow2"):
-                images.append({
-                    "path": str(img),
-                    "name": img.stem,
-                    "size": img.stat().st_size,
-                    "source": "user"
-                })
+        scan_directory(user_images_dir, "user")
         
         return images
 

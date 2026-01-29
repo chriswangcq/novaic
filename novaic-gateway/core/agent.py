@@ -23,6 +23,7 @@ from .session import SessionManager
 from .mcp_client import MCPClient, MCPSkill
 from executor.registry import ToolRegistry
 from agent.session.compaction import Compactor
+from agent.session.storage import SessionStorage
 
 
 # ==================== Data Classes ====================
@@ -106,18 +107,23 @@ class NovAICAgent:
     - Skills (Resources) 提供领域知识
     """
     
-    def __init__(self, mcp_port: int, tool_registry: Optional[ToolRegistry] = None):
+    def __init__(self, mcp_port: int, tool_registry: Optional[ToolRegistry] = None, session_key: str = "main"):
         """
         Initialize the Agent.
         
         Args:
             mcp_port: MCP Server 端口 (QEMU 转发的端口)
             tool_registry: Optional unified tool registry (aggregates multiple MCP servers)
+            session_key: Session identifier for persistence (default: "main")
         """
         self.mcp_port = mcp_port
+        self.session_key = session_key
         
         # ToolRegistry for unified tool access (if provided)
         self.tool_registry = tool_registry
+        
+        # Session persistence
+        self.storage = SessionStorage()
         
         # Cache for LLM clients (cache_key -> client)
         self._llm_clients: Dict[str, BaseLLMClient] = {}
@@ -161,6 +167,17 @@ class NovAICAgent:
             compaction_ratio=0.5,    # Compact 50% of oldest messages
             min_messages_to_keep=6,  # Always keep recent 6 messages
         )
+        self.compaction_check_interval = 10  # 每 10 轮检查一次 compaction
+        self._compaction_lock = asyncio.Lock()  # Lock for async compaction
+        self._compaction_task: Optional[asyncio.Task] = None  # Background compaction task
+        
+        # Session persistence tracking
+        self._last_saved_msg_count = 0  # Track how many messages have been saved
+        self._session_restored = False  # Whether session was restored from disk
+        
+        # Context injection settings (自主调度 - inbox)
+        self.inbox_check_interval = 5  # 每 5 轮注入一次上下文 (legacy, now check every loop)
+        self._inbox_callback = None  # Callback to get pending events
         self.model_context_sizes = {
             "gpt-4": 8192,
             "gpt-4-turbo": 128000,
@@ -196,7 +213,7 @@ class NovAICAgent:
         api_key: str,
     ) -> Optional[Dict[str, Any]]:
         """
-        Check if compaction is needed and perform it if so.
+        Check if compaction is needed and start async compaction if so (non-blocking).
         
         Args:
             model: Model being used
@@ -205,26 +222,156 @@ class NovAICAgent:
             api_key: API key
         
         Returns:
-            Compaction result if compaction was performed, None otherwise
+            None (compaction runs asynchronously)
         """
+        # 如果已经有一个 compaction 任务在运行，跳过
+        if self._compaction_task and not self._compaction_task.done():
+            print(f"[Agent] Compaction already in progress, skipping")
+            return None
+        
         messages = self.session.get_all_messages()
         context_size = self._get_model_context_size(model)
         
         if not self.compactor.should_compact(messages, context_size):
             return None
         
-        # Get LLM client for summary generation
-        llm_client = self._get_llm_client(provider, api_base, api_key)
+        # 获取需要压缩的消息快照
+        messages_snapshot = messages.copy()
         
-        # Perform compaction
-        result = await self.compactor.compact(messages, llm_client, model)
+        # 启动后台 compaction 任务（非阻塞）
+        print(f"[Agent] Starting async compaction task...")
+        self._compaction_task = asyncio.create_task(
+            self._do_compaction_async(
+                messages_snapshot=messages_snapshot,
+                model=model,
+                provider=provider,
+                api_base=api_base,
+                api_key=api_key,
+            )
+        )
         
-        if result.get("stats", {}).get("compacted"):
-            # Update session with compacted messages
-            self.session.messages = result["new_messages"]
-            print(f"[Agent] Session compacted: {result['stats']}")
+        return None  # 不等待结果，立即返回
+    
+    async def _do_compaction_async(
+        self,
+        messages_snapshot: List[Dict[str, Any]],
+        model: str,
+        provider: str,
+        api_base: str,
+        api_key: str,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        异步执行 compaction（后台任务）。
         
-        return result
+        使用锁保护 session 更新，确保原子操作。
+        同时保存 compaction summary 到磁盘。
+        """
+        try:
+            # Get LLM client for summary generation
+            llm_client = self._get_llm_client(provider, api_base, api_key)
+            
+            # Perform compaction (this is the slow part)
+            result = await self.compactor.compact(messages_snapshot, llm_client, model)
+            
+            if result.get("stats", {}).get("compacted"):
+                # 使用锁保护 session 更新
+                async with self._compaction_lock:
+                    # 区间替换逻辑：
+                    # 计算快照中被压缩掉的消息数量
+                    compacted_count = result["stats"].get("messages_compacted", 0)
+                    
+                    # 获取当前 session 的最新消息（可能在 compaction 期间有新消息）
+                    current_messages = self.session.get_all_messages()
+                    
+                    # 新消息 = 当前消息中，快照之后新增的消息
+                    new_messages_since_snapshot = current_messages[len(messages_snapshot):]
+                    
+                    # 最终消息列表 = compacted 结果 + 新增消息
+                    final_messages = result["new_messages"] + new_messages_since_snapshot
+                    self.session.messages = final_messages
+                    
+                    # 保存 compaction summary 到磁盘
+                    if result.get("summary"):
+                        self.storage.save_compaction_summary(
+                            session_key=self.session_key,
+                            summary=result["summary"],
+                            compacted_count=compacted_count,
+                            original_tokens=result["stats"].get("original_tokens", 0),
+                            summary_tokens=result["stats"].get("new_tokens", 0),
+                        )
+                    
+                    # 更新保存计数（compaction 后重置）
+                    self._last_saved_msg_count = len(final_messages)
+                    
+                    print(f"[Agent] Async compaction completed: {result['stats']}")
+            
+            return result
+            
+        except Exception as e:
+            print(f"[Agent] Async compaction failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+    
+    def set_inbox_callback(self, callback) -> None:
+        """
+        Set callback to get pending events for context injection.
+        
+        Args:
+            callback: Async function that returns inbox info dict
+        """
+        self._inbox_callback = callback
+    
+    async def _get_inbox_context(self) -> Optional[str]:
+        """
+        Get formatted inbox context for injection into messages.
+        
+        Returns:
+            Formatted string with inbox summary, or None if empty/unavailable
+        """
+        if not self._inbox_callback:
+            return None
+        
+        try:
+            inbox = await self._inbox_callback()
+            pending_count = inbox.get("pending_count", 0)
+            
+            if pending_count == 0:
+                return None
+            
+            events = inbox.get("events", [])
+            has_urgent = inbox.get("has_urgent", False)
+            recommendation = inbox.get("recommendation", "continue")
+            
+            # Build context message
+            lines = [f"📬 [收件箱] 有 {pending_count} 个待处理事件:"]
+            
+            for event in events[:5]:  # Show first 5 events
+                event_type = event.get("type", "unknown")
+                content = event.get("content", "")
+                priority = event.get("priority", "normal")
+                marker = "🔴" if priority == "high" else "⚪"
+                
+                if event_type == "user_message":
+                    lines.append(f"  {marker} [用户消息] \"{content}\"")
+                else:
+                    summary = event.get("summary", "")[:100]
+                    lines.append(f"  {marker} [{event_type}] {summary}")
+            
+            if has_urgent:
+                lines.append("⚠️ 有高优先级事件需要处理")
+            
+            if recommendation == "check_urgent":
+                lines.append("建议: 优先处理高优先级事件")
+            elif recommendation == "process_all":
+                lines.append("建议: 处理积压事件")
+            
+            print(f"[Agent] Inbox context: {pending_count} pending events, urgent={has_urgent}")
+            return "\n".join(lines)
+            
+        except Exception as e:
+            print(f"[Agent] Failed to get inbox context: {e}")
+            return None
     
     def _get_llm_client(
         self, 
@@ -363,6 +510,9 @@ class NovAICAgent:
                 self._executor_healthy = True
                 self._tools_initialized = True  # 只有成功发现工具才标记为已初始化
                 print(f"[Agent] ✓ Initialized successfully: {len(self.tools)} tools, {len(self.skills)} skills")
+                
+                # 尝试恢复之前的会话
+                self.restore_session()
             else:
                 self._executor_healthy = False
                 print(f"[Agent] ✗ MCP Server connected but NO TOOLS discovered!")
@@ -484,7 +634,119 @@ class NovAICAgent:
         trace_summary = self._current_trace.to_dict()
         print(f"[Agent] Task completed: {json.dumps(trace_summary, ensure_ascii=False)}")
         
+        # 保存会话到磁盘
+        self._save_session()
+        
         self._current_trace = None
+    
+    def _save_session(self) -> None:
+        """
+        保存当前会话到磁盘（增量保存）
+        
+        只保存自上次保存以来的新消息，避免重复写入。
+        """
+        messages = self.session.get_all_messages()
+        new_messages = messages[self._last_saved_msg_count:]
+        
+        if not new_messages:
+            print(f"[Agent] No new messages to save for session '{self.session_key}'")
+            return
+        
+        for msg in new_messages:
+            try:
+                timestamp = None
+                if "timestamp" in msg:
+                    timestamp = datetime.fromisoformat(msg["timestamp"])
+                
+                self.storage.save_message(
+                    session_key=self.session_key,
+                    role=msg.get("role", "unknown"),
+                    content=msg.get("content", ""),
+                    timestamp=timestamp,
+                    metadata=msg.get("metadata"),
+                )
+            except Exception as e:
+                print(f"[Agent] Error saving message: {e}")
+        
+        self._last_saved_msg_count = len(messages)
+        print(f"[Agent] Saved {len(new_messages)} new messages to session '{self.session_key}' (total: {self._last_saved_msg_count})")
+    
+    def restore_session(self) -> bool:
+        """
+        从磁盘恢复之前的会话。
+        
+        加载逻辑：
+        1. 如果有 compaction summary，加载它作为历史摘要
+        2. 加载 compaction 之后的所有消息
+        
+        Returns:
+            True if session was restored, False if no previous session
+        """
+        if self._session_restored:
+            print(f"[Agent] Session '{self.session_key}' already restored")
+            return True
+        
+        if not self.storage.session_exists(self.session_key):
+            print(f"[Agent] No previous session found for '{self.session_key}'")
+            return False
+        
+        try:
+            # 加载完整会话（包括 compaction summaries）
+            entries = self.storage.load_full_session(self.session_key)
+            
+            if not entries:
+                print(f"[Agent] Session file exists but is empty for '{self.session_key}'")
+                return False
+            
+            # 找到最后一个 compaction summary
+            last_compaction_idx = -1
+            last_compaction = None
+            for i, entry in enumerate(entries):
+                if entry.get("type") == "compaction_summary":
+                    last_compaction_idx = i
+                    last_compaction = entry
+            
+            # 构建恢复的消息列表
+            restored_messages = []
+            
+            # 如果有 compaction summary，加载它
+            if last_compaction:
+                restored_messages.append({
+                    "role": "system",
+                    "content": f"[Previous conversation summary]\n\n{last_compaction.get('summary', '')}",
+                    "timestamp": last_compaction.get("timestamp", datetime.now().isoformat()),
+                })
+                
+                # 只加载 compaction 之后的消息
+                messages_to_load = entries[last_compaction_idx + 1:]
+            else:
+                # 没有 compaction，加载所有消息
+                messages_to_load = entries
+            
+            # 加载消息（跳过 compaction_summary 类型）
+            for entry in messages_to_load:
+                if entry.get("type") == "message":
+                    restored_messages.append({
+                        "role": entry.get("role", "user"),
+                        "content": entry.get("content", ""),
+                        "timestamp": entry.get("timestamp", datetime.now().isoformat()),
+                    })
+            
+            # 恢复到 session manager
+            self.session.messages = restored_messages
+            self._last_saved_msg_count = len(restored_messages)
+            self._session_restored = True
+            
+            print(f"[Agent] Restored session '{self.session_key}': {len(restored_messages)} messages"
+                  + (f" (with compaction summary)" if last_compaction else ""))
+            
+            return True
+            
+        except Exception as e:
+            print(f"[Agent] Error restoring session '{self.session_key}': {e}")
+            import traceback
+            traceback.print_exc()
+            return False
     
     def _add_step_to_trace(self, iteration: int, reasoning: str = "") -> AgentStep:
         """添加步骤到当前追踪"""
@@ -806,8 +1068,36 @@ class NovAICAgent:
         
         iteration = 0
         
-        while not self._interrupted and iteration < self.max_iterations:
+        # 无限循环，依赖 Agent 自主调用 agent_rest() 结束任务
+        # 上下文压缩机制会自动管理 context window
+        while not self._interrupted:
             iteration += 1
+            
+            # 定期检查 context compaction (在 loop 内部)
+            if iteration % self.compaction_check_interval == 0:
+                try:
+                    compaction_result = await self._check_compaction(model, provider, api_base, api_key)
+                    if compaction_result and compaction_result.get("stats", {}).get("compacted"):
+                        # 更新 messages 列表
+                        messages = [
+                            {"role": "system", "content": system_prompt}
+                        ] + self.session.get_messages_for_llm()
+                        yield {
+                            "type": "status",
+                            "data": {"message": f"📦 [Iteration {iteration}] Context compacted: saved {compaction_result['stats']['tokens_saved']} tokens"}
+                        }
+                except Exception as e:
+                    print(f"[Agent] Compaction check failed at iteration {iteration} (non-fatal): {e}")
+            
+            # 每轮都检查收件箱（自主调度支持）
+            inbox_context = await self._get_inbox_context()
+            if inbox_context:
+                # 注入为 system 消息，提醒 Agent 检查收件箱
+                messages.append({
+                    "role": "system",
+                    "content": inbox_context
+                })
+                yield {"type": "status", "data": f"[Iteration {iteration}] 收件箱有新消息"}
             
             # 创建步骤追踪
             current_step = self._add_step_to_trace(iteration)
@@ -828,17 +1118,22 @@ class NovAICAgent:
                 
                 content = message.get("content") or ""
                 tool_calls = message.get("tool_calls") or []
+                # 通用提取 reasoning_content (支持 kimi/deepseek 等)
+                reasoning_content = message.get("reasoning_content")
                 
-                # 记录 reasoning
-                current_step.reasoning = content
+                # 记录 reasoning (优先用 reasoning_content，否则用 content)
+                current_step.reasoning = reasoning_content or content
                 
                 print(f"[Agent] LLM response - iteration: {iteration}, "
                       f"content: {content[:200] if content else '(empty)'}, "
-                      f"tool_calls: {len(tool_calls)}, finish_reason: {finish_reason}")
+                      f"tool_calls: {len(tool_calls)}, finish_reason: {finish_reason}"
+                      f"{', has_reasoning' if reasoning_content else ''}")
                 
                 if tool_calls:
-                    if content:
-                        yield {"type": "thinking", "data": content}
+                    # 如果有 reasoning_content，优先展示；否则展示 content
+                    thinking_text = reasoning_content or content
+                    if thinking_text:
+                        yield {"type": "thinking", "data": thinking_text}
                     else:
                         tool_names = [tc.get("function", {}).get("name", "unknown") for tc in tool_calls]
                         yield {"type": "thinking", "data": f"Executing: {', '.join(tool_names)}"}
@@ -846,11 +1141,15 @@ class NovAICAgent:
                 # 修复：有些 API 返回 finish_reason 可能不是 "tool_calls"
                 # 只要有 tool_calls 就应该执行
                 if tool_calls:
-                    messages.append({
+                    assistant_msg = {
                         "role": "assistant",
                         "content": content,
                         "tool_calls": tool_calls
-                    })
+                    }
+                    # 透传 reasoning_content (kimi/deepseek 需要)
+                    if reasoning_content:
+                        assistant_msg["reasoning_content"] = reasoning_content
+                    messages.append(assistant_msg)
                     
                     for tool_call in tool_calls:
                         if self._interrupted:
@@ -911,9 +1210,25 @@ class NovAICAgent:
                         })
                     
                 else:
-                    self.session.add_assistant_message(content)
-                    yield {"type": "final", "data": content}
-                    break
+                    # 任务可能完成，但先检查 inbox 是否有新消息
+                    inbox_context = await self._get_inbox_context()
+                    if inbox_context:
+                        # 有新消息！注入到 context 并继续处理
+                        print(f"[Agent] Task complete but inbox has new messages, continuing...")
+                        messages.append({
+                            "role": "system",
+                            "content": inbox_context
+                        })
+                        # 添加当前回复到消息历史，然后继续
+                        self.session.add_assistant_message(content)
+                        messages.append({"role": "assistant", "content": content})
+                        yield {"type": "status", "data": "📬 检测到新消息，继续处理..."}
+                        # 不 break，继续循环处理新消息
+                    else:
+                        # 没有新消息，真正完成
+                        self.session.add_assistant_message(content)
+                        yield {"type": "final", "data": content}
+                        break
                     
             except LLMError as e:
                 yield {"type": "error", "data": {"error": str(e)}}
@@ -923,9 +1238,6 @@ class NovAICAgent:
                 traceback.print_exc()
                 yield {"type": "error", "data": {"error": f"Unexpected error: {str(e)}"}}
                 break
-        
-        if iteration >= self.max_iterations:
-            yield {"type": "warning", "data": "⚠️ Maximum iterations reached. Task may be incomplete."}
     
     async def _chat_responses_style(
         self, 
@@ -958,8 +1270,32 @@ class NovAICAgent:
         
         iteration = 0
         
-        while not self._interrupted and iteration < self.max_iterations:
+        # 无限循环，依赖 Agent 自主调用 agent_rest() 结束任务
+        while not self._interrupted:
             iteration += 1
+            
+            # 定期检查 context compaction (在 loop 内部)
+            # responses API 模式下，compaction 会更新 session，但不影响 _response_id 链
+            if iteration % self.compaction_check_interval == 0:
+                try:
+                    compaction_result = await self._check_compaction(model, provider, api_base, api_key)
+                    if compaction_result and compaction_result.get("stats", {}).get("compacted"):
+                        yield {
+                            "type": "status",
+                            "data": {"message": f"📦 [Iteration {iteration}] Context compacted: saved {compaction_result['stats']['tokens_saved']} tokens"}
+                        }
+                except Exception as e:
+                    print(f"[Agent] Compaction check failed at iteration {iteration} (non-fatal): {e}")
+            
+            # 每轮都检查收件箱（自主调度支持）
+            inbox_context = await self._get_inbox_context()
+            if inbox_context:
+                # 注入为用户消息（responses API 模式）
+                input_msgs.append({
+                    "role": "user",
+                    "content": f"[系统通知]\n{inbox_context}"
+                })
+                yield {"type": "status", "data": f"[Iteration {iteration}] 收件箱有新消息"}
             
             # 创建步骤追踪
             current_step = self._add_step_to_trace(iteration)
@@ -1051,9 +1387,24 @@ class NovAICAgent:
                     input_msgs = tool_results_input
                     
                 else:
-                    self.session.add_assistant_message(content)
-                    yield {"type": "final", "data": content}
-                    break
+                    # 任务可能完成，但先检查 inbox 是否有新消息
+                    inbox_context = await self._get_inbox_context()
+                    if inbox_context:
+                        # 有新消息！注入到 context 并继续处理
+                        print(f"[Agent] Task complete but inbox has new messages, continuing...")
+                        input_msgs = [{
+                            "role": "user",
+                            "content": f"[系统通知]\n{inbox_context}"
+                        }]
+                        # 添加当前回复到 session
+                        self.session.add_assistant_message(content)
+                        yield {"type": "status", "data": "📬 检测到新消息，继续处理..."}
+                        # 不 break，继续循环处理新消息
+                    else:
+                        # 没有新消息，真正完成
+                        self.session.add_assistant_message(content)
+                        yield {"type": "final", "data": content}
+                        break
                     
             except LLMError as e:
                 yield {"type": "error", "data": {"error": str(e)}}
@@ -1063,9 +1414,6 @@ class NovAICAgent:
                 traceback.print_exc()
                 yield {"type": "error", "data": {"error": f"Unexpected error: {str(e)}"}}
                 break
-        
-        if iteration >= self.max_iterations:
-            yield {"type": "warning", "data": "⚠️ Maximum iterations reached. Task may be incomplete."}
     
     def _convert_mcp_result(self, mcp_result: Dict[str, Any]) -> Dict[str, Any]:
         """Convert MCP response to standard format."""
@@ -1253,8 +1601,10 @@ You do not have access to any tools in this mode - just engage in conversation."
             yield {"type": "error", "data": {"error": str(e)}}
     
     def interrupt(self) -> None:
-        """Interrupt current execution."""
+        """Interrupt current execution and save session."""
         self._interrupted = True
+        # 保存会话到磁盘
+        self._save_session()
     
     def get_messages(self) -> List[Dict[str, Any]]:
         """Get chat history."""
@@ -1262,8 +1612,20 @@ You do not have access to any tools in this mode - just engage in conversation."
     
     def clear_messages(self) -> None:
         """Clear chat history and reset response chain."""
+        # 先保存当前会话
+        self._save_session()
+        
+        # 归档当前会话文件
+        if self.storage.session_exists(self.session_key):
+            self.storage.archive_session(self.session_key)
+            print(f"[Agent] Archived session '{self.session_key}'")
+        
+        # 清除内存中的会话
         self.session.clear()
         self._response_id = None
+        self._last_saved_msg_count = 0
+        self._session_restored = False
+        
         for client in self._llm_clients.values():
             if hasattr(client, 'reset_response_chain'):
                 client.reset_response_chain()

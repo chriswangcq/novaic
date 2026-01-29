@@ -1,8 +1,9 @@
-import { useState, Component, ReactNode, ErrorInfo } from 'react';
+import { Component, ReactNode, ErrorInfo } from 'react';
 import { Message, AgentEvent } from '../../types';
 import { ThinkingBlock } from './ThinkingBlock';
 import { ToolCallCard } from './ToolCallCard';
-import { Sparkles, Copy, Check, AlertTriangle } from 'lucide-react';
+import { Markdown } from './Markdown';
+import { Sparkles, AlertTriangle } from 'lucide-react';
 
 interface AssistantMessageProps {
   message: Message;
@@ -94,14 +95,14 @@ export function AssistantMessage({ message }: AssistantMessageProps) {
   return (
     <MessageErrorBoundary>
       <div className="group py-2">
-        {/* Header: icon + label */}
+        {/* Header: icon + label - left aligned */}
         <div className="flex items-center gap-1.5 mb-1">
           <Sparkles size={12} className="text-violet-400" />
           <span className="text-[11px] font-medium text-white/40 uppercase tracking-wide">Agent</span>
         </div>
         
-        {/* 按事件顺序渲染 */}
-        <div className="space-y-2 pl-[18px]">
+        {/* Content with bubble style */}
+        <div className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 space-y-2">
           {events.map((event, index) => {
             try {
               if (!event || !event.type) return null;
@@ -160,8 +161,8 @@ export function AssistantMessage({ message }: AssistantMessageProps) {
                   const content = extractContent(event.data);
                   if (!content) return null;
                   return (
-                    <div key={`text-${index}`} className="text-[13px] text-white/90 leading-relaxed whitespace-pre-wrap">
-                      <FormattedText text={content} />
+                    <div key={`text-${index}`}>
+                      <Markdown content={content} />
                     </div>
                   );
                 }
@@ -201,9 +202,7 @@ export function AssistantMessage({ message }: AssistantMessageProps) {
           
           {/* 最终响应（如果有且不在 events 中） */}
           {message.content && !events.some(e => e?.type === 'final') && (
-            <div className="text-[13px] text-white/90 leading-relaxed whitespace-pre-wrap">
-              <FormattedText text={message.content} />
-            </div>
+            <Markdown content={message.content} />
           )}
           
           {/* Streaming 指示器 */}
@@ -220,98 +219,3 @@ export function AssistantMessage({ message }: AssistantMessageProps) {
   );
 }
 
-/**
- * Code block with language label and copy button (Cursor style)
- */
-function CodeBlock({ code, language }: { code: string; language: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <div className="my-2 rounded-md bg-[#1e1e1e] border border-white/[0.06] overflow-hidden group/code">
-      {/* Header with language and copy button */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-white/[0.02] border-b border-white/[0.04]">
-        <span className="text-[10px] text-white/30 uppercase tracking-wider font-medium">{language}</span>
-        <button
-          onClick={handleCopy}
-          className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-white/30 hover:text-white/60 hover:bg-white/[0.04] transition-colors"
-        >
-          {copied ? (
-            <>
-              <Check size={10} />
-              <span>Copied</span>
-            </>
-          ) : (
-            <>
-              <Copy size={10} />
-              <span>Copy</span>
-            </>
-          )}
-        </button>
-      </div>
-      {/* Code content */}
-      <pre className="px-3 py-2.5 overflow-x-auto">
-        <code className="text-[12px] text-emerald-400/90 font-mono leading-relaxed">
-          {code}
-        </code>
-      </pre>
-    </div>
-  );
-}
-
-/**
- * 文本格式化（处理代码块）- Cursor style
- */
-function FormattedText({ text }: { text: string }) {
-  const codeBlockRegex = /```(\w+)?\n?([\s\S]*?)```/g;
-  const inlineCodeRegex = /`([^`]+)`/g;
-  
-  const parts: Array<{ type: 'text' | 'code-block'; content: string; language?: string }> = [];
-  let lastIndex = 0;
-  let match;
-  
-  while ((match = codeBlockRegex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push({ type: 'text', content: text.slice(lastIndex, match.index) });
-    }
-    parts.push({ 
-      type: 'code-block', 
-      content: match[2].trim(), 
-      language: match[1] || 'text' 
-    });
-    lastIndex = match.index + match[0].length;
-  }
-  
-  if (lastIndex < text.length) {
-    parts.push({ type: 'text', content: text.slice(lastIndex) });
-  }
-  
-  return (
-    <>
-      {parts.map((part, i) => {
-        if (part.type === 'code-block') {
-          return <CodeBlock key={i} code={part.content} language={part.language || 'text'} />;
-        }
-        
-        // Process inline code
-        const textParts = part.content.split(inlineCodeRegex);
-        return (
-          <span key={i}>
-            {textParts.map((t, j) => 
-              j % 2 === 1 ? (
-                <code key={j} className="px-1 py-0.5 rounded bg-white/[0.06] text-[12px] font-mono text-violet-300">
-                  {t}
-                </code>
-              ) : t
-            )}
-          </span>
-        );
-      })}
-    </>
-  );
-}

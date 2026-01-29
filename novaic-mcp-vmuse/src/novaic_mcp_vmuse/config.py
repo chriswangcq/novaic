@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     # Browser settings
     browser_headless: bool = False
     browser_timeout: int = 30000  # ms
+    browser_user_data_dir: str = "/home/ubuntu/.config/chromium"  # Share with system chromium
     
     # Execution settings
     default_timeout: int = 60  # seconds

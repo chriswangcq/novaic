@@ -161,14 +161,6 @@ async def delete_agent(agent_id: str):
     """Delete an agent and its VM files"""
     manager = get_agent_config_manager()
     
-    # Check if it's the current agent
-    config = manager.load()
-    if config.current_agent_id == agent_id and len(config.agents) == 1:
-        raise HTTPException(
-            status_code=400,
-            detail="Cannot delete the only agent. Create another agent first."
-        )
-    
     if not manager.delete_agent(agent_id):
         raise HTTPException(status_code=404, detail="Agent not found")
     

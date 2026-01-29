@@ -21,7 +21,7 @@ pip install -q -r requirements.txt
 
 # Set environment variables
 export NOVAIC_HOST="${NOVAIC_HOST:-127.0.0.1}"
-export NOVAIC_PORT="${NOVAIC_PORT:-9000}"
+export NOVAIC_PORT="${NOVAIC_PORT:-19999}"
 
 echo "Starting NovAIC Gateway on http://$NOVAIC_HOST:$NOVAIC_PORT"
 python main.py

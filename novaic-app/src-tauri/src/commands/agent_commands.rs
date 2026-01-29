@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use tauri::Emitter;
 
 // Use 127.0.0.1 instead of localhost to avoid IPv6 connection issues
-const AGENT_BASE_URL: &str = "http://127.0.0.1:9000";
+const AGENT_BASE_URL: &str = "http://127.0.0.1:19999";
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct InitResponse {

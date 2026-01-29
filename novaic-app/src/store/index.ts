@@ -8,8 +8,9 @@
  */
 
 import { create } from 'zustand';
-import { api, gateway } from '../services';
-import type { AICAgent, CreateAgentRequest } from '../services/api';
+import { api } from '../services';
+import * as setup from '../services/setup';
+import type { AICAgent, CreateAgentRequest, AgentStatus } from '../services/api';
 import { 
   Message, 
   LogEntry, 
@@ -20,7 +21,8 @@ import {
   ApiKeyInfo,
   ChatMode,
   ChatSSEMessage,
-  MessageStatus
+  MessageStatus,
+  SetupProgressInfo
 } from '../types';
 
 // Layout persistence key
@@ -82,6 +84,12 @@ interface AppStore extends AppState {
   createAgent: (data: CreateAgentRequest) => Promise<AICAgent>;
   deleteAgent: (agentId: string) => Promise<void>;
   setCreateAgentModalOpen: (open: boolean) => void;
+  // Setup actions
+  updateAgentStatus: (agentId: string, status: AgentStatus, progress?: SetupProgressInfo) => void;
+  setupAgent: (agentId: string, config: {
+    sourceImage: string;
+    useCnMirrors: boolean;
+  }) => Promise<void>;
   // SSE connection
   connectChatSSE: () => void;
   connectLogsSSE: () => void;
@@ -117,7 +125,7 @@ let chatEventSource: EventSource | null = null;
 let logsEventSource: EventSource | null = null;
 
 // Gateway base URL
-const GATEWAY_URL = 'http://127.0.0.1:9000';
+const GATEWAY_URL = 'http://127.0.0.1:19999';
 
 export const useAppStore = create<AppStore>((set, get) => ({
   // Initial state
@@ -253,13 +261,21 @@ export const useAppStore = create<AppStore>((set, get) => ({
       }
     }
     
-    // Send via API (fire-and-forget)
+    // Send via API with timeout (fire-and-forget)
+    const sendTimeout = 30000; // 30s timeout
     try {
-      const result = await api.sendChatMessage(content, {
-        model: modelId,
-        mode: chatMode || 'agent',
-        api_key_id: apiKeyId,
-      });
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Send timeout')), sendTimeout)
+      );
+      
+      const result = await Promise.race([
+        api.sendChatMessage(content, {
+          model: modelId,
+          mode: chatMode || 'agent',
+          api_key_id: apiKeyId,
+        }),
+        timeoutPromise,
+      ]);
       
       if (result.success) {
         // Update local message ID to match server's
@@ -284,9 +300,14 @@ export const useAppStore = create<AppStore>((set, get) => ({
     // Note: Agent response will come via SSE (connectChatSSE)
   },
 
-  stopExecution: () => {
+  stopExecution: async () => {
     console.log('[Store] Stop execution requested');
-    gateway.sendInterrupt();
+    try {
+      await api.interruptAgent();
+      console.log('[Store] Agent interrupted via HTTP API');
+    } catch (e) {
+      console.error('[Store] Failed to interrupt agent:', e);
+    }
     set({ isExecuting: false });
   },
 
@@ -319,7 +340,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   clearMessages: () => {
-    gateway.sendClear();
+    // Only clear local state (no server-side clear needed)
     set({ messages: [], logs: [] });
   },
 
@@ -458,6 +479,108 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   setCreateAgentModalOpen: (open: boolean) => {
     set({ createAgentModalOpen: open });
+  },
+
+  // Update agent status (local state)
+  updateAgentStatus: (agentId: string, status: AgentStatus, progress?: SetupProgressInfo) => {
+    set((state) => ({
+      agents: state.agents.map((agent) =>
+        agent.id === agentId
+          ? { ...agent, status, setup_progress: progress }
+          : agent
+      ),
+    }));
+  },
+
+  // Setup agent - full setup flow (download, create VM, deploy)
+  setupAgent: async (agentId: string, config: {
+    sourceImage: string;
+    useCnMirrors: boolean;
+  }) => {
+    const { updateAgentStatus, agents } = get();
+    const agent = agents.find(a => a.id === agentId);
+    if (!agent) throw new Error('Agent not found');
+
+    try {
+      // Step 1: Get or generate SSH key
+      let sshPubkey = await setup.getSshPubkey();
+      if (!sshPubkey) {
+        sshPubkey = await setup.generateSshKey();
+      }
+
+      // Step 2: Create VM disk and cloud-init
+      updateAgentStatus(agentId, 'creating', {
+        stage: 'Creating VM',
+        progress: 0,
+        message: 'Creating virtual machine disk...',
+      });
+
+      await setup.setupVm(
+        {
+          agentId,
+          sourceImage: config.sourceImage,
+          diskSize: '40G',
+          sshPubkey,
+          useCnMirrors: config.useCnMirrors,
+        },
+        (progress) => {
+          updateAgentStatus(agentId, 'creating', progress);
+        }
+      );
+
+      // Step 3: Start VM
+      updateAgentStatus(agentId, 'creating', {
+        stage: 'Starting VM',
+        progress: 90,
+        message: 'Starting virtual machine...',
+      });
+
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('start_vm', { agentId });
+
+      // Wait for VM to boot
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      // Reload agents to get updated port info
+      const { loadAgents } = get();
+      await loadAgents();
+      
+      // Get updated agent with correct ports
+      const updatedAgents = get().agents;
+      const updatedAgent = updatedAgents.find(a => a.id === agentId);
+      if (!updatedAgent) throw new Error('Agent not found after VM start');
+
+      // Step 4: Deploy code
+      updateAgentStatus(agentId, 'deploying', {
+        stage: 'Deploying',
+        progress: 0,
+        message: 'Deploying agent code...',
+      });
+
+      // Get SSH port from updated agent config
+      const sshPort = updatedAgent.vm.ports.ssh;
+      await setup.deployAgent(
+        sshPort,
+        config.useCnMirrors,
+        (progress) => {
+          updateAgentStatus(agentId, 'deploying', progress);
+        }
+      );
+
+      // Step 5: Mark as ready
+      updateAgentStatus(agentId, 'running', undefined);
+      console.log('[Store] Agent setup complete:', agentId);
+
+    } catch (error) {
+      console.error('[Store] Agent setup failed:', error);
+      updateAgentStatus(agentId, 'error', {
+        stage: 'Error',
+        progress: 0,
+        message: error instanceof Error ? error.message : String(error),
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
   },
 
   // SSE Connection: Chat messages (Agent <-> User)

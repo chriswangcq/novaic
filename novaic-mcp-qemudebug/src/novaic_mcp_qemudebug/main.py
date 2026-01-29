@@ -18,13 +18,16 @@ from typing import Optional, Dict, Any, List
 from fastmcp import FastMCP
 
 # QEMU configuration (via environment)
+# Default ports based on centralized port allocation (Agent 0):
+# SSH: 20008 = BASE_PORT(20000) + Agent0(0*20) + SSH_OFFSET(8)
+# VNC: 20006 = BASE_PORT(20000) + Agent0(0*20) + VNC_OFFSET(6)
 QEMU_SSH_HOST = os.environ.get("QEMU_SSH_HOST", "127.0.0.1")
-QEMU_SSH_PORT = int(os.environ.get("QEMU_SSH_PORT", "2222"))
+QEMU_SSH_PORT = int(os.environ.get("QEMU_SSH_PORT", "20008"))
 QEMU_SSH_USER = os.environ.get("QEMU_SSH_USER", "ubuntu")
 QEMU_SSH_KEY = os.environ.get("QEMU_SSH_KEY", os.path.expanduser("~/.ssh/novaic_vm"))
 
 QEMU_VNC_HOST = os.environ.get("QEMU_VNC_HOST", "127.0.0.1")
-QEMU_VNC_PORT = int(os.environ.get("QEMU_VNC_PORT", "5900"))
+QEMU_VNC_PORT = int(os.environ.get("QEMU_VNC_PORT", "20006"))
 
 QEMU_MONITOR_SOCKET = os.environ.get("QEMU_MONITOR_SOCKET", "/tmp/novaic-qemudebug-monitor.sock")
 
@@ -426,11 +429,13 @@ async def qemu_status() -> Dict[str, Any]:
     except Exception:
         pass
     
-    # Check MCP server (port 8080)
+    # Check MCP server (VM MCP port, default 20000 for Agent 0)
+    # Get from environment or use default
+    mcp_vm_port = int(os.environ.get("QEMU_MCP_PORT", "20000"))
     try:
         import httpx
         async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get(f"http://{QEMU_SSH_HOST}:8080/health")
+            resp = await client.get(f"http://{QEMU_SSH_HOST}:{mcp_vm_port}/health")
             status["mcp_reachable"] = resp.status_code == 200
     except Exception:
         pass
@@ -503,9 +508,10 @@ def main():
     import sys
     
     # Default to streamable HTTP transport
+    # Default port 20005 = BASE_PORT(20000) + Agent0(0*20) + QEMUDEBUG_OFFSET(5)
     transport = os.environ.get("MCP_TRANSPORT", "streamable-http")
     host = os.environ.get("MCP_HOST", "0.0.0.0")
-    port = int(os.environ.get("MCP_PORT", "8083"))
+    port = int(os.environ.get("MCP_PORT", "20005"))
     
     if transport == "streamable-http":
         mcp.run(transport="streamable-http", host=host, port=port)

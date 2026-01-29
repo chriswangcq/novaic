@@ -3,7 +3,7 @@ NovAIC Gateway - Main Entry Point
 
 Unified control plane that serves:
 - REST API (/api/*)
-- WebSocket (/ws/*)
+- SSE for real-time updates (/api/chat/messages, /api/logs/stream)
 - Static files (React Web UI)
 - Event-driven agent system
 """
@@ -17,9 +17,73 @@ from datetime import datetime
 os.environ['no_proxy'] = 'localhost,127.0.0.1,::1'
 os.environ['NO_PROXY'] = 'localhost,127.0.0.1,::1'
 
+# ==================== Data Directory Setup ====================
+# NOVAIC_DATA_DIR is required (passed from Tauri app)
+if not os.environ.get("NOVAIC_DATA_DIR"):
+    print("[Gateway] ERROR: NOVAIC_DATA_DIR environment variable is required")
+    print("[Gateway] Please start Gateway through the NovAIC app")
+    sys.exit(1)
+
+NOVAIC_DATA_DIR = os.environ["NOVAIC_DATA_DIR"]
+print(f"[Gateway] Data directory: {NOVAIC_DATA_DIR}")
+
+# ==================== Data Migration ====================
+# Migrate data from old ~/.novaic/ to new $NOVAIC_DATA_DIR
+def migrate_old_data():
+    """Migrate data from ~/.novaic/ to $NOVAIC_DATA_DIR if needed"""
+    old_dir = os.path.expanduser("~/.novaic")
+    new_dir = NOVAIC_DATA_DIR
+    
+    if not os.path.exists(old_dir):
+        return  # No old data to migrate
+    
+    if old_dir == new_dir:
+        return  # Same directory, no migration needed
+    
+    print(f"[Gateway] Found old data directory: {old_dir}")
+    print(f"[Gateway] Migrating to: {new_dir}")
+    
+    # Ensure new directory exists
+    os.makedirs(new_dir, exist_ok=True)
+    
+    # Files/directories to migrate
+    items_to_migrate = [
+        "config.json",
+        "agents.json",
+        "logs",
+        "vms",
+        "images",
+        "memory",  # MCP Memory storage
+    ]
+    
+    migrated = []
+    for item in items_to_migrate:
+        old_path = os.path.join(old_dir, item)
+        new_path = os.path.join(new_dir, item)
+        
+        if os.path.exists(old_path) and not os.path.exists(new_path):
+            try:
+                import shutil
+                if os.path.isdir(old_path):
+                    shutil.copytree(old_path, new_path)
+                else:
+                    shutil.copy2(old_path, new_path)
+                migrated.append(item)
+                print(f"[Gateway] Migrated: {item}")
+            except Exception as e:
+                print(f"[Gateway] Failed to migrate {item}: {e}")
+    
+    if migrated:
+        print(f"[Gateway] Migration complete. Migrated {len(migrated)} items.")
+        print(f"[Gateway] You can safely delete the old directory: {old_dir}")
+    else:
+        print(f"[Gateway] No migration needed (data already exists or nothing to migrate)")
+
+# Run migration
+migrate_old_data()
+
 # ==================== Logging Setup ====================
-# Log directory: ~/.novaic/logs/
-LOG_DIR = os.path.expanduser("~/.novaic/logs")
+LOG_DIR = os.path.join(NOVAIC_DATA_DIR, "logs")
 os.makedirs(LOG_DIR, exist_ok=True)
 
 # Log file with date
@@ -84,7 +148,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from api.routes import router as api_router
-from api.ws import router as ws_router
 from api.agents import router as agents_router
 from config.manager import get_config_manager
 
@@ -101,7 +164,7 @@ from agent.subagent.manager import SubAgentManager
 
 # Configuration
 HOST = os.getenv("NOVAIC_HOST", "127.0.0.1")
-PORT = int(os.getenv("NOVAIC_PORT", "9000"))
+PORT = int(os.getenv("NOVAIC_PORT", "19999"))
 SOCKET_PATH = os.getenv("NOVAIC_SOCKET", "")  # Unix socket path, if set use UDS mode
 DEBUG = os.getenv("NOVAIC_DEBUG", "false").lower() == "true"
 
@@ -194,64 +257,79 @@ async def initialize_systems(config):
     # Initialize ToolRegistry with MCP servers
     tool_registry = ToolRegistry()
     
+    # Get current agent's port configuration
+    from config.agents import get_agent_config_manager, BASE_PORT, SERVICE_OFFSETS
+    
+    try:
+        agent_mgr = get_agent_config_manager()
+        current_agent = agent_mgr.get_current_agent()
+    except Exception as e:
+        print(f"[Gateway] Warning: Could not get agent config: {e}")
+        current_agent = None
+    
+    if current_agent:
+        ports = current_agent.vm.ports
+        print(f"[Gateway] Using ports from agent '{current_agent.name}' (index={current_agent.vm.agent_index})")
+    else:
+        # Fallback to default ports (Agent 0)
+        from config.agents import allocate_ports_for_agent
+        ports = allocate_ports_for_agent(0)
+        print(f"[Gateway] No current agent, using default ports (Agent 0)")
+    
     # Register VM MCP Server (primary, in VM)
     tool_registry.register_server(
         name="vm",
-        port=config.mcp_port,
+        port=ports.vm,
         priority=0,  # Highest priority
     )
     
     # Register Session MCP Server (host)
-    session_port = int(os.getenv("NOVAIC_MCP_SESSION_PORT", "8081"))
     session_enabled = os.getenv("NOVAIC_MCP_SESSION_ENABLED", "true").lower() == "true"
     tool_registry.register_server(
         name="session",
-        port=session_port,
+        port=ports.session,
         enabled=session_enabled,
         priority=1,
     )
     
     # Register Local MCP Server (host)
-    local_port = int(os.getenv("NOVAIC_MCP_LOCAL_PORT", "8082"))
     local_enabled = os.getenv("NOVAIC_MCP_LOCAL_ENABLED", "true").lower() == "true"
     tool_registry.register_server(
         name="local",
-        port=local_port,
+        port=ports.local,
         enabled=local_enabled,
         priority=2,
     )
     
     # Register QEMU MCP Server (host)
-    qemu_port = int(os.getenv("NOVAIC_MCP_QEMUDEBUG_PORT", "8083"))
     qemu_enabled = os.getenv("NOVAIC_MCP_QEMUDEBUG_ENABLED", "false").lower() == "true"  # Default disabled (fallback only)
     tool_registry.register_server(
         name="qemudebug",
-        port=qemu_port,
+        port=ports.qemudebug,
         enabled=qemu_enabled,
         priority=3,  # Lowest priority
     )
     
     # Register Memory MCP Server (host)
-    memory_port = int(os.getenv("NOVAIC_MCP_MEMORY_PORT", "8084"))
     memory_enabled = os.getenv("NOVAIC_MCP_MEMORY_ENABLED", "true").lower() == "true"  # Default enabled
     tool_registry.register_server(
         name="memory",
-        port=memory_port,
+        port=ports.memory,
         enabled=memory_enabled,
         priority=1,  # High priority (host-based memory)
     )
     
     # Register Chat MCP Server (host - Agent<->User communication)
-    chat_port = int(os.getenv("NOVAIC_MCP_CHAT_PORT", "8085"))
     chat_enabled = os.getenv("NOVAIC_MCP_CHAT_ENABLED", "true").lower() == "true"  # Default enabled
     tool_registry.register_server(
         name="chat",
-        port=chat_port,
+        port=ports.chat,
         enabled=chat_enabled,
         priority=0,  # Highest priority (essential for user interaction)
     )
     
     print(f"[Gateway] ToolRegistry initialized with {len(tool_registry._servers)} servers")
+    print(f"[Gateway] Ports: vm={ports.vm}, session={ports.session}, local={ports.local}, memory={ports.memory}, chat={ports.chat}, qemudebug={ports.qemudebug}")
     
     # Initialize WakeController
     wake_controller = WakeController(
@@ -298,7 +376,8 @@ async def initialize_systems(config):
     async def create_agent_for_session(session_key: str):
         """Factory to create agent for sub-sessions using the shared ToolRegistry."""
         from core.agent import NovAICAgent
-        agent = NovAICAgent(mcp_port=config.mcp_port, tool_registry=tool_registry)
+        # Use the current agent's VM port from ports config
+        agent = NovAICAgent(mcp_port=ports.vm, tool_registry=tool_registry, session_key=session_key)
         await agent.initialize()
         return agent
     
@@ -368,7 +447,6 @@ async def lifespan(app: FastAPI):
     else:
         print(f"🚀 NovAIC Gateway starting on http://{HOST}:{PORT}")
     print(f"📋 Config: {get_config_manager().config_file}")
-    print(f"🔧 MCP Server: http://127.0.0.1:{config.mcp_port}/mcp")
     print(f"🤖 Default model: {config.default_model}")
     
     # Initialize all systems
@@ -403,9 +481,6 @@ app.include_router(api_router, prefix="/api")
 
 # Agents API routes (already has /api/agents prefix)
 app.include_router(agents_router)
-
-# WebSocket routes
-app.include_router(ws_router)
 
 
 # Root endpoint
@@ -734,7 +809,7 @@ import asyncio
 from fastapi.responses import StreamingResponse
 import json as json_module
 from collections import deque
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import uuid as uuid_module
 
 # Chat message store (for SSE streaming to frontend)
@@ -748,8 +823,16 @@ _question_responses: Dict[str, Dict[str, Any]] = {}  # request_id -> user respon
 # User messages with status tracking
 _user_messages: Dict[str, Dict[str, Any]] = {}  # message_id -> message data
 
+# Pending user messages (inbox) - messages waiting to be processed
+_pending_user_messages: Dict[str, Dict[str, Any]] = {}  # message_id -> message data
+
 # Agent execution logs for SSE streaming
 _agent_logs: deque = deque(maxlen=500)  # Recent execution logs
+
+# Agent execution lock - ensures only one agent task runs at a time
+_agent_lock = asyncio.Lock()
+_current_agent_task: Optional[asyncio.Task] = None
+_agent_busy = False  # Track if agent is currently processing
 _log_subscribers: Dict[str, asyncio.Queue] = {}  # Log SSE subscribers
 
 
@@ -1044,8 +1127,13 @@ async def send_chat_message(data: dict):
     Send a user message (fire-and-forget style).
     
     The message is stored and broadcast, then processed asynchronously.
+    - If agent is idle: starts processing immediately
+    - If agent is busy: message goes to inbox, agent sees it via inbox_check
+    
     Returns immediately with message_id and 'delivered' status.
     """
+    global _agent_busy
+    
     content = data.get("message", "").strip()
     model = data.get("model")
     mode = data.get("mode", "agent")
@@ -1065,75 +1153,154 @@ async def send_chat_message(data: dict):
         "content": content,
         "timestamp": timestamp,
         "status": "delivered",  # Backend received it
+        "model": model,
+        "api_key_id": api_key_id,
     }
     _user_messages[message_id] = user_msg
     
     # Broadcast user message to chat panel
     broadcast_chat_message(user_msg)
     
-    # Process message asynchronously
+    # Auto-respond to any pending questions
+    # This allows users to reply to agent questions via normal chat
+    if _pending_questions:
+        # Get the most recent pending question
+        pending_ids = list(_pending_questions.keys())
+        for request_id in pending_ids:
+            _question_responses[request_id] = {
+                "response": content,
+                "selected_option": None,
+                "timestamp": timestamp,
+            }
+            print(f"[Chat] Auto-responded to pending question {request_id} with user message")
+    
+    # Check if agent is busy
+    if _agent_busy:
+        # Agent is busy - add to pending inbox
+        _pending_user_messages[message_id] = user_msg
+        print(f"[Chat] Agent busy, message {message_id} added to inbox (pending: {len(_pending_user_messages)})")
+        return {
+            "success": True,
+            "message_id": message_id,
+            "status": "delivered",
+            "queued": True,
+            "timestamp": timestamp,
+            "note": "Agent is busy, message added to inbox"
+        }
+    
+    # Process message asynchronously with execution lock
     async def process_message():
-        try:
-            # Update status to 'read' when agent starts processing
-            update_message_status(message_id, "read")
-            
-            # Get agent instance
-            from api.routes import get_agent
-            from config import get_config_manager
-            
-            agent = get_agent()
-            config = get_config_manager().load()
-            
-            # Resolve model configuration
-            resolved_model = model or config.default_model
-            resolved_provider = config.provider
-            resolved_api_base = config.api_base
-            resolved_api_key = config.api_key
-            
-            # If api_key_id is provided, resolve from config
-            if api_key_id and config.api_keys:
-                for key in config.api_keys:
-                    if key.id == api_key_id:
-                        resolved_provider = key.provider
-                        resolved_api_base = key.api_base
-                        resolved_api_key = key.api_key
-                        if not resolved_model:
-                            resolved_model = key.models[0] if key.models else config.default_model
-                        break
-            
-            # Initialize agent if needed
-            if not agent._tools_initialized:
-                await agent.initialize()
-            
-            # Process with agent (logs will be broadcast via broadcast_log)
-            async for event in agent.chat(
-                user_message=content,
-                model=resolved_model,
-                provider=resolved_provider,
-                api_base=resolved_api_base,
-                api_key=resolved_api_key,
-            ):
-                # Broadcast execution logs
-                log_entry = {
-                    "type": event.get("type", "unknown"),
+        global _current_agent_task, _agent_busy
+        
+        # Acquire lock to ensure only one agent task runs at a time
+        async with _agent_lock:
+            _agent_busy = True
+            print(f"[Chat] Acquired agent lock for message {message_id}, agent_busy=True")
+            try:
+                # Remove from pending if it was queued
+                _pending_user_messages.pop(message_id, None)
+                
+                # Update status to 'read' when agent starts processing
+                update_message_status(message_id, "read")
+                
+                # Get agent instance
+                from api.routes import get_agent
+                from config import get_config_manager
+                
+                agent = get_agent()
+                config = get_config_manager().load()
+                
+                # Resolve model configuration from API keys
+                resolved_model = model or config.default_model
+                resolved_provider = None
+                resolved_api_base = None
+                resolved_api_key = None
+                
+                # Find the right API key entry
+                target_key = None
+                if api_key_id and config.api_keys:
+                    # Use specified api_key_id
+                    for key in config.api_keys:
+                        if key.id == api_key_id:
+                            target_key = key
+                            break
+                elif config.api_keys:
+                    # Use first available API key
+                    target_key = config.api_keys[0]
+                
+                if target_key:
+                    resolved_provider = target_key.provider.value if hasattr(target_key.provider, 'value') else target_key.provider
+                    resolved_api_base = target_key.api_base
+                    resolved_api_key = target_key.api_key
+                
+                # Initialize agent if needed
+                if not agent._tools_initialized:
+                    await agent.initialize()
+                
+                # Process with agent (logs will be broadcast via broadcast_log)
+                final_content = None
+                chat_reply_called = False  # Track if agent used chat_reply MCP tool
+                
+                async for event in agent.chat(
+                    user_message=content,
+                    model=resolved_model,
+                    provider=resolved_provider,
+                    api_base=resolved_api_base,
+                    api_key=resolved_api_key,
+                ):
+                    event_type = event.get("type", "unknown")
+                    event_data = event.get("data", {})
+                    
+                    # Broadcast execution logs
+                    log_entry = {
+                        "type": event_type,
+                        "timestamp": datetime.now().isoformat(),
+                        "data": event_data,
+                        "message_id": message_id,
+                    }
+                    broadcast_log(log_entry)
+                    
+                    # Track if chat_reply was called
+                    if event_type == "tool_end":
+                        tool_name = event_data.get("tool", "") if isinstance(event_data, dict) else ""
+                        if tool_name == "chat_reply":
+                            chat_reply_called = True
+                    
+                    # Capture final response content for fallback
+                    if event_type == "final":
+                        if isinstance(event_data, str):
+                            final_content = event_data
+                        elif isinstance(event_data, dict):
+                            final_content = event_data.get("content") or event_data.get("data") or str(event_data)
+                        else:
+                            final_content = str(event_data)
+                
+                # Fallback: If agent didn't use chat_reply, send final_content as reply
+                if not chat_reply_called and final_content:
+                    print(f"[Chat] Agent didn't use chat_reply, fallback sending final_content")
+                    agent_reply = {
+                        "id": str(uuid_module.uuid4())[:12],
+                        "type": "AGENT_REPLY",
+                        "timestamp": datetime.now().isoformat(),
+                        "message": final_content,
+                    }
+                    broadcast_chat_message(agent_reply)
+                
+                # Update status to 'replied' when done
+                update_message_status(message_id, "replied")
+                
+            except Exception as e:
+                print(f"[Chat] Error processing message {message_id}: {e}")
+                # Broadcast error log
+                broadcast_log({
+                    "type": "error",
                     "timestamp": datetime.now().isoformat(),
-                    "data": event.get("data", {}),
+                    "data": {"error": str(e)},
                     "message_id": message_id,
-                }
-                broadcast_log(log_entry)
-            
-            # Update status to 'replied' when done
-            update_message_status(message_id, "replied")
-            
-        except Exception as e:
-            print(f"[Chat] Error processing message {message_id}: {e}")
-            # Broadcast error log
-            broadcast_log({
-                "type": "error",
-                "timestamp": datetime.now().isoformat(),
-                "data": {"error": str(e)},
-                "message_id": message_id,
-            })
+                })
+            finally:
+                _agent_busy = False
+                print(f"[Chat] Released agent lock for message {message_id}, agent_busy=False")
     
     # Fire and forget - don't await
     asyncio.create_task(process_message())
@@ -1217,6 +1384,7 @@ async def get_agent_inbox():
     Get pending events in the agent's inbox.
     
     Returns summary of pending events for agent to check during execution.
+    Includes pending user messages that arrived while agent was busy.
     """
     from agent.events.handler import AgentEventHandler
     
@@ -1224,6 +1392,35 @@ async def get_agent_inbox():
     pending_events = []
     has_urgent = False
     oldest_age = 0
+    
+    # Add pending user messages (highest priority - user is waiting!)
+    pending_msg_ids = list(_pending_user_messages.keys())  # Snapshot to avoid mutation during iteration
+    for msg_id in pending_msg_ids:
+        msg = _pending_user_messages.get(msg_id)
+        if not msg:
+            continue
+        pending_events.append({
+            "type": "user_message",
+            "message_id": msg_id,
+            "summary": f"用户消息: {msg.get('content', '')[:50]}...",
+            "content": msg.get("content"),
+            "timestamp": msg.get("timestamp"),
+            "priority": "high"
+        })
+        # Mark as read when included in inbox
+        if msg_id in _user_messages:
+            _user_messages[msg_id]["status"] = "read"
+            print(f"[Inbox] Marking message {msg_id[:8]} as read")
+            broadcast_chat_message({
+                "type": "STATUS_UPDATE",
+                "id": msg_id,
+                "message_id": msg_id,
+                "status": "read",
+                "timestamp": datetime.now().isoformat()
+            })
+        # Remove from pending after reading
+        del _pending_user_messages[msg_id]
+        print(f"[Inbox] Removed message {msg_id[:8]} from pending queue")
     
     # Check EventBus queue (note: this is a peek, not consume)
     if event_bus:
@@ -1272,6 +1469,43 @@ async def get_agent_inbox():
         "recommendation": recommendation,
         "agent_state": state_manager.get_state().value if state_manager else "unknown"
     }
+
+
+@app.post("/api/agent/interrupt")
+async def interrupt_agent():
+    """
+    Interrupt the currently executing agent.
+    
+    This stops the current task and saves the session state.
+    """
+    global _agent_busy
+    
+    try:
+        from api.routes import get_agent
+        agent = get_agent()
+        
+        if agent:
+            agent.interrupt()
+            print("[API] Agent interrupted via HTTP API")
+        
+        # Also update state
+        if state_manager:
+            state_manager.set_state(AgentState.AWAKE)
+        
+        # Clear busy flag
+        _agent_busy = False
+        
+        return {
+            "success": True,
+            "message": "Agent interrupted",
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        print(f"[API] Interrupt error: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
 
 
 @app.post("/api/agent/rest")
@@ -1480,8 +1714,9 @@ else:
                 <li><a href="/api/system/status">/api/system/status</a> - System status</li>
                 <li><a href="/docs">/docs</a> - API Documentation</li>
             </ul>
-            <h2>WebSocket</h2>
-            <p>Connect to <code>ws://localhost:9000/ws/{client_id}</code> for real-time chat.</p>
+            <h2>Real-time Streams (SSE)</h2>
+            <p>Chat messages: <code>/api/chat/messages</code></p>
+            <p>Execution logs: <code>/api/logs/stream</code></p>
         </body>
         </html>
         """

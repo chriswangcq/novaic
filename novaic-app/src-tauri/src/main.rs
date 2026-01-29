@@ -10,7 +10,7 @@ mod gateway_client;
 use gateway_client::GatewayClient;
 
 use vm::manager::VmManager;
-use vm::setup::{check_cloud_image, download_cloud_image, setup_vm, get_ssh_pubkey, generate_ssh_key};
+use vm::setup::{check_environment, check_cloud_image, download_cloud_image, setup_vm, get_ssh_pubkey, generate_ssh_key};
 use vm::deploy::{deploy_agent, quick_deploy_agent};
 use commands::vm_commands::{start_vm, stop_vm, get_vm_status, restart_vm, get_vnc_url, get_agent_url};
 
@@ -36,7 +36,7 @@ impl GatewayProcess {
     fn new() -> Self {
         Self {
             process: None,
-            port: 9000,
+            port: 19999,
         }
     }
 
@@ -44,7 +44,7 @@ impl GatewayProcess {
         format!("http://127.0.0.1:{}", self.port)
     }
 
-    fn start(&mut self, gateway_path: &PathBuf, is_binary: bool) -> Result<(), String> {
+    fn start(&mut self, gateway_path: &PathBuf, is_binary: bool, data_dir: &PathBuf) -> Result<(), String> {
         if self.process.is_some() {
             println!("[Gateway] Already running");
             return Ok(());
@@ -52,7 +52,10 @@ impl GatewayProcess {
 
         println!("[Gateway] Starting Gateway from {:?}", gateway_path);
         println!("[Gateway] Port: {}", self.port);
+        println!("[Gateway] Data dir: {:?}", data_dir);
         println!("[Gateway] Mode: {}", if is_binary { "binary" } else { "python" });
+
+        let data_dir_str = data_dir.to_string_lossy().to_string();
 
         let child = if is_binary {
             // Production mode: run bundled binary
@@ -63,10 +66,12 @@ impl GatewayProcess {
             Command::new(gateway_path)
                 .env("NOVAIC_PORT", self.port.to_string())
                 .env("NOVAIC_HOST", "127.0.0.1")
+                .env("NOVAIC_DATA_DIR", &data_dir_str)
                 .env("NO_PROXY", "localhost,127.0.0.1,::1")
                 .env("no_proxy", "localhost,127.0.0.1,::1")
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
+                // Use null to discard output - prevents pipe buffer from filling up
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
                 .spawn()
                 .map_err(|e| format!("Failed to start Gateway binary: {}", e))?
         } else {
@@ -93,10 +98,12 @@ impl GatewayProcess {
                 .current_dir(gateway_dir)
                 .env("NOVAIC_PORT", self.port.to_string())
                 .env("NOVAIC_HOST", "127.0.0.1")
+                .env("NOVAIC_DATA_DIR", &data_dir_str)
                 .env("NO_PROXY", "localhost,127.0.0.1,::1")
                 .env("no_proxy", "localhost,127.0.0.1,::1")
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
+                // Dev mode: inherit console so we can see logs directly
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
                 .spawn()
                 .map_err(|e| format!("Failed to start Gateway: {}", e))?
         };
@@ -225,8 +232,10 @@ async fn start_gateway(
     app: AppHandle,
 ) -> Result<String, String> {
     let (gateway_path, is_binary) = get_gateway_info(&app);
+    let data_dir = app.path().app_data_dir()
+        .map_err(|e| format!("Failed to get app data dir: {}", e))?;
     let mut gw = gateway.lock().await;
-    gw.start(&gateway_path, is_binary)?;
+    gw.start(&gateway_path, is_binary, &data_dir)?;
     Ok(format!("Gateway started on port {}", gw.port))
 }
 
@@ -358,11 +367,14 @@ fn main() {
                 })
                 .build(app)?;
             
-            // VM directory path - use app data directory
-            let vm_dir = app.path().app_data_dir()
-                .unwrap_or_else(|_| PathBuf::from("."))
-                .join("vms");
+            // App data directory - use for all data storage
+            let data_dir = app.path().app_data_dir()
+                .unwrap_or_else(|_| PathBuf::from("."));
             
+            // VM directory path
+            let vm_dir = data_dir.join("vms");
+            
+            println!("[App] Data directory: {:?}", data_dir);
             println!("[App] VM directory: {:?}", vm_dir);
             
             // Initialize VM Manager (but don't auto-start VM)
@@ -379,9 +391,10 @@ fn main() {
             println!("[Gateway] Is binary: {}", is_binary);
             
             let gateway_for_start = gateway.clone();
+            let data_dir_for_gateway = data_dir.clone();
             tauri::async_runtime::spawn(async move {
                 let mut gw = gateway_for_start.lock().await;
-                match gw.start(&gateway_path, is_binary) {
+                match gw.start(&gateway_path, is_binary, &data_dir_for_gateway) {
                     Ok(_) => println!("[Gateway] Auto-started successfully"),
                     Err(e) => println!("[Gateway] Failed to auto-start: {}", e),
                 }
@@ -411,6 +424,7 @@ fn main() {
             get_vnc_url,
             get_agent_url,
             // VM Setup commands
+            check_environment,
             check_cloud_image,
             download_cloud_image,
             setup_vm,

@@ -12,6 +12,7 @@ from enum import Enum
 from datetime import datetime
 import json
 import uuid
+import os
 
 
 class ProviderType(str, Enum):
@@ -107,9 +108,8 @@ class AppConfig(BaseModel):
     # Execution display
     visible_shell: bool = False
     
-    # MCP Server 配置
-    # 宿主机端口 (QEMU 转发: 宿主机 mcp_port -> VM 8080)
-    mcp_port: int = 8080     # 宿主机 MCP 端口
+    # Note: MCP port configuration moved to per-agent PortConfig in agents.py
+    # Each agent has its own set of ports allocated from the centralized port pool
     
     def to_public(self) -> dict:
         """Return public version (hides API keys)"""
@@ -121,7 +121,6 @@ class AppConfig(BaseModel):
             "max_tokens": self.max_tokens,
             "max_iterations": self.max_iterations,
             "visible_shell": self.visible_shell,
-            "mcp_port": self.mcp_port,
         }
     
     def get_api_key_by_id(self, key_id: str) -> Optional[ApiKeyEntry]:
@@ -140,11 +139,17 @@ class ConfigManager:
     """
     Configuration manager that handles reading/writing config files.
     
-    Config file location: ~/.novaic/config.json
+    Config file location: $NOVAIC_DATA_DIR/config.json
+    NOVAIC_DATA_DIR is required (passed from Tauri app).
     """
     
     def __init__(self, config_dir: Optional[Path] = None):
-        self.config_dir = config_dir or Path.home() / ".novaic"
+        if config_dir:
+            self.config_dir = config_dir
+        elif os.environ.get("NOVAIC_DATA_DIR"):
+            self.config_dir = Path(os.environ["NOVAIC_DATA_DIR"])
+        else:
+            raise RuntimeError("NOVAIC_DATA_DIR environment variable is required")
         self.config_file = self.config_dir / "config.json"
         self._config: Optional[AppConfig] = None
     
@@ -423,7 +428,6 @@ class ConfigManager:
         max_tokens: Optional[int] = None,
         max_iterations: Optional[int] = None,
         visible_shell: Optional[bool] = None,
-        mcp_port: Optional[int] = None,
     ) -> None:
         """Update common settings"""
         config = self.load()
@@ -436,8 +440,6 @@ class ConfigManager:
             config.max_iterations = max_iterations
         if visible_shell is not None:
             config.visible_shell = visible_shell
-        if mcp_port is not None:
-            config.mcp_port = mcp_port
         
         self.save(config)
     

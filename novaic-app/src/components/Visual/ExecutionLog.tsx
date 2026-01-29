@@ -33,27 +33,78 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
     }
   };
 
-  const formatLog = (log: LogEntry): string => {
+  const formatLog = (log: LogEntry): { main: string; detail?: string } => {
     switch (log.type) {
-      case 'tool_start':
-        return `Starting: ${log.data.tool || 'unknown'}`;
-      case 'tool_end':
-        return `Completed: ${log.data.tool || 'unknown'}`;
+      case 'tool_start': {
+        const toolName = log.data.tool || 'unknown';
+        const input = log.data.input;
+        let detail = '';
+        
+        // Format input parameters
+        if (input && typeof input === 'object') {
+          const keys = Object.keys(input);
+          if (keys.length > 0) {
+            const params = keys.slice(0, 3).map(k => {
+              const v = input[k];
+              const val = typeof v === 'string' 
+                ? (v.length > 30 ? v.substring(0, 30) + '...' : v)
+                : JSON.stringify(v);
+              return `${k}=${val}`;
+            }).join(', ');
+            detail = params + (keys.length > 3 ? ` +${keys.length - 3} more` : '');
+          }
+        }
+        
+        return { main: `Starting: ${toolName}`, detail };
+      }
+      case 'tool_end': {
+        const toolName = log.data.tool || 'unknown';
+        const success = log.data.success;
+        const result = log.data.result;
+        let detail = '';
+        
+        // Format result summary
+        if (result && typeof result === 'object') {
+          if (result.error) {
+            detail = `Error: ${String(result.error).substring(0, 50)}`;
+          } else if (result.url) {
+            detail = `URL: ${result.url}`;
+          } else if (result.output) {
+            detail = String(result.output).substring(0, 50);
+          } else if (result.success !== undefined) {
+            const keys = Object.keys(result).filter(k => k !== 'success');
+            if (keys.length > 0) {
+              detail = keys.slice(0, 2).map(k => `${k}: ${JSON.stringify(result[k]).substring(0, 20)}`).join(', ');
+            }
+          }
+        }
+        
+        return { 
+          main: `Completed: ${toolName}`, 
+          detail: detail || (success ? '✓' : '✗')
+        };
+      }
+      case 'thinking':
+        return { 
+          main: String(log.data.content || log.data || '').substring(0, 100) + (String(log.data).length > 100 ? '...' : '')
+        };
       case 'status':
-        return log.data.message || '';
+        return { main: log.data.message || '' };
       case 'stdout':
       case 'stderr':
-        return log.data.output || '';
+        return { main: log.data.output || '' };
       case 'progress':
-        return `Progress: ${log.data.progress}%`;
+        return { main: `Progress: ${log.data.progress}%` };
       case 'text':
-        return log.data.content || String(log.data);
+        return { main: log.data.content || String(log.data) };
       case 'final':
-        return 'Task completed';
+        return { main: 'Task completed' };
       case 'error':
-        return `Error: ${log.data.error || 'Unknown error'}`;
+        return { main: `Error: ${log.data.error || 'Unknown error'}` };
+      case 'warning':
+        return { main: String(log.data) };
       default:
-        return JSON.stringify(log.data);
+        return { main: JSON.stringify(log.data).substring(0, 100) };
     }
   };
 
@@ -108,20 +159,30 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
           </div>
         ) : (
           <div className="space-y-1">
-            {logs.map((log, index) => (
-              <div
-                key={index}
-                className={`flex items-start gap-2 py-1 ${getLogClass(log.type)}`}
-              >
-                <span className="flex-shrink-0 mt-0.5">{getLogIcon(log.type)}</span>
-                <span className="text-nb-text-muted w-16 flex-shrink-0">
-                  {new Date(log.timestamp).toLocaleTimeString()}
-                </span>
-                <span className="break-all whitespace-pre-wrap">
-                  {formatLog(log)}
-                </span>
-              </div>
-            ))}
+            {logs.map((log, index) => {
+              const formatted = formatLog(log);
+              return (
+                <div
+                  key={index}
+                  className={`flex items-start gap-2 py-1 ${getLogClass(log.type)}`}
+                >
+                  <span className="flex-shrink-0 mt-0.5">{getLogIcon(log.type)}</span>
+                  <span className="text-nb-text-muted w-16 flex-shrink-0">
+                    {new Date(log.timestamp).toLocaleTimeString()}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="break-all whitespace-pre-wrap">
+                      {formatted.main}
+                    </div>
+                    {formatted.detail && (
+                      <div className="text-[10px] text-nb-text-muted mt-0.5 break-all">
+                        {formatted.detail}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
             <div ref={logEndRef} />
           </div>
         )}

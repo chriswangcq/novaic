@@ -34,6 +34,7 @@ export interface DeployProgress {
   stage: string;
   progress: number;
   message: string;
+  log_line?: string;  // Real-time log line from cloud-init
 }
 
 export interface VmSetupResult {

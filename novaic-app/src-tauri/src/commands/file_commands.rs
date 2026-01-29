@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-const AGENT_BASE_URL: &str = "http://localhost:8080";
+// Default to Agent 0's VM MCP port (BASE_PORT=20000 + OFFSET_VM=0)
+// This should ideally be obtained from VmManager at runtime
+const AGENT_BASE_URL: &str = "http://localhost:20000";
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FileUploadResponse {

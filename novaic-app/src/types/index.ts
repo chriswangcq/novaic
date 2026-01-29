@@ -145,11 +145,13 @@ export type LogData = {
   tool?: string;
   input?: Record<string, unknown>;
   result?: Record<string, unknown>;
+  success?: boolean;
   message?: string;
   output?: string;
   progress?: number;
   error?: string;
   content?: string;
+  [key: string]: unknown;  // Allow additional properties
 };
 
 // Tool Information
@@ -191,12 +193,20 @@ export interface LayoutSettings {
   leftWidth: number;
 }
 
-// AIC Agent Types
+// AIC Agent Types - Port Configuration
+// Matches Python PortConfig in novaic-gateway/config/agents.py
 export interface PortConfig {
-  vnc: number;
-  mcp: number;
-  websocket: number;
-  ssh: number;
+  // MCP服务端口
+  vm: number;           // VM内MCP (vmuse)
+  session: number;      // 会话管理MCP
+  local: number;        // 本地文件MCP
+  memory: number;       // 记忆管理MCP
+  chat: number;         // 用户通信MCP
+  qemudebug: number;    // QEMU调试MCP
+  // VM连接端口
+  vnc: number;          // VNC服务
+  websocket: number;    // noVNC WebSocket
+  ssh: number;          // SSH转发
 }
 
 export interface VmConfig {
@@ -207,6 +217,33 @@ export interface VmConfig {
   memory: string;
   cpus: number;
   ports: PortConfig;
+  // VM内部端口 (固定)
+  mcp_vm_port: number;   // VM内部MCP端口 (固定 8080)
+  vnc_vm_port: number;   // VM内部VNC端口 (固定 5900)
+  ws_vm_port: number;    // VM内部WebSocket端口 (固定 6080)
+  agent_index: number;   // Agent索引，用于端口分配
+}
+
+// Agent setup status - for tracking setup progress
+export type AgentSetupStatus = 
+  | 'pending'      // Created, waiting to start setup
+  | 'downloading'  // Downloading cloud image
+  | 'creating'     // Creating VM disk & cloud-init
+  | 'deploying'    // Deploying code to VM
+  | 'ready';       // Setup complete
+
+// Agent runtime status
+export type AgentRuntimeStatus = 'stopped' | 'starting' | 'running' | 'error';
+
+// Combined agent status
+export type AgentStatus = AgentSetupStatus | AgentRuntimeStatus;
+
+// Setup progress info
+export interface SetupProgressInfo {
+  stage: string;
+  progress: number;
+  message: string;
+  error?: string;
 }
 
 export interface AICAgent {
@@ -214,7 +251,8 @@ export interface AICAgent {
   name: string;
   created_at: string;
   vm: VmConfig;
-  status: 'stopped' | 'starting' | 'running' | 'error';
+  status: AgentStatus;
+  setup_progress?: SetupProgressInfo;
 }
 
 // App State

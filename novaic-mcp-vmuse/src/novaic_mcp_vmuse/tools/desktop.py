@@ -1508,22 +1508,28 @@ Click:  mouse(action='click', aim_id='{new_aim_id}')"""
                 
                 # Handle newlines: split text by \n and type each part with Enter between
                 if "\n" in text:
+                    import time
                     lines = text.split("\n")
                     for i, line in enumerate(lines):
                         if line:  # Only type non-empty lines
                             has_non_ascii = any(ord(c) > 127 for c in line)
                             if has_non_ascii:
-                                cmd = ["xdotool", "type", "--clearmodifiers", "--delay", "100", line]
+                                # Type character by character for Chinese text
+                                for char in line:
+                                    char_cmd = ["xdotool", "type", "--clearmodifiers", char]
+                                    char_result = subprocess.run(char_cmd, capture_output=True, text=True, timeout=10)
+                                    if char_result.returncode != 0:
+                                        return {"success": False, "error": f"xdotool failed: {char_result.stderr}"}
+                                    time.sleep(0.2)  # 200ms delay for input method
                             else:
                                 cmd = ["xdotool", "type", "--clearmodifiers", line]
-                            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-                            if result.returncode != 0:
-                                return {"success": False, "error": result.stderr}
+                                result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+                                if result.returncode != 0:
+                                    return {"success": False, "error": result.stderr}
                         
                         # Press Enter after each line except the last
                         if i < len(lines) - 1:
                             subprocess.run(["xdotool", "key", "Return"], capture_output=True, timeout=5)
-                            import time
                             time.sleep(0.05)  # Small delay for reliability
                     
                     return {"success": True, "typed": text, "lines": len(lines)}
@@ -1533,10 +1539,18 @@ Click:  mouse(action='click', aim_id='{new_aim_id}')"""
                 has_non_ascii = any(ord(c) > 127 for c in text)
                 
                 if has_non_ascii:
-                    # For non-ASCII text (Chinese, etc.), add delay between characters
-                    # xdotool needs more time to process Unicode via XIM
-                    # 100ms delay is needed for reliable Chinese character input
-                    cmd = ["xdotool", "type", "--clearmodifiers", "--delay", "100", text]
+                    # For non-ASCII text (Chinese, etc.), type character by character
+                    # xdotool + ibus/fcitx needs more time to process each Unicode character
+                    # Using per-character input with 200ms delay to avoid character duplication
+                    import time
+                    for char in text:
+                        char_cmd = ["xdotool", "type", "--clearmodifiers", char]
+                        char_result = subprocess.run(char_cmd, capture_output=True, text=True, timeout=10)
+                        if char_result.returncode != 0:
+                            return {"success": False, "error": f"xdotool failed on char: {char_result.stderr}"}
+                        time.sleep(0.2)  # 200ms delay between characters for input method
+                    
+                    return {"success": True, "typed": text, "method": "char_by_char"}
                 else:
                     # For ASCII-only text, use faster input
                     cmd = ["xdotool", "type", "--clearmodifiers", text]

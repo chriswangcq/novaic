@@ -251,7 +251,7 @@ Configure via the NovAIC App settings or programmatically:
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `NBCC_HOST` | `0.0.0.0` | Server host |
-| `NBCC_PORT` | `9000` | Server port |
+| `NBCC_PORT` | `19999` | Server port |
 | `NBCC_DEBUG` | `false` | Debug mode |
 | `NBCC_DEFAULT_PROVIDER` | `openai` | Default LLM provider |
 | `NBCC_DEFAULT_MODEL` | `gpt-4o` | Default model |

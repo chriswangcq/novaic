@@ -475,21 +475,26 @@ async def browser_close_tab(index: Optional[int] = None) -> Dict[str, Any]:
 # ==================== Shell Tools ====================
 
 @mcp.tool(
-    description="""Execute shell command. IMPORTANT: GUI apps need background=true!
+    description="""Execute shell command. Always returns task_id + stdout/stderr tail.
+
+- All commands return unified format: { task_id, status, stdout_tail, stderr_tail, ... }
+- Commands completing in <3s: status="completed", includes exit_code
+- Commands taking >3s: status="running", use query_task(task_id) to check progress
+- Use query_task(task_id) to get more output lines
 
 Examples:
 - run_command(command="ls -la")
-- run_command(command="firefox", background=True)"""
+- run_command(command="pip install pandas")
+- run_command(command="make", timeout=300)"""
 )
 async def run_command(
     command: str,
     cwd: Optional[str] = None,
-    timeout: int = 60,
-    visible: bool = False,
-    background: bool = False
+    timeout: Optional[int] = None,
+    visible: bool = False
 ) -> Dict[str, Any]:
-    """Run shell command"""
-    return await ShellTools.run_command(command, cwd, timeout, visible, background)
+    """Run shell command, returns task_id + tail"""
+    return await ShellTools.run_command(command, cwd, timeout, visible)
 
 
 @mcp.tool(description="Execute Python code directly")
@@ -499,6 +504,24 @@ async def run_python(
 ) -> Dict[str, Any]:
     """Run Python code"""
     return await ShellTools.run_python(code, visible)
+
+
+@mcp.tool(description="Query task status and output tail. Works for running tasks and completed tasks within TTL (5 min). Use tail_lines to get more output.")
+def query_task(task_id: str, tail_lines: int = 50) -> Dict[str, Any]:
+    """Query task status and result (returns tail of output)"""
+    return ShellTools.query_task(task_id, tail_lines)
+
+
+@mcp.tool(description="List all tracked background tasks")
+def list_tasks() -> Dict[str, Any]:
+    """List background tasks"""
+    return ShellTools.list_tasks()
+
+
+@mcp.tool(description="Clear completed/failed tasks from tracking")
+def clear_tasks() -> Dict[str, Any]:
+    """Clear completed tasks"""
+    return ShellTools.clear_completed_tasks()
 
 
 # ==================== File Tools ====================
