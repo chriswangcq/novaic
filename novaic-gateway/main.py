@@ -247,11 +247,11 @@ async def initialize_systems(config):
     )
     print("[Gateway] MicroAgentEngine initialized")
     
-    # Initialize SubAgentManager (with placeholder factory)
+    # Initialize SubAgentManager (with agent factory using ToolRegistry)
     async def create_agent_for_session(session_key: str):
-        """Factory to create agent for sub-sessions."""
-        from agent.core.agent import NovAICAgent
-        agent = NovAICAgent(mcp_port=config.mcp_port)
+        """Factory to create agent for sub-sessions using the shared ToolRegistry."""
+        from core.agent import NovAICAgent
+        agent = NovAICAgent(mcp_port=config.mcp_port, tool_registry=tool_registry)
         await agent.initialize()
         return agent
     

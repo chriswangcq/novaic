@@ -240,6 +240,24 @@ class SubAgentManager:
             # Create agent for this sub-session
             agent = await self.agent_factory(subagent.session_key)
             
+            # Get API configuration from config manager
+            from config.manager import get_config_manager
+            config = get_config_manager().load()
+            
+            # Resolve API config (similar to routes.py)
+            model = subagent.config.model or config.default_model
+            provider = None
+            api_base = None
+            api_key = None
+            
+            # Get default API key entry
+            if config.api_keys:
+                entry = next((e for e in config.api_keys if e.api_key), None)
+                if entry:
+                    provider = entry.provider.value
+                    api_key = entry.api_key
+                    api_base = entry.get_effective_base_url()
+            
             # Build the task message
             task_message = subagent.config.task
             if subagent.config.context:
@@ -249,7 +267,10 @@ class SubAgentManager:
             final_result = None
             async for event in agent.chat(
                 task_message,
-                model=subagent.config.model,
+                model=model,
+                provider=provider,
+                api_base=api_base,
+                api_key=api_key,
             ):
                 event_type = event.get("type")
                 
