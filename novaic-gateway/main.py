@@ -396,22 +396,44 @@ async def system_status():
 @app.get("/api/internal/sessions")
 async def list_sessions():
     """List all sessions (internal API)"""
-    # TODO: Implement session listing
-    return {"sessions": []}
+    from agent.session.registry import get_session_registry
+    registry = get_session_registry()
+    return {"sessions": registry.list_sessions()}
 
 
 @app.post("/api/internal/sessions/{session_key}/history")
 async def get_session_history(session_key: str, data: dict):
     """Get session history (internal API)"""
-    # TODO: Implement session history
-    return {"messages": []}
+    from agent.session.registry import get_session_registry
+    registry = get_session_registry()
+    
+    limit = data.get("limit", 50)
+    offset = data.get("offset", 0)
+    
+    messages = registry.get_history(session_key, limit=limit, offset=offset)
+    if messages is None:
+        return {"error": "Session not found", "messages": []}
+    
+    return {"messages": messages}
 
 
 @app.post("/api/internal/sessions/{session_key}/send")
 async def send_to_session(session_key: str, data: dict):
     """Send message to session (internal API)"""
-    # TODO: Implement session messaging
-    return {"success": True, "message_id": "todo"}
+    from agent.session.registry import get_session_registry
+    registry = get_session_registry()
+    
+    message = data.get("message", "")
+    wait_response = data.get("wait_response", False)
+    timeout = data.get("timeout", 60)
+    
+    result = registry.send_message(
+        session_key=session_key,
+        message=message,
+        wait_response=wait_response,
+        timeout=timeout,
+    )
+    return result
 
 
 @app.post("/api/internal/sessions/spawn")
@@ -459,6 +481,99 @@ async def cancel_subagent(subagent_id: str):
         return {"error": "SubAgentManager not initialized", "success": False}
     
     return await subagent_manager.cancel(subagent_id)
+
+
+# ==================== Trigger Management API ====================
+
+@app.get("/api/triggers")
+async def list_triggers():
+    """List all wake triggers"""
+    if not wake_controller:
+        return {"triggers": []}
+    return {"triggers": wake_controller.list_triggers()}
+
+
+@app.post("/api/triggers/cron")
+async def add_cron_trigger(data: dict):
+    """Add a new cron trigger"""
+    if not wake_controller:
+        return {"error": "WakeController not initialized", "success": False}
+    
+    name = data.get("name", "Unnamed Cron")
+    cron_expr = data.get("cron_expr", "0 * * * *")
+    wake_message = data.get("wake_message", "Scheduled wake-up")
+    enabled = data.get("enabled", True)
+    
+    trigger_id = await wake_controller.add_cron_trigger(
+        name=name,
+        cron_expr=cron_expr,
+        wake_message=wake_message,
+        enabled=enabled,
+    )
+    
+    return {"success": True, "trigger_id": trigger_id}
+
+
+@app.post("/api/triggers/webhook")
+async def add_webhook_trigger(data: dict):
+    """Add a new webhook trigger"""
+    if not wake_controller:
+        return {"error": "WakeController not initialized", "success": False}
+    
+    name = data.get("name", "Unnamed Webhook")
+    endpoint = data.get("endpoint", f"/webhook/{name.lower().replace(' ', '-')}")
+    wake_message_template = data.get("wake_message_template", "Webhook triggered: {webhook_name}")
+    secret = data.get("secret")
+    enabled = data.get("enabled", True)
+    
+    trigger_id = await wake_controller.add_webhook_trigger(
+        name=name,
+        endpoint=endpoint,
+        wake_message_template=wake_message_template,
+        secret=secret,
+        enabled=enabled,
+    )
+    
+    return {"success": True, "trigger_id": trigger_id, "endpoint": endpoint}
+
+
+@app.delete("/api/triggers/{trigger_id}")
+async def remove_trigger(trigger_id: str):
+    """Remove a trigger"""
+    if not wake_controller:
+        return {"error": "WakeController not initialized", "success": False}
+    
+    success = await wake_controller.remove_trigger(trigger_id)
+    return {"success": success}
+
+
+@app.post("/api/triggers/{trigger_id}/enable")
+async def enable_trigger(trigger_id: str):
+    """Enable a trigger"""
+    if not wake_controller:
+        return {"error": "WakeController not initialized", "success": False}
+    
+    success = await wake_controller.enable_trigger(trigger_id)
+    return {"success": success}
+
+
+@app.post("/api/triggers/{trigger_id}/disable")
+async def disable_trigger(trigger_id: str):
+    """Disable a trigger"""
+    if not wake_controller:
+        return {"error": "WakeController not initialized", "success": False}
+    
+    success = await wake_controller.disable_trigger(trigger_id)
+    return {"success": success}
+
+
+@app.post("/api/webhook/{endpoint:path}")
+async def handle_webhook(endpoint: str, data: dict = {}):
+    """Handle incoming webhook requests"""
+    if not wake_controller:
+        return {"error": "WakeController not initialized", "success": False}
+    
+    return await wake_controller.handle_webhook(f"/webhook/{endpoint}", data)
 
 
 # Static files (React Web UI) - mount last to catch-all

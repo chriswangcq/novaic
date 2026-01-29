@@ -42,6 +42,19 @@ def get_agent() -> NovAICAgent:
         _agent = NovAICAgent(mcp_port=config.mcp_port, tool_registry=tool_registry)
         _agent.max_iterations = config.max_iterations
         _agent.max_tokens = config.max_tokens
+        
+        # Register main session in registry
+        try:
+            from agent.session.registry import get_session_registry, SessionType
+            registry = get_session_registry()
+            registry.register(
+                session_key="main",
+                session_type=SessionType.MAIN,
+                agent=_agent,
+                session_manager=_agent.session,
+            )
+        except Exception:
+            pass
     return _agent
 
 

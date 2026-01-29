@@ -177,6 +177,21 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
         agent.max_iterations = config.max_iterations
         agent.max_tokens = config.max_tokens
         connection_manager.set_agent(client_id, agent)
+        
+        # Register websocket session
+        try:
+            from agent.session.registry import get_session_registry, SessionType
+            registry = get_session_registry()
+            session_key = f"ws:{client_id}"
+            registry.register(
+                session_key=session_key,
+                session_type=SessionType.WEBSOCKET,
+                agent=agent,
+                session_manager=agent.session,
+                metadata={"client_id": client_id},
+            )
+        except Exception:
+            pass
     
     try:
         while True:
@@ -209,9 +224,21 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                 
     except WebSocketDisconnect:
         connection_manager.disconnect(client_id)
+        # Unregister session
+        try:
+            from agent.session.registry import get_session_registry
+            get_session_registry().unregister(f"ws:{client_id}")
+        except Exception:
+            pass
     except Exception as e:
         print(f"[WS] Error for client {client_id}: {e}")
         connection_manager.disconnect(client_id)
+        # Unregister session
+        try:
+            from agent.session.registry import get_session_registry
+            get_session_registry().unregister(f"ws:{client_id}")
+        except Exception:
+            pass
 
 
 async def handle_chat(client_id: str, agent, data: dict):
@@ -227,6 +254,33 @@ async def handle_chat(client_id: str, agent, data: dict):
     if not message:
         await connection_manager.send_event(client_id, "error", {"error": "Empty message"})
         return
+    
+    # Get state manager for tracking
+    state_manager = None
+    try:
+        from main import get_state_manager, publish_user_event
+        state_manager = get_state_manager()
+    except ImportError:
+        pass
+    
+    # Track state: set to BUSY
+    if state_manager:
+        from agent.core.state import AgentState
+        state_manager.set_state(AgentState.BUSY)
+        state_manager.record_activity()
+    
+    # Publish event for tracking (non-blocking)
+    try:
+        await publish_user_event(message, session_id=f"ws:{client_id}", source="websocket", reply_channel="websocket")
+    except Exception:
+        pass
+    
+    # Update session activity
+    try:
+        from agent.session.registry import get_session_registry
+        get_session_registry().update_activity(f"ws:{client_id}")
+    except Exception:
+        pass
     
     # Get API configuration
     config = get_config_manager().load()
@@ -291,3 +345,8 @@ async def handle_chat(client_id: str, agent, data: dict):
     except Exception as e:
         print(f"[WS] Chat error for {client_id}: {e}")
         await connection_manager.send_event(client_id, "error", {"error": str(e)})
+    finally:
+        # Return to AWAKE state
+        if state_manager:
+            from agent.core.state import AgentState
+            state_manager.set_state(AgentState.AWAKE)

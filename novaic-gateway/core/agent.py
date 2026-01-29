@@ -22,6 +22,7 @@ from .llm_client import LLMError, BaseLLMClient, OpenAIClient, AnthropicClient, 
 from .session import SessionManager
 from .mcp_client import MCPClient, MCPSkill
 from executor.registry import ToolRegistry
+from agent.session.compaction import Compactor
 
 
 # ==================== Data Classes ====================
@@ -153,6 +154,77 @@ class NovAICAgent:
         self._current_trace: Optional[TaskTrace] = None
         self._trace_history: List[TaskTrace] = []  # 最近的任务追踪
         self._max_trace_history = 10
+        
+        # Session compaction
+        self.compactor = Compactor(
+            max_context_ratio=0.75,  # Compact when at 75% of context
+            compaction_ratio=0.5,    # Compact 50% of oldest messages
+            min_messages_to_keep=6,  # Always keep recent 6 messages
+        )
+        self.model_context_sizes = {
+            "gpt-4": 8192,
+            "gpt-4-turbo": 128000,
+            "gpt-4o": 128000,
+            "gpt-3.5-turbo": 16384,
+            "claude-3-opus": 200000,
+            "claude-3-sonnet": 200000,
+            "claude-3-haiku": 200000,
+            "claude-sonnet-4-20250514": 200000,
+            "gemini-pro": 32000,
+            "gemini-1.5-pro": 1000000,
+        }
+        self._default_context_size = 128000  # Default to 128k if unknown
+    
+    def _get_model_context_size(self, model: str) -> int:
+        """Get context size for a model."""
+        # Check exact match first
+        if model in self.model_context_sizes:
+            return self.model_context_sizes[model]
+        
+        # Check partial match
+        for key, size in self.model_context_sizes.items():
+            if key in model.lower():
+                return size
+        
+        return self._default_context_size
+    
+    async def _check_compaction(
+        self, 
+        model: str,
+        provider: str,
+        api_base: str,
+        api_key: str,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Check if compaction is needed and perform it if so.
+        
+        Args:
+            model: Model being used
+            provider: LLM provider
+            api_base: API base URL
+            api_key: API key
+        
+        Returns:
+            Compaction result if compaction was performed, None otherwise
+        """
+        messages = self.session.get_all_messages()
+        context_size = self._get_model_context_size(model)
+        
+        if not self.compactor.should_compact(messages, context_size):
+            return None
+        
+        # Get LLM client for summary generation
+        llm_client = self._get_llm_client(provider, api_base, api_key)
+        
+        # Perform compaction
+        result = await self.compactor.compact(messages, llm_client, model)
+        
+        if result.get("stats", {}).get("compacted"):
+            # Update session with compacted messages
+            self.session.messages = result["new_messages"]
+            print(f"[Agent] Session compacted: {result['stats']}")
+        
+        return result
     
     def _get_llm_client(
         self, 
@@ -661,6 +733,17 @@ class NovAICAgent:
                 "type": "skills_loaded",
                 "data": {"skills": [s.name for s in relevant_skills]}
             }
+        
+        # Check for session compaction
+        try:
+            compaction_result = await self._check_compaction(model, provider, api_base, api_key)
+            if compaction_result and compaction_result.get("stats", {}).get("compacted"):
+                yield {
+                    "type": "status",
+                    "data": {"message": f"📦 Session compacted: saved {compaction_result['stats']['tokens_saved']} tokens"}
+                }
+        except Exception as e:
+            print(f"[Agent] Compaction check failed (non-fatal): {e}")
         
         try:
             if self.api_style == "responses":

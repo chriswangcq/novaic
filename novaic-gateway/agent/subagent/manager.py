@@ -240,6 +240,21 @@ class SubAgentManager:
             # Create agent for this sub-session
             agent = await self.agent_factory(subagent.session_key)
             
+            # Register subagent session
+            try:
+                from agent.session.registry import get_session_registry, SessionType
+                registry = get_session_registry()
+                registry.register(
+                    session_key=subagent.session_key,
+                    session_type=SessionType.SUBAGENT,
+                    agent=agent,
+                    session_manager=agent.session,
+                    parent_session=subagent.parent_session_id,
+                    metadata={"task": subagent.config.task[:100]},
+                )
+            except Exception:
+                pass
+            
             # Get API configuration from config manager
             from config.manager import get_config_manager
             config = get_config_manager().load()
