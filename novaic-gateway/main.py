@@ -245,7 +245,34 @@ async def initialize_systems(config):
         llm_client=None,  # Will be set when needed
         storage_dir="storage/micro_agents",
     )
-    print("[Gateway] MicroAgentEngine initialized")
+    
+    # Register default micro agents
+    from agent.micro.agent import MicroAgent, EvalMode
+    
+    # 1. Urgent keywords filter
+    urgent_agent = MicroAgent(
+        name="Urgent Filter",
+        description="Filters messages containing urgent keywords",
+        mode=EvalMode.RULES,
+        enabled=True,
+    )
+    urgent_agent.add_rule("Emergency", r"\b(urgent|emergency|critical|asap|immediately)\b", "wake", priority=10)
+    urgent_agent.add_rule("Error Alert", r"\b(error|failed|crash|exception|broken)\b", "wake", priority=8)
+    urgent_agent.add_rule("Help Request", r"\b(help|assist|support)\b", "wake", priority=5)
+    micro_engine.register_agent(urgent_agent)
+    
+    # 2. Spam/noise filter  
+    spam_agent = MicroAgent(
+        name="Spam Filter",
+        description="Filters out spam and noise",
+        mode=EvalMode.RULES,
+        enabled=True,
+    )
+    spam_agent.add_rule("Test Message", r"^test$|^ping$|^hello$", "ignore", priority=5)
+    spam_agent.add_rule("Empty/Short", r"^.{0,3}$", "ignore", priority=3)
+    micro_engine.register_agent(spam_agent)
+    
+    print(f"[Gateway] MicroAgentEngine initialized with {len(micro_engine.list_agents())} agents")
     
     # Initialize SubAgentManager (with agent factory using ToolRegistry)
     async def create_agent_for_session(session_key: str):
@@ -574,6 +601,111 @@ async def handle_webhook(endpoint: str, data: dict = {}):
         return {"error": "WakeController not initialized", "success": False}
     
     return await wake_controller.handle_webhook(f"/webhook/{endpoint}", data)
+
+
+# ==================== MicroAgent Management API ====================
+
+@app.get("/api/micro-agents")
+async def list_micro_agents():
+    """List all registered micro agents"""
+    if not micro_engine:
+        return {"agents": []}
+    return {"agents": micro_engine.list_agents()}
+
+
+@app.post("/api/micro-agents")
+async def create_micro_agent(data: dict):
+    """Create a new micro agent"""
+    if not micro_engine:
+        return {"error": "MicroAgentEngine not initialized", "success": False}
+    
+    from agent.micro.agent import MicroAgent, EvalMode, Rule
+    
+    # Create agent
+    agent = MicroAgent(
+        name=data.get("name", "Unnamed Agent"),
+        description=data.get("description", ""),
+        mode=EvalMode(data.get("mode", "rules")),
+        enabled=data.get("enabled", True),
+        confidence_threshold=data.get("confidence_threshold", 0.7),
+    )
+    
+    # Add rules if provided
+    for rule_data in data.get("rules", []):
+        agent.add_rule(
+            name=rule_data.get("name", "Unnamed Rule"),
+            pattern=rule_data.get("pattern", ""),
+            action=rule_data.get("action", "wake"),
+            priority=rule_data.get("priority", 0),
+        )
+    
+    # Set LLM prompt if provided
+    if "llm_prompt" in data:
+        agent.llm_prompt = data["llm_prompt"]
+    
+    agent_id = micro_engine.register_agent(agent)
+    
+    return {"success": True, "agent_id": agent_id, "agent": agent.to_dict()}
+
+
+@app.get("/api/micro-agents/{agent_id}")
+async def get_micro_agent(agent_id: str):
+    """Get a specific micro agent"""
+    if not micro_engine:
+        return {"error": "MicroAgentEngine not initialized"}
+    
+    agent = micro_engine.get_agent(agent_id)
+    if not agent:
+        return {"error": "Agent not found"}
+    
+    return {"agent": agent.to_dict()}
+
+
+@app.delete("/api/micro-agents/{agent_id}")
+async def delete_micro_agent(agent_id: str):
+    """Delete a micro agent"""
+    if not micro_engine:
+        return {"error": "MicroAgentEngine not initialized", "success": False}
+    
+    success = micro_engine.unregister_agent(agent_id)
+    return {"success": success}
+
+
+@app.post("/api/micro-agents/{agent_id}/rules")
+async def add_micro_agent_rule(agent_id: str, data: dict):
+    """Add a rule to a micro agent"""
+    if not micro_engine:
+        return {"error": "MicroAgentEngine not initialized", "success": False}
+    
+    agent = micro_engine.get_agent(agent_id)
+    if not agent:
+        return {"error": "Agent not found", "success": False}
+    
+    rule_id = agent.add_rule(
+        name=data.get("name", "Unnamed Rule"),
+        pattern=data.get("pattern", ""),
+        action=data.get("action", "wake"),
+        priority=data.get("priority", 0),
+    )
+    
+    return {"success": True, "rule_id": rule_id}
+
+
+@app.post("/api/micro-agents/evaluate")
+async def evaluate_with_micro_agents(data: dict):
+    """Evaluate text using all enabled micro agents"""
+    if not micro_engine:
+        return {"error": "MicroAgentEngine not initialized", "success": False}
+    
+    event_text = data.get("text", "")
+    event_data = data.get("data")
+    
+    result = await micro_engine.evaluate_all(event_text, event_data)
+    
+    return {
+        "success": True,
+        "result": result.to_dict(),
+    }
 
 
 # Static files (React Web UI) - mount last to catch-all
