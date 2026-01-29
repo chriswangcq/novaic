@@ -295,8 +295,8 @@ async def run_migration(conn, from_version: int):
                     api_key_id = row[7]
                     created_at = row[8]
                     
-                    # Map status to read flag: delivered=0, read/replied=1
-                    read = 1 if status in ("read", "replied") else 0
+                    # Map status to read flag: delivered=0, read=1
+                    read = 1 if status == "read" else 0
                     
                     # Build metadata
                     metadata = {}

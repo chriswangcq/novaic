@@ -200,7 +200,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
             role: msg.type === 'USER_MESSAGE' ? 'user' : 'assistant',
             content: msg.summary || '',
             timestamp: new Date(msg.timestamp),
-            status: msg.type === 'USER_MESSAGE' ? 'replied' as MessageStatus : undefined,
+            status: msg.type === 'USER_MESSAGE' ? 'read' as MessageStatus : undefined,
           }));
           set({ messages });
           console.log(`[Store] Loaded ${messages.length} messages from history`);
@@ -278,8 +278,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       ]);
       
       if (result.success) {
-        // Update local message ID to match server's
-        // and update status to 'delivered'
+        // Update local message ID to match server's and set status to 'delivered'
         set((state) => ({
           messages: state.messages.map((msg) =>
             msg.id === messageId 
@@ -672,16 +671,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
             break;
             
           case 'STATUS_UPDATE':
-            // Message status update (delivered, read, replied)
+            // Message status update (delivered, read)
             if (msg.message_id && msg.status) {
               updateMessageStatus(msg.message_id, msg.status);
               // If status is 'read', agent started processing
               if (msg.status === 'read') {
                 setExecuting(true);
-              }
-              // If status is 'replied', agent finished
-              if (msg.status === 'replied') {
-                setExecuting(false);
               }
             }
             break;

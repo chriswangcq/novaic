@@ -11,7 +11,6 @@ const statusConfig: Record<MessageStatus, { icon: typeof Check; text: string; cl
   sending: { icon: Clock, text: '发送中...', className: 'text-white/30' },
   delivered: { icon: Check, text: '已送达', className: 'text-white/40' },
   read: { icon: CheckCheck, text: '已读', className: 'text-blue-400' },
-  replied: { icon: CheckCheck, text: '已回复', className: 'text-green-400' },
   error: { icon: AlertCircle, text: '发送失败', className: 'text-red-400' },
 };
 

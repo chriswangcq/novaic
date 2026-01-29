@@ -75,7 +75,7 @@ export interface MessageBlock {
 }
 
 // Message status for tracking delivery and read state
-export type MessageStatus = 'sending' | 'delivered' | 'read' | 'replied' | 'error';
+export type MessageStatus = 'sending' | 'delivered' | 'read' | 'error';
 
 // Chat Message - 支持分块渲染
 export interface Message {

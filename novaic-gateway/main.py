@@ -1372,8 +1372,7 @@ async def send_chat_message(data: dict):
                     }
                     await broadcast_chat_message(agent_reply)
                 
-                # Update status to 'replied' when done
-                await update_message_status(message_id, "replied")
+                # Agent finished processing - execution state will be updated by AGENT_REPLY handler
                 
             except Exception as e:
                 print(f"[Chat] Error processing message {message_id}: {e}")
