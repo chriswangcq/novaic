@@ -140,29 +140,32 @@ async def initialize_systems(config):
     
     # Register Session MCP Server (host)
     session_port = int(os.getenv("NOVAIC_MCP_SESSION_PORT", "8081"))
+    session_enabled = os.getenv("NOVAIC_MCP_SESSION_ENABLED", "true").lower() == "true"
     tool_registry.register_server(
         name="session",
         port=session_port,
-        enabled=False,  # Disabled until deployed
+        enabled=session_enabled,
         priority=1,
     )
     
     # Register Local MCP Server (host)
     local_port = int(os.getenv("NOVAIC_MCP_LOCAL_PORT", "8082"))
+    local_enabled = os.getenv("NOVAIC_MCP_LOCAL_ENABLED", "true").lower() == "true"
     tool_registry.register_server(
         name="local",
         port=local_port,
-        enabled=False,  # Disabled until deployed
+        enabled=local_enabled,
         priority=2,
     )
     
     # Register QEMU MCP Server (host)
     qemu_port = int(os.getenv("NOVAIC_MCP_QEMU_PORT", "8083"))
+    qemu_enabled = os.getenv("NOVAIC_MCP_QEMU_ENABLED", "false").lower() == "true"  # Default disabled (fallback only)
     tool_registry.register_server(
         name="qemu",
         port=qemu_port,
-        enabled=False,  # Disabled until deployed
-        priority=3,
+        enabled=qemu_enabled,
+        priority=3,  # Lowest priority
     )
     
     print(f"[Gateway] ToolRegistry initialized with {len(tool_registry._servers)} servers")
