@@ -241,6 +241,16 @@ async def initialize_systems(config):
         priority=1,  # High priority (host-based memory)
     )
     
+    # Register Chat MCP Server (host - Agent<->User communication)
+    chat_port = int(os.getenv("NOVAIC_MCP_CHAT_PORT", "8085"))
+    chat_enabled = os.getenv("NOVAIC_MCP_CHAT_ENABLED", "true").lower() == "true"  # Default enabled
+    tool_registry.register_server(
+        name="chat",
+        port=chat_port,
+        enabled=chat_enabled,
+        priority=0,  # Highest priority (essential for user interaction)
+    )
+    
     print(f"[Gateway] ToolRegistry initialized with {len(tool_registry._servers)} servers")
     
     # Initialize WakeController
@@ -715,6 +725,182 @@ async def evaluate_with_micro_agents(data: dict):
     return {
         "success": True,
         "result": result.to_dict(),
+    }
+
+
+# ==================== Chat MCP API (Agent <-> User Communication) ====================
+
+import asyncio
+from fastapi.responses import StreamingResponse
+import json as json_module
+from collections import deque
+from typing import Dict, Any
+import uuid as uuid_module
+
+# Chat message store (for SSE streaming to frontend)
+_chat_messages: deque = deque(maxlen=100)  # Recent chat messages
+_chat_subscribers: Dict[str, asyncio.Queue] = {}  # SSE subscribers
+
+# Pending questions (agent asking user)
+_pending_questions: Dict[str, Dict[str, Any]] = {}  # request_id -> question data
+_question_responses: Dict[str, Dict[str, Any]] = {}  # request_id -> user response
+
+
+@app.post("/api/chat/event")
+async def receive_chat_event(data: dict):
+    """
+    Receive chat events from novaic-mcp-chat.
+    
+    This is called when the Agent uses chat tools (chat_reply, chat_ask, etc.)
+    Events are stored and broadcast to all SSE subscribers.
+    """
+    event_type = data.get("type", "")
+    event_data = data.get("data", {})
+    
+    # Generate message ID and timestamp
+    message_id = str(uuid_module.uuid4())[:12]
+    timestamp = datetime.now().isoformat()
+    
+    # Create chat message
+    chat_message = {
+        "id": message_id,
+        "type": event_type,
+        "timestamp": timestamp,
+        **event_data
+    }
+    
+    # Store message
+    _chat_messages.append(chat_message)
+    
+    # Handle AGENT_ASK specially - store pending question
+    if event_type == "AGENT_ASK":
+        request_id = event_data.get("request_id") or message_id
+        _pending_questions[request_id] = {
+            "question": event_data.get("question"),
+            "options": event_data.get("options"),
+            "timestamp": timestamp,
+            "message_id": message_id,
+        }
+        chat_message["request_id"] = request_id
+    
+    # Broadcast to all SSE subscribers
+    for queue in _chat_subscribers.values():
+        try:
+            queue.put_nowait(chat_message)
+        except asyncio.QueueFull:
+            pass  # Skip if subscriber's queue is full
+    
+    return {
+        "success": True,
+        "message_id": message_id,
+        "request_id": chat_message.get("request_id"),
+    }
+
+
+@app.get("/api/chat/messages")
+async def chat_messages_sse():
+    """
+    SSE endpoint for real-time chat messages (Agent -> User).
+    
+    Frontend connects to this to receive:
+    - Agent replies (AGENT_REPLY)
+    - Agent questions (AGENT_ASK)
+    - Agent notifications (AGENT_NOTIFY)
+    - Agent images (AGENT_IMAGE)
+    """
+    subscriber_id = str(uuid_module.uuid4())[:8]
+    queue: asyncio.Queue = asyncio.Queue(maxsize=50)
+    _chat_subscribers[subscriber_id] = queue
+    
+    async def event_generator():
+        try:
+            # Send recent messages first
+            for msg in list(_chat_messages)[-10:]:
+                yield f"data: {json_module.dumps(msg)}\n\n"
+            
+            # Stream new messages
+            while True:
+                try:
+                    message = await asyncio.wait_for(queue.get(), timeout=30.0)
+                    yield f"data: {json_module.dumps(message)}\n\n"
+                except asyncio.TimeoutError:
+                    # Send keepalive
+                    yield f": keepalive\n\n"
+        finally:
+            # Cleanup on disconnect
+            _chat_subscribers.pop(subscriber_id, None)
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )
+
+
+@app.get("/api/chat/response/{request_id}")
+async def check_user_response(request_id: str):
+    """
+    Check if user has responded to an agent's question.
+    
+    Called by novaic-mcp-chat's chat_ask tool to poll for user response.
+    """
+    if request_id not in _pending_questions:
+        return {"error": "Question not found", "has_response": False}
+    
+    if request_id in _question_responses:
+        response = _question_responses.pop(request_id)
+        _pending_questions.pop(request_id, None)
+        return {"has_response": True, **response}
+    
+    return {"has_response": False}
+
+
+@app.post("/api/chat/respond/{request_id}")
+async def submit_user_response(request_id: str, data: dict):
+    """
+    Submit user's response to an agent's question.
+    
+    Called by frontend when user answers a question from the agent.
+    """
+    if request_id not in _pending_questions:
+        return {"error": "Question not found or expired", "success": False}
+    
+    # Store response
+    _question_responses[request_id] = {
+        "response": data.get("response", ""),
+        "selected_option": data.get("selected_option"),
+        "timestamp": datetime.now().isoformat(),
+    }
+    
+    # Also publish to EventBus as USER_RESPONSE event
+    if event_bus:
+        from agent.events.models import AgentEvent, EventType
+        event = AgentEvent(
+            type=EventType.USER_RESPONSE,
+            source="user",
+            payload={
+                "request_id": request_id,
+                "response": data.get("response", ""),
+                "selected_option": data.get("selected_option"),
+            }
+        )
+        await event_bus.publish(event)
+    
+    return {"success": True, "request_id": request_id}
+
+
+@app.get("/api/chat/pending-questions")
+async def get_pending_questions():
+    """Get all pending questions from the agent."""
+    return {
+        "questions": [
+            {"request_id": rid, **qdata}
+            for rid, qdata in _pending_questions.items()
+        ]
     }
 
 

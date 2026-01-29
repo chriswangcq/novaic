@@ -17,6 +17,13 @@ class EventType(Enum):
     # User interactions
     USER_MESSAGE = "user_message"
     
+    # Agent to User (Chat MCP)
+    AGENT_REPLY = "agent_reply"      # Agent sends a message to user
+    AGENT_ASK = "agent_ask"          # Agent asks user a question
+    AGENT_NOTIFY = "agent_notify"    # Agent sends notification
+    AGENT_IMAGE = "agent_image"      # Agent shows image
+    USER_RESPONSE = "user_response"  # User responds to agent's question
+    
     # External triggers
     WECHAT_MESSAGE = "wechat_message"
     CRON_TRIGGER = "cron_trigger"
@@ -176,6 +183,74 @@ class AgentEvent:
             },
             priority=EventPriority.HIGH,
             session_id=parent_session_id,
+        )
+    
+    @classmethod
+    def agent_reply(
+        cls,
+        message: str,
+        attachments: list = None,
+        session_id: Optional[str] = None,
+        **kwargs
+    ) -> "AgentEvent":
+        """Create an agent reply event (agent sends message to user)."""
+        return cls(
+            type=EventType.AGENT_REPLY,
+            source="agent",
+            payload={
+                "message": message,
+                "attachments": attachments or [],
+                "reply_type": "message",
+                **kwargs
+            },
+            priority=EventPriority.HIGH,
+            session_id=session_id,
+        )
+    
+    @classmethod
+    def agent_ask(
+        cls,
+        question: str,
+        options: list = None,
+        request_id: str = None,
+        session_id: Optional[str] = None,
+        **kwargs
+    ) -> "AgentEvent":
+        """Create an agent ask event (agent asks user a question)."""
+        return cls(
+            type=EventType.AGENT_ASK,
+            source="agent",
+            payload={
+                "question": question,
+                "options": options,
+                "request_id": request_id or str(uuid.uuid4())[:12],
+                "reply_type": "question",
+                **kwargs
+            },
+            priority=EventPriority.HIGH,
+            session_id=session_id,
+        )
+    
+    @classmethod
+    def agent_notify(
+        cls,
+        message: str,
+        level: str = "info",
+        session_id: Optional[str] = None,
+        **kwargs
+    ) -> "AgentEvent":
+        """Create an agent notification event."""
+        return cls(
+            type=EventType.AGENT_NOTIFY,
+            source="agent",
+            payload={
+                "message": message,
+                "level": level,
+                "reply_type": "notification",
+                **kwargs
+            },
+            priority=EventPriority.NORMAL,
+            session_id=session_id,
         )
 
 
