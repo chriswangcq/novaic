@@ -231,6 +231,16 @@ async def initialize_systems(config):
         priority=3,  # Lowest priority
     )
     
+    # Register Memory MCP Server (host)
+    memory_port = int(os.getenv("NOVAIC_MCP_MEMORY_PORT", "8084"))
+    memory_enabled = os.getenv("NOVAIC_MCP_MEMORY_ENABLED", "true").lower() == "true"  # Default enabled
+    tool_registry.register_server(
+        name="memory",
+        port=memory_port,
+        enabled=memory_enabled,
+        priority=1,  # High priority (host-based memory)
+    )
+    
     print(f"[Gateway] ToolRegistry initialized with {len(tool_registry._servers)} servers")
     
     # Initialize WakeController
