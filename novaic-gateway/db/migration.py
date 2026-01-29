@@ -1,0 +1,283 @@
+"""
+Data Migration Script
+
+Migrates existing file-based data to SQLite database.
+"""
+
+import os
+import json
+import asyncio
+import logging
+from pathlib import Path
+from datetime import datetime
+from typing import Optional, Dict, Any, List
+
+from .database import Database, get_database
+
+logger = logging.getLogger(__name__)
+
+
+async def migrate_config(db: Database, data_dir: Path) -> bool:
+    """Migrate config.json to database."""
+    config_file = data_dir / "config.json"
+    
+    if not config_file.exists():
+        logger.info("[Migration] No config.json found, skipping")
+        return False
+    
+    logger.info(f"[Migration] Migrating config from {config_file}")
+    
+    try:
+        with open(config_file, "r") as f:
+            data = json.load(f)
+        
+        async with db.transaction():
+            # Migrate general settings
+            if "version" in data:
+                await db.execute(
+                    "INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)",
+                    ("version", json.dumps(data["version"]))
+                )
+            if "default_model" in data:
+                await db.execute(
+                    "INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)",
+                    ("default_model", json.dumps(data["default_model"]))
+                )
+            if "max_tokens" in data:
+                await db.execute(
+                    "INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)",
+                    ("max_tokens", json.dumps(data["max_tokens"]))
+                )
+            if "max_iterations" in data:
+                await db.execute(
+                    "INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)",
+                    ("max_iterations", json.dumps(data["max_iterations"]))
+                )
+            if "visible_shell" in data:
+                await db.execute(
+                    "INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)",
+                    ("visible_shell", json.dumps(data["visible_shell"]))
+                )
+            
+            # Migrate API keys
+            for key in data.get("api_keys", []):
+                await db.execute(
+                    """INSERT OR REPLACE INTO api_keys 
+                       (id, name, provider, api_key, api_base, deployment_name, api_version, created_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        key["id"],
+                        key["name"],
+                        key["provider"],
+                        key.get("api_key"),
+                        key.get("api_base"),
+                        key.get("deployment_name"),
+                        key.get("api_version"),
+                        key.get("created_at", datetime.now().isoformat()),
+                    )
+                )
+            
+            # Migrate models
+            for model in data.get("available_models", []):
+                await db.execute(
+                    """INSERT OR REPLACE INTO available_models 
+                       (id, name, provider, api_key_id, enabled, is_custom)
+                       VALUES (?, ?, ?, ?, ?, ?)""",
+                    (
+                        model["id"],
+                        model["name"],
+                        model["provider"],
+                        model["api_key_id"],
+                        1 if model.get("enabled", True) else 0,
+                        1 if model.get("is_custom", False) else 0,
+                    )
+                )
+        
+        logger.info(f"[Migration] Migrated config: {len(data.get('api_keys', []))} API keys, {len(data.get('available_models', []))} models")
+        
+        # Backup old file
+        backup_file = config_file.with_suffix(".json.bak")
+        config_file.rename(backup_file)
+        logger.info(f"[Migration] Backed up config.json to {backup_file}")
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"[Migration] Failed to migrate config: {e}")
+        return False
+
+
+async def migrate_agents(db: Database, data_dir: Path) -> bool:
+    """Migrate agents.json to database."""
+    agents_file = data_dir / "agents.json"
+    
+    if not agents_file.exists():
+        logger.info("[Migration] No agents.json found, skipping")
+        return False
+    
+    logger.info(f"[Migration] Migrating agents from {agents_file}")
+    
+    try:
+        with open(agents_file, "r") as f:
+            data = json.load(f)
+        
+        async with db.transaction():
+            # Migrate current_agent_id
+            if data.get("current_agent_id"):
+                await db.execute(
+                    "INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)",
+                    ("current_agent_id", json.dumps(data["current_agent_id"]))
+                )
+            
+            # Migrate agents
+            for agent in data.get("agents", []):
+                # Extract VM config and ports
+                vm_config = agent.get("vm", {})
+                ports = vm_config.pop("ports", {})
+                
+                await db.execute(
+                    """INSERT OR REPLACE INTO agents 
+                       (id, name, created_at, vm_config, ports, status)
+                       VALUES (?, ?, ?, ?, ?, ?)""",
+                    (
+                        agent["id"],
+                        agent["name"],
+                        agent.get("created_at", datetime.now().isoformat()),
+                        json.dumps(vm_config),
+                        json.dumps(ports),
+                        agent.get("status", "stopped"),
+                    )
+                )
+        
+        logger.info(f"[Migration] Migrated {len(data.get('agents', []))} agents")
+        
+        # Backup old file
+        backup_file = agents_file.with_suffix(".json.bak")
+        agents_file.rename(backup_file)
+        logger.info(f"[Migration] Backed up agents.json to {backup_file}")
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"[Migration] Failed to migrate agents: {e}")
+        return False
+
+
+async def migrate_sessions(db: Database, data_dir: Path) -> bool:
+    """Migrate session JSONL files to database."""
+    sessions_dir = data_dir / "sessions"
+    
+    if not sessions_dir.exists():
+        logger.info("[Migration] No sessions directory found, skipping")
+        return False
+    
+    session_files = list(sessions_dir.glob("*.jsonl"))
+    if not session_files:
+        logger.info("[Migration] No session files found, skipping")
+        return False
+    
+    logger.info(f"[Migration] Migrating {len(session_files)} session files")
+    
+    migrated = 0
+    for session_file in session_files:
+        try:
+            # Extract session ID from filename
+            session_id = session_file.stem.replace("_", ":")
+            
+            # Create session
+            await db.execute(
+                """INSERT OR IGNORE INTO sessions (id, created_at, updated_at)
+                   VALUES (?, ?, ?)""",
+                (session_id, datetime.now().isoformat(), datetime.now().isoformat())
+            )
+            
+            # Read and migrate entries
+            with open(session_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    
+                    try:
+                        entry = json.loads(line)
+                        entry_type = entry.get("type", "message")
+                        
+                        if entry_type == "message":
+                            await db.execute(
+                                """INSERT INTO session_messages 
+                                   (session_id, type, role, content, timestamp, metadata)
+                                   VALUES (?, ?, ?, ?, ?, ?)""",
+                                (
+                                    session_id,
+                                    "message",
+                                    entry.get("role"),
+                                    json.dumps(entry.get("content")) if not isinstance(entry.get("content"), str) else entry.get("content"),
+                                    entry.get("timestamp", datetime.now().isoformat()),
+                                    json.dumps(entry.get("metadata", {})),
+                                )
+                            )
+                        elif entry_type == "compaction_summary":
+                            await db.execute(
+                                """INSERT INTO session_messages 
+                                   (session_id, type, content, timestamp, compacted_count, original_tokens, summary_tokens)
+                                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                                (
+                                    session_id,
+                                    "compaction_summary",
+                                    entry.get("summary"),
+                                    entry.get("timestamp", datetime.now().isoformat()),
+                                    entry.get("compacted_count"),
+                                    entry.get("original_tokens"),
+                                    entry.get("summary_tokens"),
+                                )
+                            )
+                    except json.JSONDecodeError:
+                        continue
+            
+            await db.commit()
+            migrated += 1
+            
+            # Backup old file
+            backup_file = session_file.with_suffix(".jsonl.bak")
+            session_file.rename(backup_file)
+            
+        except Exception as e:
+            logger.error(f"[Migration] Failed to migrate session {session_file}: {e}")
+    
+    logger.info(f"[Migration] Migrated {migrated} sessions")
+    
+    # Also migrate metadata files
+    for meta_file in sessions_dir.glob("*.meta.json"):
+        try:
+            backup_file = meta_file.with_suffix(".json.bak")
+            meta_file.rename(backup_file)
+        except Exception:
+            pass
+    
+    return migrated > 0
+
+
+async def run_migration(db: Optional[Database] = None) -> Dict[str, bool]:
+    """Run all migrations."""
+    if db is None:
+        db = get_database()
+        await db.connect()
+    
+    data_dir = Path(os.environ.get("NOVAIC_DATA_DIR", "."))
+    
+    logger.info(f"[Migration] Starting migration from {data_dir}")
+    
+    results = {
+        "config": await migrate_config(db, data_dir),
+        "agents": await migrate_agents(db, data_dir),
+        "sessions": await migrate_sessions(db, data_dir),
+    }
+    
+    logger.info(f"[Migration] Migration complete: {results}")
+    
+    return results
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    asyncio.run(run_migration())

@@ -151,6 +151,9 @@ from api.routes import router as api_router
 from api.agents import router as agents_router
 from config.manager import get_config_manager
 
+# Import database module
+from db import init_database, close_database, run_migration
+
 # Import new components
 from agent.events.bus import EventBus
 from agent.events.handler import AgentEventHandler
@@ -440,13 +443,26 @@ async def shutdown_systems():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events"""
-    config = get_config_manager().load()
-    
     if SOCKET_PATH:
         print(f"🚀 NovAIC Gateway starting on unix://{SOCKET_PATH}")
     else:
         print(f"🚀 NovAIC Gateway starting on http://{HOST}:{PORT}")
-    print(f"📋 Config: {get_config_manager().config_file}")
+    
+    # Initialize database
+    print("[Gateway] Initializing database...")
+    db = await init_database()
+    print(f"[Gateway] Database initialized: {db.db_path}")
+    
+    # Run migrations (from file-based storage to SQLite)
+    print("[Gateway] Checking for data migrations...")
+    migration_results = await run_migration(db)
+    if any(migration_results.values()):
+        print(f"[Gateway] Migrations completed: {migration_results}")
+    else:
+        print("[Gateway] No migrations needed")
+    
+    # Load config (now from database)
+    config = get_config_manager().load()
     print(f"🤖 Default model: {config.default_model}")
     
     # Initialize all systems
@@ -456,6 +472,10 @@ async def lifespan(app: FastAPI):
     
     # Shutdown all systems
     await shutdown_systems()
+    
+    # Close database
+    await close_database()
+    print("[Gateway] Database closed")
     
     print("👋 NovAIC Gateway shutting down")
 
