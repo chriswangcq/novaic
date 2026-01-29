@@ -30,16 +30,68 @@ QEMU_MONITOR_SOCKET = os.environ.get("QEMU_MONITOR_SOCKET", "/tmp/novaic-qemudeb
 
 mcp = FastMCP(
     name="novaic-qemudebug",
-    instructions="""This MCP server provides QEMU VM debugging tools.
+    instructions="""NovAIC QEMU Debug - 虚拟机调试工具 (Fallback)
 
-Use these tools for:
-- Debugging VM issues via SSH
-- Taking screenshots of the VM display
-- Sending keyboard/mouse input directly to QEMU
-- Monitoring and controlling VM state
+6 个工具用于在 Hypervisor 层面调试 VM。
 
-These tools operate at the hypervisor level, bypassing the guest OS's input stack.
-Useful for debugging when the guest is unresponsive or for automation testing.
+## ⚠️ 重要：这是 Fallback 工具
+
+**优先使用 VM 内的工具 (novaic-mcp-vmuse)**
+仅在以下情况使用本工具：
+- VM 内 MCP Server 无响应
+- 需要 Hypervisor 层面的操作
+- 调试 VM 启动/崩溃问题
+
+## 工具一览
+
+| 工具 | 用途 |
+|------|------|
+| qemu_ssh_exec | 通过 SSH 执行命令 |
+| qemu_vnc_screenshot | 获取 VNC 显示截图 |
+| qemu_send_keys | 发送键盘输入 (绕过 Guest) |
+| qemu_send_mouse | 发送鼠标输入 (绕过 Guest) |
+| qemu_status | 检查 VM 状态 |
+| qemu_restart | 重启 VM |
+
+## 与 VM 内工具的区别
+
+| 场景 | VM 内工具 | QEMU Debug |
+|------|----------|------------|
+| 正常操作 | ✅ 推荐 | ❌ |
+| MCP 无响应 | ❌ 不可用 | ✅ 使用 |
+| 系统崩溃 | ❌ 不可用 | ✅ 使用 |
+| 键盘被锁定 | ❌ 可能失败 | ✅ 绕过 |
+
+## 使用场景
+
+### 1. 诊断 VM 状态
+```
+qemu_status()  # 检查 VM 运行状态、SSH/VNC/MCP 可达性
+```
+
+### 2. VM 无响应时执行命令
+```
+qemu_ssh_exec(command="sudo systemctl restart novaic-mcp")
+```
+
+### 3. 获取崩溃时的屏幕
+```
+qemu_vnc_screenshot()  # 返回 base64 编码的图片
+```
+
+### 4. 强制重启
+```
+qemu_restart(force=True)  # 硬重置
+qemu_restart(force=False, wait_ready=True)  # 优雅重启
+```
+
+## qemu_send_keys 键名格式
+
+- 字母：a, b, c, ... z
+- 特殊：ret (回车), spc (空格), tab, esc, backspace
+- 组合：ctrl-c, alt-f4, ctrl-alt-delete
+- 功能键：f1, f2, ... f12
+- 方向键：up, down, left, right
 """
 )
 

@@ -17,17 +17,58 @@ BRAVE_API_KEY = os.environ.get("BRAVE_API_KEY", "")
 
 mcp = FastMCP(
     name="novaic-local",
-    instructions="""This MCP server provides local tools that run on the host machine.
+    instructions="""NovAIC Local Tools - 宿主机网络工具
 
-Available tools:
-- web_search: Search the web using Brave Search API
-- web_fetch: Fetch web pages and convert to readable markdown
+2 个工具用于搜索和获取网页内容。
 
-These tools are useful for:
-- Researching information online
-- Getting current/real-time data
-- Reading web documentation
-- Gathering information for tasks
+## 工具一览
+
+| 工具 | 用途 |
+|------|------|
+| web_search | 使用 Brave Search 搜索网页 |
+| web_fetch | 获取网页并转为 Markdown |
+
+## 使用场景
+
+### 1. 信息搜索
+```
+# 搜索最新信息
+web_search(query="Python 3.12 新特性", count=5)
+
+# 搜索最近一周的内容
+web_search(query="AI news", freshness="pw")
+```
+
+### 2. 阅读文档
+```
+# 获取网页内容
+web_fetch(url="https://docs.python.org/3/whatsnew/3.12.html")
+
+# 只提取主要内容，限制长度
+web_fetch(url="https://example.com", extract_main_content=True, max_length=10000)
+```
+
+### 3. 调研流程
+典型的调研流程：
+1. `web_search` 找到相关页面
+2. `web_fetch` 获取最相关的几个页面内容
+3. 总结分析
+
+## freshness 参数说明
+
+| 值 | 含义 |
+|----|------|
+| pd | 过去一天 |
+| pw | 过去一周 |
+| pm | 过去一月 |
+| py | 过去一年 |
+| 无 | 不限时间 |
+
+## 注意事项
+
+- 搜索需要 BRAVE_API_KEY 环境变量
+- web_fetch 默认最大 50000 字符
+- 部分网站可能需要身份验证无法抓取
 """
 )
 

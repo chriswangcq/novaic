@@ -20,16 +20,54 @@ GATEWAY_URL = os.environ.get("NOVAIC_GATEWAY_URL", "http://127.0.0.1:8000")
 
 mcp = FastMCP(
     name="novaic-session",
-    instructions="""This MCP server provides session management tools for NovAIC Agent.
+    instructions="""NovAIC Session Manager - 会话与子代理管理
 
-Use these tools to:
-- List and inspect active sessions
-- Send messages between sessions
-- Spawn sub-agents for parallel task execution
-- Monitor and control sub-agent tasks
+6 个工具用于管理会话和并行任务。
 
-Sessions are isolated execution contexts with their own message history.
-Sub-agents run in separate sessions and can execute tasks in parallel.
+## 核心概念
+
+- **Session（会话）**: 独立的执行上下文，包含自己的消息历史
+- **SubAgent（子代理）**: 在独立会话中执行的并行任务
+
+## 工具一览
+
+| 工具 | 用途 |
+|------|------|
+| sessions_list | 查看所有活跃会话 |
+| sessions_history | 获取会话消息历史 |
+| sessions_send | 向指定会话发送消息 |
+| sessions_spawn | **启动子代理执行并行任务** |
+| sessions_status | 检查子代理状态 |
+| sessions_cancel | 取消运行中的子代理 |
+
+## 使用场景
+
+### 1. 并行任务
+当有多个独立任务时，使用 sessions_spawn 并行执行：
+```
+sessions_spawn(task="搜索 Python 教程", context="找到后总结要点")
+sessions_spawn(task="查看项目目录结构", context="分析代码组织")
+```
+
+### 2. 长时间任务
+对于耗时任务，spawn 后不等待（wait=False），继续其他工作：
+```
+sessions_spawn(task="执行完整测试套件", timeout_minutes=60, wait=False)
+```
+
+### 3. 会话间通信
+向其他会话发送消息或查询其历史：
+```
+sessions_send(session_key="main", message="子任务完成")
+sessions_history(session_key="subagent:task_123", limit=10)
+```
+
+## 最佳实践
+
+- 并行任务数建议 ≤ 3，避免资源竞争
+- 长任务设置合理的 timeout_minutes
+- 使用 sessions_status 定期检查子代理进度
+- announce=True 让子代理完成后自动通知主会话
 """
 )
 

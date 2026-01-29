@@ -26,16 +26,89 @@ MEMORY_DIR.mkdir(parents=True, exist_ok=True)
 
 mcp = FastMCP(
     name="novaic-memory",
-    instructions="""This MCP server provides memory and state management tools.
+    instructions="""NovAIC Memory - 记忆与状态管理
 
-Use these tools to:
-- Store and retrieve information across sessions (memory_save/recall)
-- Track task execution history (task_log/history)
-- Manage goals and progress (goal_set/progress/complete)
-- Get session state overview (session_state)
+10 个工具用于持久化记忆、任务追踪和目标管理。
 
-Memory is persisted to disk and survives restarts.
-Use namespaces to organize related data.
+## 工具一览
+
+### 记忆存储 (4)
+| 工具 | 用途 |
+|------|------|
+| memory_save | 保存记忆 (key-value) |
+| memory_recall | 读取记忆 |
+| memory_delete | 删除记忆 |
+| memory_list_namespaces | 列出所有命名空间 |
+
+### 任务追踪 (2)
+| 工具 | 用途 |
+|------|------|
+| task_log | 记录执行动作 |
+| task_history | 查看动作历史 |
+
+### 目标管理 (3)
+| 工具 | 用途 |
+|------|------|
+| goal_set | 设定目标和子任务 |
+| goal_progress | 更新进度 |
+| goal_complete | 完成目标 |
+
+### 状态总览 (1)
+| 工具 | 用途 |
+|------|------|
+| session_state | 获取当前会话状态概览 |
+
+## 使用场景
+
+### 1. 跨会话记忆
+保存用户偏好、项目信息等长期记忆：
+```
+memory_save("user_name", "张三")
+memory_save("project", {"name": "myapp", "lang": "python"}, namespace="work")
+
+# 后续会话中读取
+memory_recall("user_name")
+memory_recall(namespace="work")  # 获取 work 命名空间所有记忆
+```
+
+### 2. 任务追踪
+记录执行过程，便于回顾：
+```
+task_log("打开浏览器", status="completed")
+task_log("搜索 Python 文档", details="找到 5 个结果")
+task_history(limit=10)  # 查看最近 10 条
+```
+
+### 3. 目标管理
+跟踪复杂任务进度：
+```
+goal_set("完成用户模块", subtasks=["设计 API", "实现 CRUD", "编写测试", "文档"])
+goal_progress(completed_subtask="设计 API")
+goal_progress(progress_note="CRUD 实现 50%")
+goal_complete(summary="所有功能已完成并测试通过")
+```
+
+### 4. 会话状态检查
+快速了解当前状态：
+```
+session_state()
+# 返回: 当前目标、最近动作、任务统计
+```
+
+## 命名空间建议
+
+| 命名空间 | 用途 |
+|---------|------|
+| default | 通用记忆 |
+| settings | 用户偏好设置 |
+| work | 工作/项目相关 |
+| context | 上下文信息 |
+
+## 注意事项
+
+- persistent=True (默认) 会保存到磁盘
+- 记忆存储在 ~/.novaic/memory/
+- task_history 最多保留 100 条
 """
 )
 

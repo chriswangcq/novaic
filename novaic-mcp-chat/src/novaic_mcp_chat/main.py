@@ -21,25 +21,97 @@ GATEWAY_URL = os.environ.get("NOVAIC_GATEWAY_URL", "http://127.0.0.1:9000")
 
 mcp = FastMCP(
     name="novaic-chat",
-    instructions="""This MCP server provides tools for communicating with users.
+    instructions="""NovAIC Chat - Agent ↔ User 通信
 
-Use these tools when you want to:
-- Reply to the user with a message (chat_reply)
-- Ask the user a question and wait for their answer (chat_ask)
-- Show a notification without expecting a reply (chat_notify)
-- Show an image to the user (chat_show_image)
-- Review previous conversation history (chat_history)
+6 个工具用于与用户进行对话交互。
 
-IMPORTANT: Your thinking and tool execution are shown in a separate "Agent Log" panel.
-Use these chat tools ONLY when you want to directly communicate with the user.
+## ⚠️ 重要架构说明
 
-Example workflow:
-1. User sends: "帮我打开浏览器访问 google.com"
-2. Agent thinks: [shown in Agent Log]
-3. Agent calls: browser_navigate(...) [shown in Agent Log]
-4. Agent calls: chat_reply("已经打开 Google 首页") [shown in Chat]
+界面分为两个区域：
+- **Agent Log**: 显示思考过程、工具调用 (自动展示)
+- **Chat Panel**: 显示与用户的对话 (需要调用本工具)
 
-Use chat_history when you need to recall what was discussed earlier in the conversation.
+**只有调用本工具的内容才会出现在 Chat Panel！**
+
+## 工具一览
+
+| 工具 | 用途 |
+|------|------|
+| chat_reply | 发送消息给用户 |
+| chat_ask | 提问并等待用户回复 |
+| chat_notify | 发送通知 (无需回复) |
+| chat_show_image | 展示图片 |
+| chat_history | 查看历史消息 (摘要) |
+| chat_get_message | 按 ID 获取完整消息 |
+
+## 使用时机
+
+### ✅ 应该使用 chat_reply 的情况
+- 任务完成，需要告知用户结果
+- 需要向用户解释某件事
+- 主动提供信息或建议
+
+### ✅ 应该使用 chat_ask 的情况
+- 需要用户确认 (如删除操作)
+- 需要用户提供额外信息
+- 有多个选项需要用户选择
+
+### ✅ 应该使用 chat_notify 的情况
+- 状态更新 (如 "正在处理...")
+- 警告信息
+- 非关键性通知
+
+### ❌ 不需要使用的情况
+- 正在思考分析 (自动显示在 Agent Log)
+- 调用其他工具 (自动显示在 Agent Log)
+
+## 典型工作流
+
+```
+用户: "帮我打开 Google"
+
+[Agent Log]
+思考: 用户想访问 Google
+调用: browser_navigate(url="https://google.com")
+结果: 导航成功
+
+[调用 Chat 工具]
+chat_reply("已经打开 Google 首页")
+
+[Chat Panel]
+Agent: 已经打开 Google 首页
+```
+
+## chat_ask 示例
+
+```
+result = chat_ask(
+    question="你想用哪个浏览器？",
+    options=["Chrome", "Firefox", "Safari"],
+    timeout_seconds=60
+)
+# result.response = "Chrome" 或 result.selected_option = 0
+```
+
+## chat_notify 级别
+
+| level | 用途 |
+|-------|------|
+| info | 一般信息 |
+| success | 成功提示 |
+| warning | 警告信息 |
+| error | 错误提示 |
+
+## chat_history 使用
+
+```
+# 先看摘要列表
+history = chat_history(limit=20, summary_length=50)
+# 返回: [{"id": "abc", "summary": "消息摘要...", "is_truncated": true}]
+
+# 需要完整内容时按 ID 查询
+detail = chat_get_message("abc")
+```
 """
 )
 
