@@ -342,6 +342,95 @@ export const api = {
   async getAvailableImages(): Promise<AvailableImage[]> {
     return invoke<AvailableImage[]>('gateway_get', { path: '/api/agents/images' });
   },
+
+  // ==================== Chat API (Fire-and-Forget) ====================
+
+  /**
+   * Send a chat message (async, fire-and-forget style)
+   */
+  async sendChatMessage(message: string, options?: {
+    model?: string;
+    mode?: 'agent' | 'chat';
+    api_key_id?: string;
+  }): Promise<{ success: boolean; message_id: string; status: string; timestamp: string }> {
+    return invoke('gateway_post', {
+      path: '/api/chat/send',
+      body: {
+        message,
+        model: options?.model,
+        mode: options?.mode || 'agent',
+        api_key_id: options?.api_key_id,
+      }
+    });
+  },
+
+  /**
+   * Get chat history
+   */
+  async getChatHistory(options?: {
+    limit?: number;
+    before_id?: string;
+    message_type?: string;
+    summary_length?: number;
+  }): Promise<{
+    success: boolean;
+    messages: Array<{
+      id: string;
+      type: string;
+      timestamp: string;
+      summary: string;
+      is_truncated: boolean;
+    }>;
+    has_more: boolean;
+  }> {
+    const params = new URLSearchParams();
+    if (options?.limit) params.set('limit', options.limit.toString());
+    if (options?.before_id) params.set('before_id', options.before_id);
+    if (options?.message_type) params.set('message_type', options.message_type);
+    if (options?.summary_length) params.set('summary_length', options.summary_length.toString());
+    
+    const queryString = params.toString();
+    const path = queryString ? `/api/chat/history?${queryString}` : '/api/chat/history';
+    return invoke('gateway_get', { path });
+  },
+
+  /**
+   * Get full message content by ID
+   */
+  async getChatMessage(messageId: string): Promise<{
+    success: boolean;
+    id?: string;
+    type?: string;
+    content?: string;
+    message?: string;
+    timestamp?: string;
+    error?: string;
+  }> {
+    return invoke('gateway_get', { path: `/api/chat/message/${messageId}` });
+  },
+
+  /**
+   * Respond to an agent question
+   */
+  async respondToQuestion(requestId: string, response: string, selectedOption?: string): Promise<{
+    success: boolean;
+    request_id: string;
+  }> {
+    return invoke('gateway_post', {
+      path: `/api/chat/respond/${requestId}`,
+      body: {
+        response,
+        selected_option: selectedOption,
+      }
+    });
+  },
+
+  /**
+   * Clear execution logs
+   */
+  async clearLogs(): Promise<{ success: boolean }> {
+    return invoke('gateway_get', { path: '/api/logs/clear' });
+  },
 };
 
 export default api;

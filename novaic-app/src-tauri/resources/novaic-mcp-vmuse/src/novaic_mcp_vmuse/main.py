@@ -35,16 +35,81 @@ from .tools.result_cache import ResultCache, get_result_cache, truncate_if_neede
 
 mcp = FastMCP(
     name="novaic",
-    instructions="""NovAIC - AI Computer Engine
+    instructions="""NovAIC VM Tools - 虚拟机内操作工具 (Primary)
 
-提供 34+ MCP 工具，让你能够控制桌面、浏览器、文件系统等。
+35 个工具用于控制 VM 内的桌面、浏览器、文件系统。
 
-快速指南：
-- 桌面操作：使用 screenshot + mouse + keyboard，点击前必须确认准星位置
-- 浏览器操作：使用 browser_* 系列工具，优先用选择器
-- 环境感知：使用 system_snapshot, directory_snapshot 了解当前状态
+## ⚠️ 这是主要工具集
 
-详细指南请查看各 skill 资源：skill://desktop, skill://browser, skill://software, skill://wechat 等
+优先使用本工具集进行所有 VM 内操作。
+仅在本工具无响应时才使用 qemudebug (fallback)。
+
+## 工具分类
+
+### 桌面操作 (3)
+| 工具 | 用途 |
+|------|------|
+| screenshot | 截屏 (带坐标网格) |
+| mouse | 鼠标操作 (点击/移动/滚动) |
+| keyboard | 键盘操作 (输入/快捷键) |
+
+### 浏览器操作 (8+)
+| 工具 | 用途 |
+|------|------|
+| browser_navigate | 导航到 URL |
+| browser_click | 点击元素 (CSS 选择器) |
+| browser_type | 在元素中输入文字 |
+| browser_screenshot | 浏览器截图 |
+| browser_scroll | 滚动页面 |
+| browser_execute_js | 执行 JavaScript |
+| ... | 更多浏览器工具 |
+
+### Shell 操作 (3)
+| 工具 | 用途 |
+|------|------|
+| shell_exec | 执行命令 |
+| shell_view | 查看命令输出 |
+| shell_write | 写入内容到终端 |
+
+### 文件操作 (4)
+| 工具 | 用途 |
+|------|------|
+| file_read | 读取文件 |
+| file_write | 写入文件 |
+| file_list | 列出目录内容 |
+| file_search | 搜索文件 |
+
+### 环境感知 (2)
+| 工具 | 用途 |
+|------|------|
+| system_snapshot | 系统状态快照 |
+| directory_snapshot | 目录结构快照 |
+
+## 操作指南
+
+### 桌面操作流程
+1. `screenshot()` 获取屏幕 (显示坐标网格)
+2. 分析图像，找到目标位置
+3. `mouse(action="click", x=X, y=Y)` 点击
+
+### 浏览器操作流程
+1. `browser_navigate(url="...")` 打开网页
+2. 优先用 `browser_click(selector="CSS选择器")`
+3. 选择器不可用时才用坐标点击
+
+### 键盘输入
+```
+keyboard(action="type", text="Hello")  # 输入文字
+keyboard(action="hotkey", keys=["ctrl", "c"])  # 快捷键
+```
+
+## Skill 资源
+
+详细操作指南请查看各 skill：
+- skill://desktop - 桌面操作详细指南
+- skill://browser - 浏览器操作详细指南
+- skill://software - 软件操作指南
+- skill://wechat - 微信操作指南
 """
 )
 

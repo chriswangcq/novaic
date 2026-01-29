@@ -745,6 +745,54 @@ _chat_subscribers: Dict[str, asyncio.Queue] = {}  # SSE subscribers
 _pending_questions: Dict[str, Dict[str, Any]] = {}  # request_id -> question data
 _question_responses: Dict[str, Dict[str, Any]] = {}  # request_id -> user response
 
+# User messages with status tracking
+_user_messages: Dict[str, Dict[str, Any]] = {}  # message_id -> message data
+
+# Agent execution logs for SSE streaming
+_agent_logs: deque = deque(maxlen=500)  # Recent execution logs
+_log_subscribers: Dict[str, asyncio.Queue] = {}  # Log SSE subscribers
+
+
+def broadcast_chat_message(message: Dict[str, Any]):
+    """Broadcast a chat message to all SSE subscribers."""
+    _chat_messages.append(message)
+    for queue in _chat_subscribers.values():
+        try:
+            queue.put_nowait(message)
+        except asyncio.QueueFull:
+            pass
+
+
+def update_message_status(message_id: str, status: str):
+    """Update message status and broadcast to subscribers."""
+    # Update in user_messages store
+    if message_id in _user_messages:
+        _user_messages[message_id]["status"] = status
+    
+    # Broadcast status update
+    status_update = {
+        "id": str(uuid_module.uuid4())[:8],
+        "type": "STATUS_UPDATE",
+        "message_id": message_id,
+        "status": status,
+        "timestamp": datetime.now().isoformat(),
+    }
+    for queue in _chat_subscribers.values():
+        try:
+            queue.put_nowait(status_update)
+        except asyncio.QueueFull:
+            pass
+
+
+def broadcast_log(log: Dict[str, Any]):
+    """Broadcast an execution log to all log SSE subscribers."""
+    _agent_logs.append(log)
+    for queue in _log_subscribers.values():
+        try:
+            queue.put_nowait(log)
+        except asyncio.QueueFull:
+            pass
+
 
 @app.post("/api/chat/event")
 async def receive_chat_event(data: dict):
@@ -769,9 +817,6 @@ async def receive_chat_event(data: dict):
         **event_data
     }
     
-    # Store message
-    _chat_messages.append(chat_message)
-    
     # Handle AGENT_ASK specially - store pending question
     if event_type == "AGENT_ASK":
         request_id = event_data.get("request_id") or message_id
@@ -783,12 +828,8 @@ async def receive_chat_event(data: dict):
         }
         chat_message["request_id"] = request_id
     
-    # Broadcast to all SSE subscribers
-    for queue in _chat_subscribers.values():
-        try:
-            queue.put_nowait(chat_message)
-        except asyncio.QueueFull:
-            pass  # Skip if subscriber's queue is full
+    # Use helper to store and broadcast
+    broadcast_chat_message(chat_message)
     
     return {
         "success": True,
@@ -993,6 +1034,169 @@ async def get_chat_message(message_id: str):
             return {"success": True, **msg}
     
     return {"success": False, "error": "Message not found"}
+
+
+# ==================== User Chat API (User -> Agent Communication) ====================
+
+@app.post("/api/chat/send")
+async def send_chat_message(data: dict):
+    """
+    Send a user message (fire-and-forget style).
+    
+    The message is stored and broadcast, then processed asynchronously.
+    Returns immediately with message_id and 'delivered' status.
+    """
+    content = data.get("message", "").strip()
+    model = data.get("model")
+    mode = data.get("mode", "agent")
+    api_key_id = data.get("api_key_id")
+    
+    if not content:
+        return {"success": False, "error": "Message content required"}
+    
+    # Generate message ID
+    message_id = str(uuid_module.uuid4())[:12]
+    timestamp = datetime.now().isoformat()
+    
+    # Create and store user message
+    user_msg = {
+        "id": message_id,
+        "type": "USER_MESSAGE",
+        "content": content,
+        "timestamp": timestamp,
+        "status": "delivered",  # Backend received it
+    }
+    _user_messages[message_id] = user_msg
+    
+    # Broadcast user message to chat panel
+    broadcast_chat_message(user_msg)
+    
+    # Process message asynchronously
+    async def process_message():
+        try:
+            # Update status to 'read' when agent starts processing
+            update_message_status(message_id, "read")
+            
+            # Get agent instance
+            from api.routes import get_agent
+            from config import get_config_manager
+            
+            agent = get_agent()
+            config = get_config_manager().load()
+            
+            # Resolve model configuration
+            resolved_model = model or config.default_model
+            resolved_provider = config.provider
+            resolved_api_base = config.api_base
+            resolved_api_key = config.api_key
+            
+            # If api_key_id is provided, resolve from config
+            if api_key_id and config.api_keys:
+                for key in config.api_keys:
+                    if key.id == api_key_id:
+                        resolved_provider = key.provider
+                        resolved_api_base = key.api_base
+                        resolved_api_key = key.api_key
+                        if not resolved_model:
+                            resolved_model = key.models[0] if key.models else config.default_model
+                        break
+            
+            # Initialize agent if needed
+            if not agent._tools_initialized:
+                await agent.initialize()
+            
+            # Process with agent (logs will be broadcast via broadcast_log)
+            async for event in agent.chat(
+                user_message=content,
+                model=resolved_model,
+                provider=resolved_provider,
+                api_base=resolved_api_base,
+                api_key=resolved_api_key,
+            ):
+                # Broadcast execution logs
+                log_entry = {
+                    "type": event.get("type", "unknown"),
+                    "timestamp": datetime.now().isoformat(),
+                    "data": event.get("data", {}),
+                    "message_id": message_id,
+                }
+                broadcast_log(log_entry)
+            
+            # Update status to 'replied' when done
+            update_message_status(message_id, "replied")
+            
+        except Exception as e:
+            print(f"[Chat] Error processing message {message_id}: {e}")
+            # Broadcast error log
+            broadcast_log({
+                "type": "error",
+                "timestamp": datetime.now().isoformat(),
+                "data": {"error": str(e)},
+                "message_id": message_id,
+            })
+    
+    # Fire and forget - don't await
+    asyncio.create_task(process_message())
+    
+    return {
+        "success": True,
+        "message_id": message_id,
+        "status": "delivered",
+        "timestamp": timestamp,
+    }
+
+
+@app.get("/api/logs/stream")
+async def logs_sse():
+    """
+    SSE endpoint for real-time agent execution logs.
+    
+    Streams:
+    - tool_start: Tool execution started
+    - tool_end: Tool execution completed
+    - thinking: Agent reasoning
+    - status: Status updates
+    - error: Errors
+    - warning: Warnings
+    """
+    subscriber_id = str(uuid_module.uuid4())[:8]
+    queue: asyncio.Queue = asyncio.Queue(maxsize=100)
+    _log_subscribers[subscriber_id] = queue
+    
+    async def event_generator():
+        try:
+            # Send recent logs as catch-up (last 20)
+            for log in list(_agent_logs)[-20:]:
+                yield f"data: {json_module.dumps(log)}\n\n"
+            
+            # Stream new logs
+            while True:
+                try:
+                    log = await asyncio.wait_for(queue.get(), timeout=30.0)
+                    yield f"data: {json_module.dumps(log)}\n\n"
+                except asyncio.TimeoutError:
+                    # Send keepalive
+                    yield f": keepalive\n\n"
+        finally:
+            # Cleanup on disconnect
+            _log_subscribers.pop(subscriber_id, None)
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )
+
+
+@app.get("/api/logs/clear")
+async def clear_logs():
+    """Clear execution logs."""
+    _agent_logs.clear()
+    return {"success": True, "message": "Logs cleared"}
 
 
 # ==================== Agent Self-Scheduling API ====================

@@ -1,23 +1,26 @@
 /**
  * NovAIC Web Store
  * 
- * Zustand store that uses Gateway API and WebSocket instead of Tauri invoke.
+ * Zustand store with:
+ * - Fire-and-forget chat via POST /api/chat/send
+ * - SSE for real-time chat messages (/api/chat/messages)
+ * - SSE for real-time execution logs (/api/logs/stream)
  */
 
 import { create } from 'zustand';
 import { api, gateway } from '../services';
 import type { AICAgent, CreateAgentRequest } from '../services/api';
 import { 
-  LogData, 
   Message, 
   LogEntry, 
   AppState, 
-  AgentEvent,
   LayoutMode,
   LayoutSettings,
   AvailableModel,
   ApiKeyInfo,
-  ChatMode
+  ChatMode,
+  ChatSSEMessage,
+  MessageStatus
 } from '../types';
 
 // Layout persistence key
@@ -56,6 +59,7 @@ interface AppStore extends AppState {
   stopExecution: () => void;
   addMessage: (message: Message) => void;
   updateMessage: (id: string, updates: Partial<Message>) => void;
+  updateMessageStatus: (messageId: string, status: MessageStatus) => void;
   addLog: (log: LogEntry) => void;
   clearLogs: () => void;
   clearMessages: () => void;
@@ -78,13 +82,12 @@ interface AppStore extends AppState {
   createAgent: (data: CreateAgentRequest) => Promise<AICAgent>;
   deleteAgent: (agentId: string) => Promise<void>;
   setCreateAgentModalOpen: (open: boolean) => void;
+  // SSE connection
+  connectChatSSE: () => void;
+  connectLogsSSE: () => void;
+  disconnectSSE: () => void;
 }
 
-
-function toLogData(d: unknown): LogData {
-  if (d && typeof d === 'object') return d as LogData;
-  return { content: String(d) };
-}
 
 // Load initial layout
 const initialLayout = loadLayoutSettings();
@@ -109,10 +112,12 @@ function loadChatMode(): ChatMode {
   return 'agent';
 }
 
-// Track current message being streamed
-let currentAssistantId: string | null = null;
-let currentEvents: AgentEvent[] = [];
-let currentFinalContent = '';
+// SSE connections (module level to persist across re-renders)
+let chatEventSource: EventSource | null = null;
+let logsEventSource: EventSource | null = null;
+
+// Gateway base URL
+const GATEWAY_URL = 'http://127.0.0.1:9000';
 
 export const useAppStore = create<AppStore>((set, get) => ({
   // Initial state
@@ -138,9 +143,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
   currentAgentId: null,
   createAgentModalOpen: false,
 
-  // Initialize app - connect to Gateway WebSocket
+  // Initialize app - connect to SSE streams
   initialize: async () => {
-    const { loadModelsFromConfig, addLog, updateMessage, setExecuting } = get();
+    const { loadModelsFromConfig, connectChatSSE, connectLogsSSE } = get();
     
     try {
       console.log('[Store] Waiting for Gateway to be ready...');
@@ -173,134 +178,28 @@ export const useAppStore = create<AppStore>((set, get) => ({
         return;
       }
       
-      // Connect to WebSocket
-      await gateway.connect();
-      console.log('[Store] WebSocket connected');
+      // Connect to SSE streams for real-time updates
+      connectChatSSE();
+      connectLogsSSE();
+      console.log('[Store] SSE streams connected');
       
-      // Set up event listeners
-      gateway.on('thinking', (data) => {
-        if (currentAssistantId) {
-          const event: AgentEvent = {
-            type: 'thinking',
-            data,
-            timestamp: new Date().toISOString(),
-          };
-          currentEvents = [...currentEvents, event];
-          addLog({ type: 'thinking', timestamp: event.timestamp, data: toLogData(data) });
-          updateMessage(currentAssistantId, { events: [...currentEvents] });
+      // Load chat history (persisted messages)
+      try {
+        const history = await api.getChatHistory({ limit: 50, summary_length: 0 });
+        if (history.success && history.messages.length > 0) {
+          const messages: Message[] = history.messages.map((msg) => ({
+            id: msg.id,
+            role: msg.type === 'USER_MESSAGE' ? 'user' : 'assistant',
+            content: msg.summary || '',
+            timestamp: new Date(msg.timestamp),
+            status: msg.type === 'USER_MESSAGE' ? 'replied' as MessageStatus : undefined,
+          }));
+          set({ messages });
+          console.log(`[Store] Loaded ${messages.length} messages from history`);
         }
-      });
-      
-      gateway.on('tool_start', (data) => {
-        if (currentAssistantId) {
-          const event: AgentEvent = {
-            type: 'tool_start',
-            data,
-            timestamp: new Date().toISOString(),
-          };
-          currentEvents = [...currentEvents, event];
-          addLog({ type: 'tool_start', timestamp: event.timestamp, data: toLogData(data) });
-          updateMessage(currentAssistantId, { events: [...currentEvents] });
-        }
-      });
-      
-      gateway.on('tool_end', (data) => {
-        if (currentAssistantId) {
-          const event: AgentEvent = {
-            type: 'tool_end',
-            data,
-            timestamp: new Date().toISOString(),
-          };
-          currentEvents = [...currentEvents, event];
-          addLog({ type: 'tool_end', timestamp: event.timestamp, data: toLogData(data) });
-          updateMessage(currentAssistantId, { events: [...currentEvents] });
-        }
-      });
-      
-      gateway.on('status', (data) => {
-        if (currentAssistantId) {
-          const event: AgentEvent = {
-            type: 'status',
-            data,
-            timestamp: new Date().toISOString(),
-          };
-          currentEvents = [...currentEvents, event];
-          addLog({ type: 'status', timestamp: event.timestamp, data: toLogData(data) });
-          updateMessage(currentAssistantId, { events: [...currentEvents] });
-        }
-      });
-      
-      gateway.on('warning', (data) => {
-        if (currentAssistantId) {
-          const event: AgentEvent = {
-            type: 'warning',
-            data,
-            timestamp: new Date().toISOString(),
-          };
-          currentEvents = [...currentEvents, event];
-          addLog({ type: 'warning', timestamp: event.timestamp, data: toLogData(data) });
-          updateMessage(currentAssistantId, { events: [...currentEvents] });
-        }
-      });
-      
-      gateway.on('final', (data) => {
-        if (currentAssistantId) {
-          // Extract content from data
-          if (typeof data === 'string') {
-            currentFinalContent = data;
-          } else if (data && typeof data === 'object') {
-            currentFinalContent = String((data as Record<string, unknown>).content || 
-                                        (data as Record<string, unknown>).data || data);
-          }
-          
-          const event: AgentEvent = {
-            type: 'final',
-            data,
-            timestamp: new Date().toISOString(),
-          };
-          currentEvents = [...currentEvents, event];
-          addLog({ type: 'final', timestamp: event.timestamp, data: toLogData(data) });
-          
-          // Final update
-          updateMessage(currentAssistantId, {
-            content: currentFinalContent,
-            events: [...currentEvents],
-            isStreaming: false,
-          });
-          
-          // Reset state
-          currentAssistantId = null;
-          currentEvents = [];
-          currentFinalContent = '';
-          setExecuting(false);
-        }
-      });
-      
-      gateway.on('error', (data) => {
-        if (currentAssistantId) {
-          const errorMsg = typeof data === 'string' ? data : 
-                          (data as Record<string, unknown>)?.error || 'Unknown error';
-          
-          const event: AgentEvent = {
-            type: 'error',
-            data,
-            timestamp: new Date().toISOString(),
-          };
-          currentEvents = [...currentEvents, event];
-          addLog({ type: 'error', timestamp: event.timestamp, data: toLogData(data) });
-          
-          updateMessage(currentAssistantId, {
-            content: `Error: ${errorMsg}`,
-            events: [...currentEvents],
-            isStreaming: false,
-          });
-          
-          currentAssistantId = null;
-          currentEvents = [];
-          currentFinalContent = '';
-          setExecuting(false);
-        }
-      });
+      } catch (e) {
+        console.warn('[Store] Failed to load chat history:', e);
+      }
       
       // Load models from config
       await loadModelsFromConfig();
@@ -315,9 +214,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
     }
   },
 
-  // Send message via WebSocket
+  // Send message (fire-and-forget style, like WeChat/WhatsApp)
   sendMessage: async (content: string) => {
-    const { addMessage, setExecuting, isInitialized, initialize, selectedModel, chatMode } = get();
+    const { addMessage, updateMessageStatus, isInitialized, initialize, selectedModel, chatMode } = get();
     
     if (!isInitialized) {
       await initialize();
@@ -327,31 +226,18 @@ export const useAppStore = create<AppStore>((set, get) => ({
       }
     }
     
-    // Add user message
+    // Generate message ID locally
+    const messageId = `user-${Date.now()}`;
+    
+    // Add user message immediately with 'sending' status
     const userMessage: Message = {
-      id: `user-${Date.now()}`,
+      id: messageId,
       role: 'user',
       content,
       timestamp: new Date(),
+      status: 'sending',
     };
     addMessage(userMessage);
-    
-    // Create assistant message
-    currentAssistantId = `assistant-${Date.now()}`;
-    currentEvents = [];
-    currentFinalContent = '';
-    
-    addMessage({
-      id: currentAssistantId,
-      role: 'assistant',
-      content: '',
-      timestamp: new Date(),
-      events: [],
-      isStreaming: true,
-    });
-    
-    set({ logs: [] });
-    setExecuting(true);
     
     // Parse selected model
     let modelId: string | undefined;
@@ -367,12 +253,35 @@ export const useAppStore = create<AppStore>((set, get) => ({
       }
     }
     
-    // Send via WebSocket
-    gateway.sendChat(content, {
-      model: modelId,
-      mode: chatMode || 'agent',
-      apiKeyId,
-    });
+    // Send via API (fire-and-forget)
+    try {
+      const result = await api.sendChatMessage(content, {
+        model: modelId,
+        mode: chatMode || 'agent',
+        api_key_id: apiKeyId,
+      });
+      
+      if (result.success) {
+        // Update local message ID to match server's
+        // and update status to 'delivered'
+        set((state) => ({
+          messages: state.messages.map((msg) =>
+            msg.id === messageId 
+              ? { ...msg, id: result.message_id, status: 'delivered' as MessageStatus }
+              : msg
+          ),
+        }));
+        console.log('[Store] Message sent, id:', result.message_id);
+      } else {
+        // Update status to error
+        updateMessageStatus(messageId, 'error');
+        console.error('[Store] Failed to send message');
+      }
+    } catch (error) {
+      console.error('[Store] Error sending message:', error);
+      updateMessageStatus(messageId, 'error');
+    }
+    // Note: Agent response will come via SSE (connectChatSSE)
   },
 
   stopExecution: () => {
@@ -389,6 +298,14 @@ export const useAppStore = create<AppStore>((set, get) => ({
     set((state) => ({
       messages: state.messages.map((msg) =>
         msg.id === id ? { ...msg, ...updates } : msg
+      ),
+    }));
+  },
+
+  updateMessageStatus: (messageId: string, status: MessageStatus) => {
+    set((state) => ({
+      messages: state.messages.map((msg) =>
+        msg.id === messageId ? { ...msg, status } : msg
       ),
     }));
   },
@@ -541,5 +458,165 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   setCreateAgentModalOpen: (open: boolean) => {
     set({ createAgentModalOpen: open });
+  },
+
+  // SSE Connection: Chat messages (Agent <-> User)
+  connectChatSSE: () => {
+    const { addMessage, updateMessageStatus, setExecuting } = get();
+    
+    // Close existing connection
+    if (chatEventSource) {
+      chatEventSource.close();
+    }
+    
+    console.log('[Store] Connecting to Chat SSE...');
+    chatEventSource = new EventSource(`${GATEWAY_URL}/api/chat/messages`);
+    
+    chatEventSource.onmessage = (event) => {
+      try {
+        const msg: ChatSSEMessage = JSON.parse(event.data);
+        console.log('[Store] Chat SSE message:', msg.type, msg.id);
+        
+        switch (msg.type) {
+          case 'USER_MESSAGE':
+            // User message echoed back (skip if we already added it locally)
+            // The message from server has the authoritative ID
+            break;
+            
+          case 'AGENT_REPLY':
+            // Agent replied - add as assistant message
+            addMessage({
+              id: msg.id,
+              role: 'assistant',
+              content: msg.message || msg.content || '',
+              timestamp: new Date(msg.timestamp),
+            });
+            setExecuting(false);
+            break;
+            
+          case 'AGENT_ASK':
+            // Agent asking a question
+            addMessage({
+              id: msg.id,
+              role: 'assistant',
+              content: msg.question || '',
+              timestamp: new Date(msg.timestamp),
+              // Store request_id for responding
+              events: [{
+                type: 'status',
+                timestamp: msg.timestamp,
+                data: { 
+                  request_id: msg.request_id,
+                  options: msg.options,
+                  type: 'question'
+                }
+              }],
+            });
+            break;
+            
+          case 'AGENT_NOTIFY':
+            // Agent notification (info/warning/error)
+            addMessage({
+              id: msg.id,
+              role: 'assistant',
+              content: `[${msg.level?.toUpperCase() || 'INFO'}] ${msg.message || ''}`,
+              timestamp: new Date(msg.timestamp),
+            });
+            break;
+            
+          case 'AGENT_IMAGE':
+            // Agent showing an image
+            addMessage({
+              id: msg.id,
+              role: 'assistant',
+              content: msg.caption || 'Image',
+              timestamp: new Date(msg.timestamp),
+              // Store image URL in events
+              events: [{
+                type: 'status',
+                timestamp: msg.timestamp,
+                data: { image_url: msg.image_url, type: 'image' }
+              }],
+            });
+            break;
+            
+          case 'STATUS_UPDATE':
+            // Message status update (delivered, read, replied)
+            if (msg.message_id && msg.status) {
+              updateMessageStatus(msg.message_id, msg.status);
+              // If status is 'read', agent started processing
+              if (msg.status === 'read') {
+                setExecuting(true);
+              }
+              // If status is 'replied', agent finished
+              if (msg.status === 'replied') {
+                setExecuting(false);
+              }
+            }
+            break;
+        }
+      } catch (e) {
+        console.error('[Store] Failed to parse Chat SSE message:', e);
+      }
+    };
+    
+    chatEventSource.onerror = (e) => {
+      console.error('[Store] Chat SSE error:', e);
+      // Reconnect after delay
+      setTimeout(() => {
+        if (get().isInitialized) {
+          get().connectChatSSE();
+        }
+      }, 3000);
+    };
+  },
+
+  // SSE Connection: Execution logs (for Log Window)
+  connectLogsSSE: () => {
+    const { addLog } = get();
+    
+    // Close existing connection
+    if (logsEventSource) {
+      logsEventSource.close();
+    }
+    
+    console.log('[Store] Connecting to Logs SSE...');
+    logsEventSource = new EventSource(`${GATEWAY_URL}/api/logs/stream`);
+    
+    logsEventSource.onmessage = (event) => {
+      try {
+        const log = JSON.parse(event.data);
+        addLog({
+          type: log.type || 'status',
+          timestamp: log.timestamp || new Date().toISOString(),
+          data: log.data || {},
+        });
+      } catch (e) {
+        console.error('[Store] Failed to parse Log SSE message:', e);
+      }
+    };
+    
+    logsEventSource.onerror = (e) => {
+      console.error('[Store] Logs SSE error:', e);
+      // Reconnect after delay
+      setTimeout(() => {
+        if (get().isInitialized) {
+          get().connectLogsSSE();
+        }
+      }, 3000);
+    };
+  },
+
+  // Disconnect SSE streams
+  disconnectSSE: () => {
+    if (chatEventSource) {
+      chatEventSource.close();
+      chatEventSource = null;
+    }
+    if (logsEventSource) {
+      logsEventSource.close();
+      logsEventSource = null;
+    }
+    console.log('[Store] SSE streams disconnected');
   },
 }));

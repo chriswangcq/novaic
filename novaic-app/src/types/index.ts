@@ -74,6 +74,9 @@ export interface MessageBlock {
   isCollapsed?: boolean;
 }
 
+// Message status for tracking delivery and read state
+export type MessageStatus = 'sending' | 'delivered' | 'read' | 'replied' | 'error';
+
 // Chat Message - 支持分块渲染
 export interface Message {
   id: string;
@@ -81,6 +84,8 @@ export interface Message {
   content: string;
   timestamp: Date;
   attachments?: Attachment[];
+  // Message status (for user messages)
+  status?: MessageStatus;
   // Agent workflow
   events?: AgentEvent[];
   toolCalls?: ToolCallEvent[];
@@ -88,6 +93,36 @@ export interface Message {
   isStreaming?: boolean;
   streamingText?: string;  // 当前正在流式输出的文本
   thinkingText?: string;   // 思考过程文本
+}
+
+// Chat SSE Message types (from backend)
+export type ChatMessageType = 
+  | 'USER_MESSAGE'
+  | 'AGENT_REPLY' 
+  | 'AGENT_ASK'
+  | 'AGENT_NOTIFY'
+  | 'AGENT_IMAGE'
+  | 'STATUS_UPDATE';
+
+export interface ChatSSEMessage {
+  id: string;
+  type: ChatMessageType;
+  timestamp: string;
+  // For USER_MESSAGE and AGENT_REPLY
+  content?: string;
+  message?: string;
+  // For AGENT_ASK
+  question?: string;
+  options?: Array<{ id: string; label: string }>;
+  request_id?: string;
+  // For AGENT_NOTIFY
+  level?: 'info' | 'success' | 'warning' | 'error';
+  // For AGENT_IMAGE
+  image_url?: string;
+  caption?: string;
+  // For STATUS_UPDATE
+  message_id?: string;
+  status?: MessageStatus;
 }
 
 // File Attachment
