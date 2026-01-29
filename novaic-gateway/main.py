@@ -5,6 +5,7 @@ Unified control plane that serves:
 - REST API (/api/*)
 - WebSocket (/ws/*)
 - Static files (React Web UI)
+- Event-driven agent system
 """
 
 import os
@@ -87,12 +88,133 @@ from api.ws import router as ws_router
 from api.agents import router as agents_router
 from config.manager import get_config_manager
 
+# Import new components
+from agent.events.bus import EventBus
+from agent.events.handler import AgentEventHandler
+from agent.core.state import StateManager, AgentState
+from executor.registry import ToolRegistry
+from agent.wake.controller import WakeController
+from agent.micro.engine import MicroAgentEngine
+from agent.subagent.manager import SubAgentManager
+
 
 # Configuration
 HOST = os.getenv("NOVAIC_HOST", "127.0.0.1")
 PORT = int(os.getenv("NOVAIC_PORT", "9000"))
 SOCKET_PATH = os.getenv("NOVAIC_SOCKET", "")  # Unix socket path, if set use UDS mode
 DEBUG = os.getenv("NOVAIC_DEBUG", "false").lower() == "true"
+
+# Global instances
+event_bus: EventBus = None
+state_manager: StateManager = None
+tool_registry: ToolRegistry = None
+wake_controller: WakeController = None
+micro_engine: MicroAgentEngine = None
+subagent_manager: SubAgentManager = None
+
+
+async def initialize_systems(config):
+    """Initialize all system components."""
+    global event_bus, state_manager, tool_registry, wake_controller, micro_engine, subagent_manager
+    
+    # Initialize EventBus
+    event_bus = EventBus()
+    print("[Gateway] EventBus initialized")
+    
+    # Initialize StateManager
+    state_manager = StateManager(
+        initial_state=AgentState.AWAKE,
+        idle_timeout=None,  # No auto-sleep for now
+    )
+    print("[Gateway] StateManager initialized")
+    
+    # Initialize ToolRegistry with MCP servers
+    tool_registry = ToolRegistry()
+    
+    # Register VM MCP Server (primary, in VM)
+    tool_registry.register_server(
+        name="vm",
+        port=config.mcp_port,
+        priority=0,  # Highest priority
+    )
+    
+    # Register Session MCP Server (host)
+    session_port = int(os.getenv("NOVAIC_MCP_SESSION_PORT", "8081"))
+    tool_registry.register_server(
+        name="session",
+        port=session_port,
+        enabled=False,  # Disabled until deployed
+        priority=1,
+    )
+    
+    # Register Local MCP Server (host)
+    local_port = int(os.getenv("NOVAIC_MCP_LOCAL_PORT", "8082"))
+    tool_registry.register_server(
+        name="local",
+        port=local_port,
+        enabled=False,  # Disabled until deployed
+        priority=2,
+    )
+    
+    # Register QEMU MCP Server (host)
+    qemu_port = int(os.getenv("NOVAIC_MCP_QEMU_PORT", "8083"))
+    tool_registry.register_server(
+        name="qemu",
+        port=qemu_port,
+        enabled=False,  # Disabled until deployed
+        priority=3,
+    )
+    
+    print(f"[Gateway] ToolRegistry initialized with {len(tool_registry._servers)} servers")
+    
+    # Initialize WakeController
+    wake_controller = WakeController(
+        event_bus=event_bus,
+        storage_dir="storage/triggers",
+    )
+    print("[Gateway] WakeController initialized")
+    
+    # Initialize MicroAgentEngine
+    micro_engine = MicroAgentEngine(
+        llm_client=None,  # Will be set when needed
+        storage_dir="storage/micro_agents",
+    )
+    print("[Gateway] MicroAgentEngine initialized")
+    
+    # Initialize SubAgentManager (with placeholder factory)
+    async def create_agent_for_session(session_key: str):
+        """Factory to create agent for sub-sessions."""
+        from agent.core.agent import NovAICAgent
+        agent = NovAICAgent(mcp_port=config.mcp_port)
+        await agent.initialize()
+        return agent
+    
+    subagent_manager = SubAgentManager(
+        agent_factory=create_agent_for_session,
+        max_concurrent=5,
+    )
+    print("[Gateway] SubAgentManager initialized")
+    
+    # Start EventBus
+    await event_bus.start()
+    print("[Gateway] EventBus started")
+    
+    # Start WakeController (starts all enabled triggers)
+    await wake_controller.start()
+    print("[Gateway] WakeController started")
+
+
+async def shutdown_systems():
+    """Shutdown all system components."""
+    global event_bus, wake_controller
+    
+    if wake_controller:
+        await wake_controller.stop()
+        print("[Gateway] WakeController stopped")
+    
+    if event_bus:
+        await event_bus.stop()
+        print("[Gateway] EventBus stopped")
 
 
 @asynccontextmanager
@@ -108,7 +230,13 @@ async def lifespan(app: FastAPI):
     print(f"🔧 MCP Server: http://127.0.0.1:{config.mcp_port}/mcp")
     print(f"🤖 Default model: {config.default_model}")
     
+    # Initialize all systems
+    await initialize_systems(config)
+    
     yield
+    
+    # Shutdown all systems
+    await shutdown_systems()
     
     print("👋 NovAIC Gateway shutting down")
 
@@ -116,7 +244,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="NovAIC Gateway",
     description="Unified control plane for NovAIC AI Agent",
-    version="0.3.0",
+    version="0.4.0",
     lifespan=lifespan
 )
 
@@ -145,9 +273,98 @@ async def api_root():
     """API root endpoint"""
     return {
         "name": "NovAIC Gateway",
-        "version": "0.3.0",
+        "version": "0.4.0",
         "description": "Unified control plane for NovAIC AI Agent",
+        "components": {
+            "event_bus": "active" if event_bus and event_bus.is_running else "inactive",
+            "state_manager": state_manager.get_state().value if state_manager else "not_initialized",
+            "tool_registry": f"{len(tool_registry._servers)} servers" if tool_registry else "not_initialized",
+            "wake_controller": f"{wake_controller.get_stats()['total_triggers']} triggers" if wake_controller else "not_initialized",
+        }
     }
+
+
+# System status endpoint
+@app.get("/api/system/status")
+async def system_status():
+    """Get detailed system status"""
+    return {
+        "event_bus": event_bus.get_stats() if event_bus else None,
+        "state_manager": state_manager.get_info() if state_manager else None,
+        "tool_registry": tool_registry.get_stats() if tool_registry else None,
+        "wake_controller": wake_controller.get_stats() if wake_controller else None,
+        "micro_engine": micro_engine.get_stats() if micro_engine else None,
+        "subagent_manager": subagent_manager.get_stats() if subagent_manager else None,
+    }
+
+
+# Internal API for session tools (called by novaic-mcp-session)
+@app.get("/api/internal/sessions")
+async def list_sessions():
+    """List all sessions (internal API)"""
+    # TODO: Implement session listing
+    return {"sessions": []}
+
+
+@app.post("/api/internal/sessions/{session_key}/history")
+async def get_session_history(session_key: str, data: dict):
+    """Get session history (internal API)"""
+    # TODO: Implement session history
+    return {"messages": []}
+
+
+@app.post("/api/internal/sessions/{session_key}/send")
+async def send_to_session(session_key: str, data: dict):
+    """Send message to session (internal API)"""
+    # TODO: Implement session messaging
+    return {"success": True, "message_id": "todo"}
+
+
+@app.post("/api/internal/sessions/spawn")
+async def spawn_subagent(data: dict):
+    """Spawn a sub-agent (internal API)"""
+    if not subagent_manager:
+        return {"error": "SubAgentManager not initialized", "success": False}
+    
+    from agent.subagent.manager import SubAgentConfig
+    
+    config = SubAgentConfig(
+        task=data.get("task", ""),
+        model=data.get("model"),
+        timeout_minutes=data.get("timeout_minutes", 30),
+        announce=data.get("announce", True),
+        context=data.get("context"),
+    )
+    
+    result = await subagent_manager.spawn(
+        config=config,
+        parent_session_id=data.get("parent_session_id", "main"),
+        wait=data.get("wait", False),
+    )
+    
+    return result
+
+
+@app.get("/api/internal/sessions/subagent/{subagent_id}/status")
+async def get_subagent_status(subagent_id: str):
+    """Get sub-agent status (internal API)"""
+    if not subagent_manager:
+        return {"error": "SubAgentManager not initialized", "status": "unknown"}
+    
+    status = subagent_manager.get_status(subagent_id)
+    if not status:
+        return {"error": "Sub-agent not found", "status": "unknown"}
+    
+    return status
+
+
+@app.post("/api/internal/sessions/subagent/{subagent_id}/cancel")
+async def cancel_subagent(subagent_id: str):
+    """Cancel a sub-agent (internal API)"""
+    if not subagent_manager:
+        return {"error": "SubAgentManager not initialized", "success": False}
+    
+    return await subagent_manager.cancel(subagent_id)
 
 
 # Static files (React Web UI) - mount last to catch-all
@@ -185,6 +402,7 @@ else:
             <ul>
                 <li><a href="/api/health">/api/health</a> - Health check</li>
                 <li><a href="/api/config">/api/config</a> - Configuration</li>
+                <li><a href="/api/system/status">/api/system/status</a> - System status</li>
                 <li><a href="/docs">/docs</a> - API Documentation</li>
             </ul>
             <h2>WebSocket</h2>
