@@ -28,6 +28,7 @@ Use these tools when you want to:
 - Ask the user a question and wait for their answer (chat_ask)
 - Show a notification without expecting a reply (chat_notify)
 - Show an image to the user (chat_show_image)
+- Review previous conversation history (chat_history)
 
 IMPORTANT: Your thinking and tool execution are shown in a separate "Agent Log" panel.
 Use these chat tools ONLY when you want to directly communicate with the user.
@@ -37,6 +38,8 @@ Example workflow:
 2. Agent thinks: [shown in Agent Log]
 3. Agent calls: browser_navigate(...) [shown in Agent Log]
 4. Agent calls: chat_reply("已经打开 Google 首页") [shown in Chat]
+
+Use chat_history when you need to recall what was discussed earlier in the conversation.
 """
 )
 
@@ -223,6 +226,53 @@ async def chat_show_image(
         "reply_type": "image"
     })
     return result
+
+
+@mcp.tool()
+async def chat_history(
+    limit: Optional[int] = 20,
+    before_id: Optional[str] = None,
+    message_type: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Get recent chat history between agent and user.
+    
+    Use this to review previous conversations, check what was discussed,
+    or recall context from earlier in the session.
+    
+    Args:
+        limit: Maximum number of messages to return (default: 20, max: 100)
+        before_id: Get messages before this message ID (for pagination)
+        message_type: Filter by type: "user", "agent", "notification", or None for all
+    
+    Returns:
+        Dictionary with:
+        - success: Whether the request succeeded
+        - messages: List of chat messages with id, type, timestamp, content
+        - has_more: Whether there are more messages before these
+    
+    Examples:
+        - chat_history() - Get last 20 messages
+        - chat_history(limit=50) - Get last 50 messages
+        - chat_history(message_type="user") - Get only user messages
+        - chat_history(before_id="abc123", limit=10) - Get 10 messages before abc123
+    """
+    try:
+        params = {"limit": min(limit, 100)}
+        if before_id:
+            params["before_id"] = before_id
+        if message_type:
+            params["message_type"] = message_type
+        
+        async with httpx.AsyncClient(timeout=30.0, trust_env=False) as client:
+            response = await client.get(
+                f"{GATEWAY_URL}/api/chat/history",
+                params=params
+            )
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPError as e:
+        return {"success": False, "error": str(e), "messages": []}
 
 
 def main():

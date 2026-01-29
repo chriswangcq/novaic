@@ -904,6 +904,58 @@ async def get_pending_questions():
     }
 
 
+@app.get("/api/chat/history")
+async def get_chat_history(
+    limit: int = 20,
+    before_id: str = None,
+    message_type: str = None
+):
+    """
+    Get chat history between agent and user.
+    
+    Args:
+        limit: Maximum number of messages (default: 20, max: 100)
+        before_id: Get messages before this ID (for pagination)
+        message_type: Filter by type: "user", "agent", "notification"
+    """
+    limit = min(limit, 100)
+    
+    # Get all messages as a list
+    all_messages = list(_chat_messages)
+    
+    # Filter by message_type if specified
+    if message_type:
+        type_map = {
+            "user": ["USER_MESSAGE"],
+            "agent": ["AGENT_REPLY", "AGENT_IMAGE"],
+            "notification": ["AGENT_NOTIFY"],
+            "question": ["AGENT_ASK"],
+        }
+        allowed_types = type_map.get(message_type, [message_type.upper()])
+        all_messages = [m for m in all_messages if m.get("type") in allowed_types]
+    
+    # Filter by before_id if specified
+    if before_id:
+        found_idx = None
+        for i, msg in enumerate(all_messages):
+            if msg.get("id") == before_id:
+                found_idx = i
+                break
+        if found_idx is not None:
+            all_messages = all_messages[:found_idx]
+    
+    # Get the last `limit` messages
+    messages = all_messages[-limit:] if len(all_messages) > limit else all_messages
+    has_more = len(all_messages) > limit
+    
+    return {
+        "success": True,
+        "messages": messages,
+        "has_more": has_more,
+        "total_in_memory": len(_chat_messages),
+    }
+
+
 # Static files (React Web UI) - mount last to catch-all
 web_dist = Path(__file__).parent / "web" / "dist"
 if web_dist.exists():
