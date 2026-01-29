@@ -232,33 +232,33 @@ async def chat_show_image(
 async def chat_history(
     limit: Optional[int] = 20,
     before_id: Optional[str] = None,
-    message_type: Optional[str] = None
+    message_type: Optional[str] = None,
+    summary_length: Optional[int] = 50
 ) -> Dict[str, Any]:
     """
-    Get recent chat history between agent and user.
+    Get recent chat history between agent and user (summarized).
     
-    Use this to review previous conversations, check what was discussed,
-    or recall context from earlier in the session.
+    Messages are truncated to summary_length characters. Use chat_get_message
+    to get full content of a specific message.
     
     Args:
         limit: Maximum number of messages to return (default: 20, max: 100)
         before_id: Get messages before this message ID (for pagination)
         message_type: Filter by type: "user", "agent", "notification", or None for all
+        summary_length: Max characters per message (default: 50, 0 for full content)
     
     Returns:
         Dictionary with:
-        - success: Whether the request succeeded
-        - messages: List of chat messages with id, type, timestamp, content
+        - messages: List with id, type, timestamp, summary, is_truncated
         - has_more: Whether there are more messages before these
     
     Examples:
-        - chat_history() - Get last 20 messages
-        - chat_history(limit=50) - Get last 50 messages
-        - chat_history(message_type="user") - Get only user messages
-        - chat_history(before_id="abc123", limit=10) - Get 10 messages before abc123
+        - chat_history() - Get last 20 messages with 50-char summaries
+        - chat_history(limit=50, summary_length=100) - 50 messages, 100-char summaries
+        - chat_history(message_type="user") - Only user messages
     """
     try:
-        params = {"limit": min(limit, 100)}
+        params = {"limit": min(limit, 100), "summary_length": summary_length}
         if before_id:
             params["before_id"] = before_id
         if message_type:
@@ -273,6 +273,36 @@ async def chat_history(
             return response.json()
     except httpx.HTTPError as e:
         return {"success": False, "error": str(e), "messages": []}
+
+
+@mcp.tool()
+async def chat_get_message(message_id: str) -> Dict[str, Any]:
+    """
+    Get full content of a specific chat message by ID.
+    
+    Use this after chat_history to get complete message content.
+    
+    Args:
+        message_id: The message ID from chat_history
+    
+    Returns:
+        Dictionary with full message content including:
+        - id, type, timestamp
+        - message/question (full content)
+        - attachments, options, etc.
+    
+    Examples:
+        - chat_get_message("abc123") - Get full message with ID abc123
+    """
+    try:
+        async with httpx.AsyncClient(timeout=30.0, trust_env=False) as client:
+            response = await client.get(
+                f"{GATEWAY_URL}/api/chat/message/{message_id}"
+            )
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPError as e:
+        return {"success": False, "error": str(e)}
 
 
 def main():

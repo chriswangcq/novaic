@@ -908,15 +908,17 @@ async def get_pending_questions():
 async def get_chat_history(
     limit: int = 20,
     before_id: str = None,
-    message_type: str = None
+    message_type: str = None,
+    summary_length: int = 50
 ):
     """
-    Get chat history between agent and user.
+    Get chat history between agent and user (with optional summary).
     
     Args:
         limit: Maximum number of messages (default: 20, max: 100)
         before_id: Get messages before this ID (for pagination)
         message_type: Filter by type: "user", "agent", "notification"
+        summary_length: Truncate message content to this length (0 for full)
     """
     limit = min(limit, 100)
     
@@ -948,12 +950,49 @@ async def get_chat_history(
     messages = all_messages[-limit:] if len(all_messages) > limit else all_messages
     has_more = len(all_messages) > limit
     
+    # Create summarized messages
+    summarized = []
+    for msg in messages:
+        content = msg.get("message") or msg.get("question") or ""
+        is_truncated = summary_length > 0 and len(content) > summary_length
+        
+        summary_msg = {
+            "id": msg.get("id"),
+            "type": msg.get("type"),
+            "timestamp": msg.get("timestamp"),
+            "summary": content[:summary_length] + "..." if is_truncated else content,
+            "is_truncated": is_truncated,
+        }
+        # Include level for notifications
+        if msg.get("level"):
+            summary_msg["level"] = msg.get("level")
+        # Include options count for questions
+        if msg.get("options"):
+            summary_msg["options_count"] = len(msg.get("options"))
+        
+        summarized.append(summary_msg)
+    
     return {
         "success": True,
-        "messages": messages,
+        "messages": summarized,
         "has_more": has_more,
         "total_in_memory": len(_chat_messages),
     }
+
+
+@app.get("/api/chat/message/{message_id}")
+async def get_chat_message(message_id: str):
+    """
+    Get full content of a specific chat message.
+    
+    Args:
+        message_id: The message ID
+    """
+    for msg in _chat_messages:
+        if msg.get("id") == message_id:
+            return {"success": True, **msg}
+    
+    return {"success": False, "error": "Message not found"}
 
 
 # Static files (React Web UI) - mount last to catch-all
