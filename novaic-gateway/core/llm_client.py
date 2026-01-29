@@ -90,7 +90,7 @@ class OpenAIClient(BaseLLMClient):
     
     def __init__(self, api_base: str, api_key: str):
         super().__init__()
-        self.api_base = api_base.rstrip("/")
+        self.api_base = api_base.rstrip("/") if api_base else None
         self.api_key = api_key
         # For responses API: track response chain
         self.last_response_id: Optional[str] = None
@@ -641,7 +641,7 @@ class AzureOpenAIClient(BaseLLMClient):
     
     def __init__(self, api_base: str, deployment_name: str, api_key: str, api_version: str = "2024-02-01"):
         super().__init__()
-        self.api_base = api_base.rstrip("/")
+        self.api_base = api_base.rstrip("/") if api_base else None
         self.deployment_name = deployment_name
         self.api_key = api_key
         self.api_version = api_version
