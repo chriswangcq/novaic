@@ -20,7 +20,7 @@ import uuid
 
 from .llm_client import LLMError, BaseLLMClient, OpenAIClient, AnthropicClient, GoogleAIClient
 from ..session.manager import SessionManager
-from ...executor.mcp_client import MCPClient, MCPSkill, get_mcp_url
+from executor.mcp_client import MCPClient, MCPSkill, get_mcp_url
 
 
 # ==================== Data Classes ====================

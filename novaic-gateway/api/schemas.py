@@ -24,7 +24,7 @@ class ChatRequest(BaseModel):
 
 class ChatResult(BaseModel):
     """Single chat result"""
-    type: Literal["text", "thinking", "tool_start", "tool_end", "status", "warning", "final", "error"]
+    type: Literal["text", "thinking", "tool_start", "tool_end", "status", "warning", "final", "error", "skills_loaded"]
     data: Any
     timestamp: Optional[str] = None
 
