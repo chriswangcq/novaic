@@ -90,6 +90,29 @@ Before calling any tool, verify:
 - `run_command({"command": "ls -la"})`
 - `browser_navigate({"url": "https://example.com"})`
 
+## Self-Scheduling (自主调度)
+
+你具有自主调度能力，可以：
+1. **检查收件箱**: 系统会定期通知你新事件，你也可以主动调用 `inbox_check()`
+2. **主动休息**: 当需要等待时，调用 `agent_rest()` 进入休息状态并设置唤醒条件
+3. **与用户沟通**: 使用 `chat_reply()` 告知用户当前状态
+
+### 何时检查收件箱
+- 长时间任务执行中，每完成一个子任务后
+- 收到系统的 [INBOX UPDATE] 通知时
+- 当前操作需要等待时
+
+### 何时主动休息
+- 需要等待用户输入/确认
+- 需要等待特定时间
+- 任务已完成，无更多待办
+- 当前任务被更紧急的事件打断
+
+### 休息前的检查清单
+1. 使用 `chat_reply()` 告知用户当前状态和等待原因
+2. 设置合适的唤醒条件（用户回复、超时、关键词等）
+3. 记录 handoff_notes 以便唤醒后继续
+
 ## Error Recovery
 
 - Tool failed? Read error message and try alternative approach

@@ -995,6 +995,249 @@ async def get_chat_message(message_id: str):
     return {"success": False, "error": "Message not found"}
 
 
+# ==================== Agent Self-Scheduling API ====================
+
+# Agent rest state tracking
+_agent_rest_state: Dict[str, Any] = {
+    "is_resting": False,
+    "reason": None,
+    "wake_triggers": [],
+    "handoff_notes": None,
+    "rest_started": None,
+}
+
+
+@app.get("/api/agent/inbox")
+async def get_agent_inbox():
+    """
+    Get pending events in the agent's inbox.
+    
+    Returns summary of pending events for agent to check during execution.
+    """
+    from agent.events.handler import AgentEventHandler
+    
+    # Get pending events from EventHandler
+    pending_events = []
+    has_urgent = False
+    oldest_age = 0
+    
+    # Check EventBus queue (note: this is a peek, not consume)
+    if event_bus:
+        # Get stats which includes queue size
+        stats = event_bus.get_stats()
+        queue_size = stats.get("queue_size", 0)
+        
+        # Also check if there are any pending questions from chat
+        pending_questions = list(_pending_questions.values())
+        
+        for q in pending_questions:
+            pending_events.append({
+                "type": "user_question_pending",
+                "summary": f"用户问题等待回复: {q.get('question', '')[:50]}...",
+                "timestamp": q.get("timestamp"),
+                "priority": "high"
+            })
+        
+        # Add info about queued events
+        if queue_size > 0:
+            pending_events.append({
+                "type": "queued_events",
+                "summary": f"{queue_size} 个事件在队列中等待处理",
+                "priority": "normal"
+            })
+    
+    # Check for urgent keywords in pending events
+    for event in pending_events:
+        if event.get("priority") == "high":
+            has_urgent = True
+            break
+    
+    # Determine recommendation
+    recommendation = "continue"
+    if has_urgent:
+        recommendation = "check_urgent"
+    elif len(pending_events) > 3:
+        recommendation = "process_all"
+    
+    return {
+        "success": True,
+        "pending_count": len(pending_events),
+        "events": pending_events,
+        "has_urgent": has_urgent,
+        "oldest_age_seconds": oldest_age,
+        "recommendation": recommendation,
+        "agent_state": state_manager.get_state().value if state_manager else "unknown"
+    }
+
+
+@app.post("/api/agent/rest")
+async def agent_rest(data: dict):
+    """
+    Put the agent into rest state with wake triggers.
+    
+    The agent voluntarily enters rest state and sets conditions for waking up.
+    """
+    global _agent_rest_state
+    
+    reason = data.get("reason", "No reason provided")
+    wake_triggers = data.get("wake_triggers", [{"type": "user_response"}])
+    handoff_notes = data.get("handoff_notes")
+    
+    # Set agent to sleep state
+    if state_manager:
+        state_manager.set_state(AgentState.SLEEP)
+    
+    # Store rest state
+    _agent_rest_state = {
+        "is_resting": True,
+        "reason": reason,
+        "wake_triggers": wake_triggers,
+        "handoff_notes": handoff_notes,
+        "rest_started": datetime.now().isoformat(),
+    }
+    
+    # Configure wake triggers
+    triggers_set = 0
+    estimated_wake = None
+    
+    for trigger in wake_triggers:
+        trigger_type = trigger.get("type")
+        
+        if trigger_type == "cron" and wake_controller:
+            # Add cron trigger
+            expr = trigger.get("expr", "*/30 * * * *")
+            await wake_controller.add_cron_trigger(
+                name=f"rest_wake_{triggers_set}",
+                cron_expr=expr,
+                wake_message=f"[Auto Wake] Rest timeout. Reason: {reason}",
+                enabled=True
+            )
+            triggers_set += 1
+            
+        elif trigger_type == "timeout":
+            # Add timeout trigger via cron
+            minutes = trigger.get("minutes", 30)
+            if wake_controller:
+                # Calculate next wake time
+                from datetime import timedelta
+                wake_time = datetime.now() + timedelta(minutes=minutes)
+                estimated_wake = wake_time.isoformat()
+                
+                # Use a one-shot approach: set wake time
+                # For simplicity, we'll use the micro agent to check timeout
+            triggers_set += 1
+            
+        elif trigger_type == "keyword" and micro_engine:
+            # Add keyword-based micro agent rule
+            pattern = trigger.get("pattern", "")
+            if pattern:
+                # Create or update a wake filter micro agent
+                from agent.micro.agent import MicroAgent, EvalMode
+                agent = MicroAgent(
+                    name="Rest Wake Filter",
+                    description=f"Wake on keyword: {pattern}",
+                    mode=EvalMode.RULES,
+                )
+                agent.add_rule(
+                    name="keyword_wake",
+                    pattern=pattern,
+                    action="wake",
+                    priority=10
+                )
+                micro_engine.register_agent(agent)
+                triggers_set += 1
+        
+        elif trigger_type in ("user_response", "user_message"):
+            # Default behavior: wake on any user message
+            # This is handled by the EventHandler checking sleep state
+            triggers_set += 1
+    
+    # Notify via chat
+    if triggers_set > 0:
+        chat_message = {
+            "id": str(uuid_module.uuid4())[:12],
+            "type": "AGENT_NOTIFY",
+            "timestamp": datetime.now().isoformat(),
+            "message": f"💤 进入休息状态: {reason}",
+            "level": "info",
+            "handoff_notes": handoff_notes,
+        }
+        _chat_messages.append(chat_message)
+        for queue in _chat_subscribers.values():
+            try:
+                queue.put_nowait(chat_message)
+            except asyncio.QueueFull:
+                pass
+    
+    return {
+        "success": True,
+        "state": "resting",
+        "reason": reason,
+        "triggers_set": triggers_set,
+        "estimated_wake": estimated_wake,
+        "handoff_notes": handoff_notes,
+    }
+
+
+@app.get("/api/agent/rest-state")
+async def get_agent_rest_state():
+    """Get current rest state information."""
+    return {
+        "success": True,
+        **_agent_rest_state,
+        "current_state": state_manager.get_state().value if state_manager else "unknown"
+    }
+
+
+@app.post("/api/agent/wake")
+async def wake_agent(data: dict = {}):
+    """
+    Manually wake the agent from rest state.
+    """
+    global _agent_rest_state
+    
+    reason = data.get("reason", "Manual wake")
+    
+    if state_manager:
+        state_manager.set_state(AgentState.AWAKE)
+    
+    # Clear rest state
+    previous_state = _agent_rest_state.copy()
+    _agent_rest_state = {
+        "is_resting": False,
+        "reason": None,
+        "wake_triggers": [],
+        "handoff_notes": None,
+        "rest_started": None,
+    }
+    
+    # Notify via chat
+    chat_message = {
+        "id": str(uuid_module.uuid4())[:12],
+        "type": "AGENT_NOTIFY",
+        "timestamp": datetime.now().isoformat(),
+        "message": f"☀️ 已唤醒: {reason}",
+        "level": "success",
+    }
+    if previous_state.get("handoff_notes"):
+        chat_message["handoff_notes"] = previous_state["handoff_notes"]
+    
+    _chat_messages.append(chat_message)
+    for queue in _chat_subscribers.values():
+        try:
+            queue.put_nowait(chat_message)
+        except asyncio.QueueFull:
+            pass
+    
+    return {
+        "success": True,
+        "state": "awake",
+        "wake_reason": reason,
+        "previous_rest_reason": previous_state.get("reason"),
+        "handoff_notes": previous_state.get("handoff_notes"),
+    }
+
+
 # Static files (React Web UI) - mount last to catch-all
 web_dist = Path(__file__).parent / "web" / "dist"
 if web_dist.exists():

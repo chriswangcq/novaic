@@ -140,11 +140,15 @@ class NovAICAgent:
         self._executor_healthy = None
         
         # Settings (can be overridden)
-        self.max_iterations = 20
+        self.max_iterations = 50  # 增加到 50，因为 Agent 可以自主休息
         self.max_tokens = 4096
         self.llm_timeout = 120  # 2分钟超时，避免长时间卡住
         self.llm_max_retries = 3
         self.api_style = "chat_completions"
+        
+        # Context injection settings (自主调度)
+        self.inbox_check_interval = 5  # 每 5 轮注入一次上下文
+        self._inbox_callback = None  # Callback to get pending events
         
         # For responses API mode: track response chain
         self._response_id: Optional[str] = None
@@ -153,6 +157,60 @@ class NovAICAgent:
         self._current_trace: Optional[TaskTrace] = None
         self._trace_history: List[TaskTrace] = []  # 最近的任务追踪
         self._max_trace_history = 10
+    
+    def set_inbox_callback(self, callback) -> None:
+        """
+        Set callback to get pending events for context injection.
+        
+        Args:
+            callback: Async function that returns inbox info dict
+        """
+        self._inbox_callback = callback
+    
+    async def _get_inbox_context(self) -> Optional[str]:
+        """
+        Get formatted inbox context for injection into messages.
+        
+        Returns:
+            Formatted string with inbox summary, or None if empty/unavailable
+        """
+        if not self._inbox_callback:
+            return None
+        
+        try:
+            inbox = await self._inbox_callback()
+            pending_count = inbox.get("pending_count", 0)
+            
+            if pending_count == 0:
+                return None
+            
+            events = inbox.get("events", [])
+            has_urgent = inbox.get("has_urgent", False)
+            recommendation = inbox.get("recommendation", "continue")
+            
+            # Format context
+            lines = [f"📬 [INBOX UPDATE] {pending_count} 个待处理事件:"]
+            
+            for event in events[:5]:  # Max 5 events in summary
+                event_type = event.get("type", "unknown")
+                summary = event.get("summary", "")[:100]
+                priority = event.get("priority", "normal")
+                marker = "🔴" if priority == "high" else "⚪"
+                lines.append(f"  {marker} [{event_type}] {summary}")
+            
+            if has_urgent:
+                lines.append("⚠️ 有紧急事件需要关注！考虑使用 inbox_check() 查看详情。")
+            
+            if recommendation == "check_urgent":
+                lines.append("建议: 检查紧急事件后再继续当前任务")
+            elif recommendation == "process_all":
+                lines.append("建议: 考虑处理积压事件或使用 agent_rest() 安排稍后处理")
+            
+            return "\n".join(lines)
+            
+        except Exception as e:
+            print(f"[Agent] Failed to get inbox context: {e}")
+            return None
     
     def _get_llm_client(
         self, 
@@ -723,6 +781,17 @@ class NovAICAgent:
         while not self._interrupted and iteration < self.max_iterations:
             iteration += 1
             
+            # 每 N 轮注入收件箱上下文（自主调度支持）
+            if iteration > 1 and iteration % self.inbox_check_interval == 0:
+                inbox_context = await self._get_inbox_context()
+                if inbox_context:
+                    # 注入为 system 消息，提醒 Agent 检查收件箱
+                    messages.append({
+                        "role": "system",
+                        "content": inbox_context
+                    })
+                    yield {"type": "status", "data": f"[Iteration {iteration}] 检查收件箱..."}
+            
             # 创建步骤追踪
             current_step = self._add_step_to_trace(iteration)
             
@@ -874,6 +943,17 @@ class NovAICAgent:
         
         while not self._interrupted and iteration < self.max_iterations:
             iteration += 1
+            
+            # 每 N 轮注入收件箱上下文（自主调度支持）
+            if iteration > 1 and iteration % self.inbox_check_interval == 0:
+                inbox_context = await self._get_inbox_context()
+                if inbox_context:
+                    # 注入为用户消息（responses API 模式）
+                    input_msgs.append({
+                        "role": "user",
+                        "content": f"[系统通知]\n{inbox_context}"
+                    })
+                    yield {"type": "status", "data": f"[Iteration {iteration}] 检查收件箱..."}
             
             # 创建步骤追踪
             current_step = self._add_step_to_trace(iteration)

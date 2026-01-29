@@ -55,6 +55,19 @@ def get_agent() -> NovAICAgent:
             )
         except Exception:
             pass
+        
+        # Set up inbox callback for self-scheduling
+        try:
+            import httpx
+            async def get_inbox():
+                async with httpx.AsyncClient(timeout=5.0, trust_env=False) as client:
+                    resp = await client.get("http://127.0.0.1:9000/api/agent/inbox")
+                    if resp.status_code == 200:
+                        return resp.json()
+                    return {"pending_count": 0, "events": []}
+            _agent.set_inbox_callback(get_inbox)
+        except Exception:
+            pass
     return _agent
 
 
