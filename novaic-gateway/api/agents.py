@@ -71,11 +71,12 @@ class AvailableImageResponse(BaseModel):
 async def list_agents():
     """List all AIC agents"""
     manager = get_agent_config_manager()
-    config = manager.load()
+    agents = manager.list_agents()
+    current_agent = manager.get_current_agent()
     
     return AgentListResponse(
-        agents=[AgentResponse(**agent.model_dump()) for agent in config.agents],
-        current_agent_id=config.current_agent_id
+        agents=[AgentResponse(**agent.model_dump()) for agent in agents],
+        current_agent_id=current_agent.id if current_agent else None
     )
 
 

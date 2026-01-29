@@ -50,6 +50,8 @@ def main():
         "--hidden-import", "anyio",
         "--hidden-import", "anyio._backends",
         "--hidden-import", "anyio._backends._asyncio",
+        # Database - collect all aiosqlite modules
+        "--collect-all", "aiosqlite",
         # Main entry point
         "main.py",
     ]

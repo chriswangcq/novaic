@@ -2,9 +2,10 @@
 Database Schema Definition
 
 Defines all tables for the NovAIC Gateway SQLite database.
+Simplified in v3: unified chat_messages table with read field.
 """
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 3
 
 SCHEMA_SQL = """
 -- ========================================
@@ -70,7 +71,7 @@ CREATE TABLE IF NOT EXISTS agents (
 );
 
 -- ========================================
--- 3. Session Tables
+-- 3. Session Tables (for LLM context)
 -- ========================================
 
 CREATE TABLE IF NOT EXISTS sessions (
@@ -103,25 +104,33 @@ CREATE INDEX IF NOT EXISTS idx_session_messages_session ON session_messages(sess
 CREATE INDEX IF NOT EXISTS idx_session_messages_timestamp ON session_messages(timestamp);
 
 -- ========================================
--- 4. Chat Message Tables (Real-time)
+-- 4. Unified Chat Messages Table
 -- ========================================
+-- Stores all messages: user messages, agent replies, questions, etc.
+-- Uses 'read' field for inbox management (unread = inbox items)
 
 CREATE TABLE IF NOT EXISTS chat_messages (
     id TEXT PRIMARY KEY,
-    type TEXT NOT NULL,
+    agent_id TEXT NOT NULL DEFAULT 'default',
+    type TEXT NOT NULL,              -- 'USER_MESSAGE', 'AGENT_REPLY', 'AGENT_ASK', etc.
+    content TEXT,                    -- Message content
+    read INTEGER DEFAULT 0,          -- 0=unread, 1=read (for inbox)
+    metadata TEXT DEFAULT '{}',      -- model, api_key_id, options, etc.
     timestamp TEXT NOT NULL,
-    data TEXT NOT NULL,
     created_at TEXT DEFAULT (datetime('now'))
 );
 
-CREATE INDEX IF NOT EXISTS idx_chat_messages_timestamp ON chat_messages(timestamp);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_agent ON chat_messages(agent_id);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_read ON chat_messages(agent_id, read);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_timestamp ON chat_messages(agent_id, timestamp);
 
 -- ========================================
--- 5. Question/Response Tables
+-- 5. Question/Response Tables (per-agent)
 -- ========================================
 
 CREATE TABLE IF NOT EXISTS pending_questions (
     request_id TEXT PRIMARY KEY,
+    agent_id TEXT NOT NULL DEFAULT 'default',
     question TEXT,
     options TEXT,
     message_id TEXT,
@@ -129,67 +138,49 @@ CREATE TABLE IF NOT EXISTS pending_questions (
     created_at TEXT DEFAULT (datetime('now'))
 );
 
+CREATE INDEX IF NOT EXISTS idx_pending_questions_agent ON pending_questions(agent_id);
+
 CREATE TABLE IF NOT EXISTS question_responses (
     request_id TEXT PRIMARY KEY,
+    agent_id TEXT NOT NULL DEFAULT 'default',
     response TEXT,
     selected_option TEXT,
     timestamp TEXT NOT NULL,
     FOREIGN KEY (request_id) REFERENCES pending_questions(request_id) ON DELETE CASCADE
 );
 
--- ========================================
--- 6. User Message Tables
--- ========================================
-
-CREATE TABLE IF NOT EXISTS user_messages (
-    id TEXT PRIMARY KEY,
-    type TEXT NOT NULL DEFAULT 'USER_MESSAGE',
-    content TEXT NOT NULL,
-    timestamp TEXT NOT NULL,
-    status TEXT DEFAULT 'delivered',
-    model TEXT,
-    api_key_id TEXT,
-    created_at TEXT DEFAULT (datetime('now'))
-);
-
-CREATE INDEX IF NOT EXISTS idx_user_messages_status ON user_messages(status);
-CREATE INDEX IF NOT EXISTS idx_user_messages_timestamp ON user_messages(timestamp);
-
-CREATE TABLE IF NOT EXISTS pending_user_messages (
-    id TEXT PRIMARY KEY,
-    content TEXT NOT NULL,
-    timestamp TEXT NOT NULL,
-    model TEXT,
-    api_key_id TEXT,
-    created_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (id) REFERENCES user_messages(id) ON DELETE CASCADE
-);
+CREATE INDEX IF NOT EXISTS idx_question_responses_agent ON question_responses(agent_id);
 
 -- ========================================
--- 7. Execution Log Tables
+-- 6. Execution Log Tables (per-agent)
 -- ========================================
+-- Pure flow logs, not associated with messages
 
 CREATE TABLE IF NOT EXISTS execution_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent_id TEXT NOT NULL DEFAULT 'default',
     type TEXT NOT NULL,
     timestamp TEXT NOT NULL,
     data TEXT,
-    message_id TEXT,
     created_at TEXT DEFAULT (datetime('now'))
 );
 
-CREATE INDEX IF NOT EXISTS idx_execution_logs_timestamp ON execution_logs(timestamp);
-CREATE INDEX IF NOT EXISTS idx_execution_logs_message_id ON execution_logs(message_id);
+CREATE INDEX IF NOT EXISTS idx_execution_logs_agent ON execution_logs(agent_id);
+CREATE INDEX IF NOT EXISTS idx_execution_logs_timestamp ON execution_logs(agent_id, timestamp);
 
 -- ========================================
--- 8. Agent Runtime State Tables
+-- 7. Agent Runtime State Tables (per-agent)
 -- ========================================
 
 CREATE TABLE IF NOT EXISTS agent_runtime_state (
-    key TEXT PRIMARY KEY,
+    agent_id TEXT NOT NULL DEFAULT 'default',
+    key TEXT NOT NULL,
     value TEXT NOT NULL,
-    updated_at TEXT DEFAULT (datetime('now'))
+    updated_at TEXT DEFAULT (datetime('now')),
+    PRIMARY KEY (agent_id, key)
 );
+
+CREATE INDEX IF NOT EXISTS idx_agent_runtime_state_agent ON agent_runtime_state(agent_id);
 """
 
 DEFAULT_CONFIG = {
@@ -214,6 +205,14 @@ DEFAULT_RUNTIME_STATE = {
 
 async def init_schema(conn):
     """Initialize database schema and default data."""
+    # Check current schema version
+    try:
+        cursor = await conn.execute("SELECT value FROM config WHERE key = 'version'")
+        row = await cursor.fetchone()
+        current_version = int(row[0]) if row else 0
+    except Exception:
+        current_version = 0
+    
     # Execute schema SQL (split by statements)
     for statement in SCHEMA_SQL.split(';'):
         statement = statement.strip()
@@ -235,3 +234,163 @@ async def init_schema(conn):
         )
     
     await conn.commit()
+    
+    # Run migrations if needed
+    if current_version < SCHEMA_VERSION:
+        print(f"[DB] Migrating from version {current_version} to {SCHEMA_VERSION}")
+        await run_migration(conn, current_version)
+        print(f"[DB] Migration complete")
+
+
+async def run_migration(conn, from_version: int):
+    """Run migrations from old schema version to current."""
+    if from_version < 3:
+        print("[DB] Running migration from v2 to v3...")
+        
+        # Migration from v2 to v3:
+        # 1. Add 'content' and 'read' columns to chat_messages if not exist
+        # 2. Migrate data from user_messages to chat_messages
+        # 3. Migrate data from pending_user_messages to chat_messages (with read=0)
+        # 4. Drop user_messages and pending_user_messages tables
+        
+        # Check if columns exist
+        cursor = await conn.execute("PRAGMA table_info(chat_messages)")
+        columns = [row[1] for row in await cursor.fetchall()]
+        
+        if 'read' not in columns:
+            print("[DB] Adding 'read' column to chat_messages")
+            await conn.execute("ALTER TABLE chat_messages ADD COLUMN read INTEGER DEFAULT 0")
+        
+        if 'content' not in columns:
+            print("[DB] Adding 'content' column to chat_messages")
+            await conn.execute("ALTER TABLE chat_messages ADD COLUMN content TEXT")
+        
+        if 'metadata' not in columns:
+            print("[DB] Adding 'metadata' column to chat_messages")
+            await conn.execute("ALTER TABLE chat_messages ADD COLUMN metadata TEXT DEFAULT '{}'")
+        
+        # Migrate data from user_messages if table exists
+        try:
+            cursor = await conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='user_messages'")
+            if await cursor.fetchone():
+                print("[DB] Migrating data from user_messages...")
+                
+                # Get all user messages
+                cursor = await conn.execute("""
+                    SELECT id, agent_id, type, content, timestamp, status, model, api_key_id, created_at
+                    FROM user_messages
+                """)
+                user_messages = await cursor.fetchall()
+                
+                import json
+                migrated = 0
+                for row in user_messages:
+                    msg_id = row[0]
+                    agent_id = row[1]
+                    msg_type = row[2] or "USER_MESSAGE"
+                    content = row[3]
+                    timestamp = row[4]
+                    status = row[5] or "delivered"
+                    model = row[6]
+                    api_key_id = row[7]
+                    created_at = row[8]
+                    
+                    # Map status to read flag: delivered=0, read/replied=1
+                    read = 1 if status in ("read", "replied") else 0
+                    
+                    # Build metadata
+                    metadata = {}
+                    if model:
+                        metadata["model"] = model
+                    if api_key_id:
+                        metadata["api_key_id"] = api_key_id
+                    if status:
+                        metadata["status"] = status
+                    
+                    # Insert into chat_messages (or update if exists)
+                    await conn.execute("""
+                        INSERT OR REPLACE INTO chat_messages 
+                        (id, agent_id, type, content, read, metadata, timestamp, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (msg_id, agent_id, msg_type, content, read, json.dumps(metadata), timestamp, created_at))
+                    migrated += 1
+                
+                print(f"[DB] Migrated {migrated} messages from user_messages")
+        except Exception as e:
+            print(f"[DB] Warning: Could not migrate user_messages: {e}")
+        
+        # Migrate data from pending_user_messages if table exists
+        try:
+            cursor = await conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='pending_user_messages'")
+            if await cursor.fetchone():
+                print("[DB] Migrating data from pending_user_messages...")
+                
+                # Get all pending messages
+                cursor = await conn.execute("""
+                    SELECT id, agent_id, content, timestamp, model, api_key_id, created_at
+                    FROM pending_user_messages
+                """)
+                pending_messages = await cursor.fetchall()
+                
+                import json
+                migrated = 0
+                for row in pending_messages:
+                    msg_id = row[0]
+                    agent_id = row[1]
+                    content = row[2]
+                    timestamp = row[3]
+                    model = row[4]
+                    api_key_id = row[5]
+                    created_at = row[6]
+                    
+                    # Pending messages are unread
+                    read = 0
+                    
+                    # Build metadata
+                    metadata = {}
+                    if model:
+                        metadata["model"] = model
+                    if api_key_id:
+                        metadata["api_key_id"] = api_key_id
+                    
+                    # Check if message already exists in chat_messages
+                    check_cursor = await conn.execute("SELECT id FROM chat_messages WHERE id = ?", (msg_id,))
+                    exists = await check_cursor.fetchone()
+                    
+                    if exists:
+                        # Update to mark as unread
+                        await conn.execute("UPDATE chat_messages SET read = 0 WHERE id = ?", (msg_id,))
+                    else:
+                        # Insert as new message
+                        await conn.execute("""
+                            INSERT INTO chat_messages 
+                            (id, agent_id, type, content, read, metadata, timestamp, created_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (msg_id, agent_id, "USER_MESSAGE", content, read, json.dumps(metadata), timestamp, created_at))
+                    migrated += 1
+                
+                print(f"[DB] Migrated {migrated} messages from pending_user_messages")
+        except Exception as e:
+            print(f"[DB] Warning: Could not migrate pending_user_messages: {e}")
+        
+        # Create new indexes
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_chat_messages_read ON chat_messages(agent_id, read)"
+        )
+        
+        # Drop old tables
+        print("[DB] Dropping old tables...")
+        await conn.execute("DROP TABLE IF EXISTS pending_user_messages")
+        await conn.execute("DROP TABLE IF EXISTS user_messages")
+        
+        # Drop old index on execution_logs
+        await conn.execute("DROP INDEX IF EXISTS idx_execution_logs_message_id")
+        
+        # Update schema version
+        await conn.execute(
+            "INSERT OR REPLACE INTO config (key, value) VALUES ('version', ?)",
+            (str(SCHEMA_VERSION),)
+        )
+        
+        await conn.commit()
+        print("[DB] Migration to v3 complete")

@@ -484,13 +484,33 @@ class AgentConfigManager:
         return images
 
 
-# Global instance
-_agent_config_manager: Optional[AgentConfigManager] = None
+# Global instance - use database-backed version
+from .agents_db import (
+    AgentConfigManager,
+    AgentConfigManagerDB,
+    get_agent_config_manager,
+    get_agent_config_manager_db,
+)
 
-
-def get_agent_config_manager() -> AgentConfigManager:
-    """Get the global agent config manager instance"""
-    global _agent_config_manager
-    if _agent_config_manager is None:
-        _agent_config_manager = AgentConfigManager()
-    return _agent_config_manager
+# Re-export for backward compatibility
+__all__ = [
+    # Constants
+    "GATEWAY_PORT",
+    "BASE_PORT",
+    "PORTS_PER_AGENT",
+    "MAX_AGENTS",
+    "SERVICE_OFFSETS",
+    # Functions
+    "get_agent_port",
+    "allocate_ports_for_agent",
+    # Classes
+    "PortConfig",
+    "VmConfig",
+    "AICAgent",
+    "AgentsConfig",
+    # Managers
+    "AgentConfigManager",
+    "AgentConfigManagerDB",
+    "get_agent_config_manager",
+    "get_agent_config_manager_db",
+]

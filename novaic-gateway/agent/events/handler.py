@@ -304,11 +304,24 @@ class AgentEventHandler:
                 break
     
     def _get_rest_state(self) -> Optional[Dict[str, Any]]:
-        """Get current rest state from main module."""
+        """Get current rest state from database."""
         try:
-            from main import _agent_rest_state
-            return _agent_rest_state
-        except ImportError:
+            import asyncio
+            from api.chat_service import get_chat_service
+            chat_service = get_chat_service()
+            agent_id = chat_service.agent_id
+            
+            # Run async method synchronously
+            try:
+                loop = asyncio.get_running_loop()
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as pool:
+                    future = pool.submit(asyncio.run, chat_service.repo.get_agent_rest_state(agent_id))
+                    return future.result()
+            except RuntimeError:
+                return asyncio.run(chat_service.repo.get_agent_rest_state(agent_id))
+        except Exception as e:
+            logger.warning(f"[EventHandler] Failed to get rest state: {e}")
             return None
     
     async def _notify_wake(self, reason: str, previous_rest_state: Optional[Dict] = None) -> None:

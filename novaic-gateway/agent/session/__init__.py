@@ -1,17 +1,14 @@
 """Session management module."""
 
 from .manager import SessionManager
-from .storage import SessionStorage
 from .compaction import Compactor
 
-# Database-backed versions
-from .storage_db import SessionStorageDB, SessionStorage as SessionStorageDBSync
+# Database-backed versions (primary)
+from .storage_db import SessionStorage, SessionStorageDB
 
 __all__ = [
     "SessionManager",
     "SessionStorage",
-    "Compactor",
-    # Database versions
     "SessionStorageDB",
-    "SessionStorageDBSync",
+    "Compactor",
 ]

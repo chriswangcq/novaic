@@ -13,7 +13,7 @@ from .schemas import (
     ApiKeyCreate, ApiKeyUpdate, ModelToggle, SettingsUpdate,
     HealthResponse, HistoryResponse
 )
-from config.manager import get_config_manager, ProviderType
+from config import get_config_manager, ProviderType
 from core.agent import NovAICAgent
 
 router = APIRouter()

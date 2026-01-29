@@ -149,7 +149,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from api.routes import router as api_router
 from api.agents import router as agents_router
-from config.manager import get_config_manager
+from config import get_config_manager
 
 # Import database module
 from db import init_database, close_database, run_migration
@@ -828,37 +828,64 @@ async def evaluate_with_micro_agents(data: dict):
 import asyncio
 from fastapi.responses import StreamingResponse
 import json as json_module
-from collections import deque
 from typing import Dict, Any, Optional
 import uuid as uuid_module
 
-# Chat message store (for SSE streaming to frontend)
-_chat_messages: deque = deque(maxlen=100)  # Recent chat messages
-_chat_subscribers: Dict[str, asyncio.Queue] = {}  # SSE subscribers
+# Import ChatService for database-backed state management
+from api.chat_service import get_chat_service, ChatService
 
-# Pending questions (agent asking user)
-_pending_questions: Dict[str, Dict[str, Any]] = {}  # request_id -> question data
-_question_responses: Dict[str, Dict[str, Any]] = {}  # request_id -> user response
-
-# User messages with status tracking
-_user_messages: Dict[str, Dict[str, Any]] = {}  # message_id -> message data
-
-# Pending user messages (inbox) - messages waiting to be processed
-_pending_user_messages: Dict[str, Dict[str, Any]] = {}  # message_id -> message data
-
-# Agent execution logs for SSE streaming
-_agent_logs: deque = deque(maxlen=500)  # Recent execution logs
+# SSE subscribers (runtime state - cannot be persisted)
+_chat_subscribers: Dict[str, asyncio.Queue] = {}  # Chat SSE subscribers
+_log_subscribers: Dict[str, asyncio.Queue] = {}   # Log SSE subscribers
 
 # Agent execution lock - ensures only one agent task runs at a time
 _agent_lock = asyncio.Lock()
 _current_agent_task: Optional[asyncio.Task] = None
-_agent_busy = False  # Track if agent is currently processing
-_log_subscribers: Dict[str, asyncio.Queue] = {}  # Log SSE subscribers
 
 
-def broadcast_chat_message(message: Dict[str, Any]):
-    """Broadcast a chat message to all SSE subscribers."""
-    _chat_messages.append(message)
+def get_current_agent_id() -> str:
+    """Get the current agent ID from config."""
+    try:
+        from config.agents import get_agent_config_manager
+        mgr = get_agent_config_manager()
+        current = mgr.get_current_agent()
+        if current:
+            return current.id
+    except Exception:
+        pass
+    return "default"
+
+
+async def broadcast_chat_message(message: Dict[str, Any]):
+    """Broadcast a chat message to all SSE subscribers and save to database.
+    
+    Note: Non-persistent message types (STATUS_UPDATE, TYPING, etc.) are only
+    broadcast to SSE subscribers and not saved to database.
+    """
+    chat_service = get_chat_service()
+    agent_id = get_current_agent_id()
+    
+    # Extract message info
+    msg_type = message.get("type", "UNKNOWN")
+    msg_id = message.get("id", str(uuid_module.uuid4())[:12])
+    timestamp = message.get("timestamp", datetime.now().isoformat())
+    content = message.get("content", message.get("message"))
+    
+    # Build metadata from remaining fields
+    metadata = {k: v for k, v in message.items() 
+                if k not in ("id", "type", "timestamp", "content", "message")}
+    
+    # Save to database (ChatRepository handles non-persistent types)
+    await chat_service.repo.add_message(
+        agent_id=agent_id,
+        id=msg_id,
+        type=msg_type,
+        content=content,
+        metadata=metadata if metadata else None,
+        timestamp=timestamp,
+    )
+    
+    # Broadcast to SSE subscribers
     for queue in _chat_subscribers.values():
         try:
             queue.put_nowait(message)
@@ -866,13 +893,19 @@ def broadcast_chat_message(message: Dict[str, Any]):
             pass
 
 
-def update_message_status(message_id: str, status: str):
-    """Update message status and broadcast to subscribers."""
-    # Update in user_messages store
-    if message_id in _user_messages:
-        _user_messages[message_id]["status"] = status
+async def update_message_status(message_id: str, status: str):
+    """Update message status and broadcast to subscribers.
     
-    # Broadcast status update
+    For 'read' status, marks the message as read in the database.
+    STATUS_UPDATE is broadcast to SSE but not persisted.
+    """
+    chat_service = get_chat_service()
+    
+    # Update in database - for 'read' status, use mark_as_read
+    if status == "read":
+        await chat_service.repo.mark_as_read(message_id)
+    
+    # Broadcast status update (not persisted, just for real-time UI)
     status_update = {
         "id": str(uuid_module.uuid4())[:8],
         "type": "STATUS_UPDATE",
@@ -887,9 +920,20 @@ def update_message_status(message_id: str, status: str):
             pass
 
 
-def broadcast_log(log: Dict[str, Any]):
-    """Broadcast an execution log to all log SSE subscribers."""
-    _agent_logs.append(log)
+async def broadcast_log(log: Dict[str, Any]):
+    """Broadcast an execution log to all log SSE subscribers and save to database."""
+    chat_service = get_chat_service()
+    agent_id = get_current_agent_id()
+    
+    # Save to database (pure flow logs, not associated with messages)
+    await chat_service.repo.add_execution_log(
+        agent_id=agent_id,
+        type=log.get("type", "unknown"),
+        timestamp=log.get("timestamp", datetime.now().isoformat()),
+        data=log.get("data"),
+    )
+    
+    # Broadcast to SSE subscribers
     for queue in _log_subscribers.values():
         try:
             queue.put_nowait(log)
@@ -920,19 +964,22 @@ async def receive_chat_event(data: dict):
         **event_data
     }
     
-    # Handle AGENT_ASK specially - store pending question
+    # Handle AGENT_ASK specially - store pending question in database
     if event_type == "AGENT_ASK":
         request_id = event_data.get("request_id") or message_id
-        _pending_questions[request_id] = {
-            "question": event_data.get("question"),
-            "options": event_data.get("options"),
-            "timestamp": timestamp,
-            "message_id": message_id,
-        }
+        chat_service = get_chat_service()
+        agent_id = get_current_agent_id()
+        await chat_service.repo.add_pending_question(
+            agent_id=agent_id,
+            request_id=request_id,
+            question=event_data.get("question"),
+            options=event_data.get("options"),
+            message_id=message_id,
+        )
         chat_message["request_id"] = request_id
     
     # Use helper to store and broadcast
-    broadcast_chat_message(chat_message)
+    await broadcast_chat_message(chat_message)
     
     return {
         "success": True,
@@ -958,8 +1005,11 @@ async def chat_messages_sse():
     
     async def event_generator():
         try:
-            # Send recent messages first
-            for msg in list(_chat_messages)[-10:]:
+            # Send recent messages first (from database)
+            chat_service = get_chat_service()
+            agent_id = get_current_agent_id()
+            recent_messages = await chat_service.repo.get_recent_chat_messages(agent_id, limit=10)
+            for msg in recent_messages:
                 yield f"data: {json_module.dumps(msg)}\n\n"
             
             # Stream new messages
@@ -992,12 +1042,19 @@ async def check_user_response(request_id: str):
     
     Called by novaic-mcp-chat's chat_ask tool to poll for user response.
     """
-    if request_id not in _pending_questions:
+    chat_service = get_chat_service()
+    
+    # Check if question exists
+    question = await chat_service.repo.get_pending_question(request_id)
+    if not question:
         return {"error": "Question not found", "has_response": False}
     
-    if request_id in _question_responses:
-        response = _question_responses.pop(request_id)
-        _pending_questions.pop(request_id, None)
+    # Check for response
+    response = await chat_service.repo.get_question_response(request_id)
+    if response:
+        # Remove question and response after retrieval
+        await chat_service.repo.delete_pending_question(request_id)
+        await chat_service.repo.delete_question_response(request_id)
         return {"has_response": True, **response}
     
     return {"has_response": False}
@@ -1010,15 +1067,20 @@ async def submit_user_response(request_id: str, data: dict):
     
     Called by frontend when user answers a question from the agent.
     """
-    if request_id not in _pending_questions:
+    chat_service = get_chat_service()
+    
+    # Check if question exists
+    question = await chat_service.repo.get_pending_question(request_id)
+    if not question:
         return {"error": "Question not found or expired", "success": False}
     
-    # Store response
-    _question_responses[request_id] = {
-        "response": data.get("response", ""),
-        "selected_option": data.get("selected_option"),
-        "timestamp": datetime.now().isoformat(),
-    }
+    # Store response in database
+    timestamp = datetime.now().isoformat()
+    await chat_service.repo.add_question_response(
+        request_id=request_id,
+        response=data.get("response", ""),
+        selected_option=data.get("selected_option"),
+    )
     
     # Also publish to EventBus as USER_RESPONSE event
     if event_bus:
@@ -1040,11 +1102,11 @@ async def submit_user_response(request_id: str, data: dict):
 @app.get("/api/chat/pending-questions")
 async def get_pending_questions():
     """Get all pending questions from the agent."""
+    chat_service = get_chat_service()
+    agent_id = get_current_agent_id()
+    questions = await chat_service.repo.get_all_pending_questions(agent_id)
     return {
-        "questions": [
-            {"request_id": rid, **qdata}
-            for rid, qdata in _pending_questions.items()
-        ]
+        "questions": questions
     }
 
 
@@ -1065,11 +1127,11 @@ async def get_chat_history(
         summary_length: Truncate message content to this length (0 for full)
     """
     limit = min(limit, 100)
+    chat_service = get_chat_service()
+    agent_id = get_current_agent_id()
     
-    # Get all messages as a list
-    all_messages = list(_chat_messages)
-    
-    # Filter by message_type if specified
+    # Build type filter
+    type_filter = None
     if message_type:
         type_map = {
             "user": ["USER_MESSAGE"],
@@ -1077,27 +1139,23 @@ async def get_chat_history(
             "notification": ["AGENT_NOTIFY"],
             "question": ["AGENT_ASK"],
         }
-        allowed_types = type_map.get(message_type, [message_type.upper()])
-        all_messages = [m for m in all_messages if m.get("type") in allowed_types]
+        type_filter = type_map.get(message_type, [message_type.upper()])
     
-    # Filter by before_id if specified
-    if before_id:
-        found_idx = None
-        for i, msg in enumerate(all_messages):
-            if msg.get("id") == before_id:
-                found_idx = i
-                break
-        if found_idx is not None:
-            all_messages = all_messages[:found_idx]
+    # Get messages from database
+    all_messages = await chat_service.repo.get_chat_history(
+        agent_id=agent_id,
+        limit=limit + 1,  # Get one extra to check has_more
+        before_id=before_id,
+        type_filter=type_filter,
+    )
     
-    # Get the last `limit` messages
-    messages = all_messages[-limit:] if len(all_messages) > limit else all_messages
     has_more = len(all_messages) > limit
+    messages = all_messages[:limit]
     
     # Create summarized messages
     summarized = []
     for msg in messages:
-        content = msg.get("message") or msg.get("question") or ""
+        content = msg.get("message") or msg.get("question") or msg.get("content") or ""
         is_truncated = summary_length > 0 and len(content) > summary_length
         
         summary_msg = {
@@ -1116,11 +1174,14 @@ async def get_chat_history(
         
         summarized.append(summary_msg)
     
+    # Get total count
+    total_count = await chat_service.repo.get_chat_message_count(agent_id)
+    
     return {
         "success": True,
         "messages": summarized,
         "has_more": has_more,
-        "total_in_memory": len(_chat_messages),
+        "total_count": total_count,
     }
 
 
@@ -1132,9 +1193,11 @@ async def get_chat_message(message_id: str):
     Args:
         message_id: The message ID
     """
-    for msg in _chat_messages:
-        if msg.get("id") == message_id:
-            return {"success": True, **msg}
+    chat_service = get_chat_service()
+    msg = await chat_service.repo.get_chat_message(message_id)
+    
+    if msg:
+        return {"success": True, **msg}
     
     return {"success": False, "error": "Message not found"}
 
@@ -1152,7 +1215,8 @@ async def send_chat_message(data: dict):
     
     Returns immediately with message_id and 'delivered' status.
     """
-    global _agent_busy
+    chat_service = get_chat_service()
+    agent_id = get_current_agent_id()
     
     content = data.get("message", "").strip()
     model = data.get("model")
@@ -1166,7 +1230,7 @@ async def send_chat_message(data: dict):
     message_id = str(uuid_module.uuid4())[:12]
     timestamp = datetime.now().isoformat()
     
-    # Create and store user message
+    # Create user message
     user_msg = {
         "id": message_id,
         "type": "USER_MESSAGE",
@@ -1176,29 +1240,32 @@ async def send_chat_message(data: dict):
         "model": model,
         "api_key_id": api_key_id,
     }
-    _user_messages[message_id] = user_msg
     
-    # Broadcast user message to chat panel
-    broadcast_chat_message(user_msg)
+    # Broadcast user message (this also saves to database)
+    await broadcast_chat_message(user_msg)
     
     # Auto-respond to any pending questions
-    # This allows users to reply to agent questions via normal chat
-    if _pending_questions:
-        # Get the most recent pending question
-        pending_ids = list(_pending_questions.keys())
-        for request_id in pending_ids:
-            _question_responses[request_id] = {
-                "response": content,
-                "selected_option": None,
-                "timestamp": timestamp,
-            }
+    pending_questions = await chat_service.repo.get_all_pending_questions(agent_id)
+    if pending_questions:
+        for q in pending_questions:
+            request_id = q.get("request_id")
+            await chat_service.repo.add_question_response(
+                agent_id=agent_id,
+                request_id=request_id,
+                response=content,
+                selected_option=None,
+            )
             print(f"[Chat] Auto-responded to pending question {request_id} with user message")
     
-    # Check if agent is busy
-    if _agent_busy:
-        # Agent is busy - add to pending inbox
-        _pending_user_messages[message_id] = user_msg
-        print(f"[Chat] Agent busy, message {message_id} added to inbox (pending: {len(_pending_user_messages)})")
+    # Check if agent is busy (from database)
+    runtime_state = await chat_service.repo.get_agent_runtime_state(agent_id)
+    agent_busy = runtime_state.get("agent_busy", False) if runtime_state else False
+    
+    if agent_busy:
+        # Agent is busy - message stays unread in inbox
+        # (Already saved via broadcast_chat_message with read=0)
+        unread_count = await chat_service.repo.get_message_count(agent_id, read=False)
+        print(f"[Chat] Agent busy, message {message_id} stays in inbox (unread: {unread_count})")
         return {
             "success": True,
             "message_id": message_id,
@@ -1210,18 +1277,17 @@ async def send_chat_message(data: dict):
     
     # Process message asynchronously with execution lock
     async def process_message():
-        global _current_agent_task, _agent_busy
+        global _current_agent_task
+        aid = agent_id  # Capture agent_id from outer scope
         
         # Acquire lock to ensure only one agent task runs at a time
         async with _agent_lock:
-            _agent_busy = True
+            # Set agent busy in database
+            await chat_service.repo.set_agent_busy(aid, True)
             print(f"[Chat] Acquired agent lock for message {message_id}, agent_busy=True")
             try:
-                # Remove from pending if it was queued
-                _pending_user_messages.pop(message_id, None)
-                
-                # Update status to 'read' when agent starts processing
-                update_message_status(message_id, "read")
+                # Mark message as read when agent starts processing
+                await update_message_status(message_id, "read")
                 
                 # Get agent instance
                 from api.routes import get_agent
@@ -1278,7 +1344,7 @@ async def send_chat_message(data: dict):
                         "data": event_data,
                         "message_id": message_id,
                     }
-                    broadcast_log(log_entry)
+                    await broadcast_log(log_entry)
                     
                     # Track if chat_reply was called
                     if event_type == "tool_end":
@@ -1304,22 +1370,22 @@ async def send_chat_message(data: dict):
                         "timestamp": datetime.now().isoformat(),
                         "message": final_content,
                     }
-                    broadcast_chat_message(agent_reply)
+                    await broadcast_chat_message(agent_reply)
                 
                 # Update status to 'replied' when done
-                update_message_status(message_id, "replied")
+                await update_message_status(message_id, "replied")
                 
             except Exception as e:
                 print(f"[Chat] Error processing message {message_id}: {e}")
                 # Broadcast error log
-                broadcast_log({
+                await broadcast_log({
                     "type": "error",
                     "timestamp": datetime.now().isoformat(),
                     "data": {"error": str(e)},
                     "message_id": message_id,
                 })
             finally:
-                _agent_busy = False
+                await chat_service.repo.set_agent_busy(aid, False)
                 print(f"[Chat] Released agent lock for message {message_id}, agent_busy=False")
     
     # Fire and forget - don't await
@@ -1352,8 +1418,11 @@ async def logs_sse():
     
     async def event_generator():
         try:
-            # Send recent logs as catch-up (last 20)
-            for log in list(_agent_logs)[-20:]:
+            # Send recent logs as catch-up (last 20, from database)
+            chat_service = get_chat_service()
+            agent_id = get_current_agent_id()
+            recent_logs = await chat_service.repo.get_recent_execution_logs(agent_id, limit=20)
+            for log in recent_logs:
                 yield f"data: {json_module.dumps(log)}\n\n"
             
             # Stream new logs
@@ -1388,59 +1457,51 @@ async def clear_logs():
 
 # ==================== Agent Self-Scheduling API ====================
 
-# Agent rest state tracking
-_agent_rest_state: Dict[str, Any] = {
-    "is_resting": False,
-    "reason": None,
-    "wake_triggers": [],
-    "handoff_notes": None,
-    "rest_started": None,
-}
-
-
 @app.get("/api/agent/inbox")
 async def get_agent_inbox():
     """
     Get pending events in the agent's inbox.
     
     Returns summary of pending events for agent to check during execution.
-    Includes pending user messages that arrived while agent was busy.
+    Includes unread user messages.
     """
     from agent.events.handler import AgentEventHandler
+    chat_service = get_chat_service()
+    agent_id = get_current_agent_id()
     
     # Get pending events from EventHandler
     pending_events = []
     has_urgent = False
     oldest_age = 0
     
-    # Add pending user messages (highest priority - user is waiting!)
-    pending_msg_ids = list(_pending_user_messages.keys())  # Snapshot to avoid mutation during iteration
-    for msg_id in pending_msg_ids:
-        msg = _pending_user_messages.get(msg_id)
-        if not msg:
-            continue
+    # Get unread user messages (highest priority - user is waiting!)
+    unread_messages = await chat_service.repo.get_unread_messages(agent_id)
+    for msg in unread_messages:
+        msg_id = msg.get("id")
+        content = msg.get("content", "")
         pending_events.append({
             "type": "user_message",
             "message_id": msg_id,
-            "summary": f"用户消息: {msg.get('content', '')[:50]}...",
-            "content": msg.get("content"),
+            "summary": f"用户消息: {content[:50]}..." if len(content) > 50 else f"用户消息: {content}",
+            "content": content,
             "timestamp": msg.get("timestamp"),
             "priority": "high"
         })
         # Mark as read when included in inbox
-        if msg_id in _user_messages:
-            _user_messages[msg_id]["status"] = "read"
-            print(f"[Inbox] Marking message {msg_id[:8]} as read")
-            broadcast_chat_message({
-                "type": "STATUS_UPDATE",
-                "id": msg_id,
-                "message_id": msg_id,
-                "status": "read",
-                "timestamp": datetime.now().isoformat()
-            })
-        # Remove from pending after reading
-        del _pending_user_messages[msg_id]
-        print(f"[Inbox] Removed message {msg_id[:8]} from pending queue")
+        await chat_service.repo.mark_as_read(msg_id)
+        print(f"[Inbox] Marking message {msg_id[:8]} as read")
+        # Broadcast status update (not persisted)
+        for queue in _chat_subscribers.values():
+            try:
+                queue.put_nowait({
+                    "type": "STATUS_UPDATE",
+                    "id": str(uuid_module.uuid4())[:8],
+                    "message_id": msg_id,
+                    "status": "read",
+                    "timestamp": datetime.now().isoformat()
+                })
+            except asyncio.QueueFull:
+                pass
     
     # Check EventBus queue (note: this is a peek, not consume)
     if event_bus:
@@ -1448,8 +1509,8 @@ async def get_agent_inbox():
         stats = event_bus.get_stats()
         queue_size = stats.get("queue_size", 0)
         
-        # Also check if there are any pending questions from chat
-        pending_questions = list(_pending_questions.values())
+        # Also check if there are any pending questions from chat (from database)
+        pending_questions = await chat_service.repo.get_all_pending_questions(agent_id)
         
         for q in pending_questions:
             pending_events.append({
@@ -1498,7 +1559,8 @@ async def interrupt_agent():
     
     This stops the current task and saves the session state.
     """
-    global _agent_busy
+    chat_service = get_chat_service()
+    agent_id = get_current_agent_id()
     
     try:
         from api.routes import get_agent
@@ -1512,8 +1574,8 @@ async def interrupt_agent():
         if state_manager:
             state_manager.set_state(AgentState.AWAKE)
         
-        # Clear busy flag
-        _agent_busy = False
+        # Clear busy flag in database
+        await chat_service.repo.set_agent_busy(agent_id, False)
         
         return {
             "success": True,
@@ -1535,7 +1597,8 @@ async def agent_rest(data: dict):
     
     The agent voluntarily enters rest state and sets conditions for waking up.
     """
-    global _agent_rest_state
+    chat_service = get_chat_service()
+    agent_id = get_current_agent_id()
     
     reason = data.get("reason", "No reason provided")
     wake_triggers = data.get("wake_triggers", [{"type": "user_response"}])
@@ -1545,14 +1608,15 @@ async def agent_rest(data: dict):
     if state_manager:
         state_manager.set_state(AgentState.SLEEP)
     
-    # Store rest state
-    _agent_rest_state = {
+    # Store rest state in database
+    rest_state = {
         "is_resting": True,
         "reason": reason,
         "wake_triggers": wake_triggers,
         "handoff_notes": handoff_notes,
         "rest_started": datetime.now().isoformat(),
     }
+    await chat_service.repo.set_agent_rest_state(agent_id, rest_state)
     
     # Configure wake triggers
     triggers_set = 0
@@ -1620,12 +1684,7 @@ async def agent_rest(data: dict):
             "level": "info",
             "handoff_notes": handoff_notes,
         }
-        _chat_messages.append(chat_message)
-        for queue in _chat_subscribers.values():
-            try:
-                queue.put_nowait(chat_message)
-            except asyncio.QueueFull:
-                pass
+        await broadcast_chat_message(chat_message)
     
     return {
         "success": True,
@@ -1640,9 +1699,22 @@ async def agent_rest(data: dict):
 @app.get("/api/agent/rest-state")
 async def get_agent_rest_state():
     """Get current rest state information."""
+    chat_service = get_chat_service()
+    agent_id = get_current_agent_id()
+    rest_state = await chat_service.repo.get_agent_rest_state(agent_id)
+    
+    if not rest_state:
+        rest_state = {
+            "is_resting": False,
+            "reason": None,
+            "wake_triggers": [],
+            "handoff_notes": None,
+            "rest_started": None,
+        }
+    
     return {
         "success": True,
-        **_agent_rest_state,
+        **rest_state,
         "current_state": state_manager.get_state().value if state_manager else "unknown"
     }
 
@@ -1652,22 +1724,23 @@ async def wake_agent(data: dict = {}):
     """
     Manually wake the agent from rest state.
     """
-    global _agent_rest_state
+    chat_service = get_chat_service()
+    agent_id = get_current_agent_id()
     
     reason = data.get("reason", "Manual wake")
     
     if state_manager:
         state_manager.set_state(AgentState.AWAKE)
     
-    # Clear rest state
-    previous_state = _agent_rest_state.copy()
-    _agent_rest_state = {
+    # Get and clear rest state from database
+    previous_state = await chat_service.repo.get_agent_rest_state(agent_id) or {}
+    await chat_service.repo.set_agent_rest_state(agent_id, {
         "is_resting": False,
         "reason": None,
         "wake_triggers": [],
         "handoff_notes": None,
         "rest_started": None,
-    }
+    })
     
     # Notify via chat
     chat_message = {
@@ -1680,12 +1753,7 @@ async def wake_agent(data: dict = {}):
     if previous_state.get("handoff_notes"):
         chat_message["handoff_notes"] = previous_state["handoff_notes"]
     
-    _chat_messages.append(chat_message)
-    for queue in _chat_subscribers.values():
-        try:
-            queue.put_nowait(chat_message)
-        except asyncio.QueueFull:
-            pass
+    await broadcast_chat_message(chat_message)
     
     return {
         "success": True,

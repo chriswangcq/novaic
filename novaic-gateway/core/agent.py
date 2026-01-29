@@ -23,71 +23,12 @@ from .session import SessionManager
 from .mcp_client import MCPClient, MCPSkill
 from executor.registry import ToolRegistry
 from agent.session.compaction import Compactor
-from agent.session.storage import SessionStorage
+from agent.session.storage_db import SessionStorage
 
 
 # ==================== Data Classes ====================
-
-class TaskStatus(Enum):
-    """任务状态"""
-    PENDING = "pending"
-    IN_PROGRESS = "in_progress"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    INTERRUPTED = "interrupted"
-
-
-@dataclass
-class ToolCallTrace:
-    """工具调用追踪"""
-    id: str
-    tool_name: str
-    input: Dict[str, Any]
-    output: Optional[Dict[str, Any]] = None
-    success: bool = False
-    error: Optional[str] = None
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    duration_ms: Optional[int] = None
-
-
-@dataclass
-class AgentStep:
-    """Agent 单步执行记录"""
-    iteration: int
-    reasoning: str = ""  # LLM 的思考内容
-    tool_calls: List[ToolCallTrace] = field(default_factory=list)
-    timestamp: datetime = field(default_factory=datetime.now)
-
-
-@dataclass
-class TaskTrace:
-    """任务执行追踪"""
-    task_id: str
-    goal: str
-    status: TaskStatus = TaskStatus.PENDING
-    steps: List[AgentStep] = field(default_factory=list)
-    skills_used: List[str] = field(default_factory=list)
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    final_result: Optional[str] = None
-    error: Optional[str] = None
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """转换为字典（用于日志/审计）"""
-        return {
-            "task_id": self.task_id,
-            "goal": self.goal,
-            "status": self.status.value,
-            "steps_count": len(self.steps),
-            "skills_used": self.skills_used,
-            "started_at": self.started_at.isoformat() if self.started_at else None,
-            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
-            "duration_ms": int((self.completed_at - self.started_at).total_seconds() * 1000) 
-                          if self.completed_at and self.started_at else None,
-            "final_result": self.final_result[:500] if self.final_result else None,
-            "error": self.error
-        }
+# Note: TaskStatus and TaskTrace have been removed in v3.
+# Execution tracking is now done via console logs and execution_logs table.
 
 
 class NovAICAgent:
@@ -155,11 +96,6 @@ class NovAICAgent:
         
         # For responses API mode: track response chain
         self._response_id: Optional[str] = None
-        
-        # Task tracking (可观测性)
-        self._current_trace: Optional[TaskTrace] = None
-        self._trace_history: List[TaskTrace] = []  # 最近的任务追踪
-        self._max_trace_history = 10
         
         # Session compaction
         self.compactor = Compactor(
@@ -596,48 +532,7 @@ class NovAICAgent:
             "skills": [s.name for s in self.skills.values()],
         }
     
-    # ==================== Task Tracking ====================
-    
-    def _start_task_trace(self, goal: str) -> TaskTrace:
-        """开始新的任务追踪"""
-        trace = TaskTrace(
-            task_id=str(uuid.uuid4())[:8],
-            goal=goal,
-            status=TaskStatus.IN_PROGRESS,
-            started_at=datetime.now()
-        )
-        self._current_trace = trace
-        return trace
-    
-    def _complete_task_trace(self, result: str = None, error: str = None) -> None:
-        """完成当前任务追踪"""
-        if not self._current_trace:
-            return
-        
-        self._current_trace.completed_at = datetime.now()
-        self._current_trace.final_result = result
-        self._current_trace.error = error
-        
-        if error:
-            self._current_trace.status = TaskStatus.FAILED
-        elif self._interrupted:
-            self._current_trace.status = TaskStatus.INTERRUPTED
-        else:
-            self._current_trace.status = TaskStatus.COMPLETED
-        
-        # 保存到历史
-        self._trace_history.append(self._current_trace)
-        if len(self._trace_history) > self._max_trace_history:
-            self._trace_history = self._trace_history[-self._max_trace_history:]
-        
-        # 打印追踪摘要
-        trace_summary = self._current_trace.to_dict()
-        print(f"[Agent] Task completed: {json.dumps(trace_summary, ensure_ascii=False)}")
-        
-        # 保存会话到磁盘
-        self._save_session()
-        
-        self._current_trace = None
+    # ==================== Session Persistence ====================
     
     def _save_session(self) -> None:
         """
@@ -747,55 +642,6 @@ class NovAICAgent:
             import traceback
             traceback.print_exc()
             return False
-    
-    def _add_step_to_trace(self, iteration: int, reasoning: str = "") -> AgentStep:
-        """添加步骤到当前追踪"""
-        if not self._current_trace:
-            return AgentStep(iteration=iteration)
-        
-        step = AgentStep(iteration=iteration, reasoning=reasoning)
-        self._current_trace.steps.append(step)
-        return step
-    
-    def _add_tool_call_to_step(
-        self, 
-        step: AgentStep, 
-        tool_name: str, 
-        tool_input: Dict[str, Any],
-        tool_id: str
-    ) -> ToolCallTrace:
-        """添加工具调用到步骤"""
-        trace = ToolCallTrace(
-            id=tool_id,
-            tool_name=tool_name,
-            input=tool_input,
-            started_at=datetime.now()
-        )
-        step.tool_calls.append(trace)
-        return trace
-    
-    def _complete_tool_call_trace(
-        self, 
-        trace: ToolCallTrace, 
-        output: Dict[str, Any],
-        success: bool,
-        error: str = None
-    ) -> None:
-        """完成工具调用追踪"""
-        trace.completed_at = datetime.now()
-        trace.output = output
-        trace.success = success
-        trace.error = error
-        if trace.started_at:
-            trace.duration_ms = int((trace.completed_at - trace.started_at).total_seconds() * 1000)
-    
-    def get_trace_history(self) -> List[Dict[str, Any]]:
-        """获取任务追踪历史"""
-        return [trace.to_dict() for trace in self._trace_history]
-    
-    def get_current_trace(self) -> Optional[Dict[str, Any]]:
-        """获取当前任务追踪"""
-        return self._current_trace.to_dict() if self._current_trace else None
     
     # ==================== Parameter Validation ====================
     
@@ -977,9 +823,6 @@ class NovAICAgent:
         if not self._tools_initialized:
             await self.initialize()
         
-        # 开始任务追踪
-        trace = self._start_task_trace(user_message)
-        
         env_info = await self.get_environment_info()
         if not env_info["executor_healthy"] or env_info["tools_count"] == 0:
             yield {
@@ -990,7 +833,6 @@ class NovAICAgent:
         # 加载相关 Skills
         relevant_skills = await self._load_relevant_skills(user_message)
         if relevant_skills:
-            trace.skills_used = [s.name for s in relevant_skills]
             yield {
                 "type": "skills_loaded",
                 "data": {"skills": [s.name for s in relevant_skills]}
@@ -1018,9 +860,9 @@ class NovAICAgent:
                     skills=relevant_skills
                 ):
                     yield event
-                    # 提取最终结果用于追踪
+                    # Save session when task completes
                     if event.get("type") == "final":
-                        self._complete_task_trace(result=event.get("data"))
+                        self._save_session()
             else:
                 async for event in self._chat_completions_style(
                     user_message, 
@@ -1031,13 +873,11 @@ class NovAICAgent:
                     skills=relevant_skills
                 ):
                     yield event
-                    # 提取最终结果用于追踪
-                    if event.get("type") == "final":
-                        self._complete_task_trace(result=event.get("data"))
-                    elif event.get("type") == "error":
-                        self._complete_task_trace(error=str(event.get("data", {}).get("error")))
+                    # Save session when task completes
+                    if event.get("type") in ("final", "error"):
+                        self._save_session()
         except Exception as e:
-            self._complete_task_trace(error=str(e))
+            self._save_session()
             raise
     
     async def _chat_completions_style(
@@ -1099,9 +939,6 @@ class NovAICAgent:
                 })
                 yield {"type": "status", "data": f"[Iteration {iteration}] 收件箱有新消息"}
             
-            # 创建步骤追踪
-            current_step = self._add_step_to_trace(iteration)
-            
             try:
                 response = await self._call_llm_with_retry(
                     messages=messages,
@@ -1120,9 +957,6 @@ class NovAICAgent:
                 tool_calls = message.get("tool_calls") or []
                 # 通用提取 reasoning_content (支持 kimi/deepseek 等)
                 reasoning_content = message.get("reasoning_content")
-                
-                # 记录 reasoning (优先用 reasoning_content，否则用 content)
-                current_step.reasoning = reasoning_content or content
                 
                 print(f"[Agent] LLM response - iteration: {iteration}, "
                       f"content: {content[:200] if content else '(empty)'}, "
@@ -1162,11 +996,6 @@ class NovAICAgent:
                         # 安全解析 arguments（修复空参数 bug）
                         tool_input = self._parse_tool_arguments(func, tool_name)
                         
-                        # 开始工具调用追踪
-                        tool_trace = self._add_tool_call_to_step(
-                            current_step, tool_name, tool_input, tool_id
-                        )
-                        
                         yield {
                             "type": "tool_start",
                             "data": {"tool": tool_name, "input": tool_input, "id": tool_id}
@@ -1180,17 +1009,11 @@ class NovAICAgent:
                             print(f"[Agent] Parameter validation failed for {tool_name}: {validation_error}")
                             result = self._create_validation_error_result(tool_name, validation_error)
                             tool_content = json.dumps(result, ensure_ascii=False)
-                            self._complete_tool_call_trace(tool_trace, result, False, validation_error)
                         else:
                             # 执行工具调用 (via ToolRegistry or direct MCPClient)
                             mcp_result = await self._execute_tool(tool_name, tool_input)
                             result = self._convert_mcp_result(mcp_result)
                             tool_content = self._convert_result_to_llm_content(result)
-                            
-                            # 完成工具调用追踪
-                            success = result.get("success", False)
-                            error = result.get("error") if not success else None
-                            self._complete_tool_call_trace(tool_trace, result, success, error)
                         
                         yield {
                             "type": "tool_end",
@@ -1199,7 +1022,6 @@ class NovAICAgent:
                                 "result": result, 
                                 "result_summary": result,
                                 "success": result.get("success", False),
-                                "duration_ms": tool_trace.duration_ms
                             }
                         }
                         
@@ -1297,9 +1119,6 @@ class NovAICAgent:
                 })
                 yield {"type": "status", "data": f"[Iteration {iteration}] 收件箱有新消息"}
             
-            # 创建步骤追踪
-            current_step = self._add_step_to_trace(iteration)
-            
             try:
                 llm_client = self._get_llm_client(provider=provider, api_base=api_base, api_key=api_key)
                 
@@ -1312,9 +1131,6 @@ class NovAICAgent:
                 
                 self._response_id = response.get("id")
                 content, tool_calls, finish_reason = self._parse_responses_output(response)
-                
-                # 记录 reasoning
-                current_step.reasoning = content
                 
                 if tool_calls:
                     if content:
@@ -1337,11 +1153,6 @@ class NovAICAgent:
                         # 安全解析 arguments（修复空参数 bug）
                         tool_input = self._parse_tool_arguments(func, tool_name)
                         
-                        # 开始工具调用追踪
-                        tool_trace = self._add_tool_call_to_step(
-                            current_step, tool_name, tool_input, tool_id
-                        )
-                        
                         yield {
                             "type": "tool_start",
                             "data": {"tool": tool_name, "input": tool_input, "id": tool_id}
@@ -1355,17 +1166,11 @@ class NovAICAgent:
                             print(f"[Agent] Parameter validation failed for {tool_name}: {validation_error}")
                             result = self._create_validation_error_result(tool_name, validation_error)
                             tool_content = json.dumps(result, ensure_ascii=False)
-                            self._complete_tool_call_trace(tool_trace, result, False, validation_error)
                         else:
                             # 执行工具调用 (via ToolRegistry or direct MCPClient)
                             mcp_result = await self._execute_tool(tool_name, tool_input)
                             result = self._convert_mcp_result(mcp_result)
                             tool_content = self._convert_result_to_llm_content(result)
-                            
-                            # 完成工具调用追踪
-                            success = result.get("success", False)
-                            error = result.get("error") if not success else None
-                            self._complete_tool_call_trace(tool_trace, result, success, error)
                         
                         yield {
                             "type": "tool_end",
@@ -1374,7 +1179,6 @@ class NovAICAgent:
                                 "result": result, 
                                 "result_summary": result,
                                 "success": result.get("success", False),
-                                "duration_ms": tool_trace.duration_ms
                             }
                         }
                         

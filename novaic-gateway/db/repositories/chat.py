@@ -3,6 +3,9 @@ Chat Repository
 
 Handles all chat-related database operations including
 real-time messages, questions/responses, and execution logs.
+
+Simplified in v3: unified chat_messages table with read field.
+All operations are isolated per agent_id.
 """
 
 import json
@@ -12,30 +15,115 @@ from datetime import datetime
 from ..database import Database
 
 
+# Message types that should not be persisted to database
+NON_PERSISTENT_TYPES = {"STATUS_UPDATE", "TYPING", "PING", "HEARTBEAT"}
+
+
 class ChatRepository:
-    """Repository for chat and real-time state data."""
+    """Repository for chat and real-time state data, isolated per agent."""
     
     def __init__(self, db: Database):
         self.db = db
     
-    # ==================== Chat Messages ====================
+    # ==================== Unified Chat Messages ====================
     
-    async def list_chat_messages(
+    async def add_message(
         self,
+        agent_id: str,
+        id: str,
+        type: str,
+        content: Optional[str] = None,
+        read: bool = False,
+        metadata: Optional[Dict[str, Any]] = None,
+        timestamp: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Add a message to the chat.
+        
+        Args:
+            agent_id: Agent ID
+            id: Message ID
+            type: Message type (USER_MESSAGE, AGENT_REPLY, AGENT_ASK, etc.)
+            content: Message content
+            read: Whether the message has been read (default False)
+            metadata: Additional metadata (model, api_key_id, options, etc.)
+            timestamp: Message timestamp (defaults to now)
+        
+        Returns:
+            The created message, or None if type is non-persistent
+        """
+        # Skip non-persistent message types
+        if type in NON_PERSISTENT_TYPES:
+            return None
+        
+        if timestamp is None:
+            timestamp = datetime.now().isoformat()
+        
+        await self.db.execute(
+            """INSERT OR REPLACE INTO chat_messages 
+               (id, agent_id, type, content, read, metadata, timestamp)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (
+                id,
+                agent_id,
+                type,
+                content,
+                1 if read else 0,
+                json.dumps(metadata or {}),
+                timestamp
+            )
+        )
+        await self.db.commit()
+        
+        # Cleanup old messages (keep last 200 per agent)
+        await self.cleanup_messages(agent_id, 200)
+        
+        return await self.get_message(id)
+    
+    async def get_message(self, message_id: str) -> Optional[Dict[str, Any]]:
+        """Get a message by ID."""
+        row = await self.db.fetchone(
+            "SELECT * FROM chat_messages WHERE id = ?",
+            (message_id,)
+        )
+        if row:
+            return self._row_to_message(row)
+        return None
+    
+    async def get_messages(
+        self,
+        agent_id: str,
+        read: Optional[bool] = None,
+        type_filter: Optional[List[str]] = None,
         limit: int = 100,
         before_id: Optional[str] = None,
-        message_type: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
-        """List chat messages with optional filters."""
-        query = "SELECT * FROM chat_messages WHERE 1=1"
-        params = []
+        """
+        Get messages for an agent with optional filters.
         
-        if message_type:
-            query += " AND type = ?"
-            params.append(message_type)
+        Args:
+            agent_id: Agent ID
+            read: Filter by read status (None = all, True = read only, False = unread only)
+            type_filter: Filter by message types
+            limit: Maximum number of messages to return
+            before_id: Pagination cursor (get messages before this ID)
+        
+        Returns:
+            List of messages in chronological order
+        """
+        query = "SELECT * FROM chat_messages WHERE agent_id = ?"
+        params: List[Any] = [agent_id]
+        
+        if read is not None:
+            query += " AND read = ?"
+            params.append(1 if read else 0)
+        
+        if type_filter:
+            placeholders = ",".join(["?" for _ in type_filter])
+            query += f" AND type IN ({placeholders})"
+            params.extend(type_filter)
         
         if before_id:
-            # Get timestamp of the reference message
             ref = await self.db.fetchone(
                 "SELECT timestamp FROM chat_messages WHERE id = ?",
                 (before_id,)
@@ -49,85 +137,202 @@ class ChatRepository:
         
         rows = await self.db.fetchall(query, tuple(params))
         
-        # Parse data JSON and reverse to chronological order
-        result = []
-        for row in reversed(rows):
-            try:
-                data = json.loads(row.get("data", "{}"))
-                result.append({
-                    "id": row["id"],
-                    "type": row["type"],
-                    "timestamp": row["timestamp"],
-                    **data
-                })
-            except json.JSONDecodeError:
-                result.append(dict(row))
-        
-        return result
+        # Return in chronological order
+        return [self._row_to_message(row) for row in reversed(rows)]
     
-    async def get_chat_message(self, message_id: str) -> Optional[Dict[str, Any]]:
-        """Get a chat message by ID."""
-        row = await self.db.fetchone(
-            "SELECT * FROM chat_messages WHERE id = ?",
+    async def get_unread_messages(
+        self,
+        agent_id: str,
+        type_filter: Optional[List[str]] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Get unread messages (inbox) for an agent.
+        
+        Args:
+            agent_id: Agent ID
+            type_filter: Filter by message types (default: USER_MESSAGE only)
+        
+        Returns:
+            List of unread messages in chronological order
+        """
+        if type_filter is None:
+            type_filter = ["USER_MESSAGE"]
+        
+        return await self.get_messages(
+            agent_id=agent_id,
+            read=False,
+            type_filter=type_filter,
+            limit=100,
+        )
+    
+    async def mark_as_read(self, message_id: str) -> bool:
+        """
+        Mark a message as read.
+        
+        Args:
+            message_id: Message ID
+        
+        Returns:
+            True if updated, False if message not found
+        """
+        cursor = await self.db.execute(
+            "UPDATE chat_messages SET read = 1 WHERE id = ?",
             (message_id,)
         )
-        if row:
+        await self.db.commit()
+        return cursor.rowcount > 0
+    
+    async def mark_all_as_read(self, agent_id: str) -> int:
+        """
+        Mark all messages as read for an agent.
+        
+        Returns:
+            Number of messages marked as read
+        """
+        cursor = await self.db.execute(
+            "UPDATE chat_messages SET read = 1 WHERE agent_id = ? AND read = 0",
+            (agent_id,)
+        )
+        await self.db.commit()
+        return cursor.rowcount
+    
+    async def cleanup_messages(self, agent_id: str, keep_count: int = 200):
+        """Delete old messages for an agent, keeping the most recent ones."""
+        await self.db.execute(
+            """DELETE FROM chat_messages 
+               WHERE agent_id = ? AND id NOT IN (
+                   SELECT id FROM chat_messages 
+                   WHERE agent_id = ?
+                   ORDER BY timestamp DESC 
+                   LIMIT ?
+               )""",
+            (agent_id, agent_id, keep_count)
+        )
+        await self.db.commit()
+    
+    async def get_message_count(self, agent_id: str, read: Optional[bool] = None) -> int:
+        """Get message count for an agent."""
+        if read is None:
+            row = await self.db.fetchone(
+                "SELECT COUNT(*) as count FROM chat_messages WHERE agent_id = ?",
+                (agent_id,)
+            )
+        else:
+            row = await self.db.fetchone(
+                "SELECT COUNT(*) as count FROM chat_messages WHERE agent_id = ? AND read = ?",
+                (agent_id, 1 if read else 0)
+            )
+        return row["count"] if row else 0
+    
+    def _row_to_message(self, row: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert a database row to a message dict."""
+        metadata = {}
+        if row.get("metadata"):
             try:
-                data = json.loads(row.get("data", "{}"))
-                return {
-                    "id": row["id"],
-                    "type": row["type"],
-                    "timestamp": row["timestamp"],
-                    **data
-                }
+                metadata = json.loads(row["metadata"])
             except json.JSONDecodeError:
-                return dict(row)
-        return None
+                pass
+        
+        return {
+            "id": row["id"],
+            "agent_id": row["agent_id"],
+            "type": row["type"],
+            "content": row.get("content"),
+            "read": bool(row.get("read", 0)),
+            "metadata": metadata,
+            "timestamp": row["timestamp"],
+        }
+    
+    # ==================== Backward Compatibility ====================
+    # These methods maintain API compatibility with old code
     
     async def add_chat_message(
         self,
+        agent_id: str,
         id: str,
         type: str,
         timestamp: str,
         **data
-    ) -> Dict[str, Any]:
-        """Add a chat message."""
-        await self.db.execute(
-            """INSERT INTO chat_messages (id, type, timestamp, data)
-               VALUES (?, ?, ?, ?)""",
-            (id, type, timestamp, json.dumps(data))
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Add a chat message (backward compatible).
+        Extracts content from data, stores rest as metadata.
+        """
+        content = data.pop("content", data.pop("message", None))
+        return await self.add_message(
+            agent_id=agent_id,
+            id=id,
+            type=type,
+            content=content,
+            metadata=data if data else None,
+            timestamp=timestamp,
         )
-        await self.db.commit()
-        
-        # Cleanup old messages (keep last 100)
-        await self.cleanup_chat_messages(100)
-        
-        return await self.get_chat_message(id)
     
-    async def cleanup_chat_messages(self, keep_count: int = 100):
-        """Delete old chat messages, keeping the most recent ones."""
-        await self.db.execute(
-            """DELETE FROM chat_messages 
-               WHERE id NOT IN (
-                   SELECT id FROM chat_messages 
-                   ORDER BY timestamp DESC 
-                   LIMIT ?
-               )""",
-            (keep_count,)
+    async def get_chat_message(self, message_id: str) -> Optional[Dict[str, Any]]:
+        """Alias for get_message."""
+        return await self.get_message(message_id)
+    
+    async def list_chat_messages(
+        self,
+        agent_id: str,
+        limit: int = 100,
+        before_id: Optional[str] = None,
+        message_type: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """List chat messages (backward compatible)."""
+        type_filter = [message_type] if message_type else None
+        return await self.get_messages(
+            agent_id=agent_id,
+            limit=limit,
+            before_id=before_id,
+            type_filter=type_filter,
         )
-        await self.db.commit()
+    
+    async def get_recent_chat_messages(self, agent_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get recent chat messages."""
+        return await self.get_messages(agent_id, limit=limit)
+    
+    async def get_chat_history(
+        self,
+        agent_id: str,
+        limit: int = 20,
+        before_id: Optional[str] = None,
+        type_filter: Optional[List[str]] = None,
+    ) -> List[Dict[str, Any]]:
+        """Get chat history."""
+        return await self.get_messages(
+            agent_id=agent_id,
+            limit=limit,
+            before_id=before_id,
+            type_filter=type_filter,
+        )
+    
+    async def get_chat_message_count(self, agent_id: str) -> int:
+        """Get chat message count."""
+        return await self.get_message_count(agent_id)
+    
+    async def cleanup_chat_messages(self, agent_id: str, keep_count: int = 100):
+        """Cleanup chat messages."""
+        await self.cleanup_messages(agent_id, keep_count)
     
     # ==================== Pending Questions ====================
     
-    async def list_pending_questions(self) -> List[Dict[str, Any]]:
-        """List all pending questions."""
+    async def list_pending_questions(self, agent_id: str) -> List[Dict[str, Any]]:
+        """List all pending questions for an agent."""
         rows = await self.db.fetchall(
-            "SELECT * FROM pending_questions ORDER BY timestamp"
+            "SELECT * FROM pending_questions WHERE agent_id = ? ORDER BY timestamp",
+            (agent_id,)
         )
+        result = []
         for row in rows:
-            if row.get("options"):
-                row["options"] = json.loads(row["options"])
-        return rows
+            item = dict(row)
+            if item.get("options"):
+                try:
+                    item["options"] = json.loads(item["options"])
+                except json.JSONDecodeError:
+                    pass
+            result.append(item)
+        return result
     
     async def get_pending_question(
         self,
@@ -138,26 +343,34 @@ class ChatRepository:
             "SELECT * FROM pending_questions WHERE request_id = ?",
             (request_id,)
         )
-        if row and row.get("options"):
-            row["options"] = json.loads(row["options"])
-        return row
+        if row:
+            result = dict(row)
+            if result.get("options"):
+                try:
+                    result["options"] = json.loads(result["options"])
+                except json.JSONDecodeError:
+                    pass
+            return result
+        return None
     
     async def add_pending_question(
         self,
+        agent_id: str,
         request_id: str,
         question: str,
         options: Optional[List[str]] = None,
         message_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """Add a pending question."""
+    ) -> Optional[Dict[str, Any]]:
+        """Add a pending question for an agent."""
         timestamp = datetime.now().isoformat()
         
         await self.db.execute(
             """INSERT INTO pending_questions 
-               (request_id, question, options, message_id, timestamp)
-               VALUES (?, ?, ?, ?, ?)""",
+               (request_id, agent_id, question, options, message_id, timestamp)
+               VALUES (?, ?, ?, ?, ?, ?)""",
             (
                 request_id,
+                agent_id,
                 question,
                 json.dumps(options) if options else None,
                 message_id,
@@ -177,6 +390,10 @@ class ChatRepository:
         await self.db.commit()
         return cursor.rowcount > 0
     
+    async def get_all_pending_questions(self, agent_id: str) -> List[Dict[str, Any]]:
+        """Alias for list_pending_questions."""
+        return await self.list_pending_questions(agent_id)
+    
     # ==================== Question Responses ====================
     
     async def get_question_response(
@@ -184,25 +401,27 @@ class ChatRepository:
         request_id: str
     ) -> Optional[Dict[str, Any]]:
         """Get a response to a question."""
-        return await self.db.fetchone(
+        row = await self.db.fetchone(
             "SELECT * FROM question_responses WHERE request_id = ?",
             (request_id,)
         )
+        return dict(row) if row else None
     
     async def add_question_response(
         self,
+        agent_id: str,
         request_id: str,
         response: str,
         selected_option: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    ) -> Optional[Dict[str, Any]]:
         """Add a response to a question."""
         timestamp = datetime.now().isoformat()
         
         await self.db.execute(
             """INSERT INTO question_responses 
-               (request_id, response, selected_option, timestamp)
-               VALUES (?, ?, ?, ?)""",
-            (request_id, response, selected_option, timestamp)
+               (request_id, agent_id, response, selected_option, timestamp)
+               VALUES (?, ?, ?, ?, ?)""",
+            (request_id, agent_id, response, selected_option, timestamp)
         )
         await self.db.commit()
         
@@ -220,237 +439,97 @@ class ChatRepository:
                     "DELETE FROM question_responses WHERE request_id = ?",
                     (request_id,)
                 )
-                # Also delete the pending question
                 await self.db.execute(
                     "DELETE FROM pending_questions WHERE request_id = ?",
                     (request_id,)
                 )
             return response
     
-    # ==================== User Messages ====================
-    
-    async def list_user_messages(
-        self,
-        limit: int = 100,
-        status: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
-        """List user messages."""
-        query = "SELECT * FROM user_messages WHERE 1=1"
-        params = []
-        
-        if status:
-            query += " AND status = ?"
-            params.append(status)
-        
-        query += " ORDER BY timestamp DESC LIMIT ?"
-        params.append(limit)
-        
-        return await self.db.fetchall(query, tuple(params))
-    
-    async def get_user_message(self, message_id: str) -> Optional[Dict[str, Any]]:
-        """Get a user message by ID."""
-        return await self.db.fetchone(
-            "SELECT * FROM user_messages WHERE id = ?",
-            (message_id,)
-        )
-    
-    async def add_user_message(
-        self,
-        id: str,
-        content: str,
-        timestamp: str,
-        status: str = "delivered",
-        model: Optional[str] = None,
-        api_key_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """Add a user message."""
-        await self.db.execute(
-            """INSERT INTO user_messages 
-               (id, content, timestamp, status, model, api_key_id)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            (id, content, timestamp, status, model, api_key_id)
-        )
-        await self.db.commit()
-        
-        return await self.get_user_message(id)
-    
-    async def update_user_message_status(
-        self,
-        message_id: str,
-        status: str,
-    ) -> bool:
-        """
-        Update user message status with validation.
-        
-        Valid transitions:
-        - delivered -> read
-        - read -> replied
-        """
-        valid_transitions = {
-            "delivered": ["read"],
-            "read": ["replied"],
-            "replied": [],
-        }
-        
-        async with self.db.transaction():
-            # Get current status
-            row = await self.db.fetchone(
-                "SELECT status FROM user_messages WHERE id = ?",
-                (message_id,)
-            )
-            if not row:
-                return False
-            
-            current_status = row["status"]
-            
-            # Validate transition
-            if status not in valid_transitions.get(current_status, []):
-                # Allow setting same status (idempotent)
-                if status == current_status:
-                    return True
-                return False
-            
-            # Update status
-            await self.db.execute(
-                "UPDATE user_messages SET status = ? WHERE id = ?",
-                (status, message_id)
-            )
-        
-        return True
-    
-    # ==================== Pending User Messages ====================
-    
-    async def list_pending_user_messages(self) -> List[Dict[str, Any]]:
-        """List pending user messages (inbox)."""
-        return await self.db.fetchall(
-            "SELECT * FROM pending_user_messages ORDER BY timestamp"
-        )
-    
-    async def add_pending_user_message(
-        self,
-        id: str,
-        content: str,
-        timestamp: str,
-        model: Optional[str] = None,
-        api_key_id: Optional[str] = None,
-    ):
-        """Add a pending user message."""
-        await self.db.execute(
-            """INSERT INTO pending_user_messages 
-               (id, content, timestamp, model, api_key_id)
-               VALUES (?, ?, ?, ?, ?)""",
-            (id, content, timestamp, model, api_key_id)
-        )
-        await self.db.commit()
-    
-    async def pop_pending_user_message(
-        self,
-        message_id: str
-    ) -> Optional[Dict[str, Any]]:
-        """Get and delete a pending user message."""
-        async with self.db.transaction():
-            row = await self.db.fetchone(
-                "SELECT * FROM pending_user_messages WHERE id = ?",
-                (message_id,)
-            )
-            if row:
-                await self.db.execute(
-                    "DELETE FROM pending_user_messages WHERE id = ?",
-                    (message_id,)
-                )
-            return row
-    
-    async def pop_all_pending_user_messages(self) -> List[Dict[str, Any]]:
-        """Get and delete all pending user messages."""
-        async with self.db.transaction():
-            rows = await self.db.fetchall(
-                "SELECT * FROM pending_user_messages ORDER BY timestamp"
-            )
-            if rows:
-                await self.db.execute("DELETE FROM pending_user_messages")
-            return rows
-    
     # ==================== Execution Logs ====================
     
     async def list_execution_logs(
         self,
+        agent_id: str,
         limit: int = 500,
-        message_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
-        """List execution logs."""
-        query = "SELECT * FROM execution_logs WHERE 1=1"
-        params = []
+        """List execution logs for an agent."""
+        rows = await self.db.fetchall(
+            """SELECT * FROM execution_logs 
+               WHERE agent_id = ? 
+               ORDER BY timestamp DESC LIMIT ?""",
+            (agent_id, limit)
+        )
         
-        if message_id:
-            query += " AND message_id = ?"
-            params.append(message_id)
-        
-        query += " ORDER BY timestamp DESC LIMIT ?"
-        params.append(limit)
-        
-        rows = await self.db.fetchall(query, tuple(params))
-        
-        # Parse data JSON and reverse to chronological order
         result = []
         for row in reversed(rows):
-            try:
-                data = json.loads(row.get("data", "{}")) if row.get("data") else {}
-                result.append({
-                    "id": row["id"],
-                    "type": row["type"],
-                    "timestamp": row["timestamp"],
-                    "message_id": row["message_id"],
-                    "data": data,
-                })
-            except json.JSONDecodeError:
-                result.append(dict(row))
+            data = {}
+            if row.get("data"):
+                try:
+                    data = json.loads(row["data"])
+                except json.JSONDecodeError:
+                    pass
+            result.append({
+                "id": row["id"],
+                "type": row["type"],
+                "timestamp": row["timestamp"],
+                "data": data,
+            })
         
         return result
     
     async def add_execution_log(
         self,
+        agent_id: str,
         type: str,
         timestamp: str,
         data: Optional[Dict[str, Any]] = None,
-        message_id: Optional[str] = None,
     ) -> int:
-        """Add an execution log."""
+        """Add an execution log for an agent."""
         cursor = await self.db.execute(
-            """INSERT INTO execution_logs (type, timestamp, data, message_id)
+            """INSERT INTO execution_logs (agent_id, type, timestamp, data)
                VALUES (?, ?, ?, ?)""",
-            (type, timestamp, json.dumps(data) if data else None, message_id)
+            (agent_id, type, timestamp, json.dumps(data) if data else None)
         )
         await self.db.commit()
         
-        # Cleanup old logs (keep last 500)
-        await self.cleanup_execution_logs(500)
+        # Cleanup old logs (keep last 500 per agent)
+        await self.cleanup_execution_logs(agent_id, 500)
         
         return cursor.lastrowid
     
-    async def cleanup_execution_logs(self, keep_count: int = 500):
-        """Delete old execution logs, keeping the most recent ones."""
+    async def cleanup_execution_logs(self, agent_id: str, keep_count: int = 500):
+        """Delete old execution logs for an agent."""
         await self.db.execute(
             """DELETE FROM execution_logs 
-               WHERE id NOT IN (
+               WHERE agent_id = ? AND id NOT IN (
                    SELECT id FROM execution_logs 
+                   WHERE agent_id = ?
                    ORDER BY timestamp DESC 
                    LIMIT ?
                )""",
-            (keep_count,)
+            (agent_id, agent_id, keep_count)
         )
         await self.db.commit()
     
-    async def clear_execution_logs(self):
-        """Clear all execution logs."""
-        await self.db.execute("DELETE FROM execution_logs")
+    async def clear_execution_logs(self, agent_id: str):
+        """Clear all execution logs for an agent."""
+        await self.db.execute(
+            "DELETE FROM execution_logs WHERE agent_id = ?",
+            (agent_id,)
+        )
         await self.db.commit()
+    
+    async def get_recent_execution_logs(self, agent_id: str, limit: int = 20) -> List[Dict[str, Any]]:
+        """Get recent execution logs."""
+        return await self.list_execution_logs(agent_id, limit=limit)
     
     # ==================== Agent Runtime State ====================
     
-    async def get_agent_rest_state(self) -> Dict[str, Any]:
+    async def get_agent_rest_state(self, agent_id: str) -> Dict[str, Any]:
         """Get agent rest state."""
         rows = await self.db.fetchall(
-            "SELECT key, value FROM agent_runtime_state"
+            "SELECT key, value FROM agent_runtime_state WHERE agent_id = ?",
+            (agent_id,)
         )
         state = {}
         for row in rows:
@@ -467,35 +546,54 @@ class ChatRepository:
             "rest_started": state.get("rest_started"),
         }
     
-    async def set_agent_rest_state(
-        self,
-        is_resting: bool,
-        reason: Optional[str] = None,
-        wake_triggers: Optional[List[Dict]] = None,
-        handoff_notes: Optional[str] = None,
-        rest_started: Optional[str] = None,
-    ):
-        """Set agent rest state (transaction)."""
+    async def set_agent_rest_state(self, agent_id: str, state: Dict[str, Any]):
+        """Set agent rest state."""
         async with self.db.transaction():
-            await self.db.set_runtime_state("is_resting", json.dumps(is_resting))
-            await self.db.set_runtime_state("rest_reason", json.dumps(reason))
-            await self.db.set_runtime_state("wake_triggers", json.dumps(wake_triggers or []))
-            await self.db.set_runtime_state("handoff_notes", json.dumps(handoff_notes))
-            await self.db.set_runtime_state("rest_started", json.dumps(rest_started))
+            await self._set_runtime_state(agent_id, "is_resting", json.dumps(state.get("is_resting", False)))
+            await self._set_runtime_state(agent_id, "rest_reason", json.dumps(state.get("reason")))
+            await self._set_runtime_state(agent_id, "wake_triggers", json.dumps(state.get("wake_triggers", [])))
+            await self._set_runtime_state(agent_id, "handoff_notes", json.dumps(state.get("handoff_notes")))
+            await self._set_runtime_state(agent_id, "rest_started", json.dumps(state.get("rest_started")))
     
-    async def clear_agent_rest_state(self):
-        """Clear agent rest state (wake up)."""
-        await self.set_agent_rest_state(
-            is_resting=False,
-            reason=None,
-            wake_triggers=[],
-            handoff_notes=None,
-            rest_started=None,
+    async def _set_runtime_state(self, agent_id: str, key: str, value: str):
+        """Set a runtime state value."""
+        await self.db.execute(
+            """INSERT OR REPLACE INTO agent_runtime_state (agent_id, key, value, updated_at)
+               VALUES (?, ?, ?, datetime('now'))""",
+            (agent_id, key, value)
         )
     
-    async def is_agent_busy(self) -> bool:
+    async def _get_runtime_state(self, agent_id: str, key: str) -> Optional[str]:
+        """Get a runtime state value."""
+        row = await self.db.fetchone(
+            "SELECT value FROM agent_runtime_state WHERE agent_id = ? AND key = ?",
+            (agent_id, key)
+        )
+        return row["value"] if row else None
+    
+    async def get_agent_runtime_state(self, agent_id: str) -> Dict[str, Any]:
+        """Get full agent runtime state."""
+        rest_state = await self.get_agent_rest_state(agent_id)
+        is_busy = await self.is_agent_busy(agent_id)
+        
+        return {
+            **rest_state,
+            "agent_busy": is_busy,
+        }
+    
+    async def clear_agent_rest_state(self, agent_id: str):
+        """Clear agent rest state (wake up)."""
+        await self.set_agent_rest_state(agent_id, {
+            "is_resting": False,
+            "reason": None,
+            "wake_triggers": [],
+            "handoff_notes": None,
+            "rest_started": None,
+        })
+    
+    async def is_agent_busy(self, agent_id: str) -> bool:
         """Check if agent is busy."""
-        value = await self.db.get_runtime_state("is_busy")
+        value = await self._get_runtime_state(agent_id, "is_busy")
         if value:
             try:
                 return json.loads(value)
@@ -503,6 +601,7 @@ class ChatRepository:
                 return False
         return False
     
-    async def set_agent_busy(self, busy: bool):
+    async def set_agent_busy(self, agent_id: str, busy: bool):
         """Set agent busy state."""
-        await self.db.set_runtime_state("is_busy", json.dumps(busy))
+        await self._set_runtime_state(agent_id, "is_busy", json.dumps(busy))
+        await self.db.commit()

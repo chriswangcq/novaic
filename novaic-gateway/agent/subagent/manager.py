@@ -256,7 +256,7 @@ class SubAgentManager:
                 pass
             
             # Get API configuration from config manager
-            from config.manager import get_config_manager
+            from config import get_config_manager
             config = get_config_manager().load()
             
             # Resolve API config (similar to routes.py)
