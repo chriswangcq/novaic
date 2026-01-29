@@ -26,10 +26,10 @@ QEMU_SSH_KEY = os.environ.get("QEMU_SSH_KEY", os.path.expanduser("~/.ssh/novaic_
 QEMU_VNC_HOST = os.environ.get("QEMU_VNC_HOST", "127.0.0.1")
 QEMU_VNC_PORT = int(os.environ.get("QEMU_VNC_PORT", "5900"))
 
-QEMU_MONITOR_SOCKET = os.environ.get("QEMU_MONITOR_SOCKET", "/tmp/novaic-qemu-monitor.sock")
+QEMU_MONITOR_SOCKET = os.environ.get("QEMU_MONITOR_SOCKET", "/tmp/novaic-qemudebug-monitor.sock")
 
 mcp = FastMCP(
-    name="novaic-qemu",
+    name="novaic-qemudebug",
     instructions="""This MCP server provides QEMU VM debugging tools.
 
 Use these tools for:

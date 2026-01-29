@@ -8,7 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VM_DIR="$(dirname "$SCRIPT_DIR")"
 PROJECT_ROOT="$(dirname "$VM_DIR")"
 
-NOVAIC_VM_TOOLS_DIR="${NOVAIC_VM_TOOLS_DIR:-$PROJECT_ROOT/novaic-vm-tools}"
+NOVAIC_MCP_VMUSE_DIR="${NOVAIC_MCP_VMUSE_DIR:-$PROJECT_ROOT/novaic-mcp-vmuse}"
 
 SSH_PORT="${NOVAIC_SSH_PORT:-2222}"
 SSH_USER="${SSH_USER:-ubuntu}"
@@ -23,8 +23,8 @@ echo "⚡ NovAIC VM - 快速部署 (代码更新)"
 echo ""
 
 # 检查源目录
-if [ ! -d "$NOVAIC_VM_TOOLS_DIR" ]; then
-    echo "❌ 错误: novaic-vm-tools 目录不存在: $NOVAIC_VM_TOOLS_DIR"
+if [ ! -d "$NOVAIC_MCP_VMUSE_DIR" ]; then
+    echo "❌ 错误: novaic-mcp-vmuse 目录不存在: $NOVAIC_MCP_VMUSE_DIR"
     exit 1
 fi
 
@@ -34,9 +34,9 @@ $SSH_CMD "sudo systemctl stop novaic 2>/dev/null || true"
 
 # Step 2: 复制代码
 echo "[2/4] 复制代码..."
-$SSH_CMD "rm -rf /opt/novaic-vm-tools/src /opt/novaic-vm-tools/skills"
-$SCP_CMD -r "$NOVAIC_VM_TOOLS_DIR/src" "$SSH_USER@$SSH_HOST:/opt/novaic-vm-tools/"
-$SCP_CMD -r "$NOVAIC_VM_TOOLS_DIR/skills" "$SSH_USER@$SSH_HOST:/opt/novaic-vm-tools/" 2>/dev/null || true
+$SSH_CMD "rm -rf /opt/novaic-mcp-vmuse/src /opt/novaic-mcp-vmuse/skills"
+$SCP_CMD -r "$NOVAIC_MCP_VMUSE_DIR/src" "$SSH_USER@$SSH_HOST:/opt/novaic-mcp-vmuse/"
+$SCP_CMD -r "$NOVAIC_MCP_VMUSE_DIR/skills" "$SSH_USER@$SSH_HOST:/opt/novaic-mcp-vmuse/" 2>/dev/null || true
 
 # Step 3: 确保服务文件是最新的 (FastMCP 版本)
 echo "[3/4] 更新服务配置..."
@@ -53,11 +53,11 @@ Environment=DISPLAY=:0
 Environment=XAUTHORITY=/home/ubuntu/.Xauthority
 Environment=HOME=/home/ubuntu
 Environment=PATH=/opt/novaic-venv/bin:/usr/local/bin:/usr/bin:/bin
-Environment=PYTHONPATH=/opt/novaic-vm-tools/src
+Environment=PYTHONPATH=/opt/novaic-mcp-vmuse/src
 Environment=NOVAIC_HOST=127.0.0.1
 Environment=NOVAIC_PORT=8080
-WorkingDirectory=/opt/novaic-vm-tools
-ExecStart=/opt/novaic-venv/bin/python -c "from novaic_vm_tools.main import mcp; mcp.run(transport='streamable-http', host='127.0.0.1', port=8080)"
+WorkingDirectory=/opt/novaic-mcp-vmuse
+ExecStart=/opt/novaic-venv/bin/python -c "from novaic_mcp_vmuse.main import mcp; mcp.run(transport='streamable-http', host='127.0.0.1', port=8080)"
 Restart=always
 RestartSec=3
 

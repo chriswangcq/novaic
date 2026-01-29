@@ -45,7 +45,7 @@ dev = [
 ]
 
 [project.scripts]
-novaic = "novaic_vm_tools.cli:main"
+novaic = "novaic_mcp_vmuse.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/novaic/novaic"

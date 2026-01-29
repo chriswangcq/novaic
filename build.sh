@@ -33,32 +33,32 @@ rm -rf "$RESOURCES_DIR/novaic-gateway"
 cp -r novaic-gateway/dist/novaic-gateway "$RESOURCES_DIR/"
 echo "  Copied to: $RESOURCES_DIR/novaic-gateway/"
 
-# Step 3: Copy novaic-vm-tools to Tauri resources
+# Step 3: Copy novaic-mcp-vmuse to Tauri resources
 echo ""
-echo "[3/4] Copying novaic-vm-tools to Tauri resources..."
-rm -rf "$RESOURCES_DIR/novaic-vm-tools"
-mkdir -p "$RESOURCES_DIR/novaic-vm-tools"
+echo "[3/4] Copying novaic-mcp-vmuse to Tauri resources..."
+rm -rf "$RESOURCES_DIR/novaic-mcp-vmuse"
+mkdir -p "$RESOURCES_DIR/novaic-mcp-vmuse"
 
 # Copy source code
-cp -r novaic-vm-tools/src "$RESOURCES_DIR/novaic-vm-tools/"
-echo "  Copied: novaic-vm-tools/src/"
+cp -r novaic-mcp-vmuse/src "$RESOURCES_DIR/novaic-mcp-vmuse/"
+echo "  Copied: novaic-mcp-vmuse/src/"
 
 # Copy skills directory if exists
-if [ -d "novaic-vm-tools/skills" ]; then
-    cp -r novaic-vm-tools/skills "$RESOURCES_DIR/novaic-vm-tools/"
-    echo "  Copied: novaic-vm-tools/skills/"
+if [ -d "novaic-mcp-vmuse/skills" ]; then
+    cp -r novaic-mcp-vmuse/skills "$RESOURCES_DIR/novaic-mcp-vmuse/"
+    echo "  Copied: novaic-mcp-vmuse/skills/"
 fi
 
 # Copy pyproject.toml
-cp novaic-vm-tools/pyproject.toml "$RESOURCES_DIR/novaic-vm-tools/"
-echo "  Copied: novaic-vm-tools/pyproject.toml"
+cp novaic-mcp-vmuse/pyproject.toml "$RESOURCES_DIR/novaic-mcp-vmuse/"
+echo "  Copied: novaic-mcp-vmuse/pyproject.toml"
 
 # Copy README if exists
-if [ -f "novaic-vm-tools/README.md" ]; then
-    cp novaic-vm-tools/README.md "$RESOURCES_DIR/novaic-vm-tools/"
+if [ -f "novaic-mcp-vmuse/README.md" ]; then
+    cp novaic-mcp-vmuse/README.md "$RESOURCES_DIR/novaic-mcp-vmuse/"
 fi
 
-echo "  novaic-vm-tools packaged to: $RESOURCES_DIR/novaic-vm-tools/"
+echo "  novaic-mcp-vmuse packaged to: $RESOURCES_DIR/novaic-mcp-vmuse/"
 
 # Step 4: Build Tauri App
 echo ""

@@ -79,7 +79,7 @@ jobs:
         continue-on-error: true  # 暂时不强制要求
 
   # ============================================================
-  # Python (novaic-vm-tools, novaic-agent, novaic-cloud)
+  # Python (novaic-mcp-vmuse, novaic-agent, novaic-cloud)
   # ============================================================
   python:
     name: Python Check
@@ -105,18 +105,18 @@ jobs:
       - name: Syntax check (novaic-cloud)
         run: python -m py_compile novaic-cloud/main.py novaic-cloud/config.py
 
-      - name: Syntax check (novaic-vm-tools)
+      - name: Syntax check (novaic-mcp-vmuse)
         run: |
-          python -m py_compile novaic-vm-tools/src/novaic_vm_tools/main.py
-          python -m py_compile novaic-vm-tools/src/novaic_vm_tools/cli.py
-          python -m py_compile novaic-vm-tools/src/novaic_vm_tools/config.py
+          python -m py_compile novaic-mcp-vmuse/src/novaic_mcp_vmuse/main.py
+          python -m py_compile novaic-mcp-vmuse/src/novaic_mcp_vmuse/cli.py
+          python -m py_compile novaic-mcp-vmuse/src/novaic_mcp_vmuse/config.py
 
       # Ruff lint (快速的 Python linter)
       - name: Lint with Ruff
         run: |
           ruff check novaic-agent/ --select=E,F --ignore=E501 || true
           ruff check novaic-cloud/ --select=E,F --ignore=E501 || true
-          ruff check novaic-vm-tools/src/ --select=E,F --ignore=E501 || true
+          ruff check novaic-mcp-vmuse/src/ --select=E,F --ignore=E501 || true
         continue-on-error: true  # 暂时不强制要求
 
   # ============================================================

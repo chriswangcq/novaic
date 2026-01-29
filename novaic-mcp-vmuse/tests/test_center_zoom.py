@@ -6,7 +6,7 @@
 import asyncio
 import base64
 
-from novaic_vm_tools.tools import desktop
+from novaic_mcp_vmuse.tools import desktop
 
 
 async def test_center_zoom_screen_center():

@@ -370,11 +370,11 @@ write_files:
       Environment=XAUTHORITY=/home/ubuntu/.Xauthority
       Environment=HOME=/home/ubuntu
       Environment=PATH=/opt/novaic-venv/bin:/usr/local/bin:/usr/bin:/bin
-      Environment=PYTHONPATH=/opt/novaic-vm-tools/src
+      Environment=PYTHONPATH=/opt/novaic-mcp-vmuse/src
       Environment=NOVAIC_HOST=127.0.0.1
       Environment=NOVAIC_PORT=8080
-      WorkingDirectory=/opt/novaic-vm-tools
-      ExecStart=/opt/novaic-venv/bin/python -c "from novaic_vm_tools.main import mcp; mcp.run(transport='streamable-http', host='127.0.0.1', port=8080)"
+      WorkingDirectory=/opt/novaic-mcp-vmuse
+      ExecStart=/opt/novaic-venv/bin/python -c "from novaic_mcp_vmuse.main import mcp; mcp.run(transport='streamable-http', host='127.0.0.1', port=8080)"
       Restart=always
       RestartSec=3
 
@@ -409,8 +409,8 @@ runcmd:
   - echo "Network ready."
   
   # 创建 novaic 目录
-  - mkdir -p /opt/novaic-vm-tools /opt/novaic-venv
-  - chown -R ubuntu:ubuntu /opt/novaic-vm-tools /opt/novaic-venv
+  - mkdir -p /opt/novaic-mcp-vmuse /opt/novaic-venv
+  - chown -R ubuntu:ubuntu /opt/novaic-mcp-vmuse /opt/novaic-venv
   
   # 启用服务
   - systemctl daemon-reload

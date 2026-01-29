@@ -222,10 +222,10 @@ async def initialize_systems(config):
     )
     
     # Register QEMU MCP Server (host)
-    qemu_port = int(os.getenv("NOVAIC_MCP_QEMU_PORT", "8083"))
-    qemu_enabled = os.getenv("NOVAIC_MCP_QEMU_ENABLED", "false").lower() == "true"  # Default disabled (fallback only)
+    qemu_port = int(os.getenv("NOVAIC_MCP_QEMUDEBUG_PORT", "8083"))
+    qemu_enabled = os.getenv("NOVAIC_MCP_QEMUDEBUG_ENABLED", "false").lower() == "true"  # Default disabled (fallback only)
     tool_registry.register_server(
-        name="qemu",
+        name="qemudebug",
         port=qemu_port,
         enabled=qemu_enabled,
         priority=3,  # Lowest priority

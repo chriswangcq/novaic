@@ -1,9 +1,9 @@
 //! VM Deploy Module
 //!
-//! Handles deploying novaic-vm-tools to the VM:
+//! Handles deploying novaic-mcp-vmuse to the VM:
 //! - Wait for SSH to be available
 //! - Wait for cloud-init to complete
-//! - Copy novaic-vm-tools code to VM
+//! - Copy novaic-mcp-vmuse code to VM
 //! - Install dependencies and start service
 
 use std::path::PathBuf;
@@ -252,7 +252,7 @@ source /opt/novaic-venv/bin/activate
 # Install dependencies
 echo "Installing dependencies..."
 pip install --upgrade pip -q -i "{pip_index_url}" --trusted-host "{pip_trusted_host}"
-cd /opt/novaic-vm-tools
+cd /opt/novaic-mcp-vmuse
 pip install -e . -q -i "{pip_index_url}" --trusted-host "{pip_trusted_host}"
 
 # Install Playwright
@@ -275,7 +275,7 @@ echo "Done!"
     Ok(())
 }
 
-/// Deploy novaic-vm-tools to VM
+/// Deploy novaic-mcp-vmuse to VM
 #[tauri::command]
 pub async fn deploy_agent(
     app: tauri::AppHandle,
@@ -303,35 +303,35 @@ pub async fn deploy_agent(
 
     wait_for_cloud_init(&ssh_config).await?;
 
-    // Step 3: Get novaic-vm-tools resource path
+    // Step 3: Get novaic-mcp-vmuse resource path
     let _ = on_progress.send(DeployProgress {
         stage: "Preparing".to_string(),
         progress: 30,
         message: "Preparing to copy code...".to_string(),
     });
 
-    // Try to get novaic-vm-tools from resources, fallback to development path
+    // Try to get novaic-mcp-vmuse from resources, fallback to development path
     let core_path: PathBuf = app.path().resource_dir()
         .ok()
-        .map(|p: PathBuf| p.join("novaic-vm-tools"))
+        .map(|p: PathBuf| p.join("novaic-mcp-vmuse"))
         .filter(|p: &PathBuf| p.exists())
         .unwrap_or_else(|| {
             // Development fallback: use executable-relative path
             // exe is at: novaic-app/src-tauri/target/release/novaic
-            // core is at: novaic-vm-tools (4 levels up)
+            // core is at: novaic-mcp-vmuse (4 levels up)
             std::env::current_exe()
                 .ok()
                 .and_then(|p| p.parent().map(|d| d.to_path_buf()))
-                .map(|d| d.join("../../../..").join("novaic-vm-tools"))
+                .map(|d| d.join("../../../..").join("novaic-mcp-vmuse"))
                 .and_then(|p| p.canonicalize().ok())
-                .unwrap_or_else(|| PathBuf::from("novaic-vm-tools"))
+                .unwrap_or_else(|| PathBuf::from("novaic-mcp-vmuse"))
         });
 
     if !core_path.exists() {
-        return Err(format!("novaic-vm-tools not found at {}", core_path.display()));
+        return Err(format!("novaic-mcp-vmuse not found at {}", core_path.display()));
     }
 
-    println!("[Deploy] Using novaic-vm-tools from: {}", core_path.display());
+    println!("[Deploy] Using novaic-mcp-vmuse from: {}", core_path.display());
 
     // Step 4: Create directories on VM
     let _ = on_progress.send(DeployProgress {
@@ -340,7 +340,7 @@ pub async fn deploy_agent(
         message: "Creating directories on VM...".to_string(),
     });
 
-    ssh_run(&ssh_config, "sudo mkdir -p /opt/novaic-vm-tools && sudo chown ubuntu:ubuntu /opt/novaic-vm-tools")?;
+    ssh_run(&ssh_config, "sudo mkdir -p /opt/novaic-mcp-vmuse && sudo chown ubuntu:ubuntu /opt/novaic-mcp-vmuse")?;
 
     // Step 5: Stop existing service
     let _ = on_progress.send(DeployProgress {
@@ -352,31 +352,31 @@ pub async fn deploy_agent(
     let _ = ssh_run(&ssh_config, "sudo systemctl stop novaic 2>/dev/null || true");
 
     // Step 6: Clean old code
-    ssh_run(&ssh_config, "rm -rf /opt/novaic-vm-tools/src /opt/novaic-vm-tools/skills /opt/novaic-vm-tools/pyproject.toml")?;
+    ssh_run(&ssh_config, "rm -rf /opt/novaic-mcp-vmuse/src /opt/novaic-mcp-vmuse/skills /opt/novaic-mcp-vmuse/pyproject.toml")?;
 
     // Step 7: Copy code
     let _ = on_progress.send(DeployProgress {
         stage: "Copying code".to_string(),
         progress: 50,
-        message: "Copying novaic-vm-tools to VM...".to_string(),
+        message: "Copying novaic-mcp-vmuse to VM...".to_string(),
     });
 
     // Copy src directory
     let src_path = core_path.join("src");
     if src_path.exists() {
-        scp_directory(&ssh_config, &src_path, "/opt/novaic-vm-tools/")?;
+        scp_directory(&ssh_config, &src_path, "/opt/novaic-mcp-vmuse/")?;
     }
 
     // Copy skills directory (optional)
     let skills_path = core_path.join("skills");
     if skills_path.exists() {
-        let _ = scp_directory(&ssh_config, &skills_path, "/opt/novaic-vm-tools/");
+        let _ = scp_directory(&ssh_config, &skills_path, "/opt/novaic-mcp-vmuse/");
     }
 
     // Copy pyproject.toml
     let pyproject_path = core_path.join("pyproject.toml");
     if pyproject_path.exists() {
-        scp_file(&ssh_config, &pyproject_path, "/opt/novaic-vm-tools/")?;
+        scp_file(&ssh_config, &pyproject_path, "/opt/novaic-mcp-vmuse/")?;
     }
 
     // Step 8: Install dependencies and start service
@@ -438,23 +438,23 @@ pub async fn quick_deploy_agent(
         return Err("Cannot connect to VM via SSH".to_string());
     }
 
-    // Get novaic-vm-tools path
+    // Get novaic-mcp-vmuse path
     let core_path: PathBuf = app.path().resource_dir()
         .ok()
-        .map(|p: PathBuf| p.join("novaic-vm-tools"))
+        .map(|p: PathBuf| p.join("novaic-mcp-vmuse"))
         .filter(|p: &PathBuf| p.exists())
         .unwrap_or_else(|| {
             // Development fallback: use executable-relative path
             std::env::current_exe()
                 .ok()
                 .and_then(|p| p.parent().map(|d| d.to_path_buf()))
-                .map(|d| d.join("../../../..").join("novaic-vm-tools"))
+                .map(|d| d.join("../../../..").join("novaic-mcp-vmuse"))
                 .and_then(|p| p.canonicalize().ok())
-                .unwrap_or_else(|| PathBuf::from("novaic-vm-tools"))
+                .unwrap_or_else(|| PathBuf::from("novaic-mcp-vmuse"))
         });
 
     if !core_path.exists() {
-        return Err(format!("novaic-vm-tools not found at {}", core_path.display()));
+        return Err(format!("novaic-mcp-vmuse not found at {}", core_path.display()));
     }
 
     // Stop service
@@ -473,16 +473,16 @@ pub async fn quick_deploy_agent(
         message: "Copying code...".to_string(),
     });
 
-    ssh_run(&ssh_config, "rm -rf /opt/novaic-vm-tools/src /opt/novaic-vm-tools/skills")?;
+    ssh_run(&ssh_config, "rm -rf /opt/novaic-mcp-vmuse/src /opt/novaic-mcp-vmuse/skills")?;
 
     let src_path = core_path.join("src");
     if src_path.exists() {
-        scp_directory(&ssh_config, &src_path, "/opt/novaic-vm-tools/")?;
+        scp_directory(&ssh_config, &src_path, "/opt/novaic-mcp-vmuse/")?;
     }
 
     let skills_path = core_path.join("skills");
     if skills_path.exists() {
-        let _ = scp_directory(&ssh_config, &skills_path, "/opt/novaic-vm-tools/");
+        let _ = scp_directory(&ssh_config, &skills_path, "/opt/novaic-mcp-vmuse/");
     }
 
     // Restart service

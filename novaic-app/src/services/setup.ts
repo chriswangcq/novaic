@@ -104,7 +104,7 @@ export async function setupVm(
 }
 
 /**
- * Deploy novaic-vm-tools to VM
+ * Deploy novaic-mcp-vmuse to VM
  */
 export async function deployAgent(
   sshPort: number,
