@@ -36,7 +36,7 @@ Sub-agents run in separate sessions and can execute tasks in parallel.
 
 async def _call_gateway(endpoint: str, method: str = "GET", data: Dict = None) -> Dict:
     """Call the gateway internal API."""
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=30.0, trust_env=False) as client:
         url = f"{GATEWAY_URL}/api/internal{endpoint}"
         if method == "GET":
             response = await client.get(url)
