@@ -104,7 +104,7 @@ chat_notify("🚀 启动 VM...", level="info")
 
 task_id = task_async(
     tool="qemu_start_vm",
-    args={"memory": "4096", "cpus": 4, "daemon": True},
+    args={"agent_index": 0, "memory": "4096", "cpus": 4, "daemon": True},
     label="启动 VM"
 )["task_id"]
 
@@ -123,8 +123,6 @@ else:
 ```
 
 ### 阶段 3: 等待 SSH 可用
-
-### 阶段 2: 等待 SSH 可用
 
 ```python
 chat_notify("⏳ 等待 SSH 可用，这可能需要 2-3 分钟...", level="info")

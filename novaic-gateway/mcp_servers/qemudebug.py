@@ -52,17 +52,19 @@ class QemuDebugMCPServer(BaseMCPServer):
     description = "QEMU 虚拟机调试和设置工具"
     
     def __init__(self):
-        # QEMU configuration (via environment)
+        # QEMU configuration
         self.ssh_host = os.environ.get("QEMU_SSH_HOST", "127.0.0.1")
-        self.ssh_port = int(os.environ.get("QEMU_SSH_PORT", "20008"))
         self.ssh_user = os.environ.get("QEMU_SSH_USER", "ubuntu")
         self.ssh_key = os.environ.get("QEMU_SSH_KEY", os.path.expanduser("~/.ssh/novaic_vm"))
-        
         self.vnc_host = os.environ.get("QEMU_VNC_HOST", "127.0.0.1")
-        self.vnc_port = int(os.environ.get("QEMU_VNC_PORT", "20006"))
-        
         self.monitor_socket = os.environ.get("QEMU_MONITOR_SOCKET", "/tmp/novaic-qemudebug-monitor.sock")
-        self.mcp_port = int(os.environ.get("QEMU_MCP_PORT", "20000"))
+        
+        # Agent index (从环境变量读取，默认 0)
+        self.agent_index = int(os.environ.get("NOVAIC_AGENT_INDEX", "0"))
+        
+        # 中心化端口分配
+        from config.agents import allocate_ports_for_agent
+        self._ports_config = allocate_ports_for_agent(self.agent_index)
         
         # VM Setup configuration
         self.data_dir = os.environ.get("NOVAIC_DATA_DIR", os.path.expanduser("~/.novaic"))
@@ -80,6 +82,26 @@ class QemuDebugMCPServer(BaseMCPServer):
         self.is_arm64 = self.arch in ("arm64", "aarch64")
         
         super().__init__()
+    
+    @property
+    def ssh_port(self) -> int:
+        """SSH 端口 (中心化分配)"""
+        return self._ports_config.ssh
+    
+    @property
+    def vnc_port(self) -> int:
+        """VNC 端口 (中心化分配)"""
+        return self._ports_config.vnc
+    
+    @property
+    def mcp_port(self) -> int:
+        """MCP 端口 (中心化分配)"""
+        return self._ports_config.vm
+    
+    @property
+    def websocket_port(self) -> int:
+        """WebSocket 端口 (中心化分配)"""
+        return self._ports_config.websocket
     
     def _build_instructions(self) -> str:
         return """QEMU Debug MCP - 虚拟机调试和设置工具
@@ -889,16 +911,20 @@ final_message: "NovAIC VM ready"
             try:
                 qemu_system = server._find_qemu_system()
                 
-                # 中心化端口分配
-                # BASE_PORT=20000, PORTS_PER_AGENT=20
-                # 每个 agent 的端口段: BASE_PORT + agent_index * 20
-                from config.agents import allocate_ports_for_agent
-                ports_config = allocate_ports_for_agent(agent_index or 0)
-                
-                vnc_port = ports_config.vnc
-                mcp_port = ports_config.vm  # VM 内 MCP 端口
-                ssh_port = ports_config.ssh
-                ws_port = ports_config.websocket
+                # 端口分配：如果指定了 agent_index 则使用它，否则使用 server 默认值
+                if agent_index is not None and agent_index != server.agent_index:
+                    from config.agents import allocate_ports_for_agent
+                    ports_config = allocate_ports_for_agent(agent_index)
+                    vnc_port = ports_config.vnc
+                    mcp_port = ports_config.vm
+                    ssh_port = ports_config.ssh
+                    ws_port = ports_config.websocket
+                else:
+                    # 使用 server 实例的端口配置
+                    vnc_port = server.vnc_port
+                    mcp_port = server.mcp_port
+                    ssh_port = server.ssh_port
+                    ws_port = server.websocket_port
                 
                 # 构建命令
                 cmd = [qemu_system]
