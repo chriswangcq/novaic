@@ -165,7 +165,7 @@ async def update_agent(agent_id: str, request: UpdateAgentRequest):
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
     
-    # If status changed to running, ensure MCP Gateway is setup
+    # If status changed to running, ensure MCP Gateway is setup and wake agent
     if request.status == "running":
         mcp_manager = get_mcp_gateway_manager()
         if mcp_manager and not mcp_manager.get_gateway(agent_id):
@@ -173,6 +173,30 @@ async def update_agent(agent_id: str, request: UpdateAgentRequest):
                 agent_id=agent.id,
                 agent_index=agent.vm.agent_index,
             )
+        
+        # Send system message to wake agent for bootstrap
+        try:
+            from api.chat_service import get_chat_service
+            chat_service = get_chat_service()
+            
+            # Add a system message to agent's inbox
+            await chat_service.add_chat_message(
+                type="USER_MESSAGE",
+                agent_id=agent_id,
+                content=(
+                    "[SYSTEM] VM 已启动！请执行 agent-bootstrap skill 完成系统初始化。\n\n"
+                    "任务：\n"
+                    "1. 等待 SSH 可用\n"
+                    "2. 监控 cloud-init 进度，向用户报告\n"
+                    "3. 部署 MCP Server 代码\n"
+                    "4. 验证服务启动\n\n"
+                    "请参考 skills/agent-bootstrap/SKILL.md 执行。"
+                ),
+                metadata={"source": "system", "action": "bootstrap"},
+            )
+            print(f"[Agents API] Sent bootstrap message to agent {agent_id}")
+        except Exception as e:
+            print(f"[Agents API] Failed to send bootstrap message: {e}")
     
     return AgentResponse(**agent.model_dump())
 
