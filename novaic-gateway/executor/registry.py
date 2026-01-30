@@ -153,6 +153,11 @@ class ToolRegistry:
                 # Register the server if not already done
                 if config.port:
                     await client.register_server(name=server_name, port=config.port)
+                elif config.url:
+                    await client.register_server(name=server_name, url=config.url)
+                else:
+                    logger.warning(f"[ToolRegistry] Server {server_name} has no port or url")
+                    continue
                 
                 # Discover tools
                 tools = await client.list_all_tools(use_cache=False)

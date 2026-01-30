@@ -308,17 +308,13 @@ async def initialize_systems(config):
             priority=3,  # Lowest priority
         )
     
-    # Note: session/local/memory/chat tools are now embedded in Gateway
-    # They run directly in the Gateway process, no external MCP services needed
-    
-    # Initialize embedded memory module
-    from embedded_tools.memory import init_memory_dir
+    # Initialize memory module
+    from mcp_servers.memory import init_memory_dir
     from pathlib import Path
     init_memory_dir(Path(NOVAIC_DATA_DIR))
     
     print(f"[Gateway] ToolRegistry initialized with {len(tool_registry._servers)} external servers")
     print(f"[Gateway] VM port: {ports.vm}" + (f", qemudebug port: {ports.qemudebug}" if qemu_enabled else ""))
-    print(f"[Gateway] Embedded tools: session, local, memory, chat (no external ports)")
     
     # Initialize WakeController
     wake_controller = WakeController(

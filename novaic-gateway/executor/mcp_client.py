@@ -94,21 +94,27 @@ class MCPServerConnection:
     """
     单个 MCP Server 的连接管理
     
-    通过 HTTP 与 VM 内的 MCP Server 通信。
+    通过 HTTP 与 MCP Server 通信。
     支持 MCP 三元组: Tools, Resources, Prompts
     """
     
-    def __init__(self, name: str, port: int):
+    def __init__(self, name: str, port: int = None, url: str = None):
         """
         初始化 MCP Server 连接
         
         Args:
             name: Server 名称
-            port: 宿主机端口
+            port: 宿主机端口 (可选，与 url 二选一)
+            url: 完整 URL (可选，与 port 二选一)
         """
         self.name = name
         self.port = port
-        self.url = get_mcp_url(port)
+        if url:
+            self.url = url
+        elif port:
+            self.url = get_mcp_url(port)
+        else:
+            raise ValueError("Either port or url must be provided")
         
         # Caches
         self._tools_cache: Optional[List[Dict[str, Any]]] = None
@@ -728,15 +734,16 @@ class MCPClient:
         # Prompts
         self._prompts_cache: Optional[List[MCPPrompt]] = None
     
-    async def register_server(self, name: str, port: int):
+    async def register_server(self, name: str, port: int = None, url: str = None):
         """
         注册 MCP Server
         
         Args:
             name: Server 名称
-            port: 宿主机端口 (QEMU 转发的端口)
+            port: 宿主机端口 (可选，与 url 二选一)
+            url: 完整 URL (可选，与 port 二选一)
         """
-        server = MCPServerConnection(name=name, port=port)
+        server = MCPServerConnection(name=name, port=port, url=url)
         self.servers[name] = server
         self._clear_all_caches()
         

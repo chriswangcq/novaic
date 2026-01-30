@@ -1,31 +1,39 @@
 """
 AgentMCPGateway - MCP Gateway for a single Agent
 
-Creates a FastMCP server that aggregates tools from:
-- VM MCP server (vmuse) - VM desktop/browser/file operations
-- Embedded tools - session, local, memory, chat (run in Gateway process)
-- Skills - operation guides as MCP Resources
+Gateway 作为纯中间件，负责：
+1. 聚合所有子 MCP Servers 的工具（通过 ToolRegistry）
+2. 提供 task_* 异步任务代理工具
+3. 暴露 Skills 作为 MCP Resources
 
 Architecture:
     AgentMCPGateway (FastMCP)
-        ├── VM Tools: Proxied from VM MCP server via ToolRegistry
-        ├── Embedded Tools: session, local, memory, chat (no external process)
-        ├── Skills: Aggregated as MCP Resources
-        ├── task_*: Async task system
-        └── agent_*: Agent capabilities
+        ├── VM MCP Tools: 通过 ToolRegistry 代理 (32 tools)
+        ├── Agent Context MCP Tools: 通过 ToolRegistry 代理 (6 tools)
+        ├── Local MCP Tools: 通过 ToolRegistry 代理 (2 tools)
+        ├── Memory MCP Tools: 通过 ToolRegistry 代理 (10 tools)
+        ├── Chat MCP Tools: 通过 ToolRegistry 代理 (6 tools)
+        ├── Skills: MCP Resources
+        └── task_*: Gateway 内置的异步任务工具 (5 tools)
 """
 
 import os
 import json
+import asyncio
 import logging
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Set
 from functools import partial
 
 from fastmcp import FastMCP
 
 from config.agents import PortConfig, allocate_ports_for_agent
 from executor.registry import ToolRegistry
+
+# Discovery intervals
+DISCOVERY_INTERVAL_FAILED = 5  # seconds for failed servers
+DISCOVERY_INTERVAL_SUCCESS = 30  # seconds for successful servers
+DISCOVERY_TIMEOUT = 1  # seconds timeout for discovery
 
 # Skills directory (relative to gateway root)
 SKILLS_DIR = Path(__file__).parent.parent / "skills"
@@ -73,115 +81,152 @@ class AgentMCPGateway:
         self._registered_tools: List[str] = []
         self._registered_skills: List[str] = []
         
+        # Track server discovery status
+        self._discovered_servers: Set[str] = set()  # servers with tools discovered
+        self._discovery_task: Optional[asyncio.Task] = None
+        self._discovery_running = False
+        
         logger.info(f"[MCPGateway] Created gateway for agent {agent_id} (index={agent_index})")
     
     def _build_instructions(self) -> str:
-        """Build MCP server instructions."""
-        return f"""NovAIC Agent Gateway - 统一 MCP 入口
-
-本 Gateway 聚合了所有子 MCP 服务的工具和技能，是 Agent 操作 VM 的唯一入口。
-
-## 核心原则
-
-1. **直接工具**：立即执行，适合 <30s 的操作
-2. **task_async**：异步执行，适合 >30s 的长时间操作
-3. **agent_call**：委托子代理，适合需要多步推理的复杂任务
-
-## 工具一览
-
-### 桌面操作 (直接)
-| 工具 | 用途 | 何时使用 |
-|------|------|----------|
-| screenshot | 获取屏幕截图 | 需要看屏幕内容时 |
-| mouse | 鼠标操作 (点击/移动/滚动) | 与 UI 交互 |
-| keyboard | 键盘操作 (输入/快捷键) | 输入文字或使用快捷键 |
-
-### 浏览器自动化 (直接)
-| 工具 | 用途 | 何时使用 |
-|------|------|----------|
-| browser_navigate | 打开 URL | 访问网页 |
-| browser_click | CSS 选择器点击 | 比坐标点击更稳定 |
-| browser_type | 在元素输入 | 表单填写 |
-| browser_screenshot | 浏览器截图 | 网页截图 |
-
-### 文件与命令 (直接/异步)
-| 工具 | 用途 | 建议 |
-|------|------|------|
-| run_command | 执行 shell 命令 | <30s 直接用，否则用 task_async |
-| file_read/write | 读写文件 | 直接使用 |
-| file_list/search | 浏览文件 | 直接使用 |
-
-### 异步任务系统
-| 工具 | 用途 |
-|------|------|
-| **task_async** | 异步执行任意工具（返回 task_id） |
-| **task_query** | 查询任务状态/进度/结果 |
-| task_list | 列出所有任务 |
-| task_cancel | 取消任务 |
-| task_summary | 获取 AI 结果摘要 |
-
-### Agent 能力
-| 工具 | 用途 |
-|------|------|
-| **agent_call** | 同步委托子代理执行复杂任务 |
-| agent_context_list | 列出所有上下文 |
-| agent_context_history | 查看上下文历史 |
-| agent_context_send | 向上下文发消息 |
-| agent_inbox | 检查待处理事件 |
-| agent_rest | 主动进入休息状态 |
-
-## 使用决策树
-
-```
-需要执行操作
-├─ 预计 <30 秒？
-│   └─ 直接调用工具 (screenshot, run_command, etc.)
-├─ 预计 >30 秒？
-│   └─ 使用 task_async 包装
-│       task_async(tool="run_command", args={{"command": "make"}}, label="编译")
-│       稍后用 task_query 检查进度
-└─ 需要多步推理/研究？
-    └─ 使用 agent_call 委托
-        agent_call(task="分析这个代码库的架构")
-```
-
-## 自动截断机制
-
-长输出 (>4000字符) 会自动截断并存储，返回结果中包含：
-- `xxx_truncated: true` - 表示该字段被截断
-- `xxx_task_id: "so_abc..."` - 用于查询完整内容
-- 使用 `task_query(task_id="so_abc...", start_line=1, end_line=100)` 分段获取完整内容
-
-## 最佳实践
-
-1. **编译/构建/测试**: task_async + task_query 定期检查
-2. **文件下载**: task_async 包装，避免阻塞
-3. **研究报告**: agent_call 委托，让子代理深入分析
-4. **UI 操作**: screenshot → 分析 → mouse/keyboard 直接操作
-5. **长输出**: 自动截断，用 task_query 查看完整内容
-
-## Skills (操作指南)
-访问 skill:// 资源获取详细操作指南：
-- skill://desktop - 桌面操作详细指南
-- skill://browser - 浏览器自动化指南
-- skill://software - 常用软件操作
-- skill://wechat - 微信操作指南
-"""
+        """Build initial MCP server instructions (will be updated after setup)."""
+        return "NovAIC Agent Gateway - 统一 MCP 入口\n\n正在初始化，请稍候..."
+    
+    def _build_dynamic_instructions(self) -> str:
+        """
+        根据实际挂载的子 MCP 和发现的工具动态生成说明。
+        在 setup() 完成后调用。
+        """
+        lines = [
+            "# NovAIC Agent Gateway - 统一 MCP 入口",
+            "",
+            "本 Gateway 是 Agent 操作的唯一入口，聚合了所有子 MCP 服务的工具。",
+            "",
+            "---",
+            "",
+            "## 已挂载的 MCP Servers",
+            "",
+        ]
+        
+        # 从 registry 获取工具统计
+        stats = self.registry.get_stats()
+        tools_by_server = stats.get("tools_by_server", {})
+        
+        # 列出各 server 的工具数
+        lines.append("| Server | 工具数 | 状态 |")
+        lines.append("|--------|--------|------|")
+        
+        for server_name, tool_count in tools_by_server.items():
+            status = "✅ 已发现" if tool_count > 0 else "⏳ 等待中"
+            lines.append(f"| {server_name} | {tool_count} | {status} |")
+        
+        lines.append("")
+        lines.append(f"**总计**: {len(self._registered_tools)} 个工具")
+        lines.append("")
+        lines.append("---")
+        lines.append("")
+        
+        # Gateway 内置工具
+        lines.append("## Gateway 内置工具")
+        lines.append("")
+        lines.append("| 工具 | 用途 |")
+        lines.append("|------|------|")
+        lines.append("| task_async | 异步执行任意工具 |")
+        lines.append("| task_query | 查询任务状态/结果 |")
+        lines.append("| task_list | 列出所有任务 |")
+        lines.append("| task_cancel | 取消任务 |")
+        lines.append("| task_summary | 获取 AI 摘要 |")
+        lines.append("")
+        lines.append("---")
+        lines.append("")
+        
+        # 按 server 分组显示工具（从 registry 获取）
+        lines.append("## 聚合的工具列表")
+        lines.append("")
+        
+        # 从 registry 缓存获取工具详情
+        try:
+            cached_tools = self.registry._tools_cache or []
+            # 按 server 分组
+            server_tools: Dict[str, List[Dict]] = {}
+            for tool in cached_tools:
+                server = tool.get("_server", "unknown")
+                if server not in server_tools:
+                    server_tools[server] = []
+                server_tools[server].append(tool)
+            
+            for server_name, tools in sorted(server_tools.items()):
+                lines.append(f"### {server_name} ({len(tools)} 工具)")
+                lines.append("")
+                lines.append("| 工具 | 说明 |")
+                lines.append("|------|------|")
+                
+                for tool in sorted(tools, key=lambda t: t.get("name", "")):
+                    name = tool.get("name", "")
+                    desc = tool.get("description", "")
+                    # 截断过长的描述
+                    if len(desc) > 60:
+                        desc = desc[:57] + "..."
+                    # 转义管道符
+                    desc = desc.replace("|", "\\|").replace("\n", " ")
+                    lines.append(f"| {name} | {desc} |")
+                
+                lines.append("")
+        except Exception as e:
+            lines.append(f"(工具列表加载中: {e})")
+            lines.append("")
+        
+        lines.append("---")
+        lines.append("")
+        
+        # Skills
+        if self._registered_skills:
+            lines.append("## Skills (操作指南)")
+            lines.append("")
+            for skill_uri in self._registered_skills:
+                lines.append(f"- {skill_uri}")
+            lines.append("")
+        
+        # 使用决策树
+        lines.append("---")
+        lines.append("")
+        lines.append("## 使用决策树")
+        lines.append("")
+        lines.append("```")
+        lines.append("需要执行操作")
+        lines.append("├─ 预计 <30 秒？ → 直接调用工具")
+        lines.append("├─ 预计 >30 秒？ → task_async 包装")
+        lines.append("└─ 需要多步推理？ → agent_call 委托")
+        lines.append("```")
+        
+        return "\n".join(lines)
     
     def _register_agent_servers(self) -> None:
-        """Register external MCP servers for this agent.
+        """Register all MCP servers for this agent.
         
-        Only VM server is external now. Session/local/memory/chat are embedded.
+        All servers are discovered via HTTP protocol:
+        - VM: runs inside the virtual machine
+        - Sub MCPs: agent-context, local, memory, chat (mounted at /sub-mcp/)
         """
         # VM server (runs inside the virtual machine)
         self.registry.register_server("vm", port=self.ports.vm, priority=0)
+        
+        # Sub MCP servers (mounted as sub-paths, discovered via HTTP)
+        gateway_port = int(os.getenv("NOVAIC_PORT", "19999"))
+        base_url = f"http://127.0.0.1:{gateway_port}/agents/{self.agent_id}/sub-mcp"
+        
+        # All sub MCPs use HTTP discovery (same as VM)
+        self.registry.register_server("agent-context", url=f"{base_url}/agent-context/", priority=1)
+        self.registry.register_server("local", url=f"{base_url}/local/", priority=1)
+        self.registry.register_server("memory", url=f"{base_url}/memory/", priority=1)
+        self.registry.register_server("chat", url=f"{base_url}/chat/", priority=1)
         
         # QEMU debug server (optional, runs on host)
         qemu_enabled = os.getenv("NOVAIC_MCP_QEMUDEBUG_ENABLED", "false").lower() == "true"
         if qemu_enabled:
             self.registry.register_server("qemudebug", port=self.ports.qemudebug, enabled=True, priority=3)
         
-        logger.info(f"[MCPGateway] Registered VM server for agent {self.agent_index}")
+        logger.info(f"[MCPGateway] Registered 5 servers for agent {self.agent_index} (VM + 4 sub-MCPs)")
     
     async def setup(self) -> None:
         """
@@ -189,42 +234,146 @@ class AgentMCPGateway:
         
         This must be called before mounting the gateway.
         """
-        # Setup aggregated tools from VM server
+        # Setup aggregated tools from external MCP servers (VM)
         await self._setup_tools()
-        
-        # Setup embedded tools (session, local, memory, chat)
-        self._setup_embedded_tools()
         
         # Setup skills as MCP resources
         await self._setup_skills()
         
-        # Setup Gateway-specific tools (task_*, agent_*)
+        # Setup Gateway-specific tools (task_* only)
         self._setup_task_tools()
-        self._setup_agent_tools()
+        
+        # 动态更新 instructions，反映实际挂载的子 MCP 和工具
+        self._update_instructions()
         
         logger.info(
             f"[MCPGateway] Setup complete for agent {self.agent_index}: "
             f"{len(self._registered_tools)} tools, {len(self._registered_skills)} skills"
         )
     
+    def _update_instructions(self) -> None:
+        """更新 MCP instructions 为动态生成的内容。"""
+        try:
+            dynamic_instructions = self._build_dynamic_instructions()
+            # FastMCP 的 instructions 可以直接赋值更新
+            if hasattr(self.mcp, '_instructions'):
+                self.mcp._instructions = dynamic_instructions
+            elif hasattr(self.mcp, 'instructions'):
+                self.mcp.instructions = dynamic_instructions
+            logger.debug(f"[MCPGateway] Updated instructions for agent {self.agent_index}")
+        except Exception as e:
+            logger.warning(f"[MCPGateway] Failed to update instructions: {e}")
+    
     async def _setup_tools(self) -> None:
         """Discover tools from sub-servers and register them as MCP tools."""
+        await self._discover_and_register_tools()
+    
+    async def _discover_and_register_tools(self, timeout: float = DISCOVERY_TIMEOUT) -> int:
+        """
+        Discover tools from sub-servers and register new ones.
+        
+        Args:
+            timeout: Timeout for discovery in seconds
+        
+        Returns:
+            Number of new tools registered
+        """
+        new_tools_count = 0
+        
         try:
-            tools = await self.registry.discover_all_tools(use_cache=False)
+            # Discover tools with timeout
+            tools = await asyncio.wait_for(
+                self.registry.discover_all_tools(use_cache=False),
+                timeout=timeout
+            )
             
+            # Track which servers have tools
+            stats = self.registry.get_stats()
+            tools_by_server = stats.get("tools_by_server", {})
+            
+            for server_name, tool_count in tools_by_server.items():
+                if tool_count > 0:
+                    if server_name not in self._discovered_servers:
+                        logger.info(f"[MCPGateway] Server '{server_name}' now available with {tool_count} tools")
+                    self._discovered_servers.add(server_name)
+            
+            # Register new tools (skip already registered)
             for tool in tools:
                 tool_name = tool.get("name", "")
                 if not tool_name:
                     continue
                 
-                # Register proxy tool
-                self._register_proxy_tool(tool)
-                self._registered_tools.append(tool_name)
+                if tool_name not in self._registered_tools:
+                    # Register proxy tool
+                    self._register_proxy_tool(tool)
+                    self._registered_tools.append(tool_name)
+                    new_tools_count += 1
             
-            logger.info(f"[MCPGateway] Registered {len(self._registered_tools)} aggregated tools")
+            if new_tools_count > 0:
+                logger.info(f"[MCPGateway] Registered {new_tools_count} new tools (total: {len(self._registered_tools)})")
+                # 更新 instructions 反映新发现的工具
+                self._update_instructions()
             
+        except asyncio.TimeoutError:
+            logger.debug(f"[MCPGateway] Tool discovery timed out after {timeout}s")
         except Exception as e:
-            logger.error(f"[MCPGateway] Failed to setup tools: {e}")
+            logger.debug(f"[MCPGateway] Tool discovery failed: {e}")
+        
+        return new_tools_count
+    
+    def start_discovery_task(self) -> None:
+        """Start the background discovery task."""
+        if self._discovery_task is not None:
+            return
+        
+        self._discovery_running = True
+        self._discovery_task = asyncio.create_task(self._discovery_loop())
+        logger.info(f"[MCPGateway] Started discovery task for agent {self.agent_index}")
+    
+    def stop_discovery_task(self) -> None:
+        """Stop the background discovery task."""
+        self._discovery_running = False
+        if self._discovery_task is not None:
+            self._discovery_task.cancel()
+            self._discovery_task = None
+            logger.info(f"[MCPGateway] Stopped discovery task for agent {self.agent_index}")
+    
+    async def _discovery_loop(self) -> None:
+        """
+        Background task to periodically discover tools from servers.
+        
+        - Failed servers: check every 5 seconds (1s timeout)
+        - Successful servers: check every 30 seconds
+        """
+        last_success_check = 0
+        
+        while self._discovery_running:
+            try:
+                # Check if any server is not yet discovered
+                stats = self.registry.get_stats()
+                registered_servers = set(stats.get("tools_by_server", {}).keys())
+                undiscovered = registered_servers - self._discovered_servers
+                
+                current_time = asyncio.get_event_loop().time()
+                
+                if undiscovered:
+                    # Has undiscovered servers - check frequently
+                    new_tools = await self._discover_and_register_tools(timeout=DISCOVERY_TIMEOUT)
+                    if new_tools > 0:
+                        last_success_check = current_time
+                    await asyncio.sleep(DISCOVERY_INTERVAL_FAILED)
+                else:
+                    # All servers discovered - check less frequently
+                    if current_time - last_success_check >= DISCOVERY_INTERVAL_SUCCESS:
+                        await self._discover_and_register_tools(timeout=DISCOVERY_TIMEOUT * 3)
+                        last_success_check = current_time
+                    await asyncio.sleep(DISCOVERY_INTERVAL_SUCCESS)
+                    
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"[MCPGateway] Discovery loop error: {e}")
+                await asyncio.sleep(DISCOVERY_INTERVAL_FAILED)
     
     def _register_proxy_tool(self, tool_def: Dict[str, Any]) -> None:
         """Register a proxy tool that forwards calls to the underlying MCP server.
@@ -410,25 +559,21 @@ class AgentMCPGateway:
             logger.error(f"[MCPGateway] Failed to setup skills: {e}")
     
     def _register_skill_resource(self, skill_name: str, uri: str, description: str) -> None:
-        """Register a skill as an MCP resource."""
+        """Register a skill as an MCP resource using FastMCP 2.x decorator."""
         
-        def skill_handler(name: str = skill_name) -> str:
+        # Use the decorator pattern for FastMCP 2.x
+        @self.mcp.resource(uri, name=skill_name, description=description)
+        def skill_handler() -> str:
             """Load and return skill content from file."""
-            skill_file = SKILLS_DIR / name / "SKILL.md"
+            skill_file = SKILLS_DIR / skill_name / "SKILL.md"
             if skill_file.exists():
                 return skill_file.read_text(encoding="utf-8")
-            return f"Skill '{name}' not found"
-        
-        self.mcp.add_resource(
-            fn=partial(skill_handler, name=skill_name),
-            uri=uri,
-            name=skill_name,
-            description=description,
-        )
+            return f"Skill '{skill_name}' not found"
     
     def _register_skill_list_resource(self) -> None:
         """Register skill_list resource that lists all available skills."""
         
+        @self.mcp.resource("skill://list", name="skill_list", description="List all available skills with descriptions")
         def skill_list_handler() -> str:
             """List all available skills with descriptions."""
             skills = []
@@ -454,98 +599,6 @@ class AgentMCPGateway:
                             "description": description
                         })
             return json.dumps({"skills": skills}, ensure_ascii=False, indent=2)
-        
-        self.mcp.add_resource(
-            fn=skill_list_handler,
-            uri="skill://list",
-            name="skill_list",
-            description="List all available skills with descriptions",
-        )
-    
-    def _setup_embedded_tools(self) -> None:
-        """Register embedded tools (session, local, memory, chat).
-        
-        These tools run directly in the Gateway process, eliminating
-        the need for separate MCP service processes.
-        """
-        from embedded_tools import (
-            # Session tools
-            agent_context_list,
-            agent_context_history,
-            agent_context_send,
-            agent_inbox,
-            agent_rest,
-            # Local tools
-            web_search,
-            web_fetch,
-            # Memory tools
-            memory_save,
-            memory_recall,
-            memory_delete,
-            memory_list_namespaces,
-            task_log,
-            task_history,
-            goal_set,
-            goal_progress,
-            goal_complete,
-            session_state,
-            # Chat tools
-            chat_reply,
-            chat_ask,
-            chat_notify,
-            chat_show_image,
-            chat_history,
-            chat_get_message,
-        )
-        
-        # Register embedded tools using the @tool decorator pattern
-        embedded_funcs = [
-            # Session tools
-            agent_context_list,
-            agent_context_history,
-            agent_context_send,
-            agent_inbox,
-            agent_rest,
-            # Local tools
-            web_search,
-            web_fetch,
-            # Memory tools
-            memory_save,
-            memory_recall,
-            memory_delete,
-            memory_list_namespaces,
-            task_log,
-            task_history,
-            goal_set,
-            goal_progress,
-            goal_complete,
-            session_state,
-            # Chat tools
-            chat_reply,
-            chat_ask,
-            chat_notify,
-            chat_show_image,
-            chat_history,
-            chat_get_message,
-        ]
-        
-        for func in embedded_funcs:
-            # Use the @tool decorator pattern to register each function
-            self.mcp.tool()(func)
-        
-        embedded_count = 23  # 5 + 2 + 10 + 6
-        self._registered_tools.extend([
-            "agent_context_list", "agent_context_history", "agent_context_send",
-            "agent_inbox", "agent_rest",
-            "web_search", "web_fetch",
-            "memory_save", "memory_recall", "memory_delete", "memory_list_namespaces",
-            "task_log", "task_history", "goal_set", "goal_progress", "goal_complete",
-            "session_state",
-            "chat_reply", "chat_ask", "chat_notify", "chat_show_image",
-            "chat_history", "chat_get_message",
-        ])
-        
-        logger.info(f"[MCPGateway] Registered {embedded_count} embedded tools")
     
     def _setup_task_tools(self) -> None:
         """Register task_* async wrapper tools."""
@@ -769,126 +822,54 @@ class AgentMCPGateway:
         
         logger.info("[MCPGateway] Registered task_* tools")
     
-    def _setup_agent_tools(self) -> None:
-        """Register agent_* tools."""
-        
-        @self.mcp.tool()
-        async def agent_call(
-            task: str,
-            model: Optional[str] = None,
-            context: Optional[str] = None,
-            timeout_minutes: int = 30,
-        ) -> Dict[str, Any]:
-            """
-            Synchronously call a sub-agent to execute a complex task.
-            
-            The sub-agent will run independently and return results when complete.
-            Use this for tasks requiring multi-step reasoning or research.
-            
-            Args:
-                task: Task description for the sub-agent (be specific and clear)
-                model: LLM model to use (default: inherit from parent agent)
-                context: Additional context or background information
-                timeout_minutes: Maximum execution time (default: 30)
-            
-            Returns:
-                Dictionary with:
-                - success: Whether task completed successfully
-                - task_id: Task ID for reference
-                - result: Sub-agent's final response
-                - duration_seconds: Execution time
-                - error: Error message (if failed)
-            
-            Examples:
-                # Delegate research task
-                agent_call(task="研究 React 和 Vue 的性能差异，写一份对比报告")
-                
-                # With context
-                agent_call(
-                    task="分析这个 bug 并提出修复方案",
-                    context="用户报告登录页面偶尔卡死",
-                    model="claude-sonnet-4"
-                )
-            """
-            try:
-                from core.task_manager import get_task_manager
-                task_manager = get_task_manager()
-                if not task_manager:
-                    return {"success": False, "error": "TaskManager not available"}
-                
-                # Create agent task and wait for completion
-                result = await task_manager.spawn(
-                    task_type="agent",
-                    config={
-                        "prompt": task,
-                        "model": model,
-                        "context": context,
-                    },
-                    label=task[:50] if task else "Sub-agent task",
-                    timeout_seconds=timeout_minutes * 60,
-                )
-                
-                if not result.get("success"):
-                    return result
-                
-                task_id = result.get("task_id")
-                
-                # Wait for task completion
-                import asyncio
-                max_wait = timeout_minutes * 60
-                waited = 0
-                poll_interval = 2
-                
-                while waited < max_wait:
-                    status = await task_manager.get_status(task_id=task_id)
-                    task_status = status.get("status")
-                    
-                    if task_status in ("completed", "failed", "cancelled"):
-                        return {
-                            "success": task_status == "completed",
-                            "task_id": task_id,
-                            "result": status.get("result"),
-                            "error": status.get("error"),
-                            "duration_seconds": status.get("duration_seconds"),
-                        }
-                    
-                    await asyncio.sleep(poll_interval)
-                    waited += poll_interval
-                    # Increase poll interval over time
-                    if waited > 60:
-                        poll_interval = 5
-                    if waited > 300:
-                        poll_interval = 10
-                
-                # Timeout
-                return {
-                    "success": False,
-                    "task_id": task_id,
-                    "error": f"Task timed out after {timeout_minutes} minutes",
-                }
-                
-            except Exception as e:
-                logger.error(f"[MCPGateway] agent_call failed: {e}")
-                return {"success": False, "error": str(e)}
-        
-        logger.info("[MCPGateway] Registered agent_* tools")
-    
-    
     def get_asgi_app(self):
-        """Get the ASGI app for mounting in FastAPI."""
-        return self.mcp.http_app(path="/")
+        """Get the ASGI app for mounting in FastAPI.
+        
+        Returns a Starlette ASGI application that can be mounted in FastAPI.
+        
+        IMPORTANT: When mounting this app, you MUST either:
+        1. Pass mcp_app.lifespan to FastAPI's lifespan parameter, OR
+        2. Manually call the lifespan context manager before mounting
+        
+        Without proper lifespan handling, requests will fail with:
+        "RuntimeError: FastMCP's StreamableHTTPSessionManager task group was not initialized"
+        """
+        mcp_app = self.mcp.http_app(path="/")
+        
+        # Log available lifespan attributes for debugging
+        lifespan_info = []
+        if hasattr(mcp_app, 'lifespan') and mcp_app.lifespan is not None:
+            lifespan_info.append("lifespan")
+        if hasattr(mcp_app, 'lifespan_handler') and mcp_app.lifespan_handler:
+            lifespan_info.append("lifespan_handler")
+        if hasattr(mcp_app, 'router') and hasattr(mcp_app.router, 'lifespan_context'):
+            if mcp_app.router.lifespan_context is not None:
+                lifespan_info.append("router.lifespan_context")
+        
+        logger.info(f"[MCPGateway] Created ASGI app for agent {self.agent_index}, available lifespans: {lifespan_info or 'none'}")
+        
+        return mcp_app
     
     def get_stats(self) -> Dict[str, Any]:
         """Get gateway statistics."""
+        registry_stats = self.registry.get_stats()
+        registered_servers = set(registry_stats.get("tools_by_server", {}).keys())
+        
         return {
             "agent_id": self.agent_id,
             "agent_index": self.agent_index,
             "tools_count": len(self._registered_tools),
             "skills_count": len(self._registered_skills),
-            "registry_stats": self.registry.get_stats(),
+            "discovered_servers": list(self._discovered_servers),
+            "pending_servers": list(registered_servers - self._discovered_servers),
+            "discovery_running": self._discovery_running,
+            "registry_stats": registry_stats,
         }
     
     async def close(self) -> None:
         """Close the gateway and release resources."""
+        # Stop discovery task first
+        self.stop_discovery_task()
+        
         await self.registry.close()
         logger.info(f"[MCPGateway] Closed gateway for agent {self.agent_id}")

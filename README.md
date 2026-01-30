@@ -23,7 +23,7 @@
 
 ## What is NovAIC?
 
-NovAIC provides AI agents with a **persistent, visual desktop environment** — a complete Linux VM with 55+ MCP tools for desktop control, browser automation, file operations, and more.
+NovAIC provides AI agents with a **persistent, visual desktop environment** — a complete Linux VM with 56+ MCP tools for desktop control, browser automation, file operations, and more.
 
 Unlike temporary sandboxes that reset after each session, NovAIC maintains state across sessions with SQLite-based persistence. Your AI remembers context, keeps files, and continues work exactly where it left off.
 
@@ -31,11 +31,11 @@ Unlike temporary sandboxes that reset after each session, NovAIC maintains state
 
 | Feature | Description |
 |---------|-------------|
-| **Full Desktop Control** | 55+ MCP tools for mouse, keyboard, screenshots, window management |
+| **Full Desktop Control** | 56+ MCP tools for mouse, keyboard, screenshots, window management |
 | **Browser Automation** | Navigate, click, type, scroll — AI controls the browser like a human |
 | **Multi-Agent System** | Create and manage multiple AI agents, each with isolated VM disk |
 | **Persistent State** | SQLite + QCOW2 disk images preserve everything between sessions |
-| **MCP Gateway** | Single-process architecture with embedded tools (no separate MCP servers) |
+| **MCP Gateway** | Unified entry point aggregating VM + 4 sub-MCP servers via HTTP |
 | **Unified Task System** | `task_async` for long-running ops, `task_query` for status/output retrieval |
 | **Auto Output Truncation** | Long outputs (>4KB) auto-cached as tasks, queryable via pagination |
 | **Self-Scheduling** | Agents can autonomously check inbox, wake on triggers, run micro-agents |
@@ -206,7 +206,7 @@ The app will automatically:
 - Download Ubuntu cloud image
 - Create VM with UEFI and cloud-init
 - Deploy novaic-mcp-vmuse (VM MCP Server with 32 tools)
-- Start the Gateway with embedded tools (23 tools: session, memory, chat, local)
+- Start the Gateway with 4 sub-MCP servers (24 tools: agent-context, memory, chat, local)
 - Start the VM and connect VNC
 
 ## Quick Start (MCP Server Only)
@@ -343,15 +343,15 @@ sudo systemctl restart x11vnc
 │  │  ┌─────────────────────────────────────┐ │                        │  │
 │  │  │        MCP Gateway (FastMCP)         │ │                        │  │
 │  │  │  /agents/{agent_id}/mcp              │ │                        │  │
-│  │  │  55 tools: 32 VM + 23 embedded       │ │                        │  │
+│  │  │  56 tools: 32 VM + 24 sub-MCPs       │ │                        │  │
 │  │  │  task_async, task_query, agent_call  │ │                        │  │
 │  │  └──────────────────┬──────────────────┘ │                        │  │
 │  │  ┌─────────────────────────────────────┐ │                        │  │
-│  │  │       Embedded Tools (23 tools)      │ │                        │  │
-│  │  │  session: context, inbox, rest       │ │                        │  │
-│  │  │  memory: save, recall, goals         │ │                        │  │
-│  │  │  chat: ask, notify, history          │ │                        │  │
-│  │  │  local: web_search, web_fetch        │ │                        │  │
+│  │  │    Sub-MCP Servers (24 tools)        │ │                        │  │
+│  │  │  /sub-mcp/agent-context (6 tools)    │ │                        │  │
+│  │  │  /sub-mcp/memory (10 tools)          │ │                        │  │
+│  │  │  /sub-mcp/chat (6 tools)             │ │                        │  │
+│  │  │  /sub-mcp/local (2 tools)            │ │                        │  │
 │  │  └─────────────────────────────────────┘ │                        │  │
 │  │  ┌─────────────────────────────────────┐ │                        │  │
 │  │  │       TaskManager (Unified)          │ │                        │  │
@@ -395,9 +395,10 @@ Each agent runs in an isolated QEMU VM with:
 - **UEFI Firmware**: Auto-copied from Homebrew QEMU on ARM64
 - **Cloud-Init ISO**: Auto-generated with SSH keys for secure access
 - **Port Allocation**: 20 ports per agent (Agent 0: 20000-20019, Agent 1: 20020-20039, etc.)
-- **MCP Gateway**: Unified entry point at `/agents/{agent-id}/mcp` with 55 tools
+- **MCP Gateway**: Unified entry point at `/agents/{agent-id}/mcp` with 56 tools
 - **VM MCP**: 32 tools in VM (desktop, browser, shell, files)
-- **Embedded Tools**: 23 tools in Gateway (session, memory, chat, local)
+- **Sub-MCP Servers**: 24 tools in 4 independent MCP servers (agent-context, memory, chat, local)
+- **HTTP Discovery**: All tools discovered via standard MCP protocol over HTTP
 - **Skills**: Centrally managed in Gateway, exposed as MCP resources (`skill://desktop`, etc.)
 - **SQLite State**: Persistent state in `~/.novaic/gateway.db`
 
@@ -405,19 +406,21 @@ Each agent runs in an isolated QEMU VM with:
 
 | Package | Description | Path |
 |---------|-------------|------|
-| **[novaic-gateway](novaic-gateway)** | Control plane: REST API + SSE + ReAct Agent + SQLite + Embedded Tools | `novaic-gateway` |
+| **[novaic-gateway](novaic-gateway)** | Control plane: REST API + SSE + ReAct Agent + SQLite + Sub-MCP Servers | `novaic-gateway` |
 | **[novaic-app](novaic-app)** | Desktop client (Tauri + React + VNC + Dashboard) | `novaic-app` |
 | **[novaic-mcp-vmuse](novaic-mcp-vmuse)** | VM-based MCP server with 32 tools (desktop, browser, shell, files) | `novaic-mcp-vmuse` |
 | **[novaic-vm](novaic-vm)** | QEMU VM runtime with Ubuntu desktop | `novaic-vm` |
 
-**Embedded in Gateway** (no separate processes):
+**Sub-MCP Servers** (mounted at `/agents/{agent_id}/sub-mcp/{name}/`):
 
-| Module | Description |
-|--------|-------------|
-| `embedded_tools.session` | Context management, inbox, rest state (5 tools) |
-| `embedded_tools.memory` | Key-value storage, goals, task history (10 tools) |
-| `embedded_tools.chat` | Agent↔User communication (6 tools) |
-| `embedded_tools.local` | Web search and fetch (2 tools) |
+| Server | Description | Tools |
+|--------|-------------|-------|
+| `agent-context` | Context management, inbox, rest state, sub-agent delegation | 6 |
+| `memory` | Key-value storage, goals, task history | 10 |
+| `chat` | Agent↔User communication | 6 |
+| `local` | Web search and fetch | 2 |
+
+All sub-MCP servers are discovered via HTTP using standard MCP protocol, same as VM MCP.
 
 **Legacy/Reference** (source code available but not run as separate processes):
 
@@ -429,7 +432,7 @@ Each agent runs in an isolated QEMU VM with:
 | `novaic-mcp-local` | Original standalone local MCP server |
 | `novaic-mcp-qemudebug` | QEMU debugging (optional, can be enabled) |
 
-## MCP Tools (55 Tools via MCP Gateway)
+## MCP Tools (56 Tools via MCP Gateway)
 
 ### MCP Gateway (Unified Entry Point)
 
@@ -500,9 +503,11 @@ The MCP Gateway provides a single endpoint at `/agents/{agent_id}/mcp` with:
 | `app_state` | Get application state |
 | `clipboard_get/set` | Clipboard operations |
 
-### Embedded Tools (in Gateway process)
+### Sub-MCP Servers (24 tools via HTTP)
 
-#### Session Tools (5 tools)
+All sub-MCP servers are discovered via standard MCP HTTP protocol, same as VM MCP.
+
+#### Agent Context Tools (6 tools) — `/sub-mcp/agent-context/`
 | Tool | Description |
 |------|-------------|
 | `agent_context_list` | List all agent contexts (main + subagents) |
@@ -511,7 +516,7 @@ The MCP Gateway provides a single endpoint at `/agents/{agent_id}/mcp` with:
 | `agent_inbox` | Check pending events and messages |
 | `agent_rest` | Voluntarily enter rest state with wake conditions |
 
-#### Memory Tools (10 tools)
+#### Memory Tools (10 tools) — `/sub-mcp/memory/`
 | Tool | Description |
 |------|-------------|
 | `memory_save` | Save key-value data |
@@ -525,7 +530,7 @@ The MCP Gateway provides a single endpoint at `/agents/{agent_id}/mcp` with:
 | `goal_complete` | Mark goal as complete |
 | `session_state` | Get/set session state |
 
-#### Chat Tools (6 tools)
+#### Chat Tools (6 tools) — `/sub-mcp/chat/`
 | Tool | Description |
 |------|-------------|
 | `chat_reply` | Send reply to user |
@@ -535,7 +540,7 @@ The MCP Gateway provides a single endpoint at `/agents/{agent_id}/mcp` with:
 | `chat_history` | Get chat history |
 | `chat_get_message` | Get specific message |
 
-#### Local Tools (2 tools)
+#### Local Tools (2 tools) — `/sub-mcp/local/`
 | Tool | Description |
 |------|-------------|
 | `web_search` | Search the web |
@@ -646,10 +651,11 @@ Agents can autonomously manage their workflow:
 
 ### ToolRegistry (Unified Tool Management)
 Single entry point for all MCP tools:
-- Aggregates 32 tools from VM MCP server
-- Registers 23 embedded tools from Gateway
-- Auto-discovery and registration
-- Health checks and reconnection
+- Aggregates 32 tools from VM MCP server via HTTP
+- Aggregates 24 tools from 4 sub-MCP servers via HTTP
+- Unified HTTP discovery for all MCP servers
+- Auto-discovery with periodic health checks
+- Supports both port and URL registration
 
 ### EventBus (Publish/Subscribe)
 System-wide event handling:
