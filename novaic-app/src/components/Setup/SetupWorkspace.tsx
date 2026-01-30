@@ -9,7 +9,6 @@ import { useEffect, useState, useCallback } from 'react';
 import { 
   Download, 
   HardDrive, 
-  Upload, 
   CheckCircle, 
   Loader2,
   AlertCircle,
@@ -28,11 +27,10 @@ interface SetupWorkspaceProps {
   onBack: () => void;
 }
 
-// Step definitions
+// Step definitions (Deploy is handled by Agent after VM starts)
 const STEPS = [
   { id: 'download', label: 'Download Image', icon: Download },
   { id: 'create', label: 'Create VM', icon: HardDrive },
-  { id: 'deploy', label: 'Deploy Code', icon: Upload },
 ];
 
 // Map agent status to step index
@@ -44,10 +42,9 @@ function getStepIndex(status: AgentStatus): number {
     case 'creating':
       return 1;
     case 'deploying':
-      return 2;
     case 'ready':
     case 'running':
-      return 3; // All complete
+      return 2; // All complete (Agent handles deployment)
     default:
       return -1;
   }
@@ -183,10 +180,9 @@ export function SetupWorkspace({
       case 'creating':
         return 'Creating virtual machine...';
       case 'deploying':
-        return 'Deploying agent code...';
       case 'ready':
       case 'running':
-        return 'Setup complete!';
+        return 'VM ready! Agent will handle deployment.';
       default:
         return 'Processing...';
     }
@@ -353,8 +349,6 @@ export function SetupWorkspace({
                     'Downloading cloud image. This may take a few minutes depending on your internet speed.'
                   ) : agent.status === 'creating' ? (
                     'Creating the virtual machine disk and configuration. This usually takes about 1-2 minutes.'
-                  ) : agent.status === 'deploying' ? (
-                    'Deploying code and starting services. First boot may take 5-10 minutes for system configuration.'
                   ) : (
                     'Please wait while we set up your AI Computer...'
                   )}

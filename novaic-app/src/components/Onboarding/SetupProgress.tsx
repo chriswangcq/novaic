@@ -8,8 +8,7 @@
  * - Real-time cloud-init logs during deployment
  */
 
-import { useState, useEffect, useRef } from 'react';
-import { Download, HardDrive, Upload, CheckCircle, Loader2, Terminal } from 'lucide-react';
+import { Download, HardDrive, CheckCircle, Loader2 } from 'lucide-react';
 import type { DownloadProgress, SetupProgress as SetupProgressType, DeployProgress } from '../../services/setup';
 
 interface SetupProgressProps {
@@ -19,48 +18,18 @@ interface SetupProgressProps {
   deployProgress: DeployProgress | null;
 }
 
-// Step definitions
+// Step definitions (Deploy is handled by Agent after VM starts)
 const STEPS = [
   { id: 'download', label: 'Download Image', icon: Download },
   { id: 'create', label: 'Create VM', icon: HardDrive },
-  { id: 'deploy', label: 'Deploy Code', icon: Upload },
 ];
 
 export function SetupProgress({ step, downloadProgress, setupProgress, deployProgress }: SetupProgressProps) {
-  // Log lines for real-time display
-  const [logLines, setLogLines] = useState<string[]>([]);
-  const logContainerRef = useRef<HTMLDivElement>(null);
-
-  // Collect log lines from deployProgress
-  useEffect(() => {
-    if (deployProgress?.log_line) {
-      setLogLines(prev => {
-        const newLines = [...prev, deployProgress.log_line!];
-        // Keep last 100 lines
-        return newLines.slice(-100);
-      });
-    }
-  }, [deployProgress?.log_line]);
-
-  // Reset logs when step changes away from deploying
-  useEffect(() => {
-    if (step !== 'deploying') {
-      setLogLines([]);
-    }
-  }, [step]);
-
-  // Auto-scroll log container
-  useEffect(() => {
-    if (logContainerRef.current) {
-      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
-    }
-  }, [logLines]);
-
-  // Determine current step index
+  // Determine current step index (deploy handled by Agent after VM starts)
   const currentStepIndex = 
     step === 'checking' || step === 'downloading' ? 0 :
     step === 'creating' ? 1 :
-    step === 'deploying' ? 2 : -1;
+    step === 'deploying' ? 2 : -1; // deploying = complete for UI
 
   // Format file size
   const formatSize = (bytes: number): string => {
@@ -186,32 +155,7 @@ export function SetupProgress({ step, downloadProgress, setupProgress, deployPro
             {setupProgress.stage}
           </p>
         )}
-        {step === 'deploying' && deployProgress && (
-          <p className="text-blue-500 text-sm mt-1">
-            {deployProgress.stage}
-          </p>
-        )}
       </div>
-
-      {/* Real-time logs during deployment */}
-      {step === 'deploying' && logLines.length > 0 && (
-        <div className="mt-6">
-          <div className="flex items-center gap-2 mb-2">
-            <Terminal size={14} className="text-nb-text-secondary" />
-            <span className="text-xs text-nb-text-secondary">Installation Log</span>
-          </div>
-          <div 
-            ref={logContainerRef}
-            className="bg-black/50 rounded-lg p-3 h-40 overflow-y-auto font-mono text-xs"
-          >
-            {logLines.map((line, i) => (
-              <div key={i} className="text-green-400/80 leading-relaxed">
-                {line}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Tips */}
       <div className="mt-8 p-4 bg-nb-surface rounded-lg">
@@ -220,8 +164,6 @@ export function SetupProgress({ step, downloadProgress, setupProgress, deployPro
             'Downloading Ubuntu cloud image. This may take a few minutes depending on your internet speed.'
           ) : step === 'creating' ? (
             'Creating the virtual machine disk and configuration. This usually takes about 1-2 minutes.'
-          ) : step === 'deploying' ? (
-            'Installing packages and starting services. This may take 10-30 minutes on first boot.'
           ) : (
             'Please wait while we set up your AI Computer...'
           )}

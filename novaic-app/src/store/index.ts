@@ -557,26 +557,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
       const updatedAgent = updatedAgents.find(a => a.id === agentId);
       if (!updatedAgent) throw new Error('Agent not found after VM start');
 
-      // Step 4: Deploy code
-      updateAgentStatus(agentId, 'deploying', {
-        stage: 'Deploying',
-        progress: 0,
-        message: 'Deploying agent code...',
-      });
-
-      // Get SSH port from updated agent config
-      const sshPort = updatedAgent.vm.ports.ssh;
-      await setup.deployAgent(
-        sshPort,
-        config.useCnMirrors,
-        (progress) => {
-          updateAgentStatus(agentId, 'deploying', progress);
-        }
-      );
-
-      // Step 5: Mark as ready
+      // Step 4: Mark as running - Agent will handle deployment via agent-bootstrap skill
       updateAgentStatus(agentId, 'running', undefined);
-      console.log('[Store] Agent setup complete:', agentId);
+      console.log('[Store] VM started, Agent will take over deployment:', agentId);
 
     } catch (error) {
       console.error('[Store] Agent setup failed:', error);
