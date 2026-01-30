@@ -739,17 +739,61 @@ qemu_deploy_vmuse_code()  # 部署 MCP Server
                 os.unlink(image_path)
                 logger.info(f"[qemu_download_image] Removed existing image for force download")
             
-            # 下载
+            # 下载（流式，带进度通知）
             url = f"https://cloud-images.ubuntu.com/{codename}/current/{image_name}"
             logger.info(f"[qemu_download_image] Downloading from {url}")
             
+            # 进度通知函数
+            async def notify_progress(message: str):
+                """发送进度通知到 Gateway chat API"""
+                try:
+                    gateway_url = os.environ.get("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
+                    async with httpx.AsyncClient(timeout=5.0) as notify_client:
+                        await notify_client.post(
+                            f"{gateway_url}/api/chat/event",
+                            json={
+                                "type": "AGENT_NOTIFY",
+                                "data": {
+                                    "agent_id": server._init_agent_id,
+                                    "message": message,
+                                    "level": "info",
+                                    "reply_type": "notification"
+                                }
+                            }
+                        )
+                except Exception as e:
+                    logger.debug(f"[qemu_download_image] Failed to send progress notification: {e}")
+            
             try:
                 async with httpx.AsyncClient(timeout=600.0, follow_redirects=True) as client:
-                    response = await client.get(url)
-                    response.raise_for_status()
+                    # 先获取文件大小
+                    head_resp = await client.head(url)
+                    total_size = int(head_resp.headers.get("content-length", 0))
+                    total_mb = total_size / (1024 * 1024)
                     
-                    with open(image_path, "wb") as f:
-                        f.write(response.content)
+                    logger.info(f"[qemu_download_image] Total size: {total_mb:.1f} MB")
+                    await notify_progress(f"📥 开始下载 Ubuntu {version} 镜像 ({total_mb:.0f} MB)...")
+                    
+                    # 流式下载
+                    downloaded = 0
+                    last_progress = 0
+                    
+                    async with client.stream("GET", url) as response:
+                        response.raise_for_status()
+                        
+                        with open(image_path, "wb") as f:
+                            async for chunk in response.aiter_bytes(chunk_size=1024 * 1024):  # 1MB chunks
+                                f.write(chunk)
+                                downloaded += len(chunk)
+                                
+                                # 每 20% 发送一次进度通知
+                                if total_size > 0:
+                                    progress = int(downloaded / total_size * 100)
+                                    if progress >= last_progress + 20:
+                                        last_progress = progress
+                                        downloaded_mb = downloaded / (1024 * 1024)
+                                        logger.info(f"[qemu_download_image] Progress: {progress}%")
+                                        await notify_progress(f"⏳ 下载进度: {progress}% ({downloaded_mb:.0f}/{total_mb:.0f} MB)")
                     
                     size_mb = os.path.getsize(image_path) / (1024 * 1024)
                     return {
