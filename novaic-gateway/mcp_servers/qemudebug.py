@@ -419,3 +419,107 @@ class QemuDebugMCPServer(BaseMCPServer):
                     }
             except Exception as e:
                 return {"error": str(e), "success": False}
+        
+        @self.mcp.tool()
+        async def qemu_deploy_vmuse_code(
+            restart_service: Optional[bool] = True
+        ) -> Dict[str, Any]:
+            """
+            Deploy novaic-mcp-vmuse code to VM.
+            
+            从 App Resources 复制 MCP Server 代码到 VM：
+            - src/ → /opt/novaic-mcp-vmuse/src/
+            - skills/ → /opt/novaic-mcp-vmuse/skills/
+            - pyproject.toml → /opt/novaic-mcp-vmuse/
+            
+            Args:
+                restart_service: 是否重启 novaic 服务 (默认: True)
+            
+            Returns:
+                Dictionary with success, files_copied, service_status
+            """
+            import asyncssh
+            
+            # 1. 找到 novaic-mcp-vmuse 路径
+            resource_dir = os.environ.get("NOVAIC_RESOURCE_DIR", "")
+            vmuse_path = None
+            
+            # 尝试从 resource_dir 找
+            if resource_dir:
+                candidate = os.path.join(resource_dir, "novaic-mcp-vmuse")
+                if os.path.exists(candidate):
+                    vmuse_path = candidate
+            
+            # 开发环境回退：从 Gateway 位置推断
+            if not vmuse_path:
+                # Gateway 在 novaic/novaic-gateway，vmuse 在 novaic/novaic-mcp-vmuse
+                gateway_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                candidate = os.path.join(gateway_dir, "novaic-mcp-vmuse")
+                if os.path.exists(candidate):
+                    vmuse_path = candidate
+            
+            if not vmuse_path or not os.path.exists(vmuse_path):
+                return {
+                    "success": False,
+                    "error": f"novaic-mcp-vmuse not found. NOVAIC_RESOURCE_DIR={resource_dir}"
+                }
+            
+            logger.info(f"[qemu_deploy_vmuse_code] Using source: {vmuse_path}")
+            
+            files_copied = []
+            
+            try:
+                # 2. SSH 连接
+                connect_kwargs = {
+                    "host": server.ssh_host,
+                    "port": server.ssh_port,
+                    "username": server.ssh_user,
+                    "known_hosts": None,
+                }
+                if os.path.exists(server.ssh_key):
+                    connect_kwargs["client_keys"] = [server.ssh_key]
+                
+                async with asyncssh.connect(**connect_kwargs) as conn:
+                    # 3. 停止服务
+                    await conn.run("sudo systemctl stop novaic 2>/dev/null || true", check=False)
+                    
+                    # 4. 清理旧代码
+                    await conn.run("rm -rf /opt/novaic-mcp-vmuse/src /opt/novaic-mcp-vmuse/skills", check=False)
+                    
+                    # 5. 复制 src/
+                    src_path = os.path.join(vmuse_path, "src")
+                    if os.path.exists(src_path):
+                        await asyncssh.scp(src_path, (conn, "/opt/novaic-mcp-vmuse/"), recurse=True)
+                        files_copied.append("src/")
+                    
+                    # 6. 复制 skills/
+                    skills_path = os.path.join(vmuse_path, "skills")
+                    if os.path.exists(skills_path):
+                        await asyncssh.scp(skills_path, (conn, "/opt/novaic-mcp-vmuse/"), recurse=True)
+                        files_copied.append("skills/")
+                    
+                    # 7. 复制 pyproject.toml
+                    pyproject_path = os.path.join(vmuse_path, "pyproject.toml")
+                    if os.path.exists(pyproject_path):
+                        await asyncssh.scp(pyproject_path, (conn, "/opt/novaic-mcp-vmuse/"))
+                        files_copied.append("pyproject.toml")
+                    
+                    # 8. 重启服务
+                    service_status = "not_restarted"
+                    if restart_service is not False:
+                        result = await conn.run("sudo systemctl restart novaic", check=False)
+                        if result.exit_status == 0:
+                            service_status = "restarted"
+                        else:
+                            service_status = f"restart_failed: {result.stderr}"
+                    
+                    return {
+                        "success": True,
+                        "source_path": vmuse_path,
+                        "files_copied": files_copied,
+                        "service_status": service_status
+                    }
+                    
+            except Exception as e:
+                logger.error(f"[qemu_deploy_vmuse_code] Error: {e}")
+                return {"success": False, "error": str(e), "files_copied": files_copied}

@@ -44,7 +44,7 @@ impl GatewayProcess {
         format!("http://127.0.0.1:{}", self.port)
     }
 
-    fn start(&mut self, gateway_path: &PathBuf, is_binary: bool, data_dir: &PathBuf) -> Result<(), String> {
+    fn start(&mut self, gateway_path: &PathBuf, is_binary: bool, data_dir: &PathBuf, resource_dir: Option<&PathBuf>) -> Result<(), String> {
         if self.process.is_some() {
             println!("[Gateway] Already running");
             return Ok(());
@@ -53,9 +53,11 @@ impl GatewayProcess {
         println!("[Gateway] Starting Gateway from {:?}", gateway_path);
         println!("[Gateway] Port: {}", self.port);
         println!("[Gateway] Data dir: {:?}", data_dir);
+        println!("[Gateway] Resource dir: {:?}", resource_dir);
         println!("[Gateway] Mode: {}", if is_binary { "binary" } else { "python" });
 
         let data_dir_str = data_dir.to_string_lossy().to_string();
+        let resource_dir_str = resource_dir.map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
 
         let child = if is_binary {
             // Production mode: run bundled binary
@@ -67,6 +69,7 @@ impl GatewayProcess {
                 .env("NOVAIC_PORT", self.port.to_string())
                 .env("NOVAIC_HOST", "127.0.0.1")
                 .env("NOVAIC_DATA_DIR", &data_dir_str)
+                .env("NOVAIC_RESOURCE_DIR", &resource_dir_str)
                 .env("NO_PROXY", "localhost,127.0.0.1,::1")
                 .env("no_proxy", "localhost,127.0.0.1,::1")
                 // Use null to discard output - prevents pipe buffer from filling up
@@ -99,6 +102,7 @@ impl GatewayProcess {
                 .env("NOVAIC_PORT", self.port.to_string())
                 .env("NOVAIC_HOST", "127.0.0.1")
                 .env("NOVAIC_DATA_DIR", &data_dir_str)
+                .env("NOVAIC_RESOURCE_DIR", &resource_dir_str)
                 .env("NO_PROXY", "localhost,127.0.0.1,::1")
                 .env("no_proxy", "localhost,127.0.0.1,::1")
                 // Dev mode: inherit console so we can see logs directly
@@ -234,8 +238,9 @@ async fn start_gateway(
     let (gateway_path, is_binary) = get_gateway_info(&app);
     let data_dir = app.path().app_data_dir()
         .map_err(|e| format!("Failed to get app data dir: {}", e))?;
+    let resource_dir = app.path().resource_dir().ok();
     let mut gw = gateway.lock().await;
-    gw.start(&gateway_path, is_binary, &data_dir)?;
+    gw.start(&gateway_path, is_binary, &data_dir, resource_dir.as_ref())?;
     Ok(format!("Gateway started on port {}", gw.port))
 }
 
@@ -387,14 +392,16 @@ fn main() {
             
             // Auto-start Gateway only
             let (gateway_path, is_binary) = get_gateway_info(app.handle());
+            let resource_dir = app.path().resource_dir().ok();
             println!("[Gateway] Gateway path: {:?}", gateway_path);
+            println!("[Gateway] Resource dir: {:?}", resource_dir);
             println!("[Gateway] Is binary: {}", is_binary);
             
             let gateway_for_start = gateway.clone();
             let data_dir_for_gateway = data_dir.clone();
             tauri::async_runtime::spawn(async move {
                 let mut gw = gateway_for_start.lock().await;
-                match gw.start(&gateway_path, is_binary, &data_dir_for_gateway) {
+                match gw.start(&gateway_path, is_binary, &data_dir_for_gateway, resource_dir.as_ref()) {
                     Ok(_) => println!("[Gateway] Auto-started successfully"),
                     Err(e) => println!("[Gateway] Failed to auto-start: {}", e),
                 }
