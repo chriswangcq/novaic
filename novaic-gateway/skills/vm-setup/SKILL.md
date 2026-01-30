@@ -1,22 +1,40 @@
 ---
 name: vm-setup
-description: Setup NovAIC VM from scratch - download image, create VM, start, deploy MCP Server. Use when setting up a new agent environment.
+description: VM setup tools reference. Download image, create VM, start VM are handled by UI. Agent uses agent-bootstrap skill after VM starts.
 ---
 
 # VM Setup Skill
 
-完整的 VM 安装流程：下载镜像 → 创建 VM → 启动 → 等待 → 部署 MCP Server → 验证。
+> **注意**: 这是工具参考文档。实际流程分工：
+> - **UI 控制**: 下载镜像 → 创建 VM → 启动 VM
+> - **Agent 接手**: VM 启动后使用 `agent-bootstrap` skill
+
+## 流程分工
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  UI 控制（Tauri App 前端）                                   │
+│  1. 用户选配置（版本、磁盘大小、内存）                         │
+│  2. 下载镜像页面（显示进度条）                                │
+│  3. 创建 VM                                                 │
+│  4. 启动 VM                                                 │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+                         VM 启动完成
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│  Agent 接手（使用 agent-bootstrap skill）                    │
+│  1. 检查 SSH 是否可用                                        │
+│  2. 监控 cloud-init 日志，向用户报告进度                      │
+│  3. 部署代码（qemu_deploy_vmuse_code）                       │
+│  4. 验证 MCP Server                                         │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ## 前提条件
 
 - QEMU 已安装 (`brew install qemu`)
 - QEMU Debug MCP 已启用 (`NOVAIC_MCP_QEMUDEBUG_ENABLED=true`)
-
-## 核心原则
-
-1. **异步执行**: 长时间操作用 `task_async` + `task_query`，不阻塞对话
-2. **勤与用户沟通**: 每个阶段用 `chat_notify` 告知进度
-3. **耐心等待**: VM 启动和 cloud-init 需要时间，多给用户安慰
 
 ## 工具列表
 
