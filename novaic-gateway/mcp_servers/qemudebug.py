@@ -110,10 +110,10 @@ class QemuDebugMCPServer(BaseMCPServer):
         
         try:
             # 尝试从数据库查询
-            from config.agents_db import AgentConfigDB
+            from config.agents_db import AgentConfigManagerDB
             import asyncio
             
-            db = AgentConfigDB()
+            db = AgentConfigManagerDB()
             
             # 同步方式获取（在 __init__ 中）
             loop = asyncio.get_event_loop()
@@ -123,9 +123,9 @@ class QemuDebugMCPServer(BaseMCPServer):
                 logger.warning(f"[QemuDebugMCPServer] Cannot query DB in running loop, using default index 0")
                 return 0
             
-            config = loop.run_until_complete(db.get_agent_config(agent_id))
-            if config:
-                return config.agent_index
+            agent = loop.run_until_complete(db.get_agent(agent_id))
+            if agent and agent.vm_config:
+                return agent.vm_config.agent_index
         except Exception as e:
             logger.warning(f"[QemuDebugMCPServer] Failed to resolve agent_index: {e}")
         
