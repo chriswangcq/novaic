@@ -620,7 +620,8 @@ qemu_deploy_vmuse_code()  # 部署 MCP Server
         
         @self.mcp.tool()
         async def qemu_download_image(
-            version: Optional[str] = "24.04"
+            version: Optional[str] = "24.04",
+            force: Optional[bool] = False
         ) -> Dict[str, Any]:
             """
             Download Ubuntu cloud image.
@@ -629,9 +630,10 @@ qemu_deploy_vmuse_code()  # 部署 MCP Server
             
             Args:
                 version: Ubuntu 版本 (默认: "24.04", 支持 "22.04", "20.04")
+                force: 强制重新下载，即使本地已有文件 (默认: False)
             
             Returns:
-                Dictionary with success, image_path, size_mb
+                Dictionary with success, image_path, size_mb, downloaded
             """
             import httpx
             
@@ -646,15 +648,21 @@ qemu_deploy_vmuse_code()  # 部署 MCP Server
             server._ensure_dirs()
             image_path = os.path.join(server.iso_dir, image_name)
             
-            # 检查是否已存在
-            if os.path.exists(image_path):
+            # 检查是否已存在 (除非 force=True)
+            if os.path.exists(image_path) and not force:
                 size_mb = os.path.getsize(image_path) / (1024 * 1024)
                 return {
                     "success": True,
                     "image_path": image_path,
                     "size_mb": round(size_mb, 1),
-                    "message": "Image already exists"
+                    "downloaded": False,
+                    "message": "Image already exists (use force=True to re-download)"
                 }
+            
+            # 删除旧文件 (如果 force)
+            if force and os.path.exists(image_path):
+                os.unlink(image_path)
+                logger.info(f"[qemu_download_image] Removed existing image for force download")
             
             # 下载
             url = f"https://cloud-images.ubuntu.com/{codename}/current/{image_name}"
@@ -673,6 +681,7 @@ qemu_deploy_vmuse_code()  # 部署 MCP Server
                         "success": True,
                         "image_path": image_path,
                         "size_mb": round(size_mb, 1),
+                        "downloaded": True,
                         "message": "Download complete"
                     }
             except Exception as e:
