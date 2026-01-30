@@ -23,7 +23,7 @@
 
 ## What is NovAIC?
 
-NovAIC provides AI agents with a **persistent, visual desktop environment** — a complete Linux VM with 35+ MCP tools for desktop control, browser automation, file operations, and more.
+NovAIC provides AI agents with a **persistent, visual desktop environment** — a complete Linux VM with 55+ MCP tools for desktop control, browser automation, file operations, and more.
 
 Unlike temporary sandboxes that reset after each session, NovAIC maintains state across sessions with SQLite-based persistence. Your AI remembers context, keeps files, and continues work exactly where it left off.
 
@@ -31,16 +31,16 @@ Unlike temporary sandboxes that reset after each session, NovAIC maintains state
 
 | Feature | Description |
 |---------|-------------|
-| **Full Desktop Control** | 35+ MCP tools for mouse, keyboard, screenshots, window management |
+| **Full Desktop Control** | 55+ MCP tools for mouse, keyboard, screenshots, window management |
 | **Browser Automation** | Navigate, click, type, scroll — AI controls the browser like a human |
 | **Multi-Agent System** | Create and manage multiple AI agents, each with isolated VM disk |
 | **Persistent State** | SQLite + QCOW2 disk images preserve everything between sessions |
-| **MCP Gateway** | Unified entry point aggregating all MCP servers with async task support |
+| **MCP Gateway** | Single-process architecture with embedded tools (no separate MCP servers) |
 | **Unified Task System** | `task_async` for long-running ops, `task_query` for status/output retrieval |
 | **Auto Output Truncation** | Long outputs (>4KB) auto-cached as tasks, queryable via pagination |
 | **Self-Scheduling** | Agents can autonomously check inbox, wake on triggers, run micro-agents |
-| **Memory System** | Host-based key-value storage + goal tracking for cross-session context |
-| **Agent-User Communication** | Dedicated MCP server for questions, answers, and notifications |
+| **Memory System** | Embedded key-value storage + goal tracking for cross-session context |
+| **Agent-User Communication** | Embedded chat tools for questions, answers, and notifications |
 | **Event-Driven Architecture** | EventBus with publish/subscribe for system-wide event handling |
 | **Context Awareness** | System snapshots, directory analysis, app state detection |
 | **Privacy First** | Runs locally in QEMU VM — your data never leaves your machine |
@@ -205,8 +205,8 @@ open novaic-app/src-tauri/target/release/bundle/macos/NovAIC.app
 The app will automatically:
 - Download Ubuntu cloud image
 - Create VM with UEFI and cloud-init
-- Deploy novaic-mcp-vmuse (MCP Server)
-- Start 5 host-based MCP servers (session, memory, chat, local, qemudebug)
+- Deploy novaic-mcp-vmuse (VM MCP Server with 32 tools)
+- Start the Gateway with embedded tools (23 tools: session, memory, chat, local)
 - Start the VM and connect VNC
 
 ## Quick Start (MCP Server Only)
@@ -342,15 +342,17 @@ sudo systemctl restart x11vnc
 │  │  └─────────────┘  └─────────────┘  └────┬─────┘                  │  │
 │  │  ┌─────────────────────────────────────┐ │                        │  │
 │  │  │        MCP Gateway (FastMCP)         │ │                        │  │
-│  │  │  Unified entry for all MCP tools     │ │                        │  │
+│  │  │  /agents/{agent_id}/mcp              │ │                        │  │
+│  │  │  55 tools: 32 VM + 23 embedded       │ │                        │  │
 │  │  │  task_async, task_query, agent_call  │ │                        │  │
-│  │  │  + Auto output truncation            │ │                        │  │
 │  │  └──────────────────┬──────────────────┘ │                        │  │
 │  │  ┌─────────────────────────────────────┐ │                        │  │
-│  │  │        ToolRegistry (Aggregator)     │ │                        │  │
-│  │  │  Routes to: vmuse, session, memory,  │ │                        │  │
-│  │  │             chat, local, qemudebug   │ │                        │  │
-│  │  └──────────────────┬──────────────────┘ │                        │  │
+│  │  │       Embedded Tools (23 tools)      │ │                        │  │
+│  │  │  session: context, inbox, rest       │ │                        │  │
+│  │  │  memory: save, recall, goals         │ │                        │  │
+│  │  │  chat: ask, notify, history          │ │                        │  │
+│  │  │  local: web_search, web_fetch        │ │                        │  │
+│  │  └─────────────────────────────────────┘ │                        │  │
 │  │  ┌─────────────────────────────────────┐ │                        │  │
 │  │  │       TaskManager (Unified)          │ │                        │  │
 │  │  │  sync_output, tool, agent, shell     │ │                        │  │
@@ -365,26 +367,7 @@ sudo systemctl restart x11vnc
 │  │  │  messages, tasks, execution_logs     │ │                        │  │
 │  │  └─────────────────────────────────────┘ │                        │  │
 │  └──────────────────────────────────────────┼────────────────────────┘  │
-│                                             │ HTTP to MCP Servers       │
-│  ┌──────────────────────────────────────────┼────────────────────────┐  │
-│  │                Host MCP Servers          │                        │  │
-│  │  ┌─────────────────┐ ┌────────────────┐ │                        │  │
-│  │  │ novaic-mcp-     │ │ novaic-mcp-    │ │                        │  │
-│  │  │ session         │ │ memory         │ │                        │  │
-│  │  │ :20001          │ │ :20002         │ │                        │  │
-│  │  └─────────────────┘ └────────────────┘ │                        │  │
-│  │  ┌─────────────────┐ ┌────────────────┐ │                        │  │
-│  │  │ novaic-mcp-     │ │ novaic-mcp-    │ │                        │  │
-│  │  │ chat            │ │ local          │ │                        │  │
-│  │  │ :20003          │ │ :20004         │ │                        │  │
-│  │  └─────────────────┘ └────────────────┘ │                        │  │
-│  │  ┌─────────────────┐                    │                        │  │
-│  │  │ novaic-mcp-     │                    │                        │  │
-│  │  │ qemudebug       │                    │                        │  │
-│  │  │ :20005          │                    │                        │  │
-│  │  └─────────────────┘                    │                        │  │
-│  └──────────────────────────────────────────┼────────────────────────┘  │
-│                                             │ Port Forward            │
+│                                             │ HTTP to VM MCP           │
 │  ┌──────────────────────────────────────────┼────────────────────────┐  │
 │  │                  Per-Agent VMs           ▼                        │  │
 │  │  ┌────────────────────────┐    ┌────────────────────────┐        │  │
@@ -392,7 +375,7 @@ sudo systemctl restart x11vnc
 │  │  │  ┌──────────────────┐  │    │  ┌──────────────────┐  │        │  │
 │  │  │  │ novaic-mcp-vmuse │  │    │  │ novaic-mcp-vmuse │  │        │  │
 │  │  │  │ MCP :8080        │  │    │  │ MCP :8080        │  │        │  │
-│  │  │  │ (35+ Tools)      │  │    │  │ (35+ Tools)      │  │        │  │
+│  │  │  │ (32 Tools)       │  │    │  │ (32 Tools)       │  │        │  │
 │  │  │  │ Fwd to :20000    │  │    │  │ Fwd to :20020    │  │        │  │
 │  │  │  └──────────────────┘  │    │  └──────────────────┘  │        │  │
 │  │  │  disk-a.qcow2          │    │  disk-b.qcow2          │        │  │
@@ -412,8 +395,9 @@ Each agent runs in an isolated QEMU VM with:
 - **UEFI Firmware**: Auto-copied from Homebrew QEMU on ARM64
 - **Cloud-Init ISO**: Auto-generated with SSH keys for secure access
 - **Port Allocation**: 20 ports per agent (Agent 0: 20000-20019, Agent 1: 20020-20039, etc.)
-- **MCP Gateway**: Unified entry point at `/agents/{agent-id}/mcp` aggregating all tools
-- **MCP Servers**: 6 MCP servers (1 in VM + 5 on host) per agent
+- **MCP Gateway**: Unified entry point at `/agents/{agent-id}/mcp` with 55 tools
+- **VM MCP**: 32 tools in VM (desktop, browser, shell, files)
+- **Embedded Tools**: 23 tools in Gateway (session, memory, chat, local)
 - **Skills**: Centrally managed in Gateway, exposed as MCP resources (`skill://desktop`, etc.)
 - **SQLite State**: Persistent state in `~/.novaic/gateway.db`
 
@@ -421,23 +405,35 @@ Each agent runs in an isolated QEMU VM with:
 
 | Package | Description | Path |
 |---------|-------------|------|
-| **[novaic-gateway](novaic-gateway)** | Control plane: REST API + SSE + ReAct Agent + SQLite | `novaic-gateway` |
+| **[novaic-gateway](novaic-gateway)** | Control plane: REST API + SSE + ReAct Agent + SQLite + Embedded Tools | `novaic-gateway` |
 | **[novaic-app](novaic-app)** | Desktop client (Tauri + React + VNC + Dashboard) | `novaic-app` |
-| **[novaic-mcp-vmuse](novaic-mcp-vmuse)** | VM-based MCP server with 35+ tools (desktop, browser, shell, files) | `novaic-mcp-vmuse` |
-| **[novaic-mcp-session](novaic-mcp-session)** | Host-based session management MCP server | `novaic-mcp-session` |
-| **[novaic-mcp-memory](novaic-mcp-memory)** | Host-based memory system MCP server (key-value + goals) | `novaic-mcp-memory` |
-| **[novaic-mcp-chat](novaic-mcp-chat)** | Agent↔User communication MCP server (questions, answers, notifications) | `novaic-mcp-chat` |
-| **[novaic-mcp-local](novaic-mcp-local)** | Host-based local file access MCP server | `novaic-mcp-local` |
-| **[novaic-mcp-qemudebug](novaic-mcp-qemudebug)** | QEMU debugging and VM inspection MCP server | `novaic-mcp-qemudebug` |
+| **[novaic-mcp-vmuse](novaic-mcp-vmuse)** | VM-based MCP server with 32 tools (desktop, browser, shell, files) | `novaic-mcp-vmuse` |
 | **[novaic-vm](novaic-vm)** | QEMU VM runtime with Ubuntu desktop | `novaic-vm` |
-| **[novaic-web](novaic-web)** | Standalone Web UI (for browser access) | `novaic-web` |
-| **[novaic-agent](novaic-agent)** | Legacy standalone agent (deprecated, migrated to gateway) | `novaic-agent` |
 
-## MCP Tools (40+ Tools across MCP Gateway)
+**Embedded in Gateway** (no separate processes):
+
+| Module | Description |
+|--------|-------------|
+| `embedded_tools.session` | Context management, inbox, rest state (5 tools) |
+| `embedded_tools.memory` | Key-value storage, goals, task history (10 tools) |
+| `embedded_tools.chat` | Agent↔User communication (6 tools) |
+| `embedded_tools.local` | Web search and fetch (2 tools) |
+
+**Legacy/Reference** (source code available but not run as separate processes):
+
+| Package | Description |
+|---------|-------------|
+| `novaic-mcp-session` | Original standalone session MCP server |
+| `novaic-mcp-memory` | Original standalone memory MCP server |
+| `novaic-mcp-chat` | Original standalone chat MCP server |
+| `novaic-mcp-local` | Original standalone local MCP server |
+| `novaic-mcp-qemudebug` | QEMU debugging (optional, can be enabled) |
+
+## MCP Tools (55 Tools via MCP Gateway)
 
 ### MCP Gateway (Unified Entry Point)
 
-The MCP Gateway aggregates all sub-MCP servers and provides:
+The MCP Gateway provides a single endpoint at `/agents/{agent_id}/mcp` with:
 
 | Tool | Description |
 |------|-------------|
@@ -450,7 +446,7 @@ The MCP Gateway aggregates all sub-MCP servers and provides:
 
 **Auto Output Truncation**: When any tool returns >4KB output, it's automatically truncated and stored as a `sync_output` task. Use `task_query(task_id, start_line=1, end_line=100)` to retrieve full content.
 
-### novaic-mcp-vmuse (VM-based, 35+ tools)
+### novaic-mcp-vmuse (VM-based, 32 tools)
 
 #### Desktop Control
 | Tool | Description |
@@ -504,7 +500,9 @@ The MCP Gateway aggregates all sub-MCP servers and provides:
 | `app_state` | Get application state |
 | `clipboard_get/set` | Clipboard operations |
 
-### novaic-mcp-session (Host-based)
+### Embedded Tools (in Gateway process)
+
+#### Session Tools (5 tools)
 | Tool | Description |
 |------|-------------|
 | `agent_context_list` | List all agent contexts (main + subagents) |
@@ -513,40 +511,35 @@ The MCP Gateway aggregates all sub-MCP servers and provides:
 | `agent_inbox` | Check pending events and messages |
 | `agent_rest` | Voluntarily enter rest state with wake conditions |
 
-### novaic-mcp-memory (Host-based)
+#### Memory Tools (10 tools)
 | Tool | Description |
 |------|-------------|
 | `memory_save` | Save key-value data |
 | `memory_recall` | Recall saved data |
 | `memory_delete` | Delete memory entry |
-| `memory_list` | List all memory keys |
+| `memory_list_namespaces` | List all memory namespaces |
+| `task_log` | Log task progress |
+| `task_history` | Get task execution history |
 | `goal_set` | Set a goal |
-| `goal_get` | Get goal status |
 | `goal_progress` | Update goal progress |
 | `goal_complete` | Mark goal as complete |
+| `session_state` | Get/set session state |
 
-### novaic-mcp-chat (Host-based)
+#### Chat Tools (6 tools)
 | Tool | Description |
 |------|-------------|
-| `ask_user` | Ask user a question and wait for answer |
-| `notify_user` | Send notification to user |
-| `chat_history` | Get chat history with user |
+| `chat_reply` | Send reply to user |
+| `chat_ask` | Ask user a question |
+| `chat_notify` | Send notification to user |
+| `chat_show_image` | Display image to user |
+| `chat_history` | Get chat history |
+| `chat_get_message` | Get specific message |
 
-### novaic-mcp-local (Host-based)
+#### Local Tools (2 tools)
 | Tool | Description |
 |------|-------------|
-| `local_read_file` | Read file from host machine |
-| `local_write_file` | Write file to host machine |
-| `local_list_files` | List files on host machine |
-| `local_execute` | Execute command on host |
-
-### novaic-mcp-qemudebug (Host-based)
-| Tool | Description |
-|------|-------------|
-| `qemu_status` | Get QEMU VM status |
-| `qemu_info` | Get VM information |
-| `ssh_exec` | Execute command via SSH |
-| `port_check` | Check if port is accessible |
+| `web_search` | Search the web |
+| `web_fetch` | Fetch web page content |
 
 ## Demo
 
@@ -653,10 +646,10 @@ Agents can autonomously manage their workflow:
 
 ### ToolRegistry (Unified Tool Management)
 Single entry point for all MCP tools:
-- Aggregates tools from 6 MCP servers
+- Aggregates 32 tools from VM MCP server
+- Registers 23 embedded tools from Gateway
 - Auto-discovery and registration
 - Health checks and reconnection
-- Conflict resolution (priority-based)
 
 ### EventBus (Publish/Subscribe)
 System-wide event handling:
