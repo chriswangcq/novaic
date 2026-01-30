@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { ChevronDown, Plus, Trash2, Monitor, Loader2 } from 'lucide-react';
+import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '../../store';
 import type { AICAgent } from '../../services/api';
 
@@ -69,6 +70,18 @@ export function AgentSelector({ onCreateNew }: AgentSelectorProps) {
 
     setIsLoading(true);
     try {
+      // Stop VM first if it's running
+      const agent = agents.find(a => a.id === agentId);
+      if (agent && (agent.status === 'running' || agent.status === 'ready')) {
+        console.log('[AgentSelector] Stopping VM before delete');
+        try {
+          await invoke('stop_vm');
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } catch (e) {
+          console.warn('[AgentSelector] Failed to stop VM, continuing with delete:', e);
+        }
+      }
+      
       await deleteAgent(agentId);
     } catch (error) {
       console.error('Failed to delete agent:', error);

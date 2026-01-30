@@ -568,6 +568,7 @@ class TaskManager:
                 timeout_minutes=timeout_seconds // 60 if timeout_seconds else 30,
                 announce=False,  # We handle notifications ourselves
                 context=task.config.context,
+                copy_context=True,  # Default to copying context for agent tasks
             )
             
             # Spawn sub-agent

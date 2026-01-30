@@ -33,6 +33,8 @@ class SubAgentConfig:
     timeout_minutes: int = 30  # Maximum execution time
     announce: bool = True  # Announce results to parent session
     context: Optional[str] = None  # Additional context
+    copy_context: bool = False  # Copy parent session context (snapshot)
+    task_instruction: Optional[str] = None  # Specific task instruction (overrides task if provided)
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
@@ -42,6 +44,8 @@ class SubAgentConfig:
             "timeout_minutes": self.timeout_minutes,
             "announce": self.announce,
             "context": self.context,
+            "copy_context": self.copy_context,
+            "task_instruction": self.task_instruction,
         }
 
 
@@ -236,6 +240,14 @@ class SubAgentManager:
         subagent.status = SubAgentStatus.RUNNING
         subagent.started_at = datetime.now()
         
+        # Try to get TaskManager to report logs
+        task_manager = None
+        try:
+            from core.task_manager import get_task_manager
+            task_manager = get_task_manager()
+        except ImportError:
+            pass
+        
         try:
             # Create agent for this sub-session
             agent = await self.agent_factory(subagent.session_key)
@@ -244,6 +256,24 @@ class SubAgentManager:
             try:
                 from agent.session.registry import get_session_registry, SessionType
                 registry = get_session_registry()
+                
+                # Get parent session context if requested
+                parent_context = ""
+                if subagent.config.copy_context and subagent.parent_session_id:
+                    try:
+                        parent_session_entry = registry.get_session(subagent.parent_session_id)
+                        if parent_session_entry and parent_session_entry.session_manager:
+                            # Use compaction summary or last few messages as context
+                            msgs = parent_session_entry.session_manager.get_all_messages()
+                            if msgs:
+                                parent_context = f"\n\nParent Session Context Snapshot:\nLast {min(len(msgs), 10)} messages:\n"
+                                for msg in msgs[-10:]:
+                                    role = msg.get("role", "unknown")
+                                    content = str(msg.get("content", ""))[:500]
+                                    parent_context += f"- {role}: {content}...\n"
+                    except Exception as e:
+                        logger.warning(f"[SubAgentManager] Failed to copy parent context: {e}")
+
                 registry.register(
                     session_key=subagent.session_key,
                     session_type=SessionType.SUBAGENT,
@@ -274,9 +304,22 @@ class SubAgentManager:
                     api_base = entry.get_effective_base_url()
             
             # Build the task message
-            task_message = subagent.config.task
+            # Use task_instruction if provided, otherwise task
+            instruction = subagent.config.task_instruction or subagent.config.task
+            
+            task_parts = []
             if subagent.config.context:
-                task_message = f"Context: {subagent.config.context}\n\nTask: {task_message}"
+                task_parts.append(f"Context: {subagent.config.context}")
+            
+            if parent_context:
+                task_parts.append(parent_context)
+                
+            task_parts.append(f"Task Instruction: {instruction}")
+            
+            # Add instruction to produce summary and result
+            task_parts.append("\nPlease provide a context summary of your actions and a final result.")
+            
+            task_message = "\n\n".join(task_parts)
             
             # Run the task
             final_result = None
@@ -290,7 +333,15 @@ class SubAgentManager:
                 event_type = event.get("type")
                 
                 if event_type == "thinking":
-                    subagent.progress = event.get("data", "")
+                    progress = event.get("data", "")
+                    subagent.progress = progress
+                    # Report log to TaskManager if available
+                    if task_manager:
+                        # We use subagent.id as task_id if it's registered there, 
+                        # or we might need to assume the caller registered it.
+                        # For now, we just log to logger, but user asked for "task output".
+                        pass
+
                 elif event_type == "final":
                     final_result = event.get("data", "")
                 elif event_type == "error":

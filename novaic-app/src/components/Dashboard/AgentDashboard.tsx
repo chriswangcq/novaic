@@ -395,6 +395,19 @@ export function AgentDashboard({ onEnterWorkspace, onEnterSetup }: AgentDashboar
   const confirmDeleteAgent = async () => {
     if (!deleteConfirm) return;
     try {
+      // Stop VM first if it's running
+      const agent = agents.find(a => a.id === deleteConfirm.agentId);
+      if (agent && (agent.status === 'running' || agent.status === 'ready')) {
+        console.log('[Dashboard] Stopping VM before delete');
+        try {
+          await invoke('stop_vm');
+          // Wait a bit for VM to fully stop
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } catch (e) {
+          console.warn('[Dashboard] Failed to stop VM, continuing with delete:', e);
+        }
+      }
+      
       await deleteAgent(deleteConfirm.agentId);
     } catch (error) {
       console.error('Failed to delete agent:', error);

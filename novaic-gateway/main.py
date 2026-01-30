@@ -366,8 +366,29 @@ async def initialize_systems(config):
         await agent.initialize()
         return agent
     
+    async def on_subagent_result(parent_session_id: str, result: Any):
+        """Callback for sub-agent results."""
+        if not event_bus:
+            return
+            
+        try:
+            from agent.events.models import AgentEvent
+            # Convert result to dict if needed
+            result_dict = result.to_dict() if hasattr(result, "to_dict") else result
+            
+            event = AgentEvent.subagent_result(
+                subagent_id=result.subagent_id if hasattr(result, "subagent_id") else "unknown",
+                result=result_dict,
+                parent_session_id=parent_session_id,
+            )
+            await event_bus.publish(event)
+            print(f"[Gateway] Published SUBAGENT_RESULT event for {event.payload.get('subagent_id')}")
+        except Exception as e:
+            print(f"[Gateway] Failed to publish subagent result: {e}")
+
     subagent_manager = SubAgentManager(
         agent_factory=create_agent_for_session,
+        on_result=on_subagent_result,
         max_concurrent=5,
     )
     print("[Gateway] SubAgentManager initialized")
@@ -655,6 +676,8 @@ async def spawn_subagent(data: dict):
         timeout_minutes=data.get("timeout_minutes", 30),
         announce=data.get("announce", True),
         context=data.get("context"),
+        copy_context=data.get("copy_context", False),
+        task_instruction=data.get("task_instruction"),
     )
     
     result = await subagent_manager.spawn(
