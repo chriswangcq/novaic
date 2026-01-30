@@ -851,6 +851,7 @@ final_message: "NovAIC VM ready"
         
         @self.mcp.tool()
         async def qemu_start_vm(
+            agent_index: Optional[int] = 0,
             memory: Optional[str] = "4096",
             cpus: Optional[int] = 4,
             daemon: Optional[bool] = True
@@ -861,6 +862,7 @@ final_message: "NovAIC VM ready"
             启动 VM。需要先运行 qemu_create_vm 创建 VM。
             
             Args:
+                agent_index: Agent 索引，用于端口分配 (默认: 0)
                 memory: 内存大小 MB (默认: "4096")
                 cpus: CPU 核心数 (默认: 4)
                 daemon: 后台运行 (默认: True)
@@ -887,11 +889,16 @@ final_message: "NovAIC VM ready"
             try:
                 qemu_system = server._find_qemu_system()
                 
-                # 端口配置
-                vnc_port = server.vnc_port
-                mcp_port = server.mcp_port
-                ssh_port = server.ssh_port
-                ws_port = int(os.environ.get("QEMU_WS_PORT", "20007"))
+                # 中心化端口分配
+                # BASE_PORT=20000, PORTS_PER_AGENT=20
+                # 每个 agent 的端口段: BASE_PORT + agent_index * 20
+                from config.agents import allocate_ports_for_agent
+                ports_config = allocate_ports_for_agent(agent_index or 0)
+                
+                vnc_port = ports_config.vnc
+                mcp_port = ports_config.vm  # VM 内 MCP 端口
+                ssh_port = ports_config.ssh
+                ws_port = ports_config.websocket
                 
                 # 构建命令
                 cmd = [qemu_system]
