@@ -10,7 +10,8 @@ Features:
 - 34+ MCP tools for desktop, browser, shell, files, windows
 - Context awareness (system snapshot, directory analysis)
 - Skills-based instructions (modular, extensible)
-- Result caching for large outputs
+
+Note: Result caching (result_*) has been moved to MCP Gateway.
 """
 
 import json
@@ -28,7 +29,6 @@ from .tools.shell import ShellTools
 from .tools.files import FileTools
 from .tools.windows import WindowTools
 from .tools.context import ContextTools, get_context_tools
-from .tools.result_cache import ResultCache, get_result_cache, truncate_if_needed
 
 
 # ==================== FastMCP Server ====================
@@ -103,103 +103,9 @@ keyboard(action="type", text="Hello")  # 输入文字
 keyboard(action="hotkey", keys=["ctrl", "c"])  # 快捷键
 ```
 
-## Skill 资源
-
-详细操作指南请查看各 skill：
-- skill://desktop - 桌面操作详细指南
-- skill://browser - 浏览器操作详细指南
-- skill://software - 软件操作指南
-- skill://wechat - 微信操作指南
+Note: Skills (skill://*) have been moved to MCP Gateway.
 """
 )
-
-# ==================== Skills as Resources ====================
-
-# 获取 skills 目录路径
-SKILLS_DIR = Path(__file__).parent.parent.parent / "skills"
-
-
-def _load_skill(skill_name: str) -> str:
-    """Load skill content from file"""
-    skill_file = SKILLS_DIR / skill_name / "SKILL.md"
-    if skill_file.exists():
-        return skill_file.read_text(encoding="utf-8")
-    return f"Skill '{skill_name}' not found"
-
-
-# 使用 @mcp.resource 暴露每个 skill
-@mcp.resource("skill://desktop")
-def skill_desktop() -> str:
-    """Desktop control skill - screenshot, mouse, keyboard operations"""
-    return _load_skill("desktop")
-
-
-@mcp.resource("skill://browser")
-def skill_browser() -> str:
-    """Browser automation skill - Playwright-based web operations"""
-    return _load_skill("browser")
-
-
-@mcp.resource("skill://context")
-def skill_context() -> str:
-    """Context awareness skill - environment and system information"""
-    return _load_skill("context")
-
-
-@mcp.resource("skill://shell")
-def skill_shell() -> str:
-    """Shell commands skill - command execution and Python code running"""
-    return _load_skill("shell")
-
-
-@mcp.resource("skill://files")
-def skill_files() -> str:
-    """File operations skill - reading, writing, listing files"""
-    return _load_skill("files")
-
-
-@mcp.resource("skill://windows")
-def skill_windows() -> str:
-    """Window management skill - listing, focusing, resizing windows"""
-    return _load_skill("windows")
-
-
-@mcp.resource("skill://software")
-def skill_software() -> str:
-    """Software management skill - installation and troubleshooting"""
-    return _load_skill("software")
-
-
-@mcp.resource("skill://wechat")
-def skill_wechat() -> str:
-    """WeChat operation skill - messaging, input box, clipboard for newlines"""
-    return _load_skill("wechat")
-
-
-@mcp.resource("skill://list")
-def skill_list() -> str:
-    """List all available skills"""
-    skills = []
-    if SKILLS_DIR.exists():
-        for skill_dir in sorted(SKILLS_DIR.iterdir()):
-            skill_file = skill_dir / "SKILL.md"
-            if skill_file.exists():
-                content = skill_file.read_text(encoding="utf-8")
-                description = ""
-                # 解析 YAML frontmatter
-                if content.startswith("---"):
-                    lines = content.split("\n")
-                    for line in lines[1:]:
-                        if line.strip() == "---":
-                            break
-                        if line.startswith("description:"):
-                            description = line.replace("description:", "").strip()
-                skills.append({
-                    "name": skill_dir.name,
-                    "uri": f"skill://{skill_dir.name}",
-                    "description": description
-                })
-    return json.dumps({"skills": skills}, ensure_ascii=False, indent=2)
 
 
 # ==================== Desktop Tools ====================
@@ -475,41 +381,31 @@ async def browser_close_tab(index: Optional[int] = None) -> Dict[str, Any]:
 # ==================== Shell Tools ====================
 
 @mcp.tool(
-    description="""Execute shell command. Always returns task_id + stdout/stderr tail.
+    description="""Execute shell command synchronously with timeout protection.
 
-**Return format:** { task_id, status, stdout_tail, stderr_tail, exit_code?, ... }
-- status="completed": Command finished, check exit_code
-- status="running": Command still running, use query_task(task_id) to check
+**Return format:** { success, stdout, stderr, exit_code, ... }
+- success: true if exit_code == 0
+- exit_code: process exit code (None if timed out)
+- warning: present if command timed out
 
-**The timeout parameter controls how long to WAIT before returning:**
-- No timeout (default): Wait 3 seconds, then return if not done
-- timeout=10: Wait up to 10 seconds, then return if not done
-- timeout=60: Wait up to 60 seconds, then return if not done
+**Timeout behavior:**
+- Default timeout: 30 seconds
+- If command doesn't complete in time, returns partial output with warning
+- For long-running commands (>30s), use task_async from MCP Gateway
 
-**How to use timeout effectively:**
-Instead of calling query_task repeatedly, use timeout to "sleep and wait":
+**For long-running commands (builds, downloads, etc.):**
+Use task_async from MCP Gateway instead:
+  task_async(tool="run_command", args={"command": "npm run build"}, label="Build")
 
-Bad pattern (old way):
-  run_command("wget file")  # Returns immediately after 3s
-  query_task(id)  # Query after 2s
-  query_task(id)  # Query after 2s
-  query_task(id)  # Query after 2s... (wasteful!)
-
-Good pattern (new way):
-  run_command("wget file", timeout=15)  # Wait 15s before returning
-  # If status="running", then query_task after another 15s
-  query_task(id)  # Check once after appropriate interval
-
-**Recommended timeout values:**
-- Quick commands: timeout=5 (or omit for default 3s)
-- Package installs: timeout=30
-- Large downloads: timeout=20-30
-- Builds/compiles: timeout=60
+**Recommended usage:**
+- Quick commands (ls, cat, etc.): run_command(command="ls -la")
+- Medium commands (installs): run_command(command="pip install pkg", timeout=60)
+- Long commands: Use task_async instead!
 
 Examples:
-- run_command(command="ls -la")  # Fast, uses default 3s
-- run_command(command="wget large.zip", timeout=20)  # Wait 20s
-- run_command(command="apt install pkg", timeout=30)  # Wait 30s"""
+- run_command(command="ls -la")  # Fast command
+- run_command(command="cat file.txt")  # Read file
+- run_command(command="apt update", timeout=60)  # Medium command with longer timeout"""
 )
 async def run_command(
     command: str,
@@ -517,48 +413,18 @@ async def run_command(
     timeout: Optional[int] = None,
     visible: bool = False
 ) -> Dict[str, Any]:
-    """Run shell command, returns task_id + tail"""
+    """Run shell command synchronously with timeout protection"""
     return await ShellTools.run_command(command, cwd, timeout, visible)
 
 
 @mcp.tool(description="Execute Python code directly")
 async def run_python(
     code: str,
+    timeout: Optional[int] = None,
     visible: bool = False
 ) -> Dict[str, Any]:
     """Run Python code"""
-    return await ShellTools.run_python(code, visible)
-
-
-@mcp.tool(description="""Query task status and output tail. Works for running tasks and completed tasks within TTL (5 min).
-
-IMPORTANT: This is a synchronous query - it returns immediately with current state.
-Do NOT call this in a tight loop. Instead:
-1. Estimate task duration based on the command type
-2. Query at appropriate intervals (see run_command best practices)
-3. Use exponential backoff if no progress is seen
-
-Example workflow:
-- Task starts: run_command returns status="running"
-- Wait ~10 seconds before first query (make other tool calls if needed)
-- Query: query_task(task_id)
-- If still running and output changed: wait another interval
-- If still running but no change: increase wait time (exponential backoff)""")
-def query_task(task_id: str, tail_lines: int = 50) -> Dict[str, Any]:
-    """Query task status and result (returns tail of output)"""
-    return ShellTools.query_task(task_id, tail_lines)
-
-
-@mcp.tool(description="List all tracked background tasks")
-def list_tasks() -> Dict[str, Any]:
-    """List background tasks"""
-    return ShellTools.list_tasks()
-
-
-@mcp.tool(description="Clear completed/failed tasks from tracking")
-def clear_tasks() -> Dict[str, Any]:
-    """Clear completed tasks"""
-    return ShellTools.clear_completed_tasks()
+    return await ShellTools.run_python(code, timeout, visible)
 
 
 # ==================== File Tools ====================
@@ -687,47 +553,7 @@ async def environment_info() -> Dict[str, Any]:
     return await ContextTools.environment_info()
 
 
-# ==================== Result Cache Tools ====================
-
-@mcp.tool(description="Get truncated result by ID. Use when output shows result_id")
-async def result_get(
-    result_id: str,
-    start_line: Optional[int] = None,
-    end_line: Optional[int] = None,
-    start_char: Optional[int] = None,
-    length: Optional[int] = None,
-    mode: str = "lines"
-) -> Dict[str, Any]:
-    """Get cached result"""
-    cache = get_result_cache()
-    if mode == "chars":
-        return cache.get_by_chars(
-            result_id,
-            start_char or 0,
-            length,
-            4000
-        )
-    else:
-        return cache.get_by_lines(
-            result_id,
-            start_line or 1,
-            end_line,
-            100
-        )
-
-
-@mcp.tool(description="Get cached result metadata")
-async def result_info(result_id: str) -> Dict[str, Any]:
-    """Get result info"""
-    cache = get_result_cache()
-    return cache.get_info(result_id)
-
-
-@mcp.tool(description="List all cached results")
-async def result_list() -> Dict[str, Any]:
-    """List cached results"""
-    cache = get_result_cache()
-    return cache.list_cached()
+# Note: Result Cache Tools (result_get, result_info, result_list) moved to MCP Gateway
 
 
 # ==================== Main ====================
@@ -736,17 +562,15 @@ def main():
     """Run the MCP server"""
     import uvicorn
     
-    skills_count = len(list(SKILLS_DIR.glob('*/SKILL.md'))) if SKILLS_DIR.exists() else 0
-    
     print(f"""
 ╔═══════════════════════════════════════════════════════════════╗
 ║                                                               ║
-║   🐧 NovAIC - Linux Desktop MCP Server (FastMCP)             ║
+║   🐧 NovAIC VMuse - Linux Desktop MCP Server                 ║
 ║                                                               ║
 ║   MCP Endpoint: http://{settings.host}:{settings.port}/mcp    ║
 ║   Transport: Streamable HTTP                                  ║
 ║                                                               ║
-║   Skills: {skills_count} loaded                                           ║
+║   Note: Skills moved to MCP Gateway                           ║
 ║                                                               ║
 ╚═══════════════════════════════════════════════════════════════╝
     """)

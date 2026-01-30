@@ -1,76 +1,16 @@
 """
-NovAIC MCP Server for Agent Context and Self-Management.
+Session Tools - Agent Context and Self-Management
 
-Provides tools for managing agent contexts and self-scheduling:
-
-Agent Context Tools:
-- agent_context_list: List all active contexts (main + subagents)
-- agent_context_history: Get context message history
-- agent_context_send: Send message to a context
-
-Agent Self-Management Tools:
-- agent_inbox: Check pending events and messages
-- agent_rest: Voluntarily enter rest state with wake conditions
-
-Note: Task tools (task_async, task_query, etc.) are provided by MCP Gateway.
+These tools allow the agent to manage contexts and self-schedule.
+They call the Gateway's internal APIs directly (no external HTTP).
 """
 
 import os
 import httpx
 from typing import Optional, List, Dict, Any
-from fastmcp import FastMCP
 
-# Gateway API endpoint (configurable via environment)
+# Gateway URL for internal API calls
 GATEWAY_URL = os.environ.get("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
-
-mcp = FastMCP(
-    name="novaic-session",
-    instructions="""NovAIC Agent Context & Self-Management
-
-提供 Agent 上下文管理和自主调度能力。
-
-⚠️ 注意：任务工具 (task_async, task_query 等) 由 MCP Gateway 提供，不在此服务中。
-
-## 工具一览
-
-### Agent 上下文工具
-| 工具 | 用途 | 何时使用 |
-|------|------|----------|
-| agent_context_list | 列出所有上下文 | 查看子代理运行情况 |
-| agent_context_history | 查看对话历史 | 了解子代理思考过程 |
-| agent_context_send | 发送消息 | 与子代理通信 |
-
-### 自主调度工具
-| 工具 | 用途 | 何时使用 |
-|------|------|----------|
-| agent_inbox | 检查待处理事件 | 长任务中定期检查 |
-| agent_rest | 进入休息状态 | 等待用户/外部输入 |
-
-## 上下文类型
-
-- **main**: 主对话（用户直接交互）
-- **task:xxx**: 任务上下文（由 task_async 创建）
-- **subagent:xxx**: 子代理上下文（由 agent_call 创建）
-
-## 使用指南
-
-### agent_inbox - 何时检查
-- 执行长任务时，每 3-5 轮检查一次
-- 等待操作完成时（如网页加载）
-- 完成一个子任务后
-
-### agent_rest - 何时休息
-- 需要用户确认才能继续
-- 等待外部事件（如部署完成）
-- 当前任务全部完成
-
-### agent_context_history - 监控子代理
-```python
-# 查看子代理的思考过程
-agent_context_history(context_key="task:abc123", limit=20)
-```
-"""
-)
 
 
 async def _call_gateway(endpoint: str, method: str = "GET", data: Dict = None) -> Dict:
@@ -90,9 +30,6 @@ async def _call_gateway(endpoint: str, method: str = "GET", data: Dict = None) -
         return response.json()
 
 
-# ==================== Agent Context Tools ====================
-
-@mcp.tool()
 async def agent_context_list() -> Dict[str, Any]:
     """
     List all active agent contexts.
@@ -118,10 +55,8 @@ async def agent_context_list() -> Dict[str, Any]:
     """
     try:
         result = await _call_gateway("/sessions")
-        # Rename 'sessions' to 'contexts' for clarity
         if "sessions" in result:
             result["contexts"] = result.pop("sessions")
-            # Rename session_key to context_key in each item
             for ctx in result.get("contexts", []):
                 if "session_key" in ctx:
                     ctx["context_key"] = ctx.pop("session_key")
@@ -130,7 +65,6 @@ async def agent_context_list() -> Dict[str, Any]:
         return {"error": str(e), "contexts": []}
 
 
-@mcp.tool()
 async def agent_context_history(
     context_key: str,
     limit: Optional[int] = 50,
@@ -176,7 +110,6 @@ async def agent_context_history(
         return {"error": str(e), "context_key": context_key, "messages": []}
 
 
-@mcp.tool()
 async def agent_context_send(
     context_key: str,
     message: str,
@@ -224,9 +157,6 @@ async def agent_context_send(
         return {"error": str(e), "success": False, "context_key": context_key}
 
 
-# ==================== Agent Self-Management Tools ====================
-
-@mcp.tool()
 async def agent_inbox() -> Dict[str, Any]:
     """
     Check the inbox for pending events and messages.
@@ -256,7 +186,6 @@ async def agent_inbox() -> Dict[str, Any]:
         return {"error": str(e), "pending_count": 0, "events": []}
 
 
-@mcp.tool()
 async def agent_rest(
     reason: str,
     wake_triggers: Optional[List[Dict[str, Any]]] = None,
@@ -320,26 +249,3 @@ async def agent_rest(
             return response.json()
     except httpx.HTTPError as e:
         return {"error": str(e), "success": False}
-
-
-def main():
-    """Run the MCP server."""
-    import sys
-    
-    # Default to streamable HTTP transport
-    # Default port 20001 = BASE_PORT(20000) + Agent0(0*20) + SESSION_OFFSET(1)
-    transport = os.environ.get("MCP_TRANSPORT", "streamable-http")
-    host = os.environ.get("MCP_HOST", "0.0.0.0")
-    port = int(os.environ.get("MCP_PORT", "20001"))
-    
-    if transport == "streamable-http":
-        mcp.run(transport="streamable-http", host=host, port=port)
-    elif transport == "stdio":
-        mcp.run(transport="stdio")
-    else:
-        print(f"Unknown transport: {transport}", file=sys.stderr)
-        sys.exit(1)
-
-
-if __name__ == "__main__":
-    main()

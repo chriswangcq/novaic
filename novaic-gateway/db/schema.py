@@ -3,9 +3,10 @@ Database Schema Definition
 
 Defines all tables for the NovAIC Gateway SQLite database.
 Simplified in v3: unified chat_messages table with read field.
+v4: Added unified task system (tasks, task_outputs tables).
 """
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 5
 
 SCHEMA_SQL = """
 -- ========================================
@@ -181,6 +182,51 @@ CREATE TABLE IF NOT EXISTS agent_runtime_state (
 );
 
 CREATE INDEX IF NOT EXISTS idx_agent_runtime_state_agent ON agent_runtime_state(agent_id);
+
+-- ========================================
+-- 8. Unified Task System Tables
+-- ========================================
+-- Supports async tasks: agent sub-tasks, shell commands, browser automation, etc.
+
+CREATE TABLE IF NOT EXISTS tasks (
+    id TEXT PRIMARY KEY,
+    type TEXT NOT NULL,                  -- agent, shell, browser, tool, sync_output, custom
+    label TEXT,                          -- Human-readable label
+    config TEXT,                         -- JSON: task configuration
+    status TEXT DEFAULT 'pending',       -- pending, running, completed, failed, cancelled
+    
+    created_at TEXT DEFAULT (datetime('now')),
+    started_at TEXT,
+    completed_at TEXT,
+    
+    result TEXT,                         -- JSON: task result (truncated for sync_output)
+    result_summary TEXT,                 -- LLM-generated summary
+    error TEXT,                          -- Error message if failed
+    
+    output_file TEXT,                    -- Path to full output file (for large outputs)
+    ttl_hours INTEGER DEFAULT 168,       -- Time-to-live in hours (default: 7 days)
+    expires_at TEXT,                     -- Expiration timestamp
+    
+    parent_session_key TEXT,             -- Session that created this task
+    agent_id TEXT DEFAULT 'default',     -- Agent that owns this task
+    notify_on TEXT DEFAULT '["complete", "error"]'  -- JSON: events to notify on
+);
+
+CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+CREATE INDEX IF NOT EXISTS idx_tasks_agent ON tasks(agent_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_created ON tasks(created_at);
+
+CREATE TABLE IF NOT EXISTS task_outputs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id TEXT NOT NULL,
+    ts TEXT DEFAULT (datetime('now')),
+    type TEXT,                           -- tool_call, tool_result, message, stdout, stderr
+    content TEXT,                        -- JSON or text content
+    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_task_outputs_task ON task_outputs(task_id);
+CREATE INDEX IF NOT EXISTS idx_task_outputs_ts ON task_outputs(ts);
 """
 
 DEFAULT_CONFIG = {
@@ -386,11 +432,110 @@ async def run_migration(conn, from_version: int):
         # Drop old index on execution_logs
         await conn.execute("DROP INDEX IF EXISTS idx_execution_logs_message_id")
         
-        # Update schema version
+        # Update schema version to 3
+        await conn.execute(
+            "INSERT OR REPLACE INTO config (key, value) VALUES ('version', ?)",
+            ("3",)
+        )
+        
+        await conn.commit()
+        print("[DB] Migration to v3 complete")
+    
+    if from_version < 4:
+        print("[DB] Running migration from v3 to v4...")
+        
+        # Migration from v3 to v4:
+        # Add unified task system tables (tasks, task_outputs)
+        # These are created by SCHEMA_SQL, but we need to ensure indexes exist
+        
+        # Create tasks table if not exists
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS tasks (
+                id TEXT PRIMARY KEY,
+                type TEXT NOT NULL,
+                label TEXT,
+                config TEXT,
+                status TEXT DEFAULT 'pending',
+                created_at TEXT DEFAULT (datetime('now')),
+                started_at TEXT,
+                completed_at TEXT,
+                result TEXT,
+                result_summary TEXT,
+                error TEXT,
+                parent_session_key TEXT,
+                agent_id TEXT DEFAULT 'default',
+                notify_on TEXT DEFAULT '["complete", "error"]'
+            )
+        """)
+        
+        # Create task_outputs table if not exists
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS task_outputs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                task_id TEXT NOT NULL,
+                ts TEXT DEFAULT (datetime('now')),
+                type TEXT,
+                content TEXT,
+                FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+            )
+        """)
+        
+        # Create indexes
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_tasks_agent ON tasks(agent_id)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_tasks_created ON tasks(created_at)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_task_outputs_task ON task_outputs(task_id)")
+        await conn.execute("CREATE INDEX IF NOT EXISTS idx_task_outputs_ts ON task_outputs(ts)")
+        
+        # Update schema version to 4
         await conn.execute(
             "INSERT OR REPLACE INTO config (key, value) VALUES ('version', ?)",
             (str(SCHEMA_VERSION),)
         )
         
         await conn.commit()
-        print("[DB] Migration to v3 complete")
+        print("[DB] Migration to v4 complete")
+    
+    if from_version < 5:
+        print("[DB] Running migration from v4 to v5...")
+        
+        # Migration from v4 to v5:
+        # Add output_file, ttl_hours, expires_at columns to tasks table
+        # for unified task/result system
+        
+        # Check if columns already exist
+        cursor = await conn.execute("PRAGMA table_info(tasks)")
+        columns = [row[1] for row in await cursor.fetchall()]
+        
+        if 'output_file' not in columns:
+            print("[DB] Adding 'output_file' column to tasks")
+            await conn.execute("ALTER TABLE tasks ADD COLUMN output_file TEXT")
+        
+        if 'ttl_hours' not in columns:
+            print("[DB] Adding 'ttl_hours' column to tasks")
+            await conn.execute("ALTER TABLE tasks ADD COLUMN ttl_hours INTEGER DEFAULT 168")
+        
+        if 'expires_at' not in columns:
+            print("[DB] Adding 'expires_at' column to tasks")
+            await conn.execute("ALTER TABLE tasks ADD COLUMN expires_at TEXT")
+        
+        # Set default expires_at for existing tasks (7 days from created_at)
+        await conn.execute("""
+            UPDATE tasks 
+            SET expires_at = datetime(created_at, '+' || COALESCE(ttl_hours, 168) || ' hours')
+            WHERE expires_at IS NULL
+        """)
+        
+        # Create index for expires_at for efficient cleanup
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tasks_expires ON tasks(expires_at)"
+        )
+        
+        # Update schema version to 5
+        await conn.execute(
+            "INSERT OR REPLACE INTO config (key, value) VALUES ('version', ?)",
+            (str(SCHEMA_VERSION),)
+        )
+        
+        await conn.commit()
+        print("[DB] Migration to v5 complete")

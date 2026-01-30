@@ -8,12 +8,11 @@ Packages the Gateway into a standalone executable using PyInstaller.
 import subprocess
 import sys
 import os
+import shutil
 from pathlib import Path
 
 def main():
     gateway_dir = Path(__file__).parent
-    
-    # Ensure we're in the gateway directory
     os.chdir(gateway_dir)
     
     # Install PyInstaller if not available
@@ -23,35 +22,35 @@ def main():
         print("[Build] Installing PyInstaller...")
         subprocess.run([sys.executable, "-m", "pip", "install", "pyinstaller"], check=True)
     
-    # PyInstaller command
-    # Use --onedir for faster startup (no extraction needed)
+    # Clean previous build
+    print("[Build] Cleaning previous build...")
+    for d in ["build", "dist", "__pycache__"]:
+        if (gateway_dir / d).exists():
+            shutil.rmtree(gateway_dir / d)
+    
+    # PyInstaller command - put --collect-all FIRST for reliable collection
     cmd = [
         sys.executable, "-m", "PyInstaller",
         "--onedir",
-        "--noconfirm",  # Overwrite output without asking
+        "--noconfirm",
         "--name", "novaic-gateway",
         "--distpath", "dist",
         "--workpath", "build",
         "--specpath", "build",
-        # Hidden imports that PyInstaller might miss
-        "--hidden-import", "uvicorn.logging",
-        "--hidden-import", "uvicorn.protocols.http",
-        "--hidden-import", "uvicorn.protocols.http.auto",
-        "--hidden-import", "uvicorn.protocols.http.h11_impl",
-        "--hidden-import", "uvicorn.protocols.websockets",
-        "--hidden-import", "uvicorn.protocols.websockets.auto",
-        "--hidden-import", "uvicorn.protocols.websockets.wsproto_impl",
-        "--hidden-import", "uvicorn.lifespan",
-        "--hidden-import", "uvicorn.lifespan.on",
-        "--hidden-import", "uvicorn.lifespan.off",
-        "--hidden-import", "httpx",
-        "--hidden-import", "httpx._transports",
-        "--hidden-import", "httpx._transports.default",
-        "--hidden-import", "anyio",
-        "--hidden-import", "anyio._backends",
-        "--hidden-import", "anyio._backends._asyncio",
-        # Database - collect all aiosqlite modules
+        # IMPORTANT: --collect-all must come first for reliable package collection
+        "--collect-all", "fastmcp",
+        "--collect-all", "mcp",
+        "--collect-all", "starlette",
         "--collect-all", "aiosqlite",
+        "--collect-all", "bs4",
+        "--collect-all", "html2text",
+        "--collect-all", "readability",
+        # Hidden imports for modules that might be missed
+        "--hidden-import", "uvicorn.logging",
+        "--hidden-import", "httpx",
+        "--hidden-import", "anyio",
+        "--hidden-import", "aiofiles",
+        "--hidden-import", "embedded_tools",
         # Main entry point
         "main.py",
     ]
@@ -62,6 +61,15 @@ def main():
     result = subprocess.run(cmd)
     
     if result.returncode == 0:
+        # Copy skills directory to dist
+        skills_src = gateway_dir / "skills"
+        skills_dst = gateway_dir / "dist" / "novaic-gateway" / "_internal" / "skills"
+        if skills_src.exists():
+            if skills_dst.exists():
+                shutil.rmtree(skills_dst)
+            shutil.copytree(skills_src, skills_dst)
+            print(f"[Build] Copied skills to: {skills_dst}")
+        
         print("\n[Build] Success!")
         print(f"[Build] Output: {gateway_dir / 'dist' / 'novaic-gateway'}")
     else:

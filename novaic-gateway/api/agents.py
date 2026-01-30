@@ -14,6 +14,7 @@ from config.agents import (
     VmConfig,
     PortConfig,
 )
+from mcp_gateway.manager import get_mcp_gateway_manager
 
 router = APIRouter(prefix="/api/agents", tags=["agents"])
 
@@ -138,6 +139,15 @@ async def create_agent(request: CreateAgentRequest):
             cpus=request.cpus,
             source_image=request.source_image,
         )
+        
+        # Setup MCP Gateway for the new agent
+        mcp_manager = get_mcp_gateway_manager()
+        if mcp_manager:
+            await mcp_manager.add_agent(
+                agent_id=agent.id,
+                agent_index=agent.vm.agent_index,
+            )
+        
         return AgentResponse(**agent.model_dump())
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -161,6 +171,11 @@ async def update_agent(agent_id: str, request: UpdateAgentRequest):
 async def delete_agent(agent_id: str):
     """Delete an agent and its VM files"""
     manager = get_agent_config_manager()
+    
+    # Remove MCP Gateway first
+    mcp_manager = get_mcp_gateway_manager()
+    if mcp_manager:
+        await mcp_manager.remove_agent(agent_id)
     
     if not manager.delete_agent(agent_id):
         raise HTTPException(status_code=404, detail="Agent not found")
@@ -190,4 +205,64 @@ async def get_agent_status(agent_id: str):
         "agent_id": agent_id,
         "status": agent.status,
         "ports": agent.vm.ports.model_dump()
+    }
+
+
+# ==================== MCP Gateway Management ====================
+
+@router.get("/{agent_id}/mcp/status")
+async def get_agent_mcp_status(agent_id: str):
+    """
+    Get agent MCP Gateway status.
+    
+    Returns gateway stats including tool count, skill count, and mount path.
+    """
+    mcp_manager = get_mcp_gateway_manager()
+    if not mcp_manager:
+        raise HTTPException(status_code=503, detail="MCP Gateway Manager not available")
+    
+    gateway = mcp_manager.get_gateway(agent_id)
+    if not gateway:
+        raise HTTPException(status_code=404, detail="MCP Gateway not found for this agent")
+    
+    return {
+        "agent_id": agent_id,
+        "mount_path": mcp_manager.get_mount_path(agent_id),
+        "stats": gateway.get_stats()
+    }
+
+
+@router.post("/{agent_id}/mcp/refresh")
+async def refresh_agent_mcp(agent_id: str):
+    """
+    Refresh agent MCP Gateway.
+    
+    Re-discovers tools and skills from sub-servers.
+    Use this after sub-MCP servers are restarted or updated.
+    """
+    mcp_manager = get_mcp_gateway_manager()
+    if not mcp_manager:
+        raise HTTPException(status_code=503, detail="MCP Gateway Manager not available")
+    
+    success = await mcp_manager.refresh_agent(agent_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Agent not found or refresh failed")
+    
+    return {"status": "ok", "message": "MCP Gateway refreshed"}
+
+
+@router.get("/mcp/list")
+async def list_mcp_gateways():
+    """
+    List all MCP Gateways.
+    
+    Returns list of all mounted agent MCP gateways with their stats.
+    """
+    mcp_manager = get_mcp_gateway_manager()
+    if not mcp_manager:
+        raise HTTPException(status_code=503, detail="MCP Gateway Manager not available")
+    
+    return {
+        "gateways": mcp_manager.list_agents(),
+        "stats": mcp_manager.get_stats()
     }

@@ -136,6 +136,9 @@ logger = logging.getLogger("gateway")
 logger.info(f"Log file: {LOG_FILE}")
 print(f"[Gateway] Stdout/stderr redirected to {LOG_FILE}")
 
+import asyncio
+from typing import Optional
+
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -163,6 +166,8 @@ from executor.registry import ToolRegistry
 from agent.wake.controller import WakeController
 from agent.micro.engine import MicroAgentEngine
 from agent.subagent.manager import SubAgentManager
+from core.task_manager import TaskManager, get_task_manager, set_task_manager
+from mcp_gateway.manager import MCPGatewayManager, set_mcp_gateway_manager, get_mcp_gateway_manager
 
 
 # Configuration
@@ -178,7 +183,9 @@ tool_registry: ToolRegistry = None
 wake_controller: WakeController = None
 micro_engine: MicroAgentEngine = None
 subagent_manager: SubAgentManager = None
+task_manager: TaskManager = None
 event_handler: AgentEventHandler = None
+mcp_gateway_manager: MCPGatewayManager = None
 
 
 # ==================== Component Accessors ====================
@@ -213,6 +220,11 @@ def get_subagent_manager() -> SubAgentManager:
     return subagent_manager
 
 
+def get_task_mgr() -> TaskManager:
+    """Get the global TaskManager instance."""
+    return task_manager
+
+
 def get_event_handler() -> AgentEventHandler:
     """Get the global AgentEventHandler instance."""
     return event_handler
@@ -244,7 +256,7 @@ async def publish_user_event(
 
 async def initialize_systems(config):
     """Initialize all system components."""
-    global event_bus, state_manager, tool_registry, wake_controller, micro_engine, subagent_manager, event_handler
+    global event_bus, state_manager, tool_registry, wake_controller, micro_engine, subagent_manager, task_manager, event_handler
     
     # Initialize EventBus
     event_bus = EventBus()
@@ -279,60 +291,34 @@ async def initialize_systems(config):
         ports = allocate_ports_for_agent(0)
         print(f"[Gateway] No current agent, using default ports (Agent 0)")
     
-    # Register VM MCP Server (primary, in VM)
+    # Register VM MCP Server (runs inside the virtual machine)
     tool_registry.register_server(
         name="vm",
         port=ports.vm,
         priority=0,  # Highest priority
     )
     
-    # Register Session MCP Server (host)
-    session_enabled = os.getenv("NOVAIC_MCP_SESSION_ENABLED", "true").lower() == "true"
-    tool_registry.register_server(
-        name="session",
-        port=ports.session,
-        enabled=session_enabled,
-        priority=1,
-    )
+    # Register QEMU Debug MCP Server (optional fallback, runs on host)
+    qemu_enabled = os.getenv("NOVAIC_MCP_QEMUDEBUG_ENABLED", "false").lower() == "true"
+    if qemu_enabled:
+        tool_registry.register_server(
+            name="qemudebug",
+            port=ports.qemudebug,
+            enabled=True,
+            priority=3,  # Lowest priority
+        )
     
-    # Register Local MCP Server (host)
-    local_enabled = os.getenv("NOVAIC_MCP_LOCAL_ENABLED", "true").lower() == "true"
-    tool_registry.register_server(
-        name="local",
-        port=ports.local,
-        enabled=local_enabled,
-        priority=2,
-    )
+    # Note: session/local/memory/chat tools are now embedded in Gateway
+    # They run directly in the Gateway process, no external MCP services needed
     
-    # Register QEMU MCP Server (host)
-    qemu_enabled = os.getenv("NOVAIC_MCP_QEMUDEBUG_ENABLED", "false").lower() == "true"  # Default disabled (fallback only)
-    tool_registry.register_server(
-        name="qemudebug",
-        port=ports.qemudebug,
-        enabled=qemu_enabled,
-        priority=3,  # Lowest priority
-    )
+    # Initialize embedded memory module
+    from embedded_tools.memory import init_memory_dir
+    from pathlib import Path
+    init_memory_dir(Path(NOVAIC_DATA_DIR))
     
-    # Register Memory MCP Server (host)
-    memory_enabled = os.getenv("NOVAIC_MCP_MEMORY_ENABLED", "true").lower() == "true"  # Default enabled
-    tool_registry.register_server(
-        name="memory",
-        port=ports.memory,
-        enabled=memory_enabled,
-        priority=1,  # High priority (host-based memory)
-    )
-    
-    # Register Chat MCP Server (host - Agent<->User communication)
-    chat_enabled = os.getenv("NOVAIC_MCP_CHAT_ENABLED", "true").lower() == "true"  # Default enabled
-    tool_registry.register_server(
-        name="chat",
-        port=ports.chat,
-        enabled=chat_enabled,
-        priority=0,  # Highest priority (essential for user interaction)
-    )
-    
-    print(f"[Gateway] ToolRegistry initialized with {len(tool_registry._servers)} servers")
-    print(f"[Gateway] Ports: vm={ports.vm}, session={ports.session}, local={ports.local}, memory={ports.memory}, chat={ports.chat}, qemudebug={ports.qemudebug}")
+    print(f"[Gateway] ToolRegistry initialized with {len(tool_registry._servers)} external servers")
+    print(f"[Gateway] VM port: {ports.vm}" + (f", qemudebug port: {ports.qemudebug}" if qemu_enabled else ""))
+    print(f"[Gateway] Embedded tools: session, local, memory, chat (no external ports)")
     
     # Initialize WakeController
     wake_controller = WakeController(
@@ -390,6 +376,28 @@ async def initialize_systems(config):
     )
     print("[Gateway] SubAgentManager initialized")
     
+    # Initialize TaskManager (unified task system)
+    from db.database import get_database
+    
+    def llm_factory(provider: str, api_base: str, api_key: str):
+        """Create an LLM client for summary generation."""
+        from core.llm_client import OpenAIClient, AnthropicClient, GoogleAIClient
+        if provider == "anthropic":
+            return AnthropicClient(api_key=api_key, base_url=api_base)
+        elif provider == "google":
+            return GoogleAIClient(api_key=api_key)
+        else:
+            return OpenAIClient(api_key=api_key, base_url=api_base)
+    
+    task_manager = TaskManager(
+        db=get_database(),
+        subagent_manager=subagent_manager,
+        event_bus=event_bus,
+        llm_factory=llm_factory,
+    )
+    set_task_manager(task_manager)
+    print("[Gateway] TaskManager initialized")
+    
     # Initialize EventHandler with agent callback
     async def agent_callback(message: str, session_id: str) -> str:
         """Callback to process messages through the agent."""
@@ -425,6 +433,12 @@ async def initialize_systems(config):
     # Start WakeController (starts all enabled triggers)
     await wake_controller.start()
     print("[Gateway] WakeController started")
+    
+    # Cleanup expired tasks on startup
+    if task_manager:
+        cleaned = await task_manager.cleanup_expired()
+        if cleaned:
+            print(f"[Gateway] Cleaned up {cleaned} expired tasks on startup")
 
 
 async def shutdown_systems():
@@ -440,9 +454,32 @@ async def shutdown_systems():
         print("[Gateway] EventBus stopped")
 
 
+_cleanup_task: Optional[asyncio.Task] = None
+
+
+async def periodic_task_cleanup():
+    """Periodically clean up expired tasks (runs every hour)."""
+    while True:
+        try:
+            await asyncio.sleep(3600)  # Wait 1 hour
+            
+            from core.task_manager import get_task_manager
+            tm = get_task_manager()
+            if tm:
+                cleaned = await tm.cleanup_expired()
+                if cleaned:
+                    print(f"[Gateway] Periodic cleanup: removed {cleaned} expired tasks")
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            print(f"[Gateway] Periodic cleanup error: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events"""
+    global mcp_gateway_manager, _cleanup_task
+    
     if SOCKET_PATH:
         print(f"🚀 NovAIC Gateway starting on unix://{SOCKET_PATH}")
     else:
@@ -468,7 +505,37 @@ async def lifespan(app: FastAPI):
     # Initialize all systems
     await initialize_systems(config)
     
+    # Initialize MCP Gateway Manager (after app is ready)
+    mcp_gateway_manager = MCPGatewayManager(app)
+    set_mcp_gateway_manager(mcp_gateway_manager)
+    print("[Gateway] MCPGatewayManager initialized")
+    
+    # Setup MCP Gateways for existing agents
+    try:
+        count = await mcp_gateway_manager.setup_existing_agents()
+        print(f"[Gateway] MCP Gateways setup for {count} agents")
+    except Exception as e:
+        print(f"[Gateway] Warning: Failed to setup MCP Gateways: {e}")
+    
+    # Start periodic cleanup task
+    _cleanup_task = asyncio.create_task(periodic_task_cleanup())
+    print("[Gateway] Periodic task cleanup started (every hour)")
+    
     yield
+    
+    # Cancel cleanup task
+    if _cleanup_task:
+        _cleanup_task.cancel()
+        try:
+            await _cleanup_task
+        except asyncio.CancelledError:
+            pass
+        print("[Gateway] Periodic task cleanup stopped")
+    
+    # Shutdown MCP Gateway Manager
+    if mcp_gateway_manager:
+        await mcp_gateway_manager.close_all()
+        print("[Gateway] MCPGatewayManager closed")
     
     # Shutdown all systems
     await shutdown_systems()
@@ -623,6 +690,77 @@ async def cancel_subagent(subagent_id: str):
         return {"error": "SubAgentManager not initialized", "success": False}
     
     return await subagent_manager.cancel(subagent_id)
+
+
+# ==================== Unified Task API ====================
+
+@app.post("/api/internal/tasks")
+async def create_task(data: dict):
+    """Create a new task (internal API)"""
+    if not task_manager:
+        return {"error": "TaskManager not initialized", "success": False}
+    
+    return await task_manager.spawn(
+        task_type=data.get("task_type", "agent"),
+        config=data.get("task_config", {}),
+        label=data.get("label"),
+        timeout_seconds=data.get("timeout_seconds", 0),
+        notify_on=data.get("notify_on", ["complete", "error"]),
+        parent_session_key=data.get("parent_session_key", "main"),
+        agent_id=data.get("agent_id", "default"),
+    )
+
+
+@app.get("/api/internal/tasks/{task_id}")
+async def get_task_status(task_id: str, include_outputs: bool = False, output_limit: int = 50):
+    """Get task status (internal API)"""
+    if not task_manager:
+        return {"error": "TaskManager not initialized", "success": False}
+    
+    return await task_manager.get_status(
+        task_id=task_id,
+        include_outputs=include_outputs,
+        output_limit=output_limit,
+    )
+
+
+@app.get("/api/internal/tasks")
+async def list_tasks(status: str = None, agent_id: str = None):
+    """List tasks (internal API)"""
+    if not task_manager:
+        return {"error": "TaskManager not initialized", "success": False}
+    
+    status_filter = status.split(",") if status else None
+    return await task_manager.get_status(
+        task_id=None,
+        status_filter=status_filter,
+        agent_id=agent_id,
+    )
+
+
+@app.get("/api/internal/tasks/{task_id}/result")
+async def get_task_result(task_id: str, format: str = "summary"):
+    """Get task result (internal API)"""
+    if not task_manager:
+        return {"error": "TaskManager not initialized", "success": False}
+    
+    return await task_manager.get_result(
+        task_id=task_id,
+        format=format,
+    )
+
+
+@app.post("/api/internal/tasks/{task_id}/cancel")
+async def cancel_task(task_id: str, data: dict = None):
+    """Cancel a task (internal API)"""
+    if not task_manager:
+        return {"error": "TaskManager not initialized", "success": False}
+    
+    reason = data.get("reason") if data else None
+    return await task_manager.cancel(
+        task_id=task_id,
+        reason=reason,
+    )
 
 
 # ==================== Trigger Management API ====================

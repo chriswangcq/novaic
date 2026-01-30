@@ -262,52 +262,117 @@ class NovAICAgent:
         """
         Get formatted inbox context for injection into messages.
         
+        Includes both regular inbox events and task completion notifications.
+        
         Returns:
             Formatted string with inbox summary, or None if empty/unavailable
         """
-        if not self._inbox_callback:
+        lines = []
+        total_pending = 0
+        has_urgent = False
+        recommendation = "continue"
+        
+        # 1. Get regular inbox events
+        if self._inbox_callback:
+            try:
+                inbox = await self._inbox_callback()
+                pending_count = inbox.get("pending_count", 0)
+                total_pending += pending_count
+                
+                if pending_count > 0:
+                    events = inbox.get("events", [])
+                    has_urgent = inbox.get("has_urgent", False)
+                    recommendation = inbox.get("recommendation", "continue")
+                    
+                    for event in events[:5]:  # Show first 5 events
+                        event_type = event.get("type", "unknown")
+                        content = event.get("content", "")
+                        priority = event.get("priority", "normal")
+                        marker = "🔴" if priority == "high" else "⚪"
+                        
+                        if event_type == "user_message":
+                            lines.append(f"  {marker} [用户消息] \"{content}\"")
+                        elif event_type == "task_completed":
+                            task_id = event.get("task_id", "")
+                            label = event.get("label", "")
+                            summary = event.get("summary", "")[:100]
+                            lines.append(f"  ✅ [任务完成] {label} ({task_id}): {summary}")
+                        elif event_type == "task_failed":
+                            task_id = event.get("task_id", "")
+                            label = event.get("label", "")
+                            error = event.get("error", "")[:100]
+                            lines.append(f"  ❌ [任务失败] {label} ({task_id}): {error}")
+                        else:
+                            summary = event.get("summary", "")[:100]
+                            lines.append(f"  {marker} [{event_type}] {summary}")
+            except Exception as e:
+                print(f"[Agent] Failed to get inbox events: {e}")
+        
+        # 2. Get task notifications from TaskManager
+        try:
+            from core.task_manager import get_task_manager
+            task_manager = get_task_manager()
+            
+            if task_manager:
+                # Get recently completed tasks for this session
+                result = await task_manager.get_status(
+                    task_id=None,
+                    status_filter=["completed", "failed"],
+                    agent_id=None,  # Get all tasks
+                )
+                
+                if result.get("success"):
+                    tasks = result.get("tasks", [])
+                    # Filter to tasks completed in the last 5 minutes that haven't been shown
+                    from datetime import datetime, timedelta
+                    cutoff = datetime.now() - timedelta(minutes=5)
+                    
+                    for task in tasks[:5]:  # Show at most 5 task notifications
+                        completed_str = task.get("completed_at")
+                        if completed_str:
+                            try:
+                                completed_at = datetime.fromisoformat(completed_str)
+                                if completed_at > cutoff:
+                                    status = task.get("status", "")
+                                    label = task.get("label", "Unknown task")
+                                    task_id = task.get("task_id", "")
+                                    
+                                    # Only add if not already in lines from inbox
+                                    task_line_check = f"({task_id})"
+                                    if not any(task_line_check in line for line in lines):
+                                        if status == "completed":
+                                            summary = task.get("result_summary", "")[:100]
+                                            lines.append(f"  ✅ [任务完成] {label} ({task_id}): {summary}")
+                                        elif status == "failed":
+                                            error = task.get("error", "")[:100]
+                                            lines.append(f"  ❌ [任务失败] {label} ({task_id}): {error}")
+                                        total_pending += 1
+                            except:
+                                pass
+        except Exception as e:
+            print(f"[Agent] Failed to get task notifications: {e}")
+        
+        # 3. Build final context message
+        if total_pending == 0 and not lines:
             return None
         
-        try:
-            inbox = await self._inbox_callback()
-            pending_count = inbox.get("pending_count", 0)
-            
-            if pending_count == 0:
-                return None
-            
-            events = inbox.get("events", [])
-            has_urgent = inbox.get("has_urgent", False)
-            recommendation = inbox.get("recommendation", "continue")
-            
-            # Build context message
-            lines = [f"📬 [收件箱] 有 {pending_count} 个待处理事件:"]
-            
-            for event in events[:5]:  # Show first 5 events
-                event_type = event.get("type", "unknown")
-                content = event.get("content", "")
-                priority = event.get("priority", "normal")
-                marker = "🔴" if priority == "high" else "⚪"
-                
-                if event_type == "user_message":
-                    lines.append(f"  {marker} [用户消息] \"{content}\"")
-                else:
-                    summary = event.get("summary", "")[:100]
-                    lines.append(f"  {marker} [{event_type}] {summary}")
-            
-            if has_urgent:
-                lines.append("⚠️ 有高优先级事件需要处理")
-            
-            if recommendation == "check_urgent":
-                lines.append("建议: 优先处理高优先级事件")
-            elif recommendation == "process_all":
-                lines.append("建议: 处理积压事件")
-            
-            print(f"[Agent] Inbox context: {pending_count} pending events, urgent={has_urgent}")
-            return "\n".join(lines)
-            
-        except Exception as e:
-            print(f"[Agent] Failed to get inbox context: {e}")
-            return None
+        header = f"📬 [收件箱] 有 {total_pending} 个待处理事件:" if total_pending > 0 else ""
+        
+        if has_urgent:
+            lines.append("⚠️ 有高优先级事件需要处理")
+        
+        if recommendation == "check_urgent":
+            lines.append("建议: 优先处理高优先级事件")
+        elif recommendation == "process_all":
+            lines.append("建议: 处理积压事件")
+        
+        if lines:
+            result_lines = [header] if header else []
+            result_lines.extend(lines)
+            print(f"[Agent] Inbox context: {total_pending} pending events, urgent={has_urgent}")
+            return "\n".join(result_lines)
+        
+        return None
     
     def _get_llm_client(
         self, 

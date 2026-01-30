@@ -34,6 +34,10 @@ class EventType(Enum):
     SUBAGENT_RESULT = "subagent_result"
     SUBAGENT_PROGRESS = "subagent_progress"
     
+    # Task events (unified task system)
+    TASK_COMPLETED = "task_completed"
+    TASK_FAILED = "task_failed"
+    
     # System events
     SYSTEM = "system"
     WAKE_REQUEST = "wake_request"
@@ -251,6 +255,60 @@ class AgentEvent:
             },
             priority=EventPriority.NORMAL,
             session_id=session_id,
+        )
+    
+    @classmethod
+    def task_completed(
+        cls,
+        task_id: str,
+        task_type: str,
+        label: str,
+        summary: str,
+        parent_session_key: Optional[str] = None,
+        **kwargs
+    ) -> "AgentEvent":
+        """Create a task completed event."""
+        return cls(
+            type=EventType.TASK_COMPLETED,
+            source=f"task:{task_id}",
+            payload={
+                "task_id": task_id,
+                "type": task_type,
+                "label": label,
+                "status": "completed",
+                "summary": summary,
+                "parent_session_key": parent_session_key,
+                **kwargs
+            },
+            priority=EventPriority.HIGH,
+            session_id=parent_session_key,
+        )
+    
+    @classmethod
+    def task_failed(
+        cls,
+        task_id: str,
+        task_type: str,
+        label: str,
+        error: str,
+        parent_session_key: Optional[str] = None,
+        **kwargs
+    ) -> "AgentEvent":
+        """Create a task failed event."""
+        return cls(
+            type=EventType.TASK_FAILED,
+            source=f"task:{task_id}",
+            payload={
+                "task_id": task_id,
+                "type": task_type,
+                "label": label,
+                "status": "failed",
+                "error": error,
+                "parent_session_key": parent_session_key,
+                **kwargs
+            },
+            priority=EventPriority.HIGH,
+            session_id=parent_session_key,
         )
 
 

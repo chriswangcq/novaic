@@ -15,12 +15,13 @@ RESOURCES_DIR="novaic-app/src-tauri/resources"
 # Step 1: Build Gateway
 echo "[1/4] Building Gateway..."
 cd novaic-gateway
-if [ ! -d "venv" ]; then
+if [ ! -d ".venv" ]; then
     echo "  Creating virtual environment..."
-    python3 -m venv venv
-    ./venv/bin/pip install -q -r requirements.txt
+    python3 -m venv .venv
 fi
-./venv/bin/python build.py
+echo "  Installing dependencies..."
+./.venv/bin/pip install -q -r requirements.txt
+./.venv/bin/python build.py
 echo "  Gateway built: dist/novaic-gateway"
 cd "$SCRIPT_DIR"
 
@@ -33,7 +34,7 @@ rm -rf "$RESOURCES_DIR/novaic-gateway"
 cp -r novaic-gateway/dist/novaic-gateway "$RESOURCES_DIR/"
 echo "  Copied to: $RESOURCES_DIR/novaic-gateway/"
 
-# Step 3: Copy novaic-mcp-vmuse to Tauri resources
+# Step 3: Copy novaic-mcp-vmuse to Tauri resources (VM-side MCP)
 echo ""
 echo "[3/4] Copying novaic-mcp-vmuse to Tauri resources..."
 rm -rf "$RESOURCES_DIR/novaic-mcp-vmuse"
@@ -59,6 +60,9 @@ if [ -f "novaic-mcp-vmuse/README.md" ]; then
 fi
 
 echo "  novaic-mcp-vmuse packaged to: $RESOURCES_DIR/novaic-mcp-vmuse/"
+
+# Note: Host-side MCP services (session, local, memory, chat) are now
+# embedded in the Gateway. No separate packaging needed.
 
 # Step 4: Build Tauri App
 echo ""

@@ -35,6 +35,9 @@ Unlike temporary sandboxes that reset after each session, NovAIC maintains state
 | **Browser Automation** | Navigate, click, type, scroll — AI controls the browser like a human |
 | **Multi-Agent System** | Create and manage multiple AI agents, each with isolated VM disk |
 | **Persistent State** | SQLite + QCOW2 disk images preserve everything between sessions |
+| **MCP Gateway** | Unified entry point aggregating all MCP servers with async task support |
+| **Unified Task System** | `task_async` for long-running ops, `task_query` for status/output retrieval |
+| **Auto Output Truncation** | Long outputs (>4KB) auto-cached as tasks, queryable via pagination |
 | **Self-Scheduling** | Agents can autonomously check inbox, wake on triggers, run micro-agents |
 | **Memory System** | Host-based key-value storage + goal tracking for cross-session context |
 | **Agent-User Communication** | Dedicated MCP server for questions, answers, and notifications |
@@ -338,17 +341,28 @@ sudo systemctl restart x11vnc
 │  │  │ /api/*      │  │ /sse/chat   │  │  ReAct   │  MCP Clients     │  │
 │  │  └─────────────┘  └─────────────┘  └────┬─────┘                  │  │
 │  │  ┌─────────────────────────────────────┐ │                        │  │
+│  │  │        MCP Gateway (FastMCP)         │ │                        │  │
+│  │  │  Unified entry for all MCP tools     │ │                        │  │
+│  │  │  task_async, task_query, agent_call  │ │                        │  │
+│  │  │  + Auto output truncation            │ │                        │  │
+│  │  └──────────────────┬──────────────────┘ │                        │  │
+│  │  ┌─────────────────────────────────────┐ │                        │  │
 │  │  │        ToolRegistry (Aggregator)     │ │                        │  │
 │  │  │  Routes to: vmuse, session, memory,  │ │                        │  │
 │  │  │             chat, local, qemudebug   │ │                        │  │
 │  │  └──────────────────┬──────────────────┘ │                        │  │
+│  │  ┌─────────────────────────────────────┐ │                        │  │
+│  │  │       TaskManager (Unified)          │ │                        │  │
+│  │  │  sync_output, tool, agent, shell     │ │                        │  │
+│  │  │  + Pagination + TTL cleanup          │ │                        │  │
+│  │  └─────────────────────────────────────┘ │                        │  │
 │  │  ┌─────────────────────────────────────┐ │                        │  │
 │  │  │    EventBus (Publish/Subscribe)      │ │                        │  │
 │  │  │  Events: message, tool, wake, etc.   │ │                        │  │
 │  │  └─────────────────────────────────────┘ │                        │  │
 │  │  ┌─────────────────────────────────────┐ │                        │  │
 │  │  │      SQLite Database (State)         │ │                        │  │
-│  │  │  messages, execution_logs, config    │ │                        │  │
+│  │  │  messages, tasks, execution_logs     │ │                        │  │
 │  │  └─────────────────────────────────────┘ │                        │  │
 │  └──────────────────────────────────────────┼────────────────────────┘  │
 │                                             │ HTTP to MCP Servers       │
@@ -398,7 +412,9 @@ Each agent runs in an isolated QEMU VM with:
 - **UEFI Firmware**: Auto-copied from Homebrew QEMU on ARM64
 - **Cloud-Init ISO**: Auto-generated with SSH keys for secure access
 - **Port Allocation**: 20 ports per agent (Agent 0: 20000-20019, Agent 1: 20020-20039, etc.)
+- **MCP Gateway**: Unified entry point at `/agents/{agent-id}/mcp` aggregating all tools
 - **MCP Servers**: 6 MCP servers (1 in VM + 5 on host) per agent
+- **Skills**: Centrally managed in Gateway, exposed as MCP resources (`skill://desktop`, etc.)
 - **SQLite State**: Persistent state in `~/.novaic/gateway.db`
 
 ## Packages
@@ -417,7 +433,22 @@ Each agent runs in an isolated QEMU VM with:
 | **[novaic-web](novaic-web)** | Standalone Web UI (for browser access) | `novaic-web` |
 | **[novaic-agent](novaic-agent)** | Legacy standalone agent (deprecated, migrated to gateway) | `novaic-agent` |
 
-## MCP Tools (35+ Tools across 6 MCP Servers)
+## MCP Tools (40+ Tools across MCP Gateway)
+
+### MCP Gateway (Unified Entry Point)
+
+The MCP Gateway aggregates all sub-MCP servers and provides:
+
+| Tool | Description |
+|------|-------------|
+| `task_async` | Asynchronously execute any MCP tool (returns task_id) |
+| `task_query` | Query task status, outputs, results with pagination |
+| `task_list` | List all tasks, optionally filtered by status |
+| `task_cancel` | Cancel a running task |
+| `task_summary` | Get AI-generated summary of completed task |
+| `agent_call` | Synchronously delegate complex task to sub-agent |
+
+**Auto Output Truncation**: When any tool returns >4KB output, it's automatically truncated and stored as a `sync_output` task. Use `task_query(task_id, start_line=1, end_line=100)` to retrieve full content.
 
 ### novaic-mcp-vmuse (VM-based, 35+ tools)
 
@@ -476,10 +507,11 @@ Each agent runs in an isolated QEMU VM with:
 ### novaic-mcp-session (Host-based)
 | Tool | Description |
 |------|-------------|
-| `session_list` | List all sessions |
-| `session_get` | Get session details |
-| `session_create` | Create new session |
-| `session_messages` | Get session messages |
+| `agent_context_list` | List all agent contexts (main + subagents) |
+| `agent_context_history` | Get context message history |
+| `agent_context_send` | Send message to a context |
+| `agent_inbox` | Check pending events and messages |
+| `agent_rest` | Voluntarily enter rest state with wake conditions |
 
 ### novaic-mcp-memory (Host-based)
 | Tool | Description |
@@ -531,6 +563,23 @@ NovAIC:
    → Report saved to ~/data/report.html ✅
 ```
 
+**AI runs long build process:**
+
+```
+User: Build the entire project
+
+NovAIC:
+1. task_async(tool="run_command", args={"command": "make -j8"}, label="Build")
+   → Returns task_id: "abc123"
+2. ... continue other work ...
+3. task_query(task_id="abc123") → Check progress
+   → status: "running", running_seconds: 45
+4. task_query(task_id="abc123") → Build complete
+   → status: "completed", result: {exit_code: 0, stdout: "...[truncated]...", stdout_task_id: "so_xyz"}
+5. task_query(task_id="so_xyz", tail_lines=50) → Get build output
+   → Build successful ✅
+```
+
 **AI automates GUI operations:**
 
 ```
@@ -548,11 +597,46 @@ NovAIC:
 ## Key Features Explained
 
 ### SQLite-Based State Management
-All agent state (messages, execution logs, configuration) is persisted in SQLite database at `~/.novaic/gateway.db`. This enables:
+All agent state (messages, execution logs, tasks, configuration) is persisted in SQLite database at `~/.novaic/gateway.db`. This enables:
 - Stateless architecture (Gateway can restart without losing state)
 - Cross-session persistence
 - Efficient querying and filtering
 - Transaction safety
+
+### Unified Task System
+Long-running operations and large outputs are managed through a unified task system:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Unified Task Manager                      │
+│                    (SQLite + Output Files)                   │
+│                                                              │
+│  task_async    → Async execution of any MCP tool            │
+│  task_query    → Query status/output with pagination        │
+│  task_list     → List tasks by status                       │
+│  task_cancel   → Cancel running task                        │
+│  task_summary  → AI-generated result summary                │
+│                                                              │
+│  Types: sync_output (24h TTL) | tool/agent (7d TTL)         │
+│  Storage: SQLite metadata + files for large outputs         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Auto Truncation**: When any tool returns >4KB output:
+1. Output is automatically truncated (first 1.5KB + last 1.5KB)
+2. Full content is saved to file
+3. Returns `task_id` for later retrieval via `task_query`
+
+Example:
+```python
+# Long output auto-truncated
+result = run_command("cat large_file.txt")
+# Returns: {"stdout": "...[truncated]...", "stdout_task_id": "so_abc123"}
+
+# Retrieve full content with pagination
+task_query(task_id="so_abc123", start_line=1, end_line=100)
+task_query(task_id="so_abc123", tail_lines=50)
+```
 
 ### Server-Sent Events (SSE)
 Real-time updates from Gateway to UI via SSE (`/sse/chat/{agent_id}`):
