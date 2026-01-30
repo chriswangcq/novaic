@@ -226,7 +226,8 @@ class AgentMCPGateway:
         if qemu_enabled:
             self.registry.register_server("qemudebug", port=self.ports.qemudebug, enabled=True, priority=3)
         
-        logger.info(f"[MCPGateway] Registered 5 servers for agent {self.agent_index} (VM + 4 sub-MCPs)")
+        server_count = 5 + (1 if qemu_enabled else 0)
+        logger.info(f"[MCPGateway] Registered {server_count} servers for agent {self.agent_index} (VM + 4 sub-MCPs" + (" + qemudebug)" if qemu_enabled else ")"))
     
     async def setup(self) -> None:
         """
