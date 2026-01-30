@@ -69,11 +69,12 @@ class QemuDebugMCPServer(BaseMCPServer):
         logger.info(f"[QemuDebugMCPServer] agent_id={agent_id}, agent_index={self._agent_index}")
         
         # 存储 agent_id 用于后续操作
-        self._init_agent_id = agent_id
+        self._init_agent_id = agent_id or "default"
         
-        # VM Setup configuration
+        # VM Setup configuration - 按 agent_id 隔离
         self.data_dir = os.environ.get("NOVAIC_DATA_DIR", os.path.expanduser("~/.novaic"))
-        self.vm_dir = os.path.join(self.data_dir, "vm")
+        self.agent_dir = os.path.join(self.data_dir, "agents", self._init_agent_id)
+        self.vm_dir = os.path.join(self.agent_dir, "vm")
         self.images_dir = os.path.join(self.vm_dir, "images")
         self.iso_dir = os.path.join(self.vm_dir, "iso")
         self.firmware_dir = os.path.join(self.vm_dir, "firmware")
@@ -81,6 +82,8 @@ class QemuDebugMCPServer(BaseMCPServer):
         
         # VM 运行状态
         self.vm_pid_file = os.path.join(self.vm_dir, ".vm.pid")
+        
+        logger.info(f"[QemuDebugMCPServer] VM dir: {self.vm_dir}")
         
         # 架构检测
         self.arch = platform.machine()

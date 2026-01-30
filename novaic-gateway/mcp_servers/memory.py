@@ -70,15 +70,15 @@ class MemoryMCPServer(BaseMCPServer):
     
     def _get_memory_dir(self) -> Path:
         """获取当前 agent 的内存目录。"""
-        if _base_memory_dir:
-            agent_dir = _base_memory_dir / self._agent_id
-        elif os.environ.get("NOVAIC_DATA_DIR"):
-            agent_dir = Path(os.environ["NOVAIC_DATA_DIR"]) / "memory" / self._agent_id
+        # 统一目录结构: ~/.novaic/agents/{agent_id}/memory/
+        if os.environ.get("NOVAIC_DATA_DIR"):
+            base = Path(os.environ["NOVAIC_DATA_DIR"])
         else:
-            agent_dir = Path.home() / ".novaic" / "memory" / self._agent_id
+            base = Path.home() / ".novaic"
         
-        agent_dir.mkdir(parents=True, exist_ok=True)
-        return agent_dir
+        memory_dir = base / "agents" / self._agent_id / "memory"
+        memory_dir.mkdir(parents=True, exist_ok=True)
+        return memory_dir
     
     def _get_memory_file(self, namespace: str = "default") -> Path:
         """获取指定命名空间的内存文件路径。"""
