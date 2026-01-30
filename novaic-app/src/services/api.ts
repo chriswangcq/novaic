@@ -358,7 +358,7 @@ export const api = {
   /**
    * Update an agent
    */
-  async updateAgent(agentId: string, data: Partial<{ name: string; vm: Partial<VmConfig> }>): Promise<AICAgent> {
+  async updateAgent(agentId: string, data: Partial<{ name: string; vm: Partial<VmConfig>; status: string }>): Promise<AICAgent> {
     return invoke<AICAgent>('gateway_patch', { 
       path: `/api/agents/${agentId}`, 
       body: data 

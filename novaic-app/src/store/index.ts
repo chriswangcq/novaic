@@ -558,6 +558,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
       if (!updatedAgent) throw new Error('Agent not found after VM start');
 
       // Step 4: Mark as running - Agent will handle deployment via agent-bootstrap skill
+      // Update status in Gateway (this also triggers MCP Gateway setup)
+      await api.updateAgent(agentId, { status: 'running' });
+      
+      // Update local state
       updateAgentStatus(agentId, 'running', undefined);
       console.log('[Store] VM started, Agent will take over deployment:', agentId);
 

@@ -36,6 +36,7 @@ class UpdateAgentRequest(BaseModel):
     """Request to update an agent"""
     name: Optional[str] = None
     vm: Optional[dict] = None
+    status: Optional[str] = None  # pending, creating, running, stopped, error
 
 
 class AgentResponse(BaseModel):
@@ -163,6 +164,15 @@ async def update_agent(agent_id: str, request: UpdateAgentRequest):
     
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
+    
+    # If status changed to running, ensure MCP Gateway is setup
+    if request.status == "running":
+        mcp_manager = get_mcp_gateway_manager()
+        if mcp_manager and not mcp_manager.get_gateway(agent_id):
+            await mcp_manager.add_agent(
+                agent_id=agent.id,
+                agent_index=agent.vm.agent_index,
+            )
     
     return AgentResponse(**agent.model_dump())
 
