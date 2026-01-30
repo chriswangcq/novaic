@@ -215,19 +215,19 @@ class AgentMCPGateway:
         gateway_port = int(os.getenv("NOVAIC_PORT", "19999"))
         base_url = f"http://127.0.0.1:{gateway_port}/agents/{self.agent_id}/sub-mcp"
         
-        # All sub MCPs use HTTP discovery (same as VM)
+        # Default sub MCPs (always enabled)
         self.registry.register_server("agent-context", url=f"{base_url}/agent-context/", priority=1)
         self.registry.register_server("local", url=f"{base_url}/local/", priority=1)
         self.registry.register_server("memory", url=f"{base_url}/memory/", priority=1)
         self.registry.register_server("chat", url=f"{base_url}/chat/", priority=1)
         
-        # QEMU debug server (optional, runs on host)
+        # Optional sub MCPs (enabled via environment)
         qemu_enabled = os.getenv("NOVAIC_MCP_QEMUDEBUG_ENABLED", "false").lower() == "true"
         if qemu_enabled:
-            self.registry.register_server("qemudebug", port=self.ports.qemudebug, enabled=True, priority=3)
+            self.registry.register_server("qemudebug", url=f"{base_url}/qemudebug/", priority=3)
         
         server_count = 5 + (1 if qemu_enabled else 0)
-        logger.info(f"[MCPGateway] Registered {server_count} servers for agent {self.agent_index} (VM + 4 sub-MCPs" + (" + qemudebug)" if qemu_enabled else ")"))
+        logger.info(f"[MCPGateway] Registered {server_count} servers for agent {self.agent_index} (VM + sub-MCPs)")
     
     async def setup(self) -> None:
         """

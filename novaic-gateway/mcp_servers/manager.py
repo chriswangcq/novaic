@@ -7,6 +7,7 @@ SubMCPManager - 子 MCP Server 管理器
 - 管理 lifespan
 """
 
+import os
 import logging
 from typing import Dict, List, Any, Optional, Type
 
@@ -17,6 +18,7 @@ from .agent_context import AgentContextMCPServer
 from .local import LocalMCPServer
 from .memory import MemoryMCPServer
 from .chat import ChatMCPServer
+from .qemudebug import QemuDebugMCPServer
 
 logger = logging.getLogger(__name__)
 
@@ -31,13 +33,29 @@ class SubMCPManager:
     3. 管理 lifespan
     """
     
-    # 默认子 MCP Server 类
+    # 默认子 MCP Server 类 (always enabled)
     DEFAULT_SERVERS: List[Type[BaseMCPServer]] = [
         AgentContextMCPServer,
         LocalMCPServer,
         MemoryMCPServer,
         ChatMCPServer,
     ]
+    
+    # 可选子 MCP Server 类 (enabled via environment)
+    OPTIONAL_SERVERS: Dict[str, Type[BaseMCPServer]] = {
+        "NOVAIC_MCP_QEMUDEBUG_ENABLED": QemuDebugMCPServer,
+    }
+    
+    def _get_enabled_servers(self) -> List[Type[BaseMCPServer]]:
+        """获取所有启用的子 MCP Server 类。"""
+        servers = list(self.DEFAULT_SERVERS)
+        
+        for env_var, server_class in self.OPTIONAL_SERVERS.items():
+            if os.getenv(env_var, "false").lower() == "true":
+                servers.append(server_class)
+                logger.info(f"[SubMCPManager] Optional server enabled: {server_class.name}")
+        
+        return servers
     
     def __init__(self, app: FastAPI, base_path: str = "/agents/{agent_id}/sub-mcp"):
         """
@@ -78,7 +96,7 @@ class SubMCPManager:
         servers = {}
         lifespan_contexts = {}
         
-        for ServerClass in self.DEFAULT_SERVERS:
+        for ServerClass in self._get_enabled_servers():
             try:
                 # 创建 server 实例
                 server = ServerClass()
