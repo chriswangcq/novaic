@@ -14,33 +14,31 @@ description: Setup NovAIC VM from scratch - download image, create VM, start, de
 
 ## 核心原则
 
-### 1. 异步执行
-所有长时间操作都用 `task_async` + `task_query`，不阻塞对话。
-
-### 2. 勤与用户沟通
-每个阶段都用 `chat_notify` 告知进度，让用户知道发生了什么。
-
-### 3. 耐心等待
-VM 启动和 cloud-init 需要时间，多给用户安慰。
+1. **异步执行**: 长时间操作用 `task_async` + `task_query`，不阻塞对话
+2. **勤与用户沟通**: 每个阶段用 `chat_notify` 告知进度
+3. **耐心等待**: VM 启动和 cloud-init 需要时间，多给用户安慰
 
 ## 工具列表
 
-### VM 设置工具 (Host 端)
-| 工具 | 用途 |
-|------|------|
-| `qemu_download_image` | 下载 Ubuntu 云镜像 |
-| `qemu_create_vm` | 创建 VM (磁盘 + cloud-init) |
-| `qemu_start_vm` | 启动 VM |
-| `qemu_deploy_vmuse_code` | 部署 MCP Server 代码 |
+### VM 设置工具 (QemuDebug MCP)
+
+| 工具 | 用途 | 耗时 |
+|------|------|------|
+| `qemu_download_image` | 下载 Ubuntu 云镜像 | ~5分钟 |
+| `qemu_create_vm` | 创建 VM 磁盘 + cloud-init | ~30秒 |
+| `qemu_start_vm` | 启动 VM | ~5秒 |
+| `qemu_deploy_vmuse_code` | 部署 MCP Server 代码 | ~30秒 |
 
 ### VM 调试工具
+
 | 工具 | 用途 |
 |------|------|
-| `qemu_status` | 检查 VM/SSH/MCP 状态 |
+| `qemu_status` | 检查 VM/SSH/VNC/MCP 状态 |
 | `qemu_ssh_exec` | 在 VM 内执行命令 |
 | `qemu_restart` | 重启 VM |
 
 ### 异步和通信
+
 | 工具 | 用途 |
 |------|------|
 | `task_async` | 异步执行工具 |
@@ -48,14 +46,31 @@ VM 启动和 cloud-init 需要时间，多给用户安慰。
 | `chat_notify` | 通知用户 |
 | `chat_ask` | 询问用户 |
 
+## 目录结构
+
+```
+~/.novaic/
+├── shared/                              # 共享资源 (所有 agent 共用)
+│   ├── images/                          # 源镜像
+│   │   └── noble-server-cloudimg-arm64.img
+│   └── firmware/                        # UEFI 固件
+│
+└── agents/{agent_id}/                   # Agent 独立资源
+    └── vm/
+        ├── disk/                        # VM 磁盘
+        │   └── novaic-vm.qcow2
+        ├── iso/                         # cloud-init ISO
+        └── config/                      # cloud-init 配置
+```
+
 ## 执行流程
 
-### 阶段 0: 下载镜像 (首次)
+### 阶段 0: 下载镜像 (首次，约5分钟)
 
 ```python
 chat_notify("📥 检查 Ubuntu 云镜像...", level="info")
 
-# 异步下载镜像
+# 异步下载镜像 (下载到共享目录，所有 agent 共用)
 task_id = task_async(
     tool="qemu_download_image",
     args={"version": "24.04"},
@@ -69,18 +84,22 @@ while True:
     result = task_query(task_id=task_id)
     if result["status"] == "completed":
         if result["result"]["success"]:
-            size = result["result"]["size_mb"]
-            chat_notify(f"✅ 镜像就绪！({size} MB)", level="success")
+            if result["result"]["downloaded"]:
+                size = result["result"]["size_mb"]
+                chat_notify(f"✅ 镜像下载完成！({size} MB)", level="success")
+            else:
+                chat_notify("✅ 镜像已存在，跳过下载", level="success")
         else:
             chat_notify(f"❌ 下载失败: {result['result']['error']}", level="error")
+            return
         break
     # 等待后重试
 ```
 
-### 阶段 1: 创建 VM
+### 阶段 1: 创建 VM (约30秒)
 
 ```python
-chat_notify("🔧 创建 VM...", level="info")
+chat_notify("🔧 创建 VM 磁盘和配置...", level="info")
 
 task_id = task_async(
     tool="qemu_create_vm",
@@ -88,7 +107,6 @@ task_id = task_async(
     label="创建 VM"
 )["task_id"]
 
-# 等待完成
 result = task_query(task_id=task_id)
 if result["result"]["success"]:
     chat_notify("✅ VM 创建完成！", level="success")
@@ -97,7 +115,7 @@ else:
     return
 ```
 
-### 阶段 2: 启动 VM
+### 阶段 2: 启动 VM (约5秒)
 
 ```python
 chat_notify("🚀 启动 VM...", level="info")
@@ -114,7 +132,8 @@ if result["result"]["success"]:
     chat_notify(
         f"✅ VM 已启动！\n"
         f"- SSH: localhost:{ports['ssh']}\n"
-        f"- VNC: localhost:{ports['vnc']}\n",
+        f"- VNC: localhost:{ports['vnc']}\n"
+        f"- MCP: localhost:{ports['mcp']}",
         level="success"
     )
 else:
@@ -122,7 +141,7 @@ else:
     return
 ```
 
-### 阶段 3: 等待 SSH 可用
+### 阶段 3: 等待 SSH 可用 (约2-3分钟)
 
 ```python
 chat_notify("⏳ 等待 SSH 可用，这可能需要 2-3 分钟...", level="info")
@@ -132,16 +151,13 @@ max_retries = 30
 retry_count = 0
 
 while retry_count < max_retries:
-    # 异步检查
     task_id = task_async(
         tool="qemu_status",
         args={},
         label="检查 SSH"
     )["task_id"]
     
-    # 等待 10 秒
-    # (Agent 可以在这期间响应用户)
-    
+    # 等待 10 秒后查询
     result = task_query(task_id=task_id)
     if result["result"]["ssh_reachable"]:
         chat_notify("✅ SSH 已就绪！", level="success")
@@ -150,39 +166,53 @@ while retry_count < max_retries:
     retry_count += 1
     if retry_count % 6 == 0:  # 每分钟提示一次
         chat_notify(f"⏳ 仍在等待 SSH... ({retry_count * 10}秒)", level="info")
+
+if retry_count >= max_retries:
+    chat_notify("❌ SSH 连接超时，请检查 VM 状态", level="error")
+    return
 ```
 
-### 阶段 3: 等待 cloud-init 完成 (首次启动)
+### 阶段 4: 等待 cloud-init (首次启动，约5-10分钟)
 
 ```python
 chat_notify(
-    "☁️ 检查系统初始化状态 (cloud-init)...\n"
+    "☁️ 系统初始化中 (cloud-init)...\n"
     "首次启动需要 5-10 分钟安装桌面环境和依赖。",
     level="info"
 )
 
-# 检查 cloud-init 完成标记
-task_id = task_async(
-    tool="qemu_ssh_exec",
-    args={
-        "command": "test -f /var/log/novaic-init-done.log && echo 'DONE' || echo 'PENDING'",
-        "timeout": 10
-    },
-    label="检查 cloud-init"
-)["task_id"]
+max_retries = 60  # 最多等待 10 分钟
+retry_count = 0
 
-result = task_query(task_id=task_id)
-if "DONE" in str(result.get("result", {}).get("stdout", "")):
-    chat_notify("✅ 系统初始化已完成！", level="success")
-else:
-    chat_notify("⏳ cloud-init 正在运行，请耐心等待...", level="info")
-    # 继续轮询等待...
+while retry_count < max_retries:
+    task_id = task_async(
+        tool="qemu_ssh_exec",
+        args={
+            "command": "test -f /var/log/novaic-init-done.log && echo 'DONE' || echo 'PENDING'",
+            "timeout": 10
+        },
+        label="检查 cloud-init"
+    )["task_id"]
+    
+    result = task_query(task_id=task_id)
+    stdout = str(result.get("result", {}).get("stdout", ""))
+    
+    if "DONE" in stdout:
+        chat_notify("✅ 系统初始化完成！", level="success")
+        break
+    
+    retry_count += 1
+    if retry_count % 6 == 0:  # 每分钟提示一次
+        chat_notify(f"⏳ cloud-init 仍在运行... ({retry_count * 10}秒)", level="info")
+
+if retry_count >= max_retries:
+    chat_notify("⚠️ cloud-init 超时，但可以尝试继续", level="warning")
 ```
 
-### 阶段 4: 部署 MCP Server 代码
+### 阶段 5: 部署 MCP Server 代码 (约30秒)
 
 ```python
-chat_notify("📦 正在部署 MCP Server 代码...", level="info")
+chat_notify("📦 部署 MCP Server 代码...", level="info")
 
 task_id = task_async(
     tool="qemu_deploy_vmuse_code",
@@ -190,7 +220,6 @@ task_id = task_async(
     label="部署 MCP Server"
 )["task_id"]
 
-# 等待部署完成
 while True:
     result = task_query(task_id=task_id)
     
@@ -201,19 +230,16 @@ while True:
             chat_notify(f"✅ 代码部署完成！\n已复制: {files}", level="success")
         else:
             chat_notify(f"❌ 部署失败: {deploy_result.get('error')}", level="error")
+            return
         break
-    
-    # 等待后重试
 ```
 
-### 阶段 5: 验证
+### 阶段 6: 验证 MCP Server
 
 ```python
-chat_notify("🔍 验证 MCP Server 状态...", level="info")
+chat_notify("🔍 验证 MCP Server...", level="info")
 
-# 等待服务启动
-# (服务重启需要几秒)
-
+# 等待服务启动 (几秒)
 task_id = task_async(
     tool="qemu_status",
     args={},
@@ -236,65 +262,70 @@ if status["mcp_reachable"]:
 else:
     chat_notify(
         "⚠️ MCP Server 未响应，可能还在启动中。\n"
-        "请稍后再试，或检查日志：\n"
-        "```bash\n"
-        "qemu_ssh_exec(command='journalctl -u novaic -f')\n"
-        "```",
+        "请稍后重试 `qemu_status()`",
         level="warning"
     )
 ```
 
 ## 快速部署 (代码更新后)
 
-如果只是更新代码，不需要等待 cloud-init：
+如果 VM 已运行，只需更新代码：
 
 ```python
-# 直接部署
 chat_notify("⚡ 快速部署：更新 MCP Server 代码...", level="info")
 
-qemu_deploy_vmuse_code(restart_service=True)
+result = qemu_deploy_vmuse_code(restart_service=True)
 
-chat_notify("✅ 代码已更新，服务已重启！", level="success")
+if result["success"]:
+    chat_notify("✅ 代码已更新，服务已重启！", level="success")
+else:
+    chat_notify(f"❌ 部署失败: {result['error']}", level="error")
 ```
 
 ## 常见问题
 
 ### SSH 连接失败
-```python
-# 检查 VM 是否运行
-qemu_status()
 
-# 如果 VM 未运行，需要用户启动
-chat_ask("VM 未运行，请在 NovAIC App 中启动 VM。完成后告诉我。")
+```python
+# 检查 VM 状态
+status = qemu_status()
+
+if not status["vm_running"]:
+    chat_ask("VM 未运行。请在 NovAIC App 中启动 VM，完成后告诉我。")
+elif not status["ssh_reachable"]:
+    chat_notify("SSH 不可达，可能还在启动中，等待 30 秒后重试...", level="info")
 ```
 
 ### cloud-init 卡住
+
 ```python
 # 查看 cloud-init 日志
-qemu_ssh_exec(command="tail -50 /var/log/cloud-init-output.log")
+result = qemu_ssh_exec(command="tail -50 /var/log/cloud-init-output.log")
+print(result["stdout"])
 
-# 可能需要重启 VM
+# 如果卡住，可以重启 VM
 qemu_restart(force=False, wait_ready=True)
 ```
 
 ### MCP Server 启动失败
+
 ```python
 # 查看服务日志
-qemu_ssh_exec(command="journalctl -u novaic --no-pager -n 50")
+result = qemu_ssh_exec(command="journalctl -u novaic --no-pager -n 50")
+print(result["stdout"])
 
 # 手动重启服务
 qemu_ssh_exec(command="sudo systemctl restart novaic")
 ```
 
-## 用户沟通示例
+## 时间估算
 
-好的沟通方式：
-- "⏳ 正在等待，这可能需要几分钟..."
-- "别担心，我会持续检查。您可以问我其他问题！"
-- "✅ 完成！现在可以..."
-- "❌ 遇到问题，让我看看怎么解决..."
-
-避免的方式：
-- 长时间沉默
-- 只说"等待中"不给进度
-- 出错后不给解决方案
+| 阶段 | 首次安装 | 后续启动 |
+|------|---------|---------|
+| 下载镜像 | ~5分钟 | 跳过 |
+| 创建 VM | ~30秒 | 跳过 |
+| 启动 VM | ~5秒 | ~5秒 |
+| 等待 SSH | ~2-3分钟 | ~1分钟 |
+| cloud-init | ~5-10分钟 | 跳过 |
+| 部署代码 | ~30秒 | ~30秒 |
+| **总计** | **~15-20分钟** | **~2分钟** |
