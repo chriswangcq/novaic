@@ -1,15 +1,15 @@
 ---
 name: vm-setup
-description: Setup NovAIC VM - wait for boot, deploy MCP Server. Use when setting up a new agent environment or redeploying code after updates.
+description: Setup NovAIC VM from scratch - download image, create VM, start, deploy MCP Server. Use when setting up a new agent environment.
 ---
 
 # VM Setup Skill
 
-完整的 VM 安装流程：等待启动 → 部署 MCP Server → 验证。
+完整的 VM 安装流程：下载镜像 → 创建 VM → 启动 → 等待 → 部署 MCP Server → 验证。
 
 ## 前提条件
 
-- VM 已通过 NovAIC App 创建并启动
+- QEMU 已安装 (`brew install qemu`)
 - QEMU Debug MCP 已启用 (`NOVAIC_MCP_QEMUDEBUG_ENABLED=true`)
 
 ## 核心原则
@@ -25,12 +25,24 @@ VM 启动和 cloud-init 需要时间，多给用户安慰。
 
 ## 工具列表
 
+### VM 设置工具 (Host 端)
+| 工具 | 用途 |
+|------|------|
+| `qemu_download_image` | 下载 Ubuntu 云镜像 |
+| `qemu_create_vm` | 创建 VM (磁盘 + cloud-init) |
+| `qemu_start_vm` | 启动 VM |
+| `qemu_deploy_vmuse_code` | 部署 MCP Server 代码 |
+
+### VM 调试工具
 | 工具 | 用途 |
 |------|------|
 | `qemu_status` | 检查 VM/SSH/MCP 状态 |
 | `qemu_ssh_exec` | 在 VM 内执行命令 |
-| `qemu_deploy_vmuse_code` | 部署 MCP Server 代码 |
 | `qemu_restart` | 重启 VM |
+
+### 异步和通信
+| 工具 | 用途 |
+|------|------|
 | `task_async` | 异步执行工具 |
 | `task_query` | 查询任务状态 |
 | `chat_notify` | 通知用户 |
@@ -38,31 +50,79 @@ VM 启动和 cloud-init 需要时间，多给用户安慰。
 
 ## 执行流程
 
-### 阶段 1: 检查 VM 状态
+### 阶段 0: 下载镜像 (首次)
 
 ```python
-# 通知用户开始
-chat_notify("🚀 开始检查 VM 状态...", level="info")
+chat_notify("📥 检查 Ubuntu 云镜像...", level="info")
 
-# 异步检查状态
+# 异步下载镜像
 task_id = task_async(
-    tool="qemu_status",
-    args={},
-    label="检查 VM 状态"
+    tool="qemu_download_image",
+    args={"version": "24.04"},
+    label="下载 Ubuntu 镜像"
 )["task_id"]
 
-# 查询结果
-result = task_query(task_id=task_id)
-status = result["result"]
+chat_notify("⏳ 下载镜像中，这可能需要几分钟... 您可以问我其他问题！", level="info")
 
-if not status["vm_running"]:
-    chat_notify(
-        "❌ VM 未运行。请在 NovAIC App 中启动 VM，或手动运行：\n"
-        "```bash\ncd novaic-vm && ./scripts/start-vm.sh -d\n```",
-        level="error"
-    )
+# 轮询等待
+while True:
+    result = task_query(task_id=task_id)
+    if result["status"] == "completed":
+        if result["result"]["success"]:
+            size = result["result"]["size_mb"]
+            chat_notify(f"✅ 镜像就绪！({size} MB)", level="success")
+        else:
+            chat_notify(f"❌ 下载失败: {result['result']['error']}", level="error")
+        break
+    # 等待后重试
+```
+
+### 阶段 1: 创建 VM
+
+```python
+chat_notify("🔧 创建 VM...", level="info")
+
+task_id = task_async(
+    tool="qemu_create_vm",
+    args={"disk_size": "40G", "memory": "4096", "cpus": 4},
+    label="创建 VM"
+)["task_id"]
+
+# 等待完成
+result = task_query(task_id=task_id)
+if result["result"]["success"]:
+    chat_notify("✅ VM 创建完成！", level="success")
+else:
+    chat_notify(f"❌ 创建失败: {result['result']['error']}", level="error")
     return
 ```
+
+### 阶段 2: 启动 VM
+
+```python
+chat_notify("🚀 启动 VM...", level="info")
+
+task_id = task_async(
+    tool="qemu_start_vm",
+    args={"memory": "4096", "cpus": 4, "daemon": True},
+    label="启动 VM"
+)["task_id"]
+
+result = task_query(task_id=task_id)
+if result["result"]["success"]:
+    ports = result["result"]["ports"]
+    chat_notify(
+        f"✅ VM 已启动！\n"
+        f"- SSH: localhost:{ports['ssh']}\n"
+        f"- VNC: localhost:{ports['vnc']}\n",
+        level="success"
+    )
+else:
+    chat_notify(f"❌ 启动失败: {result['result']['error']}", level="error")
+    return
+```
+
+### 阶段 3: 等待 SSH 可用
 
 ### 阶段 2: 等待 SSH 可用
 

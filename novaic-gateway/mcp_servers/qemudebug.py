@@ -1,24 +1,34 @@
 """
-QEMU Debug MCP Server - 虚拟机调试工具 (Fallback)
+QEMU Debug MCP Server - 虚拟机调试和设置工具
 
-提供 Hypervisor 层面的 VM 调试工具。
-仅在 VM 内 MCP Server 无响应时使用。
+提供 Hypervisor 层面的 VM 调试工具和 VM 设置工具。
+仅在 VM 内 MCP Server 无响应时使用，或用于初始化 VM。
 
 启用方式: export NOVAIC_MCP_QEMUDEBUG_ENABLED=true
 """
 
 import os
+import platform
 import base64
 import asyncio
 import socket
 import tempfile
 import time
+import shutil
+import subprocess
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from .base import BaseMCPServer
 
 logger = logging.getLogger(__name__)
+
+# Ubuntu Cloud Image 配置
+UBUNTU_VERSIONS = {
+    "24.04": "noble",
+    "22.04": "jammy",
+    "20.04": "focal",
+}
 
 
 class QemuDebugMCPServer(BaseMCPServer):
@@ -32,10 +42,14 @@ class QemuDebugMCPServer(BaseMCPServer):
     - qemu_send_mouse: 发送鼠标输入 (绕过 Guest)
     - qemu_status: 检查 VM 状态
     - qemu_restart: 重启 VM
+    - qemu_deploy_vmuse_code: 部署 MCP Server 代码
+    - qemu_download_image: 下载云镜像
+    - qemu_create_vm: 创建 VM
+    - qemu_start_vm: 启动 VM
     """
     
     name = "qemudebug"
-    description = "QEMU 虚拟机调试工具 (Fallback)"
+    description = "QEMU 虚拟机调试和设置工具"
     
     def __init__(self):
         # QEMU configuration (via environment)
@@ -50,21 +64,37 @@ class QemuDebugMCPServer(BaseMCPServer):
         self.monitor_socket = os.environ.get("QEMU_MONITOR_SOCKET", "/tmp/novaic-qemudebug-monitor.sock")
         self.mcp_port = int(os.environ.get("QEMU_MCP_PORT", "20000"))
         
+        # VM Setup configuration
+        self.data_dir = os.environ.get("NOVAIC_DATA_DIR", os.path.expanduser("~/.novaic"))
+        self.vm_dir = os.path.join(self.data_dir, "vm")
+        self.images_dir = os.path.join(self.vm_dir, "images")
+        self.iso_dir = os.path.join(self.vm_dir, "iso")
+        self.firmware_dir = os.path.join(self.vm_dir, "firmware")
+        self.config_dir = os.path.join(self.vm_dir, "config")
+        
+        # VM 运行状态
+        self.vm_pid_file = os.path.join(self.vm_dir, ".vm.pid")
+        
+        # 架构检测
+        self.arch = platform.machine()
+        self.is_arm64 = self.arch in ("arm64", "aarch64")
+        
         super().__init__()
     
     def _build_instructions(self) -> str:
-        return """QEMU Debug MCP - 虚拟机调试工具 (Fallback)
+        return """QEMU Debug MCP - 虚拟机调试和设置工具
 
-## ⚠️ 重要：这是 Fallback 工具
+## 工具分类
 
-**优先使用 VM 内的工具 (novaic-mcp-vmuse)**
-仅在以下情况使用本工具：
-- VM 内 MCP Server 无响应
-- 需要 Hypervisor 层面的操作
-- 调试 VM 启动/崩溃问题
+### VM 设置工具 (Host 端)
+| 工具 | 用途 |
+|------|------|
+| qemu_download_image | 下载 Ubuntu 云镜像 |
+| qemu_create_vm | 创建 VM (磁盘 + cloud-init) |
+| qemu_start_vm | 启动 VM |
+| qemu_deploy_vmuse_code | 部署 MCP Server 代码 |
 
-## 工具列表
-
+### VM 调试工具 (Fallback)
 | 工具 | 用途 |
 |------|------|
 | qemu_ssh_exec | 通过 SSH 执行命令 |
@@ -74,7 +104,21 @@ class QemuDebugMCPServer(BaseMCPServer):
 | qemu_status | 检查 VM 状态 |
 | qemu_restart | 重启 VM |
 
-## 与 VM 内工具的区别
+## VM 创建流程
+
+```
+qemu_download_image()  # 下载 Ubuntu 镜像
+      ↓
+qemu_create_vm()       # 创建 VM 磁盘和 cloud-init
+      ↓
+qemu_start_vm()        # 启动 VM
+      ↓
+等待 SSH 可用 (qemu_status 轮询)
+      ↓
+qemu_deploy_vmuse_code()  # 部署 MCP Server
+```
+
+## 调试工具使用场景
 
 | 场景 | VM 内工具 | QEMU Debug |
 |------|----------|------------|
@@ -136,6 +180,56 @@ class QemuDebugMCPServer(BaseMCPServer):
             return f"ERROR: QEMU monitor socket not found at {self.monitor_socket}"
         except Exception as e:
             return f"ERROR: {str(e)}"
+    
+    def _ensure_dirs(self) -> None:
+        """确保所有必要目录存在。"""
+        for d in [self.vm_dir, self.images_dir, self.iso_dir, self.firmware_dir, self.config_dir]:
+            os.makedirs(d, exist_ok=True)
+    
+    def _get_ssh_pubkey(self) -> str:
+        """获取或生成 SSH 公钥。"""
+        ssh_dir = os.path.expanduser("~/.ssh")
+        
+        # 按优先级检查现有公钥
+        for key_type in ["id_ed25519", "id_rsa", "id_ecdsa"]:
+            pub_path = os.path.join(ssh_dir, f"{key_type}.pub")
+            if os.path.exists(pub_path):
+                with open(pub_path, "r") as f:
+                    return f.read().strip()
+        
+        # 生成新密钥
+        os.makedirs(ssh_dir, exist_ok=True)
+        key_path = os.path.join(ssh_dir, "id_ed25519_novaic")
+        if not os.path.exists(key_path):
+            subprocess.run([
+                "ssh-keygen", "-t", "ed25519", "-f", key_path, "-N", "",
+                "-C", f"novaic-vm-{time.strftime('%Y%m%d')}"
+            ], check=True, capture_output=True)
+        
+        with open(f"{key_path}.pub", "r") as f:
+            return f.read().strip()
+    
+    def _find_qemu_img(self) -> str:
+        """查找 qemu-img 路径。"""
+        for path in ["/opt/homebrew/bin/qemu-img", "/usr/local/bin/qemu-img", "qemu-img"]:
+            if shutil.which(path):
+                return path
+        raise FileNotFoundError("qemu-img not found")
+    
+    def _find_qemu_system(self) -> str:
+        """查找 qemu-system 路径。"""
+        cmd = "qemu-system-aarch64" if self.is_arm64 else "qemu-system-x86_64"
+        for path in [f"/opt/homebrew/bin/{cmd}", f"/usr/local/bin/{cmd}", cmd]:
+            if shutil.which(path):
+                return path
+        raise FileNotFoundError(f"{cmd} not found")
+    
+    def _find_mkisofs(self) -> Optional[str]:
+        """查找 mkisofs 或替代工具。"""
+        for cmd in ["mkisofs", "genisoimage", "hdiutil"]:
+            if shutil.which(cmd):
+                return cmd
+        return None
     
     def _register_tools(self) -> None:
         """注册所有 QEMU Debug 工具。"""
@@ -523,3 +617,346 @@ class QemuDebugMCPServer(BaseMCPServer):
             except Exception as e:
                 logger.error(f"[qemu_deploy_vmuse_code] Error: {e}")
                 return {"success": False, "error": str(e), "files_copied": files_copied}
+        
+        @self.mcp.tool()
+        async def qemu_download_image(
+            version: Optional[str] = "24.04"
+        ) -> Dict[str, Any]:
+            """
+            Download Ubuntu cloud image.
+            
+            下载 Ubuntu 云镜像到本地。首次安装 VM 需要先下载镜像。
+            
+            Args:
+                version: Ubuntu 版本 (默认: "24.04", 支持 "22.04", "20.04")
+            
+            Returns:
+                Dictionary with success, image_path, size_mb
+            """
+            import httpx
+            
+            version = version or "24.04"
+            if version not in UBUNTU_VERSIONS:
+                return {"success": False, "error": f"Unsupported version: {version}. Supported: {list(UBUNTU_VERSIONS.keys())}"}
+            
+            codename = UBUNTU_VERSIONS[version]
+            arch_suffix = "arm64" if server.is_arm64 else "amd64"
+            image_name = f"{codename}-server-cloudimg-{arch_suffix}.img"
+            
+            server._ensure_dirs()
+            image_path = os.path.join(server.iso_dir, image_name)
+            
+            # 检查是否已存在
+            if os.path.exists(image_path):
+                size_mb = os.path.getsize(image_path) / (1024 * 1024)
+                return {
+                    "success": True,
+                    "image_path": image_path,
+                    "size_mb": round(size_mb, 1),
+                    "message": "Image already exists"
+                }
+            
+            # 下载
+            url = f"https://cloud-images.ubuntu.com/{codename}/current/{image_name}"
+            logger.info(f"[qemu_download_image] Downloading from {url}")
+            
+            try:
+                async with httpx.AsyncClient(timeout=600.0, follow_redirects=True) as client:
+                    response = await client.get(url)
+                    response.raise_for_status()
+                    
+                    with open(image_path, "wb") as f:
+                        f.write(response.content)
+                    
+                    size_mb = os.path.getsize(image_path) / (1024 * 1024)
+                    return {
+                        "success": True,
+                        "image_path": image_path,
+                        "size_mb": round(size_mb, 1),
+                        "message": "Download complete"
+                    }
+            except Exception as e:
+                if os.path.exists(image_path):
+                    os.unlink(image_path)
+                return {"success": False, "error": str(e)}
+        
+        @self.mcp.tool()
+        async def qemu_create_vm(
+            disk_size: Optional[str] = "40G",
+            memory: Optional[str] = "4096",
+            cpus: Optional[int] = 4
+        ) -> Dict[str, Any]:
+            """
+            Create VM from downloaded cloud image.
+            
+            创建 VM 磁盘、cloud-init ISO 和 UEFI 固件（ARM64）。
+            需要先运行 qemu_download_image 下载镜像。
+            
+            Args:
+                disk_size: 磁盘大小 (默认: "40G")
+                memory: 内存大小 MB (默认: "4096")
+                cpus: CPU 核心数 (默认: 4)
+            
+            Returns:
+                Dictionary with success, disk_path, seed_iso_path
+            """
+            server._ensure_dirs()
+            
+            # 查找镜像
+            arch_suffix = "arm64" if server.is_arm64 else "amd64"
+            image_files = [f for f in os.listdir(server.iso_dir) if f.endswith(f"-{arch_suffix}.img")]
+            if not image_files:
+                return {"success": False, "error": "No cloud image found. Run qemu_download_image first."}
+            
+            source_image = os.path.join(server.iso_dir, image_files[0])
+            disk_path = os.path.join(server.images_dir, "novaic-vm.qcow2")
+            seed_iso_path = os.path.join(server.iso_dir, "cloud-init-seed.iso")
+            
+            try:
+                qemu_img = server._find_qemu_img()
+                
+                # 1. 创建磁盘
+                if os.path.exists(disk_path):
+                    os.unlink(disk_path)
+                
+                subprocess.run([qemu_img, "convert", "-f", "qcow2", "-O", "qcow2", source_image, disk_path], check=True)
+                subprocess.run([qemu_img, "resize", disk_path, disk_size or "40G"], check=True)
+                
+                # 2. 获取 SSH 公钥
+                ssh_pubkey = server._get_ssh_pubkey()
+                
+                # 3. 创建 cloud-init 配置
+                meta_data = f"instance-id: novaic-vm\nlocal-hostname: novaic-vm\n"
+                
+                # 简化的 user-data（完整版参考 setup.rs）
+                user_data = f"""#cloud-config
+users:
+  - name: ubuntu
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    lock_passwd: false
+    ssh_authorized_keys:
+      - {ssh_pubkey}
+
+chpasswd:
+  list: |
+    ubuntu:ubuntu
+  expire: false
+
+ssh_pwauth: true
+
+package_update: true
+packages:
+  - xfce4
+  - xfce4-terminal
+  - lightdm
+  - x11vnc
+  - chromium-browser
+  - xdotool
+  - scrot
+  - python3
+  - python3-pip
+  - python3-venv
+  - curl
+  - git
+
+write_files:
+  - path: /etc/lightdm/lightdm.conf.d/50-autologin.conf
+    content: |
+      [Seat:*]
+      autologin-user=ubuntu
+      autologin-user-timeout=0
+      user-session=xfce
+
+runcmd:
+  - chown -R ubuntu:ubuntu /home/ubuntu
+  - mkdir -p /opt/novaic-mcp-vmuse /opt/novaic-venv
+  - chown -R ubuntu:ubuntu /opt/novaic-mcp-vmuse /opt/novaic-venv
+  - systemctl enable lightdm
+  - systemctl start lightdm
+  - echo "NovAIC VM cloud-init completed" > /var/log/novaic-init-done.log
+
+final_message: "NovAIC VM ready"
+"""
+                
+                # 写入配置文件
+                meta_path = os.path.join(server.config_dir, "meta-data")
+                user_path = os.path.join(server.config_dir, "user-data")
+                with open(meta_path, "w") as f:
+                    f.write(meta_data)
+                with open(user_path, "w") as f:
+                    f.write(user_data)
+                
+                # 4. 创建 cloud-init ISO
+                mkisofs = server._find_mkisofs()
+                if not mkisofs:
+                    return {"success": False, "error": "mkisofs/genisoimage/hdiutil not found"}
+                
+                if mkisofs == "hdiutil":
+                    # macOS
+                    temp_dir = tempfile.mkdtemp()
+                    shutil.copy(meta_path, temp_dir)
+                    shutil.copy(user_path, temp_dir)
+                    subprocess.run([
+                        "hdiutil", "makehybrid", "-o", seed_iso_path.replace(".iso", ""),
+                        "-hfs", "-joliet", "-iso", "-default-volume-name", "cidata", temp_dir
+                    ], check=True)
+                    shutil.rmtree(temp_dir)
+                else:
+                    subprocess.run([
+                        mkisofs, "-output", seed_iso_path, "-volid", "cidata",
+                        "-joliet", "-rock", user_path, meta_path
+                    ], check=True)
+                
+                # 5. ARM64: 配置 UEFI 固件
+                uefi_vars_path = None
+                if server.is_arm64:
+                    # 查找 UEFI 固件
+                    uefi_src = "/opt/homebrew/share/qemu/edk2-aarch64-code.fd"
+                    uefi_dst = os.path.join(server.firmware_dir, "QEMU_EFI.fd")
+                    uefi_vars_path = os.path.join(server.firmware_dir, "QEMU_VARS.fd")
+                    
+                    if not os.path.exists(uefi_dst):
+                        if os.path.exists(uefi_src):
+                            shutil.copy(uefi_src, uefi_dst)
+                        else:
+                            return {"success": False, "error": "UEFI firmware not found"}
+                    
+                    if not os.path.exists(uefi_vars_path):
+                        # 创建空的 UEFI 变量文件
+                        with open(uefi_vars_path, "wb") as f:
+                            f.write(b'\x00' * 64 * 1024 * 1024)  # 64MB
+                
+                return {
+                    "success": True,
+                    "disk_path": disk_path,
+                    "seed_iso_path": seed_iso_path,
+                    "uefi_vars_path": uefi_vars_path,
+                    "disk_size": disk_size,
+                    "message": "VM created successfully"
+                }
+                
+            except Exception as e:
+                logger.error(f"[qemu_create_vm] Error: {e}")
+                return {"success": False, "error": str(e)}
+        
+        @self.mcp.tool()
+        async def qemu_start_vm(
+            memory: Optional[str] = "4096",
+            cpus: Optional[int] = 4,
+            daemon: Optional[bool] = True
+        ) -> Dict[str, Any]:
+            """
+            Start the QEMU VM.
+            
+            启动 VM。需要先运行 qemu_create_vm 创建 VM。
+            
+            Args:
+                memory: 内存大小 MB (默认: "4096")
+                cpus: CPU 核心数 (默认: 4)
+                daemon: 后台运行 (默认: True)
+            
+            Returns:
+                Dictionary with success, pid, ports
+            """
+            disk_path = os.path.join(server.images_dir, "novaic-vm.qcow2")
+            seed_iso_path = os.path.join(server.iso_dir, "cloud-init-seed.iso")
+            
+            if not os.path.exists(disk_path):
+                return {"success": False, "error": "VM disk not found. Run qemu_create_vm first."}
+            
+            # 检查是否已运行
+            if os.path.exists(server.vm_pid_file):
+                with open(server.vm_pid_file, "r") as f:
+                    old_pid = f.read().strip()
+                try:
+                    os.kill(int(old_pid), 0)
+                    return {"success": False, "error": f"VM already running (PID: {old_pid})"}
+                except ProcessLookupError:
+                    os.unlink(server.vm_pid_file)
+            
+            try:
+                qemu_system = server._find_qemu_system()
+                
+                # 端口配置
+                vnc_port = server.vnc_port
+                mcp_port = server.mcp_port
+                ssh_port = server.ssh_port
+                ws_port = int(os.environ.get("QEMU_WS_PORT", "20007"))
+                
+                # 构建命令
+                cmd = [qemu_system]
+                
+                if server.is_arm64:
+                    uefi_fw = os.path.join(server.firmware_dir, "QEMU_EFI.fd")
+                    uefi_vars = os.path.join(server.firmware_dir, "QEMU_VARS.fd")
+                    
+                    cmd.extend([
+                        "-M", "virt,highmem=on", "-cpu", "host", "-accel", "hvf",
+                        "-m", memory or "4096", "-smp", str(cpus or 4),
+                        "-drive", f"if=pflash,format=raw,file={uefi_fw},readonly=on",
+                        "-drive", f"if=pflash,format=raw,file={uefi_vars}",
+                        "-drive", f"if=none,id=hd0,format=qcow2,file={disk_path}",
+                        "-device", "virtio-blk-pci,drive=hd0,bootindex=1",
+                        "-device", "virtio-scsi-pci,id=scsi0",
+                        "-drive", f"if=none,id=cd0,format=raw,file={seed_iso_path},readonly=on",
+                        "-device", "scsi-cd,drive=cd0,bus=scsi0.0",
+                        "-device", "virtio-gpu-pci",
+                    ])
+                else:
+                    cmd.extend([
+                        "-M", "q35", "-cpu", "host", "-accel", "hvf",
+                        "-m", memory or "4096", "-smp", str(cpus or 4),
+                        "-hda", disk_path,
+                        "-cdrom", seed_iso_path,
+                    ])
+                
+                # 网络和设备
+                net_fwd = f"hostfwd=tcp::{vnc_port}-:5900,hostfwd=tcp::{mcp_port}-:8080,hostfwd=tcp::{ssh_port}-:22,hostfwd=tcp::{ws_port}-:6080"
+                cmd.extend([
+                    "-device", "virtio-net-pci,netdev=net0",
+                    "-netdev", f"user,id=net0,{net_fwd}",
+                    "-device", "usb-ehci",
+                    "-device", "usb-kbd",
+                    "-device", "usb-mouse",
+                ])
+                
+                if daemon:
+                    cmd.extend(["-display", "none", "-daemonize", "-pidfile", server.vm_pid_file])
+                else:
+                    cmd.extend(["-display", "cocoa" if server.is_arm64 else "gtk"])
+                
+                logger.info(f"[qemu_start_vm] Starting: {' '.join(cmd)}")
+                
+                if daemon:
+                    subprocess.run(cmd, check=True)
+                    await asyncio.sleep(2)
+                    
+                    if os.path.exists(server.vm_pid_file):
+                        with open(server.vm_pid_file, "r") as f:
+                            pid = f.read().strip()
+                        return {
+                            "success": True,
+                            "pid": pid,
+                            "ports": {
+                                "ssh": ssh_port,
+                                "vnc": vnc_port,
+                                "mcp": mcp_port,
+                                "websocket": ws_port
+                            },
+                            "message": "VM started in background"
+                        }
+                    else:
+                        return {"success": False, "error": "VM started but PID file not found"}
+                else:
+                    # 前台运行
+                    process = subprocess.Popen(cmd)
+                    return {
+                        "success": True,
+                        "pid": str(process.pid),
+                        "message": "VM started in foreground"
+                    }
+                    
+            except Exception as e:
+                logger.error(f"[qemu_start_vm] Error: {e}")
+                return {"success": False, "error": str(e)}
