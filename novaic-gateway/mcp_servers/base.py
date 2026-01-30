@@ -29,8 +29,14 @@ class BaseMCPServer(ABC):
     name: str = "base"
     description: str = "Base MCP Server"
     
-    def __init__(self):
-        """初始化 MCP Server。"""
+    def __init__(self, agent_id: Optional[str] = None):
+        """
+        初始化 MCP Server。
+        
+        Args:
+            agent_id: Agent ID，用于隔离资源 (端口、数据目录等)
+        """
+        self.agent_id = agent_id
         self.mcp = FastMCP(
             name=self.name,
             instructions=self._build_instructions(),
@@ -38,7 +44,7 @@ class BaseMCPServer(ABC):
         self._tools_registered = False
         self._http_app = None  # 缓存 http_app，避免重复创建
         
-        logger.info(f"[{self.name}] MCP Server created")
+        logger.info(f"[{self.name}] MCP Server created (agent_id={agent_id})")
     
     def _build_instructions(self) -> str:
         """构建 MCP Server 说明。子类可以覆盖。"""

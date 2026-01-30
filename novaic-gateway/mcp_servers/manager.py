@@ -98,8 +98,8 @@ class SubMCPManager:
         
         for ServerClass in self._get_enabled_servers():
             try:
-                # 创建 server 实例
-                server = ServerClass()
+                # 创建 server 实例，传递 agent_id 用于资源隔离
+                server = ServerClass(agent_id=agent_id)
                 server.setup()
                 
                 # 获取 ASGI app

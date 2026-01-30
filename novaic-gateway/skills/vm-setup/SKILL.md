@@ -104,7 +104,7 @@ chat_notify("🚀 启动 VM...", level="info")
 
 task_id = task_async(
     tool="qemu_start_vm",
-    args={"agent_index": 0, "memory": "4096", "cpus": 4, "daemon": True},
+    args={"memory": "4096", "cpus": 4, "daemon": True},
     label="启动 VM"
 )["task_id"]
 

@@ -51,7 +51,7 @@ class QemuDebugMCPServer(BaseMCPServer):
     name = "qemudebug"
     description = "QEMU 虚拟机调试和设置工具"
     
-    def __init__(self):
+    def __init__(self, agent_id: Optional[str] = None):
         # QEMU configuration
         self.ssh_host = os.environ.get("QEMU_SSH_HOST", "127.0.0.1")
         self.ssh_user = os.environ.get("QEMU_SSH_USER", "ubuntu")
@@ -59,12 +59,17 @@ class QemuDebugMCPServer(BaseMCPServer):
         self.vnc_host = os.environ.get("QEMU_VNC_HOST", "127.0.0.1")
         self.monitor_socket = os.environ.get("QEMU_MONITOR_SOCKET", "/tmp/novaic-qemudebug-monitor.sock")
         
-        # Agent index (从环境变量读取，默认 0)
-        self.agent_index = int(os.environ.get("NOVAIC_AGENT_INDEX", "0"))
+        # 根据 agent_id 获取 agent_index（用于端口分配）
+        self._agent_index = self._resolve_agent_index(agent_id)
         
         # 中心化端口分配
         from config.agents import allocate_ports_for_agent
-        self._ports_config = allocate_ports_for_agent(self.agent_index)
+        self._ports_config = allocate_ports_for_agent(self._agent_index)
+        
+        logger.info(f"[QemuDebugMCPServer] agent_id={agent_id}, agent_index={self._agent_index}")
+        
+        # 存储 agent_id 用于后续操作
+        self._init_agent_id = agent_id
         
         # VM Setup configuration
         self.data_dir = os.environ.get("NOVAIC_DATA_DIR", os.path.expanduser("~/.novaic"))
@@ -81,7 +86,41 @@ class QemuDebugMCPServer(BaseMCPServer):
         self.arch = platform.machine()
         self.is_arm64 = self.arch in ("arm64", "aarch64")
         
-        super().__init__()
+        super().__init__(agent_id=agent_id)
+    
+    def _resolve_agent_index(self, agent_id: Optional[str]) -> int:
+        """
+        根据 agent_id 解析 agent_index。
+        
+        优先级：
+        1. 从数据库查询（如果 agent_id 存在）
+        2. 返回默认值 0
+        """
+        if not agent_id:
+            return 0
+        
+        try:
+            # 尝试从数据库查询
+            from config.agents_db import AgentConfigDB
+            import asyncio
+            
+            db = AgentConfigDB()
+            
+            # 同步方式获取（在 __init__ 中）
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # 如果事件循环已运行，无法同步获取，使用默认值
+                # 实际运行时 agent_index 应该通过其他方式传入
+                logger.warning(f"[QemuDebugMCPServer] Cannot query DB in running loop, using default index 0")
+                return 0
+            
+            config = loop.run_until_complete(db.get_agent_config(agent_id))
+            if config:
+                return config.agent_index
+        except Exception as e:
+            logger.warning(f"[QemuDebugMCPServer] Failed to resolve agent_index: {e}")
+        
+        return 0
     
     @property
     def ssh_port(self) -> int:
@@ -873,7 +912,6 @@ final_message: "NovAIC VM ready"
         
         @self.mcp.tool()
         async def qemu_start_vm(
-            agent_index: Optional[int] = 0,
             memory: Optional[str] = "4096",
             cpus: Optional[int] = 4,
             daemon: Optional[bool] = True
@@ -882,9 +920,9 @@ final_message: "NovAIC VM ready"
             Start the QEMU VM.
             
             启动 VM。需要先运行 qemu_create_vm 创建 VM。
+            端口自动从当前 agent 配置获取，不需要手动指定。
             
             Args:
-                agent_index: Agent 索引，用于端口分配 (默认: 0)
                 memory: 内存大小 MB (默认: "4096")
                 cpus: CPU 核心数 (默认: 4)
                 daemon: 后台运行 (默认: True)
@@ -911,20 +949,11 @@ final_message: "NovAIC VM ready"
             try:
                 qemu_system = server._find_qemu_system()
                 
-                # 端口分配：如果指定了 agent_index 则使用它，否则使用 server 默认值
-                if agent_index is not None and agent_index != server.agent_index:
-                    from config.agents import allocate_ports_for_agent
-                    ports_config = allocate_ports_for_agent(agent_index)
-                    vnc_port = ports_config.vnc
-                    mcp_port = ports_config.vm
-                    ssh_port = ports_config.ssh
-                    ws_port = ports_config.websocket
-                else:
-                    # 使用 server 实例的端口配置
-                    vnc_port = server.vnc_port
-                    mcp_port = server.mcp_port
-                    ssh_port = server.ssh_port
-                    ws_port = server.websocket_port
+                # 使用当前 agent 的端口配置（不允许跨 agent 操作）
+                vnc_port = server.vnc_port
+                mcp_port = server.mcp_port
+                ssh_port = server.ssh_port
+                ws_port = server.websocket_port
                 
                 # 构建命令
                 cmd = [qemu_system]
