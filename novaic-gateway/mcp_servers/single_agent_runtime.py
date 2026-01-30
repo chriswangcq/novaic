@@ -1,7 +1,8 @@
 """
-Agent Context MCP Server - Agent 上下文和自我管理
+Single Agent Runtime MCP Server - 单个 Agent 的运行时管理
 
-提供 Agent 上下文管理、子代理调用、收件箱检查等功能。
+管理 Agent 内部的多个 context（main, subagent, task 等）。
+每个 context 都是一个独立的对话环境，main 也是 context 的一种。
 """
 
 import os
@@ -35,68 +36,79 @@ async def _call_gateway(endpoint: str, method: str = "GET", data: Dict = None) -
         return response.json()
 
 
-class AgentContextMCPServer(BaseMCPServer):
+class SingleAgentRuntimeMCPServer(BaseMCPServer):
     """
-    Agent Context MCP Server。
+    Single Agent Runtime MCP Server。
     
-    管理 Agent 的上下文和自我调度，通过 agent_id 标识当前 agent。
+    管理 Agent 内部的多个 context（对话环境）：
+    - main: 主对话（也是一个 context）
+    - subagent:xxx: 子代理 context
+    - task:xxx: 后台任务 context
     
     提供工具：
-    - agent_context_list: 列出所有上下文
-    - agent_context_history: 获取上下文历史
-    - agent_context_send: 发送消息到上下文
-    - agent_inbox: 检查收件箱
-    - agent_rest: 进入休息状态
-    - agent_call: 调用子代理
+    - context_list: 列出所有 context
+    - context_history: 获取 context 历史
+    - context_send: 向 context 发消息
+    - context_inbox: 检查收件箱
+    - context_rest: 进入休息状态
+    - context_call: 调用子代理（spawn 新 context）
     """
     
-    name = "agent-context"
-    description = "Agent 上下文管理和自我调度工具"
+    name = "single-agent-runtime"
+    description = "单个 Agent 的运行时管理，管理内部多个 context"
     
     def __init__(self, agent_id: Optional[str] = None):
         """
-        初始化 Agent Context Server。
+        初始化 Single Agent Runtime Server。
         
         Args:
             agent_id: Agent ID，用于标识当前 agent
         """
         self._agent_id = agent_id or "default"
         super().__init__(agent_id=agent_id)
-        logger.info(f"[AgentContextMCPServer] Initialized for agent: {self._agent_id}")
+        logger.info(f"[SingleAgentRuntimeMCPServer] Initialized for agent: {self._agent_id}")
     
     def _build_instructions(self) -> str:
-        return """Agent Context MCP - 上下文管理和自我调度
+        return """Single Agent Runtime MCP - Context 管理和调度
+
+## 概念
+
+Agent 内部可以有多个 context（对话环境）：
+- `main`: 主对话（默认，也是一个 context）
+- `subagent:xxx`: 子代理 context
+- `task:xxx`: 后台任务 context
 
 ## 工具列表
 
 | 工具 | 用途 |
 |------|------|
-| agent_context_list | 列出所有活跃上下文 |
-| agent_context_history | 获取上下文消息历史 |
-| agent_context_send | 向上下文发送消息 |
-| agent_inbox | 检查待处理事件 |
-| agent_rest | 进入休息状态 |
-| agent_call | 委托子代理执行任务 |
+| context_list | 列出所有活跃 context |
+| context_history | 获取 context 消息历史 |
+| context_send | 向 context 发送消息 |
+| context_inbox | 检查待处理事件 |
+| context_rest | 进入休息状态 |
+| context_call | 调用子代理（spawn 新 context） |
 
 ## 使用场景
 
-- **agent_inbox**: 长时间任务中定期检查是否有紧急事件
-- **agent_rest**: 等待用户输入时进入休息状态
-- **agent_call**: 委托复杂任务给子代理
+- **context_inbox**: 长时间任务中定期检查是否有紧急事件
+- **context_rest**: 等待用户输入时进入休息状态
+- **context_call**: 委托复杂任务给子代理
 """
     
     def _register_tools(self) -> None:
-        """注册所有 Agent Context 工具。"""
+        """注册所有 Runtime 工具。"""
         server = self  # Capture for closures
         
         @self.mcp.tool()
-        async def agent_context_list() -> Dict[str, Any]:
+        async def context_list() -> Dict[str, Any]:
             """
-            List all active agent contexts.
+            List all active contexts in this agent.
             
             Contexts represent independent conversation environments:
-            - main: Primary conversation with user
-            - subagent:xxx / task:xxx: Sub-agent or task conversations
+            - main: Primary conversation with user (also a context)
+            - subagent:xxx: Sub-agent contexts
+            - task:xxx: Background task contexts
             
             Returns:
                 Dictionary with:
@@ -110,7 +122,7 @@ class AgentContextMCPServer(BaseMCPServer):
                     - last_activity: Last activity timestamp
             
             Examples:
-                agent_context_list()
+                context_list()
             """
             try:
                 result = await _call_gateway("/sessions")
@@ -124,7 +136,7 @@ class AgentContextMCPServer(BaseMCPServer):
                 return {"error": str(e), "contexts": []}
         
         @self.mcp.tool()
-        async def agent_context_history(
+        async def context_history(
             context_key: str,
             limit: Optional[int] = 50,
             offset: Optional[int] = 0
@@ -158,7 +170,7 @@ class AgentContextMCPServer(BaseMCPServer):
                 return {"error": str(e), "context_key": context_key, "messages": []}
         
         @self.mcp.tool()
-        async def agent_context_send(
+        async def context_send(
             context_key: str,
             message: str,
             wait_response: Optional[bool] = False,
@@ -194,7 +206,7 @@ class AgentContextMCPServer(BaseMCPServer):
                 return {"error": str(e), "success": False, "context_key": context_key}
         
         @self.mcp.tool()
-        async def agent_inbox() -> Dict[str, Any]:
+        async def context_inbox() -> Dict[str, Any]:
             """
             Check the inbox for pending events and messages.
             
@@ -222,7 +234,7 @@ class AgentContextMCPServer(BaseMCPServer):
                 return {"error": str(e), "pending_count": 0, "events": []}
         
         @self.mcp.tool()
-        async def agent_rest(
+        async def context_rest(
             reason: str,
             wake_triggers: Optional[List[Dict[str, Any]]] = None,
             handoff_notes: Optional[str] = None
@@ -265,7 +277,7 @@ class AgentContextMCPServer(BaseMCPServer):
                 return {"error": str(e), "success": False}
         
         @self.mcp.tool()
-        async def agent_call(
+        async def context_call(
             task: str,
             model: Optional[str] = None,
             context: Optional[str] = None,
@@ -274,7 +286,8 @@ class AgentContextMCPServer(BaseMCPServer):
             """
             Synchronously call a sub-agent to execute a complex task.
             
-            The sub-agent will run independently and return results when complete.
+            This spawns a new context for the sub-agent. The sub-agent will run
+            independently and return results when complete.
             Use this for tasks requiring multi-step reasoning or research.
             
             Args:
@@ -292,8 +305,8 @@ class AgentContextMCPServer(BaseMCPServer):
                 - error: Error message (if failed)
             
             Examples:
-                agent_call(task="研究 React 和 Vue 的性能差异，写一份对比报告")
-                agent_call(task="分析这个 bug", context="登录页面偶尔卡死", model="claude-sonnet-4")
+                context_call(task="研究 React 和 Vue 的性能差异，写一份对比报告")
+                context_call(task="分析这个 bug", context="登录页面偶尔卡死", model="claude-sonnet-4")
             """
             try:
                 from core.task_manager import get_task_manager
@@ -352,7 +365,7 @@ class AgentContextMCPServer(BaseMCPServer):
                 }
                 
             except Exception as e:
-                logger.error(f"[AgentContextMCP] agent_call failed: {e}")
+                logger.error(f"[SingleAgentRuntimeMCP] context_call failed: {e}")
                 return {"success": False, "error": str(e)}
         
         logger.info(f"[{self.name}] Registered 6 tools for agent: {server._agent_id}")

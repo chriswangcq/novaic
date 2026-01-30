@@ -9,7 +9,7 @@ Architecture:
     └── MCPGatewayManager
         ├── /agents/{agent0_id}/mcp → AgentMCPGateway(0)  # 聚合层
         │   └── Sub MCPs (via ToolRegistry, mounted separately)
-        │       ├── /agents/{agent0_id}/sub-mcp/agent-context
+        │       ├── /agents/{agent0_id}/sub-mcp/single-agent-runtime
         │       ├── /agents/{agent0_id}/sub-mcp/local
         │       ├── /agents/{agent0_id}/sub-mcp/memory
         │       └── /agents/{agent0_id}/sub-mcp/chat
@@ -65,7 +65,7 @@ class MCPGatewayManager:
         Create and mount an MCP Gateway for an agent.
         
         Creates:
-        1. Sub MCP servers (agent-context, local, memory, chat) at /agents/{id}/mcp/{name}
+        1. Sub MCP servers (single-agent-runtime, local, memory, chat) at /agents/{id}/mcp/{name}
         2. Gateway MCP (aggregates all) at /agents/{id}/mcp
         
         Args:

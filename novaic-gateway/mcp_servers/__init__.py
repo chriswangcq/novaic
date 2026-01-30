@@ -7,7 +7,7 @@ MCP Servers - 独立的子 MCP Server 模块
 
 ## 子 MCP Servers
 
-- **AgentContextMCPServer**: Agent 上下文管理和自我调度
+- **SingleAgentRuntimeMCPServer**: 单个 Agent 的运行时管理（context 管理和调度）
 - **LocalMCPServer**: 主机端 Web 搜索和抓取
 - **MemoryMCPServer**: 持久化存储和状态管理
 - **ChatMCPServer**: Agent-User 通信
@@ -15,7 +15,7 @@ MCP Servers - 独立的子 MCP Server 模块
 """
 
 from .base import BaseMCPServer
-from .agent_context import AgentContextMCPServer
+from .single_agent_runtime import SingleAgentRuntimeMCPServer
 from .local import LocalMCPServer
 from .memory import MemoryMCPServer, init_memory_dir
 from .chat import ChatMCPServer
@@ -23,7 +23,7 @@ from .qemudebug import QemuDebugMCPServer
 
 # Default MCP Server classes (always enabled)
 DEFAULT_SERVERS = [
-    AgentContextMCPServer,
+    SingleAgentRuntimeMCPServer,
     LocalMCPServer,
     MemoryMCPServer,
     ChatMCPServer,
@@ -41,7 +41,7 @@ __all__ = [
     # Base class
     "BaseMCPServer",
     # Server classes
-    "AgentContextMCPServer",
+    "SingleAgentRuntimeMCPServer",
     "LocalMCPServer",
     "MemoryMCPServer",
     "ChatMCPServer",

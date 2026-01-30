@@ -14,7 +14,7 @@ from typing import Dict, List, Any, Optional, Type
 from fastapi import FastAPI
 
 from .base import BaseMCPServer
-from .agent_context import AgentContextMCPServer
+from .single_agent_runtime import SingleAgentRuntimeMCPServer
 from .local import LocalMCPServer
 from .memory import MemoryMCPServer
 from .chat import ChatMCPServer
@@ -35,7 +35,7 @@ class SubMCPManager:
     
     # 默认子 MCP Server 类 (always enabled)
     DEFAULT_SERVERS: List[Type[BaseMCPServer]] = [
-        AgentContextMCPServer,
+        SingleAgentRuntimeMCPServer,
         LocalMCPServer,
         MemoryMCPServer,
         ChatMCPServer,

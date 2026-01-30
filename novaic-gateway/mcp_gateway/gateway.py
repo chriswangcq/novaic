@@ -206,7 +206,7 @@ class AgentMCPGateway:
         
         All servers are discovered via HTTP protocol:
         - VM: runs inside the virtual machine
-        - Sub MCPs: agent-context, local, memory, chat (mounted at /sub-mcp/)
+        - Sub MCPs: single-agent-runtime, local, memory, chat (mounted at /sub-mcp/)
         """
         # VM server (runs inside the virtual machine)
         self.registry.register_server("vm", port=self.ports.vm, priority=0)
@@ -216,7 +216,7 @@ class AgentMCPGateway:
         base_url = f"http://127.0.0.1:{gateway_port}/agents/{self.agent_id}/sub-mcp"
         
         # Default sub MCPs (always enabled)
-        self.registry.register_server("agent-context", url=f"{base_url}/agent-context/", priority=1)
+        self.registry.register_server("single-agent-runtime", url=f"{base_url}/single-agent-runtime/", priority=1)
         self.registry.register_server("local", url=f"{base_url}/local/", priority=1)
         self.registry.register_server("memory", url=f"{base_url}/memory/", priority=1)
         self.registry.register_server("chat", url=f"{base_url}/chat/", priority=1)
