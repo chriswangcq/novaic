@@ -22,6 +22,8 @@ class LocalMCPServer(BaseMCPServer):
     """
     Local MCP Server。
     
+    无状态工具，不需要 agent 隔离，但保持接口一致性。
+    
     提供工具：
     - web_search: 使用 Brave Search API 搜索网页
     - web_fetch: 抓取网页并转换为 Markdown
@@ -29,6 +31,10 @@ class LocalMCPServer(BaseMCPServer):
     
     name = "local"
     description = "主机端 Web 搜索和抓取工具"
+    
+    def __init__(self, agent_id: Optional[str] = None):
+        """初始化 Local Server。"""
+        super().__init__(agent_id=agent_id)
     
     def _build_instructions(self) -> str:
         return """Local MCP - Web 搜索和抓取

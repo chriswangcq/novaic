@@ -39,6 +39,8 @@ class AgentContextMCPServer(BaseMCPServer):
     """
     Agent Context MCP Server。
     
+    管理 Agent 的上下文和自我调度，通过 agent_id 标识当前 agent。
+    
     提供工具：
     - agent_context_list: 列出所有上下文
     - agent_context_history: 获取上下文历史
@@ -50,6 +52,17 @@ class AgentContextMCPServer(BaseMCPServer):
     
     name = "agent-context"
     description = "Agent 上下文管理和自我调度工具"
+    
+    def __init__(self, agent_id: Optional[str] = None):
+        """
+        初始化 Agent Context Server。
+        
+        Args:
+            agent_id: Agent ID，用于标识当前 agent
+        """
+        self._agent_id = agent_id or "default"
+        super().__init__(agent_id=agent_id)
+        logger.info(f"[AgentContextMCPServer] Initialized for agent: {self._agent_id}")
     
     def _build_instructions(self) -> str:
         return """Agent Context MCP - 上下文管理和自我调度
@@ -74,6 +87,7 @@ class AgentContextMCPServer(BaseMCPServer):
     
     def _register_tools(self) -> None:
         """注册所有 Agent Context 工具。"""
+        server = self  # Capture for closures
         
         @self.mcp.tool()
         async def agent_context_list() -> Dict[str, Any]:
@@ -198,7 +212,10 @@ class AgentContextMCPServer(BaseMCPServer):
             """
             try:
                 async with httpx.AsyncClient(timeout=30.0, trust_env=False) as client:
-                    response = await client.get(f"{GATEWAY_URL}/api/agent/inbox")
+                    response = await client.get(
+                        f"{GATEWAY_URL}/api/agent/inbox",
+                        params={"agent_id": server._agent_id}
+                    )
                     response.raise_for_status()
                     return response.json()
             except httpx.HTTPError as e:
@@ -236,6 +253,7 @@ class AgentContextMCPServer(BaseMCPServer):
                     response = await client.post(
                         f"{GATEWAY_URL}/api/agent/rest",
                         json={
+                            "agent_id": server._agent_id,
                             "reason": reason,
                             "wake_triggers": wake_triggers or [{"type": "user_response"}],
                             "handoff_notes": handoff_notes
@@ -337,4 +355,4 @@ class AgentContextMCPServer(BaseMCPServer):
                 logger.error(f"[AgentContextMCP] agent_call failed: {e}")
                 return {"success": False, "error": str(e)}
         
-        logger.info(f"[{self.name}] Registered 6 tools")
+        logger.info(f"[{self.name}] Registered 6 tools for agent: {server._agent_id}")

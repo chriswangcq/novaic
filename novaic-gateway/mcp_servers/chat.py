@@ -39,6 +39,8 @@ class ChatMCPServer(BaseMCPServer):
     """
     Chat MCP Server。
     
+    每个 Agent 的聊天消息通过 agent_id 隔离。
+    
     提供工具：
     - chat_reply: 发送回复消息
     - chat_ask: 询问用户并等待回答
@@ -50,6 +52,17 @@ class ChatMCPServer(BaseMCPServer):
     
     name = "chat"
     description = "Agent-User 通信工具"
+    
+    def __init__(self, agent_id: Optional[str] = None):
+        """
+        初始化 Chat Server。
+        
+        Args:
+            agent_id: Agent ID，用于隔离聊天消息
+        """
+        self._agent_id = agent_id or "default"
+        super().__init__(agent_id=agent_id)
+        logger.info(f"[ChatMCPServer] Initialized for agent: {self._agent_id}")
     
     def _build_instructions(self) -> str:
         return """Chat MCP - Agent-User 通信
@@ -75,6 +88,12 @@ class ChatMCPServer(BaseMCPServer):
     
     def _register_tools(self) -> None:
         """注册所有 Chat 工具。"""
+        server = self  # Capture for closures
+        
+        async def _send_event(event_type: str, data: Dict[str, Any]) -> Dict[str, Any]:
+            """发送聊天事件，自动附加 agent_id。"""
+            data["agent_id"] = server._agent_id
+            return await _send_chat_event(event_type, data)
         
         @self.mcp.tool()
         async def chat_reply(
@@ -98,7 +117,7 @@ class ChatMCPServer(BaseMCPServer):
                 chat_reply("任务已完成！")
                 chat_reply("这是搜索结果：...", attachments=["screenshot.png"])
             """
-            result = await _send_chat_event("AGENT_REPLY", {
+            result = await _send_event("AGENT_REPLY", {
                 "message": message,
                 "attachments": attachments or [],
                 "reply_type": "message"
@@ -133,7 +152,7 @@ class ChatMCPServer(BaseMCPServer):
                 chat_ask("你想用哪个浏览器？", options=["Chrome", "Firefox", "Safari"])
                 chat_ask("请输入你的搜索关键词")
             """
-            event_result = await _send_chat_event("AGENT_ASK", {
+            event_result = await _send_event("AGENT_ASK", {
                 "question": question,
                 "options": options,
                 "timeout_seconds": timeout_seconds,
@@ -199,7 +218,7 @@ class ChatMCPServer(BaseMCPServer):
                 chat_notify("操作成功！", level="success")
                 chat_notify("检测到潜在问题", level="warning")
             """
-            result = await _send_chat_event("AGENT_NOTIFY", {
+            result = await _send_event("AGENT_NOTIFY", {
                 "message": message,
                 "level": level,
                 "reply_type": "notification"
@@ -226,7 +245,7 @@ class ChatMCPServer(BaseMCPServer):
             Examples:
                 chat_show_image("/tmp/screenshot.png", caption="当前屏幕截图")
             """
-            result = await _send_chat_event("AGENT_IMAGE", {
+            result = await _send_event("AGENT_IMAGE", {
                 "image_path": image_path,
                 "caption": caption,
                 "reply_type": "image"
@@ -256,7 +275,11 @@ class ChatMCPServer(BaseMCPServer):
                 Dictionary with messages, has_more
             """
             try:
-                params = {"limit": min(limit, 100), "summary_length": summary_length}
+                params = {
+                    "limit": min(limit, 100),
+                    "summary_length": summary_length,
+                    "agent_id": server._agent_id  # 使用当前 agent 的 ID
+                }
                 if before_id:
                     params["before_id"] = before_id
                 if message_type:
@@ -288,11 +311,12 @@ class ChatMCPServer(BaseMCPServer):
             try:
                 async with httpx.AsyncClient(timeout=30.0, trust_env=False) as client:
                     response = await client.get(
-                        f"{GATEWAY_URL}/api/chat/message/{message_id}"
+                        f"{GATEWAY_URL}/api/chat/message/{message_id}",
+                        params={"agent_id": server._agent_id}  # 使用当前 agent 的 ID
                     )
                     response.raise_for_status()
                     return response.json()
             except httpx.HTTPError as e:
                 return {"success": False, "error": str(e)}
         
-        logger.info(f"[{self.name}] Registered 6 tools")
+        logger.info(f"[{self.name}] Registered 6 tools for agent: {server._agent_id}")
