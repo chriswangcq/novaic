@@ -71,14 +71,20 @@ class QemuDebugMCPServer(BaseMCPServer):
         # 存储 agent_id 用于后续操作
         self._init_agent_id = agent_id or "default"
         
-        # VM Setup configuration - 按 agent_id 隔离
+        # VM Setup configuration
         self.data_dir = os.environ.get("NOVAIC_DATA_DIR", os.path.expanduser("~/.novaic"))
+        
+        # 共享资源目录（源镜像、固件等只读资源）
+        self.shared_dir = os.path.join(self.data_dir, "shared")
+        self.shared_images_dir = os.path.join(self.shared_dir, "images")  # 源镜像（共享）
+        self.firmware_dir = os.path.join(self.shared_dir, "firmware")     # UEFI 固件（共享）
+        
+        # Agent 独立目录（VM 磁盘、配置等）
         self.agent_dir = os.path.join(self.data_dir, "agents", self._init_agent_id)
         self.vm_dir = os.path.join(self.agent_dir, "vm")
-        self.images_dir = os.path.join(self.vm_dir, "images")
-        self.iso_dir = os.path.join(self.vm_dir, "iso")
-        self.firmware_dir = os.path.join(self.vm_dir, "firmware")
-        self.config_dir = os.path.join(self.vm_dir, "config")
+        self.disk_dir = os.path.join(self.vm_dir, "disk")      # VM 磁盘（独立）
+        self.iso_dir = os.path.join(self.vm_dir, "iso")        # cloud-init ISO（独立）
+        self.config_dir = os.path.join(self.vm_dir, "config")  # cloud-init 配置（独立）
         
         # VM 运行状态
         self.vm_pid_file = os.path.join(self.vm_dir, ".vm.pid")
@@ -247,7 +253,11 @@ qemu_deploy_vmuse_code()  # 部署 MCP Server
     
     def _ensure_dirs(self) -> None:
         """确保所有必要目录存在。"""
-        for d in [self.vm_dir, self.images_dir, self.iso_dir, self.firmware_dir, self.config_dir]:
+        # 共享目录
+        for d in [self.shared_images_dir, self.firmware_dir]:
+            os.makedirs(d, exist_ok=True)
+        # Agent 独立目录
+        for d in [self.vm_dir, self.disk_dir, self.iso_dir, self.config_dir]:
             os.makedirs(d, exist_ok=True)
     
     def _get_ssh_pubkey(self) -> str:
@@ -710,7 +720,8 @@ qemu_deploy_vmuse_code()  # 部署 MCP Server
             image_name = f"{codename}-server-cloudimg-{arch_suffix}.img"
             
             server._ensure_dirs()
-            image_path = os.path.join(server.iso_dir, image_name)
+            # 源镜像放在共享目录（所有 agent 共用）
+            image_path = os.path.join(server.shared_images_dir, image_name)
             
             # 检查是否已存在 (除非 force=True)
             if os.path.exists(image_path) and not force:
@@ -775,14 +786,15 @@ qemu_deploy_vmuse_code()  # 部署 MCP Server
             """
             server._ensure_dirs()
             
-            # 查找镜像
+            # 查找源镜像（在共享目录）
             arch_suffix = "arm64" if server.is_arm64 else "amd64"
-            image_files = [f for f in os.listdir(server.iso_dir) if f.endswith(f"-{arch_suffix}.img")]
+            image_files = [f for f in os.listdir(server.shared_images_dir) if f.endswith(f"-{arch_suffix}.img")]
             if not image_files:
                 return {"success": False, "error": "No cloud image found. Run qemu_download_image first."}
             
-            source_image = os.path.join(server.iso_dir, image_files[0])
-            disk_path = os.path.join(server.images_dir, "novaic-vm.qcow2")
+            source_image = os.path.join(server.shared_images_dir, image_files[0])
+            # VM 磁盘放在 agent 独立目录
+            disk_path = os.path.join(server.disk_dir, "novaic-vm.qcow2")
             seed_iso_path = os.path.join(server.iso_dir, "cloud-init-seed.iso")
             
             try:
@@ -933,7 +945,7 @@ final_message: "NovAIC VM ready"
             Returns:
                 Dictionary with success, pid, ports
             """
-            disk_path = os.path.join(server.images_dir, "novaic-vm.qcow2")
+            disk_path = os.path.join(server.disk_dir, "novaic-vm.qcow2")
             seed_iso_path = os.path.join(server.iso_dir, "cloud-init-seed.iso")
             
             if not os.path.exists(disk_path):
