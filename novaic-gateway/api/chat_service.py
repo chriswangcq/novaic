@@ -433,16 +433,6 @@ class ChatService:
             handoff_notes=previous_state.get("handoff_notes"),
         )
     
-    async def is_agent_busy(self, agent_id: Optional[str] = None) -> bool:
-        """Check if agent is busy."""
-        aid = self._require_agent_id(agent_id)
-        return await self.repo.is_agent_busy(aid)
-    
-    async def set_agent_busy(self, busy: bool, agent_id: Optional[str] = None):
-        """Set agent busy state."""
-        aid = self._require_agent_id(agent_id)
-        await self.repo.set_agent_busy(aid, busy)
-    
     # ==================== SSE Subscription Management ====================
     
     def subscribe_chat(self) -> tuple[str, asyncio.Queue]:

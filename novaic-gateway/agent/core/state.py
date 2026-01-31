@@ -3,10 +3,9 @@ Agent State Management
 
 Manages the agent's operational state (SLEEP, AWAKE).
 
-Note: The BUSY state is deprecated in the new Inbox-based architecture.
-Agent state is now managed by AgentStateRepository (persistent) and 
-processing is handled by AgentRunner. The BUSY state is kept for 
-backward compatibility but should not be used in new code.
+v12: Master-driven architecture.
+- SLEEP: No active Runtime, agent waiting for new messages
+- AWAKE: Active Runtime(s) processing, Master drives ReACT loop
 """
 
 import asyncio
@@ -20,16 +19,10 @@ logger = logging.getLogger(__name__)
 
 
 class AgentState(Enum):
-    """
-    Agent operational states.
+    """Agent operational states."""
     
-    Note: In the new Inbox-based architecture, only SLEEP and AWAKE are used.
-    BUSY is deprecated and kept for backward compatibility only.
-    """
-    
-    SLEEP = "sleep"    # Agent is dormant, not processing events
-    AWAKE = "awake"    # Agent is ready to receive and process events
-    BUSY = "busy"      # DEPRECATED: Agent is currently processing an event
+    SLEEP = "sleep"    # No active Runtime, agent waiting for new messages
+    AWAKE = "awake"    # Active Runtime(s), Master drives ReACT loop
 
 
 @dataclass
@@ -162,7 +155,7 @@ class StateManager:
         try:
             await asyncio.sleep(self._idle_timeout)
             
-            # Only sleep if still awake (not busy)
+            # Only sleep if still awake
             if self._state == AgentState.AWAKE:
                 self.set_state(AgentState.SLEEP, reason="idle timeout")
                 
@@ -211,34 +204,21 @@ class StateManager:
         except asyncio.TimeoutError:
             return False
     
-    async def wait_until_available(self, timeout: Optional[float] = None) -> bool:
+    async def wait_until_awake(self, timeout: Optional[float] = None) -> bool:
         """
-        Wait until agent is not busy.
+        Wait until agent is awake.
         
         Args:
             timeout: Maximum time to wait
         
         Returns:
-            True if available, False if timeout
+            True if awake, False if timeout
         """
-        if self._state != AgentState.BUSY:
-            return True
-        
-        try:
-            while self._state == AgentState.BUSY:
-                if timeout:
-                    await asyncio.wait_for(self._state_changed.wait(), timeout=timeout)
-                else:
-                    await self._state_changed.wait()
-            
-            return True
-            
-        except asyncio.TimeoutError:
-            return False
+        return await self.wait_for_state(AgentState.AWAKE, timeout)
     
     def can_accept_event(self) -> bool:
-        """Check if agent can accept new events."""
-        return self._state != AgentState.BUSY
+        """Check if agent can accept new events (always true in v12 - Master handles)."""
+        return True  # Master manages event processing
     
     def is_sleeping(self) -> bool:
         """Check if agent is sleeping."""

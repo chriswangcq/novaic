@@ -41,7 +41,8 @@
     ],
     "resources": {
       "resources/novaic-gateway": "novaic-gateway",
-      "resources/novaic-mcp-vmuse": "novaic-mcp-vmuse"
+      "resources/novaic-mcp-vmuse": "novaic-mcp-vmuse",
+      "resources/novaic-worker": "novaic-worker"
     },
     "macOS": {
       "minimumSystemVersion": "10.15"

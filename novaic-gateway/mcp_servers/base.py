@@ -77,6 +77,11 @@ class BaseMCPServer(ABC):
         
         注意：http_app 只创建一次并缓存，确保 lifespan 正确工作。
         
+        v2.9: 修复 Starlette Route 默认只允许 GET/HEAD 的问题。
+        FastMCP 的 http_app 返回的 Starlette app 中，Route 的 methods=None
+        导致 Starlette 默认只接受 GET/HEAD，但 MCP 需要 POST。
+        解决方案：手动修改 Route 的 methods 为 None + POST。
+        
         Args:
             path: MCP 端点路径
         
@@ -85,6 +90,17 @@ class BaseMCPServer(ABC):
         """
         if self._http_app is None:
             self._http_app = self.mcp.http_app(path=path)
+            
+            # Fix: FastMCP creates Route with methods=None, which defaults to GET/HEAD
+            # MCP protocol requires POST for JSON-RPC calls
+            from starlette.routing import Route
+            for route in self._http_app.routes:
+                if isinstance(route, Route) and route.path == path:
+                    # Allow all common HTTP methods for MCP
+                    route.methods = {"GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"}
+                    logger.info(f"[{self.name}] Fixed route methods for {path}")
+                    break
+        
         return self._http_app
     
     def get_stats(self) -> Dict[str, Any]:

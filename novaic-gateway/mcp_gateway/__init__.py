@@ -1,20 +1,23 @@
 """
 NovAIC MCP Gateway Module (mcp_gateway)
 
-Provides a unified MCP interface for each Agent, aggregating tools and skills
-from all sub-MCP servers (vmuse, session, local, memory, chat, qemudebug).
+v2.8: Per-Runtime Aggregate MCP
+
+Provides a unified MCP interface for each Runtime, aggregating tools from:
+- RuntimeMCP (runtime_* tools)
+- Shared MCP servers (chat, memory, local, qemudebug)
+- VM MCP
 
 Note: Named 'mcp_gateway' to avoid conflict with the 'mcp' package from FastMCP.
 
 Architecture:
     Gateway (19999)
-    └── /agents/{agent_id}/mcp  → AgentMCPGateway
+    └── /mcp/aggregate/{subagent_id}  → AggregateMCP
         ├── Tools: Proxied from sub-servers via ToolRegistry
-        ├── Skills: Aggregated from sub-servers
+        ├── Skills: Aggregated from skills directory
         └── task_*: Async wrapper tools
 """
 
-from .gateway import AgentMCPGateway
-from .manager import MCPGatewayManager
+from .gateway import AggregateMCP
 
-__all__ = ["AgentMCPGateway", "MCPGatewayManager"]
+__all__ = ["AggregateMCP"]

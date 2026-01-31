@@ -19,7 +19,7 @@ GATEWAY_URL = os.environ.get("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
 
 
 async def _send_chat_event(event_type: str, data: Dict[str, Any]) -> Dict[str, Any]:
-    """Send a chat event to the Gateway EventBus."""
+    """Send a chat event to the Gateway."""
     try:
         async with httpx.AsyncClient(timeout=30.0, trust_env=False) as client:
             response = await client.post(

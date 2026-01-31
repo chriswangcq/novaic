@@ -32,9 +32,9 @@ class LocalMCPServer(BaseMCPServer):
     name = "local"
     description = "主机端 Web 搜索和抓取工具"
     
-    def __init__(self, agent_id: Optional[str] = None):
+    def __init__(self, agent_id: Optional[str] = None, agent_index: int = 0):
         """初始化 Local Server。"""
-        super().__init__(agent_id=agent_id)
+        super().__init__(agent_id=agent_id, agent_index=agent_index)
     
     def _build_instructions(self) -> str:
         return """Local MCP - Web 搜索和抓取

@@ -55,7 +55,7 @@ def main():
         "--hidden-import", "aiofiles",
         "--hidden-import", "mcp_servers",
         "--hidden-import", "mcp_servers.base",
-        "--hidden-import", "mcp_servers.single_agent_runtime",
+        "--hidden-import", "mcp_servers.runtime",
         "--hidden-import", "mcp_servers.local",
         "--hidden-import", "mcp_servers.memory",
         "--hidden-import", "mcp_servers.chat",

@@ -1,6 +1,6 @@
 #!/bin/bash
 # NovAIC Complete Build Script
-# Builds Gateway + Tauri App into a single distributable DMG
+# Builds Gateway + Worker + Tauri App into a single distributable DMG
 
 set -e
 
@@ -12,8 +12,8 @@ cd "$SCRIPT_DIR"
 
 RESOURCES_DIR="novaic-app/src-tauri/resources"
 
-# Step 1: Build Gateway
-echo "[1/4] Building Gateway..."
+# Step 1: Build Gateway and Worker
+echo "[1/4] Building Gateway and Worker..."
 cd novaic-gateway
 if [ ! -d ".venv" ]; then
     echo "  Creating virtual environment..."
@@ -21,18 +21,31 @@ if [ ! -d ".venv" ]; then
 fi
 echo "  Installing dependencies..."
 ./.venv/bin/pip install -q -r requirements.txt
+
+echo "  Building Gateway..."
 ./.venv/bin/python build.py
 echo "  Gateway built: dist/novaic-gateway"
+
+echo "  Building Worker..."
+./.venv/bin/pyinstaller --clean --noconfirm novaic-worker.spec
+echo "  Worker built: dist/novaic-worker"
+
 cd "$SCRIPT_DIR"
 
-# Step 2: Copy Gateway to Tauri resources
+# Step 2: Copy Gateway and Worker to Tauri resources
 echo ""
-echo "[2/4] Copying Gateway to Tauri resources..."
+echo "[2/4] Copying Gateway and Worker to Tauri resources..."
 mkdir -p "$RESOURCES_DIR"
-# onedir mode: copy the entire directory
+
+# Copy Gateway (onedir mode)
 rm -rf "$RESOURCES_DIR/novaic-gateway"
 cp -r novaic-gateway/dist/novaic-gateway "$RESOURCES_DIR/"
-echo "  Copied to: $RESOURCES_DIR/novaic-gateway/"
+echo "  Copied Gateway to: $RESOURCES_DIR/novaic-gateway/"
+
+# Copy Worker (single file)
+rm -f "$RESOURCES_DIR/novaic-worker"
+cp novaic-gateway/dist/novaic-worker "$RESOURCES_DIR/"
+echo "  Copied Worker to: $RESOURCES_DIR/novaic-worker"
 
 # Step 3: Copy novaic-mcp-vmuse to Tauri resources (VM-side MCP)
 echo ""

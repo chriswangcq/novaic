@@ -14,7 +14,7 @@ from config.agents import (
     VmConfig,
     PortConfig,
 )
-from mcp_gateway.manager import get_mcp_gateway_manager
+from mcp_servers.manager import get_mcp_manager
 
 router = APIRouter(prefix="/api/agents", tags=["agents"])
 
@@ -141,13 +141,7 @@ async def create_agent(request: CreateAgentRequest):
             source_image=request.source_image,
         )
         
-        # Setup MCP Gateway for the new agent
-        mcp_manager = get_mcp_gateway_manager()
-        if mcp_manager:
-            await mcp_manager.add_agent(
-                agent_id=agent.id,
-                agent_index=agent.vm.agent_index,
-            )
+        # v2.7: MCP Gateways are created per-Runtime by Master, not per-Agent
         
         return AgentResponse(**agent.model_dump())
     except Exception as e:
@@ -169,36 +163,37 @@ async def update_agent(agent_id: str, request: UpdateAgentRequest):
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
     
-    # If setup_complete changed to True, ensure MCP Gateway is setup and send bootstrap message
+    # If setup_complete changed to True, send bootstrap message
+    # v2.7: MCP Gateway is created per-Runtime by Master, not here
     if request.setup_complete is True and not was_setup_complete:
-        # Setup MCP Gateway
-        mcp_manager = get_mcp_gateway_manager()
-        if mcp_manager and not mcp_manager.get_gateway(agent_id):
-            await mcp_manager.add_agent(
-                agent_id=agent.id,
-                agent_index=agent.vm.agent_index,
-            )
-        
-        # Send bootstrap message to Agent's inbox
+        # Send bootstrap message using v12 Master-driven architecture
         try:
-            from api.inbox_service import get_inbox_service
+            from db.database import get_database
+            from db.repositories.message import MessageRepository
             
-            inbox_svc = get_inbox_service()
-            await inbox_svc.add_message(
-                msg_type="SYSTEM_MESSAGE",
+            db = get_database()
+            msg_repo = MessageRepository(db)
+            
+            # Store message - Monitor will detect and create Runtime
+            msg = await msg_repo.add_message(
+                agent_id=agent_id,
+                type="SYSTEM_MESSAGE",
                 content="VM setup complete. Execute skill agent-bootstrap to configure the agent environment.",
-                priority="high",
-                source="system:bootstrap",
                 metadata={
                     "action": "bootstrap",
                     "skill": "agent-bootstrap",
                     "reason": "setup_complete",
+                    "priority": "high",
+                    "source": "system:bootstrap",
                 },
-                agent_id=agent_id,
             )
-            print(f"[Agents] Sent bootstrap message to agent {agent_id}")
+            
+            # v12: No broadcast_new_message needed
+            # Monitor polls for unread messages and creates Runtimes
+            
+            print(f"[Agents] Bootstrap message stored for agent {agent_id}, Monitor will process")
         except Exception as e:
-            print(f"[Agents] Warning: Failed to send bootstrap message: {e}")
+            print(f"[Agents] Warning: Failed to store bootstrap message: {e}")
     
     return AgentResponse(**agent.model_dump())
 
@@ -208,10 +203,8 @@ async def delete_agent(agent_id: str):
     """Delete an agent and its VM files"""
     manager = get_agent_config_manager()
     
-    # Remove MCP Gateway first
-    mcp_manager = get_mcp_gateway_manager()
-    if mcp_manager:
-        await mcp_manager.remove_agent(agent_id)
+    # v2.7: Aggregate Gateways are cleaned up when Runtimes are destroyed
+    # No need to remove per-agent gateway here
     
     if not manager.delete_agent(agent_id):
         raise HTTPException(status_code=404, detail="Agent not found")
@@ -243,61 +236,55 @@ async def get_agent_status(agent_id: str):
     }
 
 
-# ==================== MCP Gateway Management ====================
+# ==================== MCP Management (v2.7) ====================
 
-@router.get("/{agent_id}/mcp/status")
-async def get_agent_mcp_status(agent_id: str):
+@router.get("/mcp/status")
+async def get_mcp_status():
     """
-    Get agent MCP Gateway status.
+    Get MCPManager status.
     
-    Returns gateway stats including tool count, skill count, and mount path.
+    v2.7: Returns stats about shared servers, runtime servers, and aggregate gateways.
     """
-    mcp_manager = get_mcp_gateway_manager()
+    mcp_manager = get_mcp_manager()
     if not mcp_manager:
-        raise HTTPException(status_code=503, detail="MCP Gateway Manager not available")
-    
-    gateway = mcp_manager.get_gateway(agent_id)
-    if not gateway:
-        raise HTTPException(status_code=404, detail="MCP Gateway not found for this agent")
+        raise HTTPException(status_code=503, detail="MCPManager not available")
     
     return {
-        "agent_id": agent_id,
-        "mount_path": mcp_manager.get_mount_path(agent_id),
-        "stats": gateway.get_stats()
-    }
-
-
-@router.post("/{agent_id}/mcp/refresh")
-async def refresh_agent_mcp(agent_id: str):
-    """
-    Refresh agent MCP Gateway.
-    
-    Re-discovers tools and skills from sub-servers.
-    Use this after sub-MCP servers are restarted or updated.
-    """
-    mcp_manager = get_mcp_gateway_manager()
-    if not mcp_manager:
-        raise HTTPException(status_code=503, detail="MCP Gateway Manager not available")
-    
-    success = await mcp_manager.refresh_agent(agent_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Agent not found or refresh failed")
-    
-    return {"status": "ok", "message": "MCP Gateway refreshed"}
-
-
-@router.get("/mcp/list")
-async def list_mcp_gateways():
-    """
-    List all MCP Gateways.
-    
-    Returns list of all mounted agent MCP gateways with their stats.
-    """
-    mcp_manager = get_mcp_gateway_manager()
-    if not mcp_manager:
-        raise HTTPException(status_code=503, detail="MCP Gateway Manager not available")
-    
-    return {
-        "gateways": mcp_manager.list_agents(),
         "stats": mcp_manager.get_stats()
     }
+
+
+@router.get("/mcp/runtimes")
+async def list_mcp_runtimes():
+    """
+    List all active Runtime MCP servers and their Aggregate Gateways.
+    
+    v2.7: Each Runtime has its own Aggregate Gateway.
+    """
+    mcp_manager = get_mcp_manager()
+    if not mcp_manager:
+        raise HTTPException(status_code=503, detail="MCPManager not available")
+    
+    stats = mcp_manager.get_stats()
+    
+    runtimes = []
+    for subagent_id in stats.get("runtime_servers", []):
+        runtime_url = mcp_manager.get_runtime_mount_path(subagent_id)
+        aggregate_url = mcp_manager.get_aggregate_mount_path(subagent_id)
+        gateway = mcp_manager.get_aggregate_gateway(subagent_id)
+        
+        runtimes.append({
+            "subagent_id": subagent_id,
+            "runtime_url": runtime_url,
+            "aggregate_url": aggregate_url,
+            "gateway_stats": gateway.get_stats() if gateway else None,
+        })
+    
+    return {
+        "runtimes": runtimes,
+        "total": len(runtimes),
+    }
+
+
+# Note: Workers load tools from Aggregate Gateway URL stored in runtime record.
+# Tool discovery is done via MCP protocol (tools/list).

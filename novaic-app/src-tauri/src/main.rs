@@ -44,6 +44,150 @@ impl GatewayProcess {
     fn base_url(&self) -> String {
         format!("http://127.0.0.1:{}", self.port)
     }
+}
+
+/// Worker process manager
+/// Workers are separate processes that connect to Gateway via SSE
+/// and execute tasks (think, tool_call, reply)
+struct WorkerProcess {
+    process: Option<Child>,
+    worker_id: String,
+    gateway_url: String,
+}
+
+impl WorkerProcess {
+    fn new(worker_id: &str, gateway_url: &str) -> Self {
+        Self {
+            process: None,
+            worker_id: worker_id.to_string(),
+            gateway_url: gateway_url.to_string(),
+        }
+    }
+
+    fn start(&mut self, worker_path: &PathBuf, is_binary: bool, gateway_dir: Option<&PathBuf>) -> Result<(), String> {
+        if self.process.is_some() {
+            println!("[Worker:{}] Already running", self.worker_id);
+            return Ok(());
+        }
+
+        println!("[Worker:{}] Starting Worker from {:?}", self.worker_id, worker_path);
+        println!("[Worker:{}] Gateway URL: {}", self.worker_id, self.gateway_url);
+        println!("[Worker:{}] Mode: {}", self.worker_id, if is_binary { "binary" } else { "python" });
+
+        let child = if is_binary {
+            // Production mode: run bundled binary
+            if !worker_path.exists() {
+                return Err(format!("Worker binary not found at {:?}", worker_path));
+            }
+            
+            Command::new(worker_path)
+                .arg("--gateway")
+                .arg(&self.gateway_url)
+                .arg("--worker-id")
+                .arg(&self.worker_id)
+                .arg("--max-concurrent")
+                .arg("10")
+                .env("NO_PROXY", "localhost,127.0.0.1,::1")
+                .env("no_proxy", "localhost,127.0.0.1,::1")
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn()
+                .map_err(|e| format!("Failed to start Worker binary: {}", e))?
+        } else {
+            // Development mode: run Python with venv
+            let gateway_dir = gateway_dir.ok_or("Gateway dir required for dev mode")?;
+            let venv_python = gateway_dir.join("venv/bin/python");
+            let python = if venv_python.exists() {
+                venv_python.to_string_lossy().to_string()
+            } else if cfg!(target_os = "windows") {
+                "python".to_string()
+            } else {
+                "python3".to_string()
+            };
+
+            println!("[Worker:{}] Using Python: {}", self.worker_id, python);
+
+            Command::new(&python)
+                .arg("-m")
+                .arg("worker.worker")
+                .arg("--gateway")
+                .arg(&self.gateway_url)
+                .arg("--worker-id")
+                .arg(&self.worker_id)
+                .arg("--max-concurrent")
+                .arg("10")
+                .current_dir(gateway_dir)
+                .env("NO_PROXY", "localhost,127.0.0.1,::1")
+                .env("no_proxy", "localhost,127.0.0.1,::1")
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
+                .spawn()
+                .map_err(|e| format!("Failed to start Worker: {}", e))?
+        };
+
+        self.process = Some(child);
+        println!("[Worker:{}] Started", self.worker_id);
+        Ok(())
+    }
+
+    fn stop(&mut self) {
+        if let Some(mut process) = self.process.take() {
+            let pid = process.id();
+            println!("[Worker:{}] Stopping process (PID: {})...", self.worker_id, pid);
+            
+            // Send SIGTERM for graceful shutdown
+            #[cfg(unix)]
+            unsafe {
+                libc::kill(pid as i32, libc::SIGTERM);
+            }
+            
+            // Wait briefly for graceful shutdown
+            std::thread::sleep(std::time::Duration::from_millis(500));
+            
+            // Check if process exited
+            match process.try_wait() {
+                Ok(Some(status)) => {
+                    println!("[Worker:{}] Stopped gracefully with status: {:?}", self.worker_id, status);
+                    return;
+                }
+                Ok(None) => {
+                    // Still running, force kill
+                    println!("[Worker:{}] Process still running, sending SIGKILL...", self.worker_id);
+                    let _ = process.kill();
+                    let _ = process.wait();
+                    println!("[Worker:{}] Force killed", self.worker_id);
+                }
+                Err(e) => {
+                    println!("[Worker:{}] Error checking process status: {}", self.worker_id, e);
+                    let _ = process.kill();
+                }
+            }
+        }
+    }
+
+    fn is_running(&mut self) -> bool {
+        if let Some(ref mut process) = self.process {
+            match process.try_wait() {
+                Ok(Some(_)) => {
+                    self.process = None;
+                    false
+                }
+                Ok(None) => true,
+                Err(_) => false,
+            }
+        } else {
+            false
+        }
+    }
+}
+
+impl Drop for WorkerProcess {
+    fn drop(&mut self) {
+        self.stop();
+    }
+}
+
+impl GatewayProcess {
 
     fn start(&mut self, gateway_path: &PathBuf, is_binary: bool, data_dir: &PathBuf, resource_dir: Option<&PathBuf>) -> Result<(), String> {
         if self.process.is_some() {
@@ -207,6 +351,7 @@ impl Drop for GatewayProcess {
 }
 
 type GatewayState = Arc<Mutex<GatewayProcess>>;
+type WorkerState = Arc<Mutex<WorkerProcess>>;
 
 /// Get Gateway path and whether it's a binary
 /// Returns (path, is_binary)
@@ -256,6 +401,49 @@ fn get_gateway_info(app: &AppHandle) -> (PathBuf, bool) {
     
     println!("[Gateway] ERROR: No gateway found! Please ensure novaic-gateway is bundled with the app.");
     (PathBuf::from("/tmp/novaic-gateway-not-found"), false)
+}
+
+/// Get Worker path and whether it's a binary
+/// Returns (path, is_binary, gateway_dir_for_dev)
+fn get_worker_info(app: &AppHandle) -> (PathBuf, bool, Option<PathBuf>) {
+    // Try to use bundled binary first (production mode)
+    if let Ok(resource_dir) = app.path().resource_dir() {
+        // Check onedir structure (novaic-worker/novaic-worker)
+        let onedir_path = resource_dir.join("novaic-worker/novaic-worker");
+        println!("[Worker] Checking onedir binary at: {:?}", onedir_path);
+        if onedir_path.exists() {
+            println!("[Worker] Found onedir binary, using production mode");
+            return (onedir_path, true, None);
+        }
+        
+        // Fallback: check single file
+        let binary_path = resource_dir.join("novaic-worker");
+        println!("[Worker] Checking single file binary at: {:?}", binary_path);
+        if binary_path.is_file() {
+            println!("[Worker] Found single file binary, using production mode");
+            return (binary_path, true, None);
+        }
+        println!("[Worker] Bundled binary not found");
+    }
+    
+    // Fallback to development mode - use gateway dir for Python module
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            let dev_path = exe_dir
+                .join("../../../..")
+                .join("novaic-gateway");
+            
+            if dev_path.exists() && dev_path.join("worker/worker.py").exists() {
+                let canonical = dev_path.canonicalize().unwrap_or(dev_path.clone());
+                println!("[Worker] Using development mode, gateway dir: {:?}", canonical);
+                return (canonical.clone(), false, Some(canonical));
+            }
+            println!("[Worker] Dev path not found: {:?}", dev_path);
+        }
+    }
+    
+    println!("[Worker] ERROR: No worker found!");
+    (PathBuf::from("/tmp/novaic-worker-not-found"), false, None)
 }
 
 /// Tauri command: Start Gateway
@@ -411,20 +599,78 @@ fn main() {
             let gateway = Arc::new(Mutex::new(GatewayProcess::new()));
             app.manage(gateway.clone());
             
-            // Auto-start Gateway only
+            // Initialize Worker Manager
+            let gateway_url = {
+                let gw = tauri::async_runtime::block_on(async { gateway.lock().await });
+                gw.base_url()
+            };
+            let worker = Arc::new(Mutex::new(WorkerProcess::new("worker-1", &gateway_url)));
+            app.manage(worker.clone());
+            
+            // Auto-start Gateway and Worker
             let (gateway_path, is_binary) = get_gateway_info(app.handle());
+            let (worker_path, worker_is_binary, gateway_dir_for_worker) = get_worker_info(app.handle());
             let resource_dir = app.path().resource_dir().ok();
+            
             println!("[Gateway] Gateway path: {:?}", gateway_path);
             println!("[Gateway] Resource dir: {:?}", resource_dir);
             println!("[Gateway] Is binary: {}", is_binary);
+            println!("[Worker] Worker path: {:?}", worker_path);
+            println!("[Worker] Is binary: {}", worker_is_binary);
             
             let gateway_for_start = gateway.clone();
+            let worker_for_start = worker.clone();
             let data_dir_for_gateway = data_dir.clone();
+            
             tauri::async_runtime::spawn(async move {
-                let mut gw = gateway_for_start.lock().await;
-                match gw.start(&gateway_path, is_binary, &data_dir_for_gateway, resource_dir.as_ref()) {
-                    Ok(_) => println!("[Gateway] Auto-started successfully"),
-                    Err(e) => println!("[Gateway] Failed to auto-start: {}", e),
+                // Start Gateway first
+                {
+                    let mut gw = gateway_for_start.lock().await;
+                    match gw.start(&gateway_path, is_binary, &data_dir_for_gateway, resource_dir.as_ref()) {
+                        Ok(_) => println!("[Gateway] Auto-started successfully"),
+                        Err(e) => {
+                            println!("[Gateway] Failed to auto-start: {}", e);
+                            return;
+                        }
+                    }
+                }
+                
+                // Wait for Gateway to be ready (health check)
+                println!("[Worker] Waiting for Gateway to be ready...");
+                let client = reqwest::Client::new();
+                let health_url = format!("{}/api/health", gateway_url);
+                
+                for i in 0..30 {  // Wait up to 30 seconds
+                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                    
+                    match client.get(&health_url).send().await {
+                        Ok(resp) if resp.status().is_success() => {
+                            println!("[Worker] Gateway is ready after {}s", i + 1);
+                            break;
+                        }
+                        _ => {
+                            if i == 29 {
+                                println!("[Worker] Gateway not ready after 30s, starting Worker anyway");
+                            }
+                        }
+                    }
+                }
+                
+                // Start Worker (only in production mode, dev mode Gateway handles it via ProcessManager)
+                if worker_is_binary {
+                    let mut wk = worker_for_start.lock().await;
+                    match wk.start(&worker_path, worker_is_binary, gateway_dir_for_worker.as_ref()) {
+                        Ok(_) => println!("[Worker] Auto-started successfully"),
+                        Err(e) => println!("[Worker] Failed to auto-start: {}", e),
+                    }
+                } else {
+                    // In dev mode, ProcessManager in Gateway will spawn workers
+                    // But we can also start one here for redundancy
+                    let mut wk = worker_for_start.lock().await;
+                    match wk.start(&worker_path, worker_is_binary, gateway_dir_for_worker.as_ref()) {
+                        Ok(_) => println!("[Worker] Auto-started successfully (dev mode)"),
+                        Err(e) => println!("[Worker] Failed to auto-start (dev mode): {}", e),
+                    }
                 }
             });
             
@@ -470,6 +716,15 @@ fn main() {
                 // Stop services on exit
                 tauri::RunEvent::Exit => {
                     println!("[App] Exiting, stopping services...");
+                    
+                    // Stop Worker first (it depends on Gateway)
+                    if let Some(worker) = app_handle.try_state::<WorkerState>() {
+                        let worker_clone = worker.inner().clone();
+                        tauri::async_runtime::block_on(async {
+                            let mut wk = worker_clone.lock().await;
+                            wk.stop();
+                        });
+                    }
                     
                     // Stop Gateway (which will also stop all VMs)
                     if let Some(gateway) = app_handle.try_state::<GatewayState>() {

@@ -144,6 +144,22 @@ class Database:
             await self._conn.rollback()
             raise
     
+    @asynccontextmanager
+    async def get_connection(self):
+        """
+        Get a connection context manager.
+        
+        This is an alias for accessing the raw connection for operations
+        that need direct connection access (like BEGIN/COMMIT manually).
+        
+        Usage:
+            async with db.get_connection() as conn:
+                cursor = await conn.execute("SELECT ...")
+        """
+        if not self._conn:
+            raise RuntimeError("Database not connected")
+        yield self._conn
+    
     # ==================== Convenience Methods ====================
     
     async def get_config(self, key: str) -> Optional[str]:

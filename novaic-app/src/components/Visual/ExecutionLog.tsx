@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { LogEntry } from '../../types';
-import { Trash2, Rocket, CheckCircle, AlertCircle, Terminal, Loader2 } from 'lucide-react';
+import { Trash2, Rocket, CheckCircle, AlertCircle, Terminal, Loader2, Brain, Zap, XCircle } from 'lucide-react';
 import { useAppStore } from '../../store';
 
 interface ExecutionLogProps {
@@ -17,12 +17,18 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [logs]);
 
-  const getLogIcon = (type: string) => {
+  const getLogIcon = (type: string, success?: boolean) => {
     switch (type) {
       case 'tool_start':
         return <Rocket size={14} className="text-nb-accent" />;
       case 'tool_end':
-        return <CheckCircle size={14} className="text-nb-success" />;
+        return success !== false 
+          ? <CheckCircle size={14} className="text-nb-success" />
+          : <XCircle size={14} className="text-nb-error" />;
+      case 'thinking':
+        return <Brain size={14} className="text-purple-400" />;
+      case 'status':
+        return <Zap size={14} className="text-yellow-400" />;
       case 'error':
         return <AlertCircle size={14} className="text-nb-error" />;
       case 'stdout':
@@ -37,25 +43,26 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
     switch (log.type) {
       case 'tool_start': {
         const toolName = log.data.tool || 'unknown';
-        const input = log.data.input;
+        const args = log.data.args || log.data.input;
         let detail = '';
         
         // Format input parameters
-        if (input && typeof input === 'object') {
-          const keys = Object.keys(input);
+        if (args && typeof args === 'object') {
+          const argsObj = args as Record<string, unknown>;
+          const keys = Object.keys(argsObj);
           if (keys.length > 0) {
             const params = keys.slice(0, 3).map(k => {
-              const v = input[k];
+              const v = argsObj[k];
               const val = typeof v === 'string' 
-                ? (v.length > 30 ? v.substring(0, 30) + '...' : v)
-                : JSON.stringify(v);
-              return `${k}=${val}`;
-            }).join(', ');
-            detail = params + (keys.length > 3 ? ` +${keys.length - 3} more` : '');
+                ? (v.length > 50 ? v.substring(0, 50) + '...' : v)
+                : JSON.stringify(v).substring(0, 50);
+              return `${k}: ${val}`;
+            }).join(' | ');
+            detail = params + (keys.length > 3 ? ` (+${keys.length - 3})` : '');
           }
         }
         
-        return { main: `Starting: ${toolName}`, detail };
+        return { main: `⚡ ${toolName}`, detail };
       }
       case 'tool_end': {
         const toolName = log.data.tool || 'unknown';
@@ -66,46 +73,53 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
         // Format result summary
         if (result && typeof result === 'object') {
           if (result.error) {
-            detail = `Error: ${String(result.error).substring(0, 50)}`;
+            detail = `❌ ${String(result.error).substring(0, 80)}`;
+          } else if (result.message) {
+            detail = `💬 ${String(result.message).substring(0, 80)}`;
           } else if (result.url) {
-            detail = `URL: ${result.url}`;
+            detail = `🔗 ${result.url}`;
           } else if (result.output) {
-            detail = String(result.output).substring(0, 50);
-          } else if (result.success !== undefined) {
-            const keys = Object.keys(result).filter(k => k !== 'success');
+            detail = String(result.output).substring(0, 80);
+          } else if (result.content) {
+            detail = String(result.content).substring(0, 80);
+          } else {
+            const keys = Object.keys(result).filter(k => k !== 'success' && k !== 'done');
             if (keys.length > 0) {
-              detail = keys.slice(0, 2).map(k => `${k}: ${JSON.stringify(result[k]).substring(0, 20)}`).join(', ');
+              detail = keys.slice(0, 3).map(k => `${k}: ${JSON.stringify(result[k]).substring(0, 30)}`).join(' | ');
             }
           }
         }
         
+        const icon = success !== false ? '✓' : '✗';
         return { 
-          main: `Completed: ${toolName}`, 
-          detail: detail || (success ? '✓' : '✗')
+          main: `${icon} ${toolName}`, 
+          detail: detail || (success !== false ? 'completed' : 'failed')
         };
       }
-      case 'thinking':
-        return { 
-          main: String(log.data.content || log.data || '').substring(0, 100) + (String(log.data).length > 100 ? '...' : '')
-        };
+      case 'thinking': {
+        const content = typeof log.data === 'string' ? log.data : (log.data?.content || '');
+        if (!content) return { main: '...' };
+        // Show reasoning content (truncated)
+        const truncated = content.length > 150 ? content.substring(0, 150) + '...' : content;
+        return { main: truncated };
+      }
       case 'status':
-        return { main: log.data.message || '' };
+        return { main: log.data?.message || (typeof log.data === 'string' ? log.data : JSON.stringify(log.data)) };
       case 'stdout':
       case 'stderr':
-        return { main: log.data.output || '' };
+        return { main: log.data?.output || (typeof log.data === 'string' ? log.data : '') };
       case 'progress':
-        return { main: `Progress: ${log.data.progress}%` };
+        return { main: `Progress: ${log.data?.progress || 0}%` };
       case 'text':
-        return { main: log.data.content || String(log.data) };
+        return { main: log.data?.content || (typeof log.data === 'string' ? log.data : JSON.stringify(log.data)) };
       case 'final':
-        // Display the final response content from agent
-        return { main: String(log.data || '') };
+        return { main: typeof log.data === 'string' ? log.data : (log.data?.content || JSON.stringify(log.data || '')) };
       case 'error':
-        return { main: `Error: ${log.data.error || 'Unknown error'}` };
+        return { main: `❌ ${log.data?.error || log.data?.tool || ''}: ${typeof log.data === 'string' ? log.data : (log.data?.error || 'Unknown error')}` };
       case 'warning':
-        return { main: String(log.data) };
+        return { main: typeof log.data === 'string' ? log.data : JSON.stringify(log.data) };
       default:
-        return { main: JSON.stringify(log.data).substring(0, 100) };
+        return { main: typeof log.data === 'string' ? log.data : JSON.stringify(log.data).substring(0, 100) };
     }
   };
 
@@ -115,6 +129,10 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
         return 'text-nb-accent';
       case 'tool_end':
         return 'text-nb-success';
+      case 'thinking':
+        return 'text-purple-300 italic';
+      case 'status':
+        return 'text-yellow-300';
       case 'error':
       case 'stderr':
         return 'text-nb-error';
@@ -162,21 +180,22 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
           <div className="space-y-1">
             {logs.map((log, index) => {
               const formatted = formatLog(log);
+              const success = log.type === 'tool_end' ? log.data?.success : undefined;
               return (
                 <div
                   key={index}
-                  className={`flex items-start gap-2 py-1 ${getLogClass(log.type)}`}
+                  className={`flex items-start gap-2 py-1.5 ${getLogClass(log.type)}`}
                 >
-                  <span className="flex-shrink-0 mt-0.5">{getLogIcon(log.type)}</span>
-                  <span className="text-nb-text-muted w-16 flex-shrink-0">
+                  <span className="flex-shrink-0 mt-0.5">{getLogIcon(log.type, success)}</span>
+                  <span className="text-nb-text-muted w-16 flex-shrink-0 text-[10px]">
                     {new Date(log.timestamp).toLocaleTimeString()}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <div className="break-all whitespace-pre-wrap">
+                    <div className="break-all whitespace-pre-wrap leading-relaxed">
                       {formatted.main}
                     </div>
                     {formatted.detail && (
-                      <div className="text-[10px] text-nb-text-muted mt-0.5 break-all">
+                      <div className="text-[11px] text-nb-text-muted mt-1 break-all opacity-80">
                         {formatted.detail}
                       </div>
                     )}

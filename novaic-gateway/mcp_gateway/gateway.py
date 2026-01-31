@@ -1,5 +1,7 @@
 """
-AgentMCPGateway - MCP Gateway for a single Agent
+AggregateMCP - 聚合 MCP Gateway
+
+v2.8: 每个 Runtime 有自己的聚合 MCP Gateway
 
 Gateway 作为纯中间件，负责：
 1. 聚合所有子 MCP Servers 的工具（通过 ToolRegistry）
@@ -7,12 +9,13 @@ Gateway 作为纯中间件，负责：
 3. 暴露 Skills 作为 MCP Resources
 
 Architecture:
-    AgentMCPGateway (FastMCP)
+    AggregateMCP (FastMCP) - 每个 Runtime 一个
+        ├── RuntimeMCP Tools: runtime_* 工具 (5 tools)
         ├── VM MCP Tools: 通过 ToolRegistry 代理 (32 tools)
-        ├── Agent Context MCP Tools: 通过 ToolRegistry 代理 (6 tools)
         ├── Local MCP Tools: 通过 ToolRegistry 代理 (2 tools)
         ├── Memory MCP Tools: 通过 ToolRegistry 代理 (10 tools)
         ├── Chat MCP Tools: 通过 ToolRegistry 代理 (6 tools)
+        ├── QemuDebug MCP Tools: 通过 ToolRegistry 代理
         ├── Skills: MCP Resources
         └── task_*: Gateway 内置的异步任务工具 (5 tools)
 """
@@ -41,39 +44,44 @@ SKILLS_DIR = Path(__file__).parent.parent / "skills"
 logger = logging.getLogger(__name__)
 
 
-class AgentMCPGateway:
+class AggregateMCP:
     """
-    MCP Gateway for a single Agent.
+    聚合 MCP Gateway。
     
-    Aggregates all tools and skills from the agent's sub-MCP servers
-    and exposes them through a unified FastMCP interface.
+    v2.8: 每个 Runtime 有自己的聚合 MCP Gateway，聚合：
+    - RuntimeMCP (runtime_* 工具)
+    - 共享层 MCP (chat, memory, local, qemudebug)
+    - VM MCP
     """
     
     def __init__(
         self,
         agent_id: str,
         agent_index: int,
+        subagent_id: str,
     ):
         """
-        Initialize the MCP Gateway for an agent.
+        Initialize the MCP Gateway for a Runtime.
         
         Args:
             agent_id: Unique agent identifier (UUID)
             agent_index: Agent index for port allocation (0, 1, 2, ...)
+            subagent_id: Runtime ID (main-xxx or sub-xxx)
         """
         self.agent_id = agent_id
         self.agent_index = agent_index
+        self.subagent_id = subagent_id
         
         # Allocate ports for this agent
         self.ports = allocate_ports_for_agent(agent_index)
         
-        # Create dedicated ToolRegistry for this agent
+        # Create dedicated ToolRegistry for this runtime
         self.registry = ToolRegistry()
-        self._register_agent_servers()
+        self._register_runtime_servers()
         
         # Create FastMCP instance
         self.mcp = FastMCP(
-            name=f"novaic-agent-{agent_index}",
+            name=f"novaic-runtime-{subagent_id[:12]}",
             instructions=self._build_instructions(),
         )
         
@@ -86,11 +94,11 @@ class AgentMCPGateway:
         self._discovery_task: Optional[asyncio.Task] = None
         self._discovery_running = False
         
-        logger.info(f"[MCPGateway] Created gateway for agent {agent_id} (index={agent_index})")
+        logger.info(f"[AggregateMCP] Created gateway for runtime {subagent_id} (agent={agent_id})")
     
     def _build_instructions(self) -> str:
         """Build initial MCP server instructions (will be updated after setup)."""
-        return "NovAIC Agent Gateway - 统一 MCP 入口\n\n正在初始化，请稍候..."
+        return f"NovAIC Runtime Gateway ({self.subagent_id}) - 统一 MCP 入口\n\n正在初始化，请稍候..."
     
     def _build_dynamic_instructions(self) -> str:
         """
@@ -98,9 +106,9 @@ class AgentMCPGateway:
         在 setup() 完成后调用。
         """
         lines = [
-            "# NovAIC Agent Gateway - 统一 MCP 入口",
+            f"# NovAIC Runtime Gateway ({self.subagent_id}) - 统一 MCP 入口",
             "",
-            "本 Gateway 是 Agent 操作的唯一入口，聚合了所有子 MCP 服务的工具。",
+            "本 Gateway 是当前 Runtime 操作的唯一入口，聚合了所有子 MCP 服务的工具。",
             "",
             "---",
             "",
@@ -201,34 +209,34 @@ class AgentMCPGateway:
         
         return "\n".join(lines)
     
-    def _register_agent_servers(self) -> None:
-        """Register all MCP servers for this agent.
+    def _register_runtime_servers(self) -> None:
+        """Register all MCP servers for this runtime.
         
-        All servers are discovered via HTTP protocol:
-        - VM: runs inside the virtual machine (priority=0, highest)
-        - qemudebug: fallback when VM not ready (priority=3, lowest)
-        - Sub MCPs: single-agent-runtime, local, memory, chat (mounted at /sub-mcp/)
+        v2.9: 每个 Runtime 聚合以下服务器：
+        - Runtime MCP: runtime_* 工具 (最高优先级)
+        - VM: runs inside the virtual machine
+        - 共享层: /agents/{agent_id}/mcp/{server}/ (每个 Agent 独立)
         """
-        # VM server (runs inside the virtual machine) - highest priority
-        self.registry.register_server("vm", port=self.ports.vm, priority=0, connect_timeout=1.0)
-        
-        # qemudebug as fallback when VM not ready - lowest priority
-        # Always registered, but VM tools take precedence when available
-        
-        
-        
-        # Sub MCP servers (mounted as sub-paths, discovered via HTTP)
         gateway_port = int(os.getenv("NOVAIC_PORT", "19999"))
-        base_url = f"http://127.0.0.1:{gateway_port}/agents/{self.agent_id}/sub-mcp"
+        gateway_base = f"http://127.0.0.1:{gateway_port}"
         
-        # Default sub MCPs (always enabled)
-        self.registry.register_server("qemudebug", url=f"{base_url}/qemudebug/", priority=3)
-        self.registry.register_server("single-agent-runtime", url=f"{base_url}/single-agent-runtime/", priority=1)
-        self.registry.register_server("local", url=f"{base_url}/local/", priority=1)
-        self.registry.register_server("memory", url=f"{base_url}/memory/", priority=1)
-        self.registry.register_server("chat", url=f"{base_url}/chat/", priority=1)
+        # v2.8: Runtime MCP (runtime_* 工具) - 最高优先级
+        # 这是当前 Runtime 的专属 MCP Server
+        runtime_url = f"{gateway_base}/mcp/runtime/{self.subagent_id}/"
+        self.registry.register_server("runtime", url=runtime_url, priority=0, connect_timeout=1.0)
         
-        logger.info(f"[MCPGateway] Registered 6 servers for agent {self.agent_index} (VM + qemudebug fallback + sub-MCPs)")
+        # VM server (runs inside the virtual machine)
+        self.registry.register_server("vm", port=self.ports.vm, priority=1, connect_timeout=1.0)
+        
+        # v2.9: 共享层 MCP servers - 使用 Agent 独立的路径
+        # v2.9: 统一使用尾部斜杠
+        shared_base_url = f"{gateway_base}/agents/{self.agent_id}/mcp"  # 子路径会加斜杠
+        self.registry.register_server("chat", url=f"{shared_base_url}/chat/", priority=2)
+        self.registry.register_server("memory", url=f"{shared_base_url}/memory/", priority=2)
+        self.registry.register_server("local", url=f"{shared_base_url}/local/", priority=2)
+        self.registry.register_server("qemudebug", url=f"{shared_base_url}/qemudebug/", priority=3)
+        
+        logger.info(f"[AggregateMCP] Registered 6 servers for runtime {self.subagent_id} (Runtime + VM + Agent共享层)")
     
     async def setup(self) -> None:
         """
@@ -254,7 +262,7 @@ class AgentMCPGateway:
         # trying to connect to sub-MCP endpoints before uvicorn starts listening.
         
         logger.info(
-            f"[MCPGateway] Setup complete for agent {self.agent_index}: "
+            f"[AggregateMCP] Setup complete for agent {self.agent_index}: "
             f"{len(self._registered_skills)} skills, tool discovery deferred to background"
         )
     
@@ -267,9 +275,9 @@ class AgentMCPGateway:
                 self.mcp._instructions = dynamic_instructions
             elif hasattr(self.mcp, 'instructions'):
                 self.mcp.instructions = dynamic_instructions
-            logger.debug(f"[MCPGateway] Updated instructions for agent {self.agent_index}")
+            logger.debug(f"[AggregateMCP] Updated instructions for agent {self.agent_index}")
         except Exception as e:
-            logger.warning(f"[MCPGateway] Failed to update instructions: {e}")
+            logger.warning(f"[AggregateMCP] Failed to update instructions: {e}")
     
     async def _setup_tools(self) -> None:
         """Discover tools from sub-servers and register them as MCP tools."""
@@ -301,7 +309,7 @@ class AgentMCPGateway:
             for server_name, tool_count in tools_by_server.items():
                 if tool_count > 0:
                     if server_name not in self._discovered_servers:
-                        logger.info(f"[MCPGateway] Server '{server_name}' now available with {tool_count} tools")
+                        logger.info(f"[AggregateMCP] Server '{server_name}' now available with {tool_count} tools")
                     self._discovered_servers.add(server_name)
             
             # Register new tools (skip already registered)
@@ -317,14 +325,14 @@ class AgentMCPGateway:
                     new_tools_count += 1
             
             if new_tools_count > 0:
-                logger.info(f"[MCPGateway] Registered {new_tools_count} new tools (total: {len(self._registered_tools)})")
+                logger.info(f"[AggregateMCP] Registered {new_tools_count} new tools (total: {len(self._registered_tools)})")
                 # 更新 instructions 反映新发现的工具
                 self._update_instructions()
             
         except asyncio.TimeoutError:
-            logger.debug(f"[MCPGateway] Tool discovery timed out after {timeout}s")
+            logger.debug(f"[AggregateMCP] Tool discovery timed out after {timeout}s")
         except Exception as e:
-            logger.debug(f"[MCPGateway] Tool discovery failed: {e}")
+            logger.debug(f"[AggregateMCP] Tool discovery failed: {e}")
         
         return new_tools_count
     
@@ -335,7 +343,7 @@ class AgentMCPGateway:
         
         self._discovery_running = True
         self._discovery_task = asyncio.create_task(self._discovery_loop())
-        logger.info(f"[MCPGateway] Started discovery task for agent {self.agent_index}")
+        logger.info(f"[AggregateMCP] Started discovery task for agent {self.agent_index}")
     
     def stop_discovery_task(self) -> None:
         """Stop the background discovery task."""
@@ -343,7 +351,7 @@ class AgentMCPGateway:
         if self._discovery_task is not None:
             self._discovery_task.cancel()
             self._discovery_task = None
-            logger.info(f"[MCPGateway] Stopped discovery task for agent {self.agent_index}")
+            logger.info(f"[AggregateMCP] Stopped discovery task for agent {self.agent_index}")
     
     async def _discovery_loop(self) -> None:
         """
@@ -384,7 +392,7 @@ class AgentMCPGateway:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.error(f"[MCPGateway] Discovery loop error: {e}")
+                logger.error(f"[AggregateMCP] Discovery loop error: {e}")
                 await asyncio.sleep(DISCOVERY_INTERVAL_FAILED)
     
     def _register_proxy_tool(self, tool_def: Dict[str, Any]) -> None:
@@ -411,7 +419,7 @@ class AgentMCPGateway:
                 # Auto-truncate long outputs (now async)
                 return await gateway._auto_truncate_result(result, tool_name)
             except Exception as e:
-                logger.error(f"[MCPGateway] Tool {tool_name} failed: {e}")
+                logger.error(f"[AggregateMCP] Tool {tool_name} failed: {e}")
                 return {"success": False, "error": str(e)}
         
         # Set function attributes for FastMCP
@@ -531,7 +539,7 @@ class AgentMCPGateway:
         """Load skills from local files and register as MCP resources."""
         try:
             if not SKILLS_DIR.exists():
-                logger.warning(f"[MCPGateway] Skills directory not found: {SKILLS_DIR}")
+                logger.warning(f"[AggregateMCP] Skills directory not found: {SKILLS_DIR}")
                 return
             
             # Skill descriptions for better discoverability
@@ -565,10 +573,10 @@ class AgentMCPGateway:
             # Register skill_list resource
             self._register_skill_list_resource()
             
-            logger.info(f"[MCPGateway] Registered {len(self._registered_skills)} skills from {SKILLS_DIR}")
+            logger.info(f"[AggregateMCP] Registered {len(self._registered_skills)} skills from {SKILLS_DIR}")
             
         except Exception as e:
-            logger.error(f"[MCPGateway] Failed to setup skills: {e}")
+            logger.error(f"[AggregateMCP] Failed to setup skills: {e}")
     
     def _register_skill_resource(self, skill_name: str, uri: str, description: str) -> None:
         """Register a skill as an MCP resource using FastMCP 2.x decorator."""
@@ -660,7 +668,7 @@ class AgentMCPGateway:
                 else:
                     return {"success": False, "error": "TaskManager not available"}
             except Exception as e:
-                logger.error(f"[MCPGateway] task_async failed: {e}")
+                logger.error(f"[AggregateMCP] task_async failed: {e}")
                 return {"success": False, "error": str(e)}
         
         @self.mcp.tool()
@@ -727,7 +735,7 @@ class AgentMCPGateway:
                 else:
                     return {"success": False, "error": "TaskManager not available"}
             except Exception as e:
-                logger.error(f"[MCPGateway] task_query failed: {e}")
+                logger.error(f"[AggregateMCP] task_query failed: {e}")
                 return {"success": False, "error": str(e)}
         
         @self.mcp.tool()
@@ -763,7 +771,7 @@ class AgentMCPGateway:
                 else:
                     return {"success": False, "error": "TaskManager not available"}
             except Exception as e:
-                logger.error(f"[MCPGateway] task_list failed: {e}")
+                logger.error(f"[AggregateMCP] task_list failed: {e}")
                 return {"success": False, "error": str(e)}
         
         @self.mcp.tool()
@@ -796,7 +804,7 @@ class AgentMCPGateway:
                 else:
                     return {"success": False, "error": "TaskManager not available"}
             except Exception as e:
-                logger.error(f"[MCPGateway] task_cancel failed: {e}")
+                logger.error(f"[AggregateMCP] task_cancel failed: {e}")
                 return {"success": False, "error": str(e)}
         
         @self.mcp.tool()
@@ -829,10 +837,10 @@ class AgentMCPGateway:
                 else:
                     return {"success": False, "error": "TaskManager not available"}
             except Exception as e:
-                logger.error(f"[MCPGateway] task_summary failed: {e}")
+                logger.error(f"[AggregateMCP] task_summary failed: {e}")
                 return {"success": False, "error": str(e)}
         
-        logger.info("[MCPGateway] Registered task_* tools")
+        logger.info("[AggregateMCP] Registered task_* tools")
     
     def get_asgi_app(self):
         """Get the ASGI app for mounting in FastAPI.
@@ -845,8 +853,19 @@ class AgentMCPGateway:
         
         Without proper lifespan handling, requests will fail with:
         "RuntimeError: FastMCP's StreamableHTTPSessionManager task group was not initialized"
+        
+        v2.9: Also fixes Starlette Route methods (default is GET/HEAD only, but MCP needs POST)
         """
         mcp_app = self.mcp.http_app(path="/")
+        
+        # v2.9: Fix Route methods - FastMCP creates Route with methods=None
+        # which defaults to GET/HEAD only, but MCP needs POST for JSON-RPC
+        from starlette.routing import Route
+        for route in mcp_app.routes:
+            if isinstance(route, Route) and route.path == "/":
+                route.methods = {"GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"}
+                logger.info("[AggregateMCP] Fixed route methods for /")
+                break
         
         # Log available lifespan attributes for debugging
         lifespan_info = []
@@ -858,7 +877,7 @@ class AgentMCPGateway:
             if mcp_app.router.lifespan_context is not None:
                 lifespan_info.append("router.lifespan_context")
         
-        logger.info(f"[MCPGateway] Created ASGI app for agent {self.agent_index}, available lifespans: {lifespan_info or 'none'}")
+        logger.info(f"[AggregateMCP] Created ASGI app for agent {self.agent_index}, available lifespans: {lifespan_info or 'none'}")
         
         return mcp_app
     
@@ -870,6 +889,7 @@ class AgentMCPGateway:
         return {
             "agent_id": self.agent_id,
             "agent_index": self.agent_index,
+            "subagent_id": self.subagent_id,
             "tools_count": len(self._registered_tools),
             "skills_count": len(self._registered_skills),
             "discovered_servers": list(self._discovered_servers),
@@ -884,4 +904,4 @@ class AgentMCPGateway:
         self.stop_discovery_task()
         
         await self.registry.close()
-        logger.info(f"[MCPGateway] Closed gateway for agent {self.agent_id}")
+        logger.info(f"[AggregateMCP] Closed gateway for runtime {self.subagent_id}")

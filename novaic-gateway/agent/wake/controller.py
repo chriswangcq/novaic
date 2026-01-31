@@ -14,8 +14,6 @@ from datetime import datetime
 from .triggers.base import BaseTrigger, TriggerConfig
 from .triggers.cron import CronTrigger, CronTriggerConfig
 from .triggers.webhook import WebhookTrigger, WebhookTriggerConfig
-from ..events.models import AgentEvent, EventType, EventPriority
-from ..events.bus import EventBus
 
 logger = logging.getLogger(__name__)
 
@@ -37,24 +35,21 @@ class WakeController:
     
     Responsibilities:
     - Register and manage triggers
-    - Route wake events to the agent via EventBus
+    - Route wake events via MessageRepository and WorkerBroadcaster (v11)
     - Persist trigger configurations
     - Provide API for trigger management
     """
     
     def __init__(
         self,
-        event_bus: EventBus,
         storage_dir: str = "storage/triggers",
     ):
         """
         Initialize the wake controller.
         
         Args:
-            event_bus: EventBus for publishing wake events
             storage_dir: Directory for trigger configuration persistence
         """
-        self.event_bus = event_bus
         self.storage_dir = storage_dir
         
         # Registered triggers
@@ -232,6 +227,8 @@ class WakeController:
         """
         Handle trigger fire event.
         
+        v11: Updated to use new multi-process architecture.
+        
         Args:
             trigger_id: ID of the fired trigger
             data: Trigger data including message
@@ -251,32 +248,49 @@ class WakeController:
             timestamp=datetime.now(),
         )
         
-        # Publish wake event to EventBus
+        # v12: Store message in database - Monitor will detect and create Runtime
         try:
-            event = AgentEvent(
-                type=EventType.WAKE_REQUEST,
-                source=f"trigger:{trigger_id}",
-                payload={
-                    "context": {
-                        "trigger_id": context.trigger_id,
-                        "trigger_name": context.trigger_name,
-                        "trigger_type": context.trigger_type,
-                        "message": context.message,
-                        "timestamp": context.timestamp.isoformat(),
-                    },
-                    "data": context.data,
+            from db.database import get_database
+            from db.repositories.message import MessageRepository
+            from main import get_current_agent_id
+            
+            agent_id = get_current_agent_id()
+            if not agent_id:
+                logger.warning("[WakeController] No current agent, cannot process wake trigger")
+                self._stats["wakes_failed"] += 1
+                return
+            
+            db = get_database()
+            msg_repo = MessageRepository(db)
+            
+            # Determine message type based on trigger type
+            msg_type = "CRON_TRIGGER" if context.trigger_type == "CronTrigger" else "WEBHOOK"
+            if context.trigger_type not in ("CronTrigger", "WebhookTrigger"):
+                msg_type = "SYSTEM_MESSAGE"
+            
+            # Store message in database - Monitor will detect and create Runtime
+            msg = await msg_repo.add_message(
+                agent_id=agent_id,
+                type=msg_type,
+                content=context.message,
+                metadata={
+                    "trigger_id": context.trigger_id,
+                    "trigger_name": context.trigger_name,
+                    "trigger_type": context.trigger_type,
+                    "trigger_data": context.data,
+                    "source": f"wake:{context.trigger_type.lower()}",
                 },
-                priority=EventPriority.HIGH,
             )
             
-            await self.event_bus.publish(event)
-            self._stats["wakes_triggered"] += 1
+            # v12: No broadcast_new_message needed
+            # Monitor polls for unread messages and creates Runtimes
             
-            logger.info(f"[WakeController] Wake event published for trigger: {trigger.name}")
+            self._stats["wakes_triggered"] += 1
+            logger.info(f"[WakeController] Wake message stored for trigger: {trigger.name}")
             
         except Exception as e:
             self._stats["wakes_failed"] += 1
-            logger.error(f"[WakeController] Failed to publish wake event: {e}")
+            logger.error(f"[WakeController] Failed to process wake trigger: {e}")
     
     async def start(self) -> None:
         """Start all enabled triggers."""

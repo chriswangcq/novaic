@@ -572,14 +572,9 @@ class ChatRepository:
         return row["value"] if row else None
     
     async def get_agent_runtime_state(self, agent_id: str) -> Dict[str, Any]:
-        """Get full agent runtime state."""
+        """Get full agent runtime state (v11: is_busy removed)."""
         rest_state = await self.get_agent_rest_state(agent_id)
-        is_busy = await self.is_agent_busy(agent_id)
-        
-        return {
-            **rest_state,
-            "agent_busy": is_busy,
-        }
+        return rest_state
     
     async def clear_agent_rest_state(self, agent_id: str):
         """Clear agent rest state (wake up)."""
@@ -590,18 +585,3 @@ class ChatRepository:
             "handoff_notes": None,
             "rest_started": None,
         })
-    
-    async def is_agent_busy(self, agent_id: str) -> bool:
-        """Check if agent is busy."""
-        value = await self._get_runtime_state(agent_id, "is_busy")
-        if value:
-            try:
-                return json.loads(value)
-            except json.JSONDecodeError:
-                return False
-        return False
-    
-    async def set_agent_busy(self, agent_id: str, busy: bool):
-        """Set agent busy state."""
-        await self._set_runtime_state(agent_id, "is_busy", json.dumps(busy))
-        await self.db.commit()

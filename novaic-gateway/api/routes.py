@@ -1,5 +1,10 @@
 """
 NovAIC Gateway - REST API Routes
+
+v12: Master-driven architecture
+- Chat messages go to inbox, not directly to Agent
+- Master detects new messages and creates Runtimes
+- Workers execute tasks (think, tool_call, reply)
 """
 
 from fastapi import APIRouter, HTTPException, Query
@@ -19,101 +24,40 @@ from .schemas import (
     HealthResponse, HistoryResponse
 )
 from config import get_config_manager, ProviderType
-from core.agent import NovAICAgent
 
 router = APIRouter()
 
-# Global agent instance (keyed by agent_id for multi-agent support)
-_agent: Optional[NovAICAgent] = None
-_agent_id: Optional[str] = None  # Track which agent _agent was created for
-
-
-def get_agent() -> NovAICAgent:
-    """Get the agent instance for the current agent.
-    
-    Uses Gateway's ToolRegistry which has all sub-MCP servers registered.
-    Re-creates the agent if the current agent has changed.
-    """
-    global _agent, _agent_id
-    
-    # Get current agent info
-    from config.agents import get_agent_config_manager, allocate_ports_for_agent
-    from mcp_gateway.manager import get_mcp_gateway_manager
-    
-    try:
-        agent_mgr = get_agent_config_manager()
-        current_agent = agent_mgr.get_current_agent()
-        current_agent_id = current_agent.id if current_agent else None
-        mcp_port = current_agent.vm.ports.vm if current_agent else allocate_ports_for_agent(0).vm
-    except Exception:
-        current_agent_id = None
-        mcp_port = allocate_ports_for_agent(0).vm
-    
-    # Check if we need to recreate the agent (agent switched or not created yet)
-    if _agent is None or _agent_id != current_agent_id:
-        if _agent is not None:
-            print(f"[Agent] Switching from agent {_agent_id} to {current_agent_id}")
-        
-        config = get_config_manager().load()
-        
-        # Get Gateway's registry (has VM + all sub-MCPs)
-        tool_registry = None
-        gateway_mgr = get_mcp_gateway_manager()
-        if gateway_mgr and current_agent_id:
-            gateway = gateway_mgr.get_gateway(current_agent_id)
-            if gateway:
-                tool_registry = gateway.registry
-        
-        _agent = NovAICAgent(mcp_port=mcp_port, tool_registry=tool_registry, session_key="main")
-        _agent.max_iterations = config.max_iterations
-        _agent.max_tokens = config.max_tokens
-        _agent_id = current_agent_id
-        
-        print(f"[Agent] Created agent instance for {current_agent_id} with mcp_port={mcp_port}")
-        
-        # Register main session in registry
-        try:
-            from agent.session.registry import get_session_registry, SessionType
-            registry = get_session_registry()
-            registry.register(
-                session_key="main",
-                session_type=SessionType.MAIN,
-                agent=_agent,
-                session_manager=_agent.session,
-            )
-        except Exception:
-            pass
-        
-        # Set up inbox callback for self-scheduling
-        try:
-            import httpx
-            async def get_inbox():
-                async with httpx.AsyncClient(timeout=5.0, trust_env=False) as client:
-                    resp = await client.get("http://127.0.0.1:19999/api/agent/inbox")
-                    if resp.status_code == 200:
-                        return resp.json()
-                    return {"pending_count": 0, "events": []}
-            _agent.set_inbox_callback(get_inbox)
-        except Exception:
-            pass
-    return _agent
+# v12: Removed global _agent instance - Master-driven architecture doesn't need it
 
 
 # ==================== Health ====================
 
 @router.get("/health", response_model=HealthResponse)
 async def health_check():
-    """Health check endpoint - returns immediately without blocking on MCP"""
-    agent = get_agent()
+    """Health check endpoint - v2.7: simplified for per-Runtime architecture"""
+    from config.agents import get_agent_config_manager
+    from mcp_servers.manager import get_mcp_manager
     
-    # Don't block on MCP connection - just return current state
-    # MCP initialization happens lazily on first chat request
+    # Check if we have a current agent
+    agent_mgr = get_agent_config_manager()
+    current_agent = agent_mgr.get_current_agent()
+    
+    # v2.8: Check MCPManager health
+    mcp_healthy = False
+    tools_count = 0
+    mcp_manager = get_mcp_manager()
+    if mcp_manager:
+        stats = mcp_manager.get_stats()
+        mcp_healthy = stats.get("shared_initialized", False)
+        # Count aggregate gateways as a proxy for active runtimes with tools
+        tools_count = stats.get("total_aggregate_gateways", 0)
+    
     return HealthResponse(
         status="healthy",
         version="0.3.0",
-        agent_initialized=agent._tools_initialized,
-        mcp_healthy=agent._executor_healthy or False,
-        tools_count=len(agent.tools)
+        agent_initialized=current_agent is not None,
+        mcp_healthy=mcp_healthy,
+        tools_count=tools_count
     )
 
 
@@ -126,9 +70,41 @@ async def get_config():
     return config.to_public()
 
 
+@router.get("/config/internal")
+async def get_config_internal():
+    """
+    Get full configuration including API keys.
+    
+    Internal API for Worker processes - includes sensitive data.
+    Should only be called by Workers on localhost.
+    """
+    config = get_config_manager().load()
+    
+    # Return full config with API keys for Workers
+    return {
+        "version": config.version,
+        "api_keys": [
+            {
+                "id": k.id,
+                "name": k.name,
+                "provider": k.provider.value,
+                "api_key": k.api_key,  # Include actual key
+                "api_base": k.get_effective_base_url(),
+                "deployment_name": k.deployment_name,
+                "api_version": k.api_version,
+            }
+            for k in config.api_keys
+        ],
+        "available_models": [m.model_dump() for m in config.available_models],
+        "default_model": config.default_model,
+        "max_tokens": config.max_tokens,
+        "max_iterations": config.max_iterations,
+    }
+
+
 @router.patch("/config/settings")
 async def update_settings(settings: SettingsUpdate):
-    """Update common settings"""
+    """Update common settings - v12: Master-driven architecture"""
     get_config_manager().update_settings(
         default_model=settings.default_model,
         max_tokens=settings.max_tokens,
@@ -136,11 +112,8 @@ async def update_settings(settings: SettingsUpdate):
         visible_shell=settings.visible_shell,
     )
     
-    # Update agent settings
-    agent = get_agent()
-    config = get_config_manager().load()
-    agent.max_iterations = config.max_iterations
-    agent.max_tokens = config.max_tokens
+    # v12: Settings are read from config when Workers execute tasks
+    # No need to update a global agent instance
     
     return {"status": "ok"}
 
@@ -507,105 +480,213 @@ async def cleanup_garbage(
         raise HTTPException(status_code=500, detail=f"Cleanup failed: {str(e)}")
 
 
-# ==================== Chat ====================
+# ==================== Chat (v12: Master-driven via inbox) ====================
 
-@router.post("/chat", response_model=ChatResponse)
+@router.post("/chat")
 async def chat(request: ChatRequest):
-    """Non-streaming chat endpoint"""
-    agent = get_agent()
+    """
+    Send a message to the Agent's inbox.
+    
+    v12: Uses Master-driven architecture.
+    - Message is stored in inbox (chat_messages table)
+    - Monitor detects unread messages
+    - Master creates Runtime and drives ReACT loop
+    - Agent replies via SSE events (subscribe to /api/chat/events)
+    
+    Returns:
+    - success: Whether the message was stored
+    - message_id: ID of the stored message
+    - timestamp: When the message was stored
+    """
+    from db.database import get_database
+    from db.repositories.message import MessageRepository
+    from config.agents import get_agent_config_manager
+    
+    # Get current agent
+    agent_mgr = get_agent_config_manager()
+    current_agent = agent_mgr.get_current_agent()
+    
+    if not current_agent:
+        raise HTTPException(status_code=400, detail="No agent selected. Please select an agent first.")
+    
+    agent_id = current_agent.id
+    content = request.message.strip()
+    
+    if not content:
+        raise HTTPException(status_code=400, detail="Message content is required")
+    
+    # Build metadata
     config = get_config_manager().load()
+    metadata = {}
     
-    # Get state manager for tracking
-    try:
-        from main import get_state_manager, publish_user_event
-        state_manager = get_state_manager()
-    except ImportError:
-        state_manager = None
-    
-    # Resolve API configuration
+    # Resolve API configuration for LLM calls
     provider, api_base, api_key = resolve_api_config(config, request)
-    
-    if not api_key:
-        raise HTTPException(status_code=400, detail="No API key configured")
-    
     model = request.model or config.default_model
     
-    # Track state: set to BUSY while processing
-    if state_manager:
-        from agent.core.state import AgentState
-        state_manager.set_state(AgentState.BUSY)
-        state_manager.record_activity()
+    if model:
+        metadata["model"] = model
+    if provider:
+        metadata["provider"] = provider
+    if api_base:
+        metadata["api_base"] = api_base
+    if api_key:
+        metadata["api_key"] = api_key  # Note: Consider security implications
+    if request.api_key_id:
+        metadata["api_key_id"] = request.api_key_id
     
-    # Publish event for tracking (non-blocking)
+    # Store message in inbox
+    db = get_database()
+    message_repo = MessageRepository(db)
+    
+    msg = await message_repo.add_message(
+        agent_id=agent_id,
+        type="USER_MESSAGE",
+        content=content,
+        metadata=metadata if metadata else None,
+    )
+    
+    # Broadcast to UI SSE (for display)
     try:
-        await publish_user_event(request.message, source="http", reply_channel="http")
-    except Exception:
-        pass  # Don't fail on event publishing errors
+        from main import broadcast_chat_message
+        await broadcast_chat_message({
+            "id": msg["id"],
+            "type": "USER_MESSAGE",
+            "timestamp": msg["timestamp"],
+            "content": content,
+        }, agent_id=agent_id)
+    except Exception as e:
+        print(f"[Chat] Warning: Failed to broadcast to UI: {e}")
     
-    results = []
-    try:
-        if request.mode == "chat":
-            async for event in agent.simple_chat(
-                request.message, model=model, provider=provider, api_base=api_base, api_key=api_key
-            ):
-                results.append(ChatResult(
-                    type=event["type"], 
-                    data=event["data"],
-                    timestamp=datetime.now().isoformat()
-                ))
-        else:
-            async for event in agent.chat_with_logs(
-                request.message, model=model, provider=provider, api_base=api_base, api_key=api_key
-            ):
-                results.append(ChatResult(
-                    type=event["type"], 
-                    data=event["data"],
-                    timestamp=datetime.now().isoformat()
-                ))
-    finally:
-        # Return to AWAKE state
-        if state_manager:
-            state_manager.set_state(AgentState.AWAKE)
+    # Monitor will detect unread message and create Runtime
+    # Master will drive the ReACT loop
+    # Agent replies will come via SSE /api/chat/events
     
-    return ChatResponse(results=results)
+    return {
+        "success": True,
+        "message_id": msg["id"],
+        "timestamp": msg["timestamp"],
+        "status": "queued",
+        "note": "Subscribe to /api/chat/events for agent responses",
+    }
 
 
 @router.post("/chat/stream")
 async def chat_stream(request: ChatRequest):
-    """Streaming chat endpoint (SSE) - for backward compatibility"""
-    agent = get_agent()
+    """
+    Send a message and stream responses via SSE.
+    
+    v12: Uses Master-driven architecture.
+    - Message is stored in inbox
+    - Returns SSE stream that includes agent responses
+    
+    Note: This endpoint stores the message and then subscribes to events.
+    For better control, use POST /chat + GET /api/chat/events separately.
+    """
+    from db.database import get_database
+    from db.repositories.message import MessageRepository
+    from config.agents import get_agent_config_manager
+    import asyncio
+    
+    # Get current agent
+    agent_mgr = get_agent_config_manager()
+    current_agent = agent_mgr.get_current_agent()
+    
+    if not current_agent:
+        raise HTTPException(status_code=400, detail="No agent selected. Please select an agent first.")
+    
+    agent_id = current_agent.id
+    content = request.message.strip()
+    
+    if not content:
+        raise HTTPException(status_code=400, detail="Message content is required")
+    
+    # Build metadata
     config = get_config_manager().load()
+    metadata = {}
     
-    # Resolve API configuration
     provider, api_base, api_key = resolve_api_config(config, request)
-    
-    if not api_key:
-        raise HTTPException(status_code=400, detail="No API key configured")
-    
     model = request.model or config.default_model
     
+    if model:
+        metadata["model"] = model
+    if provider:
+        metadata["provider"] = provider
+    if api_base:
+        metadata["api_base"] = api_base
+    if api_key:
+        metadata["api_key"] = api_key
+    if request.api_key_id:
+        metadata["api_key_id"] = request.api_key_id
+    
+    # Store message in inbox
+    db = get_database()
+    message_repo = MessageRepository(db)
+    
+    msg = await message_repo.add_message(
+        agent_id=agent_id,
+        type="USER_MESSAGE",
+        content=content,
+        metadata=metadata if metadata else None,
+    )
+    
+    user_message_id = msg["id"]
+    
     async def event_generator():
+        # First, emit the stored message confirmation
+        yield f"data: {json.dumps({'type': 'message_stored', 'data': {'message_id': user_message_id}, 'timestamp': datetime.now().isoformat()})}\n\n"
+        
+        # Broadcast to UI
         try:
-            if request.mode == "chat":
-                chat_gen = agent.simple_chat(
-                    request.message, model=model, provider=provider, api_base=api_base, api_key=api_key
-                )
-            else:
-                chat_gen = agent.chat_with_logs(
-                    request.message, model=model, provider=provider, api_base=api_base, api_key=api_key
-                )
+            from main import broadcast_chat_message
+            await broadcast_chat_message({
+                "id": user_message_id,
+                "type": "USER_MESSAGE",
+                "timestamp": msg["timestamp"],
+                "content": content,
+            }, agent_id=agent_id)
+        except Exception:
+            pass
+        
+        # Subscribe to chat events for this agent
+        # Use the main.py chat SSE mechanism
+        try:
+            from main import _chat_subscribers
+            queue = asyncio.Queue(maxsize=100)
+            subscriber_id = f"chat_stream_{user_message_id}"
+            _chat_subscribers[subscriber_id] = queue
             
-            async for event in chat_gen:
-                event["timestamp"] = datetime.now().isoformat()
-                yield f"data: {json.dumps(event)}\n\n"
+            try:
+                # Wait for events with timeout
+                timeout = 300  # 5 minutes max
+                start_time = asyncio.get_event_loop().time()
+                
+                while True:
+                    elapsed = asyncio.get_event_loop().time() - start_time
+                    if elapsed > timeout:
+                        yield f"data: {json.dumps({'type': 'timeout', 'data': {'message': 'Stream timeout'}, 'timestamp': datetime.now().isoformat()})}\n\n"
+                        break
+                    
+                    try:
+                        event = await asyncio.wait_for(queue.get(), timeout=30)
+                        
+                        # Filter events for this agent
+                        if event.get("agent_id") == agent_id:
+                            event["timestamp"] = datetime.now().isoformat()
+                            yield f"data: {json.dumps(event)}\n\n"
+                            
+                            # Check for completion signals
+                            if event.get("type") in ("AGENT_DONE", "runtime_completed", "error"):
+                                break
+                    
+                    except asyncio.TimeoutError:
+                        # Send keepalive
+                        yield f": keepalive\n\n"
+                        
+            finally:
+                _chat_subscribers.pop(subscriber_id, None)
                 
         except Exception as e:
-            error_event = {
-                "type": "error",
-                "data": {"error": str(e)},
-                "timestamp": datetime.now().isoformat()
-            }
-            yield f"data: {json.dumps(error_event)}\n\n"
+            yield f"data: {json.dumps({'type': 'error', 'data': {'error': str(e)}, 'timestamp': datetime.now().isoformat()})}\n\n"
     
     return StreamingResponse(
         event_generator(),
@@ -643,40 +724,97 @@ def resolve_api_config(config, request: ChatRequest) -> tuple:
     return provider, api_base, api_key
 
 
-# ==================== History ====================
+# ==================== History (v12: Use chat_messages table) ====================
 
 @router.get("/history", response_model=HistoryResponse)
 async def get_history():
-    """Get chat history"""
-    agent = get_agent()
-    messages = agent.get_messages()
-    return HistoryResponse(messages=messages)
+    """
+    Get chat history.
+    
+    v12: Uses chat_messages table instead of NovAICAgent session.
+    """
+    from db.database import get_database
+    from config.agents import get_agent_config_manager
+    
+    agent_mgr = get_agent_config_manager()
+    current_agent = agent_mgr.get_current_agent()
+    
+    if not current_agent:
+        return HistoryResponse(messages=[])
+    
+    db = get_database()
+    rows = await db.fetchall(
+        """
+        SELECT id, type, content, timestamp, read 
+        FROM chat_messages 
+        WHERE agent_id = ? 
+        ORDER BY timestamp DESC 
+        LIMIT 100
+        """,
+        (current_agent.id,)
+    )
+    
+    messages = []
+    for row in rows:
+        messages.append({
+            "id": row[0],
+            "type": row[1],
+            "content": row[2],
+            "timestamp": row[3],
+            "read": bool(row[4]),
+        })
+    
+    return HistoryResponse(messages=list(reversed(messages)))
 
 
 @router.post("/clear")
 async def clear_history():
-    """Clear chat history"""
-    agent = get_agent()
-    agent.clear_messages()
-    return {"status": "ok", "message": "History cleared"}
+    """
+    Clear chat history.
+    
+    v12: Marks all messages as read instead of deleting.
+    """
+    from db.database import get_database
+    from config.agents import get_agent_config_manager
+    
+    agent_mgr = get_agent_config_manager()
+    current_agent = agent_mgr.get_current_agent()
+    
+    if not current_agent:
+        return {"status": "ok", "message": "No agent selected"}
+    
+    db = get_database()
+    await db.execute(
+        "UPDATE chat_messages SET read = 1 WHERE agent_id = ?",
+        (current_agent.id,)
+    )
+    
+    return {"status": "ok", "message": "History cleared (messages marked as read)"}
 
 
-# ==================== Control ====================
+# ==================== Control (v12: Master-driven) ====================
 
 @router.post("/interrupt")
 async def interrupt():
-    """Interrupt current execution"""
-    agent = get_agent()
-    agent.interrupt()
-    return {"status": "ok", "message": "Interrupt signal sent"}
+    """
+    Interrupt current execution.
+    
+    v12: TODO - Implement via Master to cancel active runtimes.
+    """
+    # In Master-driven architecture, interrupt would:
+    # 1. Cancel active runtimes for current agent
+    # 2. Mark pending tasks as cancelled
+    return {"status": "ok", "message": "v12: Interrupt not yet implemented for Master architecture"}
 
 
 @router.post("/init")
 async def init_agent():
-    """Initialize the agent (for backward compatibility)"""
-    agent = get_agent()
-    await agent.initialize()
-    return {"status": "ok", "message": "Agent initialized"}
+    """
+    Initialize the agent (for backward compatibility).
+    
+    v12: Not needed - Master handles initialization.
+    """
+    return {"status": "ok", "message": "v12: Agent initialization handled by Master"}
 
 
 # ==================== VNC ====================

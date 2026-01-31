@@ -2,7 +2,7 @@
 TaskManager - Unified Task Management System
 
 Manages async tasks of various types:
-- agent: Sub-agent tasks (delegated to SubAgentManager)
+- agent: v12: Use Master.create_sub_runtime() instead
 - shell: Shell command execution
 - browser: Browser automation (future)
 - custom: Custom task types
@@ -180,16 +180,16 @@ class TaskManager:
     Responsibilities:
     - Create and track tasks of various types
     - Persist task state to SQLite
-    - Execute tasks (agent via SubAgentManager, shell directly)
+    - Execute tasks (shell directly, agent via Master/inbox)
     - Generate result summaries
-    - Notify via EventBus on completion
+    
+    v12: SubAgentManager removed - agent tasks use Master architecture.
     """
     
     def __init__(
         self,
         db=None,
-        subagent_manager=None,
-        event_bus=None,
+        subagent_manager=None,  # v12: Deprecated, kept for signature compatibility
         llm_factory: Optional[Callable[[str, str, str], Any]] = None,
         tool_registry=None,
     ):
@@ -198,14 +198,12 @@ class TaskManager:
         
         Args:
             db: Database instance for persistence
-            subagent_manager: SubAgentManager for agent tasks
-            event_bus: EventBus for notifications
+            subagent_manager: Unused, kept for compatibility
             llm_factory: Factory to create LLM clients for summary generation
             tool_registry: ToolRegistry for executing tool tasks
         """
         self.db = db
-        self.subagent_manager = subagent_manager
-        self.event_bus = event_bus
+        self.subagent_manager = None  # Unused
         self.llm_factory = llm_factory
         self.tool_registry = tool_registry
         
@@ -560,63 +558,21 @@ class TaskManager:
     # ==================== Internal Methods ====================
     
     async def _execute_agent_task(self, task: Task, timeout_seconds: int):
-        """Execute an agent task using SubAgentManager."""
-        task.status = TaskStatus.RUNNING
+        """
+        Execute an agent task.
+        
+        Agent tasks should be submitted via Master.create_sub_runtime() instead.
+        """
+        task.status = TaskStatus.FAILED
         task.started_at = datetime.now()
+        task.completed_at = datetime.now()
+        task.error = "Agent tasks should use Master.create_sub_runtime() or POST /api/inbox"
+        task.result_summary = "Use Master architecture"
+        self._stats["failed"] += 1
         await self._save_task(task)
         
-        try:
-            if not self.subagent_manager:
-                raise RuntimeError("SubAgentManager not available")
-            
-            # Import and create SubAgentConfig
-            from agent.subagent.manager import SubAgentConfig
-            
-            config = SubAgentConfig(
-                task=task.config.prompt or "No task specified",
-                model=task.config.model,
-                timeout_minutes=timeout_seconds // 60 if timeout_seconds else 30,
-                announce=False,  # We handle notifications ourselves
-                context=task.config.context,
-                copy_context=True,  # Default to copying context for agent tasks
-            )
-            
-            # Spawn sub-agent
-            result = await self.subagent_manager.spawn(
-                config=config,
-                parent_session_id=task.parent_session_key or "main",
-                wait=True,  # Wait for completion
-            )
-            
-            if result.get("success"):
-                task.status = TaskStatus.COMPLETED
-                task.result = result.get("result")
-                self._stats["completed"] += 1
-            else:
-                task.status = TaskStatus.FAILED
-                task.error = result.get("error", "Unknown error")
-                self._stats["failed"] += 1
-            
-        except asyncio.CancelledError:
-            task.status = TaskStatus.CANCELLED
-            self._stats["cancelled"] += 1
-            raise
-        except Exception as e:
-            task.status = TaskStatus.FAILED
-            task.error = str(e)
-            self._stats["failed"] += 1
-            logger.error(f"[TaskManager] Agent task {task.id} failed: {e}")
-        finally:
-            task.completed_at = datetime.now()
-            
-            # Generate summary
-            if task.result and task.status == TaskStatus.COMPLETED:
-                task.result_summary = await self._generate_summary(task.result)
-            elif task.error:
-                task.result_summary = f"Failed: {task.error[:100]}"
-            
-            await self._save_task(task)
-            await self._notify_completion(task)
+        logger.warning(f"[TaskManager] Agent task {task.id} rejected - use Master architecture")
+        await self._notify_completion(task)
     
     async def _execute_shell_task(self, task: Task, timeout_seconds: int):
         """Execute a shell task."""
@@ -752,13 +708,13 @@ class TaskManager:
             # Get the tool registry
             registry = self.tool_registry
             if not registry:
-                # Try to get from MCP gateway manager
+                # v2.8: Try to get from MCPManager's aggregate gateways
                 try:
-                    from mcp_gateway.manager import get_mcp_gateway_manager
-                    gateway_manager = get_mcp_gateway_manager()
-                    if gateway_manager and gateway_manager._gateways:
+                    from mcp_servers.manager import get_mcp_manager
+                    mcp_mgr = get_mcp_manager()
+                    if mcp_mgr and mcp_mgr._aggregate_gateways:
                         # Use the first available gateway's registry
-                        first_gateway = next(iter(gateway_manager._gateways.values()))
+                        first_gateway = next(iter(mcp_mgr._aggregate_gateways.values()))
                         registry = first_gateway.registry
                 except Exception:
                     pass
@@ -873,42 +829,12 @@ class TaskManager:
         return result_str
     
     async def _notify_completion(self, task: Task):
-        """Send notification via EventBus."""
-        if not self.event_bus:
-            return
-        
-        # Determine event type
+        """Log task completion."""
+        # Determine if notification is requested
         if task.status == TaskStatus.COMPLETED and "complete" in task.notify_on:
-            event_type = "complete"
+            logger.info(f"[TaskManager] Task {task.id} completed (type={task.type.value})")
         elif task.status == TaskStatus.FAILED and "error" in task.notify_on:
-            event_type = "error"
-        else:
-            return
-        
-        try:
-            from agent.events.models import AgentEvent
-            
-            if event_type == "complete":
-                event = AgentEvent.task_completed(
-                    task_id=task.id,
-                    task_type=task.type.value,
-                    label=task.label or "",
-                    summary=task.result_summary or "",
-                    parent_session_key=task.parent_session_key,
-                )
-            else:
-                event = AgentEvent.task_failed(
-                    task_id=task.id,
-                    task_type=task.type.value,
-                    label=task.label or "",
-                    error=task.error or "Unknown error",
-                    parent_session_key=task.parent_session_key,
-                )
-            
-            await self.event_bus.publish(event)
-            logger.info(f"[TaskManager] Notified completion of task {task.id}")
-        except Exception as e:
-            logger.error(f"[TaskManager] Failed to notify completion: {e}")
+            logger.info(f"[TaskManager] Task {task.id} failed (type={task.type.value})")
     
     # ==================== Persistence Methods ====================
     
