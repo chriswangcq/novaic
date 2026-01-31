@@ -1,86 +1,97 @@
 """
-EventBus - Central event queue and dispatch system
+EventBus - Lightweight notification system for Inbox
 
-The EventBus is the heart of the event-driven architecture.
-It receives events from various sources and dispatches them to handlers.
+The EventBus is a simple notification mechanism for the Inbox system.
+It notifies InboxMonitor when new messages arrive.
+
+Note: This is a simplified version. Messages are persisted in the database,
+EventBus only handles in-memory notifications.
 """
 
 import asyncio
 import logging
-from typing import Callable, Dict, List, Optional, Awaitable
+from typing import Callable, Dict, List, Optional, Awaitable, Any
 from collections import defaultdict
 from datetime import datetime
-
-from .models import AgentEvent, EventType, EventResult
 
 logger = logging.getLogger(__name__)
 
 
 class EventBus:
     """
-    Central event bus for the agent system.
+    Lightweight EventBus for Inbox notifications.
     
-    Features:
-    - Priority queue: Events are processed by priority, then by timestamp
-    - Type-based routing: Handlers can subscribe to specific event types
-    - Async processing: All event handling is asynchronous
-    - Error isolation: Handler errors don't crash the bus
+    This is a simplified version that only handles:
+    - New message notifications (per agent)
+    - Generic event subscriptions (for backward compatibility)
+    
+    All message persistence is handled by InboxService/InboxRepository.
+    EventBus only triggers in-memory notifications.
     """
     
-    def __init__(self, max_queue_size: int = 1000):
-        """
-        Initialize the EventBus.
+    def __init__(self):
+        """Initialize the EventBus."""
+        # Per-agent new message events
+        self._new_message_events: Dict[str, asyncio.Event] = {}
         
-        Args:
-            max_queue_size: Maximum number of events in queue
-        """
-        self._queue: asyncio.PriorityQueue = asyncio.PriorityQueue(maxsize=max_queue_size)
-        self._subscribers: Dict[EventType, List[Callable[[AgentEvent], Awaitable[EventResult]]]] = defaultdict(list)
-        self._global_subscribers: List[Callable[[AgentEvent], Awaitable[EventResult]]] = []
-        
-        self._running = False
-        self._task: Optional[asyncio.Task] = None
+        # Generic event subscribers (for backward compatibility)
+        self._subscribers: Dict[str, List[Callable[[Dict[str, Any]], Awaitable[None]]]] = defaultdict(list)
         
         # Statistics
         self._stats = {
-            "events_published": 0,
-            "events_processed": 0,
-            "events_failed": 0,
-            "started_at": None,
+            "notifications_sent": 0,
+            "started_at": datetime.now().isoformat(),
         }
+        
+        logger.info("[EventBus] Initialized (lightweight mode)")
+    
+    def get_new_message_event(self, agent_id: str) -> asyncio.Event:
+        """
+        Get the new message event for an agent.
+        
+        Args:
+            agent_id: Agent ID
+        
+        Returns:
+            asyncio.Event that is set when new messages arrive
+        """
+        if agent_id not in self._new_message_events:
+            self._new_message_events[agent_id] = asyncio.Event()
+        return self._new_message_events[agent_id]
+    
+    def notify_new_message(self, agent_id: str):
+        """
+        Notify that a new message has arrived for an agent.
+        
+        This triggers the InboxMonitor to check the Inbox.
+        
+        Args:
+            agent_id: Agent ID
+        """
+        event = self.get_new_message_event(agent_id)
+        event.set()
+        self._stats["notifications_sent"] += 1
+        logger.debug(f"[EventBus] New message notification for agent {agent_id}")
     
     def subscribe(
         self,
-        event_type: EventType,
-        handler: Callable[[AgentEvent], Awaitable[EventResult]]
+        event_type: str,
+        handler: Callable[[Dict[str, Any]], Awaitable[None]]
     ) -> None:
         """
-        Subscribe a handler to a specific event type.
+        Subscribe a handler to an event type.
         
         Args:
-            event_type: The type of events to handle
-            handler: Async function that takes an AgentEvent and returns EventResult
+            event_type: Event type string
+            handler: Async handler function
         """
         self._subscribers[event_type].append(handler)
-        logger.debug(f"[EventBus] Subscribed handler to {event_type.value}")
-    
-    def subscribe_all(
-        self,
-        handler: Callable[[AgentEvent], Awaitable[EventResult]]
-    ) -> None:
-        """
-        Subscribe a handler to all event types.
-        
-        Args:
-            handler: Async function that handles all events
-        """
-        self._global_subscribers.append(handler)
-        logger.debug("[EventBus] Subscribed global handler")
+        logger.debug(f"[EventBus] Subscribed handler to {event_type}")
     
     def unsubscribe(
         self,
-        event_type: EventType,
-        handler: Callable[[AgentEvent], Awaitable[EventResult]]
+        event_type: str,
+        handler: Callable[[Dict[str, Any]], Awaitable[None]]
     ) -> bool:
         """
         Unsubscribe a handler from an event type.
@@ -93,148 +104,39 @@ class EventBus:
             return True
         return False
     
-    async def publish(self, event: AgentEvent) -> str:
+    async def emit(self, event_type: str, data: Dict[str, Any]):
         """
-        Publish an event to the bus.
+        Emit an event to all subscribers.
         
         Args:
-            event: The event to publish
-        
-        Returns:
-            The event ID
-        
-        Raises:
-            asyncio.QueueFull: If queue is at max capacity
+            event_type: Event type string
+            data: Event data
         """
-        await self._queue.put(event)
-        self._stats["events_published"] += 1
-        logger.debug(f"[EventBus] Published event: {event.id} ({event.type.value})")
-        return event.id
-    
-    def publish_nowait(self, event: AgentEvent) -> str:
-        """
-        Publish an event without waiting (non-blocking).
-        
-        Raises:
-            asyncio.QueueFull: If queue is full
-        """
-        self._queue.put_nowait(event)
-        self._stats["events_published"] += 1
-        return event.id
-    
-    async def start(self) -> None:
-        """Start the event processing loop."""
-        if self._running:
-            logger.warning("[EventBus] Already running")
-            return
-        
-        self._running = True
-        self._stats["started_at"] = datetime.now().isoformat()
-        self._task = asyncio.create_task(self._process_loop())
-        logger.info("[EventBus] Started")
-    
-    async def stop(self, timeout: float = 5.0) -> None:
-        """
-        Stop the event processing loop.
-        
-        Args:
-            timeout: Maximum time to wait for current event to finish
-        """
-        if not self._running:
-            return
-        
-        self._running = False
-        
-        if self._task:
-            try:
-                await asyncio.wait_for(self._task, timeout=timeout)
-            except asyncio.TimeoutError:
-                self._task.cancel()
-                try:
-                    await self._task
-                except asyncio.CancelledError:
-                    pass
-        
-        logger.info("[EventBus] Stopped")
-    
-    async def _process_loop(self) -> None:
-        """Main event processing loop."""
-        while self._running:
-            try:
-                # Wait for an event with timeout to allow checking _running flag
-                try:
-                    event = await asyncio.wait_for(self._queue.get(), timeout=0.5)
-                except asyncio.TimeoutError:
-                    continue
-                
-                # Dispatch the event
-                await self._dispatch(event)
-                self._stats["events_processed"] += 1
-                
-            except Exception as e:
-                logger.error(f"[EventBus] Error in process loop: {e}")
-                self._stats["events_failed"] += 1
-    
-    async def _dispatch(self, event: AgentEvent) -> List[EventResult]:
-        """
-        Dispatch an event to all subscribed handlers.
-        
-        Args:
-            event: The event to dispatch
-        
-        Returns:
-            List of results from all handlers
-        """
-        results = []
-        handlers = []
-        
-        # Collect handlers for this event type
-        handlers.extend(self._subscribers.get(event.type, []))
-        handlers.extend(self._global_subscribers)
-        
-        if not handlers:
-            logger.warning(f"[EventBus] No handlers for event type: {event.type.value}")
-            return results
-        
-        # Call all handlers
-        start_time = datetime.now()
-        
+        handlers = self._subscribers.get(event_type, [])
         for handler in handlers:
             try:
-                result = await handler(event)
-                results.append(result)
+                await handler(data)
             except Exception as e:
-                logger.error(f"[EventBus] Handler error for {event.id}: {e}")
-                results.append(EventResult(
-                    event_id=event.id,
-                    success=False,
-                    error=str(e)
-                ))
-        
-        duration_ms = int((datetime.now() - start_time).total_seconds() * 1000)
-        logger.debug(f"[EventBus] Dispatched {event.id} to {len(handlers)} handlers in {duration_ms}ms")
-        
-        return results
+                logger.error(f"[EventBus] Handler error for {event_type}: {e}")
     
-    @property
-    def queue_size(self) -> int:
-        """Get current queue size."""
-        return self._queue.qsize()
-    
-    @property
-    def is_running(self) -> bool:
-        """Check if the bus is running."""
-        return self._running
-    
-    def get_stats(self) -> Dict:
-        """Get bus statistics."""
+    def get_stats(self) -> Dict[str, Any]:
+        """Get EventBus statistics."""
         return {
             **self._stats,
-            "queue_size": self.queue_size,
-            "is_running": self._running,
+            "active_agents": len(self._new_message_events),
             "subscriber_counts": {
-                event_type.value: len(handlers)
+                event_type: len(handlers)
                 for event_type, handlers in self._subscribers.items()
             },
-            "global_subscribers": len(self._global_subscribers),
         }
+    
+    async def start(self) -> None:
+        """Start the EventBus (no-op for lightweight version)."""
+        logger.info("[EventBus] Started (lightweight mode - no background processing)")
+    
+    async def stop(self) -> None:
+        """Stop the EventBus (clears all events)."""
+        for event in self._new_message_events.values():
+            event.set()  # Wake up any waiting coroutines
+        self._new_message_events.clear()
+        logger.info("[EventBus] Stopped")

@@ -85,23 +85,44 @@ export async function downloadCloudImage(
 }
 
 /**
- * Setup VM (create disk, cloud-init ISO, UEFI firmware)
+ * Setup VM (create disk, cloud-init ISO, UEFI firmware) via Gateway API
  */
 export async function setupVm(
   config: VmSetupConfig,
   onProgress: (progress: SetupProgress) => void
 ): Promise<VmSetupResult> {
-  const channel = new Channel<SetupProgress>();
-  channel.onmessage = onProgress;
+  // Report starting progress
+  onProgress({ stage: 'setup', progress: 10, message: 'Creating VM disk...' });
 
-  return await invoke('setup_vm', {
-    agentId: config.agentId,
-    sourceImage: config.sourceImage,
-    diskSize: config.diskSize,
-    sshPubkey: config.sshPubkey,
-    useCnMirrors: config.useCnMirrors,
-    onProgress: channel,
-  });
+  try {
+    const result = await invoke<{
+      success: boolean;
+      vm_dir: string;
+      disk_path: string;
+      cloudinit_iso: string;
+      uefi_vars?: string;
+    }>('gateway_post', {
+      path: '/api/vm/setup',
+      body: {
+        agent_id: config.agentId,
+        source_image: config.sourceImage,
+        disk_size: config.diskSize,
+        use_cn_mirrors: config.useCnMirrors,
+      }
+    });
+
+    // Report completion
+    onProgress({ stage: 'setup', progress: 100, message: 'VM setup complete' });
+
+    return {
+      disk_path: result.disk_path,
+      seed_iso_path: result.cloudinit_iso,
+      uefi_vars_path: result.uefi_vars || null,
+    };
+  } catch (error) {
+    onProgress({ stage: 'setup', progress: 0, message: `Setup failed: ${error}` });
+    throw error;
+  }
 }
 
 /**
@@ -139,15 +160,27 @@ export async function quickDeployAgent(
 }
 
 /**
- * Get user's SSH public key
+ * Get user's SSH public key (via Gateway API)
  */
 export async function getSshPubkey(): Promise<string | null> {
-  return await invoke('get_ssh_pubkey');
+  try {
+    const result = await invoke<{ public_key: string | null }>('gateway_get', {
+      path: '/api/vm/ssh/pubkey'
+    });
+    return result.public_key;
+  } catch (error) {
+    console.error('[Setup] Get SSH pubkey failed:', error);
+    return null;
+  }
 }
 
 /**
- * Generate new SSH key pair
+ * Generate new SSH key pair (via Gateway API)
  */
 export async function generateSshKey(): Promise<string> {
-  return await invoke('generate_ssh_key');
+  const result = await invoke<{ success: boolean; public_key: string }>('gateway_post', {
+    path: '/api/vm/ssh/keys',
+    body: { name: 'default' }
+  });
+  return result.public_key;
 }

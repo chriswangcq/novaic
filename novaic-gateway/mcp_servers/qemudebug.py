@@ -51,16 +51,16 @@ class QemuDebugMCPServer(BaseMCPServer):
     name = "qemudebug"
     description = "QEMU 虚拟机调试和设置工具"
     
-    def __init__(self, agent_id: Optional[str] = None):
+    def __init__(self, agent_id: Optional[str] = None, agent_index: int = 0):
         # QEMU configuration
         self.ssh_host = os.environ.get("QEMU_SSH_HOST", "127.0.0.1")
         self.ssh_user = os.environ.get("QEMU_SSH_USER", "ubuntu")
-        self.ssh_key = os.environ.get("QEMU_SSH_KEY", os.path.expanduser("~/.ssh/novaic_vm"))
+        # SSH key is now managed by SshKeyManager (no more env var)
         self.vnc_host = os.environ.get("QEMU_VNC_HOST", "127.0.0.1")
         self.monitor_socket = os.environ.get("QEMU_MONITOR_SOCKET", "/tmp/novaic-qemudebug-monitor.sock")
         
-        # 根据 agent_id 获取 agent_index（用于端口分配）
-        self._agent_index = self._resolve_agent_index(agent_id)
+        # 直接使用传入的 agent_index（由调用者从数据库获取）
+        self._agent_index = agent_index
         
         # 中心化端口分配
         from config.agents import allocate_ports_for_agent
@@ -68,8 +68,10 @@ class QemuDebugMCPServer(BaseMCPServer):
         
         logger.info(f"[QemuDebugMCPServer] agent_id={agent_id}, agent_index={self._agent_index}")
         
-        # 存储 agent_id 用于后续操作
-        self._init_agent_id = agent_id or "default"
+        # 存储 agent_id 用于后续操作 (必须有 agent_id)
+        if not agent_id:
+            raise ValueError("[QemuDebugMCPServer] agent_id is required")
+        self._init_agent_id = agent_id
         
         # VM Setup configuration
         self.data_dir = os.environ.get("NOVAIC_DATA_DIR", os.path.expanduser("~/.novaic"))
@@ -95,41 +97,9 @@ class QemuDebugMCPServer(BaseMCPServer):
         self.arch = platform.machine()
         self.is_arm64 = self.arch in ("arm64", "aarch64")
         
-        super().__init__(agent_id=agent_id)
+        super().__init__(agent_id=agent_id, agent_index=agent_index)
     
-    def _resolve_agent_index(self, agent_id: Optional[str]) -> int:
-        """
-        根据 agent_id 解析 agent_index。
-        
-        优先级：
-        1. 从数据库查询（如果 agent_id 存在）
-        2. 返回默认值 0
-        """
-        if not agent_id:
-            return 0
-        
-        try:
-            # 尝试从数据库查询
-            from config.agents_db import AgentConfigManagerDB
-            import asyncio
-            
-            db = AgentConfigManagerDB()
-            
-            # 同步方式获取（在 __init__ 中）
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # 如果事件循环已运行，无法同步获取，使用默认值
-                # 实际运行时 agent_index 应该通过其他方式传入
-                logger.warning(f"[QemuDebugMCPServer] Cannot query DB in running loop, using default index 0")
-                return 0
-            
-            agent = loop.run_until_complete(db.get_agent(agent_id))
-            if agent and agent.vm_config:
-                return agent.vm_config.agent_index
-        except Exception as e:
-            logger.warning(f"[QemuDebugMCPServer] Failed to resolve agent_index: {e}")
-        
-        return 0
+    # Note: _resolve_agent_index removed - agent_index is now passed directly to __init__
     
     @property
     def ssh_port(self) -> int:
@@ -199,19 +169,23 @@ qemu_deploy_vmuse_code()  # 部署 MCP Server
 """
     
     async def _ssh_exec(self, command: str, timeout: int = 30) -> Dict[str, Any]:
-        """Execute a command via SSH."""
+        """Execute a command via SSH using SshKeyManager."""
         try:
             import asyncssh
+            from vm.ssh import get_ssh_key_manager
+            
+            # Get private key from SshKeyManager
+            ssh_manager = get_ssh_key_manager()
+            key_path = await ssh_manager.get_private_key_path()
             
             connect_kwargs = {
                 "host": self.ssh_host,
                 "port": self.ssh_port,
                 "username": self.ssh_user,
                 "known_hosts": None,
+                "client_keys": [str(key_path)],
+                "compression_algs": None,  # 禁用压缩，避免 zlib 错误
             }
-            
-            if os.path.exists(self.ssh_key):
-                connect_kwargs["client_keys"] = [self.ssh_key]
             
             async with asyncssh.connect(**connect_kwargs) as conn:
                 result = await asyncio.wait_for(
@@ -260,28 +234,11 @@ qemu_deploy_vmuse_code()  # 部署 MCP Server
         for d in [self.vm_dir, self.disk_dir, self.iso_dir, self.config_dir]:
             os.makedirs(d, exist_ok=True)
     
-    def _get_ssh_pubkey(self) -> str:
-        """获取或生成 SSH 公钥。"""
-        ssh_dir = os.path.expanduser("~/.ssh")
-        
-        # 按优先级检查现有公钥
-        for key_type in ["id_ed25519", "id_rsa", "id_ecdsa"]:
-            pub_path = os.path.join(ssh_dir, f"{key_type}.pub")
-            if os.path.exists(pub_path):
-                with open(pub_path, "r") as f:
-                    return f.read().strip()
-        
-        # 生成新密钥
-        os.makedirs(ssh_dir, exist_ok=True)
-        key_path = os.path.join(ssh_dir, "id_ed25519_novaic")
-        if not os.path.exists(key_path):
-            subprocess.run([
-                "ssh-keygen", "-t", "ed25519", "-f", key_path, "-N", "",
-                "-C", f"novaic-vm-{time.strftime('%Y%m%d')}"
-            ], check=True, capture_output=True)
-        
-        with open(f"{key_path}.pub", "r") as f:
-            return f.read().strip()
+    async def _get_ssh_pubkey(self) -> str:
+        """获取 SSH 公钥（使用 SshKeyManager）。"""
+        from vm.ssh import get_ssh_key_manager
+        ssh_manager = get_ssh_key_manager()
+        return await ssh_manager.get_public_key()
     
     def _find_qemu_img(self) -> str:
         """查找 qemu-img 路径。"""
@@ -499,13 +456,26 @@ qemu_deploy_vmuse_code()  # 部署 MCP Server
                 "details": {}
             }
             
-            # Check QEMU monitor
-            try:
-                result = await server._qemu_monitor_command("info status")
-                status["vm_running"] = "running" in result.lower()
-                status["details"]["qemu_status"] = result
-            except Exception as e:
-                status["details"]["qemu_error"] = str(e)
+            # Check VM process via PID file (primary method)
+            pid = None
+            if os.path.exists(server.vm_pid_file):
+                try:
+                    with open(server.vm_pid_file, "r") as f:
+                        pid = int(f.read().strip())
+                    # Check if process is running (signal 0 doesn't kill, just checks)
+                    os.kill(pid, 0)
+                    status["vm_running"] = True
+                    status["details"]["pid"] = pid
+                    status["details"]["pid_file"] = server.vm_pid_file
+                except (ValueError, ProcessLookupError):
+                    # PID file exists but process not running
+                    status["details"]["pid_error"] = "Process not found (VM may have crashed)"
+                except PermissionError:
+                    # Process exists but we can't signal it (still means it's running)
+                    status["vm_running"] = True
+                    status["details"]["pid"] = pid
+            else:
+                status["details"]["pid_error"] = f"PID file not found: {server.vm_pid_file}"
             
             # Check SSH
             try:
@@ -532,6 +502,12 @@ qemu_deploy_vmuse_code()  # 部署 MCP Server
                     status["mcp_reachable"] = resp.status_code == 200
             except Exception:
                 pass
+            
+            # If SSH/VNC reachable but PID check failed, VM is likely running
+            # (maybe started by another process or PID file was deleted)
+            if not status["vm_running"] and (status["ssh_reachable"] or status["vnc_reachable"]):
+                status["vm_running"] = True
+                status["details"]["detection_method"] = "network_reachability"
             
             return status
         
@@ -590,107 +566,265 @@ qemu_deploy_vmuse_code()  # 部署 MCP Server
         
         @self.mcp.tool()
         async def qemu_deploy_vmuse_code(
-            restart_service: Optional[bool] = True
+            restart_service: Optional[bool] = True,
+            force: Optional[bool] = False
         ) -> Dict[str, Any]:
             """
             Deploy novaic-mcp-vmuse code to VM.
             
-            从 App Resources 复制 MCP Server 代码到 VM：
-            - src/ → /opt/novaic-mcp-vmuse/src/
-            - skills/ → /opt/novaic-mcp-vmuse/skills/
-            - pyproject.toml → /opt/novaic-mcp-vmuse/
+            智能部署流程：
+            1. 检查 cloud-init 是否完成（未完成则返回 wait 状态）
+            2. 检查 Python venv 是否就绪
+            3. 复制代码到 /opt/novaic-mcp-vmuse/
+            4. 启动 novaic.service
+            5. 验证 MCP 服务是否响应
             
             Args:
                 restart_service: 是否重启 novaic 服务 (默认: True)
+                force: 强制部署，即使 cloud-init 未完成 (默认: False)
             
             Returns:
-                Dictionary with success, files_copied, service_status
+                Dictionary with:
+                - success: bool - 部署是否成功
+                - status: str - "wait" | "deployed" | "error"
+                - cloudinit_complete: bool - cloud-init 是否完成
+                - cloudinit_progress: str - cloud-init 进度信息
+                - venv_ready: bool - Python venv 是否就绪
+                - files_copied: list - 复制的文件列表
+                - service_status: str - 服务状态
+                - mcp_reachable: bool - MCP 是否可达
             """
             import asyncssh
+            
+            result = {
+                "success": False,
+                "status": "error",
+                "cloudinit_complete": False,
+                "cloudinit_progress": "",
+                "venv_ready": False,
+                "files_copied": [],
+                "service_status": "unknown",
+                "mcp_reachable": False,
+            }
             
             # 1. 找到 novaic-mcp-vmuse 路径
             resource_dir = os.environ.get("NOVAIC_RESOURCE_DIR", "")
             vmuse_path = None
             
-            # 尝试从 resource_dir 找
             if resource_dir:
                 candidate = os.path.join(resource_dir, "novaic-mcp-vmuse")
                 if os.path.exists(candidate):
                     vmuse_path = candidate
             
-            # 开发环境回退：从 Gateway 位置推断
             if not vmuse_path:
-                # Gateway 在 novaic/novaic-gateway，vmuse 在 novaic/novaic-mcp-vmuse
                 gateway_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
                 candidate = os.path.join(gateway_dir, "novaic-mcp-vmuse")
                 if os.path.exists(candidate):
                     vmuse_path = candidate
             
             if not vmuse_path or not os.path.exists(vmuse_path):
-                return {
-                    "success": False,
-                    "error": f"novaic-mcp-vmuse not found. NOVAIC_RESOURCE_DIR={resource_dir}"
-                }
+                result["error"] = f"novaic-mcp-vmuse not found. NOVAIC_RESOURCE_DIR={resource_dir}"
+                return result
             
             logger.info(f"[qemu_deploy_vmuse_code] Using source: {vmuse_path}")
             
-            files_copied = []
-            
             try:
-                # 2. SSH 连接
+                # 2. SSH 连接（使用 SshKeyManager）
+                from vm.ssh import get_ssh_key_manager
+                ssh_manager = get_ssh_key_manager()
+                key_path = await ssh_manager.get_private_key_path()
+                
                 connect_kwargs = {
                     "host": server.ssh_host,
                     "port": server.ssh_port,
                     "username": server.ssh_user,
                     "known_hosts": None,
+                    "client_keys": [str(key_path)],
+                    "compression_algs": None,  # 禁用压缩，避免 zlib 错误
                 }
-                if os.path.exists(server.ssh_key):
-                    connect_kwargs["client_keys"] = [server.ssh_key]
                 
                 async with asyncssh.connect(**connect_kwargs) as conn:
-                    # 3. 停止服务
+                    # 3. 检查 cloud-init 状态
+                    cloudinit_check = await conn.run(
+                        "test -f /var/log/novaic-init-done.log && echo 'DONE' || echo 'PENDING'",
+                        check=False
+                    )
+                    cloudinit_done = "DONE" in cloudinit_check.stdout
+                    result["cloudinit_complete"] = cloudinit_done
+                    
+                    if not cloudinit_done:
+                        # 获取 cloud-init 进度 - 一次命令获取所有状态
+                        progress_result = await conn.run(
+                            """
+LOG=/var/log/cloud-init-output.log
+echo "=== MILESTONES ==="
+grep -c 'Hit:\\|Get:' $LOG 2>/dev/null || echo "0"        # apt_hits
+grep -c 'Setting up' $LOG 2>/dev/null || echo "0"         # packages_setup
+grep -q 'Setting up xfce4 ' $LOG 2>/dev/null && echo "HAS_XFCE4"
+grep -q 'Setting up chromium' $LOG 2>/dev/null && echo "HAS_CHROMIUM"
+grep -q 'Setting up python3-pip' $LOG 2>/dev/null && echo "HAS_PYTHON_PIP"
+test -d /opt/novaic-venv/bin && echo "HAS_VENV"
+grep -q 'Installing.*fastmcp\\|pip install.*fastmcp' $LOG 2>/dev/null && echo "HAS_PIP_DEPS"
+grep -q 'playwright install\\|Playwright' $LOG 2>/dev/null && echo "HAS_PLAYWRIGHT"
+grep -q 'systemctl enable\\|systemctl start' $LOG 2>/dev/null && echo "HAS_SERVICES"
+echo "=== RECENT ==="
+tail -5 $LOG 2>/dev/null | grep -E 'Setting up|Unpacking|pip|playwright|venv|systemctl' | tail -1
+""",
+                            check=False
+                        )
+                        output = progress_result.stdout
+                        
+                        # 解析进度 - 里程碑定义（按顺序，越后面进度越高）
+                        MILESTONES = [
+                            ("HAS_SERVICES",    95, "Starting services...",              1),
+                            ("HAS_PLAYWRIGHT",  90, "Installing Playwright Chromium...", 2),
+                            ("HAS_PIP_DEPS",    80, "Installing Python dependencies...", 3),
+                            ("HAS_VENV",        70, "Creating Python virtual environment...", 5),
+                            ("HAS_PYTHON_PIP",  60, "Installing Python environment...",  6),
+                            ("HAS_CHROMIUM",    40, "Installing Chromium browser...",    8),
+                            ("HAS_XFCE4",       20, "Installing desktop environment...", 10),
+                        ]
+                        
+                        # 找到最高的已完成里程碑
+                        percent, stage, eta_minutes = 5, "Initializing...", 15
+                        for marker, pct, desc, eta in MILESTONES:
+                            if marker in output:
+                                percent, stage, eta_minutes = pct, desc, eta
+                                break
+                        
+                        # 如果还没到第一个里程碑，检查 apt update 进度
+                        if percent == 5:
+                            lines = output.split('\n')
+                            if len(lines) > 0:
+                                try:
+                                    apt_hits = int(lines[1].strip()) if lines[1].strip().isdigit() else 0
+                                    if apt_hits > 0:
+                                        percent, stage, eta_minutes = 10, "Updating package lists...", 12
+                                except (IndexError, ValueError):
+                                    pass
+                        
+                        # 提取最近的活动日志
+                        last_activity = ""
+                        if "=== RECENT ===" in output:
+                            recent_part = output.split("=== RECENT ===")[-1].strip()
+                            if recent_part:
+                                last_activity = recent_part.split('\n')[0][:80]
+                        
+                        result["cloudinit_progress"] = stage
+                        result["cloudinit_percent"] = percent
+                        result["cloudinit_eta_minutes"] = eta_minutes
+                        result["cloudinit_last_activity"] = last_activity
+                        
+                        if not force:
+                            result["status"] = "wait"
+                            result["message"] = f"cloud-init {percent}% - {stage} (ETA: ~{eta_minutes} min)"
+                            logger.info(f"[qemu_deploy_vmuse_code] cloud-init {percent}%, returning wait")
+                            return result
+                    
+                    # 4. 检查 venv 是否就绪
+                    venv_check = await conn.run(
+                        "test -d /opt/novaic-venv/bin && /opt/novaic-venv/bin/python -c 'import fastmcp' 2>/dev/null && echo 'READY'",
+                        check=False
+                    )
+                    venv_ready = "READY" in venv_check.stdout
+                    result["venv_ready"] = venv_ready
+                    
+                    if not venv_ready and not force:
+                        result["status"] = "wait"
+                        result["message"] = "Python venv not ready. cloud-init may still be installing dependencies."
+                        result["cloudinit_progress"] = "Installing Python dependencies..."
+                        logger.info(f"[qemu_deploy_vmuse_code] venv not ready, returning wait")
+                        return result
+                    
+                    # 5. 停止服务（如果存在）
                     await conn.run("sudo systemctl stop novaic 2>/dev/null || true", check=False)
                     
-                    # 4. 清理旧代码
+                    # 6. 清理旧代码
                     await conn.run("rm -rf /opt/novaic-mcp-vmuse/src /opt/novaic-mcp-vmuse/skills", check=False)
                     
-                    # 5. 复制 src/
+                    # 7. 复制代码
+                    files_copied = []
+                    
                     src_path = os.path.join(vmuse_path, "src")
                     if os.path.exists(src_path):
                         await asyncssh.scp(src_path, (conn, "/opt/novaic-mcp-vmuse/"), recurse=True)
                         files_copied.append("src/")
                     
-                    # 6. 复制 skills/
                     skills_path = os.path.join(vmuse_path, "skills")
                     if os.path.exists(skills_path):
                         await asyncssh.scp(skills_path, (conn, "/opt/novaic-mcp-vmuse/"), recurse=True)
                         files_copied.append("skills/")
                     
-                    # 7. 复制 pyproject.toml
                     pyproject_path = os.path.join(vmuse_path, "pyproject.toml")
                     if os.path.exists(pyproject_path):
                         await asyncssh.scp(pyproject_path, (conn, "/opt/novaic-mcp-vmuse/"))
                         files_copied.append("pyproject.toml")
                     
-                    # 8. 重启服务
-                    service_status = "not_restarted"
-                    if restart_service is not False:
-                        result = await conn.run("sudo systemctl restart novaic", check=False)
-                        if result.exit_status == 0:
-                            service_status = "restarted"
-                        else:
-                            service_status = f"restart_failed: {result.stderr}"
+                    result["files_copied"] = files_copied
+                    logger.info(f"[qemu_deploy_vmuse_code] Copied files: {files_copied}")
                     
-                    return {
-                        "success": True,
-                        "source_path": vmuse_path,
-                        "files_copied": files_copied,
-                        "service_status": service_status
-                    }
+                    # 8. 启动服务
+                    if restart_service is not False:
+                        # 先 daemon-reload 确保 service 文件已加载
+                        await conn.run("sudo systemctl daemon-reload", check=False)
+                        
+                        start_result = await conn.run("sudo systemctl restart novaic", check=False)
+                        if start_result.exit_status == 0:
+                            result["service_status"] = "started"
+                        else:
+                            # 服务启动失败，尝试获取错误信息
+                            log_result = await conn.run(
+                                "journalctl -u novaic -n 10 --no-pager 2>/dev/null || echo 'No logs'",
+                                check=False
+                            )
+                            result["service_status"] = f"start_failed: {start_result.stderr.strip()}"
+                            result["service_logs"] = log_result.stdout.strip()[:500]
+                    else:
+                        result["service_status"] = "not_started"
+                    
+                    # 9. 等待服务启动并验证 MCP
+                    if restart_service is not False:
+                        await asyncio.sleep(3)  # 等待服务启动
+                        
+                        # 检查服务状态
+                        status_check = await conn.run("systemctl is-active novaic", check=False)
+                        service_active = status_check.stdout.strip() == "active"
+                        
+                        if service_active:
+                            result["service_status"] = "active"
+                            
+                            # 验证 MCP 端点
+                            mcp_check = await conn.run(
+                                'curl -s -m 5 http://localhost:8080/mcp -X POST '
+                                '-H "Content-Type: application/json" '
+                                '-H "Accept: application/json, text/event-stream" '
+                                '-d \'{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","clientInfo":{"name":"deploy-check"}}}\' '
+                                '| grep -q "protocolVersion" && echo "MCP_OK"',
+                                check=False
+                            )
+                            result["mcp_reachable"] = "MCP_OK" in mcp_check.stdout
+                        else:
+                            result["service_status"] = f"inactive ({status_check.stdout.strip()})"
+                    
+                    # 10. 设置最终状态
+                    if result["service_status"] == "active" and result["mcp_reachable"]:
+                        result["success"] = True
+                        result["status"] = "deployed"
+                        result["message"] = "MCP Server deployed and running!"
+                    elif result["service_status"] == "active":
+                        result["success"] = True
+                        result["status"] = "deployed"
+                        result["message"] = "Service started but MCP not yet responding. May need a few more seconds."
+                    else:
+                        result["status"] = "error"
+                        result["message"] = f"Service failed to start: {result['service_status']}"
+                    
+                    return result
                     
             except Exception as e:
                 logger.error(f"[qemu_deploy_vmuse_code] Error: {e}")
-                return {"success": False, "error": str(e), "files_copied": files_copied}
+                result["error"] = str(e)
+                return result
         
         @self.mcp.tool()
         async def qemu_download_image(
@@ -851,8 +985,8 @@ qemu_deploy_vmuse_code()  # 部署 MCP Server
                 subprocess.run([qemu_img, "convert", "-f", "qcow2", "-O", "qcow2", source_image, disk_path], check=True)
                 subprocess.run([qemu_img, "resize", disk_path, disk_size or "40G"], check=True)
                 
-                # 2. 获取 SSH 公钥
-                ssh_pubkey = server._get_ssh_pubkey()
+                # 2. 获取 SSH 公钥（使用 SshKeyManager）
+                ssh_pubkey = await server._get_ssh_pubkey()
                 
                 # 3. 创建 cloud-init 配置
                 meta_data = f"instance-id: novaic-vm\nlocal-hostname: novaic-vm\n"

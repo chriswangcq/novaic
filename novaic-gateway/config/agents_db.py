@@ -72,7 +72,7 @@ class AICAgent(BaseModel):
     name: str
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     vm: VmConfig = Field(default_factory=VmConfig)
-    status: str = "stopped"
+    setup_complete: bool = False
 
 
 def get_agent_port(agent_index: int, service: str) -> int:
@@ -113,7 +113,7 @@ class AgentConfigManagerDB:
         self._db = db
         self._repo: Optional[AgentRepository] = None
         self._data_dir = Path(os.environ.get("NOVAIC_DATA_DIR", "."))
-        self._vms_dir = self._data_dir / "vms"
+        self._agents_dir = self._data_dir / "agents"  # 与 qemudebug.py 一致
     
     @property
     def db(self) -> Database:
@@ -130,11 +130,11 @@ class AgentConfigManagerDB:
     def _ensure_dirs(self):
         """Ensure required directories exist."""
         self._data_dir.mkdir(parents=True, exist_ok=True)
-        self._vms_dir.mkdir(parents=True, exist_ok=True)
+        self._agents_dir.mkdir(parents=True, exist_ok=True)
     
     def _get_agent_vm_dir(self, agent_id: str) -> Path:
-        """Get VM directory for an agent."""
-        return self._vms_dir / agent_id
+        """Get VM directory for an agent (matches qemudebug.py path)."""
+        return self._agents_dir / agent_id
     
     async def list_agents(self) -> List[AICAgent]:
         """List all agents."""
@@ -150,7 +150,7 @@ class AgentConfigManagerDB:
                 name=row["name"],
                 created_at=row.get("created_at", ""),
                 vm=VmConfig(**vm_config),
-                status=row.get("status", "stopped"),
+                setup_complete=row.get("setup_complete", False),
             ))
         return agents
     
@@ -169,7 +169,7 @@ class AgentConfigManagerDB:
             name=row["name"],
             created_at=row.get("created_at", ""),
             vm=VmConfig(**vm_config),
-            status=row.get("status", "stopped"),
+            setup_complete=row.get("setup_complete", False),
         )
     
     async def create_agent(
@@ -211,7 +211,7 @@ class AgentConfigManagerDB:
             name=name,
             vm_config=vm_config,
             ports=ports.model_dump(),
-            status="pending",
+            setup_complete=False,
         )
         
         # Create VM directory
@@ -238,7 +238,7 @@ class AgentConfigManagerDB:
         self,
         agent_id: str,
         name: Optional[str] = None,
-        status: Optional[str] = None,
+        setup_complete: Optional[bool] = None,
         vm_config: Optional[Dict[str, Any]] = None,
     ) -> Optional[AICAgent]:
         """Update agent configuration."""
@@ -264,7 +264,7 @@ class AgentConfigManagerDB:
         await self.repo.update_agent(
             agent_id=agent_id,
             name=name,
-            status=status,
+            setup_complete=setup_complete,
             vm_config=update_vm,
             ports=update_ports,
         )

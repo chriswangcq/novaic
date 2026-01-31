@@ -14,6 +14,7 @@ interface UseVmReturn {
 
 // Default status with Agent 0 ports (BASE_PORT=20000)
 const DEFAULT_STATUS: VmStatus = {
+  agent_id: '',
   running: false,
   agent_healthy: false,
   mcp_healthy: false,
@@ -38,34 +39,47 @@ export function useVm(): UseVmReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const currentAgentId = useAppStore((state) => state.currentAgentId);
+  const agents = useAppStore((state) => state.agents);
+  
+  // 获取当前 agent 的信息
+  const currentAgent = agents.find(a => a.id === currentAgentId);
 
   // 刷新状态
   const refreshStatus = useCallback(async () => {
+    if (!currentAgentId) {
+      setStatus(DEFAULT_STATUS);
+      return;
+    }
+    
     try {
-      const newStatus = await vmService.getStatus();
-      setStatus(newStatus);
+      const newStatus = await vmService.getStatus(currentAgentId);
+      setStatus(newStatus || DEFAULT_STATUS);
       setError(null);
     } catch (err) {
       console.warn('[useVm] Failed to get status:', err);
       // 不设置错误，使用默认状态
       setStatus(DEFAULT_STATUS);
     }
-  }, []);
+  }, [currentAgentId]);
 
   // 启动 VM
   const startVm = useCallback(async () => {
+    if (!currentAgentId || !currentAgent) {
+      setError('No agent selected');
+      return;
+    }
+    
     setIsLoading(true);
     setError(null);
     
-    console.log('[useVm] startVm called, currentAgentId:', currentAgentId);
+    const agentIndex = currentAgent.vm.agent_index ?? 0;
+    console.log('[useVm] startVm called, currentAgentId:', currentAgentId, 'agentIndex:', agentIndex);
     
     try {
-      // 传入当前 agent ID，用于定位 agent 专属的 VM 磁盘
-      const agentId = currentAgentId || undefined;
-      console.log('[useVm] Calling vmService.start with agentId:', agentId);
-      await vmService.start(agentId);
+      console.log('[useVm] Calling vmService.start with agentId:', currentAgentId);
+      await vmService.start(currentAgentId, agentIndex);
       // 等待 VM 就绪
-      await vmService.waitForReady(15, 2000);
+      await vmService.waitForReady(currentAgentId, 15, 2000);
       await refreshStatus();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to start VM';
@@ -75,15 +89,20 @@ export function useVm(): UseVmReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [refreshStatus, currentAgentId]);
+  }, [refreshStatus, currentAgentId, currentAgent]);
 
   // 停止 VM
   const stopVm = useCallback(async () => {
+    if (!currentAgentId) {
+      setError('No agent selected');
+      return;
+    }
+    
     setIsLoading(true);
     setError(null);
     
     try {
-      await vmService.stop();
+      await vmService.stop(currentAgentId);
       await refreshStatus();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to stop VM';
@@ -92,17 +111,24 @@ export function useVm(): UseVmReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [refreshStatus]);
+  }, [refreshStatus, currentAgentId]);
 
   // 重启 VM
   const restartVm = useCallback(async () => {
+    if (!currentAgentId || !currentAgent) {
+      setError('No agent selected');
+      return;
+    }
+    
     setIsLoading(true);
     setError(null);
     
+    const agentIndex = currentAgent.vm.agent_index ?? 0;
+    
     try {
-      await vmService.restart();
+      await vmService.restart(currentAgentId, agentIndex);
       // 等待 VM 就绪
-      await vmService.waitForReady(15, 2000);
+      await vmService.waitForReady(currentAgentId, 15, 2000);
       await refreshStatus();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to restart VM';
@@ -111,7 +137,7 @@ export function useVm(): UseVmReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [refreshStatus]);
+  }, [refreshStatus, currentAgentId, currentAgent]);
 
   // 初始化时获取状态
   useEffect(() => {
@@ -137,4 +163,3 @@ export function useVm(): UseVmReturn {
     refreshStatus,
   };
 }
-

@@ -36,7 +36,7 @@ class UpdateAgentRequest(BaseModel):
     """Request to update an agent"""
     name: Optional[str] = None
     vm: Optional[dict] = None
-    status: Optional[str] = None  # pending, creating, running, stopped, error
+    setup_complete: Optional[bool] = None
 
 
 class AgentResponse(BaseModel):
@@ -45,7 +45,7 @@ class AgentResponse(BaseModel):
     name: str
     created_at: str
     vm: VmConfig
-    status: str = "stopped"
+    setup_complete: bool = False
 
 
 class AgentListResponse(BaseModel):
@@ -159,14 +159,19 @@ async def update_agent(agent_id: str, request: UpdateAgentRequest):
     """Update an existing agent"""
     manager = get_agent_config_manager()
     
+    # Get old agent to check setup_complete change
+    old_agent = manager.get_agent(agent_id)
+    was_setup_complete = old_agent.setup_complete if old_agent else False
+    
     update_data = request.model_dump(exclude_none=True)
     agent = manager.update_agent(agent_id, **update_data)
     
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
     
-    # If status changed to running, ensure MCP Gateway is setup and wake agent
-    if request.status == "running":
+    # If setup_complete changed to True, ensure MCP Gateway is setup and send bootstrap message
+    if request.setup_complete is True and not was_setup_complete:
+        # Setup MCP Gateway
         mcp_manager = get_mcp_gateway_manager()
         if mcp_manager and not mcp_manager.get_gateway(agent_id):
             await mcp_manager.add_agent(
@@ -174,29 +179,26 @@ async def update_agent(agent_id: str, request: UpdateAgentRequest):
                 agent_index=agent.vm.agent_index,
             )
         
-        # Send system message to wake agent for bootstrap
+        # Send bootstrap message to Agent's inbox
         try:
-            from api.chat_service import get_chat_service
-            chat_service = get_chat_service()
+            from api.inbox_service import get_inbox_service
             
-            # Add a system message to agent's inbox
-            await chat_service.add_chat_message(
-                type="USER_MESSAGE",
+            inbox_svc = get_inbox_service()
+            await inbox_svc.add_message(
+                msg_type="SYSTEM_MESSAGE",
+                content="VM setup complete. Execute skill agent-bootstrap to configure the agent environment.",
+                priority="high",
+                source="system:bootstrap",
+                metadata={
+                    "action": "bootstrap",
+                    "skill": "agent-bootstrap",
+                    "reason": "setup_complete",
+                },
                 agent_id=agent_id,
-                content=(
-                    "[SYSTEM] VM 已启动！请执行 agent-bootstrap skill 完成系统初始化。\n\n"
-                    "任务：\n"
-                    "1. 等待 SSH 可用\n"
-                    "2. 监控 cloud-init 进度，向用户报告\n"
-                    "3. 部署 MCP Server 代码\n"
-                    "4. 验证服务启动\n\n"
-                    "请参考 skills/agent-bootstrap/SKILL.md 执行。"
-                ),
-                metadata={"source": "system", "action": "bootstrap"},
             )
-            print(f"[Agents API] Sent bootstrap message to agent {agent_id}")
+            print(f"[Agents] Sent bootstrap message to agent {agent_id}")
         except Exception as e:
-            print(f"[Agents API] Failed to send bootstrap message: {e}")
+            print(f"[Agents] Warning: Failed to send bootstrap message: {e}")
     
     return AgentResponse(**agent.model_dump())
 
@@ -224,10 +226,9 @@ async def delete_agent(agent_id: str):
 @router.get("/{agent_id}/status")
 async def get_agent_status(agent_id: str):
     """
-    Get agent VM status.
+    Get agent setup status.
     
     Note: Actual VM status should come from Tauri via IPC.
-    This is a placeholder that returns the stored status.
     """
     manager = get_agent_config_manager()
     agent = manager.get_agent(agent_id)
@@ -237,7 +238,7 @@ async def get_agent_status(agent_id: str):
     
     return {
         "agent_id": agent_id,
-        "status": agent.status,
+        "setup_complete": agent.setup_complete,
         "ports": agent.vm.ports.model_dump()
     }
 

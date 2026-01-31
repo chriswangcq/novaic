@@ -81,8 +81,8 @@ class MCPGatewayManager:
         
         try:
             # 1. Create sub MCP servers first
-            logger.info(f"[MCPGatewayManager] Creating sub MCP servers for agent {agent_id}")
-            sub_servers = await self.sub_mcp_manager.create_servers_for_agent(agent_id)
+            logger.info(f"[MCPGatewayManager] Creating sub MCP servers for agent {agent_id} (index={agent_index})")
+            sub_servers = await self.sub_mcp_manager.create_servers_for_agent(agent_id, agent_index=agent_index)
             
             # 2. Create Gateway
             gateway = AgentMCPGateway(

@@ -2,7 +2,7 @@
  * Setup Workspace Component
  * 
  * Full-page workspace for setting up an agent.
- * Shows progress for: downloading, creating VM, deploying code.
+ * Shows progress for: downloading, creating VM.
  */
 
 import { useEffect, useState, useCallback } from 'react';
@@ -16,7 +16,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { useAppStore } from '../../store';
-import { AICAgent, AgentStatus } from '../../services/api';
+import { AICAgent } from '../../services/api';
 import * as setup from '../../services/setup';
 
 interface SetupWorkspaceProps {
@@ -33,21 +33,21 @@ const STEPS = [
   { id: 'create', label: 'Create VM', icon: HardDrive },
 ];
 
-// Map agent status to step index
-function getStepIndex(status: AgentStatus): number {
-  switch (status) {
-    case 'pending':
-    case 'downloading':
-      return 0;
-    case 'creating':
-      return 1;
-    case 'deploying':
-    case 'ready':
-    case 'running':
-      return 2; // All complete (Agent handles deployment)
-    default:
-      return -1;
+// Map setup progress stage to step index
+function getStepIndex(agent: AICAgent): number {
+  if (agent.setup_complete) {
+    return 2; // All complete
   }
+  
+  const stage = agent.setup_progress?.stage?.toLowerCase() || '';
+  
+  if (stage.includes('download')) {
+    return 0;
+  } else if (stage.includes('creat') || stage.includes('vm') || stage.includes('start')) {
+    return 1;
+  }
+  
+  return 0; // Default to first step
 }
 
 // Format file size
@@ -69,7 +69,7 @@ export function SetupWorkspace({
   onComplete, 
   onBack 
 }: SetupWorkspaceProps) {
-  const { setupAgent, updateAgentStatus, agents } = useAppStore();
+  const { setupAgent, updateSetupProgress, agents } = useAppStore();
   
   // Get live agent from store (updates in real-time)
   const agent = agents.find(a => a.id === initialAgent.id) || initialAgent;
@@ -80,9 +80,9 @@ export function SetupWorkspace({
   const [error, setError] = useState<string | null>(null);
 
   // Current step index
-  const currentStepIndex = getStepIndex(agent.status);
-  const isError = agent.status === 'error';
-  const isComplete = agent.status === 'ready' || agent.status === 'running';
+  const currentStepIndex = getStepIndex(agent);
+  const isError = Boolean(agent.setup_progress?.error);
+  const isComplete = agent.setup_complete;
 
   // Start setup process
   const startSetup = useCallback(async () => {
@@ -105,7 +105,7 @@ export function SetupWorkspace({
         imagePath = imageCheck.path;
       } else if (!sourceImage) {
         // Download cloud image first
-        updateAgentStatus(agent.id, 'downloading', {
+        updateSetupProgress(agent.id, {
           stage: 'Downloading',
           progress: 0,
           message: 'Starting download...',
@@ -117,7 +117,7 @@ export function SetupWorkspace({
           useCnMirrors,
           (progress) => {
             setDownloadProgress(progress);
-            updateAgentStatus(agent.id, 'downloading', {
+            updateSetupProgress(agent.id, {
               stage: 'Downloading',
               progress: progress.percent,
               message: `${formatSize(progress.downloaded)} / ${formatSize(progress.total)}`,
@@ -133,35 +133,35 @@ export function SetupWorkspace({
       });
 
       // Note: Don't call onComplete() here immediately.
-      // The agent status will be updated to 'ready' or 'running' by setupAgent,
-      // and we'll detect that through the status check below.
+      // The agent.setup_complete will be updated by setupAgent,
+      // and we'll detect that through the isComplete check.
       console.log('[Setup] setupAgent completed, waiting for status update...');
       
     } catch (err) {
       console.error('Setup failed:', err);
       const errorMsg = err instanceof Error ? err.message : String(err);
       setError(errorMsg);
-      updateAgentStatus(agent.id, 'error', {
+      updateSetupProgress(agent.id, {
         stage: 'Error',
         progress: 0,
         message: errorMsg,
         error: errorMsg,
       });
     }
-  }, [hasStarted, sourceImage, agent, useCnMirrors, setupAgent, updateAgentStatus]);
+  }, [hasStarted, sourceImage, agent, useCnMirrors, setupAgent, updateSetupProgress]);
 
-  // Auto-start setup when component mounts
+  // Auto-start setup when component mounts (if setup not complete)
   useEffect(() => {
-    if (agent.status === 'pending' && !hasStarted) {
+    if (!agent.setup_complete && !hasStarted && !isError) {
       startSetup();
     }
-  }, [agent.status, hasStarted, startSetup]);
+  }, [agent.setup_complete, hasStarted, isError, startSetup]);
 
   // Handle retry
   const handleRetry = () => {
     setHasStarted(false);
     setError(null);
-    updateAgentStatus(agent.id, 'pending', undefined);
+    updateSetupProgress(agent.id, undefined);
   };
 
   // Get current message
@@ -169,31 +169,33 @@ export function SetupWorkspace({
     if (error) return error;
     if (agent.setup_progress?.message) return agent.setup_progress.message;
     
-    switch (agent.status) {
-      case 'pending':
-        return 'Preparing setup...';
-      case 'downloading':
-        if (downloadProgress) {
-          return `Downloading: ${formatSize(downloadProgress.downloaded)} / ${formatSize(downloadProgress.total)}`;
-        }
-        return 'Starting download...';
-      case 'creating':
-        return 'Creating virtual machine...';
-      case 'deploying':
-      case 'ready':
-      case 'running':
-        return 'VM ready! Agent will handle deployment.';
-      default:
-        return 'Processing...';
+    const stage = agent.setup_progress?.stage?.toLowerCase() || '';
+    
+    if (agent.setup_complete) {
+      return 'VM ready! Agent will handle deployment.';
+    } else if (stage.includes('download')) {
+      if (downloadProgress) {
+        return `Downloading: ${formatSize(downloadProgress.downloaded)} / ${formatSize(downloadProgress.total)}`;
+      }
+      return 'Starting download...';
+    } else if (stage.includes('creat') || stage.includes('vm')) {
+      return 'Creating virtual machine...';
+    } else if (stage.includes('start')) {
+      return 'Starting virtual machine...';
     }
+    
+    return 'Preparing setup...';
   };
 
   // Get current progress percentage
   const getCurrentProgress = () => {
     if (agent.setup_progress?.progress) return agent.setup_progress.progress;
-    if (agent.status === 'downloading' && downloadProgress) return downloadProgress.percent;
+    if (downloadProgress) return downloadProgress.percent;
     return 0;
   };
+  
+  // Check if currently downloading
+  const isDownloading = agent.setup_progress?.stage?.toLowerCase().includes('download');
 
   return (
     <div className="h-screen flex flex-col bg-nb-bg">
@@ -328,7 +330,7 @@ export function SetupWorkspace({
                 </p>
                 
                 {/* Download speed */}
-                {agent.status === 'downloading' && downloadProgress && (
+                {isDownloading && downloadProgress && (
                   <p className="text-blue-500 text-sm mt-1">
                     {downloadProgress.speed}
                   </p>
@@ -345,9 +347,9 @@ export function SetupWorkspace({
               {/* Tips */}
               <div className="mt-8 p-4 bg-nb-surface rounded-lg">
                 <p className="text-xs text-nb-text-secondary text-center">
-                  {agent.status === 'downloading' ? (
+                  {isDownloading ? (
                     'Downloading cloud image. This may take a few minutes depending on your internet speed.'
-                  ) : agent.status === 'creating' ? (
+                  ) : agent.setup_progress?.stage?.toLowerCase().includes('creat') ? (
                     'Creating the virtual machine disk and configuration. This usually takes about 1-2 minutes.'
                   ) : (
                     'Please wait while we set up your AI Computer...'

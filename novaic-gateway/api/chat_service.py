@@ -43,8 +43,14 @@ class ChatService:
         return self._repo
     
     @property
-    def agent_id(self) -> str:
-        """Get current agent ID, falls back to default if not set."""
+    def agent_id(self) -> Optional[str]:
+        """Get current agent ID.
+        
+        Returns:
+            The current agent ID, or None if not set.
+            
+        Note: Returns None instead of fallback to make issues visible.
+        """
         if self._agent_id:
             return self._agent_id
         # Try to get from config
@@ -54,13 +60,30 @@ class ChatService:
             current = mgr.get_current_agent()
             if current:
                 return current.id
-        except Exception:
-            pass
-        return "default"
+        except Exception as e:
+            logger.warning(f"[ChatService] Failed to get current agent ID: {e}")
+        return None
     
     def set_agent_id(self, agent_id: str):
         """Set the current agent ID."""
         self._agent_id = agent_id
+    
+    def _require_agent_id(self, agent_id: Optional[str] = None) -> str:
+        """Get agent ID, raising error if not available.
+        
+        Args:
+            agent_id: Optional explicit agent ID
+            
+        Returns:
+            The agent ID to use
+            
+        Raises:
+            ValueError: If no agent ID is available
+        """
+        aid = agent_id or self.agent_id
+        if not aid:
+            raise ValueError("No agent ID available. Please select an agent first.")
+        return aid
     
     # ==================== Chat Messages ====================
     
@@ -73,7 +96,7 @@ class ChatService:
         agent_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Get chat history with optional summary."""
-        aid = agent_id or self.agent_id
+        aid = self._require_agent_id(agent_id)
         messages = await self.repo.get_messages(
             agent_id=aid,
             limit=min(limit, 100),
@@ -122,7 +145,7 @@ class ChatService:
         **data
     ) -> Optional[Dict[str, Any]]:
         """Add a chat message and broadcast to subscribers."""
-        aid = agent_id or self.agent_id
+        aid = self._require_agent_id(agent_id)
         msg_id = data.pop("id", str(uuid4())[:12])
         timestamp = data.pop("timestamp", datetime.now().isoformat())
         content = data.pop("content", data.pop("message", None))
@@ -137,12 +160,13 @@ class ChatService:
             timestamp=timestamp,
         )
         
-        # Build message for SSE broadcast
+        # Build message for SSE broadcast (include agent_id for filtering)
         broadcast_msg = {
             "id": msg_id,
             "type": type,
             "content": content,
             "timestamp": timestamp,
+            "agent_id": aid,  # Include agent_id for client-side filtering
             **data
         }
         
@@ -196,7 +220,7 @@ class ChatService:
         
         Returns unread messages and marks them as read.
         """
-        aid = agent_id or self.agent_id
+        aid = self._require_agent_id(agent_id)
         messages = await self.repo.get_unread_messages(aid)
         
         # Mark as read and format result
@@ -219,7 +243,7 @@ class ChatService:
     
     async def get_unread_count(self, agent_id: Optional[str] = None) -> int:
         """Get count of unread messages."""
-        aid = agent_id or self.agent_id
+        aid = self._require_agent_id(agent_id)
         return await self.repo.get_message_count(aid, read=False)
     
     # ==================== Questions/Responses ====================
@@ -232,7 +256,7 @@ class ChatService:
         agent_id: Optional[str] = None,
     ) -> str:
         """Add a pending question from agent."""
-        aid = agent_id or self.agent_id
+        aid = self._require_agent_id(agent_id)
         request_id = request_id or str(uuid4())[:12]
         
         await self.repo.add_pending_question(
@@ -256,7 +280,7 @@ class ChatService:
     
     async def get_pending_questions(self, agent_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """Get all pending questions."""
-        aid = agent_id or self.agent_id
+        aid = self._require_agent_id(agent_id)
         return await self.repo.list_pending_questions(aid)
     
     async def submit_response(
@@ -267,7 +291,7 @@ class ChatService:
         agent_id: Optional[str] = None,
     ) -> bool:
         """Submit user response to a question."""
-        aid = agent_id or self.agent_id
+        aid = self._require_agent_id(agent_id)
         # Check if question exists
         question = await self.repo.get_pending_question(request_id)
         if not question:
@@ -292,7 +316,7 @@ class ChatService:
     
     async def auto_respond_to_questions(self, response: str, agent_id: Optional[str] = None):
         """Auto-respond to all pending questions with user message."""
-        aid = agent_id or self.agent_id
+        aid = self._require_agent_id(agent_id)
         questions = await self.repo.list_pending_questions(aid)
         for q in questions:
             await self.submit_response(
@@ -311,7 +335,7 @@ class ChatService:
         agent_id: Optional[str] = None,
     ):
         """Add an execution log entry (pure flow log, not associated with messages)."""
-        aid = agent_id or self.agent_id
+        aid = self._require_agent_id(agent_id)
         timestamp = datetime.now().isoformat()
         
         await self.repo.add_execution_log(
@@ -343,7 +367,7 @@ class ChatService:
         agent_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """Get execution logs."""
-        aid = agent_id or self.agent_id
+        aid = self._require_agent_id(agent_id)
         return await self.repo.list_execution_logs(
             agent_id=aid,
             limit=limit,
@@ -351,14 +375,14 @@ class ChatService:
     
     async def clear_execution_logs(self, agent_id: Optional[str] = None):
         """Clear all execution logs."""
-        aid = agent_id or self.agent_id
+        aid = self._require_agent_id(agent_id)
         await self.repo.clear_execution_logs(aid)
     
     # ==================== Agent State ====================
     
     async def get_agent_rest_state(self, agent_id: Optional[str] = None) -> Dict[str, Any]:
         """Get agent rest state."""
-        aid = agent_id or self.agent_id
+        aid = self._require_agent_id(agent_id)
         return await self.repo.get_agent_rest_state(aid)
     
     async def set_agent_resting(
@@ -369,7 +393,7 @@ class ChatService:
         agent_id: Optional[str] = None,
     ):
         """Set agent to resting state."""
-        aid = agent_id or self.agent_id
+        aid = self._require_agent_id(agent_id)
         await self.repo.set_agent_rest_state(aid, {
             "is_resting": True,
             "reason": reason,
@@ -389,7 +413,7 @@ class ChatService:
     
     async def wake_agent(self, reason: str = "Manual wake", agent_id: Optional[str] = None):
         """Wake up the agent."""
-        aid = agent_id or self.agent_id
+        aid = self._require_agent_id(agent_id)
         previous_state = await self.get_agent_rest_state(aid)
         
         await self.repo.set_agent_rest_state(aid, {
@@ -411,12 +435,12 @@ class ChatService:
     
     async def is_agent_busy(self, agent_id: Optional[str] = None) -> bool:
         """Check if agent is busy."""
-        aid = agent_id or self.agent_id
+        aid = self._require_agent_id(agent_id)
         return await self.repo.is_agent_busy(aid)
     
     async def set_agent_busy(self, busy: bool, agent_id: Optional[str] = None):
         """Set agent busy state."""
-        aid = agent_id or self.agent_id
+        aid = self._require_agent_id(agent_id)
         await self.repo.set_agent_busy(aid, busy)
     
     # ==================== SSE Subscription Management ====================

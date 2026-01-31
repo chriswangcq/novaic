@@ -9,10 +9,11 @@ mod gateway_client;
 
 use gateway_client::GatewayClient;
 
-use vm::manager::VmManager;
-use vm::setup::{check_environment, check_cloud_image, download_cloud_image, setup_vm, get_ssh_pubkey, generate_ssh_key};
+// VM management is now handled by Gateway - Tauri only handles:
+// - Gateway process management
+// - Cloud image download (optional)
+use vm::setup::{check_environment, check_cloud_image, download_cloud_image};
 use vm::deploy::{deploy_agent, quick_deploy_agent};
-use commands::vm_commands::{start_vm, stop_vm, get_vm_status, restart_vm, get_vnc_url, get_agent_url};
 
 use std::sync::Arc;
 use std::path::PathBuf;
@@ -122,7 +123,35 @@ impl GatewayProcess {
             let pid = process.id();
             println!("[Gateway] Stopping process (PID: {})...", pid);
             
-            // First try SIGTERM for graceful shutdown
+            // Step 1: Stop all VMs via Gateway API with quick mode
+            // quick=true: shorter timeouts, graceful=false: skip SSH poweroff
+            // This makes exit much faster (3-5s instead of 20+s)
+            println!("[Gateway] Stopping all VMs via API (quick mode)...");
+            let stop_url = format!("{}/api/vm/stop-all?quick=true&graceful=false", self.base_url());
+            match reqwest::blocking::Client::builder()
+                .timeout(std::time::Duration::from_secs(10))  // Short timeout for quick mode
+                .build()
+            {
+                Ok(client) => {
+                    match client.post(&stop_url).send() {
+                        Ok(resp) => {
+                            if resp.status().is_success() {
+                                println!("[Gateway] All VMs stopped successfully");
+                            } else {
+                                println!("[Gateway] VM stop API returned: {}", resp.status());
+                            }
+                        }
+                        Err(e) => {
+                            println!("[Gateway] VM stop API failed (may already be stopping): {}", e);
+                        }
+                    }
+                }
+                Err(e) => {
+                    println!("[Gateway] Failed to create HTTP client: {}", e);
+                }
+            }
+            
+            // Step 2: Send SIGTERM for graceful Gateway shutdown
             #[cfg(unix)]
             unsafe {
                 libc::kill(pid as i32, libc::SIGTERM);
@@ -130,8 +159,8 @@ impl GatewayProcess {
             #[cfg(unix)]
             println!("[Gateway] SIGTERM sent to PID {}", pid);
             
-            // Wait a bit for graceful shutdown
-            std::thread::sleep(std::time::Duration::from_millis(500));
+            // Wait briefly for graceful shutdown
+            std::thread::sleep(std::time::Duration::from_secs(1));
             
             // Check if process exited
             match process.try_wait() {
@@ -376,17 +405,9 @@ fn main() {
             let data_dir = app.path().app_data_dir()
                 .unwrap_or_else(|_| PathBuf::from("."));
             
-            // VM directory path
-            let vm_dir = data_dir.join("vms");
-            
             println!("[App] Data directory: {:?}", data_dir);
-            println!("[App] VM directory: {:?}", vm_dir);
             
-            // Initialize VM Manager (but don't auto-start VM)
-            let vm_manager = Arc::new(Mutex::new(VmManager::new(vm_dir.clone())));
-            app.manage(vm_manager.clone());
-            
-            // Initialize Gateway Manager
+            // Initialize Gateway Manager (VM management is now handled by Gateway)
             let gateway = Arc::new(Mutex::new(GatewayProcess::new()));
             app.manage(gateway.clone());
             
@@ -423,21 +444,11 @@ fn main() {
             }
         })
         .invoke_handler(tauri::generate_handler![
-            // VM commands
-            start_vm,
-            stop_vm,
-            get_vm_status,
-            restart_vm,
-            get_vnc_url,
-            get_agent_url,
-            // VM Setup commands
+            // VM Setup commands (image download only - VM lifecycle handled by Gateway)
             check_environment,
             check_cloud_image,
             download_cloud_image,
-            setup_vm,
-            get_ssh_pubkey,
-            generate_ssh_key,
-            // VM Deploy commands
+            // VM Deploy commands (SSH deploy to VM)
             deploy_agent,
             quick_deploy_agent,
             // Gateway commands
@@ -460,22 +471,12 @@ fn main() {
                 tauri::RunEvent::Exit => {
                     println!("[App] Exiting, stopping services...");
                     
-                    // Stop Gateway
+                    // Stop Gateway (which will also stop all VMs)
                     if let Some(gateway) = app_handle.try_state::<GatewayState>() {
                         let gateway_clone = gateway.inner().clone();
                         tauri::async_runtime::block_on(async {
                             let mut gw = gateway_clone.lock().await;
                             gw.stop();
-                        });
-                    }
-                    
-                    // Stop VM gracefully
-                    if let Some(vm_manager) = app_handle.try_state::<Arc<Mutex<VmManager>>>() {
-                        println!("[VM] Stopping VM gracefully...");
-                        let vm = vm_manager.inner().clone();
-                        tauri::async_runtime::block_on(async {
-                            let manager = vm.lock().await;
-                            manager.stop_sync_public();
                         });
                     }
                 }

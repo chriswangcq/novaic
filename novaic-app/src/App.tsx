@@ -80,7 +80,8 @@ function App() {
     setLeftPanelWidth,
     settingsOpen,
     setSettingsOpen,
-    loadAgents
+    loadAgents,
+    selectAgent
   } = useAppStore();
 
   const [isLoadingAgents, setIsLoadingAgents] = useState(true);
@@ -131,19 +132,23 @@ function App() {
   }, [setLeftPanelWidth]);
 
   // Enter workspace for an agent
-  const handleEnterWorkspace = useCallback((agentId: string) => {
+  const handleEnterWorkspace = useCallback(async (agentId: string) => {
     console.log('[App] Entering workspace for agent:', agentId);
+    // 通知 store 和 Gateway 切换 agent（会清空消息、重连 SSE、加载历史）
+    await selectAgent(agentId);
     setCurrentAgentIdLocal(agentId);
     setCurrentPage('workspace');
-  }, []);
+  }, [selectAgent]);
 
   // Enter setup workspace for an agent
-  const handleEnterSetup = useCallback((agentId: string, config: SetupConfig) => {
+  const handleEnterSetup = useCallback(async (agentId: string, config: SetupConfig) => {
     console.log('[App] Entering setup for agent:', agentId);
+    // 通知 store 和 Gateway 切换 agent
+    await selectAgent(agentId);
     setCurrentAgentIdLocal(agentId);
     setSetupConfig(config);
     setCurrentPage('setup');
-  }, []);
+  }, [selectAgent]);
 
   // Setup complete - enter workspace
   const handleSetupComplete = useCallback(() => {

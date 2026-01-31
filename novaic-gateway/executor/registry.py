@@ -23,6 +23,7 @@ class MCPServerConfig:
     port: Optional[int] = None
     enabled: bool = True
     priority: int = 0  # Lower = higher priority for tool name conflicts
+    connect_timeout: float = 1.0  # Connection timeout in seconds
 
 
 class ToolRegistry:
@@ -61,6 +62,7 @@ class ToolRegistry:
         port: Optional[int] = None,
         enabled: bool = True,
         priority: int = 0,
+        connect_timeout: float = 1.0,
     ) -> None:
         """
         Register an MCP server.
@@ -71,6 +73,7 @@ class ToolRegistry:
             port: Port number (will construct URL as http://127.0.0.1:{port}/mcp)
             enabled: Whether to enable this server
             priority: Priority for tool name conflicts (lower = higher priority)
+            connect_timeout: Connection timeout in seconds (default: 1.0s)
         """
         if url is None and port is not None:
             url = f"http://127.0.0.1:{port}/mcp"
@@ -83,6 +86,7 @@ class ToolRegistry:
             port=port,
             enabled=enabled,
             priority=priority,
+            connect_timeout=connect_timeout,
         )
         self._servers[name] = config
         
@@ -152,9 +156,17 @@ class ToolRegistry:
             try:
                 # Register the server if not already done
                 if config.port:
-                    await client.register_server(name=server_name, port=config.port)
+                    await client.register_server(
+                        name=server_name, 
+                        port=config.port, 
+                        connect_timeout=config.connect_timeout
+                    )
                 elif config.url:
-                    await client.register_server(name=server_name, url=config.url)
+                    await client.register_server(
+                        name=server_name, 
+                        url=config.url, 
+                        connect_timeout=config.connect_timeout
+                    )
                 else:
                     logger.warning(f"[ToolRegistry] Server {server_name} has no port or url")
                     continue

@@ -1,6 +1,7 @@
 import { Message, MessageStatus } from '../../types';
-import { User, Check, CheckCheck, Clock, AlertCircle } from 'lucide-react';
+import { User, Check, CheckCheck, Clock, AlertCircle, ChevronDown } from 'lucide-react';
 import { Markdown } from './Markdown';
+import { useAppStore } from '../../store';
 
 interface UserMessageProps {
   message: Message;
@@ -18,6 +19,11 @@ export function UserMessage({ message }: UserMessageProps) {
   const status = message.status || 'delivered';
   const statusInfo = statusConfig[status];
   const StatusIcon = statusInfo.icon;
+  const expandMessage = useAppStore((state) => state.expandMessage);
+  
+  const handleExpand = () => {
+    expandMessage(message.id);
+  };
   
   return (
     <div className="group py-2">
@@ -30,6 +36,17 @@ export function UserMessage({ message }: UserMessageProps) {
       {/* Message content with bubble style */}
       <div className="bg-violet-600/20 border border-violet-500/20 rounded-lg px-3 py-2">
         <Markdown content={message.content} />
+        
+        {/* Expand button for truncated messages */}
+        {message.isTruncated && (
+          <button
+            onClick={handleExpand}
+            className="flex items-center gap-1 mt-2 text-[11px] text-violet-400 hover:text-violet-300 transition-colors"
+          >
+            <ChevronDown size={14} />
+            <span>查看更多</span>
+          </button>
+        )}
       </div>
 
       {/* Message status - right aligned */}

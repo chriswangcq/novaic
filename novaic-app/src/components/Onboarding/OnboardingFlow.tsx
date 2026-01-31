@@ -15,6 +15,7 @@ import { Rocket, Settings, CheckCircle, AlertCircle } from 'lucide-react';
 import { SetupProgress } from './SetupProgress';
 import { api } from '../../services';
 import * as setup from '../../services/setup';
+import { vmService } from '../../services/vm';
 
 interface OnboardingFlowProps {
   onComplete: () => void;
@@ -154,8 +155,8 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         message: 'Starting virtual machine...',
       });
       
-      const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('start_vm', { agentId: agent.id });
+      const agentIndex = agent.vm.agent_index ?? 0;
+      await vmService.start(agent.id, agentIndex);
       
       // Wait a moment for VM to boot
       await new Promise(resolve => setTimeout(resolve, 3000));

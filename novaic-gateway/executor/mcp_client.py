@@ -98,7 +98,7 @@ class MCPServerConnection:
     支持 MCP 三元组: Tools, Resources, Prompts
     """
     
-    def __init__(self, name: str, port: int = None, url: str = None):
+    def __init__(self, name: str, port: int = None, url: str = None, connect_timeout: float = 1.0):
         """
         初始化 MCP Server 连接
         
@@ -106,9 +106,11 @@ class MCPServerConnection:
             name: Server 名称
             port: 宿主机端口 (可选，与 url 二选一)
             url: 完整 URL (可选，与 port 二选一)
+            connect_timeout: 连接超时时间 (秒)
         """
         self.name = name
         self.port = port
+        self.connect_timeout = connect_timeout
         if url:
             self.url = url
         elif port:
@@ -129,7 +131,7 @@ class MCPServerConnection:
     def _create_client(self) -> httpx.AsyncClient:
         """创建 HTTP 客户端"""
         return httpx.AsyncClient(
-            timeout=httpx.Timeout(connect=10.0, read=60.0, write=30.0, pool=10.0),
+            timeout=httpx.Timeout(connect=self.connect_timeout, read=60.0, write=30.0, pool=10.0),
             transport=httpx.AsyncHTTPTransport(proxy=None),
             trust_env=False,
         )
@@ -226,7 +228,7 @@ class MCPServerConnection:
         
         return False
     
-    async def health_check(self, timeout: float = 5.0) -> bool:
+    async def health_check(self, timeout: float = 1.0) -> bool:
         """
         检查 MCP 连接是否健康
         
@@ -275,8 +277,13 @@ class MCPServerConnection:
         self._session_id = None
         return await self.initialize()
 
-    async def initialize(self, max_retries: int = 3, retry_delay: float = 2.0) -> bool:
-        """初始化 MCP 连接（带重试）"""
+    async def initialize(self, max_retries: int = 1, retry_delay: float = 1.0) -> bool:
+        """初始化 MCP 连接（带重试）
+        
+        Args:
+            max_retries: 最大重试次数 (默认 1，即不重试，快速失败)
+            retry_delay: 重试延迟（秒）
+        """
         for attempt in range(max_retries):
             try:
                 result = await self._send_request("initialize", {
@@ -329,8 +336,13 @@ class MCPServerConnection:
         except Exception:
             pass  # 通知不需要响应
     
-    async def list_tools(self, use_cache: bool = True, max_retries: int = 3) -> List[Dict[str, Any]]:
-        """获取工具列表（带重试）"""
+    async def list_tools(self, use_cache: bool = True, max_retries: int = 1) -> List[Dict[str, Any]]:
+        """获取工具列表（带重试）
+        
+        Args:
+            use_cache: 是否使用缓存
+            max_retries: 最大重试次数 (默认 1，即不重试，快速失败用于发现阶段)
+        """
         print(f"[MCP] list_tools called: use_cache={use_cache}, cache_exists={self._tools_cache is not None}")
         
         if use_cache and self._tools_cache is not None:
@@ -346,8 +358,8 @@ class MCPServerConnection:
                     if not init_result:
                         print(f"[MCP] ✗ Failed to initialize {self.name}")
                         if attempt < max_retries - 1:
-                            print(f"[MCP] Retrying in 2s... (attempt {attempt + 1}/{max_retries})")
-                            await asyncio.sleep(2.0)
+                            print(f"[MCP] Retrying in 1s... (attempt {attempt + 1}/{max_retries})")
+                            await asyncio.sleep(1.0)
                             continue
                         return []
                     print(f"[MCP] ✓ Initialized {self.name}, session_id: {self._session_id[:20]}...")
@@ -378,7 +390,7 @@ class MCPServerConnection:
             print(f"[MCP] Resetting session for retry...")
             self._session_id = None
             if attempt < max_retries - 1:
-                await asyncio.sleep(2.0)
+                await asyncio.sleep(1.0)
         
         print(f"[MCP] ✗ All {max_retries} attempts failed, returning empty list")
         return []
@@ -734,7 +746,7 @@ class MCPClient:
         # Prompts
         self._prompts_cache: Optional[List[MCPPrompt]] = None
     
-    async def register_server(self, name: str, port: int = None, url: str = None):
+    async def register_server(self, name: str, port: int = None, url: str = None, connect_timeout: float = 1.0):
         """
         注册 MCP Server
         
@@ -742,8 +754,9 @@ class MCPClient:
             name: Server 名称
             port: 宿主机端口 (可选，与 url 二选一)
             url: 完整 URL (可选，与 port 二选一)
+            connect_timeout: 连接超时时间 (秒)
         """
-        server = MCPServerConnection(name=name, port=port, url=url)
+        server = MCPServerConnection(name=name, port=port, url=url, connect_timeout=connect_timeout)
         self.servers[name] = server
         self._clear_all_caches()
         

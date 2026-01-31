@@ -2,11 +2,16 @@
 NovAIC Gateway - REST API Routes
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
+import os
+import shutil
+import time
+from pathlib import Path
+import glob
 
 from .schemas import (
     ChatRequest, ChatResponse, ChatResult,
@@ -18,39 +23,53 @@ from core.agent import NovAICAgent
 
 router = APIRouter()
 
-# Global agent instance (singleton per gateway process)
+# Global agent instance (keyed by agent_id for multi-agent support)
 _agent: Optional[NovAICAgent] = None
+_agent_id: Optional[str] = None  # Track which agent _agent was created for
 
 
 def get_agent() -> NovAICAgent:
-    """Get the global agent instance, creating if needed.
+    """Get the agent instance for the current agent.
     
-    Uses ToolRegistry if available (multi-MCP server mode).
+    Uses Gateway's ToolRegistry which has all sub-MCP servers registered.
+    Re-creates the agent if the current agent has changed.
     """
-    global _agent
-    if _agent is None:
+    global _agent, _agent_id
+    
+    # Get current agent info
+    from config.agents import get_agent_config_manager, allocate_ports_for_agent
+    from mcp_gateway.manager import get_mcp_gateway_manager
+    
+    try:
+        agent_mgr = get_agent_config_manager()
+        current_agent = agent_mgr.get_current_agent()
+        current_agent_id = current_agent.id if current_agent else None
+        mcp_port = current_agent.vm.ports.vm if current_agent else allocate_ports_for_agent(0).vm
+    except Exception:
+        current_agent_id = None
+        mcp_port = allocate_ports_for_agent(0).vm
+    
+    # Check if we need to recreate the agent (agent switched or not created yet)
+    if _agent is None or _agent_id != current_agent_id:
+        if _agent is not None:
+            print(f"[Agent] Switching from agent {_agent_id} to {current_agent_id}")
+        
         config = get_config_manager().load()
         
-        # Try to get ToolRegistry from main
+        # Get Gateway's registry (has VM + all sub-MCPs)
         tool_registry = None
-        try:
-            from main import get_tool_registry
-            tool_registry = get_tool_registry()
-        except ImportError:
-            pass
-        
-        # Get MCP port from current agent config or use default (Agent 0)
-        from config.agents import get_agent_config_manager, allocate_ports_for_agent
-        try:
-            agent_mgr = get_agent_config_manager()
-            current_agent = agent_mgr.get_current_agent()
-            mcp_port = current_agent.vm.ports.vm if current_agent else allocate_ports_for_agent(0).vm
-        except Exception:
-            mcp_port = allocate_ports_for_agent(0).vm  # Default to Agent 0 VM port (20000)
+        gateway_mgr = get_mcp_gateway_manager()
+        if gateway_mgr and current_agent_id:
+            gateway = gateway_mgr.get_gateway(current_agent_id)
+            if gateway:
+                tool_registry = gateway.registry
         
         _agent = NovAICAgent(mcp_port=mcp_port, tool_registry=tool_registry, session_key="main")
         _agent.max_iterations = config.max_iterations
         _agent.max_tokens = config.max_tokens
+        _agent_id = current_agent_id
+        
+        print(f"[Agent] Created agent instance for {current_agent_id} with mcp_port={mcp_port}")
         
         # Register main session in registry
         try:
@@ -339,6 +358,155 @@ async def set_default_model(data: dict):
     return {"status": "ok"}
 
 
+@router.post("/config/cleanup")
+async def cleanup_garbage(
+    deep: bool = Query(False, description="Perform deep cleanup (vacuum db, remove all logs)"),
+    days: int = Query(7, description="Remove logs older than N days"),
+    clean_vm_cache: bool = Query(False, description="Remove cached VM base images (will need re-download)")
+):
+    """
+    Clean up garbage configuration files and temporary data.
+    
+    Performs the following cleanup operations:
+    1. Removes logs older than 'days' (or all logs if deep=True)
+    2. Removes .DS_Store and ._* metadata files
+    3. Removes .tmp and .bak temporary files
+    4. Removes empty directories
+    5. Vacuums the SQLite database (if deep=True)
+    6. Removes orphaned agent directories (if deep=True)
+    7. Removes cached VM images (if clean_vm_cache=True)
+    """
+    # Get data directory from environment variable
+    data_dir = Path(os.environ.get("NOVAIC_DATA_DIR", os.path.expanduser("~/.novaic")))
+    log_dir = data_dir / "logs"
+    
+    cleaned = {
+        "logs": 0,
+        "metadata_files": 0,
+        "temp_files": 0,
+        "empty_dirs": 0,
+        "database_vacuumed": False,
+        "orphaned_agents": 0,
+        "vm_images": 0
+    }
+    
+    try:
+        # 1. Clean logs
+        if log_dir.exists():
+            cutoff = time.time() - (days * 86400)
+            for log_file in log_dir.glob("*.log"):
+                try:
+                    if deep or log_file.stat().st_mtime < cutoff:
+                        try:
+                            log_file.unlink()
+                            cleaned["logs"] += 1
+                        except OSError:
+                            pass
+                except Exception:
+                    pass
+
+        # 2. Clean metadata and temp files recursively
+        for root, dirs, files in os.walk(data_dir):
+            dirs[:] = [d for d in dirs if not d.startswith('.')]
+            for file in files:
+                file_path = Path(root) / file
+                if file == ".DS_Store" or file.startswith("._"):
+                    try:
+                        file_path.unlink()
+                        cleaned["metadata_files"] += 1
+                    except OSError:
+                        pass
+                elif file.endswith(".tmp") or file.endswith(".bak"):
+                    try:
+                        file_path.unlink()
+                        cleaned["temp_files"] += 1
+                    except OSError:
+                        pass
+
+        # 3. Clean empty directories
+        for root, dirs, files in os.walk(data_dir, topdown=False):
+            for d in dirs:
+                dir_path = Path(root) / d
+                try:
+                    if not any(dir_path.iterdir()):
+                        dir_path.rmdir()
+                        cleaned["empty_dirs"] += 1
+                except OSError:
+                    pass
+
+        # 4. Vacuum database
+        if deep:
+            try:
+                from db.database import get_database
+                db = get_database()
+                if db:
+                    await db.vacuum()
+                    cleaned["database_vacuumed"] = True
+            except Exception as e:
+                print(f"[Cleanup] Database vacuum failed: {e}")
+
+        # 5. Clean orphaned agent directories (if deep=True)
+        if deep:
+            try:
+                from config.agents import get_agent_config_manager
+                agent_mgr = get_agent_config_manager()
+                agent_config = agent_mgr.reload()
+                valid_agent_ids = {a.id for a in agent_config.agents}
+                
+                # Check both vms/ and agents/ directories (legacy support)
+                for dir_name in ["vms", "agents"]:
+                    check_dir = data_dir / dir_name
+                    if check_dir.exists():
+                        for agent_dir in check_dir.iterdir():
+                            if agent_dir.is_dir() and agent_dir.name not in valid_agent_ids:
+                                try:
+                                    shutil.rmtree(agent_dir)
+                                    cleaned["orphaned_agents"] += 1
+                                except Exception:
+                                    pass
+            except Exception as e:
+                print(f"[Cleanup] Orphaned agent cleanup failed: {e}")
+
+        # 6. Clean VM base images (if requested)
+        if clean_vm_cache:
+            try:
+                # Check possible image locations
+                image_dirs = [
+                    data_dir / "images",
+                    data_dir / "shared" / "images"
+                ]
+                
+                for img_dir in image_dirs:
+                    if img_dir.exists():
+                        for img_file in img_dir.glob("*.img"):
+                            try:
+                                img_file.unlink()
+                                cleaned["vm_images"] += 1
+                            except Exception:
+                                pass
+                        for img_file in img_dir.glob("*.qcow2"):
+                            # Only delete base images, not agent disks (which are usually in vms/)
+                            # Base images usually have version numbers or 'cloudimg' in name
+                            if "cloudimg" in img_file.name or "ubuntu" in img_file.name:
+                                try:
+                                    img_file.unlink()
+                                    cleaned["vm_images"] += 1
+                                except Exception:
+                                    pass
+            except Exception as e:
+                print(f"[Cleanup] VM image cleanup failed: {e}")
+
+        return {
+            "status": "ok",
+            "message": "Cleanup completed successfully",
+            "details": cleaned
+        }
+        
+    except Exception as e:
+        print(f"[Cleanup] Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Cleanup failed: {str(e)}")
+
+
 # ==================== Chat ====================
 
 @router.post("/chat", response_model=ChatResponse)
@@ -565,29 +733,30 @@ async def start_vnc():
     Start VNC - in the current architecture, VNC runs inside the VM
     which is managed by Tauri. This endpoint just checks if VNC is ready.
     """
-    vnc_ready = _check_port(VNC_PORT)
-    ws_ready = _check_port(WS_PORT)
+    vnc_port, ws_port = _get_vnc_ports()
+    vnc_ready = _check_port(vnc_port)
+    ws_ready = _check_port(ws_port)
     
     if vnc_ready and ws_ready:
         return {
             "status": "running",
             "message": "VNC and websockify are already running",
-            "port": VNC_PORT,
-            "ws_port": WS_PORT
+            "port": vnc_port,
+            "ws_port": ws_port
         }
     elif vnc_ready:
         return {
             "status": "started",
             "message": "VNC is running, websockify may still be starting",
-            "port": VNC_PORT,
-            "ws_port": WS_PORT
+            "port": vnc_port,
+            "ws_port": ws_port
         }
     else:
         return {
             "status": "waiting",
             "message": "VNC not yet available. VM may still be starting.",
-            "port": VNC_PORT,
-            "ws_port": WS_PORT
+            "port": vnc_port,
+            "ws_port": ws_port
         }
 
 

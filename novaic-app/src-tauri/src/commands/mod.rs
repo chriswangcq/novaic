@@ -1,2 +1,2 @@
-// Only VM commands are needed - all other functionality is through Gateway WebSocket/API
-pub mod vm_commands;
+// All VM management is now through Gateway API
+// This module is kept for potential future Tauri-specific commands

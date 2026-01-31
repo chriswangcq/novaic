@@ -1,6 +1,10 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { ChevronDown, ChevronRight, Search, Plus, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Search, Plus, X, Trash2, Database, HardDrive } from 'lucide-react';
 import { api } from '../../services';
+
+// ==================== Tab Types ====================
+
+type SettingsTab = 'models' | 'cache';
 
 // ==================== Types ====================
 
@@ -748,6 +752,9 @@ function ApiKeyForm({
 export function SettingsModal(props: { open: boolean; onClose: () => void }) {
   const { open, onClose } = props;
 
+  // Tab state
+  const [activeTab, setActiveTab] = useState<SettingsTab>('models');
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -762,6 +769,18 @@ export function SettingsModal(props: { open: boolean; onClose: () => void }) {
   const [submitting, setSubmitting] = useState(false);
   const [testingKeyId, setTestingKeyId] = useState<string | null>(null);
   const [fetchingKeyId, setFetchingKeyId] = useState<string | null>(null);
+
+  // Cleanup state
+  const [cleaning, setCleaning] = useState(false);
+  const [cleanupResult, setCleanupResult] = useState<{
+    logs: number;
+    metadata_files: number;
+    temp_files: number;
+    empty_dirs: number;
+    database_vacuumed: boolean;
+    orphaned_agents: number;
+    vm_images: number;
+  } | null>(null);
 
   // Load config
   const loadConfig = useCallback(async () => {
@@ -933,6 +952,23 @@ export function SettingsModal(props: { open: boolean; onClose: () => void }) {
     }
   };
 
+  // Cleanup handlers
+  const handleCleanup = async (deep: boolean, cleanVmCache: boolean) => {
+    setCleaning(true);
+    setError(null);
+    setInfo(null);
+    setCleanupResult(null);
+    try {
+      const result = await api.cleanupGarbage({ deep, clean_vm_cache: cleanVmCache });
+      setCleanupResult(result.details);
+      setInfo(result.message);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setCleaning(false);
+    }
+  };
+
   // Count total enabled models
   const totalEnabledModels = config?.available_models.filter(m => m.enabled).length || 0;
 
@@ -940,15 +976,10 @@ export function SettingsModal(props: { open: boolean; onClose: () => void }) {
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
 
-      <div className="absolute left-1/2 top-1/2 w-[580px] max-w-[95vw] max-h-[90vh] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-nb-border bg-nb-surface shadow-xl flex flex-col">
+      <div className="absolute left-1/2 top-1/2 w-[720px] max-w-[95vw] max-h-[90vh] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-nb-border bg-nb-surface shadow-xl flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-nb-border px-4 py-3 flex-shrink-0">
-          <div>
           <div className="text-sm font-semibold text-nb-text">Settings</div>
-            <div className="text-xs text-nb-text-muted">
-              {config?.api_keys.length || 0} API keys · {totalEnabledModels} models enabled
-            </div>
-          </div>
           <button
             onClick={onClose}
             className="text-nb-text-muted hover:text-nb-text"
@@ -957,109 +988,264 @@ export function SettingsModal(props: { open: boolean; onClose: () => void }) {
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-4 overflow-y-auto flex-1 space-y-4">
-          {loading ? (
-            <div className="text-sm text-nb-text-muted py-8 text-center">Loading...</div>
-          ) : config ? (
-            <>
-              {/* API Keys with Models */}
-              <div className="space-y-3">
-                {config.api_keys.map((entry) => (
-                  editingKeyId === entry.id ? (
-                    <ApiKeyForm
-                      key={entry.id}
-                      mode="edit"
-                      provider={entry.provider}
-                      initialValues={{
-                        name: entry.name,
-                        api_base: entry.api_base || '',
-                        deployment_name: entry.deployment_name || '',
-                        api_version: entry.api_version || '',
-                      }}
-                      onSubmit={(data) => handleUpdateKey(entry.id, data)}
-                      onCancel={() => setEditingKeyId(null)}
-                      submitting={submitting}
-                    />
-                  ) : (
-                    <ApiKeyCard
-                      key={entry.id}
-                      entry={entry}
-                      models={getModelsForKey(entry.id)}
-                      onEdit={() => setEditingKeyId(entry.id)}
-                      onDelete={() => handleDeleteKey(entry.id)}
-                      onTest={() => handleTestKey(entry.id)}
-                      onFetchModels={() => handleFetchModels(entry.id)}
-                      onToggleModel={handleToggleModel}
-                      onAddCustomModel={handleAddCustomModel}
-                      onDeleteModel={handleDeleteModel}
-                      testing={testingKeyId === entry.id}
-                      fetching={fetchingKeyId === entry.id}
-                    />
-                  )
-                ))}
+        {/* Main Content with Sidebar */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Left Sidebar - Tab Navigation */}
+          <div className="w-40 border-r border-nb-border flex flex-col py-2 flex-shrink-0">
+            <button
+              onClick={() => setActiveTab('models')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm transition-colors ${
+                activeTab === 'models'
+                  ? 'bg-nb-accent/10 text-nb-accent border-r-2 border-nb-accent'
+                  : 'text-nb-text-muted hover:text-nb-text hover:bg-nb-surface-2'
+              }`}
+            >
+              <Database size={16} />
+              <span>Models</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('cache')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm transition-colors ${
+                activeTab === 'cache'
+                  ? 'bg-nb-accent/10 text-nb-accent border-r-2 border-nb-accent'
+                  : 'text-nb-text-muted hover:text-nb-text hover:bg-nb-surface-2'
+              }`}
+            >
+              <Trash2 size={16} />
+              <span>清理缓存</span>
+            </button>
+          </div>
 
-                {config.api_keys.length === 0 && !showAddForm && (
-                  <div className="text-center py-8">
-                    <div className="text-nb-text-muted text-sm mb-2">No API keys configured</div>
+          {/* Right Content Area */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Models Tab */}
+            {activeTab === 'models' && (
+              <>
+                {/* Tab Header */}
+                <div className="px-4 py-3 border-b border-nb-border flex-shrink-0">
+                  <div className="text-xs text-nb-text-muted">
+                    {config?.api_keys.length || 0} API keys · {totalEnabledModels} models enabled
+                  </div>
+                </div>
+
+                {/* Tab Content */}
+                <div className="p-4 overflow-y-auto flex-1 space-y-4">
+                  {loading ? (
+                    <div className="text-sm text-nb-text-muted py-8 text-center">Loading...</div>
+                  ) : config ? (
+                    <>
+                      {/* API Keys with Models */}
+                      <div className="space-y-3">
+                        {config.api_keys.map((entry) => (
+                          editingKeyId === entry.id ? (
+                            <ApiKeyForm
+                              key={entry.id}
+                              mode="edit"
+                              provider={entry.provider}
+                              initialValues={{
+                                name: entry.name,
+                                api_base: entry.api_base || '',
+                                deployment_name: entry.deployment_name || '',
+                                api_version: entry.api_version || '',
+                              }}
+                              onSubmit={(data) => handleUpdateKey(entry.id, data)}
+                              onCancel={() => setEditingKeyId(null)}
+                              submitting={submitting}
+                            />
+                          ) : (
+                            <ApiKeyCard
+                              key={entry.id}
+                              entry={entry}
+                              models={getModelsForKey(entry.id)}
+                              onEdit={() => setEditingKeyId(entry.id)}
+                              onDelete={() => handleDeleteKey(entry.id)}
+                              onTest={() => handleTestKey(entry.id)}
+                              onFetchModels={() => handleFetchModels(entry.id)}
+                              onToggleModel={handleToggleModel}
+                              onAddCustomModel={handleAddCustomModel}
+                              onDeleteModel={handleDeleteModel}
+                              testing={testingKeyId === entry.id}
+                              fetching={fetchingKeyId === entry.id}
+                            />
+                          )
+                        ))}
+
+                        {config.api_keys.length === 0 && !showAddForm && (
+                          <div className="text-center py-8">
+                            <div className="text-nb-text-muted text-sm mb-2">No API keys configured</div>
+                            <button
+                              onClick={() => setShowAddForm(true)}
+                              className="text-nb-accent text-sm hover:underline"
+                            >
+                              Add your first API key to get started
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Add API Key Section */}
+                      {showAddForm ? (
+                        <ApiKeyForm
+                          mode="add"
+                          provider={newProvider}
+                          onProviderChange={setNewProvider}
+                          onSubmit={handleAddKey}
+                          onCancel={() => setShowAddForm(false)}
+                          submitting={submitting}
+                        />
+                      ) : config.api_keys.length > 0 && (
+                        <button
+                          onClick={() => setShowAddForm(true)}
+                          className="w-full py-3 border border-dashed border-nb-border rounded-lg text-sm text-nb-text-muted hover:text-nb-text hover:border-nb-text-muted transition-colors flex items-center justify-center gap-2"
+                        >
+                          <Plus size={14} />
+                          Add API Key
+                        </button>
+                      )}
+                    </>
+                  ) : null}
+                </div>
+
+                {/* Tab Footer */}
+                <div className="flex items-center justify-between border-t border-nb-border px-4 py-3 flex-shrink-0">
+                  {/* Messages */}
+                  <div className="flex-1 mr-4">
+                    {error && (
+                      <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs text-red-200">
+                        {error}
+                      </div>
+                    )}
+                    {info && !error && (
+                      <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-1.5 text-xs text-green-200">
+                        {info}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={handleInitAgent}
+                    disabled={!config || totalEnabledModels === 0}
+                    className="rounded-lg bg-nb-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+                  >
+                    Initialize Agent
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* Cache Cleanup Tab */}
+            {activeTab === 'cache' && (
+              <>
+                {/* Tab Header */}
+                <div className="px-4 py-3 border-b border-nb-border flex-shrink-0">
+                  <div className="text-xs text-nb-text-muted">
+                    清理临时文件、日志和虚拟机缓存
+                  </div>
+                </div>
+
+                {/* Tab Content */}
+                <div className="p-4 overflow-y-auto flex-1 space-y-4">
+                  {/* Quick Cleanup Card */}
+                  <div className="border border-nb-border rounded-lg p-4 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-nb-surface-2">
+                        <Trash2 size={20} className="text-nb-text-muted" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-nb-text">普通清理</div>
+                        <div className="text-xs text-nb-text-muted mt-1">
+                          清理 7 天前的日志、临时文件 (.tmp, .bak)、系统元数据文件 (.DS_Store) 和空目录
+                        </div>
+                      </div>
+                    </div>
                     <button
-                      onClick={() => setShowAddForm(true)}
-                      className="text-nb-accent text-sm hover:underline"
+                      onClick={() => handleCleanup(false, false)}
+                      disabled={cleaning}
+                      className="w-full py-2 rounded-lg border border-nb-border text-sm text-nb-text hover:bg-nb-surface-2 transition-colors disabled:opacity-50"
                     >
-                      Add your first API key to get started
+                      {cleaning ? '清理中...' : '执行普通清理'}
                     </button>
                   </div>
-                )}
-              </div>
 
-              {/* Add API Key Section */}
-              {showAddForm ? (
-                <ApiKeyForm
-                  mode="add"
-                  provider={newProvider}
-                  onProviderChange={setNewProvider}
-                  onSubmit={handleAddKey}
-                  onCancel={() => setShowAddForm(false)}
-                  submitting={submitting}
-                />
-              ) : config.api_keys.length > 0 && (
-                <button
-                  onClick={() => setShowAddForm(true)}
-                  className="w-full py-3 border border-dashed border-nb-border rounded-lg text-sm text-nb-text-muted hover:text-nb-text hover:border-nb-text-muted transition-colors flex items-center justify-center gap-2"
-                >
-                  <Plus size={14} />
-                  Add API Key
-                </button>
-              )}
+                  {/* Deep Cleanup Card */}
+                  <div className="border border-orange-500/30 rounded-lg p-4 space-y-3 bg-orange-500/5">
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-orange-500/10">
+                        <HardDrive size={20} className="text-orange-400" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-nb-text">深度清理</div>
+                        <div className="text-xs text-nb-text-muted mt-1">
+                          包含普通清理的所有操作，另外还会：
+                        </div>
+                        <ul className="text-xs text-nb-text-muted mt-2 space-y-1 list-disc list-inside">
+                          <li>清理所有日志文件（不保留近期）</li>
+                          <li>清理孤立的 Agent 数据</li>
+                          <li>优化数据库（VACUUM）</li>
+                          <li>清理虚拟机基础镜像缓存（需重新下载）</li>
+                        </ul>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleCleanup(true, true)}
+                      disabled={cleaning}
+                      className="w-full py-2 rounded-lg bg-orange-500/20 border border-orange-500/30 text-sm text-orange-300 hover:bg-orange-500/30 transition-colors disabled:opacity-50"
+                    >
+                      {cleaning ? '清理中...' : '执行深度清理'}
+                    </button>
+                  </div>
 
-              {/* Messages */}
-              {(error || info) && (
-                <div className="space-y-2">
+                  {/* Cleanup Result */}
+                  {cleanupResult && (
+                    <div className="border border-green-500/30 rounded-lg p-4 bg-green-500/5">
+                      <div className="text-sm font-medium text-green-400 mb-3">清理完成</div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-nb-text-muted">日志文件</span>
+                          <span className="text-nb-text">{cleanupResult.logs} 个</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-nb-text-muted">元数据文件</span>
+                          <span className="text-nb-text">{cleanupResult.metadata_files} 个</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-nb-text-muted">临时文件</span>
+                          <span className="text-nb-text">{cleanupResult.temp_files} 个</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-nb-text-muted">空目录</span>
+                          <span className="text-nb-text">{cleanupResult.empty_dirs} 个</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-nb-text-muted">孤立 Agent</span>
+                          <span className="text-nb-text">{cleanupResult.orphaned_agents} 个</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-nb-text-muted">VM 镜像</span>
+                          <span className="text-nb-text">{cleanupResult.vm_images} 个</span>
+                        </div>
+                        <div className="flex justify-between col-span-2">
+                          <span className="text-nb-text-muted">数据库优化</span>
+                          <span className="text-nb-text">{cleanupResult.database_vacuumed ? '✓ 已完成' : '未执行'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Error/Info Messages */}
                   {error && (
                     <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
                       {error}
                     </div>
                   )}
-                  {info && (
+                  {info && !cleanupResult && (
                     <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 text-xs text-green-200">
                       {info}
                     </div>
                   )}
                 </div>
-              )}
-            </>
-          ) : null}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-end border-t border-nb-border px-4 py-3 flex-shrink-0">
-          <button
-            onClick={handleInitAgent}
-            disabled={!config || totalEnabledModels === 0}
-            className="rounded-lg bg-nb-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
-          >
-            Initialize Agent
-          </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

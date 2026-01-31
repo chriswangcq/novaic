@@ -83,6 +83,7 @@ export interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  isTruncated?: boolean;  // 消息是否被截断（历史消息摘要）
   attachments?: Attachment[];
   // Message status (for user messages)
   status?: MessageStatus;
@@ -98,6 +99,7 @@ export interface Message {
 // Chat SSE Message types (from backend)
 export type ChatMessageType = 
   | 'USER_MESSAGE'
+  | 'SYSTEM_MESSAGE'  // System-generated messages (bootstrap, scheduled tasks, etc.)
   | 'AGENT_REPLY' 
   | 'AGENT_ASK'
   | 'AGENT_NOTIFY'
@@ -108,6 +110,8 @@ export interface ChatSSEMessage {
   id: string;
   type: ChatMessageType;
   timestamp: string;
+  // Agent ID for filtering messages
+  agent_id?: string;
   // For USER_MESSAGE and AGENT_REPLY
   content?: string;
   message?: string;
@@ -224,21 +228,17 @@ export interface VmConfig {
   agent_index: number;   // Agent索引，用于端口分配
 }
 
-// Agent setup status - for tracking setup progress
-export type AgentSetupStatus = 
-  | 'pending'      // Created, waiting to start setup
-  | 'downloading'  // Downloading cloud image
-  | 'creating'     // Creating VM disk & cloud-init
-  | 'deploying'    // Deploying code to VM
-  | 'ready';       // Setup complete
+// UI display status (derived from setup_complete + VM status)
+export type AgentDisplayStatus = 
+  | 'needs_setup'    // setup_complete=false, needs setup
+  | 'setting_up'     // setup in progress (has setup_progress)
+  | 'stopped'        // VM not running
+  | 'starting'       // VM starting
+  | 'running'        // VM running
+  | 'stopping'       // VM stopping
+  | 'error';         // Error state
 
-// Agent runtime status
-export type AgentRuntimeStatus = 'stopped' | 'starting' | 'running' | 'error';
-
-// Combined agent status
-export type AgentStatus = AgentSetupStatus | AgentRuntimeStatus;
-
-// Setup progress info
+// Setup progress info (for UI display during setup, not persisted)
 export interface SetupProgressInfo {
   stage: string;
   progress: number;
@@ -251,7 +251,8 @@ export interface AICAgent {
   name: string;
   created_at: string;
   vm: VmConfig;
-  status: AgentStatus;
+  setup_complete: boolean;
+  // Setup progress (only in memory, for UI display)
   setup_progress?: SetupProgressInfo;
 }
 

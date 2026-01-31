@@ -586,8 +586,27 @@ class NovAICAgent:
         return base_prompt
     
     async def get_environment_info(self) -> Dict[str, Any]:
-        """Get current environment info."""
+        """Get current environment info.
+        
+        When using tool_registry (new architecture), returns Gateway info.
+        Otherwise returns direct VM MCP info (legacy).
+        """
         from .mcp_client import get_mcp_url
+        import os
+        
+        # New architecture: use Gateway URL
+        if self.tool_registry is not None:
+            gateway_port = int(os.getenv("NOVAIC_PORT", "19999"))
+            return {
+                "mcp_port": gateway_port,
+                "mcp_url": f"http://127.0.0.1:{gateway_port}/mcp",
+                "executor_healthy": len(self.tools) > 0,  # Healthy if we have any tools
+                "tools_count": len(self.tools),
+                "skills_count": len(self.skills),
+                "skills": [s.name for s in self.skills.values()],
+            }
+        
+        # Legacy: direct VM connection
         return {
             "mcp_port": self.mcp_port,
             "mcp_url": get_mcp_url(self.mcp_port),
@@ -889,11 +908,29 @@ class NovAICAgent:
             await self.initialize()
         
         env_info = await self.get_environment_info()
-        if not env_info["executor_healthy"] or env_info["tools_count"] == 0:
-            yield {
-                "type": "warning",
-                "data": f"⚠️ Executor service not available at {env_info['mcp_url']} (MCP tools: {env_info['tools_count']})"
-            }
+        if env_info["tools_count"] == 0:
+            # Only show warning if we have NO tools at all
+            if self.tool_registry:
+                # New architecture: show which servers are unavailable
+                stats = self.tool_registry.get_stats()
+                servers_info = stats.get("tools_by_server", {})
+                unavailable = [k for k, v in servers_info.items() if v == 0]
+                if unavailable:
+                    yield {
+                        "type": "warning",
+                        "data": f"⚠️ MCP servers not ready: {', '.join(unavailable)}"
+                    }
+                else:
+                    yield {
+                        "type": "warning",
+                        "data": f"⚠️ No MCP tools available"
+                    }
+            else:
+                # Legacy: direct VM connection
+                yield {
+                    "type": "warning",
+                    "data": f"⚠️ Executor service not available at {env_info['mcp_url']} (MCP tools: 0)"
+                }
         
         # 加载相关 Skills
         relevant_skills = await self._load_relevant_skills(user_message)

@@ -34,16 +34,18 @@ class SubMCPManager:
     """
     
     # 默认子 MCP Server 类 (always enabled)
+    # QemuDebugMCPServer is always enabled as fallback when VM is not ready
     DEFAULT_SERVERS: List[Type[BaseMCPServer]] = [
         SingleAgentRuntimeMCPServer,
         LocalMCPServer,
         MemoryMCPServer,
         ChatMCPServer,
+        QemuDebugMCPServer,  # Fallback for VM tools
     ]
     
     # 可选子 MCP Server 类 (enabled via environment)
     OPTIONAL_SERVERS: Dict[str, Type[BaseMCPServer]] = {
-        "NOVAIC_MCP_QEMUDEBUG_ENABLED": QemuDebugMCPServer,
+        # Currently empty - qemudebug moved to DEFAULT_SERVERS
     }
     
     def _get_enabled_servers(self) -> List[Type[BaseMCPServer]]:
@@ -79,12 +81,13 @@ class SubMCPManager:
         
         logger.info("[SubMCPManager] Initialized")
     
-    async def create_servers_for_agent(self, agent_id: str) -> Dict[str, BaseMCPServer]:
+    async def create_servers_for_agent(self, agent_id: str, agent_index: int = 0) -> Dict[str, BaseMCPServer]:
         """
         为一个 agent 创建所有子 MCP servers。
         
         Args:
             agent_id: Agent ID
+            agent_index: Agent index for port allocation
         
         Returns:
             字典 {server_name: server_instance}
@@ -98,8 +101,8 @@ class SubMCPManager:
         
         for ServerClass in self._get_enabled_servers():
             try:
-                # 创建 server 实例，传递 agent_id 用于资源隔离
-                server = ServerClass(agent_id=agent_id)
+                # 创建 server 实例，传递 agent_id 和 agent_index 用于资源隔离
+                server = ServerClass(agent_id=agent_id, agent_index=agent_index)
                 server.setup()
                 
                 # 获取 ASGI app

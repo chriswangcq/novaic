@@ -17,21 +17,23 @@ MCP Servers - 独立的子 MCP Server 模块
 from .base import BaseMCPServer
 from .single_agent_runtime import SingleAgentRuntimeMCPServer
 from .local import LocalMCPServer
-from .memory import MemoryMCPServer, init_memory_dir
+from .memory import MemoryMCPServer
 from .chat import ChatMCPServer
 from .qemudebug import QemuDebugMCPServer
 
 # Default MCP Server classes (always enabled)
+# QemuDebugMCPServer is always enabled as fallback when VM is not ready
 DEFAULT_SERVERS = [
     SingleAgentRuntimeMCPServer,
     LocalMCPServer,
     MemoryMCPServer,
     ChatMCPServer,
+    QemuDebugMCPServer,  # Fallback for VM tools
 ]
 
 # Optional MCP Server classes (enabled via environment)
 OPTIONAL_SERVERS = {
-    "NOVAIC_MCP_QEMUDEBUG_ENABLED": QemuDebugMCPServer,
+    # Currently empty - qemudebug moved to DEFAULT_SERVERS
 }
 
 # All MCP Server classes
@@ -46,8 +48,6 @@ __all__ = [
     "MemoryMCPServer",
     "ChatMCPServer",
     "QemuDebugMCPServer",
-    # Utils
-    "init_memory_dir",
     # Collections
     "DEFAULT_SERVERS",
     "OPTIONAL_SERVERS",

@@ -4,11 +4,11 @@
  * Dropdown in the header to select and manage AIC agents.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronDown, Plus, Trash2, Monitor, Loader2 } from 'lucide-react';
-import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '../../store';
 import type { AICAgent } from '../../services/api';
+import { vmService, VmStatus } from '../../services/vm';
 
 interface AgentSelectorProps {
   onCreateNew: () => void;
@@ -19,12 +19,35 @@ export function AgentSelector({ onCreateNew }: AgentSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [switchingTo, setSwitchingTo] = useState<string | null>(null);
+  const [vmStatus, setVmStatus] = useState<VmStatus | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Load agents on mount
   useEffect(() => {
     loadAgents();
   }, [loadAgents]);
+
+  // Poll VM status - get all statuses and find running one
+  const refreshVmStatus = useCallback(async () => {
+    try {
+      const allStatuses = await vmService.getAllStatus();
+      // Find first running VM
+      const runningEntry = Object.entries(allStatuses || {}).find(([_, s]) => s.running);
+      if (runningEntry) {
+        setVmStatus(runningEntry[1]);
+      } else {
+        setVmStatus(null);
+      }
+    } catch (error) {
+      // Ignore - VM might not be running
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshVmStatus();
+    const interval = setInterval(refreshVmStatus, 5000);
+    return () => clearInterval(interval);
+  }, [refreshVmStatus]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -70,12 +93,11 @@ export function AgentSelector({ onCreateNew }: AgentSelectorProps) {
 
     setIsLoading(true);
     try {
-      // Stop VM first if it's running
-      const agent = agents.find(a => a.id === agentId);
-      if (agent && (agent.status === 'running' || agent.status === 'ready')) {
+      // Stop VM first if it's running for this agent
+      if (vmStatus?.agent_id === agentId && vmStatus?.running) {
         console.log('[AgentSelector] Stopping VM before delete');
         try {
-          await invoke('stop_vm');
+          await vmService.stop(agentId);
           await new Promise(resolve => setTimeout(resolve, 1000));
         } catch (e) {
           console.warn('[AgentSelector] Failed to stop VM, continuing with delete:', e);
@@ -90,13 +112,20 @@ export function AgentSelector({ onCreateNew }: AgentSelectorProps) {
     }
   };
 
-  const getStatusColor = (status: AICAgent['status']) => {
-    switch (status) {
-      case 'running': return 'bg-green-500';
-      case 'starting': return 'bg-yellow-500';
-      case 'error': return 'bg-red-500';
-      default: return 'bg-gray-500';
+  // Get status color based on setup_complete and VM status
+  const getStatusColor = (agent: AICAgent) => {
+    if (!agent.setup_complete) {
+      // Setup not complete - blue for needs setup, or yellow if setting up
+      if (agent.setup_progress) {
+        return agent.setup_progress.error ? 'bg-red-500' : 'bg-yellow-500';
+      }
+      return 'bg-blue-500';
     }
+    // Setup complete - check VM status
+    if (vmStatus?.agent_id === agent.id && vmStatus?.running) {
+      return 'bg-green-500';
+    }
+    return 'bg-gray-500';
   };
 
   return (
@@ -112,7 +141,7 @@ export function AgentSelector({ onCreateNew }: AgentSelectorProps) {
           {currentAgent?.name || 'Select Agent'}
         </span>
         {currentAgent && (
-          <span className={`w-2 h-2 rounded-full ${getStatusColor(currentAgent.status)}`} />
+          <span className={`w-2 h-2 rounded-full ${getStatusColor(currentAgent)}`} />
         )}
         {isLoading ? (
           <Loader2 size={14} className="animate-spin text-nb-text-secondary" />
@@ -140,7 +169,7 @@ export function AgentSelector({ onCreateNew }: AgentSelectorProps) {
                   }`}
                 >
                   <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${getStatusColor(agent.status)}`} />
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${getStatusColor(agent)}`} />
                     <div className="flex-1 min-w-0">
                       <div className="text-sm text-nb-text truncate">{agent.name}</div>
                       <div className="text-xs text-nb-text-secondary">

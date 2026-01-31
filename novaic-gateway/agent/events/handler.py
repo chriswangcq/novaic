@@ -1,6 +1,16 @@
 """
 AgentEventHandler - Bridges EventBus and Agent
 
+DEPRECATED: This handler is replaced by InboxMonitor and AgentRunner in the new
+Inbox-based architecture. It is kept for backward compatibility but should not
+be used in new code.
+
+New architecture components:
+- InboxMonitor: Monitors Inbox and decides when to wake Agent
+- AgentRunner: Consumes messages from Inbox and processes them
+- InboxService: Handles message ingestion
+- AgentStateRepository: Persists Agent state to database
+
 This handler receives events from the EventBus and routes them to the Agent.
 It also manages agent state transitions and response routing.
 """

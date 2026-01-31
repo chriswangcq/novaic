@@ -3,7 +3,8 @@ import { Message, AgentEvent } from '../../types';
 import { ThinkingBlock } from './ThinkingBlock';
 import { ToolCallCard } from './ToolCallCard';
 import { Markdown } from './Markdown';
-import { Sparkles, AlertTriangle } from 'lucide-react';
+import { Sparkles, AlertTriangle, ChevronDown } from 'lucide-react';
+import { useAppStore } from '../../store';
 
 interface AssistantMessageProps {
   message: Message;
@@ -88,9 +89,14 @@ function findToolEnd(events: AgentEvent[], startIndex: number, toolName: string)
 export function AssistantMessage({ message }: AssistantMessageProps) {
   const events = message.events || [];
   const isStreaming = message.isStreaming;
+  const expandMessage = useAppStore((state) => state.expandMessage);
   
   // 记录已处理的 tool_end 索引，避免重复渲染
   const processedToolEnds = new Set<number>();
+  
+  const handleExpand = () => {
+    expandMessage(message.id);
+  };
 
   return (
     <MessageErrorBoundary>
@@ -203,6 +209,17 @@ export function AssistantMessage({ message }: AssistantMessageProps) {
           {/* 最终响应（如果有且不在 events 中） */}
           {message.content && !events.some(e => e?.type === 'final') && (
             <Markdown content={message.content} />
+          )}
+          
+          {/* Expand button for truncated messages */}
+          {message.isTruncated && (
+            <button
+              onClick={handleExpand}
+              className="flex items-center gap-1 text-[11px] text-violet-400 hover:text-violet-300 transition-colors"
+            >
+              <ChevronDown size={14} />
+              <span>查看更多</span>
+            </button>
           )}
           
           {/* Streaming 指示器 */}

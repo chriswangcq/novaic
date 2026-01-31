@@ -6,9 +6,10 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { invoke } from '@tauri-apps/api/core';
 import { useAppStore } from '../../store';
-import { AICAgent, AgentStatus } from '../../services/api';
+import { AICAgent } from '../../services/api';
+import { vmService, VmStatus } from '../../services/vm';
+import { AgentDisplayStatus } from '../../types';
 import { 
   Plus, 
   Play, 
@@ -21,15 +22,10 @@ import {
   AlertCircle,
   CheckCircle2,
   Circle,
-  Download,
-  Upload,
   Settings,
   X
 } from 'lucide-react';
 import { CreateAgentModal, SetupConfig } from '../Agent/CreateAgentModal';
-
-// Extended status type for UI (includes 'stopping')
-type AgentDisplayStatus = AgentStatus | 'stopping';
 
 interface AgentCardProps {
   agent: AICAgent;
@@ -44,7 +40,7 @@ interface AgentCardProps {
 }
 
 // 状态配置
-const statusConfig: Record<string, {
+const statusConfig: Record<AgentDisplayStatus, {
   color: string;
   textColor: string;
   label: string;
@@ -53,42 +49,20 @@ const statusConfig: Record<string, {
   isSetup?: boolean;  // Whether this is a setup phase
 }> = {
   // Setup phases
-  pending: {
+  needs_setup: {
     color: 'bg-blue-500',
     textColor: 'text-blue-400',
-    label: 'Pending Setup',
+    label: 'Setup Required',
     icon: Settings,
     isSetup: true,
   },
-  downloading: {
+  setting_up: {
     color: 'bg-blue-500',
     textColor: 'text-blue-400',
-    label: 'Downloading...',
-    icon: Download,
+    label: 'Setting Up...',
+    icon: Loader2,
     animate: true,
     isSetup: true,
-  },
-  creating: {
-    color: 'bg-blue-500',
-    textColor: 'text-blue-400',
-    label: 'Creating VM...',
-    icon: HardDrive,
-    animate: true,
-    isSetup: true,
-  },
-  deploying: {
-    color: 'bg-blue-500',
-    textColor: 'text-blue-400',
-    label: 'Deploying...',
-    icon: Upload,
-    animate: true,
-    isSetup: true,
-  },
-  ready: {
-    color: 'bg-gray-500',
-    textColor: 'text-gray-400',
-    label: 'Ready',
-    icon: CheckCircle2,
   },
   // Runtime phases
   stopped: {
@@ -126,13 +100,15 @@ const statusConfig: Record<string, {
 };
 
 function AgentCard({ agent, status: agentStatus, isSelected, onSelect, onStart, onStop, onDelete, onEnter, onContinueSetup }: AgentCardProps) {
-  const status = statusConfig[agentStatus] || statusConfig.stopped;
+  const status = statusConfig[agentStatus];
   const StatusIcon = status.icon;
   const isRunning = agentStatus === 'running';
   const isStarting = agentStatus === 'starting';
   const isStopping = agentStatus === 'stopping';
   const isLoading = isStarting || isStopping;
-  const isSetupPhase = status.isSetup || false;
+  const isSetupPhase = agentStatus === 'needs_setup' || agentStatus === 'setting_up';
+  const isNeedsSetup = agentStatus === 'needs_setup';
+  const isSettingUp = agentStatus === 'setting_up';
 
   return (
     <div 
@@ -176,13 +152,14 @@ function AgentCard({ agent, status: agentStatus, isSelected, onSelect, onStart, 
       {/* 操作按钮 */}
       <div className="flex items-center gap-3">
         {isSetupPhase ? (
-          // Setup in progress
+          // Setup phase
           <>
             <button
               onClick={(e) => { e.stopPropagation(); onContinueSetup(); }}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+              disabled={isSettingUp}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white rounded-lg transition-colors font-medium"
             >
-              {agentStatus === 'pending' ? (
+              {isNeedsSetup ? (
                 <>
                   <Play size={18} />
                   Start Setup
@@ -190,13 +167,14 @@ function AgentCard({ agent, status: agentStatus, isSelected, onSelect, onStart, 
               ) : (
                 <>
                   <Loader2 size={18} className="animate-spin" />
-                  Continue Setup
+                  Setting Up...
                 </>
               )}
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              className="px-4 py-2.5 bg-nb-surface-hover hover:bg-red-500/20 text-nb-text-secondary hover:text-red-400 rounded-lg transition-colors border border-nb-border"
+              disabled={isSettingUp}
+              className="px-4 py-2.5 bg-nb-surface-hover hover:bg-red-500/20 text-nb-text-secondary hover:text-red-400 disabled:opacity-50 rounded-lg transition-colors border border-nb-border"
               title="Cancel Setup"
             >
               <Trash2 size={18} />
@@ -271,45 +249,23 @@ interface AgentDashboardProps {
   onEnterSetup: (agentId: string, config: SetupConfig) => void;
 }
 
-// VM status from Tauri (must match Rust VmStatus struct)
-interface PortConfig {
-  vm: number;
-  session: number;
-  local: number;
-  memory: number;
-  chat: number;
-  qemudebug: number;
-  vnc: number;
-  websocket: number;
-  ssh: number;
-}
-
-interface VmStatus {
-  running: boolean;
-  agent_healthy: boolean;
-  mcp_healthy: boolean;
-  websockify_running: boolean;
-  ports: PortConfig;
-  vnc_url: string;
-  mcp_url: string;
-  agent_id: string | null;
-}
-
 export function AgentDashboard({ onEnterWorkspace, onEnterSetup }: AgentDashboardProps) {
   const { agents, currentAgentId, selectAgent, deleteAgent, loadAgents } = useAppStore();
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [loadingAction, setLoadingAction] = useState<{ agentId: string; action: 'starting' | 'stopping' } | null>(null);
-  const [vmStatus, setVmStatus] = useState<VmStatus | null>(null);
+  // Store ALL VM statuses, keyed by agent_id
+  const [allVmStatuses, setAllVmStatuses] = useState<Record<string, VmStatus>>({});
   const [deleteConfirm, setDeleteConfirm] = useState<{ agentId: string; agentName: string } | null>(null);
   
   // Store setup configs for agents that need setup
   const [setupConfigs, setSetupConfigs] = useState<Record<string, SetupConfig>>({});
 
-  // Poll VM status
+  // Poll VM status for all agents
   const refreshVmStatus = useCallback(async () => {
     try {
-      const status = await invoke<VmStatus>('get_vm_status');
-      setVmStatus(status);
+      // Get all VM statuses via Gateway API
+      const allStatuses = await vmService.getAllStatus();
+      setAllVmStatuses(allStatuses || {});
     } catch (error) {
       console.error('Failed to get VM status:', error);
     }
@@ -322,28 +278,33 @@ export function AgentDashboard({ onEnterWorkspace, onEnterSetup }: AgentDashboar
     return () => clearInterval(interval);
   }, [refreshVmStatus]);
 
-  // Derive agent status from agent.status and VM status
-  const getAgentStatus = (agent: AICAgent): AgentDisplayStatus => {
+  // Derive display status from agent.setup_complete and VM status
+  const getAgentDisplayStatus = (agent: AICAgent): AgentDisplayStatus => {
     // Check if there's a loading action for this agent
     if (loadingAction?.agentId === agent.id) {
       return loadingAction.action;
     }
     
-    // If agent is in setup phase, return its setup status
-    const setupStatuses = ['pending', 'downloading', 'creating', 'deploying'];
-    if (setupStatuses.includes(agent.status)) {
-      return agent.status;
+    // If setup not complete
+    if (!agent.setup_complete) {
+      // Has progress info = setting up
+      if (agent.setup_progress) {
+        // Check for error
+        if (agent.setup_progress.error) {
+          return 'error';
+        }
+        return 'setting_up';
+      }
+      return 'needs_setup';
     }
     
-    // Otherwise, derive from VM status
-    if (!vmStatus) return agent.status === 'ready' ? 'stopped' : agent.status;
-    
-    // Check if this agent's VM is running
-    if (vmStatus.agent_id === agent.id && vmStatus.running) {
+    // Setup complete, derive from VM status for THIS agent
+    const vmStatus = allVmStatuses[agent.id];
+    if (vmStatus?.running) {
       return 'running';
     }
     
-    return agent.status === 'ready' ? 'stopped' : agent.status;
+    return 'stopped';
   };
 
   const handleStartAgent = async (agentId: string) => {
@@ -352,9 +313,13 @@ export function AgentDashboard({ onEnterWorkspace, onEnterSetup }: AgentDashboar
       // First select this agent
       await selectAgent(agentId);
       
-      // Call Tauri to start VM
-      console.log('[Dashboard] Starting VM for agent:', agentId);
-      await invoke('start_vm', { agentId });
+      // Get agent info for agentIndex
+      const agent = agents.find(a => a.id === agentId);
+      const agentIndex = agent?.vm?.agent_index ?? 0;
+      
+      // Call Gateway API to start VM
+      console.log('[Dashboard] Starting VM for agent:', agentId, 'index:', agentIndex);
+      await vmService.start(agentId, agentIndex);
       console.log('[Dashboard] VM started');
       
       // Refresh status
@@ -371,9 +336,9 @@ export function AgentDashboard({ onEnterWorkspace, onEnterSetup }: AgentDashboar
   const handleStopAgent = async (agentId: string) => {
     setLoadingAction({ agentId, action: 'stopping' });
     try {
-      // Call Tauri to stop VM
-      console.log('[Dashboard] Stopping VM');
-      await invoke('stop_vm');
+      // Call Gateway API to stop VM
+      console.log('[Dashboard] Stopping VM for agent:', agentId);
+      await vmService.stop(agentId);
       console.log('[Dashboard] VM stopped');
       
       // Refresh status
@@ -397,10 +362,11 @@ export function AgentDashboard({ onEnterWorkspace, onEnterSetup }: AgentDashboar
     try {
       // Stop VM first if it's running
       const agent = agents.find(a => a.id === deleteConfirm.agentId);
-      if (agent && (agent.status === 'running' || agent.status === 'ready')) {
+      const agentVmStatus = allVmStatuses[deleteConfirm.agentId];
+      if (agent && agent.setup_complete && agentVmStatus?.running) {
         console.log('[Dashboard] Stopping VM before delete');
         try {
-          await invoke('stop_vm');
+          await vmService.stop(deleteConfirm.agentId);
           // Wait a bit for VM to fully stop
           await new Promise(resolve => setTimeout(resolve, 1000));
         } catch (e) {
@@ -416,8 +382,8 @@ export function AgentDashboard({ onEnterWorkspace, onEnterSetup }: AgentDashboar
     }
   };
 
-  const handleEnterWorkspace = (agentId: string) => {
-    selectAgent(agentId);
+  const handleEnterWorkspace = async (agentId: string) => {
+    // 不需要在这里调用 selectAgent，App.tsx 的 onEnterWorkspace 会处理
     onEnterWorkspace(agentId);
   };
 
@@ -505,7 +471,7 @@ export function AgentDashboard({ onEnterWorkspace, onEnterSetup }: AgentDashboar
                 <AgentCard
                   key={agent.id}
                   agent={agent}
-                  status={getAgentStatus(agent)}
+                  status={getAgentDisplayStatus(agent)}
                   isSelected={agent.id === currentAgentId}
                   onSelect={() => selectAgent(agent.id)}
                   onStart={() => handleStartAgent(agent.id)}

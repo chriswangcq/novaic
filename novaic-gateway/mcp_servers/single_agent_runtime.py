@@ -57,15 +57,18 @@ class SingleAgentRuntimeMCPServer(BaseMCPServer):
     name = "single-agent-runtime"
     description = "单个 Agent 的运行时管理，管理内部多个 context"
     
-    def __init__(self, agent_id: Optional[str] = None):
+    def __init__(self, agent_id: Optional[str] = None, agent_index: int = 0):
         """
         初始化 Single Agent Runtime Server。
         
         Args:
-            agent_id: Agent ID，用于标识当前 agent
+            agent_id: Agent ID，用于标识当前 agent (必填)
+            agent_index: Agent index，用于端口分配
         """
-        self._agent_id = agent_id or "default"
-        super().__init__(agent_id=agent_id)
+        if not agent_id:
+            raise ValueError("[SingleAgentRuntimeMCPServer] agent_id is required")
+        self._agent_id = agent_id
+        super().__init__(agent_id=agent_id, agent_index=agent_index)
         logger.info(f"[SingleAgentRuntimeMCPServer] Initialized for agent: {self._agent_id}")
     
     def _build_instructions(self) -> str:

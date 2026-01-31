@@ -1,7 +1,12 @@
 """
 Agent State Management
 
-Manages the agent's operational state (SLEEP, AWAKE, BUSY).
+Manages the agent's operational state (SLEEP, AWAKE).
+
+Note: The BUSY state is deprecated in the new Inbox-based architecture.
+Agent state is now managed by AgentStateRepository (persistent) and 
+processing is handled by AgentRunner. The BUSY state is kept for 
+backward compatibility but should not be used in new code.
 """
 
 import asyncio
@@ -15,11 +20,16 @@ logger = logging.getLogger(__name__)
 
 
 class AgentState(Enum):
-    """Agent operational states."""
+    """
+    Agent operational states.
+    
+    Note: In the new Inbox-based architecture, only SLEEP and AWAKE are used.
+    BUSY is deprecated and kept for backward compatibility only.
+    """
     
     SLEEP = "sleep"    # Agent is dormant, not processing events
     AWAKE = "awake"    # Agent is ready to receive and process events
-    BUSY = "busy"      # Agent is currently processing an event
+    BUSY = "busy"      # DEPRECATED: Agent is currently processing an event
 
 
 @dataclass

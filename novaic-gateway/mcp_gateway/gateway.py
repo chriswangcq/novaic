@@ -33,7 +33,7 @@ from executor.registry import ToolRegistry
 # Discovery intervals
 DISCOVERY_INTERVAL_FAILED = 5  # seconds for failed servers
 DISCOVERY_INTERVAL_SUCCESS = 30  # seconds for successful servers
-DISCOVERY_TIMEOUT = 1  # seconds timeout for discovery
+DISCOVERY_TIMEOUT = 30  # seconds timeout for discovery (global timeout, individual servers have 1s connect timeout)
 
 # Skills directory (relative to gateway root)
 SKILLS_DIR = Path(__file__).parent.parent / "skills"
@@ -205,51 +205,57 @@ class AgentMCPGateway:
         """Register all MCP servers for this agent.
         
         All servers are discovered via HTTP protocol:
-        - VM: runs inside the virtual machine
+        - VM: runs inside the virtual machine (priority=0, highest)
+        - qemudebug: fallback when VM not ready (priority=3, lowest)
         - Sub MCPs: single-agent-runtime, local, memory, chat (mounted at /sub-mcp/)
         """
-        # VM server (runs inside the virtual machine)
-        self.registry.register_server("vm", port=self.ports.vm, priority=0)
+        # VM server (runs inside the virtual machine) - highest priority
+        self.registry.register_server("vm", port=self.ports.vm, priority=0, connect_timeout=1.0)
+        
+        # qemudebug as fallback when VM not ready - lowest priority
+        # Always registered, but VM tools take precedence when available
+        
+        
         
         # Sub MCP servers (mounted as sub-paths, discovered via HTTP)
         gateway_port = int(os.getenv("NOVAIC_PORT", "19999"))
         base_url = f"http://127.0.0.1:{gateway_port}/agents/{self.agent_id}/sub-mcp"
         
         # Default sub MCPs (always enabled)
+        self.registry.register_server("qemudebug", url=f"{base_url}/qemudebug/", priority=3)
         self.registry.register_server("single-agent-runtime", url=f"{base_url}/single-agent-runtime/", priority=1)
         self.registry.register_server("local", url=f"{base_url}/local/", priority=1)
         self.registry.register_server("memory", url=f"{base_url}/memory/", priority=1)
         self.registry.register_server("chat", url=f"{base_url}/chat/", priority=1)
         
-        # Optional sub MCPs (enabled via environment)
-        qemu_enabled = os.getenv("NOVAIC_MCP_QEMUDEBUG_ENABLED", "false").lower() == "true"
-        if qemu_enabled:
-            self.registry.register_server("qemudebug", url=f"{base_url}/qemudebug/", priority=3)
-        
-        server_count = 5 + (1 if qemu_enabled else 0)
-        logger.info(f"[MCPGateway] Registered {server_count} servers for agent {self.agent_index} (VM + sub-MCPs)")
+        logger.info(f"[MCPGateway] Registered 6 servers for agent {self.agent_index} (VM + qemudebug fallback + sub-MCPs)")
     
     async def setup(self) -> None:
         """
-        Setup the gateway by discovering and registering all tools and skills.
+        Setup the gateway by registering skills and task tools.
+        
+        Tool discovery is deferred to background task to avoid blocking
+        during lifespan startup (HTTP server not yet listening).
         
         This must be called before mounting the gateway.
         """
-        # Setup aggregated tools from external MCP servers (VM)
-        await self._setup_tools()
-        
-        # Setup skills as MCP resources
+        # Setup skills as MCP resources (local files, no network)
         await self._setup_skills()
         
         # Setup Gateway-specific tools (task_* only)
         self._setup_task_tools()
         
-        # 动态更新 instructions，反映实际挂载的子 MCP 和工具
+        # 动态更新 instructions
         self._update_instructions()
+        
+        # NOTE: Tool discovery is NOT done here!
+        # It will be done by start_discovery_task() after HTTP server is ready.
+        # This prevents "All connection attempts failed" errors when
+        # trying to connect to sub-MCP endpoints before uvicorn starts listening.
         
         logger.info(
             f"[MCPGateway] Setup complete for agent {self.agent_index}: "
-            f"{len(self._registered_tools)} tools, {len(self._registered_skills)} skills"
+            f"{len(self._registered_skills)} skills, tool discovery deferred to background"
         )
     
     def _update_instructions(self) -> None:
@@ -345,7 +351,12 @@ class AgentMCPGateway:
         
         - Failed servers: check every 5 seconds (1s timeout)
         - Successful servers: check every 30 seconds
+        
+        Note: Starts with a small delay to allow HTTP server to start listening.
         """
+        # Wait for HTTP server to start (avoids "All connection attempts failed")
+        await asyncio.sleep(0.5)
+        
         last_success_check = 0
         
         while self._discovery_running:

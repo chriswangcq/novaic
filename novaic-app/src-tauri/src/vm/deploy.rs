@@ -8,8 +8,12 @@
 
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::fs;
+use std::os::unix::fs::PermissionsExt;
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
+
+use crate::gateway_client::GatewayClient;
 
 /// Deploy progress information
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -26,32 +30,52 @@ struct SshConfig {
     host: String,
     port: u16,
     user: String,
+    key_path: Option<PathBuf>,  // Path to private key file
 }
 
 impl SshConfig {
-    fn new(port: u16) -> Self {
+    fn with_key(port: u16, key_path: PathBuf) -> Self {
         Self {
             host: "127.0.0.1".to_string(),
             port,
             user: "ubuntu".to_string(),
+            key_path: Some(key_path),
         }
     }
 
     /// Get SSH command arguments
     fn ssh_args(&self) -> Vec<String> {
-        vec![
+        let mut args = Vec::new();
+        
+        // Add private key if available
+        if let Some(key) = &self.key_path {
+            args.push("-i".to_string());
+            args.push(key.to_string_lossy().to_string());
+        }
+        
+        args.extend([
             "-o".to_string(), "StrictHostKeyChecking=no".to_string(),
             "-o".to_string(), "UserKnownHostsFile=/dev/null".to_string(),
             "-o".to_string(), "LogLevel=ERROR".to_string(),
             "-o".to_string(), "ConnectTimeout=10".to_string(),
             "-p".to_string(), self.port.to_string(),
             format!("{}@{}", self.user, self.host),
-        ]
+        ]);
+        
+        args
     }
 
     /// Get SCP command arguments for copying files
     fn scp_args(&self, src: &str, dest: &str) -> Vec<String> {
-        vec![
+        let mut args = Vec::new();
+        
+        // Add private key if available
+        if let Some(key) = &self.key_path {
+            args.push("-i".to_string());
+            args.push(key.to_string_lossy().to_string());
+        }
+        
+        args.extend([
             "-o".to_string(), "StrictHostKeyChecking=no".to_string(),
             "-o".to_string(), "UserKnownHostsFile=/dev/null".to_string(),
             "-o".to_string(), "LogLevel=ERROR".to_string(),
@@ -59,8 +83,52 @@ impl SshConfig {
             "-P".to_string(), self.port.to_string(),
             src.to_string(),
             format!("{}@{}:{}", self.user, self.host, dest),
-        ]
+        ]);
+        
+        args
     }
+}
+
+/// Get SSH private key from Gateway and save to file
+/// Returns the path to the private key file
+async fn get_ssh_key_from_gateway(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    // Get app data directory
+    let data_dir = app.path().app_data_dir()
+        .map_err(|e| format!("Failed to get app data dir: {}", e))?;
+    
+    // Create ssh directory
+    let ssh_dir = data_dir.join("ssh");
+    fs::create_dir_all(&ssh_dir)
+        .map_err(|e| format!("Failed to create ssh dir: {}", e))?;
+    
+    let key_path = ssh_dir.join("id_novaic");
+    
+    // Fetch private key from Gateway
+    let client = GatewayClient::new("http://127.0.0.1:19999".to_string());
+    let response = client.get("/api/vm/ssh/private-key").await?;
+    
+    let private_key = response
+        .get("private_key")
+        .and_then(|v| v.as_str())
+        .ok_or("Invalid response: missing private_key")?;
+    
+    // Write private key to file
+    fs::write(&key_path, private_key)
+        .map_err(|e| format!("Failed to write private key: {}", e))?;
+    
+    // Set correct permissions (600)
+    #[cfg(unix)]
+    {
+        let mut perms = fs::metadata(&key_path)
+            .map_err(|e| format!("Failed to get key metadata: {}", e))?
+            .permissions();
+        perms.set_mode(0o600);
+        fs::set_permissions(&key_path, perms)
+            .map_err(|e| format!("Failed to set key permissions: {}", e))?;
+    }
+    
+    println!("[Deploy] SSH key saved to {:?}", key_path);
+    Ok(key_path)
 }
 
 /// Check if SSH is available
@@ -265,14 +333,22 @@ fn scp_directory(ssh_config: &SshConfig, src: &PathBuf, dest: &str) -> Result<()
 fn scp_file(ssh_config: &SshConfig, src: &PathBuf, dest: &str) -> Result<(), String> {
     println!("[Deploy] Copying file {} to VM:{}", src.display(), dest);
 
-    let args = vec![
+    let mut args = Vec::new();
+    
+    // Add private key if available
+    if let Some(key) = &ssh_config.key_path {
+        args.push("-i".to_string());
+        args.push(key.to_string_lossy().to_string());
+    }
+    
+    args.extend([
         "-o".to_string(), "StrictHostKeyChecking=no".to_string(),
         "-o".to_string(), "UserKnownHostsFile=/dev/null".to_string(),
         "-o".to_string(), "LogLevel=ERROR".to_string(),
         "-P".to_string(), ssh_config.port.to_string(),
         src.to_str().unwrap().to_string(),
         format!("{}@{}:{}", ssh_config.user, ssh_config.host, dest),
-    ];
+    ]);
 
     let output = Command::new("scp")
         .args(&args)
@@ -370,12 +446,21 @@ pub async fn deploy_agent(
     use_cn_mirrors: bool,
     on_progress: tauri::ipc::Channel<DeployProgress>,
 ) -> Result<(), String> {
-    let ssh_config = SshConfig::new(ssh_port);
+    // Step 0: Get SSH private key from Gateway
+    let _ = on_progress.send(DeployProgress {
+        stage: "Preparing".to_string(),
+        progress: 0,
+        message: "Getting SSH key from Gateway...".to_string(),
+        log_line: None,
+    });
+
+    let key_path = get_ssh_key_from_gateway(&app).await?;
+    let ssh_config = SshConfig::with_key(ssh_port, key_path);
 
     // Step 1: Wait for SSH
     let _ = on_progress.send(DeployProgress {
         stage: "Connecting".to_string(),
-        progress: 0,
+        progress: 5,
         message: "Waiting for SSH connection...".to_string(),
         log_line: None,
     });
@@ -589,7 +674,9 @@ pub async fn quick_deploy_agent(
     ssh_port: u16,
     on_progress: tauri::ipc::Channel<DeployProgress>,
 ) -> Result<(), String> {
-    let ssh_config = SshConfig::new(ssh_port);
+    // Get SSH private key from Gateway
+    let key_path = get_ssh_key_from_gateway(&app).await?;
+    let ssh_config = SshConfig::with_key(ssh_port, key_path);
 
     // Check SSH connection
     let _ = on_progress.send(DeployProgress {

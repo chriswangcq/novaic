@@ -22,10 +22,11 @@ class AgentRepository:
         rows = await self.db.fetchall(
             "SELECT * FROM agents ORDER BY created_at"
         )
-        # Parse JSON fields
+        # Parse JSON fields and convert setup_complete to bool
         for row in rows:
             row["vm_config"] = json.loads(row.get("vm_config", "{}"))
             row["ports"] = json.loads(row.get("ports", "{}"))
+            row["setup_complete"] = bool(row.get("setup_complete", 0))
         return rows
     
     async def get_agent(self, agent_id: str) -> Optional[Dict[str, Any]]:
@@ -37,6 +38,7 @@ class AgentRepository:
         if row:
             row["vm_config"] = json.loads(row.get("vm_config", "{}"))
             row["ports"] = json.loads(row.get("ports", "{}"))
+            row["setup_complete"] = bool(row.get("setup_complete", 0))
         return row
     
     async def create_agent(
@@ -45,15 +47,15 @@ class AgentRepository:
         name: str,
         vm_config: Dict[str, Any],
         ports: Dict[str, Any],
-        status: str = "pending",
+        setup_complete: bool = False,
     ) -> Dict[str, Any]:
         """Create a new agent."""
         created_at = datetime.now().isoformat()
         
         await self.db.execute(
-            """INSERT INTO agents (id, name, created_at, vm_config, ports, status)
+            """INSERT INTO agents (id, name, created_at, vm_config, ports, setup_complete)
                VALUES (?, ?, ?, ?, ?, ?)""",
-            (id, name, created_at, json.dumps(vm_config), json.dumps(ports), status)
+            (id, name, created_at, json.dumps(vm_config), json.dumps(ports), 1 if setup_complete else 0)
         )
         await self.db.commit()
         
@@ -65,7 +67,7 @@ class AgentRepository:
         name: Optional[str] = None,
         vm_config: Optional[Dict[str, Any]] = None,
         ports: Optional[Dict[str, Any]] = None,
-        status: Optional[str] = None,
+        setup_complete: Optional[bool] = None,
     ) -> Optional[Dict[str, Any]]:
         """Update an agent."""
         updates = []
@@ -80,9 +82,9 @@ class AgentRepository:
         if ports is not None:
             updates.append("ports = ?")
             params.append(json.dumps(ports))
-        if status is not None:
-            updates.append("status = ?")
-            params.append(status)
+        if setup_complete is not None:
+            updates.append("setup_complete = ?")
+            params.append(1 if setup_complete else 0)
         
         if not updates:
             return await self.get_agent(agent_id)

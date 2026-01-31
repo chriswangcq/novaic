@@ -152,6 +152,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from api.routes import router as api_router
 from api.agents import router as agents_router
+from api.vm import router as vm_router
 from config import get_config_manager
 
 # Import database module
@@ -162,12 +163,18 @@ from agent.events.bus import EventBus
 from agent.events.handler import AgentEventHandler
 from agent.events.models import AgentEvent, EventType, EventPriority
 from agent.core.state import StateManager, AgentState
-from executor.registry import ToolRegistry
 from agent.wake.controller import WakeController
 from agent.micro.engine import MicroAgentEngine
 from agent.subagent.manager import SubAgentManager
 from core.task_manager import TaskManager, get_task_manager, set_task_manager
 from mcp_gateway.manager import MCPGatewayManager, set_mcp_gateway_manager, get_mcp_gateway_manager
+
+# Import new Inbox components
+from agent.inbox.monitor import InboxMonitor
+from agent.runner import AgentRunner
+from api.inbox_service import InboxService, get_inbox_service
+from db.repositories.inbox import InboxRepository
+from db.repositories.agent_state import AgentStateRepository
 
 
 # Configuration
@@ -179,7 +186,6 @@ DEBUG = os.getenv("NOVAIC_DEBUG", "false").lower() == "true"
 # Global instances
 event_bus: EventBus = None
 state_manager: StateManager = None
-tool_registry: ToolRegistry = None
 wake_controller: WakeController = None
 micro_engine: MicroAgentEngine = None
 subagent_manager: SubAgentManager = None
@@ -187,13 +193,15 @@ task_manager: TaskManager = None
 event_handler: AgentEventHandler = None
 mcp_gateway_manager: MCPGatewayManager = None
 
+# New Inbox system instances
+inbox_service: InboxService = None
+inbox_monitor: InboxMonitor = None
+agent_runner: AgentRunner = None
+inbox_repo: InboxRepository = None
+agent_state_repo: AgentStateRepository = None
+
 
 # ==================== Component Accessors ====================
-
-def get_tool_registry() -> ToolRegistry:
-    """Get the global ToolRegistry instance."""
-    return tool_registry
-
 
 def get_event_bus() -> EventBus:
     """Get the global EventBus instance."""
@@ -256,7 +264,8 @@ async def publish_user_event(
 
 async def initialize_systems(config):
     """Initialize all system components."""
-    global event_bus, state_manager, tool_registry, wake_controller, micro_engine, subagent_manager, task_manager, event_handler
+    global event_bus, state_manager, wake_controller, micro_engine, subagent_manager, task_manager, event_handler
+    global inbox_service, inbox_monitor, agent_runner, inbox_repo, agent_state_repo
     
     # Initialize EventBus
     event_bus = EventBus()
@@ -269,11 +278,8 @@ async def initialize_systems(config):
     )
     print("[Gateway] StateManager initialized")
     
-    # Initialize ToolRegistry with MCP servers
-    tool_registry = ToolRegistry()
-    
     # Get current agent's port configuration
-    from config.agents import get_agent_config_manager, BASE_PORT, SERVICE_OFFSETS
+    from config.agents import get_agent_config_manager, allocate_ports_for_agent
     
     try:
         agent_mgr = get_agent_config_manager()
@@ -286,35 +292,8 @@ async def initialize_systems(config):
         ports = current_agent.vm.ports
         print(f"[Gateway] Using ports from agent '{current_agent.name}' (index={current_agent.vm.agent_index})")
     else:
-        # Fallback to default ports (Agent 0)
-        from config.agents import allocate_ports_for_agent
         ports = allocate_ports_for_agent(0)
         print(f"[Gateway] No current agent, using default ports (Agent 0)")
-    
-    # Register VM MCP Server (runs inside the virtual machine)
-    tool_registry.register_server(
-        name="vm",
-        port=ports.vm,
-        priority=0,  # Highest priority
-    )
-    
-    # Register QEMU Debug MCP Server (optional fallback, runs on host)
-    qemu_enabled = os.getenv("NOVAIC_MCP_QEMUDEBUG_ENABLED", "false").lower() == "true"
-    if qemu_enabled:
-        tool_registry.register_server(
-            name="qemudebug",
-            port=ports.qemudebug,
-            enabled=True,
-            priority=3,  # Lowest priority
-        )
-    
-    # Initialize memory module
-    from mcp_servers.memory import init_memory_dir
-    from pathlib import Path
-    init_memory_dir(Path(NOVAIC_DATA_DIR))
-    
-    print(f"[Gateway] ToolRegistry initialized with {len(tool_registry._servers)} external servers")
-    print(f"[Gateway] VM port: {ports.vm}" + (f", qemudebug port: {ports.qemudebug}" if qemu_enabled else ""))
     
     # Initialize WakeController
     wake_controller = WakeController(
@@ -357,11 +336,22 @@ async def initialize_systems(config):
     
     print(f"[Gateway] MicroAgentEngine initialized with {len(micro_engine.list_agents())} agents")
     
-    # Initialize SubAgentManager (with agent factory using ToolRegistry)
+    # Initialize SubAgentManager (with agent factory using Gateway's ToolRegistry)
     async def create_agent_for_session(session_key: str):
-        """Factory to create agent for sub-sessions using the shared ToolRegistry."""
+        """Factory to create agent for sub-sessions using the Gateway's ToolRegistry."""
         from core.agent import NovAICAgent
-        # Use the current agent's VM port from ports config
+        from mcp_gateway.manager import get_mcp_gateway_manager
+        
+        # Get Gateway's registry (has VM + all sub-MCPs)
+        gateway_mgr = get_mcp_gateway_manager()
+        agent_id = current_agent.id if current_agent else None
+        
+        tool_registry = None
+        if gateway_mgr and agent_id:
+            gateway = gateway_mgr.get_gateway(agent_id)
+            if gateway:
+                tool_registry = gateway.registry
+        
         agent = NovAICAgent(mcp_port=ports.vm, tool_registry=tool_registry, session_key=session_key)
         await agent.initialize()
         return agent
@@ -456,6 +446,36 @@ async def initialize_systems(config):
         cleaned = await task_manager.cleanup_expired()
         if cleaned:
             print(f"[Gateway] Cleaned up {cleaned} expired tasks on startup")
+    
+    # ==================== Initialize Inbox System ====================
+    from db.database import get_database
+    db = get_database()
+    
+    # Initialize repositories
+    inbox_repo = InboxRepository(db)
+    agent_state_repo = AgentStateRepository(db)
+    print("[Gateway] Inbox and AgentState repositories initialized")
+    
+    # Initialize InboxService
+    inbox_agent_id = current_agent.id if current_agent else None
+    if not inbox_agent_id:
+        print("[Gateway] Warning: No current agent, InboxService initialized without agent_id")
+    inbox_service = InboxService(agent_id=inbox_agent_id)
+    inbox_service.set_event_bus(event_bus)
+    print(f"[Gateway] InboxService initialized (agent_id={inbox_agent_id})")
+    
+    # Initialize InboxMonitor if we have an agent
+    if current_agent:
+        # Ensure agent state exists
+        await agent_state_repo.ensure_exists(current_agent.id)
+        
+        # Recover any messages stuck in processing state
+        recovered = await inbox_repo.recover_processing(current_agent.id)
+        if recovered:
+            print(f"[Gateway] Recovered {recovered} messages stuck in processing state")
+        
+        # InboxMonitor and AgentRunner will be initialized when agent is created in routes.py
+        print(f"[Gateway] Inbox system ready for agent {current_agent.id}")
 
 
 async def shutdown_systems():
@@ -534,6 +554,15 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"[Gateway] Warning: Failed to setup MCP Gateways: {e}")
     
+    # Recover VM processes (check for running VMs from previous Gateway session)
+    try:
+        from vm import get_vm_manager
+        vm_manager = get_vm_manager()
+        await vm_manager.recover_processes()
+        print("[Gateway] VM process recovery complete")
+    except Exception as e:
+        print(f"[Gateway] Warning: Failed to recover VM processes: {e}")
+    
     # Start periodic cleanup task
     _cleanup_task = asyncio.create_task(periodic_task_cleanup())
     print("[Gateway] Periodic task cleanup started (every hour)")
@@ -553,6 +582,15 @@ async def lifespan(app: FastAPI):
     if mcp_gateway_manager:
         await mcp_gateway_manager.close_all()
         print("[Gateway] MCPGatewayManager closed")
+    
+    # Stop all VMs (graceful shutdown)
+    try:
+        from vm import get_vm_manager
+        vm_manager = get_vm_manager()
+        await vm_manager.stop_all()
+        print("[Gateway] All VMs stopped")
+    except Exception as e:
+        print(f"[Gateway] Warning: Failed to stop VMs: {e}")
     
     # Shutdown all systems
     await shutdown_systems()
@@ -586,6 +624,9 @@ app.include_router(api_router, prefix="/api")
 # Agents API routes (already has /api/agents prefix)
 app.include_router(agents_router)
 
+# VM API routes (already has /api/vm prefix)
+app.include_router(vm_router)
+
 
 # Root endpoint
 @app.get("/api")
@@ -598,7 +639,7 @@ async def api_root():
         "components": {
             "event_bus": "active" if event_bus and event_bus.is_running else "inactive",
             "state_manager": state_manager.get_state().value if state_manager else "not_initialized",
-            "tool_registry": f"{len(tool_registry._servers)} servers" if tool_registry else "not_initialized",
+            "mcp_gateway": f"{len(mcp_gateway_manager.gateways)} agents" if mcp_gateway_manager else "not_initialized",
             "wake_controller": f"{wake_controller.get_stats()['total_triggers']} triggers" if wake_controller else "not_initialized",
         }
     }
@@ -608,10 +649,19 @@ async def api_root():
 @app.get("/api/system/status")
 async def system_status():
     """Get detailed system status"""
+    # Get gateway stats for current agent
+    gateway_stats = None
+    if mcp_gateway_manager:
+        agents = mcp_gateway_manager.list_agents()
+        gateway_stats = {
+            "agents_count": len(agents),
+            "agents": agents,
+        }
+    
     return {
         "event_bus": event_bus.get_stats() if event_bus else None,
         "state_manager": state_manager.get_info() if state_manager else None,
-        "tool_registry": tool_registry.get_stats() if tool_registry else None,
+        "mcp_gateway": gateway_stats,
         "wake_controller": wake_controller.get_stats() if wake_controller else None,
         "micro_engine": micro_engine.get_stats() if micro_engine else None,
         "subagent_manager": subagent_manager.get_stats() if subagent_manager else None,
@@ -719,6 +769,10 @@ async def create_task(data: dict):
     if not task_manager:
         return {"error": "TaskManager not initialized", "success": False}
     
+    agent_id = data.get("agent_id") or get_current_agent_id()
+    if not agent_id:
+        return {"error": "No agent selected. Please select an agent first.", "success": False}
+    
     return await task_manager.spawn(
         task_type=data.get("task_type", "agent"),
         config=data.get("task_config", {}),
@@ -726,7 +780,7 @@ async def create_task(data: dict):
         timeout_seconds=data.get("timeout_seconds", 0),
         notify_on=data.get("notify_on", ["complete", "error"]),
         parent_session_key=data.get("parent_session_key", "main"),
-        agent_id=data.get("agent_id", "default"),
+        agent_id=agent_id,
     )
 
 
@@ -1000,27 +1054,46 @@ _agent_lock = asyncio.Lock()
 _current_agent_task: Optional[asyncio.Task] = None
 
 
-def get_current_agent_id() -> str:
-    """Get the current agent ID from config."""
+def get_current_agent_id() -> Optional[str]:
+    """Get the current agent ID from config.
+    
+    Returns:
+        The current agent ID, or None if no agent is selected.
+        
+    Note: Returns None instead of a fallback value to make issues visible.
+    Callers should handle None explicitly.
+    """
     try:
         from config.agents import get_agent_config_manager
         mgr = get_agent_config_manager()
         current = mgr.get_current_agent()
         if current:
             return current.id
-    except Exception:
-        pass
-    return "default"
+    except Exception as e:
+        logger.warning(f"[Gateway] Failed to get current agent ID: {e}")
+    return None
 
 
-async def broadcast_chat_message(message: Dict[str, Any]):
+async def broadcast_chat_message(message: Dict[str, Any], agent_id: Optional[str] = None):
     """Broadcast a chat message to all SSE subscribers and save to database.
     
     Note: Non-persistent message types (STATUS_UPDATE, TYPING, etc.) are only
     broadcast to SSE subscribers and not saved to database.
+    
+    Args:
+        message: The message to broadcast
+        agent_id: Optional agent ID. If not provided, uses the message's agent_id 
+                  or falls back to current agent. This ensures messages are 
+                  correctly attributed even when user switches agents.
     """
     chat_service = get_chat_service()
-    agent_id = get_current_agent_id()
+    
+    # Use provided agent_id, then message's agent_id, then current agent
+    if agent_id is None:
+        agent_id = message.get("agent_id") or get_current_agent_id()
+    
+    # Add/update agent_id in message for frontend filtering
+    message["agent_id"] = agent_id
     
     # Extract message info
     msg_type = message.get("type", "UNKNOWN")
@@ -1082,6 +1155,16 @@ async def broadcast_log(log: Dict[str, Any]):
     chat_service = get_chat_service()
     agent_id = get_current_agent_id()
     
+    if not agent_id:
+        logger.warning("[Gateway] broadcast_log: No current agent, skipping database save")
+        # Still broadcast to SSE subscribers
+        for queue in _log_subscribers.values():
+            try:
+                queue.put_nowait(log)
+            except asyncio.QueueFull:
+                pass
+        return
+    
     # Save to database (pure flow logs, not associated with messages)
     await chat_service.repo.add_execution_log(
         agent_id=agent_id,
@@ -1121,11 +1204,13 @@ async def receive_chat_event(data: dict):
         **event_data
     }
     
+    # Get agent_id early for consistent routing
+    agent_id = get_current_agent_id()
+    
     # Handle AGENT_ASK specially - store pending question in database
     if event_type == "AGENT_ASK":
         request_id = event_data.get("request_id") or message_id
         chat_service = get_chat_service()
-        agent_id = get_current_agent_id()
         await chat_service.repo.add_pending_question(
             agent_id=agent_id,
             request_id=request_id,
@@ -1135,8 +1220,8 @@ async def receive_chat_event(data: dict):
         )
         chat_message["request_id"] = request_id
     
-    # Use helper to store and broadcast
-    await broadcast_chat_message(chat_message)
+    # Use helper to store and broadcast (pass agent_id for correct routing)
+    await broadcast_chat_message(chat_message, agent_id=agent_id)
     
     return {
         "success": True,
@@ -1261,6 +1346,8 @@ async def get_pending_questions():
     """Get all pending questions from the agent."""
     chat_service = get_chat_service()
     agent_id = get_current_agent_id()
+    if not agent_id:
+        return {"questions": [], "warning": "No agent selected"}
     questions = await chat_service.repo.get_all_pending_questions(agent_id)
     return {
         "questions": questions
@@ -1286,6 +1373,9 @@ async def get_chat_history(
     limit = min(limit, 100)
     chat_service = get_chat_service()
     agent_id = get_current_agent_id()
+    
+    if not agent_id:
+        return {"messages": [], "has_more": False, "warning": "No agent selected"}
     
     # Build type filter
     type_filter = None
@@ -1359,7 +1449,103 @@ async def get_chat_message(message_id: str):
     return {"success": False, "error": "Message not found"}
 
 
+# ==================== Unified Inbox API (All messages to Agent) ====================
+
+@app.post("/api/inbox")
+async def add_to_inbox(data: dict):
+    """
+    Unified API for adding messages to Agent's inbox.
+    
+    All input messages (user, system, webhook, etc.) should use this endpoint.
+    
+    Request body:
+    - type: Message type (USER_MESSAGE, SYSTEM_MESSAGE, WEBHOOK, CRON_TRIGGER, SUBAGENT_RESULT)
+    - content: Message content
+    - priority: Optional priority (critical, high, normal, low). Default: normal
+    - source: Optional source identifier (user, system:bootstrap, webhook:xxx, etc.)
+    - metadata: Optional additional data
+    - agent_id: Optional target agent ID (defaults to current agent)
+    
+    Response:
+    - success: Boolean
+    - message_id: ID of the created message
+    - timestamp: Creation timestamp
+    """
+    from api.inbox_service import get_inbox_service
+    
+    msg_type = data.get("type", "USER_MESSAGE")
+    content = data.get("content", "").strip()
+    priority = data.get("priority", "normal")
+    source = data.get("source", "user")
+    metadata = data.get("metadata", {})
+    agent_id = data.get("agent_id") or get_current_agent_id()
+    
+    if not agent_id:
+        return {"success": False, "error": "No agent selected. Please select an agent first."}
+    
+    if not content:
+        return {"success": False, "error": "Content is required"}
+    
+    # Add model/api_key_id to metadata if provided
+    if data.get("model"):
+        metadata["model"] = data.get("model")
+    if data.get("api_key_id"):
+        metadata["api_key_id"] = data.get("api_key_id")
+    
+    try:
+        inbox_svc = get_inbox_service()
+        
+        # Set SSE broadcast callback
+        inbox_svc.set_sse_broadcast(broadcast_chat_message)
+        
+        msg = await inbox_svc.add_message(
+            msg_type=msg_type,
+            content=content,
+            priority=priority,
+            source=source,
+            metadata=metadata,
+            agent_id=agent_id,
+        )
+        
+        return {
+            "success": True,
+            "message_id": msg["id"],
+            "timestamp": msg["created_at"],
+            "status": "pending",
+        }
+    
+    except Exception as e:
+        print(f"[Inbox] Error adding message: {e}")
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/api/inbox/summary")
+async def get_inbox_summary():
+    """
+    Get inbox summary for the current agent.
+    
+    Returns:
+    - pending_count: Number of pending messages
+    - messages: List of pending messages (truncated content)
+    """
+    from api.inbox_service import get_inbox_service
+    
+    agent_id = get_current_agent_id()
+    if not agent_id:
+        return {"success": False, "error": "No agent selected", "pending_count": 0, "messages": []}
+    
+    inbox_svc = get_inbox_service()
+    
+    try:
+        summary = await inbox_svc.get_inbox_summary(agent_id)
+        return {"success": True, **summary}
+    except Exception as e:
+        print(f"[Inbox] Error getting summary: {e}")
+        return {"success": False, "error": str(e)}
+
+
 # ==================== User Chat API (User -> Agent Communication) ====================
+# Note: /api/chat/send is a compatibility layer that forwards to /api/inbox
 
 @app.post("/api/chat/send")
 async def send_chat_message(data: dict):
@@ -1374,6 +1560,9 @@ async def send_chat_message(data: dict):
     """
     chat_service = get_chat_service()
     agent_id = get_current_agent_id()
+    
+    if not agent_id:
+        return {"success": False, "error": "No agent selected. Please select an agent first."}
     
     content = data.get("message", "").strip()
     model = data.get("model")
@@ -1398,8 +1587,8 @@ async def send_chat_message(data: dict):
         "api_key_id": api_key_id,
     }
     
-    # Broadcast user message (this also saves to database)
-    await broadcast_chat_message(user_msg)
+    # Broadcast user message (this also saves to database, pass agent_id for correct routing)
+    await broadcast_chat_message(user_msg, agent_id=agent_id)
     
     # Auto-respond to any pending questions
     pending_questions = await chat_service.repo.get_all_pending_questions(agent_id)
@@ -1527,7 +1716,7 @@ async def send_chat_message(data: dict):
                         "timestamp": datetime.now().isoformat(),
                         "message": final_content,
                     }
-                    await broadcast_chat_message(agent_reply)
+                    await broadcast_chat_message(agent_reply, agent_id=aid)
                 
                 # Agent finished processing - execution state will be updated by AGENT_REPLY handler
                 
@@ -1625,6 +1814,16 @@ async def get_agent_inbox():
     chat_service = get_chat_service()
     agent_id = get_current_agent_id()
     
+    if not agent_id:
+        return {
+            "success": False,
+            "error": "No agent selected",
+            "pending_count": 0,
+            "events": [],
+            "has_urgent": False,
+            "recommendation": "none"
+        }
+    
     # Get pending events from EventHandler
     pending_events = []
     has_urgent = False
@@ -1718,6 +1917,9 @@ async def interrupt_agent():
     chat_service = get_chat_service()
     agent_id = get_current_agent_id()
     
+    if not agent_id:
+        return {"success": False, "error": "No agent selected"}
+    
     try:
         from api.routes import get_agent
         agent = get_agent()
@@ -1755,6 +1957,9 @@ async def agent_rest(data: dict):
     """
     chat_service = get_chat_service()
     agent_id = get_current_agent_id()
+    
+    if not agent_id:
+        return {"success": False, "error": "No agent selected"}
     
     reason = data.get("reason", "No reason provided")
     wake_triggers = data.get("wake_triggers", [{"type": "user_response"}])
@@ -1840,7 +2045,7 @@ async def agent_rest(data: dict):
             "level": "info",
             "handoff_notes": handoff_notes,
         }
-        await broadcast_chat_message(chat_message)
+        await broadcast_chat_message(chat_message, agent_id=agent_id)
     
     return {
         "success": True,
@@ -1857,6 +2062,10 @@ async def get_agent_rest_state():
     """Get current rest state information."""
     chat_service = get_chat_service()
     agent_id = get_current_agent_id()
+    
+    if not agent_id:
+        return {"success": False, "error": "No agent selected", "is_resting": False}
+    
     rest_state = await chat_service.repo.get_agent_rest_state(agent_id)
     
     if not rest_state:
@@ -1882,6 +2091,9 @@ async def wake_agent(data: dict = {}):
     """
     chat_service = get_chat_service()
     agent_id = get_current_agent_id()
+    
+    if not agent_id:
+        return {"success": False, "error": "No agent selected"}
     
     reason = data.get("reason", "Manual wake")
     
@@ -1909,7 +2121,7 @@ async def wake_agent(data: dict = {}):
     if previous_state.get("handoff_notes"):
         chat_message["handoff_notes"] = previous_state["handoff_notes"]
     
-    await broadcast_chat_message(chat_message)
+    await broadcast_chat_message(chat_message, agent_id=agent_id)
     
     return {
         "success": True,

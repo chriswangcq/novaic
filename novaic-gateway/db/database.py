@@ -67,6 +67,12 @@ class Database:
             self._initialized = False
             logger.info("[DB] Connection closed")
     
+    async def vacuum(self):
+        """Vacuum the database to reclaim space."""
+        if self._conn:
+            await self._conn.execute("VACUUM")
+            logger.info("[DB] Database vacuumed")
+    
     async def execute(
         self,
         sql: str,

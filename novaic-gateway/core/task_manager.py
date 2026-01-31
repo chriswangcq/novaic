@@ -228,7 +228,7 @@ class TaskManager:
         timeout_seconds: int = 0,
         notify_on: Optional[List[str]] = None,
         parent_session_key: Optional[str] = None,
-        agent_id: str = "default",
+        agent_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Create and start a new task.
@@ -240,11 +240,16 @@ class TaskManager:
             timeout_seconds: Timeout (0 = no timeout)
             notify_on: Events to notify on (default: ["complete", "error"])
             parent_session_key: Session that created this task
-            agent_id: Agent that owns this task
+            agent_id: Agent that owns this task (required)
         
         Returns:
             Dictionary with task_id and status
+        
+        Raises:
+            ValueError: If agent_id is not provided
         """
+        if not agent_id:
+            raise ValueError("agent_id is required for spawn()")
         # Generate task ID
         task_id = str(uuid.uuid4())[:8]
         
@@ -313,7 +318,7 @@ class TaskManager:
         truncated_result: str,
         full_output: str,
         ttl_hours: int = 24,
-        agent_id: str = "default",
+        agent_id: Optional[str] = None,
     ) -> str:
         """
         Create an immediately completed task for storing truncated output.
@@ -326,11 +331,16 @@ class TaskManager:
             truncated_result: The truncated version of the output
             full_output: The complete output to store
             ttl_hours: Time-to-live in hours (default: 24 for sync outputs)
-            agent_id: Agent that owns this task
+            agent_id: Agent that owns this task (required)
         
         Returns:
             task_id: The unique ID for querying this output
+        
+        Raises:
+            ValueError: If agent_id is not provided
         """
+        if not agent_id:
+            raise ValueError("agent_id is required for create_completed()")
         # Generate task ID
         task_id = f"so_{str(uuid.uuid4())[:8]}"  # so_ prefix for sync_output
         

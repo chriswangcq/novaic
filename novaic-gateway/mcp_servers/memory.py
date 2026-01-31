@@ -3,36 +3,25 @@ Memory MCP Server - 持久化存储和状态管理
 
 提供键值存储、任务追踪、目标管理等功能。
 每个 Agent 有独立的内存空间，通过 agent_id 隔离。
+使用 SQLite 数据库进行持久化存储。
 """
 
-import os
-import json
-import time
 import logging
 from typing import Optional, Dict, Any, List
-from pathlib import Path
 from datetime import datetime
 
 from .base import BaseMCPServer
+from db.database import get_database
+from db.repositories.memory import MemoryRepository
 
 logger = logging.getLogger(__name__)
-
-# Global configuration
-_base_memory_dir: Optional[Path] = None
-
-
-def init_memory_dir(data_dir: Path):
-    """Initialize base memory directory. Called by Gateway on startup."""
-    global _base_memory_dir
-    _base_memory_dir = data_dir / "memory"
-    _base_memory_dir.mkdir(parents=True, exist_ok=True)
 
 
 class MemoryMCPServer(BaseMCPServer):
     """
-    Memory MCP Server。
+    Memory MCP Server (Database-backed)。
     
-    每个 Agent 的数据存储在独立目录中，通过 agent_id 隔离。
+    每个 Agent 的数据存储在数据库中，通过 agent_id 隔离。
     
     提供工具：
     - memory_save: 保存内存值
@@ -50,56 +39,30 @@ class MemoryMCPServer(BaseMCPServer):
     name = "memory"
     description = "持久化存储和状态管理工具"
     
-    def __init__(self, agent_id: Optional[str] = None):
+    def __init__(self, agent_id: Optional[str] = None, agent_index: int = 0):
         """
         初始化 Memory Server。
         
         Args:
-            agent_id: Agent ID，用于隔离内存空间
+            agent_id: Agent ID，用于隔离内存空间 (必填)
+            agent_index: Agent index，用于端口分配
         """
-        # Agent 隔离的内存空间
-        self._agent_id = agent_id or "default"
-        self._session_memory: Dict[str, Dict[str, Any]] = {}
-        self._task_history: List[Dict[str, Any]] = []
+        if not agent_id:
+            raise ValueError("[MemoryMCPServer] agent_id is required")
+        self._agent_id = agent_id
+        
+        # In-memory cache for current session (not persisted separately)
         self._current_goal: Optional[Dict[str, Any]] = None
         self._session_start = datetime.now().isoformat()
         
-        super().__init__(agent_id=agent_id)
+        super().__init__(agent_id=agent_id, agent_index=agent_index)
         
         logger.info(f"[MemoryMCPServer] Initialized for agent: {self._agent_id}")
     
-    def _get_memory_dir(self) -> Path:
-        """获取当前 agent 的内存目录。"""
-        # 统一目录结构: ~/.novaic/agents/{agent_id}/memory/
-        if os.environ.get("NOVAIC_DATA_DIR"):
-            base = Path(os.environ["NOVAIC_DATA_DIR"])
-        else:
-            base = Path.home() / ".novaic"
-        
-        memory_dir = base / "agents" / self._agent_id / "memory"
-        memory_dir.mkdir(parents=True, exist_ok=True)
-        return memory_dir
-    
-    def _get_memory_file(self, namespace: str = "default") -> Path:
-        """获取指定命名空间的内存文件路径。"""
-        return self._get_memory_dir() / f"{namespace}.json"
-    
-    def _load_persistent_memory(self, namespace: str = "default") -> Dict[str, Any]:
-        """从磁盘加载持久化内存。"""
-        file_path = self._get_memory_file(namespace)
-        if file_path.exists():
-            try:
-                with open(file_path, "r", encoding="utf-8") as f:
-                    return json.load(f)
-            except Exception:
-                return {}
-        return {}
-    
-    def _save_persistent_memory(self, data: Dict[str, Any], namespace: str = "default"):
-        """保存持久化内存到磁盘。"""
-        file_path = self._get_memory_file(namespace)
-        with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+    def _get_repo(self) -> MemoryRepository:
+        """Get memory repository instance."""
+        db = get_database()
+        return MemoryRepository(db)
     
     def _build_instructions(self) -> str:
         return """Memory MCP - 持久化存储和状态管理
@@ -147,7 +110,7 @@ class MemoryMCPServer(BaseMCPServer):
                 key: Memory key name
                 value: Value to store (any JSON-serializable value)
                 namespace: Namespace for grouping (default: "default")
-                persistent: Whether to persist to disk (default: True)
+                persistent: Whether to persist (default: True, always persisted to DB)
             
             Returns:
                 Dictionary with success status
@@ -158,31 +121,12 @@ class MemoryMCPServer(BaseMCPServer):
                 memory_save("theme", "dark", namespace="settings")
             """
             try:
-                timestamp = datetime.now().isoformat()
-                
-                if namespace not in server._session_memory:
-                    server._session_memory[namespace] = {}
-                
-                server._session_memory[namespace][key] = {
-                    "value": value,
-                    "updated_at": timestamp
-                }
-                
-                if persistent:
-                    memory = server._load_persistent_memory(namespace)
-                    memory[key] = {
-                        "value": value,
-                        "updated_at": timestamp
-                    }
-                    server._save_persistent_memory(memory, namespace)
-                
-                return {
-                    "success": True,
-                    "key": key,
-                    "namespace": namespace,
-                    "persistent": persistent
-                }
+                repo = server._get_repo()
+                result = await repo.save(server._agent_id, key, value, namespace or "default")
+                result["persistent"] = True  # Always persistent with DB
+                return result
             except Exception as e:
+                logger.error(f"[Memory] save error: {e}")
                 return {"success": False, "error": str(e)}
         
         @self.mcp.tool()
@@ -204,36 +148,10 @@ class MemoryMCPServer(BaseMCPServer):
                 Dictionary with value or all memories
             """
             try:
-                session_data = server._session_memory.get(namespace, {})
-                persistent_data = server._load_persistent_memory(namespace)
-                merged = {**persistent_data, **session_data}
-                
-                if key:
-                    if key in merged:
-                        item = merged[key]
-                        return {
-                            "success": True,
-                            "key": key,
-                            "value": item["value"],
-                            "updated_at": item.get("updated_at"),
-                            "found": True
-                        }
-                    else:
-                        return {
-                            "success": True,
-                            "key": key,
-                            "value": None,
-                            "found": False
-                        }
-                else:
-                    result = {k: v["value"] for k, v in merged.items()}
-                    return {
-                        "success": True,
-                        "namespace": namespace,
-                        "memories": result,
-                        "count": len(result)
-                    }
+                repo = server._get_repo()
+                return await repo.recall(server._agent_id, key, namespace or "default")
             except Exception as e:
+                logger.error(f"[Memory] recall error: {e}")
                 return {"success": False, "error": str(e)}
         
         @self.mcp.tool()
@@ -244,7 +162,7 @@ class MemoryMCPServer(BaseMCPServer):
             """
             Delete a memory value.
             
-            Remove a stored value from both session and persistent storage.
+            Remove a stored value from persistent storage.
             
             Args:
                 key: Memory key to delete
@@ -254,24 +172,10 @@ class MemoryMCPServer(BaseMCPServer):
                 Dictionary with deletion status
             """
             try:
-                deleted = False
-                
-                if namespace in server._session_memory and key in server._session_memory[namespace]:
-                    del server._session_memory[namespace][key]
-                    deleted = True
-                
-                memory = server._load_persistent_memory(namespace)
-                if key in memory:
-                    del memory[key]
-                    server._save_persistent_memory(memory, namespace)
-                    deleted = True
-                
-                return {
-                    "success": True,
-                    "key": key,
-                    "deleted": deleted
-                }
+                repo = server._get_repo()
+                return await repo.delete(server._agent_id, key, namespace or "default")
             except Exception as e:
+                logger.error(f"[Memory] delete error: {e}")
                 return {"success": False, "error": str(e)}
         
         @self.mcp.tool()
@@ -285,19 +189,14 @@ class MemoryMCPServer(BaseMCPServer):
                 Dictionary with list of namespace names
             """
             try:
-                namespaces = set()
-                namespaces.update(server._session_memory.keys())
-                
-                mem_dir = server._get_memory_dir()
-                if mem_dir.exists():
-                    for f in mem_dir.glob("*.json"):
-                        namespaces.add(f.stem)
-                
+                repo = server._get_repo()
+                namespaces = await repo.list_namespaces(server._agent_id)
                 return {
                     "success": True,
-                    "namespaces": sorted(list(namespaces))
+                    "namespaces": sorted(namespaces)
                 }
             except Exception as e:
+                logger.error(f"[Memory] list_namespaces error: {e}")
                 return {"success": False, "error": str(e)}
         
         @self.mcp.tool()
@@ -321,24 +220,21 @@ class MemoryMCPServer(BaseMCPServer):
                 Dictionary with logged entry
             """
             try:
-                entry = {
-                    "action": action,
-                    "details": details,
-                    "status": status,
-                    "timestamp": datetime.now().isoformat()
-                }
+                repo = server._get_repo()
+                result = await repo.log_task(
+                    server._agent_id,
+                    action,
+                    details,
+                    status or "completed"
+                )
                 
-                server._task_history.append(entry)
+                # Cleanup old entries if too many
+                if result.get("history_count", 0) > 100:
+                    await repo.cleanup_old_tasks(server._agent_id, 100)
                 
-                if len(server._task_history) > 100:
-                    server._task_history = server._task_history[-100:]
-                
-                return {
-                    "success": True,
-                    "logged": entry,
-                    "history_count": len(server._task_history)
-                }
+                return result
             except Exception as e:
+                logger.error(f"[Memory] task_log error: {e}")
                 return {"success": False, "error": str(e)}
         
         @self.mcp.tool()
@@ -359,20 +255,14 @@ class MemoryMCPServer(BaseMCPServer):
                 Dictionary with history entries
             """
             try:
-                history = server._task_history
-                
-                if status_filter:
-                    history = [h for h in history if h["status"] == status_filter]
-                
-                recent = history[-limit:] if limit else history
-                
-                return {
-                    "success": True,
-                    "history": recent,
-                    "total_count": len(server._task_history),
-                    "filtered_count": len(history)
-                }
+                repo = server._get_repo()
+                return await repo.get_task_history(
+                    server._agent_id,
+                    limit or 20,
+                    status_filter
+                )
             except Exception as e:
+                logger.error(f"[Memory] task_history error: {e}")
                 return {"success": False, "error": str(e)}
         
         @self.mcp.tool()
@@ -401,6 +291,7 @@ class MemoryMCPServer(BaseMCPServer):
                     "status": "in_progress"
                 }
                 
+                # Persist to DB
                 await memory_save("_current_goal", server._current_goal, namespace="_system")
                 
                 return {
@@ -409,6 +300,7 @@ class MemoryMCPServer(BaseMCPServer):
                     "subtasks_count": len(subtasks or [])
                 }
             except Exception as e:
+                logger.error(f"[Memory] goal_set error: {e}")
                 return {"success": False, "error": str(e)}
         
         @self.mcp.tool()
@@ -429,6 +321,7 @@ class MemoryMCPServer(BaseMCPServer):
                 Dictionary with progress info
             """
             try:
+                # Load from DB if not in memory
                 if not server._current_goal:
                     result = await memory_recall("_current_goal", namespace="_system")
                     if result.get("found"):
@@ -452,6 +345,7 @@ class MemoryMCPServer(BaseMCPServer):
                 completed = len(server._current_goal["completed_subtasks"])
                 progress = (completed / total * 100) if total > 0 else 0
                 
+                # Persist updated goal
                 await memory_save("_current_goal", server._current_goal, namespace="_system")
                 
                 return {
@@ -466,6 +360,7 @@ class MemoryMCPServer(BaseMCPServer):
                     ]
                 }
             except Exception as e:
+                logger.error(f"[Memory] goal_progress error: {e}")
                 return {"success": False, "error": str(e)}
         
         @self.mcp.tool()
@@ -485,12 +380,18 @@ class MemoryMCPServer(BaseMCPServer):
             """
             try:
                 if not server._current_goal:
-                    return {"success": False, "error": "No current goal"}
+                    result = await memory_recall("_current_goal", namespace="_system")
+                    if result.get("found"):
+                        server._current_goal = result["value"]
+                    else:
+                        return {"success": False, "error": "No current goal"}
                 
                 server._current_goal["status"] = "completed"
                 server._current_goal["completed_at"] = datetime.now().isoformat()
                 server._current_goal["summary"] = summary
                 
+                # Archive to goal history
+                import time
                 await memory_save(
                     f"goal_{int(time.time())}",
                     server._current_goal,
@@ -503,11 +404,13 @@ class MemoryMCPServer(BaseMCPServer):
                     "summary": summary
                 }
                 
+                # Clear current goal
                 server._current_goal = None
                 await memory_delete("_current_goal", namespace="_system")
                 
                 return result
             except Exception as e:
+                logger.error(f"[Memory] goal_complete error: {e}")
                 return {"success": False, "error": str(e)}
         
         @self.mcp.tool()
@@ -522,6 +425,9 @@ class MemoryMCPServer(BaseMCPServer):
                 Dictionary with session overview
             """
             try:
+                repo = server._get_repo()
+                
+                # Get current goal
                 current_goal = None
                 if server._current_goal:
                     total = len(server._current_goal.get("subtasks", []))
@@ -531,11 +437,29 @@ class MemoryMCPServer(BaseMCPServer):
                         "progress": f"{completed}/{total}" if total > 0 else "N/A",
                         "status": server._current_goal.get("status", "in_progress")
                     }
+                else:
+                    # Try loading from DB
+                    result = await memory_recall("_current_goal", namespace="_system")
+                    if result.get("found"):
+                        g = result["value"]
+                        total = len(g.get("subtasks", []))
+                        completed = len(g.get("completed_subtasks", []))
+                        current_goal = {
+                            "goal": g["goal"],
+                            "progress": f"{completed}/{total}" if total > 0 else "N/A",
+                            "status": g.get("status", "in_progress")
+                        }
                 
-                recent_actions = [h["action"] for h in server._task_history[-5:]] if server._task_history else []
+                # Get task history stats
+                history_result = await repo.get_task_history(server._agent_id, limit=100)
+                history = history_result.get("history", [])
                 
-                completed_count = len([h for h in server._task_history if h["status"] == "completed"])
-                failed_count = len([h for h in server._task_history if h["status"] == "failed"])
+                recent_actions = [h["action"] for h in history[-5:]] if history else []
+                completed_count = len([h for h in history if h["status"] == "completed"])
+                failed_count = len([h for h in history if h["status"] == "failed"])
+                
+                # Get namespaces
+                namespaces = await repo.list_namespaces(server._agent_id)
                 
                 return {
                     "success": True,
@@ -544,13 +468,14 @@ class MemoryMCPServer(BaseMCPServer):
                     "current_goal": current_goal,
                     "recent_actions": recent_actions,
                     "task_stats": {
-                        "total": len(server._task_history),
+                        "total": history_result.get("total_count", 0),
                         "completed": completed_count,
                         "failed": failed_count
                     },
-                    "memory_namespaces": list(server._session_memory.keys())
+                    "memory_namespaces": namespaces
                 }
             except Exception as e:
+                logger.error(f"[Memory] session_state error: {e}")
                 return {"success": False, "error": str(e)}
         
         logger.info(f"[{self.name}] Registered 10 tools for agent: {server._agent_id}")

@@ -2,11 +2,16 @@
 Database Schema Definition
 
 Defines all tables for the NovAIC Gateway SQLite database.
-Simplified in v3: unified chat_messages table with read field.
+v3: unified chat_messages table with read field.
 v4: Added unified task system (tasks, task_outputs tables).
+v5: Added output_file, ttl_hours, expires_at to tasks.
+v6: Changed agents.status to agents.setup_complete (boolean).
+v7: Added inbox_messages and agent_state tables for EventBus/Inbox refactor.
+v8: Added agent_memory and agent_task_history tables for Memory MCP.
+v9: Added ssh_keys and vm_processes tables for VM management.
 """
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 9
 
 SCHEMA_SQL = """
 -- ========================================
@@ -68,7 +73,7 @@ CREATE TABLE IF NOT EXISTS agents (
     created_at TEXT DEFAULT (datetime('now')),
     vm_config TEXT NOT NULL DEFAULT '{}',
     ports TEXT NOT NULL DEFAULT '{}',
-    status TEXT DEFAULT 'stopped'
+    setup_complete INTEGER DEFAULT 0
 );
 
 -- ========================================
@@ -227,6 +232,112 @@ CREATE TABLE IF NOT EXISTS task_outputs (
 
 CREATE INDEX IF NOT EXISTS idx_task_outputs_task ON task_outputs(task_id);
 CREATE INDEX IF NOT EXISTS idx_task_outputs_ts ON task_outputs(ts);
+
+-- ========================================
+-- 9. Inbox Messages Table (for EventBus/Inbox refactor)
+-- ========================================
+-- Stores all pending input messages that need Agent processing
+-- Separate from chat_messages to clearly separate inbox (pending) from chat history
+
+CREATE TABLE IF NOT EXISTS inbox_messages (
+    id TEXT PRIMARY KEY,
+    agent_id TEXT NOT NULL,
+    type TEXT NOT NULL,               -- USER_MESSAGE, SYSTEM_MESSAGE, WEBHOOK, CRON_TRIGGER, SUBAGENT_RESULT
+    content TEXT,
+    priority INTEGER DEFAULT 2,       -- 0=CRITICAL, 1=HIGH, 2=NORMAL, 3=LOW
+    source TEXT,                      -- user, system:bootstrap, webhook:xxx, cron:xxx, subagent:xxx
+    metadata TEXT DEFAULT '{}',       -- JSON: additional data
+    status TEXT DEFAULT 'pending',    -- pending, processing, done, failed
+    created_at TEXT NOT NULL,
+    processed_at TEXT,
+    FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_inbox_agent_status ON inbox_messages(agent_id, status);
+CREATE INDEX IF NOT EXISTS idx_inbox_priority ON inbox_messages(agent_id, priority, created_at);
+
+-- ========================================
+-- 10. Agent State Table (for EventBus/Inbox refactor)
+-- ========================================
+-- Stores Agent runtime state persistently (sleep/awake, wake triggers, etc.)
+
+CREATE TABLE IF NOT EXISTS agent_state (
+    agent_id TEXT PRIMARY KEY,
+    state TEXT DEFAULT 'awake',       -- sleep, awake
+    wake_triggers TEXT DEFAULT '[]',  -- JSON: conditions to wake from sleep
+    rest_reason TEXT,                 -- Why agent is resting
+    rest_started_at TEXT,
+    last_active_at TEXT,
+    FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
+);
+
+-- ========================================
+-- 11. Agent Memory Tables (for Memory MCP)
+-- ========================================
+-- Persistent key-value storage per agent/namespace
+
+CREATE TABLE IF NOT EXISTS agent_memory (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent_id TEXT NOT NULL,
+    namespace TEXT NOT NULL DEFAULT 'default',
+    key TEXT NOT NULL,
+    value TEXT,                       -- JSON serialized value
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(agent_id, namespace, key),
+    FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent_memory_agent ON agent_memory(agent_id);
+CREATE INDEX IF NOT EXISTS idx_agent_memory_namespace ON agent_memory(agent_id, namespace);
+
+-- Task history for Memory MCP (persistent task logs)
+CREATE TABLE IF NOT EXISTS agent_task_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent_id TEXT NOT NULL,
+    action TEXT NOT NULL,
+    details TEXT,
+    status TEXT DEFAULT 'completed',  -- completed, failed, in_progress
+    timestamp TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent_task_history_agent ON agent_task_history(agent_id);
+CREATE INDEX IF NOT EXISTS idx_agent_task_history_timestamp ON agent_task_history(agent_id, timestamp);
+
+-- ========================================
+-- 12. SSH Keys Table (for VM access)
+-- ========================================
+-- Stores SSH key pairs for VM authentication
+
+CREATE TABLE IF NOT EXISTS ssh_keys (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    public_key TEXT NOT NULL,
+    private_key TEXT NOT NULL,
+    is_default INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_ssh_keys_default ON ssh_keys(is_default);
+
+-- ========================================
+-- 13. VM Processes Table (for VM lifecycle)
+-- ========================================
+-- Tracks running QEMU processes for each agent
+
+CREATE TABLE IF NOT EXISTS vm_processes (
+    agent_id TEXT PRIMARY KEY,
+    pid INTEGER,
+    status TEXT DEFAULT 'stopped',
+    started_at TEXT,
+    ports TEXT DEFAULT '{}',
+    qemu_cmd TEXT,
+    error_message TEXT,
+    FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_vm_processes_status ON vm_processes(status);
 """
 
 DEFAULT_CONFIG = {
@@ -539,3 +650,204 @@ async def run_migration(conn, from_version: int):
         
         await conn.commit()
         print("[DB] Migration to v5 complete")
+    
+    if from_version < 6:
+        print("[DB] Running migration from v5 to v6...")
+        
+        # Migration from v5 to v6:
+        # Change agents.status (text) to agents.setup_complete (boolean)
+        # - pending/downloading/creating/deploying -> 0 (not complete)
+        # - ready/stopped/running/error -> 1 (complete)
+        
+        # Check if setup_complete column already exists
+        cursor = await conn.execute("PRAGMA table_info(agents)")
+        columns = [row[1] for row in await cursor.fetchall()]
+        
+        if 'setup_complete' not in columns:
+            print("[DB] Adding 'setup_complete' column to agents")
+            await conn.execute("ALTER TABLE agents ADD COLUMN setup_complete INTEGER DEFAULT 0")
+            
+            # Migrate data: ready/stopped/running means setup is complete
+            await conn.execute("""
+                UPDATE agents 
+                SET setup_complete = CASE 
+                    WHEN status IN ('ready', 'stopped', 'running') THEN 1 
+                    ELSE 0 
+                END
+            """)
+            print("[DB] Migrated status to setup_complete")
+        
+        # Update schema version to 6
+        await conn.execute(
+            "INSERT OR REPLACE INTO config (key, value) VALUES ('version', '6')"
+        )
+        
+        await conn.commit()
+        print("[DB] Migration to v6 complete")
+    
+    if from_version < 7:
+        print("[DB] Running migration from v6 to v7...")
+        
+        # Migration from v6 to v7:
+        # Add inbox_messages and agent_state tables for EventBus/Inbox refactor
+        
+        # Create inbox_messages table
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS inbox_messages (
+                id TEXT PRIMARY KEY,
+                agent_id TEXT NOT NULL,
+                type TEXT NOT NULL,
+                content TEXT,
+                priority INTEGER DEFAULT 2,
+                source TEXT,
+                metadata TEXT DEFAULT '{}',
+                status TEXT DEFAULT 'pending',
+                created_at TEXT NOT NULL,
+                processed_at TEXT,
+                FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
+            )
+        """)
+        
+        # Create indexes for inbox_messages
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_inbox_agent_status ON inbox_messages(agent_id, status)"
+        )
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_inbox_priority ON inbox_messages(agent_id, priority, created_at)"
+        )
+        
+        print("[DB] Created inbox_messages table")
+        
+        # Create agent_state table
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS agent_state (
+                agent_id TEXT PRIMARY KEY,
+                state TEXT DEFAULT 'awake',
+                wake_triggers TEXT DEFAULT '[]',
+                rest_reason TEXT,
+                rest_started_at TEXT,
+                last_active_at TEXT,
+                FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
+            )
+        """)
+        
+        print("[DB] Created agent_state table")
+        
+        # Migrate existing agent rest state from agent_runtime_state to agent_state
+        try:
+            # Get all agents
+            cursor = await conn.execute("SELECT id FROM agents")
+            agents = await cursor.fetchall()
+            
+            import json
+            
+            for agent_row in agents:
+                agent_id = agent_row[0]
+                
+                # Get existing runtime state
+                cursor = await conn.execute(
+                    "SELECT key, value FROM agent_runtime_state WHERE agent_id = ?",
+                    (agent_id,)
+                )
+                runtime_state = {row[0]: row[1] for row in await cursor.fetchall()}
+                
+                # Determine state
+                is_resting = runtime_state.get("is_resting", "false") == "true"
+                state = "sleep" if is_resting else "awake"
+                
+                # Parse wake_triggers
+                wake_triggers_str = runtime_state.get("wake_triggers", "[]")
+                try:
+                    wake_triggers = json.loads(wake_triggers_str) if wake_triggers_str else []
+                except:
+                    wake_triggers = []
+                
+                rest_reason = runtime_state.get("rest_reason")
+                if rest_reason == "null":
+                    rest_reason = None
+                
+                rest_started = runtime_state.get("rest_started")
+                if rest_started == "null":
+                    rest_started = None
+                
+                # Insert into agent_state
+                await conn.execute("""
+                    INSERT OR REPLACE INTO agent_state 
+                    (agent_id, state, wake_triggers, rest_reason, rest_started_at)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (agent_id, state, json.dumps(wake_triggers), rest_reason, rest_started))
+            
+            print(f"[DB] Migrated state for {len(agents)} agents")
+        except Exception as e:
+            print(f"[DB] Warning: Could not migrate agent runtime state: {e}")
+        
+        # Update schema version to 7
+        await conn.execute(
+            "INSERT OR REPLACE INTO config (key, value) VALUES ('version', '7')"
+        )
+        
+        await conn.commit()
+        print("[DB] Migration to v7 complete")
+    
+    if from_version < 8:
+        print("[DB] Running migration from v7 to v8...")
+        
+        # Migration from v7 to v8:
+        # Add agent_memory and agent_task_history tables for Memory MCP
+        # These are created by SCHEMA_SQL via CREATE TABLE IF NOT EXISTS
+        
+        # Update schema version to 8
+        await conn.execute(
+            "INSERT OR REPLACE INTO config (key, value) VALUES ('version', '8')"
+        )
+        
+        await conn.commit()
+        print("[DB] Migration to v8 complete")
+    
+    if from_version < 9:
+        print("[DB] Running migration from v8 to v9...")
+        
+        # Migration from v8 to v9:
+        # Add ssh_keys and vm_processes tables for VM management
+        
+        # Create ssh_keys table
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS ssh_keys (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                public_key TEXT NOT NULL,
+                private_key TEXT NOT NULL,
+                is_default INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT (datetime('now'))
+            )
+        """)
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_ssh_keys_default ON ssh_keys(is_default)"
+        )
+        print("[DB] Created ssh_keys table")
+        
+        # Create vm_processes table
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS vm_processes (
+                agent_id TEXT PRIMARY KEY,
+                pid INTEGER,
+                status TEXT DEFAULT 'stopped',
+                started_at TEXT,
+                ports TEXT DEFAULT '{}',
+                qemu_cmd TEXT,
+                error_message TEXT,
+                FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
+            )
+        """)
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_vm_processes_status ON vm_processes(status)"
+        )
+        print("[DB] Created vm_processes table")
+        
+        # Update schema version to 9
+        await conn.execute(
+            "INSERT OR REPLACE INTO config (key, value) VALUES ('version', '9')"
+        )
+        
+        await conn.commit()
+        print("[DB] Migration to v9 complete")

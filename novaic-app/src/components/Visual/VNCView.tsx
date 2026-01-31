@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAppStore } from '../../store';
-import { Monitor, RefreshCw, Play, Loader2, Lock, Unlock, Settings } from 'lucide-react';
+import { Monitor, RefreshCw, Play, Loader2, Lock, Unlock, Copy, Check } from 'lucide-react';
 import { vmService } from '../../services/vm';
 import RFB from 'novnc-rfb';
 import { LayoutToggle } from '../Layout/LayoutToggle';
@@ -20,13 +20,39 @@ interface VNCViewProps {
 }
 
 export function VNCView({ isThumbnail = false }: VNCViewProps) {
-  const { setVncConnected, vncLocked, setVncLocked, setSettingsOpen, currentAgentId } = useAppStore();
+  const { setVncConnected, vncLocked, setVncLocked, currentAgentId, agents } = useAppStore();
+  
+  // 获取当前 agent 的信息
+  const currentAgent = agents.find(a => a.id === currentAgentId);
   const [status, setStatus] = useState<VncStatus>('unknown');
   const [errorMsg, setErrorMsg] = useState('');
   const [wsReady, setWsReady] = useState(false);
+  const [copied, setCopied] = useState(false);
   const rfbRef = useRef<RFB | null>(null);
   const rfbContainerRef = useRef<HTMLDivElement>(null);
   const wsUrlRef = useRef<string | null>(null);
+
+  // 复制 MCP Server 配置到剪贴板
+  const copyMcpConfig = useCallback(async () => {
+    if (!currentAgentId) {
+      console.error('No agent selected');
+      return;
+    }
+    const mcpConfig = {
+      "mcpServers": {
+        "novaic-gateway": {
+          "url": `http://127.0.0.1:${CONFIG.gatewayPort}/agents/${currentAgentId}/mcp`
+        }
+      }
+    };
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(mcpConfig, null, 2));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (e) {
+      console.error('Failed to copy MCP config:', e);
+    }
+  }, [currentAgentId]);
   // 检查 Agent 的 VNC 状态 (使用新的 ready 字段)
   const checkVncStatus = useCallback(async () => {
     try {
@@ -63,7 +89,12 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
     const timestamp = new Date().toLocaleTimeString();
     console.log(`[VNC checkWebsockify ${timestamp}] Checking WebSocket connection...`);
     try {
-      const wsUrl = wsUrlRef.current || (await vmService.getVncUrl());
+      if (!currentAgentId) {
+        console.log(`[VNC checkWebsockify ${timestamp}] No agent selected`);
+        setWsReady(false);
+        return;
+      }
+      const wsUrl = wsUrlRef.current || (await vmService.getVncUrl(currentAgentId));
       wsUrlRef.current = wsUrl;
       const ws = new WebSocket(wsUrl);
       await new Promise<void>((resolve, reject) => {
@@ -90,7 +121,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
       setWsReady(false);
       setVncConnected(false);
     }
-  }, [setVncConnected]);
+  }, [setVncConnected, currentAgentId]);
 
   // 启动 VNC (先启动 QEMU，再启动 VNC 服务)
   const startVnc = useCallback(async () => {
@@ -103,9 +134,13 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
     
     try {
       // Step 1: 先启动 QEMU VM
-      log(`Step 1: Starting QEMU VM... (agentId: ${currentAgentId})`);
+      if (!currentAgentId || !currentAgent) {
+        throw new Error('No agent selected');
+      }
+      const agentIndex = currentAgent.vm.agent_index ?? 0;
+      log(`Step 1: Starting QEMU VM... (agentId: ${currentAgentId}, agentIndex: ${agentIndex})`);
       try {
-        await vmService.start(currentAgentId || undefined);
+        await vmService.start(currentAgentId, agentIndex);
         log('QEMU VM started');
       } catch (vmError: any) {
         // Tauri 返回的错误可能是字符串或 Error 对象
@@ -160,7 +195,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
         let wsConnected = false;
         for (let i = 0; i < 20; i++) {
           try {
-            const wsUrl = wsUrlRef.current || (await vmService.getVncUrl());
+            const wsUrl = wsUrlRef.current || (await vmService.getVncUrl(currentAgentId));
             wsUrlRef.current = wsUrl;
             const ws = new WebSocket(wsUrl);
             await new Promise<void>((resolve, reject) => {
@@ -205,7 +240,27 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
       setStatus('error');
       setErrorMsg(e.message || 'Failed to start VM or VNC');
     }
-  }, [checkWebsockify, currentAgentId, setVncConnected]);
+  }, [checkWebsockify, currentAgentId, currentAgent, setVncConnected]);
+
+  // 当 agent 切换时，重置 VNC 连接
+  useEffect(() => {
+    console.log('[VNC] Agent changed to:', currentAgentId);
+    
+    // 清除缓存的 WebSocket URL，强制重新获取
+    wsUrlRef.current = null;
+    
+    // 断开现有 RFB 连接
+    if (rfbRef.current) {
+      console.log('[VNC] Disconnecting existing RFB connection');
+      rfbRef.current.disconnect();
+      rfbRef.current = null;
+    }
+    
+    // 重置状态，触发重新连接
+    setWsReady(false);
+    setVncConnected(false);
+    setStatus('unknown');
+  }, [currentAgentId, setVncConnected]);
 
   // 初始化：优先直接连接 websockify，不依赖 Agent
   useEffect(() => {
@@ -216,11 +271,21 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
     const init = async () => {
       log('init() called');
       
-      // 策略 1: 直接尝试连接 websockify（不依赖 Agent，最快路径）
-      log('Step 1: Trying direct websockify connection...');
+      // 需要有选中的 agent 才能连接
+      if (!currentAgentId) {
+        log('No agent selected, waiting...');
+        setStatus('unknown');
+        return;
+      }
+      
+      // 策略 1: 直接尝试连接当前 agent 的 websockify
+      log(`Step 1: Trying direct websockify connection for agent ${currentAgentId}...`);
       try {
-        const wsUrl = `ws://localhost:${CONFIG.wsPort}`;
+        // 获取当前 agent 的 VNC URL
+        const wsUrl = await vmService.getVncUrl(currentAgentId);
         wsUrlRef.current = wsUrl;
+        log(`Got VNC URL: ${wsUrl}`);
+        
         const ws = new WebSocket(wsUrl);
         await new Promise<void>((resolve, reject) => {
           const timeout = setTimeout(() => {
@@ -237,8 +302,8 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
             reject(new Error('ws error'));
           };
         });
-        // WebSocket 直接可用！不需要等 Agent
-        log('Direct websockify connection SUCCESS! Skipping Agent check.');
+        // WebSocket 直接可用！
+        log('Direct websockify connection SUCCESS!');
         setStatus('running');
         setWsReady(true);
         setVncConnected(true);
@@ -281,20 +346,21 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
     // 定期检查：只在未连接时尝试重连，已连接时不轮询（RFB 会自己处理断开）
     const startPolling = () => {
       const pollFn = async () => {
-        // 如果已连接，不做任何检测，避免创建测试连接导致闪烁
-        if (wsReady) {
+        // 如果已连接或没有选中 agent，不做任何检测
+        if (wsReady || !currentAgentId) {
           return;
         }
-        // 未连接时尝试直接连 websockify
+        // 未连接时尝试获取当前 agent 的 websockify URL 并连接
         try {
-          const wsUrl = `ws://localhost:${CONFIG.wsPort}`;
+          const wsUrl = wsUrlRef.current || (await vmService.getVncUrl(currentAgentId));
+          wsUrlRef.current = wsUrl;
           const ws = new WebSocket(wsUrl);
           await new Promise<void>((resolve, reject) => {
             const timeout = setTimeout(() => { ws.close(); reject(new Error('timeout')); }, 1500);
             ws.onopen = () => { clearTimeout(timeout); ws.close(); resolve(); };
             ws.onerror = () => { clearTimeout(timeout); reject(new Error('ws error')); };
           });
-          console.log('[VNC poll] Direct websockify connected!');
+          console.log(`[VNC poll] Websockify connected for agent ${currentAgentId}!`);
           setStatus('running');
           setWsReady(true);
           setVncConnected(true);
@@ -311,7 +377,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [checkVncStatus, checkWebsockify, startVnc, setVncConnected, wsReady]);
+  }, [checkVncStatus, checkWebsockify, startVnc, setVncConnected, wsReady, currentAgentId]);
 
   // Connect/disconnect RFB inside the app
   useEffect(() => {
@@ -322,7 +388,11 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
 
     const connect = async () => {
       try {
-        const wsUrl = wsUrlRef.current || (await vmService.getVncUrl());
+        if (!currentAgentId) {
+          console.log('[VNC] No agent selected, skipping connection');
+          return;
+        }
+        const wsUrl = wsUrlRef.current || (await vmService.getVncUrl(currentAgentId));
         wsUrlRef.current = wsUrl;
 
         // Clean up any existing connection
@@ -478,13 +548,20 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
           </>
         ) : null}
 
-        {/* Settings */}
+        {/* Copy MCP Config */}
         <button
-          onClick={() => setSettingsOpen(true)}
-          className="p-1.5 hover:bg-white/[0.06] rounded transition-colors"
-          title="Settings"
+          onClick={copyMcpConfig}
+          disabled={!currentAgentId}
+          className={`p-1.5 rounded transition-colors ${
+            copied 
+              ? 'bg-nb-success/20 text-nb-success' 
+              : !currentAgentId
+                ? 'text-nb-text-muted/50 cursor-not-allowed'
+                : 'hover:bg-white/[0.06] text-nb-text-muted'
+          }`}
+          title={copied ? 'Copied!' : !currentAgentId ? 'No agent selected' : 'Copy Gateway MCP Server config'}
         >
-          <Settings size={14} className="text-nb-text-muted" />
+          {copied ? <Check size={14} /> : <Copy size={14} />}
         </button>
       </div>
 

@@ -16,6 +16,7 @@ class EventType(Enum):
     
     # User interactions
     USER_MESSAGE = "user_message"
+    SYSTEM_MESSAGE = "system_message"  # System-generated messages (bootstrap, scheduled tasks, etc.)
     
     # Agent to User (Chat MCP)
     AGENT_REPLY = "agent_reply"      # Agent sends a message to user

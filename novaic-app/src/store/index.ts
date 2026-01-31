@@ -10,7 +10,7 @@
 import { create } from 'zustand';
 import { api } from '../services';
 import * as setup from '../services/setup';
-import type { AICAgent, CreateAgentRequest, AgentStatus } from '../services/api';
+import type { AICAgent, CreateAgentRequest } from '../services/api';
 import { 
   Message, 
   LogEntry, 
@@ -22,7 +22,7 @@ import {
   ChatMode,
   ChatSSEMessage,
   MessageStatus,
-  SetupProgressInfo
+  SetupProgressInfo,
 } from '../types';
 
 // Layout persistence key
@@ -62,6 +62,7 @@ interface AppStore extends AppState {
   addMessage: (message: Message) => void;
   updateMessage: (id: string, updates: Partial<Message>) => void;
   updateMessageStatus: (messageId: string, status: MessageStatus) => void;
+  expandMessage: (messageId: string) => Promise<void>;
   addLog: (log: LogEntry) => void;
   clearLogs: () => void;
   clearMessages: () => void;
@@ -85,7 +86,8 @@ interface AppStore extends AppState {
   deleteAgent: (agentId: string) => Promise<void>;
   setCreateAgentModalOpen: (open: boolean) => void;
   // Setup actions
-  updateAgentStatus: (agentId: string, status: AgentStatus, progress?: SetupProgressInfo) => void;
+  updateSetupProgress: (agentId: string, progress: SetupProgressInfo | undefined) => void;
+  setAgentSetupComplete: (agentId: string, complete: boolean) => void;
   setupAgent: (agentId: string, config: {
     sourceImage: string;
     useCnMirrors: boolean;
@@ -191,15 +193,16 @@ export const useAppStore = create<AppStore>((set, get) => ({
       connectLogsSSE();
       console.log('[Store] SSE streams connected');
       
-      // Load chat history (persisted messages)
+      // Load chat history (persisted messages with summary)
       try {
-        const history = await api.getChatHistory({ limit: 50, summary_length: 0 });
+        const history = await api.getChatHistory({ limit: 50, summary_length: 100 });
         if (history.success && history.messages.length > 0) {
           const messages: Message[] = history.messages.map((msg) => ({
             id: msg.id,
             role: msg.type === 'USER_MESSAGE' ? 'user' : 'assistant',
             content: msg.summary || '',
             timestamp: new Date(msg.timestamp),
+            isTruncated: msg.is_truncated,  // 保存截断状态
             status: msg.type === 'USER_MESSAGE' ? 'read' as MessageStatus : undefined,
           }));
           set({ messages });
@@ -338,6 +341,27 @@ export const useAppStore = create<AppStore>((set, get) => ({
     }));
   },
 
+  // Expand truncated message - fetch full content
+  expandMessage: async (messageId: string) => {
+    try {
+      const result = await api.getChatMessage(messageId);
+      if (result.success && result.content) {
+        set((state) => ({
+          messages: state.messages.map((msg) =>
+            msg.id === messageId
+              ? { ...msg, content: result.content!, isTruncated: false }
+              : msg
+          ),
+        }));
+        console.log('[Store] Expanded message:', messageId);
+      } else {
+        console.error('[Store] Failed to expand message:', result.error);
+      }
+    } catch (e) {
+      console.error('[Store] Error expanding message:', e);
+    }
+  },
+
   addLog: (log: LogEntry) => {
     set((state) => ({ logs: [...state.logs, log] }));
   },
@@ -448,11 +472,49 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   selectAgent: async (agentId: string) => {
+    const { currentAgentId, connectChatSSE, connectLogsSSE } = get();
+    
+    // 如果是同一个 agent，不需要切换
+    if (currentAgentId === agentId) {
+      console.log('[Store] Agent already selected:', agentId);
+      return;
+    }
+    
     try {
+      // 1. 通知 Gateway 切换 agent
       await api.setCurrentAgent(agentId);
-      set({ currentAgentId: agentId });
+      
+      // 2. 清空本地消息和日志（不同 agent 有不同的聊天历史）
+      set({ 
+        currentAgentId: agentId,
+        messages: [],
+        logs: [],
+      });
       console.log('[Store] Selected agent:', agentId);
-      // Note: VM switch is handled by Tauri, not here
+      
+      // 3. 重新连接 SSE（Gateway 会根据 current_agent 路由消息）
+      connectChatSSE();
+      connectLogsSSE();
+      
+      // 4. 加载新 agent 的聊天历史
+      try {
+        const history = await api.getChatHistory({ limit: 50, summary_length: 100 });
+        if (history.success && history.messages.length > 0) {
+          const messages: Message[] = history.messages.map((msg) => ({
+            id: msg.id,
+            role: msg.type === 'USER_MESSAGE' ? 'user' : 'assistant',
+            content: msg.summary || '',
+            timestamp: new Date(msg.timestamp),
+            isTruncated: msg.is_truncated,
+            status: msg.type === 'USER_MESSAGE' ? 'read' as MessageStatus : undefined,
+          }));
+          set({ messages });
+          console.log(`[Store] Loaded ${messages.length} messages for agent ${agentId}`);
+        }
+      } catch (e) {
+        console.warn('[Store] Failed to load chat history for new agent:', e);
+      }
+      
     } catch (error) {
       console.error('[Store] Failed to select agent:', error);
       throw error;
@@ -488,12 +550,23 @@ export const useAppStore = create<AppStore>((set, get) => ({
     set({ createAgentModalOpen: open });
   },
 
-  // Update agent status (local state)
-  updateAgentStatus: (agentId: string, status: AgentStatus, progress?: SetupProgressInfo) => {
+  // Update setup progress (local state only, for UI)
+  updateSetupProgress: (agentId: string, progress: SetupProgressInfo | undefined) => {
     set((state) => ({
       agents: state.agents.map((agent) =>
         agent.id === agentId
-          ? { ...agent, status, setup_progress: progress }
+          ? { ...agent, setup_progress: progress }
+          : agent
+      ),
+    }));
+  },
+
+  // Set agent setup complete (local state)
+  setAgentSetupComplete: (agentId: string, complete: boolean) => {
+    set((state) => ({
+      agents: state.agents.map((agent) =>
+        agent.id === agentId
+          ? { ...agent, setup_complete: complete, setup_progress: undefined }
           : agent
       ),
     }));
@@ -504,7 +577,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     sourceImage: string;
     useCnMirrors: boolean;
   }) => {
-    const { updateAgentStatus, agents } = get();
+    const { updateSetupProgress, setAgentSetupComplete, agents } = get();
     const agent = agents.find(a => a.id === agentId);
     if (!agent) throw new Error('Agent not found');
 
@@ -516,7 +589,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       }
 
       // Step 2: Create VM disk and cloud-init
-      updateAgentStatus(agentId, 'creating', {
+      updateSetupProgress(agentId, {
         stage: 'Creating VM',
         progress: 0,
         message: 'Creating virtual machine disk...',
@@ -531,19 +604,21 @@ export const useAppStore = create<AppStore>((set, get) => ({
           useCnMirrors: config.useCnMirrors,
         },
         (progress) => {
-          updateAgentStatus(agentId, 'creating', progress);
+          updateSetupProgress(agentId, progress);
         }
       );
 
       // Step 3: Start VM
-      updateAgentStatus(agentId, 'creating', {
+      updateSetupProgress(agentId, {
         stage: 'Starting VM',
         progress: 90,
         message: 'Starting virtual machine...',
       });
 
-      const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('start_vm', { agentId });
+      // 使用 vmService 启动 VM（通过 Gateway API）
+      const { vmService } = await import('../services/vm');
+      const agentIndex = agent.vm.agent_index ?? 0;
+      await vmService.start(agentId, agentIndex);
 
       // Wait for VM to boot
       await new Promise(resolve => setTimeout(resolve, 3000));
@@ -557,17 +632,16 @@ export const useAppStore = create<AppStore>((set, get) => ({
       const updatedAgent = updatedAgents.find(a => a.id === agentId);
       if (!updatedAgent) throw new Error('Agent not found after VM start');
 
-      // Step 4: Mark as running - Agent will handle deployment via agent-bootstrap skill
-      // Update status in Gateway (this also triggers MCP Gateway setup)
-      await api.updateAgent(agentId, { status: 'running' });
+      // Step 4: Mark setup as complete
+      await api.updateAgent(agentId, { setup_complete: true });
       
       // Update local state
-      updateAgentStatus(agentId, 'running', undefined);
-      console.log('[Store] VM started, Agent will take over deployment:', agentId);
+      setAgentSetupComplete(agentId, true);
+      console.log('[Store] VM setup complete:', agentId);
 
     } catch (error) {
       console.error('[Store] Agent setup failed:', error);
-      updateAgentStatus(agentId, 'error', {
+      updateSetupProgress(agentId, {
         stage: 'Error',
         progress: 0,
         message: error instanceof Error ? error.message : String(error),
@@ -592,12 +666,36 @@ export const useAppStore = create<AppStore>((set, get) => ({
     chatEventSource.onmessage = (event) => {
       try {
         const msg: ChatSSEMessage = JSON.parse(event.data);
-        console.log('[Store] Chat SSE message:', msg.type, msg.id);
+        console.log('[Store] Chat SSE message:', msg.type, msg.id, 'agent_id:', msg.agent_id);
+        
+        // Filter messages by agent_id - only process messages for current agent
+        const msgAgentId = msg.agent_id;
+        const currentAgent = get().currentAgentId;
+        if (msgAgentId && currentAgent && msgAgentId !== currentAgent) {
+          console.log('[Store] Ignoring message for different agent:', msgAgentId, 'current:', currentAgent);
+          return;
+        }
         
         switch (msg.type) {
           case 'USER_MESSAGE':
             // User message echoed back (skip if we already added it locally)
             // The message from server has the authoritative ID
+            break;
+            
+          case 'SYSTEM_MESSAGE':
+            // System-generated message (bootstrap, scheduled tasks, etc.)
+            // Display as a special "system" message - using assistant role with system indicator
+            addMessage({
+              id: msg.id,
+              role: 'assistant',
+              content: `🔧 **System:** ${msg.message || msg.content || ''}`,
+              timestamp: new Date(msg.timestamp),
+              events: [{
+                type: 'status',
+                timestamp: msg.timestamp,
+                data: { type: 'system', source: (msg as ChatSSEMessage & { source?: string }).source }
+              }],
+            });
             break;
             
           case 'AGENT_REPLY':

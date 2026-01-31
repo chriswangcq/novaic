@@ -76,21 +76,7 @@ export interface VmConfig {
   agent_index: number;   // Agent索引，用于端口分配
 }
 
-// Agent setup status - for tracking setup progress
-export type AgentSetupStatus = 
-  | 'pending'      // Created, waiting to start setup
-  | 'downloading'  // Downloading cloud image
-  | 'creating'     // Creating VM disk & cloud-init
-  | 'deploying'    // Deploying code to VM
-  | 'ready';       // Setup complete
-
-// Agent runtime status
-export type AgentRuntimeStatus = 'stopped' | 'starting' | 'running' | 'error';
-
-// Combined agent status
-export type AgentStatus = AgentSetupStatus | AgentRuntimeStatus;
-
-// Setup progress info
+// Setup progress info (for UI display during setup, not persisted)
 export interface SetupProgressInfo {
   stage: string;
   progress: number;
@@ -103,7 +89,7 @@ export interface AICAgent {
   name: string;
   created_at: string;
   vm: VmConfig;
-  status: AgentStatus;
+  setup_complete: boolean;
   setup_progress?: SetupProgressInfo;
 }
 
@@ -358,7 +344,7 @@ export const api = {
   /**
    * Update an agent
    */
-  async updateAgent(agentId: string, data: Partial<{ name: string; vm: Partial<VmConfig>; status: string }>): Promise<AICAgent> {
+  async updateAgent(agentId: string, data: Partial<{ name: string; vm: Partial<VmConfig>; setup_complete: boolean }>): Promise<AICAgent> {
     return invoke<AICAgent>('gateway_patch', { 
       path: `/api/agents/${agentId}`, 
       body: data 
@@ -476,6 +462,38 @@ export const api = {
    */
   async clearLogs(): Promise<{ success: boolean }> {
     return invoke('gateway_get', { path: '/api/logs/clear' });
+  },
+
+  // ==================== Cleanup API ====================
+
+  /**
+   * Clean up garbage files and cache
+   */
+  async cleanupGarbage(options?: {
+    deep?: boolean;
+    days?: number;
+    clean_vm_cache?: boolean;
+  }): Promise<{
+    status: string;
+    message: string;
+    details: {
+      logs: number;
+      metadata_files: number;
+      temp_files: number;
+      empty_dirs: number;
+      database_vacuumed: boolean;
+      orphaned_agents: number;
+      vm_images: number;
+    };
+  }> {
+    const params = new URLSearchParams();
+    if (options?.deep) params.set('deep', 'true');
+    if (options?.days) params.set('days', options.days.toString());
+    if (options?.clean_vm_cache) params.set('clean_vm_cache', 'true');
+    
+    const queryString = params.toString();
+    const path = queryString ? `/api/config/cleanup?${queryString}` : '/api/config/cleanup';
+    return invoke('gateway_post', { path, body: {} });
   },
 };
 
