@@ -27,7 +27,7 @@ use tauri::{
     menu::{Menu, MenuItem},
 };
 
-/// Gateway process manager
+/// Backend 组件: Gateway - API + DB，不含 MCP（MCP 由 MCP Gateway 独立进程提供）
 struct GatewayProcess {
     process: Option<Child>,
     port: u16,
@@ -46,24 +46,185 @@ impl GatewayProcess {
     }
 }
 
+/// Backend 组件: MCP Gateway - 仅 MCP（与 Gateway、Master 并列）
+struct McpGatewayProcess {
+    process: Option<Child>,
+    port: u16,
+}
+
+impl McpGatewayProcess {
+    fn new() -> Self {
+        Self {
+            process: None,
+            port: 19998,
+        }
+    }
+
+    fn base_url(&self) -> String {
+        format!("http://127.0.0.1:{}", self.port)
+    }
+}
+
+/// Backend 组件: Master - 编排（Monitor + Scheduler），与 Gateway、MCP Gateway 并列
+struct MasterProcess {
+    process: Option<Child>,
+    gateway_url: String,
+    mcp_gateway_url: String,
+}
+
+impl MasterProcess {
+    fn new(gateway_url: &str, mcp_gateway_url: Option<&str>) -> Self {
+        Self {
+            process: None,
+            gateway_url: gateway_url.to_string(),
+            mcp_gateway_url: mcp_gateway_url.unwrap_or(gateway_url).to_string(),
+        }
+    }
+
+    /// Start Master using unified novaic-backend binary
+    /// v2.11: Uses `novaic-backend master` command
+    fn start(&mut self, master_path: &PathBuf, is_binary: bool, gateway_dir: Option<&PathBuf>) -> Result<(), String> {
+        if self.process.is_some() {
+            println!("[Master] Already running");
+            return Ok(());
+        }
+
+        println!("[Master] Starting Master from {:?}", master_path);
+        println!("[Master] Gateway URL: {}", self.gateway_url);
+        println!("[Master] Mode: {}", if is_binary { "binary" } else { "python" });
+
+        let child = if is_binary {
+            // Production mode: run unified novaic-backend binary
+            // v2.11: Uses `novaic-backend master --gateway-url URL`
+            if !master_path.exists() {
+                return Err(format!("Backend binary not found at {:?}", master_path));
+            }
+            
+            Command::new(master_path)
+                .arg("master")  // Subcommand
+                .arg("--gateway-url")
+                .arg(&self.gateway_url)
+                .arg("--mcp-gateway-url")
+                .arg(&self.mcp_gateway_url)
+                .env("NO_PROXY", "localhost,127.0.0.1,::1")
+                .env("no_proxy", "localhost,127.0.0.1,::1")
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn()
+                .map_err(|e| format!("Failed to start Master binary: {}", e))?
+        } else {
+            // Development mode: run Python
+            let gateway_dir = gateway_dir.ok_or("Gateway dir required for dev mode")?;
+            let venv_python = gateway_dir.join("venv/bin/python");
+            let python = if venv_python.exists() {
+                venv_python.to_string_lossy().to_string()
+            } else if cfg!(target_os = "windows") {
+                "python".to_string()
+            } else {
+                "python3".to_string()
+            };
+
+            println!("[Master] Using Python: {}", python);
+
+            Command::new(&python)
+                .arg("master_main.py")
+                .arg("--gateway-url")
+                .arg(&self.gateway_url)
+                .arg("--mcp-gateway-url")
+                .arg(&self.mcp_gateway_url)
+                .current_dir(gateway_dir)
+                .env("NO_PROXY", "localhost,127.0.0.1,::1")
+                .env("no_proxy", "localhost,127.0.0.1,::1")
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
+                .spawn()
+                .map_err(|e| format!("Failed to start Master: {}", e))?
+        };
+
+        self.process = Some(child);
+        println!("[Master] Started");
+        Ok(())
+    }
+
+    fn stop(&mut self) {
+        if let Some(mut process) = self.process.take() {
+            let pid = process.id();
+            println!("[Master] Stopping process (PID: {})...", pid);
+            
+            // Send SIGTERM for graceful shutdown
+            #[cfg(unix)]
+            unsafe {
+                libc::kill(pid as i32, libc::SIGTERM);
+            }
+            
+            // Wait briefly for graceful shutdown
+            std::thread::sleep(std::time::Duration::from_millis(500));
+            
+            // Check if process exited
+            match process.try_wait() {
+                Ok(Some(status)) => {
+                    println!("[Master] Stopped gracefully with status: {:?}", status);
+                    return;
+                }
+                Ok(None) => {
+                    // Still running, force kill
+                    println!("[Master] Process still running, sending SIGKILL...");
+                    let _ = process.kill();
+                    let _ = process.wait();
+                    println!("[Master] Force killed");
+                }
+                Err(e) => {
+                    println!("[Master] Error checking process status: {}", e);
+                    let _ = process.kill();
+                }
+            }
+        }
+    }
+
+    fn is_running(&mut self) -> bool {
+        if let Some(ref mut process) = self.process {
+            match process.try_wait() {
+                Ok(Some(_)) => {
+                    self.process = None;
+                    false
+                }
+                Ok(None) => true,
+                Err(_) => false,
+            }
+        } else {
+            false
+        }
+    }
+}
+
+impl Drop for MasterProcess {
+    fn drop(&mut self) {
+        self.stop();
+    }
+}
+
 /// Worker process manager
 /// Workers are separate processes that connect to Gateway via SSE
-/// and execute tasks (think, tool_call, reply)
+/// and execute tasks (think, tool_call, reply); MCP calls go to MCP Gateway.
 struct WorkerProcess {
     process: Option<Child>,
     worker_id: String,
     gateway_url: String,
+    mcp_gateway_url: String,
 }
 
 impl WorkerProcess {
-    fn new(worker_id: &str, gateway_url: &str) -> Self {
+    fn new(worker_id: &str, gateway_url: &str, mcp_gateway_url: Option<&str>) -> Self {
         Self {
             process: None,
             worker_id: worker_id.to_string(),
             gateway_url: gateway_url.to_string(),
+            mcp_gateway_url: mcp_gateway_url.unwrap_or(gateway_url).to_string(),
         }
     }
 
+    /// Start Worker using unified novaic-backend binary
+    /// v2.11: Uses `novaic-backend worker` command
     fn start(&mut self, worker_path: &PathBuf, is_binary: bool, gateway_dir: Option<&PathBuf>) -> Result<(), String> {
         if self.process.is_some() {
             println!("[Worker:{}] Already running", self.worker_id);
@@ -75,14 +236,18 @@ impl WorkerProcess {
         println!("[Worker:{}] Mode: {}", self.worker_id, if is_binary { "binary" } else { "python" });
 
         let child = if is_binary {
-            // Production mode: run bundled binary
+            // Production mode: run unified novaic-backend binary
+            // v2.11: Uses `novaic-backend worker --gateway URL --worker-id ID`
             if !worker_path.exists() {
-                return Err(format!("Worker binary not found at {:?}", worker_path));
+                return Err(format!("Backend binary not found at {:?}", worker_path));
             }
             
             Command::new(worker_path)
+                .arg("worker")  // Subcommand
                 .arg("--gateway")
                 .arg(&self.gateway_url)
+                .arg("--mcp-gateway-url")
+                .arg(&self.mcp_gateway_url)
                 .arg("--worker-id")
                 .arg(&self.worker_id)
                 .arg("--max-concurrent")
@@ -112,6 +277,8 @@ impl WorkerProcess {
                 .arg("worker.worker")
                 .arg("--gateway")
                 .arg(&self.gateway_url)
+                .arg("--mcp-gateway-url")
+                .arg(&self.mcp_gateway_url)
                 .arg("--worker-id")
                 .arg(&self.worker_id)
                 .arg("--max-concurrent")
@@ -189,6 +356,8 @@ impl Drop for WorkerProcess {
 
 impl GatewayProcess {
 
+    /// Start Gateway using unified novaic-backend binary
+    /// v2.11: Uses `novaic-backend gateway` command
     fn start(&mut self, gateway_path: &PathBuf, is_binary: bool, data_dir: &PathBuf, resource_dir: Option<&PathBuf>) -> Result<(), String> {
         if self.process.is_some() {
             println!("[Gateway] Already running");
@@ -205,16 +374,20 @@ impl GatewayProcess {
         let resource_dir_str = resource_dir.map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
 
         let child = if is_binary {
-            // Production mode: run bundled binary
+            // Production mode: run unified novaic-backend binary
+            // v2.11: Uses `novaic-backend gateway --port PORT --data-dir PATH`
             if !gateway_path.exists() {
-                return Err(format!("Gateway binary not found at {:?}", gateway_path));
+                return Err(format!("Backend binary not found at {:?}", gateway_path));
             }
             
             Command::new(gateway_path)
-                .env("NOVAIC_PORT", self.port.to_string())
-                .env("NOVAIC_HOST", "127.0.0.1")
-                .env("NOVAIC_DATA_DIR", &data_dir_str)
+                .arg("gateway")  // Subcommand
+                .arg("--port")
+                .arg(self.port.to_string())
+                .arg("--data-dir")
+                .arg(&data_dir_str)
                 .env("NOVAIC_RESOURCE_DIR", &resource_dir_str)
+                .env("NOVAIC_MCP_GATEWAY_URL", "http://127.0.0.1:19998")
                 .env("NO_PROXY", "localhost,127.0.0.1,::1")
                 .env("no_proxy", "localhost,127.0.0.1,::1")
                 // Use null to discard output - prevents pipe buffer from filling up
@@ -248,6 +421,7 @@ impl GatewayProcess {
                 .env("NOVAIC_HOST", "127.0.0.1")
                 .env("NOVAIC_DATA_DIR", &data_dir_str)
                 .env("NOVAIC_RESOURCE_DIR", &resource_dir_str)
+                .env("NOVAIC_MCP_GATEWAY_URL", "http://127.0.0.1:19998")
                 .env("NO_PROXY", "localhost,127.0.0.1,::1")
                 .env("no_proxy", "localhost,127.0.0.1,::1")
                 // Dev mode: inherit console so we can see logs directly
@@ -350,33 +524,202 @@ impl Drop for GatewayProcess {
     }
 }
 
+impl McpGatewayProcess {
+    /// Start MCP Gateway using unified novaic-backend binary
+    fn start(&mut self, backend_path: &PathBuf, is_binary: bool, data_dir: &PathBuf, resource_dir: Option<&PathBuf>) -> Result<(), String> {
+        if self.process.is_some() {
+            println!("[MCP Gateway] Already running");
+            return Ok(());
+        }
+
+        let data_dir_str = data_dir.to_string_lossy().to_string();
+        let resource_dir_str = resource_dir.map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
+
+        let child = if is_binary {
+            if !backend_path.exists() {
+                return Err(format!("Backend binary not found at {:?}", backend_path));
+            }
+            Command::new(backend_path)
+                .arg("mcp-gateway")
+                .arg("--port")
+                .arg(self.port.to_string())
+                .arg("--data-dir")
+                .arg(&data_dir_str)
+                .env("NOVAIC_RESOURCE_DIR", &resource_dir_str)
+                .env("NOVAIC_GATEWAY_URL", format!("http://127.0.0.1:19999"))
+                .env("NO_PROXY", "localhost,127.0.0.1,::1")
+                .env("no_proxy", "localhost,127.0.0.1,::1")
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn()
+                .map_err(|e| format!("Failed to start MCP Gateway binary: {}", e))?
+        } else {
+            // Dev mode: backend_path is the novaic-gateway directory (has main.py, novaic_main.py)
+            let gateway_dir = backend_path;
+            let venv_python = gateway_dir.join("venv/bin/python");
+            let python = if venv_python.exists() {
+                venv_python.to_string_lossy().to_string()
+            } else if cfg!(target_os = "windows") {
+                "python".to_string()
+            } else {
+                "python3".to_string()
+            };
+            // Run from gateway dir so python -m novaic_main works (novaic_main.py in novaic-gateway)
+            Command::new(&python)
+                .arg("-m")
+                .arg("novaic_main")
+                .arg("mcp-gateway")
+                .arg("--port")
+                .arg(self.port.to_string())
+                .arg("--data-dir")
+                .arg(&data_dir_str)
+                .current_dir(&gateway_dir)
+                .env("NOVAIC_MCP_PORT", self.port.to_string())
+                .env("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
+                .env("NOVAIC_DATA_DIR", &data_dir_str)
+                .env("NO_PROXY", "localhost,127.0.0.1,::1")
+                .env("no_proxy", "localhost,127.0.0.1,::1")
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
+                .spawn()
+                .map_err(|e| format!("Failed to start MCP Gateway: {}", e))?
+        };
+
+        self.process = Some(child);
+        println!("[MCP Gateway] Started on port {}", self.port);
+        Ok(())
+    }
+
+    fn stop(&mut self) {
+        if let Some(mut process) = self.process.take() {
+            let pid = process.id();
+            println!("[MCP Gateway] Stopping process (PID: {})...", pid);
+            #[cfg(unix)]
+            unsafe { libc::kill(pid as i32, libc::SIGTERM); }
+            std::thread::sleep(std::time::Duration::from_millis(500));
+            match process.try_wait() {
+                Ok(Some(_)) => {}
+                Ok(None) => { let _ = process.kill(); let _ = process.wait(); }
+                Err(_) => { let _ = process.kill(); }
+            }
+            println!("[MCP Gateway] Stopped");
+        }
+    }
+
+    fn is_running(&mut self) -> bool {
+        if let Some(ref mut process) = self.process {
+            match process.try_wait() {
+                Ok(Some(_)) => { self.process = None; false }
+                Ok(None) => true,
+                Err(_) => false,
+            }
+        } else { false }
+    }
+}
+
+impl Drop for McpGatewayProcess {
+    fn drop(&mut self) {
+        self.stop();
+    }
+}
+
 type GatewayState = Arc<Mutex<GatewayProcess>>;
+type McpGatewayState = Arc<Mutex<McpGatewayProcess>>;
+type MasterState = Arc<Mutex<MasterProcess>>;
 type WorkerState = Arc<Mutex<WorkerProcess>>;
 
-/// Get Gateway path and whether it's a binary
-/// Returns (path, is_binary)
-fn get_gateway_info(app: &AppHandle) -> (PathBuf, bool) {
-    // Try to use bundled binary first (production mode)
-    // onedir mode: binary is at novaic-gateway/novaic-gateway (relative to resource_dir)
-    if let Ok(resource_dir) = app.path().resource_dir() {
-        // Check onedir structure first (novaic-gateway/novaic-gateway)
-        let onedir_path = resource_dir.join("novaic-gateway/novaic-gateway");
-        println!("[Gateway] Checking onedir binary at: {:?}", onedir_path);
-        if onedir_path.exists() {
-            println!("[Gateway] Found onedir binary, using production mode");
-            return (onedir_path, true);
+/// Kill any zombie novaic-backend processes before starting new ones
+/// This prevents issues from leftover processes after crashes or improper shutdowns
+fn kill_zombie_processes() {
+    println!("[Cleanup] Killing zombie backend processes...");
+    
+    #[cfg(unix)]
+    {
+        use std::process::Command;
+        
+        // Kill all novaic-backend processes (including dev mode python scripts)
+        let patterns = [
+            "novaic-backend", 
+            "novaic-gateway",
+            "mcp-gateway",      // MCP Gateway subprocess
+            "mcp_main.py",     // Dev mode MCP Gateway
+            "master_main.py",  // Dev mode master
+            "worker.worker",   // Dev mode worker (python -m worker.worker)
+        ];
+        
+        for pattern in patterns {
+            // Use pkill to kill processes matching the pattern
+            let result = Command::new("pkill")
+                .arg("-9")
+                .arg("-f")
+                .arg(pattern)
+                .output();
+            
+            match result {
+                Ok(output) => {
+                    if output.status.success() {
+                        println!("[Cleanup] Killed {} processes matching '{}'", 
+                            String::from_utf8_lossy(&output.stdout).trim(),
+                            pattern);
+                    }
+                    // pkill returns non-zero if no processes matched, which is fine
+                }
+                Err(e) => {
+                    println!("[Cleanup] Warning: Could not run pkill for '{}': {}", pattern, e);
+                }
+            }
         }
         
-        // Fallback: check single file (legacy onefile mode)
-        let binary_path = resource_dir.join("novaic-gateway");
-        println!("[Gateway] Checking single file binary at: {:?}", binary_path);
-        if binary_path.is_file() {
-            println!("[Gateway] Found single file binary, using production mode");
-            return (binary_path, true);
+        // Give processes time to terminate
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        println!("[Cleanup] Done cleaning up zombie processes");
+    }
+    
+    #[cfg(windows)]
+    {
+        use std::process::Command;
+        
+        // On Windows, use taskkill
+        let patterns = ["novaic-backend.exe", "novaic-gateway.exe"];
+        
+        for pattern in patterns {
+            let _ = Command::new("taskkill")
+                .args(["/F", "/IM", pattern])
+                .output();
         }
-        println!("[Gateway] Bundled binary not found");
+        
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        println!("[Cleanup] Done cleaning up zombie processes");
+    }
+}
+
+/// Get unified backend path and whether it's a binary
+/// Returns (path, is_binary, gateway_dir_for_dev)
+/// 
+/// v2.11: Uses unified novaic-backend binary for all modes (gateway, master, worker)
+fn get_backend_info(app: &AppHandle) -> (PathBuf, bool, Option<PathBuf>) {
+    // Try to use bundled binary first (production mode)
+    // onedir mode: binary is at novaic-backend/novaic-backend (relative to resource_dir)
+    if let Ok(resource_dir) = app.path().resource_dir() {
+        // Check unified backend structure (novaic-backend/novaic-backend)
+        let backend_path = resource_dir.join("novaic-backend/novaic-backend");
+        println!("[Backend] Checking unified binary at: {:?}", backend_path);
+        if backend_path.exists() {
+            println!("[Backend] Found unified binary, using production mode");
+            return (backend_path, true, None);
+        }
+        
+        // Legacy fallback: check old structure (novaic-gateway/novaic-gateway)
+        let legacy_path = resource_dir.join("novaic-gateway/novaic-gateway");
+        println!("[Backend] Checking legacy binary at: {:?}", legacy_path);
+        if legacy_path.exists() {
+            println!("[Backend] Found legacy binary, using production mode");
+            return (legacy_path, true, None);
+        }
+        
+        println!("[Backend] Bundled binary not found");
     } else {
-        println!("[Gateway] Could not get resource_dir");
+        println!("[Backend] Could not get resource_dir");
     }
     
     // Fallback to development mode - check relative to executable
@@ -392,58 +735,29 @@ fn get_gateway_info(app: &AppHandle) -> (PathBuf, bool) {
             
             if dev_path.exists() && dev_path.join("main.py").exists() {
                 let canonical = dev_path.canonicalize().unwrap_or(dev_path);
-                println!("[Gateway] Using development source: {:?}", canonical);
-                return (canonical, false);
-            }
-            println!("[Gateway] Dev path not found: {:?}", dev_path);
-        }
-    }
-    
-    println!("[Gateway] ERROR: No gateway found! Please ensure novaic-gateway is bundled with the app.");
-    (PathBuf::from("/tmp/novaic-gateway-not-found"), false)
-}
-
-/// Get Worker path and whether it's a binary
-/// Returns (path, is_binary, gateway_dir_for_dev)
-fn get_worker_info(app: &AppHandle) -> (PathBuf, bool, Option<PathBuf>) {
-    // Try to use bundled binary first (production mode)
-    if let Ok(resource_dir) = app.path().resource_dir() {
-        // Check onedir structure (novaic-worker/novaic-worker)
-        let onedir_path = resource_dir.join("novaic-worker/novaic-worker");
-        println!("[Worker] Checking onedir binary at: {:?}", onedir_path);
-        if onedir_path.exists() {
-            println!("[Worker] Found onedir binary, using production mode");
-            return (onedir_path, true, None);
-        }
-        
-        // Fallback: check single file
-        let binary_path = resource_dir.join("novaic-worker");
-        println!("[Worker] Checking single file binary at: {:?}", binary_path);
-        if binary_path.is_file() {
-            println!("[Worker] Found single file binary, using production mode");
-            return (binary_path, true, None);
-        }
-        println!("[Worker] Bundled binary not found");
-    }
-    
-    // Fallback to development mode - use gateway dir for Python module
-    if let Ok(exe_path) = std::env::current_exe() {
-        if let Some(exe_dir) = exe_path.parent() {
-            let dev_path = exe_dir
-                .join("../../../..")
-                .join("novaic-gateway");
-            
-            if dev_path.exists() && dev_path.join("worker/worker.py").exists() {
-                let canonical = dev_path.canonicalize().unwrap_or(dev_path.clone());
-                println!("[Worker] Using development mode, gateway dir: {:?}", canonical);
+                println!("[Backend] Using development source: {:?}", canonical);
                 return (canonical.clone(), false, Some(canonical));
             }
-            println!("[Worker] Dev path not found: {:?}", dev_path);
+            println!("[Backend] Dev path not found: {:?}", dev_path);
         }
     }
     
-    println!("[Worker] ERROR: No worker found!");
-    (PathBuf::from("/tmp/novaic-worker-not-found"), false, None)
+    println!("[Backend] ERROR: No backend found! Please ensure novaic-backend is bundled with the app.");
+    (PathBuf::from("/tmp/novaic-backend-not-found"), false, None)
+}
+
+// Legacy compatibility wrappers (kept for minimal code changes)
+fn get_gateway_info(app: &AppHandle) -> (PathBuf, bool) {
+    let (path, is_binary, _) = get_backend_info(app);
+    (path, is_binary)
+}
+
+fn get_worker_info(app: &AppHandle) -> (PathBuf, bool, Option<PathBuf>) {
+    get_backend_info(app)
+}
+
+fn get_master_info(app: &AppHandle) -> (PathBuf, bool, Option<PathBuf>) {
+    get_backend_info(app)
 }
 
 /// Tauri command: Start Gateway
@@ -595,35 +909,53 @@ fn main() {
             
             println!("[App] Data directory: {:?}", data_dir);
             
-            // Initialize Gateway Manager (VM management is now handled by Gateway)
+            // Backend 四组件（Gateway、MCP Gateway、Master、Worker）均由 Tauri 统一拉起
+            // Backend 组件: Gateway（API + DB）
             let gateway = Arc::new(Mutex::new(GatewayProcess::new()));
             app.manage(gateway.clone());
             
-            // Initialize Worker Manager
+            // Backend 组件: MCP Gateway（与 Gateway、Master 并列）
+            let mcp_gateway = Arc::new(Mutex::new(McpGatewayProcess::new()));
+            app.manage(mcp_gateway.clone());
+            
+            // Backend 组件: Master（编排），需要 Gateway URL 与 MCP Gateway URL
             let gateway_url = {
                 let gw = tauri::async_runtime::block_on(async { gateway.lock().await });
                 gw.base_url()
             };
-            let worker = Arc::new(Mutex::new(WorkerProcess::new("worker-1", &gateway_url)));
+            let mcp_gateway_url = "http://127.0.0.1:19998";
+            let master = Arc::new(Mutex::new(MasterProcess::new(&gateway_url, Some(mcp_gateway_url))));
+            app.manage(master.clone());
+            
+            // Backend 组件: Worker（与 Gateway、MCP Gateway、Master 并列，由 Tauri 统一拉起）
+            let worker = Arc::new(Mutex::new(WorkerProcess::new("worker-1", &gateway_url, Some(mcp_gateway_url))));
             app.manage(worker.clone());
             
-            // Auto-start Gateway and Worker
+            // Tauri 统一拉起 Backend 四组件：Gateway、MCP Gateway、Master、Worker
             let (gateway_path, is_binary) = get_gateway_info(app.handle());
+            let (master_path, master_is_binary, gateway_dir_for_master) = get_master_info(app.handle());
             let (worker_path, worker_is_binary, gateway_dir_for_worker) = get_worker_info(app.handle());
             let resource_dir = app.path().resource_dir().ok();
             
             println!("[Gateway] Gateway path: {:?}", gateway_path);
             println!("[Gateway] Resource dir: {:?}", resource_dir);
             println!("[Gateway] Is binary: {}", is_binary);
+            println!("[Master] Master path: {:?}", master_path);
+            println!("[Master] Is binary: {}", master_is_binary);
             println!("[Worker] Worker path: {:?}", worker_path);
             println!("[Worker] Is binary: {}", worker_is_binary);
             
             let gateway_for_start = gateway.clone();
+            let mcp_gateway_for_start = mcp_gateway.clone();
+            let master_for_start = master.clone();
             let worker_for_start = worker.clone();
             let data_dir_for_gateway = data_dir.clone();
             
             tauri::async_runtime::spawn(async move {
-                // Start Gateway first
+                // Kill any zombie backend processes before starting
+                kill_zombie_processes();
+                
+                // 1. Backend 组件: Gateway
                 {
                     let mut gw = gateway_for_start.lock().await;
                     match gw.start(&gateway_path, is_binary, &data_dir_for_gateway, resource_dir.as_ref()) {
@@ -635,8 +967,20 @@ fn main() {
                     }
                 }
                 
-                // Wait for Gateway to be ready (health check)
-                println!("[Worker] Waiting for Gateway to be ready...");
+                // 2. Backend 组件: MCP Gateway
+                {
+                    let mut mg = mcp_gateway_for_start.lock().await;
+                    match mg.start(&gateway_path, is_binary, &data_dir_for_gateway, resource_dir.as_ref()) {
+                        Ok(_) => println!("[MCP Gateway] Auto-started successfully"),
+                        Err(e) => {
+                            println!("[MCP Gateway] Failed to auto-start: {}", e);
+                            // Continue anyway - Master will use Backend for MCP if same URL
+                        }
+                    }
+                }
+                
+                // 3. 等 Gateway 就绪（health check）
+                println!("[Master] Waiting for Gateway to be ready...");
                 let client = reqwest::Client::new();
                 let health_url = format!("{}/api/health", gateway_url);
                 
@@ -645,18 +989,27 @@ fn main() {
                     
                     match client.get(&health_url).send().await {
                         Ok(resp) if resp.status().is_success() => {
-                            println!("[Worker] Gateway is ready after {}s", i + 1);
+                            println!("[Master] Gateway is ready after {}s", i + 1);
                             break;
                         }
                         _ => {
                             if i == 29 {
-                                println!("[Worker] Gateway not ready after 30s, starting Worker anyway");
+                                println!("[Master] Gateway not ready after 30s, starting Master anyway");
                             }
                         }
                     }
                 }
                 
-                // Start Worker (only in production mode, dev mode Gateway handles it via ProcessManager)
+                // 4. Backend 组件: Master
+                {
+                    let mut ms = master_for_start.lock().await;
+                    match ms.start(&master_path, master_is_binary, gateway_dir_for_master.as_ref()) {
+                        Ok(_) => println!("[Master] Auto-started successfully"),
+                        Err(e) => println!("[Master] Failed to auto-start: {}", e),
+                    }
+                }
+                
+                // 5. Backend 组件: Worker（由 Tauri 统一拉起）
                 if worker_is_binary {
                     let mut wk = worker_for_start.lock().await;
                     match wk.start(&worker_path, worker_is_binary, gateway_dir_for_worker.as_ref()) {
@@ -664,8 +1017,6 @@ fn main() {
                         Err(e) => println!("[Worker] Failed to auto-start: {}", e),
                     }
                 } else {
-                    // In dev mode, ProcessManager in Gateway will spawn workers
-                    // But we can also start one here for redundancy
                     let mut wk = worker_for_start.lock().await;
                     match wk.start(&worker_path, worker_is_binary, gateway_dir_for_worker.as_ref()) {
                         Ok(_) => println!("[Worker] Auto-started successfully (dev mode)"),
@@ -717,7 +1068,7 @@ fn main() {
                 tauri::RunEvent::Exit => {
                     println!("[App] Exiting, stopping services...");
                     
-                    // Stop Worker first (it depends on Gateway)
+                    // Stop Worker（依赖 Gateway）
                     if let Some(worker) = app_handle.try_state::<WorkerState>() {
                         let worker_clone = worker.inner().clone();
                         tauri::async_runtime::block_on(async {
@@ -726,7 +1077,25 @@ fn main() {
                         });
                     }
                     
-                    // Stop Gateway (which will also stop all VMs)
+                    // Stop Backend 组件: Master
+                    if let Some(master) = app_handle.try_state::<MasterState>() {
+                        let master_clone = master.inner().clone();
+                        tauri::async_runtime::block_on(async {
+                            let mut ms = master_clone.lock().await;
+                            ms.stop();
+                        });
+                    }
+                    
+                    // Stop Backend 组件: MCP Gateway
+                    if let Some(mcp_gateway) = app_handle.try_state::<McpGatewayState>() {
+                        let mcp_clone = mcp_gateway.inner().clone();
+                        tauri::async_runtime::block_on(async {
+                            let mut mg = mcp_clone.lock().await;
+                            mg.stop();
+                        });
+                    }
+                    
+                    // Stop Backend 组件: Gateway（并停所有 VM）
                     if let Some(gateway) = app_handle.try_state::<GatewayState>() {
                         let gateway_clone = gateway.inner().clone();
                         tauri::async_runtime::block_on(async {

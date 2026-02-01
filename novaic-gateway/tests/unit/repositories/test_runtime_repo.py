@@ -104,18 +104,18 @@ class TestRuntimeQueries:
     
     @pytest.mark.asyncio
     async def test_has_main_runtime(self, runtime_repo, db_with_agent):
-        """has_main_runtime returns correct status."""
+        """get_main_runtime returns None when no main runtime, else runtime."""
         db, agent_id = db_with_agent
         runtime_repo.db = db
         
         # Initially no main runtime
-        assert await runtime_repo.has_main_runtime(agent_id) is False
+        assert await runtime_repo.get_main_runtime(agent_id) is None
         
         # Create main runtime
         await runtime_repo.create_main_runtime(agent_id)
         
         # Now should have main runtime
-        assert await runtime_repo.has_main_runtime(agent_id) is True
+        assert await runtime_repo.get_main_runtime(agent_id) is not None
     
     @pytest.mark.asyncio
     async def test_get_all_active_runtimes(self, runtime_repo, db_with_agent):

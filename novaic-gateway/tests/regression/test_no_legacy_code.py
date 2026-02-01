@@ -237,7 +237,8 @@ class TestImportIntegrity:
             )
             from master import Master, MasterConfig
             from worker.think_handler import handle_think
-            from worker.executor_handler import handle_tool_call, handle_reply
+            from worker.executor_handler import handle_tool_call
+            # handle_reply 已移除 (v2.8)，reply 通过 chat_reply MCP 工具处理
             
             assert True
         except ImportError as e:
@@ -252,6 +253,7 @@ class TestImportIntegrity:
             'agent.subagent',
             'api.inbox_service',
             'db.repositories.inbox',
+            'process.manager',  # ProcessManager 已移除，Worker 由 Tauri 统一拉起
         ]
         
         for module in deleted_modules:

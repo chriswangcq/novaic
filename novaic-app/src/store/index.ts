@@ -203,7 +203,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
             content: msg.summary || '',
             timestamp: new Date(msg.timestamp),
             isTruncated: msg.is_truncated,  // 保存截断状态
-            status: msg.type === 'USER_MESSAGE' ? 'read' as MessageStatus : undefined,
+            // Use backend read status: read=true -> 'read', read=false -> 'delivered'
+            status: msg.type === 'USER_MESSAGE' 
+              ? (msg.read ? 'read' : 'delivered') as MessageStatus 
+              : undefined,
           }));
           set({ messages });
           console.log(`[Store] Loaded ${messages.length} messages from history`);
@@ -506,7 +509,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
             content: msg.summary || '',
             timestamp: new Date(msg.timestamp),
             isTruncated: msg.is_truncated,
-            status: msg.type === 'USER_MESSAGE' ? 'read' as MessageStatus : undefined,
+            // Use backend read status: read=true -> 'read', read=false -> 'delivered'
+            status: msg.type === 'USER_MESSAGE' 
+              ? (msg.read ? 'read' : 'delivered') as MessageStatus 
+              : undefined,
           }));
           set({ messages });
           console.log(`[Store] Loaded ${messages.length} messages for agent ${agentId}`);

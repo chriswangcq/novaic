@@ -402,6 +402,7 @@ export const api = {
       timestamp: string;
       summary: string;
       is_truncated: boolean;
+      read: boolean;
     }>;
     has_more: boolean;
   }> {
