@@ -19,7 +19,8 @@ export type AgentEventType =
   | 'status' 
   | 'warning'
   | 'final' 
-  | 'error';
+  | 'error'
+  | 'image';  // 图片显示
 
 export interface AgentEvent {
   type: AgentEventType;

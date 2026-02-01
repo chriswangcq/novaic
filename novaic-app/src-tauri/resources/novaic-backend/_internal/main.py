@@ -1379,11 +1379,11 @@ async def get_inbox_summary():
         return {"success": False, "error": "No agent selected", "pending_count": 0, "messages": []}
     
     try:
-        # Get pending messages (unclaimed, unprocessed)
+        # Get pending messages (unclaimed, unread)
         db = get_database()
         rows = await db.fetchall(
             """SELECT id, type, content, timestamp FROM chat_messages 
-               WHERE agent_id = ? AND claimed_by IS NULL AND processed = 0
+               WHERE agent_id = ? AND claimed_by IS NULL AND read = 0
                ORDER BY timestamp DESC LIMIT 20""",
             (agent_id,)
         )
@@ -1417,7 +1417,7 @@ async def send_chat_message(data: dict):
     Send a user message.
     
     v11 architecture:
-    1. Store message to chat_messages (read=0, processed=0)
+    1. Store message to chat_messages (read=0)
     2. Broadcast to UI SSE and Worker SSE
     3. Worker will claim and process via /api/claim/message
     
@@ -1443,29 +1443,40 @@ async def send_chat_message(data: dict):
         metadata={"model": model, "api_key_id": api_key_id},
     )
     
-    # 2. Broadcast to SSE (for UI display)
+    # 2. Broadcast to SSE directly (skip broadcast_chat_message to avoid double DB write)
     user_msg = {
         "id": msg["id"],
         "type": "USER_MESSAGE",
         "content": content,
         "timestamp": msg["timestamp"],
         "status": "delivered",
+        "agent_id": agent_id,
     }
-    await broadcast_chat_message(user_msg, agent_id=agent_id)
+    for queue in _chat_subscribers.values():
+        try:
+            queue.put_nowait(user_msg)
+        except asyncio.QueueFull:
+            pass
     
-    # 3. Auto-respond to any pending questions
-    chat_service = get_chat_service()
-    pending_questions = await chat_service.repo.get_all_pending_questions(agent_id)
-    if pending_questions:
-        for q in pending_questions:
-            request_id = q.get("request_id")
-            await chat_service.repo.add_question_response(
-                agent_id=agent_id,
-                request_id=request_id,
-                response=content,
-                selected_option=None,
-            )
-            print(f"[Chat] Auto-responded to pending question {request_id}")
+    # 3. Auto-respond to any pending questions (best-effort, don't fail the send)
+    try:
+        chat_service = get_chat_service()
+        pending_questions = await chat_service.repo.get_all_pending_questions(agent_id)
+        if pending_questions:
+            for q in pending_questions:
+                request_id = q.get("request_id")
+                try:
+                    await chat_service.repo.add_question_response(
+                        agent_id=agent_id,
+                        request_id=request_id,
+                        response=content,
+                        selected_option=None,
+                    )
+                    print(f"[Chat] Auto-responded to pending question {request_id}")
+                except Exception as e:
+                    print(f"[Chat] Failed to respond to question {request_id}: {e}")
+    except Exception as e:
+        print(f"[Chat] Error handling pending questions: {e}")
     
     # v12: No broadcast_new_message needed
     # Monitor polls for unread messages and creates Runtimes

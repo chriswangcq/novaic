@@ -54,8 +54,9 @@ class GatewayClient:
         resp.raise_for_status()
         return resp.json().get("runtimes", [])
     
-    async def get_runtime(self, subagent_id: str) -> Optional[Dict[str, Any]]:
-        resp = await self.client.get(f"{self.gateway_url}/internal/runtimes/{subagent_id}")
+    async def get_runtime(self, runtime_id: str) -> Optional[Dict[str, Any]]:
+        """Get runtime by ID (v14: uses runtime_id)."""
+        resp = await self.client.get(f"{self.gateway_url}/internal/runtimes/{runtime_id}")
         if resp.status_code == 404:
             return None
         resp.raise_for_status()
@@ -86,29 +87,29 @@ class GatewayClient:
         resp.raise_for_status()
         return resp.json()
     
-    async def update_runtime(self, subagent_id: str, **kwargs):
-        """Update runtime fields (phase, pending_actions, context, mcp_url, status, error)."""
+    async def update_runtime(self, runtime_id: str, **kwargs):
+        """Update runtime fields (v14: uses runtime_id)."""
         resp = await self.client.patch(
-            f"{self.gateway_url}/internal/runtimes/{subagent_id}",
+            f"{self.gateway_url}/internal/runtimes/{runtime_id}",
             json=kwargs
         )
         resp.raise_for_status()
     
-    async def wake_runtime(self, subagent_id: str) -> bool:
-        """Wake a sleeping runtime (atomic CAS).
+    async def wake_runtime(self, runtime_id: str) -> bool:
+        """Wake a sleeping runtime (deprecated in v14, use SubAgent wake).
         
         Returns:
             True if woken successfully, False if already active or not found.
         """
-        resp = await self.client.post(f"{self.gateway_url}/internal/runtimes/{subagent_id}/wake")
+        resp = await self.client.post(f"{self.gateway_url}/internal/runtimes/{runtime_id}/wake")
         resp.raise_for_status()
         return resp.json().get("success", True)
     
-    async def advance_round(self, subagent_id: str, expected_round_num: int = None) -> Optional[str]:
+    async def advance_round(self, runtime_id: str, expected_round_num: int = None) -> Optional[str]:
         """Advance runtime to next round (with optional CAS).
         
         Args:
-            subagent_id: Runtime ID
+            runtime_id: Runtime ID (v14)
             expected_round_num: If provided, only advance if current round matches (CAS)
             
         Returns:
@@ -119,14 +120,14 @@ class GatewayClient:
             data["expected_round_num"] = expected_round_num
         
         resp = await self.client.post(
-            f"{self.gateway_url}/internal/runtimes/{subagent_id}/advance",
+            f"{self.gateway_url}/internal/runtimes/{runtime_id}/advance",
             json=data if data else None
         )
         resp.raise_for_status()
         result = resp.json()
         return result.get("round_id") if result.get("success", True) else None
     
-    async def try_claim_phase(self, subagent_id: str, expected_phase: str, new_phase: str) -> bool:
+    async def try_claim_phase(self, runtime_id: str, expected_phase: str, new_phase: str) -> bool:
         """Atomically claim a phase transition (CAS).
         
         Used to prevent race conditions where multiple Masters try to
@@ -136,14 +137,15 @@ class GatewayClient:
             True if claimed, False if CAS failed (phase didn't match).
         """
         resp = await self.client.post(
-            f"{self.gateway_url}/internal/runtimes/{subagent_id}/claim-phase",
+            f"{self.gateway_url}/internal/runtimes/{runtime_id}/claim-phase",
             json={"expected_phase": expected_phase, "new_phase": new_phase}
         )
         resp.raise_for_status()
         return resp.json().get("success", False)
     
-    async def delete_runtime(self, subagent_id: str):
-        resp = await self.client.delete(f"{self.gateway_url}/internal/runtimes/{subagent_id}")
+    async def delete_runtime(self, runtime_id: str):
+        """Delete a runtime (v14: uses runtime_id)."""
+        resp = await self.client.delete(f"{self.gateway_url}/internal/runtimes/{runtime_id}")
         resp.raise_for_status()
     
     async def get_main_runtime(self, agent_id: str) -> Optional[Dict[str, Any]]:
@@ -202,6 +204,63 @@ class GatewayClient:
                 json={"message_ids": message_ids}
             )
             resp.raise_for_status()
+    
+    async def get_unread_messages_grouped_by_agent(self) -> Dict[str, List[Dict[str, Any]]]:
+        """Get all unread messages grouped by agent_id (v14 for Monitor)."""
+        resp = await self.client.get(f"{self.gateway_url}/internal/messages/unread-grouped")
+        resp.raise_for_status()
+        return resp.json().get("messages_by_agent", {})
+    
+    async def has_unread_messages(self, agent_id: str) -> bool:
+        """Check if agent has unread messages."""
+        count = await self.get_unread_count(agent_id)
+        return count > 0
+    
+    # ==================== SubAgent Operations (v14) ====================
+    
+    async def get_main_subagent(self, agent_id: str) -> Optional[Dict[str, Any]]:
+        """Get or create the main SubAgent for an agent."""
+        resp = await self.client.get(f"{self.gateway_url}/internal/subagents/{agent_id}/main")
+        resp.raise_for_status()
+        return resp.json()
+    
+    async def get_subagent(self, agent_id: str, subagent_id: str) -> Optional[Dict[str, Any]]:
+        """Get a SubAgent by ID."""
+        resp = await self.client.get(f"{self.gateway_url}/internal/subagents/{agent_id}/{subagent_id}")
+        if resp.status_code == 404:
+            return None
+        resp.raise_for_status()
+        return resp.json()
+    
+    async def try_wake_subagent(self, agent_id: str, subagent_id: str) -> bool:
+        """Atomically wake a SubAgent (sleeping -> awake)."""
+        resp = await self.client.post(f"{self.gateway_url}/internal/subagents/{agent_id}/{subagent_id}/wake")
+        resp.raise_for_status()
+        return resp.json().get("success", False)
+    
+    async def set_subagent_sleeping(self, agent_id: str, subagent_id: str):
+        """Set SubAgent to sleeping status."""
+        resp = await self.client.post(f"{self.gateway_url}/internal/subagents/{agent_id}/{subagent_id}/sleeping")
+        resp.raise_for_status()
+    
+    async def set_subagent_summarizing(self, agent_id: str, subagent_id: str):
+        """Set SubAgent to summarizing status."""
+        resp = await self.client.post(f"{self.gateway_url}/internal/subagents/{agent_id}/{subagent_id}/summarizing")
+        resp.raise_for_status()
+    
+    async def update_subagent(self, agent_id: str, subagent_id: str, **kwargs):
+        """Update SubAgent fields."""
+        resp = await self.client.patch(
+            f"{self.gateway_url}/internal/subagents/{agent_id}/{subagent_id}",
+            json=kwargs
+        )
+        resp.raise_for_status()
+    
+    async def get_latest_runtimes(self, agent_id: str, subagent_id: str, limit: int = 30) -> List[Dict[str, Any]]:
+        """Get latest completed runtimes for context preparation."""
+        resp = await self.client.get(f"{self.gateway_url}/internal/runtimes/latest/{agent_id}/{subagent_id}?limit={limit}")
+        resp.raise_for_status()
+        return resp.json().get("runtimes", [])
     
     # ==================== Agent Operations ====================
     
@@ -315,10 +374,12 @@ class Master:
     Core scheduler that orchestrates the entire system.
     
     v2.10: Runs as separate service, calls Gateway via HTTP.
+    v14: SubAgent state refactor with Summarizer component.
     
     Components:
-    - Monitor: Watches inbox, creates new Runtimes
+    - Monitor: Watches inbox, wakes SubAgents, creates Runtimes
     - Scheduler: Drives Rounds for each Runtime
+    - Summarizer: Generates runtime summaries, manages sliding window
     """
     
     def __init__(
@@ -345,8 +406,10 @@ class Master:
         # Initialize components (lazy - they reference self)
         from .monitor import Monitor
         from .scheduler import Scheduler
+        from .summarizer import Summarizer
         self.monitor = Monitor(self)
         self.scheduler = Scheduler(self)
+        self.summarizer = Summarizer(self)  # v14: New component
         
         self._running = False
     
@@ -431,9 +494,10 @@ class Master:
                 agent_index = 0
             
             for runtime in runtime_list:
-                subagent_id = runtime["subagent_id"]
-                print(f"  - Recovering {subagent_id}: {runtime['phase']}")
-                await self._create_runtime_mcp_server(agent_id, subagent_id, agent_index)
+                # v14: Use runtime_id
+                runtime_id = runtime.get("runtime_id") or runtime.get("subagent_id")
+                print(f"  - Recovering {runtime_id}: {runtime['phase']}")
+                await self._create_runtime_mcp_server(agent_id, runtime_id, agent_index)
         
         print(f"[Master] Recovery complete: {len(runtimes)} runtimes restored")
     
@@ -441,20 +505,57 @@ class Master:
     # Runtime Management
     # ========================================
     
-    async def create_main_runtime(self, agent_id: str, agent_index: int = 0):
-        """Create a new Main Runtime for an agent."""
-        # Set agent to awake
+    async def create_runtime(
+        self, 
+        agent_id: str, 
+        subagent_id: str = "main",
+        agent_index: int = 0,
+        initial_context: Optional[List[Dict[str, Any]]] = None,
+    ):
+        """Create a new Runtime for a SubAgent (v14).
+        
+        Args:
+            agent_id: The VM Agent ID
+            subagent_id: The SubAgent ID (default: "main")
+            agent_index: Agent index for MCP server ports
+            initial_context: Optional initial context messages
+            
+        Returns:
+            The created Runtime dict
+        """
+        # Ensure SubAgent exists
+        await self.gateway.get_main_subagent(agent_id)
+        
+        # Set agent to awake (legacy)
         await self.set_agent_awake(agent_id)
         
-        # Create runtime record
-        runtime = await self.gateway.create_main_runtime(agent_id)
-        subagent_id = runtime["subagent_id"]
+        # Create runtime record via Gateway
+        resp = await self.gateway.client.post(
+            f"{self.gateway_url}/internal/runtimes",
+            json={
+                "agent_id": agent_id,
+                "subagent_id": subagent_id,
+                "initial_context": initial_context or [],
+            }
+        )
+        resp.raise_for_status()
+        runtime = resp.json()
+        
+        # v14: Use runtime_id for MCP server
+        runtime_id = runtime.get("runtime_id") or runtime.get("subagent_id")
         
         # Create MCP servers
-        await self._create_runtime_mcp_server(agent_id, subagent_id, agent_index)
+        await self._create_runtime_mcp_server(agent_id, runtime_id, agent_index)
         
-        print(f"[Master] Created Main Runtime {subagent_id} for agent {agent_id}")
+        print(f"[Master] Created Runtime {runtime_id} for SubAgent {subagent_id}")
         return runtime
+    
+    async def create_main_runtime(self, agent_id: str, agent_index: int = 0):
+        """Create a new Main Runtime for an agent (deprecated, use create_runtime)."""
+        # v14: Get actual main subagent_id (now has format main-{agent_id[:8]})
+        main_subagent = await self.gateway.get_main_subagent(agent_id)
+        subagent_id = main_subagent.get("subagent_id", f"main-{agent_id[:8]}")
+        return await self.create_runtime(agent_id, subagent_id, agent_index)
     
     async def create_sub_runtime(
         self, 
@@ -465,7 +566,7 @@ class Master:
         initial_context: Optional[List[Dict[str, Any]]] = None,
         agent_index: int = 0,
     ):
-        """Create a new SubAgent Runtime."""
+        """Create a new SubAgent Runtime (v14: creates sub SubAgent and its Runtime)."""
         context = initial_context or []
         
         # If sharing context, copy from parent
@@ -481,69 +582,179 @@ class Master:
                 "content": f"[SubAgent Task] {initial_task}",
             })
         
-        # Create runtime record
-        runtime = await self.gateway.create_sub_runtime(agent_id, parent_subagent_id, context)
-        subagent_id = runtime["subagent_id"]
+        # v14: Create a sub SubAgent, then create runtime for it
+        # For simplicity, we reuse create_runtime with a generated sub subagent_id
+        import uuid
+        sub_subagent_id = f"sub-{uuid.uuid4().hex[:12]}"
         
-        # Create MCP servers
-        await self._create_runtime_mcp_server(agent_id, subagent_id, agent_index)
+        # Create runtime for this sub subagent
+        runtime = await self.create_runtime(agent_id, sub_subagent_id, agent_index, context)
         
-        print(f"[Master] Created Sub Runtime {subagent_id} (parent: {parent_subagent_id})")
+        print(f"[Master] Created Sub Runtime {runtime.get('runtime_id')} (subagent: {sub_subagent_id})")
         return runtime
     
-    async def destroy_runtime(self, subagent_id: str):
+    async def destroy_runtime(self, runtime_id: str):
         """Destroy a Runtime and clean up its MCP Server."""
-        runtime = await self.gateway.get_runtime(subagent_id)
+        runtime = await self.gateway.get_runtime(runtime_id)
         if not runtime:
-            print(f"[Master] Runtime {subagent_id} not found for destruction")
+            print(f"[Master] Runtime {runtime_id} not found for destruction")
             return
         
-        # Remove MCP servers
-        await self._remove_runtime_mcp_server(runtime["agent_id"], subagent_id)
+        # Remove MCP servers (v14: use runtime_id)
+        await self._remove_runtime_mcp_server(runtime["agent_id"], runtime_id)
         
         # Delete runtime record
-        await self.gateway.delete_runtime(subagent_id)
+        await self.gateway.delete_runtime(runtime_id)
         
-        print(f"[Master] Destroyed Runtime {subagent_id}")
+        print(f"[Master] Destroyed Runtime {runtime_id}")
     
     # ========================================
     # MCP Server Management
     # ========================================
     
-    async def _create_runtime_mcp_server(self, agent_id: str, subagent_id: str, agent_index: int = 0):
-        """Create Agent shared layer, RuntimeMCP, and AggregateMCP via Gateway."""
+    async def _create_runtime_mcp_server(self, agent_id: str, runtime_id: str, agent_index: int = 0):
+        """Create Agent shared layer, RuntimeMCP, and AggregateMCP via Gateway.
+        
+        v14: Uses runtime_id instead of subagent_id for MCP server identification.
+        """
         try:
             # Step 1: Create Agent shared layer MCP (if not exists)
             if not await self.gateway.has_agent_shared_mcp(agent_id):
                 await self.gateway.create_agent_shared_mcp(agent_id, agent_index)
                 print(f"[Master] Created shared MCP servers for agent {agent_id}")
             
-            # Step 2: Create RuntimeMCP
-            await self.gateway.create_runtime_mcp(agent_id, subagent_id, agent_index)
-            print(f"[Master] Created RuntimeMCP for {subagent_id}")
+            # Step 2: Create RuntimeMCP (v14: use runtime_id)
+            await self.gateway.create_runtime_mcp(agent_id, runtime_id, agent_index)
+            print(f"[Master] Created RuntimeMCP for {runtime_id}")
             
-            # Step 3: Create AggregateMCP
-            mcp_url = await self.gateway.create_aggregate_mcp(agent_id, subagent_id, agent_index)
+            # Step 3: Create AggregateMCP (v14: use runtime_id)
+            mcp_url = await self.gateway.create_aggregate_mcp(agent_id, runtime_id, agent_index)
+            
+            # Step 4: Wait for tool discovery to complete (at least runtime tools)
+            # This ensures Worker gets all tools when it calls tools/list
+            await self._wait_for_tool_discovery(mcp_url, min_tools=10, timeout=5.0)
             
             # Store MCP URL in runtime record
-            await self.gateway.update_runtime(subagent_id, mcp_url=mcp_url)
+            await self.gateway.update_runtime(runtime_id, mcp_url=mcp_url)
             
-            print(f"[Master] Created Aggregate Gateway for {subagent_id} at {mcp_url}")
+            print(f"[Master] Created Aggregate Gateway for {runtime_id} at {mcp_url}")
         except Exception as e:
-            print(f"[Master] Error creating MCP servers for {subagent_id}: {e}")
+            print(f"[Master] Error creating MCP servers for {runtime_id}: {e}")
             import traceback
             traceback.print_exc()
     
-    async def _remove_runtime_mcp_server(self, agent_id: str, subagent_id: str):
+    async def _wait_for_tool_discovery(
+        self, 
+        mcp_url: str, 
+        min_tools: int = 10, 
+        timeout: float = 5.0
+    ) -> bool:
+        """Wait for MCP tool discovery to complete.
+        
+        Polls the MCP endpoint until it returns at least min_tools,
+        or timeout is reached.
+        
+        Args:
+            mcp_url: The MCP aggregate URL
+            min_tools: Minimum number of tools expected (default 10)
+            timeout: Maximum wait time in seconds
+            
+        Returns:
+            True if min_tools found, False if timed out
+        """
+        import aiohttp
+        
+        start_time = time.time()
+        poll_interval = 0.3
+        
+        while time.time() - start_time < timeout:
+            try:
+                async with aiohttp.ClientSession() as session:
+                    # Initialize MCP session
+                    async with session.post(
+                        f"{mcp_url}sse",
+                        json={
+                            "jsonrpc": "2.0",
+                            "method": "initialize",
+                            "params": {
+                                "protocolVersion": "2024-11-05",
+                                "capabilities": {},
+                                "clientInfo": {"name": "master-discovery", "version": "1.0"}
+                            },
+                            "id": 1
+                        },
+                        timeout=aiohttp.ClientTimeout(total=2),
+                    ) as resp:
+                        if resp.status != 200:
+                            await asyncio.sleep(poll_interval)
+                            continue
+                        
+                        session_id = resp.headers.get("mcp-session-id")
+                        if not session_id:
+                            await asyncio.sleep(poll_interval)
+                            continue
+                        
+                        # Drain the response
+                        await resp.read()
+                    
+                    # Request tools/list
+                    async with session.post(
+                        f"{mcp_url}sse",
+                        json={"jsonrpc": "2.0", "method": "tools/list", "id": 2},
+                        headers={"mcp-session-id": session_id},
+                        timeout=aiohttp.ClientTimeout(total=2),
+                    ) as resp:
+                        if resp.status != 200:
+                            await asyncio.sleep(poll_interval)
+                            continue
+                        
+                        # Parse SSE response
+                        content = await resp.text()
+                        for line in content.split('\n'):
+                            if line.startswith('data:'):
+                                import json
+                                data = json.loads(line[5:].strip())
+                                tools = data.get("result", {}).get("tools", [])
+                                if len(tools) >= min_tools:
+                                    print(f"[Master] Tool discovery complete: {len(tools)} tools")
+                                    return True
+                        
+            except Exception as e:
+                # Connection not ready yet, retry
+                pass
+            
+            await asyncio.sleep(poll_interval)
+        
+        print(f"[Master] Tool discovery timed out (waited {timeout}s)")
+        return False
+    
+    async def _remove_runtime_mcp_server(self, agent_id: str, runtime_id: str):
         """Remove RuntimeMCP and AggregateMCP via Gateway."""
         try:
-            await self.gateway.remove_aggregate_mcp(subagent_id)
-            print(f"[Master] Removed AggregateMCP for {subagent_id}")
+            await self.gateway.remove_aggregate_mcp(runtime_id)
+            print(f"[Master] Removed AggregateMCP for {runtime_id}")
             
-            await self.gateway.remove_runtime_mcp(subagent_id)
-            print(f"[Master] Removed RuntimeMCP for {subagent_id}")
+            await self.gateway.remove_runtime_mcp(runtime_id)
+            print(f"[Master] Removed RuntimeMCP for {runtime_id}")
         except Exception as e:
-            print(f"[Master] Error removing MCP servers for {subagent_id}: {e}")
+            print(f"[Master] Error removing MCP servers for {runtime_id}: {e}")
+    
+    # ========================================
+    # Summarizer Integration (v14)
+    # ========================================
+    
+    async def process_completed_runtime(
+        self, 
+        runtime_id: str, 
+        subagent_id: str, 
+        agent_id: str
+    ):
+        """Process a completed runtime through Summarizer.
+        
+        Called by Scheduler when a runtime completes.
+        Delegates to Summarizer for summary generation and SubAgent status management.
+        """
+        await self.summarizer.process_completed_runtime(runtime_id, subagent_id, agent_id)
     
     # ========================================
     # Wait for Runtime
@@ -551,33 +762,33 @@ class Master:
     
     async def wait_runtime_complete(
         self, 
-        subagent_id: str, 
+        runtime_id: str, 
         timeout_seconds: int = 1800,
         poll_interval: float = 0.5
     ) -> Dict[str, Any]:
         """Synchronously wait for a Runtime to complete."""
         start_time = time.time()
         
-        print(f"[Master] Waiting for runtime {subagent_id} to complete (timeout: {timeout_seconds}s)")
+        print(f"[Master] Waiting for runtime {runtime_id} to complete (timeout: {timeout_seconds}s)")
         
         while True:
             elapsed = time.time() - start_time
             
             if elapsed >= timeout_seconds:
-                print(f"[Master] Runtime {subagent_id} timed out after {elapsed:.1f}s")
+                print(f"[Master] Runtime {runtime_id} timed out after {elapsed:.1f}s")
                 await self.gateway.update_runtime(
-                    subagent_id, 
+                    runtime_id, 
                     status="failed", 
                     error=f"Timeout after {timeout_seconds}s"
                 )
-                await self.destroy_runtime(subagent_id)
+                await self.destroy_runtime(runtime_id)
                 return {
                     "success": False,
                     "error": f"SubAgent timed out after {timeout_seconds} seconds",
                     "duration_seconds": elapsed,
                 }
             
-            runtime = await self.gateway.get_runtime(subagent_id)
+            runtime = await self.gateway.get_runtime(runtime_id)
             
             if not runtime:
                 return {
@@ -588,8 +799,8 @@ class Master:
             
             if runtime["status"] == 'completed':
                 result = self._extract_final_result(runtime)
-                await self.destroy_runtime(subagent_id)
-                print(f"[Master] Runtime {subagent_id} completed in {elapsed:.1f}s")
+                await self.destroy_runtime(runtime_id)
+                print(f"[Master] Runtime {runtime_id} completed in {elapsed:.1f}s")
                 return {
                     "success": True,
                     "result": result,
@@ -598,8 +809,8 @@ class Master:
             
             if runtime["status"] == 'failed':
                 error = runtime.get("error") or "Unknown error"
-                await self.destroy_runtime(subagent_id)
-                print(f"[Master] Runtime {subagent_id} failed: {error}")
+                await self.destroy_runtime(runtime_id)
+                print(f"[Master] Runtime {runtime_id} failed: {error}")
                 return {
                     "success": False,
                     "error": error,

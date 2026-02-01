@@ -225,7 +225,11 @@ class ChatRepository:
         return row["count"] if row else 0
     
     def _row_to_message(self, row: Dict[str, Any]) -> Dict[str, Any]:
-        """Convert a database row to a message dict."""
+        """Convert a database row to a message dict.
+        
+        Returns both 'content' and 'message' fields for SSE compatibility.
+        Frontend uses: msg.message || msg.content
+        """
         metadata = {}
         if row.get("metadata"):
             try:
@@ -233,15 +237,27 @@ class ChatRepository:
             except json.JSONDecodeError:
                 pass
         
-        return {
+        content = row.get("content")
+        msg_type = row["type"]
+        
+        result = {
             "id": row["id"],
             "agent_id": row["agent_id"],
-            "type": row["type"],
-            "content": row.get("content"),
+            "type": msg_type,
+            "content": content,
             "read": bool(row.get("read", 0)),
             "metadata": metadata,
             "timestamp": row["timestamp"],
         }
+        
+        # Add 'message' field for AGENT_REPLY (frontend compatibility)
+        # Frontend expects: msg.message || msg.content
+        if msg_type == "AGENT_REPLY":
+            result["message"] = content
+        elif msg_type == "AGENT_ASK":
+            result["question"] = content
+        
+        return result
     
     # ==================== Backward Compatibility ====================
     # These methods maintain API compatibility with old code

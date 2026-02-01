@@ -193,6 +193,26 @@ export function AssistantMessage({ message }: AssistantMessageProps) {
                   );
                 }
                 
+                case 'image': {
+                  const data = (event.data || {}) as Record<string, unknown>;
+                  const imageUrl = String(data?.image_url || data?.image_path || '');
+                  const caption = String(data?.caption || '');
+                  if (!imageUrl) return null;
+                  return (
+                    <div key={`image-${index}`} className="space-y-1">
+                      <img 
+                        src={imageUrl} 
+                        alt={caption || 'Image'} 
+                        className="max-w-full rounded-lg border border-white/10"
+                        style={{ maxHeight: '400px', objectFit: 'contain' }}
+                      />
+                      {caption && (
+                        <p className="text-[11px] text-white/50">{caption}</p>
+                      )}
+                    </div>
+                  );
+                }
+                
                 default:
                   return null;
               }

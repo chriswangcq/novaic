@@ -198,9 +198,11 @@ async def handle_think(
                 
                 actions.append(action_dict)
             
-            # v2.8: 如果是 Main Agent 且有 final_answer，创建 chat_reply 工具调用
+            # v14: 如果是 Main SubAgent 且有 final_answer，创建 chat_reply 工具调用
             # SubAgent 的 final_answer 会作为结果返回给父 Agent
-            is_main_agent = subagent_id and subagent_id.startswith("main-")
+            # v14: 使用 subagent_type ('main' / 'sub') 来判断，不要傻逼地猜字符串
+            subagent_type = args.get("subagent_type", "main")  # default to main for backward compat
+            is_main_agent = subagent_type == "main"
             if thinking_result.final_answer and is_main_agent:
                 # 插入 chat_reply 到 done 之前
                 # v13: 生成 tool_call_id，因为 LLM 返回纯文本时没有 tool_calls

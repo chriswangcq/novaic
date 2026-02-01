@@ -72,8 +72,11 @@ a = Analysis(
         ('master', 'master'),
         # ===== Worker modules =====
         ('worker', 'worker'),
+        # ===== Utils =====
+        ('utils', 'utils'),
         # ===== Entry points (for imports) =====
         ('main.py', '.'),
+        ('mcp_main.py', '.'),
         ('master_main.py', '.'),
         ('worker_main.py', '.'),
     ],

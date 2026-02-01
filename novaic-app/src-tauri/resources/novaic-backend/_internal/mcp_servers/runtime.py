@@ -249,18 +249,20 @@ Agent 内部可以有多个 Runtime（执行环境）：
             """
             try:
                 # Check if this is a SubAgent (not allowed to rest)
-                subagent_id = server._subagent_id
+                # v14: Use subagent_id to check type, runtime_id for API
+                subagent_id = server._subagent_id  # This is actually the runtime_id in v14
                 if subagent_id and subagent_id.startswith("sub-"):
                     return {
                         "success": False,
                         "error": "SubAgents cannot rest. Complete your task and return the result instead."
                     }
                 
-                # v3.0: Directly update runtime status to 'resting' via internal API
-                # This tells the Scheduler to complete the runtime instead of starting next round
+                # v14: Use runtime_id for the API call
+                # The internal API now handles updating both Runtime and SubAgent state
+                runtime_id = subagent_id  # In v14, this is the runtime_id (rt-xxx)
                 async with httpx.AsyncClient(timeout=30.0, trust_env=False) as client:
                     response = await client.post(
-                        f"{GATEWAY_URL}/internal/runtimes/{subagent_id}/rest",
+                        f"{GATEWAY_URL}/internal/runtimes/{runtime_id}/rest",
                         json={
                             "reason": reason,
                             "wake_triggers": wake_triggers or [{"type": "user_response"}],

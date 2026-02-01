@@ -1,27 +1,32 @@
 """
-Monitor Component
+Monitor Component (v14)
 
 Background task that monitors inbox for unread messages.
-When a SLEEP agent has unread messages and no Main Runtime,
-creates a new Main Runtime to start processing.
+When a sleeping SubAgent has unread messages that match wake triggers,
+wakes the SubAgent and creates a new Runtime.
 
-v2.10: Uses Gateway HTTP API instead of direct DB access.
+v14: SubAgent state refactor
+- Polls from messages (not all agents)
+- Uses SubAgent.status atomic wake
+- Checks wake_triggers for message matching
+- Shorter polling interval (0.2s)
 """
 
+import re
 import asyncio
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Dict, Any
 
 if TYPE_CHECKING:
     from .master import Master
 
 
 class Monitor:
-    """Monitors inbox and triggers Runtime creation."""
+    """Monitors inbox and triggers SubAgent wake + Runtime creation."""
     
     def __init__(self, master: 'Master'):
         self.master = master
         self.running = False
-        self.check_interval = 1.0  # seconds
+        self.check_interval = 0.2  # v14: Shorter interval for faster response
         self._task = None
     
     async def start(self):
@@ -31,7 +36,7 @@ class Monitor:
         
         self.running = True
         self._task = asyncio.create_task(self._run())
-        print("[Monitor] Started")
+        print("[Monitor] Started (v14)")
     
     async def stop(self):
         """Stop the monitor loop."""
@@ -48,90 +53,111 @@ class Monitor:
         """Main monitor loop."""
         while self.running:
             try:
-                await self._check_agents()
+                await self._check_unread_messages()
             except Exception as e:
                 print(f"[Monitor] Error in check loop: {e}")
+                import traceback
+                traceback.print_exc()
             
             await asyncio.sleep(self.check_interval)
     
-    async def _check_agents(self):
-        """Check all agents for unread messages."""
+    async def _check_unread_messages(self):
+        """Check unread messages and wake SubAgents as needed."""
         gateway = self.master.gateway
         
-        # Get all setup-complete agents
-        agent_ids = await gateway.get_setup_complete_agents()
+        # Get unread messages grouped by agent
+        unread_by_agent = await gateway.get_unread_messages_grouped_by_agent()
         
-        for agent_id in agent_ids:
-            await self._check_agent(agent_id)
+        for agent_id, messages in unread_by_agent.items():
+            try:
+                await self._check_agent(agent_id, messages)
+            except Exception as e:
+                print(f"[Monitor] Error checking agent {agent_id}: {e}")
     
-    async def _check_agent(self, agent_id: str):
-        """Check a single agent for unread messages.
+    async def _check_agent(self, agent_id: str, messages: List[Dict[str, Any]]):
+        """Check a single agent for potential wake.
         
-        Logic:
-        - If no unread messages: do nothing
-        - If Main Runtime is active: do nothing (scheduler handles it)
-        - If Main Runtime is failed: delete and create new one
-        - If Main Runtime is sleeping/completed: wake it up + create MCP
-        - If no Main Runtime exists: create one
+        v14 Logic:
+        1. Get main SubAgent
+        2. If summarizing: skip (not ready for new work)
+        3. If awake: skip (already has active runtime)
+        4. If sleeping: check wake_triggers
+        5. If triggers match: atomic wake -> create runtime
         """
         gateway = self.master.gateway
         
-        # Check if agent has unread messages
-        unread_count = await gateway.get_unread_count(agent_id)
+        # Get or create main SubAgent
+        subagent = await gateway.get_main_subagent(agent_id)
+        if not subagent:
+            print(f"[Monitor] Could not get/create main SubAgent for {agent_id}")
+            return
         
-        if unread_count == 0:
-            return  # No unread messages
+        # Check SubAgent status
+        status = subagent.get("status", "sleeping")
         
-        # Get Main Runtime (any status)
-        main_runtime = await gateway.get_main_runtime(agent_id)
+        if status == "summarizing":
+            # SubAgent is processing summary, cannot wake yet
+            return
         
-        if main_runtime:
-            phase = main_runtime.get("phase")
-            subagent_id = main_runtime.get("subagent_id")
-            
-            # Check if Scheduler is actively processing this runtime
-            # Active phases: need_think, waiting_actions, waiting_actions_final
-            active_phases = ['need_think', 'waiting_actions', 'waiting_actions_final']
-            if phase in active_phases:
-                return  # Already running, scheduler will pick up messages
-            
-            if phase == 'failed':
-                # Failed Runtime - delete and create new one
-                print(f"[Monitor] Agent {agent_id} has failed Main Runtime {subagent_id}, deleting and recreating")
-                await self.master.destroy_runtime(subagent_id)
-                await self.master.create_main_runtime(agent_id)
-            else:
-                # Main Runtime exists but is sleeping/completed - wake it up (atomic CAS)
-                print(f"[Monitor] Agent {agent_id} has {unread_count} unread messages, waking Main Runtime {subagent_id}")
-                woken = await gateway.wake_runtime(subagent_id)
-                
-                if woken:
-                    # Successfully woken - recreate MCP servers
-                    await self._ensure_runtime_mcp(agent_id, subagent_id)
-                    await self.master.set_agent_awake(agent_id)
-                    print(f"[Monitor] Successfully woke Runtime {subagent_id}")
-                else:
-                    # Already active (another Monitor got there first) - skip
-                    print(f"[Monitor] Runtime {subagent_id} already active (CAS conflict), skipping")
+        if status == "awake":
+            # SubAgent already has active runtime
+            # The runtime will pick up new messages in next think round
+            return
+        
+        # status == "sleeping" - check if we should wake
+        wake_triggers = subagent.get("wake_triggers", [{"type": "user_response"}])
+        
+        if not self._should_wake(wake_triggers, messages):
+            return
+        
+        # Try to wake SubAgent (atomic CAS operation)
+        subagent_id = subagent.get("subagent_id", "main")
+        woken = await gateway.try_wake_subagent(agent_id, subagent_id)
+        
+        if woken:
+            print(f"[Monitor] Woke SubAgent {subagent_id} for agent {agent_id}")
+            # Create new runtime for this SubAgent
+            await self.master.create_runtime(agent_id, subagent_id)
         else:
-            # No Main Runtime exists - create one (first time)
-            print(f"[Monitor] Agent {agent_id} has {unread_count} unread messages, creating Main Runtime")
-            await self.master.create_main_runtime(agent_id)
+            # Another Monitor/process already woke it, skip
+            print(f"[Monitor] SubAgent {subagent_id} already woken (CAS conflict)")
     
-    async def _ensure_runtime_mcp(self, agent_id: str, subagent_id: str):
-        """Ensure MCP servers exist for a Runtime (create if missing)."""
-        gateway = self.master.gateway
+    def _should_wake(
+        self, 
+        triggers: List[Dict[str, Any]], 
+        messages: List[Dict[str, Any]]
+    ) -> bool:
+        """Check if messages match any wake trigger.
         
-        # Check if Aggregate MCP already exists
-        if await gateway.has_aggregate_mcp(subagent_id):
-            return  # Already exists
+        Trigger types:
+        - user_response: Any user message wakes
+        - keyword: Message contains pattern
+        - cron: Time-based (handled elsewhere)
+        - timeout: Time-based (handled elsewhere)
+        """
+        for trigger in triggers:
+            trigger_type = trigger.get("type")
+            
+            if trigger_type == "user_response":
+                # Any user message triggers wake
+                if any(m.get("type") == "USER_MESSAGE" for m in messages):
+                    return True
+            
+            elif trigger_type == "keyword":
+                # Check if any message contains the keyword pattern
+                pattern = trigger.get("pattern", "")
+                if pattern:
+                    try:
+                        regex = re.compile(pattern, re.IGNORECASE)
+                        for m in messages:
+                            content = m.get("content", "")
+                            if regex.search(content):
+                                return True
+                    except re.error:
+                        # Invalid regex, skip this trigger
+                        pass
+            
+            # cron and timeout are handled by a separate scheduled task
+            # (not implemented in this version)
         
-        # Get agent_index for port allocation
-        try:
-            agent_config = await gateway.get_agent_config(agent_id)
-            agent_index = agent_config.get("agent_index", 0)
-        except Exception:
-            agent_index = 0
-        
-        print(f"[Monitor] Recreating MCP servers for {subagent_id}")
-        await self.master._create_runtime_mcp_server(agent_id, subagent_id, agent_index)
+        return False

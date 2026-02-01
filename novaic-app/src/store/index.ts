@@ -752,11 +752,14 @@ export const useAppStore = create<AppStore>((set, get) => ({
               role: 'assistant',
               content: msg.caption || 'Image',
               timestamp: new Date(msg.timestamp),
-              // Store image URL in events
+              // Store image URL in events (use 'image' type for rendering)
               events: [{
-                type: 'status',
+                type: 'image',
                 timestamp: msg.timestamp,
-                data: { image_url: msg.image_url, type: 'image' }
+                data: { 
+                  image_url: msg.image_url || (msg as unknown as Record<string, unknown>).image_path,
+                  caption: msg.caption 
+                }
               }],
             });
             break;

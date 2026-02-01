@@ -330,12 +330,27 @@ qemu_deploy_vmuse_code()  # 部署 MCP Server
                     
                     os.unlink(tmp_path)
                     
+                    # Return in MCP standard format for multimodal LLM support
+                    img_format = (format or "png").lower()
+                    mime_type = f"image/{img_format}"
+                    
                     return {
-                        "image_base64": image_data,
-                        "format": (format or "png").lower(),
+                        "success": True,
+                        "format": img_format,
                         "width": width,
                         "height": height,
-                        "success": True
+                        # MCP content array for LLM multimodal input
+                        "_mcp_content": [
+                            {
+                                "type": "text",
+                                "text": f"Screenshot captured: {width}x{height} {img_format}"
+                            },
+                            {
+                                "type": "image",
+                                "data": image_data,
+                                "mimeType": mime_type
+                            }
+                        ]
                     }
                 except Exception as e:
                     if os.path.exists(tmp_path):

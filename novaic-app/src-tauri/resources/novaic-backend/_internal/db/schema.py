@@ -13,9 +13,10 @@ v10: Removed inbox_messages table and is_busy field (new architecture).
 v11: Multi-process architecture - action_tasks, mcp_executions, worker_processes tables.
 v12: Master-driven architecture - agent_runtimes table for Runtime management.
 v13: Added mcp_url field to agent_runtimes for Runtime MCP Server URL.
+v14: SubAgent state refactor - subagents table, runtime_id rename, summary fields.
 """
 
-SCHEMA_VERSION = 13
+SCHEMA_VERSION = 14
 
 SCHEMA_SQL = """
 -- ========================================
@@ -452,19 +453,50 @@ CREATE TABLE IF NOT EXISTS worker_processes (
 CREATE INDEX IF NOT EXISTS idx_worker_status ON worker_processes(status);
 
 -- ========================================
--- 17. Agent Runtimes Table (v12 - Master-driven)
+-- 17. SubAgents Table (v14 - SubAgent state refactor)
+-- ========================================
+-- Persistent SubAgent entities that own multiple Runtimes
+-- Each Agent has one Main SubAgent, can spawn Sub SubAgents
+
+CREATE TABLE IF NOT EXISTS subagents (
+    subagent_id TEXT PRIMARY KEY,      -- "main" or "sub-xxx"
+    agent_id TEXT NOT NULL,
+    type TEXT NOT NULL,                -- 'main' / 'sub'
+    parent_subagent_id TEXT,           -- Parent SubAgent (for sub type)
+    
+    -- Status
+    status TEXT DEFAULT 'sleeping',    -- sleeping / awake / summarizing
+    
+    -- Context management
+    historical_summary TEXT,           -- Merged historical runtime summaries
+    
+    -- Rest/wake related
+    wake_triggers TEXT DEFAULT '[{"type": "user_response"}]',
+    handoff_notes TEXT,
+    
+    -- Timestamps
+    created_at TEXT NOT NULL,
+    updated_at TEXT,
+    
+    FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_subagents_agent ON subagents(agent_id, type);
+CREATE INDEX IF NOT EXISTS idx_subagents_status ON subagents(status);
+
+-- ========================================
+-- 18. Agent Runtimes Table (v12 - Master-driven, v14 - refactored)
 -- ========================================
 -- Tracks Agent Runtime instances managed by Master
--- Each VM Agent can have one Main Runtime and multiple SubAgent Runtimes
+-- Each SubAgent can have multiple Runtimes (one active at a time)
 
 CREATE TABLE IF NOT EXISTS agent_runtimes (
-    subagent_id TEXT PRIMARY KEY,      -- Runtime ID (main-xxx or sub-xxx)
-    agent_id TEXT NOT NULL,            -- VM Agent ID
-    type TEXT NOT NULL,                -- 'main' or 'sub'
-    parent_subagent_id TEXT,           -- Parent Runtime ID (for SubAgents)
+    runtime_id TEXT PRIMARY KEY,       -- Runtime ID (rt-xxx)
+    subagent_id TEXT NOT NULL,         -- Owner SubAgent ID
+    agent_id TEXT NOT NULL,            -- VM Agent ID (denormalized for query efficiency)
     
     -- MCP Server
-    mcp_url TEXT,                      -- Aggregate MCP mount path (e.g. /mcp/aggregate/main-xxx)
+    mcp_url TEXT,                      -- Aggregate MCP mount path (e.g. /mcp/aggregate/rt-xxx)
     
     -- Round state
     current_round_id TEXT,
@@ -476,19 +508,23 @@ CREATE TABLE IF NOT EXISTS agent_runtimes (
     pending_actions TEXT DEFAULT '[]', -- Current round's pending action task IDs
     
     -- Status
-    status TEXT DEFAULT 'active',      -- active, completed, failed
+    status TEXT DEFAULT 'active',      -- active, resting, completed
     error TEXT,
+    
+    -- Summary (v14)
+    summary TEXT,                      -- Runtime summary after completion
+    is_merged INTEGER DEFAULT 0,       -- Whether merged into historical_summary
     
     -- Timestamps
     created_at TEXT NOT NULL,
     updated_at TEXT,
     
     FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE,
-    FOREIGN KEY (parent_subagent_id) REFERENCES agent_runtimes(subagent_id) ON DELETE SET NULL
+    FOREIGN KEY (subagent_id) REFERENCES subagents(subagent_id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_runtimes_agent ON agent_runtimes(agent_id, status);
-CREATE INDEX IF NOT EXISTS idx_runtimes_parent ON agent_runtimes(parent_subagent_id);
+CREATE INDEX IF NOT EXISTS idx_runtimes_subagent ON agent_runtimes(subagent_id, status);
 CREATE INDEX IF NOT EXISTS idx_runtimes_phase ON agent_runtimes(status, phase);
 """
 
@@ -1149,30 +1185,37 @@ async def run_migration(conn, from_version: int):
         # Master-driven architecture with Agent Runtimes
         # - Create agent_runtimes table for Master to manage Runtime instances
         
-        # Create agent_runtimes table
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS agent_runtimes (
-                subagent_id TEXT PRIMARY KEY,
-                agent_id TEXT NOT NULL,
-                type TEXT NOT NULL,
-                parent_subagent_id TEXT,
-                current_round_id TEXT,
-                current_round_num INTEGER DEFAULT 1,
-                phase TEXT DEFAULT 'need_think',
-                context TEXT DEFAULT '[]',
-                pending_actions TEXT DEFAULT '[]',
-                status TEXT DEFAULT 'active',
-                error TEXT,
-                created_at TEXT NOT NULL,
-                updated_at TEXT,
-                FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE,
-                FOREIGN KEY (parent_subagent_id) REFERENCES agent_runtimes(subagent_id) ON DELETE SET NULL
-            )
-        """)
-        await conn.execute("CREATE INDEX IF NOT EXISTS idx_runtimes_agent ON agent_runtimes(agent_id, status)")
-        await conn.execute("CREATE INDEX IF NOT EXISTS idx_runtimes_parent ON agent_runtimes(parent_subagent_id)")
-        await conn.execute("CREATE INDEX IF NOT EXISTS idx_runtimes_phase ON agent_runtimes(status, phase)")
-        print("[DB] Created agent_runtimes table")
+        # Check if agent_runtimes table already exists (from v14+ SCHEMA_SQL)
+        cursor = await conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='agent_runtimes'")
+        table_exists = await cursor.fetchone()
+        
+        if not table_exists:
+            # Create old v12 schema (will be migrated to v14 later)
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS agent_runtimes (
+                    subagent_id TEXT PRIMARY KEY,
+                    agent_id TEXT NOT NULL,
+                    type TEXT NOT NULL,
+                    parent_subagent_id TEXT,
+                    current_round_id TEXT,
+                    current_round_num INTEGER DEFAULT 1,
+                    phase TEXT DEFAULT 'need_think',
+                    context TEXT DEFAULT '[]',
+                    pending_actions TEXT DEFAULT '[]',
+                    status TEXT DEFAULT 'active',
+                    error TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT,
+                    FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE,
+                    FOREIGN KEY (parent_subagent_id) REFERENCES agent_runtimes(subagent_id) ON DELETE SET NULL
+                )
+            """)
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_runtimes_agent ON agent_runtimes(agent_id, status)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_runtimes_parent ON agent_runtimes(parent_subagent_id)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_runtimes_phase ON agent_runtimes(status, phase)")
+            print("[DB] Created agent_runtimes table")
+        else:
+            print("[DB] agent_runtimes table already exists (v14+ schema), skipping v12 creation")
         
         # Update schema version to 12
         await conn.execute(
@@ -1188,13 +1231,15 @@ async def run_migration(conn, from_version: int):
         # Migration from v12 to v13:
         # Add mcp_url field to agent_runtimes for Runtime MCP Server URL
         
-        # Check if column already exists
+        # Check if column already exists (v14+ schema already has it)
         cursor = await conn.execute("PRAGMA table_info(agent_runtimes)")
         columns = [row[1] for row in await cursor.fetchall()]
         
         if 'mcp_url' not in columns:
             print("[DB] Adding 'mcp_url' column to agent_runtimes")
             await conn.execute("ALTER TABLE agent_runtimes ADD COLUMN mcp_url TEXT")
+        else:
+            print("[DB] mcp_url column already exists (v14+ schema)")
         
         # Update schema version to 13
         await conn.execute(
@@ -1203,3 +1248,219 @@ async def run_migration(conn, from_version: int):
         
         await conn.commit()
         print("[DB] Migration to v13 complete")
+    
+    if from_version < 14:
+        print("[DB] Running migration from v13 to v14...")
+        
+        # Migration from v13 to v14:
+        # SubAgent state refactor
+        # 1. Create subagents table
+        # 2. Rename subagent_id to runtime_id in agent_runtimes
+        # 3. Add subagent_id foreign key to agent_runtimes
+        # 4. Add summary and is_merged fields to agent_runtimes
+        # 5. Migrate existing data
+        
+        import json
+        from datetime import datetime
+        
+        # Check if agent_runtimes already has v14 schema (runtime_id column)
+        cursor = await conn.execute("PRAGMA table_info(agent_runtimes)")
+        columns = [row[1] for row in await cursor.fetchall()]
+        is_v14_schema = 'runtime_id' in columns
+        
+        if is_v14_schema:
+            print("[DB] agent_runtimes already has v14 schema (created by SCHEMA_SQL)")
+            # Just ensure subagents table and indexes exist
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_subagents_agent ON subagents(agent_id, type)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_subagents_status ON subagents(status)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_runtimes_agent ON agent_runtimes(agent_id, status)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_runtimes_subagent ON agent_runtimes(subagent_id, status)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_runtimes_phase ON agent_runtimes(status, phase)")
+            
+            # Create main subagent for existing agents (if any)
+            cursor = await conn.execute("SELECT id FROM agents")
+            agents = await cursor.fetchall()
+            now = datetime.utcnow().isoformat()
+            
+            for agent_row in agents:
+                agent_id = agent_row[0]
+                wake_triggers = '[{"type": "user_response"}]'
+                try:
+                    cursor = await conn.execute(
+                        "SELECT wake_triggers FROM agent_state WHERE agent_id = ?",
+                        (agent_id,)
+                    )
+                    row = await cursor.fetchone()
+                    if row and row[0]:
+                        wake_triggers = row[0]
+                except:
+                    pass
+                
+                await conn.execute("""
+                    INSERT OR IGNORE INTO subagents 
+                    (subagent_id, agent_id, type, status, wake_triggers, created_at, updated_at)
+                    VALUES (?, ?, 'main', 'sleeping', ?, ?, ?)
+                """, ("main", agent_id, wake_triggers, now, now))
+            
+            if agents:
+                print(f"[DB] Created main subagent for {len(agents)} existing agents")
+        else:
+            # Full migration from v12/v13 schema
+            now = datetime.utcnow().isoformat()
+            
+            # 1. Create subagents table
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS subagents (
+                    subagent_id TEXT PRIMARY KEY,
+                    agent_id TEXT NOT NULL,
+                    type TEXT NOT NULL,
+                    parent_subagent_id TEXT,
+                    status TEXT DEFAULT 'sleeping',
+                    historical_summary TEXT,
+                    wake_triggers TEXT DEFAULT '[{"type": "user_response"}]',
+                    handoff_notes TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT,
+                    FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
+                )
+            """)
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_subagents_agent ON subagents(agent_id, type)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_subagents_status ON subagents(status)")
+            print("[DB] Created subagents table")
+            
+            # 2. Create new agent_runtimes table with renamed columns
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS agent_runtimes_new (
+                    runtime_id TEXT PRIMARY KEY,
+                    subagent_id TEXT NOT NULL,
+                    agent_id TEXT NOT NULL,
+                    mcp_url TEXT,
+                    current_round_id TEXT,
+                    current_round_num INTEGER DEFAULT 1,
+                    phase TEXT DEFAULT 'need_think',
+                    context TEXT DEFAULT '[]',
+                    pending_actions TEXT DEFAULT '[]',
+                    status TEXT DEFAULT 'active',
+                    error TEXT,
+                    summary TEXT,
+                    is_merged INTEGER DEFAULT 0,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT,
+                    FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE,
+                    FOREIGN KEY (subagent_id) REFERENCES subagents(subagent_id) ON DELETE CASCADE
+                )
+            """)
+            
+            # 3. Get all existing agents and create main subagent for each
+            cursor = await conn.execute("SELECT id FROM agents")
+            agents = await cursor.fetchall()
+            
+            for agent_row in agents:
+                agent_id = agent_row[0]
+                # v14: subagent_id 带编号，格式 main-{agent_id[:8]}
+                subagent_id = f"main-{agent_id[:8]}"
+                
+                wake_triggers = '[{"type": "user_response"}]'
+                try:
+                    cursor = await conn.execute(
+                        "SELECT wake_triggers FROM agent_state WHERE agent_id = ?",
+                        (agent_id,)
+                    )
+                    row = await cursor.fetchone()
+                    if row and row[0]:
+                        wake_triggers = row[0]
+                except:
+                    pass
+                
+                await conn.execute("""
+                    INSERT OR IGNORE INTO subagents 
+                    (subagent_id, agent_id, type, status, wake_triggers, created_at, updated_at)
+                    VALUES (?, ?, 'main', 'sleeping', ?, ?, ?)
+                """, (subagent_id, agent_id, wake_triggers, now, now))
+            
+            print(f"[DB] Created main subagent for {len(agents)} agents")
+            
+            # 4. Migrate existing runtimes to new table
+            cursor = await conn.execute("""
+                SELECT subagent_id, agent_id, type, parent_subagent_id, mcp_url,
+                       current_round_id, current_round_num, phase,
+                       context, pending_actions, status, error,
+                       created_at, updated_at
+                FROM agent_runtimes
+            """)
+            runtimes = await cursor.fetchall()
+            
+            for runtime in runtimes:
+                old_subagent_id = runtime[0]
+                agent_id = runtime[1]
+                runtime_type = runtime[2]
+                
+                if runtime_type == 'main':
+                    # v14: subagent_id 带编号，格式 main-{agent_id[:8]}
+                    new_subagent_id = f"main-{agent_id[:8]}"
+                    new_runtime_id = old_subagent_id.replace("main-", "rt-")
+                else:
+                    new_subagent_id = old_subagent_id
+                    new_runtime_id = old_subagent_id.replace("sub-", "rt-sub-")
+                    # v14: parent_subagent_id 也使用新格式
+                    parent_id = f"main-{agent_id[:8]}"
+                    
+                    await conn.execute("""
+                        INSERT OR IGNORE INTO subagents 
+                        (subagent_id, agent_id, type, parent_subagent_id, status, created_at, updated_at)
+                        VALUES (?, ?, 'sub', ?, 'sleeping', ?, ?)
+                    """, (new_subagent_id, agent_id, parent_id, now, now))
+                
+                await conn.execute("""
+                    INSERT OR IGNORE INTO agent_runtimes_new 
+                    (runtime_id, subagent_id, agent_id, mcp_url,
+                     current_round_id, current_round_num, phase,
+                     context, pending_actions, status, error,
+                     created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    new_runtime_id, new_subagent_id, agent_id, runtime[4],
+                    runtime[5], runtime[6], runtime[7],
+                    runtime[8], runtime[9], runtime[10], runtime[11],
+                    runtime[12], runtime[13]
+                ))
+            
+            print(f"[DB] Migrated {len(runtimes)} runtimes")
+            
+            # 5. Update action_tasks to use new runtime_id
+            for runtime in runtimes:
+                old_id = runtime[0]
+                runtime_type = runtime[2]
+                if runtime_type == 'main':
+                    new_id = old_id.replace("main-", "rt-")
+                else:
+                    new_id = old_id.replace("sub-", "rt-sub-")
+                
+                await conn.execute("""
+                    UPDATE action_tasks SET subagent_id = ? WHERE subagent_id = ?
+                """, (new_id, old_id))
+                
+                await conn.execute("""
+                    UPDATE mcp_executions SET subagent_id = ? WHERE subagent_id = ?
+                """, (new_id, old_id))
+            
+            print("[DB] Updated action_tasks and mcp_executions references")
+            
+            # 6. Drop old table and rename new one
+            await conn.execute("DROP TABLE IF EXISTS agent_runtimes")
+            await conn.execute("ALTER TABLE agent_runtimes_new RENAME TO agent_runtimes")
+            
+            # 7. Recreate indexes
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_runtimes_agent ON agent_runtimes(agent_id, status)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_runtimes_subagent ON agent_runtimes(subagent_id, status)")
+            await conn.execute("CREATE INDEX IF NOT EXISTS idx_runtimes_phase ON agent_runtimes(status, phase)")
+            
+            print("[DB] Recreated agent_runtimes table with new schema")
+        
+        # Update schema version to 14
+        await conn.execute(
+            "INSERT OR REPLACE INTO config (key, value) VALUES ('version', '14')"
+        )
+        
+        await conn.commit()
+        print("[DB] Migration to v14 complete")

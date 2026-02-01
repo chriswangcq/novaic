@@ -249,7 +249,7 @@ class ChatMCPServer(BaseMCPServer):
                 chat_show_image("/tmp/screenshot.png", caption="当前屏幕截图")
             """
             result = await _send_event("AGENT_IMAGE", {
-                "image_path": image_path,
+                "image_url": image_path,  # Use image_url for frontend compatibility
                 "caption": caption,
                 "reply_type": "image"
             })

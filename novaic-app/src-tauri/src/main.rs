@@ -113,7 +113,7 @@ impl MasterProcess {
                 .spawn()
                 .map_err(|e| format!("Failed to start Master binary: {}", e))?
         } else {
-            // Development mode: run Python
+            // Development mode: run Python via novaic_main.py
             let gateway_dir = gateway_dir.ok_or("Gateway dir required for dev mode")?;
             let venv_python = gateway_dir.join("venv/bin/python");
             let python = if venv_python.exists() {
@@ -126,8 +126,10 @@ impl MasterProcess {
 
             println!("[Master] Using Python: {}", python);
 
+            // v2.11: Use unified novaic_main.py entry point
             Command::new(&python)
-                .arg("master_main.py")
+                .arg("novaic_main.py")
+                .arg("master")
                 .arg("--gateway-url")
                 .arg(&self.gateway_url)
                 .arg("--mcp-gateway-url")
@@ -259,7 +261,7 @@ impl WorkerProcess {
                 .spawn()
                 .map_err(|e| format!("Failed to start Worker binary: {}", e))?
         } else {
-            // Development mode: run Python with venv
+            // Development mode: run Python via novaic_main.py
             let gateway_dir = gateway_dir.ok_or("Gateway dir required for dev mode")?;
             let venv_python = gateway_dir.join("venv/bin/python");
             let python = if venv_python.exists() {
@@ -272,9 +274,10 @@ impl WorkerProcess {
 
             println!("[Worker:{}] Using Python: {}", self.worker_id, python);
 
+            // v2.11: Use unified novaic_main.py entry point
             Command::new(&python)
-                .arg("-m")
-                .arg("worker.worker")
+                .arg("novaic_main.py")
+                .arg("worker")
                 .arg("--gateway")
                 .arg(&self.gateway_url)
                 .arg("--mcp-gateway-url")
@@ -367,11 +370,27 @@ impl GatewayProcess {
         println!("[Gateway] Starting Gateway from {:?}", gateway_path);
         println!("[Gateway] Port: {}", self.port);
         println!("[Gateway] Data dir: {:?}", data_dir);
-        println!("[Gateway] Resource dir: {:?}", resource_dir);
         println!("[Gateway] Mode: {}", if is_binary { "binary" } else { "python" });
 
         let data_dir_str = data_dir.to_string_lossy().to_string();
-        let resource_dir_str = resource_dir.map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
+        
+        // For binary mode, infer resource_dir from gateway_path if not provided
+        // gateway_path is at: resource_dir/novaic-backend/novaic-backend
+        let resource_dir_str = if is_binary && resource_dir.is_none() {
+            if let Some(parent) = gateway_path.parent() {
+                if let Some(grandparent) = parent.parent() {
+                    println!("[Gateway] Inferred resource_dir from binary path: {:?}", grandparent);
+                    grandparent.to_string_lossy().to_string()
+                } else {
+                    String::new()
+                }
+            } else {
+                String::new()
+            }
+        } else {
+            resource_dir.map(|p| p.to_string_lossy().to_string()).unwrap_or_default()
+        };
+        println!("[Gateway] Using resource_dir: {}", resource_dir_str);
 
         let child = if is_binary {
             // Production mode: run unified novaic-backend binary
@@ -396,7 +415,7 @@ impl GatewayProcess {
                 .spawn()
                 .map_err(|e| format!("Failed to start Gateway binary: {}", e))?
         } else {
-            // Development mode: run Python with venv
+            // Development mode: run Python via novaic_main.py
             let gateway_dir = gateway_path;
             let venv_python = gateway_dir.join("venv/bin/python");
             let python = if venv_python.exists() {
@@ -407,19 +426,22 @@ impl GatewayProcess {
                 "python3".to_string()
             };
 
-            let main_py = gateway_dir.join("main.py");
-            if !main_py.exists() {
-                return Err(format!("Gateway main.py not found at {:?}", main_py));
+            let novaic_main = gateway_dir.join("novaic_main.py");
+            if !novaic_main.exists() {
+                return Err(format!("novaic_main.py not found at {:?}", novaic_main));
             }
 
             println!("[Gateway] Using Python: {}", python);
 
+            // v2.11: Use unified novaic_main.py entry point
             Command::new(&python)
-                .arg(&main_py)
+                .arg(&novaic_main)
+                .arg("gateway")
+                .arg("--port")
+                .arg(self.port.to_string())
+                .arg("--data-dir")
+                .arg(&data_dir_str)
                 .current_dir(gateway_dir)
-                .env("NOVAIC_PORT", self.port.to_string())
-                .env("NOVAIC_HOST", "127.0.0.1")
-                .env("NOVAIC_DATA_DIR", &data_dir_str)
                 .env("NOVAIC_RESOURCE_DIR", &resource_dir_str)
                 .env("NOVAIC_MCP_GATEWAY_URL", "http://127.0.0.1:19998")
                 .env("NO_PROXY", "localhost,127.0.0.1,::1")
@@ -533,7 +555,24 @@ impl McpGatewayProcess {
         }
 
         let data_dir_str = data_dir.to_string_lossy().to_string();
-        let resource_dir_str = resource_dir.map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
+        
+        // For binary mode, infer resource_dir from backend_path if not provided
+        // backend_path is at: resource_dir/novaic-backend/novaic-backend
+        let resource_dir_str = if is_binary && resource_dir.is_none() {
+            if let Some(parent) = backend_path.parent() {
+                if let Some(grandparent) = parent.parent() {
+                    println!("[MCP Gateway] Inferred resource_dir from binary path: {:?}", grandparent);
+                    grandparent.to_string_lossy().to_string()
+                } else {
+                    String::new()
+                }
+            } else {
+                String::new()
+            }
+        } else {
+            resource_dir.map(|p| p.to_string_lossy().to_string()).unwrap_or_default()
+        };
+        println!("[MCP Gateway] Using resource_dir: {}", resource_dir_str);
 
         let child = if is_binary {
             if !backend_path.exists() {
@@ -641,10 +680,8 @@ fn kill_zombie_processes() {
         let patterns = [
             "novaic-backend", 
             "novaic-gateway",
-            "mcp-gateway",      // MCP Gateway subprocess
-            "mcp_main.py",     // Dev mode MCP Gateway
-            "master_main.py",  // Dev mode master
-            "worker.worker",   // Dev mode worker (python -m worker.worker)
+            "mcp-gateway",           // MCP Gateway subprocess
+            "novaic_main.py",        // Dev mode unified entry (gateway/mcp-gateway/master/worker)
         ];
         
         for pattern in patterns {

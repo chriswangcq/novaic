@@ -9,6 +9,11 @@ Handles:
 - Phase 4: COLLECT - Wait for results, advance Round
 
 v2.10: Uses Gateway HTTP API instead of direct DB access.
+v14: SubAgent state refactor
+- Uses runtime_id instead of subagent_id
+- Checks inbox at round completion to decide continue/complete
+- Context includes SubAgent historical_summary + latest runtime summaries
+- Triggers Summarizer on runtime completion
 """
 
 import asyncio
@@ -122,41 +127,48 @@ class Scheduler:
         """Check all active runtimes and drive them."""
         gateway = self.master.gateway
         
-        # Get all active runtimes
+        # Get all active runtimes (v14: includes status=active and status=resting)
         runtimes = await gateway.get_active_runtimes()
         
         for runtime in runtimes:
-            subagent_id = runtime["subagent_id"]
+            # v14: Use runtime_id
+            runtime_id = runtime.get("runtime_id") or runtime.get("subagent_id")
             round_id = runtime.get("current_round_id", "round-1")
             phase = runtime.get("phase", "")
             
             # Skip if currently executing (immediate lock)
-            if subagent_id in self._executing:
+            if runtime_id in self._executing:
                 continue
             
             # For need_think phase: only process once per (round, phase)
             # For waiting_actions phases: always process (need to poll task status)
             if phase == 'need_think':
-                state_key = (subagent_id, round_id, phase)
+                state_key = (runtime_id, round_id, phase)
                 if state_key in self._processed_states:
                     continue
                 self._processed_states.add(state_key)
             
             # Mark as executing
-            self._executing.add(subagent_id)
+            self._executing.add(runtime_id)
             
             # Drive this runtime based on its phase
             asyncio.create_task(self._drive_runtime(runtime))
     
     async def _drive_runtime(self, runtime: Dict[str, Any]):
         """Drive a single runtime through its current phase."""
-        subagent_id = runtime["subagent_id"]
+        # v14: Use runtime_id
+        runtime_id = runtime.get("runtime_id") or runtime.get("subagent_id")
         gateway = self.master.gateway
         
         try:
             # Re-read runtime to get latest state
-            fresh_runtime = await gateway.get_runtime(subagent_id)
-            if not fresh_runtime or fresh_runtime.get("status") != 'active':
+            fresh_runtime = await gateway.get_runtime(runtime_id)
+            if not fresh_runtime:
+                return  # Runtime not found
+            
+            # v14: Active runtimes include status=active and status=resting
+            status = fresh_runtime.get("status", "")
+            if status not in ('active', 'resting'):
                 return  # Runtime no longer active
             
             runtime = fresh_runtime
@@ -168,20 +180,30 @@ class Scheduler:
                 await self._handle_waiting_actions(runtime)
             # 'completed' phase - no action needed
         except Exception as e:
-            print(f"[Scheduler] Error driving runtime {subagent_id}: {e}")
+            print(f"[Scheduler] Error driving runtime {runtime_id}: {e}")
             import traceback
             traceback.print_exc()
             # Mark runtime as failed
-            await gateway.update_runtime(subagent_id, status="failed", error=str(e))
+            await gateway.update_runtime(runtime_id, status="failed", error=str(e))
         finally:
             # Release executing lock (allow next state to be processed)
-            self._executing.discard(subagent_id)
+            self._executing.discard(runtime_id)
     
     async def _handle_need_think(self, runtime: Dict[str, Any]):
         """Phase 1: THINK - Create think task for Worker."""
-        subagent_id = runtime["subagent_id"]
+        # v14: Use runtime_id
+        runtime_id = runtime.get("runtime_id") or runtime.get("subagent_id")
         round_num = runtime.get("current_round_num", 1)
-        print(f"[Scheduler] Runtime {subagent_id} needs think (round {round_num})")
+        
+        # Wait for MCP URL to be set (MCP servers may still be initializing)
+        mcp_url = runtime.get("mcp_url")
+        if not mcp_url:
+            # MCP servers not ready yet - remove from processed_states to retry
+            state_key = (runtime_id, runtime.get("current_round_id", "round-1"), "need_think")
+            self._processed_states.discard(state_key)
+            return
+        
+        print(f"[Scheduler] Runtime {runtime_id} needs think (round {round_num})")
         
         # 1. Prepare context
         context = await self._prepare_context(runtime)
@@ -191,12 +213,12 @@ class Scheduler:
         
         if task_id is None:
             # Another Master already created this think task - skip
-            print(f"[Scheduler] Skipping: think task for {subagent_id} round {round_num} already exists")
+            print(f"[Scheduler] Skipping: think task for {runtime_id} round {round_num} already exists")
             return
         
         # 3. Update runtime state
         await self.master.gateway.update_runtime(
-            subagent_id,
+            runtime_id,
             phase="waiting_actions",
             pending_actions=[task_id]
         )
@@ -204,16 +226,54 @@ class Scheduler:
         # 4. Broadcast SSE
         await self.master.broadcast_new_task(task_id, 'think', runtime["agent_id"])
         
-        print(f"[Scheduler] Created think task {task_id} for runtime {subagent_id}")
+        print(f"[Scheduler] Created think task {task_id} for runtime {runtime_id}")
     
     async def _prepare_context(self, runtime: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Prepare context for thinking, including inbox messages."""
+        """Prepare context for thinking, including inbox messages.
+        
+        v14: Context structure:
+        1. Historical summary from SubAgent (merged old runtime summaries)
+        2. Summaries of latest completed runtimes (up to 30)
+        3. Current runtime context
+        4. Unread inbox messages
+        """
         gateway = self.master.gateway
         agent_id = runtime["agent_id"]
-        subagent_id = runtime["subagent_id"]
+        # v14: Use runtime_id and subagent_id separately
+        runtime_id = runtime.get("runtime_id") or runtime.get("subagent_id")
+        subagent_id = runtime.get("subagent_id", "main")
         
         # Start with existing context
         context = list(runtime.get("context", []))
+        
+        # v14: Add SubAgent historical summary and latest runtime summaries (only for first round)
+        round_num = runtime.get("current_round_num", 1)
+        if round_num == 1 and not context:
+            try:
+                # Get SubAgent for historical context
+                subagent = await gateway.get_subagent(agent_id, subagent_id)
+                if subagent:
+                    # Add historical summary
+                    historical_summary = subagent.get("historical_summary")
+                    if historical_summary:
+                        context.append({
+                            'role': 'system',
+                            'content': f"## Historical Context Summary\n\n{historical_summary}\n\n---",
+                            'metadata': {'type': 'historical_summary'},
+                        })
+                    
+                    # Add summaries from latest runtimes
+                    latest_runtimes = await gateway.get_latest_runtimes(agent_id, subagent_id, limit=10)
+                    for r in latest_runtimes:
+                        summary = r.get("summary")
+                        if summary and r.get("runtime_id") != runtime_id:
+                            context.append({
+                                'role': 'system',
+                                'content': f"## Previous Session Summary\n\n{summary}\n\n---",
+                                'metadata': {'type': 'runtime_summary', 'runtime_id': r.get('runtime_id')},
+                            })
+            except Exception as e:
+                print(f"[Scheduler] Warning: Could not load historical context: {e}")
         
         # Get unread inbox messages
         messages = await gateway.get_unread_messages(agent_id)
@@ -256,8 +316,8 @@ class Scheduler:
             min_messages_to_keep=compaction_settings.min_messages_to_keep,
         )
         
-        # Update runtime context
-        await gateway.update_runtime(subagent_id, context=context)
+        # Update runtime context (v14: use runtime_id)
+        await gateway.update_runtime(runtime_id, context=context)
         
         return context
     
@@ -427,6 +487,26 @@ class Scheduler:
         
         return result
     
+    async def _get_subagent_type(self, agent_id: str, subagent_id: str) -> str:
+        """Get subagent type from SubAgent record.
+        
+        Returns 'main' or 'sub' based on the actual database record,
+        not guessing from the subagent_id name.
+        """
+        try:
+            gateway = self.master.gateway
+            resp = await gateway.client.get(
+                f"{gateway.gateway_url}/internal/subagents/{agent_id}/{subagent_id}"
+            )
+            if resp.status_code == 200:
+                subagent = resp.json()
+                return subagent.get("type", "main")
+        except Exception as e:
+            print(f"[Scheduler] Error getting subagent type: {e}")
+        
+        # Fallback to 'main' if query fails
+        return "main"
+    
     async def _create_think_task(self, runtime: Dict[str, Any], context: List[Dict[str, Any]]) -> str:
         """Create a think task."""
         gateway = self.master.gateway
@@ -434,13 +514,21 @@ class Scheduler:
         task_id = f"think-{uuid.uuid4().hex[:12]}"
         round_id = runtime.get("current_round_id", "round-1")
         
+        # v14: Use runtime_id for idempotency key
+        runtime_id = runtime.get("runtime_id") or runtime.get("subagent_id")
+        
         # Database-level idempotency: prevents duplicate think tasks from multiple Masters
-        idempotency_key = f"{runtime['agent_id']}-{runtime['subagent_id']}-{round_id}-think"
+        idempotency_key = f"{runtime['agent_id']}-{runtime_id}-{round_id}-think"
+        
+        # v14: Get subagent_type from SubAgent record (not guessing from name)
+        subagent_id = runtime.get("subagent_id", "main")
+        agent_id = runtime["agent_id"]
+        subagent_type = await self._get_subagent_type(agent_id, subagent_id)
         
         success = await gateway.create_task(
             id=task_id,
             agent_id=runtime["agent_id"],
-            subagent_id=runtime["subagent_id"],
+            subagent_id=runtime_id,  # v14: This is runtime_id in action_tasks table
             round_id=round_id,
             mcpcall_id="think",
             idempotency_key=idempotency_key,
@@ -448,6 +536,7 @@ class Scheduler:
             args={
                 'context': context,
                 'mcp_url': runtime.get("mcp_url"),
+                'subagent_type': subagent_type,  # v14: 'main' or 'sub'
             }
         )
         
@@ -460,7 +549,8 @@ class Scheduler:
     async def _handle_waiting_actions(self, runtime: Dict[str, Any]):
         """Phase 3+4: Check if actions are done, collect results."""
         gateway = self.master.gateway
-        subagent_id = runtime["subagent_id"]
+        # v14: Use runtime_id
+        runtime_id = runtime.get("runtime_id") or runtime.get("subagent_id")
         
         pending_ids = runtime.get("pending_actions", [])
         if not pending_ids:
@@ -504,22 +594,30 @@ class Scheduler:
         # This prevents two Masters from processing the same results
         current_phase = runtime.get("phase", "")
         claimed = await gateway.try_claim_phase(
-            subagent_id, 
+            runtime_id, 
             expected_phase=current_phase,
             new_phase="processing_results"
         )
         
         if not claimed:
-            print(f"[Scheduler] Runtime {subagent_id} results already being processed (CAS conflict)")
+            print(f"[Scheduler] Runtime {runtime_id} results already being processed (CAS conflict)")
             return
         
-        print(f"[Scheduler] Runtime {subagent_id} round {runtime.get('current_round_num', 1)} complete")
+        print(f"[Scheduler] Runtime {runtime_id} round {runtime.get('current_round_num', 1)} complete")
         await self._advance_or_complete(runtime, results)
     
     async def _advance_or_complete(self, runtime: Dict[str, Any], results: List[Dict[str, Any]]):
-        """Decide whether to advance round or complete runtime."""
+        """Decide whether to advance round or complete runtime.
+        
+        v14 Logic:
+        - At round completion, check for unread messages
+        - If messages: set status to 'active' (even if was resting), continue
+        - If no messages: complete runtime
+        """
         gateway = self.master.gateway
-        subagent_id = runtime["subagent_id"]
+        # v14: Use runtime_id
+        runtime_id = runtime.get("runtime_id") or runtime.get("subagent_id")
+        agent_id = runtime["agent_id"]
         
         # Check if we got a 'done' action from think result
         think_result = None
@@ -531,8 +629,8 @@ class Scheduler:
         if think_result:
             if not think_result.get('success', True):
                 error = think_result.get('error', 'Unknown thinking error')
-                print(f"[Scheduler] Runtime {subagent_id} think failed: {error}")
-                await gateway.update_runtime(subagent_id, status="failed", error=error)
+                print(f"[Scheduler] Runtime {runtime_id} think failed: {error}")
+                await gateway.update_runtime(runtime_id, status="failed", error=error)
                 return
             
             actions = think_result.get('actions', [])
@@ -554,7 +652,7 @@ class Scheduler:
                         })
                 
                 if tool_calls:
-                    fresh_runtime = await gateway.get_runtime(subagent_id)
+                    fresh_runtime = await gateway.get_runtime(runtime_id)
                     context = list(fresh_runtime.get("context", []) if fresh_runtime else runtime.get("context", []))
                     assistant_msg = {
                         'role': 'assistant',
@@ -566,14 +664,14 @@ class Scheduler:
                     if reasoning:
                         assistant_msg['reasoning_content'] = reasoning
                     context.append(assistant_msg)
-                    await gateway.update_runtime(subagent_id, context=context)
+                    await gateway.update_runtime(runtime_id, context=context)
                 
                 # Create action tasks (pass mcp_session_id for tool calls)
                 mcp_session_id = think_result.get('mcp_session_id')
                 task_ids = await self._create_action_tasks(runtime, action_tasks, mcp_session_id)
                 
                 phase = 'waiting_actions_final' if has_done else 'waiting_actions'
-                await gateway.update_runtime(subagent_id, phase=phase, pending_actions=task_ids)
+                await gateway.update_runtime(runtime_id, phase=phase, pending_actions=task_ids)
                 
                 # Broadcast new tasks
                 for i, task_id in enumerate(task_ids):
@@ -586,16 +684,18 @@ class Scheduler:
                 await self._complete_runtime(runtime)
                 return
             
-            print(f"[Scheduler] Runtime {subagent_id} returned no actions, completing")
+            print(f"[Scheduler] Runtime {runtime_id} returned no actions, completing")
             await self._complete_runtime(runtime)
             return
         
         # Add results to context (for non-think tasks)
+        has_tool_results = False
         if results:
-            fresh_runtime = await gateway.get_runtime(subagent_id)
+            fresh_runtime = await gateway.get_runtime(runtime_id)
             context = list(fresh_runtime.get("context", []) if fresh_runtime else runtime.get("context", []))
             for r in results:
                 if r['result']:
+                    has_tool_results = True
                     tool_call_id = r.get('tool_call_id') or ''
                     result_data = r['result']
                     
@@ -612,33 +712,54 @@ class Scheduler:
                         'tool_call_id': tool_call_id,
                         'tool_name': r.get('action', 'tool'),
                     })
-            await gateway.update_runtime(subagent_id, context=context)
+            await gateway.update_runtime(runtime_id, context=context)
         
-        # v3.0: Check if runtime entered resting state (via runtime_rest tool)
+        # v14: Check if runtime entered resting state (via runtime_rest tool)
         # Re-fetch runtime to get latest status
-        fresh_runtime = await gateway.get_runtime(subagent_id)
-        if fresh_runtime and fresh_runtime.get("status") == "resting":
-            print(f"[Scheduler] Runtime {subagent_id} entered resting state, completing")
-            await self._complete_runtime(fresh_runtime)
+        fresh_runtime = await gateway.get_runtime(runtime_id)
+        current_status = fresh_runtime.get("status", "active") if fresh_runtime else "active"
+        
+        # ReACT loop: If we just executed tool calls, continue to next think round
+        # to let LLM see the results and decide next action (reflection)
+        if has_tool_results and current_status != "resting":
+            # Tool results received - advance to next round for reflection
+            current_round_num = runtime.get("current_round_num", 1)
+            new_round_id = await gateway.advance_round(runtime_id, expected_round_num=current_round_num)
+            
+            if new_round_id:
+                print(f"[Scheduler] Runtime {runtime_id} tool results received, advancing to {new_round_id} for reflection")
+            else:
+                print(f"[Scheduler] Runtime {runtime_id} advance failed (CAS conflict)")
             return
         
-        # Check if should complete
-        if runtime.get("phase") == 'waiting_actions_final':
-            print(f"[Scheduler] Runtime {subagent_id} actions done, completing (final)")
-            await self._complete_runtime(runtime)
+        # v14: At round completion, check for unread messages
+        has_unread = await gateway.has_unread_messages(agent_id)
+        
+        if has_unread:
+            # Has new messages - continue even if was resting
+            if current_status == "resting":
+                print(f"[Scheduler] Runtime {runtime_id} has new messages, canceling rest and continuing")
+                await gateway.update_runtime(runtime_id, status="active")
+            
+            # Advance to next round (atomic CAS)
+            current_round_num = runtime.get("current_round_num", 1)
+            new_round_id = await gateway.advance_round(runtime_id, expected_round_num=current_round_num)
+            
+            if new_round_id:
+                print(f"[Scheduler] Runtime {runtime_id} advanced to {new_round_id}")
+            else:
+                print(f"[Scheduler] Runtime {runtime_id} advance failed (CAS conflict)")
             return
         
-        # No max rounds limit - let agent run indefinitely until it completes naturally
-        # or user stops it manually
-        
-        # Advance to next round (atomic CAS)
-        current_round_num = runtime.get("current_round_num", 1)
-        new_round_id = await gateway.advance_round(subagent_id, expected_round_num=current_round_num)
-        
-        if new_round_id:
-            print(f"[Scheduler] Runtime {subagent_id} advanced to {new_round_id}")
+        # No new messages - complete runtime
+        if current_status == "resting":
+            print(f"[Scheduler] Runtime {runtime_id} resting with no new messages, completing")
+        elif runtime.get("phase") == 'waiting_actions_final':
+            print(f"[Scheduler] Runtime {runtime_id} actions done, completing (final)")
         else:
-            print(f"[Scheduler] Runtime {subagent_id} advance failed (CAS conflict, another Master already advanced)")
+            print(f"[Scheduler] Runtime {runtime_id} no new messages, completing")
+        
+        await self._complete_runtime(fresh_runtime or runtime)
     
     async def _create_action_tasks(
         self, 
@@ -650,10 +771,13 @@ class Scheduler:
         gateway = self.master.gateway
         task_ids = []
         
+        # v14: Use runtime_id
+        runtime_id = runtime.get("runtime_id") or runtime.get("subagent_id")
+        
         for i, action in enumerate(actions):
             task_id = f"action-{uuid.uuid4().hex[:12]}"
             mcpcall_id = f"mc-{i+1}"
-            idempotency_key = f"{runtime['agent_id']}-{runtime['subagent_id']}-{runtime.get('current_round_id', 'round-1')}-{mcpcall_id}"
+            idempotency_key = f"{runtime['agent_id']}-{runtime_id}-{runtime.get('current_round_id', 'round-1')}-{mcpcall_id}"
             
             action_type = action.get('type', 'tool_call')
             tool_name = action.get('tool') or action.get('name')
@@ -670,7 +794,7 @@ class Scheduler:
             success = await gateway.create_task(
                 id=task_id,
                 agent_id=runtime["agent_id"],
-                subagent_id=runtime["subagent_id"],
+                subagent_id=runtime_id,  # v14: This is runtime_id in action_tasks table
                 round_id=runtime.get("current_round_id", "round-1"),
                 mcpcall_id=mcpcall_id,
                 idempotency_key=idempotency_key,
@@ -687,44 +811,39 @@ class Scheduler:
         return task_ids
     
     async def _complete_runtime(self, runtime: Dict[str, Any]):
-        """Complete a runtime and check if agent should sleep."""
+        """Complete a runtime and trigger Summarizer.
+        
+        v14: 
+        - Mark runtime as completed
+        - Trigger Summarizer to generate summary
+        - Update SubAgent status to sleeping/summarizing
+        """
         gateway = self.master.gateway
-        subagent_id = runtime["subagent_id"]
+        # v14: Use runtime_id
+        runtime_id = runtime.get("runtime_id") or runtime.get("subagent_id")
+        subagent_id = runtime.get("subagent_id", "main")
         agent_id = runtime["agent_id"]
         
-        # v3.0: Check if runtime is resting (set by runtime_rest tool)
         current_status = runtime.get("status", "active")
-        is_resting = current_status == "resting"
-        
-        print(f"[Scheduler] Completing runtime {subagent_id} (status: {current_status})")
+        print(f"[Scheduler] Completing runtime {runtime_id} (status: {current_status})")
         
         # Clean up processed states for this runtime (prevent memory leak)
         self._processed_states = {
             s for s in self._processed_states 
-            if s[0] != subagent_id
+            if s[0] != runtime_id
         }
         
-        # Mark runtime as completed (preserve 'resting' status if set)
-        if is_resting:
-            # Keep 'resting' status, just update phase
-            await gateway.update_runtime(subagent_id, phase="completed")
-        else:
-            await gateway.update_runtime(subagent_id, status="completed", phase="completed")
+        # Mark runtime as completed
+        await gateway.update_runtime(runtime_id, status="completed", phase="completed")
         
-        # If this was a SubAgent, notify parent
-        if runtime.get("parent_subagent_id"):
-            # TODO: Update parent's pending subagent task with result
-            pass
-        
-        # Check if agent should sleep
-        if runtime.get("type") == 'main':
-            # Check for other active runtimes
-            active_runtimes = await gateway.get_active_runtimes()
-            agent_runtimes = [r for r in active_runtimes if r["agent_id"] == agent_id]
-            
-            # Check inbox
-            unread_count = await gateway.get_unread_count(agent_id)
-            
-            if not agent_runtimes and unread_count == 0:
-                print(f"[Scheduler] Agent {agent_id} going to sleep")
-                await self.master.set_agent_sleep(agent_id)
+        # v14: Trigger Summarizer to generate summary (async)
+        # The Summarizer will set SubAgent status appropriately
+        try:
+            await self.master.process_completed_runtime(runtime_id, subagent_id, agent_id)
+        except Exception as e:
+            print(f"[Scheduler] Warning: Could not trigger summarizer: {e}")
+            # Fall back to just setting SubAgent to sleeping
+            try:
+                await gateway.set_subagent_sleeping(agent_id, subagent_id)
+            except Exception as e2:
+                print(f"[Scheduler] Warning: Could not set subagent sleeping: {e2}")

@@ -7,6 +7,7 @@ All database operations go through these classes.
 v11: Added ActionTaskRepository, MCPExecutionRepository, WorkerRepository
      for multi-process architecture.
 v12: Added RuntimeRepository for Master-driven Agent Runtime management.
+v14: Added SubAgentRepository for SubAgent state management.
 """
 
 from .config import ConfigRepository
@@ -20,6 +21,7 @@ from .action_task import ActionTaskRepository
 from .mcp_execution import MCPExecutionRepository
 from .worker import WorkerRepository
 from .runtime import RuntimeRepository, AgentRuntime
+from .subagent import SubAgentRepository, SubAgent
 
 __all__ = [
     "ConfigRepository",
@@ -34,4 +36,6 @@ __all__ = [
     "WorkerRepository",
     "RuntimeRepository",
     "AgentRuntime",
+    "SubAgentRepository",
+    "SubAgent",
 ]

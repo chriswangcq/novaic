@@ -128,11 +128,11 @@ async def claim_message(
     db = get_database()
     claimed_at = datetime.now().isoformat()
     
-    # Atomic claim: UPDATE ... WHERE claimed_by IS NULL AND processed = 0
+    # Atomic claim: UPDATE ... WHERE claimed_by IS NULL AND read = 0 (unread = not processed)
     cursor = await db.execute(
         """UPDATE chat_messages 
            SET claimed_by = ?, claimed_at = ?
-           WHERE id = ? AND claimed_by IS NULL AND processed = 0""",
+           WHERE id = ? AND claimed_by IS NULL AND read = 0""",
         (request.worker_id, claimed_at, message_id)
     )
     await db.commit()
@@ -307,9 +307,9 @@ async def submit_action(
     # Determine initial status
     initial_status = "pending"
     if request.type == "done":
-        # Mark message as processed
+        # Mark message as read (read=1 means processed)
         await db.execute(
-            "UPDATE chat_messages SET processed = 1, read = 1 WHERE id = ?",
+            "UPDATE chat_messages SET read = 1 WHERE id = ?",
             (request.message_id,)
         )
         await db.commit()
@@ -433,23 +433,24 @@ async def get_pending_messages(
     chat_repo: ChatRepository = Depends(get_chat_repo),
 ):
     """
-    Get pending (unclaimed, unprocessed) messages.
+    Get pending (unclaimed, unread) messages.
     
     Used by Workers to discover available work.
+    read=0 means the message hasn't been processed yet.
     """
     db = get_database()
     
     if agent_id:
         rows = await db.fetchall(
             """SELECT * FROM chat_messages 
-               WHERE agent_id = ? AND claimed_by IS NULL AND processed = 0
+               WHERE agent_id = ? AND claimed_by IS NULL AND read = 0
                ORDER BY timestamp ASC LIMIT ?""",
             (agent_id, limit)
         )
     else:
         rows = await db.fetchall(
             """SELECT * FROM chat_messages 
-               WHERE claimed_by IS NULL AND processed = 0
+               WHERE claimed_by IS NULL AND read = 0
                ORDER BY timestamp ASC LIMIT ?""",
             (limit,)
         )
