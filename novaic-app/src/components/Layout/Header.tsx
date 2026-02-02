@@ -30,9 +30,7 @@ export function Header(props: HeaderProps) {
 
         {/* Logo */}
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-            <span className="text-white font-bold text-[9px]">NA</span>
-          </div>
+          <img src="/logo.png" alt="NovAIC" className="w-6 h-6" />
           <span className="font-semibold text-nb-text text-[13px]">NovAIC</span>
         </div>
 

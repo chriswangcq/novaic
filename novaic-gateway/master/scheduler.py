@@ -654,6 +654,21 @@ class Scheduler:
                 if tool_calls:
                     fresh_runtime = await gateway.get_runtime(runtime_id)
                     context = list(fresh_runtime.get("context", []) if fresh_runtime else runtime.get("context", []))
+                    
+                    # v15: 清理已被 LLM 处理过的图片数据
+                    # Think 完成意味着 LLM 已经看到了 context 中的所有图片
+                    # 现在可以安全地用 placeholder 替换，避免数据库膨胀
+                    for msg in context:
+                        if msg.get('role') == 'tool_result':
+                            content = msg.get('content', '')
+                            if isinstance(content, str):
+                                try:
+                                    result_data = json.loads(content)
+                                    if isinstance(result_data, dict) and multimodal.has_images(result_data):
+                                        msg['content'] = multimodal.result_to_text_only(result_data)
+                                except (json.JSONDecodeError, TypeError):
+                                    pass  # Not JSON, skip
+                    
                     assistant_msg = {
                         'role': 'assistant',
                         'content': think_result.get('reasoning', ''),
@@ -699,12 +714,11 @@ class Scheduler:
                     tool_call_id = r.get('tool_call_id') or ''
                     result_data = r['result']
                     
-                    # 使用通用工具处理多模态内容
-                    # 不在 context 中存储 base64 图片数据，节省 token
-                    if isinstance(result_data, dict) and multimodal.has_images(result_data):
-                        content = multimodal.result_to_text_only(result_data)
-                    else:
-                        content = json.dumps(result_data) if isinstance(result_data, dict) else str(result_data)
+                    # v15: 保留完整结果（包括图片 base64）供 LLM Caller 提取
+                    # 图片数据会在 LLM Caller 的 add_tool_result 中被提取并传给 LLM
+                    # 然后存入 context 时会被 LLM Caller 处理（替换为 placeholder）
+                    # 这样图片既能被 LLM 看到，又不会永久占用 context 空间
+                    content = json.dumps(result_data) if isinstance(result_data, dict) else str(result_data)
                     
                     context.append({
                         'role': 'tool_result' if r['type'] != 'think' else 'assistant',

@@ -141,7 +141,13 @@ async def handle_think(
                     tool_call_id = msg.get("tool_call_id") or ''
                     tool_name = msg.get("tool_name", "tool")
                     if tool_call_id:  # 只有有 tool_call_id 时才添加
-                        llm.add_tool_result(tool_name, tool_call_id, content)
+                        # v15: 尝试解析 JSON，保留完整结果供图片检测
+                        # add_tool_result 会检测 _mcp_content 中的图片并传给 LLM
+                        try:
+                            result_data = json.loads(content) if isinstance(content, str) else content
+                        except (json.JSONDecodeError, TypeError):
+                            result_data = content
+                        llm.add_tool_result(tool_name, tool_call_id, result_data)
                 elif role == "system":
                     # System messages go into context as user
                     llm.add_user_message(f"[System] {content}")

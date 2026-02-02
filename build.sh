@@ -78,6 +78,13 @@ echo ""
 echo "[3/3] Building Tauri App..."
 cd novaic-app
 
+# Regenerate app icon with macOS safe area (smaller, rounder) if script and deps exist
+ICON_SCRIPT="src-tauri/icons/regenerate_app_icon.py"
+if [ -f "$ICON_SCRIPT" ] && python3 -c "from PIL import Image" 2>/dev/null; then
+    echo "  Regenerating app icon (safe-area)..."
+    (cd src-tauri/icons && python3 regenerate_app_icon.py) || true
+fi
+
 # Unset CI env var as tauri CLI doesn't accept CI=1 (only true/false)
 unset CI
 

@@ -21,7 +21,8 @@ use std::process::{Child, Command, Stdio};
 use tokio::sync::Mutex;
 use tauri::{
     AppHandle,
-    Manager, 
+    Manager,
+    image::Image,
     WindowEvent,
     tray::TrayIconBuilder,
     menu::{Menu, MenuItem},
@@ -914,12 +915,18 @@ fn main() {
             let quit_item = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
             
-            // Create tray icon
-            let _tray = TrayIconBuilder::with_id("main-tray")
-                .icon(app.default_window_icon().unwrap().clone())
+            // Create tray icon: use dedicated tray icon; on macOS set as template for B&W menu bar style
+            let tray_icon: Image = tauri::include_image!("icons/tray-icon.png");
+            let mut tray_builder = TrayIconBuilder::with_id("main-tray")
+                .icon(tray_icon)
                 .menu(&menu)
                 .show_menu_on_left_click(true)
-                .tooltip("NovAIC")
+                .tooltip("NovAIC");
+            #[cfg(target_os = "macos")]
+            {
+                tray_builder = tray_builder.icon_as_template(true);
+            }
+            let _tray = tray_builder
                 .on_menu_event(|app, event| {
                     println!("[Tray] Menu event: {:?}", event.id.as_ref());
                     match event.id.as_ref() {

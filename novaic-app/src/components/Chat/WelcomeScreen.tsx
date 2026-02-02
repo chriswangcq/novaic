@@ -1,12 +1,10 @@
-import { Sparkles, Terminal, Globe, FileCode } from 'lucide-react';
+import { Terminal, Globe, FileCode } from 'lucide-react';
 
 export function WelcomeScreen() {
   return (
     <div className="h-full flex flex-col items-center justify-center px-6 py-8">
       {/* Logo */}
-      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/80 to-purple-600/80 flex items-center justify-center mb-5">
-        <Sparkles size={20} className="text-white/90" />
-      </div>
+      <img src="/logo.png" alt="NovAIC" className="w-10 h-10 mb-5" />
       
       <h2 className="text-[15px] font-medium text-white/80 mb-1.5">
         What can I help you with?

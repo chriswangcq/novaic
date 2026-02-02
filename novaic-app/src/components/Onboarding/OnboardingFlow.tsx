@@ -11,7 +11,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Rocket, Settings, CheckCircle, AlertCircle } from 'lucide-react';
+import { Settings, CheckCircle, AlertCircle } from 'lucide-react';
 import { SetupProgress } from './SetupProgress';
 import { api } from '../../services';
 import * as setup from '../../services/setup';
@@ -204,9 +204,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       case 'welcome':
         return (
           <div className="flex flex-col items-center text-center max-w-lg mx-auto">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mb-6">
-              <Rocket size={40} className="text-white" />
-            </div>
+            <img src="/logo.png" alt="NovAIC" className="w-20 h-20 mb-6" />
             <h1 className="text-3xl font-bold text-nb-text mb-4">
               Welcome to NovAIC
             </h1>

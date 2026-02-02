@@ -424,9 +424,7 @@ export function AgentDashboard({ onEnterWorkspace, onEnterSetup }: AgentDashboar
       {/* Header */}
       <header className="h-14 border-b border-nb-border flex items-center justify-between px-6">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-            <span className="text-white font-bold text-sm">N</span>
-          </div>
+          <img src="/logo.png" alt="NovAIC" className="w-8 h-8" />
           <h1 className="text-lg font-semibold text-nb-text">NovAIC</h1>
         </div>
         <button
