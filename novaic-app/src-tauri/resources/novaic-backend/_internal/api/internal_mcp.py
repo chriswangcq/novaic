@@ -55,6 +55,20 @@ async def has_agent_shared_mcp(agent_id: str):
     return {"exists": mcp_mgr.has_agent_shared_servers(agent_id)}
 
 
+@router.delete("/mcp/agent-shared/{agent_id}")
+async def remove_agent_shared_mcp(agent_id: str):
+    """Remove agent shared MCP servers."""
+    from mcp_servers.manager import get_mcp_manager
+
+    mcp_mgr = get_mcp_manager()
+    if not mcp_mgr:
+        return {"status": "ok"}
+
+    await mcp_mgr.remove_agent_shared_servers(agent_id)
+
+    return {"status": "ok"}
+
+
 @router.post("/mcp/runtime")
 async def create_runtime_mcp(data: Dict[str, Any]):
     """Create runtime MCP server."""
@@ -65,19 +79,20 @@ async def create_runtime_mcp(data: Dict[str, Any]):
         raise HTTPException(status_code=503, detail="MCP Manager not available")
 
     agent_id = data.get("agent_id")
+    runtime_id = data.get("runtime_id")
     subagent_id = data.get("subagent_id")
     agent_index = data.get("agent_index", 0)
 
-    if not agent_id or not subagent_id:
-        raise HTTPException(status_code=400, detail="agent_id and subagent_id required")
+    if not agent_id or not runtime_id or not subagent_id:
+        raise HTTPException(status_code=400, detail="agent_id, runtime_id and subagent_id required")
 
-    await mcp_mgr.create_runtime_server(agent_id, subagent_id, agent_index)
+    await mcp_mgr.create_runtime_server(agent_id, runtime_id, subagent_id, agent_index)
 
     return {"status": "ok"}
 
 
-@router.delete("/mcp/runtime/{subagent_id}")
-async def remove_runtime_mcp(subagent_id: str):
+@router.delete("/mcp/runtime/{runtime_id}")
+async def remove_runtime_mcp(runtime_id: str):
     """Remove runtime MCP server."""
     from mcp_servers.manager import get_mcp_manager
 
@@ -85,7 +100,21 @@ async def remove_runtime_mcp(subagent_id: str):
     if not mcp_mgr:
         return {"status": "ok"}
 
-    await mcp_mgr.remove_runtime_server(subagent_id)
+    await mcp_mgr.remove_runtime_server(runtime_id)
+
+    return {"status": "ok"}
+
+
+@router.delete("/mcp/runtime/{agent_id}/{runtime_id}")
+async def remove_runtime_mcp_with_agent(agent_id: str, runtime_id: str):
+    """Remove runtime MCP server (with agent_id for Gateway proxy)."""
+    from mcp_servers.manager import get_mcp_manager
+
+    mcp_mgr = get_mcp_manager()
+    if not mcp_mgr:
+        return {"status": "ok"}
+
+    await mcp_mgr.remove_runtime_server(runtime_id)
 
     return {"status": "ok"}
 
@@ -100,22 +129,23 @@ async def create_aggregate_mcp(data: Dict[str, Any]):
         raise HTTPException(status_code=503, detail="MCP Manager not available")
 
     agent_id = data.get("agent_id")
+    runtime_id = data.get("runtime_id")
     subagent_id = data.get("subagent_id")
     agent_index = data.get("agent_index", 0)
 
-    if not agent_id or not subagent_id:
-        raise HTTPException(status_code=400, detail="agent_id and subagent_id required")
+    if not agent_id or not runtime_id or not subagent_id:
+        raise HTTPException(status_code=400, detail="agent_id, runtime_id and subagent_id required")
 
-    await mcp_mgr.create_aggregate_gateway(agent_id, subagent_id, agent_index)
+    await mcp_mgr.create_aggregate_gateway(agent_id, runtime_id, subagent_id, agent_index)
 
     base = _get_mcp_gateway_base()
-    mcp_url = f"{base}/mcp/aggregate/{subagent_id}/"
+    mcp_url = f"{base}/mcp/aggregate/{runtime_id}/"
 
     return {"status": "ok", "mcp_url": mcp_url}
 
 
-@router.delete("/mcp/aggregate/{subagent_id}")
-async def remove_aggregate_mcp(subagent_id: str):
+@router.delete("/mcp/aggregate/{runtime_id}")
+async def remove_aggregate_mcp(runtime_id: str):
     """Remove aggregate MCP gateway."""
     from mcp_servers.manager import get_mcp_manager
 
@@ -123,7 +153,21 @@ async def remove_aggregate_mcp(subagent_id: str):
     if not mcp_mgr:
         return {"status": "ok"}
 
-    await mcp_mgr.remove_aggregate_gateway(subagent_id)
+    await mcp_mgr.remove_aggregate_gateway(runtime_id)
+
+    return {"status": "ok"}
+
+
+@router.delete("/mcp/aggregate/{agent_id}/{runtime_id}")
+async def remove_aggregate_mcp_with_agent(agent_id: str, runtime_id: str):
+    """Remove aggregate MCP gateway (with agent_id for Gateway proxy)."""
+    from mcp_servers.manager import get_mcp_manager
+
+    mcp_mgr = get_mcp_manager()
+    if not mcp_mgr:
+        return {"status": "ok"}
+
+    await mcp_mgr.remove_aggregate_gateway(runtime_id)
 
     return {"status": "ok"}
 
@@ -192,3 +236,30 @@ async def get_mcp_runtimes():
         })
 
     return {"runtimes": runtimes, "total": len(runtimes)}
+
+
+@router.get("/mcp/servers")
+async def list_mcp_servers():
+    """List all active MCP servers (alias for stats + runtimes)."""
+    from mcp_servers.manager import get_mcp_manager
+
+    mcp_mgr = get_mcp_manager()
+    if not mcp_mgr:
+        return {"stats": {}, "runtimes": []}
+
+    stats = mcp_mgr.get_stats()
+    runtimes = []
+    for subagent_id in stats.get("runtime_servers", []):
+        runtime_url = mcp_mgr.get_runtime_mount_path(subagent_id)
+        aggregate_url = mcp_mgr.get_aggregate_mount_path(subagent_id)
+        runtimes.append({
+            "subagent_id": subagent_id,
+            "runtime_url": runtime_url,
+            "aggregate_url": aggregate_url,
+        })
+
+    return {
+        "stats": stats,
+        "runtimes": runtimes,
+        "agent_shared": stats.get("agent_shared_agents", []),
+    }

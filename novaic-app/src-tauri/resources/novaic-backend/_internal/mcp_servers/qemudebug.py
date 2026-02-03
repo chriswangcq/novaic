@@ -625,20 +625,58 @@ qemu_deploy_vmuse_code()  # 部署 MCP Server
             # 1. 找到 novaic-mcp-vmuse 路径
             resource_dir = os.environ.get("NOVAIC_RESOURCE_DIR", "")
             vmuse_path = None
+            search_paths = []
             
+            # Priority 1: NOVAIC_RESOURCE_DIR (production mode)
             if resource_dir:
                 candidate = os.path.join(resource_dir, "novaic-mcp-vmuse")
+                search_paths.append(candidate)
                 if os.path.exists(candidate):
                     vmuse_path = candidate
+                    logger.info(f"[qemu_deploy_vmuse_code] Found via NOVAIC_RESOURCE_DIR: {vmuse_path}")
             
+            # Priority 2: Infer from __file__ for PyInstaller bundle
+            # When bundled, __file__ is in _internal/mcp_servers/qemudebug.py
+            # Resource is at: _internal/../novaic-mcp-vmuse
             if not vmuse_path:
-                gateway_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-                candidate = os.path.join(gateway_dir, "novaic-mcp-vmuse")
+                internal_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                candidate = os.path.join(internal_dir, "..", "novaic-mcp-vmuse")
+                candidate = os.path.normpath(candidate)
+                search_paths.append(candidate)
                 if os.path.exists(candidate):
                     vmuse_path = candidate
+                    logger.info(f"[qemu_deploy_vmuse_code] Found via _internal/../: {vmuse_path}")
+            
+            # Priority 3: novaic-vm directory (development mode, merged structure)
+            if not vmuse_path:
+                project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                candidate = os.path.join(project_root, "novaic-vm")
+                search_paths.append(candidate)
+                if os.path.exists(candidate) and os.path.exists(os.path.join(candidate, "src", "novaic_mcp_vmuse")):
+                    vmuse_path = candidate
+                    logger.info(f"[qemu_deploy_vmuse_code] Found via novaic-vm: {vmuse_path}")
+            
+            # Priority 4: Tauri resources directory (development mode)
+            if not vmuse_path:
+                project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                candidate = os.path.join(project_root, "novaic-app", "src-tauri", "resources", "novaic-mcp-vmuse")
+                search_paths.append(candidate)
+                if os.path.exists(candidate):
+                    vmuse_path = candidate
+                    logger.info(f"[qemu_deploy_vmuse_code] Found via Tauri resources: {vmuse_path}")
+            
+            # Priority 5: macOS app bundle Resources directory
+            if not vmuse_path:
+                # /Applications/NovAIC.app/Contents/Resources/novaic-mcp-vmuse
+                app_resources = "/Applications/NovAIC.app/Contents/Resources/novaic-mcp-vmuse"
+                search_paths.append(app_resources)
+                if os.path.exists(app_resources):
+                    vmuse_path = app_resources
+                    logger.info(f"[qemu_deploy_vmuse_code] Found via macOS app bundle: {vmuse_path}")
             
             if not vmuse_path or not os.path.exists(vmuse_path):
-                result["error"] = f"novaic-mcp-vmuse not found. NOVAIC_RESOURCE_DIR={resource_dir}"
+                result["error"] = f"novaic-mcp-vmuse not found. NOVAIC_RESOURCE_DIR={resource_dir}, searched: {search_paths}"
+                logger.error(f"[qemu_deploy_vmuse_code] {result['error']}")
                 return result
             
             logger.info(f"[qemu_deploy_vmuse_code] Using source: {vmuse_path}")

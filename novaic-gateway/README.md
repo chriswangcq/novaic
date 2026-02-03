@@ -102,7 +102,8 @@ Connect to `ws://127.0.0.1:19999/ws/{client_id}` for real-time chat.
 ### Building the Web UI
 
 ```bash
-cd ../novaic-web
+# Web UI is now part of novaic-app
+cd ../novaic-app
 npm install
 npm run build
 cp -r dist ../novaic-gateway/web/

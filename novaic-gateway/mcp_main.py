@@ -83,9 +83,9 @@ async def lifespan(app: FastAPI):
         set_mcp_manager(None)
         logger.info("[MCP Gateway] MCPManager closed")
     
-    # Disconnect database
-    await db.disconnect()
-    logger.info("[MCP Gateway] Database disconnected")
+    # Close database
+    await db.close()
+    logger.info("[MCP Gateway] Database closed")
 
 
 app = FastAPI(

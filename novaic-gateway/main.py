@@ -18,6 +18,15 @@ from datetime import datetime
 os.environ['no_proxy'] = 'localhost,127.0.0.1,::1'
 os.environ['NO_PROXY'] = 'localhost,127.0.0.1,::1'
 
+# ==================== Environment Variables Debug ====================
+print("[Gateway] === Environment Variables ===")
+print(f"[Gateway] NOVAIC_DATA_DIR: {os.environ.get('NOVAIC_DATA_DIR', 'NOT SET')}")
+print(f"[Gateway] NOVAIC_RESOURCE_DIR: {os.environ.get('NOVAIC_RESOURCE_DIR', 'NOT SET')}")
+print(f"[Gateway] NOVAIC_MCP_GATEWAY_URL: {os.environ.get('NOVAIC_MCP_GATEWAY_URL', 'NOT SET')}")
+print(f"[Gateway] Current working directory: {os.getcwd()}")
+print(f"[Gateway] Executable path: {sys.executable}")
+print("[Gateway] ===============================")
+
 # ==================== Data Directory Setup ====================
 # NOVAIC_DATA_DIR is required (passed from Tauri app)
 if not os.environ.get("NOVAIC_DATA_DIR"):
@@ -154,8 +163,6 @@ sys.path.insert(0, str(Path(__file__).parent))
 from api.routes import router as api_router
 from api.agents import router as agents_router
 from api.vm import router as vm_router
-from api.claim import router as claim_router
-from api.mcp import router as mcp_api_router
 from api.internal import router as internal_router
 from config import get_config_manager
 
@@ -500,13 +507,7 @@ app.include_router(agents_router)
 # VM API routes (already has /api/vm prefix)
 app.include_router(vm_router)
 
-# Claim API routes (v11 multi-process - already has /api prefix)
-app.include_router(claim_router)
-
-# MCP API routes (v11 multi-process - already has /api/mcp prefix)
-app.include_router(mcp_api_router)
-
-# Internal API routes (v2.10 - for Master service, has /internal prefix)
+# Internal API routes (v2.10 - for services, has /internal prefix)
 app.include_router(internal_router)
 
 

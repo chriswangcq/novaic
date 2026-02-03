@@ -2,19 +2,25 @@
 """
 NovAIC Backend - Unified Entry Point
 
-Backend 由四个并列组件构成，均由 Tauri 统一拉起：
-  - Gateway: API + DB
+Backend 由六个并列组件构成，均由 Tauri 统一拉起：
+  - Gateway: API + DB + MCP Proxy
   - MCP Gateway: MCP 聚合与 Runtime/Agent MCP
-  - Master: 编排（Monitor + Scheduler）
-  - Worker: 执行 think/tool_call
+  - Launcher: Stage 前置处理 + 创建任务
+  - Collector: 收集结果 + 触发下一阶段
+  - Executor: 执行 LLM/工具调用
+  - Health: 监控并回收超时任务
+
+所有 Service 只与 Gateway 通信，MCP 管理操作通过 Gateway 代理。
 
 Usage:
     novaic-backend gateway [--port PORT] [--data-dir PATH]
     novaic-backend mcp-gateway [--port PORT] [--data-dir PATH]
-    novaic-backend master --gateway-url URL [--mcp-gateway-url URL]
-    novaic-backend worker --gateway URL [--mcp-gateway-url URL] [--worker-id ID] [--max-concurrent N]
+    novaic-backend launcher --gateway-url URL [--bootstrap]
+    novaic-backend collector --gateway-url URL
+    novaic-backend executor --gateway-url URL [--workers N]
+    novaic-backend health --gateway-url URL
 
-v2.11: 统一二进制，可运行 Backend 各组件（gateway / mcp-gateway / master / worker）。
+v3.0: Three-Task Architecture（Launcher + Collector + Executor + Health）取代 Master + Worker。
 """
 
 import sys
@@ -29,13 +35,17 @@ def print_usage():
     print("""
 NovAIC Backend - Unified Entry Point
 
-Backend 四组件（Gateway、MCP Gateway、Master、Worker）均由 Tauri 统一拉起。
+Backend 七组件（Gateway、MCP Gateway、Monitor、Launcher、Collector、Executor、Health）均由 Tauri 统一拉起。
+所有 Service 只与 Gateway 通信。
 
 Usage:
-    novaic-backend gateway [options]    Backend 组件: Gateway (API+DB+Workers)
+    novaic-backend gateway [options]     Backend 组件: Gateway (API+DB+MCP Proxy)
     novaic-backend mcp-gateway [options] Backend 组件: MCP Gateway (MCP only)
-    novaic-backend master [options]     Backend 组件: Master (编排)
-    novaic-backend worker [options]     Backend 组件: Worker（Tauri 统一拉起）
+    novaic-backend monitor [options]     Backend 组件: Monitor (事件驱动消息队列消费者)
+    novaic-backend launcher [options]    Backend 组件: Launcher (前置处理+创建任务)
+    novaic-backend collector [options]   Backend 组件: Collector (收集结果+触发下一阶段)
+    novaic-backend executor [options]    Backend 组件: Executor (执行 LLM/工具调用)
+    novaic-backend health [options]      Backend 组件: Health (回收超时任务)
 
 Gateway options:
     --port PORT         Port to listen on (default: 19999)
@@ -45,21 +55,20 @@ MCP Gateway options:
     --port PORT         Port for MCP Gateway (default: 19998)
     --data-dir PATH     Data directory (与 Gateway 共用)
 
-Master options:
-    --gateway-url URL       Gateway URL (default: http://127.0.0.1:19999)
-    --mcp-gateway-url URL   MCP Gateway URL (default: same as gateway-url)
+Launcher/Collector/Executor/Health/Monitor options:
+    --gateway-url URL   Gateway URL (default: http://127.0.0.1:19999)
 
-Worker options:
-    --gateway URL           Gateway URL (default: http://127.0.0.1:19999)
-    --mcp-gateway-url URL   MCP Gateway URL (default: same as gateway)
-    --worker-id ID          Worker ID (auto-generated if not provided)
-    --max-concurrent N      Max concurrent tasks (default: 10)
+Executor options:
+    --workers N         Number of parallel workers (default: 3)
 
 Examples:
     novaic-backend gateway --port 19999
     novaic-backend mcp-gateway --port 19998
-    novaic-backend master --gateway-url http://127.0.0.1:19999 --mcp-gateway-url http://127.0.0.1:19998
-    novaic-backend worker --gateway http://127.0.0.1:19999 --mcp-gateway-url http://127.0.0.1:19998
+    novaic-backend monitor --gateway-url http://127.0.0.1:19999
+    novaic-backend launcher --gateway-url http://127.0.0.1:19999
+    novaic-backend collector --gateway-url http://127.0.0.1:19999
+    novaic-backend executor --gateway-url http://127.0.0.1:19999 --workers 3
+    novaic-backend health --gateway-url http://127.0.0.1:19999
 """)
 
 
@@ -114,61 +123,71 @@ def run_mcp_gateway():
     mcp_main_run()
 
 
-def run_master():
-    """Run the Master orchestrator."""
+def run_launcher():
+    """Run the Launcher service."""
     import argparse
     import asyncio
     
-    parser = argparse.ArgumentParser(description="NovAIC Master Orchestrator")
-    parser.add_argument(
-        "--gateway-url",
-        default="http://127.0.0.1:19999",
-        help="Backend URL (default: http://127.0.0.1:19999)",
-    )
-    parser.add_argument(
-        "--mcp-gateway-url",
-        default=None,
-        help="MCP Gateway URL when MCP runs in separate process (default: same as gateway-url)",
-    )
+    parser = argparse.ArgumentParser(description="NovAIC Launcher Service")
+    parser.add_argument("--gateway-url", default="http://127.0.0.1:19999")
+    # v18: --bootstrap removed, Monitor service now handles message queue
     args = parser.parse_args()
     
-    # Import and run master
-    from master_main import MasterService
-    
-    service = MasterService(
-        gateway_url=args.gateway_url,
-        mcp_gateway_url=args.mcp_gateway_url,
-    )
-    
-    try:
-        asyncio.run(service.run_forever())
-    except KeyboardInterrupt:
-        print("\n[Master] Interrupted")
+    from launcher_main import main as launcher_run
+    asyncio.run(launcher_run(args.gateway_url, bootstrap=False))
 
 
-def run_worker():
-    """Run a Worker process."""
+def run_collector():
+    """Run the Collector service."""
     import argparse
     import asyncio
     
-    parser = argparse.ArgumentParser(description="NovAIC Worker Process")
-    parser.add_argument("--gateway", default="http://127.0.0.1:19999", help="Backend URL")
-    parser.add_argument("--mcp-gateway-url", default=None, help="MCP Gateway URL (default: same as gateway)")
-    parser.add_argument("--max-concurrent", type=int, default=10, help="Max concurrent tasks")
-    parser.add_argument("--worker-id", help="Worker ID (auto-generated if not provided)")
+    parser = argparse.ArgumentParser(description="NovAIC Collector Service")
+    parser.add_argument("--gateway-url", default="http://127.0.0.1:19999")
     args = parser.parse_args()
     
-    # Import and run worker
-    from worker.worker import WorkerConfig, run_worker as worker_run
+    from collector_main import main as collector_run
+    asyncio.run(collector_run(args.gateway_url))
+
+
+def run_executor():
+    """Run the Executor service."""
+    import argparse
+    import asyncio
     
-    config = WorkerConfig(
-        gateway_url=args.gateway,
-        mcp_gateway_url=args.mcp_gateway_url,
-        max_concurrent=args.max_concurrent,
-        worker_id=args.worker_id,
-    )
+    parser = argparse.ArgumentParser(description="NovAIC Executor Service")
+    parser.add_argument("--gateway-url", default="http://127.0.0.1:19999")
+    parser.add_argument("--workers", type=int, default=3, help="Number of parallel workers (default: 3)")
+    args = parser.parse_args()
     
-    asyncio.run(worker_run(config))
+    from executor_main import main as executor_run
+    asyncio.run(executor_run(args.gateway_url, args.workers))
+
+
+def run_health():
+    """Run the Health Monitor service."""
+    import argparse
+    import asyncio
+    
+    parser = argparse.ArgumentParser(description="NovAIC Health Monitor Service")
+    parser.add_argument("--gateway-url", default="http://127.0.0.1:19999")
+    args = parser.parse_args()
+    
+    from health_main import main as health_run
+    asyncio.run(health_run(args.gateway_url))
+
+
+def run_monitor():
+    """Run the Monitor service (v18: event-driven message queue consumer)."""
+    import argparse
+    import asyncio
+    
+    parser = argparse.ArgumentParser(description="NovAIC Monitor Service")
+    parser.add_argument("--gateway-url", default="http://127.0.0.1:19999")
+    args = parser.parse_args()
+    
+    from monitor_main import main as monitor_run
+    asyncio.run(monitor_run(args.gateway_url))
 
 
 def main():
@@ -194,10 +213,16 @@ def main():
         run_gateway()
     elif mode == "mcp-gateway":
         run_mcp_gateway()
-    elif mode == "master":
-        run_master()
-    elif mode == "worker":
-        run_worker()
+    elif mode == "monitor":
+        run_monitor()
+    elif mode == "launcher":
+        run_launcher()
+    elif mode == "collector":
+        run_collector()
+    elif mode == "executor":
+        run_executor()
+    elif mode == "health":
+        run_health()
     elif mode in ["--help", "-h", "help"]:
         print_usage()
         sys.exit(0)

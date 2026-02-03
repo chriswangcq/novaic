@@ -534,7 +534,7 @@ async def chat(request: ChatRequest):
     if request.api_key_id:
         metadata["api_key_id"] = request.api_key_id
     
-    # Store message in inbox
+    # Store message in inbox (status=sending for Monitor queue)
     db = get_database()
     message_repo = MessageRepository(db)
     
@@ -543,6 +543,7 @@ async def chat(request: ChatRequest):
         type="USER_MESSAGE",
         content=content,
         metadata=metadata if metadata else None,
+        status="sending",  # v18: Monitor will consume and change to 'sent'
     )
     
     # Broadcast to UI SSE (for display)
@@ -557,15 +558,14 @@ async def chat(request: ChatRequest):
     except Exception as e:
         print(f"[Chat] Warning: Failed to broadcast to UI: {e}")
     
-    # Monitor will detect unread message and create Runtime
-    # Master will drive the ReACT loop
+    # Monitor will consume sending message, wake SubAgent, and create Runtime
     # Agent replies will come via SSE /api/chat/events
     
     return {
         "success": True,
         "message_id": msg["id"],
         "timestamp": msg["timestamp"],
-        "status": "queued",
+        "status": "sending",  # v18: waiting for Monitor to process
         "note": "Subscribe to /api/chat/events for agent responses",
     }
 
@@ -618,7 +618,7 @@ async def chat_stream(request: ChatRequest):
     if request.api_key_id:
         metadata["api_key_id"] = request.api_key_id
     
-    # Store message in inbox
+    # Store message in inbox (status=sending for Monitor queue)
     db = get_database()
     message_repo = MessageRepository(db)
     
@@ -627,6 +627,7 @@ async def chat_stream(request: ChatRequest):
         type="USER_MESSAGE",
         content=content,
         metadata=metadata if metadata else None,
+        status="sending",  # v18: Monitor will consume and change to 'sent'
     )
     
     user_message_id = msg["id"]
@@ -784,10 +785,12 @@ async def clear_history():
         return {"status": "ok", "message": "No agent selected"}
     
     db = get_database()
-    await db.execute(
-        "UPDATE chat_messages SET read = 1 WHERE agent_id = ?",
-        (current_agent.id,)
-    )
+    async with db.get_connection() as conn:
+        await conn.execute(
+            "UPDATE chat_messages SET read = 1 WHERE agent_id = ?",
+            (current_agent.id,)
+        )
+        await conn.commit()
     
     return {"status": "ok", "message": "History cleared (messages marked as read)"}
 
@@ -795,16 +798,73 @@ async def clear_history():
 # ==================== Control (v12: Master-driven) ====================
 
 @router.post("/interrupt")
-async def interrupt():
+async def interrupt(agent_id: str = None):
     """
     Interrupt current execution.
     
-    v12: TODO - Implement via Master to cancel active runtimes.
+    v3.0: Cancel pending tasks and mark runtimes as interrupted.
     """
-    # In Master-driven architecture, interrupt would:
-    # 1. Cancel active runtimes for current agent
-    # 2. Mark pending tasks as cancelled
-    return {"status": "ok", "message": "v12: Interrupt not yet implemented for Master architecture"}
+    from db.database import get_database
+    from datetime import datetime
+    
+    db = get_database()
+    now = datetime.utcnow().isoformat()
+    
+    cancelled_tasks = 0
+    interrupted_runtimes = 0
+    
+    async with db.get_connection() as conn:
+        # 1. Cancel pending/claimed tasks
+        if agent_id:
+            cursor = await conn.execute("""
+                UPDATE pipeline_tasks 
+                SET status = 'cancelled', updated_at = ?
+                WHERE agent_id = ? AND status IN ('pending', 'claimed')
+            """, (now, agent_id))
+        else:
+            cursor = await conn.execute("""
+                UPDATE pipeline_tasks 
+                SET status = 'cancelled', updated_at = ?
+                WHERE status IN ('pending', 'claimed')
+            """, (now,))
+        cancelled_tasks = cursor.rowcount
+        
+        # 2. Mark active runtimes as interrupted
+        if agent_id:
+            cursor = await conn.execute("""
+                UPDATE runtimes 
+                SET status = 'interrupted', updated_at = ?
+                WHERE agent_id = ? AND status = 'active'
+            """, (now, agent_id))
+        else:
+            cursor = await conn.execute("""
+                UPDATE runtimes 
+                SET status = 'interrupted', updated_at = ?
+                WHERE status = 'active'
+            """, (now,))
+        interrupted_runtimes = cursor.rowcount
+        
+        # 3. Set SubAgents to sleeping
+        if agent_id:
+            await conn.execute("""
+                UPDATE subagents 
+                SET status = 'sleeping', updated_at = ?
+                WHERE agent_id = ? AND status = 'awake'
+            """, (now, agent_id))
+        else:
+            await conn.execute("""
+                UPDATE subagents 
+                SET status = 'sleeping', updated_at = ?
+                WHERE status = 'awake'
+            """, (now,))
+        
+        await conn.commit()
+    
+    return {
+        "status": "ok",
+        "cancelled_tasks": cancelled_tasks,
+        "interrupted_runtimes": interrupted_runtimes,
+    }
 
 
 @router.post("/init")

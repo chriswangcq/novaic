@@ -58,6 +58,7 @@ class AggregateMCP:
         self,
         agent_id: str,
         agent_index: int,
+        runtime_id: str,
         subagent_id: str,
     ):
         """
@@ -66,10 +67,12 @@ class AggregateMCP:
         Args:
             agent_id: Unique agent identifier (UUID)
             agent_index: Agent index for port allocation (0, 1, 2, ...)
-            subagent_id: Runtime ID (main-xxx or sub-xxx)
+            runtime_id: Runtime ID (rt-xxx)
+            subagent_id: SubAgent ID (main-xxx or sub-xxx)
         """
         self.agent_id = agent_id
         self.agent_index = agent_index
+        self.runtime_id = runtime_id
         self.subagent_id = subagent_id
         
         # Allocate ports for this agent
@@ -222,7 +225,7 @@ class AggregateMCP:
         
         # v2.8: Runtime MCP (runtime_* 工具) - 最高优先级
         # 这是当前 Runtime 的专属 MCP Server
-        runtime_url = f"{gateway_base}/mcp/runtime/{self.subagent_id}/"
+        runtime_url = f"{gateway_base}/mcp/runtime/{self.runtime_id}/"
         self.registry.register_server("runtime", url=runtime_url, priority=0, connect_timeout=1.0)
         
         # VM server (runs inside the virtual machine)
@@ -236,7 +239,7 @@ class AggregateMCP:
         self.registry.register_server("local", url=f"{shared_base_url}/local/", priority=2)
         self.registry.register_server("qemudebug", url=f"{shared_base_url}/qemudebug/", priority=3)
         
-        logger.info(f"[AggregateMCP] Registered 6 servers for runtime {self.subagent_id} (Runtime + VM + Agent共享层)")
+        logger.info(f"[AggregateMCP] Registered 6 servers for runtime {self.runtime_id} (Runtime + VM + Agent共享层)")
     
     async def setup(self) -> None:
         """
@@ -964,6 +967,7 @@ async def {tool_name}({params_str}):
         return {
             "agent_id": self.agent_id,
             "agent_index": self.agent_index,
+            "runtime_id": self.runtime_id,
             "subagent_id": self.subagent_id,
             "tools_count": len(self._registered_tools),
             "skills_count": len(self._registered_skills),
@@ -979,4 +983,4 @@ async def {tool_name}({params_str}):
         self.stop_discovery_task()
         
         await self.registry.close()
-        logger.info(f"[AggregateMCP] Closed gateway for runtime {self.subagent_id}")
+        logger.info(f"[AggregateMCP] Closed gateway for runtime {self.runtime_id}")

@@ -96,6 +96,10 @@ interface AppStore extends AppState {
   connectChatSSE: () => void;
   connectLogsSSE: () => void;
   disconnectSSE: () => void;
+  // Message pagination
+  hasMoreMessages: boolean;
+  isLoadingMore: boolean;
+  loadMoreMessages: () => Promise<void>;
 }
 
 
@@ -152,6 +156,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
   agents: [],
   currentAgentId: null,
   createAgentModalOpen: false,
+  // Message pagination state
+  hasMoreMessages: true,
+  isLoadingMore: false,
 
   // Initialize app - connect to SSE streams
   initialize: async () => {
@@ -208,8 +215,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
               ? (msg.read ? 'read' : 'delivered') as MessageStatus 
               : undefined,
           }));
-          set({ messages });
-          console.log(`[Store] Loaded ${messages.length} messages from history`);
+          set({ messages, hasMoreMessages: history.has_more });
+          console.log(`[Store] Loaded ${messages.length} messages from history, has_more: ${history.has_more}`);
         }
       } catch (e) {
         console.warn('[Store] Failed to load chat history:', e);
@@ -375,7 +382,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   clearMessages: () => {
     // Only clear local state (no server-side clear needed)
-    set({ messages: [], logs: [] });
+    set({ messages: [], logs: [], hasMoreMessages: true });
   },
 
   setExecuting: (executing: boolean) => {
@@ -492,6 +499,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         currentAgentId: agentId,
         messages: [],
         logs: [],
+        hasMoreMessages: true,
       });
       console.log('[Store] Selected agent:', agentId);
       
@@ -514,8 +522,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
               ? (msg.read ? 'read' : 'delivered') as MessageStatus 
               : undefined,
           }));
-          set({ messages });
-          console.log(`[Store] Loaded ${messages.length} messages for agent ${agentId}`);
+          set({ messages, hasMoreMessages: history.has_more });
+          console.log(`[Store] Loaded ${messages.length} messages for agent ${agentId}, has_more: ${history.has_more}`);
         }
       } catch (e) {
         console.warn('[Store] Failed to load chat history for new agent:', e);
@@ -838,5 +846,56 @@ export const useAppStore = create<AppStore>((set, get) => ({
       logsEventSource = null;
     }
     console.log('[Store] SSE streams disconnected');
+  },
+
+  // Load more messages (pagination - load older messages)
+  loadMoreMessages: async () => {
+    const { messages, isLoadingMore, hasMoreMessages } = get();
+    
+    // Skip if already loading or no more messages
+    if (isLoadingMore || !hasMoreMessages || messages.length === 0) {
+      return;
+    }
+    
+    set({ isLoadingMore: true });
+    
+    try {
+      // Get the oldest message to use as pagination cursor
+      const oldestMessage = messages[0];
+      
+      const history = await api.getChatHistory({
+        limit: 20,
+        before_id: oldestMessage.id,
+        summary_length: 100,
+      });
+      
+      if (history.success && history.messages.length > 0) {
+        // Convert API messages to local Message format
+        const olderMessages: Message[] = history.messages.map((msg) => ({
+          id: msg.id,
+          role: msg.type === 'USER_MESSAGE' ? 'user' : 'assistant',
+          content: msg.summary || '',
+          timestamp: new Date(msg.timestamp),
+          isTruncated: msg.is_truncated,
+          status: msg.type === 'USER_MESSAGE' 
+            ? (msg.read ? 'read' : 'delivered') as MessageStatus 
+            : undefined,
+        }));
+        
+        // Prepend older messages to the list
+        set((state) => ({
+          messages: [...olderMessages, ...state.messages],
+          hasMoreMessages: history.has_more,
+          isLoadingMore: false,
+        }));
+        
+        console.log(`[Store] Loaded ${olderMessages.length} older messages, has_more: ${history.has_more}`);
+      } else {
+        set({ hasMoreMessages: false, isLoadingMore: false });
+      }
+    } catch (e) {
+      console.error('[Store] Failed to load more messages:', e);
+      set({ isLoadingMore: false });
+    }
   },
 }));

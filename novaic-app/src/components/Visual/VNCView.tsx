@@ -15,6 +15,21 @@ const CONFIG = {
 
 type VncStatus = 'unknown' | 'stopped' | 'starting' | 'running' | 'error';
 
+// 启动进度步骤
+interface StartupProgress {
+  step: number;  // 0-4
+  stepName: string;
+  progress: number;  // 0-100
+  message: string;
+}
+
+const STARTUP_STEPS = [
+  { name: '启动虚拟机', weight: 30 },
+  { name: '等待 Agent 服务', weight: 30 },
+  { name: '启动 VNC', weight: 20 },
+  { name: '连接 WebSockify', weight: 20 },
+];
+
 interface VNCViewProps {
   isThumbnail?: boolean;
 }
@@ -28,6 +43,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
   const [errorMsg, setErrorMsg] = useState('');
   const [wsReady, setWsReady] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [startupProgress, setStartupProgress] = useState<StartupProgress | null>(null);
   const rfbRef = useRef<RFB | null>(null);
   const rfbContainerRef = useRef<HTMLDivElement>(null);
   const wsUrlRef = useRef<string | null>(null);
@@ -123,6 +139,20 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
     }
   }, [setVncConnected, currentAgentId]);
 
+  // 更新启动进度的辅助函数
+  const updateProgress = useCallback((step: number, subProgress: number, message: string) => {
+    const baseProgress = STARTUP_STEPS.slice(0, step).reduce((sum, s) => sum + s.weight, 0);
+    const stepWeight = STARTUP_STEPS[step]?.weight || 0;
+    const totalProgress = baseProgress + (stepWeight * subProgress / 100);
+    
+    setStartupProgress({
+      step,
+      stepName: STARTUP_STEPS[step]?.name || '',
+      progress: Math.min(100, Math.round(totalProgress)),
+      message,
+    });
+  }, []);
+
   // 启动 VNC (先启动 QEMU，再启动 VNC 服务)
   const startVnc = useCallback(async () => {
     const startTime = Date.now();
@@ -131,6 +161,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
     log('=== startVnc() BEGIN ===');
     setStatus('starting');
     setErrorMsg('');
+    setStartupProgress({ step: 0, stepName: STARTUP_STEPS[0].name, progress: 0, message: '准备启动...' });
     
     try {
       // Step 1: 先启动 QEMU VM
@@ -139,9 +170,12 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
       }
       const agentIndex = currentAgent.vm.agent_index ?? 0;
       log(`Step 1: Starting QEMU VM... (agentId: ${currentAgentId}, agentIndex: ${agentIndex})`);
+      updateProgress(0, 0, '正在启动虚拟机...');
+      
       try {
         await vmService.start(currentAgentId, agentIndex);
         log('QEMU VM started');
+        updateProgress(0, 100, '虚拟机已启动');
       } catch (vmError: any) {
         // Tauri 返回的错误可能是字符串或 Error 对象
         const errorMsg = typeof vmError === 'string' ? vmError : vmError?.message || '';
@@ -150,10 +184,12 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
           throw vmError;
         }
         log('VM already running, continuing...');
+        updateProgress(0, 100, '虚拟机已在运行');
       }
       
       // Step 2: 等待 Agent 服务就绪 (VM 启动需要时间)
       log('Step 2: Waiting for Agent service...');
+      updateProgress(1, 0, '等待 Agent 服务启动...');
       let agentReady = false;
       for (let i = 0; i < 30; i++) {
         try {
@@ -164,11 +200,13 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
           if (healthRes.ok) {
             agentReady = true;
             log(`Agent ready after ${i + 1} attempts`);
+            updateProgress(1, 100, 'Agent 服务已就绪');
             break;
           }
         } catch {
           // Agent 还没准备好
         }
+        updateProgress(1, Math.min(90, (i + 1) * 3), `等待 Agent 服务... (${i + 1}/30)`);
         if (i > 0 && i % 5 === 0) {
           log(`Still waiting for Agent... attempt ${i + 1}/30`);
         }
@@ -181,6 +219,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
       
       // Step 3: 调用 Agent 启动 VNC
       log('Step 3: Calling /api/vnc/start...');
+      updateProgress(2, 0, '正在启动 VNC 服务...');
       const res = await fetch(`http://localhost:${CONFIG.gatewayPort}/api/vnc/start`, {
         method: 'POST',
       });
@@ -188,10 +227,12 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
       log(`/api/vnc/start response: ${JSON.stringify(data)}`);
       
       if (data.status === 'started' || data.status === 'running') {
+        updateProgress(2, 100, 'VNC 服务已启动');
         setStatus('running');
         
         // 快速轮询等待 websockify 就绪 (每 500ms 检查一次，最多 10 秒)
         log('Step 4: Fast polling websockify...');
+        updateProgress(3, 0, '正在连接 WebSockify...');
         let wsConnected = false;
         for (let i = 0; i < 20; i++) {
           try {
@@ -215,10 +256,12 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
             });
             wsConnected = true;
             log(`WebSocket connected after ${i + 1} attempts!`);
+            updateProgress(3, 100, '连接成功！');
             break;
           } catch {
             // 继续等待
           }
+          updateProgress(3, Math.min(90, (i + 1) * 5), `连接 WebSockify... (${i + 1}/20)`);
           await new Promise(r => setTimeout(r, 500));
         }
         
@@ -226,6 +269,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
           log('=== startVnc() SUCCESS ===');
           setWsReady(true);
           setVncConnected(true);
+          setStartupProgress(null);  // 清除进度，显示正常界面
         } else {
           log('WebSocket not ready after 10s, falling back to background check');
           checkWebsockify();
@@ -233,14 +277,16 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
       } else {
         setStatus('error');
         setErrorMsg(data.error || 'Failed to start VNC');
+        setStartupProgress(null);
         log(`=== startVnc() FAILED: ${data.error} ===`);
       }
     } catch (e: any) {
       log(`=== startVnc() ERROR: ${e.message} ===`);
       setStatus('error');
       setErrorMsg(e.message || 'Failed to start VM or VNC');
+      setStartupProgress(null);
     }
-  }, [checkWebsockify, currentAgentId, currentAgent, setVncConnected]);
+  }, [checkWebsockify, currentAgentId, currentAgent, setVncConnected, updateProgress]);
 
   // 当 agent 切换时，重置 VNC 连接
   useEffect(() => {
@@ -570,8 +616,91 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
         {status === 'running' && wsReady ? (
           // VNC 已连接 - 直接渲染 noVNC canvas
           <div ref={rfbContainerRef} className="absolute inset-0" />
+        ) : status === 'starting' && startupProgress ? (
+          // 启动中 - 显示多步骤进度条
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-nb-text-muted p-8">
+            {/* 进度环 */}
+            <div className="relative w-24 h-24 mb-6">
+              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                {/* 背景圆 */}
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="42"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="8"
+                  className="opacity-20"
+                />
+                {/* 进度圆 */}
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="42"
+                  fill="none"
+                  stroke="url(#progressGradient)"
+                  strokeWidth="8"
+                  strokeLinecap="round"
+                  strokeDasharray={`${startupProgress.progress * 2.64} 264`}
+                  className="transition-all duration-300"
+                />
+                <defs>
+                  <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#3b82f6" />
+                    <stop offset="100%" stopColor="#8b5cf6" />
+                  </linearGradient>
+                </defs>
+              </svg>
+              {/* 百分比 */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-xl font-semibold text-white">{startupProgress.progress}%</span>
+              </div>
+            </div>
+            
+            {/* 当前步骤 */}
+            <p className="text-sm font-medium text-white mb-2">{startupProgress.stepName}</p>
+            <p className="text-xs text-nb-text-muted mb-6">{startupProgress.message}</p>
+            
+            {/* 步骤指示器 */}
+            <div className="flex items-center gap-2">
+              {STARTUP_STEPS.map((step, index) => (
+                <div key={step.name} className="flex items-center">
+                  <div
+                    className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+                      index < startupProgress.step
+                        ? 'bg-nb-success'
+                        : index === startupProgress.step
+                        ? 'bg-blue-500 animate-pulse'
+                        : 'bg-gray-600'
+                    }`}
+                  />
+                  {index < STARTUP_STEPS.length - 1 && (
+                    <div
+                      className={`w-6 h-0.5 transition-all duration-300 ${
+                        index < startupProgress.step ? 'bg-nb-success' : 'bg-gray-600'
+                      }`}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+            
+            {/* 步骤标签 */}
+            <div className="flex gap-1 mt-2 text-[10px] text-nb-text-muted">
+              {STARTUP_STEPS.map((step, index) => (
+                <span
+                  key={step.name}
+                  className={`w-12 text-center truncate ${
+                    index === startupProgress.step ? 'text-blue-400' : ''
+                  }`}
+                >
+                  {index + 1}
+                </span>
+              ))}
+            </div>
+          </div>
         ) : status === 'starting' ? (
-          // 启动中
+          // 启动中 - 简单加载（fallback）
           <div className="absolute inset-0 flex flex-col items-center justify-center text-nb-text-muted">
             <Loader2 size={48} className="mb-4 opacity-50 animate-spin" />
             <p className="text-sm">正在启动 VNC 服务器...</p>

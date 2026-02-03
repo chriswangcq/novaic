@@ -14,9 +14,13 @@ v11: Multi-process architecture - action_tasks, mcp_executions, worker_processes
 v12: Master-driven architecture - agent_runtimes table for Runtime management.
 v13: Added mcp_url field to agent_runtimes for Runtime MCP Server URL.
 v14: SubAgent state refactor - subagents table, runtime_id rename, summary fields.
+v15: Three-Task Architecture - pipeline_tasks table for launcher/collector/async pattern.
+v16: Async SubAgent - added progress/result/error/timeout_at fields to subagents.
+v17: Removed v11 legacy (action_tasks, mcp_executions, worker_processes tables).
+v18: Event-driven Monitor - chat_messages.status field (sending/sent).
 """
 
-SCHEMA_VERSION = 14
+SCHEMA_VERSION = 18
 
 SCHEMA_SQL = """
 -- ========================================
@@ -25,6 +29,7 @@ SCHEMA_SQL = """
 PRAGMA journal_mode = WAL;
 PRAGMA foreign_keys = ON;
 PRAGMA synchronous = NORMAL;
+PRAGMA busy_timeout = 5000;  -- Wait 5s for locks instead of failing immediately
 PRAGMA cache_size = -64000;
 PRAGMA temp_store = MEMORY;
 
@@ -134,13 +139,17 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     -- v11: Worker claiming fields
     claimed_by TEXT,                 -- Worker ID that claimed this message
     claimed_at TEXT,                 -- When the message was claimed
-    processed INTEGER DEFAULT 0      -- 0=not processed, 1=processed
+    processed INTEGER DEFAULT 0,     -- 0=not processed, 1=processed
+    
+    -- v18: Event-driven Monitor - message delivery status
+    status TEXT DEFAULT 'sent'       -- 'sending' (pending), 'sent' (delivered/confirmed)
 );
 
 CREATE INDEX IF NOT EXISTS idx_chat_messages_agent ON chat_messages(agent_id);
 CREATE INDEX IF NOT EXISTS idx_chat_messages_read ON chat_messages(agent_id, read);
 CREATE INDEX IF NOT EXISTS idx_chat_messages_timestamp ON chat_messages(agent_id, timestamp);
 CREATE INDEX IF NOT EXISTS idx_chat_messages_pending ON chat_messages(agent_id, processed, claimed_by);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_status ON chat_messages(status, created_at);  -- v18: for Monitor queue
 
 -- ========================================
 -- 5. Question/Response Tables (per-agent)
@@ -329,131 +338,7 @@ CREATE TABLE IF NOT EXISTS vm_processes (
 CREATE INDEX IF NOT EXISTS idx_vm_processes_status ON vm_processes(status);
 
 -- ========================================
--- 14. Action Tasks Table (v11 - Multi-process)
--- ========================================
--- Task queue for Worker processes (tool_call, reply, subagent)
--- Supports ID hierarchy: agent_id -> subagent_id -> round_id -> mcpcall_id
-
-CREATE TABLE IF NOT EXISTS action_tasks (
-    id TEXT PRIMARY KEY,
-    agent_id TEXT NOT NULL,
-    
-    -- ID hierarchy for tracing
-    subagent_id TEXT NOT NULL,       -- Runtime instance ID (main-xxx or sub-xxx)
-    round_id TEXT NOT NULL,          -- ReACT round ID (round-1, round-2, ...)
-    mcpcall_id TEXT NOT NULL,        -- MCP call ID within round (mc-1, mc-2, ...)
-    idempotency_key TEXT UNIQUE,     -- Combined key: agent_id-subagent_id-round_id-mcpcall_id
-    
-    -- Task content
-    type TEXT NOT NULL,              -- tool_call, reply, subagent
-    action TEXT,                     -- MCP tool name (for type=tool_call)
-    args TEXT DEFAULT '{}',          -- JSON: arguments
-    
-    -- SubAgent relationships
-    parent_task_id TEXT,             -- Parent task ID (for subagent tasks)
-    depends_on TEXT DEFAULT '[]',    -- JSON: list of task IDs this depends on
-    
-    -- Message association
-    message_id TEXT,                 -- Associated chat_messages.id
-    
-    -- Status
-    status TEXT DEFAULT 'pending',   -- pending, blocked, executing, waiting_async, done, failed, timeout, cancelled
-    
-    -- Claiming
-    claimed_by TEXT,                 -- Worker ID
-    claimed_at TEXT,
-    
-    -- Execution
-    executed_at TEXT,
-    
-    -- Result
-    result TEXT,                     -- JSON: execution result
-    error TEXT,                      -- Error message if failed
-    
-    -- Async task support
-    async_task_id TEXT,              -- MCP async task ID
-    
-    -- Timestamps
-    created_at TEXT NOT NULL,
-    updated_at TEXT,
-    
-    FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_action_tasks_pending ON action_tasks(status, created_at);
-CREATE INDEX IF NOT EXISTS idx_action_tasks_agent ON action_tasks(agent_id, status);
-CREATE INDEX IF NOT EXISTS idx_action_tasks_parent ON action_tasks(parent_task_id);
-CREATE INDEX IF NOT EXISTS idx_action_tasks_round ON action_tasks(subagent_id, round_id);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_action_tasks_idempotency ON action_tasks(idempotency_key);
-
--- ========================================
--- 15. MCP Executions Table (v11 - Idempotency)
--- ========================================
--- Records MCP tool executions for idempotency guarantee
--- Prevents duplicate execution of non-reentrant tools
-
-CREATE TABLE IF NOT EXISTS mcp_executions (
-    idempotency_key TEXT PRIMARY KEY,  -- agent_id-subagent_id-round_id-mcpcall_id
-    
-    -- Source information
-    agent_id TEXT NOT NULL,
-    subagent_id TEXT NOT NULL,
-    round_id TEXT NOT NULL,
-    mcpcall_id TEXT NOT NULL,
-    
-    -- Call information
-    tool_name TEXT NOT NULL,
-    args TEXT,                       -- JSON: arguments
-    
-    -- Status
-    status TEXT DEFAULT 'executing', -- executing, done, failed, timeout
-    
-    -- Result
-    result TEXT,                     -- JSON: execution result
-    error TEXT,                      -- Error message if failed
-    
-    -- Timestamps
-    created_at TEXT NOT NULL,
-    executed_at TEXT,
-    
-    FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
-);
-
-CREATE INDEX IF NOT EXISTS idx_mcp_exec_status ON mcp_executions(status);
-CREATE INDEX IF NOT EXISTS idx_mcp_exec_agent ON mcp_executions(agent_id, subagent_id);
-
--- ========================================
--- 16. Worker Processes Table (v11 - Process Management)
--- ========================================
--- Tracks Worker process status for health monitoring and auto-scaling
-
-CREATE TABLE IF NOT EXISTS worker_processes (
-    id TEXT PRIMARY KEY,             -- Worker ID
-    
-    -- Process information
-    pid INTEGER,
-    status TEXT DEFAULT 'stopped',   -- starting, running, stopping, stopped
-    
-    -- Configuration
-    max_concurrent INTEGER DEFAULT 10,  -- Max concurrent tasks per worker
-    
-    -- Monitoring
-    started_at TEXT,
-    last_heartbeat TEXT,
-    current_tasks TEXT DEFAULT '[]',    -- JSON: list of current task IDs
-    
-    -- Statistics
-    tasks_completed INTEGER DEFAULT 0,
-    tasks_failed INTEGER DEFAULT 0,
-    
-    -- Error tracking
-    last_error TEXT
-);
-
-CREATE INDEX IF NOT EXISTS idx_worker_status ON worker_processes(status);
-
--- ========================================
--- 17. SubAgents Table (v14 - SubAgent state refactor)
+-- 14. SubAgents Table (v14 - SubAgent state refactor)
 -- ========================================
 -- Persistent SubAgent entities that own multiple Runtimes
 -- Each Agent has one Main SubAgent, can spawn Sub SubAgents
@@ -465,7 +350,7 @@ CREATE TABLE IF NOT EXISTS subagents (
     parent_subagent_id TEXT,           -- Parent SubAgent (for sub type)
     
     -- Status
-    status TEXT DEFAULT 'sleeping',    -- sleeping / awake / summarizing
+    status TEXT DEFAULT 'sleeping',    -- sleeping / awake / summarizing / running / completed / failed / cancelled
     
     -- Context management
     historical_summary TEXT,           -- Merged historical runtime summaries
@@ -473,6 +358,13 @@ CREATE TABLE IF NOT EXISTS subagents (
     -- Rest/wake related
     wake_triggers TEXT DEFAULT '[{"type": "user_response"}]',
     handoff_notes TEXT,
+    
+    -- Async SubAgent fields (v16)
+    task TEXT,                         -- Task description for sub subagents
+    progress TEXT,                     -- Current progress description
+    result TEXT,                       -- Final result (when completed)
+    error TEXT,                        -- Error message (when failed)
+    timeout_at TEXT,                   -- Timeout timestamp
     
     -- Timestamps
     created_at TEXT NOT NULL,
@@ -485,7 +377,7 @@ CREATE INDEX IF NOT EXISTS idx_subagents_agent ON subagents(agent_id, type);
 CREATE INDEX IF NOT EXISTS idx_subagents_status ON subagents(status);
 
 -- ========================================
--- 18. Agent Runtimes Table (v12 - Master-driven, v14 - refactored)
+-- 15. Agent Runtimes Table (v12 - Master-driven, v14 - refactored)
 -- ========================================
 -- Tracks Agent Runtime instances managed by Master
 -- Each SubAgent can have multiple Runtimes (one active at a time)
@@ -526,6 +418,59 @@ CREATE TABLE IF NOT EXISTS agent_runtimes (
 CREATE INDEX IF NOT EXISTS idx_runtimes_agent ON agent_runtimes(agent_id, status);
 CREATE INDEX IF NOT EXISTS idx_runtimes_subagent ON agent_runtimes(subagent_id, status);
 CREATE INDEX IF NOT EXISTS idx_runtimes_phase ON agent_runtimes(status, phase);
+
+-- ========================================
+-- 16. Pipeline Tasks Table (v15 - Three-Task Architecture)
+-- ========================================
+-- Unified task queue for the three-task architecture:
+-- - launcher: creates async tasks + collector
+-- - collector: collects results + triggers next launcher
+-- - async: pure execution (LLM calls, tool execution)
+
+CREATE TABLE IF NOT EXISTS pipeline_tasks (
+    id TEXT PRIMARY KEY,
+    
+    -- Task classification
+    task_type TEXT NOT NULL,         -- 'launcher', 'collector', 'async'
+    task_subtype TEXT NOT NULL,      -- 'think_launcher', 'think', 'tool_call', etc.
+    
+    -- Context
+    runtime_id TEXT NOT NULL,        -- Associated runtime
+    stage_id TEXT NOT NULL,          -- Stage grouping (same for launcher + async tasks + collector)
+    agent_id TEXT NOT NULL,          -- VM Agent ID (denormalized)
+    
+    -- Input/Output
+    args TEXT DEFAULT '{}',          -- JSON: task arguments
+    result TEXT,                     -- JSON: execution result
+    error TEXT,                      -- Error message if failed
+    
+    -- Status
+    status TEXT DEFAULT 'pending',   -- pending, claimed, done, failed
+    
+    -- Claim information
+    claimed_by TEXT,                 -- Worker ID that claimed this task
+    claimed_at TEXT,                 -- When it was claimed
+    heartbeat_at TEXT,               -- Last heartbeat (for liveness detection)
+    
+    -- Idempotency
+    idempotency_key TEXT UNIQUE,     -- Prevents duplicate task creation
+    
+    -- Collector specific
+    expected_tasks INTEGER DEFAULT 0,  -- Number of async tasks to wait for (collector only)
+    completed_tasks INTEGER DEFAULT 0, -- Number of completed async tasks (collector only)
+    
+    -- Timestamps
+    created_at TEXT NOT NULL,
+    updated_at TEXT
+    
+    -- Note: No foreign keys to allow system-level tasks (agent_id="system", runtime_id="system")
+);
+
+CREATE INDEX IF NOT EXISTS idx_pipeline_tasks_pending ON pipeline_tasks(status, task_type, created_at);
+CREATE INDEX IF NOT EXISTS idx_pipeline_tasks_runtime ON pipeline_tasks(runtime_id, stage_id);
+CREATE INDEX IF NOT EXISTS idx_pipeline_tasks_stage ON pipeline_tasks(stage_id, task_type);
+CREATE INDEX IF NOT EXISTS idx_pipeline_tasks_heartbeat ON pipeline_tasks(status, heartbeat_at);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pipeline_tasks_idempotency ON pipeline_tasks(idempotency_key);
 """
 
 DEFAULT_CONFIG = {
@@ -1464,3 +1409,108 @@ async def run_migration(conn, from_version: int):
         
         await conn.commit()
         print("[DB] Migration to v14 complete")
+    
+    if from_version < 15:
+        print("[DB] Running migration from v14 to v15...")
+        
+        # Migration from v14 to v15:
+        # Three-Task Architecture - pipeline_tasks table
+        # Table is created by SCHEMA_SQL via CREATE TABLE IF NOT EXISTS
+        
+        # Update schema version to 15
+        await conn.execute(
+            "INSERT OR REPLACE INTO config (key, value) VALUES ('version', '15')"
+        )
+        
+        await conn.commit()
+        print("[DB] Migration to v15 complete")
+    
+    if from_version < 16:
+        print("[DB] Running migration from v15 to v16...")
+        
+        # Migration from v15 to v16:
+        # Async SubAgent - add progress/result/error/timeout_at/task fields to subagents
+        
+        cursor = await conn.execute("PRAGMA table_info(subagents)")
+        columns = [row[1] for row in await cursor.fetchall()]
+        
+        if 'task' not in columns:
+            print("[DB] Adding 'task' column to subagents")
+            await conn.execute("ALTER TABLE subagents ADD COLUMN task TEXT")
+        
+        if 'progress' not in columns:
+            print("[DB] Adding 'progress' column to subagents")
+            await conn.execute("ALTER TABLE subagents ADD COLUMN progress TEXT")
+        
+        if 'result' not in columns:
+            print("[DB] Adding 'result' column to subagents")
+            await conn.execute("ALTER TABLE subagents ADD COLUMN result TEXT")
+        
+        if 'error' not in columns:
+            print("[DB] Adding 'error' column to subagents")
+            await conn.execute("ALTER TABLE subagents ADD COLUMN error TEXT")
+        
+        if 'timeout_at' not in columns:
+            print("[DB] Adding 'timeout_at' column to subagents")
+            await conn.execute("ALTER TABLE subagents ADD COLUMN timeout_at TEXT")
+        
+        # Update schema version to 16
+        await conn.execute(
+            "INSERT OR REPLACE INTO config (key, value) VALUES ('version', '16')"
+        )
+        
+        await conn.commit()
+        print("[DB] Migration to v16 complete")
+    
+    if from_version < 17:
+        print("[DB] Running migration from v16 to v17...")
+        
+        # Migration from v16 to v17:
+        # Remove v11 legacy tables (action_tasks, mcp_executions, worker_processes)
+        # These were replaced by pipeline_tasks in v15 Three-Task Architecture
+        
+        # Drop legacy tables and indexes
+        await conn.execute("DROP TABLE IF EXISTS action_tasks")
+        print("[DB] Dropped action_tasks table")
+        
+        await conn.execute("DROP TABLE IF EXISTS mcp_executions")
+        print("[DB] Dropped mcp_executions table")
+        
+        await conn.execute("DROP TABLE IF EXISTS worker_processes")
+        print("[DB] Dropped worker_processes table")
+        
+        # Update schema version to 17
+        await conn.execute(
+            "INSERT OR REPLACE INTO config (key, value) VALUES ('version', '17')"
+        )
+        
+        await conn.commit()
+        print("[DB] Migration to v17 complete")
+    
+    if from_version < 18:
+        print("[DB] Running migration from v17 to v18...")
+        
+        # Migration from v17 to v18:
+        # Event-driven Monitor - add status field to chat_messages
+        
+        cursor = await conn.execute("PRAGMA table_info(chat_messages)")
+        columns = [row[1] for row in await cursor.fetchall()]
+        
+        if 'status' not in columns:
+            print("[DB] Adding 'status' column to chat_messages")
+            await conn.execute("ALTER TABLE chat_messages ADD COLUMN status TEXT DEFAULT 'sent'")
+            # All existing messages are already delivered, so default to 'sent'
+        
+        # Create index for Monitor queue
+        await conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_chat_messages_status ON chat_messages(status, created_at)"
+        )
+        print("[DB] Created index for chat_messages.status")
+        
+        # Update schema version to 18
+        await conn.execute(
+            "INSERT OR REPLACE INTO config (key, value) VALUES ('version', '18')"
+        )
+        
+        await conn.commit()
+        print("[DB] Migration to v18 complete")

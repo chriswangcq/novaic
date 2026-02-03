@@ -19,16 +19,6 @@ nb-cc/
 │   │       ├── main.py       # MCP Server 入口
 │   │       └── cli.py        # CLI 命令
 │   │
-│   ├── novaic-agent/         # AI Agent 服务 (Python FastAPI)
-│   │   ├── api/              # HTTP API
-│   │   │   ├── routes.py     # 对话 API
-│   │   │   └── vnc_routes.py # VNC 管理 API
-│   │   ├── core/             # 核心逻辑
-│   │   │   ├── agent.py      # Agent 主类
-│   │   │   ├── llm_client.py # LLM 客户端
-│   │   │   └── session.py    # 会话管理
-│   │   └── main.py           # 入口
-│   │
 │   ├── novaic-app/           # 桌面客户端 (Tauri + React)
 │   │   ├── src/              # React 前端
 │   │   │   ├── components/   # UI 组件
@@ -40,13 +30,9 @@ nb-cc/
 │   │           ├── commands/ # Tauri 命令
 │   │           └── vm/       # VM 管理
 │   │
-│   ├── novaic-cloud/         # 云服务 (Python FastAPI)
-│   │   └── api/
-│   │       ├── auth.py       # 认证
-│   │       ├── llm.py        # LLM 代理
-│   │       └── subscription.py # 订阅管理
-│   │
-│   └── novaic-vm/            # QEMU VM 运行时
+│   └── novaic-vm/            # VM 管理 + MCP 工具服务
+│       ├── src/novaic_mcp_vmuse/
+│       │   └── tools/        # browser, desktop, shell...
 │       └── scripts/
 │           ├── create-vm.sh  # 创建 VM
 │           ├── start-vm.sh   # 启动 VM
@@ -109,37 +95,39 @@ cd novaic-vm
 **完整模式（推荐）**
 
 ```bash
-# 终端 1: 启动 VM（如果还没启动）
-cd novaic-vm && ./scripts/start-vm.sh -d
-
-# 终端 2: 启动 Cloud 服务
-cd novaic-cloud
+# 终端 1: 启动 Gateway 后端
+cd novaic-gateway
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-python main.py
 
-# 终端 3: 启动 Agent 服务
-cd novaic-agent
-python -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-python main.py
+# 启动所有服务
+python main.py &                                           # Gateway (19999)
+python mcp_main.py &                                       # MCP Gateway (19998)
+python launcher_main.py --gateway-url http://127.0.0.1:19999 --bootstrap &
+python collector_main.py --gateway-url http://127.0.0.1:19999 &
+python async_main.py --gateway-url http://127.0.0.1:19999 &
 
-# 终端 4: 启动桌面 App（Tauri）
+# 终端 2: 启动桌面 App（Tauri）
 cd novaic-app
 npm install
 npm run tauri:dev
+
+# 终端 3: (可选) 启动 VM
+cd novaic-vm && ./scripts/start-vm.sh -d
 ```
 
-**仅 MCP Server 模式**
+**使用开发脚本**
 
 ```bash
-# 方式 1: 使用 VM 中的 MCP Server（已通过 deploy.sh 部署）
-# MCP Server 自动运行在 http://localhost:8080/sse
+# 一键启动所有后端服务
+./dev-guide/run-dev.sh
 
-# 方式 2: 本地运行 MCP Server
-cd novaic-core
-pip install -e .
-novaic serve
+# 或分步启动
+./dev-guide/run-dev.sh gateway
+./dev-guide/run-dev.sh mcp-gateway
+./dev-guide/run-dev.sh launcher
+./dev-guide/run-dev.sh collector
+./dev-guide/run-dev.sh async
 ```
 
 ## 端口映射

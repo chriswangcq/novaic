@@ -89,20 +89,6 @@ async def runtime_repo(db: Database):
 
 
 @pytest_asyncio.fixture
-async def action_task_repo(db: Database):
-    """ActionTaskRepository fixture."""
-    from db.repositories.action_task import ActionTaskRepository
-    return ActionTaskRepository(db)
-
-
-@pytest_asyncio.fixture
-async def mcp_execution_repo(db: Database):
-    """MCPExecutionRepository fixture."""
-    from db.repositories.mcp_execution import MCPExecutionRepository
-    return MCPExecutionRepository(db)
-
-
-@pytest_asyncio.fixture
 async def message_repo(db: Database):
     """MessageRepository fixture."""
     from db.repositories.message import MessageRepository

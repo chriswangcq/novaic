@@ -81,9 +81,9 @@ git push origin feature/your-feature-name
 提交前请确保以下检查通过：
 
 ```bash
-# Python (novaic-core, novaic-agent, novaic-cloud)
-cd novaic-core
-python -m py_compile src/novaic_core/main.py
+# Python (novaic-gateway, novaic-vm)
+cd novaic-gateway
+python -m py_compile main.py
 black --check .
 isort --check .
 
@@ -141,11 +141,10 @@ cargo clippy
 ## 项目结构
 
 ```
-├── novaic-core/      # MCP 工具服务器
-├── novaic-agent/     # AI Agent 服务
-├── novaic-app/       # 桌面客户端
-├── novaic-cloud/     # 云服务
-└── novaic-vm/        # VM 运行时
+├── novaic-gateway/   # 核心后端服务 (Gateway + Workers)
+├── novaic-app/       # 桌面客户端 (Tauri + React)
+├── novaic-vm/        # VM 管理 + MCP 工具服务
+└── dev-guide/        # 开发文档
 ```
 
 每个包相对独立，可以单独开发和测试。

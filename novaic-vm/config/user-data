@@ -1,0 +1,212 @@
+#cloud-config
+
+# =====================================================
+# NovAIC VM - Ubuntu Cloud-Init Configuration
+# =====================================================
+
+# 用户配置
+users:
+  - name: ubuntu
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    lock_passwd: false
+    groups: [adm, audio, cdrom, dialout, dip, floppy, lxd, netdev, plugdev, sudo, video]
+    ssh_authorized_keys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCoC4mXC8s7p8VXLPXkgX2NotjD/aWIMr80kT5PximB+yOzvjfU5ZyOePppdKH+sKcPwz30WKvvNGp1bX3Ja00EPotgroPqOeGyo9LPiWXRfLIq+q8SeXURz9hvsoWU9+Q5VROy7DVUFKcUYizwJo74MHMDC12C+yb6yak06PvHdvAK1oNo14io/Zj318GbCycoeSAf1bNl7c3sSI6mj+qS2sXxQ9TMdvw81ijb+LxcRJBDScFvrOBqrhSZNQt81FQJUYGbySQWX4i7YWUWMeVL33tCzHtNtFR0R6vWzDWuOKVTlfwhrF9tJfEgaCCr9AORgiFo6tcuBCS9SEY6IgFgFvTYhHOhT5oAX5kIVWXO9xqNXl3Vz8CsL5GS3EVBSsZ2L7tSY+CfU+8LsnNYF1b1GEZkECUF/EK05yCS1BJw8TNVsBU7nFVXBjjA5Yjg6wcOlKi2gOzFqcFjuFYsREU1OdVTCeA4ib7qqFOetx3TWXUVafnmTlmtWu7ksKCXPPc= wangchaoqun@wangchaoqundeMacBook-Pro.local
+
+# 设置密码
+chpasswd:
+  list: |
+    ubuntu:ubuntu
+  expire: false
+
+# SSH 配置
+ssh_pwauth: true
+
+# APT 源配置
+apt:
+  primary:
+    - arches: [default]
+      uri: http://mirrors.aliyun.com/ubuntu-ports
+  sources_list: |
+    deb http://mirrors.aliyun.com/ubuntu-ports noble main restricted universe multiverse
+    deb http://mirrors.aliyun.com/ubuntu-ports noble-updates main restricted universe multiverse
+    deb http://mirrors.aliyun.com/ubuntu-ports noble-backports main restricted universe multiverse
+    deb http://mirrors.aliyun.com/ubuntu-ports noble-security main restricted universe multiverse
+
+# 包更新
+package_update: true
+package_upgrade: false
+
+# 安装软件包
+packages:
+  # 桌面环境 (XFCE - 轻量级)
+  - xfce4
+  - xfce4-terminal
+  - xfce4-goodies
+  - lightdm
+  - lightdm-gtk-greeter
+  - dbus-x11
+  
+  # VNC 服务
+  - x11vnc
+  - xvfb
+  - python3-websockify
+  
+  # 浏览器
+  - chromium-browser
+  
+  # 桌面自动化工具
+  - xdotool
+  - wmctrl
+  - scrot
+  - imagemagick
+  
+  # Python
+  - python3
+  - python3-pip
+  - python3-venv
+  
+  # 网络工具
+  - curl
+  - wget
+  - net-tools
+  - openssh-server
+  
+  # 其他
+  - git
+  - vim
+  - htop
+
+# 写入配置文件
+write_files:
+  # LightDM 自动登录
+  - path: /etc/lightdm/lightdm.conf.d/50-autologin.conf
+    content: |
+      [Seat:*]
+      autologin-user=ubuntu
+      autologin-user-timeout=0
+      user-session=xfce
+
+  # x11vnc 服务 (无密码模式)
+  - path: /etc/systemd/system/x11vnc.service
+    content: |
+      [Unit]
+      Description=x11vnc VNC Server
+      After=display-manager.service
+      Requires=display-manager.service
+
+      [Service]
+      Type=simple
+      User=ubuntu
+      Environment=DISPLAY=:0
+      ExecStartPre=/bin/sleep 5
+      ExecStart=/usr/bin/x11vnc -display :0 -auth guess -forever -loop -noxdamage -repeat -rfbport 5900 -shared -nopw
+      Restart=always
+      RestartSec=3
+
+      [Install]
+      WantedBy=multi-user.target
+
+  # websockify 服务 (noVNC WebSocket 代理)
+  - path: /etc/systemd/system/websockify.service
+    content: |
+      [Unit]
+      Description=Websockify VNC WebSocket Proxy
+      After=x11vnc.service
+      Requires=x11vnc.service
+
+      [Service]
+      Type=simple
+      User=ubuntu
+      ExecStart=/usr/bin/websockify 6080 localhost:5900
+      Restart=always
+      RestartSec=3
+
+      [Install]
+      WantedBy=multi-user.target
+
+  # NovAIC 服务 (MCP Server)
+  - path: /etc/systemd/system/novaic.service
+    content: |
+      [Unit]
+      Description=NovAIC Core - MCP Server (FastMCP)
+      After=network.target display-manager.service x11vnc.service
+      Wants=display-manager.service
+
+      [Service]
+      Type=simple
+      User=ubuntu
+      Environment=DISPLAY=:0
+      Environment=XAUTHORITY=/home/ubuntu/.Xauthority
+      Environment=HOME=/home/ubuntu
+      Environment=PATH=/opt/novaic-venv/bin:/usr/local/bin:/usr/bin:/bin
+      Environment=PYTHONPATH=/opt/novaic-core/src
+      Environment=NOVAIC_HOST=0.0.0.0
+      Environment=NOVAIC_PORT=8080
+      WorkingDirectory=/opt/novaic-core
+      ExecStart=/opt/novaic-venv/bin/python -c "from novaic_core.main import mcp; mcp.run(transport='sse', host='0.0.0.0', port=8080)"
+      Restart=always
+      RestartSec=3
+
+      [Install]
+      WantedBy=multi-user.target
+
+  # 禁用屏幕保护
+  - path: /home/ubuntu/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-power-manager.xml
+    content: |
+      <?xml version="1.0" encoding="UTF-8"?>
+      <channel name="xfce4-power-manager" version="1.0">
+        <property name="xfce4-power-manager" type="empty">
+          <property name="dpms-enabled" type="bool" value="false"/>
+          <property name="blank-on-ac" type="int" value="0"/>
+          <property name="dpms-on-ac-sleep" type="uint" value="0"/>
+          <property name="dpms-on-ac-off" type="uint" value="0"/>
+        </property>
+      </channel>
+
+# 启动命令
+runcmd:
+  # 修复 /home/ubuntu 目录权限 (重要!)
+  - chown -R ubuntu:ubuntu /home/ubuntu
+  
+  # 创建 xfce4 配置目录
+  - mkdir -p /home/ubuntu/.config/xfce4/xfconf/xfce-perchannel-xml
+  - chown -R ubuntu:ubuntu /home/ubuntu/.config
+  
+  # 等待网络就绪
+  - echo "Waiting for network..."
+  - until ping -c 1 -W 3 8.8.8.8 > /dev/null 2>&1; do sleep 2; done
+  - echo "Network ready."
+  
+  # 创建 novaic 目录
+  - mkdir -p /opt/novaic-core /opt/novaic-venv
+  - chown -R ubuntu:ubuntu /opt/novaic-core /opt/novaic-venv
+  
+  # 启用服务
+  - systemctl daemon-reload
+  - systemctl enable lightdm
+  - systemctl enable x11vnc
+  - systemctl enable websockify
+  - systemctl enable novaic
+  - systemctl start lightdm
+  
+  # 等待桌面启动后启动 VNC 和 websockify
+  - sleep 10
+  - systemctl start x11vnc
+  - sleep 2
+  - systemctl start websockify
+  
+  # 完成标记
+  - echo "NovAIC VM cloud-init completed at $(date)" > /var/log/novaic-init-done.log
+
+final_message: |
+  =====================================================
+  NovAIC VM 配置完成!
+  =====================================================
+  
+  VNC: vnc://localhost:5900 (无密码)
+  WebSocket: ws://localhost:6080
+  SSH: ssh -p 2222 ubuntu@localhost (密码: ubuntu)
+  
+  请运行 deploy.sh 部署 MCP Server

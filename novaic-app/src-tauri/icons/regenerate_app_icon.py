@@ -76,7 +76,6 @@ def main():
         resized.save(iconset / name, "PNG")
 
     # Generate .icns (macOS only)
-    import subprocess
     import sys
     if sys.platform == "darwin":
         icns_out = ICONS_DIR / "icon.icns"

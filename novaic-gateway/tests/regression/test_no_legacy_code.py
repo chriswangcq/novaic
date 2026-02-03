@@ -229,16 +229,11 @@ class TestImportIntegrity:
     def test_main_imports_work(self):
         """Main module can be imported without deleted module errors."""
         try:
-            # This would fail if deleted modules are still imported
-            from db.repositories import (
-                RuntimeRepository,
-                ActionTaskRepository,
-                MCPExecutionRepository,
-            )
-            from master import Master, MasterConfig
-            from worker.think_handler import handle_think
-            from worker.executor_handler import handle_tool_call
-            # handle_reply 已移除 (v2.8)，reply 通过 chat_reply MCP 工具处理
+            # Test services imports work
+            from db.repositories import RuntimeRepository
+            from services.executors.think import ThinkExecutor
+            from services.executors.tool_call import ToolCallExecutor
+            from services.executors.llm_caller import LLMCaller
             
             assert True
         except ImportError as e:

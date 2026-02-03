@@ -2,7 +2,7 @@
 """
 NovAIC Backend - Unified PyInstaller Spec
 
-v2.11: Single binary for gateway, master, and worker modes.
+v3.0: Single binary for gateway and workers (Three-Task Architecture).
 Uses onedir mode for faster startup and shared libraries.
 
 Build:
@@ -12,6 +12,15 @@ Output:
     dist/novaic-backend/
     ├── novaic-backend          # Main executable
     └── _internal/              # Shared runtime and libraries
+
+Entry points:
+    - main.py           Gateway (API + SSE)
+    - mcp_main.py       MCP Gateway
+    - monitor_main.py   Monitor (event-driven message queue consumer)
+    - launcher_main.py  Launcher Worker
+    - collector_main.py Collector Worker
+    - executor_main.py  Executor Worker (LLM/Tool execution)
+    - health_main.py    Health Monitor
 """
 
 from PyInstaller.utils.hooks import copy_metadata, collect_all, collect_submodules
@@ -68,17 +77,21 @@ a = Analysis(
         ('skills', 'skills'),
         ('sse', 'sse'),
         ('process', 'process'),
-        # ===== Master modules =====
-        ('master', 'master'),
+        # ===== Services (Three-Task Architecture) =====
+        ('services', 'services'),
+        ('sdk', 'sdk'),
         # ===== Worker modules =====
-        ('worker', 'worker'),
+        # worker/ 已合并到 services/executors/
         # ===== Utils =====
         ('utils', 'utils'),
         # ===== Entry points (for imports) =====
         ('main.py', '.'),
         ('mcp_main.py', '.'),
-        ('master_main.py', '.'),
-        ('worker_main.py', '.'),
+        ('monitor_main.py', '.'),
+        ('launcher_main.py', '.'),
+        ('collector_main.py', '.'),
+        ('executor_main.py', '.'),
+        ('health_main.py', '.'),
     ],
     hiddenimports=hiddenimports + [
         # ----- uvicorn -----

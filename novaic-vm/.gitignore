@@ -1,24 +1,61 @@
-# VM 磁盘镜像 (太大，不提交)
-images/*.qcow2
-images/*.img
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# 下载的 Ubuntu Cloud Image
-iso/*.img
-iso/cloud-init-seed.iso
+# Virtual environments
+.env
+.venv/
+venv/
+ENV/
 
-# UEFI 变量文件 (会被修改)
-firmware/QEMU_VARS.fd
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
 
-# 运行时文件
-.vm.pid
-*.pid
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
 
-# 生成的配置文件
-config/user-data
-config/meta-data
+# Mypy
+.mypy_cache/
 
-# macOS
+# Ruff
+.ruff_cache/
+
+# OS
 .DS_Store
+Thumbs.db
 
-# 日志
+# Local config
+*.local
+
+# Logs
 *.log
+
+# Screenshots and temp files from tests
+test_*.png
+screenshot_*.png

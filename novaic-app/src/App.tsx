@@ -3,9 +3,9 @@ import { ChatPanel } from './components/Chat/ChatPanel';
 import { VisualPanel } from './components/Visual/VisualPanel';
 import { Resizer } from './components/Layout/Resizer';
 import { Header } from './components/Layout/Header';
+import { AgentDrawer } from './components/Layout/AgentDrawer';
 import { useAppStore } from './store';
 import { SettingsModal } from './components/Settings/SettingsModal';
-import { AgentDashboard } from './components/Dashboard';
 import { SetupWorkspace } from './components/Setup';
 import { Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
 import type { SetupConfig } from './components/Agent/CreateAgentModal';
@@ -81,14 +81,17 @@ function App() {
     settingsOpen,
     setSettingsOpen,
     loadAgents,
-    selectAgent
+    selectAgent,
+    agents,
+    currentAgentId,
+    setCreateAgentModalOpen
   } = useAppStore();
 
   const [isLoadingAgents, setIsLoadingAgents] = useState(true);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   
-  // Page state: 'dashboard' | 'setup' | 'workspace'
-  const [currentPage, setCurrentPage] = useState<'dashboard' | 'setup' | 'workspace'>('dashboard');
-  const [currentAgentIdLocal, setCurrentAgentIdLocal] = useState<string | null>(null);
+  // Page state: 'setup' | 'workspace'
+  const [currentPage, setCurrentPage] = useState<'setup' | 'workspace'>('workspace');
   const [setupConfig, setSetupConfig] = useState<SetupConfig | null>(null);
 
   useEffect(() => {
@@ -96,12 +99,30 @@ function App() {
     initialize();
   }, [initialize]);
 
-  // Load agents after gateway is initialized
+  // Load agents after gateway is initialized and auto-select first agent
   useEffect(() => {
     const checkAgents = async () => {
       setIsLoadingAgents(true);
       try {
         await loadAgents();
+        
+        // Auto-select first agent if none selected
+        const storeState = useAppStore.getState();
+        if (storeState.agents.length > 0 && !storeState.currentAgentId) {
+          const firstAgent = storeState.agents[0];
+          await selectAgent(firstAgent.id);
+          
+          // If agent needs setup, go to setup page
+          if (!firstAgent.setup_complete) {
+            setCurrentPage('setup');
+            // Use default setup config
+            setSetupConfig({
+              agent: firstAgent,
+              sourceImage: 'ubuntu-24.04',
+              useCnMirrors: false,
+            });
+          }
+        }
       } catch (error) {
         console.error('Failed to load agents:', error);
       } finally {
@@ -112,7 +133,7 @@ function App() {
     if (isInitialized) {
       checkAgents();
     }
-  }, [isInitialized, loadAgents]);
+  }, [isInitialized, loadAgents, selectAgent]);
 
   // Handle resize with constraints
   const handleResize = useCallback((delta: number) => {
@@ -131,23 +152,25 @@ function App() {
     setLeftPanelWidth(400);
   }, [setLeftPanelWidth]);
 
-  // Enter workspace for an agent
-  const handleEnterWorkspace = useCallback(async (agentId: string) => {
-    console.log('[App] Entering workspace for agent:', agentId);
-    // 通知 store 和 Gateway 切换 agent（会清空消息、重连 SSE、加载历史）
+  // Handle agent selection from drawer
+  const handleSelectAgent = useCallback(async (agentId: string, needsSetup: boolean) => {
+    console.log('[App] Selecting agent:', agentId, 'needsSetup:', needsSetup);
     await selectAgent(agentId);
-    setCurrentAgentIdLocal(agentId);
-    setCurrentPage('workspace');
-  }, [selectAgent]);
-
-  // Enter setup workspace for an agent
-  const handleEnterSetup = useCallback(async (agentId: string, config: SetupConfig) => {
-    console.log('[App] Entering setup for agent:', agentId);
-    // 通知 store 和 Gateway 切换 agent
-    await selectAgent(agentId);
-    setCurrentAgentIdLocal(agentId);
-    setSetupConfig(config);
-    setCurrentPage('setup');
+    
+    if (needsSetup) {
+      const agent = useAppStore.getState().agents.find(a => a.id === agentId);
+      if (agent) {
+        setSetupConfig({
+          agent,
+          sourceImage: 'ubuntu-24.04',
+          useCnMirrors: false,
+        });
+        setCurrentPage('setup');
+      }
+    } else {
+      setSetupConfig(null);
+      setCurrentPage('workspace');
+    }
   }, [selectAgent]);
 
   // Setup complete - enter workspace
@@ -157,12 +180,19 @@ function App() {
     setCurrentPage('workspace');
   }, []);
 
-  // Back to dashboard
-  const handleBackToDashboard = useCallback(() => {
-    setCurrentPage('dashboard');
+  // Back from setup - go to workspace (or stay if no setup complete)
+  const handleBackFromSetup = useCallback(() => {
     setSetupConfig(null);
-    setCurrentAgentIdLocal(null);
+    setCurrentPage('workspace');
   }, []);
+
+  // Handle agent created from modal
+  const handleAgentCreated = useCallback(async (config: SetupConfig) => {
+    console.log('[App] Agent created, entering setup:', config.agent.id);
+    await selectAgent(config.agent.id);
+    setSetupConfig(config);
+    setCurrentPage('setup');
+  }, [selectAgent]);
 
   // Show loading screen while initializing
   if (!isInitialized || isLoadingAgents) {
@@ -177,38 +207,45 @@ function App() {
   }
 
   // Get current agent from store
-  const currentAgent = useAppStore.getState().agents.find(a => a.id === currentAgentIdLocal);
-
-  // Show Dashboard (agent list)
-  if (currentPage === 'dashboard') {
-    return (
-      <AgentDashboard 
-        onEnterWorkspace={handleEnterWorkspace} 
-        onEnterSetup={handleEnterSetup}
-      />
-    );
-  }
+  const currentAgent = agents.find(a => a.id === currentAgentId);
 
   // Show Setup Workspace
   if (currentPage === 'setup' && setupConfig && currentAgent) {
     return (
-      <SetupWorkspace
-        agent={currentAgent}
-        sourceImage={setupConfig.sourceImage}
-        useCnMirrors={setupConfig.useCnMirrors}
-        onComplete={handleSetupComplete}
-        onBack={handleBackToDashboard}
-      />
+      <>
+        <SetupWorkspace
+          agent={currentAgent}
+          sourceImage={setupConfig.sourceImage}
+          useCnMirrors={setupConfig.useCnMirrors}
+          onComplete={handleSetupComplete}
+          onBack={handleBackFromSetup}
+        />
+        {/* Agent Drawer - 也可以在 setup 页面打开 */}
+        <AgentDrawer
+          isOpen={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          onSelectAgent={handleSelectAgent}
+          onCreateNew={() => setCreateAgentModalOpen(true)}
+        />
+      </>
     );
   }
 
   return (
     <div className="h-screen flex flex-col bg-nb-bg">
-      {/* Header with Agent Selector */}
+      {/* Header with Menu Button */}
       <Header 
         onOpenSettings={() => setSettingsOpen(true)} 
-        onBackToDashboard={handleBackToDashboard}
-        onAgentCreated={(config) => handleEnterSetup(config.agent.id, config)}
+        onToggleDrawer={() => setDrawerOpen(true)}
+        onAgentCreated={handleAgentCreated}
+      />
+      
+      {/* Agent Drawer */}
+      <AgentDrawer
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onSelectAgent={handleSelectAgent}
+        onCreateNew={() => setCreateAgentModalOpen(true)}
       />
 
       {/* Main Content */}

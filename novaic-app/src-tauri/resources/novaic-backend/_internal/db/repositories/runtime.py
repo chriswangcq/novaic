@@ -390,6 +390,9 @@ class RuntimeRepository:
         
         v14: Simplified - just sets status='resting'.
         Wake triggers are now stored in SubAgent.
+        
+        v18: ActionsCollector checks status='resting' to skip further
+        think rounds and go directly to summarize.
         """
         now = datetime.utcnow().isoformat()
         async with self.db.get_connection() as conn:

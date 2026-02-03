@@ -47,17 +47,20 @@ async def get_subagent(agent_id: str, subagent_id: str):
 
 
 @router.post("/subagents/{agent_id}/{subagent_id}/wake")
-async def wake_subagent(agent_id: str, subagent_id: str):
-    """Atomically wake a SubAgent (sleeping -> awake).
+async def wake_subagent(agent_id: str, subagent_id: str, target_status: str = "awake"):
+    """Atomically wake a SubAgent (sleeping -> target_status).
     
-    Returns success=True if wake succeeded, False if already awake.
+    Args:
+        target_status: "awaking" (intermediate) or "awake" (final)
+    
+    Returns success=True if wake succeeded, False if already awake/awaking.
     """
     from db.database import get_database
     from db.repositories import SubAgentRepository
     
     db = get_database()
     repo = SubAgentRepository(db)
-    success = await repo.try_wake(subagent_id, agent_id)
+    success = await repo.try_wake(subagent_id, agent_id, target_status=target_status)
     
     return {"success": success}
 
@@ -75,6 +78,19 @@ async def set_subagent_sleeping(agent_id: str, subagent_id: str):
     return {"status": "ok"}
 
 
+@router.post("/subagents/{agent_id}/{subagent_id}/awake")
+async def set_subagent_awake(agent_id: str, subagent_id: str):
+    """Set SubAgent to awake status (after runtime created successfully)."""
+    from db.database import get_database
+    from db.repositories import SubAgentRepository
+    
+    db = get_database()
+    repo = SubAgentRepository(db)
+    await repo.set_awake(subagent_id, agent_id)
+    
+    return {"status": "ok"}
+
+
 @router.post("/subagents/{agent_id}/{subagent_id}/summarizing")
 async def set_subagent_summarizing(agent_id: str, subagent_id: str):
     """Set SubAgent to summarizing status."""
@@ -84,6 +100,36 @@ async def set_subagent_summarizing(agent_id: str, subagent_id: str):
     db = get_database()
     repo = SubAgentRepository(db)
     await repo.set_summarizing(subagent_id, agent_id)
+    
+    return {"status": "ok"}
+
+
+@router.post("/subagents/{agent_id}/{subagent_id}/completed")
+async def set_subagent_completed(agent_id: str, subagent_id: str, data: Dict[str, Any] = None):
+    """Set SubAgent to completed status with result."""
+    from db.database import get_database
+    from db.repositories import SubAgentRepository
+    
+    db = get_database()
+    repo = SubAgentRepository(db)
+    
+    result = data.get("result") if data else None
+    await repo.set_completed(subagent_id, agent_id, result=result)
+    
+    return {"status": "ok"}
+
+
+@router.post("/subagents/{agent_id}/{subagent_id}/failed")
+async def set_subagent_failed(agent_id: str, subagent_id: str, data: Dict[str, Any] = None):
+    """Set SubAgent to failed status with error message."""
+    from db.database import get_database
+    from db.repositories import SubAgentRepository
+    
+    db = get_database()
+    repo = SubAgentRepository(db)
+    
+    error = data.get("error") if data else None
+    await repo.set_failed(subagent_id, agent_id, error=error)
     
     return {"status": "ok"}
 
@@ -107,6 +153,262 @@ async def update_subagent(agent_id: str, subagent_id: str, data: Dict[str, Any])
             data.get("wake_triggers", [{"type": "user_response"}]),
             data.get("handoff_notes")
         )
+    
+    return {"status": "ok"}
+
+
+@router.post("/subagents/{agent_id}/spawn")
+async def spawn_subagent(agent_id: str, data: Dict[str, Any]):
+    """
+    Spawn a new SubAgent and its Runtime (async mode).
+    
+    Creates a sub SubAgent, a Runtime, and the initial runtime_launcher task.
+    Returns the subagent_id immediately. Use /status to poll for completion.
+    
+    Args (JSON body):
+        task: Task description for the SubAgent
+        share_context: If True, copy context from parent runtime
+        parent_subagent_id: Parent SubAgent (defaults to main)
+        timeout_minutes: Timeout in minutes (default 30)
+    
+    Returns:
+        subagent_id: Use this to query status
+        runtime_id: Runtime ID
+    """
+    from db.database import get_database
+    from db.repositories import SubAgentRepository, RuntimeRepository
+    from datetime import datetime, timedelta
+    import uuid
+    
+    db = get_database()
+    subagent_repo = SubAgentRepository(db)
+    runtime_repo = RuntimeRepository(db)
+    
+    # Get parent subagent_id (defaults to main)
+    parent_subagent_id = data.get("parent_subagent_id")
+    if not parent_subagent_id:
+        main_subagent = await subagent_repo.get_or_create_main_subagent(agent_id)
+        parent_subagent_id = main_subagent.subagent_id
+    
+    # Parse parameters
+    task_description = data.get("task", "")
+    share_context = data.get("share_context", False)
+    timeout_minutes = data.get("timeout_minutes", 30)
+    
+    # Calculate timeout
+    now = datetime.utcnow()
+    timeout_at = (now + timedelta(minutes=timeout_minutes)).isoformat()
+    
+    # Create sub SubAgent with async fields
+    subagent = await subagent_repo.create_sub_subagent(
+        agent_id, 
+        parent_subagent_id,
+        task=task_description,
+        timeout_at=timeout_at,
+    )
+    
+    # Prepare initial context
+    initial_context = []
+    
+    # If sharing context, copy from parent's active runtime
+    if share_context:
+        parent_runtime = await runtime_repo.get_active_runtime(parent_subagent_id, agent_id)
+        if parent_runtime and parent_runtime.context:
+            # Copy context but mark it as inherited
+            initial_context = parent_runtime.context.copy()
+    
+    # Add task as user message
+    initial_context.append({
+        "role": "user",
+        "content": f"[SubAgent Task]\n{task_description}"
+    })
+    
+    # Create Runtime
+    runtime = await runtime_repo.create_runtime(
+        subagent.subagent_id, 
+        agent_id,
+        initial_context
+    )
+    
+    # Set SubAgent to running status (not just awake)
+    await subagent_repo.set_running(subagent.subagent_id, agent_id)
+    
+    # Create runtime_launcher task via pipeline_tasks
+    stage_id = f"stage-{uuid.uuid4().hex[:8]}"
+    task_id = f"task-{uuid.uuid4().hex[:12]}"
+    now_str = now.isoformat()
+    
+    async with db.get_connection() as conn:
+        await conn.execute("""
+            INSERT INTO pipeline_tasks (
+                id, task_type, task_subtype, runtime_id, stage_id, agent_id,
+                status, args, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            task_id,
+            "launcher",
+            "runtime_launcher",
+            runtime.runtime_id,
+            stage_id,
+            agent_id,
+            "pending",
+            "{}",
+            now_str,
+            now_str,
+        ))
+        await conn.commit()
+    
+    return {
+        "subagent_id": subagent.subagent_id,
+        "runtime_id": runtime.runtime_id,
+    }
+
+
+@router.get("/subagents/{agent_id}/{subagent_id}/status")
+async def get_subagent_status(agent_id: str, subagent_id: str):
+    """
+    Get SubAgent status for async spawn polling.
+    
+    Returns:
+        subagent_id: SubAgent ID
+        status: running | completed | failed | cancelled | sleeping
+        completed: True if finished (completed/failed/cancelled)
+        progress: Current progress description
+        result: Final result (when completed)
+        error: Error message (when failed)
+        runtime_id: Active runtime ID
+    """
+    from db.database import get_database
+    from db.repositories import SubAgentRepository, RuntimeRepository
+    from datetime import datetime
+    
+    db = get_database()
+    subagent_repo = SubAgentRepository(db)
+    runtime_repo = RuntimeRepository(db)
+    
+    subagent = await subagent_repo.get_by_id(subagent_id, agent_id)
+    if not subagent:
+        raise HTTPException(status_code=404, detail="SubAgent not found")
+    
+    # Check timeout
+    if subagent.status == "running" and subagent.timeout_at:
+        try:
+            timeout_at = datetime.fromisoformat(subagent.timeout_at)
+            if datetime.utcnow() > timeout_at:
+                # Mark as failed due to timeout
+                await subagent_repo.set_failed(
+                    subagent_id, agent_id, 
+                    error="SubAgent timed out"
+                )
+                subagent = await subagent_repo.get_by_id(subagent_id, agent_id)
+        except (ValueError, TypeError):
+            pass  # Invalid timeout format, skip check
+    
+    # Determine completion status
+    completed = subagent.status in ("completed", "failed", "cancelled", "sleeping")
+    
+    response = {
+        "subagent_id": subagent_id,
+        "status": subagent.status,
+        "completed": completed,
+        "progress": getattr(subagent, "progress", None),
+        "result": getattr(subagent, "result", None),
+        "error": getattr(subagent, "error", None),
+    }
+    
+    # Get the latest runtime
+    runtimes = await runtime_repo.get_latest_runtimes(subagent_id, agent_id, limit=1)
+    if runtimes:
+        runtime = runtimes[0]
+        response["runtime_id"] = runtime.runtime_id
+        response["runtime_status"] = runtime.status
+        
+        # If no explicit result set, try to get from runtime context
+        if not response["result"] and runtime.status == "completed" and runtime.context:
+            for msg in reversed(runtime.context):
+                if msg.get("role") == "assistant":
+                    response["result"] = msg.get("content", "")
+                    break
+    
+    return response
+
+
+@router.post("/subagents/{agent_id}/{subagent_id}/cancel")
+async def cancel_subagent(agent_id: str, subagent_id: str):
+    """
+    Cancel a running SubAgent.
+    
+    Sets status to 'cancelled' and cancels all pending tasks.
+    """
+    from db.database import get_database
+    from db.repositories import SubAgentRepository, RuntimeRepository
+    from datetime import datetime
+    
+    db = get_database()
+    subagent_repo = SubAgentRepository(db)
+    runtime_repo = RuntimeRepository(db)
+    
+    subagent = await subagent_repo.get_by_id(subagent_id, agent_id)
+    if not subagent:
+        raise HTTPException(status_code=404, detail="SubAgent not found")
+    
+    # Only cancel if running
+    if subagent.status != "running":
+        return {"success": False, "reason": f"SubAgent is not running (status: {subagent.status})"}
+    
+    # Set SubAgent to cancelled
+    await subagent_repo.set_cancelled(subagent_id, agent_id)
+    
+    # Cancel all pending pipeline_tasks for this SubAgent's runtimes
+    now = datetime.utcnow().isoformat()
+    async with db.get_connection() as conn:
+        # Get runtime IDs for this SubAgent
+        cursor = await conn.execute(
+            "SELECT runtime_id FROM agent_runtimes WHERE subagent_id = ? AND agent_id = ?",
+            (subagent_id, agent_id)
+        )
+        runtime_ids = [row[0] for row in await cursor.fetchall()]
+        
+        # Cancel pending tasks
+        for runtime_id in runtime_ids:
+            await conn.execute("""
+                UPDATE pipeline_tasks 
+                SET status = 'cancelled', updated_at = ?
+                WHERE runtime_id = ? AND status IN ('pending', 'claimed')
+            """, (now, runtime_id))
+            
+            # Also update runtime status
+            await conn.execute("""
+                UPDATE agent_runtimes 
+                SET status = 'cancelled', updated_at = ?
+                WHERE runtime_id = ?
+            """, (now, runtime_id))
+        
+        await conn.commit()
+    
+    return {"success": True}
+
+
+@router.delete("/subagents/{agent_id}/{subagent_id}")
+async def delete_subagent(agent_id: str, subagent_id: str):
+    """Delete a SubAgent and its runtimes."""
+    from db.database import get_database
+    from db.repositories import SubAgentRepository, RuntimeRepository
+    
+    db = get_database()
+    subagent_repo = SubAgentRepository(db)
+    runtime_repo = RuntimeRepository(db)
+    
+    # Delete runtimes for this subagent
+    async with db.get_connection() as conn:
+        await conn.execute(
+            "DELETE FROM runtimes WHERE subagent_id = ? AND agent_id = ?",
+            (subagent_id, agent_id)
+        )
+        await conn.commit()
+    
+    # Delete subagent
+    await subagent_repo.delete(subagent_id, agent_id)
     
     return {"status": "ok"}
 
@@ -225,6 +527,18 @@ async def update_runtime(runtime_id: str, data: Dict[str, Any]):
     
     if "is_merged" in data and data["is_merged"]:
         await repo.mark_merged(runtime_id)
+    
+    # Handle round updates
+    if "current_round_num" in data and "current_round_id" in data:
+        # Directly update round fields
+        now = datetime.utcnow().isoformat()
+        async with db.get_connection() as conn:
+            await conn.execute("""
+                UPDATE agent_runtimes 
+                SET current_round_num = ?, current_round_id = ?, updated_at = ?
+                WHERE runtime_id = ?
+            """, (data["current_round_num"], data["current_round_id"], now, runtime_id))
+            await conn.commit()
     
     return {"status": "ok"}
 
@@ -421,127 +735,17 @@ async def get_latest_runtimes(agent_id: str, subagent_id: str, limit: int = 30):
     return {"runtimes": [_runtime_to_dict(r) for r in runtimes]}
 
 
-# ==================== Task Operations ====================
-
-@router.get("/tasks")
-async def get_tasks(
-    status: Optional[str] = None,
-    subagent_id: Optional[str] = None,
-    ids: Optional[str] = None,  # Comma-separated IDs
-):
-    """Query tasks."""
+@router.get("/agents/{agent_id}/subagents/{subagent_id}/has-active-runtime")
+async def has_active_runtime(agent_id: str, subagent_id: str):
+    """Check if SubAgent has an active runtime (active/resting status)."""
     from db.database import get_database
+    from db.repositories import RuntimeRepository
     
     db = get_database()
+    repo = RuntimeRepository(db)
+    has_active = await repo.has_active_runtime(subagent_id, agent_id)
     
-    if ids:
-        # Query by IDs
-        id_list = ids.split(",")
-        placeholders = ",".join(["?"] * len(id_list))
-        rows = await db.fetchall(f"""
-            SELECT id, agent_id, subagent_id, round_id, mcpcall_id,
-                   type, action, args, status, result, error, created_at
-            FROM action_tasks 
-            WHERE id IN ({placeholders})
-        """, id_list)
-    elif status and subagent_id:
-        rows = await db.fetchall("""
-            SELECT id, agent_id, subagent_id, round_id, mcpcall_id,
-                   type, action, args, status, result, error, created_at
-            FROM action_tasks 
-            WHERE status = ? AND subagent_id = ?
-            ORDER BY created_at DESC
-        """, (status, subagent_id))
-    elif status:
-        rows = await db.fetchall("""
-            SELECT id, agent_id, subagent_id, round_id, mcpcall_id,
-                   type, action, args, status, result, error, created_at
-            FROM action_tasks 
-            WHERE status = ?
-            ORDER BY created_at DESC
-        """, (status,))
-    else:
-        rows = await db.fetchall("""
-            SELECT id, agent_id, subagent_id, round_id, mcpcall_id,
-                   type, action, args, status, result, error, created_at
-            FROM action_tasks 
-            ORDER BY created_at DESC
-            LIMIT 100
-        """)
-    
-    return {
-        "tasks": [_task_row_to_dict(row) for row in rows]
-    }
-
-
-@router.post("/tasks")
-async def create_task(data: Dict[str, Any]):
-    """Create a new task."""
-    from db.database import get_database
-    
-    db = get_database()
-    
-    task_id = data.get("id")
-    agent_id = data.get("agent_id")
-    subagent_id = data.get("subagent_id")
-    round_id = data.get("round_id")
-    mcpcall_id = data.get("mcpcall_id")
-    idempotency_key = data.get("idempotency_key")
-    task_type = data.get("type")
-    action = data.get("action")
-    args = data.get("args", {})
-    status = data.get("status", "pending")
-    now = datetime.utcnow().isoformat()
-    
-    try:
-        await db.execute("""
-            INSERT INTO action_tasks (
-                id, agent_id, subagent_id, round_id, mcpcall_id,
-                idempotency_key, type, action, args, status, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            task_id, agent_id, subagent_id, round_id, mcpcall_id,
-            idempotency_key, task_type, action, json.dumps(args) if isinstance(args, dict) else args,
-            status, now
-        ))
-        return {"status": "ok", "task_id": task_id}
-    except Exception as e:
-        if "UNIQUE constraint" in str(e):
-            raise HTTPException(status_code=409, detail="Task with this idempotency_key already exists")
-        raise
-
-
-@router.patch("/tasks/{task_id}")
-async def update_task(task_id: str, data: Dict[str, Any]):
-    """Update task status/result."""
-    from db.database import get_database
-    
-    db = get_database()
-    
-    updates = []
-    params = []
-    
-    if "status" in data:
-        updates.append("status = ?")
-        params.append(data["status"])
-    
-    if "result" in data:
-        updates.append("result = ?")
-        params.append(json.dumps(data["result"]) if isinstance(data["result"], dict) else data["result"])
-    
-    if "error" in data:
-        updates.append("error = ?")
-        params.append(data["error"])
-    
-    if not updates:
-        return {"status": "ok"}
-    
-    params.append(task_id)
-    await db.execute(f"""
-        UPDATE action_tasks SET {", ".join(updates)} WHERE id = ?
-    """, params)
-    
-    return {"status": "ok"}
+    return {"has_active_runtime": has_active}
 
 
 # ==================== Message Operations ====================
@@ -629,6 +833,25 @@ async def get_unread_messages_grouped(agent_id: Optional[str] = None):
     return {"messages_by_agent": messages_by_agent}
 
 
+@router.post("/messages/claim-sending")
+async def claim_sending_message():
+    """CAS claim a sending message (sending → sent).
+    
+    Used by Monitor service to consume the message queue.
+    
+    Returns:
+        {"message": {...}} if claimed, {"message": null} if queue is empty
+    """
+    from db.database import get_database
+    from db.repositories import MessageRepository
+    
+    db = get_database()
+    repo = MessageRepository(db)
+    message = await repo.claim_sending()
+    
+    return {"message": message}
+
+
 @router.patch("/messages/mark-read")
 async def mark_messages_read(data: Dict[str, Any]):
     """Mark messages as read."""
@@ -640,9 +863,11 @@ async def mark_messages_read(data: Dict[str, Any]):
     
     db = get_database()
     placeholders = ",".join(["?"] * len(message_ids))
-    await db.execute(f"""
-        UPDATE chat_messages SET read = 1 WHERE id IN ({placeholders})
-    """, message_ids)
+    async with db.get_connection() as conn:
+        await conn.execute(f"""
+            UPDATE chat_messages SET read = 1 WHERE id IN ({placeholders})
+        """, tuple(message_ids))
+        await conn.commit()
     
     return {"status": "ok"}
 
@@ -665,9 +890,11 @@ async def mark_messages_processed(data: Dict[str, Any]):
     placeholders = ",".join(["?"] * len(message_ids))
     
     # Mark as read (read=1 means processed)
-    await db.execute(f"""
-        UPDATE chat_messages SET read = 1 WHERE id IN ({placeholders})
-    """, message_ids)
+    async with db.get_connection() as conn:
+        await conn.execute(f"""
+            UPDATE chat_messages SET read = 1 WHERE id IN ({placeholders})
+        """, tuple(message_ids))
+        await conn.commit()
     
     # Broadcast STATUS_UPDATE to SSE for each message
     # Import here to avoid circular import
@@ -694,7 +921,10 @@ async def mark_messages_processed(data: Dict[str, Any]):
 
 @router.post("/messages")
 async def create_message(data: Dict[str, Any]):
-    """Create a chat message (for agent replies)."""
+    """Create a chat message (for agent replies).
+    
+    Agent replies use status='sent' directly (no Monitor processing needed).
+    """
     from db.database import get_database
     from db.repositories.message import MessageRepository
     
@@ -706,6 +936,7 @@ async def create_message(data: Dict[str, Any]):
         type=data["type"],
         content=data["content"],
         metadata=data.get("metadata"),
+        status="sent",  # v18: Agent replies skip Monitor queue
     )
     
     return msg
@@ -930,21 +1161,492 @@ def _subagent_to_dict(subagent) -> Dict[str, Any]:
     }
 
 
-def _task_row_to_dict(row: Dict[str, Any]) -> Dict[str, Any]:
-    """Convert task row to dictionary."""
+# ==================== Pipeline Tasks API (Three-Task Architecture) ====================
+
+@router.post("/pipeline/tasks/claim")
+async def claim_pipeline_task(data: Dict[str, Any]):
+    """
+    Atomically claim a pending pipeline task.
+    
+    Body:
+        task_types: List of task types to claim (launcher, collector, async)
+        task_subtypes: Optional list of subtypes (e.g., think_launcher, tool_call)
+        worker_id: Worker ID claiming the task
+        collector_ready_only: If True and claiming collector, only claim when all tasks done
+    
+    Returns:
+        task: The claimed task dict, or null if no task available
+    """
+    from db.database import get_database
+    
+    db = get_database()
+    
+    task_types = data.get("task_types", [])
+    task_subtypes = data.get("task_subtypes")
+    worker_id = data.get("worker_id", "unknown")
+    collector_ready_only = data.get("collector_ready_only", False)
+    
+    if not task_types:
+        raise HTTPException(status_code=400, detail="task_types required")
+    
+    # Build type filter
+    type_placeholders = ",".join([f"'{t}'" for t in task_types])
+    type_filter = f"task_type IN ({type_placeholders})"
+    
+    # Build subtype filter
+    subtype_filter = ""
+    if task_subtypes:
+        subtype_placeholders = ",".join([f"'{s}'" for s in task_subtypes])
+        subtype_filter = f"AND task_subtype IN ({subtype_placeholders})"
+    
+    # For collector, optionally check if all tasks done
+    collector_filter = ""
+    if collector_ready_only and "collector" in task_types:
+        collector_filter = "AND (task_type != 'collector' OR completed_tasks >= expected_tasks)"
+    
+    sql = f"""
+        UPDATE pipeline_tasks 
+        SET status = 'claimed', 
+            claimed_by = :worker_id,
+            claimed_at = datetime('now'),
+            heartbeat_at = datetime('now'),
+            updated_at = datetime('now')
+        WHERE id = (
+            SELECT id FROM pipeline_tasks 
+            WHERE status = 'pending' 
+              AND {type_filter}
+              {subtype_filter}
+              {collector_filter}
+            ORDER BY created_at
+            LIMIT 1
+        )
+        RETURNING *
+    """
+    
+    cursor = await db.execute(sql, {"worker_id": worker_id})
+    row = await cursor.fetchone()
+    await db.commit()
+    
+    if row:
+        return {"task": _pipeline_task_to_dict(dict(row))}
+    return {"task": None}
+
+
+@router.post("/pipeline/tasks")
+async def create_pipeline_task(data: Dict[str, Any]):
+    """
+    Create a new pipeline task.
+    
+    Uses idempotency_key to prevent duplicates.
+    
+    Returns:
+        task_id: Created task ID, or null if idempotency conflict
+        exists: True if task already exists with same idempotency_key
+    """
+    from db.database import get_database
+    import uuid
+    
+    db = get_database()
+    
+    task_id = f"task-{uuid.uuid4().hex[:12]}"
+    task_type = data.get("task_type")
+    task_subtype = data.get("task_subtype")
+    runtime_id = data.get("runtime_id")
+    stage_id = data.get("stage_id")
+    agent_id = data.get("agent_id")
+    args = data.get("args", {})
+    idempotency_key = data.get("idempotency_key")
+    expected_tasks = data.get("expected_tasks", 0)
+    
+    if not all([task_type, task_subtype, runtime_id, stage_id, agent_id]):
+        raise HTTPException(status_code=400, detail="Missing required fields")
+    
+    args_json = json.dumps(args) if isinstance(args, dict) else args
+    
+    try:
+        cursor = await db.execute("""
+            INSERT INTO pipeline_tasks (
+                id, task_type, task_subtype,
+                runtime_id, stage_id, agent_id,
+                args, idempotency_key, expected_tasks,
+                status, created_at
+            ) VALUES (
+                :id, :task_type, :task_subtype,
+                :runtime_id, :stage_id, :agent_id,
+                :args, :idempotency_key, :expected_tasks,
+                'pending', datetime('now')
+            )
+        """, {
+            "id": task_id,
+            "task_type": task_type,
+            "task_subtype": task_subtype,
+            "runtime_id": runtime_id,
+            "stage_id": stage_id,
+            "agent_id": agent_id,
+            "args": args_json,
+            "idempotency_key": idempotency_key,
+            "expected_tasks": expected_tasks,
+        })
+        await db.commit()
+        return {"task_id": task_id, "exists": False}
+    except Exception as e:
+        # Check if it's a unique constraint violation
+        if "UNIQUE constraint" in str(e) and idempotency_key:
+            # Return existing task ID instead of None
+            cursor = await db.execute("""
+                SELECT id FROM pipeline_tasks WHERE idempotency_key = :key
+            """, {"key": idempotency_key})
+            row = await cursor.fetchone()
+            if not row:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"UNIQUE constraint violated but task not found for key: {idempotency_key}"
+                )
+            return {"task_id": row["id"], "exists": True}
+        raise
+
+
+@router.patch("/pipeline/tasks/{task_id}/done")
+async def mark_pipeline_task_done(task_id: str, data: Dict[str, Any]):
+    """Mark a pipeline task as done with result."""
+    from db.database import get_database
+    
+    db = get_database()
+    result = data.get("result")
+    result_json = json.dumps(result) if result else None
+    
+    await db.execute("""
+        UPDATE pipeline_tasks 
+        SET status = 'done', 
+            result = :result,
+            updated_at = datetime('now')
+        WHERE id = :task_id
+    """, {"task_id": task_id, "result": result_json})
+    await db.commit()
+    
+    return {"status": "ok"}
+
+
+@router.patch("/pipeline/tasks/{task_id}/failed")
+async def mark_pipeline_task_failed(task_id: str, data: Dict[str, Any]):
+    """Mark a pipeline task as failed with error."""
+    from db.database import get_database
+    
+    db = get_database()
+    error = data.get("error", "Unknown error")
+    
+    await db.execute("""
+        UPDATE pipeline_tasks 
+        SET status = 'failed', 
+            error = :error,
+            updated_at = datetime('now')
+        WHERE id = :task_id
+    """, {"task_id": task_id, "error": error})
+    await db.commit()
+    
+    return {"status": "ok"}
+
+
+@router.patch("/pipeline/tasks/{task_id}/heartbeat")
+async def update_pipeline_task_heartbeat(task_id: str):
+    """Update heartbeat timestamp for a claimed task."""
+    from db.database import get_database
+    
+    db = get_database()
+    
+    await db.execute("""
+        UPDATE pipeline_tasks 
+        SET heartbeat_at = datetime('now')
+        WHERE id = :task_id AND status = 'claimed'
+    """, {"task_id": task_id})
+    await db.commit()
+    
+    return {"status": "ok"}
+
+
+@router.patch("/pipeline/tasks/{task_id}/release")
+async def release_pipeline_task(task_id: str):
+    """
+    Release a claimed task back to pending for retry.
+    
+    Used when a launcher fails but should be retried (e.g., MCP creation failed).
+    Clears claimed_by/claimed_at so the task can be re-claimed.
+    """
+    from db.database import get_database
+    
+    db = get_database()
+    
+    await db.execute("""
+        UPDATE pipeline_tasks 
+        SET status = 'pending', 
+            claimed_by = NULL,
+            claimed_at = NULL,
+            heartbeat_at = NULL,
+            updated_at = datetime('now')
+        WHERE id = :task_id AND status = 'claimed'
+    """, {"task_id": task_id})
+    await db.commit()
+    
+    return {"status": "ok"}
+
+
+@router.post("/pipeline/tasks/recover-stale")
+async def recover_stale_pipeline_tasks(data: Dict[str, Any]):
+    """
+    Recover stale tasks (heartbeat timeout).
+    
+    Resets claimed tasks back to pending if heartbeat is too old.
+    """
+    from db.database import get_database
+    
+    db = get_database()
+    
+    task_type = data.get("task_type")
+    timeout_seconds = data.get("timeout_seconds", 60)
+    
+    type_filter = ""
+    if task_type:
+        type_filter = f"AND task_type = '{task_type}'"
+    
+    cursor = await db.execute(f"""
+        UPDATE pipeline_tasks 
+        SET status = 'pending', 
+            claimed_by = NULL,
+            claimed_at = NULL,
+            heartbeat_at = NULL,
+            updated_at = datetime('now')
+        WHERE status = 'claimed'
+          {type_filter}
+          AND heartbeat_at < datetime('now', '-{timeout_seconds} seconds')
+        RETURNING id
+    """)
+    
+    rows = await cursor.fetchall()
+    await db.commit()
+    
+    recovered_count = len(rows) if rows else 0
+    return {"recovered_count": recovered_count}
+
+
+@router.post("/pipeline/stages/{stage_id}/increment-completed")
+async def increment_stage_completed(stage_id: str):
+    """
+    Atomically increment completed_tasks count for a stage's collector.
+    
+    Returns whether all tasks are now complete.
+    """
+    from db.database import get_database
+    
+    db = get_database()
+    
+    cursor = await db.execute("""
+        UPDATE pipeline_tasks 
+        SET completed_tasks = completed_tasks + 1,
+            updated_at = datetime('now')
+        WHERE stage_id = :stage_id 
+          AND task_type = 'collector'
+          AND status = 'pending'
+        RETURNING id, expected_tasks, completed_tasks
+    """, {"stage_id": stage_id})
+    
+    row = await cursor.fetchone()
+    await db.commit()
+    
+    if row:
+        row_dict = dict(row)
+        expected = row_dict.get("expected_tasks", 0)
+        completed = row_dict.get("completed_tasks", 0)
+        return {
+            "expected": expected,
+            "completed": completed,
+            "all_done": completed >= expected,
+        }
+    
+    return {"expected": 0, "completed": 0, "all_done": False}
+
+
+@router.get("/pipeline/tasks/by-stage/{stage_id}")
+async def get_tasks_by_stage(stage_id: str):
+    """Get all tasks for a stage."""
+    from db.database import get_database
+    
+    db = get_database()
+    
+    cursor = await db.execute("""
+        SELECT * FROM pipeline_tasks 
+        WHERE stage_id = :stage_id
+        ORDER BY created_at
+    """, {"stage_id": stage_id})
+    
+    rows = await cursor.fetchall()
+    tasks = [_pipeline_task_to_dict(dict(row)) for row in rows] if rows else []
+    
+    return {"tasks": tasks}
+
+
+@router.get("/pipeline/tasks/{task_id}")
+async def get_pipeline_task(task_id: str):
+    """Get a single pipeline task by ID."""
+    from db.database import get_database
+    
+    db = get_database()
+    
+    cursor = await db.execute("""
+        SELECT * FROM pipeline_tasks WHERE id = :task_id
+    """, {"task_id": task_id})
+    
+    row = await cursor.fetchone()
+    
+    if not row:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    return _pipeline_task_to_dict(dict(row))
+
+
+def _pipeline_task_to_dict(row: Dict[str, Any]) -> Dict[str, Any]:
+    """Convert pipeline_tasks row to dictionary."""
     args = row.get("args")
     result = row.get("result")
     return {
         "id": row["id"],
+        "task_type": row["task_type"],
+        "task_subtype": row["task_subtype"],
+        "runtime_id": row["runtime_id"],
+        "stage_id": row["stage_id"],
         "agent_id": row["agent_id"],
-        "subagent_id": row["subagent_id"],
-        "round_id": row["round_id"],
-        "mcpcall_id": row["mcpcall_id"],
-        "type": row["type"],
-        "action": row.get("action"),
-        "args": json.loads(args) if args else {},
-        "status": row["status"],
-        "result": json.loads(result) if result else None,
+        "args": json.loads(args) if args and isinstance(args, str) else args or {},
+        "result": json.loads(result) if result and isinstance(result, str) else result,
         "error": row.get("error"),
+        "status": row["status"],
+        "claimed_by": row.get("claimed_by"),
+        "claimed_at": row.get("claimed_at"),
+        "heartbeat_at": row.get("heartbeat_at"),
+        "idempotency_key": row.get("idempotency_key"),
+        "expected_tasks": row.get("expected_tasks", 0),
+        "completed_tasks": row.get("completed_tasks", 0),
         "created_at": row["created_at"],
+        "updated_at": row.get("updated_at"),
     }
+
+
+# ==================== MCP Gateway Proxy ====================
+# All MCP management operations go through Gateway
+# Services should NOT call MCP Gateway directly
+
+import os
+import httpx
+
+MCP_GATEWAY_URL = os.environ.get("NOVAIC_MCP_GATEWAY_URL", "http://127.0.0.1:19998")
+
+
+@router.get("/mcp/agent-shared/{agent_id}/exists")
+async def mcp_has_agent_shared(agent_id: str):
+    """Check if agent has shared MCP server."""
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.get(f"{MCP_GATEWAY_URL}/internal/mcp/agent-shared/{agent_id}/exists")
+        resp.raise_for_status()
+        return resp.json()
+
+
+@router.post("/mcp/agent-shared")
+async def mcp_create_agent_shared(data: Dict[str, Any]):
+    """Create agent shared MCP server."""
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.post(f"{MCP_GATEWAY_URL}/internal/mcp/agent-shared", json=data)
+        resp.raise_for_status()
+        return resp.json()
+
+
+@router.delete("/mcp/agent-shared/{agent_id}")
+async def mcp_delete_agent_shared(agent_id: str):
+    """Delete agent shared MCP server."""
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.delete(f"{MCP_GATEWAY_URL}/internal/mcp/agent-shared/{agent_id}")
+        resp.raise_for_status()
+        return resp.json()
+
+
+@router.post("/mcp/runtime")
+async def mcp_create_runtime(data: Dict[str, Any]):
+    """Create runtime MCP server."""
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.post(f"{MCP_GATEWAY_URL}/internal/mcp/runtime", json=data)
+        resp.raise_for_status()
+        return resp.json()
+
+
+@router.delete("/mcp/runtime/{agent_id}/{runtime_id}")
+async def mcp_delete_runtime(agent_id: str, runtime_id: str):
+    """Delete runtime MCP server."""
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.delete(f"{MCP_GATEWAY_URL}/internal/mcp/runtime/{agent_id}/{runtime_id}")
+        resp.raise_for_status()
+        return resp.json()
+
+
+@router.post("/mcp/aggregate")
+async def mcp_create_aggregate(data: Dict[str, Any]):
+    """Create aggregate MCP server."""
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.post(f"{MCP_GATEWAY_URL}/internal/mcp/aggregate", json=data)
+        resp.raise_for_status()
+        return resp.json()
+
+
+@router.delete("/mcp/aggregate/{agent_id}/{runtime_id}")
+async def mcp_delete_aggregate(agent_id: str, runtime_id: str):
+    """Delete aggregate MCP server."""
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.delete(f"{MCP_GATEWAY_URL}/internal/mcp/aggregate/{agent_id}/{runtime_id}")
+        resp.raise_for_status()
+        return resp.json()
+
+
+@router.get("/mcp/servers")
+async def mcp_list_servers():
+    """List all active MCP servers."""
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        resp = await client.get(f"{MCP_GATEWAY_URL}/internal/mcp/servers")
+        resp.raise_for_status()
+        return resp.json()
+
+
+# ==================== Health Monitor Operations (v18) ====================
+
+@router.get("/health/stuck-sending")
+async def get_stuck_sending_count(timeout_seconds: int = 30):
+    """Get count of messages stuck in 'sending' state."""
+    from db.database import get_database
+    from db.repositories import MessageRepository
+    
+    db = get_database()
+    repo = MessageRepository(db)
+    count = await repo.reset_stuck_sending(timeout_seconds)
+    
+    return {"count": count}
+
+
+@router.get("/health/stuck-awaking")
+async def get_stuck_awaking_count(timeout_seconds: int = 60):
+    """Get count of SubAgents stuck in 'awaking' state."""
+    from db.database import get_database
+    from db.repositories import SubAgentRepository
+    
+    db = get_database()
+    repo = SubAgentRepository(db)
+    count = await repo.get_stuck_awaking_count(timeout_seconds)
+    
+    return {"count": count}
+
+
+@router.post("/health/reset-stuck-awaking")
+async def reset_stuck_awaking(timeout_seconds: int = 60):
+    """Reset SubAgents stuck in 'awaking' state to 'sleeping'."""
+    from db.database import get_database
+    from db.repositories import SubAgentRepository
+    
+    db = get_database()
+    repo = SubAgentRepository(db)
+    count = await repo.reset_stuck_awaking(timeout_seconds)
+    
+    return {"reset_count": count}

@@ -52,6 +52,8 @@ class Database:
         await self._conn.execute("PRAGMA journal_mode = WAL")
         await self._conn.execute("PRAGMA foreign_keys = ON")
         await self._conn.execute("PRAGMA synchronous = NORMAL")
+        # Set busy timeout to wait for locks instead of failing immediately
+        await self._conn.execute("PRAGMA busy_timeout = 5000")  # 5 seconds
         
         # Initialize schema
         await init_schema(self._conn)

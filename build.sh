@@ -12,7 +12,7 @@ cd "$SCRIPT_DIR"
 
 RESOURCES_DIR="novaic-app/src-tauri/resources"
 
-# Step 1: Build unified Backend (Gateway + MCP Gateway + Master + Worker)
+# Step 1: Build unified Backend (Gateway + MCP Gateway + Workers)
 echo "[1/3] Building unified Backend (novaic-backend)..."
 cd novaic-gateway
 
@@ -49,28 +49,22 @@ rm -rf "$RESOURCES_DIR/novaic-backend"
 cp -r novaic-gateway/dist/novaic-backend "$RESOURCES_DIR/"
 echo "  Copied: $RESOURCES_DIR/novaic-backend/"
 
-# Copy novaic-mcp-vmuse (VM-side MCP server)
-echo "  Copying novaic-mcp-vmuse..."
+# Copy novaic-vm MCP server (VM-side MCP server)
+echo "  Copying novaic-vm MCP..."
 rm -rf "$RESOURCES_DIR/novaic-mcp-vmuse"
 mkdir -p "$RESOURCES_DIR/novaic-mcp-vmuse"
 
 # Copy source code
-cp -r novaic-mcp-vmuse/src "$RESOURCES_DIR/novaic-mcp-vmuse/"
-echo "  Copied: novaic-mcp-vmuse/src/"
-
-# Copy skills directory if exists
-if [ -d "novaic-mcp-vmuse/skills" ]; then
-    cp -r novaic-mcp-vmuse/skills "$RESOURCES_DIR/novaic-mcp-vmuse/"
-    echo "  Copied: novaic-mcp-vmuse/skills/"
-fi
+cp -r novaic-vm/src "$RESOURCES_DIR/novaic-mcp-vmuse/"
+echo "  Copied: novaic-vm/src/"
 
 # Copy pyproject.toml
-cp novaic-mcp-vmuse/pyproject.toml "$RESOURCES_DIR/novaic-mcp-vmuse/"
-echo "  Copied: novaic-mcp-vmuse/pyproject.toml"
+cp novaic-vm/pyproject.toml "$RESOURCES_DIR/novaic-mcp-vmuse/"
+echo "  Copied: novaic-vm/pyproject.toml"
 
 # Copy README if exists
-if [ -f "novaic-mcp-vmuse/README.md" ]; then
-    cp novaic-mcp-vmuse/README.md "$RESOURCES_DIR/novaic-mcp-vmuse/"
+if [ -f "novaic-vm/README.md" ]; then
+    cp novaic-vm/README.md "$RESOURCES_DIR/novaic-mcp-vmuse/"
 fi
 
 # Step 3: Build Tauri App
@@ -97,8 +91,10 @@ echo "Output files:"
 ls -lh src-tauri/target/release/bundle/dmg/*.dmg 2>/dev/null || echo "  DMG not found"
 ls -lh src-tauri/target/release/bundle/macos/*.app 2>/dev/null || echo "  APP not found"
 echo ""
-echo "Backend usage (four components):"
+echo "Backend usage (six components):"
 echo "  ./novaic-backend gateway --port 19999"
 echo "  ./novaic-backend mcp-gateway --port 19998"
-echo "  ./novaic-backend master --gateway-url http://127.0.0.1:19999 --mcp-gateway-url http://127.0.0.1:19998"
-echo "  ./novaic-backend worker --gateway http://127.0.0.1:19999 --mcp-gateway-url http://127.0.0.1:19998"
+echo "  ./novaic-backend launcher --gateway-url http://127.0.0.1:19999 --bootstrap"
+echo "  ./novaic-backend collector --gateway-url http://127.0.0.1:19999"
+echo "  ./novaic-backend async --gateway-url http://127.0.0.1:19999"
+echo "  ./novaic-backend health --gateway-url http://127.0.0.1:19999"

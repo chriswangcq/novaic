@@ -4,10 +4,10 @@ Database Repositories
 Data access layer implementing the Repository pattern.
 All database operations go through these classes.
 
-v11: Added ActionTaskRepository, MCPExecutionRepository, WorkerRepository
-     for multi-process architecture.
 v12: Added RuntimeRepository for Master-driven Agent Runtime management.
 v14: Added SubAgentRepository for SubAgent state management.
+v15: Three-Task Architecture - pipeline_tasks based system.
+v16: Removed v11 legacy (ActionTaskRepository, MCPExecutionRepository, WorkerRepository).
 """
 
 from .config import ConfigRepository
@@ -17,9 +17,6 @@ from .chat import ChatRepository
 from .agent_state import AgentStateRepository
 from .memory import MemoryRepository
 from .message import MessageRepository
-from .action_task import ActionTaskRepository
-from .mcp_execution import MCPExecutionRepository
-from .worker import WorkerRepository
 from .runtime import RuntimeRepository, AgentRuntime
 from .subagent import SubAgentRepository, SubAgent
 
@@ -31,9 +28,6 @@ __all__ = [
     "AgentStateRepository",
     "MemoryRepository",
     "MessageRepository",
-    "ActionTaskRepository",
-    "MCPExecutionRepository",
-    "WorkerRepository",
     "RuntimeRepository",
     "AgentRuntime",
     "SubAgentRepository",

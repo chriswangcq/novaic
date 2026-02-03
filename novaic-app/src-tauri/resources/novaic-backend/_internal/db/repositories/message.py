@@ -3,19 +3,25 @@ MessageRepository - 消息仓库
 
 简化的消息操作，只管已读/未读状态。
 消息是 Agent 环境的一部分，不是"任务"。
+
+v18: Event-driven Monitor
+- 添加 status 字段：sending (待处理) / sent (已确认)
+- Monitor 服务消费 sending 队列
 """
 
 import json
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 from uuid import uuid4
 
 
 class MessageRepository:
     """
-    消息仓库 - 只管已读/未读
+    消息仓库 - 管理消息状态
     
-    消息存储在 chat_messages 表中，只有 read 字段表示状态。
+    消息存储在 chat_messages 表中：
+    - read: 0=未读, 1=已读（用于 Agent 消费）
+    - status: sending/sent（用于 Monitor 消费队列）
     """
     
     def __init__(self, db):
@@ -29,9 +35,10 @@ class MessageRepository:
         metadata: Optional[Dict[str, Any]] = None,
         id: Optional[str] = None,
         timestamp: Optional[str] = None,
+        status: str = "sending",  # v18: 默认 sending，Monitor 会改成 sent
     ) -> Dict[str, Any]:
         """
-        添加消息（默认未读）
+        添加消息（默认未读，状态为 sending）
         
         Args:
             agent_id: Agent ID
@@ -40,6 +47,7 @@ class MessageRepository:
             metadata: 元数据
             id: 可选的消息 ID（不提供则自动生成）
             timestamp: 可选的时间戳（不提供则使用当前时间）
+            status: 消息状态 (sending/sent)，用户消息默认 sending
         
         Returns:
             创建的消息
@@ -49,9 +57,9 @@ class MessageRepository:
         
         await self.db.execute(
             """INSERT INTO chat_messages 
-               (id, agent_id, type, content, read, metadata, timestamp, created_at)
-               VALUES (?, ?, ?, ?, 0, ?, ?, ?)""",
-            (msg_id, agent_id, type, content, json.dumps(metadata or {}), timestamp, timestamp)
+               (id, agent_id, type, content, read, metadata, timestamp, created_at, status)
+               VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?)""",
+            (msg_id, agent_id, type, content, json.dumps(metadata or {}), timestamp, timestamp, status)
         )
         await self.db.commit()
         
@@ -61,13 +69,92 @@ class MessageRepository:
             "type": type,
             "content": content,
             "read": 0,
+            "status": status,
             "metadata": metadata or {},
             "timestamp": timestamp,
         }
     
+    # ========================================
+    # Monitor Queue Operations (v18)
+    # ========================================
+    
+    async def claim_sending(self) -> Optional[Dict[str, Any]]:
+        """
+        CAS 认领一条 sending 状态的消息。
+        
+        原子操作：sending → sent
+        
+        Returns:
+            认领成功的消息，或 None（队列为空）
+        """
+        async with self.db.get_connection() as conn:
+            # 1. 查找一条 sending 消息
+            cursor = await conn.execute(
+                """SELECT id, agent_id, type, content, metadata, timestamp
+                   FROM chat_messages 
+                   WHERE status = 'sending' 
+                   ORDER BY created_at ASC 
+                   LIMIT 1"""
+            )
+            row = await cursor.fetchone()
+            
+            if not row:
+                return None
+            
+            msg_id = row[0]
+            
+            # 2. CAS 更新：sending → sent
+            now = datetime.utcnow().isoformat()
+            cursor = await conn.execute(
+                """UPDATE chat_messages 
+                   SET status = 'sent', claimed_at = ?
+                   WHERE id = ? AND status = 'sending'""",
+                (now, msg_id)
+            )
+            await conn.commit()
+            
+            # 3. 检查是否成功认领
+            if cursor.rowcount == 0:
+                return None  # 被其他 worker 抢走了
+            
+            return {
+                "id": msg_id,
+                "agent_id": row[1],
+                "type": row[2],
+                "content": row[3],
+                "metadata": json.loads(row[4] or "{}"),
+                "timestamp": row[5],
+            }
+    
+    async def get_sending_count(self) -> int:
+        """获取 sending 状态的消息数量（用于监控）。"""
+        result = await self.db.fetchone(
+            "SELECT COUNT(*) as count FROM chat_messages WHERE status = 'sending'"
+        )
+        return result["count"] if result else 0
+    
+    async def reset_stuck_sending(self, timeout_seconds: int = 60) -> int:
+        """
+        重置卡住的 sending 消息（用于 Health 恢复）。
+        
+        如果消息在 sending 状态超过 timeout_seconds 秒，可能是处理失败，
+        这里不重置，而是由 Health 监控并告警。
+        
+        Returns:
+            卡住的消息数量
+        """
+        # 只统计，不自动重置（sending 消息应该很快被处理）
+        result = await self.db.fetchone(
+            """SELECT COUNT(*) as count FROM chat_messages 
+               WHERE status = 'sending' 
+               AND datetime(created_at, '+' || ? || ' seconds') < datetime('now')""",
+            (timeout_seconds,)
+        )
+        return result["count"] if result else 0
+    
     async def get_unread(self, agent_id: str) -> List[Dict[str, Any]]:
         """
-        获取未读消息
+        获取未读消息（只返回已确认 sent 的消息）
         
         Args:
             agent_id: Agent ID
@@ -77,7 +164,7 @@ class MessageRepository:
         """
         rows = await self.db.fetchall(
             """SELECT * FROM chat_messages 
-               WHERE agent_id = ? AND read = 0 
+               WHERE agent_id = ? AND read = 0 AND status = 'sent'
                ORDER BY timestamp ASC""",
             (agent_id,)
         )
@@ -89,6 +176,7 @@ class MessageRepository:
                 "type": row["type"],
                 "content": row["content"],
                 "read": row["read"],
+                "status": row.get("status", "sent"),
                 "metadata": json.loads(row["metadata"] or "{}"),
                 "timestamp": row["timestamp"],
             }
@@ -169,6 +257,7 @@ class MessageRepository:
                 "type": row["type"],
                 "content": row["content"],
                 "read": row["read"],
+                "status": row.get("status", "sent"),
                 "metadata": json.loads(row["metadata"] or "{}"),
                 "timestamp": row["timestamp"],
             }
@@ -199,6 +288,7 @@ class MessageRepository:
             "type": row["type"],
             "content": row["content"],
             "read": row["read"],
+            "status": row.get("status", "sent"),
             "metadata": json.loads(row["metadata"] or "{}"),
             "timestamp": row["timestamp"],
         }

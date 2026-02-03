@@ -61,6 +61,7 @@ class RuntimeMCP(BaseMCPServer):
         self, 
         agent_id: Optional[str] = None, 
         agent_index: int = 0,
+        runtime_id: Optional[str] = None,
         subagent_id: Optional[str] = None,
     ):
         """
@@ -69,14 +70,16 @@ class RuntimeMCP(BaseMCPServer):
         Args:
             agent_id: Agent ID，用于标识当前 agent (必填)
             agent_index: Agent index，用于端口分配
-            subagent_id: Current runtime's subagent_id
+            runtime_id: Runtime ID (rt-xxx)
+            subagent_id: SubAgent ID (main-xxx or sub-xxx)
         """
         if not agent_id:
             raise ValueError("[RuntimeMCP] agent_id is required")
         self._agent_id = agent_id
+        self._runtime_id = runtime_id
         self._subagent_id = subagent_id
         super().__init__(agent_id=agent_id, agent_index=agent_index)
-        logger.info(f"[RuntimeMCP] Initialized for agent: {self._agent_id}, subagent: {self._subagent_id}")
+        logger.info(f"[RuntimeMCP] Initialized for agent: {self._agent_id}, runtime: {self._runtime_id}, subagent: {self._subagent_id}")
     
     def _build_instructions(self) -> str:
         return """RuntimeMCP - Runtime 管理和调度
@@ -248,18 +251,16 @@ Agent 内部可以有多个 Runtime（执行环境）：
                 Dictionary with success, state, triggers_set, estimated_wake, handoff_notes
             """
             try:
-                # Check if this is a SubAgent (not allowed to rest)
-                # v14: Use subagent_id to check type, runtime_id for API
-                subagent_id = server._subagent_id  # This is actually the runtime_id in v14
+                # Check if this is a SubAgent runtime (not allowed to rest)
+                subagent_id = server._subagent_id
                 if subagent_id and subagent_id.startswith("sub-"):
                     return {
                         "success": False,
                         "error": "SubAgents cannot rest. Complete your task and return the result instead."
                     }
                 
-                # v14: Use runtime_id for the API call
-                # The internal API now handles updating both Runtime and SubAgent state
-                runtime_id = subagent_id  # In v14, this is the runtime_id (rt-xxx)
+                # Call internal API to set runtime status to 'resting'
+                runtime_id = server._runtime_id
                 async with httpx.AsyncClient(timeout=30.0, trust_env=False) as client:
                     response = await client.post(
                         f"{GATEWAY_URL}/internal/runtimes/{runtime_id}/rest",
@@ -275,20 +276,16 @@ Agent 内部可以有多个 Runtime（执行环境）：
                 return {"error": str(e), "success": False}
         
         @self.mcp.tool()
-        async def runtime_spawn(
+        async def subagent_spawn(
             task: str,
             share_context: bool = False,
             timeout_minutes: int = 30,
         ) -> Dict[str, Any]:
             """
-            Spawn a SubAgent to execute a task synchronously.
+            Spawn a SubAgent to execute a task asynchronously.
             
-            This creates a new SubAgent Runtime, waits for it to complete,
-            and returns the result. The SubAgent is automatically destroyed
-            after completion.
-            
-            Use this for tasks requiring multi-step reasoning or research.
-            For async execution, use task_async(tool="runtime_spawn", args={...})
+            Returns immediately with subagent_id. Use subagent_query() to poll
+            for completion, or subagent_cancel() to cancel.
             
             Args:
                 task: Task description for the SubAgent (be specific and clear)
@@ -297,55 +294,101 @@ Agent 内部可以有多个 Runtime（执行环境）：
             
             Returns:
                 Dictionary with:
-                - success: Whether task completed successfully
-                - result: SubAgent's final response
-                - duration_seconds: Execution time
-                - error: Error message (if failed)
+                - subagent_id: Use this to query status or cancel
+                - message: Confirmation message
             
             Examples:
-                runtime_spawn(task="研究 React 和 Vue 的性能差异，写一份对比报告")
-                runtime_spawn(task="分析登录页面卡死的 bug", share_context=True)
+                subagent_spawn(task="研究 React 和 Vue 的性能差异，写一份对比报告")
+                subagent_spawn(task="分析登录页面卡死的 bug", share_context=True)
+            """
+            logger.info(f"[subagent_spawn] Starting SubAgent for task: {task[:50]}...")
+            
+            try:
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    response = await client.post(
+                        f"{self.gateway_url}/internal/subagents/{server._agent_id}/spawn",
+                        json={
+                            "task": task,
+                            "share_context": share_context,
+                            "parent_subagent_id": self.subagent_id,
+                            "timeout_minutes": timeout_minutes,
+                        }
+                    )
+                    response.raise_for_status()
+                    result = response.json()
+                
+                subagent_id = result["subagent_id"]
+                logger.info(f"[subagent_spawn] Created SubAgent {subagent_id}")
+                
+                return {
+                    "subagent_id": subagent_id,
+                    "message": f"SubAgent spawned. Use subagent_query(subagent_id='{subagent_id}') to check status.",
+                }
+                
+            except httpx.HTTPError as e:
+                logger.error(f"[subagent_spawn] HTTP error: {e}")
+                return {"error": f"Failed to spawn SubAgent: {str(e)}"}
+            except Exception as e:
+                logger.error(f"[subagent_spawn] Error: {e}")
+                return {"error": f"SubAgent error: {str(e)}"}
+        
+        @self.mcp.tool()
+        async def subagent_query(subagent_id: str) -> Dict[str, Any]:
+            """
+            Query the status of a spawned SubAgent.
+            
+            Args:
+                subagent_id: The SubAgent ID returned by subagent_spawn()
+            
+            Returns:
+                Dictionary with:
+                - status: running | completed | failed | cancelled
+                - completed: True if finished (completed/failed/cancelled)
+                - progress: Current progress description (if running)
+                - result: Final result (if completed)
+                - error: Error message (if failed)
             """
             try:
-                # Get Master instance
-                from master import get_master
-                master = get_master()
-                if not master:
-                    return {"success": False, "error": "Master not available"}
-                
-                # Check if we have parent subagent_id
-                parent_subagent_id = server._subagent_id
-                if not parent_subagent_id:
-                    # Try to get main runtime
-                    main_runtime = await master.runtime_repo.get_main_runtime(server._agent_id)
-                    if main_runtime:
-                        parent_subagent_id = main_runtime.subagent_id
-                    else:
-                        return {"success": False, "error": "No active runtime found"}
-                
-                logger.info(f"[runtime_spawn] Creating SubAgent for task: {task[:50]}...")
-                
-                # Create SubAgent Runtime via Master
-                runtime = await master.create_sub_runtime(
-                    agent_id=server._agent_id,
-                    parent_subagent_id=parent_subagent_id,
-                    initial_task=task,
-                    share_context=share_context,
-                )
-                
-                # Wait for SubAgent to complete (Master drives the ReACT loop)
-                result = await master.wait_runtime_complete(
-                    subagent_id=runtime.subagent_id,
-                    timeout_seconds=timeout_minutes * 60,
-                )
-                
-                logger.info(f"[runtime_spawn] SubAgent {runtime.subagent_id} completed: success={result.get('success')}")
-                return result
-                
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    response = await client.get(
+                        f"{self.gateway_url}/internal/subagents/{server._agent_id}/{subagent_id}/status"
+                    )
+                    response.raise_for_status()
+                    return response.json()
+                    
+            except httpx.HTTPError as e:
+                logger.error(f"[subagent_query] HTTP error: {e}")
+                return {"error": f"Failed to query SubAgent: {str(e)}"}
             except Exception as e:
-                logger.error(f"[RuntimeMCP] runtime_spawn failed: {e}")
-                import traceback
-                traceback.print_exc()
-                return {"success": False, "error": str(e)}
+                logger.error(f"[subagent_query] Error: {e}")
+                return {"error": f"Query error: {str(e)}"}
         
-        logger.info(f"[{self.name}] Registered 5 tools for agent: {server._agent_id}")
+        @self.mcp.tool()
+        async def subagent_cancel(subagent_id: str) -> Dict[str, Any]:
+            """
+            Cancel a running SubAgent.
+            
+            Args:
+                subagent_id: The SubAgent ID to cancel
+            
+            Returns:
+                Dictionary with:
+                - success: True if cancelled successfully
+                - reason: Reason if cancellation failed
+            """
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    response = await client.post(
+                        f"{self.gateway_url}/internal/subagents/{server._agent_id}/{subagent_id}/cancel"
+                    )
+                    response.raise_for_status()
+                    return response.json()
+                    
+            except httpx.HTTPError as e:
+                logger.error(f"[subagent_cancel] HTTP error: {e}")
+                return {"success": False, "error": f"Failed to cancel SubAgent: {str(e)}"}
+            except Exception as e:
+                logger.error(f"[subagent_cancel] Error: {e}")
+                return {"success": False, "error": f"Cancel error: {str(e)}"}
+        
+        logger.info(f"[{self.name}] Registered 7 tools for agent: {server._agent_id}")

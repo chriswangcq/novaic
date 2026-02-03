@@ -1,259 +1,326 @@
-# MCP 调试心得
+# MCP 调试指南
 
-## 问题场景
+## MCP 架构概览
 
-2026-02-01 调试时遇到 MCP 初始化失败：
-- Worker 调用 `POST .../mcp/local/` 返回 **405 Method Not Allowed**
-- 日志显示 `[MCP] ✗ Failed to initialize local`
-- 工具发现数为 0
-
-## 排查过程
-
-### 1. 检查日志
-
-```bash
-# Gateway 日志
-tail -100 ~/Library/Application\ Support/com.novaic.app/logs/gateway-$(date +%Y%m%d).log
-
-# MCP Gateway 日志（如果手动启动）
-tail -100 /tmp/mcp_gateway.log
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                      MCP Gateway (19998)                             │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  ┌────────────────────────────────────────────────────────────────┐  │
+│  │                    Agent Shared MCP                             │  │
+│  │  (per-agent, 所有 Runtime 共享)                                  │  │
+│  │                                                                 │  │
+│  │  • local       - 文件系统操作 (read, write, list)                │  │
+│  │  • memory      - 记忆存储 (store, retrieve, search)              │  │
+│  │  • vmuse       - VM 工具 (browser, desktop, shell, windows)      │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+│                                                                      │
+│  ┌────────────────────────────────────────────────────────────────┐  │
+│  │                     Runtime MCP                                  │  │
+│  │  (per-runtime)                                                   │  │
+│  │                                                                 │  │
+│  │  • subagent_spawn   - 启动子 Agent                              │  │
+│  │  • subagent_query   - 查询子 Agent 状态                          │  │
+│  │  • subagent_cancel  - 取消子 Agent                              │  │
+│  │  • context_request  - 请求更多上下文                             │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+│                                                                      │
+│  ┌────────────────────────────────────────────────────────────────┐  │
+│  │                   Aggregate Gateway                              │  │
+│  │  /aggregate/{agent_id}/{runtime_id}                              │  │
+│  │                                                                 │  │
+│  │  合并 Agent Shared + Runtime MCP 的所有工具                       │  │
+│  │  LLM 通过这个入口获取完整工具列表                                  │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
-关键日志特征：
-- `[MCPManager] Initialized` - 说明 MCP 在 Gateway 进程内（旧架构）
-- `[ProcessManager] Starting` - 说明 ProcessManager 在 Gateway 内（旧架构）
-- 新架构应该只看到 `[Gateway] MCP 由 Backend 组件 MCP Gateway 提供`
+## 调试命令
 
-### 2. 检查服务状态
+### 检查 MCP Gateway 状态
 
 ```bash
-# Gateway 健康检查
-curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:19999/api/health
-# 期望: 200
+# 健康检查
+curl http://127.0.0.1:19998/api/health
 
-# MCP Gateway 状态
-curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:19998/internal/mcp/stats
-# 期望: 200（如果 MCP Gateway 在跑）
-# 期望: 000（连接失败，说明 MCP Gateway 没起）
+# 列出所有 MCP 服务
+curl http://127.0.0.1:19998/mcp/servers
 ```
 
-### 3. 检查 DB 中的 mcp_url
+### 检查工具列表
 
 ```bash
-sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
-  "SELECT subagent_id, mcp_url, status FROM agent_runtimes;"
+# Agent Shared MCP 工具
+curl http://127.0.0.1:19998/mcp/agent-shared/{agent_id}/tools/list
+
+# Runtime MCP 工具
+curl http://127.0.0.1:19998/mcp/runtime/{agent_id}/{runtime_id}/tools/list
+
+# Aggregate (全部工具)
+curl http://127.0.0.1:19998/aggregate/{agent_id}/{runtime_id}/tools/list
 ```
 
-关键判断：
-- 如果 `mcp_url` 是 **相对路径**（如 `/mcp/aggregate/xxx/`）→ 旧数据，Worker 会拼到 Gateway 上导致 404/405
-- 如果 `mcp_url` 是 **完整 URL**（如 `http://127.0.0.1:19998/mcp/aggregate/xxx/`）→ 新架构，Worker 会直接用
-
-### 4. 测试 MCP 端点
+### 手动调用工具
 
 ```bash
-# 测试 MCP 是否可访问（需要正确的 Accept 头）
-curl -s -X POST http://127.0.0.1:19998/mcp/aggregate/main-xxx/ \
+# 调用 local MCP 的 read_file 工具
+curl -X POST http://127.0.0.1:19998/mcp/agent-shared/{agent_id}/tools/call \
   -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}'
-```
+  -d '{
+    "name": "read_file",
+    "arguments": {
+      "path": "/path/to/file"
+    }
+  }'
 
-## 根因分析
-
-**问题 1: MCP Gateway 未启动**
-- 现象: curl 19998 返回 000（连接失败）
-- 解决: 启动 MCP Gateway
-
-**问题 2: 旧数据使用相对路径**
-- 现象: DB 中 `mcp_url = /mcp/aggregate/xxx/`
-- 解决: 清理旧 runtime 或等新流程重建
-
-**问题 3: 405 Method Not Allowed**
-- 现象: POST 到 19999 的 MCP 路径返回 405
-- 原因: Gateway 上没有 MCP 路由（MCP 在 19998）
-- 解决: 确保 Worker 用 MCP Gateway URL (19998)
-
-## 解决方案
-
-### 方案 A: 手动启动完整环境
-
-```bash
-# 1. 杀掉旧进程
-pkill -f "python main.py"
-pkill -f "python mcp_main.py"
-sleep 2
-
-# 2. 启动 Gateway
-cd /path/to/novaic-gateway
-export NOVAIC_DATA_DIR="$HOME/Library/Application Support/com.novaic.app"
-nohup python main.py > /tmp/gateway.log 2>&1 &
-sleep 3
-
-# 3. 启动 MCP Gateway
-export NOVAIC_GATEWAY_URL="http://127.0.0.1:19999"
-nohup python mcp_main.py > /tmp/mcp_gateway.log 2>&1 &
-sleep 3
-
-# 4. 启动 Master
-nohup python master_main.py \
-  --gateway-url http://127.0.0.1:19999 \
-  --mcp-gateway-url http://127.0.0.1:19998 \
-  > /tmp/master.log 2>&1 &
-
-# 5. 启动 Worker
-nohup python -m worker.worker \
-  --gateway http://127.0.0.1:19999 \
-  --mcp-gateway-url http://127.0.0.1:19998 \
-  > /tmp/worker.log 2>&1 &
-```
-
-### 方案 B: 使用开发脚本
-
-```bash
-./dev-guide/run-dev.sh
-```
-
-### 方案 C: 清理旧数据重来
-
-```bash
-# 删除 completed 的旧 runtime
-sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
-  "DELETE FROM agent_runtimes WHERE status='completed';"
-```
-
-## 验证方法
-
-```bash
-# 1. 检查两个服务都在跑
-curl -s http://127.0.0.1:19999/api/health && echo " Gateway OK"
-curl -s http://127.0.0.1:19998/internal/mcp/stats && echo " MCP Gateway OK"
-
-# 2. 检查 MCP stats
-curl -s http://127.0.0.1:19998/internal/mcp/stats | python -m json.tool
-
-# 3. 手动创建测试 MCP
-curl -s -X POST http://127.0.0.1:19998/internal/mcp/agent-shared \
+# 调用 Runtime MCP 的 subagent_spawn
+curl -X POST http://127.0.0.1:19998/mcp/runtime/{agent_id}/{runtime_id}/tools/call \
   -H "Content-Type: application/json" \
-  -d '{"agent_id": "YOUR_AGENT_ID"}'
-
-curl -s -X POST http://127.0.0.1:19998/internal/mcp/runtime \
-  -H "Content-Type: application/json" \
-  -d '{"subagent_id": "test-123", "agent_id": "YOUR_AGENT_ID"}'
-
-curl -s -X POST http://127.0.0.1:19998/internal/mcp/aggregate \
-  -H "Content-Type: application/json" \
-  -d '{"subagent_id": "test-123", "agent_id": "YOUR_AGENT_ID"}'
+  -d '{
+    "name": "subagent_spawn",
+    "arguments": {
+      "task": "Do something",
+      "share_context": false
+    }
+  }'
 ```
 
-## 经验总结
+## 常见问题
 
-1. **先检查服务状态**: curl 19999 和 19998 确认都在跑
-2. **看日志辨架构**: 有 `[MCPManager] Initialized` 说明在跑旧代码
-3. **DB 是证据**: `mcp_url` 的格式能判断是新旧数据
-4. **MCP 需要 Accept 头**: `Accept: application/json, text/event-stream`
-5. **顺序很重要**: Gateway → MCP Gateway → Master → Worker
+### 1. 工具列表为空
 
----
+**症状**: `/tools/list` 返回空数组
 
-## 图片/多模态问题排查
+**排查**:
 
-### 问题：截图 base64 被当文本发给 LLM
+```bash
+# 检查 MCP 服务是否创建
+curl http://127.0.0.1:19998/mcp/servers
 
-MCP 协议返回图片时，格式是：
-```json
-{
-  "content": [
-    {"type": "image", "data": "iVBORw0KGgo...", "mimeType": "image/png"}
-  ]
+# 如果服务不存在，检查 Runtime
+curl http://127.0.0.1:19999/internal/runtimes/{agent_id}
+# 确认 mcp_url 字段不为空
+```
+
+**常见原因**:
+- RuntimeLauncher 未成功创建 MCP
+- MCP Gateway 重启导致服务丢失
+- agent_id 或 runtime_id 错误
+
+### 2. 工具调用超时
+
+**症状**: 工具调用长时间无响应
+
+**排查**:
+
+```bash
+# 检查 MCP Gateway 进程
+ps aux | grep mcp_main
+
+# 检查是否有挂起的请求
+# (需要在 MCP Gateway 中添加日志)
+```
+
+**常见原因**:
+- VM 操作太慢 (browser, desktop)
+- 网络问题
+- 资源不足
+
+### 3. Aggregate Gateway 找不到工具
+
+**症状**: Aggregate 返回的工具比预期少
+
+**排查**:
+
+```bash
+# 分别检查各 MCP 的工具
+curl http://127.0.0.1:19998/mcp/agent-shared/{agent_id}/tools/list
+curl http://127.0.0.1:19998/mcp/runtime/{agent_id}/{runtime_id}/tools/list
+
+# 检查 Aggregate 注册
+curl http://127.0.0.1:19998/aggregate/{agent_id}/{runtime_id}/info
+```
+
+**常见原因**:
+- Agent Shared MCP 未创建
+- Runtime MCP 未创建
+- Aggregate 注册失败
+
+### 4. SubAgent 工具调用失败
+
+**症状**: subagent_spawn/query/cancel 返回错误
+
+**排查**:
+
+```bash
+# 检查 SubAgent 状态
+curl http://127.0.0.1:19999/internal/subagents/{agent_id}
+
+# 检查 Runtime MCP 配置
+curl http://127.0.0.1:19998/mcp/runtime/{agent_id}/{runtime_id}/info
+
+# 手动查询 SubAgent
+curl http://127.0.0.1:19999/internal/subagents/{agent_id}/{subagent_id}/status
+```
+
+**常见原因**:
+- SubAgent ID 不存在
+- Runtime MCP 的 gateway_url 配置错误
+- 权限问题
+
+## MCP 服务生命周期
+
+### 创建流程
+
+```
+1. RuntimeLauncher 创建 Runtime
+2. 调用 MCP Gateway 创建 Agent Shared MCP (如果不存在)
+   POST /mcp/agent-shared
+3. 调用 MCP Gateway 创建 Runtime MCP
+   POST /mcp/runtime
+4. 调用 MCP Gateway 创建 Aggregate Gateway
+   POST /mcp/aggregate
+5. 等待工具发现完成 (tool discovery)
+6. 保存 mcp_url 到 Runtime
+```
+
+### 销毁流程
+
+```
+1. SummarizeCollector 完成对话
+2. 调用 MCP Gateway 删除 Runtime MCP
+   DELETE /mcp/runtime/{agent_id}/{runtime_id}
+3. 调用 MCP Gateway 删除 Aggregate Gateway
+   DELETE /mcp/aggregate/{agent_id}/{runtime_id}
+4. Agent Shared MCP 保留 (可复用)
+```
+
+## 日志分析
+
+### MCP Gateway 日志
+
+```python
+# 在 mcp_main.py 中添加详细日志
+import logging
+logging.basicConfig(level=logging.DEBUG)
+```
+
+### 关键日志点
+
+```
+[MCP Gateway] Creating Agent Shared MCP for agent xxx
+[MCP Gateway] Agent Shared MCP created: http://127.0.0.1:19998/mcp/agent-shared/xxx
+[MCP Gateway] Creating Runtime MCP for runtime rt-xxx
+[MCP Gateway] Runtime MCP created: http://127.0.0.1:19998/mcp/runtime/xxx/rt-xxx
+[MCP Gateway] Aggregate Gateway registered: /aggregate/xxx/rt-xxx
+[MCP Gateway] Tool discovery completed: 15 tools found
+```
+
+## 开发调试技巧
+
+### 1. 使用 MCP Inspector
+
+```bash
+# 安装 MCP Inspector
+npm install -g @modelcontextprotocol/inspector
+
+# 连接到 Aggregate Gateway
+mcp-inspector http://127.0.0.1:19998/aggregate/{agent_id}/{runtime_id}
+```
+
+### 2. 模拟 LLM 工具调用
+
+```python
+import httpx
+
+async def test_tool_call():
+    async with httpx.AsyncClient() as client:
+        # 获取工具列表
+        tools = await client.get(
+            f"http://127.0.0.1:19998/aggregate/{agent_id}/{runtime_id}/tools/list"
+        )
+        print("Tools:", tools.json())
+        
+        # 调用工具
+        result = await client.post(
+            f"http://127.0.0.1:19998/aggregate/{agent_id}/{runtime_id}/tools/call",
+            json={
+                "name": "read_file",
+                "arguments": {"path": "/tmp/test.txt"}
+            }
+        )
+        print("Result:", result.json())
+```
+
+### 3. 检查 MCP 内部状态
+
+```bash
+# 检查 MCPManager 状态
+curl http://127.0.0.1:19998/internal/mcp-manager/stats
+
+# 检查活跃连接
+curl http://127.0.0.1:19998/internal/connections
+```
+
+## MCP 配置
+
+### Agent Shared MCP 配置
+
+```python
+# mcp_servers/agent_shared.py
+SHARED_MCP_CONFIG = {
+    "local": {
+        "workspace": "/path/to/workspace",
+        "allowed_paths": ["/tmp", "/home"],
+    },
+    "memory": {
+        "max_entries": 1000,
+    },
+    "vmuse": {
+        "vm_id": "...",
+    },
 }
 ```
 
-`_convert_tool_result` 会提取成：
-```python
-{"success": True, "screenshot": "iVBORw0KGgo...", "mime_type": "image/png"}
-```
-
-### 修复后的处理流程
-
-1. **`worker/llm_caller.py` 的 `add_tool_result`**：
-   - 检测 `screenshot` + `mime_type` 字段
-   - 生成不含 base64 的文本结果（含 `_image_included: true`）
-   - 将图片作为单独的 user message 添加，使用多模态格式
-
-2. **`master/scheduler.py` 的 context 保存**：
-   - 存入 DB 时不存 base64，只存 `_image_included: true`
-   - 避免 context 膨胀
-
-3. **多模态格式**：
-   - **OpenAI**: `{"type": "image_url", "image_url": {"url": "data:image/png;base64,..."}}`
-   - **Anthropic**: `{"type": "image", "source": {"type": "base64", "media_type": "...", "data": "..."}}`
-
-### 验证方法
-
-发送截图请求后检查：
-```bash
-# 检查 MCP 返回
-sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
-  "SELECT tool_name, substr(result, 1, 100) FROM mcp_executions WHERE tool_name='screenshot' ORDER BY created_at DESC LIMIT 1;"
-
-# 检查 context 是否存了 base64（不应该有很长的字符串）
-sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
-  "SELECT length(context) FROM agent_runtimes ORDER BY created_at DESC LIMIT 1;"
-```
-
----
-
-## Aggregate MCP 参数格式问题 (2026-02-01)
-
-### 问题：`runtime_rest` 调用失败
-
-```
-"error": "2 validation errors for call[runtime_rest]
-  reason: Missing required argument
-  args: Unexpected keyword argument"
-```
-
-### 根因分析
-
-1. **LLMCaller 从 aggregate MCP 加载工具 schema**
-2. **旧设计**: aggregate MCP 用 `proxy_handler(args: Dict = {})` 包装所有工具
-   - LLM 看到的 schema: `{"properties": {"args": {...}}}`
-   - LLM 发送: `{"args": {"reason": "...", ...}}`
-3. **Executor 绕过 aggregate，直接调底层 MCP**
-   - 底层 MCP 期望: `{"reason": "...", ...}`
-   - 参数不匹配 → 失败
-
-### 修复方案
-
-1. **统一走 aggregate MCP** (`executor_handler.py`)
-   - 修改 `_get_mcp_url_for_tool()` 返回 None
-   - 让所有工具都用 `task_mcp_url`（aggregate MCP）
-
-2. **去掉 args 包装** (`mcp_gateway/gateway.py`)
-   - 修改 `_register_proxy_tool()`
-   - 动态生成与原始工具**相同签名**的 proxy 函数
-   - LLM 看到原始 schema，直接发送参数
-
-### 修复后的效果
+### Runtime MCP 配置
 
 ```python
-# 修复前（args 包装）
-LLM 发送: {"args": {"message": "hello"}}
-Schema: {"properties": {"args": {...}}}
-
-# 修复后（原始格式）
-LLM 发送: {"message": "hello"}
-Schema: {"properties": {"message": {...}}}
+# mcp_servers/runtime.py
+RUNTIME_MCP_CONFIG = {
+    "gateway_url": "http://127.0.0.1:19999",
+    "agent_id": "...",
+    "runtime_id": "...",
+    "subagent_id": "...",
+}
 ```
 
-### 验证方法
+## 性能优化
 
-```bash
-# 检查参数格式
-sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
-  "SELECT action, substr(args, 1, 200) FROM action_tasks WHERE type='tool_call' ORDER BY created_at DESC LIMIT 5;"
+### 1. 工具发现缓存
 
-# 期望看到 tool_args 直接包含参数，没有 args 包装：
-# {"tool_args": {"message": "..."}, ...}  ✅
-# {"tool_args": {"args": {"message": "..."}}, ...}  ❌
+```python
+# Aggregate Gateway 缓存工具列表
+# 避免每次 LLM 调用都重新发现
+TOOL_CACHE_TTL = 60  # seconds
+```
+
+### 2. 连接池
+
+```python
+# 复用 HTTP 连接
+httpx.AsyncClient(
+    limits=httpx.Limits(max_connections=100),
+    timeout=httpx.Timeout(30.0),
+)
+```
+
+### 3. 并行工具调用
+
+```python
+# 多个工具调用可以并行执行
+async def call_tools(tools_calls):
+    tasks = [call_tool(tc) for tc in tool_calls]
+    return await asyncio.gather(*tasks)
 ```

@@ -1,122 +1,184 @@
-# NovAIC VM
+# NovAIC Core
 
-> QEMU Linux VM runtime — A complete desktop environment for AI agents
+> MCP Tool Server — 44+ tools for AI desktop control
 
+[![PyPI](https://img.shields.io/pypi/v/novaic-core.svg)](https://pypi.org/project/novaic-core/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Overview
 
-NovAIC VM provides a pre-configured Ubuntu virtual machine with a desktop environment (XFCE), VNC server, and the NovAIC MCP Server. It enables AI agents to operate a real computer with persistent storage.
+NovAIC Core is the MCP (Model Context Protocol) server that provides AI agents with tools to control a Linux desktop environment. It includes 44+ tools for:
 
-### Features
+- Desktop control (screenshot, mouse, keyboard)
+- Browser automation (navigate, click, type, scroll)
+- Shell execution (commands, Python code)
+- File operations (read, write, list)
+- Window management (list, focus, launch)
+- Memory system (persistent key-value storage)
+- Context awareness (system snapshots, directory analysis)
 
-- **Ubuntu 24.04 LTS** — Stable, well-supported Linux distribution
-- **XFCE Desktop** — Lightweight desktop environment
-- **VNC Server** — Remote desktop access for visualization
-- **SSH Access** — Command-line access for debugging
-- **Persistent Storage** — QCOW2 disk images preserve state
-- **MCP Server** — Pre-deployed NovAIC Core with 44+ tools
+## Installation
 
-## System Requirements
+```bash
+pip install novaic-core
+```
 
-| Requirement | Minimum |
-|-------------|---------|
-| **OS** | macOS (Apple Silicon or Intel) |
-| **RAM** | 8GB (VM uses 4GB) |
-| **Disk** | 50GB free space |
-| **Software** | Homebrew |
+Or install from source:
+
+```bash
+cd novaic-core
+pip install -e .
+```
 
 ## Quick Start
 
-### 1. One-Command Setup
-
 ```bash
-cd novaic-vm
-./setup.sh
+# Start the MCP server
+novaic serve
+
+# Or run directly
+python -m novaic_core.main
 ```
 
-This automatically:
-- Installs QEMU and dependencies
-- Downloads Ubuntu Cloud Image
-- Creates and configures the VM
-- Starts the VM
-
-### 2. Wait for Initial Configuration
-
-First boot takes 5-10 minutes for cloud-init setup.
-
-Check progress:
-```bash
-ssh -p 2222 ubuntu@localhost
-# Password: ubuntu
-
-tail -f /var/log/cloud-init-output.log
-```
-
-### 3. Deploy MCP Server
-
-```bash
-./scripts/deploy.sh
-```
-
-### 4. Connect
-
-| Service | Address | Credentials |
-|---------|---------|-------------|
-| **VNC** | `vnc://localhost:5900` | Password: `novaic` |
-| **SSH** | `ssh -p 2222 ubuntu@localhost` | Password: `ubuntu` |
-| **MCP** | `http://localhost:8080/sse` | — |
-
-## Management Commands
-
-```bash
-# Start VM (foreground with window)
-./scripts/start-vm.sh
-
-# Start VM (background/daemon mode)
-./scripts/start-vm.sh -d
-
-# Stop VM
-./scripts/stop-vm.sh
-
-# Check status
-./scripts/status-vm.sh
-
-# Deploy/update MCP Server
-./scripts/deploy.sh
-
-# Quick deploy (code only, no deps)
-./scripts/deploy-quick.sh
-
-# Reset VM to clean state
-./scripts/reset-vm.sh
-
-# Completely remove VM
-./scripts/clean-vm.sh
-```
+The server starts at `http://localhost:8080/mcp` (Streamable HTTP transport).
 
 ## Configuration
 
-### Environment Variables
+Environment variables (prefix: `NOVAIC_`):
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `NOVAIC_VM_MEMORY` | `4096` | VM memory (MB) |
-| `NOVAIC_VM_CPUS` | `4` | VM CPU cores |
-| `NOVAIC_VNC_PORT` | `5900` | VNC port (host) |
-| `NOVAIC_MCP_PORT` | `8080` | MCP Server port (host) |
-| `NOVAIC_SSH_PORT` | `2222` | SSH port (host) |
+| `NOVAIC_HOST` | `0.0.0.0` | Server host |
+| `NOVAIC_PORT` | `8080` | Server port |
+| `NOVAIC_DEBUG` | `false` | Debug mode |
 
-### Custom Ubuntu Mirror
+Config directory: `~/.novaic/`
 
-```bash
-export UBUNTU_MIRROR="https://mirrors.tuna.tsinghua.edu.cn/ubuntu-cloud-images"
-./scripts/create-vm.sh
+## MCP Tools Reference
+
+### Desktop Tools
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `screenshot` | Take a screenshot | `area?`, `grid?` |
+| `mouse` | Two-phase mouse control | `action`, `x?`, `y?`, `zoom?`, `aim_id?`, `delta_x?`, `delta_y?` |
+| `keyboard` | Keyboard input | `action`, `text?`, `keys?` |
+
+**Mouse workflow (aim → execute):**
+```python
+# 1. Aim at target (returns aim_id + zoomed screenshot with crosshair)
+mouse(action='aim', x=500, y=300, zoom=2)
+
+# 2. Execute with aim_id
+mouse(action='click', aim_id='aim_xxx')
+mouse(action='double', aim_id='aim_xxx')
+mouse(action='scroll', aim_id='aim_xxx', direction='down', amount=3)
+
+# Delta adjustment (fine-tune from crosshair position)
+mouse(action='aim', aim_id='aim_xxx', delta_x=-50, delta_y=20, zoom=4)
 ```
 
-## Using with MCP Clients
+**Keyboard actions:** `type` (text input), `key` (key combinations)
 
-### Claude Desktop
+### Browser Tools
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `browser_navigate` | Navigate to URL | `url` |
+| `browser_click` | Click element | `selector` |
+| `browser_type` | Type into element | `selector`, `text` |
+| `browser_screenshot` | Browser screenshot | — |
+| `browser_scroll` | Scroll page | `direction`, `amount?` |
+| `browser_eval` | Execute JavaScript | `script` |
+| `browser_get_text` | Get element text | `selector` |
+| `browser_wait` | Wait for element | `selector`, `timeout?` |
+
+### Shell Tools
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `run_command` | Execute shell command | `command`, `timeout?` |
+| `run_python` | Execute Python code | `code` |
+
+### File Tools
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `read_file` | Read file contents | `path`, `encoding?` |
+| `write_file` | Write to file | `path`, `content` |
+| `list_files` | List directory | `path`, `recursive?` |
+| `file_info` | Get file metadata | `path` |
+| `delete_file` | Delete file | `path` |
+| `copy_file` | Copy file | `src`, `dest` |
+| `move_file` | Move file | `src`, `dest` |
+
+### Window Tools
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `list_windows` | List all windows | — |
+| `focus_window` | Focus a window | `window_id` or `title` |
+| `launch_app` | Launch application | `app_name` |
+| `maximize_window` | Maximize window | `window_id` |
+| `minimize_window` | Minimize window | `window_id` |
+| `close_window` | Close window | `window_id` |
+
+### Memory Tools
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `memory_save` | Save to memory | `key`, `value` |
+| `memory_recall` | Recall from memory | `key` |
+| `memory_delete` | Delete from memory | `key` |
+| `memory_list` | List all keys | — |
+| `task_log` | Log a task | `task`, `status` |
+| `task_history` | Get task history | `limit?` |
+| `goal_set` | Set a goal | `goal`, `steps?` |
+| `goal_progress` | Update goal progress | `progress`, `notes?` |
+| `goal_complete` | Complete goal | `result?` |
+| `session_state` | Get session state | — |
+
+### Context Tools
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `system_snapshot` | System overview | — |
+| `directory_snapshot` | Analyze directory | `path` |
+| `app_state` | Application state | `app_name?` |
+| `clipboard_get` | Get clipboard | — |
+| `clipboard_set` | Set clipboard | `content` |
+| `recent_files` | Recent files | `limit?` |
+| `environment_info` | Environment info | — |
+
+### Result Cache Tools
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `result_get` | Get cached result | `result_id`, `offset?`, `limit?` |
+| `result_info` | Result metadata | `result_id` |
+| `result_list` | List cached results | — |
+
+## API Endpoints
+
+NovAIC Core uses [FastMCP](https://github.com/jlowin/fastmcp) with Streamable HTTP transport:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/mcp` | POST | MCP protocol endpoint (tools, resources) |
+| `/health` | GET | Health check |
+
+**MCP Resources:**
+- `skill://desktop` — Desktop control guidance
+- `skill://browser` — Browser automation guidance
+- `skill://wechat` — WeChat operation guidance
+- `skill://list` — List all available skills
+
+## Example Usage
+
+NovAIC Core is designed to be used via MCP protocol. Connect your MCP client to `http://localhost:8080/mcp`.
+
+### With Claude Desktop
 
 Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
@@ -124,148 +186,91 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 {
   "mcpServers": {
     "novaic": {
-      "url": "http://localhost:8080/sse"
+      "url": "http://localhost:8080/mcp"
     }
   }
 }
 ```
 
-### Cursor IDE
+### With Cursor IDE
 
-The MCP server can be used with Cursor's MCP support for AI-assisted development.
+Add to your MCP settings:
 
-### Any MCP-Compatible Client
-
-The SSE endpoint `http://localhost:8080/sse` follows the MCP protocol specification.
-
-## Architecture
-
-```
-┌───────────────────────────────────────────────────────────────────┐
-│  macOS Host                                                        │
-│                                                                    │
-│  ┌─────────────────────────────────────────────────────────────┐  │
-│  │  QEMU VM (Ubuntu 24.04)                                      │  │
-│  │                                                               │  │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌──────────────────────┐  │  │
-│  │  │   XFCE4     │  │   x11vnc    │  │    NovAIC Core       │  │  │
-│  │  │   Desktop   │  │   :5901     │  │    MCP Server :8080  │  │  │
-│  │  └─────────────┘  └─────────────┘  └──────────────────────┘  │  │
-│  │                                                               │  │
-│  └─────────────────────────────────────────────────────────────┘  │
-│         ↑                  ↑                    ↑                  │
-│    SSH :2222          VNC :5900           MCP :8080               │
-│                                                                    │
-│  ┌─────────────────────────────────────────────────────────────┐  │
-│  │  MCP Client (Claude Desktop / Cursor / etc)                  │  │
-│  │  → MCP Protocol → http://localhost:8080/sse                  │  │
-│  └─────────────────────────────────────────────────────────────┘  │
-│                                                                    │
-└───────────────────────────────────────────────────────────────────┘
+```json
+{
+  "novaic": {
+    "url": "http://localhost:8080/mcp"
+  }
+}
 ```
 
-## Directory Structure
-
-```
-novaic-vm/
-├── setup.sh              # One-command setup script
-├── scripts/
-│   ├── create-vm.sh      # Create VM from cloud image
-│   ├── start-vm.sh       # Start VM
-│   ├── stop-vm.sh        # Stop VM
-│   ├── status-vm.sh      # Check VM status
-│   ├── deploy.sh         # Deploy MCP Server
-│   ├── deploy-quick.sh   # Quick deploy (code only)
-│   ├── reset-vm.sh       # Reset to clean state
-│   └── clean-vm.sh       # Remove VM completely
-├── config/
-│   ├── cloud-init.yaml   # cloud-init configuration
-│   ├── user-data         # Generated user-data
-│   └── meta-data         # Generated meta-data
-├── images/               # VM disk images (QCOW2)
-├── iso/                  # Ubuntu Cloud Image + seed ISO
-└── firmware/             # UEFI firmware (ARM64)
-```
-
-## Troubleshooting
-
-### VNC Shows Black Screen
+### CLI Testing
 
 ```bash
-ssh -p 2222 ubuntu@localhost
-sudo systemctl restart lightdm
-sudo systemctl restart x11vnc
+# List available tools
+novaic info
+
+# List skills
+novaic skills
 ```
 
-### MCP Server Not Responding
+## Project Structure
+
+```
+novaic-core/
+├── src/novaic_core/
+│   ├── __init__.py
+│   ├── main.py           # MCP Server entry point
+│   ├── cli.py            # CLI commands
+│   ├── config.py         # Configuration
+│   └── tools/
+│       ├── __init__.py
+│       ├── desktop.py    # screenshot, mouse, keyboard
+│       ├── browser.py    # browser automation
+│       ├── shell.py      # run_command, run_python
+│       ├── files.py      # file operations
+│       ├── windows.py    # window management
+│       ├── memory.py     # memory system
+│       ├── context.py    # context awareness
+│       └── result_cache.py # result caching
+├── skills/               # Skill documentation
+├── tests/
+├── pyproject.toml
+└── README.md
+```
+
+## Skills Documentation
+
+Each tool category has detailed skill documentation in the `skills/` directory:
+
+| Skill | Description |
+|-------|-------------|
+| [Desktop](skills/desktop/SKILL.md) | Two-phase mouse workflow (aim → execute), keyboard, screenshots |
+| [Browser](skills/browser/SKILL.md) | Browser automation with Playwright |
+| [Shell](skills/shell/SKILL.md) | Command execution and Python code |
+| [Files](skills/files/SKILL.md) | File operations (read, write, list) |
+| [Windows](skills/windows/SKILL.md) | Window management (focus, maximize, close) |
+| [Memory](skills/memory/SKILL.md) | Persistent key-value storage and goal tracking |
+| [Context](skills/context/SKILL.md) | System snapshots and environment awareness |
+| [Software](skills/software/SKILL.md) | Installing and troubleshooting software |
+| [WeChat](skills/wechat/SKILL.md) | WeChat messaging operations |
+
+## Development
 
 ```bash
-# Check service status
-ssh -p 2222 ubuntu@localhost
-sudo systemctl status novaic
-sudo journalctl -u novaic -f
+# Install dev dependencies
+pip install -e ".[dev]"
 
-# Redeploy
-cd novaic-vm
-./scripts/deploy.sh
+# Run tests
+pytest
+
+# Format code
+black src/
+isort src/
+
+# Type check
+mypy src/
 ```
-
-### VM Won't Start
-
-```bash
-# Check if another instance is running
-./scripts/status-vm.sh
-
-# Stop any existing instance
-./scripts/stop-vm.sh
-
-# Try starting again
-./scripts/start-vm.sh
-```
-
-### Port Already in Use
-
-```bash
-# Check what's using the port
-lsof -i :5900
-lsof -i :8080
-lsof -i :2222
-
-# Kill the process or use different ports
-NOVAIC_VNC_PORT=5901 NOVAIC_MCP_PORT=8082 ./scripts/start-vm.sh
-```
-
-### Reset Everything
-
-```bash
-# Stop VM
-./scripts/stop-vm.sh
-
-# Remove all VM data
-./scripts/clean-vm.sh
-
-# Start fresh
-./setup.sh
-```
-
-## Pre-installed Software
-
-The VM comes with:
-
-- **Desktop**: XFCE4, Thunar file manager
-- **Browsers**: Firefox
-- **Development**: Python 3.11, pip, Node.js 20, npm
-- **Editors**: nano, vim
-- **Tools**: git, curl, wget, htop, tmux
-- **Automation**: Playwright, xdotool, scrot
-
-## Network Ports
-
-| Port (Host) | Port (VM) | Service |
-|-------------|-----------|---------|
-| 5900 | 5901 | VNC |
-| 2222 | 22 | SSH |
-| 8080 | 8080 | MCP Server |
 
 ## License
 

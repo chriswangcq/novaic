@@ -100,7 +100,7 @@ tail -f /var/log/cloud-init-output.log
 ./scripts/deploy.sh
 ```
 
-This deploys novaic-mcp-vmuse (MCP Server with 35+ tools) into the VM. After deployment:
+This deploys novaic-vm MCP Server (with 35+ tools) into the VM. After deployment:
 
 | Service | Address | Credentials |
 |---------|---------|-------------|
@@ -205,7 +205,7 @@ open novaic-app/src-tauri/target/release/bundle/macos/NovAIC.app
 The app will automatically:
 - Download Ubuntu cloud image
 - Create VM with UEFI and cloud-init
-- Deploy novaic-mcp-vmuse (VM MCP Server with 32 tools)
+- Deploy novaic-vm MCP Server (with 32 tools)
 - Start the Gateway with 4 sub-MCP servers (24 tools: agent-context, memory, chat, local)
 - Start the VM and connect VNC
 
@@ -366,7 +366,7 @@ sudo systemctl restart x11vnc
 │  │  │  ┌───────────────────────┐  │    │  ┌───────────────────────┐  │   │   │
 │  │  │  │  QEMU VM              │  │    │  │  QEMU VM              │  │   │   │
 │  │  │  │  ┌─────────────────┐  │  │    │  │  ┌─────────────────┐  │  │   │   │
-│  │  │  │  │novaic-mcp-vmuse │  │  │    │  │  │novaic-mcp-vmuse │  │  │   │   │
+│  │  │  │  │novaic-vm MCP    │  │  │    │  │  │novaic-vm MCP    │  │  │   │   │
 │  │  │  │  │ MCP :8080       │  │  │    │  │  │ MCP :8080       │  │  │   │   │
 │  │  │  │  │ (32 tools)      │  │  │    │  │  │ (32 tools)      │  │  │   │   │
 │  │  │  │  │ Fwd to :20000   │  │  │    │  │  │ Fwd to :20020   │  │  │   │   │
@@ -401,8 +401,7 @@ Each agent runs in an isolated QEMU VM with:
 |---------|-------------|------|
 | **[novaic-gateway](novaic-gateway)** | Control plane: REST API + SSE + ReAct Agent + SQLite + Sub-MCP Servers | `novaic-gateway` |
 | **[novaic-app](novaic-app)** | Desktop client (Tauri + React + VNC + Dashboard) | `novaic-app` |
-| **[novaic-mcp-vmuse](novaic-mcp-vmuse)** | VM-based MCP server with 32 tools (desktop, browser, shell, files) | `novaic-mcp-vmuse` |
-| **[novaic-vm](novaic-vm)** | QEMU VM runtime with Ubuntu desktop | `novaic-vm` |
+| **[novaic-vm](novaic-vm)** | VM management + MCP server with 32 tools (desktop, browser, shell, files) | `novaic-vm` |
 
 **Sub-MCP Servers** (mounted at `/agents/{agent_id}/sub-mcp/{name}/`):
 
@@ -442,7 +441,7 @@ The MCP Gateway provides a single endpoint at `/agents/{agent_id}/mcp` with:
 
 **Auto Output Truncation**: When any tool returns >4KB output, it's automatically truncated and stored as a `sync_output` task. Use `task_query(task_id, start_line=1, end_line=100)` to retrieve full content.
 
-### novaic-mcp-vmuse (VM-based, 32 tools)
+### novaic-vm MCP Server (VM-based, 32 tools)
 
 #### Desktop Control
 | Tool | Description |

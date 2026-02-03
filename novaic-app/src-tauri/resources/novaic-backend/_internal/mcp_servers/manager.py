@@ -60,11 +60,11 @@ class MCPManager:
         self._agent_shared_servers: Dict[str, Dict[str, BaseMCPServer]] = {}
         self._agent_shared_lifespan_contexts: Dict[str, Dict[str, Any]] = {}
         
-        # Runtime 层 servers: {subagent_id: server_instance}
+        # Runtime 层 servers: {runtime_id: server_instance}
         self._runtime_servers: Dict[str, RuntimeMCP] = {}
         self._runtime_lifespan_contexts: Dict[str, Any] = {}
         
-        # v2.7: 聚合层 gateways: {subagent_id: AggregateMCP}
+        # v2.7: 聚合层 gateways: {runtime_id: AggregateMCP}
         self._aggregate_gateways: Dict[str, 'AggregateMCP'] = {}
         self._aggregate_lifespan_contexts: Dict[str, Any] = {}
         
@@ -190,31 +190,34 @@ class MCPManager:
     async def create_runtime_server(
         self, 
         agent_id: str, 
+        runtime_id: str,
         subagent_id: str,
         agent_index: int = 0,
     ) -> RuntimeMCP:
         """
         为一个 Runtime 创建 single-agent-runtime MCP server。
         
-        由 Master 调用，路径: /mcp/runtime/{subagent_id}/
+        由 Launcher 调用，路径: /mcp/runtime/{runtime_id}/
         
         Args:
             agent_id: Agent ID
-            subagent_id: Runtime ID (main-xxx 或 sub-xxx)
+            runtime_id: Runtime ID (rt-xxx)
+            subagent_id: SubAgent ID (main-xxx or sub-xxx) for context
             agent_index: Agent index for port allocation
         
         Returns:
             创建的 server 实例
         """
-        if subagent_id in self._runtime_servers:
-            logger.warning(f"[MCPManager] Runtime server for {subagent_id} already exists")
-            return self._runtime_servers[subagent_id]
+        if runtime_id in self._runtime_servers:
+            logger.warning(f"[MCPManager] Runtime server for {runtime_id} already exists")
+            return self._runtime_servers[runtime_id]
         
         try:
-            # 创建 server 实例，绑定 subagent_id
+            # 创建 server 实例，绑定 runtime_id 和 subagent_id
             server = RuntimeMCP(
                 agent_id=agent_id, 
                 agent_index=agent_index,
+                runtime_id=runtime_id,
                 subagent_id=subagent_id,
             )
             server.setup()
@@ -222,14 +225,14 @@ class MCPManager:
             # 获取 ASGI app
             mcp_app = server.get_asgi_app(path="/")
             
-            # 挂载路径: /mcp/runtime/{subagent_id}/
+            # 挂载路径: /mcp/runtime/{runtime_id}/
             # v2.9: 统一使用尾部斜杠
-            mount_path = f"/mcp/runtime/{subagent_id}/"
+            mount_path = f"/mcp/runtime/{runtime_id}/"
             
             # 初始化 lifespan
-            lifespan_ctx = await self._init_lifespan(mcp_app, subagent_id, "single-agent-runtime")
+            lifespan_ctx = await self._init_lifespan(mcp_app, runtime_id, "single-agent-runtime")
             if lifespan_ctx:
-                self._runtime_lifespan_contexts[subagent_id] = lifespan_ctx
+                self._runtime_lifespan_contexts[runtime_id] = lifespan_ctx
             
             # 挂载到 FastAPI
             self.app.mount(mount_path, mcp_app)
@@ -237,61 +240,61 @@ class MCPManager:
             # v2.9: 确保新挂载的路由在 StaticFiles (catch-all "/") 之前
             self._reorder_routes_before_staticfiles()
             
-            self._runtime_servers[subagent_id] = server
+            self._runtime_servers[runtime_id] = server
             logger.info(f"[MCPManager] Mounted runtime server at {mount_path}")
             
             return server
             
         except Exception as e:
-            logger.error(f"[MCPManager] Failed to create runtime server for {subagent_id}: {e}")
+            logger.error(f"[MCPManager] Failed to create runtime server for {runtime_id}: {e}")
             raise
     
-    async def remove_runtime_server(self, subagent_id: str) -> bool:
+    async def remove_runtime_server(self, runtime_id: str) -> bool:
         """
         移除一个 Runtime 的 MCP server。
         
-        由 Master 在 Runtime 销毁时调用。
+        由 Launcher 在 Runtime 销毁时调用。
         
         Args:
-            subagent_id: Runtime ID
+            runtime_id: Runtime ID (rt-xxx)
         
         Returns:
             是否成功移除
         """
-        if subagent_id not in self._runtime_servers:
-            logger.warning(f"[MCPManager] Runtime server for {subagent_id} not found")
+        if runtime_id not in self._runtime_servers:
+            logger.warning(f"[MCPManager] Runtime server for {runtime_id} not found")
             return False
         
         try:
             # 关闭 lifespan
-            lifespan_ctx = self._runtime_lifespan_contexts.pop(subagent_id, None)
+            lifespan_ctx = self._runtime_lifespan_contexts.pop(runtime_id, None)
             if lifespan_ctx:
                 try:
                     await lifespan_ctx.__aexit__(None, None, None)
-                    logger.info(f"[MCPManager] Closed lifespan for runtime {subagent_id}")
+                    logger.info(f"[MCPManager] Closed lifespan for runtime {runtime_id}")
                 except Exception as e:
-                    logger.error(f"[MCPManager] Error closing lifespan for {subagent_id}: {e}")
+                    logger.error(f"[MCPManager] Error closing lifespan for {runtime_id}: {e}")
             
             # 移除 server
-            del self._runtime_servers[subagent_id]
+            del self._runtime_servers[runtime_id]
             
             # 注意: FastAPI 不支持动态卸载路由，但 server 已被移除
             # 后续请求会返回 404
             
-            logger.info(f"[MCPManager] Removed runtime server for {subagent_id}")
+            logger.info(f"[MCPManager] Removed runtime server for {runtime_id}")
             return True
             
         except Exception as e:
-            logger.error(f"[MCPManager] Failed to remove runtime server for {subagent_id}: {e}")
+            logger.error(f"[MCPManager] Failed to remove runtime server for {runtime_id}: {e}")
             return False
     
-    def get_runtime_server(self, subagent_id: str) -> Optional[RuntimeMCP]:
+    def get_runtime_server(self, runtime_id: str) -> Optional[RuntimeMCP]:
         """获取 Runtime 层 MCP server。"""
-        return self._runtime_servers.get(subagent_id)
+        return self._runtime_servers.get(runtime_id)
     
-    def get_runtime_mount_path(self, subagent_id: str) -> str:
+    def get_runtime_mount_path(self, runtime_id: str) -> str:
         """获取 Runtime 层 MCP server 的挂载路径。"""
-        return f"/mcp/runtime/{subagent_id}/"
+        return f"/mcp/runtime/{runtime_id}/"
     
     # ========================================
     # 聚合层管理 (v2.7: 每个 Runtime 一个聚合 Gateway)
@@ -300,6 +303,7 @@ class MCPManager:
     async def create_aggregate_gateway(
         self,
         agent_id: str,
+        runtime_id: str,
         subagent_id: str,
         agent_index: int = 0,
     ) -> 'AggregateMCP':
@@ -315,19 +319,20 @@ class MCPManager:
         
         Args:
             agent_id: Agent ID
-            subagent_id: Runtime ID (main-xxx 或 sub-xxx)
+            runtime_id: Runtime ID (rt-xxx)
+            subagent_id: SubAgent ID (main-xxx or sub-xxx)
             agent_index: Agent index for port allocation
         
         Returns:
             创建的聚合 Gateway 实例
         """
-        if subagent_id in self._aggregate_gateways:
-            logger.warning(f"[MCPManager] Aggregate gateway for {subagent_id} already exists")
-            return self._aggregate_gateways[subagent_id]
+        if runtime_id in self._aggregate_gateways:
+            logger.warning(f"[MCPManager] Aggregate gateway for {runtime_id} already exists")
+            return self._aggregate_gateways[runtime_id]
         
         # 检查 Runtime MCP 是否已创建
-        if subagent_id not in self._runtime_servers:
-            raise ValueError(f"Runtime MCP for {subagent_id} not found. Call create_runtime_server first.")
+        if runtime_id not in self._runtime_servers:
+            raise ValueError(f"Runtime MCP for {runtime_id} not found. Call create_runtime_server first.")
         
         try:
             from mcp_gateway.gateway import AggregateMCP
@@ -336,6 +341,7 @@ class MCPManager:
             gateway = AggregateMCP(
                 agent_id=agent_id,
                 agent_index=agent_index,
+                runtime_id=runtime_id,
                 subagent_id=subagent_id,
             )
             
@@ -345,14 +351,14 @@ class MCPManager:
             # 获取 ASGI app
             mcp_app = gateway.get_asgi_app()
             
-            # 挂载路径: /mcp/aggregate/{subagent_id}/
+            # 挂载路径: /mcp/aggregate/{runtime_id}/
             # v2.9: 统一使用尾部斜杠
-            mount_path = f"/mcp/aggregate/{subagent_id}/"
+            mount_path = f"/mcp/aggregate/{runtime_id}/"
             
             # 初始化 lifespan
-            lifespan_ctx = await self._init_lifespan(mcp_app, subagent_id, "aggregate-gateway")
+            lifespan_ctx = await self._init_lifespan(mcp_app, runtime_id, "aggregate-gateway")
             if lifespan_ctx:
-                self._aggregate_lifespan_contexts[subagent_id] = lifespan_ctx
+                self._aggregate_lifespan_contexts[runtime_id] = lifespan_ctx
             
             # 挂载到 FastAPI
             self.app.mount(mount_path, mcp_app)
@@ -363,60 +369,60 @@ class MCPManager:
             # 启动后台发现任务
             gateway.start_discovery_task()
             
-            self._aggregate_gateways[subagent_id] = gateway
+            self._aggregate_gateways[runtime_id] = gateway
             logger.info(f"[MCPManager] Mounted aggregate gateway at {mount_path}")
             
             return gateway
             
         except Exception as e:
-            logger.error(f"[MCPManager] Failed to create aggregate gateway for {subagent_id}: {e}")
+            logger.error(f"[MCPManager] Failed to create aggregate gateway for {runtime_id}: {e}")
             raise
     
-    async def remove_aggregate_gateway(self, subagent_id: str) -> bool:
+    async def remove_aggregate_gateway(self, runtime_id: str) -> bool:
         """
         移除一个 Runtime 的聚合 Gateway。
         
         Args:
-            subagent_id: Runtime ID
+            runtime_id: Runtime ID (rt-xxx)
         
         Returns:
             是否成功移除
         """
-        if subagent_id not in self._aggregate_gateways:
-            logger.warning(f"[MCPManager] Aggregate gateway for {subagent_id} not found")
+        if runtime_id not in self._aggregate_gateways:
+            logger.warning(f"[MCPManager] Aggregate gateway for {runtime_id} not found")
             return False
         
         try:
             # 关闭 gateway
-            gateway = self._aggregate_gateways[subagent_id]
+            gateway = self._aggregate_gateways[runtime_id]
             await gateway.close()
             
             # 关闭 lifespan
-            lifespan_ctx = self._aggregate_lifespan_contexts.pop(subagent_id, None)
+            lifespan_ctx = self._aggregate_lifespan_contexts.pop(runtime_id, None)
             if lifespan_ctx:
                 try:
                     await lifespan_ctx.__aexit__(None, None, None)
-                    logger.info(f"[MCPManager] Closed lifespan for aggregate {subagent_id}")
+                    logger.info(f"[MCPManager] Closed lifespan for aggregate {runtime_id}")
                 except Exception as e:
-                    logger.error(f"[MCPManager] Error closing lifespan for aggregate {subagent_id}: {e}")
+                    logger.error(f"[MCPManager] Error closing lifespan for aggregate {runtime_id}: {e}")
             
             # 移除 gateway
-            del self._aggregate_gateways[subagent_id]
+            del self._aggregate_gateways[runtime_id]
             
-            logger.info(f"[MCPManager] Removed aggregate gateway for {subagent_id}")
+            logger.info(f"[MCPManager] Removed aggregate gateway for {runtime_id}")
             return True
             
         except Exception as e:
-            logger.error(f"[MCPManager] Failed to remove aggregate gateway for {subagent_id}: {e}")
+            logger.error(f"[MCPManager] Failed to remove aggregate gateway for {runtime_id}: {e}")
             return False
     
-    def get_aggregate_gateway(self, subagent_id: str) -> Optional['AggregateMCP']:
+    def get_aggregate_gateway(self, runtime_id: str) -> Optional['AggregateMCP']:
         """获取聚合 Gateway 实例。"""
-        return self._aggregate_gateways.get(subagent_id)
+        return self._aggregate_gateways.get(runtime_id)
     
-    def get_aggregate_mount_path(self, subagent_id: str) -> str:
+    def get_aggregate_mount_path(self, runtime_id: str) -> str:
         """获取聚合 Gateway 的挂载路径。"""
-        return f"/mcp/aggregate/{subagent_id}/"
+        return f"/mcp/aggregate/{runtime_id}/"
     
     # ========================================
     # 通用方法
@@ -490,12 +496,12 @@ class MCPManager:
     async def close_all(self) -> None:
         """关闭所有 MCP servers。"""
         # 关闭聚合层 (v2.7)
-        for subagent_id in list(self._aggregate_gateways.keys()):
-            await self.remove_aggregate_gateway(subagent_id)
+        for runtime_id in list(self._aggregate_gateways.keys()):
+            await self.remove_aggregate_gateway(runtime_id)
         
         # 关闭 Runtime 层
-        for subagent_id in list(self._runtime_servers.keys()):
-            await self.remove_runtime_server(subagent_id)
+        for runtime_id in list(self._runtime_servers.keys()):
+            await self.remove_runtime_server(runtime_id)
         
         # 关闭共享层 (v2.9: per-agent)
         for agent_id in list(self._agent_shared_servers.keys()):
