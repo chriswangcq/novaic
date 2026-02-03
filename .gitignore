@@ -110,7 +110,12 @@ secrets.yml
 # Frontend / Node.js
 node_modules/
 .vite/
+
+# Build artifacts (anywhere in tree)
 dist/
+build/
+web/
+process/
 
 # Rust build artifacts
 target/
@@ -173,4 +178,4 @@ paper/
 .cursor/
 
 # Tauri bundled resources (copied during build)
-novaic-app/src-tauri/resources/novaic-gateway/
+novaic-app/src-tauri/resources/novaic-backend/

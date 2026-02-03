@@ -96,7 +96,7 @@ cd novaic-vm
 
 ```bash
 # 终端 1: 启动 Gateway 后端
-cd novaic-gateway
+cd novaic-backend
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 

@@ -114,7 +114,7 @@ The NovAIC desktop application provides a complete GUI experience with multi-age
 
 ```bash
 # Setup Gateway (Python backend)
-cd novaic-gateway
+cd novaic-backend
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
@@ -139,11 +139,11 @@ npm run tauri dev
 
 ```bash
 # Build Gateway binary (PyInstaller)
-cd novaic-gateway
+cd novaic-backend
 ./venv/bin/python build.py
 
 # Copy to Tauri resources
-cp dist/novaic-gateway ../novaic-app/src-tauri/resources/
+cp dist/novaic-backend ../novaic-app/src-tauri/resources/
 
 # Build Tauri app
 cd ../novaic-app
@@ -399,7 +399,7 @@ Each agent runs in an isolated QEMU VM with:
 
 | Package | Description | Path |
 |---------|-------------|------|
-| **[novaic-gateway](novaic-gateway)** | Control plane: REST API + SSE + ReAct Agent + SQLite + Sub-MCP Servers | `novaic-gateway` |
+| **[novaic-backend](novaic-backend)** | Control plane: REST API + SSE + ReAct Agent + SQLite + Sub-MCP Servers | `novaic-backend` |
 | **[novaic-app](novaic-app)** | Desktop client (Tauri + React + VNC + Dashboard) | `novaic-app` |
 | **[novaic-vm](novaic-vm)** | VM management + MCP server with 32 tools (desktop, browser, shell, files) | `novaic-vm` |
 

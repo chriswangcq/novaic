@@ -81,8 +81,8 @@ git push origin feature/your-feature-name
 提交前请确保以下检查通过：
 
 ```bash
-# Python (novaic-gateway, novaic-vm)
-cd novaic-gateway
+# Python (novaic-backend, novaic-vm)
+cd novaic-backend
 python -m py_compile main.py
 black --check .
 isort --check .
@@ -141,7 +141,7 @@ cargo clippy
 ## 项目结构
 
 ```
-├── novaic-gateway/   # 核心后端服务 (Gateway + Workers)
+├── novaic-backend/   # 核心后端服务 (Gateway + Workers)
 ├── novaic-app/       # 桌面客户端 (Tauri + React)
 ├── novaic-vm/        # VM 管理 + MCP 工具服务
 └── dev-guide/        # 开发文档

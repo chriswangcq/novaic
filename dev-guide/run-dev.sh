@@ -1,31 +1,41 @@
 #!/bin/bash
-# NovAIC 开发环境启动脚本 (v17)
-# 
+# NovAIC 开发环境启动脚本 (v22+ / Task Queue v2)
+#
 # 用法:
-#   ./run-dev.sh              # 启动所有服务
-#   ./run-dev.sh gateway      # 只启动 Gateway
-#   ./run-dev.sh mcp-gateway  # 只启动 MCP Gateway
-#   ./run-dev.sh launcher     # 只启动 Launcher Service
-#   ./run-dev.sh collector    # 只启动 Collector Service
-#   ./run-dev.sh async        # 只启动 Async Service
-#   ./run-dev.sh health       # 只启动 Health Service
-#   ./run-dev.sh services     # 启动所有 Services (不含 Gateway)
-#   ./run-dev.sh stop         # 停止所有服务
+#   ./run-dev.sh                  # 启动全部
+#   ./run-dev.sh stop             # 停止全部
+#   ./run-dev.sh status           # 查看进程状态
+#   ./run-dev.sh reset            # 清理运行态数据
+#   ./run-dev.sh logs [service]   # tail 日志 (service 可选)
+#   ./run-dev.sh gateway|mcp|watchdog|task|saga|health
+#
+# 约定:
+# - 所有服务都使用 /tmp/*.log 日志
+# - Gateway/MCP/Workers 都需要 NOVAIC_GATEWAY_URL + NOVAIC_MCP_GATEWAY_URL
 
-set -e
+set -euo pipefail
 
-# 项目根目录
+# 路径
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-GATEWAY_DIR="$PROJECT_ROOT/novaic-gateway"
+BACKEND_DIR="$PROJECT_ROOT/novaic-backend"
 
-# 数据目录
+# 端口与环境
+GATEWAY_URL="${NOVAIC_GATEWAY_URL:-http://127.0.0.1:19999}"
+MCP_GATEWAY_URL="${NOVAIC_MCP_GATEWAY_URL:-http://127.0.0.1:19998}"
+export NOVAIC_GATEWAY_URL="$GATEWAY_URL"
+export NOVAIC_MCP_GATEWAY_URL="$MCP_GATEWAY_URL"
 export NOVAIC_DATA_DIR="${NOVAIC_DATA_DIR:-$HOME/.novaic}"
-mkdir -p "$NOVAIC_DATA_DIR"
+export PYTHONUNBUFFERED=1
 
-# Gateway URL
-GATEWAY_URL="http://127.0.0.1:19999"
-MCP_GATEWAY_URL="http://127.0.0.1:19998"
+# 日志
+LOG_DIR="/tmp"
+LOG_GATEWAY="$LOG_DIR/gateway.log"
+LOG_MCP="$LOG_DIR/mcp.log"
+LOG_WATCHDOG="$LOG_DIR/watchdog.log"
+LOG_TASK="$LOG_DIR/task.log"
+LOG_SAGA="$LOG_DIR/saga.log"
+LOG_HEALTH="$LOG_DIR/health.log"
 
 # 颜色输出
 RED='\033[0;31m'
@@ -33,252 +43,159 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-log_info() {
-    echo -e "${GREEN}[INFO]${NC} $1"
-}
+log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
+log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
-log_warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
-}
-
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-# 检查 venv
-check_venv() {
-    if [ ! -d "$GATEWAY_DIR/venv" ]; then
-        log_error "Virtual environment not found at $GATEWAY_DIR/venv"
-        log_info "Run: cd $GATEWAY_DIR && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt"
-        exit 1
-    fi
-}
-
-# 激活 venv
 activate_venv() {
-    source "$GATEWAY_DIR/venv/bin/activate"
+    if [ -d "$BACKEND_DIR/venv" ]; then
+        source "$BACKEND_DIR/venv/bin/activate"
+    else
+        log_warn "Virtualenv not found at $BACKEND_DIR/venv, using system python"
+    fi
 }
 
-# 启动 Gateway
+ensure_dirs() {
+    mkdir -p "$NOVAIC_DATA_DIR"
+}
+
+start_process() {
+    local name="$1"
+    local cmd="$2"
+    local log_file="$3"
+
+    log_info "Starting ${name}..."
+    (cd "$BACKEND_DIR" && activate_venv && nohup bash -c "$cmd" > "$log_file" 2>&1 &)
+}
+
+wait_for_health() {
+    local url="$1"
+    local name="$2"
+    local attempts=20
+    local sleep_s=1
+    for _ in $(seq 1 "$attempts"); do
+        if curl -s "$url" > /dev/null 2>&1; then
+            log_info "${name} healthy"
+            return 0
+        fi
+        sleep "$sleep_s"
+    done
+    log_error "${name} health check failed: $url"
+    return 1
+}
+
 start_gateway() {
-    log_info "Starting Gateway on port 19999..."
-    cd "$GATEWAY_DIR"
-    activate_venv
-    python main.py &
-    sleep 2
-    
-    # 健康检查
-    if curl -s "$GATEWAY_URL/api/health" > /dev/null; then
-        log_info "Gateway started successfully"
-    else
-        log_error "Gateway failed to start"
-        exit 1
-    fi
+    start_process "Gateway" "python main_gateway.py" "$LOG_GATEWAY"
+    wait_for_health "$GATEWAY_URL/api/health" "Gateway"
 }
 
-# 启动 MCP Gateway
-start_mcp_gateway() {
-    log_info "Starting MCP Gateway on port 19998..."
-    cd "$GATEWAY_DIR"
-    activate_venv
-    export NOVAIC_GATEWAY_URL="$GATEWAY_URL"
-    python mcp_main.py &
-    sleep 2
-    
-    # 健康检查
-    if curl -s "$MCP_GATEWAY_URL/api/health" > /dev/null; then
-        log_info "MCP Gateway started successfully"
-    else
-        log_error "MCP Gateway failed to start"
-        exit 1
-    fi
+start_mcp() {
+    start_process "MCP Gateway" "python main_mcp.py" "$LOG_MCP"
+    wait_for_health "$MCP_GATEWAY_URL/api/health" "MCP Gateway"
 }
 
-# 启动 Launcher Service
-start_launcher() {
-    log_info "Starting Launcher Service..."
-    cd "$GATEWAY_DIR"
-    activate_venv
-    python launcher_main.py --gateway-url "$GATEWAY_URL" &
-    log_info "Launcher Service started"
-}
+start_watchdog() { start_process "Watchdog" "python main_watchdog.py" "$LOG_WATCHDOG"; }
+start_task()     { start_process "Task Worker" "python main_task.py" "$LOG_TASK"; }
+start_saga()     { start_process "Saga Worker" "python main_saga.py" "$LOG_SAGA"; }
+start_health()   { start_process "Health Worker" "python main_health.py" "$LOG_HEALTH"; }
 
-# 启动 Collector Service
-start_collector() {
-    log_info "Starting Collector Service..."
-    cd "$GATEWAY_DIR"
-    activate_venv
-    python collector_main.py --gateway-url "$GATEWAY_URL" &
-    log_info "Collector Service started"
-}
-
-# 启动 Async Service
-start_async() {
-    log_info "Starting Async Service..."
-    cd "$GATEWAY_DIR"
-    activate_venv
-    python executor_main.py --gateway-url "$GATEWAY_URL" &
-    log_info "Executor Service started"
-}
-
-# 启动 Health Service
-start_health() {
-    log_info "Starting Health Service..."
-    cd "$GATEWAY_DIR"
-    activate_venv
-    python health_main.py --gateway-url "$GATEWAY_URL" &
-    log_info "Health Service started"
-}
-
-# 启动 Monitor Service
-start_monitor() {
-    log_info "Starting Monitor Service..."
-    cd "$GATEWAY_DIR"
-    activate_venv
-    python monitor_main.py --gateway-url "$GATEWAY_URL" &
-    log_info "Monitor Service started"
-}
-
-# 启动所有 Services (不含 Gateway)
-start_services() {
-    start_monitor
-    sleep 1
-    start_launcher
-    sleep 1
-    start_collector
-    start_async
+start_workers() {
+    start_watchdog
+    start_task
+    start_saga
     start_health
 }
 
-# 启动所有
-start_all() {
-    check_venv
-    
-    log_info "Starting all services..."
-    log_info "Data directory: $NOVAIC_DATA_DIR"
-    
-    start_gateway
-    start_mcp_gateway
-    sleep 1
-    start_services
-    
-    echo ""
-    log_info "All services started!"
-    echo ""
-    echo "Gateway:     $GATEWAY_URL"
-    echo "MCP Gateway: $MCP_GATEWAY_URL"
-    echo ""
-    echo "Health check:"
-    echo "  curl $GATEWAY_URL/api/health"
-    echo "  curl $MCP_GATEWAY_URL/api/health"
-    echo ""
-    echo "Press Ctrl+C to stop all services"
-    
-    # 等待
-    wait
-}
-
-# 停止所有
 stop_all() {
     log_info "Stopping all services..."
-    
-    # 杀掉相关进程
-    pkill -f "python.*main.py" 2>/dev/null || true
-    pkill -f "python.*monitor_main.py" 2>/dev/null || true
-    pkill -f "python.*launcher_main.py" 2>/dev/null || true
-    pkill -f "python.*collector_main.py" 2>/dev/null || true
-    pkill -f "python.*executor_main.py" 2>/dev/null || true
-    pkill -f "python.*health_main.py" 2>/dev/null || true
-    pkill -f "python.*mcp_main.py" 2>/dev/null || true
-    pkill -f "python.*executor_main.py" 2>/dev/null || true
-    
+    pkill -f "python.*main_gateway.py" 2>/dev/null || true
+    pkill -f "python.*main_mcp.py" 2>/dev/null || true
+    pkill -f "python.*main_watchdog.py" 2>/dev/null || true
+    pkill -f "python.*main_task.py" 2>/dev/null || true
+    pkill -f "python.*main_saga.py" 2>/dev/null || true
+    pkill -f "python.*main_health.py" 2>/dev/null || true
     log_info "All services stopped"
 }
 
-# 显示帮助
-show_help() {
-    echo "NovAIC Development Environment (v19)"
-    echo ""
-    echo "Usage: $0 [command]"
-    echo ""
-    echo "Commands:"
-    echo "  (none)        Start all services"
-    echo "  gateway       Start Gateway only (port 19999)"
-    echo "  mcp-gateway   Start MCP Gateway only (port 19998)"
-    echo "  monitor       Start Monitor Service (message watcher)"
-    echo "  launcher      Start Launcher Service"
-    echo "  collector     Start Collector Service"
-    echo "  async         Start Async (Executor) Service"
-    echo "  health        Start Health Service"
-    echo "  services      Start all Services (Monitor, Launcher, Collector, Async, Health)"
-    echo "  stop          Stop all services"
-    echo "  help          Show this help"
-    echo ""
-    echo "Environment:"
-    echo "  NOVAIC_DATA_DIR  Data directory (default: ~/.novaic)"
-    echo ""
-    echo "Examples:"
-    echo "  $0                    # Start everything"
-    echo "  $0 gateway            # Start Gateway only"
-    echo "  $0 services           # Start Services after Gateway is running"
-    echo "  $0 stop               # Stop all"
+reset_runtime_data() {
+    log_warn "Resetting runtime data (tq_tasks/tq_sagas/agent_runtimes/chat_messages)..."
+    sqlite3 "$NOVAIC_DATA_DIR/novaic.db" "
+DELETE FROM agent_runtimes;
+DELETE FROM tq_sagas;
+DELETE FROM tq_tasks;
+DELETE FROM chat_messages;
+UPDATE subagents SET status = 'sleeping';
+"
+    log_info "Runtime data reset complete"
 }
 
-# 主入口
+show_status() {
+    ps aux | grep -E "python.*main_(gateway|mcp|watchdog|task|saga|health)" | grep -v grep || true
+}
+
+tail_logs() {
+    local target="${1:-all}"
+    case "$target" in
+        gateway) tail -n 50 "$LOG_GATEWAY" ;;
+        mcp) tail -n 50 "$LOG_MCP" ;;
+        watchdog) tail -n 50 "$LOG_WATCHDOG" ;;
+        task) tail -n 50 "$LOG_TASK" ;;
+        saga) tail -n 50 "$LOG_SAGA" ;;
+        health) tail -n 50 "$LOG_HEALTH" ;;
+        all|*)
+            tail -n 50 "$LOG_GATEWAY" "$LOG_MCP" "$LOG_WATCHDOG" "$LOG_TASK" "$LOG_SAGA" "$LOG_HEALTH"
+            ;;
+    esac
+}
+
+show_help() {
+    cat <<'EOF'
+NovAIC Development Environment (v22+)
+
+Usage: ./run-dev.sh [command]
+
+Commands:
+  (none)        Start all services
+  gateway       Start Gateway only
+  mcp           Start MCP Gateway only
+  watchdog      Start Watchdog only
+  task          Start Task Worker only
+  saga          Start Saga Worker only
+  health        Start Health Worker only
+  workers       Start Watchdog/Task/Saga/Health
+  stop          Stop all services
+  status        Show running processes
+  reset         Clear runtime data (tq_tasks/tq_sagas/agent_runtimes/chat_messages)
+  logs [name]   Tail logs (gateway|mcp|watchdog|task|saga|health|all)
+  help          Show this help
+
+Environment:
+  NOVAIC_DATA_DIR        Data directory (default: ~/.novaic)
+  NOVAIC_GATEWAY_URL     Gateway URL (default: http://127.0.0.1:19999)
+  NOVAIC_MCP_GATEWAY_URL MCP Gateway URL (default: http://127.0.0.1:19998)
+EOF
+}
+
+ensure_dirs
+
 case "${1:-all}" in
-    gateway)
-        check_venv
-        start_gateway
-        wait
-        ;;
-    mcp-gateway)
-        check_venv
-        start_mcp_gateway
-        wait
-        ;;
-    monitor)
-        check_venv
-        activate_venv
-        cd "$GATEWAY_DIR"
-        python monitor_main.py --gateway-url "$GATEWAY_URL"
-        ;;
-    launcher)
-        check_venv
-        activate_venv
-        cd "$GATEWAY_DIR"
-        python launcher_main.py --gateway-url "$GATEWAY_URL"
-        ;;
-    collector)
-        check_venv
-        activate_venv
-        cd "$GATEWAY_DIR"
-        python collector_main.py --gateway-url "$GATEWAY_URL"
-        ;;
-    async)
-        check_venv
-        activate_venv
-        cd "$GATEWAY_DIR"
-        python executor_main.py --gateway-url "$GATEWAY_URL"
-        ;;
-    health)
-        check_venv
-        activate_venv
-        cd "$GATEWAY_DIR"
-        python health_main.py --gateway-url "$GATEWAY_URL"
-        ;;
-    services)
-        check_venv
-        start_services
-        wait
-        ;;
-    stop)
-        stop_all
-        ;;
-    help|--help|-h)
-        show_help
-        ;;
+    gateway)  start_gateway ;;
+    mcp|mcp-gateway) start_mcp ;;
+    watchdog|monitor) start_watchdog ;;
+    task)     start_task ;;
+    saga)     start_saga ;;
+    health)   start_health ;;
+    workers)  start_workers ;;
+    stop)     stop_all ;;
+    status)   show_status ;;
+    reset)    reset_runtime_data ;;
+    logs)     tail_logs "${2:-all}" ;;
+    help|--help|-h) show_help ;;
     all|"")
-        start_all
+        start_gateway
+        start_mcp
+        start_workers
+        log_info "All services started"
         ;;
     *)
         log_error "Unknown command: $1"

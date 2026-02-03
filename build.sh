@@ -14,7 +14,7 @@ RESOURCES_DIR="novaic-app/src-tauri/resources"
 
 # Step 1: Build unified Backend (Gateway + MCP Gateway + Workers)
 echo "[1/3] Building unified Backend (novaic-backend)..."
-cd novaic-gateway
+cd novaic-backend
 
 if [ ! -d ".venv" ]; then
     echo "  Creating virtual environment..."
@@ -46,7 +46,7 @@ mkdir -p "$RESOURCES_DIR"
 # Copy unified Backend (onedir)
 echo "  Copying novaic-backend..."
 rm -rf "$RESOURCES_DIR/novaic-backend"
-cp -r novaic-gateway/dist/novaic-backend "$RESOURCES_DIR/"
+cp -r novaic-backend/dist/novaic-backend "$RESOURCES_DIR/"
 echo "  Copied: $RESOURCES_DIR/novaic-backend/"
 
 # Copy novaic-vm MCP server (VM-side MCP server)
@@ -91,10 +91,10 @@ echo "Output files:"
 ls -lh src-tauri/target/release/bundle/dmg/*.dmg 2>/dev/null || echo "  DMG not found"
 ls -lh src-tauri/target/release/bundle/macos/*.app 2>/dev/null || echo "  APP not found"
 echo ""
-echo "Backend usage (six components):"
-echo "  ./novaic-backend gateway --port 19999"
-echo "  ./novaic-backend mcp-gateway --port 19998"
-echo "  ./novaic-backend launcher --gateway-url http://127.0.0.1:19999 --bootstrap"
-echo "  ./novaic-backend collector --gateway-url http://127.0.0.1:19999"
-echo "  ./novaic-backend async --gateway-url http://127.0.0.1:19999"
+echo "Backend usage (Saga/Task Architecture - 6 components):"
+echo "  ./novaic-backend gateway --port 19999 --data-dir /path/to/data"
+echo "  ./novaic-backend mcp-gateway --port 19998 --data-dir /path/to/data"
+echo "  ./novaic-backend watchdog --gateway-url http://127.0.0.1:19999"
+echo "  ./novaic-backend task-worker --gateway-url http://127.0.0.1:19999"
+echo "  ./novaic-backend saga-worker --gateway-url http://127.0.0.1:19999"
 echo "  ./novaic-backend health --gateway-url http://127.0.0.1:19999"

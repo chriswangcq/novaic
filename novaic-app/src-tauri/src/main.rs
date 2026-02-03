@@ -67,13 +67,13 @@ impl McpGatewayProcess {
 }
 
 /// Backend 组件: Service Process - 通用服务进程管理器
-/// v3.0: Three-Task Architecture (Launcher, Collector, Async, Health)
+/// v4.0: Saga/Task Architecture (Watchdog, Task Worker, Saga Worker, Health)
 /// Services only communicate with Gateway (MCP ops proxied through Gateway)
 struct ServiceProcess {
     process: Option<Child>,
-    service_type: String,  // launcher, collector, executor, health
+    service_type: String,  // watchdog, task-worker, saga-worker, health
     gateway_url: String,
-    extra_args: Vec<String>,  // e.g., ["--bootstrap"] for launcher
+    extra_args: Vec<String>,
 }
 
 impl ServiceProcess {
@@ -485,7 +485,7 @@ impl McpGatewayProcess {
                 .spawn()
                 .map_err(|e| format!("Failed to start MCP Gateway binary: {}", e))?
         } else {
-            // Dev mode: backend_path is the novaic-gateway directory (has main.py, novaic_main.py)
+            // Dev mode: backend_path is the novaic-backend directory (has main.py, novaic_main.py)
             let gateway_dir = backend_path;
             let venv_python = gateway_dir.join("venv/bin/python");
             let python = if venv_python.exists() {
@@ -495,7 +495,7 @@ impl McpGatewayProcess {
             } else {
                 "python3".to_string()
             };
-            // Run from gateway dir so python -m novaic_main works (novaic_main.py in novaic-gateway)
+            // Run from gateway dir so python -m novaic_main works (novaic_main.py in novaic-backend)
             Command::new(&python)
                 .arg("-m")
                 .arg("novaic_main")
@@ -556,11 +556,10 @@ impl Drop for McpGatewayProcess {
 
 type GatewayState = Arc<Mutex<GatewayProcess>>;
 type McpGatewayState = Arc<Mutex<McpGatewayProcess>>;
-// v3.0: Five services (Monitor, Launcher, Collector, Executor, Health)
-type MonitorState = Arc<Mutex<ServiceProcess>>;
-type LauncherState = Arc<Mutex<ServiceProcess>>;
-type CollectorState = Arc<Mutex<ServiceProcess>>;
-type ExecutorState = Arc<Mutex<ServiceProcess>>;
+// v4.0: Four services (Watchdog, Task Worker, Saga Worker, Health)
+type WatchdogState = Arc<Mutex<ServiceProcess>>;
+type TaskWorkerState = Arc<Mutex<ServiceProcess>>;
+type SagaWorkerState = Arc<Mutex<ServiceProcess>>;
 type HealthState = Arc<Mutex<ServiceProcess>>;
 
 /// Kill any zombie novaic-backend processes before starting new ones
@@ -574,8 +573,7 @@ fn kill_zombie_processes() {
         
         // Kill all novaic-backend processes (including dev mode python scripts)
         let patterns = [
-            "novaic-backend", 
-            "novaic-gateway",
+            "novaic-backend",
             "mcp-gateway",           // MCP Gateway subprocess
             "novaic_main.py",        // Dev mode unified entry (gateway/mcp-gateway/master/worker)
         ];
@@ -613,7 +611,7 @@ fn kill_zombie_processes() {
         use std::process::Command;
         
         // On Windows, use taskkill
-        let patterns = ["novaic-backend.exe", "novaic-gateway.exe"];
+        let patterns = ["novaic-backend.exe"];
         
         for pattern in patterns {
             let _ = Command::new("taskkill")
@@ -642,8 +640,8 @@ fn get_backend_info(app: &AppHandle) -> (PathBuf, bool, Option<PathBuf>) {
             return (backend_path, true, None);
         }
         
-        // Legacy fallback: check old structure (novaic-gateway/novaic-gateway)
-        let legacy_path = resource_dir.join("novaic-gateway/novaic-gateway");
+        // Legacy fallback: check old structure (novaic-backend/novaic-backend)
+        let legacy_path = resource_dir.join("novaic-backend/novaic-backend");
         println!("[Backend] Checking legacy binary at: {:?}", legacy_path);
         if legacy_path.exists() {
             println!("[Backend] Found legacy binary, using production mode");
@@ -657,14 +655,14 @@ fn get_backend_info(app: &AppHandle) -> (PathBuf, bool, Option<PathBuf>) {
     
     // Fallback to development mode - check relative to executable
     // In dev mode, executable is at: novaic-app/src-tauri/target/release/novaic
-    // Gateway source is at: novaic-gateway (4 levels up from executable)
+    // Backend source is at: novaic-backend (4 levels up from executable)
     if let Ok(exe_path) = std::env::current_exe() {
         if let Some(exe_dir) = exe_path.parent() {
             // exe_dir = .../novaic-app/src-tauri/target/release/
-            // Go up 4 levels to project root, then into novaic-gateway
+            // Go up 4 levels to project root, then into novaic-backend
             let dev_path = exe_dir
                 .join("../../../..")  // Go to project root (novaic/)
-                .join("novaic-gateway");
+                .join("novaic-backend");
             
             if dev_path.exists() && dev_path.join("main.py").exists() {
                 let canonical = dev_path.canonicalize().unwrap_or(dev_path);
@@ -841,8 +839,8 @@ fn main() {
             
             println!("[App] Data directory: {:?}", data_dir);
             
-            // Backend 六组件（Gateway、MCP Gateway、Launcher、Collector、Async、Health）均由 Tauri 统一拉起
-            // v3.0: Three-Task Architecture
+            // Backend 五组件（Gateway、MCP Gateway、Watchdog、Task Worker、Saga Worker、Health）均由 Tauri 统一拉起
+            // v4.0: Saga/Task Architecture
             
             // Backend 组件: Gateway（API + DB）
             let gateway = Arc::new(Mutex::new(GatewayProcess::new()));
@@ -858,32 +856,26 @@ fn main() {
                 gw.base_url()
             };
             
-            // v3.0: Five service processes (all communicate only with Gateway)
-            // Monitor: 事件驱动消息队列消费者 (唤醒 SubAgent, 创建 runtime)
-            let monitor = Arc::new(Mutex::new(
-                ServiceProcess::new("monitor", &gateway_url)
+            // v4.0: Four service processes (all communicate only with Gateway)
+            // Watchdog: 监控 sending 消息，触发 MessageProcess Saga
+            let watchdog = Arc::new(Mutex::new(
+                ServiceProcess::new("watchdog", &gateway_url)
             ));
-            app.manage(monitor.clone());
+            app.manage(watchdog.clone());
             
-            // Launcher: 前置处理 + 创建任务
-            let launcher = Arc::new(Mutex::new(
-                ServiceProcess::new("launcher", &gateway_url)
+            // Task Worker: 通用任务执行器
+            let task_worker = Arc::new(Mutex::new(
+                ServiceProcess::new("task-worker", &gateway_url)
             ));
-            app.manage(launcher.clone());
+            app.manage(task_worker.clone());
             
-            // Collector: 收集结果 + 触发下一阶段
-            let collector = Arc::new(Mutex::new(
-                ServiceProcess::new("collector", &gateway_url)
+            // Saga Worker: Saga 流程编排
+            let saga_worker = Arc::new(Mutex::new(
+                ServiceProcess::new("saga-worker", &gateway_url)
             ));
-            app.manage(collector.clone());
+            app.manage(saga_worker.clone());
             
-            // Executor: 执行 LLM/工具调用
-            let executor_svc = Arc::new(Mutex::new(
-                ServiceProcess::new("executor", &gateway_url)
-            ));
-            app.manage(executor_svc.clone());
-            
-            // Health: 监控并回收超时任务
+            // Health: 监控并回收超时任务/Saga
             let health = Arc::new(Mutex::new(
                 ServiceProcess::new("health", &gateway_url)
             ));
@@ -909,10 +901,9 @@ fn main() {
             
             let gateway_for_start = gateway.clone();
             let mcp_gateway_for_start = mcp_gateway.clone();
-            let monitor_for_start = monitor.clone();
-            let launcher_for_start = launcher.clone();
-            let collector_for_start = collector.clone();
-            let executor_for_start = executor_svc.clone();
+            let watchdog_for_start = watchdog.clone();
+            let task_worker_for_start = task_worker.clone();
+            let saga_worker_for_start = saga_worker.clone();
             let health_for_start = health.clone();
             let data_dir_for_gateway = data_dir.clone();
             let backend_path_clone = backend_path.clone();
@@ -967,63 +958,51 @@ fn main() {
                     }
                 }
                 
-                // 4-8. 直接启动 Worker 服务（和 Gateway 一样简单）
+                // 4-7. 直接启动 Worker 服务（和 Gateway 一样简单）
+                // v4.0: Saga/Task Architecture - 4 services
                 if is_binary {
                     let gateway_url = "http://127.0.0.1:19999";
                     
-                    // Monitor (v18: event-driven message queue consumer)
+                    // Watchdog: 监控 sending 消息，触发 MessageProcess Saga
                     match Command::new(&backend_path_clone)
-                        .arg("monitor")
+                        .arg("watchdog")
                         .arg("--gateway-url")
                         .arg(gateway_url)
                         .stdout(Stdio::null())
                         .stderr(Stdio::null())
                         .spawn()
                     {
-                        Ok(_) => println!("[Monitor] Started"),
-                        Err(e) => println!("[Monitor] Failed: {}", e),
+                        Ok(_) => println!("[Watchdog] Started"),
+                        Err(e) => println!("[Watchdog] Failed: {}", e),
                     }
                     
-                    // Launcher
+                    // Task Worker: 通用任务执行器
                     match Command::new(&backend_path_clone)
-                        .arg("launcher")
+                        .arg("task-worker")
                         .arg("--gateway-url")
                         .arg(gateway_url)
                         .stdout(Stdio::null())
                         .stderr(Stdio::null())
                         .spawn()
                     {
-                        Ok(_) => println!("[Launcher] Started"),
-                        Err(e) => println!("[Launcher] Failed: {}", e),
+                        Ok(_) => println!("[Task Worker] Started"),
+                        Err(e) => println!("[Task Worker] Failed: {}", e),
                     }
                     
-                    // Collector
+                    // Saga Worker: Saga 流程编排
                     match Command::new(&backend_path_clone)
-                        .arg("collector")
+                        .arg("saga-worker")
                         .arg("--gateway-url")
                         .arg(gateway_url)
                         .stdout(Stdio::null())
                         .stderr(Stdio::null())
                         .spawn()
                     {
-                        Ok(_) => println!("[Collector] Started"),
-                        Err(e) => println!("[Collector] Failed: {}", e),
+                        Ok(_) => println!("[Saga Worker] Started"),
+                        Err(e) => println!("[Saga Worker] Failed: {}", e),
                     }
                     
-                    // Executor
-                    match Command::new(&backend_path_clone)
-                        .arg("executor")
-                        .arg("--gateway-url")
-                        .arg(gateway_url)
-                        .stdout(Stdio::null())
-                        .stderr(Stdio::null())
-                        .spawn()
-                    {
-                        Ok(_) => println!("[Executor] Started"),
-                        Err(e) => println!("[Executor] Failed: {}", e),
-                    }
-                    
-                    // Health
+                    // Health: 监控并回收超时任务/Saga
                     match Command::new(&backend_path_clone)
                         .arg("health")
                         .arg("--gateway-url")
@@ -1038,31 +1017,24 @@ fn main() {
                 } else {
                     // 开发模式：使用 ServiceProcess
                     {
-                        let mut svc = monitor_for_start.lock().await;
+                        let mut svc = watchdog_for_start.lock().await;
                         match svc.start(&backend_path_clone, is_binary, gateway_dir_clone.as_ref(), resource_dir_clone.as_ref()) {
-                            Ok(_) => println!("[Monitor] Auto-started successfully"),
-                            Err(e) => println!("[Monitor] Failed to auto-start: {}", e),
+                            Ok(_) => println!("[Watchdog] Auto-started successfully"),
+                            Err(e) => println!("[Watchdog] Failed to auto-start: {}", e),
                         }
                     }
                     {
-                        let mut svc = launcher_for_start.lock().await;
+                        let mut svc = task_worker_for_start.lock().await;
                         match svc.start(&backend_path_clone, is_binary, gateway_dir_clone.as_ref(), resource_dir_clone.as_ref()) {
-                            Ok(_) => println!("[Launcher] Auto-started successfully"),
-                            Err(e) => println!("[Launcher] Failed to auto-start: {}", e),
+                            Ok(_) => println!("[Task Worker] Auto-started successfully"),
+                            Err(e) => println!("[Task Worker] Failed to auto-start: {}", e),
                         }
                     }
                     {
-                        let mut svc = collector_for_start.lock().await;
+                        let mut svc = saga_worker_for_start.lock().await;
                         match svc.start(&backend_path_clone, is_binary, gateway_dir_clone.as_ref(), resource_dir_clone.as_ref()) {
-                            Ok(_) => println!("[Collector] Auto-started successfully"),
-                            Err(e) => println!("[Collector] Failed to auto-start: {}", e),
-                        }
-                    }
-                    {
-                        let mut svc = executor_for_start.lock().await;
-                        match svc.start(&backend_path_clone, is_binary, gateway_dir_clone.as_ref(), resource_dir_clone.as_ref()) {
-                            Ok(_) => println!("[Executor] Auto-started successfully"),
-                            Err(e) => println!("[Executor] Failed to auto-start: {}", e),
+                            Ok(_) => println!("[Saga Worker] Auto-started successfully"),
+                            Err(e) => println!("[Saga Worker] Failed to auto-start: {}", e),
                         }
                     }
                     {
@@ -1128,36 +1100,27 @@ fn main() {
                         });
                     }
                     
-                    // Executor
-                    if let Some(executor_svc) = app_handle.try_state::<ExecutorState>() {
-                        let svc_clone = executor_svc.inner().clone();
+                    // Saga Worker
+                    if let Some(saga_worker) = app_handle.try_state::<SagaWorkerState>() {
+                        let svc_clone = saga_worker.inner().clone();
                         tauri::async_runtime::block_on(async {
                             let mut svc = svc_clone.lock().await;
                             svc.stop();
                         });
                     }
                     
-                    // Collector
-                    if let Some(collector) = app_handle.try_state::<CollectorState>() {
-                        let svc_clone = collector.inner().clone();
+                    // Task Worker
+                    if let Some(task_worker) = app_handle.try_state::<TaskWorkerState>() {
+                        let svc_clone = task_worker.inner().clone();
                         tauri::async_runtime::block_on(async {
                             let mut svc = svc_clone.lock().await;
                             svc.stop();
                         });
                     }
                     
-                    // Launcher
-                    if let Some(launcher) = app_handle.try_state::<LauncherState>() {
-                        let svc_clone = launcher.inner().clone();
-                        tauri::async_runtime::block_on(async {
-                            let mut svc = svc_clone.lock().await;
-                            svc.stop();
-                        });
-                    }
-                    
-                    // Monitor
-                    if let Some(monitor) = app_handle.try_state::<MonitorState>() {
-                        let svc_clone = monitor.inner().clone();
+                    // Watchdog
+                    if let Some(watchdog) = app_handle.try_state::<WatchdogState>() {
+                        let svc_clone = watchdog.inner().clone();
                         tauri::async_runtime::block_on(async {
                             let mut svc = svc_clone.lock().await;
                             svc.stop();

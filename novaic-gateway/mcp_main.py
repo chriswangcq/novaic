@@ -46,7 +46,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from mcp_servers.manager import MCPManager, set_mcp_manager, get_mcp_manager
 from api.internal_mcp import router as internal_mcp_router
-from db.database import get_database
+from db.access import get_db
 from core.task_manager import TaskManager, set_task_manager
 
 # Port for this MCP Gateway (default 19998; Backend uses 19999)
@@ -57,7 +57,7 @@ MCP_PORT = int(os.environ.get("NOVAIC_MCP_PORT", "19998"))
 async def lifespan(app: FastAPI):
     """Initialize database and MCPManager."""
     # Initialize database (needed for qemudebug SSH access, etc.)
-    db = get_database()
+    db = get_db()
     await db.connect()
     logger.info("[MCP Gateway] Database connected")
     

@@ -24,6 +24,7 @@ from .schemas import (
     HealthResponse, HistoryResponse
 )
 from config import get_config_manager, ProviderType
+from db.access import get_db
 
 router = APIRouter()
 
@@ -410,8 +411,7 @@ async def cleanup_garbage(
         # 4. Vacuum database
         if deep:
             try:
-                from db.database import get_database
-                db = get_database()
+                db = get_db()
                 if db:
                     await db.vacuum()
                     cleaned["database_vacuumed"] = True
@@ -498,7 +498,6 @@ async def chat(request: ChatRequest):
     - message_id: ID of the stored message
     - timestamp: When the message was stored
     """
-    from db.database import get_database
     from db.repositories.message import MessageRepository
     from config.agents import get_agent_config_manager
     
@@ -535,7 +534,7 @@ async def chat(request: ChatRequest):
         metadata["api_key_id"] = request.api_key_id
     
     # Store message in inbox (status=sending for Monitor queue)
-    db = get_database()
+    db = get_db()
     message_repo = MessageRepository(db)
     
     msg = await message_repo.add_message(
@@ -582,7 +581,6 @@ async def chat_stream(request: ChatRequest):
     Note: This endpoint stores the message and then subscribes to events.
     For better control, use POST /chat + GET /api/chat/events separately.
     """
-    from db.database import get_database
     from db.repositories.message import MessageRepository
     from config.agents import get_agent_config_manager
     import asyncio
@@ -619,7 +617,7 @@ async def chat_stream(request: ChatRequest):
         metadata["api_key_id"] = request.api_key_id
     
     # Store message in inbox (status=sending for Monitor queue)
-    db = get_database()
+    db = get_db()
     message_repo = MessageRepository(db)
     
     msg = await message_repo.add_message(
@@ -734,7 +732,6 @@ async def get_history():
     
     v12: Uses chat_messages table instead of NovAICAgent session.
     """
-    from db.database import get_database
     from config.agents import get_agent_config_manager
     
     agent_mgr = get_agent_config_manager()
@@ -743,7 +740,7 @@ async def get_history():
     if not current_agent:
         return HistoryResponse(messages=[])
     
-    db = get_database()
+    db = get_db()
     rows = await db.fetchall(
         """
         SELECT id, type, content, timestamp, read 
@@ -775,7 +772,6 @@ async def clear_history():
     
     v12: Marks all messages as read instead of deleting.
     """
-    from db.database import get_database
     from config.agents import get_agent_config_manager
     
     agent_mgr = get_agent_config_manager()
@@ -784,7 +780,7 @@ async def clear_history():
     if not current_agent:
         return {"status": "ok", "message": "No agent selected"}
     
-    db = get_database()
+    db = get_db()
     async with db.get_connection() as conn:
         await conn.execute(
             "UPDATE chat_messages SET read = 1 WHERE agent_id = ?",
@@ -804,10 +800,9 @@ async def interrupt(agent_id: str = None):
     
     v3.0: Cancel pending tasks and mark runtimes as interrupted.
     """
-    from db.database import get_database
     from datetime import datetime
     
-    db = get_database()
+    db = get_db()
     now = datetime.utcnow().isoformat()
     
     cancelled_tasks = 0
