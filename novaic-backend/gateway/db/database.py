@@ -35,14 +35,13 @@ class QueuedCursor:
         return self._cursor.lastrowid
 
     async def fetchone(self):
-        async def _do(_conn):
-            return await self._cursor.fetchone()
-        return await self._db._run(_do)
+        # 直接在同一个 worker 线程中执行，不重新排队
+        # cursor 已经在 worker 中创建，所以可以直接操作
+        return await self._cursor.fetchone()
 
     async def fetchall(self):
-        async def _do(_conn):
-            return await self._cursor.fetchall()
-        return await self._db._run(_do)
+        # 直接在同一个 worker 线程中执行，不重新排队
+        return await self._cursor.fetchall()
 
 
 class _ConnectionProxy:
@@ -242,9 +241,9 @@ class Database:
             token = self._in_transaction.set(True)
             try:
                 yield self
-                await self._conn.commit()
+                await self.commit()  # 通过队列提交
             except Exception:
-                await self._conn.rollback()
+                await self.rollback()  # 通过队列回滚
                 raise
             finally:
                 self._in_transaction.reset(token)
