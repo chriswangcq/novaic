@@ -39,7 +39,7 @@ def resolve_runtime_ids(runtime_id: str) -> Tuple[str, str, str]:
     """
     
     db = get_db()
-    with db.get_connection() as conn:
+    with db.get_connection("agent", resource_id=runtime_id, timeout=10.0) as conn:
         cursor = conn.execute(
             "SELECT runtime_id, agent_id, subagent_id FROM agent_runtimes WHERE runtime_id = ?",
             (runtime_id,)
@@ -64,7 +64,7 @@ def get_runtime_context(runtime_id: str) -> Dict[str, Any]:
     """
     
     db = get_db()
-    with db.get_connection() as conn:
+    with db.get_connection("agent", resource_id=runtime_id, timeout=10.0) as conn:
         cursor = conn.execute(
             """SELECT runtime_id, agent_id, subagent_id, status, phase, mcp_url
                FROM agent_runtimes WHERE runtime_id = ?""",
@@ -423,9 +423,9 @@ def cancel_subagent(agent_id: str, subagent_id: str):
     
     # Cancel all active runtimes for this SubAgent
     now = datetime.utcnow().isoformat()
-    with db.get_connection("agent", resource_id=agent_id, timeout=10.0) as conn:
+    with db.transaction("agent", resource_id=agent_id, timeout=10.0):
         # Get runtime IDs for this SubAgent
-        cursor = conn.execute(
+        cursor = db.execute(
             "SELECT runtime_id FROM agent_runtimes WHERE subagent_id = ? AND agent_id = ?",
             (subagent_id, agent_id)
         )
@@ -433,13 +433,11 @@ def cancel_subagent(agent_id: str, subagent_id: str):
         
         # Cancel active runtimes
         for runtime_id in runtime_ids:
-            conn.execute("""
+            db.execute("""
                 UPDATE agent_runtimes 
                 SET status = 'cancelled', updated_at = ?
                 WHERE runtime_id = ? AND status = 'active'
             """, (now, runtime_id))
-        
-        conn.commit()
     
     return {"success": True}
 
@@ -454,12 +452,11 @@ def delete_subagent(agent_id: str, subagent_id: str):
     runtime_repo = RuntimeRepository(db)
     
     # Delete runtimes for this subagent
-    with db.get_connection("agent", resource_id=agent_id, timeout=10.0) as conn:
-        conn.execute(
+    with db.transaction("agent", resource_id=agent_id, timeout=10.0):
+        db.execute(
             "DELETE FROM runtimes WHERE subagent_id = ? AND agent_id = ?",
             (subagent_id, agent_id)
         )
-        conn.commit()
     
     # Delete subagent
     subagent_repo.delete(subagent_id, agent_id)
@@ -593,13 +590,12 @@ def update_runtime(runtime_id: str, data: Dict[str, Any]):
         # Extract agent_id from runtime
         runtime = runtime_repo.get_by_id(runtime_id)
         if runtime:
-            with db.get_connection("agent", resource_id=runtime.agent_id, timeout=10.0) as conn:
-                conn.execute("""
+            with db.transaction("agent", resource_id=runtime.agent_id, timeout=10.0):
+                db.execute("""
                     UPDATE agent_runtimes 
                     SET current_round_num = ?, current_round_id = ?, updated_at = ?
                     WHERE runtime_id = ?
                 """, (data["current_round_num"], data["current_round_id"], now, runtime_id))
-                conn.commit()
     
     return {"status": "ok"}
 
@@ -632,12 +628,11 @@ def rest_runtime(runtime_id: str, data: Dict[str, Any]):
         return {"success": False, "error": "Runtime not found"}
     
     # Set need_rest=1 (不再设置 status='resting')
-    with db.get_connection("agent", resource_id=runtime.agent_id, timeout=10.0) as conn:
-        conn.execute(
+    with db.transaction("agent", resource_id=runtime.agent_id, timeout=10.0):
+        db.execute(
             "UPDATE agent_runtimes SET need_rest = 1, updated_at = datetime('now') WHERE runtime_id = ?",
             (runtime_id,)
         )
-        conn.commit()
     
     # Update SubAgent's wake triggers (v14)
     reason = data.get("reason", "No reason provided")
@@ -729,20 +724,24 @@ def try_claim_phase(runtime_id: str, data: Dict[str, Any]):
     db = get_db()
     now = datetime.utcnow().isoformat()
     
+    # Get agent_id from runtime for lock
+    runtime_ctx = get_runtime_context(runtime_id)
+    agent_id = runtime_ctx.get("agent_id")
+    
     # Atomic CAS: only update if phase matches expected (v14: use runtime_id)
-    if round_id:
-        cursor = db.execute("""
-            UPDATE agent_runtimes 
-            SET phase = ?, current_round_id = ?, updated_at = ?
-            WHERE runtime_id = ? AND phase = ?
-        """, (new_phase, round_id, now, runtime_id, expected_phase))
-    else:
-        cursor = db.execute("""
-            UPDATE agent_runtimes 
-            SET phase = ?, updated_at = ?
-            WHERE runtime_id = ? AND phase = ?
-        """, (new_phase, now, runtime_id, expected_phase))
-    db.commit()
+    with db.transaction("agent", resource_id=agent_id, timeout=10.0):
+        if round_id:
+            cursor = db.execute("""
+                UPDATE agent_runtimes 
+                SET phase = ?, current_round_id = ?, updated_at = ?
+                WHERE runtime_id = ? AND phase = ?
+            """, (new_phase, round_id, now, runtime_id, expected_phase))
+        else:
+            cursor = db.execute("""
+                UPDATE agent_runtimes 
+                SET phase = ?, updated_at = ?
+                WHERE runtime_id = ? AND phase = ?
+            """, (new_phase, now, runtime_id, expected_phase))
     
     return {"success": cursor.rowcount > 0}
 
@@ -816,9 +815,13 @@ def set_runtime_status(runtime_id: str, data: Dict[str, Any]):
     now = datetime.utcnow().isoformat()
 
     db = get_db()
-    with db.get_connection() as conn:
+    # Get agent_id from runtime for lock
+    runtime_ctx = get_runtime_context(runtime_id)
+    agent_id = runtime_ctx.get("agent_id")
+    
+    with db.transaction("agent", resource_id=agent_id, timeout=10.0):
         if error is not None:
-            cursor = conn.execute(
+            cursor = db.execute(
                 f"""
                 UPDATE agent_runtimes
                 SET status = ?, error = ?, updated_at = ?
@@ -827,7 +830,7 @@ def set_runtime_status(runtime_id: str, data: Dict[str, Any]):
                 (new_status, error, now, runtime_id, *expected_list),
             )
         else:
-            cursor = conn.execute(
+            cursor = db.execute(
                 f"""
                 UPDATE agent_runtimes
                 SET status = ?, updated_at = ?
@@ -835,7 +838,6 @@ def set_runtime_status(runtime_id: str, data: Dict[str, Any]):
                 """,
                 (new_status, now, runtime_id, *expected_list),
             )
-        conn.commit()
 
     if cursor.rowcount > 0:
         return {"success": True}
@@ -853,6 +855,7 @@ def set_runtime_status(runtime_id: str, data: Dict[str, Any]):
 def set_runtime_summarized(runtime_id: str):
     """Set runtime summarized flag to 1 (idempotent)."""
     from datetime import datetime
+    from gateway.db.repositories import RuntimeRepository
 
     db = get_db()
     runtime_repo = RuntimeRepository(db)
@@ -861,13 +864,12 @@ def set_runtime_summarized(runtime_id: str):
         return {"success": False}
     
     now = datetime.utcnow().isoformat()
-    with db.get_connection("agent", resource_id=runtime.agent_id, timeout=10.0) as conn:
-        cursor = conn.execute("""
+    with db.transaction("agent", resource_id=runtime.agent_id, timeout=10.0):
+        cursor = db.execute("""
             UPDATE agent_runtimes
             SET summarized = 1, updated_at = ?
             WHERE runtime_id = ? AND summarized = 0
         """, (now, runtime_id))
-        conn.commit()
 
     if cursor.rowcount > 0:
         return {"success": True}
@@ -901,13 +903,12 @@ def set_runtime_need_rest(runtime_id: str, data: Dict[str, Any]):
     if not runtime:
         return {"success": False, "cas_failed": False}
     
-    with db.get_connection("agent", resource_id=runtime.agent_id, timeout=10.0) as conn:
-        cursor = conn.execute("""
+    with db.transaction("agent", resource_id=runtime.agent_id, timeout=10.0):
+        cursor = db.execute("""
             UPDATE agent_runtimes
             SET need_rest = ?, updated_at = ?
             WHERE runtime_id = ? AND need_rest = ?
         """, (target, now, runtime_id, expected))
-        conn.commit()
 
     if cursor.rowcount > 0:
         return {"success": True, "current_value": str(target)}
@@ -1107,10 +1108,10 @@ def claim_and_prepare_message():
     """
     
     db = get_db()
-    with db.get_connection() as conn:
+    with db.transaction("global", timeout=10.0):
         # Atomically claim one sending message (sending → sent)
         # Note: read 字段由 context.read 设置，这里不改变
-        cursor = conn.execute("""
+        cursor = db.execute("""
             UPDATE chat_messages
             SET status = 'sent'
             WHERE id = (
@@ -1123,7 +1124,6 @@ def claim_and_prepare_message():
         """)
         row = cursor.fetchone()
         cursor.close()  # ← 必须先关闭cursor
-        conn.commit()
         
         if not row:
             return {"message": None}
@@ -1148,13 +1148,12 @@ def claim_message(message_id: str):
     db = get_db()
     
     # Use message-specific lock (sharded for better concurrency)
-    with db.get_connection("message", resource_id=message_id, timeout=10.0) as conn:
-        cursor = conn.execute("""
+    with db.transaction("message", resource_id=message_id, timeout=10.0):
+        cursor = db.execute("""
             UPDATE chat_messages
             SET status = 'sent'
             WHERE id = ? AND status = 'sending'
         """, (message_id,))
-        conn.commit()
 
     if cursor.rowcount > 0:
         return {"success": True, "message_id": message_id, "claimed": True}
@@ -1196,11 +1195,10 @@ def mark_messages_read(data: Dict[str, Any]):
     db = get_db()
     placeholders = ",".join(["?"] * len(message_ids))
     # For batch updates, use global lock
-    with db.get_connection("global", timeout=15.0) as conn:
-        conn.execute(f"""
+    with db.transaction("global", timeout=15.0):
+        db.execute(f"""
             UPDATE chat_messages SET read = 1 WHERE id IN ({placeholders})
         """, tuple(message_ids))
-        conn.commit()
     
     return {"status": "ok"}
 
@@ -1223,11 +1221,10 @@ def mark_messages_processed(data: Dict[str, Any]):
     
     # Mark as read (read=1 means processed)
     # For batch updates, use global lock
-    with db.get_connection("global", timeout=15.0) as conn:
-        conn.execute(f"""
+    with db.transaction("global", timeout=15.0):
+        db.execute(f"""
             UPDATE chat_messages SET read = 1 WHERE id IN ({placeholders})
         """, tuple(message_ids))
-        conn.commit()
     
     # Broadcast STATUS_UPDATE to SSE for each message
     # Import here to avoid circular import
@@ -1504,11 +1501,12 @@ def _build_llm_config_for_agent(db, agent_id: str) -> Dict[str, Any]:
     """Build LLM config for a specific agent (internal helper)."""
     
     # 1. Get agent's model_id
-    cursor = db.execute(
-        "SELECT model_id FROM agents WHERE id = ?",
-        (agent_id,)
-    )
-    row = cursor.fetchone()
+    with db.get_connection("agent", resource_id=agent_id, timeout=10.0) as conn:
+        cursor = conn.execute(
+            "SELECT model_id FROM agents WHERE id = ?",
+            (agent_id,)
+        )
+        row = cursor.fetchone()
     
     if not row:
         return {
@@ -1517,27 +1515,30 @@ def _build_llm_config_for_agent(db, agent_id: str) -> Dict[str, Any]:
             "agent_id": agent_id,
         }
     
-    model_id = row["model_id"]
+    model_id = row[0]
     
     # 2. If no model selected, use default from config
     if not model_id:
-        default_row = db.fetchone("SELECT value FROM config WHERE key = 'default_model'")
+        with db.get_connection("global", timeout=10.0) as conn:
+            cursor = conn.execute("SELECT value FROM config WHERE key = 'default_model'")
+            default_row = cursor.fetchone()
         model_id = default_row[0].strip('"') if default_row else "gpt-4o"
     
     # 3. 从DB查询model和api_key配置
-    cursor = db.execute("""
-        SELECT 
-            m.name as model_name,
-            m.provider,
-            k.provider as key_provider,
-            k.api_key,
-            k.api_base
-        FROM candidate_models m
-        JOIN api_keys k ON m.api_key_id = k.id
-        WHERE m.name = ? AND m.available = 1
-        LIMIT 1
-    """, (model_id,))
-    row = cursor.fetchone()
+    with db.get_connection("global", timeout=10.0) as conn:
+        cursor = conn.execute("""
+            SELECT 
+                m.id as model_id,
+                m.provider,
+                k.provider as key_provider,
+                k.api_key,
+                k.api_base
+            FROM candidate_models m
+            JOIN api_keys k ON m.api_key_id = k.id
+            WHERE m.id = ? AND m.available = 1
+            LIMIT 1
+        """, (model_id,))
+        row = cursor.fetchone()
     
     if not row:
         return {
@@ -1562,7 +1563,7 @@ def _build_llm_config_for_agent(db, agent_id: str) -> Dict[str, Any]:
     return {
         "success": True,
         "agent_id": agent_id,
-        "model": row[0],  # model_name
+        "model": row[0],  # model_id (e.g. "kimi-k2.5")
         "provider": provider,
         "api_key": row[3],  # api_key
         "api_base": api_base,
@@ -2062,7 +2063,7 @@ def list_active_runtimes_for_mcp():
     db = get_db()
     
     # Query all active runtimes
-    with db.get_connection() as conn:
+    with db.get_connection("global", timeout=10.0) as conn:
         cursor = conn.execute("""
             SELECT runtime_id, agent_id, subagent_id, status, created_at
             FROM agent_runtimes 
@@ -2441,12 +2442,11 @@ def rt_chat_event(runtime_id: str, data: Dict[str, Any]):
     message_id = str(uuid.uuid4())[:11]
     timestamp = datetime.now().isoformat()
     
-    with db.get_connection("message", resource_id=message_id, timeout=10.0) as conn:
-        conn.execute("""
+    with db.transaction("message", resource_id=message_id, timeout=10.0):
+        db.execute("""
             INSERT INTO chat_messages (id, agent_id, type, content, timestamp, status)
             VALUES (?, ?, ?, ?, ?, 'sent')
         """, (message_id, agent_id, event_type, content, timestamp))
-        conn.commit()
     
     # Broadcast via SSE
     broadcaster = get_worker_broadcaster()
@@ -2648,18 +2648,17 @@ def rt_subagent_cancel(runtime_id: str, target_subagent_id: str):
     
     # Cancel active runtimes
     now = datetime.utcnow().isoformat()
-    with db.get_connection("agent", resource_id=agent_id, timeout=10.0) as conn:
-        cursor = conn.execute(
+    with db.transaction("agent", resource_id=agent_id, timeout=10.0):
+        cursor = db.execute(
             "SELECT runtime_id FROM agent_runtimes WHERE subagent_id = ? AND agent_id = ?",
             (target_subagent_id, agent_id)
         )
         runtime_ids = [row[0] for row in cursor.fetchall()]
         for rid in runtime_ids:
-            conn.execute("""
+            db.execute("""
                 UPDATE agent_runtimes SET status = 'cancelled', updated_at = ?
                 WHERE runtime_id = ? AND status = 'active'
             """, (now, rid))
-        conn.commit()
     
     return {"success": True}
 

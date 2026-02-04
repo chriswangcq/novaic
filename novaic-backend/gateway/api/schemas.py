@@ -12,6 +12,7 @@ from datetime import datetime
 class ChatRequest(BaseModel):
     """Chat request"""
     message: str = Field(..., description="User message")
+    agent_id: Optional[str] = Field(None, description="Target agent ID (uses current agent if not provided)")
     model: Optional[str] = Field(None, description="Model to use")
     mode: Optional[str] = Field("agent", description="Chat mode: 'agent' or 'chat'")
     

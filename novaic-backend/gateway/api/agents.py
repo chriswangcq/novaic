@@ -190,11 +190,11 @@ def create_agent(request: CreateAgentRequest):
         
         # Set model_id if provided
         if request.model:
-            db.execute(
-                "UPDATE agents SET model_id = ? WHERE id = ?",
-                (request.model, agent.id)
-            )
-            db.commit()
+            with db.transaction(lock_type="agent", resource_id=agent.id):
+                db.execute(
+                    "UPDATE agents SET model_id = ? WHERE id = ?",
+                    (request.model, agent.id)
+                )
         
         # v2.7: MCP Gateways are created per-Runtime by Master, not per-Agent
         
@@ -449,7 +449,7 @@ def get_agent_model(agent_id: str):
             k.api_base
         FROM candidate_models m
         JOIN api_keys k ON m.api_key_id = k.id
-        WHERE m.name = ?
+        WHERE m.id = ?
         LIMIT 1
     """, (model_id,))
     row = cursor.fetchone()
@@ -509,7 +509,7 @@ def set_agent_model(agent_id: str, request: SetAgentModelRequest):
         SELECT m.id, m.name, k.name as provider_name
         FROM candidate_models m
         JOIN api_keys k ON m.api_key_id = k.id
-        WHERE m.name = ? AND m.available = 1
+        WHERE m.id = ? AND m.available = 1
         LIMIT 1
     """, (request.model_id,))
     row = cursor.fetchone()
@@ -521,11 +521,11 @@ def set_agent_model(agent_id: str, request: SetAgentModelRequest):
         )
     
     # Update agent's model_id
-    db.execute(
-        "UPDATE agents SET model_id = ? WHERE id = ?",
-        (request.model_id, agent_id)
-    )
-    db.commit()
+    with db.transaction(lock_type="agent", resource_id=agent_id):
+        db.execute(
+            "UPDATE agents SET model_id = ? WHERE id = ?",
+            (request.model_id, agent_id)
+        )
     
     return {
         "success": True,

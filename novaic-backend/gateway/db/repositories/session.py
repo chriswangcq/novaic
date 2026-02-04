@@ -62,31 +62,33 @@ class SessionRepository:
         """Create a new session."""
         now = datetime.now().isoformat()
         
-        self.db.execute(
-            """INSERT INTO sessions (id, agent_id, created_at, updated_at, metadata)
-               VALUES (?, ?, ?, ?, ?)""",
-            (session_id, agent_id, now, now, json.dumps(metadata or {}))
-        )
-        self.db.commit()
+        # Use agent_id if available, otherwise use session_id
+        resource_id = agent_id if agent_id else session_id
+        with self.db.transaction(lock_type="agent", resource_id=resource_id):
+            self.db.execute(
+                """INSERT INTO sessions (id, agent_id, created_at, updated_at, metadata)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (session_id, agent_id, now, now, json.dumps(metadata or {}))
+            )
         
         return self.get_session(session_id)
     
     def update_session_timestamp(self, session_id: str):
         """Update session's updated_at timestamp."""
-        self.db.execute(
-            "UPDATE sessions SET updated_at = ? WHERE id = ?",
-            (datetime.now().isoformat(), session_id)
-        )
-        self.db.commit()
+        with self.db.transaction(lock_type="agent", resource_id=session_id):
+            self.db.execute(
+                "UPDATE sessions SET updated_at = ? WHERE id = ?",
+                (datetime.now().isoformat(), session_id)
+            )
     
     def delete_session(self, session_id: str) -> bool:
         """Delete a session and all its messages."""
-        cursor = self.db.execute(
-            "DELETE FROM sessions WHERE id = ?",
-            (session_id,)
-        )
-        self.db.commit()
-        return cursor.rowcount > 0
+        with self.db.transaction(lock_type="agent", resource_id=session_id):
+            cursor = self.db.execute(
+                "DELETE FROM sessions WHERE id = ?",
+                (session_id,)
+            )
+            return cursor.rowcount > 0
     
     def ensure_session(
         self,
@@ -158,27 +160,27 @@ class SessionRepository:
         # Ensure session exists
         self.ensure_session(session_id)
         
-        cursor = self.db.execute(
-            """INSERT INTO session_messages 
-               (session_id, type, role, content, timestamp, metadata)
-               VALUES (?, 'message', ?, ?, ?, ?)""",
-            (
-                session_id,
-                role,
-                json.dumps(content) if not isinstance(content, str) else content,
-                timestamp,
-                json.dumps(metadata or {})
+        with self.db.transaction(lock_type="agent", resource_id=session_id):
+            cursor = self.db.execute(
+                """INSERT INTO session_messages 
+                   (session_id, type, role, content, timestamp, metadata)
+                   VALUES (?, 'message', ?, ?, ?, ?)""",
+                (
+                    session_id,
+                    role,
+                    json.dumps(content) if not isinstance(content, str) else content,
+                    timestamp,
+                    json.dumps(metadata or {})
+                )
             )
-        )
-        
-        # Update session timestamp
-        self.db.execute(
-            "UPDATE sessions SET updated_at = ? WHERE id = ?",
-            (timestamp, session_id)
-        )
-        
-        self.db.commit()
-        return cursor.lastrowid
+            
+            # Update session timestamp
+            self.db.execute(
+                "UPDATE sessions SET updated_at = ? WHERE id = ?",
+                (timestamp, session_id)
+            )
+            
+            return cursor.lastrowid
     
     def add_compaction_summary(
         self,
@@ -191,14 +193,14 @@ class SessionRepository:
         """Add a compaction summary to a session."""
         timestamp = datetime.now().isoformat()
         
-        cursor = self.db.execute(
-            """INSERT INTO session_messages 
-               (session_id, type, content, timestamp, compacted_count, original_tokens, summary_tokens)
-               VALUES (?, 'compaction_summary', ?, ?, ?, ?, ?)""",
-            (session_id, summary, timestamp, compacted_count, original_tokens, summary_tokens)
-        )
-        self.db.commit()
-        return cursor.lastrowid
+        with self.db.transaction(lock_type="agent", resource_id=session_id):
+            cursor = self.db.execute(
+                """INSERT INTO session_messages 
+                   (session_id, type, content, timestamp, compacted_count, original_tokens, summary_tokens)
+                   VALUES (?, 'compaction_summary', ?, ?, ?, ?, ?)""",
+                (session_id, summary, timestamp, compacted_count, original_tokens, summary_tokens)
+            )
+            return cursor.lastrowid
     
     def get_latest_compaction(
         self,

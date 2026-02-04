@@ -28,6 +28,10 @@ export NOVAIC_MCP_GATEWAY_URL="$MCP_GATEWAY_URL"
 export NOVAIC_DATA_DIR="${NOVAIC_DATA_DIR:-$HOME/.novaic}"
 export PYTHONUNBUFFERED=1
 
+# Worker 数量配置
+NUM_TASK_WORKERS="${NOVAIC_TASK_WORKERS:-3}"
+NUM_SAGA_WORKERS="${NOVAIC_SAGA_WORKERS:-3}"
+
 # 日志
 LOG_DIR="/tmp"
 LOG_GATEWAY="$LOG_DIR/gateway.log"
@@ -101,9 +105,23 @@ start_queue() {
 }
 
 start_watchdog() { start_process "Watchdog" "python main_watchdog.py" "$LOG_WATCHDOG"; }
-start_task()     { start_process "Task Worker" "python main_task.py" "$LOG_TASK"; }
-start_saga()     { start_process "Saga Worker" "python main_saga.py" "$LOG_SAGA"; }
 start_health()   { start_process "Health Worker" "python main_health.py" "$LOG_HEALTH"; }
+
+start_task() {
+    log_info "Starting $NUM_TASK_WORKERS Task Workers..."
+    for i in $(seq 1 "$NUM_TASK_WORKERS"); do
+        local log_file="$LOG_DIR/task-$i.log"
+        (cd "$BACKEND_DIR" && activate_venv && nohup bash -c "python main_task.py" > "$log_file" 2>&1 &)
+    done
+}
+
+start_saga() {
+    log_info "Starting $NUM_SAGA_WORKERS Saga Workers..."
+    for i in $(seq 1 "$NUM_SAGA_WORKERS"); do
+        local log_file="$LOG_DIR/saga-$i.log"
+        (cd "$BACKEND_DIR" && activate_venv && nohup bash -c "python main_saga.py" > "$log_file" 2>&1 &)
+    done
+}
 
 start_workers() {
     start_watchdog
@@ -137,7 +155,22 @@ UPDATE subagents SET status = 'sleeping';
 }
 
 show_status() {
-    ps aux | grep -E "python.*main_(gateway|mcp|watchdog|task|saga|health)" | grep -v grep || true
+    echo "=== Running Services ==="
+    local gateway_count=$(pgrep -f "python.*main_gateway.py" 2>/dev/null | wc -l | tr -d ' ')
+    local mcp_count=$(pgrep -f "python.*main_mcp.py" 2>/dev/null | wc -l | tr -d ' ')
+    local queue_count=$(pgrep -f "python.*queue_service/main.py" 2>/dev/null | wc -l | tr -d ' ')
+    local watchdog_count=$(pgrep -f "python.*main_watchdog.py" 2>/dev/null | wc -l | tr -d ' ')
+    local task_count=$(pgrep -f "python.*main_task.py" 2>/dev/null | wc -l | tr -d ' ')
+    local saga_count=$(pgrep -f "python.*main_saga.py" 2>/dev/null | wc -l | tr -d ' ')
+    local health_count=$(pgrep -f "python.*main_health.py" 2>/dev/null | wc -l | tr -d ' ')
+    
+    echo "Gateway:       $gateway_count"
+    echo "MCP Gateway:   $mcp_count"
+    echo "Queue Service: $queue_count"
+    echo "Watchdog:      $watchdog_count"
+    echo "Task Workers:  $task_count (configured: $NUM_TASK_WORKERS)"
+    echo "Saga Workers:  $saga_count (configured: $NUM_SAGA_WORKERS)"
+    echo "Health Worker: $health_count"
 }
 
 tail_logs() {
@@ -180,6 +213,8 @@ Environment:
   NOVAIC_DATA_DIR        Data directory (default: ~/.novaic)
   NOVAIC_GATEWAY_URL     Gateway URL (default: http://127.0.0.1:19999)
   NOVAIC_MCP_GATEWAY_URL MCP Gateway URL (default: http://127.0.0.1:19998)
+  NOVAIC_TASK_WORKERS    Number of Task Workers (default: 3)
+  NOVAIC_SAGA_WORKERS    Number of Saga Workers (default: 3)
 EOF
 }
 

@@ -31,7 +31,7 @@ def migrate_config(db: Database, data_dir: Path) -> bool:
         with open(config_file, "r") as f:
             data = json.load(f)
         
-        with db.transaction():
+        with db.transaction("global"):
             # Migrate general settings
             if "version" in data:
                 db.execute(
@@ -122,7 +122,7 @@ def migrate_agents(db: Database, data_dir: Path) -> bool:
         with open(agents_file, "r") as f:
             data = json.load(f)
         
-        with db.transaction():
+        with db.transaction("global"):
             # Migrate current_agent_id
             if data.get("current_agent_id"):
                 db.execute(

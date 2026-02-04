@@ -73,13 +73,13 @@ class ConfigRepository:
         """Create a new API key."""
         created_at = datetime.utcnow().isoformat()
         
-        self.db.execute(
-            """INSERT INTO api_keys 
-               (id, name, provider, api_key, api_base, deployment_name, api_version, created_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            (id, name, provider, api_key, api_base, deployment_name, api_version, created_at)
-        )
-        self.db.commit()
+        with self.db.transaction(lock_type="global"):
+            self.db.execute(
+                """INSERT INTO api_keys 
+                   (id, name, provider, api_key, api_base, deployment_name, api_version, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (id, name, provider, api_key, api_base, deployment_name, api_version, created_at)
+            )
         
         return self.get_api_key(id)
     
@@ -117,22 +117,23 @@ class ConfigRepository:
             return self.get_api_key(key_id)
         
         params.append(key_id)
-        self.db.execute(
-            f"UPDATE api_keys SET {', '.join(updates)} WHERE id = ?",
-            tuple(params)
-        )
-        self.db.commit()
+        with self.db.transaction(lock_type="global"):
+            self.db.execute(
+                f"UPDATE api_keys SET {', '.join(updates)} WHERE id = ?",
+                tuple(params)
+            )
         
         return self.get_api_key(key_id)
     
     def delete_api_key(self, key_id: str) -> bool:
         """Delete an API key (cascades to models)."""
-        cursor = self.db.execute(
-            "DELETE FROM api_keys WHERE id = ?",
-            (key_id,)
-        )
-        self.db.commit()
-        return cursor.rowcount > 0
+        with self.db.transaction(lock_type="global"):
+            cursor = self.db.execute(
+                "DELETE FROM api_keys WHERE id = ?",
+                (key_id,)
+            )
+            rowcount = cursor.rowcount
+        return rowcount > 0
     
     # ==================== Models ====================
     
@@ -176,18 +177,18 @@ class ConfigRepository:
         is_custom: bool = False,
     ) -> Dict[str, Any]:
         """Create or update a model."""
-        self.db.execute(
-            """INSERT INTO candidate_models 
-               (id, name, provider, api_key_id, available, is_custom)
-               VALUES (?, ?, ?, ?, ?, ?)
-               ON CONFLICT(id, api_key_id) DO UPDATE SET
-                   name = excluded.name,
-                   provider = excluded.provider,
-                   available = excluded.available,
-                   is_custom = excluded.is_custom""",
-            (id, name, provider, api_key_id, 1 if enabled else 0, 1 if is_custom else 0)
-        )
-        self.db.commit()
+        with self.db.transaction(lock_type="global"):
+            self.db.execute(
+                """INSERT INTO candidate_models 
+                   (id, name, provider, api_key_id, available, is_custom)
+                   VALUES (?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(id, api_key_id) DO UPDATE SET
+                       name = excluded.name,
+                       provider = excluded.provider,
+                       available = excluded.available,
+                       is_custom = excluded.is_custom""",
+                (id, name, provider, api_key_id, 1 if enabled else 0, 1 if is_custom else 0)
+            )
         
         return self.get_model(id, api_key_id)
     
@@ -198,12 +199,13 @@ class ConfigRepository:
         enabled: bool
     ) -> bool:
         """Enable or disable a model."""
-        cursor = self.db.execute(
-            "UPDATE candidate_models SET available = ? WHERE id = ? AND api_key_id = ?",
-            (1 if enabled else 0, model_id, api_key_id)
-        )
-        self.db.commit()
-        return cursor.rowcount > 0
+        with self.db.transaction(lock_type="global"):
+            cursor = self.db.execute(
+                "UPDATE candidate_models SET available = ? WHERE id = ? AND api_key_id = ?",
+                (1 if enabled else 0, model_id, api_key_id)
+            )
+            rowcount = cursor.rowcount
+        return rowcount > 0
     
     def delete_model(
         self,
@@ -211,12 +213,13 @@ class ConfigRepository:
         api_key_id: str
     ) -> bool:
         """Delete a model."""
-        cursor = self.db.execute(
-            "DELETE FROM candidate_models WHERE id = ? AND api_key_id = ?",
-            (model_id, api_key_id)
-        )
-        self.db.commit()
-        return cursor.rowcount > 0
+        with self.db.transaction(lock_type="global"):
+            cursor = self.db.execute(
+                "DELETE FROM candidate_models WHERE id = ? AND api_key_id = ?",
+                (model_id, api_key_id)
+            )
+            rowcount = cursor.rowcount
+        return rowcount > 0
     
     def save_models_for_key(
         self,
@@ -228,7 +231,7 @@ class ConfigRepository:
         Save/merge models for an API key.
         Keeps existing custom models.
         """
-        with self.db.transaction():
+        with self.db.transaction(lock_type="global"):
             # Get existing custom models
             existing_custom = self.db.fetchall(
                 "SELECT * FROM candidate_models WHERE api_key_id = ? AND is_custom = 1",

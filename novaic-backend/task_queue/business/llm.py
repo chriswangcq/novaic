@@ -111,7 +111,7 @@ class LLMBusiness:
         self,
         runtime_id: str,
         *,
-        model: str = "gpt-4o-mini",
+        model: str = "kimi-k2.5",  # 使用 Kimi 作为默认
         system_prompt: Optional[str] = None,
     ) -> SummaryResult:
         """

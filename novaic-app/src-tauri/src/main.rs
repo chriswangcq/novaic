@@ -901,14 +901,9 @@ fn main() {
             
             let gateway_for_start = gateway.clone();
             let mcp_gateway_for_start = mcp_gateway.clone();
-            let watchdog_for_start = watchdog.clone();
-            let task_worker_for_start = task_worker.clone();
-            let saga_worker_for_start = saga_worker.clone();
-            let health_for_start = health.clone();
             let data_dir_for_gateway = data_dir.clone();
             let backend_path_clone = backend_path.clone();
             let gateway_dir_clone = gateway_dir.clone();
-            let resource_dir_clone = resource_dir.clone();
             
             tauri::async_runtime::spawn(async move {
                 // Kill any zombie backend processes before starting
@@ -959,11 +954,15 @@ fn main() {
                 }
                 
                 // 4-7. 直接启动 Worker 服务（和 Gateway 一样简单）
-                // v4.0: Saga/Task Architecture - 4 services
+                // v4.1: Saga/Task Architecture - multiple workers for parallelism
+                // 配置：3 Task Workers, 3 Saga Workers, 1 Watchdog, 1 Health
+                const NUM_TASK_WORKERS: u32 = 3;
+                const NUM_SAGA_WORKERS: u32 = 3;
+                
                 if is_binary {
                     let gateway_url = "http://127.0.0.1:19999";
                     
-                    // Watchdog: 监控 sending 消息，触发 MessageProcess Saga
+                    // Watchdog: 监控 sending 消息，触发 MessageProcess Saga (1 个)
                     match Command::new(&backend_path_clone)
                         .arg("watchdog")
                         .arg("--gateway-url")
@@ -976,33 +975,37 @@ fn main() {
                         Err(e) => println!("[Watchdog] Failed: {}", e),
                     }
                     
-                    // Task Worker: 通用任务执行器
-                    match Command::new(&backend_path_clone)
-                        .arg("task-worker")
-                        .arg("--gateway-url")
-                        .arg(gateway_url)
-                        .stdout(Stdio::null())
-                        .stderr(Stdio::null())
-                        .spawn()
-                    {
-                        Ok(_) => println!("[Task Worker] Started"),
-                        Err(e) => println!("[Task Worker] Failed: {}", e),
+                    // Task Workers: 通用任务执行器 (3 个)
+                    for i in 1..=NUM_TASK_WORKERS {
+                        match Command::new(&backend_path_clone)
+                            .arg("task-worker")
+                            .arg("--gateway-url")
+                            .arg(gateway_url)
+                            .stdout(Stdio::null())
+                            .stderr(Stdio::null())
+                            .spawn()
+                        {
+                            Ok(_) => println!("[Task Worker #{}] Started", i),
+                            Err(e) => println!("[Task Worker #{}] Failed: {}", i, e),
+                        }
                     }
                     
-                    // Saga Worker: Saga 流程编排
-                    match Command::new(&backend_path_clone)
-                        .arg("saga-worker")
-                        .arg("--gateway-url")
-                        .arg(gateway_url)
-                        .stdout(Stdio::null())
-                        .stderr(Stdio::null())
-                        .spawn()
-                    {
-                        Ok(_) => println!("[Saga Worker] Started"),
-                        Err(e) => println!("[Saga Worker] Failed: {}", e),
+                    // Saga Workers: Saga 流程编排 (3 个)
+                    for i in 1..=NUM_SAGA_WORKERS {
+                        match Command::new(&backend_path_clone)
+                            .arg("saga-worker")
+                            .arg("--gateway-url")
+                            .arg(gateway_url)
+                            .stdout(Stdio::null())
+                            .stderr(Stdio::null())
+                            .spawn()
+                        {
+                            Ok(_) => println!("[Saga Worker #{}] Started", i),
+                            Err(e) => println!("[Saga Worker #{}] Failed: {}", i, e),
+                        }
                     }
                     
-                    // Health: 监控并回收超时任务/Saga
+                    // Health: 监控并回收超时任务/Saga (1 个)
                     match Command::new(&backend_path_clone)
                         .arg("health")
                         .arg("--gateway-url")
@@ -1015,34 +1018,73 @@ fn main() {
                         Err(e) => println!("[Health] Failed: {}", e),
                     }
                 } else {
-                    // 开发模式：使用 ServiceProcess
+                    // 开发模式：直接启动 Python 脚本 (多个 workers)
+                    let gateway_dir = gateway_dir_clone.expect("Gateway dir required for dev mode");
+                    let venv_python = gateway_dir.join(".venv/bin/python");
+                    let python = if venv_python.exists() {
+                        venv_python.to_string_lossy().to_string()
+                    } else {
+                        "python3".to_string()
+                    };
+                    
+                    // Watchdog (1 个)
+                    match Command::new(&python)
+                        .arg("main_watchdog.py")
+                        .current_dir(&gateway_dir)
+                        .env("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
+                        .env("NOVAIC_MCP_GATEWAY_URL", "http://127.0.0.1:19998")
+                        .stdout(Stdio::inherit())
+                        .stderr(Stdio::inherit())
+                        .spawn()
                     {
-                        let mut svc = watchdog_for_start.lock().await;
-                        match svc.start(&backend_path_clone, is_binary, gateway_dir_clone.as_ref(), resource_dir_clone.as_ref()) {
-                            Ok(_) => println!("[Watchdog] Auto-started successfully"),
-                            Err(e) => println!("[Watchdog] Failed to auto-start: {}", e),
+                        Ok(_) => println!("[Watchdog] Started (dev mode)"),
+                        Err(e) => println!("[Watchdog] Failed: {}", e),
+                    }
+                    
+                    // Task Workers (3 个)
+                    for i in 1..=NUM_TASK_WORKERS {
+                        match Command::new(&python)
+                            .arg("main_task.py")
+                            .current_dir(&gateway_dir)
+                            .env("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
+                            .env("NOVAIC_MCP_GATEWAY_URL", "http://127.0.0.1:19998")
+                            .stdout(Stdio::inherit())
+                            .stderr(Stdio::inherit())
+                            .spawn()
+                        {
+                            Ok(_) => println!("[Task Worker #{}] Started (dev mode)", i),
+                            Err(e) => println!("[Task Worker #{}] Failed: {}", i, e),
                         }
                     }
-                    {
-                        let mut svc = task_worker_for_start.lock().await;
-                        match svc.start(&backend_path_clone, is_binary, gateway_dir_clone.as_ref(), resource_dir_clone.as_ref()) {
-                            Ok(_) => println!("[Task Worker] Auto-started successfully"),
-                            Err(e) => println!("[Task Worker] Failed to auto-start: {}", e),
+                    
+                    // Saga Workers (3 个)
+                    for i in 1..=NUM_SAGA_WORKERS {
+                        match Command::new(&python)
+                            .arg("main_saga.py")
+                            .current_dir(&gateway_dir)
+                            .env("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
+                            .env("NOVAIC_MCP_GATEWAY_URL", "http://127.0.0.1:19998")
+                            .stdout(Stdio::inherit())
+                            .stderr(Stdio::inherit())
+                            .spawn()
+                        {
+                            Ok(_) => println!("[Saga Worker #{}] Started (dev mode)", i),
+                            Err(e) => println!("[Saga Worker #{}] Failed: {}", i, e),
                         }
                     }
+                    
+                    // Health (1 个)
+                    match Command::new(&python)
+                        .arg("main_health.py")
+                        .current_dir(&gateway_dir)
+                        .env("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
+                        .env("NOVAIC_MCP_GATEWAY_URL", "http://127.0.0.1:19998")
+                        .stdout(Stdio::inherit())
+                        .stderr(Stdio::inherit())
+                        .spawn()
                     {
-                        let mut svc = saga_worker_for_start.lock().await;
-                        match svc.start(&backend_path_clone, is_binary, gateway_dir_clone.as_ref(), resource_dir_clone.as_ref()) {
-                            Ok(_) => println!("[Saga Worker] Auto-started successfully"),
-                            Err(e) => println!("[Saga Worker] Failed to auto-start: {}", e),
-                        }
-                    }
-                    {
-                        let mut svc = health_for_start.lock().await;
-                        match svc.start(&backend_path_clone, is_binary, gateway_dir_clone.as_ref(), resource_dir_clone.as_ref()) {
-                            Ok(_) => println!("[Health] Auto-started successfully"),
-                            Err(e) => println!("[Health] Failed to auto-start: {}", e),
-                        }
+                        Ok(_) => println!("[Health] Started (dev mode)"),
+                        Err(e) => println!("[Health] Failed: {}", e),
                     }
                 }
             });

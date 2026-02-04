@@ -59,21 +59,21 @@ class ChatRepository:
         if timestamp is None:
             timestamp = datetime.now().isoformat()
         
-        self.db.execute(
-            """INSERT OR REPLACE INTO chat_messages 
-               (id, agent_id, type, content, read, metadata, timestamp)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (
-                id,
-                agent_id,
-                type,
-                content,
-                1 if read else 0,
-                json.dumps(metadata or {}),
-                timestamp
+        with self.db.transaction("message", resource_id=id):
+            self.db.execute(
+                """INSERT OR REPLACE INTO chat_messages 
+                   (id, agent_id, type, content, read, metadata, timestamp)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    id,
+                    agent_id,
+                    type,
+                    content,
+                    1 if read else 0,
+                    json.dumps(metadata or {}),
+                    timestamp
+                )
             )
-        )
-        self.db.commit()
         
         # Cleanup old messages (keep last 200 per agent)
         self.cleanup_messages(agent_id, 200)
@@ -175,12 +175,12 @@ class ChatRepository:
         Returns:
             True if updated, False if message not found
         """
-        cursor = self.db.execute(
-            "UPDATE chat_messages SET read = 1 WHERE id = ?",
-            (message_id,)
-        )
-        self.db.commit()
-        return cursor.rowcount > 0
+        with self.db.transaction("message", resource_id=message_id):
+            cursor = self.db.execute(
+                "UPDATE chat_messages SET read = 1 WHERE id = ?",
+                (message_id,)
+            )
+            return cursor.rowcount > 0
     
     def mark_all_as_read(self, agent_id: str) -> int:
         """
@@ -189,26 +189,26 @@ class ChatRepository:
         Returns:
             Number of messages marked as read
         """
-        cursor = self.db.execute(
-            "UPDATE chat_messages SET read = 1 WHERE agent_id = ? AND read = 0",
-            (agent_id,)
-        )
-        self.db.commit()
-        return cursor.rowcount
+        with self.db.transaction("agent", resource_id=agent_id):
+            cursor = self.db.execute(
+                "UPDATE chat_messages SET read = 1 WHERE agent_id = ? AND read = 0",
+                (agent_id,)
+            )
+            return cursor.rowcount
     
     def cleanup_messages(self, agent_id: str, keep_count: int = 200):
         """Delete old messages for an agent, keeping the most recent ones."""
-        self.db.execute(
-            """DELETE FROM chat_messages 
-               WHERE agent_id = ? AND id NOT IN (
-                   SELECT id FROM chat_messages 
-                   WHERE agent_id = ?
-                   ORDER BY timestamp DESC 
-                   LIMIT ?
-               )""",
-            (agent_id, agent_id, keep_count)
-        )
-        self.db.commit()
+        with self.db.transaction("agent", resource_id=agent_id):
+            self.db.execute(
+                """DELETE FROM chat_messages 
+                   WHERE agent_id = ? AND id NOT IN (
+                       SELECT id FROM chat_messages 
+                       WHERE agent_id = ?
+                       ORDER BY timestamp DESC 
+                       LIMIT ?
+                   )""",
+                (agent_id, agent_id, keep_count)
+            )
     
     def get_message_count(self, agent_id: str, read: Optional[bool] = None) -> int:
         """Get message count for an agent."""
@@ -380,31 +380,37 @@ class ChatRepository:
         """Add a pending question for an agent."""
         timestamp = datetime.now().isoformat()
         
-        self.db.execute(
-            """INSERT INTO pending_questions 
-               (request_id, agent_id, question, options, message_id, timestamp)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            (
-                request_id,
-                agent_id,
-                question,
-                json.dumps(options) if options else None,
-                message_id,
-                timestamp
+        with self.db.transaction("agent", resource_id=agent_id):
+            self.db.execute(
+                """INSERT INTO pending_questions 
+                   (request_id, agent_id, question, options, message_id, timestamp)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (
+                    request_id,
+                    agent_id,
+                    question,
+                    json.dumps(options) if options else None,
+                    message_id,
+                    timestamp
+                )
             )
-        )
-        self.db.commit()
         
         return self.get_pending_question(request_id)
     
     def delete_pending_question(self, request_id: str) -> bool:
         """Delete a pending question."""
-        cursor = self.db.execute(
-            "DELETE FROM pending_questions WHERE request_id = ?",
-            (request_id,)
-        )
-        self.db.commit()
-        return cursor.rowcount > 0
+        # First get agent_id to determine resource_id
+        question = self.get_pending_question(request_id)
+        if not question:
+            return False
+        
+        agent_id = question.get("agent_id")
+        with self.db.transaction("agent", resource_id=agent_id):
+            cursor = self.db.execute(
+                "DELETE FROM pending_questions WHERE request_id = ?",
+                (request_id,)
+            )
+            return cursor.rowcount > 0
     
     def get_all_pending_questions(self, agent_id: str) -> List[Dict[str, Any]]:
         """Alias for list_pending_questions."""
@@ -433,13 +439,13 @@ class ChatRepository:
         """Add a response to a question."""
         timestamp = datetime.now().isoformat()
         
-        self.db.execute(
-            """INSERT INTO question_responses 
-               (request_id, agent_id, response, selected_option, timestamp)
-               VALUES (?, ?, ?, ?, ?)""",
-            (request_id, agent_id, response, selected_option, timestamp)
-        )
-        self.db.commit()
+        with self.db.transaction("agent", resource_id=agent_id):
+            self.db.execute(
+                """INSERT INTO question_responses 
+                   (request_id, agent_id, response, selected_option, timestamp)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (request_id, agent_id, response, selected_option, timestamp)
+            )
         
         return self.get_question_response(request_id)
     
@@ -448,7 +454,13 @@ class ChatRepository:
         request_id: str
     ) -> Optional[Dict[str, Any]]:
         """Get and delete a question response (atomic)."""
-        with self.db.transaction():
+        # First get response to determine agent_id
+        response = self.get_question_response(request_id)
+        if not response:
+            return None
+        
+        agent_id = response.get("agent_id")
+        with self.db.transaction("agent", resource_id=agent_id):
             response = self.get_question_response(request_id)
             if response:
                 self.db.execute(
@@ -501,39 +513,40 @@ class ChatRepository:
         data: Optional[Dict[str, Any]] = None,
     ) -> int:
         """Add an execution log for an agent."""
-        cursor = self.db.execute(
-            """INSERT INTO execution_logs (agent_id, type, timestamp, data)
-               VALUES (?, ?, ?, ?)""",
-            (agent_id, type, timestamp, json.dumps(data) if data else None)
-        )
-        self.db.commit()
+        with self.db.transaction("agent", resource_id=agent_id):
+            cursor = self.db.execute(
+                """INSERT INTO execution_logs (agent_id, type, timestamp, data)
+                   VALUES (?, ?, ?, ?)""",
+                (agent_id, type, timestamp, json.dumps(data) if data else None)
+            )
+            row_id = cursor.lastrowid
         
         # Cleanup old logs (keep last 500 per agent)
         self.cleanup_execution_logs(agent_id, 500)
         
-        return cursor.lastrowid
+        return row_id
     
     def cleanup_execution_logs(self, agent_id: str, keep_count: int = 500):
         """Delete old execution logs for an agent."""
-        self.db.execute(
-            """DELETE FROM execution_logs 
-               WHERE agent_id = ? AND id NOT IN (
-                   SELECT id FROM execution_logs 
-                   WHERE agent_id = ?
-                   ORDER BY timestamp DESC 
-                   LIMIT ?
-               )""",
-            (agent_id, agent_id, keep_count)
-        )
-        self.db.commit()
+        with self.db.transaction("agent", resource_id=agent_id):
+            self.db.execute(
+                """DELETE FROM execution_logs 
+                   WHERE agent_id = ? AND id NOT IN (
+                       SELECT id FROM execution_logs 
+                       WHERE agent_id = ?
+                       ORDER BY timestamp DESC 
+                       LIMIT ?
+                   )""",
+                (agent_id, agent_id, keep_count)
+            )
     
     def clear_execution_logs(self, agent_id: str):
         """Clear all execution logs for an agent."""
-        self.db.execute(
-            "DELETE FROM execution_logs WHERE agent_id = ?",
-            (agent_id,)
-        )
-        self.db.commit()
+        with self.db.transaction("agent", resource_id=agent_id):
+            self.db.execute(
+                "DELETE FROM execution_logs WHERE agent_id = ?",
+                (agent_id,)
+            )
     
     def get_recent_execution_logs(self, agent_id: str, limit: int = 20) -> List[Dict[str, Any]]:
         """Get recent execution logs."""
@@ -564,7 +577,7 @@ class ChatRepository:
     
     def set_agent_rest_state(self, agent_id: str, state: Dict[str, Any]):
         """Set agent rest state."""
-        with self.db.transaction():
+        with self.db.transaction("agent", resource_id=agent_id):
             self._set_runtime_state(agent_id, "is_resting", json.dumps(state.get("is_resting", False)))
             self._set_runtime_state(agent_id, "rest_reason", json.dumps(state.get("reason")))
             self._set_runtime_state(agent_id, "wake_triggers", json.dumps(state.get("wake_triggers", [])))

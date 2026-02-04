@@ -11,10 +11,13 @@ from ..saga import SagaDefinition
 
 def _build_summary_payload(ctx):
     """构建 llm.call_summary payload"""
-    return {
+    payload = {
         "runtime_id": ctx["runtime_id"],
-        "model": ctx.get("summary_model", "gpt-4o-mini"),
     }
+    # 只有显式指定了 summary_model 才传入，否则使用 agent 的默认模型
+    if ctx.get("summary_model"):
+        payload["model"] = ctx["summary_model"]
+    return payload
 
 
 def _build_set_summarized_payload(ctx):

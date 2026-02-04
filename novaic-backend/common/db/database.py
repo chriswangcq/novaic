@@ -4,7 +4,6 @@ Database Connection and Management
 Provides synchronous SQLite connection with WAL mode support.
 """
 
-import os
 import sqlite3
 import threading
 import logging
@@ -15,10 +14,6 @@ from contextlib import contextmanager
 from .locks import DatabaseLockManager
 
 logger = logging.getLogger(__name__)
-
-# Global database instance
-_database: Optional["Database"] = None
-_lock = threading.Lock()
 
 
 class Database:
@@ -31,26 +26,30 @@ class Database:
     - Transaction support with context manager
     - Row factory for dict-like access
     - Thread-safe with FIFO locks (configurable)
+    
+    IMPORTANT: All database operations MUST use transaction() or get_connection()
+    to ensure proper locking. Direct execute()/commit() calls are only safe
+    within a transaction context.
     """
     
     def __init__(self, db_path: Path):
         self.db_path = db_path
-        self._conn: Optional[sqlite3.Connection] = None
         self._initialized = False
-        self._local = threading.local()
+        self._local = threading.local()  # Thread-local storage for connections
+        self._init_schema_func = None  # Store schema init function
         
         # Lock manager for coordinating concurrent access
         self.locks = DatabaseLockManager()
     
     def connect(self, init_schema_func=None):
         """
-        Connect to database and initialize schema.
+        Initialize database (schema setup).
         
         Args:
             init_schema_func: Optional function to initialize schema.
                              Should accept a sqlite3.Connection object.
         """
-        if self._conn is not None:
+        if self._initialized:
             return
         
         # Ensure directory exists
@@ -58,51 +57,69 @@ class Database:
         
         logger.info(f"[DB] Connecting to {self.db_path}")
         
-        self._conn = sqlite3.connect(
-            self.db_path,
-            check_same_thread=False,
-            timeout=30.0
-        )
-        self._conn.row_factory = sqlite3.Row
+        # Store schema init function for thread-local connections
+        self._init_schema_func = init_schema_func
         
-        # Enable WAL mode and foreign keys
-        self._conn.execute("PRAGMA journal_mode = WAL")
-        self._conn.execute("PRAGMA foreign_keys = ON")
-        self._conn.execute("PRAGMA synchronous = NORMAL")
-        # Set busy timeout to wait for locks instead of failing immediately
-        self._conn.execute("PRAGMA busy_timeout = 5000")  # 5 seconds
+        # Create initial connection for schema setup
+        conn = self._create_connection()
         
         # Initialize schema (if provided)
         if init_schema_func:
-            init_schema_func(self._conn)
+            init_schema_func(conn)
         
         self._initialized = True
         
         logger.info(f"[DB] Connected and initialized")
     
+    def _create_connection(self) -> sqlite3.Connection:
+        """Create a new SQLite connection with proper settings."""
+        conn = sqlite3.connect(
+            self.db_path,
+            check_same_thread=False,  # We handle thread safety ourselves
+            timeout=30.0
+        )
+        conn.row_factory = sqlite3.Row
+        
+        # Enable WAL mode and foreign keys
+        conn.execute("PRAGMA journal_mode = WAL")
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute("PRAGMA synchronous = NORMAL")
+        # Set busy timeout to wait for locks instead of failing immediately
+        conn.execute("PRAGMA busy_timeout = 5000")  # 5 seconds
+        
+        return conn
+    
+    def _get_thread_connection(self) -> sqlite3.Connection:
+        """Get or create a connection for the current thread."""
+        if not hasattr(self._local, 'conn') or self._local.conn is None:
+            self._local.conn = self._create_connection()
+        return self._local.conn
+    
     def close(self):
-        """Close database connection."""
-        if self._conn:
-            self._conn.close()
-            self._conn = None
-            self._initialized = False
-            logger.info("[DB] Connection closed")
+        """Close all database connections."""
+        # Close thread-local connection if exists
+        if hasattr(self._local, 'conn') and self._local.conn:
+            self._local.conn.close()
+            self._local.conn = None
+        self._initialized = False
+        logger.info("[DB] Connection closed")
     
     def vacuum(self):
         """Vacuum the database to reclaim space."""
-        if self._conn:
-            self._conn.execute("VACUUM")
-            logger.info("[DB] Database vacuumed")
+        conn = self._get_thread_connection()
+        conn.execute("VACUUM")
+        logger.info("[DB] Database vacuumed")
     
     def execute(
         self,
         sql: str,
         params: tuple = ()
     ) -> sqlite3.Cursor:
-        """Execute a SQL statement."""
-        if not self._conn:
+        """Execute a SQL statement. Should be called within transaction() context."""
+        if not self._initialized:
             raise RuntimeError("Database not connected")
-        return self._conn.execute(sql, params)
+        conn = self._get_thread_connection()
+        return conn.execute(sql, params)
     
     def executemany(
         self,
@@ -110,9 +127,10 @@ class Database:
         params_list: List[tuple]
     ) -> sqlite3.Cursor:
         """Execute a SQL statement with multiple parameter sets."""
-        if not self._conn:
+        if not self._initialized:
             raise RuntimeError("Database not connected")
-        return self._conn.executemany(sql, params_list)
+        conn = self._get_thread_connection()
+        return conn.executemany(sql, params_list)
     
     def fetchone(
         self,
@@ -136,18 +154,22 @@ class Database:
     
     def commit(self):
         """Commit current transaction."""
-        if self._conn:
-            self._conn.commit()
+        if self._initialized:
+            conn = self._get_thread_connection()
+            conn.commit()
     
     def rollback(self):
         """Rollback current transaction."""
-        if self._conn:
-            self._conn.rollback()
+        if self._initialized:
+            conn = self._get_thread_connection()
+            conn.rollback()
     
     @contextmanager
     def transaction(self, lock_type: str = "global", **lock_kwargs):
         """
         Context manager for database transactions with FIFO lock.
+        
+        Uses thread-local connections for true parallel execution.
         
         Args:
             lock_type (str): Lock type ("global", "message", "agent", "task", "saga")
@@ -156,28 +178,23 @@ class Database:
                 - timeout (float): Maximum wait time
         
         Usage:
-            # Global lock (default)
-            with db.transaction():
+            with db.transaction("agent", resource_id=agent_id):
                 db.execute("INSERT ...")
                 db.execute("UPDATE ...")
-            
-            # Message lock (sharded by message_id)
-            with db.transaction("message", resource_id=message_id):
-                db.execute("UPDATE chat_messages ...")
-            
-            # Agent lock (sharded by agent_id)
-            with db.transaction("agent", resource_id=agent_id):
-                db.execute("UPDATE subagents ...")
+                # Auto-commits on exit, rolls back on exception
         """
-        if not self._conn:
+        if not self._initialized:
             raise RuntimeError("Database not connected")
         
+        conn = self._get_thread_connection()
+        
+        # Use specified lock type (thread-local connections enable true sharding)
         with self.locks.acquire(lock_type, **lock_kwargs):
             try:
                 yield self
-                self._conn.commit()
+                conn.commit()
             except Exception:
-                self._conn.rollback()
+                conn.rollback()
                 raise
     
     @contextmanager
@@ -185,6 +202,8 @@ class Database:
         """
         Get a connection context manager with FIFO lock.
         
+        Uses thread-local connections for true parallel execution.
+        
         Args:
             lock_type (str): Lock type ("global", "message", "agent", "task", "saga")
             **lock_kwargs: Lock-specific parameters
@@ -192,18 +211,14 @@ class Database:
                 - timeout (float): Maximum wait time
         
         Usage:
-            # Global lock (default)
-            with db.get_connection() as conn:
+            with db.get_connection("agent", resource_id=agent_id) as conn:
                 cursor = conn.execute("SELECT ...")
-            
-            # Message lock (sharded by message_id)
-            with db.get_connection("message", resource_id=message_id) as conn:
-                conn.execute("UPDATE chat_messages ...")
                 conn.commit()
         """
-        if not self._conn:
+        if not self._initialized:
             raise RuntimeError("Database not connected")
         
+        # Use specified lock type (thread-local connections enable true sharding)
         with self.locks.acquire(lock_type, **lock_kwargs):
             yield self
     
@@ -211,70 +226,48 @@ class Database:
     
     def get_config(self, key: str) -> Optional[str]:
         """Get a config value by key."""
-        row = self.fetchone(
-            "SELECT value FROM config WHERE key = ?",
-            (key,)
-        )
-        return row["value"] if row else None
+        with self.transaction("global"):
+            row = self.fetchone(
+                "SELECT value FROM config WHERE key = ?",
+                (key,)
+            )
+            return row["value"] if row else None
     
     def set_config(self, key: str, value: str):
         """Set a config value."""
-        self.execute(
-            """INSERT INTO config (key, value, updated_at) 
-               VALUES (?, ?, datetime('now'))
-               ON CONFLICT(key) DO UPDATE SET 
-                   value = excluded.value,
-                   updated_at = datetime('now')""",
-            (key, value)
-        )
-        self.commit()
+        with self.transaction("global"):
+            self.execute(
+                """INSERT INTO config (key, value, updated_at) 
+                   VALUES (?, ?, datetime('now'))
+                   ON CONFLICT(key) DO UPDATE SET 
+                       value = excluded.value,
+                       updated_at = datetime('now')""",
+                (key, value)
+            )
     
     def get_runtime_state(self, key: str) -> Optional[str]:
         """Get a runtime state value by key."""
-        row = self.fetchone(
-            "SELECT value FROM agent_runtime_state WHERE key = ?",
-            (key,)
-        )
-        return row["value"] if row else None
+        with self.transaction("global"):
+            row = self.fetchone(
+                "SELECT value FROM agent_runtime_state WHERE key = ?",
+                (key,)
+            )
+            return row["value"] if row else None
     
     def set_runtime_state(self, key: str, value: str):
         """Set a runtime state value."""
-        self.execute(
-            """INSERT INTO agent_runtime_state (key, value, updated_at)
-               VALUES (?, ?, datetime('now'))
-               ON CONFLICT(key) DO UPDATE SET
-                   value = excluded.value,
-                   updated_at = datetime('now')""",
-            (key, value)
-        )
-        self.commit()
+        with self.transaction("global"):
+            self.execute(
+                """INSERT INTO agent_runtime_state (key, value, updated_at)
+                   VALUES (?, ?, datetime('now'))
+                   ON CONFLICT(key) DO UPDATE SET
+                       value = excluded.value,
+                       updated_at = datetime('now')""",
+                (key, value)
+            )
 
 
-def get_database() -> Database:
-    """Get the global database instance."""
-    global _database
-    if _database is None:
-        # Get data directory from environment
-        data_dir = os.environ.get("NOVAIC_DATA_DIR")
-        if not data_dir:
-            raise RuntimeError("NOVAIC_DATA_DIR environment variable is required")
-        
-        db_path = Path(data_dir) / "novaic.db"
-        _database = Database(db_path)
-    
-    return _database
-
-
-def init_database() -> Database:
-    """Initialize and return the global database instance."""
-    db = get_database()
-    db.connect()
-    return db
-
-
-def close_database():
-    """Close the global database connection."""
-    global _database
-    if _database:
-        _database.close()
-        _database = None
+# NOTE: Global database functions removed.
+# Each service (Gateway, Queue Service) manages its own Database instance.
+# - Gateway: gateway/db/access.py -> novaic.db
+# - Queue Service: queue_service/main.py -> queue.db

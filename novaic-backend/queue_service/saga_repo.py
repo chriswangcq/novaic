@@ -126,19 +126,21 @@ class SagaRepository:
     
     def get(self, saga_id: str) -> Optional[Dict[str, Any]]:
         """获取 Saga"""
-        cursor = self.db.execute(
-            "SELECT * FROM tq_sagas WHERE id = ?", (saga_id,)
-        )
-        row = cursor.fetchone()
-        return self._row_to_dict(row) if row else None
+        with self.db.transaction(lock_type="saga", resource_id=saga_id):
+            cursor = self.db.execute(
+                "SELECT * FROM tq_sagas WHERE id = ?", (saga_id,)
+            )
+            row = cursor.fetchone()
+            return self._row_to_dict(row) if row else None
     
     def get_by_idempotency_key(self, key: str) -> Optional[Dict[str, Any]]:
         """通过幂等键获取"""
-        cursor = self.db.execute(
-            "SELECT * FROM tq_sagas WHERE idempotency_key = ?", (key,)
-        )
-        row = cursor.fetchone()
-        return self._row_to_dict(row) if row else None
+        with self.db.transaction(lock_type="global"):
+            cursor = self.db.execute(
+                "SELECT * FROM tq_sagas WHERE idempotency_key = ?", (key,)
+            )
+            row = cursor.fetchone()
+            return self._row_to_dict(row) if row else None
     
     def update_progress(
         self,
@@ -179,11 +181,12 @@ class SagaRepository:
     
     def get_pending(self) -> List[Dict[str, Any]]:
         """获取待执行/运行中的 Saga"""
-        cursor = self.db.execute(
-            "SELECT * FROM tq_sagas WHERE status IN ('pending', 'running') ORDER BY created_at"
-        )
-        rows = cursor.fetchall()
-        return [self._row_to_dict(row) for row in rows]
+        with self.db.transaction(lock_type="global"):
+            cursor = self.db.execute(
+                "SELECT * FROM tq_sagas WHERE status IN ('pending', 'running') ORDER BY created_at"
+            )
+            rows = cursor.fetchall()
+            return [self._row_to_dict(row) for row in rows]
     
     def start(
         self,

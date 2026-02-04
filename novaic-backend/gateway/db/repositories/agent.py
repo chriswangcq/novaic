@@ -52,12 +52,12 @@ class AgentRepository:
         """Create a new agent."""
         created_at = datetime.now().isoformat()
         
-        self.db.execute(
-            """INSERT INTO agents (id, name, created_at, vm_config, ports, setup_complete)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            (id, name, created_at, json.dumps(vm_config), json.dumps(ports), 1 if setup_complete else 0)
-        )
-        self.db.commit()
+        with self.db.transaction("agent", resource_id=id):
+            self.db.execute(
+                """INSERT INTO agents (id, name, created_at, vm_config, ports, setup_complete)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (id, name, created_at, json.dumps(vm_config), json.dumps(ports), 1 if setup_complete else 0)
+            )
         
         return self.get_agent(id)
     
@@ -90,22 +90,22 @@ class AgentRepository:
             return self.get_agent(agent_id)
         
         params.append(agent_id)
-        self.db.execute(
-            f"UPDATE agents SET {', '.join(updates)} WHERE id = ?",
-            tuple(params)
-        )
-        self.db.commit()
+        with self.db.transaction("agent", resource_id=agent_id):
+            self.db.execute(
+                f"UPDATE agents SET {', '.join(updates)} WHERE id = ?",
+                tuple(params)
+            )
         
         return self.get_agent(agent_id)
     
     def delete_agent(self, agent_id: str) -> bool:
         """Delete an agent."""
-        cursor = self.db.execute(
-            "DELETE FROM agents WHERE id = ?",
-            (agent_id,)
-        )
-        self.db.commit()
-        return cursor.rowcount > 0
+        with self.db.transaction("agent", resource_id=agent_id):
+            cursor = self.db.execute(
+                "DELETE FROM agents WHERE id = ?",
+                (agent_id,)
+            )
+            return cursor.rowcount > 0
     
     def get_current_agent_id(self) -> Optional[str]:
         """Get the current agent ID from config."""

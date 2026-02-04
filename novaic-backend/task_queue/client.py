@@ -242,7 +242,15 @@ class SagaClient:
         
         try:
             resp = session.request(method, url, json=json_data)
-            data = resp.json()
+            
+            # 检查空响应
+            if not resp.text or not resp.text.strip():
+                raise TaskQueueError(f"Empty response from {url} (status: {resp.status_code})")
+            
+            try:
+                data = resp.json()
+            except Exception as json_err:
+                raise TaskQueueError(f"Failed to parse JSON from {url}: {json_err}, content: {resp.text[:200]}")
             
             if resp.status_code >= 400:
                 error_msg = data.get("detail", str(data))
@@ -364,10 +372,19 @@ class GatewayInternalClient:
         url = f"{self.gateway_url}{path}"
         try:
             resp = session.request(method, url, json=json_data, params=params)
-            data = resp.json()
+            
+            # 检查空响应
+            if not resp.text or not resp.text.strip():
+                raise TaskQueueError(f"Empty response from {url} (status: {resp.status_code})")
+            
+            try:
+                data = resp.json()
+            except Exception as json_err:
+                raise TaskQueueError(f"Failed to parse JSON from {url}: {json_err}, content: {resp.text[:200]}")
+            
             if resp.status_code >= 400:
-                    error_msg = data.get("detail", str(data))
-                    raise TaskQueueError(f"API error ({resp.status_code}): {error_msg}")
+                error_msg = data.get("detail", str(data))
+                raise TaskQueueError(f"API error ({resp.status_code}): {error_msg}")
             return data
         except httpx.HTTPError as e:
             raise TaskQueueError(f"HTTP error: {e}")

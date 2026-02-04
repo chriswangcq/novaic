@@ -73,13 +73,14 @@ class TaskQueue:
         except Exception as e:
             # 检查是否是唯一约束冲突
             if "UNIQUE constraint" in str(e) and idempotency_key:
-                cursor = self.db.execute(
-                    "SELECT id FROM tq_tasks WHERE idempotency_key = ?",
-                    (idempotency_key,)
-                )
-                row = cursor.fetchone()
-                if row:
-                    return row[0]
+                with self.db.transaction(lock_type="global"):
+                    cursor = self.db.execute(
+                        "SELECT id FROM tq_tasks WHERE idempotency_key = ?",
+                        (idempotency_key,)
+                    )
+                    row = cursor.fetchone()
+                    if row:
+                        return row[0]
             raise
     
     def claim(
@@ -232,52 +233,55 @@ class TaskQueue:
     
     def get_task(self, task_id: str) -> Optional[Dict[str, Any]]:
         """获取任务详情"""
-        cursor = self.db.execute(
-            "SELECT * FROM tq_tasks WHERE id = ?",
-            (task_id,)
-        )
-        row = cursor.fetchone()
-        
-        if row:
-            return self._row_to_dict(row)
-        return None
+        with self.db.transaction(lock_type="task", resource_id=task_id):
+            cursor = self.db.execute(
+                "SELECT * FROM tq_tasks WHERE id = ?",
+                (task_id,)
+            )
+            row = cursor.fetchone()
+            
+            if row:
+                return self._row_to_dict(row)
+            return None
     
     def get_task_by_idempotency_key(
         self,
         idempotency_key: str,
     ) -> Optional[Dict[str, Any]]:
         """通过幂等键获取任务"""
-        cursor = self.db.execute(
-            "SELECT * FROM tq_tasks WHERE idempotency_key = ?",
-            (idempotency_key,)
-        )
-        row = cursor.fetchone()
-        
-        if row:
-            return self._row_to_dict(row)
-        return None
+        with self.db.transaction(lock_type="global"):
+            cursor = self.db.execute(
+                "SELECT * FROM tq_tasks WHERE idempotency_key = ?",
+                (idempotency_key,)
+            )
+            row = cursor.fetchone()
+            
+            if row:
+                return self._row_to_dict(row)
+            return None
     
     def count_by_status(
         self,
         topic: Optional[str] = None,
     ) -> Dict[str, int]:
         """统计各状态任务数量"""
-        if topic:
-            cursor = self.db.execute("""
-                SELECT status, COUNT(*) as count 
-                FROM tq_tasks 
-                WHERE topic = ?
-                GROUP BY status
-            """, (topic,))
-        else:
-            cursor = self.db.execute("""
-                SELECT status, COUNT(*) as count 
-                FROM tq_tasks 
-                GROUP BY status
-            """)
-        
-        rows = cursor.fetchall()
-        return {row[0]: row[1] for row in rows}
+        with self.db.transaction(lock_type="global"):
+            if topic:
+                cursor = self.db.execute("""
+                    SELECT status, COUNT(*) as count 
+                    FROM tq_tasks 
+                    WHERE topic = ?
+                    GROUP BY status
+                """, (topic,))
+            else:
+                cursor = self.db.execute("""
+                    SELECT status, COUNT(*) as count 
+                    FROM tq_tasks 
+                    GROUP BY status
+                """)
+            
+            rows = cursor.fetchall()
+            return {row[0]: row[1] for row in rows}
     
     def cancel_all(self, agent_id: Optional[str] = None) -> int:
         """
@@ -326,12 +330,13 @@ class TaskQueue:
         Returns:
             所有在 tq_tasks 表中出现过的 topic 列表
         """
-        cursor = self.db.execute("""
-            SELECT DISTINCT topic FROM tq_tasks ORDER BY topic
-        """)
-        rows = cursor.fetchall()
-        cursor.close()
-        return [row[0] for row in rows]
+        with self.db.transaction(lock_type="global"):
+            cursor = self.db.execute("""
+                SELECT DISTINCT topic FROM tq_tasks ORDER BY topic
+            """)
+            rows = cursor.fetchall()
+            cursor.close()
+            return [row[0] for row in rows]
     
     def _row_to_dict(self, row) -> Dict[str, Any]:
         """将数据库行转换为字典"""

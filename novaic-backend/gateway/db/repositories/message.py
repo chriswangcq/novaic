@@ -55,13 +55,13 @@ class MessageRepository:
         msg_id = id or str(uuid4())[:12]
         timestamp = timestamp or datetime.now().isoformat()
         
-        self.db.execute(
-            """INSERT INTO chat_messages 
-               (id, agent_id, type, content, read, metadata, timestamp, created_at, status)
-               VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?)""",
-            (msg_id, agent_id, type, content, json.dumps(metadata or {}), timestamp, timestamp, status)
-        )
-        self.db.commit()
+        with self.db.transaction("message", resource_id=msg_id):
+            self.db.execute(
+                """INSERT INTO chat_messages 
+                   (id, agent_id, type, content, read, metadata, timestamp, created_at, status)
+                   VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?)""",
+                (msg_id, agent_id, type, content, json.dumps(metadata or {}), timestamp, timestamp, status)
+            )
         
         return {
             "id": msg_id,
@@ -87,7 +87,8 @@ class MessageRepository:
         Returns:
             认领成功的消息，或 None（队列为空）
         """
-        with self.db.get_connection() as conn:
+        # 全局锁：因为需要先查询再更新，涉及多条记录的竞争
+        with self.db.transaction("global") as conn:
             # 1. 查找一条 sending 消息
             cursor = conn.execute(
                 """SELECT id, agent_id, type, content, metadata, timestamp
@@ -111,7 +112,7 @@ class MessageRepository:
                    WHERE id = ? AND status = 'sending'""",
                 (now, msg_id)
             )
-            conn.commit()
+            # transaction 自动 commit
             
             # 3. 检查是否成功认领
             if cursor.rowcount == 0:
@@ -216,11 +217,11 @@ class MessageRepository:
         Args:
             message_id: 消息 ID
         """
-        self.db.execute(
-            "UPDATE chat_messages SET read = 1 WHERE id = ?",
-            (message_id,)
-        )
-        self.db.commit()
+        with self.db.transaction("message", resource_id=message_id):
+            self.db.execute(
+                "UPDATE chat_messages SET read = 1 WHERE id = ?",
+                (message_id,)
+            )
     
     def mark_all_read(self, agent_id: str):
         """
@@ -229,11 +230,12 @@ class MessageRepository:
         Args:
             agent_id: Agent ID
         """
-        self.db.execute(
-            "UPDATE chat_messages SET read = 1 WHERE agent_id = ? AND read = 0",
-            (agent_id,)
-        )
-        self.db.commit()
+        # 批量操作使用 agent 级别锁
+        with self.db.transaction("agent", resource_id=agent_id):
+            self.db.execute(
+                "UPDATE chat_messages SET read = 1 WHERE agent_id = ? AND read = 0",
+                (agent_id,)
+            )
     
     def get_unread_count(self, agent_id: str) -> int:
         """

@@ -8,7 +8,6 @@ from common.db import Database, DatabaseLockManager
 from .access import get_database, get_db, init_database, close_database
 from .schema import init_schema_sync
 from .migration import run_migration
-from . import ops
 
 __all__ = [
     # Database class
@@ -22,6 +21,4 @@ __all__ = [
     # Schema
     "init_schema_sync",
     "run_migration",
-    # Modules
-    "ops",
 ]

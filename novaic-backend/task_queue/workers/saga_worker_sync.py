@@ -38,6 +38,7 @@ class SagaWorkerMetrics:
     steps_executed: int = 0
     tasks_published: int = 0
     tasks_waited: int = 0
+    progress_update_failed: int = 0  # 被静默忽略的 update_progress 失败次数
     last_saga_at: Optional[str] = None
     started_at: Optional[str] = None
     
@@ -49,6 +50,7 @@ class SagaWorkerMetrics:
             "steps_executed": self.steps_executed,
             "tasks_published": self.tasks_published,
             "tasks_waited": self.tasks_waited,
+            "progress_update_failed": self.progress_update_failed,
             "last_saga_at": self.last_saga_at,
             "started_at": self.started_at,
         }
@@ -150,6 +152,10 @@ class SagaWorkerSync:
             self._wait_for_all_sagas()
             self.saga_client.close()
             self.task_client.close()
+            # 输出最终指标
+            self._log(f"Final metrics: processed={self.metrics.sagas_processed}, succeeded={self.metrics.sagas_succeeded}, failed={self.metrics.sagas_failed}, progress_update_failed={self.metrics.progress_update_failed}")
+            if self.metrics.progress_update_failed > 0:
+                self._log(f"⚠️  {self.metrics.progress_update_failed} update_progress calls were silently ignored!", level="warning")
             self._log("Stopped")
     
     def shutdown(self):
@@ -479,7 +485,8 @@ class SagaWorkerSync:
         try:
             self.saga_client.update_progress(saga_id, current_step, step_results)
         except Exception as e:
-            self._log(f"Failed to update progress: {e}", level="error")
+            self.metrics.progress_update_failed += 1
+            self._log(f"Failed to update progress (silently ignored, total={self.metrics.progress_update_failed}): {e}", level="error")
     
     def _log(self, msg: str, level: str = "info"):
         """日志输出"""

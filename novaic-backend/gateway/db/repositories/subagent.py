@@ -138,7 +138,7 @@ class SubAgentRepository:
     
     def _insert(self, subagent: SubAgent):
         """Insert a SubAgent into the database."""
-        with self.db.get_connection() as conn:
+        with self.db.get_connection("agent", resource_id=subagent.agent_id) as conn:
             conn.execute("""
                 INSERT INTO subagents (
                     subagent_id, agent_id, type, parent_subagent_id,
@@ -171,7 +171,7 @@ class SubAgentRepository:
     
     def get_by_id(self, subagent_id: str, agent_id: str) -> Optional[SubAgent]:
         """Get a SubAgent by its ID and agent ID."""
-        with self.db.get_connection() as conn:
+        with self.db.get_connection("agent", resource_id=agent_id) as conn:
             cursor = conn.execute(
                 f"SELECT {self._COLUMNS} FROM subagents WHERE subagent_id = ? AND agent_id = ?",
                 (subagent_id, agent_id)
@@ -183,7 +183,7 @@ class SubAgentRepository:
     
     def get_main_subagent(self, agent_id: str) -> Optional[SubAgent]:
         """Get the main SubAgent for an agent."""
-        with self.db.get_connection() as conn:
+        with self.db.get_connection("agent", resource_id=agent_id) as conn:
             cursor = conn.execute(f"""
                 SELECT {self._COLUMNS} FROM subagents 
                 WHERE agent_id = ? AND type = 'main'
@@ -207,7 +207,7 @@ class SubAgentRepository:
     
     def get_sub_subagents(self, agent_id: str) -> List[SubAgent]:
         """Get all sub SubAgents for an agent."""
-        with self.db.get_connection() as conn:
+        with self.db.get_connection("agent", resource_id=agent_id) as conn:
             cursor = conn.execute(f"""
                 SELECT {self._COLUMNS} FROM subagents 
                 WHERE agent_id = ? AND type = 'sub'
@@ -236,7 +236,7 @@ class SubAgentRepository:
         Returns True if wake succeeded, False if already awake/awaking.
         """
         now = datetime.utcnow().isoformat()
-        with self.db.get_connection() as conn:
+        with self.db.get_connection("agent", resource_id=agent_id) as conn:
             # CAS: sleeping OR failed → target_status
             cursor = conn.execute("""
                 UPDATE subagents 
@@ -249,7 +249,7 @@ class SubAgentRepository:
     def set_sleeping(self, subagent_id: str, agent_id: str):
         """Set SubAgent to sleeping status."""
         now = datetime.utcnow().isoformat()
-        with self.db.get_connection() as conn:
+        with self.db.get_connection("agent", resource_id=agent_id) as conn:
             conn.execute("""
                 UPDATE subagents 
                 SET status = 'sleeping', updated_at = ?
@@ -260,7 +260,7 @@ class SubAgentRepository:
     def set_summarizing(self, subagent_id: str, agent_id: str):
         """Set SubAgent to summarizing status."""
         now = datetime.utcnow().isoformat()
-        with self.db.get_connection() as conn:
+        with self.db.get_connection("agent", resource_id=agent_id) as conn:
             conn.execute("""
                 UPDATE subagents 
                 SET status = 'summarizing', updated_at = ?
@@ -271,7 +271,7 @@ class SubAgentRepository:
     def set_awake(self, subagent_id: str, agent_id: str):
         """Set SubAgent to awake status (for direct state changes)."""
         now = datetime.utcnow().isoformat()
-        with self.db.get_connection() as conn:
+        with self.db.get_connection("agent", resource_id=agent_id) as conn:
             conn.execute("""
                 UPDATE subagents 
                 SET status = 'awake', updated_at = ?
@@ -282,7 +282,7 @@ class SubAgentRepository:
     def set_running(self, subagent_id: str, agent_id: str, progress: Optional[str] = None):
         """Set SubAgent to running status (for async SubAgents)."""
         now = datetime.utcnow().isoformat()
-        with self.db.get_connection() as conn:
+        with self.db.get_connection("agent", resource_id=agent_id) as conn:
             conn.execute("""
                 UPDATE subagents 
                 SET status = 'running', progress = ?, updated_at = ?
@@ -293,7 +293,7 @@ class SubAgentRepository:
     def set_completed(self, subagent_id: str, agent_id: str, result: Optional[str] = None):
         """Set SubAgent to completed status with result."""
         now = datetime.utcnow().isoformat()
-        with self.db.get_connection() as conn:
+        with self.db.get_connection("agent", resource_id=agent_id) as conn:
             conn.execute("""
                 UPDATE subagents 
                 SET status = 'completed', result = ?, progress = NULL, updated_at = ?
@@ -304,7 +304,7 @@ class SubAgentRepository:
     def set_failed(self, subagent_id: str, agent_id: str, error: Optional[str] = None):
         """Set SubAgent to failed status with error message."""
         now = datetime.utcnow().isoformat()
-        with self.db.get_connection() as conn:
+        with self.db.get_connection("agent", resource_id=agent_id) as conn:
             conn.execute("""
                 UPDATE subagents 
                 SET status = 'failed', error = ?, progress = NULL, updated_at = ?
@@ -315,7 +315,7 @@ class SubAgentRepository:
     def set_cancelled(self, subagent_id: str, agent_id: str):
         """Set SubAgent to cancelled status."""
         now = datetime.utcnow().isoformat()
-        with self.db.get_connection() as conn:
+        with self.db.get_connection("agent", resource_id=agent_id) as conn:
             conn.execute("""
                 UPDATE subagents 
                 SET status = 'cancelled', progress = NULL, updated_at = ?
@@ -326,7 +326,7 @@ class SubAgentRepository:
     def update_progress(self, subagent_id: str, agent_id: str, progress: str):
         """Update the progress description for a running SubAgent."""
         now = datetime.utcnow().isoformat()
-        with self.db.get_connection() as conn:
+        with self.db.get_connection("agent", resource_id=agent_id) as conn:
             conn.execute("""
                 UPDATE subagents 
                 SET progress = ?, updated_at = ?
@@ -346,7 +346,7 @@ class SubAgentRepository:
     ):
         """Update the historical summary for a SubAgent."""
         now = datetime.utcnow().isoformat()
-        with self.db.get_connection() as conn:
+        with self.db.get_connection("agent", resource_id=agent_id) as conn:
             conn.execute("""
                 UPDATE subagents 
                 SET historical_summary = ?, updated_at = ?
@@ -363,7 +363,7 @@ class SubAgentRepository:
     ):
         """Update wake triggers and handoff notes for a SubAgent."""
         now = datetime.utcnow().isoformat()
-        with self.db.get_connection() as conn:
+        with self.db.get_connection("agent", resource_id=agent_id) as conn:
             conn.execute("""
                 UPDATE subagents 
                 SET wake_triggers = ?, handoff_notes = ?, updated_at = ?
@@ -377,7 +377,7 @@ class SubAgentRepository:
     
     def delete(self, subagent_id: str, agent_id: str):
         """Delete a SubAgent."""
-        with self.db.get_connection() as conn:
+        with self.db.get_connection("agent", resource_id=agent_id) as conn:
             conn.execute(
                 "DELETE FROM subagents WHERE subagent_id = ? AND agent_id = ?",
                 (subagent_id, agent_id)
@@ -386,7 +386,7 @@ class SubAgentRepository:
     
     def delete_all_for_agent(self, agent_id: str):
         """Delete all SubAgents for an agent."""
-        with self.db.get_connection() as conn:
+        with self.db.get_connection("agent", resource_id=agent_id) as conn:
             conn.execute(
                 "DELETE FROM subagents WHERE agent_id = ?",
                 (agent_id,)
@@ -446,7 +446,7 @@ class SubAgentRepository:
         Returns number of SubAgents reset.
         """
         now = datetime.utcnow().isoformat()
-        with self.db.get_connection() as conn:
+        with self.db.get_connection("global") as conn:
             cursor = conn.execute(
                 """UPDATE subagents 
                    SET status = 'sleeping', updated_at = ?

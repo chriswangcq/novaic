@@ -61,15 +61,15 @@ class AgentStateRepository:
         """
         now = datetime.now().isoformat()
         
-        self.db.execute(
-            """INSERT INTO agent_state (agent_id, state, last_active_at)
-               VALUES (?, ?, ?)
-               ON CONFLICT(agent_id) DO UPDATE SET 
-               state = excluded.state, 
-               last_active_at = excluded.last_active_at""",
-            (agent_id, state, now)
-        )
-        self.db.commit()
+        with self.db.transaction("agent", resource_id=agent_id):
+            self.db.execute(
+                """INSERT INTO agent_state (agent_id, state, last_active_at)
+                   VALUES (?, ?, ?)
+                   ON CONFLICT(agent_id) DO UPDATE SET 
+                   state = excluded.state, 
+                   last_active_at = excluded.last_active_at""",
+                (agent_id, state, now)
+            )
     
     def set_sleep(
         self,
@@ -87,18 +87,18 @@ class AgentStateRepository:
         """
         now = datetime.now().isoformat()
         
-        self.db.execute(
-            """INSERT INTO agent_state (agent_id, state, rest_reason, wake_triggers, rest_started_at, last_active_at)
-               VALUES (?, 'sleep', ?, ?, ?, ?)
-               ON CONFLICT(agent_id) DO UPDATE SET 
-               state = 'sleep',
-               rest_reason = excluded.rest_reason,
-               wake_triggers = excluded.wake_triggers,
-               rest_started_at = excluded.rest_started_at,
-               last_active_at = excluded.last_active_at""",
-            (agent_id, reason, json.dumps(wake_triggers or []), now, now)
-        )
-        self.db.commit()
+        with self.db.transaction("agent", resource_id=agent_id):
+            self.db.execute(
+                """INSERT INTO agent_state (agent_id, state, rest_reason, wake_triggers, rest_started_at, last_active_at)
+                   VALUES (?, 'sleep', ?, ?, ?, ?)
+                   ON CONFLICT(agent_id) DO UPDATE SET 
+                   state = 'sleep',
+                   rest_reason = excluded.rest_reason,
+                   wake_triggers = excluded.wake_triggers,
+                   rest_started_at = excluded.rest_started_at,
+                   last_active_at = excluded.last_active_at""",
+                (agent_id, reason, json.dumps(wake_triggers or []), now, now)
+            )
     
     def set_awake(self, agent_id: str):
         """
@@ -111,18 +111,18 @@ class AgentStateRepository:
         """
         now = datetime.now().isoformat()
         
-        self.db.execute(
-            """INSERT INTO agent_state (agent_id, state, rest_reason, wake_triggers, rest_started_at, last_active_at)
-               VALUES (?, 'awake', NULL, '[]', NULL, ?)
-               ON CONFLICT(agent_id) DO UPDATE SET 
-               state = 'awake',
-               rest_reason = NULL,
-               wake_triggers = '[]',
-               rest_started_at = NULL,
-               last_active_at = excluded.last_active_at""",
-            (agent_id, now)
-        )
-        self.db.commit()
+        with self.db.transaction("agent", resource_id=agent_id):
+            self.db.execute(
+                """INSERT INTO agent_state (agent_id, state, rest_reason, wake_triggers, rest_started_at, last_active_at)
+                   VALUES (?, 'awake', NULL, '[]', NULL, ?)
+                   ON CONFLICT(agent_id) DO UPDATE SET 
+                   state = 'awake',
+                   rest_reason = NULL,
+                   wake_triggers = '[]',
+                   rest_started_at = NULL,
+                   last_active_at = excluded.last_active_at""",
+                (agent_id, now)
+            )
     
     def update_last_active(self, agent_id: str):
         """
@@ -133,11 +133,11 @@ class AgentStateRepository:
         """
         now = datetime.now().isoformat()
         
-        self.db.execute(
-            """UPDATE agent_state SET last_active_at = ? WHERE agent_id = ?""",
-            (now, agent_id)
-        )
-        self.db.commit()
+        with self.db.transaction("agent", resource_id=agent_id):
+            self.db.execute(
+                """UPDATE agent_state SET last_active_at = ? WHERE agent_id = ?""",
+                (now, agent_id)
+            )
     
     def is_sleeping(self, agent_id: str) -> bool:
         """
@@ -189,12 +189,12 @@ class AgentStateRepository:
         """
         now = datetime.now().isoformat()
         
-        self.db.execute(
-            """INSERT OR IGNORE INTO agent_state (agent_id, state, wake_triggers, last_active_at)
-               VALUES (?, 'awake', '[]', ?)""",
-            (agent_id, now)
-        )
-        self.db.commit()
+        with self.db.transaction("agent", resource_id=agent_id):
+            self.db.execute(
+                """INSERT OR IGNORE INTO agent_state (agent_id, state, wake_triggers, last_active_at)
+                   VALUES (?, 'awake', '[]', ?)""",
+                (agent_id, now)
+            )
     
     def delete_state(self, agent_id: str):
         """
@@ -203,8 +203,8 @@ class AgentStateRepository:
         Args:
             agent_id: Agent ID
         """
-        self.db.execute(
-            "DELETE FROM agent_state WHERE agent_id = ?",
-            (agent_id,)
-        )
-        self.db.commit()
+        with self.db.transaction("agent", resource_id=agent_id):
+            self.db.execute(
+                "DELETE FROM agent_state WHERE agent_id = ?",
+                (agent_id,)
+            )

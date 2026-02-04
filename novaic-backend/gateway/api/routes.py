@@ -485,14 +485,22 @@ def chat(request: ChatRequest):
     from gateway.db.repositories.message import MessageRepository
     from gateway.config.agents import get_agent_config_manager
     
-    # Get current agent
+    # Get agent_id: use request.agent_id if provided, else fallback to current_agent
     agent_mgr = get_agent_config_manager()
-    current_agent = agent_mgr.get_current_agent()
     
-    if not current_agent:
-        raise HTTPException(status_code=400, detail="No agent selected. Please select an agent first.")
+    if request.agent_id:
+        # Validate agent exists
+        agent = agent_mgr.get_agent(request.agent_id)
+        if not agent:
+            raise HTTPException(status_code=404, detail=f"Agent not found: {request.agent_id}")
+        agent_id = request.agent_id
+    else:
+        # Fallback to current agent
+        current_agent = agent_mgr.get_current_agent()
+        if not current_agent:
+            raise HTTPException(status_code=400, detail="No agent_id provided and no current agent selected.")
+        agent_id = current_agent.id
     
-    agent_id = current_agent.id
     content = request.message.strip()
     
     if not content:
@@ -569,14 +577,20 @@ def chat_stream(request: ChatRequest):
     from gateway.config.agents import get_agent_config_manager
     import asyncio
     
-    # Get current agent
+    # Get agent_id: use request.agent_id if provided, else fallback to current_agent
     agent_mgr = get_agent_config_manager()
-    current_agent = agent_mgr.get_current_agent()
     
-    if not current_agent:
-        raise HTTPException(status_code=400, detail="No agent selected. Please select an agent first.")
+    if request.agent_id:
+        agent = agent_mgr.get_agent(request.agent_id)
+        if not agent:
+            raise HTTPException(status_code=404, detail=f"Agent not found: {request.agent_id}")
+        agent_id = request.agent_id
+    else:
+        current_agent = agent_mgr.get_current_agent()
+        if not current_agent:
+            raise HTTPException(status_code=400, detail="No agent_id provided and no current agent selected.")
+        agent_id = current_agent.id
     
-    agent_id = current_agent.id
     content = request.message.strip()
     
     if not content:
@@ -765,12 +779,11 @@ def clear_history():
         return {"status": "ok", "message": "No agent selected"}
     
     db = get_db()
-    with db.get_connection("agent", resource_id=current_agent.id, timeout=10.0) as conn:
-        conn.execute(
+    with db.transaction(lock_type="agent", resource_id=current_agent.id, timeout=10.0):
+        db.execute(
             "UPDATE chat_messages SET read = 1 WHERE agent_id = ?",
             (current_agent.id,)
         )
-        conn.commit()
     
     return {"status": "ok", "message": "History cleared (messages marked as read)"}
 
@@ -798,9 +811,9 @@ def interrupt(agent_id: str = None):
     interrupted_runtimes = 0
     
     # 1. 立即更新 Gateway 自己的数据库
-    with db.get_connection("global", timeout=15.0) as conn:
+    with db.transaction(lock_type="global", timeout=15.0):
         # Mark active runtimes as interrupted
-        cursor = conn.execute("""
+        cursor = db.execute("""
             UPDATE agent_runtimes 
             SET status = 'completed', phase = 'completed', updated_at = ?
             WHERE status = 'active'
@@ -808,13 +821,11 @@ def interrupt(agent_id: str = None):
         interrupted_runtimes = cursor.rowcount
         
         # Set SubAgents to sleeping
-        conn.execute("""
+        db.execute("""
             UPDATE subagents 
             SET status = 'sleeping', updated_at = ?
             WHERE status IN ('awake', 'awaking')
         """, (now,))
-        
-        conn.commit()
     
     # 2. 写入 INTERRUPT 消息，Watchdog 会调用 QS cancel API
     # v2.1: Gateway 不再直接调用 Queue Service

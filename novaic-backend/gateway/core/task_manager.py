@@ -848,42 +848,42 @@ class TaskManager:
             return
         
         try:
-            self.db.execute(
-                """INSERT INTO tasks 
-                   (id, type, label, config, status, created_at, started_at, completed_at,
-                    result, result_summary, error, output_file, ttl_hours, expires_at,
-                    parent_session_key, agent_id, notify_on)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                   ON CONFLICT(id) DO UPDATE SET
-                       status = excluded.status,
-                       started_at = excluded.started_at,
-                       completed_at = excluded.completed_at,
-                       result = excluded.result,
-                       result_summary = excluded.result_summary,
-                       error = excluded.error,
-                       output_file = excluded.output_file,
-                       expires_at = excluded.expires_at""",
-                (
-                    task.id,
-                    task.type.value,
-                    task.label,
-                    json.dumps(task.config.to_dict()),
-                    task.status.value,
-                    task.created_at.isoformat() if task.created_at else None,
-                    task.started_at.isoformat() if task.started_at else None,
-                    task.completed_at.isoformat() if task.completed_at else None,
-                    json.dumps(task.result) if task.result else None,
-                    task.result_summary,
-                    task.error,
-                    task.output_file,
-                    task.ttl_hours,
-                    task.expires_at.isoformat() if task.expires_at else None,
-                    task.parent_session_key,
-                    task.agent_id,
-                    json.dumps(task.notify_on),
+            with self.db.transaction(lock_type="agent", resource_id=task.agent_id):
+                self.db.execute(
+                    """INSERT INTO tasks 
+                       (id, type, label, config, status, created_at, started_at, completed_at,
+                        result, result_summary, error, output_file, ttl_hours, expires_at,
+                        parent_session_key, agent_id, notify_on)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                       ON CONFLICT(id) DO UPDATE SET
+                           status = excluded.status,
+                           started_at = excluded.started_at,
+                           completed_at = excluded.completed_at,
+                           result = excluded.result,
+                           result_summary = excluded.result_summary,
+                           error = excluded.error,
+                           output_file = excluded.output_file,
+                           expires_at = excluded.expires_at""",
+                    (
+                        task.id,
+                        task.type.value,
+                        task.label,
+                        json.dumps(task.config.to_dict()),
+                        task.status.value,
+                        task.created_at.isoformat() if task.created_at else None,
+                        task.started_at.isoformat() if task.started_at else None,
+                        task.completed_at.isoformat() if task.completed_at else None,
+                        json.dumps(task.result) if task.result else None,
+                        task.result_summary,
+                        task.error,
+                        task.output_file,
+                        task.ttl_hours,
+                        task.expires_at.isoformat() if task.expires_at else None,
+                        task.parent_session_key,
+                        task.agent_id,
+                        json.dumps(task.notify_on),
+                    )
                 )
-            )
-            self.db.commit()
         except Exception as e:
             logger.error(f"[TaskManager] Failed to save task {task.id}: {e}")
     
@@ -992,12 +992,32 @@ class TaskManager:
         if not self.db:
             return
         
+        # Get agent_id from memory cache or database
+        agent_id = None
+        if task_id in self._tasks:
+            agent_id = self._tasks[task_id].agent_id
+        else:
+            # Query database for agent_id
+            try:
+                row = self.db.fetchone(
+                    "SELECT agent_id FROM tasks WHERE id = ?",
+                    (task_id,)
+                )
+                if row:
+                    agent_id = row["agent_id"]
+            except Exception:
+                pass
+        
+        if not agent_id:
+            # Fallback to default agent_id if not found
+            agent_id = "default"
+        
         try:
-            self.db.execute(
-                "INSERT INTO task_outputs (task_id, type, content) VALUES (?, ?, ?)",
-                (task_id, output_type, content)
-            )
-            self.db.commit()
+            with self.db.transaction(lock_type="agent", resource_id=agent_id):
+                self.db.execute(
+                    "INSERT INTO task_outputs (task_id, type, content) VALUES (?, ?, ?)",
+                    (task_id, output_type, content)
+                )
         except Exception as e:
             logger.warning(f"[TaskManager] Failed to add task output: {e}")
     
@@ -1150,11 +1170,11 @@ class TaskManager:
                         logger.warning(f"[TaskManager] Failed to delete output file {output_file}: {e}")
             
             # Delete from database
-            result = self.db.execute(
-                "DELETE FROM tasks WHERE expires_at IS NOT NULL AND expires_at < ?",
-                (now,)
-            )
-            self.db.commit()
+            with self.db.transaction(lock_type="global"):
+                result = self.db.execute(
+                    "DELETE FROM tasks WHERE expires_at IS NOT NULL AND expires_at < ?",
+                    (now,)
+                )
             
             # Get rowcount - handle different database backends
             if hasattr(result, 'rowcount'):

@@ -34,14 +34,14 @@ class MemoryRepository:
         value_json = json.dumps(value, ensure_ascii=False)
         
         # Use INSERT OR REPLACE for upsert
-        self.db.execute(
-            """INSERT INTO agent_memory (agent_id, namespace, key, value, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?)
-               ON CONFLICT(agent_id, namespace, key) 
-               DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at""",
-            (agent_id, namespace, key, value_json, now, now)
-        )
-        self.db.commit()
+        with self.db.transaction(lock_type="agent", resource_id=agent_id):
+            self.db.execute(
+                """INSERT INTO agent_memory (agent_id, namespace, key, value, created_at, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(agent_id, namespace, key) 
+                   DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at""",
+                (agent_id, namespace, key, value_json, now, now)
+            )
         
         return {
             "success": True,
@@ -100,17 +100,18 @@ class MemoryRepository:
         namespace: str = "default"
     ) -> Dict[str, Any]:
         """Delete a memory value."""
-        result = self.db.execute(
-            """DELETE FROM agent_memory 
-               WHERE agent_id = ? AND namespace = ? AND key = ?""",
-            (agent_id, namespace, key)
-        )
-        self.db.commit()
+        with self.db.transaction(lock_type="agent", resource_id=agent_id):
+            result = self.db.execute(
+                """DELETE FROM agent_memory 
+                   WHERE agent_id = ? AND namespace = ? AND key = ?""",
+                (agent_id, namespace, key)
+            )
+            rowcount = result.rowcount
         
         return {
             "success": True,
             "key": key,
-            "deleted": result.rowcount > 0
+            "deleted": rowcount > 0
         }
     
     def list_namespaces(self, agent_id: str) -> List[str]:
@@ -123,12 +124,12 @@ class MemoryRepository:
     
     def delete_all_for_agent(self, agent_id: str) -> int:
         """Delete all memory for an agent. Returns count deleted."""
-        result = self.db.execute(
-            "DELETE FROM agent_memory WHERE agent_id = ?",
-            (agent_id,)
-        )
-        self.db.commit()
-        return result.rowcount
+        with self.db.transaction(lock_type="agent", resource_id=agent_id):
+            result = self.db.execute(
+                "DELETE FROM agent_memory WHERE agent_id = ?",
+                (agent_id,)
+            )
+            return result.rowcount
     
     # ========================================
     # Task History Operations
@@ -144,18 +145,19 @@ class MemoryRepository:
         """Log a task action."""
         now = datetime.now().isoformat()
         
-        self.db.execute(
-            """INSERT INTO agent_task_history (agent_id, action, details, status, timestamp)
-               VALUES (?, ?, ?, ?, ?)""",
-            (agent_id, action, details, status, now)
-        )
-        self.db.commit()
-        
-        # Get count
-        row = self.db.fetchone(
-            "SELECT COUNT(*) as cnt FROM agent_task_history WHERE agent_id = ?",
-            (agent_id,)
-        )
+        with self.db.transaction(lock_type="agent", resource_id=agent_id):
+            self.db.execute(
+                """INSERT INTO agent_task_history (agent_id, action, details, status, timestamp)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (agent_id, action, details, status, now)
+            )
+            
+            # Get count
+            row = self.db.fetchone(
+                "SELECT COUNT(*) as cnt FROM agent_task_history WHERE agent_id = ?",
+                (agent_id,)
+            )
+            history_count = row["cnt"] if row else 0
         
         return {
             "success": True,
@@ -165,7 +167,7 @@ class MemoryRepository:
                 "status": status,
                 "timestamp": now
             },
-            "history_count": row["cnt"] if row else 0
+            "history_count": history_count
         }
     
     def get_task_history(
@@ -231,19 +233,19 @@ class MemoryRepository:
         
         # Delete others
         placeholders = ",".join(["?"] * len(keep_ids))
-        result = self.db.execute(
-            f"""DELETE FROM agent_task_history 
-                WHERE agent_id = ? AND id NOT IN ({placeholders})""",
-            (agent_id, *keep_ids)
-        )
-        self.db.commit()
-        return result.rowcount
+        with self.db.transaction(lock_type="agent", resource_id=agent_id):
+            result = self.db.execute(
+                f"""DELETE FROM agent_task_history 
+                    WHERE agent_id = ? AND id NOT IN ({placeholders})""",
+                (agent_id, *keep_ids)
+            )
+            return result.rowcount
     
     def delete_task_history_for_agent(self, agent_id: str) -> int:
         """Delete all task history for an agent."""
-        result = self.db.execute(
-            "DELETE FROM agent_task_history WHERE agent_id = ?",
-            (agent_id,)
-        )
-        self.db.commit()
-        return result.rowcount
+        with self.db.transaction(lock_type="agent", resource_id=agent_id):
+            result = self.db.execute(
+                "DELETE FROM agent_task_history WHERE agent_id = ?",
+                (agent_id,)
+            )
+            return result.rowcount

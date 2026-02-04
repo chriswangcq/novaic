@@ -71,20 +71,20 @@ class VmProcessRepository:
         """Insert or update VM process record."""
         started_at = datetime.now().isoformat() if status == "running" else None
         
-        self.db.execute("""
-            INSERT OR REPLACE INTO vm_processes 
-            (agent_id, pid, status, started_at, ports, qemu_cmd, error_message)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (
-            agent_id,
-            pid,
-            status,
-            started_at,
-            json.dumps(ports) if ports else "{}",
-            qemu_cmd,
-            error_message,
-        ))
-        self.db.commit()
+        with self.db.transaction(lock_type="agent", resource_id=agent_id):
+            self.db.execute("""
+                INSERT OR REPLACE INTO vm_processes 
+                (agent_id, pid, status, started_at, ports, qemu_cmd, error_message)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                agent_id,
+                pid,
+                status,
+                started_at,
+                json.dumps(ports) if ports else "{}",
+                qemu_cmd,
+                error_message,
+            ))
     
     def update_status(
         self,
@@ -94,25 +94,25 @@ class VmProcessRepository:
         error_message: Optional[str] = None,
     ):
         """Update VM process status."""
-        if pid is not None:
-            self.db.execute(
-                "UPDATE vm_processes SET status = ?, pid = ?, error_message = ? WHERE agent_id = ?",
-                (status, pid, error_message, agent_id)
-            )
-        else:
-            self.db.execute(
-                "UPDATE vm_processes SET status = ?, error_message = ? WHERE agent_id = ?",
-                (status, error_message, agent_id)
-            )
-        self.db.commit()
+        with self.db.transaction(lock_type="agent", resource_id=agent_id):
+            if pid is not None:
+                self.db.execute(
+                    "UPDATE vm_processes SET status = ?, pid = ?, error_message = ? WHERE agent_id = ?",
+                    (status, pid, error_message, agent_id)
+                )
+            else:
+                self.db.execute(
+                    "UPDATE vm_processes SET status = ?, error_message = ? WHERE agent_id = ?",
+                    (status, error_message, agent_id)
+                )
     
     def delete_process(self, agent_id: str):
         """Delete VM process record."""
-        self.db.execute(
-            "DELETE FROM vm_processes WHERE agent_id = ?",
-            (agent_id,)
-        )
-        self.db.commit()
+        with self.db.transaction(lock_type="agent", resource_id=agent_id):
+            self.db.execute(
+                "DELETE FROM vm_processes WHERE agent_id = ?",
+                (agent_id,)
+            )
 
 
 class SshKeyRepository:
@@ -150,26 +150,26 @@ class SshKeyRepository:
         is_default: bool = False,
     ):
         """Create a new SSH key."""
-        # If setting as default, unset other defaults
-        if is_default:
-            self.db.execute("UPDATE ssh_keys SET is_default = 0")
-        
-        self.db.execute("""
-            INSERT INTO ssh_keys (id, name, public_key, private_key, is_default)
-            VALUES (?, ?, ?, ?, ?)
-        """, (key_id, name, public_key, private_key, 1 if is_default else 0))
-        self.db.commit()
+        with self.db.transaction(lock_type="global"):
+            # If setting as default, unset other defaults
+            if is_default:
+                self.db.execute("UPDATE ssh_keys SET is_default = 0")
+            
+            self.db.execute("""
+                INSERT INTO ssh_keys (id, name, public_key, private_key, is_default)
+                VALUES (?, ?, ?, ?, ?)
+            """, (key_id, name, public_key, private_key, 1 if is_default else 0))
     
     def delete_key(self, key_id: str):
         """Delete SSH key."""
-        self.db.execute("DELETE FROM ssh_keys WHERE id = ?", (key_id,))
-        self.db.commit()
+        with self.db.transaction(lock_type="global"):
+            self.db.execute("DELETE FROM ssh_keys WHERE id = ?", (key_id,))
     
     def set_default(self, key_id: str):
         """Set a key as the default."""
-        self.db.execute("UPDATE ssh_keys SET is_default = 0")
-        self.db.execute(
-            "UPDATE ssh_keys SET is_default = 1 WHERE id = ?",
-            (key_id,)
-        )
-        self.db.commit()
+        with self.db.transaction(lock_type="global"):
+            self.db.execute("UPDATE ssh_keys SET is_default = 0")
+            self.db.execute(
+                "UPDATE ssh_keys SET is_default = 1 WHERE id = ?",
+                (key_id,)
+            )
