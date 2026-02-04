@@ -18,26 +18,62 @@ Task Queue v2 - 通用任务队列基础设施
 """
 
 from .exceptions import RetryableError, TaskNotFoundError, SagaError
-from .queue import TaskQueue
-from .worker import Worker, MultiTopicWorker, run_workers
-from .saga import SagaOrchestrator, SagaRepository, SagaWorker, SagaExecutor, SagaDefinition, SagaStep, StepType
-from .health import HealthMonitor, HealthMonitorClient
 from .client import TaskQueueClient, SagaClient
-from .routes import (
-    create_task_queue_router, 
-    create_recovery_router,
-    create_handler_router,
-    create_business_router,
-)
-from .instance import (
-    init_task_queue,
-    init_saga_orchestrator,
-    get_task_queue,
-    get_saga_orchestrator,
-    set_handler_context,
-    get_handler_context,
-    shutdown_task_queue,
-)
+
+# Gateway 端模块（可选导入，避免强制依赖 aiohttp）
+try:
+    from .queue import TaskQueue
+    from .worker import Worker, MultiTopicWorker, run_workers
+    from .saga import SagaOrchestrator, SagaRepository, SagaWorker, SagaExecutor, SagaDefinition, SagaStep, StepType
+    from .health import HealthMonitor, HealthMonitorClient
+    _GATEWAY_MODULES_AVAILABLE = True
+except ImportError:
+    _GATEWAY_MODULES_AVAILABLE = False
+    # Worker 端不需要这些模块
+    TaskQueue = None
+    Worker = None
+    MultiTopicWorker = None
+    run_workers = None
+    SagaOrchestrator = None
+    SagaRepository = None
+    SagaWorker = None
+    SagaExecutor = None
+    SagaDefinition = None
+    SagaStep = None
+    StepType = None
+    HealthMonitor = None
+    HealthMonitorClient = None
+if _GATEWAY_MODULES_AVAILABLE:
+    try:
+        from .routes import (
+            create_task_queue_router, 
+            create_recovery_router,
+            create_handler_router,
+            create_business_router,
+        )
+        from .instance import (
+            init_task_queue,
+            init_saga_orchestrator,
+            get_task_queue,
+            get_saga_orchestrator,
+            set_handler_context,
+            get_handler_context,
+            shutdown_task_queue,
+        )
+    except ImportError:
+        pass
+else:
+    create_task_queue_router = None
+    create_recovery_router = None
+    create_handler_router = None
+    create_business_router = None
+    init_task_queue = None
+    init_saga_orchestrator = None
+    get_task_queue = None
+    get_saga_orchestrator = None
+    set_handler_context = None
+    get_handler_context = None
+    shutdown_task_queue = None
 
 __all__ = [
     # Core (Gateway side)

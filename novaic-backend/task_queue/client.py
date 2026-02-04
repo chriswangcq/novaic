@@ -44,7 +44,7 @@ class TaskQueueClient:
     def _get_session(self) -> httpx.Client:
         """获取或创建 HTTP session"""
         if self._session is None:
-            self._session = httpx.Client(timeout=self.timeout)
+            self._session = httpx.Client(timeout=self.timeout, trust_env=False)
         return self._session
     
     def close(self):
@@ -63,16 +63,24 @@ class TaskQueueClient:
         url = f"{self.gateway_url}{path}"
         
         try:
-            with session.request(method, url, json=json_data) as resp:
+            resp = session.request(method, url, json=json_data)
+            
+            # 调试：检查响应
+            if not resp.content:
+                raise TaskQueueError(f"Empty response from {url} (status: {resp.status_code})")
+            
+            try:
                 data = resp.json()
-                
-                if resp.status_code >= 400:
-                    error_msg = data.get("detail", str(data))
-                    if resp.status_code == 404:
-                        raise TaskNotFoundError(error_msg)
-                    raise TaskQueueError(f"API error ({resp.status_code}): {error_msg}")
-                
-                return data
+            except Exception as json_err:
+                raise TaskQueueError(f"Failed to parse JSON from {url}: {json_err}, content: {resp.text[:200]}")
+            
+            if resp.status_code >= 400:
+                error_msg = data.get("detail", str(data))
+                if resp.status_code == 404:
+                    raise TaskNotFoundError(error_msg)
+                raise TaskQueueError(f"API error ({resp.status_code}): {error_msg}")
+            
+            return data
                 
         except httpx.HTTPError as e:
             raise TaskQueueError(f"HTTP error: {e}")
@@ -216,7 +224,7 @@ class SagaClient:
     
     def _get_session(self) -> httpx.Client:
         if self._session is None:
-            self._session = httpx.Client(timeout=self.timeout)
+            self._session = httpx.Client(timeout=self.timeout, trust_env=False)
         return self._session
     
     def close(self):
@@ -233,14 +241,14 @@ class SagaClient:
         url = f"{self.gateway_url}{path}"
         
         try:
-            with session.request(method, url, json=json_data) as resp:
-                data = resp.json()
-                
-                if resp.status_code >= 400:
-                    error_msg = data.get("detail", str(data))
-                    raise TaskQueueError(f"API error ({resp.status_code}): {error_msg}")
-                
-                return data
+            resp = session.request(method, url, json=json_data)
+            data = resp.json()
+            
+            if resp.status_code >= 400:
+                error_msg = data.get("detail", str(data))
+                raise TaskQueueError(f"API error ({resp.status_code}): {error_msg}")
+            
+            return data
                 
         except httpx.HTTPError as e:
             raise TaskQueueError(f"HTTP error: {e}")
@@ -344,18 +352,18 @@ class GatewayInternalClient:
 
     def _get_session(self) -> httpx.Client:
         if self._session is None:
-            self._session = httpx.Client(timeout=self.timeout)
+            self._session = httpx.Client(timeout=self.timeout, trust_env=False)
         return self._session
 
     def close(self):
         if self._session:
             self._session.close()
 
-    def _request(self, method: str, path: str, json_data: Optional[dict] = None) -> dict:
+    def _request(self, method: str, path: str, json_data: Optional[dict] = None, params: Optional[dict] = None) -> dict:
         session = self._get_session()
         url = f"{self.gateway_url}{path}"
         try:
-            resp = session.request(method, url, json=json_data)
+            resp = session.request(method, url, json=json_data, params=params)
             data = resp.json()
             if resp.status_code >= 400:
                     error_msg = data.get("detail", str(data))
@@ -466,3 +474,22 @@ class GatewayInternalClient:
         if error:
             payload["error"] = error
         return self._request("POST", f"/internal/runtimes/{runtime_id}/set-status", payload)
+    
+    # ---------- Task Handlers ----------
+    def execute_handler(self, task: Dict[str, Any]) -> Dict[str, Any]:
+        """执行 Task Handler"""
+        return self._request("POST", "/internal/tq/handlers/execute", task)
+    
+    # ---------- Messages (Watchdog) ----------
+    def claim_and_prepare_message(self) -> Optional[Dict[str, Any]]:
+        """Claim 并准备一条 sending 消息"""
+        data = self._request("POST", "/internal/messages/claim-and-prepare", {})
+        return data.get("message")
+    
+    # ---------- Task Queue Recovery ----------
+    def recover_all(self, task_timeout: int = 60, saga_timeout: int = 120) -> Dict[str, Any]:
+        """恢复所有超时的 Task 和 Saga"""
+        return self._request("POST", "/internal/tq/recover/all", None, params={
+            "task_timeout": task_timeout,
+            "saga_timeout": saga_timeout,
+        })
