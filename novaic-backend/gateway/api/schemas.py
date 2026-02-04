@@ -85,15 +85,24 @@ class HealthResponse(BaseModel):
 # ==================== History ====================
 
 class Message(BaseModel):
-    """Chat message"""
+    """Chat message (legacy format for OpenAI-style)"""
     role: Literal["user", "assistant"]
     content: str
     timestamp: Optional[datetime] = None
 
 
+class ChatHistoryMessage(BaseModel):
+    """Chat message from database"""
+    id: str
+    type: str  # USER_MESSAGE, AGENT_REPLY, etc.
+    content: str
+    timestamp: str
+    read: bool
+
+
 class HistoryResponse(BaseModel):
     """Chat history response"""
-    messages: List[Message]
+    messages: List[ChatHistoryMessage]
 
 
 # ==================== WebSocket ====================

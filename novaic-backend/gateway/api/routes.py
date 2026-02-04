@@ -485,21 +485,16 @@ def chat(request: ChatRequest):
     from gateway.db.repositories.message import MessageRepository
     from gateway.config.agents import get_agent_config_manager
     
-    # Get agent_id: use request.agent_id if provided, else fallback to current_agent
-    agent_mgr = get_agent_config_manager()
+    # agent_id is required
+    if not request.agent_id:
+        raise HTTPException(status_code=400, detail="agent_id is required")
     
-    if request.agent_id:
-        # Validate agent exists
-        agent = agent_mgr.get_agent(request.agent_id)
-        if not agent:
-            raise HTTPException(status_code=404, detail=f"Agent not found: {request.agent_id}")
-        agent_id = request.agent_id
-    else:
-        # Fallback to current agent
-        current_agent = agent_mgr.get_current_agent()
-        if not current_agent:
-            raise HTTPException(status_code=400, detail="No agent_id provided and no current agent selected.")
-        agent_id = current_agent.id
+    # Validate agent exists
+    agent_mgr = get_agent_config_manager()
+    agent = agent_mgr.get_agent(request.agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent not found: {request.agent_id}")
+    agent_id = request.agent_id
     
     content = request.message.strip()
     
@@ -577,19 +572,16 @@ def chat_stream(request: ChatRequest):
     from gateway.config.agents import get_agent_config_manager
     import asyncio
     
-    # Get agent_id: use request.agent_id if provided, else fallback to current_agent
-    agent_mgr = get_agent_config_manager()
+    # agent_id is required
+    if not request.agent_id:
+        raise HTTPException(status_code=400, detail="agent_id is required")
     
-    if request.agent_id:
-        agent = agent_mgr.get_agent(request.agent_id)
-        if not agent:
-            raise HTTPException(status_code=404, detail=f"Agent not found: {request.agent_id}")
-        agent_id = request.agent_id
-    else:
-        current_agent = agent_mgr.get_current_agent()
-        if not current_agent:
-            raise HTTPException(status_code=400, detail="No agent_id provided and no current agent selected.")
-        agent_id = current_agent.id
+    # Validate agent exists
+    agent_mgr = get_agent_config_manager()
+    agent = agent_mgr.get_agent(request.agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent not found: {request.agent_id}")
+    agent_id = request.agent_id
     
     content = request.message.strip()
     
@@ -724,19 +716,14 @@ def resolve_api_config(config, request: ChatRequest) -> tuple:
 # ==================== History (v12: Use chat_messages table) ====================
 
 @router.get("/history", response_model=HistoryResponse)
-def get_history():
+def get_history(agent_id: str = Query(..., description="Agent ID (required)")):
     """
     Get chat history.
     
     v12: Uses chat_messages table instead of NovAICAgent session.
     """
-    from gateway.config.agents import get_agent_config_manager
-    
-    agent_mgr = get_agent_config_manager()
-    current_agent = agent_mgr.get_current_agent()
-    
-    if not current_agent:
-        return HistoryResponse(messages=[])
+    if not agent_id:
+        raise HTTPException(status_code=400, detail="agent_id is required")
     
     db = get_db()
     rows = db.fetchall(
@@ -747,42 +734,37 @@ def get_history():
         ORDER BY timestamp DESC 
         LIMIT 100
         """,
-        (current_agent.id,)
+        (agent_id,)
     )
     
     messages = []
     for row in rows:
         messages.append({
-            "id": row[0],
-            "type": row[1],
-            "content": row[2],
-            "timestamp": row[3],
-            "read": bool(row[4]),
+            "id": row["id"],
+            "type": row["type"],
+            "content": row["content"],
+            "timestamp": row["timestamp"],
+            "read": bool(row["read"]),
         })
     
     return HistoryResponse(messages=list(reversed(messages)))
 
 
 @router.post("/clear")
-def clear_history():
+def clear_history(agent_id: str = Query(..., description="Agent ID (required)")):
     """
     Clear chat history.
     
     v12: Marks all messages as read instead of deleting.
     """
-    from gateway.config.agents import get_agent_config_manager
-    
-    agent_mgr = get_agent_config_manager()
-    current_agent = agent_mgr.get_current_agent()
-    
-    if not current_agent:
-        return {"status": "ok", "message": "No agent selected"}
+    if not agent_id:
+        raise HTTPException(status_code=400, detail="agent_id is required")
     
     db = get_db()
-    with db.transaction(lock_type="agent", resource_id=current_agent.id, timeout=10.0):
+    with db.transaction(lock_type="agent", resource_id=agent_id, timeout=10.0):
         db.execute(
             "UPDATE chat_messages SET read = 1 WHERE agent_id = ?",
-            (current_agent.id,)
+            (agent_id,)
         )
     
     return {"status": "ok", "message": "History cleared (messages marked as read)"}
@@ -791,7 +773,7 @@ def clear_history():
 # ==================== Control (v12: Master-driven) ====================
 
 @router.post("/interrupt")
-def interrupt(agent_id: str = None):
+def interrupt(agent_id: str = Query(..., description="Agent ID (required)")):
     """
     Interrupt current execution.
     
@@ -804,6 +786,9 @@ def interrupt(agent_id: str = None):
     from datetime import datetime
     from gateway.db.repositories.message import MessageRepository
     import uuid
+    
+    if not agent_id:
+        raise HTTPException(status_code=400, detail="agent_id is required")
     
     db = get_db()
     now = datetime.utcnow().isoformat()
@@ -830,16 +815,6 @@ def interrupt(agent_id: str = None):
     # 2. 写入 INTERRUPT 消息，Watchdog 会调用 QS cancel API
     # v2.1: Gateway 不再直接调用 Queue Service
     message_repo = MessageRepository(db)
-    
-    # 获取 agent_id（用于消息路由）
-    if not agent_id:
-        from gateway.config.agents import get_agent_config_manager
-        try:
-            mgr = get_agent_config_manager()
-            current = mgr.get_current_agent()
-            agent_id = current.id if current else "unknown"
-        except:
-            agent_id = "unknown"
     
     msg = message_repo.add_message(
         agent_id=agent_id,

@@ -570,15 +570,16 @@ def broadcast_chat_message(message: Dict[str, Any], agent_id: Optional[str] = No
     
     Args:
         message: The message to broadcast
-        agent_id: Optional agent ID. If not provided, uses the message's agent_id 
-                  or falls back to current agent. This ensures messages are 
-                  correctly attributed even when user switches agents.
+        agent_id: Optional agent ID. If not provided, tries to get from message.
+                  Does NOT fall back to get_current_agent_id() to avoid context issues.
+                  If no agent_id available, logs warning and skips database save.
     """
     chat_service = get_chat_service()
     
-    # Use provided agent_id, then message's agent_id, then current agent
+    # Use provided agent_id, then message's agent_id
+    # NOTE: Removed fallback to get_current_agent_id() - caller must provide agent_id
     if agent_id is None:
-        agent_id = message.get("agent_id") or get_current_agent_id()
+        agent_id = message.get("agent_id")
     
     # Add/update agent_id in message for frontend filtering
     message["agent_id"] = agent_id
@@ -600,18 +601,23 @@ def broadcast_chat_message(message: Dict[str, Any], agent_id: Optional[str] = No
     # (USER_MESSAGE is unread, AGENT_* are auto-read to avoid Monitor re-wake loops)
     is_agent_message = msg_type.startswith("AGENT_")
     
-    # Save to database (ChatRepository handles non-persistent types)
-    chat_service.repo.add_message(
-        agent_id=agent_id,
-        id=msg_id,
-        type=msg_type,
-        content=content,
-        read=is_agent_message,  # Agent messages auto-read
-        metadata=metadata if metadata else None,
-        timestamp=timestamp,
-    )
+    # Save to database only if agent_id is available
+    if agent_id:
+        # Save to database (ChatRepository handles non-persistent types)
+        chat_service.repo.add_message(
+            agent_id=agent_id,
+            id=msg_id,
+            type=msg_type,
+            content=content,
+            read=is_agent_message,  # Agent messages auto-read
+            metadata=metadata if metadata else None,
+            timestamp=timestamp,
+        )
+    else:
+        # Log warning but continue with SSE broadcast
+        logger.warning(f"[Gateway] broadcast_chat_message: No agent_id provided, skipping database save for message type={msg_type}")
     
-    # Broadcast to SSE subscribers
+    # Broadcast to SSE subscribers (always do this regardless of agent_id)
     for queue in _chat_subscribers.values():
         try:
             queue.put_nowait(message)
@@ -646,13 +652,24 @@ def update_message_status(message_id: str, status: str):
             pass
 
 
-def broadcast_log(log: Dict[str, Any]):
-    """Broadcast an execution log to all log SSE subscribers and save to database."""
+def broadcast_log(log: Dict[str, Any], agent_id: Optional[str] = None):
+    """Broadcast an execution log to all log SSE subscribers and save to database.
+    
+    Args:
+        log: The log data to broadcast. May contain 'agent_id' field.
+        agent_id: Optional agent ID. If not provided, tries to get from log data.
+                  Does NOT fall back to get_current_agent_id() to avoid context issues.
+                  If no agent_id available, logs warning and skips database save.
+    """
     chat_service = get_chat_service()
-    agent_id = get_current_agent_id()
+    
+    # Use provided agent_id, then log's agent_id
+    # NOTE: Removed fallback to get_current_agent_id() - caller must provide agent_id
+    if agent_id is None:
+        agent_id = log.get("agent_id")
     
     if not agent_id:
-        logger.warning("[Gateway] broadcast_log: No current agent, skipping database save")
+        logger.warning("[Gateway] broadcast_log: No agent_id provided, skipping database save")
         # Still broadcast to SSE subscribers
         for queue in _log_subscribers.values():
             try:
@@ -683,15 +700,19 @@ def receive_log_broadcast(data: dict):
     Receive execution log broadcasts from Workers.
     
     Called by Workers to broadcast tool execution status (thinking, tool_start, tool_end).
+    Workers should include agent_id in the data.
     """
-    # Extract agent_id from data or use current agent
-    agent_id = data.pop("agent_id", None) or get_current_agent_id()
+    # Extract agent_id from data - NOTE: No fallback to get_current_agent_id()
+    agent_id = data.pop("agent_id", None)
     
-    # Broadcast the log
+    if not agent_id:
+        logger.warning("[Gateway] receive_log_broadcast: No agent_id in data, broadcast will skip database save")
+    
+    # Broadcast the log (pass agent_id as parameter)
     broadcast_log({
         **data,
         "agent_id": agent_id,
-    })
+    }, agent_id=agent_id)
     
     return {"success": True}
 
@@ -703,6 +724,8 @@ def receive_chat_event(data: dict):
     
     This is called when the Agent uses chat tools (chat_reply, chat_ask, etc.)
     Events are stored and broadcast to all SSE subscribers.
+    
+    Note: agent_id should be included in data or event_data by the caller.
     """
     event_type = data.get("type", "")
     event_data = data.get("data", {})
@@ -722,21 +745,27 @@ def receive_chat_event(data: dict):
         **event_data
     }
     
-    # Get agent_id early for consistent routing
-    agent_id = get_current_agent_id()
+    # Get agent_id from data or event_data - NOTE: No fallback to get_current_agent_id()
+    agent_id = data.get("agent_id") or event_data.get("agent_id")
+    
+    if not agent_id:
+        logger.warning(f"[Gateway] receive_chat_event: No agent_id provided for event type={event_type}")
     
     # Handle AGENT_ASK specially - store pending question in database
     if event_type == "AGENT_ASK":
-        request_id = event_data.get("request_id") or message_id
-        chat_service = get_chat_service()
-        chat_service.repo.add_pending_question(
-            agent_id=agent_id,
-            request_id=request_id,
-            question=event_data.get("question"),
-            options=event_data.get("options"),
-            message_id=message_id,
-        )
-        chat_message["request_id"] = request_id
+        if not agent_id:
+            logger.warning("[Gateway] receive_chat_event: Cannot store AGENT_ASK without agent_id")
+        else:
+            request_id = event_data.get("request_id") or message_id
+            chat_service = get_chat_service()
+            chat_service.repo.add_pending_question(
+                agent_id=agent_id,
+                request_id=request_id,
+                question=event_data.get("question"),
+                options=event_data.get("options"),
+                message_id=message_id,
+            )
+            chat_message["request_id"] = request_id
     
     # Use helper to store and broadcast (pass agent_id for correct routing)
     broadcast_chat_message(chat_message, agent_id=agent_id)
@@ -749,7 +778,7 @@ def receive_chat_event(data: dict):
 
 
 @app.get("/api/chat/messages")
-def chat_messages_sse():
+def chat_messages_sse(agent_id: str = None):
     """
     SSE endpoint for real-time chat messages (Agent -> User).
     
@@ -758,25 +787,38 @@ def chat_messages_sse():
     - Agent questions (AGENT_ASK)
     - Agent notifications (AGENT_NOTIFY)
     - Agent images (AGENT_IMAGE)
+    
+    Args:
+        agent_id: Required. Only messages for this agent will be pushed.
     """
+    from fastapi.responses import JSONResponse
+    
+    # Validate agent_id is provided
+    if not agent_id:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "agent_id parameter is required"}
+        )
+    
     subscriber_id = str(uuid_module.uuid4())[:8]
     queue: asyncio.Queue = asyncio.Queue(maxsize=50)
     _chat_subscribers[subscriber_id] = queue
     
     def event_generator():
         try:
-            # Send recent messages first (from database)
+            # Send recent messages first (from database, filtered by agent_id)
             chat_service = get_chat_service()
-            agent_id = get_current_agent_id()
             recent_messages = chat_service.repo.get_recent_chat_messages(agent_id, limit=10)
             for msg in recent_messages:
                 yield f"data: {json_module.dumps(msg)}\n\n"
             
-            # Stream new messages
+            # Stream new messages (filtered by agent_id)
             while True:
                 try:
                     message = asyncio.wait_for(queue.get(), timeout=30.0)
-                    yield f"data: {json_module.dumps(message)}\n\n"
+                    # Filter: only push messages for the specified agent_id
+                    if message.get("agent_id") == agent_id:
+                        yield f"data: {json_module.dumps(message)}\n\n"
                 except asyncio.TimeoutError:
                     # Send keepalive
                     yield f": keepalive\n\n"
@@ -846,12 +888,16 @@ def submit_user_response(request_id: str, data: dict):
 
 
 @app.get("/api/chat/pending-questions")
-def get_pending_questions():
-    """Get all pending questions from the agent."""
-    chat_service = get_chat_service()
-    agent_id = get_current_agent_id()
+def get_pending_questions(agent_id: str):
+    """Get all pending questions from the agent.
+    
+    Args:
+        agent_id: Agent ID (required query parameter)
+    """
     if not agent_id:
-        return {"questions": [], "warning": "No agent selected"}
+        return {"error": "agent_id is required", "questions": []}
+    
+    chat_service = get_chat_service()
     questions = chat_service.repo.get_all_pending_questions(agent_id)
     return {
         "questions": questions
@@ -860,6 +906,7 @@ def get_pending_questions():
 
 @app.get("/api/chat/history")
 def get_chat_history(
+    agent_id: str,
     limit: int = 20,
     before_id: str = None,
     message_type: str = None,
@@ -869,17 +916,17 @@ def get_chat_history(
     Get chat history between agent and user (with optional summary).
     
     Args:
+        agent_id: Agent ID (required query parameter)
         limit: Maximum number of messages (default: 20, max: 100)
         before_id: Get messages before this ID (for pagination)
         message_type: Filter by type: "user", "agent", "notification"
         summary_length: Truncate message content to this length (0 for full)
     """
+    if not agent_id:
+        return {"error": "agent_id is required", "messages": [], "has_more": False}
+    
     limit = min(limit, 100)
     chat_service = get_chat_service()
-    agent_id = get_current_agent_id()
-    
-    if not agent_id:
-        return {"messages": [], "has_more": False, "warning": "No agent selected"}
     
     # Build type filter
     type_filter = None
@@ -1032,9 +1079,12 @@ def add_to_inbox(data: dict):
 
 
 @app.get("/api/inbox/summary")
-def get_inbox_summary():
+def get_inbox_summary(agent_id: str):
     """
-    Get inbox summary for the current agent.
+    Get inbox summary for the specified agent.
+    
+    Args:
+        agent_id: Agent ID (required query parameter)
     
     v11: Uses MessageRepository to get pending (unclaimed, unprocessed) messages.
     
@@ -1042,9 +1092,8 @@ def get_inbox_summary():
     - pending_count: Number of pending messages
     - messages: List of pending messages (truncated content)
     """
-    agent_id = get_current_agent_id()
     if not agent_id:
-        return {"success": False, "error": "No agent selected", "pending_count": 0, "messages": []}
+        return {"success": False, "error": "agent_id is required", "pending_count": 0, "messages": []}
     
     try:
         # Get pending messages (unclaimed, unread)
@@ -1154,7 +1203,7 @@ def send_chat_message(data: dict):
 
 
 @app.get("/api/logs/stream")
-def logs_sse():
+def logs_sse(agent_id: str = None):
     """
     SSE endpoint for real-time agent execution logs.
     
@@ -1165,25 +1214,38 @@ def logs_sse():
     - status: Status updates
     - error: Errors
     - warning: Warnings
+    
+    Args:
+        agent_id: Required. Only logs for this agent will be pushed.
     """
+    from fastapi.responses import JSONResponse
+    
+    # Validate agent_id is provided
+    if not agent_id:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "agent_id parameter is required"}
+        )
+    
     subscriber_id = str(uuid_module.uuid4())[:8]
     queue: asyncio.Queue = asyncio.Queue(maxsize=100)
     _log_subscribers[subscriber_id] = queue
     
     def event_generator():
         try:
-            # Send recent logs as catch-up (last 20, from database)
+            # Send recent logs as catch-up (last 20, from database, filtered by agent_id)
             chat_service = get_chat_service()
-            agent_id = get_current_agent_id()
             recent_logs = chat_service.repo.get_recent_execution_logs(agent_id, limit=20)
             for log in recent_logs:
                 yield f"data: {json_module.dumps(log)}\n\n"
             
-            # Stream new logs
+            # Stream new logs (filtered by agent_id)
             while True:
                 try:
                     log = asyncio.wait_for(queue.get(), timeout=30.0)
-                    yield f"data: {json_module.dumps(log)}\n\n"
+                    # Filter: only push logs for the specified agent_id
+                    if log.get("agent_id") == agent_id:
+                        yield f"data: {json_module.dumps(log)}\n\n"
                 except asyncio.TimeoutError:
                     # Send keepalive
                     yield f": keepalive\n\n"
@@ -1268,25 +1330,27 @@ def worker_broadcast_status():
 # ==================== Agent Self-Scheduling API ====================
 
 @app.get("/api/agent/inbox")
-def get_agent_inbox():
+def get_agent_inbox(agent_id: str):
     """
     Get pending events in the agent's inbox.
+    
+    Args:
+        agent_id: Agent ID (required query parameter)
     
     Returns summary of pending events for agent to check during execution.
     Includes unread user messages.
     """
-    chat_service = get_chat_service()
-    agent_id = get_current_agent_id()
-    
     if not agent_id:
         return {
             "success": False,
-            "error": "No agent selected",
+            "error": "agent_id is required",
             "pending_count": 0,
             "events": [],
             "has_urgent": False,
             "recommendation": "none"
         }
+    
+    chat_service = get_chat_service()
     
     # Get pending events from EventHandler
     pending_events = []
@@ -1436,13 +1500,16 @@ def agent_rest(data: dict):
 
 
 @app.get("/api/agent/rest-state")
-def get_agent_rest_state():
-    """Get current rest state information."""
-    chat_service = get_chat_service()
-    agent_id = get_current_agent_id()
+def get_agent_rest_state(agent_id: str):
+    """Get current rest state information.
     
+    Args:
+        agent_id: Agent ID (required query parameter)
+    """
     if not agent_id:
-        return {"success": False, "error": "No agent selected", "is_resting": False}
+        return {"success": False, "error": "agent_id is required", "is_resting": False}
+    
+    chat_service = get_chat_service()
     
     rest_state = chat_service.repo.get_agent_rest_state(agent_id)
     
