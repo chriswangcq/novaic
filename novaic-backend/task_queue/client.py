@@ -104,7 +104,7 @@ class TaskQueueClient:
         Returns:
             task_id: 任务 ID
         """
-        data = self._request("POST", "/internal/tq/tasks/publish", {
+        data = self._request("POST", "/api/queue/tasks/publish", {
             "topic": topic,
             "payload": payload,
             "idempotency_key": idempotency_key,
@@ -127,7 +127,7 @@ class TaskQueueClient:
         Returns:
             task: 任务字典，或 None
         """
-        data = self._request("POST", "/internal/tq/tasks/claim", {
+        data = self._request("POST", "/api/queue/tasks/claim", {
             "topics": topics,
             "worker_id": worker_id,
         })
@@ -148,7 +148,7 @@ class TaskQueueClient:
         Returns:
             success: 是否成功
         """
-        data = self._request("POST", f"/internal/tq/tasks/{task_id}/complete", {
+        data = self._request("POST", f"/api/queue/tasks/{task_id}/complete", {
             "result": result,
         })
         return data.get("success", False)
@@ -170,7 +170,7 @@ class TaskQueueClient:
         Returns:
             final_status: 最终状态
         """
-        data = self._request("POST", f"/internal/tq/tasks/{task_id}/fail", {
+        data = self._request("POST", f"/api/queue/tasks/{task_id}/fail", {
             "error": error,
             "retry": retry,
         })
@@ -186,7 +186,7 @@ class TaskQueueClient:
         Returns:
             success: 是否成功
         """
-        data = self._request("POST", f"/internal/tq/tasks/{task_id}/heartbeat", {})
+        data = self._request("POST", f"/api/queue/tasks/{task_id}/heartbeat", {})
         return data.get("success", False)
     
     def get_task(self, task_id: str) -> Optional[Dict[str, Any]]:
@@ -200,7 +200,7 @@ class TaskQueueClient:
             task: 任务字典
         """
         try:
-            data = self._request("GET", f"/internal/tq/tasks/{task_id}", None)
+            data = self._request("GET", f"/api/queue/tasks/{task_id}", None)
             return data.get("task")
         except TaskNotFoundError:
             return None
@@ -260,7 +260,7 @@ class SagaClient:
         idempotency_key: Optional[str] = None,
     ) -> str:
         """创建 Saga"""
-        data = self._request("POST", "/internal/tq/sagas/start", {
+        data = self._request("POST", "/api/queue/sagas/start", {
             "saga_type": saga_type,
             "context": context,
             "idempotency_key": idempotency_key,
@@ -273,7 +273,7 @@ class SagaClient:
         worker_id: str,
     ) -> Optional[Dict[str, Any]]:
         """认领 Saga"""
-        data = self._request("POST", "/internal/tq/sagas/claim", {
+        data = self._request("POST", "/api/queue/sagas/claim", {
             "saga_types": saga_types,
             "worker_id": worker_id,
         })
@@ -281,13 +281,13 @@ class SagaClient:
     
     def heartbeat(self, saga_id: str) -> bool:
         """更新心跳"""
-        data = self._request("POST", f"/internal/tq/sagas/{saga_id}/heartbeat", {})
+        data = self._request("POST", f"/api/queue/sagas/{saga_id}/heartbeat", {})
         return data.get("success", False)
     
     def get(self, saga_id: str) -> Optional[Dict[str, Any]]:
         """获取 Saga 状态"""
         try:
-            data = self._request("GET", f"/internal/tq/sagas/{saga_id}", None)
+            data = self._request("GET", f"/api/queue/sagas/{saga_id}", None)
             return data.get("saga")
         except TaskQueueError as e:
             if "404" in str(e):
@@ -307,7 +307,7 @@ class SagaClient:
         status: str = "running",
     ):
         """更新 Saga 进度"""
-        self._request("POST", f"/internal/tq/sagas/{saga_id}/progress", {
+        self._request("POST", f"/api/queue/sagas/{saga_id}/progress", {
             "current_step": current_step,
             "step_results": step_results,
             "status": status,
@@ -319,7 +319,7 @@ class SagaClient:
         step_results: Dict[str, Any],
     ):
         """标记 Saga 完成"""
-        self._request("POST", f"/internal/tq/sagas/{saga_id}/complete", {
+        self._request("POST", f"/api/queue/sagas/{saga_id}/complete", {
             "step_results": step_results,
         })
     
@@ -329,7 +329,7 @@ class SagaClient:
         error: str,
     ):
         """标记 Saga 失败"""
-        self._request("POST", f"/internal/tq/sagas/{saga_id}/fail", {
+        self._request("POST", f"/api/queue/sagas/{saga_id}/fail", {
             "error": error,
         })
 
@@ -474,11 +474,6 @@ class GatewayInternalClient:
         if error:
             payload["error"] = error
         return self._request("POST", f"/internal/runtimes/{runtime_id}/set-status", payload)
-    
-    # ---------- Task Handlers ----------
-    def execute_handler(self, task: Dict[str, Any]) -> Dict[str, Any]:
-        """执行 Task Handler"""
-        return self._request("POST", "/internal/tq/handlers/execute", task)
     
     # ---------- Messages (Watchdog) ----------
     def claim_and_prepare_message(self) -> Optional[Dict[str, Any]]:

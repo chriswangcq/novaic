@@ -27,10 +27,9 @@ def _build_route_payload(ctx):
 def _decide_action(ctx, results):
     """决策下一步"""
     route_result = results.get("route_message", {})
-    # 修复：route_result 的结构是 {"success": true, "result": {"action": "start_runtime"}}
-    result_data = route_result.get("result", {})
+    # route_result 直接就是 {"success": true, "action": "start_runtime", ...}
     return {
-        "action": result_data.get("action", "skip"),
+        "action": route_result.get("action", "skip"),
         "message_id": ctx["message_id"],
     }
 

@@ -195,6 +195,12 @@ def create_task_queue_router(
         counts = queue.count_by_status(topic)
         return StatsResponse(counts=counts)
     
+    @router.get("/topics")
+    def get_topics():
+        """获取所有已知的 topics (Task Worker 启动时调用)"""
+        topics = queue.get_topics()
+        return {"topics": topics, "count": len(topics)}
+    
     # ========================================
     # Saga APIs (if orchestrator provided)
     # ========================================

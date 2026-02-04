@@ -3,23 +3,19 @@
 
 特点：
 - 纯同步代码（无 async/await）
-- 使用 SDK（GatewayInternalClient）
+- 直接调用 Queue Service 恢复 API
 - 无需心跳（健康检查本身很轻量）
 - 单线程串行（定期检查）
-
-对比异步版本：
-- 代码更简单（无 async/await）
-- 逻辑完全一致
 """
 
+import os
 import time
 import uuid
+import httpx
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 import traceback
-
-from task_queue.client import GatewayInternalClient
 
 
 @dataclass
@@ -48,7 +44,7 @@ class HealthWorkerSync:
     同步健康监控 Worker
     
     职责：
-    1. 定期调用 Gateway 的恢复 API
+    1. 定期调用 Queue Service 的恢复 API
     2. 恢复超时的任务和 Saga
     
     优势：
@@ -61,23 +57,33 @@ class HealthWorkerSync:
     
     def __init__(
         self,
-        queue_service_url: str = "http://127.0.0.1:19997",  # 改为 Queue Service
+        queue_service_url: str = None,
         check_interval: float = 30.0,
         task_timeout: int = 60,
         saga_timeout: int = 120,
     ):
-        self.gateway_url = gateway_url.rstrip("/")
+        # Queue Service URL: 参数 > 环境变量 > 默认值
+        self.queue_service_url = (queue_service_url or 
+                                   os.environ.get("QUEUE_SERVICE_URL", "http://127.0.0.1:19997")).rstrip("/")
         self.check_interval = check_interval
         self.task_timeout = task_timeout
         self.saga_timeout = saga_timeout
         self.worker_id = f"health-sync-{uuid.uuid4().hex[:8]}"
         
         self._running = False
-        
-        # 使用 SDK（连接 Queue Service 进行恢复）
-        self.gateway_client = GatewayInternalClient(queue_service_url, timeout=30.0)
+        self._client: Optional[httpx.Client] = None
         
         self.metrics = HealthWorkerMetrics()
+    
+    def _get_client(self) -> httpx.Client:
+        """获取 HTTP 客户端"""
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.Client(
+                base_url=self.queue_service_url,
+                timeout=30.0,
+                trust_env=False,
+            )
+        return self._client
     
     def run(self):
         """主循环（同步）"""
@@ -85,6 +91,7 @@ class HealthWorkerSync:
         self.metrics.started_at = datetime.utcnow().isoformat()
         
         self._log(f"Starting (worker_id: {self.worker_id})...")
+        self._log(f"Queue Service URL: {self.queue_service_url}")
         
         try:
             while self._running:
@@ -105,7 +112,8 @@ class HealthWorkerSync:
         
         finally:
             self._running = False
-            self.gateway_client.close()
+            if self._client:
+                self._client.close()
             self._log("Stopped")
     
     def shutdown(self):
@@ -119,22 +127,31 @@ class HealthWorkerSync:
         self.metrics.last_check_at = datetime.utcnow().isoformat()
         
         try:
-            # 调用统一恢复 API
-            data = self.gateway_client.recover_all(
-                task_timeout=self.task_timeout,
-                saga_timeout=self.saga_timeout,
+            client = self._get_client()
+            
+            # 调用 Queue Service 恢复 API
+            resp = client.post(
+                "/api/queue/recover/all",
+                params={
+                    "task_timeout": self.task_timeout,
+                    "saga_timeout": self.saga_timeout,
+                }
             )
             
-            tasks_recovered = data.get("tasks_recovered", 0)
-            sagas_recovered = data.get("sagas_recovered", 0)
-            
-            self.metrics.tasks_recovered += tasks_recovered
-            self.metrics.sagas_recovered += sagas_recovered
-            
-            if tasks_recovered > 0 or sagas_recovered > 0:
-                self._log(
-                    f"Recovered: {tasks_recovered} tasks, {sagas_recovered} sagas"
-                )
+            if resp.status_code == 200:
+                data = resp.json()
+                tasks_recovered = data.get("tasks_recovered", 0)
+                sagas_recovered = data.get("sagas_recovered", 0)
+                
+                self.metrics.tasks_recovered += tasks_recovered
+                self.metrics.sagas_recovered += sagas_recovered
+                
+                if tasks_recovered > 0 or sagas_recovered > 0:
+                    self._log(
+                        f"Recovered: {tasks_recovered} tasks, {sagas_recovered} sagas"
+                    )
+            else:
+                self._log(f"Recovery API returned {resp.status_code}", level="warning")
                 
         except Exception as e:
             self._log(f"Health check failed: {e}", level="error")
@@ -159,15 +176,13 @@ class HealthWorkerSync:
 
 # ==================== 启动脚本 ====================
 
-def start_worker(queue_service_url: str = "http://127.0.0.1:19997"):
+def start_worker(queue_service_url: str = None):
     """启动 HealthWorker"""
-    worker = HealthWorkerSync(queue_service_url)
+    worker = HealthWorkerSync(queue_service_url=queue_service_url)
     worker.run()
 
 
 if __name__ == "__main__":
-    import os
-    
     queue_service_url = os.environ.get("QUEUE_SERVICE_URL", "http://127.0.0.1:19997")
     
     print("=" * 60)
@@ -177,4 +192,4 @@ if __name__ == "__main__":
     print("=" * 60)
     print()
     
-    start_worker(gateway_url=gateway_url)
+    start_worker(queue_service_url=queue_service_url)

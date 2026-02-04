@@ -13,6 +13,7 @@
 - 性能相当（都是 I/O 密集型）
 """
 
+import os
 import time
 import uuid
 import json
@@ -79,20 +80,23 @@ class SagaWorkerSync:
         self,
         saga_types: List[str],
         gateway_url: str = "http://127.0.0.1:19999",
+        queue_service_url: str = None,
         poll_interval: float = 0.1,
         step_timeout: float = 300.0,
         max_concurrent: int = 10,
     ):
         self.saga_types = saga_types
         self.gateway_url = gateway_url
+        # Queue Service URL: 参数 > 环境变量 > 默认值
+        self.queue_service_url = queue_service_url or os.environ.get("QUEUE_SERVICE_URL", "http://127.0.0.1:19997")
         self.poll_interval = poll_interval
         self.step_timeout = step_timeout
         self.max_concurrent = max_concurrent
         self.worker_id = f"saga-sync-{uuid.uuid4().hex[:8]}"
         
         # 使用现有的同步 SDK
-        self.saga_client = SagaClient(queue_service_url, timeout=step_timeout)  # 连接 Queue Service
-        self.task_client = TaskQueueClient(queue_service_url, timeout=step_timeout)  # 连接 Queue Service
+        self.saga_client = SagaClient(self.queue_service_url, timeout=step_timeout)  # 连接 Queue Service
+        self.task_client = TaskQueueClient(self.queue_service_url, timeout=step_timeout)  # 连接 Queue Service
         
         self._running = False
         self._lock = threading.Lock()
@@ -344,6 +348,10 @@ class SagaWorkerSync:
             
             # 查询任务状态
             task = self.task_client.get_task(task_id)
+            if task is None:
+                # Task 不存在，可能还没创建，继续等待
+                time.sleep(0.1)
+                continue
             status = task.get("status")
             
             if status == "done":
@@ -499,7 +507,8 @@ class SagaWorkerSync:
 
 def start_worker(
     saga_types: List[str] = None,
-    queue_service_url: str = "http://127.0.0.1:19997",  # 改为 Queue Service
+    queue_service_url: str = "http://127.0.0.1:19997",
+    gateway_url: str = "http://127.0.0.1:19999",
     max_concurrent: int = 10,
 ):
     """启动一个 SagaWorker"""
@@ -527,12 +536,14 @@ if __name__ == "__main__":
     import os
     
     queue_service_url = os.environ.get("QUEUE_SERVICE_URL", "http://127.0.0.1:19997")
+    gateway_url = os.environ.get("GATEWAY_URL", "http://127.0.0.1:19999")
     max_concurrent = int(os.environ.get("MAX_CONCURRENT", "10"))
     
     print("=" * 60)
     print("同步 SagaWorker (多线程)")
     print("=" * 60)
     print(f"Queue Service: {queue_service_url}")
+    print(f"Gateway: {gateway_url}")
     print(f"Max Concurrent: {max_concurrent}")
     print("=" * 60)
     print()

@@ -1,10 +1,9 @@
 """
-Saga Worker v2 启动入口
+Saga Worker 启动入口 (同步版本)
 
 执行 Saga 流程编排。
 """
 
-import asyncio
 import os
 import sys
 import signal
@@ -25,20 +24,23 @@ DEFAULT_SAGA_TYPES = [
 ]
 
 
-async def main():
-    from task_queue.workers.saga_worker_v2 import SagaWorkerV2
+def main():
+    from task_queue.workers.saga_worker_sync import SagaWorkerSync
     from task_queue.sagas import get_all_saga_definitions
     
     gateway_url = os.environ.get("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
+    queue_service_url = os.environ.get("QUEUE_SERVICE_URL", "http://127.0.0.1:19997")
     saga_types_str = os.environ.get("SAGA_TYPES", "")
+    max_concurrent = int(os.environ.get("MAX_CONCURRENT", "10"))
     
     saga_types = saga_types_str.split(",") if saga_types_str else DEFAULT_SAGA_TYPES
     
-    worker = SagaWorkerV2(
+    worker = SagaWorkerSync(
         saga_types=saga_types,
         gateway_url=gateway_url,
+        queue_service_url=queue_service_url,
         poll_interval=0.1,
-        heartbeat_interval=10.0,
+        max_concurrent=max_concurrent,
     )
     
     # 注册 Saga 定义
@@ -47,26 +49,25 @@ async def main():
         print(f"[main_saga] Registered: {saga_def.name} ({len(saga_def.steps)} steps)")
     
     # 信号处理
-    loop = asyncio.get_running_loop()
-    
-    def shutdown_handler():
+    def shutdown_handler(signum, frame):
         print("[main_saga] Received shutdown signal")
-        asyncio.create_task(worker.shutdown())
+        worker.shutdown()
     
-    for sig in (signal.SIGTERM, signal.SIGINT):
-        loop.add_signal_handler(sig, shutdown_handler)
+    signal.signal(signal.SIGTERM, shutdown_handler)
+    signal.signal(signal.SIGINT, shutdown_handler)
     
-    print(f"[main_saga] Starting SagaWorker v2...")
+    print(f"[main_saga] Starting SagaWorker (sync)...")
     print(f"[main_saga] Gateway URL: {gateway_url}")
+    print(f"[main_saga] Queue Service URL: {queue_service_url}")
     print(f"[main_saga] Saga types: {saga_types}")
     
-    await worker.run()
+    worker.run()
     
     print("[main_saga] Shutdown complete")
 
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        main()
     except KeyboardInterrupt:
         pass

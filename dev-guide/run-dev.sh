@@ -32,6 +32,7 @@ export PYTHONUNBUFFERED=1
 LOG_DIR="/tmp"
 LOG_GATEWAY="$LOG_DIR/gateway.log"
 LOG_MCP="$LOG_DIR/mcp.log"
+LOG_QUEUE="$LOG_DIR/queue.log"
 LOG_WATCHDOG="$LOG_DIR/watchdog.log"
 LOG_TASK="$LOG_DIR/task.log"
 LOG_SAGA="$LOG_DIR/saga.log"
@@ -94,6 +95,11 @@ start_mcp() {
     wait_for_health "$MCP_GATEWAY_URL/api/health" "MCP Gateway"
 }
 
+start_queue() {
+    start_process "Queue Service" "PYTHONPATH=. python queue_service/main.py" "$LOG_QUEUE"
+    wait_for_health "http://127.0.0.1:19997/health" "Queue Service"
+}
+
 start_watchdog() { start_process "Watchdog" "python main_watchdog.py" "$LOG_WATCHDOG"; }
 start_task()     { start_process "Task Worker" "python main_task.py" "$LOG_TASK"; }
 start_saga()     { start_process "Saga Worker" "python main_saga.py" "$LOG_SAGA"; }
@@ -110,6 +116,7 @@ stop_all() {
     log_info "Stopping all services..."
     pkill -f "python.*main_gateway.py" 2>/dev/null || true
     pkill -f "python.*main_mcp.py" 2>/dev/null || true
+    pkill -f "python.*queue_service/main.py" 2>/dev/null || true
     pkill -f "python.*main_watchdog.py" 2>/dev/null || true
     pkill -f "python.*main_task.py" 2>/dev/null || true
     pkill -f "python.*main_saga.py" 2>/dev/null || true
@@ -191,9 +198,11 @@ case "${1:-all}" in
     reset)    reset_runtime_data ;;
     logs)     tail_logs "${2:-all}" ;;
     help|--help|-h) show_help ;;
+    queue)    start_queue ;;
     all|"")
         start_gateway
         start_mcp
+        start_queue
         start_workers
         log_info "All services started"
         ;;

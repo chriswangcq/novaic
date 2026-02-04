@@ -319,6 +319,20 @@ class TaskQueue:
             
             return len(rows) if rows else 0
     
+    def get_topics(self) -> List[str]:
+        """
+        获取所有已知的 topics
+        
+        Returns:
+            所有在 tq_tasks 表中出现过的 topic 列表
+        """
+        cursor = self.db.execute("""
+            SELECT DISTINCT topic FROM tq_tasks ORDER BY topic
+        """)
+        rows = cursor.fetchall()
+        cursor.close()
+        return [row[0] for row in rows]
+    
     def _row_to_dict(self, row) -> Dict[str, Any]:
         """将数据库行转换为字典"""
         if hasattr(row, "keys"):

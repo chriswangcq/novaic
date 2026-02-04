@@ -14,6 +14,7 @@
 - 性能更好（多核 CPU）
 """
 
+import os
 import time
 import uuid
 from dataclasses import dataclass
@@ -21,7 +22,8 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List
 import traceback
 
-from task_queue.client import TaskQueueClient, GatewayInternalClient
+from task_queue.client import TaskQueueClient, GatewayInternalClient, SagaClient
+from task_queue.business.mcp import MCPGatewayClient
 from task_queue.heartbeat_sync import HeartbeatSync
 
 
@@ -60,7 +62,8 @@ class TaskWorkerSync:
     def __init__(
         self,
         topics: List[str],
-        queue_service_url: str = "http://127.0.0.1:19997",  # 改为 Queue Service
+        queue_service_url: str = "http://127.0.0.1:19997",
+        gateway_url: str = None,
         poll_interval: float = 0.1,
         timeout: float = 60.0,
     ):
@@ -70,11 +73,14 @@ class TaskWorkerSync:
         self.timeout = timeout
         self.worker_id = f"task-sync-{uuid.uuid4().hex[:8]}"
         
+        # Gateway URL: 参数 > 环境变量 > 默认值
+        self.gateway_url = gateway_url or os.environ.get("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
+        
         # 使用现有的同步 SDK
         self.client = TaskQueueClient(queue_service_url, timeout=timeout)  # 连接 Queue Service
-        # Gateway URL 从环境变量获取
-        gateway_url = os.environ.get("GATEWAY_URL", "http://127.0.0.1:19999")
-        self.gateway_client = GatewayInternalClient(gateway_url, timeout=timeout)
+        self.saga_client = SagaClient(queue_service_url, timeout=timeout)  # 用于 saga.trigger handler
+        self.gateway_client = GatewayInternalClient(self.gateway_url, timeout=timeout)
+        self.mcp_client = MCPGatewayClient()  # 用于 tool.execute handler
         
         self._running = False
         self.metrics = TaskWorkerMetrics()
@@ -109,6 +115,7 @@ class TaskWorkerSync:
         finally:
             self._running = False
             self.client.close()
+            self.saga_client.close()
             self.gateway_client.close()
             self._log("Stopped")
     
@@ -198,9 +205,29 @@ class TaskWorkerSync:
     
     def _call_handler(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """
-        调用 Handler（通过 Gateway SDK）
+        本地执行 Handler
+        
+        Handler 通过 GatewayInternalClient 调用 Gateway API 访问数据库
         """
-        return self.gateway_client.execute_handler(task)
+        from task_queue.handlers import get_handler
+        
+        topic = task["topic"]
+        payload = task.get("payload", {})
+        
+        # 获取 handler
+        handler = get_handler(topic)
+        
+        # 构建 handler 上下文
+        ctx = {
+            "gateway_url": self.gateway_client.gateway_url,
+            "gateway_client": self.gateway_client,
+            "saga_client": self.saga_client,
+            "mcp_client": self.mcp_client,
+            "queue_service_url": self.queue_service_url,
+        }
+        
+        # 执行 handler（同步）
+        return handler(payload, ctx)
     
     def _log(self, message: str, level: str = "info"):
         """日志"""
@@ -259,7 +286,7 @@ def start_multiple_workers(
     for i in range(num_workers):
         p = Process(
             target=start_worker,
-            args=(topics, gateway_url),
+            args=(topics, queue_service_url),
             name=f"TaskWorker-{i+1}",
             daemon=False
         )
@@ -288,6 +315,7 @@ if __name__ == "__main__":
     # 获取配置
     num_workers = int(os.environ.get("NUM_WORKERS", "5"))
     queue_service_url = os.environ.get("QUEUE_SERVICE_URL", "http://127.0.0.1:19997")
+    gateway_url = os.environ.get("GATEWAY_URL", "http://127.0.0.1:19999")
     
     # 支持命令行参数
     if len(sys.argv) > 1:
@@ -297,8 +325,9 @@ if __name__ == "__main__":
     print("同步 TaskWorker (多进程)")
     print("=" * 60)
     print(f"Workers: {num_workers}")
+    print(f"Queue Service: {queue_service_url}")
     print(f"Gateway: {gateway_url}")
     print("=" * 60)
     print()
     
-    start_multiple_workers(num_workers=num_workers, gateway_url=gateway_url)
+    start_multiple_workers(num_workers=num_workers, queue_service_url=queue_service_url)

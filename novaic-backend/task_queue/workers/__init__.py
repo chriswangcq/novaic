@@ -1,30 +1,39 @@
 """
-Task Queue v2 Workers
+Task Queue Workers (同步版本)
 
-基于 Task Queue v2 架构的 Worker 服务：
+基于 Task Queue 架构的 Worker 服务：
 - Watchdog: 消息监视器（发现 sending 消息，触发 Saga）
-- SagaWorkerV2: Saga 执行器
-- TaskWorkerV2: 任务执行器
-- HealthWorkerV2: 健康监控
+- SagaWorkerSync: Saga 执行器
+- TaskWorkerSync: 任务执行器
+- HealthWorkerSync: 健康监控
 
-所有 Worker 通过 HTTP API 与 Gateway 通信，不直接访问数据库。
+所有 Worker 通过 HTTP API 与 Queue Service 通信。
 
 Usage:
-    from task_queue.workers import Watchdog, SagaWorkerV2, TaskWorkerV2, HealthWorkerV2
+    from task_queue.workers import Watchdog, SagaWorkerSync, TaskWorkerSync, HealthWorkerSync
     
     # 启动 Watchdog
     watchdog = Watchdog(gateway_url="http://127.0.0.1:19999")
-    await watchdog.run()
+    watchdog.run()
 """
 
 from .watchdog import Watchdog, MessageWorkerV2  # MessageWorkerV2 is alias for backward compat
-from .saga_worker_v2 import SagaWorkerV2
-from .task_worker_v2 import TaskWorkerV2
-from .health_worker_v2 import HealthWorkerV2
+from .saga_worker_sync import SagaWorkerSync
+from .task_worker_sync import TaskWorkerSync
+from .health_worker_sync import HealthWorkerSync
+
+# Backward compat aliases
+SagaWorkerV2 = SagaWorkerSync
+TaskWorkerV2 = TaskWorkerSync
+HealthWorkerV2 = HealthWorkerSync
 
 __all__ = [
     "Watchdog",
     "MessageWorkerV2",  # backward compat alias
+    "SagaWorkerSync",
+    "TaskWorkerSync",
+    "HealthWorkerSync",
+    # Backward compat aliases
     "SagaWorkerV2",
     "TaskWorkerV2",
     "HealthWorkerV2",

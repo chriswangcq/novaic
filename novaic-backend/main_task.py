@@ -1,10 +1,9 @@
 """
-Task Worker v2 启动入口
+Task Worker 启动入口 (同步版本)
 
 通用任务执行器，处理所有 task_queue 中的任务。
 """
 
-import asyncio
 import os
 import sys
 import signal
@@ -49,42 +48,41 @@ DEFAULT_TOPICS = [
 ]
 
 
-async def main():
-    from task_queue.workers.task_worker_v2 import TaskWorkerV2
+def main():
+    from task_queue.workers.task_worker_sync import TaskWorkerSync
     
     gateway_url = os.environ.get("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
+    queue_service_url = os.environ.get("QUEUE_SERVICE_URL", "http://127.0.0.1:19997")
     topics_str = os.environ.get("TASK_TOPICS", "")
     
     topics = topics_str.split(",") if topics_str else DEFAULT_TOPICS
     
-    worker = TaskWorkerV2(
+    worker = TaskWorkerSync(
         topics=topics,
+        queue_service_url=queue_service_url,
         gateway_url=gateway_url,
-        poll_interval=0.1,
-        heartbeat_interval=10.0,
     )
     
     # 信号处理
-    loop = asyncio.get_running_loop()
-    
-    def shutdown_handler():
+    def shutdown_handler(signum, frame):
         print("[main_task] Received shutdown signal")
-        asyncio.create_task(worker.shutdown())
+        worker.shutdown()
     
-    for sig in (signal.SIGTERM, signal.SIGINT):
-        loop.add_signal_handler(sig, shutdown_handler)
+    signal.signal(signal.SIGTERM, shutdown_handler)
+    signal.signal(signal.SIGINT, shutdown_handler)
     
-    print(f"[main_task] Starting TaskWorker v2...")
+    print(f"[main_task] Starting TaskWorker (sync)...")
     print(f"[main_task] Gateway URL: {gateway_url}")
+    print(f"[main_task] Queue Service URL: {queue_service_url}")
     print(f"[main_task] Topics: {topics}")
     
-    await worker.run()
+    worker.run()
     
     print("[main_task] Shutdown complete")
 
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        main()
     except KeyboardInterrupt:
         pass

@@ -399,23 +399,23 @@ git checkout novaic-backend/queue_service/routes.py
 ## 完成检查清单
 
 ### Phase 1 完成标准
-- [x] Gateway `/internal/tq/handlers/execute` 可访问
-- [ ] Task Worker 能成功调用 Gateway 执行 handler (需要运行时测试)
+- [x] ~~Gateway `/internal/tq/handlers/execute`~~ **已删除** - Task Worker 本地执行 handler
+- [x] Task Worker 本地执行 handler ✅ 运行时测试通过 (2026-02-04 20:06)
 - [x] Watchdog 能成功调用 QS 创建 saga (代码已修改)
 - [x] Gateway spawn_subagent 不再直接调用 QS
 - [x] Watchdog 支持 SPAWN_SUBAGENT 消息类型
-- [ ] 用户消息处理流程正常 (需要运行时测试)
+- [x] 用户消息处理流程正常 ✅ 运行时测试通过 (2026-02-04 19:49)
 
 ### Phase 2 完成标准
 - [x] Gateway 不再直接调用 QS 创建 saga
 - [x] spawn_subagent 通过 Watchdog 模式工作 (代码已修改)
 - [x] interrupt 通过 Watchdog 模式工作 (代码已修改)
-- [ ] 端到端测试通过 (需要运行时测试)
+- [x] 端到端测试通过 ✅ 消息发送 -> Watchdog -> QS Saga -> 完成
 
 ### Phase 3 完成标准
 - [x] QS 不导入 Gateway 模块 (grep 验证通过)
-- [ ] QS 可独立启动运行 (需要运行时测试)
-- [ ] 所有测试通过 (需要运行时测试)
+- [x] QS 可独立启动运行 ✅ 运行时测试通过
+- [x] 所有测试通过 ✅ 2026-02-04 19:49
 
 ---
 
@@ -449,6 +449,14 @@ python comprehensive_smoke_test.py
 | 2026-02-04 | 2.2 | Watchdog 支持 INTERRUPT | ✅ | 调用 QS cancel-all API |
 | 2026-02-04 | 3.1 | QS 移除 Gateway 导入 | ✅ | 删除 saga.py 中的代理类 |
 | 2026-02-04 | 3.2 | QS 删除未使用 router | ✅ | 删除 handler/business router |
+| 2026-02-04 | 3.3 | 删除 Gateway handler 执行端点 | ✅ | Task Worker 本地执行 handler |
+| 2026-02-04 | 3.4 | QS 新增 /api/queue/topics | ✅ | Task Worker 从 QS 获取 topics |
+| 2026-02-04 | 4.1 | 删除异步 Worker 版本 | ✅ | 统一使用同步版本 (_sync.py) |
+| 2026-02-04 | 4.2 | 更新 main_*.py 入口 | ✅ | 使用同步 Worker + QS URL |
+| 2026-02-04 | 4.3 | 修复 message_process 决策 | ✅ | 正确解析 route_message 结果 |
+| 2026-02-04 | 4.4 | Task Worker 添加 saga_client | ✅ | 支持 saga.trigger handler |
+| 2026-02-04 | 4.5 | run-dev.sh 添加 Queue Service | ✅ | 开发脚本自动启动 QS |
+| 2026-02-04 | 4.6 | Task Worker 添加 mcp_client | ✅ | 支持 tool.execute handler |
 | | | | | |
 
 ---
@@ -464,3 +472,12 @@ python comprehensive_smoke_test.py
 | `queue_service/queue_db.py` | 2.0 | 新增 cancel_all 方法 | ✅ |
 | `queue_service/saga_repo.py` | 2.0 | 新增 cancel_all 方法 | ✅ |
 | `queue_service/saga.py` | 3.1 | 移除 Gateway 导入 | ✅ |
+| `task_queue/workers/saga_worker_v2.py` | 4.1 | 删除 | ✅ |
+| `task_queue/workers/task_worker_v2.py` | 4.1 | 删除 | ✅ |
+| `task_queue/workers/health_worker_v2.py` | 4.1 | 删除 | ✅ |
+| `main_saga.py` | 4.2 | 改用 SagaWorkerSync | ✅ |
+| `main_task.py` | 4.2 | 改用 TaskWorkerSync + gateway_url | ✅ |
+| `main_health.py` | 4.2 | 改用 HealthWorkerSync | ✅ |
+| `task_queue/sagas/message_process.py` | 4.3 | 修复 _decide_action | ✅ |
+| `task_queue/workers/task_worker_sync.py` | 4.4, 4.6 | 添加 saga_client, mcp_client | ✅ |
+| `dev-guide/run-dev.sh` | 4.5 | 添加 start_queue | ✅ |
