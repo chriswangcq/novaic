@@ -11,6 +11,7 @@ All tasks are persisted to SQLite for recovery and querying.
 """
 
 import asyncio
+import time
 import json
 import logging
 import os
@@ -221,7 +222,7 @@ class TaskManager:
             "cancelled": 0,
         }
     
-    async def spawn(
+    def spawn(
         self,
         task_type: str,
         config: Dict[str, Any],
@@ -278,7 +279,7 @@ class TaskManager:
         self._stats["spawned"] += 1
         
         # Persist to database
-        await self._save_task(task)
+        self._save_task(task)
         
         logger.info(f"[TaskManager] Spawned task {task_id} ({task_type}): {label}")
         
@@ -299,7 +300,7 @@ class TaskManager:
             # Mark as failed for unsupported types
             task.status = TaskStatus.FAILED
             task.error = f"Task type '{task_type}' not yet implemented"
-            await self._save_task(task)
+            self._save_task(task)
             return {
                 "success": False,
                 "task_id": task_id,
@@ -313,7 +314,7 @@ class TaskManager:
             "status": task.status.value,
         }
     
-    async def create_completed(
+    def create_completed(
         self,
         tool_name: str,
         truncated_result: str,
@@ -355,8 +356,8 @@ class TaskManager:
         
         # Write full output to file
         output_file = output_dir / f"{task_id}.txt"
-        async with aiofiles.open(output_file, 'w', encoding='utf-8') as f:
-            await f.write(full_output)
+        with aiofiles.open(output_file, 'w', encoding='utf-8') as f:
+            f.write(full_output)
         
         # Create task
         task = Task(
@@ -380,13 +381,13 @@ class TaskManager:
         self._tasks[task_id] = task
         
         # Persist to database
-        await self._save_task(task)
+        self._save_task(task)
         
         logger.info(f"[TaskManager] Created sync_output task {task_id} for {tool_name}")
         
         return task_id
     
-    async def get_status(
+    def get_status(
         self,
         task_id: Optional[str] = None,
         include_outputs: bool = False,
@@ -419,7 +420,7 @@ class TaskManager:
             task = self._tasks.get(task_id)
             if not task:
                 # Try loading from database
-                task = await self._load_task(task_id)
+                task = self._load_task(task_id)
             
             if not task:
                 return {"success": False, "error": f"Task '{task_id}' not found"}
@@ -428,7 +429,7 @@ class TaskManager:
             
             # Handle paginated output retrieval from output_file
             if task.output_file and (start_line or end_line or tail_lines):
-                output_content = await self._read_output_file(
+                output_content = self._read_output_file(
                     task.output_file,
                     start_line,
                     end_line,
@@ -441,7 +442,7 @@ class TaskManager:
                     result["output_has_more"] = output_content["has_more"]
             
             if include_outputs:
-                outputs = await self._get_task_outputs(task_id, output_limit)
+                outputs = self._get_task_outputs(task_id, output_limit)
                 result["outputs"] = outputs
                 result["output_count"] = len(outputs)
                 result["truncated"] = len(outputs) >= output_limit
@@ -449,14 +450,14 @@ class TaskManager:
             return {"success": True, **result}
         else:
             # List tasks
-            tasks = await self._list_tasks(status_filter, agent_id)
+            tasks = self._list_tasks(status_filter, agent_id)
             return {
                 "success": True,
                 "tasks": tasks,
                 "total": len(tasks),
             }
     
-    async def get_result(
+    def get_result(
         self,
         task_id: str,
         format: str = "summary",
@@ -473,7 +474,7 @@ class TaskManager:
         """
         task = self._tasks.get(task_id)
         if not task:
-            task = await self._load_task(task_id)
+            task = self._load_task(task_id)
         
         if not task:
             return {"success": False, "error": f"Task '{task_id}' not found"}
@@ -500,7 +501,7 @@ class TaskManager:
         
         return result
     
-    async def cancel(
+    def cancel(
         self,
         task_id: str,
         reason: Optional[str] = None,
@@ -529,7 +530,7 @@ class TaskManager:
         if task._task:
             task._task.cancel()
             try:
-                await task._task
+                task._task
             except asyncio.CancelledError:
                 pass
         
@@ -537,7 +538,7 @@ class TaskManager:
         if task._process:
             try:
                 task._process.terminate()
-                await asyncio.sleep(0.5)
+                time.sleep(0.5)
                 if task._process.returncode is None:
                     task._process.kill()
             except Exception:
@@ -547,7 +548,7 @@ class TaskManager:
         task.completed_at = datetime.now()
         task.error = reason or "Cancelled by user"
         
-        await self._save_task(task)
+        self._save_task(task)
         self._stats["cancelled"] += 1
         
         logger.info(f"[TaskManager] Cancelled task {task_id}")
@@ -560,7 +561,7 @@ class TaskManager:
     
     # ==================== Internal Methods ====================
     
-    async def _execute_agent_task(self, task: Task, timeout_seconds: int):
+    def _execute_agent_task(self, task: Task, timeout_seconds: int):
         """
         Execute an agent task.
         
@@ -572,23 +573,23 @@ class TaskManager:
         task.error = "Agent tasks should use Master.create_sub_runtime() or POST /api/inbox"
         task.result_summary = "Use Master architecture"
         self._stats["failed"] += 1
-        await self._save_task(task)
+        self._save_task(task)
         
         logger.warning(f"[TaskManager] Agent task {task.id} rejected - use Master architecture")
-        await self._notify_completion(task)
+        self._notify_completion(task)
     
-    async def _execute_shell_task(self, task: Task, timeout_seconds: int):
+    def _execute_shell_task(self, task: Task, timeout_seconds: int):
         """Execute a shell task."""
         task.status = TaskStatus.RUNNING
         task.started_at = datetime.now()
-        await self._save_task(task)
+        self._save_task(task)
         
         command = task.config.command
         if not command:
             task.status = TaskStatus.FAILED
             task.error = "No command specified"
             task.completed_at = datetime.now()
-            await self._save_task(task)
+            self._save_task(task)
             return
         
         try:
@@ -597,7 +598,7 @@ class TaskManager:
             cwd = task.config.working_dir or os.getcwd()
             
             # Start process
-            process = await asyncio.create_subprocess_shell(
+            process = asyncio.create_subprocess_shell(
                 command,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
@@ -609,15 +610,15 @@ class TaskManager:
             stdout_lines = []
             stderr_lines = []
             
-            async def read_stream(stream, lines_list, output_type):
+            def read_stream(stream, lines_list, output_type):
                 while True:
-                    line = await stream.readline()
+                    line = stream.readline()
                     if not line:
                         break
                     decoded = line.decode('utf-8', errors='replace').rstrip('\n')
                     lines_list.append(decoded)
                     # Save to outputs
-                    await self._add_task_output(task.id, output_type, decoded)
+                    self._add_task_output(task.id, output_type, decoded)
             
             # Read stdout and stderr concurrently
             stdout_task = asyncio.create_task(
@@ -630,10 +631,10 @@ class TaskManager:
             # Wait for process with optional timeout
             if timeout_seconds > 0:
                 try:
-                    await asyncio.wait_for(process.wait(), timeout=timeout_seconds)
+                    asyncio.wait_for(process.wait(), timeout=timeout_seconds)
                 except asyncio.TimeoutError:
                     process.terminate()
-                    await asyncio.sleep(0.5)
+                    time.sleep(0.5)
                     if process.returncode is None:
                         process.kill()
                     task.status = TaskStatus.FAILED
@@ -642,14 +643,14 @@ class TaskManager:
                     stdout_task.cancel()
                     stderr_task.cancel()
                     task.completed_at = datetime.now()
-                    await self._save_task(task)
-                    await self._notify_completion(task)
+                    self._save_task(task)
+                    self._notify_completion(task)
                     return
             else:
-                await process.wait()
+                process.wait()
             
             # Wait for stream readers
-            await asyncio.gather(stdout_task, stderr_task, return_exceptions=True)
+            asyncio.gather(stdout_task, stderr_task, return_exceptions=True)
             
             # Set result
             task.result = {
@@ -684,18 +685,18 @@ class TaskManager:
             # Generate summary
             if task.result:
                 result_str = task.result if isinstance(task.result, str) else json.dumps(task.result)
-                task.result_summary = await self._generate_summary(result_str)
+                task.result_summary = self._generate_summary(result_str)
             elif task.error:
                 task.result_summary = f"Failed: {task.error[:100]}"
             
-            await self._save_task(task)
-            await self._notify_completion(task)
+            self._save_task(task)
+            self._notify_completion(task)
     
-    async def _execute_tool_task(self, task: Task, timeout_seconds: int):
+    def _execute_tool_task(self, task: Task, timeout_seconds: int):
         """Execute a generic MCP tool task."""
         task.status = TaskStatus.RUNNING
         task.started_at = datetime.now()
-        await self._save_task(task)
+        self._save_task(task)
         
         tool_name = task.config.tool
         tool_args = task.config.args or {}
@@ -704,7 +705,7 @@ class TaskManager:
             task.status = TaskStatus.FAILED
             task.error = "No tool name specified"
             task.completed_at = datetime.now()
-            await self._save_task(task)
+            self._save_task(task)
             return
         
         try:
@@ -726,16 +727,16 @@ class TaskManager:
                 raise RuntimeError("ToolRegistry not available")
             
             # Add intermediate output
-            await self._add_task_output(task.id, "info", f"Executing tool: {tool_name}")
+            self._add_task_output(task.id, "info", f"Executing tool: {tool_name}")
             
             # Execute the tool with optional timeout
             if timeout_seconds > 0:
-                result = await asyncio.wait_for(
+                result = asyncio.wait_for(
                     registry.execute(tool_name, tool_args),
                     timeout=timeout_seconds
                 )
             else:
-                result = await registry.execute(tool_name, tool_args)
+                result = registry.execute(tool_name, tool_args)
             
             # Store result
             task.result = result
@@ -756,7 +757,7 @@ class TaskManager:
             
             # Add result to outputs
             result_str = json.dumps(result) if isinstance(result, (dict, list)) else str(result)
-            await self._add_task_output(task.id, "result", result_str[:2000])
+            self._add_task_output(task.id, "result", result_str[:2000])
             
         except asyncio.TimeoutError:
             task.status = TaskStatus.FAILED
@@ -777,14 +778,14 @@ class TaskManager:
             # Generate summary
             if task.result and task.status == TaskStatus.COMPLETED:
                 result_str = json.dumps(task.result) if isinstance(task.result, (dict, list)) else str(task.result)
-                task.result_summary = await self._generate_summary(result_str)
+                task.result_summary = self._generate_summary(result_str)
             elif task.error:
                 task.result_summary = f"Failed: {task.error[:100]}"
             
-            await self._save_task(task)
-            await self._notify_completion(task)
+            self._save_task(task)
+            self._notify_completion(task)
     
-    async def _generate_summary(self, result: Any) -> str:
+    def _generate_summary(self, result: Any) -> str:
         """Generate a summary of the task result using LLM."""
         if not result:
             return "No result"
@@ -821,7 +822,7 @@ class TaskManager:
                         {"role": "user", "content": f"用1-2句话简洁概括以下任务结果，重点说明完成了什么：\n\n{result_str}"}
                     ]
                     
-                    response = await client.chat(messages, model=summary_model)
+                    response = client.chat(messages, model=summary_model)
                     return response.strip()[:500]
             except Exception as e:
                 logger.warning(f"[TaskManager] Failed to generate LLM summary: {e}")
@@ -831,7 +832,7 @@ class TaskManager:
             return result_str[:200] + "..."
         return result_str
     
-    async def _notify_completion(self, task: Task):
+    def _notify_completion(self, task: Task):
         """Log task completion."""
         # Determine if notification is requested
         if task.status == TaskStatus.COMPLETED and "complete" in task.notify_on:
@@ -841,13 +842,13 @@ class TaskManager:
     
     # ==================== Persistence Methods ====================
     
-    async def _save_task(self, task: Task):
+    def _save_task(self, task: Task):
         """Save task to database."""
         if not self.db:
             return
         
         try:
-            await self.db.execute(
+            self.db.execute(
                 """INSERT INTO tasks 
                    (id, type, label, config, status, created_at, started_at, completed_at,
                     result, result_summary, error, output_file, ttl_hours, expires_at,
@@ -882,17 +883,17 @@ class TaskManager:
                     json.dumps(task.notify_on),
                 )
             )
-            await self.db.commit()
+            self.db.commit()
         except Exception as e:
             logger.error(f"[TaskManager] Failed to save task {task.id}: {e}")
     
-    async def _load_task(self, task_id: str) -> Optional[Task]:
+    def _load_task(self, task_id: str) -> Optional[Task]:
         """Load task from database."""
         if not self.db:
             return None
         
         try:
-            row = await self.db.fetchone(
+            row = self.db.fetchone(
                 "SELECT * FROM tasks WHERE id = ?",
                 (task_id,)
             )
@@ -923,7 +924,7 @@ class TaskManager:
             logger.error(f"[TaskManager] Failed to load task {task_id}: {e}")
             return None
     
-    async def _list_tasks(
+    def _list_tasks(
         self,
         status_filter: Optional[List[str]] = None,
         agent_id: Optional[str] = None,
@@ -956,7 +957,7 @@ class TaskManager:
                 
                 where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
                 
-                rows = await self.db.fetchall(
+                rows = self.db.fetchall(
                     f"SELECT * FROM tasks {where} ORDER BY created_at DESC LIMIT 100",
                     tuple(params)
                 )
@@ -986,27 +987,27 @@ class TaskManager:
         
         return tasks
     
-    async def _add_task_output(self, task_id: str, output_type: str, content: str):
+    def _add_task_output(self, task_id: str, output_type: str, content: str):
         """Add output to task_outputs table."""
         if not self.db:
             return
         
         try:
-            await self.db.execute(
+            self.db.execute(
                 "INSERT INTO task_outputs (task_id, type, content) VALUES (?, ?, ?)",
                 (task_id, output_type, content)
             )
-            await self.db.commit()
+            self.db.commit()
         except Exception as e:
             logger.warning(f"[TaskManager] Failed to add task output: {e}")
     
-    async def _get_task_outputs(self, task_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+    def _get_task_outputs(self, task_id: str, limit: int = 50) -> List[Dict[str, Any]]:
         """Get task outputs from database."""
         if not self.db:
             return []
         
         try:
-            rows = await self.db.fetchall(
+            rows = self.db.fetchall(
                 "SELECT ts, type, content FROM task_outputs WHERE task_id = ? ORDER BY ts DESC LIMIT ?",
                 (task_id, limit)
             )
@@ -1015,7 +1016,7 @@ class TaskManager:
             logger.error(f"[TaskManager] Failed to get task outputs: {e}")
             return []
     
-    async def _read_output_file(
+    def _read_output_file(
         self,
         output_file: str,
         start_line: Optional[int] = None,
@@ -1040,8 +1041,8 @@ class TaskManager:
             return None
         
         try:
-            async with aiofiles.open(output_file, 'r', encoding='utf-8') as f:
-                all_lines = await f.readlines()
+            with aiofiles.open(output_file, 'r', encoding='utf-8') as f:
+                all_lines = f.readlines()
             
             total_lines = len(all_lines)
             
@@ -1089,7 +1090,7 @@ class TaskManager:
             "running": running,
         }
     
-    async def cleanup_completed(self, max_age_hours: int = 24):
+    def cleanup_completed(self, max_age_hours: int = 24):
         """Clean up old completed tasks from memory."""
         cutoff = datetime.now()
         to_remove = []
@@ -1109,7 +1110,7 @@ class TaskManager:
         
         return len(to_remove)
     
-    async def cleanup_expired(self) -> int:
+    def cleanup_expired(self) -> int:
         """
         Clean up expired tasks from database and delete their output files.
         
@@ -1126,7 +1127,7 @@ class TaskManager:
         
         try:
             # First, get expired tasks with output files
-            rows = await self.db.fetchall(
+            rows = self.db.fetchall(
                 "SELECT id, output_file FROM tasks WHERE expires_at IS NOT NULL AND expires_at < ?",
                 (now,)
             )
@@ -1149,11 +1150,11 @@ class TaskManager:
                         logger.warning(f"[TaskManager] Failed to delete output file {output_file}: {e}")
             
             # Delete from database
-            result = await self.db.execute(
+            result = self.db.execute(
                 "DELETE FROM tasks WHERE expires_at IS NOT NULL AND expires_at < ?",
                 (now,)
             )
-            await self.db.commit()
+            self.db.commit()
             
             # Get rowcount - handle different database backends
             if hasattr(result, 'rowcount'):

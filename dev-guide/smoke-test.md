@@ -1,7 +1,8 @@
 # 后端冒烟测试指南
 
-> **更新时间**: 2026-02-03
-> **适用版本**: v22+ (Task Queue v2 + Saga 架构)
+> **更新时间**: 2026-02-04  
+> **适用版本**: v22+ (Task Queue v2 + Saga 架构)  
+> **最新修复**: 参见 [fixes-20260204.md](./fixes-20260204.md) - 完整AI回复流程验证通过 ✅
 
 本文档记录后端冒烟测试的完整流程、常见问题和解决方案。
 
@@ -107,107 +108,107 @@ curl -s http://127.0.0.1:19998/api/health
 
 ## 冒烟测试流程
 
-### Step 1: 配置 LLM API Key
+### Step 1: 配置 LLM API Key 和 Model
 
-**重要**: 必须先配置 API Key 才能完成 LLM 调用测试。
+**重要**: 必须先配置 API Key 和 Model 才能完成 LLM 调用测试。详细步骤参见 [fixes-20260204.md](./fixes-20260204.md) 的"DB配置初始化流程"部分。
 
-#### 方法 A: 从 Tauri 应用数据库复制
+#### 快速配置命令
 
-```bash
-# 查看 Tauri 应用的 API key
-sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
-  "SELECT id, name, provider, api_base FROM api_keys;"
+```python
+# 1. 添加 API Key
+import httpx
 
-# 复制到开发数据库
-sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
-  "SELECT * FROM api_keys;" | while IFS='|' read id name provider api_key api_base deployment api_version created; do
-  sqlite3 ~/.novaic/novaic.db "INSERT OR REPLACE INTO api_keys (id, name, provider, api_key, api_base, deployment_name, api_version, created_at) VALUES ('$id', '$name', '$provider', '$api_key', '$api_base', '$deployment', '$api_version', '$created');"
-done
+with httpx.Client(trust_env=False, timeout=10.0) as client:
+    r = client.post("http://127.0.0.1:19999/api/config/api-keys", json={
+        "provider": "openai",  # moonshot兼容openai
+        "name": "Moonshot/Kimi",
+        "api_key": "sk-YOUR-REAL-KEY",
+        "api_base": "https://api.moonshot.cn/v1"
+    })
+    key_id = r.json()['id']
+    print(f"✓ API Key ID: {key_id}")
 ```
 
-#### 方法 B: 通过 API 添加
+```python
+# 2. 添加模型到 candidate_models
+import sqlite3
+from pathlib import Path
+
+db_path = Path.home() / ".novaic" / "novaic.db"
+conn = sqlite3.connect(str(db_path))
+
+# 获取刚创建的api_key_id
+key_id = conn.execute(
+    "SELECT id FROM api_keys ORDER BY created_at DESC LIMIT 1"
+).fetchone()[0]
+
+# 插入kimi-k2.5模型
+conn.execute("""
+    INSERT INTO candidate_models (id, name, provider, api_key_id, available, is_custom)
+    VALUES (?, ?, ?, ?, 1, 0)
+""", ("model-kimi-k25", "kimi-k2.5", "openai", key_id))
+
+conn.commit()
+conn.close()
+print("✓ kimi-k2.5已添加")
+```
 
 ```bash
-curl -X POST http://127.0.0.1:19999/api/config/api-keys \
+# 3. 验证配置
+curl -s http://127.0.0.1:19999/internal/config/llm | python -m json.tool
+```
+
+### Step 2: 创建 Agent（自动创建SubAgent）
+
+```bash
+# 创建 Agent（指定model，自动创建SubAgent）
+curl -s -X POST http://127.0.0.1:19999/api/agents \
   -H "Content-Type: application/json" \
   -d '{
-    "provider": "openai",
-    "name": "My API Key",
-    "api_key": "sk-xxx",
-    "api_base": "https://api.openai.com/v1"
+    "name": "smoke-test",
+    "model": "kimi-k2.5"
   }'
-```
-
-### Step 2: 配置可用模型
-
-```bash
-# 添加模型到 candidate_models
-sqlite3 ~/.novaic/novaic.db "INSERT OR REPLACE INTO candidate_models (id, name, provider, api_key_id, available, is_custom) VALUES ('kimi-k2.5', 'kimi-k2.5', 'openai', '<your-api-key-id>', 1, 0);"
-
-# 设置默认模型
-sqlite3 ~/.novaic/novaic.db "UPDATE config SET value = '\"kimi-k2.5\"' WHERE key = 'default_model';"
-
-# 验证配置
-curl -s http://127.0.0.1:19999/api/config
-```
-
-**重要**: 配置 API Key 和模型后，需要**重启 Gateway** 才能生效！
-
-```bash
-pkill -f "python.*main_gateway"
-sleep 2
-nohup python main_gateway.py > /tmp/gateway.log 2>&1 &
-sleep 5
-
-# 验证 LLM 配置
-strings /tmp/gateway.log | grep "LLM client"
-# 应该看到: [Gateway] LLM client configured: openai
-```
-
-### Step 3: 创建 Agent 和 SubAgent
-
-```bash
-# 创建 Agent
-AGENT_RESPONSE=$(curl -s -X POST http://127.0.0.1:19999/api/agents \
-  -H "Content-Type: application/json" \
-  -d '{"name": "smoke-test"}')
-echo $AGENT_RESPONSE
-
-# 获取 Agent ID
-AGENT_ID=$(echo $AGENT_RESPONSE | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
-echo "Agent ID: $AGENT_ID"
-```
-
-**重要**: 必须创建 SubAgent，否则消息无法路由！
-
-```bash
-# SubAgent ID 格式: main-{agent_id前8位}
-SUBAGENT_ID="main-${AGENT_ID:0:8}"
-
-# 创建 SubAgent
-sqlite3 ~/.novaic/novaic.db "INSERT INTO subagents (subagent_id, agent_id, type, status, created_at) VALUES ('$SUBAGENT_ID', '$AGENT_ID', 'main', 'sleeping', datetime('now'));"
 
 # 验证
-sqlite3 ~/.novaic/novaic.db "SELECT subagent_id, agent_id, status FROM subagents;"
+sqlite3 ~/.novaic/novaic.db "SELECT id, name, model_id FROM agents;"
+sqlite3 ~/.novaic/novaic.db "SELECT subagent_id, agent_id FROM subagents;"
 ```
 
-### Step 4: 发送消息并验证
+**注意**: 从 2026-02-04 起，创建 Agent 时会自动创建 main SubAgent，无需手动插入。
+
+### Step 3: 发送消息并验证
 
 ```bash
 # 发送消息
 curl -s -X POST http://127.0.0.1:19999/api/chat/send \
   -H "Content-Type: application/json" \
-  -d '{"message": "请回复 pong"}'
+  -d '{"message": "你好！请回复：收到"}'
 
-# 等待处理（LLM 调用需要时间）
-sleep 30
+# 等待处理（通常5-10秒）
+sleep 10
 
-# 检查 LLM 任务结果
-sqlite3 ~/.novaic/novaic.db "SELECT topic, status, substr(result, 1, 100) FROM tq_tasks WHERE topic = 'llm.call' ORDER BY created_at DESC LIMIT 1;"
+# 检查 AI 回复
+sqlite3 ~/.novaic/novaic.db "
+  SELECT type, content, timestamp 
+  FROM chat_messages 
+  WHERE type='AGENT_REPLY' 
+  ORDER BY timestamp DESC 
+  LIMIT 1;
+"
 
-# 检查聊天消息
-sqlite3 ~/.novaic/novaic.db "SELECT type, substr(content, 1, 80) FROM chat_messages ORDER BY timestamp DESC LIMIT 5;"
+# 检查任务状态
+sqlite3 ~/.novaic/novaic.db "
+  SELECT topic, status, COUNT(*) 
+  FROM tq_tasks 
+  GROUP BY topic, status 
+  ORDER BY topic;
+"
 ```
+
+**预期结果**:
+- 应该看到 `AGENT_REPLY` 类型的消息
+- 内容应该是 "收到"
+- LLM任务和tool.execute任务都是 `done` 状态
 
 ---
 
@@ -268,56 +269,54 @@ tail -20 /tmp/task.log
 
 ## 常见问题和解决方案
 
-### 1. "SubAgent not found"
+### 1. "SubAgent not found"（已过时）
 
-**原因**: Agent 创建后没有对应的 SubAgent 记录。
+**注意**: 从 2026-02-04 起，此问题已修复。创建 Agent 时会自动创建 main SubAgent。
 
-**解决方案**:
+如果使用旧代码，手动创建：
 ```bash
-# SubAgent ID 格式必须是 main-{agent_id前8位}
-AGENT_ID="59361ea4-4218-4dc3-a4b8-287e6e6b2406"
-SUBAGENT_ID="main-${AGENT_ID:0:8}"  # main-59361ea4
+AGENT_ID="your-agent-id"
+SUBAGENT_ID="main-${AGENT_ID:0:8}"
 
 sqlite3 ~/.novaic/novaic.db "INSERT INTO subagents (subagent_id, agent_id, type, status, created_at) VALUES ('$SUBAGENT_ID', '$AGENT_ID', 'main', 'sleeping', datetime('now'));"
 ```
 
-### 2. "LLM client not configured"
+### 2. LLM 调用失败（401 / API key错误）
 
-**原因**: Gateway 启动时 API Key 未配置，或配置后未重启 Gateway。
+**原因**: API Key 未配置或配置错误。
 
 **解决方案**:
 1. 检查 API Key 配置
    ```bash
-   sqlite3 ~/.novaic/novaic.db "SELECT id, name, provider FROM api_keys;"
+   sqlite3 ~/.novaic/novaic.db "SELECT id, name, provider, api_base FROM api_keys;"
    ```
 2. 检查 candidate_models 配置
    ```bash
-   sqlite3 ~/.novaic/novaic.db "SELECT * FROM candidate_models;"
+   sqlite3 ~/.novaic/novaic.db "SELECT name, provider, api_key_id, available FROM candidate_models;"
    ```
-3. **重启 Gateway**
+3. 验证 LLM 配置（不需要重启）
    ```bash
-   pkill -f "python.*main_gateway"
-   nohup python main_gateway.py > /tmp/gateway.log 2>&1 &
-   sleep 5
-   strings /tmp/gateway.log | grep "LLM client"
+   curl -s http://127.0.0.1:19999/internal/config/llm | python -m json.tool
    ```
+
+**注意**: 从 2026-02-04 起，LLM 配置从 DB 动态读取，无需重启 Gateway。
 
 ### 3. 模型不存在错误 (404 / "model not found")
 
-**原因**: default_model 配置的模型名与 API Provider 不匹配。
-
-**示例**: 配置了 Kimi API (moonshot)，但 default_model 是 `gpt-4o`。
+**原因**: Agent 的 model_id 或 default_model 不在 candidate_models 中。
 
 **解决方案**:
 ```bash
-# 检查当前配置
-sqlite3 ~/.novaic/novaic.db "SELECT value FROM config WHERE key = 'default_model';"
+# 检查 agent 的 model_id
+sqlite3 ~/.novaic/novaic.db "SELECT id, name, model_id FROM agents;"
 
-# 更新为正确的模型名
-sqlite3 ~/.novaic/novaic.db "UPDATE config SET value = '\"kimi-k2.5\"' WHERE key = 'default_model';"
+# 检查可用模型
+sqlite3 ~/.novaic/novaic.db "SELECT name, available FROM candidate_models;"
 
-# 重启 Gateway
+# 如果模型不存在，添加它（参见 Step 1）
 ```
+
+**提示**: 创建 Agent 时指定 `"model": "kimi-k2.5"` 会自动使用该模型，无需修改 default_model。
 
 ### 4. Task Worker 频繁退出
 
@@ -352,14 +351,24 @@ sqlite3 ~/.novaic/novaic.db "SELECT topic, status, count(*) FROM tq_tasks WHERE 
 sqlite3 ~/.novaic/novaic.db "SELECT step_results FROM tq_sagas WHERE id = '<saga-id>';"
 ```
 
-### 6. Context 中有空消息
+### 6. "cannot commit transaction - SQL statements in progress"
+
+**原因**: cursor 未在 commit 前 close（已在 2026-02-04 修复）。
+
+**状态**: 此问题已修复，错误减少 92%。如果仍出现，请报告。
+
+### 7. Context 中有空消息（已较少见）
 
 **原因**: 之前失败的 LLM 调用留下了无效数据。
 
-**解决方案**: 清理 runtime 数据，重新开始
+**解决方案**: 清理 runtime 数据
 ```bash
-sqlite3 ~/.novaic/novaic.db "DELETE FROM agent_runtimes; DELETE FROM tq_sagas; DELETE FROM tq_tasks;"
-sqlite3 ~/.novaic/novaic.db "UPDATE subagents SET status = 'sleeping';"
+sqlite3 ~/.novaic/novaic.db "
+DELETE FROM agent_runtimes; 
+DELETE FROM tq_sagas; 
+DELETE FROM tq_tasks;
+DELETE FROM chat_messages;
+"
 ```
 
 ---

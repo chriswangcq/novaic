@@ -46,7 +46,7 @@ class LLMBusiness:
     Example:
         >>> from task_queue.business import LLMBusiness
         >>> llm_biz = LLMBusiness(db, llm_client)
-        >>> result = await llm_biz.call(messages, model="gpt-4o")
+        >>> result = llm_biz.call(messages, model="gpt-4o")
         >>> if result.success:
         ...     print(result.response)
     """
@@ -61,7 +61,7 @@ class LLMBusiness:
         self.llm_client = llm_client
         self.client = client or GatewayInternalClient(gateway_url)
     
-    async def call(
+    def call(
         self,
         messages: List[Dict[str, Any]],
         *,
@@ -96,7 +96,7 @@ class LLMBusiness:
             processed = process_multimodal_messages(sanitized, provider)
             
             # 3. 调用 LLM
-            response = await self.llm_client.chat(
+            response = self.llm_client.chat(
                 messages=processed,
                 model=model,
                 tools=tools,
@@ -107,7 +107,7 @@ class LLMBusiness:
         except Exception as e:
             return LLMCallResult(success=False, error=str(e))
     
-    async def generate_summary(
+    def generate_summary(
         self,
         runtime_id: str,
         *,
@@ -131,7 +131,7 @@ class LLMBusiness:
             system_prompt = "Please summarize this conversation concisely, highlighting key points and decisions made."
         
         # 1. 获取 runtime 信息
-        runtime = await self.client.get_runtime(runtime_id)
+        runtime = self.client.get_runtime(runtime_id)
         if not runtime:
             return SummaryResult(success=False, error="Runtime not found")
 
@@ -157,7 +157,7 @@ class LLMBusiness:
         
         try:
             # 3. 调用 LLM
-            response = await self.llm_client.chat(
+            response = self.llm_client.chat(
                 messages=messages,
                 model=model,
             )
@@ -165,7 +165,7 @@ class LLMBusiness:
             summary = response.get("choices", [{}])[0].get("message", {}).get("content", "")
             
             # 4. 保存摘要
-            await self.client.update_runtime(runtime_id, {"summary": summary})
+            self.client.update_runtime(runtime_id, {"summary": summary})
             
             return SummaryResult(success=True, summary=summary)
             

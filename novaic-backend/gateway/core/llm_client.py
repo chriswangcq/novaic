@@ -3,7 +3,7 @@ LLM Client - Multi-Provider Support (OpenAI, Anthropic, Google, Azure, Bedrock)
 """
 
 import httpx
-from typing import AsyncGenerator, Optional, List, Dict, Any
+from typing import Generator, Optional, List, Dict, Any
 import json
 from abc import ABC, abstractmethod
 
@@ -35,7 +35,7 @@ class BaseLLMClient(ABC):
         self.default_model = DEFAULT_MODEL
     
     @abstractmethod
-    async def chat(
+    def chat(
         self,
         messages: List[Dict[str, Any]],
         tools: Optional[List[Dict[str, Any]]] = None,
@@ -47,13 +47,13 @@ class BaseLLMClient(ABC):
         pass
     
     @abstractmethod
-    async def chat_stream(
+    def chat_stream(
         self,
         messages: List[Dict[str, Any]],
         tools: Optional[List[Dict[str, Any]]] = None,
         model: Optional[str] = None,
         max_tokens: Optional[int] = None
-    ) -> AsyncGenerator[Dict[str, Any], None]:
+    ) -> Generator[Dict[str, Any], None, None]:
         """Stream chat response from LLM."""
         pass
     
@@ -101,7 +101,7 @@ class OpenAIClient(BaseLLMClient):
             "Content-Type": "application/json"
         }
     
-    async def chat(
+    def chat(
         self,
         messages: List[Dict[str, Any]],
         tools: Optional[List[Dict[str, Any]]] = None,
@@ -131,12 +131,12 @@ class OpenAIClient(BaseLLMClient):
         print(f"[OpenAI] Calling {url} with model {payload['model']}")
         
         try:
-            async with httpx.AsyncClient(
+            with httpx.Client(
                 timeout=self.timeout, 
                 proxy=None,
                 trust_env=False
             ) as client:
-                response = await client.post(
+                response = client.post(
                     url,
                     headers=self._get_headers(),
                     json=payload
@@ -166,13 +166,13 @@ class OpenAIClient(BaseLLMClient):
         
         return result
     
-    async def chat_stream(
+    def chat_stream(
         self,
         messages: List[Dict[str, Any]],
         tools: Optional[List[Dict[str, Any]]] = None,
         model: Optional[str] = None,
         max_tokens: Optional[int] = None
-    ) -> AsyncGenerator[Dict[str, Any], None]:
+    ) -> Generator[Dict[str, Any], None, None]:
         """Stream chat response from OpenAI."""
         payload = {
             "model": model or self.default_model,
@@ -187,22 +187,22 @@ class OpenAIClient(BaseLLMClient):
         url = f"{self.api_base}/chat/completions"
         print(f"[OpenAI] Streaming from {url} with model {payload['model']}")
         
-        async with httpx.AsyncClient(
+        with httpx.Client(
             timeout=self.timeout,
             proxy=None,
             trust_env=False
         ) as client:
-            async with client.stream(
+            with client.stream(
                 "POST",
                 url,
                 headers=self._get_headers(),
                 json=payload
             ) as response:
                 if response.status_code != 200:
-                    error_text = await response.aread()
+                    error_text = response.read()
                     raise LLMError(f"API error: {response.status_code} - {error_text}")
                 
-                async for line in response.aiter_lines():
+                for line in response.iter_lines():
                     if line.startswith("data: "):
                         data = line[6:]
                         if data.strip() == "[DONE]":
@@ -212,7 +212,7 @@ class OpenAIClient(BaseLLMClient):
                         except json.JSONDecodeError:
                             continue
     
-    async def responses_create(
+    def responses_create(
         self,
         input: List[Dict[str, Any]],
         tools: Optional[List[Dict[str, Any]]] = None,
@@ -239,12 +239,12 @@ class OpenAIClient(BaseLLMClient):
         print(f"[OpenAI] Calling responses API: {url} with model {payload['model']}")
         
         try:
-            async with httpx.AsyncClient(
+            with httpx.Client(
                 timeout=self.timeout,
                 proxy=None,
                 trust_env=False
             ) as client:
-                response = await client.post(
+                response = client.post(
                     url,
                     headers=self._get_headers(),
                     json=payload
@@ -480,7 +480,7 @@ class AnthropicClient(BaseLLMClient):
             }
         }
     
-    async def chat(
+    def chat(
         self,
         messages: List[Dict[str, Any]],
         tools: Optional[List[Dict[str, Any]]] = None,
@@ -515,12 +515,12 @@ class AnthropicClient(BaseLLMClient):
         print(f"[Anthropic] Calling {url} with model {payload['model']}")
         
         try:
-            async with httpx.AsyncClient(
+            with httpx.Client(
                 timeout=self.timeout, 
                 proxy=None,
                 trust_env=False
             ) as client:
-                response = await client.post(
+                response = client.post(
                     url,
                     headers=self._get_headers(),
                     json=payload
@@ -547,13 +547,13 @@ class AnthropicClient(BaseLLMClient):
         
         return self._convert_response_to_openai(raw_response)
     
-    async def chat_stream(
+    def chat_stream(
         self,
         messages: List[Dict[str, Any]],
         tools: Optional[List[Dict[str, Any]]] = None,
         model: Optional[str] = None,
         max_tokens: Optional[int] = None
-    ) -> AsyncGenerator[Dict[str, Any], None]:
+    ) -> Generator[Dict[str, Any], None, None]:
         """Stream chat response from Anthropic."""
         system_prompt, converted_messages = self._convert_messages(messages)
         
@@ -573,22 +573,22 @@ class AnthropicClient(BaseLLMClient):
         url = f"{self.api_base}/v1/messages"
         print(f"[Anthropic] Streaming from {url} with model {payload['model']}")
         
-        async with httpx.AsyncClient(
+        with httpx.Client(
             timeout=self.timeout,
             proxy=None,
             trust_env=False
         ) as client:
-            async with client.stream(
+            with client.stream(
                 "POST",
                 url,
                 headers=self._get_headers(),
                 json=payload
             ) as response:
                 if response.status_code != 200:
-                    error_text = await response.aread()
+                    error_text = response.read()
                     raise LLMError(f"API error: {response.status_code} - {error_text}")
                 
-                async for line in response.aiter_lines():
+                for line in response.iter_lines():
                     if line.startswith("data: "):
                         data = line[6:]
                         if data.strip() == "[DONE]":
@@ -652,7 +652,7 @@ class AzureOpenAIClient(BaseLLMClient):
             "Content-Type": "application/json"
         }
     
-    async def chat(
+    def chat(
         self,
         messages: List[Dict[str, Any]],
         tools: Optional[List[Dict[str, Any]]] = None,
@@ -674,12 +674,12 @@ class AzureOpenAIClient(BaseLLMClient):
         print(f"[Azure] Calling {url}")
         
         try:
-            async with httpx.AsyncClient(
+            with httpx.Client(
                 timeout=self.timeout, 
                 proxy=None,
                 trust_env=False
             ) as client:
-                response = await client.post(
+                response = client.post(
                     url,
                     headers=self._get_headers(),
                     json=payload
@@ -697,13 +697,13 @@ class AzureOpenAIClient(BaseLLMClient):
         
         return response.json()
     
-    async def chat_stream(
+    def chat_stream(
         self,
         messages: List[Dict[str, Any]],
         tools: Optional[List[Dict[str, Any]]] = None,
         model: Optional[str] = None,
         max_tokens: Optional[int] = None
-    ) -> AsyncGenerator[Dict[str, Any], None]:
+    ) -> Generator[Dict[str, Any], None, None]:
         """Stream chat response from Azure OpenAI."""
         payload = {
             "messages": messages,
@@ -717,22 +717,22 @@ class AzureOpenAIClient(BaseLLMClient):
         url = f"{self.api_base}/openai/deployments/{self.deployment_name}/chat/completions?api-version={self.api_version}"
         print(f"[Azure] Streaming from {url}")
         
-        async with httpx.AsyncClient(
+        with httpx.Client(
             timeout=self.timeout,
             proxy=None,
             trust_env=False
         ) as client:
-            async with client.stream(
+            with client.stream(
                 "POST",
                 url,
                 headers=self._get_headers(),
                 json=payload
             ) as response:
                 if response.status_code != 200:
-                    error_text = await response.aread()
+                    error_text = response.read()
                     raise LLMError(f"API error: {response.status_code} - {error_text}")
                 
-                async for line in response.aiter_lines():
+                for line in response.iter_lines():
                     if line.startswith("data: "):
                         data = line[6:]
                         if data.strip() == "[DONE]":
@@ -915,7 +915,7 @@ class GoogleAIClient(BaseLLMClient):
             }
         }
     
-    async def chat(
+    def chat(
         self,
         messages: List[Dict[str, Any]],
         tools: Optional[List[Dict[str, Any]]] = None,
@@ -946,12 +946,12 @@ class GoogleAIClient(BaseLLMClient):
         print(f"[Google] Calling with model {model_name}, tools: {len(tools) if tools else 0}")
         
         try:
-            async with httpx.AsyncClient(
+            with httpx.Client(
                 timeout=self.timeout, 
                 proxy=None,
                 trust_env=False
             ) as client:
-                response = await client.post(
+                response = client.post(
                     url,
                     headers={"Content-Type": "application/json"},
                     json=payload
@@ -969,13 +969,13 @@ class GoogleAIClient(BaseLLMClient):
         
         return self._convert_response_to_openai(response.json(), model_name)
     
-    async def chat_stream(
+    def chat_stream(
         self,
         messages: List[Dict[str, Any]],
         tools: Optional[List[Dict[str, Any]]] = None,
         model: Optional[str] = None,
         max_tokens: Optional[int] = None
-    ) -> AsyncGenerator[Dict[str, Any], None]:
+    ) -> Generator[Dict[str, Any], None, None]:
         """Stream chat response from Google AI."""
         model_name = model or self.default_model
         system_instruction, contents = self._convert_messages(messages)
@@ -998,22 +998,22 @@ class GoogleAIClient(BaseLLMClient):
         url = f"{self.api_base}/models/{model_name}:streamGenerateContent?key={self.api_key}&alt=sse"
         print(f"[Google] Streaming with model {model_name}")
         
-        async with httpx.AsyncClient(
+        with httpx.Client(
             timeout=self.timeout,
             proxy=None,
             trust_env=False
         ) as client:
-            async with client.stream(
+            with client.stream(
                 "POST",
                 url,
                 headers={"Content-Type": "application/json"},
                 json=payload
             ) as response:
                 if response.status_code != 200:
-                    error_text = await response.aread()
+                    error_text = response.read()
                     raise LLMError(f"API error: {response.status_code} - {error_text}")
                 
-                async for line in response.aiter_lines():
+                for line in response.iter_lines():
                     if line.startswith("data: "):
                         data = line[6:]
                         try:

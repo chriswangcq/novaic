@@ -153,7 +153,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from contextlib import asynccontextmanager
+from contextlib import contextmanager, asynccontextmanager
 from pathlib import Path
 
 import sys
@@ -202,7 +202,7 @@ def get_task_mgr() -> TaskManager:
     return task_manager
 
 
-async def initialize_systems(config):
+def initialize_systems(config):
     """Initialize all system components."""
     global task_manager
     global message_repo, agent_state_repo
@@ -244,7 +244,7 @@ async def initialize_systems(config):
     
     # Cleanup expired tasks on startup
     if task_manager:
-        cleaned = await task_manager.cleanup_expired()
+        cleaned = task_manager.cleanup_expired()
         if cleaned:
             print(f"[Gateway] Cleaned up {cleaned} expired tasks on startup")
     
@@ -259,13 +259,13 @@ async def initialize_systems(config):
     # The old AgentRunner has been removed in favor of the multi-process architecture
     if current_agent:
         # Ensure agent state exists
-        await agent_state_repo.ensure_exists(current_agent.id)
+        agent_state_repo.ensure_exists(current_agent.id)
         print(f"[Gateway] Agent state initialized for {current_agent.id}")
     else:
         print("[Gateway] Warning: No current agent selected")
 
 
-async def shutdown_systems():
+def shutdown_systems():
     """Shutdown all system components."""
     # v2: Most components are now separate processes
     pass
@@ -283,7 +283,7 @@ async def periodic_task_cleanup():
             from gateway.core.task_manager import get_task_manager
             tm = get_task_manager()
             if tm:
-                cleaned = await tm.cleanup_expired()
+                cleaned = tm.cleanup_expired()
                 if cleaned:
                     print(f"[Gateway] Periodic cleanup: removed {cleaned} expired tasks")
         except asyncio.CancelledError:
@@ -306,12 +306,12 @@ async def lifespan(app: FastAPI):
     
     # Initialize database
     print("[Gateway] Initializing database...")
-    db = await init_database()
+    db = init_database()
     print(f"[Gateway] Database initialized: {db.db_path}")
     
     # Run migrations (from file-based storage to SQLite)
     print("[Gateway] Checking for data migrations...")
-    migration_results = await run_migration(db)
+    migration_results = run_migration(db)
     if any(migration_results.values()):
         print(f"[Gateway] Migrations completed: {migration_results}")
     else:
@@ -322,7 +322,7 @@ async def lifespan(app: FastAPI):
     print(f"🤖 Default model: {config.default_model}")
     
     # Initialize all systems
-    await initialize_systems(config)
+    initialize_systems(config)
     
     # MCP 由 Backend 组件 MCP Gateway（main_mcp.py）提供
     print("[Gateway] MCP 由 Backend 组件 MCP Gateway 提供")
@@ -331,7 +331,7 @@ async def lifespan(app: FastAPI):
     try:
         from gateway.vm import get_vm_manager
         vm_manager = get_vm_manager()
-        await vm_manager.recover_processes()
+        vm_manager.recover_processes()
         print("[Gateway] VM process recovery complete")
     except Exception as e:
         print(f"[Gateway] Warning: Failed to recover VM processes: {e}")
@@ -342,7 +342,7 @@ async def lifespan(app: FastAPI):
     
     # Initialize Worker SSE broadcaster (v11)
     from gateway.sse import init_worker_broadcaster, shutdown_worker_broadcaster
-    await init_worker_broadcaster()
+    init_worker_broadcaster()
     print("[Gateway] Worker SSE broadcaster initialized")
     
     # Initialize Task Queue v2
@@ -436,7 +436,7 @@ async def lifespan(app: FastAPI):
     if _cleanup_task:
         _cleanup_task.cancel()
         try:
-            await _cleanup_task
+            _cleanup_task
         except asyncio.CancelledError:
             pass
         print("[Gateway] Periodic task cleanup stopped")
@@ -461,10 +461,10 @@ async def lifespan(app: FastAPI):
         print(f"[Gateway] Warning: Failed to stop VMs: {e}")
     
     # Shutdown all systems
-    await shutdown_systems()
+    shutdown_systems()
     
     # Close database
-    await close_database()
+    close_database()
     print("[Gateway] Database closed")
     
     print("👋 NovAIC Gateway shutting down")
@@ -501,7 +501,7 @@ app.include_router(internal_router)
 
 # Root endpoint
 @app.get("/api")
-async def api_root():
+def api_root():
     """API root endpoint"""
     return {
         "name": "NovAIC Gateway",
@@ -516,7 +516,7 @@ async def api_root():
 
 # System status endpoint
 @app.get("/api/system/status")
-async def system_status():
+def system_status():
     """Get detailed system status"""
     return {
         "mcp": "separate MCP Gateway process",
@@ -527,7 +527,7 @@ async def system_status():
 # ==================== Unified Task API ====================
 
 @app.post("/api/internal/tasks")
-async def create_task(data: dict):
+def create_task(data: dict):
     """Create a new task (internal API)"""
     if not task_manager:
         return {"error": "TaskManager not initialized", "success": False}
@@ -536,7 +536,7 @@ async def create_task(data: dict):
     if not agent_id:
         return {"error": "No agent selected. Please select an agent first.", "success": False}
     
-    return await task_manager.spawn(
+    return task_manager.spawn(
         task_type=data.get("task_type", "agent"),
         config=data.get("task_config", {}),
         label=data.get("label"),
@@ -548,12 +548,12 @@ async def create_task(data: dict):
 
 
 @app.get("/api/internal/tasks/{task_id}")
-async def get_task_status(task_id: str, include_outputs: bool = False, output_limit: int = 50):
+def get_task_status(task_id: str, include_outputs: bool = False, output_limit: int = 50):
     """Get task status (internal API)"""
     if not task_manager:
         return {"error": "TaskManager not initialized", "success": False}
     
-    return await task_manager.get_status(
+    return task_manager.get_status(
         task_id=task_id,
         include_outputs=include_outputs,
         output_limit=output_limit,
@@ -561,13 +561,13 @@ async def get_task_status(task_id: str, include_outputs: bool = False, output_li
 
 
 @app.get("/api/internal/tasks")
-async def list_tasks(status: str = None, agent_id: str = None):
+def list_tasks(status: str = None, agent_id: str = None):
     """List tasks (internal API)"""
     if not task_manager:
         return {"error": "TaskManager not initialized", "success": False}
     
     status_filter = status.split(",") if status else None
-    return await task_manager.get_status(
+    return task_manager.get_status(
         task_id=None,
         status_filter=status_filter,
         agent_id=agent_id,
@@ -575,25 +575,25 @@ async def list_tasks(status: str = None, agent_id: str = None):
 
 
 @app.get("/api/internal/tasks/{task_id}/result")
-async def get_task_result(task_id: str, format: str = "summary"):
+def get_task_result(task_id: str, format: str = "summary"):
     """Get task result (internal API)"""
     if not task_manager:
         return {"error": "TaskManager not initialized", "success": False}
     
-    return await task_manager.get_result(
+    return task_manager.get_result(
         task_id=task_id,
         format=format,
     )
 
 
 @app.post("/api/internal/tasks/{task_id}/cancel")
-async def cancel_task(task_id: str, data: dict = None):
+def cancel_task(task_id: str, data: dict = None):
     """Cancel a task (internal API)"""
     if not task_manager:
         return {"error": "TaskManager not initialized", "success": False}
     
     reason = data.get("reason") if data else None
-    return await task_manager.cancel(
+    return task_manager.cancel(
         task_id=task_id,
         reason=reason,
     )
@@ -641,7 +641,7 @@ def get_current_agent_id() -> Optional[str]:
     return None
 
 
-async def broadcast_chat_message(message: Dict[str, Any], agent_id: Optional[str] = None):
+def broadcast_chat_message(message: Dict[str, Any], agent_id: Optional[str] = None):
     """Broadcast a chat message to all SSE subscribers and save to database.
     
     Note: Non-persistent message types (STATUS_UPDATE, TYPING, etc.) are only
@@ -680,7 +680,7 @@ async def broadcast_chat_message(message: Dict[str, Any], agent_id: Optional[str
     is_agent_message = msg_type.startswith("AGENT_")
     
     # Save to database (ChatRepository handles non-persistent types)
-    await chat_service.repo.add_message(
+    chat_service.repo.add_message(
         agent_id=agent_id,
         id=msg_id,
         type=msg_type,
@@ -698,7 +698,7 @@ async def broadcast_chat_message(message: Dict[str, Any], agent_id: Optional[str
             pass
 
 
-async def update_message_status(message_id: str, status: str):
+def update_message_status(message_id: str, status: str):
     """Update message status and broadcast to subscribers.
     
     For 'read' status, marks the message as read in the database.
@@ -708,7 +708,7 @@ async def update_message_status(message_id: str, status: str):
     
     # Update in database - for 'read' status, use mark_as_read
     if status == "read":
-        await chat_service.repo.mark_as_read(message_id)
+        chat_service.repo.mark_as_read(message_id)
     
     # Broadcast status update (not persisted, just for real-time UI)
     status_update = {
@@ -725,7 +725,7 @@ async def update_message_status(message_id: str, status: str):
             pass
 
 
-async def broadcast_log(log: Dict[str, Any]):
+def broadcast_log(log: Dict[str, Any]):
     """Broadcast an execution log to all log SSE subscribers and save to database."""
     chat_service = get_chat_service()
     agent_id = get_current_agent_id()
@@ -741,7 +741,7 @@ async def broadcast_log(log: Dict[str, Any]):
         return
     
     # Save to database (pure flow logs, not associated with messages)
-    await chat_service.repo.add_execution_log(
+    chat_service.repo.add_execution_log(
         agent_id=agent_id,
         type=log.get("type", "unknown"),
         timestamp=log.get("timestamp", datetime.now().isoformat()),
@@ -757,7 +757,7 @@ async def broadcast_log(log: Dict[str, Any]):
 
 
 @app.post("/api/logs/broadcast")
-async def receive_log_broadcast(data: dict):
+def receive_log_broadcast(data: dict):
     """
     Receive execution log broadcasts from Workers.
     
@@ -767,7 +767,7 @@ async def receive_log_broadcast(data: dict):
     agent_id = data.pop("agent_id", None) or get_current_agent_id()
     
     # Broadcast the log
-    await broadcast_log({
+    broadcast_log({
         **data,
         "agent_id": agent_id,
     })
@@ -776,7 +776,7 @@ async def receive_log_broadcast(data: dict):
 
 
 @app.post("/api/chat/event")
-async def receive_chat_event(data: dict):
+def receive_chat_event(data: dict):
     """
     Receive chat events from novaic-mcp-chat.
     
@@ -808,7 +808,7 @@ async def receive_chat_event(data: dict):
     if event_type == "AGENT_ASK":
         request_id = event_data.get("request_id") or message_id
         chat_service = get_chat_service()
-        await chat_service.repo.add_pending_question(
+        chat_service.repo.add_pending_question(
             agent_id=agent_id,
             request_id=request_id,
             question=event_data.get("question"),
@@ -818,7 +818,7 @@ async def receive_chat_event(data: dict):
         chat_message["request_id"] = request_id
     
     # Use helper to store and broadcast (pass agent_id for correct routing)
-    await broadcast_chat_message(chat_message, agent_id=agent_id)
+    broadcast_chat_message(chat_message, agent_id=agent_id)
     
     return {
         "success": True,
@@ -828,7 +828,7 @@ async def receive_chat_event(data: dict):
 
 
 @app.get("/api/chat/messages")
-async def chat_messages_sse():
+def chat_messages_sse():
     """
     SSE endpoint for real-time chat messages (Agent -> User).
     
@@ -842,19 +842,19 @@ async def chat_messages_sse():
     queue: asyncio.Queue = asyncio.Queue(maxsize=50)
     _chat_subscribers[subscriber_id] = queue
     
-    async def event_generator():
+    def event_generator():
         try:
             # Send recent messages first (from database)
             chat_service = get_chat_service()
             agent_id = get_current_agent_id()
-            recent_messages = await chat_service.repo.get_recent_chat_messages(agent_id, limit=10)
+            recent_messages = chat_service.repo.get_recent_chat_messages(agent_id, limit=10)
             for msg in recent_messages:
                 yield f"data: {json_module.dumps(msg)}\n\n"
             
             # Stream new messages
             while True:
                 try:
-                    message = await asyncio.wait_for(queue.get(), timeout=30.0)
+                    message = asyncio.wait_for(queue.get(), timeout=30.0)
                     yield f"data: {json_module.dumps(message)}\n\n"
                 except asyncio.TimeoutError:
                     # Send keepalive
@@ -875,7 +875,7 @@ async def chat_messages_sse():
 
 
 @app.get("/api/chat/response/{request_id}")
-async def check_user_response(request_id: str):
+def check_user_response(request_id: str):
     """
     Check if user has responded to an agent's question.
     
@@ -884,23 +884,23 @@ async def check_user_response(request_id: str):
     chat_service = get_chat_service()
     
     # Check if question exists
-    question = await chat_service.repo.get_pending_question(request_id)
+    question = chat_service.repo.get_pending_question(request_id)
     if not question:
         return {"error": "Question not found", "has_response": False}
     
     # Check for response
-    response = await chat_service.repo.get_question_response(request_id)
+    response = chat_service.repo.get_question_response(request_id)
     if response:
         # Remove question and response after retrieval
-        await chat_service.repo.delete_pending_question(request_id)
-        await chat_service.repo.delete_question_response(request_id)
+        chat_service.repo.delete_pending_question(request_id)
+        chat_service.repo.delete_question_response(request_id)
         return {"has_response": True, **response}
     
     return {"has_response": False}
 
 
 @app.post("/api/chat/respond/{request_id}")
-async def submit_user_response(request_id: str, data: dict):
+def submit_user_response(request_id: str, data: dict):
     """
     Submit user's response to an agent's question.
     
@@ -909,13 +909,13 @@ async def submit_user_response(request_id: str, data: dict):
     chat_service = get_chat_service()
     
     # Check if question exists
-    question = await chat_service.repo.get_pending_question(request_id)
+    question = chat_service.repo.get_pending_question(request_id)
     if not question:
         return {"error": "Question not found or expired", "success": False}
     
     # Store response in database
     timestamp = datetime.now().isoformat()
-    await chat_service.repo.add_question_response(
+    chat_service.repo.add_question_response(
         request_id=request_id,
         response=data.get("response", ""),
         selected_option=data.get("selected_option"),
@@ -925,20 +925,20 @@ async def submit_user_response(request_id: str, data: dict):
 
 
 @app.get("/api/chat/pending-questions")
-async def get_pending_questions():
+def get_pending_questions():
     """Get all pending questions from the agent."""
     chat_service = get_chat_service()
     agent_id = get_current_agent_id()
     if not agent_id:
         return {"questions": [], "warning": "No agent selected"}
-    questions = await chat_service.repo.get_all_pending_questions(agent_id)
+    questions = chat_service.repo.get_all_pending_questions(agent_id)
     return {
         "questions": questions
     }
 
 
 @app.get("/api/chat/history")
-async def get_chat_history(
+def get_chat_history(
     limit: int = 20,
     before_id: str = None,
     message_type: str = None,
@@ -972,7 +972,7 @@ async def get_chat_history(
         type_filter = type_map.get(message_type, [message_type.upper()])
     
     # Get messages from database
-    all_messages = await chat_service.repo.get_chat_history(
+    all_messages = chat_service.repo.get_chat_history(
         agent_id=agent_id,
         limit=limit + 1,  # Get one extra to check has_more
         before_id=before_id,
@@ -1006,7 +1006,7 @@ async def get_chat_history(
         summarized.append(summary_msg)
     
     # Get total count
-    total_count = await chat_service.repo.get_chat_message_count(agent_id)
+    total_count = chat_service.repo.get_chat_message_count(agent_id)
     
     return {
         "success": True,
@@ -1017,7 +1017,7 @@ async def get_chat_history(
 
 
 @app.get("/api/chat/message/{message_id}")
-async def get_chat_message(message_id: str):
+def get_chat_message(message_id: str):
     """
     Get full content of a specific chat message.
     
@@ -1025,7 +1025,7 @@ async def get_chat_message(message_id: str):
         message_id: The message ID
     """
     chat_service = get_chat_service()
-    msg = await chat_service.repo.get_chat_message(message_id)
+    msg = chat_service.repo.get_chat_message(message_id)
     
     if msg:
         return {"success": True, **msg}
@@ -1037,7 +1037,7 @@ async def get_chat_message(message_id: str):
 # v11: Uses MessageRepository and SSE broadcast for Worker processing
 
 @app.post("/api/inbox")
-async def add_to_inbox(data: dict):
+def add_to_inbox(data: dict):
     """
     Unified API for adding messages to Agent's inbox.
     
@@ -1079,7 +1079,7 @@ async def add_to_inbox(data: dict):
     
     try:
         # 1. Store message using MessageRepository
-        msg = await message_repo.add_message(
+        msg = message_repo.add_message(
             agent_id=agent_id,
             type=msg_type,
             content=content,
@@ -1087,7 +1087,7 @@ async def add_to_inbox(data: dict):
         )
         
         # 2. Broadcast to SSE (for UI display)
-        await broadcast_chat_message({
+        broadcast_chat_message({
             "id": msg["id"],
             "type": msg_type,
             "timestamp": msg["timestamp"],
@@ -1111,7 +1111,7 @@ async def add_to_inbox(data: dict):
 
 
 @app.get("/api/inbox/summary")
-async def get_inbox_summary():
+def get_inbox_summary():
     """
     Get inbox summary for the current agent.
     
@@ -1127,7 +1127,7 @@ async def get_inbox_summary():
     
     try:
         # Get pending messages (unclaimed, unread)
-        rows = await message_repo.get_pending_unclaimed(agent_id, limit=20)
+        rows = message_repo.get_pending_unclaimed(agent_id, limit=20)
         
         messages = []
         for row in rows:
@@ -1153,7 +1153,7 @@ async def get_inbox_summary():
 # v11: Message stored + broadcast to Worker SSE for processing
 
 @app.post("/api/chat/send")
-async def send_chat_message(data: dict):
+def send_chat_message(data: dict):
     """
     Send a user message.
     
@@ -1177,7 +1177,7 @@ async def send_chat_message(data: dict):
         return {"success": False, "error": "Message content required"}
     
     # 1. Store message using MessageRepository
-    msg = await message_repo.add_message(
+    msg = message_repo.add_message(
         agent_id=agent_id,
         type="USER_MESSAGE",
         content=content,
@@ -1202,12 +1202,12 @@ async def send_chat_message(data: dict):
     # 3. Auto-respond to any pending questions (best-effort, don't fail the send)
     try:
         chat_service = get_chat_service()
-        pending_questions = await chat_service.repo.get_all_pending_questions(agent_id)
+        pending_questions = chat_service.repo.get_all_pending_questions(agent_id)
         if pending_questions:
             for q in pending_questions:
                 request_id = q.get("request_id")
                 try:
-                    await chat_service.repo.add_question_response(
+                    chat_service.repo.add_question_response(
                         agent_id=agent_id,
                         request_id=request_id,
                         response=content,
@@ -1233,7 +1233,7 @@ async def send_chat_message(data: dict):
 
 
 @app.get("/api/logs/stream")
-async def logs_sse():
+def logs_sse():
     """
     SSE endpoint for real-time agent execution logs.
     
@@ -1249,19 +1249,19 @@ async def logs_sse():
     queue: asyncio.Queue = asyncio.Queue(maxsize=100)
     _log_subscribers[subscriber_id] = queue
     
-    async def event_generator():
+    def event_generator():
         try:
             # Send recent logs as catch-up (last 20, from database)
             chat_service = get_chat_service()
             agent_id = get_current_agent_id()
-            recent_logs = await chat_service.repo.get_recent_execution_logs(agent_id, limit=20)
+            recent_logs = chat_service.repo.get_recent_execution_logs(agent_id, limit=20)
             for log in recent_logs:
                 yield f"data: {json_module.dumps(log)}\n\n"
             
             # Stream new logs
             while True:
                 try:
-                    log = await asyncio.wait_for(queue.get(), timeout=30.0)
+                    log = asyncio.wait_for(queue.get(), timeout=30.0)
                     yield f"data: {json_module.dumps(log)}\n\n"
                 except asyncio.TimeoutError:
                     # Send keepalive
@@ -1282,7 +1282,7 @@ async def logs_sse():
 
 
 @app.get("/api/logs/clear")
-async def clear_logs():
+def clear_logs():
     """Clear execution logs."""
     _agent_logs.clear()
     return {"success": True, "message": "Logs cleared"}
@@ -1293,7 +1293,7 @@ async def clear_logs():
 from gateway.sse import get_worker_broadcaster, SSEEvent
 
 @app.get("/api/worker/events")
-async def worker_events_sse(worker_id: Optional[str] = None):
+def worker_events_sse(worker_id: Optional[str] = None):
     """
     SSE endpoint for Worker processes to receive events.
     
@@ -1331,7 +1331,7 @@ async def worker_events_sse(worker_id: Optional[str] = None):
 
 
 @app.get("/api/worker/status")
-async def worker_broadcast_status():
+def worker_broadcast_status():
     """
     Get status of the Worker SSE broadcaster.
     
@@ -1347,7 +1347,7 @@ async def worker_broadcast_status():
 # ==================== Agent Self-Scheduling API ====================
 
 @app.get("/api/agent/inbox")
-async def get_agent_inbox():
+def get_agent_inbox():
     """
     Get pending events in the agent's inbox.
     
@@ -1373,7 +1373,7 @@ async def get_agent_inbox():
     oldest_age = 0
     
     # Get unread user messages (highest priority - user is waiting!)
-    unread_messages = await chat_service.repo.get_unread_messages(agent_id)
+    unread_messages = chat_service.repo.get_unread_messages(agent_id)
     for msg in unread_messages:
         msg_id = msg.get("id")
         content = msg.get("content", "")
@@ -1386,7 +1386,7 @@ async def get_agent_inbox():
             "priority": "high"
         })
         # Mark as read when included in inbox
-        await chat_service.repo.mark_as_read(msg_id)
+        chat_service.repo.mark_as_read(msg_id)
         print(f"[Inbox] Marking message {msg_id[:8]} as read")
         # Broadcast status update (not persisted)
         for queue in _chat_subscribers.values():
@@ -1402,7 +1402,7 @@ async def get_agent_inbox():
                 pass
     
     # Check for any pending questions from chat (from database)
-    pending_questions = await chat_service.repo.get_all_pending_questions(agent_id)
+    pending_questions = chat_service.repo.get_all_pending_questions(agent_id)
     
     for q in pending_questions:
         pending_events.append({
@@ -1436,7 +1436,7 @@ async def get_agent_inbox():
 
 
 @app.post("/api/agent/interrupt")
-async def interrupt_agent():
+def interrupt_agent():
     """
     Interrupt the currently executing agent.
     
@@ -1470,7 +1470,7 @@ async def interrupt_agent():
 
 
 @app.post("/api/agent/rest")
-async def agent_rest(data: dict):
+def agent_rest(data: dict):
     """
     Put the agent into rest state.
     
@@ -1493,7 +1493,7 @@ async def agent_rest(data: dict):
         "handoff_notes": handoff_notes,
         "rest_started": datetime.now().isoformat(),
     }
-    await chat_service.repo.set_agent_rest_state(agent_id, rest_state)
+    chat_service.repo.set_agent_rest_state(agent_id, rest_state)
     
     # Notify via chat
     chat_message = {
@@ -1504,7 +1504,7 @@ async def agent_rest(data: dict):
         "level": "info",
         "handoff_notes": handoff_notes,
     }
-    await broadcast_chat_message(chat_message, agent_id=agent_id)
+    broadcast_chat_message(chat_message, agent_id=agent_id)
     
     return {
         "success": True,
@@ -1515,7 +1515,7 @@ async def agent_rest(data: dict):
 
 
 @app.get("/api/agent/rest-state")
-async def get_agent_rest_state():
+def get_agent_rest_state():
     """Get current rest state information."""
     chat_service = get_chat_service()
     agent_id = get_current_agent_id()
@@ -1523,7 +1523,7 @@ async def get_agent_rest_state():
     if not agent_id:
         return {"success": False, "error": "No agent selected", "is_resting": False}
     
-    rest_state = await chat_service.repo.get_agent_rest_state(agent_id)
+    rest_state = chat_service.repo.get_agent_rest_state(agent_id)
     
     if not rest_state:
         rest_state = {
@@ -1541,7 +1541,7 @@ async def get_agent_rest_state():
 
 
 @app.post("/api/agent/wake")
-async def wake_agent(data: dict = {}):
+def wake_agent(data: dict = {}):
     """
     Manually wake the agent from rest state.
     """
@@ -1554,8 +1554,8 @@ async def wake_agent(data: dict = {}):
     reason = data.get("reason", "Manual wake")
     
     # Get and clear rest state from database
-    previous_state = await chat_service.repo.get_agent_rest_state(agent_id) or {}
-    await chat_service.repo.set_agent_rest_state(agent_id, {
+    previous_state = chat_service.repo.get_agent_rest_state(agent_id) or {}
+    chat_service.repo.set_agent_rest_state(agent_id, {
         "is_resting": False,
         "reason": None,
         "wake_triggers": [],
@@ -1574,7 +1574,7 @@ async def wake_agent(data: dict = {}):
     if previous_state.get("handoff_notes"):
         chat_message["handoff_notes"] = previous_state["handoff_notes"]
     
-    await broadcast_chat_message(chat_message, agent_id=agent_id)
+    broadcast_chat_message(chat_message, agent_id=agent_id)
     
     return {
         "success": True,
@@ -1601,7 +1601,7 @@ else:
     from fastapi.responses import HTMLResponse
     
     @app.get("/", response_class=HTMLResponse)
-    async def root():
+    def root():
         return """
         <!DOCTYPE html>
         <html>

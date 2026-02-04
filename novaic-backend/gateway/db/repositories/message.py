@@ -27,7 +27,7 @@ class MessageRepository:
     def __init__(self, db):
         self.db = db
     
-    async def add_message(
+    def add_message(
         self,
         agent_id: str,
         type: str,
@@ -55,13 +55,13 @@ class MessageRepository:
         msg_id = id or str(uuid4())[:12]
         timestamp = timestamp or datetime.now().isoformat()
         
-        await self.db.execute(
+        self.db.execute(
             """INSERT INTO chat_messages 
                (id, agent_id, type, content, read, metadata, timestamp, created_at, status)
                VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?)""",
             (msg_id, agent_id, type, content, json.dumps(metadata or {}), timestamp, timestamp, status)
         )
-        await self.db.commit()
+        self.db.commit()
         
         return {
             "id": msg_id,
@@ -78,7 +78,7 @@ class MessageRepository:
     # Monitor Queue Operations (v18)
     # ========================================
     
-    async def claim_sending(self) -> Optional[Dict[str, Any]]:
+    def claim_sending(self) -> Optional[Dict[str, Any]]:
         """
         CAS 认领一条 sending 状态的消息。
         
@@ -87,16 +87,16 @@ class MessageRepository:
         Returns:
             认领成功的消息，或 None（队列为空）
         """
-        async with self.db.get_connection() as conn:
+        with self.db.get_connection() as conn:
             # 1. 查找一条 sending 消息
-            cursor = await conn.execute(
+            cursor = conn.execute(
                 """SELECT id, agent_id, type, content, metadata, timestamp
                    FROM chat_messages 
                    WHERE status = 'sending' 
                    ORDER BY created_at ASC 
                    LIMIT 1"""
             )
-            row = await cursor.fetchone()
+            row = cursor.fetchone()
             
             if not row:
                 return None
@@ -105,13 +105,13 @@ class MessageRepository:
             
             # 2. CAS 更新：sending → sent
             now = datetime.utcnow().isoformat()
-            cursor = await conn.execute(
+            cursor = conn.execute(
                 """UPDATE chat_messages 
                    SET status = 'sent', claimed_at = ?
                    WHERE id = ? AND status = 'sending'""",
                 (now, msg_id)
             )
-            await conn.commit()
+            conn.commit()
             
             # 3. 检查是否成功认领
             if cursor.rowcount == 0:
@@ -126,14 +126,14 @@ class MessageRepository:
                 "timestamp": row[5],
             }
     
-    async def get_sending_count(self) -> int:
+    def get_sending_count(self) -> int:
         """获取 sending 状态的消息数量（用于监控）。"""
-        result = await self.db.fetchone(
+        result = self.db.fetchone(
             "SELECT COUNT(*) as count FROM chat_messages WHERE status = 'sending'"
         )
         return result["count"] if result else 0
     
-    async def reset_stuck_sending(self, timeout_seconds: int = 60) -> int:
+    def reset_stuck_sending(self, timeout_seconds: int = 60) -> int:
         """
         重置卡住的 sending 消息（用于 Health 恢复）。
         
@@ -144,7 +144,7 @@ class MessageRepository:
             卡住的消息数量
         """
         # 只统计，不自动重置（sending 消息应该很快被处理）
-        result = await self.db.fetchone(
+        result = self.db.fetchone(
             """SELECT COUNT(*) as count FROM chat_messages 
                WHERE status = 'sending' 
                AND datetime(created_at, '+' || ? || ' seconds') < datetime('now')""",
@@ -152,7 +152,7 @@ class MessageRepository:
         )
         return result["count"] if result else 0
     
-    async def get_unread(self, agent_id: str) -> List[Dict[str, Any]]:
+    def get_unread(self, agent_id: str) -> List[Dict[str, Any]]:
         """
         获取未读消息（只返回已确认 sent 的消息）
         
@@ -162,7 +162,7 @@ class MessageRepository:
         Returns:
             未读消息列表（按时间排序）
         """
-        rows = await self.db.fetchall(
+        rows = self.db.fetchall(
             """SELECT * FROM chat_messages 
                WHERE agent_id = ? AND read = 0 AND status = 'sent'
                ORDER BY timestamp ASC""",
@@ -183,7 +183,7 @@ class MessageRepository:
             for row in rows
         ]
 
-    async def get_pending_unclaimed(
+    def get_pending_unclaimed(
         self,
         agent_id: str,
         limit: int = 20,
@@ -191,7 +191,7 @@ class MessageRepository:
         """
         获取未认领且未读的消息（用于 Inbox 汇总）
         """
-        rows = await self.db.fetchall(
+        rows = self.db.fetchall(
             """SELECT id, type, content, timestamp
                FROM chat_messages
                WHERE agent_id = ? AND claimed_by IS NULL AND read = 0
@@ -209,33 +209,33 @@ class MessageRepository:
             for row in rows
         ]
     
-    async def mark_read(self, message_id: str):
+    def mark_read(self, message_id: str):
         """
         标记消息为已读
         
         Args:
             message_id: 消息 ID
         """
-        await self.db.execute(
+        self.db.execute(
             "UPDATE chat_messages SET read = 1 WHERE id = ?",
             (message_id,)
         )
-        await self.db.commit()
+        self.db.commit()
     
-    async def mark_all_read(self, agent_id: str):
+    def mark_all_read(self, agent_id: str):
         """
         标记所有消息为已读
         
         Args:
             agent_id: Agent ID
         """
-        await self.db.execute(
+        self.db.execute(
             "UPDATE chat_messages SET read = 1 WHERE agent_id = ? AND read = 0",
             (agent_id,)
         )
-        await self.db.commit()
+        self.db.commit()
     
-    async def get_unread_count(self, agent_id: str) -> int:
+    def get_unread_count(self, agent_id: str) -> int:
         """
         获取未读消息数量
         
@@ -245,13 +245,13 @@ class MessageRepository:
         Returns:
             未读消息数量
         """
-        result = await self.db.fetchone(
+        result = self.db.fetchone(
             "SELECT COUNT(*) as count FROM chat_messages WHERE agent_id = ? AND read = 0",
             (agent_id,)
         )
         return result["count"] if result else 0
     
-    async def get_history(
+    def get_history(
         self,
         agent_id: str,
         limit: int = 50,
@@ -268,7 +268,7 @@ class MessageRepository:
         Returns:
             消息列表（按时间倒序）
         """
-        rows = await self.db.fetchall(
+        rows = self.db.fetchall(
             """SELECT * FROM chat_messages 
                WHERE agent_id = ? 
                ORDER BY timestamp DESC 
@@ -290,7 +290,7 @@ class MessageRepository:
             for row in rows
         ]
     
-    async def get_message(self, message_id: str) -> Optional[Dict[str, Any]]:
+    def get_message(self, message_id: str) -> Optional[Dict[str, Any]]:
         """
         获取单条消息
         
@@ -300,7 +300,7 @@ class MessageRepository:
         Returns:
             消息或 None
         """
-        row = await self.db.fetchone(
+        row = self.db.fetchone(
             "SELECT * FROM chat_messages WHERE id = ?",
             (message_id,)
         )

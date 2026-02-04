@@ -20,7 +20,7 @@ router = APIRouter(prefix="/internal", tags=["internal"])
 
 # ==================== Runtime Resolution Helper ====================
 
-async def resolve_runtime_ids(runtime_id: str) -> Tuple[str, str, str]:
+def resolve_runtime_ids(runtime_id: str) -> Tuple[str, str, str]:
     """
     Resolve agent_id and subagent_id from runtime_id.
     
@@ -39,12 +39,12 @@ async def resolve_runtime_ids(runtime_id: str) -> Tuple[str, str, str]:
     """
     
     db = get_db()
-    async with db.get_connection() as conn:
-        cursor = await conn.execute(
+    with db.get_connection() as conn:
+        cursor = conn.execute(
             "SELECT runtime_id, agent_id, subagent_id FROM agent_runtimes WHERE runtime_id = ?",
             (runtime_id,)
         )
-        row = await cursor.fetchone()
+        row = cursor.fetchone()
     
     if not row:
         raise HTTPException(status_code=404, detail=f"Runtime not found: {runtime_id}")
@@ -52,7 +52,7 @@ async def resolve_runtime_ids(runtime_id: str) -> Tuple[str, str, str]:
     return row[0], row[1], row[2]
 
 
-async def get_runtime_context(runtime_id: str) -> Dict[str, Any]:
+def get_runtime_context(runtime_id: str) -> Dict[str, Any]:
     """
     Get full runtime context including agent_id, subagent_id, and runtime details.
     
@@ -64,13 +64,13 @@ async def get_runtime_context(runtime_id: str) -> Dict[str, Any]:
     """
     
     db = get_db()
-    async with db.get_connection() as conn:
-        cursor = await conn.execute(
+    with db.get_connection() as conn:
+        cursor = conn.execute(
             """SELECT runtime_id, agent_id, subagent_id, status, phase, mcp_url
                FROM agent_runtimes WHERE runtime_id = ?""",
             (runtime_id,)
         )
-        row = await cursor.fetchone()
+        row = cursor.fetchone()
     
     if not row:
         raise HTTPException(status_code=404, detail=f"Runtime not found: {runtime_id}")
@@ -88,25 +88,25 @@ async def get_runtime_context(runtime_id: str) -> Dict[str, Any]:
 # ==================== SubAgent Operations (v14) ====================
 
 @router.get("/subagents/{agent_id}/main")
-async def get_main_subagent(agent_id: str):
+def get_main_subagent(agent_id: str):
     """Get the main SubAgent for an agent (creates if not exists)."""
     from gateway.db.repositories import SubAgentRepository
     
     db = get_db()
     repo = SubAgentRepository(db)
-    subagent = await repo.get_or_create_main_subagent(agent_id)
+    subagent = repo.get_or_create_main_subagent(agent_id)
     
     return _subagent_to_dict(subagent)
 
 
 @router.get("/subagents/{agent_id}/{subagent_id}")
-async def get_subagent(agent_id: str, subagent_id: str):
+def get_subagent(agent_id: str, subagent_id: str):
     """Get a SubAgent by ID."""
     from gateway.db.repositories import SubAgentRepository
     
     db = get_db()
     repo = SubAgentRepository(db)
-    subagent = await repo.get_by_id(subagent_id, agent_id)
+    subagent = repo.get_by_id(subagent_id, agent_id)
     
     if not subagent:
         raise HTTPException(status_code=404, detail="SubAgent not found")
@@ -115,7 +115,7 @@ async def get_subagent(agent_id: str, subagent_id: str):
 
 
 @router.post("/subagents/{agent_id}/{subagent_id}/wake")
-async def wake_subagent(agent_id: str, subagent_id: str, target_status: str = "awake"):
+def wake_subagent(agent_id: str, subagent_id: str, target_status: str = "awake"):
     """Atomically wake a SubAgent (sleeping -> target_status).
     
     Args:
@@ -127,8 +127,8 @@ async def wake_subagent(agent_id: str, subagent_id: str, target_status: str = "a
     
     db = get_db()
     repo = SubAgentRepository(db)
-    success = await repo.try_wake(subagent_id, agent_id, target_status=target_status)
-    subagent = await repo.get_by_id(subagent_id, agent_id)
+    success = repo.try_wake(subagent_id, agent_id, target_status=target_status)
+    subagent = repo.get_by_id(subagent_id, agent_id)
     current_status = subagent.status if subagent else None
     return {
         "success": success,
@@ -139,14 +139,14 @@ async def wake_subagent(agent_id: str, subagent_id: str, target_status: str = "a
 
 
 @router.post("/subagents/{agent_id}/{subagent_id}/sleeping")
-async def set_subagent_sleeping(agent_id: str, subagent_id: str):
+def set_subagent_sleeping(agent_id: str, subagent_id: str):
     """Set SubAgent to sleeping status."""
     from gateway.db.repositories import SubAgentRepository
     
     db = get_db()
     repo = SubAgentRepository(db)
-    await repo.set_sleeping(subagent_id, agent_id)
-    subagent = await repo.get_by_id(subagent_id, agent_id)
+    repo.set_sleeping(subagent_id, agent_id)
+    subagent = repo.get_by_id(subagent_id, agent_id)
     return {
         "success": True,
         "status": subagent.status if subagent else "sleeping",
@@ -155,14 +155,14 @@ async def set_subagent_sleeping(agent_id: str, subagent_id: str):
 
 
 @router.post("/subagents/{agent_id}/{subagent_id}/awake")
-async def set_subagent_awake(agent_id: str, subagent_id: str):
+def set_subagent_awake(agent_id: str, subagent_id: str):
     """Set SubAgent to awake status (after runtime created successfully)."""
     from gateway.db.repositories import SubAgentRepository
     
     db = get_db()
     repo = SubAgentRepository(db)
-    await repo.set_awake(subagent_id, agent_id)
-    subagent = await repo.get_by_id(subagent_id, agent_id)
+    repo.set_awake(subagent_id, agent_id)
+    subagent = repo.get_by_id(subagent_id, agent_id)
     return {
         "success": True,
         "status": subagent.status if subagent else "awake",
@@ -171,19 +171,19 @@ async def set_subagent_awake(agent_id: str, subagent_id: str):
 
 
 @router.post("/subagents/{agent_id}/{subagent_id}/summarizing")
-async def set_subagent_summarizing(agent_id: str, subagent_id: str):
+def set_subagent_summarizing(agent_id: str, subagent_id: str):
     """Set SubAgent to summarizing status."""
     from gateway.db.repositories import SubAgentRepository
     
     db = get_db()
     repo = SubAgentRepository(db)
-    await repo.set_summarizing(subagent_id, agent_id)
+    repo.set_summarizing(subagent_id, agent_id)
     
     return {"status": "ok"}
 
 
 @router.post("/subagents/{agent_id}/{subagent_id}/completed")
-async def set_subagent_completed(agent_id: str, subagent_id: str, data: Dict[str, Any] = None):
+def set_subagent_completed(agent_id: str, subagent_id: str, data: Dict[str, Any] = None):
     """Set SubAgent to completed status with result."""
     from gateway.db.repositories import SubAgentRepository
     
@@ -191,13 +191,13 @@ async def set_subagent_completed(agent_id: str, subagent_id: str, data: Dict[str
     repo = SubAgentRepository(db)
     
     result = data.get("result") if data else None
-    await repo.set_completed(subagent_id, agent_id, result=result)
+    repo.set_completed(subagent_id, agent_id, result=result)
     
     return {"status": "ok"}
 
 
 @router.post("/subagents/{agent_id}/{subagent_id}/failed")
-async def set_subagent_failed(agent_id: str, subagent_id: str, data: Dict[str, Any] = None):
+def set_subagent_failed(agent_id: str, subagent_id: str, data: Dict[str, Any] = None):
     """Set SubAgent to failed status with error message."""
     from gateway.db.repositories import SubAgentRepository
     
@@ -205,13 +205,13 @@ async def set_subagent_failed(agent_id: str, subagent_id: str, data: Dict[str, A
     repo = SubAgentRepository(db)
     
     error = data.get("error") if data else None
-    await repo.set_failed(subagent_id, agent_id, error=error)
+    repo.set_failed(subagent_id, agent_id, error=error)
     
     return {"status": "ok"}
 
 
 @router.patch("/subagents/{agent_id}/{subagent_id}")
-async def update_subagent(agent_id: str, subagent_id: str, data: Dict[str, Any]):
+def update_subagent(agent_id: str, subagent_id: str, data: Dict[str, Any]):
     """Update SubAgent fields."""
     from gateway.db.repositories import SubAgentRepository
     
@@ -219,10 +219,10 @@ async def update_subagent(agent_id: str, subagent_id: str, data: Dict[str, Any])
     repo = SubAgentRepository(db)
     
     if "historical_summary" in data:
-        await repo.update_historical_summary(subagent_id, agent_id, data["historical_summary"])
+        repo.update_historical_summary(subagent_id, agent_id, data["historical_summary"])
     
     if "wake_triggers" in data or "handoff_notes" in data:
-        await repo.update_wake_triggers(
+        repo.update_wake_triggers(
             subagent_id, 
             agent_id,
             data.get("wake_triggers", [{"type": "user_response"}]),
@@ -233,7 +233,7 @@ async def update_subagent(agent_id: str, subagent_id: str, data: Dict[str, Any])
 
 
 @router.post("/subagents/{agent_id}/spawn")
-async def spawn_subagent(agent_id: str, data: Dict[str, Any]):
+def spawn_subagent(agent_id: str, data: Dict[str, Any]):
     """
     Spawn a new SubAgent and its Runtime (async mode).
     
@@ -261,7 +261,7 @@ async def spawn_subagent(agent_id: str, data: Dict[str, Any]):
     # Get parent subagent_id (defaults to main)
     parent_subagent_id = data.get("parent_subagent_id")
     if not parent_subagent_id:
-        main_subagent = await subagent_repo.get_or_create_main_subagent(agent_id)
+        main_subagent = subagent_repo.get_or_create_main_subagent(agent_id)
         parent_subagent_id = main_subagent.subagent_id
     
     # Parse parameters
@@ -274,7 +274,7 @@ async def spawn_subagent(agent_id: str, data: Dict[str, Any]):
     timeout_at = (now + timedelta(minutes=timeout_minutes)).isoformat()
     
     # Create sub SubAgent with async fields
-    subagent = await subagent_repo.create_sub_subagent(
+    subagent = subagent_repo.create_sub_subagent(
         agent_id, 
         parent_subagent_id,
         task=task_description,
@@ -286,7 +286,7 @@ async def spawn_subagent(agent_id: str, data: Dict[str, Any]):
     
     # If sharing context, copy from parent's active runtime
     if share_context:
-        parent_runtime = await runtime_repo.get_active_runtime(parent_subagent_id, agent_id)
+        parent_runtime = runtime_repo.get_active_runtime(parent_subagent_id, agent_id)
         if parent_runtime and parent_runtime.context:
             # Copy context but mark it as inherited
             initial_context = parent_runtime.context.copy()
@@ -298,13 +298,13 @@ async def spawn_subagent(agent_id: str, data: Dict[str, Any]):
     })
     
     # Set SubAgent to awaking status
-    await subagent_repo.try_wake(subagent.subagent_id, agent_id, target_status="awaking")
+    subagent_repo.try_wake(subagent.subagent_id, agent_id, target_status="awaking")
     
     # Trigger RuntimeStart Saga
     orchestrator = get_saga_orchestrator()
     if orchestrator:
         trigger_id = f"spawn-{subagent.subagent_id}-{uuid.uuid4().hex[:8]}"
-        await orchestrator.create(
+        orchestrator.create(
             saga_type="runtime_start",
             context={
                 "agent_id": agent_id,
@@ -321,7 +321,7 @@ async def spawn_subagent(agent_id: str, data: Dict[str, Any]):
 
 
 @router.get("/subagents/{agent_id}/{subagent_id}/status")
-async def get_subagent_status(agent_id: str, subagent_id: str):
+def get_subagent_status(agent_id: str, subagent_id: str):
     """
     Get SubAgent status for async spawn polling.
     
@@ -341,7 +341,7 @@ async def get_subagent_status(agent_id: str, subagent_id: str):
     subagent_repo = SubAgentRepository(db)
     runtime_repo = RuntimeRepository(db)
     
-    subagent = await subagent_repo.get_by_id(subagent_id, agent_id)
+    subagent = subagent_repo.get_by_id(subagent_id, agent_id)
     if not subagent:
         raise HTTPException(status_code=404, detail="SubAgent not found")
     
@@ -351,11 +351,11 @@ async def get_subagent_status(agent_id: str, subagent_id: str):
             timeout_at = datetime.fromisoformat(subagent.timeout_at)
             if datetime.utcnow() > timeout_at:
                 # Mark as failed due to timeout
-                await subagent_repo.set_failed(
+                subagent_repo.set_failed(
                     subagent_id, agent_id, 
                     error="SubAgent timed out"
                 )
-                subagent = await subagent_repo.get_by_id(subagent_id, agent_id)
+                subagent = subagent_repo.get_by_id(subagent_id, agent_id)
         except (ValueError, TypeError):
             pass  # Invalid timeout format, skip check
     
@@ -372,7 +372,7 @@ async def get_subagent_status(agent_id: str, subagent_id: str):
     }
     
     # Get the latest runtime
-    runtimes = await runtime_repo.get_latest_runtimes(subagent_id, agent_id, limit=1)
+    runtimes = runtime_repo.get_latest_runtimes(subagent_id, agent_id, limit=1)
     if runtimes:
         runtime = runtimes[0]
         response["runtime_id"] = runtime.runtime_id
@@ -389,7 +389,7 @@ async def get_subagent_status(agent_id: str, subagent_id: str):
 
 
 @router.post("/subagents/{agent_id}/{subagent_id}/cancel")
-async def cancel_subagent(agent_id: str, subagent_id: str):
+def cancel_subagent(agent_id: str, subagent_id: str):
     """
     Cancel a running SubAgent.
     
@@ -402,7 +402,7 @@ async def cancel_subagent(agent_id: str, subagent_id: str):
     subagent_repo = SubAgentRepository(db)
     runtime_repo = RuntimeRepository(db)
     
-    subagent = await subagent_repo.get_by_id(subagent_id, agent_id)
+    subagent = subagent_repo.get_by_id(subagent_id, agent_id)
     if not subagent:
         raise HTTPException(status_code=404, detail="SubAgent not found")
     
@@ -411,33 +411,33 @@ async def cancel_subagent(agent_id: str, subagent_id: str):
         return {"success": False, "reason": f"SubAgent is not running (status: {subagent.status})"}
     
     # Set SubAgent to cancelled
-    await subagent_repo.set_cancelled(subagent_id, agent_id)
+    subagent_repo.set_cancelled(subagent_id, agent_id)
     
     # Cancel all active runtimes for this SubAgent
     now = datetime.utcnow().isoformat()
-    async with db.get_connection() as conn:
+    with db.get_connection("agent", resource_id=agent_id, timeout=10.0) as conn:
         # Get runtime IDs for this SubAgent
-        cursor = await conn.execute(
+        cursor = conn.execute(
             "SELECT runtime_id FROM agent_runtimes WHERE subagent_id = ? AND agent_id = ?",
             (subagent_id, agent_id)
         )
-        runtime_ids = [row[0] for row in await cursor.fetchall()]
+        runtime_ids = [row[0] for row in cursor.fetchall()]
         
         # Cancel active runtimes
         for runtime_id in runtime_ids:
-            await conn.execute("""
+            conn.execute("""
                 UPDATE agent_runtimes 
                 SET status = 'cancelled', updated_at = ?
                 WHERE runtime_id = ? AND status = 'active'
             """, (now, runtime_id))
         
-        await conn.commit()
+        conn.commit()
     
     return {"success": True}
 
 
 @router.delete("/subagents/{agent_id}/{subagent_id}")
-async def delete_subagent(agent_id: str, subagent_id: str):
+def delete_subagent(agent_id: str, subagent_id: str):
     """Delete a SubAgent and its runtimes."""
     from gateway.db.repositories import SubAgentRepository, RuntimeRepository
     
@@ -446,15 +446,15 @@ async def delete_subagent(agent_id: str, subagent_id: str):
     runtime_repo = RuntimeRepository(db)
     
     # Delete runtimes for this subagent
-    async with db.get_connection() as conn:
-        await conn.execute(
+    with db.get_connection("agent", resource_id=agent_id, timeout=10.0) as conn:
+        conn.execute(
             "DELETE FROM runtimes WHERE subagent_id = ? AND agent_id = ?",
             (subagent_id, agent_id)
         )
-        await conn.commit()
+        conn.commit()
     
     # Delete subagent
-    await subagent_repo.delete(subagent_id, agent_id)
+    subagent_repo.delete(subagent_id, agent_id)
     
     return {"status": "ok"}
 
@@ -462,13 +462,13 @@ async def delete_subagent(agent_id: str, subagent_id: str):
 # ==================== Runtime Operations ====================
 
 @router.get("/runtimes/active")
-async def get_active_runtimes():
+def get_active_runtimes():
     """Get all active runtimes."""
     from gateway.db.repositories import RuntimeRepository
     
     db = get_db()
     repo = RuntimeRepository(db)
-    runtimes = await repo.get_all_active_runtimes()
+    runtimes = repo.get_all_active_runtimes()
     
     return {
         "runtimes": [_runtime_to_dict(r) for r in runtimes]
@@ -476,13 +476,13 @@ async def get_active_runtimes():
 
 
 @router.get("/runtimes/{runtime_id}")
-async def get_runtime(runtime_id: str):
+def get_runtime(runtime_id: str):
     """Get a single runtime by ID."""
     from gateway.db.repositories import RuntimeRepository
     
     db = get_db()
     repo = RuntimeRepository(db)
-    runtime = await repo.get_by_id(runtime_id)
+    runtime = repo.get_by_id(runtime_id)
     
     if not runtime:
         raise HTTPException(status_code=404, detail="Runtime not found")
@@ -491,7 +491,7 @@ async def get_runtime(runtime_id: str):
 
 
 @router.post("/runtimes")
-async def create_runtime(data: Dict[str, Any]):
+def create_runtime(data: Dict[str, Any]):
     """Create a new Runtime for a SubAgent (v14)."""
     from gateway.db.repositories import RuntimeRepository
     
@@ -504,13 +504,13 @@ async def create_runtime(data: Dict[str, Any]):
     
     db = get_db()
     repo = RuntimeRepository(db)
-    runtime = await repo.create_runtime(subagent_id, agent_id, initial_context)
+    runtime = repo.create_runtime(subagent_id, agent_id, initial_context)
     
     return _runtime_to_dict(runtime)
 
 
 @router.post("/runtimes/main")
-async def create_main_runtime(data: Dict[str, Any]):
+def create_main_runtime(data: Dict[str, Any]):
     """Create a new Main Runtime (deprecated, use POST /runtimes)."""
     from gateway.db.repositories import RuntimeRepository, SubAgentRepository
     
@@ -525,21 +525,21 @@ async def create_main_runtime(data: Dict[str, Any]):
     subagent_repo = SubAgentRepository(db)
 
     if subagent_id:
-        subagent = await subagent_repo.get_by_id(subagent_id, agent_id)
+        subagent = subagent_repo.get_by_id(subagent_id, agent_id)
         if not subagent:
             raise HTTPException(status_code=404, detail="SubAgent not found")
     else:
-        subagent = await subagent_repo.get_or_create_main_subagent(agent_id)
+        subagent = subagent_repo.get_or_create_main_subagent(agent_id)
         subagent_id = subagent.subagent_id
 
     repo = RuntimeRepository(db)
-    runtime = await repo.create_runtime(subagent_id, agent_id, initial_context)
+    runtime = repo.create_runtime(subagent_id, agent_id, initial_context)
 
     return _runtime_to_dict(runtime)
 
 
 @router.patch("/runtimes/{runtime_id}")
-async def update_runtime(runtime_id: str, data: Dict[str, Any]):
+def update_runtime(runtime_id: str, data: Dict[str, Any]):
     """Update runtime fields."""
     from gateway.db.repositories import RuntimeRepository
     
@@ -548,53 +548,56 @@ async def update_runtime(runtime_id: str, data: Dict[str, Any]):
     
     # Handle specific updates
     if "phase" in data and "pending_actions" in data:
-        await repo.set_pending_actions(
+        repo.set_pending_actions(
             runtime_id, 
             data["pending_actions"], 
             data["phase"]
         )
     elif "phase" in data:
-        await repo.set_phase(runtime_id, data["phase"])
+        repo.set_phase(runtime_id, data["phase"])
     
     if "context" in data:
-        await repo.update_context(runtime_id, data["context"])
+        repo.update_context(runtime_id, data["context"])
     
     if "mcp_url" in data:
-        await repo.set_mcp_url(runtime_id, data["mcp_url"])
+        repo.set_mcp_url(runtime_id, data["mcp_url"])
     
     if "status" in data:
         if data["status"] == "completed":
-            await repo.mark_completed(runtime_id)
+            repo.mark_completed(runtime_id)
         elif data["status"] == "failed":
-            await repo.mark_failed(runtime_id, data.get("error", "Unknown error"))
+            repo.mark_failed(runtime_id, data.get("error", "Unknown error"))
         elif data["status"] == "resting":
-            await repo.set_resting(runtime_id)
+            repo.set_resting(runtime_id)
         elif data["status"] == "active":
-            await repo.set_status(runtime_id, "active")
+            repo.set_status(runtime_id, "active")
     
     if "summary" in data:
-        await repo.set_summary(runtime_id, data["summary"])
+        repo.set_summary(runtime_id, data["summary"])
     
     if "is_merged" in data and data["is_merged"]:
-        await repo.mark_merged(runtime_id)
+        repo.mark_merged(runtime_id)
     
     # Handle round updates
     if "current_round_num" in data and "current_round_id" in data:
         # Directly update round fields
         now = datetime.utcnow().isoformat()
-        async with db.get_connection() as conn:
-            await conn.execute("""
-                UPDATE agent_runtimes 
-                SET current_round_num = ?, current_round_id = ?, updated_at = ?
-                WHERE runtime_id = ?
-            """, (data["current_round_num"], data["current_round_id"], now, runtime_id))
-            await conn.commit()
+        # Extract agent_id from runtime
+        runtime = runtime_repo.get_by_id(runtime_id)
+        if runtime:
+            with db.get_connection("agent", resource_id=runtime.agent_id, timeout=10.0) as conn:
+                conn.execute("""
+                    UPDATE agent_runtimes 
+                    SET current_round_num = ?, current_round_id = ?, updated_at = ?
+                    WHERE runtime_id = ?
+                """, (data["current_round_num"], data["current_round_id"], now, runtime_id))
+                conn.commit()
     
     return {"status": "ok"}
 
 
 @router.post("/runtimes/{runtime_id}/rest")
-async def rest_runtime(runtime_id: str, data: Dict[str, Any]):
+def rest_runtime(runtime_id: str, data: Dict[str, Any]):
     """
     Put a runtime into resting state (v14).
     
@@ -616,24 +619,24 @@ async def rest_runtime(runtime_id: str, data: Dict[str, Any]):
     subagent_repo = SubAgentRepository(db)
     
     # Check if runtime exists
-    runtime = await runtime_repo.get_by_id(runtime_id)
+    runtime = runtime_repo.get_by_id(runtime_id)
     if not runtime:
         return {"success": False, "error": "Runtime not found"}
     
     # Set need_rest=1 (不再设置 status='resting')
-    async with db.get_connection() as conn:
-        await conn.execute(
+    with db.get_connection("agent", resource_id=runtime.agent_id, timeout=10.0) as conn:
+        conn.execute(
             "UPDATE agent_runtimes SET need_rest = 1, updated_at = datetime('now') WHERE runtime_id = ?",
             (runtime_id,)
         )
-        await conn.commit()
+        conn.commit()
     
     # Update SubAgent's wake triggers (v14)
     reason = data.get("reason", "No reason provided")
     wake_triggers = data.get("wake_triggers", [{"type": "user_response"}])
     handoff_notes = data.get("handoff_notes")
     
-    await subagent_repo.update_wake_triggers(
+    subagent_repo.update_wake_triggers(
         runtime.subagent_id,
         runtime.agent_id,
         wake_triggers,
@@ -651,7 +654,7 @@ async def rest_runtime(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.post("/runtimes/{runtime_id}/wake")
-async def wake_runtime(runtime_id: str):
+def wake_runtime(runtime_id: str):
     """Wake a sleeping runtime (deprecated in v14, use SubAgent wake).
     
     Returns success=True only if the runtime was actually woken up.
@@ -661,13 +664,13 @@ async def wake_runtime(runtime_id: str):
     
     db = get_db()
     repo = RuntimeRepository(db)
-    success = await repo.wake_main_runtime(runtime_id)
+    success = repo.wake_main_runtime(runtime_id)
     
     return {"status": "ok" if success else "skipped", "success": success}
 
 
 @router.post("/runtimes/{runtime_id}/advance")
-async def advance_runtime_round(runtime_id: str, data: Dict[str, Any] = None):
+def advance_runtime_round(runtime_id: str, data: Dict[str, Any] = None):
     """Advance runtime to next round (with optional CAS).
     
     Args:
@@ -682,7 +685,7 @@ async def advance_runtime_round(runtime_id: str, data: Dict[str, Any] = None):
     if data:
         expected_round_num = data.get("expected_round_num")
     
-    new_round_id = await repo.advance_round(runtime_id, expected_round_num)
+    new_round_id = repo.advance_round(runtime_id, expected_round_num)
     
     if new_round_id is None:
         return {"round_id": None, "success": False, "reason": "CAS conflict or runtime not found"}
@@ -691,7 +694,7 @@ async def advance_runtime_round(runtime_id: str, data: Dict[str, Any] = None):
 
 
 @router.post("/runtimes/{runtime_id}/claim-phase")
-async def try_claim_phase(runtime_id: str, data: Dict[str, Any]):
+def try_claim_phase(runtime_id: str, data: Dict[str, Any]):
     """Atomically claim a phase transition (CAS operation).
     
     Used to prevent race conditions where multiple Masters try to
@@ -720,24 +723,24 @@ async def try_claim_phase(runtime_id: str, data: Dict[str, Any]):
     
     # Atomic CAS: only update if phase matches expected (v14: use runtime_id)
     if round_id:
-        cursor = await db.execute("""
+        cursor = db.execute("""
             UPDATE agent_runtimes 
             SET phase = ?, current_round_id = ?, updated_at = ?
             WHERE runtime_id = ? AND phase = ?
         """, (new_phase, round_id, now, runtime_id, expected_phase))
     else:
-        cursor = await db.execute("""
+        cursor = db.execute("""
             UPDATE agent_runtimes 
             SET phase = ?, updated_at = ?
             WHERE runtime_id = ? AND phase = ?
         """, (new_phase, now, runtime_id, expected_phase))
-    await db.commit()
+    db.commit()
     
     return {"success": cursor.rowcount > 0}
 
 
 @router.post("/runtimes/{runtime_id}/context/append")
-async def append_runtime_context(runtime_id: str, data: Dict[str, Any]):
+def append_runtime_context(runtime_id: str, data: Dict[str, Any]):
     """Append a message to runtime context with idempotency."""
     from gateway.db.repositories import RuntimeRepository
 
@@ -751,7 +754,7 @@ async def append_runtime_context(runtime_id: str, data: Dict[str, Any]):
 
     db = get_db()
     repo = RuntimeRepository(db)
-    runtime = await repo.get_by_id(runtime_id)
+    runtime = repo.get_by_id(runtime_id)
     if not runtime:
         return {"success": False, "error": "Runtime not found"}
 
@@ -775,7 +778,7 @@ async def append_runtime_context(runtime_id: str, data: Dict[str, Any]):
         message_with_meta["_idempotency_key"] = idempotency_key
 
     context.append(message_with_meta)
-    await repo.update_context(runtime_id, context)
+    repo.update_context(runtime_id, context)
 
     return {
         "success": True,
@@ -785,7 +788,7 @@ async def append_runtime_context(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.post("/runtimes/{runtime_id}/set-status")
-async def set_runtime_status(runtime_id: str, data: Dict[str, Any]):
+def set_runtime_status(runtime_id: str, data: Dict[str, Any]):
     """Set runtime status with CAS on expected status list."""
     from datetime import datetime
 
@@ -805,9 +808,9 @@ async def set_runtime_status(runtime_id: str, data: Dict[str, Any]):
     now = datetime.utcnow().isoformat()
 
     db = get_db()
-    async with db.get_connection() as conn:
+    with db.get_connection() as conn:
         if error is not None:
-            cursor = await conn.execute(
+            cursor = conn.execute(
                 f"""
                 UPDATE agent_runtimes
                 SET status = ?, error = ?, updated_at = ?
@@ -816,7 +819,7 @@ async def set_runtime_status(runtime_id: str, data: Dict[str, Any]):
                 (new_status, error, now, runtime_id, *expected_list),
             )
         else:
-            cursor = await conn.execute(
+            cursor = conn.execute(
                 f"""
                 UPDATE agent_runtimes
                 SET status = ?, updated_at = ?
@@ -824,13 +827,13 @@ async def set_runtime_status(runtime_id: str, data: Dict[str, Any]):
                 """,
                 (new_status, now, runtime_id, *expected_list),
             )
-        await conn.commit()
+        conn.commit()
 
     if cursor.rowcount > 0:
         return {"success": True}
 
     # fetch current status for idempotency info
-    row = await db.fetchone(
+    row = db.fetchone(
         "SELECT status FROM agent_runtimes WHERE runtime_id = ?",
         (runtime_id,),
     )
@@ -839,24 +842,29 @@ async def set_runtime_status(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.post("/runtimes/{runtime_id}/summarized")
-async def set_runtime_summarized(runtime_id: str):
+def set_runtime_summarized(runtime_id: str):
     """Set runtime summarized flag to 1 (idempotent)."""
     from datetime import datetime
 
     db = get_db()
+    runtime_repo = RuntimeRepository(db)
+    runtime = runtime_repo.get_by_id(runtime_id)
+    if not runtime:
+        return {"success": False}
+    
     now = datetime.utcnow().isoformat()
-    async with db.get_connection() as conn:
-        cursor = await conn.execute("""
+    with db.get_connection("agent", resource_id=runtime.agent_id, timeout=10.0) as conn:
+        cursor = conn.execute("""
             UPDATE agent_runtimes
             SET summarized = 1, updated_at = ?
             WHERE runtime_id = ? AND summarized = 0
         """, (now, runtime_id))
-        await conn.commit()
+        conn.commit()
 
     if cursor.rowcount > 0:
         return {"success": True}
 
-    row = await db.fetchone(
+    row = db.fetchone(
         "SELECT summarized FROM agent_runtimes WHERE runtime_id = ?",
         (runtime_id,),
     )
@@ -870,7 +878,7 @@ async def set_runtime_summarized(runtime_id: str):
 
 
 @router.post("/runtimes/{runtime_id}/need-rest")
-async def set_runtime_need_rest(runtime_id: str, data: Dict[str, Any]):
+def set_runtime_need_rest(runtime_id: str, data: Dict[str, Any]):
     """Set runtime need_rest flag with CAS (idempotent)."""
     from datetime import datetime
 
@@ -880,18 +888,23 @@ async def set_runtime_need_rest(runtime_id: str, data: Dict[str, Any]):
     now = datetime.utcnow().isoformat()
 
     db = get_db()
-    async with db.get_connection() as conn:
-        cursor = await conn.execute("""
+    runtime_repo = RuntimeRepository(db)
+    runtime = runtime_repo.get_by_id(runtime_id)
+    if not runtime:
+        return {"success": False, "cas_failed": False}
+    
+    with db.get_connection("agent", resource_id=runtime.agent_id, timeout=10.0) as conn:
+        cursor = conn.execute("""
             UPDATE agent_runtimes
             SET need_rest = ?, updated_at = ?
             WHERE runtime_id = ? AND need_rest = ?
         """, (target, now, runtime_id, expected))
-        await conn.commit()
+        conn.commit()
 
     if cursor.rowcount > 0:
         return {"success": True, "current_value": str(target)}
 
-    row = await db.fetchone(
+    row = db.fetchone(
         "SELECT need_rest FROM agent_runtimes WHERE runtime_id = ?",
         (runtime_id,),
     )
@@ -905,25 +918,25 @@ async def set_runtime_need_rest(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.delete("/runtimes/{runtime_id}")
-async def delete_runtime(runtime_id: str):
+def delete_runtime(runtime_id: str):
     """Delete a runtime."""
     from gateway.db.repositories import RuntimeRepository
     
     db = get_db()
     repo = RuntimeRepository(db)
-    await repo.delete(runtime_id)
+    repo.delete(runtime_id)
     
     return {"status": "ok"}
 
 
 @router.get("/runtimes/main/{agent_id}")
-async def get_main_runtime(agent_id: str):
+def get_main_runtime(agent_id: str):
     """Get active main runtime for an agent (v14: from main SubAgent)."""
     from gateway.db.repositories import RuntimeRepository
     
     db = get_db()
     repo = RuntimeRepository(db)
-    runtime = await repo.get_active_runtime("main", agent_id)
+    runtime = repo.get_active_runtime("main", agent_id)
     
     if not runtime:
         return {"runtime": None}
@@ -932,13 +945,13 @@ async def get_main_runtime(agent_id: str):
 
 
 @router.get("/runtimes/subagent/{agent_id}/{subagent_id}")
-async def get_subagent_runtime(agent_id: str, subagent_id: str):
+def get_subagent_runtime(agent_id: str, subagent_id: str):
     """Get active runtime for a SubAgent (v14)."""
     from gateway.db.repositories import RuntimeRepository
     
     db = get_db()
     repo = RuntimeRepository(db)
-    runtime = await repo.get_active_runtime(subagent_id, agent_id)
+    runtime = repo.get_active_runtime(subagent_id, agent_id)
     
     if not runtime:
         return {"runtime": None}
@@ -947,25 +960,25 @@ async def get_subagent_runtime(agent_id: str, subagent_id: str):
 
 
 @router.get("/runtimes/latest/{agent_id}/{subagent_id}")
-async def get_latest_runtimes(agent_id: str, subagent_id: str, limit: int = 30):
+def get_latest_runtimes(agent_id: str, subagent_id: str, limit: int = 30):
     """Get latest completed runtimes for a SubAgent (for context preparation, v14)."""
     from gateway.db.repositories import RuntimeRepository
     
     db = get_db()
     repo = RuntimeRepository(db)
-    runtimes = await repo.get_latest_runtimes(subagent_id, agent_id, limit)
+    runtimes = repo.get_latest_runtimes(subagent_id, agent_id, limit)
     
     return {"runtimes": [_runtime_to_dict(r) for r in runtimes]}
 
 
 @router.get("/agents/{agent_id}/subagents/{subagent_id}/has-active-runtime")
-async def has_active_runtime(agent_id: str, subagent_id: str):
+def has_active_runtime(agent_id: str, subagent_id: str):
     """Check if SubAgent has an active runtime (active/resting status)."""
     from gateway.db.repositories import RuntimeRepository
     
     db = get_db()
     repo = RuntimeRepository(db)
-    has_active = await repo.has_active_runtime(subagent_id, agent_id)
+    has_active = repo.has_active_runtime(subagent_id, agent_id)
     
     return {"has_active_runtime": has_active}
 
@@ -973,14 +986,14 @@ async def has_active_runtime(agent_id: str, subagent_id: str):
 # ==================== Message Operations ====================
 
 @router.get("/messages/unread/{agent_id}")
-async def get_unread_messages(agent_id: str):
+def get_unread_messages(agent_id: str):
     """Get unread messages for an agent (for Scheduler to include in context).
     
     Uses read=0 to find messages that haven't been processed yet.
     """
     
     db = get_db()
-    rows = await db.fetchall("""
+    rows = db.fetchall("""
         SELECT id, type, content, metadata, timestamp 
         FROM chat_messages 
         WHERE agent_id = ? AND read = 0 AND type = 'USER_MESSAGE'
@@ -1002,11 +1015,11 @@ async def get_unread_messages(agent_id: str):
 
 
 @router.get("/messages/unread-sent/{agent_id}")
-async def get_unread_sent_messages(agent_id: str):
+def get_unread_sent_messages(agent_id: str):
     """Get unread sent user messages for an agent."""
 
     db = get_db()
-    rows = await db.fetchall("""
+    rows = db.fetchall("""
         SELECT id, content, timestamp
         FROM chat_messages
         WHERE agent_id = ? AND type = 'USER_MESSAGE' AND status = 'sent' AND read = 0
@@ -1022,14 +1035,14 @@ async def get_unread_sent_messages(agent_id: str):
 
 
 @router.get("/messages/unread-count/{agent_id}")
-async def get_unread_count(agent_id: str):
+def get_unread_count(agent_id: str):
     """Get count of unread messages (for Monitor to detect new messages).
     
     Uses read=0 to find messages that haven't been processed yet.
     """
     
     db = get_db()
-    row = await db.fetchone("""
+    row = db.fetchone("""
         SELECT COUNT(*) as count FROM chat_messages 
         WHERE agent_id = ? AND read = 0 AND type = 'USER_MESSAGE'
     """, (agent_id,))
@@ -1038,7 +1051,7 @@ async def get_unread_count(agent_id: str):
 
 
 @router.get("/messages/unread-grouped")
-async def get_unread_messages_grouped(agent_id: Optional[str] = None):
+def get_unread_messages_grouped(agent_id: Optional[str] = None):
     """Get unread messages grouped by agent_id (v14 for Monitor).
     
     Returns all agents with unread USER_MESSAGE messages.
@@ -1048,7 +1061,7 @@ async def get_unread_messages_grouped(agent_id: Optional[str] = None):
     db = get_db()
     
     # Get all unread messages with their agent_id
-    rows = await db.fetchall("""
+    rows = db.fetchall("""
         SELECT id, agent_id, type, content, metadata, timestamp 
         FROM chat_messages 
         WHERE read = 0 AND type = 'USER_MESSAGE'
@@ -1072,27 +1085,37 @@ async def get_unread_messages_grouped(agent_id: Optional[str] = None):
     return {"messages_by_agent": messages_by_agent}
 
 
-@router.get("/messages/find-sending")
-async def find_sending_message():
-    """Find a sending message without claiming it.
+@router.post("/messages/claim-and-prepare")
+def claim_and_prepare_message():
+    """Claim one sending message and prepare for processing.
     
-    Used by MessageWorker v2 to discover messages.
-    The actual claim is done by MessageProcess Saga.
+    Used by Watchdog to:
+    1. Find a sending message
+    2. Claim it (sending → sent) atomically
+    3. Return message info for saga creation
     
     Returns:
-        {"message": {...}} if found, {"message": null} if queue is empty
+        {"message": {...}} if claimed, {"message": null} if queue is empty
     """
     
     db = get_db()
-    async with db.get_connection() as conn:
-        cursor = await conn.execute("""
-            SELECT id, agent_id, type, content, metadata, timestamp
-            FROM chat_messages 
-            WHERE status = 'sending' 
-            ORDER BY created_at ASC 
-            LIMIT 1
+    with db.get_connection() as conn:
+        # Atomically claim one sending message (sending → sent)
+        # Note: read 字段由 context.read 设置，这里不改变
+        cursor = conn.execute("""
+            UPDATE chat_messages
+            SET status = 'sent'
+            WHERE id = (
+                SELECT id FROM chat_messages 
+                WHERE status = 'sending' 
+                ORDER BY created_at ASC 
+                LIMIT 1
+            )
+            RETURNING id, agent_id, type, content, metadata, timestamp
         """)
-        row = await cursor.fetchone()
+        row = cursor.fetchone()
+        cursor.close()  # ← 必须先关闭cursor
+        conn.commit()
         
         if not row:
             return {"message": None}
@@ -1108,22 +1131,27 @@ async def find_sending_message():
 
 
 @router.post("/messages/{message_id}/claim")
-async def claim_message(message_id: str):
-    """Claim a message (sending -> sent) with CAS."""
-
+def claim_message(message_id: str):
+    """
+    Claim a message (sending -> sent) with CAS.
+    
+    Uses FIFO lock (sharded by message_id) to ensure fair ordering.
+    """
     db = get_db()
-    async with db.get_connection() as conn:
-        cursor = await conn.execute("""
+    
+    # Use message-specific lock (sharded for better concurrency)
+    with db.get_connection("message", resource_id=message_id, timeout=10.0) as conn:
+        cursor = conn.execute("""
             UPDATE chat_messages
             SET status = 'sent'
             WHERE id = ? AND status = 'sending'
         """, (message_id,))
-        await conn.commit()
+        conn.commit()
 
     if cursor.rowcount > 0:
         return {"success": True, "message_id": message_id, "claimed": True}
 
-    row = await db.fetchone(
+    row = db.fetchone(
         "SELECT status FROM chat_messages WHERE id = ?",
         (message_id,),
     )
@@ -1137,11 +1165,11 @@ async def claim_message(message_id: str):
 
 
 @router.get("/messages/has-new/{agent_id}")
-async def has_new_messages(agent_id: str):
+def has_new_messages(agent_id: str):
     """Check if agent has new sent unread user messages."""
 
     db = get_db()
-    row = await db.fetchone("""
+    row = db.fetchone("""
         SELECT COUNT(*) as cnt FROM chat_messages
         WHERE agent_id = ? AND type = 'USER_MESSAGE' AND status = 'sent' AND read = 0
     """, (agent_id,))
@@ -1150,7 +1178,7 @@ async def has_new_messages(agent_id: str):
 
 
 @router.patch("/messages/mark-read")
-async def mark_messages_read(data: Dict[str, Any]):
+def mark_messages_read(data: Dict[str, Any]):
     """Mark messages as read."""
     
     message_ids = data.get("message_ids", [])
@@ -1159,17 +1187,18 @@ async def mark_messages_read(data: Dict[str, Any]):
     
     db = get_db()
     placeholders = ",".join(["?"] * len(message_ids))
-    async with db.get_connection() as conn:
-        await conn.execute(f"""
+    # For batch updates, use global lock
+    with db.get_connection("global", timeout=15.0) as conn:
+        conn.execute(f"""
             UPDATE chat_messages SET read = 1 WHERE id IN ({placeholders})
         """, tuple(message_ids))
-        await conn.commit()
+        conn.commit()
     
     return {"status": "ok"}
 
 
 @router.patch("/messages/mark-processed")
-async def mark_messages_processed(data: Dict[str, Any]):
+def mark_messages_processed(data: Dict[str, Any]):
     """Mark messages as read and broadcast status update to SSE.
     
     Note: 'processed' concept is merged into 'read'. Once read=1, message is considered processed.
@@ -1185,11 +1214,12 @@ async def mark_messages_processed(data: Dict[str, Any]):
     placeholders = ",".join(["?"] * len(message_ids))
     
     # Mark as read (read=1 means processed)
-    async with db.get_connection() as conn:
-        await conn.execute(f"""
+    # For batch updates, use global lock
+    with db.get_connection("global", timeout=15.0) as conn:
+        conn.execute(f"""
             UPDATE chat_messages SET read = 1 WHERE id IN ({placeholders})
         """, tuple(message_ids))
-        await conn.commit()
+        conn.commit()
     
     # Broadcast STATUS_UPDATE to SSE for each message
     # Import here to avoid circular import
@@ -1215,7 +1245,7 @@ async def mark_messages_processed(data: Dict[str, Any]):
 
 
 @router.post("/messages")
-async def create_message(data: Dict[str, Any]):
+def create_message(data: Dict[str, Any]):
     """Create a chat message (for agent replies).
     
     Agent replies use status='sent' directly (no Monitor processing needed).
@@ -1225,7 +1255,7 @@ async def create_message(data: Dict[str, Any]):
     db = get_db()
     repo = MessageRepository(db)
     
-    msg = await repo.add_message(
+    msg = repo.add_message(
         agent_id=data["agent_id"],
         type=data["type"],
         content=data["content"],
@@ -1239,11 +1269,11 @@ async def create_message(data: Dict[str, Any]):
 # ==================== Agent Operations ====================
 
 @router.get("/agents/setup-complete")
-async def get_setup_complete_agents():
+def get_setup_complete_agents():
     """Get all agents with setup complete."""
     
     db = get_db()
-    rows = await db.fetchall(
+    rows = db.fetchall(
         "SELECT id FROM agents WHERE setup_complete = 1"
     )
     
@@ -1251,26 +1281,26 @@ async def get_setup_complete_agents():
 
 
 @router.post("/agents/{agent_id}/awake")
-async def set_agent_awake(agent_id: str):
+def set_agent_awake(agent_id: str):
     """Set agent state to awake."""
     from gateway.db.repositories import AgentStateRepository
     
     db = get_db()
     repo = AgentStateRepository(db)
-    await repo.set_awake(agent_id)
+    repo.set_awake(agent_id)
     
     return {"status": "ok"}
 
 
 @router.post("/agents/{agent_id}/sleep")
-async def set_agent_sleep(agent_id: str, data: Dict[str, Any] = None):
+def set_agent_sleep(agent_id: str, data: Dict[str, Any] = None):
     """Set agent state to sleep."""
     from gateway.db.repositories import AgentStateRepository
     
     db = get_db()
     repo = AgentStateRepository(db)
     reason = (data or {}).get("reason", "Task completed")
-    await repo.set_sleep(agent_id, reason=reason)
+    repo.set_sleep(agent_id, reason=reason)
     
     return {"status": "ok"}
 
@@ -1280,7 +1310,7 @@ async def set_agent_sleep(agent_id: str, data: Dict[str, Any] = None):
 # ==================== SSE Broadcast ====================
 
 @router.post("/broadcast/new-task")
-async def broadcast_new_task(data: Dict[str, Any]):
+def broadcast_new_task(data: Dict[str, Any]):
     """Broadcast new task event to workers."""
     from gateway.sse.broadcaster import get_worker_broadcaster
     
@@ -1292,7 +1322,7 @@ async def broadcast_new_task(data: Dict[str, Any]):
     task_type = data.get("task_type")
     agent_id = data.get("agent_id")
     
-    await broadcaster.broadcast_new_task(
+    broadcaster.broadcast_new_task(
         task_id=task_id,
         agent_id=agent_id,
         task_type=task_type,
@@ -1302,11 +1332,11 @@ async def broadcast_new_task(data: Dict[str, Any]):
 
 
 @router.post("/broadcast/chat-message")
-async def broadcast_chat_message(data: Dict[str, Any]):
+def broadcast_chat_message(data: Dict[str, Any]):
     """Broadcast chat message to UI."""
     try:
         from main import broadcast_chat_message as _broadcast
-        await _broadcast(data.get("message", {}), agent_id=data.get("agent_id"))
+        _broadcast(data.get("message", {}), agent_id=data.get("agent_id"))
         return {"status": "ok"}
     except Exception as e:
         return {"status": "error", "error": str(e)}
@@ -1315,7 +1345,7 @@ async def broadcast_chat_message(data: Dict[str, Any]):
 # ==================== Config ====================
 
 @router.get("/config/agent/{agent_id}")
-async def get_agent_config(agent_id: str):
+def get_agent_config(agent_id: str):
     """Get agent configuration."""
     from gateway.config.agents import get_agent_config_manager
     
@@ -1334,7 +1364,7 @@ async def get_agent_config(agent_id: str):
 
 
 @router.get("/config/ports/{agent_index}")
-async def get_ports_for_agent(agent_index: int):
+def get_ports_for_agent(agent_index: int):
     """
     Get port configuration for an agent by index.
     
@@ -1367,16 +1397,16 @@ async def get_ports_for_agent(agent_index: int):
 
 
 @router.get("/config/llm")
-async def get_llm_config():
+def get_llm_config():
     """
     Get LLM configuration (API keys and models).
     
     Used by Worker processes that need to call LLM.
     Returns sanitized config (no full API keys exposed).
     """
-    from gateway.config import get_config_manager_db
+    from gateway.config import get_config_manager
     
-    config = await get_config_manager_db().load()
+    config = get_config_manager().load()
     
     # Group models by api_key_id
     models_by_key = {}
@@ -1409,7 +1439,7 @@ async def get_llm_config():
 
 
 @router.get("/config/llm/full")
-async def get_llm_config_full():
+def get_llm_config_full():
     """
     Get full LLM configuration including API keys.
     
@@ -1422,9 +1452,9 @@ async def get_llm_config_full():
     - api_key: full API key
     - api_base: API base URL
     """
-    from gateway.config import get_config_manager_db
+    from gateway.config import get_config_manager
     
-    config = await get_config_manager_db().load()
+    config = get_config_manager().load()
     
     # Find the model config for default_model
     default_model_info = next(
@@ -1462,16 +1492,15 @@ async def get_llm_config_full():
     }
 
 
-async def _build_llm_config_for_agent(db, agent_id: str) -> Dict[str, Any]:
+def _build_llm_config_for_agent(db, agent_id: str) -> Dict[str, Any]:
     """Build LLM config for a specific agent (internal helper)."""
-    from gateway.config import get_config_manager_db
-
+    
     # 1. Get agent's model_id
-    cursor = await db.execute(
+    cursor = db.execute(
         "SELECT model_id FROM agents WHERE id = ?",
         (agent_id,)
     )
-    row = await cursor.fetchone()
+    row = cursor.fetchone()
     
     if not row:
         return {
@@ -1482,16 +1511,17 @@ async def _build_llm_config_for_agent(db, agent_id: str) -> Dict[str, Any]:
     
     model_id = row["model_id"]
     
-    # 2. If no model selected, use default
+    # 2. If no model selected, use default from config
     if not model_id:
-        config = await get_config_manager_db().load()
-        model_id = config.default_model
+        default_row = db.fetchone("SELECT value FROM config WHERE key = 'default_model'")
+        model_id = default_row[0].strip('"') if default_row else "gpt-4o"
     
-    # 3. Get model and provider info
-    cursor = await db.execute("""
+    # 3. 从DB查询model和api_key配置
+    cursor = db.execute("""
         SELECT 
             m.name as model_name,
-            k.provider,
+            m.provider,
+            k.provider as key_provider,
             k.api_key,
             k.api_base
         FROM candidate_models m
@@ -1499,17 +1529,17 @@ async def _build_llm_config_for_agent(db, agent_id: str) -> Dict[str, Any]:
         WHERE m.name = ? AND m.available = 1
         LIMIT 1
     """, (model_id,))
-    row = await cursor.fetchone()
+    row = cursor.fetchone()
     
     if not row:
         return {
             "success": False,
-            "error": f"Model '{model_id}' not found or not available",
+            "error": f"Model '{model_id}' not found in candidate_models",
             "agent_id": agent_id,
             "model_id": model_id,
         }
     
-    if not row["api_key"]:
+    if not row[3]:  # api_key
         return {
             "success": False,
             "error": f"API key not configured for model '{model_id}'",
@@ -1517,28 +1547,22 @@ async def _build_llm_config_for_agent(db, agent_id: str) -> Dict[str, Any]:
             "model_id": model_id,
         }
     
-    # Determine effective api_base
-    api_base = row["api_base"]
-    if not api_base:
-        provider_defaults = {
-            "openai": "https://api.openai.com/v1",
-            "anthropic": "https://api.anthropic.com",
-            "google": "https://generativelanguage.googleapis.com/v1beta",
-        }
-        api_base = provider_defaults.get(row["provider"], "")
+    # 使用model表的provider或api_key表的provider
+    provider = row[1] if row[1] else row[2]
+    api_base = row[4] if row[4] else "https://api.openai.com/v1"
     
     return {
         "success": True,
         "agent_id": agent_id,
-        "model": row["model_name"],
-        "provider": row["provider"],
-        "api_key": row["api_key"],
+        "model": row[0],  # model_name
+        "provider": provider,
+        "api_key": row[3],  # api_key
         "api_base": api_base,
     }
 
 
 @router.get("/config/llm/agent/{agent_id}")
-async def get_agent_llm_config(agent_id: str):
+def get_agent_llm_config(agent_id: str):
     """
     Get LLM configuration for a specific agent.
     
@@ -1557,14 +1581,12 @@ async def get_agent_llm_config(agent_id: str):
     - api_key: full API key
     - api_base: API base URL
     """
-    from gateway.config import get_config_manager_db
-    
     db = get_db()
-    return await _build_llm_config_for_agent(db, agent_id)
+    return _build_llm_config_for_agent(db, agent_id)
 
 
 @router.get("/config/llm/runtime/{runtime_id}")
-async def get_runtime_llm_config(runtime_id: str):
+def get_runtime_llm_config(runtime_id: str):
     """
     Get LLM configuration for a specific runtime.
     
@@ -1577,16 +1599,16 @@ async def get_runtime_llm_config(runtime_id: str):
     """
     
     db = get_db()
-    runtime_ctx = await get_runtime_context(runtime_id)
+    runtime_ctx = get_runtime_context(runtime_id)
     agent_id = runtime_ctx.get("agent_id")
     
-    return await _build_llm_config_for_agent(db, agent_id)
+    return _build_llm_config_for_agent(db, agent_id)
 
 
 # ==================== LLM Operations ====================
 
 @router.post("/llm/compact-context")
-async def compact_context_with_llm(data: Dict[str, Any]):
+def compact_context_with_llm(data: Dict[str, Any]):
     """
     Compact context using LLM.
     
@@ -1610,7 +1632,7 @@ async def compact_context_with_llm(data: Dict[str, Any]):
     db = get_db()
     
     # Get first API key from api_keys table
-    row = await db.fetchone("SELECT api_key, api_base FROM api_keys LIMIT 1")
+    row = db.fetchone("SELECT api_key, api_base FROM api_keys LIMIT 1")
     if not row:
         return {"success": False, "error": "No API keys configured"}
     
@@ -1633,8 +1655,8 @@ async def compact_context_with_llm(data: Dict[str, Any]):
     ]
     
     try:
-        async with httpx.AsyncClient(timeout=60.0, trust_env=False) as client:
-            response = await client.post(
+        with httpx.Client(timeout=60.0, trust_env=False) as client:
+            response = client.post(
                 f"{base_url}/chat/completions",
                 headers={
                     "Authorization": f"Bearer {api_key}",
@@ -1714,16 +1736,16 @@ MCP_GATEWAY_URL = os.environ.get("NOVAIC_MCP_GATEWAY_URL", "http://127.0.0.1:199
 
 
 @router.get("/mcp/agent-shared/{agent_id}/exists")
-async def mcp_has_agent_shared(agent_id: str):
+def mcp_has_agent_shared(agent_id: str):
     """Check if agent has shared MCP server."""
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.get(f"{MCP_GATEWAY_URL}/internal/mcp/agent-shared/{agent_id}/exists")
+    with httpx.Client(timeout=10.0) as client:
+        resp = client.get(f"{MCP_GATEWAY_URL}/internal/mcp/agent-shared/{agent_id}/exists")
         resp.raise_for_status()
         return resp.json()
 
 
 @router.post("/mcp/agent-shared")
-async def mcp_create_agent_shared(data: Dict[str, Any]):
+def mcp_create_agent_shared(data: Dict[str, Any]):
     """Create agent shared MCP server.
     
     Gateway adds 'ports' from config before forwarding to MCP Gateway.
@@ -1737,23 +1759,23 @@ async def mcp_create_agent_shared(data: Dict[str, Any]):
     # Add ports to request
     data["ports"] = ports.model_dump()
     
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.post(f"{MCP_GATEWAY_URL}/internal/mcp/agent-shared", json=data)
+    with httpx.Client(timeout=30.0) as client:
+        resp = client.post(f"{MCP_GATEWAY_URL}/internal/mcp/agent-shared", json=data)
         resp.raise_for_status()
         return resp.json()
 
 
 @router.delete("/mcp/agent-shared/{agent_id}")
-async def mcp_delete_agent_shared(agent_id: str):
+def mcp_delete_agent_shared(agent_id: str):
     """Delete agent shared MCP server."""
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.delete(f"{MCP_GATEWAY_URL}/internal/mcp/agent-shared/{agent_id}")
+    with httpx.Client(timeout=10.0) as client:
+        resp = client.delete(f"{MCP_GATEWAY_URL}/internal/mcp/agent-shared/{agent_id}")
         resp.raise_for_status()
         return resp.json()
 
 
 @router.post("/mcp/runtime")
-async def mcp_create_runtime(data: Dict[str, Any]):
+def mcp_create_runtime(data: Dict[str, Any]):
     """Create runtime MCP server.
     
     Gateway adds 'ports' from config before forwarding to MCP Gateway.
@@ -1767,23 +1789,23 @@ async def mcp_create_runtime(data: Dict[str, Any]):
     # Add ports to request
     data["ports"] = ports.model_dump()
     
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.post(f"{MCP_GATEWAY_URL}/internal/mcp/runtime", json=data)
+    with httpx.Client(timeout=30.0) as client:
+        resp = client.post(f"{MCP_GATEWAY_URL}/internal/mcp/runtime", json=data)
         resp.raise_for_status()
         return resp.json()
 
 
 @router.delete("/mcp/runtime/{agent_id}/{runtime_id}")
-async def mcp_delete_runtime(agent_id: str, runtime_id: str):
+def mcp_delete_runtime(agent_id: str, runtime_id: str):
     """Delete runtime MCP server."""
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.delete(f"{MCP_GATEWAY_URL}/internal/mcp/runtime/{agent_id}/{runtime_id}")
+    with httpx.Client(timeout=10.0) as client:
+        resp = client.delete(f"{MCP_GATEWAY_URL}/internal/mcp/runtime/{agent_id}/{runtime_id}")
         resp.raise_for_status()
         return resp.json()
 
 
 @router.post("/mcp/aggregate")
-async def mcp_create_aggregate(data: Dict[str, Any]):
+def mcp_create_aggregate(data: Dict[str, Any]):
     """Create aggregate MCP server.
     
     Gateway adds 'ports' from config before forwarding to MCP Gateway.
@@ -1797,26 +1819,26 @@ async def mcp_create_aggregate(data: Dict[str, Any]):
     # Add ports to request
     data["ports"] = ports.model_dump()
     
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.post(f"{MCP_GATEWAY_URL}/internal/mcp/aggregate", json=data)
+    with httpx.Client(timeout=30.0) as client:
+        resp = client.post(f"{MCP_GATEWAY_URL}/internal/mcp/aggregate", json=data)
         resp.raise_for_status()
         return resp.json()
 
 
 @router.delete("/mcp/aggregate/{agent_id}/{runtime_id}")
-async def mcp_delete_aggregate(agent_id: str, runtime_id: str):
+def mcp_delete_aggregate(agent_id: str, runtime_id: str):
     """Delete aggregate MCP server."""
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.delete(f"{MCP_GATEWAY_URL}/internal/mcp/aggregate/{agent_id}/{runtime_id}")
+    with httpx.Client(timeout=10.0) as client:
+        resp = client.delete(f"{MCP_GATEWAY_URL}/internal/mcp/aggregate/{agent_id}/{runtime_id}")
         resp.raise_for_status()
         return resp.json()
 
 
 @router.get("/mcp/servers")
-async def mcp_list_servers():
+def mcp_list_servers():
     """List all active MCP servers."""
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.get(f"{MCP_GATEWAY_URL}/internal/mcp/servers")
+    with httpx.Client(timeout=10.0) as client:
+        resp = client.get(f"{MCP_GATEWAY_URL}/internal/mcp/servers")
         resp.raise_for_status()
         return resp.json()
 
@@ -1824,37 +1846,37 @@ async def mcp_list_servers():
 # ==================== Health Monitor Operations (v18) ====================
 
 @router.get("/health/stuck-sending")
-async def get_stuck_sending_count(timeout_seconds: int = 30):
+def get_stuck_sending_count(timeout_seconds: int = 30):
     """Get count of messages stuck in 'sending' state."""
     from gateway.db.repositories import MessageRepository
     
     db = get_db()
     repo = MessageRepository(db)
-    count = await repo.reset_stuck_sending(timeout_seconds)
+    count = repo.reset_stuck_sending(timeout_seconds)
     
     return {"count": count}
 
 
 @router.get("/health/stuck-awaking")
-async def get_stuck_awaking_count(timeout_seconds: int = 60):
+def get_stuck_awaking_count(timeout_seconds: int = 60):
     """Get count of SubAgents stuck in 'awaking' state."""
     from gateway.db.repositories import SubAgentRepository
     
     db = get_db()
     repo = SubAgentRepository(db)
-    count = await repo.get_stuck_awaking_count(timeout_seconds)
+    count = repo.get_stuck_awaking_count(timeout_seconds)
     
     return {"count": count}
 
 
 @router.post("/health/reset-stuck-awaking")
-async def reset_stuck_awaking(timeout_seconds: int = 60):
+def reset_stuck_awaking(timeout_seconds: int = 60):
     """Reset SubAgents stuck in 'awaking' state to 'sleeping'."""
     from gateway.db.repositories import SubAgentRepository
     
     db = get_db()
     repo = SubAgentRepository(db)
-    count = await repo.reset_stuck_awaking(timeout_seconds)
+    count = repo.reset_stuck_awaking(timeout_seconds)
     
     return {"reset_count": count}
 
@@ -1862,7 +1884,7 @@ async def reset_stuck_awaking(timeout_seconds: int = 60):
 # ==================== TaskManager API (for MCP Gateway) ====================
 
 @router.post("/tasks/spawn")
-async def task_spawn(data: Dict[str, Any]):
+def task_spawn(data: Dict[str, Any]):
     """Spawn a new task.
     
     Used by MCP Gateway to create background tasks.
@@ -1873,7 +1895,7 @@ async def task_spawn(data: Dict[str, Any]):
     if not task_manager:
         raise HTTPException(status_code=503, detail="TaskManager not available")
     
-    result = await task_manager.spawn(
+    result = task_manager.spawn(
         task_type=data.get("task_type", "tool"),
         config=data.get("config", {}),
         label=data.get("label"),
@@ -1886,7 +1908,7 @@ async def task_spawn(data: Dict[str, Any]):
 
 
 @router.post("/tasks/create-completed")
-async def task_create_completed(data: Dict[str, Any]):
+def task_create_completed(data: Dict[str, Any]):
     """Create an immediately completed task for truncated output storage.
     
     Used by MCP Gateway for _auto_truncate_result.
@@ -1897,7 +1919,7 @@ async def task_create_completed(data: Dict[str, Any]):
     if not task_manager:
         raise HTTPException(status_code=503, detail="TaskManager not available")
     
-    task_id = await task_manager.create_completed(
+    task_id = task_manager.create_completed(
         tool_name=data.get("tool_name", "unknown"),
         truncated_result=data.get("truncated_result", ""),
         full_output=data.get("full_output", ""),
@@ -1908,7 +1930,7 @@ async def task_create_completed(data: Dict[str, Any]):
 
 
 @router.get("/tasks/{task_id}")
-async def task_get_status(
+def task_get_status(
     task_id: str,
     include_outputs: bool = False,
     start_line: Optional[int] = None,
@@ -1925,7 +1947,7 @@ async def task_get_status(
     if not task_manager:
         raise HTTPException(status_code=503, detail="TaskManager not available")
     
-    return await task_manager.get_status(
+    return task_manager.get_status(
         task_id=task_id,
         include_outputs=include_outputs,
         start_line=start_line,
@@ -1935,7 +1957,7 @@ async def task_get_status(
 
 
 @router.get("/tasks")
-async def task_list(
+def task_list(
     status: Optional[str] = None,
     agent_id: Optional[str] = None,
 ):
@@ -1950,7 +1972,7 @@ async def task_list(
         raise HTTPException(status_code=503, detail="TaskManager not available")
     
     status_filter = [status] if status else None
-    return await task_manager.get_status(
+    return task_manager.get_status(
         task_id=None,
         status_filter=status_filter,
         agent_id=agent_id,
@@ -1958,7 +1980,7 @@ async def task_list(
 
 
 @router.post("/tasks/{task_id}/cancel")
-async def task_cancel(task_id: str, reason: Optional[str] = None):
+def task_cancel(task_id: str, reason: Optional[str] = None):
     """Cancel a task.
     
     Used by MCP Gateway for task_cancel tool.
@@ -1969,11 +1991,11 @@ async def task_cancel(task_id: str, reason: Optional[str] = None):
     if not task_manager:
         raise HTTPException(status_code=503, detail="TaskManager not available")
     
-    return await task_manager.cancel(task_id, reason)
+    return task_manager.cancel(task_id, reason)
 
 
 @router.get("/tasks/{task_id}/result")
-async def task_get_result(task_id: str, format: str = "summary"):
+def task_get_result(task_id: str, format: str = "summary"):
     """Get task result.
     
     Used by MCP Gateway for task_result tool.
@@ -1984,13 +2006,13 @@ async def task_get_result(task_id: str, format: str = "summary"):
     if not task_manager:
         raise HTTPException(status_code=503, detail="TaskManager not available")
     
-    return await task_manager.get_result(task_id, format=format)
+    return task_manager.get_result(task_id, format=format)
 
 
 # ==================== SSH Key API (for MCP Gateway) ====================
 
 @router.get("/vm/ssh/public-key")
-async def get_ssh_public_key():
+def get_ssh_public_key():
     """Get default SSH public key.
     
     Used by MCP Gateway (qemudebug) to inject SSH key into VM.
@@ -1998,13 +2020,13 @@ async def get_ssh_public_key():
     from gateway.vm.ssh import get_ssh_key_manager
     
     manager = get_ssh_key_manager()
-    public_key = await manager.get_public_key()
+    public_key = manager.get_public_key()
     
     return {"public_key": public_key}
 
 
 @router.get("/vm/ssh/private-key-path")
-async def get_ssh_private_key_path():
+def get_ssh_private_key_path():
     """Get path to SSH private key file.
     
     Used by MCP Gateway (qemudebug) for SSH connections.
@@ -2013,7 +2035,7 @@ async def get_ssh_private_key_path():
     from gateway.vm.ssh import get_ssh_key_manager
     
     manager = get_ssh_key_manager()
-    key_path = await manager.get_private_key_path()
+    key_path = manager.get_private_key_path()
     
     return {"key_path": str(key_path)}
 
@@ -2023,7 +2045,7 @@ async def get_ssh_private_key_path():
 # Use Runtime-First API: /rt/{runtime_id}/memory/* instead.
 
 @router.get("/runtimes/list")
-async def list_active_runtimes_for_mcp():
+def list_active_runtimes_for_mcp():
     """List all active runtimes.
     
     Used by MCP Gateway for runtime_list tool.
@@ -2032,14 +2054,14 @@ async def list_active_runtimes_for_mcp():
     db = get_db()
     
     # Query all active runtimes
-    async with db.get_connection() as conn:
-        cursor = await conn.execute("""
+    with db.get_connection() as conn:
+        cursor = conn.execute("""
             SELECT runtime_id, agent_id, subagent_id, status, created_at
             FROM agent_runtimes 
             WHERE status IN ('active', 'resting')
             ORDER BY created_at DESC
         """)
-        rows = await cursor.fetchall()
+        rows = cursor.fetchall()
     
     return {
         "runtimes": [
@@ -2057,7 +2079,7 @@ async def list_active_runtimes_for_mcp():
 
 
 @router.post("/runtimes/{runtime_id}/history")
-async def get_runtime_history(runtime_id: str, data: Dict[str, Any]):
+def get_runtime_history(runtime_id: str, data: Dict[str, Any]):
     """Get message history for a runtime.
     
     Used by MCP Gateway for runtime_history tool.
@@ -2072,7 +2094,7 @@ async def get_runtime_history(runtime_id: str, data: Dict[str, Any]):
     offset = data.get("offset", 0)
     
     # Get runtime and its context
-    runtime = await repo.get_by_id(runtime_id)
+    runtime = repo.get_by_id(runtime_id)
     if not runtime:
         return {"messages": [], "total": 0, "error": "Runtime not found"}
     
@@ -2101,7 +2123,7 @@ async def get_runtime_history(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.post("/runtimes/{runtime_id}/send")
-async def send_to_runtime(runtime_id: str, data: Dict[str, Any]):
+def send_to_runtime(runtime_id: str, data: Dict[str, Any]):
     """Send a message to a runtime.
     
     Used by MCP Gateway for runtime_send tool.
@@ -2116,7 +2138,7 @@ async def send_to_runtime(runtime_id: str, data: Dict[str, Any]):
     message = data.get("message", "")
     
     # Get runtime
-    runtime = await repo.get_by_id(runtime_id)
+    runtime = repo.get_by_id(runtime_id)
     if not runtime:
         return {"success": False, "error": "Runtime not found"}
     
@@ -2128,7 +2150,7 @@ async def send_to_runtime(runtime_id: str, data: Dict[str, Any]):
         "timestamp": datetime.now().isoformat(),
     })
     
-    await repo.update_context(runtime_id, context)
+    repo.update_context(runtime_id, context)
     
     return {"success": True, "queued": True, "runtime_id": runtime_id}
 
@@ -2138,7 +2160,7 @@ async def send_to_runtime(runtime_id: str, data: Dict[str, Any]):
 # Use Runtime-First API: /rt/{runtime_id}/chat/* instead.
 
 @router.post("/web/search")
-async def web_search(data: Dict[str, Any]):
+def web_search(data: Dict[str, Any]):
     """Search the web using Brave Search API.
     
     Used by MCP Gateway for web_search tool.
@@ -2159,12 +2181,12 @@ async def web_search(data: Dict[str, Any]):
     freshness = data.get("freshness")
     
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        with httpx.Client(timeout=30.0) as client:
             params = {"q": query, "count": count}
             if freshness:
                 params["freshness"] = freshness
             
-            response = await client.get(
+            response = client.get(
                 "https://api.search.brave.com/res/v1/web/search",
                 params=params,
                 headers={
@@ -2194,7 +2216,7 @@ async def web_search(data: Dict[str, Any]):
 
 
 @router.post("/web/fetch")
-async def web_fetch(data: Dict[str, Any]):
+def web_fetch(data: Dict[str, Any]):
     """Fetch a web page and convert to markdown.
     
     Used by MCP Gateway for web_fetch tool.
@@ -2207,14 +2229,14 @@ async def web_fetch(data: Dict[str, Any]):
     max_length = data.get("max_length", 50000)
     
     try:
-        async with httpx.AsyncClient(
+        with httpx.Client(
             timeout=30.0,
             follow_redirects=True,
             headers={
                 "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
             }
         ) as client:
-            response = await client.get(url)
+            response = client.get(url)
             response.raise_for_status()
             
             html_content = response.text
@@ -2277,15 +2299,15 @@ async def web_fetch(data: Dict[str, Any]):
 # ---------- Memory APIs (via runtime_id) ----------
 
 @router.post("/rt/{runtime_id}/memory/save")
-async def rt_memory_save(runtime_id: str, data: Dict[str, Any]):
+def rt_memory_save(runtime_id: str, data: Dict[str, Any]):
     """Save memory value. Agent ID resolved from runtime."""
     from gateway.db.repositories.memory import MemoryRepository
     
-    _, agent_id, _ = await resolve_runtime_ids(runtime_id)
+    _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     db = get_db()
     repo = MemoryRepository(db)
-    return await repo.save(
+    return repo.save(
         agent_id=agent_id,
         key=data.get("key"),
         value=data.get("value"),
@@ -2294,15 +2316,15 @@ async def rt_memory_save(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.post("/rt/{runtime_id}/memory/recall")
-async def rt_memory_recall(runtime_id: str, data: Dict[str, Any]):
+def rt_memory_recall(runtime_id: str, data: Dict[str, Any]):
     """Recall memory value(s). Agent ID resolved from runtime."""
     from gateway.db.repositories.memory import MemoryRepository
     
-    _, agent_id, _ = await resolve_runtime_ids(runtime_id)
+    _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     db = get_db()
     repo = MemoryRepository(db)
-    return await repo.recall(
+    return repo.recall(
         agent_id=agent_id,
         key=data.get("key"),
         namespace=data.get("namespace", "default")
@@ -2310,15 +2332,15 @@ async def rt_memory_recall(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.post("/rt/{runtime_id}/memory/delete")
-async def rt_memory_delete(runtime_id: str, data: Dict[str, Any]):
+def rt_memory_delete(runtime_id: str, data: Dict[str, Any]):
     """Delete memory value. Agent ID resolved from runtime."""
     from gateway.db.repositories.memory import MemoryRepository
     
-    _, agent_id, _ = await resolve_runtime_ids(runtime_id)
+    _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     db = get_db()
     repo = MemoryRepository(db)
-    return await repo.delete(
+    return repo.delete(
         agent_id=agent_id,
         key=data.get("key"),
         namespace=data.get("namespace", "default")
@@ -2326,28 +2348,28 @@ async def rt_memory_delete(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.get("/rt/{runtime_id}/memory/namespaces")
-async def rt_memory_list_namespaces(runtime_id: str):
+def rt_memory_list_namespaces(runtime_id: str):
     """List all memory namespaces. Agent ID resolved from runtime."""
     from gateway.db.repositories.memory import MemoryRepository
     
-    _, agent_id, _ = await resolve_runtime_ids(runtime_id)
+    _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     db = get_db()
     repo = MemoryRepository(db)
-    namespaces = await repo.list_namespaces(agent_id)
+    namespaces = repo.list_namespaces(agent_id)
     return {"success": True, "namespaces": namespaces}
 
 
 @router.post("/rt/{runtime_id}/memory/task/log")
-async def rt_memory_log_task(runtime_id: str, data: Dict[str, Any]):
+def rt_memory_log_task(runtime_id: str, data: Dict[str, Any]):
     """Log a task action. Agent ID resolved from runtime."""
     from gateway.db.repositories.memory import MemoryRepository
     
-    _, agent_id, _ = await resolve_runtime_ids(runtime_id)
+    _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     db = get_db()
     repo = MemoryRepository(db)
-    return await repo.log_task(
+    return repo.log_task(
         agent_id=agent_id,
         action=data.get("action"),
         details=data.get("details"),
@@ -2356,15 +2378,15 @@ async def rt_memory_log_task(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.post("/rt/{runtime_id}/memory/task/history")
-async def rt_memory_get_task_history(runtime_id: str, data: Dict[str, Any]):
+def rt_memory_get_task_history(runtime_id: str, data: Dict[str, Any]):
     """Get task history. Agent ID resolved from runtime."""
     from gateway.db.repositories.memory import MemoryRepository
     
-    _, agent_id, _ = await resolve_runtime_ids(runtime_id)
+    _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     db = get_db()
     repo = MemoryRepository(db)
-    return await repo.get_task_history(
+    return repo.get_task_history(
         agent_id=agent_id,
         limit=data.get("limit", 20),
         status_filter=data.get("status_filter")
@@ -2374,12 +2396,12 @@ async def rt_memory_get_task_history(runtime_id: str, data: Dict[str, Any]):
 # ---------- Chat APIs (via runtime_id) ----------
 
 @router.post("/rt/{runtime_id}/chat/event")
-async def rt_chat_event(runtime_id: str, data: Dict[str, Any]):
+def rt_chat_event(runtime_id: str, data: Dict[str, Any]):
     """Send a chat event. Agent ID resolved from runtime."""
     import uuid
     from gateway.sse.broadcaster import get_worker_broadcaster
     
-    _, agent_id, _ = await resolve_runtime_ids(runtime_id)
+    _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     event_type = data.get("type", "AGENT_REPLY")
     event_data = data.get("data", {})
@@ -2411,19 +2433,19 @@ async def rt_chat_event(runtime_id: str, data: Dict[str, Any]):
     message_id = str(uuid.uuid4())[:11]
     timestamp = datetime.now().isoformat()
     
-    async with db.get_connection() as conn:
-        await conn.execute("""
+    with db.get_connection("message", resource_id=message_id, timeout=10.0) as conn:
+        conn.execute("""
             INSERT INTO chat_messages (id, agent_id, type, content, timestamp, status)
             VALUES (?, ?, ?, ?, ?, 'sent')
         """, (message_id, agent_id, event_type, content, timestamp))
-        await conn.commit()
+        conn.commit()
     
     # Broadcast via SSE
     broadcaster = get_worker_broadcaster()
     if broadcaster:
         try:
             from gateway.sse.broadcaster import SSEEvent
-            await broadcaster.broadcast(
+            broadcaster.broadcast(
                 event_type=SSEEvent.NEW_MESSAGE,
                 data={"message_id": message_id, "agent_id": agent_id, "type": event_type, "content": content},
             )
@@ -2434,15 +2456,15 @@ async def rt_chat_event(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.get("/rt/{runtime_id}/chat/history")
-async def rt_chat_history(runtime_id: str, limit: int = 20, summary_length: int = 50):
+def rt_chat_history(runtime_id: str, limit: int = 20, summary_length: int = 50):
     """Get chat history. Agent ID resolved from runtime."""
     from gateway.db.repositories.message import MessageRepository
     
-    _, agent_id, _ = await resolve_runtime_ids(runtime_id)
+    _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     db = get_db()
     repo = MessageRepository(db)
-    messages = await repo.get_history(agent_id, limit=limit)
+    messages = repo.get_history(agent_id, limit=limit)
     
     result_messages = []
     for m in messages:
@@ -2460,16 +2482,16 @@ async def rt_chat_history(runtime_id: str, limit: int = 20, summary_length: int 
 
 
 @router.get("/rt/{runtime_id}/chat/message/{message_id}")
-async def rt_chat_get_message(runtime_id: str, message_id: str):
+def rt_chat_get_message(runtime_id: str, message_id: str):
     """Get full content of a chat message."""
     from gateway.db.repositories.message import MessageRepository
     
     # Validate runtime exists (also verifies access)
-    await resolve_runtime_ids(runtime_id)
+    resolve_runtime_ids(runtime_id)
     
     db = get_db()
     repo = MessageRepository(db)
-    message = await repo.get_message(message_id)
+    message = repo.get_message(message_id)
     if not message:
         return {"success": False, "error": "Message not found"}
     
@@ -2484,14 +2506,14 @@ async def rt_chat_get_message(runtime_id: str, message_id: str):
 # ---------- SubAgent APIs (via runtime_id) ----------
 
 @router.post("/rt/{runtime_id}/subagent/spawn")
-async def rt_subagent_spawn(runtime_id: str, data: Dict[str, Any]):
+def rt_subagent_spawn(runtime_id: str, data: Dict[str, Any]):
     """Spawn a SubAgent. Agent ID and parent SubAgent ID resolved from runtime."""
     from gateway.db.repositories import SubAgentRepository, RuntimeRepository
     from task_queue import get_saga_orchestrator
     from datetime import timedelta
     import uuid
     
-    _, agent_id, parent_subagent_id = await resolve_runtime_ids(runtime_id)
+    _, agent_id, parent_subagent_id = resolve_runtime_ids(runtime_id)
     
     db = get_db()
     subagent_repo = SubAgentRepository(db)
@@ -2505,27 +2527,27 @@ async def rt_subagent_spawn(runtime_id: str, data: Dict[str, Any]):
     timeout_at = (now + timedelta(minutes=timeout_minutes)).isoformat()
     
     # Create sub SubAgent
-    subagent = await subagent_repo.create_sub_subagent(
+    subagent = subagent_repo.create_sub_subagent(
         agent_id, parent_subagent_id, task=task_description, timeout_at=timeout_at,
     )
     
     # Prepare initial context
     initial_context = []
     if share_context:
-        parent_runtime = await runtime_repo.get_by_id(runtime_id)
+        parent_runtime = runtime_repo.get_by_id(runtime_id)
         if parent_runtime and parent_runtime.context:
             initial_context = parent_runtime.context.copy()
     
     initial_context.append({"role": "user", "content": f"[SubAgent Task]\n{task_description}"})
     
     # Set SubAgent to awaking status
-    await subagent_repo.try_wake(subagent.subagent_id, agent_id, target_status="awaking")
+    subagent_repo.try_wake(subagent.subagent_id, agent_id, target_status="awaking")
     
     # Trigger RuntimeStart Saga
     orchestrator = get_saga_orchestrator()
     if orchestrator:
         trigger_id = f"spawn-{subagent.subagent_id}-{uuid.uuid4().hex[:8]}"
-        await orchestrator.create(
+        orchestrator.create(
             saga_type="runtime_start",
             context={
                 "agent_id": agent_id,
@@ -2540,17 +2562,17 @@ async def rt_subagent_spawn(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.get("/rt/{runtime_id}/subagent/{target_subagent_id}/status")
-async def rt_subagent_query(runtime_id: str, target_subagent_id: str):
+def rt_subagent_query(runtime_id: str, target_subagent_id: str):
     """Query SubAgent status. Agent ID resolved from runtime."""
     from gateway.db.repositories import SubAgentRepository, RuntimeRepository
     
-    _, agent_id, _ = await resolve_runtime_ids(runtime_id)
+    _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     db = get_db()
     subagent_repo = SubAgentRepository(db)
     runtime_repo = RuntimeRepository(db)
     
-    subagent = await subagent_repo.get_by_id(target_subagent_id, agent_id)
+    subagent = subagent_repo.get_by_id(target_subagent_id, agent_id)
     if not subagent:
         raise HTTPException(status_code=404, detail="SubAgent not found")
     
@@ -2559,8 +2581,8 @@ async def rt_subagent_query(runtime_id: str, target_subagent_id: str):
         try:
             timeout_at = datetime.fromisoformat(subagent.timeout_at)
             if datetime.utcnow() > timeout_at:
-                await subagent_repo.set_failed(target_subagent_id, agent_id, error="SubAgent timed out")
-                subagent = await subagent_repo.get_by_id(target_subagent_id, agent_id)
+                subagent_repo.set_failed(target_subagent_id, agent_id, error="SubAgent timed out")
+                subagent = subagent_repo.get_by_id(target_subagent_id, agent_id)
         except (ValueError, TypeError):
             pass
     
@@ -2572,7 +2594,7 @@ async def rt_subagent_query(runtime_id: str, target_subagent_id: str):
         "error": getattr(subagent, "error", None),
     }
     
-    runtimes = await runtime_repo.get_latest_runtimes(target_subagent_id, agent_id, limit=1)
+    runtimes = runtime_repo.get_latest_runtimes(target_subagent_id, agent_id, limit=1)
     if runtimes:
         rt = runtimes[0]
         response["runtime_id"] = rt.runtime_id
@@ -2587,38 +2609,38 @@ async def rt_subagent_query(runtime_id: str, target_subagent_id: str):
 
 
 @router.post("/rt/{runtime_id}/subagent/{target_subagent_id}/cancel")
-async def rt_subagent_cancel(runtime_id: str, target_subagent_id: str):
+def rt_subagent_cancel(runtime_id: str, target_subagent_id: str):
     """Cancel a running SubAgent."""
     from gateway.db.repositories import SubAgentRepository
     
-    _, agent_id, _ = await resolve_runtime_ids(runtime_id)
+    _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     db = get_db()
     subagent_repo = SubAgentRepository(db)
     
-    subagent = await subagent_repo.get_by_id(target_subagent_id, agent_id)
+    subagent = subagent_repo.get_by_id(target_subagent_id, agent_id)
     if not subagent:
         raise HTTPException(status_code=404, detail="SubAgent not found")
     
     if subagent.status != "running":
         return {"success": False, "reason": f"SubAgent is not running (status: {subagent.status})"}
     
-    await subagent_repo.set_cancelled(target_subagent_id, agent_id)
+    subagent_repo.set_cancelled(target_subagent_id, agent_id)
     
     # Cancel active runtimes
     now = datetime.utcnow().isoformat()
-    async with db.get_connection() as conn:
-        cursor = await conn.execute(
+    with db.get_connection("agent", resource_id=agent_id, timeout=10.0) as conn:
+        cursor = conn.execute(
             "SELECT runtime_id FROM agent_runtimes WHERE subagent_id = ? AND agent_id = ?",
             (target_subagent_id, agent_id)
         )
-        runtime_ids = [row[0] for row in await cursor.fetchall()]
+        runtime_ids = [row[0] for row in cursor.fetchall()]
         for rid in runtime_ids:
-            await conn.execute("""
+            conn.execute("""
                 UPDATE agent_runtimes SET status = 'cancelled', updated_at = ?
                 WHERE runtime_id = ? AND status = 'active'
             """, (now, rid))
-        await conn.commit()
+        conn.commit()
     
     return {"success": True}
 
@@ -2632,7 +2654,7 @@ async def rt_qemu_ssh_exec(runtime_id: str, data: Dict[str, Any]):
     from gateway.vm.ssh import get_ssh_key_manager
     from gateway.config.agents import allocate_ports_for_agent, get_agent_config_manager
     
-    _, agent_id, _ = await resolve_runtime_ids(runtime_id)
+    _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     command = data.get("command", "")
     timeout = data.get("timeout", 30)
@@ -2652,7 +2674,7 @@ async def rt_qemu_ssh_exec(runtime_id: str, data: Dict[str, Any]):
     try:
         import asyncssh
         ssh_manager = get_ssh_key_manager()
-        key_path = await ssh_manager.get_private_key_path()
+        key_path = ssh_manager.get_private_key_path()
         
         async with asyncssh.connect(
             host="127.0.0.1", port=ssh_port, username="novaic",
@@ -2670,12 +2692,12 @@ async def rt_qemu_ssh_exec(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.get("/rt/{runtime_id}/qemu/status")
-async def rt_qemu_status(runtime_id: str):
+def rt_qemu_status(runtime_id: str):
     """Get QEMU VM status. Agent ID resolved from runtime."""
     import os
     from gateway.config.agents import allocate_ports_for_agent, get_agent_config_manager
     
-    _, agent_id, _ = await resolve_runtime_ids(runtime_id)
+    _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     config_mgr = get_agent_config_manager()
     agents = config_mgr.get_agents()
@@ -2711,17 +2733,17 @@ async def rt_qemu_status(runtime_id: str):
 # ---------- Task APIs (via runtime_id) ----------
 
 @router.post("/rt/{runtime_id}/tasks/spawn")
-async def rt_task_spawn(runtime_id: str, data: Dict[str, Any]):
+def rt_task_spawn(runtime_id: str, data: Dict[str, Any]):
     """Spawn a new task. Agent ID resolved from runtime."""
     from gateway.core.task_manager import get_task_manager
     
-    _, agent_id, _ = await resolve_runtime_ids(runtime_id)
+    _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     task_manager = get_task_manager()
     if not task_manager:
         raise HTTPException(status_code=503, detail="TaskManager not available")
     
-    return await task_manager.spawn(
+    return task_manager.spawn(
         task_type=data.get("task_type", "tool"),
         config=data.get("config", {}),
         label=data.get("label"),
@@ -2733,18 +2755,18 @@ async def rt_task_spawn(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.get("/rt/{runtime_id}/tasks")
-async def rt_task_list(runtime_id: str, status: Optional[str] = None):
+def rt_task_list(runtime_id: str, status: Optional[str] = None):
     """List tasks. Agent ID resolved from runtime."""
     from gateway.core.task_manager import get_task_manager
     
-    _, agent_id, _ = await resolve_runtime_ids(runtime_id)
+    _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     task_manager = get_task_manager()
     if not task_manager:
         raise HTTPException(status_code=503, detail="TaskManager not available")
     
     status_filter = [status] if status else None
-    return await task_manager.get_status(task_id=None, status_filter=status_filter, agent_id=agent_id)
+    return task_manager.get_status(task_id=None, status_filter=status_filter, agent_id=agent_id)
 
 
 # Note: task_query, task_cancel, task_summary don't need runtime_id - they use task_id directly

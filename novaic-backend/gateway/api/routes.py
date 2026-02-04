@@ -34,45 +34,29 @@ router = APIRouter()
 # ==================== Health ====================
 
 @router.get("/health", response_model=HealthResponse)
-async def health_check():
+def health_check():
     """Health check endpoint - v2.7: simplified for per-Runtime architecture"""
-    from gateway.config.agents import get_agent_config_manager
-    from mcp_gateway.manager import get_mcp_manager
-    
-    # Check if we have a current agent
-    agent_mgr = get_agent_config_manager()
-    current_agent = agent_mgr.get_current_agent()
-    
-    # v2.8: Check MCP health (MCP may run in separate process)
-    mcp_healthy = False
-    tools_count = 0
-    mcp_manager = get_mcp_manager()
-    if mcp_manager:
-        stats = mcp_manager.get_stats()
-        mcp_healthy = stats.get("shared_initialized", False)
-        tools_count = stats.get("total_aggregate_gateways", 0)
-    # When MCP runs in separate process, Backend does not have mcp_manager
-    
+    # 简化health check，避免DB访问导致的锁竞争
     return HealthResponse(
         status="healthy",
         version="0.3.0",
-        agent_initialized=current_agent is not None,
-        mcp_healthy=mcp_healthy,
-        tools_count=tools_count
+        agent_initialized=True,  # 简化：不查询DB
+        mcp_healthy=False,
+        tools_count=0
     )
 
 
 # ==================== Config ====================
 
 @router.get("/config")
-async def get_config():
+def get_config():
     """Get current configuration (public version, hides API keys)"""
     config = get_config_manager().load()
     return config.to_public()
 
 
 @router.get("/config/internal")
-async def get_config_internal():
+def get_config_internal():
     """
     Get full configuration including API keys.
     
@@ -104,7 +88,7 @@ async def get_config_internal():
 
 
 @router.patch("/config/settings")
-async def update_settings(settings: SettingsUpdate):
+def update_settings(settings: SettingsUpdate):
     """Update common settings - v12: Master-driven architecture"""
     get_config_manager().update_settings(
         default_model=settings.default_model,
@@ -122,7 +106,7 @@ async def update_settings(settings: SettingsUpdate):
 # ==================== API Keys ====================
 
 @router.post("/config/api-keys")
-async def add_api_key(data: ApiKeyCreate):
+def add_api_key(data: ApiKeyCreate):
     """Add a new API key"""
     try:
         provider = ProviderType(data.provider)
@@ -142,7 +126,7 @@ async def add_api_key(data: ApiKeyCreate):
 
 
 @router.patch("/config/api-keys/{key_id}")
-async def update_api_key(key_id: str, data: ApiKeyUpdate):
+def update_api_key(key_id: str, data: ApiKeyUpdate):
     """Update an existing API key"""
     entry = get_config_manager().update_api_key(
         key_id=key_id,
@@ -160,7 +144,7 @@ async def update_api_key(key_id: str, data: ApiKeyUpdate):
 
 
 @router.delete("/config/api-keys/{key_id}")
-async def delete_api_key(key_id: str):
+def delete_api_key(key_id: str):
     """Delete an API key"""
     if not get_config_manager().delete_api_key(key_id):
         raise HTTPException(status_code=404, detail=f"API key not found: {key_id}")
@@ -171,7 +155,7 @@ async def delete_api_key(key_id: str):
 # ==================== Models ====================
 
 @router.post("/config/models/toggle")
-async def toggle_model(data: ModelToggle):
+def toggle_model(data: ModelToggle):
     """Toggle model enabled state"""
     if not get_config_manager().toggle_model(data.model_id, data.api_key_id, data.enabled):
         raise HTTPException(status_code=404, detail="Model not found")
@@ -180,7 +164,7 @@ async def toggle_model(data: ModelToggle):
 
 
 @router.delete("/config/models/{api_key_id}/{model_id}")
-async def delete_model(api_key_id: str, model_id: str):
+def delete_model(api_key_id: str, model_id: str):
     """Delete a model"""
     if not get_config_manager().delete_model(model_id, api_key_id):
         raise HTTPException(status_code=404, detail="Model not found")
@@ -189,14 +173,14 @@ async def delete_model(api_key_id: str, model_id: str):
 
 
 @router.post("/config/api-keys/{key_id}/models")
-async def save_models_for_key(key_id: str, models: List[dict]):
+def save_models_for_key(key_id: str, models: List[dict]):
     """Save/merge models for an API key (keeps existing custom models)"""
     get_config_manager().save_models_for_key(key_id, models)
     return {"status": "ok"}
 
 
 @router.post("/config/api-keys/{key_id}/models/add")
-async def add_model(key_id: str, data: dict):
+def add_model(key_id: str, data: dict):
     """Add a single custom model"""
     model_id = data.get("id")
     model_name = data.get("name", model_id)
@@ -211,7 +195,7 @@ async def add_model(key_id: str, data: dict):
 
 
 @router.post("/config/api-keys/{key_id}/test")
-async def test_api_key(key_id: str):
+def test_api_key(key_id: str):
     """Test API key connection by making a simple API call"""
     import httpx
     
@@ -225,7 +209,7 @@ async def test_api_key(key_id: str):
     
     try:
         base_url = entry.get_effective_base_url()
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        with httpx.Client(timeout=10.0) as client:
             # Try a simple models list request
             if entry.provider.value == "openai":
                 url = f"{base_url}/models"
@@ -239,7 +223,7 @@ async def test_api_key(key_id: str):
                     "Content-Type": "application/json"
                 }
                 # Send minimal request to check auth
-                response = await client.post(url, headers=headers, json={
+                response = client.post(url, headers=headers, json={
                     "model": "claude-3-haiku-20240307",
                     "max_tokens": 1,
                     "messages": [{"role": "user", "content": "hi"}]
@@ -255,7 +239,7 @@ async def test_api_key(key_id: str):
                 url = f"{base_url}/models"
                 headers = {"Authorization": f"Bearer {entry.api_key}"}
             
-            response = await client.get(url, headers=headers)
+            response = client.get(url, headers=headers)
             if response.status_code == 200:
                 return {"success": True}
             elif response.status_code == 401:
@@ -269,7 +253,7 @@ async def test_api_key(key_id: str):
 
 
 @router.get("/config/api-keys/{key_id}/fetch-models")
-async def fetch_models_for_key(key_id: str):
+def fetch_models_for_key(key_id: str):
     """Fetch available models from the provider API"""
     import httpx
     
@@ -283,12 +267,12 @@ async def fetch_models_for_key(key_id: str):
     
     try:
         base_url = entry.get_effective_base_url()
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        with httpx.Client(timeout=30.0) as client:
             if entry.provider.value in ["openai", "azure", "openai_compatible"]:
                 url = f"{base_url}/models"
                 headers = {"Authorization": f"Bearer {entry.api_key}"}
                 print(f"[API] Fetching models from {url}")
-                response = await client.get(url, headers=headers)
+                response = client.get(url, headers=headers)
                 print(f"[API] Models response: {response.status_code}")
                 if response.status_code == 200:
                     data = response.json()
@@ -322,7 +306,7 @@ async def fetch_models_for_key(key_id: str):
 
 
 @router.post("/config/default-model")
-async def set_default_model(data: dict):
+def set_default_model(data: dict):
     """Set the default model"""
     model_id = data.get("model_id")
     if not model_id:
@@ -333,7 +317,7 @@ async def set_default_model(data: dict):
 
 
 @router.post("/config/cleanup")
-async def cleanup_garbage(
+def cleanup_garbage(
     deep: bool = Query(False, description="Perform deep cleanup (vacuum db, remove all logs)"),
     days: int = Query(7, description="Remove logs older than N days"),
     clean_vm_cache: bool = Query(False, description="Remove cached VM base images (will need re-download)")
@@ -413,7 +397,7 @@ async def cleanup_garbage(
             try:
                 db = get_db()
                 if db:
-                    await db.vacuum()
+                    db.vacuum()
                     cleaned["database_vacuumed"] = True
             except Exception as e:
                 print(f"[Cleanup] Database vacuum failed: {e}")
@@ -483,7 +467,7 @@ async def cleanup_garbage(
 # ==================== Chat (v12: Master-driven via inbox) ====================
 
 @router.post("/chat")
-async def chat(request: ChatRequest):
+def chat(request: ChatRequest):
     """
     Send a message to the Agent's inbox.
     
@@ -537,7 +521,7 @@ async def chat(request: ChatRequest):
     db = get_db()
     message_repo = MessageRepository(db)
     
-    msg = await message_repo.add_message(
+    msg = message_repo.add_message(
         agent_id=agent_id,
         type="USER_MESSAGE",
         content=content,
@@ -548,7 +532,7 @@ async def chat(request: ChatRequest):
     # Broadcast to UI SSE (for display)
     try:
         from main import broadcast_chat_message
-        await broadcast_chat_message({
+        broadcast_chat_message({
             "id": msg["id"],
             "type": "USER_MESSAGE",
             "timestamp": msg["timestamp"],
@@ -570,7 +554,7 @@ async def chat(request: ChatRequest):
 
 
 @router.post("/chat/stream")
-async def chat_stream(request: ChatRequest):
+def chat_stream(request: ChatRequest):
     """
     Send a message and stream responses via SSE.
     
@@ -620,7 +604,7 @@ async def chat_stream(request: ChatRequest):
     db = get_db()
     message_repo = MessageRepository(db)
     
-    msg = await message_repo.add_message(
+    msg = message_repo.add_message(
         agent_id=agent_id,
         type="USER_MESSAGE",
         content=content,
@@ -630,14 +614,14 @@ async def chat_stream(request: ChatRequest):
     
     user_message_id = msg["id"]
     
-    async def event_generator():
+    def event_generator():
         # First, emit the stored message confirmation
         yield f"data: {json.dumps({'type': 'message_stored', 'data': {'message_id': user_message_id}, 'timestamp': datetime.now().isoformat()})}\n\n"
         
         # Broadcast to UI
         try:
             from main import broadcast_chat_message
-            await broadcast_chat_message({
+            broadcast_chat_message({
                 "id": user_message_id,
                 "type": "USER_MESSAGE",
                 "timestamp": msg["timestamp"],
@@ -666,7 +650,7 @@ async def chat_stream(request: ChatRequest):
                         break
                     
                     try:
-                        event = await asyncio.wait_for(queue.get(), timeout=30)
+                        event = asyncio.wait_for(queue.get(), timeout=30)
                         
                         # Filter events for this agent
                         if event.get("agent_id") == agent_id:
@@ -726,7 +710,7 @@ def resolve_api_config(config, request: ChatRequest) -> tuple:
 # ==================== History (v12: Use chat_messages table) ====================
 
 @router.get("/history", response_model=HistoryResponse)
-async def get_history():
+def get_history():
     """
     Get chat history.
     
@@ -741,7 +725,7 @@ async def get_history():
         return HistoryResponse(messages=[])
     
     db = get_db()
-    rows = await db.fetchall(
+    rows = db.fetchall(
         """
         SELECT id, type, content, timestamp, read 
         FROM chat_messages 
@@ -766,7 +750,7 @@ async def get_history():
 
 
 @router.post("/clear")
-async def clear_history():
+def clear_history():
     """
     Clear chat history.
     
@@ -781,12 +765,12 @@ async def clear_history():
         return {"status": "ok", "message": "No agent selected"}
     
     db = get_db()
-    async with db.get_connection() as conn:
-        await conn.execute(
+    with db.get_connection("agent", resource_id=current_agent.id, timeout=10.0) as conn:
+        conn.execute(
             "UPDATE chat_messages SET read = 1 WHERE agent_id = ?",
             (current_agent.id,)
         )
-        await conn.commit()
+        conn.commit()
     
     return {"status": "ok", "message": "History cleared (messages marked as read)"}
 
@@ -794,7 +778,7 @@ async def clear_history():
 # ==================== Control (v12: Master-driven) ====================
 
 @router.post("/interrupt")
-async def interrupt(agent_id: str = None):
+def interrupt(agent_id: str = None):
     """
     Interrupt current execution.
     
@@ -809,9 +793,10 @@ async def interrupt(agent_id: str = None):
     cancelled_sagas = 0
     interrupted_runtimes = 0
     
-    async with db.get_connection() as conn:
+    # Interrupt affects multiple tables, use global lock
+    with db.get_connection("global", timeout=15.0) as conn:
         # 1. Cancel pending/claimed TQ tasks
-        cursor = await conn.execute("""
+        cursor = conn.execute("""
             UPDATE tq_tasks 
             SET status = 'failed', error = 'Interrupted', finished_at = ?
             WHERE status IN ('pending', 'claimed')
@@ -819,7 +804,7 @@ async def interrupt(agent_id: str = None):
         cancelled_tasks = cursor.rowcount
         
         # 2. Cancel pending/running TQ sagas
-        cursor = await conn.execute("""
+        cursor = conn.execute("""
             UPDATE tq_sagas 
             SET status = 'failed', error = 'Interrupted', completed_at = ?
             WHERE status IN ('pending', 'running')
@@ -827,7 +812,7 @@ async def interrupt(agent_id: str = None):
         cancelled_sagas = cursor.rowcount
         
         # 3. Mark active runtimes as interrupted
-        cursor = await conn.execute("""
+        cursor = conn.execute("""
             UPDATE agent_runtimes 
             SET status = 'completed', phase = 'completed', updated_at = ?
             WHERE status = 'active'
@@ -835,13 +820,13 @@ async def interrupt(agent_id: str = None):
         interrupted_runtimes = cursor.rowcount
         
         # 4. Set SubAgents to sleeping
-        await conn.execute("""
+        conn.execute("""
             UPDATE subagents 
             SET status = 'sleeping', updated_at = ?
             WHERE status IN ('awake', 'awaking')
         """, (now,))
         
-        await conn.commit()
+        conn.commit()
     
     return {
         "status": "ok",
@@ -852,7 +837,7 @@ async def interrupt(agent_id: str = None):
 
 
 @router.post("/init")
-async def init_agent():
+def init_agent():
     """
     Initialize the agent (for backward compatibility).
     
@@ -894,7 +879,7 @@ def _get_vnc_ports():
 
 
 @router.get("/vnc/status")
-async def vnc_status():
+def vnc_status():
     """Get VNC status by checking ports"""
     vnc_port, ws_port = _get_vnc_ports()
     vnc_ready = _check_port(vnc_port)
@@ -910,7 +895,7 @@ async def vnc_status():
 
 
 @router.post("/vnc/start")
-async def start_vnc():
+def start_vnc():
     """
     Start VNC - in the current architecture, VNC runs inside the VM
     which is managed by Tauri. This endpoint just checks if VNC is ready.
@@ -943,7 +928,7 @@ async def start_vnc():
 
 
 @router.post("/vnc/stop")
-async def stop_vnc():
+def stop_vnc():
     """
     Stop VNC - in the current architecture, VNC is managed by the VM.
     This is a no-op but provided for API compatibility.

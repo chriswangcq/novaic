@@ -49,7 +49,7 @@ class RuntimeBusiness:
     Example:
         >>> from task_queue.business import RuntimeBusiness
         >>> runtime_biz = RuntimeBusiness(db)
-        >>> result = await runtime_biz.create(agent_id="agent-1", subagent_id="main")
+        >>> result = runtime_biz.create(agent_id="agent-1", subagent_id="main")
         >>> print(result.runtime_id)
     """
     
@@ -61,13 +61,12 @@ class RuntimeBusiness:
         """
         self.client = client or GatewayInternalClient(gateway_url)
     
-    async def create(
+    def create(
         self,
         agent_id: str,
         subagent_id: str,
         *,
         idempotency_key: Optional[str] = None,
-        initial_context: Optional[List[Dict[str, Any]]] = None,
     ) -> RuntimeCreateResult:
         """
         创建 Runtime 记录
@@ -78,16 +77,13 @@ class RuntimeBusiness:
             agent_id: Agent ID
             subagent_id: SubAgent ID
             idempotency_key: 幂等键
-            initial_context: 初始对话上下文
             
         Returns:
             RuntimeCreateResult
         """
-        initial_context = initial_context or []
-
         # 幂等检查：只复用 active 状态的 runtime
         if idempotency_key:
-            existing = await self.client.get_subagent_runtime(agent_id, subagent_id)
+            existing = self.client.get_subagent_runtime(agent_id, subagent_id)
             if existing and existing.get("status") == "active":
                 return RuntimeCreateResult(
                     success=True,
@@ -98,7 +94,8 @@ class RuntimeBusiness:
                     phase=existing.get("phase", ""),
                 )
 
-        runtime = await self.client.create_runtime(agent_id, subagent_id, initial_context)
+        # 创建空 runtime，所有消息由 context.read 统一读取
+        runtime = self.client.create_runtime(agent_id, subagent_id, [])
         return RuntimeCreateResult(
             success=True,
             runtime_id=runtime.get("runtime_id", ""),
@@ -107,7 +104,7 @@ class RuntimeBusiness:
             phase=runtime.get("phase", PHASE_NEED_THINK),
         )
     
-    async def update_phase(
+    def update_phase(
         self,
         runtime_id: str,
         expected_phase: str,
@@ -129,7 +126,7 @@ class RuntimeBusiness:
         Returns:
             RuntimeUpdateResult
         """
-        claim = await self.client.claim_phase(runtime_id, expected_phase, new_phase, round_id)
+        claim = self.client.claim_phase(runtime_id, expected_phase, new_phase, round_id)
         if claim.get("success"):
             return RuntimeUpdateResult(
                 success=True,
@@ -139,7 +136,7 @@ class RuntimeBusiness:
             )
 
         # 检查当前状态（幂等）
-        runtime = await self.client.get_runtime(runtime_id)
+        runtime = self.client.get_runtime(runtime_id)
         current_phase = runtime.get("phase") if runtime else "not_found"
 
         result = RuntimeUpdateResult(
@@ -156,7 +153,7 @@ class RuntimeBusiness:
             )
         return result
     
-    async def set_status(
+    def set_status(
         self,
         runtime_id: str,
         expected_status,  # str 或 List[str]
@@ -181,7 +178,7 @@ class RuntimeBusiness:
         else:
             expected_list = expected_status
         
-        resp = await self.client.set_runtime_status(runtime_id, expected_list, new_status)
+        resp = self.client.set_runtime_status(runtime_id, expected_list, new_status)
         if resp.get("success"):
             return RuntimeUpdateResult(
                 success=True,
@@ -199,7 +196,7 @@ class RuntimeBusiness:
             message="Already in target status" if current_status == new_status else "Status mismatch",
         )
     
-    async def increment_round(self, runtime_id: str) -> Dict[str, Any]:
+    def increment_round(self, runtime_id: str) -> Dict[str, Any]:
         """
         增加 Runtime round 计数
         
@@ -209,18 +206,18 @@ class RuntimeBusiness:
         Returns:
             {"success": bool, "round_num": int}
         """
-        result = await self.client.advance_round(runtime_id)
+        result = self.client.advance_round(runtime_id)
         if not result.get("success"):
             return {"success": False, "runtime_id": runtime_id, "round_num": None}
 
-        runtime = await self.client.get_runtime(runtime_id)
+        runtime = self.client.get_runtime(runtime_id)
         return {
             "success": True,
             "runtime_id": runtime_id,
             "round_num": runtime.get("current_round_num") if runtime else None,
         }
     
-    async def set_summarized(self, runtime_id: str) -> RuntimeUpdateResult:
+    def set_summarized(self, runtime_id: str) -> RuntimeUpdateResult:
         """
         设置 Runtime 已生成摘要
         
@@ -232,7 +229,7 @@ class RuntimeBusiness:
         Returns:
             RuntimeUpdateResult
         """
-        resp = await self.client.set_runtime_summarized(runtime_id)
+        resp = self.client.set_runtime_summarized(runtime_id)
         if resp.get("success"):
             return RuntimeUpdateResult(
                 success=True,
@@ -249,7 +246,7 @@ class RuntimeBusiness:
             message=resp.get("message", ""),
         )
     
-    async def set_need_rest(self, runtime_id: str, value: bool = True) -> RuntimeUpdateResult:
+    def set_need_rest(self, runtime_id: str, value: bool = True) -> RuntimeUpdateResult:
         """
         设置 Runtime need_rest 标志
         
@@ -262,7 +259,7 @@ class RuntimeBusiness:
         Returns:
             RuntimeUpdateResult
         """
-        resp = await self.client.set_runtime_need_rest(runtime_id, value)
+        resp = self.client.set_runtime_need_rest(runtime_id, value)
         target = "1" if value else "0"
         return RuntimeUpdateResult(
             success=resp.get("success") or resp.get("current_value") == target,
@@ -272,7 +269,7 @@ class RuntimeBusiness:
             message=resp.get("message", ""),
         )
     
-    async def get(self, runtime_id: str) -> Optional[Dict[str, Any]]:
+    def get(self, runtime_id: str) -> Optional[Dict[str, Any]]:
         """
         获取 Runtime 信息
         
@@ -282,4 +279,4 @@ class RuntimeBusiness:
         Returns:
             Runtime 信息或 None
         """
-        return await self.client.get_runtime(runtime_id)
+        return self.client.get_runtime(runtime_id)

@@ -2,13 +2,13 @@
 AIC Agent Configuration Manager - Database Version
 
 Manages multiple AIC agents using SQLite storage.
+All operations are synchronous.
 """
 
 import os
 import json
 import uuid
 import shutil
-import asyncio
 import platform
 from typing import Dict, List, Optional, Any
 from pathlib import Path
@@ -105,7 +105,7 @@ def allocate_ports_for_agent(agent_index: int) -> PortConfig:
 
 class AgentConfigManagerDB:
     """
-    Database-backed Agent Configuration Manager.
+    Database-backed Agent Configuration Manager (Synchronous).
     
     All operations go directly to SQLite database.
     """
@@ -137,9 +137,9 @@ class AgentConfigManagerDB:
         """Get VM directory for an agent (matches qemudebug.py path)."""
         return self._agents_dir / agent_id
     
-    async def list_agents(self) -> List[AICAgent]:
+    def list_agents(self) -> List[AICAgent]:
         """List all agents."""
-        rows = await self.repo.list_agents()
+        rows = self.repo.list_agents()
         agents = []
         for row in rows:
             vm_config = row.get("vm_config", {})
@@ -155,9 +155,9 @@ class AgentConfigManagerDB:
             ))
         return agents
     
-    async def get_agent(self, agent_id: str) -> Optional[AICAgent]:
+    def get_agent(self, agent_id: str) -> Optional[AICAgent]:
         """Get agent by ID."""
-        row = await self.repo.get_agent(agent_id)
+        row = self.repo.get_agent(agent_id)
         if not row:
             return None
         
@@ -173,7 +173,7 @@ class AgentConfigManagerDB:
             setup_complete=row.get("setup_complete", False),
         )
     
-    async def create_agent(
+    def create_agent(
         self,
         name: str,
         backend: str = "qemu",
@@ -187,7 +187,7 @@ class AgentConfigManagerDB:
         self._ensure_dirs()
         
         # Find next available agent index
-        agent_index = await self.repo.find_next_agent_index()
+        agent_index = self.repo.find_next_agent_index()
         ports = allocate_ports_for_agent(agent_index)
         
         agent_id = str(uuid.uuid4())
@@ -207,7 +207,7 @@ class AgentConfigManagerDB:
         }
         
         # Create in database
-        await self.repo.create_agent(
+        self.repo.create_agent(
             id=agent_id,
             name=name,
             vm_config=vm_config,
@@ -229,13 +229,13 @@ class AgentConfigManagerDB:
         self._setup_uefi_firmware(vm_dir)
         
         # Set as current if first agent
-        current = await self.repo.get_current_agent_id()
+        current = self.repo.get_current_agent_id()
         if current is None:
-            await self.repo.set_current_agent_id(agent_id)
+            self.repo.set_current_agent_id(agent_id)
         
-        return await self.get_agent(agent_id)
+        return self.get_agent(agent_id)
     
-    async def update_agent(
+    def update_agent(
         self,
         agent_id: str,
         name: Optional[str] = None,
@@ -243,7 +243,7 @@ class AgentConfigManagerDB:
         vm_config: Optional[Dict[str, Any]] = None,
     ) -> Optional[AICAgent]:
         """Update agent configuration."""
-        current = await self.get_agent(agent_id)
+        current = self.get_agent(agent_id)
         if not current:
             return None
         
@@ -262,7 +262,7 @@ class AgentConfigManagerDB:
             update_vm = current_vm
             update_ports = ports
         
-        await self.repo.update_agent(
+        self.repo.update_agent(
             agent_id=agent_id,
             name=name,
             setup_complete=setup_complete,
@@ -270,27 +270,27 @@ class AgentConfigManagerDB:
             ports=update_ports,
         )
         
-        return await self.get_agent(agent_id)
+        return self.get_agent(agent_id)
     
-    async def delete_agent(self, agent_id: str) -> bool:
+    def delete_agent(self, agent_id: str) -> bool:
         """Delete an agent and its VM files."""
         # Get current agent for cleanup
-        agent = await self.get_agent(agent_id)
+        agent = self.get_agent(agent_id)
         if not agent:
             return False
         
         # Delete from database
-        success = await self.repo.delete_agent(agent_id)
+        success = self.repo.delete_agent(agent_id)
         
         if success:
             # Update current agent if needed
-            current_id = await self.repo.get_current_agent_id()
+            current_id = self.repo.get_current_agent_id()
             if current_id == agent_id:
-                agents = await self.list_agents()
+                agents = self.list_agents()
                 if agents:
-                    await self.repo.set_current_agent_id(agents[0].id)
+                    self.repo.set_current_agent_id(agents[0].id)
                 else:
-                    await self.repo.set_current_agent_id(None)
+                    self.repo.set_current_agent_id(None)
             
             # Delete VM directory
             vm_dir = self._get_agent_vm_dir(agent_id)
@@ -299,20 +299,20 @@ class AgentConfigManagerDB:
         
         return success
     
-    async def get_current_agent(self) -> Optional[AICAgent]:
+    def get_current_agent(self) -> Optional[AICAgent]:
         """Get the currently selected agent."""
-        agent_id = await self.repo.get_current_agent_id()
+        agent_id = self.repo.get_current_agent_id()
         if agent_id:
-            return await self.get_agent(agent_id)
+            return self.get_agent(agent_id)
         return None
     
-    async def set_current_agent(self, agent_id: str) -> bool:
+    def set_current_agent(self, agent_id: str) -> bool:
         """Set the current agent."""
-        agent = await self.get_agent(agent_id)
+        agent = self.get_agent(agent_id)
         if not agent:
             return False
         
-        await self.repo.set_current_agent_id(agent_id)
+        self.repo.set_current_agent_id(agent_id)
         return True
     
     def _setup_uefi_firmware(self, vm_dir: Path) -> None:
@@ -346,7 +346,7 @@ class AgentConfigManagerDB:
                 f.write(b"\x00" * (64 * 1024 * 1024))
             print(f"[AgentConfig] Created UEFI VARS at {dest_vars}")
     
-    async def get_available_images(self) -> List[Dict[str, Any]]:
+    def get_available_images(self) -> List[Dict[str, Any]]:
         """Get list of available base images for cloning."""
         images = []
         
@@ -370,83 +370,27 @@ class AgentConfigManagerDB:
         return images
 
 
-# ==================== Sync Wrapper for Backward Compatibility ====================
+# ==================== Alias for Backward Compatibility ====================
 
-class AgentConfigManager:
-    """
-    Synchronous wrapper around AgentConfigManagerDB.
-    """
-    
-    def __init__(self):
-        self._async_manager = AgentConfigManagerDB()
-    
-    def _run_async(self, coro):
-        """Run an async coroutine synchronously."""
-        try:
-            loop = asyncio.get_running_loop()
-            import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                future = pool.submit(asyncio.run, coro)
-                return future.result()
-        except RuntimeError:
-            return asyncio.run(coro)
-    
-    def load(self):
-        """Compatibility method - returns self."""
-        return self
-    
-    def reload(self):
-        """Compatibility method - returns self."""
-        return self
-    
-    def list_agents(self) -> List[AICAgent]:
-        """List all agents."""
-        return self._run_async(self._async_manager.list_agents())
-    
-    def get_agent(self, agent_id: str) -> Optional[AICAgent]:
-        """Get agent by ID."""
-        return self._run_async(self._async_manager.get_agent(agent_id))
-    
-    def create_agent(self, **kwargs) -> AICAgent:
-        """Create agent."""
-        return self._run_async(self._async_manager.create_agent(**kwargs))
-    
-    def update_agent(self, agent_id: str, **kwargs) -> Optional[AICAgent]:
-        """Update agent."""
-        return self._run_async(self._async_manager.update_agent(agent_id, **kwargs))
-    
-    def delete_agent(self, agent_id: str) -> bool:
-        """Delete agent."""
-        return self._run_async(self._async_manager.delete_agent(agent_id))
-    
-    def get_current_agent(self) -> Optional[AICAgent]:
-        """Get current agent."""
-        return self._run_async(self._async_manager.get_current_agent())
-    
-    def set_current_agent(self, agent_id: str) -> bool:
-        """Set current agent."""
-        return self._run_async(self._async_manager.set_current_agent(agent_id))
-    
-    def get_available_images(self) -> List[Dict[str, Any]]:
-        """Get available images."""
-        return self._run_async(self._async_manager.get_available_images())
+# AgentConfigManager is now just an alias to AgentConfigManagerDB (both are sync)
+AgentConfigManager = AgentConfigManagerDB
 
 
 # Global instances
-_agent_config_manager: Optional[AgentConfigManager] = None
+_agent_config_manager: Optional[AgentConfigManagerDB] = None
 _agent_config_manager_db: Optional[AgentConfigManagerDB] = None
 
 
-def get_agent_config_manager() -> AgentConfigManager:
-    """Get the global sync agent config manager instance."""
+def get_agent_config_manager() -> AgentConfigManagerDB:
+    """Get the global agent config manager instance."""
     global _agent_config_manager
     if _agent_config_manager is None:
-        _agent_config_manager = AgentConfigManager()
+        _agent_config_manager = AgentConfigManagerDB()
     return _agent_config_manager
 
 
 def get_agent_config_manager_db() -> AgentConfigManagerDB:
-    """Get the global async agent config manager instance."""
+    """Get the global agent config manager instance (alias for compatibility)."""
     global _agent_config_manager_db
     if _agent_config_manager_db is None:
         _agent_config_manager_db = AgentConfigManagerDB()

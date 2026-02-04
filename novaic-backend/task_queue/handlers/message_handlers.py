@@ -15,7 +15,7 @@ from ..business import MessageBusiness
 
 
 @register_handler("message.process")
-async def handle_message_process(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+def handle_message_process(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     处理用户消息
     
@@ -45,7 +45,7 @@ async def handle_message_process(payload: Dict[str, Any], ctx: dict) -> Dict[str
     subagent_id = payload.get("subagent_id", f"main-{agent_id[:8]}")
     
     # 1. 检查 SubAgent
-    status_resp = await client.get_subagent_status(agent_id, subagent_id)
+    status_resp = client.get_subagent_status(agent_id, subagent_id)
     subagent_status = status_resp.get("status")
     if not subagent_status:
         return {
@@ -67,7 +67,7 @@ async def handle_message_process(payload: Dict[str, Any], ctx: dict) -> Dict[str
     
     # 2b. awake: 查找 active Runtime
     if subagent_status == "awake":
-        active_runtime = await client.get_subagent_runtime(agent_id, subagent_id)
+        active_runtime = client.get_subagent_runtime(agent_id, subagent_id)
         if active_runtime:
             # 追加消息到 context
             return {
@@ -79,14 +79,14 @@ async def handle_message_process(payload: Dict[str, Any], ctx: dict) -> Dict[str
         else:
             # awake 但没有 active runtime，异常情况
             # 重置为 sleeping 以便重新创建 runtime
-            await client.set_subagent_sleeping(agent_id, subagent_id)
+            client.set_subagent_sleeping(agent_id, subagent_id)
             subagent_status = "sleeping"  # 继续走 sleeping 流程
     
     # 3. sleeping/failed: CAS 唤醒 → awaking
     woke_up = False
     if subagent_status in ("sleeping", "failed"):
         biz = SubAgentBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
-        result = await biz.wake(agent_id, subagent_id)
+        result = biz.wake(agent_id, subagent_id)
         woke_up = result.success and result.status == "awaking"
     
     # 4. 只有唤醒成功才创建 Saga
@@ -105,7 +105,7 @@ async def handle_message_process(payload: Dict[str, Any], ctx: dict) -> Dict[str
             {"role": "user", "content": content}
         ]
         
-        saga_id = await saga_client.start(
+        saga_id = saga_client.start(
             saga_type="runtime_start",
             context={
                 "agent_id": agent_id,
@@ -132,7 +132,7 @@ async def handle_message_process(payload: Dict[str, Any], ctx: dict) -> Dict[str
 
 
 @register_handler("message.claim")
-async def handle_message_claim(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+def handle_message_claim(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     认领消息 (sending → sent)
     
@@ -143,11 +143,11 @@ async def handle_message_claim(payload: Dict[str, Any], ctx: dict) -> Dict[str, 
     """
     message_id = payload["message_id"]
     biz = MessageBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
-    return await biz.claim_message(message_id)
+    return biz.claim_message(message_id)
 
 
 @register_handler("message.route")
-async def handle_message_route(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+def handle_message_route(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     判断消息路由（v2）
     
@@ -170,7 +170,7 @@ async def handle_message_route(payload: Dict[str, Any], ctx: dict) -> Dict[str, 
     message_id = payload["message_id"]
     
     # 获取当前状态
-    status = await biz.get_status(agent_id, subagent_id)
+    status = biz.get_status(agent_id, subagent_id)
     
     if status is None:
         return {
@@ -191,7 +191,7 @@ async def handle_message_route(payload: Dict[str, Any], ctx: dict) -> Dict[str, 
     # awake: 检查是否有 active runtime
     if status == "awake":
         # 检查是否真的有 active runtime
-        active_runtime = await client.get_subagent_runtime(agent_id, subagent_id)
+        active_runtime = client.get_subagent_runtime(agent_id, subagent_id)
         if active_runtime:
             return {
                 "success": True,
@@ -201,12 +201,12 @@ async def handle_message_route(payload: Dict[str, Any], ctx: dict) -> Dict[str, 
             }
         else:
             # awake 但没有 active runtime，重置为 sleeping
-            await client.set_subagent_sleeping(agent_id, subagent_id)
+            client.set_subagent_sleeping(agent_id, subagent_id)
             status = "sleeping"  # 继续走唤醒流程
     
     # sleeping/failed: 尝试 CAS 唤醒
     if status in ("sleeping", "failed"):
-        result = await biz.wake(agent_id, subagent_id)
+        result = biz.wake(agent_id, subagent_id)
         
         if result.success and result.status == "awaking":
             return {

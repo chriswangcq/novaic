@@ -41,7 +41,7 @@ def _build_trigger_runtime_start(ctx, decision):
             "agent_id": ctx["agent_id"],
             "subagent_id": ctx["subagent_id"],
             "trigger_id": ctx["message_id"],
-            "initial_context": ctx.get("initial_context", []),
+            # 移除 initial_context - Watchdog 只负责唤醒，不传递消息内容
         },
         "idempotency_key": f"runtime-start-{ctx['message_id']}",
     }

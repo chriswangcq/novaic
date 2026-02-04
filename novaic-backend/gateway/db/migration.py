@@ -6,7 +6,6 @@ Migrates existing file-based data to SQLite database.
 
 import os
 import json
-import asyncio
 import logging
 from pathlib import Path
 from datetime import datetime
@@ -18,7 +17,7 @@ from .access import get_db
 logger = logging.getLogger(__name__)
 
 
-async def migrate_config(db: Database, data_dir: Path) -> bool:
+def migrate_config(db: Database, data_dir: Path) -> bool:
     """Migrate config.json to database."""
     config_file = data_dir / "config.json"
     
@@ -32,37 +31,37 @@ async def migrate_config(db: Database, data_dir: Path) -> bool:
         with open(config_file, "r") as f:
             data = json.load(f)
         
-        async with db.transaction():
+        with db.transaction():
             # Migrate general settings
             if "version" in data:
-                await db.execute(
+                db.execute(
                     "INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)",
                     ("version", json.dumps(data["version"]))
                 )
             if "default_model" in data:
-                await db.execute(
+                db.execute(
                     "INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)",
                     ("default_model", json.dumps(data["default_model"]))
                 )
             if "max_tokens" in data:
-                await db.execute(
+                db.execute(
                     "INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)",
                     ("max_tokens", json.dumps(data["max_tokens"]))
                 )
             if "max_iterations" in data:
-                await db.execute(
+                db.execute(
                     "INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)",
                     ("max_iterations", json.dumps(data["max_iterations"]))
                 )
             if "visible_shell" in data:
-                await db.execute(
+                db.execute(
                     "INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)",
                     ("visible_shell", json.dumps(data["visible_shell"]))
                 )
             
             # Migrate API keys
             for key in data.get("api_keys", []):
-                await db.execute(
+                db.execute(
                     """INSERT OR REPLACE INTO api_keys 
                        (id, name, provider, api_key, api_base, deployment_name, api_version, created_at)
                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
@@ -81,7 +80,7 @@ async def migrate_config(db: Database, data_dir: Path) -> bool:
             # Migrate models (candidate_models preferred, fallback to available_models)
             models = data.get("candidate_models", data.get("available_models", []))
             for model in models:
-                await db.execute(
+                db.execute(
                     """INSERT OR REPLACE INTO candidate_models 
                        (id, name, provider, api_key_id, available, is_custom)
                        VALUES (?, ?, ?, ?, ?, ?)""",
@@ -109,7 +108,7 @@ async def migrate_config(db: Database, data_dir: Path) -> bool:
         return False
 
 
-async def migrate_agents(db: Database, data_dir: Path) -> bool:
+def migrate_agents(db: Database, data_dir: Path) -> bool:
     """Migrate agents.json to database."""
     agents_file = data_dir / "agents.json"
     
@@ -123,10 +122,10 @@ async def migrate_agents(db: Database, data_dir: Path) -> bool:
         with open(agents_file, "r") as f:
             data = json.load(f)
         
-        async with db.transaction():
+        with db.transaction():
             # Migrate current_agent_id
             if data.get("current_agent_id"):
-                await db.execute(
+                db.execute(
                     "INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)",
                     ("current_agent_id", json.dumps(data["current_agent_id"]))
                 )
@@ -137,7 +136,7 @@ async def migrate_agents(db: Database, data_dir: Path) -> bool:
                 vm_config = agent.get("vm", {})
                 ports = vm_config.pop("ports", {})
                 
-                await db.execute(
+                db.execute(
                     """INSERT OR REPLACE INTO agents 
                        (id, name, created_at, vm_config, ports, status)
                        VALUES (?, ?, ?, ?, ?, ?)""",
@@ -165,7 +164,7 @@ async def migrate_agents(db: Database, data_dir: Path) -> bool:
         return False
 
 
-async def migrate_sessions(db: Database, data_dir: Path) -> bool:
+def migrate_sessions(db: Database, data_dir: Path) -> bool:
     """Migrate session JSONL files to database."""
     sessions_dir = data_dir / "sessions"
     
@@ -187,7 +186,7 @@ async def migrate_sessions(db: Database, data_dir: Path) -> bool:
             session_id = session_file.stem.replace("_", ":")
             
             # Create session
-            await db.execute(
+            db.execute(
                 """INSERT OR IGNORE INTO sessions (id, created_at, updated_at)
                    VALUES (?, ?, ?)""",
                 (session_id, datetime.now().isoformat(), datetime.now().isoformat())
@@ -205,7 +204,7 @@ async def migrate_sessions(db: Database, data_dir: Path) -> bool:
                         entry_type = entry.get("type", "message")
                         
                         if entry_type == "message":
-                            await db.execute(
+                            db.execute(
                                 """INSERT INTO session_messages 
                                    (session_id, type, role, content, timestamp, metadata)
                                    VALUES (?, ?, ?, ?, ?, ?)""",
@@ -219,7 +218,7 @@ async def migrate_sessions(db: Database, data_dir: Path) -> bool:
                                 )
                             )
                         elif entry_type == "compaction_summary":
-                            await db.execute(
+                            db.execute(
                                 """INSERT INTO session_messages 
                                    (session_id, type, content, timestamp, compacted_count, original_tokens, summary_tokens)
                                    VALUES (?, ?, ?, ?, ?, ?, ?)""",
@@ -236,7 +235,7 @@ async def migrate_sessions(db: Database, data_dir: Path) -> bool:
                     except json.JSONDecodeError:
                         continue
             
-            await db.commit()
+            db.commit()
             migrated += 1
             
             # Backup old file
@@ -259,20 +258,20 @@ async def migrate_sessions(db: Database, data_dir: Path) -> bool:
     return migrated > 0
 
 
-async def run_migration(db: Optional[Database] = None) -> Dict[str, bool]:
+def run_migration(db: Optional[Database] = None) -> Dict[str, bool]:
     """Run all migrations."""
     if db is None:
         db = get_db()
-        await db.connect()
+        db.connect()
     
     data_dir = Path(os.environ.get("NOVAIC_DATA_DIR", "."))
     
     logger.info(f"[Migration] Starting migration from {data_dir}")
     
     results = {
-        "config": await migrate_config(db, data_dir),
-        "agents": await migrate_agents(db, data_dir),
-        "sessions": await migrate_sessions(db, data_dir),
+        "config": migrate_config(db, data_dir),
+        "agents": migrate_agents(db, data_dir),
+        "sessions": migrate_sessions(db, data_dir),
     }
     
     logger.info(f"[Migration] Migration complete: {results}")
@@ -282,4 +281,4 @@ async def run_migration(db: Optional[Database] = None) -> Dict[str, bool]:
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    asyncio.run(run_migration())
+    run_migration()

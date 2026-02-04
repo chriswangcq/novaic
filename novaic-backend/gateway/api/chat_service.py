@@ -87,7 +87,7 @@ class ChatService:
     
     # ==================== Chat Messages ====================
     
-    async def get_chat_history(
+    def get_chat_history(
         self,
         limit: int = 20,
         before_id: Optional[str] = None,
@@ -97,7 +97,7 @@ class ChatService:
     ) -> Dict[str, Any]:
         """Get chat history with optional summary."""
         aid = self._require_agent_id(agent_id)
-        messages = await self.repo.get_messages(
+        messages = self.repo.get_messages(
             agent_id=aid,
             limit=min(limit, 100),
             before_id=before_id,
@@ -134,11 +134,11 @@ class ChatService:
             "has_more": len(messages) >= limit,
         }
     
-    async def get_chat_message(self, message_id: str) -> Optional[Dict[str, Any]]:
+    def get_chat_message(self, message_id: str) -> Optional[Dict[str, Any]]:
         """Get full content of a specific chat message."""
-        return await self.repo.get_message(message_id)
+        return self.repo.get_message(message_id)
     
-    async def add_chat_message(
+    def add_chat_message(
         self,
         type: str,
         agent_id: Optional[str] = None,
@@ -151,7 +151,7 @@ class ChatService:
         content = data.pop("content", data.pop("message", None))
         
         # Save to database
-        msg = await self.repo.add_message(
+        msg = self.repo.add_message(
             agent_id=aid,
             id=msg_id,
             type=type,
@@ -171,11 +171,11 @@ class ChatService:
         }
         
         # Broadcast to SSE subscribers
-        await self._broadcast_chat(broadcast_msg)
+        self._broadcast_chat(broadcast_msg)
         
         return msg
     
-    async def _broadcast_chat(self, message: Dict[str, Any]):
+    def _broadcast_chat(self, message: Dict[str, Any]):
         """Broadcast message to all chat SSE subscribers."""
         for queue in self._sse_subscribers.values():
             try:
@@ -185,7 +185,7 @@ class ChatService:
     
     # ==================== Message Status ====================
     
-    async def update_message_status(
+    def update_message_status(
         self,
         message_id: str,
         status: str
@@ -195,7 +195,7 @@ class ChatService:
         For 'read' status, marks the message as read in database.
         """
         if status == "read":
-            success = await self.repo.mark_as_read(message_id)
+            success = self.repo.mark_as_read(message_id)
         else:
             # For other statuses, just broadcast (no longer stored)
             success = True
@@ -209,25 +209,25 @@ class ChatService:
                 "status": status,
                 "timestamp": datetime.now().isoformat(),
             }
-            await self._broadcast_chat(status_update)
+            self._broadcast_chat(status_update)
         
         return success
     
     # ==================== Inbox (Unread Messages) ====================
     
-    async def get_inbox(self, agent_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_inbox(self, agent_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """Get all unread user messages (inbox).
         
         Returns unread messages and marks them as read.
         """
         aid = self._require_agent_id(agent_id)
-        messages = await self.repo.get_unread_messages(aid)
+        messages = self.repo.get_unread_messages(aid)
         
         # Mark as read and format result
         result = []
         for msg in messages:
             # Mark as read
-            await self.repo.mark_as_read(msg["id"])
+            self.repo.mark_as_read(msg["id"])
             
             content = msg.get("content", "")
             result.append({
@@ -241,14 +241,14 @@ class ChatService:
         
         return result
     
-    async def get_unread_count(self, agent_id: Optional[str] = None) -> int:
+    def get_unread_count(self, agent_id: Optional[str] = None) -> int:
         """Get count of unread messages."""
         aid = self._require_agent_id(agent_id)
-        return await self.repo.get_message_count(aid, read=False)
+        return self.repo.get_message_count(aid, read=False)
     
     # ==================== Questions/Responses ====================
     
-    async def add_pending_question(
+    def add_pending_question(
         self,
         question: str,
         options: Optional[List[str]] = None,
@@ -259,7 +259,7 @@ class ChatService:
         aid = self._require_agent_id(agent_id)
         request_id = request_id or str(uuid4())[:12]
         
-        await self.repo.add_pending_question(
+        self.repo.add_pending_question(
             agent_id=aid,
             request_id=request_id,
             question=question,
@@ -267,7 +267,7 @@ class ChatService:
         )
         
         # Add to chat messages
-        await self.add_chat_message(
+        self.add_chat_message(
             type="AGENT_ASK",
             agent_id=aid,
             id=request_id,
@@ -278,12 +278,12 @@ class ChatService:
         
         return request_id
     
-    async def get_pending_questions(self, agent_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_pending_questions(self, agent_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """Get all pending questions."""
         aid = self._require_agent_id(agent_id)
-        return await self.repo.list_pending_questions(aid)
+        return self.repo.list_pending_questions(aid)
     
-    async def submit_response(
+    def submit_response(
         self,
         request_id: str,
         response: str,
@@ -293,12 +293,12 @@ class ChatService:
         """Submit user response to a question."""
         aid = self._require_agent_id(agent_id)
         # Check if question exists
-        question = await self.repo.get_pending_question(request_id)
+        question = self.repo.get_pending_question(request_id)
         if not question:
             return False
         
         # Add response
-        await self.repo.add_question_response(
+        self.repo.add_question_response(
             agent_id=aid,
             request_id=request_id,
             response=response,
@@ -307,19 +307,19 @@ class ChatService:
         
         return True
     
-    async def check_response(
+    def check_response(
         self,
         request_id: str
     ) -> Optional[Dict[str, Any]]:
         """Check if user has responded to a question."""
-        return await self.repo.pop_question_response(request_id)
+        return self.repo.pop_question_response(request_id)
     
-    async def auto_respond_to_questions(self, response: str, agent_id: Optional[str] = None):
+    def auto_respond_to_questions(self, response: str, agent_id: Optional[str] = None):
         """Auto-respond to all pending questions with user message."""
         aid = self._require_agent_id(agent_id)
-        questions = await self.repo.list_pending_questions(aid)
+        questions = self.repo.list_pending_questions(aid)
         for q in questions:
-            await self.submit_response(
+            self.submit_response(
                 request_id=q["request_id"],
                 response=response,
                 selected_option=None,
@@ -328,7 +328,7 @@ class ChatService:
     
     # ==================== Execution Logs ====================
     
-    async def add_execution_log(
+    def add_execution_log(
         self,
         type: str,
         data: Optional[Dict[str, Any]] = None,
@@ -338,7 +338,7 @@ class ChatService:
         aid = self._require_agent_id(agent_id)
         timestamp = datetime.now().isoformat()
         
-        await self.repo.add_execution_log(
+        self.repo.add_execution_log(
             agent_id=aid,
             type=type,
             timestamp=timestamp,
@@ -351,9 +351,9 @@ class ChatService:
             "timestamp": timestamp,
             "data": data or {},
         }
-        await self._broadcast_log(log_entry)
+        self._broadcast_log(log_entry)
     
-    async def _broadcast_log(self, log: Dict[str, Any]):
+    def _broadcast_log(self, log: Dict[str, Any]):
         """Broadcast log to all log SSE subscribers."""
         for queue in self._log_subscribers.values():
             try:
@@ -361,31 +361,31 @@ class ChatService:
             except asyncio.QueueFull:
                 pass
     
-    async def get_execution_logs(
+    def get_execution_logs(
         self,
         limit: int = 500,
         agent_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """Get execution logs."""
         aid = self._require_agent_id(agent_id)
-        return await self.repo.list_execution_logs(
+        return self.repo.list_execution_logs(
             agent_id=aid,
             limit=limit,
         )
     
-    async def clear_execution_logs(self, agent_id: Optional[str] = None):
+    def clear_execution_logs(self, agent_id: Optional[str] = None):
         """Clear all execution logs."""
         aid = self._require_agent_id(agent_id)
-        await self.repo.clear_execution_logs(aid)
+        self.repo.clear_execution_logs(aid)
     
     # ==================== Agent State ====================
     
-    async def get_agent_rest_state(self, agent_id: Optional[str] = None) -> Dict[str, Any]:
+    def get_agent_rest_state(self, agent_id: Optional[str] = None) -> Dict[str, Any]:
         """Get agent rest state."""
         aid = self._require_agent_id(agent_id)
-        return await self.repo.get_agent_rest_state(aid)
+        return self.repo.get_agent_rest_state(aid)
     
-    async def set_agent_resting(
+    def set_agent_resting(
         self,
         reason: str,
         wake_triggers: Optional[List[Dict]] = None,
@@ -394,7 +394,7 @@ class ChatService:
     ):
         """Set agent to resting state."""
         aid = self._require_agent_id(agent_id)
-        await self.repo.set_agent_rest_state(aid, {
+        self.repo.set_agent_rest_state(aid, {
             "is_resting": True,
             "reason": reason,
             "wake_triggers": wake_triggers or [],
@@ -403,7 +403,7 @@ class ChatService:
         })
         
         # Add notification
-        await self.add_chat_message(
+        self.add_chat_message(
             type="AGENT_NOTIFY",
             agent_id=aid,
             content=f"💤 进入休息状态: {reason}",
@@ -411,12 +411,12 @@ class ChatService:
             handoff_notes=handoff_notes,
         )
     
-    async def wake_agent(self, reason: str = "Manual wake", agent_id: Optional[str] = None):
+    def wake_agent(self, reason: str = "Manual wake", agent_id: Optional[str] = None):
         """Wake up the agent."""
         aid = self._require_agent_id(agent_id)
-        previous_state = await self.get_agent_rest_state(aid)
+        previous_state = self.get_agent_rest_state(aid)
         
-        await self.repo.set_agent_rest_state(aid, {
+        self.repo.set_agent_rest_state(aid, {
             "is_resting": False,
             "reason": None,
             "wake_triggers": [],
@@ -425,7 +425,7 @@ class ChatService:
         })
         
         # Add notification
-        await self.add_chat_message(
+        self.add_chat_message(
             type="AGENT_NOTIFY",
             agent_id=aid,
             content=f"☀️ 已唤醒: {reason}",

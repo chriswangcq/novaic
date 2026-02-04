@@ -56,7 +56,7 @@ class MCPBusiness:
     Example:
         >>> from task_queue.business import MCPBusiness
         >>> mcp_biz = MCPBusiness(db, mcp_manager, mcp_client)
-        >>> result = await mcp_biz.create(runtime_id="rt-123", agent_id="agent-1")
+        >>> result = mcp_biz.create(runtime_id="rt-123", agent_id="agent-1")
         >>> if result.success:
         ...     print(f"MCP URL: {result.mcp_url}")
     """
@@ -72,7 +72,7 @@ class MCPBusiness:
         self.client = client or GatewayInternalClient(gateway_url)
 
 
-    async def create(
+    def create(
         self,
         runtime_id: str,
         agent_id: str,
@@ -89,7 +89,7 @@ class MCPBusiness:
         Returns:
             MCPCreateResult
         """
-        runtime = await self.client.get_runtime(runtime_id)
+        runtime = self.client.get_runtime(runtime_id)
         if not runtime:
             return MCPCreateResult(
                 success=False,
@@ -115,13 +115,13 @@ class MCPBusiness:
             )
 
         try:
-            resp = await self.client.create_aggregate_mcp(
+            resp = self.client.create_aggregate_mcp(
                 agent_id=agent_id,
                 runtime_id=runtime_id,
                 subagent_id=subagent_id,
             )
             mcp_url = resp.get("mcp_url") or f"/mcp/aggregate/{runtime_id}/"
-            await self.client.update_runtime(runtime_id, {"mcp_url": mcp_url})
+            self.client.update_runtime(runtime_id, {"mcp_url": mcp_url})
         except Exception as e:
             return MCPCreateResult(
                 success=False,
@@ -136,7 +136,7 @@ class MCPBusiness:
             created=True,
         )
     
-    async def destroy(self, runtime_id: str) -> MCPDestroyResult:
+    def destroy(self, runtime_id: str) -> MCPDestroyResult:
         """
         销毁 MCP Server
         
@@ -148,7 +148,7 @@ class MCPBusiness:
         Returns:
             MCPDestroyResult
         """
-        runtime = await self.client.get_runtime(runtime_id)
+        runtime = self.client.get_runtime(runtime_id)
         if not runtime:
             return MCPDestroyResult(
                 success=True,
@@ -166,7 +166,7 @@ class MCPBusiness:
 
         agent_id = runtime.get("agent_id")
         try:
-            await self.client.destroy_aggregate_mcp(agent_id, runtime_id)
+            self.client.destroy_aggregate_mcp(agent_id, runtime_id)
         except Exception as e:
             if "not found" not in str(e).lower():
                 return MCPDestroyResult(
@@ -175,7 +175,7 @@ class MCPBusiness:
                     error=str(e),
                 )
 
-        await self.client.update_runtime(runtime_id, {"mcp_url": None})
+        self.client.update_runtime(runtime_id, {"mcp_url": None})
 
         return MCPDestroyResult(
             success=True,
@@ -183,7 +183,7 @@ class MCPBusiness:
             destroyed=True,
         )
     
-    async def execute_tool(
+    def execute_tool(
         self,
         runtime_id: str,
         tool_call_id: str,
@@ -213,7 +213,7 @@ class MCPBusiness:
                 status="failed",
             )
         
-        runtime = await self.client.get_runtime(runtime_id)
+        runtime = self.client.get_runtime(runtime_id)
         mcp_url = runtime.get("mcp_url") if runtime else None
         if not mcp_url:
             return ToolExecuteResult(
@@ -226,7 +226,7 @@ class MCPBusiness:
         
         try:
             # 执行工具
-            result = await self.mcp_client.call_tool(
+            result = self.mcp_client.call_tool(
                 mcp_url=mcp_url,
                 tool_name=tool_name,
                 arguments=arguments,
@@ -249,7 +249,7 @@ class MCPBusiness:
                 status="failed",
             )
     
-    async def get_mcp_url(self, runtime_id: str) -> Optional[str]:
+    def get_mcp_url(self, runtime_id: str) -> Optional[str]:
         """
         获取 Runtime 的 MCP URL
         
@@ -259,7 +259,7 @@ class MCPBusiness:
         Returns:
             MCP URL 或 None
         """
-        runtime = await self.client.get_runtime(runtime_id)
+        runtime = self.client.get_runtime(runtime_id)
         return runtime.get("mcp_url") if runtime else None
 
 
@@ -287,12 +287,43 @@ class MCPGatewayClient:
             self._connections[url] = conn
         return conn
 
-    async def call_tool(self, mcp_url: str, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    def call_tool(self, mcp_url: str, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """同步调用工具（包装async方法）"""
+        import asyncio
         conn = self._get_connection(mcp_url)
-        return await conn.call_tool(name=tool_name, arguments=arguments)
+        
+        # 同步包装async方法
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            # 没有运行的loop，创建新的
+            return asyncio.run(conn.call_tool(name=tool_name, arguments=arguments))
+        else:
+            # 有运行的loop，使用run_in_executor
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(
+                    asyncio.run,
+                    conn.call_tool(name=tool_name, arguments=arguments)
+                )
+                return future.result()
 
-    async def list_tools(self, mcp_url: str, use_cache: bool = True) -> Dict[str, Any]:
+    def list_tools(self, mcp_url: str, use_cache: bool = True) -> Dict[str, Any]:
+        """同步获取工具列表（包装async方法）"""
+        import asyncio
         conn = self._get_connection(mcp_url)
-        return await conn.list_tools(use_cache=use_cache)
+        
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(conn.list_tools(use_cache=use_cache))
+        else:
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(
+                    asyncio.run,
+                    conn.list_tools(use_cache=use_cache)
+                )
+                return future.result()
 
 

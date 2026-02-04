@@ -43,7 +43,7 @@ class MessageBusiness:
     Example:
         >>> from task_queue.business import MessageBusiness
         >>> msg_biz = MessageBusiness(db)
-        >>> result = await msg_biz.append_to_context(
+        >>> result = msg_biz.append_to_context(
         ...     runtime_id="rt-123",
         ...     message={"role": "assistant", "content": "Hello"},
         ...     idempotency_key="rt-123-round1-response",
@@ -58,7 +58,7 @@ class MessageBusiness:
         """
         self.client = client or GatewayInternalClient(gateway_url)
     
-    async def append_to_context(
+    def append_to_context(
         self,
         runtime_id: str,
         message: Dict[str, Any],
@@ -82,7 +82,7 @@ class MessageBusiness:
         Returns:
             ContextAppendResult
         """
-        response = await self.client.append_context(
+        response = self.client.append_context(
             runtime_id=runtime_id,
             message=message,
             message_type=message_type,
@@ -105,7 +105,7 @@ class MessageBusiness:
             message=response.get("message", ""),
         )
     
-    async def get_context(self, runtime_id: str) -> Optional[List[Dict[str, Any]]]:
+    def get_context(self, runtime_id: str) -> Optional[List[Dict[str, Any]]]:
         """
         获取 runtime context
         
@@ -115,12 +115,12 @@ class MessageBusiness:
         Returns:
             Context 列表或 None
         """
-        runtime = await self.client.get_runtime(runtime_id)
+        runtime = self.client.get_runtime(runtime_id)
         if not runtime:
             return None
         return runtime.get("context") or []
     
-    async def claim_message(self, message_id: str) -> Dict[str, Any]:
+    def claim_message(self, message_id: str) -> Dict[str, Any]:
         """
         认领消息 (sending → sent)
         
@@ -132,9 +132,9 @@ class MessageBusiness:
         Returns:
             {"success": bool, "claimed": bool, "current_status": str}
         """
-        return await self.client.claim_message(message_id)
+        return self.client.claim_message(message_id)
     
-    async def find_active_runtime(
+    def find_active_runtime(
         self,
         agent_id: str,
         subagent_id: str,
@@ -149,5 +149,5 @@ class MessageBusiness:
         Returns:
             Runtime ID 或 None
         """
-        runtime = await self.client.get_subagent_runtime(agent_id, subagent_id)
+        runtime = self.client.get_subagent_runtime(agent_id, subagent_id)
         return runtime.get("runtime_id") if runtime else None

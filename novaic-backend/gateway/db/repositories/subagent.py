@@ -84,7 +84,7 @@ class SubAgentRepository:
     # Create Operations
     # ========================================
     
-    async def create_main_subagent(self, agent_id: str) -> SubAgent:
+    def create_main_subagent(self, agent_id: str) -> SubAgent:
         """Create the main SubAgent for an agent."""
         now = datetime.utcnow().isoformat()
         
@@ -100,10 +100,10 @@ class SubAgentRepository:
             updated_at=now,
         )
         
-        await self._insert(subagent)
+        self._insert(subagent)
         return subagent
     
-    async def create_sub_subagent(
+    def create_sub_subagent(
         self, 
         agent_id: str, 
         parent_subagent_id: str = "main",
@@ -133,13 +133,13 @@ class SubAgentRepository:
             updated_at=now,
         )
         
-        await self._insert(subagent)
+        self._insert(subagent)
         return subagent
     
-    async def _insert(self, subagent: SubAgent):
+    def _insert(self, subagent: SubAgent):
         """Insert a SubAgent into the database."""
-        async with self.db.get_connection() as conn:
-            await conn.execute("""
+        with self.db.get_connection() as conn:
+            conn.execute("""
                 INSERT INTO subagents (
                     subagent_id, agent_id, type, parent_subagent_id,
                     status, historical_summary, wake_triggers, handoff_notes,
@@ -163,64 +163,64 @@ class SubAgentRepository:
                 subagent.created_at,
                 subagent.updated_at,
             ))
-            await conn.commit()
+            conn.commit()
     
     # ========================================
     # Query Operations
     # ========================================
     
-    async def get_by_id(self, subagent_id: str, agent_id: str) -> Optional[SubAgent]:
+    def get_by_id(self, subagent_id: str, agent_id: str) -> Optional[SubAgent]:
         """Get a SubAgent by its ID and agent ID."""
-        async with self.db.get_connection() as conn:
-            cursor = await conn.execute(
+        with self.db.get_connection() as conn:
+            cursor = conn.execute(
                 f"SELECT {self._COLUMNS} FROM subagents WHERE subagent_id = ? AND agent_id = ?",
                 (subagent_id, agent_id)
             )
-            row = await cursor.fetchone()
+            row = cursor.fetchone()
             if row:
                 return self._row_to_subagent(row)
             return None
     
-    async def get_main_subagent(self, agent_id: str) -> Optional[SubAgent]:
+    def get_main_subagent(self, agent_id: str) -> Optional[SubAgent]:
         """Get the main SubAgent for an agent."""
-        async with self.db.get_connection() as conn:
-            cursor = await conn.execute(f"""
+        with self.db.get_connection() as conn:
+            cursor = conn.execute(f"""
                 SELECT {self._COLUMNS} FROM subagents 
                 WHERE agent_id = ? AND type = 'main'
                 LIMIT 1
             """, (agent_id,))
-            row = await cursor.fetchone()
+            row = cursor.fetchone()
             if row:
                 return self._row_to_subagent(row)
             return None
     
-    async def get_or_create_main_subagent(self, agent_id: str) -> SubAgent:
+    def get_or_create_main_subagent(self, agent_id: str) -> SubAgent:
         """Get or create the main SubAgent for an agent."""
-        subagent = await self.get_main_subagent(agent_id)
+        subagent = self.get_main_subagent(agent_id)
         if not subagent:
             try:
-                subagent = await self.create_main_subagent(agent_id)
+                subagent = self.create_main_subagent(agent_id)
             except sqlite3.IntegrityError:
                 # Concurrent create; fetch existing main subagent
-                subagent = await self.get_main_subagent(agent_id)
+                subagent = self.get_main_subagent(agent_id)
         return subagent
     
-    async def get_sub_subagents(self, agent_id: str) -> List[SubAgent]:
+    def get_sub_subagents(self, agent_id: str) -> List[SubAgent]:
         """Get all sub SubAgents for an agent."""
-        async with self.db.get_connection() as conn:
-            cursor = await conn.execute(f"""
+        with self.db.get_connection() as conn:
+            cursor = conn.execute(f"""
                 SELECT {self._COLUMNS} FROM subagents 
                 WHERE agent_id = ? AND type = 'sub'
                 ORDER BY created_at ASC
             """, (agent_id,))
-            rows = await cursor.fetchall()
+            rows = cursor.fetchall()
             return [self._row_to_subagent(row) for row in rows]
     
     # ========================================
     # Status Operations (Atomic)
     # ========================================
     
-    async def try_wake(
+    def try_wake(
         self, 
         subagent_id: str, 
         agent_id: str, 
@@ -236,109 +236,109 @@ class SubAgentRepository:
         Returns True if wake succeeded, False if already awake/awaking.
         """
         now = datetime.utcnow().isoformat()
-        async with self.db.get_connection() as conn:
+        with self.db.get_connection() as conn:
             # CAS: sleeping OR failed → target_status
-            cursor = await conn.execute("""
+            cursor = conn.execute("""
                 UPDATE subagents 
                 SET status = ?, updated_at = ?
                 WHERE subagent_id = ? AND agent_id = ? AND status IN ('sleeping', 'failed')
             """, (target_status, now, subagent_id, agent_id))
-            await conn.commit()
+            conn.commit()
             return cursor.rowcount > 0
     
-    async def set_sleeping(self, subagent_id: str, agent_id: str):
+    def set_sleeping(self, subagent_id: str, agent_id: str):
         """Set SubAgent to sleeping status."""
         now = datetime.utcnow().isoformat()
-        async with self.db.get_connection() as conn:
-            await conn.execute("""
+        with self.db.get_connection() as conn:
+            conn.execute("""
                 UPDATE subagents 
                 SET status = 'sleeping', updated_at = ?
                 WHERE subagent_id = ? AND agent_id = ?
             """, (now, subagent_id, agent_id))
-            await conn.commit()
+            conn.commit()
     
-    async def set_summarizing(self, subagent_id: str, agent_id: str):
+    def set_summarizing(self, subagent_id: str, agent_id: str):
         """Set SubAgent to summarizing status."""
         now = datetime.utcnow().isoformat()
-        async with self.db.get_connection() as conn:
-            await conn.execute("""
+        with self.db.get_connection() as conn:
+            conn.execute("""
                 UPDATE subagents 
                 SET status = 'summarizing', updated_at = ?
                 WHERE subagent_id = ? AND agent_id = ?
             """, (now, subagent_id, agent_id))
-            await conn.commit()
+            conn.commit()
     
-    async def set_awake(self, subagent_id: str, agent_id: str):
+    def set_awake(self, subagent_id: str, agent_id: str):
         """Set SubAgent to awake status (for direct state changes)."""
         now = datetime.utcnow().isoformat()
-        async with self.db.get_connection() as conn:
-            await conn.execute("""
+        with self.db.get_connection() as conn:
+            conn.execute("""
                 UPDATE subagents 
                 SET status = 'awake', updated_at = ?
                 WHERE subagent_id = ? AND agent_id = ?
             """, (now, subagent_id, agent_id))
-            await conn.commit()
+            conn.commit()
     
-    async def set_running(self, subagent_id: str, agent_id: str, progress: Optional[str] = None):
+    def set_running(self, subagent_id: str, agent_id: str, progress: Optional[str] = None):
         """Set SubAgent to running status (for async SubAgents)."""
         now = datetime.utcnow().isoformat()
-        async with self.db.get_connection() as conn:
-            await conn.execute("""
+        with self.db.get_connection() as conn:
+            conn.execute("""
                 UPDATE subagents 
                 SET status = 'running', progress = ?, updated_at = ?
                 WHERE subagent_id = ? AND agent_id = ?
             """, (progress, now, subagent_id, agent_id))
-            await conn.commit()
+            conn.commit()
     
-    async def set_completed(self, subagent_id: str, agent_id: str, result: Optional[str] = None):
+    def set_completed(self, subagent_id: str, agent_id: str, result: Optional[str] = None):
         """Set SubAgent to completed status with result."""
         now = datetime.utcnow().isoformat()
-        async with self.db.get_connection() as conn:
-            await conn.execute("""
+        with self.db.get_connection() as conn:
+            conn.execute("""
                 UPDATE subagents 
                 SET status = 'completed', result = ?, progress = NULL, updated_at = ?
                 WHERE subagent_id = ? AND agent_id = ?
             """, (result, now, subagent_id, agent_id))
-            await conn.commit()
+            conn.commit()
     
-    async def set_failed(self, subagent_id: str, agent_id: str, error: Optional[str] = None):
+    def set_failed(self, subagent_id: str, agent_id: str, error: Optional[str] = None):
         """Set SubAgent to failed status with error message."""
         now = datetime.utcnow().isoformat()
-        async with self.db.get_connection() as conn:
-            await conn.execute("""
+        with self.db.get_connection() as conn:
+            conn.execute("""
                 UPDATE subagents 
                 SET status = 'failed', error = ?, progress = NULL, updated_at = ?
                 WHERE subagent_id = ? AND agent_id = ?
             """, (error, now, subagent_id, agent_id))
-            await conn.commit()
+            conn.commit()
     
-    async def set_cancelled(self, subagent_id: str, agent_id: str):
+    def set_cancelled(self, subagent_id: str, agent_id: str):
         """Set SubAgent to cancelled status."""
         now = datetime.utcnow().isoformat()
-        async with self.db.get_connection() as conn:
-            await conn.execute("""
+        with self.db.get_connection() as conn:
+            conn.execute("""
                 UPDATE subagents 
                 SET status = 'cancelled', progress = NULL, updated_at = ?
                 WHERE subagent_id = ? AND agent_id = ?
             """, (now, subagent_id, agent_id))
-            await conn.commit()
+            conn.commit()
     
-    async def update_progress(self, subagent_id: str, agent_id: str, progress: str):
+    def update_progress(self, subagent_id: str, agent_id: str, progress: str):
         """Update the progress description for a running SubAgent."""
         now = datetime.utcnow().isoformat()
-        async with self.db.get_connection() as conn:
-            await conn.execute("""
+        with self.db.get_connection() as conn:
+            conn.execute("""
                 UPDATE subagents 
                 SET progress = ?, updated_at = ?
                 WHERE subagent_id = ? AND agent_id = ? AND status = 'running'
             """, (progress, now, subagent_id, agent_id))
-            await conn.commit()
+            conn.commit()
     
     # ========================================
     # Update Operations
     # ========================================
     
-    async def update_historical_summary(
+    def update_historical_summary(
         self, 
         subagent_id: str, 
         agent_id: str, 
@@ -346,15 +346,15 @@ class SubAgentRepository:
     ):
         """Update the historical summary for a SubAgent."""
         now = datetime.utcnow().isoformat()
-        async with self.db.get_connection() as conn:
-            await conn.execute("""
+        with self.db.get_connection() as conn:
+            conn.execute("""
                 UPDATE subagents 
                 SET historical_summary = ?, updated_at = ?
                 WHERE subagent_id = ? AND agent_id = ?
             """, (summary, now, subagent_id, agent_id))
-            await conn.commit()
+            conn.commit()
     
-    async def update_wake_triggers(
+    def update_wake_triggers(
         self, 
         subagent_id: str, 
         agent_id: str,
@@ -363,35 +363,35 @@ class SubAgentRepository:
     ):
         """Update wake triggers and handoff notes for a SubAgent."""
         now = datetime.utcnow().isoformat()
-        async with self.db.get_connection() as conn:
-            await conn.execute("""
+        with self.db.get_connection() as conn:
+            conn.execute("""
                 UPDATE subagents 
                 SET wake_triggers = ?, handoff_notes = ?, updated_at = ?
                 WHERE subagent_id = ? AND agent_id = ?
             """, (json.dumps(wake_triggers), handoff_notes, now, subagent_id, agent_id))
-            await conn.commit()
+            conn.commit()
     
     # ========================================
     # Delete Operations
     # ========================================
     
-    async def delete(self, subagent_id: str, agent_id: str):
+    def delete(self, subagent_id: str, agent_id: str):
         """Delete a SubAgent."""
-        async with self.db.get_connection() as conn:
-            await conn.execute(
+        with self.db.get_connection() as conn:
+            conn.execute(
                 "DELETE FROM subagents WHERE subagent_id = ? AND agent_id = ?",
                 (subagent_id, agent_id)
             )
-            await conn.commit()
+            conn.commit()
     
-    async def delete_all_for_agent(self, agent_id: str):
+    def delete_all_for_agent(self, agent_id: str):
         """Delete all SubAgents for an agent."""
-        async with self.db.get_connection() as conn:
-            await conn.execute(
+        with self.db.get_connection() as conn:
+            conn.execute(
                 "DELETE FROM subagents WHERE agent_id = ?",
                 (agent_id,)
             )
-            await conn.commit()
+            conn.commit()
     
     # ========================================
     # Helper Methods
@@ -430,9 +430,9 @@ class SubAgentRepository:
     # Health Monitor Operations (v18)
     # ========================================
     
-    async def get_stuck_awaking_count(self, timeout_seconds: int = 60) -> int:
+    def get_stuck_awaking_count(self, timeout_seconds: int = 60) -> int:
         """Get count of SubAgents stuck in 'awaking' state."""
-        result = await self.db.fetchone(
+        result = self.db.fetchone(
             """SELECT COUNT(*) as count FROM subagents 
                WHERE status = 'awaking' 
                AND datetime(updated_at, '+' || ? || ' seconds') < datetime('now')""",
@@ -440,19 +440,19 @@ class SubAgentRepository:
         )
         return result["count"] if result else 0
     
-    async def reset_stuck_awaking(self, timeout_seconds: int = 60) -> int:
+    def reset_stuck_awaking(self, timeout_seconds: int = 60) -> int:
         """Reset SubAgents stuck in 'awaking' state to 'sleeping'.
         
         Returns number of SubAgents reset.
         """
         now = datetime.utcnow().isoformat()
-        async with self.db.get_connection() as conn:
-            cursor = await conn.execute(
+        with self.db.get_connection() as conn:
+            cursor = conn.execute(
                 """UPDATE subagents 
                    SET status = 'sleeping', updated_at = ?
                    WHERE status = 'awaking' 
                    AND datetime(updated_at, '+' || ? || ' seconds') < datetime('now')""",
                 (now, timeout_seconds)
             )
-            await conn.commit()
+            conn.commit()
             return cursor.rowcount

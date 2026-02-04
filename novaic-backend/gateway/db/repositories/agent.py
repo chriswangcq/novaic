@@ -17,9 +17,9 @@ class AgentRepository:
     def __init__(self, db: Database):
         self.db = db
     
-    async def list_agents(self) -> List[Dict[str, Any]]:
+    def list_agents(self) -> List[Dict[str, Any]]:
         """List all agents."""
-        rows = await self.db.fetchall(
+        rows = self.db.fetchall(
             "SELECT * FROM agents ORDER BY created_at"
         )
         # Parse JSON fields and convert setup_complete to bool
@@ -29,9 +29,9 @@ class AgentRepository:
             row["setup_complete"] = bool(row.get("setup_complete", 0))
         return rows
     
-    async def get_agent(self, agent_id: str) -> Optional[Dict[str, Any]]:
+    def get_agent(self, agent_id: str) -> Optional[Dict[str, Any]]:
         """Get an agent by ID."""
-        row = await self.db.fetchone(
+        row = self.db.fetchone(
             "SELECT * FROM agents WHERE id = ?",
             (agent_id,)
         )
@@ -41,7 +41,7 @@ class AgentRepository:
             row["setup_complete"] = bool(row.get("setup_complete", 0))
         return row
     
-    async def create_agent(
+    def create_agent(
         self,
         id: str,
         name: str,
@@ -52,16 +52,16 @@ class AgentRepository:
         """Create a new agent."""
         created_at = datetime.now().isoformat()
         
-        await self.db.execute(
+        self.db.execute(
             """INSERT INTO agents (id, name, created_at, vm_config, ports, setup_complete)
                VALUES (?, ?, ?, ?, ?, ?)""",
             (id, name, created_at, json.dumps(vm_config), json.dumps(ports), 1 if setup_complete else 0)
         )
-        await self.db.commit()
+        self.db.commit()
         
-        return await self.get_agent(id)
+        return self.get_agent(id)
     
-    async def update_agent(
+    def update_agent(
         self,
         agent_id: str,
         name: Optional[str] = None,
@@ -87,29 +87,29 @@ class AgentRepository:
             params.append(1 if setup_complete else 0)
         
         if not updates:
-            return await self.get_agent(agent_id)
+            return self.get_agent(agent_id)
         
         params.append(agent_id)
-        await self.db.execute(
+        self.db.execute(
             f"UPDATE agents SET {', '.join(updates)} WHERE id = ?",
             tuple(params)
         )
-        await self.db.commit()
+        self.db.commit()
         
-        return await self.get_agent(agent_id)
+        return self.get_agent(agent_id)
     
-    async def delete_agent(self, agent_id: str) -> bool:
+    def delete_agent(self, agent_id: str) -> bool:
         """Delete an agent."""
-        cursor = await self.db.execute(
+        cursor = self.db.execute(
             "DELETE FROM agents WHERE id = ?",
             (agent_id,)
         )
-        await self.db.commit()
+        self.db.commit()
         return cursor.rowcount > 0
     
-    async def get_current_agent_id(self) -> Optional[str]:
+    def get_current_agent_id(self) -> Optional[str]:
         """Get the current agent ID from config."""
-        value = await self.db.get_config("current_agent_id")
+        value = self.db.get_config("current_agent_id")
         if value and value != "null":
             try:
                 return json.loads(value)
@@ -117,23 +117,23 @@ class AgentRepository:
                 return None
         return None
     
-    async def set_current_agent_id(self, agent_id: Optional[str]):
+    def set_current_agent_id(self, agent_id: Optional[str]):
         """Set the current agent ID in config."""
-        await self.db.set_config(
+        self.db.set_config(
             "current_agent_id",
             json.dumps(agent_id) if agent_id else "null"
         )
     
-    async def get_current_agent(self) -> Optional[Dict[str, Any]]:
+    def get_current_agent(self) -> Optional[Dict[str, Any]]:
         """Get the current agent."""
-        agent_id = await self.get_current_agent_id()
+        agent_id = self.get_current_agent_id()
         if agent_id:
-            return await self.get_agent(agent_id)
+            return self.get_agent(agent_id)
         return None
     
-    async def get_used_agent_indices(self) -> List[int]:
+    def get_used_agent_indices(self) -> List[int]:
         """Get list of used agent indices for port allocation."""
-        rows = await self.db.fetchall(
+        rows = self.db.fetchall(
             "SELECT vm_config FROM agents"
         )
         indices = []
@@ -143,9 +143,9 @@ class AgentRepository:
                 indices.append(vm_config["agent_index"])
         return indices
     
-    async def find_next_agent_index(self) -> int:
+    def find_next_agent_index(self) -> int:
         """Find the next available agent index."""
-        used_indices = set(await self.get_used_agent_indices())
+        used_indices = set(self.get_used_agent_indices())
         index = 0
         while index in used_indices:
             index += 1

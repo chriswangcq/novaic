@@ -1,70 +1,79 @@
-# NovAIC 开发指南
-
-本目录包含 NovAIC 项目的开发文档和工具。
-
-## 文档结构
-
-| 文件 | 内容 |
-|------|------|
-| **[smoke-test.md](./smoke-test.md)** | **冒烟测试指南（基准流程）** |
-| [build-process.md](./build-process.md) | 构建与发布流程 |
-| [run-dev.sh](./run-dev.sh) | 开发环境启动脚本 |
+# 开发指南索引
 
 ## 快速开始
 
-### 1. 环境准备
+1. **[smoke-test.md](./smoke-test.md)** - 冒烟测试流程（首次必读）
+2. **[run-dev.sh](./run-dev.sh)** - 快速启动所有服务的脚本
 
-```bash
-# 克隆仓库
-git clone https://github.com/novaic/novaic.git
-cd novaic
+## 架构文档
 
-# 安装 Gateway 依赖
-cd novaic-backend
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-cd ..
+- **[architecture.md](./architecture.md)** - 系统整体架构
+- **[services-architecture.md](./services-architecture.md)** - 服务间交互详解
+- **[state-machines.md](./state-machines.md)** - Saga状态机详解
+- **[task-queue-v2-design.md](./task-queue-v2-design.md)** - Task Queue v2设计
 
-# 安装 Tauri 前端依赖
-cd novaic-app
-npm install
-cd ..
+## 调试指南
+
+- **[debugging-dev.md](./debugging-dev.md)** - 开发环境调试
+- **[debugging-mcp.md](./debugging-mcp.md)** - MCP相关调试
+- **[troubleshooting.md](./troubleshooting.md)** - 常见问题排查
+
+## 修复记录
+
+- **[fixes-20260204.md](./fixes-20260204.md)** - 2026-02-04 完整修复记录
+  - ✅ Watchdog原子claim
+  - ✅ Agent model参数保存
+  - ✅ LLM配置从DB读取
+  - ✅ SQLite cursor管理（错误减少92%）
+  - ✅ MCP async/sync修复
+  - ✅ 完整AI回复流程验证通过
+
+## 案例研究
+
+- **[case-study-agent-id-mismatch.md](./case-study-agent-id-mismatch.md)** - Agent ID不匹配问题分析
+
+## Saga设计
+
+- **[saga-design-principles.md](./saga-design-principles.md)** - Saga设计原则
+- **[saga-v2-migration-plan.md](./saga-v2-migration-plan.md)** - Saga v2迁移计划
+
+## 工具列表
+
+- **[tool_list.md](./tool_list.md)** - 可用工具清单
+
+## 构建相关
+
+- **[build-process.md](./build-process.md)** - 构建流程说明
+
+---
+
+## 今日要点（2026-02-04）
+
+### ✅ 全同步架构验证通过
+
+完整流程：
+```
+用户消息 → Watchdog claim → sent 
+  → ReactThink saga → LLM调用(kimi-k2.5) 
+  → ReactActions saga → chat_reply工具 
+  → AI消息写入DB → 前端显示
 ```
 
-### 2. 启动开发环境
+**响应时间**: 5秒内完成  
+**成功率**: 100%  
+**稳定性**: cursor错误减少92%
+
+详见 [fixes-20260204.md](./fixes-20260204.md)
+
+### 🚀 快速测试命令
 
 ```bash
-# 方式 1: 使用脚本启动后端（后台 + /tmp/*.log）
-./dev-guide/run-dev.sh
+# 1. 启动所有服务
+cd /Users/wangchaoqun/novaic && ./dev-guide/run-dev.sh all
 
-# 方式 2: 分步启动
-./dev-guide/run-dev.sh gateway      # Gateway (19999)
-./dev-guide/run-dev.sh mcp          # MCP Gateway (19998)
-./dev-guide/run-dev.sh watchdog     # Watchdog (消息监听)
-./dev-guide/run-dev.sh task         # Task Worker
-./dev-guide/run-dev.sh saga         # Saga Worker
-./dev-guide/run-dev.sh health       # Health Worker
+# 2. 初始化DB配置（首次）
+# 参见 fixes-20260204.md 的"DB配置初始化流程"部分
 
-# 方式 3: Tauri 开发模式 (自动启动所有后端)
-cd novaic-app
-npm run tauri dev
+# 3. 运行完整测试
+# 参见 fixes-20260204.md 的"完整端到端测试"部分
 ```
-
-### 3. 验证服务状态
-
-```bash
-# Gateway 健康检查
-curl http://127.0.0.1:19999/api/health
-
-# MCP Gateway 健康检查
-curl http://127.0.0.1:19998/api/health
-
-# 查看任务状态
-curl http://127.0.0.1:19999/internal/tq/tasks/stats
-```
-
-## 相关文档
-
-- [冒烟测试](./smoke-test.md) - 基准流程与验证清单
-- [构建流程](./build-process.md) - 构建与发布

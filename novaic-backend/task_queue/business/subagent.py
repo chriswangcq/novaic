@@ -38,7 +38,7 @@ class SubAgentBusiness:
     Example:
         >>> from task_queue.business import SubAgentBusiness
         >>> subagent_biz = SubAgentBusiness(db)
-        >>> result = await subagent_biz.wake(agent_id="agent-1", subagent_id="main")
+        >>> result = subagent_biz.wake(agent_id="agent-1", subagent_id="main")
         >>> if result.success:
         ...     print(f"Status: {result.previous_status} → {result.status}")
     """
@@ -51,7 +51,7 @@ class SubAgentBusiness:
         """
         self.client = client or GatewayInternalClient(gateway_url)
     
-    async def wake(
+    def wake(
         self,
         agent_id: str,
         subagent_id: str,
@@ -73,11 +73,11 @@ class SubAgentBusiness:
         Returns:
             SubAgentStateResult
         """
-        response = await self.client.wake_subagent(agent_id, subagent_id, target_status="awaking")
+        response = self.client.wake_subagent(agent_id, subagent_id, target_status="awaking")
         if response.get("success"):
             status = response.get("status")
             if not status:
-                status = await self.get_status(agent_id, subagent_id) or "awaking"
+                status = self.get_status(agent_id, subagent_id) or "awaking"
             return SubAgentStateResult(
                 success=True,
                 subagent_id=subagent_id,
@@ -94,7 +94,7 @@ class SubAgentBusiness:
             error=response.get("error", "Wake failed"),
         )
     
-    async def set_awake(
+    def set_awake(
         self,
         agent_id: str,
         subagent_id: str,
@@ -119,11 +119,11 @@ class SubAgentBusiness:
             SubAgentStateResult
         """
         # CAS: awaking → awake
-        response = await self.client.set_subagent_awake(agent_id, subagent_id)
+        response = self.client.set_subagent_awake(agent_id, subagent_id)
         if response.get("success"):
             status = response.get("status")
             if not status:
-                status = await self.get_status(agent_id, subagent_id) or "awake"
+                status = self.get_status(agent_id, subagent_id) or "awake"
             return SubAgentStateResult(
                 success=True,
                 subagent_id=subagent_id,
@@ -140,7 +140,7 @@ class SubAgentBusiness:
             error=response.get("error", "Set awake failed"),
         )
     
-    async def set_sleeping(
+    def set_sleeping(
         self,
         agent_id: str,
         subagent_id: str,
@@ -159,10 +159,10 @@ class SubAgentBusiness:
         Returns:
             SubAgentStateResult
         """
-        response = await self.client.set_subagent_sleeping(agent_id, subagent_id)
+        response = self.client.set_subagent_sleeping(agent_id, subagent_id)
         status = response.get("status")
         if not status and response.get("success"):
-            status = await self.get_status(agent_id, subagent_id) or "sleeping"
+            status = self.get_status(agent_id, subagent_id) or "sleeping"
         return SubAgentStateResult(
             success=response.get("success", False),
             subagent_id=subagent_id,
@@ -172,7 +172,7 @@ class SubAgentBusiness:
             error=response.get("error", ""),
         )
     
-    async def get(
+    def get(
         self,
         agent_id: str,
         subagent_id: str,
@@ -187,10 +187,10 @@ class SubAgentBusiness:
         Returns:
             SubAgent 信息或 None
         """
-        response = await self.client.get_subagent(agent_id, subagent_id)
+        response = self.client.get_subagent(agent_id, subagent_id)
         return response.get("subagent") if response else None
     
-    async def get_status(
+    def get_status(
         self,
         agent_id: str,
         subagent_id: str,
@@ -205,5 +205,5 @@ class SubAgentBusiness:
         Returns:
             状态字符串或 None
         """
-        response = await self.client.get_subagent_status(agent_id, subagent_id)
+        response = self.client.get_subagent_status(agent_id, subagent_id)
         return response.get("status") if response else None

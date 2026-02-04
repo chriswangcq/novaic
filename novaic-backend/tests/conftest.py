@@ -19,7 +19,6 @@ import pytest_asyncio
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from gateway.db.database import Database
-from gateway.db.schema import init_schema
 from fastapi import FastAPI
 from httpx import AsyncClient, ASGITransport
 
@@ -219,18 +218,18 @@ async def db_with_agent(db: Database) -> AsyncGenerator[tuple, None]:
     subagent_id = f"main-{agent_id[:8]}"
     
     # Insert a test agent (using correct schema columns)
-    await db.execute("""
+    db.execute("""
         INSERT INTO agents (id, name, setup_complete, vm_config, ports, created_at)
         VALUES (?, ?, ?, ?, ?, datetime('now'))
     """, (agent_id, "Test Agent", 1, "{}", "{}"))
     
     # Insert a main subagent (required by agent_runtimes foreign key)
-    await db.execute("""
+    db.execute("""
         INSERT INTO subagents (subagent_id, agent_id, type, status, created_at, updated_at)
         VALUES (?, ?, 'main', 'sleeping', datetime('now'), datetime('now'))
     """, (subagent_id, agent_id))
     
-    await db.commit()
+    db.commit()
     
     yield db, agent_id
 
@@ -400,9 +399,9 @@ def test_environment(monkeypatch):
 async def create_test_runtime(runtime_repo, agent_id: str, runtime_type: str = "main"):
     """Helper to create a test runtime."""
     if runtime_type == "main":
-        return await runtime_repo.create_main_runtime(agent_id)
+        return runtime_repo.create_main_runtime(agent_id)
     else:
-        return await runtime_repo.create_sub_runtime(
+        return runtime_repo.create_sub_runtime(
             agent_id, 
             parent_subagent_id="main-parent"
         )
@@ -416,10 +415,10 @@ async def create_test_message(db: Database, agent_id: str, content: str = "Test 
     msg_id = f"msg-{uuid.uuid4().hex[:12]}"
     now = datetime.utcnow().isoformat()
     
-    await db.execute("""
+    db.execute("""
         INSERT INTO chat_messages (id, agent_id, type, content, read, processed, timestamp)
         VALUES (?, ?, ?, ?, 0, 0, ?)
     """, (msg_id, agent_id, "USER_MESSAGE", content, now))
-    await db.commit()
+    db.commit()
     
     return msg_id

@@ -21,7 +21,7 @@ from ..utils import broadcast_log, BroadcastType, summarize_result
 
 
 @register_handler("tool.execute")
-async def handle_tool_execute(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+def handle_tool_execute(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     执行工具
     
@@ -59,7 +59,7 @@ async def handle_tool_execute(payload: Dict[str, Any], ctx: dict) -> Dict[str, A
     if not agent_id:
         from ..client import GatewayInternalClient
         client = ctx.get("gateway_client") or GatewayInternalClient(ctx["gateway_url"])
-        runtime = await client.get_runtime(runtime_id)
+        runtime = client.get_runtime(runtime_id)
         if runtime:
             agent_id = runtime.get("agent_id")
     
@@ -71,7 +71,7 @@ async def handle_tool_execute(payload: Dict[str, Any], ctx: dict) -> Dict[str, A
         client=ctx.get("gateway_client"),
     )
     
-    result = await biz.execute_tool(
+    result = biz.execute_tool(
         runtime_id=runtime_id,
         tool_call_id=tool_call_id,
         tool_name=tool_name,
@@ -82,13 +82,13 @@ async def handle_tool_execute(payload: Dict[str, Any], ctx: dict) -> Dict[str, A
     if agent_id:
         if result.success:
             summary = summarize_result(result.result) if isinstance(result.result, dict) else {"output": str(result.result)[:100]}
-            await broadcast_log(ctx, agent_id, BroadcastType.TOOL_END, {
+            broadcast_log(ctx, agent_id, BroadcastType.TOOL_END, {
                 "tool": tool_name,
                 "success": True,
                 "result": summary,
             })
         else:
-            await broadcast_log(ctx, agent_id, BroadcastType.TOOL_END, {
+            broadcast_log(ctx, agent_id, BroadcastType.TOOL_END, {
                 "tool": tool_name,
                 "success": False,
                 "error": result.error[:100] if result.error else "Unknown error",

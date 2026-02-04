@@ -16,7 +16,7 @@ class AgentStateRepository:
     def __init__(self, db):
         self.db = db
     
-    async def get_state(self, agent_id: str) -> Dict[str, Any]:
+    def get_state(self, agent_id: str) -> Dict[str, Any]:
         """
         Get Agent state.
         
@@ -26,7 +26,7 @@ class AgentStateRepository:
         Returns:
             State dict with keys: agent_id, state, wake_triggers, rest_reason, rest_started_at, last_active_at
         """
-        row = await self.db.fetchone(
+        row = self.db.fetchone(
             "SELECT * FROM agent_state WHERE agent_id = ?",
             (agent_id,)
         )
@@ -51,7 +51,7 @@ class AgentStateRepository:
             "last_active_at": None,
         }
     
-    async def set_state(self, agent_id: str, state: str):
+    def set_state(self, agent_id: str, state: str):
         """
         Set Agent state.
         
@@ -61,7 +61,7 @@ class AgentStateRepository:
         """
         now = datetime.now().isoformat()
         
-        await self.db.execute(
+        self.db.execute(
             """INSERT INTO agent_state (agent_id, state, last_active_at)
                VALUES (?, ?, ?)
                ON CONFLICT(agent_id) DO UPDATE SET 
@@ -69,9 +69,9 @@ class AgentStateRepository:
                last_active_at = excluded.last_active_at""",
             (agent_id, state, now)
         )
-        await self.db.commit()
+        self.db.commit()
     
-    async def set_sleep(
+    def set_sleep(
         self,
         agent_id: str,
         reason: str,
@@ -87,7 +87,7 @@ class AgentStateRepository:
         """
         now = datetime.now().isoformat()
         
-        await self.db.execute(
+        self.db.execute(
             """INSERT INTO agent_state (agent_id, state, rest_reason, wake_triggers, rest_started_at, last_active_at)
                VALUES (?, 'sleep', ?, ?, ?, ?)
                ON CONFLICT(agent_id) DO UPDATE SET 
@@ -98,9 +98,9 @@ class AgentStateRepository:
                last_active_at = excluded.last_active_at""",
             (agent_id, reason, json.dumps(wake_triggers or []), now, now)
         )
-        await self.db.commit()
+        self.db.commit()
     
-    async def set_awake(self, agent_id: str):
+    def set_awake(self, agent_id: str):
         """
         Set Agent to awake state.
         
@@ -111,7 +111,7 @@ class AgentStateRepository:
         """
         now = datetime.now().isoformat()
         
-        await self.db.execute(
+        self.db.execute(
             """INSERT INTO agent_state (agent_id, state, rest_reason, wake_triggers, rest_started_at, last_active_at)
                VALUES (?, 'awake', NULL, '[]', NULL, ?)
                ON CONFLICT(agent_id) DO UPDATE SET 
@@ -122,9 +122,9 @@ class AgentStateRepository:
                last_active_at = excluded.last_active_at""",
             (agent_id, now)
         )
-        await self.db.commit()
+        self.db.commit()
     
-    async def update_last_active(self, agent_id: str):
+    def update_last_active(self, agent_id: str):
         """
         Update last_active_at timestamp.
         
@@ -133,13 +133,13 @@ class AgentStateRepository:
         """
         now = datetime.now().isoformat()
         
-        await self.db.execute(
+        self.db.execute(
             """UPDATE agent_state SET last_active_at = ? WHERE agent_id = ?""",
             (now, agent_id)
         )
-        await self.db.commit()
+        self.db.commit()
     
-    async def is_sleeping(self, agent_id: str) -> bool:
+    def is_sleeping(self, agent_id: str) -> bool:
         """
         Check if Agent is sleeping.
         
@@ -149,10 +149,10 @@ class AgentStateRepository:
         Returns:
             True if Agent is in sleep state
         """
-        state = await self.get_state(agent_id)
+        state = self.get_state(agent_id)
         return state["state"] == "sleep"
     
-    async def is_awake(self, agent_id: str) -> bool:
+    def is_awake(self, agent_id: str) -> bool:
         """
         Check if Agent is awake.
         
@@ -162,10 +162,10 @@ class AgentStateRepository:
         Returns:
             True if Agent is in awake state
         """
-        state = await self.get_state(agent_id)
+        state = self.get_state(agent_id)
         return state["state"] == "awake"
     
-    async def get_wake_triggers(self, agent_id: str) -> List[Dict[str, Any]]:
+    def get_wake_triggers(self, agent_id: str) -> List[Dict[str, Any]]:
         """
         Get wake triggers for an Agent.
         
@@ -175,10 +175,10 @@ class AgentStateRepository:
         Returns:
             List of wake trigger conditions
         """
-        state = await self.get_state(agent_id)
+        state = self.get_state(agent_id)
         return state["wake_triggers"]
     
-    async def ensure_exists(self, agent_id: str):
+    def ensure_exists(self, agent_id: str):
         """
         Ensure agent_state record exists for an Agent.
         
@@ -189,22 +189,22 @@ class AgentStateRepository:
         """
         now = datetime.now().isoformat()
         
-        await self.db.execute(
+        self.db.execute(
             """INSERT OR IGNORE INTO agent_state (agent_id, state, wake_triggers, last_active_at)
                VALUES (?, 'awake', '[]', ?)""",
             (agent_id, now)
         )
-        await self.db.commit()
+        self.db.commit()
     
-    async def delete_state(self, agent_id: str):
+    def delete_state(self, agent_id: str):
         """
         Delete Agent state record.
         
         Args:
             agent_id: Agent ID
         """
-        await self.db.execute(
+        self.db.execute(
             "DELETE FROM agent_state WHERE agent_id = ?",
             (agent_id,)
         )
-        await self.db.commit()
+        self.db.commit()

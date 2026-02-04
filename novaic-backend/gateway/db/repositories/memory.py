@@ -22,7 +22,7 @@ class MemoryRepository:
     # Key-Value Memory Operations
     # ========================================
     
-    async def save(
+    def save(
         self,
         agent_id: str,
         key: str,
@@ -34,14 +34,14 @@ class MemoryRepository:
         value_json = json.dumps(value, ensure_ascii=False)
         
         # Use INSERT OR REPLACE for upsert
-        await self.db.execute(
+        self.db.execute(
             """INSERT INTO agent_memory (agent_id, namespace, key, value, created_at, updated_at)
                VALUES (?, ?, ?, ?, ?, ?)
                ON CONFLICT(agent_id, namespace, key) 
                DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at""",
             (agent_id, namespace, key, value_json, now, now)
         )
-        await self.db.commit()
+        self.db.commit()
         
         return {
             "success": True,
@@ -49,7 +49,7 @@ class MemoryRepository:
             "namespace": namespace
         }
     
-    async def recall(
+    def recall(
         self,
         agent_id: str,
         key: Optional[str] = None,
@@ -58,7 +58,7 @@ class MemoryRepository:
         """Recall memory value(s)."""
         if key:
             # Get single key
-            row = await self.db.fetchone(
+            row = self.db.fetchone(
                 """SELECT value, updated_at FROM agent_memory 
                    WHERE agent_id = ? AND namespace = ? AND key = ?""",
                 (agent_id, namespace, key)
@@ -80,7 +80,7 @@ class MemoryRepository:
                 }
         else:
             # Get all in namespace
-            rows = await self.db.fetchall(
+            rows = self.db.fetchall(
                 """SELECT key, value FROM agent_memory 
                    WHERE agent_id = ? AND namespace = ?""",
                 (agent_id, namespace)
@@ -93,19 +93,19 @@ class MemoryRepository:
                 "count": len(memories)
             }
     
-    async def delete(
+    def delete(
         self,
         agent_id: str,
         key: str,
         namespace: str = "default"
     ) -> Dict[str, Any]:
         """Delete a memory value."""
-        result = await self.db.execute(
+        result = self.db.execute(
             """DELETE FROM agent_memory 
                WHERE agent_id = ? AND namespace = ? AND key = ?""",
             (agent_id, namespace, key)
         )
-        await self.db.commit()
+        self.db.commit()
         
         return {
             "success": True,
@@ -113,28 +113,28 @@ class MemoryRepository:
             "deleted": result.rowcount > 0
         }
     
-    async def list_namespaces(self, agent_id: str) -> List[str]:
+    def list_namespaces(self, agent_id: str) -> List[str]:
         """List all namespaces for an agent."""
-        rows = await self.db.fetchall(
+        rows = self.db.fetchall(
             """SELECT DISTINCT namespace FROM agent_memory WHERE agent_id = ?""",
             (agent_id,)
         )
         return [row["namespace"] for row in rows]
     
-    async def delete_all_for_agent(self, agent_id: str) -> int:
+    def delete_all_for_agent(self, agent_id: str) -> int:
         """Delete all memory for an agent. Returns count deleted."""
-        result = await self.db.execute(
+        result = self.db.execute(
             "DELETE FROM agent_memory WHERE agent_id = ?",
             (agent_id,)
         )
-        await self.db.commit()
+        self.db.commit()
         return result.rowcount
     
     # ========================================
     # Task History Operations
     # ========================================
     
-    async def log_task(
+    def log_task(
         self,
         agent_id: str,
         action: str,
@@ -144,15 +144,15 @@ class MemoryRepository:
         """Log a task action."""
         now = datetime.now().isoformat()
         
-        await self.db.execute(
+        self.db.execute(
             """INSERT INTO agent_task_history (agent_id, action, details, status, timestamp)
                VALUES (?, ?, ?, ?, ?)""",
             (agent_id, action, details, status, now)
         )
-        await self.db.commit()
+        self.db.commit()
         
         # Get count
-        row = await self.db.fetchone(
+        row = self.db.fetchone(
             "SELECT COUNT(*) as cnt FROM agent_task_history WHERE agent_id = ?",
             (agent_id,)
         )
@@ -168,7 +168,7 @@ class MemoryRepository:
             "history_count": row["cnt"] if row else 0
         }
     
-    async def get_task_history(
+    def get_task_history(
         self,
         agent_id: str,
         limit: int = 20,
@@ -176,7 +176,7 @@ class MemoryRepository:
     ) -> Dict[str, Any]:
         """Get task history."""
         # Get total count
-        total_row = await self.db.fetchone(
+        total_row = self.db.fetchone(
             "SELECT COUNT(*) as cnt FROM agent_task_history WHERE agent_id = ?",
             (agent_id,)
         )
@@ -184,20 +184,20 @@ class MemoryRepository:
         
         # Build query
         if status_filter:
-            rows = await self.db.fetchall(
+            rows = self.db.fetchall(
                 """SELECT action, details, status, timestamp FROM agent_task_history 
                    WHERE agent_id = ? AND status = ?
                    ORDER BY timestamp DESC LIMIT ?""",
                 (agent_id, status_filter, limit)
             )
             # Get filtered count
-            filter_row = await self.db.fetchone(
+            filter_row = self.db.fetchone(
                 "SELECT COUNT(*) as cnt FROM agent_task_history WHERE agent_id = ? AND status = ?",
                 (agent_id, status_filter)
             )
             filtered_count = filter_row["cnt"] if filter_row else 0
         else:
-            rows = await self.db.fetchall(
+            rows = self.db.fetchall(
                 """SELECT action, details, status, timestamp FROM agent_task_history 
                    WHERE agent_id = ?
                    ORDER BY timestamp DESC LIMIT ?""",
@@ -215,10 +215,10 @@ class MemoryRepository:
             "filtered_count": filtered_count
         }
     
-    async def cleanup_old_tasks(self, agent_id: str, keep_count: int = 100) -> int:
+    def cleanup_old_tasks(self, agent_id: str, keep_count: int = 100) -> int:
         """Keep only the most recent N task history entries."""
         # Get IDs to keep
-        rows = await self.db.fetchall(
+        rows = self.db.fetchall(
             """SELECT id FROM agent_task_history 
                WHERE agent_id = ? 
                ORDER BY timestamp DESC LIMIT ?""",
@@ -231,19 +231,19 @@ class MemoryRepository:
         
         # Delete others
         placeholders = ",".join(["?"] * len(keep_ids))
-        result = await self.db.execute(
+        result = self.db.execute(
             f"""DELETE FROM agent_task_history 
                 WHERE agent_id = ? AND id NOT IN ({placeholders})""",
             (agent_id, *keep_ids)
         )
-        await self.db.commit()
+        self.db.commit()
         return result.rowcount
     
-    async def delete_task_history_for_agent(self, agent_id: str) -> int:
+    def delete_task_history_for_agent(self, agent_id: str) -> int:
         """Delete all task history for an agent."""
-        result = await self.db.execute(
+        result = self.db.execute(
             "DELETE FROM agent_task_history WHERE agent_id = ?",
             (agent_id,)
         )
-        await self.db.commit()
+        self.db.commit()
         return result.rowcount

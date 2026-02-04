@@ -65,7 +65,7 @@ class VmStatusResponse(BaseModel):
 # ==================== Environment Check ====================
 
 @router.get("/environment")
-async def check_environment():
+def check_environment():
     """
     Check if VM dependencies are installed.
     
@@ -79,7 +79,7 @@ async def check_environment():
 # ==================== VM Setup ====================
 
 @router.post("/setup")
-async def setup_vm(request: VmSetupRequest):
+def setup_vm(request: VmSetupRequest):
     """
     Setup VM for an agent (create disk, cloud-init).
     
@@ -87,7 +87,7 @@ async def setup_vm(request: VmSetupRequest):
     """
     try:
         setup = VmSetup()
-        result = await setup.setup_vm(
+        result = setup.setup_vm(
             agent_id=request.agent_id,
             source_image=request.source_image,
             disk_size=request.disk_size,
@@ -102,7 +102,7 @@ async def setup_vm(request: VmSetupRequest):
 # ==================== VM Lifecycle ====================
 
 @router.post("/start")
-async def start_vm(request: VmStartRequest):
+def start_vm(request: VmStartRequest):
     """
     Start VM for an agent.
     
@@ -110,7 +110,7 @@ async def start_vm(request: VmStartRequest):
     """
     try:
         manager = get_vm_manager()
-        result = await manager.start(
+        result = manager.start(
             agent_id=request.agent_id,
             agent_index=request.agent_index,
             memory=request.memory,
@@ -123,7 +123,7 @@ async def start_vm(request: VmStartRequest):
 
 
 @router.post("/stop")
-async def stop_vm(request: VmStopRequest):
+def stop_vm(request: VmStopRequest):
     """
     Stop VM for an agent.
     
@@ -132,7 +132,7 @@ async def stop_vm(request: VmStopRequest):
     """
     try:
         manager = get_vm_manager()
-        result = await manager.stop(
+        result = manager.stop(
             agent_id=request.agent_id,
             graceful=request.graceful,
             quick=request.quick,
@@ -144,7 +144,7 @@ async def stop_vm(request: VmStopRequest):
 
 
 @router.post("/stop-all")
-async def stop_all_vms(quick: bool = False, graceful: bool = True):
+def stop_all_vms(quick: bool = False, graceful: bool = True):
     """Stop all running VMs in parallel.
     
     Args:
@@ -153,7 +153,7 @@ async def stop_all_vms(quick: bool = False, graceful: bool = True):
     """
     try:
         manager = get_vm_manager()
-        result = await manager.stop_all(graceful=graceful, quick=quick)
+        result = manager.stop_all(graceful=graceful, quick=quick)
         return {"success": True, "results": result}
     except Exception as e:
         logger.error(f"[VM API] Stop all failed: {e}")
@@ -163,10 +163,10 @@ async def stop_all_vms(quick: bool = False, graceful: bool = True):
 # ==================== VM Status ====================
 
 @router.get("/status/{agent_id}")
-async def get_vm_status(agent_id: str):
+def get_vm_status(agent_id: str):
     """Get VM status for a specific agent."""
     manager = get_vm_manager()
-    status = await manager.get_status(agent_id)
+    status = manager.get_status(agent_id)
     
     if not status:
         raise HTTPException(status_code=404, detail="VM not found")
@@ -187,10 +187,10 @@ async def get_vm_status(agent_id: str):
 
 
 @router.get("/status")
-async def get_all_vm_status():
+def get_all_vm_status():
     """Get status for all VMs."""
     manager = get_vm_manager()
-    all_status = await manager.get_all_status()
+    all_status = manager.get_all_status()
     
     return {
         agent_id: VmStatusResponse(
@@ -211,41 +211,41 @@ async def get_all_vm_status():
 
 
 @router.get("/running")
-async def get_running_agents():
+def get_running_agents():
     """Get list of running agent IDs."""
     manager = get_vm_manager()
-    agents = await manager.get_running_agents()
+    agents = manager.get_running_agents()
     return {"agents": agents}
 
 
 @router.get("/is-running/{agent_id}")
-async def is_vm_running(agent_id: str):
+def is_vm_running(agent_id: str):
     """Check if a specific VM is running."""
     manager = get_vm_manager()
-    running = await manager.is_running(agent_id)
+    running = manager.is_running(agent_id)
     return {"running": running}
 
 
 # ==================== SSH Key Management ====================
 
 @router.get("/ssh/keys")
-async def list_ssh_keys():
+def list_ssh_keys():
     """List all SSH keys."""
     manager = get_ssh_key_manager()
-    keys = await manager.list_keys()
+    keys = manager.list_keys()
     return {"keys": keys}
 
 
 @router.get("/ssh/pubkey")
-async def get_ssh_pubkey():
+def get_ssh_pubkey():
     """Get the default public key."""
     manager = get_ssh_key_manager()
-    pubkey = await manager.get_public_key()
+    pubkey = manager.get_public_key()
     return {"public_key": pubkey}
 
 
 @router.get("/ssh/private-key")
-async def get_ssh_private_key():
+def get_ssh_private_key():
     """
     Get the default private key.
     
@@ -253,23 +253,23 @@ async def get_ssh_private_key():
     The private key is stored in Gateway's database.
     """
     manager = get_ssh_key_manager()
-    key = await manager.get_or_create_default_key()
+    key = manager.get_or_create_default_key()
     return {"private_key": key["private_key"]}
 
 
 @router.post("/ssh/keys")
-async def create_ssh_key(request: SshKeyCreateRequest):
+def create_ssh_key(request: SshKeyCreateRequest):
     """Create a new SSH key pair."""
     manager = get_ssh_key_manager()
-    key = await manager.create_key(name=request.name)
+    key = manager.create_key(name=request.name)
     return {"success": True, **key}
 
 
 @router.delete("/ssh/keys/{key_id}")
-async def delete_ssh_key(key_id: str):
+def delete_ssh_key(key_id: str):
     """Delete an SSH key."""
     manager = get_ssh_key_manager()
-    success = await manager.delete_key(key_id)
+    success = manager.delete_key(key_id)
     if not success:
         raise HTTPException(status_code=400, detail="Cannot delete key (not found or is default)")
     return {"success": True}

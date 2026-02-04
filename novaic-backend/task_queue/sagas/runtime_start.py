@@ -17,7 +17,7 @@ def _build_runtime_create_payload(ctx):
         "agent_id": ctx["agent_id"],
         "subagent_id": ctx["subagent_id"],
         "idempotency_key": f"runtime-{ctx['subagent_id']}-{ctx.get('trigger_id', '')}",
-        "initial_context": ctx.get("initial_context", []),
+        # 移除 initial_context - 所有消息统一由 context.read 读取
     }
 
 
@@ -54,7 +54,7 @@ def _build_trigger_think_payload(ctx, prev_result):
             "agent_id": ctx["agent_id"],
             "subagent_id": ctx["subagent_id"],
             "round_num": 1,
-            "messages": ctx.get("initial_context", []),
+            # 移除 messages - 所有消息由 ReactThink 的 context.read 统一读取
             "model": ctx.get("model", "gpt-4o"),
             "tools": ctx.get("tools", []),
         },

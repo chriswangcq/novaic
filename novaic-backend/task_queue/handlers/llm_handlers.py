@@ -32,18 +32,18 @@ def _create_llm_client(provider: str, api_key: str, api_base: str):
         return OpenAIClient(api_base=api_base, api_key=api_key)
 
 
-async def _fetch_llm_config_from_gateway(gateway_url: str, runtime_id: str) -> Dict[str, Any]:
+def _fetch_llm_config_from_gateway(gateway_url: str, runtime_id: str) -> Dict[str, Any]:
     """Fetch LLM config by runtime_id from Gateway internal API."""
     import httpx
     url = f"{gateway_url.rstrip('/')}/internal/config/llm/runtime/{runtime_id}"
-    async with httpx.AsyncClient(timeout=10.0, trust_env=False) as client:
-        resp = await client.get(url)
+    with httpx.Client(timeout=10.0, trust_env=False) as client:
+        resp = client.get(url)
         resp.raise_for_status()
         return resp.json()
 
 
 @register_handler("llm.call")
-async def handle_llm_call(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+def handle_llm_call(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     调用 LLM
     
@@ -71,7 +71,7 @@ async def handle_llm_call(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     
     # 通过 Gateway 内部 API 获取 Runtime 对应的 LLM 配置
     gateway_url = ctx.get("gateway_url", "http://127.0.0.1:19999")
-    llm_config = await _fetch_llm_config_from_gateway(gateway_url, runtime_id)
+    llm_config = _fetch_llm_config_from_gateway(gateway_url, runtime_id)
     
     if not llm_config.get("success"):
         return {
@@ -89,11 +89,11 @@ async def handle_llm_call(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
         try:
             from ..client import GatewayInternalClient
             gateway_client = GatewayInternalClient(gateway_url)
-            runtime = await gateway_client.get_runtime(runtime_id)
+            runtime = gateway_client.get_runtime(runtime_id)
             mcp_url = runtime.get("mcp_url") if runtime else None
             mcp_client = ctx.get("mcp_client")
             if mcp_client and mcp_url:
-                mcp_tools = await mcp_client.list_tools(mcp_url, use_cache=True)
+                mcp_tools = mcp_client.list_tools(mcp_url, use_cache=True)
                 raw_tools = mcp_tools.get("tools", mcp_tools) if isinstance(mcp_tools, dict) else mcp_tools
                 tools = []
                 for tool in raw_tools or []:
@@ -116,14 +116,14 @@ async def handle_llm_call(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     
     # 1. 广播 thinking 状态
     if agent_id:
-        await broadcast_log(ctx, agent_id, BroadcastType.STATUS, {
+        broadcast_log(ctx, agent_id, BroadcastType.STATUS, {
             "message": f"🧠 Thinking ({round_id})...",
         })
     
     # 2. 使用业务逻辑层调用 LLM
     biz = LLMBusiness(ctx["gateway_url"], llm_client, client=ctx.get("gateway_client"))
     
-    result = await biz.call(
+    result = biz.call(
         messages=messages,
         model=model,
         tools=tools,
@@ -133,7 +133,7 @@ async def handle_llm_call(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     if not result.success:
         # 广播错误
         if agent_id:
-            await broadcast_log(ctx, agent_id, BroadcastType.ERROR, {
+            broadcast_log(ctx, agent_id, BroadcastType.ERROR, {
                 "message": result.error[:200],
             })
         
@@ -149,7 +149,7 @@ async def handle_llm_call(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
         # 广播 reasoning
         reasoning = biz.extract_reasoning(result.response)
         if reasoning:
-            await broadcast_log(ctx, agent_id, BroadcastType.THINKING, {
+            broadcast_log(ctx, agent_id, BroadcastType.THINKING, {
                 "content": reasoning[:500] + "..." if len(reasoning) > 500 else reasoning,
             })
         
@@ -163,7 +163,7 @@ async def handle_llm_call(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
             except json.JSONDecodeError:
                 args = {}
             
-            await broadcast_log(ctx, agent_id, BroadcastType.TOOL_START, {
+            broadcast_log(ctx, agent_id, BroadcastType.TOOL_START, {
                 "tool": tool_name,
                 "args": args,
             })
@@ -178,7 +178,7 @@ async def handle_llm_call(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
 
 
 @register_handler("llm.call_summary")
-async def handle_llm_call_summary(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+def handle_llm_call_summary(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     调用 LLM 生成摘要
     
@@ -194,7 +194,7 @@ async def handle_llm_call_summary(payload: Dict[str, Any], ctx: dict) -> Dict[st
     
     # 通过 Gateway 内部 API 获取 Runtime 对应的 LLM 配置
     gateway_url = ctx.get("gateway_url", "http://127.0.0.1:19999")
-    llm_config = await _fetch_llm_config_from_gateway(gateway_url, runtime_id)
+    llm_config = _fetch_llm_config_from_gateway(gateway_url, runtime_id)
     
     if not llm_config.get("success"):
         return {
@@ -214,7 +214,7 @@ async def handle_llm_call_summary(payload: Dict[str, Any], ctx: dict) -> Dict[st
     
     biz = LLMBusiness(ctx["gateway_url"], llm_client, client=ctx.get("gateway_client"))
     
-    result = await biz.generate_summary(
+    result = biz.generate_summary(
         runtime_id=runtime_id,
         model=model,
         system_prompt=payload.get("system_prompt"),

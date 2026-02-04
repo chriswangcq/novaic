@@ -98,7 +98,7 @@ class VmManager:
     
     # ==================== VM Lifecycle ====================
     
-    async def start(
+    def start(
         self,
         agent_id: str,
         agent_index: int,
@@ -120,7 +120,7 @@ class VmManager:
         logger.info(f"[VmManager] Starting VM for agent {agent_id} (index={agent_index})")
         
         # Check if already running
-        process_info = await self.repo.get_process(agent_id)
+        process_info = self.repo.get_process(agent_id)
         if process_info and process_info["status"] == "running":
             if self._is_pid_alive(process_info.get("pid")):
                 logger.info(f"[VmManager] VM for agent {agent_id} already running")
@@ -165,7 +165,7 @@ class VmManager:
                 raise RuntimeError(f"Port {port} ({port_name}) is already in use")
         
         # Update status to starting
-        await self.repo.upsert_process(
+        self.repo.upsert_process(
             agent_id=agent_id,
             status="starting",
             ports=ports.__dict__,
@@ -190,7 +190,7 @@ class VmManager:
             self._processes[agent_id] = process
             
             # Save to DB
-            await self.repo.upsert_process(
+            self.repo.upsert_process(
                 agent_id=agent_id,
                 pid=process.pid,
                 status="running",
@@ -200,13 +200,13 @@ class VmManager:
             
             # Wait for VM to boot
             logger.info(f"[VmManager] Waiting for VM to start (PID: {process.pid})...")
-            await asyncio.sleep(5)
+            time.sleep(5)
             
             # Wait for websockify
-            await self._wait_for_service(ports.websocket, "websockify", timeout=60)
+            self._wait_for_service(ports.websocket, "websockify", timeout=60)
             
             # Wait for MCP
-            await self._wait_for_service(ports.vm, "MCP", timeout=120)
+            self._wait_for_service(ports.vm, "MCP", timeout=120)
             
             logger.info(f"[VmManager] VM for agent {agent_id} started successfully")
             
@@ -218,10 +218,10 @@ class VmManager:
             
         except Exception as e:
             logger.error(f"[VmManager] Failed to start VM: {e}")
-            await self.repo.update_status(agent_id, "error", error_message=str(e))
+            self.repo.update_status(agent_id, "error", error_message=str(e))
             raise
     
-    async def stop(self, agent_id: str, graceful: bool = True, quick: bool = False) -> Dict[str, Any]:
+    def stop(self, agent_id: str, graceful: bool = True, quick: bool = False) -> Dict[str, Any]:
         """
         Stop VM for an agent.
         
@@ -235,7 +235,7 @@ class VmManager:
         """
         logger.info(f"[VmManager] Stopping VM for agent {agent_id} (graceful={graceful}, quick={quick})")
         
-        process_info = await self.repo.get_process(agent_id)
+        process_info = self.repo.get_process(agent_id)
         if not process_info:
             return {"status": "not_found"}
         
@@ -243,7 +243,7 @@ class VmManager:
         ports = process_info.get("ports", {})
         
         # Update status
-        await self.repo.update_status(agent_id, "stopping")
+        self.repo.update_status(agent_id, "stopping")
         
         # Quick mode: shorter timeouts
         ssh_timeout = 3 if quick else 10
@@ -253,7 +253,7 @@ class VmManager:
         if graceful and ports.get("ssh"):
             try:
                 ssh_manager = get_ssh_key_manager()
-                key_path = await ssh_manager.get_private_key_path()
+                key_path = ssh_manager.get_private_key_path()
                 
                 connect_timeout = "2" if quick else "5"
                 result = subprocess.run(
@@ -278,7 +278,7 @@ class VmManager:
         shutdown_ok = False
         if pid:
             for i in range(wait_iterations):
-                await asyncio.sleep(1)
+                time.sleep(1)
                 if not self._is_pid_alive(pid):
                     logger.info(f"[VmManager] VM {agent_id} shutdown gracefully")
                     shutdown_ok = True
@@ -293,12 +293,12 @@ class VmManager:
         if agent_id in self._processes:
             del self._processes[agent_id]
         
-        await self.repo.update_status(agent_id, "stopped")
+        self.repo.update_status(agent_id, "stopped")
         
         logger.info(f"[VmManager] VM for agent {agent_id} stopped")
         return {"status": "stopped"}
     
-    async def stop_all(self, graceful: bool = True, quick: bool = False) -> Dict[str, Any]:
+    def stop_all(self, graceful: bool = True, quick: bool = False) -> Dict[str, Any]:
         """Stop all running VMs in parallel.
         
         Args:
@@ -308,7 +308,7 @@ class VmManager:
         Returns:
             Dict mapping agent_id to stop result.
         """
-        running = await self.repo.get_running_processes()
+        running = self.repo.get_running_processes()
         
         if not running:
             logger.info("[VmManager] No running VMs to stop")
@@ -321,7 +321,7 @@ class VmManager:
             self.stop(proc["agent_id"], graceful=graceful, quick=quick)
             for proc in running
         ]
-        results_list = await asyncio.gather(*tasks, return_exceptions=True)
+        results_list = asyncio.gather(*tasks, return_exceptions=True)
         
         # Build results dict
         results = {}
@@ -338,9 +338,9 @@ class VmManager:
     
     # ==================== Status ====================
     
-    async def get_status(self, agent_id: str) -> Optional[VmStatus]:
+    def get_status(self, agent_id: str) -> Optional[VmStatus]:
         """Get VM status for an agent."""
-        process_info = await self.repo.get_process(agent_id)
+        process_info = self.repo.get_process(agent_id)
         if not process_info:
             return None
         
@@ -368,27 +368,27 @@ class VmManager:
             error_message=process_info.get("error_message"),
         )
     
-    async def get_all_status(self) -> Dict[str, VmStatus]:
+    def get_all_status(self) -> Dict[str, VmStatus]:
         """Get status for all VMs."""
-        all_processes = await self.repo.get_all_processes()
+        all_processes = self.repo.get_all_processes()
         result = {}
         
         for proc in all_processes:
             agent_id = proc["agent_id"]
-            status = await self.get_status(agent_id)
+            status = self.get_status(agent_id)
             if status:
                 result[agent_id] = status
         
         return result
     
-    async def is_running(self, agent_id: str) -> bool:
+    def is_running(self, agent_id: str) -> bool:
         """Check if VM is running."""
-        status = await self.get_status(agent_id)
+        status = self.get_status(agent_id)
         return status.running if status else False
     
-    async def get_running_agents(self) -> List[str]:
+    def get_running_agents(self) -> List[str]:
         """Get list of running agent IDs."""
-        running = await self.repo.get_running_processes()
+        running = self.repo.get_running_processes()
         return [
             p["agent_id"] for p in running
             if self._is_pid_alive(p.get("pid"))
@@ -396,7 +396,7 @@ class VmManager:
     
     # ==================== Recovery ====================
     
-    async def recover_processes(self):
+    def recover_processes(self):
         """
         Recover running VMs after Gateway restart.
         
@@ -404,7 +404,7 @@ class VmManager:
         """
         logger.info("[VmManager] Recovering VM processes...")
         
-        running = await self.repo.get_running_processes()
+        running = self.repo.get_running_processes()
         recovered = 0
         cleaned = 0
         
@@ -417,7 +417,7 @@ class VmManager:
                 recovered += 1
             else:
                 logger.info(f"[VmManager] VM {agent_id} no longer running, cleaning up")
-                await self.repo.update_status(agent_id, "stopped")
+                self.repo.update_status(agent_id, "stopped")
                 cleaned += 1
         
         logger.info(f"[VmManager] Recovery complete: {recovered} running, {cleaned} cleaned")
@@ -569,7 +569,7 @@ class VmManager:
         
         return args
     
-    async def _wait_for_service(
+    def _wait_for_service(
         self,
         port: int,
         name: str,
@@ -585,7 +585,7 @@ class VmManager:
                 elapsed = asyncio.get_event_loop().time() - start
                 logger.info(f"[VmManager] {name} ready after {elapsed:.1f}s")
                 return
-            await asyncio.sleep(interval)
+            time.sleep(interval)
         
         logger.warning(f"[VmManager] {name} not ready after {timeout}s (continuing anyway)")
     

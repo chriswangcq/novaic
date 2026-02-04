@@ -15,7 +15,7 @@ from ..business import MessageBusiness
 
 
 @register_handler("context.read")
-async def handle_context_read(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+def handle_context_read(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     读取最新 runtime context（用于 ReactThink）
     
@@ -32,44 +32,60 @@ async def handle_context_read(payload: Dict[str, Any], ctx: dict) -> Dict[str, A
 
     from ..client import GatewayInternalClient
     client = ctx.get("gateway_client") or GatewayInternalClient(ctx["gateway_url"])
-    runtime = await client.get_runtime(runtime_id)
+    runtime = client.get_runtime(runtime_id)
     if not runtime:
         return {"success": False, "error": "Runtime not found"}
 
     context = runtime.get("context") or []
     agent_id = runtime.get("agent_id")
     
+    # 记录本次读取到的新消息
+    new_messages_list = []
+    
     # 过滤 sending 状态的消息（可选）
     # 注：context 里的消息已经是 sent 的，这里主要是获取新的 user messages
     if filter_sending:
         # 获取新的 sent 消息（未被读取的）
-        new_messages = await client.get_unread_sent_messages(agent_id)
+        new_messages = client.get_unread_sent_messages(agent_id)
 
         if new_messages:
-            await client.mark_messages_read([msg["id"] for msg in new_messages])
+            # 逐个处理消息：append 成功后再标记为已读（原子性）
             for msg in new_messages:
-                await client.append_context(
-                    runtime_id=runtime_id,
-                    message={"role": "user", "content": msg["content"]},
-                    message_type="user",
-                    round_id=None,
-                    idempotency_key=f"user-msg-{msg['id']}",
-                )
-                context.append({
-                    "role": "user",
-                    "content": msg["content"],
-                })
+                try:
+                    # 先 append 到 context
+                    append_result = client.append_context(
+                        runtime_id=runtime_id,
+                        message={"role": "user", "content": msg["content"]},
+                        message_type="user",
+                        round_id=None,
+                        idempotency_key=f"user-msg-{msg['id']}",
+                    )
+                    
+                    # append 成功后，才标记为已读
+                    if append_result.get("success"):
+                        client.mark_messages_read([msg["id"]])
+                        context.append({
+                            "role": "user",
+                            "content": msg["content"],
+                        })
+                        # 记录成功处理的新消息
+                        new_messages_list.append(msg)
+                except Exception as e:
+                    # 如果 append 失败，不标记为已读，下次还能读到
+                    print(f"[context.read] Failed to append message {msg['id']}: {e}")
+                    continue
     
     return {
         "success": True,
         "runtime_id": runtime_id,
         "context": context,
         "length": len(context),
+        "new_messages": new_messages_list,  # 返回本次读取的新消息
     }
 
 
 @register_handler("context.append")
-async def handle_context_append(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+def handle_context_append(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     追加消息到 runtime context
     
@@ -84,7 +100,7 @@ async def handle_context_append(payload: Dict[str, Any], ctx: dict) -> Dict[str,
     """
     biz = MessageBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
     
-    result = await biz.append_to_context(
+    result = biz.append_to_context(
         runtime_id=payload["runtime_id"],
         message=payload["message"],
         message_type=payload.get("message_type", "unknown"),
@@ -108,7 +124,7 @@ async def handle_context_append(payload: Dict[str, Any], ctx: dict) -> Dict[str,
 
 
 @register_handler("context.get")
-async def handle_context_get(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+def handle_context_get(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     获取 runtime context
     
@@ -117,7 +133,7 @@ async def handle_context_get(payload: Dict[str, Any], ctx: dict) -> Dict[str, An
     """
     biz = MessageBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
     
-    context = await biz.get_context(payload["runtime_id"])
+    context = biz.get_context(payload["runtime_id"])
     
     if context is None:
         return {"success": False, "error": "Runtime not found"}

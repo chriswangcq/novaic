@@ -134,9 +134,9 @@ def create_task_queue_router(
     # ========================================
     
     @router.post("/tasks/publish", response_model=PublishResponse)
-    async def publish_task(req: PublishRequest):
+    def publish_task(req: PublishRequest):
         """发布任务"""
-        task_id = await queue.publish(
+        task_id = queue.publish(
             topic=req.topic,
             payload=req.payload,
             idempotency_key=req.idempotency_key,
@@ -145,18 +145,18 @@ def create_task_queue_router(
         return PublishResponse(task_id=task_id)
     
     @router.post("/tasks/claim", response_model=ClaimResponse)
-    async def claim_task(req: ClaimRequest):
+    def claim_task(req: ClaimRequest):
         """认领任务"""
-        task = await queue.claim(
+        task = queue.claim(
             topics=req.topics,
             worker_id=req.worker_id,
         )
         return ClaimResponse(task=task)
     
     @router.post("/tasks/{task_id}/complete", response_model=SuccessResponse)
-    async def complete_task(task_id: str, req: CompleteRequest):
+    def complete_task(task_id: str, req: CompleteRequest):
         """标记任务完成"""
-        success = await queue.complete(task_id, req.result)
+        success = queue.complete(task_id, req.result)
         if not success:
             logger.warning("[TaskQueue] Complete failed (task_id=%s)", task_id)
         else:
@@ -164,9 +164,9 @@ def create_task_queue_router(
         return SuccessResponse(success=success)
     
     @router.post("/tasks/{task_id}/fail", response_model=StatusResponse)
-    async def fail_task(task_id: str, req: FailRequest):
+    def fail_task(task_id: str, req: FailRequest):
         """标记任务失败"""
-        final_status = await queue.fail(task_id, req.error, req.retry)
+        final_status = queue.fail(task_id, req.error, req.retry)
         logger.warning(
             "[TaskQueue] Task failed (task_id=%s, final_status=%s, retry=%s)",
             task_id,
@@ -176,23 +176,23 @@ def create_task_queue_router(
         return StatusResponse(final_status=final_status)
     
     @router.post("/tasks/{task_id}/heartbeat", response_model=SuccessResponse)
-    async def heartbeat_task(task_id: str):
+    def heartbeat_task(task_id: str):
         """更新心跳"""
-        success = await queue.heartbeat(task_id)
+        success = queue.heartbeat(task_id)
         return SuccessResponse(success=success)
     
     @router.get("/tasks/{task_id}", response_model=TaskResponse)
-    async def get_task(task_id: str):
+    def get_task(task_id: str):
         """获取任务详情"""
-        task = await queue.get_task(task_id)
+        task = queue.get_task(task_id)
         if not task:
             raise HTTPException(status_code=404, detail="Task not found")
         return TaskResponse(task=task)
     
     @router.get("/tasks/stats", response_model=StatsResponse)
-    async def get_task_stats(topic: Optional[str] = None):
+    def get_task_stats(topic: Optional[str] = None):
         """获取任务统计"""
-        counts = await queue.count_by_status(topic)
+        counts = queue.count_by_status(topic)
         return StatsResponse(counts=counts)
     
     # ========================================
@@ -201,10 +201,10 @@ def create_task_queue_router(
     
     if orchestrator:
         @router.post("/sagas/start", response_model=SagaStartResponse)
-        async def start_saga(req: SagaStartRequest):
+        def start_saga(req: SagaStartRequest):
             """创建 Saga (立即返回，由 SagaWorker 执行)"""
             try:
-                saga_id = await orchestrator.create(
+                saga_id = orchestrator.create(
                     saga_type=req.saga_type,
                     context=req.context,
                     idempotency_key=req.idempotency_key,
@@ -214,32 +214,32 @@ def create_task_queue_router(
                 raise HTTPException(status_code=400, detail=str(e))
         
         @router.post("/sagas/claim", response_model=SagaClaimResponse)
-        async def claim_saga(req: SagaClaimRequest):
+        def claim_saga(req: SagaClaimRequest):
             """认领 Saga (SagaWorker 调用)"""
-            saga = await orchestrator.claim(
+            saga = orchestrator.claim(
                 saga_types=req.saga_types,
                 worker_id=req.worker_id,
             )
             return SagaClaimResponse(saga=saga)
         
         @router.get("/sagas/{saga_id}", response_model=SagaResponse)
-        async def get_saga(saga_id: str):
+        def get_saga(saga_id: str):
             """获取 Saga 状态"""
-            saga = await orchestrator.get(saga_id)
+            saga = orchestrator.get(saga_id)
             if not saga:
                 raise HTTPException(status_code=404, detail="Saga not found")
             return SagaResponse(saga=saga)
         
         @router.post("/sagas/{saga_id}/heartbeat", response_model=SuccessResponse)
-        async def heartbeat_saga(saga_id: str):
+        def heartbeat_saga(saga_id: str):
             """更新 Saga 心跳 (SagaWorker 调用)"""
-            success = await orchestrator.heartbeat(saga_id)
+            success = orchestrator.heartbeat(saga_id)
             return SuccessResponse(success=success)
         
         @router.post("/sagas/{saga_id}/progress", response_model=SuccessResponse)
-        async def update_saga_progress(saga_id: str, req: SagaProgressRequest):
+        def update_saga_progress(saga_id: str, req: SagaProgressRequest):
             """更新 Saga 进度 (Saga Worker 调用)"""
-            await orchestrator.update_progress(
+            orchestrator.update_progress(
                 saga_id=saga_id,
                 current_step=req.current_step,
                 step_results=req.step_results,
@@ -248,22 +248,22 @@ def create_task_queue_router(
             return SuccessResponse(success=True)
         
         @router.post("/sagas/{saga_id}/complete", response_model=SuccessResponse)
-        async def complete_saga(saga_id: str, req: SagaCompleteRequest):
+        def complete_saga(saga_id: str, req: SagaCompleteRequest):
             """标记 Saga 完成 (Saga Worker 调用)"""
-            await orchestrator.mark_completed(saga_id, req.step_results)
+            orchestrator.mark_completed(saga_id, req.step_results)
             return SuccessResponse(success=True)
         
         @router.post("/sagas/{saga_id}/fail", response_model=SuccessResponse)
-        async def fail_saga(saga_id: str, req: SagaFailRequest):
+        def fail_saga(saga_id: str, req: SagaFailRequest):
             """标记 Saga 失败 (Saga Worker 调用)"""
-            await orchestrator.mark_failed(saga_id, req.error)
+            orchestrator.mark_failed(saga_id, req.error)
             return SuccessResponse(success=True)
         
         @router.post("/sagas/{saga_id}/resume", response_model=SuccessResponse)
-        async def resume_saga(saga_id: str):
+        def resume_saga(saga_id: str):
             """恢复 Saga (发布 saga.run Task)"""
             try:
-                await orchestrator.resume(saga_id)
+                orchestrator.resume(saga_id)
                 return SuccessResponse(success=True)
             except SagaError as e:
                 raise HTTPException(status_code=400, detail=str(e))
@@ -309,7 +309,7 @@ def create_handler_router(get_context_func) -> APIRouter:
     router = APIRouter(tags=["Handler Execution"])
     
     @router.post("/execute", response_model=HandlerExecResponse)
-    async def execute_handler(req: HandlerExecRequest):
+    def execute_handler(req: HandlerExecRequest):
         """
         执行 Handler
         
@@ -326,7 +326,7 @@ def create_handler_router(get_context_func) -> APIRouter:
         ctx = get_context_func()
         
         try:
-            result = await handler(req.payload, ctx)
+            result = handler(req.payload, ctx)
             return HandlerExecResponse(
                 success=True,
                 result=result,
@@ -342,7 +342,7 @@ def create_handler_router(get_context_func) -> APIRouter:
             )
     
     @router.get("/topics")
-    async def list_topics():
+    def list_topics():
         """列出所有可用的 Handler topics"""
         from .handlers import get_all_topics
         return {"topics": get_all_topics()}
@@ -388,7 +388,7 @@ def create_business_router(
     router = APIRouter(tags=["Business Entry"])
     
     @router.post("/message/process", response_model=MessageProcessResponse)
-    async def process_message(req: MessageProcessRequest):
+    def process_message(req: MessageProcessRequest):
         """
         处理用户消息 - 业务入口
         
@@ -408,7 +408,7 @@ def create_business_router(
             # 注入 saga_client（使用 orchestrator）
             ctx_with_saga = {**ctx, "saga_client": orchestrator}
             
-            result = await handler({
+            result = handler({
                 "message_id": req.message_id,
                 "agent_id": req.agent_id,
                 "content": req.content,
@@ -458,28 +458,28 @@ def create_recovery_router(
     router = APIRouter(tags=["Task Queue Recovery"])
     
     @router.post("/tasks", response_model=RecoveryResponse)
-    async def recover_stale_tasks(timeout_seconds: int = 60):
+    def recover_stale_tasks(timeout_seconds: int = 60):
         """恢复超时任务"""
-        recovered = await queue.recover_stale(timeout_seconds)
+        recovered = queue.recover_stale(timeout_seconds)
         return RecoveryResponse(tasks_recovered=recovered)
     
     if orchestrator:
         @router.post("/sagas", response_model=RecoveryResponse)
-        async def recover_stale_sagas(timeout_seconds: int = 120):
+        def recover_stale_sagas(timeout_seconds: int = 120):
             """恢复超时 Saga"""
-            recovered = await orchestrator.recover_stale(timeout_seconds)
+            recovered = orchestrator.recover_stale(timeout_seconds)
             return RecoveryResponse(sagas_recovered=recovered)
     
     @router.post("/all", response_model=RecoveryResponse)
-    async def recover_all(
+    def recover_all(
         task_timeout: int = 60,
         saga_timeout: int = 120,
     ):
         """恢复所有超时任务和 Saga"""
-        tasks_recovered = await queue.recover_stale(task_timeout)
+        tasks_recovered = queue.recover_stale(task_timeout)
         sagas_recovered = 0
         if orchestrator:
-            sagas_recovered = await orchestrator.recover_stale(saga_timeout)
+            sagas_recovered = orchestrator.recover_stale(saga_timeout)
         return RecoveryResponse(
             tasks_recovered=tasks_recovered,
             sagas_recovered=sagas_recovered,

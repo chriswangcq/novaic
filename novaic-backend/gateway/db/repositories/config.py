@@ -20,9 +20,9 @@ class ConfigRepository:
     
     # ==================== General Config ====================
     
-    async def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Optional[Any]:
         """Get a config value (JSON-decoded)."""
-        value = await self.db.get_config(key)
+        value = self.db.get_config(key)
         if value is not None:
             try:
                 return json.loads(value)
@@ -30,13 +30,13 @@ class ConfigRepository:
                 return value
         return None
     
-    async def set(self, key: str, value: Any):
+    def set(self, key: str, value: Any):
         """Set a config value (JSON-encoded)."""
-        await self.db.set_config(key, json.dumps(value))
+        self.db.set_config(key, json.dumps(value))
     
-    async def get_all(self) -> Dict[str, Any]:
+    def get_all(self) -> Dict[str, Any]:
         """Get all config values as dict."""
-        rows = await self.db.fetchall("SELECT key, value FROM config")
+        rows = self.db.fetchall("SELECT key, value FROM config")
         result = {}
         for row in rows:
             try:
@@ -47,20 +47,20 @@ class ConfigRepository:
     
     # ==================== API Keys ====================
     
-    async def list_api_keys(self) -> List[Dict[str, Any]]:
+    def list_api_keys(self) -> List[Dict[str, Any]]:
         """List all API keys."""
-        return await self.db.fetchall(
+        return self.db.fetchall(
             "SELECT * FROM api_keys ORDER BY created_at"
         )
     
-    async def get_api_key(self, key_id: str) -> Optional[Dict[str, Any]]:
+    def get_api_key(self, key_id: str) -> Optional[Dict[str, Any]]:
         """Get an API key by ID."""
-        return await self.db.fetchone(
+        return self.db.fetchone(
             "SELECT * FROM api_keys WHERE id = ?",
             (key_id,)
         )
     
-    async def create_api_key(
+    def create_api_key(
         self,
         id: str,
         name: str,
@@ -73,17 +73,17 @@ class ConfigRepository:
         """Create a new API key."""
         created_at = datetime.utcnow().isoformat()
         
-        await self.db.execute(
+        self.db.execute(
             """INSERT INTO api_keys 
                (id, name, provider, api_key, api_base, deployment_name, api_version, created_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (id, name, provider, api_key, api_base, deployment_name, api_version, created_at)
         )
-        await self.db.commit()
+        self.db.commit()
         
-        return await self.get_api_key(id)
+        return self.get_api_key(id)
     
-    async def update_api_key(
+    def update_api_key(
         self,
         key_id: str,
         name: Optional[str] = None,
@@ -114,29 +114,29 @@ class ConfigRepository:
             params.append(api_version)
         
         if not updates:
-            return await self.get_api_key(key_id)
+            return self.get_api_key(key_id)
         
         params.append(key_id)
-        await self.db.execute(
+        self.db.execute(
             f"UPDATE api_keys SET {', '.join(updates)} WHERE id = ?",
             tuple(params)
         )
-        await self.db.commit()
+        self.db.commit()
         
-        return await self.get_api_key(key_id)
+        return self.get_api_key(key_id)
     
-    async def delete_api_key(self, key_id: str) -> bool:
+    def delete_api_key(self, key_id: str) -> bool:
         """Delete an API key (cascades to models)."""
-        cursor = await self.db.execute(
+        cursor = self.db.execute(
             "DELETE FROM api_keys WHERE id = ?",
             (key_id,)
         )
-        await self.db.commit()
+        self.db.commit()
         return cursor.rowcount > 0
     
     # ==================== Models ====================
     
-    async def list_models(
+    def list_models(
         self,
         api_key_id: Optional[str] = None,
         enabled_only: bool = False
@@ -153,20 +153,20 @@ class ConfigRepository:
             query += " AND available = 1"
         
         query += " ORDER BY id"
-        return await self.db.fetchall(query, tuple(params))
+        return self.db.fetchall(query, tuple(params))
     
-    async def get_model(
+    def get_model(
         self,
         model_id: str,
         api_key_id: str
     ) -> Optional[Dict[str, Any]]:
         """Get a model by ID and API key ID."""
-        return await self.db.fetchone(
+        return self.db.fetchone(
             "SELECT * FROM candidate_models WHERE id = ? AND api_key_id = ?",
             (model_id, api_key_id)
         )
     
-    async def create_model(
+    def create_model(
         self,
         id: str,
         name: str,
@@ -176,7 +176,7 @@ class ConfigRepository:
         is_custom: bool = False,
     ) -> Dict[str, Any]:
         """Create or update a model."""
-        await self.db.execute(
+        self.db.execute(
             """INSERT INTO candidate_models 
                (id, name, provider, api_key_id, available, is_custom)
                VALUES (?, ?, ?, ?, ?, ?)
@@ -187,38 +187,38 @@ class ConfigRepository:
                    is_custom = excluded.is_custom""",
             (id, name, provider, api_key_id, 1 if enabled else 0, 1 if is_custom else 0)
         )
-        await self.db.commit()
+        self.db.commit()
         
-        return await self.get_model(id, api_key_id)
+        return self.get_model(id, api_key_id)
     
-    async def toggle_model(
+    def toggle_model(
         self,
         model_id: str,
         api_key_id: str,
         enabled: bool
     ) -> bool:
         """Enable or disable a model."""
-        cursor = await self.db.execute(
+        cursor = self.db.execute(
             "UPDATE candidate_models SET available = ? WHERE id = ? AND api_key_id = ?",
             (1 if enabled else 0, model_id, api_key_id)
         )
-        await self.db.commit()
+        self.db.commit()
         return cursor.rowcount > 0
     
-    async def delete_model(
+    def delete_model(
         self,
         model_id: str,
         api_key_id: str
     ) -> bool:
         """Delete a model."""
-        cursor = await self.db.execute(
+        cursor = self.db.execute(
             "DELETE FROM candidate_models WHERE id = ? AND api_key_id = ?",
             (model_id, api_key_id)
         )
-        await self.db.commit()
+        self.db.commit()
         return cursor.rowcount > 0
     
-    async def save_models_for_key(
+    def save_models_for_key(
         self,
         api_key_id: str,
         models: List[Dict[str, Any]],
@@ -228,16 +228,16 @@ class ConfigRepository:
         Save/merge models for an API key.
         Keeps existing custom models.
         """
-        async with self.db.transaction():
+        with self.db.transaction():
             # Get existing custom models
-            existing_custom = await self.db.fetchall(
+            existing_custom = self.db.fetchall(
                 "SELECT * FROM candidate_models WHERE api_key_id = ? AND is_custom = 1",
                 (api_key_id,)
             )
             custom_ids = {m["id"] for m in existing_custom}
             
             # Delete non-custom models for this key
-            await self.db.execute(
+            self.db.execute(
                 "DELETE FROM candidate_models WHERE api_key_id = ? AND is_custom = 0",
                 (api_key_id,)
             )
@@ -250,7 +250,7 @@ class ConfigRepository:
                     continue  # Skip, already exists as custom
                 
                 new_ids.add(model_id)
-                await self.db.execute(
+                self.db.execute(
                     """INSERT INTO candidate_models 
                        (id, name, provider, api_key_id, available, is_custom)
                        VALUES (?, ?, ?, ?, ?, ?)""",

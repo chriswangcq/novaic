@@ -14,7 +14,7 @@ from ..business import MCPBusiness
 
 
 @register_handler("mcp.create")
-async def handle_mcp_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+def handle_mcp_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     创建 MCP Server
     
@@ -30,7 +30,7 @@ async def handle_mcp_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any
         client=ctx.get("gateway_client"),
     )
     
-    result = await biz.create(
+    result = biz.create(
         runtime_id=payload["runtime_id"],
         agent_id=payload["agent_id"],
     )
@@ -53,7 +53,7 @@ async def handle_mcp_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any
 
 
 @register_handler("mcp.destroy")
-async def handle_mcp_destroy(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+def handle_mcp_destroy(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     销毁 MCP Server
     
@@ -68,7 +68,7 @@ async def handle_mcp_destroy(payload: Dict[str, Any], ctx: dict) -> Dict[str, An
         client=ctx.get("gateway_client"),
     )
     
-    result = await biz.destroy(payload["runtime_id"])
+    result = biz.destroy(payload["runtime_id"])
     
     response = {
         "success": result.success,

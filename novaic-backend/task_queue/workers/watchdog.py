@@ -13,7 +13,8 @@ Watchdog - 消息监视器
 - 所有业务逻辑在 MessageProcess Saga 中
 """
 
-import asyncio
+import time
+import threading
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
@@ -65,21 +66,21 @@ class Watchdog:
         self.worker_id = f"wd-{uuid.uuid4().hex[:8]}"
         
         self._running = False
-        self._shutdown_event = asyncio.Event()
-        self._client: Optional[httpx.AsyncClient] = None
+        self._shutdown_event = threading.Event()
+        self._client: Optional[httpx.Client] = None
         
         self.metrics = WatchdogMetrics()
     
-    async def _get_client(self) -> httpx.AsyncClient:
+    def _get_client(self) -> httpx.Client:
         """获取 HTTP 客户端"""
-        if self._client is None or self._client.is_closed:
-            self._client = httpx.AsyncClient(
+        if self._client is None or False:
+            self._client = httpx.Client(
                 base_url=self.gateway_url,
                 timeout=self.timeout,
             )
         return self._client
     
-    async def run(self):
+    def run(self):
         """主循环"""
         self._running = True
         self._shutdown_event.clear()
@@ -90,39 +91,42 @@ class Watchdog:
         try:
             while not self._shutdown_event.is_set():
                 try:
-                    # 1. 查找 sending 消息（不 claim）
-                    message = await self._find_sending_message()
+                    # 1. Claim一条sending消息（sending → sent）
+                    message = self._find_sending_message()
                     
                     if message:
-                        await self._create_saga_for_message(message)
+                        # 2. 为已claim的消息创建saga
+                        self._create_saga_for_message(message)
+                        # 立即处理下一条，不sleep（批量处理）
                     else:
-                        await asyncio.sleep(self.poll_interval)
+                        # 队列空了，休眠
+                        time.sleep(self.poll_interval)
                         
-                except asyncio.CancelledError:
+                except KeyboardInterrupt:
                     break
                 except Exception as e:
                     self._log(f"Error in main loop: {e}", level="error")
                     traceback.print_exc()
                     self.metrics.errors += 1
-                    await asyncio.sleep(self.poll_interval)
+                    time.sleep(self.poll_interval)
         
         finally:
             self._running = False
             if self._client:
-                await self._client.aclose()
+                self._client.close()
             self._log("Stopped")
     
-    async def shutdown(self):
+    def shutdown(self):
         """优雅关闭"""
         self._log("Shutting down...")
         self._shutdown_event.set()
     
-    async def _find_sending_message(self) -> Optional[Dict[str, Any]]:
-        """查找 sending 消息（不 claim）"""
-        client = await self._get_client()
+    def _find_sending_message(self) -> Optional[Dict[str, Any]]:
+        """查找并claim sending消息（sending → sent）"""
+        client = self._get_client()
         
         try:
-            resp = await client.get("/internal/messages/find-sending")
+            resp = client.post("/internal/messages/claim-and-prepare")
             if resp.status_code == 200:
                 data = resp.json()
                 return data.get("message")
@@ -131,7 +135,7 @@ class Watchdog:
             self._log(f"Failed to find message: {e}", level="error")
             return None
     
-    async def _create_saga_for_message(self, message: Dict[str, Any]):
+    def _create_saga_for_message(self, message: Dict[str, Any]):
         """为消息创建 MessageProcess Saga"""
         msg_id = message.get("id")
         agent_id = message.get("agent_id")
@@ -148,12 +152,12 @@ class Watchdog:
             return
         
         # 创建 MessageProcess Saga
-        client = await self._get_client()
+        client = self._get_client()
         
         subagent_id = f"main-{agent_id[:8]}"
         
         try:
-            resp = await client.post(
+            resp = client.post(
                 "/internal/tq/sagas/start",
                 json={
                     "saga_type": "message_process",
@@ -161,7 +165,7 @@ class Watchdog:
                         "message_id": msg_id,
                         "agent_id": agent_id,
                         "subagent_id": subagent_id,
-                        "initial_context": [{"role": "user", "content": content}],
+                        # 移除 initial_context - Watchdog 只负责唤醒，不传递消息内容
                     },
                     "idempotency_key": f"message-process-{msg_id}",
                 }

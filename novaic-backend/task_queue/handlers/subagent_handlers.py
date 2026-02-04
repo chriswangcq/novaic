@@ -15,7 +15,7 @@ from ..business import SubAgentBusiness
 
 
 @register_handler("subagent.wake")
-async def handle_subagent_wake(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+def handle_subagent_wake(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     唤醒 SubAgent
     
@@ -32,7 +32,7 @@ async def handle_subagent_wake(payload: Dict[str, Any], ctx: dict) -> Dict[str, 
     """
     biz = SubAgentBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
     
-    result = await biz.wake(
+    result = biz.wake(
         agent_id=payload["agent_id"],
         subagent_id=payload["subagent_id"],
     )
@@ -52,7 +52,7 @@ async def handle_subagent_wake(payload: Dict[str, Any], ctx: dict) -> Dict[str, 
 
 
 @register_handler("subagent.set_awake")
-async def handle_subagent_set_awake(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+def handle_subagent_set_awake(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     设置 SubAgent 为 awake 状态（RuntimeStart Saga 完成后调用）
     
@@ -70,7 +70,7 @@ async def handle_subagent_set_awake(payload: Dict[str, Any], ctx: dict) -> Dict[
     """
     biz = SubAgentBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
     
-    result = await biz.set_awake(
+    result = biz.set_awake(
         agent_id=payload["agent_id"],
         subagent_id=payload["subagent_id"],
         runtime_id=payload["runtime_id"],
@@ -93,7 +93,7 @@ async def handle_subagent_set_awake(payload: Dict[str, Any], ctx: dict) -> Dict[
 
 
 @register_handler("subagent.set_sleeping")
-async def handle_subagent_set_sleeping(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+def handle_subagent_set_sleeping(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     设置 SubAgent 为 sleeping 状态
     
@@ -106,7 +106,7 @@ async def handle_subagent_set_sleeping(payload: Dict[str, Any], ctx: dict) -> Di
     """
     biz = SubAgentBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
     
-    result = await biz.set_sleeping(
+    result = biz.set_sleeping(
         agent_id=payload["agent_id"],
         subagent_id=payload["subagent_id"],
     )

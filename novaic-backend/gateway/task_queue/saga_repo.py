@@ -5,7 +5,7 @@ This module holds the DB-backed SagaRepository/SagaOrchestrator so that
 non-gateway code does not directly touch the database.
 """
 
-import asyncio
+import threading
 import json
 import uuid
 from datetime import datetime
@@ -33,9 +33,9 @@ class SagaRepository:
         """
         self.db = db
         self.queue = queue
-        self._lock = asyncio.Lock()
+        self._lock = threading.Lock()
     
-    async def create(
+    def create(
         self,
         saga_type: str,
         context: Dict[str, Any],
@@ -45,26 +45,26 @@ class SagaRepository:
         创建 Saga (只创建记录，不发布 Task)
         """
         if idempotency_key:
-            existing = await self.get_by_idempotency_key(idempotency_key)
+            existing = self.get_by_idempotency_key(idempotency_key)
             if existing:
                 return existing["id"]
         
         saga_id = f"saga-{uuid.uuid4().hex[:12]}"
         now = datetime.utcnow().isoformat()
         
-        async with self._lock:
-            await self.db.execute("""
+        with self._lock:
+            self.db.execute("""
                 INSERT INTO tq_sagas (
                     id, saga_type, context, idempotency_key,
                     current_step, status, step_results, created_at
                 )
                 VALUES (?, ?, ?, ?, 0, 'pending', '{}', ?)
             """, (saga_id, saga_type, json.dumps(context), idempotency_key, now))
-            await self.db.commit()
+            self.db.commit()
         
         return saga_id
     
-    async def claim(
+    def claim(
         self,
         saga_types: List[str],
         worker_id: str,
@@ -76,8 +76,8 @@ class SagaRepository:
         type_placeholders = ",".join("?" * len(saga_types))
         now = datetime.utcnow().isoformat()
         
-        async with self._lock:
-            cursor = await self.db.execute(f"""
+        with self._lock:
+            cursor = self.db.execute(f"""
                 UPDATE tq_sagas 
                 SET status = 'running',
                     claimed_by = ?,
@@ -93,28 +93,29 @@ class SagaRepository:
                 RETURNING *
             """, (worker_id, now, now, *saga_types))
             
-            row = await cursor.fetchone()
-            await self.db.commit()
+            row = cursor.fetchone()
+            cursor.close()  # ← 必须先关闭cursor
+            self.db.commit()
         
         return self._row_to_dict(row) if row else None
     
-    async def heartbeat(self, saga_id: str) -> bool:
+    def heartbeat(self, saga_id: str) -> bool:
         """更新心跳"""
         now = datetime.utcnow().isoformat()
-        async with self._lock:
-            cursor = await self.db.execute("""
+        with self._lock:
+            cursor = self.db.execute("""
                 UPDATE tq_sagas 
                 SET heartbeat_at = ?
                 WHERE id = ? AND status = 'running'
             """, (now, saga_id))
-            await self.db.commit()
+            self.db.commit()
         return cursor.rowcount > 0
     
-    async def recover_stale(self, timeout_seconds: int = 300) -> int:
+    def recover_stale(self, timeout_seconds: int = 300) -> int:
         """恢复超时的 Saga (重置为 pending)"""
-        async with self._lock:
-            cursor = await self.db.execute(f"""
-                UPDATE tq_sagas 
+        with self._lock:
+            cursor = self.db.execute(f"""
+                UPDATE tq_sagas
                 SET status = 'pending',
                     claimed_by = NULL,
                     claimed_at = NULL,
@@ -123,29 +124,30 @@ class SagaRepository:
                   AND (heartbeat_at IS NULL OR heartbeat_at < datetime('now', '-{timeout_seconds} seconds'))
                 RETURNING id
             """)
-            rows = await cursor.fetchall()
-            await self.db.commit()
+            rows = cursor.fetchall()
+            cursor.close()  # ← 必须先关闭cursor
+            self.db.commit()
         return len(rows) if rows else 0
     
-    async def get(self, saga_id: str) -> Optional[Dict[str, Any]]:
+    def get(self, saga_id: str) -> Optional[Dict[str, Any]]:
         """获取 Saga"""
-        async with self._lock:
-            cursor = await self.db.execute(
+        with self._lock:
+            cursor = self.db.execute(
                 "SELECT * FROM tq_sagas WHERE id = ?", (saga_id,)
             )
-            row = await cursor.fetchone()
+            row = cursor.fetchone()
         return self._row_to_dict(row) if row else None
     
-    async def get_by_idempotency_key(self, key: str) -> Optional[Dict[str, Any]]:
+    def get_by_idempotency_key(self, key: str) -> Optional[Dict[str, Any]]:
         """通过幂等键获取"""
-        async with self._lock:
-            cursor = await self.db.execute(
+        with self._lock:
+            cursor = self.db.execute(
                 "SELECT * FROM tq_sagas WHERE idempotency_key = ?", (key,)
             )
-            row = await cursor.fetchone()
+            row = cursor.fetchone()
         return self._row_to_dict(row) if row else None
     
-    async def update_progress(
+    def update_progress(
         self,
         saga_id: str,
         current_step: int,
@@ -154,53 +156,54 @@ class SagaRepository:
     ):
         """更新进度"""
         now = datetime.utcnow().isoformat()
-        async with self._lock:
-            await self.db.execute("""
+        with self._lock:
+            self.db.execute("""
                 UPDATE tq_sagas 
                 SET current_step = ?, step_results = ?, status = ?, updated_at = ?
                 WHERE id = ?
             """, (current_step, json.dumps(step_results), status, now, saga_id))
-            await self.db.commit()
+            self.db.commit()
     
-    async def mark_completed(self, saga_id: str, step_results: Dict[str, Any]):
+    def mark_completed(self, saga_id: str, step_results: Dict[str, Any]):
         """标记完成"""
         now = datetime.utcnow().isoformat()
-        async with self._lock:
-            await self.db.execute("""
+        with self._lock:
+            cursor = self.db.execute("""
                 UPDATE tq_sagas 
                 SET status = 'completed', step_results = ?, updated_at = ?, completed_at = ?
                 WHERE id = ?
             """, (json.dumps(step_results), now, now, saga_id))
-            await self.db.commit()
+            cursor.close()  # ← 必须先关闭cursor
+            self.db.commit()
     
-    async def mark_failed(self, saga_id: str, error: str):
+    def mark_failed(self, saga_id: str, error: str):
         """标记失败"""
         now = datetime.utcnow().isoformat()
-        async with self._lock:
-            await self.db.execute("""
+        with self._lock:
+            self.db.execute("""
                 UPDATE tq_sagas 
                 SET status = 'failed', error = ?, updated_at = ?
                 WHERE id = ?
             """, (error, now, saga_id))
-            await self.db.commit()
+            self.db.commit()
     
-    async def get_pending(self) -> List[Dict[str, Any]]:
+    def get_pending(self) -> List[Dict[str, Any]]:
         """获取待执行/运行中的 Saga"""
-        async with self._lock:
-            cursor = await self.db.execute(
+        with self._lock:
+            cursor = self.db.execute(
                 "SELECT * FROM tq_sagas WHERE status IN ('pending', 'running') ORDER BY created_at"
             )
-            rows = await cursor.fetchall()
+            rows = cursor.fetchall()
         return [self._row_to_dict(row) for row in rows]
     
-    async def start(
+    def start(
         self,
         saga_type: str,
         context: Dict[str, Any],
         idempotency_key: Optional[str] = None,
     ) -> str:
         """启动 Saga (兼容接口)"""
-        return await self.create(saga_type, context, idempotency_key)
+        return self.create(saga_type, context, idempotency_key)
     
     def _row_to_dict(self, row) -> Dict[str, Any]:
         """行转字典"""
@@ -246,7 +249,7 @@ class SagaOrchestrator(SagaRepository):
         """获取定义"""
         return self._definitions.get(saga_type)
     
-    async def start(
+    def start(
         self,
         saga_type: str,
         context: Dict[str, Any],
@@ -257,26 +260,26 @@ class SagaOrchestrator(SagaRepository):
             raise SagaError(f"Unknown saga type: {saga_type}")
         
         if idempotency_key:
-            existing = await self.get_by_idempotency_key(idempotency_key)
+            existing = self.get_by_idempotency_key(idempotency_key)
             if existing:
                 return existing["id"]
         
         saga_id = f"saga-{uuid.uuid4().hex[:12]}"
         now = datetime.utcnow().isoformat()
         
-        await self.db.execute("""
+        self.db.execute("""
             INSERT INTO tq_sagas (
                 id, saga_type, context, idempotency_key,
                 current_step, status, step_results, created_at
             )
             VALUES (?, ?, ?, ?, 0, 'running', '{}', ?)
         """, (saga_id, saga_type, json.dumps(context), idempotency_key, now))
-        await self.db.commit()
+        self.db.commit()
         
         definition = self._definitions[saga_type]
         executor = SagaExecutor(self.queue, self, self._definitions)
         
-        saga = await self.get(saga_id)
+        saga = self.get(saga_id)
         step_results = saga["step_results"]
         
         for i in range(len(definition.steps)):
@@ -288,33 +291,33 @@ class SagaOrchestrator(SagaRepository):
                     continue
             
             try:
-                result = await executor._execute_step(saga_id, step, context, step_results)
+                result = executor._execute_step(saga_id, step, context, step_results)
                 
                 if step.step_type == StepType.DECISION:
                     step_results["_decision"] = result
                 else:
                     step_results[step.name] = result
                 
-                await self.update_progress(saga_id, i + 1, step_results)
+                self.update_progress(saga_id, i + 1, step_results)
                 
             except Exception as e:
                 if step.optional:
                     step_results[step.name] = {"error": str(e)}
-                    await self.update_progress(saga_id, i + 1, step_results)
+                    self.update_progress(saga_id, i + 1, step_results)
                 else:
-                    await self.mark_failed(saga_id, str(e))
+                    self.mark_failed(saga_id, str(e))
                     raise SagaStepError(step.name, str(e), e)
         
-        await self.mark_completed(saga_id, step_results)
+        self.mark_completed(saga_id, step_results)
         return saga_id
     
-    async def resume(self, saga_id: str):
+    def resume(self, saga_id: str):
         """恢复执行"""
-        saga = await self.get(saga_id)
+        saga = self.get(saga_id)
         if not saga or saga["status"] not in ("pending", "running"):
             return
         
-        await self.update_progress(saga_id, saga["current_step"], saga["step_results"], "running")
+        self.update_progress(saga_id, saga["current_step"], saga["step_results"], "running")
         
         definition = self._definitions.get(saga["saga_type"])
         if not definition:
@@ -333,28 +336,28 @@ class SagaOrchestrator(SagaRepository):
                     continue
             
             try:
-                result = await executor._execute_step(saga_id, step, context, step_results)
+                result = executor._execute_step(saga_id, step, context, step_results)
                 
                 if step.step_type == StepType.DECISION:
                     step_results["_decision"] = result
                 else:
                     step_results[step.name] = result
                 
-                await self.update_progress(saga_id, i + 1, step_results)
+                self.update_progress(saga_id, i + 1, step_results)
                 
             except Exception as e:
                 if step.optional:
                     step_results[step.name] = {"error": str(e)}
-                    await self.update_progress(saga_id, i + 1, step_results)
+                    self.update_progress(saga_id, i + 1, step_results)
                 else:
-                    await self.mark_failed(saga_id, str(e))
+                    self.mark_failed(saga_id, str(e))
                     raise
         
-        await self.mark_completed(saga_id, step_results)
+        self.mark_completed(saga_id, step_results)
     
-    async def get_pending_sagas(self) -> List[Dict[str, Any]]:
+    def get_pending_sagas(self) -> List[Dict[str, Any]]:
         """获取待执行的 Saga (兼容旧接口)"""
-        return await self.get_pending()
+        return self.get_pending()
     
-    async def _get_saga(self, saga_id: str) -> Optional[Dict[str, Any]]:
-        return await self.get(saga_id)
+    def _get_saga(self, saga_id: str) -> Optional[Dict[str, Any]]:
+        return self.get(saga_id)

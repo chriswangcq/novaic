@@ -33,6 +33,7 @@ def _get_mcp_gateway_url() -> Optional[str]:
 class CreateAgentRequest(BaseModel):
     """Request to create a new agent"""
     name: str
+    model: Optional[str] = None  # LLM model (e.g., "kimi-k2.5", "gpt-4o")
     backend: str = "qemu"
     os_type: str = "ubuntu"
     os_version: str = "24.04"
@@ -108,7 +109,7 @@ class AvailableImageResponse(BaseModel):
 # ==================== Endpoints ====================
 
 @router.get("", response_model=AgentListResponse)
-async def list_agents():
+def list_agents():
     """List all AIC agents"""
     manager = get_agent_config_manager()
     agents = manager.list_agents()
@@ -121,7 +122,7 @@ async def list_agents():
 
 
 @router.get("/current", response_model=Optional[AgentResponse])
-async def get_current_agent():
+def get_current_agent():
     """Get the currently selected agent"""
     manager = get_agent_config_manager()
     agent = manager.get_current_agent()
@@ -133,7 +134,7 @@ async def get_current_agent():
 
 
 @router.post("/current")
-async def set_current_agent(request: SetCurrentAgentRequest):
+def set_current_agent(request: SetCurrentAgentRequest):
     """Set the current agent"""
     manager = get_agent_config_manager()
     
@@ -144,7 +145,7 @@ async def set_current_agent(request: SetCurrentAgentRequest):
 
 
 @router.get("/images", response_model=List[AvailableImageResponse])
-async def list_available_images():
+def list_available_images():
     """List available VM images"""
     manager = get_agent_config_manager()
     images = manager.get_available_images()
@@ -152,7 +153,7 @@ async def list_available_images():
 
 
 @router.get("/{agent_id}", response_model=AgentResponse)
-async def get_agent(agent_id: str):
+def get_agent(agent_id: str):
     """Get agent by ID"""
     manager = get_agent_config_manager()
     agent = manager.get_agent(agent_id)
@@ -164,7 +165,7 @@ async def get_agent(agent_id: str):
 
 
 @router.post("", response_model=AgentResponse)
-async def create_agent(request: CreateAgentRequest):
+def create_agent(request: CreateAgentRequest):
     """Create a new AIC agent"""
     manager = get_agent_config_manager()
     
@@ -179,15 +180,36 @@ async def create_agent(request: CreateAgentRequest):
             source_image=request.source_image,
         )
         
+        # Auto-create main SubAgent for the new agent
+        from gateway.db.repositories import SubAgentRepository
+        from gateway.db.database import get_database
+        
+        db = get_database()
+        subagent_repo = SubAgentRepository(db)
+        subagent_repo.get_or_create_main_subagent(agent.id)
+        
+        # Set model_id if provided
+        if request.model:
+            db.execute(
+                "UPDATE agents SET model_id = ? WHERE id = ?",
+                (request.model, agent.id)
+            )
+            db.commit()
+        
         # v2.7: MCP Gateways are created per-Runtime by Master, not per-Agent
         
-        return AgentResponse(**agent.model_dump())
+        # Re-fetch agent to get model_id
+        response_dict = agent.model_dump()
+        if request.model:
+            response_dict['model_id'] = request.model
+        
+        return AgentResponse(**response_dict)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.patch("/{agent_id}", response_model=AgentResponse)
-async def update_agent(agent_id: str, request: UpdateAgentRequest):
+def update_agent(agent_id: str, request: UpdateAgentRequest):
     """Update an existing agent"""
     manager = get_agent_config_manager()
     
@@ -212,7 +234,7 @@ async def update_agent(agent_id: str, request: UpdateAgentRequest):
             msg_repo = MessageRepository(db)
             
             # Store message - Monitor will detect and create Runtime
-            msg = await msg_repo.add_message(
+            msg = msg_repo.add_message(
                 agent_id=agent_id,
                 type="SYSTEM_MESSAGE",
                 content="VM setup complete. Execute skill agent-bootstrap to configure the agent environment.",
@@ -236,7 +258,7 @@ async def update_agent(agent_id: str, request: UpdateAgentRequest):
 
 
 @router.delete("/{agent_id}")
-async def delete_agent(agent_id: str):
+def delete_agent(agent_id: str):
     """Delete an agent and its VM files"""
     manager = get_agent_config_manager()
     
@@ -254,7 +276,7 @@ async def delete_agent(agent_id: str):
 # These endpoints are placeholders for status queries.
 
 @router.get("/{agent_id}/status")
-async def get_agent_status(agent_id: str):
+def get_agent_status(agent_id: str):
     """
     Get agent setup status.
     
@@ -277,7 +299,7 @@ async def get_agent_status(agent_id: str):
 # When MCP runs in separate process, proxy to MCP Gateway.
 
 @router.get("/mcp/status")
-async def get_mcp_status():
+def get_mcp_status():
     """
     Get MCPManager status.
     Proxies to MCP Gateway when MCP runs in separate process.
@@ -289,8 +311,8 @@ async def get_mcp_status():
     if not mcp_url:
         raise HTTPException(status_code=503, detail="MCP not available (no MCP Gateway URL)")
     try:
-        async with httpx.AsyncClient(timeout=10.0, trust_env=False) as client:
-            r = await client.get(f"{mcp_url.rstrip('/')}/internal/mcp/stats")
+        with httpx.Client(timeout=10.0, trust_env=False) as client:
+            r = client.get(f"{mcp_url.rstrip('/')}/internal/mcp/stats")
             r.raise_for_status()
             return r.json()
     except Exception as e:
@@ -298,7 +320,7 @@ async def get_mcp_status():
 
 
 @router.get("/mcp/runtimes")
-async def list_mcp_runtimes():
+def list_mcp_runtimes():
     """
     List all active Runtime MCP servers and their Aggregate Gateways.
     Proxies to MCP Gateway when MCP runs in separate process.
@@ -322,8 +344,8 @@ async def list_mcp_runtimes():
     if not mcp_url:
         raise HTTPException(status_code=503, detail="MCP not available (no MCP Gateway URL)")
     try:
-        async with httpx.AsyncClient(timeout=10.0, trust_env=False) as client:
-            r = await client.get(f"{mcp_url.rstrip('/')}/internal/mcp/runtimes")
+        with httpx.Client(timeout=10.0, trust_env=False) as client:
+            r = client.get(f"{mcp_url.rstrip('/')}/internal/mcp/runtimes")
             r.raise_for_status()
             return r.json()
     except Exception as e:
@@ -337,7 +359,7 @@ async def list_mcp_runtimes():
 # ==================== Model Selection (v20) ====================
 
 @router.get("/models/available", response_model=List[ModelInfo])
-async def list_available_models():
+def list_available_models():
     """
     List all available models for selection.
     
@@ -349,7 +371,7 @@ async def list_available_models():
     db = get_db()
     
     # Join candidate_models with api_keys to get full info
-    cursor = await db.execute("""
+    cursor = db.execute("""
         SELECT 
             m.id as model_id,
             m.name as model_name,
@@ -364,7 +386,7 @@ async def list_available_models():
         WHERE m.available = 1 AND k.api_key IS NOT NULL AND k.api_key != ''
         ORDER BY k.name, m.name
     """)
-    rows = await cursor.fetchall()
+    rows = cursor.fetchall()
     
     return [
         ModelInfo(
@@ -382,7 +404,7 @@ async def list_available_models():
 
 
 @router.get("/{agent_id}/model", response_model=AgentModelConfigResponse)
-async def get_agent_model(agent_id: str):
+def get_agent_model(agent_id: str):
     """
     Get agent's selected LLM model and configuration.
     
@@ -391,7 +413,7 @@ async def get_agent_model(agent_id: str):
     - model: Full model info including provider
     - api_key/api_base: Included for internal use (LLM calls)
     """
-    from gateway.config import get_config_manager_db
+    from gateway.config import get_config_manager
     
     db = get_db()
     manager = get_agent_config_manager()
@@ -401,20 +423,20 @@ async def get_agent_model(agent_id: str):
         raise HTTPException(status_code=404, detail="Agent not found")
     
     # Get agent's model_id from database
-    cursor = await db.execute(
+    cursor = db.execute(
         "SELECT model_id FROM agents WHERE id = ?",
         (agent_id,)
     )
-    row = await cursor.fetchone()
+    row = cursor.fetchone()
     model_id = row["model_id"] if row and row["model_id"] else None
     
     # If no model selected, use default from config
     if not model_id:
-        config = await get_config_manager_db().load()
+        config = get_config_manager().load()
         model_id = config.default_model
     
     # Get model and provider info
-    cursor = await db.execute("""
+    cursor = db.execute("""
         SELECT 
             m.id as model_id,
             m.name as model_name,
@@ -430,7 +452,7 @@ async def get_agent_model(agent_id: str):
         WHERE m.name = ?
         LIMIT 1
     """, (model_id,))
-    row = await cursor.fetchone()
+    row = cursor.fetchone()
     
     if not row:
         return AgentModelConfigResponse(
@@ -469,7 +491,7 @@ async def get_agent_model(agent_id: str):
 
 
 @router.put("/{agent_id}/model")
-async def set_agent_model(agent_id: str, request: SetAgentModelRequest):
+def set_agent_model(agent_id: str, request: SetAgentModelRequest):
     """
     Set agent's LLM model.
     
@@ -483,14 +505,14 @@ async def set_agent_model(agent_id: str, request: SetAgentModelRequest):
         raise HTTPException(status_code=404, detail="Agent not found")
     
     # Verify model exists and is enabled
-    cursor = await db.execute("""
+    cursor = db.execute("""
         SELECT m.id, m.name, k.name as provider_name
         FROM candidate_models m
         JOIN api_keys k ON m.api_key_id = k.id
         WHERE m.name = ? AND m.available = 1
         LIMIT 1
     """, (request.model_id,))
-    row = await cursor.fetchone()
+    row = cursor.fetchone()
     
     if not row:
         raise HTTPException(
@@ -499,11 +521,11 @@ async def set_agent_model(agent_id: str, request: SetAgentModelRequest):
         )
     
     # Update agent's model_id
-    await db.execute(
+    db.execute(
         "UPDATE agents SET model_id = ? WHERE id = ?",
         (request.model_id, agent_id)
     )
-    await db.commit()
+    db.commit()
     
     return {
         "success": True,

@@ -19,7 +19,7 @@ from ..business import RuntimeBusiness
 
 
 @register_handler("runtime.create")
-async def handle_runtime_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+def handle_runtime_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     创建 Runtime 记录
     
@@ -29,15 +29,14 @@ async def handle_runtime_create(payload: Dict[str, Any], ctx: dict) -> Dict[str,
         agent_id: str
         subagent_id: str
         idempotency_key: str (可选)
-        initial_context: list (可选)
     """
     biz = RuntimeBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
     
-    result = await biz.create(
+    result = biz.create(
         agent_id=payload["agent_id"],
         subagent_id=payload["subagent_id"],
         idempotency_key=payload.get("idempotency_key"),
-        initial_context=payload.get("initial_context", []),
+        # 移除 initial_context - 所有消息由 context.read 统一读取
     )
     
     return {
@@ -51,7 +50,7 @@ async def handle_runtime_create(payload: Dict[str, Any], ctx: dict) -> Dict[str,
 
 
 @register_handler("runtime.update_phase")
-async def handle_runtime_update_phase(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+def handle_runtime_update_phase(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     更新 Runtime phase
     
@@ -65,7 +64,7 @@ async def handle_runtime_update_phase(payload: Dict[str, Any], ctx: dict) -> Dic
     """
     biz = RuntimeBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
     
-    result = await biz.update_phase(
+    result = biz.update_phase(
         runtime_id=payload["runtime_id"],
         expected_phase=payload["expected_phase"],
         new_phase=payload["new_phase"],
@@ -91,7 +90,7 @@ async def handle_runtime_update_phase(payload: Dict[str, Any], ctx: dict) -> Dic
 
 
 @register_handler("runtime.set_status")
-async def handle_runtime_set_status(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+def handle_runtime_set_status(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     设置 Runtime status
     
@@ -104,7 +103,7 @@ async def handle_runtime_set_status(payload: Dict[str, Any], ctx: dict) -> Dict[
     """
     biz = RuntimeBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
     
-    result = await biz.set_status(
+    result = biz.set_status(
         runtime_id=payload["runtime_id"],
         expected_status=payload["expected_status"],
         new_status=payload["new_status"],
@@ -128,7 +127,7 @@ async def handle_runtime_set_status(payload: Dict[str, Any], ctx: dict) -> Dict[
 
 
 @register_handler("runtime.increment_round")
-async def handle_runtime_increment_round(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+def handle_runtime_increment_round(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     增加 Runtime round 计数
     
@@ -136,11 +135,11 @@ async def handle_runtime_increment_round(payload: Dict[str, Any], ctx: dict) -> 
         runtime_id: str
     """
     biz = RuntimeBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
-    return await biz.increment_round(payload["runtime_id"])
+    return biz.increment_round(payload["runtime_id"])
 
 
 @register_handler("runtime.set_summarized")
-async def handle_runtime_set_summarized(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+def handle_runtime_set_summarized(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     设置 Runtime 已生成摘要
     
@@ -151,7 +150,7 @@ async def handle_runtime_set_summarized(payload: Dict[str, Any], ctx: dict) -> D
     """
     biz = RuntimeBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
     
-    result = await biz.set_summarized(payload["runtime_id"])
+    result = biz.set_summarized(payload["runtime_id"])
     
     response = {
         "success": result.success,
@@ -165,7 +164,7 @@ async def handle_runtime_set_summarized(payload: Dict[str, Any], ctx: dict) -> D
 
 
 @register_handler("runtime.set_need_rest")
-async def handle_runtime_set_need_rest(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+def handle_runtime_set_need_rest(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     设置 Runtime need_rest 标志
     
@@ -177,7 +176,7 @@ async def handle_runtime_set_need_rest(payload: Dict[str, Any], ctx: dict) -> Di
     """
     biz = RuntimeBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
     
-    result = await biz.set_need_rest(
+    result = biz.set_need_rest(
         payload["runtime_id"],
         payload.get("value", True),
     )
@@ -194,7 +193,7 @@ async def handle_runtime_set_need_rest(payload: Dict[str, Any], ctx: dict) -> Di
 
 
 @register_handler("runtime.check_new_messages")
-async def handle_check_new_messages(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+def handle_check_new_messages(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     检查是否有新的 sent 消息 + need_rest 状态
     
@@ -211,12 +210,12 @@ async def handle_check_new_messages(payload: Dict[str, Any], ctx: dict) -> Dict[
     runtime_id = payload["runtime_id"]
     agent_id = payload["agent_id"]
     biz = RuntimeBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
-    runtime = await biz.get(runtime_id)
+    runtime = biz.get(runtime_id)
     need_rest = bool(runtime.get("need_rest")) if runtime else False
 
     from ..client import GatewayInternalClient
     client = ctx.get("gateway_client") or GatewayInternalClient(ctx["gateway_url"])
-    msg_resp = await client.has_new_messages(agent_id)
+    msg_resp = client.has_new_messages(agent_id)
     has_new = bool(msg_resp.get("has_new_messages"))
     
     return {

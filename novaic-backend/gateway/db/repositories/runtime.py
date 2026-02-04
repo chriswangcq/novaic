@@ -91,7 +91,7 @@ class RuntimeRepository:
     # Create Operations
     # ========================================
     
-    async def create_runtime(
+    def create_runtime(
         self, 
         subagent_id: str, 
         agent_id: str,
@@ -122,13 +122,13 @@ class RuntimeRepository:
             updated_at=now,
         )
         
-        await self._insert(runtime)
+        self._insert(runtime)
         return runtime
     
-    async def _insert(self, runtime: AgentRuntime):
+    def _insert(self, runtime: AgentRuntime):
         """Insert a runtime into database."""
-        async with self.db.get_connection() as conn:
-            await conn.execute("""
+        with self.db.get_connection() as conn:
+            conn.execute("""
                 INSERT INTO agent_runtimes (
                     runtime_id, subagent_id, agent_id, mcp_url,
                     current_round_id, current_round_num, phase,
@@ -155,131 +155,131 @@ class RuntimeRepository:
                 runtime.created_at,
                 runtime.updated_at,
             ))
-            await conn.commit()
+            conn.commit()
     
     # ========================================
     # Query Operations
     # ========================================
     
-    async def get_by_id(self, runtime_id: str) -> Optional[AgentRuntime]:
+    def get_by_id(self, runtime_id: str) -> Optional[AgentRuntime]:
         """Get a runtime by its ID."""
-        async with self.db.get_connection() as conn:
-            cursor = await conn.execute(
+        with self.db.get_connection() as conn:
+            cursor = conn.execute(
                 f"SELECT {self._COLUMNS} FROM agent_runtimes WHERE runtime_id = ?",
                 (runtime_id,)
             )
-            row = await cursor.fetchone()
+            row = cursor.fetchone()
             if row:
                 return self._row_to_runtime(row)
             return None
     
-    async def get_active_runtime(self, subagent_id: str, agent_id: str) -> Optional[AgentRuntime]:
+    def get_active_runtime(self, subagent_id: str, agent_id: str) -> Optional[AgentRuntime]:
         """Get the active runtime for a SubAgent (status in active, resting)."""
-        async with self.db.get_connection() as conn:
-            cursor = await conn.execute(f"""
+        with self.db.get_connection() as conn:
+            cursor = conn.execute(f"""
                 SELECT {self._COLUMNS} FROM agent_runtimes 
                 WHERE subagent_id = ? AND agent_id = ? AND status IN ('active', 'resting')
                 ORDER BY created_at DESC
                 LIMIT 1
             """, (subagent_id, agent_id))
-            row = await cursor.fetchone()
+            row = cursor.fetchone()
             if row:
                 return self._row_to_runtime(row)
             return None
     
-    async def get_active_runtimes_for_agent(self, agent_id: str) -> List[AgentRuntime]:
+    def get_active_runtimes_for_agent(self, agent_id: str) -> List[AgentRuntime]:
         """Get all active runtimes for an agent."""
-        async with self.db.get_connection() as conn:
-            cursor = await conn.execute(f"""
+        with self.db.get_connection() as conn:
+            cursor = conn.execute(f"""
                 SELECT {self._COLUMNS} FROM agent_runtimes 
                 WHERE agent_id = ? AND status IN ('active', 'resting')
                 ORDER BY created_at ASC
             """, (agent_id,))
-            rows = await cursor.fetchall()
+            rows = cursor.fetchall()
             return [self._row_to_runtime(row) for row in rows]
     
-    async def get_all_active_runtimes(self) -> List[AgentRuntime]:
+    def get_all_active_runtimes(self) -> List[AgentRuntime]:
         """Get all active runtimes across all agents."""
-        async with self.db.get_connection() as conn:
-            cursor = await conn.execute(f"""
+        with self.db.get_connection() as conn:
+            cursor = conn.execute(f"""
                 SELECT {self._COLUMNS} FROM agent_runtimes 
                 WHERE status IN ('active', 'resting')
                 ORDER BY created_at ASC
             """)
-            rows = await cursor.fetchall()
+            rows = cursor.fetchall()
             return [self._row_to_runtime(row) for row in rows]
     
-    async def has_active_runtime(self, subagent_id: str, agent_id: str) -> bool:
+    def has_active_runtime(self, subagent_id: str, agent_id: str) -> bool:
         """Check if SubAgent has an active runtime."""
-        async with self.db.get_connection() as conn:
-            cursor = await conn.execute("""
+        with self.db.get_connection() as conn:
+            cursor = conn.execute("""
                 SELECT 1 FROM agent_runtimes 
                 WHERE subagent_id = ? AND agent_id = ? AND status IN ('active', 'resting')
                 LIMIT 1
             """, (subagent_id, agent_id))
-            row = await cursor.fetchone()
+            row = cursor.fetchone()
             return row is not None
     
-    async def get_latest_runtimes(
+    def get_latest_runtimes(
         self, 
         subagent_id: str, 
         agent_id: str, 
         limit: int = 30
     ) -> List[AgentRuntime]:
         """Get the latest runtimes for a SubAgent (for context preparation)."""
-        async with self.db.get_connection() as conn:
-            cursor = await conn.execute(f"""
+        with self.db.get_connection() as conn:
+            cursor = conn.execute(f"""
                 SELECT {self._COLUMNS} FROM agent_runtimes 
                 WHERE subagent_id = ? AND agent_id = ? AND status = 'completed' AND is_merged = 0
                 ORDER BY created_at DESC
                 LIMIT ?
             """, (subagent_id, agent_id, limit))
-            rows = await cursor.fetchall()
+            rows = cursor.fetchall()
             # Return in chronological order (oldest first)
             return [self._row_to_runtime(row) for row in reversed(rows)]
     
-    async def get_unmerged_runtimes(
+    def get_unmerged_runtimes(
         self, 
         subagent_id: str, 
         agent_id: str
     ) -> List[AgentRuntime]:
         """Get all unmerged completed runtimes for a SubAgent."""
-        async with self.db.get_connection() as conn:
-            cursor = await conn.execute(f"""
+        with self.db.get_connection() as conn:
+            cursor = conn.execute(f"""
                 SELECT {self._COLUMNS} FROM agent_runtimes 
                 WHERE subagent_id = ? AND agent_id = ? AND status = 'completed' AND is_merged = 0
                 ORDER BY created_at ASC
             """, (subagent_id, agent_id))
-            rows = await cursor.fetchall()
+            rows = cursor.fetchall()
             return [self._row_to_runtime(row) for row in rows]
     
     # ========================================
     # Update Operations
     # ========================================
     
-    async def set_mcp_url(self, runtime_id: str, mcp_url: str):
+    def set_mcp_url(self, runtime_id: str, mcp_url: str):
         """Set the MCP URL for a runtime."""
         now = datetime.utcnow().isoformat()
-        async with self.db.get_connection() as conn:
-            await conn.execute("""
+        with self.db.get_connection() as conn:
+            conn.execute("""
                 UPDATE agent_runtimes 
                 SET mcp_url = ?, updated_at = ?
                 WHERE runtime_id = ?
             """, (mcp_url, now, runtime_id))
-            await conn.commit()
+            conn.commit()
     
-    async def update_phase(self, runtime_id: str, phase: str):
+    def update_phase(self, runtime_id: str, phase: str):
         """Update runtime phase."""
         now = datetime.utcnow().isoformat()
-        async with self.db.get_connection() as conn:
-            await conn.execute("""
+        with self.db.get_connection() as conn:
+            conn.execute("""
                 UPDATE agent_runtimes 
                 SET phase = ?, updated_at = ?
                 WHERE runtime_id = ?
             """, (phase, now, runtime_id))
-            await conn.commit()
+            conn.commit()
     
-    async def advance_round(self, runtime_id: str, expected_round_num: int = None) -> Optional[str]:
+    def advance_round(self, runtime_id: str, expected_round_num: int = None) -> Optional[str]:
         """Advance to next round (atomic CAS operation).
         
         Args:
@@ -291,10 +291,10 @@ class RuntimeRepository:
         """
         now = datetime.utcnow().isoformat()
         
-        async with self.db.get_connection() as conn:
+        with self.db.get_connection() as conn:
             if expected_round_num is not None:
                 # Atomic CAS: only advance if round_num matches expected
-                cursor = await conn.execute("""
+                cursor = conn.execute("""
                     UPDATE agent_runtimes 
                     SET current_round_num = current_round_num + 1,
                         current_round_id = 'round-' || (current_round_num + 1),
@@ -303,7 +303,7 @@ class RuntimeRepository:
                     WHERE runtime_id = ? AND current_round_num = ?
                 """, (now, runtime_id, expected_round_num))
             else:
-                cursor = await conn.execute("""
+                cursor = conn.execute("""
                     UPDATE agent_runtimes 
                     SET current_round_num = current_round_num + 1,
                         current_round_id = 'round-' || (current_round_num + 1),
@@ -312,89 +312,89 @@ class RuntimeRepository:
                     WHERE runtime_id = ?
                 """, (now, runtime_id))
             
-            await conn.commit()
+            conn.commit()
             
             if cursor.rowcount > 0:
-                runtime = await self.get_by_id(runtime_id)
+                runtime = self.get_by_id(runtime_id)
                 return runtime.current_round_id if runtime else None
             return None
     
-    async def update_context(self, runtime_id: str, context: List[Dict[str, Any]]):
+    def update_context(self, runtime_id: str, context: List[Dict[str, Any]]):
         """Update runtime context."""
         now = datetime.utcnow().isoformat()
-        async with self.db.get_connection() as conn:
-            await conn.execute("""
+        with self.db.get_connection() as conn:
+            conn.execute("""
                 UPDATE agent_runtimes 
                 SET context = ?, updated_at = ?
                 WHERE runtime_id = ?
             """, (json.dumps(context), now, runtime_id))
-            await conn.commit()
+            conn.commit()
     
-    async def append_to_context(self, runtime_id: str, messages: List[Dict[str, Any]]):
+    def append_to_context(self, runtime_id: str, messages: List[Dict[str, Any]]):
         """Append messages to runtime context."""
-        runtime = await self.get_by_id(runtime_id)
+        runtime = self.get_by_id(runtime_id)
         if not runtime:
             raise ValueError(f"Runtime not found: {runtime_id}")
         
         new_context = runtime.context + messages
-        await self.update_context(runtime_id, new_context)
+        self.update_context(runtime_id, new_context)
     
-    async def set_phase(self, runtime_id: str, phase: str):
+    def set_phase(self, runtime_id: str, phase: str):
         """Set runtime phase only."""
         now = datetime.utcnow().isoformat()
-        async with self.db.get_connection() as conn:
-            await conn.execute("""
+        with self.db.get_connection() as conn:
+            conn.execute("""
                 UPDATE agent_runtimes 
                 SET phase = ?, updated_at = ?
                 WHERE runtime_id = ?
             """, (phase, now, runtime_id))
-            await conn.commit()
+            conn.commit()
     
-    async def set_pending_actions(self, runtime_id: str, task_ids: List[str], phase: str = 'waiting_actions'):
+    def set_pending_actions(self, runtime_id: str, task_ids: List[str], phase: str = 'waiting_actions'):
         """Set pending action task IDs for current round."""
         now = datetime.utcnow().isoformat()
-        async with self.db.get_connection() as conn:
-            await conn.execute("""
+        with self.db.get_connection() as conn:
+            conn.execute("""
                 UPDATE agent_runtimes 
                 SET pending_actions = ?, phase = ?, updated_at = ?
                 WHERE runtime_id = ?
             """, (json.dumps(task_ids), phase, now, runtime_id))
-            await conn.commit()
+            conn.commit()
     
-    async def set_status(self, runtime_id: str, status: str):
+    def set_status(self, runtime_id: str, status: str):
         """Set runtime status."""
         now = datetime.utcnow().isoformat()
-        async with self.db.get_connection() as conn:
-            await conn.execute("""
+        with self.db.get_connection() as conn:
+            conn.execute("""
                 UPDATE agent_runtimes 
                 SET status = ?, updated_at = ?
                 WHERE runtime_id = ?
             """, (status, now, runtime_id))
-            await conn.commit()
+            conn.commit()
     
-    async def mark_completed(self, runtime_id: str):
+    def mark_completed(self, runtime_id: str):
         """Mark runtime as completed."""
         now = datetime.utcnow().isoformat()
-        async with self.db.get_connection() as conn:
-            await conn.execute("""
+        with self.db.get_connection() as conn:
+            conn.execute("""
                 UPDATE agent_runtimes 
                 SET status = 'completed', phase = 'completed', updated_at = ?
                 WHERE runtime_id = ?
             """, (now, runtime_id))
-            await conn.commit()
+            conn.commit()
     
-    async def mark_failed(self, runtime_id: str, error: str):
+    def mark_failed(self, runtime_id: str, error: str):
         """Mark runtime as failed."""
         now = datetime.utcnow().isoformat()
-        async with self.db.get_connection() as conn:
-            await conn.execute("""
+        with self.db.get_connection() as conn:
+            conn.execute("""
                 UPDATE agent_runtimes 
                 SET status = 'failed', error = ?, updated_at = ?
                 WHERE runtime_id = ?
             """, (error, now, runtime_id))
-            await conn.commit()
+            conn.commit()
     
-    async def set_resting(self, runtime_id: str):
+    def set_resting(self, runtime_id: str):
         """Set runtime to resting state.
         
         v14: Simplified - just sets status='resting'.
@@ -404,95 +404,95 @@ class RuntimeRepository:
         think rounds and go directly to summarize.
         """
         now = datetime.utcnow().isoformat()
-        async with self.db.get_connection() as conn:
-            await conn.execute("""
+        with self.db.get_connection() as conn:
+            conn.execute("""
                 UPDATE agent_runtimes 
                 SET status = 'resting', updated_at = ?
                 WHERE runtime_id = ?
             """, (now, runtime_id))
-            await conn.commit()
+            conn.commit()
     
     # ========================================
     # Summary Operations (v14)
     # ========================================
     
-    async def set_summary(self, runtime_id: str, summary: str):
+    def set_summary(self, runtime_id: str, summary: str):
         """Set the summary for a completed runtime."""
         now = datetime.utcnow().isoformat()
-        async with self.db.get_connection() as conn:
-            await conn.execute("""
+        with self.db.get_connection() as conn:
+            conn.execute("""
                 UPDATE agent_runtimes 
                 SET summary = ?, updated_at = ?
                 WHERE runtime_id = ?
             """, (summary, now, runtime_id))
-            await conn.commit()
+            conn.commit()
     
-    async def mark_merged(self, runtime_id: str):
+    def mark_merged(self, runtime_id: str):
         """Mark a runtime's summary as merged into historical_summary."""
         now = datetime.utcnow().isoformat()
-        async with self.db.get_connection() as conn:
-            await conn.execute("""
+        with self.db.get_connection() as conn:
+            conn.execute("""
                 UPDATE agent_runtimes 
                 SET is_merged = 1, updated_at = ?
                 WHERE runtime_id = ?
             """, (now, runtime_id))
-            await conn.commit()
+            conn.commit()
     
-    async def mark_multiple_merged(self, runtime_ids: List[str]):
+    def mark_multiple_merged(self, runtime_ids: List[str]):
         """Mark multiple runtimes as merged."""
         if not runtime_ids:
             return
         now = datetime.utcnow().isoformat()
         placeholders = ','.join(['?' for _ in runtime_ids])
-        async with self.db.get_connection() as conn:
-            await conn.execute(f"""
+        with self.db.get_connection() as conn:
+            conn.execute(f"""
                 UPDATE agent_runtimes 
                 SET is_merged = 1, updated_at = ?
                 WHERE runtime_id IN ({placeholders})
             """, [now] + runtime_ids)
-            await conn.commit()
+            conn.commit()
     
     # ========================================
     # Delete Operations
     # ========================================
     
-    async def delete(self, runtime_id: str):
+    def delete(self, runtime_id: str):
         """Delete a runtime."""
-        async with self.db.get_connection() as conn:
-            await conn.execute(
+        with self.db.get_connection() as conn:
+            conn.execute(
                 "DELETE FROM agent_runtimes WHERE runtime_id = ?",
                 (runtime_id,)
             )
-            await conn.commit()
+            conn.commit()
     
-    async def delete_all_for_agent(self, agent_id: str):
+    def delete_all_for_agent(self, agent_id: str):
         """Delete all runtimes for an agent."""
-        async with self.db.get_connection() as conn:
-            await conn.execute(
+        with self.db.get_connection() as conn:
+            conn.execute(
                 "DELETE FROM agent_runtimes WHERE agent_id = ?",
                 (agent_id,)
             )
-            await conn.commit()
+            conn.commit()
     
-    async def delete_all_for_subagent(self, subagent_id: str, agent_id: str):
+    def delete_all_for_subagent(self, subagent_id: str, agent_id: str):
         """Delete all runtimes for a SubAgent."""
-        async with self.db.get_connection() as conn:
-            await conn.execute(
+        with self.db.get_connection() as conn:
+            conn.execute(
                 "DELETE FROM agent_runtimes WHERE subagent_id = ? AND agent_id = ?",
                 (subagent_id, agent_id)
             )
-            await conn.commit()
+            conn.commit()
     
-    async def cleanup_completed(self, older_than_hours: int = 24):
+    def cleanup_completed(self, older_than_hours: int = 24):
         """Clean up completed/failed runtimes older than specified hours."""
-        async with self.db.get_connection() as conn:
-            await conn.execute("""
+        with self.db.get_connection() as conn:
+            conn.execute("""
                 DELETE FROM agent_runtimes 
                 WHERE status IN ('completed', 'failed')
                 AND is_merged = 1
                 AND updated_at < datetime('now', ? || ' hours')
             """, (f"-{older_than_hours}",))
-            await conn.commit()
+            conn.commit()
     
     # ========================================
     # Helper Methods
@@ -524,19 +524,19 @@ class RuntimeRepository:
     # Backward Compatibility (deprecated)
     # ========================================
     
-    async def create_main_runtime(self, agent_id: str) -> AgentRuntime:
+    def create_main_runtime(self, agent_id: str) -> AgentRuntime:
         """DEPRECATED: Use create_runtime(subagent_id, agent_id) instead."""
         # v14: main subagent_id now has format main-{agent_id[:8]}
         subagent_id = f"main-{agent_id[:8]}"
-        return await self.create_runtime(subagent_id, agent_id)
+        return self.create_runtime(subagent_id, agent_id)
     
-    async def get_main_runtime(self, agent_id: str) -> Optional[AgentRuntime]:
+    def get_main_runtime(self, agent_id: str) -> Optional[AgentRuntime]:
         """DEPRECATED: Get the active main runtime for an agent.
         
         v14: Now queries by subagent type='main' via JOIN, not by subagent_id='main'.
         """
-        async with self.db.get_connection() as conn:
-            cursor = await conn.execute("""
+        with self.db.get_connection() as conn:
+            cursor = conn.execute("""
                 SELECT r.runtime_id, r.subagent_id, r.agent_id, r.mcp_url,
                        r.current_round_id, r.current_round_num, r.phase, r.context,
                        r.pending_actions, r.status, r.error, r.summary, r.is_merged,
@@ -546,21 +546,21 @@ class RuntimeRepository:
                 WHERE r.agent_id = ? AND s.type = 'main' AND r.status = 'active'
                 LIMIT 1
             """, (agent_id,))
-            row = await cursor.fetchone()
+            row = cursor.fetchone()
             if row:
                 return self._row_to_runtime(row)
             return None
     
-    async def get_active_runtimes(self, agent_id: str) -> List[AgentRuntime]:
+    def get_active_runtimes(self, agent_id: str) -> List[AgentRuntime]:
         """DEPRECATED: Use get_active_runtimes_for_agent instead."""
-        return await self.get_active_runtimes_for_agent(agent_id)
+        return self.get_active_runtimes_for_agent(agent_id)
     
-    async def wake_main_runtime(self, runtime_id: str) -> bool:
+    def wake_main_runtime(self, runtime_id: str) -> bool:
         """DEPRECATED: Wake logic now handled by SubAgent status."""
         # For backward compatibility, just set status to active
         now = datetime.utcnow().isoformat()
-        async with self.db.get_connection() as conn:
-            cursor = await conn.execute("""
+        with self.db.get_connection() as conn:
+            cursor = conn.execute("""
                 UPDATE agent_runtimes 
                 SET status = 'active', phase = 'need_think', 
                     current_round_num = current_round_num + 1,
@@ -568,5 +568,5 @@ class RuntimeRepository:
                     pending_actions = '[]', updated_at = ?
                 WHERE runtime_id = ? AND status = 'completed'
             """, (now, runtime_id))
-            await conn.commit()
+            conn.commit()
             return cursor.rowcount > 0

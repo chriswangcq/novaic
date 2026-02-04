@@ -10,7 +10,7 @@ from . import register_handler
 
 
 @register_handler("saga.trigger")
-async def handle_saga_trigger(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+def handle_saga_trigger(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     触发新 Saga
     
@@ -36,13 +36,13 @@ async def handle_saga_trigger(payload: Dict[str, Any], ctx: dict) -> Dict[str, A
     try:
         # Prefer async create (non-blocking) when available.
         if hasattr(saga_client, "create") and callable(getattr(saga_client, "create")):
-            saga_id = await saga_client.create(
+            saga_id = saga_client.create(
                 saga_type=saga_type,
                 context=saga_context,
                 idempotency_key=idempotency_key,
             )
         else:
-            saga_id = await saga_client.start(
+            saga_id = saga_client.start(
                 saga_type=saga_type,
                 context=saga_context,
                 idempotency_key=idempotency_key,

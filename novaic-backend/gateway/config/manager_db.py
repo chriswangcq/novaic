@@ -3,11 +3,12 @@ NovAIC Gateway - Database-backed Configuration Manager
 
 Manages API keys, models, and settings using SQLite.
 This replaces the file-based ConfigManager.
+
+All operations are synchronous.
 """
 
 import json
 import uuid
-import asyncio
 from typing import Optional, List, Any
 from datetime import datetime
 from enum import Enum
@@ -123,7 +124,7 @@ class AppConfig(BaseModel):
 
 class ConfigManagerDB:
     """
-    Database-backed Configuration Manager.
+    Database-backed Configuration Manager (Synchronous).
     
     All operations go directly to SQLite database.
     No in-memory caching - every read fetches from DB.
@@ -145,13 +146,13 @@ class ConfigManagerDB:
             self._repo = ConfigRepository(self.db)
         return self._repo
     
-    async def load(self) -> AppConfig:
+    def load(self) -> AppConfig:
         """Load full configuration from database."""
         # Get general config
-        config_data = await self.repo.get_all()
+        config_data = self.repo.get_all()
         
         # Get API keys
-        api_keys_data = await self.repo.list_api_keys()
+        api_keys_data = self.repo.list_api_keys()
         api_keys = []
         for k in api_keys_data:
             api_keys.append(ApiKeyEntry(
@@ -166,7 +167,7 @@ class ConfigManagerDB:
             ))
         
         # Get models
-        models_data = await self.repo.list_models()
+        models_data = self.repo.list_models()
         models = []
         for m in models_data:
             models.append(CandidateModel(
@@ -190,7 +191,7 @@ class ConfigManagerDB:
     
     # ==================== API Key Management ====================
     
-    async def add_api_key(
+    def add_api_key(
         self,
         provider: ProviderType,
         name: Optional[str] = None,
@@ -202,13 +203,13 @@ class ConfigManagerDB:
         """Add a new API key entry."""
         # Generate name if not provided
         if not name:
-            existing = await self.repo.list_api_keys()
+            existing = self.repo.list_api_keys()
             count = sum(1 for k in existing if k["provider"] == provider.value)
             name = f"{provider.display_name} #{count + 1}"
         
         key_id = str(uuid.uuid4())
         
-        await self.repo.create_api_key(
+        self.repo.create_api_key(
             id=key_id,
             name=name,
             provider=provider.value,
@@ -228,7 +229,7 @@ class ConfigManagerDB:
             api_version=api_version,
         )
     
-    async def update_api_key(
+    def update_api_key(
         self,
         key_id: str,
         name: Optional[str] = None,
@@ -238,7 +239,7 @@ class ConfigManagerDB:
         api_version: Optional[str] = None,
     ) -> Optional[ApiKeyEntry]:
         """Update an existing API key entry."""
-        result = await self.repo.update_api_key(
+        result = self.repo.update_api_key(
             key_id=key_id,
             name=name,
             api_key=api_key,
@@ -260,13 +261,13 @@ class ConfigManagerDB:
             )
         return None
     
-    async def delete_api_key(self, key_id: str) -> bool:
+    def delete_api_key(self, key_id: str) -> bool:
         """Delete an API key entry (cascades to models)."""
-        return await self.repo.delete_api_key(key_id)
+        return self.repo.delete_api_key(key_id)
     
     # ==================== Model Management ====================
     
-    async def add_model(
+    def add_model(
         self,
         model_id: str,
         name: str,
@@ -276,7 +277,7 @@ class ConfigManagerDB:
         is_custom: bool = False,
     ) -> CandidateModel:
         """Add a new candidate model."""
-        await self.repo.create_model(
+        self.repo.create_model(
             id=model_id,
             name=name,
             provider=provider.value,
@@ -294,31 +295,31 @@ class ConfigManagerDB:
             is_custom=is_custom,
         )
     
-    async def toggle_model(
+    def toggle_model(
         self,
         model_id: str,
         api_key_id: str,
         enabled: bool
     ) -> bool:
         """Enable or disable a model."""
-        return await self.repo.toggle_model(model_id, api_key_id, enabled)
+        return self.repo.toggle_model(model_id, api_key_id, enabled)
     
-    async def delete_model(self, model_id: str, api_key_id: str) -> bool:
+    def delete_model(self, model_id: str, api_key_id: str) -> bool:
         """Delete a model."""
-        return await self.repo.delete_model(model_id, api_key_id)
+        return self.repo.delete_model(model_id, api_key_id)
     
-    async def save_models_for_key(
+    def save_models_for_key(
         self,
         api_key_id: str,
         models: List[dict]
     ):
         """Save/merge models for an API key."""
         # Get API key to determine provider
-        key_data = await self.repo.get_api_key(api_key_id)
+        key_data = self.repo.get_api_key(api_key_id)
         if not key_data:
             return
         
-        await self.repo.save_models_for_key(
+        self.repo.save_models_for_key(
             api_key_id=api_key_id,
             models=models,
             provider=key_data["provider"],
@@ -326,7 +327,7 @@ class ConfigManagerDB:
     
     # ==================== Settings ====================
     
-    async def update_settings(
+    def update_settings(
         self,
         default_model: Optional[str] = None,
         max_tokens: Optional[int] = None,
@@ -335,114 +336,44 @@ class ConfigManagerDB:
     ):
         """Update common settings."""
         if default_model is not None:
-            await self.repo.set("default_model", default_model)
+            self.repo.set("default_model", default_model)
         if max_tokens is not None:
-            await self.repo.set("max_tokens", max_tokens)
+            self.repo.set("max_tokens", max_tokens)
         if max_iterations is not None:
-            await self.repo.set("max_iterations", max_iterations)
+            self.repo.set("max_iterations", max_iterations)
         if visible_shell is not None:
-            await self.repo.set("visible_shell", visible_shell)
-    
-    async def set_default_model(self, model_id: str):
-        """Set the default model."""
-        await self.repo.set("default_model", model_id)
-    
-    async def get_default_model(self) -> str:
-        """Get the default model."""
-        return await self.repo.get("default_model") or "gpt-4o"
-
-
-# ==================== Sync Wrapper for Backward Compatibility ====================
-
-class ConfigManager:
-    """
-    Synchronous wrapper around ConfigManagerDB for backward compatibility.
-    
-    Uses asyncio.run() to execute async operations.
-    In new code, prefer using ConfigManagerDB directly.
-    """
-    
-    def __init__(self):
-        self._async_manager = ConfigManagerDB()
-        self._loop = None
-    
-    def _run_async(self, coro):
-        """Run an async coroutine synchronously."""
-        try:
-            loop = asyncio.get_running_loop()
-            # If already in async context, create a task
-            import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                future = pool.submit(asyncio.run, coro)
-                return future.result()
-        except RuntimeError:
-            # No running loop, safe to use asyncio.run
-            return asyncio.run(coro)
-    
-    def load(self) -> AppConfig:
-        """Load configuration."""
-        return self._run_async(self._async_manager.load())
-    
-    def reload(self) -> AppConfig:
-        """Reload configuration (same as load for DB version)."""
-        return self.load()
-    
-    def add_api_key(self, **kwargs) -> ApiKeyEntry:
-        """Add API key."""
-        if "provider" in kwargs and isinstance(kwargs["provider"], str):
-            kwargs["provider"] = ProviderType(kwargs["provider"])
-        return self._run_async(self._async_manager.add_api_key(**kwargs))
-    
-    def update_api_key(self, key_id: str, **kwargs) -> Optional[ApiKeyEntry]:
-        """Update API key."""
-        return self._run_async(self._async_manager.update_api_key(key_id, **kwargs))
-    
-    def delete_api_key(self, key_id: str) -> bool:
-        """Delete API key."""
-        return self._run_async(self._async_manager.delete_api_key(key_id))
-    
-    def add_model(self, **kwargs) -> CandidateModel:
-        """Add model."""
-        if "provider" in kwargs and isinstance(kwargs["provider"], str):
-            kwargs["provider"] = ProviderType(kwargs["provider"])
-        return self._run_async(self._async_manager.add_model(**kwargs))
-    
-    def toggle_model(self, model_id: str, api_key_id: str, enabled: bool) -> bool:
-        """Toggle model."""
-        return self._run_async(self._async_manager.toggle_model(model_id, api_key_id, enabled))
-    
-    def delete_model(self, model_id: str, api_key_id: str) -> bool:
-        """Delete model."""
-        return self._run_async(self._async_manager.delete_model(model_id, api_key_id))
-    
-    def save_models_for_key(self, api_key_id: str, models: List[dict]):
-        """Save models for key."""
-        return self._run_async(self._async_manager.save_models_for_key(api_key_id, models))
-    
-    def update_settings(self, **kwargs):
-        """Update settings."""
-        return self._run_async(self._async_manager.update_settings(**kwargs))
+            self.repo.set("visible_shell", visible_shell)
     
     def set_default_model(self, model_id: str):
-        """Set default model."""
-        return self._run_async(self._async_manager.set_default_model(model_id))
+        """Set the default model."""
+        self.repo.set("default_model", model_id)
+    
+    def get_default_model(self) -> str:
+        """Get the default model."""
+        return self.repo.get("default_model") or "gpt-4o"
+
+
+# ==================== Alias for Backward Compatibility ====================
+
+# ConfigManager is now just an alias to ConfigManagerDB (both are sync)
+ConfigManager = ConfigManagerDB
 
 
 # Global instances
-_config_manager: Optional[ConfigManager] = None
+_config_manager: Optional[ConfigManagerDB] = None
 _config_manager_db: Optional[ConfigManagerDB] = None
 
 
-def get_config_manager() -> ConfigManager:
-    """Get the global sync config manager instance."""
+def get_config_manager() -> ConfigManagerDB:
+    """Get the global config manager instance."""
     global _config_manager
     if _config_manager is None:
-        _config_manager = ConfigManager()
+        _config_manager = ConfigManagerDB()
     return _config_manager
 
 
 def get_config_manager_db() -> ConfigManagerDB:
-    """Get the global async config manager instance."""
+    """Get the global config manager instance (alias for compatibility)."""
     global _config_manager_db
     if _config_manager_db is None:
         _config_manager_db = ConfigManagerDB()

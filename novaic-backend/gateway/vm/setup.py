@@ -202,7 +202,7 @@ class VmSetup:
     
     # ==================== VM Setup ====================
     
-    async def setup_vm(
+    def setup_vm(
         self,
         agent_id: str,
         source_image: str,
@@ -227,7 +227,7 @@ class VmSetup:
         
         # Get SSH public key
         ssh_manager = get_ssh_key_manager()
-        ssh_pubkey = await ssh_manager.get_public_key()
+        ssh_pubkey = ssh_manager.get_public_key()
         
         result = {
             "vm_dir": str(vm_dir),

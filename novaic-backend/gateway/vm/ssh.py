@@ -39,7 +39,7 @@ class SshKeyManager:
         self.repo = SshKeyRepository()
         self._temp_key_dir: Optional[Path] = None
     
-    async def get_or_create_default_key(self) -> Dict[str, Any]:
+    def get_or_create_default_key(self) -> Dict[str, Any]:
         """
         Get the default SSH key, creating one if it doesn't exist.
         
@@ -47,7 +47,7 @@ class SshKeyManager:
             Dict with id, name, public_key, private_key
         """
         # Try to get existing default key
-        key = await self.repo.get_default_key()
+        key = self.repo.get_default_key()
         if key:
             logger.debug(f"[SSH] Using existing default key: {key['id'][:8]}")
             return key
@@ -57,7 +57,7 @@ class SshKeyManager:
         key_id = str(uuid.uuid4())
         public_key, private_key = self._generate_key_pair()
         
-        await self.repo.create_key(
+        self.repo.create_key(
             key_id=key_id,
             name="default",
             public_key=public_key,
@@ -75,18 +75,18 @@ class SshKeyManager:
             "is_default": True,
         }
     
-    async def get_public_key(self) -> str:
+    def get_public_key(self) -> str:
         """Get the default public key for cloud-init."""
-        key = await self.get_or_create_default_key()
+        key = self.get_or_create_default_key()
         return key["public_key"]
     
-    async def get_private_key_path(self) -> Path:
+    def get_private_key_path(self) -> Path:
         """
         Get path to the private key file (for SSH commands).
         
         Creates a temporary file if needed.
         """
-        key = await self.get_or_create_default_key()
+        key = self.get_or_create_default_key()
         
         # Create temp directory if needed
         if self._temp_key_dir is None:
@@ -102,9 +102,9 @@ class SshKeyManager:
         
         return key_path
     
-    async def list_keys(self) -> List[Dict[str, Any]]:
+    def list_keys(self) -> List[Dict[str, Any]]:
         """List all SSH keys (without private keys for security)."""
-        keys = await self.repo.list_keys()
+        keys = self.repo.list_keys()
         # Remove private keys from response
         return [
             {
@@ -117,12 +117,12 @@ class SshKeyManager:
             for k in keys
         ]
     
-    async def create_key(self, name: str = "custom") -> Dict[str, Any]:
+    def create_key(self, name: str = "custom") -> Dict[str, Any]:
         """Create a new SSH key pair."""
         key_id = str(uuid.uuid4())
         public_key, private_key = self._generate_key_pair()
         
-        await self.repo.create_key(
+        self.repo.create_key(
             key_id=key_id,
             name=name,
             public_key=public_key,
@@ -138,9 +138,9 @@ class SshKeyManager:
             "public_key": public_key,
         }
     
-    async def delete_key(self, key_id: str) -> bool:
+    def delete_key(self, key_id: str) -> bool:
         """Delete an SSH key."""
-        key = await self.repo.get_key(key_id)
+        key = self.repo.get_key(key_id)
         if not key:
             return False
         
@@ -148,7 +148,7 @@ class SshKeyManager:
             logger.warning("[SSH] Cannot delete default key")
             return False
         
-        await self.repo.delete_key(key_id)
+        self.repo.delete_key(key_id)
         
         # Clean up temp file if exists
         if self._temp_key_dir:
