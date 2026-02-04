@@ -9,7 +9,7 @@ import sqlite3
 from typing import Optional, Any, List, Dict, Tuple
 from contextlib import contextmanager
 
-from .database import get_database, Database
+from .access import get_database, Database
 
 # ==================== Core Operations ====================
 

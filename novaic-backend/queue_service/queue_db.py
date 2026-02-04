@@ -16,7 +16,7 @@ import uuid
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 
-from task_queue.exceptions import TaskNotFoundError
+from queue_service.exceptions import TaskNotFoundError
 
 
 class TaskQueue:

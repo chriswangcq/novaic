@@ -91,8 +91,8 @@ class SagaWorkerSync:
         self.worker_id = f"saga-sync-{uuid.uuid4().hex[:8]}"
         
         # 使用现有的同步 SDK
-        self.saga_client = SagaClient(gateway_url, timeout=step_timeout)
-        self.task_client = TaskQueueClient(gateway_url, timeout=step_timeout)
+        self.saga_client = SagaClient(queue_service_url, timeout=step_timeout)  # 连接 Queue Service
+        self.task_client = TaskQueueClient(queue_service_url, timeout=step_timeout)  # 连接 Queue Service
         
         self._running = False
         self._lock = threading.Lock()
@@ -499,7 +499,7 @@ class SagaWorkerSync:
 
 def start_worker(
     saga_types: List[str] = None,
-    gateway_url: str = "http://127.0.0.1:19999",
+    queue_service_url: str = "http://127.0.0.1:19997",  # 改为 Queue Service
     max_concurrent: int = 10,
 ):
     """启动一个 SagaWorker"""
@@ -526,13 +526,13 @@ if __name__ == "__main__":
     import sys
     import os
     
-    gateway_url = os.environ.get("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
+    queue_service_url = os.environ.get("QUEUE_SERVICE_URL", "http://127.0.0.1:19997")
     max_concurrent = int(os.environ.get("MAX_CONCURRENT", "10"))
     
     print("=" * 60)
     print("同步 SagaWorker (多线程)")
     print("=" * 60)
-    print(f"Gateway: {gateway_url}")
+    print(f"Queue Service: {queue_service_url}")
     print(f"Max Concurrent: {max_concurrent}")
     print("=" * 60)
     print()

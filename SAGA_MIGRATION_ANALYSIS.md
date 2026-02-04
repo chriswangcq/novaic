@@ -112,12 +112,12 @@
 4. **更新 Worker 配置**
    ```python
    # Worker 只需改 URL
-   saga_client = SagaClient("http://127.0.0.1:19998")  # Saga 服务端口
+   saga_client = SagaClient("http://127.0.0.1:19997")  # Saga 服务端口
    ```
 
 **配置：**
 - Gateway: 端口 19999，访问 tq_tasks
-- Saga Service: 端口 19998，访问 tq_sagas
+- Saga Service: 端口 19997，访问 tq_sagas
 - 共享: novaic.db + FIFO Lock
 
 ---
@@ -263,7 +263,7 @@ app.include_router(router, prefix="/sagas")
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=19998)
+    uvicorn.run(app, host="0.0.0.0", port=19997)
 ```
 
 ### Phase 3: 更新客户端（30分钟）
@@ -271,7 +271,7 @@ if __name__ == "__main__":
 ```python
 # task_queue/client.py - 修改 SagaClient
 class SagaClient:
-    def __init__(self, saga_url: str = "http://127.0.0.1:19998"):
+    def __init__(self, saga_url: str = "http://127.0.0.1:19997"):
         # 从 Gateway URL 改为 Saga Service URL
         self.saga_url = saga_url
         # 其他代码保持不变
@@ -285,7 +285,7 @@ cd saga_service
 python main.py
 
 # 2. 测试 API
-curl http://127.0.0.1:19998/sagas/claim \
+curl http://127.0.0.1:19997/sagas/claim \
   -d '{"saga_types": ["test"], "worker_id": "test"}'
 
 # 3. 启动 Workers（使用新的 Saga Service URL）
@@ -328,7 +328,7 @@ class SagaRepository:
 
 ```python
 # Workers 无需大改
-saga_client = SagaClient("http://127.0.0.1:19998")  # 改 URL 即可
+saga_client = SagaClient("http://127.0.0.1:19997")  # 改 URL 即可
 ```
 
 ### 3. 数据库已支持并发

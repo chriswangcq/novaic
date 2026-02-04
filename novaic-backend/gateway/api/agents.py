@@ -182,7 +182,7 @@ def create_agent(request: CreateAgentRequest):
         
         # Auto-create main SubAgent for the new agent
         from gateway.db.repositories import SubAgentRepository
-        from gateway.db.database import get_database
+        from gateway.db.access import get_database
         
         db = get_database()
         subagent_repo = SubAgentRepository(db)

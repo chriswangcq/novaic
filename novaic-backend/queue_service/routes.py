@@ -10,9 +10,9 @@ import logging
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
-from .queue import TaskQueue
-from .saga import SagaOrchestrator
-from .exceptions import TaskNotFoundError, SagaError
+from queue_service.queue_db import TaskQueue
+from queue_service.saga_repo import SagaRepository, SagaOrchestrator
+from queue_service.exceptions import TaskNotFoundError, SagaError
 
 logger = logging.getLogger(__name__)
 
@@ -303,49 +303,31 @@ def create_handler_router(get_context_func) -> APIRouter:
     Returns:
         router: FastAPI Router
     """
-    from .handlers import get_handler
-    from .exceptions import RetryableError
+    from queue_service.exceptions import RetryableError
+    # Handlers 不在 Queue Service 中，由 Gateway 提供
     
     router = APIRouter(tags=["Handler Execution"])
     
     @router.post("/execute", response_model=HandlerExecResponse)
     def execute_handler(req: HandlerExecRequest):
         """
-        执行 Handler
+        执行 Handler（代理到 Gateway）
         
-        返回值：
-        - 200 + success=True + result: Handler 正常返回（业务成功或业务失败都在 result 里）
-        - 503: 基础设施故障，TaskWorker 应该重试
-        - 404: Handler 不存在
+        注意：Queue Service 不直接执行 Handler，
+        而是将请求代理到 Gateway 的 Handler 执行 API。
         """
-        try:
-            handler = get_handler(req.topic)
-        except ValueError as e:
-            raise HTTPException(status_code=404, detail=str(e))
-        
-        ctx = get_context_func()
-        
-        try:
-            result = handler(req.payload, ctx)
-            return HandlerExecResponse(
-                success=True,
-                result=result,
-            )
-        except RetryableError as e:
-            # 基础设施故障 → HTTP 503 → TaskWorker 重试
-            raise HTTPException(status_code=503, detail=str(e))
-        except Exception as e:
-            # 业务失败 → 返回结果（不是错误），让 Saga 处理
-            return HandlerExecResponse(
-                success=True,
-                result={"success": False, "error": str(e)},
-            )
+        raise HTTPException(
+            status_code=501, 
+            detail="Handler execution should be done via Gateway, not Queue Service"
+        )
     
     @router.get("/topics")
     def list_topics():
-        """列出所有可用的 Handler topics"""
-        from .handlers import get_all_topics
-        return {"topics": get_all_topics()}
+        """列出所有可用的 Handler topics（代理到 Gateway）"""
+        raise HTTPException(
+            status_code=501,
+            detail="Topics should be queried from Gateway, not Queue Service"
+        )
     
     return router
 
@@ -390,44 +372,15 @@ def create_business_router(
     @router.post("/message/process", response_model=MessageProcessResponse)
     def process_message(req: MessageProcessRequest):
         """
-        处理用户消息 - 业务入口
+        处理用户消息 - 业务入口（代理到 Gateway）
         
-        流程：
-        1. 检查 SubAgent 状态
-        2. 唤醒 SubAgent（如果需要）
-        3. 启动 RuntimeStart Saga
+        注意：Queue Service 不处理业务逻辑，
+        业务入口应该在 Gateway。
         """
-        from .handlers import get_handler
-        
-        ctx = get_context_func()
-        
-        # 使用 message.process handler
-        try:
-            handler = get_handler("message.process")
-            
-            # 注入 saga_client（使用 orchestrator）
-            ctx_with_saga = {**ctx, "saga_client": orchestrator}
-            
-            result = handler({
-                "message_id": req.message_id,
-                "agent_id": req.agent_id,
-                "content": req.content,
-                "subagent_id": req.subagent_id,
-            }, ctx_with_saga)
-            
-            return MessageProcessResponse(
-                success=result.get("success", False),
-                action=result.get("action"),
-                saga_id=result.get("saga_id"),
-                runtime_id=result.get("runtime_id"),
-                error=result.get("error"),
-            )
-            
-        except Exception as e:
-            return MessageProcessResponse(
-                success=False,
-                error=str(e),
-            )
+        raise HTTPException(
+            status_code=501,
+            detail="Business entry should be via Gateway, not Queue Service"
+        )
     
     return router
 

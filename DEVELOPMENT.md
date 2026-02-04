@@ -102,7 +102,7 @@ pip install -r requirements.txt
 
 # 启动所有服务
 python main.py &                                           # Gateway (19999)
-python mcp_main.py &                                       # MCP Gateway (19998)
+python mcp_main.py &                                       # MCP Gateway (19997)
 python launcher_main.py --gateway-url http://127.0.0.1:19999 --bootstrap &
 python collector_main.py --gateway-url http://127.0.0.1:19999 &
 python async_main.py --gateway-url http://127.0.0.1:19999 &

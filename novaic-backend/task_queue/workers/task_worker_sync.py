@@ -60,18 +60,20 @@ class TaskWorkerSync:
     def __init__(
         self,
         topics: List[str],
-        gateway_url: str = "http://127.0.0.1:19999",
+        queue_service_url: str = "http://127.0.0.1:19997",  # 改为 Queue Service
         poll_interval: float = 0.1,
         timeout: float = 60.0,
     ):
         self.topics = topics
-        self.gateway_url = gateway_url
+        self.queue_service_url = queue_service_url
         self.poll_interval = poll_interval
         self.timeout = timeout
         self.worker_id = f"task-sync-{uuid.uuid4().hex[:8]}"
         
         # 使用现有的同步 SDK
-        self.client = TaskQueueClient(gateway_url, timeout=timeout)
+        self.client = TaskQueueClient(queue_service_url, timeout=timeout)  # 连接 Queue Service
+        # Gateway URL 从环境变量获取
+        gateway_url = os.environ.get("GATEWAY_URL", "http://127.0.0.1:19999")
         self.gateway_client = GatewayInternalClient(gateway_url, timeout=timeout)
         
         self._running = False
@@ -215,16 +217,16 @@ class TaskWorkerSync:
 
 # ==================== 启动脚本 ====================
 
-def start_worker(topics: List[str], gateway_url: str = "http://127.0.0.1:19999"):
+def start_worker(topics: List[str], queue_service_url: str = "http://127.0.0.1:19997"):
     """启动一个 Worker（在当前进程）"""
-    worker = TaskWorkerSync(topics, gateway_url)
+    worker = TaskWorkerSync(topics, queue_service_url)
     worker.run()
 
 
 def start_multiple_workers(
     num_workers: int = 5,
     topics: List[str] = None,
-    gateway_url: str = "http://127.0.0.1:19999"
+    queue_service_url: str = "http://127.0.0.1:19997"
 ):
     """启动多个 Worker（多进程）"""
     from multiprocessing import Process
@@ -285,7 +287,7 @@ if __name__ == "__main__":
     
     # 获取配置
     num_workers = int(os.environ.get("NUM_WORKERS", "5"))
-    gateway_url = os.environ.get("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
+    queue_service_url = os.environ.get("QUEUE_SERVICE_URL", "http://127.0.0.1:19997")
     
     # 支持命令行参数
     if len(sys.argv) > 1:

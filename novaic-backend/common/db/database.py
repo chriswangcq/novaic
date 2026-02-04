@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import Optional, Any, List, Dict
 from contextlib import contextmanager
 
-from .schema import init_schema_sync
 from .locks import DatabaseLockManager
 
 logger = logging.getLogger(__name__)
@@ -43,8 +42,14 @@ class Database:
         # Lock manager for coordinating concurrent access
         self.locks = DatabaseLockManager()
     
-    def connect(self):
-        """Connect to database and initialize schema."""
+    def connect(self, init_schema_func=None):
+        """
+        Connect to database and initialize schema.
+        
+        Args:
+            init_schema_func: Optional function to initialize schema.
+                             Should accept a sqlite3.Connection object.
+        """
         if self._conn is not None:
             return
         
@@ -67,8 +72,10 @@ class Database:
         # Set busy timeout to wait for locks instead of failing immediately
         self._conn.execute("PRAGMA busy_timeout = 5000")  # 5 seconds
         
-        # Initialize schema
-        init_schema_sync(self._conn)
+        # Initialize schema (if provided)
+        if init_schema_func:
+            init_schema_func(self._conn)
+        
         self._initialized = True
         
         logger.info(f"[DB] Connected and initialized")

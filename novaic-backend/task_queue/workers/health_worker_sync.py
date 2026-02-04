@@ -61,7 +61,7 @@ class HealthWorkerSync:
     
     def __init__(
         self,
-        gateway_url: str = "http://127.0.0.1:19999",
+        queue_service_url: str = "http://127.0.0.1:19997",  # 改为 Queue Service
         check_interval: float = 30.0,
         task_timeout: int = 60,
         saga_timeout: int = 120,
@@ -74,8 +74,8 @@ class HealthWorkerSync:
         
         self._running = False
         
-        # 使用 SDK
-        self.gateway_client = GatewayInternalClient(gateway_url, timeout=30.0)
+        # 使用 SDK（连接 Queue Service 进行恢复）
+        self.gateway_client = GatewayInternalClient(queue_service_url, timeout=30.0)
         
         self.metrics = HealthWorkerMetrics()
     
@@ -159,21 +159,21 @@ class HealthWorkerSync:
 
 # ==================== 启动脚本 ====================
 
-def start_worker(gateway_url: str = "http://127.0.0.1:19999"):
+def start_worker(queue_service_url: str = "http://127.0.0.1:19997"):
     """启动 HealthWorker"""
-    worker = HealthWorkerSync(gateway_url)
+    worker = HealthWorkerSync(queue_service_url)
     worker.run()
 
 
 if __name__ == "__main__":
     import os
     
-    gateway_url = os.environ.get("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
+    queue_service_url = os.environ.get("QUEUE_SERVICE_URL", "http://127.0.0.1:19997")
     
     print("=" * 60)
     print("同步 HealthWorker (单线程)")
     print("=" * 60)
-    print(f"Gateway: {gateway_url}")
+    print(f"Queue Service: {queue_service_url}")
     print("=" * 60)
     print()
     

@@ -11,7 +11,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 
-from .database import Database
+from common.db import Database
 from .access import get_db
 
 logger = logging.getLogger(__name__)

@@ -11,8 +11,8 @@ import uuid
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 
-from task_queue.exceptions import SagaError, SagaStepError
-from task_queue.saga import TaskQueueProtocol, SagaDefinition, SagaExecutor, StepType
+from queue_service.exceptions import SagaError, SagaStepError
+from queue_service.saga import TaskQueueProtocol, SagaDefinition, SagaExecutor, StepType
 
 
 class SagaRepository:
