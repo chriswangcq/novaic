@@ -175,15 +175,18 @@ class SagaClientProtocol(Protocol):
 
 
 # ============================================================
-# SagaRepository - 使用 saga_repo.py 中的实现
+# SagaRepository - Gateway 端 (DB 操作)
 # ============================================================
-# 
-# 注意: SagaRepository 实现在 queue_service/saga_repo.py
-# Queue Service 不再导入 Gateway 模块，保持独立
-#
-# 使用方式:
-#   from queue_service.saga_repo import SagaRepository
-#
+
+class SagaRepository:
+    """
+    Gateway DB 实现位于 `gateway.task_queue.saga_repo`.
+    这里仅作为薄封装，避免非 gateway 模块直接触库。
+    """
+
+    def __new__(cls, *args, **kwargs):
+        from gateway.task_queue.saga_repo import SagaRepository as Impl
+        return Impl(*args, **kwargs)
 
 
 # ============================================================
@@ -598,12 +601,15 @@ class SagaExecutor:
 
 
 # ============================================================
-# SagaOrchestrator - 使用 saga_repo.py 中的实现
+# SagaOrchestrator - 兼容旧接口 (同步模式，用于测试)
 # ============================================================
-#
-# 注意: SagaOrchestrator 实现在 queue_service/saga_repo.py
-# Queue Service 不再导入 Gateway 模块，保持独立
-#
-# 使用方式:
-#   from queue_service.saga_repo import SagaOrchestrator
-#
+
+class SagaOrchestrator(SagaRepository):
+    """
+    Gateway DB 实现位于 `gateway.task_queue.saga_repo`.
+    这里仅作为薄封装，避免非 gateway 模块直接触库。
+    """
+
+    def __new__(cls, *args, **kwargs):
+        from gateway.task_queue.saga_repo import SagaOrchestrator as Impl
+        return Impl(*args, **kwargs)

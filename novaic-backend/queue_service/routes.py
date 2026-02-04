@@ -272,117 +272,23 @@ def create_task_queue_router(
 
 
 # ============================================================
-# Handler Execution API
+# Handler Execution API - 已移至 Gateway
 # ============================================================
-
-class HandlerExecRequest(BaseModel):
-    topic: str
-    payload: Dict[str, Any]
-
-
-class HandlerExecResponse(BaseModel):
-    success: bool
-    result: Optional[Dict[str, Any]] = None
-    error: Optional[str] = None
-
-
-def create_handler_router(get_context_func) -> APIRouter:
-    """
-    创建 Handler 执行 API 路由
-    
-    Handler 在 Gateway 中执行（因为需要直接访问 DB）
-    Worker 通过 HTTP 调用此 API 执行 Handler
-    
-    异常处理：
-    - RetryableError: 基础设施故障 → HTTP 503 → TaskWorker 重试
-    - 其他异常: 业务失败 → HTTP 200 + success=True + result 包含错误信息
-    
-    Args:
-        get_context_func: 获取 Handler 上下文的函数
-        
-    Returns:
-        router: FastAPI Router
-    """
-    from queue_service.exceptions import RetryableError
-    # Handlers 不在 Queue Service 中，由 Gateway 提供
-    
-    router = APIRouter(tags=["Handler Execution"])
-    
-    @router.post("/execute", response_model=HandlerExecResponse)
-    def execute_handler(req: HandlerExecRequest):
-        """
-        执行 Handler（代理到 Gateway）
-        
-        注意：Queue Service 不直接执行 Handler，
-        而是将请求代理到 Gateway 的 Handler 执行 API。
-        """
-        raise HTTPException(
-            status_code=501, 
-            detail="Handler execution should be done via Gateway, not Queue Service"
-        )
-    
-    @router.get("/topics")
-    def list_topics():
-        """列出所有可用的 Handler topics（代理到 Gateway）"""
-        raise HTTPException(
-            status_code=501,
-            detail="Topics should be queried from Gateway, not Queue Service"
-        )
-    
-    return router
+#
+# v2.1: Handler 执行 API 由 Gateway 提供
+# 端点: POST /internal/tq/handlers/execute
+# 
+# Queue Service 是纯调度中间件，不执行业务逻辑
+#
 
 
 # ============================================================
-# Business Entry API
+# Business Entry API - 已移至 Gateway
 # ============================================================
-
-class MessageProcessRequest(BaseModel):
-    message_id: str
-    agent_id: str
-    content: str
-    subagent_id: Optional[str] = None
-
-
-class MessageProcessResponse(BaseModel):
-    success: bool
-    action: Optional[str] = None
-    saga_id: Optional[str] = None
-    runtime_id: Optional[str] = None
-    error: Optional[str] = None
-
-
-def create_business_router(
-    orchestrator: Optional[SagaOrchestrator],
-    get_context_func,
-) -> APIRouter:
-    """
-    创建业务入口 API 路由
-    
-    提供高层业务接口，如消息处理入口
-    
-    Args:
-        orchestrator: SagaOrchestrator 实例
-        get_context_func: 获取 Handler 上下文的函数
-        
-    Returns:
-        router: FastAPI Router
-    """
-    router = APIRouter(tags=["Business Entry"])
-    
-    @router.post("/message/process", response_model=MessageProcessResponse)
-    def process_message(req: MessageProcessRequest):
-        """
-        处理用户消息 - 业务入口（代理到 Gateway）
-        
-        注意：Queue Service 不处理业务逻辑，
-        业务入口应该在 Gateway。
-        """
-        raise HTTPException(
-            status_code=501,
-            detail="Business entry should be via Gateway, not Queue Service"
-        )
-    
-    return router
+#
+# v2.1: 业务入口 API 由 Gateway 提供
+# Queue Service 是纯调度中间件，不处理业务入口
+#
 
 
 # ============================================================
@@ -437,5 +343,28 @@ def create_recovery_router(
             tasks_recovered=tasks_recovered,
             sagas_recovered=sagas_recovered,
         )
+    
+    @router.post("/cancel-all")
+    def cancel_all(agent_id: Optional[str] = None):
+        """
+        取消所有 pending/running 的任务和 Saga
+        
+        用于 interrupt 操作，由 Watchdog 调用。
+        
+        Args:
+            agent_id: 可选，只取消指定 agent 的任务/sagas
+            
+        Returns:
+            cancelled_tasks: 取消的任务数
+            cancelled_sagas: 取消的 saga 数
+        """
+        cancelled_tasks = queue.cancel_all(agent_id)
+        cancelled_sagas = 0
+        if orchestrator:
+            cancelled_sagas = orchestrator.cancel_all(agent_id)
+        return {
+            "cancelled_tasks": cancelled_tasks,
+            "cancelled_sagas": cancelled_sagas,
+        }
     
     return router

@@ -1,18 +1,27 @@
 """
-Watchdog - 消息监视器
+Watchdog - 消息监视器 (Agent 唤醒系统)
 
 监视 sending 状态的消息，为每条消息创建 MessageProcess Saga。
 
+架构定位：
+- Watchdog 是 Gateway 和 Queue Service 之间的桥梁
+- 监控 Gateway 的消息 → 在 Queue Service 创建 Saga
+
 职责：
-1. 发现 sending 状态的消息
-2. 为每条消息创建 MessageProcess Saga
-3. 不包含任何业务逻辑（纯监视）
+1. 发现 sending 状态的消息 (调用 Gateway API)
+2. 为每条消息创建 MessageProcess Saga (调用 Queue Service API)
+3. 不包含任何业务逻辑（纯监视 + 触发）
+
+交互：
+- Gateway: /internal/messages/claim-and-prepare (获取消息)
+- Queue Service: /api/queue/sagas/start (创建 saga)
 
 注意：
 - Watchdog 不直接 claim 消息
 - 所有业务逻辑在 MessageProcess Saga 中
 """
 
+import os
 import time
 import threading
 import uuid
@@ -44,12 +53,18 @@ class WatchdogMetrics:
 
 class Watchdog:
     """
-    消息监视器
+    消息监视器 (Agent 唤醒系统)
+    
+    架构定位：Gateway 和 Queue Service 之间的桥梁
     
     职责：
-    1. 发现 sending 状态的消息
-    2. 为每条消息创建 MessageProcess Saga
+    1. 发现 sending 状态的消息 (调用 Gateway)
+    2. 为每条消息创建 MessageProcess Saga (调用 Queue Service)
     3. 不包含任何业务逻辑
+    
+    交互：
+    - Gateway: /internal/messages/claim-and-prepare
+    - Queue Service: /api/queue/sagas/start
     """
     
     name = "watchdog"
@@ -57,28 +72,44 @@ class Watchdog:
     def __init__(
         self,
         gateway_url: str = "http://127.0.0.1:19999",
+        queue_service_url: Optional[str] = None,
         poll_interval: float = 0.1,
         timeout: float = 30.0,
     ):
         self.gateway_url = gateway_url.rstrip("/")
+        # Queue Service URL - 从环境变量获取或使用默认值
+        self.queue_service_url = (
+            queue_service_url or 
+            os.environ.get("QUEUE_SERVICE_URL", "http://127.0.0.1:19997")
+        ).rstrip("/")
         self.poll_interval = poll_interval
         self.timeout = timeout
         self.worker_id = f"wd-{uuid.uuid4().hex[:8]}"
         
         self._running = False
         self._shutdown_event = threading.Event()
-        self._client: Optional[httpx.Client] = None
+        self._gateway_client: Optional[httpx.Client] = None
+        self._queue_client: Optional[httpx.Client] = None
         
         self.metrics = WatchdogMetrics()
     
-    def _get_client(self) -> httpx.Client:
-        """获取 HTTP 客户端"""
-        if self._client is None or False:
-            self._client = httpx.Client(
+    def _get_gateway_client(self) -> httpx.Client:
+        """获取 Gateway HTTP 客户端"""
+        if self._gateway_client is None:
+            self._gateway_client = httpx.Client(
                 base_url=self.gateway_url,
                 timeout=self.timeout,
             )
-        return self._client
+        return self._gateway_client
+    
+    def _get_queue_client(self) -> httpx.Client:
+        """获取 Queue Service HTTP 客户端"""
+        if self._queue_client is None:
+            self._queue_client = httpx.Client(
+                base_url=self.queue_service_url,
+                timeout=self.timeout,
+            )
+        return self._queue_client
     
     def run(self):
         """主循环"""
@@ -87,15 +118,17 @@ class Watchdog:
         self.metrics.started_at = datetime.utcnow().isoformat()
         
         self._log(f"Starting (worker_id: {self.worker_id})...")
+        self._log(f"Gateway URL: {self.gateway_url}")
+        self._log(f"Queue Service URL: {self.queue_service_url}")
         
         try:
             while not self._shutdown_event.is_set():
                 try:
-                    # 1. Claim一条sending消息（sending → sent）
+                    # 1. Claim一条sending消息（sending → sent）- 调用 Gateway
                     message = self._find_sending_message()
                     
                     if message:
-                        # 2. 为已claim的消息创建saga
+                        # 2. 为已claim的消息创建saga - 调用 Queue Service
                         self._create_saga_for_message(message)
                         # 立即处理下一条，不sleep（批量处理）
                     else:
@@ -112,8 +145,10 @@ class Watchdog:
         
         finally:
             self._running = False
-            if self._client:
-                self._client.close()
+            if self._gateway_client:
+                self._gateway_client.close()
+            if self._queue_client:
+                self._queue_client.close()
             self._log("Stopped")
     
     def shutdown(self):
@@ -122,8 +157,8 @@ class Watchdog:
         self._shutdown_event.set()
     
     def _find_sending_message(self) -> Optional[Dict[str, Any]]:
-        """查找并claim sending消息（sending → sent）"""
-        client = self._get_client()
+        """查找并claim sending消息（sending → sent）- 调用 Gateway"""
+        client = self._get_gateway_client()
         
         try:
             resp = client.post("/internal/messages/claim-and-prepare")
@@ -132,40 +167,53 @@ class Watchdog:
                 return data.get("message")
             return None
         except Exception as e:
-            self._log(f"Failed to find message: {e}", level="error")
+            self._log(f"Failed to find message from Gateway: {e}", level="error")
             return None
     
     def _create_saga_for_message(self, message: Dict[str, Any]):
-        """为消息创建 MessageProcess Saga"""
+        """
+        根据消息类型执行对应操作 - 调用 Queue Service
+        
+        消息类型 → 操作映射：
+        - USER_MESSAGE → 创建 message_process saga
+        - SPAWN_SUBAGENT → 创建 runtime_start saga
+        - INTERRUPT → 调用 QS cancel API (不创建 saga)
+        """
         msg_id = message.get("id")
         agent_id = message.get("agent_id")
         content = message.get("content", "")
         msg_type = message.get("type")
+        metadata = message.get("metadata", {})
         
         self.metrics.messages_found += 1
         self.metrics.last_message_at = datetime.utcnow().isoformat()
         
         self._log(f"Found message {msg_id} (type={msg_type}, agent={agent_id})")
         
-        # 只处理用户消息
-        if msg_type != "USER_MESSAGE":
-            return
-        
-        # 创建 MessageProcess Saga
-        client = self._get_client()
-        
+        # 根据消息类型分发到不同的处理逻辑
+        if msg_type == "USER_MESSAGE":
+            self._create_message_process_saga(msg_id, agent_id)
+        elif msg_type == "SPAWN_SUBAGENT":
+            self._create_runtime_start_saga(msg_id, agent_id, metadata)
+        elif msg_type == "INTERRUPT":
+            self._handle_interrupt(msg_id, agent_id, metadata)
+        else:
+            self._log(f"Unknown message type, skipping: {msg_type}")
+    
+    def _create_message_process_saga(self, msg_id: str, agent_id: str):
+        """创建 message_process Saga"""
+        client = self._get_queue_client()
         subagent_id = f"main-{agent_id[:8]}"
         
         try:
             resp = client.post(
-                "/internal/tq/sagas/start",
+                "/api/queue/sagas/start",
                 json={
                     "saga_type": "message_process",
                     "context": {
                         "message_id": msg_id,
                         "agent_id": agent_id,
                         "subagent_id": subagent_id,
-                        # 移除 initial_context - Watchdog 只负责唤醒，不传递消息内容
                     },
                     "idempotency_key": f"message-process-{msg_id}",
                 }
@@ -174,14 +222,82 @@ class Watchdog:
             if resp.status_code == 200:
                 data = resp.json()
                 saga_id = data.get("saga_id")
-                self._log(f"Created MessageProcess Saga {saga_id} for message {msg_id}")
+                self._log(f"Created message_process Saga {saga_id} for message {msg_id}")
                 self.metrics.sagas_created += 1
             else:
-                self._log(f"Failed to create saga: {resp.status_code}", level="error")
+                self._log(f"Failed to create message_process saga: {resp.status_code} - {resp.text}", level="error")
                 self.metrics.errors += 1
                 
         except Exception as e:
-            self._log(f"Failed to create saga: {e}", level="error")
+            self._log(f"Failed to create message_process saga: {e}", level="error")
+            self.metrics.errors += 1
+    
+    def _create_runtime_start_saga(self, msg_id: str, agent_id: str, metadata: Dict[str, Any]):
+        """创建 runtime_start Saga (用于 SubAgent spawn)"""
+        client = self._get_queue_client()
+        
+        subagent_id = metadata.get("subagent_id")
+        trigger_id = metadata.get("trigger_id")
+        initial_context = metadata.get("initial_context", [])
+        
+        if not subagent_id:
+            self._log(f"SPAWN_SUBAGENT message {msg_id} missing subagent_id, skipping", level="error")
+            self.metrics.errors += 1
+            return
+        
+        try:
+            resp = client.post(
+                "/api/queue/sagas/start",
+                json={
+                    "saga_type": "runtime_start",
+                    "context": {
+                        "agent_id": agent_id,
+                        "subagent_id": subagent_id,
+                        "trigger_id": trigger_id,
+                        "initial_context": initial_context,
+                    },
+                    "idempotency_key": f"runtime-start-{trigger_id}",
+                }
+            )
+            
+            if resp.status_code == 200:
+                data = resp.json()
+                saga_id = data.get("saga_id")
+                self._log(f"Created runtime_start Saga {saga_id} for subagent {subagent_id}")
+                self.metrics.sagas_created += 1
+            else:
+                self._log(f"Failed to create runtime_start saga: {resp.status_code} - {resp.text}", level="error")
+                self.metrics.errors += 1
+                
+        except Exception as e:
+            self._log(f"Failed to create runtime_start saga: {e}", level="error")
+            self.metrics.errors += 1
+    
+    def _handle_interrupt(self, msg_id: str, agent_id: str, metadata: Dict[str, Any]):
+        """处理 INTERRUPT 消息 - 调用 QS cancel API"""
+        client = self._get_queue_client()
+        
+        target_agent_id = metadata.get("target_agent_id")
+        action = metadata.get("action", "cancel_all")
+        
+        try:
+            # 调用 Queue Service cancel-all API
+            resp = client.post(
+                "/api/queue/recover/cancel-all",
+                params={"agent_id": target_agent_id} if target_agent_id else {}
+            )
+            
+            if resp.status_code == 200:
+                data = resp.json()
+                cancelled_tasks = data.get("cancelled_tasks", 0)
+                cancelled_sagas = data.get("cancelled_sagas", 0)
+                self._log(f"INTERRUPT handled: cancelled {cancelled_tasks} tasks, {cancelled_sagas} sagas")
+            else:
+                self._log(f"Failed to handle INTERRUPT: {resp.status_code} - {resp.text}", level="error")
+                self.metrics.errors += 1
+                
+        except Exception as e:
+            self._log(f"Failed to handle INTERRUPT: {e}", level="error")
             self.metrics.errors += 1
     
     def _log(self, msg: str, level: str = "info"):

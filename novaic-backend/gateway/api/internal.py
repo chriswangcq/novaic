@@ -250,7 +250,6 @@ def spawn_subagent(agent_id: str, data: Dict[str, Any]):
         subagent_id: Use this to query status
     """
     from gateway.db.repositories import SubAgentRepository, RuntimeRepository
-    from task_queue import get_saga_orchestrator
     from datetime import datetime, timedelta
     import uuid
     
@@ -300,23 +299,32 @@ def spawn_subagent(agent_id: str, data: Dict[str, Any]):
     # Set SubAgent to awaking status
     subagent_repo.try_wake(subagent.subagent_id, agent_id, target_status="awaking")
     
-    # Trigger RuntimeStart Saga
-    orchestrator = get_saga_orchestrator()
-    if orchestrator:
-        trigger_id = f"spawn-{subagent.subagent_id}-{uuid.uuid4().hex[:8]}"
-        orchestrator.create(
-            saga_type="runtime_start",
-            context={
-                "agent_id": agent_id,
-                "subagent_id": subagent.subagent_id,
-                "trigger_id": trigger_id,
-                "initial_context": initial_context,
-            },
-            idempotency_key=f"runtime-start-{trigger_id}",
-        )
+    # v2.1: 写入 SPAWN_SUBAGENT 消息，由 Watchdog 创建 Saga
+    # Gateway 不再直接调用 Queue Service
+    from gateway.db.repositories.message import MessageRepository
+    
+    trigger_id = f"spawn-{subagent.subagent_id}-{uuid.uuid4().hex[:8]}"
+    message_repo = MessageRepository(db)
+    
+    # 写入消息，Watchdog 会监测并创建 runtime_start saga
+    msg = message_repo.add_message(
+        agent_id=agent_id,
+        type="SPAWN_SUBAGENT",
+        content=task_description,
+        status="sending",  # Watchdog 监测 sending 状态
+        metadata={
+            "subagent_id": subagent.subagent_id,
+            "trigger_id": trigger_id,
+            "initial_context": initial_context,
+            "parent_subagent_id": parent_subagent_id,
+        }
+    )
+    
+    print(f"[Gateway] Created SPAWN_SUBAGENT message {msg['id']} for subagent {subagent.subagent_id}")
     
     return {
         "subagent_id": subagent.subagent_id,
+        "message_id": msg["id"],
     }
 
 
@@ -2509,7 +2517,6 @@ def rt_chat_get_message(runtime_id: str, message_id: str):
 def rt_subagent_spawn(runtime_id: str, data: Dict[str, Any]):
     """Spawn a SubAgent. Agent ID and parent SubAgent ID resolved from runtime."""
     from gateway.db.repositories import SubAgentRepository, RuntimeRepository
-    from task_queue import get_saga_orchestrator
     from datetime import timedelta
     import uuid
     
@@ -2543,22 +2550,34 @@ def rt_subagent_spawn(runtime_id: str, data: Dict[str, Any]):
     # Set SubAgent to awaking status
     subagent_repo.try_wake(subagent.subagent_id, agent_id, target_status="awaking")
     
-    # Trigger RuntimeStart Saga
-    orchestrator = get_saga_orchestrator()
-    if orchestrator:
-        trigger_id = f"spawn-{subagent.subagent_id}-{uuid.uuid4().hex[:8]}"
-        orchestrator.create(
-            saga_type="runtime_start",
-            context={
-                "agent_id": agent_id,
-                "subagent_id": subagent.subagent_id,
-                "trigger_id": trigger_id,
-                "initial_context": initial_context,
-            },
-            idempotency_key=f"runtime-start-{trigger_id}",
-        )
+    # v2.1: 写入 SPAWN_SUBAGENT 消息，由 Watchdog 创建 Saga
+    # Gateway 不再直接调用 Queue Service
+    from gateway.db.repositories.message import MessageRepository
+    import uuid
     
-    return {"subagent_id": subagent.subagent_id}
+    trigger_id = f"spawn-{subagent.subagent_id}-{uuid.uuid4().hex[:8]}"
+    message_repo = MessageRepository(db)
+    
+    # 写入消息，Watchdog 会监测并创建 runtime_start saga
+    msg = message_repo.add_message(
+        agent_id=agent_id,
+        type="SPAWN_SUBAGENT",
+        content=task_description,
+        status="sending",  # Watchdog 监测 sending 状态
+        metadata={
+            "subagent_id": subagent.subagent_id,
+            "trigger_id": trigger_id,
+            "initial_context": initial_context,
+            "parent_subagent_id": parent_subagent_id,
+        }
+    )
+    
+    print(f"[Gateway] Created SPAWN_SUBAGENT message {msg['id']} for subagent {subagent.subagent_id}")
+    
+    return {
+        "subagent_id": subagent.subagent_id,
+        "message_id": msg["id"],
+    }
 
 
 @router.get("/rt/{runtime_id}/subagent/{target_subagent_id}/status")
@@ -2770,3 +2789,74 @@ def rt_task_list(runtime_id: str, status: Optional[str] = None):
 
 
 # Note: task_query, task_cancel, task_summary don't need runtime_id - they use task_id directly
+
+
+# ==================== Handler Execution API (v2.1) ====================
+# Task Worker 调用此端点执行 handler
+# Handler 在 Gateway 中执行，因为需要直接访问数据库
+
+@router.post("/tq/handlers/execute")
+async def tq_handlers_execute(data: Dict[str, Any]):
+    """
+    执行 Handler（Task Worker 调用）
+    
+    Handler 在 Gateway 中执行，因为需要直接访问数据库。
+    Task Worker 通过 HTTP 调用此 API 执行 Handler。
+    
+    Request:
+        - topic: Handler topic (e.g., "subagent.create", "llm.call")
+        - payload: Handler 参数
+    
+    Response:
+        - success: bool
+        - result: Handler 返回值（如果成功）
+        - error: 错误信息（如果失败）
+    
+    异常处理：
+        - RetryableError: HTTP 503 → TaskWorker 重试
+        - 其他异常: HTTP 200 + success=False + error 信息
+    """
+    from task_queue.handlers import get_handler, get_all_topics
+    from queue_service.exceptions import RetryableError
+    
+    topic = data.get("topic")
+    payload = data.get("payload", {})
+    
+    if not topic:
+        return {"success": False, "error": "Missing 'topic' parameter"}
+    
+    try:
+        handler = get_handler(topic)
+    except ValueError as e:
+        return {"success": False, "error": str(e)}
+    
+    try:
+        # 执行 handler
+        import asyncio
+        if asyncio.iscoroutinefunction(handler):
+            result = await handler(payload)
+        else:
+            result = handler(payload)
+        
+        return {"success": True, "result": result}
+    
+    except RetryableError as e:
+        # 基础设施故障，返回 503 让 TaskWorker 重试
+        raise HTTPException(status_code=503, detail=str(e))
+    
+    except Exception as e:
+        # 业务失败，返回 200 + 错误信息
+        import traceback
+        traceback.print_exc()
+        return {"success": False, "error": str(e)}
+
+
+@router.get("/tq/handlers/topics")
+def tq_handlers_topics():
+    """
+    获取所有已注册的 Handler topics
+    """
+    from task_queue.handlers import get_all_topics
+    
+    topics = get_all_topics()
+    return {"topics": topics, "count": len(topics)}

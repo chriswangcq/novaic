@@ -194,6 +194,46 @@ class SagaRepository:
         """启动 Saga (兼容接口)"""
         return self.create(saga_type, context, idempotency_key)
     
+    def cancel_all(self, agent_id: Optional[str] = None) -> int:
+        """
+        取消所有 pending/running 状态的 Saga
+        
+        Args:
+            agent_id: 可选，只取消指定 agent 的 saga（通过 context 中的 agent_id 字段）
+            
+        Returns:
+            取消的 saga 数量
+        """
+        now = datetime.utcnow().isoformat()
+        
+        with self.db.transaction(lock_type="global"):
+            if agent_id:
+                # 取消指定 agent 的 saga
+                cursor = self.db.execute("""
+                    UPDATE tq_sagas 
+                    SET status = 'cancelled',
+                        error = 'Cancelled by interrupt',
+                        updated_at = ?
+                    WHERE status IN ('pending', 'running')
+                      AND context LIKE ?
+                    RETURNING id
+                """, (now, f'%"agent_id":"{agent_id}"%'))
+            else:
+                # 取消所有 saga
+                cursor = self.db.execute("""
+                    UPDATE tq_sagas 
+                    SET status = 'cancelled',
+                        error = 'Cancelled by interrupt',
+                        updated_at = ?
+                    WHERE status IN ('pending', 'running')
+                    RETURNING id
+                """, (now,))
+            
+            rows = cursor.fetchall()
+            cursor.close()
+            
+            return len(rows) if rows else 0
+    
     def _row_to_dict(self, row) -> Dict[str, Any]:
         """行转字典"""
         if hasattr(row, "keys"):

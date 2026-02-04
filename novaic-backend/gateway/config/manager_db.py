@@ -16,7 +16,7 @@ from enum import Enum
 from pydantic import BaseModel, Field
 
 from gateway.db.access import get_db
-from gateway.db.database import Database
+from common.db.database import Database
 from gateway.db.repositories.config import ConfigRepository
 
 

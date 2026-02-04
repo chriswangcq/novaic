@@ -782,36 +782,24 @@ def interrupt(agent_id: str = None):
     """
     Interrupt current execution.
     
-    v4.0: Cancel pending tasks/sagas and mark runtimes as interrupted.
+    v4.1: Gateway 不再直接调用 Queue Service。
+    - Gateway 立即更新自己的数据库（runtimes, subagents）
+    - 写入 INTERRUPT 消息，由 Watchdog 调用 QS cancel API
+    
+    这样用户得到立即响应，QS 的取消是异步处理。
     """
     from datetime import datetime
+    from gateway.db.repositories.message import MessageRepository
+    import uuid
     
     db = get_db()
     now = datetime.utcnow().isoformat()
     
-    cancelled_tasks = 0
-    cancelled_sagas = 0
     interrupted_runtimes = 0
     
-    # Interrupt affects multiple tables, use global lock
+    # 1. 立即更新 Gateway 自己的数据库
     with db.get_connection("global", timeout=15.0) as conn:
-        # 1. Cancel pending/claimed TQ tasks
-        cursor = conn.execute("""
-            UPDATE tq_tasks 
-            SET status = 'failed', error = 'Interrupted', finished_at = ?
-            WHERE status IN ('pending', 'claimed')
-        """, (now,))
-        cancelled_tasks = cursor.rowcount
-        
-        # 2. Cancel pending/running TQ sagas
-        cursor = conn.execute("""
-            UPDATE tq_sagas 
-            SET status = 'failed', error = 'Interrupted', completed_at = ?
-            WHERE status IN ('pending', 'running')
-        """, (now,))
-        cancelled_sagas = cursor.rowcount
-        
-        # 3. Mark active runtimes as interrupted
+        # Mark active runtimes as interrupted
         cursor = conn.execute("""
             UPDATE agent_runtimes 
             SET status = 'completed', phase = 'completed', updated_at = ?
@@ -819,7 +807,7 @@ def interrupt(agent_id: str = None):
         """, (now,))
         interrupted_runtimes = cursor.rowcount
         
-        # 4. Set SubAgents to sleeping
+        # Set SubAgents to sleeping
         conn.execute("""
             UPDATE subagents 
             SET status = 'sleeping', updated_at = ?
@@ -828,11 +816,39 @@ def interrupt(agent_id: str = None):
         
         conn.commit()
     
+    # 2. 写入 INTERRUPT 消息，Watchdog 会调用 QS cancel API
+    # v2.1: Gateway 不再直接调用 Queue Service
+    message_repo = MessageRepository(db)
+    
+    # 获取 agent_id（用于消息路由）
+    if not agent_id:
+        from gateway.config.agents import get_agent_config_manager
+        try:
+            mgr = get_agent_config_manager()
+            current = mgr.get_current_agent()
+            agent_id = current.id if current else "unknown"
+        except:
+            agent_id = "unknown"
+    
+    msg = message_repo.add_message(
+        agent_id=agent_id,
+        type="INTERRUPT",
+        content="User requested interrupt",
+        status="sending",  # Watchdog 监测 sending 状态
+        metadata={
+            "action": "cancel_all",
+            "target_agent_id": agent_id,
+            "interrupted_runtimes": interrupted_runtimes,
+        }
+    )
+    
+    print(f"[Gateway] Created INTERRUPT message {msg['id']}, Watchdog will cancel tasks/sagas")
+    
     return {
         "status": "ok",
-        "cancelled_tasks": cancelled_tasks,
-        "cancelled_sagas": cancelled_sagas,
+        "message_id": msg["id"],
         "interrupted_runtimes": interrupted_runtimes,
+        "note": "Tasks/sagas cancellation is async via Watchdog",
     }
 
 

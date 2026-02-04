@@ -8,7 +8,7 @@ import json
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
-from ..database import Database
+from common.db.database import Database
 
 
 class SessionRepository:

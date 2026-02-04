@@ -55,6 +55,12 @@ fi
 echo ""
 echo "3️⃣  Starting Workers..."
 
+# Watchdog
+echo "   - Watchdog..."
+venv/bin/python3 main_watchdog.py > "$NOVAIC_DATA_DIR/logs/watchdog.log" 2>&1 &
+WATCHDOG_PID=$!
+echo "     PID: $WATCHDOG_PID"
+
 # Task Worker
 echo "   - Task Worker..."
 venv/bin/python3 -m task_queue.workers.task_worker_sync 2 > "$NOVAIC_DATA_DIR/logs/task-worker.log" 2>&1 &
@@ -79,6 +85,7 @@ sleep 2
 cat > "$NOVAIC_DATA_DIR/pids.txt" <<EOF
 gateway=$GATEWAY_PID
 queue_service=$QUEUE_PID
+watchdog=$WATCHDOG_PID
 task_worker=$TASK_WORKER_PID
 saga_worker=$SAGA_WORKER_PID
 health_worker=$HEALTH_WORKER_PID

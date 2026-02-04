@@ -279,6 +279,46 @@ class TaskQueue:
         rows = cursor.fetchall()
         return {row[0]: row[1] for row in rows}
     
+    def cancel_all(self, agent_id: Optional[str] = None) -> int:
+        """
+        取消所有 pending/claimed 状态的任务
+        
+        Args:
+            agent_id: 可选，只取消指定 agent 的任务（通过 payload 中的 agent_id 字段）
+            
+        Returns:
+            取消的任务数量
+        """
+        now = datetime.utcnow().isoformat()
+        
+        with self.db.transaction(lock_type="global"):
+            if agent_id:
+                # 取消指定 agent 的任务
+                cursor = self.db.execute("""
+                    UPDATE tq_tasks 
+                    SET status = 'cancelled',
+                        error = 'Cancelled by interrupt',
+                        finished_at = ?
+                    WHERE status IN ('pending', 'claimed')
+                      AND payload LIKE ?
+                    RETURNING id
+                """, (now, f'%"agent_id":"{agent_id}"%'))
+            else:
+                # 取消所有任务
+                cursor = self.db.execute("""
+                    UPDATE tq_tasks 
+                    SET status = 'cancelled',
+                        error = 'Cancelled by interrupt',
+                        finished_at = ?
+                    WHERE status IN ('pending', 'claimed')
+                    RETURNING id
+                """, (now,))
+            
+            rows = cursor.fetchall()
+            cursor.close()
+            
+            return len(rows) if rows else 0
+    
     def _row_to_dict(self, row) -> Dict[str, Any]:
         """将数据库行转换为字典"""
         if hasattr(row, "keys"):

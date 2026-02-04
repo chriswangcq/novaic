@@ -345,90 +345,13 @@ async def lifespan(app: FastAPI):
     init_worker_broadcaster()
     print("[Gateway] Worker SSE broadcaster initialized")
     
-    # Initialize Task Queue v2
-    from task_queue import (
-        init_task_queue, 
-        init_saga_orchestrator,
-        set_handler_context,
-        shutdown_task_queue,
-        create_task_queue_router,
-        create_handler_router,
-        create_business_router,
-        create_recovery_router,
-        get_task_queue,
-        get_saga_orchestrator,
-        get_handler_context,
-    )
+    # v2.0: Task Queue and Saga are now managed by Queue Service (port 19997)
+    # Gateway only handles business logic and interacts with Queue Service via HTTP
+    print("[Gateway] Task Queue v2.0: Managed by Queue Service (port 19997)")
+    print("[Gateway] Workers connect to Queue Service directly")
     
-    task_queue = await init_task_queue(db)
-    saga_orchestrator = await init_saga_orchestrator(db)
-    
-    # Gateway URL (for internal handler API calls)
-    gateway_url = os.environ.get("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
-    
-    # 创建 LLM client (从 config 获取默认 API key)
-    llm_client = None
-    try:
-        from gateway.core.llm_client import OpenAIClient, AnthropicClient, GoogleAIClient
-        # 获取 default model 对应的 API key
-        default_model_config = next(
-            (m for m in config.candidate_models if m.name == config.default_model),
-            None
-        )
-        if default_model_config:
-            api_key_entry = config.get_api_key_by_id(default_model_config.api_key_id)
-            if api_key_entry and api_key_entry.api_key:
-                provider = api_key_entry.provider.value if hasattr(api_key_entry.provider, 'value') else str(api_key_entry.provider)
-                if provider == "anthropic":
-                    llm_client = AnthropicClient(api_key=api_key_entry.api_key, api_base=api_key_entry.get_effective_base_url())
-                elif provider == "google":
-                    llm_client = GoogleAIClient(api_key=api_key_entry.api_key)
-                else:
-                    llm_client = OpenAIClient(api_base=api_key_entry.get_effective_base_url(), api_key=api_key_entry.api_key)
-                print(f"[Gateway] LLM client configured: {provider}")
-    except Exception as e:
-        print(f"[Gateway] Warning: Could not configure LLM client: {e}")
-    
-    # 初始化 MCP client（通过 MCP Gateway 调用工具）
-    try:
-        from task_queue.business.mcp import MCPGatewayClient
-        mcp_client = MCPGatewayClient()
-    except Exception as e:
-        print(f"[Gateway] Warning: Could not initialize MCP client: {e}")
-        mcp_client = None
-
-    # 设置 Handler 执行上下文
-    set_handler_context({
-        "db": db,
-        "saga_client": saga_orchestrator,  # saga.trigger handler 需要
-        "llm_client": llm_client,  # llm.call handler 需要
-        "mcp_client": mcp_client,  # tool.execute handler 需要
-        "gateway_url": gateway_url,  # 供 handler 通过 API 调用
-    })
-    
-    # 创建并挂载 Task Queue API 路由
-    tq_router = create_task_queue_router(task_queue, saga_orchestrator)
-    handler_router = create_handler_router(get_handler_context)
-    business_router = create_business_router(saga_orchestrator, get_handler_context)
-    recovery_router = create_recovery_router(task_queue, saga_orchestrator)
-    
-    app.include_router(tq_router, prefix="/internal/tq")
-    app.include_router(handler_router, prefix="/internal/tq/handlers")
-    app.include_router(business_router, prefix="/internal/tq/business")
-    app.include_router(recovery_router, prefix="/internal/tq/recover")
-    
-    print("[Gateway] Task Queue v2 initialized")
-    print(f"[Gateway]   - TaskQueue: /internal/tq/tasks/*")
-    print(f"[Gateway]   - Saga: /internal/tq/sagas/*")
-    print(f"[Gateway]   - Handlers: /internal/tq/handlers/*")
-    print(f"[Gateway]   - Business: /internal/tq/business/*")
-    print(f"[Gateway]   - Recovery: /internal/tq/recover/*")
-    
-    # Worker 由 Tauri 统一拉起，不再由 Gateway 内 ProcessManager 拉子进程
-    print("[Gateway] Workers are started by Tauri (Backend 四组件)")
-    
-    # v2.10: Master runs as separate service (master_main.py)
-    print("[Gateway] Ready (Master runs separately via master_main.py)")
+    # Gateway is ready
+    print("[Gateway] Ready (v2.0 - Queue Service architecture)")
     
     yield
     
@@ -446,10 +369,8 @@ async def lifespan(app: FastAPI):
     await shutdown_worker_broadcaster()
     print("[Gateway] Worker SSE broadcaster shutdown")
     
-    # Shutdown Task Queue v2
-    from task_queue import shutdown_task_queue
-    await shutdown_task_queue()
-    print("[Gateway] Task Queue v2 shutdown")
+    # v2.0: Queue Service handles its own shutdown
+    print("[Gateway] Shutdown complete (v2.0)")
     
     # Stop all VMs (graceful shutdown)
     try:
