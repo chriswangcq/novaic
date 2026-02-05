@@ -14,6 +14,7 @@ from .context import (
 )
 from .broadcast import (
     broadcast_log,
+    sync_broadcast_log,
     BroadcastType,
 )
 from .result import (
@@ -34,6 +35,7 @@ __all__ = [
     "process_multimodal_messages",
     # broadcast
     "broadcast_log",
+    "sync_broadcast_log",
     "BroadcastType",
     # result
     "summarize_result",

@@ -22,9 +22,10 @@ v19: Task Queue v2 - tq_tasks and tq_sagas tables for new architecture.
 v20: Saga v2 - agent_runtimes.summarized and need_rest fields.
 v21: Agent model selection - agents.model_id field.
 v22: Candidate models - candidate_models table with available flag.
+v23: Execution logs - subagent_id, status, kind, event_key, updated_at for upsert support.
 """
 
-SCHEMA_VERSION = 22
+SCHEMA_VERSION = 23
 
 SCHEMA_SQL = """
 -- ========================================
@@ -187,18 +188,27 @@ CREATE INDEX IF NOT EXISTS idx_question_responses_agent ON question_responses(ag
 -- 6. Execution Log Tables (per-agent)
 -- ========================================
 -- Pure flow logs, not associated with messages
+-- v23: Added subagent_id, status, kind, event_key, updated_at for upsert support
 
 CREATE TABLE IF NOT EXISTS execution_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     agent_id TEXT NOT NULL DEFAULT 'default',
+    subagent_id TEXT NOT NULL DEFAULT 'main',      -- v23: Owning subagent
     type TEXT NOT NULL,
+    kind TEXT NOT NULL DEFAULT 'tool',             -- v23: 'think' | 'tool'
+    status TEXT NOT NULL DEFAULT 'complete',       -- v23: 'running' | 'complete'
+    event_key TEXT,                                -- v23: Unique business key for upsert
     timestamp TEXT NOT NULL,
     data TEXT,
-    created_at TEXT DEFAULT (datetime('now'))
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT                                -- v23: Last update time
 );
 
 CREATE INDEX IF NOT EXISTS idx_execution_logs_agent ON execution_logs(agent_id);
 CREATE INDEX IF NOT EXISTS idx_execution_logs_timestamp ON execution_logs(agent_id, timestamp);
+CREATE INDEX IF NOT EXISTS idx_execution_logs_subagent ON execution_logs(agent_id, subagent_id);
+-- Note: Using regular UNIQUE INDEX (not partial) because SQLite ON CONFLICT requires non-partial index
+CREATE UNIQUE INDEX IF NOT EXISTS idx_execution_logs_event_key ON execution_logs(agent_id, subagent_id, event_key);
 
 -- ========================================
 -- 7. Agent Runtime State Tables (per-agent)
@@ -492,7 +502,6 @@ DEFAULT_CONFIG = {
     "max_tokens": "4096",
     "max_iterations": "20",
     "visible_shell": "false",
-    "current_agent_id": "null",
 }
 
 DEFAULT_RUNTIME_STATE = {
@@ -515,13 +524,28 @@ def init_schema_sync(conn):
     except Exception:
         current_version = 0
     
-    # Execute schema SQL (split by statements)
+    # Split schema SQL into CREATE TABLE and CREATE INDEX statements
+    table_statements = []
+    index_statements = []
+    
     for statement in SCHEMA_SQL.split(';'):
         statement = statement.strip()
         if statement:
-            conn.execute(statement)
+            if statement.upper().startswith('CREATE INDEX') or statement.upper().startswith('CREATE UNIQUE INDEX'):
+                index_statements.append(statement)
+            else:
+                table_statements.append(statement)
     
-    # Insert default config values
+    # Step 1: Execute table creation statements first
+    for statement in table_statements:
+        try:
+            conn.execute(statement)
+        except Exception as e:
+            # Ignore errors for existing tables/constraints
+            if "already exists" not in str(e).lower():
+                pass
+    
+    # Insert default config values (needed for migration check)
     for key, value in DEFAULT_CONFIG.items():
         conn.execute(
             "INSERT OR IGNORE INTO config (key, value) VALUES (?, ?)",
@@ -537,16 +561,81 @@ def init_schema_sync(conn):
     
     conn.commit()
     
-    # Run migrations if needed
+    # Step 2: Run migrations if needed (adds columns before index creation)
     if current_version < SCHEMA_VERSION:
         print(f"[DB] Migrating from version {current_version} to {SCHEMA_VERSION}")
         run_migration_sync(conn, current_version)
         print(f"[DB] Migration complete")
+    
+    # Step 3: Create indexes after migration (columns now exist)
+    for statement in index_statements:
+        try:
+            conn.execute(statement)
+        except Exception as e:
+            # Ignore errors for existing indexes
+            if "already exists" not in str(e).lower():
+                pass
+    
+    conn.commit()
 
 
 def run_migration_sync(conn, from_version: int):
-    """Run migrations synchronously (simplified - assumes most migrations already done)."""
-    # For new databases or already migrated ones, just update version
+    """Run migrations synchronously."""
+    
+    # v21: Add model_id to agents table
+    # Always try to add (handles case where version was updated but column wasn't added)
+    try:
+        conn.execute("ALTER TABLE agents ADD COLUMN model_id TEXT")
+        print("[DB] Migration v21: Added model_id to agents")
+    except Exception as e:
+        if "duplicate column" not in str(e).lower():
+            print(f"[DB] Migration v21 warning: {e}")
+    
+    # v22: Create candidate_models table (handled by CREATE TABLE IF NOT EXISTS)
+    
+    # v23: Add new columns to execution_logs table
+    if from_version < 23:
+        # Add subagent_id column
+        try:
+            conn.execute("ALTER TABLE execution_logs ADD COLUMN subagent_id TEXT NOT NULL DEFAULT 'main'")
+            print("[DB] Migration v23: Added subagent_id to execution_logs")
+        except Exception as e:
+            if "duplicate column" not in str(e).lower():
+                print(f"[DB] Migration v23 warning (subagent_id): {e}")
+        
+        # Add kind column
+        try:
+            conn.execute("ALTER TABLE execution_logs ADD COLUMN kind TEXT NOT NULL DEFAULT 'tool'")
+            print("[DB] Migration v23: Added kind to execution_logs")
+        except Exception as e:
+            if "duplicate column" not in str(e).lower():
+                print(f"[DB] Migration v23 warning (kind): {e}")
+        
+        # Add status column
+        try:
+            conn.execute("ALTER TABLE execution_logs ADD COLUMN status TEXT NOT NULL DEFAULT 'complete'")
+            print("[DB] Migration v23: Added status to execution_logs")
+        except Exception as e:
+            if "duplicate column" not in str(e).lower():
+                print(f"[DB] Migration v23 warning (status): {e}")
+        
+        # Add event_key column
+        try:
+            conn.execute("ALTER TABLE execution_logs ADD COLUMN event_key TEXT")
+            print("[DB] Migration v23: Added event_key to execution_logs")
+        except Exception as e:
+            if "duplicate column" not in str(e).lower():
+                print(f"[DB] Migration v23 warning (event_key): {e}")
+        
+        # Add updated_at column
+        try:
+            conn.execute("ALTER TABLE execution_logs ADD COLUMN updated_at TEXT")
+            print("[DB] Migration v23: Added updated_at to execution_logs")
+        except Exception as e:
+            if "duplicate column" not in str(e).lower():
+                print(f"[DB] Migration v23 warning (updated_at): {e}")
+    
+    # Update version
     conn.execute(
         "INSERT OR REPLACE INTO config (key, value) VALUES ('version', ?)",
         (str(SCHEMA_VERSION),)

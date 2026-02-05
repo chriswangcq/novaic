@@ -1,423 +1,146 @@
-# NovAIC 后端调试指南
+# Subagent 调试指南
 
-本文档总结了调试 NovAIC 后端问题的系统方法和技巧。
-
-## 目录
-
-1. [服务状态检查](#1-服务状态检查)
-2. [数据库状态查询](#2-数据库状态查询)
-3. [日志分析](#3-日志分析)
-4. [API 测试](#4-api-测试)
-5. [常见问题诊断](#5-常见问题诊断)
-6. [修复操作](#6-修复操作)
+> 本文档告诉你如何调试 NovAIC 的问题。按照步骤执行，然后汇报结果。
 
 ---
 
-## 1. 服务状态检查
+## 第一步：确定问题在哪一层
 
-### 1.1 检查进程是否运行
-
-```bash
-# 检查所有后端进程
-ps aux | grep -E "main_gateway|main_tools|queue_service|saga_worker|task_worker|watchdog" | grep -v grep
-
-# 检查特定进程
-ps aux | grep main_gateway | grep -v grep
+```
+前端 (React) → Gateway API (FastAPI) → 数据库 (SQLite)
+                    ↓
+              Worker (Task/Saga)
 ```
 
-### 1.2 检查端口监听
+**快速判断方法**：先调 API 看返回值是否正确。
 
 ```bash
-# 检查关键端口
-lsof -i :19999 -i :19998 -i :19997
+# 获取 agent 列表
+curl -s "http://127.0.0.1:19999/api/agents" | python3 -m json.tool
 
-# 各端口对应服务：
-# - 19999: Gateway (主 API 和数据库)
-# - 19998: Tools Server (工具调用服务)
-# - 19997: Queue Service (任务/Saga 队列)
+# 获取消息历史（替换 xxx 为实际 agent_id）
+curl -s "http://127.0.0.1:19999/api/chat/history?agent_id=xxx&limit=10" | python3 -m json.tool
+
+# 获取执行日志
+curl -s "http://127.0.0.1:19999/api/logs/entries?agent_id=xxx&limit=10" | python3 -m json.tool
 ```
 
-### 1.3 健康检查 API
-
-```bash
-# Gateway 健康检查
-curl http://127.0.0.1:19999/api/health
-
-# Tools Server 健康检查
-curl http://127.0.0.1:19998/api/health
-
-# Queue Service 健康检查
-curl http://127.0.0.1:19997/health
-```
+- **API 返回正确** → 问题在前端
+- **API 返回错误** → 问题在后端
 
 ---
 
-## 2. 数据库状态查询
+## 第二步：检查数据库
 
-数据库位置: `~/Library/Application Support/com.novaic.app/`
-- `novaic.db` - 主数据库 (Agent、消息、Runtime 等)
-- `queue.db` - 队列数据库 (Task、Saga)
+### 数据库位置
 
-### 2.1 检查消息状态
+```
+~/Library/Application Support/com.novaic.app/novaic.db
+```
+
+### 常用查询
 
 ```bash
 # 查看最近消息
 sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
-  "SELECT id, content, status, created_at FROM chat_messages ORDER BY created_at DESC LIMIT 5;"
+  "SELECT id, type, content, timestamp FROM chat_messages ORDER BY timestamp DESC LIMIT 10;"
 
-# 消息状态说明：
-# - sending: 等待处理
-# - sent: 已发送（可能是问题状态）
-# - delivered: 已处理
-```
-
-### 2.2 检查 Runtime 状态
-
-```bash
-# 查看活跃 Runtime
+# 查看执行日志
 sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
-  "SELECT runtime_id, status, phase, created_at FROM agent_runtimes WHERE status='active' ORDER BY created_at DESC LIMIT 5;"
+  "SELECT id, kind, status, event_key, timestamp FROM execution_logs ORDER BY id DESC LIMIT 10;"
 
-# Runtime phase 说明：
-# - init: 初始化中
-# - thinking: AI 思考中
-# - waiting_actions: 等待工具执行
-# - completed: 已完成
-```
-
-### 2.3 检查 Subagent 状态
-
-```bash
-# 查看 Subagent 状态
+# 查看任务队列
 sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
-  "SELECT subagent_id, agent_id, status FROM subagents LIMIT 5;"
+  "SELECT id, topic, status, error FROM tasks ORDER BY created_at DESC LIMIT 10;"
 
-# 状态说明：
-# - sleeping: 休眠中（等待消息唤醒）
-# - awake: 已唤醒（正在处理）
-```
+# 查看 Saga 状态
+sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
+  "SELECT id, saga_type, status, current_step, error FROM sagas ORDER BY created_at DESC LIMIT 5;"
 
-### 2.4 检查 Saga 状态
-
-```bash
-# 查看最近 Saga
-sqlite3 ~/Library/Application\ Support/com.novaic.app/queue.db \
-  "SELECT saga_id, saga_type, status, error, created_at FROM tq_sagas ORDER BY created_at DESC LIMIT 5;"
-
-# Saga 类型：
-# - message_process: 消息处理
-# - runtime_start: Runtime 启动
-# - react_think: AI 思考循环
-# - react_actions: 工具执行
-
-# 状态：
-# - pending: 等待执行
-# - running: 执行中
-# - completed: 已完成
-# - failed: 失败
-```
-
-### 2.5 检查 Task 状态
-
-```bash
-# 查看最近 Task
-sqlite3 ~/Library/Application\ Support/com.novaic.app/queue.db \
-  "SELECT task_id, topic, status, error FROM tq_tasks ORDER BY created_at DESC LIMIT 10;"
+# 查看 Runtime 状态
+sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
+  "SELECT id, agent_id, status, phase FROM runtimes ORDER BY created_at DESC LIMIT 5;"
 ```
 
 ---
 
-## 3. 日志分析
+## 第三步：检查日志
 
-日志位置: `~/Library/Application Support/com.novaic.app/logs/`
+### 日志位置
 
-### 3.1 查看最新日志
-
-```bash
-# Gateway 日志
-tail -100 ~/Library/Application\ Support/com.novaic.app/logs/gateway-*.log
-
-# Saga Worker 日志
-tail -100 ~/Library/Application\ Support/com.novaic.app/logs/saga-worker-*.log
-
-# Task Worker 日志
-tail -100 ~/Library/Application\ Support/com.novaic.app/logs/task-worker-*.log
+```
+~/Library/Application Support/com.novaic.app/logs/
 ```
 
-### 3.2 搜索错误
+### 查看日志命令
 
 ```bash
-# 搜索所有日志中的错误
+# 查看最近日志
+cat ~/Library/Application\ Support/com.novaic.app/logs/*.log | tail -100
+
+# 搜索错误
 grep -i "error\|exception\|failed" ~/Library/Application\ Support/com.novaic.app/logs/*.log | tail -30
-
-# 搜索特定关键词
-grep -i "tools\|mcp\|connection" ~/Library/Application\ Support/com.novaic.app/logs/*.log | tail -20
-```
-
-### 3.3 Tools Server 日志
-
-```bash
-# 如果使用 nohup 启动
-tail -50 /tmp/tools_server.log
 ```
 
 ---
 
-## 4. API 测试
-
-### 4.1 Tools Server API
+## 第四步：检查服务状态
 
 ```bash
-# 健康检查
-curl http://127.0.0.1:19998/api/health
+# 检查进程
+ps aux | grep -E "main_gateway|main_tools|queue_service|saga_worker|task_worker|watchdog" | grep -v grep
 
-# 查看 Runtime 列表
-curl http://127.0.0.1:19998/internal/runtimes
-
-# 创建 Runtime 上下文
-curl -X POST http://127.0.0.1:19998/internal/runtimes \
-  -H "Content-Type: application/json" \
-  -d '{"runtime_id": "rt-test", "agent_id": "agent-test", "subagent_id": "main-test", "ports": {}}'
-
-# 获取工具列表
-curl http://127.0.0.1:19998/internal/runtimes/rt-test/tools
-
-# 调用工具
-curl -X POST http://127.0.0.1:19998/internal/runtimes/rt-test/tools/call \
-  -H "Content-Type: application/json" \
-  -d '{"name": "runtime_list", "arguments": {}}'
-
-# 获取统计信息
-curl http://127.0.0.1:19998/internal/stats
-
-# 删除 Runtime
-curl -X DELETE http://127.0.0.1:19998/internal/runtimes/rt-test
-```
-
-### 4.2 Gateway API
-
-```bash
-# 获取活跃 Runtime 列表
-curl http://127.0.0.1:19999/internal/runtimes/list
-
-# 获取 Agent 列表
-curl http://127.0.0.1:19999/api/agents
-```
-
-### 4.3 Queue Service API
-
-```bash
-# 健康检查
-curl http://127.0.0.1:19997/health
-
-# 获取 Saga 统计
-curl http://127.0.0.1:19997/api/sagas/stats
-```
-
----
-
-## 5. 常见问题诊断
-
-### 5.1 消息发送无响应
-
-**诊断步骤：**
-
-1. 检查服务状态
-```bash
-lsof -i :19999 -i :19998 -i :19997
-```
-
-2. 检查消息状态
-```bash
-sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
-  "SELECT id, status FROM chat_messages ORDER BY created_at DESC LIMIT 3;"
-```
-
-3. 检查 Saga 状态
-```bash
-sqlite3 ~/Library/Application\ Support/com.novaic.app/queue.db \
-  "SELECT saga_id, saga_type, status, error FROM tq_sagas ORDER BY created_at DESC LIMIT 5;"
-```
-
-4. 检查 Runtime 状态
-```bash
-sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
-  "SELECT runtime_id, status, phase FROM agent_runtimes WHERE status='active';"
-```
-
-**常见原因：**
-- Tools Server 未启动 (端口 19998 无监听)
-- Runtime 卡在 `waiting_actions` 状态
-- Subagent 状态不正确
-- Saga 失败
-
-### 5.2 Runtime 卡住
-
-**症状：** Runtime 长时间处于 `active` 状态，phase 为 `waiting_actions`
-
-**诊断：**
-```bash
-sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
-  "SELECT runtime_id, status, phase, pending_actions FROM agent_runtimes WHERE status='active';"
-```
-
-**解决：** 见 [6.2 重置卡住的 Runtime](#62-重置卡住的-runtime)
-
-### 5.3 工具调用失败
-
-**诊断：**
-```bash
-# 检查 Tools Server 是否运行
-curl http://127.0.0.1:19998/api/health
-
-# 检查日志
-grep -i "tool\|error" /tmp/tools_server.log | tail -20
-```
-
----
-
-## 6. 修复操作
-
-### 6.1 重启服务
-
-```bash
-# 杀掉旧进程
-pkill -f "main_tools.py"
-pkill -f "saga_worker"
-pkill -f "task_worker"
-
-# 重启 Tools Server
-cd /path/to/novaic/novaic-backend
-export NOVAIC_DATA_DIR=~/Library/Application\ Support/com.novaic.app
-export GATEWAY_URL=http://127.0.0.1:19999
-nohup python main_tools.py --port 19998 > /tmp/tools_server.log 2>&1 &
-
-# 重启 Workers
-export QUEUE_SERVICE_URL=http://127.0.0.1:19997
-export NOVAIC_TOOLS_SERVER_URL=http://127.0.0.1:19998
-nohup python -m task_queue.workers.saga_worker_sync > /tmp/saga_worker.log 2>&1 &
-nohup python -m task_queue.workers.task_worker_sync > /tmp/task_worker.log 2>&1 &
-```
-
-### 6.2 重置卡住的 Runtime
-
-```bash
-# 1. 找到卡住的 Runtime
-sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
-  "SELECT runtime_id, agent_id FROM agent_runtimes WHERE status='active' AND phase='waiting_actions';"
-
-# 2. 重置 Runtime 状态
-sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
-  "UPDATE agent_runtimes SET status='completed', phase='completed' WHERE runtime_id='rt-xxx';"
-
-# 3. 重置 Subagent 状态
-sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
-  "UPDATE subagents SET status='sleeping' WHERE subagent_id='main-xxx';"
-```
-
-### 6.3 清理失败的 Saga
-
-```bash
-# 将 running 状态的 Saga 标记为失败
-sqlite3 ~/Library/Application\ Support/com.novaic.app/queue.db \
-  "UPDATE tq_sagas SET status='failed', error='Manual cleanup' WHERE status='running';"
-```
-
-### 6.4 重置消息状态
-
-```bash
-# 将 sent 状态的消息改为 sending（重新触发处理）
-sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
-  "UPDATE chat_messages SET status='sending' WHERE status='sent' AND id='msg-xxx';"
-```
-
----
-
-## 7. 调试流程总结
-
-### 完整诊断流程
-
-```bash
-# 1. 检查服务
+# 检查端口
 lsof -i :19999 -i :19998 -i :19997
 
-# 2. 检查健康
+# 健康检查
 curl -s http://127.0.0.1:19999/api/health
 curl -s http://127.0.0.1:19998/api/health
-curl -s http://127.0.0.1:19997/health
-
-# 3. 检查消息
-sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
-  "SELECT id, status FROM chat_messages ORDER BY created_at DESC LIMIT 5;"
-
-# 4. 检查 Saga
-sqlite3 ~/Library/Application\ Support/com.novaic.app/queue.db \
-  "SELECT saga_type, status, error FROM tq_sagas ORDER BY created_at DESC LIMIT 5;"
-
-# 5. 检查 Runtime
-sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
-  "SELECT runtime_id, status, phase FROM agent_runtimes ORDER BY created_at DESC LIMIT 3;"
-
-# 6. 检查日志
-grep -i "error" ~/Library/Application\ Support/com.novaic.app/logs/*.log | tail -10
-```
-
-### 快速修复脚本
-
-```bash
-#!/bin/bash
-# quick-fix.sh - 快速修复常见问题
-
-DATA_DIR=~/Library/Application\ Support/com.novaic.app
-
-echo "=== 1. 检查服务状态 ==="
-lsof -i :19999 -i :19998 -i :19997 2>/dev/null
-
-echo -e "\n=== 2. 重置卡住的 Runtime ==="
-sqlite3 "$DATA_DIR/novaic.db" "UPDATE agent_runtimes SET status='completed' WHERE status='active' AND phase='waiting_actions';"
-
-echo -e "\n=== 3. 重置 Subagent 状态 ==="
-sqlite3 "$DATA_DIR/novaic.db" "UPDATE subagents SET status='sleeping' WHERE status='awake';"
-
-echo -e "\n=== 4. 清理失败的 Saga ==="
-sqlite3 "$DATA_DIR/queue.db" "UPDATE tq_sagas SET status='failed' WHERE status='running';"
-
-echo -e "\n=== 修复完成 ==="
 ```
 
 ---
 
-## 8. 架构参考
+## 常见问题速查
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        NovAIC Backend                            │
-├─────────────────────┬───────────────────┬───────────────────────┤
-│  Gateway (19999)    │  Tools Server     │  Queue Service        │
-│  • 数据库操作       │  (19998)          │  (19997)              │
-│  • Internal API     │  • 32个内置工具   │  • Task 队列          │
-│  • 用户/Agent管理   │  • 外部MCP发现    │  • Saga 编排          │
-└─────────────────────┴───────────────────┴───────────────────────┘
-         │                    │                      │
-         └────────────────────┼──────────────────────┘
-                              │
-              ┌───────────────┼───────────────┐
-              │               │               │
-         Saga Worker    Task Worker      Watchdog
-         (Saga 执行)    (Task 执行)    (状态监控)
-```
-
-### 数据流
-
-1. 用户发送消息 → Gateway 存储消息 (`status='sending'`)
-2. Watchdog 检测到新消息 → 创建 `message_process` Saga
-3. Saga Worker 执行 Saga → 创建/唤醒 Runtime
-4. Runtime 进入 `react_think` 循环 → 调用 LLM
-5. LLM 返回工具调用 → 创建 `react_actions` Saga
-6. Task Worker 执行工具 → 通过 Tools Server HTTP API
-7. 工具结果返回 → 继续 `react_think` 循环
-8. 完成后 Runtime 进入 rest 状态
+| 症状 | 可能原因 | 检查方法 |
+|------|----------|----------|
+| 消息发送无响应 | Saga 失败 / Worker 未运行 | 查 Saga 状态 |
+| 消息刷新后消失 | API 返回不全 / 前端过滤 | 先调 API 看返回 |
+| Execute Log 为空 | 日志未写入 / SSE 未推送 | 查数据库有无记录 |
+| 最后一条消息不显示 | 分页逻辑错误 / 虚拟列表问题 | 调 API 看最后一条 |
 
 ---
 
-*最后更新: 2026-02-05*
+## 汇报模板
+
+调试完成后，使用以下格式汇报：
+
+```markdown
+## 调试结果
+
+**问题**：[问题描述]
+
+**排查过程**：
+1. 调 API：[结果]
+2. 查数据库：[结果]
+3. 查日志：[结果]
+
+**定位**：[问题在哪一层，哪个文件/函数]
+
+**建议修复**：[如何修复]
+```
+
+---
+
+## 关键文件位置
+
+| 层 | 文件 | 说明 |
+|----|------|------|
+| Gateway API | `novaic-backend/main_gateway.py` | HTTP 端点 |
+| 数据库操作 | `novaic-backend/gateway/db/repositories/chat.py` | 消息/日志存储 |
+| Schema | `novaic-backend/gateway/db/schema.py` | 表结构 |
+| Worker | `novaic-backend/task_queue/handlers/` | Task 处理 |
+| 前端 Store | `novaic-app/src/store/index.ts` | 状态管理 |
+| 前端 API | `novaic-app/src/services/api.ts` | API 调用 |
+| 消息列表 | `novaic-app/src/components/Chat/MessageList.tsx` | 消息渲染 |
+| 执行日志 | `novaic-app/src/components/Visual/ExecutionLog.tsx` | 日志渲染 |

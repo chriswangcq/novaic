@@ -81,7 +81,6 @@ class AICAgent(BaseModel):
 class AgentsConfig(BaseModel):
     """Root configuration for all agents"""
     version: int = 1
-    current_agent_id: Optional[str] = None
     agents: List[AICAgent] = []
 
 

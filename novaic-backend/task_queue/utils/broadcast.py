@@ -125,3 +125,62 @@ async def broadcast_error(ctx: dict, agent_id: str, message: str, *, max_length:
     if len(message) > max_length:
         message = message[:max_length] + "..."
     return await broadcast_log(ctx, agent_id, BroadcastType.ERROR, {"message": message})
+
+
+# ==================== 同步广播（供 Task Worker 同步调用） ====================
+
+def sync_broadcast_log(
+    ctx: dict,
+    agent_id: str,
+    log_type: BroadcastType | str = None,
+    data: Dict[str, Any] = None,
+    *,
+    gateway_client_key: str = "gateway_client",
+    subagent_id: str = "main",
+    kind: str = None,
+    status: str = "complete",
+    event_key: str = None,
+    input_data: Dict[str, Any] = None,
+    result_data: Dict[str, Any] = None,
+) -> bool:
+    """
+    同步向 Gateway 发送执行日志（POST /api/logs/broadcast）。
+    Task Worker 为同步进程，ctx 中没有 broadcaster，需通过 gateway_client 直接 POST。
+    
+    Args:
+        ctx: 上下文（包含 gateway_client）
+        agent_id: Agent ID
+        log_type: 日志类型（保留兼容）
+        data: 日志数据（保留兼容）
+        gateway_client_key: ctx 中 gateway_client 的键名
+        subagent_id: SubAgent ID，默认 "main"
+        kind: 事件类型（think/tool/message 等）
+        status: 状态（running/complete）
+        event_key: 事件唯一标识
+        input_data: 输入数据
+        result_data: 结果数据
+    """
+    client = ctx.get(gateway_client_key)
+    if not client or not getattr(client, "broadcast_log", None):
+        return False
+    if isinstance(log_type, BroadcastType):
+        log_type = log_type.value
+    try:
+        result = client.broadcast_log(
+            agent_id=agent_id,
+            log_type=log_type,
+            data=data,
+            subagent_id=subagent_id,
+            kind=kind,
+            status=status,
+            event_key=event_key,
+            input_data=input_data,
+            result_data=result_data,
+        )
+        print(f"[broadcast] sync_broadcast_log: agent={agent_id}, kind={kind}, status={status}, result={result}")
+        return result
+    except Exception as e:
+        import traceback
+        print(f"[broadcast] ERROR sync_broadcast_log: agent={agent_id}, kind={kind}, status={status}, error={e}")
+        traceback.print_exc()
+        return False

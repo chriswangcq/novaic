@@ -876,14 +876,15 @@ def _check_port(port: int, host: str = "127.0.0.1", timeout: float = 0.5) -> boo
         return False
 
 def _get_vnc_ports():
-    """Get VNC/WebSocket ports from current agent config"""
+    """Get VNC/WebSocket ports from first agent config (or defaults)"""
     from gateway.config.agents import get_agent_config_manager, allocate_ports_for_agent
     
     try:
         agent_mgr = get_agent_config_manager()
-        current_agent = agent_mgr.get_current_agent()
-        if current_agent:
-            return current_agent.vm.ports.vnc, current_agent.vm.ports.websocket
+        agents = agent_mgr.list_agents()
+        if agents:
+            first_agent = agents[0]
+            return first_agent.vm.ports.vnc, first_agent.vm.ports.websocket
     except Exception:
         pass
     

@@ -150,7 +150,7 @@ import asyncio
 from typing import Optional
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import contextmanager, asynccontextmanager
@@ -207,22 +207,23 @@ def initialize_systems(config):
     global task_manager
     global message_repo, agent_state_repo
     
-    # Get current agent's port configuration
+    # Get port configuration from first agent (or use defaults)
     from gateway.config.agents import get_agent_config_manager, allocate_ports_for_agent
     
     try:
         agent_mgr = get_agent_config_manager()
-        current_agent = agent_mgr.get_current_agent()
+        agents = agent_mgr.list_agents()
+        first_agent = agents[0] if agents else None
     except Exception as e:
         print(f"[Gateway] Warning: Could not get agent config: {e}")
-        current_agent = None
+        first_agent = None
     
-    if current_agent:
-        ports = current_agent.vm.ports
-        print(f"[Gateway] Using ports from agent '{current_agent.name}' (index={current_agent.vm.agent_index})")
+    if first_agent:
+        ports = first_agent.vm.ports
+        print(f"[Gateway] Using ports from agent '{first_agent.name}' (index={first_agent.vm.agent_index})")
     else:
         ports = allocate_ports_for_agent(0)
-        print(f"[Gateway] No current agent, using default ports (Agent 0)")
+        print(f"[Gateway] No agents found, using default ports (Agent 0)")
     
     # Initialize TaskManager (unified task system)
     def llm_factory(provider: str, api_base: str, api_key: str):
@@ -257,12 +258,12 @@ def initialize_systems(config):
     
     # v11: Agent processing now handled by Worker processes (started by Tauri)
     # The old AgentRunner has been removed in favor of the multi-process architecture
-    if current_agent:
+    if first_agent:
         # Ensure agent state exists
-        agent_state_repo.ensure_exists(current_agent.id)
-        print(f"[Gateway] Agent state initialized for {current_agent.id}")
+        agent_state_repo.ensure_exists(first_agent.id)
+        print(f"[Gateway] Agent state initialized for {first_agent.id}")
     else:
-        print("[Gateway] Warning: No current agent selected")
+        print("[Gateway] Warning: No agents found")
 
 
 def shutdown_systems():
@@ -453,9 +454,9 @@ def create_task(data: dict):
     if not task_manager:
         return {"error": "TaskManager not initialized", "success": False}
     
-    agent_id = data.get("agent_id") or get_current_agent_id()
+    agent_id = data.get("agent_id")
     if not agent_id:
-        return {"error": "No agent selected. Please select an agent first.", "success": False}
+        return {"error": "agent_id is required", "success": False}
     
     return task_manager.spawn(
         task_type=data.get("task_type", "agent"),
@@ -542,26 +543,6 @@ _log_subscribers: Dict[str, asyncio.Queue] = {}   # Log SSE subscribers
 # Note: v11 - Agent execution handled by Worker processes (started by Tauri)
 
 
-def get_current_agent_id() -> Optional[str]:
-    """Get the current agent ID from config.
-    
-    Returns:
-        The current agent ID, or None if no agent is selected.
-        
-    Note: Returns None instead of a fallback value to make issues visible.
-    Callers should handle None explicitly.
-    """
-    try:
-        from gateway.config.agents import get_agent_config_manager
-        mgr = get_agent_config_manager()
-        current = mgr.get_current_agent()
-        if current:
-            return current.id
-    except Exception as e:
-        logger.warning(f"[Gateway] Failed to get current agent ID: {e}")
-    return None
-
-
 def broadcast_chat_message(message: Dict[str, Any], agent_id: Optional[str] = None):
     """Broadcast a chat message to all SSE subscribers and save to database.
     
@@ -571,13 +552,11 @@ def broadcast_chat_message(message: Dict[str, Any], agent_id: Optional[str] = No
     Args:
         message: The message to broadcast
         agent_id: Optional agent ID. If not provided, tries to get from message.
-                  Does NOT fall back to get_current_agent_id() to avoid context issues.
                   If no agent_id available, logs warning and skips database save.
     """
     chat_service = get_chat_service()
     
     # Use provided agent_id, then message's agent_id
-    # NOTE: Removed fallback to get_current_agent_id() - caller must provide agent_id
     if agent_id is None:
         agent_id = message.get("agent_id")
     
@@ -652,46 +631,73 @@ def update_message_status(message_id: str, status: str):
             pass
 
 
-def broadcast_log(log: Dict[str, Any], agent_id: Optional[str] = None):
-    """Broadcast an execution log to all log SSE subscribers and save to database.
+def broadcast_log(log: Dict[str, Any], agent_id: Optional[str] = None) -> Optional[int]:
+    """Write execution log to DB and notify SSE subscribers (lightweight: only log_id).
     
-    Args:
-        log: The log data to broadcast. May contain 'agent_id' field.
-        agent_id: Optional agent ID. If not provided, tries to get from log data.
-                  Does NOT fall back to get_current_agent_id() to avoid context issues.
-                  If no agent_id available, logs warning and skips database save.
+    SSE 只推送「有更新」通知（event + log_id + subagent_id），前端再 GET /api/logs/entries 拉取内容。
+    
+    支持的字段：
+    - agent_id: Agent ID
+    - subagent_id: Subagent ID (默认 'main')
+    - type: 日志类型 (保留兼容)
+    - kind: 新事件类型 'think' | 'tool'
+    - status: 状态 'running' | 'complete'
+    - event_key: 唯一业务键 (用于 upsert)
+    - data: 通用数据
+    - input_data 或 input: 输入数据 (可选，兼容两种字段名)
+    - result_data 或 result: 结果数据 (可选，兼容两种字段名)
     """
     chat_service = get_chat_service()
-    
-    # Use provided agent_id, then log's agent_id
-    # NOTE: Removed fallback to get_current_agent_id() - caller must provide agent_id
     if agent_id is None:
         agent_id = log.get("agent_id")
-    
     if not agent_id:
         logger.warning("[Gateway] broadcast_log: No agent_id provided, skipping database save")
-        # Still broadcast to SSE subscribers
-        for queue in _log_subscribers.values():
-            try:
-                queue.put_nowait(log)
-            except asyncio.QueueFull:
-                pass
-        return
+        return None
     
-    # Save to database (pure flow logs, not associated with messages)
-    chat_service.repo.add_execution_log(
-        agent_id=agent_id,
-        type=log.get("type", "unknown"),
-        timestamp=log.get("timestamp", datetime.now().isoformat()),
-        data=log.get("data"),
-    )
+    # 提取新字段
+    subagent_id = log.get("subagent_id", "main")
+    kind = log.get("kind")
+    status = log.get("status")
+    event_key = log.get("event_key")
+    # 兼容两种字段名：client 发送的是 input_data/result_data，旧代码可能用 input/result
+    input_data = log.get("input_data") or log.get("input")
+    result_data = log.get("result_data") or log.get("result")
     
-    # Broadcast to SSE subscribers
+    # 如果有 event_key，使用 upsert 方法
+    if event_key:
+        row_id = chat_service.repo.upsert_execution_log(
+            agent_id=agent_id,
+            subagent_id=subagent_id,
+            event_key=event_key,
+            type=log.get("type", "unknown"),
+            kind=kind,
+            status=status,
+            data=log.get("data"),
+            input_data=input_data,
+            result_data=result_data,
+        )
+    else:
+        # 传统方式：直接插入
+        row_id = chat_service.repo.add_execution_log(
+            agent_id=agent_id,
+            type=log.get("type", "unknown"),
+            timestamp=log.get("timestamp", datetime.now().isoformat()),
+            data=log.get("data"),
+        )
+    
+    # SSE 通知包含 subagent_id 便于前端过滤
+    notification = {
+        "event": "logs_updated",
+        "agent_id": agent_id,
+        "subagent_id": subagent_id,
+        "log_id": row_id,
+    }
     for queue in _log_subscribers.values():
         try:
-            queue.put_nowait(log)
+            queue.put_nowait(notification)
         except asyncio.QueueFull:
             pass
+    return row_id
 
 
 @app.post("/api/logs/broadcast")
@@ -700,21 +706,45 @@ def receive_log_broadcast(data: dict):
     Receive execution log broadcasts from Workers.
     
     Called by Workers to broadcast tool execution status (thinking, tool_start, tool_end).
-    Workers should include agent_id in the data.
+    
+    请求体字段：
+    - agent_id: str (必需)
+    - subagent_id: str (可选，默认 'main')
+    - type: str (保留兼容，日志类型)
+    - kind: str (新增: 'think' | 'tool')
+    - status: str (新增: 'running' | 'complete')
+    - event_key: str (新增: 唯一业务键，用于 upsert)
+    - data: dict (通用数据)
+    - input: dict (新增可选: 输入数据)
+    - result: dict (新增可选: 结果数据)
+    
+    逻辑：
+    - 调用 ChatRepository 的 upsert_execution_log 方法 (如果有 event_key)
+    - 向 SSE 推送轻量通知：{"event": "logs_updated", "agent_id": ..., "subagent_id": ..., "log_id": ...}
     """
-    # Extract agent_id from data - NOTE: No fallback to get_current_agent_id()
+    # Debug: log incoming request
+    print(f"[Gateway] receive_log_broadcast: agent_id={data.get('agent_id')}, kind={data.get('kind')}, status={data.get('status')}, event_key={data.get('event_key')}")
+    
+    # Extract agent_id from data
     agent_id = data.pop("agent_id", None)
     
     if not agent_id:
         logger.warning("[Gateway] receive_log_broadcast: No agent_id in data, broadcast will skip database save")
     
     # Broadcast the log (pass agent_id as parameter)
-    broadcast_log({
+    # 保留所有字段传递给 broadcast_log，包括新字段
+    log_id = broadcast_log({
         **data,
         "agent_id": agent_id,
     }, agent_id=agent_id)
     
-    return {"success": True}
+    print(f"[Gateway] receive_log_broadcast: log_id={log_id}, agent_id={agent_id}")
+    
+    return {
+        "success": True,
+        "log_id": log_id,
+        "subagent_id": data.get("subagent_id", "main"),
+    }
 
 
 @app.post("/api/chat/event")
@@ -745,7 +775,7 @@ def receive_chat_event(data: dict):
         **event_data
     }
     
-    # Get agent_id from data or event_data - NOTE: No fallback to get_current_agent_id()
+    # Get agent_id from data or event_data
     agent_id = data.get("agent_id") or event_data.get("agent_id")
     
     if not agent_id:
@@ -947,8 +977,11 @@ def get_chat_history(
         type_filter=type_filter,
     )
     
+    # Repository returns messages in chronological order (oldest first, newest last)
+    # after reversing the DESC-ordered query results.
+    # So we need to take the last 'limit' messages (newest ones).
     has_more = len(all_messages) > limit
-    messages = all_messages[:limit]
+    messages = all_messages[-limit:] if len(all_messages) > limit else all_messages
     
     # Create summarized messages
     summarized = []
@@ -1027,10 +1060,10 @@ def add_to_inbox(data: dict):
     msg_type = data.get("type", "USER_MESSAGE")
     content = data.get("content", "").strip()
     metadata = data.get("metadata", {})
-    agent_id = data.get("agent_id") or get_current_agent_id()
+    agent_id = data.get("agent_id")
     
     if not agent_id:
-        return {"success": False, "error": "No agent selected. Please select an agent first."}
+        return {"success": False, "error": "agent_id is required"}
     
     if not content:
         return {"success": False, "error": "Content is required"}
@@ -1134,10 +1167,10 @@ def send_chat_message(data: dict):
     
     Returns immediately with message_id.
     """
-    agent_id = get_current_agent_id()
+    agent_id = data.get("agent_id")
     
     if not agent_id:
-        return {"success": False, "error": "No agent selected. Please select an agent first."}
+        return {"success": False, "error": "agent_id is required"}
     
     content = data.get("message", "").strip()
     model = data.get("model")
@@ -1202,57 +1235,90 @@ def send_chat_message(data: dict):
     }
 
 
+@app.get("/api/logs/entries")
+def get_log_entries(
+    agent_id: str = Query(..., description="Agent ID"),
+    subagent_id: Optional[str] = Query(None, description="Subagent ID (optional, filter by subagent)"),
+    after_id: Optional[int] = Query(None, description="Return entries with id > after_id (incremental fetch)"),
+    limit: int = Query(50, ge=1, le=100, description="Max entries to return"),
+):
+    """
+    分页拉取执行日志。前端用 after_id 增量拉取，SSE 只推送「有更新」通知后前端调此接口。
+    
+    参数：
+    - agent_id: Agent ID (必需)
+    - subagent_id: Subagent ID (可选，若传入则只返回该 subagent 的日志)
+    - after_id: 返回 id > after_id 的记录 (增量拉取)
+    - limit: 最大返回条数 (1-100)
+    
+    返回的每条记录包含：
+    - id, agent_id, type, timestamp, data (原有字段)
+    - subagent_id, kind, status, event_key, input, result (新增字段)
+    """
+    if not agent_id:
+        return {"success": False, "error": "agent_id required", "entries": []}
+    chat_service = get_chat_service()
+    if after_id is not None:
+        entries = chat_service.repo.get_execution_logs_after(
+            agent_id, after_id, limit=limit, subagent_id=subagent_id
+        )
+    else:
+        entries = chat_service.repo.get_recent_execution_logs(
+            agent_id, limit=limit, subagent_id=subagent_id
+        )
+    return {"success": True, "entries": entries}
+
+
+@app.get("/api/logs/subagents")
+def get_log_subagents(
+    agent_id: str = Query(..., description="Agent ID"),
+):
+    """
+    获取指定 agent 下有日志的 subagent 列表。
+    
+    参数：
+    - agent_id: Agent ID (必需)
+    
+    返回：
+    - success: bool
+    - subagents: List[str] - subagent_id 列表
+    """
+    if not agent_id:
+        return {"success": False, "error": "agent_id required", "subagents": []}
+    chat_service = get_chat_service()
+    subagents = chat_service.repo.get_log_subagents(agent_id)
+    return {"success": True, "subagents": subagents}
+
+
 @app.get("/api/logs/stream")
 def logs_sse(agent_id: str = None):
     """
-    SSE endpoint for real-time agent execution logs.
-    
-    Streams:
-    - tool_start: Tool execution started
-    - tool_end: Tool execution completed
-    - thinking: Agent reasoning
-    - status: Status updates
-    - error: Errors
-    - warning: Warnings
-    
-    Args:
-        agent_id: Required. Only logs for this agent will be pushed.
+    SSE 只推送「有更新」通知（event + log_id），不推送完整内容。
+    前端收到后调用 GET /api/logs/entries?agent_id=&after_id= 拉取新条目。
     """
     from fastapi.responses import JSONResponse
-    
-    # Validate agent_id is provided
+
     if not agent_id:
         return JSONResponse(
             status_code=400,
             content={"error": "agent_id parameter is required"}
         )
-    
     subscriber_id = str(uuid_module.uuid4())[:8]
     queue: asyncio.Queue = asyncio.Queue(maxsize=100)
     _log_subscribers[subscriber_id] = queue
-    
+
     async def event_generator():
         try:
-            # Send recent logs as catch-up (last 20, from database, filtered by agent_id)
-            chat_service = get_chat_service()
-            recent_logs = chat_service.repo.get_recent_execution_logs(agent_id, limit=20)
-            for log in recent_logs:
-                yield f"data: {json_module.dumps(log)}\n\n"
-            
-            # Stream new logs (filtered by agent_id)
             while True:
                 try:
-                    log = await asyncio.wait_for(queue.get(), timeout=30.0)
-                    # Filter: only push logs for the specified agent_id
-                    if log.get("agent_id") == agent_id:
-                        yield f"data: {json_module.dumps(log)}\n\n"
+                    notification = await asyncio.wait_for(queue.get(), timeout=30.0)
+                    if notification.get("agent_id") == agent_id:
+                        yield f"data: {json_module.dumps(notification)}\n\n"
                 except asyncio.TimeoutError:
-                    # Send keepalive
                     yield f": keepalive\n\n"
         finally:
-            # Cleanup on disconnect
             _log_subscribers.pop(subscriber_id, None)
-    
+
     return StreamingResponse(
         event_generator(),
         media_type="text/event-stream",
@@ -1265,9 +1331,16 @@ def logs_sse(agent_id: str = None):
 
 
 @app.get("/api/logs/clear")
-def clear_logs():
-    """Clear execution logs."""
-    _agent_logs.clear()
+def clear_logs(agent_id: str = None):
+    """Clear execution logs for a specific agent.
+    
+    Args:
+        agent_id: Required. The agent ID to clear logs for.
+    """
+    if not agent_id:
+        return {"success": False, "error": "agent_id is required"}
+    chat_service = get_chat_service()
+    chat_service.clear_execution_logs(agent_id)
     return {"success": True, "message": "Logs cleared"}
 
 
@@ -1421,17 +1494,17 @@ def get_agent_inbox(agent_id: str):
 
 
 @app.post("/api/agent/interrupt")
-def interrupt_agent():
+def interrupt_agent(data: dict = {}):
     """
     Interrupt the currently executing agent.
     
     This stops the current task and saves the session state.
     """
     chat_service = get_chat_service()
-    agent_id = get_current_agent_id()
+    agent_id = data.get("agent_id")
     
     if not agent_id:
-        return {"success": False, "error": "No agent selected"}
+        return {"success": False, "error": "agent_id is required"}
     
     try:
         from gateway.api.routes import get_agent
@@ -1462,10 +1535,10 @@ def agent_rest(data: dict):
     v2: Rest state is managed via subagents.status in database.
     """
     chat_service = get_chat_service()
-    agent_id = get_current_agent_id()
+    agent_id = data.get("agent_id")
     
     if not agent_id:
-        return {"success": False, "error": "No agent selected"}
+        return {"success": False, "error": "agent_id is required"}
     
     reason = data.get("reason", "No reason provided")
     handoff_notes = data.get("handoff_notes")
@@ -1534,10 +1607,10 @@ def wake_agent(data: dict = {}):
     Manually wake the agent from rest state.
     """
     chat_service = get_chat_service()
-    agent_id = get_current_agent_id()
+    agent_id = data.get("agent_id")
     
     if not agent_id:
-        return {"success": False, "error": "No agent selected"}
+        return {"success": False, "error": "agent_id is required"}
     
     reason = data.get("reason", "Manual wake")
     

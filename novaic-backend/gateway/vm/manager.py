@@ -12,6 +12,7 @@ import signal
 import socket
 import asyncio
 import logging
+import time
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, field
@@ -576,13 +577,13 @@ class VmManager:
         timeout: int = 60,
         interval: float = 2.0,
     ):
-        """Wait for a service to become available on a port."""
+        """Wait for a service to become available on a port. Uses time.time() so it works in sync threads (e.g. AnyIO worker)."""
         logger.info(f"[VmManager] Waiting for {name} on port {port}...")
         
-        start = asyncio.get_event_loop().time()
-        while asyncio.get_event_loop().time() - start < timeout:
+        start = time.time()
+        while time.time() - start < timeout:
             if self._is_port_in_use(port):
-                elapsed = asyncio.get_event_loop().time() - start
+                elapsed = time.time() - start
                 logger.info(f"[VmManager] {name} ready after {elapsed:.1f}s")
                 return
             time.sleep(interval)
@@ -623,7 +624,6 @@ class VmManager:
             os.kill(pid, signal.SIGTERM)
             
             # Wait a bit (shorter in quick mode)
-            import time
             wait_iterations = 2 if quick else 6
             for _ in range(wait_iterations):
                 time.sleep(0.5)

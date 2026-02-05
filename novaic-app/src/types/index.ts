@@ -139,11 +139,21 @@ export interface Attachment {
   type: string;
 }
 
-// Log Entry for execution logs
+// Log Entry for execution logs (id 来自后端，用于增量拉取 after_id)
 export interface LogEntry {
+  id?: number;
+  agent_id?: string;
   type: 'tool_start' | 'tool_end' | 'status' | 'stdout' | 'stderr' | 'progress' | 'text' | 'thinking' | 'final' | 'error' | 'warning';
   timestamp: string;
   data: LogData;
+  // 新增字段 - 支持事件模型和 Subagent
+  subagent_id?: string;
+  status?: 'running' | 'complete';
+  kind?: 'think' | 'tool';
+  event_key?: string;
+  input?: any;
+  result?: any;
+  updated_at?: string;
 }
 
 export type LogData = {
@@ -289,6 +299,8 @@ export interface AppState {
   agents: AICAgent[];
   currentAgentId: string | null;
   createAgentModalOpen: boolean;
+  // Execute log incremental fetch: last fetched max log id
+  lastLogId: number | null;
 }
 
 // API Response Types

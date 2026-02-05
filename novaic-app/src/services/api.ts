@@ -122,7 +122,6 @@ export interface AICAgent {
 
 export interface AgentListResponse {
   agents: AICAgent[];
-  current_agent_id: string | null;
 }
 
 export interface CreateAgentRequest {
@@ -350,25 +349,6 @@ export const api = {
   },
 
   /**
-   * Get current agent
-   */
-  async getCurrentAgent(): Promise<AICAgent | null> {
-    return invoke<AICAgent | null>('gateway_get', { path: '/api/agents/current' });
-  },
-
-  /**
-   * Set current agent
-   * @deprecated Use agent_id parameter in individual API calls instead
-   * @param agentId - The agent ID to set as current
-   */
-  async setCurrentAgent(agentId: string): Promise<void> {
-    await invoke('gateway_post', { 
-      path: '/api/agents/current', 
-      body: { agent_id: agentId } 
-    });
-  },
-
-  /**
    * Get agent by ID
    */
   async getAgent(agentId: string): Promise<AICAgent> {
@@ -563,6 +543,36 @@ export const api = {
       path: '/api/agent/interrupt',
       body: { agent_id: agentId }
     });
+  },
+
+  /**
+   * Fetch execution log entries (initial or incremental).
+   * SSE 只推送「有更新」通知，前端用此接口拉取内容。
+   * @param agentId - Agent ID
+   * @param options.after_id - 只返回 id > after_id 的条目（增量）
+   * @param options.limit - 条数上限
+   * @param options.subagent_id - 只返回指定 subagent 的日志（可选）
+   */
+  async getLogEntries(
+    agentId: string,
+    options?: { after_id?: number; limit?: number; subagent_id?: string }
+  ): Promise<{ success: boolean; entries: Array<{ id: number; type: string; timestamp: string; data: Record<string, unknown>; subagent_id?: string; status?: 'running' | 'complete'; kind?: 'think' | 'tool'; event_key?: string; input?: any; result?: any; updated_at?: string }> }> {
+    const params = new URLSearchParams();
+    params.set('agent_id', agentId);
+    if (options?.after_id != null) params.set('after_id', String(options.after_id));
+    if (options?.limit != null) params.set('limit', String(options.limit));
+    if (options?.subagent_id != null) params.set('subagent_id', options.subagent_id);
+    return invoke('gateway_get', { path: `/api/logs/entries?${params.toString()}` });
+  },
+
+  /**
+   * Get list of subagent IDs that have logs for the given agent.
+   * @param agentId - Agent ID
+   */
+  async getLogSubagents(agentId: string): Promise<{ success: boolean; subagents: string[] }> {
+    const params = new URLSearchParams();
+    params.set('agent_id', agentId);
+    return invoke('gateway_get', { path: `/api/logs/subagents?${params.toString()}` });
   },
 
   /**

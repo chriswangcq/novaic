@@ -1,23 +1,15 @@
-import { useRef, useEffect } from 'react';
 import { MessageList } from './MessageList';
 import { ChatInput } from './ChatInput';
 import { useAppStore } from '../../store';
 
 export function ChatPanel() {
   const { messages, isExecuting, sendMessage, stopExecution } = useAppStore();
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Auto scroll to bottom
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
 
   return (
     <div className="flex flex-col h-full bg-[#0a0a0a]">
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto">
+      {/* Messages - 让 MessageList 完全控制滚动，不要嵌套滚动容器 */}
+      <div className="flex-1 min-h-0">
         <MessageList messages={messages} isLoading={isExecuting} />
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}

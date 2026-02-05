@@ -13,7 +13,8 @@ import * as setup from '../services/setup';
 import type { AICAgent, CreateAgentRequest } from '../services/api';
 import { 
   Message, 
-  LogEntry, 
+  LogEntry,
+  LogData,
   AppState, 
   LayoutMode,
   LayoutSettings,
@@ -121,6 +122,11 @@ interface AppStore extends AppState {
   hasMoreMessages: boolean;
   isLoadingMore: boolean;
   loadMoreMessages: () => Promise<void>;
+  // Log subagent filtering
+  logSubagentId: string | null;
+  logSubagents: string[];
+  setLogSubagentId: (id: string | null) => void;
+  fetchLogSubagents: (agentId: string) => Promise<void>;
 }
 
 
@@ -180,6 +186,11 @@ export const useAppStore = create<AppStore>((set, get) => ({
   // Message pagination state
   hasMoreMessages: true,
   isLoadingMore: false,
+  // Execute log 增量拉取：上次已拉取到的最大 log id（SSE 只推通知，前端据此拉取）
+  lastLogId: null as number | null,
+  // Log subagent filtering
+  logSubagentId: null as string | null,
+  logSubagents: [] as string[],
 
   // Initialize app - connect to SSE streams
   initialize: async () => {
@@ -411,16 +422,20 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   addLog: (log: LogEntry) => {
-    set((state) => ({ logs: [...state.logs, log] }));
+    const MAX_LOGS = 500;
+    set((state) => {
+      const next = [...state.logs, log];
+      if (next.length > MAX_LOGS) next.shift();
+      return { logs: next };
+    });
   },
 
   clearLogs: () => {
-    set({ logs: [] });
+    set({ logs: [], lastLogId: null, logSubagentId: null, logSubagents: [] });
   },
 
   clearMessages: () => {
-    // Only clear local state (no server-side clear needed)
-    set({ messages: [], logs: [], hasMoreMessages: true });
+    set({ messages: [], logs: [], lastLogId: null, hasMoreMessages: true, logSubagentId: null, logSubagents: [] });
   },
 
   setExecuting: (executing: boolean) => {
@@ -574,16 +589,40 @@ export const useAppStore = create<AppStore>((set, get) => ({
         currentAgentId: agentId,
         messages: [],
         logs: [],
+        lastLogId: null,
         hasMoreMessages: true,
+        logSubagentId: null,
+        logSubagents: [],
       });
       saveAgentId(agentId);  // Persist to localStorage
       console.log('[Store] Selected agent:', agentId);
       
-      // 2. 重新连接 SSE（带 agent_id 参数，后端按 agent 过滤）
+      // 2. 先加载聊天历史（再连 SSE，避免 SSE 先推 10 条再被 50 条覆盖导致闪烁）
+      try {
+        const history = await api.getChatHistory({ agent_id: agentId, limit: 50, summary_length: 100 });
+        if (history.success && history.messages.length > 0) {
+          const messages: Message[] = history.messages.map((msg) => ({
+            id: msg.id,
+            role: msg.type === 'USER_MESSAGE' ? 'user' : 'assistant',
+            content: msg.summary || '',
+            timestamp: new Date(msg.timestamp),
+            isTruncated: msg.is_truncated,
+            status: msg.type === 'USER_MESSAGE' 
+              ? (msg.read ? 'read' : 'delivered') as MessageStatus 
+              : undefined,
+          }));
+          set({ messages, hasMoreMessages: history.has_more });
+          console.log(`[Store] Loaded ${messages.length} messages for agent ${agentId}, has_more: ${history.has_more}`);
+        }
+      } catch (e) {
+        console.warn('[Store] Failed to load chat history for new agent:', e);
+      }
+      
+      // 3. 连接 SSE（后端会先推最近 10 条 chat / 20 条 log，addMessage 按 id 去重）
       connectChatSSE(agentId);
       connectLogsSSE(agentId);
       
-      // 3. 加载新 agent 的模型配置
+      // 4. 加载新 agent 的模型配置
       try {
         const modelConfig = await api.getAgentModel(agentId);
         if (modelConfig && modelConfig.model_id && modelConfig.model) {
@@ -595,28 +634,6 @@ export const useAppStore = create<AppStore>((set, get) => ({
         }
       } catch (e) {
         console.warn('[Store] Failed to load model for agent:', e);
-      }
-      
-      // 4. 加载新 agent 的聊天历史
-      try {
-        const history = await api.getChatHistory({ agent_id: agentId, limit: 50, summary_length: 100 });
-        if (history.success && history.messages.length > 0) {
-          const messages: Message[] = history.messages.map((msg) => ({
-            id: msg.id,
-            role: msg.type === 'USER_MESSAGE' ? 'user' : 'assistant',
-            content: msg.summary || '',
-            timestamp: new Date(msg.timestamp),
-            isTruncated: msg.is_truncated,
-            // Use backend read status: read=true -> 'read', read=false -> 'delivered'
-            status: msg.type === 'USER_MESSAGE' 
-              ? (msg.read ? 'read' : 'delivered') as MessageStatus 
-              : undefined,
-          }));
-          set({ messages, hasMoreMessages: history.has_more });
-          console.log(`[Store] Loaded ${messages.length} messages for agent ${agentId}, has_more: ${history.has_more}`);
-        }
-      } catch (e) {
-        console.warn('[Store] Failed to load chat history for new agent:', e);
       }
       
     } catch (error) {
@@ -896,50 +913,156 @@ export const useAppStore = create<AppStore>((set, get) => ({
     };
   },
 
-  // SSE Connection: Execution logs (for Log Window)
+  // SSE Connection: Execution logs（SSE 只推「有更新」通知，前端再拉取内容）
   connectLogsSSE: (agentId?: string) => {
-    const { addLog, currentAgentId } = get();
-    
-    // Use provided agentId or fallback to currentAgentId
+    const { currentAgentId, logSubagentId, fetchLogSubagents } = get();
     const targetAgentId = agentId || currentAgentId;
-    
-    // Don't connect if no agent selected
     if (!targetAgentId) {
       console.log('[Store] No agent selected, skipping Logs SSE connection');
       return;
     }
+    if (logsEventSource) logsEventSource.close();
+
+    const MAX_LOGS = 500;
     
-    // Close existing connection
-    if (logsEventSource) {
-      logsEventSource.close();
-    }
-    
+    // 重新拉取最新日志并合并（处理 upsert 更新的情况）
+    // 不再使用 after_id 增量拉取，因为 upsert 更新不会改变 id
+    const fetchAndMergeLogs = async (subagentId: string | null, isInitial: boolean = false) => {
+      try {
+        const res = await api.getLogEntries(targetAgentId, {
+          // 每次拉取最新的日志，不使用 after_id
+          limit: isInitial ? 50 : 100,
+          subagent_id: subagentId ?? undefined,
+        });
+        if (!res.success || !res.entries.length) return;
+        
+        const newEntries: LogEntry[] = res.entries.map((e) => ({
+          id: e.id,
+          type: e.type as LogEntry['type'],
+          timestamp: e.timestamp,
+          data: (e.data || {}) as LogData,
+          subagent_id: e.subagent_id,
+          status: e.status,
+          kind: e.kind,
+          event_key: e.event_key,
+          input: e.input,
+          result: e.result,
+          updated_at: e.updated_at,
+        }));
+        
+        const newMaxId = Math.max(...res.entries.map((e) => e.id));
+        
+        set((state) => {
+          if (isInitial) {
+            // 初始加载：直接使用新数据
+            return { logs: newEntries, lastLogId: newMaxId };
+          }
+          
+          // 增量更新：根据 id 合并日志（新日志覆盖旧日志）
+          const existingMap = new Map(state.logs.map(log => [log.id, log]));
+          
+          // 用新数据覆盖现有数据
+          for (const entry of newEntries) {
+            existingMap.set(entry.id, entry);
+          }
+          
+          // 转换回数组并按 id 排序
+          let merged = Array.from(existingMap.values()).sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
+          
+          // 限制最大日志数量
+          if (merged.length > MAX_LOGS) {
+            merged = merged.slice(-MAX_LOGS);
+          }
+          
+          return { logs: merged, lastLogId: newMaxId };
+        });
+        
+        console.log(`[Store] Logs merged: ${newEntries.length} entries, max_id: ${newMaxId}`);
+      } catch (e) {
+        console.error('[Store] getLogEntries failed:', e);
+      }
+    };
+
+    (async () => {
+      set({ logs: [], lastLogId: null });
+      await fetchAndMergeLogs(logSubagentId, true);
+      // Also fetch available subagents
+      await fetchLogSubagents(targetAgentId);
+    })();
+
     const sseUrl = `${GATEWAY_URL}/api/logs/stream?agent_id=${targetAgentId}`;
-    console.log('[Store] Connecting to Logs SSE:', sseUrl);
+    console.log('[Store] Connecting to Logs SSE (notify-only):', sseUrl);
     logsEventSource = new EventSource(sseUrl);
-    
     logsEventSource.onmessage = (event) => {
       try {
-        const log = JSON.parse(event.data);
-        addLog({
-          type: log.type || 'status',
-          timestamp: log.timestamp || new Date().toISOString(),
-          data: log.data || {},
-        });
+        const data = JSON.parse(event.data);
+        if (data?.event === 'logs_updated' && data.agent_id === targetAgentId) {
+          const { logSubagentId } = get();
+          fetchAndMergeLogs(logSubagentId, false);
+          // Refresh subagent list as well
+          fetchLogSubagents(targetAgentId);
+        }
       } catch (e) {
         console.error('[Store] Failed to parse Log SSE message:', e);
       }
     };
-    
-    logsEventSource.onerror = (e) => {
-      console.error('[Store] Logs SSE error:', e);
-      // Reconnect after delay with same agentId
+    logsEventSource.onerror = () => {
       setTimeout(() => {
         if (get().isInitialized && get().currentAgentId) {
           get().connectLogsSSE(get().currentAgentId!);
         }
       }, 3000);
     };
+  },
+
+  // Set log subagent filter and refetch logs
+  setLogSubagentId: (id: string | null) => {
+    const { currentAgentId } = get();
+    set({ logSubagentId: id, logs: [], lastLogId: null });
+    
+    if (!currentAgentId) return;
+    
+    // Fetch logs with new subagent filter
+    (async () => {
+      try {
+        const res = await api.getLogEntries(currentAgentId, {
+          limit: 50,
+          subagent_id: id ?? undefined,
+        });
+        if (res.success && res.entries.length) {
+          const entries: LogEntry[] = res.entries.map((e) => ({
+            id: e.id,
+            type: e.type as LogEntry['type'],
+            timestamp: e.timestamp,
+            data: (e.data || {}) as LogData,
+            subagent_id: e.subagent_id,
+            status: e.status,
+            kind: e.kind,
+            event_key: e.event_key,
+            input: e.input,
+            result: e.result,
+            updated_at: e.updated_at,
+          }));
+          const newMaxId = Math.max(...res.entries.map((e) => e.id));
+          set({ logs: entries, lastLogId: newMaxId });
+          console.log(`[Store] Loaded ${entries.length} logs for subagent filter: ${id || 'all'}`);
+        }
+      } catch (e) {
+        console.error('[Store] Failed to fetch logs for subagent:', e);
+      }
+    })();
+  },
+
+  // Fetch list of subagents that have logs
+  fetchLogSubagents: async (agentId: string) => {
+    try {
+      const res = await api.getLogSubagents(agentId);
+      if (res.success) {
+        set({ logSubagents: res.subagents || [] });
+      }
+    } catch (e) {
+      console.error('[Store] Failed to fetch log subagents:', e);
+    }
   },
 
   // Disconnect SSE streams

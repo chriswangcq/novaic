@@ -53,15 +53,6 @@ class ChatService:
         """
         if self._agent_id:
             return self._agent_id
-        # Try to get from config
-        try:
-            from gateway.config.agents import get_agent_config_manager
-            mgr = get_agent_config_manager()
-            current = mgr.get_current_agent()
-            if current:
-                return current.id
-        except Exception as e:
-            logger.warning(f"[ChatService] Failed to get current agent ID: {e}")
         return None
     
     def set_agent_id(self, agent_id: str):

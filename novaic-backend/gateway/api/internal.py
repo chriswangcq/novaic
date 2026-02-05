@@ -787,8 +787,17 @@ def append_runtime_context(runtime_id: str, data: Dict[str, Any]):
     from gateway.db.repositories import RuntimeRepository
 
     message = data.get("message")
-    if not message:
+    # 检查 message 是否为 None 或空字典（空字典视为无效消息）
+    if message is None:
         raise HTTPException(status_code=400, detail="message required")
+    # 空字典 {} 也视为无效消息，但返回成功（幂等处理）
+    if not message or (isinstance(message, dict) and not message.get("role") and not message.get("content")):
+        return {
+            "success": True,
+            "appended": False,
+            "context_length": 0,
+            "message": "Empty message skipped",
+        }
 
     message_type = data.get("message_type", "unknown")
     round_id = data.get("round_id")
@@ -2344,6 +2353,7 @@ def rt_memory_get_task_history(runtime_id: str, data: Dict[str, Any]):
 def rt_chat_event(runtime_id: str, data: Dict[str, Any]):
     """Send a chat event. Agent ID resolved from runtime."""
     import uuid
+    import asyncio
     from gateway.sse.broadcaster import get_worker_broadcaster
     
     _, agent_id, _ = resolve_runtime_ids(runtime_id)
@@ -2384,7 +2394,7 @@ def rt_chat_event(runtime_id: str, data: Dict[str, Any]):
             VALUES (?, ?, ?, ?, ?, 'sent')
         """, (message_id, agent_id, event_type, content, timestamp))
     
-    # Broadcast via SSE
+    # Broadcast via Worker SSE (for other workers)
     broadcaster = get_worker_broadcaster()
     if broadcaster:
         try:
@@ -2395,6 +2405,44 @@ def rt_chat_event(runtime_id: str, data: Dict[str, Any]):
             )
         except Exception:
             pass
+    
+    # Broadcast to UI SSE subscribers (for frontend real-time display)
+    # This is the key fix: _chat_subscribers is the SSE channel for frontend UI
+    try:
+        from main_gateway import _chat_subscribers
+        
+        # Build message in the format frontend expects
+        ui_message = {
+            "id": message_id,
+            "type": event_type,
+            "timestamp": timestamp,
+            "agent_id": agent_id,
+            # Include both 'message' and 'content' for compatibility
+            "message": content,
+            "content": content,
+        }
+        
+        # Add extra fields based on event type
+        if event_type == "AGENT_ASK":
+            ui_message["question"] = event_data.get("question", "")
+            ui_message["options"] = event_data.get("options")
+            ui_message["request_id"] = event_data.get("request_id")
+        elif event_type == "AGENT_NOTIFY":
+            ui_message["level"] = event_data.get("level", "info")
+        elif event_type == "AGENT_IMAGE":
+            ui_message["image_url"] = event_data.get("image_url", "")
+            ui_message["caption"] = event_data.get("caption", "")
+        
+        # Push to all UI SSE subscribers
+        for queue in _chat_subscribers.values():
+            try:
+                queue.put_nowait(ui_message)
+            except asyncio.QueueFull:
+                pass
+        
+        print(f"[rt_chat_event] Broadcasted {event_type} to {len(_chat_subscribers)} UI subscribers")
+    except Exception as e:
+        print(f"[rt_chat_event] Failed to broadcast to UI SSE: {e}")
     
     return {"success": True, "event_type": event_type, "message_id": message_id}
 

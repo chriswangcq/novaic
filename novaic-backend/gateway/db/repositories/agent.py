@@ -107,30 +107,6 @@ class AgentRepository:
             )
             return cursor.rowcount > 0
     
-    def get_current_agent_id(self) -> Optional[str]:
-        """Get the current agent ID from config."""
-        value = self.db.get_config("current_agent_id")
-        if value and value != "null":
-            try:
-                return json.loads(value)
-            except json.JSONDecodeError:
-                return None
-        return None
-    
-    def set_current_agent_id(self, agent_id: Optional[str]):
-        """Set the current agent ID in config."""
-        self.db.set_config(
-            "current_agent_id",
-            json.dumps(agent_id) if agent_id else "null"
-        )
-    
-    def get_current_agent(self) -> Optional[Dict[str, Any]]:
-        """Get the current agent."""
-        agent_id = self.get_current_agent_id()
-        if agent_id:
-            return self.get_agent(agent_id)
-        return None
-    
     def get_used_agent_indices(self) -> List[int]:
         """Get list of used agent indices for port allocation."""
         rows = self.db.fetchall(

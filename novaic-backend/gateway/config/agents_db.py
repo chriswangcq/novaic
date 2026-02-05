@@ -228,11 +228,6 @@ class AgentConfigManagerDB:
         # Setup UEFI firmware
         self._setup_uefi_firmware(vm_dir)
         
-        # Set as current if first agent
-        current = self.repo.get_current_agent_id()
-        if current is None:
-            self.repo.set_current_agent_id(agent_id)
-        
         return self.get_agent(agent_id)
     
     def update_agent(
@@ -283,37 +278,12 @@ class AgentConfigManagerDB:
         success = self.repo.delete_agent(agent_id)
         
         if success:
-            # Update current agent if needed
-            current_id = self.repo.get_current_agent_id()
-            if current_id == agent_id:
-                agents = self.list_agents()
-                if agents:
-                    self.repo.set_current_agent_id(agents[0].id)
-                else:
-                    self.repo.set_current_agent_id(None)
-            
             # Delete VM directory
             vm_dir = self._get_agent_vm_dir(agent_id)
             if vm_dir.exists():
                 shutil.rmtree(vm_dir)
         
         return success
-    
-    def get_current_agent(self) -> Optional[AICAgent]:
-        """Get the currently selected agent."""
-        agent_id = self.repo.get_current_agent_id()
-        if agent_id:
-            return self.get_agent(agent_id)
-        return None
-    
-    def set_current_agent(self, agent_id: str) -> bool:
-        """Set the current agent."""
-        agent = self.get_agent(agent_id)
-        if not agent:
-            return False
-        
-        self.repo.set_current_agent_id(agent_id)
-        return True
     
     def _setup_uefi_firmware(self, vm_dir: Path) -> None:
         """Copy UEFI firmware from Homebrew QEMU to VM directory (ARM64 only)."""

@@ -253,7 +253,7 @@ class ConfigRepository:
     ):
         """
         Save/merge models for an API key.
-        Keeps existing custom models.
+        Keeps existing custom models and preserves available state for existing models.
         """
         with self.db.transaction(lock_type="global"):
             # Get existing custom models
@@ -262,6 +262,14 @@ class ConfigRepository:
                 (api_key_id,)
             )
             custom_ids = {m["id"] for m in existing_custom}
+            
+            # Get existing non-custom models to preserve their available state
+            existing_non_custom = self.db.fetchall(
+                "SELECT id, available FROM candidate_models WHERE api_key_id = ? AND is_custom = 0",
+                (api_key_id,)
+            )
+            # Map model_id -> available state (True/False)
+            existing_available = {m["id"]: bool(m["available"]) for m in existing_non_custom}
             
             # Delete non-custom models for this key
             self.db.execute(
@@ -277,6 +285,15 @@ class ConfigRepository:
                     continue  # Skip, already exists as custom
                 
                 new_ids.add(model_id)
+                
+                # Preserve existing available state if model was already in DB
+                # Otherwise use the value from model_data (default to False for newly fetched models)
+                if model_id in existing_available:
+                    is_available = existing_available[model_id]
+                else:
+                    # New model: use provided value or default to False
+                    is_available = model_data.get("available", model_data.get("enabled", False))
+                
                 self.db.execute(
                     """INSERT INTO candidate_models 
                        (id, name, provider, api_key_id, available, is_custom)
@@ -286,7 +303,7 @@ class ConfigRepository:
                         model_data.get("name", model_id),
                         provider,
                         api_key_id,
-                        1 if model_data.get("available", model_data.get("enabled", True)) else 0,
+                        1 if is_available else 0,
                         1 if model_data.get("is_custom", False) else 0,
                     )
                 )

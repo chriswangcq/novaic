@@ -92,12 +92,6 @@ class AgentModelConfigResponse(BaseModel):
 class AgentListResponse(BaseModel):
     """List of agents response"""
     agents: List[AgentResponse]
-    current_agent_id: Optional[str] = None
-
-
-class SetCurrentAgentRequest(BaseModel):
-    """Request to set current agent"""
-    agent_id: str
 
 
 class AvailableImageResponse(BaseModel):
@@ -115,35 +109,10 @@ def list_agents():
     """List all AIC agents"""
     manager = get_agent_config_manager()
     agents = manager.list_agents()
-    current_agent = manager.get_current_agent()
     
     return AgentListResponse(
-        agents=[AgentResponse(**agent.model_dump()) for agent in agents],
-        current_agent_id=current_agent.id if current_agent else None
+        agents=[AgentResponse(**agent.model_dump()) for agent in agents]
     )
-
-
-@router.get("/current", response_model=Optional[AgentResponse])
-def get_current_agent():
-    """Get the currently selected agent"""
-    manager = get_agent_config_manager()
-    agent = manager.get_current_agent()
-    
-    if agent is None:
-        return None
-    
-    return AgentResponse(**agent.model_dump())
-
-
-@router.post("/current")
-def set_current_agent(request: SetCurrentAgentRequest):
-    """Set the current agent"""
-    manager = get_agent_config_manager()
-    
-    if not manager.set_current_agent(request.agent_id):
-        raise HTTPException(status_code=404, detail="Agent not found")
-    
-    return {"status": "ok", "current_agent_id": request.agent_id}
 
 
 @router.get("/images", response_model=List[AvailableImageResponse])

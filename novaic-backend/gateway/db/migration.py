@@ -123,13 +123,6 @@ def migrate_agents(db: Database, data_dir: Path) -> bool:
             data = json.load(f)
         
         with db.transaction("global"):
-            # Migrate current_agent_id
-            if data.get("current_agent_id"):
-                db.execute(
-                    "INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)",
-                    ("current_agent_id", json.dumps(data["current_agent_id"]))
-                )
-            
             # Migrate agents
             for agent in data.get("agents", []):
                 # Extract VM config and ports

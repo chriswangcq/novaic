@@ -475,6 +475,36 @@ class ChatRepository:
     
     # ==================== Execution Logs ====================
     
+    def _row_to_execution_log(self, row: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert a database row to an execution log dict."""
+        data = {}
+        if row.get("data"):
+            try:
+                data = json.loads(row["data"])
+            except json.JSONDecodeError:
+                pass
+        
+        # Extract input and result from data if present (for backward compatibility)
+        # These are stored in data by upsert_execution_log, but should be returned as top-level fields
+        input_data = data.pop("input", None) if isinstance(data, dict) else None
+        result_data = data.pop("result", None) if isinstance(data, dict) else None
+        
+        return {
+            "id": row["id"],
+            "agent_id": row.get("agent_id"),
+            "subagent_id": row.get("subagent_id", "main"),
+            "type": row["type"],
+            "kind": row.get("kind", "tool"),
+            "status": row.get("status", "complete"),
+            "event_key": row.get("event_key"),
+            "timestamp": row["timestamp"],
+            "data": data,
+            "input": input_data,
+            "result": result_data,
+            "created_at": row.get("created_at"),
+            "updated_at": row.get("updated_at"),
+        }
+    
     def list_execution_logs(
         self,
         agent_id: str,
@@ -488,22 +518,7 @@ class ChatRepository:
             (agent_id, limit)
         )
         
-        result = []
-        for row in reversed(rows):
-            data = {}
-            if row.get("data"):
-                try:
-                    data = json.loads(row["data"])
-                except json.JSONDecodeError:
-                    pass
-            result.append({
-                "id": row["id"],
-                "type": row["type"],
-                "timestamp": row["timestamp"],
-                "data": data,
-            })
-        
-        return result
+        return [self._row_to_execution_log(row) for row in reversed(rows)]
     
     def add_execution_log(
         self,
@@ -511,13 +526,20 @@ class ChatRepository:
         type: str,
         timestamp: str,
         data: Optional[Dict[str, Any]] = None,
+        subagent_id: str = "main",
+        kind: str = "tool",
+        status: str = "complete",
+        event_key: Optional[str] = None,
     ) -> int:
         """Add an execution log for an agent."""
+        now = datetime.now().isoformat()
         with self.db.transaction("agent", resource_id=agent_id):
             cursor = self.db.execute(
-                """INSERT INTO execution_logs (agent_id, type, timestamp, data)
-                   VALUES (?, ?, ?, ?)""",
-                (agent_id, type, timestamp, json.dumps(data) if data else None)
+                """INSERT INTO execution_logs 
+                   (agent_id, subagent_id, type, kind, status, event_key, timestamp, data, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (agent_id, subagent_id, type, kind, status, event_key, 
+                 timestamp, json.dumps(data) if data else None, now)
             )
             row_id = cursor.lastrowid
         
@@ -525,6 +547,128 @@ class ChatRepository:
         self.cleanup_execution_logs(agent_id, 500)
         
         return row_id
+    
+    def upsert_execution_log(
+        self,
+        agent_id: str,
+        subagent_id: str,
+        kind: str,
+        status: str,
+        event_key: str,
+        data: Optional[Dict[str, Any]] = None,
+        input_data: Optional[Dict[str, Any]] = None,
+        result_data: Optional[Dict[str, Any]] = None,
+        type: Optional[str] = None,
+    ) -> int:
+        """
+        Upsert an execution log by (agent_id, subagent_id, event_key).
+        
+        If not exists: INSERT with new data
+        If exists: UPDATE status, data, updated_at
+        
+        Args:
+            agent_id: Agent ID
+            subagent_id: SubAgent ID (e.g., 'main', 'sub-xxx')
+            kind: Log kind ('think' | 'tool')
+            status: Log status ('running' | 'complete')
+            event_key: Unique business key (e.g., 'think:{runtime_id}:{round_id}')
+            data: Main data payload
+            input_data: Input data (merged into data)
+            result_data: Result data (merged into data)
+            type: Log type (defaults to kind if not provided)
+        
+        Returns:
+            The row ID of the upserted log
+        """
+        now = datetime.now().isoformat()
+        log_type = type or kind
+        
+        # Merge data fields
+        merged_data = data or {}
+        if input_data:
+            merged_data["input"] = input_data
+        if result_data:
+            merged_data["result"] = result_data
+        
+        data_json = json.dumps(merged_data) if merged_data else None
+        
+        with self.db.transaction("agent", resource_id=agent_id):
+            # Use INSERT OR REPLACE with ON CONFLICT for upsert
+            # SQLite ON CONFLICT requires the unique constraint
+            cursor = self.db.execute(
+                """INSERT INTO execution_logs 
+                   (agent_id, subagent_id, type, kind, status, event_key, timestamp, data, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(agent_id, subagent_id, event_key) DO UPDATE SET
+                       status = excluded.status,
+                       data = excluded.data,
+                       updated_at = excluded.updated_at""",
+                (agent_id, subagent_id, log_type, kind, status, event_key, now, data_json, now)
+            )
+            row_id = cursor.lastrowid
+            
+            # lastrowid returns 0 on UPDATE, so we need to query the actual ID
+            if row_id == 0:
+                row = self.db.fetchone(
+                    "SELECT id FROM execution_logs WHERE agent_id = ? AND subagent_id = ? AND event_key = ?",
+                    (agent_id, subagent_id, event_key)
+                )
+                if row:
+                    row_id = row["id"]
+        
+        return row_id
+    
+    def get_execution_logs(
+        self,
+        agent_id: str,
+        subagent_id: Optional[str] = None,
+        after_id: Optional[int] = None,
+        limit: int = 100,
+    ) -> List[Dict[str, Any]]:
+        """
+        Get execution logs with optional filters.
+        
+        Args:
+            agent_id: Agent ID
+            subagent_id: Optional SubAgent ID filter
+            after_id: Optional ID to fetch logs after (for incremental fetch)
+            limit: Maximum number of logs to return
+        
+        Returns:
+            List of execution logs with all fields
+        """
+        query = "SELECT * FROM execution_logs WHERE agent_id = ?"
+        params: List[Any] = [agent_id]
+        
+        if subagent_id is not None:
+            query += " AND subagent_id = ?"
+            params.append(subagent_id)
+        
+        if after_id is not None:
+            query += " AND id > ?"
+            params.append(after_id)
+        
+        query += " ORDER BY id ASC LIMIT ?"
+        params.append(limit)
+        
+        rows = self.db.fetchall(query, tuple(params))
+        return [self._row_to_execution_log(row) for row in rows]
+    
+    def get_log_subagents(self, agent_id: str) -> List[str]:
+        """
+        Get list of subagent_ids that have logs for this agent.
+        
+        Args:
+            agent_id: Agent ID
+        
+        Returns:
+            List of unique subagent_ids
+        """
+        rows = self.db.fetchall(
+            "SELECT DISTINCT subagent_id FROM execution_logs WHERE agent_id = ?",
+            (agent_id,)
+        )
+        return [row["subagent_id"] for row in rows]
     
     def cleanup_execution_logs(self, agent_id: str, keep_count: int = 500):
         """Delete old execution logs for an agent."""
@@ -548,10 +692,42 @@ class ChatRepository:
                 (agent_id,)
             )
     
-    def get_recent_execution_logs(self, agent_id: str, limit: int = 20) -> List[Dict[str, Any]]:
-        """Get recent execution logs."""
-        return self.list_execution_logs(agent_id, limit=limit)
-    
+    def get_recent_execution_logs(
+        self,
+        agent_id: str,
+        limit: int = 20,
+        subagent_id: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Get recent execution logs (newest first), optionally filtered by subagent_id.
+        
+        Returns logs in chronological order (oldest to newest).
+        """
+        query = "SELECT * FROM execution_logs WHERE agent_id = ?"
+        params: List[Any] = [agent_id]
+        
+        if subagent_id is not None:
+            query += " AND subagent_id = ?"
+            params.append(subagent_id)
+        
+        # Get newest logs first, then reverse for chronological order
+        query += " ORDER BY id DESC LIMIT ?"
+        params.append(limit)
+        
+        rows = self.db.fetchall(query, tuple(params))
+        # Reverse to return in chronological order (oldest to newest)
+        return [self._row_to_execution_log(row) for row in reversed(rows)]
+
+    def get_execution_logs_after(
+        self,
+        agent_id: str,
+        after_id: int,
+        limit: int = 50,
+        subagent_id: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Get execution logs with id > after_id (for incremental fetch)."""
+        return self.get_execution_logs(agent_id, subagent_id=subagent_id, after_id=after_id, limit=limit)
+
     # ==================== Agent Runtime State ====================
     
     def get_agent_rest_state(self, agent_id: str) -> Dict[str, Any]:

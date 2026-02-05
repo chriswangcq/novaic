@@ -17,7 +17,7 @@ import json
 from typing import Dict, Any
 from . import register_handler
 from ..business import MCPBusiness
-from ..utils import broadcast_log, BroadcastType, summarize_result
+from ..utils import sync_broadcast_log, BroadcastType
 
 
 @register_handler("tool.execute")
@@ -28,8 +28,7 @@ def handle_tool_execute(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     功能：
     1. 执行 MCP 工具
     2. done/reset 执行时设置 runtime status=resting (v2)
-    3. 广播 tool_end 到前端
-    4. 生成结果摘要（隐藏图片数据）
+    3. 广播 tool 事件到前端（执行前 running，执行后 complete）
     
     幂等性：工具本身负责保证幂等性
     
@@ -47,6 +46,7 @@ def handle_tool_execute(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     tool_name = payload["tool_name"]
     arguments = payload["arguments"]
     agent_id = payload.get("agent_id")
+    subagent_id = "main"
     
     # 解析 arguments
     if isinstance(arguments, str):
@@ -56,12 +56,34 @@ def handle_tool_execute(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
             pass
     
     # 如果没有 agent_id，从 runtime 获取
+    from ..client import GatewayInternalClient
+    client = ctx.get("gateway_client") or GatewayInternalClient(ctx["gateway_url"])
     if not agent_id:
-        from ..client import GatewayInternalClient
-        client = ctx.get("gateway_client") or GatewayInternalClient(ctx["gateway_url"])
         runtime = client.get_runtime(runtime_id)
         if runtime:
             agent_id = runtime.get("agent_id")
+            subagent_id = runtime.get("subagent_id", "main")
+    else:
+        # 即使有 agent_id，也尝试获取 subagent_id
+        runtime = client.get_runtime(runtime_id)
+        if runtime:
+            subagent_id = runtime.get("subagent_id", "main")
+    
+    # 事件标识
+    tool_event_key = f"tool:{runtime_id}:{tool_call_id}"
+    
+    # 广播 tool running 事件（执行前）
+    if agent_id:
+        sync_broadcast_log(
+            ctx,
+            agent_id,
+            subagent_id=subagent_id,
+            kind="tool",
+            status="running",
+            event_key=tool_event_key,
+            data={"type": "tool"},
+            input_data={"tool": tool_name, "args": arguments},
+        )
     
     # 使用业务逻辑层执行工具
     # 注：need_rest 由 MCP runtime_reset 工具内部设置
@@ -77,21 +99,30 @@ def handle_tool_execute(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
         arguments=arguments,
     )
     
-    # 广播 tool_end
+    # 广播 tool complete 事件（执行后）
     if agent_id:
         if result.success:
-            summary = summarize_result(result.result) if isinstance(result.result, dict) else {"output": str(result.result)[:100]}
-            broadcast_log(ctx, agent_id, BroadcastType.TOOL_END, {
-                "tool": tool_name,
-                "success": True,
-                "result": summary,
-            })
+            sync_broadcast_log(
+                ctx,
+                agent_id,
+                subagent_id=subagent_id,
+                kind="tool",
+                status="complete",
+                event_key=tool_event_key,
+                data={"type": "tool"},
+                result_data={"result": result.result},
+            )
         else:
-            broadcast_log(ctx, agent_id, BroadcastType.TOOL_END, {
-                "tool": tool_name,
-                "success": False,
-                "error": result.error[:100] if result.error else "Unknown error",
-            })
+            sync_broadcast_log(
+                ctx,
+                agent_id,
+                subagent_id=subagent_id,
+                kind="tool",
+                status="complete",
+                event_key=tool_event_key,
+                data={"type": "tool"},
+                result_data={"error": result.error if result.error else "Unknown error"},
+            )
     
     # 返回结果
     return {

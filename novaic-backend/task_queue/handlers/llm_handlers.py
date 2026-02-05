@@ -15,7 +15,7 @@ import os
 from typing import Dict, Any
 from . import register_handler
 from ..business import LLMBusiness
-from ..utils import broadcast_log, BroadcastType
+from ..utils import sync_broadcast_log, BroadcastType
 
 
 def _create_llm_client(provider: str, api_key: str, api_base: str):
@@ -84,6 +84,7 @@ def handle_llm_call(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     
     model = llm_config["model"]
     agent_id = llm_config.get("agent_id")
+    subagent_id = llm_config.get("subagent_id", "main")
 
     # 通过 Tools Server HTTP API 获取工具列表
     if not tools:
@@ -111,19 +112,30 @@ def handle_llm_call(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
             import logging
             logging.getLogger(__name__).warning(f"Failed to get tools from Tools Server: {e}")
             tools = tools or []
+    
     llm_client = _create_llm_client(
         provider=llm_config["provider"],
         api_key=llm_config["api_key"],
         api_base=llm_config["api_base"],
     )
     
-    # 1. 广播 thinking 状态
-    if agent_id:
-        broadcast_log(ctx, agent_id, BroadcastType.STATUS, {
-            "message": f"🧠 Thinking ({round_id})...",
-        })
+    # 事件标识
+    think_event_key = f"think:{runtime_id}:{round_id}"
     
-    # 2. 使用业务逻辑层调用 LLM
+    # 广播 think running 事件（LLM 调用前）
+    if agent_id:
+        sync_broadcast_log(
+            ctx,
+            agent_id,
+            subagent_id=subagent_id,
+            kind="think",
+            status="running",
+            event_key=think_event_key,
+            data={"type": "think"},
+            input_data=None,
+        )
+    
+    # 使用业务逻辑层调用 LLM
     biz = LLMBusiness(ctx["gateway_url"], llm_client, client=ctx.get("gateway_client"))
     
     result = biz.call(
@@ -134,11 +146,18 @@ def handle_llm_call(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     )
     
     if not result.success:
-        # 广播错误
+        # 广播错误（think complete with error）
         if agent_id:
-            broadcast_log(ctx, agent_id, BroadcastType.ERROR, {
-                "message": result.error[:200],
-            })
+            sync_broadcast_log(
+                ctx,
+                agent_id,
+                subagent_id=subagent_id,
+                kind="think",
+                status="complete",
+                event_key=think_event_key,
+                data={"type": "think"},
+                result_data={"error": result.error[:200]},
+            )
         
         return {
             "success": False,
@@ -147,29 +166,23 @@ def handle_llm_call(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
             "error": result.error,
         }
     
-    # 3. 广播 reasoning 和 tool_start
+    # 广播 think complete 事件（LLM 返回后）
     if agent_id and result.response:
-        # 广播 reasoning
         reasoning = biz.extract_reasoning(result.response)
+        result_content = {}
         if reasoning:
-            broadcast_log(ctx, agent_id, BroadcastType.THINKING, {
-                "content": reasoning[:500] + "..." if len(reasoning) > 500 else reasoning,
-            })
+            result_content["content"] = reasoning[:500] + "..." if len(reasoning) > 500 else reasoning
         
-        # 广播 tool_start
-        tool_calls = biz.extract_tool_calls(result.response)
-        for tc in tool_calls:
-            func = tc.get("function", {})
-            tool_name = func.get("name", "")
-            try:
-                args = json.loads(func.get("arguments", "{}"))
-            except json.JSONDecodeError:
-                args = {}
-            
-            broadcast_log(ctx, agent_id, BroadcastType.TOOL_START, {
-                "tool": tool_name,
-                "args": args,
-            })
+        sync_broadcast_log(
+            ctx,
+            agent_id,
+            subagent_id=subagent_id,
+            kind="think",
+            status="complete",
+            event_key=think_event_key,
+            data={"type": "think"},
+            result_data=result_content if result_content else None,
+        )
     
     return {
         "success": True,

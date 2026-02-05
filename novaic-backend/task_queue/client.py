@@ -538,6 +538,68 @@ class GatewayInternalClient:
         data = self._request("POST", "/internal/messages/claim-and-prepare", {})
         return data.get("message")
     
+    # ---------- Execution Log Broadcast (Worker -> Gateway -> SSE) ----------
+    def broadcast_log(
+        self,
+        agent_id: str,
+        log_type: str = None,
+        data: Dict[str, Any] = None,
+        timestamp: Optional[str] = None,
+        *,
+        subagent_id: str = "main",
+        kind: str = None,
+        status: str = "complete",
+        event_key: str = None,
+        input_data: Dict[str, Any] = None,
+        result_data: Dict[str, Any] = None,
+    ) -> bool:
+        """
+        向 Gateway 发送执行日志，Gateway 会写入 DB 并推给 SSE 订阅者（Execute Log 窗口）。
+        Worker 同步调用，无需 async。
+        
+        Args:
+            agent_id: Agent ID
+            log_type: 日志类型（保留兼容）
+            data: 日志数据（保留兼容）
+            timestamp: 时间戳
+            subagent_id: SubAgent ID，默认 "main"
+            kind: 事件类型（think/tool/message 等）
+            status: 状态（running/complete）
+            event_key: 事件唯一标识（如 "think:runtime_id:round_id"）
+            input_data: 输入数据
+            result_data: 结果数据
+        """
+        from datetime import datetime
+        payload = {
+            "agent_id": agent_id,
+            "subagent_id": subagent_id,
+            "timestamp": timestamp or datetime.utcnow().isoformat(),
+        }
+        
+        # 兼容旧格式
+        if log_type:
+            payload["type"] = log_type
+        if data:
+            payload["data"] = data
+            
+        # 新事件模型字段
+        if kind:
+            payload["kind"] = kind
+        if status:
+            payload["status"] = status
+        if event_key:
+            payload["event_key"] = event_key
+        if input_data:
+            payload["input_data"] = input_data
+        if result_data:
+            payload["result_data"] = result_data
+        
+        try:
+            self._request("POST", "/api/logs/broadcast", payload)
+            return True
+        except Exception:
+            return False
+
     # ---------- Task Queue Recovery ----------
     def recover_all(self, task_timeout: int = 60, saga_timeout: int = 120) -> Dict[str, Any]:
         """恢复所有超时的 Task 和 Saga"""

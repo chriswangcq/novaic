@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useLayoutEffect, useCallback, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Loader2 } from 'lucide-react';
 import { Message } from '../../types';
@@ -16,37 +16,68 @@ interface MessageListProps {
 export function MessageList({ messages, isLoading }: MessageListProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const lastMessageCountRef = useRef(messages.length);
-  const scrollPositionRef = useRef<{ offset: number; height: number } | null>(null);
+  const hasInitialScrolled = useRef(false);
+  const [isReady, setIsReady] = useState(false);
   
   const { 
     hasMoreMessages, 
     isLoadingMore, 
-    loadMoreMessages 
+    loadMoreMessages,
+    currentAgentId 
   } = useAppStore();
 
   // Virtual list configuration
   const virtualizer = useVirtualizer({
     count: messages.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 100, // 估算每条消息的平均高度
-    overscan: 5, // 预渲染上下各 5 个项目
+    estimateSize: () => 120, // 估算每条消息的平均高度，稍大一些更安全
+    overscan: 8, // 增加预渲染数量，确保边界元素被渲染
   });
 
-  // 滚动到底部（新消息到达时）
-  const scrollToBottom = useCallback(() => {
-    if (parentRef.current) {
-      parentRef.current.scrollTop = parentRef.current.scrollHeight;
-    }
-  }, []);
+  // 切换聊天时重置状态
+  useLayoutEffect(() => {
+    hasInitialScrolled.current = false;
+    setIsReady(false);
+  }, [currentAgentId]);
 
-  // 监听新消息，自动滚动到底部
+  // 初始化时滚动到底部
   useEffect(() => {
-    if (messages.length > lastMessageCountRef.current) {
-      // 新消息到达，滚动到底部
-      setTimeout(scrollToBottom, 50);
+    if (!hasInitialScrolled.current && messages.length > 0) {
+      // 使用 virtualizer API 滚动到最后一条消息
+      // 需要等待 virtualizer 初始化完成
+      const timer = setTimeout(() => {
+        virtualizer.scrollToIndex(messages.length - 1, { 
+          align: 'end',
+          behavior: 'auto' 
+        });
+        hasInitialScrolled.current = true;
+        setIsReady(true);
+      }, 0);
+      return () => clearTimeout(timer);
+    } else if (messages.length === 0) {
+      // 没有消息时直接显示（欢迎屏幕）
+      setIsReady(true);
+    }
+  }, [messages.length, currentAgentId, virtualizer]);
+
+  // 监听新消息，自动滚动到底部（已初始化后的新消息）
+  useEffect(() => {
+    if (hasInitialScrolled.current && messages.length > lastMessageCountRef.current) {
+      // 新消息到达，使用 virtualizer API 滚动到底部
+      // 延迟一帧确保 DOM 已更新
+      requestAnimationFrame(() => {
+        virtualizer.scrollToIndex(messages.length - 1, { 
+          align: 'end',
+          behavior: 'smooth' 
+        });
+      });
     }
     lastMessageCountRef.current = messages.length;
-  }, [messages.length, scrollToBottom]);
+  }, [messages.length, virtualizer]);
+
+  // 记录加载前的第一条可见消息索引
+  const firstVisibleIndexRef = useRef<number | null>(null);
+  const prevMessagesLengthRef = useRef(messages.length);
 
   // 处理滚动事件 - 滚动到顶部时加载更多
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
@@ -55,24 +86,28 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
     
     // 当滚动到顶部附近（小于 100px）时，加载更多消息
     if (scrollTop < 100 && hasMoreMessages && !isLoadingMore && messages.length > 0) {
-      // 保存当前滚动位置，用于加载后恢复
-      scrollPositionRef.current = {
-        offset: target.scrollHeight - target.scrollTop,
-        height: target.scrollHeight,
-      };
+      // 保存当前第一条可见消息的索引（加载后需要调整）
+      const virtualItems = virtualizer.getVirtualItems();
+      if (virtualItems.length > 0) {
+        firstVisibleIndexRef.current = virtualItems[0].index;
+        prevMessagesLengthRef.current = messages.length;
+      }
       loadMoreMessages();
     }
-  }, [hasMoreMessages, isLoadingMore, loadMoreMessages, messages.length]);
+  }, [hasMoreMessages, isLoadingMore, loadMoreMessages, messages.length, virtualizer]);
 
   // 加载更多消息后恢复滚动位置
   useEffect(() => {
-    if (!isLoadingMore && scrollPositionRef.current && parentRef.current) {
-      const { offset } = scrollPositionRef.current;
-      // 恢复滚动位置：新的 scrollHeight - 之前的 offset
-      parentRef.current.scrollTop = parentRef.current.scrollHeight - offset;
-      scrollPositionRef.current = null;
+    if (!isLoadingMore && firstVisibleIndexRef.current !== null && messages.length > prevMessagesLengthRef.current) {
+      // 计算新加载的消息数量
+      const newMessagesCount = messages.length - prevMessagesLengthRef.current;
+      // 滚动到之前可见的第一条消息（索引需要加上新加载的数量）
+      const targetIndex = firstVisibleIndexRef.current + newMessagesCount;
+      virtualizer.scrollToIndex(targetIndex, { align: 'start' });
+      firstVisibleIndexRef.current = null;
     }
-  }, [isLoadingMore, messages.length]);
+    prevMessagesLengthRef.current = messages.length;
+  }, [isLoadingMore, messages.length, virtualizer]);
 
   // Empty state
   if (messages.length === 0 && !isLoading) {
@@ -84,7 +119,8 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
   return (
     <div 
       ref={parentRef}
-      className="h-full overflow-auto px-3 py-3"
+      className={`h-full overflow-auto px-3 py-3 ${isReady ? 'opacity-100' : 'opacity-0'}`}
+      style={{ transition: 'none' }} // 不要过渡动画，直接切换
       onScroll={handleScroll}
     >
       {/* 加载更多指示器 */}

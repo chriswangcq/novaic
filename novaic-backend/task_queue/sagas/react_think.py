@@ -47,6 +47,14 @@ def _build_save_response_payload(ctx, prev_result):
     response = prev_result.get("response", {})
     message = response.get("choices", [{}])[0].get("message", {})
     
+    # 确保 message 有效（至少有 role 或 content）
+    if not message or (not message.get("role") and not message.get("content")):
+        # 如果 LLM 返回空响应，构建一个占位消息
+        message = {
+            "role": "assistant",
+            "content": "[No response from LLM]",
+        }
+    
     return {
         "runtime_id": ctx["runtime_id"],
         "message": message,
