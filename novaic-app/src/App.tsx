@@ -99,29 +99,55 @@ function App() {
     initialize();
   }, [initialize]);
 
-  // Load agents after gateway is initialized and auto-select first agent
+  // Load agents after gateway is initialized and auto-select/restore agent
   useEffect(() => {
     const checkAgents = async () => {
       setIsLoadingAgents(true);
       try {
         await loadAgents();
         
-        // Auto-select first agent if none selected
         const storeState = useAppStore.getState();
-        if (storeState.agents.length > 0 && !storeState.currentAgentId) {
-          const firstAgent = storeState.agents[0];
-          await selectAgent(firstAgent.id);
-          
-          // If agent needs setup, go to setup page
-          if (!firstAgent.setup_complete) {
-            setCurrentPage('setup');
-            // Use default setup config
-            setSetupConfig({
-              agent: firstAgent,
-              sourceImage: 'ubuntu-24.04',
-              useCnMirrors: false,
-            });
+        const { agents: loadedAgents, currentAgentId: restoredAgentId } = storeState;
+        
+        if (loadedAgents.length === 0) {
+          // No agents available, nothing to select
+          return;
+        }
+        
+        let targetAgent = null;
+        
+        if (restoredAgentId) {
+          // Verify restored agentId exists in agents list
+          const existingAgent = loadedAgents.find(a => a.id === restoredAgentId);
+          if (existingAgent) {
+            // Restored agent is valid, use it
+            targetAgent = existingAgent;
+            console.log('[App] Restored agent from localStorage:', restoredAgentId);
+          } else {
+            // Restored agent not found, fallback to first
+            targetAgent = loadedAgents[0];
+            console.log('[App] Restored agent not found, selecting first:', targetAgent.id);
           }
+        } else {
+          // No restored agent, select first
+          targetAgent = loadedAgents[0];
+          console.log('[App] No restored agent, selecting first:', targetAgent.id);
+        }
+        
+        // Select the target agent (will be skipped if already selected)
+        if (targetAgent && targetAgent.id !== restoredAgentId) {
+          await selectAgent(targetAgent.id);
+        }
+        
+        // If agent needs setup, go to setup page
+        if (targetAgent && !targetAgent.setup_complete) {
+          setCurrentPage('setup');
+          // Use default setup config
+          setSetupConfig({
+            agent: targetAgent,
+            sourceImage: 'ubuntu-24.04',
+            useCnMirrors: false,
+          });
         }
       } catch (error) {
         console.error('Failed to load agents:', error);

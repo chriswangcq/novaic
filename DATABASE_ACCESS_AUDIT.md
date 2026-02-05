@@ -32,11 +32,11 @@ grep -r "get_database|init_database" --include="*.py"
 
 #### 1. 数据库直接操作 (`.db.execute()`)
 
-**检查范围：** `task_queue/`, `mcp_gateway/`, 根目录 `main_*.py`
+**检查范围：** `task_queue/`, `mcp_client/`, 根目录 `main_*.py`
 
 ```bash
 ✅ task_queue/ - 无直接数据库访问
-✅ mcp_gateway/ - 无直接数据库访问  
+✅ mcp_client/ - 无直接数据库访问  
 ✅ main_*.py - 仅有初始化调用
 ```
 
@@ -233,7 +233,7 @@ task_queue/
   ├── sagas/             ✅ 流程编排，无DB访问
   └── utils/             ✅ 工具函数，无DB访问
 
-mcp_gateway/            ✅ MCP服务，无DB访问
+mcp_client/             ✅ MCP服务，无DB访问
 
 根目录:
   ├── main_task.py       ✅ 仅导入TaskQueueClient

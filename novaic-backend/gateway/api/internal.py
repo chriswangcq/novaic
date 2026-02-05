@@ -2,7 +2,7 @@
 Internal API for Master（Backend 组件）.
 
 Master 通过本 API 与 Gateway（DB、任务、消息等）交互。
-MCP 生命周期由 MCP Gateway（另一 Backend 组件）提供。仅内部使用。
+工具服务由 Tools Server（另一 Backend 组件）提供。仅内部使用。
 
 v14: Added SubAgent API endpoints for SubAgent state management.
 v15: Runtime-first API design - all APIs accept runtime_id and resolve agent_id/subagent_id from DB.
@@ -477,6 +477,41 @@ def get_active_runtimes():
     
     return {
         "runtimes": [_runtime_to_dict(r) for r in runtimes]
+    }
+
+
+@router.get("/runtimes/list")
+def list_active_runtimes_for_mcp():
+    """List all active runtimes.
+    
+    Used by Tools Server for runtime_list tool.
+    NOTE: Must be defined BEFORE /runtimes/{runtime_id} to avoid route conflict.
+    """
+    
+    db = get_db()
+    
+    # Query all active runtimes
+    with db.get_connection("global", timeout=10.0) as conn:
+        cursor = conn.execute("""
+            SELECT runtime_id, agent_id, subagent_id, status, created_at
+            FROM agent_runtimes 
+            WHERE status IN ('active', 'resting')
+            ORDER BY created_at DESC
+        """)
+        rows = cursor.fetchall()
+    
+    return {
+        "runtimes": [
+            {
+                "runtime_id": row[0],
+                "agent_id": row[1],
+                "subagent_id": row[2],
+                "type": "main" if row[2] and row[2].startswith("main-") else "subagent",
+                "status": row[3],
+                "created_at": row[4],
+            }
+            for row in rows
+        ]
     }
 
 
@@ -1186,19 +1221,54 @@ def has_new_messages(agent_id: str):
 
 @router.patch("/messages/mark-read")
 def mark_messages_read(data: Dict[str, Any]):
-    """Mark messages as read."""
+    """Mark messages as read and broadcast status update."""
+    from datetime import datetime
+    import uuid as uuid_module
     
     message_ids = data.get("message_ids", [])
+    agent_id = data.get("agent_id")  # Optional: for SSE filtering
+    
     if not message_ids:
         return {"status": "ok"}
     
     db = get_db()
     placeholders = ",".join(["?"] * len(message_ids))
+    
+    # If no agent_id provided, try to get it from the first message
+    if not agent_id:
+        cursor = db.execute(
+            "SELECT agent_id FROM chat_messages WHERE id = ? LIMIT 1",
+            (message_ids[0],)
+        )
+        row = cursor.fetchone()
+        if row:
+            agent_id = row["agent_id"]
+    
     # For batch updates, use global lock
     with db.transaction("global", timeout=15.0):
         db.execute(f"""
             UPDATE chat_messages SET read = 1 WHERE id IN ({placeholders})
         """, tuple(message_ids))
+    
+    # Broadcast STATUS_UPDATE to SSE for each message
+    try:
+        from main_gateway import _chat_subscribers
+        for msg_id in message_ids:
+            status_update = {
+                "id": str(uuid_module.uuid4())[:8],
+                "type": "STATUS_UPDATE",
+                "message_id": msg_id,
+                "status": "read",
+                "agent_id": agent_id,  # Include agent_id for SSE filtering
+                "timestamp": datetime.now().isoformat(),
+            }
+            for queue in _chat_subscribers.values():
+                try:
+                    queue.put_nowait(status_update)
+                except:
+                    pass
+    except Exception as e:
+        print(f"[Internal] Failed to broadcast status update: {e}")
     
     return {"status": "ok"}
 
@@ -1213,11 +1283,23 @@ def mark_messages_processed(data: Dict[str, Any]):
     import uuid as uuid_module
     
     message_ids = data.get("message_ids", [])
+    agent_id = data.get("agent_id")  # Optional: for SSE filtering
+    
     if not message_ids:
         return {"status": "ok"}
     
     db = get_db()
     placeholders = ",".join(["?"] * len(message_ids))
+    
+    # If no agent_id provided, try to get it from the first message
+    if not agent_id:
+        cursor = db.execute(
+            "SELECT agent_id FROM chat_messages WHERE id = ? LIMIT 1",
+            (message_ids[0],)
+        )
+        row = cursor.fetchone()
+        if row:
+            agent_id = row["agent_id"]
     
     # Mark as read (read=1 means processed)
     # For batch updates, use global lock
@@ -1229,13 +1311,14 @@ def mark_messages_processed(data: Dict[str, Any]):
     # Broadcast STATUS_UPDATE to SSE for each message
     # Import here to avoid circular import
     try:
-        from main import _chat_subscribers
+        from main_gateway import _chat_subscribers
         for msg_id in message_ids:
             status_update = {
                 "id": str(uuid_module.uuid4())[:8],
                 "type": "STATUS_UPDATE",
                 "message_id": msg_id,
                 "status": "read",
+                "agent_id": agent_id,  # Include agent_id for SSE filtering
                 "timestamp": datetime.now().isoformat(),
             }
             for queue in _chat_subscribers.values():
@@ -1310,7 +1393,7 @@ def set_agent_sleep(agent_id: str, data: Dict[str, Any] = None):
     return {"status": "ok"}
 
 
-# MCP 生命周期由 Backend 组件 MCP Gateway 提供（api/internal_mcp.py）；Master 调 MCP Gateway /internal/mcp/*
+# 工具服务由 Backend 组件 Tools Server 提供（api/internal_mcp.py）；Master 调 Tools Server /internal/mcp/*
 
 # ==================== SSE Broadcast ====================
 
@@ -1374,7 +1457,7 @@ def get_ports_for_agent(agent_index: int):
     Get port configuration for an agent by index.
     
     Pure computation based on agent_index, no database access.
-    Used by MCP Gateway and other services.
+    Used by Tools Server and other services.
     """
     from gateway.config.agents import allocate_ports_for_agent, GATEWAY_PORT, BASE_PORT, PORTS_PER_AGENT
     
@@ -1421,8 +1504,7 @@ def get_llm_config():
         models_by_key[m.api_key_id].append({
             "id": m.id,
             "name": m.name,
-            "enabled": m.available,
-            "available": m.available,
+            "enabled": m.enabled,
             "is_custom": m.is_custom,
         })
     
@@ -1500,10 +1582,10 @@ def get_llm_config_full():
 def _build_llm_config_for_agent(db, agent_id: str) -> Dict[str, Any]:
     """Build LLM config for a specific agent (internal helper)."""
     
-    # 1. Get agent's model_id
+    # 1. Check agent exists (agents table may not have model_id column)
     with db.get_connection("agent", resource_id=agent_id, timeout=10.0) as conn:
         cursor = conn.execute(
-            "SELECT model_id FROM agents WHERE id = ?",
+            "SELECT id FROM agents WHERE id = ?",
             (agent_id,)
         )
         row = cursor.fetchone()
@@ -1515,14 +1597,11 @@ def _build_llm_config_for_agent(db, agent_id: str) -> Dict[str, Any]:
             "agent_id": agent_id,
         }
     
-    model_id = row[0]
-    
-    # 2. If no model selected, use default from config
-    if not model_id:
-        with db.get_connection("global", timeout=10.0) as conn:
-            cursor = conn.execute("SELECT value FROM config WHERE key = 'default_model'")
-            default_row = cursor.fetchone()
-        model_id = default_row[0].strip('"') if default_row else "gpt-4o"
+    # 2. Use default model from config (agents table doesn't have model_id column yet)
+    with db.get_connection("global", timeout=10.0) as conn:
+        cursor = conn.execute("SELECT value FROM config WHERE key = 'default_model'")
+        default_row = cursor.fetchone()
+    model_id = default_row[0].strip('"') if default_row else "gpt-4o"
     
     # 3. 从DB查询model和api_key配置
     with db.get_connection("global", timeout=10.0) as conn:
@@ -1734,122 +1813,14 @@ def _subagent_to_dict(subagent) -> Dict[str, Any]:
     }
 
 
-# ==================== MCP Gateway Proxy ====================
-# All MCP management operations go through Gateway
-# Services should NOT call MCP Gateway directly
-
-import os
-import httpx
-
-MCP_GATEWAY_URL = os.environ.get("NOVAIC_MCP_GATEWAY_URL", "http://127.0.0.1:19998")
-
-
-@router.get("/mcp/agent-shared/{agent_id}/exists")
-def mcp_has_agent_shared(agent_id: str):
-    """Check if agent has shared MCP server."""
-    with httpx.Client(timeout=10.0) as client:
-        resp = client.get(f"{MCP_GATEWAY_URL}/internal/mcp/agent-shared/{agent_id}/exists")
-        resp.raise_for_status()
-        return resp.json()
-
-
-@router.post("/mcp/agent-shared")
-def mcp_create_agent_shared(data: Dict[str, Any]):
-    """Create agent shared MCP server.
-    
-    Gateway adds 'ports' from config before forwarding to MCP Gateway.
-    """
-    from gateway.config.agents import allocate_ports_for_agent
-    
-    # Get ports from config (Gateway is the only source of config)
-    agent_index = data.get("agent_index", 0)
-    ports = allocate_ports_for_agent(agent_index)
-    
-    # Add ports to request
-    data["ports"] = ports.model_dump()
-    
-    with httpx.Client(timeout=30.0) as client:
-        resp = client.post(f"{MCP_GATEWAY_URL}/internal/mcp/agent-shared", json=data)
-        resp.raise_for_status()
-        return resp.json()
-
-
-@router.delete("/mcp/agent-shared/{agent_id}")
-def mcp_delete_agent_shared(agent_id: str):
-    """Delete agent shared MCP server."""
-    with httpx.Client(timeout=10.0) as client:
-        resp = client.delete(f"{MCP_GATEWAY_URL}/internal/mcp/agent-shared/{agent_id}")
-        resp.raise_for_status()
-        return resp.json()
-
-
-@router.post("/mcp/runtime")
-def mcp_create_runtime(data: Dict[str, Any]):
-    """Create runtime MCP server.
-    
-    Gateway adds 'ports' from config before forwarding to MCP Gateway.
-    """
-    from gateway.config.agents import allocate_ports_for_agent
-    
-    # Get ports from config (Gateway is the only source of config)
-    agent_index = data.get("agent_index", 0)
-    ports = allocate_ports_for_agent(agent_index)
-    
-    # Add ports to request
-    data["ports"] = ports.model_dump()
-    
-    with httpx.Client(timeout=30.0) as client:
-        resp = client.post(f"{MCP_GATEWAY_URL}/internal/mcp/runtime", json=data)
-        resp.raise_for_status()
-        return resp.json()
-
-
-@router.delete("/mcp/runtime/{agent_id}/{runtime_id}")
-def mcp_delete_runtime(agent_id: str, runtime_id: str):
-    """Delete runtime MCP server."""
-    with httpx.Client(timeout=10.0) as client:
-        resp = client.delete(f"{MCP_GATEWAY_URL}/internal/mcp/runtime/{agent_id}/{runtime_id}")
-        resp.raise_for_status()
-        return resp.json()
-
-
-@router.post("/mcp/aggregate")
-def mcp_create_aggregate(data: Dict[str, Any]):
-    """Create aggregate MCP server.
-    
-    Gateway adds 'ports' from config before forwarding to MCP Gateway.
-    """
-    from gateway.config.agents import allocate_ports_for_agent
-    
-    # Get ports from config (Gateway is the only source of config)
-    agent_index = data.get("agent_index", 0)
-    ports = allocate_ports_for_agent(agent_index)
-    
-    # Add ports to request
-    data["ports"] = ports.model_dump()
-    
-    with httpx.Client(timeout=30.0) as client:
-        resp = client.post(f"{MCP_GATEWAY_URL}/internal/mcp/aggregate", json=data)
-        resp.raise_for_status()
-        return resp.json()
-
-
-@router.delete("/mcp/aggregate/{agent_id}/{runtime_id}")
-def mcp_delete_aggregate(agent_id: str, runtime_id: str):
-    """Delete aggregate MCP server."""
-    with httpx.Client(timeout=10.0) as client:
-        resp = client.delete(f"{MCP_GATEWAY_URL}/internal/mcp/aggregate/{agent_id}/{runtime_id}")
-        resp.raise_for_status()
-        return resp.json()
-
-
-@router.get("/mcp/servers")
-def mcp_list_servers():
-    """List all active MCP servers."""
-    with httpx.Client(timeout=10.0) as client:
-        resp = client.get(f"{MCP_GATEWAY_URL}/internal/mcp/servers")
-        resp.raise_for_status()
-        return resp.json()
+# ==================== MCP Gateway Proxy (DEPRECATED) ====================
+# NOTE: MCP Gateway (FastMCP) has been replaced by Tools Server.
+# The following APIs have been removed:
+# - /internal/mcp/agent-shared/* 
+# - /internal/mcp/runtime/*
+# - /internal/mcp/aggregate/*
+# - /internal/mcp/servers
+# Use Tools Server APIs at /internal/runtimes/* instead.
 
 
 # ==================== Health Monitor Operations (v18) ====================
@@ -1890,13 +1861,13 @@ def reset_stuck_awaking(timeout_seconds: int = 60):
     return {"reset_count": count}
 
 
-# ==================== TaskManager API (for MCP Gateway) ====================
+# ==================== TaskManager API (for Tools Server) ====================
 
 @router.post("/tasks/spawn")
 def task_spawn(data: Dict[str, Any]):
     """Spawn a new task.
     
-    Used by MCP Gateway to create background tasks.
+    Used by Tools Server to create background tasks.
     """
     from gateway.core.task_manager import get_task_manager
     
@@ -1920,7 +1891,7 @@ def task_spawn(data: Dict[str, Any]):
 def task_create_completed(data: Dict[str, Any]):
     """Create an immediately completed task for truncated output storage.
     
-    Used by MCP Gateway for _auto_truncate_result.
+    Used by Tools Server for _auto_truncate_result.
     """
     from gateway.core.task_manager import get_task_manager
     
@@ -1948,7 +1919,7 @@ def task_get_status(
 ):
     """Get task status by ID.
     
-    Used by MCP Gateway for task_query tool.
+    Used by Tools Server for task_query tool.
     """
     from gateway.core.task_manager import get_task_manager
     
@@ -1972,7 +1943,7 @@ def task_list(
 ):
     """List tasks.
     
-    Used by MCP Gateway for task_list tool.
+    Used by Tools Server for task_list tool.
     """
     from gateway.core.task_manager import get_task_manager
     
@@ -1992,7 +1963,7 @@ def task_list(
 def task_cancel(task_id: str, reason: Optional[str] = None):
     """Cancel a task.
     
-    Used by MCP Gateway for task_cancel tool.
+    Used by Tools Server for task_cancel tool.
     """
     from gateway.core.task_manager import get_task_manager
     
@@ -2007,7 +1978,7 @@ def task_cancel(task_id: str, reason: Optional[str] = None):
 def task_get_result(task_id: str, format: str = "summary"):
     """Get task result.
     
-    Used by MCP Gateway for task_result tool.
+    Used by Tools Server for task_result tool.
     """
     from gateway.core.task_manager import get_task_manager
     
@@ -2018,13 +1989,13 @@ def task_get_result(task_id: str, format: str = "summary"):
     return task_manager.get_result(task_id, format=format)
 
 
-# ==================== SSH Key API (for MCP Gateway) ====================
+# ==================== SSH Key API (for Tools Server) ====================
 
 @router.get("/vm/ssh/public-key")
 def get_ssh_public_key():
     """Get default SSH public key.
     
-    Used by MCP Gateway (qemudebug) to inject SSH key into VM.
+    Used by Tools Server (qemudebug) to inject SSH key into VM.
     """
     from gateway.vm.ssh import get_ssh_key_manager
     
@@ -2038,7 +2009,7 @@ def get_ssh_public_key():
 def get_ssh_private_key_path():
     """Get path to SSH private key file.
     
-    Used by MCP Gateway (qemudebug) for SSH connections.
+    Used by Tools Server (qemudebug) for SSH connections.
     Returns the path where Gateway has written the private key.
     """
     from gateway.vm.ssh import get_ssh_key_manager
@@ -2049,49 +2020,14 @@ def get_ssh_private_key_path():
     return {"key_path": str(key_path)}
 
 
-# ==================== Runtime List API (for MCP Gateway runtime tools) ====================
-# NOTE: Legacy Memory API (/memory/{agent_id}/*) removed in v15.
-# Use Runtime-First API: /rt/{runtime_id}/memory/* instead.
-
-@router.get("/runtimes/list")
-def list_active_runtimes_for_mcp():
-    """List all active runtimes.
-    
-    Used by MCP Gateway for runtime_list tool.
-    """
-    
-    db = get_db()
-    
-    # Query all active runtimes
-    with db.get_connection("global", timeout=10.0) as conn:
-        cursor = conn.execute("""
-            SELECT runtime_id, agent_id, subagent_id, status, created_at
-            FROM agent_runtimes 
-            WHERE status IN ('active', 'resting')
-            ORDER BY created_at DESC
-        """)
-        rows = cursor.fetchall()
-    
-    return {
-        "runtimes": [
-            {
-                "runtime_id": row[0],
-                "agent_id": row[1],
-                "subagent_id": row[2],
-                "type": "main" if row[2] and row[2].startswith("main-") else "subagent",
-                "status": row[3],
-                "created_at": row[4],
-            }
-            for row in rows
-        ]
-    }
-
+# ==================== Runtime Tools API ====================
+# NOTE: /runtimes/list moved to line ~480 (before /runtimes/{runtime_id}) to fix route conflict.
 
 @router.post("/runtimes/{runtime_id}/history")
 def get_runtime_history(runtime_id: str, data: Dict[str, Any]):
     """Get message history for a runtime.
     
-    Used by MCP Gateway for runtime_history tool.
+    Used by Tools Server for runtime_history tool.
     Queries runtime's context which contains the conversation history.
     """
     from gateway.db.repositories import RuntimeRepository
@@ -2135,7 +2071,7 @@ def get_runtime_history(runtime_id: str, data: Dict[str, Any]):
 def send_to_runtime(runtime_id: str, data: Dict[str, Any]):
     """Send a message to a runtime.
     
-    Used by MCP Gateway for runtime_send tool.
+    Used by Tools Server for runtime_send tool.
     Appends the message to the runtime's context.
     """
     from gateway.db.repositories import RuntimeRepository
@@ -2164,7 +2100,7 @@ def send_to_runtime(runtime_id: str, data: Dict[str, Any]):
     return {"success": True, "queued": True, "runtime_id": runtime_id}
 
 
-# ==================== Web API (for MCP Gateway local tools) ====================
+# ==================== Web API (for Tools Server local tools) ====================
 # NOTE: Legacy Chat API (/chat/*) removed in v15.
 # Use Runtime-First API: /rt/{runtime_id}/chat/* instead.
 
@@ -2172,7 +2108,7 @@ def send_to_runtime(runtime_id: str, data: Dict[str, Any]):
 def web_search(data: Dict[str, Any]):
     """Search the web using Brave Search API.
     
-    Used by MCP Gateway for web_search tool.
+    Used by Tools Server for web_search tool.
     """
     import os
     import httpx
@@ -2228,7 +2164,7 @@ def web_search(data: Dict[str, Any]):
 def web_fetch(data: Dict[str, Any]):
     """Fetch a web page and convert to markdown.
     
-    Used by MCP Gateway for web_fetch tool.
+    Used by Tools Server for web_fetch tool.
     """
     import re
     import httpx
@@ -2303,7 +2239,7 @@ def web_fetch(data: Dict[str, Any]):
 # NOTE: Legacy QEMU API (/vm/qemu/{agent_id}/*) removed in v15.
 # Use Runtime-First API: /rt/{runtime_id}/qemu/* instead.
 # All APIs accept runtime_id and resolve agent_id/subagent_id from database.
-# This simplifies MCP Gateway tools - they only need to know runtime_id.
+# This simplifies Tools Server tools - they only need to know runtime_id.
 
 # ---------- Memory APIs (via runtime_id) ----------
 

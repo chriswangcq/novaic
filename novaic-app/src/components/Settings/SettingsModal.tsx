@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { ChevronDown, ChevronRight, Search, Plus, X, Trash2, Database, HardDrive } from 'lucide-react';
-import { api } from '../../services';
+import { api, type ApiKeyInfo, type CandidateModel } from '../../services/api';
 
 // ==================== Tab Types ====================
 
@@ -10,30 +10,17 @@ type SettingsTab = 'models' | 'cache';
 
 type ProviderType = 'openai' | 'anthropic' | 'google' | 'azure' | 'openai_compatible';
 
-interface ApiKeyEntryPublic {
-  id: string;
-  name: string;
-  provider: ProviderType;
-  has_api_key: boolean;
-  api_base: string | null;
-  deployment_name: string | null;
-  api_version: string | null;
-  created_at: string;
-}
+// Use ApiKeyInfo from api.ts but cast provider to our local ProviderType for convenience
+type ApiKeyEntryPublic = Omit<ApiKeyInfo, 'provider'> & { provider: ProviderType };
 
-interface AvailableModel {
-  id: string;
-  name: string;
-  provider: ProviderType;
-  api_key_id: string;
-  enabled: boolean;
-  is_custom?: boolean;
-}
+// Re-export CandidateModel with ProviderType
+type LocalCandidateModel = Omit<CandidateModel, 'provider'> & { provider: ProviderType };
 
-interface AppConfigPublic {
+// App config with local types
+interface AppConfigLocal {
   version: number;
   api_keys: ApiKeyEntryPublic[];
-  available_models: AvailableModel[];
+  candidate_models: LocalCandidateModel[];
   max_tokens: number;
   max_iterations: number;
   visible_shell: boolean;
@@ -90,19 +77,39 @@ const PROVIDER_INFO: Record<ProviderType, {
 
 // ==================== Small Components ====================
 
-function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void | Promise<void>; disabled?: boolean }) {
+  const [loading, setLoading] = useState(false);
+  
+  const handleClick = async () => {
+    if (disabled || loading) return;
+    
+    const result = onChange(!checked);
+    // Handle both sync and async onChange
+    if (result instanceof Promise) {
+      setLoading(true);
+      try {
+        await result;
+      } catch (error) {
+        console.error('Toggle onChange error:', error);
+        // Error is already handled in the parent's try-catch
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+  
   return (
     <button
-      onClick={() => !disabled && onChange(!checked)}
-      disabled={disabled}
+      onClick={handleClick}
+      disabled={disabled || loading}
       className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors flex-shrink-0 ${
         checked ? 'bg-green-500' : 'bg-nb-surface-2'
-      } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+      } ${(disabled || loading) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
     >
       <span
         className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
           checked ? 'translate-x-5' : 'translate-x-1'
-        }`}
+        } ${loading ? 'animate-pulse' : ''}`}
       />
     </button>
   );
@@ -150,8 +157,8 @@ function ModelSection({
   fetching,
 }: {
   apiKeyId: string;
-  models: AvailableModel[];
-  onToggle: (modelId: string, apiKeyId: string, enabled: boolean) => void;
+  models: LocalCandidateModel[];
+  onToggle: (modelId: string, apiKeyId: string, enabled: boolean) => void | Promise<void>;
   onAddCustomModel: (apiKeyId: string, modelId: string, modelName: string) => void;
   onDeleteModel?: (modelId: string, apiKeyId: string) => void;
   onFetchModels: () => void;
@@ -375,8 +382,8 @@ function ModelItem({
   onToggle,
   onDelete,
 }: {
-  model: AvailableModel;
-  onToggle: (modelId: string, apiKeyId: string, enabled: boolean) => void;
+  model: LocalCandidateModel;
+  onToggle: (modelId: string, apiKeyId: string, enabled: boolean) => void | Promise<void>;
   onDelete?: (modelId: string, apiKeyId: string) => void;
 }) {
   return (
@@ -416,8 +423,8 @@ function AllModelsModal({
   onDelete,
   onClose,
 }: {
-  models: AvailableModel[];
-  onToggle: (modelId: string, apiKeyId: string, enabled: boolean) => void;
+  models: LocalCandidateModel[];
+  onToggle: (modelId: string, apiKeyId: string, enabled: boolean) => void | Promise<void>;
   onDelete?: (modelId: string, apiKeyId: string) => void;
   onClose: () => void;
 }) {
@@ -525,12 +532,12 @@ function ApiKeyCard({
   fetching
 }: { 
   entry: ApiKeyEntryPublic;
-  models: AvailableModel[];
+  models: LocalCandidateModel[];
   onEdit: () => void;
   onDelete: () => void;
   onTest: () => void;
   onFetchModels: () => void;
-  onToggleModel: (modelId: string, apiKeyId: string, enabled: boolean) => void;
+  onToggleModel: (modelId: string, apiKeyId: string, enabled: boolean) => void | Promise<void>;
   onAddCustomModel: (apiKeyId: string, modelId: string, modelName: string) => void;
   onDeleteModel?: (modelId: string, apiKeyId: string) => void;
   testing: boolean;
@@ -760,7 +767,7 @@ export function SettingsModal(props: { open: boolean; onClose: () => void }) {
   const [info, setInfo] = useState<string | null>(null);
 
   // Config state
-  const [config, setConfig] = useState<AppConfigPublic | null>(null);
+  const [config, setConfig] = useState<AppConfigLocal | null>(null);
   
   // Form state
   const [showAddForm, setShowAddForm] = useState(false);
@@ -787,7 +794,7 @@ export function SettingsModal(props: { open: boolean; onClose: () => void }) {
     setLoading(true);
     setError(null);
     try {
-      const cfg = await api.getConfig() as AppConfigPublic;
+      const cfg = await api.getConfig() as unknown as AppConfigLocal;
       setConfig(cfg);
     } catch (e) {
       setError(String(e));
@@ -804,7 +811,7 @@ export function SettingsModal(props: { open: boolean; onClose: () => void }) {
 
   // Get models for a specific API key
   const getModelsForKey = useCallback((apiKeyId: string) => {
-    return config?.available_models.filter(m => m.api_key_id === apiKeyId) || [];
+    return config?.candidate_models?.filter(m => m.api_key_id === apiKeyId) || [];
   }, [config]);
 
   if (!open) return null;
@@ -970,7 +977,7 @@ export function SettingsModal(props: { open: boolean; onClose: () => void }) {
   };
 
   // Count total enabled models
-  const totalEnabledModels = config?.available_models.filter(m => m.enabled).length || 0;
+  const totalEnabledModels = config?.candidate_models?.filter(m => m.enabled).length || 0;
 
   return (
     <div className="fixed inset-0 z-50">

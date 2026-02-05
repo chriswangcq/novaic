@@ -67,7 +67,6 @@ def handle_tool_execute(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     # 注：need_rest 由 MCP runtime_reset 工具内部设置
     biz = MCPBusiness(
         gateway_url=ctx["gateway_url"],
-        mcp_client=ctx.get("mcp_client"),
         client=ctx.get("gateway_client"),
     )
     

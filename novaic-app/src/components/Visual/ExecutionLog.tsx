@@ -10,7 +10,7 @@ interface ExecutionLogProps {
 
 export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
   const logEndRef = useRef<HTMLDivElement>(null);
-  const { clearLogs } = useAppStore();
+  const { clearLogs, currentAgentId } = useAppStore();
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -159,8 +159,9 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
 
         <button
           onClick={clearLogs}
-          className="p-1.5 hover:bg-nb-surface-2 rounded transition-colors"
-          title="Clear logs"
+          className="p-1.5 hover:bg-nb-surface-2 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          title={currentAgentId ? "Clear logs" : "No agent selected"}
+          disabled={!currentAgentId || logs.length === 0}
         >
           <Trash2 size={14} className="text-nb-text-muted" />
         </button>
@@ -171,10 +172,21 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
         {logs.length === 0 ? (
           <div className="text-nb-text-muted text-center py-8">
             <Terminal size={32} className="mx-auto mb-2 opacity-50" />
-            <p>No execution logs yet</p>
-            <p className="text-xs mt-1 opacity-50">
-              Logs will appear here when you send a message
-            </p>
+            {currentAgentId ? (
+              <>
+                <p>No execution logs yet</p>
+                <p className="text-xs mt-1 opacity-50">
+                  Logs will appear here when you send a message
+                </p>
+              </>
+            ) : (
+              <>
+                <p>No agent selected</p>
+                <p className="text-xs mt-1 opacity-50">
+                  Select or create an agent to see execution logs
+                </p>
+              </>
+            )}
           </div>
         ) : (
           <div className="space-y-1">

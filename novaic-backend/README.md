@@ -7,7 +7,7 @@ NovAIC AI Agent 的后端服务，基于 v2 Saga/Task 架构。
 ```
 novaic-backend/
 ├── Gateway (api/, main.py)      # REST API + DB 管理
-├── MCP (mcp_gateway/, mcp_servers/)  # MCP 服务聚合
+├── MCP (mcp_client/, mcp_servers/)  # MCP 服务聚合
 ├── task_queue/                   # v2 Saga/Task 核心
 │   ├── sagas/                    # Saga 定义 (ReactThink, ReactActions...)
 │   ├── handlers/                 # Task handlers

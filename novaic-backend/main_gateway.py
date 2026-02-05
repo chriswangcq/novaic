@@ -1,7 +1,7 @@
 """
 NovAIC Backend 组件: Gateway - Main Entry Point
 
-Backend 四组件（Gateway、MCP Gateway、Master、Worker）均由 Tauri 统一拉起。
+Backend 四组件（Gateway、Tools Server、Master、Worker）均由 Tauri 统一拉起。
 本进程为 Gateway：API + DB，不含 MCP；Worker 由 Tauri 拉起。
 
 - REST API (/api/*)
@@ -22,7 +22,7 @@ os.environ['NO_PROXY'] = 'localhost,127.0.0.1,::1'
 print("[Gateway] === Environment Variables ===")
 print(f"[Gateway] NOVAIC_DATA_DIR: {os.environ.get('NOVAIC_DATA_DIR', 'NOT SET')}")
 print(f"[Gateway] NOVAIC_RESOURCE_DIR: {os.environ.get('NOVAIC_RESOURCE_DIR', 'NOT SET')}")
-print(f"[Gateway] NOVAIC_MCP_GATEWAY_URL: {os.environ.get('NOVAIC_MCP_GATEWAY_URL', 'NOT SET')}")
+print(f"[Gateway] NOVAIC_TOOLS_SERVER_URL: {os.environ.get('NOVAIC_TOOLS_SERVER_URL', 'NOT SET')}")
 print(f"[Gateway] Current working directory: {os.getcwd()}")
 print(f"[Gateway] Executable path: {sys.executable}")
 print("[Gateway] ===============================")
@@ -324,8 +324,8 @@ async def lifespan(app: FastAPI):
     # Initialize all systems
     initialize_systems(config)
     
-    # MCP 由 Backend 组件 MCP Gateway（main_mcp.py）提供
-    print("[Gateway] MCP 由 Backend 组件 MCP Gateway 提供")
+    # 工具服务由 Tools Server（main_tools.py）提供
+    print("[Gateway] 工具服务由 Tools Server 提供")
     
     # Recover VM processes (check for running VMs from previous Gateway session)
     try:
@@ -429,7 +429,7 @@ def api_root():
         "version": "2.0.0",
         "description": "NovAIC AI Agent Gateway (v2 Saga/Task Architecture)",
         "components": {
-            "mcp": "separate MCP Gateway process",
+            "tools": "separate Tools Server process",
             "workers": "separate Watchdog/Task/Saga/Health worker processes",
         }
     }
@@ -440,7 +440,7 @@ def api_root():
 def system_status():
     """Get detailed system status"""
     return {
-        "mcp": "separate MCP Gateway process",
+        "tools": "separate Tools Server process",
         "architecture": "v2 Saga/Task",
     }
 
@@ -804,7 +804,7 @@ def chat_messages_sse(agent_id: str = None):
     queue: asyncio.Queue = asyncio.Queue(maxsize=50)
     _chat_subscribers[subscriber_id] = queue
     
-    def event_generator():
+    async def event_generator():
         try:
             # Send recent messages first (from database, filtered by agent_id)
             chat_service = get_chat_service()
@@ -815,7 +815,7 @@ def chat_messages_sse(agent_id: str = None):
             # Stream new messages (filtered by agent_id)
             while True:
                 try:
-                    message = asyncio.wait_for(queue.get(), timeout=30.0)
+                    message = await asyncio.wait_for(queue.get(), timeout=30.0)
                     # Filter: only push messages for the specified agent_id
                     if message.get("agent_id") == agent_id:
                         yield f"data: {json_module.dumps(message)}\n\n"
@@ -1231,7 +1231,7 @@ def logs_sse(agent_id: str = None):
     queue: asyncio.Queue = asyncio.Queue(maxsize=100)
     _log_subscribers[subscriber_id] = queue
     
-    def event_generator():
+    async def event_generator():
         try:
             # Send recent logs as catch-up (last 20, from database, filtered by agent_id)
             chat_service = get_chat_service()
@@ -1242,7 +1242,7 @@ def logs_sse(agent_id: str = None):
             # Stream new logs (filtered by agent_id)
             while True:
                 try:
-                    log = asyncio.wait_for(queue.get(), timeout=30.0)
+                    log = await asyncio.wait_for(queue.get(), timeout=30.0)
                     # Filter: only push logs for the specified agent_id
                     if log.get("agent_id") == agent_id:
                         yield f"data: {json_module.dumps(log)}\n\n"

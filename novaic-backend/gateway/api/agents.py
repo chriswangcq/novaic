@@ -2,7 +2,6 @@
 NovAIC Gateway（Backend 组件）- AIC Agent 管理 API.
 
 提供 Agent 管理 REST 接口。
-MCP 状态/运行时由另一 Backend 组件 MCP Gateway 提供；本进程通过代理转发。
 """
 
 import os
@@ -17,15 +16,14 @@ from gateway.config.agents import (
     VmConfig,
     PortConfig,
 )
-from mcp_gateway.manager import get_mcp_manager
 from gateway.db.access import get_db
 
 router = APIRouter(prefix="/api/agents", tags=["agents"])
 
 
-def _get_mcp_gateway_url() -> Optional[str]:
-    """MCP Gateway URL when MCP runs in separate process."""
-    return os.environ.get("NOVAIC_MCP_GATEWAY_URL") or None
+def _get_tools_server_url() -> Optional[str]:
+    """Tools Server URL when tools are served from separate process."""
+    return os.environ.get("NOVAIC_TOOLS_SERVER_URL") or None
 
 
 # ==================== Request/Response Models ====================
@@ -64,24 +62,28 @@ class SetAgentModelRequest(BaseModel):
     model_id: str
 
 
-class ModelInfo(BaseModel):
-    """Model information"""
+class CandidateModelResponse(BaseModel):
+    """
+    Candidate model response (unified model representation).
+    
+    Used for:
+    - /models/available endpoint (list enabled models)
+    - Agent model configuration
+    """
     id: str
     name: str
-    provider_id: str
-    provider_name: str
-    provider_type: str  # openai, anthropic, google
-    enabled: bool = True
-    is_custom: bool = False
-    # Alias for clarity: "available" means enabled
-    available: bool = True
+    provider: str           # Provider type: openai, anthropic, google, etc.
+    api_key_id: str         # API key ID this model belongs to
+    api_key_name: str       # API key name for display
+    enabled: bool = True    # Whether model is enabled for selection
+    is_custom: bool = False # Custom model added by user
 
 
 class AgentModelConfigResponse(BaseModel):
     """Agent's LLM model configuration"""
     agent_id: str
     model_id: Optional[str] = None
-    model: Optional[ModelInfo] = None
+    model: Optional[CandidateModelResponse] = None
     # Full config for LLM calls (only in internal API)
     api_key: Optional[str] = None
     api_base: Optional[str] = None
@@ -196,7 +198,7 @@ def create_agent(request: CreateAgentRequest):
                     (request.model, agent.id)
                 )
         
-        # v2.7: MCP Gateways are created per-Runtime by Master, not per-Agent
+        # v2.7: Tools contexts are created per-Runtime by Master, not per-Agent
         
         # Re-fetch agent to get model_id
         response_dict = agent.model_dump()
@@ -224,7 +226,7 @@ def update_agent(agent_id: str, request: UpdateAgentRequest):
         raise HTTPException(status_code=404, detail="Agent not found")
     
     # If setup_complete changed to True, send bootstrap message
-    # v2.7: MCP Gateway is created per-Runtime by Master, not here
+    # v2.7: Tools context is created per-Runtime by Master, not here
     if request.setup_complete is True and not was_setup_complete:
         # Send bootstrap message using v12 Master-driven architecture
         try:
@@ -296,60 +298,36 @@ def get_agent_status(agent_id: str):
 
 
 # ==================== MCP Management (v2.7) ====================
-# When MCP runs in separate process, proxy to MCP Gateway.
+# Deprecated: Legacy MCP proxy endpoints.
 
 @router.get("/mcp/status")
 def get_mcp_status():
+    """Get MCP status.
+    
+    NOTE: Legacy MCP Gateway has been deprecated.
+    Tools are now served via Tools Server (HTTP API).
     """
-    Get MCPManager status.
-    Proxies to MCP Gateway when MCP runs in separate process.
-    """
-    mcp_manager = get_mcp_manager()
-    if mcp_manager:
-        return {"stats": mcp_manager.get_stats()}
-    mcp_url = _get_mcp_gateway_url()
-    if not mcp_url:
-        raise HTTPException(status_code=503, detail="MCP not available (no MCP Gateway URL)")
-    try:
-        with httpx.Client(timeout=10.0, trust_env=False) as client:
-            r = client.get(f"{mcp_url.rstrip('/')}/internal/mcp/stats")
-            r.raise_for_status()
-            return r.json()
-    except Exception as e:
-        raise HTTPException(status_code=503, detail=f"MCP Gateway unreachable: {e}")
+    return {
+        "status": "deprecated",
+        "message": "Legacy MCP Gateway has been replaced by Tools Server",
+        "tools_server_url": os.environ.get("NOVAIC_TOOLS_SERVER_URL", "http://127.0.0.1:19998"),
+    }
 
 
 @router.get("/mcp/runtimes")
 def list_mcp_runtimes():
+    """List MCP runtimes.
+    
+    NOTE: Legacy MCP Gateway has been deprecated.
+    Use Tools Server APIs instead.
     """
-    List all active Runtime MCP servers and their Aggregate Gateways.
-    Proxies to MCP Gateway when MCP runs in separate process.
-    """
-    mcp_manager = get_mcp_manager()
-    if mcp_manager:
-        stats = mcp_manager.get_stats()
-        runtimes = []
-        for subagent_id in stats.get("runtime_servers", []):
-            runtime_url = mcp_manager.get_runtime_mount_path(subagent_id)
-            aggregate_url = mcp_manager.get_aggregate_mount_path(subagent_id)
-            gateway = mcp_manager.get_aggregate_gateway(subagent_id)
-            runtimes.append({
-                "subagent_id": subagent_id,
-                "runtime_url": runtime_url,
-                "aggregate_url": aggregate_url,
-                "gateway_stats": gateway.get_stats() if gateway else None,
-            })
-        return {"runtimes": runtimes, "total": len(runtimes)}
-    mcp_url = _get_mcp_gateway_url()
-    if not mcp_url:
-        raise HTTPException(status_code=503, detail="MCP not available (no MCP Gateway URL)")
-    try:
-        with httpx.Client(timeout=10.0, trust_env=False) as client:
-            r = client.get(f"{mcp_url.rstrip('/')}/internal/mcp/runtimes")
-            r.raise_for_status()
-            return r.json()
-    except Exception as e:
-        raise HTTPException(status_code=503, detail=f"MCP Gateway unreachable: {e}")
+    return {
+        "status": "deprecated",
+        "message": "Legacy MCP Gateway has been replaced by Tools Server",
+        "runtimes": [],
+        "total": 0,
+        "tools_server_url": os.environ.get("NOVAIC_TOOLS_SERVER_URL", "http://127.0.0.1:19998"),
+    }
 
 
 # Note: Workers load tools from Aggregate Gateway URL stored in runtime record.
@@ -358,48 +336,34 @@ def list_mcp_runtimes():
 
 # ==================== Model Selection (v20) ====================
 
-@router.get("/models/available", response_model=List[ModelInfo])
+@router.get("/models/available", response_model=List[CandidateModelResponse])
 def list_available_models():
     """
-    List all available models for selection.
+    List all available (enabled) models for selection.
     
-    Returns models that are:
-    1. In candidate_models table
-    2. Marked available
-    3. Have valid api_key configured
+    Returns CandidateModel entries that are:
+    1. In candidate_models table with enabled=true
+    2. Have valid api_key configured
+    
+    This is the unified API for getting models that can be used.
     """
-    db = get_db()
+    from gateway.config import get_config_manager
     
-    # Join candidate_models with api_keys to get full info
-    cursor = db.execute("""
-        SELECT 
-            m.id as model_id,
-            m.name as model_name,
-            m.available,
-            m.is_custom,
-            k.id as provider_id,
-            k.name as provider_name,
-            k.provider as provider_type,
-            k.api_key
-        FROM candidate_models m
-        JOIN api_keys k ON m.api_key_id = k.id
-        WHERE m.available = 1 AND k.api_key IS NOT NULL AND k.api_key != ''
-        ORDER BY k.name, m.name
-    """)
-    rows = cursor.fetchall()
+    # Use repository method that joins with api_keys
+    config_manager = get_config_manager()
+    models_data = config_manager.repo.list_models_with_key_name(enabled_only=True)
     
     return [
-        ModelInfo(
-            id=row["model_id"],
-            name=row["model_name"],
-            provider_id=row["provider_id"],
-            provider_name=row["provider_name"],
-            provider_type=row["provider_type"],
-            enabled=bool(row["available"]),
-            is_custom=bool(row["is_custom"]),
-            available=bool(row["available"]),
+        CandidateModelResponse(
+            id=row["id"],
+            name=row["name"],
+            provider=row["provider"],
+            api_key_id=row["api_key_id"],
+            api_key_name=row.get("api_key_name", ""),
+            enabled=True,  # Only enabled models are returned
+            is_custom=bool(row.get("is_custom", 0)),
         )
-        for row in rows
+        for row in models_data
     ]
 
 
@@ -435,16 +399,16 @@ def get_agent_model(agent_id: str):
         config = get_config_manager().load()
         model_id = config.default_model
     
-    # Get model and provider info
+    # Get model and provider info (DB field is 'available', maps to 'enabled')
     cursor = db.execute("""
         SELECT 
             m.id as model_id,
             m.name as model_name,
-            m.enabled,
+            m.provider,
+            m.api_key_id,
+            m.available,
             m.is_custom,
-            k.id as provider_id,
-            k.name as provider_name,
-            k.provider as provider_type,
+            k.name as api_key_name,
             k.api_key,
             k.api_base
         FROM candidate_models m
@@ -470,20 +434,19 @@ def get_agent_model(agent_id: str):
             "anthropic": "https://api.anthropic.com",
             "google": "https://generativelanguage.googleapis.com/v1beta",
         }
-        api_base = provider_defaults.get(row["provider_type"], "")
+        api_base = provider_defaults.get(row["provider"], "")
     
     return AgentModelConfigResponse(
         agent_id=agent_id,
         model_id=model_id,
-        model=ModelInfo(
+        model=CandidateModelResponse(
             id=row["model_id"],
             name=row["model_name"],
-            provider_id=row["provider_id"],
-            provider_name=row["provider_name"],
-            provider_type=row["provider_type"],
+            provider=row["provider"],
+            api_key_id=row["api_key_id"],
+            api_key_name=row["api_key_name"],
             enabled=bool(row["available"]),
             is_custom=bool(row["is_custom"]),
-            available=bool(row["available"]),
         ),
         api_key=row["api_key"],
         api_base=api_base,

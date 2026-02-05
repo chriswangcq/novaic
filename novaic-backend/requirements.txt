@@ -26,11 +26,11 @@ aiofiles>=23.0.0
 aiosqlite>=0.19.0
 
 # MCP Server
-fastmcp>=2.3.1
+# fastmcp>=2.3.1
 
 # FastMCP optional dependencies (required for lifespan/EventStore)
-fakeredis>=2.0.0
-lupa>=2.0
+# fakeredis>=2.0.0
+# lupa>=2.0
 
 # Sub-MCP Server dependencies
 beautifulsoup4>=4.12.0

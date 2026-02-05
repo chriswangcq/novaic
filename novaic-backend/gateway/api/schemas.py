@@ -63,6 +63,12 @@ class ModelToggle(BaseModel):
     enabled: bool
 
 
+class CustomModelAdd(BaseModel):
+    """Add custom model request"""
+    id: str  # Model ID
+    name: Optional[str] = None  # Model name (defaults to id)
+
+
 class SettingsUpdate(BaseModel):
     """Update settings request"""
     default_model: Optional[str] = None

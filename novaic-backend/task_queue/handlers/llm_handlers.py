@@ -11,6 +11,7 @@ Topics:
 """
 
 import json
+import os
 from typing import Dict, Any
 from . import register_handler
 from ..business import LLMBusiness
@@ -84,29 +85,31 @@ def handle_llm_call(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     model = llm_config["model"]
     agent_id = llm_config.get("agent_id")
 
-    # Try to load MCP tools if not provided
+    # 通过 Tools Server HTTP API 获取工具列表
     if not tools:
         try:
-            from ..client import GatewayInternalClient
-            gateway_client = GatewayInternalClient(gateway_url)
-            runtime = gateway_client.get_runtime(runtime_id)
-            mcp_url = runtime.get("mcp_url") if runtime else None
-            mcp_client = ctx.get("mcp_client")
-            if mcp_client and mcp_url:
-                mcp_tools = mcp_client.list_tools(mcp_url, use_cache=True)
-                raw_tools = mcp_tools.get("tools", mcp_tools) if isinstance(mcp_tools, dict) else mcp_tools
-                tools = []
-                for tool in raw_tools or []:
-                    if isinstance(tool, dict) and tool.get("name"):
-                        tools.append({
-                            "type": "function",
-                            "function": {
-                                "name": tool.get("name"),
-                                "description": tool.get("description", ""),
-                                "parameters": tool.get("inputSchema", {}),
-                            },
-                        })
-        except Exception:
+            tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", "http://127.0.0.1:19998")
+            import httpx
+            with httpx.Client(timeout=10.0, trust_env=False) as client:
+                resp = client.get(f"{tools_server_url}/internal/runtimes/{runtime_id}/tools")
+                if resp.status_code == 200:
+                    tools_data = resp.json()
+                    raw_tools = tools_data.get("tools", [])
+                    tools = []
+                    for tool in raw_tools:
+                        if isinstance(tool, dict) and tool.get("name"):
+                            tools.append({
+                                "type": "function",
+                                "function": {
+                                    "name": tool.get("name"),
+                                    "description": tool.get("description", ""),
+                                    "parameters": tool.get("inputSchema", {}),
+                                },
+                            })
+        except Exception as e:
+            # 如果获取工具失败，记录警告并继续
+            import logging
+            logging.getLogger(__name__).warning(f"Failed to get tools from Tools Server: {e}")
             tools = tools or []
     llm_client = _create_llm_client(
         provider=llm_config["provider"],

@@ -4,21 +4,23 @@ NovAIC Backend - Unified Entry Point
 
 Backend v2 架构由以下组件构成：
   - Gateway: API + DB
-  - MCP Gateway: MCP 聚合与 Runtime/Agent MCP
+  - Tools Server: HTTP API for tools (replaces MCP Gateway)
+  - Queue Service: Task/Saga 队列管理
   - Watchdog: 监控 sending 消息，触发 MessageProcess Saga
   - Task Worker: 通用任务执行器
   - Saga Worker: Saga 流程编排
   - Health Worker: 监控并回收超时任务/Saga
 
-所有 Service 只与 Gateway 通信。
+所有 Worker 通过 Gateway 和 Queue Service 通信。
 
 Usage:
     novaic-backend gateway [--port PORT] [--data-dir PATH]
-    novaic-backend mcp-gateway [--port PORT] [--data-dir PATH]
-    novaic-backend watchdog --gateway-url URL
-    novaic-backend task-worker --gateway-url URL
-    novaic-backend saga-worker --gateway-url URL
-    novaic-backend health --gateway-url URL
+    novaic-backend tools-server [--port PORT] [--data-dir PATH] [--gateway-url URL]
+    novaic-backend queue-service [--port PORT] [--data-dir PATH]
+    novaic-backend watchdog --gateway-url URL --queue-service-url URL
+    novaic-backend task-worker --gateway-url URL --queue-service-url URL [--num-workers N]
+    novaic-backend saga-worker --gateway-url URL --queue-service-url URL [--max-concurrent N]
+    novaic-backend health --queue-service-url URL
 
 v2.0: Saga/Task Architecture 替代旧的 Master/Worker/Launcher/Collector 架构
 """
@@ -35,34 +37,55 @@ def print_usage():
     print("""
 NovAIC Backend - Unified Entry Point (v2 Architecture)
 
-Backend 六组件均由 Tauri 统一拉起，所有 Service 只与 Gateway 通信。
+Backend 七组件均由 Tauri 统一拉起。
 
 Usage:
-    novaic-backend gateway [options]      Backend 组件: Gateway (API+DB)
-    novaic-backend mcp-gateway [options]  Backend 组件: MCP Gateway (MCP only)
-    novaic-backend watchdog [options]     Backend 组件: Watchdog (消息监控)
-    novaic-backend task-worker [options]  Backend 组件: Task Worker (任务执行)
-    novaic-backend saga-worker [options]  Backend 组件: Saga Worker (流程编排)
-    novaic-backend health [options]       Backend 组件: Health Worker (超时回收)
+    novaic-backend gateway [options]       Backend 组件: Gateway (API+DB)
+    novaic-backend tools-server [options]  Backend 组件: Tools Server (HTTP API for tools)
+    novaic-backend queue-service [options] Backend 组件: Queue Service (Task/Saga 队列)
+    novaic-backend watchdog [options]      Backend 组件: Watchdog (消息监控)
+    novaic-backend task-worker [options]   Backend 组件: Task Worker (任务执行)
+    novaic-backend saga-worker [options]   Backend 组件: Saga Worker (流程编排)
+    novaic-backend health [options]        Backend 组件: Health Worker (超时回收)
 
 Gateway options:
     --port PORT         Port to listen on (default: 19999)
     --data-dir PATH     Data directory (default: from NOVAIC_DATA_DIR env)
 
-MCP Gateway options:
-    --port PORT         Port for MCP Gateway (default: 19998)
+Tools Server options:
+    --port PORT         Port for Tools Server (default: 19998)
+    --data-dir PATH     Data directory (与 Gateway 共用)
+    --gateway-url URL   Gateway URL (default: http://127.0.0.1:19999)
+
+Queue Service options:
+    --port PORT         Port for Queue Service (default: 19997)
     --data-dir PATH     Data directory (与 Gateway 共用)
 
-Worker options (watchdog/task-worker/saga-worker/health):
-    --gateway-url URL   Gateway URL (default: http://127.0.0.1:19999)
+Watchdog options:
+    --gateway-url URL       Gateway URL (default: http://127.0.0.1:19999)
+    --queue-service-url URL Queue Service URL (default: http://127.0.0.1:19997)
+
+Task Worker options:
+    --gateway-url URL       Gateway URL (default: http://127.0.0.1:19999)
+    --queue-service-url URL Queue Service URL (default: http://127.0.0.1:19997)
+    --num-workers N         Number of worker threads (default: 5)
+
+Saga Worker options:
+    --gateway-url URL       Gateway URL (default: http://127.0.0.1:19999)
+    --queue-service-url URL Queue Service URL (default: http://127.0.0.1:19997)
+    --max-concurrent N      Max concurrent sagas (default: 10)
+
+Health Worker options:
+    --queue-service-url URL Queue Service URL (default: http://127.0.0.1:19997)
 
 Examples:
     novaic-backend gateway --port 19999
-    novaic-backend mcp-gateway --port 19998
-    novaic-backend watchdog --gateway-url http://127.0.0.1:19999
-    novaic-backend task-worker --gateway-url http://127.0.0.1:19999
-    novaic-backend saga-worker --gateway-url http://127.0.0.1:19999
-    novaic-backend health --gateway-url http://127.0.0.1:19999
+    novaic-backend tools-server --port 19998
+    novaic-backend queue-service --port 19997
+    novaic-backend watchdog --gateway-url http://127.0.0.1:19999 --queue-service-url http://127.0.0.1:19997
+    novaic-backend task-worker --gateway-url http://127.0.0.1:19999 --queue-service-url http://127.0.0.1:19997
+    novaic-backend saga-worker --gateway-url http://127.0.0.1:19999 --queue-service-url http://127.0.0.1:19997
+    novaic-backend health --queue-service-url http://127.0.0.1:19997
 """)
 
 
@@ -97,24 +120,54 @@ def run_gateway():
     uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="info")
 
 
-def run_mcp_gateway():
-    """Run the MCP Gateway server (MCP only, separate from Backend)."""
+def run_tools_server():
+    """Run the Tools Server (HTTP API for tools, replaces MCP Gateway)."""
     import argparse
     
-    parser = argparse.ArgumentParser(description="NovAIC MCP Gateway")
-    parser.add_argument("--port", type=int, default=19998, help="Port for MCP Gateway (default: 19998)")
+    parser = argparse.ArgumentParser(description="NovAIC Tools Server")
+    parser.add_argument("--port", type=int, default=19998, help="Port for Tools Server (default: 19998)")
+    parser.add_argument("--data-dir", help="Data directory (overrides NOVAIC_DATA_DIR)")
+    parser.add_argument("--gateway-url", help="Gateway URL (default: http://127.0.0.1:19999)")
+    args = parser.parse_args()
+    
+    if args.data_dir:
+        os.environ["NOVAIC_DATA_DIR"] = args.data_dir
+    if not os.environ.get("NOVAIC_DATA_DIR"):
+        print("[Tools Server] ERROR: NOVAIC_DATA_DIR required (use --data-dir or set env)")
+        sys.exit(1)
+    
+    os.environ["NOVAIC_TOOLS_PORT"] = str(args.port)
+    if args.gateway_url:
+        os.environ["GATEWAY_URL"] = args.gateway_url
+    elif not os.environ.get("GATEWAY_URL"):
+        os.environ["GATEWAY_URL"] = "http://127.0.0.1:19999"
+    
+    from main_tools import app
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="info")
+
+
+def run_queue_service():
+    """Run the Queue Service (Task/Saga queue management)."""
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="NovAIC Queue Service")
+    parser.add_argument("--port", type=int, default=19997, help="Port for Queue Service (default: 19997)")
     parser.add_argument("--data-dir", help="Data directory (overrides NOVAIC_DATA_DIR)")
     args = parser.parse_args()
     
     if args.data_dir:
         os.environ["NOVAIC_DATA_DIR"] = args.data_dir
     if not os.environ.get("NOVAIC_DATA_DIR"):
-        print("[MCP Gateway] ERROR: NOVAIC_DATA_DIR required (use --data-dir or set env)")
+        print("[Queue Service] ERROR: NOVAIC_DATA_DIR required (use --data-dir or set env)")
         sys.exit(1)
-    os.environ["NOVAIC_MCP_PORT"] = str(args.port)
+    os.environ["NOVAIC_QUEUE_PORT"] = str(args.port)
     
-    from main_mcp import main as mcp_main_run
-    mcp_main_run()
+    from queue_service.main import app
+    import uvicorn
+    
+    print(f"[Queue Service] Starting on port {args.port}")
+    uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="info")
 
 
 def run_watchdog():
@@ -123,58 +176,127 @@ def run_watchdog():
     import asyncio
     
     parser = argparse.ArgumentParser(description="NovAIC Watchdog Service")
-    parser.add_argument("--gateway-url", default="http://127.0.0.1:19999")
+    parser.add_argument("--gateway-url", default="http://127.0.0.1:19999", help="Gateway URL")
+    parser.add_argument("--queue-service-url", default="http://127.0.0.1:19997", help="Queue Service URL")
     args = parser.parse_args()
     
-    os.environ["NOVAIC_GATEWAY_URL"] = args.gateway_url
+    from task_queue.workers.watchdog import Watchdog
     
-    from main_watchdog import main as watchdog_run
-    asyncio.run(watchdog_run())
+    async def run():
+        worker = Watchdog(
+            gateway_url=args.gateway_url,
+            queue_service_url=args.queue_service_url,
+            poll_interval=0.1,
+        )
+        
+        import signal
+        loop = asyncio.get_running_loop()
+        
+        def shutdown_handler():
+            print("[watchdog] Received shutdown signal")
+            asyncio.create_task(worker.shutdown())
+        
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            loop.add_signal_handler(sig, shutdown_handler)
+        
+        print(f"[watchdog] Starting...")
+        print(f"[watchdog] Gateway URL: {args.gateway_url}")
+        print(f"[watchdog] Queue Service URL: {args.queue_service_url}")
+        
+        await worker.run()
+        print("[watchdog] Shutdown complete")
+    
+    asyncio.run(run())
 
 
 def run_task_worker():
     """Run the Task Worker service."""
     import argparse
-    import asyncio
+    import signal
     
     parser = argparse.ArgumentParser(description="NovAIC Task Worker Service")
-    parser.add_argument("--gateway-url", default="http://127.0.0.1:19999")
+    parser.add_argument("--gateway-url", default="http://127.0.0.1:19999", help="Gateway URL")
+    parser.add_argument("--queue-service-url", default="http://127.0.0.1:19997", help="Queue Service URL")
+    parser.add_argument("--num-workers", type=int, default=5, help="Number of worker threads (reserved)")
     args = parser.parse_args()
     
-    os.environ["NOVAIC_GATEWAY_URL"] = args.gateway_url
+    from task_queue.workers.task_worker_sync import TaskWorkerSync
     
-    from main_task import main as task_run
-    asyncio.run(task_run())
+    # 默认处理的 topics
+    topics = [
+        "subagent.wake", "subagent.set_awake", "subagent.set_sleeping",
+        "runtime.create", "runtime.update_phase", "runtime.set_status",
+        "runtime.increment_round", "runtime.set_summarized", "runtime.set_need_rest",
+        "runtime.check_new_messages",
+        "mcp.create", "mcp.destroy",
+        "llm.call", "llm.call_summary",
+        "tool.execute",
+        "context.append", "context.get", "context.read",
+        "message.claim", "message.route", "message.process",
+        "saga.trigger",
+    ]
+    
+    worker = TaskWorkerSync(
+        topics=topics,
+        queue_service_url=args.queue_service_url,
+        gateway_url=args.gateway_url,
+    )
+    
+    def shutdown_handler(signum, frame):
+        print("[task-worker] Received shutdown signal")
+        worker.shutdown()
+    
+    signal.signal(signal.SIGTERM, shutdown_handler)
+    signal.signal(signal.SIGINT, shutdown_handler)
+    
+    print(f"[task-worker] Starting...")
+    print(f"[task-worker] Gateway URL: {args.gateway_url}")
+    print(f"[task-worker] Queue Service URL: {args.queue_service_url}")
+    print(f"[task-worker] Num workers: {args.num_workers} (reserved)")
+    
+    worker.run()
+    print("[task-worker] Shutdown complete")
 
 
 def run_saga_worker():
     """Run the Saga Worker service."""
-    import argparse
-    import asyncio
-    
-    parser = argparse.ArgumentParser(description="NovAIC Saga Worker Service")
-    parser.add_argument("--gateway-url", default="http://127.0.0.1:19999")
-    args = parser.parse_args()
-    
-    os.environ["NOVAIC_GATEWAY_URL"] = args.gateway_url
-    
+    # main_saga.py 已经使用 argparse 处理所有参数：
+    # --gateway-url, --queue-service-url, --max-concurrent
+    # 直接调用即可，argv 已在 main() 中处理好
     from main_saga import main as saga_run
-    asyncio.run(saga_run())
+    saga_run()
 
 
 def run_health():
     """Run the Health Worker service."""
     import argparse
-    import asyncio
+    import signal
     
     parser = argparse.ArgumentParser(description="NovAIC Health Worker Service")
-    parser.add_argument("--gateway-url", default="http://127.0.0.1:19999")
+    parser.add_argument("--queue-service-url", default="http://127.0.0.1:19997", help="Queue Service URL")
     args = parser.parse_args()
     
-    os.environ["NOVAIC_GATEWAY_URL"] = args.gateway_url
+    from task_queue.workers.health_worker_sync import HealthWorkerSync
     
-    from main_health import main as health_run
-    asyncio.run(health_run())
+    worker = HealthWorkerSync(
+        queue_service_url=args.queue_service_url,
+        check_interval=30.0,
+        task_timeout=60,
+        saga_timeout=120,
+    )
+    
+    def shutdown_handler(signum, frame):
+        print("[health] Received shutdown signal")
+        worker.shutdown()
+    
+    signal.signal(signal.SIGTERM, shutdown_handler)
+    signal.signal(signal.SIGINT, shutdown_handler)
+    
+    print(f"[health] Starting...")
+    print(f"[health] Queue Service URL: {args.queue_service_url}")
+    
+    worker.run()
+    print("[health] Shutdown complete")
 
 
 def main():
@@ -198,8 +320,10 @@ def main():
     
     if mode == "gateway":
         run_gateway()
-    elif mode == "mcp-gateway":
-        run_mcp_gateway()
+    elif mode in ("tools-server", "mcp-gateway"):
+        run_tools_server()
+    elif mode == "queue-service":
+        run_queue_service()
     elif mode == "watchdog":
         run_watchdog()
     elif mode == "task-worker":

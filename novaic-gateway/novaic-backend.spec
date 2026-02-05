@@ -71,7 +71,7 @@ a = Analysis(
         ('db', 'db'),
         ('vm', 'vm'),
         ('mcp_servers', 'mcp_servers'),
-        ('mcp_gateway', 'mcp_gateway'),
+        ('mcp_client', 'mcp_client'),
         ('executor', 'executor'),
         ('agent', 'agent'),
         ('skills', 'skills'),

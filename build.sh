@@ -12,7 +12,7 @@ cd "$SCRIPT_DIR"
 
 RESOURCES_DIR="novaic-app/src-tauri/resources"
 
-# Step 1: Build unified Backend (Gateway + MCP Gateway + Workers)
+# Step 1: Build unified Backend (Gateway + Tools Server + Workers)
 echo "[1/3] Building unified Backend (novaic-backend)..."
 cd novaic-backend
 
@@ -93,7 +93,7 @@ ls -lh src-tauri/target/release/bundle/macos/*.app 2>/dev/null || echo "  APP no
 echo ""
 echo "Backend usage (Saga/Task Architecture - multiple workers):"
 echo "  ./novaic-backend gateway --port 19999 --data-dir /path/to/data"
-echo "  ./novaic-backend mcp-gateway --port 19998 --data-dir /path/to/data"
+echo "  ./novaic-backend tools-server --port 19998 --data-dir /path/to/data"
 echo "  ./novaic-backend watchdog --gateway-url http://127.0.0.1:19999"
 echo "  ./novaic-backend task-worker --gateway-url http://127.0.0.1:19999  # x3"
 echo "  ./novaic-backend saga-worker --gateway-url http://127.0.0.1:19999  # x3"
@@ -101,7 +101,7 @@ echo "  ./novaic-backend health --gateway-url http://127.0.0.1:19999"
 echo ""
 echo "Default worker configuration:"
 echo "  - Gateway:      1"
-echo "  - MCP Gateway:  1"
+echo "  - Tools Server: 1"
 echo "  - Watchdog:     1"
 echo "  - Task Workers: 3"
 echo "  - Saga Workers: 3"

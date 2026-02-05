@@ -29,7 +29,7 @@ from PyInstaller.utils.hooks import copy_metadata, collect_all, collect_submodul
 # Required for packages that use importlib.metadata
 datas = []
 for pkg in [
-    'fastmcp', 'mcp', 'aiohttp', 'aiofiles', 'httpx',
+    'aiohttp', 'aiofiles', 'httpx',
     'uvicorn', 'fastapi', 'starlette', 'pydantic', 'anyio', 'websockets',
 ]:
     try:
@@ -43,9 +43,6 @@ hiddenimports = []
 
 # Collect all files from critical packages
 critical_packages = [
-    'fakeredis',  # FastMCP session management (includes commands.json)
-    'lupa',       # Lua bindings for fakeredis
-    'docket',     # FastMCP dependency
     'aiohttp',    # SSE and HTTP client
 ]
 
@@ -64,15 +61,21 @@ a = Analysis(
     pathex=[],
     binaries=binaries,
     datas=datas + [
+        # ===== Common package (shared utilities, DB, locks) =====
+        ('common', 'common'),
         # ===== Gateway package (all modules under gateway/) =====
         ('gateway', 'gateway'),
-        # ===== MCP Gateway package =====
-        ('mcp_gateway', 'mcp_gateway'),
+        # ===== MCP Client package =====
+        ('mcp_client', 'mcp_client'),
+        # ===== Tools Server (HTTP API for tools) =====
+        ('tools_server', 'tools_server'),
         # ===== Task Queue (Saga/Task Architecture) =====
         ('task_queue', 'task_queue'),
+        # ===== Queue Service (Task/Saga 队列管理) =====
+        ('queue_service', 'queue_service'),
         # ===== Entry points (for imports by main_novaic.py) =====
         ('main_gateway.py', '.'),
-        ('main_mcp.py', '.'),
+        ('main_tools.py', '.'),
         ('main_watchdog.py', '.'),
         ('main_task.py', '.'),
         ('main_saga.py', '.'),
@@ -112,15 +115,6 @@ a = Analysis(
         'starlette.routing',
         'starlette.responses',
         'starlette.middleware',
-        # ----- fastmcp & mcp -----
-        'fastmcp',
-        'fastmcp.server',
-        'fastmcp.server.server',
-        'fastmcp.server.http',
-        'mcp',
-        'mcp.server',
-        'mcp.server.streamable_http',
-        'mcp.server.streamable_http_manager',
         # ----- anyio -----
         'anyio',
         'anyio._backends',
@@ -129,12 +123,6 @@ a = Analysis(
         'websockets',
         'websockets.legacy',
         'websockets.server',
-        # ----- lupa (lua bindings) -----
-        'lupa',
-        'lupa.lua54',  # Primary lua version
-        # ----- fakeredis -----
-        'fakeredis',
-        'fakeredis.aioredis',
         # ----- aiohttp dependencies -----
         'multidict',
         'multidict._multidict',
@@ -167,12 +155,6 @@ a = Analysis(
         'wheel',
         'distutils',
         'pkg_resources',
-        # Exclude unused lupa versions (keep only lua54)
-        'lupa.lua51',
-        'lupa.lua52',
-        'lupa.lua53',
-        'lupa.luajit20',
-        'lupa.luajit21',
     ],
     noarchive=False,
     optimize=0,

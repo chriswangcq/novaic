@@ -7,6 +7,7 @@ Task Worker 启动入口 (同步版本)
 import os
 import sys
 import signal
+import argparse
 
 # 设置环境
 os.environ['no_proxy'] = 'localhost,127.0.0.1,::1'
@@ -51,11 +52,15 @@ DEFAULT_TOPICS = [
 def main():
     from task_queue.workers.task_worker_sync import TaskWorkerSync
     
-    gateway_url = os.environ.get("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
-    queue_service_url = os.environ.get("QUEUE_SERVICE_URL", "http://127.0.0.1:19997")
-    topics_str = os.environ.get("TASK_TOPICS", "")
+    parser = argparse.ArgumentParser(description="Task Worker (sync)")
+    parser.add_argument("--gateway-url", default="http://127.0.0.1:19999", help="Gateway URL")
+    parser.add_argument("--queue-service-url", default="http://127.0.0.1:19997", help="Queue Service URL")
+    parser.add_argument("--num-workers", type=int, default=5, help="Number of workers")
+    args = parser.parse_args()
     
-    topics = topics_str.split(",") if topics_str else DEFAULT_TOPICS
+    gateway_url = args.gateway_url
+    queue_service_url = args.queue_service_url
+    topics = DEFAULT_TOPICS
     
     worker = TaskWorkerSync(
         topics=topics,

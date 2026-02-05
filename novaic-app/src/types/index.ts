@@ -175,15 +175,24 @@ export type ChatMode = 'agent' | 'chat';
 // Provider Type
 export type ProviderType = 'openai' | 'anthropic' | 'google' | 'azure' | 'openai_compatible';
 
-// Available Model
-export interface AvailableModel {
+/**
+ * CandidateModel - Unified model representation
+ * 
+ * Represents a model that can be selected for use.
+ * Can be fetched from provider or custom added by user.
+ */
+export interface CandidateModel {
   id: string;
   name: string;
   provider: ProviderType;
   api_key_id: string;
-  enabled: boolean;
-  is_custom?: boolean;  // Whether this is a custom model (manually added)
+  api_key_name: string;     // Provider name for display
+  enabled: boolean;         // Whether model is enabled for selection
+  is_custom: boolean;       // Custom model added by user
 }
+
+// Legacy alias for backward compatibility
+export type AvailableModel = CandidateModel;
 
 // API Key Info (public, for display)
 export interface ApiKeyInfo {

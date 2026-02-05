@@ -26,7 +26,6 @@ def handle_mcp_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     biz = MCPBusiness(
         gateway_url=ctx["gateway_url"],
-        mcp_client=ctx.get("mcp_client"),
         client=ctx.get("gateway_client"),
     )
     
@@ -64,7 +63,6 @@ def handle_mcp_destroy(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     biz = MCPBusiness(
         gateway_url=ctx["gateway_url"],
-        mcp_client=ctx.get("mcp_client"),
         client=ctx.get("gateway_client"),
     )
     

@@ -1,7 +1,7 @@
 import { useState, useRef, KeyboardEvent, useEffect, useMemo, useCallback } from 'react';
 import { Loader2, StopCircle, ArrowUp, ChevronDown, Bot, MessageSquare, X } from 'lucide-react';
 import { useAppStore } from '../../store';
-import { ChatMode, AvailableModel } from '../../types';
+import { ChatMode, CandidateModel } from '../../types';
 
 interface ChatInputProps {
   onSend: (content: string) => void;
@@ -37,8 +37,12 @@ export function ChatInput({
     setSelectedModel,
     chatMode,
     setChatMode,
-    loadModelsFromConfig
+    loadModelsFromConfig,
+    currentAgentId
   } = useAppStore();
+
+  // Check if agent is selected
+  const hasAgent = !!currentAgentId;
 
   // Fetch latest models when dropdown opens
   const handleOpenModelDropdown = useCallback(async () => {
@@ -90,7 +94,7 @@ export function ChatInput({
 
   // Group models by API Key (not provider)
   const modelsByApiKey = useMemo(() => {
-    const grouped: Record<string, AvailableModel[]> = {};
+    const grouped: Record<string, CandidateModel[]> = {};
     availableModels.forEach(model => {
       const keyId = model.api_key_id;
       if (!grouped[keyId]) grouped[keyId] = [];
@@ -100,6 +104,10 @@ export function ChatInput({
   }, [availableModels]);
 
   const handleSend = () => {
+    // Check if agent is selected
+    if (!hasAgent) {
+      return;
+    }
     const trimmed = content.trim();
     if (trimmed) {
       // Fire-and-forget: allow sending even when agent is busy
@@ -139,6 +147,14 @@ export function ChatInput({
 
   return (
     <div className="p-4 flex flex-col items-center gap-2">
+      {/* No agent selected hint */}
+      {!hasAgent && (
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400/80 text-xs mb-1">
+          <Bot size={14} />
+          <span>Select an agent from the sidebar to start chatting</span>
+        </div>
+      )}
+      
       {/* Main input row */}
       <div className="flex items-center gap-3 w-full max-w-[480px]">
         {/* Input container */}
@@ -162,8 +178,9 @@ export function ChatInput({
             onInput={handleInput}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
-            placeholder={placeholder}
-            className="w-full bg-transparent text-white/85 placeholder-white/30 text-[13px] resize-none focus:outline-none h-[32px] max-h-[80px] py-[6px] px-4 leading-[20px]"
+            placeholder={hasAgent ? placeholder : "Please select an agent first..."}
+            disabled={!hasAgent}
+            className={`w-full bg-transparent text-white/85 placeholder-white/30 text-[13px] resize-none focus:outline-none h-[32px] max-h-[80px] py-[6px] px-4 leading-[20px] ${!hasAgent ? 'cursor-not-allowed opacity-50' : ''}`}
             rows={1}
           />
         </div>
@@ -171,13 +188,13 @@ export function ChatInput({
         {/* Send button - always available (fire-and-forget mode) */}
         <button
           onClick={handleSend}
-          disabled={!content.trim()}
+          disabled={!hasAgent || !content.trim()}
           className={`w-[32px] h-[32px] rounded-full transition-all flex items-center justify-center shrink-0 ${
-            content.trim()
+            hasAgent && content.trim()
               ? 'bg-violet-500 hover:bg-violet-600 text-white'
               : 'bg-white/[0.04] text-white/25 cursor-not-allowed border border-white/[0.06]'
           }`}
-          title="Send"
+          title={hasAgent ? "Send" : "Please select an agent first"}
         >
           <ArrowUp size={14} strokeWidth={2.5} />
         </button>
@@ -287,7 +304,7 @@ export function ChatInput({
                           >
                             <span className="text-xs text-white/80 truncate">{model.name}</span>
                             <span className="text-[9px] text-white/30 bg-white/[0.04] px-1.5 py-0.5 rounded flex-shrink-0">
-                              {apiKeyNameMap[model.api_key_id] || model.provider}
+                              {model.api_key_name || apiKeyNameMap[model.api_key_id] || model.provider}
                             </span>
                           </button>
                         );

@@ -21,7 +21,6 @@ Watchdog - 消息监视器 (Agent 唤醒系统)
 - 所有业务逻辑在 MessageProcess Saga 中
 """
 
-import os
 import time
 import threading
 import uuid
@@ -72,16 +71,12 @@ class Watchdog:
     def __init__(
         self,
         gateway_url: str = "http://127.0.0.1:19999",
-        queue_service_url: Optional[str] = None,
+        queue_service_url: str = "http://127.0.0.1:19997",
         poll_interval: float = 0.1,
         timeout: float = 30.0,
     ):
         self.gateway_url = gateway_url.rstrip("/")
-        # Queue Service URL - 从环境变量获取或使用默认值
-        self.queue_service_url = (
-            queue_service_url or 
-            os.environ.get("QUEUE_SERVICE_URL", "http://127.0.0.1:19997")
-        ).rstrip("/")
+        self.queue_service_url = queue_service_url.rstrip("/")
         self.poll_interval = poll_interval
         self.timeout = timeout
         self.worker_id = f"wd-{uuid.uuid4().hex[:8]}"

@@ -69,38 +69,8 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
       console.error('Failed to copy MCP config:', e);
     }
   }, [currentAgentId]);
-  // 检查 Agent 的 VNC 状态 (使用新的 ready 字段)
-  const checkVncStatus = useCallback(async () => {
-    try {
-      const res = await fetch(`http://localhost:${CONFIG.gatewayPort}/api/vnc/status`, {
-        signal: AbortSignal.timeout(3000),
-      });
-      const data = await res.json();
-      
-      if (data.ready) {
-        // VNC + websockify 都就绪
-        setStatus('running');
-        checkWebsockify();
-      } else if (data.running) {
-        // VNC 运行但 websockify 未就绪
-        setStatus('running');
-        setWsReady(false);
-        // 尝试检查 websockify
-        checkWebsockify();
-      } else {
-        setStatus('stopped');
-        setWsReady(false);
-        setVncConnected(false);
-      }
-    } catch (e) {
-      // Agent 不可用
-      setStatus('unknown');
-      setWsReady(false);
-      setVncConnected(false);
-    }
-  }, [setVncConnected]);
 
-  // 检查 websockify 是否可用
+  // 检查 websockify 是否可用 (必须在 checkVncStatus 之前声明)
   const checkWebsockify = useCallback(async () => {
     const timestamp = new Date().toLocaleTimeString();
     console.log(`[VNC checkWebsockify ${timestamp}] Checking WebSocket connection...`);
@@ -138,6 +108,46 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
       setVncConnected(false);
     }
   }, [setVncConnected, currentAgentId]);
+
+  // 检查 Agent 的 VNC 状态 (使用新的 ready 字段)
+  const checkVncStatus = useCallback(async () => {
+    // 需要有选中的 agent 才能检查状态
+    if (!currentAgentId) {
+      console.log('[VNC checkVncStatus] No agent selected');
+      setStatus('unknown');
+      setWsReady(false);
+      setVncConnected(false);
+      return;
+    }
+    
+    try {
+      const res = await fetch(`http://localhost:${CONFIG.gatewayPort}/api/vnc/status?agent_id=${currentAgentId}`, {
+        signal: AbortSignal.timeout(3000),
+      });
+      const data = await res.json();
+      
+      if (data.ready) {
+        // VNC + websockify 都就绪
+        setStatus('running');
+        checkWebsockify();
+      } else if (data.running) {
+        // VNC 运行但 websockify 未就绪
+        setStatus('running');
+        setWsReady(false);
+        // 尝试检查 websockify
+        checkWebsockify();
+      } else {
+        setStatus('stopped');
+        setWsReady(false);
+        setVncConnected(false);
+      }
+    } catch (e) {
+      // Agent 不可用
+      setStatus('unknown');
+      setWsReady(false);
+      setVncConnected(false);
+    }
+  }, [setVncConnected, currentAgentId, checkWebsockify]);
 
   // 更新启动进度的辅助函数
   const updateProgress = useCallback((step: number, subProgress: number, message: string) => {
@@ -220,7 +230,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
       // Step 3: 调用 Agent 启动 VNC
       log('Step 3: Calling /api/vnc/start...');
       updateProgress(2, 0, '正在启动 VNC 服务...');
-      const res = await fetch(`http://localhost:${CONFIG.gatewayPort}/api/vnc/start`, {
+      const res = await fetch(`http://localhost:${CONFIG.gatewayPort}/api/vnc/start?agent_id=${currentAgentId}`, {
         method: 'POST',
       });
       const data = await res.json();
@@ -361,7 +371,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
       // 策略 2: 如果直接连接失败，尝试通过 Agent API
       try {
         log('Step 2: Checking Agent VNC status...');
-        const res = await fetch(`http://localhost:${CONFIG.gatewayPort}/api/vnc/status`, {
+        const res = await fetch(`http://localhost:${CONFIG.gatewayPort}/api/vnc/status?agent_id=${currentAgentId}`, {
           signal: AbortSignal.timeout(3000),
         });
         const data = await res.json();

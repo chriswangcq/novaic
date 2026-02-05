@@ -37,7 +37,8 @@
 │                    服务组件                              │
 ├─────────────────────────────────────────────────────────┤
 │ main_gateway.py   │ Gateway (19999) - REST API + SQLite │
-│ main_mcp.py       │ MCP Gateway (19998) - MCP 管理      │
+│ main_tools.py     │ Tools Server (19998) - 工具服务管理 │
+│ main_queue.py     │ Queue Service (19997) - 队列服务    │
 │ main_watchdog.py  │ Watchdog - 消息监听 + 触发 Saga     │
 │ main_task.py      │ Task Worker - 执行所有 Handler      │
 │ main_saga.py      │ Saga Worker - 编排多步骤流程        │
@@ -79,8 +80,11 @@ sleep 5
 # 验证 Gateway
 curl -s http://127.0.0.1:19999/api/health
 
-# 启动 MCP Gateway
-nohup python main_mcp.py > /tmp/mcp.log 2>&1 &
+# 启动 Tools Server
+nohup python main_tools.py > /tmp/tools.log 2>&1 &
+
+# 启动 Queue Service
+nohup python main_queue.py > /tmp/queue.log 2>&1 &
 
 # 启动 Workers（必须设置 NOVAIC_GATEWAY_URL）
 nohup python main_watchdog.py > /tmp/watchdog.log 2>&1 &
@@ -90,7 +94,7 @@ nohup python main_health.py > /tmp/health.log 2>&1 &
 
 sleep 3
 
-# 验证进程数（应该是 6 个）
+# 验证进程数（应该是 7 个）
 ps aux | grep "python.*main_" | grep -v grep | wc -l
 ```
 
@@ -100,8 +104,11 @@ ps aux | grep "python.*main_" | grep -v grep | wc -l
 # Gateway 健康检查
 curl -s http://127.0.0.1:19999/api/health
 
-# MCP Gateway 健康检查
+# Tools Server 健康检查
 curl -s http://127.0.0.1:19998/api/health
+
+# Queue Service 健康检查
+curl -s http://127.0.0.1:19997/api/health
 ```
 
 ---
@@ -410,8 +417,9 @@ UPDATE subagents SET status = 'sleeping';
 冒烟测试通过标准：
 
 - [ ] Gateway 健康检查返回 `healthy`
-- [ ] MCP Gateway 健康检查返回 `ok`
-- [ ] 6 个服务进程都在运行
+- [ ] Tools Server 健康检查返回 `ok`
+- [ ] Queue Service 健康检查返回 `ok`
+- [ ] 7 个服务进程都在运行
 - [ ] API Key 和模型已配置
 - [ ] Gateway 日志显示 `LLM client configured`
 - [ ] Agent 和 SubAgent 已创建
@@ -422,7 +430,7 @@ UPDATE subagents SET status = 'sleeping';
 
 ## 标杆案例：2026-02-03 冒烟测试闭环
 
-本案例作为 v22+ 的默认基准，用于验证 Task Queue v2 + Saga + MCP 完整闭环。
+本案例作为 v22+ 的默认基准，用于验证 Task Queue v2 + Saga + Tools Server 完整闭环。
 
 ### 目标
 
@@ -435,9 +443,9 @@ UPDATE subagents SET status = 'sleeping';
 ### 关键修复清单（必须具备）
 
 - `saga.trigger` 使用异步 `create()`，避免 Gateway 内同步执行阻塞
-- MCP 创建走 Gateway → MCP Gateway 代理，写入完整 `mcp_url`
-- `tool.execute` 使用 MCP Gateway HTTP client
-- MCP URL 统一使用带 `/` 结尾的 mount path
+- 工具创建走 Gateway → Tools Server 代理，写入完整 `tools_url`
+- `tool.execute` 使用 Tools Server HTTP client
+- Tools URL 统一使用带 `/` 结尾的 mount path
 - TaskQueue 并发写入加锁，避免 `sqlite3.OperationalError: cannot commit transaction - SQL statements in progress`
 
 ### 快速复现命令
@@ -449,12 +457,14 @@ cd /path/to/novaic/novaic-backend
 source venv/bin/activate
 export NOVAIC_DATA_DIR=~/.novaic
 export NOVAIC_GATEWAY_URL=http://127.0.0.1:19999
-export NOVAIC_MCP_GATEWAY_URL=http://127.0.0.1:19998
+export NOVAIC_TOOLS_SERVER_URL=http://127.0.0.1:19998
+export NOVAIC_QUEUE_SERVICE_URL=http://127.0.0.1:19997
 export PYTHONUNBUFFERED=1
 
 nohup python main_gateway.py > /tmp/gateway.log 2>&1 &
 sleep 5
-nohup python main_mcp.py > /tmp/mcp.log 2>&1 &
+nohup python main_tools.py > /tmp/tools.log 2>&1 &
+nohup python main_queue.py > /tmp/queue.log 2>&1 &
 nohup python main_watchdog.py > /tmp/watchdog.log 2>&1 &
 nohup python main_task.py > /tmp/task.log 2>&1 &
 nohup python main_saga.py > /tmp/saga.log 2>&1 &

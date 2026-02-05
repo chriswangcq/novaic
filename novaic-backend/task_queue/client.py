@@ -6,6 +6,7 @@ TaskQueueClient - 通过 HTTP API 访问 Gateway 的 TaskQueue
 """
 
 import json
+import os
 import httpx
 from typing import Optional, List, Dict, Any
 
@@ -465,16 +466,55 @@ class GatewayInternalClient:
     def get_subagent_status(self, agent_id: str, subagent_id: str) -> dict:
         return self._request("GET", f"/internal/subagents/{agent_id}/{subagent_id}/status", None)
 
-    # ---------- MCP ----------
+    # ---------- Tools Server ----------
+    def create_runtime_tools(self, runtime_id: str, agent_id: str, subagent_id: str, ports: dict = None) -> dict:
+        """在 Tools Server 创建 Runtime 工具上下文"""
+        tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", "http://127.0.0.1:19998")
+        with httpx.Client(timeout=30.0, trust_env=False) as client:
+            resp = client.post(f"{tools_server_url}/internal/runtimes", json={
+                "runtime_id": runtime_id,
+                "agent_id": agent_id,
+                "subagent_id": subagent_id,
+                "ports": ports or {},
+            })
+            resp.raise_for_status()
+            return resp.json()
+
+    def destroy_runtime_tools(self, runtime_id: str) -> dict:
+        """在 Tools Server 删除 Runtime 工具上下文"""
+        tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", "http://127.0.0.1:19998")
+        with httpx.Client(timeout=10.0, trust_env=False) as client:
+            resp = client.delete(f"{tools_server_url}/internal/runtimes/{runtime_id}")
+            resp.raise_for_status()
+            return resp.json()
+
+    def list_runtime_tools(self, runtime_id: str) -> dict:
+        """获取 Runtime 的工具列表"""
+        tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", "http://127.0.0.1:19998")
+        with httpx.Client(timeout=10.0, trust_env=False) as client:
+            resp = client.get(f"{tools_server_url}/internal/runtimes/{runtime_id}/tools")
+            resp.raise_for_status()
+            return resp.json()
+
+    def call_runtime_tool(self, runtime_id: str, tool_name: str, arguments: dict) -> dict:
+        """调用 Runtime 的工具"""
+        tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", "http://127.0.0.1:19998")
+        with httpx.Client(timeout=30.0, trust_env=False) as client:
+            resp = client.post(f"{tools_server_url}/internal/runtimes/{runtime_id}/tools/call", json={
+                "name": tool_name,
+                "arguments": arguments,
+            })
+            resp.raise_for_status()
+            return resp.json()
+
+    # 向后兼容别名
     def create_aggregate_mcp(self, agent_id: str, runtime_id: str, subagent_id: str) -> dict:
-        return self._request("POST", "/internal/mcp/aggregate", {
-            "agent_id": agent_id,
-            "runtime_id": runtime_id,
-            "subagent_id": subagent_id,
-        })
+        """向后兼容：创建 Runtime 工具上下文"""
+        return self.create_runtime_tools(runtime_id, agent_id, subagent_id)
 
     def destroy_aggregate_mcp(self, agent_id: str, runtime_id: str) -> dict:
-        return self._request("DELETE", f"/internal/mcp/aggregate/{agent_id}/{runtime_id}", None)
+        """向后兼容：删除 Runtime 工具上下文"""
+        return self.destroy_runtime_tools(runtime_id)
 
     # ---------- Runtime flags ----------
     def set_runtime_summarized(self, runtime_id: str) -> dict:

@@ -110,8 +110,8 @@ export function AgentDrawer({ isOpen, onClose, onSelectAgent, onCreateNew }: Age
         }
       }
       
+      // deleteAgent 内部会调用 loadAgents 并自动选择新 agent
       await deleteAgent(agentId);
-      await loadAgents();
     } catch (error) {
       console.error('Failed to delete agent:', error);
     } finally {

@@ -29,6 +29,27 @@ import {
 const LAYOUT_STORAGE_KEY = 'novaic-layout';
 const DEFAULT_LEFT_WIDTH = 400;
 
+// Agent persistence key
+const AGENT_STORAGE_KEY = 'novaic-current-agent-id';
+
+function loadStoredAgentId(): string | null {
+  try {
+    return localStorage.getItem(AGENT_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function saveAgentId(agentId: string | null): void {
+  try {
+    if (agentId) {
+      localStorage.setItem(AGENT_STORAGE_KEY, agentId);
+    } else {
+      localStorage.removeItem(AGENT_STORAGE_KEY);
+    }
+  } catch {}
+}
+
 // Load layout settings from localStorage
 function loadLayoutSettings(): LayoutSettings {
   try {
@@ -76,7 +97,7 @@ interface AppStore extends AppState {
   setLeftPanelWidth: (width: number) => void;
   // Model & Mode actions
   setAvailableModels: (models: AvailableModel[]) => void;
-  setSelectedModel: (model: string) => void;
+  setSelectedModel: (model: string) => Promise<void>;
   setChatMode: (mode: ChatMode) => void;
   loadModelsFromConfig: () => Promise<void>;
   // Agent actions
@@ -93,8 +114,8 @@ interface AppStore extends AppState {
     useCnMirrors: boolean;
   }) => Promise<void>;
   // SSE connection
-  connectChatSSE: () => void;
-  connectLogsSSE: () => void;
+  connectChatSSE: (agentId?: string) => void;
+  connectLogsSSE: (agentId?: string) => void;
   disconnectSSE: () => void;
   // Message pagination
   hasMoreMessages: boolean;
@@ -154,7 +175,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   chatMode: loadChatMode(),
   // Agent state
   agents: [],
-  currentAgentId: null,
+  currentAgentId: loadStoredAgentId(),  // Initialize from localStorage
   createAgentModalOpen: false,
   // Message pagination state
   hasMoreMessages: true,
@@ -195,31 +216,39 @@ export const useAppStore = create<AppStore>((set, get) => ({
         return;
       }
       
-      // Connect to SSE streams for real-time updates
+      // Try to connect SSE streams (will only connect if currentAgentId is set)
+      // If no agent is selected yet, SSE will be connected when selectAgent() is called
       connectChatSSE();
       connectLogsSSE();
-      console.log('[Store] SSE streams connected');
+      console.log('[Store] SSE connection attempted (requires agent selection)');
       
       // Load chat history (persisted messages with summary)
-      try {
-        const history = await api.getChatHistory({ limit: 50, summary_length: 100 });
-        if (history.success && history.messages.length > 0) {
-          const messages: Message[] = history.messages.map((msg) => ({
-            id: msg.id,
-            role: msg.type === 'USER_MESSAGE' ? 'user' : 'assistant',
-            content: msg.summary || '',
-            timestamp: new Date(msg.timestamp),
-            isTruncated: msg.is_truncated,  // 保存截断状态
-            // Use backend read status: read=true -> 'read', read=false -> 'delivered'
-            status: msg.type === 'USER_MESSAGE' 
-              ? (msg.read ? 'read' : 'delivered') as MessageStatus 
-              : undefined,
-          }));
-          set({ messages, hasMoreMessages: history.has_more });
-          console.log(`[Store] Loaded ${messages.length} messages from history, has_more: ${history.has_more}`);
+      // Note: At initialization, currentAgentId may not be set yet (will be loaded by loadAgents)
+      // So we skip loading history here - it will be loaded when selectAgent is called
+      const { currentAgentId } = get();
+      if (currentAgentId) {
+        try {
+          const history = await api.getChatHistory({ agent_id: currentAgentId, limit: 50, summary_length: 100 });
+          if (history.success && history.messages.length > 0) {
+            const messages: Message[] = history.messages.map((msg) => ({
+              id: msg.id,
+              role: msg.type === 'USER_MESSAGE' ? 'user' : 'assistant',
+              content: msg.summary || '',
+              timestamp: new Date(msg.timestamp),
+              isTruncated: msg.is_truncated,  // 保存截断状态
+              // Use backend read status: read=true -> 'read', read=false -> 'delivered'
+              status: msg.type === 'USER_MESSAGE' 
+                ? (msg.read ? 'read' : 'delivered') as MessageStatus 
+                : undefined,
+            }));
+            set({ messages, hasMoreMessages: history.has_more });
+            console.log(`[Store] Loaded ${messages.length} messages from history, has_more: ${history.has_more}`);
+          }
+        } catch (e) {
+          console.warn('[Store] Failed to load chat history:', e);
         }
-      } catch (e) {
-        console.warn('[Store] Failed to load chat history:', e);
+      } else {
+        console.log('[Store] No agent selected yet, skipping history load');
       }
       
       // Load models from config
@@ -237,7 +266,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   // Send message (fire-and-forget style, like WeChat/WhatsApp)
   sendMessage: async (content: string) => {
-    const { addMessage, updateMessageStatus, isInitialized, initialize, selectedModel, chatMode } = get();
+    const { addMessage, updateMessageStatus, isInitialized, initialize, selectedModel, chatMode, currentAgentId } = get();
     
     if (!isInitialized) {
       await initialize();
@@ -245,6 +274,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
         console.log('[Store] Not initialized, cannot send message');
         return;
       }
+    }
+    
+    // Check if agent is selected
+    if (!currentAgentId) {
+      console.error('[Store] No agent selected, cannot send message');
+      return;
     }
     
     // Generate message ID locally
@@ -283,6 +318,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       
       const result = await Promise.race([
         api.sendChatMessage(content, {
+          agent_id: currentAgentId,
           model: modelId,
           mode: chatMode || 'agent',
           api_key_id: apiKeyId,
@@ -313,9 +349,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   stopExecution: async () => {
-    console.log('[Store] Stop execution requested');
+    const { currentAgentId } = get();
+    console.log('[Store] Stop execution requested for agent:', currentAgentId);
     try {
-      await api.interruptAgent();
+      await api.interruptAgent(currentAgentId || undefined);
       console.log('[Store] Agent interrupted via HTTP API');
     } catch (e) {
       console.error('[Store] Failed to interrupt agent:', e);
@@ -353,8 +390,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   // Expand truncated message - fetch full content
   expandMessage: async (messageId: string) => {
+    const { currentAgentId } = get();
     try {
-      const result = await api.getChatMessage(messageId);
+      const result = await api.getChatMessage(messageId, currentAgentId || undefined);
       if (result.success && result.content) {
         set((state) => ({
           messages: state.messages.map((msg) =>
@@ -423,11 +461,27 @@ export const useAppStore = create<AppStore>((set, get) => ({
     set({ availableModels: models });
   },
 
-  setSelectedModel: (model: string) => {
+  setSelectedModel: async (model: string) => {
+    const { currentAgentId } = get();
     set({ selectedModel: model });
+    
+    // 保存到 localStorage（作为 fallback）
     try {
       localStorage.setItem(MODEL_STORAGE_KEY, model);
     } catch {}
+    
+    // 同步保存到当前 agent（如果有）
+    if (currentAgentId && model) {
+      try {
+        // model 格式: "api_key_id:model_id"，后端只需要 model_id
+        const colonIndex = model.indexOf(':');
+        const modelId = colonIndex !== -1 ? model.substring(colonIndex + 1) : model;
+        await api.setAgentModel(currentAgentId, modelId);
+        console.log('[Store] Saved model to agent:', currentAgentId, modelId);
+      } catch (error) {
+        console.warn('[Store] Failed to save model to agent:', error);
+      }
+    }
   },
 
   setChatMode: (mode: ChatMode) => {
@@ -441,8 +495,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
     try {
       const config = await api.getConfig();
       
-      // Filter only enabled models
-      const enabledModels = (config.available_models || []).filter(m => m.enabled);
+      // Filter only enabled models from candidate_models
+      const enabledModels = (config.candidate_models || []).filter(m => m.enabled);
       
       // Extract API key info
       const apiKeys: ApiKeyInfo[] = (config.api_keys || []).map(k => ({
@@ -471,11 +525,35 @@ export const useAppStore = create<AppStore>((set, get) => ({
   loadAgents: async () => {
     try {
       const response = await api.listAgents();
-      set({ 
-        agents: response.agents,
-        currentAgentId: response.current_agent_id 
-      });
+      const { currentAgentId, selectAgent, isInitialized } = get();
+      
+      // 更新 agents 列表
+      set({ agents: response.agents });
       console.log('[Store] Loaded agents:', response.agents.length);
+      
+      // 自动选择 agent（如果当前没有选择或选择的 agent 不存在）
+      if (response.agents.length > 0) {
+        const currentAgentExists = response.agents.some(a => a.id === currentAgentId);
+        
+        if (!currentAgentId || !currentAgentExists) {
+          // 优先使用 localStorage 中保存的，否则选择第一个
+          const storedAgentId = loadStoredAgentId();
+          const storedAgentExists = storedAgentId && response.agents.some(a => a.id === storedAgentId);
+          
+          const targetAgentId = storedAgentExists ? storedAgentId! : response.agents[0].id;
+          console.log('[Store] Auto-selecting agent:', targetAgentId);
+          
+          // 如果已初始化，调用完整的 selectAgent 以清空消息并加载新历史
+          if (isInitialized) {
+            // 使用 selectAgent 确保消息被清空、历史被加载
+            await selectAgent(targetAgentId);
+          } else {
+            // 初始化前只设置 ID（SSE 和历史会在 initialize 时处理）
+            set({ currentAgentId: targetAgentId });
+            saveAgentId(targetAgentId);
+          }
+        }
+      }
     } catch (error) {
       console.error('[Store] Failed to load agents:', error);
     }
@@ -491,25 +569,37 @@ export const useAppStore = create<AppStore>((set, get) => ({
     }
     
     try {
-      // 1. 通知 Gateway 切换 agent
-      await api.setCurrentAgent(agentId);
-      
-      // 2. 清空本地消息和日志（不同 agent 有不同的聊天历史）
+      // 1. 更新本地状态并持久化到 localStorage
       set({ 
         currentAgentId: agentId,
         messages: [],
         logs: [],
         hasMoreMessages: true,
       });
+      saveAgentId(agentId);  // Persist to localStorage
       console.log('[Store] Selected agent:', agentId);
       
-      // 3. 重新连接 SSE（Gateway 会根据 current_agent 路由消息）
-      connectChatSSE();
-      connectLogsSSE();
+      // 2. 重新连接 SSE（带 agent_id 参数，后端按 agent 过滤）
+      connectChatSSE(agentId);
+      connectLogsSSE(agentId);
+      
+      // 3. 加载新 agent 的模型配置
+      try {
+        const modelConfig = await api.getAgentModel(agentId);
+        if (modelConfig && modelConfig.model_id && modelConfig.model) {
+          // 构造 composite ID: api_key_id:model_id
+          const compositeId = `${modelConfig.model.api_key_id}:${modelConfig.model_id}`;
+          set({ selectedModel: compositeId });
+          localStorage.setItem(MODEL_STORAGE_KEY, compositeId);
+          console.log('[Store] Loaded model for agent:', agentId, compositeId);
+        }
+      } catch (e) {
+        console.warn('[Store] Failed to load model for agent:', e);
+      }
       
       // 4. 加载新 agent 的聊天历史
       try {
-        const history = await api.getChatHistory({ limit: 50, summary_length: 100 });
+        const history = await api.getChatHistory({ agent_id: agentId, limit: 50, summary_length: 100 });
         if (history.success && history.messages.length > 0) {
           const messages: Message[] = history.messages.map((msg) => ({
             id: msg.id,
@@ -551,9 +641,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
   deleteAgent: async (agentId: string) => {
     try {
       await api.deleteAgent(agentId);
+      console.log('[Store] Deleted agent:', agentId);
+      
+      // loadAgents 会检测到当前 agent 不存在，自动选择新 agent
+      // 新的 loadAgents 会调用 selectAgent，包含清空消息、连接 SSE、加载历史
       const { loadAgents } = get();
       await loadAgents();
-      console.log('[Store] Deleted agent:', agentId);
     } catch (error) {
       console.error('[Store] Failed to delete agent:', error);
       throw error;
@@ -666,29 +759,33 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   // SSE Connection: Chat messages (Agent <-> User)
-  connectChatSSE: () => {
-    const { addMessage, updateMessageStatus, setExecuting } = get();
+  connectChatSSE: (agentId?: string) => {
+    const { addMessage, updateMessageStatus, setExecuting, currentAgentId } = get();
+    
+    // Use provided agentId or fallback to currentAgentId
+    const targetAgentId = agentId || currentAgentId;
+    
+    // Don't connect if no agent selected
+    if (!targetAgentId) {
+      console.log('[Store] No agent selected, skipping Chat SSE connection');
+      return;
+    }
     
     // Close existing connection
     if (chatEventSource) {
       chatEventSource.close();
     }
     
-    console.log('[Store] Connecting to Chat SSE...');
-    chatEventSource = new EventSource(`${GATEWAY_URL}/api/chat/messages`);
+    const sseUrl = `${GATEWAY_URL}/api/chat/messages?agent_id=${targetAgentId}`;
+    console.log('[Store] Connecting to Chat SSE:', sseUrl);
+    chatEventSource = new EventSource(sseUrl);
     
     chatEventSource.onmessage = (event) => {
       try {
         const msg: ChatSSEMessage = JSON.parse(event.data);
         console.log('[Store] Chat SSE message:', msg.type, msg.id, 'agent_id:', msg.agent_id);
         
-        // Filter messages by agent_id - only process messages for current agent
-        const msgAgentId = msg.agent_id;
-        const currentAgent = get().currentAgentId;
-        if (msgAgentId && currentAgent && msgAgentId !== currentAgent) {
-          console.log('[Store] Ignoring message for different agent:', msgAgentId, 'current:', currentAgent);
-          return;
-        }
+        // Note: Backend already filters by agent_id, no client-side filtering needed
         
         switch (msg.type) {
           case 'USER_MESSAGE':
@@ -790,26 +887,36 @@ export const useAppStore = create<AppStore>((set, get) => ({
     
     chatEventSource.onerror = (e) => {
       console.error('[Store] Chat SSE error:', e);
-      // Reconnect after delay
+      // Reconnect after delay with same agentId
       setTimeout(() => {
-        if (get().isInitialized) {
-          get().connectChatSSE();
+        if (get().isInitialized && get().currentAgentId) {
+          get().connectChatSSE(get().currentAgentId!);
         }
       }, 3000);
     };
   },
 
   // SSE Connection: Execution logs (for Log Window)
-  connectLogsSSE: () => {
-    const { addLog } = get();
+  connectLogsSSE: (agentId?: string) => {
+    const { addLog, currentAgentId } = get();
+    
+    // Use provided agentId or fallback to currentAgentId
+    const targetAgentId = agentId || currentAgentId;
+    
+    // Don't connect if no agent selected
+    if (!targetAgentId) {
+      console.log('[Store] No agent selected, skipping Logs SSE connection');
+      return;
+    }
     
     // Close existing connection
     if (logsEventSource) {
       logsEventSource.close();
     }
     
-    console.log('[Store] Connecting to Logs SSE...');
-    logsEventSource = new EventSource(`${GATEWAY_URL}/api/logs/stream`);
+    const sseUrl = `${GATEWAY_URL}/api/logs/stream?agent_id=${targetAgentId}`;
+    console.log('[Store] Connecting to Logs SSE:', sseUrl);
+    logsEventSource = new EventSource(sseUrl);
     
     logsEventSource.onmessage = (event) => {
       try {
@@ -826,10 +933,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
     
     logsEventSource.onerror = (e) => {
       console.error('[Store] Logs SSE error:', e);
-      // Reconnect after delay
+      // Reconnect after delay with same agentId
       setTimeout(() => {
-        if (get().isInitialized) {
-          get().connectLogsSSE();
+        if (get().isInitialized && get().currentAgentId) {
+          get().connectLogsSSE(get().currentAgentId!);
         }
       }, 3000);
     };
@@ -850,10 +957,16 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   // Load more messages (pagination - load older messages)
   loadMoreMessages: async () => {
-    const { messages, isLoadingMore, hasMoreMessages } = get();
+    const { messages, isLoadingMore, hasMoreMessages, currentAgentId } = get();
     
     // Skip if already loading or no more messages
     if (isLoadingMore || !hasMoreMessages || messages.length === 0) {
+      return;
+    }
+    
+    // Skip if no agent selected
+    if (!currentAgentId) {
+      console.warn('[Store] No agent selected, cannot load more messages');
       return;
     }
     
@@ -864,6 +977,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       const oldestMessage = messages[0];
       
       const history = await api.getChatHistory({
+        agent_id: currentAgentId,
         limit: 20,
         before_id: oldestMessage.id,
         summary_length: 100,

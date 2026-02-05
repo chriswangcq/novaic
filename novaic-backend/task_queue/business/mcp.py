@@ -11,7 +11,8 @@ from dataclasses import dataclass
 from typing import Dict, Any, Optional
 import os
 
-from mcp_gateway.mcp_client import MCPServerConnection
+import httpx
+
 from ..client import GatewayInternalClient
 
 
@@ -55,20 +56,18 @@ class MCPBusiness:
     
     Example:
         >>> from task_queue.business import MCPBusiness
-        >>> mcp_biz = MCPBusiness(db, mcp_manager, mcp_client)
+        >>> mcp_biz = MCPBusiness(gateway_url="http://127.0.0.1:19997")
         >>> result = mcp_biz.create(runtime_id="rt-123", agent_id="agent-1")
         >>> if result.success:
         ...     print(f"MCP URL: {result.mcp_url}")
     """
     
-    def __init__(self, gateway_url: str, mcp_client=None, client: Optional[GatewayInternalClient] = None):
+    def __init__(self, gateway_url: str, client: Optional[GatewayInternalClient] = None):
         """
         Args:
             gateway_url: Gateway base URL
-            mcp_client: MCP 客户端（用于工具调用）
             client: 可复用的 GatewayInternalClient
         """
-        self.mcp_client = mcp_client
         self.client = client or GatewayInternalClient(gateway_url)
 
 
@@ -191,7 +190,7 @@ class MCPBusiness:
         arguments: Dict[str, Any],
     ) -> ToolExecuteResult:
         """
-        执行工具
+        执行工具 - 通过 Tools Server HTTP API
         
         幂等性：工具本身负责保证
         
@@ -204,42 +203,33 @@ class MCPBusiness:
         Returns:
             ToolExecuteResult
         """
-        if not self.mcp_client:
-            return ToolExecuteResult(
-                success=False,
-                tool_call_id=tool_call_id,
-                tool_name=tool_name,
-                error="MCP client not configured",
-                status="failed",
-            )
-        
-        runtime = self.client.get_runtime(runtime_id)
-        mcp_url = runtime.get("mcp_url") if runtime else None
-        if not mcp_url:
-            return ToolExecuteResult(
-                success=False,
-                tool_call_id=tool_call_id,
-                tool_name=tool_name,
-                error="Runtime MCP not found",
-                status="failed",
-            )
+        tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", "http://127.0.0.1:19998")
         
         try:
-            # 执行工具
-            result = self.mcp_client.call_tool(
-                mcp_url=mcp_url,
-                tool_name=tool_name,
-                arguments=arguments,
-            )
-            
-            return ToolExecuteResult(
-                success=True,
-                tool_call_id=tool_call_id,
-                tool_name=tool_name,
-                result=result,
-                status="executed",
-            )
-            
+            with httpx.Client(timeout=30.0, trust_env=False) as client:
+                resp = client.post(
+                    f"{tools_server_url}/internal/runtimes/{runtime_id}/tools/call",
+                    json={"name": tool_name, "arguments": arguments}
+                )
+                resp.raise_for_status()
+                result = resp.json()
+                
+                if result.get("success"):
+                    return ToolExecuteResult(
+                        success=True,
+                        tool_call_id=tool_call_id,
+                        tool_name=tool_name,
+                        result=result.get("result"),
+                        status="executed",
+                    )
+                else:
+                    return ToolExecuteResult(
+                        success=False,
+                        tool_call_id=tool_call_id,
+                        tool_name=tool_name,
+                        error=result.get("error", "Unknown error"),
+                        status="failed",
+                    )
         except Exception as e:
             return ToolExecuteResult(
                 success=False,
@@ -263,67 +253,59 @@ class MCPBusiness:
         return runtime.get("mcp_url") if runtime else None
 
 
-class MCPGatewayClient:
-    """HTTP client for MCP aggregate gateways."""
+class ToolsServerClient:
+    """
+    Tools Server HTTP 客户端
+    
+    用于与 Tools Server 通信，执行工具调用和获取工具列表。
+    
+    Example:
+        >>> client = ToolsServerClient()
+        >>> result = client.call_tool("rt-123", "bash", {"command": "ls"})
+        >>> tools = client.list_tools("rt-123")
+    """
 
     def __init__(self):
-        self._connections: Dict[str, MCPServerConnection] = {}
+        self._tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", "http://127.0.0.1:19998")
 
-    def _normalize_url(self, mcp_url: str) -> str:
-        url = mcp_url.strip()
-        if url.startswith("/"):
-            base = os.environ.get("NOVAIC_MCP_GATEWAY_URL", "http://127.0.0.1:19998")
-            url = f"{base.rstrip('/')}{url}"
-        if not url.endswith("/"):
-            url = f"{url}/"
-        return url
-
-    def _get_connection(self, mcp_url: str) -> MCPServerConnection:
-        url = self._normalize_url(mcp_url)
-        conn = self._connections.get(url)
-        if not conn:
-            conn = MCPServerConnection(name=f"aggregate-{len(self._connections)}", port=0)
-            conn.url = url
-            self._connections[url] = conn
-        return conn
-
-    def call_tool(self, mcp_url: str, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """同步调用工具（包装async方法）"""
-        import asyncio
-        conn = self._get_connection(mcp_url)
+    def call_tool(self, runtime_id: str, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        调用工具 - 通过 Tools Server HTTP API
         
-        # 同步包装async方法
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            # 没有运行的loop，创建新的
-            return asyncio.run(conn.call_tool(name=tool_name, arguments=arguments))
-        else:
-            # 有运行的loop，使用run_in_executor
-            import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future = executor.submit(
-                    asyncio.run,
-                    conn.call_tool(name=tool_name, arguments=arguments)
-                )
-                return future.result()
+        Args:
+            runtime_id: Runtime ID
+            tool_name: 工具名称
+            arguments: 工具参数
+            
+        Returns:
+            工具执行结果
+        """
+        with httpx.Client(timeout=30.0, trust_env=False) as client:
+            resp = client.post(
+                f"{self._tools_server_url}/internal/runtimes/{runtime_id}/tools/call",
+                json={"name": tool_name, "arguments": arguments}
+            )
+            resp.raise_for_status()
+            result = resp.json()
+            
+            if result.get("success"):
+                return result.get("result")
+            else:
+                raise Exception(result.get("error", "Unknown error"))
 
-    def list_tools(self, mcp_url: str, use_cache: bool = True) -> Dict[str, Any]:
-        """同步获取工具列表（包装async方法）"""
-        import asyncio
-        conn = self._get_connection(mcp_url)
+    def list_tools(self, runtime_id: str) -> Dict[str, Any]:
+        """
+        获取工具列表 - 通过 Tools Server HTTP API
         
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            return asyncio.run(conn.list_tools(use_cache=use_cache))
-        else:
-            import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future = executor.submit(
-                    asyncio.run,
-                    conn.list_tools(use_cache=use_cache)
-                )
-                return future.result()
-
-
+        Args:
+            runtime_id: Runtime ID
+            
+        Returns:
+            工具列表
+        """
+        with httpx.Client(timeout=30.0, trust_env=False) as client:
+            resp = client.get(
+                f"{self._tools_server_url}/internal/runtimes/{runtime_id}/tools"
+            )
+            resp.raise_for_status()
+            return resp.json()

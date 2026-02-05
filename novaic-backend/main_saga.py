@@ -7,6 +7,7 @@ Saga Worker 启动入口 (同步版本)
 import os
 import sys
 import signal
+import argparse
 
 # 设置环境
 os.environ['no_proxy'] = 'localhost,127.0.0.1,::1'
@@ -28,12 +29,16 @@ def main():
     from task_queue.workers.saga_worker_sync import SagaWorkerSync
     from task_queue.sagas import get_all_saga_definitions
     
-    gateway_url = os.environ.get("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
-    queue_service_url = os.environ.get("QUEUE_SERVICE_URL", "http://127.0.0.1:19997")
-    saga_types_str = os.environ.get("SAGA_TYPES", "")
-    max_concurrent = int(os.environ.get("MAX_CONCURRENT", "10"))
+    parser = argparse.ArgumentParser(description="Saga Worker (sync)")
+    parser.add_argument("--gateway-url", default="http://127.0.0.1:19999", help="Gateway URL")
+    parser.add_argument("--queue-service-url", default="http://127.0.0.1:19997", help="Queue Service URL")
+    parser.add_argument("--max-concurrent", type=int, default=10, help="Max concurrent sagas")
+    args = parser.parse_args()
     
-    saga_types = saga_types_str.split(",") if saga_types_str else DEFAULT_SAGA_TYPES
+    gateway_url = args.gateway_url
+    queue_service_url = args.queue_service_url
+    max_concurrent = args.max_concurrent
+    saga_types = DEFAULT_SAGA_TYPES
     
     worker = SagaWorkerSync(
         saga_types=saga_types,

@@ -61,10 +61,12 @@ class WatchdogSync:
     def __init__(
         self,
         gateway_url: str = "http://127.0.0.1:19999",
+        queue_service_url: str = "http://127.0.0.1:19997",
         poll_interval: float = 0.1,
         timeout: float = 30.0,
     ):
         self.gateway_url = gateway_url.rstrip("/")
+        self.queue_service_url = queue_service_url.rstrip("/")
         self.poll_interval = poll_interval
         self.timeout = timeout
         self.worker_id = f"wd-sync-{uuid.uuid4().hex[:8]}"
@@ -72,7 +74,7 @@ class WatchdogSync:
         self._running = False
         
         # 使用 SDK
-        self.saga_client = SagaClient(gateway_url, timeout=timeout)
+        self.saga_client = SagaClient(queue_service_url, timeout=timeout)
         self.gateway_client = GatewayInternalClient(gateway_url, timeout=timeout)
         
         self.metrics = WatchdogMetrics()
@@ -180,22 +182,40 @@ class WatchdogSync:
 
 # ==================== 启动脚本 ====================
 
-def start_worker(gateway_url: str = "http://127.0.0.1:19999"):
+def start_worker(
+    gateway_url: str = "http://127.0.0.1:19999",
+    queue_service_url: str = "http://127.0.0.1:19997",
+):
     """启动 Watchdog"""
-    worker = WatchdogSync(gateway_url)
+    worker = WatchdogSync(gateway_url, queue_service_url)
     worker.run()
 
 
 if __name__ == "__main__":
-    import os
+    import argparse
     
-    gateway_url = os.environ.get("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
+    parser = argparse.ArgumentParser(description="同步 Watchdog (单线程)")
+    parser.add_argument(
+        "--gateway-url",
+        default="http://127.0.0.1:19999",
+        help="Gateway URL (default: http://127.0.0.1:19999)",
+    )
+    parser.add_argument(
+        "--queue-service-url",
+        default="http://127.0.0.1:19997",
+        help="Queue Service URL (default: http://127.0.0.1:19997)",
+    )
+    args = parser.parse_args()
     
     print("=" * 60)
     print("同步 Watchdog (单线程)")
     print("=" * 60)
-    print(f"Gateway: {gateway_url}")
+    print(f"Gateway: {args.gateway_url}")
+    print(f"Queue Service: {args.queue_service_url}")
     print("=" * 60)
     print()
     
-    start_worker(gateway_url=gateway_url)
+    start_worker(
+        gateway_url=args.gateway_url,
+        queue_service_url=args.queue_service_url,
+    )

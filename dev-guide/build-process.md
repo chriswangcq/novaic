@@ -51,7 +51,8 @@ npm run tauri build
 | 组件 | 命令 | 端口 | 职责 |
 |------|------|------|------|
 | Gateway | `gateway` | 19999 | API + DB + SSE |
-| MCP Gateway | `mcp-gateway` | 19998 | MCP 聚合 |
+| Tools Server | `tools-server` | 19998 | MCP 聚合 |
+| Queue Service | `queue-service` | 19997 | 消息队列 |
 | Watchdog | `watchdog` | - | 监控消息，触发 Saga |
 | Task Worker | `task-worker` | - | 执行任务 |
 | Saga Worker | `saga-worker` | - | 编排工作流 |
@@ -62,7 +63,7 @@ npm run tauri build
 ```bash
 # 生产模式 (PyInstaller 打包后)
 ./novaic-backend gateway --port 19999 --data-dir /path/to/data
-./novaic-backend mcp-gateway --port 19998 --data-dir /path/to/data
+./novaic-backend tools-server --port 19998 --data-dir /path/to/data
 ./novaic-backend watchdog --gateway-url http://127.0.0.1:19999
 ./novaic-backend task-worker --gateway-url http://127.0.0.1:19999
 ./novaic-backend saga-worker --gateway-url http://127.0.0.1:19999
@@ -72,7 +73,7 @@ npm run tauri build
 python main_novaic.py gateway --port 19999 --data-dir /path/to/data
 # 或直接运行入口文件
 python main_gateway.py
-python main_mcp.py
+python main_tools.py
 python main_watchdog.py
 python main_task.py
 python main_saga.py
@@ -92,10 +93,10 @@ Analysis(['main_novaic.py'], ...)
 # 打包的模块和文件
 datas=[
     ('gateway', 'gateway'),           # Gateway 包
-    ('mcp_gateway', 'mcp_gateway'),   # MCP Gateway 包
+    ('mcp_client', 'mcp_client'),     # MCP Client 包
     ('task_queue', 'task_queue'),     # Task Queue 包
     ('main_gateway.py', '.'),         # 入口文件
-    ('main_mcp.py', '.'),
+    ('main_tools.py', '.'),
     ('main_watchdog.py', '.'),
     ('main_task.py', '.'),
     ('main_saga.py', '.'),
@@ -111,7 +112,8 @@ Tauri (`main.rs`) 负责启动和管理所有 Backend 进程：
 
 1. **启动顺序**:
    - Gateway (等待 health check)
-   - MCP Gateway
+   - Tools Server
+   - Queue Service
    - Watchdog
    - Task Worker
    - Saga Worker
@@ -122,7 +124,8 @@ Tauri (`main.rs`) 负责启动和管理所有 Backend 进程：
    - Saga Worker
    - Task Worker
    - Watchdog
-   - MCP Gateway
+   - Queue Service
+   - Tools Server
    - Gateway (停止所有 VM)
 
 ---
@@ -134,7 +137,7 @@ Tauri (`main.rs`) 负责启动和管理所有 Backend 进程：
 ```bash
 cd novaic-backend
 
-# 只启动 Gateway + MCP Gateway
+# 只启动 Gateway + Tools Server
 ./run_gateways.sh
 
 # 启动全部 6 个服务
@@ -146,7 +149,8 @@ cd novaic-backend
 | 服务 | 日志文件 |
 |------|----------|
 | Gateway | `/tmp/gateway.log` |
-| MCP Gateway | `/tmp/mcp_gateway.log` |
+| Tools Server | `/tmp/tools_server.log` |
+| Queue Service | `/tmp/queue_service.log` |
 | Watchdog | `/tmp/watchdog.log` |
 | Task Worker | `/tmp/task_worker.log` |
 | Saga Worker | `/tmp/saga_worker.log` |
@@ -176,4 +180,4 @@ python -m pytest tests/ -v
 确保环境变量正确：
 - `NOVAIC_DATA_DIR`: 数据目录
 - `NOVAIC_GATEWAY_URL`: Gateway URL (默认 http://127.0.0.1:19999)
-- `NOVAIC_MCP_GATEWAY_URL`: MCP Gateway URL (默认 http://127.0.0.1:19998)
+- `NOVAIC_TOOLS_SERVER_URL`: Tools Server URL (默认 http://127.0.0.1:19998)

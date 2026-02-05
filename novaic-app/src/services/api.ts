@@ -6,34 +6,61 @@
 
 import { invoke } from '@tauri-apps/api/core';
 
+/**
+ * AppConfig - Application configuration from backend.
+ * 
+ * This matches the output of AppConfig.to_public() in manager_db.py
+ */
 export interface AppConfig {
   version: number;
   api_keys: ApiKeyInfo[];
-  available_models: AvailableModel[];
+  candidate_models: CandidateModel[];
   max_tokens: number;
   max_iterations: number;
   visible_shell: boolean;
-  mcp_port: number;  // 宿主机 MCP 端口 (QEMU 转发)
 }
 
+/**
+ * ApiKeyInfo - API key public info from backend.
+ * 
+ * Matches ApiKeyEntry.to_public() output - sensitive api_key is hidden.
+ */
 export interface ApiKeyInfo {
   id: string;
   name: string;
   provider: string;
   has_api_key: boolean;
-  api_base?: string;
-  deployment_name?: string;
-  api_version?: string;
+  api_base: string | null;
+  deployment_name: string | null;
+  api_version: string | null;
   created_at: string;
 }
 
-export interface AvailableModel {
+/**
+ * CandidateModel - Unified model representation
+ * 
+ * Used across all model-related APIs:
+ * - /api/config (candidate_models array)
+ * - /api/agents/models/available (enabled models)
+ * - /api/agents/{id}/model (agent's selected model)
+ */
+export interface CandidateModel {
   id: string;
   name: string;
-  provider: string;
-  api_key_id: string;
-  enabled: boolean;
-  is_custom: boolean;
+  provider: string;         // Provider type: openai, anthropic, google, etc.
+  api_key_id: string;       // API key ID this model belongs to
+  api_key_name: string;     // API key name for display
+  enabled: boolean;         // Whether model is enabled for selection
+  is_custom: boolean;       // Custom model added by user
+}
+
+// Agent's current model configuration (matches AgentModelConfigResponse)
+export interface AgentModelConfig {
+  agent_id: string;
+  model_id: string | null;
+  model: CandidateModel | null;
+  api_key?: string;
+  api_base?: string;
 }
 
 export interface HealthStatus {
@@ -216,7 +243,7 @@ export const api = {
   /**
    * Save models for API key (merges with existing, keeps custom models)
    */
-  async saveModelsForKey(keyId: string, models: AvailableModel[]): Promise<void> {
+  async saveModelsForKey(keyId: string, models: CandidateModel[]): Promise<void> {
     await invoke('gateway_post', { 
       path: `/api/config/api-keys/${keyId}/models`, 
       body: models 
@@ -235,31 +262,46 @@ export const api = {
 
   /**
    * Initialize agent
+   * @param agent_id - Optional agent ID to initialize specific agent
    */
-  async initAgent(): Promise<void> {
-    await invoke('gateway_post', { path: '/api/init', body: null });
+  async initAgent(agent_id?: string): Promise<void> {
+    const params = new URLSearchParams();
+    if (agent_id) params.set('agent_id', agent_id);
+    const queryString = params.toString();
+    const path = queryString ? `/api/init?${queryString}` : '/api/init';
+    await invoke('gateway_post', { path, body: null });
   },
 
   /**
    * Clear chat history
+   * @param agent_id - Optional agent ID to clear history for specific agent
    */
-  async clearHistory(): Promise<void> {
-    await invoke('gateway_post', { path: '/api/clear', body: null });
+  async clearHistory(agent_id?: string): Promise<void> {
+    const params = new URLSearchParams();
+    if (agent_id) params.set('agent_id', agent_id);
+    const queryString = params.toString();
+    const path = queryString ? `/api/clear?${queryString}` : '/api/clear';
+    await invoke('gateway_post', { path, body: null });
   },
 
   /**
    * Interrupt current execution
+   * @param agent_id - Optional agent ID to interrupt specific agent
    */
-  async interrupt(): Promise<void> {
-    await invoke('gateway_post', { path: '/api/interrupt', body: null });
+  async interrupt(agent_id?: string): Promise<void> {
+    const params = new URLSearchParams();
+    if (agent_id) params.set('agent_id', agent_id);
+    const queryString = params.toString();
+    const path = queryString ? `/api/interrupt?${queryString}` : '/api/interrupt';
+    await invoke('gateway_post', { path, body: null });
   },
 
   /**
    * Fetch models from provider API (for discovery)
    */
-  async fetchModelsForKey(keyId: string): Promise<AvailableModel[]> {
+  async fetchModelsForKey(keyId: string): Promise<CandidateModel[]> {
     try {
-      return invoke<AvailableModel[]>('gateway_get', { 
+      return invoke<CandidateModel[]>('gateway_get', { 
         path: `/api/config/api-keys/${keyId}/fetch-models` 
       });
     } catch {
@@ -316,6 +358,8 @@ export const api = {
 
   /**
    * Set current agent
+   * @deprecated Use agent_id parameter in individual API calls instead
+   * @param agentId - The agent ID to set as current
    */
   async setCurrentAgent(agentId: string): Promise<void> {
     await invoke('gateway_post', { 
@@ -365,12 +409,52 @@ export const api = {
     return invoke<AvailableImage[]>('gateway_get', { path: '/api/agents/images' });
   },
 
+  /**
+   * List all available (enabled) models for selection.
+   * Returns CandidateModel[] with enabled=true and valid API keys.
+   */
+  async listAvailableModels(): Promise<CandidateModel[]> {
+    const result = await invoke<CandidateModel[]>('gateway_get', { 
+      path: '/api/agents/models/available' 
+    });
+    return result || [];
+  },
+
+  /**
+   * Set the model for an agent
+   * @param agentId - The agent ID
+   * @param modelId - The model ID to set
+   */
+  async setAgentModel(agentId: string, modelId: string): Promise<void> {
+    await invoke('gateway_put', {
+      path: `/api/agents/${agentId}/model`,
+      body: { model_id: modelId }
+    });
+  },
+
+  /**
+   * Get the current model configuration for an agent
+   * @param agentId - The agent ID
+   */
+  async getAgentModel(agentId: string): Promise<AgentModelConfig> {
+    return invoke<AgentModelConfig>('gateway_get', { 
+      path: `/api/agents/${agentId}/model` 
+    });
+  },
+
   // ==================== Chat API (Fire-and-Forget) ====================
 
   /**
    * Send a chat message (async, fire-and-forget style)
+   * @param message - The message content to send
+   * @param options - Optional parameters
+   * @param options.agent_id - Target agent ID
+   * @param options.model - Model to use for the response
+   * @param options.mode - Chat mode ('agent' or 'chat')
+   * @param options.api_key_id - API key ID to use
    */
   async sendChatMessage(message: string, options?: {
+    agent_id?: string;
     model?: string;
     mode?: 'agent' | 'chat';
     api_key_id?: string;
@@ -379,6 +463,7 @@ export const api = {
       path: '/api/chat/send',
       body: {
         message,
+        agent_id: options?.agent_id,
         model: options?.model,
         mode: options?.mode || 'agent',
         api_key_id: options?.api_key_id,
@@ -388,8 +473,15 @@ export const api = {
 
   /**
    * Get chat history
+   * @param options - Optional parameters
+   * @param options.agent_id - Target agent ID
+   * @param options.limit - Maximum number of messages to return
+   * @param options.before_id - Return messages before this ID (pagination)
+   * @param options.message_type - Filter by message type
+   * @param options.summary_length - Maximum length of message summaries
    */
   async getChatHistory(options?: {
+    agent_id?: string;
     limit?: number;
     before_id?: string;
     message_type?: string;
@@ -407,6 +499,7 @@ export const api = {
     has_more: boolean;
   }> {
     const params = new URLSearchParams();
+    if (options?.agent_id) params.set('agent_id', options.agent_id);
     if (options?.limit) params.set('limit', options.limit.toString());
     if (options?.before_id) params.set('before_id', options.before_id);
     if (options?.message_type) params.set('message_type', options.message_type);
@@ -419,8 +512,10 @@ export const api = {
 
   /**
    * Get full message content by ID
+   * @param messageId - The message ID to retrieve
+   * @param agentId - Optional agent ID for the message
    */
-  async getChatMessage(messageId: string): Promise<{
+  async getChatMessage(messageId: string, agentId?: string): Promise<{
     success: boolean;
     id?: string;
     type?: string;
@@ -429,13 +524,23 @@ export const api = {
     timestamp?: string;
     error?: string;
   }> {
-    return invoke('gateway_get', { path: `/api/chat/message/${messageId}` });
+    const params = new URLSearchParams();
+    if (agentId) params.set('agent_id', agentId);
+    const queryString = params.toString();
+    const path = queryString 
+      ? `/api/chat/message/${messageId}?${queryString}` 
+      : `/api/chat/message/${messageId}`;
+    return invoke('gateway_get', { path });
   },
 
   /**
    * Respond to an agent question
+   * @param requestId - The request ID to respond to
+   * @param response - The response text
+   * @param selectedOption - Optional selected option for multiple choice questions
+   * @param agentId - Optional agent ID
    */
-  async respondToQuestion(requestId: string, response: string, selectedOption?: string): Promise<{
+  async respondToQuestion(requestId: string, response: string, selectedOption?: string, agentId?: string): Promise<{
     success: boolean;
     request_id: string;
   }> {
@@ -444,25 +549,32 @@ export const api = {
       body: {
         response,
         selected_option: selectedOption,
+        agent_id: agentId,
       }
     });
   },
 
   /**
    * Interrupt agent execution
+   * @param agentId - Optional agent ID to interrupt specific agent
    */
-  async interruptAgent(): Promise<{ success: boolean; message?: string; error?: string }> {
+  async interruptAgent(agentId?: string): Promise<{ success: boolean; message?: string; error?: string }> {
     return invoke('gateway_post', {
       path: '/api/agent/interrupt',
-      body: {}
+      body: { agent_id: agentId }
     });
   },
 
   /**
    * Clear execution logs
+   * @param agentId - Optional agent ID to clear logs for specific agent
    */
-  async clearLogs(): Promise<{ success: boolean }> {
-    return invoke('gateway_get', { path: '/api/logs/clear' });
+  async clearLogs(agentId?: string): Promise<{ success: boolean }> {
+    const params = new URLSearchParams();
+    if (agentId) params.set('agent_id', agentId);
+    const queryString = params.toString();
+    const path = queryString ? `/api/logs/clear?${queryString}` : '/api/logs/clear';
+    return invoke('gateway_get', { path });
   },
 
   // ==================== Cleanup API ====================

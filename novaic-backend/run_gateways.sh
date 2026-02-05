@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 本地手动启动所有 Backend 服务（与 Tauri 分开跑时用）
 # Usage: ./run_gateways.sh [--all]
-#   无参数: 只启动 Gateway + MCP Gateway
+#   无参数: 只启动 Gateway + Tools Server
 #   --all:  启动全部 6 个服务
 
 set -e
@@ -16,7 +16,7 @@ export NOVAIC_GATEWAY_URL="$GATEWAY_URL"
 # 停掉旧进程
 echo "[run_gateways] Stopping old processes..."
 pkill -f "python main_gateway.py" 2>/dev/null || true
-pkill -f "python main_mcp.py" 2>/dev/null || true
+pkill -f "python main_tools.py" 2>/dev/null || true
 pkill -f "python main_watchdog.py" 2>/dev/null || true
 pkill -f "python main_task.py" 2>/dev/null || true
 pkill -f "python main_saga.py" 2>/dev/null || true
@@ -28,9 +28,9 @@ nohup python main_gateway.py > /tmp/gateway.log 2>&1 &
 echo "[run_gateways] Gateway started (PID $!) -> /tmp/gateway.log"
 sleep 3
 
-# 2. 启动 MCP Gateway (19998)
-nohup python main_mcp.py > /tmp/mcp_gateway.log 2>&1 &
-echo "[run_gateways] MCP Gateway started (PID $!) -> /tmp/mcp_gateway.log"
+# 2. 启动 Tools Server (19998)
+nohup python main_tools.py > /tmp/tools_server.log 2>&1 &
+echo "[run_gateways] Tools Server started (PID $!) -> /tmp/tools_server.log"
 
 # 如果指定 --all，启动所有 worker 服务
 if [[ "$1" == "--all" ]]; then
@@ -61,13 +61,13 @@ echo ""
 echo "=== Gateway (19999) ==="
 curl -s "http://127.0.0.1:19999/api/health" | python -m json.tool 2>/dev/null || echo "(not ready)"
 echo ""
-echo "=== MCP Gateway (19998) ==="
+echo "=== Tools Server (19998) ==="
 curl -s "http://127.0.0.1:19998/api/health" | python -m json.tool 2>/dev/null || echo "(not ready)"
 
 echo ""
 echo "Logs:"
 echo "  Gateway:     tail -f /tmp/gateway.log"
-echo "  MCP Gateway: tail -f /tmp/mcp_gateway.log"
+echo "  Tools Server: tail -f /tmp/tools_server.log"
 if [[ "$1" == "--all" ]]; then
     echo "  Watchdog:    tail -f /tmp/watchdog.log"
     echo "  Task Worker: tail -f /tmp/task_worker.log"

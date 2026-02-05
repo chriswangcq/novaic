@@ -28,7 +28,7 @@ use tauri::{
     menu::{Menu, MenuItem},
 };
 
-/// Backend 组件: Gateway - API + DB，不含 MCP（MCP 由 MCP Gateway 独立进程提供）
+/// Backend 组件: Gateway - API + DB，不含工具服务（工具服务由 Tools Server 独立进程提供）
 struct GatewayProcess {
     process: Option<Child>,
     port: u16,
@@ -47,13 +47,13 @@ impl GatewayProcess {
     }
 }
 
-/// Backend 组件: MCP Gateway - 仅 MCP（与 Gateway、Master 并列）
-struct McpGatewayProcess {
+/// Backend 组件: Tools Server - 工具服务（与 Gateway 并列）
+struct ToolsServerProcess {
     process: Option<Child>,
     port: u16,
 }
 
-impl McpGatewayProcess {
+impl ToolsServerProcess {
     fn new() -> Self {
         Self {
             process: None,
@@ -66,9 +66,28 @@ impl McpGatewayProcess {
     }
 }
 
+/// Backend 组件: Queue Service - Task/Saga 队列管理
+struct QueueServiceProcess {
+    process: Option<Child>,
+    port: u16,
+}
+
+impl QueueServiceProcess {
+    fn new() -> Self {
+        Self {
+            process: None,
+            port: 19997,
+        }
+    }
+
+    fn base_url(&self) -> String {
+        format!("http://127.0.0.1:{}", self.port)
+    }
+}
+
 /// Backend 组件: Service Process - 通用服务进程管理器
 /// v4.0: Saga/Task Architecture (Watchdog, Task Worker, Saga Worker, Health)
-/// Services only communicate with Gateway (MCP ops proxied through Gateway)
+/// Services only communicate with Gateway (Tools ops proxied through Gateway)
 struct ServiceProcess {
     process: Option<Child>,
     service_type: String,  // watchdog, task-worker, saga-worker, health
@@ -140,7 +159,7 @@ impl ServiceProcess {
             
             // Use null to discard output - same as Gateway for consistency
             cmd.env("NOVAIC_RESOURCE_DIR", &resource_dir_str)
-                .env("NOVAIC_MCP_GATEWAY_URL", "http://127.0.0.1:19998")
+                .env("NOVAIC_TOOLS_SERVER_URL", "http://127.0.0.1:19998")
                 .env("NO_PROXY", "localhost,127.0.0.1,::1")
                 .env("no_proxy", "localhost,127.0.0.1,::1")
                 .stdout(Stdio::null())
@@ -172,7 +191,7 @@ impl ServiceProcess {
             
             cmd.current_dir(gateway_dir)
                 .env("NOVAIC_RESOURCE_DIR", &resource_dir_str)
-                .env("NOVAIC_MCP_GATEWAY_URL", "http://127.0.0.1:19998")
+                .env("NOVAIC_TOOLS_SERVER_URL", "http://127.0.0.1:19998")
                 .env("NO_PROXY", "localhost,127.0.0.1,::1")
                 .env("no_proxy", "localhost,127.0.0.1,::1")
                 .stdout(Stdio::inherit())
@@ -293,7 +312,7 @@ impl GatewayProcess {
                 .arg("--data-dir")
                 .arg(&data_dir_str)
                 .env("NOVAIC_RESOURCE_DIR", &resource_dir_str)
-                .env("NOVAIC_MCP_GATEWAY_URL", "http://127.0.0.1:19998")
+                .env("NOVAIC_TOOLS_SERVER_URL", "http://127.0.0.1:19998")
                 .env("NO_PROXY", "localhost,127.0.0.1,::1")
                 .env("no_proxy", "localhost,127.0.0.1,::1")
                 // Use null to discard output - prevents pipe buffer from filling up
@@ -330,7 +349,7 @@ impl GatewayProcess {
                 .arg(&data_dir_str)
                 .current_dir(gateway_dir)
                 .env("NOVAIC_RESOURCE_DIR", &resource_dir_str)
-                .env("NOVAIC_MCP_GATEWAY_URL", "http://127.0.0.1:19998")
+                .env("NOVAIC_TOOLS_SERVER_URL", "http://127.0.0.1:19998")
                 .env("NO_PROXY", "localhost,127.0.0.1,::1")
                 .env("no_proxy", "localhost,127.0.0.1,::1")
                 // Dev mode: inherit console so we can see logs directly
@@ -433,11 +452,11 @@ impl Drop for GatewayProcess {
     }
 }
 
-impl McpGatewayProcess {
+impl ToolsServerProcess {
     /// Start MCP Gateway using unified novaic-backend binary
     fn start(&mut self, backend_path: &PathBuf, is_binary: bool, data_dir: &PathBuf, resource_dir: Option<&PathBuf>) -> Result<(), String> {
         if self.process.is_some() {
-            println!("[MCP Gateway] Already running");
+            println!("[Tools Server] Already running");
             return Ok(());
         }
 
@@ -451,27 +470,27 @@ impl McpGatewayProcess {
         let resource_dir_str = if is_binary && provided_resource_dir.is_empty() {
             if let Some(parent) = backend_path.parent() {
                 if let Some(grandparent) = parent.parent() {
-                    println!("[MCP Gateway] Inferred resource_dir from binary path: {:?}", grandparent);
+                    println!("[Tools Server] Inferred resource_dir from binary path: {:?}", grandparent);
                     grandparent.to_string_lossy().to_string()
                 } else {
-                    println!("[MCP Gateway] Warning: Could not infer resource_dir (no grandparent)");
+                    println!("[Tools Server] Warning: Could not infer resource_dir (no grandparent)");
                     String::new()
                 }
             } else {
-                println!("[MCP Gateway] Warning: Could not infer resource_dir (no parent)");
+                println!("[Tools Server] Warning: Could not infer resource_dir (no parent)");
                 String::new()
             }
         } else {
             provided_resource_dir
         };
-        println!("[MCP Gateway] Using resource_dir: {}", resource_dir_str);
+        println!("[Tools Server] Using resource_dir: {}", resource_dir_str);
 
         let child = if is_binary {
             if !backend_path.exists() {
                 return Err(format!("Backend binary not found at {:?}", backend_path));
             }
             Command::new(backend_path)
-                .arg("mcp-gateway")
+                .arg("tools-server")
                 .arg("--port")
                 .arg(self.port.to_string())
                 .arg("--data-dir")
@@ -483,7 +502,7 @@ impl McpGatewayProcess {
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
                 .spawn()
-                .map_err(|e| format!("Failed to start MCP Gateway binary: {}", e))?
+                .map_err(|e| format!("Failed to start Tools Server binary: {}", e))?
         } else {
             // Dev mode: backend_path is the novaic-backend directory (has main.py, novaic_main.py)
             let gateway_dir = backend_path;
@@ -499,13 +518,13 @@ impl McpGatewayProcess {
             Command::new(&python)
                 .arg("-m")
                 .arg("novaic_main")
-                .arg("mcp-gateway")
+                .arg("tools-server")
                 .arg("--port")
                 .arg(self.port.to_string())
                 .arg("--data-dir")
                 .arg(&data_dir_str)
                 .current_dir(&gateway_dir)
-                .env("NOVAIC_MCP_PORT", self.port.to_string())
+                .env("NOVAIC_TOOLS_PORT", self.port.to_string())
                 .env("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
                 .env("NOVAIC_DATA_DIR", &data_dir_str)
                 .env("NO_PROXY", "localhost,127.0.0.1,::1")
@@ -513,18 +532,18 @@ impl McpGatewayProcess {
                 .stdout(Stdio::inherit())
                 .stderr(Stdio::inherit())
                 .spawn()
-                .map_err(|e| format!("Failed to start MCP Gateway: {}", e))?
+                .map_err(|e| format!("Failed to start Tools Server: {}", e))?
         };
 
         self.process = Some(child);
-        println!("[MCP Gateway] Started on port {}", self.port);
+        println!("[Tools Server] Started on port {}", self.port);
         Ok(())
     }
 
     fn stop(&mut self) {
         if let Some(mut process) = self.process.take() {
             let pid = process.id();
-            println!("[MCP Gateway] Stopping process (PID: {})...", pid);
+            println!("[Tools Server] Stopping process (PID: {})...", pid);
             #[cfg(unix)]
             unsafe { libc::kill(pid as i32, libc::SIGTERM); }
             std::thread::sleep(std::time::Duration::from_millis(500));
@@ -533,7 +552,7 @@ impl McpGatewayProcess {
                 Ok(None) => { let _ = process.kill(); let _ = process.wait(); }
                 Err(_) => { let _ = process.kill(); }
             }
-            println!("[MCP Gateway] Stopped");
+            println!("[Tools Server] Stopped");
         }
     }
 
@@ -548,14 +567,136 @@ impl McpGatewayProcess {
     }
 }
 
-impl Drop for McpGatewayProcess {
+impl Drop for ToolsServerProcess {
+    fn drop(&mut self) {
+        self.stop();
+    }
+}
+
+impl QueueServiceProcess {
+    /// Start Queue Service using unified novaic-backend binary
+    fn start(&mut self, backend_path: &PathBuf, is_binary: bool, data_dir: &PathBuf, resource_dir: Option<&PathBuf>) -> Result<(), String> {
+        if self.process.is_some() {
+            println!("[Queue Service] Already running");
+            return Ok(());
+        }
+
+        let data_dir_str = data_dir.to_string_lossy().to_string();
+        
+        // Get resource_dir string, or empty if not provided
+        let provided_resource_dir = resource_dir.map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
+        
+        // For binary mode, infer resource_dir from backend_path if not provided or empty
+        // backend_path is at: resource_dir/novaic-backend/novaic-backend
+        let resource_dir_str = if is_binary && provided_resource_dir.is_empty() {
+            if let Some(parent) = backend_path.parent() {
+                if let Some(grandparent) = parent.parent() {
+                    println!("[Queue Service] Inferred resource_dir from binary path: {:?}", grandparent);
+                    grandparent.to_string_lossy().to_string()
+                } else {
+                    println!("[Queue Service] Warning: Could not infer resource_dir (no grandparent)");
+                    String::new()
+                }
+            } else {
+                println!("[Queue Service] Warning: Could not infer resource_dir (no parent)");
+                String::new()
+            }
+        } else {
+            provided_resource_dir
+        };
+        println!("[Queue Service] Using resource_dir: {}", resource_dir_str);
+
+        let child = if is_binary {
+            if !backend_path.exists() {
+                return Err(format!("Backend binary not found at {:?}", backend_path));
+            }
+            Command::new(backend_path)
+                .arg("queue-service")
+                .arg("--port")
+                .arg(self.port.to_string())
+                .arg("--data-dir")
+                .arg(&data_dir_str)
+                .env("NOVAIC_RESOURCE_DIR", &resource_dir_str)
+                .env("NOVAIC_GATEWAY_URL", format!("http://127.0.0.1:19999"))
+                .env("NO_PROXY", "localhost,127.0.0.1,::1")
+                .env("no_proxy", "localhost,127.0.0.1,::1")
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn()
+                .map_err(|e| format!("Failed to start Queue Service binary: {}", e))?
+        } else {
+            // Dev mode: backend_path is the novaic-backend directory (has main.py, novaic_main.py)
+            let gateway_dir = backend_path;
+            let venv_python = gateway_dir.join("venv/bin/python");
+            let python = if venv_python.exists() {
+                venv_python.to_string_lossy().to_string()
+            } else if cfg!(target_os = "windows") {
+                "python".to_string()
+            } else {
+                "python3".to_string()
+            };
+            // Run from gateway dir so python -m novaic_main works (novaic_main.py in novaic-backend)
+            Command::new(&python)
+                .arg("-m")
+                .arg("novaic_main")
+                .arg("queue-service")
+                .arg("--port")
+                .arg(self.port.to_string())
+                .arg("--data-dir")
+                .arg(&data_dir_str)
+                .current_dir(&gateway_dir)
+                .env("NOVAIC_QUEUE_PORT", self.port.to_string())
+                .env("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
+                .env("NOVAIC_DATA_DIR", &data_dir_str)
+                .env("NO_PROXY", "localhost,127.0.0.1,::1")
+                .env("no_proxy", "localhost,127.0.0.1,::1")
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
+                .spawn()
+                .map_err(|e| format!("Failed to start Queue Service: {}", e))?
+        };
+
+        self.process = Some(child);
+        println!("[Queue Service] Started on port {}", self.port);
+        Ok(())
+    }
+
+    fn stop(&mut self) {
+        if let Some(mut process) = self.process.take() {
+            let pid = process.id();
+            println!("[Queue Service] Stopping process (PID: {})...", pid);
+            #[cfg(unix)]
+            unsafe { libc::kill(pid as i32, libc::SIGTERM); }
+            std::thread::sleep(std::time::Duration::from_millis(500));
+            match process.try_wait() {
+                Ok(Some(_)) => {}
+                Ok(None) => { let _ = process.kill(); let _ = process.wait(); }
+                Err(_) => { let _ = process.kill(); }
+            }
+            println!("[Queue Service] Stopped");
+        }
+    }
+
+    fn is_running(&mut self) -> bool {
+        if let Some(ref mut process) = self.process {
+            match process.try_wait() {
+                Ok(Some(_)) => { self.process = None; false }
+                Ok(None) => true,
+                Err(_) => false,
+            }
+        } else { false }
+    }
+}
+
+impl Drop for QueueServiceProcess {
     fn drop(&mut self) {
         self.stop();
     }
 }
 
 type GatewayState = Arc<Mutex<GatewayProcess>>;
-type McpGatewayState = Arc<Mutex<McpGatewayProcess>>;
+type ToolsServerState = Arc<Mutex<ToolsServerProcess>>;
+type QueueServiceState = Arc<Mutex<QueueServiceProcess>>;
 // v4.0: Four services (Watchdog, Task Worker, Saga Worker, Health)
 type WatchdogState = Arc<Mutex<ServiceProcess>>;
 type TaskWorkerState = Arc<Mutex<ServiceProcess>>;
@@ -565,19 +706,28 @@ type HealthState = Arc<Mutex<ServiceProcess>>;
 /// Kill any zombie novaic-backend processes before starting new ones
 /// This prevents issues from leftover processes after crashes or improper shutdowns
 fn kill_zombie_processes() {
-    println!("[Cleanup] Killing zombie backend processes...");
+    println!("[Cleanup] Cleaning up zombie backend processes...");
     
     #[cfg(unix)]
     {
         use std::process::Command;
         
-        // Kill all novaic-backend processes (including dev mode python scripts)
+        // Step 1: Kill processes by name patterns
         let patterns = [
+            // Binary mode
             "novaic-backend",
-            "mcp-gateway",           // MCP Gateway subprocess
-            "novaic_main.py",        // Dev mode unified entry (gateway/mcp-gateway/master/worker)
+            // Dev mode - all worker scripts
+            "main_gateway.py",
+            "main_tools.py",
+            "main_watchdog.py",
+            "main_task.py",
+            "main_saga.py",
+            "main_health.py",
+            "queue_service",         // Queue service module
+            "novaic_main.py",        // Legacy unified entry
         ];
         
+        let mut killed_count = 0;
         for pattern in patterns {
             // Use pkill to kill processes matching the pattern
             let result = Command::new("pkill")
@@ -586,36 +736,70 @@ fn kill_zombie_processes() {
                 .arg(pattern)
                 .output();
             
-            match result {
-                Ok(output) => {
-                    if output.status.success() {
-                        println!("[Cleanup] Killed {} processes matching '{}'", 
-                            String::from_utf8_lossy(&output.stdout).trim(),
-                            pattern);
-                    }
-                    // pkill returns non-zero if no processes matched, which is fine
-                }
-                Err(e) => {
-                    println!("[Cleanup] Warning: Could not run pkill for '{}': {}", pattern, e);
+            if let Ok(output) = result {
+                if output.status.success() {
+                    killed_count += 1;
+                    println!("[Cleanup] Killed processes matching '{}'", pattern);
                 }
             }
         }
         
-        // Give processes time to terminate
-        std::thread::sleep(std::time::Duration::from_millis(500));
-        println!("[Cleanup] Done cleaning up zombie processes");
+        // Step 2: Kill processes occupying our ports (in case of orphaned processes)
+        let ports = [19999, 19998, 19997];  // Gateway, Tools Server, Queue Service
+        for port in ports {
+            // Find process using the port via lsof
+            let lsof_result = Command::new("lsof")
+                .args(["-ti", &format!(":{}", port)])
+                .output();
+            
+            if let Ok(output) = lsof_result {
+                let pids = String::from_utf8_lossy(&output.stdout);
+                for pid_str in pids.trim().lines() {
+                    if let Ok(pid) = pid_str.trim().parse::<i32>() {
+                        // Kill the process
+                        unsafe {
+                            if libc::kill(pid, libc::SIGKILL) == 0 {
+                                println!("[Cleanup] Killed PID {} occupying port {}", pid, port);
+                                killed_count += 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        if killed_count > 0 {
+            // Give processes time to fully terminate
+            std::thread::sleep(std::time::Duration::from_millis(500));
+            println!("[Cleanup] Cleaned up {} zombie process(es)", killed_count);
+        } else {
+            println!("[Cleanup] No zombie processes found");
+        }
     }
     
     #[cfg(windows)]
     {
         use std::process::Command;
         
-        // On Windows, use taskkill
-        let patterns = ["novaic-backend.exe"];
+        // On Windows, use taskkill for the binary
+        let _ = Command::new("taskkill")
+            .args(["/F", "/IM", "novaic-backend.exe"])
+            .output();
         
-        for pattern in patterns {
-            let _ = Command::new("taskkill")
-                .args(["/F", "/IM", pattern])
+        // Also try to kill Python processes running our scripts
+        let python_patterns = [
+            "main_gateway.py",
+            "main_tools.py", 
+            "main_watchdog.py",
+            "main_task.py",
+            "main_saga.py",
+            "main_health.py",
+        ];
+        
+        for pattern in python_patterns {
+            // Use wmic to find and kill Python processes with our scripts
+            let _ = Command::new("wmic")
+                .args(["process", "where", &format!("CommandLine like '%{}%'", pattern), "delete"])
                 .output();
         }
         
@@ -762,6 +946,18 @@ async fn gateway_patch(
     client.patch(&path, body).await
 }
 
+/// Tauri command: Gateway API PUT request
+#[tauri::command]
+async fn gateway_put(
+    gateway: tauri::State<'_, GatewayState>,
+    path: String,
+    body: Option<serde_json::Value>,
+) -> Result<serde_json::Value, String> {
+    let gw = gateway.lock().await;
+    let client = GatewayClient::new(gw.base_url());
+    client.put(&path, body).await
+}
+
 /// Tauri command: Gateway API DELETE request
 #[tauri::command]
 async fn gateway_delete(
@@ -846,9 +1042,13 @@ fn main() {
             let gateway = Arc::new(Mutex::new(GatewayProcess::new()));
             app.manage(gateway.clone());
             
-            // Backend 组件: MCP Gateway（与 Gateway 并列）
-            let mcp_gateway = Arc::new(Mutex::new(McpGatewayProcess::new()));
-            app.manage(mcp_gateway.clone());
+            // Backend 组件: Tools Server（与 Gateway 并列）
+            let tools_server = Arc::new(Mutex::new(ToolsServerProcess::new()));
+            app.manage(tools_server.clone());
+            
+            // Backend 组件: Queue Service（Task/Saga 队列管理）
+            let queue_service = Arc::new(Mutex::new(QueueServiceProcess::new()));
+            app.manage(queue_service.clone());
             
             // 获取 Gateway URL (所有服务只与 Gateway 通信)
             let gateway_url = {
@@ -900,7 +1100,8 @@ fn main() {
             println!("[Backend] Is binary: {}", is_binary);
             
             let gateway_for_start = gateway.clone();
-            let mcp_gateway_for_start = mcp_gateway.clone();
+            let tools_server_for_start = tools_server.clone();
+            let queue_service_for_start = queue_service.clone();
             let data_dir_for_gateway = data_dir.clone();
             let backend_path_clone = backend_path.clone();
             let gateway_dir_clone = gateway_dir.clone();
@@ -921,18 +1122,29 @@ fn main() {
                     }
                 }
                 
-                // 2. Backend 组件: MCP Gateway
+                // 2. Backend 组件: Tools Server
                 {
-                    let mut mg = mcp_gateway_for_start.lock().await;
-                    match mg.start(&backend_path, is_binary, &data_dir_for_gateway, resource_dir.as_ref()) {
-                        Ok(_) => println!("[MCP Gateway] Auto-started successfully"),
+                    let mut ts = tools_server_for_start.lock().await;
+                    match ts.start(&backend_path, is_binary, &data_dir_for_gateway, resource_dir.as_ref()) {
+                        Ok(_) => println!("[Tools Server] Auto-started successfully"),
                         Err(e) => {
-                            println!("[MCP Gateway] Failed to auto-start: {}", e);
+                            println!("[Tools Server] Failed to auto-start: {}", e);
                         }
                     }
                 }
                 
-                // 3. 等 Gateway 就绪（health check）
+                // 3. Backend 组件: Queue Service（Task/Saga 队列管理）
+                {
+                    let mut qs = queue_service_for_start.lock().await;
+                    match qs.start(&backend_path, is_binary, &data_dir_for_gateway, resource_dir.as_ref()) {
+                        Ok(_) => println!("[Queue Service] Auto-started successfully"),
+                        Err(e) => {
+                            println!("[Queue Service] Failed to auto-start: {}", e);
+                        }
+                    }
+                }
+                
+                // 4. 等 Gateway 就绪（health check）
                 println!("[Services] Waiting for Gateway to be ready...");
                 let client = reqwest::Client::new();
                 let health_url = format!("{}/api/health", gateway_url);
@@ -953,7 +1165,7 @@ fn main() {
                     }
                 }
                 
-                // 4-7. 直接启动 Worker 服务（和 Gateway 一样简单）
+                // 5-8. 直接启动 Worker 服务（和 Gateway 一样简单）
                 // v4.1: Saga/Task Architecture - multiple workers for parallelism
                 // 配置：3 Task Workers, 3 Saga Workers, 1 Watchdog, 1 Health
                 const NUM_TASK_WORKERS: u32 = 3;
@@ -961,12 +1173,15 @@ fn main() {
                 
                 if is_binary {
                     let gateway_url = "http://127.0.0.1:19999";
+                    let queue_service_url = "http://127.0.0.1:19997";
                     
                     // Watchdog: 监控 sending 消息，触发 MessageProcess Saga (1 个)
                     match Command::new(&backend_path_clone)
                         .arg("watchdog")
                         .arg("--gateway-url")
                         .arg(gateway_url)
+                        .arg("--queue-service-url")
+                        .arg(queue_service_url)
                         .stdout(Stdio::null())
                         .stderr(Stdio::null())
                         .spawn()
@@ -981,6 +1196,8 @@ fn main() {
                             .arg("task-worker")
                             .arg("--gateway-url")
                             .arg(gateway_url)
+                            .arg("--queue-service-url")
+                            .arg(queue_service_url)
                             .stdout(Stdio::null())
                             .stderr(Stdio::null())
                             .spawn()
@@ -996,6 +1213,8 @@ fn main() {
                             .arg("saga-worker")
                             .arg("--gateway-url")
                             .arg(gateway_url)
+                            .arg("--queue-service-url")
+                            .arg(queue_service_url)
                             .stdout(Stdio::null())
                             .stderr(Stdio::null())
                             .spawn()
@@ -1010,6 +1229,8 @@ fn main() {
                         .arg("health")
                         .arg("--gateway-url")
                         .arg(gateway_url)
+                        .arg("--queue-service-url")
+                        .arg(queue_service_url)
                         .stdout(Stdio::null())
                         .stderr(Stdio::null())
                         .spawn()
@@ -1027,12 +1248,17 @@ fn main() {
                         "python3".to_string()
                     };
                     
+                    let gateway_url = "http://127.0.0.1:19999";
+                    let queue_service_url = "http://127.0.0.1:19997";
+                    
                     // Watchdog (1 个)
                     match Command::new(&python)
                         .arg("main_watchdog.py")
+                        .arg("--gateway-url")
+                        .arg(gateway_url)
+                        .arg("--queue-service-url")
+                        .arg(queue_service_url)
                         .current_dir(&gateway_dir)
-                        .env("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
-                        .env("NOVAIC_MCP_GATEWAY_URL", "http://127.0.0.1:19998")
                         .stdout(Stdio::inherit())
                         .stderr(Stdio::inherit())
                         .spawn()
@@ -1045,9 +1271,11 @@ fn main() {
                     for i in 1..=NUM_TASK_WORKERS {
                         match Command::new(&python)
                             .arg("main_task.py")
+                            .arg("--gateway-url")
+                            .arg(gateway_url)
+                            .arg("--queue-service-url")
+                            .arg(queue_service_url)
                             .current_dir(&gateway_dir)
-                            .env("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
-                            .env("NOVAIC_MCP_GATEWAY_URL", "http://127.0.0.1:19998")
                             .stdout(Stdio::inherit())
                             .stderr(Stdio::inherit())
                             .spawn()
@@ -1061,9 +1289,11 @@ fn main() {
                     for i in 1..=NUM_SAGA_WORKERS {
                         match Command::new(&python)
                             .arg("main_saga.py")
+                            .arg("--gateway-url")
+                            .arg(gateway_url)
+                            .arg("--queue-service-url")
+                            .arg(queue_service_url)
                             .current_dir(&gateway_dir)
-                            .env("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
-                            .env("NOVAIC_MCP_GATEWAY_URL", "http://127.0.0.1:19998")
                             .stdout(Stdio::inherit())
                             .stderr(Stdio::inherit())
                             .spawn()
@@ -1076,9 +1306,9 @@ fn main() {
                     // Health (1 个)
                     match Command::new(&python)
                         .arg("main_health.py")
+                        .arg("--queue-service-url")
+                        .arg(queue_service_url)
                         .current_dir(&gateway_dir)
-                        .env("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
-                        .env("NOVAIC_MCP_GATEWAY_URL", "http://127.0.0.1:19998")
                         .stdout(Stdio::inherit())
                         .stderr(Stdio::inherit())
                         .spawn()
@@ -1121,6 +1351,7 @@ fn main() {
             gateway_get,
             gateway_post,
             gateway_patch,
+            gateway_put,
             gateway_delete,
             gateway_health,
         ])
@@ -1169,12 +1400,12 @@ fn main() {
                         });
                     }
                     
-                    // Stop Backend 组件: MCP Gateway
-                    if let Some(mcp_gateway) = app_handle.try_state::<McpGatewayState>() {
-                        let mcp_clone = mcp_gateway.inner().clone();
+                    // Stop Backend 组件: Tools Server
+                    if let Some(tools_server) = app_handle.try_state::<ToolsServerState>() {
+                        let ts_clone = tools_server.inner().clone();
                         tauri::async_runtime::block_on(async {
-                            let mut mg = mcp_clone.lock().await;
-                            mg.stop();
+                            let mut ts = ts_clone.lock().await;
+                            ts.stop();
                         });
                     }
                     

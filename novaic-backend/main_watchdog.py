@@ -4,46 +4,53 @@ Watchdog Worker 启动入口
 监控 sending 消息，触发 RuntimeStart Saga。
 """
 
-import asyncio
+import argparse
 import os
-import sys
 import signal
 
-# 设置环境
+# 设置网络环境（绕过代理）
 os.environ['no_proxy'] = 'localhost,127.0.0.1,::1'
 os.environ['NO_PROXY'] = 'localhost,127.0.0.1,::1'
 
 
-async def main():
+def main():
+    parser = argparse.ArgumentParser(description="Watchdog Worker - 监控 sending 消息")
+    parser.add_argument(
+        "--gateway-url",
+        default="http://127.0.0.1:19999",
+        help="Gateway URL (default: http://127.0.0.1:19999)",
+    )
+    parser.add_argument(
+        "--queue-service-url",
+        default="http://127.0.0.1:19997",
+        help="Queue Service URL (default: http://127.0.0.1:19997)",
+    )
+    args = parser.parse_args()
+    
     from task_queue.workers.watchdog import Watchdog
     
-    gateway_url = os.environ.get("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
-    
     worker = Watchdog(
-        gateway_url=gateway_url,
+        gateway_url=args.gateway_url,
+        queue_service_url=args.queue_service_url,
         poll_interval=0.1,
     )
     
     # 信号处理
-    loop = asyncio.get_running_loop()
-    
-    def shutdown_handler():
+    def shutdown_handler(signum, frame):
         print("[main_watchdog] Received shutdown signal")
-        asyncio.create_task(worker.shutdown())
+        worker.shutdown()
     
-    for sig in (signal.SIGTERM, signal.SIGINT):
-        loop.add_signal_handler(sig, shutdown_handler)
+    signal.signal(signal.SIGTERM, shutdown_handler)
+    signal.signal(signal.SIGINT, shutdown_handler)
     
     print(f"[main_watchdog] Starting Watchdog...")
-    print(f"[main_watchdog] Gateway URL: {gateway_url}")
+    print(f"[main_watchdog] Gateway URL: {args.gateway_url}")
+    print(f"[main_watchdog] Queue Service URL: {args.queue_service_url}")
     
-    await worker.run()
+    worker.run()
     
     print("[main_watchdog] Shutdown complete")
 
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        pass
+    main()

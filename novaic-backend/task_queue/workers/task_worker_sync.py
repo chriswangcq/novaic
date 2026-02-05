@@ -23,7 +23,6 @@ from typing import Optional, Dict, Any, List
 import traceback
 
 from task_queue.client import TaskQueueClient, GatewayInternalClient, SagaClient
-from task_queue.business.mcp import MCPGatewayClient
 from task_queue.heartbeat_sync import HeartbeatSync
 
 
@@ -80,7 +79,6 @@ class TaskWorkerSync:
         self.client = TaskQueueClient(queue_service_url, timeout=timeout)  # 连接 Queue Service
         self.saga_client = SagaClient(queue_service_url, timeout=timeout)  # 用于 saga.trigger handler
         self.gateway_client = GatewayInternalClient(self.gateway_url, timeout=timeout)
-        self.mcp_client = MCPGatewayClient()  # 用于 tool.execute handler
         
         self._running = False
         self.metrics = TaskWorkerMetrics()
@@ -222,7 +220,6 @@ class TaskWorkerSync:
             "gateway_url": self.gateway_client.gateway_url,
             "gateway_client": self.gateway_client,
             "saga_client": self.saga_client,
-            "mcp_client": self.mcp_client,
             "queue_service_url": self.queue_service_url,
         }
         

@@ -20,7 +20,7 @@ import glob
 
 from .schemas import (
     ChatRequest, ChatResponse, ChatResult,
-    ApiKeyCreate, ApiKeyUpdate, ModelToggle, SettingsUpdate,
+    ApiKeyCreate, ApiKeyUpdate, ModelToggle, CustomModelAdd, SettingsUpdate,
     HealthResponse, HistoryResponse
 )
 from gateway.config import get_config_manager, ProviderType
@@ -180,18 +180,30 @@ def save_models_for_key(key_id: str, models: List[dict]):
 
 
 @router.post("/config/api-keys/{key_id}/models/add")
-def add_model(key_id: str, data: dict):
+def add_model(key_id: str, data: CustomModelAdd):
     """Add a single custom model"""
-    model_id = data.get("id")
-    model_name = data.get("name", model_id)
+    # Get API key to determine provider
+    config = get_config_manager().load()
+    api_key = config.get_api_key_by_id(key_id)
+    if api_key is None:
+        raise HTTPException(status_code=404, detail=f"API key not found: {key_id}")
     
-    if not model_id:
-        raise HTTPException(status_code=400, detail="Model ID required")
+    model_name = data.name if data.name else data.id
     
-    if not get_config_manager().add_model(key_id, model_id, model_name):
-        raise HTTPException(status_code=400, detail="Model already exists or API key not found")
-    
-    return {"status": "ok"}
+    try:
+        # Call add_model with correct parameter order:
+        # model_id, name, provider, api_key_id, enabled=True, is_custom=True
+        get_config_manager().add_model(
+            model_id=data.id,
+            name=model_name,
+            provider=api_key.provider,
+            api_key_id=key_id,
+            enabled=True,
+            is_custom=True
+        )
+        return {"status": "ok"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/config/api-keys/{key_id}/test")

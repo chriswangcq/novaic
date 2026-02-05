@@ -4,7 +4,7 @@ import { ChatInput } from './ChatInput';
 import { useAppStore } from '../../store';
 
 export function ChatPanel() {
-  const { messages, isExecuting, sendMessage } = useAppStore();
+  const { messages, isExecuting, sendMessage, stopExecution } = useAppStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto scroll to bottom
@@ -21,7 +21,7 @@ export function ChatPanel() {
       </div>
 
       {/* Input */}
-      <ChatInput onSend={sendMessage} isLoading={isExecuting} />
+      <ChatInput onSend={sendMessage} onStop={stopExecution} isLoading={isExecuting} />
     </div>
   );
 }

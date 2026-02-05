@@ -712,16 +712,8 @@ class TaskManager:
             # Get the tool registry
             registry = self.tool_registry
             if not registry:
-                # v2.8: Try to get from MCPManager's aggregate gateways
-                try:
-                    from mcp_gateway.manager import get_mcp_manager
-                    mcp_mgr = get_mcp_manager()
-                    if mcp_mgr and mcp_mgr._aggregate_gateways:
-                        # Use the first available gateway's registry
-                        first_gateway = next(iter(mcp_mgr._aggregate_gateways.values()))
-                        registry = first_gateway.registry
-                except Exception:
-                    pass
+                # NOTE: FastMCP has been deprecated. External tools now discovered via Tools Server.
+                pass
             
             if not registry:
                 raise RuntimeError("ToolRegistry not available")

@@ -571,7 +571,7 @@ runcmd:
   - sudo -u ubuntu python3 -m venv /opt/novaic-venv
   - echo "Installing Python dependencies..."
   - sudo -u ubuntu /opt/novaic-venv/bin/pip install --upgrade pip -q -i "http://{pip_mirror}" --trusted-host "{pip_host}"
-  - sudo -u ubuntu /opt/novaic-venv/bin/pip install -q -i "http://{pip_mirror}" --trusted-host "{pip_host}" fastmcp fastapi "uvicorn[standard]" pydantic pydantic-settings playwright httpx python-dotenv Pillow
+  - sudo -u ubuntu /opt/novaic-venv/bin/pip install -q -i "http://{pip_mirror}" --trusted-host "{pip_host}" fastapi "uvicorn[standard]" pydantic pydantic-settings playwright httpx python-dotenv Pillow
   - echo "Installing Playwright Chromium..."
   - sudo -u ubuntu /opt/novaic-venv/bin/playwright install chromium
   - /opt/novaic-venv/bin/playwright install-deps chromium || true

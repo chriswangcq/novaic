@@ -156,6 +156,30 @@ class ConfigRepository:
         query += " ORDER BY id"
         return self.db.fetchall(query, tuple(params))
     
+    def list_models_with_key_name(
+        self,
+        api_key_id: Optional[str] = None,
+        enabled_only: bool = False
+    ) -> List[Dict[str, Any]]:
+        """List candidate models with api_key name joined."""
+        query = """
+            SELECT m.*, k.name as api_key_name
+            FROM candidate_models m
+            JOIN api_keys k ON m.api_key_id = k.id
+            WHERE 1=1
+        """
+        params = []
+        
+        if api_key_id:
+            query += " AND m.api_key_id = ?"
+            params.append(api_key_id)
+        
+        if enabled_only:
+            query += " AND m.available = 1 AND k.api_key IS NOT NULL AND k.api_key != ''"
+        
+        query += " ORDER BY k.name, m.name"
+        return self.db.fetchall(query, tuple(params))
+    
     def get_model(
         self,
         model_id: str,

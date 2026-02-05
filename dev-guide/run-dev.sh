@@ -11,7 +11,7 @@
 #
 # 约定:
 # - 所有服务都使用 /tmp/*.log 日志
-# - Gateway/MCP/Workers 都需要 NOVAIC_GATEWAY_URL + NOVAIC_MCP_GATEWAY_URL
+# - Gateway/MCP/Workers 都需要 NOVAIC_GATEWAY_URL + NOVAIC_TOOLS_SERVER_URL
 
 set -euo pipefail
 
@@ -22,9 +22,9 @@ BACKEND_DIR="$PROJECT_ROOT/novaic-backend"
 
 # 端口与环境
 GATEWAY_URL="${NOVAIC_GATEWAY_URL:-http://127.0.0.1:19999}"
-MCP_GATEWAY_URL="${NOVAIC_MCP_GATEWAY_URL:-http://127.0.0.1:19998}"
+TOOLS_SERVER_URL="${NOVAIC_TOOLS_SERVER_URL:-http://127.0.0.1:19998}"
 export NOVAIC_GATEWAY_URL="$GATEWAY_URL"
-export NOVAIC_MCP_GATEWAY_URL="$MCP_GATEWAY_URL"
+export NOVAIC_TOOLS_SERVER_URL="$TOOLS_SERVER_URL"
 export NOVAIC_DATA_DIR="${NOVAIC_DATA_DIR:-$HOME/.novaic}"
 export PYTHONUNBUFFERED=1
 
@@ -95,8 +95,8 @@ start_gateway() {
 }
 
 start_mcp() {
-    start_process "MCP Gateway" "python main_mcp.py" "$LOG_MCP"
-    wait_for_health "$MCP_GATEWAY_URL/api/health" "MCP Gateway"
+    start_process "Tools Server" "python main_tools.py" "$LOG_MCP"
+    wait_for_health "$TOOLS_SERVER_URL/api/health" "Tools Server"
 }
 
 start_queue() {
@@ -133,7 +133,7 @@ start_workers() {
 stop_all() {
     log_info "Stopping all services..."
     pkill -f "python.*main_gateway.py" 2>/dev/null || true
-    pkill -f "python.*main_mcp.py" 2>/dev/null || true
+    pkill -f "python.*main_tools.py" 2>/dev/null || true
     pkill -f "python.*queue_service/main.py" 2>/dev/null || true
     pkill -f "python.*main_watchdog.py" 2>/dev/null || true
     pkill -f "python.*main_task.py" 2>/dev/null || true
@@ -157,7 +157,7 @@ UPDATE subagents SET status = 'sleeping';
 show_status() {
     echo "=== Running Services ==="
     local gateway_count=$(pgrep -f "python.*main_gateway.py" 2>/dev/null | wc -l | tr -d ' ')
-    local mcp_count=$(pgrep -f "python.*main_mcp.py" 2>/dev/null | wc -l | tr -d ' ')
+    local mcp_count=$(pgrep -f "python.*main_tools.py" 2>/dev/null | wc -l | tr -d ' ')
     local queue_count=$(pgrep -f "python.*queue_service/main.py" 2>/dev/null | wc -l | tr -d ' ')
     local watchdog_count=$(pgrep -f "python.*main_watchdog.py" 2>/dev/null | wc -l | tr -d ' ')
     local task_count=$(pgrep -f "python.*main_task.py" 2>/dev/null | wc -l | tr -d ' ')
@@ -165,7 +165,7 @@ show_status() {
     local health_count=$(pgrep -f "python.*main_health.py" 2>/dev/null | wc -l | tr -d ' ')
     
     echo "Gateway:       $gateway_count"
-    echo "MCP Gateway:   $mcp_count"
+    echo "Tools Server:  $mcp_count"
     echo "Queue Service: $queue_count"
     echo "Watchdog:      $watchdog_count"
     echo "Task Workers:  $task_count (configured: $NUM_TASK_WORKERS)"
@@ -197,7 +197,7 @@ Usage: ./run-dev.sh [command]
 Commands:
   (none)        Start all services
   gateway       Start Gateway only
-  mcp           Start MCP Gateway only
+  mcp           Start Tools Server only
   watchdog      Start Watchdog only
   task          Start Task Worker only
   saga          Start Saga Worker only
@@ -212,7 +212,7 @@ Commands:
 Environment:
   NOVAIC_DATA_DIR        Data directory (default: ~/.novaic)
   NOVAIC_GATEWAY_URL     Gateway URL (default: http://127.0.0.1:19999)
-  NOVAIC_MCP_GATEWAY_URL MCP Gateway URL (default: http://127.0.0.1:19998)
+  NOVAIC_TOOLS_SERVER_URL Tools Server URL (default: http://127.0.0.1:19998)
   NOVAIC_TASK_WORKERS    Number of Task Workers (default: 3)
   NOVAIC_SAGA_WORKERS    Number of Saga Workers (default: 3)
 EOF
@@ -222,7 +222,7 @@ ensure_dirs
 
 case "${1:-all}" in
     gateway)  start_gateway ;;
-    mcp|mcp-gateway) start_mcp ;;
+    mcp|mcp-gateway|tools) start_mcp ;;
     watchdog|monitor) start_watchdog ;;
     task)     start_task ;;
     saga)     start_saga ;;

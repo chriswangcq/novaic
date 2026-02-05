@@ -7,11 +7,11 @@
  */
 
 import { useState, useEffect } from 'react';
-import { X, Loader2, HardDrive, Cpu, MemoryStick, ChevronRight } from 'lucide-react';
+import { X, Loader2, HardDrive, Cpu, MemoryStick, ChevronRight, Bot } from 'lucide-react';
 import { useAppStore } from '../../store';
 import { api } from '../../services';
 import { EnvironmentCheck } from '../Setup';
-import type { AvailableImage, AICAgent } from '../../services/api';
+import type { AvailableImage, AICAgent, CandidateModel } from '../../services/api';
 
 // Setup config returned when agent is created
 export interface SetupConfig {
@@ -72,6 +72,11 @@ export function CreateAgentModal({ isOpen, onClose, onCreated }: CreateAgentModa
   const [isLoading, setIsLoading] = useState(false);
   const [availableImages, setAvailableImages] = useState<AvailableImage[]>([]);
   const [error, setError] = useState('');
+  
+  // Model selection state
+  const [availableModels, setAvailableModels] = useState<CandidateModel[]>([]);
+  const [selectedModelId, setSelectedModelId] = useState<string>('');
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
 
   // Auto-detect locale for mirror selection
   useEffect(() => {
@@ -87,6 +92,30 @@ export function CreateAgentModal({ isOpen, onClose, onCreated }: CreateAgentModa
       loadImages();
     }
   }, [isOpen, step]);
+
+  // Load available models when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      loadAvailableModels();
+    }
+  }, [isOpen]);
+
+  const loadAvailableModels = async () => {
+    setIsLoadingModels(true);
+    try {
+      const models = await api.listAvailableModels();
+      setAvailableModels(models);
+      // Auto-select first model if available
+      if (models.length > 0 && !selectedModelId) {
+        const firstModel = models[0];
+        setSelectedModelId(`${firstModel.api_key_id}:${firstModel.id}`);
+      }
+    } catch (error) {
+      console.error('Failed to load models:', error);
+    } finally {
+      setIsLoadingModels(false);
+    }
+  };
 
   const loadImages = async () => {
     try {
@@ -112,6 +141,7 @@ export function CreateAgentModal({ isOpen, onClose, onCreated }: CreateAgentModa
       setMemory('4096');
       setCpus(4);
       setError('');
+      setSelectedModelId('');  // Reset model selection
     }
   }, [isOpen]);
 
@@ -145,6 +175,18 @@ export function CreateAgentModal({ isOpen, onClose, onCreated }: CreateAgentModa
         cpus,
         source_image: sourceImage || undefined,
       });
+      
+      // Set model for the new agent
+      if (selectedModelId) {
+        try {
+          await api.setAgentModel(agent.id, selectedModelId);
+          console.log('[CreateAgentModal] Set model for agent:', agent.id, selectedModelId);
+        } catch (modelError) {
+          console.warn('[CreateAgentModal] Failed to set model, continuing:', modelError);
+          // Don't fail the whole creation if model setting fails
+        }
+      }
+      
       await loadAgents();
       
       // Call onCreated with setup config (triggers setup flow)
@@ -239,6 +281,40 @@ export function CreateAgentModal({ isOpen, onClose, onCreated }: CreateAgentModa
               placeholder="My Agent"
               className="w-full px-3 py-2 bg-nb-bg border border-nb-border rounded-lg text-nb-text placeholder-nb-text-secondary focus:outline-none focus:border-blue-500"
             />
+          </div>
+
+          {/* Model Selection */}
+          <div>
+            <label className="block text-sm font-medium text-nb-text mb-2">
+              <Bot size={14} className="inline mr-1" />
+              Default Model
+            </label>
+            <select
+              value={selectedModelId}
+              onChange={(e) => setSelectedModelId(e.target.value)}
+              disabled={isLoadingModels}
+              className="w-full px-3 py-2 bg-nb-bg border border-nb-border rounded-lg text-nb-text focus:outline-none focus:border-blue-500 disabled:opacity-50"
+            >
+              {isLoadingModels ? (
+                <option value="">Loading models...</option>
+              ) : availableModels.length === 0 ? (
+                <option value="">No models available</option>
+              ) : (
+                <>
+                  <option value="">Select a model...</option>
+                  {availableModels.map(model => (
+                    <option key={`${model.api_key_id}:${model.id}`} value={`${model.api_key_id}:${model.id}`}>
+                      {model.name} ({model.api_key_name})
+                    </option>
+                  ))}
+                </>
+              )}
+            </select>
+            {availableModels.length === 0 && !isLoadingModels && (
+              <p className="mt-1 text-xs text-amber-400">
+                Configure API keys in Settings to enable models
+              </p>
+            )}
           </div>
 
           {/* Backend */}

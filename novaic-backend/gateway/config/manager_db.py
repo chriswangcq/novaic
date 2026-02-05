@@ -79,12 +79,21 @@ class ApiKeyEntry(BaseModel):
 
 
 class CandidateModel(BaseModel):
-    """Candidate model configuration"""
+    """
+    Candidate model configuration.
+    
+    A candidate model can be:
+    - Fetched from provider (is_custom=False)
+    - Custom added by user (is_custom=True)
+    
+    enabled=True means the model is available for use.
+    """
     id: str
     name: str
     provider: ProviderType
     api_key_id: str
-    available: bool = True
+    api_key_name: str = ""  # Provider name for display
+    enabled: bool = True    # Was 'available', unified to 'enabled'
     is_custom: bool = False
 
 
@@ -103,7 +112,10 @@ class AppConfig(BaseModel):
         return {
             "version": self.version,
             "api_keys": [k.to_public() for k in self.api_keys],
-            "candidate_models": [m.model_dump() for m in self.candidate_models],
+            "candidate_models": [
+                m.model_dump()
+                for m in self.candidate_models
+            ],
             "default_model": self.default_model,
             "max_tokens": self.max_tokens,
             "max_iterations": self.max_iterations,
@@ -117,9 +129,9 @@ class AppConfig(BaseModel):
                 return key
         return None
     
-    def get_available_models(self) -> List[CandidateModel]:
-        """Get only available models"""
-        return [m for m in self.candidate_models if m.available]
+    def get_enabled_models(self) -> List[CandidateModel]:
+        """Get only enabled models"""
+        return [m for m in self.candidate_models if m.enabled]
 
 
 class ConfigManagerDB:
@@ -166,8 +178,8 @@ class ConfigManagerDB:
                 created_at=k.get("created_at", ""),
             ))
         
-        # Get models
-        models_data = self.repo.list_models()
+        # Get models with api_key_name
+        models_data = self.repo.list_models_with_key_name()
         models = []
         for m in models_data:
             models.append(CandidateModel(
@@ -175,7 +187,8 @@ class ConfigManagerDB:
                 name=m["name"],
                 provider=ProviderType(m["provider"]),
                 api_key_id=m["api_key_id"],
-                available=bool(m.get("available", 1)),
+                api_key_name=m.get("api_key_name", ""),
+                enabled=bool(m.get("available", 1)),  # DB uses 'available', model uses 'enabled'
                 is_custom=bool(m.get("is_custom", 0)),
             ))
         
@@ -286,12 +299,17 @@ class ConfigManagerDB:
             is_custom=is_custom,
         )
         
+        # Get api_key_name for the response
+        api_key = self.repo.get_api_key(api_key_id)
+        api_key_name = api_key.get("name", "") if api_key else ""
+        
         return CandidateModel(
             id=model_id,
             name=name,
             provider=provider,
             api_key_id=api_key_id,
-            available=enabled,
+            api_key_name=api_key_name,
+            enabled=enabled,
             is_custom=is_custom,
         )
     
