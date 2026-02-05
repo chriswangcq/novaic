@@ -6,6 +6,7 @@ mod error;
 mod commands;
 mod http_client;
 mod gateway_client;
+mod config;
 
 use gateway_client::GatewayClient;
 
@@ -27,6 +28,8 @@ use tauri::{
     tray::TrayIconBuilder,
     menu::{Menu, MenuItem},
 };
+
+use config::AppConfig;
 
 /// Backend 组件: Gateway - API + DB，不含工具服务（工具服务由 Tools Server 独立进程提供）
 struct GatewayProcess {
@@ -60,10 +63,6 @@ impl ToolsServerProcess {
             port: 19998,
         }
     }
-
-    fn base_url(&self) -> String {
-        format!("http://127.0.0.1:{}", self.port)
-    }
 }
 
 /// Backend 组件: Queue Service - Task/Saga 队列管理
@@ -79,10 +78,6 @@ impl QueueServiceProcess {
             port: 19997,
         }
     }
-
-    fn base_url(&self) -> String {
-        format!("http://127.0.0.1:{}", self.port)
-    }
 }
 
 /// Backend 组件: Service Process - 通用服务进程管理器
@@ -91,118 +86,14 @@ impl QueueServiceProcess {
 struct ServiceProcess {
     process: Option<Child>,
     service_type: String,  // watchdog, task-worker, saga-worker, health
-    gateway_url: String,
-    extra_args: Vec<String>,
 }
 
 impl ServiceProcess {
-    fn new(service_type: &str, gateway_url: &str) -> Self {
+    fn new(service_type: &str, _gateway_url: &str) -> Self {
         Self {
             process: None,
             service_type: service_type.to_string(),
-            gateway_url: gateway_url.to_string(),
-            extra_args: vec![],
         }
-    }
-
-    fn with_extra_args(mut self, args: Vec<String>) -> Self {
-        self.extra_args = args;
-        self
-    }
-
-    /// Start service using unified novaic-backend binary
-    /// v3.0: Uses `novaic-backend <service_type>` command
-    fn start(&mut self, backend_path: &PathBuf, is_binary: bool, gateway_dir: Option<&PathBuf>, resource_dir: Option<&PathBuf>) -> Result<(), String> {
-        if self.process.is_some() {
-            println!("[{}] Already running", self.service_type);
-            return Ok(());
-        }
-
-        println!("[{}] Starting from {:?}", self.service_type, backend_path);
-        println!("[{}] Gateway URL: {}", self.service_type, self.gateway_url);
-        println!("[{}] Mode: {}", self.service_type, if is_binary { "binary" } else { "python" });
-
-        // Compute resource_dir string
-        let provided_resource_dir = resource_dir.map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
-        let resource_dir_str = if is_binary && provided_resource_dir.is_empty() {
-            // For binary mode, infer resource_dir from backend_path
-            // backend_path is at: resource_dir/novaic-backend/novaic-backend
-            if let Some(parent) = backend_path.parent() {
-                if let Some(grandparent) = parent.parent() {
-                    println!("[{}] Inferred resource_dir from binary path: {:?}", self.service_type, grandparent);
-                    grandparent.to_string_lossy().to_string()
-                } else {
-                    String::new()
-                }
-            } else {
-                String::new()
-            }
-        } else {
-            provided_resource_dir
-        };
-        
-        println!("[{}] NOVAIC_RESOURCE_DIR: {}", self.service_type, resource_dir_str);
-
-        let child = if is_binary {
-            if !backend_path.exists() {
-                return Err(format!("Backend binary not found at {:?}", backend_path));
-            }
-            
-            let mut cmd = Command::new(backend_path);
-            cmd.arg(&self.service_type)
-                .arg("--gateway-url")
-                .arg(&self.gateway_url);
-            
-            for arg in &self.extra_args {
-                cmd.arg(arg);
-            }
-            
-            // Use null to discard output - same as Gateway for consistency
-            cmd.env("NOVAIC_RESOURCE_DIR", &resource_dir_str)
-                .env("NOVAIC_TOOLS_SERVER_URL", "http://127.0.0.1:19998")
-                .env("NO_PROXY", "localhost,127.0.0.1,::1")
-                .env("no_proxy", "localhost,127.0.0.1,::1")
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
-                .spawn()
-                .map_err(|e| format!("Failed to start {} binary: {}", self.service_type, e))?
-        } else {
-            let gateway_dir = gateway_dir.ok_or("Gateway dir required for dev mode")?;
-            let venv_python = gateway_dir.join("venv/bin/python");
-            let python = if venv_python.exists() {
-                venv_python.to_string_lossy().to_string()
-            } else if cfg!(target_os = "windows") {
-                "python".to_string()
-            } else {
-                "python3".to_string()
-            };
-
-            println!("[{}] Using Python: {}", self.service_type, python);
-
-            let mut cmd = Command::new(&python);
-            cmd.arg("novaic_main.py")
-                .arg(&self.service_type)
-                .arg("--gateway-url")
-                .arg(&self.gateway_url);
-            
-            for arg in &self.extra_args {
-                cmd.arg(arg);
-            }
-            
-            cmd.current_dir(gateway_dir)
-                .env("NOVAIC_RESOURCE_DIR", &resource_dir_str)
-                .env("NOVAIC_TOOLS_SERVER_URL", "http://127.0.0.1:19998")
-                .env("NO_PROXY", "localhost,127.0.0.1,::1")
-                .env("no_proxy", "localhost,127.0.0.1,::1")
-                .stdout(Stdio::inherit())
-                .stderr(Stdio::inherit())
-                .spawn()
-                .map_err(|e| format!("Failed to start {}: {}", self.service_type, e))?
-        };
-
-        self.process = Some(child);
-        println!("[{}] Started", self.service_type);
-        Ok(())
     }
 
     fn stop(&mut self) {
@@ -215,7 +106,7 @@ impl ServiceProcess {
                 libc::kill(pid as i32, libc::SIGTERM);
             }
             
-            std::thread::sleep(std::time::Duration::from_millis(500));
+            std::thread::sleep(std::time::Duration::from_millis(AppConfig::PROCESS_TERM_WAIT_MS));
             
             match process.try_wait() {
                 Ok(Some(status)) => {
@@ -233,21 +124,6 @@ impl ServiceProcess {
                     let _ = process.kill();
                 }
             }
-        }
-    }
-
-    fn is_running(&mut self) -> bool {
-        if let Some(ref mut process) = self.process {
-            match process.try_wait() {
-                Ok(Some(_)) => {
-                    self.process = None;
-                    false
-                }
-                Ok(None) => true,
-                Err(_) => false,
-            }
-        } else {
-            false
         }
     }
 }
@@ -375,7 +251,7 @@ impl GatewayProcess {
             println!("[Gateway] Stopping all VMs via API (quick mode)...");
             let stop_url = format!("{}/api/vm/stop-all?quick=true&graceful=false", self.base_url());
             match reqwest::blocking::Client::builder()
-                .timeout(std::time::Duration::from_secs(10))  // Short timeout for quick mode
+                .timeout(std::time::Duration::from_secs(AppConfig::GATEWAY_STOP_TIMEOUT_SECS))
                 .build()
             {
                 Ok(client) => {
@@ -546,7 +422,7 @@ impl ToolsServerProcess {
             println!("[Tools Server] Stopping process (PID: {})...", pid);
             #[cfg(unix)]
             unsafe { libc::kill(pid as i32, libc::SIGTERM); }
-            std::thread::sleep(std::time::Duration::from_millis(500));
+            std::thread::sleep(std::time::Duration::from_millis(AppConfig::PROCESS_TERM_WAIT_MS));
             match process.try_wait() {
                 Ok(Some(_)) => {}
                 Ok(None) => { let _ = process.kill(); let _ = process.wait(); }
@@ -554,16 +430,6 @@ impl ToolsServerProcess {
             }
             println!("[Tools Server] Stopped");
         }
-    }
-
-    fn is_running(&mut self) -> bool {
-        if let Some(ref mut process) = self.process {
-            match process.try_wait() {
-                Ok(Some(_)) => { self.process = None; false }
-                Ok(None) => true,
-                Err(_) => false,
-            }
-        } else { false }
     }
 }
 
@@ -667,7 +533,7 @@ impl QueueServiceProcess {
             println!("[Queue Service] Stopping process (PID: {})...", pid);
             #[cfg(unix)]
             unsafe { libc::kill(pid as i32, libc::SIGTERM); }
-            std::thread::sleep(std::time::Duration::from_millis(500));
+            std::thread::sleep(std::time::Duration::from_millis(AppConfig::PROCESS_TERM_WAIT_MS));
             match process.try_wait() {
                 Ok(Some(_)) => {}
                 Ok(None) => { let _ = process.kill(); let _ = process.wait(); }
@@ -675,16 +541,6 @@ impl QueueServiceProcess {
             }
             println!("[Queue Service] Stopped");
         }
-    }
-
-    fn is_running(&mut self) -> bool {
-        if let Some(ref mut process) = self.process {
-            match process.try_wait() {
-                Ok(Some(_)) => { self.process = None; false }
-                Ok(None) => true,
-                Err(_) => false,
-            }
-        } else { false }
     }
 }
 
@@ -696,7 +552,6 @@ impl Drop for QueueServiceProcess {
 
 type GatewayState = Arc<Mutex<GatewayProcess>>;
 type ToolsServerState = Arc<Mutex<ToolsServerProcess>>;
-type QueueServiceState = Arc<Mutex<QueueServiceProcess>>;
 // v4.0: Four services (Watchdog, Task Worker, Saga Worker, Health)
 type WatchdogState = Arc<Mutex<ServiceProcess>>;
 type TaskWorkerState = Arc<Mutex<ServiceProcess>>;
@@ -770,7 +625,7 @@ fn kill_zombie_processes() {
         
         if killed_count > 0 {
             // Give processes time to fully terminate
-            std::thread::sleep(std::time::Duration::from_millis(500));
+            std::thread::sleep(std::time::Duration::from_millis(AppConfig::PROCESS_TERM_WAIT_MS));
             println!("[Cleanup] Cleaned up {} zombie process(es)", killed_count);
         } else {
             println!("[Cleanup] No zombie processes found");
@@ -1167,9 +1022,9 @@ fn main() {
                 
                 // 5-8. 直接启动 Worker 服务（和 Gateway 一样简单）
                 // v4.1: Saga/Task Architecture - multiple workers for parallelism
-                // 配置：3 Task Workers, 3 Saga Workers, 1 Watchdog, 1 Health
-                const NUM_TASK_WORKERS: u32 = 3;
-                const NUM_SAGA_WORKERS: u32 = 3;
+                // 配置：可通过 AppConfig 调整 Worker 数量
+                let num_task_workers = AppConfig::NUM_TASK_WORKERS;
+                let num_saga_workers = AppConfig::NUM_SAGA_WORKERS;
                 
                 if is_binary {
                     let gateway_url = "http://127.0.0.1:19999";
@@ -1190,8 +1045,8 @@ fn main() {
                         Err(e) => println!("[Watchdog] Failed: {}", e),
                     }
                     
-                    // Task Workers: 通用任务执行器 (3 个)
-                    for i in 1..=NUM_TASK_WORKERS {
+                    // Task Workers: 通用任务执行器
+                    for i in 1..=num_task_workers {
                         match Command::new(&backend_path_clone)
                             .arg("task-worker")
                             .arg("--gateway-url")
@@ -1207,8 +1062,8 @@ fn main() {
                         }
                     }
                     
-                    // Saga Workers: Saga 流程编排 (3 个)
-                    for i in 1..=NUM_SAGA_WORKERS {
+                    // Saga Workers: Saga 流程编排
+                    for i in 1..=num_saga_workers {
                         match Command::new(&backend_path_clone)
                             .arg("saga-worker")
                             .arg("--gateway-url")
@@ -1267,8 +1122,8 @@ fn main() {
                         Err(e) => println!("[Watchdog] Failed: {}", e),
                     }
                     
-                    // Task Workers (3 个)
-                    for i in 1..=NUM_TASK_WORKERS {
+                    // Task Workers
+                    for i in 1..=num_task_workers {
                         match Command::new(&python)
                             .arg("main_task.py")
                             .arg("--gateway-url")
@@ -1285,8 +1140,8 @@ fn main() {
                         }
                     }
                     
-                    // Saga Workers (3 个)
-                    for i in 1..=NUM_SAGA_WORKERS {
+                    // Saga Workers
+                    for i in 1..=num_saga_workers {
                         match Command::new(&python)
                             .arg("main_saga.py")
                             .arg("--gateway-url")

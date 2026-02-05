@@ -9,6 +9,8 @@ RuntimeStart Saga - Runtime 启动流程
 """
 
 from ..saga import SagaDefinition
+from . import register_saga_definition
+from ..topics import TaskTopics, SagaTopics
 
 
 def _build_runtime_create_payload(ctx):
@@ -67,24 +69,27 @@ RUNTIME_START_SAGA = SagaDefinition("runtime_start")
 
 RUNTIME_START_SAGA.add_task_step(
     name="create_runtime",
-    topic="runtime.create",
+    topic=TaskTopics.RUNTIME_CREATE,
     build_payload=_build_runtime_create_payload,
 )
 
 RUNTIME_START_SAGA.add_task_step(
     name="create_mcp",
-    topic="mcp.create",
+    topic=TaskTopics.MCP_CREATE,
     build_payload=_build_mcp_create_payload,
 )
 
 RUNTIME_START_SAGA.add_task_step(
     name="set_subagent_awake",
-    topic="subagent.set_awake",
+    topic=TaskTopics.SUBAGENT_SET_AWAKE,
     build_payload=_build_set_awake_payload,
 )
 
 RUNTIME_START_SAGA.add_task_step(
     name="trigger_think",
-    topic="saga.trigger",
+    topic=SagaTopics.SAGA_TRIGGER,
     build_payload=_build_trigger_think_payload,
 )
+
+# 自动注册
+RUNTIME_START_SAGA = register_saga_definition(RUNTIME_START_SAGA)

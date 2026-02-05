@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { useEffect, useLayoutEffect, useState, useCallback, useRef } from 'react';
 import { LogEntry } from '../../types';
 import { Trash2, Rocket, CheckCircle, AlertCircle, Terminal, Loader2, Brain, Zap, XCircle, ChevronDown, ChevronRight, Copy, Check } from 'lucide-react';
 import { useAppStore } from '../../store';
-
-const LOG_ESTIMATE_SIZE = 72;
-const OVERSCAN = 8;
+import { useVirtualList } from '../../hooks/useVirtualList';
+import { useScrollPagination } from '../../hooks/useScrollPagination';
+import { LOG_ESTIMATE_SIZE, LOG_OVERSCAN } from '../../constants/scroll';
+import { UI_CONFIG } from '../../config';
 
 interface ExecutionLogProps {
   logs: LogEntry[];
@@ -42,7 +42,7 @@ function LogDetail({ log, isExpanded, onToggle }: LogDetailProps) {
   const copyToClipboard = useCallback((text: string, label: string) => {
     navigator.clipboard.writeText(text).then(() => {
       setCopied(label);
-      setTimeout(() => setCopied(null), 2000);
+      setTimeout(() => setCopied(null), UI_CONFIG.COPY_FEEDBACK_DELAY);
     });
   }, []);
 
@@ -114,7 +114,7 @@ function LogDetail({ log, isExpanded, onToggle }: LogDetailProps) {
           {log.kind === 'think' && !!thinkingContent && (
             <div>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-purple-400 font-medium">💭 思考内容</span>
+                <span className="text-white/70 font-medium">💭 思考内容</span>
                 <button
                   onClick={() => copyToClipboard(thinkingContent, 'thinking')}
                   className="p-1 hover:bg-nb-surface rounded"
@@ -185,9 +185,16 @@ function LogDetail({ log, isExpanded, onToggle }: LogDetailProps) {
 }
 
 export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
-  const parentRef = useRef<HTMLDivElement>(null);
-  const { clearLogs, currentAgentId, logSubagentId, logSubagents, setLogSubagentId } = useAppStore();
-  const prevLengthRef = useRef(logs.length);
+  const { 
+    clearLogs, 
+    currentAgentId, 
+    logSubagentId, 
+    logSubagents, 
+    setLogSubagentId,
+    hasMoreLogs,
+    isLoadingMoreLogs,
+    loadMoreLogs,
+  } = useAppStore();
   
   // 记录展开状态的日志 ID
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
@@ -204,39 +211,148 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
     });
   }, []);
 
-  const virtualizer = useVirtualizer({
+  // 虚拟列表
+  const { parentRef, virtualizer } = useVirtualList({
     count: logs.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => LOG_ESTIMATE_SIZE,
-    overscan: OVERSCAN,
+    estimateSize: LOG_ESTIMATE_SIZE,
+    overscan: LOG_OVERSCAN,
   });
 
-  // Auto-scroll to bottom when new logs arrive (user is at bottom)
-  useEffect(() => {
-    if (logs.length <= prevLengthRef.current) {
-      prevLengthRef.current = logs.length;
+  // 手动实现自动滚动逻辑
+  const hasInitialScrolled = useRef(false);
+  const prevLogsLengthRef = useRef(0); // 初始化为 0，用于检测"从无到有"
+  const autoScrollEnabled = useRef(true); // 是否启用自动滚动
+  const isAutoScrolling = useRef(false); // 是否正在执行自动滚动
+  const isMounted = useRef(false); // 是否已经挂载
+
+  // 判断是否在底部（使用更宽松的条件）
+  const isAtBottom = useCallback(() => {
+    const scrollElement = parentRef.current;
+    if (!scrollElement) return false;
+    
+    const { scrollTop, scrollHeight, clientHeight } = scrollElement;
+    const scrollBottom = scrollHeight - scrollTop - clientHeight;
+    
+    // 距离底部小于 200px 认为在底部（更宽松）
+    return scrollBottom < 200;
+  }, [parentRef]);
+
+  // 监听用户滚动，更新自动滚动状态
+  const handleUserScroll = useCallback(() => {
+    // 如果正在自动滚动中，不更新状态（避免误判）
+    if (isAutoScrolling.current) {
       return;
     }
-    prevLengthRef.current = logs.length;
-    const el = parentRef.current;
-    if (!el) return;
-    const threshold = 80;
-    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
-    if (atBottom) {
+    
+    const atBottom = isAtBottom();
+    if (atBottom !== autoScrollEnabled.current) {
+      autoScrollEnabled.current = atBottom;
+    }
+  }, [isAtBottom]);
+
+  // 分页加载
+  const { handleScroll: handlePaginationScroll, firstVisibleIndexRef } = useScrollPagination({
+    itemsLength: logs.length,
+    virtualizer,
+    hasMore: hasMoreLogs,
+    isLoading: isLoadingMoreLogs,
+    onLoadMore: loadMoreLogs,
+    scrollThreshold: 100
+  });
+
+  // 组合滚动处理：分页 + 自动滚动状态更新
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    handlePaginationScroll(e);
+    handleUserScroll();
+  }, [handlePaginationScroll, handleUserScroll]);
+
+  // 组件挂载时的初始化
+  useEffect(() => {
+    isMounted.current = true;
+    // 不管有没有日志，都让 line 280-295 的逻辑处理滚动
+  }, []);
+
+
+  // 切换 Agent 或 subagent tag 时重置并滚动
+  useLayoutEffect(() => {
+    // 重置所有状态
+    hasInitialScrolled.current = false;
+    prevLogsLengthRef.current = 0;
+    autoScrollEnabled.current = true;
+    firstVisibleIndexRef.current = null;
+    
+    // 如果已经有日志数据，立即滚动到底部
+    if (logs.length > 0) {
+      hasInitialScrolled.current = true;
+      prevLogsLengthRef.current = logs.length;
+      
+      // 使用多个 RAF 确保虚拟列表完全渲染
       requestAnimationFrame(() => {
-        el.scrollTop = el.scrollHeight;
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            virtualizer.scrollToIndex(logs.length - 1, { 
+              align: 'end',
+              behavior: 'auto'
+            });
+          });
+        });
       });
     }
-  }, [logs.length]);
+  }, [currentAgentId, logSubagentId, virtualizer]);
+  
+  // 如果切换时没有日志，等待首次加载数据时滚动
+  useEffect(() => {
+    if (!hasInitialScrolled.current && logs.length > 0 && prevLogsLengthRef.current === 0) {
+      hasInitialScrolled.current = true;
+      prevLogsLengthRef.current = logs.length;
+      
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            virtualizer.scrollToIndex(logs.length - 1, { 
+              align: 'end',
+              behavior: 'auto'
+            });
+          });
+        });
+      });
+    }
+  }, [logs.length, virtualizer]);
+
+  // 新日志自动滚动（只在自动滚动启用时）
+  useEffect(() => {
+    if (hasInitialScrolled.current && logs.length > prevLogsLengthRef.current && !isLoadingMoreLogs) {
+      // 如果启用了自动滚动，就滚动到底部
+      if (autoScrollEnabled.current) {
+        isAutoScrolling.current = true;
+        
+        // 使用 requestAnimationFrame 确保 DOM 已更新
+        requestAnimationFrame(() => {
+          virtualizer.scrollToIndex(logs.length - 1, { 
+            align: 'end',
+            behavior: 'smooth' 
+          });
+          
+          // 滚动动画大约 300ms，延迟后重置标志
+          setTimeout(() => {
+            isAutoScrolling.current = false;
+            // 重新检查一次底部状态
+            autoScrollEnabled.current = isAtBottom();
+          }, 400);
+        });
+      }
+    }
+    prevLogsLengthRef.current = logs.length;
+  }, [logs.length, virtualizer, isLoadingMoreLogs, isAtBottom]);
 
   const getLogIcon = (log: LogEntry, success?: boolean) => {
     // 如果有 kind 字段，优先使用 kind
     if (log.kind === 'think') {
       // 根据 status 显示不同图标
       if (log.status === 'running') {
-        return <Loader2 size={14} className="text-purple-400 animate-spin" />;
+        return <Loader2 size={14} className="text-white/60 animate-spin" />;
       }
-      return <Brain size={14} className="text-purple-400" />;
+      return <Brain size={14} className="text-white/60" />;
     }
     if (log.kind === 'tool') {
       // 根据 status 显示不同图标
@@ -257,7 +373,7 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
           ? <CheckCircle size={14} className="text-nb-success" />
           : <XCircle size={14} className="text-nb-error" />;
       case 'thinking':
-        return <Brain size={14} className="text-purple-400" />;
+        return <Brain size={14} className="text-white/60" />;
       case 'status':
         return <Zap size={14} className="text-yellow-400" />;
       case 'error':
@@ -432,7 +548,7 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
       case 'tool_end':
         return 'text-nb-success';
       case 'thinking':
-        return 'text-purple-300 italic';
+        return 'text-white/60 italic';
       case 'status':
         return 'text-yellow-300';
       case 'error':
@@ -475,7 +591,7 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
           <button
             className={`px-3 py-1 rounded text-xs font-medium transition-colors whitespace-nowrap ${
               logSubagentId === null 
-                ? 'bg-blue-500 text-white' 
+                ? 'bg-white/15 text-white' 
                 : 'bg-nb-surface-2 text-nb-text-muted hover:bg-nb-surface-2/80'
             }`}
             onClick={() => setLogSubagentId(null)}
@@ -487,7 +603,7 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
               key={id}
               className={`px-3 py-1 rounded text-xs font-medium transition-colors whitespace-nowrap ${
                 logSubagentId === id 
-                  ? 'bg-blue-500 text-white' 
+                  ? 'bg-white/15 text-white' 
                   : 'bg-nb-surface-2 text-nb-text-muted hover:bg-nb-surface-2/80'
               }`}
               onClick={() => setLogSubagentId(id)}
@@ -502,6 +618,7 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
       <div
         ref={parentRef}
         className="flex-1 overflow-y-auto overflow-x-hidden p-4 font-mono text-xs"
+        onScroll={handleScroll}
       >
         {logs.length === 0 ? (
           <div className="text-nb-text-muted text-center py-8">
@@ -523,13 +640,29 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
             )}
           </div>
         ) : (
-          <div
-            style={{
-              height: `${virtualizer.getTotalSize()}px`,
-              position: 'relative',
-              width: '100%',
-            }}
-          >
+          <>
+            {/* 加载更多指示器 */}
+            {isLoadingMoreLogs && (
+              <div className="flex justify-center py-2 mb-2">
+                <Loader2 size={20} className="animate-spin text-nb-text-muted" />
+                <span className="ml-2 text-xs text-nb-text-muted">加载历史日志...</span>
+              </div>
+            )}
+            
+            {/* 没有更多日志提示 */}
+            {!hasMoreLogs && logs.length > 0 && (
+              <div className="text-center text-xs text-nb-text-muted py-2 mb-2">
+                — 已加载全部日志 —
+              </div>
+            )}
+
+            <div
+              style={{
+                height: `${virtualizer.getTotalSize()}px`,
+                position: 'relative',
+                width: '100%',
+              }}
+            >
             {virtualizer.getVirtualItems().map((virtualRow) => {
               const log = logs[virtualRow.index];
               const formatted = formatLog(log);
@@ -551,61 +684,63 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
                   }}
                   className={`py-2 px-1 ${getLogClass(log.type)} hover:bg-nb-surface-2/50 rounded transition-colors`}
                 >
-                  {/* 主要信息行 */}
-                  <div className="flex items-start gap-2">
-                    <span className="flex-shrink-0 mt-0.5">{getLogIcon(log, success)}</span>
-                    <span className="text-nb-text-muted w-14 flex-shrink-0 text-[10px] font-mono">
-                      {new Date(log.timestamp).toLocaleTimeString()}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      {/* 第一行：工具名/类型 + 状态标签 */}
-                      <div className="flex items-center gap-2 flex-wrap">
+                  {/* 新布局：第一行放时间戳 + 名字 + 状态 */}
+                  <div className="space-y-1.5">
+                    {/* 第一行：时间戳 + 图标 + 名字（左）+ 状态标签（右）*/}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-nb-text-muted text-[10px] font-mono">
+                          {new Date(log.timestamp).toLocaleTimeString()}
+                        </span>
+                        <span className="flex-shrink-0">{getLogIcon(log, success)}</span>
                         <span className="font-medium">{formatted.main}</span>
-                        {formatted.status && (
-                          <span className={`px-1.5 py-0.5 rounded text-[10px] ${
-                            formatted.isRunning 
-                              ? 'bg-blue-500/20 text-blue-400' 
-                              : formatted.status === '失败' 
-                                ? 'bg-nb-error/20 text-nb-error'
-                                : 'bg-nb-success/20 text-nb-success'
-                          }`}>
-                            {formatted.status}
-                          </span>
-                        )}
                         {/* 显示 subagent_id 标签 */}
                         {log.subagent_id && logSubagentId === null && (
-                          <span className="px-1.5 py-0.5 bg-purple-500/20 text-purple-400 text-[10px] rounded">
+                          <span className="px-1.5 py-0.5 bg-white/10 text-white/60 text-[10px] rounded">
                             {log.subagent_id}
                           </span>
                         )}
                       </div>
-                      
-                      {/* 第二行：摘要信息 */}
-                      {formatted.detail && (
-                        <div className="text-[11px] text-nb-text-muted mt-1 break-all leading-relaxed">
-                          {formatted.detail}
-                        </div>
+                      {/* 状态标签放在右边 */}
+                      {formatted.status && (
+                        <span className={`px-2 py-0.5 rounded text-[10px] flex-shrink-0 ${
+                          formatted.isRunning 
+                            ? 'bg-white/10 text-white/70' 
+                            : formatted.status === '失败' 
+                              ? 'bg-nb-error/20 text-nb-error'
+                              : 'bg-nb-success/20 text-nb-success'
+                        }`}>
+                          {formatted.status}
+                        </span>
                       )}
-                      
-                      {/* 可展开的详情 */}
-                      <LogDetail 
-                        log={log} 
-                        isExpanded={isExpanded}
-                        onToggle={() => toggleLogExpand(logKey)}
-                      />
                     </div>
+                    
+                    {/* 第二行：摘要信息（全宽，不锁紧）*/}
+                    {formatted.detail && (
+                      <div className="text-[11px] text-nb-text-muted break-all leading-relaxed pl-0">
+                        {formatted.detail}
+                      </div>
+                    )}
+                    
+                    {/* 可展开的详情（全宽）*/}
+                    <LogDetail 
+                      log={log} 
+                      isExpanded={isExpanded}
+                      onToggle={() => toggleLogExpand(logKey)}
+                    />
                   </div>
                 </div>
               );
             })}
-          </div>
+            </div>
+          </>
         )}
 
         {/* Progress bar when executing */}
         {isExecuting && (
           <div className="mt-4 h-1 bg-nb-surface-2 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-nb-accent to-purple-500 animate-pulse"
+              className="h-full bg-white/20 animate-pulse"
               style={{ width: '60%' }}
             />
           </div>

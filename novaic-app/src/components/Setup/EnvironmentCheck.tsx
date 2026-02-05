@@ -89,7 +89,7 @@ export function EnvironmentCheck({ onReady, onBack }: EnvironmentCheckProps) {
   if (checking) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
-        <Loader2 size={48} className="text-blue-500 animate-spin mb-4" />
+        <Loader2 size={48} className="text-white/60 animate-spin mb-4" />
         <p className="text-nb-text-secondary">Checking environment...</p>
       </div>
     );
@@ -256,7 +256,7 @@ export function EnvironmentCheck({ onReady, onBack }: EnvironmentCheckProps) {
           {result.ready && (
             <button
               onClick={onReady}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-white/15 hover:bg-white/20 text-white text-sm font-medium rounded-lg transition-colors"
             >
               Continue
             </button>
@@ -296,7 +296,7 @@ export function EnvironmentCheck({ onReady, onBack }: EnvironmentCheckProps) {
                     href="https://brew.sh" 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="text-blue-400 hover:underline"
+                    className="text-white/70 hover:underline"
                   >
                     brew.sh
                   </a>

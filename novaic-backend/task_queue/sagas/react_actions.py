@@ -13,6 +13,8 @@ ReactActions Saga - ReAct Actions 阶段 (v2)
 
 from ..saga import SagaDefinition
 from ..constants import PHASE_NEED_THINK, PHASE_WAITING_ACTIONS
+from . import register_saga_definition
+from ..topics import TaskTopics, SagaTopics
 
 
 def _build_update_phase_payload(ctx):
@@ -31,13 +33,15 @@ def _build_tool_execute_tasks(ctx):
     runtime_id = ctx["runtime_id"]
     round_num = ctx.get("round_num", 1)
     agent_id = ctx.get("agent_id")
+    subagent_id = ctx.get("subagent_id", "main")  # ✅ 新增：从 context 获取
     
     return [
         {
-            "topic": "tool.execute",
+            "topic": TaskTopics.TOOL_EXECUTE,
             "payload": {
                 "runtime_id": runtime_id,
                 "agent_id": agent_id,
+                "subagent_id": subagent_id,  # ✅ 新增：传递给 payload
                 "round_id": f"round-{round_num}",
                 "tool_call_id": tc.get("id"),
                 "tool_name": tc.get("function", {}).get("name"),
@@ -58,7 +62,7 @@ def _build_save_results_tasks(ctx, prev_results):
         if result.get("success"):
             tool_call_id = result.get("tool_call_id") or f"tool-{i}"
             tasks.append({
-                "topic": "context.append",
+                "topic": TaskTopics.CONTEXT_APPEND,
                 "payload": {
                     "runtime_id": runtime_id,
                     "message": {
@@ -142,7 +146,7 @@ REACT_ACTIONS_SAGA = SagaDefinition("react_actions")
 # Step 1: 设置 phase
 REACT_ACTIONS_SAGA.add_task_step(
     name="set_phase_waiting_actions",
-    topic="runtime.update_phase",
+    topic=TaskTopics.RUNTIME_UPDATE_PHASE,
     build_payload=_build_update_phase_payload,
 )
 
@@ -161,7 +165,7 @@ REACT_ACTIONS_SAGA.add_parallel_step(
 # Step 4: 检查是否继续（查询新消息 + runtime status）
 REACT_ACTIONS_SAGA.add_task_step(
     name="check_continue",
-    topic="runtime.check_new_messages",
+    topic=TaskTopics.RUNTIME_CHECK_NEW_MESSAGES,
     build_payload=_build_check_continue_payload,
 )
 
@@ -174,7 +178,7 @@ REACT_ACTIONS_SAGA.add_decision_step(
 # Step 6a: 继续下一轮 Think
 REACT_ACTIONS_SAGA.add_task_step(
     name="trigger_next_think",
-    topic="saga.trigger",
+    topic=SagaTopics.SAGA_TRIGGER,
     build_payload=_build_trigger_next_think_payload,
     condition=lambda d: not d.get("should_complete", False),
 )
@@ -182,7 +186,10 @@ REACT_ACTIONS_SAGA.add_task_step(
 # Step 6b: 结束 Runtime
 REACT_ACTIONS_SAGA.add_task_step(
     name="trigger_complete",
-    topic="saga.trigger",
+    topic=SagaTopics.SAGA_TRIGGER,
     build_payload=_build_trigger_complete_payload,
     condition=lambda d: d.get("should_complete", False),
 )
+
+# 自动注册
+REACT_ACTIONS_SAGA = register_saga_definition(REACT_ACTIONS_SAGA)

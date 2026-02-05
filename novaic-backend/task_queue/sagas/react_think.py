@@ -13,6 +13,8 @@ v2 变更：
 """
 
 from ..saga import SagaDefinition
+from . import register_saga_definition
+from ..topics import TaskTopics, SagaTopics
 
 
 # 需要转换为 runtime_rest 的工具名
@@ -164,21 +166,21 @@ REACT_THINK_SAGA = SagaDefinition("react_think")
 # Step 1: 从 DB 读取最新 context
 REACT_THINK_SAGA.add_task_step(
     name="read_context",
-    topic="context.read",
+    topic=TaskTopics.CONTEXT_READ,
     build_payload=_build_read_context_payload,
 )
 
 # Step 2: 调用 LLM（使用 read_context 的结果）
 REACT_THINK_SAGA.add_task_step(
     name="call_llm",
-    topic="llm.call",
+    topic=TaskTopics.LLM_CALL,
     build_payload=_build_llm_call_payload,
 )
 
 # Step 3: 保存 LLM 响应
 REACT_THINK_SAGA.add_task_step(
     name="save_response",
-    topic="context.append",
+    topic=TaskTopics.CONTEXT_APPEND,
     build_payload=_build_save_response_payload,
 )
 
@@ -191,6 +193,9 @@ REACT_THINK_SAGA.add_decision_step(
 # Step 5: 触发 ReactActions（总是执行）
 REACT_THINK_SAGA.add_task_step(
     name="trigger_actions",
-    topic="saga.trigger",
+    topic=SagaTopics.SAGA_TRIGGER,
     build_payload=_build_trigger_actions_from_decision,
 )
+
+# 自动注册
+REACT_THINK_SAGA = register_saga_definition(REACT_THINK_SAGA)

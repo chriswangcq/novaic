@@ -7,6 +7,7 @@
 
 import re
 import os
+import sys
 from pathlib import Path
 
 # 要更新的文件列表
@@ -16,7 +17,8 @@ FILES_TO_UPDATE = [
     "novaic-backend/task_queue/routes.py",
 ]
 
-BASE_DIR = Path("/Users/wangchaoqun/novaic")
+# 跨平台项目根目录
+BASE_DIR = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) if '__file__' in globals() else Path.cwd()
 
 
 def detect_lock_type_and_resource(code_block: str) -> tuple:

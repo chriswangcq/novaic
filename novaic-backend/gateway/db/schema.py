@@ -23,9 +23,10 @@ v20: Saga v2 - agent_runtimes.summarized and need_rest fields.
 v21: Agent model selection - agents.model_id field.
 v22: Candidate models - candidate_models table with available flag.
 v23: Execution logs - subagent_id, status, kind, event_key, updated_at for upsert support.
+v24: Runtime Summary - subagents.hrl/summary_lock, agent_runtimes.simple_summary/hot_summary/cold_summary.
 """
 
-SCHEMA_VERSION = 23
+SCHEMA_VERSION = 24
 
 SCHEMA_SQL = """
 -- ========================================
@@ -381,6 +382,10 @@ CREATE TABLE IF NOT EXISTS subagents (
     error TEXT,                        -- Error message (when failed)
     timeout_at TEXT,                   -- Timeout timestamp
     
+    -- Runtime Summary (v24)
+    hrl TEXT DEFAULT '[]',              -- Hot Runtime List (JSON array of runtime_ids)
+    summary_lock INTEGER DEFAULT 0,     -- 0=idle, 1=summarizing (CAS lock)
+    
     -- Timestamps
     created_at TEXT NOT NULL,
     updated_at TEXT,
@@ -423,6 +428,11 @@ CREATE TABLE IF NOT EXISTS agent_runtimes (
     is_merged INTEGER DEFAULT 0,       -- Whether merged into historical_summary
     summarized INTEGER DEFAULT 0,      -- v20: Whether summary has been generated (async)
     need_rest INTEGER DEFAULT 0,       -- v20: Whether agent needs to rest (set by done/reset)
+    
+    -- Runtime Summary (v24)
+    simple_summary TEXT,               -- Simple summary (plain text)
+    hot_summary TEXT,                  -- Hot summary (LLM-generated plain text)
+    cold_summary TEXT,                 -- Cold summary (LLM-generated plain text)
     
     -- Timestamps
     created_at TEXT NOT NULL,
@@ -634,6 +644,48 @@ def run_migration_sync(conn, from_version: int):
         except Exception as e:
             if "duplicate column" not in str(e).lower():
                 print(f"[DB] Migration v23 warning (updated_at): {e}")
+    
+    # v24: Runtime Summary - add new columns to subagents and agent_runtimes
+    if from_version < 24:
+        # subagents.hrl (Hot Runtime List)
+        try:
+            conn.execute("ALTER TABLE subagents ADD COLUMN hrl TEXT DEFAULT '[]'")
+            print("[DB] Migration v24: Added hrl to subagents")
+        except Exception as e:
+            if "duplicate column" not in str(e).lower():
+                print(f"[DB] Migration v24 warning (hrl): {e}")
+        
+        # subagents.summary_lock
+        try:
+            conn.execute("ALTER TABLE subagents ADD COLUMN summary_lock INTEGER DEFAULT 0")
+            print("[DB] Migration v24: Added summary_lock to subagents")
+        except Exception as e:
+            if "duplicate column" not in str(e).lower():
+                print(f"[DB] Migration v24 warning (summary_lock): {e}")
+        
+        # agent_runtimes.simple_summary
+        try:
+            conn.execute("ALTER TABLE agent_runtimes ADD COLUMN simple_summary TEXT")
+            print("[DB] Migration v24: Added simple_summary to agent_runtimes")
+        except Exception as e:
+            if "duplicate column" not in str(e).lower():
+                print(f"[DB] Migration v24 warning (simple_summary): {e}")
+        
+        # agent_runtimes.hot_summary
+        try:
+            conn.execute("ALTER TABLE agent_runtimes ADD COLUMN hot_summary TEXT")
+            print("[DB] Migration v24: Added hot_summary to agent_runtimes")
+        except Exception as e:
+            if "duplicate column" not in str(e).lower():
+                print(f"[DB] Migration v24 warning (hot_summary): {e}")
+        
+        # agent_runtimes.cold_summary
+        try:
+            conn.execute("ALTER TABLE agent_runtimes ADD COLUMN cold_summary TEXT")
+            print("[DB] Migration v24: Added cold_summary to agent_runtimes")
+        except Exception as e:
+            if "duplicate column" not in str(e).lower():
+                print(f"[DB] Migration v24 warning (cold_summary): {e}")
     
     # Update version
     conn.execute(

@@ -34,6 +34,15 @@ class SummaryResult:
     error: str = ""
 
 
+@dataclass
+class HotColdSummaryResult:
+    """Hot/Cold Summary 生成结果"""
+    success: bool
+    hot_summary: str = ""
+    cold_summary: str = ""
+    error: str = ""
+
+
 class LLMBusiness:
     """
     LLM 业务逻辑
@@ -212,3 +221,114 @@ class LLMBusiness:
         """
         message = response.get("choices", [{}])[0].get("message", {})
         return message.get("reasoning_content") or message.get("content", "")
+    
+    def generate_hot_cold_summary(
+        self,
+        runtime_id: str,
+        *,
+        model: str = "kimi-k2.5",
+    ) -> HotColdSummaryResult:
+        """
+        生成 Hot Summary 和 Cold Summary
+        
+        Hot Summary:
+        - 除最后3轮外：LLM 总结成一段话
+        - 最后3轮：保留 think + tools + full_result
+        
+        Cold Summary:
+        - 所有轮次：LLM 总结成一段话
+        
+        Args:
+            runtime_id: Runtime ID
+            model: 模型名称
+            
+        Returns:
+            HotColdSummaryResult
+        """
+        from ..utils import (
+            prepare_hot_summary_parts,
+            prepare_cold_summary_text,
+            HOT_SUMMARY_PROMPT,
+            COLD_SUMMARY_PROMPT,
+        )
+        
+        # 1. 获取 runtime 信息
+        runtime = self.client.get_runtime(runtime_id)
+        if not runtime:
+            return HotColdSummaryResult(success=False, error="Runtime not found")
+        
+        context = runtime.get("context") or []
+        
+        if not context:
+            return HotColdSummaryResult(
+                success=True, 
+                hot_summary="[No context]", 
+                cold_summary="[No context]"
+            )
+        
+        if not self.llm_client:
+            return HotColdSummaryResult(success=False, error="LLM client not configured")
+        
+        # 2. 准备 Hot Summary 部分
+        earlier_text, recent_text = prepare_hot_summary_parts(context, recent_rounds=3)
+        
+        hot_summary = ""
+        cold_summary = ""
+        
+        # 3. 生成 Hot Summary
+        try:
+            if earlier_text:
+                # 需要 LLM 总结前面轮次
+                hot_prompt = HOT_SUMMARY_PROMPT.format(content=earlier_text)
+                hot_messages = [
+                    {"role": "user", "content": hot_prompt},
+                ]
+                
+                hot_response = self.llm_client.chat(
+                    messages=hot_messages,
+                    model=model,
+                )
+                
+                earlier_summary = hot_response.get("choices", [{}])[0].get("message", {}).get("content", "")
+                
+                # 组合 hot_summary: 前面总结 + 最近完整内容
+                hot_summary = f"【历史摘要】\n{earlier_summary}\n\n【最近对话】\n{recent_text}"
+            else:
+                # 轮次不超过3轮，直接用完整内容
+                hot_summary = recent_text
+        except Exception as e:
+            return HotColdSummaryResult(success=False, error=f"Failed to generate hot summary: {str(e)}")
+        
+        # 4. 生成 Cold Summary
+        try:
+            cold_text = prepare_cold_summary_text(context)
+            cold_prompt = COLD_SUMMARY_PROMPT.format(content=cold_text)
+            cold_messages = [
+                {"role": "user", "content": cold_prompt},
+            ]
+            
+            cold_response = self.llm_client.chat(
+                messages=cold_messages,
+                model=model,
+            )
+            
+            cold_summary = cold_response.get("choices", [{}])[0].get("message", {}).get("content", "")
+        except Exception as e:
+            return HotColdSummaryResult(success=False, error=f"Failed to generate cold summary: {str(e)}")
+        
+        # 5. 保存到数据库
+        try:
+            self.client.set_runtime_hot_cold_summary(runtime_id, hot_summary, cold_summary)
+        except Exception as e:
+            return HotColdSummaryResult(
+                success=False, 
+                error=f"Failed to save summaries: {str(e)}",
+                hot_summary=hot_summary,
+                cold_summary=cold_summary,
+            )
+        
+        return HotColdSummaryResult(
+            success=True,
+            hot_summary=hot_summary,
+            cold_summary=cold_summary,
+        )

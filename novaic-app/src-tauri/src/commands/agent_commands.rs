@@ -180,10 +180,11 @@ pub async fn send_message(message: String) -> Result<ChatResponse, String> {
     let json_body = format!(r#"{{"message":"{}"}}"#, escaped_message);
     
     // Use curl command to make the request (works reliably)
+    let timeout = crate::config::AppConfig::HTTP_TIMEOUT_LONG_SECS.to_string();
     let output = Command::new("curl")
         .args([
             "-s",                           // Silent mode
-            "-m", "300",                    // 5 minute timeout
+            "-m", &timeout,                 // Long timeout for chat
             "-X", "POST",
             &format!("{}/api/chat", AGENT_BASE_URL),
             "-H", "Content-Type: application/json",
@@ -211,7 +212,7 @@ pub async fn send_message(message: String) -> Result<ChatResponse, String> {
 pub async fn get_health() -> Result<HealthResponse, String> {
     // 使用本地服务客户端（不走代理）
     let client = crate::http_client::local_client()
-        .timeout(std::time::Duration::from_secs(10))
+        .timeout(std::time::Duration::from_secs(crate::config::AppConfig::HTTP_CONNECT_TIMEOUT_SECS))
         .pool_max_idle_per_host(0)
         .build()
         .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
@@ -349,11 +350,12 @@ pub async fn send_message_stream(
     }).to_string();
     
     // Use curl with unbuffered output (-N) to stream SSE events
+    let timeout = crate::config::AppConfig::HTTP_TIMEOUT_LONG_SECS.to_string();
     let mut child = Command::new("curl")
         .args([
             "-s",                           // Silent mode
             "-N",                           // No buffer (stream immediately)
-            "-m", "300",                    // 5 minute timeout
+            "-m", &timeout,                 // Long timeout for streaming chat
             "-X", "POST",
             &format!("{}/api/chat/stream", AGENT_BASE_URL),
             "-H", "Content-Type: application/json",

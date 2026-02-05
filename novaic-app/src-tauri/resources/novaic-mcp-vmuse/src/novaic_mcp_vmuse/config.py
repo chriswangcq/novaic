@@ -2,6 +2,8 @@
 NovAIC Configuration
 """
 
+import os
+import tempfile
 from pydantic_settings import BaseSettings
 
 
@@ -13,8 +15,8 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8080
     
-    # Work directory
-    work_dir: str = "/tmp/novaic-work"
+    # Work directory - 跨平台临时目录
+    work_dir: str = os.path.join(tempfile.gettempdir(), "novaic-work")
     
     # Browser settings
     browser_headless: bool = False

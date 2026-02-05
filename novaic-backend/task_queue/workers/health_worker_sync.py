@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 import traceback
+from common.config import ServiceConfig
 
 
 @dataclass
@@ -64,7 +65,7 @@ class HealthWorkerSync:
     ):
         # Queue Service URL: 参数 > 环境变量 > 默认值
         self.queue_service_url = (queue_service_url or 
-                                   os.environ.get("QUEUE_SERVICE_URL", "http://127.0.0.1:19997")).rstrip("/")
+                                   os.environ.get("QUEUE_SERVICE_URL", ServiceConfig.QUEUE_SERVICE_URL)).rstrip("/")
         self.check_interval = check_interval
         self.task_timeout = task_timeout
         self.saga_timeout = saga_timeout
@@ -183,7 +184,7 @@ def start_worker(queue_service_url: str = None):
 
 
 if __name__ == "__main__":
-    queue_service_url = os.environ.get("QUEUE_SERVICE_URL", "http://127.0.0.1:19997")
+    queue_service_url = os.environ.get("QUEUE_SERVICE_URL", ServiceConfig.QUEUE_SERVICE_URL)
     
     print("=" * 60)
     print("同步 HealthWorker (单线程)")

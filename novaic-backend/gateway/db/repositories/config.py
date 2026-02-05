@@ -307,3 +307,38 @@ class ConfigRepository:
                         1 if model_data.get("is_custom", False) else 0,
                     )
                 )
+    
+    def get_model_config(self, model_id: str) -> Optional[Dict[str, Any]]:
+        """
+        获取模型配置（含 API key 信息）。
+        
+        JOIN candidate_models 和 api_keys 表获取完整配置。
+        
+        Returns:
+            包含 model_id, provider, key_provider, api_key, api_base 的字典，
+            如果模型不存在或不可用则返回 None。
+        """
+        row = self.db.fetchone("""
+            SELECT 
+                m.id as model_id,
+                m.provider,
+                k.provider as key_provider,
+                k.api_key,
+                k.api_base
+            FROM candidate_models m
+            JOIN api_keys k ON m.api_key_id = k.id
+            WHERE m.id = ? AND m.available = 1
+            LIMIT 1
+        """, (model_id,))
+        return row
+    
+    def get_first_api_key(self) -> Optional[Dict[str, Any]]:
+        """
+        获取第一个 API key。
+        
+        Returns:
+            包含 api_key 和 api_base 的字典，如果没有配置则返回 None。
+        """
+        return self.db.fetchone(
+            "SELECT api_key, api_base FROM api_keys LIMIT 1"
+        )

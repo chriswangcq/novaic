@@ -279,7 +279,7 @@ def get_mcp_status():
     return {
         "status": "deprecated",
         "message": "Legacy MCP Gateway has been replaced by Tools Server",
-        "tools_server_url": os.environ.get("NOVAIC_TOOLS_SERVER_URL", "http://127.0.0.1:19998"),
+        "tools_server_url": os.environ.get("NOVAIC_TOOLS_SERVER_URL", ServiceConfig.TOOLS_SERVER_URL),
     }
 
 
@@ -295,7 +295,7 @@ def list_mcp_runtimes():
         "message": "Legacy MCP Gateway has been replaced by Tools Server",
         "runtimes": [],
         "total": 0,
-        "tools_server_url": os.environ.get("NOVAIC_TOOLS_SERVER_URL", "http://127.0.0.1:19998"),
+        "tools_server_url": os.environ.get("NOVAIC_TOOLS_SERVER_URL", ServiceConfig.TOOLS_SERVER_URL),
     }
 
 

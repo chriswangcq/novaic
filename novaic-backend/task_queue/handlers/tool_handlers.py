@@ -18,9 +18,10 @@ from typing import Dict, Any
 from . import register_handler
 from ..business import MCPBusiness
 from ..utils import sync_broadcast_log, BroadcastType
+from ..topics import TaskTopics
 
 
-@register_handler("tool.execute")
+@register_handler(TaskTopics.TOOL_EXECUTE)
 def handle_tool_execute(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     执行工具
@@ -45,8 +46,10 @@ def handle_tool_execute(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     tool_call_id = payload["tool_call_id"]
     tool_name = payload["tool_name"]
     arguments = payload["arguments"]
+    
+    # ✅ 修改：优先从 payload 获取
     agent_id = payload.get("agent_id")
-    subagent_id = "main"
+    subagent_id = payload.get("subagent_id")  # 优先从 payload 获取
     
     # 解析 arguments
     if isinstance(arguments, str):
@@ -55,19 +58,37 @@ def handle_tool_execute(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
         except json.JSONDecodeError:
             pass
     
-    # 如果没有 agent_id，从 runtime 获取
-    from ..client import GatewayInternalClient
-    client = ctx.get("gateway_client") or GatewayInternalClient(ctx["gateway_url"])
-    if not agent_id:
-        runtime = client.get_runtime(runtime_id)
-        if runtime:
-            agent_id = runtime.get("agent_id")
-            subagent_id = runtime.get("subagent_id", "main")
+    # 如果 payload 中没有，从 runtime 获取（兼容旧逻辑）
+    if not subagent_id or not agent_id:
+        from ..client import GatewayInternalClient
+        import logging
+        
+        gateway_url = ctx.get("gateway_url")
+        client = ctx.get("gateway_client") or GatewayInternalClient(gateway_url)
+        
+        try:
+            runtime = client.get_runtime(runtime_id)
+            if not runtime:
+                logging.warning(
+                    f"[tool_handlers] Runtime not found: {runtime_id}, "
+                    f"using defaults (agent_id={agent_id}, subagent_id={subagent_id or 'main'})"
+                )
+                subagent_id = subagent_id or "main"
+            else:
+                if not subagent_id:
+                    subagent_id = runtime.get("subagent_id", "main")
+                if not agent_id:
+                    agent_id = runtime.get("agent_id")
+        except Exception as e:
+            logging.error(
+                f"[tool_handlers] Failed to get runtime {runtime_id}: {e}, "
+                f"using defaults (agent_id={agent_id}, subagent_id={subagent_id or 'main'})"
+            )
+            subagent_id = subagent_id or "main"
     else:
-        # 即使有 agent_id，也尝试获取 subagent_id
-        runtime = client.get_runtime(runtime_id)
-        if runtime:
-            subagent_id = runtime.get("subagent_id", "main")
+        # Payload 中已有完整信息，记录日志（可选）
+        import logging
+        logging.debug(f"[tool_handlers] Using subagent_id from payload: {subagent_id}")
     
     # 事件标识
     tool_event_key = f"tool:{runtime_id}:{tool_call_id}"

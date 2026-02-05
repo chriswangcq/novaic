@@ -86,11 +86,17 @@ class SshKeyManager:
         
         Creates a temporary file if needed.
         """
+        import tempfile
+        
         key = self.get_or_create_default_key()
         
         # Create temp directory if needed
         if self._temp_key_dir is None:
-            data_dir = os.environ.get("NOVAIC_DATA_DIR", "/tmp/novaic")
+            # 跨平台临时目录
+            if "NOVAIC_DATA_DIR" in os.environ:
+                data_dir = os.environ["NOVAIC_DATA_DIR"]
+            else:
+                data_dir = str(Path(tempfile.gettempdir()) / "novaic")
             self._temp_key_dir = Path(data_dir) / ".ssh"
             self._temp_key_dir.mkdir(parents=True, exist_ok=True)
         

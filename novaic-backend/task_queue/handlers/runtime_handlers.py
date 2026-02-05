@@ -2,7 +2,7 @@
 Runtime Handlers - Runtime 生命周期管理
 
 Topics:
-- runtime.create: 创建 Runtime 记录
+- runtime.create: 创建 Runtime 记录（包含历史 Context 构建）
 - runtime.update_phase: 更新 phase (CAS)
 - runtime.set_status: 设置 status (CAS)
 - runtime.set_summarized: 设置 summarized 标志
@@ -16,12 +16,20 @@ Topics:
 from typing import Dict, Any
 from . import register_handler
 from ..business import RuntimeBusiness
+from ..client import GatewayInternalClient
+from ..utils.context_builder import build_initial_context
+from ..topics import TaskTopics
 
 
-@register_handler("runtime.create")
+@register_handler(TaskTopics.RUNTIME_CREATE)
 def handle_runtime_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
-    创建 Runtime 记录
+    创建 Runtime 记录，并从历史构建初始 Context
+    
+    初始 Context 构建规则：
+    1. historical_summary: SubAgent 的合并历史摘要
+    2. hrl[:-5] 的 cold_summary: 较早的 runtime
+    3. hrl[-5:] 的 hot_summary: 最近的 runtime
     
     幂等性：idempotency_key 唯一约束
     
@@ -29,14 +37,41 @@ def handle_runtime_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
         agent_id: str
         subagent_id: str
         idempotency_key: str (可选)
+        
+    Returns:
+        success: bool
+        runtime_id: str
+        created: bool
+        message: str
+        status: str
+        phase: str
+        context_parts: int - 初始 context 部分数量
     """
-    biz = RuntimeBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
+    agent_id = payload["agent_id"]
+    subagent_id = payload["subagent_id"]
     
+    # 获取或创建 client
+    client = ctx.get("gateway_client") or GatewayInternalClient(ctx["gateway_url"])
+    biz = RuntimeBusiness(ctx["gateway_url"], client=client)
+    
+    # 构建初始 context（从历史摘要）
+    initial_context = []
+    context_parts = 0
+    try:
+        initial_context = build_initial_context(agent_id, subagent_id, client)
+        context_parts = len(initial_context)
+        if context_parts > 0:
+            print(f"[runtime.create] Built initial context with {context_parts} parts for {subagent_id}")
+    except Exception as e:
+        # Context 构建失败不阻塞 runtime 创建
+        print(f"[runtime.create] Failed to build initial context for {subagent_id}: {e}")
+    
+    # 创建 runtime
     result = biz.create(
-        agent_id=payload["agent_id"],
-        subagent_id=payload["subagent_id"],
+        agent_id=agent_id,
+        subagent_id=subagent_id,
         idempotency_key=payload.get("idempotency_key"),
-        # 移除 initial_context - 所有消息由 context.read 统一读取
+        initial_context=initial_context,
     )
     
     return {
@@ -46,10 +81,11 @@ def handle_runtime_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
         "message": result.message,
         "status": result.status,
         "phase": result.phase,
+        "context_parts": context_parts,
     }
 
 
-@register_handler("runtime.update_phase")
+@register_handler(TaskTopics.RUNTIME_UPDATE_PHASE)
 def handle_runtime_update_phase(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     更新 Runtime phase
@@ -89,7 +125,7 @@ def handle_runtime_update_phase(payload: Dict[str, Any], ctx: dict) -> Dict[str,
     return response
 
 
-@register_handler("runtime.set_status")
+@register_handler(TaskTopics.RUNTIME_SET_STATUS)
 def handle_runtime_set_status(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     设置 Runtime status
@@ -126,7 +162,7 @@ def handle_runtime_set_status(payload: Dict[str, Any], ctx: dict) -> Dict[str, A
     return response
 
 
-@register_handler("runtime.increment_round")
+@register_handler(TaskTopics.RUNTIME_INCREMENT_ROUND)
 def handle_runtime_increment_round(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     增加 Runtime round 计数
@@ -138,7 +174,7 @@ def handle_runtime_increment_round(payload: Dict[str, Any], ctx: dict) -> Dict[s
     return biz.increment_round(payload["runtime_id"])
 
 
-@register_handler("runtime.set_summarized")
+@register_handler(TaskTopics.RUNTIME_SET_SUMMARIZED)
 def handle_runtime_set_summarized(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     设置 Runtime 已生成摘要
@@ -163,7 +199,7 @@ def handle_runtime_set_summarized(payload: Dict[str, Any], ctx: dict) -> Dict[st
     return response
 
 
-@register_handler("runtime.set_need_rest")
+@register_handler(TaskTopics.RUNTIME_SET_NEED_REST)
 def handle_runtime_set_need_rest(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     设置 Runtime need_rest 标志
@@ -192,7 +228,7 @@ def handle_runtime_set_need_rest(payload: Dict[str, Any], ctx: dict) -> Dict[str
     return response
 
 
-@register_handler("runtime.check_new_messages")
+@register_handler(TaskTopics.RUNTIME_CHECK_NEW_MESSAGES)
 def handle_check_new_messages(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     检查是否有新的 sent 消息 + need_rest 状态
@@ -245,4 +281,76 @@ def handle_check_new_messages(payload: Dict[str, Any], ctx: dict) -> Dict[str, A
         "has_new_messages": has_new,
         "need_rest": need_rest,
         "need_rest_reset": need_rest_reset,
+    }
+
+
+@register_handler(TaskTopics.RUNTIME_GENERATE_SIMPLE_SUMMARY)
+def handle_generate_simple_summary(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+    """
+    生成并保存 Simple Summary
+    
+    在 RuntimeComplete 流程中同步调用。
+    从 runtime context 生成纯文本摘要：
+    - 除最后3轮外：保留 think + tools + [task_result:xxx_id]
+    - 最后3轮：保留 think + tools + full_result
+    
+    Payload:
+        runtime_id: str
+    
+    Returns:
+        success: bool
+        runtime_id: str
+        summary_length: int - summary 字符长度
+        rounds_count: int - 识别的轮次数
+    """
+    from ..utils.simple_summary import generate_simple_summary
+    from ..client import GatewayInternalClient
+    
+    runtime_id = payload["runtime_id"]
+    
+    # 获取 GatewayInternalClient
+    client = ctx.get("gateway_client") or GatewayInternalClient(ctx["gateway_url"])
+    
+    # 1. 获取 runtime context
+    runtime = client.get_runtime(runtime_id)
+    if not runtime:
+        return {
+            "success": False,
+            "runtime_id": runtime_id,
+            "error": "Runtime not found",
+        }
+    
+    context = runtime.get("context") or []
+    
+    # 2. 生成 simple summary
+    try:
+        simple_summary = generate_simple_summary(context)
+    except Exception as e:
+        return {
+            "success": False,
+            "runtime_id": runtime_id,
+            "error": f"Failed to generate summary: {e}",
+        }
+    
+    # 3. 保存到 runtime
+    try:
+        client.update_runtime(runtime_id, {"simple_summary": simple_summary})
+    except Exception as e:
+        return {
+            "success": False,
+            "runtime_id": runtime_id,
+            "error": f"Failed to save summary: {e}",
+        }
+    
+    # 计算轮次数（用于日志）
+    from ..utils.simple_summary import split_into_rounds
+    rounds_count = len(split_into_rounds(context))
+    
+    print(f"[runtime.generate_simple_summary] {runtime_id}: generated {len(simple_summary)} chars, {rounds_count} rounds")
+    
+    return {
+        "success": True,
+        "runtime_id": runtime_id,
+        "summary_length": len(simple_summary),
+        "rounds_count": rounds_count,
     }

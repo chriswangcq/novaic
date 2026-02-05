@@ -43,6 +43,37 @@ def get_all_topics() -> list:
     return list(_handlers.keys())
 
 
+def validate_topic_registration():
+    """验证所有 handler 注册的 topic 与常量定义的一致性
+    
+    在启动时调用，检查是否有 topic 常量遗漏或未使用。
+    
+    Returns:
+        dict: 验证结果
+        - valid: bool - 是否一致
+        - missing_in_constants: list - 已注册但未定义常量的 topics
+        - unused_constants: list - 已定义常量但未注册的 topics
+    """
+    from ..topics import validate_topics
+    
+    registered_topics = set(_handlers.keys())
+    validation = validate_topics(registered_topics)
+    
+    # 打印验证结果
+    if validation["missing_in_constants"]:
+        print(f"[WARNING] Topics registered but missing in constants: {validation['missing_in_constants']}")
+    
+    if validation["unused_constants"]:
+        print(f"[INFO] Topic constants defined but not registered: {validation['unused_constants']}")
+    
+    is_valid = len(validation["missing_in_constants"]) == 0
+    
+    return {
+        "valid": is_valid,
+        **validation,
+    }
+
+
 # 导入所有 handlers 以触发注册
 from . import subagent_handlers
 from . import runtime_handlers
@@ -52,3 +83,4 @@ from . import tool_handlers
 from . import context_handlers
 from . import message_handlers
 from . import saga_handlers
+from . import summary_handlers  # v24: History Merge handlers

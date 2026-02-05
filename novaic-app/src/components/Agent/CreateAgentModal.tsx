@@ -236,9 +236,9 @@ export function CreateAgentModal({ isOpen, onClose, onCreated }: CreateAgentModa
             <h2 className="text-lg font-semibold text-nb-text">{getModalTitle()}</h2>
             {/* Step indicator */}
             <div className="flex items-center gap-1 ml-3">
-              <div className={`w-2 h-2 rounded-full ${step === 'environment' ? 'bg-blue-500' : 'bg-green-500'}`} />
+              <div className={`w-2 h-2 rounded-full ${step === 'environment' ? 'bg-white/60' : 'bg-green-500'}`} />
               <ChevronRight size={14} className="text-nb-text-secondary" />
-              <div className={`w-2 h-2 rounded-full ${step === 'configure' ? 'bg-blue-500' : 'bg-nb-border'}`} />
+              <div className={`w-2 h-2 rounded-full ${step === 'configure' ? 'bg-white/60' : 'bg-nb-border'}`} />
             </div>
           </div>
           <button
@@ -279,7 +279,7 @@ export function CreateAgentModal({ isOpen, onClose, onCreated }: CreateAgentModa
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="My Agent"
-              className="w-full px-3 py-2 bg-nb-bg border border-nb-border rounded-lg text-nb-text placeholder-nb-text-secondary focus:outline-none focus:border-blue-500"
+              className="w-full px-3 py-2 bg-nb-bg border border-nb-border rounded-lg text-nb-text placeholder-nb-text-secondary focus:outline-none focus:border-white/30"
             />
           </div>
 
@@ -293,7 +293,7 @@ export function CreateAgentModal({ isOpen, onClose, onCreated }: CreateAgentModa
               value={selectedModelId}
               onChange={(e) => setSelectedModelId(e.target.value)}
               disabled={isLoadingModels}
-              className="w-full px-3 py-2 bg-nb-bg border border-nb-border rounded-lg text-nb-text focus:outline-none focus:border-blue-500 disabled:opacity-50"
+              className="w-full px-3 py-2 bg-nb-bg border border-nb-border rounded-lg text-nb-text focus:outline-none focus:border-white/30 disabled:opacity-50"
             >
               {isLoadingModels ? (
                 <option value="">Loading models...</option>
@@ -328,7 +328,7 @@ export function CreateAgentModal({ isOpen, onClose, onCreated }: CreateAgentModa
                   key={opt.id}
                   className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
                     backend === opt.id 
-                      ? 'border-blue-500 bg-blue-500/10' 
+                      ? 'border-white/30 bg-white/5' 
                       : 'border-nb-border hover:border-nb-border-light'
                   }`}
                 >
@@ -362,7 +362,7 @@ export function CreateAgentModal({ isOpen, onClose, onCreated }: CreateAgentModa
                   const versions = OS_OPTIONS.find(os => os.type === e.target.value)?.versions || [];
                   setOsVersion(versions[0] || '');
                 }}
-                className="w-full px-3 py-2 bg-nb-bg border border-nb-border rounded-lg text-nb-text focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 bg-nb-bg border border-nb-border rounded-lg text-nb-text focus:outline-none focus:border-white/30"
               >
                 {OS_OPTIONS.map(os => (
                   <option key={os.type} value={os.type}>
@@ -378,7 +378,7 @@ export function CreateAgentModal({ isOpen, onClose, onCreated }: CreateAgentModa
               <select
                 value={osVersion}
                 onChange={(e) => setOsVersion(e.target.value)}
-                className="w-full px-3 py-2 bg-nb-bg border border-nb-border rounded-lg text-nb-text focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 bg-nb-bg border border-nb-border rounded-lg text-nb-text focus:outline-none focus:border-white/30"
               >
                 {availableVersions.map(ver => (
                   <option key={ver} value={ver}>{ver}</option>
@@ -397,7 +397,7 @@ export function CreateAgentModal({ isOpen, onClose, onCreated }: CreateAgentModa
               <select
                 value={sourceImage}
                 onChange={(e) => setSourceImage(e.target.value)}
-                className="w-full px-3 py-2 bg-nb-bg border border-nb-border rounded-lg text-nb-text focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 bg-nb-bg border border-nb-border rounded-lg text-nb-text focus:outline-none focus:border-white/30"
               >
                 <option value="">Create new (requires ISO download)</option>
                 {availableImages.map(img => (
@@ -422,7 +422,7 @@ export function CreateAgentModal({ isOpen, onClose, onCreated }: CreateAgentModa
               <select
                 value={memory}
                 onChange={(e) => setMemory(e.target.value)}
-                className="w-full px-3 py-2 bg-nb-bg border border-nb-border rounded-lg text-nb-text focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 bg-nb-bg border border-nb-border rounded-lg text-nb-text focus:outline-none focus:border-white/30"
               >
                 {MEMORY_OPTIONS.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -437,7 +437,7 @@ export function CreateAgentModal({ isOpen, onClose, onCreated }: CreateAgentModa
               <select
                 value={cpus}
                 onChange={(e) => setCpus(Number(e.target.value))}
-                className="w-full px-3 py-2 bg-nb-bg border border-nb-border rounded-lg text-nb-text focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 bg-nb-bg border border-nb-border rounded-lg text-nb-text focus:outline-none focus:border-white/30"
               >
                 {CPU_OPTIONS.map(n => (
                   <option key={n} value={n}>{n} cores</option>
@@ -472,7 +472,7 @@ export function CreateAgentModal({ isOpen, onClose, onCreated }: CreateAgentModa
           <button
             onClick={handleSubmit}
             disabled={isLoading || !name.trim()}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white text-sm font-medium rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-white/15 hover:bg-white/20 disabled:bg-white/10 text-white text-sm font-medium rounded-lg transition-colors"
           >
             {isLoading && <Loader2 size={16} className="animate-spin" />}
             Create Agent

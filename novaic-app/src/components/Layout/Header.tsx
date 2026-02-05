@@ -5,11 +5,12 @@ import { useAppStore } from '../../store';
 interface HeaderProps {
   onOpenSettings: () => void;
   onToggleDrawer: () => void;
+  isDrawerOpen: boolean;
   onAgentCreated?: (config: SetupConfig) => void;
 }
 
 export function Header(props: HeaderProps) {
-  const { onOpenSettings, onToggleDrawer, onAgentCreated } = props;
+  const { onOpenSettings, onToggleDrawer, isDrawerOpen, onAgentCreated } = props;
   const { createAgentModalOpen, setCreateAgentModalOpen, clearMessages, agents, currentAgentId } = useAppStore();
   
   const currentAgent = agents.find(a => a.id === currentAgentId);
@@ -29,7 +30,11 @@ export function Header(props: HeaderProps) {
         {/* Menu Button - 三横杠 */}
         <button
           onClick={onToggleDrawer}
-          className="p-1.5 hover:bg-nb-surface-2 rounded-lg transition-colors mr-1"
+          className={`p-1.5 rounded-lg transition-all mr-1 ${
+            isDrawerOpen 
+              ? 'bg-nb-surface-2 shadow-inner' 
+              : 'hover:bg-nb-surface-2'
+          }`}
           title="Agent List"
         >
           <Menu size={18} className="text-nb-text-muted" />
@@ -43,7 +48,7 @@ export function Header(props: HeaderProps) {
           </span>
           {currentAgent && (
             <span className={`w-2 h-2 rounded-full ${
-              currentAgent.setup_complete ? 'bg-green-500' : 'bg-blue-500'
+              currentAgent.setup_complete ? 'bg-green-500' : 'bg-white/40'
             }`} />
           )}
         </div>

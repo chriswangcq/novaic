@@ -179,9 +179,6 @@ export interface ToolInfo {
 // Layout Mode
 export type LayoutMode = 'full' | 'normal' | 'mini';
 
-// Chat Mode
-export type ChatMode = 'agent' | 'chat';
-
 // Provider Type
 export type ProviderType = 'openai' | 'anthropic' | 'google' | 'azure' | 'openai_compatible';
 
@@ -294,7 +291,6 @@ export interface AppState {
   availableModels: AvailableModel[];
   apiKeys: ApiKeyInfo[];
   selectedModel: string;
-  chatMode: ChatMode;
   // AIC Agents
   agents: AICAgent[];
   currentAgentId: string | null;

@@ -13,54 +13,31 @@ import argparse
 os.environ['no_proxy'] = 'localhost,127.0.0.1,::1'
 os.environ['NO_PROXY'] = 'localhost,127.0.0.1,::1'
 
-
-# 默认处理的 topics（所有 handler 需要在此注册）
-DEFAULT_TOPICS = [
-    # SubAgent lifecycle
-    "subagent.wake",
-    "subagent.set_awake",
-    "subagent.set_sleeping",
-    # Runtime lifecycle
-    "runtime.create",
-    "runtime.update_phase",
-    "runtime.set_status",
-    "runtime.increment_round",
-    "runtime.set_summarized",
-    "runtime.set_need_rest",
-    "runtime.check_new_messages",
-    # MCP lifecycle
-    "mcp.create",
-    "mcp.destroy",
-    # LLM calls
-    "llm.call",
-    "llm.call_summary",
-    # Tool execution
-    "tool.execute",
-    # Context operations
-    "context.append",
-    "context.get",
-    "context.read",
-    # Message processing
-    "message.claim",
-    "message.route",
-    "message.process",
-    # Saga triggers
-    "saga.trigger",
-]
+# Import unified configuration
+from common.config import ServiceConfig
 
 
 def main():
     from task_queue.workers.task_worker_sync import TaskWorkerSync
+    from task_queue.handlers import get_all_topics, validate_topic_registration
     
     parser = argparse.ArgumentParser(description="Task Worker (sync)")
-    parser.add_argument("--gateway-url", default="http://127.0.0.1:19999", help="Gateway URL")
-    parser.add_argument("--queue-service-url", default="http://127.0.0.1:19997", help="Queue Service URL")
-    parser.add_argument("--num-workers", type=int, default=5, help="Number of workers")
+    parser.add_argument("--gateway-url", default=ServiceConfig.GATEWAY_URL, help="Gateway URL")
+    parser.add_argument("--queue-service-url", default=ServiceConfig.QUEUE_SERVICE_URL, help="Queue Service URL")
+    parser.add_argument("--num-workers", type=int, default=ServiceConfig.NUM_WORKERS, help="Number of workers")
     args = parser.parse_args()
     
     gateway_url = args.gateway_url
     queue_service_url = args.queue_service_url
-    topics = DEFAULT_TOPICS
+    
+    # 验证 Topic 注册一致性
+    validation = validate_topic_registration()
+    if not validation["valid"]:
+        print(f"[WARNING] Topic validation failed: {validation}")
+    
+    # 自动从 handlers 注册表获取所有 topics
+    topics = get_all_topics()
+    print(f"[task-worker] Subscribed to {len(topics)} topics: {sorted(topics)}")
     
     worker = TaskWorkerSync(
         topics=topics,

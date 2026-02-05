@@ -4,6 +4,7 @@
 //! This allows the frontend to use Tauri invoke instead of direct fetch.
 
 use serde_json::Value;
+use crate::config::AppConfig;
 
 /// Gateway client for HTTP communication
 pub struct GatewayClient {
@@ -15,8 +16,8 @@ impl GatewayClient {
     pub fn new(base_url: String) -> Self {
         let client = reqwest::Client::builder()
             .no_proxy()  // Bypass system proxy for localhost
-            .timeout(std::time::Duration::from_secs(30))  // 30s timeout to avoid infinite wait
-            .connect_timeout(std::time::Duration::from_secs(10))  // 10s connect timeout
+            .timeout(std::time::Duration::from_secs(AppConfig::HTTP_TIMEOUT_SECS))
+            .connect_timeout(std::time::Duration::from_secs(AppConfig::HTTP_CONNECT_TIMEOUT_SECS))
             .build()
             .unwrap_or_default();
         

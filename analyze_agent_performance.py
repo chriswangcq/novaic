@@ -13,8 +13,10 @@ import sqlite3
 import json
 from collections import defaultdict
 from datetime import datetime
+from pathlib import Path
 
-DB_PATH = "/Users/wangchaoqun/.novaic/novaic.db"
+# 跨平台数据库路径
+DB_PATH = str(Path.home() / ".novaic" / "novaic.db")
 
 
 def analyze_agent_loops():

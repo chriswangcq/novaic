@@ -5,7 +5,20 @@
 
 set -e
 AGENT_ID="${1:-7b053af9-a386-425f-8127-492bfc156525}"
-DATA_DIR="${NOVAIC_DATA_DIR:-$HOME/Library/Application Support/com.novaic.app}"
+
+# 跨平台数据目录
+if [ -z "$NOVAIC_DATA_DIR" ]; then
+    if [ "$(uname)" = "Darwin" ]; then
+        DATA_DIR="$HOME/Library/Application Support/com.novaic.app"
+    elif [ "$(uname)" = "Linux" ]; then
+        DATA_DIR="$HOME/.local/share/com.novaic.app"
+    else
+        DATA_DIR="$HOME/.novaic"
+    fi
+else
+    DATA_DIR="$NOVAIC_DATA_DIR"
+fi
+
 DISK_PATH="$DATA_DIR/agents/$AGENT_ID/disk.qcow2"
 
 echo "Checking processes using: $DISK_PATH"

@@ -126,3 +126,18 @@ class AgentRepository:
         while index in used_indices:
             index += 1
         return index
+    
+    def list_setup_complete_ids(self) -> List[str]:
+        """列出所有已完成设置的 agent IDs"""
+        rows = self.db.fetchall(
+            "SELECT id FROM agents WHERE setup_complete = 1"
+        )
+        return [row["id"] for row in rows]
+    
+    def exists(self, agent_id: str) -> bool:
+        """检查 agent 是否存在"""
+        row = self.db.fetchone(
+            "SELECT 1 FROM agents WHERE id = ?",
+            (agent_id,)
+        )
+        return row is not None

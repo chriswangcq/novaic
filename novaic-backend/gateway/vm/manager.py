@@ -18,6 +18,8 @@ from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from common.config import ServiceConfig
+
 from gateway.config.agents import PortConfig, allocate_ports_for_agent
 from .repository import VmProcessRepository
 from .ssh import get_ssh_key_manager
@@ -30,9 +32,15 @@ _vm_manager: Optional["VmManager"] = None
 
 def get_vm_manager() -> "VmManager":
     """Get the global VM manager instance."""
+    import tempfile
+    
     global _vm_manager
     if _vm_manager is None:
-        data_dir = os.environ.get("NOVAIC_DATA_DIR", "/tmp/novaic")
+        # 跨平台临时目录
+        if "NOVAIC_DATA_DIR" in os.environ:
+            data_dir = os.environ["NOVAIC_DATA_DIR"]
+        else:
+            data_dir = str(Path(tempfile.gettempdir()) / "novaic")
         _vm_manager = VmManager(data_dir)
     return _vm_manager
 
@@ -204,10 +212,10 @@ class VmManager:
             time.sleep(5)
             
             # Wait for websockify
-            self._wait_for_service(ports.websocket, "websockify", timeout=60)
+            self._wait_for_service(ports.websocket, "websockify", timeout=ServiceConfig.VM_WEBSOCKIFY_TIMEOUT)
             
             # Wait for MCP
-            self._wait_for_service(ports.vm, "MCP", timeout=120)
+            self._wait_for_service(ports.vm, "MCP", timeout=ServiceConfig.VM_MCP_TIMEOUT)
             
             logger.info(f"[VmManager] VM for agent {agent_id} started successfully")
             
@@ -247,7 +255,7 @@ class VmManager:
         self.repo.update_status(agent_id, "stopping")
         
         # Quick mode: shorter timeouts
-        ssh_timeout = 3 if quick else 10
+        ssh_timeout = ServiceConfig.SSH_QUICK_TIMEOUT if quick else ServiceConfig.SSH_NORMAL_TIMEOUT
         wait_iterations = 3 if quick else 10
         
         # Step 1: Try graceful shutdown via SSH (skip in quick mode if graceful=False)
@@ -499,6 +507,12 @@ class VmManager:
                 seed_iso = iso_path
                 break
         
+        # 跨平台 socket 路径
+        import tempfile
+        socket_dir = Path(tempfile.gettempdir()) / "novaic"
+        socket_dir.mkdir(parents=True, exist_ok=True)
+        socket_path = socket_dir / f"novaic-mcp-{config.agent_index}.sock"
+        
         args = [
             "-name", f"novaic-vm-{config.agent_index}",
             "-M", "virt,highmem=on",
@@ -513,7 +527,7 @@ class VmManager:
             "-device", "virtio-net-pci,netdev=net0",
             "-netdev", f"user,id=net0,{port_forward}",
             "-device", "virtio-serial-pci",
-            "-chardev", f"socket,id=mcp,path=/tmp/novaic-mcp-{config.agent_index}.sock,server=on,wait=off",
+            "-chardev", f"socket,id=mcp,path={socket_path},server=on,wait=off",
             "-device", "virtserialport,chardev=mcp,name=mcp",
             "-device", "virtio-gpu-pci",
             "-device", "usb-ehci",
@@ -541,6 +555,12 @@ class VmManager:
         """Build QEMU args for x86_64."""
         seed_iso = agent_dir / "cloud-init.iso"
         
+        # 跨平台 socket 路径
+        import tempfile
+        socket_dir = Path(tempfile.gettempdir()) / "novaic"
+        socket_dir.mkdir(parents=True, exist_ok=True)
+        socket_path = socket_dir / f"novaic-mcp-{config.agent_index}.sock"
+        
         args = [
             "-name", f"novaic-vm-{config.agent_index}",
         ]
@@ -560,7 +580,7 @@ class VmManager:
             "-net", "nic",
             "-net", f"user,{port_forward}",
             "-device", "virtio-serial-pci",
-            "-chardev", f"socket,id=mcp,path=/tmp/novaic-mcp-{config.agent_index}.sock,server=on,wait=off",
+            "-chardev", f"socket,id=mcp,path={socket_path},server=on,wait=off",
             "-device", "virtserialport,chardev=mcp,name=mcp",
             "-display", "none",
         ])

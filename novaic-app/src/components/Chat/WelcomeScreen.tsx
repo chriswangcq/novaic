@@ -42,7 +42,7 @@ function QuickAction({ icon, title, description }: {
 }) {
   return (
     <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-white/[0.02] border border-white/[0.05] hover:bg-white/[0.04] hover:border-white/[0.08] transition-all cursor-pointer group">
-      <div className="w-7 h-7 rounded-md bg-white/[0.04] flex items-center justify-center text-white/40 group-hover:text-violet-400/80 transition-colors">
+      <div className="w-7 h-7 rounded-md bg-white/[0.04] flex items-center justify-center text-white/40 group-hover:text-white/70 transition-colors">
         {icon}
       </div>
       <div className="flex-1 min-w-0">

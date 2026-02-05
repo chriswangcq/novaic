@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use tauri::Manager;
 
 use crate::gateway_client::GatewayClient;
+use crate::config::AppConfig;
 
 /// Deploy progress information
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -57,7 +58,7 @@ impl SshConfig {
             "-o".to_string(), "StrictHostKeyChecking=no".to_string(),
             "-o".to_string(), "UserKnownHostsFile=/dev/null".to_string(),
             "-o".to_string(), "LogLevel=ERROR".to_string(),
-            "-o".to_string(), "ConnectTimeout=10".to_string(),
+            "-o".to_string(), format!("ConnectTimeout={}", AppConfig::SSH_CONNECT_TIMEOUT_SECS),
             "-p".to_string(), self.port.to_string(),
             format!("{}@{}", self.user, self.host),
         ]);
@@ -87,6 +88,60 @@ impl SshConfig {
         
         args
     }
+}
+
+/// Find novaic-mcp-vmuse code path with unified search logic
+/// Priority: NOVAIC_RESOURCE_DIR -> Tauri resource_dir -> relative to project root
+fn find_vmuse_code_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let mut search_paths = Vec::new();
+    
+    // Priority 1: NOVAIC_RESOURCE_DIR environment variable (production)
+    if let Ok(resource_dir) = std::env::var("NOVAIC_RESOURCE_DIR") {
+        let candidate = PathBuf::from(resource_dir).join("novaic-mcp-vmuse");
+        search_paths.push(candidate.clone());
+        if candidate.exists() && candidate.is_dir() {
+            println!("[deploy_vmuse] Found vmuse via NOVAIC_RESOURCE_DIR: {:?}", candidate);
+            return Ok(candidate);
+        }
+    }
+    
+    // Priority 2: Tauri resource_dir (production/packaged)
+    if let Some(resource_dir) = app.path().resource_dir().ok() {
+        let candidate = resource_dir.join("novaic-mcp-vmuse");
+        search_paths.push(candidate.clone());
+        if candidate.exists() && candidate.is_dir() {
+            println!("[deploy_vmuse] Found vmuse via Tauri resource_dir: {:?}", candidate);
+            return Ok(candidate);
+        }
+    }
+    
+    // Priority 3: Relative to project root (development)
+    if let Ok(exe_path) = std::env::current_exe() {
+        // exe is at: novaic-app/src-tauri/target/release/novaic
+        // Try to find project root by going up 4 levels
+        if let Some(project_root) = exe_path.ancestors().nth(4) {
+            // Try: project_root/novaic-vm (correct location)
+            let candidate = project_root.join("novaic-vm");
+            search_paths.push(candidate.clone());
+            if candidate.exists() && candidate.is_dir() {
+                println!("[deploy_vmuse] Found vmuse via project root: {:?}", candidate);
+                return Ok(candidate);
+            }
+            
+            // Fallback: Try novaic-mcp-vmuse
+            let candidate = project_root.join("novaic-mcp-vmuse");
+            search_paths.push(candidate.clone());
+            if candidate.exists() && candidate.is_dir() {
+                println!("[deploy_vmuse] Found vmuse via project root (legacy): {:?}", candidate);
+                return Ok(candidate);
+            }
+        }
+    }
+    
+    Err(format!(
+        "novaic-mcp-vmuse not found. Set NOVAIC_RESOURCE_DIR environment variable or ensure project structure is correct. Searched: {:?}",
+        search_paths
+    ))
 }
 
 /// Get SSH private key from Gateway and save to file
@@ -191,7 +246,7 @@ async fn wait_for_cloud_init(
 ) -> Result<(), String> {
     println!("[Deploy] Waiting for cloud-init to complete (this may take 10-30 minutes)...");
 
-    let check_interval_secs = 5;
+    let check_interval_secs = AppConfig::CLOUD_INIT_CHECK_INTERVAL_SECS;
     let mut elapsed: u64 = 0;
     let mut last_line_count: usize = 0;
 
@@ -217,7 +272,7 @@ async fn wait_for_cloud_init(
                 if !line.trim().is_empty() {
                     let _ = on_progress.send(DeployProgress {
                         stage: "Initializing".to_string(),
-                        progress: 15,
+                        progress: AppConfig::DEPLOY_PROGRESS_CLOUD_INIT as u32,
                         message: format!("Installing packages... ({}min elapsed)", elapsed / 60),
                         log_line: Some(line.to_string()),
                     });
@@ -234,11 +289,11 @@ async fn wait_for_cloud_init(
         elapsed += check_interval_secs;
 
         // Send progress update every minute
-        if elapsed % 60 == 0 {
+        if elapsed % AppConfig::CLOUD_INIT_PROGRESS_INTERVAL_SECS == 0 {
             println!("[Deploy] Still waiting for cloud-init... {}min elapsed", elapsed / 60);
             let _ = on_progress.send(DeployProgress {
                 stage: "Initializing".to_string(),
-                progress: 15,
+                progress: AppConfig::DEPLOY_PROGRESS_CLOUD_INIT as u32,
                 message: format!("Installing packages... ({}min elapsed)", elapsed / 60),
                 log_line: None,
             });
@@ -460,12 +515,12 @@ pub async fn deploy_agent(
     // Step 1: Wait for SSH
     let _ = on_progress.send(DeployProgress {
         stage: "Connecting".to_string(),
-        progress: 5,
+        progress: AppConfig::DEPLOY_PROGRESS_INIT as u32,
         message: "Waiting for SSH connection...".to_string(),
         log_line: None,
     });
 
-    wait_for_ssh(&ssh_config, 15, 20).await?;
+    wait_for_ssh(&ssh_config, AppConfig::SSH_WAIT_MAX_RETRIES, AppConfig::SSH_WAIT_TIMEOUT_SECS).await?;
 
     // Step 2: Check if cloud-init already completed (skip waiting if done)
     if check_cloud_init_done(&ssh_config) {
@@ -479,7 +534,7 @@ pub async fn deploy_agent(
     } else {
         let _ = on_progress.send(DeployProgress {
             stage: "Initializing".to_string(),
-            progress: 15,
+            progress: AppConfig::DEPLOY_PROGRESS_CLOUD_INIT as u32,
             message: "First boot: waiting for cloud-init (10-30 min)...".to_string(),
             log_line: None,
         });
@@ -494,27 +549,8 @@ pub async fn deploy_agent(
         log_line: None,
     });
 
-    // Try to get novaic-mcp-vmuse from resources, fallback to development path
-    let core_path: PathBuf = app.path().resource_dir()
-        .ok()
-        .map(|p: PathBuf| p.join("novaic-mcp-vmuse"))
-        .filter(|p: &PathBuf| p.exists())
-        .unwrap_or_else(|| {
-            // Development fallback: use executable-relative path
-            // exe is at: novaic-app/src-tauri/target/release/novaic
-            // core is at: novaic-mcp-vmuse (4 levels up)
-            std::env::current_exe()
-                .ok()
-                .and_then(|p| p.parent().map(|d| d.to_path_buf()))
-                .map(|d| d.join("../../../..").join("novaic-mcp-vmuse"))
-                .and_then(|p| p.canonicalize().ok())
-                .unwrap_or_else(|| PathBuf::from("novaic-mcp-vmuse"))
-        });
-
-    if !core_path.exists() {
-        return Err(format!("novaic-mcp-vmuse not found at {}", core_path.display()));
-    }
-
+    // Use unified path search function
+    let core_path = find_vmuse_code_path(&app)?;
     println!("[Deploy] Using novaic-mcp-vmuse from: {}", core_path.display());
 
     // Step 4: Create directories on VM
@@ -543,7 +579,7 @@ pub async fn deploy_agent(
     // Step 7: Copy code
     let _ = on_progress.send(DeployProgress {
         stage: "Copying code".to_string(),
-        progress: 50,
+        progress: AppConfig::DEPLOY_PROGRESS_COPYING as u32,
         message: "Copying novaic-mcp-vmuse to VM...".to_string(),
         log_line: None,
     });
@@ -585,8 +621,8 @@ pub async fn deploy_agent(
     });
 
     // Wait for service to become active (with retries)
-    let max_service_wait = 60; // 60 seconds
-    let check_interval = 5;
+    let max_service_wait = AppConfig::SERVICE_WAIT_TIMEOUT_SECS;
+    let check_interval = AppConfig::SERVICE_CHECK_INTERVAL_SECS;
     let mut service_ready = false;
     let mut elapsed = 0;
 
@@ -647,8 +683,8 @@ pub async fn deploy_agent(
             break;
         }
 
-        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
-        elapsed += 3;
+        tokio::time::sleep(tokio::time::Duration::from_secs(AppConfig::MCP_HEALTH_CHECK_INTERVAL_SECS)).await;
+        elapsed += AppConfig::MCP_HEALTH_CHECK_INTERVAL_SECS;
         println!("[Deploy] MCP server not ready (HTTP {}), waiting... ({}s)", http_code, elapsed);
     }
 
@@ -658,7 +694,7 @@ pub async fn deploy_agent(
 
     let _ = on_progress.send(DeployProgress {
         stage: "Complete".to_string(),
-        progress: 100,
+        progress: AppConfig::DEPLOY_PROGRESS_COMPLETE as u32,
         message: "Deployment complete! Service is running.".to_string(),
         log_line: None,
     });
@@ -690,24 +726,9 @@ pub async fn quick_deploy_agent(
         return Err("Cannot connect to VM via SSH".to_string());
     }
 
-    // Get novaic-mcp-vmuse path
-    let core_path: PathBuf = app.path().resource_dir()
-        .ok()
-        .map(|p: PathBuf| p.join("novaic-mcp-vmuse"))
-        .filter(|p: &PathBuf| p.exists())
-        .unwrap_or_else(|| {
-            // Development fallback: use executable-relative path
-            std::env::current_exe()
-                .ok()
-                .and_then(|p| p.parent().map(|d| d.to_path_buf()))
-                .map(|d| d.join("../../../..").join("novaic-mcp-vmuse"))
-                .and_then(|p| p.canonicalize().ok())
-                .unwrap_or_else(|| PathBuf::from("novaic-mcp-vmuse"))
-        });
-
-    if !core_path.exists() {
-        return Err(format!("novaic-mcp-vmuse not found at {}", core_path.display()));
-    }
+    // Get novaic-mcp-vmuse path using unified search function
+    let core_path = find_vmuse_code_path(&app)?;
+    println!("[QuickDeploy] Using novaic-mcp-vmuse from: {}", core_path.display());
 
     // Stop service
     let _ = on_progress.send(DeployProgress {
@@ -751,7 +772,7 @@ pub async fn quick_deploy_agent(
 
     let _ = on_progress.send(DeployProgress {
         stage: "Complete".to_string(),
-        progress: 100,
+        progress: AppConfig::DEPLOY_PROGRESS_COMPLETE as u32,
         message: "Quick deploy complete!".to_string(),
         log_line: None,
     });

@@ -87,21 +87,21 @@ export function SetupProgress({ step, downloadProgress, setupProgress, deployPro
               <div className="flex items-center w-full">
                 {/* Line before */}
                 {index > 0 && (
-                  <div className={`flex-1 h-0.5 ${isComplete || isActive ? 'bg-blue-500' : 'bg-nb-border'}`} />
+                  <div className={`flex-1 h-0.5 ${isComplete || isActive ? 'bg-white/30' : 'bg-nb-border'}`} />
                 )}
                 
                 {/* Icon */}
                 <div
                   className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    isComplete ? 'bg-blue-500' :
-                    isActive ? 'bg-blue-500/20 border-2 border-blue-500' :
+                    isComplete ? 'bg-white/20' :
+                    isActive ? 'bg-white/10 border-2 border-white/30' :
                     'bg-nb-surface border-2 border-nb-border'
                   }`}
                 >
                   {isComplete ? (
                     <CheckCircle size={20} className="text-white" />
                   ) : isActive ? (
-                    <Loader2 size={20} className="text-blue-500 animate-spin" />
+                    <Loader2 size={20} className="text-white/70 animate-spin" />
                   ) : (
                     <Icon size={20} className="text-nb-text-secondary" />
                   )}
@@ -109,13 +109,13 @@ export function SetupProgress({ step, downloadProgress, setupProgress, deployPro
 
                 {/* Line after */}
                 {index < STEPS.length - 1 && (
-                  <div className={`flex-1 h-0.5 ${isComplete ? 'bg-blue-500' : 'bg-nb-border'}`} />
+                  <div className={`flex-1 h-0.5 ${isComplete ? 'bg-white/30' : 'bg-nb-border'}`} />
                 )}
               </div>
               
               {/* Label */}
               <span className={`mt-2 text-xs ${
-                isActive ? 'text-blue-500 font-medium' :
+                isActive ? 'text-white/80 font-medium' :
                 isComplete ? 'text-nb-text' :
                 'text-nb-text-secondary'
               }`}>
@@ -130,7 +130,7 @@ export function SetupProgress({ step, downloadProgress, setupProgress, deployPro
       <div className="mb-4">
         <div className="h-2 bg-nb-surface rounded-full overflow-hidden">
           <div
-            className="h-full bg-blue-500 transition-all duration-300"
+            className="h-full bg-white/20 transition-all duration-300"
             style={{ width: `${getCurrentProgress()}%` }}
           />
         </div>
@@ -144,14 +144,14 @@ export function SetupProgress({ step, downloadProgress, setupProgress, deployPro
         
         {/* Download speed */}
         {step === 'downloading' && downloadProgress && (
-          <p className="text-blue-500 text-sm mt-1">
+          <p className="text-white/70 text-sm mt-1">
             {downloadProgress.speed}
           </p>
         )}
 
         {/* Stage info */}
         {step === 'creating' && setupProgress && (
-          <p className="text-blue-500 text-sm mt-1">
+          <p className="text-white/70 text-sm mt-1">
             {setupProgress.stage}
           </p>
         )}

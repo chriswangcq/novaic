@@ -28,6 +28,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional, Dict, Any
 import traceback
+from common.config import ServiceConfig
 import httpx
 
 
@@ -70,15 +71,15 @@ class Watchdog:
     
     def __init__(
         self,
-        gateway_url: str = "http://127.0.0.1:19999",
-        queue_service_url: str = "http://127.0.0.1:19997",
-        poll_interval: float = 0.1,
-        timeout: float = 30.0,
+        gateway_url: str = None,
+        queue_service_url: str = None,
+        poll_interval: float = None,
+        timeout: float = None,
     ):
-        self.gateway_url = gateway_url.rstrip("/")
-        self.queue_service_url = queue_service_url.rstrip("/")
-        self.poll_interval = poll_interval
-        self.timeout = timeout
+        self.gateway_url = (gateway_url or ServiceConfig.GATEWAY_URL).rstrip("/")
+        self.queue_service_url = (queue_service_url or ServiceConfig.QUEUE_SERVICE_URL).rstrip("/")
+        self.poll_interval = poll_interval if poll_interval is not None else ServiceConfig.POLL_INTERVAL
+        self.timeout = timeout if timeout is not None else ServiceConfig.HTTP_TIMEOUT
         self.worker_id = f"wd-{uuid.uuid4().hex[:8]}"
         
         self._running = False

@@ -237,7 +237,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             </div>
             <button
               onClick={() => setStep('configure')}
-              className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+              className="px-8 py-3 bg-white/15 hover:bg-white/20 text-white font-medium rounded-lg transition-colors"
             >
               Get Started
             </button>
@@ -248,7 +248,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         return (
           <div className="max-w-lg mx-auto">
             <div className="flex items-center gap-3 mb-6">
-              <Settings size={24} className="text-blue-500" />
+              <Settings size={24} className="text-white/70" />
               <h2 className="text-xl font-semibold text-nb-text">Configure Your Agent</h2>
             </div>
 
@@ -262,7 +262,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 value={agentName}
                 onChange={(e) => setAgentName(e.target.value)}
                 placeholder="My Agent"
-                className="w-full px-4 py-2 bg-nb-bg border border-nb-border rounded-lg text-nb-text focus:outline-none focus:border-blue-500"
+                className="w-full px-4 py-2 bg-nb-bg border border-nb-border rounded-lg text-nb-text focus:outline-none focus:border-white/30"
               />
             </div>
 
@@ -279,7 +279,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                     const versions = OS_OPTIONS.find(os => os.type === e.target.value)?.versions || [];
                     setOsVersion(versions[0] || '');
                   }}
-                  className="w-full px-4 py-2 bg-nb-bg border border-nb-border rounded-lg text-nb-text focus:outline-none focus:border-blue-500"
+                  className="w-full px-4 py-2 bg-nb-bg border border-nb-border rounded-lg text-nb-text focus:outline-none focus:border-white/30"
                 >
                   {OS_OPTIONS.map(os => (
                     <option key={os.type} value={os.type}>{os.name}</option>
@@ -293,7 +293,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 <select
                   value={osVersion}
                   onChange={(e) => setOsVersion(e.target.value)}
-                  className="w-full px-4 py-2 bg-nb-bg border border-nb-border rounded-lg text-nb-text focus:outline-none focus:border-blue-500"
+                  className="w-full px-4 py-2 bg-nb-bg border border-nb-border rounded-lg text-nb-text focus:outline-none focus:border-white/30"
                 >
                   {availableVersions.map(ver => (
                     <option key={ver} value={ver}>{ver}</option>
@@ -311,7 +311,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 <select
                   value={memory}
                   onChange={(e) => setMemory(e.target.value)}
-                  className="w-full px-4 py-2 bg-nb-bg border border-nb-border rounded-lg text-nb-text focus:outline-none focus:border-blue-500"
+                  className="w-full px-4 py-2 bg-nb-bg border border-nb-border rounded-lg text-nb-text focus:outline-none focus:border-white/30"
                 >
                   {MEMORY_OPTIONS.map(opt => (
                     <option key={opt.value} value={opt.value}>
@@ -327,7 +327,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 <select
                   value={cpus}
                   onChange={(e) => setCpus(Number(e.target.value))}
-                  className="w-full px-4 py-2 bg-nb-bg border border-nb-border rounded-lg text-nb-text focus:outline-none focus:border-blue-500"
+                  className="w-full px-4 py-2 bg-nb-bg border border-nb-border rounded-lg text-nb-text focus:outline-none focus:border-white/30"
                 >
                   {CPU_OPTIONS.map(n => (
                     <option key={n} value={n}>{n} cores</option>
@@ -360,7 +360,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               <button
                 onClick={startSetup}
                 disabled={!agentName.trim()}
-                className="flex-1 px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white font-medium rounded-lg transition-colors"
+                className="flex-1 px-6 py-2 bg-white/15 hover:bg-white/20 disabled:bg-white/10 text-white font-medium rounded-lg transition-colors"
               >
                 Create Agent
               </button>
@@ -395,7 +395,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             </p>
             <button
               onClick={onComplete}
-              className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+              className="px-8 py-3 bg-white/15 hover:bg-white/20 text-white font-medium rounded-lg transition-colors"
             >
               Start Using NovAIC
             </button>
@@ -423,7 +423,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               </button>
               <button
                 onClick={onComplete}
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                className="px-6 py-2 bg-white/15 hover:bg-white/20 text-white rounded-lg transition-colors"
               >
                 Skip for Now
               </button>
@@ -442,7 +442,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       {step !== 'welcome' && step !== 'done' && step !== 'error' && (
         <div className="h-1 bg-nb-border">
           <div
-            className="h-full bg-blue-500 transition-all duration-500"
+            className="h-full bg-white/20 transition-all duration-500"
             style={{
               width: step === 'configure' ? '20%' :
                      step === 'checking' ? '30%' :

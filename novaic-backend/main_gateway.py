@@ -1240,33 +1240,52 @@ def get_log_entries(
     agent_id: str = Query(..., description="Agent ID"),
     subagent_id: Optional[str] = Query(None, description="Subagent ID (optional, filter by subagent)"),
     after_id: Optional[int] = Query(None, description="Return entries with id > after_id (incremental fetch)"),
+    before_id: Optional[int] = Query(None, description="Return entries with id < before_id (pagination for older logs)"),
     limit: int = Query(50, ge=1, le=100, description="Max entries to return"),
 ):
     """
-    分页拉取执行日志。前端用 after_id 增量拉取，SSE 只推送「有更新」通知后前端调此接口。
+    分页拉取执行日志。前端用 after_id 增量拉取，before_id 加载更多历史日志。
     
     参数：
     - agent_id: Agent ID (必需)
     - subagent_id: Subagent ID (可选，若传入则只返回该 subagent 的日志)
     - after_id: 返回 id > after_id 的记录 (增量拉取)
+    - before_id: 返回 id < before_id 的记录 (向前翻页加载更多)
     - limit: 最大返回条数 (1-100)
     
     返回的每条记录包含：
     - id, agent_id, type, timestamp, data (原有字段)
     - subagent_id, kind, status, event_key, input, result (新增字段)
+    - has_more: 是否还有更多历史日志 (当使用 before_id 时)
     """
     if not agent_id:
-        return {"success": False, "error": "agent_id required", "entries": []}
+        return {"success": False, "error": "agent_id required", "entries": [], "has_more": False}
     chat_service = get_chat_service()
+    
+    # Fetch limit + 1 to check if there are more entries
+    fetch_limit = limit + 1 if before_id is not None else limit
+    
     if after_id is not None:
         entries = chat_service.repo.get_execution_logs_after(
-            agent_id, after_id, limit=limit, subagent_id=subagent_id
+            agent_id, after_id, limit=fetch_limit, subagent_id=subagent_id
         )
+        return {"success": True, "entries": entries, "has_more": False}
+    elif before_id is not None:
+        entries = chat_service.repo.get_execution_logs(
+            agent_id, subagent_id=subagent_id, before_id=before_id, limit=fetch_limit
+        )
+        # Check if there are more entries (we fetched limit + 1)
+        has_more = len(entries) > limit
+        if has_more:
+            entries = entries[1:]  # Remove the oldest one (first in list after reverse)
+        return {"success": True, "entries": entries, "has_more": has_more}
     else:
         entries = chat_service.repo.get_recent_execution_logs(
             agent_id, limit=limit, subagent_id=subagent_id
         )
-    return {"success": True, "entries": entries}
+        # For initial load, check if there are more by comparing with count
+        # We'll let the frontend determine has_more based on the returned count
+        return {"success": True, "entries": entries, "has_more": len(entries) >= limit}
 
 
 @app.get("/api/logs/subagents")
@@ -1293,8 +1312,13 @@ def get_log_subagents(
 @app.get("/api/logs/stream")
 def logs_sse(agent_id: str = None):
     """
-    SSE 只推送「有更新」通知（event + log_id），不推送完整内容。
-    前端收到后调用 GET /api/logs/entries?agent_id=&after_id= 拉取新条目。
+    SSE for execution logs with initial history push.
+    
+    连接时：
+    1. 先推送最近 50 条日志（event: log_entry）
+    2. 然后监听新日志通知（event: logs_updated）
+    
+    前端收到 log_entry 事件后直接渲染，收到 logs_updated 后可增量拉取。
     """
     from fastapi.responses import JSONResponse
 
@@ -1309,6 +1333,13 @@ def logs_sse(agent_id: str = None):
 
     async def event_generator():
         try:
+            # 1. 先推送最近日志（类似 Chat SSE）
+            chat_service = get_chat_service()
+            recent_logs = chat_service.repo.get_recent_execution_logs(agent_id, limit=50)
+            for log in recent_logs:
+                yield f"data: {json_module.dumps({'event': 'log_entry', 'agent_id': agent_id, 'entry': log})}\n\n"
+            
+            # 2. 然后监听新日志通知
             while True:
                 try:
                     notification = await asyncio.wait_for(queue.get(), timeout=30.0)

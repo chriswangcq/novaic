@@ -1,5 +1,4 @@
 import { useRef, useEffect, useLayoutEffect, useCallback, useState } from 'react';
-import { useVirtualizer } from '@tanstack/react-virtual';
 import { Loader2 } from 'lucide-react';
 import { Message } from '../../types';
 import { UserMessage } from './UserMessage';
@@ -7,17 +6,25 @@ import { AssistantMessage } from './AssistantMessage';
 import { WelcomeScreen } from './WelcomeScreen';
 import { StreamingIndicator } from './StreamingIndicator';
 import { useAppStore } from '../../store';
+import { useVirtualList } from '../../hooks/useVirtualList';
+import { useScrollPagination } from '../../hooks/useScrollPagination';
+import { MESSAGE_ESTIMATE_SIZE, MESSAGE_OVERSCAN } from '../../constants/scroll';
 
 interface MessageListProps {
   messages: Message[];
   isLoading: boolean;
+  onUnreadCountChange?: (count: number) => void;
+  scrollToBottomRef?: React.MutableRefObject<(() => void) | null>;
+  clearUnreadRef?: React.MutableRefObject<(() => void) | null>;
 }
 
-export function MessageList({ messages, isLoading }: MessageListProps) {
-  const parentRef = useRef<HTMLDivElement>(null);
+export function MessageList({ messages, isLoading, onUnreadCountChange, scrollToBottomRef, clearUnreadRef }: MessageListProps) {
   const lastMessageCountRef = useRef(messages.length);
-  const hasInitialScrolled = useRef(false);
+  const lastMessageIdRef = useRef<string | null>(null); // 记录最后一条消息的 ID
+  const prevIsLoadingMoreRef = useRef(false); // 记录上一次的 isLoadingMore 状态
   const [isReady, setIsReady] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const hasInitialScrolled = useRef(false);
   
   const { 
     hasMoreMessages, 
@@ -26,88 +33,188 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
     currentAgentId 
   } = useAppStore();
 
-  // Virtual list configuration
-  const virtualizer = useVirtualizer({
+  // 使用虚拟列表 hook
+  const { parentRef, virtualizer } = useVirtualList({
     count: messages.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 120, // 估算每条消息的平均高度，稍大一些更安全
-    overscan: 8, // 增加预渲染数量，确保边界元素被渲染
+    estimateSize: MESSAGE_ESTIMATE_SIZE,
+    overscan: MESSAGE_OVERSCAN,
   });
+
+  // 使用分页滚动 hook
+  const { handleScroll: handlePaginationScroll } = useScrollPagination({
+    itemsLength: messages.length,
+    virtualizer,
+    hasMore: hasMoreMessages,
+    isLoading: isLoadingMore,
+    onLoadMore: loadMoreMessages,
+    scrollThreshold: 100
+  });
+
+  // 判断最新消息的可见高度
+  const getLastMessageVisibleHeight = useCallback(() => {
+    if (messages.length === 0) return 0;
+    
+    const virtualItems = virtualizer.getVirtualItems();
+    if (virtualItems.length === 0) return 0;
+    
+    const lastVirtualItem = virtualItems[virtualItems.length - 1];
+    if (lastVirtualItem.index !== messages.length - 1) return 0; // 最新消息不在可见区域
+    
+    const scrollElement = parentRef.current;
+    if (!scrollElement) return 0;
+    
+    const { scrollTop, clientHeight } = scrollElement;
+    const itemEnd = lastVirtualItem.start + lastVirtualItem.size;
+    const itemStart = lastVirtualItem.start;
+    const viewportBottom = scrollTop + clientHeight;
+    
+    // 计算可见高度
+    const visibleHeight = Math.max(0, Math.min(itemEnd, viewportBottom) - Math.max(itemStart, scrollTop));
+    return visibleHeight;
+  }, [messages.length, virtualizer, parentRef]);
+
+  // 判断是否应该清除未读（最新消息露出 > 30px）
+  const shouldClearUnread = useCallback(() => {
+    const visibleHeight = getLastMessageVisibleHeight();
+    return visibleHeight > 30;
+  }, [getLastMessageVisibleHeight]);
+
+  // 滚动到底部
+  const scrollToBottom = useCallback((behavior: 'auto' | 'smooth' = 'smooth') => {
+    requestAnimationFrame(() => {
+      // 在回调执行时获取最新的消息数量，避免闭包陷阱
+      if (messages.length > 0) {
+        virtualizer.scrollToIndex(messages.length - 1, { 
+          align: 'end',
+          behavior 
+        });
+      }
+    });
+  }, [virtualizer, messages.length]);
+
+  // 清除未读计数的函数
+  const clearUnread = useCallback(() => {
+    setUnreadCount(0);
+  }, []);
+
+  // 暴露函数给父组件
+  useEffect(() => {
+    if (scrollToBottomRef) {
+      scrollToBottomRef.current = () => scrollToBottom('smooth');
+    }
+    if (clearUnreadRef) {
+      clearUnreadRef.current = clearUnread;
+    }
+  }, [scrollToBottom, scrollToBottomRef, clearUnread, clearUnreadRef]);
+
+  // 同步 unreadCount 到父组件
+  useEffect(() => {
+    onUnreadCountChange?.(unreadCount);
+  }, [unreadCount, onUnreadCountChange]);
 
   // 切换聊天时重置状态
   useLayoutEffect(() => {
     hasInitialScrolled.current = false;
     setIsReady(false);
+    setUnreadCount(0);
+    lastMessageIdRef.current = null; // 重置消息 ID
+    prevIsLoadingMoreRef.current = false; // 重置加载状态
   }, [currentAgentId]);
 
-  // 初始化时滚动到底部
+  // 初始滚动到底部
   useEffect(() => {
     if (!hasInitialScrolled.current && messages.length > 0) {
-      // 使用 virtualizer API 滚动到最后一条消息
-      // 需要等待 virtualizer 初始化完成
       const timer = setTimeout(() => {
-        virtualizer.scrollToIndex(messages.length - 1, { 
-          align: 'end',
-          behavior: 'auto' 
-        });
+        scrollToBottom('auto');
         hasInitialScrolled.current = true;
         setIsReady(true);
       }, 0);
       return () => clearTimeout(timer);
     } else if (messages.length === 0) {
-      // 没有消息时直接显示（欢迎屏幕）
       setIsReady(true);
     }
-  }, [messages.length, currentAgentId, virtualizer]);
+  }, [messages.length, scrollToBottom]);
 
-  // 监听新消息，自动滚动到底部（已初始化后的新消息）
+  // 监听 isLoading 状态，StreamingIndicator 出现时重新滚动到底部
   useEffect(() => {
-    if (hasInitialScrolled.current && messages.length > lastMessageCountRef.current) {
-      // 新消息到达，使用 virtualizer API 滚动到底部
-      // 延迟一帧确保 DOM 已更新
-      requestAnimationFrame(() => {
-        virtualizer.scrollToIndex(messages.length - 1, { 
-          align: 'end',
-          behavior: 'smooth' 
+    if (isLoading && hasInitialScrolled.current && messages.length > 0) {
+      const latestMessage = messages[messages.length - 1];
+      if (latestMessage.role === 'user') {
+        // 检查用户是否在底部
+        requestAnimationFrame(() => {
+          if (shouldClearUnread()) {
+            // 用户还在底部 → 滚动（保持在底部）
+            scrollToBottom('smooth');
+          }
+          // 用户不在底部 → 不滚动（尊重用户意图）
         });
-      });
-    }
-    lastMessageCountRef.current = messages.length;
-  }, [messages.length, virtualizer]);
-
-  // 记录加载前的第一条可见消息索引
-  const firstVisibleIndexRef = useRef<number | null>(null);
-  const prevMessagesLengthRef = useRef(messages.length);
-
-  // 处理滚动事件 - 滚动到顶部时加载更多
-  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLDivElement;
-    const scrollTop = target.scrollTop;
-    
-    // 当滚动到顶部附近（小于 100px）时，加载更多消息
-    if (scrollTop < 100 && hasMoreMessages && !isLoadingMore && messages.length > 0) {
-      // 保存当前第一条可见消息的索引（加载后需要调整）
-      const virtualItems = virtualizer.getVirtualItems();
-      if (virtualItems.length > 0) {
-        firstVisibleIndexRef.current = virtualItems[0].index;
-        prevMessagesLengthRef.current = messages.length;
       }
-      loadMoreMessages();
     }
-  }, [hasMoreMessages, isLoadingMore, loadMoreMessages, messages.length, virtualizer]);
+  }, [isLoading, messages.length, scrollToBottom, shouldClearUnread]);
 
-  // 加载更多消息后恢复滚动位置
+  // 监听新消息，智能滚动逻辑
   useEffect(() => {
-    if (!isLoadingMore && firstVisibleIndexRef.current !== null && messages.length > prevMessagesLengthRef.current) {
-      // 计算新加载的消息数量
-      const newMessagesCount = messages.length - prevMessagesLengthRef.current;
-      // 滚动到之前可见的第一条消息（索引需要加上新加载的数量）
-      const targetIndex = firstVisibleIndexRef.current + newMessagesCount;
-      virtualizer.scrollToIndex(targetIndex, { align: 'start' });
-      firstVisibleIndexRef.current = null;
+    let rafId: number | null = null;
+    
+    if (hasInitialScrolled.current && messages.length > 0) {
+      const latestMessage = messages[messages.length - 1];
+      const prevMessageId = lastMessageIdRef.current;
+      
+      // 检测是否刚完成历史消息加载（在更新前检查）
+      const justFinishedLoadingMore = prevIsLoadingMoreRef.current && !isLoadingMore;
+      
+      // 只有当最后一条消息的 ID 变化，且不是正在加载更多，且不是刚完成加载历史消息时，才认为是新消息
+      if (latestMessage.id !== prevMessageId && !isLoadingMore && !justFinishedLoadingMore) {
+        const isUserMessage = latestMessage.role === 'user';
+        
+        if (isUserMessage) {
+          // 用户消息：必定滚动
+          scrollToBottom('smooth');
+          setUnreadCount(0);
+        } else {
+          // Agent 消息：需要延迟检查，等虚拟列表更新后再判断
+          rafId = requestAnimationFrame(() => {
+            // 延迟一帧，确保虚拟列表已更新
+            if (shouldClearUnread()) {
+              // 最新消息可见（露出 > 30px）：自动滚动
+              scrollToBottom('smooth');
+              setUnreadCount(0);
+            } else {
+              // 最新消息不可见：增加未读计数
+              setUnreadCount(prev => prev + 1);
+            }
+          });
+        }
+      }
+      
+      // 更新最后一条消息的 ID（在处理完新消息后）
+      lastMessageIdRef.current = latestMessage.id;
+      
+      // 更新 isLoadingMore 状态（在检查完之后）
+      prevIsLoadingMoreRef.current = isLoadingMore;
     }
-    prevMessagesLengthRef.current = messages.length;
-  }, [isLoadingMore, messages.length, virtualizer]);
+    
+    // 更新消息数量 ref
+    lastMessageCountRef.current = messages.length;
+    
+    // 清理函数
+    return () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+    };
+  }, [messages, messages.length, isLoadingMore, scrollToBottom, shouldClearUnread]);
+
+  // 合并滚动处理：分页和清除未读计数
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    // 分页逻辑
+    handlePaginationScroll(e);
+    
+    // 清除未读计数逻辑（最新消息可见时）
+    if (unreadCount > 0 && shouldClearUnread()) {
+      setUnreadCount(0);
+    }
+  }, [handlePaginationScroll, unreadCount, shouldClearUnread]);
 
   // Empty state
   if (messages.length === 0 && !isLoading) {
@@ -119,7 +226,7 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
   return (
     <div 
       ref={parentRef}
-      className={`h-full overflow-auto px-3 py-3 ${isReady ? 'opacity-100' : 'opacity-0'}`}
+      className={`h-full overflow-auto px-3 py-3 relative ${isReady ? 'opacity-100' : 'opacity-0'}`}
       style={{ transition: 'none' }} // 不要过渡动画，直接切换
       onScroll={handleScroll}
     >

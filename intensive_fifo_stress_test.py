@@ -10,9 +10,11 @@ import threading
 import time
 import sys
 import sqlite3
+from pathlib import Path
 
 BASE_URL = "http://127.0.0.1:19999"
-DB_PATH = "/Users/wangchaoqun/.novaic/novaic.db"
+# 跨平台数据库路径
+DB_PATH = str(Path.home() / ".novaic" / "novaic.db")
 
 
 def send_messages_burst(agent_id, num_messages, results):

@@ -47,18 +47,18 @@ export function Resizer({ onResize, onDoubleClick }: ResizerProps) {
 
   return (
     <div
-      className="w-1 bg-transparent hover:bg-violet-500/50 cursor-col-resize transition-colors shrink-0 relative group"
+      className="w-1 bg-transparent hover:bg-white/30 cursor-col-resize transition-colors shrink-0 relative group"
       onMouseDown={handleMouseDown}
       onDoubleClick={onDoubleClick}
     >
       {/* Visual indicator on hover */}
-      <div className="absolute inset-y-0 -left-1 -right-1 group-hover:bg-violet-500/20" />
+      <div className="absolute inset-y-0 -left-1 -right-1 group-hover:bg-white/10" />
       {/* Drag handle dots */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
         <div className="flex flex-col gap-1">
-          <div className="w-1 h-1 rounded-full bg-violet-400" />
-          <div className="w-1 h-1 rounded-full bg-violet-400" />
-          <div className="w-1 h-1 rounded-full bg-violet-400" />
+          <div className="w-1 h-1 rounded-full bg-white/60" />
+          <div className="w-1 h-1 rounded-full bg-white/60" />
+          <div className="w-1 h-1 rounded-full bg-white/60" />
         </div>
       </div>
     </div>

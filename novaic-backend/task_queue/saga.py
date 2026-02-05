@@ -31,6 +31,8 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List, Callable, Protocol
 from enum import Enum
 
+from common.enums import TaskState, SagaState
+from common.config import ServiceConfig
 from .exceptions import SagaError, SagaStepError
 
 
@@ -157,7 +159,7 @@ class TaskQueueProtocol(Protocol):
         topic: str,
         payload: Dict[str, Any],
         idempotency_key: Optional[str] = None,
-        max_retries: int = 3,
+        max_retries: int = None,
     ) -> str: ...
     
     async def get_task(self, task_id: str) -> Optional[Dict[str, Any]]: ...
@@ -376,9 +378,9 @@ class SagaExecutor:
         if not saga:
             raise SagaError(f"Saga not found: {saga_id}")
         
-        if saga["status"] == "completed":
+        if saga["status"] == SagaState.COMPLETED.value:
             return
-        if saga["status"] == "failed":
+        if saga["status"] == SagaState.FAILED.value:
             raise SagaError(f"Saga already failed: {saga_id}")
         
         definition = self._definitions.get(saga["saga_type"])
@@ -390,7 +392,7 @@ class SagaExecutor:
         current_step = saga["current_step"]
         
         # 标记运行中
-        await self.saga_client.update_progress(saga_id, current_step, step_results, "running")
+        await self.saga_client.update_progress(saga_id, current_step, step_results, SagaState.RUNNING.value)
         
         # 执行步骤
         for i in range(current_step, len(definition.steps)):
@@ -488,7 +490,7 @@ class SagaExecutor:
         ], return_exceptions=True)
         
         return [
-            {"status": "failed", "error": str(r)} if isinstance(r, Exception) else r
+            {"status": TaskState.FAILED.value, "error": str(r)} if isinstance(r, Exception) else r
             for r in results
         ]
     
@@ -565,7 +567,7 @@ class SagaExecutor:
             if task["status"] == "done":
                 return task.get("result") or {}
             
-            if task["status"] == "failed":
+            if task["status"] == TaskState.FAILED.value:
                 raise SagaError(f"Task failed: {task.get('error', 'Unknown')}")
             
             if asyncio.get_event_loop().time() - start > timeout:
@@ -588,10 +590,10 @@ class SagaExecutor:
             if not saga:
                 raise SagaError(f"Saga not found: {saga_id}")
             
-            if saga["status"] == "completed":
+            if saga["status"] == SagaState.COMPLETED.value:
                 return {"saga_id": saga_id, "results": saga.get("step_results", {})}
             
-            if saga["status"] == "failed":
+            if saga["status"] == SagaState.FAILED.value:
                 raise SagaError(f"Saga failed: {saga.get('error', 'Unknown')}")
             
             if asyncio.get_event_loop().time() - start > timeout:

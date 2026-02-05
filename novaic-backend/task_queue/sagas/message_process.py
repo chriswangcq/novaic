@@ -8,6 +8,8 @@ MessageProcess Saga - 消息处理入口 (v2)
 """
 
 from ..saga import SagaDefinition
+from . import register_saga_definition
+from ..topics import TaskTopics, SagaTopics
 
 
 def _build_claim_payload(ctx):
@@ -53,13 +55,13 @@ MESSAGE_PROCESS_SAGA = SagaDefinition("message_process")
 
 MESSAGE_PROCESS_SAGA.add_task_step(
     name="claim_message",
-    topic="message.claim",
+    topic=TaskTopics.MESSAGE_CLAIM,
     build_payload=_build_claim_payload,
 )
 
 MESSAGE_PROCESS_SAGA.add_task_step(
     name="route_message",
-    topic="message.route",
+    topic=TaskTopics.MESSAGE_ROUTE,
     build_payload=_build_route_payload,
 )
 
@@ -70,7 +72,10 @@ MESSAGE_PROCESS_SAGA.add_decision_step(
 
 MESSAGE_PROCESS_SAGA.add_task_step(
     name="trigger_runtime_start",
-    topic="saga.trigger",
+    topic=SagaTopics.SAGA_TRIGGER,
     build_payload=_build_trigger_runtime_start,
     condition=lambda d: d.get("action") == "start_runtime",
 )
+
+# 自动注册
+MESSAGE_PROCESS_SAGA = register_saga_definition(MESSAGE_PROCESS_SAGA)

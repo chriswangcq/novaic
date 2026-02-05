@@ -12,8 +12,8 @@ Task Queue Workers (同步版本)
 Usage:
     from task_queue.workers import Watchdog, SagaWorkerSync, TaskWorkerSync, HealthWorkerSync
     
-    # 启动 Watchdog
-    watchdog = Watchdog(gateway_url="http://127.0.0.1:19999")
+    # 启动 Watchdog (使用默认配置)
+    watchdog = Watchdog()
     watchdog.run()
 """
 

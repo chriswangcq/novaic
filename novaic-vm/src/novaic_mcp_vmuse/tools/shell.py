@@ -230,7 +230,9 @@ echo ""
 echo "=== Command finished (exit code: $?) ==="
 sleep 3
 """
-        script_path = f"/tmp/novaic_visible_{os.getpid()}.sh"
+        # 跨平台临时文件路径
+        import tempfile
+        script_path = os.path.join(tempfile.gettempdir(), f"novaic_visible_{os.getpid()}.sh")
         with open(script_path, 'w') as f:
             f.write(script_content)
         os.chmod(script_path, 0o755)
@@ -281,8 +283,9 @@ sleep 3
             timeout: Execution timeout in seconds
             visible: If true, run in visible terminal
         """
-        # Write code to temp file
-        script_path = f"/tmp/novaic_python_{os.getpid()}.py"
+        # Write code to temp file - 跨平台临时路径
+        import tempfile
+        script_path = os.path.join(tempfile.gettempdir(), f"novaic_python_{os.getpid()}.py")
         with open(script_path, 'w') as f:
             f.write(code)
         

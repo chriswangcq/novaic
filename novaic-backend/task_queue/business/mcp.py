@@ -14,6 +14,7 @@ import os
 import httpx
 
 from ..client import GatewayInternalClient
+from common.config import ServiceConfig
 
 
 @dataclass
@@ -203,10 +204,10 @@ class MCPBusiness:
         Returns:
             ToolExecuteResult
         """
-        tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", "http://127.0.0.1:19998")
+        tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", ServiceConfig.TOOLS_SERVER_URL)
         
         try:
-            with httpx.Client(timeout=30.0, trust_env=False) as client:
+            with httpx.Client(timeout=ServiceConfig.MCP_CALL_TIMEOUT, trust_env=False) as client:
                 resp = client.post(
                     f"{tools_server_url}/internal/runtimes/{runtime_id}/tools/call",
                     json={"name": tool_name, "arguments": arguments}
@@ -280,7 +281,7 @@ class ToolsServerClient:
         Returns:
             工具执行结果
         """
-        with httpx.Client(timeout=30.0, trust_env=False) as client:
+        with httpx.Client(timeout=ServiceConfig.MCP_CALL_TIMEOUT, trust_env=False) as client:
             resp = client.post(
                 f"{self._tools_server_url}/internal/runtimes/{runtime_id}/tools/call",
                 json={"name": tool_name, "arguments": arguments}
@@ -303,7 +304,7 @@ class ToolsServerClient:
         Returns:
             工具列表
         """
-        with httpx.Client(timeout=30.0, trust_env=False) as client:
+        with httpx.Client(timeout=ServiceConfig.MCP_CALL_TIMEOUT, trust_env=False) as client:
             resp = client.get(
                 f"{self._tools_server_url}/internal/runtimes/{runtime_id}/tools"
             )

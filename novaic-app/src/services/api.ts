@@ -546,20 +546,22 @@ export const api = {
   },
 
   /**
-   * Fetch execution log entries (initial or incremental).
+   * Fetch execution log entries (initial, incremental, or paginated).
    * SSE 只推送「有更新」通知，前端用此接口拉取内容。
    * @param agentId - Agent ID
    * @param options.after_id - 只返回 id > after_id 的条目（增量）
+   * @param options.before_id - 只返回 id < before_id 的条目（向前翻页）
    * @param options.limit - 条数上限
    * @param options.subagent_id - 只返回指定 subagent 的日志（可选）
    */
   async getLogEntries(
     agentId: string,
-    options?: { after_id?: number; limit?: number; subagent_id?: string }
-  ): Promise<{ success: boolean; entries: Array<{ id: number; type: string; timestamp: string; data: Record<string, unknown>; subagent_id?: string; status?: 'running' | 'complete'; kind?: 'think' | 'tool'; event_key?: string; input?: any; result?: any; updated_at?: string }> }> {
+    options?: { after_id?: number; before_id?: number; limit?: number; subagent_id?: string }
+  ): Promise<{ success: boolean; entries: Array<{ id: number; type: string; timestamp: string; data: Record<string, unknown>; subagent_id?: string; status?: 'running' | 'complete'; kind?: 'think' | 'tool'; event_key?: string; input?: any; result?: any; updated_at?: string }>; has_more: boolean }> {
     const params = new URLSearchParams();
     params.set('agent_id', agentId);
     if (options?.after_id != null) params.set('after_id', String(options.after_id));
+    if (options?.before_id != null) params.set('before_id', String(options.before_id));
     if (options?.limit != null) params.set('limit', String(options.limit));
     if (options?.subagent_id != null) params.set('subagent_id', options.subagent_id);
     return invoke('gateway_get', { path: `/api/logs/entries?${params.toString()}` });

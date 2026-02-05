@@ -17,6 +17,10 @@
 11. [常见踩坑点](#11-常见踩坑点)
 12. [快速上手 Checklist](#12-快速上手-checklist)
 
+### 专题文档
+
+- [前端滚动逻辑和虚拟列表](./frontend-scroll-patterns.md) - 虚拟列表、自动滚动、边界条件处理
+
 ---
 
 ## 1. 项目架构理解
@@ -553,9 +557,11 @@ cat ~/Library/Application\ Support/com.novaic.app/*.log | tail -100
 
 ---
 
-## 附录：本次迭代经验总结
+## 附录：迭代经验总结
 
-本手册基于 2026-02-05 的迭代经验编写，主要完成了：
+### 2026-02-05：Execute Log 事件模型和多 bug 修复
+
+本手册基于此次迭代经验编写，主要完成了：
 
 1. **Execute Log 事件模型** - 增加 status/kind/event_key/subagent_id 字段
 2. **Subagent Tab 切换** - 按 subagent 过滤日志
@@ -567,6 +573,28 @@ cat ~/Library/Application\ Support/com.novaic.app/*.log | tail -100
    - Model available 状态丢失
 
 期间派出了约 20+ 个 subagent，修复了约 15+ 个 bug。
+
+### 2026-02-05 晚：ExecutionLog 滚动问题深度修复
+
+完成了 ExecutionLog 自动滚动逻辑的全面优化：
+
+1. **滚动问题修复**：
+   - 初始滚动"从上滚下来"的问题
+   - 翻页后误触发"你有新消息"
+   - 自动滚动只在第一次生效的问题
+   - 翻页恢复位置误触发的问题
+   
+2. **UI 布局改进**：
+   - 重新设计日志条目布局（时间戳前置、状态右对齐）
+   - 详情内容全宽显示，不被时间戳挤压
+   - 更清晰的视觉层次
+
+3. **关键教训**：
+   - **复杂度是敌人** - 5 个 ref 状态导致 bug 风险指数级增长
+   - **边界条件是魔鬼** - "有历史数据时挂载"等边界情况是 bug 温床
+   - **慢就是快** - 全面思考清楚再动手比反复调试效率高
+
+详细经验总结见 [前端滚动逻辑和虚拟列表](./frontend-scroll-patterns.md)。
 
 ---
 

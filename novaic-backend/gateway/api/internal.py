@@ -13,6 +13,8 @@ from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime
 import json
 
+from common.enums import RuntimeStatus, SubagentStatus
+from common.config import ServiceConfig
 from gateway.db.access import get_db
 
 router = APIRouter(prefix="/internal", tags=["internal"])
@@ -37,19 +39,16 @@ def resolve_runtime_ids(runtime_id: str) -> Tuple[str, str, str]:
     Raises:
         HTTPException: If runtime not found
     """
+    from gateway.db.repositories import RuntimeRepository
     
     db = get_db()
-    with db.get_connection("agent", resource_id=runtime_id, timeout=10.0) as conn:
-        cursor = conn.execute(
-            "SELECT runtime_id, agent_id, subagent_id FROM agent_runtimes WHERE runtime_id = ?",
-            (runtime_id,)
-        )
-        row = cursor.fetchone()
+    runtime_repo = RuntimeRepository(db)
+    runtime = runtime_repo.get_by_id(runtime_id)
     
-    if not row:
+    if not runtime:
         raise HTTPException(status_code=404, detail=f"Runtime not found: {runtime_id}")
     
-    return row[0], row[1], row[2]
+    return runtime.runtime_id, runtime.agent_id, runtime.subagent_id
 
 
 def get_runtime_context(runtime_id: str) -> Dict[str, Any]:
@@ -62,26 +61,22 @@ def get_runtime_context(runtime_id: str) -> Dict[str, Any]:
     Returns:
         Dict with runtime_id, agent_id, subagent_id, status, etc.
     """
+    from gateway.db.repositories import RuntimeRepository
     
     db = get_db()
-    with db.get_connection("agent", resource_id=runtime_id, timeout=10.0) as conn:
-        cursor = conn.execute(
-            """SELECT runtime_id, agent_id, subagent_id, status, phase, mcp_url
-               FROM agent_runtimes WHERE runtime_id = ?""",
-            (runtime_id,)
-        )
-        row = cursor.fetchone()
+    runtime_repo = RuntimeRepository(db)
+    runtime = runtime_repo.get_by_id(runtime_id)
     
-    if not row:
+    if not runtime:
         raise HTTPException(status_code=404, detail=f"Runtime not found: {runtime_id}")
     
     return {
-        "runtime_id": row[0],
-        "agent_id": row[1],
-        "subagent_id": row[2],
-        "status": row[3],
-        "phase": row[4],
-        "mcp_url": row[5],
+        "runtime_id": runtime.runtime_id,
+        "agent_id": runtime.agent_id,
+        "subagent_id": runtime.subagent_id,
+        "status": runtime.status,
+        "phase": runtime.phase,
+        "mcp_url": runtime.mcp_url,
     }
 
 
@@ -115,7 +110,7 @@ def get_subagent(agent_id: str, subagent_id: str):
 
 
 @router.post("/subagents/{agent_id}/{subagent_id}/wake")
-def wake_subagent(agent_id: str, subagent_id: str, target_status: str = "awake"):
+def wake_subagent(agent_id: str, subagent_id: str, target_status: str = SubagentStatus.AWAKE.value):
     """Atomically wake a SubAgent (sleeping -> target_status).
     
     Args:
@@ -354,7 +349,7 @@ def get_subagent_status(agent_id: str, subagent_id: str):
         raise HTTPException(status_code=404, detail="SubAgent not found")
     
     # Check timeout
-    if subagent.status == "running" and subagent.timeout_at:
+    if subagent.status == SubagentStatus.RUNNING.value and subagent.timeout_at:
         try:
             timeout_at = datetime.fromisoformat(subagent.timeout_at)
             if datetime.utcnow() > timeout_at:
@@ -368,7 +363,12 @@ def get_subagent_status(agent_id: str, subagent_id: str):
             pass  # Invalid timeout format, skip check
     
     # Determine completion status
-    completed = subagent.status in ("completed", "failed", "cancelled", "sleeping")
+    completed = subagent.status in (
+        SubagentStatus.COMPLETED.value,
+        SubagentStatus.FAILED.value,
+        SubagentStatus.CANCELLED.value,
+        SubagentStatus.SLEEPING.value
+    )
     
     response = {
         "subagent_id": subagent_id,
@@ -387,7 +387,7 @@ def get_subagent_status(agent_id: str, subagent_id: str):
         response["runtime_status"] = runtime.status
         
         # If no explicit result set, try to get from runtime context
-        if not response["result"] and runtime.status == "completed" and runtime.context:
+        if not response["result"] and runtime.status == RuntimeStatus.COMPLETED.value and runtime.context:
             for msg in reversed(runtime.context):
                 if msg.get("role") == "assistant":
                     response["result"] = msg.get("content", "")
@@ -415,29 +415,16 @@ def cancel_subagent(agent_id: str, subagent_id: str):
         raise HTTPException(status_code=404, detail="SubAgent not found")
     
     # Only cancel if running
-    if subagent.status != "running":
+    if subagent.status != SubagentStatus.RUNNING.value:
         return {"success": False, "reason": f"SubAgent is not running (status: {subagent.status})"}
     
     # Set SubAgent to cancelled
     subagent_repo.set_cancelled(subagent_id, agent_id)
     
     # Cancel all active runtimes for this SubAgent
-    now = datetime.utcnow().isoformat()
-    with db.transaction("agent", resource_id=agent_id, timeout=10.0):
-        # Get runtime IDs for this SubAgent
-        cursor = db.execute(
-            "SELECT runtime_id FROM agent_runtimes WHERE subagent_id = ? AND agent_id = ?",
-            (subagent_id, agent_id)
-        )
-        runtime_ids = [row[0] for row in cursor.fetchall()]
-        
-        # Cancel active runtimes
-        for runtime_id in runtime_ids:
-            db.execute("""
-                UPDATE agent_runtimes 
-                SET status = 'cancelled', updated_at = ?
-                WHERE runtime_id = ? AND status = 'active'
-            """, (now, runtime_id))
+    runtime_ids = runtime_repo.get_runtime_ids_for_subagent(subagent_id, agent_id)
+    for runtime_id in runtime_ids:
+        runtime_repo.set_status(runtime_id, 'cancelled')
     
     return {"success": True}
 
@@ -452,9 +439,9 @@ def delete_subagent(agent_id: str, subagent_id: str):
     runtime_repo = RuntimeRepository(db)
     
     # Delete runtimes for this subagent
-    with db.transaction("agent", resource_id=agent_id, timeout=10.0):
+    with db.transaction("agent", resource_id=agent_id, timeout=ServiceConfig.DB_TRANSACTION_TIMEOUT):
         db.execute(
-            "DELETE FROM runtimes WHERE subagent_id = ? AND agent_id = ?",
+            "DELETE FROM agent_runtimes WHERE subagent_id = ? AND agent_id = ?",
             (subagent_id, agent_id)
         )
     
@@ -462,6 +449,136 @@ def delete_subagent(agent_id: str, subagent_id: str):
     subagent_repo.delete(subagent_id, agent_id)
     
     return {"status": "ok"}
+
+
+# ==================== HRL and Summary Lock Operations (v24) ====================
+
+@router.get("/subagents/{agent_id}/{subagent_id}/hrl")
+def get_hrl(agent_id: str, subagent_id: str):
+    """Get Hot Runtime List for a SubAgent.
+    
+    Returns:
+        hrl: List of runtime_ids in HRL
+        length: Number of runtimes in HRL
+    """
+    from gateway.db.repositories import SubAgentRepository
+    
+    db = get_db()
+    repo = SubAgentRepository(db)
+    hrl = repo.get_hrl(subagent_id, agent_id)
+    
+    return {
+        "hrl": hrl,
+        "length": len(hrl),
+    }
+
+
+@router.post("/subagents/{agent_id}/{subagent_id}/hrl/add")
+def add_to_hrl(agent_id: str, subagent_id: str, data: Dict[str, Any]):
+    """Add a runtime to HRL.
+    
+    Body:
+        runtime_id: Runtime ID to add
+        
+    Returns:
+        success: True if added, False if already exists
+        hrl: Updated HRL list
+        length: Updated HRL length
+    """
+    from gateway.db.repositories import SubAgentRepository
+    
+    db = get_db()
+    repo = SubAgentRepository(db)
+    
+    runtime_id = data.get("runtime_id")
+    if not runtime_id:
+        raise HTTPException(status_code=400, detail="runtime_id is required")
+    
+    success = repo.add_to_hrl(subagent_id, agent_id, runtime_id)
+    hrl = repo.get_hrl(subagent_id, agent_id)
+    
+    return {
+        "success": success,
+        "hrl": hrl,
+        "length": len(hrl),
+    }
+
+
+@router.get("/subagents/{agent_id}/{subagent_id}/summary-lock")
+def get_summary_lock(agent_id: str, subagent_id: str):
+    """Get summary_lock status for a SubAgent.
+    
+    Returns:
+        summary_lock: 0 = idle, 1 = locked
+    """
+    from gateway.db.repositories import SubAgentRepository
+    
+    db = get_db()
+    repo = SubAgentRepository(db)
+    lock = repo.get_summary_lock(subagent_id, agent_id)
+    
+    return {"summary_lock": lock}
+
+
+@router.post("/subagents/{agent_id}/{subagent_id}/summary-lock/acquire")
+def acquire_summary_lock(agent_id: str, subagent_id: str):
+    """Try to acquire summary_lock using CAS.
+    
+    Returns:
+        success: True if lock acquired, False if lock already held
+    """
+    from gateway.db.repositories import SubAgentRepository
+    
+    db = get_db()
+    repo = SubAgentRepository(db)
+    success = repo.acquire_summary_lock(subagent_id, agent_id)
+    
+    return {"success": success}
+
+
+@router.post("/subagents/{agent_id}/{subagent_id}/summary-lock/release")
+def release_summary_lock(agent_id: str, subagent_id: str):
+    """Release summary_lock.
+    
+    Returns:
+        success: Always True
+    """
+    from gateway.db.repositories import SubAgentRepository
+    
+    db = get_db()
+    repo = SubAgentRepository(db)
+    repo.release_summary_lock(subagent_id, agent_id)
+    
+    return {"success": True}
+
+
+@router.post("/subagents/{agent_id}/{subagent_id}/merge-history")
+def merge_history(agent_id: str, subagent_id: str, data: Dict[str, Any]):
+    """Atomically update historical_summary and remove runtimes from HRL.
+    
+    Body:
+        new_history: New merged historical summary
+        remove_runtime_ids: List of runtime_ids to remove from HRL
+        
+    Returns:
+        success: True if successful
+    """
+    from gateway.db.repositories import SubAgentRepository
+    
+    db = get_db()
+    repo = SubAgentRepository(db)
+    
+    new_history = data.get("new_history", "")
+    remove_runtime_ids = data.get("remove_runtime_ids", [])
+    
+    success = repo.atomic_update_history_and_hrl(
+        subagent_id=subagent_id,
+        agent_id=agent_id,
+        new_history=new_history,
+        remove_runtime_ids=remove_runtime_ids
+    )
+    
+    return {"success": success}
 
 
 # ==================== Runtime Operations ====================
@@ -487,32 +604,62 @@ def list_active_runtimes_for_mcp():
     Used by Tools Server for runtime_list tool.
     NOTE: Must be defined BEFORE /runtimes/{runtime_id} to avoid route conflict.
     """
+    from gateway.db.repositories import RuntimeRepository
     
     db = get_db()
-    
-    # Query all active runtimes
-    with db.get_connection("global", timeout=10.0) as conn:
-        cursor = conn.execute("""
-            SELECT runtime_id, agent_id, subagent_id, status, created_at
-            FROM agent_runtimes 
-            WHERE status IN ('active', 'resting')
-            ORDER BY created_at DESC
-        """)
-        rows = cursor.fetchall()
+    runtime_repo = RuntimeRepository(db)
+    runtimes = runtime_repo.get_all_active_runtimes()
     
     return {
         "runtimes": [
             {
-                "runtime_id": row[0],
-                "agent_id": row[1],
-                "subagent_id": row[2],
-                "type": "main" if row[2] and row[2].startswith("main-") else "subagent",
-                "status": row[3],
-                "created_at": row[4],
+                "runtime_id": r.runtime_id,
+                "agent_id": r.agent_id,
+                "subagent_id": r.subagent_id,
+                "type": "main" if r.subagent_id and r.subagent_id.startswith("main-") else "subagent",
+                "status": r.status,
+                "created_at": r.created_at,
             }
-            for row in rows
+            for r in runtimes
         ]
     }
+
+
+@router.post("/runtimes/batch")
+def get_runtimes_batch(data: Dict[str, Any]):
+    """Get multiple runtimes by IDs (for context building).
+    
+    Request body:
+        runtime_ids: List[str] - List of runtime IDs to fetch
+        
+    Returns:
+        runtimes: List of runtime dicts with summaries, in input order
+    """
+    from gateway.db.repositories import RuntimeRepository
+    
+    runtime_ids = data.get("runtime_ids", [])
+    if not runtime_ids:
+        return {"runtimes": []}
+    
+    db = get_db()
+    repo = RuntimeRepository(db)
+    runtimes = repo.get_runtimes_by_ids(runtime_ids)
+    
+    # Convert to dict with summary fields
+    result = []
+    for rt in runtimes:
+        result.append({
+            "runtime_id": rt.runtime_id,
+            "subagent_id": rt.subagent_id,
+            "agent_id": rt.agent_id,
+            "status": rt.status,
+            "simple_summary": rt.simple_summary,
+            "hot_summary": rt.hot_summary,
+            "cold_summary": rt.cold_summary,
+            "created_at": rt.created_at,
+        })
+    
+    return {"runtimes": result}
 
 
 @router.get("/runtimes/{runtime_id}")
@@ -603,14 +750,14 @@ def update_runtime(runtime_id: str, data: Dict[str, Any]):
         repo.set_mcp_url(runtime_id, data["mcp_url"])
     
     if "status" in data:
-        if data["status"] == "completed":
+        if data["status"] == RuntimeStatus.COMPLETED.value:
             repo.mark_completed(runtime_id)
-        elif data["status"] == "failed":
+        elif data["status"] == RuntimeStatus.FAILED.value:
             repo.mark_failed(runtime_id, data.get("error", "Unknown error"))
-        elif data["status"] == "resting":
+        elif data["status"] == RuntimeStatus.RESTING.value:
             repo.set_resting(runtime_id)
-        elif data["status"] == "active":
-            repo.set_status(runtime_id, "active")
+        elif data["status"] == RuntimeStatus.ACTIVE.value:
+            repo.set_status(runtime_id, RuntimeStatus.ACTIVE.value)
     
     if "summary" in data:
         repo.set_summary(runtime_id, data["summary"])
@@ -620,17 +767,7 @@ def update_runtime(runtime_id: str, data: Dict[str, Any]):
     
     # Handle round updates
     if "current_round_num" in data and "current_round_id" in data:
-        # Directly update round fields
-        now = datetime.utcnow().isoformat()
-        # Extract agent_id from runtime
-        runtime = runtime_repo.get_by_id(runtime_id)
-        if runtime:
-            with db.transaction("agent", resource_id=runtime.agent_id, timeout=10.0):
-                db.execute("""
-                    UPDATE agent_runtimes 
-                    SET current_round_num = ?, current_round_id = ?, updated_at = ?
-                    WHERE runtime_id = ?
-                """, (data["current_round_num"], data["current_round_id"], now, runtime_id))
+        repo.reset_round(runtime_id, data["current_round_num"], data["current_round_id"])
     
     return {"status": "ok"}
 
@@ -663,11 +800,7 @@ def rest_runtime(runtime_id: str, data: Dict[str, Any]):
         return {"success": False, "error": "Runtime not found"}
     
     # Set need_rest=1 (不再设置 status='resting')
-    with db.transaction("agent", resource_id=runtime.agent_id, timeout=10.0):
-        db.execute(
-            "UPDATE agent_runtimes SET need_rest = 1, updated_at = datetime('now') WHERE runtime_id = ?",
-            (runtime_id,)
-        )
+    runtime_repo.set_need_rest(runtime_id, True)
     
     # Update SubAgent's wake triggers (v14)
     reason = data.get("reason", "No reason provided")
@@ -756,29 +889,15 @@ def try_claim_phase(runtime_id: str, data: Dict[str, Any]):
     if not expected_phase or not new_phase:
         raise HTTPException(status_code=400, detail="expected_phase and new_phase required")
     
-    db = get_db()
-    now = datetime.utcnow().isoformat()
+    from gateway.db.repositories import RuntimeRepository
     
-    # Get agent_id from runtime for lock
-    runtime_ctx = get_runtime_context(runtime_id)
-    agent_id = runtime_ctx.get("agent_id")
+    db = get_db()
+    runtime_repo = RuntimeRepository(db)
     
     # Atomic CAS: only update if phase matches expected (v14: use runtime_id)
-    with db.transaction("agent", resource_id=agent_id, timeout=10.0):
-        if round_id:
-            cursor = db.execute("""
-                UPDATE agent_runtimes 
-                SET phase = ?, current_round_id = ?, updated_at = ?
-                WHERE runtime_id = ? AND phase = ?
-            """, (new_phase, round_id, now, runtime_id, expected_phase))
-        else:
-            cursor = db.execute("""
-                UPDATE agent_runtimes 
-                SET phase = ?, updated_at = ?
-                WHERE runtime_id = ? AND phase = ?
-            """, (new_phase, now, runtime_id, expected_phase))
+    success = runtime_repo.cas_update_phase(runtime_id, expected_phase, new_phase, round_id)
     
-    return {"success": cursor.rowcount > 0}
+    return {"success": success}
 
 
 @router.post("/runtimes/{runtime_id}/context/append")
@@ -841,7 +960,7 @@ def append_runtime_context(runtime_id: str, data: Dict[str, Any]):
 @router.post("/runtimes/{runtime_id}/set-status")
 def set_runtime_status(runtime_id: str, data: Dict[str, Any]):
     """Set runtime status with CAS on expected status list."""
-    from datetime import datetime
+    from gateway.db.repositories import RuntimeRepository
 
     expected_status = data.get("expected_status")
     new_status = data.get("new_status")
@@ -855,118 +974,97 @@ def set_runtime_status(runtime_id: str, data: Dict[str, Any]):
     else:
         expected_list = expected_status
 
-    placeholders = ",".join("?" for _ in expected_list)
-    now = datetime.utcnow().isoformat()
-
     db = get_db()
-    # Get agent_id from runtime for lock
-    runtime_ctx = get_runtime_context(runtime_id)
-    agent_id = runtime_ctx.get("agent_id")
+    runtime_repo = RuntimeRepository(db)
     
-    with db.transaction("agent", resource_id=agent_id, timeout=10.0):
-        if error is not None:
-            cursor = db.execute(
-                f"""
-                UPDATE agent_runtimes
-                SET status = ?, error = ?, updated_at = ?
-                WHERE runtime_id = ? AND status IN ({placeholders})
-                """,
-                (new_status, error, now, runtime_id, *expected_list),
-            )
-        else:
-            cursor = db.execute(
-                f"""
-                UPDATE agent_runtimes
-                SET status = ?, updated_at = ?
-                WHERE runtime_id = ? AND status IN ({placeholders})
-                """,
-                (new_status, now, runtime_id, *expected_list),
-            )
+    # Use CAS update with expected status list
+    if error is not None:
+        success = runtime_repo.cas_set_status_with_error(runtime_id, expected_list, new_status, error)
+    else:
+        success = runtime_repo.cas_set_status(runtime_id, expected_list, new_status)
 
-    if cursor.rowcount > 0:
+    if success:
         return {"success": True}
 
     # fetch current status for idempotency info
-    row = db.fetchone(
-        "SELECT status FROM agent_runtimes WHERE runtime_id = ?",
-        (runtime_id,),
-    )
-    current_status = row["status"] if row else "not_found"
+    runtime = runtime_repo.get_by_id(runtime_id)
+    current_status = runtime.status if runtime else "not_found"
     return {"success": current_status == new_status, "current_status": current_status}
 
 
 @router.post("/runtimes/{runtime_id}/summarized")
 def set_runtime_summarized(runtime_id: str):
     """Set runtime summarized flag to 1 (idempotent)."""
-    from datetime import datetime
     from gateway.db.repositories import RuntimeRepository
+
+    db = get_db()
+    runtime_repo = RuntimeRepository(db)
+    
+    # Use CAS to set summarized flag
+    success = runtime_repo.cas_set_summarized(runtime_id)
+    
+    if success:
+        return {"success": True}
+
+    # Check current value for idempotency info
+    runtime = runtime_repo.get_by_id(runtime_id)
+    if not runtime:
+        return {"success": False, "message": "Runtime not found", "current_value": "not_found"}
+    return {
+        "success": runtime.summarized == 1,
+        "current_value": str(runtime.summarized),
+        "message": "Already summarized" if runtime.summarized == 1 else "Update failed",
+    }
+
+
+@router.post("/runtimes/{runtime_id}/hot-cold-summary")
+def set_runtime_hot_cold_summary(runtime_id: str, data: Dict[str, Any]):
+    """Set both hot and cold summaries for a runtime (v24).
+    
+    Hot summary: Earlier rounds summarized + last 3 rounds full content
+    Cold summary: All rounds summarized by LLM
+    """
+    from gateway.db.repositories import RuntimeRepository
+
+    hot_summary = data.get("hot_summary", "")
+    cold_summary = data.get("cold_summary", "")
 
     db = get_db()
     runtime_repo = RuntimeRepository(db)
     runtime = runtime_repo.get_by_id(runtime_id)
     if not runtime:
-        return {"success": False}
+        return {"success": False, "error": "Runtime not found"}
     
-    now = datetime.utcnow().isoformat()
-    with db.transaction("agent", resource_id=runtime.agent_id, timeout=10.0):
-        cursor = db.execute("""
-            UPDATE agent_runtimes
-            SET summarized = 1, updated_at = ?
-            WHERE runtime_id = ? AND summarized = 0
-        """, (now, runtime_id))
+    runtime_repo.set_hot_cold_summary(runtime_id, hot_summary, cold_summary)
 
-    if cursor.rowcount > 0:
-        return {"success": True}
-
-    row = db.fetchone(
-        "SELECT summarized FROM agent_runtimes WHERE runtime_id = ?",
-        (runtime_id,),
-    )
-    if not row:
-        return {"success": False, "message": "Runtime not found", "current_value": "not_found"}
-    return {
-        "success": row["summarized"] == 1,
-        "current_value": str(row["summarized"]),
-        "message": "Already summarized" if row["summarized"] == 1 else "Update failed",
-    }
+    return {"success": True, "runtime_id": runtime_id}
 
 
 @router.post("/runtimes/{runtime_id}/need-rest")
 def set_runtime_need_rest(runtime_id: str, data: Dict[str, Any]):
     """Set runtime need_rest flag with CAS (idempotent)."""
-    from datetime import datetime
+    from gateway.db.repositories import RuntimeRepository
 
     value = bool(data.get("value", True))
     target = 1 if value else 0
-    expected = 0 if value else 1
-    now = datetime.utcnow().isoformat()
 
     db = get_db()
     runtime_repo = RuntimeRepository(db)
-    runtime = runtime_repo.get_by_id(runtime_id)
-    if not runtime:
-        return {"success": False, "cas_failed": False}
     
-    with db.transaction("agent", resource_id=runtime.agent_id, timeout=10.0):
-        cursor = db.execute("""
-            UPDATE agent_runtimes
-            SET need_rest = ?, updated_at = ?
-            WHERE runtime_id = ? AND need_rest = ?
-        """, (target, now, runtime_id, expected))
+    # Use CAS to set need_rest flag
+    success = runtime_repo.cas_set_need_rest(runtime_id, value)
 
-    if cursor.rowcount > 0:
+    if success:
         return {"success": True, "current_value": str(target)}
 
-    row = db.fetchone(
-        "SELECT need_rest FROM agent_runtimes WHERE runtime_id = ?",
-        (runtime_id,),
-    )
-    if not row:
+    # Check current value for idempotency info
+    runtime = runtime_repo.get_by_id(runtime_id)
+    if not runtime:
         return {"success": False, "message": "Runtime not found", "current_value": "not_found"}
     return {
-        "success": row["need_rest"] == target,
-        "current_value": str(row["need_rest"]),
-        "message": f"Already need_rest={target}" if row["need_rest"] == target else "Update failed",
+        "success": runtime.need_rest == target,
+        "current_value": str(runtime.need_rest),
+        "message": f"Already need_rest={target}" if runtime.need_rest == target else "Update failed",
     }
 
 
@@ -1044,47 +1142,34 @@ def get_unread_messages(agent_id: str):
     
     Uses read=0 to find messages that haven't been processed yet.
     """
+    from gateway.db.repositories.message import MessageRepository
     
     db = get_db()
-    rows = db.fetchall("""
-        SELECT id, type, content, metadata, timestamp 
-        FROM chat_messages 
-        WHERE agent_id = ? AND read = 0 AND type = 'USER_MESSAGE'
-        ORDER BY timestamp ASC
-    """, (agent_id,))
+    repo = MessageRepository(db)
+    messages = repo.get_unread(agent_id)
     
-    return {
-        "messages": [
-            {
-                "id": row["id"],
-                "type": row["type"],
-                "content": row["content"],
-                "metadata": json.loads(row["metadata"]) if row.get("metadata") else {},
-                "timestamp": row["timestamp"],
-            }
-            for row in rows
-        ]
-    }
+    # Filter for USER_MESSAGE type only (matching original behavior)
+    user_messages = [m for m in messages if m.get("type") == "USER_MESSAGE"]
+    
+    return {"messages": user_messages}
 
 
 @router.get("/messages/unread-sent/{agent_id}")
 def get_unread_sent_messages(agent_id: str):
     """Get unread sent user messages for an agent."""
+    from gateway.db.repositories.message import MessageRepository
 
     db = get_db()
-    rows = db.fetchall("""
-        SELECT id, content, timestamp
-        FROM chat_messages
-        WHERE agent_id = ? AND type = 'USER_MESSAGE' AND status = 'sent' AND read = 0
-        ORDER BY created_at ASC
-    """, (agent_id,))
+    repo = MessageRepository(db)
+    messages = repo.get_unread(agent_id)
+    
+    # Filter for USER_MESSAGE type only (matching original behavior)
+    user_messages = [
+        {"id": m["id"], "content": m["content"], "timestamp": m["timestamp"]}
+        for m in messages if m.get("type") == "USER_MESSAGE"
+    ]
 
-    return {
-        "messages": [
-            {"id": row["id"], "content": row["content"], "timestamp": row["timestamp"]}
-            for row in rows
-        ]
-    }
+    return {"messages": user_messages}
 
 
 @router.get("/messages/unread-count/{agent_id}")
@@ -1093,14 +1178,13 @@ def get_unread_count(agent_id: str):
     
     Uses read=0 to find messages that haven't been processed yet.
     """
+    from gateway.db.repositories.message import MessageRepository
     
     db = get_db()
-    row = db.fetchone("""
-        SELECT COUNT(*) as count FROM chat_messages 
-        WHERE agent_id = ? AND read = 0 AND type = 'USER_MESSAGE'
-    """, (agent_id,))
+    repo = MessageRepository(db)
+    count = repo.get_unread_user_message_count(agent_id)
     
-    return {"count": row["count"] if row else 0}
+    return {"count": count}
 
 
 @router.get("/messages/unread-grouped")
@@ -1150,36 +1234,13 @@ def claim_and_prepare_message():
     Returns:
         {"message": {...}} if claimed, {"message": null} if queue is empty
     """
+    from gateway.db.repositories.message import MessageRepository
     
     db = get_db()
-    with db.transaction("global", timeout=10.0):
-        # Atomically claim one sending message (sending → sent)
-        # Note: read 字段由 context.read 设置，这里不改变
-        cursor = db.execute("""
-            UPDATE chat_messages
-            SET status = 'sent'
-            WHERE id = (
-                SELECT id FROM chat_messages 
-                WHERE status = 'sending' 
-                ORDER BY created_at ASC 
-                LIMIT 1
-            )
-            RETURNING id, agent_id, type, content, metadata, timestamp
-        """)
-        row = cursor.fetchone()
-        cursor.close()  # ← 必须先关闭cursor
-        
-        if not row:
-            return {"message": None}
-        
-        return {"message": {
-            "id": row[0],
-            "agent_id": row[1],
-            "type": row[2],
-            "content": row[3],
-            "metadata": row[4],
-            "timestamp": row[5],
-        }}
+    repo = MessageRepository(db)
+    message = repo.claim_sending()
+    
+    return {"message": message}
 
 
 @router.post("/messages/{message_id}/claim")
@@ -1189,24 +1250,19 @@ def claim_message(message_id: str):
     
     Uses FIFO lock (sharded by message_id) to ensure fair ordering.
     """
-    db = get_db()
+    from gateway.db.repositories.message import MessageRepository
     
-    # Use message-specific lock (sharded for better concurrency)
-    with db.transaction("message", resource_id=message_id, timeout=10.0):
-        cursor = db.execute("""
-            UPDATE chat_messages
-            SET status = 'sent'
-            WHERE id = ? AND status = 'sending'
-        """, (message_id,))
-
-    if cursor.rowcount > 0:
+    db = get_db()
+    repo = MessageRepository(db)
+    
+    claimed = repo.claim_by_id(message_id)
+    
+    if claimed:
         return {"success": True, "message_id": message_id, "claimed": True}
 
-    row = db.fetchone(
-        "SELECT status FROM chat_messages WHERE id = ?",
-        (message_id,),
-    )
-    current_status = row["status"] if row else "not_found"
+    # Check current status using repository
+    msg = repo.get_message(message_id)
+    current_status = msg["status"] if msg else "not_found"
     return {
         "success": current_status == "sent",
         "message_id": message_id,
@@ -1218,14 +1274,13 @@ def claim_message(message_id: str):
 @router.get("/messages/has-new/{agent_id}")
 def has_new_messages(agent_id: str):
     """Check if agent has new sent unread user messages."""
+    from gateway.db.repositories.message import MessageRepository
 
     db = get_db()
-    row = db.fetchone("""
-        SELECT COUNT(*) as cnt FROM chat_messages
-        WHERE agent_id = ? AND type = 'USER_MESSAGE' AND status = 'sent' AND read = 0
-    """, (agent_id,))
-    has_new = row["cnt"] > 0 if row else False
-    return {"has_new_messages": has_new}
+    repo = MessageRepository(db)
+    count = repo.get_pending_count(agent_id)
+    
+    return {"has_new_messages": count > 0}
 
 
 @router.patch("/messages/mark-read")
@@ -1233,6 +1288,7 @@ def mark_messages_read(data: Dict[str, Any]):
     """Mark messages as read and broadcast status update."""
     from datetime import datetime
     import uuid as uuid_module
+    from gateway.db.repositories.message import MessageRepository
     
     message_ids = data.get("message_ids", [])
     agent_id = data.get("agent_id")  # Optional: for SSE filtering
@@ -1241,23 +1297,16 @@ def mark_messages_read(data: Dict[str, Any]):
         return {"status": "ok"}
     
     db = get_db()
-    placeholders = ",".join(["?"] * len(message_ids))
+    repo = MessageRepository(db)
     
     # If no agent_id provided, try to get it from the first message
     if not agent_id:
-        cursor = db.execute(
-            "SELECT agent_id FROM chat_messages WHERE id = ? LIMIT 1",
-            (message_ids[0],)
-        )
-        row = cursor.fetchone()
-        if row:
-            agent_id = row["agent_id"]
+        msg = repo.get_message(message_ids[0])
+        if msg:
+            agent_id = msg["agent_id"]
     
-    # For batch updates, use global lock
-    with db.transaction("global", timeout=15.0):
-        db.execute(f"""
-            UPDATE chat_messages SET read = 1 WHERE id IN ({placeholders})
-        """, tuple(message_ids))
+    # Batch mark as read
+    repo.batch_mark_read(message_ids, agent_id)
     
     # Broadcast STATUS_UPDATE to SSE for each message
     try:
@@ -1290,6 +1339,7 @@ def mark_messages_processed(data: Dict[str, Any]):
     """
     from datetime import datetime
     import uuid as uuid_module
+    from gateway.db.repositories.message import MessageRepository
     
     message_ids = data.get("message_ids", [])
     agent_id = data.get("agent_id")  # Optional: for SSE filtering
@@ -1298,24 +1348,16 @@ def mark_messages_processed(data: Dict[str, Any]):
         return {"status": "ok"}
     
     db = get_db()
-    placeholders = ",".join(["?"] * len(message_ids))
+    repo = MessageRepository(db)
     
     # If no agent_id provided, try to get it from the first message
     if not agent_id:
-        cursor = db.execute(
-            "SELECT agent_id FROM chat_messages WHERE id = ? LIMIT 1",
-            (message_ids[0],)
-        )
-        row = cursor.fetchone()
-        if row:
-            agent_id = row["agent_id"]
+        msg = repo.get_message(message_ids[0])
+        if msg:
+            agent_id = msg["agent_id"]
     
-    # Mark as read (read=1 means processed)
-    # For batch updates, use global lock
-    with db.transaction("global", timeout=15.0):
-        db.execute(f"""
-            UPDATE chat_messages SET read = 1 WHERE id IN ({placeholders})
-        """, tuple(message_ids))
+    # Batch mark as read (read=1 means processed)
+    repo.batch_mark_read(message_ids, agent_id)
     
     # Broadcast STATUS_UPDATE to SSE for each message
     # Import here to avoid circular import
@@ -1368,13 +1410,13 @@ def create_message(data: Dict[str, Any]):
 @router.get("/agents/setup-complete")
 def get_setup_complete_agents():
     """Get all agents with setup complete."""
+    from gateway.db.repositories import AgentRepository
     
     db = get_db()
-    rows = db.fetchall(
-        "SELECT id FROM agents WHERE setup_complete = 1"
-    )
+    agent_repo = AgentRepository(db)
+    agent_ids = agent_repo.list_setup_complete_ids()
     
-    return {"agent_ids": [row["id"] for row in rows]}
+    return {"agent_ids": agent_ids}
 
 
 @router.post("/agents/{agent_id}/awake")
@@ -1592,7 +1634,7 @@ def _build_llm_config_for_agent(db, agent_id: str) -> Dict[str, Any]:
     """Build LLM config for a specific agent (internal helper)."""
     
     # 1. Check agent exists (agents table may not have model_id column)
-    with db.get_connection("agent", resource_id=agent_id, timeout=10.0) as conn:
+    with db.get_connection("agent", resource_id=agent_id, timeout=ServiceConfig.DB_TRANSACTION_TIMEOUT) as conn:
         cursor = conn.execute(
             "SELECT id FROM agents WHERE id = ?",
             (agent_id,)
@@ -1607,13 +1649,13 @@ def _build_llm_config_for_agent(db, agent_id: str) -> Dict[str, Any]:
         }
     
     # 2. Use default model from config (agents table doesn't have model_id column yet)
-    with db.get_connection("global", timeout=10.0) as conn:
+    with db.get_connection("global", timeout=ServiceConfig.DB_TRANSACTION_TIMEOUT) as conn:
         cursor = conn.execute("SELECT value FROM config WHERE key = 'default_model'")
         default_row = cursor.fetchone()
     model_id = default_row[0].strip('"') if default_row else "gpt-4o"
     
     # 3. 从DB查询model和api_key配置
-    with db.get_connection("global", timeout=10.0) as conn:
+    with db.get_connection("global", timeout=ServiceConfig.DB_TRANSACTION_TIMEOUT) as conn:
         cursor = conn.execute("""
             SELECT 
                 m.id as model_id,
@@ -1691,15 +1733,31 @@ def get_runtime_llm_config(runtime_id: str):
     Used by task_queue workers for LLM calls.
     
     Logic:
-    1. Resolve agent_id from runtime_id
+    1. Resolve agent_id and subagent_id from runtime_id
     2. Use agent's model_id if set, else default_model
+    
+    Returns:
+    - success: bool
+    - agent_id: str
+    - subagent_id: str (e.g. "main-7b053af9")
+    - model: model name
+    - provider: openai/anthropic/google  
+    - api_key: full API key
+    - api_base: API base URL
     """
     
     db = get_db()
     runtime_ctx = get_runtime_context(runtime_id)
     agent_id = runtime_ctx.get("agent_id")
+    subagent_id = runtime_ctx.get("subagent_id", "main")
     
-    return _build_llm_config_for_agent(db, agent_id)
+    # Get LLM config for agent
+    result = _build_llm_config_for_agent(db, agent_id)
+    
+    # Add subagent_id to result (needed for execution_log broadcast)
+    result["subagent_id"] = subagent_id
+    
+    return result
 
 
 # ==================== LLM Operations ====================
@@ -1725,11 +1783,13 @@ def compact_context_with_llm(data: Dict[str, Any]):
     settings = get_context_compaction_settings()
     
     # Get API configuration from database
+    from gateway.db.repositories import ConfigRepository
     
     db = get_db()
+    config_repo = ConfigRepository(db)
     
     # Get first API key from api_keys table
-    row = db.fetchone("SELECT api_key, api_base FROM api_keys LIMIT 1")
+    row = config_repo.get_first_api_key()
     if not row:
         return {"success": False, "error": "No API keys configured"}
     
@@ -1741,7 +1801,7 @@ def compact_context_with_llm(data: Dict[str, Any]):
     
     # Format messages for compaction
     messages_text = "\n".join([
-        f"[{m.get('role', 'unknown')}]: {m.get('content', '')[:500]}"
+        f"[{m.get('role', 'unknown')}]: {m.get('content', '')[:ServiceConfig.TEXT_TRUNCATE_MESSAGE]}"
         for m in messages_to_compact
     ])
     
@@ -1752,7 +1812,7 @@ def compact_context_with_llm(data: Dict[str, Any]):
     ]
     
     try:
-        with httpx.Client(timeout=60.0, trust_env=False) as client:
+        with httpx.Client(timeout=ServiceConfig.LLM_CALL_TIMEOUT, trust_env=False) as client:
             response = client.post(
                 f"{base_url}/chat/completions",
                 headers={
@@ -1762,8 +1822,8 @@ def compact_context_with_llm(data: Dict[str, Any]):
                 json={
                     "model": model,
                     "messages": llm_messages,
-                    "temperature": 0.3,
-                    "max_tokens": 2000,
+                    "temperature": ServiceConfig.LLM_TEMPERATURE_DEFAULT,
+                    "max_tokens": ServiceConfig.LLM_MAX_TOKENS_DEFAULT,
                 }
             )
             response.raise_for_status()
@@ -1835,8 +1895,10 @@ def _subagent_to_dict(subagent) -> Dict[str, Any]:
 # ==================== Health Monitor Operations (v18) ====================
 
 @router.get("/health/stuck-sending")
-def get_stuck_sending_count(timeout_seconds: int = 30):
+def get_stuck_sending_count(timeout_seconds: int = None):
     """Get count of messages stuck in 'sending' state."""
+    if timeout_seconds is None:
+        timeout_seconds = ServiceConfig.STUCK_SENDING_TIMEOUT
     from gateway.db.repositories import MessageRepository
     
     db = get_db()
@@ -1847,8 +1909,10 @@ def get_stuck_sending_count(timeout_seconds: int = 30):
 
 
 @router.get("/health/stuck-awaking")
-def get_stuck_awaking_count(timeout_seconds: int = 60):
+def get_stuck_awaking_count(timeout_seconds: int = None):
     """Get count of SubAgents stuck in 'awaking' state."""
+    if timeout_seconds is None:
+        timeout_seconds = ServiceConfig.STUCK_AWAKING_TIMEOUT
     from gateway.db.repositories import SubAgentRepository
     
     db = get_db()
@@ -1859,8 +1923,10 @@ def get_stuck_awaking_count(timeout_seconds: int = 60):
 
 
 @router.post("/health/reset-stuck-awaking")
-def reset_stuck_awaking(timeout_seconds: int = 60):
+def reset_stuck_awaking(timeout_seconds: int = None):
     """Reset SubAgents stuck in 'awaking' state to 'sleeping'."""
+    if timeout_seconds is None:
+        timeout_seconds = ServiceConfig.STUCK_AWAKING_TIMEOUT
     from gateway.db.repositories import SubAgentRepository
     
     db = get_db()
@@ -2044,7 +2110,7 @@ def get_runtime_history(runtime_id: str, data: Dict[str, Any]):
     db = get_db()
     repo = RuntimeRepository(db)
     
-    limit = data.get("limit", 50)
+    limit = data.get("limit", ServiceConfig.MAX_RUNTIME_CONTEXT_PER_PAGE)
     offset = data.get("offset", 0)
     
     # Get runtime and its context
@@ -2058,8 +2124,8 @@ def get_runtime_history(runtime_id: str, data: Dict[str, Any]):
     for msg in context:
         if isinstance(msg, dict) and "role" in msg:
             content = msg.get("content", "")
-            if len(content) > 500:
-                content = content[:500] + "..."
+            if len(content) > ServiceConfig.TEXT_TRUNCATE_MESSAGE:
+                content = content[:ServiceConfig.TEXT_TRUNCATE_MESSAGE] + "..."
             messages.append({
                 "role": msg.get("role"),
                 "content": content,
@@ -2383,16 +2449,19 @@ def rt_chat_event(runtime_id: str, data: Dict[str, Any]):
     else:
         content = event_data.get("message", "") or json.dumps(event_data)
     
-    # Store message
-    db = get_db()
-    message_id = str(uuid.uuid4())[:11]
-    timestamp = datetime.now().isoformat()
+    # Store message using MessageRepository
+    from gateway.db.repositories.message import MessageRepository
     
-    with db.transaction("message", resource_id=message_id, timeout=10.0):
-        db.execute("""
-            INSERT INTO chat_messages (id, agent_id, type, content, timestamp, status)
-            VALUES (?, ?, ?, ?, ?, 'sent')
-        """, (message_id, agent_id, event_type, content, timestamp))
+    db = get_db()
+    repo = MessageRepository(db)
+    msg = repo.add_message(
+        agent_id=agent_id,
+        type=event_type,
+        content=content,
+        status="sent",  # Agent events are already confirmed, skip Monitor queue
+    )
+    message_id = msg["id"]
+    timestamp = msg["timestamp"]
     
     # Broadcast via Worker SSE (for other workers)
     broadcaster = get_worker_broadcaster()
@@ -2448,8 +2517,16 @@ def rt_chat_event(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.get("/rt/{runtime_id}/chat/history")
-def rt_chat_history(runtime_id: str, limit: int = 20, summary_length: int = 50):
+def rt_chat_history(
+    runtime_id: str, 
+    limit: int = None, 
+    summary_length: int = None
+):
     """Get chat history. Agent ID resolved from runtime."""
+    if limit is None:
+        limit = ServiceConfig.DEFAULT_CHAT_LIMIT
+    if summary_length is None:
+        summary_length = ServiceConfig.DEFAULT_SUMMARY_LENGTH
     from gateway.db.repositories.message import MessageRepository
     
     _, agent_id, _ = resolve_runtime_ids(runtime_id)
@@ -2580,7 +2657,7 @@ def rt_subagent_query(runtime_id: str, target_subagent_id: str):
         raise HTTPException(status_code=404, detail="SubAgent not found")
     
     # Check timeout
-    if subagent.status == "running" and subagent.timeout_at:
+    if subagent.status == SubagentStatus.RUNNING.value and subagent.timeout_at:
         try:
             timeout_at = datetime.fromisoformat(subagent.timeout_at)
             if datetime.utcnow() > timeout_at:
@@ -2589,7 +2666,12 @@ def rt_subagent_query(runtime_id: str, target_subagent_id: str):
         except (ValueError, TypeError):
             pass
     
-    completed = subagent.status in ("completed", "failed", "cancelled", "sleeping")
+    completed = subagent.status in (
+        SubagentStatus.COMPLETED.value,
+        SubagentStatus.FAILED.value,
+        SubagentStatus.CANCELLED.value,
+        SubagentStatus.SLEEPING.value
+    )
     response = {
         "subagent_id": target_subagent_id, "status": subagent.status, "completed": completed,
         "progress": getattr(subagent, "progress", None),
@@ -2602,7 +2684,7 @@ def rt_subagent_query(runtime_id: str, target_subagent_id: str):
         rt = runtimes[0]
         response["runtime_id"] = rt.runtime_id
         response["runtime_status"] = rt.status
-        if not response["result"] and rt.status == "completed" and rt.context:
+        if not response["result"] and rt.status == RuntimeStatus.COMPLETED.value and rt.context:
             for msg in reversed(rt.context):
                 if msg.get("role") == "assistant":
                     response["result"] = msg.get("content", "")
@@ -2614,35 +2696,27 @@ def rt_subagent_query(runtime_id: str, target_subagent_id: str):
 @router.post("/rt/{runtime_id}/subagent/{target_subagent_id}/cancel")
 def rt_subagent_cancel(runtime_id: str, target_subagent_id: str):
     """Cancel a running SubAgent."""
-    from gateway.db.repositories import SubAgentRepository
+    from gateway.db.repositories import SubAgentRepository, RuntimeRepository
     
     _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     db = get_db()
     subagent_repo = SubAgentRepository(db)
+    runtime_repo = RuntimeRepository(db)
     
     subagent = subagent_repo.get_by_id(target_subagent_id, agent_id)
     if not subagent:
         raise HTTPException(status_code=404, detail="SubAgent not found")
     
-    if subagent.status != "running":
+    if subagent.status != SubagentStatus.RUNNING.value:
         return {"success": False, "reason": f"SubAgent is not running (status: {subagent.status})"}
     
     subagent_repo.set_cancelled(target_subagent_id, agent_id)
     
     # Cancel active runtimes
-    now = datetime.utcnow().isoformat()
-    with db.transaction("agent", resource_id=agent_id, timeout=10.0):
-        cursor = db.execute(
-            "SELECT runtime_id FROM agent_runtimes WHERE subagent_id = ? AND agent_id = ?",
-            (target_subagent_id, agent_id)
-        )
-        runtime_ids = [row[0] for row in cursor.fetchall()]
-        for rid in runtime_ids:
-            db.execute("""
-                UPDATE agent_runtimes SET status = 'cancelled', updated_at = ?
-                WHERE runtime_id = ? AND status = 'active'
-            """, (now, rid))
+    runtime_ids = runtime_repo.get_runtime_ids_for_subagent(target_subagent_id, agent_id)
+    for rid in runtime_ids:
+        runtime_repo.set_status(rid, 'cancelled')
     
     return {"success": True}
 
@@ -2881,36 +2955,46 @@ async def rt_qemu_deploy_vmuse(runtime_id: str, data: Dict[str, Any]):
     mcp_port = ports.vm
     
     # 1. 找到 novaic-mcp-vmuse 路径
-    resource_dir = os.environ.get("NOVAIC_RESOURCE_DIR", "")
+    # 统一路径搜索逻辑，优先级：环境变量 -> 相对于项目根目录
+    from pathlib import Path
+    
     vmuse_path = None
     search_paths = []
     
-    # Priority 1: NOVAIC_RESOURCE_DIR (production mode)
+    # Priority 1: NOVAIC_RESOURCE_DIR environment variable (production)
+    resource_dir = os.environ.get("NOVAIC_RESOURCE_DIR")
     if resource_dir:
         candidate = os.path.join(resource_dir, "novaic-mcp-vmuse")
         search_paths.append(candidate)
-        if os.path.exists(candidate):
+        if os.path.isdir(candidate):
             vmuse_path = candidate
+            print(f"[deploy_vmuse] Found vmuse via NOVAIC_RESOURCE_DIR: {vmuse_path}")
     
-    # Priority 2: Tauri resources directory (development mode)
+    # Priority 2: Relative to project root (development/packaged)
     if not vmuse_path:
-        # novaic-backend/gateway/api/internal.py -> novaic/novaic-app/src-tauri/resources/novaic-mcp-vmuse
-        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
-        candidate = os.path.join(project_root, "novaic-app", "src-tauri", "resources", "novaic-mcp-vmuse")
-        search_paths.append(candidate)
-        if os.path.exists(candidate):
-            vmuse_path = candidate
+        # novaic-backend/gateway/api/internal.py -> project_root
+        project_root = Path(__file__).resolve().parent.parent.parent.parent
+        
+        # Try: project_root/novaic-vm (correct location)
+        candidate = project_root / "novaic-vm"
+        search_paths.append(str(candidate))
+        if candidate.exists() and candidate.is_dir():
+            vmuse_path = str(candidate)
+            print(f"[deploy_vmuse] Found vmuse via project root: {vmuse_path}")
+        
+        # Fallback: Try Tauri resources directory (development build)
+        if not vmuse_path:
+            candidate = project_root / "novaic-app" / "src-tauri" / "resources" / "novaic-mcp-vmuse"
+            search_paths.append(str(candidate))
+            if candidate.exists() and candidate.is_dir():
+                vmuse_path = str(candidate)
+                print(f"[deploy_vmuse] Found vmuse via Tauri resources: {vmuse_path}")
     
-    # Priority 3: macOS app bundle Resources directory
     if not vmuse_path:
-        app_resources = "/Applications/NovAIC.app/Contents/Resources/novaic-mcp-vmuse"
-        search_paths.append(app_resources)
-        if os.path.exists(app_resources):
-            vmuse_path = app_resources
-    
-    if not vmuse_path or not os.path.exists(vmuse_path):
-        result["error"] = f"novaic-mcp-vmuse not found. NOVAIC_RESOURCE_DIR={resource_dir}, searched: {search_paths}"
+        result["error"] = f"novaic-mcp-vmuse not found. Set NOVAIC_RESOURCE_DIR environment variable or ensure project structure is correct. Searched: {search_paths}"
         return result
+    
+    print(f"[deploy_vmuse] Using vmuse path: {vmuse_path}")
     
     try:
         import asyncssh

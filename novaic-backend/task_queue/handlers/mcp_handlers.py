@@ -11,9 +11,10 @@ Topics:
 from typing import Dict, Any
 from . import register_handler
 from ..business import MCPBusiness
+from ..topics import TaskTopics
 
 
-@register_handler("mcp.create")
+@register_handler(TaskTopics.MCP_CREATE)
 def handle_mcp_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     创建 MCP Server
@@ -51,7 +52,7 @@ def handle_mcp_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     return response
 
 
-@register_handler("mcp.destroy")
+@register_handler(TaskTopics.MCP_DESTROY)
 def handle_mcp_destroy(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     销毁 MCP Server

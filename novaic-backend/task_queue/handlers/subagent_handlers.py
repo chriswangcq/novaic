@@ -12,9 +12,10 @@ Topics:
 from typing import Dict, Any
 from . import register_handler
 from ..business import SubAgentBusiness
+from ..topics import TaskTopics
 
 
-@register_handler("subagent.wake")
+@register_handler(TaskTopics.SUBAGENT_WAKE)
 def handle_subagent_wake(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     唤醒 SubAgent
@@ -51,7 +52,7 @@ def handle_subagent_wake(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     return response
 
 
-@register_handler("subagent.set_awake")
+@register_handler(TaskTopics.SUBAGENT_SET_AWAKE)
 def handle_subagent_set_awake(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     设置 SubAgent 为 awake 状态（RuntimeStart Saga 完成后调用）
@@ -92,7 +93,7 @@ def handle_subagent_set_awake(payload: Dict[str, Any], ctx: dict) -> Dict[str, A
     return response
 
 
-@register_handler("subagent.set_sleeping")
+@register_handler(TaskTopics.SUBAGENT_SET_SLEEPING)
 def handle_subagent_set_sleeping(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     设置 SubAgent 为 sleeping 状态

@@ -14,7 +14,6 @@ class ChatRequest(BaseModel):
     message: str = Field(..., description="User message")
     agent_id: Optional[str] = Field(None, description="Target agent ID (uses current agent if not provided)")
     model: Optional[str] = Field(None, description="Model to use")
-    mode: Optional[str] = Field("agent", description="Chat mode: 'agent' or 'chat'")
     
     # API configuration - optional, uses config defaults if not provided
     provider: Optional[str] = Field(None, description="Provider type")
@@ -121,7 +120,6 @@ class WSMessage(BaseModel):
     # For chat messages
     message: Optional[str] = None
     model: Optional[str] = None
-    mode: Optional[str] = None
     api_key_id: Optional[str] = None
 
 

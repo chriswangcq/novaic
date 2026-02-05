@@ -40,6 +40,8 @@ export default defineConfig({
     minify: !process.env.TAURI_DEBUG ? 'esbuild' : false,
     // Produce sourcemaps for debug builds
     sourcemap: !!process.env.TAURI_DEBUG,
+    // 调整 chunk size 警告阈值（桌面应用可以接受较大的 bundle）
+    chunkSizeWarningLimit: 1000,
   },
   
   // 优化依赖处理

@@ -6,7 +6,20 @@
 
 set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DATA_DIR="${NOVAIC_DATA_DIR:-$HOME/Library/Application Support/com.novaic.app}"
+
+# 跨平台数据目录
+if [ -z "$NOVAIC_DATA_DIR" ]; then
+    if [ "$(uname)" = "Darwin" ]; then
+        DATA_DIR="$HOME/Library/Application Support/com.novaic.app"
+    elif [ "$(uname)" = "Linux" ]; then
+        DATA_DIR="$HOME/.local/share/com.novaic.app"
+    else
+        DATA_DIR="$HOME/.novaic"
+    fi
+else
+    DATA_DIR="$NOVAIC_DATA_DIR"
+fi
+
 GATEWAY_URL="${NOVAIC_GATEWAY_URL:-http://127.0.0.1:19999}"
 
 cd "$SCRIPT_DIR"

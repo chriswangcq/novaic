@@ -10,6 +10,7 @@
 import { create } from 'zustand';
 import { api } from '../services';
 import * as setup from '../services/setup';
+import { vmService } from '../services/vm';
 import type { AICAgent, CreateAgentRequest } from '../services/api';
 import { 
   Message, 
@@ -20,22 +21,23 @@ import {
   LayoutSettings,
   AvailableModel,
   ApiKeyInfo,
-  ChatMode,
   ChatSSEMessage,
   MessageStatus,
   SetupProgressInfo,
 } from '../types';
-
-// Layout persistence key
-const LAYOUT_STORAGE_KEY = 'novaic-layout';
-const DEFAULT_LEFT_WIDTH = 400;
-
-// Agent persistence key
-const AGENT_STORAGE_KEY = 'novaic-current-agent-id';
+import { 
+  API_CONFIG, 
+  SSE_CONFIG, 
+  POLL_CONFIG, 
+  VM_CONFIG, 
+  PAGINATION_CONFIG, 
+  STORAGE_KEYS, 
+  LAYOUT_CONFIG 
+} from '../config';
 
 function loadStoredAgentId(): string | null {
   try {
-    return localStorage.getItem(AGENT_STORAGE_KEY);
+    return localStorage.getItem(STORAGE_KEYS.SELECTED_AGENT);
   } catch {
     return null;
   }
@@ -44,9 +46,9 @@ function loadStoredAgentId(): string | null {
 function saveAgentId(agentId: string | null): void {
   try {
     if (agentId) {
-      localStorage.setItem(AGENT_STORAGE_KEY, agentId);
+      localStorage.setItem(STORAGE_KEYS.SELECTED_AGENT, agentId);
     } else {
-      localStorage.removeItem(AGENT_STORAGE_KEY);
+      localStorage.removeItem(STORAGE_KEYS.SELECTED_AGENT);
     }
   } catch {}
 }
@@ -54,24 +56,24 @@ function saveAgentId(agentId: string | null): void {
 // Load layout settings from localStorage
 function loadLayoutSettings(): LayoutSettings {
   try {
-    const saved = localStorage.getItem(LAYOUT_STORAGE_KEY);
+    const saved = localStorage.getItem(STORAGE_KEYS.LAYOUT);
     if (saved) {
       const parsed = JSON.parse(saved) as Partial<LayoutSettings>;
       return {
         mode: parsed.mode || 'normal',
-        leftWidth: parsed.leftWidth || DEFAULT_LEFT_WIDTH,
+        leftWidth: parsed.leftWidth || LAYOUT_CONFIG.DEFAULT_LEFT_WIDTH,
       };
     }
   } catch (e) {
     console.warn('[Store] Failed to load layout settings:', e);
   }
-  return { mode: 'normal', leftWidth: DEFAULT_LEFT_WIDTH };
+  return { mode: 'normal', leftWidth: LAYOUT_CONFIG.DEFAULT_LEFT_WIDTH };
 }
 
 // Save layout settings to localStorage
 function saveLayoutSettings(settings: LayoutSettings): void {
   try {
-    localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify(settings));
+    localStorage.setItem(STORAGE_KEYS.LAYOUT, JSON.stringify(settings));
   } catch (e) {
     console.warn('[Store] Failed to save layout settings:', e);
   }
@@ -96,10 +98,9 @@ interface AppStore extends AppState {
   // Layout actions
   setLayoutMode: (mode: LayoutMode) => void;
   setLeftPanelWidth: (width: number) => void;
-  // Model & Mode actions
+  // Model actions
   setAvailableModels: (models: AvailableModel[]) => void;
   setSelectedModel: (model: string) => Promise<void>;
-  setChatMode: (mode: ChatMode) => void;
   loadModelsFromConfig: () => Promise<void>;
   // Agent actions
   loadAgents: () => Promise<void>;
@@ -122,6 +123,10 @@ interface AppStore extends AppState {
   hasMoreMessages: boolean;
   isLoadingMore: boolean;
   loadMoreMessages: () => Promise<void>;
+  // Log pagination
+  hasMoreLogs: boolean;
+  isLoadingMoreLogs: boolean;
+  loadMoreLogs: () => Promise<void>;
   // Log subagent filtering
   logSubagentId: string | null;
   logSubagents: string[];
@@ -133,32 +138,17 @@ interface AppStore extends AppState {
 // Load initial layout
 const initialLayout = loadLayoutSettings();
 
-// Model selection persistence
-const MODEL_STORAGE_KEY = 'novaic-selected-model';
-const MODE_STORAGE_KEY = 'novaic-chat-mode';
-
 function loadSelectedModel(): string {
   try {
-    return localStorage.getItem(MODEL_STORAGE_KEY) || '';
+    return localStorage.getItem(STORAGE_KEYS.SELECTED_MODEL) || '';
   } catch {
     return '';
   }
 }
 
-function loadChatMode(): ChatMode {
-  try {
-    const saved = localStorage.getItem(MODE_STORAGE_KEY);
-    if (saved === 'agent' || saved === 'chat') return saved;
-  } catch {}
-  return 'agent';
-}
-
 // SSE connections (module level to persist across re-renders)
 let chatEventSource: EventSource | null = null;
 let logsEventSource: EventSource | null = null;
-
-// Gateway base URL
-const GATEWAY_URL = 'http://127.0.0.1:19999';
 
 export const useAppStore = create<AppStore>((set, get) => ({
   // Initial state
@@ -178,7 +168,6 @@ export const useAppStore = create<AppStore>((set, get) => ({
   availableModels: [],
   apiKeys: [],
   selectedModel: loadSelectedModel(),
-  chatMode: loadChatMode(),
   // Agent state
   agents: [],
   currentAgentId: loadStoredAgentId(),  // Initialize from localStorage
@@ -188,6 +177,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
   isLoadingMore: false,
   // Execute log 增量拉取：上次已拉取到的最大 log id（SSE 只推通知，前端据此拉取）
   lastLogId: null as number | null,
+  // Log pagination state
+  hasMoreLogs: true,
+  isLoadingMoreLogs: false,
   // Log subagent filtering
   logSubagentId: null as string | null,
   logSubagents: [] as string[],
@@ -200,8 +192,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
       console.log('[Store] Waiting for Gateway to be ready...');
       
       // Wait for Gateway to be ready (poll health endpoint)
-      const maxAttempts = 30;
-      const delayMs = 1000;
+      const maxAttempts = POLL_CONFIG.GATEWAY_HEALTH_MAX_ATTEMPTS;
+      const delayMs = POLL_CONFIG.GATEWAY_HEALTH_INTERVAL;
       let gatewayReady = false;
       
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -239,7 +231,11 @@ export const useAppStore = create<AppStore>((set, get) => ({
       const { currentAgentId } = get();
       if (currentAgentId) {
         try {
-          const history = await api.getChatHistory({ agent_id: currentAgentId, limit: 50, summary_length: 100 });
+          const history = await api.getChatHistory({ 
+            agent_id: currentAgentId, 
+            limit: PAGINATION_CONFIG.CHAT_HISTORY_LIMIT, 
+            summary_length: PAGINATION_CONFIG.CHAT_SUMMARY_LENGTH 
+          });
           if (history.success && history.messages.length > 0) {
             const messages: Message[] = history.messages.map((msg) => ({
               id: msg.id,
@@ -277,7 +273,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   // Send message (fire-and-forget style, like WeChat/WhatsApp)
   sendMessage: async (content: string) => {
-    const { addMessage, updateMessageStatus, isInitialized, initialize, selectedModel, chatMode, currentAgentId } = get();
+    const { addMessage, updateMessageStatus, isInitialized, initialize, selectedModel, currentAgentId } = get();
     
     if (!isInitialized) {
       await initialize();
@@ -321,7 +317,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     }
     
     // Send via API with timeout (fire-and-forget)
-    const sendTimeout = 30000; // 30s timeout
+    const sendTimeout = API_CONFIG.HTTP_TIMEOUT;
     try {
       const timeoutPromise = new Promise<never>((_, reject) => 
         setTimeout(() => reject(new Error('Send timeout')), sendTimeout)
@@ -331,7 +327,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         api.sendChatMessage(content, {
           agent_id: currentAgentId,
           model: modelId,
-          mode: chatMode || 'agent',
+          mode: 'agent',
           api_key_id: apiKeyId,
         }),
         timeoutPromise,
@@ -431,11 +427,11 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   clearLogs: () => {
-    set({ logs: [], lastLogId: null, logSubagentId: null, logSubagents: [] });
+    set({ logs: [], lastLogId: null, hasMoreLogs: true, logSubagentId: null, logSubagents: [] });
   },
 
   clearMessages: () => {
-    set({ messages: [], logs: [], lastLogId: null, hasMoreMessages: true, logSubagentId: null, logSubagents: [] });
+    set({ messages: [], logs: [], lastLogId: null, hasMoreMessages: true, hasMoreLogs: true, logSubagentId: null, logSubagents: [] });
   },
 
   setExecuting: (executing: boolean) => {
@@ -482,7 +478,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     
     // 保存到 localStorage（作为 fallback）
     try {
-      localStorage.setItem(MODEL_STORAGE_KEY, model);
+      localStorage.setItem(STORAGE_KEYS.SELECTED_MODEL, model);
     } catch {}
     
     // 同步保存到当前 agent（如果有）
@@ -497,13 +493,6 @@ export const useAppStore = create<AppStore>((set, get) => ({
         console.warn('[Store] Failed to save model to agent:', error);
       }
     }
-  },
-
-  setChatMode: (mode: ChatMode) => {
-    set({ chatMode: mode });
-    try {
-      localStorage.setItem(MODE_STORAGE_KEY, mode);
-    } catch {}
   },
 
   loadModelsFromConfig: async () => {
@@ -591,6 +580,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         logs: [],
         lastLogId: null,
         hasMoreMessages: true,
+        hasMoreLogs: true,
         logSubagentId: null,
         logSubagents: [],
       });
@@ -599,7 +589,11 @@ export const useAppStore = create<AppStore>((set, get) => ({
       
       // 2. 先加载聊天历史（再连 SSE，避免 SSE 先推 10 条再被 50 条覆盖导致闪烁）
       try {
-        const history = await api.getChatHistory({ agent_id: agentId, limit: 50, summary_length: 100 });
+        const history = await api.getChatHistory({ 
+          agent_id: agentId, 
+          limit: PAGINATION_CONFIG.CHAT_HISTORY_LIMIT, 
+          summary_length: PAGINATION_CONFIG.CHAT_SUMMARY_LENGTH 
+        });
         if (history.success && history.messages.length > 0) {
           const messages: Message[] = history.messages.map((msg) => ({
             id: msg.id,
@@ -629,7 +623,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
           // 构造 composite ID: api_key_id:model_id
           const compositeId = `${modelConfig.model.api_key_id}:${modelConfig.model_id}`;
           set({ selectedModel: compositeId });
-          localStorage.setItem(MODEL_STORAGE_KEY, compositeId);
+          localStorage.setItem(STORAGE_KEYS.SELECTED_MODEL, compositeId);
           console.log('[Store] Loaded model for agent:', agentId, compositeId);
         }
       } catch (e) {
@@ -740,12 +734,11 @@ export const useAppStore = create<AppStore>((set, get) => ({
       });
 
       // 使用 vmService 启动 VM（通过 Gateway API）
-      const { vmService } = await import('../services/vm');
       const agentIndex = agent.vm.agent_index ?? 0;
       await vmService.start(agentId, agentIndex);
 
       // Wait for VM to boot
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise(resolve => setTimeout(resolve, VM_CONFIG.START_WAIT_DELAY));
 
       // Reload agents to get updated port info
       const { loadAgents } = get();
@@ -793,7 +786,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       chatEventSource.close();
     }
     
-    const sseUrl = `${GATEWAY_URL}/api/chat/messages?agent_id=${targetAgentId}`;
+    const sseUrl = `${API_CONFIG.GATEWAY_URL}/api/chat/messages?agent_id=${targetAgentId}`;
     console.log('[Store] Connecting to Chat SSE:', sseUrl);
     chatEventSource = new EventSource(sseUrl);
     
@@ -909,13 +902,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
         if (get().isInitialized && get().currentAgentId) {
           get().connectChatSSE(get().currentAgentId!);
         }
-      }, 3000);
+      }, SSE_CONFIG.RECONNECT_DELAY);
     };
   },
 
-  // SSE Connection: Execution logs（SSE 只推「有更新」通知，前端再拉取内容）
+  // SSE Connection: Execution logs（SSE 推送历史日志 + 更新通知）
   connectLogsSSE: (agentId?: string) => {
-    const { currentAgentId, logSubagentId, fetchLogSubagents } = get();
+    const { currentAgentId, fetchLogSubagents } = get();
     const targetAgentId = agentId || currentAgentId;
     if (!targetAgentId) {
       console.log('[Store] No agent selected, skipping Logs SSE connection');
@@ -923,15 +916,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
     }
     if (logsEventSource) logsEventSource.close();
 
-    const MAX_LOGS = 500;
+    const MAX_LOGS = PAGINATION_CONFIG.MAX_LOGS_IN_MEMORY;
     
     // 重新拉取最新日志并合并（处理 upsert 更新的情况）
-    // 不再使用 after_id 增量拉取，因为 upsert 更新不会改变 id
-    const fetchAndMergeLogs = async (subagentId: string | null, isInitial: boolean = false) => {
+    const fetchAndMergeLogs = async (subagentId: string | null) => {
       try {
         const res = await api.getLogEntries(targetAgentId, {
-          // 每次拉取最新的日志，不使用 after_id
-          limit: isInitial ? 50 : 100,
+          limit: PAGINATION_CONFIG.LOG_ENTRIES_INCREMENTAL,
           subagent_id: subagentId ?? undefined,
         });
         if (!res.success || !res.entries.length) return;
@@ -953,11 +944,6 @@ export const useAppStore = create<AppStore>((set, get) => ({
         const newMaxId = Math.max(...res.entries.map((e) => e.id));
         
         set((state) => {
-          if (isInitial) {
-            // 初始加载：直接使用新数据
-            return { logs: newEntries, lastLogId: newMaxId };
-          }
-          
           // 增量更新：根据 id 合并日志（新日志覆盖旧日志）
           const existingMap = new Map(state.logs.map(log => [log.id, log]));
           
@@ -983,22 +969,62 @@ export const useAppStore = create<AppStore>((set, get) => ({
       }
     };
 
-    (async () => {
-      set({ logs: [], lastLogId: null });
-      await fetchAndMergeLogs(logSubagentId, true);
-      // Also fetch available subagents
-      await fetchLogSubagents(targetAgentId);
-    })();
+    // 清空现有日志，等待 SSE 推送历史数据
+    set({ logs: [], lastLogId: null, hasMoreLogs: true });
+    // 预先获取 subagent 列表
+    fetchLogSubagents(targetAgentId);
 
-    const sseUrl = `${GATEWAY_URL}/api/logs/stream?agent_id=${targetAgentId}`;
-    console.log('[Store] Connecting to Logs SSE (notify-only):', sseUrl);
+    const sseUrl = `${API_CONFIG.GATEWAY_URL}/api/logs/stream?agent_id=${targetAgentId}`;
+    console.log('[Store] Connecting to Logs SSE (with history push):', sseUrl);
     logsEventSource = new EventSource(sseUrl);
+    
     logsEventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        
+        // 处理历史日志推送（SSE 连接时推送）
+        if (data?.event === 'log_entry' && data.agent_id === targetAgentId && data.entry) {
+          const e = data.entry;
+          const { logSubagentId } = get();
+          
+          // 如果有 subagent 过滤，检查是否匹配
+          if (logSubagentId !== null && e.subagent_id !== logSubagentId) {
+            return; // 不匹配过滤条件，跳过
+          }
+          
+          const logEntry: LogEntry = {
+            id: e.id,
+            type: e.type as LogEntry['type'],
+            timestamp: e.timestamp,
+            data: (e.data || {}) as LogData,
+            subagent_id: e.subagent_id,
+            status: e.status,
+            kind: e.kind,
+            event_key: e.event_key,
+            input: e.input,
+            result: e.result,
+            updated_at: e.updated_at,
+          };
+          
+          set((state) => {
+            // 按 id 去重合并
+            const existingMap = new Map(state.logs.map(log => [log.id, log]));
+            existingMap.set(logEntry.id, logEntry);
+            
+            let merged = Array.from(existingMap.values()).sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
+            if (merged.length > MAX_LOGS) {
+              merged = merged.slice(-MAX_LOGS);
+            }
+            
+            const newMaxId = Math.max(state.lastLogId ?? 0, logEntry.id ?? 0);
+            return { logs: merged, lastLogId: newMaxId };
+          });
+        }
+        
+        // 处理更新通知（新日志产生时推送）
         if (data?.event === 'logs_updated' && data.agent_id === targetAgentId) {
           const { logSubagentId } = get();
-          fetchAndMergeLogs(logSubagentId, false);
+          fetchAndMergeLogs(logSubagentId);
           // Refresh subagent list as well
           fetchLogSubagents(targetAgentId);
         }
@@ -1006,19 +1032,20 @@ export const useAppStore = create<AppStore>((set, get) => ({
         console.error('[Store] Failed to parse Log SSE message:', e);
       }
     };
+    
     logsEventSource.onerror = () => {
       setTimeout(() => {
         if (get().isInitialized && get().currentAgentId) {
           get().connectLogsSSE(get().currentAgentId!);
         }
-      }, 3000);
+      }, SSE_CONFIG.RECONNECT_DELAY);
     };
   },
 
   // Set log subagent filter and refetch logs
   setLogSubagentId: (id: string | null) => {
     const { currentAgentId } = get();
-    set({ logSubagentId: id, logs: [], lastLogId: null });
+    set({ logSubagentId: id, logs: [], lastLogId: null, hasMoreLogs: true });
     
     if (!currentAgentId) return;
     
@@ -1026,7 +1053,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     (async () => {
       try {
         const res = await api.getLogEntries(currentAgentId, {
-          limit: 50,
+          limit: PAGINATION_CONFIG.LOG_ENTRIES_LIMIT,
           subagent_id: id ?? undefined,
         });
         if (res.success && res.entries.length) {
@@ -1044,8 +1071,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
             updated_at: e.updated_at,
           }));
           const newMaxId = Math.max(...res.entries.map((e) => e.id));
-          set({ logs: entries, lastLogId: newMaxId });
-          console.log(`[Store] Loaded ${entries.length} logs for subagent filter: ${id || 'all'}`);
+          set({ logs: entries, lastLogId: newMaxId, hasMoreLogs: res.has_more });
+          console.log(`[Store] Loaded ${entries.length} logs for subagent filter: ${id || 'all'}, has_more: ${res.has_more}`);
+        } else {
+          set({ hasMoreLogs: false });
         }
       } catch (e) {
         console.error('[Store] Failed to fetch logs for subagent:', e);
@@ -1101,9 +1130,9 @@ export const useAppStore = create<AppStore>((set, get) => ({
       
       const history = await api.getChatHistory({
         agent_id: currentAgentId,
-        limit: 20,
+        limit: PAGINATION_CONFIG.CHAT_HISTORY_PAGE_SIZE,
         before_id: oldestMessage.id,
-        summary_length: 100,
+        summary_length: PAGINATION_CONFIG.CHAT_SUMMARY_LENGTH,
       });
       
       if (history.success && history.messages.length > 0) {
@@ -1133,6 +1162,66 @@ export const useAppStore = create<AppStore>((set, get) => ({
     } catch (e) {
       console.error('[Store] Failed to load more messages:', e);
       set({ isLoadingMore: false });
+    }
+  },
+
+  // Load more logs (pagination - load older logs)
+  loadMoreLogs: async () => {
+    const { logs, isLoadingMoreLogs, hasMoreLogs, currentAgentId, logSubagentId } = get();
+    
+    // Skip if already loading or no more logs
+    if (isLoadingMoreLogs || !hasMoreLogs || logs.length === 0) {
+      return;
+    }
+    
+    // Skip if no agent selected
+    if (!currentAgentId) {
+      console.warn('[Store] No agent selected, cannot load more logs');
+      return;
+    }
+    
+    set({ isLoadingMoreLogs: true });
+    
+    try {
+      // Get the oldest log to use as pagination cursor
+      const oldestLog = logs[0];
+      
+      const res = await api.getLogEntries(currentAgentId, {
+        limit: PAGINATION_CONFIG.LOG_ENTRIES_LIMIT,
+        before_id: oldestLog.id ?? undefined,
+        subagent_id: logSubagentId ?? undefined,
+      });
+      
+      if (res.success && res.entries.length > 0) {
+        // Convert API entries to LogEntry format
+        const olderLogs: LogEntry[] = res.entries.map((e) => ({
+          id: e.id,
+          type: e.type as LogEntry['type'],
+          timestamp: e.timestamp,
+          data: (e.data || {}) as LogData,
+          subagent_id: e.subagent_id,
+          status: e.status,
+          kind: e.kind,
+          event_key: e.event_key,
+          input: e.input,
+          result: e.result,
+          updated_at: e.updated_at,
+        }));
+        
+        // Prepend older logs to the list
+        set((state) => ({
+          logs: [...olderLogs, ...state.logs],
+          hasMoreLogs: res.has_more,
+          isLoadingMoreLogs: false,
+        }));
+        
+        console.log(`[Store] Loaded ${olderLogs.length} older logs, has_more: ${res.has_more}`);
+      } else {
+        set({ hasMoreLogs: false, isLoadingMoreLogs: false });
+      }
+    } catch (e) {
+      console.error('[Store] Failed to load more logs:', e);
+      set({ isLoadingMoreLogs: false });
     }
   },
 }));

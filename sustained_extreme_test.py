@@ -16,9 +16,11 @@ import sys
 import sqlite3
 from datetime import datetime
 from collections import defaultdict
+from pathlib import Path
 
 BASE_URL = "http://127.0.0.1:19999"
-DB_PATH = "/Users/wangchaoqun/.novaic/novaic.db"
+# 跨平台数据库路径
+DB_PATH = str(Path.home() / ".novaic" / "novaic.db")
 
 
 class SustainedTester:

@@ -9,6 +9,7 @@ import { ChevronDown, Plus, Trash2, Monitor, Loader2 } from 'lucide-react';
 import { useAppStore } from '../../store';
 import type { AICAgent } from '../../services/api';
 import { vmService, VmStatus } from '../../services/vm';
+import { POLL_CONFIG } from '../../config';
 
 interface AgentSelectorProps {
   onCreateNew: () => void;
@@ -45,7 +46,7 @@ export function AgentSelector({ onCreateNew }: AgentSelectorProps) {
 
   useEffect(() => {
     refreshVmStatus();
-    const interval = setInterval(refreshVmStatus, 5000);
+    const interval = setInterval(refreshVmStatus, POLL_CONFIG.VM_STATUS_NORMAL_INTERVAL);
     return () => clearInterval(interval);
   }, [refreshVmStatus]);
 
@@ -98,7 +99,7 @@ export function AgentSelector({ onCreateNew }: AgentSelectorProps) {
         console.log('[AgentSelector] Stopping VM before delete');
         try {
           await vmService.stop(agentId);
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise(resolve => setTimeout(resolve, POLL_CONFIG.GATEWAY_HEALTH_INTERVAL));
         } catch (e) {
           console.warn('[AgentSelector] Failed to stop VM, continuing with delete:', e);
         }
@@ -119,7 +120,7 @@ export function AgentSelector({ onCreateNew }: AgentSelectorProps) {
       if (agent.setup_progress) {
         return agent.setup_progress.error ? 'bg-red-500' : 'bg-yellow-500';
       }
-      return 'bg-blue-500';
+      return 'bg-white/40';
     }
     // Setup complete - check VM status
     if (vmStatus?.agent_id === agent.id && vmStatus?.running) {

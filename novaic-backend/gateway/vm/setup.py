@@ -38,7 +38,16 @@ class VmSetup:
     """
     
     def __init__(self, data_dir: Optional[str] = None):
-        self.data_dir = Path(data_dir or os.environ.get("NOVAIC_DATA_DIR", "/tmp/novaic"))
+        import tempfile
+        
+        # 跨平台临时目录
+        if data_dir:
+            self.data_dir = Path(data_dir)
+        elif "NOVAIC_DATA_DIR" in os.environ:
+            self.data_dir = Path(os.environ["NOVAIC_DATA_DIR"])
+        else:
+            self.data_dir = Path(tempfile.gettempdir()) / "novaic"
+        
         self.arch = platform.machine()  # 'arm64' or 'x86_64'
         self.is_arm = self.arch in ("arm64", "aarch64")
         self.is_macos = platform.system() == "Darwin"

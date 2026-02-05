@@ -9,6 +9,7 @@ Runtime Business - Runtime 生命周期管理
 """
 
 from dataclasses import dataclass
+from common.enums import RuntimeStatus
 from ..constants import PHASE_NEED_THINK
 from typing import Dict, Any, List, Optional
 
@@ -67,6 +68,7 @@ class RuntimeBusiness:
         subagent_id: str,
         *,
         idempotency_key: Optional[str] = None,
+        initial_context: Optional[List[Dict[str, Any]]] = None,
     ) -> RuntimeCreateResult:
         """
         创建 Runtime 记录
@@ -77,6 +79,7 @@ class RuntimeBusiness:
             agent_id: Agent ID
             subagent_id: SubAgent ID
             idempotency_key: 幂等键
+            initial_context: 可选的初始 context（历史摘要等）
             
         Returns:
             RuntimeCreateResult
@@ -84,7 +87,7 @@ class RuntimeBusiness:
         # 幂等检查：只复用 active 状态的 runtime
         if idempotency_key:
             existing = self.client.get_subagent_runtime(agent_id, subagent_id)
-            if existing and existing.get("status") == "active":
+            if existing and existing.get("status") == RuntimeStatus.ACTIVE.value:
                 return RuntimeCreateResult(
                     success=True,
                     runtime_id=existing["runtime_id"],
@@ -94,13 +97,13 @@ class RuntimeBusiness:
                     phase=existing.get("phase", ""),
                 )
 
-        # 创建空 runtime，所有消息由 context.read 统一读取
-        runtime = self.client.create_runtime(agent_id, subagent_id, [])
+        # 创建 runtime，传入 initial_context（可能包含历史摘要）
+        runtime = self.client.create_runtime(agent_id, subagent_id, initial_context or [])
         return RuntimeCreateResult(
             success=True,
             runtime_id=runtime.get("runtime_id", ""),
             created=True,
-            status=runtime.get("status", "active"),
+            status=runtime.get("status", RuntimeStatus.ACTIVE.value),
             phase=runtime.get("phase", PHASE_NEED_THINK),
         )
     

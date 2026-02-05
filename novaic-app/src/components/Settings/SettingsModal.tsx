@@ -80,7 +80,10 @@ const PROVIDER_INFO: Record<ProviderType, {
 function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void | Promise<void>; disabled?: boolean }) {
   const [loading, setLoading] = useState(false);
   
-  const handleClick = async () => {
+  const handleClick = async (e: React.MouseEvent) => {
+    // Prevent event from bubbling up to parent elements
+    e.stopPropagation();
+    
     if (disabled || loading) return;
     
     const result = onChange(!checked);
@@ -405,7 +408,10 @@ function ModelItem({
       
       {model.is_custom && onDelete && (
         <button
-          onClick={() => onDelete(model.id, model.api_key_id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(model.id, model.api_key_id);
+          }}
           className="text-[10px] text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
         >
           Delete

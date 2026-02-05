@@ -13,6 +13,7 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 from common.db.database import Database
+from common.config import ServiceConfig
 
 
 # Message types that should not be persisted to database
@@ -75,8 +76,8 @@ class ChatRepository:
                 )
             )
         
-        # Cleanup old messages (keep last 200 per agent)
-        self.cleanup_messages(agent_id, 200)
+        # Cleanup old messages (keep last N per agent)
+        self.cleanup_messages(agent_id, ServiceConfig.CLEANUP_KEEP_MESSAGES)
         
         return self.get_message(id)
     
@@ -95,7 +96,7 @@ class ChatRepository:
         agent_id: str,
         read: Optional[bool] = None,
         type_filter: Optional[List[str]] = None,
-        limit: int = 100,
+        limit: int = None,
         before_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
@@ -111,6 +112,9 @@ class ChatRepository:
         Returns:
             List of messages in chronological order
         """
+        if limit is None:
+            limit = ServiceConfig.MAX_MESSAGES_PER_PAGE
+        
         query = "SELECT * FROM chat_messages WHERE agent_id = ?"
         params: List[Any] = [agent_id]
         
@@ -162,7 +166,7 @@ class ChatRepository:
             agent_id=agent_id,
             read=False,
             type_filter=type_filter,
-            limit=100,
+            limit=ServiceConfig.MAX_MESSAGES_PER_PAGE,
         )
     
     def mark_as_read(self, message_id: str) -> bool:
@@ -196,8 +200,10 @@ class ChatRepository:
             )
             return cursor.rowcount
     
-    def cleanup_messages(self, agent_id: str, keep_count: int = 200):
+    def cleanup_messages(self, agent_id: str, keep_count: int = None):
         """Delete old messages for an agent, keeping the most recent ones."""
+        if keep_count is None:
+            keep_count = ServiceConfig.CLEANUP_KEEP_MESSAGES
         with self.db.transaction("agent", resource_id=agent_id):
             self.db.execute(
                 """DELETE FROM chat_messages 
@@ -543,8 +549,8 @@ class ChatRepository:
             )
             row_id = cursor.lastrowid
         
-        # Cleanup old logs (keep last 500 per agent)
-        self.cleanup_execution_logs(agent_id, 500)
+        # Cleanup old logs (keep last N per agent)
+        self.cleanup_execution_logs(agent_id, ServiceConfig.CLEANUP_KEEP_EXECUTION_LOGS)
         
         return row_id
     
@@ -623,7 +629,8 @@ class ChatRepository:
         agent_id: str,
         subagent_id: Optional[str] = None,
         after_id: Optional[int] = None,
-        limit: int = 100,
+        before_id: Optional[int] = None,
+        limit: int = None,
     ) -> List[Dict[str, Any]]:
         """
         Get execution logs with optional filters.
@@ -632,11 +639,15 @@ class ChatRepository:
             agent_id: Agent ID
             subagent_id: Optional SubAgent ID filter
             after_id: Optional ID to fetch logs after (for incremental fetch)
+            before_id: Optional ID to fetch logs before (for pagination)
             limit: Maximum number of logs to return
         
         Returns:
             List of execution logs with all fields
         """
+        if limit is None:
+            limit = ServiceConfig.MAX_EXECUTION_LOGS_PER_PAGE
+        
         query = "SELECT * FROM execution_logs WHERE agent_id = ?"
         params: List[Any] = [agent_id]
         
@@ -648,10 +659,23 @@ class ChatRepository:
             query += " AND id > ?"
             params.append(after_id)
         
-        query += " ORDER BY id ASC LIMIT ?"
+        if before_id is not None:
+            query += " AND id < ?"
+            params.append(before_id)
+        
+        # For before_id (pagination), order DESC then reverse; for after_id, order ASC
+        if before_id is not None:
+            query += " ORDER BY id DESC LIMIT ?"
+        else:
+            query += " ORDER BY id ASC LIMIT ?"
         params.append(limit)
         
         rows = self.db.fetchall(query, tuple(params))
+        
+        # Reverse if using before_id to return in chronological order (oldest to newest)
+        if before_id is not None:
+            rows = list(reversed(rows))
+        
         return [self._row_to_execution_log(row) for row in rows]
     
     def get_log_subagents(self, agent_id: str) -> List[str]:
@@ -670,8 +694,10 @@ class ChatRepository:
         )
         return [row["subagent_id"] for row in rows]
     
-    def cleanup_execution_logs(self, agent_id: str, keep_count: int = 500):
+    def cleanup_execution_logs(self, agent_id: str, keep_count: int = None):
         """Delete old execution logs for an agent."""
+        if keep_count is None:
+            keep_count = ServiceConfig.CLEANUP_KEEP_EXECUTION_LOGS
         with self.db.transaction("agent", resource_id=agent_id):
             self.db.execute(
                 """DELETE FROM execution_logs 

@@ -95,9 +95,14 @@ def check_system_status():
         client.close()
 
 
-def analyze_database_locks(db_path="/Users/wangchaoqun/.novaic/novaic.db"):
+def analyze_database_locks(db_path=None):
     """分析数据库锁的使用情况"""
     import sqlite3
+    from pathlib import Path
+    
+    # 跨平台数据库路径
+    if db_path is None:
+        db_path = str(Path.home() / ".novaic" / "novaic.db")
     
     try:
         conn = sqlite3.connect(db_path)

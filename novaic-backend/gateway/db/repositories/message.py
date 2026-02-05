@@ -14,6 +14,8 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any, Tuple
 from uuid import uuid4
 
+from common.config import ServiceConfig
+
 
 class MessageRepository:
     """
@@ -320,3 +322,88 @@ class MessageRepository:
             "metadata": json.loads(row["metadata"] or "{}"),
             "timestamp": row["timestamp"],
         }
+    
+    def claim_by_id(self, message_id: str) -> bool:
+        """
+        按 ID 认领消息（CAS 操作）
+        
+        原子操作：sending → sent
+        
+        Args:
+            message_id: 消息 ID
+        
+        Returns:
+            True 如果认领成功，False 如果消息不存在或已被认领
+        """
+        with self.db.transaction("message", resource_id=message_id, timeout=ServiceConfig.DB_TRANSACTION_TIMEOUT):
+            cursor = self.db.execute(
+                """UPDATE chat_messages
+                   SET status = 'sent'
+                   WHERE id = ? AND status = 'sending'""",
+                (message_id,)
+            )
+        
+        return cursor.rowcount > 0
+    
+    def batch_mark_read(
+        self,
+        message_ids: List[str],
+        agent_id: Optional[str] = None,
+    ) -> int:
+        """
+        批量标记消息为已读
+        
+        Args:
+            message_ids: 消息 ID 列表
+            agent_id: 可选的 Agent ID（用于确定锁范围，如果不提供则使用全局锁）
+        
+        Returns:
+            更新的消息数量
+        """
+        if not message_ids:
+            return 0
+        
+        placeholders = ",".join(["?"] * len(message_ids))
+        
+        # 批量更新使用全局锁以保证原子性
+        with self.db.transaction("global", timeout=ServiceConfig.DB_TRANSACTION_TIMEOUT_LONG):
+            cursor = self.db.execute(
+                f"UPDATE chat_messages SET read = 1 WHERE id IN ({placeholders})",
+                tuple(message_ids)
+            )
+        
+        return cursor.rowcount
+    
+    def get_unread_user_message_count(self, agent_id: str) -> int:
+        """
+        统计未读用户消息数量
+        
+        Args:
+            agent_id: Agent ID
+        
+        Returns:
+            未读 USER_MESSAGE 类型消息的数量
+        """
+        result = self.db.fetchone(
+            """SELECT COUNT(*) as count FROM chat_messages 
+               WHERE agent_id = ? AND read = 0 AND type = 'USER_MESSAGE'""",
+            (agent_id,)
+        )
+        return result["count"] if result else 0
+    
+    def get_pending_count(self, agent_id: str) -> int:
+        """
+        统计待处理消息数量（已发送但未读的用户消息）
+        
+        Args:
+            agent_id: Agent ID
+        
+        Returns:
+            待处理消息数量
+        """
+        result = self.db.fetchone(
+            """SELECT COUNT(*) as count FROM chat_messages
+               WHERE agent_id = ? AND type = 'USER_MESSAGE' AND status = 'sent' AND read = 0""",
+            (agent_id,)
+        )
+        return result["count"] if result else 0

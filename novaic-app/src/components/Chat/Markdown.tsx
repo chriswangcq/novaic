@@ -7,6 +7,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
+import { UI_CONFIG } from '../../config';
 
 interface MarkdownProps {
   content: string;
@@ -22,7 +23,7 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
   const handleCopy = async () => {
     await navigator.clipboard.writeText(code);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(false), UI_CONFIG.COPY_FEEDBACK_DELAY);
   };
 
   return (

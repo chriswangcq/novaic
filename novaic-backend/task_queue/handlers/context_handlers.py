@@ -12,9 +12,10 @@ Topics:
 from typing import Dict, Any
 from . import register_handler
 from ..business import MessageBusiness
+from ..topics import TaskTopics
 
 
-@register_handler("context.read")
+@register_handler(TaskTopics.CONTEXT_READ)
 def handle_context_read(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     读取最新 runtime context（用于 ReactThink）
@@ -84,7 +85,7 @@ def handle_context_read(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     }
 
 
-@register_handler("context.append")
+@register_handler(TaskTopics.CONTEXT_APPEND)
 def handle_context_append(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     追加消息到 runtime context
@@ -123,7 +124,7 @@ def handle_context_append(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     return response
 
 
-@register_handler("context.get")
+@register_handler(TaskTopics.CONTEXT_GET)
 def handle_context_get(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     获取 runtime context

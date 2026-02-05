@@ -390,7 +390,11 @@ def mock_fastapi_app():
 @pytest.fixture(autouse=True)
 def test_environment(monkeypatch):
     """Set up test environment variables."""
-    monkeypatch.setenv("NOVAIC_DATA_DIR", "/tmp/novaic-test")
+    import tempfile
+    import os
+    # 跨平台测试数据目录
+    test_data_dir = os.path.join(tempfile.gettempdir(), "novaic-test")
+    monkeypatch.setenv("NOVAIC_DATA_DIR", test_data_dir)
     monkeypatch.setenv("NOVAIC_DEBUG", "true")
 
 

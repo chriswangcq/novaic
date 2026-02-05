@@ -51,7 +51,7 @@ class AppErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryS
               this.setState({ hasError: false, error: undefined, errorInfo: undefined });
               window.location.reload();
             }}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-white/15 hover:bg-white/20 rounded-lg transition-colors"
           >
             <RefreshCw size={16} />
             Reload App
@@ -224,7 +224,7 @@ function App() {
   if (!isInitialized || isLoadingAgents) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-nb-bg">
-        <Loader2 size={32} className="animate-spin text-blue-500 mb-4" />
+        <Loader2 size={32} className="animate-spin text-white/60 mb-4" />
         <p className="text-nb-text-secondary">
           {!isInitialized ? 'Connecting to services...' : 'Loading...'}
         </p>
@@ -262,20 +262,23 @@ function App() {
       {/* Header with Menu Button */}
       <Header 
         onOpenSettings={() => setSettingsOpen(true)} 
-        onToggleDrawer={() => setDrawerOpen(true)}
+        onToggleDrawer={() => setDrawerOpen(!drawerOpen)}
+        isDrawerOpen={drawerOpen}
         onAgentCreated={handleAgentCreated}
       />
       
-      {/* Agent Drawer */}
-      <AgentDrawer
-        isOpen={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        onSelectAgent={handleSelectAgent}
-        onCreateNew={() => setCreateAgentModalOpen(true)}
-      />
+      {/* Main Container with Agent Drawer */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Agent Drawer - 挤占式侧边栏 */}
+        <AgentDrawer
+          isOpen={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          onSelectAgent={handleSelectAgent}
+          onCreateNew={() => setCreateAgentModalOpen(true)}
+        />
 
-      {/* Main Content */}
-      <main className="flex-1 flex overflow-hidden relative">
+        {/* Main Content */}
+        <main className="flex-1 flex overflow-hidden relative">
         {/* Full mode: only VM */}
         {layoutMode === 'full' && (
           <div className="flex-1 flex flex-col overflow-hidden">
@@ -326,6 +329,7 @@ function App() {
           </>
         )}
       </main>
+      </div>
 
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       

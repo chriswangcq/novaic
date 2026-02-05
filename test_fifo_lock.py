@@ -12,10 +12,15 @@
 import threading
 import time
 from collections import deque
-
-# 导入锁实现
 import sys
-sys.path.insert(0, "/Users/wangchaoqun/novaic/novaic-backend")
+import os
+
+# 跨平台路径处理
+BACKEND_DIR = os.path.join(os.path.dirname(__file__), 'novaic-backend')
+if not os.path.exists(BACKEND_DIR):
+    # 如果在 backend 目录内，使用当前目录
+    BACKEND_DIR = os.path.dirname(__file__)
+sys.path.insert(0, BACKEND_DIR)
 
 from gateway.db.locks import FIFOLock, ShardedFIFOLock, DatabaseLockManager
 

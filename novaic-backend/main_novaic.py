@@ -32,6 +32,9 @@ import os
 os.environ['no_proxy'] = 'localhost,127.0.0.1,::1'
 os.environ['NO_PROXY'] = 'localhost,127.0.0.1,::1'
 
+# Import unified configuration
+from common.config import ServiceConfig
+
 
 def print_usage():
     print("""
@@ -94,7 +97,7 @@ def run_gateway():
     import argparse
     
     parser = argparse.ArgumentParser(description="NovAIC Gateway Server")
-    parser.add_argument("--port", type=int, default=19999, help="Port to listen on")
+    parser.add_argument("--port", type=int, default=ServiceConfig.GATEWAY_PORT, help="Port to listen on")
     parser.add_argument("--data-dir", help="Data directory (overrides NOVAIC_DATA_DIR)")
     args = parser.parse_args()
     
@@ -125,9 +128,9 @@ def run_tools_server():
     import argparse
     
     parser = argparse.ArgumentParser(description="NovAIC Tools Server")
-    parser.add_argument("--port", type=int, default=19998, help="Port for Tools Server (default: 19998)")
+    parser.add_argument("--port", type=int, default=ServiceConfig.TOOLS_SERVER_PORT, help=f"Port for Tools Server (default: {ServiceConfig.TOOLS_SERVER_PORT})")
     parser.add_argument("--data-dir", help="Data directory (overrides NOVAIC_DATA_DIR)")
-    parser.add_argument("--gateway-url", help="Gateway URL (default: http://127.0.0.1:19999)")
+    parser.add_argument("--gateway-url", help=f"Gateway URL (default: {ServiceConfig.GATEWAY_URL})")
     args = parser.parse_args()
     
     if args.data_dir:
@@ -140,7 +143,7 @@ def run_tools_server():
     if args.gateway_url:
         os.environ["GATEWAY_URL"] = args.gateway_url
     elif not os.environ.get("GATEWAY_URL"):
-        os.environ["GATEWAY_URL"] = "http://127.0.0.1:19999"
+        os.environ["GATEWAY_URL"] = ServiceConfig.GATEWAY_URL
     
     from main_tools import app
     import uvicorn
@@ -152,7 +155,7 @@ def run_queue_service():
     import argparse
     
     parser = argparse.ArgumentParser(description="NovAIC Queue Service")
-    parser.add_argument("--port", type=int, default=19997, help="Port for Queue Service (default: 19997)")
+    parser.add_argument("--port", type=int, default=ServiceConfig.QUEUE_SERVICE_PORT, help=f"Port for Queue Service (default: {ServiceConfig.QUEUE_SERVICE_PORT})")
     parser.add_argument("--data-dir", help="Data directory (overrides NOVAIC_DATA_DIR)")
     args = parser.parse_args()
     
@@ -176,8 +179,8 @@ def run_watchdog():
     import asyncio
     
     parser = argparse.ArgumentParser(description="NovAIC Watchdog Service")
-    parser.add_argument("--gateway-url", default="http://127.0.0.1:19999", help="Gateway URL")
-    parser.add_argument("--queue-service-url", default="http://127.0.0.1:19997", help="Queue Service URL")
+    parser.add_argument("--gateway-url", default=ServiceConfig.GATEWAY_URL, help="Gateway URL")
+    parser.add_argument("--queue-service-url", default=ServiceConfig.QUEUE_SERVICE_URL, help="Queue Service URL")
     args = parser.parse_args()
     
     from task_queue.workers.watchdog import Watchdog
@@ -186,7 +189,7 @@ def run_watchdog():
         worker = Watchdog(
             gateway_url=args.gateway_url,
             queue_service_url=args.queue_service_url,
-            poll_interval=0.1,
+            poll_interval=ServiceConfig.POLL_INTERVAL,
         )
         
         import signal
@@ -215,26 +218,17 @@ def run_task_worker():
     import signal
     
     parser = argparse.ArgumentParser(description="NovAIC Task Worker Service")
-    parser.add_argument("--gateway-url", default="http://127.0.0.1:19999", help="Gateway URL")
-    parser.add_argument("--queue-service-url", default="http://127.0.0.1:19997", help="Queue Service URL")
-    parser.add_argument("--num-workers", type=int, default=5, help="Number of worker threads (reserved)")
+    parser.add_argument("--gateway-url", default=ServiceConfig.GATEWAY_URL, help="Gateway URL")
+    parser.add_argument("--queue-service-url", default=ServiceConfig.QUEUE_SERVICE_URL, help="Queue Service URL")
+    parser.add_argument("--num-workers", type=int, default=ServiceConfig.NUM_WORKERS, help="Number of worker threads (reserved)")
     args = parser.parse_args()
     
     from task_queue.workers.task_worker_sync import TaskWorkerSync
+    from task_queue.handlers import get_all_topics
     
-    # 默认处理的 topics
-    topics = [
-        "subagent.wake", "subagent.set_awake", "subagent.set_sleeping",
-        "runtime.create", "runtime.update_phase", "runtime.set_status",
-        "runtime.increment_round", "runtime.set_summarized", "runtime.set_need_rest",
-        "runtime.check_new_messages",
-        "mcp.create", "mcp.destroy",
-        "llm.call", "llm.call_summary",
-        "tool.execute",
-        "context.append", "context.get", "context.read",
-        "message.claim", "message.route", "message.process",
-        "saga.trigger",
-    ]
+    # 自动从 handlers 注册表获取所有 topics
+    topics = get_all_topics()
+    print(f"[task-worker] Subscribed to {len(topics)} topics: {sorted(topics)}")
     
     worker = TaskWorkerSync(
         topics=topics,
@@ -273,7 +267,7 @@ def run_health():
     import signal
     
     parser = argparse.ArgumentParser(description="NovAIC Health Worker Service")
-    parser.add_argument("--queue-service-url", default="http://127.0.0.1:19997", help="Queue Service URL")
+    parser.add_argument("--queue-service-url", default=ServiceConfig.QUEUE_SERVICE_URL, help="Queue Service URL")
     args = parser.parse_args()
     
     from task_queue.workers.health_worker_sync import HealthWorkerSync
@@ -281,8 +275,8 @@ def run_health():
     worker = HealthWorkerSync(
         queue_service_url=args.queue_service_url,
         check_interval=30.0,
-        task_timeout=60,
-        saga_timeout=120,
+        task_timeout=ServiceConfig.TASK_TIMEOUT,
+        saga_timeout=ServiceConfig.SAGA_TIMEOUT,
     )
     
     def shutdown_handler(signum, frame):
@@ -307,6 +301,16 @@ def main():
     else:
         script_dir = os.path.dirname(os.path.abspath(__file__))
         sys.path.insert(0, script_dir)
+    
+    # Validate configuration
+    try:
+        ServiceConfig.validate()
+        print(f"[Config] Gateway: {ServiceConfig.GATEWAY_URL}")
+        print(f"[Config] Queue Service: {ServiceConfig.QUEUE_SERVICE_URL}")
+        print(f"[Config] Tools Server: {ServiceConfig.TOOLS_SERVER_URL}")
+    except ValueError as e:
+        print(f"[Config] Configuration error: {e}")
+        sys.exit(1)
     
     # Parse mode
     if len(sys.argv) < 2:

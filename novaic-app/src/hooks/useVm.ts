@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { vmService, VmStatus } from '../services/vm';
 import { useAppStore } from '../store';
+import { POLL_CONFIG, VM_CONFIG, DEFAULT_PORTS } from '../config';
 
 interface UseVmReturn {
   status: VmStatus | null;
@@ -20,18 +21,18 @@ const DEFAULT_STATUS: VmStatus = {
   mcp_healthy: false,
   websockify_running: false,
   ports: {
-    vm: 20000,
-    session: 20001,
-    local: 20002,
-    memory: 20003,
-    chat: 20004,
-    qemudebug: 20005,
-    vnc: 20006,
-    websocket: 20007,
-    ssh: 20008,
+    vm: DEFAULT_PORTS.VM,
+    session: DEFAULT_PORTS.SESSION,
+    local: DEFAULT_PORTS.LOCAL,
+    memory: DEFAULT_PORTS.MEMORY,
+    chat: DEFAULT_PORTS.CHAT,
+    qemudebug: DEFAULT_PORTS.QEMUDEBUG,
+    vnc: DEFAULT_PORTS.VNC,
+    websocket: DEFAULT_PORTS.WEBSOCKET,
+    ssh: DEFAULT_PORTS.SSH,
   },
-  vnc_url: 'ws://localhost:20007/websockify',
-  mcp_url: 'http://127.0.0.1:20000/mcp',
+  vnc_url: `ws://localhost:${DEFAULT_PORTS.WEBSOCKET}/websockify`,
+  mcp_url: `http://127.0.0.1:${DEFAULT_PORTS.VM}/mcp`,
 };
 
 export function useVm(): UseVmReturn {
@@ -79,7 +80,11 @@ export function useVm(): UseVmReturn {
       console.log('[useVm] Calling vmService.start with agentId:', currentAgentId);
       await vmService.start(currentAgentId, agentIndex);
       // 等待 VM 就绪
-      await vmService.waitForReady(currentAgentId, 15, 2000);
+      await vmService.waitForReady(
+        currentAgentId, 
+        VM_CONFIG.OPERATION_READY_MAX_ATTEMPTS, 
+        VM_CONFIG.READY_CHECK_INTERVAL
+      );
       await refreshStatus();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to start VM';
@@ -128,7 +133,11 @@ export function useVm(): UseVmReturn {
     try {
       await vmService.restart(currentAgentId, agentIndex);
       // 等待 VM 就绪
-      await vmService.waitForReady(currentAgentId, 15, 2000);
+      await vmService.waitForReady(
+        currentAgentId, 
+        VM_CONFIG.OPERATION_READY_MAX_ATTEMPTS, 
+        VM_CONFIG.READY_CHECK_INTERVAL
+      );
       await refreshStatus();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to restart VM';
@@ -148,7 +157,7 @@ export function useVm(): UseVmReturn {
   useEffect(() => {
     const interval = setInterval(() => {
       refreshStatus();
-    }, 10000); // 每 10 秒刷新一次
+    }, POLL_CONFIG.VM_STATUS_SLOW_INTERVAL);
 
     return () => clearInterval(interval);
   }, [refreshStatus]);

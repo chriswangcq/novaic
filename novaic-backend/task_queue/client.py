@@ -11,6 +11,7 @@ import httpx
 from typing import Optional, List, Dict, Any
 
 from .exceptions import TaskQueueError, TaskNotFoundError
+from common.config import ServiceConfig
 
 
 class TaskQueueClient:
@@ -91,7 +92,7 @@ class TaskQueueClient:
         topic: str,
         payload: Dict[str, Any],
         idempotency_key: Optional[str] = None,
-        max_retries: int = 3,
+        max_retries: int = None,
     ) -> str:
         """
         发布任务
@@ -105,6 +106,9 @@ class TaskQueueClient:
         Returns:
             task_id: 任务 ID
         """
+        if max_retries is None:
+            max_retries = ServiceConfig.DEFAULT_MAX_RETRIES
+        
         data = self._request("POST", "/api/queue/tasks/publish", {
             "topic": topic,
             "payload": payload,
@@ -469,7 +473,7 @@ class GatewayInternalClient:
     # ---------- Tools Server ----------
     def create_runtime_tools(self, runtime_id: str, agent_id: str, subagent_id: str, ports: dict = None) -> dict:
         """在 Tools Server 创建 Runtime 工具上下文"""
-        tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", "http://127.0.0.1:19998")
+        tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", ServiceConfig.TOOLS_SERVER_URL)
         with httpx.Client(timeout=30.0, trust_env=False) as client:
             resp = client.post(f"{tools_server_url}/internal/runtimes", json={
                 "runtime_id": runtime_id,
@@ -482,23 +486,23 @@ class GatewayInternalClient:
 
     def destroy_runtime_tools(self, runtime_id: str) -> dict:
         """在 Tools Server 删除 Runtime 工具上下文"""
-        tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", "http://127.0.0.1:19998")
-        with httpx.Client(timeout=10.0, trust_env=False) as client:
+        tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", ServiceConfig.TOOLS_SERVER_URL)
+        with httpx.Client(timeout=ServiceConfig.HTTP_TIMEOUT_SHORT, trust_env=False) as client:
             resp = client.delete(f"{tools_server_url}/internal/runtimes/{runtime_id}")
             resp.raise_for_status()
             return resp.json()
 
     def list_runtime_tools(self, runtime_id: str) -> dict:
         """获取 Runtime 的工具列表"""
-        tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", "http://127.0.0.1:19998")
-        with httpx.Client(timeout=10.0, trust_env=False) as client:
+        tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", ServiceConfig.TOOLS_SERVER_URL)
+        with httpx.Client(timeout=ServiceConfig.HTTP_TIMEOUT_SHORT, trust_env=False) as client:
             resp = client.get(f"{tools_server_url}/internal/runtimes/{runtime_id}/tools")
             resp.raise_for_status()
             return resp.json()
 
     def call_runtime_tool(self, runtime_id: str, tool_name: str, arguments: dict) -> dict:
         """调用 Runtime 的工具"""
-        tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", "http://127.0.0.1:19998")
+        tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", ServiceConfig.TOOLS_SERVER_URL)
         with httpx.Client(timeout=30.0, trust_env=False) as client:
             resp = client.post(f"{tools_server_url}/internal/runtimes/{runtime_id}/tools/call", json={
                 "name": tool_name,
@@ -519,6 +523,13 @@ class GatewayInternalClient:
     # ---------- Runtime flags ----------
     def set_runtime_summarized(self, runtime_id: str) -> dict:
         return self._request("POST", f"/internal/runtimes/{runtime_id}/summarized", {})
+    
+    def set_runtime_hot_cold_summary(self, runtime_id: str, hot_summary: str, cold_summary: str) -> dict:
+        """Set both hot and cold summaries for a runtime."""
+        return self._request("POST", f"/internal/runtimes/{runtime_id}/hot-cold-summary", {
+            "hot_summary": hot_summary,
+            "cold_summary": cold_summary,
+        })
 
     def set_runtime_need_rest(self, runtime_id: str, value: bool) -> dict:
         return self._request("POST", f"/internal/runtimes/{runtime_id}/need-rest", {"value": value})
@@ -607,3 +618,81 @@ class GatewayInternalClient:
             "task_timeout": task_timeout,
             "saga_timeout": saga_timeout,
         })
+
+    # ---------- HRL and Summary Lock Operations (v24) ----------
+    def get_hrl(self, agent_id: str, subagent_id: str) -> dict:
+        """Get Hot Runtime List for a SubAgent.
+        
+        Returns:
+            dict with 'hrl' (list) and 'length' (int)
+        """
+        return self._request("GET", f"/internal/subagents/{agent_id}/{subagent_id}/hrl", None)
+
+    def add_to_hrl(self, agent_id: str, subagent_id: str, runtime_id: str) -> dict:
+        """Add a runtime to HRL.
+        
+        Returns:
+            dict with 'success', 'hrl', 'length'
+        """
+        return self._request("POST", f"/internal/subagents/{agent_id}/{subagent_id}/hrl/add", {
+            "runtime_id": runtime_id
+        })
+
+    def get_summary_lock(self, agent_id: str, subagent_id: str) -> dict:
+        """Get summary_lock status for a SubAgent.
+        
+        Returns:
+            dict with 'summary_lock' (0 or 1)
+        """
+        return self._request("GET", f"/internal/subagents/{agent_id}/{subagent_id}/summary-lock", None)
+
+    def acquire_summary_lock(self, agent_id: str, subagent_id: str) -> dict:
+        """Try to acquire summary_lock using CAS.
+        
+        Returns:
+            dict with 'success' (bool)
+        """
+        return self._request("POST", f"/internal/subagents/{agent_id}/{subagent_id}/summary-lock/acquire", {})
+
+    def release_summary_lock(self, agent_id: str, subagent_id: str) -> dict:
+        """Release summary_lock.
+        
+        Returns:
+            dict with 'success' (bool)
+        """
+        return self._request("POST", f"/internal/subagents/{agent_id}/{subagent_id}/summary-lock/release", {})
+
+    def atomic_merge_history(
+        self,
+        agent_id: str,
+        subagent_id: str,
+        new_history: str,
+        remove_runtime_ids: List[str]
+    ) -> dict:
+        """Atomically update historical_summary and remove runtimes from HRL.
+        
+        Returns:
+            dict with 'success' (bool)
+        """
+        return self._request("POST", f"/internal/subagents/{agent_id}/{subagent_id}/merge-history", {
+            "new_history": new_history,
+            "remove_runtime_ids": remove_runtime_ids,
+        })
+
+    # ---------- Runtime Batch Operations (v24) ----------
+    def get_runtimes_by_ids(self, runtime_ids: List[str]) -> List[Dict[str, Any]]:
+        """Get multiple runtimes by IDs (for context building).
+        
+        Args:
+            runtime_ids: List of runtime IDs to fetch
+            
+        Returns:
+            List of runtime dicts with summaries, in input order
+        """
+        if not runtime_ids:
+            return []
+        
+        data = self._request("POST", "/internal/runtimes/batch", {
+            "runtime_ids": runtime_ids
+        })
+        return data.get("runtimes", [])

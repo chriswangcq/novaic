@@ -8,6 +8,7 @@
 
 use reqwest::{Client, ClientBuilder};
 use std::time::Duration;
+use crate::config::AppConfig;
 
 /// 判断 URL 是否为本地地址（不应该走代理）
 pub fn is_local_url(url: &str) -> bool {
@@ -66,12 +67,12 @@ pub fn auto_client(url: &str) -> ClientBuilder {
 pub fn local_client_with_timeout(timeout_secs: u64) -> ClientBuilder {
     local_client()
         .timeout(Duration::from_secs(timeout_secs))
-        .connect_timeout(Duration::from_secs(5))
+        .connect_timeout(Duration::from_secs(AppConfig::HTTP_CONNECT_TIMEOUT_SECS))
 }
 
 /// 创建带超时的外网服务客户端
 pub fn external_client_with_timeout(timeout_secs: u64) -> ClientBuilder {
     external_client()
         .timeout(Duration::from_secs(timeout_secs))
-        .connect_timeout(Duration::from_secs(10))
+        .connect_timeout(Duration::from_secs(AppConfig::HTTP_CONNECT_TIMEOUT_SECS))
 }

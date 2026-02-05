@@ -14,6 +14,7 @@ import time
 import sys
 import sqlite3
 from datetime import datetime
+from pathlib import Path
 
 BASE_URL = "http://127.0.0.1:19999"
 
@@ -26,7 +27,8 @@ def get_db_path():
             return resp.json()["db_path"]
     except:
         pass
-    return "/Users/wangchaoqun/.novaic/novaic.db"
+    # 跨平台数据库路径
+    return str(Path.home() / ".novaic" / "novaic.db")
 
 
 class LightStressTester:

@@ -27,6 +27,7 @@ from queue import Queue
 from task_queue.client import SagaClient, TaskQueueClient
 from task_queue.heartbeat_sync import HeartbeatSync
 from task_queue.saga import StepType
+from common.config import ServiceConfig
 
 
 @dataclass
@@ -81,19 +82,19 @@ class SagaWorkerSync:
     def __init__(
         self,
         saga_types: List[str],
-        gateway_url: str = "http://127.0.0.1:19999",
+        gateway_url: str = None,
         queue_service_url: str = None,
-        poll_interval: float = 0.1,
-        step_timeout: float = 300.0,
-        max_concurrent: int = 10,
+        poll_interval: float = None,
+        step_timeout: float = None,
+        max_concurrent: int = None,
     ):
         self.saga_types = saga_types
-        self.gateway_url = gateway_url
+        self.gateway_url = gateway_url or ServiceConfig.GATEWAY_URL
         # Queue Service URL: 参数 > 环境变量 > 默认值
-        self.queue_service_url = queue_service_url or os.environ.get("QUEUE_SERVICE_URL", "http://127.0.0.1:19997")
-        self.poll_interval = poll_interval
-        self.step_timeout = step_timeout
-        self.max_concurrent = max_concurrent
+        self.queue_service_url = queue_service_url or os.environ.get("QUEUE_SERVICE_URL", ServiceConfig.QUEUE_SERVICE_URL)
+        self.poll_interval = poll_interval if poll_interval is not None else ServiceConfig.POLL_INTERVAL
+        self.step_timeout = step_timeout if step_timeout is not None else ServiceConfig.SAGA_STEP_TIMEOUT
+        self.max_concurrent = max_concurrent if max_concurrent is not None else ServiceConfig.MAX_CONCURRENT_SAGAS
         self.worker_id = f"saga-sync-{uuid.uuid4().hex[:8]}"
         
         # 使用现有的同步 SDK
@@ -514,9 +515,9 @@ class SagaWorkerSync:
 
 def start_worker(
     saga_types: List[str] = None,
-    queue_service_url: str = "http://127.0.0.1:19997",
-    gateway_url: str = "http://127.0.0.1:19999",
-    max_concurrent: int = 10,
+    queue_service_url: str = None,
+    gateway_url: str = None,
+    max_concurrent: int = None,
 ):
     """启动一个 SagaWorker"""
     if saga_types is None:
@@ -542,9 +543,9 @@ if __name__ == "__main__":
     import sys
     import os
     
-    queue_service_url = os.environ.get("QUEUE_SERVICE_URL", "http://127.0.0.1:19997")
-    gateway_url = os.environ.get("GATEWAY_URL", "http://127.0.0.1:19999")
-    max_concurrent = int(os.environ.get("MAX_CONCURRENT", "10"))
+    queue_service_url = os.environ.get("QUEUE_SERVICE_URL", ServiceConfig.QUEUE_SERVICE_URL)
+    gateway_url = os.environ.get("GATEWAY_URL", ServiceConfig.GATEWAY_URL)
+    max_concurrent = int(os.environ.get("MAX_CONCURRENT", str(ServiceConfig.MAX_CONCURRENT_SAGAS)))
     
     print("=" * 60)
     print("同步 SagaWorker (多线程)")

@@ -7,9 +7,10 @@ Topics:
 
 from typing import Dict, Any
 from . import register_handler
+from ..topics import SagaTopics
 
 
-@register_handler("saga.trigger")
+@register_handler(SagaTopics.SAGA_TRIGGER)
 def handle_saga_trigger(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     触发新 Saga

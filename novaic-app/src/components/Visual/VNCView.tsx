@@ -4,14 +4,7 @@ import { Monitor, RefreshCw, Play, Loader2, Lock, Unlock, Copy, Check } from 'lu
 import { vmService } from '../../services/vm';
 import RFB from 'novnc-rfb';
 import { LayoutToggle } from '../Layout/LayoutToggle';
-
-// 配置 - 默认使用 Agent 0 的端口 (BASE_PORT=20000)
-// 实际端口应从 VM status 获取
-const CONFIG = {
-  gatewayPort: 19999,  // Gateway API 端口 (固定)
-  vncPort: 20006,     // VNC 端口 (Agent 0: 20006)
-  wsPort: 20007,      // websockify 端口 (Agent 0: 20007)
-};
+import { API_CONFIG, UI_CONFIG, WS_CONFIG, POLL_CONFIG, VM_CONFIG } from '../../config';
 
 type VncStatus = 'unknown' | 'stopped' | 'starting' | 'running' | 'error';
 
@@ -57,14 +50,14 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
     const mcpConfig = {
       "mcpServers": {
         "novaic-gateway": {
-          "url": `http://127.0.0.1:${CONFIG.gatewayPort}/agents/${currentAgentId}/mcp`
+          "url": `${API_CONFIG.GATEWAY_URL}/agents/${currentAgentId}/mcp`
         }
       }
     };
     try {
       await navigator.clipboard.writeText(JSON.stringify(mcpConfig, null, 2));
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopied(false), UI_CONFIG.COPY_FEEDBACK_DELAY);
     } catch (e) {
       console.error('Failed to copy MCP config:', e);
     }
@@ -87,7 +80,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
         const timeout = setTimeout(() => {
           ws.close();
           reject(new Error('timeout'));
-        }, 2000);
+        }, WS_CONFIG.CONNECTION_TIMEOUT);
 
         ws.onopen = () => {
           clearTimeout(timeout);
@@ -121,8 +114,8 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
     }
     
     try {
-      const res = await fetch(`http://localhost:${CONFIG.gatewayPort}/api/vnc/status?agent_id=${currentAgentId}`, {
-        signal: AbortSignal.timeout(3000),
+      const res = await fetch(`${API_CONFIG.GATEWAY_URL}/api/vnc/status?agent_id=${currentAgentId}`, {
+        signal: AbortSignal.timeout(API_CONFIG.ABORT_TIMEOUT),
       });
       const data = await res.json();
       
@@ -203,9 +196,9 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
       let agentReady = false;
       for (let i = 0; i < 30; i++) {
         try {
-          const healthRes = await fetch(`http://localhost:${CONFIG.gatewayPort}/api/health`, {
+          const healthRes = await fetch(`${API_CONFIG.GATEWAY_URL}/api/health`, {
             method: 'GET',
-            signal: AbortSignal.timeout(3000),
+            signal: AbortSignal.timeout(API_CONFIG.ABORT_TIMEOUT),
           });
           if (healthRes.ok) {
             agentReady = true;
@@ -218,9 +211,9 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
         }
         updateProgress(1, Math.min(90, (i + 1) * 3), `等待 Agent 服务... (${i + 1}/30)`);
         if (i > 0 && i % 5 === 0) {
-          log(`Still waiting for Agent... attempt ${i + 1}/30`);
+          log(`Still waiting for Agent... attempt ${i + 1}/${VM_CONFIG.READY_CHECK_MAX_ATTEMPTS}`);
         }
-        await new Promise(r => setTimeout(r, 2000));
+        await new Promise(r => setTimeout(r, VM_CONFIG.READY_CHECK_INTERVAL));
       }
       
       if (!agentReady) {
@@ -230,7 +223,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
       // Step 3: 调用 Agent 启动 VNC
       log('Step 3: Calling /api/vnc/start...');
       updateProgress(2, 0, '正在启动 VNC 服务...');
-      const res = await fetch(`http://localhost:${CONFIG.gatewayPort}/api/vnc/start?agent_id=${currentAgentId}`, {
+      const res = await fetch(`${API_CONFIG.GATEWAY_URL}/api/vnc/start?agent_id=${currentAgentId}`, {
         method: 'POST',
       });
       const data = await res.json();
@@ -272,7 +265,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
             // 继续等待
           }
           updateProgress(3, Math.min(90, (i + 1) * 5), `连接 WebSockify... (${i + 1}/20)`);
-          await new Promise(r => setTimeout(r, 500));
+          await new Promise(r => setTimeout(r, WS_CONFIG.VNC_RECONNECT_DELAY));
         }
         
         if (wsConnected) {
@@ -347,7 +340,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
           const timeout = setTimeout(() => {
             ws.close();
             reject(new Error('timeout'));
-          }, 2000);
+          }, WS_CONFIG.CONNECTION_TIMEOUT);
           ws.onopen = () => {
             clearTimeout(timeout);
             ws.close();
@@ -371,8 +364,8 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
       // 策略 2: 如果直接连接失败，尝试通过 Agent API
       try {
         log('Step 2: Checking Agent VNC status...');
-        const res = await fetch(`http://localhost:${CONFIG.gatewayPort}/api/vnc/status?agent_id=${currentAgentId}`, {
-          signal: AbortSignal.timeout(3000),
+        const res = await fetch(`${API_CONFIG.GATEWAY_URL}/api/vnc/status?agent_id=${currentAgentId}`, {
+          signal: AbortSignal.timeout(API_CONFIG.ABORT_TIMEOUT),
         });
         const data = await res.json();
         log(`VNC status: running=${data.running}, websockify=${data.websockify}, ready=${data.ready}`);
@@ -424,8 +417,8 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
           // 继续等待
         }
       };
-      // 未连接时 5 秒检测一次
-      intervalId = setInterval(pollFn, 5000);
+      // 未连接时定期检测
+      intervalId = setInterval(pollFn, POLL_CONFIG.VNC_POLL_INTERVAL);
     };
     
     startPolling();
@@ -656,8 +649,8 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
                 />
                 <defs>
                   <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#3b82f6" />
-                    <stop offset="100%" stopColor="#8b5cf6" />
+                    <stop offset="0%" stopColor="#ffffff" stopOpacity="0.3" />
+                    <stop offset="100%" stopColor="#ffffff" stopOpacity="0.2" />
                   </linearGradient>
                 </defs>
               </svg>
@@ -680,7 +673,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
                       index < startupProgress.step
                         ? 'bg-nb-success'
                         : index === startupProgress.step
-                        ? 'bg-blue-500 animate-pulse'
+                        ? 'bg-white/60 animate-pulse'
                         : 'bg-gray-600'
                     }`}
                   />
@@ -701,7 +694,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
                 <span
                   key={step.name}
                   className={`w-12 text-center truncate ${
-                    index === startupProgress.step ? 'text-blue-400' : ''
+                    index === startupProgress.step ? 'text-white/70' : ''
                   }`}
                 >
                   {index + 1}

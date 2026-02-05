@@ -1,7 +1,5 @@
 import { Component, ReactNode, ErrorInfo } from 'react';
-import { Message, AgentEvent } from '../../types';
-import { ThinkingBlock } from './ThinkingBlock';
-import { ToolCallCard } from './ToolCallCard';
+import { Message } from '../../types';
 import { Markdown } from './Markdown';
 import { Sparkles, AlertTriangle, ChevronDown } from 'lucide-react';
 import { useAppStore } from '../../store';
@@ -70,29 +68,10 @@ function extractContent(data: unknown): string {
   }
 }
 
-/**
- * 查找 tool_start 对应的 tool_end
- */
-function findToolEnd(events: AgentEvent[], startIndex: number, toolName: string): AgentEvent | undefined {
-  for (let i = startIndex + 1; i < events.length; i++) {
-    const event = events[i];
-    if (event.type === 'tool_end') {
-      const endTool = (event.data as Record<string, unknown>)?.tool;
-      if (endTool === toolName) {
-        return event;
-      }
-    }
-  }
-  return undefined;
-}
-
 export function AssistantMessage({ message }: AssistantMessageProps) {
   const events = message.events || [];
   const isStreaming = message.isStreaming;
   const expandMessage = useAppStore((state) => state.expandMessage);
-  
-  // 记录已处理的 tool_end 索引，避免重复渲染
-  const processedToolEnds = new Set<number>();
   
   const handleExpand = () => {
     expandMessage(message.id);
@@ -114,54 +93,6 @@ export function AssistantMessage({ message }: AssistantMessageProps) {
               if (!event || !event.type) return null;
               
               switch (event.type) {
-                case 'thinking': {
-                  const content = extractContent(event.data);
-                  if (!content || content.length < 5) return null;
-                  return <ThinkingBlock key={`thinking-${index}`} content={content} />;
-                }
-                
-                case 'tool_start': {
-                  const data = (event.data || {}) as Record<string, unknown>;
-                  const toolName = String(data?.tool || 'unknown');
-                  const toolInput = (data?.input && typeof data.input === 'object' ? data.input : {}) as Record<string, unknown>;
-                  const toolId = String(data?.id || `tool-${index}`);
-                  
-                  // 查找对应的 tool_end
-                  const toolEnd = findToolEnd(events, index, toolName);
-                  const toolEndIndex = toolEnd ? events.indexOf(toolEnd) : -1;
-                  if (toolEndIndex >= 0) {
-                    processedToolEnds.add(toolEndIndex);
-                  }
-                  
-                  const endData = (toolEnd?.data || {}) as Record<string, unknown>;
-                  const resultData = (endData?.result && typeof endData.result === 'object' ? endData.result : undefined) as Record<string, unknown> | undefined;
-                  const isSuccess = resultData?.success === true;
-                  const isRunning = !toolEnd;
-                  
-                  return (
-                    <ToolCallCard
-                      key={`tool-${index}`}
-                      toolCall={{
-                        id: toolId,
-                        tool: toolName,
-                        input: toolInput,
-                        status: isRunning ? 'running' : (isSuccess ? 'success' : 'error'),
-                        result: resultData ? {
-                          success: Boolean(resultData.success),
-                          ...resultData,
-                        } : undefined,
-                        startTime: Date.now(),
-                        endTime: toolEnd ? Date.now() : undefined,
-                      }}
-                    />
-                  );
-                }
-                
-                case 'tool_end': {
-                  // 已经在 tool_start 中处理，跳过
-                  return null;
-                }
-                
                 case 'text':
                 case 'final': {
                   const content = extractContent(event.data);
@@ -212,6 +143,12 @@ export function AssistantMessage({ message }: AssistantMessageProps) {
                     </div>
                   );
                 }
+                
+                // 忽略 thinking, tool_start, tool_end 等中间过程
+                case 'thinking':
+                case 'tool_start':
+                case 'tool_end':
+                  return null;
                 
                 default:
                   return null;

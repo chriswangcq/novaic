@@ -8,13 +8,15 @@ Topics:
 """
 
 from typing import Dict, Any
+from common.enums import SubagentStatus
 from . import register_handler
 from ..business import SubAgentBusiness
 from ..client import GatewayInternalClient
 from ..business import MessageBusiness
+from ..topics import TaskTopics
 
 
-@register_handler("message.process")
+@register_handler(TaskTopics.MESSAGE_PROCESS)
 def handle_message_process(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     处理用户消息
@@ -66,7 +68,7 @@ def handle_message_process(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]
         }
     
     # 2b. awake: 查找 active Runtime
-    if subagent_status == "awake":
+    if subagent_status == SubagentStatus.AWAKE.value:
         active_runtime = client.get_subagent_runtime(agent_id, subagent_id)
         if active_runtime:
             # 追加消息到 context
@@ -80,11 +82,11 @@ def handle_message_process(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]
             # awake 但没有 active runtime，异常情况
             # 重置为 sleeping 以便重新创建 runtime
             client.set_subagent_sleeping(agent_id, subagent_id)
-            subagent_status = "sleeping"  # 继续走 sleeping 流程
+            subagent_status = SubagentStatus.SLEEPING.value  # 继续走 sleeping 流程
     
     # 3. sleeping/failed: CAS 唤醒 → awaking
     woke_up = False
-    if subagent_status in ("sleeping", "failed"):
+    if subagent_status in (SubagentStatus.SLEEPING.value, SubagentStatus.FAILED.value):
         biz = SubAgentBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
         result = biz.wake(agent_id, subagent_id)
         woke_up = result.success and result.status == "awaking"
@@ -131,7 +133,7 @@ def handle_message_process(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]
     }
 
 
-@register_handler("message.claim")
+@register_handler(TaskTopics.MESSAGE_CLAIM)
 def handle_message_claim(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     认领消息 (sending → sent)
@@ -146,7 +148,7 @@ def handle_message_claim(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     return biz.claim_message(message_id)
 
 
-@register_handler("message.route")
+@register_handler(TaskTopics.MESSAGE_ROUTE)
 def handle_message_route(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     判断消息路由（v2）
@@ -189,7 +191,7 @@ def handle_message_route(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
         }
     
     # awake: 检查是否有 active runtime
-    if status == "awake":
+    if status == SubagentStatus.AWAKE.value:
         # 检查是否真的有 active runtime
         active_runtime = client.get_subagent_runtime(agent_id, subagent_id)
         if active_runtime:
@@ -202,10 +204,10 @@ def handle_message_route(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
         else:
             # awake 但没有 active runtime，重置为 sleeping
             client.set_subagent_sleeping(agent_id, subagent_id)
-            status = "sleeping"  # 继续走唤醒流程
+            status = SubagentStatus.SLEEPING.value  # 继续走唤醒流程
     
     # sleeping/failed: 尝试 CAS 唤醒
-    if status in ("sleeping", "failed"):
+    if status in (SubagentStatus.SLEEPING.value, SubagentStatus.FAILED.value):
         result = biz.wake(agent_id, subagent_id)
         
         if result.success and result.status == "awaking":

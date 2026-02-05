@@ -20,7 +20,7 @@ export function LayoutToggle() {
           title={title}
           className={`p-1.5 rounded transition-colors ${
             layoutMode === id
-              ? 'bg-violet-500/20 text-violet-400'
+              ? 'bg-white/15 text-white/80'
               : 'text-white/40 hover:text-white/60 hover:bg-white/[0.04]'
           }`}
         >

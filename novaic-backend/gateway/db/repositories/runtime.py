@@ -14,10 +14,13 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, field
 
+from common.enums import RuntimeStatus
+from common.config import ServiceConfig
+
 
 @dataclass
 class AgentRuntime:
-    """Agent Runtime data model (v14 schema)."""
+    """Agent Runtime data model (v14 schema, v24 summary fields)."""
     runtime_id: str           # Runtime ID (rt-xxx)
     subagent_id: str          # Owner SubAgent ID ("main" or "sub-xxx")
     agent_id: str             # VM Agent ID
@@ -46,6 +49,11 @@ class AgentRuntime:
     summarized: int = 0
     need_rest: int = 0
     
+    # Runtime Summary (v24)
+    simple_summary: Optional[str] = None
+    hot_summary: Optional[str] = None
+    cold_summary: Optional[str] = None
+    
     # Timestamps
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
@@ -68,20 +76,25 @@ class AgentRuntime:
             'is_merged': self.is_merged,
             'summarized': self.summarized,
             'need_rest': self.need_rest,
+            'simple_summary': self.simple_summary,
+            'hot_summary': self.hot_summary,
+            'cold_summary': self.cold_summary,
             'created_at': self.created_at,
             'updated_at': self.updated_at,
         }
 
 
 class RuntimeRepository:
-    """Repository for agent_runtimes table operations (v14 schema)."""
+    """Repository for agent_runtimes table operations (v14 schema, v24 summary fields)."""
     
-    # Explicit column list for v14 schema
+    # Explicit column list for v14 schema + v24 summary fields
     _COLUMNS = """
         runtime_id, subagent_id, agent_id, mcp_url,
         current_round_id, current_round_num, phase,
         context, pending_actions, status, error,
-        summary, is_merged, summarized, need_rest, created_at, updated_at
+        summary, is_merged, summarized, need_rest,
+        simple_summary, hot_summary, cold_summary,
+        created_at, updated_at
     """
     
     def __init__(self, db):
@@ -134,8 +147,9 @@ class RuntimeRepository:
                     current_round_id, current_round_num, phase,
                     context, pending_actions, status, error,
                     summary, is_merged, summarized, need_rest,
+                    simple_summary, hot_summary, cold_summary,
                     created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 runtime.runtime_id,
                 runtime.subagent_id,
@@ -152,6 +166,9 @@ class RuntimeRepository:
                 1 if runtime.is_merged else 0,
                 runtime.summarized,
                 runtime.need_rest,
+                runtime.simple_summary,
+                runtime.hot_summary,
+                runtime.cold_summary,
                 runtime.created_at,
                 runtime.updated_at,
             ))
@@ -178,10 +195,10 @@ class RuntimeRepository:
         with self.db.get_connection("agent", resource_id=agent_id) as conn:
             cursor = conn.execute(f"""
                 SELECT {self._COLUMNS} FROM agent_runtimes 
-                WHERE subagent_id = ? AND agent_id = ? AND status IN ('active', 'resting')
+                WHERE subagent_id = ? AND agent_id = ? AND status IN (?, ?)
                 ORDER BY created_at DESC
                 LIMIT 1
-            """, (subagent_id, agent_id))
+            """, (subagent_id, agent_id, RuntimeStatus.ACTIVE.value, RuntimeStatus.RESTING.value))
             row = cursor.fetchone()
             if row:
                 return self._row_to_runtime(row)
@@ -192,9 +209,9 @@ class RuntimeRepository:
         with self.db.get_connection("agent", resource_id=agent_id) as conn:
             cursor = conn.execute(f"""
                 SELECT {self._COLUMNS} FROM agent_runtimes 
-                WHERE agent_id = ? AND status IN ('active', 'resting')
+                WHERE agent_id = ? AND status IN (?, ?)
                 ORDER BY created_at ASC
-            """, (agent_id,))
+            """, (agent_id, RuntimeStatus.ACTIVE.value, RuntimeStatus.RESTING.value))
             rows = cursor.fetchall()
             return [self._row_to_runtime(row) for row in rows]
     
@@ -203,9 +220,9 @@ class RuntimeRepository:
         with self.db.get_connection("agent") as conn:
             cursor = conn.execute(f"""
                 SELECT {self._COLUMNS} FROM agent_runtimes 
-                WHERE status IN ('active', 'resting')
+                WHERE status IN (?, ?)
                 ORDER BY created_at ASC
-            """)
+            """, (RuntimeStatus.ACTIVE.value, RuntimeStatus.RESTING.value))
             rows = cursor.fetchall()
             return [self._row_to_runtime(row) for row in rows]
     
@@ -214,9 +231,9 @@ class RuntimeRepository:
         with self.db.get_connection("agent", resource_id=agent_id) as conn:
             cursor = conn.execute("""
                 SELECT 1 FROM agent_runtimes 
-                WHERE subagent_id = ? AND agent_id = ? AND status IN ('active', 'resting')
+                WHERE subagent_id = ? AND agent_id = ? AND status IN (?, ?)
                 LIMIT 1
-            """, (subagent_id, agent_id))
+            """, (subagent_id, agent_id, RuntimeStatus.ACTIVE.value, RuntimeStatus.RESTING.value))
             row = cursor.fetchone()
             return row is not None
     
@@ -230,10 +247,10 @@ class RuntimeRepository:
         with self.db.get_connection("agent", resource_id=agent_id) as conn:
             cursor = conn.execute(f"""
                 SELECT {self._COLUMNS} FROM agent_runtimes 
-                WHERE subagent_id = ? AND agent_id = ? AND status = 'completed' AND is_merged = 0
+                WHERE subagent_id = ? AND agent_id = ? AND status = ? AND is_merged = 0
                 ORDER BY created_at DESC
                 LIMIT ?
-            """, (subagent_id, agent_id, limit))
+            """, (subagent_id, agent_id, RuntimeStatus.COMPLETED.value, limit))
             rows = cursor.fetchall()
             # Return in chronological order (oldest first)
             return [self._row_to_runtime(row) for row in reversed(rows)]
@@ -247,9 +264,9 @@ class RuntimeRepository:
         with self.db.get_connection("agent", resource_id=agent_id) as conn:
             cursor = conn.execute(f"""
                 SELECT {self._COLUMNS} FROM agent_runtimes 
-                WHERE subagent_id = ? AND agent_id = ? AND status = 'completed' AND is_merged = 0
+                WHERE subagent_id = ? AND agent_id = ? AND status = ? AND is_merged = 0
                 ORDER BY created_at ASC
-            """, (subagent_id, agent_id))
+            """, (subagent_id, agent_id, RuntimeStatus.COMPLETED.value))
             rows = cursor.fetchall()
             return [self._row_to_runtime(row) for row in rows]
     
@@ -362,7 +379,12 @@ class RuntimeRepository:
             conn.commit()
     
     def set_status(self, runtime_id: str, status: str):
-        """Set runtime status."""
+        """Set runtime status.
+        
+        Args:
+            runtime_id: Runtime ID
+            status: Status value (should use RuntimeStatus enum values)
+        """
         now = datetime.utcnow().isoformat()
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:
             conn.execute("""
@@ -378,9 +400,9 @@ class RuntimeRepository:
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:
             conn.execute("""
                 UPDATE agent_runtimes 
-                SET status = 'completed', phase = 'completed', updated_at = ?
+                SET status = ?, phase = ?, updated_at = ?
                 WHERE runtime_id = ?
-            """, (now, runtime_id))
+            """, (RuntimeStatus.COMPLETED.value, RuntimeStatus.COMPLETED.value, now, runtime_id))
             conn.commit()
     
     def mark_failed(self, runtime_id: str, error: str):
@@ -389,9 +411,9 @@ class RuntimeRepository:
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:
             conn.execute("""
                 UPDATE agent_runtimes 
-                SET status = 'failed', error = ?, updated_at = ?
+                SET status = ?, error = ?, updated_at = ?
                 WHERE runtime_id = ?
-            """, (error, now, runtime_id))
+            """, (RuntimeStatus.FAILED.value, error, now, runtime_id))
             conn.commit()
     
     def set_resting(self, runtime_id: str):
@@ -407,9 +429,9 @@ class RuntimeRepository:
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:
             conn.execute("""
                 UPDATE agent_runtimes 
-                SET status = 'resting', updated_at = ?
+                SET status = ?, updated_at = ?
                 WHERE runtime_id = ?
-            """, (now, runtime_id))
+            """, (RuntimeStatus.RESTING.value, now, runtime_id))
             conn.commit()
     
     # ========================================
@@ -426,6 +448,108 @@ class RuntimeRepository:
                 WHERE runtime_id = ?
             """, (summary, now, runtime_id))
             conn.commit()
+    
+    def set_simple_summary(self, runtime_id: str, simple_summary: str):
+        """Set the simple summary for a runtime.
+        
+        Simple summary: Plain text summary of the runtime's purpose/outcome.
+        """
+        now = datetime.utcnow().isoformat()
+        with self.db.get_connection("agent", resource_id=runtime_id) as conn:
+            conn.execute("""
+                UPDATE agent_runtimes 
+                SET simple_summary = ?, updated_at = ?
+                WHERE runtime_id = ?
+            """, (simple_summary, now, runtime_id))
+            conn.commit()
+    
+    def set_hot_summary(self, runtime_id: str, hot_summary: str):
+        """Set the hot summary for a completed runtime.
+        
+        Hot summary: 
+        - Earlier rounds: LLM-generated summary paragraph
+        - Last N rounds: Full content with think + tools + results
+        """
+        now = datetime.utcnow().isoformat()
+        with self.db.get_connection("agent", resource_id=runtime_id) as conn:
+            conn.execute("""
+                UPDATE agent_runtimes 
+                SET hot_summary = ?, updated_at = ?
+                WHERE runtime_id = ?
+            """, (hot_summary, now, runtime_id))
+            conn.commit()
+    
+    def set_cold_summary(self, runtime_id: str, cold_summary: str):
+        """Set the cold summary for a completed runtime.
+        
+        Cold summary: LLM-generated summary of all rounds.
+        """
+        now = datetime.utcnow().isoformat()
+        with self.db.get_connection("agent", resource_id=runtime_id) as conn:
+            conn.execute("""
+                UPDATE agent_runtimes 
+                SET cold_summary = ?, updated_at = ?
+                WHERE runtime_id = ?
+            """, (cold_summary, now, runtime_id))
+            conn.commit()
+    
+    def set_hot_cold_summary(self, runtime_id: str, hot_summary: str, cold_summary: str):
+        """Set both hot and cold summaries atomically."""
+        now = datetime.utcnow().isoformat()
+        with self.db.get_connection("agent", resource_id=runtime_id) as conn:
+            conn.execute("""
+                UPDATE agent_runtimes 
+                SET hot_summary = ?, cold_summary = ?, updated_at = ?
+                WHERE runtime_id = ?
+            """, (hot_summary, cold_summary, now, runtime_id))
+            conn.commit()
+    
+    def get_summaries(self, runtime_id: str) -> Optional[Dict[str, Optional[str]]]:
+        """Get all three summary types for a runtime.
+        
+        Returns:
+            Dict with keys: simple_summary, hot_summary, cold_summary
+            Returns None if runtime not found.
+        """
+        with self.db.get_connection("agent", resource_id=runtime_id) as conn:
+            cursor = conn.execute("""
+                SELECT simple_summary, hot_summary, cold_summary 
+                FROM agent_runtimes WHERE runtime_id = ?
+            """, (runtime_id,))
+            row = cursor.fetchone()
+            if row:
+                return {
+                    'simple_summary': row[0],
+                    'hot_summary': row[1],
+                    'cold_summary': row[2],
+                }
+            return None
+    
+    def get_runtimes_by_ids(self, runtime_ids: List[str]) -> List[AgentRuntime]:
+        """Get multiple runtimes by their IDs.
+        
+        Args:
+            runtime_ids: List of runtime IDs to fetch
+            
+        Returns:
+            List of AgentRuntime objects (in order of input IDs where found)
+        """
+        if not runtime_ids:
+            return []
+        
+        placeholders = ','.join(['?' for _ in runtime_ids])
+        with self.db.get_connection("agent", resource_id=runtime_ids[0] if runtime_ids else None) as conn:
+            cursor = conn.execute(f"""
+                SELECT {self._COLUMNS} FROM agent_runtimes 
+                WHERE runtime_id IN ({placeholders})
+            """, runtime_ids)
+            rows = cursor.fetchall()
+            
+            # Build a map for ordering
+            runtime_map = {self._row_to_runtime(row).runtime_id: self._row_to_runtime(row) for row in rows}
+            
+            # Return in input order (preserving order)
+            return [runtime_map[rid] for rid in runtime_ids if rid in runtime_map]
     
     def mark_merged(self, runtime_id: str):
         """Mark a runtime's summary as merged into historical_summary."""
@@ -488,10 +612,10 @@ class RuntimeRepository:
         with self.db.get_connection("agent") as conn:
             conn.execute("""
                 DELETE FROM agent_runtimes 
-                WHERE status IN ('completed', 'failed')
+                WHERE status IN (?, ?)
                 AND is_merged = 1
                 AND updated_at < datetime('now', ? || ' hours')
-            """, (f"-{older_than_hours}",))
+            """, (RuntimeStatus.COMPLETED.value, RuntimeStatus.FAILED.value, f"-{older_than_hours}"))
             conn.commit()
     
     # ========================================
@@ -499,7 +623,7 @@ class RuntimeRepository:
     # ========================================
     
     def _row_to_runtime(self, row) -> AgentRuntime:
-        """Convert database row to AgentRuntime object (v14 schema)."""
+        """Convert database row to AgentRuntime object (v14 schema + v24 summary fields)."""
         return AgentRuntime(
             runtime_id=row[0],
             subagent_id=row[1],
@@ -516,8 +640,11 @@ class RuntimeRepository:
             is_merged=bool(row[12]),
             summarized=row[13] or 0,
             need_rest=row[14] or 0,
-            created_at=row[15],
-            updated_at=row[16],
+            simple_summary=row[15],
+            hot_summary=row[16],
+            cold_summary=row[17],
+            created_at=row[18],
+            updated_at=row[19],
         )
     
     # ========================================
@@ -534,18 +661,20 @@ class RuntimeRepository:
         """DEPRECATED: Get the active main runtime for an agent.
         
         v14: Now queries by subagent type='main' via JOIN, not by subagent_id='main'.
+        v24: Updated to include new summary fields.
         """
         with self.db.get_connection("agent", resource_id=agent_id) as conn:
             cursor = conn.execute("""
                 SELECT r.runtime_id, r.subagent_id, r.agent_id, r.mcp_url,
                        r.current_round_id, r.current_round_num, r.phase, r.context,
                        r.pending_actions, r.status, r.error, r.summary, r.is_merged,
-                       r.summarized, r.need_rest, r.created_at, r.updated_at
+                       r.summarized, r.need_rest, r.simple_summary, r.hot_summary, 
+                       r.cold_summary, r.created_at, r.updated_at
                 FROM agent_runtimes r
                 JOIN subagents s ON r.subagent_id = s.subagent_id AND r.agent_id = s.agent_id
-                WHERE r.agent_id = ? AND s.type = 'main' AND r.status = 'active'
+                WHERE r.agent_id = ? AND s.type = 'main' AND r.status = ?
                 LIMIT 1
-            """, (agent_id,))
+            """, (agent_id, RuntimeStatus.ACTIVE.value))
             row = cursor.fetchone()
             if row:
                 return self._row_to_runtime(row)
@@ -562,11 +691,186 @@ class RuntimeRepository:
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:
             cursor = conn.execute("""
                 UPDATE agent_runtimes 
-                SET status = 'active', phase = 'need_think', 
+                SET status = ?, phase = 'need_think', 
                     current_round_num = current_round_num + 1,
                     current_round_id = 'round-' || (current_round_num + 1),
                     pending_actions = '[]', updated_at = ?
-                WHERE runtime_id = ? AND status = 'completed'
-            """, (now, runtime_id))
+                WHERE runtime_id = ? AND status = ?
+            """, (RuntimeStatus.ACTIVE.value, now, runtime_id, RuntimeStatus.COMPLETED.value))
+            conn.commit()
+            return cursor.rowcount > 0
+    
+    # ========================================
+    # New Methods (v25)
+    # ========================================
+    
+    def get_runtime_ids_for_subagent(self, subagent_id: str, agent_id: str) -> List[str]:
+        """获取 subagent 的所有 runtime_ids。
+        
+        Args:
+            subagent_id: SubAgent ID
+            agent_id: Agent ID
+            
+        Returns:
+            List of runtime IDs belonging to the SubAgent
+        """
+        with self.db.get_connection("agent", resource_id=agent_id) as conn:
+            cursor = conn.execute(
+                "SELECT runtime_id FROM agent_runtimes WHERE subagent_id = ? AND agent_id = ?",
+                (subagent_id, agent_id)
+            )
+            return [row[0] for row in cursor.fetchall()]
+    
+    def reset_round(self, runtime_id: str, round_num: int = 1, round_id: str = None):
+        """重置 round（用于 runtime reset）。
+        
+        Args:
+            runtime_id: Runtime ID
+            round_num: Round number to reset to (default 1)
+            round_id: Round ID to set (default "round-{round_num}")
+        """
+        now = datetime.utcnow().isoformat()
+        actual_round_id = round_id or f"round-{round_num}"
+        
+        with self.db.get_connection("agent", resource_id=runtime_id) as conn:
+            conn.execute("""
+                UPDATE agent_runtimes 
+                SET current_round_num = ?, current_round_id = ?, updated_at = ?
+                WHERE runtime_id = ?
+            """, (round_num, actual_round_id, now, runtime_id))
+            conn.commit()
+    
+    def set_need_rest(self, runtime_id: str, value: int = 1):
+        """设置 need_rest 标志。
+        
+        Args:
+            runtime_id: Runtime ID
+            value: Value to set (default 1)
+        """
+        now = datetime.utcnow().isoformat()
+        with self.db.get_connection("agent", resource_id=runtime_id) as conn:
+            conn.execute(
+                "UPDATE agent_runtimes SET need_rest = ?, updated_at = ? WHERE runtime_id = ?",
+                (value, now, runtime_id)
+            )
+            conn.commit()
+    
+    def cas_update_phase(self, runtime_id: str, new_phase: str, expected_phase: str, round_id: str = None) -> bool:
+        """CAS 更新 phase，返回是否成功。
+        
+        Args:
+            runtime_id: Runtime ID
+            new_phase: New phase to set
+            expected_phase: Expected current phase (CAS condition)
+            round_id: Optional round_id to set along with phase
+            
+        Returns:
+            True if update succeeded (phase matched expected), False otherwise
+        """
+        now = datetime.utcnow().isoformat()
+        
+        with self.db.get_connection("agent", resource_id=runtime_id) as conn:
+            if round_id:
+                cursor = conn.execute("""
+                    UPDATE agent_runtimes 
+                    SET phase = ?, current_round_id = ?, updated_at = ?
+                    WHERE runtime_id = ? AND phase = ?
+                """, (new_phase, round_id, now, runtime_id, expected_phase))
+            else:
+                cursor = conn.execute("""
+                    UPDATE agent_runtimes 
+                    SET phase = ?, updated_at = ?
+                    WHERE runtime_id = ? AND phase = ?
+                """, (new_phase, now, runtime_id, expected_phase))
+            conn.commit()
+            return cursor.rowcount > 0
+    
+    def cas_set_summarized(self, runtime_id: str, expected_value: int = 0) -> bool:
+        """CAS 设置 summarized=1，返回是否成功。
+        
+        Args:
+            runtime_id: Runtime ID
+            expected_value: Expected current value (default 0)
+            
+        Returns:
+            True if update succeeded (summarized matched expected), False otherwise
+        """
+        now = datetime.utcnow().isoformat()
+        
+        with self.db.get_connection("agent", resource_id=runtime_id) as conn:
+            cursor = conn.execute("""
+                UPDATE agent_runtimes
+                SET summarized = 1, updated_at = ?
+                WHERE runtime_id = ? AND summarized = ?
+            """, (now, runtime_id, expected_value))
+            conn.commit()
+            return cursor.rowcount > 0
+    
+    def cas_set_need_rest(self, runtime_id: str, target: int, expected: int) -> bool:
+        """CAS 设置 need_rest，返回是否成功。
+        
+        Args:
+            runtime_id: Runtime ID
+            target: Target value to set
+            expected: Expected current value (CAS condition)
+            
+        Returns:
+            True if update succeeded (need_rest matched expected), False otherwise
+        """
+        now = datetime.utcnow().isoformat()
+        
+        with self.db.get_connection("agent", resource_id=runtime_id) as conn:
+            cursor = conn.execute("""
+                UPDATE agent_runtimes
+                SET need_rest = ?, updated_at = ?
+                WHERE runtime_id = ? AND need_rest = ?
+            """, (target, now, runtime_id, expected))
+            conn.commit()
+            return cursor.rowcount > 0
+    
+    def cas_set_status(self, runtime_id: str, expected_status: List[str], new_status: str) -> bool:
+        """CAS set status - only update if current status is in expected_status list.
+        
+        Args:
+            runtime_id: Runtime ID
+            expected_status: List of expected current statuses
+            new_status: New status to set
+            
+        Returns:
+            True if update succeeded, False otherwise
+        """
+        now = datetime.utcnow().isoformat()
+        placeholders = ','.join(['?' for _ in expected_status])
+        
+        with self.db.get_connection("agent", resource_id=runtime_id) as conn:
+            cursor = conn.execute(f"""
+                UPDATE agent_runtimes 
+                SET status = ?, updated_at = ?
+                WHERE runtime_id = ? AND status IN ({placeholders})
+            """, (new_status, now, runtime_id, *expected_status))
+            conn.commit()
+            return cursor.rowcount > 0
+    
+    def cas_set_status_with_error(self, runtime_id: str, expected_status: List[str], new_status: str, error: str) -> bool:
+        """CAS set status with error - only update if current status is in expected_status list.
+        
+        Args:
+            runtime_id: Runtime ID
+            expected_status: List of expected current statuses
+            new_status: New status to set
+            error: Error message to set
+            
+        Returns:
+            True if update succeeded, False otherwise
+        """
+        now = datetime.utcnow().isoformat()
+        placeholders = ','.join(['?' for _ in expected_status])
+        
+        with self.db.get_connection("agent", resource_id=runtime_id) as conn:
+            cursor = conn.execute(f"""
+                UPDATE agent_runtimes 
+                SET status = ?, error = ?, updated_at = ?
+                WHERE runtime_id = ? AND status IN ({placeholders})
+            """, (new_status, error, now, runtime_id, *expected_status))
             conn.commit()
             return cursor.rowcount > 0

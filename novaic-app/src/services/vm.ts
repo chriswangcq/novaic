@@ -7,6 +7,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import type { PortConfig } from './api';
+import { VM_CONFIG, API_CONFIG } from '../config';
 
 // VM 状态类型 - matches Gateway VmStatus
 export interface VmStatus {
@@ -96,7 +97,7 @@ class VmService {
     try {
       // Stop then start
       await this.stop(agentId);
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, VM_CONFIG.RESTART_DELAY));
       return await this.start(agentId, agentIndex);
     } catch (error) {
       console.error('[VM Service] Restart failed:', error);
@@ -164,11 +165,11 @@ class VmService {
       if (status?.vnc_url) {
         return status.vnc_url;
       }
-      // 返回默认 URL (Agent 0 websocket port: 20007)
-      return 'ws://localhost:20007/websockify';
+      // 返回默认 URL (Agent 0 websocket port)
+      return `ws://localhost:${import.meta.env.VITE_WS_PORT || 20007}/websockify`;
     } catch (error) {
       console.error('[VM Service] Get VNC URL failed:', error);
-      return 'ws://localhost:20007/websockify';
+      return `ws://localhost:${import.meta.env.VITE_WS_PORT || 20007}/websockify`;
     }
   }
 
@@ -177,7 +178,7 @@ class VmService {
    */
   async getAgentUrl(): Promise<string> {
     // Gateway is always at fixed port
-    return 'http://localhost:19999';
+    return API_CONFIG.GATEWAY_URL;
   }
 
   /**
@@ -199,8 +200,14 @@ class VmService {
    * 等待特定 agent 的 VM 就绪
    * @param agentId - Agent ID
    */
-  async waitForReady(agentId: string, maxAttempts = 30, intervalMs = 2000): Promise<boolean> {
-    for (let i = 0; i < maxAttempts; i++) {
+  async waitForReady(
+    agentId: string, 
+    maxAttempts?: number, 
+    intervalMs?: number
+  ): Promise<boolean> {
+    const attempts = maxAttempts ?? VM_CONFIG.READY_CHECK_MAX_ATTEMPTS;
+    const interval = intervalMs ?? VM_CONFIG.READY_CHECK_INTERVAL;
+    for (let i = 0; i < attempts; i++) {
       try {
         const status = await this.getStatus(agentId);
         if (status && status.running && status.agent_healthy) {
@@ -209,7 +216,7 @@ class VmService {
       } catch {
         // 继续等待
       }
-      await new Promise(resolve => setTimeout(resolve, intervalMs));
+      await new Promise(resolve => setTimeout(resolve, interval));
     }
     return false;
   }

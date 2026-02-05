@@ -10,6 +10,7 @@ import { useAppStore } from '../../store';
 import { AICAgent } from '../../services/api';
 import { vmService, VmStatus } from '../../services/vm';
 import { AgentDisplayStatus } from '../../types';
+import { POLL_CONFIG } from '../../config';
 import { 
   Plus, 
   Play, 
@@ -50,15 +51,15 @@ const statusConfig: Record<AgentDisplayStatus, {
 }> = {
   // Setup phases
   needs_setup: {
-    color: 'bg-blue-500',
-    textColor: 'text-blue-400',
+    color: 'bg-white/20',
+    textColor: 'text-white/70',
     label: 'Setup Required',
     icon: Settings,
     isSetup: true,
   },
   setting_up: {
-    color: 'bg-blue-500',
-    textColor: 'text-blue-400',
+    color: 'bg-white/20',
+    textColor: 'text-white/70',
     label: 'Setting Up...',
     icon: Loader2,
     animate: true,
@@ -115,7 +116,7 @@ function AgentCard({ agent, status: agentStatus, isSelected, onSelect, onStart, 
       className={`
         relative p-6 rounded-xl border-2 transition-all duration-200 cursor-pointer
         ${isSelected 
-          ? 'border-blue-500 bg-blue-500/10' 
+          ? 'border-white/30 bg-white/5' 
           : 'border-nb-border bg-nb-surface hover:border-nb-border-hover hover:bg-nb-surface-hover'
         }
       `}
@@ -157,7 +158,7 @@ function AgentCard({ agent, status: agentStatus, isSelected, onSelect, onStart, 
             <button
               onClick={(e) => { e.stopPropagation(); onContinueSetup(); }}
               disabled={isSettingUp}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white rounded-lg transition-colors font-medium"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white/15 hover:bg-white/20 disabled:bg-white/10 text-white rounded-lg transition-colors font-medium"
             >
               {isNeedsSetup ? (
                 <>
@@ -186,7 +187,7 @@ function AgentCard({ agent, status: agentStatus, isSelected, onSelect, onStart, 
             <button
               onClick={(e) => { e.stopPropagation(); onEnter(); }}
               disabled={isStopping}
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white rounded-lg transition-colors font-medium"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white/15 hover:bg-white/20 disabled:bg-white/10 text-white rounded-lg transition-colors font-medium"
             >
               <Monitor size={18} />
               Enter Workspace
@@ -274,7 +275,7 @@ export function AgentDashboard({ onEnterWorkspace, onEnterSetup }: AgentDashboar
   // Poll status periodically
   useEffect(() => {
     refreshVmStatus();
-    const interval = setInterval(refreshVmStatus, 3000);
+    const interval = setInterval(refreshVmStatus, POLL_CONFIG.VM_STATUS_FAST_INTERVAL);
     return () => clearInterval(interval);
   }, [refreshVmStatus]);
 
@@ -368,7 +369,7 @@ export function AgentDashboard({ onEnterWorkspace, onEnterSetup }: AgentDashboar
         try {
           await vmService.stop(deleteConfirm.agentId);
           // Wait a bit for VM to fully stop
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise(resolve => setTimeout(resolve, POLL_CONFIG.GATEWAY_HEALTH_INTERVAL));
         } catch (e) {
           console.warn('[Dashboard] Failed to stop VM, continuing with delete:', e);
         }
@@ -429,7 +430,7 @@ export function AgentDashboard({ onEnterWorkspace, onEnterSetup }: AgentDashboar
         </div>
         <button
           onClick={() => setCreateModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+          className="flex items-center gap-2 px-4 py-2 bg-white/15 hover:bg-white/20 text-white rounded-lg transition-colors font-medium"
         >
           <Plus size={18} />
           New Agent
@@ -457,7 +458,7 @@ export function AgentDashboard({ onEnterWorkspace, onEnterSetup }: AgentDashboar
               <p className="text-nb-text-secondary mb-6">Create your first AI agent to get started</p>
               <button
                 onClick={() => setCreateModalOpen(true)}
-                className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                className="flex items-center gap-2 px-6 py-3 bg-white/15 hover:bg-white/20 text-white rounded-lg transition-colors font-medium"
               >
                 <Plus size={20} />
                 Create Your First Agent

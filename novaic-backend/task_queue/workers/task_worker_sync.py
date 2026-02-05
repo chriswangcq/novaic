@@ -24,6 +24,7 @@ import traceback
 
 from task_queue.client import TaskQueueClient, GatewayInternalClient, SagaClient
 from task_queue.heartbeat_sync import HeartbeatSync
+from common.config import ServiceConfig
 
 
 @dataclass
@@ -61,19 +62,19 @@ class TaskWorkerSync:
     def __init__(
         self,
         topics: List[str],
-        queue_service_url: str = "http://127.0.0.1:19997",
+        queue_service_url: str = None,
         gateway_url: str = None,
-        poll_interval: float = 0.1,
-        timeout: float = 60.0,
+        poll_interval: float = None,
+        timeout: float = None,
     ):
         self.topics = topics
-        self.queue_service_url = queue_service_url
-        self.poll_interval = poll_interval
-        self.timeout = timeout
+        self.queue_service_url = queue_service_url or ServiceConfig.QUEUE_SERVICE_URL
+        self.poll_interval = poll_interval if poll_interval is not None else ServiceConfig.POLL_INTERVAL
+        self.timeout = timeout if timeout is not None else ServiceConfig.TASK_TIMEOUT
         self.worker_id = f"task-sync-{uuid.uuid4().hex[:8]}"
         
         # Gateway URL: 参数 > 环境变量 > 默认值
-        self.gateway_url = gateway_url or os.environ.get("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
+        self.gateway_url = gateway_url or os.environ.get("NOVAIC_GATEWAY_URL", ServiceConfig.GATEWAY_URL)
         
         # 使用现有的同步 SDK
         self.client = TaskQueueClient(queue_service_url, timeout=timeout)  # 连接 Queue Service
@@ -241,40 +242,24 @@ class TaskWorkerSync:
 
 # ==================== 启动脚本 ====================
 
-def start_worker(topics: List[str], queue_service_url: str = "http://127.0.0.1:19997"):
+def start_worker(topics: List[str], queue_service_url: str = None):
     """启动一个 Worker（在当前进程）"""
     worker = TaskWorkerSync(topics, queue_service_url)
     worker.run()
 
 
 def start_multiple_workers(
-    num_workers: int = 5,
+    num_workers: int = None,
     topics: List[str] = None,
-    queue_service_url: str = "http://127.0.0.1:19997"
+    queue_service_url: str = None
 ):
     """启动多个 Worker（多进程）"""
     from multiprocessing import Process
     
     if topics is None:
-        topics = [
-            "llm.call",
-            "llm.call_summary",
-            "mcp.create",
-            "mcp.destroy",
-            "runtime.create",
-            "runtime.update_phase",
-            "runtime.set_status",
-            "runtime.set_summarized",
-            "runtime.check_new_messages",
-            "message.claim",
-            "message.route",
-            "subagent.set_awake",
-            "subagent.set_sleeping",
-            "context.append",
-            "context.read",
-            "tool.execute",
-            "saga.trigger",
-        ]
+        # 自动从 handlers 注册表获取所有 topics
+        from task_queue.handlers import get_all_topics
+        topics = get_all_topics()
     
     processes = []
     
@@ -310,9 +295,9 @@ if __name__ == "__main__":
     import os
     
     # 获取配置
-    num_workers = int(os.environ.get("NUM_WORKERS", "5"))
-    queue_service_url = os.environ.get("QUEUE_SERVICE_URL", "http://127.0.0.1:19997")
-    gateway_url = os.environ.get("GATEWAY_URL", "http://127.0.0.1:19999")
+    num_workers = int(os.environ.get("NUM_WORKERS", str(ServiceConfig.NUM_WORKERS)))
+    queue_service_url = os.environ.get("QUEUE_SERVICE_URL", ServiceConfig.QUEUE_SERVICE_URL)
+    gateway_url = os.environ.get("GATEWAY_URL", ServiceConfig.GATEWAY_URL)
     
     # 支持命令行参数
     if len(sys.argv) > 1:
