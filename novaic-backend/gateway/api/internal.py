@@ -2663,10 +2663,10 @@ async def rt_qemu_ssh_exec(runtime_id: str, data: Dict[str, Any]):
     
     # Get agent index for port allocation
     config_mgr = get_agent_config_manager()
-    agents = config_mgr.get_agents()
+    agents = config_mgr.list_agents()
     agent_index = 0
     for i, agent in enumerate(agents):
-        if agent.agent_id == agent_id:
+        if agent.id == agent_id:
             agent_index = i
             break
     
@@ -2679,7 +2679,7 @@ async def rt_qemu_ssh_exec(runtime_id: str, data: Dict[str, Any]):
         key_path = ssh_manager.get_private_key_path()
         
         async with asyncssh.connect(
-            host="127.0.0.1", port=ssh_port, username="novaic",
+            host="127.0.0.1", port=ssh_port, username="ubuntu",
             known_hosts=None, client_keys=[str(key_path)], compression_algs=None,
         ) as conn:
             result = await asyncio.wait_for(conn.run(command, check=False), timeout=timeout)
@@ -2702,10 +2702,10 @@ def rt_qemu_status(runtime_id: str):
     _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     config_mgr = get_agent_config_manager()
-    agents = config_mgr.get_agents()
+    agents = config_mgr.list_agents()
     agent_index = 0
     for i, agent in enumerate(agents):
-        if agent.agent_id == agent_id:
+        if agent.id == agent_id:
             agent_index = i
             break
     
@@ -2730,6 +2730,296 @@ def rt_qemu_status(runtime_id: str):
         "ports": {"ssh": ports.ssh, "vnc": ports.vnc, "websocket": ports.websocket},
         "agent_id": agent_id,
     }
+
+
+@router.post("/rt/{runtime_id}/qemu/start")
+def rt_qemu_start(runtime_id: str, data: Dict[str, Any]):
+    """Start the QEMU VM. Agent ID resolved from runtime."""
+    from gateway.vm import get_vm_manager
+    from gateway.config.agents import get_agent_config_manager
+    
+    _, agent_id, _ = resolve_runtime_ids(runtime_id)
+    
+    # Get agent index for port allocation
+    config_mgr = get_agent_config_manager()
+    agents = config_mgr.list_agents()
+    agent_index = 0
+    for i, agent in enumerate(agents):
+        if agent.id == agent_id:
+            agent_index = agent.vm.agent_index if hasattr(agent.vm, 'agent_index') else i
+            break
+    
+    memory = data.get("memory", "4096")
+    cpus = data.get("cpus", 4)
+    
+    try:
+        manager = get_vm_manager()
+        result = manager.start(
+            agent_id=agent_id,
+            agent_index=agent_index,
+            memory=memory,
+            cpus=cpus,
+        )
+        return {"success": True, **result}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/rt/{runtime_id}/qemu/shutdown")
+def rt_qemu_shutdown(runtime_id: str, data: Dict[str, Any]):
+    """Shutdown the QEMU VM gracefully. Agent ID resolved from runtime."""
+    from gateway.vm import get_vm_manager
+    
+    _, agent_id, _ = resolve_runtime_ids(runtime_id)
+    
+    graceful = data.get("graceful", True)
+    quick = data.get("quick", False)
+    
+    try:
+        manager = get_vm_manager()
+        result = manager.stop(
+            agent_id=agent_id,
+            graceful=graceful,
+            quick=quick,
+        )
+        return {"success": True, **result}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/rt/{runtime_id}/qemu/restart")
+def rt_qemu_restart(runtime_id: str, data: Dict[str, Any]):
+    """Restart the QEMU VM (stop then start). Agent ID resolved from runtime."""
+    from gateway.vm import get_vm_manager
+    from gateway.config.agents import get_agent_config_manager
+    
+    _, agent_id, _ = resolve_runtime_ids(runtime_id)
+    
+    # Get agent index for port allocation
+    config_mgr = get_agent_config_manager()
+    agents = config_mgr.list_agents()
+    agent_index = 0
+    for i, agent in enumerate(agents):
+        if agent.id == agent_id:
+            agent_index = agent.vm.agent_index if hasattr(agent.vm, 'agent_index') else i
+            break
+    
+    graceful = data.get("graceful", True)
+    
+    try:
+        manager = get_vm_manager()
+        
+        # Stop the VM first
+        stop_result = manager.stop(
+            agent_id=agent_id,
+            graceful=graceful,
+            quick=False,  # Use normal timeout for restart
+        )
+        
+        # Start the VM again
+        start_result = manager.start(
+            agent_id=agent_id,
+            agent_index=agent_index,
+            memory="4096",  # Default memory
+            cpus=4,         # Default CPUs
+        )
+        
+        return {
+            "success": True,
+            "stop_result": stop_result,
+            "start_result": start_result,
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@router.post("/rt/{runtime_id}/qemu/deploy-vmuse")
+async def rt_qemu_deploy_vmuse(runtime_id: str, data: Dict[str, Any]):
+    """
+    Deploy novaic-mcp-vmuse code to VM.
+    
+    智能部署流程：
+    1. 检查 cloud-init 是否完成（未完成则返回 wait 状态）
+    2. 复制代码到 /opt/novaic-mcp-vmuse/
+    3. 启动 novaic.service
+    4. 验证 MCP 服务是否响应
+    
+    Agent ID resolved from runtime.
+    """
+    import os
+    import asyncio
+    from gateway.vm.ssh import get_ssh_key_manager
+    from gateway.config.agents import allocate_ports_for_agent, get_agent_config_manager
+    
+    _, agent_id, _ = resolve_runtime_ids(runtime_id)
+    
+    restart_service = data.get("restart_service", True)
+    force = data.get("force", False)
+    
+    result = {
+        "success": False,
+        "status": "error",
+        "cloudinit_complete": False,
+        "cloudinit_progress": "",
+        "venv_ready": False,
+        "files_copied": [],
+        "service_status": "unknown",
+        "mcp_reachable": False,
+    }
+    
+    # Get agent index for port allocation
+    config_mgr = get_agent_config_manager()
+    agents = config_mgr.list_agents()
+    agent_index = 0
+    for i, agent in enumerate(agents):
+        if agent.id == agent_id:
+            agent_index = agent.vm.agent_index if hasattr(agent.vm, 'agent_index') else i
+            break
+    
+    ports = allocate_ports_for_agent(agent_index)
+    ssh_port = ports.ssh
+    mcp_port = ports.vm
+    
+    # 1. 找到 novaic-mcp-vmuse 路径
+    resource_dir = os.environ.get("NOVAIC_RESOURCE_DIR", "")
+    vmuse_path = None
+    search_paths = []
+    
+    # Priority 1: NOVAIC_RESOURCE_DIR (production mode)
+    if resource_dir:
+        candidate = os.path.join(resource_dir, "novaic-mcp-vmuse")
+        search_paths.append(candidate)
+        if os.path.exists(candidate):
+            vmuse_path = candidate
+    
+    # Priority 2: Tauri resources directory (development mode)
+    if not vmuse_path:
+        # novaic-backend/gateway/api/internal.py -> novaic/novaic-app/src-tauri/resources/novaic-mcp-vmuse
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
+        candidate = os.path.join(project_root, "novaic-app", "src-tauri", "resources", "novaic-mcp-vmuse")
+        search_paths.append(candidate)
+        if os.path.exists(candidate):
+            vmuse_path = candidate
+    
+    # Priority 3: macOS app bundle Resources directory
+    if not vmuse_path:
+        app_resources = "/Applications/NovAIC.app/Contents/Resources/novaic-mcp-vmuse"
+        search_paths.append(app_resources)
+        if os.path.exists(app_resources):
+            vmuse_path = app_resources
+    
+    if not vmuse_path or not os.path.exists(vmuse_path):
+        result["error"] = f"novaic-mcp-vmuse not found. NOVAIC_RESOURCE_DIR={resource_dir}, searched: {search_paths}"
+        return result
+    
+    try:
+        import asyncssh
+        
+        # 2. SSH 连接
+        ssh_manager = get_ssh_key_manager()
+        key_path = ssh_manager.get_private_key_path()
+        
+        connect_kwargs = {
+            "host": "127.0.0.1",
+            "port": ssh_port,
+            "username": "ubuntu",
+            "known_hosts": None,
+            "client_keys": [str(key_path)],
+            "compression_algs": None,
+        }
+        
+        async with asyncssh.connect(**connect_kwargs) as conn:
+            # 3. 检查 cloud-init 状态
+            cloudinit_check = await conn.run(
+                "test -f /var/log/novaic-init-done.log && echo 'DONE' || echo 'PENDING'",
+                check=False
+            )
+            cloudinit_done = "DONE" in cloudinit_check.stdout
+            result["cloudinit_complete"] = cloudinit_done
+            
+            if not cloudinit_done and not force:
+                # 获取 cloud-init 进度
+                progress_result = await conn.run(
+                    "tail -5 /var/log/cloud-init-output.log 2>/dev/null | head -1 || echo 'Initializing...'",
+                    check=False
+                )
+                result["cloudinit_progress"] = progress_result.stdout.strip()
+                result["status"] = "wait"
+                result["success"] = True
+                result["message"] = "Cloud-init not complete. Wait and retry, or use force=true to proceed anyway."
+                return result
+            
+            # 4. 检查 venv 是否就绪
+            venv_check = await conn.run(
+                "test -d /opt/novaic-venv/bin && echo 'READY' || echo 'MISSING'",
+                check=False
+            )
+            result["venv_ready"] = "READY" in venv_check.stdout
+            
+            # 5. 停止服务
+            await conn.run("sudo systemctl stop novaic 2>/dev/null || true", check=False)
+            
+            # 6. 创建目标目录
+            await conn.run("sudo mkdir -p /opt/novaic-mcp-vmuse && sudo chown -R ubuntu:ubuntu /opt/novaic-mcp-vmuse", check=False)
+            
+            # 7. 清理旧代码
+            await conn.run("rm -rf /opt/novaic-mcp-vmuse/src /opt/novaic-mcp-vmuse/skills", check=False)
+            
+            files_copied = []
+            
+            # 8. 复制 src/
+            src_path = os.path.join(vmuse_path, "src")
+            if os.path.exists(src_path):
+                await asyncssh.scp(src_path, (conn, "/opt/novaic-mcp-vmuse/"), recurse=True)
+                files_copied.append("src/")
+            
+            # 9. 复制 pyproject.toml
+            pyproject_path = os.path.join(vmuse_path, "pyproject.toml")
+            if os.path.exists(pyproject_path):
+                await asyncssh.scp(pyproject_path, (conn, "/opt/novaic-mcp-vmuse/"))
+                files_copied.append("pyproject.toml")
+            
+            # 10. 复制 README.md (if exists)
+            readme_path = os.path.join(vmuse_path, "README.md")
+            if os.path.exists(readme_path):
+                await asyncssh.scp(readme_path, (conn, "/opt/novaic-mcp-vmuse/"))
+                files_copied.append("README.md")
+            
+            result["files_copied"] = files_copied
+            
+            # 11. 重启服务
+            service_status = "not_restarted"
+            if restart_service:
+                restart_result = await conn.run("sudo systemctl restart novaic", check=False)
+                if restart_result.exit_status == 0:
+                    service_status = "restarted"
+                    # Wait a moment for service to start
+                    await asyncio.sleep(2)
+                else:
+                    service_status = f"restart_failed: {restart_result.stderr.strip()}"
+            
+            result["service_status"] = service_status
+            
+            # 12. 验证 MCP 服务
+            try:
+                import httpx
+                async with httpx.AsyncClient(timeout=5.0) as http_client:
+                    mcp_response = await http_client.get(f"http://127.0.0.1:{mcp_port}/health")
+                    result["mcp_reachable"] = mcp_response.status_code == 200
+            except Exception:
+                result["mcp_reachable"] = False
+            
+            result["success"] = True
+            result["status"] = "deployed"
+            result["source_path"] = vmuse_path
+            return result
+            
+    except asyncio.TimeoutError:
+        result["error"] = "SSH connection timed out"
+        return result
+    except Exception as e:
+        result["error"] = str(e)
+        return result
 
 
 # ---------- Task APIs (via runtime_id) ----------

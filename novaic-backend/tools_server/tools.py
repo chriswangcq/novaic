@@ -1,7 +1,7 @@
 """
 Tools Server - 工具定义
 
-包含 32 个内置工具的完整定义，符合 OpenAI function calling 格式。
+包含 36 个内置工具的完整定义，符合 OpenAI function calling 格式。
 
 工具分类：
 - memory: 10 个工具 (memory_save, memory_recall, memory_delete, memory_list_namespaces, 
@@ -10,10 +10,10 @@ Tools Server - 工具定义
                      subagent_spawn, subagent_query, subagent_cancel)
 - chat: 6 个工具 (chat_reply, chat_ask, chat_notify, chat_show_image, chat_history, chat_get_message)
 - web: 2 个工具 (web_search, web_fetch)
-- qemu: 2 个工具 (qemu_ssh_exec, qemu_status)
+- qemu: 6 个工具 (qemu_ssh_exec, qemu_status, qemu_start_vm, qemu_restart_vm, qemu_shutdown_vm, qemu_deploy_vmuse_code)
 - task: 5 个工具 (task_async, task_query, task_list, task_cancel, task_summary)
 
-总计: 32 个工具
+总计: 36 个工具
 """
 
 from typing import Dict, List, Any, Optional
@@ -514,7 +514,7 @@ WEB_TOOLS: List[Dict[str, Any]] = [
 ]
 
 
-# ==================== QEMU Tools (2) ====================
+# ==================== QEMU Tools (6) ====================
 
 QEMU_TOOLS: List[Dict[str, Any]] = [
     {
@@ -542,6 +542,81 @@ QEMU_TOOLS: List[Dict[str, Any]] = [
         "inputSchema": {
             "type": "object",
             "properties": {},
+            "required": []
+        }
+    },
+    {
+        "name": "qemu_start_vm",
+        "description": "Start the QEMU virtual machine. Use this to boot up the VM if it's not running.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "memory": {
+                    "type": "string",
+                    "description": "Memory size in MB (default: '4096')",
+                    "default": "4096"
+                },
+                "cpus": {
+                    "type": "integer",
+                    "description": "Number of CPUs (default: 4)",
+                    "default": 4
+                }
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "qemu_restart_vm",
+        "description": "Restart the QEMU virtual machine. This will gracefully shutdown and then start the VM.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "graceful": {
+                    "type": "boolean",
+                    "description": "Try graceful shutdown via SSH first (default: true)",
+                    "default": True
+                }
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "qemu_shutdown_vm",
+        "description": "Shutdown the QEMU virtual machine gracefully. Use this to safely stop the VM.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "graceful": {
+                    "type": "boolean",
+                    "description": "Try graceful shutdown via SSH first (default: true)",
+                    "default": True
+                },
+                "quick": {
+                    "type": "boolean",
+                    "description": "Use shorter timeouts for faster shutdown (default: false)",
+                    "default": False
+                }
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "qemu_deploy_vmuse_code",
+        "description": "Deploy novaic-mcp-vmuse code to VM. Checks cloud-init status, copies code to /opt/novaic-mcp-vmuse/, and starts novaic.service. Returns wait status if cloud-init is not complete.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "restart_service": {
+                    "type": "boolean",
+                    "description": "Whether to restart novaic service after deployment (default: true)",
+                    "default": True
+                },
+                "force": {
+                    "type": "boolean",
+                    "description": "Force deployment even if cloud-init is not complete (default: false)",
+                    "default": False
+                }
+            },
             "required": []
         }
     },

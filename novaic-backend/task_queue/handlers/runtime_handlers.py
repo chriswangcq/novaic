@@ -199,13 +199,17 @@ def handle_check_new_messages(payload: Dict[str, Any], ctx: dict) -> Dict[str, A
     
     用于 ReactActions 判断是否继续循环
     
+    重要：如果有新消息且 need_rest=1，自动重置 need_rest=0
+    这确保用户发送新消息时，Agent 不会意外结束。
+    
     Payload:
         runtime_id: str
         agent_id: str
     
     Returns:
         has_new_messages: bool - 是否有新消息
-        need_rest: bool - 是否需要休息
+        need_rest: bool - 是否需要休息（重置后的值）
+        need_rest_reset: bool - 是否进行了重置
     """
     runtime_id = payload["runtime_id"]
     agent_id = payload["agent_id"]
@@ -218,9 +222,27 @@ def handle_check_new_messages(payload: Dict[str, Any], ctx: dict) -> Dict[str, A
     msg_resp = client.has_new_messages(agent_id)
     has_new = bool(msg_resp.get("has_new_messages"))
     
+    # 关键逻辑：如果有新消息且 need_rest=1，重置 need_rest=0
+    # 这样 Agent 会继续处理新消息，而不是意外结束
+    need_rest_reset = False
+    if has_new and need_rest:
+        print(f"[runtime.check_new_messages] {runtime_id}: has_new_messages=True, need_rest=True -> resetting need_rest to 0")
+        try:
+            reset_result = biz.set_need_rest(runtime_id, value=False)
+            if reset_result.success:
+                need_rest = False
+                need_rest_reset = True
+                print(f"[runtime.check_new_messages] {runtime_id}: need_rest reset successfully")
+            else:
+                print(f"[runtime.check_new_messages] {runtime_id}: need_rest reset failed: {reset_result.message}")
+        except Exception as e:
+            print(f"[runtime.check_new_messages] {runtime_id}: need_rest reset error: {e}")
+            # 重置失败不影响主流程，继续返回原始状态
+    
     return {
         "success": True,
         "runtime_id": runtime_id,
         "has_new_messages": has_new,
         "need_rest": need_rest,
+        "need_rest_reset": need_rest_reset,
     }

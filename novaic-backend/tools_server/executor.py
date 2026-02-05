@@ -78,6 +78,10 @@ BUILTIN_TOOL_NAMES = {
     # QEMU 工具
     "qemu_ssh_exec",
     "qemu_status",
+    "qemu_deploy_vmuse_code",
+    "qemu_start_vm",
+    "qemu_restart_vm",
+    "qemu_shutdown_vm",
     
     # Task 工具
     "task_spawn",
@@ -572,6 +576,45 @@ class ToolExecutor:
             elif tool_name == "qemu_status":
                 response = await client.get(
                     f"/internal/rt/{self.runtime_id}/qemu/status"
+                )
+                return self._handle_response(response)
+            
+            elif tool_name == "qemu_start_vm":
+                response = await client.post(
+                    f"/internal/rt/{self.runtime_id}/qemu/start",
+                    json={
+                        "memory": arguments.get("memory", "4096"),
+                        "cpus": arguments.get("cpus", 4),
+                    }
+                )
+                return self._handle_response(response)
+            
+            elif tool_name == "qemu_restart_vm":
+                response = await client.post(
+                    f"/internal/rt/{self.runtime_id}/qemu/restart",
+                    json={
+                        "graceful": arguments.get("graceful", True),
+                    }
+                )
+                return self._handle_response(response)
+            
+            elif tool_name == "qemu_shutdown_vm":
+                response = await client.post(
+                    f"/internal/rt/{self.runtime_id}/qemu/shutdown",
+                    json={
+                        "graceful": arguments.get("graceful", True),
+                        "quick": arguments.get("quick", False),
+                    }
+                )
+                return self._handle_response(response)
+            
+            elif tool_name == "qemu_deploy_vmuse_code":
+                response = await client.post(
+                    f"/internal/rt/{self.runtime_id}/qemu/deploy-vmuse",
+                    json={
+                        "restart_service": arguments.get("restart_service", True),
+                        "force": arguments.get("force", False),
+                    }
                 )
                 return self._handle_response(response)
             
