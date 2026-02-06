@@ -176,7 +176,7 @@ saga_types = get_all_saga_types()
 
 ## 相关文档
 
-- [Saga 自动发现机制](../../../SAGA_AUTO_DISCOVERY.md) - 实现细节
+- [Saga 自动发现机制](../../../docs/SAGA_AUTO_DISCOVERY.md) - 实现细节
 - [Task Queue 架构](../../README.md) - 整体架构
 - [Saga 设计](../../saga.py) - Saga 核心实现
 

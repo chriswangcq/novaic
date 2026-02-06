@@ -723,13 +723,13 @@ System-wide event handling:
 ## Documentation
 
 ### User Guides
-- [Development Guide](DEVELOPMENT.md) — Local development setup
+- [Development Guide](docs/DEVELOPMENT.md) — Local development setup
 - [Contributing Guide](CONTRIBUTING.md) — How to contribute
 
 ### Technical Documentation
 - [Development Guides](dev-guide/) — Build process, debugging, and testing
 - [Tech Lead Guide](tech-lead-guide/) — Architecture patterns and best practices
-- [Status Report](STATUS.md) — Current project status and recent improvements
+- [All Documentation](docs/) — Complete technical documentation archive
 
 ### Recent Improvements & Migration Reports
 
@@ -747,10 +747,10 @@ System-wide event handling:
 - ✅ Event-driven architecture with pub/sub EventBus
 
 **Detailed Reports:**
-- [FINAL_SUMMARY.md](FINAL_SUMMARY.md) — Complete migration report
-- [COMPLETION_REPORT.md](COMPLETION_REPORT.md) — SQLite stabilization details
-- [MACOS_PATH_FIX_COMPLETE.md](MACOS_PATH_FIX_COMPLETE.md) — macOS compatibility fixes
-- [SYNC_MIGRATION.md](SYNC_MIGRATION.md) — Worker architecture migration
+- [FINAL_SUMMARY.md](docs/FINAL_SUMMARY.md) — Complete migration report
+- [COMPLETION_REPORT.md](docs/COMPLETION_REPORT.md) — SQLite stabilization details
+- [MACOS_PATH_FIX_COMPLETE.md](docs/MACOS_PATH_FIX_COMPLETE.md) — macOS compatibility fixes
+- [SYNC_MIGRATION.md](docs/SYNC_MIGRATION.md) — Worker architecture migration
 
 ## Requirements
 
@@ -795,9 +795,8 @@ NovAIC has been tested extensively for production readiness:
 - ✅ VNC viewer with efficient frame updates
 
 **Test Reports:**
-- [SMOKE_TEST_REPORT.md](SMOKE_TEST_REPORT.md) — Comprehensive smoke test results
-- [TEST_RESULTS.md](TEST_RESULTS.md) — Detailed test results
-- [V2_SMOKE_TEST_FINAL.md](V2_SMOKE_TEST_FINAL.md) — V2 architecture validation
+- [V2_SMOKE_TEST_FINAL.md](docs/V2_SMOKE_TEST_FINAL.md) — V2 architecture validation
+- [Additional test reports](docs/) — See docs folder for archived test reports
 
 ### Monitoring & Debugging
 
