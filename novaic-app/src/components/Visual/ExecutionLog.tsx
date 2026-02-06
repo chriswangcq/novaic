@@ -198,6 +198,8 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
   
   // 记录展开状态的日志 ID
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
+  // 控制内容显示时机，避免用户看到滚动过程
+  const [isReady, setIsReady] = useState(false);
   
   const toggleLogExpand = useCallback((logKey: string) => {
     setExpandedLogs(prev => {
@@ -280,42 +282,27 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
     prevLogsLengthRef.current = 0;
     autoScrollEnabled.current = true;
     firstVisibleIndexRef.current = null;
-    
-    // 如果已经有日志数据，立即滚动到底部
-    if (logs.length > 0) {
-      hasInitialScrolled.current = true;
-      prevLogsLengthRef.current = logs.length;
-      
-      // 使用多个 RAF 确保虚拟列表完全渲染
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            virtualizer.scrollToIndex(logs.length - 1, { 
-              align: 'end',
-              behavior: 'auto'
-            });
-          });
-        });
-      });
-    }
-  }, [currentAgentId, logSubagentId, virtualizer]);
+    setIsReady(false); // 先隐藏内容，等滚动完成后再显示
+  }, [currentAgentId, logSubagentId]);
   
-  // 如果切换时没有日志，等待首次加载数据时滚动
+  // 初始滚动到底部（切换 agent 或首次加载数据时）
   useEffect(() => {
-    if (!hasInitialScrolled.current && logs.length > 0 && prevLogsLengthRef.current === 0) {
-      hasInitialScrolled.current = true;
-      prevLogsLengthRef.current = logs.length;
-      
-      requestAnimationFrame(() => {
+    if (!hasInitialScrolled.current && logs.length > 0) {
+      const timer = setTimeout(() => {
+        // 使用 requestAnimationFrame 确保虚拟列表已更新
         requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            virtualizer.scrollToIndex(logs.length - 1, { 
-              align: 'end',
-              behavior: 'auto'
-            });
+          virtualizer.scrollToIndex(logs.length - 1, { 
+            align: 'end',
+            behavior: 'auto'
           });
+          hasInitialScrolled.current = true;
+          prevLogsLengthRef.current = logs.length;
+          setIsReady(true); // 滚动完成后再显示内容
         });
-      });
+      }, 0);
+      return () => clearTimeout(timer);
+    } else if (logs.length === 0) {
+      setIsReady(true); // 没有日志时直接显示
     }
   }, [logs.length, virtualizer]);
 
@@ -328,9 +315,13 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
         
         // 使用 requestAnimationFrame 确保 DOM 已更新
         requestAnimationFrame(() => {
+          // 如果已经在底部，使用 auto（无动画，直接定位）
+          // 如果不在底部，使用 smooth（有动画，平滑滚动）
+          const behavior = isAtBottom() ? 'auto' : 'smooth';
+          
           virtualizer.scrollToIndex(logs.length - 1, { 
             align: 'end',
-            behavior: 'smooth' 
+            behavior 
           });
           
           // 滚动动画大约 300ms，延迟后重置标志
@@ -617,7 +608,8 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
       {/* Log content - virtualized for large lists */}
       <div
         ref={parentRef}
-        className="flex-1 overflow-y-auto overflow-x-hidden p-4 font-mono text-xs"
+        className={`flex-1 overflow-y-auto overflow-x-hidden p-4 font-mono text-xs ${isReady ? 'opacity-100' : 'opacity-0'}`}
+        style={{ transition: 'none' }} // 不要过渡动画，直接切换
         onScroll={handleScroll}
       >
         {logs.length === 0 ? (
