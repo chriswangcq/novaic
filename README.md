@@ -56,11 +56,66 @@ Unlike temporary sandboxes that reset after each session, NovAIC maintains state
 | **Graceful VM Lifecycle** | Automatic UEFI/cloud-init setup, graceful shutdown via SSH |
 | **Open Source** | MIT license, fully customizable |
 
-## Installation Guide
+### Option 1: Desktop App (Recommended)
 
-### Prerequisites
+The easiest way to get started with full multi-agent support:
 
-Before installing NovAIC, ensure you have the following:
+```bash
+# 1. Clone repository
+git clone https://github.com/chriswangcq/novaic.git
+cd novaic
+
+# 2. Build the app
+./build.sh
+
+# 3. Run the app
+open novaic-app/src-tauri/target/release/bundle/macos/NovAIC.app
+```
+
+The app includes an onboarding wizard that automatically:
+- Downloads Ubuntu cloud image
+- Creates VM with UEFI and cloud-init
+- Deploys novaic-vm MCP Server (32 tools)
+- Starts Gateway with 4 sub-MCP servers (24 tools)
+- Connects VNC viewer
+
+### Option 2: MCP Server Only
+
+If you just want to use NovAIC as an MCP server without the desktop app:
+
+```bash
+# Setup and start VM
+cd novaic-vm
+./setup.sh
+
+# Deploy MCP Server
+./scripts/deploy.sh
+
+# Connect your MCP client to http://localhost:8080/mcp
+```
+
+### Option 3: Development Mode
+
+For local development with hot reload:
+
+```bash
+# Setup backend
+cd novaic-backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Setup and run frontend
+cd ../novaic-app
+npm install
+npm run tauri dev
+```
+
+See [Development Guide](docs/DEVELOPMENT.md) for details.
+
+---
+
+## Prerequisites
 
 | Requirement | Version | Check Command |
 |-------------|---------|---------------|
@@ -72,101 +127,11 @@ Before installing NovAIC, ensure you have the following:
 | **RAM** | 8GB+ | — |
 | **Disk** | 50GB+ free | — |
 
-### Step 1: Clone the Repository
+---
 
-```bash
-git clone https://github.com/chriswangcq/novaic.git
-cd novaic
-```
+## Configure MCP Clients
 
-### Step 2: Setup the Virtual Machine
-
-The VM provides a persistent Linux desktop environment for AI agents.
-
-```bash
-cd novaic-vm
-./setup.sh
-```
-
-This script will:
-- Install QEMU and dependencies via Homebrew
-- Download Ubuntu 24.04 Cloud Image
-- Create and configure the VM (4GB RAM, 4 CPUs)
-- Start the VM
-
-**Wait for initial configuration** (5-10 minutes on first boot):
-
-```bash
-# Monitor progress
-ssh -p 2222 ubuntu@localhost  # Password: ubuntu
-tail -f /var/log/cloud-init-output.log
-```
-
-### Step 3: Deploy MCP Server to VM
-
-```bash
-./scripts/deploy.sh
-```
-
-This deploys novaic-vm MCP Server (with 35+ tools) into the VM. After deployment:
-
-| Service | Address | Credentials |
-|---------|---------|-------------|
-| **VNC** | `vnc://localhost:5900` | Password: `novaic` |
-| **SSH** | `ssh -p 2222 ubuntu@localhost` | Password: `ubuntu` |
-| **MCP** | `http://localhost:8080/mcp` | — |
-
-### Step 4: Setup the Desktop App (Recommended)
-
-The NovAIC desktop application provides a complete GUI experience with multi-agent management:
-
-```bash
-# Setup Gateway (Python backend)
-cd novaic-backend
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-# Setup App (frontend + Tauri)
-cd ../novaic-app
-npm install
-
-# Start development mode
-npm run tauri dev
-```
-
-**Key Features of Desktop App:**
-
-- **Onboarding Flow**: First-time setup wizard for creating your first agent
-- **Agent Selector**: Switch between multiple AI agents (each has isolated VM)
-- **VNC Viewer**: Built-in visual access to the VM desktop
-- **Auto Lifecycle**: Tauri manages Gateway and VM startup/shutdown automatically
-- **Graceful Shutdown**: VMs shut down cleanly via SSH before force-kill
-
-#### Build for Distribution
-
-```bash
-# Build Gateway binary (PyInstaller)
-cd novaic-backend
-./venv/bin/python build.py
-
-# Copy to Tauri resources
-cp dist/novaic-backend ../novaic-app/src-tauri/resources/
-
-# Build Tauri app
-cd ../novaic-app
-npm run tauri build
-```
-
-Or use the all-in-one build script:
-
-```bash
-./build.sh
-```
-
-### Step 5: Configure Your MCP Client
-
-#### Claude Desktop
+### Claude Desktop
 
 Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
@@ -180,7 +145,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
-#### Cursor IDE
+### Cursor IDE
 
 Add to your MCP settings:
 
@@ -190,53 +155,6 @@ Add to your MCP settings:
     "url": "http://localhost:8080/mcp"
   }
 }
-```
-
----
-
-## Quick Start (Desktop App — Recommended)
-
-The easiest way to get started with full multi-agent support:
-
-```bash
-# 1. Clone and build
-git clone https://github.com/chriswangcq/novaic.git
-cd novaic
-./build.sh
-
-# 2. Run the app
-open novaic-app/src-tauri/target/release/bundle/macos/NovAIC.app
-
-# 3. Follow the onboarding wizard to create your first agent
-```
-
-The app will automatically:
-- Download Ubuntu cloud image
-- Create VM with UEFI and cloud-init
-- Deploy novaic-vm MCP Server (with 32 tools)
-- Start the Gateway with 4 sub-MCP servers (24 tools: agent-context, memory, chat, local)
-- Start the VM and connect VNC
-
-## Quick Start (MCP Server Only)
-
-If you just want to use NovAIC as an MCP server without the desktop app:
-
-```bash
-# 1. Setup VM
-cd novaic-vm
-./setup.sh
-
-# 2. Deploy MCP Server
-./scripts/deploy.sh
-
-# 3. Connect your MCP client to http://localhost:8080/mcp
-```
-
-## Quick Start (Python Package)
-
-```bash
-pip install novaic-core
-novaic serve
 ```
 
 ---
@@ -435,11 +353,12 @@ Each agent runs in an isolated QEMU VM with:
 
 ## Packages
 
-| Package | Description | Status | Path |
-|---------|-------------|--------|------|
-| **[novaic-backend](novaic-backend)** | Control plane: REST API + SSE + ReAct Agent + Production SQLite + Workers | ✅ Stable | `novaic-backend` |
-| **[novaic-app](novaic-app)** | Desktop client: Tauri + React + Real-time Chat + VNC Viewer + Agent Management | ✅ Stable | `novaic-app` |
-| **[novaic-vm](novaic-vm)** | VM management + MCP server with 32 tools (desktop, browser, shell, files) | ✅ Stable | `novaic-vm` |
+| Package | Description | Status |
+|---------|-------------|--------|
+| **[novaic-backend](novaic-backend)** | Control plane: REST API + SSE + ReAct Agent + Production SQLite + Workers | ✅ Stable |
+| **[novaic-app](novaic-app)** | Desktop client: Tauri + React + Real-time Chat + VNC Viewer + Agent Management | ✅ Stable |
+| **[novaic-vm](novaic-vm)** | VM management + MCP server with 32 tools (desktop, browser, shell, files) | ✅ Stable |
+| **[novaic-gateway](novaic-gateway)** | Legacy MCP Gateway (replaced by Tools Server in novaic-backend) | ⚠️ Deprecated |
 
 **Architecture Components:**
 - **Gateway**: FastAPI-based control plane with REST API and SSE streaming
@@ -462,16 +381,6 @@ All sub-MCP servers are embedded in the Gateway and discovered via HTTP using st
 - **Shared State**: Direct access to SQLite database
 - **HTTP Discovery**: Standard MCP protocol for tool discovery
 - **Unified Lifecycle**: All services managed by Gateway
-
-**Legacy/Reference** (source code available but not run as separate processes):
-
-| Package | Description |
-|---------|-------------|
-| `novaic-mcp-session` | Original standalone session MCP server |
-| `novaic-mcp-memory` | Original standalone memory MCP server |
-| `novaic-mcp-chat` | Original standalone chat MCP server |
-| `novaic-mcp-local` | Original standalone local MCP server |
-| `novaic-mcp-qemudebug` | QEMU debugging (optional, can be enabled) |
 
 ## MCP Tools (56 Tools via MCP Gateway)
 
@@ -784,8 +693,8 @@ NovAIC has been tested extensively for production readiness:
 
 **Stress Testing:**
 - ✅ 5 agents × 1 minute message bursts
-- ✅ Sustained extreme load tests (comprehensive_smoke_test.py)
-- ✅ FIFO lock stress tests (intensive_fifo_stress_test.py)
+- ✅ Sustained extreme load tests with multiple concurrent agents
+- ✅ FIFO lock stress tests under high concurrency
 - ✅ Multi-agent concurrent execution
 
 **Frontend Performance:**
@@ -800,25 +709,17 @@ NovAIC has been tested extensively for production readiness:
 
 ### Monitoring & Debugging
 
-**Built-in Tools:**
-```bash
-# Monitor worker status
-python monitor_workers.py
-
-# Diagnose issues
-python diagnose_workers.py
-
-# Analyze performance
-python analyze_agent_performance.py
-
-# Check for loops
-python analyze_agent_loops.py
-```
-
 **Log Files:**
 - Gateway: `~/.novaic/logs/gateway.log`
 - Workers: `~/.novaic/logs/worker_*.log`
 - VM MCP: Check via `ssh -p 2222 ubuntu@localhost`
+- SQLite Database: `~/.novaic/gateway.db`
+
+**Debugging Tips:**
+- Check Gateway logs for API errors and worker task execution
+- Monitor worker logs for task processing details
+- Use SQLite queries to inspect database state
+- SSH into VM to check MCP service status: `sudo systemctl status novaic`
 
 ## Contributing
 
