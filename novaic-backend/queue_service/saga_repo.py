@@ -117,7 +117,7 @@ class SagaRepository:
                     claimed_at = NULL,
                     heartbeat_at = NULL
                 WHERE status = 'running'
-                  AND (heartbeat_at IS NULL OR heartbeat_at < datetime('now', '-{timeout_seconds} seconds'))
+                  AND (heartbeat_at IS NULL OR datetime(heartbeat_at) < datetime('now', '-{timeout_seconds} seconds'))
                 RETURNING id
             """)
             rows = cursor.fetchall()

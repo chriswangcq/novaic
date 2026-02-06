@@ -22,7 +22,7 @@ class ServiceConfig:
     
     # Timeouts
     TASK_TIMEOUT = int(os.getenv("TASK_TIMEOUT", "60"))
-    SAGA_TIMEOUT = int(os.getenv("SAGA_TIMEOUT", "120"))
+    SAGA_TIMEOUT = int(os.getenv("SAGA_TIMEOUT", "300"))
     SAGA_STEP_TIMEOUT = int(os.getenv("SAGA_STEP_TIMEOUT", "300"))
     HTTP_TIMEOUT = float(os.getenv("HTTP_TIMEOUT", "30.0"))
     

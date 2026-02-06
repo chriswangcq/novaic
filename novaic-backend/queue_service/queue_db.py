@@ -222,7 +222,7 @@ class TaskQueue:
                         ELSE 'Heartbeat timeout, will retry'
                     END
                 WHERE status = 'claimed'
-                  AND heartbeat_at < datetime('now', '-{timeout_seconds} seconds')
+                  AND datetime(heartbeat_at) < datetime('now', '-{timeout_seconds} seconds')
                 RETURNING id
             """)
             

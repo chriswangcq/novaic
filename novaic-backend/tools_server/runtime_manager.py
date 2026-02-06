@@ -5,6 +5,7 @@ RuntimeManager - 管理 Runtime 的工具上下文
 - 内存存储 Runtime 上下文信息
 - 创建、获取、删除 Runtime 上下文
 - 管理外部 MCP 工具发现
+- 通过 Gateway API 持久化注册信息，重启后可恢复
 """
 
 import asyncio
@@ -12,6 +13,8 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, List, Optional, Any
+
+import httpx
 
 from mcp_client.registry import ToolRegistry
 
@@ -38,15 +41,21 @@ class RuntimeManager:
     - 内存存储所有 Runtime 上下文
     - 支持 CRUD 操作
     - 管理外部 MCP 工具发现
+    - 通过 Gateway API 持久化 tool_ports，重启后自动恢复
     """
     
-    def __init__(self):
-        """初始化 RuntimeManager"""
+    def __init__(self, gateway_url: Optional[str] = None):
+        """初始化 RuntimeManager
+        
+        Args:
+            gateway_url: Gateway base URL (for persisting tool_ports)
+        """
         self._runtimes: Dict[str, RuntimeContext] = {}
         self._registry: Optional[ToolRegistry] = None
         self._lock = asyncio.Lock()
+        self._gateway_url = gateway_url
         
-        logger.info("[RuntimeManager] Initialized")
+        logger.info(f"[RuntimeManager] Initialized (gateway={gateway_url})")
     
     def create(
         self,
@@ -84,6 +93,9 @@ class RuntimeManager:
         )
         
         self._runtimes[runtime_id] = context
+        
+        # Persist tool_ports to Gateway for recovery after restart
+        self._persist_tool_ports(runtime_id, ports)
         
         logger.info(
             f"[RuntimeManager] Created runtime: {runtime_id}, "
@@ -124,6 +136,9 @@ class RuntimeManager:
             logger.info(f"[RuntimeManager] Cancelled discovery task for runtime: {runtime_id}")
         
         del self._runtimes[runtime_id]
+        
+        # Clear tool_ports in Gateway
+        self._persist_tool_ports(runtime_id, None)
         
         logger.info(f"[RuntimeManager] Deleted runtime: {runtime_id}")
         return True
@@ -277,6 +292,114 @@ class RuntimeManager:
             ],
         }
     
+    # ========================================
+    # Gateway Persistence
+    # ========================================
+    
+    def _persist_tool_ports(self, runtime_id: str, ports: Optional[dict]) -> None:
+        """Persist tool_ports to Gateway DB via API (best-effort, non-blocking).
+        
+        Args:
+            runtime_id: Runtime ID
+            ports: MCP ports dict, or None to clear
+        """
+        if not self._gateway_url:
+            return
+        
+        try:
+            with httpx.Client(timeout=5.0, trust_env=False) as client:
+                client.post(
+                    f"{self._gateway_url}/internal/runtimes/{runtime_id}/tool-ports",
+                    json={"ports": ports},
+                )
+            logger.debug(f"[RuntimeManager] Persisted tool_ports for {runtime_id}: {ports}")
+        except Exception as e:
+            # Best-effort: don't fail runtime creation/deletion if Gateway is unreachable
+            logger.warning(f"[RuntimeManager] Failed to persist tool_ports for {runtime_id}: {e}")
+    
+    async def restore_from_gateway(self, max_retries: int = 5, retry_delay: float = 3.0) -> int:
+        """Restore runtime contexts from Gateway on startup.
+        
+        Queries Gateway for active runtimes with tool_ports set,
+        re-creates them in memory and starts tool discovery.
+        
+        Retries with delay to handle startup race condition where
+        Gateway may not be ready yet when Tools Server starts.
+        
+        Returns:
+            Number of runtimes restored
+        """
+        if not self._gateway_url:
+            logger.info("[RuntimeManager] No gateway_url configured, skipping restore")
+            return 0
+        
+        data = None
+        for attempt in range(1, max_retries + 1):
+            try:
+                async with httpx.AsyncClient(timeout=10.0, trust_env=False) as client:
+                    resp = await client.get(f"{self._gateway_url}/internal/runtimes/with-tools")
+                    resp.raise_for_status()
+                    data = resp.json()
+                    break  # Success
+            except Exception as e:
+                if attempt < max_retries:
+                    logger.info(
+                        f"[RuntimeManager] Gateway not ready (attempt {attempt}/{max_retries}), "
+                        f"retrying in {retry_delay}s... ({e})"
+                    )
+                    await asyncio.sleep(retry_delay)
+                else:
+                    logger.warning(
+                        f"[RuntimeManager] Failed to query Gateway after {max_retries} attempts: {e}"
+                    )
+                    return 0
+        
+        if data is None:
+            return 0
+        
+        runtimes = data.get("runtimes", [])
+        if not runtimes:
+            logger.info("[RuntimeManager] No active runtimes with tools to restore")
+            return 0
+        
+        restored = 0
+        for rt in runtimes:
+            runtime_id = rt.get("runtime_id")
+            agent_id = rt.get("agent_id")
+            subagent_id = rt.get("subagent_id")
+            ports = rt.get("tool_ports", {})
+            
+            if runtime_id in self._runtimes:
+                logger.debug(f"[RuntimeManager] Runtime {runtime_id} already in memory, skipping")
+                continue
+            
+            try:
+                context = RuntimeContext(
+                    runtime_id=runtime_id,
+                    agent_id=agent_id,
+                    subagent_id=subagent_id,
+                    ports=ports,
+                    created_at=datetime.now(),
+                    external_tools=[],
+                    discovery_task=None,
+                )
+                self._runtimes[runtime_id] = context
+                
+                # Start tool discovery only if there are external MCP ports
+                if ports:
+                    await self.start_discovery(runtime_id)
+                
+                restored += 1
+                logger.info(
+                    f"[RuntimeManager] Restored runtime: {runtime_id}, "
+                    f"agent={agent_id}, subagent={subagent_id}, ports={ports}"
+                )
+            except Exception as e:
+                logger.error(f"[RuntimeManager] Failed to restore runtime {runtime_id}: {e}")
+        
+        logger.info(f"[RuntimeManager] Restored {restored}/{len(runtimes)} runtimes from Gateway")
+        return restored
+    
     async def close(self) -> None:
         """
         关闭 RuntimeManager，清理所有资源
@@ -315,6 +438,23 @@ def get_runtime_manager() -> RuntimeManager:
     global _runtime_manager
     if _runtime_manager is None:
         _runtime_manager = RuntimeManager()
+    return _runtime_manager
+
+
+def init_runtime_manager(gateway_url: Optional[str] = None) -> RuntimeManager:
+    """
+    初始化 RuntimeManager 单例（带 gateway_url 参数）
+    
+    应在 Tools Server 启动时调用一次。
+    
+    Args:
+        gateway_url: Gateway base URL for persistence
+        
+    Returns:
+        RuntimeManager 实例
+    """
+    global _runtime_manager
+    _runtime_manager = RuntimeManager(gateway_url=gateway_url)
     return _runtime_manager
 
 

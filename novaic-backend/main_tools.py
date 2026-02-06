@@ -84,7 +84,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from tools_server.api import router, internal_router
-from tools_server.runtime_manager import get_runtime_manager, shutdown_runtime_manager
+from tools_server.runtime_manager import init_runtime_manager, shutdown_runtime_manager
 
 # Port for Tools Server (default 19998)
 TOOLS_PORT = int(os.environ.get("NOVAIC_TOOLS_PORT", os.environ.get("NOVAIC_MCP_PORT", "19998")))
@@ -93,10 +93,23 @@ TOOLS_PORT = int(os.environ.get("NOVAIC_TOOLS_PORT", os.environ.get("NOVAIC_MCP_
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize and cleanup RuntimeManager."""
-    manager = get_runtime_manager()
+    gateway_url = os.environ.get("GATEWAY_URL", "http://127.0.0.1:19999")
+    
+    # Initialize with gateway_url for persistence
+    manager = init_runtime_manager(gateway_url=gateway_url)
     logger.info("[Tools Server] RuntimeManager initialized")
-    logger.info(f"[Tools Server] Using Gateway API at: {os.environ.get('GATEWAY_URL')}")
+    logger.info(f"[Tools Server] Using Gateway API at: {gateway_url}")
     logger.info(f"[Tools Server] Data directory: {os.environ.get('NOVAIC_DATA_DIR')}")
+    
+    # Restore active runtimes from Gateway DB
+    try:
+        restored = await manager.restore_from_gateway()
+        if restored > 0:
+            logger.info(f"[Tools Server] Restored {restored} runtime(s) from Gateway")
+        else:
+            logger.info("[Tools Server] No runtimes to restore")
+    except Exception as e:
+        logger.warning(f"[Tools Server] Failed to restore runtimes: {e}")
     
     yield
     

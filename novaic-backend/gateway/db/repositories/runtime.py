@@ -54,6 +54,9 @@ class AgentRuntime:
     hot_summary: Optional[str] = None
     cold_summary: Optional[str] = None
     
+    # Tools Server persistence (v25)
+    tool_ports: Optional[dict] = None  # MCP ports for Tools Server discovery
+    
     # Timestamps
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
@@ -79,6 +82,7 @@ class AgentRuntime:
             'simple_summary': self.simple_summary,
             'hot_summary': self.hot_summary,
             'cold_summary': self.cold_summary,
+            'tool_ports': self.tool_ports,
             'created_at': self.created_at,
             'updated_at': self.updated_at,
         }
@@ -94,7 +98,7 @@ class RuntimeRepository:
         context, pending_actions, status, error,
         summary, is_merged, summarized, need_rest,
         simple_summary, hot_summary, cold_summary,
-        created_at, updated_at
+        tool_ports, created_at, updated_at
     """
     
     def __init__(self, db):
@@ -148,8 +152,8 @@ class RuntimeRepository:
                     context, pending_actions, status, error,
                     summary, is_merged, summarized, need_rest,
                     simple_summary, hot_summary, cold_summary,
-                    created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    tool_ports, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 runtime.runtime_id,
                 runtime.subagent_id,
@@ -169,6 +173,7 @@ class RuntimeRepository:
                 runtime.simple_summary,
                 runtime.hot_summary,
                 runtime.cold_summary,
+                json.dumps(runtime.tool_ports) if runtime.tool_ports else None,
                 runtime.created_at,
                 runtime.updated_at,
             ))
@@ -217,7 +222,7 @@ class RuntimeRepository:
     
     def get_all_active_runtimes(self) -> List[AgentRuntime]:
         """Get all active runtimes across all agents."""
-        with self.db.get_connection("agent") as conn:
+        with self.db.get_connection("global") as conn:
             cursor = conn.execute(f"""
                 SELECT {self._COLUMNS} FROM agent_runtimes 
                 WHERE status IN (?, ?)
@@ -504,6 +509,43 @@ class RuntimeRepository:
             """, (hot_summary, cold_summary, now, runtime_id))
             conn.commit()
     
+    # ========================================
+    # Tools Server Persistence (v25)
+    # ========================================
+    
+    def set_tool_ports(self, runtime_id: str, tool_ports: dict):
+        """Save Tools Server MCP ports for a runtime.
+        
+        Called by Tools Server when registering a runtime's tools.
+        Enables recovery after Tools Server restart.
+        
+        Args:
+            runtime_id: Runtime ID
+            tool_ports: MCP ports dict (e.g. {"vmuse": 8080})
+        """
+        now = datetime.utcnow().isoformat()
+        with self.db.get_connection("agent", resource_id=runtime_id) as conn:
+            conn.execute("""
+                UPDATE agent_runtimes 
+                SET tool_ports = ?, updated_at = ?
+                WHERE runtime_id = ?
+            """, (json.dumps(tool_ports), now, runtime_id))
+            conn.commit()
+    
+    def clear_tool_ports(self, runtime_id: str):
+        """Clear Tools Server MCP ports for a runtime.
+        
+        Called by Tools Server when unregistering a runtime's tools.
+        """
+        now = datetime.utcnow().isoformat()
+        with self.db.get_connection("agent", resource_id=runtime_id) as conn:
+            conn.execute("""
+                UPDATE agent_runtimes 
+                SET tool_ports = NULL, updated_at = ?
+                WHERE runtime_id = ?
+            """, (now, runtime_id))
+            conn.commit()
+    
     def get_summaries(self, runtime_id: str) -> Optional[Dict[str, Optional[str]]]:
         """Get all three summary types for a runtime.
         
@@ -614,7 +656,7 @@ class RuntimeRepository:
                 DELETE FROM agent_runtimes 
                 WHERE status IN (?, ?)
                 AND is_merged = 1
-                AND updated_at < datetime('now', ? || ' hours')
+                AND datetime(updated_at) < datetime('now', ? || ' hours')
             """, (RuntimeStatus.COMPLETED.value, RuntimeStatus.FAILED.value, f"-{older_than_hours}"))
             conn.commit()
     
@@ -623,7 +665,7 @@ class RuntimeRepository:
     # ========================================
     
     def _row_to_runtime(self, row) -> AgentRuntime:
-        """Convert database row to AgentRuntime object (v14 schema + v24 summary fields)."""
+        """Convert database row to AgentRuntime object (v14 schema + v25 fields)."""
         return AgentRuntime(
             runtime_id=row[0],
             subagent_id=row[1],
@@ -643,8 +685,9 @@ class RuntimeRepository:
             simple_summary=row[15],
             hot_summary=row[16],
             cold_summary=row[17],
-            created_at=row[18],
-            updated_at=row[19],
+            tool_ports=json.loads(row[18]) if row[18] else None,
+            created_at=row[19],
+            updated_at=row[20],
         )
     
     # ========================================

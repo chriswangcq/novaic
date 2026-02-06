@@ -267,16 +267,20 @@ def run_health():
     import signal
     
     parser = argparse.ArgumentParser(description="NovAIC Health Worker Service")
+    parser.add_argument("--gateway-url", default=ServiceConfig.GATEWAY_URL, help="Gateway URL (accepted but not used)")
     parser.add_argument("--queue-service-url", default=ServiceConfig.QUEUE_SERVICE_URL, help="Queue Service URL")
+    parser.add_argument("--check-interval", type=float, default=30.0, help="Health check interval in seconds")
+    parser.add_argument("--task-timeout", type=int, default=ServiceConfig.TASK_TIMEOUT, help="Task timeout in seconds")
+    parser.add_argument("--saga-timeout", type=int, default=ServiceConfig.SAGA_TIMEOUT, help="Saga timeout in seconds")
     args = parser.parse_args()
     
     from task_queue.workers.health_worker_sync import HealthWorkerSync
     
     worker = HealthWorkerSync(
         queue_service_url=args.queue_service_url,
-        check_interval=30.0,
-        task_timeout=ServiceConfig.TASK_TIMEOUT,
-        saga_timeout=ServiceConfig.SAGA_TIMEOUT,
+        check_interval=args.check_interval,
+        task_timeout=args.task_timeout,
+        saga_timeout=args.saga_timeout,
     )
     
     def shutdown_handler(signum, frame):
@@ -291,6 +295,51 @@ def run_health():
     
     worker.run()
     print("[health] Shutdown complete")
+
+
+def _setup_worker_logging(mode: str):
+    """Setup file logging for worker processes.
+    
+    Worker processes in binary mode have stdout/stderr set to null by Tauri.
+    This redirects output to a log file so we can debug startup failures.
+    """
+    data_dir = os.environ.get("NOVAIC_DATA_DIR")
+    if not data_dir:
+        return  # Can't log without data dir
+    
+    log_dir = os.path.join(data_dir, "logs")
+    os.makedirs(log_dir, exist_ok=True)
+    
+    from datetime import datetime as dt
+    log_file = os.path.join(log_dir, f"{mode}-{dt.now().strftime('%Y%m%d')}.log")
+    
+    try:
+        fh = open(log_file, 'a', encoding='utf-8', buffering=1)
+        
+        class TeeStream:
+            def __init__(self, file, stream):
+                self.file = file
+                self.stream = stream
+            
+            def write(self, data):
+                if data:
+                    self.file.write(data)
+                    try:
+                        self.stream.write(data)
+                    except Exception:
+                        pass
+            
+            def flush(self):
+                self.file.flush()
+                try:
+                    self.stream.flush()
+                except Exception:
+                    pass
+        
+        sys.stdout = TeeStream(fh, sys.__stdout__)
+        sys.stderr = TeeStream(fh, sys.__stderr__)
+    except Exception:
+        pass  # Best-effort: don't crash if log setup fails
 
 
 def main():
@@ -321,6 +370,11 @@ def main():
     
     # Remove mode from argv so argparse in sub-commands works correctly
     sys.argv = [sys.argv[0]] + sys.argv[2:]
+    
+    # Setup file logging for worker processes (stdout is null in binary mode)
+    # Gateway, Tools Server, Queue Service handle their own logging
+    if mode in ("watchdog", "task-worker", "saga-worker", "health"):
+        _setup_worker_logging(mode)
     
     if mode == "gateway":
         run_gateway()

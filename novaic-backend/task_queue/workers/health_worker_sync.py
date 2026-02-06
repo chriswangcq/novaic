@@ -61,7 +61,7 @@ class HealthWorkerSync:
         queue_service_url: str = None,
         check_interval: float = 30.0,
         task_timeout: int = 60,
-        saga_timeout: int = 120,
+        saga_timeout: int = 300,
     ):
         # Queue Service URL: 参数 > 环境变量 > 默认值
         self.queue_service_url = (queue_service_url or 

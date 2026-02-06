@@ -24,9 +24,10 @@ v21: Agent model selection - agents.model_id field.
 v22: Candidate models - candidate_models table with available flag.
 v23: Execution logs - subagent_id, status, kind, event_key, updated_at for upsert support.
 v24: Runtime Summary - subagents.hrl/summary_lock, agent_runtimes.simple_summary/hot_summary/cold_summary.
+v25: Tools Server persistence - agent_runtimes.tool_ports for Tools Server recovery.
 """
 
-SCHEMA_VERSION = 24
+SCHEMA_VERSION = 25
 
 SCHEMA_SQL = """
 -- ========================================
@@ -434,6 +435,9 @@ CREATE TABLE IF NOT EXISTS agent_runtimes (
     hot_summary TEXT,                  -- Hot summary (LLM-generated plain text)
     cold_summary TEXT,                 -- Cold summary (LLM-generated plain text)
     
+    -- Tools Server persistence (v25)
+    tool_ports TEXT,                    -- JSON: MCP ports for Tools Server discovery (null = not registered)
+    
     -- Timestamps
     created_at TEXT NOT NULL,
     updated_at TEXT,
@@ -686,6 +690,15 @@ def run_migration_sync(conn, from_version: int):
         except Exception as e:
             if "duplicate column" not in str(e).lower():
                 print(f"[DB] Migration v24 warning (cold_summary): {e}")
+    
+    # v25: Tools Server persistence - add tool_ports to agent_runtimes
+    if from_version < 25:
+        try:
+            conn.execute("ALTER TABLE agent_runtimes ADD COLUMN tool_ports TEXT")
+            print("[DB] Migration v25: Added tool_ports to agent_runtimes")
+        except Exception as e:
+            if "duplicate column" not in str(e).lower():
+                print(f"[DB] Migration v25 warning (tool_ports): {e}")
     
     # Update version
     conn.execute(

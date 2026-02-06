@@ -662,6 +662,36 @@ def get_runtimes_batch(data: Dict[str, Any]):
     return {"runtimes": result}
 
 
+@router.get("/runtimes/with-tools")
+def get_runtimes_with_tools():
+    """Get all active runtimes that have tool_ports registered.
+    
+    Used by Tools Server on startup to restore runtime tool contexts.
+    Returns only runtimes with status in (active, resting) AND tool_ports IS NOT NULL.
+    
+    NOTE: Must be defined BEFORE /runtimes/{runtime_id} to avoid route conflict.
+    """
+    from gateway.db.repositories import RuntimeRepository
+    
+    db = get_db()
+    runtime_repo = RuntimeRepository(db)
+    runtimes = runtime_repo.get_all_active_runtimes()
+    
+    # Filter to only runtimes with tool_ports registered (including empty ports)
+    result = []
+    for r in runtimes:
+        if r.tool_ports is not None:
+            result.append({
+                "runtime_id": r.runtime_id,
+                "agent_id": r.agent_id,
+                "subagent_id": r.subagent_id,
+                "tool_ports": r.tool_ports,
+                "created_at": r.created_at,
+            })
+    
+    return {"runtimes": result, "total": len(result)}
+
+
 @router.get("/runtimes/{runtime_id}")
 def get_runtime(runtime_id: str):
     """Get a single runtime by ID."""
@@ -1066,6 +1096,31 @@ def set_runtime_need_rest(runtime_id: str, data: Dict[str, Any]):
         "current_value": str(runtime.need_rest),
         "message": f"Already need_rest={target}" if runtime.need_rest == target else "Update failed",
     }
+
+
+@router.post("/runtimes/{runtime_id}/tool-ports")
+def set_runtime_tool_ports(runtime_id: str, data: Dict[str, Any]):
+    """Save Tools Server MCP ports for a runtime.
+    
+    Called by Tools Server when registering/unregistering a runtime.
+    Enables recovery after Tools Server restart.
+    
+    Request body:
+        ports: dict - MCP ports (e.g. {"vmuse": 8080}), or null to clear
+    """
+    from gateway.db.repositories import RuntimeRepository
+    
+    ports = data.get("ports")
+    
+    db = get_db()
+    runtime_repo = RuntimeRepository(db)
+    
+    if ports is not None:
+        runtime_repo.set_tool_ports(runtime_id, ports)
+    else:
+        runtime_repo.clear_tool_ports(runtime_id)
+    
+    return {"success": True, "runtime_id": runtime_id}
 
 
 @router.delete("/runtimes/{runtime_id}")
@@ -1844,7 +1899,7 @@ def compact_context_with_llm(data: Dict[str, Any]):
 # ==================== Helpers ====================
 
 def _runtime_to_dict(runtime) -> Dict[str, Any]:
-    """Convert runtime to dictionary (v14 schema)."""
+    """Convert runtime to dictionary (v14 schema + v25 tool_ports)."""
     return {
         "runtime_id": runtime.runtime_id,
         "subagent_id": runtime.subagent_id,
@@ -1861,6 +1916,7 @@ def _runtime_to_dict(runtime) -> Dict[str, Any]:
         "need_rest": getattr(runtime, "need_rest", None),
         "summarized": getattr(runtime, "summarized", None),
         "is_merged": runtime.is_merged,
+        "tool_ports": getattr(runtime, "tool_ports", None),
         "created_at": runtime.created_at,
         "updated_at": runtime.updated_at,
     }

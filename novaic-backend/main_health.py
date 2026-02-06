@@ -21,7 +21,7 @@ def main():
     parser.add_argument("--queue-service-url", default="http://127.0.0.1:19997", help="Queue Service URL")
     parser.add_argument("--check-interval", type=float, default=30, help="Health check interval in seconds")
     parser.add_argument("--task-timeout", type=int, default=60, help="Task timeout in seconds")
-    parser.add_argument("--saga-timeout", type=int, default=120, help="Saga timeout in seconds")
+    parser.add_argument("--saga-timeout", type=int, default=300, help="Saga timeout in seconds")
     args = parser.parse_args()
     
     queue_service_url = args.queue_service_url
