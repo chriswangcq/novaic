@@ -308,32 +308,42 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
 
   // 新日志自动滚动（只在自动滚动启用时）
   useEffect(() => {
+    // 只处理新日志到达的情况
     if (hasInitialScrolled.current && logs.length > prevLogsLengthRef.current && !isLoadingMoreLogs) {
       // 如果启用了自动滚动，就滚动到底部
       if (autoScrollEnabled.current) {
         isAutoScrolling.current = true;
         
-        // 使用 requestAnimationFrame 确保 DOM 已更新
+        // 保存当前长度，避免在异步回调中闭包陷阱
+        const targetLength = logs.length;
+        
+        // 使用三个 requestAnimationFrame 确保虚拟列表完全更新和测量完成后再滚动
+        // 虚拟列表的 measureElement 需要时间测量新 item 的实际高度
         requestAnimationFrame(() => {
-          // 如果已经在底部，使用 auto（无动画，直接定位）
-          // 如果不在底部，使用 smooth（有动画，平滑滚动）
-          const behavior = isAtBottom() ? 'auto' : 'smooth';
-          
-          virtualizer.scrollToIndex(logs.length - 1, { 
-            align: 'end',
-            behavior 
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              // 直接滚动到底部，使用 auto 无动画
+              virtualizer.scrollToIndex(targetLength - 1, { 
+                align: 'end',
+                behavior: 'auto'
+              });
+              
+              // 更新 prevLogsLengthRef 在滚动执行后
+              prevLogsLengthRef.current = targetLength;
+              
+              // 立即重置标志（auto 滚动是瞬时的，不需要延迟）
+              isAutoScrolling.current = false;
+              // 重新检查一次底部状态
+              autoScrollEnabled.current = isAtBottom();
+            });
           });
-          
-          // 滚动动画大约 300ms，延迟后重置标志
-          setTimeout(() => {
-            isAutoScrolling.current = false;
-            // 重新检查一次底部状态
-            autoScrollEnabled.current = isAtBottom();
-          }, 400);
         });
+      } else {
+        // 如果没有启用自动滚动，也要更新 prevLogsLengthRef
+        prevLogsLengthRef.current = logs.length;
       }
     }
-    prevLogsLengthRef.current = logs.length;
+    // 注意：不在 else 分支更新 prevLogsLengthRef，避免误更新
   }, [logs.length, virtualizer, isLoadingMoreLogs, isAtBottom]);
 
   const getLogIcon = (log: LogEntry, success?: boolean) => {
