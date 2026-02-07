@@ -369,6 +369,7 @@ def try_claim_phase(runtime_id: str, data: Dict[str, Any]):
 def append_runtime_context(runtime_id: str, data: Dict[str, Any]):
     """Append a message to runtime context with idempotency."""
     from gateway.db.repositories import RuntimeRepository
+    from task_queue.utils import multimodal
 
     message = data.get("message")
     # 检查 message 是否为 None 或空字典（空字典视为无效消息）
@@ -403,6 +404,10 @@ def append_runtime_context(runtime_id: str, data: Dict[str, Any]):
                     "context_length": len(context),
                     "message": "Message already exists",
                 }
+
+    # 注意：不在这里处理图片分离！
+    # 保持原始 tool result（包含完整图片数据）
+    # 图片提取由 task_queue/utils/context.py:process_multimodal_messages 在 LLM 调用时处理
 
     message_with_meta = {
         **message,

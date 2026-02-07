@@ -182,6 +182,9 @@ def process_multimodal_messages(
     将 tool_result 中的图片提取出来，作为单独的 user message 添加
     （因为 LLM API 不支持在 tool result 中放图片）
     
+    关键：保证 assistant+tool_calls 后的所有 tool results 连续，
+    图片 user messages 添加到所有 tool results 之后。
+    
     Args:
         messages: 原始消息列表
         provider: LLM 提供商 ("openai" 或 "anthropic")
@@ -201,8 +204,9 @@ def process_multimodal_messages(
         return messages
     
     processed = []
+    pending_images = []  # 收集待添加的图片 user messages
     
-    for msg in messages:
+    for i, msg in enumerate(messages):
         role = msg.get("role")
         content = msg.get("content", "")
         
@@ -239,7 +243,7 @@ def process_multimodal_messages(
                     "content": text_only,
                 })
                 
-                # 添加图片作为 user message
+                # 收集图片，但不立即添加
                 if images:
                     tool_name = msg.get("name", "tool")
                     description = f"[Image from {tool_name}]"
@@ -249,13 +253,23 @@ def process_multimodal_messages(
                     else:
                         img_content = multimodal.to_openai_content(images, description)
                     
-                    processed.append({
+                    pending_images.append({
                         "role": "user",
                         "content": img_content,
                     })
             else:
                 processed.append(msg)
         else:
+            # 非 tool result 消息
+            # 如果有待添加的图片，先把它们添加进来
+            if pending_images:
+                processed.extend(pending_images)
+                pending_images = []
+            
             processed.append(msg)
+    
+    # 处理末尾剩余的图片
+    if pending_images:
+        processed.extend(pending_images)
     
     return processed
