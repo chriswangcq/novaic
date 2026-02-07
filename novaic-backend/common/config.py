@@ -98,6 +98,22 @@ class ServiceConfig:
     TEXT_TRUNCATE_REASONING = int(os.getenv("TEXT_TRUNCATE_REASONING", "500"))
     TEXT_TRUNCATE_MESSAGE = int(os.getenv("TEXT_TRUNCATE_MESSAGE", "500"))
     
+    # ===== 长结果截断配置 =====
+    
+    AUTO_TRUNCATE_ENABLED = bool(os.getenv("AUTO_TRUNCATE_ENABLED", "true").lower() == "true")
+    AUTO_TRUNCATE_THRESHOLD_SMALL = int(os.getenv("AUTO_TRUNCATE_THRESHOLD_SMALL", "4096"))  # 4KB（仅文本）
+    AUTO_TRUNCATE_THRESHOLD_LARGE = int(os.getenv("AUTO_TRUNCATE_THRESHOLD_LARGE", "10240"))  # 10KB（仅文本）
+    AUTO_TRUNCATE_HEAD_SIZE = int(os.getenv("AUTO_TRUNCATE_HEAD_SIZE", "1536"))  # 1.5KB
+    AUTO_TRUNCATE_TAIL_SIZE = int(os.getenv("AUTO_TRUNCATE_TAIL_SIZE", "1536"))  # 1.5KB
+    AUTO_TRUNCATE_TTL_HOURS = int(os.getenv("AUTO_TRUNCATE_TTL_HOURS", "24"))
+    
+    # ===== 图像处理配置 =====
+    
+    IMAGE_COMPRESS_ENABLED = bool(os.getenv("IMAGE_COMPRESS_ENABLED", "true").lower() == "true")
+    IMAGE_MAX_SIZE_KB = int(os.getenv("IMAGE_MAX_SIZE_KB", "500"))  # 500KB
+    IMAGE_MAX_DIMENSION = int(os.getenv("IMAGE_MAX_DIMENSION", "1920"))  # 1920px
+    IMAGE_QUALITY = int(os.getenv("IMAGE_QUALITY", "85"))  # 85%
+    
     # ===== 重试配置 =====
     
     DEFAULT_MAX_RETRIES = int(os.getenv("DEFAULT_MAX_RETRIES", "3"))

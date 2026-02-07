@@ -177,7 +177,9 @@ def sync_broadcast_log(
             input_data=input_data,
             result_data=result_data,
         )
-        print(f"[broadcast] sync_broadcast_log: agent={agent_id}, kind={kind}, status={status}, result={result}")
+        # 打印日志（限制长度避免大图片卡死）
+        result_preview = str(result)[:200] + "..." if len(str(result)) > 200 else str(result)
+        print(f"[broadcast] sync_broadcast_log: agent={agent_id}, kind={kind}, status={status}, result={result_preview}")
         return result
     except Exception as e:
         import traceback

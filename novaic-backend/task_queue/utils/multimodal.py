@@ -210,9 +210,10 @@ def has_images(result: Dict[str, Any]) -> bool:
     """
     检查结果是否包含图片
     
-    支持两种检测:
+    支持三种检测:
     1. MCP 标准格式: _mcp_content 数组中的 image 类型
-    2. 常见字段格式: screenshot, image_base64 等字段
+    2. MCP 标准格式: content 数组中的 image 类型（新格式）
+    3. 常见字段格式: screenshot, image_base64 等字段
     
     Args:
         result: 工具执行结果
@@ -220,17 +221,36 @@ def has_images(result: Dict[str, Any]) -> bool:
     Returns:
         bool: 是否包含图片
     """
-    # 1. 检查 _mcp_content（MCP 标准格式）
+    # 1. 检查 _mcp_content（MCP 客户端转换格式）
     mcp_content = result.get("_mcp_content", [])
     for item in mcp_content:
-        if item.get("type") == "image" and item.get("data"):
-            return True
-        if item.get("type") == "resource":
-            mime_type = item.get("mimeType", "")
-            if mime_type.startswith("image/") and item.get("blob"):
+        if isinstance(item, dict):
+            if item.get("type") == "image" and item.get("data"):
                 return True
+            if item.get("type") == "resource":
+                mime_type = item.get("mimeType", "")
+                if mime_type.startswith("image/") and item.get("blob"):
+                    return True
     
-    # 2. 检查常见图片字段（向后兼容）
+    # 2. 检查 content 数组（MCP 标准格式 - 新格式）
+    content = result.get("content", [])
+    if isinstance(content, list):
+        # 检查是否是 MCP 标准格式（包含 type 字段）
+        for item in content:
+            if isinstance(item, dict):
+                item_type = item.get("type")
+                if item_type == "image":
+                    data = item.get("data", "")
+                    if data and _is_likely_base64_image(data):
+                        return True
+                if item_type == "resource":
+                    resource = item.get("resource", {})
+                    mime_type = resource.get("mimeType", "")
+                    blob = resource.get("blob", "")
+                    if mime_type.startswith("image/") and blob and _is_likely_base64_image(blob):
+                        return True
+    
+    # 3. 检查常见图片字段（向后兼容）
     for field_name in IMAGE_FIELD_NAMES:
         value = result.get(field_name)
         if _is_likely_base64_image(value):
@@ -298,9 +318,10 @@ def result_to_text_only(result: Dict[str, Any]) -> str:
     """
     将结果转换为纯文本格式（用于存储到 context，不含图片 base64）
     
-    处理两种图片来源:
+    处理三种图片来源:
     1. _mcp_content 数组中的 image 类型 → 替换为占位符
-    2. 常见图片字段 (screenshot 等) → 替换为占位符
+    2. content 数组中的 image 类型 → 替换为占位符（MCP 标准格式）
+    3. 常见图片字段 (screenshot 等) → 替换为占位符
     
     Args:
         result: 工具执行结果
@@ -310,21 +331,28 @@ def result_to_text_only(result: Dict[str, Any]) -> str:
     """
     output = {}
     
+    def sanitize_content_array(content: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """将 content 数组中的图片替换为占位符"""
+        sanitized = []
+        for item in content:
+            if item.get("type") == "image":
+                sanitized.append({
+                    "type": "image",
+                    "_placeholder": True,
+                    "mimeType": item.get("mimeType", item.get("mime_type", "image/png")),
+                    "_note": "Image data provided separately to LLM"
+                })
+            else:
+                sanitized.append(item)
+        return sanitized
+    
     for key, value in result.items():
-        if key == "_mcp_content":
-            # 替换 _mcp_content 中的图片数据为占位符
-            sanitized_content = []
-            for item in value:
-                if item.get("type") == "image":
-                    sanitized_content.append({
-                        "type": "image",
-                        "_placeholder": True,
-                        "mimeType": item.get("mimeType", "image/png"),
-                        "_note": "Image data provided separately to LLM"
-                    })
-                else:
-                    sanitized_content.append(item)
-            output["_mcp_content"] = sanitized_content
+        if key == "_mcp_content" or key == "content":
+            # 替换 content 数组中的图片数据为占位符
+            if isinstance(value, list):
+                output[key] = sanitize_content_array(value)
+            else:
+                output[key] = value
         elif key in IMAGE_FIELD_NAMES and _is_likely_base64_image(value):
             # 替换常见图片字段为占位符
             output[key] = "[IMAGE DATA PROVIDED SEPARATELY TO LLM]"

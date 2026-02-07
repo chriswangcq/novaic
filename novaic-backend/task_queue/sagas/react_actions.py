@@ -53,28 +53,48 @@ def _build_tool_execute_tasks(ctx):
 
 
 def _build_save_results_tasks(ctx, prev_results):
-    """构建并行 context.append 任务"""
+    """构建并行 context.append 任务
+    
+    注意：必须保存所有 tool results（包括失败的），因为 LLM API 要求
+    每个 tool_call 都必须有对应的 tool result。
+    """
+    import json
     runtime_id = ctx["runtime_id"]
     round_num = ctx.get("round_num", 1)
     
     tasks = []
     for i, result in enumerate(prev_results):
+        tool_call_id = result.get("tool_call_id") or f"tool-{i}"
+        
+        # 构建 content（成功或失败都要保存）
         if result.get("success"):
-            tool_call_id = result.get("tool_call_id") or f"tool-{i}"
-            tasks.append({
-                "topic": TaskTopics.CONTEXT_APPEND,
-                "payload": {
-                    "runtime_id": runtime_id,
-                    "message": {
-                        "role": "tool",
-                        "tool_call_id": result.get("tool_call_id"),
-                        "content": str(result.get("result", "")),
-                    },
-                    "message_type": "tool_result",
-                    "round_id": f"round-{round_num}",
-                    "idempotency_key": f"{runtime_id}-round{round_num}-{tool_call_id}",
+            # 成功：保存 result 字段
+            tool_result = result.get("result", "")
+        else:
+            # 失败：保存错误信息
+            error_msg = result.get("error", "Tool execution failed")
+            tool_result = {"error": error_msg, "success": False}
+        
+        # 正确序列化 result：使用 json.dumps 而不是 str()
+        if isinstance(tool_result, (dict, list)):
+            content = json.dumps(tool_result, ensure_ascii=False)
+        else:
+            content = str(tool_result)
+        
+        tasks.append({
+            "topic": TaskTopics.CONTEXT_APPEND,
+            "payload": {
+                "runtime_id": runtime_id,
+                "message": {
+                    "role": "tool",
+                    "tool_call_id": result.get("tool_call_id"),
+                    "content": content,
                 },
-            })
+                "message_type": "tool_result",
+                "round_id": f"round-{round_num}",
+                "idempotency_key": f"{runtime_id}-round{round_num}-{tool_call_id}",
+            },
+        })
     
     return tasks
 

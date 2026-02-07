@@ -14,7 +14,7 @@ from common.config import ServiceConfig
 from gateway.db.access import get_db
 from .helpers import resolve_runtime_ids, get_runtime_context, _runtime_to_dict, _subagent_to_dict
 
-router = APIRouter(prefix="/internal", tags=["internal"])
+router = APIRouter(tags=["internal"])
 
 # ==================== Agent Operations ====================
 

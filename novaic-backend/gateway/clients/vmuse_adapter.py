@@ -198,6 +198,9 @@ class VmuseAdapter:
             elif tool_name == "browser_screenshot":
                 return await self._browser_screenshot(vm_id, arguments)
             
+            elif tool_name == "browser_content":
+                return await self._browser_content(vm_id, arguments)
+            
             # Window 工具
             elif tool_name == "list_windows":
                 return await self._list_windows(vm_id, arguments)
@@ -257,222 +260,778 @@ class VmuseAdapter:
     # ==================== 浏览器操作 ====================
     
     async def _browser_navigate(self, vm_id: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """浏览器导航到 URL"""
-        url = arguments.get("url")
-        if not url:
-            return {"success": False, "error": "Missing required parameter: url"}
+        """
+        浏览器导航到 URL - 返回统一格式
         
-        response = await self.client.post(
-            f"/api/vms/{vm_id}/browser/navigate",
-            json={"url": url}
-        )
-        response.raise_for_status()
-        result = response.json()
+        Args:
+            vm_id: VM ID
+            arguments: {"url": "..."}
         
-        return {
-            "success": result.get("success", True),
-            "result": result
-        }
+        Returns:
+            统一格式：
+            {
+                "success": bool,
+                "content": [{"type": "text", "text": "..."}]
+            }
+        """
+        try:
+            url = arguments.get("url")
+            if not url:
+                return {
+                    "success": False,
+                    "error": "Missing required parameter: url",
+                    "content": []
+                }
+            
+            response = await self.client.post(
+                f"/api/vms/{vm_id}/browser/navigate",
+                json={"url": url}
+            )
+            response.raise_for_status()
+            result = response.json()
+            
+            return {
+                "success": result.get("success", True),
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps(result, ensure_ascii=False)
+                    }
+                ]
+            }
+        except httpx.HTTPStatusError as e:
+            return {
+                "success": False,
+                "error": f"HTTP {e.response.status_code}: {e.response.text}",
+                "content": []
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "content": []
+            }
     
     async def _browser_click(self, vm_id: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """点击浏览器元素"""
-        selector = arguments.get("selector")
-        if not selector:
-            return {"success": False, "error": "Missing required parameter: selector"}
+        """
+        点击浏览器元素 - 返回统一格式
         
-        response = await self.client.post(
-            f"/api/vms/{vm_id}/browser/click",
-            json={"selector": selector}
-        )
-        response.raise_for_status()
-        result = response.json()
+        Args:
+            vm_id: VM ID
+            arguments: {"selector": "..."}
         
-        return {
-            "success": result.get("success", True),
-            "result": result
-        }
+        Returns:
+            统一格式：
+            {
+                "success": bool,
+                "content": [{"type": "text", "text": "..."}]
+            }
+        """
+        try:
+            selector = arguments.get("selector")
+            if not selector:
+                return {
+                    "success": False,
+                    "error": "Missing required parameter: selector",
+                    "content": []
+                }
+            
+            response = await self.client.post(
+                f"/api/vms/{vm_id}/browser/click",
+                json={"selector": selector}
+            )
+            response.raise_for_status()
+            result = response.json()
+            
+            return {
+                "success": result.get("success", True),
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps(result, ensure_ascii=False)
+                    }
+                ]
+            }
+        except httpx.HTTPStatusError as e:
+            return {
+                "success": False,
+                "error": f"HTTP {e.response.status_code}: {e.response.text}",
+                "content": []
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "content": []
+            }
     
     async def _browser_type(self, vm_id: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """在浏览器元素中输入文本"""
-        selector = arguments.get("selector")
-        text = arguments.get("text")
+        """
+        在浏览器元素中输入文本 - 返回统一格式
         
-        if not selector:
-            return {"success": False, "error": "Missing required parameter: selector"}
-        if text is None:  # 允许空字符串
-            return {"success": False, "error": "Missing required parameter: text"}
+        Args:
+            vm_id: VM ID
+            arguments: {"selector": "...", "text": "..."}
         
-        response = await self.client.post(
-            f"/api/vms/{vm_id}/browser/type",
-            json={
-                "selector": selector,
-                "text": text
+        Returns:
+            统一格式：
+            {
+                "success": bool,
+                "content": [{"type": "text", "text": "..."}]
             }
-        )
-        response.raise_for_status()
-        result = response.json()
-        
-        return {
-            "success": result.get("success", True),
-            "result": result
-        }
+        """
+        try:
+            selector = arguments.get("selector")
+            text = arguments.get("text")
+            
+            if not selector:
+                return {
+                    "success": False,
+                    "error": "Missing required parameter: selector",
+                    "content": []
+                }
+            if text is None:  # 允许空字符串
+                return {
+                    "success": False,
+                    "error": "Missing required parameter: text",
+                    "content": []
+                }
+            
+            response = await self.client.post(
+                f"/api/vms/{vm_id}/browser/type",
+                json={
+                    "selector": selector,
+                    "text": text
+                }
+            )
+            response.raise_for_status()
+            result = response.json()
+            
+            return {
+                "success": result.get("success", True),
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps(result, ensure_ascii=False)
+                    }
+                ]
+            }
+        except httpx.HTTPStatusError as e:
+            return {
+                "success": False,
+                "error": f"HTTP {e.response.status_code}: {e.response.text}",
+                "content": []
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "content": []
+            }
     
     async def _browser_scroll(self, vm_id: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """滚动浏览器页面"""
-        direction = arguments.get("direction")
-        if not direction:
-            return {"success": False, "error": "Missing required parameter: direction"}
+        """
+        滚动浏览器页面 - 返回统一格式
         
-        if direction not in ["up", "down", "left", "right"]:
-            return {"success": False, "error": f"Invalid direction: {direction}. Must be one of: up, down, left, right"}
+        Args:
+            vm_id: VM ID
+            arguments: {"direction": "up|down|left|right", "amount": 100}
         
-        amount = arguments.get("amount", 100)
-        
-        response = await self.client.post(
-            f"/api/vms/{vm_id}/browser/scroll",
-            json={
-                "direction": direction,
-                "amount": amount
+        Returns:
+            统一格式：
+            {
+                "success": bool,
+                "content": [{"type": "text", "text": "..."}]
             }
-        )
-        response.raise_for_status()
-        result = response.json()
-        
-        return {
-            "success": result.get("success", True),
-            "result": result
-        }
+        """
+        try:
+            direction = arguments.get("direction")
+            if not direction:
+                return {
+                    "success": False,
+                    "error": "Missing required parameter: direction",
+                    "content": []
+                }
+            
+            if direction not in ["up", "down", "left", "right"]:
+                return {
+                    "success": False,
+                    "error": f"Invalid direction: {direction}. Must be one of: up, down, left, right",
+                    "content": []
+                }
+            
+            amount = arguments.get("amount", 100)
+            
+            response = await self.client.post(
+                f"/api/vms/{vm_id}/browser/scroll",
+                json={
+                    "direction": direction,
+                    "amount": amount
+                }
+            )
+            response.raise_for_status()
+            result = response.json()
+            
+            return {
+                "success": result.get("success", True),
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps(result, ensure_ascii=False)
+                    }
+                ]
+            }
+        except httpx.HTTPStatusError as e:
+            return {
+                "success": False,
+                "error": f"HTTP {e.response.status_code}: {e.response.text}",
+                "content": []
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "content": []
+            }
     
     async def _browser_eval(self, vm_id: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """在浏览器中执行 JavaScript 代码"""
-        script = arguments.get("script")
-        if not script:
-            return {"success": False, "error": "Missing required parameter: script"}
+        """
+        在浏览器中执行 JavaScript 代码 - 返回统一格式
         
-        response = await self.client.post(
-            f"/api/vms/{vm_id}/browser/eval",
-            json={"script": script}
-        )
-        response.raise_for_status()
-        result = response.json()
+        Args:
+            vm_id: VM ID
+            arguments: {"script": "..."}
         
-        return {
-            "success": result.get("success", True),
-            "result": result
-        }
+        Returns:
+            统一格式：
+            {
+                "success": bool,
+                "content": [{"type": "text", "text": "..."}]
+            }
+        """
+        try:
+            script = arguments.get("script")
+            if not script:
+                return {
+                    "success": False,
+                    "error": "Missing required parameter: script",
+                    "content": []
+                }
+            
+            response = await self.client.post(
+                f"/api/vms/{vm_id}/browser/eval",
+                json={"script": script}
+            )
+            response.raise_for_status()
+            result = response.json()
+            
+            return {
+                "success": result.get("success", True),
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps(result, ensure_ascii=False)
+                    }
+                ]
+            }
+        except httpx.HTTPStatusError as e:
+            return {
+                "success": False,
+                "error": f"HTTP {e.response.status_code}: {e.response.text}",
+                "content": []
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "content": []
+            }
     
     async def _browser_get_tabs(self, vm_id: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """获取浏览器标签页列表"""
-        response = await self.client.get(f"/api/vms/{vm_id}/browser/tabs")
-        response.raise_for_status()
-        result = response.json()
+        """
+        获取浏览器标签页列表 - 返回统一格式
         
-        return {
-            "success": True,
-            "result": {
+        Args:
+            vm_id: VM ID
+            arguments: {}
+        
+        Returns:
+            统一格式：
+            {
+                "success": bool,
+                "content": [{"type": "text", "text": "..."}]
+            }
+        """
+        try:
+            response = await self.client.get(f"/api/vms/{vm_id}/browser/tabs")
+            response.raise_for_status()
+            result = response.json()
+            
+            tabs_info = {
                 "tabs": result.get("tabs", []),
                 "active_tab": result.get("active_tab", 0)
             }
-        }
+            
+            return {
+                "success": True,
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps(tabs_info, ensure_ascii=False)
+                    }
+                ]
+            }
+        except httpx.HTTPStatusError as e:
+            return {
+                "success": False,
+                "error": f"HTTP {e.response.status_code}: {e.response.text}",
+                "content": []
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "content": []
+            }
     
     async def _browser_switch_tab(self, vm_id: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """切换到指定的浏览器标签页"""
-        tab_index = arguments.get("tab_index")
-        if tab_index is None:
-            return {"success": False, "error": "Missing required parameter: tab_index"}
+        """
+        切换到指定的浏览器标签页 - 返回统一格式
         
-        if not isinstance(tab_index, int) or tab_index < 0:
-            return {"success": False, "error": f"Invalid tab_index: {tab_index}. Must be a non-negative integer"}
+        Args:
+            vm_id: VM ID
+            arguments: {"tab_index": 0}
         
-        response = await self.client.post(
-            f"/api/vms/{vm_id}/browser/tabs/switch",
-            json={"tab_index": tab_index}
-        )
-        response.raise_for_status()
-        result = response.json()
-        
-        return {
-            "success": result.get("success", True),
-            "result": result
-        }
+        Returns:
+            统一格式：
+            {
+                "success": bool,
+                "content": [{"type": "text", "text": "..."}]
+            }
+        """
+        try:
+            tab_index = arguments.get("tab_index")
+            if tab_index is None:
+                return {
+                    "success": False,
+                    "error": "Missing required parameter: tab_index",
+                    "content": []
+                }
+            
+            if not isinstance(tab_index, int) or tab_index < 0:
+                return {
+                    "success": False,
+                    "error": f"Invalid tab_index: {tab_index}. Must be a non-negative integer",
+                    "content": []
+                }
+            
+            response = await self.client.post(
+                f"/api/vms/{vm_id}/browser/tabs/switch",
+                json={"tab_index": tab_index}
+            )
+            response.raise_for_status()
+            result = response.json()
+            
+            return {
+                "success": result.get("success", True),
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps(result, ensure_ascii=False)
+                    }
+                ]
+            }
+        except httpx.HTTPStatusError as e:
+            return {
+                "success": False,
+                "error": f"HTTP {e.response.status_code}: {e.response.text}",
+                "content": []
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "content": []
+            }
     
     async def _browser_close_tab(self, vm_id: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """关闭当前或指定的浏览器标签页"""
-        tab_index = arguments.get("tab_index")
+        """
+        关闭当前或指定的浏览器标签页 - 返回统一格式
         
-        payload = {}
-        if tab_index is not None:
-            if not isinstance(tab_index, int) or tab_index < 0:
-                return {"success": False, "error": f"Invalid tab_index: {tab_index}. Must be a non-negative integer"}
-            payload["tab_index"] = tab_index
+        Args:
+            vm_id: VM ID
+            arguments: {"tab_index": 0}  # optional
         
-        response = await self.client.post(
-            f"/api/vms/{vm_id}/browser/tabs/close",
-            json=payload
-        )
-        response.raise_for_status()
-        result = response.json()
-        
-        return {
-            "success": result.get("success", True),
-            "result": result
-        }
+        Returns:
+            统一格式：
+            {
+                "success": bool,
+                "content": [{"type": "text", "text": "..."}]
+            }
+        """
+        try:
+            tab_index = arguments.get("tab_index")
+            
+            payload = {}
+            if tab_index is not None:
+                if not isinstance(tab_index, int) or tab_index < 0:
+                    return {
+                        "success": False,
+                        "error": f"Invalid tab_index: {tab_index}. Must be a non-negative integer",
+                        "content": []
+                    }
+                payload["tab_index"] = tab_index
+            
+            response = await self.client.post(
+                f"/api/vms/{vm_id}/browser/tabs/close",
+                json=payload
+            )
+            response.raise_for_status()
+            result = response.json()
+            
+            return {
+                "success": result.get("success", True),
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps(result, ensure_ascii=False)
+                    }
+                ]
+            }
+        except httpx.HTTPStatusError as e:
+            return {
+                "success": False,
+                "error": f"HTTP {e.response.status_code}: {e.response.text}",
+                "content": []
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "content": []
+            }
     
     async def _browser_screenshot(self, vm_id: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """
-        浏览器截图
+        浏览器截图 - 返回 MCP 标准格式
         
         Args:
             vm_id: VM ID
             arguments: 参数（空）
         
         Returns:
-            MCP 标准格式的结果
-        """
-        response = await self.client.post(f"/api/vms/{vm_id}/browser/screenshot")
-        response.raise_for_status()
-        result = response.json()
-        
-        # 检查返回格式
-        if "content" in result and isinstance(result["content"], list):
-            # MCP 标准格式，直接返回
-            return {
-                "success": result.get("status") == "success",
-                "result": {
-                    "_mcp_content": result["content"]
-                }
+            统一格式：
+            {
+                "success": bool,
+                "content": [
+                    {"type": "text", "text": "..."},
+                    {"type": "image", "data": "base64...", "mimeType": "image/png"}
+                ]
             }
-        else:
-            # 处理其他格式（如果有）
+        """
+        try:
+            response = await self.client.post(f"/api/vms/{vm_id}/browser/screenshot")
+            response.raise_for_status()
+            result = response.json()
+            
+            # 检查返回格式
+            if "content" in result and isinstance(result["content"], list):
+                # vmcontrol 已返回 MCP 标准格式，直接使用
+                return {
+                    "success": result.get("status") == "success",
+                    "content": result["content"]
+                }
+            else:
+                # 转换传统格式为标准格式
+                image_data = result.get("data") or result.get("image_data", "")
+                
+                if not image_data:
+                    return {
+                        "success": False,
+                        "error": "No image data returned from vmcontrol",
+                        "content": []
+                    }
+                
+                # 可选：压缩图像（如果过大）
+                image_data, metadata = await self._compress_image_if_needed(image_data)
+                
+                # 构建标准格式
+                content = [
+                    {
+                        "type": "text",
+                        "text": f"Browser screenshot captured successfully. {metadata.get('compression_info', '')}"
+                    },
+                    {
+                        "type": "image",
+                        "data": image_data,
+                        "mimeType": f"image/{result.get('format', 'png')}",
+                        "metadata": {
+                            "width": result.get("width"),
+                            "height": result.get("height"),
+                            **metadata
+                        }
+                    }
+                ]
+                
+                return {
+                    "success": True,
+                    "content": content
+                }
+        
+        except httpx.HTTPError as e:
+            logger.error(f"[VmuseAdapter] Browser screenshot HTTP error: {e}")
             return {
-                "success": result.get("status") == "success",
-                "result": result
+                "success": False,
+                "error": f"HTTP error: {str(e)}",
+                "content": []
+            }
+        except Exception as e:
+            logger.error(f"[VmuseAdapter] Browser screenshot failed: {e}", exc_info=True)
+            return {
+                "success": False,
+                "error": str(e),
+                "content": []
+            }
+    
+    async def _browser_content(self, vm_id: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        获取浏览器页面内容 - 返回统一格式
+        
+        Args:
+            vm_id: VM ID
+            arguments: {} (可选参数，如是否包含截图)
+        
+        Returns:
+            统一格式：
+            {
+                "success": bool,
+                "content": [
+                    {"type": "text", "text": "页面文本内容"},
+                    {"type": "image", "data": "...", "mimeType": "image/png"}  # 可选
+                ]
+            }
+        """
+        try:
+            response = await self.client.post(f"/api/vms/{vm_id}/browser/content")
+            response.raise_for_status()
+            result = response.json()
+            
+            content_items = []
+            
+            # 添加文本内容
+            page_content = result.get("content", "") or result.get("text", "")
+            if page_content:
+                content_items.append({
+                    "type": "text",
+                    "text": page_content
+                })
+            
+            # 如果返回中包含截图，添加到 content
+            if "screenshot" in result or "image_data" in result:
+                image_data = result.get("screenshot") or result.get("image_data")
+                
+                # 可选：压缩图像
+                image_data, metadata = await self._compress_image_if_needed(image_data)
+                
+                content_items.append({
+                    "type": "image",
+                    "data": image_data,
+                    "mimeType": result.get("mimeType", "image/png"),
+                    "metadata": metadata
+                })
+            
+            # 如果没有任何内容，返回空字符串
+            if not content_items:
+                content_items.append({
+                    "type": "text",
+                    "text": ""
+                })
+            
+            return {
+                "success": True,
+                "content": content_items
+            }
+        
+        except httpx.HTTPStatusError as e:
+            return {
+                "success": False,
+                "error": f"HTTP {e.response.status_code}: {e.response.text}",
+                "content": []
+            }
+        except Exception as e:
+            logger.error(f"[VmuseAdapter] Browser content failed: {e}", exc_info=True)
+            return {
+                "success": False,
+                "error": str(e),
+                "content": []
+            }
+    
+    # ==================== 图像处理辅助方法 ====================
+    
+    def _extract_image_from_content(self, result: Dict[str, Any]) -> str:
+        """
+        从标准 content 格式中提取图像数据
+        
+        Args:
+            result: 标准格式的返回结果
+        
+        Returns:
+            Base64 编码的图像数据，如果没有则返回空字符串
+        """
+        content = result.get("content", [])
+        for item in content:
+            if item.get("type") == "image":
+                return item.get("data", "")
+        return ""
+    
+    async def _compress_image_if_needed(
+        self,
+        image_data: str,
+        max_size_kb: Optional[int] = None
+    ) -> tuple[str, dict]:
+        """
+        压缩图像到指定大小
+        
+        Args:
+            image_data: Base64 编码的图像数据
+            max_size_kb: 最大大小（KB），如果为 None 则使用配置值
+        
+        Returns:
+            (compressed_data, metadata) - 压缩后的数据和元数据
+        """
+        import base64
+        
+        # 使用配置值或传入的参数
+        if max_size_kb is None:
+            max_size_kb = ServiceConfig.IMAGE_MAX_SIZE_KB if ServiceConfig.IMAGE_COMPRESS_ENABLED else float('inf')
+        max_dimension = ServiceConfig.IMAGE_MAX_DIMENSION
+        
+        try:
+            # 如果压缩被禁用，直接返回
+            if not ServiceConfig.IMAGE_COMPRESS_ENABLED:
+                return image_data, {
+                    "compressed": False,
+                    "original_size": len(image_data.encode('utf-8')),
+                    "compression_info": "(compression disabled)"
+                }
+            
+            # 计算原始大小
+            original_size = len(image_data.encode('utf-8'))
+            
+            # 如果小于阈值，直接返回
+            if original_size <= max_size_kb * 1024:
+                return image_data, {
+                    "compressed": False,
+                    "original_size": original_size,
+                    "compression_info": ""
+                }
+            
+            # 尝试压缩图像
+            try:
+                from PIL import Image
+                from io import BytesIO
+                
+                # 解码图像
+                img_bytes = base64.b64decode(image_data)
+                img = Image.open(BytesIO(img_bytes))
+                
+                # 降分辨率（保持宽高比）
+                if max(img.size) > max_dimension:
+                    ratio = max_dimension / max(img.size)
+                    new_size = tuple(int(dim * ratio) for dim in img.size)
+                    img = img.resize(new_size, Image.LANCZOS)
+                    logger.info(f"[VmuseAdapter] Resized image from {img.size} to {new_size}")
+                
+                # 压缩质量
+                output = BytesIO()
+                img.save(output, format='PNG', optimize=True)
+                compressed_bytes = output.getvalue()
+                compressed_data = base64.b64encode(compressed_bytes).decode('utf-8')
+                
+                compressed_size = len(compressed_data.encode('utf-8'))
+                compression_ratio = compressed_size / original_size
+                
+                logger.info(f"[VmuseAdapter] Image compressed: {original_size} -> {compressed_size} bytes ({compression_ratio:.1%})")
+                
+                return compressed_data, {
+                    "compressed": True,
+                    "original_size": original_size,
+                    "compressed_size": compressed_size,
+                    "compression_ratio": f"{compression_ratio:.1%}",
+                    "compression_info": f"(compressed from {original_size//1024}KB to {compressed_size//1024}KB)"
+                }
+            
+            except ImportError:
+                logger.warning("[VmuseAdapter] PIL not available, skipping image compression")
+                return image_data, {
+                    "compressed": False,
+                    "original_size": original_size,
+                    "compression_info": "(compression skipped: PIL not available)"
+                }
+        
+        except Exception as e:
+            logger.warning(f"[VmuseAdapter] Image compression failed: {e}")
+            return image_data, {
+                "compressed": False,
+                "error": str(e),
+                "compression_info": "(compression failed)"
             }
     
     # ==================== 文件操作 ====================
     
     async def _file_read(self, vm_id: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """读取文件"""
+        """
+        读取文件内容
+        
+        注意：文件内容可能很大，会被自动截断机制处理
+        """
         path = arguments.get("path")
         if not path:
-            return {"success": False, "error": "Missing required parameter: path"}
+            return {
+                "success": False,
+                "error": "Missing required parameter: path",
+                "content": []
+            }
         
-        response = await self.client.get(
-            f"/api/vms/{vm_id}/guest/file",
-            params={"path": path}
-        )
-        response.raise_for_status()
-        result = response.json()
-        
-        # 转换格式以匹配 VMUSE 返回值
-        return {
-            "success": True,
-            "result": {
+        try:
+            response = await self.client.get(
+                f"/api/vms/{vm_id}/guest/file",
+                params={"path": path}
+            )
+            response.raise_for_status()
+            result = response.json()
+            
+            # 转换为标准格式
+            file_data = {
                 "content": result.get("content", ""),
                 "size": result.get("size", 0),
                 "path": path
             }
-        }
+            
+            return {
+                "success": True,
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps(file_data, ensure_ascii=False)
+                    }
+                ]
+            }
+        
+        except httpx.HTTPStatusError as e:
+            logger.error(f"[VmuseAdapter] File read HTTP error for {path}: {e}")
+            return {
+                "success": False,
+                "error": f"HTTP {e.response.status_code}: {e.response.text}",
+                "content": []
+            }
+        except Exception as e:
+            logger.error(f"[VmuseAdapter] File read failed for {path}: {e}", exc_info=True)
+            return {
+                "success": False,
+                "error": str(e),
+                "content": []
+            }
     
     async def _file_write(self, vm_id: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """写入文件"""
@@ -505,120 +1064,320 @@ class VmuseAdapter:
     # ==================== Shell 操作 ====================
     
     async def _shell_exec(self, vm_id: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """执行 Shell 命令"""
+        """
+        执行 Shell 命令
+        
+        注意：命令输出可能很大，会被自动截断机制处理
+        """
         command = arguments.get("command")
         if not command:
-            return {"success": False, "error": "Missing required parameter: command"}
+            return {
+                "success": False,
+                "error": "Missing required parameter: command",
+                "content": []
+            }
         
         wait = arguments.get("wait", True)
         
-        # 为命令添加 DISPLAY=:0 以确保 GUI 程序在 VNC 窗口显示
-        # 对于非 GUI 命令，这不会造成问题
-        command_with_display = f"DISPLAY=:0 {command}"
-        
-        response = await self.client.post(
-            f"/api/vms/{vm_id}/guest/exec",
-            json={
-                "path": "/bin/bash",
-                "args": ["-c", command_with_display],
-                "wait": wait
-            }
-        )
-        response.raise_for_status()
-        result = response.json()
-        
-        # 转换格式以匹配 VMUSE 返回值
-        return {
-            "success": result.get("exit_code", 0) == 0,
-            "result": {
+        try:
+            # 为命令添加 DISPLAY=:0 以确保 GUI 程序在 VNC 窗口显示
+            # 对于非 GUI 命令，这不会造成问题
+            command_with_display = f"DISPLAY=:0 {command}"
+            
+            response = await self.client.post(
+                f"/api/vms/{vm_id}/guest/exec",
+                json={
+                    "path": "/bin/bash",
+                    "args": ["-c", command_with_display],
+                    "wait": wait
+                }
+            )
+            response.raise_for_status()
+            result = response.json()
+            
+            # 转换为标准格式
+            exec_data = {
                 "exit_code": result.get("exit_code", 0),
                 "stdout": result.get("stdout", ""),
                 "stderr": result.get("stderr", ""),
                 "command": command
             }
-        }
+            
+            return {
+                "success": result.get("exit_code", 0) == 0,
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps(exec_data, ensure_ascii=False)
+                    }
+                ]
+            }
+        
+        except httpx.HTTPStatusError as e:
+            logger.error(f"[VmuseAdapter] Shell exec HTTP error for '{command}': {e}")
+            return {
+                "success": False,
+                "error": f"HTTP {e.response.status_code}: {e.response.text}",
+                "content": []
+            }
+        except Exception as e:
+            logger.error(f"[VmuseAdapter] Shell exec failed for '{command}': {e}", exc_info=True)
+            return {
+                "success": False,
+                "error": str(e),
+                "content": []
+            }
     
     # ==================== 截图 ====================
     
     async def _screenshot(self, vm_id: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """获取 VM 截图"""
-        response = await self.client.post(f"/api/vms/{vm_id}/screenshot")
-        response.raise_for_status()
-        result = response.json()
+        """
+        获取 VM 截图 - 返回 MCP 标准格式
         
-        # vmcontrol 返回 JSON: {"data": "base64...", "format": "png", "width": 1280, "height": 800}
-        # 兼容两种格式：新格式使用 "data"，旧格式使用 "image_data"
-        image_data = result.get("data") or result.get("image_data", "")
+        Args:
+            vm_id: VM ID
+            arguments: 参数（可选：grid, center, zoom_factor）
         
-        return {
-            "success": True,
-            "result": {
-                "image_data": image_data,
-                "format": result.get("format", "png"),
-                "width": result.get("width", 0),
-                "height": result.get("height", 0)
+        Returns:
+            统一格式：
+            {
+                "success": bool,
+                "content": [
+                    {"type": "text", "text": "..."},
+                    {"type": "image", "data": "base64...", "mimeType": "image/png"}
+                ]
             }
-        }
+        """
+        try:
+            response = await self.client.post(f"/api/vms/{vm_id}/screenshot")
+            response.raise_for_status()
+            result = response.json()
+            
+            # vmcontrol 返回 JSON: {"data": "base64...", "format": "png", "width": 1280, "height": 800}
+            # 兼容两种格式：新格式使用 "data"，旧格式使用 "image_data"
+            image_data = result.get("data") or result.get("image_data", "")
+            
+            if not image_data:
+                return {
+                    "success": False,
+                    "error": "No image data returned from vmcontrol",
+                    "content": []
+                }
+            
+            # 可选：压缩图像（如果过大）
+            image_data, metadata = await self._compress_image_if_needed(image_data)
+            
+            # 构建标准格式
+            content = [
+                {
+                    "type": "text",
+                    "text": f"Screenshot captured successfully. {metadata.get('compression_info', '')}"
+                },
+                {
+                    "type": "image",
+                    "data": image_data,
+                    "mimeType": f"image/{result.get('format', 'png')}",
+                    "metadata": {
+                        "width": result.get("width"),
+                        "height": result.get("height"),
+                        **metadata
+                    }
+                }
+            ]
+            
+            return {
+                "success": True,
+                "content": content
+            }
+        
+        except httpx.HTTPError as e:
+            logger.error(f"[VmuseAdapter] Screenshot HTTP error: {e}")
+            return {
+                "success": False,
+                "error": f"HTTP error: {str(e)}",
+                "content": []
+            }
+        except Exception as e:
+            logger.error(f"[VmuseAdapter] Screenshot failed: {e}", exc_info=True)
+            return {
+                "success": False,
+                "error": str(e),
+                "content": []
+            }
     
     # ==================== 鼠标操作 ====================
     
     async def _mouse(self, vm_id: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """鼠标操作"""
+        """
+        鼠标操作 - 返回统一格式
+        
+        Args:
+            vm_id: VM ID
+            arguments: 鼠标操作参数
+        
+        Returns:
+            统一格式：
+            {
+                "success": bool,
+                "content": [
+                    {"type": "text", "text": "..."},
+                    {"type": "image", "data": "base64...", "mimeType": "image/png"}  # 仅 aim 操作
+                ]
+            }
+        """
         action = arguments.get("action")
         
         if not action:
-            return {"success": False, "error": "Missing 'action' parameter"}
+            return {
+                "success": False,
+                "error": "Missing 'action' parameter",
+                "content": []
+            }
         
-        # 处理 aim action
+        # 处理 aim action（返回图片）
         if action == "aim":
-            # 绝对定位
-            if "x" in arguments and "y" in arguments:
-                x = int(arguments["x"])
-                y = int(arguments["y"])
-                zoom = float(arguments.get("zoom", 1.0))
-                aim_id = self.aim_cache.create(x, y, zoom)
+            try:
+                # 绝对定位
+                if "x" in arguments and "y" in arguments:
+                    x = int(arguments["x"])
+                    y = int(arguments["y"])
+                    zoom = float(arguments.get("zoom", 1.0))
+                    aim_id = self.aim_cache.create(x, y, zoom)
+                    
+                    # 获取带网格的截图（已返回标准格式）
+                    screenshot_result = await self._screenshot(vm_id, {
+                        "grid": True,
+                        "center": {"x": x, "y": y},
+                        "zoom_factor": zoom
+                    })
+                    
+                    # 检查截图是否成功
+                    if not screenshot_result.get("success"):
+                        return {
+                            "success": False,
+                            "error": screenshot_result.get("error", "Failed to capture screenshot"),
+                            "content": []
+                        }
+                    
+                    # 构建返回内容：文本 + 图片
+                    content = screenshot_result.get("content", []).copy()
+                    
+                    # 添加 aim 信息到文本
+                    aim_info = {
+                        "aim_id": aim_id,
+                        "position": {"x": x, "y": y, "zoom": zoom},
+                        "message": "Mouse aim position set successfully"
+                    }
+                    
+                    # 如果有文本项，更新它；否则添加新的文本项
+                    text_found = False
+                    for item in content:
+                        if item.get("type") == "text":
+                            # 合并信息
+                            try:
+                                existing_text = json.loads(item.get("text", "{}"))
+                                existing_text.update(aim_info)
+                                item["text"] = json.dumps(existing_text, ensure_ascii=False)
+                            except:
+                                # 如果不是 JSON，追加信息
+                                item["text"] = f"{item.get('text', '')}\n{json.dumps(aim_info, ensure_ascii=False)}"
+                            text_found = True
+                            break
+                    
+                    if not text_found:
+                        # 在开头插入文本项
+                        content.insert(0, {
+                            "type": "text",
+                            "text": json.dumps(aim_info, ensure_ascii=False)
+                        })
+                    
+                    return {
+                        "success": True,
+                        "content": content
+                    }
                 
-                # 获取带网格的截图
-                screenshot_result = await self._screenshot(vm_id, {
-                    "grid": True,
-                    "center": {"x": x, "y": y},
-                    "zoom_factor": zoom
-                })
+                # 相对调整
+                elif "aim_id" in arguments:
+                    aim_id = arguments["aim_id"]
+                    delta_x = int(arguments.get("delta_x", 0))
+                    delta_y = int(arguments.get("delta_y", 0))
+                    zoom = arguments.get("zoom")
+                    
+                    aim = self.aim_cache.update(aim_id, delta_x, delta_y, zoom)
+                    if not aim:
+                        return {
+                            "success": False,
+                            "error": f"aim_id '{aim_id}' not found or expired",
+                            "content": []
+                        }
+                    
+                    # 获取更新后的截图（已返回标准格式）
+                    screenshot_result = await self._screenshot(vm_id, {
+                        "grid": True,
+                        "center": {"x": aim["x"], "y": aim["y"]},
+                        "zoom_factor": aim["zoom"]
+                    })
+                    
+                    # 检查截图是否成功
+                    if not screenshot_result.get("success"):
+                        return {
+                            "success": False,
+                            "error": screenshot_result.get("error", "Failed to capture screenshot"),
+                            "content": []
+                        }
+                    
+                    # 构建返回内容：文本 + 图片
+                    content = screenshot_result.get("content", []).copy()
+                    
+                    # 添加 aim 信息到文本
+                    aim_info = {
+                        "aim_id": aim_id,
+                        "position": {"x": aim["x"], "y": aim["y"], "zoom": aim["zoom"]},
+                        "delta": {"x": delta_x, "y": delta_y},
+                        "message": "Mouse aim position updated successfully"
+                    }
+                    
+                    # 如果有文本项，更新它；否则添加新的文本项
+                    text_found = False
+                    for item in content:
+                        if item.get("type") == "text":
+                            # 合并信息
+                            try:
+                                existing_text = json.loads(item.get("text", "{}"))
+                                existing_text.update(aim_info)
+                                item["text"] = json.dumps(existing_text, ensure_ascii=False)
+                            except:
+                                # 如果不是 JSON，追加信息
+                                item["text"] = f"{item.get('text', '')}\n{json.dumps(aim_info, ensure_ascii=False)}"
+                            text_found = True
+                            break
+                    
+                    if not text_found:
+                        # 在开头插入文本项
+                        content.insert(0, {
+                            "type": "text",
+                            "text": json.dumps(aim_info, ensure_ascii=False)
+                        })
+                    
+                    return {
+                        "success": True,
+                        "content": content
+                    }
                 
-                return {
-                    "success": True,
-                    "aim_id": aim_id,
-                    "position": {"x": x, "y": y, "zoom": zoom},
-                    "screenshot": screenshot_result.get("result", {}).get("image_data", "")
-                }
+                else:
+                    return {
+                        "success": False,
+                        "error": "aim requires x,y or aim_id",
+                        "content": []
+                    }
             
-            # 相对调整
-            elif "aim_id" in arguments:
-                aim_id = arguments["aim_id"]
-                delta_x = int(arguments.get("delta_x", 0))
-                delta_y = int(arguments.get("delta_y", 0))
-                zoom = arguments.get("zoom")
-                
-                aim = self.aim_cache.update(aim_id, delta_x, delta_y, zoom)
-                if not aim:
-                    return {"success": False, "error": f"aim_id '{aim_id}' not found or expired"}
-                
-                # 获取更新后的截图
-                screenshot_result = await self._screenshot(vm_id, {
-                    "grid": True,
-                    "center": {"x": aim["x"], "y": aim["y"]},
-                    "zoom_factor": aim["zoom"]
-                })
-                
+            except Exception as e:
+                logger.error(f"[VmuseAdapter] Mouse aim operation failed: {e}", exc_info=True)
                 return {
-                    "success": True,
-                    "aim_id": aim_id,
-                    "position": {"x": aim["x"], "y": aim["y"], "zoom": aim["zoom"]},
-                    "screenshot": screenshot_result.get("result", {}).get("image_data", "")
+                    "success": False,
+                    "error": str(e),
+                    "content": []
                 }
-            
-            else:
-                return {"success": False, "error": "aim requires x,y or aim_id"}
         
         # ========== 添加强制 aim_id 检查 ==========
         # 所有 execute actions 必须使用 aim_id
@@ -629,7 +1388,8 @@ class VmuseAdapter:
             if "aim_id" not in arguments:
                 return {
                     "success": False,
-                    "error": f"'{action}' requires aim_id. Use mouse(action='aim', x=..., y=...) first to get an aim_id."
+                    "error": f"'{action}' requires aim_id. Use mouse(action='aim', x=..., y=...) first to get an aim_id.",
+                    "content": []
                 }
             
             # 从缓存获取 aim 数据
@@ -638,7 +1398,8 @@ class VmuseAdapter:
             if not aim:
                 return {
                     "success": False,
-                    "error": f"Invalid or expired aim_id: '{aim_id}'. Please call mouse(action='aim', ...) again to get a new aim_id."
+                    "error": f"Invalid or expired aim_id: '{aim_id}'. Please call mouse(action='aim', ...) again to get a new aim_id.",
+                    "content": []
                 }
             
             # 强制使用 aim 缓存中的坐标，覆盖任何直接提供的 x, y
@@ -654,7 +1415,11 @@ class VmuseAdapter:
         if action == "move":
             # 移动鼠标
             if "x" not in arguments or "y" not in arguments:
-                return {"success": False, "error": "Missing 'x' or 'y' for move action"}
+                return {
+                    "success": False,
+                    "error": "Missing 'x' or 'y' for move action",
+                    "content": []
+                }
             payload["x"] = arguments["x"]
             payload["y"] = arguments["y"]
         
@@ -673,58 +1438,103 @@ class VmuseAdapter:
         
         elif action == "double":
             # 双击 - aim_id 已经设置了 x, y
-            x = arguments.get("x")
-            y = arguments.get("y")
-            
-            # 移动到位置并双击（不再支持在当前位置双击）
-            await self._exec_guest_command(vm_id, f"xdotool mousemove {x} {y} click --repeat 2 --delay 100 1")
-            
-            return {
-                "success": True,
-                "result": {
-                    "message": f"Mouse double click executed successfully",
+            try:
+                x = arguments.get("x")
+                y = arguments.get("y")
+                
+                # 移动到位置并双击（不再支持在当前位置双击）
+                await self._exec_guest_command(vm_id, f"xdotool mousemove {x} {y} click --repeat 2 --delay 100 1")
+                
+                result_info = {
+                    "message": "Mouse double click executed successfully",
                     "action": action,
                     "x": x,
                     "y": y
                 }
-            }
+                
+                return {
+                    "success": True,
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": json.dumps(result_info, ensure_ascii=False)
+                        }
+                    ]
+                }
+            except Exception as e:
+                logger.error(f"[VmuseAdapter] Mouse double click failed: {e}", exc_info=True)
+                return {
+                    "success": False,
+                    "error": str(e),
+                    "content": []
+                }
         
         elif action == "down":
             # 按下鼠标（拖拽开始） - aim_id 已经设置了 x, y
-            x = arguments.get("x")
-            y = arguments.get("y")
-            button = arguments.get("button", "left")
-            button_num = {"left": 1, "right": 3, "middle": 2}.get(button, 1)
-            
-            # 移动到位置并按下（不再支持在当前位置按下）
-            await self._exec_guest_command(vm_id, f"xdotool mousemove {x} {y} mousedown {button_num}")
-            
-            return {
-                "success": True,
-                "result": {
-                    "message": f"Mouse down executed successfully",
+            try:
+                x = arguments.get("x")
+                y = arguments.get("y")
+                button = arguments.get("button", "left")
+                button_num = {"left": 1, "right": 3, "middle": 2}.get(button, 1)
+                
+                # 移动到位置并按下（不再支持在当前位置按下）
+                await self._exec_guest_command(vm_id, f"xdotool mousemove {x} {y} mousedown {button_num}")
+                
+                result_info = {
+                    "message": "Mouse down executed successfully",
                     "action": action,
                     "x": x,
                     "y": y,
                     "button": button
                 }
-            }
+                
+                return {
+                    "success": True,
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": json.dumps(result_info, ensure_ascii=False)
+                        }
+                    ]
+                }
+            except Exception as e:
+                logger.error(f"[VmuseAdapter] Mouse down failed: {e}", exc_info=True)
+                return {
+                    "success": False,
+                    "error": str(e),
+                    "content": []
+                }
         
         elif action == "up":
             # 释放鼠标（拖拽结束）
-            button = arguments.get("button", "left")
-            button_num = {"left": 1, "right": 3, "middle": 2}.get(button, 1)
-            
-            await self._exec_guest_command(vm_id, f"xdotool mouseup {button_num}")
-            
-            return {
-                "success": True,
-                "result": {
-                    "message": f"Mouse up executed successfully",
+            try:
+                button = arguments.get("button", "left")
+                button_num = {"left": 1, "right": 3, "middle": 2}.get(button, 1)
+                
+                await self._exec_guest_command(vm_id, f"xdotool mouseup {button_num}")
+                
+                result_info = {
+                    "message": "Mouse up executed successfully",
                     "action": action,
                     "button": button
                 }
-            }
+                
+                return {
+                    "success": True,
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": json.dumps(result_info, ensure_ascii=False)
+                        }
+                    ]
+                }
+            except Exception as e:
+                logger.error(f"[VmuseAdapter] Mouse up failed: {e}", exc_info=True)
+                return {
+                    "success": False,
+                    "error": str(e),
+                    "content": []
+                }
         
         elif action == "scroll":
             # 滚动 - 转换参数格式
@@ -740,7 +1550,11 @@ class VmuseAdapter:
                 # 移动到位置
                 move_result = await self._exec_guest_command(vm_id, f"xdotool mousemove {x} {y}")
                 if move_result.get("exit_code") != 0:
-                    return {"success": False, "error": "Failed to move mouse before scrolling"}
+                    return {
+                        "success": False,
+                        "error": "Failed to move mouse before scrolling",
+                        "content": []
+                    }
             
             # 转换：direction + amount → delta
             # up = 正数, down = 负数
@@ -750,7 +1564,11 @@ class VmuseAdapter:
                 payload["delta"] = -amount
         
         else:
-            return {"success": False, "error": f"Unknown mouse action: {action}"}
+            return {
+                "success": False,
+                "error": f"Unknown mouse action: {action}",
+                "content": []
+            }
         
         # 调用 vmcontrol API
         try:
@@ -761,19 +1579,41 @@ class VmuseAdapter:
             response.raise_for_status()
             result = response.json()
             
+            result_info = {
+                "message": f"Mouse {action} executed successfully",
+                "action": action
+            }
+            
             return {
                 "success": True,
-                "result": {
-                    "message": f"Mouse {action} executed successfully",
-                    "action": action
-                }
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps(result_info, ensure_ascii=False)
+                    }
+                ]
             }
         
-        except httpx.HTTPError as e:
-            logger.error(f"[VmuseAdapter] Mouse operation failed: {e}")
+        except httpx.HTTPStatusError as e:
+            logger.error(f"[VmuseAdapter] Mouse operation HTTP error: {e}")
             return {
                 "success": False,
-                "error": f"Mouse operation failed: {str(e)}"
+                "error": f"HTTP {e.response.status_code}: {e.response.text}",
+                "content": []
+            }
+        except httpx.HTTPError as e:
+            logger.error(f"[VmuseAdapter] Mouse operation HTTP error: {e}")
+            return {
+                "success": False,
+                "error": f"HTTP error: {str(e)}",
+                "content": []
+            }
+        except Exception as e:
+            logger.error(f"[VmuseAdapter] Mouse operation failed: {e}", exc_info=True)
+            return {
+                "success": False,
+                "error": str(e),
+                "content": []
             }
     
     # ==================== 键盘操作 ====================
@@ -1204,7 +2044,11 @@ class VmuseAdapter:
             return {"error": str(e), "exit_code": -1, "stdout": "", "stderr": str(e)}
     
     async def _system_snapshot(self, vm_id: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """系统快照"""
+        """
+        获取系统状态快照
+        
+        注意：系统信息可能较大，会被自动截断机制处理
+        """
         include = arguments.get("include", ["processes", "memory", "disk", "network", "cpu"])
         
         snapshot = {}
@@ -1237,34 +2081,52 @@ class VmuseAdapter:
             
             return {
                 "success": True,
-                "result": snapshot
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps(snapshot, ensure_ascii=False)
+                    }
+                ]
             }
         
         except Exception as e:
-            logger.error(f"[VmuseAdapter] System snapshot failed: {e}")
+            logger.error(f"[VmuseAdapter] System snapshot failed: {e}", exc_info=True)
             return {
                 "success": False,
-                "error": f"System snapshot failed: {str(e)}"
+                "error": f"System snapshot failed: {str(e)}",
+                "content": []
             }
     
     async def _clipboard_get(self, vm_id: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """获取剪贴板内容"""
+        """
+        获取剪贴板内容
+        
+        注意：剪贴板内容可能很大，会被自动截断机制处理
+        """
         try:
             # 尝试使用 xclip 获取剪贴板内容
             result = await self._exec_guest_command(vm_id, "xclip -selection clipboard -o 2>/dev/null || xsel --clipboard --output 2>/dev/null || echo ''")
             
+            clipboard_data = {
+                "content": result.get("stdout", "")
+            }
+            
             return {
                 "success": True,
-                "result": {
-                    "content": result.get("stdout", "")
-                }
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps(clipboard_data, ensure_ascii=False)
+                    }
+                ]
             }
         
         except Exception as e:
-            logger.error(f"[VmuseAdapter] Clipboard get failed: {e}")
+            logger.error(f"[VmuseAdapter] Clipboard get failed: {e}", exc_info=True)
             return {
                 "success": False,
-                "error": f"Clipboard get failed: {str(e)}"
+                "error": f"Clipboard get failed: {str(e)}",
+                "content": []
             }
     
     async def _clipboard_set(self, vm_id: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
@@ -1294,7 +2156,11 @@ class VmuseAdapter:
             }
     
     async def _environment_info(self, vm_id: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
-        """获取环境信息"""
+        """
+        获取环境信息
+        
+        注意：环境变量可能很多，会被自动截断机制处理
+        """
         try:
             info = {}
             
@@ -1316,14 +2182,20 @@ class VmuseAdapter:
             
             return {
                 "success": True,
-                "result": info
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps(info, ensure_ascii=False)
+                    }
+                ]
             }
         
         except Exception as e:
-            logger.error(f"[VmuseAdapter] Environment info failed: {e}")
+            logger.error(f"[VmuseAdapter] Environment info failed: {e}", exc_info=True)
             return {
                 "success": False,
-                "error": f"Environment info failed: {str(e)}"
+                "error": f"Environment info failed: {str(e)}",
+                "content": []
             }
     
     # ==================== 工具列表（可选） ====================

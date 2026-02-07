@@ -22,8 +22,6 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional, Callable, Awaitable
 from dataclasses import dataclass, field
 
-import aiofiles
-
 logger = logging.getLogger(__name__)
 
 
@@ -356,7 +354,7 @@ class TaskManager:
         
         # Write full output to file
         output_file = output_dir / f"{task_id}.txt"
-        with aiofiles.open(output_file, 'w', encoding='utf-8') as f:
+        with open(output_file, 'w', encoding='utf-8') as f:
             f.write(full_output)
         
         # Create task
@@ -1053,7 +1051,7 @@ class TaskManager:
             return None
         
         try:
-            with aiofiles.open(output_file, 'r', encoding='utf-8') as f:
+            with open(output_file, 'r', encoding='utf-8') as f:
                 all_lines = f.readlines()
             
             total_lines = len(all_lines)

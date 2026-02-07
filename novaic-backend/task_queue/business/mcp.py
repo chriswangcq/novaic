@@ -115,6 +115,21 @@ class MCPBusiness:
             )
 
         try:
+            # 1. 在 Tools Server 创建 runtime context
+            tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", ServiceConfig.TOOLS_SERVER_URL)
+            with httpx.Client(timeout=10.0, trust_env=False) as http_client:
+                resp = http_client.post(
+                    f"{tools_server_url}/internal/runtimes",
+                    json={
+                        "runtime_id": runtime_id,
+                        "agent_id": agent_id,
+                        "subagent_id": subagent_id,
+                        "ports": {},
+                    }
+                )
+                resp.raise_for_status()
+            
+            # 2. 创建 aggregate MCP（向后兼容）
             resp = self.client.create_aggregate_mcp(
                 agent_id=agent_id,
                 runtime_id=runtime_id,
@@ -166,6 +181,16 @@ class MCPBusiness:
 
         agent_id = runtime.get("agent_id")
         try:
+            # 1. 删除 Tools Server runtime context
+            tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", ServiceConfig.TOOLS_SERVER_URL)
+            with httpx.Client(timeout=10.0, trust_env=False) as http_client:
+                resp = http_client.delete(
+                    f"{tools_server_url}/internal/runtimes/{runtime_id}"
+                )
+                if resp.status_code != 404:  # Ignore 404
+                    resp.raise_for_status()
+            
+            # 2. 删除 aggregate MCP（向后兼容）
             self.client.destroy_aggregate_mcp(agent_id, runtime_id)
         except Exception as e:
             if "not found" not in str(e).lower():
