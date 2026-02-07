@@ -32,8 +32,9 @@ SERVICE_OFFSETS = {
 
 
 class PortConfig(BaseModel):
-    """Port configuration for an agent - only SSH is needed."""
-    ssh: int = 20000  # SSH port for VM access
+    """Port configuration for an agent - SSH and VMUSE HTTP."""
+    ssh: int = 20000   # SSH port for VM access
+    vmuse: int = 18080  # VMUSE HTTP API port
 
 
 class VmConfig(BaseModel):

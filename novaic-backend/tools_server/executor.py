@@ -36,7 +36,46 @@ logger = logging.getLogger(__name__)
 # Gateway API 基础 URL
 GATEWAY_URL = os.environ.get("GATEWAY_URL", "http://127.0.0.1:19999")
 
-# 内置工具名称集合（这些工具直接调用 Gateway API 或 vmuse_adapter）
+# vmcontrol API 基础 URL
+VMCONTROL_URL = os.environ.get("VMCONTROL_URL", "http://127.0.0.1:8080")
+
+# VM 工具映射表：工具名 -> (tool, operation)
+# 这些工具会被路由到 vmcontrol 的 /api/vms/:id/vmuse/:tool/:operation
+VM_TOOL_MAPPING = {
+    # Browser tools
+    "browser_navigate": ("browser", "navigate"),
+    "browser_click": ("browser", "click"),
+    "browser_type": ("browser", "type"),
+    "browser_screenshot": ("browser", "screenshot"),
+    "browser_content": ("browser", "content"),
+    "browser_scroll": ("browser", "scroll"),
+    "browser_evaluate": ("browser", "evaluate"),
+    # Desktop tools
+    "screenshot": ("desktop", "screenshot"),
+    "mouse": ("desktop", "mouse"),
+    "keyboard": ("desktop", "keyboard"),
+    # Shell tools
+    "shell_exec": ("shell", "command"),
+    # File tools
+    "file_read": ("file", "read"),
+    "file_write": ("file", "write"),
+    "file_list": ("file", "list"),
+    # Window tools (if needed, currently not in BUILTIN_TOOL_NAMES)
+    "list_windows": ("windows", "list"),
+    "focus_window": ("windows", "focus"),
+    "maximize_window": ("windows", "maximize"),
+    "minimize_window": ("windows", "minimize"),
+    "close_window": ("windows", "close"),
+    "resize_window": ("windows", "resize"),
+    "launch_app": ("windows", "launch"),
+    # Context tools
+    "system_snapshot": ("context", "snapshot"),
+    "clipboard_get": ("context", "clipboard_get"),
+    "clipboard_set": ("context", "clipboard_set"),
+    "environment_info": ("context", "environment"),
+}
+
+# 内置工具名称集合（这些工具直接调用 Gateway API 或 vmcontrol）
 # 注意：这是工具名称集合，不同于 tools.py 中的 BUILTIN_TOOLS（工具定义字典）
 BUILTIN_TOOL_NAMES = {
     # Memory 工具
@@ -99,19 +138,17 @@ BUILTIN_TOOL_NAMES = {
     "task_log",
     "task_history",
     
-    # VM 工具（通过 vmuse_adapter 实现）
+    # VM 工具（直接调用 vmcontrol）
     "browser_navigate",
     "browser_click",
     "browser_type",
     "browser_screenshot",
     "browser_content",
     "browser_scroll",
-    "browser_eval",
-    "browser_get_tabs",
-    "browser_switch_tab",
-    "browser_close_tab",
+    "browser_evaluate",
     "file_read",
     "file_write",
+    "file_list",
     "shell_exec",
     "screenshot",
     "mouse",
@@ -863,30 +900,82 @@ class ToolExecutor:
                     "subagent_id": self.subagent_id,
                 }
             
-            # ==================== VM 工具（通过 vmuse_adapter）====================
-            elif tool_name in [
-                "browser_navigate", "browser_click", "browser_type", 
-                "browser_screenshot", "browser_content", "browser_scroll",
-                "browser_eval", "browser_get_tabs", "browser_switch_tab", "browser_close_tab",
-                "file_read", "file_write", "shell_exec", "screenshot",
-                "mouse", "keyboard",
-                "list_windows", "focus_window", "maximize_window", "minimize_window",
-                "close_window", "resize_window", "launch_app",
-                "system_snapshot", "clipboard_get", "clipboard_set", "environment_info",
-            ]:
-                # 使用 vmuse_adapter 调用 VM 工具
-                from gateway.clients.vmuse_adapter import get_vmuse_adapter
+            # ==================== VM 工具（直接通过端口转发访问）====================
+            elif tool_name in VM_TOOL_MAPPING:
+                # 从映射表获取 tool 和 operation
+                tool, operation = VM_TOOL_MAPPING[tool_name]
                 
-                adapter = get_vmuse_adapter()
+                # 获取 agent 的 VMUSE 端口
+                # VM 内的服务监听 8080，通过 QEMU 端口转发到宿主机的 ports.vmuse
+                try:
+                    async with httpx.AsyncClient(timeout=5.0) as client:
+                        agent_response = await client.get(f"{GATEWAY_URL}/internal/agents/{self.agent_id}")
+                        agent_data = agent_response.json()
+                        vmuse_port = agent_data.get("vm", {}).get("ports", {}).get("vmuse", 18080)
+                except Exception as e:
+                    logger.warning(f"[ToolExecutor] Could not get agent VMUSE port, using default 18080: {e}")
+                    vmuse_port = 18080
                 
-                # 直接使用 agent_id 作为 vm_id（vmcontrol 使用 agent_id 识别 VM）
-                result = await adapter.call_tool(
-                    tool_name=tool_name,
-                    arguments=arguments,
-                    vm_id=self.agent_id
-                )
+                # 直接访问 VM 的 VMUSE HTTP 服务（通过端口转发）
+                url = f"http://127.0.0.1:{vmuse_port}/api/{tool}/{operation}"
                 
-                return result
+                logger.info(f"[ToolExecutor] Calling VMUSE directly: {url} (port {vmuse_port})")
+                
+                try:
+                    async with httpx.AsyncClient(timeout=30.0) as client:
+                        response = await client.post(url, json=arguments)
+                        response.raise_for_status()
+                        vm_result = response.json()
+                    
+                    # VMUSE 返回格式转换为 MCP 标准格式
+                    # 可能的格式：
+                    # 1. {"status": "success", "data": "base64..."} (旧格式)
+                    # 2. {"success": true, "screenshot": "base64...", ...} (新格式)
+                    
+                    # 检查是否成功
+                    is_success = (
+                        vm_result.get("success") is True or
+                        vm_result.get("status") == "success"
+                    )
+                    
+                    if not is_success:
+                        error_msg = vm_result.get("error", "Unknown VMUSE error")
+                        logger.error(f"[ToolExecutor] VMUSE error for {tool_name}: {error_msg}")
+                        return {
+                            "success": False,
+                            "error": error_msg,
+                        }
+                    
+                    # 转换旧格式 {"data": "..."} -> {"screenshot": "..."}
+                    if "data" in vm_result and "screenshot" not in vm_result:
+                        # 检测是否是图片数据（base64）
+                        data_value = vm_result.get("data", "")
+                        if isinstance(data_value, str) and len(data_value) > 100:
+                            vm_result["screenshot"] = data_value
+                            # 移除旧字段
+                            vm_result.pop("data", None)
+                    
+                    # 统一 success 字段
+                    vm_result["success"] = True
+                    vm_result.pop("status", None)
+                    
+                    return vm_result
+                
+                except httpx.HTTPStatusError as e:
+                    error_text = e.response.text if e.response else str(e)
+                    logger.error(f"[ToolExecutor] VMUSE HTTP error for {tool_name}: {e.response.status_code} - {error_text}")
+                    return {
+                        "success": False,
+                        "error": f"VMUSE HTTP error: {e.response.status_code}",
+                        "content": []
+                    }
+                except Exception as e:
+                    logger.error(f"[ToolExecutor] VMUSE request failed for {tool_name}: {e}", exc_info=True)
+                    return {
+                        "success": False,
+                        "error": f"VMUSE request failed: {str(e)}",
+                        "content": []
+                    }
             
             else:
                 return {"success": False, "error": f"Unknown builtin tool: {tool_name}"}

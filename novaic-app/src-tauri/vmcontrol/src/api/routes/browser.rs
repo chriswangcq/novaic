@@ -25,32 +25,26 @@ async fn execute_playwright_command(
         )
     })?;
 
-    // Build command arguments for playwright_helper.py
-    let mut cmd_args = vec![command.to_string()];
-    if let Some(args_val) = args {
-        // Escape the JSON string for shell
-        let json_str = args_val.to_string().replace("\"", "\\\"");
-        cmd_args.push(format!("\"{}\"", json_str));
-    }
-
-    // Build command string with DISPLAY=:0 to show browser on real X11 desktop
-    // This allows users to see the browser window through VNC, making AI actions visible
-    // :0 is the main X11 display where the desktop environment runs
-    // Use venv Python to ensure playwright module is available
-    let playwright_cmd = format!(
-        "DISPLAY=:0 PLAYWRIGHT_BROWSERS_PATH=/opt/novaic/.cache /opt/novaic/venv/bin/python3 /opt/novaic/scripts/playwright_helper.py {}",
-        cmd_args.join(" ")
+    // Call NovAIC VM Server HTTP API (running inside VM at port 8080)
+    // The server maintains a persistent browser and handles all operations
+    // We use Guest Agent to execute curl inside VM to call the local HTTP API
+    let request_body = args.unwrap_or_else(|| serde_json::json!({}));
+    let json_data = request_body.to_string().replace("'", "'\\''");  // Escape single quotes for shell
+    
+    let curl_cmd = format!(
+        "curl -s -X POST http://localhost:8080/api/browser/{} -H 'Content-Type: application/json' -d '{}'",
+        command, json_data
     );
 
-    // Execute playwright helper script via shell on the real X11 desktop
+    // Execute curl via Guest Agent
     let status = client
-        .exec_sync("/bin/sh", vec!["-c".to_string(), playwright_cmd])
+        .exec_sync("/bin/sh", vec!["-c".to_string(), curl_cmd])
         .await
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ApiError {
-                    error: format!("Failed to execute browser command: {}", e),
+                    error: format!("Failed to execute curl command: {}", e),
                 }),
             )
         })?;
@@ -68,13 +62,13 @@ async fn execute_playwright_command(
             return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ApiError {
-                    error: format!("Browser command failed with exit code {}: {}", exit_code, stderr),
+                    error: format!("Curl command failed with exit code {}: {}", exit_code, stderr),
                 }),
             ));
         }
     }
 
-    // Parse stdout as JSON
+    // Parse stdout (JSON response from VM server)
     if let Some(stdout) = status.stdout {
         let output_bytes = general_purpose::STANDARD
             .decode(&stdout)
@@ -96,31 +90,46 @@ async fn execute_playwright_command(
             )
         })?;
 
-        let result: BrowserResponse = serde_json::from_str(&output).map_err(|e| {
+        let vm_response: serde_json::Value = serde_json::from_str(&output).map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ApiError {
-                    error: format!("Failed to parse browser response: {}", e),
+                    error: format!("Failed to parse VM server response: {}", e),
                 }),
             )
         })?;
-
-        // Check if response contains error
-        if let Some(err) = &result.error {
-            return Err((
-                StatusCode::BAD_REQUEST,
+        
+        // Convert VM server response to BrowserResponse format
+        let status_str = vm_response.get("status")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown");
+        
+        if status_str == "success" {
+            Ok(BrowserResponse {
+                status: "success".to_string(),
+                url: vm_response.get("url").and_then(|v| v.as_str()).map(String::from),
+                html: vm_response.get("html").and_then(|v| v.as_str()).map(String::from),
+                data: vm_response.get("data").and_then(|v| v.as_str()).map(String::from),
+                error: None,
+            })
+        } else {
+            let error_msg = vm_response.get("error")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Unknown error")
+                .to_string();
+            
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ApiError {
-                    error: err.clone(),
+                    error: error_msg,
                 }),
-            ));
+            ))
         }
-
-        Ok(result)
     } else {
         Err((
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ApiError {
-                error: "No output from browser command".to_string(),
+                error: "No output from VM server".to_string(),
             }),
         ))
     }

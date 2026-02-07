@@ -8,6 +8,7 @@ use crate::api::types::{
     WriteFileRequest, WriteFileResponse,
 };
 use crate::qemu::GuestAgentClient;
+use base64::{engine::general_purpose, Engine as _};
 
 /// POST /api/vms/:id/guest/exec
 /// Execute command in VM via Guest Agent
@@ -41,13 +42,13 @@ pub async fn exec_command(
 
         // Decode base64 stdout/stderr if present
         let stdout = status.stdout.and_then(|s| {
-            base64::decode(&s)
+            general_purpose::STANDARD.decode(&s)
                 .ok()
                 .and_then(|bytes| String::from_utf8(bytes).ok())
         });
 
         let stderr = status.stderr.and_then(|s| {
-            base64::decode(&s)
+            general_purpose::STANDARD.decode(&s)
                 .ok()
                 .and_then(|bytes| String::from_utf8(bytes).ok())
         });
@@ -104,7 +105,7 @@ pub async fn read_file(
     })?;
 
     Ok(Json(ReadFileResponse {
-        content: base64::encode(&data),
+        content: general_purpose::STANDARD.encode(&data),
         size: data.len(),
     }))
 }
@@ -125,7 +126,7 @@ pub async fn write_file(
         )
     })?;
 
-    let data = base64::decode(&req.content).map_err(|e| {
+    let data = general_purpose::STANDARD.decode(&req.content).map_err(|e| {
         (
             StatusCode::BAD_REQUEST,
             Json(ApiError {

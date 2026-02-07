@@ -64,6 +64,7 @@ echo "  Copied: $RESOURCES_DIR/novaic-backend/"
 
 # Copy vmcontrol binary
 echo "  Copying vmcontrol..."
+rm -rf "$RESOURCES_DIR/vmcontrol"
 mkdir -p "$RESOURCES_DIR/vmcontrol"
 cp novaic-app/src-tauri/vmcontrol/target/release/vmcontrol "$RESOURCES_DIR/vmcontrol/"
 echo "  Copied: $RESOURCES_DIR/vmcontrol/vmcontrol"

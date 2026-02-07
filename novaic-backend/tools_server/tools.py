@@ -12,11 +12,168 @@ Tools Server - 工具定义
 - web: 2 个工具 (web_search, web_fetch)
 - qemu: 5 个工具 (qemu_ssh_exec, qemu_status, qemu_start_vm, qemu_restart_vm, qemu_shutdown_vm)
 - task: 5 个工具 (task_async, task_query, task_list, task_cancel, task_summary)
+- vm: 13 个工具 (browser_navigate, browser_click, browser_type, browser_screenshot, browser_scroll,
+                  browser_evaluate, screenshot, mouse, keyboard, shell_exec, file_read, file_write, file_list)
 
-总计: 35 个工具
+总计: 48 个工具
 """
 
 from typing import Dict, List, Any, Optional
+
+# ==================== VM Tools Definition (直接定义，不依赖 vmuse_adapter) ====================
+
+VM_TOOLS = [
+    {
+        "name": "browser_navigate",
+        "description": "Navigate browser to a URL in the VM",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "url": {"type": "string", "description": "URL to navigate to"}
+            },
+            "required": ["url"]
+        }
+    },
+    {
+        "name": "browser_click",
+        "description": "Click element in browser by CSS selector",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "selector": {"type": "string", "description": "CSS selector"}
+            },
+            "required": ["selector"]
+        }
+    },
+    {
+        "name": "browser_type",
+        "description": "Type text into browser element",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "selector": {"type": "string", "description": "CSS selector"},
+                "text": {"type": "string", "description": "Text to type"}
+            },
+            "required": ["selector", "text"]
+        }
+    },
+    {
+        "name": "browser_screenshot",
+        "description": "Take screenshot of current browser page",
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+    },
+    {
+        "name": "browser_scroll",
+        "description": "Scroll browser page",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "direction": {"type": "string", "enum": ["up", "down", "left", "right"]},
+                "amount": {"type": "integer", "description": "Scroll amount", "default": 500}
+            },
+            "required": ["direction"]
+        }
+    },
+    {
+        "name": "browser_evaluate",
+        "description": "Execute JavaScript code in browser",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "script": {"type": "string", "description": "JavaScript code"}
+            },
+            "required": ["script"]
+        }
+    },
+    {
+        "name": "screenshot",
+        "description": "Take desktop screenshot of VM",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "grid": {"type": "boolean", "description": "Show coordinate grid", "default": True}
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "mouse",
+        "description": "Control mouse in VM. Use 'aim' to get aim_id, then use aim_id for other actions.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "action": {"type": "string", "enum": ["aim", "click", "right_click", "double", "scroll"]},
+                "x": {"type": "integer"},
+                "y": {"type": "integer"},
+                "aim_id": {"type": "string"},
+                "zoom": {"type": "number", "default": 2.0}
+            },
+            "required": ["action"]
+        }
+    },
+    {
+        "name": "keyboard",
+        "description": "Control keyboard in VM",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "action": {"type": "string", "enum": ["type", "key"]},
+                "text": {"type": "string"},
+                "keys": {"type": "array", "items": {"type": "string"}}
+            },
+            "required": ["action"]
+        }
+    },
+    {
+        "name": "shell_exec",
+        "description": "Execute shell command in VM",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "command": {"type": "string", "description": "Shell command"}
+            },
+            "required": ["command"]
+        }
+    },
+    {
+        "name": "file_read",
+        "description": "Read file from VM",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string"}
+            },
+            "required": ["path"]
+        }
+    },
+    {
+        "name": "file_write",
+        "description": "Write file to VM",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string"},
+                "content": {"type": "string"}
+            },
+            "required": ["path", "content"]
+        }
+    },
+    {
+        "name": "file_list",
+        "description": "List directory contents in VM",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "default": "."}
+            },
+            "required": []
+        }
+    },
+]
 
 
 # ==================== Memory Tools (10) ====================
@@ -737,7 +894,7 @@ def get_all_tools() -> List[Dict[str, Any]]:
     """
     Get all tools as a flat list (for LLM function calling).
     
-    Includes both standard builtin tools and VM tools from vmuse_adapter.
+    Includes both standard builtin tools and VM tools.
     
     Returns:
         List of tool definitions in OpenAI function calling format.
@@ -749,16 +906,8 @@ def get_all_tools() -> List[Dict[str, Any]]:
     for category_tools in BUILTIN_TOOLS.values():
         tools.extend(category_tools)
     
-    # 添加 VM 工具（从 vmuse_adapter）
-    try:
-        from gateway.clients.vmuse_adapter import get_vmuse_adapter
-        adapter = get_vmuse_adapter()
-        vm_tools = adapter.list_tools_mcp_format()
-        tools.extend(vm_tools)
-    except Exception as e:
-        # 如果 vmuse_adapter 不可用，仅记录警告，不影响其他工具
-        import logging
-        logging.getLogger(__name__).warning(f"Failed to load VM tools: {e}")
+    # 添加 VM 工具（直接从 VM_TOOLS）
+    tools.extend(VM_TOOLS)
     
     return tools
 
@@ -767,7 +916,7 @@ def get_tool_by_name(name: str) -> Optional[Dict[str, Any]]:
     """
     Get a tool definition by name.
     
-    Supports both standard builtin tools and VM tools from vmuse_adapter.
+    Supports both standard builtin tools and VM tools.
     
     Args:
         name: Tool name (e.g., 'memory_save', 'chat_reply', 'browser_navigate')
@@ -781,17 +930,9 @@ def get_tool_by_name(name: str) -> Optional[Dict[str, Any]]:
         return tool
     
     # 如果不是标准工具，检查是否是 VM 工具
-    try:
-        from gateway.clients.vmuse_adapter import get_vmuse_adapter
-        adapter = get_vmuse_adapter()
-        vm_tools = adapter.list_tools_mcp_format()
-        
-        # 在 VM 工具列表中查找
-        for vm_tool in vm_tools:
-            if vm_tool.get("name") == name:
-                return vm_tool
-    except Exception:
-        pass  # 忽略错误，返回 None
+    for vm_tool in VM_TOOLS:
+        if vm_tool.get("name") == name:
+            return vm_tool
     
     return None
 

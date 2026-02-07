@@ -19,12 +19,14 @@ import platform
 
 class PortConfig(BaseModel):
     """
-    Port configuration for an agent - only SSH is needed.
+    Port configuration for an agent - SSH and VMUSE HTTP.
     
-    Each agent gets 1 port starting from BASE_PORT + agent_index.
+    Each agent gets 2 ports starting from BASE_PORT + agent_index * 2.
     SSH is used for VM deployment and debugging.
+    VMUSE is the HTTP API for VM tools (desktop, browser, shell, etc).
     """
-    ssh: int = 20000  # SSH port for VM access
+    ssh: int = 20000   # SSH port for VM access
+    vmuse: int = 18080  # VMUSE HTTP API port (VM:8080 -> Host:18000+)
 
 
 class VmConfig(BaseModel):
@@ -60,15 +62,18 @@ class AgentsConfig(BaseModel):
 # Centralized port allocation configuration
 # Port layout:
 #   19999       - Gateway (固定)
-#   20000-20099 - Agents (100个 × 1端口 for SSH)
+#   20000-20199 - Agents (100个 × 2端口 for SSH + VMUSE)
+#   18000-18099 - VMUSE HTTP ports (separate range to avoid conflicts)
 GATEWAY_PORT = 19999        # Gateway 固定端口
-BASE_PORT = 20000           # Agent 基础端口号
-PORTS_PER_AGENT = 1         # 每个Agent分配的端口数量 (只有SSH)
+BASE_PORT = 20000           # Agent SSH 基础端口号
+BASE_VMUSE_PORT = 18000     # Agent VMUSE 基础端口号
+PORTS_PER_AGENT = 2         # 每个Agent分配的端口数量 (SSH + VMUSE)
 MAX_AGENTS = 100            # 最大支持的Agent数量
 
 # 服务端口偏移量 (相对于Agent基础端口)
 SERVICE_OFFSETS = {
-    "ssh": 0,          # SSH port (only port needed)
+    "ssh": 0,          # SSH port
+    "vmuse": 0,        # VMUSE port (uses separate BASE_VMUSE_PORT)
 }
 
 
@@ -81,22 +86,27 @@ def get_agent_port(agent_index: int, service: str) -> int:
     
     Args:
         agent_index: Agent index (0, 1, 2, ...)
-        service: Service name (only "ssh" is supported)
+        service: Service name ("ssh" or "vmuse")
     
     Returns:
         Port number
         
     Example:
-        Agent 0: ssh=20000
-        Agent 1: ssh=20001
+        Agent 0: ssh=20000, vmuse=18000
+        Agent 1: ssh=20001, vmuse=18001
     """
     if service not in SERVICE_OFFSETS:
         raise ValueError(f"Unknown service: {service}. Valid services: {list(SERVICE_OFFSETS.keys())}")
     if agent_index < 0 or agent_index >= MAX_AGENTS:
         raise ValueError(f"Agent index must be between 0 and {MAX_AGENTS - 1}")
     
-    base = BASE_PORT + agent_index * PORTS_PER_AGENT
-    return base + SERVICE_OFFSETS[service]
+    if service == "ssh":
+        return BASE_PORT + agent_index
+    elif service == "vmuse":
+        return BASE_VMUSE_PORT + agent_index
+    else:
+        base = BASE_PORT + agent_index * PORTS_PER_AGENT
+        return base + SERVICE_OFFSETS[service]
 
 
 def allocate_ports_for_agent(agent_index: int) -> PortConfig:
@@ -111,11 +121,11 @@ def allocate_ports_for_agent(agent_index: int) -> PortConfig:
         agent_index: Agent index (0, 1, 2, ...)
     
     Returns:
-        PortConfig with SSH port assigned
+        PortConfig with SSH and VMUSE ports assigned
     """
-    base = BASE_PORT + agent_index * PORTS_PER_AGENT
     return PortConfig(
-        ssh=base + SERVICE_OFFSETS["ssh"],
+        ssh=get_agent_port(agent_index, "ssh"),
+        vmuse=get_agent_port(agent_index, "vmuse")
     )
 
 

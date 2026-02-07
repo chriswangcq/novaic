@@ -56,7 +56,7 @@ def get_runtime_vm_tools(runtime_id: str):
     获取 Runtime 的 VM 工具列表
     
     用于 Tools Server 发现 VM 工具（不通过 MCP）。
-    如果 Runtime 关联的 Agent 有 VM 配置，返回 vmuse_adapter 定义的工具列表。
+    如果 Runtime 关联的 Agent 有 VM 配置，返回 VM 工具列表。
     
     Args:
         runtime_id: Runtime ID (rt-xxx)
@@ -69,8 +69,8 @@ def get_runtime_vm_tools(runtime_id: str):
         }
     """
     from gateway.db.repositories import RuntimeRepository
-    from gateway.clients.vmuse_adapter import get_vmuse_adapter
     from gateway.config.agents import get_agent_config_manager
+    from tools_server.tools import VM_TOOLS
     
     # 1. 检查 Runtime 是否存在
     db = get_db()
@@ -96,10 +96,9 @@ def get_runtime_vm_tools(runtime_id: str):
     if not hasattr(agent, 'vm') or not agent.vm:
         return {"tools": [], "agent_id": agent_id, "vm_available": False}
     
-    # 4. 使用 vmuse_adapter 获取工具列表
+    # 4. 直接使用 VM_TOOLS 获取工具列表
     try:
-        adapter = get_vmuse_adapter()
-        tools = adapter.list_tools_mcp_format()  # 使用新的 MCP 格式方法
+        tools = VM_TOOLS
         
         return {
             "tools": tools,

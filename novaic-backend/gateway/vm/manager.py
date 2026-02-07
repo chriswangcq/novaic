@@ -551,8 +551,9 @@ class VmManager:
         """Build QEMU command arguments."""
         ports = config.ports
         
-        # Only SSH port forwarding needed
-        port_forward = f"hostfwd=tcp::{ports.ssh}-:22"
+        # Port forwarding: SSH + VMUSE HTTP server
+        # VM:22 -> Host:{ports.ssh}, VM:8080 -> Host:{ports.vmuse}
+        port_forward = f"hostfwd=tcp::{ports.ssh}-:22,hostfwd=tcp::{ports.vmuse}-:8080"
         
         if self.is_arm:
             return self._build_arm64_args(config, agent_dir, port_forward)

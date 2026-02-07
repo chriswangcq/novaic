@@ -1,0 +1,21 @@
+[Unit]
+Description=NovAIC VM Server
+After=network.target lightdm.service
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/novaic
+Environment="XAUTHORITY=/home/ubuntu/.Xauthority"
+Environment="DISPLAY=:0"
+Environment="PLAYWRIGHT_BROWSERS_PATH=/opt/novaic/.cache"
+Environment="HOME=/home/ubuntu"
+ExecStart=/opt/novaic/venv/bin/python3 /opt/novaic/scripts/novaic_vm_server.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -5,6 +5,7 @@ pub mod screen;
 pub mod guest;
 pub mod vnc;
 pub mod browser;
+pub mod vmuse;
 
 use axum::{Router, routing::{get, post}};
 use std::sync::Arc;
@@ -36,6 +37,8 @@ pub fn create_router(state: AppState) -> Router {
         .route("/api/vms/:id/browser/type", post(browser::type_text))
         .route("/api/vms/:id/browser/content", get(browser::get_content))
         .route("/api/vms/:id/browser/screenshot", post(browser::screenshot))
+        // VMUSE Generic Proxy - supports all tools (browser, desktop, shell, files, etc.)
+        .route("/api/vms/:id/vmuse/:tool/:operation", post(vmuse::vmuse_proxy))
         // VNC WebSocket endpoint
         .route("/api/vms/:id/vnc", get(vnc::vnc_websocket))
         .with_state(state)

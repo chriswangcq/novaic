@@ -157,11 +157,20 @@ def main():
             else:
                 result = {"status": "error", "error": f"Unknown command: {command}"}
             
-            # 关闭浏览器
-            browser.close()
-            
             # 输出结果
             print(json.dumps(result))
+            
+            # 检查环境变量，决定是否关闭浏览器
+            # BROWSER_KEEP_OPEN=1 表示保持浏览器打开
+            keep_open = os.environ.get("BROWSER_KEEP_OPEN", "0") == "1"
+            
+            if not keep_open:
+                # 关闭浏览器
+                browser.close()
+            else:
+                # 保持浏览器打开
+                # 等待用户手动关闭或超时
+                print(f"[INFO] Browser kept open at {page.url}", file=sys.stderr)
     
     except Exception as e:
         print(json.dumps({"status": "error", "error": f"Playwright error: {str(e)}"}))
