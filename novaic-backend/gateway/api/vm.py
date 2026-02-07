@@ -398,21 +398,24 @@ async def get_vnc_status(agent_id: str):
 # ==================== VMUSE Deployment ====================
 
 def _deploy_vmuse_background(agent_id: str, ssh_port: int, vmuse_port: int):
-    """Background task for VMUSE deployment."""
+    """
+    Background task for VMUSE deployment.
+    Uses aggressive deployment strategy by default (retry until success).
+    """
     try:
         logger.info(f"[VMUSE Deploy] Starting background deployment for agent {agent_id}")
         deployer = get_vmuse_deployer()
         
-        # Deploy with cloud-init wait
+        # Deploy with aggressive strategy (retry until success)
         result = deployer.deploy(
             agent_id=agent_id,
             ssh_port=ssh_port,
-            wait_for_cloud_init=True,
-            cloud_init_timeout=600,  # 10 minutes
+            aggressive=True,  # Use aggressive strategy: deploy immediately, retry until success
         )
         
         if result["success"]:
-            logger.info(f"[VMUSE Deploy] ✅ Deployment succeeded for agent {agent_id}")
+            attempts = result.get("attempts", "unknown")
+            logger.info(f"[VMUSE Deploy] ✅ Deployment succeeded for agent {agent_id} (attempts: {attempts})")
             
             # Verify health
             if deployer.health_check(vmuse_port=vmuse_port):
@@ -420,7 +423,8 @@ def _deploy_vmuse_background(agent_id: str, ssh_port: int, vmuse_port: int):
             else:
                 logger.warning(f"[VMUSE Deploy] ⚠️  Health check failed for agent {agent_id}")
         else:
-            logger.error(f"[VMUSE Deploy] ❌ Deployment failed for agent {agent_id}: {result.get('error')}")
+            attempts = result.get("attempts", "unknown")
+            logger.error(f"[VMUSE Deploy] ❌ Deployment failed for agent {agent_id} after {attempts} attempts: {result.get('error')}")
     
     except Exception as e:
         logger.error(f"[VMUSE Deploy] Background task error for agent {agent_id}: {e}", exc_info=True)
@@ -429,16 +433,19 @@ def _deploy_vmuse_background(agent_id: str, ssh_port: int, vmuse_port: int):
 @router.post("/{agent_id}/deploy-vmuse")
 def deploy_vmuse_manual(
     agent_id: str,
-    wait_for_cloud_init: bool = True,
-    cloud_init_timeout: int = 600,
+    aggressive: bool = True,
 ):
     """
     Manually trigger VMUSE code deployment to VM.
     
+    Useful for:
+    - Updating VMUSE code after changes
+    - Retrying failed automatic deployment
+    - Deploying to VMs created before auto-deployment was added
+    
     Args:
         agent_id: Agent ID
-        wait_for_cloud_init: Wait for cloud-init to complete (default: True)
-        cloud_init_timeout: Cloud-init timeout in seconds (default: 600)
+        aggressive: Use aggressive deployment (retry until success). Default: True
     
     Returns:
         Deployment result
@@ -460,8 +467,7 @@ def deploy_vmuse_manual(
         result = deployer.deploy(
             agent_id=agent_id,
             ssh_port=agent.vm.ports.ssh,
-            wait_for_cloud_init=wait_for_cloud_init,
-            cloud_init_timeout=cloud_init_timeout,
+            aggressive=aggressive,
         )
         
         # Health check

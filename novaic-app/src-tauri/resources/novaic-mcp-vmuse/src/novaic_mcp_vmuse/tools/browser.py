@@ -31,8 +31,13 @@ class BrowserTools:
     
     async def _ensure_browser(self) -> Page:
         """Ensure browser is running and return the page (uses persistent context for login data)"""
-        if self._page is not None:
+        # Check if page exists and is still valid (not closed)
+        if self._page is not None and not self._page.is_closed():
             return self._page
+        
+        if self._page is not None and self._page.is_closed():
+            print(f"[Browser] Current page is closed, getting new page")
+            self._page = None
         
         if self._playwright is None:
             self._playwright = await async_playwright().start()
@@ -61,7 +66,16 @@ class BrowserTools:
         
         # Get existing page or create new one
         if self._context.pages:
-            self._page = self._context.pages[0]
+            # Find a valid (non-closed) page
+            for page in self._context.pages:
+                if not page.is_closed():
+                    self._page = page
+                    print(f"[Browser] Using existing page: {page.url}")
+                    return self._page
+            
+            # All pages are closed, create a new one
+            print("[Browser] All existing pages are closed, creating new page")
+            self._page = await self._context.new_page()
         else:
             self._page = await self._context.new_page()
         
@@ -75,49 +89,74 @@ class BrowserTools:
             url: URL to navigate to
             wait_until: load, domcontentloaded, networkidle
         """
-        try:
-            page = await self._ensure_browser()
-            
-            await page.goto(url, wait_until=wait_until, timeout=settings.browser_timeout)
-            
-            # Get page info
-            title = await page.title()
-            current_url = page.url
-            
-            # Get simplified HTML structure
-            html_content = await page.evaluate("""
-                () => {
-                    function simplify(el, depth = 0) {
-                        if (depth > 5) return '...';
-                        const tag = el.tagName.toLowerCase();
-                        let info = tag;
-                        
-                        if (el.id) info += `#${el.id}`;
-                        if (el.className && typeof el.className === 'string') {
-                            info += '.' + el.className.split(' ').slice(0, 2).join('.');
+        # Retry logic for handling closed page errors
+        max_retries = 2
+        last_error = None
+        
+        for attempt in range(max_retries):
+            try:
+                page = await self._ensure_browser()
+                
+                # Double-check page is not closed before goto (race condition protection)
+                if page.is_closed():
+                    print(f"[Browser] Page closed just before goto, retrying... (attempt {attempt + 1})")
+                    self._page = None
+                    await asyncio.sleep(0.5)
+                    continue
+                
+                await page.goto(url, wait_until=wait_until, timeout=settings.browser_timeout)
+                
+                # Get page info
+                title = await page.title()
+                current_url = page.url
+                
+                # Get simplified HTML structure
+                html_content = await page.evaluate("""
+                    () => {
+                        function simplify(el, depth = 0) {
+                            if (depth > 5) return '...';
+                            const tag = el.tagName.toLowerCase();
+                            let info = tag;
+                            
+                            if (el.id) info += `#${el.id}`;
+                            if (el.className && typeof el.className === 'string') {
+                                info += '.' + el.className.split(' ').slice(0, 2).join('.');
+                            }
+                            
+                            const children = Array.from(el.children).slice(0, 5);
+                            if (children.length > 0) {
+                                const childInfo = children.map(c => simplify(c, depth + 1)).join(', ');
+                                info += ` [${childInfo}]`;
+                            }
+                            
+                            return info;
                         }
-                        
-                        const children = Array.from(el.children).slice(0, 5);
-                        if (children.length > 0) {
-                            const childInfo = children.map(c => simplify(c, depth + 1)).join(', ');
-                            info += ` [${childInfo}]`;
-                        }
-                        
-                        return info;
+                        return simplify(document.body);
                     }
-                    return simplify(document.body);
+                """)
+                
+                return {
+                    "success": True,
+                    "url": current_url,
+                    "title": title,
+                    "structure": html_content
                 }
-            """)
-            
-            return {
-                "success": True,
-                "url": current_url,
-                "title": title,
-                "structure": html_content
-            }
-            
-        except Exception as e:
-            return {"success": False, "error": str(e)}
+                
+            except Exception as e:
+                error_str = str(e)
+                last_error = error_str
+                
+                # Check if error is about closed page/browser
+                if "closed" in error_str.lower() and attempt < max_retries - 1:
+                    print(f"[Browser] Page/browser closed error, retrying... (attempt {attempt + 1}/{max_retries})")
+                    self._page = None  # Force recreation
+                    await asyncio.sleep(0.5)
+                    continue
+                else:
+                    # Other error or max retries reached
+                    break
+        
+        return {"success": False, "error": last_error}
     
     async def click(self, selector: str, timeout: int = 5000) -> Dict[str, Any]:
         """
