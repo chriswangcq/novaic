@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from gateway.vm import get_vm_manager, VmSetup, get_ssh_key_manager
+from gateway.vm.deployer import get_vmuse_deployer
 
 logger = logging.getLogger(__name__)
 
@@ -101,11 +102,15 @@ def setup_vm(request: VmSetupRequest):
 # ==================== VM Lifecycle ====================
 
 @router.post("/start")
-def start_vm(request: VmStartRequest):
+def start_vm(request: VmStartRequest, auto_deploy_vmuse: bool = True):
     """
     Start VM for an agent.
     
     Starts QEMU and waits for services to be ready.
+    
+    Args:
+        request: VM start request
+        auto_deploy_vmuse: Automatically deploy VMUSE after VM starts (default: True)
     """
     try:
         manager = get_vm_manager()
@@ -114,6 +119,25 @@ def start_vm(request: VmStartRequest):
             memory=request.memory,
             cpus=request.cpus,
         )
+        
+        # Trigger automatic VMUSE deployment if enabled
+        if auto_deploy_vmuse:
+            from gateway.config import get_agent_config_manager
+            agent_manager = get_agent_config_manager()
+            agent = agent_manager.get_agent(request.agent_id)
+            
+            if agent and agent.vm.ports:
+                # Schedule deployment task (non-blocking)
+                import threading
+                deploy_thread = threading.Thread(
+                    target=_deploy_vmuse_background,
+                    args=(request.agent_id, agent.vm.ports.ssh, agent.vm.ports.vmuse),
+                    daemon=True
+                )
+                deploy_thread.start()
+                logger.info(f"[VM API] Scheduled VMUSE deployment for agent {request.agent_id}")
+                result["vmuse_deployment"] = "scheduled"
+        
         return {"success": True, **result}
     except Exception as e:
         logger.error(f"[VM API] Start failed: {e}")
@@ -369,3 +393,126 @@ async def get_vnc_status(agent_id: str):
     result["reason"] = "VNC ready"
     
     return result
+
+
+# ==================== VMUSE Deployment ====================
+
+def _deploy_vmuse_background(agent_id: str, ssh_port: int, vmuse_port: int):
+    """Background task for VMUSE deployment."""
+    try:
+        logger.info(f"[VMUSE Deploy] Starting background deployment for agent {agent_id}")
+        deployer = get_vmuse_deployer()
+        
+        # Deploy with cloud-init wait
+        result = deployer.deploy(
+            agent_id=agent_id,
+            ssh_port=ssh_port,
+            wait_for_cloud_init=True,
+            cloud_init_timeout=600,  # 10 minutes
+        )
+        
+        if result["success"]:
+            logger.info(f"[VMUSE Deploy] ✅ Deployment succeeded for agent {agent_id}")
+            
+            # Verify health
+            if deployer.health_check(vmuse_port=vmuse_port):
+                logger.info(f"[VMUSE Deploy] ✅ Health check passed for agent {agent_id}")
+            else:
+                logger.warning(f"[VMUSE Deploy] ⚠️  Health check failed for agent {agent_id}")
+        else:
+            logger.error(f"[VMUSE Deploy] ❌ Deployment failed for agent {agent_id}: {result.get('error')}")
+    
+    except Exception as e:
+        logger.error(f"[VMUSE Deploy] Background task error for agent {agent_id}: {e}", exc_info=True)
+
+
+@router.post("/{agent_id}/deploy-vmuse")
+def deploy_vmuse_manual(
+    agent_id: str,
+    wait_for_cloud_init: bool = True,
+    cloud_init_timeout: int = 600,
+):
+    """
+    Manually trigger VMUSE code deployment to VM.
+    
+    Args:
+        agent_id: Agent ID
+        wait_for_cloud_init: Wait for cloud-init to complete (default: True)
+        cloud_init_timeout: Cloud-init timeout in seconds (default: 600)
+    
+    Returns:
+        Deployment result
+    """
+    try:
+        # Get agent ports
+        from gateway.config import get_agent_config_manager
+        agent_manager = get_agent_config_manager()
+        agent = agent_manager.get_agent(agent_id)
+        
+        if not agent:
+            raise HTTPException(status_code=404, detail="Agent not found")
+        
+        if not agent.vm.ports:
+            raise HTTPException(status_code=400, detail="Agent ports not configured")
+        
+        # Deploy
+        deployer = get_vmuse_deployer()
+        result = deployer.deploy(
+            agent_id=agent_id,
+            ssh_port=agent.vm.ports.ssh,
+            wait_for_cloud_init=wait_for_cloud_init,
+            cloud_init_timeout=cloud_init_timeout,
+        )
+        
+        # Health check
+        if result["success"]:
+            result["health_check"] = deployer.health_check(
+                vmuse_port=agent.vm.ports.vmuse
+            )
+        
+        return result
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[VM API] Deploy VMUSE failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{agent_id}/vmuse-health")
+def check_vmuse_health(agent_id: str):
+    """
+    Check VMUSE service health for an agent.
+    
+    Args:
+        agent_id: Agent ID
+    
+    Returns:
+        Health status
+    """
+    try:
+        from gateway.config import get_agent_config_manager
+        agent_manager = get_agent_config_manager()
+        agent = agent_manager.get_agent(agent_id)
+        
+        if not agent:
+            raise HTTPException(status_code=404, detail="Agent not found")
+        
+        if not agent.vm.ports:
+            raise HTTPException(status_code=400, detail="Agent ports not configured")
+        
+        deployer = get_vmuse_deployer()
+        healthy = deployer.health_check(vmuse_port=agent.vm.ports.vmuse)
+        
+        return {
+            "agent_id": agent_id,
+            "healthy": healthy,
+            "vmuse_port": agent.vm.ports.vmuse,
+            "url": f"http://127.0.0.1:{agent.vm.ports.vmuse}",
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[VM API] Health check failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

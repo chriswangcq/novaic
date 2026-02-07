@@ -21,12 +21,16 @@ class PortConfig(BaseModel):
     """
     Port configuration for an agent - SSH and VMUSE HTTP.
     
-    Each agent gets 2 ports starting from BASE_PORT + agent_index * 2.
+    Ports are dynamically assigned during agent creation:
+    - Agent 0: ssh=20000, vmuse=18000
+    - Agent 1: ssh=20001, vmuse=18001
+    - Agent N: ssh=20000+N, vmuse=18000+N
+    
     SSH is used for VM deployment and debugging.
     VMUSE is the HTTP API for VM tools (desktop, browser, shell, etc).
     """
-    ssh: int = 20000   # SSH port for VM access
-    vmuse: int = 18080  # VMUSE HTTP API port (VM:8080 -> Host:18000+)
+    ssh: int   # SSH port for VM access (dynamically assigned)
+    vmuse: int # VMUSE HTTP API port (VM:8080 -> Host:18000+N, dynamically assigned)
 
 
 class VmConfig(BaseModel):

@@ -504,6 +504,30 @@ write_files:
         </property>
       </channel>
 
+  - path: /etc/systemd/system/novaic-vmuse.service
+    content: |
+      [Unit]
+      Description=NovAIC VMUSE HTTP Server
+      After=network.target lightdm.service
+
+      [Service]
+      Type=simple
+      User=ubuntu
+      WorkingDirectory=/opt/novaic/novaic-mcp-vmuse
+      Environment="DISPLAY=:0"
+      Environment="PATH=/opt/novaic/venv/bin:/usr/local/bin:/usr/bin:/bin"
+      Environment="PYTHONPATH=/opt/novaic/novaic-mcp-vmuse/src"
+      ExecStart=/opt/novaic/venv/bin/python3 -m novaic_mcp_vmuse.http_server
+      Restart=always
+      RestartSec=10
+      StandardOutput=journal
+      StandardError=journal
+      SyslogIdentifier=novaic-vmuse
+
+      [Install]
+      WantedBy=multi-user.target
+    permissions: '0644'
+
   - path: /opt/novaic/scripts/playwright_helper.py
     content: |
       #!/usr/bin/env python3
@@ -664,49 +688,72 @@ write_files:
 
 # Startup commands
 runcmd:
-  # Set up directory structure first (ubuntu user now exists)
+  # ========== Phase 1: Directory Setup ==========
+  - echo "=== Phase 1: Directory Setup ==="
   - mkdir -p /home/ubuntu/.config/xfce4/xfconf/xfce-perchannel-xml
   - mkdir -p /opt/novaic/scripts
   - mkdir -p /opt/novaic/venv
+  - mkdir -p /opt/novaic/novaic-mcp-vmuse/src/novaic_mcp_vmuse
+  - mkdir -p /opt/novaic/.cache
   
-  # Set system-wide DISPLAY environment variable
-  - echo 'DISPLAY=:0' | sudo tee -a /etc/environment
-  
-  # Wait for network connectivity
-  - echo "Waiting for network..."
+  # ========== Phase 2: Network & Environment ==========
+  - echo "=== Phase 2: Network & Environment ==="
   - until ping -c 1 -W 3 8.8.8.8 > /dev/null 2>&1; do sleep 2; done
   - echo "Network ready."
+  - echo 'DISPLAY=:0' | sudo tee -a /etc/environment
+  - echo 'export PATH="/opt/novaic/venv/bin:$PATH"' | sudo tee /etc/profile.d/novaic.sh
   
-  # Enable and start QEMU Guest Agent
+  # ========== Phase 3: Node.js Installation ==========
+  - echo "=== Phase 3: Installing Node.js 20 LTS ==="
+  - curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+  - apt-get install -y nodejs
+  - node --version | tee /opt/novaic/.node_version
+  - npm --version | tee /opt/novaic/.npm_version
+  - echo "Node.js installed."
+  
+  # ========== Phase 4: Python Virtual Environment ==========
+  - echo "=== Phase 4: Python Virtual Environment ==="
+  - python3 -m venv /opt/novaic/venv
+  - /opt/novaic/venv/bin/pip install --upgrade pip --index-url https://{pip_mirror} --trusted-host {pip_host}
+  
+  # ========== Phase 5: VMUSE Python Dependencies ==========
+  - echo "=== Phase 5: VMUSE Python Dependencies ==="
+  - /opt/novaic/venv/bin/pip install aiohttp pydantic pydantic-settings python-dotenv Pillow playwright --index-url https://{pip_mirror} --trusted-host {pip_host}
+  - echo "VMUSE dependencies installed."
+  
+  # ========== Phase 6: Playwright + Chromium ==========
+  - echo "=== Phase 6: Playwright Chromium ==="
+  - /opt/novaic/venv/bin/playwright install --with-deps chromium
+  - echo "Playwright Chromium installed."
+  
+  # ========== Phase 7: QEMU Guest Agent ==========
+  - echo "=== Phase 7: QEMU Guest Agent ==="
   - systemctl daemon-reload
   - systemctl enable qemu-guest-agent
   - systemctl start qemu-guest-agent
   
-  # Install Playwright using virtual environment (PEP 668 compliance)
-  - echo "Creating Python virtual environment..."
-  - python3 -m venv /opt/novaic/venv
-  - echo "Installing Playwright in virtual environment..."
-  - /opt/novaic/venv/bin/pip install --upgrade pip --index-url https://{pip_mirror} --trusted-host {pip_host}
-  - /opt/novaic/venv/bin/pip install playwright --index-url https://{pip_mirror} --trusted-host {pip_host}
-  - echo "Installing Chromium browser..."
-  - /opt/novaic/venv/bin/playwright install --with-deps chromium
-  - echo "Playwright installation completed."
-  
-  # Update playwright_helper.py shebang to use virtual environment
-  - sed -i '1s|.*|#!/opt/novaic/venv/bin/python3|' /opt/novaic/scripts/playwright_helper.py
-  
-  # Set correct ownership (now that ubuntu user exists)
+  # ========== Phase 8: Ownership ==========
+  - echo "=== Phase 8: Setting ownership ==="
   - chown -R ubuntu:ubuntu /home/ubuntu
   - chown -R ubuntu:ubuntu /opt/novaic
   
-  # Start display manager
+  # ========== Phase 9: Display Manager ==========
+  - echo "=== Phase 9: Display Manager ==="
   - systemctl enable lightdm
   - systemctl start lightdm
   - sleep 10
   
-  # Mark installation as complete
+  # ========== Phase 10: Enable VMUSE Service ==========
+  - echo "=== Phase 10: VMUSE Service ==="
+  - systemctl daemon-reload
+  - systemctl enable novaic-vmuse
+  - echo "VMUSE service enabled (will start after code deployment)."
+  
+  # ========== Phase 11: Completion ==========
   - touch /opt/novaic/.dependencies_installed
-  - echo "NovAIC VM cloud-init completed at $(date)" > /var/log/novaic-init-done.log
+  - touch /opt/novaic/.cloud_init_complete
+  - echo "NovAIC VM cloud-init completed at $(date)" | tee /var/log/novaic-init-done.log
+  - echo "=== Cloud-Init Complete ==="
 
 final_message: |
   =====================================================

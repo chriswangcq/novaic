@@ -1,7 +1,7 @@
 """
 Tools Server - 工具定义
 
-包含 36 个内置工具的完整定义，符合 OpenAI function calling 格式。
+包含 55 个内置工具的完整定义，符合 OpenAI function calling 格式。
 
 工具分类：
 - memory: 10 个工具 (memory_save, memory_recall, memory_delete, memory_list_namespaces, 
@@ -12,10 +12,15 @@ Tools Server - 工具定义
 - web: 2 个工具 (web_search, web_fetch)
 - qemu: 5 个工具 (qemu_ssh_exec, qemu_status, qemu_start_vm, qemu_restart_vm, qemu_shutdown_vm)
 - task: 5 个工具 (task_async, task_query, task_list, task_cancel, task_summary)
-- vm: 13 个工具 (browser_navigate, browser_click, browser_type, browser_screenshot, browser_scroll,
-                  browser_evaluate, screenshot, mouse, keyboard, shell_exec, file_read, file_write, file_list)
+- vm: 32 个工具 (完整 VMUSE 工具集)
+  - Browser (9): navigate, click, type, screenshot, scroll, evaluate, get_tabs, switch_tab, close_tab
+  - Desktop (3): screenshot, mouse, keyboard
+  - Shell (2): shell_exec, run_python
+  - File (4): read, write, list, info
+  - Window (7): list_windows, focus_window, maximize_window, minimize_window, close_window, resize_window, launch_app
+  - Context (7): system_snapshot, directory_snapshot, app_state, clipboard_get, clipboard_set, recent_files, environment_info
 
-总计: 48 个工具
+总计: 67 个工具
 """
 
 from typing import Dict, List, Any, Optional
@@ -90,6 +95,37 @@ VM_TOOLS = [
         }
     },
     {
+        "name": "browser_get_tabs",
+        "description": "Get list of open browser tabs",
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+    },
+    {
+        "name": "browser_switch_tab",
+        "description": "Switch to browser tab by index (0-based)",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "index": {"type": "integer", "description": "Tab index (0-based)"}
+            },
+            "required": ["index"]
+        }
+    },
+    {
+        "name": "browser_close_tab",
+        "description": "Close browser tab by index (current tab if not specified)",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "index": {"type": "integer", "description": "Tab index (0-based), omit to close current tab"}
+            },
+            "required": []
+        }
+    },
+    {
         "name": "screenshot",
         "description": "Take desktop screenshot of VM",
         "inputSchema": {
@@ -140,6 +176,18 @@ VM_TOOLS = [
         }
     },
     {
+        "name": "run_python",
+        "description": "Execute Python code in VM",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "code": {"type": "string", "description": "Python code to execute"},
+                "timeout": {"type": "integer", "description": "Timeout in seconds", "default": 30}
+            },
+            "required": ["code"]
+        }
+    },
+    {
         "name": "file_read",
         "description": "Read file from VM",
         "inputSchema": {
@@ -170,6 +218,168 @@ VM_TOOLS = [
             "properties": {
                 "path": {"type": "string", "default": "."}
             },
+            "required": []
+        }
+    },
+    {
+        "name": "file_info",
+        "description": "Get file metadata (size, type, permissions, timestamps)",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "File or directory path"}
+            },
+            "required": ["path"]
+        }
+    },
+    {
+        "name": "list_windows",
+        "description": "List all desktop windows with window_id, title, position, size",
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+    },
+    {
+        "name": "focus_window",
+        "description": "Bring window to front by window_id",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "window_id": {"type": "string", "description": "Window ID from list_windows"}
+            },
+            "required": ["window_id"]
+        }
+    },
+    {
+        "name": "maximize_window",
+        "description": "Maximize window to fill screen",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "window_id": {"type": "string", "description": "Window ID from list_windows"}
+            },
+            "required": ["window_id"]
+        }
+    },
+    {
+        "name": "minimize_window",
+        "description": "Minimize window to taskbar",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "window_id": {"type": "string", "description": "Window ID from list_windows"}
+            },
+            "required": ["window_id"]
+        }
+    },
+    {
+        "name": "close_window",
+        "description": "Close window by window_id",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "window_id": {"type": "string", "description": "Window ID from list_windows"}
+            },
+            "required": ["window_id"]
+        }
+    },
+    {
+        "name": "resize_window",
+        "description": "Resize window to specific dimensions",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "window_id": {"type": "string", "description": "Window ID from list_windows"},
+                "width": {"type": "integer", "description": "Width in pixels"},
+                "height": {"type": "integer", "description": "Height in pixels"}
+            },
+            "required": ["window_id", "width", "height"]
+        }
+    },
+    {
+        "name": "launch_app",
+        "description": "Launch application by name (firefox, chromium, code, terminal, files)",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "app_name": {"type": "string", "description": "Application name"}
+            },
+            "required": ["app_name"]
+        }
+    },
+    {
+        "name": "system_snapshot",
+        "description": "Get system state snapshot: windows, clipboard, resources, processes",
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+    },
+    {
+        "name": "directory_snapshot",
+        "description": "Analyze directory structure: tree, project type, statistics",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Directory path", "default": "."},
+                "max_depth": {"type": "integer", "description": "Maximum depth", "default": 3}
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "app_state",
+        "description": "Get application state: windows, processes for specific app",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "app_name": {"type": "string", "description": "Application name"}
+            },
+            "required": ["app_name"]
+        }
+    },
+    {
+        "name": "clipboard_get",
+        "description": "Get clipboard text content",
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+    },
+    {
+        "name": "clipboard_set",
+        "description": "Set clipboard text content",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "content": {"type": "string", "description": "Text to set in clipboard"}
+            },
+            "required": ["content"]
+        }
+    },
+    {
+        "name": "recent_files",
+        "description": "Find recently modified files in directory",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Directory path", "default": "."},
+                "hours": {"type": "integer", "description": "Hours to look back", "default": 24},
+                "limit": {"type": "integer", "description": "Maximum files to return", "default": 20}
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "environment_info",
+        "description": "Get environment information: shell, PATH, installed tools, env vars",
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
             "required": []
         }
     },

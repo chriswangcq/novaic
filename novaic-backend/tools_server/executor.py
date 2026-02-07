@@ -50,29 +50,37 @@ VM_TOOL_MAPPING = {
     "browser_content": ("browser", "content"),
     "browser_scroll": ("browser", "scroll"),
     "browser_evaluate": ("browser", "evaluate"),
+    "browser_get_tabs": ("browser", "get_tabs"),
+    "browser_switch_tab": ("browser", "switch_tab"),
+    "browser_close_tab": ("browser", "close_tab"),
     # Desktop tools
     "screenshot": ("desktop", "screenshot"),
     "mouse": ("desktop", "mouse"),
     "keyboard": ("desktop", "keyboard"),
     # Shell tools
     "shell_exec": ("shell", "command"),
+    "run_python": ("shell", "run_python"),
     # File tools
     "file_read": ("file", "read"),
     "file_write": ("file", "write"),
     "file_list": ("file", "list"),
-    # Window tools (if needed, currently not in BUILTIN_TOOL_NAMES)
-    "list_windows": ("windows", "list"),
-    "focus_window": ("windows", "focus"),
-    "maximize_window": ("windows", "maximize"),
-    "minimize_window": ("windows", "minimize"),
-    "close_window": ("windows", "close"),
-    "resize_window": ("windows", "resize"),
-    "launch_app": ("windows", "launch"),
+    "file_info": ("file", "info"),
+    # Window tools
+    "list_windows": ("window", "list"),
+    "focus_window": ("window", "focus"),
+    "maximize_window": ("window", "maximize"),
+    "minimize_window": ("window", "minimize"),
+    "close_window": ("window", "close"),
+    "resize_window": ("window", "resize"),
+    "launch_app": ("window", "launch_app"),
     # Context tools
-    "system_snapshot": ("context", "snapshot"),
+    "system_snapshot": ("context", "system_snapshot"),
+    "directory_snapshot": ("context", "directory_snapshot"),
+    "app_state": ("context", "app_state"),
     "clipboard_get": ("context", "clipboard_get"),
     "clipboard_set": ("context", "clipboard_set"),
-    "environment_info": ("context", "environment"),
+    "recent_files": ("context", "recent_files"),
+    "environment_info": ("context", "environment_info"),
 }
 
 # 内置工具名称集合（这些工具直接调用 Gateway API 或 vmcontrol）

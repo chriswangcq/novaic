@@ -52,6 +52,7 @@ class VMUSEServer:
         self.app.router.add_post('/api/browser/screenshot', self.browser_screenshot)
         self.app.router.add_post('/api/browser/scroll', self.browser_scroll)
         self.app.router.add_post('/api/browser/eval', self.browser_eval)
+        self.app.router.add_post('/api/browser/evaluate', self.browser_eval)  # Alias for executor.py
         self.app.router.add_post('/api/browser/get_tabs', self.browser_get_tabs)
         self.app.router.add_post('/api/browser/switch_tab', self.browser_switch_tab)
         self.app.router.add_post('/api/browser/close_tab', self.browser_close_tab)
@@ -149,8 +150,17 @@ class VMUSEServer:
         try:
             data = await request.json()
             action = data.get('action')
+            
+            # 智能推断 action：如果没有指定 action，根据参数自动推断
             if not action:
-                return web.json_response({"success": False, "error": "Missing action"}, status=400)
+                if 'text' in data:
+                    action = 'type'  # 有 text 参数，推断为 type 动作
+                    logger.info(f"[Keyboard] Auto-inferred action='type' from text parameter")
+                elif 'keys' in data:
+                    action = 'key'  # 有 keys 参数，推断为 key 动作
+                    logger.info(f"[Keyboard] Auto-inferred action='key' from keys parameter")
+                else:
+                    return web.json_response({"success": False, "error": "Missing action or text/keys parameters"}, status=400)
             
             result = await DesktopTools.keyboard(
                 action=action,
