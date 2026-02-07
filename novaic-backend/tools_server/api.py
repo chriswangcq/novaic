@@ -319,28 +319,10 @@ async def call_tool(runtime_id: str, request: CallToolRequest):
             arguments=request.arguments,
         )
         
-        # 解包工具返回的 {success, result, error} 格式（避免双层嵌套）
-        if isinstance(result, dict):
-            if "result" in result:
-                # 工具返回了 {success, result} 格式，解包
-                actual_result = result.get("result")
-                actual_success = result.get("success", True)
-                actual_error = result.get("error")
-            else:
-                # 工具返回了直接数据（无包装）
-                actual_result = result
-                actual_success = result.get("success", True) if "success" in result else True
-                actual_error = result.get("error")
-        else:
-            # 非字典结果，直接使用
-            actual_result = result
-            actual_success = True
-            actual_error = None
-        
         return CallToolResponse(
-            success=actual_success,
-            result=actual_result,
-            error=actual_error,
+            success=True,
+            result=result,
+            error=None,
         )
         
     except Exception as e:

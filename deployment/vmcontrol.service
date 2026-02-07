@@ -1,0 +1,25 @@
+[Unit]
+Description=NovAIC VM Control Service
+After=network.target
+
+[Service]
+Type=simple
+User=novaic
+Group=novaic
+WorkingDirectory=/opt/novaic
+Environment="RUST_LOG=info"
+ExecStart=/opt/novaic/bin/vmcontrol --port 8080 --host 127.0.0.1
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/novaic/data
+
+[Install]
+WantedBy=multi-user.target
