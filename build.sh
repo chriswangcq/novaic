@@ -13,7 +13,7 @@ cd "$SCRIPT_DIR"
 RESOURCES_DIR="novaic-app/src-tauri/resources"
 
 # Step 1: Build unified Backend (Gateway + Tools Server + Workers)
-echo "[1/3] Building unified Backend (novaic-backend)..."
+echo "[1/4] Building unified Backend (novaic-backend)..."
 cd novaic-backend
 
 if [ ! -d ".venv" ]; then
@@ -38,9 +38,22 @@ echo "  Built: dist/novaic-backend/ ($BACKEND_SIZE)"
 
 cd "$SCRIPT_DIR"
 
-# Step 2: Copy Backend and MCP to Tauri resources
+# Step 2: Build vmcontrol (Rust VM control service)
 echo ""
-echo "[2/3] Copying resources to Tauri..."
+echo "[2/4] Building vmcontrol..."
+cd novaic-app/src-tauri/vmcontrol
+
+echo "  Building vmcontrol (release mode)..."
+cargo build --release
+
+VMCONTROL_SIZE=$(du -sh target/release/vmcontrol | cut -f1)
+echo "  Built: target/release/vmcontrol ($VMCONTROL_SIZE)"
+
+cd "$SCRIPT_DIR"
+
+# Step 3: Copy Backend and vmcontrol to Tauri resources
+echo ""
+echo "[3/4] Copying resources to Tauri..."
 mkdir -p "$RESOURCES_DIR"
 
 # Copy unified Backend (onedir)
@@ -49,27 +62,17 @@ rm -rf "$RESOURCES_DIR/novaic-backend"
 cp -r novaic-backend/dist/novaic-backend "$RESOURCES_DIR/"
 echo "  Copied: $RESOURCES_DIR/novaic-backend/"
 
-# Copy novaic-vm MCP server (VM-side MCP server)
-echo "  Copying novaic-vm MCP..."
-rm -rf "$RESOURCES_DIR/novaic-mcp-vmuse"
-mkdir -p "$RESOURCES_DIR/novaic-mcp-vmuse"
+# Copy vmcontrol binary
+echo "  Copying vmcontrol..."
+mkdir -p "$RESOURCES_DIR/vmcontrol"
+cp novaic-app/src-tauri/vmcontrol/target/release/vmcontrol "$RESOURCES_DIR/vmcontrol/"
+echo "  Copied: $RESOURCES_DIR/vmcontrol/vmcontrol"
 
-# Copy source code
-cp -r novaic-vm/src "$RESOURCES_DIR/novaic-mcp-vmuse/"
-echo "  Copied: novaic-vm/src/"
+# Note: novaic-vm (FastMCP) is no longer needed - all VM tools are now provided by vmuse_adapter via vmcontrol
 
-# Copy pyproject.toml
-cp novaic-vm/pyproject.toml "$RESOURCES_DIR/novaic-mcp-vmuse/"
-echo "  Copied: novaic-vm/pyproject.toml"
-
-# Copy README if exists
-if [ -f "novaic-vm/README.md" ]; then
-    cp novaic-vm/README.md "$RESOURCES_DIR/novaic-mcp-vmuse/"
-fi
-
-# Step 3: Build Tauri App
+# Step 4: Build Tauri App
 echo ""
-echo "[3/3] Building Tauri App..."
+echo "[4/4] Building Tauri App..."
 cd novaic-app
 
 # Regenerate app icon with macOS safe area (smaller, rounder) if script and deps exist

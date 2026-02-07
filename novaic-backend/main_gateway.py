@@ -164,6 +164,7 @@ from gateway.api.routes import router as api_router
 from gateway.api.agents import router as agents_router
 from gateway.api.vm import router as vm_router
 from gateway.api.internal import router as internal_router
+from gateway.api.vmcontrol import router as vmcontrol_router
 from gateway.config import get_config_manager
 
 # Import database module
@@ -220,7 +221,7 @@ def initialize_systems(config):
     
     if first_agent:
         ports = first_agent.vm.ports
-        print(f"[Gateway] Using ports from agent '{first_agent.name}' (index={first_agent.vm.agent_index})")
+        print(f"[Gateway] Using ports from agent '{first_agent.name}' (ssh={first_agent.vm.ports.ssh})")
     else:
         ports = allocate_ports_for_agent(0)
         print(f"[Gateway] No agents found, using default ports (Agent 0)")
@@ -370,6 +371,14 @@ async def lifespan(app: FastAPI):
     await shutdown_worker_broadcaster()
     print("[Gateway] Worker SSE broadcaster shutdown")
     
+    # Close vmcontrol client
+    try:
+        from gateway.clients.vmcontrol import close_vmcontrol_client
+        await close_vmcontrol_client()
+        print("[Gateway] VmControl client closed")
+    except Exception as e:
+        print(f"[Gateway] Warning: Failed to close VmControl client: {e}")
+    
     # v2.0: Queue Service handles its own shutdown
     print("[Gateway] Shutdown complete (v2.0)")
     
@@ -416,6 +425,9 @@ app.include_router(agents_router)
 
 # VM API routes (already has /api/vm prefix)
 app.include_router(vm_router)
+
+# VmControl proxy routes (already has /api/vmcontrol prefix)
+app.include_router(vmcontrol_router)
 
 # Internal API routes (v2.10 - for services, has /internal prefix)
 app.include_router(internal_router)

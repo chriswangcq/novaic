@@ -213,7 +213,7 @@ class RuntimeManager:
                         f"on port {port} for runtime {runtime_id}"
                     )
             
-            # 发现所有工具
+            # 发现所有工具（MCP 服务器）
             tools = await self._registry.discover_all_tools(use_cache=False)
             
             # 过滤出属于当前 runtime 的工具
@@ -221,6 +221,11 @@ class RuntimeManager:
                 tool for tool in tools
                 if tool.get("_server", "").startswith(f"{runtime_id}_")
             ]
+            
+            # NOTE: VM 工具不在这里添加！
+            # VM 工具已经在 tools.py 的 get_all_tools() 中作为 builtin 添加
+            # 这里的 external_tools 只应该包含真正的外部 MCP 服务器工具
+            # 如果在这里再次添加 VM 工具，会导致重复
             
             # 更新上下文中的外部工具列表
             async with self._lock:

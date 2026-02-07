@@ -107,26 +107,6 @@ class AgentRepository:
             )
             return cursor.rowcount > 0
     
-    def get_used_agent_indices(self) -> List[int]:
-        """Get list of used agent indices for port allocation."""
-        rows = self.db.fetchall(
-            "SELECT vm_config FROM agents"
-        )
-        indices = []
-        for row in rows:
-            vm_config = json.loads(row.get("vm_config", "{}"))
-            if "agent_index" in vm_config:
-                indices.append(vm_config["agent_index"])
-        return indices
-    
-    def find_next_agent_index(self) -> int:
-        """Find the next available agent index."""
-        used_indices = set(self.get_used_agent_indices())
-        index = 0
-        while index in used_indices:
-            index += 1
-        return index
-    
     def list_setup_complete_ids(self) -> List[str]:
         """列出所有已完成设置的 agent IDs"""
         rows = self.db.fetchall(

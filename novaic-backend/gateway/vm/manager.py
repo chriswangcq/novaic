@@ -48,15 +48,11 @@ def get_vm_manager() -> "VmManager":
 @dataclass
 class VmConfig:
     """VM configuration for QEMU."""
+    agent_id: str
+    ports: PortConfig  # 必需字段，从 agent 配置中获取
     memory: str = "4096"
     cpus: int = 4
     image_path: Optional[str] = None
-    agent_index: int = 0
-    ports: PortConfig = field(default_factory=lambda: allocate_ports_for_agent(0))
-    # VM internal ports (fixed, mapped via QEMU port forwarding)
-    mcp_vm_port: int = 8080
-    vnc_vm_port: int = 5900
-    ws_vm_port: int = 6080
 
 
 @dataclass
@@ -66,13 +62,13 @@ class VmStatus:
     running: bool
     agent_healthy: bool
     mcp_healthy: bool
-    websockify_running: bool
     ports: Dict[str, int]
     vnc_url: str
     mcp_url: str
     pid: Optional[int] = None
     started_at: Optional[str] = None
     error_message: Optional[str] = None
+    vnc_socket: Optional[Path] = None  # QEMU native VNC socket path
 
 
 class VmManager:
@@ -110,7 +106,6 @@ class VmManager:
     def start(
         self,
         agent_id: str,
-        agent_index: int,
         memory: str = "4096",
         cpus: int = 4,
     ) -> Dict[str, Any]:
@@ -119,14 +114,24 @@ class VmManager:
         
         Args:
             agent_id: Agent ID
-            agent_index: Agent index (for port allocation)
             memory: Memory size (e.g., "4096")
             cpus: Number of CPUs
         
         Returns:
             Dict with VM status info.
+        
+        端口配置从 agent 配置中获取
         """
-        logger.info(f"[VmManager] Starting VM for agent {agent_id} (index={agent_index})")
+        
+        # 从数据库获取 agent 配置
+        from gateway.config.agents_db import AgentConfigManagerDB
+        agent_service = AgentConfigManagerDB()
+        agent = agent_service.get_agent(agent_id)
+        
+        if not agent or not agent.vm or not agent.vm.ports:
+            raise ValueError(f"Agent {agent_id} not found or has no port configuration")
+        
+        logger.info(f"[VmManager] Starting VM for agent {agent_id} (ssh_port={agent.vm.ports.ssh})")
         
         # Check if already running
         process_info = self.repo.get_process(agent_id)
@@ -135,13 +140,12 @@ class VmManager:
                 logger.info(f"[VmManager] VM for agent {agent_id} already running")
                 return {"status": "already_running", "pid": process_info["pid"]}
         
-        # Build config
-        ports = allocate_ports_for_agent(agent_index)
+        # Build config - 使用持久化的端口配置
         config = VmConfig(
+            agent_id=agent_id,
+            ports=agent.vm.ports,
             memory=memory,
             cpus=cpus,
-            agent_index=agent_index,
-            ports=ports,
         )
         
         # Get image path - check multiple possible locations
@@ -167,17 +171,15 @@ class VmManager:
         logger.info(f"[VmManager] Using disk: {disk_path}")
         config.image_path = str(disk_path)
         
-        # Check ports available
-        for port_name in ["vnc", "websocket", "ssh", "vm"]:
-            port = getattr(ports, port_name)
-            if self._is_port_in_use(port):
-                raise RuntimeError(f"Port {port} ({port_name}) is already in use")
+        # Check SSH port available
+        if self._is_port_in_use(config.ports.ssh):
+            raise RuntimeError(f"SSH port {config.ports.ssh} already in use")
         
         # Update status to starting
         self.repo.upsert_process(
             agent_id=agent_id,
             status="starting",
-            ports=ports.__dict__,
+            ports=config.ports.__dict__,
         )
         
         try:
@@ -188,11 +190,19 @@ class VmManager:
             full_cmd = [qemu_cmd] + qemu_args
             logger.info(f"[VmManager] Starting QEMU: {' '.join(full_cmd[:10])}...")
             
-            # Start QEMU process
+            # Prepare log directory and files
+            # Use data_dir/logs for QEMU logs (consistent with other services)
+            log_dir = self.data_dir / "logs"
+            log_dir.mkdir(parents=True, exist_ok=True)
+            stdout_log = log_dir / f"qemu-{agent_id}-stdout.log"
+            stderr_log = log_dir / f"qemu-{agent_id}-stderr.log"
+            
+            # Start QEMU process with log files instead of PIPE
+            # Using log files prevents buffer overflow and allows debugging
             process = subprocess.Popen(
                 full_cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stdout=open(stdout_log, 'w'),
+                stderr=open(stderr_log, 'w'),
                 cwd=str(agent_dir),
             )
             
@@ -203,7 +213,7 @@ class VmManager:
                 agent_id=agent_id,
                 pid=process.pid,
                 status="running",
-                ports=ports.__dict__,
+                ports=config.ports.__dict__,
                 qemu_cmd=" ".join(full_cmd),
             )
             
@@ -211,18 +221,37 @@ class VmManager:
             logger.info(f"[VmManager] Waiting for VM to start (PID: {process.pid})...")
             time.sleep(5)
             
-            # Wait for websockify
-            self._wait_for_service(ports.websocket, "websockify", timeout=ServiceConfig.VM_WEBSOCKIFY_TIMEOUT)
-            
-            # Wait for MCP
-            self._wait_for_service(ports.vm, "MCP", timeout=ServiceConfig.VM_MCP_TIMEOUT)
+            # Check if process is still running
+            if process.poll() is not None:
+                exit_code = process.returncode
+                error_msg = f"QEMU process exited immediately with code {exit_code}. Check logs: {stdout_log}, {stderr_log}"
+                logger.error(f"[VmManager] {error_msg}")
+                # Try to read error from stderr log
+                try:
+                    if stderr_log.exists():
+                        with open(stderr_log, 'r') as f:
+                            stderr_content = f.read()
+                            if stderr_content:
+                                error_msg += f"\nStderr: {stderr_content[-500:]}"  # Last 500 chars
+                except Exception:
+                    pass
+                self.repo.update_status(agent_id, "error", error_message=error_msg)
+                raise RuntimeError(error_msg)
             
             logger.info(f"[VmManager] VM for agent {agent_id} started successfully")
+            
+            # Register VM with vmcontrol service (async call in sync context)
+            # Use asyncio.run to execute the async registration
+            try:
+                import asyncio
+                asyncio.run(self._register_vm_with_vmcontrol(agent_id, agent.name, config.ports))
+            except Exception as e:
+                logger.warning(f"[VmManager] Failed to register VM with vmcontrol (non-fatal): {e}")
             
             return {
                 "status": "running",
                 "pid": process.pid,
-                "ports": ports.__dict__,
+                "ports": config.ports.__dict__,
             }
             
         except Exception as e:
@@ -265,6 +294,8 @@ class VmManager:
                 key_path = ssh_manager.get_private_key_path()
                 
                 connect_timeout = "2" if quick else "5"
+                # TODO: Replace with QMP system_powerdown command
+                # Will be implemented in Phase 1 via vmcontrol
                 result = subprocess.run(
                     [
                         "ssh",
@@ -359,22 +390,22 @@ class VmManager:
         # Check if actually running
         running = self._is_pid_alive(pid) if pid else False
         
-        # Check services
-        websockify_running = self._is_port_in_use(ports.get("websocket", 0))
-        mcp_healthy = self._is_port_in_use(ports.get("vm", 0))
+        # Get VNC socket path for vmcontrol WebSocket URL
+        agent_dir = self.get_agent_dir(agent_id)
+        vnc_socket_path = Path("/tmp/novaic") / f"novaic-vnc-{agent_id}.sock"
         
         return VmStatus(
             agent_id=agent_id,
             running=running,
             agent_healthy=True,  # Gateway is always healthy
-            mcp_healthy=mcp_healthy,
-            websockify_running=websockify_running,
+            mcp_healthy=False,  # MCP no longer used
             ports=ports,
-            vnc_url=f"ws://localhost:{ports.get('websocket', 0)}/websockify",
-            mcp_url=f"http://127.0.0.1:{ports.get('vm', 0)}/mcp",
+            vnc_url=f"ws://localhost:8080/api/vms/{agent_id}/vnc",  # vmcontrol WebSocket URL
+            mcp_url="",  # MCP no longer used
             pid=pid,
             started_at=process_info.get("started_at"),
             error_message=process_info.get("error_message"),
+            vnc_socket=vnc_socket_path if vnc_socket_path.exists() else None,
         )
     
     def get_all_status(self) -> Dict[str, VmStatus]:
@@ -410,12 +441,20 @@ class VmManager:
         Recover running VMs after Gateway restart.
         
         Checks DB for VMs marked as running and verifies they're still alive.
+        Also re-registers all running VMs with vmcontrol service.
         """
         logger.info("[VmManager] Recovering VM processes...")
         
         running = self.repo.get_running_processes()
         recovered = 0
         cleaned = 0
+        
+        # Get agent service for name lookup
+        from gateway.config.agents_db import AgentConfigManagerDB
+        agent_service = AgentConfigManagerDB()
+        
+        # List to store running VMs for vmcontrol registration
+        running_vms = []
         
         for proc in running:
             agent_id = proc["agent_id"]
@@ -424,12 +463,70 @@ class VmManager:
             if pid and self._is_pid_alive(pid):
                 logger.info(f"[VmManager] Recovered VM {agent_id} (PID: {pid})")
                 recovered += 1
+                
+                # Collect for vmcontrol registration
+                agent = agent_service.get_agent(agent_id)
+                if agent:
+                    ports = proc.get("ports", {})
+                    running_vms.append({
+                        "agent_id": agent_id,
+                        "agent_name": agent.name,
+                        "ports": ports
+                    })
             else:
                 logger.info(f"[VmManager] VM {agent_id} no longer running, cleaning up")
                 self.repo.update_status(agent_id, "stopped")
                 cleaned += 1
         
         logger.info(f"[VmManager] Recovery complete: {recovered} running, {cleaned} cleaned")
+        
+        # Re-register all running VMs with vmcontrol
+        if running_vms:
+            logger.info(f"[VmManager] Re-registering {len(running_vms)} VMs with vmcontrol...")
+            try:
+                import asyncio
+                asyncio.run(self._batch_register_vms(running_vms))
+            except Exception as e:
+                logger.warning(f"[VmManager] Failed to batch register VMs: {e}")
+    
+    async def _batch_register_vms(self, vms: List[Dict[str, Any]]):
+        """
+        Batch register multiple VMs with vmcontrol service.
+        
+        Args:
+            vms: List of dicts with agent_id, agent_name, ports
+        """
+        from gateway.clients.vmcontrol import get_vmcontrol_client
+        
+        client = get_vmcontrol_client()
+        
+        # Check if vmcontrol is available
+        if not await client.health_check():
+            logger.warning(f"[VmManager] vmcontrol not available, skipping batch registration")
+            return
+        
+        # Register each VM
+        registered = 0
+        for vm in vms:
+            agent_id = vm["agent_id"]
+            agent_name = vm["agent_name"]
+            
+            try:
+                qmp_socket = f"/tmp/novaic/novaic-qmp-{agent_id}.sock"
+                
+                await client.register_vm(
+                    vm_id=agent_id,
+                    name=agent_name,
+                    qmp_socket=qmp_socket
+                )
+                
+                logger.info(f"[VmManager] Re-registered VM {agent_id} with vmcontrol")
+                registered += 1
+                
+            except Exception as e:
+                logger.warning(f"[VmManager] Failed to register VM {agent_id}: {e}")
+        
+        logger.info(f"[VmManager] Batch registration complete: {registered}/{len(vms)} VMs registered")
     
     # ==================== Internal Helpers ====================
     
@@ -454,12 +551,8 @@ class VmManager:
         """Build QEMU command arguments."""
         ports = config.ports
         
-        port_forward = (
-            f"hostfwd=tcp::{ports.vnc}-:{config.vnc_vm_port},"
-            f"hostfwd=tcp::{ports.websocket}-:{config.ws_vm_port},"
-            f"hostfwd=tcp::{ports.ssh}-:22,"
-            f"hostfwd=tcp:127.0.0.1:{ports.vm}-:{config.mcp_vm_port}"
-        )
+        # Only SSH port forwarding needed
+        port_forward = f"hostfwd=tcp::{ports.ssh}-:22"
         
         if self.is_arm:
             return self._build_arm64_args(config, agent_dir, port_forward)
@@ -507,14 +600,16 @@ class VmManager:
                 seed_iso = iso_path
                 break
         
-        # 跨平台 socket 路径
-        import tempfile
-        socket_dir = Path(tempfile.gettempdir()) / "novaic"
+        # Socket 路径 - 使用固定的 /tmp/novaic 避免路径过长
+        socket_dir = Path("/tmp/novaic")
         socket_dir.mkdir(parents=True, exist_ok=True)
-        socket_path = socket_dir / f"novaic-mcp-{config.agent_index}.sock"
+        socket_path = socket_dir / f"novaic-mcp-{agent_id}.sock"
+        qmp_socket_path = socket_dir / f"novaic-qmp-{agent_id}.sock"
+        ga_socket_path = socket_dir / f"novaic-ga-{agent_id}.sock"
+        vnc_socket_path = socket_dir / f"novaic-vnc-{agent_id}.sock"
         
         args = [
-            "-name", f"novaic-vm-{config.agent_index}",
+            "-name", f"novaic-vm-{agent_id}",
             "-M", "virt,highmem=on",
             "-cpu", "host",
             "-accel", "hvf",
@@ -529,10 +624,17 @@ class VmManager:
             "-device", "virtio-serial-pci",
             "-chardev", f"socket,id=mcp,path={socket_path},server=on,wait=off",
             "-device", "virtserialport,chardev=mcp,name=mcp",
+            # QEMU Guest Agent channel
+            "-chardev", f"socket,path={ga_socket_path},server=on,wait=off,id=qga0",
+            "-device", "virtserialport,chardev=qga0,name=org.qemu.guest_agent.0",
+            # QMP control socket for external VM management
+            "-qmp", f"unix:{qmp_socket_path},server,nowait",
             "-device", "virtio-gpu-pci",
             "-device", "usb-ehci",
             "-device", "usb-kbd",
-            "-device", "usb-mouse",
+            "-device", "usb-tablet",  # 使用绝对坐标，便于 QMP input-send-event 和 VNC
+            # QEMU native VNC via Unix socket
+            "-vnc", f"unix:{vnc_socket_path}",
             "-display", "none",
         ]
         
@@ -553,16 +655,19 @@ class VmManager:
         port_forward: str,
     ) -> List[str]:
         """Build QEMU args for x86_64."""
+        agent_id = agent_dir.name
         seed_iso = agent_dir / "cloud-init.iso"
         
-        # 跨平台 socket 路径
-        import tempfile
-        socket_dir = Path(tempfile.gettempdir()) / "novaic"
+        # Socket 路径 - 使用固定的 /tmp/novaic 避免路径过长
+        socket_dir = Path("/tmp/novaic")
         socket_dir.mkdir(parents=True, exist_ok=True)
-        socket_path = socket_dir / f"novaic-mcp-{config.agent_index}.sock"
+        socket_path = socket_dir / f"novaic-mcp-{agent_id}.sock"
+        qmp_socket_path = socket_dir / f"novaic-qmp-{agent_id}.sock"
+        ga_socket_path = socket_dir / f"novaic-ga-{agent_id}.sock"
+        vnc_socket_path = socket_dir / f"novaic-vnc-{agent_id}.sock"
         
         args = [
-            "-name", f"novaic-vm-{config.agent_index}",
+            "-name", f"novaic-vm-{agent_id}",
         ]
         
         # Acceleration
@@ -582,6 +687,13 @@ class VmManager:
             "-device", "virtio-serial-pci",
             "-chardev", f"socket,id=mcp,path={socket_path},server=on,wait=off",
             "-device", "virtserialport,chardev=mcp,name=mcp",
+            # QEMU Guest Agent channel
+            "-chardev", f"socket,path={ga_socket_path},server=on,wait=off,id=qga0",
+            "-device", "virtserialport,chardev=qga0,name=org.qemu.guest_agent.0",
+            # QMP control socket for external VM management
+            "-qmp", f"unix:{qmp_socket_path},server,nowait",
+            # QEMU native VNC via Unix socket
+            "-vnc", f"unix:{vnc_socket_path}",
             "-display", "none",
         ])
         
@@ -621,6 +733,41 @@ class VmManager:
                 return result == 0
         except Exception:
             return False
+    
+    async def _register_vm_with_vmcontrol(self, agent_id: str, agent_name: str, ports: PortConfig):
+        """
+        Register VM with vmcontrol service
+        
+        Args:
+            agent_id: Agent ID (VM ID)
+            agent_name: Agent name
+            ports: Port configuration for the VM
+        """
+        try:
+            from gateway.clients.vmcontrol import get_vmcontrol_client
+            
+            client = get_vmcontrol_client()
+            
+            # Check if vmcontrol is available
+            if not await client.health_check():
+                logger.warning(f"[VmManager] vmcontrol not available, skipping VM registration")
+                return
+            
+            # Build QMP socket path
+            qmp_socket = f"/tmp/novaic/novaic-qmp-{agent_id}.sock"
+            
+            # Register VM
+            result = await client.register_vm(
+                vm_id=agent_id,
+                name=agent_name,
+                qmp_socket=qmp_socket
+            )
+            
+            logger.info(f"[VmManager] VM {agent_id} registered with vmcontrol: {result}")
+            
+        except Exception as e:
+            logger.warning(f"[VmManager] Failed to register VM with vmcontrol: {e}")
+            # Don't fail VM start if registration fails
     
     def _is_pid_alive(self, pid: Optional[int]) -> bool:
         """Check if a process is still running."""

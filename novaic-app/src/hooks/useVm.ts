@@ -73,12 +73,11 @@ export function useVm(): UseVmReturn {
     setIsLoading(true);
     setError(null);
     
-    const agentIndex = currentAgent.vm.agent_index ?? 0;
-    console.log('[useVm] startVm called, currentAgentId:', currentAgentId, 'agentIndex:', agentIndex);
+    console.log('[useVm] startVm called, currentAgentId:', currentAgentId);
     
     try {
       console.log('[useVm] Calling vmService.start with agentId:', currentAgentId);
-      await vmService.start(currentAgentId, agentIndex);
+      await vmService.start(currentAgentId);
       // 等待 VM 就绪
       await vmService.waitForReady(
         currentAgentId, 
@@ -128,10 +127,8 @@ export function useVm(): UseVmReturn {
     setIsLoading(true);
     setError(null);
     
-    const agentIndex = currentAgent.vm.agent_index ?? 0;
-    
     try {
-      await vmService.restart(currentAgentId, agentIndex);
+      await vmService.restart(currentAgentId);
       // 等待 VM 就绪
       await vmService.waitForReady(
         currentAgentId, 

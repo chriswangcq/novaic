@@ -6,6 +6,7 @@ Replaces Tauri's VM commands.
 """
 
 import logging
+from pathlib import Path
 from typing import Optional, Dict, Any, List
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -30,7 +31,6 @@ class VmSetupRequest(BaseModel):
 class VmStartRequest(BaseModel):
     """Request to start VM."""
     agent_id: str
-    agent_index: int
     memory: str = "4096"
     cpus: int = 4
 
@@ -53,9 +53,8 @@ class VmStatusResponse(BaseModel):
     running: bool
     agent_healthy: bool
     mcp_healthy: bool
-    websockify_running: bool
     ports: Dict[str, int]
-    vnc_url: str
+    vnc_url: str  # vmcontrol WebSocket URL: ws://localhost:8080/api/vms/{agent_id}/vnc
     mcp_url: str
     pid: Optional[int] = None
     started_at: Optional[str] = None
@@ -112,7 +111,6 @@ def start_vm(request: VmStartRequest):
         manager = get_vm_manager()
         result = manager.start(
             agent_id=request.agent_id,
-            agent_index=request.agent_index,
             memory=request.memory,
             cpus=request.cpus,
         )
@@ -176,7 +174,6 @@ def get_vm_status(agent_id: str):
         running=status.running,
         agent_healthy=status.agent_healthy,
         mcp_healthy=status.mcp_healthy,
-        websockify_running=status.websockify_running,
         ports=status.ports,
         vnc_url=status.vnc_url,
         mcp_url=status.mcp_url,
@@ -198,7 +195,6 @@ def get_all_vm_status():
             running=status.running,
             agent_healthy=status.agent_healthy,
             mcp_healthy=status.mcp_healthy,
-            websockify_running=status.websockify_running,
             ports=status.ports,
             vnc_url=status.vnc_url,
             mcp_url=status.mcp_url,
@@ -273,3 +269,103 @@ def delete_ssh_key(key_id: str):
     if not success:
         raise HTTPException(status_code=400, detail="Cannot delete key (not found or is default)")
     return {"success": True}
+
+
+# ==================== VNC Status Check ====================
+
+@router.get("/vnc/status/{agent_id}")
+async def get_vnc_status(agent_id: str):
+    """
+    Check VNC connection status for a specific agent.
+    
+    Performs multi-layer checks:
+    1. VM process status (PID exists and running)
+    2. VNC socket file existence
+    3. VmControl service health
+    4. VmControl VM registration
+    
+    Args:
+        agent_id: Agent ID (UUID)
+    
+    Returns:
+        {
+            "available": bool,              # VNC is ready to connect
+            "vm_running": bool,             # VM process is running
+            "vnc_socket_exists": bool,      # VNC socket file exists
+            "vnc_socket_path": str,         # VNC socket file path
+            "vmcontrol_healthy": bool,      # VmControl service is healthy
+            "vm_registered": bool,          # VM is registered in VmControl
+            "vnc_url": str,                 # VNC WebSocket URL
+            "reason": str                   # Status reason or error message
+        }
+    """
+    from pathlib import Path
+    from gateway.clients.vmcontrol import get_vmcontrol_client
+    
+    result = {
+        "available": False,
+        "vm_running": False,
+        "vnc_socket_exists": False,
+        "vnc_socket_path": "",
+        "vmcontrol_healthy": False,
+        "vm_registered": False,
+        "vnc_url": f"ws://localhost:8080/api/vms/{agent_id}/vnc",
+        "reason": ""
+    }
+    
+    # 1. Check if VM is running
+    manager = get_vm_manager()
+    process_info = manager.repo.get_process(agent_id)
+    
+    if not process_info:
+        result["reason"] = "VM not started"
+        return result
+    
+    pid = process_info.get("pid")
+    if not pid or not manager._is_pid_alive(pid):
+        result["reason"] = "VM process not running"
+        return result
+    
+    result["vm_running"] = True
+    
+    # 2. Check VNC Socket file
+    socket_path = Path(f"/tmp/novaic/novaic-vnc-{agent_id}.sock")
+    result["vnc_socket_path"] = str(socket_path)
+    result["vnc_socket_exists"] = socket_path.exists()
+    
+    if not result["vnc_socket_exists"]:
+        result["reason"] = "VNC socket not found (VM may still be booting)"
+        return result
+    
+    # 3. Check VmControl service health
+    try:
+        client = get_vmcontrol_client()
+        result["vmcontrol_healthy"] = await client.health_check()
+    except Exception as e:
+        logger.warning(f"[VNC Status] VmControl health check failed: {e}")
+        result["vmcontrol_healthy"] = False
+    
+    if not result["vmcontrol_healthy"]:
+        result["reason"] = "VmControl service not available"
+        return result
+    
+    # 4. Check if VM is registered in VmControl
+    try:
+        vms = await client.list_vms()
+        result["vm_registered"] = any(
+            vm.get("id") == agent_id or vm.get("agent_id") == agent_id 
+            for vm in vms
+        )
+    except Exception as e:
+        logger.warning(f"[VNC Status] Failed to list VMs from VmControl: {e}")
+        result["vm_registered"] = False
+    
+    if not result["vm_registered"]:
+        result["reason"] = "VM not registered in VmControl (may need to restart VmControl)"
+        return result
+    
+    # All checks passed
+    result["available"] = True
+    result["reason"] = "VNC ready"
+    
+    return result

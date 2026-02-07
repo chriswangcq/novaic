@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 # Gateway API 基础 URL
 GATEWAY_URL = os.environ.get("GATEWAY_URL", "http://127.0.0.1:19999")
 
-# 内置工具名称集合（这些工具直接调用 Gateway API）
+# 内置工具名称集合（这些工具直接调用 Gateway API 或 vmuse_adapter）
 # 注意：这是工具名称集合，不同于 tools.py 中的 BUILTIN_TOOLS（工具定义字典）
 BUILTIN_TOOL_NAMES = {
     # Memory 工具
@@ -78,7 +78,6 @@ BUILTIN_TOOL_NAMES = {
     # QEMU 工具
     "qemu_ssh_exec",
     "qemu_status",
-    "qemu_deploy_vmuse_code",
     "qemu_start_vm",
     "qemu_restart_vm",
     "qemu_shutdown_vm",
@@ -98,6 +97,35 @@ BUILTIN_TOOL_NAMES = {
     # Task history (memory 分类中定义)
     "task_log",
     "task_history",
+    
+    # VM 工具（通过 vmuse_adapter 实现）
+    "browser_navigate",
+    "browser_click",
+    "browser_type",
+    "browser_screenshot",
+    "browser_content",
+    "browser_scroll",
+    "browser_eval",
+    "browser_get_tabs",
+    "browser_switch_tab",
+    "browser_close_tab",
+    "file_read",
+    "file_write",
+    "shell_exec",
+    "screenshot",
+    "mouse",
+    "keyboard",
+    "list_windows",
+    "focus_window",
+    "maximize_window",
+    "minimize_window",
+    "close_window",
+    "resize_window",
+    "launch_app",
+    "system_snapshot",
+    "clipboard_get",
+    "clipboard_set",
+    "environment_info",
 }
 
 
@@ -608,15 +636,6 @@ class ToolExecutor:
                 )
                 return self._handle_response(response)
             
-            elif tool_name == "qemu_deploy_vmuse_code":
-                response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/qemu/deploy-vmuse",
-                    json={
-                        "restart_service": arguments.get("restart_service", True),
-                        "force": arguments.get("force", False),
-                    }
-                )
-                return self._handle_response(response)
             
             # ==================== Task 工具 ====================
             elif tool_name == "task_spawn":
@@ -763,6 +782,31 @@ class ToolExecutor:
                     "agent_id": self.agent_id,
                     "subagent_id": self.subagent_id,
                 }
+            
+            # ==================== VM 工具（通过 vmuse_adapter）====================
+            elif tool_name in [
+                "browser_navigate", "browser_click", "browser_type", 
+                "browser_screenshot", "browser_content", "browser_scroll",
+                "browser_eval", "browser_get_tabs", "browser_switch_tab", "browser_close_tab",
+                "file_read", "file_write", "shell_exec", "screenshot",
+                "mouse", "keyboard",
+                "list_windows", "focus_window", "maximize_window", "minimize_window",
+                "close_window", "resize_window", "launch_app",
+                "system_snapshot", "clipboard_get", "clipboard_set", "environment_info",
+            ]:
+                # 使用 vmuse_adapter 调用 VM 工具
+                from gateway.clients.vmuse_adapter import get_vmuse_adapter
+                
+                adapter = get_vmuse_adapter()
+                
+                # 直接使用 agent_id 作为 vm_id（vmcontrol 使用 agent_id 识别 VM）
+                result = await adapter.call_tool(
+                    tool_name=tool_name,
+                    arguments=arguments,
+                    vm_id=self.agent_id
+                )
+                
+                return result
             
             else:
                 return {"success": False, "error": f"Unknown builtin tool: {tool_name}"}

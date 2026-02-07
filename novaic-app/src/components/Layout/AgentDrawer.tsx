@@ -74,10 +74,6 @@ export function AgentDrawer({ isOpen, onClose, onSelectAgent, onCreateNew }: Age
 
   const handleDelete = async (e: React.MouseEvent, agentId: string) => {
     e.stopPropagation();
-    if (agents.length <= 1) {
-      alert('Cannot delete the only agent');
-      return;
-    }
     if (!confirm('Are you sure you want to delete this agent?')) {
       return;
     }
@@ -110,8 +106,7 @@ export function AgentDrawer({ isOpen, onClose, onSelectAgent, onCreateNew }: Age
     
     setStartingVm(agent.id);
     try {
-      const agentIndex = agent.vm.agent_index ?? 0;
-      await vmService.start(agent.id, agentIndex);
+      await vmService.start(agent.id);
       await refreshVmStatuses();
     } catch (error) {
       console.error('Failed to start VM:', error);
@@ -268,16 +263,14 @@ export function AgentDrawer({ isOpen, onClose, onSelectAgent, onCreateNew }: Age
                       )}
                       
                       {/* Delete */}
-                      {agents.length > 1 && (
-                        <button
-                          onClick={(e) => handleDelete(e, agent.id)}
-                          disabled={isLoading}
-                          className="p-1.5 rounded hover:bg-red-500/20 text-nb-text-secondary hover:text-red-400 transition-colors disabled:opacity-50"
-                          title="Delete"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
+                      <button
+                        onClick={(e) => handleDelete(e, agent.id)}
+                        disabled={isLoading}
+                        className="p-1.5 rounded hover:bg-red-500/20 text-nb-text-secondary hover:text-red-400 transition-colors disabled:opacity-50"
+                        title="Delete"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </div>
                 </div>

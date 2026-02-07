@@ -465,14 +465,12 @@ packages:
   - lightdm
   - lightdm-gtk-greeter
   - dbus-x11
-  - x11vnc
-  - xvfb
-  - python3-websockify
   - chromium-browser
   - xdotool
   - wmctrl
   - scrot
   - imagemagick
+  - xclip
   - python3
   - python3-pip
   - python3-venv
@@ -483,6 +481,7 @@ packages:
   - git
   - vim
   - htop
+  - qemu-guest-agent
 
 # Write configuration files
 write_files:
@@ -492,67 +491,6 @@ write_files:
       autologin-user=ubuntu
       autologin-user-timeout=0
       user-session=xfce
-
-  - path: /etc/systemd/system/x11vnc.service
-    content: |
-      [Unit]
-      Description=x11vnc VNC Server
-      After=display-manager.service
-      Requires=display-manager.service
-
-      [Service]
-      Type=simple
-      User=ubuntu
-      Environment=DISPLAY=:0
-      ExecStartPre=/bin/sleep 5
-      ExecStart=/usr/bin/x11vnc -display :0 -auth guess -forever -loop -noxdamage -repeat -rfbport 5900 -shared -nopw
-      Restart=always
-      RestartSec=3
-
-      [Install]
-      WantedBy=multi-user.target
-
-  - path: /etc/systemd/system/websockify.service
-    content: |
-      [Unit]
-      Description=Websockify VNC WebSocket Proxy
-      After=x11vnc.service
-      Requires=x11vnc.service
-
-      [Service]
-      Type=simple
-      User=ubuntu
-      ExecStart=/usr/bin/websockify 6080 localhost:5900
-      Restart=always
-      RestartSec=3
-
-      [Install]
-      WantedBy=multi-user.target
-
-  - path: /etc/systemd/system/novaic.service
-    content: |
-      [Unit]
-      Description=NovAIC Core - MCP Server (FastMCP)
-      After=network.target display-manager.service x11vnc.service
-      Wants=display-manager.service
-
-      [Service]
-      Type=simple
-      User=ubuntu
-      Environment=DISPLAY=:0
-      Environment=XAUTHORITY=/home/ubuntu/.Xauthority
-      Environment=HOME=/home/ubuntu
-      Environment=PATH=/opt/novaic-venv/bin:/usr/local/bin:/usr/bin:/bin
-      Environment=PYTHONPATH=/opt/novaic-mcp-vmuse/src
-      Environment=NOVAIC_HOST=0.0.0.0
-      Environment=NOVAIC_PORT=8080
-      WorkingDirectory=/opt/novaic-mcp-vmuse
-      ExecStart=/opt/novaic-venv/bin/python -c "from novaic_mcp_vmuse.main import mcp; mcp.run(transport='streamable-http', host='0.0.0.0', port=8080)"
-      Restart=always
-      RestartSec=3
-
-      [Install]
-      WantedBy=multi-user.target
 
   - path: /home/ubuntu/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-power-manager.xml
     content: |
@@ -566,34 +504,208 @@ write_files:
         </property>
       </channel>
 
+  - path: /opt/novaic/scripts/playwright_helper.py
+    content: |
+      #!/usr/bin/env python3
+      """
+      Playwright 辅助脚本 - 由 Guest Agent 调用
+      支持基本的浏览器操作
+      
+      使用方法:
+          playwright_helper.py <command> [<args_json>]
+      
+      命令:
+          navigate <args>  - 导航到 URL
+          click <args>     - 点击元素
+          type <args>      - 输入文本
+          screenshot       - 截图
+          content          - 获取页面内容
+      
+      示例:
+          playwright_helper.py navigate '{{"url": "https://example.com"}}'
+          playwright_helper.py click '{{"selector": "button#submit"}}'
+          playwright_helper.py type '{{"selector": "input#username", "text": "admin"}}'
+          playwright_helper.py screenshot
+          playwright_helper.py content
+      """
+      
+      import sys
+      import json
+      import os
+      from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+      
+      # 默认超时时间（毫秒）
+      DEFAULT_TIMEOUT = 30000
+      
+      
+      def main():
+          if len(sys.argv) < 2:
+              print(json.dumps({{"status": "error", "error": "Missing command"}}))
+              sys.exit(1)
+          
+          command = sys.argv[1]
+          args = {{}}
+          
+          if len(sys.argv) > 2:
+              try:
+                  args = json.loads(sys.argv[2])
+              except json.JSONDecodeError as e:
+                  print(json.dumps({{"status": "error", "error": f"Invalid JSON arguments: {{e}}"}}))
+                  sys.exit(1)
+          
+          try:
+              with sync_playwright() as p:
+                  # 启动浏览器（非 headless 模式，以便用户可以看到）
+                  browser = p.chromium.launch(
+                      headless=False,
+                      args=['--no-sandbox', '--disable-setuid-sandbox']
+                  )
+                  
+                  # 创建新的浏览器上下文和页面
+                  context = browser.new_context(
+                      viewport={{'width': 1280, 'height': 720}},
+                      user_agent='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                  )
+                  page = context.new_page()
+                  
+                  # 设置默认超时
+                  page.set_default_timeout(DEFAULT_TIMEOUT)
+                  
+                  result = {{}}
+                  
+                  if command == "navigate":
+                      url = args.get("url")
+                      if not url:
+                          result = {{"status": "error", "error": "Missing 'url' parameter"}}
+                      else:
+                          try:
+                              response = page.goto(url, wait_until="domcontentloaded")
+                              result = {{
+                                  "status": "success",
+                                  "url": page.url,
+                                  "title": page.title()
+                              }}
+                              if response:
+                                  result["status_code"] = response.status
+                          except PlaywrightTimeoutError:
+                              result = {{"status": "error", "error": f"Timeout navigating to {{url}}"}}
+                          except Exception as e:
+                              result = {{"status": "error", "error": f"Navigation failed: {{str(e)}}"}}
+                  
+                  elif command == "click":
+                      selector = args.get("selector")
+                      if not selector:
+                          result = {{"status": "error", "error": "Missing 'selector' parameter"}}
+                      else:
+                          try:
+                              page.click(selector)
+                              result = {{"status": "success"}}
+                          except PlaywrightTimeoutError:
+                              result = {{"status": "error", "error": f"Element not found or not clickable: {{selector}}"}}
+                          except Exception as e:
+                              result = {{"status": "error", "error": f"Click failed: {{str(e)}}"}}
+                  
+                  elif command == "type":
+                      selector = args.get("selector")
+                      text = args.get("text")
+                      if not selector:
+                          result = {{"status": "error", "error": "Missing 'selector' parameter"}}
+                      elif text is None:
+                          result = {{"status": "error", "error": "Missing 'text' parameter"}}
+                      else:
+                          try:
+                              page.fill(selector, text)
+                              result = {{"status": "success"}}
+                          except PlaywrightTimeoutError:
+                              result = {{"status": "error", "error": f"Element not found: {{selector}}"}}
+                          except Exception as e:
+                              result = {{"status": "error", "error": f"Type failed: {{str(e)}}"}}
+                  
+                  elif command == "screenshot":
+                      try:
+                          screenshot_bytes = page.screenshot(full_page=False)
+                          # 转换为 hex 字符串以便 JSON 序列化
+                          result = {{
+                              "status": "success",
+                              "data": screenshot_bytes.hex()
+                          }}
+                      except Exception as e:
+                          result = {{"status": "error", "error": f"Screenshot failed: {{str(e)}}"}}
+                  
+                  elif command == "content":
+                      try:
+                          html = page.content()
+                          result = {{
+                              "status": "success",
+                              "html": html,
+                              "url": page.url,
+                              "title": page.title()
+                          }}
+                      except Exception as e:
+                          result = {{"status": "error", "error": f"Get content failed: {{str(e)}}"}}
+                  
+                  else:
+                      result = {{"status": "error", "error": f"Unknown command: {{command}}"}}
+                  
+                  # 关闭浏览器
+                  browser.close()
+                  
+                  # 输出结果
+                  print(json.dumps(result))
+          
+          except Exception as e:
+              print(json.dumps({{"status": "error", "error": f"Playwright error: {{str(e)}}"}}))
+              sys.exit(1)
+      
+      
+      if __name__ == "__main__":
+          main()
+    permissions: '0755'
+
 # Startup commands
 runcmd:
-  - chown -R ubuntu:ubuntu /home/ubuntu
+  # Set up directory structure first (ubuntu user now exists)
   - mkdir -p /home/ubuntu/.config/xfce4/xfconf/xfce-perchannel-xml
-  - chown -R ubuntu:ubuntu /home/ubuntu/.config
+  - mkdir -p /opt/novaic/scripts
+  - mkdir -p /opt/novaic/venv
+  
+  # Set system-wide DISPLAY environment variable
+  - echo 'DISPLAY=:0' | sudo tee -a /etc/environment
+  
+  # Wait for network connectivity
   - echo "Waiting for network..."
   - until ping -c 1 -W 3 8.8.8.8 > /dev/null 2>&1; do sleep 2; done
   - echo "Network ready."
-  - mkdir -p /opt/novaic-mcp-vmuse /opt/novaic-venv
-  - chown -R ubuntu:ubuntu /opt/novaic-mcp-vmuse /opt/novaic-venv
-  - echo "Creating Python virtual environment..."
-  - sudo -u ubuntu python3 -m venv /opt/novaic-venv
-  - echo "Installing Python dependencies..."
-  - sudo -u ubuntu /opt/novaic-venv/bin/pip install --upgrade pip -q -i "http://{pip_mirror}" --trusted-host "{pip_host}"
-  - sudo -u ubuntu /opt/novaic-venv/bin/pip install -q -i "http://{pip_mirror}" --trusted-host "{pip_host}" fastapi "uvicorn[standard]" pydantic pydantic-settings playwright httpx python-dotenv Pillow
-  - echo "Installing Playwright Chromium..."
-  - sudo -u ubuntu /opt/novaic-venv/bin/playwright install chromium
-  - /opt/novaic-venv/bin/playwright install-deps chromium || true
+  
+  # Enable and start QEMU Guest Agent
   - systemctl daemon-reload
+  - systemctl enable qemu-guest-agent
+  - systemctl start qemu-guest-agent
+  
+  # Install Playwright using virtual environment (PEP 668 compliance)
+  - echo "Creating Python virtual environment..."
+  - python3 -m venv /opt/novaic/venv
+  - echo "Installing Playwright in virtual environment..."
+  - /opt/novaic/venv/bin/pip install --upgrade pip --index-url https://{pip_mirror} --trusted-host {pip_host}
+  - /opt/novaic/venv/bin/pip install playwright --index-url https://{pip_mirror} --trusted-host {pip_host}
+  - echo "Installing Chromium browser..."
+  - /opt/novaic/venv/bin/playwright install --with-deps chromium
+  - echo "Playwright installation completed."
+  
+  # Update playwright_helper.py shebang to use virtual environment
+  - sed -i '1s|.*|#!/opt/novaic/venv/bin/python3|' /opt/novaic/scripts/playwright_helper.py
+  
+  # Set correct ownership (now that ubuntu user exists)
+  - chown -R ubuntu:ubuntu /home/ubuntu
+  - chown -R ubuntu:ubuntu /opt/novaic
+  
+  # Start display manager
   - systemctl enable lightdm
-  - systemctl enable x11vnc
-  - systemctl enable websockify
-  - systemctl enable novaic
   - systemctl start lightdm
   - sleep 10
-  - systemctl start x11vnc
-  - sleep 2
-  - systemctl start websockify
+  
+  # Mark installation as complete
+  - touch /opt/novaic/.dependencies_installed
   - echo "NovAIC VM cloud-init completed at $(date)" > /var/log/novaic-init-done.log
 
 final_message: |
@@ -602,11 +714,7 @@ final_message: |
   =====================================================
   
   VM internal ports (mapped to dynamic host ports via QEMU):
-  - VNC: 5900 (no password)
-  - WebSocket: 6080
-  - MCP: 8080
   - SSH: 22
   
   Check NovAIC app for actual host port mappings.
-  Please run deploy to install MCP Server.
 '''

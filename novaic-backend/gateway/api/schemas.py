@@ -85,6 +85,7 @@ class HealthResponse(BaseModel):
     agent_initialized: bool
     mcp_healthy: bool
     tools_count: int
+    vmcontrol_healthy: Optional[bool] = None
 
 
 # ==================== History ====================

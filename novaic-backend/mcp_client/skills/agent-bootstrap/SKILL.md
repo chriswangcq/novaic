@@ -240,7 +240,7 @@ Agent: 🎉 **初始化完成！MCP Server 已就绪！**
 | 70% | venv | 创建 Python 虚拟环境 | 30 秒 |
 | 80% | pip install | 安装 Python 依赖 | 2-3 分钟 |
 | 90% | playwright | 安装 Playwright Chromium | 2-3 分钟 |
-| 95% | services | 启动 lightdm/x11vnc | 30 秒 |
+| 95% | services | 启动 lightdm | 30 秒 |
 
 ### 如果需要更详细的日志
 

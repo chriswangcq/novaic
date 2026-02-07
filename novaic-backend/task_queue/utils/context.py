@@ -213,11 +213,25 @@ def process_multimodal_messages(
             except (json.JSONDecodeError, TypeError):
                 result = {"content": content}
             
-            if isinstance(result, dict) and multimodal.has_images(result):
-                _, images = multimodal.extract_from_result(result)
+            # 解包嵌套的 result 字段（工具返回格式：{success, result}）
+            if isinstance(result, dict) and "result" in result and isinstance(result["result"], dict):
+                inner_result = result["result"]
+            else:
+                inner_result = result
+            
+            if isinstance(inner_result, dict) and multimodal.has_images(inner_result):
+                _, images = multimodal.extract_from_result(inner_result)
                 
-                # 生成纯文本版本
-                text_only = multimodal.result_to_text_only(result)
+                # 生成纯文本版本（使用解包后的数据）
+                inner_text_only = multimodal.result_to_text_only(inner_result)
+                
+                # 如果原始 result 有嵌套结构，重新包装
+                if isinstance(result, dict) and "result" in result:
+                    # 重新包装：{success: ..., result: {image_data: "[PLACEHOLDER]", ...}}
+                    sanitized_result = {**result, "result": json.loads(inner_text_only)}
+                    text_only = json.dumps(sanitized_result)
+                else:
+                    text_only = inner_text_only
                 
                 # 添加文本版本的 tool result
                 processed.append({

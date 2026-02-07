@@ -4,7 +4,7 @@
  * Handles communication with Tauri backend for VM setup operations:
  * - Check/download cloud images
  * - Setup VM (disk creation, cloud-init)
- * - Deploy code to VM
+ * - Wait for VM initialization (cloud-init installs all dependencies)
  */
 
 import { invoke, Channel } from '@tauri-apps/api/core';
@@ -126,7 +126,8 @@ export async function setupVm(
 }
 
 /**
- * Deploy novaic-mcp-vmuse to VM
+ * Wait for VM initialization to complete
+ * (cloud-init installs all dependencies: xdotool, xclip, qemu-guest-agent, playwright, etc.)
  */
 export async function deployAgent(
   sshPort: number,
@@ -144,19 +145,16 @@ export async function deployAgent(
 }
 
 /**
- * Quick deploy (only copy code and restart service)
+ * Quick deploy (DEPRECATED - no longer needed, kept for backward compatibility)
+ * All dependencies are now installed via cloud-init during VM first boot.
  */
 export async function quickDeployAgent(
-  sshPort: number,
-  onProgress: (progress: DeployProgress) => void
+  _sshPort: number,
+  _onProgress: (progress: DeployProgress) => void
 ): Promise<void> {
-  const channel = new Channel<DeployProgress>();
-  channel.onmessage = onProgress;
-
-  return await invoke('quick_deploy_agent', {
-    sshPort,
-    onProgress: channel,
-  });
+  // This function is no longer needed but kept for backward compatibility
+  // It will do nothing in the backend
+  throw new Error('quickDeployAgent is deprecated - all dependencies are installed via cloud-init');
 }
 
 /**

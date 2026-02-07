@@ -84,10 +84,6 @@ export function AgentSelector({ onCreateNew }: AgentSelectorProps) {
 
   const handleDelete = async (e: React.MouseEvent, agentId: string) => {
     e.stopPropagation();
-    if (agents.length <= 1) {
-      alert('Cannot delete the only agent');
-      return;
-    }
     if (!confirm('Are you sure you want to delete this agent?')) {
       return;
     }
@@ -181,15 +177,13 @@ export function AgentSelector({ onCreateNew }: AgentSelectorProps) {
                       <Loader2 size={14} className="animate-spin text-nb-text-secondary flex-shrink-0" />
                     )}
                   </div>
-                  {agents.length > 1 && (
-                    <button
-                      onClick={(e) => handleDelete(e, agent.id)}
-                      className="p-1 rounded hover:bg-red-500/20 text-nb-text-secondary hover:text-red-400 transition-colors flex-shrink-0 ml-2"
-                      title="Delete agent"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
+                  <button
+                    onClick={(e) => handleDelete(e, agent.id)}
+                    className="p-1 rounded hover:bg-red-500/20 text-nb-text-secondary hover:text-red-400 transition-colors flex-shrink-0 ml-2"
+                    title="Delete agent"
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               ))
             )}

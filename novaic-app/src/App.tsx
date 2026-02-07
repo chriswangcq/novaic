@@ -110,7 +110,19 @@ function App() {
         const { agents: loadedAgents, currentAgentId: restoredAgentId } = storeState;
         
         if (loadedAgents.length === 0) {
-          // No agents available, nothing to select
+          // 清空所有状态和 localStorage
+          console.log('[App] No agents found, clearing state');
+          const { disconnectSSE } = useAppStore.getState();
+          disconnectSSE();
+          useAppStore.setState({ 
+            currentAgentId: null,
+            messages: [],
+            logs: [],
+            lastLogId: null,
+            logSubagentId: null,
+            logSubagents: [],
+          });
+          localStorage.removeItem('novaic-current-agent-id');
           return;
         }
         

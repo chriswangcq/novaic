@@ -535,6 +535,24 @@ export const useAppStore = create<AppStore>((set, get) => ({
       set({ agents: response.agents });
       console.log('[Store] Loaded agents:', response.agents.length);
       
+      // 如果 agent 列表为空，清空所有状态
+      if (response.agents.length === 0) {
+        console.log('[Store] No agents found, clearing state');
+        set({ 
+          currentAgentId: null,
+          messages: [],
+          logs: [],
+          lastLogId: null,
+          hasMoreMessages: true,
+          hasMoreLogs: true,
+          logSubagentId: null,
+          logSubagents: [],
+        });
+        saveAgentId(null);  // 清空 localStorage
+        get().disconnectSSE();  // 断开 SSE 连接
+        return;
+      }
+      
       // 自动选择 agent（如果当前没有选择或选择的 agent 不存在）
       if (response.agents.length > 0) {
         const currentAgentExists = response.agents.some(a => a.id === currentAgentId);
@@ -734,8 +752,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       });
 
       // 使用 vmService 启动 VM（通过 Gateway API）
-      const agentIndex = agent.vm.agent_index ?? 0;
-      await vmService.start(agentId, agentIndex);
+      await vmService.start(agentId);
 
       // Wait for VM to boot
       await new Promise(resolve => setTimeout(resolve, VM_CONFIG.START_WAIT_DELAY));

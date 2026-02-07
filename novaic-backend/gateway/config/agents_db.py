@@ -23,33 +23,17 @@ from gateway.db.repositories.agent import AgentRepository
 # Port allocation constants
 GATEWAY_PORT = 19999
 BASE_PORT = 20000
-PORTS_PER_AGENT = 20
+PORTS_PER_AGENT = 1  # Only SSH port needed
 MAX_AGENTS = 100
 
 SERVICE_OFFSETS = {
-    "vm": 0,
-    "session": 1,
-    "local": 2,
-    "memory": 3,
-    "chat": 4,
-    "qemudebug": 5,
-    "vnc": 6,
-    "websocket": 7,
-    "ssh": 8,
+    "ssh": 0,  # Only SSH port needed
 }
 
 
 class PortConfig(BaseModel):
-    """Port configuration for an agent."""
-    vm: int = 20000
-    session: int = 20001
-    local: int = 20002
-    memory: int = 20003
-    chat: int = 20004
-    qemudebug: int = 20005
-    vnc: int = 20006
-    websocket: int = 20007
-    ssh: int = 20008
+    """Port configuration for an agent - only SSH is needed."""
+    ssh: int = 20000  # SSH port for VM access
 
 
 class VmConfig(BaseModel):
@@ -61,10 +45,6 @@ class VmConfig(BaseModel):
     memory: str = "4096"
     cpus: int = 4
     ports: PortConfig = Field(default_factory=PortConfig)
-    mcp_vm_port: int = 8080
-    vnc_vm_port: int = 5900
-    ws_vm_port: int = 6080
-    agent_index: int = 0
 
 
 class AICAgent(BaseModel):
@@ -77,7 +57,12 @@ class AICAgent(BaseModel):
 
 
 def get_agent_port(agent_index: int, service: str) -> int:
-    """Calculate the port for a specific service of an agent."""
+    """
+    Calculate the port for a specific service of an agent.
+    
+    NOTE: This function is for internal use during agent creation only.
+    Runtime code should use the port configuration stored in the database.
+    """
     if service not in SERVICE_OFFSETS:
         raise ValueError(f"Unknown service: {service}")
     if agent_index < 0 or agent_index >= MAX_AGENTS:
@@ -88,17 +73,15 @@ def get_agent_port(agent_index: int, service: str) -> int:
 
 
 def allocate_ports_for_agent(agent_index: int) -> PortConfig:
-    """Allocate all ports for an agent based on its index."""
+    """
+    Allocate ports for an agent based on its index.
+    
+    NOTE: This function is for internal use during agent creation only.
+    It should not be called at runtime. Runtime code should use the
+    port configuration stored in the database.
+    """
     base = BASE_PORT + agent_index * PORTS_PER_AGENT
     return PortConfig(
-        vm=base + SERVICE_OFFSETS["vm"],
-        session=base + SERVICE_OFFSETS["session"],
-        local=base + SERVICE_OFFSETS["local"],
-        memory=base + SERVICE_OFFSETS["memory"],
-        chat=base + SERVICE_OFFSETS["chat"],
-        qemudebug=base + SERVICE_OFFSETS["qemudebug"],
-        vnc=base + SERVICE_OFFSETS["vnc"],
-        websocket=base + SERVICE_OFFSETS["websocket"],
         ssh=base + SERVICE_OFFSETS["ssh"],
     )
 
@@ -137,6 +120,36 @@ class AgentConfigManagerDB:
         """Get VM directory for an agent (matches qemudebug.py path)."""
         return self._agents_dir / agent_id
     
+    def _allocate_new_ports(self) -> PortConfig:
+        """
+        分配新的端口配置，避免与现有 agent 冲突。
+        策略：查询所有已使用的 SSH 端口，找到下一个可用的端口范围。
+        """
+        # 获取所有已存在的 agent
+        all_agents = self.repo.list_agents()
+        
+        # 收集已使用的 SSH 端口（作为端口范围的标识）
+        used_ssh_ports = set()
+        for agent in all_agents:
+            ports = agent.get("ports", {})
+            if ports and "ssh" in ports:
+                used_ssh_ports.add(ports["ssh"])
+        
+        # 找到下一个可用的端口范围
+        # 假设每个 agent 占用 PORTS_PER_AGENT 个端口
+        index = 0
+        while True:
+            base_port = BASE_PORT + index * PORTS_PER_AGENT
+            ssh_port = base_port + SERVICE_OFFSETS["ssh"]
+            if ssh_port not in used_ssh_ports:
+                break
+            index += 1
+            if index >= MAX_AGENTS:
+                raise RuntimeError(f"No available ports (max {MAX_AGENTS} agents)")
+        
+        # 使用现有的 allocate_ports_for_agent 函数分配完整的端口配置
+        return allocate_ports_for_agent(index)
+    
     def list_agents(self) -> List[AICAgent]:
         """List all agents."""
         rows = self.repo.list_agents()
@@ -144,6 +157,7 @@ class AgentConfigManagerDB:
         for row in rows:
             vm_config = row.get("vm_config", {})
             ports = row.get("ports", {})
+            
             vm_config["ports"] = PortConfig(**ports) if ports else PortConfig()
             
             agents.append(AICAgent(
@@ -163,6 +177,7 @@ class AgentConfigManagerDB:
         
         vm_config = row.get("vm_config", {})
         ports = row.get("ports", {})
+        
         vm_config["ports"] = PortConfig(**ports) if ports else PortConfig()
         
         return AICAgent(
@@ -186,9 +201,8 @@ class AgentConfigManagerDB:
         """Create a new agent."""
         self._ensure_dirs()
         
-        # Find next available agent index
-        agent_index = self.repo.find_next_agent_index()
-        ports = allocate_ports_for_agent(agent_index)
+        # 分配新端口（基于已使用端口找到空闲范围）
+        ports = self._allocate_new_ports()
         
         agent_id = str(uuid.uuid4())
         
@@ -199,10 +213,6 @@ class AgentConfigManagerDB:
             "os_version": os_version,
             "memory": memory,
             "cpus": cpus,
-            "mcp_vm_port": 8080,
-            "vnc_vm_port": 5900,
-            "ws_vm_port": 6080,
-            "agent_index": agent_index,
             "image_path": str(self._get_agent_vm_dir(agent_id) / f"{os_type}-{os_version}.qcow2"),
         }
         
@@ -274,8 +284,21 @@ class AgentConfigManagerDB:
         if not agent:
             return False
         
-        # Delete from database
-        success = self.repo.delete_agent(agent_id)
+        # 手动清理相关数据（确保兼容没有外键约束的旧数据库）
+        # 对于新数据库，外键约束会自动级联删除，但这个手动清理逻辑是安全的冗余
+        db = get_db()
+        with db.transaction("agent_cleanup", resource_id=agent_id):
+            # 删除所有关联的数据
+            db.execute("DELETE FROM chat_messages WHERE agent_id = ?", (agent_id,))
+            db.execute("DELETE FROM execution_logs WHERE agent_id = ?", (agent_id,))
+            db.execute("DELETE FROM tasks WHERE agent_id = ?", (agent_id,))
+            db.execute("DELETE FROM pending_questions WHERE agent_id = ?", (agent_id,))
+            db.execute("DELETE FROM agent_runtime_state WHERE agent_id = ?", (agent_id,))
+            # pipeline_tasks 允许 NULL agent_id，只删除关联的
+            db.execute("DELETE FROM pipeline_tasks WHERE agent_id = ?", (agent_id,))
+            
+            # Delete from database (will also trigger cascade if foreign keys exist)
+            success = self.repo.delete_agent(agent_id)
         
         if success:
             # Delete VM directory
@@ -340,9 +363,9 @@ class AgentConfigManagerDB:
         return images
 
 
-# ==================== Alias for Backward Compatibility ====================
+# ==================== Alias ====================
 
-# AgentConfigManager is now just an alias to AgentConfigManagerDB (both are sync)
+# AgentConfigManager is an alias to AgentConfigManagerDB
 AgentConfigManager = AgentConfigManagerDB
 
 

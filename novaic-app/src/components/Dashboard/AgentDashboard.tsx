@@ -314,13 +314,9 @@ export function AgentDashboard({ onEnterWorkspace, onEnterSetup }: AgentDashboar
       // First select this agent
       await selectAgent(agentId);
       
-      // Get agent info for agentIndex
-      const agent = agents.find(a => a.id === agentId);
-      const agentIndex = agent?.vm?.agent_index ?? 0;
-      
       // Call Gateway API to start VM
-      console.log('[Dashboard] Starting VM for agent:', agentId, 'index:', agentIndex);
-      await vmService.start(agentId, agentIndex);
+      console.log('[Dashboard] Starting VM for agent:', agentId);
+      await vmService.start(agentId);
       console.log('[Dashboard] VM started');
       
       // Refresh status

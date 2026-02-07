@@ -10,6 +10,7 @@ Backend v2 架构由以下组件构成：
   - Task Worker: 通用任务执行器
   - Saga Worker: Saga 流程编排
   - Health Worker: 监控并回收超时任务/Saga
+  - VMControl: VM 管理服务 (Rust)
 
 所有 Worker 通过 Gateway 和 Queue Service 通信。
 
@@ -21,6 +22,7 @@ Usage:
     novaic-backend task-worker --gateway-url URL --queue-service-url URL [--num-workers N]
     novaic-backend saga-worker --gateway-url URL --queue-service-url URL [--max-concurrent N]
     novaic-backend health --queue-service-url URL
+    novaic-backend vmcontrol [--port PORT] [--host HOST]
 
 v2.0: Saga/Task Architecture 替代旧的 Master/Worker/Launcher/Collector 架构
 """
@@ -40,7 +42,7 @@ def print_usage():
     print("""
 NovAIC Backend - Unified Entry Point (v2 Architecture)
 
-Backend 七组件均由 Tauri 统一拉起。
+Backend 八组件均由 Tauri 统一拉起。
 
 Usage:
     novaic-backend gateway [options]       Backend 组件: Gateway (API+DB)
@@ -50,6 +52,7 @@ Usage:
     novaic-backend task-worker [options]   Backend 组件: Task Worker (任务执行)
     novaic-backend saga-worker [options]   Backend 组件: Saga Worker (流程编排)
     novaic-backend health [options]        Backend 组件: Health Worker (超时回收)
+    novaic-backend vmcontrol [options]     Backend 组件: VMControl (VM 管理服务)
 
 Gateway options:
     --port PORT         Port to listen on (default: 19999)
@@ -81,6 +84,11 @@ Saga Worker options:
 Health Worker options:
     --queue-service-url URL Queue Service URL (default: http://127.0.0.1:19997)
 
+VMControl options:
+    --port PORT         Port for VMControl (default: 8080)
+    --host HOST         Host to bind to (default: 127.0.0.1)
+    --vmcontrol-bin     Path to vmcontrol binary (default: auto-detect)
+
 Examples:
     novaic-backend gateway --port 19999
     novaic-backend tools-server --port 19998
@@ -89,6 +97,7 @@ Examples:
     novaic-backend task-worker --gateway-url http://127.0.0.1:19999 --queue-service-url http://127.0.0.1:19997
     novaic-backend saga-worker --gateway-url http://127.0.0.1:19999 --queue-service-url http://127.0.0.1:19997
     novaic-backend health --queue-service-url http://127.0.0.1:19997
+    novaic-backend vmcontrol --port 8080
 """)
 
 
@@ -297,6 +306,129 @@ def run_health():
     print("[health] Shutdown complete")
 
 
+def run_vmcontrol():
+    """Run the VMControl service (Rust binary)."""
+    import argparse
+    import subprocess
+    import shutil
+    from pathlib import Path
+    import time
+    import requests
+    
+    parser = argparse.ArgumentParser(description="NovAIC VMControl Service")
+    parser.add_argument("--port", type=int, default=ServiceConfig.VMCONTROL_PORT, help=f"Port for VMControl (default: {ServiceConfig.VMCONTROL_PORT})")
+    parser.add_argument("--host", default=ServiceConfig.VMCONTROL_HOST, help=f"Host to bind to (default: {ServiceConfig.VMCONTROL_HOST})")
+    parser.add_argument("--vmcontrol-bin", help="Path to vmcontrol binary (default: auto-detect)")
+    args = parser.parse_args()
+    
+    # Find vmcontrol binary
+    vmcontrol_bin = args.vmcontrol_bin
+    if not vmcontrol_bin:
+        # Try multiple locations
+        script_dir = Path(__file__).parent
+        candidates = [
+            # Relative to novaic-backend
+            script_dir.parent / "novaic-app" / "src-tauri" / "target" / "release" / "vmcontrol",
+            script_dir.parent / "novaic-app" / "src-tauri" / "target" / "debug" / "vmcontrol",
+            # From PATH
+            shutil.which("vmcontrol"),
+            # Check if we're in a packaged environment (PyInstaller)
+            Path(sys.executable).parent / "vmcontrol",
+        ]
+        
+        for candidate in candidates:
+            if candidate and Path(candidate).exists() and Path(candidate).is_file():
+                vmcontrol_bin = str(candidate)
+                print(f"[VMControl] Found binary at: {vmcontrol_bin}")
+                break
+    
+    if not vmcontrol_bin or not Path(vmcontrol_bin).exists():
+        print("[VMControl] ERROR: vmcontrol binary not found")
+        print("[VMControl] Searched locations:")
+        for candidate in candidates:
+            if candidate:
+                print(f"[VMControl]   - {candidate}")
+        print("[VMControl] Please build vmcontrol or specify --vmcontrol-bin")
+        print("[VMControl] Build command: cd novaic-app/src-tauri/vmcontrol && cargo build --release")
+        sys.exit(1)
+    
+    # Set environment variables for Rust service
+    env = os.environ.copy()
+    env["RUST_LOG"] = env.get("RUST_LOG", "vmcontrol=info,tower_http=debug")
+    
+    print(f"[VMControl] Starting on {args.host}:{args.port}")
+    print(f"[VMControl] Binary: {vmcontrol_bin}")
+    print(f"[VMControl] RUST_LOG: {env['RUST_LOG']}")
+    
+    # Build command with arguments
+    cmd = [
+        vmcontrol_bin,
+        "--port", str(args.port),
+        "--host", args.host,
+    ]
+    
+    print(f"[VMControl] Command: {' '.join(cmd)}")
+    
+    # Start the vmcontrol process
+    try:
+        process = subprocess.Popen(
+            cmd,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+        )
+        
+        # Wait for service to be ready
+        print("[VMControl] Waiting for service to be ready...")
+        max_wait = 30
+        start_time = time.time()
+        ready = False
+        
+        while time.time() - start_time < max_wait:
+            try:
+                response = requests.get(
+                    f"http://{args.host}:{args.port}/api/health",
+                    timeout=2
+                )
+                if response.status_code == 200:
+                    ready = True
+                    print("[VMControl] Service is ready!")
+                    break
+            except requests.exceptions.RequestException:
+                pass
+            time.sleep(1)
+        
+        if not ready:
+            print(f"[VMControl] WARNING: Service not responding after {max_wait}s")
+        
+        # Stream logs
+        print("[VMControl] Streaming logs (Ctrl+C to stop)...")
+        try:
+            for line in process.stdout:
+                print(f"[VMControl] {line.rstrip()}")
+        except KeyboardInterrupt:
+            print("\n[VMControl] Received interrupt signal")
+        finally:
+            print("[VMControl] Shutting down...")
+            process.terminate()
+            try:
+                process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                print("[VMControl] Force killing process...")
+                process.kill()
+                process.wait()
+            print("[VMControl] Shutdown complete")
+    
+    except FileNotFoundError:
+        print(f"[VMControl] ERROR: Could not execute {vmcontrol_bin}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"[VMControl] ERROR: {e}")
+        sys.exit(1)
+
+
 def _setup_worker_logging(mode: str):
     """Setup file logging for worker processes.
     
@@ -357,6 +489,7 @@ def main():
         print(f"[Config] Gateway: {ServiceConfig.GATEWAY_URL}")
         print(f"[Config] Queue Service: {ServiceConfig.QUEUE_SERVICE_URL}")
         print(f"[Config] Tools Server: {ServiceConfig.TOOLS_SERVER_URL}")
+        print(f"[Config] VMControl: {ServiceConfig.VMCONTROL_URL}")
     except ValueError as e:
         print(f"[Config] Configuration error: {e}")
         sys.exit(1)
@@ -390,6 +523,8 @@ def main():
         run_saga_worker()
     elif mode == "health":
         run_health()
+    elif mode == "vmcontrol":
+        run_vmcontrol()
     elif mode in ["--help", "-h", "help"]:
         print_usage()
         sys.exit(0)

@@ -155,8 +155,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         message: 'Starting virtual machine...',
       });
       
-      const agentIndex = agent.vm.agent_index ?? 0;
-      await vmService.start(agent.id, agentIndex);
+      await vmService.start(agent.id);
       
       // Wait a moment for VM to boot
       await new Promise(resolve => setTimeout(resolve, 3000));

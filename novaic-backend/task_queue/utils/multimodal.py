@@ -57,13 +57,66 @@ def _is_likely_base64_image(value: Any, min_length: int = 100) -> bool:
     return bool(_BASE64_PATTERN.match(sample))
 
 
+def _parse_content_array(content: List[Dict[str, Any]]) -> Tuple[str, List[Dict[str, str]]]:
+    """
+    解析 MCP 标准 content 数组格式
+    
+    支持格式:
+    - {"type": "text", "text": "..."}
+    - {"type": "image", "data": "base64...", "mimeType": "image/png"}
+    - {"type": "resource", "resource": {"blob": "base64...", "mimeType": "..."}}
+    
+    Args:
+        content: MCP 标准 content 数组
+    
+    Returns:
+        (text_content, images_list)
+    """
+    text_parts = []
+    images = []
+    
+    for item in content:
+        if not isinstance(item, dict):
+            continue
+            
+        item_type = item.get("type", "")
+        
+        if item_type == "text":
+            text = item.get("text", "")
+            if text:
+                text_parts.append(text)
+        
+        elif item_type == "image":
+            data = item.get("data", "")
+            if data and _is_likely_base64_image(data):
+                images.append({
+                    "data": data,
+                    "mime_type": item.get("mimeType", item.get("mime_type", "image/png"))
+                })
+        
+        elif item_type == "resource":
+            # Embedded resource with binary data
+            resource = item.get("resource", {})
+            mime_type = resource.get("mimeType", resource.get("mime_type", ""))
+            blob = resource.get("blob", "")
+            
+            if mime_type.startswith("image/") and blob and _is_likely_base64_image(blob):
+                images.append({
+                    "data": blob,
+                    "mime_type": mime_type
+                })
+    
+    return "\n".join(text_parts), images
+
+
 def extract_from_result(result: Dict[str, Any]) -> Tuple[str, List[Dict[str, str]]]:
     """
     从工具结果中提取文本和图片列表
     
-    支持两种来源:
-    1. MCP 标准格式: _mcp_content 数组
-    2. 常见字段格式: screenshot, image_base64 等字段
+    优先级:
+    1. _mcp_content (MCP 客户端转换后的标准格式)
+    2. content 数组 (MCP 标准格式)
+    3. 传统字段 (IMAGE_FIELD_NAMES)
     
     Args:
         result: 工具执行结果
@@ -76,38 +129,56 @@ def extract_from_result(result: Dict[str, Any]) -> Tuple[str, List[Dict[str, str
     text_parts = []
     images = []
     
-    # 1. 优先从 _mcp_content 提取（MCP 标准格式）
-    mcp_content = result.get("_mcp_content", [])
-    for item in mcp_content:
-        item_type = item.get("type", "")
-        
-        if item_type == "text":
-            text = item.get("text", "")
-            if text:
-                text_parts.append(text)
+    # 1. 优先检查 _mcp_content
+    if "_mcp_content" in result:
+        mcp_content = result["_mcp_content"]
+        if isinstance(mcp_content, list):
+            for item in mcp_content:
+                item_type = item.get("type", "")
                 
-        elif item_type == "image":
-            data = item.get("data", "")
-            if data:
-                images.append({
-                    "data": data,
-                    "mime_type": item.get("mimeType", "image/png")
-                })
-                
-        elif item_type == "resource":
-            # 资源可能包含内嵌文本或二进制数据
-            text = item.get("text", "")
-            if text:
-                text_parts.append(text)
-            # 如果是图片资源
-            mime_type = item.get("mimeType", "")
-            if mime_type.startswith("image/") and item.get("blob"):
-                images.append({
-                    "data": item.get("blob", ""),
-                    "mime_type": mime_type
-                })
+                if item_type == "text":
+                    text = item.get("text", "")
+                    if text:
+                        text_parts.append(text)
+                        
+                elif item_type == "image":
+                    data = item.get("data", "")
+                    if data:
+                        images.append({
+                            "data": data,
+                            "mime_type": item.get("mimeType", "image/png")
+                        })
+                        
+                elif item_type == "resource":
+                    # 资源可能包含内嵌文本或二进制数据
+                    text = item.get("text", "")
+                    if text:
+                        text_parts.append(text)
+                    # 如果是图片资源
+                    mime_type = item.get("mimeType", "")
+                    if mime_type.startswith("image/") and item.get("blob"):
+                        images.append({
+                            "data": item.get("blob", ""),
+                            "mime_type": mime_type
+                        })
+            
+            # 如果找到了 _mcp_content，直接返回（不再检查其他字段）
+            if text_parts or images:
+                return "\n".join(text_parts) if text_parts else "", images
     
-    # 2. 从常见图片字段提取（向后兼容非 MCP 标准格式）
+    # 2. 检查 content 数组（MCP 标准）
+    if "content" in result:
+        content = result["content"]
+        if isinstance(content, list) and content:
+            # 检查是否是 MCP 标准格式（包含 type 字段）
+            has_type_field = any(
+                isinstance(item, dict) and "type" in item 
+                for item in content
+            )
+            if has_type_field:
+                return _parse_content_array(content)
+    
+    # 3. 从常见图片字段提取（向后兼容非 MCP 标准格式）
     for field_name in IMAGE_FIELD_NAMES:
         value = result.get(field_name)
         if _is_likely_base64_image(value):

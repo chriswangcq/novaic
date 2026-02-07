@@ -20,6 +20,9 @@
 ### 专题文档
 
 - [前端滚动逻辑和虚拟列表](./frontend-scroll-patterns.md) - 虚拟列表、自动滚动、边界条件处理
+- [系统稳定性与连接管理](./system-stability-and-connection-management.md) - 长连接 vs 按需连接、QMP 重构案例
+- [数据一致性与级联删除](./data-consistency-and-cascade-deletion.md) - 外键约束、孤立数据清理、删除最佳实践
+- [架构重构方法论](./architecture-refactoring-methodology.md) - 问题诊断、对比学习、渐进式重构、用户体验设计
 
 ---
 
@@ -596,6 +599,51 @@ cat ~/Library/Application\ Support/com.novaic.app/*.log | tail -100
 
 详细经验总结见 [前端滚动逻辑和虚拟列表](./frontend-scroll-patterns.md)。
 
+### 2026-02-07：系统稳定性全面提升
+
+完成了多个架构级稳定性问题的诊断与修复：
+
+1. **QMP 连接稳定性**：
+   - 问题："Broken pipe" 导致浏览器工具失败
+   - 根因：长连接断开后无法恢复
+   - 方案：改为按需连接（借鉴 VNC 的成功经验）
+   - 效果：自动容错、并发性提升、代码简化
+
+2. **数据一致性问题**：
+   - 问题：删除 agent 后残留 501 条消息、2570 条日志
+   - 根因：5 个表缺少外键约束
+   - 方案：添加外键约束 + 应用层手动清理（双保险）
+   - 效果：数据完全清理、级联删除正确
+
+3. **用户体验优化**：
+   - 问题：浏览器在虚拟显示运行（DISPLAY=:99），VNC 看不到
+   - 根因：理念相悖（用户希望看到 AI 操作）
+   - 方案：统一使用 DISPLAY=:0，移除 Xvfb
+   - 效果：用户可见 AI 操作，更友好
+
+4. **构建系统陷阱**：
+   - 问题：修改代码后 build 不生效
+   - 根因：build.sh 条件判断跳过编译
+   - 方案：移除条件判断，总是编译（Cargo 增量编译）
+   - 效果：确保代码变更生效
+
+5. **前端状态清理**：
+   - 问题：删除 agent 后前端残留显示
+   - 根因：localStorage 和 SSE 未清理
+   - 方案：空列表时自动清空所有状态
+   - 效果：状态同步正确
+
+**关键方法论**：
+- **对比学习法**：VNC 稳定 → 分析差异 → 借鉴经验修复 QMP
+- **渐进式重构**：分阶段迁移多模态标准，每步验证
+- **用户体验优先**：技术方案服务用户体验，而非妥协
+- **简单胜过复杂**：按需连接 > 长连接+重连、总是编译 > 条件判断
+
+详细经验总结见新增的三个专题文档：
+- [系统稳定性与连接管理](./system-stability-and-connection-management.md)
+- [数据一致性与级联删除](./data-consistency-and-cascade-deletion.md)
+- [架构重构方法论](./architecture-refactoring-methodology.md)
+
 ---
 
-*最后更新：2026-02-05*
+*最后更新：2026-02-07*

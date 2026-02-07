@@ -7,11 +7,11 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import type { PortConfig } from './api';
-import { VM_CONFIG, API_CONFIG } from '../config';
+import { VM_CONFIG, API_CONFIG, WS_CONFIG } from '../config';
 
 // VM 状态类型 - matches Gateway VmStatus
 export interface VmStatus {
-  agent_id: string;              // Agent ID
+  agent_id: string;              // Agent ID (UUID)
   running: boolean;
   agent_healthy: boolean;
   mcp_healthy: boolean;          // NovAIC MCP Server 健康状态
@@ -29,20 +29,18 @@ class VmService {
   /**
    * 启动虚拟机
    * @param agentId - Agent ID
-   * @param agentIndex - Agent 索引（用于端口分配）
    */
-  async start(agentId: string, agentIndex: number): Promise<string> {
+  async start(agentId: string): Promise<string> {
     try {
       const result = await invoke<{ success: boolean; status?: string; pid?: number }>('gateway_post', {
         path: '/api/vm/start',
         body: {
           agent_id: agentId,
-          agent_index: agentIndex,
           memory: '4096',
           cpus: 4,
         }
       });
-      console.log('[VM Service] Start:', result, 'agentId:', agentId, 'agentIndex:', agentIndex);
+      console.log('[VM Service] Start:', result, 'agentId:', agentId);
       return result.status || 'started';
     } catch (error) {
       console.error('[VM Service] Start failed:', error);
@@ -91,14 +89,13 @@ class VmService {
   /**
    * 重启虚拟机
    * @param agentId - Agent ID
-   * @param agentIndex - Agent 索引（用于端口分配）
    */
-  async restart(agentId: string, agentIndex: number): Promise<string> {
+  async restart(agentId: string): Promise<string> {
     try {
       // Stop then start
       await this.stop(agentId);
       await new Promise(resolve => setTimeout(resolve, VM_CONFIG.RESTART_DELAY));
-      return await this.start(agentId, agentIndex);
+      return await this.start(agentId);
     } catch (error) {
       console.error('[VM Service] Restart failed:', error);
       throw error;
@@ -158,18 +155,53 @@ class VmService {
   /**
    * 获取 VNC WebSocket URL
    * @param agentId - Agent ID
+   * 
+   * 新方式：通过 vmcontrol 代理
+   * URL 格式：ws://localhost:8080/api/vms/{vm_id}/vnc
+   * 
+   * 支持两种 VM ID 格式：
+   * - agent_index (数字，精确匹配 socket 文件)
+   * - agent_id (UUID，自动查找可用 socket)
+   * 
+   * 兼容性：如果 vmcontrol 不可用，回退到旧的 websockify 方式
    */
   async getVncUrl(agentId: string): Promise<string> {
     try {
+      // 优先使用 vmcontrol 代理（新方式）
+      const vmcontrolPort = WS_CONFIG.VMCONTROL_PORT;
+      
+      // 检查 vmcontrol 是否可用（快速健康检查）
+      try {
+        const healthUrl = `http://localhost:${vmcontrolPort}/health`;
+        const response = await fetch(healthUrl, {
+          signal: AbortSignal.timeout(1000), // 快速超时
+        });
+        
+        if (response.ok) {
+          // 直接使用 agent_id (UUID)
+          const vmcontrolUrl = `ws://localhost:${vmcontrolPort}/api/vms/${agentId}/vnc`;
+          console.log(`[VM Service] Using vmcontrol proxy: ${vmcontrolUrl}`);
+          return vmcontrolUrl;
+        }
+      } catch (healthError) {
+        console.warn('[VM Service] vmcontrol not available, checking fallback options...');
+      }
+      
+      // 回退方式 1：从 VM status 获取 VNC URL
       const status = await this.getStatus(agentId);
       if (status?.vnc_url) {
+        console.log(`[VM Service] Using VNC URL from status: ${status.vnc_url}`);
         return status.vnc_url;
       }
-      // 返回默认 URL (Agent 0 websocket port)
-      return `ws://localhost:${import.meta.env.VITE_WS_PORT || 20007}/websockify`;
+      
+      // 回退方式 2：使用旧的 websockify URL（默认 Agent 0）
+      const websockifyUrl = `ws://localhost:${WS_CONFIG.WEBSOCKIFY_PORT}/websockify`;
+      console.log(`[VM Service] Falling back to websockify: ${websockifyUrl}`);
+      return websockifyUrl;
     } catch (error) {
       console.error('[VM Service] Get VNC URL failed:', error);
-      return `ws://localhost:${import.meta.env.VITE_WS_PORT || 20007}/websockify`;
+      // 最终回退到默认 websockify URL
+      return `ws://localhost:${WS_CONFIG.WEBSOCKIFY_PORT}/websockify`;
     }
   }
 
@@ -272,6 +304,46 @@ class VmService {
     } catch (error) {
       console.error('[VM Service] Setup VM failed:', error);
       throw error;
+    }
+  }
+
+  /**
+   * 获取 VNC 连接状态
+   * @param agentId - Agent ID
+   * 
+   * 检测 VNC 是否可用，包括：
+   * - VM 进程运行状态
+   * - VNC Socket 文件存在性
+   * - VmControl 服务健康状态
+   * - VM 在 VmControl 中的注册状态
+   */
+  async getVncStatus(agentId: string): Promise<{
+    available: boolean;
+    vm_running: boolean;
+    vnc_socket_exists: boolean;
+    vnc_socket_path: string;
+    vmcontrol_healthy: boolean;
+    vm_registered: boolean;
+    vnc_url: string;
+    reason: string;
+  }> {
+    try {
+      return await invoke('gateway_get', {
+        path: `/api/vm/vnc/status/${agentId}`
+      });
+    } catch (error) {
+      console.error('[VM Service] Get VNC status failed:', error);
+      // 返回默认的不可用状态
+      return {
+        available: false,
+        vm_running: false,
+        vnc_socket_exists: false,
+        vnc_socket_path: '',
+        vmcontrol_healthy: false,
+        vm_registered: false,
+        vnc_url: `ws://localhost:8080/api/vms/${agentId}/vnc`,
+        reason: String(error)
+      };
     }
   }
 }

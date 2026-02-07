@@ -14,7 +14,7 @@ use gateway_client::GatewayClient;
 // - Gateway process management
 // - Cloud image download (optional)
 use vm::setup::{check_environment, check_cloud_image, download_cloud_image};
-use vm::deploy::{deploy_agent, quick_deploy_agent};
+use vm::deploy::deploy_agent;
 
 use std::sync::Arc;
 use std::path::PathBuf;
@@ -62,6 +62,93 @@ impl ToolsServerProcess {
             process: None,
             port: 19998,
         }
+    }
+}
+
+/// Backend 组件: VmControl - VM 控制服务（Rust 原生，QMP/Guest Agent/VNC 代理）
+struct VmControlProcess {
+    process: Option<Child>,
+    port: u16,
+}
+
+impl VmControlProcess {
+    fn new() -> Self {
+        Self {
+            process: None,
+            port: 8080,
+        }
+    }
+    
+    /// Start VmControl from binary
+    fn start(&mut self, app: &AppHandle) -> Result<(), String> {
+        if self.process.is_some() {
+            println!("[VmControl] Already running");
+            return Ok(());
+        }
+        
+        // Get vmcontrol binary path from resources
+        let resource_dir = app.path().resource_dir()
+            .map_err(|e| format!("Failed to get resource dir: {}", e))?;
+        let vmcontrol_path = resource_dir.join("vmcontrol/vmcontrol");
+        
+        if !vmcontrol_path.exists() {
+            return Err(format!("VmControl binary not found at {:?}", vmcontrol_path));
+        }
+        
+        println!("[VmControl] Starting from {:?}", vmcontrol_path);
+        println!("[VmControl] Port: {}", self.port);
+        
+        let child = Command::new(&vmcontrol_path)
+            .arg("--port")
+            .arg(self.port.to_string())
+            .arg("--host")
+            .arg("127.0.0.1")
+            .env("RUST_LOG", "vmcontrol=info,tower_http=debug")
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .map_err(|e| format!("Failed to start VmControl: {}", e))?;
+        
+        self.process = Some(child);
+        println!("[VmControl] Started on port {}", self.port);
+        Ok(())
+    }
+    
+    fn stop(&mut self) {
+        if let Some(mut process) = self.process.take() {
+            let pid = process.id();
+            println!("[VmControl] Stopping process (PID: {})...", pid);
+            
+            #[cfg(unix)]
+            unsafe {
+                libc::kill(pid as i32, libc::SIGTERM);
+            }
+            
+            std::thread::sleep(std::time::Duration::from_millis(AppConfig::PROCESS_TERM_WAIT_MS));
+            
+            match process.try_wait() {
+                Ok(Some(status)) => {
+                    println!("[VmControl] Stopped gracefully with status: {:?}", status);
+                    return;
+                }
+                Ok(None) => {
+                    println!("[VmControl] Process still running, sending SIGKILL...");
+                    let _ = process.kill();
+                    let _ = process.wait();
+                    println!("[VmControl] Force killed");
+                }
+                Err(e) => {
+                    println!("[VmControl] Error checking process status: {}", e);
+                    let _ = process.kill();
+                }
+            }
+        }
+    }
+}
+
+impl Drop for VmControlProcess {
+    fn drop(&mut self) {
+        self.stop();
     }
 }
 
@@ -552,6 +639,7 @@ impl Drop for QueueServiceProcess {
 
 type GatewayState = Arc<Mutex<GatewayProcess>>;
 type ToolsServerState = Arc<Mutex<ToolsServerProcess>>;
+type VmControlState = Arc<Mutex<VmControlProcess>>;
 // v4.0: Four services (Watchdog, Task Worker, Saga Worker, Health)
 type WatchdogState = Arc<Mutex<ServiceProcess>>;
 type TaskWorkerState = Arc<Mutex<ServiceProcess>>;
@@ -897,6 +985,10 @@ fn main() {
             let gateway = Arc::new(Mutex::new(GatewayProcess::new()));
             app.manage(gateway.clone());
             
+            // Backend 组件: VmControl（VM 控制服务，Rust 原生）
+            let vmcontrol = Arc::new(Mutex::new(VmControlProcess::new()));
+            app.manage(vmcontrol.clone());
+            
             // Backend 组件: Tools Server（与 Gateway 并列）
             let tools_server = Arc::new(Mutex::new(ToolsServerProcess::new()));
             app.manage(tools_server.clone());
@@ -955,11 +1047,13 @@ fn main() {
             println!("[Backend] Is binary: {}", is_binary);
             
             let gateway_for_start = gateway.clone();
+            let vmcontrol_for_start = vmcontrol.clone();
             let tools_server_for_start = tools_server.clone();
             let queue_service_for_start = queue_service.clone();
             let data_dir_for_gateway = data_dir.clone();
             let backend_path_clone = backend_path.clone();
             let gateway_dir_clone = gateway_dir.clone();
+            let app_handle_for_vmcontrol = app.handle().clone();
             
             tauri::async_runtime::spawn(async move {
                 // Kill any zombie backend processes before starting
@@ -977,7 +1071,19 @@ fn main() {
                     }
                 }
                 
-                // 2. Backend 组件: Tools Server
+                // 2. Backend 组件: VmControl（VM 控制服务）
+                {
+                    let mut vc = vmcontrol_for_start.lock().await;
+                    match vc.start(&app_handle_for_vmcontrol) {
+                        Ok(_) => println!("[VmControl] Auto-started successfully"),
+                        Err(e) => {
+                            println!("[VmControl] Failed to auto-start: {}", e);
+                            // VmControl 失败不影响其他服务继续启动
+                        }
+                    }
+                }
+                
+                // 3. Backend 组件: Tools Server
                 {
                     let mut ts = tools_server_for_start.lock().await;
                     match ts.start(&backend_path, is_binary, &data_dir_for_gateway, resource_dir.as_ref()) {
@@ -988,7 +1094,7 @@ fn main() {
                     }
                 }
                 
-                // 3. Backend 组件: Queue Service（Task/Saga 队列管理）
+                // 4. Backend 组件: Queue Service（Task/Saga 队列管理）
                 {
                     let mut qs = queue_service_for_start.lock().await;
                     match qs.start(&backend_path, is_binary, &data_dir_for_gateway, resource_dir.as_ref()) {
@@ -999,7 +1105,7 @@ fn main() {
                     }
                 }
                 
-                // 4. 等 Gateway 就绪（health check）
+                // 5. 等 Gateway 就绪（health check）
                 println!("[Services] Waiting for Gateway to be ready...");
                 let client = reqwest::Client::new();
                 let health_url = format!("{}/api/health", gateway_url);
@@ -1194,9 +1300,8 @@ fn main() {
             check_environment,
             check_cloud_image,
             download_cloud_image,
-            // VM Deploy commands (SSH deploy to VM)
+            // VM Deploy commands (wait for VM initialization)
             deploy_agent,
-            quick_deploy_agent,
             // Gateway commands
             start_gateway,
             stop_gateway,
@@ -1261,6 +1366,15 @@ fn main() {
                         tauri::async_runtime::block_on(async {
                             let mut ts = ts_clone.lock().await;
                             ts.stop();
+                        });
+                    }
+                    
+                    // Stop Backend 组件: VmControl
+                    if let Some(vmcontrol) = app_handle.try_state::<VmControlState>() {
+                        let vc_clone = vmcontrol.inner().clone();
+                        tauri::async_runtime::block_on(async {
+                            let mut vc = vc_clone.lock().await;
+                            vc.stop();
                         });
                     }
                     

@@ -171,12 +171,11 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
       if (!currentAgentId || !currentAgent) {
         throw new Error('No agent selected');
       }
-      const agentIndex = currentAgent.vm.agent_index ?? 0;
-      log(`Step 1: Starting QEMU VM... (agentId: ${currentAgentId}, agentIndex: ${agentIndex})`);
+      log(`Step 1: Starting QEMU VM... (agentId: ${currentAgentId})`);
       updateProgress(0, 0, '正在启动虚拟机...');
       
       try {
-        await vmService.start(currentAgentId, agentIndex);
+        await vmService.start(currentAgentId);
         log('QEMU VM started');
         updateProgress(0, 100, '虚拟机已启动');
       } catch (vmError: any) {

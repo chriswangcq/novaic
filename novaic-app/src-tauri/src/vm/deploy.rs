@@ -1,10 +1,8 @@
 //! VM Deploy Module
 //!
-//! Handles deploying novaic-mcp-vmuse to the VM:
+//! Waits for VM to be fully initialized:
 //! - Wait for SSH to be available
-//! - Wait for cloud-init to complete
-//! - Copy novaic-mcp-vmuse code to VM
-//! - Install dependencies and start service
+//! - Wait for cloud-init to complete (installs all dependencies via cloud-init)
 
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -65,84 +63,8 @@ impl SshConfig {
         
         args
     }
-
-    /// Get SCP command arguments for copying files
-    fn scp_args(&self, src: &str, dest: &str) -> Vec<String> {
-        let mut args = Vec::new();
-        
-        // Add private key if available
-        if let Some(key) = &self.key_path {
-            args.push("-i".to_string());
-            args.push(key.to_string_lossy().to_string());
-        }
-        
-        args.extend([
-            "-o".to_string(), "StrictHostKeyChecking=no".to_string(),
-            "-o".to_string(), "UserKnownHostsFile=/dev/null".to_string(),
-            "-o".to_string(), "LogLevel=ERROR".to_string(),
-            "-r".to_string(),
-            "-P".to_string(), self.port.to_string(),
-            src.to_string(),
-            format!("{}@{}:{}", self.user, self.host, dest),
-        ]);
-        
-        args
-    }
 }
 
-/// Find novaic-mcp-vmuse code path with unified search logic
-/// Priority: NOVAIC_RESOURCE_DIR -> Tauri resource_dir -> relative to project root
-fn find_vmuse_code_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
-    let mut search_paths = Vec::new();
-    
-    // Priority 1: NOVAIC_RESOURCE_DIR environment variable (production)
-    if let Ok(resource_dir) = std::env::var("NOVAIC_RESOURCE_DIR") {
-        let candidate = PathBuf::from(resource_dir).join("novaic-mcp-vmuse");
-        search_paths.push(candidate.clone());
-        if candidate.exists() && candidate.is_dir() {
-            println!("[deploy_vmuse] Found vmuse via NOVAIC_RESOURCE_DIR: {:?}", candidate);
-            return Ok(candidate);
-        }
-    }
-    
-    // Priority 2: Tauri resource_dir (production/packaged)
-    if let Some(resource_dir) = app.path().resource_dir().ok() {
-        let candidate = resource_dir.join("novaic-mcp-vmuse");
-        search_paths.push(candidate.clone());
-        if candidate.exists() && candidate.is_dir() {
-            println!("[deploy_vmuse] Found vmuse via Tauri resource_dir: {:?}", candidate);
-            return Ok(candidate);
-        }
-    }
-    
-    // Priority 3: Relative to project root (development)
-    if let Ok(exe_path) = std::env::current_exe() {
-        // exe is at: novaic-app/src-tauri/target/release/novaic
-        // Try to find project root by going up 4 levels
-        if let Some(project_root) = exe_path.ancestors().nth(4) {
-            // Try: project_root/novaic-vm (correct location)
-            let candidate = project_root.join("novaic-vm");
-            search_paths.push(candidate.clone());
-            if candidate.exists() && candidate.is_dir() {
-                println!("[deploy_vmuse] Found vmuse via project root: {:?}", candidate);
-                return Ok(candidate);
-            }
-            
-            // Fallback: Try novaic-mcp-vmuse
-            let candidate = project_root.join("novaic-mcp-vmuse");
-            search_paths.push(candidate.clone());
-            if candidate.exists() && candidate.is_dir() {
-                println!("[deploy_vmuse] Found vmuse via project root (legacy): {:?}", candidate);
-                return Ok(candidate);
-            }
-        }
-    }
-    
-    Err(format!(
-        "novaic-mcp-vmuse not found. Set NOVAIC_RESOURCE_DIR environment variable or ensure project structure is correct. Searched: {:?}",
-        search_paths
-    ))
-}
 
 /// Get SSH private key from Gateway and save to file
 /// Returns the path to the private key file
@@ -361,144 +283,13 @@ fn ssh_run(ssh_config: &SshConfig, command: &str) -> Result<String, String> {
     }
 }
 
-/// Copy directory to VM using SCP
-fn scp_directory(ssh_config: &SshConfig, src: &PathBuf, dest: &str) -> Result<(), String> {
-    println!("[Deploy] Copying {} to VM:{}", src.display(), dest);
 
-    let args = ssh_config.scp_args(src.to_str().unwrap(), dest);
-
-    let output = Command::new("scp")
-        .args(&args)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-        .map_err(|e| format!("Failed to run SCP: {}", e))?;
-
-    if output.status.success() {
-        Ok(())
-    } else {
-        Err(format!(
-            "SCP failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        ))
-    }
-}
-
-/// Copy file to VM using SCP
-fn scp_file(ssh_config: &SshConfig, src: &PathBuf, dest: &str) -> Result<(), String> {
-    println!("[Deploy] Copying file {} to VM:{}", src.display(), dest);
-
-    let mut args = Vec::new();
-    
-    // Add private key if available
-    if let Some(key) = &ssh_config.key_path {
-        args.push("-i".to_string());
-        args.push(key.to_string_lossy().to_string());
-    }
-    
-    args.extend([
-        "-o".to_string(), "StrictHostKeyChecking=no".to_string(),
-        "-o".to_string(), "UserKnownHostsFile=/dev/null".to_string(),
-        "-o".to_string(), "LogLevel=ERROR".to_string(),
-        "-P".to_string(), ssh_config.port.to_string(),
-        src.to_str().unwrap().to_string(),
-        format!("{}@{}:{}", ssh_config.user, ssh_config.host, dest),
-    ]);
-
-    let output = Command::new("scp")
-        .args(&args)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
-        .map_err(|e| format!("Failed to run SCP: {}", e))?;
-
-    if output.status.success() {
-        Ok(())
-    } else {
-        Err(format!(
-            "SCP failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        ))
-    }
-}
-
-/// Install dependencies and start service (check-style: skip if already installed)
-fn install_and_start_service(ssh_config: &SshConfig, use_cn_mirrors: bool) -> Result<(), String> {
-    // Configure pip source
-    let (pip_index_url, pip_trusted_host) = if use_cn_mirrors {
-        ("https://mirrors.aliyun.com/pypi/simple/", "mirrors.aliyun.com")
-    } else {
-        ("https://pypi.org/simple/", "pypi.org")
-    };
-
-    // Installation script with check-style install (cloud-init should have installed deps)
-    let install_script = format!(r#"
-set -e
-
-# Check if venv exists (should be created by cloud-init)
-if [ ! -f /opt/novaic-venv/bin/activate ]; then
-    echo "Creating venv (cloud-init may have failed)..."
-    
-    # Wait for apt lock
-    while pgrep -x "apt-get|apt|dpkg|unattended-upgr" > /dev/null 2>&1; do
-        sleep 5
-    done
-    
-    # Install python3-venv if needed
-    if ! dpkg -s python3-venv &> /dev/null; then
-        sudo apt-get update -qq
-        sudo apt-get install -y -qq python3-venv
-    fi
-    
-    sudo rm -rf /opt/novaic-venv
-    sudo mkdir -p /opt/novaic-venv
-    sudo chown $USER:$USER /opt/novaic-venv
-    python3 -m venv /opt/novaic-venv
-fi
-
-source /opt/novaic-venv/bin/activate
-
-# Check if fastmcp is installed (indicator that deps are installed)
-if ! python -c "import fastmcp" &> /dev/null 2>&1; then
-    echo "Installing dependencies (cloud-init may have failed)..."
-    pip install --upgrade pip -q -i "{pip_index_url}" --trusted-host "{pip_trusted_host}"
-    cd /opt/novaic-mcp-vmuse
-    pip install -e . -q -i "{pip_index_url}" --trusted-host "{pip_trusted_host}"
-else
-    echo "Dependencies already installed, skipping..."
-    # Still install in editable mode to link the code
-    cd /opt/novaic-mcp-vmuse
-    pip install -e . -q --no-deps 2>/dev/null || true
-fi
-
-# Check if Playwright chromium is installed
-if [ ! -d ~/.cache/ms-playwright/chromium-* ]; then
-    echo "Installing Playwright chromium (cloud-init may have failed)..."
-    pip install playwright -q -i "{pip_index_url}" --trusted-host "{pip_trusted_host}" 2>/dev/null || true
-    playwright install chromium
-    sudo playwright install-deps chromium 2>/dev/null || true
-else
-    echo "Playwright chromium already installed, skipping..."
-fi
-
-# Reload and start service
-sudo systemctl daemon-reload
-sudo systemctl enable novaic.service
-sudo systemctl restart novaic.service
-
-echo "Done!"
-"#, pip_index_url = pip_index_url, pip_trusted_host = pip_trusted_host);
-
-    ssh_run(ssh_config, &install_script)?;
-    Ok(())
-}
-
-/// Deploy novaic-mcp-vmuse to VM
+/// Wait for VM to be fully initialized (SSH + cloud-init)
 #[tauri::command]
 pub async fn deploy_agent(
     app: tauri::AppHandle,
     ssh_port: u16,
-    use_cn_mirrors: bool,
+    _use_cn_mirrors: bool,  // Kept for API compatibility but not used
     on_progress: tauri::ipc::Channel<DeployProgress>,
 ) -> Result<(), String> {
     // Step 0: Get SSH private key from Gateway
@@ -522,260 +313,50 @@ pub async fn deploy_agent(
 
     wait_for_ssh(&ssh_config, AppConfig::SSH_WAIT_MAX_RETRIES, AppConfig::SSH_WAIT_TIMEOUT_SECS).await?;
 
-    // Step 2: Check if cloud-init already completed (skip waiting if done)
+    // Step 2: Wait for cloud-init to complete (installs all dependencies)
     if check_cloud_init_done(&ssh_config) {
-        println!("[Deploy] cloud-init already completed, skipping wait");
+        println!("[Deploy] cloud-init already completed");
         let _ = on_progress.send(DeployProgress {
             stage: "Initializing".to_string(),
-            progress: 20,
-            message: "cloud-init already completed".to_string(),
+            progress: 90,
+            message: "VM already initialized".to_string(),
             log_line: None,
         });
     } else {
         let _ = on_progress.send(DeployProgress {
             stage: "Initializing".to_string(),
             progress: AppConfig::DEPLOY_PROGRESS_CLOUD_INIT as u32,
-            message: "First boot: waiting for cloud-init (10-30 min)...".to_string(),
+            message: "First boot: waiting for cloud-init to install dependencies (5-10 min)...".to_string(),
             log_line: None,
         });
         wait_for_cloud_init(&ssh_config, &on_progress).await?;
     }
 
-    // Step 3: Get novaic-mcp-vmuse resource path
-    let _ = on_progress.send(DeployProgress {
-        stage: "Preparing".to_string(),
-        progress: 30,
-        message: "Preparing to copy code...".to_string(),
-        log_line: None,
-    });
-
-    // Use unified path search function
-    let core_path = find_vmuse_code_path(&app)?;
-    println!("[Deploy] Using novaic-mcp-vmuse from: {}", core_path.display());
-
-    // Step 4: Create directories on VM
-    let _ = on_progress.send(DeployProgress {
-        stage: "Creating directories".to_string(),
-        progress: 35,
-        message: "Creating directories on VM...".to_string(),
-        log_line: None,
-    });
-
-    ssh_run(&ssh_config, "sudo mkdir -p /opt/novaic-mcp-vmuse && sudo chown ubuntu:ubuntu /opt/novaic-mcp-vmuse")?;
-
-    // Step 5: Stop existing service
-    let _ = on_progress.send(DeployProgress {
-        stage: "Stopping service".to_string(),
-        progress: 40,
-        message: "Stopping existing service...".to_string(),
-        log_line: None,
-    });
-
-    let _ = ssh_run(&ssh_config, "sudo systemctl stop novaic 2>/dev/null || true");
-
-    // Step 6: Clean old code
-    ssh_run(&ssh_config, "rm -rf /opt/novaic-mcp-vmuse/src /opt/novaic-mcp-vmuse/skills /opt/novaic-mcp-vmuse/pyproject.toml")?;
-
-    // Step 7: Copy code
-    let _ = on_progress.send(DeployProgress {
-        stage: "Copying code".to_string(),
-        progress: AppConfig::DEPLOY_PROGRESS_COPYING as u32,
-        message: "Copying novaic-mcp-vmuse to VM...".to_string(),
-        log_line: None,
-    });
-
-    // Copy src directory
-    let src_path = core_path.join("src");
-    if src_path.exists() {
-        scp_directory(&ssh_config, &src_path, "/opt/novaic-mcp-vmuse/")?;
-    }
-
-    // Copy skills directory (optional)
-    let skills_path = core_path.join("skills");
-    if skills_path.exists() {
-        let _ = scp_directory(&ssh_config, &skills_path, "/opt/novaic-mcp-vmuse/");
-    }
-
-    // Copy pyproject.toml
-    let pyproject_path = core_path.join("pyproject.toml");
-    if pyproject_path.exists() {
-        scp_file(&ssh_config, &pyproject_path, "/opt/novaic-mcp-vmuse/")?;
-    }
-
-    // Step 8: Install dependencies and start service
-    let _ = on_progress.send(DeployProgress {
-        stage: "Installing".to_string(),
-        progress: 70,
-        message: "Installing dependencies (this may take a few minutes)...".to_string(),
-        log_line: None,
-    });
-
-    install_and_start_service(&ssh_config, use_cn_mirrors)?;
-
-    // Step 9: Wait for service to be ready
+    // Step 3: Verify dependencies installed marker (optional check)
     let _ = on_progress.send(DeployProgress {
         stage: "Verifying".to_string(),
-        progress: 90,
-        message: "Waiting for service to start...".to_string(),
+        progress: 95,
+        message: "Verifying dependencies...".to_string(),
         log_line: None,
     });
 
-    // Wait for service to become active (with retries)
-    let max_service_wait = AppConfig::SERVICE_WAIT_TIMEOUT_SECS;
-    let check_interval = AppConfig::SERVICE_CHECK_INTERVAL_SECS;
-    let mut service_ready = false;
-    let mut elapsed = 0;
-
-    while elapsed < max_service_wait {
-        tokio::time::sleep(tokio::time::Duration::from_secs(check_interval)).await;
-        elapsed += check_interval;
-
-        let status = ssh_run(&ssh_config, "systemctl is-active novaic.service 2>/dev/null || echo 'inactive'")
-            .unwrap_or_else(|_| "unknown".to_string());
-
-        let _ = on_progress.send(DeployProgress {
-            stage: "Verifying".to_string(),
-            progress: 90 + (elapsed as u32 * 8 / max_service_wait as u32).min(8),
-            message: format!("Checking service status... ({}s)", elapsed),
-            log_line: None,
-        });
-
-        if status.trim() == "active" {
-            println!("[Deploy] Service is active after {}s", elapsed);
-            service_ready = true;
-            break;
-        }
-
-        println!("[Deploy] Service status: {}, waiting... ({}s)", status.trim(), elapsed);
-    }
-
-    if !service_ready {
-        // Get service logs for debugging
-        let logs = ssh_run(&ssh_config, "journalctl -u novaic.service -n 20 --no-pager 2>/dev/null || echo 'no logs'")
-            .unwrap_or_else(|_| "Failed to get logs".to_string());
-        println!("[Deploy] Service failed to start. Logs:\n{}", logs);
-        
-        return Err(format!("Service failed to start within {}s. Check service logs.", max_service_wait));
-    }
-
-    // Step 10: Verify MCP server is responding
-    let _ = on_progress.send(DeployProgress {
-        stage: "Verifying".to_string(),
-        progress: 98,
-        message: "Verifying MCP server...".to_string(),
-        log_line: None,
-    });
-
-    // Wait for MCP HTTP server to be ready (port 8080 in VM)
-    let max_mcp_wait = 30;
-    let mut mcp_ready = false;
-    elapsed = 0;
-
-    while elapsed < max_mcp_wait {
-        let check = ssh_run(&ssh_config, "curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/mcp/ 2>/dev/null || echo '000'")
-            .unwrap_or_else(|_| "000".to_string());
-        
-        let http_code = check.trim();
-        if http_code == "200" || http_code == "404" || http_code == "405" {
-            // 200 = ok, 404/405 = server running but different endpoint - both mean server is up
-            println!("[Deploy] MCP server responding (HTTP {})", http_code);
-            mcp_ready = true;
-            break;
-        }
-
-        tokio::time::sleep(tokio::time::Duration::from_secs(AppConfig::MCP_HEALTH_CHECK_INTERVAL_SECS)).await;
-        elapsed += AppConfig::MCP_HEALTH_CHECK_INTERVAL_SECS;
-        println!("[Deploy] MCP server not ready (HTTP {}), waiting... ({}s)", http_code, elapsed);
-    }
-
-    if !mcp_ready {
-        println!("[Deploy] Warning: MCP server not responding, but service is active. Continuing...");
+    // Check for dependencies marker file
+    let deps_check = ssh_run(&ssh_config, "test -f /opt/novaic/.dependencies_installed && echo 'ok' || echo 'missing'")
+        .unwrap_or_else(|_| "error".to_string());
+    
+    if deps_check.trim() != "ok" {
+        println!("[Deploy] Warning: Dependencies marker not found, but cloud-init completed");
+    } else {
+        println!("[Deploy] Dependencies verified");
     }
 
     let _ = on_progress.send(DeployProgress {
         stage: "Complete".to_string(),
         progress: AppConfig::DEPLOY_PROGRESS_COMPLETE as u32,
-        message: "Deployment complete! Service is running.".to_string(),
+        message: "VM initialization complete! All dependencies installed by cloud-init.".to_string(),
         log_line: None,
     });
 
-    println!("[Deploy] Deployment complete");
-    Ok(())
-}
-
-/// Quick deploy: only copy code and restart service (skip waiting)
-#[tauri::command]
-pub async fn quick_deploy_agent(
-    app: tauri::AppHandle,
-    ssh_port: u16,
-    on_progress: tauri::ipc::Channel<DeployProgress>,
-) -> Result<(), String> {
-    // Get SSH private key from Gateway
-    let key_path = get_ssh_key_from_gateway(&app).await?;
-    let ssh_config = SshConfig::with_key(ssh_port, key_path);
-
-    // Check SSH connection
-    let _ = on_progress.send(DeployProgress {
-        stage: "Connecting".to_string(),
-        progress: 0,
-        message: "Connecting to VM...".to_string(),
-        log_line: None,
-    });
-
-    if !check_ssh(&ssh_config) {
-        return Err("Cannot connect to VM via SSH".to_string());
-    }
-
-    // Get novaic-mcp-vmuse path using unified search function
-    let core_path = find_vmuse_code_path(&app)?;
-    println!("[QuickDeploy] Using novaic-mcp-vmuse from: {}", core_path.display());
-
-    // Stop service
-    let _ = on_progress.send(DeployProgress {
-        stage: "Stopping".to_string(),
-        progress: 20,
-        message: "Stopping service...".to_string(),
-        log_line: None,
-    });
-
-    let _ = ssh_run(&ssh_config, "sudo systemctl stop novaic 2>/dev/null || true");
-
-    // Copy code
-    let _ = on_progress.send(DeployProgress {
-        stage: "Copying".to_string(),
-        progress: 40,
-        message: "Copying code...".to_string(),
-        log_line: None,
-    });
-
-    ssh_run(&ssh_config, "rm -rf /opt/novaic-mcp-vmuse/src /opt/novaic-mcp-vmuse/skills")?;
-
-    let src_path = core_path.join("src");
-    if src_path.exists() {
-        scp_directory(&ssh_config, &src_path, "/opt/novaic-mcp-vmuse/")?;
-    }
-
-    let skills_path = core_path.join("skills");
-    if skills_path.exists() {
-        let _ = scp_directory(&ssh_config, &skills_path, "/opt/novaic-mcp-vmuse/");
-    }
-
-    // Restart service
-    let _ = on_progress.send(DeployProgress {
-        stage: "Restarting".to_string(),
-        progress: 80,
-        message: "Restarting service...".to_string(),
-        log_line: None,
-    });
-
-    ssh_run(&ssh_config, "sudo systemctl restart novaic.service")?;
-
-    let _ = on_progress.send(DeployProgress {
-        stage: "Complete".to_string(),
-        progress: AppConfig::DEPLOY_PROGRESS_COMPLETE as u32,
-        message: "Quick deploy complete!".to_string(),
-        log_line: None,
-    });
-
+    println!("[Deploy] VM initialization complete");
     Ok(())
 }

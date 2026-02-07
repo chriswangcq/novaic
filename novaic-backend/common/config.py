@@ -20,6 +20,11 @@ class ServiceConfig:
     TOOLS_SERVER_PORT = int(os.getenv("TOOLS_SERVER_PORT", "19998"))
     TOOLS_SERVER_URL = os.getenv("TOOLS_SERVER_URL", f"http://{TOOLS_SERVER_HOST}:{TOOLS_SERVER_PORT}")
     
+    # VMControl (Rust service)
+    VMCONTROL_HOST = os.getenv("VMCONTROL_HOST", "127.0.0.1")
+    VMCONTROL_PORT = int(os.getenv("VMCONTROL_PORT", "8080"))
+    VMCONTROL_URL = os.getenv("VMCONTROL_URL", f"http://{VMCONTROL_HOST}:{VMCONTROL_PORT}")
+    
     # Timeouts
     TASK_TIMEOUT = int(os.getenv("TASK_TIMEOUT", "60"))
     SAGA_TIMEOUT = int(os.getenv("SAGA_TIMEOUT", "300"))
@@ -68,10 +73,15 @@ class ServiceConfig:
     DB_TRANSACTION_TIMEOUT_LONG = float(os.getenv("DB_TRANSACTION_TIMEOUT_LONG", "15.0"))
     
     # VM 配置
-    VM_WEBSOCKIFY_TIMEOUT = int(os.getenv("VM_WEBSOCKIFY_TIMEOUT", "60"))
     VM_MCP_TIMEOUT = int(os.getenv("VM_MCP_TIMEOUT", "120"))
     SSH_QUICK_TIMEOUT = int(os.getenv("SSH_QUICK_TIMEOUT", "3"))
     SSH_NORMAL_TIMEOUT = int(os.getenv("SSH_NORMAL_TIMEOUT", "10"))
+    
+    # ===== VMUSE 配置 =====
+    
+    # 使用传统 VMUSE MCP 还是新的 vmcontrol 适配器
+    USE_LEGACY_VMUSE = os.getenv("USE_LEGACY_VMUSE", "false").lower() == "true"
+    VMUSE_MCP_URL = os.getenv("VMUSE_MCP_URL", "http://127.0.0.1:8080/mcp")
     
     # ===== LLM 配置 =====
     
@@ -108,6 +118,9 @@ class ServiceConfig:
         
         if not (1024 <= cls.TOOLS_SERVER_PORT <= 65535):
             errors.append(f"Invalid TOOLS_SERVER_PORT: {cls.TOOLS_SERVER_PORT}")
+        
+        if not (1024 <= cls.VMCONTROL_PORT <= 65535):
+            errors.append(f"Invalid VMCONTROL_PORT: {cls.VMCONTROL_PORT}")
         
         # 验证超时值
         if cls.TASK_TIMEOUT <= 0:

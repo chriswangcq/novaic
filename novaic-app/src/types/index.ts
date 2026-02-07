@@ -242,7 +242,6 @@ export interface VmConfig {
   mcp_vm_port: number;   // VM内部MCP端口 (固定 8080)
   vnc_vm_port: number;   // VM内部VNC端口 (固定 5900)
   ws_vm_port: number;    // VM内部WebSocket端口 (固定 6080)
-  agent_index: number;   // Agent索引，用于端口分配
 }
 
 // UI display status (derived from setup_complete + VM status)

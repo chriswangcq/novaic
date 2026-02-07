@@ -150,7 +150,9 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     processed INTEGER DEFAULT 0,     -- 0=not processed, 1=processed
     
     -- v18: Event-driven Monitor - message delivery status
-    status TEXT DEFAULT 'sent'       -- 'sending' (pending), 'sent' (delivered/confirmed)
+    status TEXT DEFAULT 'sent',      -- 'sending' (pending), 'sent' (delivered/confirmed)
+    
+    FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_chat_messages_agent ON chat_messages(agent_id);
@@ -170,7 +172,8 @@ CREATE TABLE IF NOT EXISTS pending_questions (
     options TEXT,
     message_id TEXT,
     timestamp TEXT NOT NULL,
-    created_at TEXT DEFAULT (datetime('now'))
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_pending_questions_agent ON pending_questions(agent_id);
@@ -203,7 +206,8 @@ CREATE TABLE IF NOT EXISTS execution_logs (
     timestamp TEXT NOT NULL,
     data TEXT,
     created_at TEXT DEFAULT (datetime('now')),
-    updated_at TEXT                                -- v23: Last update time
+    updated_at TEXT,                               -- v23: Last update time
+    FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_execution_logs_agent ON execution_logs(agent_id);
@@ -221,7 +225,8 @@ CREATE TABLE IF NOT EXISTS agent_runtime_state (
     key TEXT NOT NULL,
     value TEXT NOT NULL,
     updated_at TEXT DEFAULT (datetime('now')),
-    PRIMARY KEY (agent_id, key)
+    PRIMARY KEY (agent_id, key),
+    FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_agent_runtime_state_agent ON agent_runtime_state(agent_id);
@@ -252,7 +257,8 @@ CREATE TABLE IF NOT EXISTS tasks (
     
     parent_session_key TEXT,             -- Session that created this task
     agent_id TEXT DEFAULT 'default',     -- Agent that owns this task
-    notify_on TEXT DEFAULT '["complete", "error"]'  -- JSON: events to notify on
+    notify_on TEXT DEFAULT '["complete", "error"]',  -- JSON: events to notify on
+    FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);

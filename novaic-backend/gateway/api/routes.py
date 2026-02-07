@@ -34,15 +34,25 @@ router = APIRouter()
 # ==================== Health ====================
 
 @router.get("/health", response_model=HealthResponse)
-def health_check():
+async def health_check():
     """Health check endpoint - v2.7: simplified for per-Runtime architecture"""
+    # Check vmcontrol service health
+    vmcontrol_healthy = False
+    try:
+        from gateway.clients.vmcontrol import get_vmcontrol_client
+        client = get_vmcontrol_client()
+        vmcontrol_healthy = await client.health_check()
+    except Exception as e:
+        print(f"[Health] vmcontrol check failed: {e}")
+    
     # 简化health check，避免DB访问导致的锁竞争
     return HealthResponse(
         status="healthy",
         version="0.3.0",
         agent_initialized=True,  # 简化：不查询DB
         mcp_healthy=False,
-        tools_count=0
+        tools_count=0,
+        vmcontrol_healthy=vmcontrol_healthy
     )
 
 
@@ -875,70 +885,57 @@ def _check_port(port: int, host: str = "127.0.0.1", timeout: float = 0.5) -> boo
     except:
         return False
 
-def _get_vnc_ports():
-    """Get VNC/WebSocket ports from first agent config (or defaults)"""
-    from gateway.config.agents import get_agent_config_manager, allocate_ports_for_agent
-    
-    try:
-        agent_mgr = get_agent_config_manager()
-        agents = agent_mgr.list_agents()
-        if agents:
-            first_agent = agents[0]
-            return first_agent.vm.ports.vnc, first_agent.vm.ports.websocket
-    except Exception:
-        pass
-    
-    # Fallback to Agent 0 defaults
-    ports = allocate_ports_for_agent(0)
-    return ports.vnc, ports.websocket
 
 
 @router.get("/vnc/status")
 def vnc_status():
-    """Get VNC status by checking ports"""
-    vnc_port, ws_port = _get_vnc_ports()
-    vnc_ready = _check_port(vnc_port)
-    ws_ready = _check_port(ws_port)
-    
-    return {
-        "running": vnc_ready,
-        "websockify_running": ws_ready,
-        "port": vnc_port if vnc_ready else None,
-        "ws_port": ws_port if ws_ready else None,
-        "ready": vnc_ready and ws_ready
-    }
+    """Get VNC status - check vmcontrol service health"""
+    try:
+        from gateway.clients.vmcontrol import get_vmcontrol_client
+        import asyncio
+        client = get_vmcontrol_client()
+        # Check if vmcontrol service is healthy
+        healthy = asyncio.run(client.health_check())
+        return {
+            "running": healthy,
+            "ready": healthy,
+            "note": "VNC is provided via vmcontrol WebSocket (ws://localhost:8080/api/vms/{agent_id}/vnc)"
+        }
+    except Exception as e:
+        return {
+            "running": False,
+            "ready": False,
+            "error": str(e)
+        }
 
 
 @router.post("/vnc/start")
 def start_vnc():
     """
-    Start VNC - in the current architecture, VNC runs inside the VM
-    which is managed by Tauri. This endpoint just checks if VNC is ready.
+    Start VNC - in the new architecture, VNC is provided via QEMU native VNC
+    and exposed through vmcontrol WebSocket proxy.
     """
-    vnc_port, ws_port = _get_vnc_ports()
-    vnc_ready = _check_port(vnc_port)
-    ws_ready = _check_port(ws_port)
-    
-    if vnc_ready and ws_ready:
+    try:
+        from gateway.clients.vmcontrol import get_vmcontrol_client
+        import asyncio
+        client = get_vmcontrol_client()
+        healthy = asyncio.run(client.health_check())
+        
+        if healthy:
+            return {
+                "status": "running",
+                "message": "VNC is available via vmcontrol WebSocket",
+                "note": "Connect to ws://localhost:8080/api/vms/{agent_id}/vnc"
+            }
+        else:
+            return {
+                "status": "waiting",
+                "message": "vmcontrol service not ready. VM may still be starting."
+            }
+    except Exception as e:
         return {
-            "status": "running",
-            "message": "VNC and websockify are already running",
-            "port": vnc_port,
-            "ws_port": ws_port
-        }
-    elif vnc_ready:
-        return {
-            "status": "started",
-            "message": "VNC is running, websockify may still be starting",
-            "port": vnc_port,
-            "ws_port": ws_port
-        }
-    else:
-        return {
-            "status": "waiting",
-            "message": "VNC not yet available. VM may still be starting.",
-            "port": vnc_port,
-            "ws_port": ws_port
+            "status": "error",
+            "message": f"Failed to check VNC status: {str(e)}"
         }
 
 

@@ -10,10 +10,10 @@ Tools Server - 工具定义
                      subagent_spawn, subagent_query, subagent_cancel)
 - chat: 6 个工具 (chat_reply, chat_ask, chat_notify, chat_show_image, chat_history, chat_get_message)
 - web: 2 个工具 (web_search, web_fetch)
-- qemu: 6 个工具 (qemu_ssh_exec, qemu_status, qemu_start_vm, qemu_restart_vm, qemu_shutdown_vm, qemu_deploy_vmuse_code)
+- qemu: 5 个工具 (qemu_ssh_exec, qemu_status, qemu_start_vm, qemu_restart_vm, qemu_shutdown_vm)
 - task: 5 个工具 (task_async, task_query, task_list, task_cancel, task_summary)
 
-总计: 36 个工具
+总计: 35 个工具
 """
 
 from typing import Dict, List, Any, Optional
@@ -600,26 +600,6 @@ QEMU_TOOLS: List[Dict[str, Any]] = [
             "required": []
         }
     },
-    {
-        "name": "qemu_deploy_vmuse_code",
-        "description": "Deploy novaic-mcp-vmuse code to VM. Checks cloud-init status, copies code to /opt/novaic-mcp-vmuse/, and starts novaic.service. Returns wait status if cloud-init is not complete.",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "restart_service": {
-                    "type": "boolean",
-                    "description": "Whether to restart novaic service after deployment (default: true)",
-                    "default": True
-                },
-                "force": {
-                    "type": "boolean",
-                    "description": "Force deployment even if cloud-init is not complete (default: false)",
-                    "default": False
-                }
-            },
-            "required": []
-        }
-    },
 ]
 
 
@@ -757,13 +737,29 @@ def get_all_tools() -> List[Dict[str, Any]]:
     """
     Get all tools as a flat list (for LLM function calling).
     
+    Includes both standard builtin tools and VM tools from vmuse_adapter.
+    
     Returns:
         List of tool definitions in OpenAI function calling format.
         Each tool has: name, description, inputSchema
     """
     tools = []
+    
+    # 添加标准内置工具
     for category_tools in BUILTIN_TOOLS.values():
         tools.extend(category_tools)
+    
+    # 添加 VM 工具（从 vmuse_adapter）
+    try:
+        from gateway.clients.vmuse_adapter import get_vmuse_adapter
+        adapter = get_vmuse_adapter()
+        vm_tools = adapter.list_tools_mcp_format()
+        tools.extend(vm_tools)
+    except Exception as e:
+        # 如果 vmuse_adapter 不可用，仅记录警告，不影响其他工具
+        import logging
+        logging.getLogger(__name__).warning(f"Failed to load VM tools: {e}")
+    
     return tools
 
 
@@ -771,13 +767,33 @@ def get_tool_by_name(name: str) -> Optional[Dict[str, Any]]:
     """
     Get a tool definition by name.
     
+    Supports both standard builtin tools and VM tools from vmuse_adapter.
+    
     Args:
-        name: Tool name (e.g., 'memory_save', 'chat_reply')
+        name: Tool name (e.g., 'memory_save', 'chat_reply', 'browser_navigate')
         
     Returns:
         Tool definition dict or None if not found
     """
-    return _TOOL_BY_NAME.get(name)
+    # 首先检查标准内置工具
+    tool = _TOOL_BY_NAME.get(name)
+    if tool:
+        return tool
+    
+    # 如果不是标准工具，检查是否是 VM 工具
+    try:
+        from gateway.clients.vmuse_adapter import get_vmuse_adapter
+        adapter = get_vmuse_adapter()
+        vm_tools = adapter.list_tools_mcp_format()
+        
+        # 在 VM 工具列表中查找
+        for vm_tool in vm_tools:
+            if vm_tool.get("name") == name:
+                return vm_tool
+    except Exception:
+        pass  # 忽略错误，返回 None
+    
+    return None
 
 
 def get_tools_by_category(category: str) -> List[Dict[str, Any]]:

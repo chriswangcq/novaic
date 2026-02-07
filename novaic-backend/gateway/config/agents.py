@@ -19,33 +19,12 @@ import platform
 
 class PortConfig(BaseModel):
     """
-    Complete port configuration for an agent.
+    Port configuration for an agent - only SSH is needed.
     
-    Each agent gets a contiguous block of 20 ports starting from BASE_PORT + agent_index * 20.
-    
-    Port layout (offsets 0-19):
-        0: vm        - VM内MCP服务 (vmuse)
-        1: session   - 会话管理MCP
-        2: local     - 本地文件MCP
-        3: memory    - 记忆管理MCP
-        4: chat      - 用户通信MCP
-        5: qemudebug - QEMU调试MCP
-        6: vnc       - VNC服务
-        7: websocket - noVNC WebSocket
-        8: ssh       - SSH转发
-        9-19: reserved - 预留扩展
+    Each agent gets 1 port starting from BASE_PORT + agent_index.
+    SSH is used for VM deployment and debugging.
     """
-    # MCP服务端口
-    vm: int = 20000           # VM内MCP (vmuse)
-    session: int = 20001      # 会话管理MCP
-    local: int = 20002        # 本地文件MCP
-    memory: int = 20003       # 记忆管理MCP
-    chat: int = 20004         # 用户通信MCP
-    qemudebug: int = 20005    # QEMU调试MCP
-    # VM连接端口
-    vnc: int = 20006          # VNC服务
-    websocket: int = 20007    # noVNC WebSocket
-    ssh: int = 20008          # SSH转发
+    ssh: int = 20000  # SSH port for VM access
 
 
 class VmConfig(BaseModel):
@@ -57,12 +36,6 @@ class VmConfig(BaseModel):
     memory: str = "4096"   # Memory in MB
     cpus: int = 4          # CPU cores
     ports: PortConfig = Field(default_factory=PortConfig)
-    # VM 内部端口 (固定，通过QEMU端口转发映射到宿主机动态端口)
-    mcp_vm_port: int = 8080    # VM 内部 MCP 端口 (固定)
-    vnc_vm_port: int = 5900    # VM 内部 VNC 端口 (固定)
-    ws_vm_port: int = 6080     # VM 内部 WebSocket 端口 (固定)
-    # 兼容性字段 (用于Agent索引计算)
-    agent_index: int = 0       # Agent索引，用于端口分配
 
 
 class AICAgent(BaseModel):
@@ -86,25 +59,16 @@ class AgentsConfig(BaseModel):
 
 # Centralized port allocation configuration
 # Port layout:
-#   19999         - Gateway (固定)
-#   20000-21999   - Agents (100个 × 20端口)
+#   19999       - Gateway (固定)
+#   20000-20099 - Agents (100个 × 1端口 for SSH)
 GATEWAY_PORT = 19999        # Gateway 固定端口
 BASE_PORT = 20000           # Agent 基础端口号
-PORTS_PER_AGENT = 20        # 每个Agent分配的端口数量
+PORTS_PER_AGENT = 1         # 每个Agent分配的端口数量 (只有SSH)
 MAX_AGENTS = 100            # 最大支持的Agent数量
 
 # 服务端口偏移量 (相对于Agent基础端口)
 SERVICE_OFFSETS = {
-    "vm": 0,           # VM内MCP (vmuse)
-    "session": 1,      # 会话管理MCP
-    "local": 2,        # 本地文件MCP
-    "memory": 3,       # 记忆管理MCP
-    "chat": 4,         # 用户通信MCP
-    "qemudebug": 5,    # QEMU调试MCP
-    "vnc": 6,          # VNC服务
-    "websocket": 7,    # noVNC WebSocket
-    "ssh": 8,          # SSH转发
-    # 9-19: 预留扩展
+    "ssh": 0,          # SSH port (only port needed)
 }
 
 
@@ -112,16 +76,19 @@ def get_agent_port(agent_index: int, service: str) -> int:
     """
     Calculate the port for a specific service of an agent.
     
+    NOTE: This function is for internal use during agent creation only.
+    Runtime code should use the port configuration stored in the database.
+    
     Args:
         agent_index: Agent index (0, 1, 2, ...)
-        service: Service name (vm, session, local, memory, chat, qemudebug, vnc, websocket, ssh)
+        service: Service name (only "ssh" is supported)
     
     Returns:
         Port number
         
     Example:
-        Agent 0: vm=20000, session=20001, ..., ssh=20008
-        Agent 1: vm=20020, session=20021, ..., ssh=20028
+        Agent 0: ssh=20000
+        Agent 1: ssh=20001
     """
     if service not in SERVICE_OFFSETS:
         raise ValueError(f"Unknown service: {service}. Valid services: {list(SERVICE_OFFSETS.keys())}")
@@ -134,24 +101,20 @@ def get_agent_port(agent_index: int, service: str) -> int:
 
 def allocate_ports_for_agent(agent_index: int) -> PortConfig:
     """
-    Allocate all ports for an agent based on its index.
+    Allocate ports for an agent based on its index.
+    
+    NOTE: This function is for internal use during agent creation only.
+    It should not be called at runtime. Runtime code should use the
+    port configuration stored in the database.
     
     Args:
         agent_index: Agent index (0, 1, 2, ...)
     
     Returns:
-        PortConfig with all ports assigned
+        PortConfig with SSH port assigned
     """
     base = BASE_PORT + agent_index * PORTS_PER_AGENT
     return PortConfig(
-        vm=base + SERVICE_OFFSETS["vm"],
-        session=base + SERVICE_OFFSETS["session"],
-        local=base + SERVICE_OFFSETS["local"],
-        memory=base + SERVICE_OFFSETS["memory"],
-        chat=base + SERVICE_OFFSETS["chat"],
-        qemudebug=base + SERVICE_OFFSETS["qemudebug"],
-        vnc=base + SERVICE_OFFSETS["vnc"],
-        websocket=base + SERVICE_OFFSETS["websocket"],
         ssh=base + SERVICE_OFFSETS["ssh"],
     )
 
@@ -166,7 +129,7 @@ from .agents_db import (
     get_agent_config_manager_db,
 )
 
-# Re-export for backward compatibility
+# Public exports
 __all__ = [
     # Constants
     "GATEWAY_PORT",

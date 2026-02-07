@@ -2,11 +2,13 @@
 Data Migration Script
 
 Migrates existing file-based data to SQLite database.
+Also includes schema migrations for foreign key constraints.
 """
 
 import os
 import json
 import logging
+import sqlite3
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, Any, List
@@ -251,6 +253,38 @@ def migrate_sessions(db: Database, data_dir: Path) -> bool:
     return migrated > 0
 
 
+def migrate_add_foreign_keys(db: Database) -> bool:
+    """Add foreign key constraints to existing tables.
+    
+    Note: SQLite doesn't support ADD CONSTRAINT directly,
+    so we document the new schema and apply on fresh installs.
+    For existing databases, foreign keys will be enforced by application logic.
+    """
+    try:
+        # Check if migration is already applied by examining table schema
+        cursor = db.conn.execute("PRAGMA foreign_key_list(chat_messages)")
+        existing_fks = cursor.fetchall()
+        
+        if existing_fks:
+            logger.info("[Migration] Foreign key constraints already exist, skipping")
+            return True
+        
+        logger.warning("[Migration] Foreign key migration requires manual intervention")
+        logger.warning("[Migration] New installs will use schema.py with foreign keys")
+        logger.warning("[Migration] Existing databases: foreign keys will be enforced by application logic")
+        
+        # For existing databases, we can't easily add foreign keys without recreating tables
+        # The safest approach is:
+        # 1. New installs get foreign keys from schema.py
+        # 2. Existing installs rely on application logic in delete_agent()
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"[Migration] Foreign key migration check failed: {e}")
+        return False
+
+
 def run_migration(db: Optional[Database] = None) -> Dict[str, bool]:
     """Run all migrations."""
     if db is None:
@@ -265,6 +299,7 @@ def run_migration(db: Optional[Database] = None) -> Dict[str, bool]:
         "config": migrate_config(db, data_dir),
         "agents": migrate_agents(db, data_dir),
         "sessions": migrate_sessions(db, data_dir),
+        "foreign_keys": migrate_add_foreign_keys(db),
     }
     
     logger.info(f"[Migration] Migration complete: {results}")
