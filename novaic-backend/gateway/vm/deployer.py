@@ -236,7 +236,7 @@ fi
 # Extract new version
 mkdir -p novaic-mcp-vmuse
 cd novaic-mcp-vmuse
-tar -xzf /tmp/vmuse.tar.gz
+tar -xzf /tmp/vmuse.tar.gz --strip-components=1
 
 # Install Python dependencies
 /opt/novaic/venv/bin/pip install -e . --quiet
@@ -475,7 +475,7 @@ if [ -d "novaic-mcp-vmuse" ]; then
 fi
 mkdir -p novaic-mcp-vmuse
 cd novaic-mcp-vmuse
-tar -xzf /tmp/vmuse.tar.gz
+tar -xzf /tmp/vmuse.tar.gz --strip-components=1
 /opt/novaic/venv/bin/pip install -e . --quiet
 rm -f /tmp/vmuse.tar.gz
 echo "Installation completed"
