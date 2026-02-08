@@ -331,7 +331,8 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
           checkSetupStatusRef.current = null;
         }
         setSetupStatus(null);
-        setStatus('unknown'); // 会触发正常 VNC 连接
+        // 只在状态变化时更新，避免重复触发 useEffect
+        setStatus(prev => prev === 'unknown' ? prev : 'unknown');
         return 'complete';
       } else if (setupStatusData.phase === 'error') {
         console.error('[VNC] Initialization error:', setupStatusData.error);
@@ -340,7 +341,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
           checkSetupStatusRef.current = null;
         }
         setSetupStatus(setupStatusData);
-        setStatus('error');
+        setStatus(prev => prev === 'error' ? prev : 'error');
         setErrorMsg(setupStatusData.error || 'Initialization failed');
         return 'error';
       } else {
@@ -352,7 +353,8 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
           }
           return setupStatusData;
         });
-        setStatus('initializing');
+        // 只在状态不是 initializing 时才更新，避免重复设置
+        setStatus(prev => prev === 'initializing' ? prev : 'initializing');
         return 'initializing';
       }
     } catch (e) {
