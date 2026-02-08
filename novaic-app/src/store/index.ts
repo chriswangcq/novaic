@@ -529,10 +529,22 @@ export const useAppStore = create<AppStore>((set, get) => ({
   loadAgents: async () => {
     try {
       const response = await api.listAgents();
-      const { currentAgentId, selectAgent, isInitialized } = get();
+      const { currentAgentId, selectAgent, isInitialized, agents: currentAgents } = get();
       
-      // 更新 agents 列表
-      set({ agents: response.agents });
+      // 只有在 agents 真正变化时才更新，避免不必要的重渲染
+      const agentsChanged = 
+        currentAgents.length !== response.agents.length ||
+        currentAgents.some((a, i) => {
+          const newAgent = response.agents[i];
+          return !newAgent || a.id !== newAgent.id || a.name !== newAgent.name || a.created_at !== newAgent.created_at;
+        });
+      
+      if (agentsChanged) {
+        set({ agents: response.agents });
+        console.log('[Store] Agents changed, updating:', response.agents.length);
+      } else {
+        console.log('[Store] Agents unchanged, skipping update');
+      }
       console.log('[Store] Loaded agents:', response.agents.length);
       
       // 如果 agent 列表为空，清空所有状态

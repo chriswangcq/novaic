@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useAppStore } from '../../store';
 import { Monitor, RefreshCw, Play, Loader2, Lock, Unlock, Copy, Check } from 'lucide-react';
 import { vmService } from '../../services/vm';
@@ -45,8 +45,11 @@ interface VNCViewProps {
 export function VNCView({ isThumbnail = false }: VNCViewProps) {
   const { setVncConnected, vncLocked, setVncLocked, currentAgentId, agents } = useAppStore();
   
-  // 获取当前 agent 的信息
-  const currentAgent = agents.find(a => a.id === currentAgentId);
+  // 获取当前 agent 的信息 - 使用 useMemo 避免 agents 数组引用变化导致的重新计算
+  const currentAgent = useMemo(() => 
+    agents.find(a => a.id === currentAgentId), 
+    [agents, currentAgentId]
+  );
   const [status, setStatus] = useState<VncStatus>('unknown');
   const [errorMsg, setErrorMsg] = useState('');
   const [wsReady, setWsReady] = useState(false);
@@ -347,8 +350,12 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
       } else {
         // 正在初始化中 - 只在状态真正变化时更新，避免不必要的重渲染
         setSetupStatus(prev => {
-          // 避免相同进度的重复更新
-          if (prev && prev.phase === setupStatusData.phase && prev.progress === setupStatusData.progress) {
+          // 避免相同进度的重复更新 - 深度比较关键字段
+          if (prev && 
+              prev.phase === setupStatusData.phase && 
+              prev.progress === setupStatusData.progress &&
+              prev.message === setupStatusData.message &&
+              JSON.stringify(prev.steps) === JSON.stringify(setupStatusData.steps)) {
             return prev;
           }
           return setupStatusData;
