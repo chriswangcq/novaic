@@ -259,6 +259,42 @@ async def get_tools(runtime_id: str):
         # 获取内置工具
         builtin_tools = get_all_tools()
         
+        # Phase 5: Per-agent tool filtering
+        agent_id = getattr(runtime, "agent_id", None)
+        if agent_id:
+            try:
+                import httpx
+                gateway_url = os.environ.get("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
+                with httpx.Client(timeout=5.0, trust_env=False) as client:
+                    resp = client.get(f"{gateway_url}/api/agents/{agent_id}/tools-config")
+                    if resp.status_code == 200:
+                        config = resp.json()
+                        enabled_cats = config.get("enabled_tool_categories", [])
+                        disabled = set(config.get("disabled_tools", []))
+                        
+                        if enabled_cats or disabled:
+                            from tools_server.tools import BUILTIN_TOOLS
+                            filtered = []
+                            for tool in builtin_tools:
+                                tool_name = tool.get("name", "")
+                                # Check category filter
+                                if enabled_cats:
+                                    tool_in_enabled = False
+                                    for cat, cat_tools in BUILTIN_TOOLS.items():
+                                        if cat in enabled_cats:
+                                            if any(t["name"] == tool_name for t in cat_tools):
+                                                tool_in_enabled = True
+                                                break
+                                    if not tool_in_enabled:
+                                        continue
+                                # Check disabled list
+                                if tool_name in disabled:
+                                    continue
+                                filtered.append(tool)
+                            builtin_tools = filtered
+            except Exception as e:
+                logger.warning(f"[ToolsAPI] Failed to filter tools for agent {agent_id}: {e}")
+        
         # 获取外部工具（从 RuntimeManager 的发现结果）
         external_tools = manager.get_external_tools(runtime_id)
         

@@ -10,6 +10,7 @@ Backend v2 架构由以下组件构成：
   - Task Worker: 通用任务执行器
   - Saga Worker: Saga 流程编排
   - Health Worker: 监控并回收超时任务/Saga
+  - Scheduler Worker: 定时唤醒 sleeping agents
   - VMControl: VM 管理服务 (Rust)
 
 所有 Worker 通过 Gateway 和 Queue Service 通信。
@@ -22,6 +23,7 @@ Usage:
     novaic-backend task-worker --gateway-url URL --queue-service-url URL [--num-workers N]
     novaic-backend saga-worker --gateway-url URL --queue-service-url URL [--max-concurrent N]
     novaic-backend health --queue-service-url URL
+    novaic-backend scheduler --gateway-url URL
     novaic-backend vmcontrol [--port PORT] [--host HOST]
 
 v2.0: Saga/Task Architecture 替代旧的 Master/Worker/Launcher/Collector 架构
@@ -52,6 +54,7 @@ Usage:
     novaic-backend task-worker [options]   Backend 组件: Task Worker (任务执行)
     novaic-backend saga-worker [options]   Backend 组件: Saga Worker (流程编排)
     novaic-backend health [options]        Backend 组件: Health Worker (超时回收)
+    novaic-backend scheduler [options]     Backend 组件: Scheduler Worker (定时唤醒)
     novaic-backend vmcontrol [options]     Backend 组件: VMControl (VM 管理服务)
 
 Gateway options:
@@ -84,6 +87,10 @@ Saga Worker options:
 Health Worker options:
     --queue-service-url URL Queue Service URL (default: http://127.0.0.1:19997)
 
+Scheduler Worker options:
+    --gateway-url URL       Gateway URL (default: http://127.0.0.1:19999)
+    --check-interval SECS   Check interval in seconds (default: 10.0)
+
 VMControl options:
     --port PORT         Port for VMControl (default: 8080)
     --host HOST         Host to bind to (default: 127.0.0.1)
@@ -97,6 +104,7 @@ Examples:
     novaic-backend task-worker --gateway-url http://127.0.0.1:19999 --queue-service-url http://127.0.0.1:19997
     novaic-backend saga-worker --gateway-url http://127.0.0.1:19999 --queue-service-url http://127.0.0.1:19997
     novaic-backend health --queue-service-url http://127.0.0.1:19997
+    novaic-backend scheduler --gateway-url http://127.0.0.1:19999
     novaic-backend vmcontrol --port 8080
 """)
 
@@ -306,6 +314,38 @@ def run_health():
     print("[health] Shutdown complete")
 
 
+def run_scheduler():
+    """Run the Scheduler Worker service (scheduled agent wake-up)."""
+    import argparse
+    import signal
+    
+    parser = argparse.ArgumentParser(description="NovAIC Scheduler Worker Service")
+    parser.add_argument("--gateway-url", default=ServiceConfig.GATEWAY_URL, help="Gateway URL")
+    parser.add_argument("--check-interval", type=float, default=10.0, help="Check interval in seconds")
+    args = parser.parse_args()
+    
+    from task_queue.workers.scheduler_worker_sync import SchedulerWorkerSync
+    
+    worker = SchedulerWorkerSync(
+        gateway_url=args.gateway_url,
+        check_interval=args.check_interval,
+    )
+    
+    def shutdown_handler(signum, frame):
+        print("[scheduler] Received shutdown signal")
+        worker.shutdown()
+    
+    signal.signal(signal.SIGTERM, shutdown_handler)
+    signal.signal(signal.SIGINT, shutdown_handler)
+    
+    print(f"[scheduler] Starting...")
+    print(f"[scheduler] Gateway URL: {args.gateway_url}")
+    print(f"[scheduler] Check interval: {args.check_interval}s")
+    
+    worker.run()
+    print("[scheduler] Shutdown complete")
+
+
 def run_vmcontrol():
     """Run the VMControl service (Rust binary)."""
     import argparse
@@ -506,7 +546,7 @@ def main():
     
     # Setup file logging for worker processes (stdout is null in binary mode)
     # Gateway, Tools Server, Queue Service handle their own logging
-    if mode in ("watchdog", "task-worker", "saga-worker", "health"):
+    if mode in ("watchdog", "task-worker", "saga-worker", "health", "scheduler"):
         _setup_worker_logging(mode)
     
     if mode == "gateway":
@@ -523,6 +563,8 @@ def main():
         run_saga_worker()
     elif mode == "health":
         run_health()
+    elif mode == "scheduler":
+        run_scheduler()
     elif mode == "vmcontrol":
         run_vmcontrol()
     elif mode in ["--help", "-h", "help"]:

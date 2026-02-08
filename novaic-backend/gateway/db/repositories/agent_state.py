@@ -59,7 +59,7 @@ class AgentStateRepository:
             agent_id: Agent ID
             state: State value ('sleep' or 'awake')
         """
-        now = datetime.now().isoformat()
+        now = datetime.utcnow().isoformat()
         
         with self.db.transaction("agent", resource_id=agent_id):
             self.db.execute(
@@ -85,7 +85,7 @@ class AgentStateRepository:
             reason: Reason for sleeping
             wake_triggers: List of wake trigger conditions
         """
-        now = datetime.now().isoformat()
+        now = datetime.utcnow().isoformat()
         
         with self.db.transaction("agent", resource_id=agent_id):
             self.db.execute(
@@ -109,7 +109,7 @@ class AgentStateRepository:
         Args:
             agent_id: Agent ID
         """
-        now = datetime.now().isoformat()
+        now = datetime.utcnow().isoformat()
         
         with self.db.transaction("agent", resource_id=agent_id):
             self.db.execute(
@@ -131,7 +131,7 @@ class AgentStateRepository:
         Args:
             agent_id: Agent ID
         """
-        now = datetime.now().isoformat()
+        now = datetime.utcnow().isoformat()
         
         with self.db.transaction("agent", resource_id=agent_id):
             self.db.execute(
@@ -187,7 +187,7 @@ class AgentStateRepository:
         Args:
             agent_id: Agent ID
         """
-        now = datetime.now().isoformat()
+        now = datetime.utcnow().isoformat()
         
         with self.db.transaction("agent", resource_id=agent_id):
             self.db.execute(

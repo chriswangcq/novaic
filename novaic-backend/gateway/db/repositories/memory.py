@@ -30,7 +30,7 @@ class MemoryRepository:
         namespace: str = "default"
     ) -> Dict[str, Any]:
         """Save a memory value (upsert)."""
-        now = datetime.now().isoformat()
+        now = datetime.utcnow().isoformat()
         value_json = json.dumps(value, ensure_ascii=False)
         
         # Use INSERT OR REPLACE for upsert
@@ -143,7 +143,7 @@ class MemoryRepository:
         status: str = "completed"
     ) -> Dict[str, Any]:
         """Log a task action."""
-        now = datetime.now().isoformat()
+        now = datetime.utcnow().isoformat()
         
         with self.db.transaction(lock_type="agent", resource_id=agent_id):
             self.db.execute(

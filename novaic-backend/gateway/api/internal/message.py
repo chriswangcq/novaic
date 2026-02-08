@@ -200,7 +200,7 @@ def mark_messages_read(data: Dict[str, Any]):
                 "message_id": msg_id,
                 "status": "read",
                 "agent_id": agent_id,  # Include agent_id for SSE filtering
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.utcnow().isoformat(),
             }
             for queue in _chat_subscribers.values():
                 try:
@@ -252,7 +252,7 @@ def mark_messages_processed(data: Dict[str, Any]):
                 "message_id": msg_id,
                 "status": "read",
                 "agent_id": agent_id,  # Include agent_id for SSE filtering
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.utcnow().isoformat(),
             }
             for queue in _chat_subscribers.values():
                 try:
@@ -263,6 +263,45 @@ def mark_messages_processed(data: Dict[str, Any]):
         print(f"[Internal] Failed to broadcast status update: {e}")
     
     return {"status": "ok"}
+
+
+@router.post("/messages/inject-wake")
+def inject_wake_message(data: Dict[str, Any]):
+    """Inject a SYSTEM_WAKE message to trigger agent wake-up.
+    
+    Used by SchedulerWorker to wake sleeping agents via the normal
+    Watchdog -> MessageProcess flow.
+    
+    Args:
+        data: {
+            "agent_id": str - Agent to wake
+            "metadata": dict - Wake metadata (wake_reason, handoff_notes, etc.)
+        }
+    """
+    from gateway.db.repositories.message import MessageRepository
+    
+    db = get_db()
+    repo = MessageRepository(db)
+    
+    agent_id = data.get("agent_id")
+    if not agent_id:
+        return {"success": False, "error": "agent_id is required"}
+    
+    metadata = data.get("metadata", {})
+    
+    msg = repo.add_message(
+        agent_id=agent_id,
+        type="SYSTEM_WAKE",
+        content="[Scheduled wake]",
+        metadata=metadata,
+        status="sending",  # Watchdog will claim this
+    )
+    
+    return {
+        "success": True,
+        "message_id": msg["id"],
+        "agent_id": agent_id,
+    }
 
 
 @router.post("/messages")

@@ -58,7 +58,7 @@ class ChatRepository:
             return None
         
         if timestamp is None:
-            timestamp = datetime.now().isoformat()
+            timestamp = datetime.utcnow().isoformat()
         
         with self.db.transaction("message", resource_id=id):
             self.db.execute(
@@ -384,7 +384,7 @@ class ChatRepository:
         message_id: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """Add a pending question for an agent."""
-        timestamp = datetime.now().isoformat()
+        timestamp = datetime.utcnow().isoformat()
         
         with self.db.transaction("agent", resource_id=agent_id):
             self.db.execute(
@@ -443,7 +443,7 @@ class ChatRepository:
         selected_option: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """Add a response to a question."""
-        timestamp = datetime.now().isoformat()
+        timestamp = datetime.utcnow().isoformat()
         
         with self.db.transaction("agent", resource_id=agent_id):
             self.db.execute(
@@ -538,7 +538,7 @@ class ChatRepository:
         event_key: Optional[str] = None,
     ) -> int:
         """Add an execution log for an agent."""
-        now = datetime.now().isoformat()
+        now = datetime.utcnow().isoformat()
         with self.db.transaction("agent", resource_id=agent_id):
             cursor = self.db.execute(
                 """INSERT INTO execution_logs 
@@ -586,7 +586,7 @@ class ChatRepository:
         Returns:
             The row ID of the upserted log
         """
-        now = datetime.now().isoformat()
+        now = datetime.utcnow().isoformat()
         log_type = type or kind
         
         # Merge data fields

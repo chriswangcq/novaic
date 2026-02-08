@@ -128,4 +128,4 @@ class WSEvent(BaseModel):
     """WebSocket event format (server -> client)"""
     type: str  # "text", "thinking", "tool_start", "tool_end", "final", "error", "pong"
     data: Any
-    timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
+    timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat())

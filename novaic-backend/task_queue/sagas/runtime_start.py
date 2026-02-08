@@ -19,6 +19,7 @@ def _build_runtime_create_payload(ctx):
         "agent_id": ctx["agent_id"],
         "subagent_id": ctx["subagent_id"],
         "idempotency_key": f"runtime-{ctx['subagent_id']}-{ctx.get('trigger_id', '')}",
+        "trigger_type": ctx.get("trigger_type", "user_message"),
     }
     
     # Sub-subagent 需要 initial_context（包含任务描述）

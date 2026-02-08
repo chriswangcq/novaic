@@ -12,6 +12,7 @@ Tools Server - 工具定义
 - web: 2 个工具 (web_search, web_fetch)
 - qemu: 5 个工具 (qemu_ssh_exec, qemu_status, qemu_start_vm, qemu_restart_vm, qemu_shutdown_vm)
 - task: 5 个工具 (task_async, task_query, task_list, task_cancel, task_summary)
+- notebook: 4 个工具 (notebook_write, notebook_list, notebook_read, notebook_update)
 - vm: 32 个工具 (完整 VMUSE 工具集)
   - Browser (9): navigate, click, type, screenshot, scroll, evaluate, get_tabs, switch_tab, close_tab
   - Desktop (3): screenshot, mouse, keyboard
@@ -20,7 +21,9 @@ Tools Server - 工具定义
   - Window (7): list_windows, focus_window, maximize_window, minimize_window, close_window, resize_window, launch_app
   - Context (7): system_snapshot, directory_snapshot, app_state, clipboard_get, clipboard_set, recent_files, environment_info
 
-总计: 67 个工具
+- drive: 2 个工具 (drive_update_profile, drive_update_relationship)
+
+总计: 73 个工具
 """
 
 from typing import Dict, List, Any, Optional
@@ -646,6 +649,13 @@ RUNTIME_TOOLS: List[Dict[str, Any]] = [
                 "handoff_notes": {
                     "type": "string",
                     "description": "Optional notes for context when waking up"
+                },
+                "rest_duration_minutes": {
+                    "type": "integer",
+                    "description": "How many minutes to rest before auto-waking. Default 30. Range: 1-1440 (24h). The agent will be automatically woken up after this duration.",
+                    "default": 30,
+                    "minimum": 1,
+                    "maximum": 1440
                 }
             },
             "required": ["reason"]
@@ -1071,10 +1081,190 @@ TASK_TOOLS: List[Dict[str, Any]] = [
 ]
 
 
+# ==================== Notebook Tools (Agent's private workspace) ====================
+
+NOTEBOOK_TOOLS: List[Dict[str, Any]] = [
+    {
+        "name": "notebook_write",
+        "description": "Write a new entry to your private notebook. Use this to record research findings, reflections, insights, plans, or observations. Notebook entries are private and not shown to the user unless you explicitly share them via chat.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "entry_type": {
+                    "type": "string",
+                    "enum": ["research", "reflection", "insight", "plan", "observation"],
+                    "description": "Type of entry: research (collected info), reflection (thinking about past), insight (discovered know-how), plan (future action items), observation (environmental notes)"
+                },
+                "title": {
+                    "type": "string",
+                    "description": "Short title summarizing this entry"
+                },
+                "content": {
+                    "type": "string",
+                    "description": "Detailed content of the entry"
+                },
+                "related_topics": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Topic tags for categorization (e.g. ['crypto', 'btc', 'market'])"
+                },
+                "relevance_score": {
+                    "type": "number",
+                    "description": "How relevant this is to the user (0.0-1.0, default 0.5)",
+                    "minimum": 0,
+                    "maximum": 1
+                },
+                "expires_at": {
+                    "type": "string",
+                    "description": "ISO timestamp when this info expires (for time-sensitive data like prices). Omit for permanent entries."
+                }
+            },
+            "required": ["entry_type", "title", "content"]
+        }
+    },
+    {
+        "name": "notebook_list",
+        "description": "List entries from your notebook with optional filters. Returns titles and metadata. Use notebook_read to get full content of a specific entry.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "entry_type": {
+                    "type": "string",
+                    "enum": ["research", "reflection", "insight", "plan", "observation"],
+                    "description": "Filter by entry type"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": ["draft", "ready", "shared", "archived"],
+                    "description": "Filter by status"
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Max entries to return (default 20)",
+                    "default": 20
+                },
+                "include_expired": {
+                    "type": "boolean",
+                    "description": "Include expired entries (default false)",
+                    "default": False
+                }
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "notebook_read",
+        "description": "Read the full content of a specific notebook entry by ID.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "entry_id": {
+                    "type": "integer",
+                    "description": "ID of the notebook entry to read"
+                }
+            },
+            "required": ["entry_id"]
+        }
+    },
+    {
+        "name": "notebook_update",
+        "description": "Update an existing notebook entry. Use to change status (draft->ready->shared->archived), update content, or adjust relevance.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "entry_id": {
+                    "type": "integer",
+                    "description": "ID of the notebook entry to update"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": ["draft", "ready", "shared", "archived"],
+                    "description": "New status"
+                },
+                "content": {
+                    "type": "string",
+                    "description": "Updated content"
+                },
+                "title": {
+                    "type": "string",
+                    "description": "Updated title"
+                },
+                "relevance_score": {
+                    "type": "number",
+                    "description": "Updated relevance (0.0-1.0)",
+                    "minimum": 0,
+                    "maximum": 1
+                },
+                "expires_at": {
+                    "type": "string",
+                    "description": "Updated expiry timestamp"
+                }
+            },
+            "required": ["entry_id"]
+        }
+    },
+]
+
+
+# ==================== Drive Tools (Agent autonomous behavior) ====================
+
+DRIVE_TOOLS: List[Dict[str, Any]] = [
+    {
+        "name": "drive_update_profile",
+        "description": "Update your understanding of the user. Store learned preferences, habits, interests, or other observations about the user. This data persists across sessions and helps you be more helpful and relevant.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string",
+                    "description": "Profile key (e.g. 'interests', 'active_hours', 'tech_stack', 'communication_preference', 'current_project')"
+                },
+                "value": {
+                    "description": "Value to store (string, array, or object)"
+                },
+                "reason": {
+                    "type": "string",
+                    "description": "Why you're updating this (for your own reference)"
+                }
+            },
+            "required": ["key", "value"]
+        }
+    },
+    {
+        "name": "drive_update_relationship",
+        "description": "Adjust your relationship metrics with the user based on interaction quality. Use positive deltas when interactions go well, negative when you sense the user is annoyed or unresponsive.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "relationship_delta": {
+                    "type": "integer",
+                    "description": "Change in relationship level (-10 to +10)",
+                    "minimum": -10,
+                    "maximum": 10
+                },
+                "proactiveness_delta": {
+                    "type": "number",
+                    "description": "Change in proactiveness (-0.2 to +0.2)",
+                    "minimum": -0.2,
+                    "maximum": 0.2
+                },
+                "reason": {
+                    "type": "string",
+                    "description": "Why you're adjusting (e.g. 'user responded positively to my suggestion')"
+                }
+            },
+            "required": ["reason"]
+        }
+    },
+]
+
+
 # ==================== All Tools Combined ====================
 
 BUILTIN_TOOLS: Dict[str, List[Dict[str, Any]]] = {
     "memory": MEMORY_TOOLS,
+    "notebook": NOTEBOOK_TOOLS,
+    "drive": DRIVE_TOOLS,
     "runtime": RUNTIME_TOOLS,
     "chat": CHAT_TOOLS,
     "web": WEB_TOOLS,

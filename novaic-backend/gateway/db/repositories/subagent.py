@@ -37,6 +37,7 @@ class SubAgent:
     # Rest/wake related
     wake_triggers: List[Dict[str, Any]] = field(default_factory=lambda: [{"type": "user_response"}])
     handoff_notes: Optional[str] = None
+    wake_at: Optional[str] = None  # ISO timestamp: auto-wake time
     
     # Async SubAgent fields (v16)
     task: Optional[str] = None           # Task description for sub subagents
@@ -64,6 +65,7 @@ class SubAgent:
             'historical_summary': self.historical_summary,
             'wake_triggers': self.wake_triggers,
             'handoff_notes': self.handoff_notes,
+            'wake_at': self.wake_at,
             'task': self.task,
             'progress': self.progress,
             'result': self.result,
@@ -81,7 +83,7 @@ class SubAgentRepository:
     
     _COLUMNS = """
         subagent_id, agent_id, type, parent_subagent_id,
-        status, historical_summary, wake_triggers, handoff_notes,
+        status, historical_summary, wake_triggers, handoff_notes, wake_at,
         task, progress, result, error, timeout_at,
         hrl, summary_lock,
         created_at, updated_at
@@ -152,11 +154,11 @@ class SubAgentRepository:
             conn.execute("""
                 INSERT INTO subagents (
                     subagent_id, agent_id, type, parent_subagent_id,
-                    status, historical_summary, wake_triggers, handoff_notes,
+                    status, historical_summary, wake_triggers, handoff_notes, wake_at,
                     task, progress, result, error, timeout_at,
                     hrl, summary_lock,
                     created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 subagent.subagent_id,
                 subagent.agent_id,
@@ -166,6 +168,7 @@ class SubAgentRepository:
                 subagent.historical_summary,
                 json.dumps(subagent.wake_triggers),
                 subagent.handoff_notes,
+                subagent.wake_at,
                 subagent.task,
                 subagent.progress,
                 subagent.result,
@@ -524,15 +527,15 @@ class SubAgentRepository:
     def _row_to_subagent(self, row) -> SubAgent:
         """Convert database row to SubAgent object.
         
-        Columns order (v24):
+        Columns order (v26):
         0: subagent_id, 1: agent_id, 2: type, 3: parent_subagent_id,
         4: status, 5: historical_summary, 6: wake_triggers, 7: handoff_notes,
-        8: task, 9: progress, 10: result, 11: error, 12: timeout_at,
-        13: hrl, 14: summary_lock,
-        15: created_at, 16: updated_at
+        8: wake_at, 9: task, 10: progress, 11: result, 12: error, 13: timeout_at,
+        14: hrl, 15: summary_lock,
+        16: created_at, 17: updated_at
         """
         wake_triggers = json.loads(row[6]) if row[6] else [{"type": "user_response"}]
-        hrl = json.loads(row[13]) if row[13] else []
+        hrl = json.loads(row[14]) if row[14] else []
         
         return SubAgent(
             subagent_id=row[0],
@@ -543,15 +546,16 @@ class SubAgentRepository:
             historical_summary=row[5],
             wake_triggers=wake_triggers,
             handoff_notes=row[7],
-            task=row[8],
-            progress=row[9],
-            result=row[10],
-            error=row[11],
-            timeout_at=row[12],
+            wake_at=row[8],
+            task=row[9],
+            progress=row[10],
+            result=row[11],
+            error=row[12],
+            timeout_at=row[13],
             hrl=hrl,
-            summary_lock=row[14] or 0,
-            created_at=row[15],
-            updated_at=row[16],
+            summary_lock=row[15] or 0,
+            created_at=row[16],
+            updated_at=row[17],
         )
     
     # ========================================
@@ -686,6 +690,47 @@ class SubAgentRepository:
             row = cursor.fetchone()
             return row[0] if row and row[0] else 0
     
+    def update_wake_info(
+        self, 
+        subagent_id: str, 
+        agent_id: str,
+        wake_triggers: List[Dict[str, Any]],
+        wake_at: Optional[str] = None,
+        handoff_notes: Optional[str] = None
+    ):
+        """Update wake triggers, wake_at timer, and handoff notes for a SubAgent."""
+        now = datetime.utcnow().isoformat()
+        with self.db.get_connection("agent", resource_id=agent_id) as conn:
+            conn.execute("""
+                UPDATE subagents 
+                SET wake_triggers = ?, wake_at = ?, handoff_notes = ?, updated_at = ?
+                WHERE subagent_id = ? AND agent_id = ?
+            """, (json.dumps(wake_triggers), wake_at, handoff_notes, now, subagent_id, agent_id))
+            conn.commit()
+
+    def clear_wake_at(self, subagent_id: str, agent_id: str):
+        """Clear wake_at timer (called when agent wakes up)."""
+        now = datetime.utcnow().isoformat()
+        with self.db.get_connection("agent", resource_id=agent_id) as conn:
+            conn.execute("""
+                UPDATE subagents 
+                SET wake_at = NULL, updated_at = ?
+                WHERE subagent_id = ? AND agent_id = ?
+            """, (now, subagent_id, agent_id))
+            conn.commit()
+
+    def get_due_for_wake(self) -> List['SubAgent']:
+        """Find sleeping SubAgents whose wake_at has passed."""
+        now = datetime.utcnow().isoformat()
+        with self.db.get_connection("global") as conn:
+            cursor = conn.execute(f"""
+                SELECT {self._COLUMNS} FROM subagents
+                WHERE status = 'sleeping' AND wake_at IS NOT NULL AND wake_at <= ?
+                ORDER BY wake_at ASC
+            """, (now,))
+            rows = cursor.fetchall()
+            return [self._row_to_subagent(r) for r in rows]
+
     def atomic_update_history_and_hrl(
         self,
         subagent_id: str,

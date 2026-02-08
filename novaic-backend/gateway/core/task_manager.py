@@ -152,7 +152,7 @@ class Task:
         }
         
         if self.started_at and not self.completed_at:
-            data["running_seconds"] = (datetime.now() - self.started_at).total_seconds()
+            data["running_seconds"] = (datetime.utcnow() - self.started_at).total_seconds()
         elif self.started_at and self.completed_at:
             data["duration_seconds"] = (self.completed_at - self.started_at).total_seconds()
         
@@ -266,7 +266,7 @@ class TaskManager:
             label=label or f"{task_type} task",
             config=TaskConfig.from_dict(config),
             status=TaskStatus.PENDING,
-            created_at=datetime.now(),
+            created_at=datetime.utcnow(),
             parent_session_key=parent_session_key,
             agent_id=agent_id,
             notify_on=notify_on or ["complete", "error"],
@@ -344,7 +344,7 @@ class TaskManager:
         # Generate task ID
         task_id = f"so_{str(uuid.uuid4())[:8]}"  # so_ prefix for sync_output
         
-        now = datetime.now()
+        now = datetime.utcnow()
         expires_at = now + timedelta(hours=ttl_hours)
         
         # Ensure output directory exists
@@ -543,7 +543,7 @@ class TaskManager:
                 pass
         
         task.status = TaskStatus.CANCELLED
-        task.completed_at = datetime.now()
+        task.completed_at = datetime.utcnow()
         task.error = reason or "Cancelled by user"
         
         self._save_task(task)
@@ -566,8 +566,8 @@ class TaskManager:
         Agent tasks should be submitted via Master.create_sub_runtime() instead.
         """
         task.status = TaskStatus.FAILED
-        task.started_at = datetime.now()
-        task.completed_at = datetime.now()
+        task.started_at = datetime.utcnow()
+        task.completed_at = datetime.utcnow()
         task.error = "Agent tasks should use Master.create_sub_runtime() or POST /api/inbox"
         task.result_summary = "Use Master architecture"
         self._stats["failed"] += 1
@@ -579,14 +579,14 @@ class TaskManager:
     def _execute_shell_task(self, task: Task, timeout_seconds: int):
         """Execute a shell task."""
         task.status = TaskStatus.RUNNING
-        task.started_at = datetime.now()
+        task.started_at = datetime.utcnow()
         self._save_task(task)
         
         command = task.config.command
         if not command:
             task.status = TaskStatus.FAILED
             task.error = "No command specified"
-            task.completed_at = datetime.now()
+            task.completed_at = datetime.utcnow()
             self._save_task(task)
             return
         
@@ -640,7 +640,7 @@ class TaskManager:
                     self._stats["failed"] += 1
                     stdout_task.cancel()
                     stderr_task.cancel()
-                    task.completed_at = datetime.now()
+                    task.completed_at = datetime.utcnow()
                     self._save_task(task)
                     self._notify_completion(task)
                     return
@@ -678,7 +678,7 @@ class TaskManager:
             logger.error(f"[TaskManager] Shell task {task.id} failed: {e}")
         finally:
             task._process = None
-            task.completed_at = datetime.now()
+            task.completed_at = datetime.utcnow()
             
             # Generate summary
             if task.result:
@@ -693,7 +693,7 @@ class TaskManager:
     def _execute_tool_task(self, task: Task, timeout_seconds: int):
         """Execute a generic MCP tool task."""
         task.status = TaskStatus.RUNNING
-        task.started_at = datetime.now()
+        task.started_at = datetime.utcnow()
         self._save_task(task)
         
         tool_name = task.config.tool
@@ -702,7 +702,7 @@ class TaskManager:
         if not tool_name:
             task.status = TaskStatus.FAILED
             task.error = "No tool name specified"
-            task.completed_at = datetime.now()
+            task.completed_at = datetime.utcnow()
             self._save_task(task)
             return
         
@@ -763,7 +763,7 @@ class TaskManager:
             self._stats["failed"] += 1
             logger.error(f"[TaskManager] Tool task {task.id} failed: {e}")
         finally:
-            task.completed_at = datetime.now()
+            task.completed_at = datetime.utcnow()
             
             # Generate summary
             if task.result and task.status == TaskStatus.COMPLETED:
@@ -1102,7 +1102,7 @@ class TaskManager:
     
     def cleanup_completed(self, max_age_hours: int = 24):
         """Clean up old completed tasks from memory."""
-        cutoff = datetime.now()
+        cutoff = datetime.utcnow()
         to_remove = []
         
         for task_id, task in self._tasks.items():
@@ -1132,7 +1132,7 @@ class TaskManager:
         if not self.db:
             return 0
         
-        now = datetime.now().isoformat()
+        now = datetime.utcnow().isoformat()
         cleaned = 0
         
         try:

@@ -588,6 +588,48 @@ export const api = {
     return invoke('gateway_get', { path });
   },
 
+  // ==================== Skills ====================
+
+  async getSkills(): Promise<{ skills: any[]; count: number }> {
+    return invoke('gateway_get', { path: '/api/skills' });
+  },
+
+  async createSkill(data: any): Promise<any> {
+    return invoke('gateway_post', { path: '/api/skills', body: data });
+  },
+
+  async updateSkill(skillId: string, data: any): Promise<any> {
+    return invoke('gateway_put', { path: `/api/skills/${skillId}`, body: data });
+  },
+
+  async deleteSkill(skillId: string): Promise<any> {
+    return invoke('gateway_delete', { path: `/api/skills/${skillId}` });
+  },
+
+  async getAgentSkills(agentId: string): Promise<{ skills: any[]; count: number }> {
+    return invoke('gateway_get', { path: `/api/agents/${agentId}/skills` });
+  },
+
+  async setAgentSkills(agentId: string, skillIds: string[]): Promise<any> {
+    return invoke('gateway_post', { path: `/api/agents/${agentId}/skills`, body: { skill_ids: skillIds } });
+  },
+
+  async getAgentToolsConfig(agentId: string): Promise<any> {
+    return invoke('gateway_get', { path: `/api/agents/${agentId}/tools-config` });
+  },
+
+  async saveAgentToolsConfig(agentId: string, data: any): Promise<any> {
+    return invoke('gateway_post', { path: `/api/agents/${agentId}/tools-config`, body: data });
+  },
+
+  async getPromptsPreview(agentId: string): Promise<any> {
+    return invoke('gateway_get', { path: `/api/agents/${agentId}/prompts-preview` });
+  },
+
+  async getToolCategories(): Promise<any> {
+    return invoke('gateway_get', { path: '/api/tools/categories' });
+  },
+
   // ==================== Cleanup API ====================
 
   /**

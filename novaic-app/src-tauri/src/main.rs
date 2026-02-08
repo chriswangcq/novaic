@@ -645,6 +645,7 @@ type WatchdogState = Arc<Mutex<ServiceProcess>>;
 type TaskWorkerState = Arc<Mutex<ServiceProcess>>;
 type SagaWorkerState = Arc<Mutex<ServiceProcess>>;
 type HealthState = Arc<Mutex<ServiceProcess>>;
+type SchedulerState = Arc<Mutex<ServiceProcess>>;
 
 /// Kill any zombie novaic-backend processes before starting new ones
 /// This prevents issues from leftover processes after crashes or improper shutdowns
@@ -666,6 +667,7 @@ fn kill_zombie_processes() {
             "main_task.py",
             "main_saga.py",
             "main_health.py",
+            "main_scheduler.py",
             "queue_service",         // Queue service module
             "novaic_main.py",        // Legacy unified entry
         ];
@@ -737,6 +739,7 @@ fn kill_zombie_processes() {
             "main_task.py",
             "main_saga.py",
             "main_health.py",
+            "main_scheduler.py",
         ];
         
         for pattern in python_patterns {
@@ -860,8 +863,8 @@ async fn gateway_get(
     gateway: tauri::State<'_, GatewayState>,
     path: String,
 ) -> Result<serde_json::Value, String> {
-    let gw = gateway.lock().await;
-    let client = GatewayClient::new(gw.base_url());
+    let base_url = { gateway.lock().await.base_url() };
+    let client = GatewayClient::new(base_url);
     client.get(&path).await
 }
 
@@ -872,8 +875,8 @@ async fn gateway_post(
     path: String,
     body: Option<serde_json::Value>,
 ) -> Result<serde_json::Value, String> {
-    let gw = gateway.lock().await;
-    let client = GatewayClient::new(gw.base_url());
+    let base_url = { gateway.lock().await.base_url() };
+    let client = GatewayClient::new(base_url);
     client.post(&path, body).await
 }
 
@@ -884,8 +887,8 @@ async fn gateway_patch(
     path: String,
     body: Option<serde_json::Value>,
 ) -> Result<serde_json::Value, String> {
-    let gw = gateway.lock().await;
-    let client = GatewayClient::new(gw.base_url());
+    let base_url = { gateway.lock().await.base_url() };
+    let client = GatewayClient::new(base_url);
     client.patch(&path, body).await
 }
 
@@ -896,8 +899,8 @@ async fn gateway_put(
     path: String,
     body: Option<serde_json::Value>,
 ) -> Result<serde_json::Value, String> {
-    let gw = gateway.lock().await;
-    let client = GatewayClient::new(gw.base_url());
+    let base_url = { gateway.lock().await.base_url() };
+    let client = GatewayClient::new(base_url);
     client.put(&path, body).await
 }
 
@@ -907,8 +910,8 @@ async fn gateway_delete(
     gateway: tauri::State<'_, GatewayState>,
     path: String,
 ) -> Result<serde_json::Value, String> {
-    let gw = gateway.lock().await;
-    let client = GatewayClient::new(gw.base_url());
+    let base_url = { gateway.lock().await.base_url() };
+    let client = GatewayClient::new(base_url);
     client.delete(&path).await
 }
 
@@ -1028,6 +1031,12 @@ fn main() {
             ));
             app.manage(health.clone());
             
+            // Scheduler: 定时唤醒 sleeping agents (1 个)
+            let scheduler = Arc::new(Mutex::new(
+                ServiceProcess::new("scheduler", &gateway_url)
+            ));
+            app.manage(scheduler.clone());
+            
             // Tauri 统一拉起 Backend 六组件
             let (backend_path, is_binary) = get_gateway_info(app.handle());
             let (_, _, gateway_dir) = get_backend_info(app.handle());
@@ -1126,7 +1135,27 @@ fn main() {
                     }
                 }
                 
-                // 5-8. 直接启动 Worker 服务（和 Gateway 一样简单）
+                // 5b. 等 Tools Server 就绪（health check）
+                println!("[Services] Waiting for Tools Server to be ready...");
+                let ts_health_url = "http://127.0.0.1:19998/api/health";
+                
+                for i in 0..15 {
+                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                    
+                    match client.get(ts_health_url).send().await {
+                        Ok(resp) if resp.status().is_success() => {
+                            println!("[Services] Tools Server is ready after {}s", i + 1);
+                            break;
+                        }
+                        _ => {
+                            if i == 14 {
+                                println!("[Services] Tools Server not ready after 15s, starting workers anyway");
+                            }
+                        }
+                    }
+                }
+                
+                // 6-9. 直接启动 Worker 服务（和 Gateway 一样简单）
                 // v4.1: Saga/Task Architecture - multiple workers for parallelism
                 // 配置：可通过 AppConfig 调整 Worker 数量
                 let num_task_workers = AppConfig::NUM_TASK_WORKERS;
@@ -1198,6 +1227,19 @@ fn main() {
                     {
                         Ok(_) => println!("[Health] Started"),
                         Err(e) => println!("[Health] Failed: {}", e),
+                    }
+                    
+                    // Scheduler: 定时唤醒调度器 (1 个)
+                    match Command::new(&backend_path_clone)
+                        .arg("scheduler")
+                        .arg("--gateway-url")
+                        .arg(gateway_url)
+                        .stdout(Stdio::null())
+                        .stderr(Stdio::null())
+                        .spawn()
+                    {
+                        Ok(_) => println!("[Scheduler] Started"),
+                        Err(e) => println!("[Scheduler] Failed: {}", e),
                     }
                 } else {
                     // 开发模式：直接启动 Python 脚本 (多个 workers)
@@ -1277,6 +1319,20 @@ fn main() {
                         Ok(_) => println!("[Health] Started (dev mode)"),
                         Err(e) => println!("[Health] Failed: {}", e),
                     }
+                    
+                    // Scheduler (1 个)
+                    match Command::new(&python)
+                        .arg("main_scheduler.py")
+                        .arg("--gateway-url")
+                        .arg(gateway_url)
+                        .current_dir(&gateway_dir)
+                        .stdout(Stdio::inherit())
+                        .stderr(Stdio::inherit())
+                        .spawn()
+                    {
+                        Ok(_) => println!("[Scheduler] Started (dev mode)"),
+                        Err(e) => println!("[Scheduler] Failed: {}", e),
+                    }
                 }
             });
             
@@ -1324,6 +1380,15 @@ fn main() {
                     println!("[App] Exiting, stopping services...");
                     
                     // Stop service processes (reverse order)
+                    // Scheduler
+                    if let Some(scheduler) = app_handle.try_state::<SchedulerState>() {
+                        let svc_clone = scheduler.inner().clone();
+                        tauri::async_runtime::block_on(async {
+                            let mut svc = svc_clone.lock().await;
+                            svc.stop();
+                        });
+                    }
+                    
                     // Health
                     if let Some(health) = app_handle.try_state::<HealthState>() {
                         let svc_clone = health.inner().clone();

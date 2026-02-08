@@ -18,6 +18,36 @@ router = APIRouter(tags=["internal"])
 
 # ==================== SubAgent Operations (v14) ====================
 
+@router.get("/subagents/due-wake")
+def get_subagents_due_for_wake():
+    """Get sleeping SubAgents whose wake_at timer has expired.
+    
+    Used by SchedulerWorker to find agents that need to be woken up.
+    
+    Returns:
+        {"subagents": [{"agent_id": ..., "subagent_id": ..., "wake_at": ..., "handoff_notes": ...}, ...]}
+    """
+    from gateway.db.repositories import SubAgentRepository
+    
+    db = get_db()
+    repo = SubAgentRepository(db)
+    
+    due = repo.get_due_for_wake()
+    
+    return {
+        "subagents": [
+            {
+                "agent_id": sa.agent_id,
+                "subagent_id": sa.subagent_id,
+                "wake_at": sa.wake_at,
+                "wake_triggers": sa.wake_triggers,
+                "handoff_notes": sa.handoff_notes,
+            }
+            for sa in due
+        ]
+    }
+
+
 @router.get("/subagents/{agent_id}/main")
 def get_main_subagent(agent_id: str):
     """Get the main SubAgent for an agent (creates if not exists)."""
@@ -59,6 +89,11 @@ def wake_subagent(agent_id: str, subagent_id: str, target_status: str = Subagent
     db = get_db()
     repo = SubAgentRepository(db)
     success = repo.try_wake(subagent_id, agent_id, target_status=target_status)
+    
+    # Clear wake_at timer on successful wake
+    if success:
+        repo.clear_wake_at(subagent_id, agent_id)
+    
     subagent = repo.get_by_id(subagent_id, agent_id)
     current_status = subagent.status if subagent else None
     return {
@@ -516,3 +551,58 @@ def merge_history(agent_id: str, subagent_id: str, data: Dict[str, Any]):
     )
     
     return {"success": success}
+
+
+# ==================== Drive Prompt Data (Phase 3) ====================
+
+@router.get("/agents/{agent_id}/drive")
+def get_agent_drive(agent_id: str):
+    """Get agent drive record for Drive Prompt builder."""
+    from gateway.db.repositories.drive import DriveRepository
+    
+    db = get_db()
+    repo = DriveRepository(db)
+    return repo.get_or_create(agent_id)
+
+
+@router.get("/agents/{agent_id}/notebook-summary")
+def get_agent_notebook_summary(agent_id: str):
+    """Get notebook summary for Drive Prompt builder."""
+    from gateway.db.repositories.notebook import NotebookRepository
+    
+    db = get_db()
+    repo = NotebookRepository(db)
+    return repo.get_summary(agent_id)
+
+
+# ==================== Agent Info & Drive Lifecycle (Phase 4) ====================
+
+@router.post("/agents/{agent_id}/drive/increment-interaction")
+def increment_drive_interaction(agent_id: str):
+    """Increment interaction count and reset no-response streak in agent_drive.
+    
+    Called by Watchdog when processing USER_MESSAGE.
+    """
+    from gateway.db.repositories.drive import DriveRepository
+    
+    db = get_db()
+    repo = DriveRepository(db)
+    return repo.increment_interaction(agent_id)
+
+
+@router.get("/agents/{agent_id}/info")
+def get_agent_info(agent_id: str):
+    """Get basic agent info for system prompt builder."""
+    from gateway.config.agents import get_agent_config_manager
+    
+    config_mgr = get_agent_config_manager()
+    agent = config_mgr.get_agent(agent_id)
+    
+    if not agent:
+        return {"name": "NovAIC Agent", "os": "unknown", "agent_id": agent_id}
+    
+    return {
+        "name": agent.name,
+        "os": getattr(agent, 'os', 'unknown'),
+        "agent_id": agent_id,
+    }

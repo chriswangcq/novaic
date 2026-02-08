@@ -87,7 +87,7 @@ class RuntimeManager:
             agent_id=agent_id,
             subagent_id=subagent_id,
             ports=ports,
-            created_at=datetime.now(),
+            created_at=datetime.utcnow(),
             external_tools=[],
             discovery_task=None,
         )
@@ -384,7 +384,7 @@ class RuntimeManager:
                     agent_id=agent_id,
                     subagent_id=subagent_id,
                     ports=ports,
-                    created_at=datetime.now(),
+                    created_at=datetime.utcnow(),
                     external_tools=[],
                     discovery_task=None,
                 )

@@ -27,7 +27,7 @@ v24: Runtime Summary - subagents.hrl/summary_lock, agent_runtimes.simple_summary
 v25: Tools Server persistence - agent_runtimes.tool_ports for Tools Server recovery.
 """
 
-SCHEMA_VERSION = 25
+SCHEMA_VERSION = 30
 
 SCHEMA_SQL = """
 -- ========================================
@@ -313,6 +313,106 @@ CREATE TABLE IF NOT EXISTS agent_memory (
 CREATE INDEX IF NOT EXISTS idx_agent_memory_agent ON agent_memory(agent_id);
 CREATE INDEX IF NOT EXISTS idx_agent_memory_namespace ON agent_memory(agent_id, namespace);
 
+-- ========================================
+-- Agent Notebook - Structured internal workspace
+-- ========================================
+-- Stores agent's private notes: research, reflections, insights, plans, observations.
+-- Unlike agent_memory (simple KV), notebook is a structured document store with
+-- types, status lifecycle, relevance scoring, and time-sensitivity.
+
+CREATE TABLE IF NOT EXISTS agent_notebook (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent_id TEXT NOT NULL,
+    
+    entry_type TEXT NOT NULL,          -- 'research', 'reflection', 'insight', 'plan', 'observation'
+    title TEXT NOT NULL,               
+    content TEXT NOT NULL,             
+    source TEXT,                       -- where this entry came from (runtime_id, tool, etc.)
+    
+    related_topics TEXT DEFAULT '[]',  -- JSON array of topic tags
+    relevance_score REAL DEFAULT 0.5,  -- 0-1 relevance to user
+    
+    status TEXT DEFAULT 'draft',       -- 'draft', 'ready', 'shared', 'archived'
+    
+    expires_at TEXT,                   -- ISO timestamp for time-sensitive info (NULL = no expiry)
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    
+    FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_notebook_agent ON agent_notebook(agent_id);
+CREATE INDEX IF NOT EXISTS idx_notebook_agent_type ON agent_notebook(agent_id, entry_type);
+CREATE INDEX IF NOT EXISTS idx_notebook_agent_status ON agent_notebook(agent_id, status);
+
+-- ========================================
+-- Agent Drive - Personality and autonomous behavior config
+-- ========================================
+-- Per-agent drive configuration: personality, user profile, relationship tracking.
+-- Powers the agent's autonomous wake behavior and proactive communication.
+
+CREATE TABLE IF NOT EXISTS agent_drive (
+    agent_id TEXT PRIMARY KEY,
+    
+    -- Personality
+    personality TEXT DEFAULT '{}',           -- JSON: personality traits
+    communication_style TEXT DEFAULT 'friendly',  -- Communication style hint
+    
+    -- User profile (learned by agent)
+    user_profile TEXT DEFAULT '{}',          -- JSON: user preferences, habits, interests
+    user_active_hours TEXT,                  -- e.g. "9:00-18:00"
+    
+    -- Drive parameters
+    proactiveness REAL DEFAULT 0.5,          -- 0-1: how proactive to be
+    min_rest_minutes INTEGER DEFAULT 15,     -- minimum rest duration
+    max_rest_minutes INTEGER DEFAULT 120,    -- maximum rest duration
+    
+    -- Relationship tracking
+    relationship_level INTEGER DEFAULT 0,    -- 0-100 closeness
+    interaction_count INTEGER DEFAULT 0,     -- total interaction count
+    no_response_streak INTEGER DEFAULT 0,    -- consecutive proactive messages without user response
+    last_proactive_at TEXT,                  -- last proactive message time
+    
+    -- Tools configuration (Phase 5)
+    enabled_tool_categories TEXT DEFAULT '[]',   -- JSON: enabled tool categories
+    disabled_tools TEXT DEFAULT '[]',            -- JSON: explicitly disabled tool names
+    custom_instructions TEXT DEFAULT '',          -- User-defined extra instructions
+    
+    -- Timestamps
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    
+    FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
+);
+
+-- ========================================
+-- Skills - Reusable capability bundles
+-- ========================================
+
+CREATE TABLE IF NOT EXISTS skills (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    prompt TEXT DEFAULT '',
+    tools TEXT DEFAULT '[]',
+    workflow TEXT DEFAULT '',
+    icon TEXT DEFAULT 'zap',
+    enabled INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
+-- Agent-Skill assignments (many-to-many)
+CREATE TABLE IF NOT EXISTS agent_skills (
+    agent_id TEXT NOT NULL,
+    skill_id TEXT NOT NULL,
+    priority INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    PRIMARY KEY (agent_id, skill_id),
+    FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE,
+    FOREIGN KEY (skill_id) REFERENCES skills(id) ON DELETE CASCADE
+);
+
 -- Task history for Memory MCP (persistent task logs)
 CREATE TABLE IF NOT EXISTS agent_task_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -382,6 +482,7 @@ CREATE TABLE IF NOT EXISTS subagents (
     -- Rest/wake related
     wake_triggers TEXT DEFAULT '[{"type": "user_response"}]',
     handoff_notes TEXT,
+    wake_at TEXT,                      -- ISO timestamp: auto-wake time (NULL = no timer)
     
     -- Async SubAgent fields (v16)
     task TEXT,                         -- Task description for sub subagents
@@ -444,6 +545,9 @@ CREATE TABLE IF NOT EXISTS agent_runtimes (
     
     -- Tools Server persistence (v25)
     tool_ports TEXT,                    -- JSON: MCP ports for Tools Server discovery (null = not registered)
+    
+    -- Drive trigger (v29)
+    trigger_type TEXT DEFAULT 'user_message',  -- What triggered this runtime (user_message, proactive, scheduled)
     
     -- Timestamps
     created_at TEXT NOT NULL,
@@ -707,6 +811,45 @@ def run_migration_sync(conn, from_version: int):
             if "duplicate column" not in str(e).lower():
                 print(f"[DB] Migration v25 warning (tool_ports): {e}")
     
+    # v26: Scheduled wake - add wake_at to subagents
+    if from_version < 26:
+        try:
+            conn.execute("ALTER TABLE subagents ADD COLUMN wake_at TEXT")
+            print("[DB] Migration v26: Added wake_at to subagents")
+        except Exception as e:
+            if "duplicate column" not in str(e).lower():
+                print(f"[DB] Migration v26 warning (wake_at): {e}")
+
+    # v29: Drive Phase 4 - trigger_type on runtimes, no_response_streak on drive
+    if from_version < 29:
+        try:
+            conn.execute("ALTER TABLE agent_runtimes ADD COLUMN trigger_type TEXT DEFAULT 'user_message'")
+        except Exception:
+            pass
+        try:
+            conn.execute("ALTER TABLE agent_drive ADD COLUMN no_response_streak INTEGER DEFAULT 0")
+        except Exception:
+            pass
+        conn.execute("PRAGMA user_version = 29")
+        print("[schema] Migrated to v29: trigger_type on runtimes, no_response_streak on drive")
+
+    # v30: Skills & Agent Tools
+    if from_version < 30:
+        try:
+            conn.execute("ALTER TABLE agent_drive ADD COLUMN enabled_tool_categories TEXT DEFAULT '[]'")
+        except Exception:
+            pass
+        try:
+            conn.execute("ALTER TABLE agent_drive ADD COLUMN disabled_tools TEXT DEFAULT '[]'")
+        except Exception:
+            pass
+        try:
+            conn.execute("ALTER TABLE agent_drive ADD COLUMN custom_instructions TEXT DEFAULT ''")
+        except Exception:
+            pass
+        conn.execute("PRAGMA user_version = 30")
+        print("[schema] Migrated to v30: skills tables + agent_drive tool config columns")
+
     # Update version
     conn.execute(
         "INSERT OR REPLACE INTO config (key, value) VALUES ('version', ?)",

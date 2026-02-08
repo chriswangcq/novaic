@@ -10,6 +10,7 @@ MCP Business - MCP Server 管理
 from dataclasses import dataclass
 from typing import Dict, Any, Optional
 import os
+import time
 
 import httpx
 
@@ -115,19 +116,38 @@ class MCPBusiness:
             )
 
         try:
-            # 1. 在 Tools Server 创建 runtime context
+            # 1. 在 Tools Server 创建 runtime context（带重试）
             tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", ServiceConfig.TOOLS_SERVER_URL)
-            with httpx.Client(timeout=10.0, trust_env=False) as http_client:
-                resp = http_client.post(
-                    f"{tools_server_url}/internal/runtimes",
-                    json={
-                        "runtime_id": runtime_id,
-                        "agent_id": agent_id,
-                        "subagent_id": subagent_id,
-                        "ports": {},
-                    }
+            max_retries = 3
+            last_error = None
+            for attempt in range(max_retries + 1):
+                try:
+                    with httpx.Client(timeout=10.0, trust_env=False) as http_client:
+                        resp = http_client.post(
+                            f"{tools_server_url}/internal/runtimes",
+                            json={
+                                "runtime_id": runtime_id,
+                                "agent_id": agent_id,
+                                "subagent_id": subagent_id,
+                                "ports": {},
+                            }
+                        )
+                        resp.raise_for_status()
+                    last_error = None
+                    break  # success
+                except Exception as e:
+                    last_error = e
+                    if attempt < max_retries:
+                        wait = 2 ** (attempt + 1)  # 2, 4, 8
+                        print(f"[MCP] Tools Server not ready, retry {attempt+1}/{max_retries} in {wait}s: {e}")
+                        time.sleep(wait)
+            
+            if last_error:
+                return MCPCreateResult(
+                    success=False,
+                    runtime_id=runtime_id,
+                    error=f"Tools Server registration failed after {max_retries} retries: {last_error}",
                 )
-                resp.raise_for_status()
             
             # 2. 创建 aggregate MCP（向后兼容）
             resp = self.client.create_aggregate_mcp(

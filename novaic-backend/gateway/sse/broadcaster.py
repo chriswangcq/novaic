@@ -39,8 +39,8 @@ class WorkerConnection:
     
     worker_id: str
     queue: asyncio.Queue
-    connected_at: str = field(default_factory=lambda: datetime.now().isoformat())
-    last_activity: str = field(default_factory=lambda: datetime.now().isoformat())
+    connected_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    last_activity: str = field(default_factory=lambda: datetime.utcnow().isoformat())
     message_count: int = 0
 
 
@@ -165,7 +165,7 @@ class WorkerBroadcaster:
         event = {
             "event": event_type.value,
             "data": data,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.utcnow().isoformat(),
         }
         
         sent_count = 0
@@ -176,7 +176,7 @@ class WorkerBroadcaster:
             try:
                 conn.queue.put_nowait(event)
                 conn.message_count += 1
-                conn.last_activity = datetime.now().isoformat()
+                conn.last_activity = datetime.utcnow().isoformat()
                 sent_count += 1
             except asyncio.QueueFull:
                 print(f"[SSE] Worker {worker_id} queue full, dropping event")
@@ -207,13 +207,13 @@ class WorkerBroadcaster:
         event = {
             "event": event_type.value,
             "data": data,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.utcnow().isoformat(),
         }
         
         try:
             conn.queue.put_nowait(event)
             conn.message_count += 1
-            conn.last_activity = datetime.now().isoformat()
+            conn.last_activity = datetime.utcnow().isoformat()
             return True
         except asyncio.QueueFull:
             print(f"[SSE] Worker {worker_id} queue full, dropping event")
@@ -315,7 +315,7 @@ class WorkerBroadcaster:
                 await asyncio.sleep(self._heartbeat_interval)
                 await self.broadcast(
                     SSEEvent.HEARTBEAT,
-                    {"time": datetime.now().isoformat()}
+                    {"time": datetime.utcnow().isoformat()}
                 )
             except asyncio.CancelledError:
                 break
@@ -376,7 +376,7 @@ class WorkerBroadcaster:
                     
                 except asyncio.TimeoutError:
                     # Send keepalive comment
-                    yield f": keepalive {datetime.now().isoformat()}\n\n"
+                    yield f": keepalive {datetime.utcnow().isoformat()}\n\n"
                     
         except asyncio.CancelledError:
             pass

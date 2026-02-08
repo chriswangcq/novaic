@@ -69,7 +69,7 @@ class ContextTools:
         """
         try:
             snapshot = {
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.utcnow().isoformat(),
                 "system": {},
                 "desktop": {},
                 "resources": {}

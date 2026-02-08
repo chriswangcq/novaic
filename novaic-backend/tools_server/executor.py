@@ -94,6 +94,16 @@ BUILTIN_TOOL_NAMES = {
     "memory_log_task",
     "memory_get_task_history",
     
+    # Notebook 工具
+    "notebook_write",
+    "notebook_list",
+    "notebook_read",
+    "notebook_update",
+    
+    # Drive 工具
+    "drive_update_profile",
+    "drive_update_relationship",
+    
     # Goal 工具（通过 memory 实现）
     "goal_set",
     "goal_progress",
@@ -361,6 +371,76 @@ class ToolExecutor:
                 )
                 return self._handle_response(response)
             
+            # ==================== Notebook 工具 ====================
+            elif tool_name == "notebook_write":
+                response = await client.post(
+                    f"/internal/rt/{self.runtime_id}/notebook/write",
+                    json={
+                        "entry_type": arguments.get("entry_type"),
+                        "title": arguments.get("title"),
+                        "content": arguments.get("content"),
+                        "related_topics": arguments.get("related_topics", []),
+                        "relevance_score": arguments.get("relevance_score", 0.5),
+                        "expires_at": arguments.get("expires_at"),
+                    }
+                )
+                return self._handle_response(response)
+            
+            elif tool_name == "notebook_list":
+                response = await client.post(
+                    f"/internal/rt/{self.runtime_id}/notebook/list",
+                    json={
+                        "entry_type": arguments.get("entry_type"),
+                        "status": arguments.get("status"),
+                        "limit": arguments.get("limit", 20),
+                        "include_expired": arguments.get("include_expired", False),
+                    }
+                )
+                return self._handle_response(response)
+            
+            elif tool_name == "notebook_read":
+                response = await client.post(
+                    f"/internal/rt/{self.runtime_id}/notebook/read",
+                    json={"entry_id": arguments.get("entry_id")}
+                )
+                return self._handle_response(response)
+            
+            elif tool_name == "notebook_update":
+                payload = {"entry_id": arguments.get("entry_id")}
+                for key in ("status", "content", "title", "relevance_score", "expires_at"):
+                    val = arguments.get(key)
+                    if val is not None:
+                        payload[key] = val
+                response = await client.post(
+                    f"/internal/rt/{self.runtime_id}/notebook/update",
+                    json=payload
+                )
+                return self._handle_response(response)
+            
+            # ==================== Drive 工具 ====================
+            elif tool_name == "drive_update_profile":
+                response = await client.post(
+                    f"/internal/rt/{self.runtime_id}/drive/update-profile",
+                    json={
+                        "key": arguments.get("key"),
+                        "value": arguments.get("value"),
+                        "reason": arguments.get("reason"),
+                    }
+                )
+                return self._handle_response(response)
+            
+            elif tool_name == "drive_update_relationship":
+                payload = {"reason": arguments.get("reason", "")}
+                if arguments.get("relationship_delta") is not None:
+                    payload["relationship_delta"] = arguments["relationship_delta"]
+                if arguments.get("proactiveness_delta") is not None:
+                    payload["proactiveness_delta"] = arguments["proactiveness_delta"]
+                response = await client.post(
+                    f"/internal/rt/{self.runtime_id}/drive/update",
+                    json=payload
+                )
+                return self._handle_response(response)
+            
             # ==================== Goal 工具（通过 Memory 实现）====================
             elif tool_name == "goal_set":
                 # 保存 goal 到 memory 的 goals namespace
@@ -497,6 +577,7 @@ class ToolExecutor:
                         "reason": arguments.get("reason", "Agent requested rest"),
                         "wake_triggers": arguments.get("wake_triggers", [{"type": "user_response"}]),
                         "handoff_notes": arguments.get("handoff_notes"),
+                        "rest_duration_minutes": arguments.get("rest_duration_minutes", 30),
                     }
                 )
                 return self._handle_response(response)

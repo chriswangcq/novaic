@@ -543,6 +543,19 @@ class GatewayInternalClient:
             payload["error"] = error
         return self._request("POST", f"/internal/runtimes/{runtime_id}/set-status", payload)
     
+    # ---------- Scheduler (Wake) ----------
+    def get_due_for_wake(self) -> list:
+        """Get sleeping SubAgents whose wake_at has passed."""
+        data = self._request("GET", "/internal/subagents/due-wake", None)
+        return data.get("subagents", [])
+    
+    def inject_wake_message(self, agent_id: str, metadata: dict = None) -> dict:
+        """Inject a SYSTEM_WAKE message to trigger scheduled wake."""
+        return self._request("POST", "/internal/messages/inject-wake", {
+            "agent_id": agent_id,
+            "metadata": metadata or {},
+        })
+
     # ---------- Messages (Watchdog) ----------
     def claim_and_prepare_message(self) -> Optional[Dict[str, Any]]:
         """Claim 并准备一条 sending 消息"""
@@ -696,3 +709,45 @@ class GatewayInternalClient:
             "runtime_ids": runtime_ids
         })
         return data.get("runtimes", [])
+
+    # ---------- Drive (Phase 3) ----------
+    def get_agent_drive(self, agent_id: str) -> dict:
+        """Get agent drive configuration (auto-creates default if missing)."""
+        return self._request("GET", f"/internal/agents/{agent_id}/drive", None)
+
+    def get_notebook_summary(self, agent_id: str) -> dict:
+        """Get notebook summary for an agent."""
+        return self._request("GET", f"/internal/agents/{agent_id}/notebook-summary", None)
+
+    def get_agent_state(self, agent_id: str) -> dict:
+        """Get agent state (sleep/wake status, last_active_at, etc)."""
+        # agent_state is stored via the subagent main endpoint
+        try:
+            main_subagent = self._request("GET", f"/internal/subagents/{agent_id}/main", None)
+            return {
+                "status": main_subagent.get("status"),
+                "last_active_at": main_subagent.get("updated_at"),
+                "wake_triggers": main_subagent.get("wake_triggers"),
+                "handoff_notes": main_subagent.get("handoff_notes"),
+            }
+        except Exception:
+            return {}
+
+    # ---------- Drive Lifecycle (Phase 4) ----------
+    def increment_drive_interaction(self, agent_id: str) -> dict:
+        """Increment agent drive interaction count and reset no-response streak."""
+        return self._request("POST", f"/internal/agents/{agent_id}/drive/increment-interaction", {})
+
+    def get_agent_info(self, agent_id: str) -> dict:
+        """Get basic agent info (name, os) for system prompt."""
+        try:
+            return self._request("GET", f"/internal/agents/{agent_id}/info", None)
+        except Exception:
+            return {"name": "NovAIC Agent", "os": "unknown"}
+
+    def get_agent_skills(self, agent_id: str) -> dict:
+        """Get assigned skills for an agent."""
+        try:
+            return self._request("GET", f"/api/agents/{agent_id}/skills", None)
+        except Exception:
+            return {"skills": []}

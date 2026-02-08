@@ -69,7 +69,7 @@ class VmProcessRepository:
         error_message: Optional[str] = None,
     ):
         """Insert or update VM process record."""
-        started_at = datetime.now().isoformat() if status == "running" else None
+        started_at = datetime.utcnow().isoformat() if status == "running" else None
         
         with self.db.transaction(lock_type="agent", resource_id=agent_id):
             self.db.execute("""

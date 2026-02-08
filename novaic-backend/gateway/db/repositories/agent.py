@@ -50,7 +50,7 @@ class AgentRepository:
         setup_complete: bool = False,
     ) -> Dict[str, Any]:
         """Create a new agent."""
-        created_at = datetime.now().isoformat()
+        created_at = datetime.utcnow().isoformat()
         
         with self.db.transaction("agent", resource_id=id):
             self.db.execute(

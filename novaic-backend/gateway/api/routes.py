@@ -644,7 +644,7 @@ def chat_stream(request: ChatRequest):
     
     def event_generator():
         # First, emit the stored message confirmation
-        yield f"data: {json.dumps({'type': 'message_stored', 'data': {'message_id': user_message_id}, 'timestamp': datetime.now().isoformat()})}\n\n"
+        yield f"data: {json.dumps({'type': 'message_stored', 'data': {'message_id': user_message_id}, 'timestamp': datetime.utcnow().isoformat()})}\n\n"
         
         # Broadcast to UI
         try:
@@ -674,7 +674,7 @@ def chat_stream(request: ChatRequest):
                 while True:
                     elapsed = asyncio.get_event_loop().time() - start_time
                     if elapsed > timeout:
-                        yield f"data: {json.dumps({'type': 'timeout', 'data': {'message': 'Stream timeout'}, 'timestamp': datetime.now().isoformat()})}\n\n"
+                        yield f"data: {json.dumps({'type': 'timeout', 'data': {'message': 'Stream timeout'}, 'timestamp': datetime.utcnow().isoformat()})}\n\n"
                         break
                     
                     try:
@@ -682,7 +682,7 @@ def chat_stream(request: ChatRequest):
                         
                         # Filter events for this agent
                         if event.get("agent_id") == agent_id:
-                            event["timestamp"] = datetime.now().isoformat()
+                            event["timestamp"] = datetime.utcnow().isoformat()
                             yield f"data: {json.dumps(event)}\n\n"
                             
                             # Check for completion signals
@@ -697,7 +697,7 @@ def chat_stream(request: ChatRequest):
                 _chat_subscribers.pop(subscriber_id, None)
                 
         except Exception as e:
-            yield f"data: {json.dumps({'type': 'error', 'data': {'error': str(e)}, 'timestamp': datetime.now().isoformat()})}\n\n"
+            yield f"data: {json.dumps({'type': 'error', 'data': {'error': str(e)}, 'timestamp': datetime.utcnow().isoformat()})}\n\n"
     
     return StreamingResponse(
         event_generator(),

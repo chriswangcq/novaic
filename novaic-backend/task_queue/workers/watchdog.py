@@ -188,7 +188,9 @@ class Watchdog:
         
         # 根据消息类型分发到不同的处理逻辑
         if msg_type == "USER_MESSAGE":
-            self._create_message_process_saga(msg_id, agent_id)
+            self._create_message_process_saga(msg_id, agent_id, msg_type)
+        elif msg_type == "SYSTEM_WAKE":
+            self._create_message_process_saga(msg_id, agent_id, msg_type)
         elif msg_type == "SPAWN_SUBAGENT":
             self._create_runtime_start_saga(msg_id, agent_id, metadata)
         elif msg_type == "INTERRUPT":
@@ -196,7 +198,7 @@ class Watchdog:
         else:
             self._log(f"Unknown message type, skipping: {msg_type}")
     
-    def _create_message_process_saga(self, msg_id: str, agent_id: str):
+    def _create_message_process_saga(self, msg_id: str, agent_id: str, msg_type: str = "USER_MESSAGE"):
         """创建 message_process Saga"""
         client = self._get_queue_client()
         subagent_id = f"main-{agent_id[:8]}"
@@ -210,6 +212,7 @@ class Watchdog:
                         "message_id": msg_id,
                         "agent_id": agent_id,
                         "subagent_id": subagent_id,
+                        "trigger_type": "scheduled_wake" if msg_type == "SYSTEM_WAKE" else "user_message",
                     },
                     "idempotency_key": f"message-process-{msg_id}",
                 }

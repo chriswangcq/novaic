@@ -139,9 +139,16 @@ class WatchdogSync:
         
         self._log(f"Found message {msg_id} (type={msg_type}, agent={agent_id})")
         
-        # 只处理用户消息
-        if msg_type != "USER_MESSAGE":
+        # 处理用户消息和系统唤醒消息
+        if msg_type not in ("USER_MESSAGE", "SYSTEM_WAKE"):
             return
+        
+        # Phase 4: Lifecycle hook — 用户消息自动计数
+        if msg_type == "USER_MESSAGE":
+            try:
+                self.gateway_client.increment_drive_interaction(agent_id)
+            except Exception:
+                pass  # non-critical
         
         # 创建 MessageProcess Saga
         subagent_id = f"main-{agent_id[:8]}"
@@ -153,6 +160,7 @@ class WatchdogSync:
                     "message_id": msg_id,
                     "agent_id": agent_id,
                     "subagent_id": subagent_id,
+                    "trigger_type": "scheduled_wake" if msg_type == "SYSTEM_WAKE" else "user_message",
                 },
                 idempotency_key=f"message-process-{msg_id}",
             )

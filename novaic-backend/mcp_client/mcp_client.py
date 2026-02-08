@@ -563,14 +563,14 @@ class MCPServerConnection:
         # 更新或创建 skill
         if uri in self._skills_cache:
             self._skills_cache[uri].content = content
-            self._skills_cache[uri].loaded_at = datetime.now()
+            self._skills_cache[uri].loaded_at = datetime.utcnow()
         else:
             self._skills_cache[uri] = MCPSkill(
                 name=uri.replace("skill://", ""),
                 uri=uri,
                 description="",
                 content=content,
-                loaded_at=datetime.now()
+                loaded_at=datetime.utcnow()
             )
         
         return self._skills_cache[uri]

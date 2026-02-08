@@ -1,12 +1,12 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { ChevronDown, ChevronRight, Search, Plus, X, Trash2, Database, HardDrive, Monitor } from 'lucide-react';
+import { ChevronDown, ChevronRight, Search, Plus, X, Trash2, Database, HardDrive, Monitor, Zap, Wrench } from 'lucide-react';
 import { api, type ApiKeyInfo, type CandidateModel, type AICAgent } from '../../services/api';
 import { useAppStore } from '../../store';
 import { vmService } from '../../services/vm';
 
 // ==================== Tab Types ====================
 
-type SettingsTab = 'models' | 'agents' | 'cache';
+type SettingsTab = 'models' | 'agents' | 'skills' | 'agent-tools' | 'cache';
 
 // ==================== Types ====================
 
@@ -871,6 +871,516 @@ function AgentsTab() {
   );
 }
 
+// ==================== Skills Tab ====================
+
+function SkillsTab() {
+  const [skills, setSkills] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<any | null>(null); // null = list view, {} = new, {id:...} = editing
+  const [saving, setSaving] = useState(false);
+
+  // Form state
+  const [formName, setFormName] = useState('');
+  const [formDescription, setFormDescription] = useState('');
+  const [formPrompt, setFormPrompt] = useState('');
+  const [formWorkflow, setFormWorkflow] = useState('');
+  const [formTools, setFormTools] = useState<string[]>([]);
+  const [formIcon, setFormIcon] = useState('zap');
+
+  const loadSkills = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await api.getSkills();
+      setSkills(res.skills || []);
+    } catch (e) {
+      console.error('Failed to load skills:', e);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadSkills(); }, [loadSkills]);
+
+  const startEdit = (skill: any | null) => {
+    if (skill) {
+      setFormName(skill.name);
+      setFormDescription(skill.description || '');
+      setFormPrompt(skill.prompt || '');
+      setFormWorkflow(skill.workflow || '');
+      setFormTools(skill.tools || []);
+      setFormIcon(skill.icon || 'zap');
+      setEditing(skill);
+    } else {
+      setFormName('');
+      setFormDescription('');
+      setFormPrompt('');
+      setFormWorkflow('');
+      setFormTools([]);
+      setFormIcon('zap');
+      setEditing({});
+    }
+  };
+
+  const handleSave = async () => {
+    if (!formName.trim()) return;
+    setSaving(true);
+    try {
+      const data = {
+        name: formName,
+        description: formDescription,
+        prompt: formPrompt,
+        tools: formTools,
+        workflow: formWorkflow,
+        icon: formIcon,
+      };
+      if (editing?.id) {
+        await api.updateSkill(editing.id, data);
+      } else {
+        await api.createSkill(data);
+      }
+      setEditing(null);
+      await loadSkills();
+    } catch (e) {
+      console.error('Failed to save skill:', e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (skillId: string) => {
+    if (!confirm('Delete this skill?')) return;
+    try {
+      await api.deleteSkill(skillId);
+      await loadSkills();
+    } catch (e) {
+      console.error('Failed to delete skill:', e);
+    }
+  };
+
+  // Edit form
+  if (editing !== null) {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="px-4 py-3 border-b border-nb-border flex items-center justify-between flex-shrink-0">
+          <h3 className="text-sm font-medium text-nb-text">{editing.id ? 'Edit Skill' : 'New Skill'}</h3>
+          <button onClick={() => setEditing(null)} className="text-nb-text-muted hover:text-nb-text text-xs">Cancel</button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div>
+            <label className="block text-xs text-nb-text-muted mb-1">Name</label>
+            <input
+              value={formName}
+              onChange={e => setFormName(e.target.value)}
+              className="w-full bg-nb-surface-2 border border-nb-border rounded px-3 py-1.5 text-sm text-nb-text"
+              placeholder="e.g. Web Researcher"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-nb-text-muted mb-1">Description</label>
+            <input
+              value={formDescription}
+              onChange={e => setFormDescription(e.target.value)}
+              className="w-full bg-nb-surface-2 border border-nb-border rounded px-3 py-1.5 text-sm text-nb-text"
+              placeholder="Brief description"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-nb-text-muted mb-1">Prompt / Instructions</label>
+            <textarea
+              value={formPrompt}
+              onChange={e => setFormPrompt(e.target.value)}
+              rows={6}
+              className="w-full bg-nb-surface-2 border border-nb-border rounded px-3 py-2 text-sm text-nb-text font-mono resize-y"
+              placeholder="Instructions for the agent when this skill is active..."
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-nb-text-muted mb-1">Workflow (optional)</label>
+            <textarea
+              value={formWorkflow}
+              onChange={e => setFormWorkflow(e.target.value)}
+              rows={3}
+              className="w-full bg-nb-surface-2 border border-nb-border rounded px-3 py-2 text-sm text-nb-text font-mono resize-y"
+              placeholder="Step-by-step workflow SOP..."
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-nb-text-muted mb-1">Associated Tools (comma-separated)</label>
+            <input
+              value={formTools.join(', ')}
+              onChange={e => setFormTools(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+              className="w-full bg-nb-surface-2 border border-nb-border rounded px-3 py-1.5 text-sm text-nb-text"
+              placeholder="web_search, web_fetch, notebook_write"
+            />
+          </div>
+        </div>
+        <div className="px-4 py-3 border-t border-nb-border flex justify-end gap-2 flex-shrink-0">
+          <button
+            onClick={() => setEditing(null)}
+            className="px-3 py-1.5 text-xs text-nb-text-muted hover:text-nb-text border border-nb-border rounded"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving || !formName.trim()}
+            className="px-3 py-1.5 text-xs bg-nb-accent/20 text-nb-accent hover:bg-nb-accent/30 rounded disabled:opacity-50"
+          >
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // List view
+  return (
+    <div className="flex flex-col h-full">
+      <div className="px-4 py-3 border-b border-nb-border flex items-center justify-between flex-shrink-0">
+        <h3 className="text-sm font-medium text-nb-text">Skills</h3>
+        <button
+          onClick={() => startEdit(null)}
+          className="flex items-center gap-1 px-2.5 py-1 text-xs bg-nb-accent/20 text-nb-accent hover:bg-nb-accent/30 rounded"
+        >
+          <Plus size={12} /> New Skill
+        </button>
+      </div>
+      <div className="flex-1 overflow-y-auto p-4">
+        {loading ? (
+          <p className="text-xs text-nb-text-muted text-center py-8">Loading...</p>
+        ) : skills.length === 0 ? (
+          <div className="text-center py-12">
+            <Zap size={32} className="mx-auto text-nb-text-muted/30 mb-2" />
+            <p className="text-sm text-nb-text-muted">No skills yet</p>
+            <p className="text-xs text-nb-text-muted/70 mt-1">Create a skill to define reusable capabilities</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {skills.map(skill => (
+              <div key={skill.id} className="border border-nb-border rounded-lg p-3 hover:bg-nb-surface-2/50 transition-colors">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2">
+                    <Zap size={14} className="text-nb-accent shrink-0" />
+                    <span className="text-sm font-medium text-nb-text">{skill.name}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => startEdit(skill)}
+                      className="px-2 py-0.5 text-[10px] text-nb-text-muted hover:text-nb-text border border-nb-border rounded"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(skill.id)}
+                      className="px-2 py-0.5 text-[10px] text-red-400 hover:text-red-300 border border-nb-border rounded"
+                    >
+                      Del
+                    </button>
+                  </div>
+                </div>
+                {skill.description && (
+                  <p className="text-xs text-nb-text-muted mt-1 ml-5">{skill.description}</p>
+                )}
+                {skill.tools?.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2 ml-5">
+                    {skill.tools.map((t: string) => (
+                      <span key={t} className="px-1.5 py-0.5 text-[10px] bg-nb-surface-2 text-nb-text-muted rounded">
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ==================== Agent Tools Tab ====================
+
+function AgentToolsTab() {
+  const { agents, currentAgentId } = useAppStore();
+  const [selectedAgentId, setSelectedAgentId] = useState<string>(currentAgentId || '');
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Tool config
+  const [categories, setCategories] = useState<Record<string, { name: string; count: number; tools: { name: string; description: string }[] }>>({});
+  const [enabledCategories, setEnabledCategories] = useState<string[]>([]);
+  const [disabledTools, setDisabledTools] = useState<string[]>([]);
+  const [customInstructions, setCustomInstructions] = useState('');
+
+  // Skills
+  const [allSkills, setAllSkills] = useState<any[]>([]);
+  const [assignedSkillIds, setAssignedSkillIds] = useState<string[]>([]);
+
+  // Prompts
+  const [prompts, setPrompts] = useState<{ system_prompt: string; drive_prompt: string; system_prompt_length: number; drive_prompt_length: number } | null>(null);
+  const [expandedPrompt, setExpandedPrompt] = useState<string | null>(null);
+
+  const loadData = useCallback(async () => {
+    if (!selectedAgentId) return;
+    setLoading(true);
+    try {
+      const [catRes, configRes, skillsRes, agentSkillsRes] = await Promise.all([
+        api.getToolCategories(),
+        api.getAgentToolsConfig(selectedAgentId),
+        api.getSkills(),
+        api.getAgentSkills(selectedAgentId),
+      ]);
+      setCategories(catRes.categories || {});
+      setEnabledCategories(configRes.enabled_tool_categories || []);
+      setDisabledTools(configRes.disabled_tools || []);
+      setCustomInstructions(configRes.custom_instructions || '');
+      setAllSkills(skillsRes.skills || []);
+      setAssignedSkillIds((agentSkillsRes.skills || []).map((s: any) => s.id));
+
+      // Load prompts preview
+      try {
+        const p = await api.getPromptsPreview(selectedAgentId);
+        setPrompts(p);
+      } catch {
+        setPrompts(null);
+      }
+    } catch (e) {
+      console.error('Failed to load agent tools data:', e);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedAgentId]);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  useEffect(() => {
+    if (currentAgentId && !selectedAgentId) {
+      setSelectedAgentId(currentAgentId);
+    }
+  }, [currentAgentId]);
+
+  const handleSave = async () => {
+    if (!selectedAgentId) return;
+    setSaving(true);
+    try {
+      await Promise.all([
+        api.saveAgentToolsConfig(selectedAgentId, {
+          enabled_tool_categories: enabledCategories,
+          disabled_tools: disabledTools,
+          custom_instructions: customInstructions,
+        }),
+        api.setAgentSkills(selectedAgentId, assignedSkillIds),
+      ]);
+      // Reload prompts preview after save
+      try {
+        const p = await api.getPromptsPreview(selectedAgentId);
+        setPrompts(p);
+      } catch {}
+    } catch (e) {
+      console.error('Failed to save:', e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleCategory = (cat: string) => {
+    setEnabledCategories(prev => {
+      if (prev.length === 0) {
+        // Currently "all enabled" → switch to "all except this one"
+        return Object.keys(categories).filter(c => c !== cat);
+      }
+      return prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat];
+    });
+  };
+
+  const toggleSkill = (skillId: string) => {
+    setAssignedSkillIds(prev =>
+      prev.includes(skillId) ? prev.filter(id => id !== skillId) : [...prev, skillId]
+    );
+  };
+
+  const allCatsEnabled = enabledCategories.length === 0;
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Header with agent selector */}
+      <div className="px-4 py-3 border-b border-nb-border flex items-center justify-between flex-shrink-0">
+        <h3 className="text-sm font-medium text-nb-text">Agent Tools</h3>
+        <select
+          value={selectedAgentId}
+          onChange={e => setSelectedAgentId(e.target.value)}
+          className="bg-nb-surface-2 border border-nb-border rounded px-2 py-1 text-xs text-nb-text max-w-[200px]"
+        >
+          <option value="">Select Agent...</option>
+          {agents.map(a => (
+            <option key={a.id} value={a.id}>{a.name}</option>
+          ))}
+        </select>
+      </div>
+
+      {!selectedAgentId ? (
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-xs text-nb-text-muted">Select an agent to configure</p>
+        </div>
+      ) : loading ? (
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-xs text-nb-text-muted">Loading...</p>
+        </div>
+      ) : (
+        <>
+          <div className="flex-1 overflow-y-auto p-4 space-y-5">
+            {/* Tools Section */}
+            <div>
+              <h4 className="text-xs font-medium text-nb-text mb-2">Tool Categories</h4>
+              <div className="grid grid-cols-3 gap-1.5">
+                {Object.entries(categories).map(([cat, info]) => {
+                  const isEnabled = allCatsEnabled || enabledCategories.includes(cat);
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => toggleCategory(cat)}
+                      className={`flex items-center justify-between px-2.5 py-1.5 rounded text-xs border transition-colors ${
+                        isEnabled
+                          ? 'border-nb-accent/40 bg-nb-accent/10 text-nb-text'
+                          : 'border-nb-border bg-nb-surface-2 text-nb-text-muted'
+                      }`}
+                    >
+                      <span>{cat}</span>
+                      <span className="text-[10px] opacity-60">({info.count})</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {enabledCategories.length === 0 && (
+                <p className="text-[10px] text-nb-text-muted mt-1">All categories enabled (default)</p>
+              )}
+            </div>
+
+            {/* Disabled Tools */}
+            <div>
+              <h4 className="text-xs font-medium text-nb-text mb-2">Disabled Tools</h4>
+              <div className="flex flex-wrap gap-1">
+                {disabledTools.map(tool => (
+                  <span key={tool} className="flex items-center gap-1 px-2 py-0.5 text-[10px] bg-red-500/10 text-red-400 rounded border border-red-500/20">
+                    {tool}
+                    <button onClick={() => setDisabledTools(prev => prev.filter(t => t !== tool))} className="hover:text-red-300">
+                      <X size={10} />
+                    </button>
+                  </span>
+                ))}
+                <input
+                  placeholder="+ add tool name"
+                  className="px-2 py-0.5 text-[10px] bg-nb-surface-2 border border-nb-border rounded w-28 text-nb-text"
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      const val = (e.target as HTMLInputElement).value.trim();
+                      if (val && !disabledTools.includes(val)) {
+                        setDisabledTools(prev => [...prev, val]);
+                        (e.target as HTMLInputElement).value = '';
+                      }
+                    }
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Skills Section */}
+            <div>
+              <h4 className="text-xs font-medium text-nb-text mb-2">Assigned Skills</h4>
+              {allSkills.length === 0 ? (
+                <p className="text-[10px] text-nb-text-muted">No skills defined. Create skills in the Skills tab.</p>
+              ) : (
+                <div className="space-y-1">
+                  {allSkills.map(skill => {
+                    const assigned = assignedSkillIds.includes(skill.id);
+                    return (
+                      <button
+                        key={skill.id}
+                        onClick={() => toggleSkill(skill.id)}
+                        className={`w-full flex items-center gap-2 px-3 py-2 rounded text-xs border transition-colors text-left ${
+                          assigned
+                            ? 'border-nb-accent/40 bg-nb-accent/10 text-nb-text'
+                            : 'border-nb-border bg-nb-surface-2 text-nb-text-muted hover:bg-nb-surface-2/80'
+                        }`}
+                      >
+                        <Zap size={12} className={assigned ? 'text-nb-accent' : 'text-nb-text-muted'} />
+                        <div className="flex-1 min-w-0">
+                          <span className="font-medium">{skill.name}</span>
+                          {skill.description && <span className="ml-2 opacity-60">{skill.description}</span>}
+                        </div>
+                        {assigned && <span className="text-[10px] text-nb-accent">Active</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Prompts Preview */}
+            <div>
+              <h4 className="text-xs font-medium text-nb-text mb-2">Prompts Preview</h4>
+              <div className="space-y-1.5">
+                {prompts && (
+                  <>
+                    <div className="border border-nb-border rounded">
+                      <button
+                        className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-nb-text hover:bg-nb-surface-2"
+                        onClick={() => setExpandedPrompt(expandedPrompt === 'system' ? null : 'system')}
+                      >
+                        <span>System Prompt ({prompts.system_prompt_length} chars)</span>
+                        {expandedPrompt === 'system' ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                      </button>
+                      {expandedPrompt === 'system' && (
+                        <pre className="px-3 py-2 text-[10px] text-nb-text-muted border-t border-nb-border max-h-48 overflow-y-auto whitespace-pre-wrap font-mono">{prompts.system_prompt}</pre>
+                      )}
+                    </div>
+                    <div className="border border-nb-border rounded">
+                      <button
+                        className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-nb-text hover:bg-nb-surface-2"
+                        onClick={() => setExpandedPrompt(expandedPrompt === 'drive' ? null : 'drive')}
+                      >
+                        <span>Drive Prompt ({prompts.drive_prompt_length} chars)</span>
+                        {expandedPrompt === 'drive' ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                      </button>
+                      {expandedPrompt === 'drive' && (
+                        <pre className="px-3 py-2 text-[10px] text-nb-text-muted border-t border-nb-border max-h-48 overflow-y-auto whitespace-pre-wrap font-mono">{prompts.drive_prompt}</pre>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Custom Instructions */}
+            <div>
+              <h4 className="text-xs font-medium text-nb-text mb-2">Custom Instructions</h4>
+              <textarea
+                value={customInstructions}
+                onChange={e => setCustomInstructions(e.target.value)}
+                rows={3}
+                className="w-full bg-nb-surface-2 border border-nb-border rounded px-3 py-2 text-xs text-nb-text font-mono resize-y"
+                placeholder="Additional instructions appended to system prompt..."
+              />
+            </div>
+          </div>
+
+          {/* Save button */}
+          <div className="px-4 py-3 border-t border-nb-border flex justify-end flex-shrink-0">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="px-4 py-1.5 text-xs bg-nb-accent/20 text-nb-accent hover:bg-nb-accent/30 rounded disabled:opacity-50"
+            >
+              {saving ? 'Saving...' : 'Save Configuration'}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ==================== Main Component ====================
 
 export function SettingsModal(props: { open: boolean; onClose: () => void }) {
@@ -1139,6 +1649,28 @@ export function SettingsModal(props: { open: boolean; onClose: () => void }) {
               <span>Agents</span>
             </button>
             <button
+              onClick={() => setActiveTab('skills')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm transition-colors ${
+                activeTab === 'skills'
+                  ? 'bg-nb-accent/10 text-nb-accent border-r-2 border-nb-accent'
+                  : 'text-nb-text-muted hover:text-nb-text hover:bg-nb-surface-2'
+              }`}
+            >
+              <Zap size={16} />
+              <span>Skills</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('agent-tools')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm transition-colors ${
+                activeTab === 'agent-tools'
+                  ? 'bg-nb-accent/10 text-nb-accent border-r-2 border-nb-accent'
+                  : 'text-nb-text-muted hover:text-nb-text hover:bg-nb-surface-2'
+              }`}
+            >
+              <Wrench size={16} />
+              <span>Agent Tools</span>
+            </button>
+            <button
               onClick={() => setActiveTab('cache')}
               className={`flex items-center gap-2 px-4 py-2.5 text-sm transition-colors ${
                 activeTab === 'cache'
@@ -1270,6 +1802,16 @@ export function SettingsModal(props: { open: boolean; onClose: () => void }) {
             {/* Agents Tab */}
             {activeTab === 'agents' && (
               <AgentsTab />
+            )}
+
+            {/* Skills Tab */}
+            {activeTab === 'skills' && (
+              <SkillsTab />
+            )}
+
+            {/* Agent Tools Tab */}
+            {activeTab === 'agent-tools' && (
+              <AgentToolsTab />
             )}
 
             {/* Cache Cleanup Tab */}

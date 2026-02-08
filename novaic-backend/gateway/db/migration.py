@@ -75,7 +75,7 @@ def migrate_config(db: Database, data_dir: Path) -> bool:
                         key.get("api_base"),
                         key.get("deployment_name"),
                         key.get("api_version"),
-                        key.get("created_at", datetime.now().isoformat()),
+                        key.get("created_at", datetime.utcnow().isoformat()),
                     )
                 )
             
@@ -138,7 +138,7 @@ def migrate_agents(db: Database, data_dir: Path) -> bool:
                     (
                         agent["id"],
                         agent["name"],
-                        agent.get("created_at", datetime.now().isoformat()),
+                        agent.get("created_at", datetime.utcnow().isoformat()),
                         json.dumps(vm_config),
                         json.dumps(ports),
                         agent.get("status", "stopped"),
@@ -184,7 +184,7 @@ def migrate_sessions(db: Database, data_dir: Path) -> bool:
             db.execute(
                 """INSERT OR IGNORE INTO sessions (id, created_at, updated_at)
                    VALUES (?, ?, ?)""",
-                (session_id, datetime.now().isoformat(), datetime.now().isoformat())
+                (session_id, datetime.utcnow().isoformat(), datetime.utcnow().isoformat())
             )
             
             # Read and migrate entries
@@ -208,7 +208,7 @@ def migrate_sessions(db: Database, data_dir: Path) -> bool:
                                     "message",
                                     entry.get("role"),
                                     json.dumps(entry.get("content")) if not isinstance(entry.get("content"), str) else entry.get("content"),
-                                    entry.get("timestamp", datetime.now().isoformat()),
+                                    entry.get("timestamp", datetime.utcnow().isoformat()),
                                     json.dumps(entry.get("metadata", {})),
                                 )
                             )
@@ -221,7 +221,7 @@ def migrate_sessions(db: Database, data_dir: Path) -> bool:
                                     session_id,
                                     "compaction_summary",
                                     entry.get("summary"),
-                                    entry.get("timestamp", datetime.now().isoformat()),
+                                    entry.get("timestamp", datetime.utcnow().isoformat()),
                                     entry.get("compacted_count"),
                                     entry.get("original_tokens"),
                                     entry.get("summary_tokens"),

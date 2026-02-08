@@ -55,7 +55,7 @@ class MessageRepository:
             创建的消息
         """
         msg_id = id or str(uuid4())[:12]
-        timestamp = timestamp or datetime.now().isoformat()
+        timestamp = timestamp or datetime.utcnow().isoformat()
         
         with self.db.transaction("message", resource_id=msg_id):
             self.db.execute(

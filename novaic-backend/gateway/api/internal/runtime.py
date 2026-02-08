@@ -267,16 +267,22 @@ def rest_runtime(runtime_id: str, data: Dict[str, Any]):
     # Set need_rest=1 (不再设置 status='resting')
     runtime_repo.set_need_rest(runtime_id, True)
     
-    # Update SubAgent's wake triggers (v14)
+    # Update SubAgent's wake triggers and schedule (v26)
     reason = data.get("reason", "No reason provided")
     wake_triggers = data.get("wake_triggers", [{"type": "user_response"}])
     handoff_notes = data.get("handoff_notes")
+    rest_duration = data.get("rest_duration_minutes", 30)
+    rest_duration = max(1, min(1440, rest_duration))  # clamp 1min - 24h
     
-    subagent_repo.update_wake_triggers(
+    from datetime import timedelta
+    wake_at = (datetime.utcnow() + timedelta(minutes=rest_duration)).isoformat()
+    
+    subagent_repo.update_wake_info(
         runtime.subagent_id,
         runtime.agent_id,
-        wake_triggers,
-        handoff_notes
+        wake_triggers=wake_triggers,
+        wake_at=wake_at,
+        handoff_notes=handoff_notes,
     )
     
     return {
@@ -284,7 +290,8 @@ def rest_runtime(runtime_id: str, data: Dict[str, Any]):
         "state": "resting",
         "reason": reason,
         "triggers_set": len(wake_triggers),
-        "estimated_wake": None,
+        "estimated_wake": wake_at,
+        "rest_duration_minutes": rest_duration,
         "handoff_notes": handoff_notes,
     }
 
@@ -702,7 +709,7 @@ def send_to_runtime(runtime_id: str, data: Dict[str, Any]):
     context.append({
         "role": "user",
         "content": message,
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.utcnow().isoformat(),
     })
     
     repo.update_context(runtime_id, context)
@@ -814,6 +821,97 @@ def rt_memory_get_task_history(runtime_id: str, data: Dict[str, Any]):
     )
 
 
+# ==================== Notebook 工具 ====================
+
+@router.post("/rt/{runtime_id}/notebook/write")
+def rt_notebook_write(runtime_id: str, data: Dict[str, Any]):
+    """Write a new notebook entry. Agent ID resolved from runtime."""
+    from gateway.db.repositories.notebook import NotebookRepository
+    
+    _, agent_id, _ = resolve_runtime_ids(runtime_id)
+    
+    db = get_db()
+    repo = NotebookRepository(db)
+    return repo.write(
+        agent_id=agent_id,
+        entry_type=data.get("entry_type", "observation"),
+        title=data.get("title", "Untitled"),
+        content=data.get("content", ""),
+        source=f"runtime:{runtime_id}",
+        related_topics=data.get("related_topics"),
+        relevance_score=data.get("relevance_score", 0.5),
+        expires_at=data.get("expires_at"),
+    )
+
+
+@router.post("/rt/{runtime_id}/notebook/read")
+def rt_notebook_read(runtime_id: str, data: Dict[str, Any]):
+    """Read a single notebook entry. Agent ID resolved from runtime."""
+    from gateway.db.repositories.notebook import NotebookRepository
+    
+    _, agent_id, _ = resolve_runtime_ids(runtime_id)
+    
+    db = get_db()
+    repo = NotebookRepository(db)
+    return repo.read(
+        agent_id=agent_id,
+        entry_id=data.get("entry_id"),
+    )
+
+
+@router.post("/rt/{runtime_id}/notebook/list")
+def rt_notebook_list(runtime_id: str, data: Dict[str, Any]):
+    """List notebook entries with filters. Agent ID resolved from runtime."""
+    from gateway.db.repositories.notebook import NotebookRepository
+    
+    _, agent_id, _ = resolve_runtime_ids(runtime_id)
+    
+    db = get_db()
+    repo = NotebookRepository(db)
+    return repo.list_entries(
+        agent_id=agent_id,
+        entry_type=data.get("entry_type"),
+        status=data.get("status"),
+        limit=data.get("limit", 20),
+        include_expired=data.get("include_expired", False),
+    )
+
+
+@router.post("/rt/{runtime_id}/notebook/update")
+def rt_notebook_update(runtime_id: str, data: Dict[str, Any]):
+    """Update a notebook entry. Agent ID resolved from runtime."""
+    from gateway.db.repositories.notebook import NotebookRepository
+    
+    _, agent_id, _ = resolve_runtime_ids(runtime_id)
+    
+    db = get_db()
+    repo = NotebookRepository(db)
+    return repo.update(
+        agent_id=agent_id,
+        entry_id=data.get("entry_id"),
+        status=data.get("status"),
+        content=data.get("content"),
+        title=data.get("title"),
+        relevance_score=data.get("relevance_score"),
+        expires_at=data.get("expires_at"),
+    )
+
+
+@router.post("/rt/{runtime_id}/notebook/delete")
+def rt_notebook_delete(runtime_id: str, data: Dict[str, Any]):
+    """Delete a notebook entry. Agent ID resolved from runtime."""
+    from gateway.db.repositories.notebook import NotebookRepository
+    
+    _, agent_id, _ = resolve_runtime_ids(runtime_id)
+    
+    db = get_db()
+    repo = NotebookRepository(db)
+    return repo.delete(
+        agent_id=agent_id,
+        entry_id=data.get("entry_id"),
+    )
+
+
 # ---------- Chat APIs (via runtime_id) ----------
 
 @router.post("/rt/{runtime_id}/chat/event")
@@ -913,6 +1011,22 @@ def rt_chat_event(runtime_id: str, data: Dict[str, Any]):
         print(f"[rt_chat_event] Broadcasted {event_type} to {len(_chat_subscribers)} UI subscribers")
     except Exception as e:
         print(f"[rt_chat_event] Failed to broadcast to UI SSE: {e}")
+    
+    # Phase 4: Auto-track proactive messages
+    # If this is an AGENT_REPLY and the runtime was from a scheduled wake, update last_proactive_at
+    if event_type == "AGENT_REPLY":
+        try:
+            from gateway.db.repositories import RuntimeRepository as _RTRepo
+            from gateway.db.repositories.drive import DriveRepository
+            _db = get_db()
+            _rt_repo = _RTRepo(_db)
+            _runtime = _rt_repo.get_by_id(runtime_id)
+            if _runtime and getattr(_runtime, 'trigger_type', None) == 'scheduled_wake':
+                _drive_repo = DriveRepository(_db)
+                _drive_repo.set_last_proactive(_runtime.agent_id)
+                print(f"[rt_chat_event] Tracked proactive message for agent {_runtime.agent_id}")
+        except Exception as e:
+            print(f"[rt_chat_event] Failed to track proactive message: {e}")
     
     return {"success": True, "event_type": event_type, "message_id": message_id}
 
@@ -1329,3 +1443,51 @@ def rt_task_list(runtime_id: str, status: Optional[str] = None):
 
 
 # Note: task_query, task_cancel, task_summary don't need runtime_id - they use task_id directly
+
+
+# ==================== Drive 工具 (Agent 自驱力) ====================
+
+@router.post("/rt/{runtime_id}/drive/get")
+def rt_drive_get(runtime_id: str):
+    """Get agent drive configuration. Agent ID resolved from runtime."""
+    from gateway.db.repositories.drive import DriveRepository
+    
+    _, agent_id, _ = resolve_runtime_ids(runtime_id)
+    
+    db = get_db()
+    repo = DriveRepository(db)
+    return repo.get_or_create(agent_id)
+
+
+@router.post("/rt/{runtime_id}/drive/update-profile")
+def rt_drive_update_profile(runtime_id: str, data: Dict[str, Any]):
+    """Update a key in user_profile. Agent ID resolved from runtime."""
+    from gateway.db.repositories.drive import DriveRepository
+    
+    _, agent_id, _ = resolve_runtime_ids(runtime_id)
+    
+    db = get_db()
+    repo = DriveRepository(db)
+    return repo.update_profile(
+        agent_id=agent_id,
+        key=data.get("key"),
+        value=data.get("value"),
+        reason=data.get("reason"),
+    )
+
+
+@router.post("/rt/{runtime_id}/drive/update")
+def rt_drive_update(runtime_id: str, data: Dict[str, Any]):
+    """Update drive fields (relationship, proactiveness, etc). Agent ID resolved from runtime."""
+    from gateway.db.repositories.drive import DriveRepository
+    
+    _, agent_id, _ = resolve_runtime_ids(runtime_id)
+    
+    db = get_db()
+    repo = DriveRepository(db)
+    return repo.update_drive(
+        agent_id=agent_id,
+        relationship_delta=data.get("relationship_delta"),
+        proactiveness_delta=data.get("proactiveness_delta"),
+        reason=data.get("reason"),
+    )

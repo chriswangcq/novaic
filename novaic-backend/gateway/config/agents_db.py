@@ -64,7 +64,7 @@ class AICAgent(BaseModel):
     """AIC Agent configuration."""
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
-    created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
+    created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
     vm: VmConfig = Field(default_factory=VmConfig)
     setup_complete: bool = False  # VM setup complete (disk, config)
     cloud_init_complete: bool = False  # Cloud-init initialization complete

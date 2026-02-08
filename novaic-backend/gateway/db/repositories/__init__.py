@@ -16,6 +16,9 @@ from .session import SessionRepository
 from .chat import ChatRepository
 from .agent_state import AgentStateRepository
 from .memory import MemoryRepository
+from .notebook import NotebookRepository
+from .drive import DriveRepository
+from .skill import SkillRepository
 from .message import MessageRepository
 from .runtime import RuntimeRepository, AgentRuntime
 from .subagent import SubAgentRepository, SubAgent
@@ -38,6 +41,9 @@ __all__ = [
     "ChatRepository",
     "AgentStateRepository",
     "MemoryRepository",
+    "NotebookRepository",
+    "DriveRepository",
+    "SkillRepository",
     "MessageRepository",
     "RuntimeRepository",
     "AgentRuntime",

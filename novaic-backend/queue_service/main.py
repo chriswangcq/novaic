@@ -39,7 +39,7 @@ print(f"[Queue Service] Data directory: {NOVAIC_DATA_DIR}")
 LOG_DIR = os.path.join(NOVAIC_DATA_DIR, "logs")
 os.makedirs(LOG_DIR, exist_ok=True)
 
-LOG_FILE = os.path.join(LOG_DIR, f"queue-service-{datetime.now().strftime('%Y%m%d')}.log")
+LOG_FILE = os.path.join(LOG_DIR, f"queue-service-{datetime.utcnow().strftime('%Y%m%d')}.log")
 
 logging.basicConfig(
     level=logging.INFO,

@@ -60,7 +60,7 @@ class SessionRepository:
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Create a new session."""
-        now = datetime.now().isoformat()
+        now = datetime.utcnow().isoformat()
         
         # Use agent_id if available, otherwise use session_id
         resource_id = agent_id if agent_id else session_id
@@ -78,7 +78,7 @@ class SessionRepository:
         with self.db.transaction(lock_type="agent", resource_id=session_id):
             self.db.execute(
                 "UPDATE sessions SET updated_at = ? WHERE id = ?",
-                (datetime.now().isoformat(), session_id)
+                (datetime.utcnow().isoformat(), session_id)
             )
     
     def delete_session(self, session_id: str) -> bool:
@@ -155,7 +155,7 @@ class SessionRepository:
         metadata: Optional[Dict[str, Any]] = None,
     ) -> int:
         """Add a message to a session."""
-        timestamp = datetime.now().isoformat()
+        timestamp = datetime.utcnow().isoformat()
         
         # Ensure session exists
         self.ensure_session(session_id)
@@ -191,7 +191,7 @@ class SessionRepository:
         summary_tokens: int,
     ) -> int:
         """Add a compaction summary to a session."""
-        timestamp = datetime.now().isoformat()
+        timestamp = datetime.utcnow().isoformat()
         
         with self.db.transaction(lock_type="agent", resource_id=session_id):
             cursor = self.db.execute(

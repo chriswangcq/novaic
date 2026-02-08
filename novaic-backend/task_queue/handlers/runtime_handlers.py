@@ -76,6 +76,35 @@ def handle_runtime_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
             # Context 构建失败不阻塞 runtime 创建
             print(f"[runtime.create] Failed to build initial context for {subagent_id}: {e}")
     
+    # Base System Prompt: 为所有 session 注入 Agent 身份 (Phase 4)
+    try:
+        from ..utils.system_prompt import build_system_prompt
+        sys_prompt = build_system_prompt(agent_id, client)
+        if sys_prompt:
+            initial_context.insert(0, {
+                "role": "system",
+                "content": sys_prompt,
+            })
+            context_parts += 1
+            print(f"[runtime.create] Injected system prompt for {subagent_id}")
+    except Exception as e:
+        print(f"[runtime.create] Failed to build system prompt for {subagent_id}: {e}")
+    
+    # Drive Prompt: 定时唤醒时注入自驱力 Prompt (Phase 3)
+    trigger_type = payload.get("trigger_type", "user_message")
+    if trigger_type == "scheduled_wake":
+        try:
+            from ..utils.drive_prompt import build_drive_prompt
+            drive_prompt = build_drive_prompt(agent_id, client)
+            initial_context.append({
+                "role": "system",
+                "content": drive_prompt,
+            })
+            context_parts += 1
+            print(f"[runtime.create] Injected drive prompt for scheduled wake ({subagent_id})")
+        except Exception as e:
+            print(f"[runtime.create] Failed to build drive prompt for {subagent_id}: {e}")
+    
     # 创建 runtime
     result = biz.create(
         agent_id=agent_id,
