@@ -208,6 +208,7 @@ class AgentConfigManagerDB:
             created_at=row.get("created_at", ""),
             vm=VmConfig(**vm_config),
             setup_complete=row.get("setup_complete", False),
+            cloud_init_complete=row.get("cloud_init_complete", False),
         )
     
     def create_agent(

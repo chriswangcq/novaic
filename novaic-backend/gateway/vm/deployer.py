@@ -176,16 +176,6 @@ class VmuseDeployer:
                     vm_ip, ssh_port, ssh_user, ssh_password, cloud_init_timeout
                 ):
                     raise RuntimeError("Cloud-init did not complete in time")
-                
-                # Update database: mark cloud-init as complete
-                try:
-                    from gateway.config import get_agent_config_manager
-                    agent_manager = get_agent_config_manager()
-                    agent_manager.update_agent(agent_id, cloud_init_complete=True)
-                    logger.info(f"[VmuseDeployer] Updated agent {agent_id} cloud_init_complete=True")
-                except Exception as e:
-                    logger.warning(f"[VmuseDeployer] Failed to update cloud_init_complete: {e}")
-                
                 result["steps"]["cloud_init"] = "completed"
             else:
                 result["steps"]["cloud_init"] = "skipped"
@@ -394,39 +384,6 @@ echo "VMUSE installation completed"
                 if deploy_result["success"]:
                     result.update(deploy_result)
                     logger.info(f"[VmuseDeployer] ✅ Deployment succeeded on attempt #{result['attempts']}")
-                    
-                    # Check and update cloud-init status
-                    try:
-                        # Check if cloud-init is complete via marker file
-                        ssh_manager = get_ssh_key_manager()
-                        key_path = ssh_manager.get_private_key_path()
-                        
-                        check_result = subprocess.run(
-                            [
-                                "ssh",
-                                "-i", str(key_path),
-                                "-p", str(ssh_port),
-                                "-o", "StrictHostKeyChecking=no",
-                                "-o", "UserKnownHostsFile=/dev/null",
-                                "-o", "ConnectTimeout=5",
-                                f"{ssh_user}@{vm_ip}",
-                                "test -f /opt/novaic/.cloud_init_complete && echo 'COMPLETE'"
-                            ],
-                            capture_output=True,
-                            text=True,
-                            timeout=10,
-                        )
-                        
-                        if check_result.returncode == 0 and "COMPLETE" in check_result.stdout:
-                            from gateway.config import get_agent_config_manager
-                            agent_manager = get_agent_config_manager()
-                            agent_manager.update_agent(agent_id, cloud_init_complete=True)
-                            logger.info(f"[VmuseDeployer] Updated agent {agent_id} cloud_init_complete=True")
-                        else:
-                            logger.debug(f"[VmuseDeployer] Cloud-init not yet complete, will be updated later")
-                    except Exception as e:
-                        logger.warning(f"[VmuseDeployer] Failed to check/update cloud_init_complete: {e}")
-                    
                     return result
                 
                 # Deployment failed, check why
