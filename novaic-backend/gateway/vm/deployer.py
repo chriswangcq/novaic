@@ -11,6 +11,7 @@ import time
 from pathlib import Path
 from typing import Optional, Dict, Any
 import paramiko
+from gateway.vm.ssh import get_ssh_key_manager
 
 logger = logging.getLogger(__name__)
 
@@ -56,13 +57,17 @@ class VmuseDeployer:
             vm_ip: VM IP address
             ssh_port: SSH port
             ssh_user: SSH username
-            ssh_password: SSH password
+            ssh_password: SSH password (not used, kept for compatibility)
             timeout: Maximum wait time in seconds (default: 1 hour)
         
         Returns:
             True if cloud-init completed successfully
         """
         logger.info(f"[VmuseDeployer] Waiting for cloud-init to complete (timeout: {timeout}s / {timeout//60} minutes)...")
+        
+        # Get SSH key
+        ssh_manager = get_ssh_key_manager()
+        key_path = ssh_manager.get_private_key_path()
         
         start_time = time.time()
         check_interval = 10  # Start with 10 seconds
@@ -72,10 +77,11 @@ class VmuseDeployer:
                 # Try SSH connection
                 result = subprocess.run(
                     [
-                        "sshpass", "-p", ssh_password,
                         "ssh",
+                        "-i", str(key_path),
                         "-p", str(ssh_port),
                         "-o", "StrictHostKeyChecking=no",
+                        "-o", "UserKnownHostsFile=/dev/null",
                         "-o", "ConnectTimeout=5",
                         f"{ssh_user}@{vm_ip}",
                         "test -f /opt/novaic/.cloud_init_complete && echo 'READY' || echo 'WAITING'"
@@ -191,12 +197,17 @@ class VmuseDeployer:
             
             # Step 3: Transfer to VM
             logger.info("[VmuseDeployer] Step 3/5: Transferring to VM...")
+            # Get SSH key
+            ssh_manager = get_ssh_key_manager()
+            key_path = ssh_manager.get_private_key_path()
+            
             scp_result = subprocess.run(
                 [
-                    "sshpass", "-p", ssh_password,
                     "scp",
+                    "-i", str(key_path),
                     "-P", str(ssh_port),
                     "-o", "StrictHostKeyChecking=no",
+                    "-o", "UserKnownHostsFile=/dev/null",
                     str(tar_path),
                     f"{ssh_user}@{vm_ip}:/tmp/vmuse.tar.gz"
                 ],
@@ -238,10 +249,11 @@ echo "VMUSE installation completed"
             
             ssh_result = subprocess.run(
                 [
-                    "sshpass", "-p", ssh_password,
                     "ssh",
+                    "-i", str(key_path),
                     "-p", str(ssh_port),
                     "-o", "StrictHostKeyChecking=no",
+                    "-o", "UserKnownHostsFile=/dev/null",
                     f"{ssh_user}@{vm_ip}",
                     install_script
                 ],
@@ -260,10 +272,11 @@ echo "VMUSE installation completed"
             logger.info("[VmuseDeployer] Step 5/5: Starting VMUSE service...")
             service_result = subprocess.run(
                 [
-                    "sshpass", "-p", ssh_password,
                     "ssh",
+                    "-i", str(key_path),
                     "-p", str(ssh_port),
                     "-o", "StrictHostKeyChecking=no",
+                    "-o", "UserKnownHostsFile=/dev/null",
                     f"{ssh_user}@{vm_ip}",
                     "sudo systemctl restart novaic-vmuse"
                 ],
@@ -281,10 +294,11 @@ echo "VMUSE installation completed"
             # Check service status
             status_result = subprocess.run(
                 [
-                    "sshpass", "-p", ssh_password,
                     "ssh",
+                    "-i", str(key_path),
                     "-p", str(ssh_port),
                     "-o", "StrictHostKeyChecking=no",
+                    "-o", "UserKnownHostsFile=/dev/null",
                     f"{ssh_user}@{vm_ip}",
                     "sudo systemctl is-active novaic-vmuse"
                 ],
@@ -429,11 +443,17 @@ echo "VMUSE installation completed"
             result["steps"]["package"] = "ok"
             
             # Step 2: Transfer
+            # Get SSH key
+            ssh_manager = get_ssh_key_manager()
+            key_path = ssh_manager.get_private_key_path()
+            
             scp_result = subprocess.run(
                 [
-                    "sshpass", "-p", ssh_password,
-                    "scp", "-P", str(ssh_port),
+                    "scp",
+                    "-i", str(key_path),
+                    "-P", str(ssh_port),
                     "-o", "StrictHostKeyChecking=no",
+                    "-o", "UserKnownHostsFile=/dev/null",
                     "-o", "ConnectTimeout=5",
                     str(tar_path),
                     f"{ssh_user}@{vm_ip}:/tmp/vmuse.tar.gz"
@@ -462,9 +482,11 @@ echo "Installation completed"
 """
             ssh_result = subprocess.run(
                 [
-                    "sshpass", "-p", ssh_password,
-                    "ssh", "-p", str(ssh_port),
+                    "ssh",
+                    "-i", str(key_path),
+                    "-p", str(ssh_port),
                     "-o", "StrictHostKeyChecking=no",
+                    "-o", "UserKnownHostsFile=/dev/null",
                     "-o", "ConnectTimeout=5",
                     f"{ssh_user}@{vm_ip}",
                     install_script
@@ -480,9 +502,11 @@ echo "Installation completed"
             # Step 4: Start service
             service_result = subprocess.run(
                 [
-                    "sshpass", "-p", ssh_password,
-                    "ssh", "-p", str(ssh_port),
+                    "ssh",
+                    "-i", str(key_path),
+                    "-p", str(ssh_port),
                     "-o", "StrictHostKeyChecking=no",
+                    "-o", "UserKnownHostsFile=/dev/null",
                     f"{ssh_user}@{vm_ip}",
                     "sudo systemctl restart novaic-vmuse"
                 ],
@@ -496,9 +520,11 @@ echo "Installation completed"
             # Check status
             status_result = subprocess.run(
                 [
-                    "sshpass", "-p", ssh_password,
-                    "ssh", "-p", str(ssh_port),
+                    "ssh",
+                    "-i", str(key_path),
+                    "-p", str(ssh_port),
                     "-o", "StrictHostKeyChecking=no",
+                    "-o", "UserKnownHostsFile=/dev/null",
                     f"{ssh_user}@{vm_ip}",
                     "sudo systemctl is-active novaic-vmuse"
                 ],
