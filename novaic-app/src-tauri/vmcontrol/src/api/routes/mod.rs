@@ -24,6 +24,7 @@ pub fn create_router(state: AppState) -> Router {
         .route("/api/vms/:id/pause", post(vm::pause_vm))
         .route("/api/vms/:id/resume", post(vm::resume_vm))
         .route("/api/vms/:id/shutdown", post(vm::shutdown_vm))
+        .route("/api/vms/shutdown-all", post(vm::shutdown_all_vms))
         // Screenshot and input endpoints
         .route("/api/vms/:id/screenshot", post(screen::screenshot))
         .route("/api/vms/:id/input/keyboard", post(input::keyboard_input))

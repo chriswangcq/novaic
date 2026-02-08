@@ -228,7 +228,7 @@ scrot /tmp/test.png
 - `executor.py` - 工具执行和VM映射
 - `multimodal.py` - MCP格式转换
 
-### VM (novaic-app/src-tauri/resources/novaic-mcp-vmuse/)
+### VM (novaic-mcp-vmuse/)
 - `http_server.py` - HTTP服务器
 - `tools/` - 工具实现
   - `desktop.py` - 桌面工具

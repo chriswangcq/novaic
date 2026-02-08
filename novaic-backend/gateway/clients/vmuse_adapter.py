@@ -1096,6 +1096,8 @@ class VmuseAdapter:
             result = response.json()
             
             # 转换为标准格式
+            # 注意：success=True 表示命令执行完成（无论 exit_code 是多少）
+            # exit_code 由 LLM 根据上下文判断是否符合预期
             exec_data = {
                 "exit_code": result.get("exit_code", 0),
                 "stdout": result.get("stdout", ""),
@@ -1104,7 +1106,7 @@ class VmuseAdapter:
             }
             
             return {
-                "success": result.get("exit_code", 0) == 0,
+                "success": True,
                 "content": [
                     {
                         "type": "text",

@@ -519,7 +519,12 @@ def set_runtime_hot_cold_summary(runtime_id: str, data: Dict[str, Any]):
 
 @router.post("/runtimes/{runtime_id}/need-rest")
 def set_runtime_need_rest(runtime_id: str, data: Dict[str, Any]):
-    """Set runtime need_rest flag with CAS (idempotent)."""
+    """Set runtime need_rest flag (idempotent).
+    
+    Note: 使用非 CAS 版本的 set_need_rest，因为：
+    1. 这个操作本身是幂等的（设置为固定值）
+    2. 不需要检查当前值
+    """
     from gateway.db.repositories import RuntimeRepository
 
     value = bool(data.get("value", True))
@@ -528,20 +533,18 @@ def set_runtime_need_rest(runtime_id: str, data: Dict[str, Any]):
     db = get_db()
     runtime_repo = RuntimeRepository(db)
     
-    # Use CAS to set need_rest flag
-    success = runtime_repo.cas_set_need_rest(runtime_id, value)
+    # 直接设置 need_rest 标志（幂等操作）
+    runtime_repo.set_need_rest(runtime_id, target)
 
-    if success:
-        return {"success": True, "current_value": str(target)}
-
-    # Check current value for idempotency info
+    # 验证设置是否成功
     runtime = runtime_repo.get_by_id(runtime_id)
     if not runtime:
         return {"success": False, "message": "Runtime not found", "current_value": "not_found"}
+    
     return {
         "success": runtime.need_rest == target,
         "current_value": str(runtime.need_rest),
-        "message": f"Already need_rest={target}" if runtime.need_rest == target else "Update failed",
+        "message": "OK" if runtime.need_rest == target else "Update failed",
     }
 
 
@@ -1269,9 +1272,11 @@ async def rt_qemu_ssh_exec(runtime_id: str, data: Dict[str, Any]):
             known_hosts=None, client_keys=[str(key_path)], compression_algs=None,
         ) as conn:
             result = await asyncio.wait_for(conn.run(command, check=False), timeout=timeout)
+            # 注意：success=True 表示 SSH 连接成功且命令执行完成
+            # exit_code 是命令本身的退出码，由 LLM 根据上下文判断是否符合预期
             return {
                 "stdout": result.stdout, "stderr": result.stderr,
-                "exit_code": result.exit_status, "success": result.exit_status == 0
+                "exit_code": result.exit_status, "success": True
             }
     except asyncio.TimeoutError:
         return {"error": f"Command timed out after {timeout}s", "success": False}

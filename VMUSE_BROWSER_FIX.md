@@ -26,7 +26,7 @@
 
 ## 🔍 根本原因
 
-**文件**: `novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/browser.py`
+**文件**: `novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/browser.py`
 
 **问题代码**（修复前）:
 ```python
@@ -152,12 +152,12 @@ curl -X POST http://127.0.0.1:18080/api/browser/get_tabs \
 ### 1. 更新代码
 ```bash
 # 修改文件
-vim novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/browser.py
+vim novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/browser.py
 ```
 
 ### 2. 重新打包
 ```bash
-cd novaic-app/src-tauri/resources/novaic-mcp-vmuse
+cd novaic-mcp-vmuse
 tar -czf /tmp/vmuse-fix.tar.gz --exclude='*.pyc' --exclude='__pycache__' .
 ```
 
@@ -192,7 +192,7 @@ curl -X POST http://127.0.0.1:18080/api/browser/navigate \
 
 ## 📝 相关文件
 
-- **修复文件**: `novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/browser.py`
+- **修复文件**: `novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/browser.py`
 - **修复方法**: `BrowserTools._ensure_browser()`
 - **影响工具**:
   - `browser_navigate`

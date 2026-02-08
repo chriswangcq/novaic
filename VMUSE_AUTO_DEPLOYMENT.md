@@ -129,7 +129,7 @@ def _allocate_new_ports(self) -> PortConfig:
                  ↓
 ┌─────────────────────────────────────────────────────────────┐
 │ 5.2 打包 VMUSE 代码                                          │
-│     • 从 novaic-app/src-tauri/resources/novaic-mcp-vmuse/   │
+│     • 从 novaic-mcp-vmuse/   │
 │     • 生成 .tar.gz                                           │
 │     • 排除 __pycache__, .pyc                                │
 └────────────────┬────────────────────────────────────────────┘

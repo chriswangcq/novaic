@@ -32,8 +32,8 @@ class ShellTools:
         Execute shell command synchronously with timeout protection.
         
         Return format: { success, stdout, stderr, exit_code, ... }
-        - success: true if exit_code == 0
-        - exit_code: process exit code (None if timed out)
+        - success: true if command execution completed (regardless of exit_code)
+        - exit_code: process exit code (None if timed out), LLM should interpret based on context
         - warning: present if command timed out
         
         Timeout behavior:
@@ -115,8 +115,10 @@ class ShellTools:
             stdout_truncated, stdout_lines = ShellTools._truncate_output(stdout)
             stderr_truncated, stderr_lines = ShellTools._truncate_output(stderr)
             
+            # 注意：success=True 表示命令执行完成（无论 exit_code 是多少）
+            # exit_code 由 LLM 根据上下文判断是否符合预期
             return {
-                "success": process.returncode == 0,
+                "success": True,
                 "stdout": stdout_truncated,
                 "stderr": stderr_truncated,
                 "exit_code": process.returncode,

@@ -134,6 +134,64 @@ pub async fn shutdown_vm(
     Ok(StatusCode::OK)
 }
 
+/// Shutdown all registered VMs gracefully
+/// Sends system_powerdown to all VMs in parallel, returns results
+pub async fn shutdown_all_vms(
+    State(state): State<VmState>,
+) -> Json<HashMap<String, String>> {
+    let vms = state.read().await;
+    let mut results = HashMap::new();
+    
+    if vms.is_empty() {
+        return Json(results);
+    }
+    
+    tracing::info!("Shutting down {} VMs...", vms.len());
+    
+    // Collect VM info for parallel shutdown
+    let vm_infos: Vec<(String, String)> = vms.iter()
+        .map(|(id, vm)| (id.clone(), vm.qmp_socket.clone()))
+        .collect();
+    
+    // Drop the read lock before async operations
+    drop(vms);
+    
+    // Shutdown all VMs in parallel
+    let handles: Vec<_> = vm_infos.into_iter().map(|(id, qmp_socket)| {
+        let id_clone = id.clone();
+        tokio::spawn(async move {
+            match QmpClient::connect(&qmp_socket).await {
+                Ok(mut qmp) => {
+                    match qmp.execute("system_powerdown", None).await {
+                        Ok(_) => {
+                            tracing::info!("VM {} shutdown signal sent", id_clone);
+                            (id_clone, "shutdown_sent".to_string())
+                        }
+                        Err(e) => {
+                            tracing::warn!("VM {} shutdown failed: {}", id_clone, e);
+                            (id_clone, format!("error: {}", e))
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!("VM {} QMP connect failed: {}", id_clone, e);
+                    (id_clone, format!("connect_error: {}", e))
+                }
+            }
+        })
+    }).collect();
+    
+    // Wait for all shutdowns to complete
+    for handle in handles {
+        if let Ok((id, result)) = handle.await {
+            results.insert(id, result);
+        }
+    }
+    
+    tracing::info!("All VM shutdown signals sent: {:?}", results);
+    Json(results)
+}
+
 /// Register an existing VM with vmcontrol
 pub async fn register_vm(
     State(state): State<VmState>,

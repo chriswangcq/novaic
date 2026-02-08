@@ -144,6 +144,14 @@ impl VmControlProcess {
             }
         }
     }
+    
+    fn is_running(&self) -> bool {
+        self.process.is_some()
+    }
+    
+    fn base_url(&self) -> String {
+        format!("http://127.0.0.1:{}", self.port)
+    }
 }
 
 impl Drop for VmControlProcess {
@@ -1434,7 +1442,43 @@ fn main() {
                         });
                     }
                     
-                    // Stop Backend 组件: VmControl
+                    // Step 1: 先通过 vmcontrol 发送 shutdown 信号给所有 VM
+                    // 这会发送 QMP system_powerdown 命令，让 VM 优雅关闭
+                    if let Some(vmcontrol) = app_handle.try_state::<VmControlState>() {
+                        let vc_clone = vmcontrol.inner().clone();
+                        let shutdown_result = tauri::async_runtime::block_on(async {
+                            let vc = vc_clone.lock().await;
+                            if vc.is_running() {
+                                Some(vc.base_url())
+                            } else {
+                                None
+                            }
+                        });
+                        
+                        if let Some(base_url) = shutdown_result {
+                            println!("[App] Sending shutdown signal to all VMs...");
+                            let shutdown_url = format!("{}/api/vms/shutdown-all", base_url);
+                            if let Ok(client) = reqwest::blocking::Client::builder()
+                                .timeout(std::time::Duration::from_secs(5))
+                                .build()
+                            {
+                                match client.post(&shutdown_url).send() {
+                                    Ok(resp) => {
+                                        if resp.status().is_success() {
+                                            println!("[App] VM shutdown signals sent successfully");
+                                        } else {
+                                            println!("[App] VM shutdown-all returned: {}", resp.status());
+                                        }
+                                    }
+                                    Err(e) => {
+                                        println!("[App] VM shutdown-all failed: {}", e);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Step 2: Stop Backend 组件: VmControl
                     if let Some(vmcontrol) = app_handle.try_state::<VmControlState>() {
                         let vc_clone = vmcontrol.inner().clone();
                         tauri::async_runtime::block_on(async {
@@ -1443,7 +1487,7 @@ fn main() {
                         });
                     }
                     
-                    // Stop Backend 组件: Gateway（并停所有 VM）
+                    // Step 3: Stop Backend 组件: Gateway（并停所有 VM 进程）
                     if let Some(gateway) = app_handle.try_state::<GatewayState>() {
                         let gateway_clone = gateway.inner().clone();
                         tauri::async_runtime::block_on(async {

@@ -59,7 +59,7 @@ runcmd:
 ## 📦 阶段2: VMUSE 代码部署
 
 ### 当前状态
-- **VMUSE 源代码位置**: `novaic-app/src-tauri/resources/novaic-mcp-vmuse/`
+- **VMUSE 源代码位置**: `novaic-mcp-vmuse/`
 - **目标位置**: VM 中的 `/opt/novaic/novaic-mcp-vmuse/`
 
 ### 部署方式选项
@@ -403,7 +403,7 @@ async def deploy_vmuse(agent_id: str):
         
         # 1. 打包代码
         import tarfile
-        vmuse_src = Path(__file__).parent.parent.parent.parent / "novaic-app/src-tauri/resources/novaic-mcp-vmuse"
+        vmuse_src = Path(__file__).parent.parent.parent.parent / "novaic-mcp-vmuse"
         tar_path = Path("/tmp") / f"vmuse-{agent_id}.tar.gz"
         
         with tarfile.open(tar_path, "w:gz") as tar:
@@ -495,7 +495,7 @@ curl http://127.0.0.1:18080/health
 ## 📝 关键文件位置
 
 ### 源代码
-- **VMUSE 源码**: `novaic-app/src-tauri/resources/novaic-mcp-vmuse/`
+- **VMUSE 源码**: `novaic-mcp-vmuse/`
 - **Backend 配置**: `novaic-backend/tools_server/`
 - **Gateway VM 管理**: `novaic-backend/gateway/vm/`
 
@@ -542,7 +542,7 @@ ssh -p 20000 ubuntu@127.0.0.1 'sudo lsof -i :8080'                   # 端口检
 ### 1. 开发流程
 ```bash
 # 修改代码
-vim novaic-app/src-tauri/resources/novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py
+vim novaic-mcp-vmuse/src/novaic_mcp_vmuse/http_server.py
 
 # 部署测试
 ./deploy_vmuse_to_vm.sh

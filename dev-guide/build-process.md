@@ -40,7 +40,7 @@ pyinstaller --clean --noconfirm novaic-backend.spec
 
 ```bash
 cp -r novaic-backend/dist/novaic-backend novaic-app/src-tauri/resources/
-cp -r novaic-vm/src novaic-app/src-tauri/resources/novaic-mcp-vmuse/
+cp -r novaic-vm/src novaic-mcp-vmuse/
 ```
 
 ### Step 3: 前端 + Tauri

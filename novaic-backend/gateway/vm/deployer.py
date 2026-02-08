@@ -26,12 +26,24 @@ class VmuseDeployer:
     
     def _locate_vmuse_source(self) -> Path:
         """Locate VMUSE source code directory."""
+        import os
+        
         # Try multiple possible locations
-        candidates = [
-            Path(__file__).parent.parent.parent.parent / "novaic-app/src-tauri/resources/novaic-mcp-vmuse",
-            Path.home() / "novaic/novaic-app/src-tauri/resources/novaic-mcp-vmuse",
-            Path("/opt/novaic/novaic-mcp-vmuse"),  # Fallback
-        ]
+        candidates = []
+        
+        # 1. 从环境变量获取 app bundle resources 路径（打包后的 app）
+        # 注意：Tauri 设置的是 NOVAIC_RESOURCE_DIR（不带 S）
+        if "NOVAIC_RESOURCE_DIR" in os.environ:
+            candidates.append(Path(os.environ["NOVAIC_RESOURCE_DIR"]) / "novaic-mcp-vmuse")
+        
+        # 2. 开发环境：顶级目录的源码
+        candidates.extend([
+            Path(__file__).parent.parent.parent.parent / "novaic-mcp-vmuse",
+            Path.home() / "novaic/novaic-mcp-vmuse",
+        ])
+        
+        # 3. Fallback
+        candidates.append(Path("/opt/novaic/novaic-mcp-vmuse"))
         
         for candidate in candidates:
             if candidate.exists() and (candidate / "pyproject.toml").exists():

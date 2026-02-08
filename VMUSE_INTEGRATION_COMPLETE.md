@@ -155,7 +155,7 @@ Agent/LLM (获得结果)
 - `executor.py` - 工具执行逻辑
 - `multimodal.py` - 图片格式转换
 
-**2. VM服务 (novaic-app/src-tauri/resources/novaic-mcp-vmuse/)**
+**2. VM服务 (novaic-mcp-vmuse/)**
 - `http_server.py` - aiohttp HTTP服务器
 - `tools/*.py` - 工具实现
 - `config.py` - 配置管理

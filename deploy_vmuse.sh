@@ -31,7 +31,7 @@ if ! command -v sshpass &> /dev/null; then
 fi
 
 # 检查 VMUSE 源码
-VMUSE_SRC="novaic-app/src-tauri/resources/novaic-mcp-vmuse"
+VMUSE_SRC="novaic-mcp-vmuse"
 if [ ! -d "$VMUSE_SRC" ]; then
     echo -e "${RED}❌ VMUSE 源码目录不存在: $VMUSE_SRC${NC}"
     exit 1
