@@ -55,4 +55,29 @@ def set_agent_sleep(agent_id: str, data: Dict[str, Any] = None):
     return {"status": "ok"}
 
 
+@router.get("/agents/{agent_id}")
+def get_agent_internal(agent_id: str):
+    """Get agent information for internal use (tools server)."""
+    from gateway.config import get_agent_config_manager
+    
+    agent_manager = get_agent_config_manager()
+    agent = agent_manager.get_agent(agent_id)
+    
+    if not agent:
+        raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+    
+    # Return agent data with VM ports for tools server
+    return {
+        "agent_id": agent.agent_id,
+        "name": agent.name,
+        "vm": {
+            "backend": agent.vm.backend if agent.vm else None,
+            "ports": {
+                "ssh": agent.vm.ports.ssh if agent.vm and agent.vm.ports else None,
+                "vmuse": agent.vm.ports.vmuse if agent.vm and agent.vm.ports else None,
+            } if agent.vm and agent.vm.ports else {}
+        } if agent.vm else {}
+    }
+
+
 # 工具服务由 Backend 组件 Tools Server 提供（api/internal_mcp.py）；Master 调 Tools Server /internal/mcp/*
