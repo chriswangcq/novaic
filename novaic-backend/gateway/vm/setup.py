@@ -799,6 +799,11 @@ runcmd:
   
   # ========== Phase 9: Display Manager ==========
   - echo "=== Phase 9: Display Manager ==="
+  # 确保 /tmp/.X11-unix 目录存在并设置正确权限
+  - mkdir -p /tmp/.X11-unix
+  - chmod 1777 /tmp/.X11-unix
+  - chown root:root /tmp/.X11-unix
+  # 启用并启动 lightdm
   - systemctl enable lightdm
   - systemctl start lightdm
   - sleep 15
@@ -809,7 +814,11 @@ runcmd:
   - DISPLAY=:0 xdpyinfo > /dev/null 2>&1 || (echo "ERROR: DISPLAY not available" && exit 1)
   # 验证 lightdm 状态
   - systemctl is-active lightdm || (echo "ERROR: lightdm not active" && exit 1)
-  - echo "Display Manager verification passed"
+  # 验证桌面会话是否运行
+  - echo "Verifying desktop session..."
+  - pgrep -u ubuntu xfce4-session || (echo "WARNING: XFCE session not running, attempting to start..." && su - ubuntu -c "DISPLAY=:0 startxfce4 &")
+  - sleep 5
+  - pgrep -u ubuntu xfce4-session && echo "Desktop session verified" || echo "WARNING: Desktop session may not have started correctly"
   
   # ========== Phase 10: Enable VMUSE Service ==========
   - echo "=== Phase 10: VMUSE Service ==="
