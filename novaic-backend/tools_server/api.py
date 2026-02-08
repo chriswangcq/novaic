@@ -259,7 +259,7 @@ async def get_tools(runtime_id: str):
         # 获取内置工具
         builtin_tools = get_all_tools()
         
-        # Phase 5: Per-agent tool filtering
+        # Per-agent tool filtering (blacklist only - disabled_tools)
         agent_id = getattr(runtime, "agent_id", None)
         if agent_id:
             try:
@@ -269,29 +269,14 @@ async def get_tools(runtime_id: str):
                     resp = client.get(f"{gateway_url}/api/agents/{agent_id}/tools-config")
                     if resp.status_code == 200:
                         config = resp.json()
-                        enabled_cats = config.get("enabled_tool_categories", [])
                         disabled = set(config.get("disabled_tools", []))
                         
-                        if enabled_cats or disabled:
-                            from tools_server.tools import BUILTIN_TOOLS
-                            filtered = []
-                            for tool in builtin_tools:
-                                tool_name = tool.get("name", "")
-                                # Check category filter
-                                if enabled_cats:
-                                    tool_in_enabled = False
-                                    for cat, cat_tools in BUILTIN_TOOLS.items():
-                                        if cat in enabled_cats:
-                                            if any(t["name"] == tool_name for t in cat_tools):
-                                                tool_in_enabled = True
-                                                break
-                                    if not tool_in_enabled:
-                                        continue
-                                # Check disabled list
-                                if tool_name in disabled:
-                                    continue
-                                filtered.append(tool)
-                            builtin_tools = filtered
+                        if disabled:
+                            # Filter out disabled tools
+                            builtin_tools = [
+                                tool for tool in builtin_tools
+                                if tool.get("name", "") not in disabled
+                            ]
             except Exception as e:
                 logger.warning(f"[ToolsAPI] Failed to filter tools for agent {agent_id}: {e}")
         

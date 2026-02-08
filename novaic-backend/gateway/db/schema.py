@@ -27,7 +27,7 @@ v24: Runtime Summary - subagents.hrl/summary_lock, agent_runtimes.simple_summary
 v25: Tools Server persistence - agent_runtimes.tool_ports for Tools Server recovery.
 """
 
-SCHEMA_VERSION = 30
+SCHEMA_VERSION = 32
 
 SCHEMA_SQL = """
 -- ========================================
@@ -388,6 +388,10 @@ CREATE TABLE IF NOT EXISTS agent_drive (
 -- ========================================
 -- Skills - Reusable capability bundles
 -- ========================================
+-- source: 'builtin' (read-only, from SKILL.md files) or 'custom' (user-created)
+-- forked_from: if this is a fork of a builtin skill, stores the original skill id
+-- builtin_id: for builtin skills, the directory name (e.g., 'desktop', 'browser')
+-- auto_match_keywords: JSON array of keywords for automatic skill matching
 
 CREATE TABLE IF NOT EXISTS skills (
     id TEXT PRIMARY KEY,
@@ -398,19 +402,24 @@ CREATE TABLE IF NOT EXISTS skills (
     workflow TEXT DEFAULT '',
     icon TEXT DEFAULT 'zap',
     enabled INTEGER DEFAULT 1,
+    source TEXT DEFAULT 'custom',           -- 'builtin' or 'custom'
+    builtin_id TEXT,                        -- for builtin: directory name
+    forked_from TEXT,                       -- if forked, original skill id
+    auto_match_keywords TEXT DEFAULT '[]',  -- JSON array for auto-matching
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
 );
 
 -- Agent-Skill assignments (many-to-many)
+-- Note: skill_id can be either a UUID (custom skill) or "builtin:xxx" (builtin skill)
+-- No FK constraint on skill_id to support builtin skills that are not in the skills table
 CREATE TABLE IF NOT EXISTS agent_skills (
     agent_id TEXT NOT NULL,
     skill_id TEXT NOT NULL,
     priority INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now')),
     PRIMARY KEY (agent_id, skill_id),
-    FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE,
-    FOREIGN KEY (skill_id) REFERENCES skills(id) ON DELETE CASCADE
+    FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
 );
 
 -- Task history for Memory MCP (persistent task logs)
@@ -849,6 +858,56 @@ def run_migration_sync(conn, from_version: int):
             pass
         conn.execute("PRAGMA user_version = 30")
         print("[schema] Migrated to v30: skills tables + agent_drive tool config columns")
+
+    # v31: Skills source/fork support
+    if from_version < 31:
+        try:
+            conn.execute("ALTER TABLE skills ADD COLUMN source TEXT DEFAULT 'custom'")
+        except Exception:
+            pass
+        try:
+            conn.execute("ALTER TABLE skills ADD COLUMN builtin_id TEXT")
+        except Exception:
+            pass
+        try:
+            conn.execute("ALTER TABLE skills ADD COLUMN forked_from TEXT")
+        except Exception:
+            pass
+        try:
+            conn.execute("ALTER TABLE skills ADD COLUMN auto_match_keywords TEXT DEFAULT '[]'")
+        except Exception:
+            pass
+        conn.execute("PRAGMA user_version = 31")
+        print("[schema] Migrated to v31: skills source/fork columns")
+
+    # v32: Remove FK constraint from agent_skills to support builtin skills
+    if from_version < 32:
+        try:
+            # SQLite doesn't support dropping FK constraints, so we need to recreate the table
+            # 1. Create new table without FK constraint on skill_id
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS agent_skills_new (
+                    agent_id TEXT NOT NULL,
+                    skill_id TEXT NOT NULL,
+                    priority INTEGER DEFAULT 0,
+                    created_at TEXT DEFAULT (datetime('now')),
+                    PRIMARY KEY (agent_id, skill_id),
+                    FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
+                )
+            """)
+            # 2. Copy data from old table
+            conn.execute("""
+                INSERT OR IGNORE INTO agent_skills_new (agent_id, skill_id, priority, created_at)
+                SELECT agent_id, skill_id, priority, created_at FROM agent_skills
+            """)
+            # 3. Drop old table
+            conn.execute("DROP TABLE IF EXISTS agent_skills")
+            # 4. Rename new table
+            conn.execute("ALTER TABLE agent_skills_new RENAME TO agent_skills")
+            conn.execute("PRAGMA user_version = 32")
+            print("[schema] Migrated to v32: agent_skills FK constraint removed for builtin skills support")
+        except Exception as e:
+            print(f"[schema] Migration v32 warning: {e}")
 
     # Update version
     conn.execute(

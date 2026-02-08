@@ -590,20 +590,40 @@ export const api = {
 
   // ==================== Skills ====================
 
-  async getSkills(): Promise<{ skills: any[]; count: number }> {
-    return invoke('gateway_get', { path: '/api/skills' });
+  async getSkills(includeBuiltin: boolean = true): Promise<{ 
+    skills: any[]; 
+    builtin_skills: any[];
+    custom_skills: any[];
+    count: number;
+    builtin_count: number;
+    custom_count: number;
+  }> {
+    const params = new URLSearchParams();
+    params.set('include_builtin', includeBuiltin.toString());
+    return invoke('gateway_get', { path: `/api/skills?${params.toString()}` });
+  },
+
+  async getSkill(skillId: string): Promise<any> {
+    return invoke('gateway_get', { path: `/api/skills/${encodeURIComponent(skillId)}` });
   },
 
   async createSkill(data: any): Promise<any> {
     return invoke('gateway_post', { path: '/api/skills', body: data });
   },
 
+  async forkSkill(skillId: string, newName?: string): Promise<any> {
+    return invoke('gateway_post', { 
+      path: `/api/skills/${encodeURIComponent(skillId)}/fork`, 
+      body: newName ? { name: newName } : {} 
+    });
+  },
+
   async updateSkill(skillId: string, data: any): Promise<any> {
-    return invoke('gateway_put', { path: `/api/skills/${skillId}`, body: data });
+    return invoke('gateway_put', { path: `/api/skills/${encodeURIComponent(skillId)}`, body: data });
   },
 
   async deleteSkill(skillId: string): Promise<any> {
-    return invoke('gateway_delete', { path: `/api/skills/${skillId}` });
+    return invoke('gateway_delete', { path: `/api/skills/${encodeURIComponent(skillId)}` });
   },
 
   async getAgentSkills(agentId: string): Promise<{ skills: any[]; count: number }> {
@@ -612,6 +632,10 @@ export const api = {
 
   async setAgentSkills(agentId: string, skillIds: string[]): Promise<any> {
     return invoke('gateway_post', { path: `/api/agents/${agentId}/skills`, body: { skill_ids: skillIds } });
+  },
+
+  async matchSkillsForTask(task: string, maxSkills: number = 3): Promise<{ matched_skills: any[]; count: number }> {
+    return invoke('gateway_post', { path: '/api/skills/match', body: { task, max_skills: maxSkills } });
   },
 
   async getAgentToolsConfig(agentId: string): Promise<any> {

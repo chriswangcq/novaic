@@ -1270,6 +1270,7 @@ BUILTIN_TOOLS: Dict[str, List[Dict[str, Any]]] = {
     "web": WEB_TOOLS,
     "qemu": QEMU_TOOLS,
     "task": TASK_TOOLS,
+    "vm": VM_TOOLS,  # VM USE tools (browser, desktop, shell, file, window, context)
 }
 
 # Tool name to category mapping (for quick lookup)
@@ -1294,7 +1295,7 @@ def get_all_tools() -> List[Dict[str, Any]]:
     """
     Get all tools as a flat list (for LLM function calling).
     
-    Includes both standard builtin tools and VM tools.
+    Includes all builtin tools (including VM tools).
     
     Returns:
         List of tool definitions in OpenAI function calling format.
@@ -1302,12 +1303,9 @@ def get_all_tools() -> List[Dict[str, Any]]:
     """
     tools = []
     
-    # 添加标准内置工具
+    # 添加所有内置工具（包括 VM 工具）
     for category_tools in BUILTIN_TOOLS.values():
         tools.extend(category_tools)
-    
-    # 添加 VM 工具（直接从 VM_TOOLS）
-    tools.extend(VM_TOOLS)
     
     return tools
 

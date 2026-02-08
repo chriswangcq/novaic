@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { ChevronDown, ChevronRight, Search, Plus, X, Trash2, Database, HardDrive, Monitor, Zap, Wrench } from 'lucide-react';
+import { ChevronDown, ChevronRight, Search, Plus, X, Trash2, Database, HardDrive, Monitor, Zap, Wrench, Eye, Edit3 } from 'lucide-react';
 import { api, type ApiKeyInfo, type CandidateModel, type AICAgent } from '../../services/api';
 import { useAppStore } from '../../store';
 import { vmService } from '../../services/vm';
+import { Markdown } from '../Chat/Markdown';
 
 // ==================== Tab Types ====================
 
@@ -874,10 +875,13 @@ function AgentsTab() {
 // ==================== Skills Tab ====================
 
 function SkillsTab() {
-  const [skills, setSkills] = useState<any[]>([]);
+  const [builtinSkills, setBuiltinSkills] = useState<any[]>([]);
+  const [customSkills, setCustomSkills] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<any | null>(null); // null = list view, {} = new, {id:...} = editing
   const [saving, setSaving] = useState(false);
+  const [forking, setForking] = useState<string | null>(null);
+  const [viewingBuiltin, setViewingBuiltin] = useState<any | null>(null);
 
   // Form state
   const [formName, setFormName] = useState('');
@@ -886,12 +890,14 @@ function SkillsTab() {
   const [formWorkflow, setFormWorkflow] = useState('');
   const [formTools, setFormTools] = useState<string[]>([]);
   const [formIcon, setFormIcon] = useState('zap');
+  const [formKeywords, setFormKeywords] = useState<string[]>([]);
 
   const loadSkills = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.getSkills();
-      setSkills(res.skills || []);
+      const res = await api.getSkills(true);
+      setBuiltinSkills(res.builtin_skills || []);
+      setCustomSkills(res.custom_skills || []);
     } catch (e) {
       console.error('Failed to load skills:', e);
     } finally {
@@ -909,6 +915,7 @@ function SkillsTab() {
       setFormWorkflow(skill.workflow || '');
       setFormTools(skill.tools || []);
       setFormIcon(skill.icon || 'zap');
+      setFormKeywords(skill.auto_match_keywords || []);
       setEditing(skill);
     } else {
       setFormName('');
@@ -917,6 +924,7 @@ function SkillsTab() {
       setFormWorkflow('');
       setFormTools([]);
       setFormIcon('zap');
+      setFormKeywords([]);
       setEditing({});
     }
   };
@@ -932,8 +940,9 @@ function SkillsTab() {
         tools: formTools,
         workflow: formWorkflow,
         icon: formIcon,
+        auto_match_keywords: formKeywords,
       };
-      if (editing?.id) {
+      if (editing?.id && !editing.id.startsWith('builtin:')) {
         await api.updateSkill(editing.id, data);
       } else {
         await api.createSkill(data);
@@ -948,6 +957,10 @@ function SkillsTab() {
   };
 
   const handleDelete = async (skillId: string) => {
+    if (skillId.startsWith('builtin:')) {
+      alert('Cannot delete builtin skills');
+      return;
+    }
     if (!confirm('Delete this skill?')) return;
     try {
       await api.deleteSkill(skillId);
@@ -957,8 +970,79 @@ function SkillsTab() {
     }
   };
 
+  const handleFork = async (skillId: string) => {
+    setForking(skillId);
+    try {
+      await api.forkSkill(skillId);
+      await loadSkills();
+    } catch (e) {
+      console.error('Failed to fork skill:', e);
+    } finally {
+      setForking(null);
+    }
+  };
+
+  // View builtin skill details
+  if (viewingBuiltin) {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="px-4 py-3 border-b border-nb-border flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-medium text-nb-text">{viewingBuiltin.name}</h3>
+            <span className="text-[9px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">内置</span>
+          </div>
+          <button onClick={() => setViewingBuiltin(null)} className="text-nb-text-muted hover:text-nb-text text-xs">关闭</button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div>
+            <label className="block text-xs text-nb-text-muted mb-1">Description</label>
+            <p className="text-sm text-nb-text">{viewingBuiltin.description || '无描述'}</p>
+          </div>
+          <div>
+            <label className="block text-xs text-nb-text-muted mb-1">Auto-match Keywords</label>
+            <div className="flex flex-wrap gap-1">
+              {(viewingBuiltin.auto_match_keywords || []).length > 0 ? (
+                viewingBuiltin.auto_match_keywords.map((kw: string) => (
+                  <span key={kw} className="px-1.5 py-0.5 text-[10px] bg-nb-surface-2 text-nb-text-muted rounded">{kw}</span>
+                ))
+              ) : (
+                <span className="text-[10px] text-nb-text-muted">无关键词</span>
+              )}
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs text-nb-text-muted mb-1">Prompt / Instructions (只读)</label>
+            <PromptSection
+              title="Prompt Content"
+              content={viewingBuiltin.prompt || ''}
+              charCount={(viewingBuiltin.prompt || '').length}
+              isEditable={false}
+              defaultExpanded={true}
+            />
+          </div>
+        </div>
+        <div className="px-4 py-3 border-t border-nb-border flex justify-end gap-2 flex-shrink-0">
+          <button
+            onClick={() => setViewingBuiltin(null)}
+            className="px-3 py-1.5 text-xs text-nb-text-muted hover:text-nb-text border border-nb-border rounded"
+          >
+            关闭
+          </button>
+          <button
+            onClick={() => { handleFork(viewingBuiltin.id); setViewingBuiltin(null); }}
+            disabled={forking === viewingBuiltin.id}
+            className="px-3 py-1.5 text-xs bg-nb-accent/20 text-nb-accent hover:bg-nb-accent/30 rounded disabled:opacity-50"
+          >
+            {forking === viewingBuiltin.id ? 'Forking...' : 'Fork 为自定义'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Edit form
   if (editing !== null) {
+    const isBuiltin = editing.source === 'builtin';
     return (
       <div className="flex flex-col h-full">
         <div className="px-4 py-3 border-b border-nb-border flex items-center justify-between flex-shrink-0">
@@ -973,6 +1057,7 @@ function SkillsTab() {
               onChange={e => setFormName(e.target.value)}
               className="w-full bg-nb-surface-2 border border-nb-border rounded px-3 py-1.5 text-sm text-nb-text"
               placeholder="e.g. Web Researcher"
+              disabled={isBuiltin}
             />
           </div>
           <div>
@@ -981,27 +1066,41 @@ function SkillsTab() {
               value={formDescription}
               onChange={e => setFormDescription(e.target.value)}
               className="w-full bg-nb-surface-2 border border-nb-border rounded px-3 py-1.5 text-sm text-nb-text"
-              placeholder="Brief description"
+              placeholder="Brief description (used for auto-matching)"
+              disabled={isBuiltin}
             />
           </div>
           <div>
+            <label className="block text-xs text-nb-text-muted mb-1">Auto-match Keywords (comma-separated)</label>
+            <input
+              value={formKeywords.join(', ')}
+              onChange={e => setFormKeywords(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+              className="w-full bg-nb-surface-2 border border-nb-border rounded px-3 py-1.5 text-sm text-nb-text"
+              placeholder="browser, web, 网页, 浏览器"
+              disabled={isBuiltin}
+            />
+            <p className="text-[10px] text-nb-text-muted mt-1">当用户消息包含这些关键词时，自动加载此技能</p>
+          </div>
+          <div>
             <label className="block text-xs text-nb-text-muted mb-1">Prompt / Instructions</label>
-            <textarea
-              value={formPrompt}
-              onChange={e => setFormPrompt(e.target.value)}
-              rows={6}
-              className="w-full bg-nb-surface-2 border border-nb-border rounded px-3 py-2 text-sm text-nb-text font-mono resize-y"
-              placeholder="Instructions for the agent when this skill is active..."
+            <PromptSection
+              title="Prompt"
+              content={formPrompt}
+              charCount={formPrompt.length}
+              isEditable={!isBuiltin}
+              onContentChange={setFormPrompt}
+              defaultExpanded={true}
             />
           </div>
           <div>
             <label className="block text-xs text-nb-text-muted mb-1">Workflow (optional)</label>
-            <textarea
-              value={formWorkflow}
-              onChange={e => setFormWorkflow(e.target.value)}
-              rows={3}
-              className="w-full bg-nb-surface-2 border border-nb-border rounded px-3 py-2 text-sm text-nb-text font-mono resize-y"
-              placeholder="Step-by-step workflow SOP..."
+            <PromptSection
+              title="Workflow"
+              content={formWorkflow}
+              charCount={formWorkflow.length}
+              isEditable={!isBuiltin}
+              onContentChange={setFormWorkflow}
+              defaultExpanded={true}
             />
           </div>
           <div>
@@ -1011,6 +1110,7 @@ function SkillsTab() {
               onChange={e => setFormTools(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
               className="w-full bg-nb-surface-2 border border-nb-border rounded px-3 py-1.5 text-sm text-nb-text"
               placeholder="web_search, web_fetch, notebook_write"
+              disabled={isBuiltin}
             />
           </div>
         </div>
@@ -1021,13 +1121,15 @@ function SkillsTab() {
           >
             Cancel
           </button>
-          <button
-            onClick={handleSave}
-            disabled={saving || !formName.trim()}
-            className="px-3 py-1.5 text-xs bg-nb-accent/20 text-nb-accent hover:bg-nb-accent/30 rounded disabled:opacity-50"
-          >
-            {saving ? 'Saving...' : 'Save'}
-          </button>
+          {!isBuiltin && (
+            <button
+              onClick={handleSave}
+              disabled={saving || !formName.trim()}
+              className="px-3 py-1.5 text-xs bg-nb-accent/20 text-nb-accent hover:bg-nb-accent/30 rounded disabled:opacity-50"
+            >
+              {saving ? 'Saving...' : 'Save'}
+            </button>
+          )}
         </div>
       </div>
     );
@@ -1045,56 +1147,283 @@ function SkillsTab() {
           <Plus size={12} /> New Skill
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {loading ? (
           <p className="text-xs text-nb-text-muted text-center py-8">Loading...</p>
-        ) : skills.length === 0 ? (
-          <div className="text-center py-12">
-            <Zap size={32} className="mx-auto text-nb-text-muted/30 mb-2" />
-            <p className="text-sm text-nb-text-muted">No skills yet</p>
-            <p className="text-xs text-nb-text-muted/70 mt-1">Create a skill to define reusable capabilities</p>
-          </div>
         ) : (
-          <div className="space-y-2">
-            {skills.map(skill => (
-              <div key={skill.id} className="border border-nb-border rounded-lg p-3 hover:bg-nb-surface-2/50 transition-colors">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    <Zap size={14} className="text-nb-accent shrink-0" />
-                    <span className="text-sm font-medium text-nb-text">{skill.name}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => startEdit(skill)}
-                      className="px-2 py-0.5 text-[10px] text-nb-text-muted hover:text-nb-text border border-nb-border rounded"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(skill.id)}
-                      className="px-2 py-0.5 text-[10px] text-red-400 hover:text-red-300 border border-nb-border rounded"
-                    >
-                      Del
-                    </button>
-                  </div>
+          <>
+            {/* Builtin Skills Section */}
+            <div>
+              <h4 className="text-xs font-medium text-nb-text-muted uppercase tracking-wider mb-2">
+                内置技能 ({builtinSkills.length}) - 只读
+              </h4>
+              {builtinSkills.length === 0 ? (
+                <p className="text-xs text-nb-text-muted">No builtin skills found</p>
+              ) : (
+                <div className="space-y-2">
+                  {builtinSkills.map(skill => (
+                    <div key={skill.id} className="border border-blue-500/20 bg-blue-500/5 rounded-lg p-3 hover:bg-blue-500/10 transition-colors">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2">
+                          <Zap size={14} className="text-blue-400 shrink-0" />
+                          <span className="text-sm font-medium text-nb-text">{skill.name}</span>
+                          <span className="text-[9px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">内置</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => setViewingBuiltin(skill)}
+                            className="px-2 py-0.5 text-[10px] text-nb-text-muted hover:text-nb-text border border-nb-border rounded"
+                          >
+                            查看
+                          </button>
+                          <button
+                            onClick={() => handleFork(skill.id)}
+                            disabled={forking === skill.id}
+                            className="px-2 py-0.5 text-[10px] text-nb-accent hover:text-nb-accent/80 border border-nb-accent/30 rounded disabled:opacity-50"
+                          >
+                            {forking === skill.id ? '...' : 'Fork'}
+                          </button>
+                        </div>
+                      </div>
+                      {skill.description && (
+                        <p className="text-xs text-nb-text-muted mt-1 ml-5 line-clamp-2">{skill.description}</p>
+                      )}
+                      {skill.auto_match_keywords?.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2 ml-5">
+                          {skill.auto_match_keywords.slice(0, 5).map((kw: string) => (
+                            <span key={kw} className="px-1.5 py-0.5 text-[10px] bg-blue-500/10 text-blue-400 rounded">{kw}</span>
+                          ))}
+                          {skill.auto_match_keywords.length > 5 && (
+                            <span className="px-1.5 py-0.5 text-[10px] text-nb-text-muted">+{skill.auto_match_keywords.length - 5}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
-                {skill.description && (
-                  <p className="text-xs text-nb-text-muted mt-1 ml-5">{skill.description}</p>
-                )}
-                {skill.tools?.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-2 ml-5">
-                    {skill.tools.map((t: string) => (
-                      <span key={t} className="px-1.5 py-0.5 text-[10px] bg-nb-surface-2 text-nb-text-muted rounded">
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+              )}
+            </div>
+
+            {/* Custom Skills Section */}
+            <div>
+              <h4 className="text-xs font-medium text-nb-text-muted uppercase tracking-wider mb-2">
+                自定义技能 ({customSkills.length})
+              </h4>
+              {customSkills.length === 0 ? (
+                <div className="text-center py-8 border border-dashed border-nb-border rounded-lg">
+                  <Zap size={24} className="mx-auto text-nb-text-muted/30 mb-2" />
+                  <p className="text-xs text-nb-text-muted">No custom skills yet</p>
+                  <p className="text-[10px] text-nb-text-muted/70 mt-1">Create a new skill or fork a builtin one</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {customSkills.map(skill => (
+                    <div key={skill.id} className="border border-nb-border rounded-lg p-3 hover:bg-nb-surface-2/50 transition-colors">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-2">
+                          <Zap size={14} className="text-nb-accent shrink-0" />
+                          <span className="text-sm font-medium text-nb-text">{skill.name}</span>
+                          {skill.forked_from && (
+                            <span className="text-[9px] bg-nb-surface-2 text-nb-text-muted px-1.5 py-0.5 rounded">forked</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => startEdit(skill)}
+                            className="px-2 py-0.5 text-[10px] text-nb-text-muted hover:text-nb-text border border-nb-border rounded"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(skill.id)}
+                            className="px-2 py-0.5 text-[10px] text-red-400 hover:text-red-300 border border-nb-border rounded"
+                          >
+                            Del
+                          </button>
+                        </div>
+                      </div>
+                      {skill.description && (
+                        <p className="text-xs text-nb-text-muted mt-1 ml-5">{skill.description}</p>
+                      )}
+                      {skill.auto_match_keywords?.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2 ml-5">
+                          {skill.auto_match_keywords.map((kw: string) => (
+                            <span key={kw} className="px-1.5 py-0.5 text-[10px] bg-nb-surface-2 text-nb-text-muted rounded">{kw}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
         )}
       </div>
+    </div>
+  );
+}
+
+// ==================== Prompt Preview/Edit Component ====================
+
+function PromptSection({ 
+  title, 
+  content, 
+  charCount,
+  isEditable = false,
+  onContentChange,
+  defaultExpanded = false,
+}: { 
+  title: string; 
+  content: string; 
+  charCount: number;
+  isEditable?: boolean;
+  onContentChange?: (content: string) => void;
+  defaultExpanded?: boolean;
+}) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+  const [isPreviewMode, setIsPreviewMode] = useState(!isEditable); // Start in edit mode if editable
+
+  return (
+    <div className="border border-nb-border rounded overflow-hidden">
+      {/* Header */}
+      <button
+        className="w-full flex items-center justify-between px-3 py-2 text-xs text-nb-text hover:bg-nb-surface-2 transition-colors"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <span className="font-medium">{title} ({charCount} chars)</span>
+        {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+      </button>
+      
+      {/* Content */}
+      {expanded && (
+        <div className="border-t border-nb-border">
+          {/* Mode Toggle */}
+          <div className="flex items-center justify-end gap-1 px-3 py-1.5 bg-nb-surface-2/50 border-b border-nb-border">
+            <button
+              onClick={() => setIsPreviewMode(true)}
+              className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] transition-colors ${
+                isPreviewMode 
+                  ? 'bg-nb-accent/20 text-nb-accent' 
+                  : 'text-nb-text-muted hover:text-nb-text'
+              }`}
+            >
+              <Eye size={10} />
+              <span>Preview</span>
+            </button>
+            {isEditable && (
+              <button
+                onClick={() => setIsPreviewMode(false)}
+                className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] transition-colors ${
+                  !isPreviewMode 
+                    ? 'bg-nb-accent/20 text-nb-accent' 
+                    : 'text-nb-text-muted hover:text-nb-text'
+                }`}
+              >
+                <Edit3 size={10} />
+                <span>Edit</span>
+              </button>
+            )}
+          </div>
+          
+          {/* Content Area */}
+          {isPreviewMode ? (
+            <div className="px-3 py-3 max-h-[300px] overflow-y-auto bg-nb-surface/50">
+              <Markdown content={content || '*No content*'} className="text-xs" />
+            </div>
+          ) : (
+            <textarea
+              value={content}
+              onChange={e => onContentChange?.(e.target.value)}
+              className="w-full px-3 py-2 text-xs text-nb-text font-mono bg-nb-surface-2 border-0 resize-y min-h-[200px] max-h-[400px] focus:outline-none focus:ring-1 focus:ring-nb-accent/50"
+              placeholder="Enter content..."
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ==================== Tool Category Section ====================
+
+function ToolCategorySection({
+  categoryName,
+  tools,
+  disabledTools,
+  onToggleTool,
+}: {
+  categoryName: string;
+  tools: { name: string; description: string }[];
+  disabledTools: string[];
+  onToggleTool: (toolName: string, enabled: boolean) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  
+  const enabledCount = tools.filter(t => !disabledTools.includes(t.name)).length;
+  const allEnabled = enabledCount === tools.length;
+  const noneEnabled = enabledCount === 0;
+
+  return (
+    <div className="border border-nb-border rounded overflow-hidden">
+      {/* Category Header */}
+      <button
+        className="w-full flex items-center justify-between px-3 py-2 text-xs hover:bg-nb-surface-2 transition-colors"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div className="flex items-center gap-2">
+          {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+          <span className="font-medium text-nb-text">{categoryName}</span>
+          <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+            allEnabled 
+              ? 'bg-green-500/20 text-green-400' 
+              : noneEnabled 
+                ? 'bg-red-500/20 text-red-400'
+                : 'bg-yellow-500/20 text-yellow-400'
+          }`}>
+            {enabledCount}/{tools.length}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Quick toggle all */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const shouldEnable = !allEnabled;
+              tools.forEach(t => onToggleTool(t.name, shouldEnable));
+            }}
+            className="text-[10px] text-nb-text-muted hover:text-nb-text px-1.5 py-0.5 rounded hover:bg-nb-surface-2"
+          >
+            {allEnabled ? 'Disable All' : 'Enable All'}
+          </button>
+        </div>
+      </button>
+      
+      {/* Tools List */}
+      {expanded && (
+        <div className="border-t border-nb-border divide-y divide-nb-border/50">
+          {tools.map(tool => {
+            const isEnabled = !disabledTools.includes(tool.name);
+            return (
+              <div 
+                key={tool.name}
+                className="flex items-center gap-3 px-3 py-2 hover:bg-nb-surface-2/50 transition-colors"
+              >
+                <Toggle
+                  checked={isEnabled}
+                  onChange={(enabled) => onToggleTool(tool.name, enabled)}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium text-nb-text">{tool.name}</div>
+                  {tool.description && (
+                    <div className="text-[10px] text-nb-text-muted truncate">{tool.description}</div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -1109,7 +1438,6 @@ function AgentToolsTab() {
 
   // Tool config
   const [categories, setCategories] = useState<Record<string, { name: string; count: number; tools: { name: string; description: string }[] }>>({});
-  const [enabledCategories, setEnabledCategories] = useState<string[]>([]);
   const [disabledTools, setDisabledTools] = useState<string[]>([]);
   const [customInstructions, setCustomInstructions] = useState('');
 
@@ -1119,7 +1447,6 @@ function AgentToolsTab() {
 
   // Prompts
   const [prompts, setPrompts] = useState<{ system_prompt: string; drive_prompt: string; system_prompt_length: number; drive_prompt_length: number } | null>(null);
-  const [expandedPrompt, setExpandedPrompt] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     if (!selectedAgentId) return;
@@ -1128,11 +1455,10 @@ function AgentToolsTab() {
       const [catRes, configRes, skillsRes, agentSkillsRes] = await Promise.all([
         api.getToolCategories(),
         api.getAgentToolsConfig(selectedAgentId),
-        api.getSkills(),
+        api.getSkills(true),
         api.getAgentSkills(selectedAgentId),
       ]);
       setCategories(catRes.categories || {});
-      setEnabledCategories(configRes.enabled_tool_categories || []);
       setDisabledTools(configRes.disabled_tools || []);
       setCustomInstructions(configRes.custom_instructions || '');
       setAllSkills(skillsRes.skills || []);
@@ -1158,7 +1484,7 @@ function AgentToolsTab() {
     if (currentAgentId && !selectedAgentId) {
       setSelectedAgentId(currentAgentId);
     }
-  }, [currentAgentId]);
+  }, [currentAgentId, selectedAgentId]);
 
   const handleSave = async () => {
     if (!selectedAgentId) return;
@@ -1166,7 +1492,6 @@ function AgentToolsTab() {
     try {
       await Promise.all([
         api.saveAgentToolsConfig(selectedAgentId, {
-          enabled_tool_categories: enabledCategories,
           disabled_tools: disabledTools,
           custom_instructions: customInstructions,
         }),
@@ -1176,7 +1501,7 @@ function AgentToolsTab() {
       try {
         const p = await api.getPromptsPreview(selectedAgentId);
         setPrompts(p);
-      } catch {}
+      } catch { /* ignore */ }
     } catch (e) {
       console.error('Failed to save:', e);
     } finally {
@@ -1184,13 +1509,13 @@ function AgentToolsTab() {
     }
   };
 
-  const toggleCategory = (cat: string) => {
-    setEnabledCategories(prev => {
-      if (prev.length === 0) {
-        // Currently "all enabled" → switch to "all except this one"
-        return Object.keys(categories).filter(c => c !== cat);
+  const handleToggleTool = (toolName: string, enabled: boolean) => {
+    setDisabledTools(prev => {
+      if (enabled) {
+        return prev.filter(t => t !== toolName);
+      } else {
+        return prev.includes(toolName) ? prev : [...prev, toolName];
       }
-      return prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat];
     });
   };
 
@@ -1200,7 +1525,9 @@ function AgentToolsTab() {
     );
   };
 
-  const allCatsEnabled = enabledCategories.length === 0;
+  // Calculate stats
+  const totalTools = Object.values(categories).reduce((sum, cat) => sum + cat.tools.length, 0);
+  const enabledToolsCount = totalTools - disabledTools.length;
 
   return (
     <div className="flex flex-col h-full">
@@ -1230,86 +1557,46 @@ function AgentToolsTab() {
       ) : (
         <>
           <div className="flex-1 overflow-y-auto p-4 space-y-5">
-            {/* Tools Section */}
-            <div>
-              <h4 className="text-xs font-medium text-nb-text mb-2">Tool Categories</h4>
-              <div className="grid grid-cols-3 gap-1.5">
-                {Object.entries(categories).map(([cat, info]) => {
-                  const isEnabled = allCatsEnabled || enabledCategories.includes(cat);
-                  return (
-                    <button
-                      key={cat}
-                      onClick={() => toggleCategory(cat)}
-                      className={`flex items-center justify-between px-2.5 py-1.5 rounded text-xs border transition-colors ${
-                        isEnabled
-                          ? 'border-nb-accent/40 bg-nb-accent/10 text-nb-text'
-                          : 'border-nb-border bg-nb-surface-2 text-nb-text-muted'
-                      }`}
-                    >
-                      <span>{cat}</span>
-                      <span className="text-[10px] opacity-60">({info.count})</span>
-                    </button>
-                  );
-                })}
-              </div>
-              {enabledCategories.length === 0 && (
-                <p className="text-[10px] text-nb-text-muted mt-1">All categories enabled (default)</p>
-              )}
-            </div>
-
-            {/* Disabled Tools */}
-            <div>
-              <h4 className="text-xs font-medium text-nb-text mb-2">Disabled Tools</h4>
-              <div className="flex flex-wrap gap-1">
-                {disabledTools.map(tool => (
-                  <span key={tool} className="flex items-center gap-1 px-2 py-0.5 text-[10px] bg-red-500/10 text-red-400 rounded border border-red-500/20">
-                    {tool}
-                    <button onClick={() => setDisabledTools(prev => prev.filter(t => t !== tool))} className="hover:text-red-300">
-                      <X size={10} />
-                    </button>
-                  </span>
-                ))}
-                <input
-                  placeholder="+ add tool name"
-                  className="px-2 py-0.5 text-[10px] bg-nb-surface-2 border border-nb-border rounded w-28 text-nb-text"
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') {
-                      const val = (e.target as HTMLInputElement).value.trim();
-                      if (val && !disabledTools.includes(val)) {
-                        setDisabledTools(prev => [...prev, val]);
-                        (e.target as HTMLInputElement).value = '';
-                      }
-                    }
-                  }}
-                />
-              </div>
-            </div>
-
             {/* Skills Section */}
             <div>
-              <h4 className="text-xs font-medium text-nb-text mb-2">Assigned Skills</h4>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-xs font-medium text-nb-text">Assigned Skills</h4>
+                <span className="text-[10px] text-nb-text-muted">
+                  {assignedSkillIds.length} active
+                </span>
+              </div>
               {allSkills.length === 0 ? (
                 <p className="text-[10px] text-nb-text-muted">No skills defined. Create skills in the Skills tab.</p>
               ) : (
                 <div className="space-y-1">
                   {allSkills.map(skill => {
                     const assigned = assignedSkillIds.includes(skill.id);
+                    const isBuiltin = skill.source === 'builtin';
                     return (
                       <button
                         key={skill.id}
                         onClick={() => toggleSkill(skill.id)}
                         className={`w-full flex items-center gap-2 px-3 py-2 rounded text-xs border transition-colors text-left ${
                           assigned
-                            ? 'border-nb-accent/40 bg-nb-accent/10 text-nb-text'
+                            ? isBuiltin 
+                              ? 'border-blue-500/40 bg-blue-500/10 text-nb-text'
+                              : 'border-nb-accent/40 bg-nb-accent/10 text-nb-text'
                             : 'border-nb-border bg-nb-surface-2 text-nb-text-muted hover:bg-nb-surface-2/80'
                         }`}
                       >
-                        <Zap size={12} className={assigned ? 'text-nb-accent' : 'text-nb-text-muted'} />
+                        <Zap size={12} className={assigned ? (isBuiltin ? 'text-blue-400' : 'text-nb-accent') : 'text-nb-text-muted'} />
                         <div className="flex-1 min-w-0">
-                          <span className="font-medium">{skill.name}</span>
-                          {skill.description && <span className="ml-2 opacity-60">{skill.description}</span>}
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-medium">{skill.name}</span>
+                            {isBuiltin && (
+                              <span className="text-[9px] bg-blue-500/20 text-blue-400 px-1 py-0.5 rounded">内置</span>
+                            )}
+                          </div>
+                          {skill.description && (
+                            <span className="text-[10px] opacity-60 line-clamp-1">{skill.description}</span>
+                          )}
                         </div>
-                        {assigned && <span className="text-[10px] text-nb-accent">Active</span>}
+                        {assigned && <span className="text-[10px] text-nb-accent shrink-0">Active</span>}
                       </button>
                     );
                   })}
@@ -1317,36 +1604,45 @@ function AgentToolsTab() {
               )}
             </div>
 
+            {/* Tools Section - By Category */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-xs font-medium text-nb-text">Tools by Category</h4>
+                <span className="text-[10px] text-nb-text-muted">
+                  {enabledToolsCount}/{totalTools} enabled
+                </span>
+              </div>
+              <div className="space-y-2">
+                {Object.entries(categories).map(([catName, catInfo]) => (
+                  <ToolCategorySection
+                    key={catName}
+                    categoryName={catName}
+                    tools={catInfo.tools}
+                    disabledTools={disabledTools}
+                    onToggleTool={handleToggleTool}
+                  />
+                ))}
+              </div>
+            </div>
+
             {/* Prompts Preview */}
             <div>
               <h4 className="text-xs font-medium text-nb-text mb-2">Prompts Preview</h4>
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 {prompts && (
                   <>
-                    <div className="border border-nb-border rounded">
-                      <button
-                        className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-nb-text hover:bg-nb-surface-2"
-                        onClick={() => setExpandedPrompt(expandedPrompt === 'system' ? null : 'system')}
-                      >
-                        <span>System Prompt ({prompts.system_prompt_length} chars)</span>
-                        {expandedPrompt === 'system' ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                      </button>
-                      {expandedPrompt === 'system' && (
-                        <pre className="px-3 py-2 text-[10px] text-nb-text-muted border-t border-nb-border max-h-48 overflow-y-auto whitespace-pre-wrap font-mono">{prompts.system_prompt}</pre>
-                      )}
-                    </div>
-                    <div className="border border-nb-border rounded">
-                      <button
-                        className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-nb-text hover:bg-nb-surface-2"
-                        onClick={() => setExpandedPrompt(expandedPrompt === 'drive' ? null : 'drive')}
-                      >
-                        <span>Drive Prompt ({prompts.drive_prompt_length} chars)</span>
-                        {expandedPrompt === 'drive' ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                      </button>
-                      {expandedPrompt === 'drive' && (
-                        <pre className="px-3 py-2 text-[10px] text-nb-text-muted border-t border-nb-border max-h-48 overflow-y-auto whitespace-pre-wrap font-mono">{prompts.drive_prompt}</pre>
-                      )}
-                    </div>
+                    <PromptSection
+                      title="System Prompt"
+                      content={prompts.system_prompt}
+                      charCount={prompts.system_prompt_length}
+                      isEditable={false}
+                    />
+                    <PromptSection
+                      title="Drive Prompt"
+                      content={prompts.drive_prompt}
+                      charCount={prompts.drive_prompt_length}
+                      isEditable={false}
+                    />
                   </>
                 )}
               </div>
@@ -1354,13 +1650,18 @@ function AgentToolsTab() {
 
             {/* Custom Instructions */}
             <div>
-              <h4 className="text-xs font-medium text-nb-text mb-2">Custom Instructions</h4>
-              <textarea
-                value={customInstructions}
-                onChange={e => setCustomInstructions(e.target.value)}
-                rows={3}
-                className="w-full bg-nb-surface-2 border border-nb-border rounded px-3 py-2 text-xs text-nb-text font-mono resize-y"
-                placeholder="Additional instructions appended to system prompt..."
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-xs font-medium text-nb-text">Custom Instructions</h4>
+                <span className="text-[10px] text-nb-text-muted">
+                  Appended to system prompt
+                </span>
+              </div>
+              <PromptSection
+                title="Custom Instructions"
+                content={customInstructions}
+                charCount={customInstructions.length}
+                isEditable={true}
+                onContentChange={setCustomInstructions}
               />
             </div>
           </div>

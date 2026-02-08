@@ -37,6 +37,7 @@ def handle_runtime_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
         agent_id: str
         subagent_id: str
         idempotency_key: str (可选)
+        user_message: str (可选) - 用户消息，用于自动匹配技能
         
     Returns:
         success: bool
@@ -46,9 +47,11 @@ def handle_runtime_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
         status: str
         phase: str
         context_parts: int - 初始 context 部分数量
+        matched_skills: list - 自动匹配的技能名称列表
     """
     agent_id = payload["agent_id"]
     subagent_id = payload["subagent_id"]
+    user_message = payload.get("user_message")  # For auto-matching skills
     
     # 获取或创建 client
     client = ctx.get("gateway_client") or GatewayInternalClient(ctx["gateway_url"])
@@ -59,6 +62,7 @@ def handle_runtime_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     # 否则从历史摘要构建（用于 main subagent）
     initial_context = []
     context_parts = 0
+    matched_skills = []
     
     if "initial_context" in payload and payload["initial_context"]:
         # Sub-subagent: 使用传入的 initial_context
@@ -77,9 +81,15 @@ def handle_runtime_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
             print(f"[runtime.create] Failed to build initial context for {subagent_id}: {e}")
     
     # Base System Prompt: 为所有 session 注入 Agent 身份 (Phase 4)
+    # Now with auto-matching skills based on user_message
     try:
         from ..utils.system_prompt import build_system_prompt
-        sys_prompt = build_system_prompt(agent_id, client)
+        sys_prompt = build_system_prompt(
+            agent_id, 
+            client,
+            task=user_message,  # Pass user message for auto-matching
+            auto_match_skills=True,
+        )
         if sys_prompt:
             initial_context.insert(0, {
                 "role": "system",
@@ -87,6 +97,16 @@ def handle_runtime_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
             })
             context_parts += 1
             print(f"[runtime.create] Injected system prompt for {subagent_id}")
+            
+            # Try to get matched skills for logging
+            if user_message:
+                try:
+                    match_resp = client.match_skills_for_task(user_message)
+                    matched_skills = [s.get("name") for s in match_resp.get("matched_skills", [])]
+                    if matched_skills:
+                        print(f"[runtime.create] Auto-matched skills: {matched_skills}")
+                except Exception:
+                    pass
     except Exception as e:
         print(f"[runtime.create] Failed to build system prompt for {subagent_id}: {e}")
     
@@ -121,6 +141,7 @@ def handle_runtime_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
         "status": result.status,
         "phase": result.phase,
         "context_parts": context_parts,
+        "matched_skills": matched_skills,
     }
 
 

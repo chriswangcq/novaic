@@ -751,3 +751,23 @@ class GatewayInternalClient:
             return self._request("GET", f"/api/agents/{agent_id}/skills", None)
         except Exception:
             return {"skills": []}
+    
+    def match_skills_for_task(self, task: str, max_skills: int = 3) -> dict:
+        """
+        Match skills based on task description using keywords.
+        
+        Args:
+            task: Task description to match against
+            max_skills: Maximum number of skills to return
+            
+        Returns:
+            dict with matched_skills list
+        """
+        try:
+            return self._request("POST", "/api/skills/match", {
+                "task": task,
+                "max_skills": max_skills,
+            })
+        except Exception as e:
+            print(f"[client] Failed to match skills for task: {e}")
+            return {"matched_skills": []}

@@ -65,7 +65,38 @@ class DriveRepository:
             "interaction_count": row["interaction_count"] or 0,
             "no_response_streak": row["no_response_streak"] or 0,
             "last_proactive_at": row["last_proactive_at"],
-            "enabled_tool_categories": json.loads(row["enabled_tool_categories"] or "[]"),
+            "disabled_tools": json.loads(row["disabled_tools"] or "[]"),
+            "custom_instructions": row["custom_instructions"] or "",
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"],
+        }
+    
+    def get(self, agent_id: str) -> Optional[Dict[str, Any]]:
+        """Get drive record without creating (pure read, no lock).
+        
+        Returns None if not found. Use this for read-only queries.
+        """
+        row = self.db.fetchone(
+            "SELECT * FROM agent_drive WHERE agent_id = ?",
+            (agent_id,)
+        )
+        
+        if not row:
+            return None
+        
+        return {
+            "agent_id": row["agent_id"],
+            "personality": json.loads(row["personality"] or "{}"),
+            "communication_style": row["communication_style"] or "friendly",
+            "user_profile": json.loads(row["user_profile"] or "{}"),
+            "user_active_hours": row["user_active_hours"],
+            "proactiveness": row["proactiveness"] or 0.5,
+            "min_rest_minutes": row["min_rest_minutes"] or 15,
+            "max_rest_minutes": row["max_rest_minutes"] or 120,
+            "relationship_level": row["relationship_level"] or 0,
+            "interaction_count": row["interaction_count"] or 0,
+            "no_response_streak": row["no_response_streak"] or 0,
+            "last_proactive_at": row["last_proactive_at"],
             "disabled_tools": json.loads(row["disabled_tools"] or "[]"),
             "custom_instructions": row["custom_instructions"] or "",
             "created_at": row["created_at"],
@@ -235,7 +266,6 @@ class DriveRepository:
             "interaction_count": 0,
             "no_response_streak": 0,
             "last_proactive_at": None,
-            "enabled_tool_categories": [],
             "disabled_tools": [],
             "custom_instructions": "",
             "created_at": None,
