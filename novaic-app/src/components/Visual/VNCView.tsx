@@ -27,6 +27,7 @@ interface SetupStatus {
     ssh_ready?: boolean;
     cloud_init?: boolean;
     vmuse_deployed?: boolean;
+    cloud_init_detail?: string;
   };
   error: string | null;
 }
@@ -307,40 +308,62 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
     setStatus('unknown');
   }, [currentAgentId, setVncConnected]);
 
-  // 检查 VM 初始化状态
-  const checkSetupStatus = useCallback(async () => {
-    if (!currentAgentId) return;
+  // 检查 VM 初始化状态（带防闪烁优化）
+  const checkSetupStatusRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  
+  const checkSetupStatus = useCallback(async (): Promise<'initializing' | 'complete' | 'error' | null> => {
+    if (!currentAgentId) return null;
     
     try {
-      const status = await vmService.getSetupStatus(currentAgentId);
-      if (!status) {
+      const setupStatusData = await vmService.getSetupStatus(currentAgentId);
+      if (!setupStatusData) {
         console.log('[VNC] Setup status not available');
-        return;
+        return null;
       }
       
-      console.log(`[VNC] Setup status: phase=${status.phase}, progress=${status.progress}%`);
-      setSetupStatus(status);
+      console.log(`[VNC] Setup status: phase=${setupStatusData.phase}, progress=${setupStatusData.progress}%`);
       
-      // 如果初始化完成，清除状态并继续正常 VNC 流程
-      if (status.phase === 'complete') {
+      // 如果初始化完成，停止轮询并清除状态
+      if (setupStatusData.phase === 'complete') {
+        console.log('[VNC] Initialization complete! Stopping setup polling...');
+        if (checkSetupStatusRef.current) {
+          clearInterval(checkSetupStatusRef.current);
+          checkSetupStatusRef.current = null;
+        }
         setSetupStatus(null);
-        setStatus('unknown'); // 触发重新检查 VNC
-      } else if (status.phase === 'error') {
+        setStatus('unknown'); // 会触发正常 VNC 连接
+        return 'complete';
+      } else if (setupStatusData.phase === 'error') {
+        console.error('[VNC] Initialization error:', setupStatusData.error);
+        if (checkSetupStatusRef.current) {
+          clearInterval(checkSetupStatusRef.current);
+          checkSetupStatusRef.current = null;
+        }
+        setSetupStatus(setupStatusData);
         setStatus('error');
-        setErrorMsg(status.error || 'Initialization failed');
+        setErrorMsg(setupStatusData.error || 'Initialization failed');
+        return 'error';
       } else {
-        // 正在初始化中
+        // 正在初始化中 - 只在状态真正变化时更新，避免不必要的重渲染
+        setSetupStatus(prev => {
+          // 避免相同进度的重复更新
+          if (prev && prev.phase === setupStatusData.phase && prev.progress === setupStatusData.progress) {
+            return prev;
+          }
+          return setupStatusData;
+        });
         setStatus('initializing');
+        return 'initializing';
       }
     } catch (e) {
       console.error('[VNC] Check setup status failed:', e);
+      return null;
     }
   }, [currentAgentId]);
 
   // 初始化：优先直接连接 websockify，不依赖 Agent
   useEffect(() => {
     let intervalId: ReturnType<typeof setInterval> | null = null;
-    let setupCheckIntervalId: ReturnType<typeof setInterval> | null = null;
     const startTime = Date.now();
     const log = (msg: string) => console.log(`[VNC ${((Date.now() - startTime) / 1000).toFixed(1)}s] ${msg}`);
     
@@ -356,14 +379,21 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
       
       // Step 0: 首先检查初始化状态
       log('Step 0: Checking VM initialization status...');
-      await checkSetupStatus();
+      const initStatus = await checkSetupStatus();
       
       // 如果正在初始化，启动轮询并提前返回
-      if (status === 'initializing') {
+      if (initStatus === 'initializing') {
         log('VM is initializing, starting setup status polling...');
-        setupCheckIntervalId = setInterval(checkSetupStatus, 3000); // 每3秒检查一次
+        checkSetupStatusRef.current = setInterval(checkSetupStatus, 3000); // 每3秒检查一次
         return;
+      } else if (initStatus === 'error') {
+        log('VM initialization error, stopping...');
+        return;
+      } else if (initStatus === 'complete') {
+        log('VM initialization already complete, continuing to VNC...');
+        // 继续执行下面的 VNC 连接逻辑
       }
+      // 如果 initStatus === null，也继续正常流程
       
       // 策略 1: 直接尝试连接当前 agent 的 websockify
       log(`Step 1: Trying direct websockify connection for agent ${currentAgentId}...`);
@@ -463,9 +493,12 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
     
     return () => {
       if (intervalId) clearInterval(intervalId);
-      if (setupCheckIntervalId) clearInterval(setupCheckIntervalId);
+      if (checkSetupStatusRef.current) {
+        clearInterval(checkSetupStatusRef.current);
+        checkSetupStatusRef.current = null;
+      }
     };
-  }, [checkVncStatus, checkWebsockify, startVm, setVncConnected, wsReady, currentAgentId, checkSetupStatus, status]);
+  }, [checkVncStatus, checkWebsockify, startVm, setVncConnected, wsReady, currentAgentId, checkSetupStatus]);
 
   // Connect/disconnect RFB inside the app
   useEffect(() => {
