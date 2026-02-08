@@ -77,7 +77,7 @@ function VNCViewComponent({ isThumbnail = false }: VNCViewProps) {
           console.log(`[VNC] RFB disconnected (clean: ${clean})`);
           if (!clean) {
             setVncConnected(false);
-            reset();
+            // 不调用 reset()，避免循环。让轮询自然重试
           }
         });
         

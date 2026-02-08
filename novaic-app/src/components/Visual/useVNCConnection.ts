@@ -99,7 +99,7 @@ export function useVNCConnection(
     }
   }, [agentId]);
   
-  // 检查 WebSocket 连接
+  // 检查 WebSocket 连接（只测试可用性，不改变状态）
   const checkWebSocket = useCallback(async (): Promise<boolean> => {
     if (!agentId || isConnectingRef.current) return false;
     
@@ -126,17 +126,20 @@ export function useVNCConnection(
         };
       });
       
-      console.log('[VNC Connection] WebSocket connected');
+      console.log('[VNC Connection] WebSocket available, preparing for RFB');
+      // 只设置 wsReady，让 RFB 连接成功后再设置 running
       setWsReady(true);
-      setStatus('running');
-      onConnected(true);
+      setStatus('running');  // 设置为 running，让 VNCView 开始 RFB 连接
       return true;
     } catch (e) {
+      console.log('[VNC Connection] WebSocket not available');
+      setWsReady(false);
+      setStatus(prev => prev === 'starting' ? 'starting' : 'unknown');
       return false;
     } finally {
       isConnectingRef.current = false;
     }
-  }, [agentId, onConnected]);
+  }, [agentId]);
   
   // 启动 VM
   const startVm = useCallback(async () => {
