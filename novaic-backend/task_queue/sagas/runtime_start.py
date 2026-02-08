@@ -15,12 +15,18 @@ from ..topics import TaskTopics, SagaTopics
 
 def _build_runtime_create_payload(ctx):
     """构建 runtime.create payload"""
-    return {
+    payload = {
         "agent_id": ctx["agent_id"],
         "subagent_id": ctx["subagent_id"],
         "idempotency_key": f"runtime-{ctx['subagent_id']}-{ctx.get('trigger_id', '')}",
-        # 移除 initial_context - 所有消息统一由 context.read 读取
     }
+    
+    # Sub-subagent 需要 initial_context（包含任务描述）
+    # Main subagent 从历史摘要构建 context
+    if "initial_context" in ctx and ctx["initial_context"]:
+        payload["initial_context"] = ctx["initial_context"]
+    
+    return payload
 
 
 def _build_mcp_create_payload(ctx, prev_result):

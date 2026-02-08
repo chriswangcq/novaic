@@ -816,9 +816,7 @@ runcmd:
   - systemctl is-active lightdm || (echo "ERROR: lightdm not active" && exit 1)
   # 验证桌面会话是否运行
   - echo "Verifying desktop session..."
-  - pgrep -u ubuntu xfce4-session || (echo "WARNING: XFCE session not running, attempting to start..." && su - ubuntu -c "DISPLAY=:0 startxfce4 &")
-  - sleep 5
-  - pgrep -u ubuntu xfce4-session && echo "Desktop session verified" || echo "WARNING: Desktop session may not have started correctly"
+  - pgrep -u ubuntu xfce4-session && echo "Desktop session is running" || echo "WARNING: Desktop session not detected yet, but lightdm will auto-start it on first login"
   
   # ========== Phase 10: Enable VMUSE Service ==========
   - echo "=== Phase 10: VMUSE Service ==="

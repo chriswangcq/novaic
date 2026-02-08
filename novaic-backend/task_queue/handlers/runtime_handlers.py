@@ -54,17 +54,27 @@ def handle_runtime_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     client = ctx.get("gateway_client") or GatewayInternalClient(ctx["gateway_url"])
     biz = RuntimeBusiness(ctx["gateway_url"], client=client)
     
-    # 构建初始 context（从历史摘要）
+    # 构建初始 context
+    # 优先使用 payload 中的 initial_context（用于 sub-subagent，包含任务描述）
+    # 否则从历史摘要构建（用于 main subagent）
     initial_context = []
     context_parts = 0
-    try:
-        initial_context = build_initial_context(agent_id, subagent_id, client)
+    
+    if "initial_context" in payload and payload["initial_context"]:
+        # Sub-subagent: 使用传入的 initial_context
+        initial_context = payload["initial_context"]
         context_parts = len(initial_context)
-        if context_parts > 0:
-            print(f"[runtime.create] Built initial context with {context_parts} parts for {subagent_id}")
-    except Exception as e:
-        # Context 构建失败不阻塞 runtime 创建
-        print(f"[runtime.create] Failed to build initial context for {subagent_id}: {e}")
+        print(f"[runtime.create] Using provided initial context with {context_parts} parts for {subagent_id}")
+    else:
+        # Main subagent: 从历史摘要构建
+        try:
+            initial_context = build_initial_context(agent_id, subagent_id, client)
+            context_parts = len(initial_context)
+            if context_parts > 0:
+                print(f"[runtime.create] Built initial context with {context_parts} parts for {subagent_id}")
+        except Exception as e:
+            # Context 构建失败不阻塞 runtime 创建
+            print(f"[runtime.create] Failed to build initial context for {subagent_id}: {e}")
     
     # 创建 runtime
     result = biz.create(
