@@ -137,8 +137,21 @@ a = Analysis(
         # ----- ssl -----
         'ssl',
         'certifi',
-        # ----- other -----
+        # ----- ssh clients -----
         'asyncssh',
+        'paramiko',
+        'paramiko.rsakey',
+        'paramiko.ecdsakey',
+        'paramiko.ed25519key',
+        'paramiko.transport',
+        'paramiko.client',
+        'paramiko.sftp_client',
+        # ----- cryptography (paramiko dependency) -----
+        'cryptography',
+        'cryptography.hazmat',
+        'cryptography.hazmat.primitives',
+        'cryptography.hazmat.backends',
+        # ----- other -----
         'PIL',
     ],
     hookspath=[],

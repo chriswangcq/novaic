@@ -204,6 +204,17 @@ function AgentCard({ agent, status: agentStatus, isSelected, onSelect, onStart, 
                 <Square size={18} />
               )}
             </button>
+            <button
+              onClick={(e) => { 
+                console.log('[Dashboard] Delete button clicked (Running state)');
+                e.stopPropagation(); 
+                onDelete(); 
+              }}
+              className="px-4 py-2.5 bg-nb-surface-hover hover:bg-red-500/20 text-nb-text-secondary hover:text-red-400 disabled:opacity-50 rounded-lg transition-colors border border-nb-border"
+              title="Delete Agent"
+            >
+              <Trash2 size={18} />
+            </button>
           </>
         ) : (
           // Ready or stopped
@@ -227,7 +238,6 @@ function AgentCard({ agent, status: agentStatus, isSelected, onSelect, onStart, 
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              disabled={isLoading}
               className="px-4 py-2.5 bg-nb-surface-hover hover:bg-red-500/20 text-nb-text-secondary hover:text-red-400 disabled:opacity-50 rounded-lg transition-colors border border-nb-border"
               title="Delete Agent"
             >
@@ -350,12 +360,19 @@ export function AgentDashboard({ onEnterWorkspace, onEnterSetup }: AgentDashboar
   };
 
   const handleDeleteAgent = (agentId: string) => {
+    console.log('[Dashboard] handleDeleteAgent called for:', agentId);
     const agent = agents.find(a => a.id === agentId);
+    console.log('[Dashboard] Found agent:', agent?.name);
     setDeleteConfirm({ agentId, agentName: agent?.name || 'Agent' });
+    console.log('[Dashboard] Delete confirm dialog should now be visible');
   };
 
   const confirmDeleteAgent = async () => {
-    if (!deleteConfirm) return;
+    if (!deleteConfirm) {
+      console.warn('[Dashboard] confirmDeleteAgent called but deleteConfirm is null');
+      return;
+    }
+    console.log('[Dashboard] confirmDeleteAgent called for:', deleteConfirm.agentId);
     try {
       // Stop VM first if it's running
       const agent = agents.find(a => a.id === deleteConfirm.agentId);
@@ -371,9 +388,12 @@ export function AgentDashboard({ onEnterWorkspace, onEnterSetup }: AgentDashboar
         }
       }
       
+      console.log('[Dashboard] Calling deleteAgent...');
       await deleteAgent(deleteConfirm.agentId);
+      console.log('[Dashboard] Agent deleted successfully');
     } catch (error) {
-      console.error('Failed to delete agent:', error);
+      console.error('[Dashboard] Failed to delete agent:', error);
+      alert(`Failed to delete agent: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setDeleteConfirm(null);
     }
@@ -495,7 +515,7 @@ export function AgentDashboard({ onEnterWorkspace, onEnterSetup }: AgentDashboar
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
           {/* Backdrop */}
           <div 
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"

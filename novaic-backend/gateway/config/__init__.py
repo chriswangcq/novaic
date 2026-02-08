@@ -17,6 +17,12 @@ from .manager_db import (
     get_config_manager_db,
 )
 
+# Agent configuration manager
+from .agents_db import (
+    AgentConfigManagerDB,
+    get_agent_config_manager,
+)
+
 # Multi-process settings (v11)
 from .settings import (
     WORKER_MODE,
@@ -44,6 +50,9 @@ __all__ = [
     # Async (primary, database-backed)
     'ConfigManagerDB',
     'get_config_manager_db',
+    # Agent configuration
+    'AgentConfigManagerDB',
+    'get_agent_config_manager',
     # Multi-process settings (v11)
     'WORKER_MODE',
     'is_multi_process_mode',

@@ -488,13 +488,9 @@ class ToolExecutor:
                 return self._handle_response(response)
             
             elif tool_name == "runtime_rest":
-                # 只有 Main Runtime 可以调用
-                if not self.subagent_id.startswith("main"):
-                    return {
-                        "success": False,
-                        "error": "runtime_rest can only be called by Main Runtime",
-                    }
-                
+                # Both Main Runtime and SubAgent can call rest
+                # Main Runtime: enters rest state and waits for user response
+                # SubAgent: completes its task and reports back to parent
                 response = await client.post(
                     f"/internal/runtimes/{self.runtime_id}/rest",
                     json={
@@ -593,10 +589,12 @@ class ToolExecutor:
             
             # ==================== SubAgent 工具 ====================
             elif tool_name == "subagent_spawn":
+                # 兼容 task 和 prompt 参数（部分 LLM 可能使用 prompt）
+                task_desc = arguments.get("task") or arguments.get("prompt", "")
                 response = await client.post(
                     f"/internal/rt/{self.runtime_id}/subagent/spawn",
                     json={
-                        "task": arguments.get("task", ""),
+                        "task": task_desc,
                         "share_context": arguments.get("share_context", False),
                         "timeout_minutes": arguments.get("timeout_minutes", 30),
                     }

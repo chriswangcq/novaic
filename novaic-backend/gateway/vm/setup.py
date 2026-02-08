@@ -313,15 +313,31 @@ class VmSetup:
         config_dir = vm_dir / "cloud-init"
         config_dir.mkdir(parents=True, exist_ok=True)
         
-        # APT mirror
+        # Mirrors configuration
         if use_cn_mirrors:
+            # APT mirror (Ubuntu packages)
             apt_mirror = "mirrors.aliyun.com/ubuntu-ports" if self.is_arm else "mirrors.aliyun.com/ubuntu"
+            # pip mirror (Python packages)
             pip_mirror = "mirrors.aliyun.com/pypi/simple/"
             pip_host = "mirrors.aliyun.com"
+            # Node.js mirror
+            nodejs_setup_url = "https://mirrors.aliyun.com/nodesource/setup_20.x"
+            # npm mirror
+            npm_registry = "https://registry.npmmirror.com"
+            # Playwright mirror (Chromium download)
+            playwright_mirror = "https://npmmirror.com/mirrors/playwright/"
         else:
+            # APT mirror (Ubuntu packages)
             apt_mirror = "ports.ubuntu.com/ubuntu-ports" if self.is_arm else "archive.ubuntu.com/ubuntu"
+            # pip mirror (Python packages)
             pip_mirror = "pypi.org/simple/"
             pip_host = "pypi.org"
+            # Node.js mirror
+            nodejs_setup_url = "https://deb.nodesource.com/setup_20.x"
+            # npm mirror
+            npm_registry = "https://registry.npmjs.org"
+            # Playwright mirror (use default)
+            playwright_mirror = ""
         
         ubuntu_codename = "noble"  # Ubuntu 24.04
         
@@ -336,6 +352,9 @@ class VmSetup:
             ubuntu_codename=ubuntu_codename,
             pip_mirror=pip_mirror,
             pip_host=pip_host,
+            nodejs_setup_url=nodejs_setup_url,
+            npm_registry=npm_registry,
+            playwright_mirror=playwright_mirror,
         )
         (config_dir / "user-data").write_text(user_data)
         
@@ -415,6 +434,9 @@ class VmSetup:
         ubuntu_codename: str,
         pip_mirror: str,
         pip_host: str,
+        nodejs_setup_url: str,
+        npm_registry: str,
+        playwright_mirror: str,
     ) -> str:
         """Generate cloud-init user-data."""
         return f'''#cloud-config
@@ -459,21 +481,32 @@ package_upgrade: false
 
 # Install packages
 packages:
+  # X Server 核心（QEMU native VNC 必需）
+  - xserver-xorg
+  - xserver-xorg-core
+  - xserver-xorg-input-all
+  - xserver-xorg-video-dummy
+  - x11-utils
+  - x11-xserver-utils
+  # 桌面环境
   - xfce4
   - xfce4-terminal
   - xfce4-goodies
   - lightdm
   - lightdm-gtk-greeter
   - dbus-x11
+  # 浏览器和工具
   - chromium-browser
   - xdotool
   - wmctrl
   - scrot
   - imagemagick
   - xclip
+  # Python 环境
   - python3
   - python3-pip
   - python3-venv
+  # 系统工具
   - curl
   - wget
   - net-tools
@@ -485,6 +518,25 @@ packages:
 
 # Write configuration files
 write_files:
+  # X Server 配置（虚拟显示驱动 - QEMU native VNC 必需）
+  - path: /etc/X11/xorg.conf.d/10-novaic.conf
+    content: |
+      Section "Device"
+        Identifier "VirtioGPU"
+        Driver "dummy"
+      EndSection
+      Section "Screen"
+        Identifier "DefaultScreen"
+        Device "VirtioGPU"
+        DefaultDepth 24
+        SubSection "Display"
+          Depth 24
+          Modes "1280x720" "1024x768"
+        EndSubSection
+      EndSection
+    permissions: '0644'
+  
+  # LightDM 自动登录配置
   - path: /etc/lightdm/lightdm.conf.d/50-autologin.conf
     content: |
       [Seat:*]
@@ -705,11 +757,13 @@ runcmd:
   
   # ========== Phase 3: Node.js Installation ==========
   - echo "=== Phase 3: Installing Node.js 20 LTS ==="
-  - curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+  - curl -fsSL {nodejs_setup_url} | sudo -E bash -
   - apt-get install -y nodejs
   - node --version | tee /opt/novaic/.node_version
   - npm --version | tee /opt/novaic/.npm_version
-  - echo "Node.js installed."
+  # Configure npm registry
+  - npm config set registry {npm_registry}
+  - echo "Node.js installed with registry: {npm_registry}"
   
   # ========== Phase 4: Python Virtual Environment ==========
   - echo "=== Phase 4: Python Virtual Environment ==="
@@ -723,7 +777,13 @@ runcmd:
   
   # ========== Phase 6: Playwright + Chromium ==========
   - echo "=== Phase 6: Playwright Chromium ==="
-  - /opt/novaic/venv/bin/playwright install --with-deps chromium
+  # Set Playwright download mirror if specified
+  - |
+    if [ -n "{playwright_mirror}" ]; then
+      export PLAYWRIGHT_DOWNLOAD_HOST="{playwright_mirror}"
+      echo "Using Playwright mirror: {playwright_mirror}"
+    fi
+    /opt/novaic/venv/bin/playwright install --with-deps chromium
   - echo "Playwright Chromium installed."
   
   # ========== Phase 7: QEMU Guest Agent ==========
@@ -741,7 +801,15 @@ runcmd:
   - echo "=== Phase 9: Display Manager ==="
   - systemctl enable lightdm
   - systemctl start lightdm
-  - sleep 10
+  - sleep 15
+  # 验证 X server 是否运行
+  - echo "Verifying X server..."
+  - pgrep -x Xorg || (echo "ERROR: X server not running" && exit 1)
+  # 验证 DISPLAY 是否可用
+  - DISPLAY=:0 xdpyinfo > /dev/null 2>&1 || (echo "ERROR: DISPLAY not available" && exit 1)
+  # 验证 lightdm 状态
+  - systemctl is-active lightdm || (echo "ERROR: lightdm not active" && exit 1)
+  - echo "Display Manager verification passed"
   
   # ========== Phase 10: Enable VMUSE Service ==========
   - echo "=== Phase 10: VMUSE Service ==="

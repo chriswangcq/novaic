@@ -20,7 +20,6 @@ interface AgentDrawerProps {
 
 export function AgentDrawer({ isOpen, onClose, onSelectAgent, onCreateNew }: AgentDrawerProps) {
   const { agents, currentAgentId, loadAgents, deleteAgent } = useAppStore();
-  const [isLoading, setIsLoading] = useState(false);
   const [vmStatuses, setVmStatuses] = useState<Record<string, VmStatus>>({});
   const [startingVm, setStartingVm] = useState<string | null>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -74,29 +73,33 @@ export function AgentDrawer({ isOpen, onClose, onSelectAgent, onCreateNew }: Age
 
   const handleDelete = async (e: React.MouseEvent, agentId: string) => {
     e.stopPropagation();
+    console.log('[AgentDrawer] handleDelete called for:', agentId);
     if (!confirm('Are you sure you want to delete this agent?')) {
+      console.log('[AgentDrawer] Delete cancelled by user');
       return;
     }
 
-    setIsLoading(true);
+    console.log('[AgentDrawer] Delete confirmed, proceeding...');
     try {
       // Stop VM first if it's running
       const vmStatus = vmStatuses[agentId];
       if (vmStatus?.running) {
+        console.log('[AgentDrawer] Stopping VM before delete');
         try {
           await vmService.stop(agentId);
           await new Promise(resolve => setTimeout(resolve, POLL_CONFIG.GATEWAY_HEALTH_INTERVAL));
         } catch (e) {
-          console.warn('Failed to stop VM, continuing with delete:', e);
+          console.warn('[AgentDrawer] Failed to stop VM, continuing with delete:', e);
         }
       }
       
+      console.log('[AgentDrawer] Calling deleteAgent...');
       // deleteAgent 内部会调用 loadAgents 并自动选择新 agent
       await deleteAgent(agentId);
+      console.log('[AgentDrawer] Agent deleted successfully');
     } catch (error) {
-      console.error('Failed to delete agent:', error);
-    } finally {
-      setIsLoading(false);
+      console.error('[AgentDrawer] Failed to delete agent:', error);
+      alert(`Failed to delete agent: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
 
@@ -117,14 +120,11 @@ export function AgentDrawer({ isOpen, onClose, onSelectAgent, onCreateNew }: Age
 
   const handleStopVm = async (e: React.MouseEvent, agentId: string) => {
     e.stopPropagation();
-    setIsLoading(true);
     try {
       await vmService.stop(agentId);
       await refreshVmStatuses();
     } catch (error) {
       console.error('Failed to stop VM:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -265,7 +265,6 @@ export function AgentDrawer({ isOpen, onClose, onSelectAgent, onCreateNew }: Age
                       {/* Delete */}
                       <button
                         onClick={(e) => handleDelete(e, agent.id)}
-                        disabled={isLoading}
                         className="p-1.5 rounded hover:bg-red-500/20 text-nb-text-secondary hover:text-red-400 transition-colors disabled:opacity-50"
                         title="Delete"
                       >

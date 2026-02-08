@@ -148,7 +148,7 @@ export interface LogEntry {
   data: LogData;
   // 新增字段 - 支持事件模型和 Subagent
   subagent_id?: string;
-  status?: 'running' | 'complete';
+  status?: 'running' | 'complete' | 'failed';
   kind?: 'think' | 'tool';
   event_key?: string;
   input?: any;

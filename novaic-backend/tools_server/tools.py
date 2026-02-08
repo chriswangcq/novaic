@@ -621,7 +621,7 @@ RUNTIME_TOOLS: List[Dict[str, Any]] = [
     },
     {
         "name": "runtime_rest",
-        "description": "Voluntarily enter rest state. Only Main Runtime can call this. The agent will pause and wait for wake triggers.",
+        "description": "Voluntarily enter rest state. The runtime will pause and wait for wake triggers. For Main Runtime: waits for user response. For SubAgent: reports completion to parent.",
         "inputSchema": {
             "type": "object",
             "properties": {

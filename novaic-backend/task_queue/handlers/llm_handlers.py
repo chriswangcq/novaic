@@ -148,14 +148,14 @@ def handle_llm_call(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     )
     
     if not result.success:
-        # 广播错误（think complete with error）
+        # 广播错误（think failed）
         if agent_id:
             sync_broadcast_log(
                 ctx,
                 agent_id,
                 subagent_id=subagent_id,
                 kind="think",
-                status="complete",
+                status="failed",
                 event_key=think_event_key,
                 data={"type": "think"},
                 result_data={"error": result.error[:ServiceConfig.TEXT_TRUNCATE_ERROR]},

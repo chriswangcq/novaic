@@ -76,7 +76,7 @@ class Database:
         conn = sqlite3.connect(
             self.db_path,
             check_same_thread=False,  # We handle thread safety ourselves
-            timeout=30.0
+            timeout=30.0  # Reasonable timeout for multi-process
         )
         conn.row_factory = sqlite3.Row
         
@@ -85,7 +85,7 @@ class Database:
         conn.execute("PRAGMA foreign_keys = ON")
         conn.execute("PRAGMA synchronous = NORMAL")
         # Set busy timeout to wait for locks instead of failing immediately
-        conn.execute("PRAGMA busy_timeout = 5000")  # 5 seconds
+        conn.execute("PRAGMA busy_timeout = 10000")  # 10 seconds - enough for short transactions
         
         return conn
     

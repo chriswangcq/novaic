@@ -5,6 +5,7 @@ Manages multiple AIC agents using SQLite storage.
 All operations are synchronous.
 """
 
+import logging
 import os
 import json
 import uuid
@@ -15,6 +16,8 @@ from pathlib import Path
 from datetime import datetime
 from pydantic import BaseModel, Field
 
+logger = logging.getLogger(__name__)
+
 from gateway.db.access import get_db
 from common.db.database import Database
 from gateway.db.repositories.agent import AgentRepository
@@ -23,11 +26,13 @@ from gateway.db.repositories.agent import AgentRepository
 # Port allocation constants
 GATEWAY_PORT = 19999
 BASE_PORT = 20000
-PORTS_PER_AGENT = 1  # Only SSH port needed
+BASE_VMUSE_PORT = 18000
+PORTS_PER_AGENT = 2  # SSH + VMUSE ports
 MAX_AGENTS = 100
 
 SERVICE_OFFSETS = {
-    "ssh": 0,  # Only SSH port needed
+    "ssh": 0,
+    "vmuse": 0,
 }
 
 
@@ -40,8 +45,8 @@ class PortConfig(BaseModel):
     - Agent 1: ssh=20001, vmuse=18001
     - Agent N: ssh=20000+N, vmuse=18000+N
     """
-    ssh: int   # SSH port for VM access (dynamically assigned)
-    vmuse: int # VMUSE HTTP API port (dynamically assigned)
+    ssh: int = 0    # SSH port for VM access (dynamically assigned, 0 means not assigned)
+    vmuse: int = 0  # VMUSE HTTP API port (dynamically assigned, 0 means not assigned)
 
 
 class VmConfig(BaseModel):
@@ -76,8 +81,14 @@ def get_agent_port(agent_index: int, service: str) -> int:
     if agent_index < 0 or agent_index >= MAX_AGENTS:
         raise ValueError(f"Agent index must be between 0 and {MAX_AGENTS - 1}")
     
-    base = BASE_PORT + agent_index * PORTS_PER_AGENT
-    return base + SERVICE_OFFSETS[service]
+    # SSH and VMUSE use separate port ranges
+    if service == "ssh":
+        return BASE_PORT + agent_index
+    elif service == "vmuse":
+        return BASE_VMUSE_PORT + agent_index
+    else:
+        base = BASE_PORT + agent_index * PORTS_PER_AGENT
+        return base + SERVICE_OFFSETS[service]
 
 
 def allocate_ports_for_agent(agent_index: int) -> PortConfig:
@@ -88,9 +99,9 @@ def allocate_ports_for_agent(agent_index: int) -> PortConfig:
     It should not be called at runtime. Runtime code should use the
     port configuration stored in the database.
     """
-    base = BASE_PORT + agent_index * PORTS_PER_AGENT
     return PortConfig(
-        ssh=base + SERVICE_OFFSETS["ssh"],
+        ssh=get_agent_port(agent_index, "ssh"),
+        vmuse=get_agent_port(agent_index, "vmuse"),
     )
 
 
@@ -286,33 +297,38 @@ class AgentConfigManagerDB:
         return self.get_agent(agent_id)
     
     def delete_agent(self, agent_id: str) -> bool:
-        """Delete an agent and its VM files."""
+        """
+        Delete an agent and its VM files.
+        
+        Uses simple database delete - CASCADE will handle related data cleanup.
+        No transaction needed for single DELETE statement.
+        """
         # Get current agent for cleanup
         agent = self.get_agent(agent_id)
         if not agent:
             return False
         
-        # 手动清理相关数据（确保兼容没有外键约束的旧数据库）
-        # 对于新数据库，外键约束会自动级联删除，但这个手动清理逻辑是安全的冗余
-        db = get_db()
-        with db.transaction("agent_cleanup", resource_id=agent_id):
-            # 删除所有关联的数据
-            db.execute("DELETE FROM chat_messages WHERE agent_id = ?", (agent_id,))
-            db.execute("DELETE FROM execution_logs WHERE agent_id = ?", (agent_id,))
-            db.execute("DELETE FROM tasks WHERE agent_id = ?", (agent_id,))
-            db.execute("DELETE FROM pending_questions WHERE agent_id = ?", (agent_id,))
-            db.execute("DELETE FROM agent_runtime_state WHERE agent_id = ?", (agent_id,))
-            # pipeline_tasks 允许 NULL agent_id，只删除关联的
-            db.execute("DELETE FROM pipeline_tasks WHERE agent_id = ?", (agent_id,))
-            
-            # Delete from database (will also trigger cascade if foreign keys exist)
+        try:
+            # Direct delete without transaction wrapper - SQLite handles this atomically
+            # Foreign key CASCADE will automatically delete related data from:
+            # - chat_messages, execution_logs, tasks, pending_questions
+            # - agent_runtime_state, pipeline_tasks, subagents, vm_processes
             success = self.repo.delete_agent(agent_id)
-        
-        if success:
-            # Delete VM directory
-            vm_dir = self._get_agent_vm_dir(agent_id)
-            if vm_dir.exists():
-                shutil.rmtree(vm_dir)
+            logger.info(f"[delete_agent] Deleted agent {agent_id}, CASCADE cleaned up related data")
+                
+            if success:
+                # Delete VM directory after database cleanup
+                vm_dir = self._get_agent_vm_dir(agent_id)
+                if vm_dir.exists():
+                    try:
+                        shutil.rmtree(vm_dir)
+                        logger.info(f"[delete_agent] Deleted VM directory: {vm_dir}")
+                    except Exception as e:
+                        logger.warning(f"[delete_agent] Failed to delete VM directory {vm_dir}: {e}")
+                
+        except Exception as e:
+            logger.error(f"[delete_agent] Failed to delete agent {agent_id}: {e}")
+            raise
         
         return success
     

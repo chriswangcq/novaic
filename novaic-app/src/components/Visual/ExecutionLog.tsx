@@ -349,9 +349,13 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
   const getLogIcon = (log: LogEntry, success?: boolean) => {
     // 如果有 kind 字段，优先使用 kind
     if (log.kind === 'think') {
+      const error = log.result?.error || log.data?.error;
       // 根据 status 显示不同图标
       if (log.status === 'running') {
         return <Loader2 size={14} className="text-white/60 animate-spin" />;
+      }
+      if (log.status === 'failed' || error) {
+        return <XCircle size={14} className="text-nb-error" />;
       }
       return <Brain size={14} className="text-white/60" />;
     }
@@ -443,10 +447,12 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
     return success !== false ? '完成' : '失败';
   };
 
-  const formatLog = (log: LogEntry): { main: string; detail?: string; toolName?: string; status?: string; isRunning?: boolean } => {
+  const formatLog = (log: LogEntry): { main: string; detail?: string; toolName?: string; status?: string; isRunning?: boolean; isFailed?: boolean } => {
     // 新事件模型：根据 kind 和 status 显示
     if (log.kind === 'think') {
       const content = log.result?.content || log.data?.content || (typeof log.data === 'string' ? log.data : '');
+      const error = log.result?.error || log.data?.error;
+      
       if (log.status === 'running') {
         return { 
           main: '🧠 思考中...', 
@@ -454,9 +460,21 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
           isRunning: true 
         };
       }
+      
+      // failed 状态
+      if (log.status === 'failed' || error) {
+        return { 
+          main: '🧠 思考失败',
+          status: '失败',
+          detail: error ? truncateString(String(error), 80) : undefined,
+          isFailed: true
+        };
+      }
+      
       // complete 状态
       return { 
         main: '🧠 思考完成',
+        status: '完成',
         detail: content ? truncateString(content, 80) : undefined
       };
     }
@@ -708,7 +726,7 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
                         <span className={`px-2 py-0.5 rounded text-[10px] flex-shrink-0 ${
                           formatted.isRunning 
                             ? 'bg-white/10 text-white/70' 
-                            : formatted.status === '失败' 
+                            : formatted.isFailed || formatted.status === '失败' 
                               ? 'bg-nb-error/20 text-nb-error'
                               : 'bg-nb-success/20 text-nb-success'
                         }`}>
