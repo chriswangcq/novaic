@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo, memo } from 'react';
 import { useAppStore } from '../../store';
 import { Monitor, RefreshCw, Play, Loader2, Lock, Unlock, Copy, Check } from 'lucide-react';
 import { vmService } from '../../services/vm';
@@ -42,7 +42,7 @@ interface VNCViewProps {
   isThumbnail?: boolean;
 }
 
-export function VNCView({ isThumbnail = false }: VNCViewProps) {
+function VNCViewComponent({ isThumbnail = false }: VNCViewProps) {
   const { setVncConnected, vncLocked, setVncLocked, currentAgentId, agents } = useAppStore();
   
   // 获取当前 agent 的信息 - 使用 useMemo 避免 agents 数组引用变化导致的重新计算
@@ -927,3 +927,6 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
     </div>
   );
 }
+
+// 使用 memo 防止父组件（VisualPanel）因 logs 更新而导致的无意义重渲染
+export const VNCView = memo(VNCViewComponent);
