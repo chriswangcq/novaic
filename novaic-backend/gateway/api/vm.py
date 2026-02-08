@@ -5,7 +5,9 @@ REST API for VM management (setup, start, stop, status).
 Replaces Tauri's VM commands.
 """
 
+import json
 import logging
+import subprocess
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 from fastapi import APIRouter, HTTPException
@@ -15,6 +17,10 @@ from gateway.vm import get_vm_manager, VmSetup, get_ssh_key_manager
 from gateway.vm.deployer import get_vmuse_deployer
 
 logger = logging.getLogger(__name__)
+
+# Constants for setup status monitoring
+SSH_TIMEOUT = 5
+SSH_CONNECT_TIMEOUT = 3
 
 router = APIRouter(prefix="/api/vm", tags=["vm"])
 
@@ -522,3 +528,309 @@ def check_vmuse_health(agent_id: str):
     except Exception as e:
         logger.error(f"[VM API] Health check failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def _run_ssh_command(key_path: Path, ssh_port: int, command: str, timeout: int = SSH_TIMEOUT) -> subprocess.CompletedProcess:
+    """Helper function to run SSH commands with standard options."""
+    return subprocess.run(
+        [
+            "ssh",
+            "-i", str(key_path),
+            "-p", str(ssh_port),
+            "-o", "StrictHostKeyChecking=no",
+            "-o", "UserKnownHostsFile=/dev/null",
+            "-o", f"ConnectTimeout={SSH_CONNECT_TIMEOUT}",
+            "ubuntu@127.0.0.1",
+            command
+        ],
+        capture_output=True,
+        timeout=timeout,
+        text=True,
+    )
+
+
+@router.get("/{agent_id}/setup-status")
+def get_setup_status(agent_id: str):
+    """
+    Get detailed setup status for a VM during initialization.
+    
+    Returns progress information for frontend to display:
+    - Phase: creating/booting/cloud-init/vmuse-deploy/complete/error
+    - Progress: 0-100%
+    - Message: Human-readable status
+    - Steps: Detailed breakdown of each phase
+    
+    Args:
+        agent_id: Agent ID
+    
+    Returns:
+        Detailed setup status
+    """
+    try:
+        from gateway.config import get_agent_config_manager
+        
+        agent_manager = get_agent_config_manager()
+        agent = agent_manager.get_agent(agent_id)
+        
+        if not agent:
+            raise HTTPException(status_code=404, detail="Agent not found")
+        
+        logger.debug(f"[Setup Status] Checking status for agent {agent_id}")
+        
+        # Base response structure
+        response = {
+            "agent_id": agent_id,
+            "phase": "unknown",
+            "progress": 0,
+            "message": "初始化中...",
+            "steps": {},
+            "error": None,
+        }
+        
+        # Get SSH key path upfront (needed for multiple checks)
+        key_path = None
+        try:
+            ssh_manager = get_ssh_key_manager()
+            key_path = ssh_manager.get_private_key_path()
+        except Exception as e:
+            logger.error(f"[Setup Status] Failed to get SSH key: {e}")
+            return {
+                "agent_id": agent_id,
+                "phase": "error",
+                "progress": 0,
+                "message": "SSH 密钥配置错误",
+                "error": str(e),
+                "steps": {},
+            }
+        
+        # Check if setup is already complete
+        if agent.setup_complete:
+            logger.debug(f"[Setup Status] Agent {agent_id} already marked as complete")
+            response.update({
+                "phase": "complete",
+                "progress": 100,
+                "message": "环境已就绪",
+                "steps": {
+                    "vm_created": True,
+                    "vm_booted": True,
+                    "cloud_init": True,
+                    "vmuse_deployed": True,
+                }
+            })
+            return response
+        
+        # Phase 1: Check VM process status
+        vm_manager = get_vm_manager()
+        vm_process = vm_manager.repo.get_process(agent_id)
+        
+        if not vm_process:
+            logger.debug(f"[Setup Status] Agent {agent_id}: VM process not found")
+            response.update({
+                "phase": "creating",
+                "progress": 5,
+                "message": "正在创建虚拟机...",
+                "steps": {"vm_created": False}
+            })
+            return response
+        
+        vm_status = vm_process.get("status", "stopped")
+        if vm_status != "running":
+            logger.debug(f"[Setup Status] Agent {agent_id}: VM status = {vm_status}")
+            response.update({
+                "phase": "booting",
+                "progress": 10,
+                "message": "正在启动虚拟机...",
+                "steps": {
+                    "vm_created": True,
+                    "vm_booted": False,
+                }
+            })
+            return response
+        
+        response["steps"]["vm_created"] = True
+        response["steps"]["vm_booted"] = True
+        
+        # Phase 2: Check SSH accessibility
+        ssh_port = agent.vm.ports.ssh if agent.vm.ports else 20000
+        ssh_accessible = False
+        
+        try:
+            result = _run_ssh_command(key_path, ssh_port, "echo ok")
+            ssh_accessible = result.returncode == 0
+        except Exception as e:
+            logger.debug(f"[Setup Status] Agent {agent_id}: SSH check failed: {e}")
+        
+        if not ssh_accessible:
+            logger.debug(f"[Setup Status] Agent {agent_id}: SSH not accessible yet")
+            response.update({
+                "phase": "booting",
+                "progress": 15,
+                "message": "虚拟机启动中，等待 SSH 可访问...",
+                "steps": {
+                    "vm_created": True,
+                    "vm_booted": True,
+                    "ssh_ready": False,
+                }
+            })
+            return response
+        
+        response["steps"]["ssh_ready"] = True
+        logger.debug(f"[Setup Status] Agent {agent_id}: SSH accessible")
+        
+        # Phase 3: Check cloud-init status
+        cloud_init_status = None
+        cloud_init_detail = ""
+        
+        try:
+            result = _run_ssh_command(key_path, ssh_port, "cloud-init status --format=json")
+            # cloud-init returns: 0 (done), 1 (error), 2 (running)
+            # We should parse JSON regardless of exit code
+            if result.stdout.strip():
+                ci_data = json.loads(result.stdout)
+                cloud_init_status = ci_data.get("status")
+                cloud_init_detail = ci_data.get("extended_status", "")
+                logger.debug(f"[Setup Status] Agent {agent_id}: cloud-init status = {cloud_init_status}")
+        except Exception as e:
+            logger.debug(f"[Setup Status] Agent {agent_id}: Failed to parse cloud-init JSON: {e}")
+            # Fallback to simple status check
+            try:
+                result = _run_ssh_command(key_path, ssh_port, "cloud-init status")
+                # Parse output like "status: running"
+                for line in result.stdout.split('\n'):
+                    if line.startswith('status:'):
+                        cloud_init_status = line.split(':', 1)[1].strip()
+                        logger.debug(f"[Setup Status] Agent {agent_id}: cloud-init status (fallback) = {cloud_init_status}")
+                        break
+            except Exception as e2:
+                logger.debug(f"[Setup Status] Agent {agent_id}: Fallback cloud-init check failed: {e2}")
+        
+        # Handle cloud-init status = None (SSH works but cloud-init not responding)
+        if cloud_init_status is None:
+            logger.warning(f"[Setup Status] Agent {agent_id}: Cannot determine cloud-init status")
+            response.update({
+                "phase": "booting",
+                "progress": 20,
+                "message": "系统初始化中，正在启动 cloud-init...",
+                "steps": {
+                    "vm_created": True,
+                    "vm_booted": True,
+                    "ssh_ready": True,
+                    "cloud_init": False,
+                }
+            })
+            return response
+        
+        if cloud_init_status == "running":
+            # Cloud-init is still running - try to get more details
+            progress_message = "安装系统组件和依赖..."
+            progress_pct = 40
+            
+            # Try to determine what's being installed
+            try:
+                log_result = _run_ssh_command(key_path, ssh_port, "tail -20 /var/log/cloud-init-output.log")
+                log_tail = log_result.stdout.lower()
+                
+                if "download snap" in log_tail or "fetch and check" in log_tail:
+                    progress_message = "下载并安装 Snap 包..."
+                    progress_pct = 60
+                elif "chromium" in log_tail or "playwright" in log_tail:
+                    progress_message = "安装浏览器和自动化工具..."
+                    progress_pct = 70
+                elif "setting up" in log_tail or "processing triggers" in log_tail:
+                    progress_message = "配置系统服务..."
+                    progress_pct = 80
+            except Exception as e:
+                logger.debug(f"[Setup Status] Agent {agent_id}: Failed to read cloud-init log: {e}")
+            
+            logger.info(f"[Setup Status] Agent {agent_id}: cloud-init running - {progress_message}")
+            response.update({
+                "phase": "cloud-init",
+                "progress": progress_pct,
+                "message": f"Cloud-init 初始化中: {progress_message}",
+                "steps": {
+                    "vm_created": True,
+                    "vm_booted": True,
+                    "ssh_ready": True,
+                    "cloud_init": False,
+                    "cloud_init_detail": cloud_init_detail or "running",
+                }
+            })
+            return response
+        
+        elif cloud_init_status == "done":
+            response["steps"]["cloud_init"] = True
+            logger.debug(f"[Setup Status] Agent {agent_id}: cloud-init done")
+            
+            # Phase 4: Check VMUSE deployment
+            vmuse_port = agent.vm.ports.vmuse if agent.vm.ports else 18000
+            deployer = get_vmuse_deployer()
+            vmuse_healthy = deployer.health_check(vmuse_port=vmuse_port)
+            
+            if not vmuse_healthy:
+                logger.debug(f"[Setup Status] Agent {agent_id}: VMUSE not healthy yet")
+                response.update({
+                    "phase": "vmuse-deploy",
+                    "progress": 85,
+                    "message": "正在部署 VMUSE 服务...",
+                    "steps": {
+                        "vm_created": True,
+                        "vm_booted": True,
+                        "ssh_ready": True,
+                        "cloud_init": True,
+                        "vmuse_deployed": False,
+                    }
+                })
+                return response
+            
+            # Everything is ready! Mark as complete in database
+            logger.info(f"[Setup Status] Agent {agent_id}: Setup complete!")
+            try:
+                agent_manager.update_agent(agent_id, setup_complete=True)
+            except Exception as e:
+                logger.warning(f"[Setup Status] Failed to update setup_complete flag: {e}")
+            
+            response.update({
+                "phase": "complete",
+                "progress": 100,
+                "message": "环境已就绪",
+                "steps": {
+                    "vm_created": True,
+                    "vm_booted": True,
+                    "ssh_ready": True,
+                    "cloud_init": True,
+                    "vmuse_deployed": True,
+                }
+            })
+            return response
+        
+        elif cloud_init_status == "error":
+            logger.error(f"[Setup Status] Agent {agent_id}: cloud-init error - {cloud_init_detail}")
+            response.update({
+                "phase": "error",
+                "progress": 0,
+                "message": "Cloud-init 初始化失败",
+                "error": cloud_init_detail or "Unknown error",
+            })
+            return response
+        
+        # Unknown cloud-init status
+        logger.warning(f"[Setup Status] Agent {agent_id}: Unknown cloud-init status: {cloud_init_status}")
+        response.update({
+            "phase": "unknown",
+            "progress": 20,
+            "message": f"未知的初始化状态: {cloud_init_status}",
+        })
+        return response
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[VM API] Get setup status failed for {agent_id}: {e}", exc_info=True)
+        return {
+            "agent_id": agent_id,
+            "phase": "error",
+            "progress": 0,
+            "message": "获取状态失败",
+            "error": str(e),
+            "steps": {},
+        }
