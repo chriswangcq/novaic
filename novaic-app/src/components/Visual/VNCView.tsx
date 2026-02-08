@@ -123,7 +123,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
     // 需要有选中的 agent 才能检查状态
     if (!currentAgentId) {
       console.log('[VNC checkVncStatus] No agent selected');
-      setStatus('unknown');
+      setStatus(prev => prev === 'unknown' ? prev : 'unknown');
       setWsReady(false);
       setVncConnected(false);
       return;
@@ -137,22 +137,22 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
       
       if (data.ready) {
         // VNC + websockify 都就绪
-        setStatus('running');
+        setStatus(prev => prev === 'running' ? prev : 'running');
         checkWebsockify();
       } else if (data.running) {
         // VNC 运行但 websockify 未就绪
-        setStatus('running');
+        setStatus(prev => prev === 'running' ? prev : 'running');
         setWsReady(false);
         // 尝试检查 websockify
         checkWebsockify();
       } else {
-        setStatus('stopped');
+        setStatus(prev => prev === 'stopped' ? prev : 'stopped');
         setWsReady(false);
         setVncConnected(false);
       }
     } catch (e) {
       // Agent 不可用
-      setStatus('unknown');
+      setStatus(prev => prev === 'unknown' ? prev : 'unknown');
       setWsReady(false);
       setVncConnected(false);
     }
@@ -178,7 +178,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
     const log = (msg: string) => console.log(`[VNC startVm ${((Date.now() - startTime) / 1000).toFixed(1)}s] ${msg}`);
     
     log('=== startVm() BEGIN ===');
-    setStatus('starting');
+    setStatus(prev => prev === 'starting' ? prev : 'starting');
     setErrorMsg('');
     setStartupProgress({ step: 0, stepName: STARTUP_STEPS[0].name, progress: 0, message: '准备启动...' });
     
@@ -237,7 +237,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
       // Step 3: 直接连接 VNC WebSocket (通过 vmcontrol 代理)
       log('Step 3: Connecting to VNC via vmcontrol...');
       updateProgress(2, 0, '正在连接 VNC...');
-      setStatus('running');
+      setStatus(prev => prev === 'running' ? prev : 'running');
       
       let wsConnected = false;
       for (let i = 0; i < 20; i++) {
@@ -282,7 +282,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
       }
     } catch (e: any) {
       log(`=== startVm() ERROR: ${e.message} ===`);
-      setStatus('error');
+      setStatus(prev => prev === 'error' ? prev : 'error');
       setErrorMsg(e.message || 'Failed to start VM');
       setStartupProgress(null);
     }
@@ -305,7 +305,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
     // 重置状态，触发重新连接
     setWsReady(false);
     setVncConnected(false);
-    setStatus('unknown');
+    setStatus(prev => prev === 'unknown' ? prev : 'unknown');
   }, [currentAgentId, setVncConnected]);
 
   // 检查 VM 初始化状态（带防闪烁优化）
@@ -375,7 +375,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
       // 需要有选中的 agent 才能连接
       if (!currentAgentId) {
         log('No agent selected, waiting...');
-        setStatus('unknown');
+        setStatus(prev => prev === 'unknown' ? prev : 'unknown');
         return;
       }
       
@@ -423,7 +423,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
         });
         // WebSocket 直接可用！
         log('Direct websockify connection SUCCESS!');
-        setStatus('running');
+        setStatus(prev => prev === 'running' ? prev : 'running');
         setWsReady(true);
         setVncConnected(true);
         return; // 快速返回，不需要进一步操作
@@ -442,12 +442,12 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
         
         if (data.ready) {
           log('Already ready via Agent, connecting...');
-          setStatus('running');
+          setStatus(prev => prev === 'running' ? prev : 'running');
           setWsReady(true);
           setVncConnected(true);
         } else if (data.running) {
           log('VNC running but websockify not ready, checking...');
-          setStatus('running');
+          setStatus(prev => prev === 'running' ? prev : 'running');
           checkWebsockify();
         } else {
           log('VM not running, calling startVm()...');
@@ -456,7 +456,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
       } catch (e) {
         log(`Agent not available: ${e}`);
         // Agent 不可用，可能 VM 正在启动中，进入轮询等待
-        setStatus('starting');
+        setStatus(prev => prev === 'starting' ? prev : 'starting');
       }
     };
     
@@ -480,7 +480,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
             ws.onerror = () => { clearTimeout(timeout); reject(new Error('ws error')); };
           });
           console.log(`[VNC poll] Websockify connected for agent ${currentAgentId}!`);
-          setStatus('running');
+          setStatus(prev => prev === 'running' ? prev : 'running');
           setWsReady(true);
           setVncConnected(true);
         } catch {
