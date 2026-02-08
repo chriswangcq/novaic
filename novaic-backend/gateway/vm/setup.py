@@ -741,7 +741,7 @@ write_files:
 # Startup commands
 runcmd:
   # ========== Phase 1: Directory Setup ==========
-  - echo "=== Phase 1: Directory Setup ==="
+  - echo "=== Phase 1 - Directory Setup ==="
   - mkdir -p /home/ubuntu/.config/xfce4/xfconf/xfce-perchannel-xml
   - mkdir -p /opt/novaic/scripts
   - mkdir -p /opt/novaic/venv
@@ -749,14 +749,14 @@ runcmd:
   - mkdir -p /opt/novaic/.cache
   
   # ========== Phase 2: Network & Environment ==========
-  - echo "=== Phase 2: Network & Environment ==="
+  - echo "=== Phase 2 - Network & Environment ==="
   - until ping -c 1 -W 3 8.8.8.8 > /dev/null 2>&1; do sleep 2; done
   - echo "Network ready."
   - echo 'DISPLAY=:0' | sudo tee -a /etc/environment
   - echo 'export PATH="/opt/novaic/venv/bin:$PATH"' | sudo tee /etc/profile.d/novaic.sh
   
   # ========== Phase 3: Node.js Installation ==========
-  - echo "=== Phase 3: Installing Node.js 20 LTS ==="
+  - echo "=== Phase 3 - Installing Node.js 20 LTS ==="
   - curl -fsSL {nodejs_setup_url} | sudo -E bash -
   - apt-get install -y nodejs
   - node --version | tee /opt/novaic/.node_version
@@ -766,17 +766,17 @@ runcmd:
   - echo "Node.js installed with registry: {npm_registry}"
   
   # ========== Phase 4: Python Virtual Environment ==========
-  - echo "=== Phase 4: Python Virtual Environment ==="
+  - echo "=== Phase 4 - Python Virtual Environment ==="
   - python3 -m venv /opt/novaic/venv
   - /opt/novaic/venv/bin/pip install --upgrade pip --index-url https://{pip_mirror} --trusted-host {pip_host}
   
   # ========== Phase 5: VMUSE Python Dependencies ==========
-  - echo "=== Phase 5: VMUSE Python Dependencies ==="
+  - echo "=== Phase 5 - VMUSE Python Dependencies ==="
   - /opt/novaic/venv/bin/pip install aiohttp pydantic pydantic-settings python-dotenv Pillow playwright --index-url https://{pip_mirror} --trusted-host {pip_host}
   - echo "VMUSE dependencies installed."
   
   # ========== Phase 6: Playwright + Chromium ==========
-  - echo "=== Phase 6: Playwright Chromium ==="
+  - echo "=== Phase 6 - Playwright Chromium ==="
   # Set Playwright download mirror if specified
   - |
     if [ -n "{playwright_mirror}" ]; then
@@ -787,18 +787,18 @@ runcmd:
   - echo "Playwright Chromium installed."
   
   # ========== Phase 7: QEMU Guest Agent ==========
-  - echo "=== Phase 7: QEMU Guest Agent ==="
+  - echo "=== Phase 7 - QEMU Guest Agent ==="
   - systemctl daemon-reload
   - systemctl enable qemu-guest-agent
   - systemctl start qemu-guest-agent
   
   # ========== Phase 8: Ownership ==========
-  - echo "=== Phase 8: Setting ownership ==="
+  - echo "=== Phase 8 - Setting ownership ==="
   - chown -R ubuntu:ubuntu /home/ubuntu
   - chown -R ubuntu:ubuntu /opt/novaic
   
   # ========== Phase 9: Display Manager ==========
-  - echo "=== Phase 9: Display Manager ==="
+  - echo "=== Phase 9 - Display Manager ==="
   # 确保 /tmp/.X11-unix 目录存在并设置正确权限
   - mkdir -p /tmp/.X11-unix
   - chmod 1777 /tmp/.X11-unix
@@ -819,7 +819,7 @@ runcmd:
   - pgrep -u ubuntu xfce4-session && echo "Desktop session is running" || echo "WARNING: Desktop session not detected yet, but lightdm will auto-start it on first login"
   
   # ========== Phase 10: Enable VMUSE Service ==========
-  - echo "=== Phase 10: VMUSE Service ==="
+  - echo "=== Phase 10 - VMUSE Service ==="
   - systemctl daemon-reload
   - systemctl enable novaic-vmuse
   - echo "VMUSE service enabled (will start after code deployment)."
