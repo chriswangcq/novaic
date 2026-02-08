@@ -6,7 +6,7 @@ import RFB from 'novnc-rfb';
 import { LayoutToggle } from '../Layout/LayoutToggle';
 import { API_CONFIG, UI_CONFIG, WS_CONFIG, POLL_CONFIG, VM_CONFIG } from '../../config';
 
-type VncStatus = 'unknown' | 'stopped' | 'starting' | 'running' | 'error';
+type VncStatus = 'unknown' | 'stopped' | 'starting' | 'running' | 'error' | 'initializing';
 
 // 启动进度步骤
 interface StartupProgress {
@@ -14,6 +14,21 @@ interface StartupProgress {
   stepName: string;
   progress: number;  // 0-100
   message: string;
+}
+
+// VM 初始化状态
+interface SetupStatus {
+  phase: string;
+  progress: number;
+  message: string;
+  steps: {
+    vm_created?: boolean;
+    vm_booted?: boolean;
+    ssh_ready?: boolean;
+    cloud_init?: boolean;
+    vmuse_deployed?: boolean;
+  };
+  error: string | null;
 }
 
 const STARTUP_STEPS = [
@@ -37,6 +52,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
   const [wsReady, setWsReady] = useState(false);
   const [copied, setCopied] = useState(false);
   const [startupProgress, setStartupProgress] = useState<StartupProgress | null>(null);
+  const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null);
   const rfbRef = useRef<RFB | null>(null);
   const rfbContainerRef = useRef<HTMLDivElement>(null);
   const wsUrlRef = useRef<string | null>(null);
@@ -310,9 +326,40 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
     setStatus('unknown');
   }, [currentAgentId, setVncConnected]);
 
+  // 检查 VM 初始化状态
+  const checkSetupStatus = useCallback(async () => {
+    if (!currentAgentId) return;
+    
+    try {
+      const status = await vmService.getSetupStatus(currentAgentId);
+      if (!status) {
+        console.log('[VNC] Setup status not available');
+        return;
+      }
+      
+      console.log(`[VNC] Setup status: phase=${status.phase}, progress=${status.progress}%`);
+      setSetupStatus(status);
+      
+      // 如果初始化完成，清除状态并继续正常 VNC 流程
+      if (status.phase === 'complete') {
+        setSetupStatus(null);
+        setStatus('unknown'); // 触发重新检查 VNC
+      } else if (status.phase === 'error') {
+        setStatus('error');
+        setErrorMsg(status.error || 'Initialization failed');
+      } else {
+        // 正在初始化中
+        setStatus('initializing');
+      }
+    } catch (e) {
+      console.error('[VNC] Check setup status failed:', e);
+    }
+  }, [currentAgentId]);
+
   // 初始化：优先直接连接 websockify，不依赖 Agent
   useEffect(() => {
     let intervalId: ReturnType<typeof setInterval> | null = null;
+    let setupCheckIntervalId: ReturnType<typeof setInterval> | null = null;
     const startTime = Date.now();
     const log = (msg: string) => console.log(`[VNC ${((Date.now() - startTime) / 1000).toFixed(1)}s] ${msg}`);
     
@@ -323,6 +370,17 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
       if (!currentAgentId) {
         log('No agent selected, waiting...');
         setStatus('unknown');
+        return;
+      }
+      
+      // Step 0: 首先检查初始化状态
+      log('Step 0: Checking VM initialization status...');
+      await checkSetupStatus();
+      
+      // 如果正在初始化，启动轮询并提前返回
+      if (status === 'initializing') {
+        log('VM is initializing, starting setup status polling...');
+        setupCheckIntervalId = setInterval(checkSetupStatus, 3000); // 每3秒检查一次
         return;
       }
       
@@ -424,8 +482,9 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
     
     return () => {
       if (intervalId) clearInterval(intervalId);
+      if (setupCheckIntervalId) clearInterval(setupCheckIntervalId);
     };
-  }, [checkVncStatus, checkWebsockify, startVnc, setVncConnected, wsReady, currentAgentId]);
+  }, [checkVncStatus, checkWebsockify, startVnc, setVncConnected, wsReady, currentAgentId, checkSetupStatus, status]);
 
   // Connect/disconnect RFB inside the app
   useEffect(() => {
@@ -518,6 +577,8 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
         return wsReady ? { text: 'Connected', color: 'bg-nb-success' } : { text: 'VNC Ready', color: 'bg-nb-warning' };
       case 'starting':
         return { text: 'Starting...', color: 'bg-nb-warning animate-pulse' };
+      case 'initializing':
+        return { text: 'Initializing...', color: 'bg-blue-500 animate-pulse' };
       case 'stopped':
         return { text: 'Stopped', color: 'bg-nb-error' };
       case 'error':
@@ -533,7 +594,27 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
   if (isThumbnail) {
     return (
       <div className="h-full w-full relative overflow-hidden bg-black">
-        {status === 'running' && wsReady ? (
+        {status === 'initializing' && setupStatus ? (
+          // 初始化中 - 显示进度
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center">
+              <div className="relative w-16 h-16 mx-auto mb-2">
+                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="6" className="opacity-20" />
+                  <circle
+                    cx="50" cy="50" r="42" fill="none" stroke="#3b82f6" strokeWidth="6"
+                    strokeLinecap="round" strokeDasharray={`${setupStatus.progress * 2.64} 264`}
+                    className="transition-all duration-500"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-xs font-semibold text-white">{setupStatus.progress}%</span>
+                </div>
+              </div>
+              <span className="text-[10px] text-nb-text-muted/70">正在初始化...</span>
+            </div>
+          </div>
+        ) : status === 'running' && wsReady ? (
           <div ref={rfbContainerRef} className="absolute inset-0 pointer-events-none" />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
@@ -545,7 +626,9 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
         )}
         {/* Status indicator */}
         <div className="absolute top-2 left-2">
-          <span className={`w-2 h-2 rounded-full ${statusDisplay.color} block`} />
+          <span className={`w-2 h-2 rounded-full ${
+            status === 'initializing' ? 'bg-blue-500 animate-pulse' : statusDisplay.color
+          } block`} />
         </div>
       </div>
     );
@@ -615,7 +698,91 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
 
       {/* Content */}
       <div className="flex-1 relative overflow-hidden bg-black">
-        {status === 'running' && wsReady ? (
+        {status === 'initializing' && setupStatus ? (
+          // VM 正在初始化 - 显示 cloud-init 进度
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-nb-text-muted p-8">
+            {/* 进度环 */}
+            <div className="relative w-32 h-32 mb-8">
+              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                {/* 背景圆 */}
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="42"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="6"
+                  className="opacity-20"
+                />
+                {/* 进度圆 */}
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="42"
+                  fill="none"
+                  stroke="url(#initProgressGradient)"
+                  strokeWidth="6"
+                  strokeLinecap="round"
+                  strokeDasharray={`${setupStatus.progress * 2.64} 264`}
+                  className="transition-all duration-500"
+                />
+                <defs>
+                  <linearGradient id="initProgressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.8" />
+                    <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.8" />
+                  </linearGradient>
+                </defs>
+              </svg>
+              {/* 百分比 */}
+              <div className="absolute inset-0 flex items-center justify-center flex-col">
+                <span className="text-2xl font-bold text-white">{setupStatus.progress}%</span>
+                <span className="text-xs text-nb-text-muted mt-1">{setupStatus.phase}</span>
+              </div>
+            </div>
+            
+            {/* 状态消息 */}
+            <p className="text-base font-medium text-white mb-2">{setupStatus.message}</p>
+            <p className="text-sm text-nb-text-muted mb-8">虚拟机首次启动需要 5-8 分钟初始化...</p>
+            
+            {/* 步骤指示器 */}
+            <div className="flex flex-col gap-3 w-full max-w-md">
+              {[
+                { key: 'vm_created', label: '创建虚拟机', icon: '🖥️' },
+                { key: 'vm_booted', label: '启动系统', icon: '⚡' },
+                { key: 'ssh_ready', label: 'SSH 就绪', icon: '🔐' },
+                { key: 'cloud_init', label: 'Cloud-init 初始化', icon: '📦' },
+                { key: 'vmuse_deployed', label: 'VMUSE 服务部署', icon: '🚀' },
+              ].map(({ key, label, icon }) => {
+                const completed = setupStatus.steps[key as keyof typeof setupStatus.steps];
+                return (
+                  <div key={key} className="flex items-center gap-3">
+                    <div
+                      className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all duration-300 ${
+                        completed
+                          ? 'bg-nb-success/20 text-nb-success'
+                          : 'bg-gray-700 text-gray-400'
+                      }`}
+                    >
+                      {completed ? '✓' : icon}
+                    </div>
+                    <div className="flex-1">
+                      <span className={`text-sm ${completed ? 'text-white' : 'text-nb-text-muted'}`}>
+                        {label}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            
+            {/* 详细状态 */}
+            {setupStatus.steps.cloud_init_detail && (
+              <p className="text-xs text-nb-text-muted/60 mt-4">
+                {setupStatus.steps.cloud_init_detail}
+              </p>
+            )}
+          </div>
+        ) : status === 'running' && wsReady ? (
           // VNC 已连接 - 直接渲染 noVNC canvas
           <div ref={rfbContainerRef} className="absolute inset-0" />
         ) : status === 'starting' && startupProgress ? (
