@@ -12,7 +12,7 @@
  * - 避免频繁的重新创建
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { vmService } from '../../services/vm';
 import { WS_CONFIG, POLL_CONFIG, API_CONFIG } from '../../config';
 
@@ -265,9 +265,16 @@ export function useVNCConnection(
     };
   }, [agentId, checkSetupStatus, checkWebSocket, refreshStatus, reset, wsReady]);
   
-  return [
-    { status, wsReady, errorMsg, setupStatus },
-    { startVm, refreshStatus, reset },
-    wsUrlRef.current
-  ];
+  // 使用 useMemo 缓存对象，避免每次返回新引用
+  const state = useMemo(
+    () => ({ status, wsReady, errorMsg, setupStatus }),
+    [status, wsReady, errorMsg, setupStatus]
+  );
+  
+  const actions = useMemo(
+    () => ({ startVm, refreshStatus, reset }),
+    [startVm, refreshStatus, reset]
+  );
+  
+  return [state, actions, wsUrlRef.current];
 }
