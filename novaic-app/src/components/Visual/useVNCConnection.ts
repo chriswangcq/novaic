@@ -224,8 +224,8 @@ export function useVNCConnection(
               clearInterval(setupPollIntervalRef.current);
               setupPollIntervalRef.current = null;
             }
-            // 初始化完成，尝试连接
-            await checkWebSocket();
+            // 初始化完成，检查 VM 状态
+            await refreshStatus();
           } else if (status === 'error') {
             if (setupPollIntervalRef.current) {
               clearInterval(setupPollIntervalRef.current);
@@ -238,15 +238,11 @@ export function useVNCConnection(
         return;
       }
       
-      // 2. 尝试直接连接
-      const connected = await checkWebSocket();
-      if (!mounted || connected) return;
-      
-      // 3. 检查 VM 状态
+      // 2. 先检查 VM 是否真的在运行（而不是直接测端口）
       await refreshStatus();
       if (!mounted) return;
       
-      // 4. 启动轮询（只在未连接时）
+      // 3. 启动轮询（只在未连接时）
       pollIntervalRef.current = setInterval(async () => {
         if (wsReady) return; // 已连接时跳过
         await checkWebSocket();

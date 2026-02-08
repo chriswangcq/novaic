@@ -161,22 +161,27 @@ function VNCViewComponent({ isThumbnail = false }: VNCViewProps) {
       );
     }
     
-    // 未连接
+    // 未连接 - 显示状态和操作按钮
     return (
       <div className="absolute inset-0 flex flex-col items-center justify-center text-nb-text-muted">
         <Monitor size={48} className="mb-4 opacity-50" />
         <p className="text-sm mb-2">
-          {status === 'error' ? '启动失败' : status === 'unknown' ? 'VM 未连接' : 'VM 未启动'}
+          {status === 'error' ? '启动失败' : 
+           status === 'stopped' ? 'VM 未启动' :
+           status === 'unknown' ? 'VM 未连接' : 'VM 未启动'}
         </p>
         {errorMsg && <p className="text-xs text-nb-error mb-4">{errorMsg}</p>}
-        <button
-          onClick={startVm}
-          disabled={['starting', 'initializing'].includes(status)}
-          className="px-4 py-2 bg-nb-accent hover:bg-nb-accent/90 text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <Play size={16} />
-          Start VM
-        </button>
+        {/* 只要不是 running 状态，都显示 Start 按钮 */}
+        {status !== 'running' && (
+          <button
+            onClick={startVm}
+            disabled={['starting', 'initializing'].includes(status)}
+            className="px-4 py-2 bg-nb-accent hover:bg-nb-accent/90 text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Play size={16} />
+            Start VM
+          </button>
+        )}
       </div>
     );
   };
