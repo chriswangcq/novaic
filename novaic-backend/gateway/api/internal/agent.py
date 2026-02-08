@@ -68,7 +68,7 @@ def get_agent_internal(agent_id: str):
     
     # Return agent data with VM ports for tools server
     return {
-        "agent_id": agent.agent_id,
+        "agent_id": agent.id,
         "name": agent.name,
         "vm": {
             "backend": agent.vm.backend if agent.vm else None,
