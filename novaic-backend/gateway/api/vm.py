@@ -603,8 +603,8 @@ def get_setup_status(agent_id: str):
                 "steps": {},
             }
         
-        # Check if setup is already complete
-        if agent.setup_complete:
+        # Check if cloud-init is already complete
+        if agent.cloud_init_complete:
             logger.debug(f"[Setup Status] Agent {agent_id} already marked as complete")
             response.update({
                 "phase": "complete",
@@ -783,11 +783,11 @@ def get_setup_status(agent_id: str):
                 return response
             
             # Everything is ready! Mark as complete in database
-            logger.info(f"[Setup Status] Agent {agent_id}: Setup complete!")
+            logger.info(f"[Setup Status] Agent {agent_id}: Cloud-init complete!")
             try:
-                agent_manager.update_agent(agent_id, setup_complete=True)
+                agent_manager.update_agent(agent_id, cloud_init_complete=True)
             except Exception as e:
-                logger.warning(f"[Setup Status] Failed to update setup_complete flag: {e}")
+                logger.warning(f"[Setup Status] Failed to update cloud_init_complete flag: {e}")
             
             response.update({
                 "phase": "complete",

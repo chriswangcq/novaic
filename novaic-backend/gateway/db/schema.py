@@ -91,7 +91,8 @@ CREATE TABLE IF NOT EXISTS agents (
     vm_config TEXT NOT NULL DEFAULT '{}',
     ports TEXT NOT NULL DEFAULT '{}',
     setup_complete INTEGER DEFAULT 0,
-    model_id TEXT  -- Selected LLM model ID (v20)
+    model_id TEXT,  -- Selected LLM model ID (v20)
+    cloud_init_complete INTEGER DEFAULT 0  -- Cloud-init initialization status
 );
 
 -- ========================================

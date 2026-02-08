@@ -68,6 +68,7 @@ class AgentRepository:
         vm_config: Optional[Dict[str, Any]] = None,
         ports: Optional[Dict[str, Any]] = None,
         setup_complete: Optional[bool] = None,
+        cloud_init_complete: Optional[bool] = None,
     ) -> Optional[Dict[str, Any]]:
         """Update an agent."""
         updates = []
@@ -85,6 +86,9 @@ class AgentRepository:
         if setup_complete is not None:
             updates.append("setup_complete = ?")
             params.append(1 if setup_complete else 0)
+        if cloud_init_complete is not None:
+            updates.append("cloud_init_complete = ?")
+            params.append(1 if cloud_init_complete else 0)
         
         if not updates:
             return self.get_agent(agent_id)

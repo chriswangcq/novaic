@@ -66,7 +66,8 @@ class AICAgent(BaseModel):
     name: str
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     vm: VmConfig = Field(default_factory=VmConfig)
-    setup_complete: bool = False
+    setup_complete: bool = False  # VM setup complete (disk, config)
+    cloud_init_complete: bool = False  # Cloud-init initialization complete
 
 
 def get_agent_port(agent_index: int, service: str) -> int:
@@ -266,6 +267,7 @@ class AgentConfigManagerDB:
         agent_id: str,
         name: Optional[str] = None,
         setup_complete: Optional[bool] = None,
+        cloud_init_complete: Optional[bool] = None,
         vm_config: Optional[Dict[str, Any]] = None,
     ) -> Optional[AICAgent]:
         """Update agent configuration."""
@@ -292,6 +294,7 @@ class AgentConfigManagerDB:
             agent_id=agent_id,
             name=name,
             setup_complete=setup_complete,
+            cloud_init_complete=cloud_init_complete,
             vm_config=update_vm,
             ports=update_ports,
         )
