@@ -150,9 +150,22 @@ export function useVNCConnection(
     
     try {
       await vmService.start(agentId);
-      // 启动后等待连接就绪
-      await new Promise(r => setTimeout(r, 2000));
-      await checkWebSocket();
+      console.log('[VNC Connection] VM start command sent, waiting for connection...');
+      
+      // 启动后持续检查连接（最多 30 秒）
+      for (let i = 0; i < 30; i++) {
+        await new Promise(r => setTimeout(r, 1000)); // 每秒检查一次
+        const connected = await checkWebSocket();
+        if (connected) {
+          console.log(`[VNC Connection] Connected after ${i + 1} seconds`);
+          return;
+        }
+      }
+      
+      // 30 秒后还没连上，设置错误
+      console.log('[VNC Connection] Timeout waiting for connection');
+      setStatus('error');
+      setErrorMsg('VM started but connection timeout. Please refresh.');
     } catch (e: any) {
       const errorMsg = typeof e === 'string' ? e : e?.message || '';
       if (!errorMsg.includes('already running')) {
@@ -160,6 +173,7 @@ export function useVNCConnection(
         setErrorMsg(e.message || 'Failed to start VM');
       } else {
         // 已经在运行，检查连接
+        console.log('[VNC Connection] VM already running, checking connection...');
         await checkWebSocket();
       }
     }
