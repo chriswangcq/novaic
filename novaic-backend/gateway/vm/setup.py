@@ -518,12 +518,13 @@ packages:
 
 # Write configuration files
 write_files:
-  # X Server 配置（虚拟显示驱动 - QEMU native VNC 必需）
+  # X Server 配置（使用 modesetting 驱动连接到 virtio-gpu）
   - path: /etc/X11/xorg.conf.d/10-novaic.conf
     content: |
       Section "Device"
         Identifier "VirtioGPU"
-        Driver "dummy"
+        Driver "modesetting"
+        Option "AccelMethod" "glamor"
       EndSection
       Section "Screen"
         Identifier "DefaultScreen"
