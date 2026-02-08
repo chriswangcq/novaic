@@ -542,7 +542,7 @@ write_files:
       [Seat:*]
       autologin-user=ubuntu
       autologin-user-timeout=0
-      user-session=xfce
+      autologin-session=xfce
 
   - path: /home/ubuntu/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-power-manager.xml
     content: |
