@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useState, useCallback, useRef } from 'react';
 import { LogEntry } from '../../types';
-import { Trash2, Rocket, CheckCircle, AlertCircle, Terminal, Loader2, Brain, Zap, XCircle, ChevronDown, ChevronRight, Copy, Check } from 'lucide-react';
+import { Rocket, CheckCircle, AlertCircle, Terminal, Loader2, Brain, Zap, XCircle, ChevronDown, ChevronRight, Copy, Check } from 'lucide-react';
 import { useAppStore } from '../../store';
 import { useVirtualList } from '../../hooks/useVirtualList';
 import { useScrollPagination } from '../../hooks/useScrollPagination';
@@ -186,7 +186,6 @@ function LogDetail({ log, isExpanded, onToggle }: LogDetailProps) {
 
 export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
   const { 
-    clearLogs, 
     currentAgentId, 
     logSubagentId, 
     logSubagents, 
@@ -580,58 +579,48 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
 
   return (
     <div className="h-full flex flex-col bg-nb-bg">
-      {/* Header */}
-      <div className="h-10 px-4 flex items-center gap-2 bg-nb-surface border-b border-nb-border">
-        <Terminal size={16} className="text-nb-text-muted" />
-        <span className="text-sm font-medium text-nb-text">Execution Log</span>
+      {/* Header - 合并标题和 subagent tabs */}
+      <div className="h-8 px-3 flex items-center gap-2 bg-nb-surface border-b border-nb-border overflow-x-auto">
+        <Terminal size={13} className="text-nb-text-muted shrink-0" />
+        <span className="text-xs font-medium text-nb-text shrink-0">Execution Log</span>
         
         {isExecuting && (
-          <span className="flex items-center gap-1.5 px-2 py-0.5 bg-nb-success/20 text-nb-success rounded text-xs">
-            <Loader2 size={12} className="animate-spin" />
+          <span className="flex items-center gap-1 px-1.5 py-0.5 bg-nb-success/20 text-nb-success rounded text-[10px] shrink-0">
+            <Loader2 size={10} className="animate-spin" />
             Running
           </span>
         )}
 
-        <div className="flex-1" />
-
-        <button
-          onClick={clearLogs}
-          className="p-1.5 hover:bg-nb-surface-2 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          title={currentAgentId ? "Clear logs" : "No agent selected"}
-          disabled={!currentAgentId || logs.length === 0}
-        >
-          <Trash2 size={14} className="text-nb-text-muted" />
-        </button>
-      </div>
-
-      {/* Subagent Tabs */}
-      {logSubagents.length > 0 && (
-        <div className="px-4 py-2 flex gap-2 border-b border-nb-border bg-nb-surface overflow-x-auto">
-          <button
-            className={`px-3 py-1 rounded text-xs font-medium transition-colors whitespace-nowrap ${
-              logSubagentId === null 
-                ? 'bg-white/15 text-white' 
-                : 'bg-nb-surface-2 text-nb-text-muted hover:bg-nb-surface-2/80'
-            }`}
-            onClick={() => setLogSubagentId(null)}
-          >
-            全部
-          </button>
-          {logSubagents.map(id => (
+        {/* Subagent tabs inline */}
+        {logSubagents.length > 0 && (
+          <>
+            <div className="w-px h-3.5 bg-nb-border mx-1 shrink-0" />
             <button
-              key={id}
-              className={`px-3 py-1 rounded text-xs font-medium transition-colors whitespace-nowrap ${
-                logSubagentId === id 
+              className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors whitespace-nowrap shrink-0 ${
+                logSubagentId === null 
                   ? 'bg-white/15 text-white' 
                   : 'bg-nb-surface-2 text-nb-text-muted hover:bg-nb-surface-2/80'
               }`}
-              onClick={() => setLogSubagentId(id)}
+              onClick={() => setLogSubagentId(null)}
             >
-              {id}
+              全部
             </button>
-          ))}
-        </div>
-      )}
+            {logSubagents.map(id => (
+              <button
+                key={id}
+                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors whitespace-nowrap shrink-0 ${
+                  logSubagentId === id 
+                    ? 'bg-white/15 text-white' 
+                    : 'bg-nb-surface-2 text-nb-text-muted hover:bg-nb-surface-2/80'
+                }`}
+                onClick={() => setLogSubagentId(id)}
+              >
+                {id}
+              </button>
+            ))}
+          </>
+        )}
+      </div>
 
       {/* Log content - virtualized for large lists */}
       <div

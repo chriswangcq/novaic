@@ -88,7 +88,7 @@ function App() {
   } = useAppStore();
 
   const [isLoadingAgents, setIsLoadingAgents] = useState(true);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(true);
   
   // Page state: 'setup' | 'workspace'
   const [currentPage, setCurrentPage] = useState<'setup' | 'workspace'>('workspace');

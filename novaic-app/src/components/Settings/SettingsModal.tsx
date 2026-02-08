@@ -1,10 +1,12 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { ChevronDown, ChevronRight, Search, Plus, X, Trash2, Database, HardDrive } from 'lucide-react';
-import { api, type ApiKeyInfo, type CandidateModel } from '../../services/api';
+import { ChevronDown, ChevronRight, Search, Plus, X, Trash2, Database, HardDrive, Monitor } from 'lucide-react';
+import { api, type ApiKeyInfo, type CandidateModel, type AICAgent } from '../../services/api';
+import { useAppStore } from '../../store';
+import { vmService } from '../../services/vm';
 
 // ==================== Tab Types ====================
 
-type SettingsTab = 'models' | 'cache';
+type SettingsTab = 'models' | 'agents' | 'cache';
 
 // ==================== Types ====================
 
@@ -760,6 +762,115 @@ function ApiKeyForm({
   );
 }
 
+// ==================== Agents Tab ====================
+
+function AgentsTab() {
+  const { agents, loadAgents, deleteAgent, currentAgentId } = useAppStore();
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [vmStatuses, setVmStatuses] = useState<Record<string, { running: boolean }>>({});
+
+  useEffect(() => {
+    loadAgents();
+    const loadStatuses = async () => {
+      try {
+        const statuses = await vmService.getAllStatus();
+        setVmStatuses(statuses || {});
+      } catch { /* ignore */ }
+    };
+    loadStatuses();
+  }, [loadAgents]);
+
+  const handleDelete = async (agent: AICAgent) => {
+    if (!confirm(`确定删除 "${agent.name}" 吗？这将同时删除关联的虚拟机和所有数据。`)) return;
+    
+    setDeleting(agent.id);
+    try {
+      // Stop VM first if running
+      if (vmStatuses[agent.id]?.running) {
+        try {
+          await vmService.stop(agent.id);
+          await new Promise(r => setTimeout(r, 1000));
+        } catch { /* ignore */ }
+      }
+      await deleteAgent(agent.id);
+    } catch (e) {
+      alert(`删除失败: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  return (
+    <>
+      {/* Tab Header */}
+      <div className="px-4 py-3 border-b border-nb-border flex-shrink-0">
+        <div className="text-xs text-nb-text-muted">
+          {agents.length} 个 Agent
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      <div className="p-4 overflow-y-auto flex-1 space-y-2">
+        {agents.length === 0 ? (
+          <div className="text-sm text-nb-text-muted py-8 text-center">
+            No agents yet
+          </div>
+        ) : (
+          agents.map(agent => {
+            const isRunning = vmStatuses[agent.id]?.running;
+            const isCurrent = agent.id === currentAgentId;
+            const isDeleting = deleting === agent.id;
+            
+            return (
+              <div
+                key={agent.id}
+                className={`border rounded-lg p-3 flex items-center gap-3 ${
+                  isCurrent ? 'border-nb-accent/50 bg-nb-accent/5' : 'border-nb-border'
+                }`}
+              >
+                {/* Icon */}
+                <div className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center shrink-0 border border-white/10">
+                  <Monitor size={18} className="text-white/60" />
+                </div>
+                
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-nb-text truncate">{agent.name}</span>
+                    {isCurrent && (
+                      <span className="text-[9px] bg-nb-accent/20 text-nb-accent px-1.5 py-0.5 rounded shrink-0">
+                        Current
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-xs text-nb-text-muted">
+                      {agent.vm.os_type} {agent.vm.os_version}
+                    </span>
+                    <span className="text-xs text-nb-text-muted">·</span>
+                    <span className={`text-xs ${isRunning ? 'text-emerald-400' : 'text-slate-400'}`}>
+                      {!agent.setup_complete ? 'Needs setup' : isRunning ? 'Running' : 'Stopped'}
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Delete */}
+                <button
+                  onClick={() => handleDelete(agent)}
+                  disabled={isDeleting}
+                  className="px-2.5 py-1.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50 shrink-0"
+                >
+                  {isDeleting ? '删除中...' : '删除'}
+                </button>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </>
+  );
+}
+
 // ==================== Main Component ====================
 
 export function SettingsModal(props: { open: boolean; onClose: () => void }) {
@@ -1017,6 +1128,17 @@ export function SettingsModal(props: { open: boolean; onClose: () => void }) {
               <span>Models</span>
             </button>
             <button
+              onClick={() => setActiveTab('agents')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm transition-colors ${
+                activeTab === 'agents'
+                  ? 'bg-nb-accent/10 text-nb-accent border-r-2 border-nb-accent'
+                  : 'text-nb-text-muted hover:text-nb-text hover:bg-nb-surface-2'
+              }`}
+            >
+              <Monitor size={16} />
+              <span>Agents</span>
+            </button>
+            <button
               onClick={() => setActiveTab('cache')}
               className={`flex items-center gap-2 px-4 py-2.5 text-sm transition-colors ${
                 activeTab === 'cache'
@@ -1143,6 +1265,11 @@ export function SettingsModal(props: { open: boolean; onClose: () => void }) {
                   </button>
                 </div>
               </>
+            )}
+
+            {/* Agents Tab */}
+            {activeTab === 'agents' && (
+              <AgentsTab />
             )}
 
             {/* Cache Cleanup Tab */}

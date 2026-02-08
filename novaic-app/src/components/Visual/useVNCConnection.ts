@@ -14,7 +14,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { vmService } from '../../services/vm';
-import { WS_CONFIG, POLL_CONFIG, API_CONFIG } from '../../config';
+import { WS_CONFIG } from '../../config';
 
 export type VncStatus = 'unknown' | 'stopped' | 'starting' | 'running' | 'error' | 'initializing';
 
@@ -42,6 +42,7 @@ interface VNCConnectionState {
 
 interface VNCConnectionActions {
   startVm: () => Promise<void>;
+  stopVm: () => Promise<void>;
   refreshStatus: () => Promise<void>;
   reset: () => void;
 }
@@ -150,22 +151,9 @@ export function useVNCConnection(
     
     try {
       await vmService.start(agentId);
-      console.log('[VNC Connection] VM start command sent, waiting for connection...');
-      
-      // 启动后持续检查连接（最多 30 秒）
-      for (let i = 0; i < 30; i++) {
-        await new Promise(r => setTimeout(r, 1000)); // 每秒检查一次
-        const connected = await checkWebSocket();
-        if (connected) {
-          console.log(`[VNC Connection] Connected after ${i + 1} seconds`);
-          return;
-        }
-      }
-      
-      // 30 秒后还没连上，设置错误
-      console.log('[VNC Connection] Timeout waiting for connection');
-      setStatus('error');
-      setErrorMsg('VM started but connection timeout. Please refresh.');
+      // 启动后等待连接就绪
+      await new Promise(r => setTimeout(r, 2000));
+      await checkWebSocket();
     } catch (e: any) {
       const errorMsg = typeof e === 'string' ? e : e?.message || '';
       if (!errorMsg.includes('already running')) {
@@ -173,27 +161,40 @@ export function useVNCConnection(
         setErrorMsg(e.message || 'Failed to start VM');
       } else {
         // 已经在运行，检查连接
-        console.log('[VNC Connection] VM already running, checking connection...');
         await checkWebSocket();
       }
     }
   }, [agentId, checkWebSocket]);
   
-  // 刷新状态
+  // 停止 VM
+  const stopVm = useCallback(async () => {
+    if (!agentId) return;
+    
+    try {
+      await vmService.stop(agentId);
+      // 断开 RFB 连接并重置状态
+      setStatus('stopped');
+      setWsReady(false);
+      wsUrlRef.current = null;
+      onConnected(false);
+    } catch (e: any) {
+      console.error('[VNC Connection] Failed to stop VM:', e);
+      setErrorMsg(e.message || 'Failed to stop VM');
+    }
+  }, [agentId, onConnected]);
+  
+  // 刷新状态（通过后端 API 确认 VM 真实状态）
   const refreshStatus = useCallback(async () => {
     if (!agentId) return;
     
     try {
-      const res = await fetch(`${API_CONFIG.GATEWAY_URL}/api/vnc/status?agent_id=${agentId}`, {
-        signal: AbortSignal.timeout(API_CONFIG.ABORT_TIMEOUT),
-      });
-      const data = await res.json();
-      
-      if (data.ready || data.running) {
+      const running = await vmService.isRunning(agentId);
+      if (running) {
         await checkWebSocket();
       } else {
         setStatus('stopped');
         setWsReady(false);
+        wsUrlRef.current = null;
         onConnected(false);
       }
     } catch (e) {
@@ -238,8 +239,8 @@ export function useVNCConnection(
               clearInterval(setupPollIntervalRef.current);
               setupPollIntervalRef.current = null;
             }
-            // 初始化完成，检查 VM 状态
-            await refreshStatus();
+            // 初始化完成，尝试连接
+            await checkWebSocket();
           } else if (status === 'error') {
             if (setupPollIntervalRef.current) {
               clearInterval(setupPollIntervalRef.current);
@@ -252,15 +253,27 @@ export function useVNCConnection(
         return;
       }
       
-      // 2. 先检查 VM 是否真的在运行（而不是直接测端口）
-      await refreshStatus();
-      if (!mounted) return;
+      // 2. 先通过后端 API 确认 VM 是否真的在运行
+      //    （不能直接测 WebSocket，因为残留的 socket 文件会导致误判）
+      let vmRunning = false;
+      try {
+        const running = await vmService.isRunning(agentId);
+        if (!mounted) return;
+        vmRunning = running;
+      } catch {
+        if (!mounted) return;
+      }
       
-      // 3. 启动轮询（只在未连接时）
-      pollIntervalRef.current = setInterval(async () => {
-        if (wsReady) return; // 已连接时跳过
-        await checkWebSocket();
-      }, POLL_CONFIG.VNC_POLL_INTERVAL);
+      if (vmRunning) {
+        // VM 确实在运行，尝试连接 WebSocket
+        const connected = await checkWebSocket();
+        if (!mounted || connected) return;
+      } else {
+        // VM 没在运行，显示 stopped
+        setStatus('stopped');
+        setWsReady(false);
+        onConnected(false);
+      }
     };
     
     init();
@@ -285,8 +298,8 @@ export function useVNCConnection(
   );
   
   const actions = useMemo(
-    () => ({ startVm, refreshStatus, reset }),
-    [startVm, refreshStatus, reset]
+    () => ({ startVm, stopVm, refreshStatus, reset }),
+    [startVm, stopVm, refreshStatus, reset]
   );
   
   return [state, actions, wsUrlRef.current];

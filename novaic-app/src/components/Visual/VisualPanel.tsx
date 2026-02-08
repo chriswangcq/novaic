@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { VNCView } from './VNCView';
 import { ExecutionLog } from './ExecutionLog';
 import { useAppStore } from '../../store';
-import { GripHorizontal, Maximize2, Minimize2 } from 'lucide-react';
+import { GripHorizontal, Maximize2 } from 'lucide-react';
 
 // Layout persistence key
 const VM_HEIGHT_STORAGE_KEY = 'novaic-vm-height-ratio';
@@ -106,7 +106,7 @@ export function VisualPanel({ isThumbnail = false }: VisualPanelProps) {
       {/* VM View */}
       <div 
         className="flex-shrink-0 overflow-hidden"
-        style={{ height: isLogsCollapsed ? 'calc(100% - 40px)' : `${vmHeightRatio * 100}%` }}
+        style={{ height: isLogsCollapsed ? 'calc(100% - 32px)' : `${vmHeightRatio * 100}%` }}
       >
         <VNCView />
       </div>
@@ -132,34 +132,26 @@ export function VisualPanel({ isThumbnail = false }: VisualPanelProps) {
           flex-1 min-h-0 overflow-hidden flex flex-col
           ${isLogsCollapsed ? 'flex-shrink-0' : ''}
         `}
-        style={{ height: isLogsCollapsed ? '40px' : undefined }}
+        style={{ height: isLogsCollapsed ? '32px' : undefined }}
       >
         {isLogsCollapsed ? (
           // Collapsed header
           <div 
-            className="h-10 px-4 flex items-center gap-2 bg-nb-surface border-t border-nb-border cursor-pointer hover:bg-nb-surface-2"
+            className="h-8 px-3 flex items-center gap-2 bg-nb-surface border-t border-nb-border cursor-pointer hover:bg-nb-surface-2"
             onClick={toggleLogsCollapse}
           >
-            <span className="text-sm font-medium text-nb-text">Execution Log</span>
+            <span className="text-xs font-medium text-nb-text">Execution Log</span>
             {logs.length > 0 && (
-              <span className="px-1.5 py-0.5 bg-nb-accent/20 text-nb-accent rounded text-xs">
+              <span className="px-1.5 py-0.5 bg-nb-accent/20 text-nb-accent rounded text-[10px]">
                 {logs.length}
               </span>
             )}
             <div className="flex-1" />
-            <Maximize2 size={14} className="text-nb-text-muted" />
+            <Maximize2 size={12} className="text-nb-text-muted" />
           </div>
         ) : (
           // Expanded logs
-          <div className="flex-1 flex flex-col min-h-0 relative">
-            {/* Collapse button overlay */}
-            <button
-              onClick={toggleLogsCollapse}
-              className="absolute top-2 right-12 z-10 p-1.5 hover:bg-nb-surface-2 rounded transition-colors"
-              title="Collapse logs"
-            >
-              <Minimize2 size={14} className="text-nb-text-muted" />
-            </button>
+          <div className="flex-1 flex flex-col min-h-0">
             <ExecutionLog logs={logs} isExecuting={isExecuting} />
           </div>
         )}

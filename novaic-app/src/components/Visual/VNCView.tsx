@@ -10,7 +10,7 @@
 
 import { useEffect, useRef, memo } from 'react';
 import { useAppStore } from '../../store';
-import { Monitor, RefreshCw, Play, Loader2, Lock, Unlock } from 'lucide-react';
+import { Monitor, Play, Loader2 } from 'lucide-react';
 import RFB from 'novnc-rfb';
 import { useVNCConnection } from './useVNCConnection';
 
@@ -22,7 +22,7 @@ function VNCViewComponent({ isThumbnail = false }: VNCViewProps) {
   // 只订阅必要的 store 字段
   const currentAgentId = useAppStore(state => state.currentAgentId);
   const vncLocked = useAppStore(state => state.vncLocked);
-  const setVncLocked = useAppStore(state => state.setVncLocked);
+  
   const setVncConnected = useAppStore(state => state.setVncConnected);
   
   // 使用自定义 hook 管理连接
@@ -32,7 +32,7 @@ function VNCViewComponent({ isThumbnail = false }: VNCViewProps) {
   );
   
   const { status, wsReady, errorMsg, setupStatus } = connectionState;
-  const { startVm, refreshStatus, reset } = connectionActions;
+  const { startVm, reset } = connectionActions;
   
   // RFB 相关 refs
   const rfbRef = useRef<RFB | null>(null);
@@ -161,27 +161,22 @@ function VNCViewComponent({ isThumbnail = false }: VNCViewProps) {
       );
     }
     
-    // 未连接 - 显示状态和操作按钮
+    // 未连接
     return (
       <div className="absolute inset-0 flex flex-col items-center justify-center text-nb-text-muted">
         <Monitor size={48} className="mb-4 opacity-50" />
         <p className="text-sm mb-2">
-          {status === 'error' ? '启动失败' : 
-           status === 'stopped' ? 'VM 未启动' :
-           status === 'unknown' ? 'VM 未连接' : 'VM 未启动'}
+          {status === 'error' ? '启动失败' : status === 'unknown' ? 'VM 未连接' : 'VM 未启动'}
         </p>
         {errorMsg && <p className="text-xs text-nb-error mb-4">{errorMsg}</p>}
-        {/* 只要不是 running 状态，都显示 Start 按钮 */}
-        {status !== 'running' && (
-          <button
-            onClick={startVm}
-            disabled={['starting', 'initializing'].includes(status)}
-            className="px-4 py-2 bg-nb-accent hover:bg-nb-accent/90 text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Play size={16} />
-            Start VM
-          </button>
-        )}
+        <button
+          onClick={startVm}
+          disabled={['starting', 'initializing'].includes(status)}
+          className="px-4 py-2 bg-nb-accent hover:bg-nb-accent/90 text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Play size={16} />
+          Start VM
+        </button>
       </div>
     );
   };
@@ -195,46 +190,8 @@ function VNCViewComponent({ isThumbnail = false }: VNCViewProps) {
   }
   
   return (
-    <div className="flex flex-col h-full bg-nb-surface">
-      {/* Header */}
-      <div className="flex-shrink-0 h-12 px-4 flex items-center justify-between border-b border-nb-border bg-nb-surface">
-        <div className="flex items-center gap-2">
-          <Monitor size={16} className="text-nb-text-muted" />
-          <span className="text-sm font-medium text-nb-text">VNC</span>
-          <span className={`text-xs px-2 py-0.5 rounded ${
-            status === 'running' ? 'bg-nb-success/20 text-nb-success' :
-            status === 'initializing' ? 'bg-blue-500/20 text-blue-400' :
-            status === 'starting' ? 'bg-yellow-500/20 text-yellow-400' :
-            'bg-gray-500/20 text-gray-400'
-          }`}>
-            {status}
-          </span>
-        </div>
-        
-        <div className="flex items-center gap-1">
-          {status === 'running' && (
-            <>
-              <button
-                onClick={() => setVncLocked(!vncLocked)}
-                className="p-1.5 hover:bg-white/[0.06] rounded transition-colors"
-                title={vncLocked ? 'Unlock' : 'Lock'}
-              >
-                {vncLocked ? <Lock size={14} /> : <Unlock size={14} />}
-              </button>
-              <button
-                onClick={refreshStatus}
-                className="p-1.5 hover:bg-white/[0.06] rounded transition-colors"
-                title="Refresh"
-              >
-                <RefreshCw size={14} className="text-nb-text-muted" />
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-      
-      {/* Content */}
-      <div className="flex-1 relative overflow-hidden bg-black">
+    <div className="flex flex-col h-full bg-black">
+      <div className="flex-1 relative overflow-hidden">
         {renderContent()}
       </div>
     </div>
