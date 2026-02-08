@@ -1,4 +1,4 @@
-import { Component, ReactNode, ErrorInfo } from 'react';
+import { Component, ReactNode, ErrorInfo, useState } from 'react';
 import { Message } from '../../types';
 import { Markdown } from './Markdown';
 import { Sparkles, AlertTriangle, ChevronDown } from 'lucide-react';
@@ -6,6 +6,7 @@ import { useAppStore } from '../../store';
 
 interface AssistantMessageProps {
   message: Message;
+  showHeader?: boolean; // 是否显示头像/标签（连续消息合并时为 false）
 }
 
 /**
@@ -33,7 +34,7 @@ class MessageErrorBoundary extends Component<{ children: ReactNode }, ErrorBound
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex items-start gap-2 px-2.5 py-1.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 text-[12px]">
+        <div className="flex items-start gap-2 px-2.5 py-1.5 rounded-lg bg-nb-error/10 border border-nb-error/20 text-nb-error text-[12px]">
           <AlertTriangle size={14} className="shrink-0 mt-0.5" />
           <div>
             <div className="font-medium">Render Error</div>
@@ -68,7 +69,8 @@ function extractContent(data: unknown): string {
   }
 }
 
-export function AssistantMessage({ message }: AssistantMessageProps) {
+function AssistantMessageInner({ message, showHeader = true }: AssistantMessageProps) {
+  const [isHovered, setIsHovered] = useState(false);
   const events = message.events || [];
   const isStreaming = message.isStreaming;
   const expandMessage = useAppStore((state) => state.expandMessage);
@@ -77,119 +79,144 @@ export function AssistantMessage({ message }: AssistantMessageProps) {
     expandMessage(message.id);
   };
 
+  // 格式化时间
+  const formatTime = (timestamp?: string | Date) => {
+    if (!timestamp) return '';
+    const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
+    return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+  };
+
   return (
-    <MessageErrorBoundary>
-      <div className="group py-2">
-        {/* Header: icon + label - left aligned */}
+    <div 
+      className="group py-1"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Header: icon + label - left aligned (只在需要时显示) */}
+      {showHeader && (
         <div className="flex items-center gap-1.5 mb-1">
-          <Sparkles size={12} className="text-violet-400" />
-          <span className="text-[11px] font-medium text-white/40 uppercase tracking-wide">Agent</span>
+          <Sparkles size={12} className="text-nb-text-muted" />
+          <span className="text-[11px] font-medium text-nb-text-secondary uppercase tracking-wide">Agent</span>
+          {/* 时间戳 - hover 显示 */}
+          <span className={`
+            text-[10px] text-nb-text-secondary ml-1 transition-opacity duration-200
+            ${isHovered ? 'opacity-100' : 'opacity-0'}
+          `}>
+            {formatTime(message.timestamp)}
+          </span>
         </div>
-        
-        {/* Content with bubble style */}
-        <div className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 space-y-2">
-          {events.map((event, index) => {
-            try {
-              if (!event || !event.type) return null;
-              
-              switch (event.type) {
-                case 'text':
-                case 'final': {
-                  const content = extractContent(event.data);
-                  if (!content) return null;
-                  return (
-                    <div key={`text-${index}`}>
-                      <Markdown content={content} />
-                    </div>
-                  );
-                }
-                
-                case 'warning': {
-                  const content = extractContent(event.data);
-                  return (
-                    <div key={`warning-${index}`} className="flex items-start gap-2 px-2.5 py-1.5 rounded bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-[12px]">
-                      <span className="shrink-0">⚠</span>
-                      <span>{content || 'Warning'}</span>
-                    </div>
-                  );
-                }
-                
-                case 'error': {
-                  const content = extractContent(event.data);
-                  return (
-                    <div key={`error-${index}`} className="flex items-start gap-2 px-2.5 py-1.5 rounded bg-red-500/10 border border-red-500/20 text-red-400 text-[12px]">
-                      <span className="shrink-0">✕</span>
-                      <span>{content || 'Error'}</span>
-                    </div>
-                  );
-                }
-                
-                case 'image': {
-                  const data = (event.data || {}) as Record<string, unknown>;
-                  const imageUrl = String(data?.image_url || data?.image_path || '');
-                  const caption = String(data?.caption || '');
-                  if (!imageUrl) return null;
-                  return (
-                    <div key={`image-${index}`} className="space-y-1">
-                      <img 
-                        src={imageUrl} 
-                        alt={caption || 'Image'} 
-                        className="max-w-full rounded-lg border border-white/10"
-                        style={{ maxHeight: '400px', objectFit: 'contain' }}
-                      />
-                      {caption && (
-                        <p className="text-[11px] text-white/50">{caption}</p>
-                      )}
-                    </div>
-                  );
-                }
-                
-                // 忽略 thinking, tool_start, tool_end 等中间过程
-                case 'thinking':
-                case 'tool_start':
-                case 'tool_end':
-                  return null;
-                
-                default:
-                  return null;
+      )}
+      
+      {/* Content - 更柔和的背景 */}
+      <div className="bg-nb-surface/80 border border-nb-border/50 rounded-2xl rounded-tl-md px-3.5 py-2.5 space-y-2">
+        {events.map((event, index) => {
+          try {
+            if (!event || !event.type) return null;
+            
+            switch (event.type) {
+              case 'text':
+              case 'final': {
+                const content = extractContent(event.data);
+                if (!content) return null;
+                return (
+                  <div key={`text-${index}`}>
+                    <Markdown content={content} />
+                  </div>
+                );
               }
-            } catch (e) {
-              console.error(`[AssistantMessage] Error rendering event ${index}:`, e, event);
-              return (
-                <div key={`error-${index}`} className="text-[11px] text-red-400/60">
-                  [Render error for event {index}]
-                </div>
-              );
+              
+              case 'warning': {
+                const content = extractContent(event.data);
+                return (
+                  <div key={`warning-${index}`} className="flex items-start gap-2 px-2.5 py-1.5 rounded-lg bg-nb-warning/10 border border-nb-warning/20 text-nb-warning text-[12px]">
+                    <span className="shrink-0">⚠</span>
+                    <span>{content || 'Warning'}</span>
+                  </div>
+                );
+              }
+              
+              case 'error': {
+                const content = extractContent(event.data);
+                return (
+                  <div key={`error-${index}`} className="flex items-start gap-2 px-2.5 py-1.5 rounded-lg bg-nb-error/10 border border-nb-error/20 text-nb-error text-[12px]">
+                    <span className="shrink-0">✕</span>
+                    <span>{content || 'Error'}</span>
+                  </div>
+                );
+              }
+              
+              case 'image': {
+                const data = (event.data || {}) as Record<string, unknown>;
+                const imageUrl = String(data?.image_url || data?.image_path || '');
+                const caption = String(data?.caption || '');
+                if (!imageUrl) return null;
+                return (
+                  <div key={`image-${index}`} className="space-y-1">
+                    <img 
+                      src={imageUrl} 
+                      alt={caption || 'Image'} 
+                      className="max-w-full rounded-lg border border-nb-border"
+                      style={{ maxHeight: '400px', objectFit: 'contain' }}
+                    />
+                    {caption && (
+                      <p className="text-[11px] text-nb-text-secondary">{caption}</p>
+                    )}
+                  </div>
+                );
+              }
+              
+              // 忽略 thinking, tool_start, tool_end 等中间过程
+              case 'thinking':
+              case 'tool_start':
+              case 'tool_end':
+                return null;
+              
+              default:
+                return null;
             }
-          })}
-          
-          {/* 最终响应（如果有且不在 events 中） */}
-          {message.content && !events.some(e => e?.type === 'final') && (
-            <Markdown content={message.content} />
-          )}
-          
-          {/* Expand button for truncated messages */}
-          {message.isTruncated && (
-            <button
-              onClick={handleExpand}
-              className="flex items-center gap-1 text-[11px] text-violet-400 hover:text-violet-300 transition-colors"
-            >
-              <ChevronDown size={14} />
-              <span>查看更多</span>
-            </button>
-          )}
-          
-          {/* Streaming 指示器 */}
-          {isStreaming && events.length === 0 && (
-            <div className="flex items-center gap-1 text-white/30 text-[12px]">
-              <span className="animate-pulse">●</span>
-              <span className="animate-pulse" style={{ animationDelay: '150ms' }}>●</span>
-              <span className="animate-pulse" style={{ animationDelay: '300ms' }}>●</span>
-            </div>
-          )}
-        </div>
+          } catch (e) {
+            console.error(`[AssistantMessage] Error rendering event ${index}:`, e, event);
+            return (
+              <div key={`error-${index}`} className="text-[11px] text-nb-error/60">
+                [Render error for event {index}]
+              </div>
+            );
+          }
+        })}
+        
+        {/* 最终响应（如果有且不在 events 中） */}
+        {message.content && !events.some(e => e?.type === 'final') && (
+          <Markdown content={message.content} />
+        )}
+        
+        {/* Expand button for truncated messages */}
+        {message.isTruncated && (
+          <button
+            onClick={handleExpand}
+            className="flex items-center gap-1 text-[11px] text-nb-text-muted hover:text-nb-text transition-colors"
+          >
+            <ChevronDown size={14} />
+            <span>查看更多</span>
+          </button>
+        )}
+        
+        {/* Streaming 指示器 */}
+        {isStreaming && events.length === 0 && (
+          <div className="flex items-center gap-1.5 text-nb-text-secondary text-[12px]">
+            <span className="animate-pulse">●</span>
+            <span className="animate-pulse" style={{ animationDelay: '150ms' }}>●</span>
+            <span className="animate-pulse" style={{ animationDelay: '300ms' }}>●</span>
+          </div>
+        )}
       </div>
-    </MessageErrorBoundary>
+    </div>
   );
 }
 
+export function AssistantMessage(props: AssistantMessageProps) {
+  return (
+    <MessageErrorBoundary>
+      <AssistantMessageInner {...props} />
+    </MessageErrorBoundary>
+  );
+}

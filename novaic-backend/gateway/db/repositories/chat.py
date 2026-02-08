@@ -599,28 +599,45 @@ class ChatRepository:
         data_json = json.dumps(merged_data) if merged_data else None
         
         with self.db.transaction("agent", resource_id=agent_id):
-            # Use INSERT OR REPLACE with ON CONFLICT for upsert
-            # SQLite ON CONFLICT requires the unique constraint
-            cursor = self.db.execute(
-                """INSERT INTO execution_logs 
-                   (agent_id, subagent_id, type, kind, status, event_key, timestamp, data, updated_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                   ON CONFLICT(agent_id, subagent_id, event_key) DO UPDATE SET
-                       status = excluded.status,
-                       data = excluded.data,
-                       updated_at = excluded.updated_at""",
-                (agent_id, subagent_id, log_type, kind, status, event_key, now, data_json, now)
+            # Check if record exists to merge data properly
+            existing = self.db.fetchone(
+                "SELECT id, data FROM execution_logs WHERE agent_id = ? AND subagent_id = ? AND event_key = ?",
+                (agent_id, subagent_id, event_key)
             )
-            row_id = cursor.lastrowid
             
-            # lastrowid returns 0 on UPDATE, so we need to query the actual ID
-            if row_id == 0:
-                row = self.db.fetchone(
-                    "SELECT id FROM execution_logs WHERE agent_id = ? AND subagent_id = ? AND event_key = ?",
-                    (agent_id, subagent_id, event_key)
+            if existing:
+                # Merge existing data with new data (preserve input when updating with result)
+                existing_data = {}
+                if existing["data"]:
+                    try:
+                        existing_data = json.loads(existing["data"])
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+                
+                # Deep merge: keep existing fields, add/update new fields
+                final_data = {**existing_data, **merged_data}
+                # Ensure input is preserved if it existed
+                if "input" in existing_data and "input" not in merged_data:
+                    final_data["input"] = existing_data["input"]
+                
+                final_data_json = json.dumps(final_data) if final_data else None
+                
+                cursor = self.db.execute(
+                    """UPDATE execution_logs SET
+                       status = ?, data = ?, updated_at = ?
+                       WHERE id = ?""",
+                    (status, final_data_json, now, existing["id"])
                 )
-                if row:
-                    row_id = row["id"]
+                row_id = existing["id"]
+            else:
+                # Insert new record
+                cursor = self.db.execute(
+                    """INSERT INTO execution_logs 
+                       (agent_id, subagent_id, type, kind, status, event_key, timestamp, data, updated_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (agent_id, subagent_id, log_type, kind, status, event_key, now, data_json, now)
+                )
+                row_id = cursor.lastrowid
         
         return row_id
     

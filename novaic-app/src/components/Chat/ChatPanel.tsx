@@ -4,7 +4,7 @@ import { ChatInput } from './ChatInput';
 import { useAppStore } from '../../store';
 
 export function ChatPanel() {
-  const { messages, isExecuting, sendMessage, stopExecution } = useAppStore();
+  const { messages, sendMessage } = useAppStore();
   const [unreadCount, setUnreadCount] = useState(0);
   const scrollToBottomRef = useRef<(() => void) | null>(null);
   const clearUnreadRef = useRef<(() => void) | null>(null);
@@ -22,12 +22,11 @@ export function ChatPanel() {
   }, []);
 
   return (
-    <div className="flex flex-col h-full bg-[#0a0a0a]">
+    <div className="flex flex-col h-full bg-nb-bg/50">
       {/* Messages - 让 MessageList 完全控制滚动，不要嵌套滚动容器 */}
       <div className="flex-1 min-h-0">
         <MessageList 
           messages={messages} 
-          isLoading={isExecuting}
           onUnreadCountChange={stableSetUnreadCount}
           scrollToBottomRef={scrollToBottomRef}
           clearUnreadRef={clearUnreadRef}
@@ -37,8 +36,6 @@ export function ChatPanel() {
       {/* Input */}
       <ChatInput 
         onSend={sendMessage} 
-        onStop={stopExecution} 
-        isLoading={isExecuting}
         unreadCount={unreadCount}
         onScrollToBottom={handleScrollToBottom}
       />

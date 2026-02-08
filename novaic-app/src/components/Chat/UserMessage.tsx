@@ -1,21 +1,25 @@
+import { useState } from 'react';
 import { Message, MessageStatus } from '../../types';
-import { User, Check, CheckCheck, Clock, AlertCircle, ChevronDown } from 'lucide-react';
+import { Check, CheckCheck, Clock, AlertCircle, ChevronDown } from 'lucide-react';
 import { Markdown } from './Markdown';
 import { useAppStore } from '../../store';
 
 interface UserMessageProps {
   message: Message;
+  showHeader?: boolean; // 是否显示头像/标签（连续消息合并时为 false）
+  showStatus?: boolean; // 是否显示状态（同状态组的最后一条才显示）
 }
 
 // Status display configuration
 const statusConfig: Record<MessageStatus, { icon: typeof Check; text: string; className: string }> = {
-  sending: { icon: Clock, text: '发送中...', className: 'text-white/30' },
-  delivered: { icon: Check, text: '已送达', className: 'text-white/40' },
-  read: { icon: CheckCheck, text: '已读', className: 'text-blue-400' },
-  error: { icon: AlertCircle, text: '发送失败', className: 'text-red-400' },
+  sending: { icon: Clock, text: '发送中...', className: 'text-nb-text-secondary' },
+  delivered: { icon: Check, text: '已送达', className: 'text-nb-text-secondary' },
+  read: { icon: CheckCheck, text: '已读', className: 'text-nb-text-muted' },
+  error: { icon: AlertCircle, text: '发送失败', className: 'text-nb-error' },
 };
 
-export function UserMessage({ message }: UserMessageProps) {
+export function UserMessage({ message, showHeader = true, showStatus = true }: UserMessageProps) {
+  const [isHovered, setIsHovered] = useState(false);
   const status = message.status || 'delivered';
   const statusInfo = statusConfig[status];
   const StatusIcon = statusInfo.icon;
@@ -24,24 +28,32 @@ export function UserMessage({ message }: UserMessageProps) {
   const handleExpand = () => {
     expandMessage(message.id);
   };
+
+  // 是否强制显示状态（发送中、错误、或者是组内最后一条）
+  const forceShowStatus = status === 'sending' || status === 'error' || showStatus;
   
   return (
-    <div className="group py-2">
-      {/* Header: icon + label - right aligned */}
-      <div className="flex items-center gap-1.5 mb-1 justify-end">
-        <span className="text-[11px] font-medium text-white/40 uppercase tracking-wide">You</span>
-        <User size={12} className="text-white/30" />
-      </div>
+    <div 
+      className="group py-1"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Header: label - right aligned (只在需要时显示) */}
+      {showHeader && (
+        <div className="flex items-center gap-1.5 mb-1 justify-end">
+          <span className="text-[11px] font-medium text-nb-text-secondary uppercase tracking-wide">You</span>
+        </div>
+      )}
       
-      {/* Message content with bubble style */}
-      <div className="bg-violet-600/20 border border-violet-500/20 rounded-lg px-3 py-2">
+      {/* Message content - 柔和的蓝紫色调 */}
+      <div className="bg-violet-500/10 border border-violet-500/10 rounded-2xl rounded-tr-md px-3.5 py-2.5">
         <Markdown content={message.content} />
         
         {/* Expand button for truncated messages */}
         {message.isTruncated && (
           <button
             onClick={handleExpand}
-            className="flex items-center gap-1 mt-2 text-[11px] text-violet-400 hover:text-violet-300 transition-colors"
+            className="flex items-center gap-1 mt-2 text-[11px] text-nb-text-muted hover:text-nb-text transition-colors"
           >
             <ChevronDown size={14} />
             <span>查看更多</span>
@@ -49,9 +61,13 @@ export function UserMessage({ message }: UserMessageProps) {
         )}
       </div>
 
-      {/* Message status - right aligned */}
-      <div className={`flex items-center gap-1 mt-1 justify-end text-[10px] ${statusInfo.className}`}>
-        <StatusIcon size={12} className={status === 'sending' ? 'animate-pulse' : ''} />
+      {/* Message status - 组内最后一条常显，其他 hover 显示 */}
+      <div className={`
+        flex items-center gap-1 mt-1 justify-end text-[10px] transition-opacity duration-200
+        ${statusInfo.className}
+        ${forceShowStatus || isHovered ? 'opacity-100' : 'opacity-0'}
+      `}>
+        <StatusIcon size={11} className={status === 'sending' ? 'animate-pulse' : ''} />
         <span>{statusInfo.text}</span>
       </div>
 
@@ -61,7 +77,7 @@ export function UserMessage({ message }: UserMessageProps) {
           {message.attachments.map((attachment) => (
             <div
               key={attachment.id}
-              className="flex items-center gap-1.5 px-2 py-1 rounded bg-white/[0.04] border border-white/[0.06] text-[11px] text-white/50"
+              className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-nb-surface border border-nb-border text-[11px] text-nb-text-muted"
             >
               <span className="truncate max-w-[120px]">{attachment.name}</span>
             </div>
@@ -71,4 +87,3 @@ export function UserMessage({ message }: UserMessageProps) {
     </div>
   );
 }
-

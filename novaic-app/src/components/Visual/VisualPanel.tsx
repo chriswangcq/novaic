@@ -38,7 +38,7 @@ interface VisualPanelProps {
 }
 
 export function VisualPanel({ isThumbnail = false }: VisualPanelProps) {
-  const { setLayoutMode, logs, isExecuting } = useAppStore();
+  const { setLayoutMode, logs } = useAppStore();
   const [vmHeightRatio, setVmHeightRatio] = useState(loadVmHeightRatio);
   const [isResizing, setIsResizing] = useState(false);
   const [isLogsCollapsed, setIsLogsCollapsed] = useState(false);
@@ -152,7 +152,7 @@ export function VisualPanel({ isThumbnail = false }: VisualPanelProps) {
         ) : (
           // Expanded logs
           <div className="flex-1 flex flex-col min-h-0">
-            <ExecutionLog logs={logs} isExecuting={isExecuting} />
+            <ExecutionLog logs={logs} />
           </div>
         )}
       </div>

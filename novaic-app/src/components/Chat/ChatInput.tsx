@@ -1,12 +1,10 @@
 import { useState, useRef, KeyboardEvent, useEffect, useMemo, useCallback } from 'react';
-import { Loader2, StopCircle, ArrowUp, ChevronDown, Bot, X, ArrowDown } from 'lucide-react';
+import { ArrowUp, ChevronDown, Bot, X, ArrowDown } from 'lucide-react';
 import { useAppStore } from '../../store';
 import { CandidateModel } from '../../types';
 
 interface ChatInputProps {
   onSend: (content: string) => void;
-  onStop?: () => void;
-  isLoading: boolean;
   placeholder?: string;
   unreadCount?: number;
   onScrollToBottom?: () => void;
@@ -14,8 +12,6 @@ interface ChatInputProps {
 
 export function ChatInput({ 
   onSend, 
-  onStop, 
-  isLoading, 
   placeholder = "Ask anything...",
   unreadCount = 0,
   onScrollToBottom
@@ -108,10 +104,6 @@ export function ChatInput({
     }
   };
 
-  const handleStop = () => {
-    onStop?.();
-  };
-
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     // Send on Enter (without Shift)
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -201,16 +193,6 @@ export function ChatInput({
           <ArrowUp size={14} strokeWidth={2.5} />
         </button>
 
-        {/* Stop button - only show when agent is executing */}
-        {isLoading && (
-          <button
-            onClick={handleStop}
-            className="w-[32px] h-[32px] rounded-full bg-red-500/15 hover:bg-red-500/25 transition-all flex items-center justify-center shrink-0 border border-red-500/20"
-            title="Stop Agent"
-          >
-            <StopCircle size={14} className="text-red-400" />
-          </button>
-        )}
       </div>
 
       {/* Model selector row */}
@@ -281,15 +263,6 @@ export function ChatInput({
         </div>
       </div>
 
-      {/* Loading indicator */}
-      {isLoading && (
-        <div className="absolute bottom-20 left-1/2 -translate-x-1/2">
-          <span className="flex items-center gap-1.5 text-[10px] text-white/50 bg-white/5 px-2 py-1 rounded-full">
-            <Loader2 size={10} className="animate-spin" />
-            Running...
-          </span>
-        </div>
-      )}
     </div>
   );
 }

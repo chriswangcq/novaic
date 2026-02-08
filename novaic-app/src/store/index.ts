@@ -90,7 +90,6 @@ interface AppStore extends AppState {
   addLog: (log: LogEntry) => void;
   clearLogs: () => void;
   clearMessages: () => void;
-  setExecuting: (executing: boolean) => void;
   setVncConnected: (connected: boolean) => void;
   setVncInteractive: (interactive: boolean) => void;
   setVncLocked: (locked: boolean) => void;
@@ -154,7 +153,6 @@ export const useAppStore = create<AppStore>((set, get) => ({
   // Initial state
   messages: [],
   logs: [],
-  isExecuting: false,
   isInitialized: false,
   vncConnected: false,
   vncInteractive: false,
@@ -364,7 +362,6 @@ export const useAppStore = create<AppStore>((set, get) => ({
     } catch (e) {
       console.error('[Store] Failed to interrupt agent:', e);
     }
-    set({ isExecuting: false });
   },
 
   addMessage: (message: Message) => {
@@ -434,9 +431,6 @@ export const useAppStore = create<AppStore>((set, get) => ({
     set({ messages: [], logs: [], lastLogId: null, hasMoreMessages: true, hasMoreLogs: true, logSubagentId: null, logSubagents: [] });
   },
 
-  setExecuting: (executing: boolean) => {
-    set({ isExecuting: executing });
-  },
 
   setVncConnected: (connected: boolean) => {
     set({ vncConnected: connected });
@@ -799,7 +793,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   // SSE Connection: Chat messages (Agent <-> User)
   connectChatSSE: (agentId?: string) => {
-    const { addMessage, updateMessageStatus, setExecuting, currentAgentId } = get();
+    const { addMessage, updateMessageStatus, currentAgentId } = get();
     
     // Use provided agentId or fallback to currentAgentId
     const targetAgentId = agentId || currentAgentId;
@@ -856,7 +850,6 @@ export const useAppStore = create<AppStore>((set, get) => ({
               content: msg.message || msg.content || '',
               timestamp: new Date(msg.timestamp),
             });
-            setExecuting(false);
             break;
             
           case 'AGENT_ASK':
@@ -912,10 +905,6 @@ export const useAppStore = create<AppStore>((set, get) => ({
             // Message status update (delivered, read)
             if (msg.message_id && msg.status) {
               updateMessageStatus(msg.message_id, msg.status);
-              // If status is 'read', agent started processing
-              if (msg.status === 'read') {
-                setExecuting(true);
-              }
             }
             break;
         }

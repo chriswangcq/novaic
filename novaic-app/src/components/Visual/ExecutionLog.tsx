@@ -1,27 +1,15 @@
 import { useEffect, useLayoutEffect, useState, useCallback, useRef } from 'react';
 import { LogEntry } from '../../types';
-import { Rocket, CheckCircle, AlertCircle, Terminal, Loader2, Brain, Zap, XCircle, ChevronDown, ChevronRight, Copy, Check } from 'lucide-react';
+import { CheckCircle, Terminal, Loader2, Brain, XCircle, ChevronDown, ChevronRight, Sparkles } from 'lucide-react';
 import { useAppStore } from '../../store';
 import { useVirtualList } from '../../hooks/useVirtualList';
 import { useScrollPagination } from '../../hooks/useScrollPagination';
 import { LOG_ESTIMATE_SIZE, LOG_OVERSCAN } from '../../constants/scroll';
-import { UI_CONFIG } from '../../config';
+import { SmartValue } from './SmartValue';
 
 interface ExecutionLogProps {
   logs: LogEntry[];
-  isExecuting: boolean;
 }
-
-// 格式化 JSON 数据用于显示
-const formatJsonForDisplay = (data: unknown, indent = 2): string => {
-  if (data === null || data === undefined) return '';
-  if (typeof data === 'string') return data;
-  try {
-    return JSON.stringify(data, null, indent);
-  } catch {
-    return String(data);
-  }
-};
 
 // 截断字符串
 const truncateString = (str: string, maxLength: number): string => {
@@ -29,39 +17,38 @@ const truncateString = (str: string, maxLength: number): string => {
   return str.substring(0, maxLength) + '...';
 };
 
-// 详情展示组件
-interface LogDetailProps {
+// ==================== 日志卡片组件 ====================
+
+interface LogCardProps {
   log: LogEntry;
   isExpanded: boolean;
   onToggle: () => void;
+  showSubagent: boolean;
 }
 
-function LogDetail({ log, isExpanded, onToggle }: LogDetailProps) {
-  const [copied, setCopied] = useState<string | null>(null);
-
-  const copyToClipboard = useCallback((text: string, label: string) => {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(label);
-      setTimeout(() => setCopied(null), UI_CONFIG.COPY_FEEDBACK_DELAY);
-    });
-  }, []);
-
-  // 提取 input 数据
+function LogCard({ log, isExpanded, onToggle, showSubagent }: LogCardProps) {
+  // 提取数据
   const getInputData = (): unknown => {
     if (log.input) return log.input;
-    if (log.data?.input) return log.data.input;
+    if (log.data?.input) {
+      const inputObj = log.data.input as Record<string, unknown>;
+      if (inputObj.args) return inputObj.args;
+      return inputObj;
+    }
     if (log.data?.args) return log.data.args;
     return null;
   };
 
-  // 提取 result 数据
   const getResultData = (): unknown => {
     if (log.result) return log.result;
-    if (log.data?.result) return log.data.result;
+    if (log.data?.result) {
+      const resultObj = log.data.result as Record<string, unknown>;
+      if (resultObj.result !== undefined) return resultObj.result;
+      return resultObj;
+    }
     return null;
   };
 
-  // 提取思考内容
   const getThinkingContent = (): string => {
     if (log.result?.content && typeof log.result.content === 'string') return log.result.content;
     if (log.data?.content && typeof log.data.content === 'string') return log.data.content;
@@ -69,122 +56,196 @@ function LogDetail({ log, isExpanded, onToggle }: LogDetailProps) {
     return '';
   };
 
-  // 提取错误信息
-  const getErrorInfo = (): string | null => {
-    if (log.result?.error && typeof log.result.error === 'string') return log.result.error;
-    if (log.data?.error && typeof log.data.error === 'string') return log.data.error;
-    if (log.data?.result && typeof log.data.result === 'object' && log.data.result !== null) {
-      const resultObj = log.data.result as Record<string, unknown>;
-      if (resultObj.error && typeof resultObj.error === 'string') {
-        return resultObj.error;
-      }
-    }
-    return null;
-  };
-
   const input = getInputData();
   const result = getResultData();
   const thinkingContent = getThinkingContent();
-  const error = getErrorInfo();
-
-  // 判断是否有详情可展示
+  const toolName = log.data?.tool || log.event_key || '';
+  const isThink = log.kind === 'think' || log.type === 'thinking';
+  const isTool = log.kind === 'tool' || log.type === 'tool_start' || log.type === 'tool_end';
+  const isRunning = log.status === 'running';
+  const isFailed = log.status === 'failed' || log.data?.success === false || !!(log.result?.error || log.data?.error);
+  
   const hasDetails = Boolean(
-    (log.kind === 'think' && thinkingContent) ||
-    (log.kind === 'tool' && (input || result)) ||
-    (log.type === 'tool_start' && input) ||
-    (log.type === 'tool_end' && result) ||
-    error
+    (isThink && thinkingContent) ||
+    (isTool && (input || result))
   );
 
-  if (!hasDetails) return null;
+  // 获取摘要
+  const getSummary = (): string => {
+    if (isThink && thinkingContent) {
+      return truncateString(thinkingContent, 100);
+    }
+    if (isTool && result) {
+      const r = result as Record<string, unknown>;
+      if (r.error) return `错误: ${truncateString(String(r.error), 60)}`;
+      if (r.message) return truncateString(String(r.message), 60);
+      if (r.content) return truncateString(String(r.content), 60);
+      const keys = Object.keys(r).filter(k => !['success', 'done'].includes(k));
+      if (keys.length > 0) {
+        const firstVal = r[keys[0]];
+        if (typeof firstVal === 'string' && firstVal.length > 100) {
+          return `${keys[0]}: [${firstVal.length} 字符]`;
+        }
+        return `${keys[0]}: ${truncateString(JSON.stringify(firstVal), 50)}`;
+      }
+    }
+    return '';
+  };
+
+  const summary = getSummary();
 
   return (
-    <div className="mt-1">
-      <button
-        onClick={onToggle}
-        className="flex items-center gap-1 text-[10px] text-nb-text-muted hover:text-nb-text transition-colors"
+    <div className={`
+      group rounded-lg border transition-all duration-200
+      ${isRunning 
+        ? 'bg-gradient-to-r from-nb-accent/10 to-transparent border-nb-accent/30' 
+        : isFailed 
+          ? 'bg-gradient-to-r from-nb-error/10 to-transparent border-nb-error/30'
+          : 'bg-nb-surface/50 border-nb-border/50 hover:border-nb-border hover:bg-nb-surface'
+      }
+    `}>
+      {/* 主内容区 */}
+      <div 
+        className="px-3 py-2.5 cursor-pointer"
+        onClick={hasDetails ? onToggle : undefined}
       >
-        {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-        <span>{isExpanded ? '收起详情' : '展开详情'}</span>
-      </button>
-
-      {isExpanded && (
-        <div className="mt-2 p-2 bg-nb-surface-2 rounded border border-nb-border text-[11px] space-y-2">
-          {/* Think 类型显示思考内容 */}
-          {log.kind === 'think' && !!thinkingContent && (
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-white/70 font-medium">💭 思考内容</span>
-                <button
-                  onClick={() => copyToClipboard(thinkingContent, 'thinking')}
-                  className="p-1 hover:bg-nb-surface rounded"
-                  title="复制"
-                >
-                  {copied === 'thinking' ? <Check size={12} className="text-nb-success" /> : <Copy size={12} />}
-                </button>
+        {/* 第一行：时间 + 类型图标 + 名称 + 状态 */}
+        <div className="flex items-center gap-2">
+          {/* 时间戳 */}
+          <span className="text-[10px] text-nb-text-secondary font-mono tabular-nums">
+            {new Date(log.timestamp).toLocaleTimeString('zh-CN', { hour12: false })}
+          </span>
+          
+          {/* 类型图标 */}
+          <div className={`
+            w-5 h-5 rounded-md flex items-center justify-center shrink-0
+            ${isThink 
+              ? 'bg-violet-500/20' 
+              : isRunning 
+                ? 'bg-nb-accent/20'
+                : isFailed 
+                  ? 'bg-nb-error/20' 
+                  : 'bg-nb-success/20'
+            }
+          `}>
+            {isThink ? (
+              isRunning ? <Loader2 size={12} className="text-violet-400 animate-spin" /> 
+                       : <Brain size={12} className="text-violet-400" />
+            ) : isRunning ? (
+              <Loader2 size={12} className="text-nb-text-muted animate-spin" />
+            ) : isFailed ? (
+              <XCircle size={12} className="text-nb-error" />
+            ) : (
+              <CheckCircle size={12} className="text-nb-success" />
+            )}
+          </div>
+          
+          {/* 名称 */}
+          <span className={`
+            text-[13px] font-medium truncate
+            ${isThink ? 'text-violet-300' : 'text-nb-text'}
+          `}>
+            {isThink ? '思考' : toolName}
+          </span>
+          
+          {/* Subagent 标签 */}
+          {showSubagent && log.subagent_id && (
+            <span className="px-1.5 py-0.5 bg-nb-surface-2 text-nb-text-secondary text-[9px] rounded font-mono">
+              {log.subagent_id}
+            </span>
+          )}
+          
+          {/* 弹性空间 */}
+          <div className="flex-1" />
+          
+          {/* 状态标签 */}
+          <span className={`
+            px-2 py-0.5 rounded-full text-[10px] font-medium shrink-0
+            ${isRunning 
+              ? 'bg-nb-accent/20 text-nb-text-muted' 
+              : isFailed 
+                ? 'bg-nb-error/20 text-nb-error'
+                : 'bg-nb-success/20 text-nb-success'
+            }
+          `}>
+            {isRunning ? '运行中' : isFailed ? '失败' : '完成'}
+          </span>
+          
+          {/* 展开箭头 */}
+          {hasDetails && (
+            <div className={`
+              w-5 h-5 rounded flex items-center justify-center
+              text-nb-text-secondary group-hover:text-nb-text-muted transition-colors
+            `}>
+              {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+            </div>
+          )}
+        </div>
+        
+        {/* 第二行：摘要 */}
+        {summary && !isExpanded && (
+          <div className="mt-1.5 pl-7 text-[11px] text-nb-text-secondary leading-relaxed line-clamp-2">
+            {summary}
+          </div>
+        )}
+      </div>
+      
+      {/* 展开的详情区域 */}
+      {isExpanded && hasDetails && (
+        <div className="px-3 pb-3 space-y-2">
+          <div className="h-px bg-nb-border/30" />
+          
+          {/* 思考内容 */}
+          {isThink && thinkingContent ? (
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-1.5 text-[10px] text-violet-400/70 font-medium">
+                <Sparkles size={10} />
+                <span>思考内容</span>
               </div>
-              <pre className="whitespace-pre-wrap text-nb-text-muted bg-nb-surface p-2 rounded max-h-40 overflow-auto">
-                {thinkingContent}
-              </pre>
-            </div>
-          )}
-
-          {/* Tool 类型显示输入参数 */}
-          {(log.kind === 'tool' || log.type === 'tool_start' || log.type === 'tool_end') && !!input && (
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-nb-accent font-medium">📥 输入参数</span>
-                <button
-                  onClick={() => copyToClipboard(formatJsonForDisplay(input), 'input')}
-                  className="p-1 hover:bg-nb-surface rounded"
-                  title="复制"
-                >
-                  {copied === 'input' ? <Check size={12} className="text-nb-success" /> : <Copy size={12} />}
-                </button>
+              <div className="bg-nb-bg rounded-md p-2.5 border border-nb-border/30">
+                <SmartValue value={thinkingContent} copyable />
               </div>
-              <pre className="whitespace-pre-wrap text-nb-text-muted bg-nb-surface p-2 rounded max-h-40 overflow-auto font-mono">
-                {formatJsonForDisplay(input)}
-              </pre>
             </div>
-          )}
-
-          {/* Tool 类型显示执行结果 */}
-          {(log.kind === 'tool' || log.type === 'tool_end') && !!result && (
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className={error ? 'text-nb-error font-medium' : 'text-nb-success font-medium'}>
-                  {error ? '❌ 执行结果（错误）' : '📤 执行结果'}
-                </span>
-                <button
-                  onClick={() => copyToClipboard(formatJsonForDisplay(result), 'result')}
-                  className="p-1 hover:bg-nb-surface rounded"
-                  title="复制"
-                >
-                  {copied === 'result' ? <Check size={12} className="text-nb-success" /> : <Copy size={12} />}
-                </button>
+          ) : null}
+          
+          {/* 工具输入 */}
+          {isTool && input ? (
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-1.5 text-[10px] text-nb-text-muted font-medium">
+                <span className="w-1 h-1 rounded-full bg-nb-text-muted" />
+                <span>输入参数</span>
               </div>
-              <pre className={`whitespace-pre-wrap bg-nb-surface p-2 rounded max-h-40 overflow-auto font-mono ${error ? 'text-nb-error' : 'text-nb-text-muted'}`}>
-                {formatJsonForDisplay(result)}
-              </pre>
+              <div className="bg-nb-bg rounded-md p-2.5 border border-nb-border/30">
+                <SmartValue value={input} copyable />
+              </div>
             </div>
-          )}
-
-          {/* 单独显示错误（如果有且未在 result 中显示） */}
-          {!!error && !result && (
-            <div>
-              <span className="text-nb-error font-medium">❌ 错误信息</span>
-              <pre className="whitespace-pre-wrap text-nb-error bg-nb-surface p-2 rounded mt-1">
-                {error}
-              </pre>
+          ) : null}
+          
+          {/* 工具输出 */}
+          {isTool && result ? (
+            <div className="space-y-1.5">
+              <div className={`flex items-center gap-1.5 text-[10px] font-medium ${
+                isFailed ? 'text-nb-error/70' : 'text-nb-success/70'
+              }`}>
+                <span className={`w-1 h-1 rounded-full ${isFailed ? 'bg-nb-error' : 'bg-nb-success'}`} />
+                <span>{isFailed ? '错误输出' : '执行结果'}</span>
+              </div>
+              <div className={`bg-nb-bg rounded-md p-2.5 border ${
+                isFailed ? 'border-nb-error/20' : 'border-nb-border/30'
+              }`}>
+                <SmartValue value={result} isError={isFailed} copyable />
+              </div>
             </div>
-          )}
+          ) : null}
         </div>
       )}
     </div>
   );
 }
 
-export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
+// ==================== 主组件 ====================
+
+export function ExecutionLog({ logs }: ExecutionLogProps) {
   const { 
     currentAgentId, 
     logSubagentId, 
@@ -195,9 +256,7 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
     loadMoreLogs,
   } = useAppStore();
   
-  // 记录展开状态的日志 ID
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
-  // 控制内容显示时机，避免用户看到滚动过程
   const [isReady, setIsReady] = useState(false);
   
   const toggleLogExpand = useCallback((logKey: string) => {
@@ -212,46 +271,29 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
     });
   }, []);
 
-  // 虚拟列表
   const { parentRef, virtualizer } = useVirtualList({
     count: logs.length,
     estimateSize: LOG_ESTIMATE_SIZE,
     overscan: LOG_OVERSCAN,
   });
 
-  // 手动实现自动滚动逻辑
   const hasInitialScrolled = useRef(false);
-  const prevLogsLengthRef = useRef(0); // 初始化为 0，用于检测"从无到有"
-  const autoScrollEnabled = useRef(true); // 是否启用自动滚动
-  const isAutoScrolling = useRef(false); // 是否正在执行自动滚动
-  const isMounted = useRef(false); // 是否已经挂载
+  const prevLogsLengthRef = useRef(0);
+  const autoScrollEnabled = useRef(true);
+  const isAutoScrolling = useRef(false);
 
-  // 判断是否在底部（使用更宽松的条件）
   const isAtBottom = useCallback(() => {
     const scrollElement = parentRef.current;
     if (!scrollElement) return false;
-    
     const { scrollTop, scrollHeight, clientHeight } = scrollElement;
-    const scrollBottom = scrollHeight - scrollTop - clientHeight;
-    
-    // 距离底部小于 200px 认为在底部（更宽松）
-    return scrollBottom < 200;
+    return scrollHeight - scrollTop - clientHeight < 200;
   }, [parentRef]);
 
-  // 监听用户滚动，更新自动滚动状态
   const handleUserScroll = useCallback(() => {
-    // 如果正在自动滚动中，不更新状态（避免误判）
-    if (isAutoScrolling.current) {
-      return;
-    }
-    
-    const atBottom = isAtBottom();
-    if (atBottom !== autoScrollEnabled.current) {
-      autoScrollEnabled.current = atBottom;
-    }
+    if (isAutoScrolling.current) return;
+    autoScrollEnabled.current = isAtBottom();
   }, [isAtBottom]);
 
-  // 分页加载
   const { handleScroll: handlePaginationScroll, firstVisibleIndexRef } = useScrollPagination({
     itemsLength: logs.length,
     virtualizer,
@@ -261,390 +303,119 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
     scrollThreshold: 100
   });
 
-  // 组合滚动处理：分页 + 自动滚动状态更新
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     handlePaginationScroll(e);
     handleUserScroll();
   }, [handlePaginationScroll, handleUserScroll]);
 
-  // 组件挂载时的初始化
-  useEffect(() => {
-    isMounted.current = true;
-    // 不管有没有日志，都让 line 280-295 的逻辑处理滚动
-  }, []);
-
-
-  // 切换 Agent 或 subagent tag 时重置并滚动
   useLayoutEffect(() => {
-    // 重置所有状态
     hasInitialScrolled.current = false;
     prevLogsLengthRef.current = 0;
     autoScrollEnabled.current = true;
     firstVisibleIndexRef.current = null;
-    setIsReady(false); // 先隐藏内容，等滚动完成后再显示
+    setIsReady(false);
   }, [currentAgentId, logSubagentId]);
   
-  // 初始滚动到底部（切换 agent 或首次加载数据时）
   useEffect(() => {
     if (!hasInitialScrolled.current && logs.length > 0) {
       const timer = setTimeout(() => {
-        // 使用 requestAnimationFrame 确保虚拟列表已更新
         requestAnimationFrame(() => {
-          virtualizer.scrollToIndex(logs.length - 1, { 
-            align: 'end',
-            behavior: 'auto'
-          });
+          virtualizer.scrollToIndex(logs.length - 1, { align: 'end', behavior: 'auto' });
           hasInitialScrolled.current = true;
           prevLogsLengthRef.current = logs.length;
-          setIsReady(true); // 滚动完成后再显示内容
+          setIsReady(true);
         });
       }, 0);
       return () => clearTimeout(timer);
     } else if (logs.length === 0) {
-      setIsReady(true); // 没有日志时直接显示
+      setIsReady(true);
     }
   }, [logs.length, virtualizer]);
 
-  // 新日志自动滚动（只在自动滚动启用时）
   useEffect(() => {
-    // 只处理新日志到达的情况
     if (hasInitialScrolled.current && logs.length > prevLogsLengthRef.current && !isLoadingMoreLogs) {
-      // 如果启用了自动滚动，就滚动到底部
       if (autoScrollEnabled.current) {
         isAutoScrolling.current = true;
-        
-        // 保存当前长度，避免在异步回调中闭包陷阱
         const targetLength = logs.length;
-        
-        // 使用三个 requestAnimationFrame 确保虚拟列表完全更新和测量完成后再滚动
-        // 虚拟列表的 measureElement 需要时间测量新 item 的实际高度
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
             requestAnimationFrame(() => {
-              // 直接滚动到底部，使用 auto 无动画
-              virtualizer.scrollToIndex(targetLength - 1, { 
-                align: 'end',
-                behavior: 'auto'
-              });
-              
-              // 更新 prevLogsLengthRef 在滚动执行后
+              virtualizer.scrollToIndex(targetLength - 1, { align: 'end', behavior: 'auto' });
               prevLogsLengthRef.current = targetLength;
-              
-              // 立即重置标志（auto 滚动是瞬时的，不需要延迟）
               isAutoScrolling.current = false;
-              // 重新检查一次底部状态
               autoScrollEnabled.current = isAtBottom();
             });
           });
         });
       } else {
-        // 如果没有启用自动滚动，也要更新 prevLogsLengthRef
         prevLogsLengthRef.current = logs.length;
       }
     }
-    // 注意：不在 else 分支更新 prevLogsLengthRef，避免误更新
   }, [logs.length, virtualizer, isLoadingMoreLogs, isAtBottom]);
-
-  const getLogIcon = (log: LogEntry, success?: boolean) => {
-    // 如果有 kind 字段，优先使用 kind
-    if (log.kind === 'think') {
-      const error = log.result?.error || log.data?.error;
-      // 根据 status 显示不同图标
-      if (log.status === 'running') {
-        return <Loader2 size={14} className="text-white/60 animate-spin" />;
-      }
-      if (log.status === 'failed' || error) {
-        return <XCircle size={14} className="text-nb-error" />;
-      }
-      return <Brain size={14} className="text-white/60" />;
-    }
-    if (log.kind === 'tool') {
-      // 根据 status 显示不同图标
-      if (log.status === 'running') {
-        return <Loader2 size={14} className="text-nb-accent animate-spin" />;
-      }
-      return success !== false 
-        ? <CheckCircle size={14} className="text-nb-success" />
-        : <XCircle size={14} className="text-nb-error" />;
-    }
-
-    // 兼容旧的 type 字段
-    switch (log.type) {
-      case 'tool_start':
-        return <Rocket size={14} className="text-nb-accent" />;
-      case 'tool_end':
-        return success !== false 
-          ? <CheckCircle size={14} className="text-nb-success" />
-          : <XCircle size={14} className="text-nb-error" />;
-      case 'thinking':
-        return <Brain size={14} className="text-white/60" />;
-      case 'status':
-        return <Zap size={14} className="text-yellow-400" />;
-      case 'error':
-        return <AlertCircle size={14} className="text-nb-error" />;
-      case 'stdout':
-      case 'stderr':
-        return <Terminal size={14} className="text-nb-text-muted" />;
-      default:
-        return <Terminal size={14} className="text-nb-text-muted" />;
-    }
-  };
-
-  // 获取参数摘要（用于默认显示）
-  const getParamsSummary = (input: unknown): string => {
-    if (!input || typeof input !== 'object') return '';
-    const inputObj = input as Record<string, unknown>;
-    const keys = Object.keys(inputObj);
-    if (keys.length === 0) return '';
-    
-    const params = keys.slice(0, 2).map(k => {
-      const v = inputObj[k];
-      let val: string;
-      if (typeof v === 'string') {
-        val = v.length > 30 ? v.substring(0, 30) + '...' : v;
-      } else if (typeof v === 'number' || typeof v === 'boolean') {
-        val = String(v);
-      } else {
-        val = JSON.stringify(v).substring(0, 30);
-      }
-      return `${k}=${val}`;
-    }).join(', ');
-    
-    return params + (keys.length > 2 ? ` (+${keys.length - 2})` : '');
-  };
-
-  // 获取结果摘要
-  const getResultSummary = (result: unknown, success?: boolean): string => {
-    if (!result) return success !== false ? '完成' : '失败';
-    
-    if (typeof result === 'object') {
-      const resultObj = result as Record<string, unknown>;
-      if (resultObj.error) {
-        return `错误: ${truncateString(String(resultObj.error), 50)}`;
-      }
-      if (resultObj.message) {
-        return truncateString(String(resultObj.message), 50);
-      }
-      if (resultObj.url) {
-        return `🔗 ${resultObj.url}`;
-      }
-      if (resultObj.output) {
-        return truncateString(String(resultObj.output), 50);
-      }
-      if (resultObj.content) {
-        return truncateString(String(resultObj.content), 50);
-      }
-      // 显示主要字段
-      const keys = Object.keys(resultObj).filter(k => k !== 'success' && k !== 'done');
-      if (keys.length > 0) {
-        const firstKey = keys[0];
-        const val = resultObj[firstKey];
-        return `${firstKey}: ${truncateString(JSON.stringify(val), 40)}`;
-      }
-    }
-    
-    return success !== false ? '完成' : '失败';
-  };
-
-  const formatLog = (log: LogEntry): { main: string; detail?: string; toolName?: string; status?: string; isRunning?: boolean; isFailed?: boolean } => {
-    // 新事件模型：根据 kind 和 status 显示
-    if (log.kind === 'think') {
-      const content = log.result?.content || log.data?.content || (typeof log.data === 'string' ? log.data : '');
-      const error = log.result?.error || log.data?.error;
-      
-      if (log.status === 'running') {
-        return { 
-          main: '🧠 思考中...', 
-          detail: content ? truncateString(content, 80) : undefined,
-          isRunning: true 
-        };
-      }
-      
-      // failed 状态
-      if (log.status === 'failed' || error) {
-        return { 
-          main: '🧠 思考失败',
-          status: '失败',
-          detail: error ? truncateString(String(error), 80) : undefined,
-          isFailed: true
-        };
-      }
-      
-      // complete 状态
-      return { 
-        main: '🧠 思考完成',
-        status: '完成',
-        detail: content ? truncateString(content, 80) : undefined
-      };
-    }
-    
-    if (log.kind === 'tool') {
-      const toolName = log.data?.tool || log.event_key || 'unknown';
-      const input = log.input || log.data?.input;
-      const result = log.result || log.data?.result;
-      const success = log.data?.success ?? (result && !(result as Record<string, unknown>).error);
-      
-      if (log.status === 'running') {
-        const paramsSummary = getParamsSummary(input);
-        return { 
-          main: `⚡ ${toolName}`, 
-          toolName,
-          status: '执行中',
-          detail: paramsSummary || undefined,
-          isRunning: true 
-        };
-      }
-      
-      // complete 状态
-      const resultSummary = getResultSummary(result, success);
-      const icon = success !== false ? '✓' : '✗';
-      return { 
-        main: `${icon} ${toolName}`, 
-        toolName,
-        status: success !== false ? '完成' : '失败',
-        detail: resultSummary
-      };
-    }
-
-    // 兼容旧的 type 字段
-    switch (log.type) {
-      case 'tool_start': {
-        const toolName = log.data?.tool || 'unknown';
-        const args = log.data?.args || log.data?.input;
-        const paramsSummary = getParamsSummary(args);
-        return { 
-          main: `⚡ ${toolName}`, 
-          toolName,
-          status: '开始',
-          detail: paramsSummary || undefined
-        };
-      }
-      case 'tool_end': {
-        const toolName = log.data?.tool || 'unknown';
-        const success = log.data?.success;
-        const result = log.data?.result;
-        const resultSummary = getResultSummary(result, success);
-        const icon = success !== false ? '✓' : '✗';
-        return { 
-          main: `${icon} ${toolName}`, 
-          toolName,
-          status: success !== false ? '完成' : '失败',
-          detail: resultSummary
-        };
-      }
-      case 'thinking': {
-        const content = typeof log.data === 'string' ? log.data : (log.data?.content || '');
-        return { 
-          main: '🧠 思考',
-          detail: content ? truncateString(content, 80) : undefined
-        };
-      }
-      case 'status':
-        return { main: log.data?.message || (typeof log.data === 'string' ? log.data : JSON.stringify(log.data)) };
-      case 'stdout':
-      case 'stderr':
-        return { main: log.data?.output || (typeof log.data === 'string' ? log.data : '') };
-      case 'progress':
-        return { main: `Progress: ${log.data?.progress || 0}%` };
-      case 'text':
-        return { main: log.data?.content || (typeof log.data === 'string' ? log.data : JSON.stringify(log.data)) };
-      case 'final':
-        return { main: typeof log.data === 'string' ? log.data : (log.data?.content || JSON.stringify(log.data || '')) };
-      case 'error':
-        return { main: `❌ ${log.data?.error || log.data?.tool || ''}: ${typeof log.data === 'string' ? log.data : (log.data?.error || 'Unknown error')}` };
-      case 'warning':
-        return { main: typeof log.data === 'string' ? log.data : JSON.stringify(log.data) };
-      default:
-        return { main: typeof log.data === 'string' ? log.data : JSON.stringify(log.data).substring(0, 100) };
-    }
-  };
-
-  const getLogClass = (type: string): string => {
-    switch (type) {
-      case 'tool_start':
-        return 'text-nb-accent';
-      case 'tool_end':
-        return 'text-nb-success';
-      case 'thinking':
-        return 'text-white/60 italic';
-      case 'status':
-        return 'text-yellow-300';
-      case 'error':
-      case 'stderr':
-        return 'text-nb-error';
-      default:
-        return 'text-nb-text';
-    }
-  };
 
   return (
     <div className="h-full flex flex-col bg-nb-bg">
-      {/* Header - 合并标题和 subagent tabs */}
-      <div className="h-8 px-3 flex items-center gap-2 bg-nb-surface border-b border-nb-border overflow-x-auto">
-        <Terminal size={13} className="text-nb-text-muted shrink-0" />
-        <span className="text-xs font-medium text-nb-text shrink-0">Execution Log</span>
-        
-        {isExecuting && (
-          <span className="flex items-center gap-1 px-1.5 py-0.5 bg-nb-success/20 text-nb-success rounded text-[10px] shrink-0">
-            <Loader2 size={10} className="animate-spin" />
-            Running
-          </span>
-        )}
+      {/* Header */}
+      <div className="h-10 px-4 flex items-center gap-3 bg-nb-surface border-b border-nb-border">
+        <div className="flex items-center gap-2">
+          <Terminal size={14} className="text-nb-text-secondary" />
+          <span className="text-xs font-medium text-nb-text-muted">Execution Log</span>
+        </div>
 
-        {/* Subagent tabs inline */}
+        {/* Subagent tabs */}
         {logSubagents.length > 0 && (
           <>
-            <div className="w-px h-3.5 bg-nb-border mx-1 shrink-0" />
-            <button
-              className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors whitespace-nowrap shrink-0 ${
-                logSubagentId === null 
-                  ? 'bg-white/15 text-white' 
-                  : 'bg-nb-surface-2 text-nb-text-muted hover:bg-nb-surface-2/80'
-              }`}
-              onClick={() => setLogSubagentId(null)}
-            >
-              全部
-            </button>
-            {logSubagents.map(id => (
+            <div className="w-px h-4 bg-nb-border" />
+            <div className="flex items-center gap-1">
               <button
-                key={id}
-                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors whitespace-nowrap shrink-0 ${
-                  logSubagentId === id 
-                    ? 'bg-white/15 text-white' 
-                    : 'bg-nb-surface-2 text-nb-text-muted hover:bg-nb-surface-2/80'
+                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
+                  logSubagentId === null 
+                    ? 'bg-white/10 text-nb-text' 
+                    : 'text-nb-text-secondary hover:text-nb-text-muted hover:bg-nb-hover'
                 }`}
-                onClick={() => setLogSubagentId(id)}
+                onClick={() => setLogSubagentId(null)}
               >
-                {id}
+                全部
               </button>
-            ))}
+              {logSubagents.map(id => (
+                <button
+                  key={id}
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
+                    logSubagentId === id 
+                      ? 'bg-white/10 text-nb-text' 
+                      : 'text-nb-text-secondary hover:text-nb-text-muted hover:bg-nb-hover'
+                  }`}
+                  onClick={() => setLogSubagentId(id)}
+                >
+                  {id}
+                </button>
+              ))}
+            </div>
           </>
         )}
       </div>
 
-      {/* Log content - virtualized for large lists */}
+      {/* Log content */}
       <div
         ref={parentRef}
-        className={`flex-1 overflow-y-auto overflow-x-hidden p-4 font-mono text-xs ${isReady ? 'opacity-100' : 'opacity-0'}`}
-        style={{ transition: 'none' }} // 不要过渡动画，直接切换
+        className={`flex-1 overflow-y-auto overflow-x-hidden p-3 ${isReady ? 'opacity-100' : 'opacity-0'}`}
+        style={{ transition: 'none' }}
         onScroll={handleScroll}
       >
         {logs.length === 0 ? (
-          <div className="text-nb-text-muted text-center py-8">
-            <Terminal size={32} className="mx-auto mb-2 opacity-50" />
+          <div className="h-full flex flex-col items-center justify-center text-center">
+            <div className="w-12 h-12 rounded-xl bg-nb-surface flex items-center justify-center mb-3 border border-nb-border">
+              <Terminal size={24} className="text-nb-text-secondary" />
+            </div>
             {currentAgentId ? (
               <>
-                <p>No execution logs yet</p>
-                <p className="text-xs mt-1 opacity-50">
-                  Logs will appear here when you send a message
-                </p>
+                <p className="text-nb-text-muted text-sm">暂无执行日志</p>
+                <p className="text-nb-text-secondary text-xs mt-1">发送消息后将在这里显示执行过程</p>
               </>
             ) : (
               <>
-                <p>No agent selected</p>
-                <p className="text-xs mt-1 opacity-50">
-                  Select or create an agent to see execution logs
-                </p>
+                <p className="text-nb-text-muted text-sm">请先选择 Agent</p>
+                <p className="text-nb-text-secondary text-xs mt-1">选择或创建一个 Agent 开始使用</p>
               </>
             )}
           </div>
@@ -652,19 +423,20 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
           <>
             {/* 加载更多指示器 */}
             {isLoadingMoreLogs && (
-              <div className="flex justify-center py-2 mb-2">
-                <Loader2 size={20} className="animate-spin text-nb-text-muted" />
-                <span className="ml-2 text-xs text-nb-text-muted">加载历史日志...</span>
+              <div className="flex items-center justify-center gap-2 py-3 mb-2">
+                <Loader2 size={14} className="animate-spin text-nb-text-secondary" />
+                <span className="text-[11px] text-nb-text-secondary">加载历史日志...</span>
               </div>
             )}
             
-            {/* 没有更多日志提示 */}
+            {/* 已加载全部 */}
             {!hasMoreLogs && logs.length > 0 && (
-              <div className="text-center text-xs text-nb-text-muted py-2 mb-2">
+              <div className="text-center text-[11px] text-nb-text-secondary py-2 mb-2">
                 — 已加载全部日志 —
               </div>
             )}
 
+            {/* 虚拟列表 */}
             <div
               style={{
                 height: `${virtualizer.getTotalSize()}px`,
@@ -672,90 +444,38 @@ export function ExecutionLog({ logs, isExecuting }: ExecutionLogProps) {
                 width: '100%',
               }}
             >
-            {virtualizer.getVirtualItems().map((virtualRow) => {
-              const log = logs[virtualRow.index];
-              const formatted = formatLog(log);
-              const success = log.type === 'tool_end' ? log.data?.success : (log.kind === 'tool' && log.status === 'complete' ? log.data?.success : undefined);
-              const logKey = log.id?.toString() || `${virtualRow.index}-${log.timestamp}`;
-              const isExpanded = expandedLogs.has(logKey);
-              
-              return (
-                <div
-                  key={virtualRow.key}
-                  data-index={virtualRow.index}
-                  ref={virtualizer.measureElement}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    transform: `translateY(${virtualRow.start}px)`,
-                  }}
-                  className={`py-2 px-1 ${getLogClass(log.type)} hover:bg-nb-surface-2/50 rounded transition-colors`}
-                >
-                  {/* 新布局：第一行放时间戳 + 名字 + 状态 */}
-                  <div className="space-y-1.5">
-                    {/* 第一行：时间戳 + 图标 + 名字（左）+ 状态标签（右）*/}
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-nb-text-muted text-[10px] font-mono">
-                          {new Date(log.timestamp).toLocaleTimeString()}
-                        </span>
-                        <span className="flex-shrink-0">{getLogIcon(log, success)}</span>
-                        <span className="font-medium">{formatted.main}</span>
-                        {/* 显示 subagent_id 标签 */}
-                        {log.subagent_id && logSubagentId === null && (
-                          <span className="px-1.5 py-0.5 bg-white/10 text-white/60 text-[10px] rounded">
-                            {log.subagent_id}
-                          </span>
-                        )}
-                      </div>
-                      {/* 状态标签放在右边 */}
-                      {formatted.status && (
-                        <span className={`px-2 py-0.5 rounded text-[10px] flex-shrink-0 ${
-                          formatted.isRunning 
-                            ? 'bg-white/10 text-white/70' 
-                            : formatted.isFailed || formatted.status === '失败' 
-                              ? 'bg-nb-error/20 text-nb-error'
-                              : 'bg-nb-success/20 text-nb-success'
-                        }`}>
-                          {formatted.status}
-                        </span>
-                      )}
-                    </div>
-                    
-                    {/* 第二行：摘要信息（全宽，不锁紧）*/}
-                    {formatted.detail && (
-                      <div className="text-[11px] text-nb-text-muted break-all leading-relaxed pl-0">
-                        {formatted.detail}
-                      </div>
-                    )}
-                    
-                    {/* 可展开的详情（全宽）*/}
-                    <LogDetail 
-                      log={log} 
+              {virtualizer.getVirtualItems().map((virtualRow) => {
+                const log = logs[virtualRow.index];
+                const logKey = log.id?.toString() || `${virtualRow.index}-${log.timestamp}`;
+                const isExpanded = expandedLogs.has(logKey);
+                
+                return (
+                  <div
+                    key={virtualRow.key}
+                    data-index={virtualRow.index}
+                    ref={virtualizer.measureElement}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      transform: `translateY(${virtualRow.start}px)`,
+                    }}
+                    className="pb-2"
+                  >
+                    <LogCard
+                      log={log}
                       isExpanded={isExpanded}
                       onToggle={() => toggleLogExpand(logKey)}
+                      showSubagent={logSubagentId === null}
                     />
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
             </div>
           </>
-        )}
-
-        {/* Progress bar when executing */}
-        {isExecuting && (
-          <div className="mt-4 h-1 bg-nb-surface-2 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-white/20 animate-pulse"
-              style={{ width: '60%' }}
-            />
-          </div>
         )}
       </div>
     </div>
   );
 }
-

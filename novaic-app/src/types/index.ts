@@ -276,7 +276,6 @@ export interface AICAgent {
 export interface AppState {
   messages: Message[];
   logs: LogEntry[];
-  isExecuting: boolean;
   isInitialized: boolean;
   vncConnected: boolean;
   vncInteractive: boolean;
