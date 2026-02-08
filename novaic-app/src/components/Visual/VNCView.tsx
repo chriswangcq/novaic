@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef, useMemo, memo } from 'react';
 import { useAppStore } from '../../store';
+import { shallow } from 'zustand/shallow';
 import { Monitor, RefreshCw, Play, Loader2, Lock, Unlock, Copy, Check } from 'lucide-react';
 import { vmService } from '../../services/vm';
 import RFB from 'novnc-rfb';
@@ -43,7 +44,17 @@ interface VNCViewProps {
 }
 
 function VNCViewComponent({ isThumbnail = false }: VNCViewProps) {
-  const { setVncConnected, vncLocked, setVncLocked, currentAgentId, agents } = useAppStore();
+  // 使用 shallow 比较只订阅需要的字段，避免 store 其他字段变化导致重渲染
+  const { setVncConnected, vncLocked, setVncLocked, currentAgentId, agents } = useAppStore(
+    state => ({
+      setVncConnected: state.setVncConnected,
+      vncLocked: state.vncLocked,
+      setVncLocked: state.setVncLocked,
+      currentAgentId: state.currentAgentId,
+      agents: state.agents,
+    }),
+    shallow
+  );
   
   // 获取当前 agent 的信息 - 使用 useMemo 避免 agents 数组引用变化导致的重新计算
   const currentAgent = useMemo(() => 
