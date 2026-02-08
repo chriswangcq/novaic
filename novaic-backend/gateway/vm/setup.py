@@ -764,7 +764,7 @@ runcmd:
   - npm --version | tee /opt/novaic/.npm_version
   # Configure npm registry
   - npm config set registry {npm_registry}
-  - echo "Node.js installed with registry: {npm_registry}"
+  - echo "Node.js installed with registry {npm_registry}"
   
   # ========== Phase 4: Python Virtual Environment ==========
   - echo "=== Phase 4 - Python Virtual Environment ==="
@@ -782,7 +782,7 @@ runcmd:
   - |
     if [ -n "{playwright_mirror}" ]; then
       export PLAYWRIGHT_DOWNLOAD_HOST="{playwright_mirror}"
-      echo "Using Playwright mirror: {playwright_mirror}"
+      echo "Using Playwright mirror {playwright_mirror}"
     fi
     /opt/novaic/venv/bin/playwright install --with-deps chromium
   - echo "Playwright Chromium installed."
@@ -810,14 +810,14 @@ runcmd:
   - sleep 15
   # 验证 X server 是否运行
   - echo "Verifying X server..."
-  - pgrep -x Xorg || (echo "ERROR: X server not running" && exit 1)
+  - pgrep -x Xorg || (echo "ERROR - X server not running" && exit 1)
   # 验证 DISPLAY 是否可用
-  - DISPLAY=:0 xdpyinfo > /dev/null 2>&1 || (echo "ERROR: DISPLAY not available" && exit 1)
+  - DISPLAY=:0 xdpyinfo > /dev/null 2>&1 || (echo "ERROR - DISPLAY not available" && exit 1)
   # 验证 lightdm 状态
-  - systemctl is-active lightdm || (echo "ERROR: lightdm not active" && exit 1)
+  - systemctl is-active lightdm || (echo "ERROR - lightdm not active" && exit 1)
   # 验证桌面会话是否运行
   - echo "Verifying desktop session..."
-  - pgrep -u ubuntu xfce4-session && echo "Desktop session is running" || echo "WARNING: Desktop session not detected yet, but lightdm will auto-start it on first login"
+  - pgrep -u ubuntu xfce4-session && echo "Desktop session is running" || echo "WARNING - Desktop session not detected yet, but lightdm will auto-start it on first login"
   
   # ========== Phase 10: Enable VMUSE Service ==========
   - echo "=== Phase 10 - VMUSE Service ==="
