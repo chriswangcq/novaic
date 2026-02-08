@@ -142,32 +142,34 @@ class AgentConfigManagerDB:
     def _allocate_new_ports(self) -> PortConfig:
         """
         分配新的端口配置，避免与现有 agent 冲突。
-        策略：查询所有已使用的 SSH 端口，找到下一个可用的端口范围。
+        策略：直接扫描数据库中已使用的端口，找到第一个空闲的端口对。
         """
         # 获取所有已存在的 agent
         all_agents = self.repo.list_agents()
         
-        # 收集已使用的 SSH 端口（作为端口范围的标识）
+        # 收集已使用的所有端口
         used_ssh_ports = set()
+        used_vmuse_ports = set()
         for agent in all_agents:
             ports = agent.get("ports", {})
-            if ports and "ssh" in ports:
-                used_ssh_ports.add(ports["ssh"])
+            if ports:
+                if "ssh" in ports:
+                    used_ssh_ports.add(ports["ssh"])
+                if "vmuse" in ports:
+                    used_vmuse_ports.add(ports["vmuse"])
         
-        # 找到下一个可用的端口范围
-        # 假设每个 agent 占用 PORTS_PER_AGENT 个端口
-        index = 0
-        while True:
-            base_port = BASE_PORT + index * PORTS_PER_AGENT
-            ssh_port = base_port + SERVICE_OFFSETS["ssh"]
-            if ssh_port not in used_ssh_ports:
-                break
-            index += 1
-            if index >= MAX_AGENTS:
-                raise RuntimeError(f"No available ports (max {MAX_AGENTS} agents)")
+        logger.info(f"[_allocate_new_ports] Used SSH ports: {sorted(used_ssh_ports)}")
+        logger.info(f"[_allocate_new_ports] Used VMUSE ports: {sorted(used_vmuse_ports)}")
         
-        # 使用现有的 allocate_ports_for_agent 函数分配完整的端口配置
-        return allocate_ports_for_agent(index)
+        # 找到第一个空闲的端口对（不使用 index，直接扫描端口范围）
+        for offset in range(MAX_AGENTS):
+            ssh_port = BASE_PORT + offset
+            vmuse_port = BASE_VMUSE_PORT + offset
+            if ssh_port not in used_ssh_ports and vmuse_port not in used_vmuse_ports:
+                logger.info(f"[_allocate_new_ports] Allocated new ports: SSH={ssh_port}, VMUSE={vmuse_port}")
+                return PortConfig(ssh=ssh_port, vmuse=vmuse_port)
+        
+        raise RuntimeError(f"No available ports (checked {MAX_AGENTS} port pairs from {BASE_PORT}/{BASE_VMUSE_PORT})")
     
     def list_agents(self) -> List[AICAgent]:
         """List all agents."""
