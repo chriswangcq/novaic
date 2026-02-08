@@ -32,10 +32,9 @@ interface SetupStatus {
 }
 
 const STARTUP_STEPS = [
-  { name: '启动虚拟机', weight: 30 },
-  { name: '等待 Agent 服务', weight: 30 },
-  { name: '启动 VNC', weight: 20 },
-  { name: '连接 WebSockify', weight: 20 },
+  { name: '启动虚拟机', weight: 40 },
+  { name: '等待 VmControl', weight: 30 },
+  { name: '连接 VNC', weight: 30 },
 ];
 
 interface VNCViewProps {
@@ -172,18 +171,18 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
     });
   }, []);
 
-  // 启动 VNC (先启动 QEMU，再启动 VNC 服务)
-  const startVnc = useCallback(async () => {
+  // 启动 VM (启动 QEMU，VM 自带 VNC，通过 vmcontrol 代理)
+  const startVm = useCallback(async () => {
     const startTime = Date.now();
-    const log = (msg: string) => console.log(`[VNC startVnc ${((Date.now() - startTime) / 1000).toFixed(1)}s] ${msg}`);
+    const log = (msg: string) => console.log(`[VNC startVm ${((Date.now() - startTime) / 1000).toFixed(1)}s] ${msg}`);
     
-    log('=== startVnc() BEGIN ===');
+    log('=== startVm() BEGIN ===');
     setStatus('starting');
     setErrorMsg('');
     setStartupProgress({ step: 0, stepName: STARTUP_STEPS[0].name, progress: 0, message: '准备启动...' });
     
     try {
-      // Step 1: 先启动 QEMU VM
+      // Step 1: 启动 QEMU VM
       if (!currentAgentId || !currentAgent) {
         throw new Error('No agent selected');
       }
@@ -205,103 +204,85 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
         updateProgress(0, 100, '虚拟机已在运行');
       }
       
-      // Step 2: 等待 Agent 服务就绪 (VM 启动需要时间)
-      log('Step 2: Waiting for Agent service...');
-      updateProgress(1, 0, '等待 Agent 服务启动...');
-      let agentReady = false;
+      // Step 2: 等待 VmControl 就绪 (VM 启动后 VNC 通过 vmcontrol 代理)
+      log('Step 2: Waiting for VmControl...');
+      updateProgress(1, 0, '等待 VmControl 代理...');
+      let vmcontrolReady = false;
       for (let i = 0; i < 30; i++) {
         try {
-          const healthRes = await fetch(`${API_CONFIG.GATEWAY_URL}/api/health`, {
-            method: 'GET',
+          const healthRes = await fetch(`http://localhost:${WS_CONFIG.VMCONTROL_PORT}/health`, {
             signal: AbortSignal.timeout(API_CONFIG.ABORT_TIMEOUT),
           });
           if (healthRes.ok) {
-            agentReady = true;
-            log(`Agent ready after ${i + 1} attempts`);
-            updateProgress(1, 100, 'Agent 服务已就绪');
+            vmcontrolReady = true;
+            log(`VmControl ready after ${i + 1} attempts`);
+            updateProgress(1, 100, 'VmControl 已就绪');
             break;
           }
         } catch {
-          // Agent 还没准备好
+          // VmControl 还没准备好
         }
-        updateProgress(1, Math.min(90, (i + 1) * 3), `等待 Agent 服务... (${i + 1}/30)`);
+        updateProgress(1, Math.min(90, (i + 1) * 3), `等待 VmControl... (${i + 1}/30)`);
         if (i > 0 && i % 5 === 0) {
-          log(`Still waiting for Agent... attempt ${i + 1}/${VM_CONFIG.READY_CHECK_MAX_ATTEMPTS}`);
+          log(`Still waiting for VmControl... attempt ${i + 1}/${VM_CONFIG.READY_CHECK_MAX_ATTEMPTS}`);
         }
         await new Promise(r => setTimeout(r, VM_CONFIG.READY_CHECK_INTERVAL));
       }
       
-      if (!agentReady) {
-        throw new Error('Agent service not responding after VM start');
+      if (!vmcontrolReady) {
+        throw new Error('VmControl service not responding after VM start');
       }
       
-      // Step 3: 调用 Agent 启动 VNC
-      log('Step 3: Calling /api/vnc/start...');
-      updateProgress(2, 0, '正在启动 VNC 服务...');
-      const res = await fetch(`${API_CONFIG.GATEWAY_URL}/api/vnc/start?agent_id=${currentAgentId}`, {
-        method: 'POST',
-      });
-      const data = await res.json();
-      log(`/api/vnc/start response: ${JSON.stringify(data)}`);
+      // Step 3: 直接连接 VNC WebSocket (通过 vmcontrol 代理)
+      log('Step 3: Connecting to VNC via vmcontrol...');
+      updateProgress(2, 0, '正在连接 VNC...');
+      setStatus('running');
       
-      if (data.status === 'started' || data.status === 'running') {
-        updateProgress(2, 100, 'VNC 服务已启动');
-        setStatus('running');
-        
-        // 快速轮询等待 websockify 就绪 (每 500ms 检查一次，最多 10 秒)
-        log('Step 4: Fast polling websockify...');
-        updateProgress(3, 0, '正在连接 WebSockify...');
-        let wsConnected = false;
-        for (let i = 0; i < 20; i++) {
-          try {
-            const wsUrl = wsUrlRef.current || (await vmService.getVncUrl(currentAgentId));
-            wsUrlRef.current = wsUrl;
-            const ws = new WebSocket(wsUrl);
-            await new Promise<void>((resolve, reject) => {
-              const timeout = setTimeout(() => {
-                ws.close();
-                reject(new Error('timeout'));
-              }, 1000);
-              ws.onopen = () => {
-                clearTimeout(timeout);
-                ws.close();
-                resolve();
-              };
-              ws.onerror = () => {
-                clearTimeout(timeout);
-                reject(new Error('ws error'));
-              };
-            });
-            wsConnected = true;
-            log(`WebSocket connected after ${i + 1} attempts!`);
-            updateProgress(3, 100, '连接成功！');
-            break;
-          } catch {
-            // 继续等待
-          }
-          updateProgress(3, Math.min(90, (i + 1) * 5), `连接 WebSockify... (${i + 1}/20)`);
-          await new Promise(r => setTimeout(r, WS_CONFIG.VNC_RECONNECT_DELAY));
+      let wsConnected = false;
+      for (let i = 0; i < 20; i++) {
+        try {
+          const wsUrl = wsUrlRef.current || (await vmService.getVncUrl(currentAgentId));
+          wsUrlRef.current = wsUrl;
+          const ws = new WebSocket(wsUrl);
+          await new Promise<void>((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              ws.close();
+              reject(new Error('timeout'));
+            }, 1000);
+            ws.onopen = () => {
+              clearTimeout(timeout);
+              ws.close();
+              resolve();
+            };
+            ws.onerror = () => {
+              clearTimeout(timeout);
+              reject(new Error('ws error'));
+            };
+          });
+          wsConnected = true;
+          log(`VNC WebSocket connected after ${i + 1} attempts!`);
+          updateProgress(2, 100, '连接成功！');
+          break;
+        } catch {
+          // 继续等待
         }
-        
-        if (wsConnected) {
-          log('=== startVnc() SUCCESS ===');
-          setWsReady(true);
-          setVncConnected(true);
-          setStartupProgress(null);  // 清除进度，显示正常界面
-        } else {
-          log('WebSocket not ready after 10s, falling back to background check');
-          checkWebsockify();
-        }
+        updateProgress(2, Math.min(90, (i + 1) * 5), `连接 VNC... (${i + 1}/20)`);
+        await new Promise(r => setTimeout(r, WS_CONFIG.VNC_RECONNECT_DELAY));
+      }
+      
+      if (wsConnected) {
+        log('=== startVm() SUCCESS ===');
+        setWsReady(true);
+        setVncConnected(true);
+        setStartupProgress(null);  // 清除进度，显示正常界面
       } else {
-        setStatus('error');
-        setErrorMsg(data.error || 'Failed to start VNC');
-        setStartupProgress(null);
-        log(`=== startVnc() FAILED: ${data.error} ===`);
+        log('VNC WebSocket not ready after 10s, falling back to background check');
+        checkWebsockify();
       }
     } catch (e: any) {
-      log(`=== startVnc() ERROR: ${e.message} ===`);
+      log(`=== startVm() ERROR: ${e.message} ===`);
       setStatus('error');
-      setErrorMsg(e.message || 'Failed to start VM or VNC');
+      setErrorMsg(e.message || 'Failed to start VM');
       setStartupProgress(null);
     }
   }, [checkWebsockify, currentAgentId, currentAgent, setVncConnected, updateProgress]);
@@ -437,8 +418,8 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
           setStatus('running');
           checkWebsockify();
         } else {
-          log('VNC not running, calling startVnc()...');
-          startVnc();
+          log('VM not running, calling startVm()...');
+          startVm();
         }
       } catch (e) {
         log(`Agent not available: ${e}`);
@@ -484,7 +465,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
       if (intervalId) clearInterval(intervalId);
       if (setupCheckIntervalId) clearInterval(setupCheckIntervalId);
     };
-  }, [checkVncStatus, checkWebsockify, startVnc, setVncConnected, wsReady, currentAgentId, checkSetupStatus, status]);
+  }, [checkVncStatus, checkWebsockify, startVm, setVncConnected, wsReady, currentAgentId, checkSetupStatus, status]);
 
   // Connect/disconnect RFB inside the app
   useEffect(() => {
@@ -646,7 +627,7 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
         {/* Main actions - right side */}
         {status === 'stopped' || status === 'unknown' || status === 'error' ? (
           <button
-            onClick={startVnc}
+            onClick={startVm}
             className="flex items-center gap-1.5 px-2.5 py-1 bg-nb-success hover:bg-nb-success/80 text-white rounded text-[11px] font-medium transition-colors"
             title="Start VM"
           >
@@ -872,31 +853,31 @@ export function VNCView({ isThumbnail = false }: VNCViewProps) {
           // 启动中 - 简单加载（fallback）
           <div className="absolute inset-0 flex flex-col items-center justify-center text-nb-text-muted">
             <Loader2 size={48} className="mb-4 opacity-50 animate-spin" />
-            <p className="text-sm">正在启动 VNC 服务器...</p>
+            <p className="text-sm">正在启动虚拟机...</p>
           </div>
         ) : (
           // 未连接
           <div className="absolute inset-0 flex flex-col items-center justify-center text-nb-text-muted">
             <Monitor size={48} className="mb-4 opacity-50" />
             <p className="text-sm mb-2">
-              {status === 'error' ? 'VNC 启动失败' : status === 'unknown' ? 'Agent 未连接' : 'VNC 未启动'}
+              {status === 'error' ? '启动失败' : status === 'unknown' ? 'VM 未连接' : 'VM 未启动'}
             </p>
             {errorMsg && (
               <p className="text-xs text-nb-error mb-4">{errorMsg}</p>
             )}
             <p className="text-xs opacity-75 max-w-md text-center mb-6">
               {status === 'unknown' 
-                ? '请确保 VM 正在运行且 Agent 服务已启动'
-                : '点击 Start 按钮启动虚拟机桌面'
+                ? '请确保虚拟机正在运行'
+                : '点击 Start 按钮启动虚拟机'
               }
             </p>
             
             <button
-              onClick={startVnc}
+              onClick={startVm}
               className="px-4 py-2 bg-nb-accent text-white rounded-md hover:bg-nb-accent/80 transition-colors flex items-center gap-2"
             >
               <Play size={16} />
-              <span>启动 VNC</span>
+              <span>启动 VM</span>
             </button>
           </div>
         )}
