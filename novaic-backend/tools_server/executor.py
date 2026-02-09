@@ -584,10 +584,12 @@ class ToolExecutor:
                 task_id = arguments.get("task_id")
                 if not task_id:
                     return {"success": False, "error": "task_id is required"}
+                # 兼容 LLM 可能使用的不同参数名
+                note = arguments.get("note") or arguments.get("progress_notes") or arguments.get("progress") or ""
                 response = await client.post(
                     f"/internal/rt/{self.runtime_id}/quadrant-tasks/{task_id}/progress",
                     json={
-                        "note": arguments.get("note"),
+                        "note": note,
                         "set_ongoing": arguments.get("set_ongoing", False),
                     }
                 )

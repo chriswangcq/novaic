@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { invoke } from '@tauri-apps/api/core';
 import { LogEntry } from '../../types';
 import { CheckCircle, Terminal, Loader2, Brain, XCircle, ChevronDown, ChevronRight, Sparkles, Maximize2, X, Copy, Check, Wrench, Image as ImageIcon } from 'lucide-react';
 import { useAppStore } from '../../store';
@@ -191,6 +192,28 @@ function ToolResultContent({ content, toolCallId, toolName }: ToolResultContentP
   );
 }
 
+// ==================== LLM Debug Response Type ====================
+
+interface LLMDebugResponse {
+  success: boolean;
+  elapsed_ms: number;
+  model?: string;
+  provider?: string;
+  response?: {
+    content?: string;
+    reasoning_content?: string;
+    tool_calls?: Array<{ id: string; type: string; function: { name: string; arguments: string } }>;
+    role: string;
+  };
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+  error?: string;
+  traceback?: string;
+}
+
 // ==================== LLM Input Modal ====================
 
 interface LLMInputModalProps {
@@ -203,16 +226,39 @@ interface LLMInputModalProps {
 }
 
 function LLMInputModal({ isOpen, onClose, messages, model, tools, provider }: LLMInputModalProps) {
+  const { availableModels, apiKeys } = useAppStore();
   const [copied, setCopied] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'messages' | 'tools'>('messages');
+  const [activeTab, setActiveTab] = useState<'view' | 'edit' | 'response'>('view');
+  
+  // 编辑状态
+  const [editedMessages, setEditedMessages] = useState<LLMMessage[]>([]);
+  const [editedModel, setEditedModel] = useState('');
+  const [editedProvider, setEditedProvider] = useState('');
+  const [editingMessageIdx, setEditingMessageIdx] = useState<number | null>(null);
+  const [editingContent, setEditingContent] = useState('');
+  
+  // 调试调用状态
+  const [isLoading, setIsLoading] = useState(false);
+  const [debugResponse, setDebugResponse] = useState<LLMDebugResponse | null>(null);
+  
+  // 初始化编辑状态
+  useEffect(() => {
+    if (isOpen) {
+      setEditedMessages(JSON.parse(JSON.stringify(messages)));
+      setEditedModel(model || '');
+      setEditedProvider(provider || '');
+      setDebugResponse(null);
+    }
+  }, [isOpen, messages, model, provider]);
 
-  // 预解析所有消息（只在 messages 变化时重新计算）
+  // 预解析所有消息
   const parsedMessages = useMemo(() => {
-    return messages.map(msg => ({
+    const msgs = activeTab === 'edit' ? editedMessages : messages;
+    return msgs.map(msg => ({
       original: msg,
       parsed: parseMessageContent(msg),
     }));
-  }, [messages]);
+  }, [messages, editedMessages, activeTab]);
 
   // 统计信息
   const stats = useMemo(() => {
@@ -236,17 +282,118 @@ function LLMInputModal({ isOpen, onClose, messages, model, tools, provider }: LL
   };
 
   const copyFullRequest = () => {
-    // 复制完整请求（截断图片数据）
     const request = {
-      model,
-      provider,
-      messages: messages.map(msg => JSON.parse(getMessageJson(msg, true))),
+      model: activeTab === 'edit' ? editedModel : model,
+      provider: activeTab === 'edit' ? editedProvider : provider,
+      messages: (activeTab === 'edit' ? editedMessages : messages).map(msg => JSON.parse(getMessageJson(msg, true))),
       tools,
     };
     copyToClipboard(JSON.stringify(request, null, 2), 'request');
   };
 
+  // 重置为原始
+  const resetToOriginal = () => {
+    setEditedMessages(JSON.parse(JSON.stringify(messages)));
+    setEditedModel(model || '');
+    setEditedProvider(provider || '');
+    setEditingMessageIdx(null);
+  };
+
+  // 开始编辑消息
+  const startEditMessage = (idx: number) => {
+    const msg = editedMessages[idx];
+    // 获取文本内容
+    let content = '';
+    if (typeof msg.content === 'string') {
+      content = msg.content;
+    } else if (Array.isArray(msg.content)) {
+      content = msg.content
+        .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+        .map(p => p.text)
+        .join('\n');
+    }
+    setEditingContent(content);
+    setEditingMessageIdx(idx);
+  };
+
+  // 保存编辑的消息
+  const saveEditMessage = () => {
+    if (editingMessageIdx === null) return;
+    const newMessages = [...editedMessages];
+    const msg = newMessages[editingMessageIdx];
+    
+    // 更新 content
+    if (typeof msg.content === 'string' || !msg.content) {
+      msg.content = editingContent;
+    } else if (Array.isArray(msg.content)) {
+      // 保留图片，更新文本
+      const nonTextParts = msg.content.filter(p => p.type !== 'text');
+      msg.content = [
+        { type: 'text' as const, text: editingContent },
+        ...nonTextParts,
+      ];
+    }
+    
+    setEditedMessages(newMessages);
+    setEditingMessageIdx(null);
+    setEditingContent('');
+  };
+
+  // 删除消息
+  const deleteMessage = (idx: number) => {
+    setEditedMessages(editedMessages.filter((_, i) => i !== idx));
+  };
+
+  // 添加消息
+  const addMessage = (role: 'user' | 'assistant' | 'system') => {
+    setEditedMessages([...editedMessages, { role, content: '' }]);
+    setEditingMessageIdx(editedMessages.length);
+    setEditingContent('');
+  };
+
+  // 发送调试请求
+  const sendDebugRequest = async () => {
+    if (!editedModel) {
+      setDebugResponse({ success: false, error: 'Please select a model', elapsed_ms: 0 });
+      setActiveTab('response');
+      return;
+    }
+
+    setIsLoading(true);
+    setDebugResponse(null);
+    
+    try {
+      // 使用 Tauri invoke 调用后端 API
+      const data = await invoke<LLMDebugResponse>('gateway_post', {
+        path: '/internal/debug/llm/call',
+        body: {
+          messages: editedMessages,
+          model: editedModel,
+          provider: editedProvider || 'openai',
+          tools: tools,
+          preprocess: false,  // 已经是预处理后的 messages，不需要再次预处理
+        },
+      });
+      
+      setDebugResponse(data);
+      setActiveTab('response');
+    } catch (err) {
+      setDebugResponse({
+        success: false,
+        error: err instanceof Error ? err.message : String(err),
+        elapsed_ms: 0,
+      });
+      setActiveTab('response');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (!isOpen) return null;
+
+  const currentMessages = activeTab === 'edit' ? editedMessages : messages;
+  const currentModel = activeTab === 'edit' ? editedModel : model;
+  const currentProvider = activeTab === 'edit' ? editedProvider : provider;
 
   const modalContent = (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center">
@@ -261,24 +408,33 @@ function LLMInputModal({ isOpen, onClose, messages, model, tools, provider }: LL
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-nb-border shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
-              <Terminal size={16} className="text-blue-400" />
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+              activeTab === 'edit' ? 'bg-emerald-500/20' : 
+              activeTab === 'response' ? 'bg-violet-500/20' : 'bg-blue-500/20'
+            }`}>
+              <Terminal size={16} className={
+                activeTab === 'edit' ? 'text-emerald-400' : 
+                activeTab === 'response' ? 'text-violet-400' : 'text-blue-400'
+              } />
             </div>
             <div>
-              <h3 className="text-sm font-medium text-nb-text">LLM 调用完整入参</h3>
+              <h3 className="text-sm font-medium text-nb-text">
+                {activeTab === 'edit' ? 'LLM 调试模式' : 
+                 activeTab === 'response' ? 'LLM 响应结果' : 'LLM 调用入参'}
+              </h3>
               <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                {provider && (
+                {currentProvider && (
                   <span className="text-[10px] text-nb-text-secondary bg-nb-surface-2 px-1.5 py-0.5 rounded">
-                    {provider}
+                    {currentProvider}
                   </span>
                 )}
-                {model && (
+                {currentModel && (
                   <span className="text-[10px] text-nb-text-secondary bg-nb-surface-2 px-1.5 py-0.5 rounded">
-                    {model}
+                    {currentModel}
                   </span>
                 )}
                 <span className="text-[10px] text-nb-text-secondary">
-                  {messages.length} 条消息
+                  {currentMessages.length} 条消息
                 </span>
                 {tools && tools.length > 0 && (
                   <span className="text-[10px] text-nb-text-secondary">
@@ -291,9 +447,6 @@ function LLMInputModal({ isOpen, onClose, messages, model, tools, provider }: LL
                     {stats.totalImages} 张图片
                   </span>
                 )}
-                <span className="text-[10px] text-nb-text-muted">
-                  ~{(stats.totalSize / 1024).toFixed(1)}KB
-                </span>
               </div>
             </div>
           </div>
@@ -301,10 +454,10 @@ function LLMInputModal({ isOpen, onClose, messages, model, tools, provider }: LL
             <button
               onClick={copyFullRequest}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] text-nb-text-muted hover:text-nb-text hover:bg-nb-hover transition-colors"
-              title="复制完整请求 JSON（图片数据已截断）"
+              title="复制完整请求 JSON"
             >
               {copied === 'request' ? <Check size={12} className="text-nb-success" /> : <Copy size={12} />}
-              复制请求
+              复制
             </button>
             <button
               onClick={onClose}
@@ -316,40 +469,217 @@ function LLMInputModal({ isOpen, onClose, messages, model, tools, provider }: LL
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center gap-1 px-4 py-2 border-b border-nb-border shrink-0">
-          <button
-            onClick={() => setActiveTab('messages')}
-            className={`px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors ${
-              activeTab === 'messages' 
-                ? 'bg-blue-500/20 text-blue-400' 
-                : 'text-nb-text-secondary hover:text-nb-text hover:bg-nb-hover'
-            }`}
-          >
-            <span className="flex items-center gap-1.5">
-              <Terminal size={12} />
-              Messages ({messages.length})
-            </span>
-          </button>
-          {tools && tools.length > 0 && (
+        <div className="flex items-center justify-between px-4 py-2 border-b border-nb-border shrink-0">
+          <div className="flex items-center gap-1">
             <button
-              onClick={() => setActiveTab('tools')}
+              onClick={() => setActiveTab('view')}
               className={`px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors ${
-                activeTab === 'tools' 
-                  ? 'bg-orange-500/20 text-orange-400' 
+                activeTab === 'view' 
+                  ? 'bg-blue-500/20 text-blue-400' 
                   : 'text-nb-text-secondary hover:text-nb-text hover:bg-nb-hover'
               }`}
             >
               <span className="flex items-center gap-1.5">
-                <Wrench size={12} />
-                Tools ({tools.length})
+                <Terminal size={12} />
+                查看
               </span>
             </button>
+            <button
+              onClick={() => setActiveTab('edit')}
+              className={`px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors ${
+                activeTab === 'edit' 
+                  ? 'bg-emerald-500/20 text-emerald-400' 
+                  : 'text-nb-text-secondary hover:text-nb-text hover:bg-nb-hover'
+              }`}
+            >
+              <span className="flex items-center gap-1.5">
+                ✏️ 编辑调试
+              </span>
+            </button>
+            {debugResponse && (
+              <button
+                onClick={() => setActiveTab('response')}
+                className={`px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors ${
+                  activeTab === 'response' 
+                    ? 'bg-violet-500/20 text-violet-400' 
+                    : 'text-nb-text-secondary hover:text-nb-text hover:bg-nb-hover'
+                }`}
+              >
+                <span className="flex items-center gap-1.5">
+                  {debugResponse.success ? '✅' : '❌'} 响应
+                </span>
+              </button>
+            )}
+          </div>
+          
+          {/* 编辑模式操作按钮 */}
+          {activeTab === 'edit' && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={resetToOriginal}
+                className="px-2.5 py-1.5 rounded-md text-[11px] text-nb-text-muted hover:text-nb-text hover:bg-nb-hover transition-colors"
+              >
+                重置
+              </button>
+              <button
+                onClick={sendDebugRequest}
+                disabled={isLoading || !editedModel}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors ${
+                  isLoading || !editedModel
+                    ? 'bg-nb-surface-2 text-nb-text-muted cursor-not-allowed'
+                    : 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30'
+                }`}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 size={12} className="animate-spin" />
+                    发送中...
+                  </>
+                ) : (
+                  <>
+                    🚀 发送请求
+                  </>
+                )}
+              </button>
+            </div>
           )}
         </div>
         
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {activeTab === 'messages' && parsedMessages.map(({ original, parsed }, idx) => (
+          {/* 编辑模式：模型选择 */}
+          {activeTab === 'edit' && (
+            <div className="flex items-center gap-4 p-3 bg-nb-surface-2 rounded-lg border border-nb-border/30">
+              <div className="flex items-center gap-2">
+                <label className="text-[10px] text-nb-text-secondary">Model:</label>
+                <select
+                  value={editedModel}
+                  onChange={(e) => {
+                    const selectedModel = availableModels.find(m => m.id === e.target.value);
+                    setEditedModel(e.target.value);
+                    if (selectedModel) {
+                      setEditedProvider(selectedModel.provider);
+                    }
+                  }}
+                  className="px-2 py-1 text-[11px] bg-nb-bg border border-nb-border rounded min-w-[200px] text-nb-text"
+                >
+                  <option value="">选择模型...</option>
+                  {availableModels.map(m => {
+                    const apiKey = apiKeys.find(k => k.id === m.api_key_id);
+                    return (
+                      <option key={m.id} value={m.id}>
+                        {m.name || m.id} ({apiKey?.name || m.provider})
+                      </option>
+                    );
+                  })}
+                  {/* 如果当前模型不在列表中，也显示它 */}
+                  {model && !availableModels.find(m => m.id === model) && (
+                    <option value={model}>{model} (原始)</option>
+                  )}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-[10px] text-nb-text-secondary">Provider:</label>
+                <span className="px-2 py-1 text-[11px] bg-nb-bg border border-nb-border rounded text-nb-text-secondary">
+                  {editedProvider || provider || 'auto'}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* 响应结果 Tab */}
+          {activeTab === 'response' && debugResponse && (
+            <div className="space-y-3">
+              {/* 状态栏 */}
+              <div className={`p-3 rounded-lg border ${
+                debugResponse.success 
+                  ? 'bg-emerald-500/5 border-emerald-500/20' 
+                  : 'bg-red-500/5 border-red-500/20'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className={`text-sm font-medium ${
+                      debugResponse.success ? 'text-emerald-400' : 'text-red-400'
+                    }`}>
+                      {debugResponse.success ? '✅ 成功' : '❌ 失败'}
+                    </span>
+                    <span className="text-[11px] text-nb-text-secondary">
+                      {debugResponse.elapsed_ms}ms
+                    </span>
+                    {debugResponse.model && (
+                      <span className="text-[10px] text-nb-text-muted bg-nb-surface-2 px-1.5 py-0.5 rounded">
+                        {debugResponse.model}
+                      </span>
+                    )}
+                  </div>
+                  {debugResponse.usage && (
+                    <div className="flex items-center gap-2 text-[10px] text-nb-text-secondary">
+                      <span>Prompt: {debugResponse.usage.prompt_tokens}</span>
+                      <span>Completion: {debugResponse.usage.completion_tokens}</span>
+                      <span className="font-medium">Total: {debugResponse.usage.total_tokens}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 错误信息 */}
+              {debugResponse.error && (
+                <div className="p-3 bg-red-500/5 border border-red-500/20 rounded-lg">
+                  <div className="text-[11px] text-red-400 font-medium mb-1">Error:</div>
+                  <pre className="text-[11px] text-red-300 whitespace-pre-wrap">{debugResponse.error}</pre>
+                  {debugResponse.traceback && (
+                    <details className="mt-2">
+                      <summary className="text-[10px] text-nb-text-secondary cursor-pointer">Traceback</summary>
+                      <pre className="mt-1 text-[10px] text-nb-text-muted whitespace-pre-wrap overflow-x-auto">
+                        {debugResponse.traceback}
+                      </pre>
+                    </details>
+                  )}
+                </div>
+              )}
+
+              {/* 响应内容 */}
+              {debugResponse.response?.content && (
+                <div className="p-3 bg-green-500/5 border border-green-500/20 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] text-green-400 font-medium">Content:</span>
+                    <button
+                      onClick={() => copyToClipboard(debugResponse.response?.content || '', 'response-content')}
+                      className="text-nb-text-secondary hover:text-nb-text"
+                    >
+                      {copied === 'response-content' ? <Check size={12} className="text-nb-success" /> : <Copy size={12} />}
+                    </button>
+                  </div>
+                  <pre className="text-[11px] text-nb-text-muted whitespace-pre-wrap break-words">
+                    {debugResponse.response.content}
+                  </pre>
+                </div>
+              )}
+
+              {/* 推理内容 */}
+              {debugResponse.response?.reasoning_content && (
+                <div className="p-3 bg-violet-500/5 border border-violet-500/20 rounded-lg">
+                  <div className="text-[11px] text-violet-400 font-medium mb-2">Reasoning:</div>
+                  <pre className="text-[11px] text-nb-text-muted whitespace-pre-wrap break-words">
+                    {debugResponse.response.reasoning_content}
+                  </pre>
+                </div>
+              )}
+
+              {/* Tool Calls */}
+              {debugResponse.response?.tool_calls && debugResponse.response.tool_calls.length > 0 && (
+                <div className="p-3 bg-orange-500/5 border border-orange-500/20 rounded-lg">
+                  <div className="text-[11px] text-orange-400 font-medium mb-2">
+                    Tool Calls ({debugResponse.response.tool_calls.length}):
+                  </div>
+                  <SmartValue value={debugResponse.response.tool_calls} copyable={true} />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 消息列表（查看/编辑模式） */}
+          {(activeTab === 'view' || activeTab === 'edit') && parsedMessages.map(({ original, parsed }, idx) => (
             <div 
               key={idx} 
               className={`rounded-lg border ${
@@ -392,60 +722,123 @@ function LLMInputModal({ isOpen, onClose, messages, model, tools, provider }: LL
                     #{idx + 1} · {(parsed.rawSize / 1024).toFixed(1)}KB
                   </span>
                 </div>
-                <button
-                  onClick={() => copyToClipboard(getMessageJson(original, false), `msg-${idx}`)}
-                  className="text-nb-text-secondary hover:text-nb-text transition-colors"
-                  title="复制原始 JSON"
-                >
-                  {copied === `msg-${idx}` ? <Check size={12} className="text-nb-success" /> : <Copy size={12} />}
-                </button>
+                <div className="flex items-center gap-1">
+                  {activeTab === 'edit' && (
+                    <>
+                      <button
+                        onClick={() => startEditMessage(idx)}
+                        className="px-2 py-1 text-[10px] text-nb-text-secondary hover:text-emerald-400 hover:bg-emerald-500/10 rounded transition-colors"
+                      >
+                        编辑
+                      </button>
+                      <button
+                        onClick={() => deleteMessage(idx)}
+                        className="px-2 py-1 text-[10px] text-nb-text-secondary hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                      >
+                        删除
+                      </button>
+                    </>
+                  )}
+                  <button
+                    onClick={() => copyToClipboard(getMessageJson(original, false), `msg-${idx}`)}
+                    className="text-nb-text-secondary hover:text-nb-text transition-colors p-1"
+                    title="复制原始 JSON"
+                  >
+                    {copied === `msg-${idx}` ? <Check size={12} className="text-nb-success" /> : <Copy size={12} />}
+                  </button>
+                </div>
               </div>
-              <div className="p-3 max-h-[400px] overflow-y-auto">
-                {/* tool role 消息尝试用 SmartValue 渲染（支持 JSON 树形展开和图片预览） */}
-                {original.role === 'tool' ? (
-                  <ToolResultContent content={original.content} toolCallId={original.tool_call_id} toolName={original.name} />
-                ) : (
-                  <pre className="text-[11px] text-nb-text-muted whitespace-pre-wrap break-words font-mono leading-relaxed">
-                    {parsed.displayText}
-                  </pre>
-                )}
-              </div>
+              
+              {/* 编辑框 */}
+              {activeTab === 'edit' && editingMessageIdx === idx ? (
+                <div className="p-3 space-y-2">
+                  <textarea
+                    value={editingContent}
+                    onChange={(e) => setEditingContent(e.target.value)}
+                    className="w-full h-40 p-2 text-[11px] font-mono bg-nb-bg border border-nb-border rounded text-nb-text resize-y"
+                    placeholder="输入消息内容..."
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={saveEditMessage}
+                      className="px-3 py-1.5 text-[11px] bg-emerald-500/20 text-emerald-400 rounded hover:bg-emerald-500/30 transition-colors"
+                    >
+                      保存
+                    </button>
+                    <button
+                      onClick={() => { setEditingMessageIdx(null); setEditingContent(''); }}
+                      className="px-3 py-1.5 text-[11px] text-nb-text-secondary hover:text-nb-text rounded hover:bg-nb-hover transition-colors"
+                    >
+                      取消
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 max-h-[400px] overflow-y-auto">
+                  {original.role === 'tool' ? (
+                    <ToolResultContent content={original.content} toolCallId={original.tool_call_id} toolName={original.name} />
+                  ) : (
+                    <pre className="text-[11px] text-nb-text-muted whitespace-pre-wrap break-words font-mono leading-relaxed">
+                      {parsed.displayText}
+                    </pre>
+                  )}
+                </div>
+              )}
             </div>
           ))}
 
-          {activeTab === 'tools' && tools && tools.map((tool, idx) => (
-            <div key={idx} className="rounded-lg border bg-orange-500/5 border-orange-500/20">
-              <div className="flex items-center justify-between px-3 py-2 border-b border-orange-500/20">
-                <div className="flex items-center gap-2">
-                  <Wrench size={12} className="text-orange-400" />
-                  <span className="text-[11px] font-semibold text-orange-400">
-                    {tool.function?.name || 'unknown'}
-                  </span>
-                </div>
-                <button
-                  onClick={() => copyToClipboard(JSON.stringify(tool, null, 2), `tool-${idx}`)}
-                  className="text-nb-text-secondary hover:text-nb-text transition-colors"
-                >
-                  {copied === `tool-${idx}` ? <Check size={12} className="text-nb-success" /> : <Copy size={12} />}
-                </button>
-              </div>
-              <div className="p-3 space-y-2">
-                {tool.function?.description && (
-                  <p className="text-[11px] text-nb-text-muted">{tool.function.description}</p>
-                )}
-                {tool.function?.parameters ? (
-                  <details className="group">
-                    <summary className="text-[10px] text-nb-text-secondary cursor-pointer hover:text-nb-text">
-                      Parameters Schema
-                    </summary>
-                    <pre className="mt-2 text-[10px] text-nb-text-secondary font-mono bg-nb-bg p-2 rounded overflow-x-auto max-h-[300px] overflow-y-auto">
-                      {JSON.stringify(tool.function.parameters, null, 2)}
-                    </pre>
-                  </details>
-                ) : null}
-              </div>
+          {/* 添加消息按钮（编辑模式） */}
+          {activeTab === 'edit' && (
+            <div className="flex items-center gap-2 p-3 border border-dashed border-nb-border/50 rounded-lg">
+              <span className="text-[10px] text-nb-text-secondary">添加消息:</span>
+              <button
+                onClick={() => addMessage('user')}
+                className="px-2 py-1 text-[10px] text-blue-400 bg-blue-500/10 rounded hover:bg-blue-500/20 transition-colors"
+              >
+                + User
+              </button>
+              <button
+                onClick={() => addMessage('assistant')}
+                className="px-2 py-1 text-[10px] text-green-400 bg-green-500/10 rounded hover:bg-green-500/20 transition-colors"
+              >
+                + Assistant
+              </button>
+              <button
+                onClick={() => addMessage('system')}
+                className="px-2 py-1 text-[10px] text-amber-400 bg-amber-500/10 rounded hover:bg-amber-500/20 transition-colors"
+              >
+                + System
+              </button>
             </div>
-          ))}
+          )}
+
+          {/* Tools 列表（查看模式） */}
+          {activeTab === 'view' && tools && tools.length > 0 && (
+            <details className="group">
+              <summary className="flex items-center gap-2 px-3 py-2 bg-orange-500/5 border border-orange-500/20 rounded-lg cursor-pointer hover:bg-orange-500/10 transition-colors">
+                <Wrench size={12} className="text-orange-400" />
+                <span className="text-[11px] font-medium text-orange-400">Tools ({tools.length})</span>
+              </summary>
+              <div className="mt-2 space-y-2">
+                {tools.map((tool, idx) => (
+                  <div key={idx} className="p-3 bg-nb-surface-2 rounded-lg border border-nb-border/30">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[11px] font-medium text-nb-text">{tool.function?.name}</span>
+                      <button
+                        onClick={() => copyToClipboard(JSON.stringify(tool, null, 2), `tool-${idx}`)}
+                        className="text-nb-text-secondary hover:text-nb-text"
+                      >
+                        {copied === `tool-${idx}` ? <Check size={12} className="text-nb-success" /> : <Copy size={12} />}
+                      </button>
+                    </div>
+                    {tool.function?.description && (
+                      <p className="text-[10px] text-nb-text-muted">{tool.function.description}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
         </div>
       </div>
     </div>

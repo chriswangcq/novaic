@@ -101,12 +101,14 @@ def handle_llm_call(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
                     tools = []
                     for tool in raw_tools:
                         if isinstance(tool, dict) and tool.get("name"):
+                            # API 返回 input_schema，兼容 inputSchema
+                            schema = tool.get("input_schema") or tool.get("inputSchema") or {}
                             tools.append({
                                 "type": "function",
                                 "function": {
                                     "name": tool.get("name"),
                                     "description": tool.get("description", ""),
-                                    "parameters": tool.get("inputSchema", {}),
+                                    "parameters": schema,
                                 },
                             })
         except Exception as e:
