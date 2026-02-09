@@ -1,12 +1,459 @@
-import { useEffect, useLayoutEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useLayoutEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { LogEntry } from '../../types';
-import { CheckCircle, Terminal, Loader2, Brain, XCircle, ChevronDown, ChevronRight, Sparkles } from 'lucide-react';
+import { CheckCircle, Terminal, Loader2, Brain, XCircle, ChevronDown, ChevronRight, Sparkles, Maximize2, X, Copy, Check, Wrench, Image as ImageIcon } from 'lucide-react';
 import { useAppStore } from '../../store';
 import { useVirtualList } from '../../hooks/useVirtualList';
 import { useScrollPagination } from '../../hooks/useScrollPagination';
 import { LOG_ESTIMATE_SIZE, LOG_OVERSCAN } from '../../constants/scroll';
 import { SmartValue } from './SmartValue';
 import { formatTime } from '../../utils/time';
+
+// ==================== LLM Message Types ====================
+
+// OpenAI 多模态 content 格式
+type ContentPart = 
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string; detail?: string } };
+
+// LLM 消息格式（完整）
+interface LLMMessage {
+  role: string;
+  content?: string | ContentPart[];
+  tool_calls?: Array<{
+    id: string;
+    type: string;
+    function: { name: string; arguments: string };
+  }>;
+  tool_call_id?: string;  // tool role 消息
+  name?: string;          // tool role 消息的工具名
+}
+
+// ==================== Helper Functions ====================
+
+/**
+ * 解析消息内容，返回用于显示的信息
+ * - 处理字符串和数组格式的 content
+ * - 处理 tool_calls
+ * - 图片数据用占位符替代（避免渲染卡顿）
+ */
+function parseMessageContent(msg: LLMMessage): {
+  displayText: string;
+  hasImages: boolean;
+  imageCount: number;
+  hasToolCalls: boolean;
+  toolCallNames: string[];
+  rawSize: number;
+} {
+  let displayText = '';
+  let hasImages = false;
+  let imageCount = 0;
+  let rawSize = 0;
+  const hasToolCalls = !!(msg.tool_calls && msg.tool_calls.length > 0);
+  const toolCallNames = msg.tool_calls?.map(tc => tc.function?.name) || [];
+
+  // 处理 content
+  if (typeof msg.content === 'string') {
+    displayText = msg.content;
+    rawSize = msg.content.length;
+  } else if (Array.isArray(msg.content)) {
+    // 多模态 content 数组
+    const textParts: string[] = [];
+    for (const part of msg.content) {
+      if (part.type === 'text') {
+        textParts.push(part.text);
+        rawSize += part.text.length;
+      } else if (part.type === 'image_url') {
+        hasImages = true;
+        imageCount++;
+        const url = part.image_url?.url || '';
+        // 计算原始大小（base64 数据）
+        if (url.startsWith('data:')) {
+          const base64Part = url.split(',')[1] || '';
+          rawSize += base64Part.length;
+          textParts.push(`[IMAGE ${imageCount}: ${(base64Part.length / 1024).toFixed(1)}KB base64]`);
+        } else {
+          rawSize += url.length;
+          textParts.push(`[IMAGE ${imageCount}: ${url.slice(0, 100)}${url.length > 100 ? '...' : ''}]`);
+        }
+      }
+    }
+    displayText = textParts.join('\n\n');
+  }
+
+  // 处理 tool_calls
+  if (hasToolCalls && !displayText) {
+    displayText = `[Tool Calls: ${toolCallNames.join(', ')}]\n\n${JSON.stringify(msg.tool_calls, null, 2)}`;
+    rawSize = JSON.stringify(msg.tool_calls).length;
+  } else if (hasToolCalls) {
+    displayText += `\n\n[Tool Calls: ${toolCallNames.join(', ')}]\n${JSON.stringify(msg.tool_calls, null, 2)}`;
+    rawSize += JSON.stringify(msg.tool_calls).length;
+  }
+
+  // tool role 消息
+  if (msg.role === 'tool' && msg.tool_call_id) {
+    const prefix = `[Tool Result for: ${msg.tool_call_id}${msg.name ? ` (${msg.name})` : ''}]\n\n`;
+    displayText = prefix + displayText;
+  }
+
+  return {
+    displayText: displayText || '(empty)',
+    hasImages,
+    imageCount,
+    hasToolCalls,
+    toolCallNames,
+    rawSize,
+  };
+}
+
+/**
+ * 获取消息的原始 JSON（用于复制）
+ * 图片数据截断以避免复制过大内容
+ */
+function getMessageJson(msg: LLMMessage, truncateImages = true): string {
+  if (!truncateImages) {
+    return JSON.stringify(msg, null, 2);
+  }
+  
+  // 深拷贝并截断图片数据
+  const clone = JSON.parse(JSON.stringify(msg));
+  if (Array.isArray(clone.content)) {
+    for (const part of clone.content) {
+      if (part.type === 'image_url' && part.image_url?.url?.startsWith('data:')) {
+        const [prefix] = part.image_url.url.split(',');
+        part.image_url.url = `${prefix},[BASE64_DATA_TRUNCATED]`;
+      }
+    }
+  }
+  return JSON.stringify(clone, null, 2);
+}
+
+// ==================== Tool Result Content ====================
+
+interface ToolResultContentProps {
+  content?: string | ContentPart[];
+  toolCallId?: string;
+  toolName?: string;
+}
+
+/**
+ * 渲染 tool role 消息的内容
+ * - 尝试解析 JSON 并用 SmartValue 渲染（支持树形展开和图片预览）
+ * - 如果不是 JSON，则显示纯文本
+ */
+function ToolResultContent({ content, toolCallId, toolName }: ToolResultContentProps) {
+  // 提取文本内容
+  let textContent = '';
+  if (typeof content === 'string') {
+    textContent = content;
+  } else if (Array.isArray(content)) {
+    // 多模态 content，提取 text 部分
+    textContent = content
+      .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
+      .map(part => part.text)
+      .join('\n');
+  }
+
+  // 尝试解析 JSON
+  let parsedJson: unknown = null;
+  let isJson = false;
+  
+  if (textContent) {
+    try {
+      parsedJson = JSON.parse(textContent);
+      isJson = typeof parsedJson === 'object' && parsedJson !== null;
+    } catch {
+      // 不是 JSON，保持 isJson = false
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      {/* Tool Call ID 信息 */}
+      {(toolCallId || toolName) && (
+        <div className="text-[10px] text-purple-400/70 mb-2">
+          {toolName && <span className="font-medium">{toolName}</span>}
+          {toolCallId && <span className="text-nb-text-muted ml-2">({toolCallId})</span>}
+        </div>
+      )}
+      
+      {/* 内容渲染 */}
+      {isJson ? (
+        // JSON 用 SmartValue 渲染（树形展开 + 图片预览）
+        <SmartValue value={parsedJson} copyable={false} />
+      ) : (
+        // 非 JSON 用纯文本
+        <pre className="text-[11px] text-nb-text-muted whitespace-pre-wrap break-words font-mono leading-relaxed">
+          {textContent || '(empty)'}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+// ==================== LLM Input Modal ====================
+
+interface LLMInputModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  messages: LLMMessage[];
+  model?: string;
+  tools?: Array<{ type: string; function: { name: string; description: string; parameters: unknown } }>;
+  provider?: string;
+}
+
+function LLMInputModal({ isOpen, onClose, messages, model, tools, provider }: LLMInputModalProps) {
+  const [copied, setCopied] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'messages' | 'tools'>('messages');
+
+  // 预解析所有消息（只在 messages 变化时重新计算）
+  const parsedMessages = useMemo(() => {
+    return messages.map(msg => ({
+      original: msg,
+      parsed: parseMessageContent(msg),
+    }));
+  }, [messages]);
+
+  // 统计信息
+  const stats = useMemo(() => {
+    let totalImages = 0;
+    let totalSize = 0;
+    for (const { parsed } of parsedMessages) {
+      totalImages += parsed.imageCount;
+      totalSize += parsed.rawSize;
+    }
+    return { totalImages, totalSize };
+  }, [parsedMessages]);
+
+  const copyToClipboard = async (text: string, key: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(key);
+      setTimeout(() => setCopied(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  const copyFullRequest = () => {
+    // 复制完整请求（截断图片数据）
+    const request = {
+      model,
+      provider,
+      messages: messages.map(msg => JSON.parse(getMessageJson(msg, true))),
+      tools,
+    };
+    copyToClipboard(JSON.stringify(request, null, 2), 'request');
+  };
+
+  if (!isOpen) return null;
+
+  const modalContent = (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      
+      {/* Modal */}
+      <div className="relative w-[95vw] max-w-5xl h-[90vh] bg-nb-surface rounded-xl border border-nb-border shadow-2xl flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-nb-border shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
+              <Terminal size={16} className="text-blue-400" />
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-nb-text">LLM 调用完整入参</h3>
+              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                {provider && (
+                  <span className="text-[10px] text-nb-text-secondary bg-nb-surface-2 px-1.5 py-0.5 rounded">
+                    {provider}
+                  </span>
+                )}
+                {model && (
+                  <span className="text-[10px] text-nb-text-secondary bg-nb-surface-2 px-1.5 py-0.5 rounded">
+                    {model}
+                  </span>
+                )}
+                <span className="text-[10px] text-nb-text-secondary">
+                  {messages.length} 条消息
+                </span>
+                {tools && tools.length > 0 && (
+                  <span className="text-[10px] text-nb-text-secondary">
+                    · {tools.length} 个工具
+                  </span>
+                )}
+                {stats.totalImages > 0 && (
+                  <span className="text-[10px] text-cyan-400 flex items-center gap-1">
+                    <ImageIcon size={10} />
+                    {stats.totalImages} 张图片
+                  </span>
+                )}
+                <span className="text-[10px] text-nb-text-muted">
+                  ~{(stats.totalSize / 1024).toFixed(1)}KB
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={copyFullRequest}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] text-nb-text-muted hover:text-nb-text hover:bg-nb-hover transition-colors"
+              title="复制完整请求 JSON（图片数据已截断）"
+            >
+              {copied === 'request' ? <Check size={12} className="text-nb-success" /> : <Copy size={12} />}
+              复制请求
+            </button>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-nb-text-secondary hover:text-nb-text hover:bg-nb-hover transition-colors"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex items-center gap-1 px-4 py-2 border-b border-nb-border shrink-0">
+          <button
+            onClick={() => setActiveTab('messages')}
+            className={`px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors ${
+              activeTab === 'messages' 
+                ? 'bg-blue-500/20 text-blue-400' 
+                : 'text-nb-text-secondary hover:text-nb-text hover:bg-nb-hover'
+            }`}
+          >
+            <span className="flex items-center gap-1.5">
+              <Terminal size={12} />
+              Messages ({messages.length})
+            </span>
+          </button>
+          {tools && tools.length > 0 && (
+            <button
+              onClick={() => setActiveTab('tools')}
+              className={`px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors ${
+                activeTab === 'tools' 
+                  ? 'bg-orange-500/20 text-orange-400' 
+                  : 'text-nb-text-secondary hover:text-nb-text hover:bg-nb-hover'
+              }`}
+            >
+              <span className="flex items-center gap-1.5">
+                <Wrench size={12} />
+                Tools ({tools.length})
+              </span>
+            </button>
+          )}
+        </div>
+        
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          {activeTab === 'messages' && parsedMessages.map(({ original, parsed }, idx) => (
+            <div 
+              key={idx} 
+              className={`rounded-lg border ${
+                original.role === 'system' ? 'bg-amber-500/5 border-amber-500/20' : 
+                original.role === 'user' ? 'bg-blue-500/5 border-blue-500/20' : 
+                original.role === 'assistant' ? 'bg-green-500/5 border-green-500/20' :
+                original.role === 'tool' ? 'bg-purple-500/5 border-purple-500/20' : 
+                'bg-nb-surface-2 border-nb-border/30'
+              }`}
+            >
+              <div className={`flex items-center justify-between px-3 py-2 border-b ${
+                original.role === 'system' ? 'border-amber-500/20' : 
+                original.role === 'user' ? 'border-blue-500/20' : 
+                original.role === 'assistant' ? 'border-green-500/20' :
+                original.role === 'tool' ? 'border-purple-500/20' : 
+                'border-nb-border/30'
+              }`}>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`text-[10px] font-semibold ${
+                    original.role === 'system' ? 'text-amber-400' : 
+                    original.role === 'user' ? 'text-blue-400' : 
+                    original.role === 'assistant' ? 'text-green-400' :
+                    original.role === 'tool' ? 'text-purple-400' : 
+                    'text-nb-text-secondary'
+                  }`}>
+                    {original.role.toUpperCase()}
+                  </span>
+                  {parsed.hasToolCalls && (
+                    <span className="text-[9px] text-orange-400 bg-orange-500/10 px-1.5 py-0.5 rounded">
+                      +tool_calls
+                    </span>
+                  )}
+                  {parsed.hasImages && (
+                    <span className="text-[9px] text-cyan-400 bg-cyan-500/10 px-1.5 py-0.5 rounded flex items-center gap-1">
+                      <ImageIcon size={9} />
+                      {parsed.imageCount}
+                    </span>
+                  )}
+                  <span className="text-[10px] text-nb-text-secondary">
+                    #{idx + 1} · {(parsed.rawSize / 1024).toFixed(1)}KB
+                  </span>
+                </div>
+                <button
+                  onClick={() => copyToClipboard(getMessageJson(original, false), `msg-${idx}`)}
+                  className="text-nb-text-secondary hover:text-nb-text transition-colors"
+                  title="复制原始 JSON"
+                >
+                  {copied === `msg-${idx}` ? <Check size={12} className="text-nb-success" /> : <Copy size={12} />}
+                </button>
+              </div>
+              <div className="p-3 max-h-[400px] overflow-y-auto">
+                {/* tool role 消息尝试用 SmartValue 渲染（支持 JSON 树形展开和图片预览） */}
+                {original.role === 'tool' ? (
+                  <ToolResultContent content={original.content} toolCallId={original.tool_call_id} toolName={original.name} />
+                ) : (
+                  <pre className="text-[11px] text-nb-text-muted whitespace-pre-wrap break-words font-mono leading-relaxed">
+                    {parsed.displayText}
+                  </pre>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {activeTab === 'tools' && tools && tools.map((tool, idx) => (
+            <div key={idx} className="rounded-lg border bg-orange-500/5 border-orange-500/20">
+              <div className="flex items-center justify-between px-3 py-2 border-b border-orange-500/20">
+                <div className="flex items-center gap-2">
+                  <Wrench size={12} className="text-orange-400" />
+                  <span className="text-[11px] font-semibold text-orange-400">
+                    {tool.function?.name || 'unknown'}
+                  </span>
+                </div>
+                <button
+                  onClick={() => copyToClipboard(JSON.stringify(tool, null, 2), `tool-${idx}`)}
+                  className="text-nb-text-secondary hover:text-nb-text transition-colors"
+                >
+                  {copied === `tool-${idx}` ? <Check size={12} className="text-nb-success" /> : <Copy size={12} />}
+                </button>
+              </div>
+              <div className="p-3 space-y-2">
+                {tool.function?.description && (
+                  <p className="text-[11px] text-nb-text-muted">{tool.function.description}</p>
+                )}
+                {tool.function?.parameters ? (
+                  <details className="group">
+                    <summary className="text-[10px] text-nb-text-secondary cursor-pointer hover:text-nb-text">
+                      Parameters Schema
+                    </summary>
+                    <pre className="mt-2 text-[10px] text-nb-text-secondary font-mono bg-nb-bg p-2 rounded overflow-x-auto max-h-[300px] overflow-y-auto">
+                      {JSON.stringify(tool.function.parameters, null, 2)}
+                    </pre>
+                  </details>
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  // 使用 Portal 渲染到 body，确保在最上层
+  return createPortal(modalContent, document.body);
+}
 
 interface ExecutionLogProps {
   logs: LogEntry[];
@@ -28,6 +475,8 @@ interface LogCardProps {
 }
 
 function LogCard({ log, isExpanded, onToggle, showSubagent }: LogCardProps) {
+  const [showLLMModal, setShowLLMModal] = useState(false);
+
   // 提取数据
   const getInputData = (): unknown => {
     if (log.input) return log.input;
@@ -57,9 +506,24 @@ function LogCard({ log, isExpanded, onToggle, showSubagent }: LogCardProps) {
     return '';
   };
 
+  // 获取 LLM 输入（完整入参：messages, model, tools, provider）
+  // messages 中的 content 可能是 string 或 ContentPart[]（多模态）
+  interface LLMInputData {
+    messages?: LLMMessage[];
+    model?: string;
+    tools?: Array<{ type: string; function: { name: string; description: string; parameters: unknown } }>;
+    provider?: string;
+  }
+  const getLLMInput = (): LLMInputData | null => {
+    if (log.input?.messages) return log.input as LLMInputData;
+    if (log.data?.input?.messages) return log.data.input as LLMInputData;
+    return null;
+  };
+
   const input = getInputData();
   const result = getResultData();
   const thinkingContent = getThinkingContent();
+  const llmInput = getLLMInput();
   const toolName = log.data?.tool || log.event_key || '';
   const isThink = log.kind === 'think' || log.type === 'thinking';
   const isTool = log.kind === 'tool' || log.type === 'tool_start' || log.type === 'tool_end';
@@ -67,7 +531,7 @@ function LogCard({ log, isExpanded, onToggle, showSubagent }: LogCardProps) {
   const isFailed = log.status === 'failed' || log.data?.success === false || !!(log.result?.error || log.data?.error);
   
   const hasDetails = Boolean(
-    (isThink && thinkingContent) ||
+    (isThink && (thinkingContent || llmInput)) ||
     (isTool && (input || result))
   );
 
@@ -196,6 +660,89 @@ function LogCard({ log, isExpanded, onToggle, showSubagent }: LogCardProps) {
         <div className="px-3 pb-3 space-y-2">
           <div className="h-px bg-nb-border/30" />
           
+          {/* LLM 输入（messages） */}
+          {isThink && llmInput?.messages ? (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-[10px] text-blue-400/70 font-medium">
+                  <Terminal size={10} />
+                  <span>LLM 输入</span>
+                  {llmInput.provider && (
+                    <span className="px-1.5 py-0.5 bg-nb-surface-2 text-nb-text-secondary text-[9px] rounded">
+                      {llmInput.provider}
+                    </span>
+                  )}
+                  {llmInput.model && (
+                    <span className="px-1.5 py-0.5 bg-nb-surface-2 text-nb-text-secondary text-[9px] rounded">
+                      {llmInput.model}
+                    </span>
+                  )}
+                  <span className="text-nb-text-secondary text-[9px]">
+                    {llmInput.messages.length} 条消息
+                  </span>
+                  {llmInput.tools && llmInput.tools.length > 0 && (
+                    <span className="text-nb-text-secondary text-[9px]">
+                      · {llmInput.tools.length} 个工具
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowLLMModal(true); }}
+                  className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-nb-text-secondary hover:text-nb-text hover:bg-nb-hover transition-colors"
+                >
+                  <Maximize2 size={10} />
+                  <span>展开查看</span>
+                </button>
+              </div>
+              <div className="bg-nb-bg rounded-md border border-nb-border/30 max-h-[200px] overflow-y-auto">
+                {llmInput.messages.slice(0, 5).map((msg, idx) => {
+                  // 使用 parseMessageContent 处理多模态内容
+                  const parsed = parseMessageContent(msg);
+                  return (
+                    <div key={idx} className={`p-2 border-b border-nb-border/20 last:border-b-0 ${
+                      msg.role === 'system' ? 'bg-amber-500/5' : 
+                      msg.role === 'user' ? 'bg-blue-500/5' : 
+                      msg.role === 'assistant' ? 'bg-green-500/5' : 
+                      msg.role === 'tool' ? 'bg-purple-500/5' : ''
+                    }`}>
+                      <div className={`text-[9px] font-medium mb-1 flex items-center gap-1.5 ${
+                        msg.role === 'system' ? 'text-amber-400/70' : 
+                        msg.role === 'user' ? 'text-blue-400/70' : 
+                        msg.role === 'assistant' ? 'text-green-400/70' : 
+                        msg.role === 'tool' ? 'text-purple-400/70' : 'text-nb-text-secondary'
+                      }`}>
+                        <span>{msg.role.toUpperCase()}</span>
+                        {parsed.hasToolCalls && <span className="text-orange-400">[+tools]</span>}
+                        {parsed.hasImages && <span className="text-cyan-400">[+{parsed.imageCount}img]</span>}
+                        <span className="text-nb-text-muted">· {(parsed.rawSize / 1024).toFixed(1)}KB</span>
+                      </div>
+                      <div className="text-[11px] text-nb-text-muted whitespace-pre-wrap break-words line-clamp-3">
+                        {parsed.displayText.length > 300 ? parsed.displayText.slice(0, 300) + '...' : parsed.displayText}
+                      </div>
+                    </div>
+                  );
+                })}
+                {llmInput.messages.length > 5 && (
+                  <div className="p-2 text-center text-[10px] text-nb-text-secondary">
+                    还有 {llmInput.messages.length - 5} 条消息，点击"展开查看"查看全部
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : null}
+          
+          {/* LLM Input Modal - 使用 Portal 渲染到 body 最上层 */}
+          {isThink && llmInput?.messages && (
+            <LLMInputModal
+              isOpen={showLLMModal}
+              onClose={() => setShowLLMModal(false)}
+              messages={llmInput.messages}
+              model={llmInput.model}
+              tools={llmInput.tools}
+              provider={llmInput.provider}
+            />
+          )}
+
           {/* 思考内容 */}
           {isThink && thinkingContent ? (
             <div className="space-y-1.5">
