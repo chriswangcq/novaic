@@ -17,6 +17,7 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 
 from queue_service.exceptions import TaskNotFoundError
+from common.utils.time import utc_now_iso
 
 
 class TaskQueue:
@@ -57,7 +58,7 @@ class TaskQueue:
         """
         task_id = f"task-{uuid.uuid4().hex[:12]}"
         payload_json = json.dumps(payload, ensure_ascii=False)
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         
         try:
             with self.db.transaction(lock_type="global"):
@@ -96,7 +97,7 @@ class TaskQueue:
         
         with self.db.transaction(lock_type="global"):
             topic_placeholders = ",".join("?" * len(topics))
-            now = datetime.utcnow().isoformat()
+            now = utc_now_iso()
             
             cursor = self.db.execute(f"""
                 UPDATE tq_tasks 
@@ -131,7 +132,7 @@ class TaskQueue:
         """标记任务完成"""
         with self.db.transaction(lock_type="task", resource_id=task_id):
             result_json = json.dumps(result, ensure_ascii=False) if result else None
-            now = datetime.utcnow().isoformat()
+            now = utc_now_iso()
             
             cursor = self.db.execute("""
                 UPDATE tq_tasks 
@@ -153,7 +154,7 @@ class TaskQueue:
     ) -> str:
         """标记任务失败"""
         with self.db.transaction(lock_type="task", resource_id=task_id):
-            now = datetime.utcnow().isoformat()
+            now = utc_now_iso()
             
             if retry:
                 cursor = self.db.execute("""
@@ -193,7 +194,7 @@ class TaskQueue:
     def heartbeat(self, task_id: str) -> bool:
         """更新心跳时间"""
         with self.db.transaction(lock_type="task", resource_id=task_id):
-            now = datetime.utcnow().isoformat()
+            now = utc_now_iso()
             
             cursor = self.db.execute("""
                 UPDATE tq_tasks 
@@ -293,7 +294,7 @@ class TaskQueue:
         Returns:
             取消的任务数量
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         
         with self.db.transaction(lock_type="global"):
             if agent_id:

@@ -25,6 +25,7 @@ import traceback
 from task_queue.client import TaskQueueClient, GatewayInternalClient, SagaClient
 from task_queue.heartbeat_sync import HeartbeatSync
 from common.config import ServiceConfig
+from common.utils.time import utc_now_iso
 
 
 @dataclass
@@ -87,7 +88,7 @@ class TaskWorkerSync:
     def run(self):
         """主循环（同步）"""
         self._running = True
-        self.metrics.started_at = datetime.utcnow().isoformat()
+        self.metrics.started_at = utc_now_iso()
         
         self._log(f"Starting (worker_id: {self.worker_id}, topics: {self.topics})...")
         
@@ -200,7 +201,7 @@ class TaskWorkerSync:
         
         finally:
             self.metrics.tasks_processed += 1
-            self.metrics.last_task_at = datetime.utcnow().isoformat()
+            self.metrics.last_task_at = utc_now_iso()
     
     def _call_handler(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -229,7 +230,7 @@ class TaskWorkerSync:
     
     def _log(self, message: str, level: str = "info"):
         """日志"""
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = utc_now_iso()
         prefix = f"[{timestamp}] [{self.worker_id}]"
         
         if level == "error":

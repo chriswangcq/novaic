@@ -22,6 +22,8 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional, Callable, Awaitable
 from dataclasses import dataclass, field
 
+from common.utils.time import utc_now_iso
+
 logger = logging.getLogger(__name__)
 
 
@@ -1132,7 +1134,7 @@ class TaskManager:
         if not self.db:
             return 0
         
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         cleaned = 0
         
         try:

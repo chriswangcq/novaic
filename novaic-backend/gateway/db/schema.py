@@ -25,9 +25,10 @@ v22: Candidate models - candidate_models table with available flag.
 v23: Execution logs - subagent_id, status, kind, event_key, updated_at for upsert support.
 v24: Runtime Summary - subagents.hrl/summary_lock, agent_runtimes.simple_summary/hot_summary/cold_summary.
 v25: Tools Server persistence - agent_runtimes.tool_ports for Tools Server recovery.
+v33: Alive Agent Phase 1 - Bootstrap markdown files and active hours for agent_drive.
 """
 
-SCHEMA_VERSION = 32
+SCHEMA_VERSION = 33
 
 SCHEMA_SQL = """
 -- ========================================
@@ -377,6 +378,17 @@ CREATE TABLE IF NOT EXISTS agent_drive (
     enabled_tool_categories TEXT DEFAULT '[]',   -- JSON: enabled tool categories
     disabled_tools TEXT DEFAULT '[]',            -- JSON: explicitly disabled tool names
     custom_instructions TEXT DEFAULT '',          -- User-defined extra instructions
+    
+    -- Bootstrap markdown files (Phase 1 - Alive Agent)
+    soul_md TEXT DEFAULT '',              -- Agent personality definition
+    heartbeat_md TEXT DEFAULT '',         -- Wake-up checklist
+    memory_md TEXT DEFAULT '',            -- Long-term memory (agent-maintained)
+    user_md TEXT DEFAULT '',              -- User profile (agent-maintained)
+    
+    -- Active Hours configuration
+    active_hours_start TEXT DEFAULT '09:00',
+    active_hours_end TEXT DEFAULT '22:00',
+    active_hours_timezone TEXT DEFAULT 'Asia/Shanghai',
     
     -- Timestamps
     created_at TEXT DEFAULT (datetime('now')),
@@ -908,6 +920,41 @@ def run_migration_sync(conn, from_version: int):
             print("[schema] Migrated to v32: agent_skills FK constraint removed for builtin skills support")
         except Exception as e:
             print(f"[schema] Migration v32 warning: {e}")
+
+    # v33: Alive Agent Phase 1 - Bootstrap markdown files and active hours
+    if from_version < 33:
+        # Bootstrap markdown files
+        try:
+            conn.execute("ALTER TABLE agent_drive ADD COLUMN soul_md TEXT DEFAULT ''")
+        except Exception:
+            pass
+        try:
+            conn.execute("ALTER TABLE agent_drive ADD COLUMN heartbeat_md TEXT DEFAULT ''")
+        except Exception:
+            pass
+        try:
+            conn.execute("ALTER TABLE agent_drive ADD COLUMN memory_md TEXT DEFAULT ''")
+        except Exception:
+            pass
+        try:
+            conn.execute("ALTER TABLE agent_drive ADD COLUMN user_md TEXT DEFAULT ''")
+        except Exception:
+            pass
+        # Active hours configuration
+        try:
+            conn.execute("ALTER TABLE agent_drive ADD COLUMN active_hours_start TEXT DEFAULT '09:00'")
+        except Exception:
+            pass
+        try:
+            conn.execute("ALTER TABLE agent_drive ADD COLUMN active_hours_end TEXT DEFAULT '22:00'")
+        except Exception:
+            pass
+        try:
+            conn.execute("ALTER TABLE agent_drive ADD COLUMN active_hours_timezone TEXT DEFAULT 'Asia/Shanghai'")
+        except Exception:
+            pass
+        conn.execute("PRAGMA user_version = 33")
+        print("[schema] Migrated to v33: agent_drive bootstrap markdown files and active hours")
 
     # Update version
     conn.execute(

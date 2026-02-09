@@ -9,6 +9,7 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 from common.db.database import Database
+from common.utils.time import utc_now_iso
 
 
 class SessionRepository:
@@ -60,7 +61,7 @@ class SessionRepository:
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Create a new session."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         
         # Use agent_id if available, otherwise use session_id
         resource_id = agent_id if agent_id else session_id
@@ -78,7 +79,7 @@ class SessionRepository:
         with self.db.transaction(lock_type="agent", resource_id=session_id):
             self.db.execute(
                 "UPDATE sessions SET updated_at = ? WHERE id = ?",
-                (datetime.utcnow().isoformat(), session_id)
+                (utc_now_iso(), session_id)
             )
     
     def delete_session(self, session_id: str) -> bool:
@@ -155,7 +156,7 @@ class SessionRepository:
         metadata: Optional[Dict[str, Any]] = None,
     ) -> int:
         """Add a message to a session."""
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = utc_now_iso()
         
         # Ensure session exists
         self.ensure_session(session_id)
@@ -191,7 +192,7 @@ class SessionRepository:
         summary_tokens: int,
     ) -> int:
         """Add a compaction summary to a session."""
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = utc_now_iso()
         
         with self.db.transaction(lock_type="agent", resource_id=session_id):
             cursor = self.db.execute(

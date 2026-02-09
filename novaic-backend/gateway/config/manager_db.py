@@ -15,6 +15,8 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
+from common.utils.time import utc_now_iso
+
 from gateway.db.access import get_db
 from common.db.database import Database
 from gateway.db.repositories.config import ConfigRepository
@@ -58,7 +60,7 @@ class ApiKeyEntry(BaseModel):
     api_base: Optional[str] = None
     deployment_name: Optional[str] = None
     api_version: Optional[str] = None
-    created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    created_at: str = Field(default_factory=lambda: utc_now_iso())
     
     def to_public(self) -> dict:
         """Return public version (hides sensitive data)"""

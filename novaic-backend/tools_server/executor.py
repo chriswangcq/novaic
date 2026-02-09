@@ -103,6 +103,7 @@ BUILTIN_TOOL_NAMES = {
     # Drive 工具
     "drive_update_profile",
     "drive_update_relationship",
+    "memory_update",
     
     # Goal 工具（通过 memory 实现）
     "goal_set",
@@ -441,6 +442,52 @@ class ToolExecutor:
                 )
                 return self._handle_response(response)
             
+            elif tool_name == "memory_update":
+                target = arguments.get("target", "memory")
+                content = arguments.get("content")
+                append_content = arguments.get("append")
+                reason = arguments.get("reason", "")
+                
+                # 确定要更新的字段
+                field = "memory_md" if target == "memory" else "user_md"
+                
+                # 如果是 append 模式，先获取现有内容
+                final_content = content
+                if append_content and not content:
+                    # 获取现有内容
+                    try:
+                        drive_resp = await client.get(
+                            f"/api/agents/{self.agent_id}/bootstrap-files"
+                        )
+                        if drive_resp.status_code == 200:
+                            drive_data = drive_resp.json()
+                            current = drive_data.get(field, "")
+                            final_content = (current + "\n\n" + append_content) if current else append_content
+                        else:
+                            final_content = append_content
+                    except Exception as e:
+                        logger.warning(f"[ToolExecutor] Failed to get current {field}: {e}")
+                        final_content = append_content
+                
+                if not final_content:
+                    return {"success": False, "error": "Either 'content' or 'append' must be provided"}
+                
+                # 调用 API 更新
+                response = await client.post(
+                    f"/api/agents/{self.agent_id}/bootstrap-files",
+                    json={field: final_content}
+                )
+                
+                result = self._handle_response(response)
+                if result.get("success"):
+                    result["target"] = target
+                    result["field"] = field
+                    result["reason"] = reason
+                    result["content_length"] = len(final_content)
+                    logger.info(f"[ToolExecutor] memory_update: updated {field} for agent {self.agent_id}, length={len(final_content)}, reason={reason}")
+                
+                return result
+            
             # ==================== Goal 工具（通过 Memory 实现）====================
             elif tool_name == "goal_set":
                 # 保存 goal 到 memory 的 goals namespace
@@ -612,7 +659,18 @@ class ToolExecutor:
                 return self._handle_response(response)
             
             elif tool_name == "chat_reply":
-                # 发送回复消息
+                message = arguments.get("message", "").strip()
+                
+                # HEARTBEAT_OK 协议：如果消息是 HEARTBEAT_OK，静默完成不发送给用户
+                if message == "HEARTBEAT_OK" or message.startswith("HEARTBEAT_OK"):
+                    logger.info(f"[ToolExecutor] HEARTBEAT_OK received for runtime {self.runtime_id}, silent completion")
+                    return {
+                        "success": True,
+                        "silent": True,
+                        "message": "Heartbeat acknowledged. No message sent to user."
+                    }
+                
+                # 正常发送回复消息
                 response = await client.post(
                     f"/internal/rt/{self.runtime_id}/chat/event",
                     json={

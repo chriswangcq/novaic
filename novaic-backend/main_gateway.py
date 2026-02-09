@@ -14,6 +14,8 @@ import sys
 import logging
 from datetime import datetime
 
+from common.utils.time import utc_now_iso
+
 # Set no_proxy to avoid proxy issues with local services
 os.environ['no_proxy'] = 'localhost,127.0.0.1,::1'
 os.environ['NO_PROXY'] = 'localhost,127.0.0.1,::1'
@@ -582,7 +584,7 @@ def broadcast_chat_message(message: Dict[str, Any], agent_id: Optional[str] = No
     # Extract message info
     msg_type = message.get("type", "UNKNOWN")
     msg_id = message.get("id", str(uuid_module.uuid4())[:12])
-    timestamp = message.get("timestamp", datetime.utcnow().isoformat())
+    timestamp = message.get("timestamp", utc_now_iso())
     content = message.get("content", message.get("message"))
     
     # Debug: log content extraction
@@ -638,7 +640,7 @@ def update_message_status(message_id: str, status: str):
         "type": "STATUS_UPDATE",
         "message_id": message_id,
         "status": status,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": utc_now_iso(),
     }
     for queue in _chat_subscribers.values():
         try:
@@ -697,7 +699,7 @@ def broadcast_log(log: Dict[str, Any], agent_id: Optional[str] = None) -> Option
         row_id = chat_service.repo.add_execution_log(
             agent_id=agent_id,
             type=log.get("type", "unknown"),
-            timestamp=log.get("timestamp", datetime.utcnow().isoformat()),
+            timestamp=log.get("timestamp", utc_now_iso()),
             data=log.get("data"),
         )
     
@@ -781,7 +783,7 @@ def receive_chat_event(data: dict):
     
     # Generate message ID and timestamp
     message_id = str(uuid_module.uuid4())[:12]
-    timestamp = datetime.utcnow().isoformat()
+    timestamp = utc_now_iso()
     
     # Create chat message
     chat_message = {
@@ -923,7 +925,7 @@ def submit_user_response(request_id: str, data: dict):
         return {"error": "Question not found or expired", "success": False}
     
     # Store response in database
-    timestamp = datetime.utcnow().isoformat()
+    timestamp = utc_now_iso()
     chat_service.repo.add_question_response(
         request_id=request_id,
         response=data.get("response", ""),
@@ -1501,7 +1503,7 @@ def get_agent_inbox(agent_id: str):
                     "id": str(uuid_module.uuid4())[:8],
                     "message_id": msg_id,
                     "status": "read",
-                    "timestamp": datetime.utcnow().isoformat()
+                    "timestamp": utc_now_iso()
                 })
             except asyncio.QueueFull:
                 pass
@@ -1564,7 +1566,7 @@ def interrupt_agent(data: dict = {}):
         return {
             "success": True,
             "message": "Agent interrupted",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": utc_now_iso()
         }
     except Exception as e:
         print(f"[API] Interrupt error: {e}")
@@ -1596,7 +1598,7 @@ def agent_rest(data: dict):
         "reason": reason,
         "wake_triggers": [{"type": "user_response"}],
         "handoff_notes": handoff_notes,
-        "rest_started": datetime.utcnow().isoformat(),
+        "rest_started": utc_now_iso(),
     }
     chat_service.repo.set_agent_rest_state(agent_id, rest_state)
     
@@ -1604,7 +1606,7 @@ def agent_rest(data: dict):
     chat_message = {
         "id": str(uuid_module.uuid4())[:12],
         "type": "AGENT_NOTIFY",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": utc_now_iso(),
         "message": f"💤 进入休息状态: {reason}",
         "level": "info",
         "handoff_notes": handoff_notes,
@@ -1675,7 +1677,7 @@ def wake_agent(data: dict = {}):
     chat_message = {
         "id": str(uuid_module.uuid4())[:12],
         "type": "AGENT_NOTIFY",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": utc_now_iso(),
         "message": f"☀️ 已唤醒: {reason}",
         "level": "success",
     }

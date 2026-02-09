@@ -10,6 +10,7 @@ from datetime import datetime
 import json
 
 from common.enums import RuntimeStatus, SubagentStatus
+from common.utils.time import utc_now_iso
 from common.config import ServiceConfig
 from gateway.db.access import get_db
 from .helpers import resolve_runtime_ids, get_runtime_context, _runtime_to_dict, _subagent_to_dict
@@ -168,7 +169,6 @@ def has_new_messages(agent_id: str):
 @router.patch("/messages/mark-read")
 def mark_messages_read(data: Dict[str, Any]):
     """Mark messages as read and broadcast status update."""
-    from datetime import datetime
     import uuid as uuid_module
     from gateway.db.repositories.message import MessageRepository
     
@@ -200,7 +200,7 @@ def mark_messages_read(data: Dict[str, Any]):
                 "message_id": msg_id,
                 "status": "read",
                 "agent_id": agent_id,  # Include agent_id for SSE filtering
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": utc_now_iso(),
             }
             for queue in _chat_subscribers.values():
                 try:
@@ -219,7 +219,6 @@ def mark_messages_processed(data: Dict[str, Any]):
     
     Note: 'processed' concept is merged into 'read'. Once read=1, message is considered processed.
     """
-    from datetime import datetime
     import uuid as uuid_module
     from gateway.db.repositories.message import MessageRepository
     
@@ -252,7 +251,7 @@ def mark_messages_processed(data: Dict[str, Any]):
                 "message_id": msg_id,
                 "status": "read",
                 "agent_id": agent_id,  # Include agent_id for SSE filtering
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": utc_now_iso(),
             }
             for queue in _chat_subscribers.values():
                 try:

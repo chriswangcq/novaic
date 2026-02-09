@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 
 from common.enums import RuntimeStatus
 from common.config import ServiceConfig
+from common.utils.time import utc_now_iso
 
 
 @dataclass
@@ -125,7 +126,7 @@ class RuntimeRepository:
             The created Runtime
         """
         runtime_id = f"rt-{uuid.uuid4().hex[:12]}"
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         
         runtime = AgentRuntime(
             runtime_id=runtime_id,
@@ -281,7 +282,7 @@ class RuntimeRepository:
     
     def set_mcp_url(self, runtime_id: str, mcp_url: str):
         """Set the MCP URL for a runtime."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:
             conn.execute("""
                 UPDATE agent_runtimes 
@@ -292,7 +293,7 @@ class RuntimeRepository:
     
     def update_phase(self, runtime_id: str, phase: str):
         """Update runtime phase."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:
             conn.execute("""
                 UPDATE agent_runtimes 
@@ -311,7 +312,7 @@ class RuntimeRepository:
         Returns:
             New round_id if advanced, None if CAS failed or runtime not found.
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:
             if expected_round_num is not None:
@@ -343,7 +344,7 @@ class RuntimeRepository:
     
     def update_context(self, runtime_id: str, context: List[Dict[str, Any]]):
         """Update runtime context."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:
             conn.execute("""
                 UPDATE agent_runtimes 
@@ -363,7 +364,7 @@ class RuntimeRepository:
     
     def set_phase(self, runtime_id: str, phase: str):
         """Set runtime phase only."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:
             conn.execute("""
                 UPDATE agent_runtimes 
@@ -374,7 +375,7 @@ class RuntimeRepository:
     
     def set_pending_actions(self, runtime_id: str, task_ids: List[str], phase: str = 'waiting_actions'):
         """Set pending action task IDs for current round."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:
             conn.execute("""
                 UPDATE agent_runtimes 
@@ -390,7 +391,7 @@ class RuntimeRepository:
             runtime_id: Runtime ID
             status: Status value (should use RuntimeStatus enum values)
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:
             conn.execute("""
                 UPDATE agent_runtimes 
@@ -401,7 +402,7 @@ class RuntimeRepository:
     
     def mark_completed(self, runtime_id: str):
         """Mark runtime as completed."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:
             conn.execute("""
                 UPDATE agent_runtimes 
@@ -412,7 +413,7 @@ class RuntimeRepository:
     
     def mark_failed(self, runtime_id: str, error: str):
         """Mark runtime as failed."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:
             conn.execute("""
                 UPDATE agent_runtimes 
@@ -430,7 +431,7 @@ class RuntimeRepository:
         v18: ActionsCollector checks status='resting' to skip further
         think rounds and go directly to summarize.
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:
             conn.execute("""
                 UPDATE agent_runtimes 
@@ -445,7 +446,7 @@ class RuntimeRepository:
     
     def set_summary(self, runtime_id: str, summary: str):
         """Set the summary for a completed runtime."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:
             conn.execute("""
                 UPDATE agent_runtimes 
@@ -459,7 +460,7 @@ class RuntimeRepository:
         
         Simple summary: Plain text summary of the runtime's purpose/outcome.
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:
             conn.execute("""
                 UPDATE agent_runtimes 
@@ -475,7 +476,7 @@ class RuntimeRepository:
         - Earlier rounds: LLM-generated summary paragraph
         - Last N rounds: Full content with think + tools + results
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:
             conn.execute("""
                 UPDATE agent_runtimes 
@@ -489,7 +490,7 @@ class RuntimeRepository:
         
         Cold summary: LLM-generated summary of all rounds.
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:
             conn.execute("""
                 UPDATE agent_runtimes 
@@ -500,7 +501,7 @@ class RuntimeRepository:
     
     def set_hot_cold_summary(self, runtime_id: str, hot_summary: str, cold_summary: str):
         """Set both hot and cold summaries atomically."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:
             conn.execute("""
                 UPDATE agent_runtimes 
@@ -523,7 +524,7 @@ class RuntimeRepository:
             runtime_id: Runtime ID
             tool_ports: MCP ports dict (e.g. {"vmuse": 8080})
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:
             conn.execute("""
                 UPDATE agent_runtimes 
@@ -537,7 +538,7 @@ class RuntimeRepository:
         
         Called by Tools Server when unregistering a runtime's tools.
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:
             conn.execute("""
                 UPDATE agent_runtimes 
@@ -595,7 +596,7 @@ class RuntimeRepository:
     
     def mark_merged(self, runtime_id: str):
         """Mark a runtime's summary as merged into historical_summary."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:
             conn.execute("""
                 UPDATE agent_runtimes 
@@ -608,7 +609,7 @@ class RuntimeRepository:
         """Mark multiple runtimes as merged."""
         if not runtime_ids:
             return
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         placeholders = ','.join(['?' for _ in runtime_ids])
         with self.db.get_connection("agent", resource_id=runtime_ids[0] if runtime_ids else None) as conn:
             conn.execute(f"""
@@ -730,7 +731,7 @@ class RuntimeRepository:
     def wake_main_runtime(self, runtime_id: str) -> bool:
         """DEPRECATED: Wake logic now handled by SubAgent status."""
         # For backward compatibility, just set status to active
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:
             cursor = conn.execute("""
                 UPDATE agent_runtimes 
@@ -772,7 +773,7 @@ class RuntimeRepository:
             round_num: Round number to reset to (default 1)
             round_id: Round ID to set (default "round-{round_num}")
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         actual_round_id = round_id or f"round-{round_num}"
         
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:
@@ -790,7 +791,7 @@ class RuntimeRepository:
             runtime_id: Runtime ID
             value: Value to set (default 1)
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:
             conn.execute(
                 "UPDATE agent_runtimes SET need_rest = ?, updated_at = ? WHERE runtime_id = ?",
@@ -810,7 +811,7 @@ class RuntimeRepository:
         Returns:
             True if update succeeded (phase matched expected), False otherwise
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:
             if round_id:
@@ -838,7 +839,7 @@ class RuntimeRepository:
         Returns:
             True if update succeeded (summarized matched expected), False otherwise
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:
             cursor = conn.execute("""
@@ -860,7 +861,7 @@ class RuntimeRepository:
         Returns:
             True if update succeeded (need_rest matched expected), False otherwise
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:
             cursor = conn.execute("""
@@ -882,7 +883,7 @@ class RuntimeRepository:
         Returns:
             True if update succeeded, False otherwise
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         placeholders = ','.join(['?' for _ in expected_status])
         
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:
@@ -906,7 +907,7 @@ class RuntimeRepository:
         Returns:
             True if update succeeded, False otherwise
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         placeholders = ','.join(['?' for _ in expected_status])
         
         with self.db.get_connection("agent", resource_id=runtime_id) as conn:

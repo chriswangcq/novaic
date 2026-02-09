@@ -24,6 +24,7 @@ from typing import Optional, Dict, Any, List, Callable, Awaitable
 
 from .saga import TaskQueueProtocol
 from .exceptions import RetryableError
+from common.utils.time import utc_now_iso
 
 
 # Handler 类型定义
@@ -129,7 +130,7 @@ class Worker:
         """
         self._running = True
         self._shutdown_event.clear()
-        self.metrics.started_at = datetime.utcnow().isoformat()
+        self.metrics.started_at = utc_now_iso()
         
         # 设置信号处理
         self._setup_signals()
@@ -148,7 +149,7 @@ class Worker:
                     if task:
                         self._current_task = task
                         self.metrics.claimed += 1
-                        self.metrics.last_claim_at = datetime.utcnow().isoformat()
+                        self.metrics.last_claim_at = utc_now_iso()
                         
                         # 处理任务
                         await self._process_task(task)
@@ -193,7 +194,7 @@ class Worker:
             elapsed_ms = (asyncio.get_event_loop().time() - start_time) * 1000
             self.metrics.processed += 1
             self.metrics.total_process_time_ms += elapsed_ms
-            self.metrics.last_process_at = datetime.utcnow().isoformat()
+            self.metrics.last_process_at = utc_now_iso()
             
             # 标记完成
             await self.queue.complete(task_id, result)

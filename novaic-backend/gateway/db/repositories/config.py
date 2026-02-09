@@ -10,6 +10,7 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 from common.db.database import Database
+from common.utils.time import utc_now_iso
 
 
 class ConfigRepository:
@@ -71,7 +72,7 @@ class ConfigRepository:
         api_version: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Create a new API key."""
-        created_at = datetime.utcnow().isoformat()
+        created_at = utc_now_iso()
         
         with self.db.transaction(lock_type="global"):
             self.db.execute(

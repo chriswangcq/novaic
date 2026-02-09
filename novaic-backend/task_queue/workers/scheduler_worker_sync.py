@@ -20,6 +20,7 @@ import traceback
 
 from task_queue.client import GatewayInternalClient
 from common.config import ServiceConfig
+from common.utils.time import utc_now_iso
 
 
 @dataclass
@@ -75,7 +76,7 @@ class SchedulerWorkerSync:
     def run(self):
         """主循环（同步）"""
         self._running = True
-        self.metrics.started_at = datetime.utcnow().isoformat()
+        self.metrics.started_at = utc_now_iso()
         
         self._log(f"Starting (worker_id: {self.worker_id})...")
         self._log(f"Gateway URL: {self.gateway_url}")
@@ -108,7 +109,7 @@ class SchedulerWorkerSync:
     def _check_and_wake(self):
         """扫描到期 Agent 并注入唤醒消息"""
         self.metrics.checks_performed += 1
-        self.metrics.last_check_at = datetime.utcnow().isoformat()
+        self.metrics.last_check_at = utc_now_iso()
         
         try:
             # 1. 查询到期的 SubAgent
@@ -165,7 +166,7 @@ class SchedulerWorkerSync:
     
     def _log(self, msg: str, level: str = "info"):
         """日志输出"""
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = utc_now_iso()
         prefix = f"[{timestamp}] [{self.worker_id}]"
         
         if level == "error":

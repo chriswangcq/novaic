@@ -3,6 +3,7 @@ import { Message } from '../../types';
 import { Markdown } from './Markdown';
 import { Sparkles, AlertTriangle, ChevronDown } from 'lucide-react';
 import { useAppStore } from '../../store';
+import { formatTime } from '../../utils/time';
 
 interface AssistantMessageProps {
   message: Message;
@@ -79,11 +80,10 @@ function AssistantMessageInner({ message, showHeader = true }: AssistantMessageP
     expandMessage(message.id);
   };
 
-  // 格式化时间
-  const formatTime = (timestamp?: string | Date) => {
+  // 格式化时间（使用统一的时间工具）
+  const formatMessageTime = (timestamp?: string | Date) => {
     if (!timestamp) return '';
-    const date = typeof timestamp === 'string' ? new Date(timestamp) : timestamp;
-    return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+    return formatTime(timestamp);
   };
 
   return (
@@ -102,7 +102,7 @@ function AssistantMessageInner({ message, showHeader = true }: AssistantMessageP
             text-[10px] text-nb-text-secondary ml-1 transition-opacity duration-200
             ${isHovered ? 'opacity-100' : 'opacity-0'}
           `}>
-            {formatTime(message.timestamp)}
+            {formatMessageTime(message.timestamp)}
           </span>
         </div>
       )}

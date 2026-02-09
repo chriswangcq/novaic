@@ -12,6 +12,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List
 
 from queue_service.exceptions import SagaError, SagaStepError
+from common.utils.time import utc_now_iso
 from queue_service.saga import TaskQueueProtocol, SagaDefinition, SagaExecutor, StepType
 
 
@@ -49,7 +50,7 @@ class SagaRepository:
                 return existing["id"]
         
         saga_id = f"saga-{uuid.uuid4().hex[:12]}"
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         
         with self.db.transaction(lock_type="global"):
             self.db.execute("""
@@ -72,7 +73,7 @@ class SagaRepository:
             return None
         
         type_placeholders = ",".join("?" * len(saga_types))
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         
         with self.db.transaction(lock_type="global"):
             cursor = self.db.execute(f"""
@@ -98,7 +99,7 @@ class SagaRepository:
     
     def heartbeat(self, saga_id: str) -> bool:
         """更新心跳"""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.transaction(lock_type="saga", resource_id=saga_id):
             cursor = self.db.execute("""
                 UPDATE tq_sagas 
@@ -150,7 +151,7 @@ class SagaRepository:
         status: str = "running",
     ):
         """更新进度"""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.transaction(lock_type="saga", resource_id=saga_id):
             self.db.execute("""
                 UPDATE tq_sagas 
@@ -160,7 +161,7 @@ class SagaRepository:
     
     def mark_completed(self, saga_id: str, step_results: Dict[str, Any]):
         """标记完成"""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.transaction(lock_type="saga", resource_id=saga_id):
             cursor = self.db.execute("""
                 UPDATE tq_sagas 
@@ -171,7 +172,7 @@ class SagaRepository:
     
     def mark_failed(self, saga_id: str, error: str):
         """标记失败"""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.transaction(lock_type="saga", resource_id=saga_id):
             self.db.execute("""
                 UPDATE tq_sagas 
@@ -207,7 +208,7 @@ class SagaRepository:
         Returns:
             取消的 saga 数量
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         
         with self.db.transaction(lock_type="global"):
             if agent_id:
@@ -297,7 +298,7 @@ class SagaOrchestrator(SagaRepository):
                 return existing["id"]
         
         saga_id = f"saga-{uuid.uuid4().hex[:12]}"
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         
         with self.db.transaction(lock_type="global"):
             self.db.execute("""

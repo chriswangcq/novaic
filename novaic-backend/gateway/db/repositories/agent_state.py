@@ -9,6 +9,8 @@ import json
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 
+from common.utils.time import utc_now_iso
+
 
 class AgentStateRepository:
     """Repository for agent_state table."""
@@ -59,7 +61,7 @@ class AgentStateRepository:
             agent_id: Agent ID
             state: State value ('sleep' or 'awake')
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         
         with self.db.transaction("agent", resource_id=agent_id):
             self.db.execute(
@@ -85,7 +87,7 @@ class AgentStateRepository:
             reason: Reason for sleeping
             wake_triggers: List of wake trigger conditions
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         
         with self.db.transaction("agent", resource_id=agent_id):
             self.db.execute(
@@ -109,7 +111,7 @@ class AgentStateRepository:
         Args:
             agent_id: Agent ID
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         
         with self.db.transaction("agent", resource_id=agent_id):
             self.db.execute(
@@ -131,7 +133,7 @@ class AgentStateRepository:
         Args:
             agent_id: Agent ID
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         
         with self.db.transaction("agent", resource_id=agent_id):
             self.db.execute(
@@ -187,7 +189,7 @@ class AgentStateRepository:
         Args:
             agent_id: Agent ID
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         
         with self.db.transaction("agent", resource_id=agent_id):
             self.db.execute(

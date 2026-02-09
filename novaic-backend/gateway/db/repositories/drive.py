@@ -9,6 +9,9 @@ import json
 import logging
 from datetime import datetime
 from typing import Optional, Dict, Any
+from zoneinfo import ZoneInfo
+
+from common.utils.time import utc_now_iso
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +70,13 @@ class DriveRepository:
             "last_proactive_at": row["last_proactive_at"],
             "disabled_tools": json.loads(row["disabled_tools"] or "[]"),
             "custom_instructions": row["custom_instructions"] or "",
+            "soul_md": row["soul_md"] or "",
+            "heartbeat_md": row["heartbeat_md"] or "",
+            "memory_md": row["memory_md"] or "",
+            "user_md": row["user_md"] or "",
+            "active_hours_start": row["active_hours_start"] or "09:00",
+            "active_hours_end": row["active_hours_end"] or "22:00",
+            "active_hours_timezone": row["active_hours_timezone"] or "Asia/Shanghai",
             "created_at": row["created_at"],
             "updated_at": row["updated_at"],
         }
@@ -99,6 +109,13 @@ class DriveRepository:
             "last_proactive_at": row["last_proactive_at"],
             "disabled_tools": json.loads(row["disabled_tools"] or "[]"),
             "custom_instructions": row["custom_instructions"] or "",
+            "soul_md": row["soul_md"] or "",
+            "heartbeat_md": row["heartbeat_md"] or "",
+            "memory_md": row["memory_md"] or "",
+            "user_md": row["user_md"] or "",
+            "active_hours_start": row["active_hours_start"] or "09:00",
+            "active_hours_end": row["active_hours_end"] or "22:00",
+            "active_hours_timezone": row["active_hours_timezone"] or "Asia/Shanghai",
             "created_at": row["created_at"],
             "updated_at": row["updated_at"],
         }
@@ -111,7 +128,7 @@ class DriveRepository:
         reason: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Update a key in user_profile JSON."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         
         # Ensure record exists — if the agent is missing we return early
         current = self.get_or_create(agent_id)
@@ -161,7 +178,7 @@ class DriveRepository:
         **kwargs,
     ) -> Dict[str, Any]:
         """Update drive fields with deltas for relationship and proactiveness."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         
         # Ensure record exists
         current = self.get_or_create(agent_id)
@@ -205,7 +222,7 @@ class DriveRepository:
     
     def increment_interaction(self, agent_id: str) -> Dict[str, Any]:
         """Atomically increment interaction_count."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         self.get_or_create(agent_id)
         
         if not self._agent_exists(agent_id):
@@ -230,7 +247,7 @@ class DriveRepository:
     
     def set_last_proactive(self, agent_id: str) -> Dict[str, Any]:
         """Set last_proactive_at to now."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         self.get_or_create(agent_id)
         
         if not self._agent_exists(agent_id):
@@ -268,6 +285,103 @@ class DriveRepository:
             "last_proactive_at": None,
             "disabled_tools": [],
             "custom_instructions": "",
+            "soul_md": "",
+            "heartbeat_md": "",
+            "memory_md": "",
+            "user_md": "",
+            "active_hours_start": "09:00",
+            "active_hours_end": "22:00",
+            "active_hours_timezone": "Asia/Shanghai",
             "created_at": None,
             "updated_at": None,
         }
+    
+    def update_bootstrap_files(
+        self,
+        agent_id: str,
+        soul_md: Optional[str] = None,
+        heartbeat_md: Optional[str] = None,
+        memory_md: Optional[str] = None,
+        user_md: Optional[str] = None,
+        active_hours_start: Optional[str] = None,
+        active_hours_end: Optional[str] = None,
+        active_hours_timezone: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Update bootstrap markdown files and active hours config."""
+        now = utc_now_iso()
+        
+        # Ensure record exists
+        self.get_or_create(agent_id)
+        if not self._agent_exists(agent_id):
+            logger.debug("update_bootstrap_files: agent %s not in agents table, skipping", agent_id)
+            return {"success": True, "agent_id": agent_id, "skipped": True}
+        
+        updates = ["updated_at = ?"]
+        params = [now]
+        
+        # Only update non-None fields
+        field_mapping = {
+            "soul_md": soul_md,
+            "heartbeat_md": heartbeat_md,
+            "memory_md": memory_md,
+            "user_md": user_md,
+            "active_hours_start": active_hours_start,
+            "active_hours_end": active_hours_end,
+            "active_hours_timezone": active_hours_timezone,
+        }
+        
+        for field, value in field_mapping.items():
+            if value is not None:
+                updates.append(f"{field} = ?")
+                params.append(value)
+        
+        # If no fields to update, return early
+        if len(updates) == 1:
+            return {"success": True, "agent_id": agent_id, "no_changes": True}
+        
+        set_clause = ", ".join(updates)
+        params.append(agent_id)
+        
+        try:
+            with self.db.transaction(lock_type="agent", resource_id=agent_id):
+                self.db.execute(
+                    f"UPDATE agent_drive SET {set_clause} WHERE agent_id = ?",
+                    tuple(params)
+                )
+        except Exception as e:
+            logger.warning("update_bootstrap_files failed for %s: %s", agent_id, e)
+            return {"success": False, "agent_id": agent_id, "error": str(e)}
+        
+        return {"success": True, "agent_id": agent_id}
+    
+    def is_active_hours(self, agent_id: str) -> bool:
+        """Check if current time is within user's active hours."""
+        drive = self.get_or_create(agent_id)
+        
+        active_hours_start = drive.get("active_hours_start", "09:00")
+        active_hours_end = drive.get("active_hours_end", "22:00")
+        active_hours_timezone = drive.get("active_hours_timezone", "Asia/Shanghai")
+        
+        try:
+            tz = ZoneInfo(active_hours_timezone)
+        except Exception:
+            # Fallback to Asia/Shanghai if timezone is invalid
+            logger.warning("Invalid timezone %s for agent %s, using Asia/Shanghai", active_hours_timezone, agent_id)
+            tz = ZoneInfo("Asia/Shanghai")
+        
+        # Get current time in the user's timezone
+        now_utc = datetime.utcnow().replace(tzinfo=ZoneInfo("UTC"))
+        now_local = now_utc.astimezone(tz)
+        current_time = now_local.strftime("%H:%M")
+        
+        # Parse start and end times
+        start_time = active_hours_start
+        end_time = active_hours_end
+        
+        # Handle overnight ranges (e.g., 22:00 - 06:00)
+        if start_time <= end_time:
+            # Normal range (e.g., 09:00 - 22:00)
+            return start_time <= current_time <= end_time
+        else:
+            # Overnight range (e.g., 22:00 - 06:00)
+            return current_time >= start_time or current_time <= end_time

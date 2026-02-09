@@ -14,6 +14,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List
 
 from common.db import Database
+from common.utils.time import utc_now_iso
 from .access import get_db
 
 logger = logging.getLogger(__name__)
@@ -75,7 +76,7 @@ def migrate_config(db: Database, data_dir: Path) -> bool:
                         key.get("api_base"),
                         key.get("deployment_name"),
                         key.get("api_version"),
-                        key.get("created_at", datetime.utcnow().isoformat()),
+                        key.get("created_at", utc_now_iso()),
                     )
                 )
             
@@ -138,7 +139,7 @@ def migrate_agents(db: Database, data_dir: Path) -> bool:
                     (
                         agent["id"],
                         agent["name"],
-                        agent.get("created_at", datetime.utcnow().isoformat()),
+                        agent.get("created_at", utc_now_iso()),
                         json.dumps(vm_config),
                         json.dumps(ports),
                         agent.get("status", "stopped"),
@@ -184,7 +185,7 @@ def migrate_sessions(db: Database, data_dir: Path) -> bool:
             db.execute(
                 """INSERT OR IGNORE INTO sessions (id, created_at, updated_at)
                    VALUES (?, ?, ?)""",
-                (session_id, datetime.utcnow().isoformat(), datetime.utcnow().isoformat())
+                (session_id, utc_now_iso(), utc_now_iso())
             )
             
             # Read and migrate entries
@@ -208,7 +209,7 @@ def migrate_sessions(db: Database, data_dir: Path) -> bool:
                                     "message",
                                     entry.get("role"),
                                     json.dumps(entry.get("content")) if not isinstance(entry.get("content"), str) else entry.get("content"),
-                                    entry.get("timestamp", datetime.utcnow().isoformat()),
+                                    entry.get("timestamp", utc_now_iso()),
                                     json.dumps(entry.get("metadata", {})),
                                 )
                             )
@@ -221,7 +222,7 @@ def migrate_sessions(db: Database, data_dir: Path) -> bool:
                                     session_id,
                                     "compaction_summary",
                                     entry.get("summary"),
-                                    entry.get("timestamp", datetime.utcnow().isoformat()),
+                                    entry.get("timestamp", utc_now_iso()),
                                     entry.get("compacted_count"),
                                     entry.get("original_tokens"),
                                     entry.get("summary_tokens"),

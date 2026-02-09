@@ -9,6 +9,7 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 from common.db.database import Database
+from common.utils.time import utc_now_iso
 
 
 class AgentRepository:
@@ -50,7 +51,7 @@ class AgentRepository:
         setup_complete: bool = False,
     ) -> Dict[str, Any]:
         """Create a new agent."""
-        created_at = datetime.utcnow().isoformat()
+        created_at = utc_now_iso()
         
         with self.db.transaction("agent", resource_id=id):
             self.db.execute(

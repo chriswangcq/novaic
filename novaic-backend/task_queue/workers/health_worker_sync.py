@@ -17,6 +17,7 @@ from datetime import datetime
 from typing import Optional
 import traceback
 from common.config import ServiceConfig
+from common.utils.time import utc_now_iso
 
 
 @dataclass
@@ -89,7 +90,7 @@ class HealthWorkerSync:
     def run(self):
         """主循环（同步）"""
         self._running = True
-        self.metrics.started_at = datetime.utcnow().isoformat()
+        self.metrics.started_at = utc_now_iso()
         
         self._log(f"Starting (worker_id: {self.worker_id})...")
         self._log(f"Queue Service URL: {self.queue_service_url}")
@@ -125,7 +126,7 @@ class HealthWorkerSync:
     def _perform_check(self):
         """执行健康检查（同步）"""
         self.metrics.checks_performed += 1
-        self.metrics.last_check_at = datetime.utcnow().isoformat()
+        self.metrics.last_check_at = utc_now_iso()
         
         try:
             client = self._get_client()
@@ -160,7 +161,7 @@ class HealthWorkerSync:
     
     def _log(self, msg: str, level: str = "info"):
         """日志输出"""
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = utc_now_iso()
         prefix = f"[{timestamp}] [{self.worker_id}]"
         
         if level == "error":

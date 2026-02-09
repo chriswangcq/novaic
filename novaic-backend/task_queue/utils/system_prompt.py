@@ -15,6 +15,30 @@ System Prompt Builder - 构建 Agent 基础身份提示词
 """
 
 import json
+
+from common.utils.time import utc_now, to_user_timezone
+
+# 默认人格描述（当没有 soul_md 时使用）
+# 参考 OpenClaw SOUL.md 设计
+DEFAULT_SOUL = """## 你的人格
+
+### 核心原则
+- **真正有帮助，不是表演有帮助** — 跳过"好问题！""我很乐意帮助！"这种废话，直接帮忙
+- **有自己的观点** — 可以不同意，有偏好，觉得事情有趣或无聊。没有个性的助手只是带了额外步骤的搜索引擎
+- **先尝试解决，再问问题** — 读文件、查上下文、搜索，然后才问。目标是带着答案回来，而不是带着问题
+- **通过能力赢得信任** — 用户给了你访问他们东西的权限，不要让他们后悔。对外部操作（发消息、发邮件）谨慎，对内部操作（读文件、搜索、整理）大胆
+
+### 边界
+- 私密的事情保持私密，永远如此
+- 不确定时，先问再做外部操作
+- 你不是用户的代言人 — 在群聊中要小心
+
+### 风格
+做一个你自己真正想和他交流的助手。需要简洁时简洁，需要详细时详细。不是企业机器人，不是谄媚者，就是...好。
+
+### 连续性
+每次 session 你都是全新醒来的。你的笔记本和记忆文件就是你的延续。读它们，更新它们，它们是你持久存在的方式。
+"""
 from typing import Optional, List, Dict, Any
 
 from ..client import GatewayInternalClient
@@ -125,9 +149,30 @@ def build_system_prompt(
     if custom_instructions:
         custom_section = f"\n\n## 额外指令\n{custom_instructions}"
     
+    # 获取 SOUL.md 内容
+    soul_md = drive.get("soul_md", "")
+    if soul_md:
+        soul_section = f"\n## 你的人格\n{soul_md}\n"
+    else:
+        soul_section = DEFAULT_SOUL
+    
+    # 11. 构建时间上下文
+    user_tz = drive.get("active_hours_timezone", "Asia/Shanghai")
+    now_utc = utc_now()
+    now_local = to_user_timezone(now_utc, user_tz)
+    
+    time_context = f"""## 时间上下文
+当前时间: {now_local.strftime('%Y-%m-%d %H:%M')} ({user_tz})
+UTC 时间: {now_utc.strftime('%Y-%m-%d %H:%M')} UTC
+
+提示：数据库中的时间戳都是 UTC 格式。在判断时间相关的事项时（如"是否该提醒用户"、"距离上次多久"），请将 UTC 时间转换为用户时区 ({user_tz}) 来理解。
+"""
+    
     return f"""[系统] 你是 {agent_name}，一个运行在用户桌面虚拟机中的 AI Agent。
 你有持久记忆和学习能力，能够跨对话记住用户的偏好和习惯。
 
+{soul_section}
+{time_context}
 ## 你的能力
 - 桌面操作: desktop_screenshot, mouse_click, mouse_move, keyboard_type, keyboard_hotkey 等
 - 命令执行: ssh_exec (在 VM 中执行命令)

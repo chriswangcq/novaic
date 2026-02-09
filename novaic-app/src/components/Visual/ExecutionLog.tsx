@@ -6,6 +6,7 @@ import { useVirtualList } from '../../hooks/useVirtualList';
 import { useScrollPagination } from '../../hooks/useScrollPagination';
 import { LOG_ESTIMATE_SIZE, LOG_OVERSCAN } from '../../constants/scroll';
 import { SmartValue } from './SmartValue';
+import { formatTime } from '../../utils/time';
 
 interface ExecutionLogProps {
   logs: LogEntry[];
@@ -113,7 +114,7 @@ function LogCard({ log, isExpanded, onToggle, showSubagent }: LogCardProps) {
         <div className="flex items-center gap-2">
           {/* 时间戳 */}
           <span className="text-[10px] text-nb-text-secondary font-mono tabular-nums">
-            {new Date(log.timestamp).toLocaleTimeString('zh-CN', { hour12: false })}
+            {formatTime(log.timestamp, undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
           </span>
           
           {/* 类型图标 */}

@@ -14,6 +14,7 @@ from datetime import datetime
 
 from common.db.database import Database
 from common.config import ServiceConfig
+from common.utils.time import utc_now_iso
 
 
 # Message types that should not be persisted to database
@@ -58,7 +59,7 @@ class ChatRepository:
             return None
         
         if timestamp is None:
-            timestamp = datetime.utcnow().isoformat()
+            timestamp = utc_now_iso()
         
         with self.db.transaction("message", resource_id=id):
             self.db.execute(
@@ -115,7 +116,8 @@ class ChatRepository:
         if limit is None:
             limit = ServiceConfig.MAX_MESSAGES_PER_PAGE
         
-        query = "SELECT * FROM chat_messages WHERE agent_id = ?"
+        # Always exclude SYSTEM_WAKE messages from UI queries
+        query = "SELECT * FROM chat_messages WHERE agent_id = ? AND type != 'SYSTEM_WAKE'"
         params: List[Any] = [agent_id]
         
         if read is not None:
@@ -384,7 +386,7 @@ class ChatRepository:
         message_id: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """Add a pending question for an agent."""
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = utc_now_iso()
         
         with self.db.transaction("agent", resource_id=agent_id):
             self.db.execute(
@@ -443,7 +445,7 @@ class ChatRepository:
         selected_option: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """Add a response to a question."""
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = utc_now_iso()
         
         with self.db.transaction("agent", resource_id=agent_id):
             self.db.execute(
@@ -538,7 +540,7 @@ class ChatRepository:
         event_key: Optional[str] = None,
     ) -> int:
         """Add an execution log for an agent."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.transaction("agent", resource_id=agent_id):
             cursor = self.db.execute(
                 """INSERT INTO execution_logs 
@@ -586,7 +588,7 @@ class ChatRepository:
         Returns:
             The row ID of the upserted log
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         log_type = type or kind
         
         # Merge data fields

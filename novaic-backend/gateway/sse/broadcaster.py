@@ -16,6 +16,8 @@ from enum import Enum
 from typing import Dict, Any, Optional, Set, AsyncGenerator
 from contextlib import asynccontextmanager
 
+from common.utils.time import utc_now_iso
+
 
 class SSEEvent(str, Enum):
     """SSE event types for Worker communication."""
@@ -39,8 +41,8 @@ class WorkerConnection:
     
     worker_id: str
     queue: asyncio.Queue
-    connected_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
-    last_activity: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    connected_at: str = field(default_factory=lambda: utc_now_iso())
+    last_activity: str = field(default_factory=lambda: utc_now_iso())
     message_count: int = 0
 
 
@@ -165,7 +167,7 @@ class WorkerBroadcaster:
         event = {
             "event": event_type.value,
             "data": data,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": utc_now_iso(),
         }
         
         sent_count = 0
@@ -176,7 +178,7 @@ class WorkerBroadcaster:
             try:
                 conn.queue.put_nowait(event)
                 conn.message_count += 1
-                conn.last_activity = datetime.utcnow().isoformat()
+                conn.last_activity = utc_now_iso()
                 sent_count += 1
             except asyncio.QueueFull:
                 print(f"[SSE] Worker {worker_id} queue full, dropping event")
@@ -207,13 +209,13 @@ class WorkerBroadcaster:
         event = {
             "event": event_type.value,
             "data": data,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": utc_now_iso(),
         }
         
         try:
             conn.queue.put_nowait(event)
             conn.message_count += 1
-            conn.last_activity = datetime.utcnow().isoformat()
+            conn.last_activity = utc_now_iso()
             return True
         except asyncio.QueueFull:
             print(f"[SSE] Worker {worker_id} queue full, dropping event")
@@ -315,7 +317,7 @@ class WorkerBroadcaster:
                 await asyncio.sleep(self._heartbeat_interval)
                 await self.broadcast(
                     SSEEvent.HEARTBEAT,
-                    {"time": datetime.utcnow().isoformat()}
+                    {"time": utc_now_iso()}
                 )
             except asyncio.CancelledError:
                 break
@@ -376,7 +378,7 @@ class WorkerBroadcaster:
                     
                 except asyncio.TimeoutError:
                     # Send keepalive comment
-                    yield f": keepalive {datetime.utcnow().isoformat()}\n\n"
+                    yield f": keepalive {utc_now_iso()}\n\n"
                     
         except asyncio.CancelledError:
             pass

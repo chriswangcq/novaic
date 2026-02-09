@@ -15,6 +15,7 @@ from typing import Optional, List, Dict, Any, Tuple
 from uuid import uuid4
 
 from common.config import ServiceConfig
+from common.utils.time import utc_now_iso
 
 
 class MessageRepository:
@@ -55,7 +56,7 @@ class MessageRepository:
             创建的消息
         """
         msg_id = id or str(uuid4())[:12]
-        timestamp = timestamp or datetime.utcnow().isoformat()
+        timestamp = timestamp or utc_now_iso()
         
         with self.db.transaction("message", resource_id=msg_id):
             self.db.execute(
@@ -107,7 +108,7 @@ class MessageRepository:
             msg_id = row[0]
             
             # 2. CAS 更新：sending → sent
-            now = datetime.utcnow().isoformat()
+            now = utc_now_iso()
             cursor = conn.execute(
                 """UPDATE chat_messages 
                    SET status = 'sent', claimed_at = ?
@@ -274,7 +275,7 @@ class MessageRepository:
         """
         rows = self.db.fetchall(
             """SELECT * FROM chat_messages 
-               WHERE agent_id = ? 
+               WHERE agent_id = ? AND type != 'SYSTEM_WAKE'
                ORDER BY timestamp DESC 
                LIMIT ? OFFSET ?""",
             (agent_id, limit, offset)

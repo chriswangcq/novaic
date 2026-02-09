@@ -15,6 +15,7 @@ from fastapi import APIRouter, HTTPException, Query
 from typing import Dict, Any, List, Optional
 import json
 
+from common.utils.time import utc_now_iso
 from gateway.db.access import get_db
 
 router = APIRouter(prefix="/api", tags=["skills"])
@@ -251,7 +252,7 @@ def save_agent_tools_config(agent_id: str, data: Dict[str, Any]):
     repo.get_or_create(agent_id)
     
     # Build update fields
-    now_str = __import__('datetime').datetime.utcnow().isoformat()
+    now_str = utc_now_iso()
     updates = ["updated_at = ?"]
     params = [now_str]
     
@@ -328,3 +329,64 @@ def get_tool_categories():
         }
     
     return {"categories": categories}
+
+
+# ==================== Bootstrap Files ====================
+
+@router.get("/agents/{agent_id}/bootstrap-files")
+def get_bootstrap_files(agent_id: str):
+    """Get agent's bootstrap files and active hours configuration."""
+    from gateway.db.repositories.drive import DriveRepository
+    
+    db = get_db()
+    repo = DriveRepository(db)
+    
+    # 使用 get() 方法（纯读取，不创建）
+    drive = repo.get(agent_id)
+    if not drive:
+        # 返回默认值
+        return {
+            "soul_md": "",
+            "heartbeat_md": "",
+            "memory_md": "",
+            "user_md": "",
+            "active_hours_start": "09:00",
+            "active_hours_end": "22:00",
+            "active_hours_timezone": "Asia/Shanghai",
+        }
+    
+    return {
+        "soul_md": drive.get("soul_md", ""),
+        "heartbeat_md": drive.get("heartbeat_md", ""),
+        "memory_md": drive.get("memory_md", ""),
+        "user_md": drive.get("user_md", ""),
+        "active_hours_start": drive.get("active_hours_start", "09:00"),
+        "active_hours_end": drive.get("active_hours_end", "22:00"),
+        "active_hours_timezone": drive.get("active_hours_timezone", "Asia/Shanghai"),
+    }
+
+
+@router.post("/agents/{agent_id}/bootstrap-files")
+def save_bootstrap_files(agent_id: str, data: Dict[str, Any]):
+    """Save agent's bootstrap files and active hours configuration."""
+    from gateway.db.repositories.drive import DriveRepository
+    
+    db = get_db()
+    repo = DriveRepository(db)
+    
+    # 确保 agent_drive 记录存在
+    repo.get_or_create(agent_id)
+    
+    # 调用 update_bootstrap_files 方法
+    result = repo.update_bootstrap_files(
+        agent_id=agent_id,
+        soul_md=data.get("soul_md"),
+        heartbeat_md=data.get("heartbeat_md"),
+        memory_md=data.get("memory_md"),
+        user_md=data.get("user_md"),
+        active_hours_start=data.get("active_hours_start"),
+        active_hours_end=data.get("active_hours_end"),
+        active_hours_timezone=data.get("active_hours_timezone"),
+    )
+    
+    return result

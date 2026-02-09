@@ -21,6 +21,7 @@ import traceback
 
 from task_queue.client import SagaClient, GatewayInternalClient
 from common.config import ServiceConfig
+from common.utils.time import utc_now_iso
 
 
 @dataclass
@@ -83,7 +84,7 @@ class WatchdogSync:
     def run(self):
         """主循环（同步）"""
         self._running = True
-        self.metrics.started_at = datetime.utcnow().isoformat()
+        self.metrics.started_at = utc_now_iso()
         
         self._log(f"Starting (worker_id: {self.worker_id})...")
         
@@ -135,7 +136,7 @@ class WatchdogSync:
         msg_type = message.get("type")
         
         self.metrics.messages_found += 1
-        self.metrics.last_message_at = datetime.utcnow().isoformat()
+        self.metrics.last_message_at = utc_now_iso()
         
         self._log(f"Found message {msg_id} (type={msg_type}, agent={agent_id})")
         
@@ -174,7 +175,7 @@ class WatchdogSync:
     
     def _log(self, msg: str, level: str = "info"):
         """日志输出"""
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = utc_now_iso()
         prefix = f"[{timestamp}] [{self.worker_id}]"
         
         if level == "error":

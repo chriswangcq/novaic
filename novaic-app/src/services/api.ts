@@ -654,6 +654,41 @@ export const api = {
     return invoke('gateway_get', { path: '/api/tools/categories' });
   },
 
+  // ==================== Bootstrap Files API ====================
+
+  /**
+   * Get bootstrap files for an agent
+   */
+  async getBootstrapFiles(agentId: string): Promise<{
+    soul_md: string;
+    heartbeat_md: string;
+    memory_md: string;
+    user_md: string;
+    active_hours_start: string;
+    active_hours_end: string;
+    active_hours_timezone: string;
+  }> {
+    return invoke('gateway_get', { path: `/api/agents/${agentId}/bootstrap-files` });
+  },
+
+  /**
+   * Save bootstrap files for an agent
+   */
+  async saveBootstrapFiles(agentId: string, data: {
+    soul_md?: string;
+    heartbeat_md?: string;
+    memory_md?: string;
+    user_md?: string;
+    active_hours_start?: string;
+    active_hours_end?: string;
+    active_hours_timezone?: string;
+  }): Promise<{ success: boolean }> {
+    return invoke('gateway_post', {
+      path: `/api/agents/${agentId}/bootstrap-files`,
+      body: data,
+    });
+  },
+
   // ==================== Cleanup API ====================
 
   /**

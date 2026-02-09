@@ -18,6 +18,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 
+from common.utils.time import utc_now_iso
+
 
 # Default keywords for auto-matching builtin skills
 BUILTIN_SKILL_KEYWORDS = {
@@ -191,7 +193,7 @@ class SkillRepository:
     ) -> Dict[str, Any]:
         """Create a new skill."""
         skill_id = str(uuid.uuid4())
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         tools_json = json.dumps(tools or [], ensure_ascii=False)
         keywords_json = json.dumps(auto_match_keywords or [], ensure_ascii=False)
         
@@ -241,7 +243,7 @@ class SkillRepository:
         if skill_id.startswith("builtin:"):
             raise ValueError("Cannot update builtin skills. Fork it first to create an editable copy.")
         
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         updates = ["updated_at = ?"]
         params: list = [now]
         
@@ -339,7 +341,7 @@ class SkillRepository:
             )
             
             # Insert new assignments (no FK constraint check for builtin skills)
-            now = datetime.utcnow().isoformat()
+            now = utc_now_iso()
             inserted_count = 0
             for i, skill_id in enumerate(skill_ids):
                 # Validate skill exists (either builtin or custom)

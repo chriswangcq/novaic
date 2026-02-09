@@ -10,7 +10,7 @@ v12: Master-driven architecture
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from typing import Optional, List
-from datetime import datetime, timedelta
+from datetime import timedelta
 import json
 import os
 import shutil
@@ -18,6 +18,7 @@ import time
 from pathlib import Path
 import glob
 
+from common.utils.time import utc_now_iso
 from .schemas import (
     ChatRequest, ChatResponse, ChatResult,
     ApiKeyCreate, ApiKeyUpdate, ModelToggle, CustomModelAdd, SettingsUpdate,
@@ -644,7 +645,7 @@ def chat_stream(request: ChatRequest):
     
     def event_generator():
         # First, emit the stored message confirmation
-        yield f"data: {json.dumps({'type': 'message_stored', 'data': {'message_id': user_message_id}, 'timestamp': datetime.utcnow().isoformat()})}\n\n"
+        yield f"data: {json.dumps({'type': 'message_stored', 'data': {'message_id': user_message_id}, 'timestamp': utc_now_iso()})}\n\n"
         
         # Broadcast to UI
         try:
@@ -674,7 +675,7 @@ def chat_stream(request: ChatRequest):
                 while True:
                     elapsed = asyncio.get_event_loop().time() - start_time
                     if elapsed > timeout:
-                        yield f"data: {json.dumps({'type': 'timeout', 'data': {'message': 'Stream timeout'}, 'timestamp': datetime.utcnow().isoformat()})}\n\n"
+                        yield f"data: {json.dumps({'type': 'timeout', 'data': {'message': 'Stream timeout'}, 'timestamp': utc_now_iso()})}\n\n"
                         break
                     
                     try:
@@ -682,7 +683,7 @@ def chat_stream(request: ChatRequest):
                         
                         # Filter events for this agent
                         if event.get("agent_id") == agent_id:
-                            event["timestamp"] = datetime.utcnow().isoformat()
+                            event["timestamp"] = utc_now_iso()
                             yield f"data: {json.dumps(event)}\n\n"
                             
                             # Check for completion signals
@@ -697,7 +698,7 @@ def chat_stream(request: ChatRequest):
                 _chat_subscribers.pop(subscriber_id, None)
                 
         except Exception as e:
-            yield f"data: {json.dumps({'type': 'error', 'data': {'error': str(e)}, 'timestamp': datetime.utcnow().isoformat()})}\n\n"
+            yield f"data: {json.dumps({'type': 'error', 'data': {'error': str(e)}, 'timestamp': utc_now_iso()})}\n\n"
     
     return StreamingResponse(
         event_generator(),
@@ -752,7 +753,7 @@ def get_history(agent_id: str = Query(..., description="Agent ID (required)")):
         """
         SELECT id, type, content, timestamp, read 
         FROM chat_messages 
-        WHERE agent_id = ? 
+        WHERE agent_id = ? AND type != 'SYSTEM_WAKE'
         ORDER BY timestamp DESC 
         LIMIT 100
         """,
@@ -805,7 +806,6 @@ def interrupt(agent_id: str = Query(..., description="Agent ID (required)")):
     
     这样用户得到立即响应，QS 的取消是异步处理。
     """
-    from datetime import datetime
     from gateway.db.repositories.message import MessageRepository
     import uuid
     
@@ -813,7 +813,7 @@ def interrupt(agent_id: str = Query(..., description="Agent ID (required)")):
         raise HTTPException(status_code=400, detail="agent_id is required")
     
     db = get_db()
-    now = datetime.utcnow().isoformat()
+    now = utc_now_iso()
     
     interrupted_runtimes = 0
     

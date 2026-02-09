@@ -2,9 +2,11 @@
 NovAIC Gateway - API Request/Response Schemas
 """
 
+from datetime import datetime
 from pydantic import BaseModel, Field
 from typing import Optional, List, Any, Literal
-from datetime import datetime
+
+from common.utils.time import utc_now_iso
 
 
 # ==================== Chat ====================
@@ -128,4 +130,4 @@ class WSEvent(BaseModel):
     """WebSocket event format (server -> client)"""
     type: str  # "text", "thinking", "tool_start", "tool_end", "final", "error", "pong"
     data: Any
-    timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    timestamp: str = Field(default_factory=lambda: utc_now_iso())

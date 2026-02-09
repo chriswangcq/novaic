@@ -21,9 +21,9 @@ Tools Server - 工具定义
   - Window (7): list_windows, focus_window, maximize_window, minimize_window, close_window, resize_window, launch_app
   - Context (7): system_snapshot, directory_snapshot, app_state, clipboard_get, clipboard_set, recent_files, environment_info
 
-- drive: 2 个工具 (drive_update_profile, drive_update_relationship)
+- drive: 3 个工具 (drive_update_profile, drive_update_relationship, memory_update)
 
-总计: 73 个工具
+总计: 74 个工具
 """
 
 from typing import Dict, List, Any, Optional
@@ -1254,6 +1254,33 @@ DRIVE_TOOLS: List[Dict[str, Any]] = [
                 }
             },
             "required": ["reason"]
+        }
+    },
+    {
+        "name": "memory_update",
+        "description": "Update your long-term memory (MEMORY.md) or user profile notes (USER.md). Use this during heartbeat to consolidate important learnings from your notebook into persistent memory. MEMORY.md stores your curated long-term memories and insights. USER.md stores your understanding of the user (preferences, habits, context).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "target": {
+                    "type": "string",
+                    "enum": ["memory", "user"],
+                    "description": "Which file to update: 'memory' for MEMORY.md (your long-term memory, insights, lessons learned), 'user' for USER.md (user profile, preferences, habits)"
+                },
+                "content": {
+                    "type": "string",
+                    "description": "New content for the file. This REPLACES the existing content. Use this when you want to rewrite/reorganize the entire file."
+                },
+                "append": {
+                    "type": "string",
+                    "description": "Content to APPEND to the existing file. Use this to add new entries without losing existing content. Either 'content' or 'append' should be provided, not both."
+                },
+                "reason": {
+                    "type": "string",
+                    "description": "Brief note about why you're updating this (for your own reference and logging)"
+                }
+            },
+            "required": ["target"]
         }
     },
 ]

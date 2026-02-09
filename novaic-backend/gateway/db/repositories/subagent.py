@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 
 from common.enums import SubagentStatus
 from common.config import ServiceConfig
+from common.utils.time import utc_now_iso
 
 
 @dataclass
@@ -98,7 +99,7 @@ class SubAgentRepository:
     
     def create_main_subagent(self, agent_id: str) -> SubAgent:
         """Create the main SubAgent for an agent."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         
         # v14: subagent_id 带编号，方便区分不同 agent 的 main subagent
         subagent_id = f"main-{agent_id[:8]}"
@@ -131,7 +132,7 @@ class SubAgentRepository:
             timeout_at: Timeout timestamp (for async SubAgents)
         """
         subagent_id = f"sub-{uuid.uuid4().hex[:12]}"
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         
         subagent = SubAgent(
             subagent_id=subagent_id,
@@ -251,7 +252,7 @@ class SubAgentRepository:
         
         Returns True if wake succeeded, False if already awake/awaking.
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=agent_id) as conn:
             # CAS: sleeping OR failed → target_status
             cursor = conn.execute("""
@@ -264,7 +265,7 @@ class SubAgentRepository:
     
     def set_sleeping(self, subagent_id: str, agent_id: str):
         """Set SubAgent to sleeping status."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=agent_id) as conn:
             conn.execute("""
                 UPDATE subagents 
@@ -275,7 +276,7 @@ class SubAgentRepository:
     
     def set_summarizing(self, subagent_id: str, agent_id: str):
         """Set SubAgent to summarizing status."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=agent_id) as conn:
             conn.execute("""
                 UPDATE subagents 
@@ -286,7 +287,7 @@ class SubAgentRepository:
     
     def set_awake(self, subagent_id: str, agent_id: str):
         """Set SubAgent to awake status (for direct state changes)."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=agent_id) as conn:
             conn.execute("""
                 UPDATE subagents 
@@ -297,7 +298,7 @@ class SubAgentRepository:
     
     def set_running(self, subagent_id: str, agent_id: str, progress: Optional[str] = None):
         """Set SubAgent to running status (for async SubAgents)."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=agent_id) as conn:
             conn.execute("""
                 UPDATE subagents 
@@ -308,7 +309,7 @@ class SubAgentRepository:
     
     def set_completed(self, subagent_id: str, agent_id: str, result: Optional[str] = None):
         """Set SubAgent to completed status with result."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=agent_id) as conn:
             conn.execute("""
                 UPDATE subagents 
@@ -319,7 +320,7 @@ class SubAgentRepository:
     
     def set_failed(self, subagent_id: str, agent_id: str, error: Optional[str] = None):
         """Set SubAgent to failed status with error message."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=agent_id) as conn:
             conn.execute("""
                 UPDATE subagents 
@@ -330,7 +331,7 @@ class SubAgentRepository:
     
     def set_cancelled(self, subagent_id: str, agent_id: str):
         """Set SubAgent to cancelled status."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=agent_id) as conn:
             conn.execute("""
                 UPDATE subagents 
@@ -341,7 +342,7 @@ class SubAgentRepository:
     
     def update_progress(self, subagent_id: str, agent_id: str, progress: str):
         """Update the progress description for a running SubAgent."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=agent_id) as conn:
             conn.execute("""
                 UPDATE subagents 
@@ -361,7 +362,7 @@ class SubAgentRepository:
         summary: str
     ):
         """Update the historical summary for a SubAgent."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=agent_id) as conn:
             conn.execute("""
                 UPDATE subagents 
@@ -378,7 +379,7 @@ class SubAgentRepository:
         handoff_notes: Optional[str] = None
     ):
         """Update wake triggers and handoff notes for a SubAgent."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=agent_id) as conn:
             conn.execute("""
                 UPDATE subagents 
@@ -412,7 +413,7 @@ class SubAgentRepository:
         
         This operation is atomic using a single UPDATE with JSON functions.
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=agent_id) as conn:
             # Use SQLite JSON functions for atomic operation
             # json_insert ensures we don't add duplicates by checking first
@@ -441,7 +442,7 @@ class SubAgentRepository:
         if not runtime_ids:
             return
         
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=agent_id) as conn:
             # Read current HRL
             cursor = conn.execute(
@@ -476,7 +477,7 @@ class SubAgentRepository:
         Returns:
             True if lock acquired, False if already locked
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=agent_id) as conn:
             # CAS: 0 -> 1
             cursor = conn.execute("""
@@ -489,7 +490,7 @@ class SubAgentRepository:
     
     def release_summary_lock(self, subagent_id: str, agent_id: str):
         """Release the summary lock (set to idle)."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=agent_id) as conn:
             conn.execute("""
                 UPDATE subagents 
@@ -583,7 +584,7 @@ class SubAgentRepository:
         if timeout_seconds is None:
             timeout_seconds = ServiceConfig.STUCK_AWAKING_TIMEOUT
         
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("global") as conn:
             cursor = conn.execute(
                 """UPDATE subagents 
@@ -617,7 +618,7 @@ class SubAgentRepository:
         Returns:
             True if added, False if already exists
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=agent_id) as conn:
             # Get current HRL
             cursor = conn.execute(
@@ -652,7 +653,7 @@ class SubAgentRepository:
         Returns:
             True if lock acquired, False if lock already held
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=agent_id) as conn:
             cursor = conn.execute("""
                 UPDATE subagents 
@@ -667,7 +668,7 @@ class SubAgentRepository:
         
         Always sets lock to 0 regardless of current state.
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=agent_id) as conn:
             conn.execute("""
                 UPDATE subagents 
@@ -699,7 +700,7 @@ class SubAgentRepository:
         handoff_notes: Optional[str] = None
     ):
         """Update wake triggers, wake_at timer, and handoff notes for a SubAgent."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=agent_id) as conn:
             conn.execute("""
                 UPDATE subagents 
@@ -710,7 +711,7 @@ class SubAgentRepository:
 
     def clear_wake_at(self, subagent_id: str, agent_id: str):
         """Clear wake_at timer (called when agent wakes up)."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=agent_id) as conn:
             conn.execute("""
                 UPDATE subagents 
@@ -721,7 +722,7 @@ class SubAgentRepository:
 
     def get_due_for_wake(self) -> List['SubAgent']:
         """Find sleeping SubAgents whose wake_at has passed."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("global") as conn:
             cursor = conn.execute(f"""
                 SELECT {self._COLUMNS} FROM subagents
@@ -753,7 +754,7 @@ class SubAgentRepository:
         Returns:
             True if successful, False if SubAgent not found
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         with self.db.get_connection("agent", resource_id=agent_id) as conn:
             # Get current HRL
             cursor = conn.execute(

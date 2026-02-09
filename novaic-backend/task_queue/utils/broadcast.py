@@ -15,6 +15,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Dict, Any, Optional, Protocol
 
+from common.utils.time import utc_now_iso
+
 
 class BroadcastType(str, Enum):
     """广播消息类型"""
@@ -73,7 +75,7 @@ async def broadcast_log(
         await broadcaster.broadcast({
             "agent_id": agent_id,
             "type": log_type,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": utc_now_iso(),
             "data": data,
         })
         return True

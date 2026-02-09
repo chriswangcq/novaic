@@ -8,10 +8,10 @@ All operations are isolated per agent_id.
 
 import asyncio
 import json
-from datetime import datetime
 from typing import Dict, Any, Optional, List
 from uuid import uuid4
 
+from common.utils.time import utc_now_iso
 from gateway.db.access import get_db
 from gateway.db.repositories.chat import ChatRepository
 
@@ -138,7 +138,7 @@ class ChatService:
         """Add a chat message and broadcast to subscribers."""
         aid = self._require_agent_id(agent_id)
         msg_id = data.pop("id", str(uuid4())[:12])
-        timestamp = data.pop("timestamp", datetime.utcnow().isoformat())
+        timestamp = data.pop("timestamp", utc_now_iso())
         content = data.pop("content", data.pop("message", None))
         
         # Save to database
@@ -198,7 +198,7 @@ class ChatService:
                 "type": "STATUS_UPDATE",
                 "message_id": message_id,
                 "status": status,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": utc_now_iso(),
             }
             self._broadcast_chat(status_update)
         
@@ -327,7 +327,7 @@ class ChatService:
     ):
         """Add an execution log entry (pure flow log, not associated with messages)."""
         aid = self._require_agent_id(agent_id)
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = utc_now_iso()
         
         self.repo.add_execution_log(
             agent_id=aid,
@@ -390,7 +390,7 @@ class ChatService:
             "reason": reason,
             "wake_triggers": wake_triggers or [],
             "handoff_notes": handoff_notes,
-            "rest_started": datetime.utcnow().isoformat(),
+            "rest_started": utc_now_iso(),
         })
         
         # Add notification

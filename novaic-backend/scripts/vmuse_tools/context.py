@@ -15,6 +15,8 @@ from typing import Dict, Any, Optional, List
 from pathlib import Path
 from datetime import datetime
 
+from common.utils.time import utc_now_iso
+
 
 class ContextTools:
     """环境感知工具"""
@@ -69,7 +71,7 @@ class ContextTools:
         """
         try:
             snapshot = {
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": utc_now_iso(),
                 "system": {},
                 "desktop": {},
                 "resources": {}

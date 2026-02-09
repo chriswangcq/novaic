@@ -235,7 +235,11 @@ export const useAppStore = create<AppStore>((set, get) => ({
             summary_length: PAGINATION_CONFIG.CHAT_SUMMARY_LENGTH 
           });
           if (history.success && history.messages.length > 0) {
-            const messages: Message[] = history.messages.map((msg) => ({
+            // Filter out SYSTEM_WAKE messages (internal scheduled wake triggers)
+            const filteredMessages = history.messages.filter(
+              (msg) => msg.type !== 'SYSTEM_WAKE'
+            );
+            const messages: Message[] = filteredMessages.map((msg) => ({
               id: msg.id,
               role: msg.type === 'USER_MESSAGE' ? 'user' : 'assistant',
               content: msg.summary || '',
@@ -247,7 +251,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
                 : undefined,
             }));
             set({ messages, hasMoreMessages: history.has_more });
-            console.log(`[Store] Loaded ${messages.length} messages from history, has_more: ${history.has_more}`);
+            console.log(`[Store] Loaded ${messages.length} messages from history (filtered ${history.messages.length - filteredMessages.length} SYSTEM_WAKE), has_more: ${history.has_more}`);
           }
         } catch (e) {
           console.warn('[Store] Failed to load chat history:', e);
@@ -619,7 +623,11 @@ export const useAppStore = create<AppStore>((set, get) => ({
           summary_length: PAGINATION_CONFIG.CHAT_SUMMARY_LENGTH 
         });
         if (history.success && history.messages.length > 0) {
-          const messages: Message[] = history.messages.map((msg) => ({
+          // Filter out SYSTEM_WAKE messages (internal scheduled wake triggers)
+          const filteredMessages = history.messages.filter(
+            (msg) => msg.type !== 'SYSTEM_WAKE'
+          );
+          const messages: Message[] = filteredMessages.map((msg) => ({
             id: msg.id,
             role: msg.type === 'USER_MESSAGE' ? 'user' : 'assistant',
             content: msg.summary || '',
@@ -630,7 +638,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
               : undefined,
           }));
           set({ messages, hasMoreMessages: history.has_more });
-          console.log(`[Store] Loaded ${messages.length} messages for agent ${agentId}, has_more: ${history.has_more}`);
+          console.log(`[Store] Loaded ${messages.length} messages for agent ${agentId} (filtered ${history.messages.length - filteredMessages.length} SYSTEM_WAKE), has_more: ${history.has_more}`);
         }
       } catch (e) {
         console.warn('[Store] Failed to load chat history for new agent:', e);
@@ -1154,8 +1162,12 @@ export const useAppStore = create<AppStore>((set, get) => ({
       });
       
       if (history.success && history.messages.length > 0) {
+        // Filter out SYSTEM_WAKE messages (internal scheduled wake triggers)
+        const filteredMessages = history.messages.filter(
+          (msg) => msg.type !== 'SYSTEM_WAKE'
+        );
         // Convert API messages to local Message format
-        const olderMessages: Message[] = history.messages.map((msg) => ({
+        const olderMessages: Message[] = filteredMessages.map((msg) => ({
           id: msg.id,
           role: msg.type === 'USER_MESSAGE' ? 'user' : 'assistant',
           content: msg.summary || '',
@@ -1173,7 +1185,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
           isLoadingMore: false,
         }));
         
-        console.log(`[Store] Loaded ${olderMessages.length} older messages, has_more: ${history.has_more}`);
+        console.log(`[Store] Loaded ${olderMessages.length} older messages (filtered ${history.messages.length - filteredMessages.length} SYSTEM_WAKE), has_more: ${history.has_more}`);
       } else {
         set({ hasMoreMessages: false, isLoadingMore: false });
       }

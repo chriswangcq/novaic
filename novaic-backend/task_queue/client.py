@@ -12,6 +12,7 @@ from typing import Optional, List, Dict, Any
 
 from .exceptions import TaskQueueError, TaskNotFoundError
 from common.config import ServiceConfig
+from common.utils.time import utc_now_iso
 
 
 class TaskQueueClient:
@@ -593,11 +594,10 @@ class GatewayInternalClient:
             input_data: 输入数据
             result_data: 结果数据
         """
-        from datetime import datetime
         payload = {
             "agent_id": agent_id,
             "subagent_id": subagent_id,
-            "timestamp": timestamp or datetime.utcnow().isoformat(),
+            "timestamp": timestamp or utc_now_iso(),
         }
         
         # 兼容旧格式

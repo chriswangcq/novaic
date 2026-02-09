@@ -17,6 +17,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional, Dict, Any, Protocol
 
+from common.utils.time import utc_now_iso
+
 
 # ============================================================
 # Protocol for TaskQueue (支持本地和远程)
@@ -79,7 +81,7 @@ class HealthMonitor:
         """主循环"""
         self._running = True
         self._shutdown_event.clear()
-        self.metrics.started_at = datetime.utcnow().isoformat()
+        self.metrics.started_at = utc_now_iso()
         
         self._log("Starting...")
         
@@ -88,7 +90,7 @@ class HealthMonitor:
                 try:
                     await self._check_and_recover()
                     self.metrics.checks += 1
-                    self.metrics.last_check_at = datetime.utcnow().isoformat()
+                    self.metrics.last_check_at = utc_now_iso()
                 except Exception as e:
                     self._log(f"Error: {e}", level="error")
                 
@@ -205,7 +207,7 @@ class HealthMonitorClient:
         """主循环"""
         self._running = True
         self._shutdown_event.clear()
-        self.metrics.started_at = datetime.utcnow().isoformat()
+        self.metrics.started_at = utc_now_iso()
         
         self._log("Starting...")
         
@@ -214,7 +216,7 @@ class HealthMonitorClient:
                 try:
                     await self._check_and_recover()
                     self.metrics.checks += 1
-                    self.metrics.last_check_at = datetime.utcnow().isoformat()
+                    self.metrics.last_check_at = utc_now_iso()
                 except Exception as e:
                     self._log(f"Error: {e}", level="error")
                 

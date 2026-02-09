@@ -6,6 +6,7 @@ import json
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 from gateway.db.access import get_db
+from common.utils.time import utc_now_iso
 
 
 def _parse_process_row(row: Dict[str, Any]) -> Dict[str, Any]:
@@ -69,7 +70,7 @@ class VmProcessRepository:
         error_message: Optional[str] = None,
     ):
         """Insert or update VM process record."""
-        started_at = datetime.utcnow().isoformat() if status == "running" else None
+        started_at = utc_now_iso() if status == "running" else None
         
         with self.db.transaction(lock_type="agent", resource_id=agent_id):
             self.db.execute("""

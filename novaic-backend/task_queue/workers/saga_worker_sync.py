@@ -28,6 +28,7 @@ from task_queue.client import SagaClient, TaskQueueClient
 from task_queue.heartbeat_sync import HeartbeatSync
 from task_queue.saga import StepType
 from common.config import ServiceConfig
+from common.utils.time import utc_now_iso
 
 
 @dataclass
@@ -115,7 +116,7 @@ class SagaWorkerSync:
     def run(self):
         """主循环（同步）"""
         self._running = True
-        self.metrics.started_at = datetime.utcnow().isoformat()
+        self.metrics.started_at = utc_now_iso()
         
         self._log(f"Starting (worker_id: {self.worker_id}, saga_types: {self.saga_types}, max_concurrent: {self.max_concurrent})...")
         
@@ -252,7 +253,7 @@ class SagaWorkerSync:
             step_results = json.loads(step_results)
         
         self.metrics.sagas_processed += 1
-        self.metrics.last_saga_at = datetime.utcnow().isoformat()
+        self.metrics.last_saga_at = utc_now_iso()
         
         self._log(f"Executing saga {saga_id} (type={saga_type}, step={current_step})")
         
@@ -491,7 +492,7 @@ class SagaWorkerSync:
     
     def _log(self, msg: str, level: str = "info"):
         """日志输出"""
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = utc_now_iso()
         prefix = f"[{timestamp}] [{self.worker_id}]"
         
         if level == "error":

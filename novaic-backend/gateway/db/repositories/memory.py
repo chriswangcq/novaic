@@ -10,6 +10,7 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 from common.db.database import Database
+from common.utils.time import utc_now_iso
 
 
 class MemoryRepository:
@@ -30,7 +31,7 @@ class MemoryRepository:
         namespace: str = "default"
     ) -> Dict[str, Any]:
         """Save a memory value (upsert)."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         value_json = json.dumps(value, ensure_ascii=False)
         
         # Use INSERT OR REPLACE for upsert
@@ -143,7 +144,7 @@ class MemoryRepository:
         status: str = "completed"
     ) -> Dict[str, Any]:
         """Log a task action."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         
         with self.db.transaction(lock_type="agent", resource_id=agent_id):
             self.db.execute(

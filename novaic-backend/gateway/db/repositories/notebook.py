@@ -9,6 +9,8 @@ import json
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 
+from common.utils.time import utc_now_iso
+
 
 class NotebookRepository:
     """Repository for agent_notebook table."""
@@ -28,7 +30,7 @@ class NotebookRepository:
         expires_at: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Create a new notebook entry."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         topics_json = json.dumps(related_topics or [], ensure_ascii=False)
         relevance_score = max(0.0, min(1.0, relevance_score))
         
@@ -98,7 +100,7 @@ class NotebookRepository:
         
         if not include_expired:
             conditions.append("(expires_at IS NULL OR expires_at > ?)")
-            params.append(datetime.utcnow().isoformat())
+            params.append(utc_now_iso())
         
         where = " AND ".join(conditions)
         params.append(min(limit, 100))  # cap at 100
@@ -133,7 +135,7 @@ class NotebookRepository:
         expires_at: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Update an existing notebook entry."""
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         
         updates = ["updated_at = ?"]
         params: list = [now]
@@ -198,7 +200,7 @@ class NotebookRepository:
         Returns only metadata (no full content) to keep context size small.
         Excludes expired and archived entries.
         """
-        now = datetime.utcnow().isoformat()
+        now = utc_now_iso()
         
         rows = self.db.fetchall(
             """SELECT id, entry_type, title, status, relevance_score, created_at

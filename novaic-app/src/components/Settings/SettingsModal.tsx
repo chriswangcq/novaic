@@ -1441,6 +1441,17 @@ function AgentToolsTab() {
   const [disabledTools, setDisabledTools] = useState<string[]>([]);
   const [customInstructions, setCustomInstructions] = useState('');
 
+  // Bootstrap files state
+  const [soulMd, setSoulMd] = useState('');
+  const [heartbeatMd, setHeartbeatMd] = useState('');
+  const [memoryMd, setMemoryMd] = useState('');
+  const [userMd, setUserMd] = useState('');
+
+  // Active hours state
+  const [activeHoursStart, setActiveHoursStart] = useState('09:00');
+  const [activeHoursEnd, setActiveHoursEnd] = useState('22:00');
+  const [activeHoursTimezone, setActiveHoursTimezone] = useState('Asia/Shanghai');
+
   // Skills
   const [allSkills, setAllSkills] = useState<any[]>([]);
   const [assignedSkillIds, setAssignedSkillIds] = useState<string[]>([]);
@@ -1471,6 +1482,20 @@ function AgentToolsTab() {
       } catch {
         setPrompts(null);
       }
+
+      // Load bootstrap files
+      try {
+        const bootstrapFiles = await api.getBootstrapFiles(selectedAgentId);
+        setSoulMd(bootstrapFiles.soul_md || '');
+        setHeartbeatMd(bootstrapFiles.heartbeat_md || '');
+        setMemoryMd(bootstrapFiles.memory_md || '');
+        setUserMd(bootstrapFiles.user_md || '');
+        setActiveHoursStart(bootstrapFiles.active_hours_start || '09:00');
+        setActiveHoursEnd(bootstrapFiles.active_hours_end || '22:00');
+        setActiveHoursTimezone(bootstrapFiles.active_hours_timezone || 'Asia/Shanghai');
+      } catch (e) {
+        console.error('Failed to load bootstrap files:', e);
+      }
     } catch (e) {
       console.error('Failed to load agent tools data:', e);
     } finally {
@@ -1496,6 +1521,14 @@ function AgentToolsTab() {
           custom_instructions: customInstructions,
         }),
         api.setAgentSkills(selectedAgentId, assignedSkillIds),
+        api.saveBootstrapFiles(selectedAgentId, {
+          soul_md: soulMd,
+          heartbeat_md: heartbeatMd,
+          // memory_md 和 user_md 是 Agent 维护的，用户不应该编辑
+          active_hours_start: activeHoursStart,
+          active_hours_end: activeHoursEnd,
+          active_hours_timezone: activeHoursTimezone,
+        }),
       ]);
       // Reload prompts preview after save
       try {
@@ -1663,6 +1696,136 @@ function AgentToolsTab() {
                 isEditable={true}
                 onContentChange={setCustomInstructions}
               />
+            </div>
+
+            {/* Bootstrap Files Section */}
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-sm font-medium text-gray-200">Bootstrap Files</h4>
+                <p className="text-xs text-gray-400 mb-4">
+                  定义 Agent 的人格和行为。SOUL.md 定义人格，HEARTBEAT.md 定义唤醒时的检查清单。
+                </p>
+              </div>
+              
+              {/* SOUL.md */}
+              <div>
+                <label className="block text-[10px] text-nb-text-muted mb-1">
+                  SOUL.md (Agent 人格定义)
+                </label>
+                <textarea
+                  value={soulMd}
+                  onChange={(e) => setSoulMd(e.target.value)}
+                  className="w-full h-32 px-3 py-2 bg-nb-surface-2 border border-nb-border rounded-lg text-xs text-nb-text font-mono resize-y focus:outline-none focus:ring-1 focus:ring-nb-accent/50"
+                  placeholder={`# 我是谁
+
+## 核心原则
+- 真正有帮助，不是表演有帮助
+- 有自己的观点
+- 先尝试解决，再问问题
+- 尊重用户的时间
+
+## 风格
+友好、自然、像朋友一样交流`}
+                />
+              </div>
+              
+              {/* HEARTBEAT.md */}
+              <div>
+                <label className="block text-[10px] text-nb-text-muted mb-1">
+                  HEARTBEAT.md (唤醒检查清单)
+                </label>
+                <textarea
+                  value={heartbeatMd}
+                  onChange={(e) => setHeartbeatMd(e.target.value)}
+                  className="w-full h-32 px-3 py-2 bg-nb-surface-2 border border-nb-border rounded-lg text-xs text-nb-text font-mono resize-y focus:outline-none focus:ring-1 focus:ring-nb-accent/50"
+                  placeholder={`# 检查清单
+
+## 每次唤醒都检查
+- 笔记本中有 status=ready 的内容吗？
+
+## 轮换检查（每天 2-3 次）
+- 用户关心的新闻/价格有变化吗？
+
+## 定期检查（每天 1 次）
+- 回顾最近对话，整理到 MEMORY.md`}
+                />
+              </div>
+              
+              {/* MEMORY.md (只读) */}
+              <div>
+                <label className="block text-[10px] text-nb-text-muted mb-1">
+                  MEMORY.md (长期记忆 - Agent 维护，只读)
+                </label>
+                <div className="relative">
+                  <textarea
+                    value={memoryMd}
+                    readOnly
+                    className="w-full h-24 px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-gray-400 font-mono resize-y cursor-not-allowed"
+                    placeholder="Agent 会在 heartbeat 时自动整理笔记到这里..."
+                  />
+                  <span className="absolute top-2 right-2 text-xs text-gray-500 bg-gray-900 px-1">只读</span>
+                </div>
+              </div>
+              
+              {/* USER.md (只读) */}
+              <div>
+                <label className="block text-[10px] text-nb-text-muted mb-1">
+                  USER.md (用户画像 - Agent 维护，只读)
+                </label>
+                <div className="relative">
+                  <textarea
+                    value={userMd}
+                    readOnly
+                    className="w-full h-24 px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-gray-400 font-mono resize-y cursor-not-allowed"
+                    placeholder="Agent 会在对话中学习用户偏好并记录到这里..."
+                  />
+                  <span className="absolute top-2 right-2 text-xs text-gray-500 bg-gray-900 px-1">只读</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Active Hours Section */}
+            <div className="space-y-3">
+              <div>
+                <h4 className="text-xs font-medium text-nb-text">Active Hours (活跃时间)</h4>
+                <p className="text-[10px] text-nb-text-muted mt-0.5">Agent 在非活跃时间会减少主动联系</p>
+              </div>
+              
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="block text-[10px] text-nb-text-muted mb-1">开始时间</label>
+                  <input
+                    type="time"
+                    value={activeHoursStart}
+                    onChange={(e) => setActiveHoursStart(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-nb-surface-2 border border-nb-border rounded-lg text-xs text-nb-text focus:outline-none focus:ring-1 focus:ring-nb-accent/50"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-[10px] text-nb-text-muted mb-1">结束时间</label>
+                  <input
+                    type="time"
+                    value={activeHoursEnd}
+                    onChange={(e) => setActiveHoursEnd(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-nb-surface-2 border border-nb-border rounded-lg text-xs text-nb-text focus:outline-none focus:ring-1 focus:ring-nb-accent/50"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-[10px] text-nb-text-muted mb-1">时区</label>
+                  <select
+                    value={activeHoursTimezone}
+                    onChange={(e) => setActiveHoursTimezone(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-nb-surface-2 border border-nb-border rounded-lg text-xs text-nb-text focus:outline-none focus:ring-1 focus:ring-nb-accent/50"
+                  >
+                    <option value="Asia/Shanghai">Asia/Shanghai (UTC+8)</option>
+                    <option value="Asia/Tokyo">Asia/Tokyo (UTC+9)</option>
+                    <option value="America/New_York">America/New_York (UTC-5)</option>
+                    <option value="America/Los_Angeles">America/Los_Angeles (UTC-8)</option>
+                    <option value="Europe/London">Europe/London (UTC+0)</option>
+                    <option value="UTC">UTC</option>
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
 

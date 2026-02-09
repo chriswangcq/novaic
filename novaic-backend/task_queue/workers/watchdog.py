@@ -29,6 +29,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any
 import traceback
 from common.config import ServiceConfig
+from common.utils.time import utc_now_iso
 import httpx
 
 
@@ -111,7 +112,7 @@ class Watchdog:
         """主循环"""
         self._running = True
         self._shutdown_event.clear()
-        self.metrics.started_at = datetime.utcnow().isoformat()
+        self.metrics.started_at = utc_now_iso()
         
         self._log(f"Starting (worker_id: {self.worker_id})...")
         self._log(f"Gateway URL: {self.gateway_url}")
@@ -182,7 +183,7 @@ class Watchdog:
         metadata = message.get("metadata", {})
         
         self.metrics.messages_found += 1
-        self.metrics.last_message_at = datetime.utcnow().isoformat()
+        self.metrics.last_message_at = utc_now_iso()
         
         self._log(f"Found message {msg_id} (type={msg_type}, agent={agent_id})")
         
