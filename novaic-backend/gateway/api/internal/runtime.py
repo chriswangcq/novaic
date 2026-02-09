@@ -830,21 +830,28 @@ def rt_memory_get_task_history(runtime_id: str, data: Dict[str, Any]):
 def rt_notebook_write(runtime_id: str, data: Dict[str, Any]):
     """Write a new notebook entry. Agent ID resolved from runtime."""
     from gateway.db.repositories.notebook import NotebookRepository
+    import logging
     
-    _, agent_id, _ = resolve_runtime_ids(runtime_id)
-    
-    db = get_db()
-    repo = NotebookRepository(db)
-    return repo.write(
-        agent_id=agent_id,
-        entry_type=data.get("entry_type", "observation"),
-        title=data.get("title", "Untitled"),
-        content=data.get("content", ""),
-        source=f"runtime:{runtime_id}",
-        related_topics=data.get("related_topics"),
-        relevance_score=data.get("relevance_score", 0.5),
-        expires_at=data.get("expires_at"),
-    )
+    try:
+        _, agent_id, _ = resolve_runtime_ids(runtime_id)
+        
+        db = get_db()
+        repo = NotebookRepository(db)
+        return repo.write(
+            agent_id=agent_id,
+            entry_type=data.get("entry_type") or data.get("type", "observation"),  # 兼容 type 参数
+            title=data.get("title", "Untitled"),
+            content=data.get("content", ""),
+            source=f"runtime:{runtime_id}",
+            related_topics=data.get("related_topics") or data.get("tags"),  # 兼容 tags 参数
+            relevance_score=data.get("relevance_score", 0.5),
+            expires_at=data.get("expires_at"),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"[notebook_write] Error for runtime {runtime_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to write notebook entry: {str(e)}")
 
 
 @router.post("/rt/{runtime_id}/notebook/read")
