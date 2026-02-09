@@ -255,18 +255,19 @@ class TestTaskGenerator:
 class TestPromptBuilder:
     """测试 Prompt 构建器"""
     
-    def test_build_cold_start_prompt(self):
-        """冷启动 Prompt 应该包含必要元素"""
-        from task_queue.utils.self_drive_prompt import build_cold_start_prompt
+    def test_build_self_drive_prompt_cold_start(self):
+        """冷启动场景（空画像）应该自动演化出好奇心驱动的行为"""
+        from task_queue.utils.self_drive_prompt import build_self_drive_prompt
         
-        prompt = build_cold_start_prompt(
+        prompt = build_self_drive_prompt(
             drive_config={},
             user_profile={},
+            task_board={"q1": {"count": 0, "tasks": []}, "q2": {"count": 0, "tasks": []}, "q3": {"count": 0, "tasks": []}, "q4": {"count": 0, "tasks": []}},
         )
         
-        assert "初次见面" in prompt
+        assert "初识阶段" in prompt
         assert "好奇心" in prompt
-        assert "行为建议" in prompt
+        assert "自驱系统" in prompt
     
     def test_build_self_drive_prompt(self):
         """完整 Prompt 应该包含所有部分"""
@@ -319,11 +320,11 @@ class TestIntegration:
     """集成测试"""
     
     def test_full_flow_cold_start(self):
-        """测试完整的冷启动流程"""
+        """测试完整的冷启动流程（通过自驱系统自动演化）"""
         from task_queue.utils.profile_assessment import assess_profile_completeness
         from task_queue.utils.drive_config import DriveConfig
         from task_queue.utils.task_generator import generate_self_driven_tasks
-        from task_queue.utils.self_drive_prompt import build_cold_start_prompt
+        from task_queue.utils.self_drive_prompt import build_self_drive_prompt
         
         # 1. 评估空画像
         assessment = assess_profile_completeness({})
@@ -334,9 +335,14 @@ class TestIntegration:
         tasks = generate_self_driven_tasks({}, config)
         assert len(tasks) > 0
         
-        # 3. 构建 Prompt
-        prompt = build_cold_start_prompt({}, {})
+        # 3. 构建 Prompt（冷启动通过空画像自动触发初识阶段行为）
+        prompt = build_self_drive_prompt(
+            drive_config={},
+            user_profile={},
+            task_board={"q1": {"count": 0, "tasks": []}, "q2": {"count": 0, "tasks": []}, "q3": {"count": 0, "tasks": []}, "q4": {"count": 0, "tasks": []}},
+        )
         assert len(prompt) > 100
+        assert "初识阶段" in prompt
     
     def test_full_flow_normal(self):
         """测试完整的正常流程"""

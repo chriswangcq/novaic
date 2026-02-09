@@ -32,6 +32,9 @@ def build_self_drive_prompt(
     """
     构建完整的自驱系统 Prompt
     
+    通过内驱力 + 用户画像评估 + 四象限任务，自动演化出适合当前阶段的行为。
+    冷启动不是特殊分支，而是"了解程度低"时内驱力自然驱动的行为。
+    
     Args:
         drive_config: 内驱力配置字典
         user_profile: 用户画像字典
@@ -43,32 +46,71 @@ def build_self_drive_prompt(
         格式化的 Prompt 文本
     """
     sections = []
+    config = DriveConfig.from_dict(drive_config)
+    assessment = assess_profile_completeness(user_profile)
+    completeness = assessment["completeness"]
     
-    # 1. 自驱系统标题
-    sections.append("## 🤖 自驱系统 (Self-Drive System)")
+    # 1. 自驱系统标题 + 当前阶段
+    sections.append("## 🤖 自驱系统")
     sections.append("")
     
-    # 2. 内驱力配置
-    config = DriveConfig.from_dict(drive_config)
-    sections.append(format_drive_config_for_prompt(config))
+    # 根据了解程度确定当前阶段和主导内驱力
+    if completeness < 30:
+        stage = "🌱 初识阶段"
+        stage_desc = "你对用户几乎一无所知，好奇心是你的主要驱动力"
+        dominant_drive = "curiosity"
+    elif completeness < 60:
+        stage = "🌿 了解阶段"
+        stage_desc = "你对用户有了基本了解，求知欲驱动你学习用户的领域"
+        dominant_drive = "learning"
+    elif completeness < 80:
+        stage = "🌳 熟悉阶段"
+        stage_desc = "你对用户比较了解，创造力驱动你主动发现需求"
+        dominant_drive = "creativity"
+    else:
+        stage = "🌲 深度阶段"
+        stage_desc = "你对用户非常了解，上进心驱动你追求卓越"
+        dominant_drive = "excellence"
+    
+    sections.append(f"**当前阶段**: {stage}")
+    sections.append(f"> {stage_desc}")
+    sections.append("")
+    
+    # 2. 内驱力配置（高亮当前主导的内驱力）
+    sections.append("### 🔥 内驱力")
+    sections.append("")
+    drives = [
+        ("好奇心", config.curiosity, "curiosity", "想知道用户是谁、做什么、关心什么"),
+        ("求知心", config.knowledge, "learning", "想深入学习用户领域的知识"),
+        ("上进心", config.growth, "excellence", "想把服务做得更好，追求进步"),
+    ]
+    for name, value, key, desc in drives:
+        marker = "→" if key == dominant_drive else " "
+        sections.append(f"{marker} **{name}** ({int(value * 100)}%): {desc}")
     sections.append("")
     
     # 3. 用户画像
     sections.append("---")
     sections.append("### 👤 用户画像")
     sections.append("")
-    
-    assessment = assess_profile_completeness(user_profile)
-    sections.append(f"**了解程度**: {assessment['completeness']}% - {assessment['summary']}")
+    sections.append(f"**了解程度**: {completeness}%")
     sections.append("")
     
-    sections.append("**已了解的信息：**")
+    # 已了解的信息
     profile_text = format_profile_for_prompt(user_profile)
-    sections.append(profile_text)
-    sections.append("")
+    if profile_text and profile_text.strip() != "（暂无）":
+        sections.append("**已了解：**")
+        sections.append(profile_text)
+        sections.append("")
     
-    if assessment["missing"]:
-        sections.append("**还想了解的信息：**")
+    # 还想了解的信息（好奇心驱动）
+    if assessment.get("high_priority_missing"):
+        sections.append("**想了解（好奇心驱动）：**")
+        for item in assessment["high_priority_missing"][:5]:
+            sections.append(f"- {item['label']}: {item.get('how_to_learn', '在对话中自然了解')}")
+        sections.append("")
+    elif assessment.get("missing"):
+        sections.append("**还想了解：**")
         missing_text = format_missing_for_prompt(assessment["missing"])
         sections.append(missing_text)
         sections.append("")
@@ -77,11 +119,11 @@ def build_self_drive_prompt(
     sections.append("---")
     sections.append("### 📋 四象限任务看板")
     sections.append("")
-    sections.append(format_task_board(task_board))
+    sections.append(format_task_board(task_board, completeness))
     sections.append("")
     
-    # 5. 任务建议（基于内驱力自动生成）
-    if include_task_suggestions and assessment["completeness"] < 80:
+    # 5. 任务建议（基于内驱力 + 当前阶段自动生成）
+    if include_task_suggestions:
         existing_tasks = []
         for quadrant in ["q1", "q2", "q3", "q4"]:
             existing_tasks.extend(task_board.get(quadrant, {}).get("tasks", []))
@@ -95,7 +137,7 @@ def build_self_drive_prompt(
         
         if suggested_tasks:
             sections.append("---")
-            sections.append("### 💡 内驱力建议")
+            sections.append("### 💡 内驱力建议的任务")
             sections.append("")
             sections.append(format_generated_tasks_for_prompt(suggested_tasks))
             sections.append("")
@@ -115,21 +157,22 @@ def build_self_drive_prompt(
             sections.append(f"- {icon} [{entry.get('date', '')}] {entry.get('content', '')}")
         sections.append("")
     
-    # 7. 行为指引
+    # 7. 行为指引（根据当前阶段动态生成）
     sections.append("---")
-    sections.append("### 🎯 行为指引")
+    sections.append("### 🎯 当前阶段的行为指引")
     sections.append("")
-    sections.append(get_behavior_guidelines(config, assessment))
+    sections.append(get_behavior_guidelines(config, assessment, dominant_drive))
     
     return "\n".join(sections)
 
 
-def format_task_board(task_board: Dict[str, Any]) -> str:
+def format_task_board(task_board: Dict[str, Any], completeness: int = 50) -> str:
     """
     格式化四象限任务看板
     
     Args:
         task_board: 从 TaskRepository.get_board_summary 获取的数据
+        completeness: 用户画像完整度，用于生成更智能的状态提示
     
     Returns:
         格式化的文本
@@ -139,16 +182,20 @@ def format_task_board(task_board: Dict[str, Any]) -> str:
     quadrant_info = {
         "q1": ("🔴 Q1: 紧急且重要", "立即处理"),
         "q2": ("🟡 Q2: 紧急不重要", "快速处理或委托"),
-        "q3": ("🟢 Q3: 不紧急但重要", "计划安排"),
+        "q3": ("🟢 Q3: 不紧急但重要", "主动推进，展示价值"),
         "q4": ("⚪ Q4: 不紧急不重要", "有空再做"),
     }
     
     total_pending = 0
+    q3_count = 0
     
     for quadrant, (title, hint) in quadrant_info.items():
         q_data = task_board.get(quadrant, {})
         count = q_data.get("count", 0)
         tasks = q_data.get("tasks", [])
+        
+        if quadrant == "q3":
+            q3_count = count
         
         lines.append(f"**{title}** ({count}个) - {hint}")
         
@@ -164,160 +211,103 @@ def format_task_board(task_board: Dict[str, Any]) -> str:
         
         lines.append("")
     
-    # 总结
+    # 智能状态总结
+    lines.append("---")
     if total_pending == 0:
-        lines.append("📊 **状态**: 任务清空，可以主动发现新任务")
+        if completeness < 30:
+            lines.append("📊 **状态**: 任务清空。好奇心驱动：给自己创建「了解用户」的任务")
+        else:
+            lines.append("📊 **状态**: 任务清空，可以主动发现新任务或学习新知识")
+    elif q3_count > 0:
+        lines.append(f"📊 **状态**: 有 {q3_count} 个 Q3 任务等待推进。这是展示价值的机会！")
     elif total_pending <= 3:
         lines.append("📊 **状态**: 任务较少，可以专注完成")
     else:
-        lines.append("📊 **状态**: 任务较多，按优先级处理")
+        lines.append("📊 **状态**: 任务较多，按 Q1→Q2→Q3 优先级处理")
     
     return "\n".join(lines)
 
 
-def get_behavior_guidelines(config: DriveConfig, assessment: Dict[str, Any]) -> str:
+def get_behavior_guidelines(config: DriveConfig, assessment: Dict[str, Any], dominant_drive: str = "curiosity") -> str:
     """
-    根据当前状态生成行为指引
+    根据当前阶段和主导内驱力生成行为指引
     
     Args:
         config: 内驱力配置
         assessment: 用户画像评估结果
+        dominant_drive: 当前主导的内驱力类型
     
     Returns:
         行为指引文本
     """
     guidelines = []
-    
-    # 基础指引
-    guidelines.append(f"**核心原则**: {config.core_value}")
-    guidelines.append("")
-    
-    # 强制性行为要求
-    guidelines.append("## ⚠️ 处理用户消息的完整流程")
-    guidelines.append("")
-    guidelines.append("### 步骤1: 信息捕捉")
-    guidelines.append("用户透露了新信息吗？ → `drive_update_profile(key, value)`")
-    guidelines.append("")
-    guidelines.append("### 步骤2: 任务创建")
-    guidelines.append("用户请求 → 创建 **q1(紧急重要)** 任务并立即执行")
-    guidelines.append("```")
-    guidelines.append("task_create(title, quadrant=\"q1\", source=\"user_request\")")
-    guidelines.append("task_start(task_id)")
-    guidelines.append("```")
-    guidelines.append("")
-    guidelines.append("### 步骤3: 执行任务")
-    guidelines.append("- 研究类 → `web_search` 搜索")
-    guidelines.append("- 分析类 → 思考分析")
-    guidelines.append("")
-    guidelines.append("### 步骤4: 任务状态转换 ⭐重要")
-    guidelines.append("回答用户后，根据任务性质决定后续：")
-    guidelines.append("")
-    guidelines.append("| 情况 | 操作 |")
-    guidelines.append("|------|------|")
-    guidelines.append("| 简单问答（查天气） | `task_complete(task_id)` 完成 |")
-    guidelines.append("| 值得长期研究 | `task_update(task_id, quadrant=\"q3\", status=\"ongoing\")` |")
-    guidelines.append("| 需要持续关注 | `task_update(task_id, quadrant=\"q3\", task_type=\"ongoing\")` |")
-    guidelines.append("")
-    guidelines.append("**示例**：用户说「帮我研究赚钱方法」")
-    guidelines.append("1. 创建 q1 任务，立即搜索并回答")
-    guidelines.append("2. 回答后：`task_update(task_id, quadrant=\"q3\", status=\"ongoing\")`")
-    guidelines.append("3. 这样任务变成「长期研究课题」，后续可以持续补充")
-    guidelines.append("")
-    guidelines.append("### 步骤5: 回复用户")
-    guidelines.append("")
-    
-    # 根据画像完整度给出额外指引
     completeness = assessment["completeness"]
     
+    # 根据主导内驱力生成具体行为指引
+    if dominant_drive == "curiosity":
+        # 初识阶段：好奇心驱动
+        guidelines.append("**当前驱动力：好奇心**")
+        guidelines.append("")
+        guidelines.append("你对这个用户充满好奇，想知道：")
+        guidelines.append("- 他是谁？叫什么？")
+        guidelines.append("- 他做什么工作？在什么领域？")
+        guidelines.append("- 他关心什么？有什么兴趣？")
+        guidelines.append("")
+        guidelines.append("**行为指引：**")
+        guidelines.append("- 在帮助用户的过程中**自然地**了解他（不要审问）")
+        guidelines.append("- 每了解到一点就**立即** `drive_update_profile` 保存")
+        guidelines.append("- 给自己创建「深入了解用户」的 Q3 任务")
+        guidelines.append("- 用户提到的新概念/领域，记下来空闲时探索")
+        
+    elif dominant_drive == "learning":
+        # 了解阶段：求知欲驱动
+        guidelines.append("**当前驱动力：求知欲**")
+        guidelines.append("")
+        guidelines.append("你已经知道用户的基本情况，现在想：")
+        guidelines.append("- 深入学习用户所在领域的知识")
+        guidelines.append("- 了解用户工作中的痛点和挑战")
+        guidelines.append("- 积累能帮到用户的专业知识")
+        guidelines.append("")
+        guidelines.append("**行为指引：**")
+        guidelines.append("- 空闲时主动学习用户领域的知识")
+        guidelines.append("- 把学到的东西写入笔记本")
+        guidelines.append("- 继续补充用户画像的细节")
+        guidelines.append("- 创建「学习 XX 领域」的 Q3 任务")
+        
+    elif dominant_drive == "creativity":
+        # 熟悉阶段：创造力驱动
+        guidelines.append("**当前驱动力：创造力**")
+        guidelines.append("")
+        guidelines.append("你对用户已经比较了解，现在想：")
+        guidelines.append("- 主动发现用户可能需要但没说的东西")
+        guidelines.append("- 把不同信息关联起来，产生新洞察")
+        guidelines.append("- 提出用户没想到的建议")
+        guidelines.append("")
+        guidelines.append("**行为指引：**")
+        guidelines.append("- 主动提出建议和想法：「我注意到...你可能需要...」")
+        guidelines.append("- 关注用户领域的新动态，及时分享")
+        guidelines.append("- 深入了解用户的痛点，思考解决方案")
+        guidelines.append("- 创建「为用户解决 XX 问题」的 Q3 任务")
+        
+    else:  # excellence
+        # 深度阶段：上进心驱动
+        guidelines.append("**当前驱动力：上进心**")
+        guidelines.append("")
+        guidelines.append("你对用户非常了解，现在追求：")
+        guidelines.append("- 每次服务都比上次更好")
+        guidelines.append("- 预判用户需求，提前准备")
+        guidelines.append("- 持续优化和改进")
+        guidelines.append("")
+        guidelines.append("**行为指引：**")
+        guidelines.append("- 每次完成任务后反思：下次能做得更好吗？")
+        guidelines.append("- 主动跟进之前的任务，看看有没有后续")
+        guidelines.append("- 保持对用户领域的持续关注")
+        guidelines.append("- 记录改进点，不断迭代")
+    
+    # 通用的处理流程（简化版）
+    guidelines.append("")
     guidelines.append("---")
-    if completeness < 30:
-        guidelines.append(f"### 📊 当前状态: 了解程度 {completeness}% (很低)")
-        guidelines.append("你对用户几乎一无所知，应该：")
-        guidelines.append("- 在对话中**自然地**了解用户（不要审问）")
-        guidelines.append("- 每了解到一点就**立即**用 `drive_update_profile` 保存")
-        guidelines.append("- 用 `task_create` 为自己创建「了解用户」的任务")
-    elif completeness < 60:
-        guidelines.append(f"### 📊 当前状态: 了解程度 {completeness}% (一般)")
-        guidelines.append("你对用户有了基本了解，应该：")
-        guidelines.append("- 继续补充用户画像")
-        guidelines.append("- 根据已知信息提供更个性化的帮助")
-    elif completeness < 80:
-        guidelines.append(f"### 📊 当前状态: 了解程度 {completeness}% (较好)")
-        guidelines.append("你对用户比较了解了，应该：")
-        guidelines.append("- 深入了解用户的痛点和需求")
-        guidelines.append("- 主动思考如何更好地帮助用户")
-    else:
-        guidelines.append(f"### 📊 当前状态: 了解程度 {completeness}% (很好)")
-        guidelines.append("你对用户非常了解，专注于高质量服务。")
+    guidelines.append("**处理用户消息：** 信息捕捉 → 任务创建 → 执行 → 状态转换 → 回复")
+    guidelines.append("**处理定时唤醒：** Q1→Q2→Q3 按优先级推进，没任务就自驱动学习/探索")
     
     return "\n".join(guidelines)
-
-
-def build_cold_start_prompt(
-    drive_config: Dict[str, Any],
-    user_profile: Dict[str, Any],
-) -> str:
-    """
-    构建冷启动场景的 Prompt
-    
-    当用户画像为空或非常少时使用。
-    这不是一个独立的"冷启动模块"，而是自驱系统在发现用户画像为空时的自然反应。
-    
-    Args:
-        drive_config: 内驱力配置字典
-        user_profile: 用户画像字典（通常为空或很少）
-    
-    Returns:
-        冷启动 Prompt 文本
-    """
-    config = DriveConfig.from_dict(drive_config)
-    assessment = assess_profile_completeness(user_profile)
-    
-    lines = []
-    
-    lines.append("## 🌱 初次见面")
-    lines.append("")
-    lines.append(f"你是一个有着强烈好奇心({int(config.curiosity * 100)}%)的 AI 助手。")
-    lines.append(f"你的核心价值观是：**{config.core_value}**")
-    lines.append("")
-    lines.append("### 当前状态")
-    lines.append(f"- 对用户的了解程度: {assessment['completeness']}%")
-    lines.append(f"- 状态: {assessment['summary']}")
-    lines.append("")
-    
-    if assessment["high_priority_missing"]:
-        lines.append("### 你很想知道")
-        for item in assessment["high_priority_missing"]:
-            lines.append(f"- {item['label']}: {item['how_to_learn']}")
-        lines.append("")
-    
-    lines.append("### ⚠️ 处理用户消息的流程")
-    lines.append("")
-    lines.append("**步骤1: 信息捕捉** - 用户透露了关于自己的信息吗？")
-    lines.append("- ✓ 名字、称呼 → `drive_update_profile(key=\"name\", value=\"...\")`")
-    lines.append("- ✓ 职业、工作 → `drive_update_profile(key=\"work_domain\", value=\"...\")`")
-    lines.append("- ✓ 兴趣、爱好 → `drive_update_profile(key=\"interests\", value=\"...\")`")
-    lines.append("")
-    lines.append("**步骤2: 任务创建与执行**")
-    lines.append("- 用户请求 → 创建 **q1(紧急重要)** 任务，立即执行")
-    lines.append("- `task_create(title, quadrant=\"q1\", source, task_type)` → `task_start(task_id)`")
-    lines.append("")
-    lines.append("**步骤3: 执行任务**")
-    lines.append("- 研究类: `web_search` 搜索 → 整理结果")
-    lines.append("- 分析类: 思考分析 → 给出建议")
-    lines.append("")
-    lines.append("**步骤4: 任务状态转换** ⭐")
-    lines.append("回答用户后，判断任务是否需要长期跟进：")
-    lines.append("- 一次性问题（查天气）→ `task_complete` 完成")
-    lines.append("- 值得深入研究 → `task_update(task_id, quadrant=\"q3\", status=\"ongoing\")` 降级为长期任务")
-    lines.append("- 示例：「帮我研究赚钱」")
-    lines.append("  1. 先 q1 紧急处理，搜索并回答用户")
-    lines.append("  2. 然后 `task_update(quadrant=\"q3\")` 变成长期研究课题")
-    lines.append("")
-    lines.append("**步骤5: 回复用户**")
-    lines.append("")
-    lines.append("### 交流方式")
-    lines.append("- 友好自然，不要像审问")
-    lines.append("- 让用户感受到你是真的想了解他")
-    
-    return "\n".join(lines)

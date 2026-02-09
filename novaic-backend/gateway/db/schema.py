@@ -777,11 +777,10 @@ def init_schema_sync(conn):
         )
     
     # Insert default runtime state
-    for key, value in DEFAULT_RUNTIME_STATE.items():
-        conn.execute(
-            "INSERT OR IGNORE INTO agent_runtime_state (key, value) VALUES (?, ?)",
-            (key, value)
-        )
+    # Note: agent_runtime_state has a foreign key to agents table,
+    # so we only insert default values when a default agent exists.
+    # Per-agent runtime state should be initialized when creating an agent.
+    # Skip inserting default runtime state here to avoid foreign key constraint errors.
     
     conn.commit()
     
