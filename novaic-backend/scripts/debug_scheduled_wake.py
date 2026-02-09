@@ -13,7 +13,6 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from task_queue.client import GatewayInternalClient
-from task_queue.utils.drive_prompt import build_drive_prompt
 from task_queue.utils.system_prompt import build_system_prompt
 from task_queue.utils.context_builder import build_initial_context
 
@@ -27,9 +26,9 @@ def debug_scheduled_wake(agent_id: str, gateway_url: str = "http://127.0.0.1:199
     print(f"调试 Scheduled Wake - Agent: {agent_id}")
     print("=" * 80)
     
-    # 1. System Prompt
+    # 1. System Prompt (统一的)
     print("\n" + "=" * 40)
-    print("1. SYSTEM PROMPT")
+    print("1. SYSTEM PROMPT (统一)")
     print("=" * 40)
     try:
         sys_prompt = build_system_prompt(agent_id, client)
@@ -53,13 +52,16 @@ def debug_scheduled_wake(agent_id: str, gateway_url: str = "http://127.0.0.1:199
     except Exception as e:
         print(f"❌ Error: {e}")
     
-    # 3. Drive Prompt (定时唤醒专用)
+    # 3. Wake Message (定时唤醒时写入 DB 的消息内容)
     print("\n" + "=" * 40)
-    print("3. DRIVE PROMPT (定时唤醒专用)")
+    print("3. WAKE MESSAGE (定时唤醒时写入 DB 的消息内容)")
     print("=" * 40)
     try:
-        drive_prompt = build_drive_prompt(agent_id, client)
-        print(drive_prompt)
+        from task_queue.utils.system_prompt import build_wake_message
+        wake_msg = build_wake_message(agent_id, client)
+        print(wake_msg)
+        print("\n[说明] 这个消息会作为 SYSTEM_WAKE 类型写入 DB，")
+        print("然后由 ReactThink 的 context.read 统一读取，和用户消息流程完全一致。")
     except Exception as e:
         print(f"❌ Error: {e}")
     

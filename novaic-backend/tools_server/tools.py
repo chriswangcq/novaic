@@ -1,7 +1,7 @@
 """
 Tools Server - 工具定义
 
-包含 55 个内置工具的完整定义，符合 OpenAI function calling 格式。
+包含内置工具的完整定义，符合 OpenAI function calling 格式。
 
 工具分类：
 - memory: 10 个工具 (memory_save, memory_recall, memory_delete, memory_list_namespaces, 
@@ -20,10 +20,11 @@ Tools Server - 工具定义
   - File (4): read, write, list, info
   - Window (7): list_windows, focus_window, maximize_window, minimize_window, close_window, resize_window, launch_app
   - Context (7): system_snapshot, directory_snapshot, app_state, clipboard_get, clipboard_set, recent_files, environment_info
-
 - drive: 3 个工具 (drive_update_profile, drive_update_relationship, memory_update)
+- quadrant_task: 6 个工具 (task_create, task_complete, task_update, task_board_list, task_delete, drive_log_growth)
+  - 四象限任务管理：q1(紧急重要), q2(紧急不重要), q3(不紧急重要), q4(不紧急不重要)
 
-总计: 74 个工具
+总计: 80 个工具
 """
 
 from typing import Dict, List, Any, Optional
@@ -1206,6 +1207,213 @@ NOTEBOOK_TOOLS: List[Dict[str, Any]] = [
 ]
 
 
+# ==================== Quadrant Task Tools (四象限任务管理) ====================
+
+QUADRANT_TASK_TOOLS: List[Dict[str, Any]] = [
+    {
+        "name": "task_create",
+        "description": """创建一个四象限任务。用于：
+- 从对话中捕捉用户提到的事项
+- 推理用户可能需要的帮助
+- 为自己创建学习/了解用户的任务
+
+四象限说明：
+- q1: 紧急且重要（有截止日期的用户请求）
+- q2: 紧急不重要（需要快速处理的小事）
+- q3: 不紧急但重要（了解用户、学习知识）
+- q4: 不紧急不重要（有空再做）
+
+任务类型：
+- one_time: 一次性任务（完成即结束）
+- recurring: 周期性任务（定期执行）
+- ongoing: 持续性任务（长期跟进，如「关注用户健康」）""",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "title": {
+                    "type": "string",
+                    "description": "任务标题（简洁描述）"
+                },
+                "quadrant": {
+                    "type": "string",
+                    "enum": ["q1", "q2", "q3", "q4"],
+                    "description": "四象限分类"
+                },
+                "source": {
+                    "type": "string",
+                    "enum": ["user_request", "user_mention", "inference", "curiosity", "learning", "self_improvement"],
+                    "description": "任务来源"
+                },
+                "task_type": {
+                    "type": "string",
+                    "enum": ["one_time", "recurring", "ongoing"],
+                    "description": "任务类型：one_time(一次性), recurring(周期性), ongoing(持续性)，默认 one_time"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "任务详细描述（可选）"
+                },
+                "reasoning": {
+                    "type": "string",
+                    "description": "为什么创建这个任务（你的推理过程）"
+                },
+                "due_date": {
+                    "type": "string",
+                    "description": "截止日期，如 2024-01-20（可选）"
+                },
+                "context": {
+                    "type": "string",
+                    "description": "相关上下文，如用户原话（可选）"
+                }
+            },
+            "required": ["title", "quadrant", "source"]
+        }
+    },
+    {
+        "name": "task_complete",
+        "description": "完成一个任务",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "task_id": {
+                    "type": "integer",
+                    "description": "任务 ID"
+                },
+                "notes": {
+                    "type": "string",
+                    "description": "完成备注/反思（可选）"
+                }
+            },
+            "required": ["task_id"]
+        }
+    },
+    {
+        "name": "task_update",
+        "description": "更新任务状态或信息",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "task_id": {
+                    "type": "integer",
+                    "description": "任务 ID"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": ["pending", "in_progress", "completed", "ongoing", "paused", "cancelled"],
+                    "description": "新状态：pending(待处理), in_progress(进行中), completed(已完成), ongoing(持续进行), paused(暂停), cancelled(取消)"
+                },
+                "quadrant": {
+                    "type": "string",
+                    "enum": ["q1", "q2", "q3", "q4"],
+                    "description": "更新象限（优先级变化时）"
+                },
+                "title": {
+                    "type": "string",
+                    "description": "更新标题"
+                },
+                "due_date": {
+                    "type": "string",
+                    "description": "更新截止日期"
+                }
+            },
+            "required": ["task_id"]
+        }
+    },
+    {
+        "name": "task_start",
+        "description": "开始执行一个任务。将任务状态设为 in_progress 并返回任务详情。创建任务后应立即调用此工具开始执行。",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "task_id": {
+                    "type": "integer",
+                    "description": "任务 ID"
+                }
+            },
+            "required": ["task_id"]
+        }
+    },
+    {
+        "name": "task_progress",
+        "description": "记录任务进展。用于持续性任务(ongoing)或周期性任务(recurring)，记录阶段性进展而非完成。",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "task_id": {
+                    "type": "integer",
+                    "description": "任务 ID"
+                },
+                "note": {
+                    "type": "string",
+                    "description": "进展说明（做了什么、发现了什么）"
+                },
+                "set_ongoing": {
+                    "type": "boolean",
+                    "description": "是否将任务状态设为 ongoing（持续进行中），默认 false"
+                }
+            },
+            "required": ["task_id", "note"]
+        }
+    },
+    {
+        "name": "task_board_list",
+        "description": "列出任务板上的任务",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "quadrant": {
+                    "type": "string",
+                    "enum": ["q1", "q2", "q3", "q4", "all"],
+                    "description": "筛选象限，默认 all"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": ["pending", "in_progress", "completed", "all"],
+                    "description": "筛选状态，默认 pending"
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "返回数量限制，默认 20"
+                }
+            }
+        }
+    },
+    {
+        "name": "task_delete",
+        "description": "删除一个任务",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "task_id": {
+                    "type": "integer",
+                    "description": "任务 ID"
+                }
+            },
+            "required": ["task_id"]
+        }
+    },
+    {
+        "name": "drive_log_growth",
+        "description": "记录一条成长日志。当你学到新东西、有新发现、或完成了有意义的事情时使用。",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string",
+                    "description": "成长内容（学到了什么、发现了什么、做到了什么）"
+                },
+                "category": {
+                    "type": "string",
+                    "enum": ["learning", "discovery", "achievement", "reflection"],
+                    "description": "类别：learning=学习, discovery=发现, achievement=成就, reflection=反思"
+                }
+            },
+            "required": ["content"]
+        }
+    },
+]
+
+
 # ==================== Drive Tools (Agent autonomous behavior) ====================
 
 DRIVE_TOOLS: List[Dict[str, Any]] = [
@@ -1292,6 +1500,7 @@ BUILTIN_TOOLS: Dict[str, List[Dict[str, Any]]] = {
     "memory": MEMORY_TOOLS,
     "notebook": NOTEBOOK_TOOLS,
     "drive": DRIVE_TOOLS,
+    "quadrant_task": QUADRANT_TASK_TOOLS,  # 四象限任务管理工具
     "runtime": RUNTIME_TOOLS,
     "chat": CHAT_TOOLS,
     "web": WEB_TOOLS,

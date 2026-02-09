@@ -22,6 +22,7 @@ from .skill import SkillRepository
 from .message import MessageRepository
 from .runtime import RuntimeRepository, AgentRuntime
 from .subagent import SubAgentRepository, SubAgent
+from .task import TaskRepository
 from gateway.db.access import get_db
 
 
@@ -49,6 +50,7 @@ __all__ = [
     "AgentRuntime",
     "SubAgentRepository",
     "SubAgent",
+    "TaskRepository",
     "get_message_repo",
     "get_agent_state_repo",
 ]

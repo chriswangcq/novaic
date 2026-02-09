@@ -28,7 +28,7 @@ v25: Tools Server persistence - agent_runtimes.tool_ports for Tools Server recov
 v33: Alive Agent Phase 1 - Bootstrap markdown files and active hours for agent_drive.
 """
 
-SCHEMA_VERSION = 33
+SCHEMA_VERSION = 36
 
 SCHEMA_SQL = """
 -- ========================================
@@ -390,6 +390,10 @@ CREATE TABLE IF NOT EXISTS agent_drive (
     active_hours_end TEXT DEFAULT '22:00',
     active_hours_timezone TEXT DEFAULT 'Asia/Shanghai',
     
+    -- Growth and Drive configuration (v35)
+    growth_log TEXT DEFAULT '[]',             -- JSON: 成长日志列表
+    drive_config TEXT DEFAULT '{}',           -- JSON: 内驱力配置
+    
     -- Timestamps
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now')),
@@ -640,6 +644,80 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_pipeline_tasks_idempotency ON pipeline_tas
 -- ========================================
 -- Task queue tables removed - now managed by Queue Service (port 19997)
 -- tq_tasks and tq_sagas are in queue.db, not novaic.db
+
+-- ========================================
+-- Agent Tasks Table (四象限任务系统)
+-- ========================================
+-- 基于艾森豪威尔矩阵的任务管理
+-- 任务来源：用户对话捕捉、推理生成、内驱力自生成
+
+CREATE TABLE IF NOT EXISTS agent_tasks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent_id TEXT NOT NULL,
+    
+    -- 任务基本信息
+    title TEXT NOT NULL,
+    description TEXT DEFAULT '',
+    
+    -- 四象限分类
+    quadrant TEXT NOT NULL,              -- q1/q2/q3/q4
+    -- q1: 紧急且重要 (Do First)
+    -- q2: 紧急不重要 (Delegate/Quick)
+    -- q3: 不紧急但重要 (Schedule)
+    -- q4: 不紧急不重要 (Delete/Later)
+    
+    -- 任务状态
+    status TEXT DEFAULT 'pending',       -- pending/in_progress/completed/ongoing/paused/cancelled
+    -- pending: 待处理
+    -- in_progress: 进行中
+    -- completed: 已完成（一次性任务）
+    -- ongoing: 持续进行（长期任务，有进展但未结束）
+    -- paused: 暂停
+    -- cancelled: 已取消
+    
+    -- 任务类型
+    task_type TEXT DEFAULT 'one_time',   -- one_time/recurring/ongoing
+    -- one_time: 一次性任务（完成即结束）
+    -- recurring: 周期性任务（定期执行）
+    -- ongoing: 持续性任务（长期跟进）
+    
+    -- 进度追踪（用于持续性任务）
+    progress_notes TEXT DEFAULT '[]',    -- JSON array of progress entries
+    
+    -- 任务来源
+    source TEXT NOT NULL,                -- 任务来源
+    -- user_request: 用户直接请求
+    -- user_mention: 用户对话中提到
+    -- inference: 从已知信息推理
+    -- curiosity: 好奇心驱动
+    -- learning: 求知心驱动
+    -- self_improvement: 上进心驱动
+    
+    reasoning TEXT,                      -- 为什么创建这个任务（推理过程）
+    
+    -- 时间相关
+    due_date TEXT,                       -- 截止日期（如果有）
+    reminder_at TEXT,                    -- 提醒时间
+    
+    -- 上下文
+    context TEXT,                        -- 相关上下文（用户原话等）
+    related_profile_keys TEXT DEFAULT '[]',  -- 关联的用户画像字段 JSON
+    
+    -- 完成信息
+    completed_at TEXT,
+    completion_notes TEXT,               -- 完成时的备注/反思
+    
+    -- 时间戳
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    
+    FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent_tasks_agent ON agent_tasks(agent_id);
+CREATE INDEX IF NOT EXISTS idx_agent_tasks_quadrant ON agent_tasks(agent_id, quadrant);
+CREATE INDEX IF NOT EXISTS idx_agent_tasks_status ON agent_tasks(agent_id, status);
+CREATE INDEX IF NOT EXISTS idx_agent_tasks_due ON agent_tasks(agent_id, due_date);
 """
 
 DEFAULT_CONFIG = {
@@ -955,6 +1033,64 @@ def run_migration_sync(conn, from_version: int):
             pass
         conn.execute("PRAGMA user_version = 33")
         print("[schema] Migrated to v33: agent_drive bootstrap markdown files and active hours")
+
+    # v34: Four-quadrant task system (自驱系统 2.0)
+    if from_version < 34:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS agent_tasks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                agent_id TEXT NOT NULL,
+                title TEXT NOT NULL,
+                description TEXT DEFAULT '',
+                quadrant TEXT NOT NULL,
+                status TEXT DEFAULT 'pending',
+                source TEXT NOT NULL,
+                reasoning TEXT,
+                due_date TEXT,
+                reminder_at TEXT,
+                context TEXT,
+                related_profile_keys TEXT DEFAULT '[]',
+                completed_at TEXT,
+                completion_notes TEXT,
+                created_at TEXT DEFAULT (datetime('now')),
+                updated_at TEXT DEFAULT (datetime('now')),
+                FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
+            )
+        """)
+        try:
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_agent_tasks_agent ON agent_tasks(agent_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_agent_tasks_quadrant ON agent_tasks(agent_id, quadrant)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_agent_tasks_status ON agent_tasks(agent_id, status)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_agent_tasks_due ON agent_tasks(agent_id, due_date)")
+        except Exception:
+            pass
+        conn.execute("PRAGMA user_version = 34")
+        print("[schema] Migrated to v34: agent_tasks table for four-quadrant task system")
+
+    # v35: Growth log and drive config for agent_drive
+    if from_version < 35:
+        try:
+            conn.execute("ALTER TABLE agent_drive ADD COLUMN growth_log TEXT DEFAULT '[]'")
+        except Exception:
+            pass
+        try:
+            conn.execute("ALTER TABLE agent_drive ADD COLUMN drive_config TEXT DEFAULT '{}'")
+        except Exception:
+            pass
+        conn.execute("PRAGMA user_version = 35")
+        print("[schema] Migrated to v35: agent_drive growth_log and drive_config")
+
+    if from_version < 36:
+        try:
+            conn.execute("ALTER TABLE agent_tasks ADD COLUMN task_type TEXT DEFAULT 'one_time'")
+        except Exception:
+            pass
+        try:
+            conn.execute("ALTER TABLE agent_tasks ADD COLUMN progress_notes TEXT DEFAULT '[]'")
+        except Exception:
+            pass
+        conn.execute("PRAGMA user_version = 36")
+        print("[schema] Migrated to v36: agent_tasks task_type and progress_notes")
 
     # Update version
     conn.execute(

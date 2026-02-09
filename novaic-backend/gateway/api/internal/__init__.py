@@ -17,6 +17,7 @@ from .subagent import router as subagent_router
 from .task import router as task_router
 from .vm import router as vm_router
 from .web import router as web_router
+from .self_drive import router as self_drive_router
 
 router = APIRouter(prefix="/internal", tags=["internal"])
 
@@ -31,3 +32,4 @@ router.include_router(subagent_router)
 router.include_router(task_router)
 router.include_router(vm_router)
 router.include_router(web_router)
+router.include_router(self_drive_router)

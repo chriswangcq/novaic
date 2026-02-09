@@ -157,6 +157,16 @@ BUILTIN_TOOL_NAMES = {
     "task_log",
     "task_history",
     
+    # 四象限任务管理工具
+    "task_create",
+    "task_start",
+    "task_progress",
+    "task_complete",
+    "task_update",
+    "task_board_list",
+    "task_delete",
+    "drive_log_growth",
+    
     # VM 工具（直接调用 vmcontrol）
     "browser_navigate",
     "browser_click",
@@ -488,6 +498,112 @@ class ToolExecutor:
                 
                 return result
             
+            # ==================== 四象限任务管理工具 ====================
+            elif tool_name == "task_create":
+                # 创建四象限任务
+                response = await client.post(
+                    f"/internal/rt/{self.runtime_id}/quadrant-tasks",
+                    json={
+                        "title": arguments.get("title"),
+                        "quadrant": arguments.get("quadrant"),
+                        "source": arguments.get("source"),
+                        "description": arguments.get("description"),
+                        "reasoning": arguments.get("reasoning"),
+                        "due_date": arguments.get("due_date"),
+                        "context": arguments.get("context"),
+                    }
+                )
+                return self._handle_response(response)
+            
+            elif tool_name == "task_complete":
+                # 完成任务
+                task_id = arguments.get("task_id")
+                if not task_id:
+                    return {"success": False, "error": "task_id is required"}
+                response = await client.post(
+                    f"/internal/rt/{self.runtime_id}/quadrant-tasks/{task_id}/complete",
+                    json={
+                        "notes": arguments.get("notes"),
+                    }
+                )
+                return self._handle_response(response)
+            
+            elif tool_name == "task_update":
+                # 更新任务
+                task_id = arguments.get("task_id")
+                if not task_id:
+                    return {"success": False, "error": "task_id is required"}
+                payload = {}
+                for key in ("status", "quadrant", "title", "due_date"):
+                    val = arguments.get(key)
+                    if val is not None:
+                        payload[key] = val
+                response = await client.patch(
+                    f"/internal/rt/{self.runtime_id}/quadrant-tasks/{task_id}",
+                    json=payload
+                )
+                return self._handle_response(response)
+            
+            elif tool_name == "task_board_list":
+                # 列出任务板上的任务
+                params = {}
+                if arguments.get("quadrant"):
+                    params["quadrant"] = arguments["quadrant"]
+                if arguments.get("status"):
+                    params["status"] = arguments["status"]
+                if arguments.get("limit"):
+                    params["limit"] = arguments["limit"]
+                response = await client.get(
+                    f"/internal/rt/{self.runtime_id}/quadrant-tasks",
+                    params=params,
+                )
+                return self._handle_response(response)
+            
+            elif tool_name == "task_delete":
+                # 删除任务
+                task_id = arguments.get("task_id")
+                if not task_id:
+                    return {"success": False, "error": "task_id is required"}
+                response = await client.delete(
+                    f"/internal/rt/{self.runtime_id}/quadrant-tasks/{task_id}"
+                )
+                return self._handle_response(response)
+            
+            elif tool_name == "task_start":
+                # 开始执行任务
+                task_id = arguments.get("task_id")
+                if not task_id:
+                    return {"success": False, "error": "task_id is required"}
+                response = await client.post(
+                    f"/internal/rt/{self.runtime_id}/quadrant-tasks/{task_id}/start"
+                )
+                return self._handle_response(response)
+            
+            elif tool_name == "task_progress":
+                # 记录任务进展
+                task_id = arguments.get("task_id")
+                if not task_id:
+                    return {"success": False, "error": "task_id is required"}
+                response = await client.post(
+                    f"/internal/rt/{self.runtime_id}/quadrant-tasks/{task_id}/progress",
+                    json={
+                        "note": arguments.get("note"),
+                        "set_ongoing": arguments.get("set_ongoing", False),
+                    }
+                )
+                return self._handle_response(response)
+            
+            elif tool_name == "drive_log_growth":
+                # 记录成长日志
+                response = await client.post(
+                    f"/internal/rt/{self.runtime_id}/growth-logs",
+                    json={
+                        "content": arguments.get("content"),
+                        "category": arguments.get("category", "learning"),
+                    }
+                )
+                return self._handle_response(response)
+            
             # ==================== Goal 工具（通过 Memory 实现）====================
             elif tool_name == "goal_set":
                 # 保存 goal 到 memory 的 goals namespace
@@ -659,7 +775,8 @@ class ToolExecutor:
                 return self._handle_response(response)
             
             elif tool_name == "chat_reply":
-                message = arguments.get("message", "").strip()
+                # 兼容 message 和 content 两种参数名（有些 LLM 会用 content）
+                message = (arguments.get("message") or arguments.get("content") or "").strip()
                 
                 # HEARTBEAT_OK 协议：如果消息是 HEARTBEAT_OK，静默完成不发送给用户
                 if message == "HEARTBEAT_OK" or message.startswith("HEARTBEAT_OK"):
@@ -670,13 +787,21 @@ class ToolExecutor:
                         "message": "Heartbeat acknowledged. No message sent to user."
                     }
                 
+                # 空消息校验：拒绝发送空消息
+                if not message:
+                    logger.warning(f"[ToolExecutor] chat_reply called with empty message for runtime {self.runtime_id}")
+                    return {
+                        "success": False,
+                        "error": "message 不能为空。请提供要回复给用户的内容。"
+                    }
+                
                 # 正常发送回复消息
                 response = await client.post(
                     f"/internal/rt/{self.runtime_id}/chat/event",
                     json={
                         "type": "AGENT_REPLY",
                         "data": {
-                            "message": arguments.get("message", ""),
+                            "message": message,
                             "attachments": arguments.get("attachments", []),
                         },
                     }

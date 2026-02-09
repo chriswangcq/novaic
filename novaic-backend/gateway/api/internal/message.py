@@ -39,17 +39,19 @@ def get_unread_messages(agent_id: str):
 
 @router.get("/messages/unread-sent/{agent_id}")
 def get_unread_sent_messages(agent_id: str):
-    """Get unread sent user messages for an agent."""
+    """Get unread sent messages for an agent (USER_MESSAGE and SYSTEM_WAKE)."""
     from gateway.db.repositories.message import MessageRepository
 
     db = get_db()
     repo = MessageRepository(db)
     messages = repo.get_unread(agent_id)
     
-    # Filter for USER_MESSAGE type only (matching original behavior)
+    # Include both USER_MESSAGE and SYSTEM_WAKE types
+    # Both are treated as user role messages in the LLM context
+    valid_types = ("USER_MESSAGE", "SYSTEM_WAKE")
     user_messages = [
-        {"id": m["id"], "content": m["content"], "timestamp": m["timestamp"]}
-        for m in messages if m.get("type") == "USER_MESSAGE"
+        {"id": m["id"], "content": m["content"], "timestamp": m["timestamp"], "type": m.get("type")}
+        for m in messages if m.get("type") in valid_types
     ]
 
     return {"messages": user_messages}
@@ -271,6 +273,9 @@ def inject_wake_message(data: Dict[str, Any]):
     Used by SchedulerWorker to wake sleeping agents via the normal
     Watchdog -> MessageProcess flow.
     
+    The message content is dynamically generated with wake context
+    (time, last interaction, active hours, etc.)
+    
     Args:
         data: {
             "agent_id": str - Agent to wake
@@ -278,6 +283,8 @@ def inject_wake_message(data: Dict[str, Any]):
         }
     """
     from gateway.db.repositories.message import MessageRepository
+    from task_queue.client import GatewayInternalClient
+    from task_queue.utils.system_prompt import build_wake_message
     
     db = get_db()
     repo = MessageRepository(db)
@@ -288,10 +295,20 @@ def inject_wake_message(data: Dict[str, Any]):
     
     metadata = data.get("metadata", {})
     
+    # 生成完整的 wake message 内容
+    try:
+        client = GatewayInternalClient(ServiceConfig.GATEWAY_URL)
+        wake_content = build_wake_message(agent_id, client)
+        client.close()
+    except Exception as e:
+        # 降级到简单消息
+        print(f"[inject_wake] Failed to build wake message: {e}")
+        wake_content = "[系统定时唤醒]\n\n请检查任务看板和笔记本，决定是否需要联系用户。"
+    
     msg = repo.add_message(
         agent_id=agent_id,
         type="SYSTEM_WAKE",
-        content="[Scheduled wake]",
+        content=wake_content,
         metadata=metadata,
         status="sending",  # Watchdog will claim this
     )

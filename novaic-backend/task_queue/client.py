@@ -771,3 +771,91 @@ class GatewayInternalClient:
         except Exception as e:
             print(f"[client] Failed to match skills for task: {e}")
             return {"matched_skills": []}
+
+    # ========================================
+    # Self-Drive System Methods
+    # ========================================
+    
+    def get_main_subagent(self, agent_id: str) -> Optional[Dict[str, Any]]:
+        """获取 main subagent 信息"""
+        try:
+            return self._request("GET", f"/internal/subagents/{agent_id}/main", None)
+        except Exception:
+            return None
+    
+    def get_quadrant_task_board(self, agent_id: str) -> Dict[str, Any]:
+        """获取四象限任务看板"""
+        # 需要先获取 runtime_id，这里使用 agent_id 作为 runtime_id 的一部分
+        # 实际上应该通过 subagent 获取，这里简化处理
+        try:
+            # 尝试获取 main subagent
+            subagent = self.get_main_subagent(agent_id)
+            if subagent:
+                runtime_id = f"{agent_id}:{subagent.get('id', 'main')}:0"
+            else:
+                runtime_id = f"{agent_id}:main:0"
+            
+            resp = self._request("GET", f"/internal/rt/{runtime_id}/quadrant-tasks/board")
+            return resp
+        except Exception as e:
+            print(f"[client] get_quadrant_task_board failed: {e}")
+            return {"q1": {"count": 0, "tasks": []}, "q2": {"count": 0, "tasks": []}, "q3": {"count": 0, "tasks": []}, "q4": {"count": 0, "tasks": []}}
+    
+    def get_growth_log(self, agent_id: str, limit: int = 10, category: str = None) -> Dict[str, Any]:
+        """获取成长日志"""
+        try:
+            subagent = self.get_main_subagent(agent_id)
+            if subagent:
+                runtime_id = f"{agent_id}:{subagent.get('id', 'main')}:0"
+            else:
+                runtime_id = f"{agent_id}:main:0"
+            
+            params = {"limit": limit}
+            if category:
+                params["category"] = category
+            
+            resp = self._request("GET", f"/internal/rt/{runtime_id}/self-drive/growth-log", params=params)
+            return resp
+        except Exception as e:
+            print(f"[client] get_growth_log failed: {e}")
+            return {"entries": [], "total_count": 0}
+    
+    def get_drive_config(self, agent_id: str) -> Dict[str, Any]:
+        """获取内驱力配置"""
+        try:
+            subagent = self.get_main_subagent(agent_id)
+            if subagent:
+                runtime_id = f"{agent_id}:{subagent.get('id', 'main')}:0"
+            else:
+                runtime_id = f"{agent_id}:main:0"
+            
+            resp = self._request("GET", f"/internal/rt/{runtime_id}/self-drive/config")
+            return resp
+        except Exception as e:
+            print(f"[client] get_drive_config failed: {e}")
+            return {
+                "success": True,
+                "config": {
+                    "core_value": "为用户服务是第一目标",
+                    "curiosity": 0.7,
+                    "knowledge": 0.6,
+                    "growth": 0.5,
+                    "proactive_level": 0.5,
+                    "reflection_frequency": "daily",
+                }
+            }
+    
+    def get_self_drive_state(self, agent_id: str) -> Dict[str, Any]:
+        """获取完整的自驱系统状态"""
+        try:
+            subagent = self.get_main_subagent(agent_id)
+            if subagent:
+                runtime_id = f"{agent_id}:{subagent.get('id', 'main')}:0"
+            else:
+                runtime_id = f"{agent_id}:main:0"
+            
+            resp = self._request("GET", f"/internal/rt/{runtime_id}/self-drive/state")
+            return resp
+        except Exception as e:
+            print(f"[client] get_self_drive_state failed: {e}")
+            return {"success": False, "error": str(e)}

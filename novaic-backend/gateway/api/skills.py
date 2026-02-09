@@ -288,26 +288,27 @@ def get_prompts_preview(agent_id: str):
     client = GatewayInternalClient(ServiceConfig.GATEWAY_URL)
     
     try:
-        # System prompt
+        from task_queue.utils.system_prompt import build_system_prompt, build_wake_message
+        
+        # System prompt (统一的，不区分场景)
         try:
-            from task_queue.utils.system_prompt import build_system_prompt
             system_prompt = build_system_prompt(agent_id, client)
         except Exception as e:
             system_prompt = f"[Error building system prompt: {e}]"
         
-        # Drive prompt
+        # Wake message (定时唤醒时的消息内容，写入 DB 作为 user message)
         try:
-            from task_queue.utils.drive_prompt import build_drive_prompt
-            drive_prompt = build_drive_prompt(agent_id, client)
+            wake_message = build_wake_message(agent_id, client)
         except Exception as e:
-            drive_prompt = f"[Error building drive prompt: {e}]"
+            wake_message = f"[Error building wake message: {e}]"
         
         return {
             "agent_id": agent_id,
             "system_prompt": system_prompt or "",
             "system_prompt_length": len(system_prompt or ""),
-            "drive_prompt": drive_prompt or "",
-            "drive_prompt_length": len(drive_prompt or ""),
+            "wake_message": wake_message or "",
+            "wake_message_length": len(wake_message or ""),
+            "note": "System Prompt 统一。定时唤醒时，wake_message 作为普通消息写入 DB，由 ReactThink 统一读取。",
         }
     finally:
         client.close()

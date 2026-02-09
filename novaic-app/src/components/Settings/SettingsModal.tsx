@@ -1457,7 +1457,7 @@ function AgentToolsTab() {
   const [assignedSkillIds, setAssignedSkillIds] = useState<string[]>([]);
 
   // Prompts
-  const [prompts, setPrompts] = useState<{ system_prompt: string; drive_prompt: string; system_prompt_length: number; drive_prompt_length: number } | null>(null);
+  const [prompts, setPrompts] = useState<{ system_prompt: string; wake_message: string; system_prompt_length: number; wake_message_length: number } | null>(null);
 
   const loadData = useCallback(async () => {
     if (!selectedAgentId) return;
@@ -1661,6 +1661,9 @@ function AgentToolsTab() {
             {/* Prompts Preview */}
             <div>
               <h4 className="text-xs font-medium text-nb-text mb-2">Prompts Preview</h4>
+              <p className="text-[10px] text-nb-text-muted mb-2">
+                统一的 System Prompt。定时唤醒时，Wake Message 作为普通消息写入 DB。
+              </p>
               <div className="space-y-2">
                 {prompts && (
                   <>
@@ -1671,9 +1674,9 @@ function AgentToolsTab() {
                       isEditable={false}
                     />
                     <PromptSection
-                      title="Drive Prompt"
-                      content={prompts.drive_prompt}
-                      charCount={prompts.drive_prompt_length}
+                      title="Wake Message (定时唤醒时写入 DB 的消息内容)"
+                      content={prompts.wake_message}
+                      charCount={prompts.wake_message_length}
                       isEditable={false}
                     />
                   </>

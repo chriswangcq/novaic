@@ -385,3 +385,246 @@ class DriveRepository:
         else:
             # Overnight range (e.g., 22:00 - 06:00)
             return current_time >= start_time or current_time <= end_time
+
+    # ========================================
+    # Growth Log Methods
+    # ========================================
+
+    def add_growth_log(
+        self,
+        agent_id: str,
+        content: str,
+        category: str = "learning",
+    ) -> Dict[str, Any]:
+        """添加一条成长日志
+        
+        Args:
+            agent_id: Agent ID
+            content: 成长内容
+            category: 类别 (learning/discovery/achievement/reflection)
+        
+        Returns:
+            操作结果
+        """
+        now = utc_now_iso()
+        
+        # 确保记录存在
+        self.get_or_create(agent_id)
+        if not self._agent_exists(agent_id):
+            return {"success": True, "skipped": True}
+        
+        # 读取现有日志
+        row = self.db.fetchone(
+            "SELECT growth_log FROM agent_drive WHERE agent_id = ?",
+            (agent_id,)
+        )
+        
+        growth_log = []
+        if row and row["growth_log"]:
+            try:
+                growth_log = json.loads(row["growth_log"])
+            except:
+                growth_log = []
+        
+        # 添加新日志
+        new_entry = {
+            "date": now[:10],  # YYYY-MM-DD
+            "time": now,
+            "category": category,
+            "content": content,
+        }
+        growth_log.append(new_entry)
+        
+        # 只保留最近 100 条
+        if len(growth_log) > 100:
+            growth_log = growth_log[-100:]
+        
+        # 保存
+        try:
+            with self.db.transaction(lock_type="agent", resource_id=agent_id):
+                self.db.execute(
+                    """UPDATE agent_drive 
+                       SET growth_log = ?, updated_at = ?
+                       WHERE agent_id = ?""",
+                    (json.dumps(growth_log, ensure_ascii=False), now, agent_id)
+                )
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+        
+        return {
+            "success": True,
+            "entry": new_entry,
+            "total_count": len(growth_log),
+        }
+
+    def get_growth_log(
+        self,
+        agent_id: str,
+        limit: int = 20,
+        category: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """获取成长日志
+        
+        Args:
+            agent_id: Agent ID
+            limit: 返回数量限制
+            category: 筛选类别
+        
+        Returns:
+            成长日志列表
+        """
+        row = self.db.fetchone(
+            "SELECT growth_log FROM agent_drive WHERE agent_id = ?",
+            (agent_id,)
+        )
+        
+        growth_log = []
+        if row and row["growth_log"]:
+            try:
+                growth_log = json.loads(row["growth_log"])
+            except:
+                growth_log = []
+        
+        # 筛选类别
+        if category:
+            growth_log = [e for e in growth_log if e.get("category") == category]
+        
+        # 返回最近的
+        recent = growth_log[-limit:] if growth_log else []
+        recent.reverse()  # 最新的在前
+        
+        return {
+            "success": True,
+            "entries": recent,
+            "total_count": len(growth_log),
+        }
+
+    # ========================================
+    # Drive Config Methods
+    # ========================================
+
+    def get_drive_config(self, agent_id: str) -> Dict[str, Any]:
+        """获取内驱力配置
+        
+        Args:
+            agent_id: Agent ID
+        
+        Returns:
+            内驱力配置字典
+        """
+        row = self.db.fetchone(
+            "SELECT drive_config FROM agent_drive WHERE agent_id = ?",
+            (agent_id,)
+        )
+        
+        if not row or not row.get("drive_config"):
+            # 返回默认配置
+            return {
+                "success": True,
+                "config": {
+                    "core_value": "为用户服务是第一目标",
+                    "curiosity": 0.7,
+                    "knowledge": 0.6,
+                    "growth": 0.5,
+                    "proactive_level": 0.5,
+                    "reflection_frequency": "daily",
+                }
+            }
+        
+        try:
+            config = json.loads(row["drive_config"])
+        except:
+            config = {}
+        
+        return {
+            "success": True,
+            "config": config,
+        }
+
+    def update_drive_config(
+        self,
+        agent_id: str,
+        config: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """更新内驱力配置
+        
+        Args:
+            agent_id: Agent ID
+            config: 新的配置（会与现有配置合并）
+        
+        Returns:
+            操作结果
+        """
+        now = utc_now_iso()
+        
+        # 确保记录存在
+        self.get_or_create(agent_id)
+        if not self._agent_exists(agent_id):
+            return {"success": True, "skipped": True}
+        
+        # 读取现有配置
+        current = self.get_drive_config(agent_id).get("config", {})
+        
+        # 合并配置
+        merged = {**current, **config}
+        
+        # 保存
+        try:
+            with self.db.transaction(lock_type="agent", resource_id=agent_id):
+                self.db.execute(
+                    """UPDATE agent_drive 
+                       SET drive_config = ?, updated_at = ?
+                       WHERE agent_id = ?""",
+                    (json.dumps(merged, ensure_ascii=False), now, agent_id)
+                )
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+        
+        return {
+            "success": True,
+            "config": merged,
+        }
+
+    # ========================================
+    # Profile Completeness Methods
+    # ========================================
+
+    def get_profile_completeness(self, agent_id: str) -> Dict[str, Any]:
+        """获取用户画像完整度评估
+        
+        Args:
+            agent_id: Agent ID
+        
+        Returns:
+            完整度评估结果
+        """
+        row = self.db.fetchone(
+            "SELECT user_profile FROM agent_drive WHERE agent_id = ?",
+            (agent_id,)
+        )
+        
+        user_profile = {}
+        if row and row.get("user_profile"):
+            try:
+                user_profile = json.loads(row["user_profile"])
+            except:
+                user_profile = {}
+        
+        # 使用 profile_assessment 模块评估
+        # 这里简化实现，完整版在 task_queue/utils/profile_assessment.py
+        dimensions = [
+            "preferred_name", "communication_style", "work_domain",
+            "primary_use_case", "active_hours", "interests",
+            "pain_points", "tech_level"
+        ]
+        
+        known_count = sum(1 for d in dimensions if user_profile.get(d))
+        completeness = int(known_count / len(dimensions) * 100)
+        
+        return {
+            "success": True,
+            "completeness": completeness,
+            "known_count": known_count,
+            "total_dimensions": len(dimensions),
+            "user_profile": user_profile,
+        }
