@@ -40,7 +40,8 @@ function VNCViewComponent({ isThumbnail = false }: VNCViewProps) {
   
   // RFB 连接管理
   useEffect(() => {
-    if (!(status === 'running' && wsReady && wsUrl)) return;
+    // 在 running 或 initializing 状态下都尝试连接 VNC
+    if (!((status === 'running' || status === 'initializing') && wsReady && wsUrl)) return;
     if (!rfbContainerRef.current) return;
     
     let disposed = false;
@@ -122,8 +123,38 @@ function VNCViewComponent({ isThumbnail = false }: VNCViewProps) {
   
   // 渲染内容
   const renderContent = () => {
-    // 初始化中
-    if (status === 'initializing' && setupStatus) {
+    // VNC 已连接（包括初始化阶段，让用户看到真实的系统画面）
+    if ((status === 'running' || status === 'initializing') && wsReady) {
+      return (
+        <>
+          <div ref={rfbContainerRef} className="absolute inset-0" />
+          {/* 初始化阶段显示小提示 */}
+          {status === 'initializing' && setupStatus && (
+            <div className="absolute bottom-4 left-4 right-4 bg-black/70 backdrop-blur-sm rounded-lg p-3 flex items-center gap-3">
+              <div className="w-8 h-8 relative flex-shrink-0">
+                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="8" className="opacity-20" />
+                  <circle
+                    cx="50" cy="50" r="42" fill="none" stroke="#3b82f6" strokeWidth="8" strokeLinecap="round"
+                    strokeDasharray={`${setupStatus.progress * 2.64} 264`}
+                  />
+                </svg>
+                <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white">
+                  {setupStatus.progress}%
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-white truncate">{setupStatus.message}</p>
+                <p className="text-xs text-nb-text-muted">Cloud-init 初始化中...</p>
+              </div>
+            </div>
+          )}
+        </>
+      );
+    }
+    
+    // 初始化中但 VNC 未连接 - 显示进度圈
+    if (status === 'initializing' && setupStatus && !wsReady) {
       return (
         <div className="absolute inset-0 flex flex-col items-center justify-center text-nb-text-muted p-8">
           <div className="relative w-32 h-32 mb-8">
@@ -141,14 +172,9 @@ function VNCViewComponent({ isThumbnail = false }: VNCViewProps) {
             </div>
           </div>
           <p className="text-base font-medium text-white mb-2">{setupStatus.message}</p>
-          <p className="text-sm text-nb-text-muted">虚拟机首次启动需要 5-8 分钟初始化...</p>
+          <p className="text-sm text-nb-text-muted">正在连接虚拟机显示...</p>
         </div>
       );
-    }
-    
-    // VNC 已连接
-    if (status === 'running' && wsReady) {
-      return <div ref={rfbContainerRef} className="absolute inset-0" />;
     }
     
     // 启动中

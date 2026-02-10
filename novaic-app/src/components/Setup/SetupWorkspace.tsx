@@ -132,10 +132,10 @@ export function SetupWorkspace({
         useCnMirrors,
       });
 
-      // Note: Don't call onComplete() here immediately.
-      // The agent.setup_complete will be updated by setupAgent,
-      // and we'll detect that through the isComplete check.
-      console.log('[Setup] setupAgent completed, waiting for status update...');
+      // VM is started, immediately go to workspace
+      // Cloud-init will run in background, user can see it via VNC
+      console.log('[Setup] VM started, entering workspace...');
+      onComplete();
       
     } catch (err) {
       console.error('Setup failed:', err);
@@ -156,6 +156,14 @@ export function SetupWorkspace({
       startSetup();
     }
   }, [agent.setup_complete, hasStarted, isError, startSetup]);
+
+  // Auto-enter workspace when setup is complete
+  useEffect(() => {
+    if (agent.setup_complete && hasStarted) {
+      console.log('[Setup] Setup complete, auto-entering workspace...');
+      onComplete();
+    }
+  }, [agent.setup_complete, hasStarted, onComplete]);
 
   // Handle retry
   const handleRetry = () => {

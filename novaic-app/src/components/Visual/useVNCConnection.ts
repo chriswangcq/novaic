@@ -133,9 +133,14 @@ export function useVNCConnection(
       setStatus('running');  // 设置为 running，让 VNCView 开始 RFB 连接
       return true;
     } catch (e) {
-      console.log('[VNC Connection] WebSocket not available');
+      console.log('[VNC Connection] WebSocket not available, will retry...');
       setWsReady(false);
-      setStatus(prev => prev === 'starting' ? 'starting' : 'unknown');
+      // 保持当前状态，不要设置为 error 或 unknown
+      // VM 可能正在运行但 VNC 服务还没准备好
+      setStatus(prev => {
+        if (prev === 'starting' || prev === 'initializing') return prev;
+        return 'starting';  // 显示 "正在启动" 而不是错误
+      });
       return false;
     } finally {
       isConnectingRef.current = false;
@@ -231,7 +236,8 @@ export function useVNCConnection(
       if (!mounted) return;
       
       if (initStatus === 'initializing') {
-        // 启动初始化状态轮询
+        // 即使在初始化阶段，也尝试连接 VNC，让用户看到真实的系统画面
+        // 同时启动初始化状态轮询（在后台更新状态）
         setupPollIntervalRef.current = setInterval(async () => {
           const status = await checkSetupStatus();
           if (status === 'complete') {
@@ -239,8 +245,6 @@ export function useVNCConnection(
               clearInterval(setupPollIntervalRef.current);
               setupPollIntervalRef.current = null;
             }
-            // 初始化完成，尝试连接
-            await checkWebSocket();
           } else if (status === 'error') {
             if (setupPollIntervalRef.current) {
               clearInterval(setupPollIntervalRef.current);
@@ -248,7 +252,9 @@ export function useVNCConnection(
             }
           }
         }, 3000);
-        return;
+        
+        // 尝试连接 VNC（不要 return，继续执行后面的逻辑）
+        // 这样用户可以看到 cloud-init 在系统中运行的实时画面
       } else if (initStatus === 'error') {
         return;
       }
@@ -267,7 +273,19 @@ export function useVNCConnection(
       if (vmRunning) {
         // VM 确实在运行，尝试连接 WebSocket
         const connected = await checkWebSocket();
-        if (!mounted || connected) return;
+        if (!mounted) return;
+        
+        if (!connected) {
+          // WebSocket 连接失败，启动轮询重试
+          console.log('[VNC Connection] VM running but WebSocket not ready, starting retry poll...');
+          pollIntervalRef.current = setInterval(async () => {
+            const success = await checkWebSocket();
+            if (success && pollIntervalRef.current) {
+              clearInterval(pollIntervalRef.current);
+              pollIntervalRef.current = null;
+            }
+          }, 3000);
+        }
       } else {
         // VM 没在运行，显示 stopped
         setStatus('stopped');

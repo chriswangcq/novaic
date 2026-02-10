@@ -481,6 +481,21 @@ class VmSetup:
 # NovAIC VM - Ubuntu Cloud-Init Configuration
 # =====================================================
 
+# bootcmd 在每次启动时最早执行，用于设置 TTY1 自动登录
+# 这样用户可以在 cloud-init 运行期间看到日志
+bootcmd:
+  - mkdir -p /etc/systemd/system/getty@tty1.service.d
+  - |
+    cat > /etc/systemd/system/getty@tty1.service.d/override.conf << 'EOFGETTY'
+    [Service]
+    ExecStart=
+    ExecStart=-/sbin/agetty --autologin ubuntu --noclear %I $TERM
+    EOFGETTY
+  - systemctl daemon-reload
+  # 后台等待 ubuntu 用户创建后再重启 getty
+  - |
+    (while ! id ubuntu >/dev/null 2>&1; do sleep 1; done; sleep 2; systemctl restart getty@tty1.service) &
+
 # User configuration
 users:
   - name: ubuntu
@@ -580,6 +595,34 @@ write_files:
       autologin-user=ubuntu
       autologin-user-timeout=0
       autologin-session=xfce
+
+  # 自动登录后显示 cloud-init 日志的脚本
+  # 注意：不设置 owner，因为 write_files 在 users 创建之前执行
+  # 所有权会在 runcmd 中设置
+  - path: /home/ubuntu/.bash_profile
+    content: |
+      # NovAIC: 首次启动时自动显示 cloud-init 日志
+      if [ -f /var/log/cloud-init-output.log ] && [ ! -f /var/log/novaic-init-done.log ]; then
+        echo ""
+        echo "=========================================="
+        echo "  NovAIC VM 正在初始化..."
+        echo "  Cloud-init 日志实时输出"
+        echo "=========================================="
+        echo ""
+        tail -f /var/log/cloud-init-output.log &
+        TAIL_PID=$!
+        # 等待初始化完成
+        while [ ! -f /var/log/novaic-init-done.log ]; do
+          sleep 2
+        done
+        kill $TAIL_PID 2>/dev/null
+        echo ""
+        echo "=========================================="
+        echo "  初始化完成！正在启动桌面环境..."
+        echo "=========================================="
+        sleep 2
+      fi
+    permissions: '0644'
 
   - path: /home/ubuntu/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-power-manager.xml
     content: |
@@ -784,6 +827,8 @@ runcmd:
   - mkdir -p /opt/novaic/venv
   - mkdir -p /opt/novaic/novaic-mcp-vmuse/src/novaic_mcp_vmuse
   - mkdir -p /opt/novaic/.cache
+  # 修复 write_files 创建的文件所有权（因为 write_files 在用户创建之前执行）
+  - chown -R ubuntu:ubuntu /home/ubuntu
   
   # ========== Phase 2: Network & Environment ==========
   - echo "=== Phase 2 - Network & Environment ==="
