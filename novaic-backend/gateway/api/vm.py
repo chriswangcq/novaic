@@ -78,8 +78,21 @@ def check_environment():
     Returns:
         Environment check result with dependency status.
     """
+    import os
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # Debug: log environment variable
+    resource_dir = os.environ.get("NOVAIC_RESOURCE_DIR", "")
+    logger.info(f"[VM API] check_environment: NOVAIC_RESOURCE_DIR='{resource_dir}'")
+    
     setup = VmSetup()
-    return setup.check_environment()
+    result = setup.check_environment()
+    
+    # Add resource_dir to result for debugging
+    result["resource_dir"] = resource_dir
+    
+    return result
 
 
 # ==================== VM Setup ====================

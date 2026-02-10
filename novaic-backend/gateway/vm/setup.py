@@ -121,6 +121,13 @@ class VmSetup:
         arch_suffix = "aarch64" if self.is_arm else "x86_64"
         binary_name = f"qemu-system-{arch_suffix}"
         
+        # 1. Check bundled QEMU in resource directory (for packaged app)
+        bundled_path = self._get_bundled_path("qemu", binary_name)
+        if bundled_path:
+            version = self._get_version(bundled_path, "--version")
+            return bundled_path, version
+        
+        # 2. Fallback to system paths
         paths = [
             f"/opt/homebrew/bin/{binary_name}",
             f"/usr/local/bin/{binary_name}",
@@ -141,6 +148,13 @@ class VmSetup:
     
     def _find_qemu_img(self) -> tuple[Optional[str], Optional[str]]:
         """Find qemu-img binary."""
+        # 1. Check bundled qemu-img in resource directory (for packaged app)
+        bundled_path = self._get_bundled_path("qemu", "qemu-img")
+        if bundled_path:
+            version = self._get_version(bundled_path, "--version")
+            return bundled_path, version
+        
+        # 2. Fallback to system paths
         paths = [
             "/opt/homebrew/bin/qemu-img",
             "/usr/local/bin/qemu-img",
@@ -182,6 +196,13 @@ class VmSetup:
     
     def _find_uefi_firmware(self) -> Optional[str]:
         """Find UEFI firmware for ARM64."""
+        # 1. Check bundled UEFI firmware in resource directory (for packaged app)
+        # Firmware is in qemu/share/ subdirectory
+        bundled_path = self._get_bundled_path("qemu/share", "edk2-aarch64-code.fd")
+        if bundled_path:
+            return bundled_path
+        
+        # 2. Fallback to system paths
         paths = [
             "/opt/homebrew/share/qemu/edk2-aarch64-code.fd",
             "/usr/local/share/qemu/edk2-aarch64-code.fd",
@@ -191,6 +212,21 @@ class VmSetup:
         for path in paths:
             if Path(path).exists():
                 return path
+        
+        return None
+    
+    def _get_bundled_path(self, subdir: str, filename: str) -> Optional[str]:
+        """Get bundled file path from resource directory."""
+        resource_dir = os.environ.get("NOVAIC_RESOURCE_DIR", "")
+        logger.info(f"[VmSetup] _get_bundled_path: NOVAIC_RESOURCE_DIR='{resource_dir}'")
+        if not resource_dir:
+            logger.info(f"[VmSetup] _get_bundled_path: resource_dir is empty, returning None")
+            return None
+        
+        bundled_path = Path(resource_dir) / subdir / filename
+        logger.info(f"[VmSetup] _get_bundled_path: checking {bundled_path}, exists={bundled_path.exists()}")
+        if bundled_path.exists():
+            return str(bundled_path)
         
         return None
     
@@ -778,13 +814,25 @@ runcmd:
   
   # ========== Phase 6: Playwright + Chromium ==========
   - echo "=== Phase 6 - Playwright Chromium ==="
-  # Set Playwright download mirror if specified
+  # Install Playwright with mirror fallback
   - |
-    if [ -n "{playwright_mirror}" ]; then
-      export PLAYWRIGHT_DOWNLOAD_HOST="{playwright_mirror}"
-      echo "Using Playwright mirror {playwright_mirror}"
-    fi
-    /opt/novaic/venv/bin/playwright install --with-deps chromium
+    install_playwright() {{
+      if [ -n "{playwright_mirror}" ]; then
+        echo "Trying Playwright mirror: {playwright_mirror}"
+        export PLAYWRIGHT_DOWNLOAD_HOST="{playwright_mirror}"
+        if /opt/novaic/venv/bin/playwright install --with-deps chromium 2>&1; then
+          echo "Playwright installed from mirror"
+          return 0
+        else
+          echo "Mirror failed, trying official source..."
+          unset PLAYWRIGHT_DOWNLOAD_HOST
+        fi
+      fi
+      # Fallback to official source
+      echo "Installing Playwright from official source..."
+      /opt/novaic/venv/bin/playwright install --with-deps chromium
+    }}
+    install_playwright
   - echo "Playwright Chromium installed."
   
   # ========== Phase 7: QEMU Guest Agent ==========

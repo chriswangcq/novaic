@@ -42,7 +42,8 @@
     "resources": {
       "resources/novaic-backend": "novaic-backend",
       "resources/vmcontrol": "vmcontrol",
-      "resources/novaic-mcp-vmuse": "novaic-mcp-vmuse"
+      "resources/novaic-mcp-vmuse": "novaic-mcp-vmuse",
+      "resources/qemu": "qemu"
     },
     "macOS": {
       "minimumSystemVersion": "10.15"

@@ -34,6 +34,25 @@ pub struct EnvironmentCheckResult {
     pub message: Option<String>,
 }
 
+/// Get bundled QEMU path from app resources
+fn get_bundled_qemu_path(filename: &str) -> Option<PathBuf> {
+    // Try to get the resource directory from the current executable
+    if let Ok(exe_path) = std::env::current_exe() {
+        // In macOS app bundle: .app/Contents/MacOS/novaic
+        // Resources are at: .app/Contents/Resources/qemu/
+        if let Some(macos_dir) = exe_path.parent() {
+            let resources_dir = macos_dir.parent().map(|p| p.join("Resources"));
+            if let Some(res_dir) = resources_dir {
+                let bundled_path = res_dir.join("qemu").join(filename);
+                if bundled_path.exists() {
+                    return Some(bundled_path);
+                }
+            }
+        }
+    }
+    None
+}
+
 /// Find QEMU system binary path
 fn find_qemu_system() -> Option<(String, String)> {
     let arch_suffix = if cfg!(target_arch = "aarch64") {
@@ -44,6 +63,23 @@ fn find_qemu_system() -> Option<(String, String)> {
     
     let binary_name = format!("qemu-system-{}", arch_suffix);
     
+    // 1. Check bundled QEMU first (for packaged app)
+    if let Some(bundled_path) = get_bundled_qemu_path(&binary_name) {
+        let path_str = bundled_path.to_string_lossy().to_string();
+        if let Ok(output) = Command::new(&bundled_path).arg("--version").output() {
+            if output.status.success() {
+                let version = String::from_utf8_lossy(&output.stdout)
+                    .lines()
+                    .next()
+                    .unwrap_or("")
+                    .to_string();
+                return Some((path_str, version));
+            }
+        }
+        return Some((path_str, String::new()));
+    }
+    
+    // 2. Fallback to system paths
     let paths = [
         format!("/opt/homebrew/bin/{}", binary_name),
         format!("/usr/local/bin/{}", binary_name),
@@ -82,6 +118,23 @@ fn find_qemu_system() -> Option<(String, String)> {
 
 /// Find qemu-img binary and get version
 fn find_qemu_img_with_version() -> Option<(String, String)> {
+    // 1. Check bundled qemu-img first (for packaged app)
+    if let Some(bundled_path) = get_bundled_qemu_path("qemu-img") {
+        let path_str = bundled_path.to_string_lossy().to_string();
+        if let Ok(output) = Command::new(&bundled_path).arg("--version").output() {
+            if output.status.success() {
+                let version = String::from_utf8_lossy(&output.stdout)
+                    .lines()
+                    .next()
+                    .unwrap_or("")
+                    .to_string();
+                return Some((path_str, version));
+            }
+        }
+        return Some((path_str, String::new()));
+    }
+    
+    // 2. Fallback to system paths
     let paths = [
         "/opt/homebrew/bin/qemu-img",
         "/usr/local/bin/qemu-img",
@@ -124,6 +177,13 @@ fn check_uefi_firmware() -> Option<String> {
         return Some("Not required (x86_64)".to_string());
     }
     
+    // 1. Check bundled UEFI firmware first (for packaged app)
+    // Firmware is in qemu/share/ subdirectory
+    if let Some(bundled_path) = get_bundled_qemu_share_path("edk2-aarch64-code.fd") {
+        return Some(bundled_path.to_string_lossy().to_string());
+    }
+    
+    // 2. Fallback to system paths
     let paths = [
         "/opt/homebrew/share/qemu/edk2-aarch64-code.fd",
         "/usr/local/share/qemu/edk2-aarch64-code.fd",
@@ -136,6 +196,22 @@ fn check_uefi_firmware() -> Option<String> {
         }
     }
     
+    None
+}
+
+/// Get bundled QEMU share path (for firmware, ROM files, etc.)
+fn get_bundled_qemu_share_path(filename: &str) -> Option<PathBuf> {
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(macos_dir) = exe_path.parent() {
+            let resources_dir = macos_dir.parent().map(|p| p.join("Resources"));
+            if let Some(res_dir) = resources_dir {
+                let bundled_path = res_dir.join("qemu").join("share").join(filename);
+                if bundled_path.exists() {
+                    return Some(bundled_path);
+                }
+            }
+        }
+    }
     None
 }
 

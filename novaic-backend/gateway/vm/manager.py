@@ -535,6 +535,13 @@ class VmManager:
         arch_suffix = "aarch64" if self.is_arm else "x86_64"
         binary_name = f"qemu-system-{arch_suffix}"
         
+        # 1. Check bundled QEMU in resource directory (for packaged app)
+        bundled_path = self._get_bundled_qemu_path(binary_name)
+        if bundled_path:
+            logger.info(f"[VmManager] Using bundled QEMU: {bundled_path}")
+            return bundled_path
+        
+        # 2. Fallback to system paths
         paths = [
             f"/opt/homebrew/bin/{binary_name}",
             f"/usr/local/bin/{binary_name}",
@@ -546,6 +553,34 @@ class VmManager:
                 return path
         
         return binary_name  # Hope it's in PATH
+    
+    def _get_bundled_qemu_path(self, binary_name: str) -> Optional[str]:
+        """Get bundled QEMU path from resource directory."""
+        resource_dir = os.environ.get("NOVAIC_RESOURCE_DIR", "")
+        logger.info(f"[VmManager] _get_bundled_qemu_path: NOVAIC_RESOURCE_DIR='{resource_dir}'")
+        if not resource_dir:
+            logger.info(f"[VmManager] _get_bundled_qemu_path: resource_dir is empty, returning None")
+            return None
+        
+        bundled_path = Path(resource_dir) / "qemu" / binary_name
+        logger.info(f"[VmManager] _get_bundled_qemu_path: checking {bundled_path}, exists={bundled_path.exists()}")
+        if bundled_path.exists():
+            return str(bundled_path)
+        
+        return None
+    
+    def _get_bundled_qemu_share_dir(self) -> Optional[str]:
+        """Get bundled QEMU share directory path (for ROM files, firmware, etc.)."""
+        resource_dir = os.environ.get("NOVAIC_RESOURCE_DIR", "")
+        if not resource_dir:
+            return None
+        
+        share_path = Path(resource_dir) / "qemu" / "share"
+        if share_path.exists() and share_path.is_dir():
+            logger.info(f"[VmManager] Using bundled QEMU share dir: {share_path}")
+            return str(share_path)
+        
+        return None
     
     def _build_qemu_args(self, config: VmConfig, agent_dir: Path) -> List[str]:
         """Build QEMU command arguments."""
@@ -572,6 +607,16 @@ class VmManager:
         for path in possible_paths:
             if path.exists():
                 return path
+        
+        # Check bundled QEMU share directory for base firmware (edk2-aarch64-code.fd)
+        # This is used as a fallback source for QEMU_EFI.fd
+        if filename == "QEMU_EFI.fd":
+            share_dir = self._get_bundled_qemu_share_dir()
+            if share_dir:
+                bundled_edk2 = Path(share_dir) / "edk2-aarch64-code.fd"
+                if bundled_edk2.exists():
+                    logger.info(f"[VmManager] Using bundled firmware: {bundled_edk2}")
+                    return bundled_edk2
         
         raise RuntimeError(f"{filename} not found in any of: {[str(p) for p in possible_paths]}")
     
@@ -639,6 +684,11 @@ class VmManager:
             "-display", "none",
         ]
         
+        # Add QEMU data directory for bundled ROM files
+        qemu_share_dir = self._get_bundled_qemu_share_dir()
+        if qemu_share_dir:
+            args.extend(["-L", qemu_share_dir])
+        
         if seed_iso:
             logger.info(f"[VmManager] Using cloud-init ISO: {seed_iso}")
             args.extend([
@@ -697,6 +747,11 @@ class VmManager:
             "-vnc", f"unix:{vnc_socket_path}",
             "-display", "none",
         ])
+        
+        # Add QEMU data directory for bundled ROM files
+        qemu_share_dir = self._get_bundled_qemu_share_dir()
+        if qemu_share_dir:
+            args.extend(["-L", qemu_share_dir])
         
         if seed_iso.exists():
             args.extend(["-cdrom", str(seed_iso)])
