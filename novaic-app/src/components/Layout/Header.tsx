@@ -1,5 +1,5 @@
 import { Settings, Trash2, Menu, Play, Square, Lock, Unlock, RefreshCw } from 'lucide-react';
-import { CreateAgentModal, SetupConfig } from '../Agent/CreateAgentModal';
+import { CreateAgentModal } from '../Agent/CreateAgentModal';
 import { useAppStore } from '../../store';
 
 
@@ -9,7 +9,7 @@ interface HeaderProps {
   onOpenSettings: () => void;
   onToggleDrawer: () => void;
   isDrawerOpen: boolean;
-  onAgentCreated?: (config: SetupConfig) => void;
+  onAgentCreated?: () => void;
 }
 
 export function Header(props: HeaderProps) {

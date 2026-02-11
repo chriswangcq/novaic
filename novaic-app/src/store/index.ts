@@ -93,6 +93,8 @@ interface AppStore extends AppState {
   setVncConnected: (connected: boolean) => void;
   setVncInteractive: (interactive: boolean) => void;
   setVncLocked: (locked: boolean) => void;
+  // Android
+  setAndroidConnected: (connected: boolean) => void;
   setSettingsOpen: (open: boolean) => void;
   // Layout actions
   setLayoutMode: (mode: LayoutMode) => void;
@@ -157,6 +159,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   vncConnected: false,
   vncInteractive: false,
   vncLocked: false,
+  androidConnected: false,
   settingsOpen: false,
   user: null,
   // Layout state (loaded from localStorage)
@@ -446,6 +449,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   setVncLocked: (locked: boolean) => {
     set({ vncLocked: locked });
+  },
+
+  setAndroidConnected: (connected: boolean) => {
+    set({ androidConnected: connected });
   },
 
   setSettingsOpen: (open: boolean) => {

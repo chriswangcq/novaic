@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { MessageList } from './MessageList';
 import { ChatInput } from './ChatInput';
+import { CollapsibleExecutionLog } from '../Visual/CollapsibleExecutionLog';
 import { useAppStore } from '../../store';
 
 export function ChatPanel() {
@@ -22,7 +23,10 @@ export function ChatPanel() {
   }, []);
 
   return (
-    <div className="flex flex-col h-full bg-nb-bg/50">
+    <div className="relative flex flex-col h-full bg-nb-bg/50">
+      {/* 浮动的 Execution Log - 不占用垂直空间 */}
+      <CollapsibleExecutionLog />
+      
       {/* Messages - 让 MessageList 完全控制滚动，不要嵌套滚动容器 */}
       <div className="flex-1 min-h-0">
         <MessageList 

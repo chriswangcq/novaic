@@ -73,19 +73,10 @@ export interface HealthStatus {
 
 // ==================== AIC Agent Types ====================
 
-// Port configuration - matches Python PortConfig in novaic-gateway/config/agents.py
+// Port configuration - matches Python PortConfig in novaic-gateway/config/agents_db.py
 export interface PortConfig {
-  // MCP服务端口
-  vm: number;           // VM内MCP (vmuse)
-  session: number;      // 会话管理MCP
-  local: number;        // 本地文件MCP
-  memory: number;       // 记忆管理MCP
-  chat: number;         // 用户通信MCP
-  qemudebug: number;    // QEMU调试MCP
-  // VM连接端口
-  vnc: number;          // VNC服务
-  websocket: number;    // noVNC WebSocket
-  ssh: number;          // SSH转发
+  ssh: number;    // SSH port for VM access (0 = not assigned)
+  vmuse: number;  // VMUSE HTTP API port (0 = not assigned)
 }
 
 export interface VmConfig {
@@ -96,10 +87,11 @@ export interface VmConfig {
   memory: string;
   cpus: number;
   ports: PortConfig;
-  // VM内部端口 (固定)
-  mcp_vm_port: number;   // VM内部MCP端口 (固定 8080)
-  vnc_vm_port: number;   // VM内部VNC端口 (固定 5900)
-  ws_vm_port: number;    // VM内部WebSocket端口 (固定 6080)
+  android?: {
+    device_serial: string;
+    managed: boolean;
+    avd_name?: string;
+  };
 }
 
 // Setup progress info (for UI display during setup, not persisted)
@@ -117,20 +109,75 @@ export interface AICAgent {
   vm: VmConfig;
   setup_complete: boolean;
   setup_progress?: SetupProgressInfo;
+  android?: {
+    device_serial: string;   // 如 "emulator-5554"
+    managed?: boolean;       // 是否由 novaic 管理
+    avd_name?: string;       // 托管模式下的 AVD 名称
+  };
 }
 
 export interface AgentListResponse {
   agents: AICAgent[];
 }
 
-export interface CreateAgentRequest {
-  name: string;
+// Agent 类型
+export type AgentType = 'linux' | 'android' | 'hybrid';
+
+// Android 管理模式
+export type AndroidManageMode = 'managed' | 'external';
+
+// Android 配置
+export interface AndroidConfig {
+  manageMode: AndroidManageMode;
+  // 托管模式配置
+  systemImage?: string;      // 系统镜像包名
+  deviceDefinition?: string; // 设备定义 ID
+  avdName?: string;          // AVD 名称（可选，自动生成）
+  // 外部设备模式配置
+  deviceSerial?: string;     // 设备序列号
+}
+
+// VM 配置请求（用于创建/更新 Linux VM）
+export interface VmConfigRequest {
   backend?: string;
   os_type?: string;
   os_version?: string;
   memory?: string;
   cpus?: number;
   source_image?: string;
+}
+
+// Android 配置请求
+export interface AndroidConfigRequest {
+  managed: boolean;           // 是否由 novaic 管理
+  avd_name?: string;          // AVD 名称（托管模式）
+  device_serial?: string;     // 设备序列号（外部模式）
+}
+
+export interface CreateAgentRequest {
+  name: string;
+  model?: string;             // LLM 模型 ID
+  // Agent 类型: 'chat' | 'linux' | 'android' | 'hybrid'
+  agent_type?: AgentType;
+  // Linux VM 配置（新格式）
+  vm_config?: VmConfigRequest;
+  // Android 配置
+  android?: AndroidConfigRequest;
+  // Legacy fields for backward compatibility
+  backend?: string;
+  os_type?: string;
+  os_version?: string;
+  memory?: string;
+  cpus?: number;
+  source_image?: string;
+}
+
+// 更新 Agent 请求
+export interface UpdateAgentRequest {
+  name?: string;
+  vm_config?: VmConfigRequest;  // 添加/更新 VM 配置
+  android?: AndroidConfigRequest;  // 添加/更新 Android 配置
+  setup_complete?: boolean;
 }
 
 export interface AvailableImage {
@@ -366,12 +413,32 @@ export const api = {
 
   /**
    * Update an agent
+   * 
+   * Supports partial updates:
+   * - name: Update agent name
+   * - vm_config: Add or update Linux VM configuration
+   * - android: Add or update Android configuration
+   * - setup_complete: Mark VM setup as complete
    */
-  async updateAgent(agentId: string, data: Partial<{ name: string; vm: Partial<VmConfig>; setup_complete: boolean }>): Promise<AICAgent> {
+  async updateAgent(agentId: string, data: UpdateAgentRequest): Promise<AICAgent> {
     return invoke<AICAgent>('gateway_patch', { 
       path: `/api/agents/${agentId}`, 
       body: data 
     });
+  },
+
+  /**
+   * Add Linux VM configuration to an existing agent
+   */
+  async addVmConfig(agentId: string, vmConfig: VmConfigRequest): Promise<AICAgent> {
+    return this.updateAgent(agentId, { vm_config: vmConfig });
+  },
+
+  /**
+   * Add Android configuration to an existing agent
+   */
+  async addAndroidConfig(agentId: string, androidConfig: AndroidConfigRequest): Promise<AICAgent> {
+    return this.updateAgent(agentId, { android: androidConfig });
   },
 
   /**

@@ -26,7 +26,7 @@ import {
   Settings,
   X
 } from 'lucide-react';
-import { CreateAgentModal, SetupConfig } from '../Agent/CreateAgentModal';
+import { CreateAgentModal, type SetupConfig } from '../Agent/CreateAgentModal';
 
 interface AgentCardProps {
   agent: AICAgent;
@@ -410,15 +410,30 @@ export function AgentDashboard({ onEnterWorkspace, onEnterSetup }: AgentDashboar
   };
 
   // Called when agent is created from modal
-  const handleAgentCreated = (config: SetupConfig) => {
-    // Store the setup config
-    setSetupConfigs(prev => ({
-      ...prev,
-      [config.agent.id]: config,
-    }));
+  const handleAgentCreated = () => {
+    // Get the newly created agent from store (it should be the current one after creation)
+    const storeState = useAppStore.getState();
+    const newAgent = storeState.currentAgentId 
+      ? storeState.agents.find(a => a.id === storeState.currentAgentId)
+      : null;
     
-    // Immediately enter setup workspace
-    onEnterSetup(config.agent.id, config);
+    if (newAgent) {
+      // Create default setup config
+      const config: SetupConfig = {
+        agent: newAgent,
+        sourceImage: 'ubuntu-24.04',
+        useCnMirrors: navigator.language?.startsWith('zh') || false,
+      };
+      
+      // Store the setup config
+      setSetupConfigs(prev => ({
+        ...prev,
+        [newAgent.id]: config,
+      }));
+      
+      // Immediately enter setup workspace
+      onEnterSetup(newAgent.id, config);
+    }
   };
 
   // Continue setup for an agent

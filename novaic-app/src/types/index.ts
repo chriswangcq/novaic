@@ -215,19 +215,10 @@ export interface LayoutSettings {
 }
 
 // AIC Agent Types - Port Configuration
-// Matches Python PortConfig in novaic-gateway/config/agents.py
+// Matches Python PortConfig in novaic-gateway/config/agents_db.py
 export interface PortConfig {
-  // MCP服务端口
-  vm: number;           // VM内MCP (vmuse)
-  session: number;      // 会话管理MCP
-  local: number;        // 本地文件MCP
-  memory: number;       // 记忆管理MCP
-  chat: number;         // 用户通信MCP
-  qemudebug: number;    // QEMU调试MCP
-  // VM连接端口
-  vnc: number;          // VNC服务
-  websocket: number;    // noVNC WebSocket
-  ssh: number;          // SSH转发
+  ssh: number;    // SSH port for VM access (0 = not assigned)
+  vmuse: number;  // VMUSE HTTP API port (0 = not assigned)
 }
 
 export interface VmConfig {
@@ -238,10 +229,11 @@ export interface VmConfig {
   memory: string;
   cpus: number;
   ports: PortConfig;
-  // VM内部端口 (固定)
-  mcp_vm_port: number;   // VM内部MCP端口 (固定 8080)
-  vnc_vm_port: number;   // VM内部VNC端口 (固定 5900)
-  ws_vm_port: number;    // VM内部WebSocket端口 (固定 6080)
+  android?: {
+    device_serial: string;
+    managed: boolean;
+    avd_name?: string;
+  };
 }
 
 // UI display status (derived from setup_complete + VM status)
@@ -270,6 +262,11 @@ export interface AICAgent {
   setup_complete: boolean;
   // Setup progress (only in memory, for UI display)
   setup_progress?: SetupProgressInfo;
+  android?: {
+    device_serial: string;   // 如 "emulator-5554"
+    managed?: boolean;       // 是否由 novaic 管理
+    avd_name?: string;       // 托管模式下的 AVD 名称
+  };
 }
 
 // App State
@@ -295,6 +292,8 @@ export interface AppState {
   createAgentModalOpen: boolean;
   // Execute log incremental fetch: last fetched max log id
   lastLogId: number | null;
+  // Android 状态
+  androidConnected: boolean;
 }
 
 // API Response Types

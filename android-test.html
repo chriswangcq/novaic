@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Android Scrcpy Test (WebCodecs H.264)</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            padding: 16px;
+            background: #16213e;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .header h1 { font-size: 18px; }
+        .status {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status.disconnected { background: #444; }
+        .status.connecting { background: #f59e0b; color: #000; }
+        .status.connected { background: #10b981; color: #000; }
+        .status.error { background: #ef4444; }
+        .info { font-size: 12px; color: #888; margin-left: auto; }
+        .controls { display: flex; gap: 8px; }
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-connect { background: #10b981; color: white; }
+        .btn-connect:hover:not(:disabled) { background: #059669; }
+        .btn-disconnect { background: #ef4444; color: white; }
+        .btn-disconnect:hover:not(:disabled) { background: #dc2626; }
+        .main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .canvas-container {
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        #screen {
+            display: block;
+            max-width: 100%;
+            max-height: calc(100vh - 120px);
+            cursor: pointer;
+        }
+        .placeholder {
+            width: 360px;
+            height: 640px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+        }
+        .placeholder svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+        .log {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            max-height: 150px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.9);
+            padding: 8px;
+            font-family: monospace;
+            font-size: 11px;
+        }
+        .log-entry { padding: 2px 0; }
+        .log-entry.error { color: #ef4444; }
+        .log-entry.info { color: #10b981; }
+        .log-entry.warn { color: #f59e0b; }
+        .webcodecs-warning {
+            background: #f59e0b;
+            color: #000;
+            padding: 8px 16px;
+            text-align: center;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Android Scrcpy (WebCodecs H.264)</h1>
+        <span id="status" class="status disconnected">未连接</span>
+        <span id="info" class="info"></span>
+        <div class="controls">
+            <button id="connectBtn" class="btn-connect" onclick="connect()">连接</button>
+            <button id="disconnectBtn" class="btn-disconnect" onclick="disconnect()" disabled>断开</button>
+        </div>
+    </div>
+    
+    <div id="webcodecs-warning" class="webcodecs-warning" style="display: none;">
+        WebCodecs API 不支持，请使用 Chrome 或 Safari 浏览器
+    </div>
+    
+    <div class="main">
+        <div class="canvas-container">
+            <canvas id="screen" style="display: none;"></canvas>
+            <div id="placeholder" class="placeholder">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+                    <line x1="12" y1="18" x2="12.01" y2="18"/>
+                </svg>
+                <p>点击"连接"开始</p>
+            </div>
+        </div>
+    </div>
+    
+    <div id="log" class="log"></div>
+
+    <script>
+        const WS_URL = 'ws://localhost:8080/api/android/scrcpy?device=emulator-5554';
+        
+        let ws = null;
+        let deviceInfo = null;
+        let decoder = null;
+        let frameCount = 0;
+        let lastFpsTime = Date.now();
+        
+        // H.264 解析相关状态
+        let spsData = null;
+        let ppsData = null;
+        let decoderConfigured = false;
+        let pendingFrames = []; // 等待配置完成的帧
+        
+        const screen = document.getElementById('screen');
+        const placeholder = document.getElementById('placeholder');
+        const statusEl = document.getElementById('status');
+        const infoEl = document.getElementById('info');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        
+        // 检查 WebCodecs 支持
+        const isWebCodecsSupported = typeof VideoDecoder !== 'undefined';
+        
+        if (!isWebCodecsSupported) {
+            document.getElementById('webcodecs-warning').style.display = 'block';
+            connectBtn.disabled = true;
+        }
+        
+        function log(msg, type = 'log') {
+            const logEl = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            logEl.appendChild(entry);
+            logEl.scrollTop = logEl.scrollHeight;
+            console[type === 'error' ? 'error' : type === 'warn' ? 'warn' : 'log'](msg);
+        }
+        
+        function setStatus(status, text) {
+            statusEl.className = `status ${status}`;
+            statusEl.textContent = text;
+        }
+        
+        // ==================== H.264 NAL 解析工具 ====================
+        
+        /**
+         * 从 Annex B 格式的 H.264 数据中解析 NAL 单元
+         * Annex B 使用 start code (0x00000001 或 0x000001) 分隔 NAL 单元
+         */
+        function parseNALUnits(data) {
+            const nalUnits = [];
+            let i = 0;
+            
+            while (i < data.length) {
+                // 查找 start code
+                let startCodeLen = 0;
+                if (i + 3 < data.length && data[i] === 0 && data[i + 1] === 0) {
+                    if (data[i + 2] === 1) {
+                        startCodeLen = 3; // 0x000001
+                    } else if (data[i + 2] === 0 && i + 4 <= data.length && data[i + 3] === 1) {
+                        startCodeLen = 4; // 0x00000001
+                    }
+                }
+                
+                if (startCodeLen === 0) {
+                    i++;
+                    continue;
+                }
+                
+                // 找到 start code，现在找下一个 start code 或数据结束
+                const nalStart = i + startCodeLen;
+                let nalEnd = data.length;
+                
+                for (let j = nalStart; j < data.length - 2; j++) {
+                    if (data[j] === 0 && data[j + 1] === 0) {
+                        if (data[j + 2] === 1 || (j + 3 < data.length && data[j + 2] === 0 && data[j + 3] === 1)) {
+                            nalEnd = j;
+                            break;
+                        }
+                    }
+                }
+                
+                if (nalEnd > nalStart) {
+                    const nalData = data.slice(nalStart, nalEnd);
+                    const nalType = nalData[0] & 0x1F;
+                    nalUnits.push({
+                        type: nalType,
+                        data: nalData,
+                        startCodeLen: startCodeLen
+                    });
+                }
+                
+                i = nalEnd;
+            }
+            
+            return nalUnits;
+        }
+        
+        /**
+         * 从 SPS 中解析 profile, level 等信息
+         */
+        function parseSPS(spsData) {
+            if (spsData.length < 4) return null;
+            
+            // SPS 格式: nal_unit_type (1 byte) + profile_idc (1 byte) + constraint_flags (1 byte) + level_idc (1 byte) + ...
+            const profileIdc = spsData[1];
+            const constraintFlags = spsData[2];
+            const levelIdc = spsData[3];
+            
+            return {
+                profileIdc,
+                constraintFlags,
+                levelIdc
+            };
+        }
+        
+        /**
+         * 构建 AVC Decoder Configuration Record
+         * 
+         * 格式 (ISO/IEC 14496-15):
+         * - configurationVersion: 1 byte (always 1)
+         * - AVCProfileIndication: 1 byte
+         * - profile_compatibility: 1 byte
+         * - AVCLevelIndication: 1 byte
+         * - lengthSizeMinusOne: 1 byte (0b11111100 | (NALULengthSize - 1)), 通常是 0xFF (4 bytes)
+         * - numOfSequenceParameterSets: 1 byte (0b11100000 | numSPS)
+         * - for each SPS:
+         *   - sequenceParameterSetLength: 2 bytes (big-endian)
+         *   - sequenceParameterSetNALUnit: N bytes
+         * - numOfPictureParameterSets: 1 byte
+         * - for each PPS:
+         *   - pictureParameterSetLength: 2 bytes (big-endian)
+         *   - pictureParameterSetNALUnit: N bytes
+         */
+        function buildAVCDecoderConfigurationRecord(sps, pps) {
+            const spsInfo = parseSPS(sps);
+            if (!spsInfo) {
+                log('Failed to parse SPS', 'error');
+                return null;
+            }
+            
+            log(`SPS: profile=${spsInfo.profileIdc}, level=${spsInfo.levelIdc}`, 'info');
+            
+            // 计算总长度
+            const totalLength = 6 + 2 + sps.length + 1 + 2 + pps.length;
+            const record = new Uint8Array(totalLength);
+            
+            let offset = 0;
+            
+            // configurationVersion
+            record[offset++] = 1;
+            
+            // AVCProfileIndication
+            record[offset++] = spsInfo.profileIdc;
+            
+            // profile_compatibility
+            record[offset++] = spsInfo.constraintFlags;
+            
+            // AVCLevelIndication
+            record[offset++] = spsInfo.levelIdc;
+            
+            // lengthSizeMinusOne (使用 4 字节长度前缀)
+            record[offset++] = 0xFF; // 0b11111111 = reserved (6 bits) + lengthSizeMinusOne (2 bits) = 3
+            
+            // numOfSequenceParameterSets
+            record[offset++] = 0xE1; // 0b11100001 = reserved (3 bits) + numSPS (5 bits) = 1
+            
+            // SPS length (big-endian)
+            record[offset++] = (sps.length >> 8) & 0xFF;
+            record[offset++] = sps.length & 0xFF;
+            
+            // SPS data
+            record.set(sps, offset);
+            offset += sps.length;
+            
+            // numOfPictureParameterSets
+            record[offset++] = 1;
+            
+            // PPS length (big-endian)
+            record[offset++] = (pps.length >> 8) & 0xFF;
+            record[offset++] = pps.length & 0xFF;
+            
+            // PPS data
+            record.set(pps, offset);
+            
+            return record;
+        }
+        
+        /**
+         * 将 Annex B 格式转换为 AVC 格式 (length-prefixed)
+         * WebCodecs 需要 AVC 格式的数据（4字节长度前缀替代 start code）
+         */
+        function annexBToAVC(annexBData) {
+            const nalUnits = parseNALUnits(annexBData);
+            
+            // 过滤掉 SPS (7) 和 PPS (8)，因为它们已经在 description 中了
+            const filteredNALs = nalUnits.filter(nal => nal.type !== 7 && nal.type !== 8);
+            
+            if (filteredNALs.length === 0) {
+                return null; // 只有 SPS/PPS，没有实际视频数据
+            }
+            
+            // 计算总长度
+            let totalLength = 0;
+            for (const nal of filteredNALs) {
+                totalLength += 4 + nal.data.length; // 4 字节长度前缀 + NAL 数据
+            }
+            
+            const avcData = new Uint8Array(totalLength);
+            let offset = 0;
+            
+            for (const nal of filteredNALs) {
+                // 写入 4 字节长度前缀 (big-endian)
+                const len = nal.data.length;
+                avcData[offset++] = (len >> 24) & 0xFF;
+                avcData[offset++] = (len >> 16) & 0xFF;
+                avcData[offset++] = (len >> 8) & 0xFF;
+                avcData[offset++] = len & 0xFF;
+                
+                // 写入 NAL 数据
+                avcData.set(nal.data, offset);
+                offset += len;
+            }
+            
+            return avcData;
+        }
+        
+        /**
+         * 检查数据中是否包含关键帧 (IDR)
+         */
+        function containsKeyFrame(nalUnits) {
+            return nalUnits.some(nal => nal.type === 5); // IDR slice
+        }
+        
+        // ==================== VideoDecoder 管理 ====================
+        
+        // 创建 VideoDecoder 实例（但不配置）
+        function createDecoder() {
+            if (decoder) {
+                decoder.close();
+            }
+            
+            const ctx = screen.getContext('2d');
+            
+            decoder = new VideoDecoder({
+                output: (frame) => {
+                    // 更新 canvas 尺寸
+                    if (screen.width !== frame.displayWidth || screen.height !== frame.displayHeight) {
+                        screen.width = frame.displayWidth;
+                        screen.height = frame.displayHeight;
+                    }
+                    
+                    // 绘制帧
+                    ctx.drawImage(frame, 0, 0);
+                    frame.close();
+                    
+                    // 更新 FPS
+                    frameCount++;
+                    const now = Date.now();
+                    if (now - lastFpsTime >= 1000) {
+                        if (deviceInfo) {
+                            infoEl.textContent = `${deviceInfo.width}x${deviceInfo.height} | ${deviceInfo.codec.toUpperCase()} | ${frameCount} FPS`;
+                        }
+                        frameCount = 0;
+                        lastFpsTime = now;
+                    }
+                },
+                error: (e) => {
+                    log(`VideoDecoder error: ${e.message}`, 'error');
+                }
+            });
+            
+            log('VideoDecoder created (waiting for SPS/PPS)', 'info');
+        }
+        
+        // 使用 SPS/PPS 配置解码器
+        function configureDecoderWithAVC(codec, width, height, sps, pps) {
+            if (!decoder) {
+                createDecoder();
+            }
+            
+            // 构建 AVC decoder configuration record
+            const avcConfig = buildAVCDecoderConfigurationRecord(sps, pps);
+            if (!avcConfig) {
+                log('Failed to build AVC config', 'error');
+                return false;
+            }
+            
+            // 根据 SPS 构建 codec 字符串
+            const spsInfo = parseSPS(sps);
+            let codecString = 'avc1.';
+            if (spsInfo) {
+                // 格式: avc1.PPCCLL (profile, constraint, level 各 2 位十六进制)
+                codecString += spsInfo.profileIdc.toString(16).padStart(2, '0');
+                codecString += spsInfo.constraintFlags.toString(16).padStart(2, '0');
+                codecString += spsInfo.levelIdc.toString(16).padStart(2, '0');
+            } else {
+                codecString = 'avc1.640028'; // 默认 High Profile Level 4.0
+            }
+            
+            log(`Configuring decoder with codec: ${codecString}`, 'info');
+            log(`AVC config size: ${avcConfig.length} bytes`, 'info');
+            
+            try {
+                decoder.configure({
+                    codec: codecString,
+                    codedWidth: width,
+                    codedHeight: height,
+                    description: avcConfig,
+                    optimizeForLatency: true,
+                });
+                
+                decoderConfigured = true;
+                log('VideoDecoder configured with AVC description', 'info');
+                
+                // 处理等待中的帧
+                if (pendingFrames.length > 0) {
+                    log(`Processing ${pendingFrames.length} pending frames`, 'info');
+                    for (const frame of pendingFrames) {
+                        decodeFrame(frame.data, frame.pts, frame.isKeyFrame);
+                    }
+                    pendingFrames = [];
+                }
+                
+                return true;
+            } catch (e) {
+                log(`Failed to configure decoder: ${e.message}`, 'error');
+                return false;
+            }
+        }
+        
+        // 解码一帧
+        function decodeFrame(h264Data, pts, isKeyFrame) {
+            if (!decoder || decoder.state !== 'configured') {
+                return;
+            }
+            
+            // 转换为 AVC 格式
+            const avcData = annexBToAVC(h264Data);
+            if (!avcData) {
+                return; // 没有视频数据（可能只有 SPS/PPS）
+            }
+            
+            try {
+                const chunk = new EncodedVideoChunk({
+                    type: isKeyFrame ? 'key' : 'delta',
+                    timestamp: pts,
+                    data: avcData,
+                });
+                
+                decoder.decode(chunk);
+            } catch (e) {
+                log(`Decode error: ${e.message}`, 'error');
+            }
+        }
+        
+        // 初始化 VideoDecoder（旧接口，保持兼容）
+        function initDecoder(codec, width, height) {
+            // 重置状态
+            spsData = null;
+            ppsData = null;
+            decoderConfigured = false;
+            pendingFrames = [];
+            
+            // 创建解码器实例
+            createDecoder();
+            
+            // 保存设备信息供后续使用
+            deviceInfo.codec = codec;
+            deviceInfo.width = width;
+            deviceInfo.height = height;
+        }
+        
+        function connect() {
+            if (!isWebCodecsSupported) {
+                log('WebCodecs API not supported', 'error');
+                return;
+            }
+            
+            if (ws) {
+                ws.close();
+            }
+            
+            setStatus('connecting', '连接中...');
+            connectBtn.disabled = true;
+            frameCount = 0;
+            
+            log('正在连接 WebSocket...');
+            
+            ws = new WebSocket(WS_URL);
+            ws.binaryType = 'arraybuffer';
+            
+            ws.onopen = () => {
+                log('WebSocket 已连接，等待设备信息...', 'info');
+            };
+            
+            ws.onmessage = (event) => {
+                if (typeof event.data === 'string') {
+                    try {
+                        const msg = JSON.parse(event.data);
+                        
+                        if (msg.type === 'info') {
+                            deviceInfo = msg;
+                            log(`设备: ${msg.device}, 分辨率: ${msg.width}x${msg.height}, 编码: ${msg.codec}`, 'info');
+                            
+                            // 初始化解码器
+                            initDecoder(msg.codec, msg.width, msg.height);
+                            
+                            // 显示 canvas
+                            placeholder.style.display = 'none';
+                            screen.style.display = 'block';
+                            
+                            setStatus('connected', '已连接');
+                            disconnectBtn.disabled = false;
+                        } else if (msg.type === 'error') {
+                            log(`服务端错误: ${msg.message}`, 'error');
+                            setStatus('error', '错误');
+                        }
+                    } catch (e) {
+                        log(`解析消息失败: ${e}`, 'warn');
+                    }
+                } else if (event.data instanceof ArrayBuffer) {
+                    // 二进制数据（H.264 视频帧）
+                    // scrcpy 帧格式:
+                    // - 8 字节: flags (2 bits) + PTS (62 bits), big-endian
+                    //   - bit 63: config packet flag
+                    //   - bit 62: key frame flag
+                    //   - bits 0-61: PTS in microseconds
+                    // - 4 字节: packet size, big-endian
+                    // - N 字节: H.264 数据 (Annex B 格式)
+                    const data = new Uint8Array(event.data);
+                    
+                    if (data.length < 12) {
+                        log(`Invalid packet size: ${data.length}`, 'warn');
+                        return;
+                    }
+                    
+                    // 解析 PTS 和 flags (8 字节, big-endian)
+                    const headerView = new DataView(event.data, 0, 8);
+                    const ptsHigh = headerView.getUint32(0, false);
+                    const ptsLow = headerView.getUint32(4, false);
+                    
+                    // 提取 flags
+                    const isConfig = (ptsHigh >> 31) & 1;
+                    const isKeyFrame = (ptsHigh >> 30) & 1;
+                    
+                    // 提取 PTS (62 bits)
+                    const pts = BigInt(ptsHigh & 0x3FFFFFFF) * BigInt(0x100000000) + BigInt(ptsLow);
+                    
+                    // 解析 size (4 字节, big-endian)
+                    const sizeView = new DataView(event.data, 8, 4);
+                    const packetSize = sizeView.getUint32(0, false);
+                    
+                    // 提取 H.264 数据 (Annex B 格式)
+                    const h264Data = data.slice(12);
+                    
+                    // 解析 NAL 单元
+                    const nalUnits = parseNALUnits(h264Data);
+                    
+                    // 提取 SPS 和 PPS
+                    for (const nal of nalUnits) {
+                        if (nal.type === 7) { // SPS
+                            spsData = nal.data;
+                            log(`Found SPS: ${spsData.length} bytes`, 'info');
+                        } else if (nal.type === 8) { // PPS
+                            ppsData = nal.data;
+                            log(`Found PPS: ${ppsData.length} bytes`, 'info');
+                        }
+                    }
+                    
+                    // 如果有 SPS 和 PPS 但解码器未配置，则配置解码器
+                    if (spsData && ppsData && !decoderConfigured && deviceInfo) {
+                        configureDecoderWithAVC(
+                            deviceInfo.codec,
+                            deviceInfo.width,
+                            deviceInfo.height,
+                            spsData,
+                            ppsData
+                        );
+                    }
+                    
+                    // 检查是否包含关键帧
+                    const hasKeyFrame = containsKeyFrame(nalUnits) || isKeyFrame || isConfig;
+                    
+                    // 解码
+                    if (decoderConfigured && decoder && decoder.state === 'configured') {
+                        decodeFrame(h264Data, Number(pts), hasKeyFrame);
+                    } else if (hasKeyFrame) {
+                        // 缓存关键帧，等待配置完成
+                        pendingFrames.push({
+                            data: h264Data,
+                            pts: Number(pts),
+                            isKeyFrame: true
+                        });
+                        log(`Buffered key frame (waiting for decoder config)`, 'info');
+                    }
+                }
+            };
+            
+            ws.onerror = (e) => {
+                log('WebSocket 错误', 'error');
+                setStatus('error', '连接错误');
+            };
+            
+            ws.onclose = () => {
+                log('WebSocket 已关闭');
+                setStatus('disconnected', '未连接');
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                
+                // 清理解码器
+                if (decoder) {
+                    decoder.close();
+                    decoder = null;
+                }
+            };
+        }
+        
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+            
+            if (decoder) {
+                decoder.close();
+                decoder = null;
+            }
+            
+            // 重置 H.264 解析状态
+            spsData = null;
+            ppsData = null;
+            decoderConfigured = false;
+            pendingFrames = [];
+        }
+        
+        // 发送控制消息
+        function sendControlMessage(msg) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify(msg));
+            }
+        }
+        
+        // 处理触控事件
+        let touchStart = null;
+        
+        screen.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            if (!deviceInfo) return;
+            
+            const rect = screen.getBoundingClientRect();
+            const scaleX = deviceInfo.width / rect.width;
+            const scaleY = deviceInfo.height / rect.height;
+            
+            const x = Math.round(e.offsetX * scaleX);
+            const y = Math.round(e.offsetY * scaleY);
+            
+            touchStart = { x, y, time: Date.now() };
+            
+            // 发送 touch down
+            sendControlMessage({
+                type: 'inject_touch',
+                action: 0, // ACTION_DOWN
+                pointerId: 0,
+                x: x,
+                y: y,
+                screenWidth: deviceInfo.width,
+                screenHeight: deviceInfo.height,
+            });
+            
+            log(`Touch down: (${x}, ${y})`, 'info');
+        });
+        
+        screen.addEventListener('mousemove', (e) => {
+            if (!touchStart || !deviceInfo) return;
+            e.preventDefault();
+            
+            const rect = screen.getBoundingClientRect();
+            const scaleX = deviceInfo.width / rect.width;
+            const scaleY = deviceInfo.height / rect.height;
+            
+            const x = Math.round(e.offsetX * scaleX);
+            const y = Math.round(e.offsetY * scaleY);
+            
+            // 发送 touch move
+            sendControlMessage({
+                type: 'inject_touch',
+                action: 2, // ACTION_MOVE
+                pointerId: 0,
+                x: x,
+                y: y,
+                screenWidth: deviceInfo.width,
+                screenHeight: deviceInfo.height,
+            });
+        });
+        
+        screen.addEventListener('mouseup', (e) => {
+            e.preventDefault();
+            if (!deviceInfo) return;
+            
+            const rect = screen.getBoundingClientRect();
+            const scaleX = deviceInfo.width / rect.width;
+            const scaleY = deviceInfo.height / rect.height;
+            
+            const x = Math.round(e.offsetX * scaleX);
+            const y = Math.round(e.offsetY * scaleY);
+            
+            // 发送 touch up
+            sendControlMessage({
+                type: 'inject_touch',
+                action: 1, // ACTION_UP
+                pointerId: 0,
+                x: x,
+                y: y,
+                screenWidth: deviceInfo.width,
+                screenHeight: deviceInfo.height,
+            });
+            
+            log(`Touch up: (${x}, ${y})`, 'info');
+            touchStart = null;
+        });
+        
+        screen.addEventListener('mouseleave', (e) => {
+            if (touchStart && deviceInfo) {
+                const rect = screen.getBoundingClientRect();
+                const scaleX = deviceInfo.width / rect.width;
+                const scaleY = deviceInfo.height / rect.height;
+                
+                const x = Math.round(e.offsetX * scaleX);
+                const y = Math.round(e.offsetY * scaleY);
+                
+                sendControlMessage({
+                    type: 'inject_touch',
+                    action: 1, // ACTION_UP
+                    pointerId: 0,
+                    x: x,
+                    y: y,
+                    screenWidth: deviceInfo.width,
+                    screenHeight: deviceInfo.height,
+                });
+                
+                touchStart = null;
+            }
+        });
+        
+        // 防止拖动时选中文本
+        screen.addEventListener('dragstart', (e) => e.preventDefault());
+        
+        // 键盘事件
+        document.addEventListener('keydown', (e) => {
+            if (!deviceInfo) return;
+            
+            const keyMap = {
+                'Backspace': 67,    // KEYCODE_DEL
+                'Enter': 66,        // KEYCODE_ENTER
+                'Escape': 111,      // KEYCODE_ESCAPE
+                'ArrowUp': 19,      // KEYCODE_DPAD_UP
+                'ArrowDown': 20,    // KEYCODE_DPAD_DOWN
+                'ArrowLeft': 21,    // KEYCODE_DPAD_LEFT
+                'ArrowRight': 22,   // KEYCODE_DPAD_RIGHT
+            };
+            
+            const keycode = keyMap[e.key];
+            if (keycode) {
+                e.preventDefault();
+                sendControlMessage({
+                    type: 'inject_keycode',
+                    action: 0, // ACTION_DOWN
+                    keycode: keycode,
+                    repeat: 0,
+                    metastate: 0,
+                });
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            if (!deviceInfo) return;
+            
+            const keyMap = {
+                'Backspace': 67,
+                'Enter': 66,
+                'Escape': 111,
+                'ArrowUp': 19,
+                'ArrowDown': 20,
+                'ArrowLeft': 21,
+                'ArrowRight': 22,
+            };
+            
+            const keycode = keyMap[e.key];
+            if (keycode) {
+                e.preventDefault();
+                sendControlMessage({
+                    type: 'inject_keycode',
+                    action: 1, // ACTION_UP
+                    keycode: keycode,
+                    repeat: 0,
+                    metastate: 0,
+                });
+            }
+        });
+        
+        log('页面加载完成，点击"连接"开始');
+        if (isWebCodecsSupported) {
+            log('WebCodecs API 支持: 是', 'info');
+        } else {
+            log('WebCodecs API 支持: 否', 'error');
+        }
+    </script>
+</body>
+</html>

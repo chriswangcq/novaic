@@ -143,6 +143,7 @@ from .agents_db import (
     AgentConfigManagerDB,
     get_agent_config_manager,
     get_agent_config_manager_db,
+    AndroidConfig,
 )
 
 # Public exports
@@ -161,6 +162,7 @@ __all__ = [
     "VmConfig",
     "AICAgent",
     "AgentsConfig",
+    "AndroidConfig",
     # Managers
     "AgentConfigManager",
     "AgentConfigManagerDB",

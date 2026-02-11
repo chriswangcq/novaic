@@ -51,6 +51,13 @@ class PortConfig(BaseModel):
     vmuse: int = 0  # VMUSE HTTP API port (dynamically assigned, 0 means not assigned)
 
 
+class AndroidConfig(BaseModel):
+    """Android emulator configuration for an agent."""
+    device_serial: str = ""      # e.g., emulator-5554
+    managed: bool = False        # Whether managed by novaic (create/destroy AVD)
+    avd_name: Optional[str] = None  # AVD name for managed mode
+
+
 class VmConfig(BaseModel):
     """VM configuration for an agent."""
     backend: str = "qemu"
@@ -60,6 +67,7 @@ class VmConfig(BaseModel):
     memory: str = "4096"
     cpus: int = 4
     ports: PortConfig = Field(default_factory=PortConfig)
+    android: Optional[AndroidConfig] = None  # Android emulator config (optional)
 
 
 class AICAgent(BaseModel):
@@ -184,6 +192,10 @@ class AgentConfigManagerDB:
             
             vm_config["ports"] = PortConfig(**ports) if ports else PortConfig()
             
+            # Parse Android config if present
+            if "android" in vm_config and vm_config["android"]:
+                vm_config["android"] = AndroidConfig(**vm_config["android"])
+            
             agents.append(AICAgent(
                 id=row["id"],
                 name=row["name"],
@@ -204,6 +216,10 @@ class AgentConfigManagerDB:
         
         vm_config["ports"] = PortConfig(**ports) if ports else PortConfig()
         
+        # Parse Android config if present
+        if "android" in vm_config and vm_config["android"]:
+            vm_config["android"] = AndroidConfig(**vm_config["android"])
+        
         return AICAgent(
             id=row["id"],
             name=row["name"],
@@ -216,30 +232,53 @@ class AgentConfigManagerDB:
     def create_agent(
         self,
         name: str,
+        agent_type: str = "linux",  # 'chat' | 'linux' | 'android' | 'hybrid'
         backend: str = "qemu",
         os_type: str = "ubuntu",
         os_version: str = "24.04",
         memory: str = "4096",
         cpus: int = 4,
         source_image: Optional[str] = None,
+        android_config: Optional["AndroidConfig"] = None,
     ) -> AICAgent:
-        """Create a new agent."""
-        self._ensure_dirs()
+        """
+        Create a new agent.
         
-        # 分配新端口（基于已使用端口找到空闲范围）
-        ports = self._allocate_new_ports()
+        Agent types:
+        - 'chat': Pure chat agent (no VM/AVD, just LLM)
+        - 'linux': Linux VM agent
+        - 'android': Android AVD agent
+        - 'hybrid': Both Linux VM and Android AVD
+        """
+        self._ensure_dirs()
         
         agent_id = str(uuid.uuid4())
         
-        # Build VM config
-        vm_config = {
-            "backend": backend,
-            "os_type": os_type,
-            "os_version": os_version,
-            "memory": memory,
-            "cpus": cpus,
-            "image_path": str(self._get_agent_vm_dir(agent_id) / f"{os_type}-{os_version}.qcow2"),
-        }
+        # Initialize VM config and ports based on agent type
+        vm_config = {}
+        ports = PortConfig()  # Default empty ports
+        
+        # Only allocate ports and setup VM for types that need it
+        needs_vm = agent_type in ("linux", "hybrid")
+        needs_android = agent_type in ("android", "hybrid")
+        
+        if needs_vm:
+            # Allocate ports for VM
+            ports = self._allocate_new_ports()
+            
+            # Build VM config
+            vm_config = {
+                "backend": backend,
+                "os_type": os_type,
+                "os_version": os_version,
+                "memory": memory,
+                "cpus": cpus,
+                "image_path": str(self._get_agent_vm_dir(agent_id) / f"{os_type}-{os_version}.qcow2"),
+            }
+        
+        # Add Android config if provided
+        if needs_android and android_config:
+            vm_config["android"] = android_config.model_dump()
         
         # Create in database
         self.repo.create_agent(
@@ -247,21 +286,24 @@ class AgentConfigManagerDB:
             name=name,
             vm_config=vm_config,
             ports=ports.model_dump(),
-            setup_complete=False,
+            setup_complete=not needs_vm,  # Chat-only agents are always "setup complete"
+            agent_type=agent_type,
         )
         
-        # Create VM directory
-        vm_dir = self._get_agent_vm_dir(agent_id)
-        vm_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Copy source image if provided
-        if source_image and Path(source_image).exists():
-            dest_image = Path(vm_config["image_path"])
-            print(f"[AgentConfig] Copying image from {source_image} to {dest_image}")
-            shutil.copy2(source_image, dest_image)
-        
-        # Setup UEFI firmware
-        self._setup_uefi_firmware(vm_dir)
+        # Only create VM directory and setup for VM-based agents
+        if needs_vm:
+            # Create VM directory
+            vm_dir = self._get_agent_vm_dir(agent_id)
+            vm_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Copy source image if provided
+            if source_image and Path(source_image).exists():
+                dest_image = Path(vm_config["image_path"])
+                print(f"[AgentConfig] Copying image from {source_image} to {dest_image}")
+                shutil.copy2(source_image, dest_image)
+            
+            # Setup UEFI firmware
+            self._setup_uefi_firmware(vm_dir)
         
         return self.get_agent(agent_id)
     
@@ -272,8 +314,18 @@ class AgentConfigManagerDB:
         setup_complete: Optional[bool] = None,
         cloud_init_complete: Optional[bool] = None,
         vm_config: Optional[Dict[str, Any]] = None,
+        android_config: Optional["AndroidConfig"] = None,
     ) -> Optional[AICAgent]:
-        """Update agent configuration."""
+        """
+        Update agent configuration.
+        
+        Supports:
+        - name: Update agent name
+        - setup_complete: Mark VM setup as complete
+        - cloud_init_complete: Mark cloud-init as complete
+        - vm_config: Update VM configuration (merged with existing)
+        - android_config: Add or update Android configuration
+        """
         current = self.get_agent(agent_id)
         if not current:
             return None
@@ -281,17 +333,44 @@ class AgentConfigManagerDB:
         update_vm = None
         update_ports = None
         
+        # Handle VM config update
         if vm_config:
             # Merge with existing VM config
             current_vm = current.vm.model_dump()
             ports = current_vm.pop("ports", {})
+            android = current_vm.pop("android", None)  # Preserve existing android config
             
             if "ports" in vm_config:
                 ports.update(vm_config.pop("ports"))
             
             current_vm.update(vm_config)
+            
+            # Restore android config if not being updated
+            if android and "android" not in current_vm:
+                current_vm["android"] = android
+            
             update_vm = current_vm
             update_ports = ports
+            
+            # If adding VM config to a chat-only agent, allocate ports
+            if not ports.get("ssh") and not ports.get("vmuse"):
+                new_ports = self._allocate_new_ports()
+                update_ports = new_ports.model_dump()
+                
+                # Create VM directory if needed
+                vm_dir = self._get_agent_vm_dir(agent_id)
+                vm_dir.mkdir(parents=True, exist_ok=True)
+                self._setup_uefi_firmware(vm_dir)
+        
+        # Handle Android config update
+        if android_config:
+            if update_vm is None:
+                # Start with current VM config
+                current_vm = current.vm.model_dump()
+                update_ports = current_vm.pop("ports", {})
+                update_vm = current_vm
+            
+            update_vm["android"] = android_config.model_dump()
         
         self.repo.update_agent(
             agent_id=agent_id,

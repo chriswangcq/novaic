@@ -6,17 +6,50 @@ pub mod guest;
 pub mod vnc;
 pub mod browser;
 pub mod vmuse;
+pub mod scrcpy;
+pub mod android;
 
-use axum::{Router, routing::{get, post}};
+use axum::{Router, routing::{get, post, delete}};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use std::collections::HashMap;
 
+use crate::android::AndroidManager;
+
 /// Application state shared across all routes
 pub type AppState = Arc<RwLock<HashMap<String, vm::VmManager>>>;
 
+/// Android Manager state
+pub type AndroidState = Arc<RwLock<AndroidManager>>;
+
+/// Combined application state
+#[derive(Clone)]
+pub struct CombinedState {
+    pub vms: AppState,
+    pub android: AndroidState,
+}
+
 /// Create the main API router with all routes
 pub fn create_router(state: AppState) -> Router {
+    // 创建 Android Manager
+    let android_manager = Arc::new(RwLock::new(AndroidManager::new()));
+    
+    // 创建 Android 子路由
+    let android_router = Router::new()
+        // AVD 列表和设备管理
+        .route("/avds", get(android::list_avds))
+        .route("/devices", get(android::list_devices))
+        // 模拟器控制
+        .route("/emulator/start", post(android::start_emulator))
+        .route("/emulator/stop", post(android::stop_emulator))
+        .route("/emulator/status", get(android::get_emulator_status))
+        // AVD 管理（不依赖 Java）
+        .route("/system-image/check", get(android::check_system_image))
+        .route("/device-definitions", get(android::list_device_definitions))
+        .route("/avd/create", post(android::create_avd))
+        .route("/avd/:name", delete(android::delete_avd))
+        .with_state(android_manager);
+    
     Router::new()
         .route("/health", get(health::health_check))
         .route("/api/vms", get(vm::list_vms).post(vm::register_vm))
@@ -42,5 +75,10 @@ pub fn create_router(state: AppState) -> Router {
         .route("/api/vms/:id/vmuse/:tool/:operation", post(vmuse::vmuse_proxy))
         // VNC WebSocket endpoint
         .route("/api/vms/:id/vnc", get(vnc::vnc_websocket))
+        // Scrcpy endpoints (legacy, for backward compatibility)
+        .route("/api/android/scrcpy", get(scrcpy::scrcpy_websocket))
+        .route("/api/android/scrcpy/status", get(scrcpy::scrcpy_status))
         .with_state(state)
+        // Android emulator management endpoints
+        .nest("/api/android", android_router)
 }

@@ -1,8 +1,16 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { VNCView } from './VNCView';
+import { ScrcpyView } from './ScrcpyView';
 import { ExecutionLog } from './ExecutionLog';
 import { useAppStore } from '../../store';
-import { GripHorizontal, Maximize2 } from 'lucide-react';
+import { GripHorizontal, Maximize2, Monitor, Smartphone } from 'lucide-react';
+
+type ActiveView = 'linux' | 'android';
+
+// 测试用：硬编码 Android 设备信息（Agent 模型扩展后可从 agent.android 获取）
+const ANDROID_DEVICE_FOR_TEST = {
+  deviceSerial: 'emulator-5554',
+};
 
 // Layout persistence key
 const VM_HEIGHT_STORAGE_KEY = 'novaic-vm-height-ratio';
@@ -38,11 +46,33 @@ interface VisualPanelProps {
 }
 
 export function VisualPanel({ isThumbnail = false }: VisualPanelProps) {
-  const { setLayoutMode, logs } = useAppStore();
+  const { setLayoutMode, logs, currentAgentId, agents } = useAppStore();
   const [vmHeightRatio, setVmHeightRatio] = useState(loadVmHeightRatio);
   const [isResizing, setIsResizing] = useState(false);
   const [isLogsCollapsed, setIsLogsCollapsed] = useState(false);
+  const [activeView, setActiveView] = useState<ActiveView>('linux');
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // 判断 Agent 是否同时配置了 Linux VM 和 Android
+  const currentAgent = currentAgentId ? agents.find((a) => a.id === currentAgentId) : null;
+  const hasLinux = Boolean(currentAgent?.vm);
+  const hasAndroid = Boolean(
+    currentAgent &&
+    (currentAgent.android?.device_serial || currentAgent.android?.avd_name || ANDROID_DEVICE_FOR_TEST.deviceSerial)
+  );
+  const showViewSwitch = hasLinux && hasAndroid;
+
+  // 根据 Agent 配置自动选择默认视图
+  useEffect(() => {
+    if (hasLinux && !hasAndroid) {
+      setActiveView('linux');
+    } else if (!hasLinux && hasAndroid) {
+      setActiveView('android');
+    } else if (!hasLinux && !hasAndroid) {
+      setActiveView('linux'); // fallback
+    }
+    // 两者都有时保持用户选择，不强制覆盖
+  }, [hasLinux, hasAndroid]);
 
   // Handle vertical resize
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
@@ -100,15 +130,53 @@ export function VisualPanel({ isThumbnail = false }: VisualPanelProps) {
     );
   }
 
+  // 获取 Android 设备序列号（优先从 Agent 配置，否则用硬编码测试值）
+  const androidDeviceSerial =
+    currentAgent?.android?.device_serial || ANDROID_DEVICE_FOR_TEST.deviceSerial;
+
   // Full mode or normal mode: VM on top, logs on bottom
   return (
     <div ref={containerRef} className="flex flex-col h-full">
-      {/* VM View */}
+      {/* View toolbar + content */}
       <div 
-        className="flex-shrink-0 overflow-hidden"
+        className="flex-shrink-0 overflow-hidden flex flex-col"
         style={{ height: isLogsCollapsed ? 'calc(100% - 32px)' : `${vmHeightRatio * 100}%` }}
       >
-        <VNCView />
+        {/* Tab-style 视图切换（仅当同时配置 Linux 和 Android 时显示） */}
+        {showViewSwitch && (
+          <div className="flex items-center gap-1 px-3 py-2 bg-nb-surface border-b border-nb-border">
+            <div className="flex rounded-lg bg-nb-surface-2 p-0.5">
+              <button
+                type="button"
+                onClick={() => setActiveView('linux')}
+                className={`
+                  flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors
+                  ${activeView === 'linux' ? 'bg-nb-accent text-white' : 'text-nb-text-muted hover:text-nb-text hover:bg-nb-surface'}
+                `}
+              >
+                <Monitor size={14} />
+                Linux
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveView('android')}
+                className={`
+                  flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors
+                  ${activeView === 'android' ? 'bg-nb-accent text-white' : 'text-nb-text-muted hover:text-nb-text hover:bg-nb-surface'}
+                `}
+              >
+                <Smartphone size={14} />
+                Android
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 视图内容 */}
+        <div className="flex-1 min-h-0 overflow-hidden">
+          {activeView === 'linux' && <VNCView />}
+          {activeView === 'android' && <ScrcpyView deviceSerial={androidDeviceSerial} autoConnect />}
+        </div>
       </div>
 
       {/* Horizontal Resizer */}

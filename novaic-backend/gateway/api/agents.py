@@ -15,10 +15,56 @@ from gateway.config.agents import (
     AICAgent,
     VmConfig,
     PortConfig,
+    AndroidConfig,
 )
 from gateway.db.access import get_db
 
 router = APIRouter(prefix="/api/agents", tags=["agents"])
+
+
+def _prepare_android_config(
+    android_request: "AndroidConfigRequest",
+    agent_name: str,
+) -> AndroidConfig:
+    """
+    Prepare Android configuration from request.
+    
+    - If managed=True: auto-generate avd_name if not provided
+    - If managed=False: validate device_serial is provided
+    
+    Returns AndroidConfig ready to be stored.
+    """
+    import re
+    
+    if android_request.managed:
+        # Managed mode: novaic will create/manage the AVD
+        avd_name = android_request.avd_name
+        if not avd_name:
+            # Auto-generate AVD name from agent name
+            # Sanitize: only alphanumeric and underscores
+            safe_name = re.sub(r'[^a-zA-Z0-9_]', '_', agent_name.lower())
+            avd_name = f"novaic_{safe_name}"
+        
+        # Preserve device_serial if provided (e.g., after emulator starts)
+        device_serial = android_request.device_serial or ""
+        
+        return AndroidConfig(
+            device_serial=device_serial,
+            managed=True,
+            avd_name=avd_name,
+        )
+    else:
+        # External mode: user provides existing device
+        if not android_request.device_serial:
+            raise ValueError(
+                "device_serial is required when managed=False"
+            )
+        
+        return AndroidConfig(
+            device_serial=android_request.device_serial,
+            managed=False,
+            avd_name=None,
+        )
 
 
 def _get_tools_server_url() -> Optional[str]:
@@ -28,10 +74,15 @@ def _get_tools_server_url() -> Optional[str]:
 
 # ==================== Request/Response Models ====================
 
-class CreateAgentRequest(BaseModel):
-    """Request to create a new agent"""
-    name: str
-    model: Optional[str] = None  # LLM model (e.g., "kimi-k2.5", "gpt-4o")
+class AndroidConfigRequest(BaseModel):
+    """Android emulator configuration request"""
+    managed: bool = True  # Whether novaic manages the AVD lifecycle
+    avd_name: Optional[str] = None  # AVD name (required if managed=True, auto-generated if not provided)
+    device_serial: Optional[str] = None  # Device serial (required if managed=False)
+
+
+class VmConfigRequest(BaseModel):
+    """VM configuration request (for Linux VM)"""
     backend: str = "qemu"
     os_type: str = "ubuntu"
     os_version: str = "24.04"
@@ -40,11 +91,62 @@ class CreateAgentRequest(BaseModel):
     source_image: Optional[str] = None
 
 
+class CreateAgentRequest(BaseModel):
+    """
+    Request to create a new agent.
+    
+    Agent types:
+    - 'chat': Pure chat agent (no VM/AVD, just LLM)
+    - 'linux': Linux VM agent
+    - 'android': Android AVD agent
+    - 'hybrid': Both Linux VM and Android AVD
+    
+    For 'chat' type, vm_config and android are ignored.
+    For 'linux' type, vm_config is required (or uses defaults).
+    For 'android' type, android is required.
+    For 'hybrid' type, both vm_config and android are required.
+    """
+    name: str
+    model: Optional[str] = None  # LLM model (e.g., "kimi-k2.5", "gpt-4o")
+    agent_type: str = "linux"  # 'chat' | 'linux' | 'android' | 'hybrid'
+    # Linux VM config (optional, used for 'linux' and 'hybrid' types)
+    vm_config: Optional[VmConfigRequest] = None
+    # Android config (optional, used for 'android' and 'hybrid' types)
+    android: Optional[AndroidConfigRequest] = None
+    # Legacy fields for backward compatibility (deprecated, use vm_config instead)
+    backend: Optional[str] = None
+    os_type: Optional[str] = None
+    os_version: Optional[str] = None
+    memory: Optional[str] = None
+    cpus: Optional[int] = None
+    source_image: Optional[str] = None
+
+
 class UpdateAgentRequest(BaseModel):
-    """Request to update an agent"""
+    """
+    Request to update an agent.
+    
+    Supports partial updates:
+    - name: Update agent name
+    - vm_config: Update VM configuration (for Linux VM)
+    - android: Update Android configuration
+    - setup_complete: Mark VM setup as complete
+    
+    Each field can be updated independently.
+    """
     name: Optional[str] = None
-    vm: Optional[dict] = None
+    vm_config: Optional[VmConfigRequest] = None  # Update VM config
+    android: Optional[AndroidConfigRequest] = None  # Update Android config
     setup_complete: Optional[bool] = None
+    # Legacy field for backward compatibility
+    vm: Optional[dict] = None
+
+
+class AndroidConfigResponse(BaseModel):
+    """Android emulator configuration response"""
+    device_serial: str = ""
+    managed: bool = False
+    avd_name: Optional[str] = None
 
 
 class AgentResponse(BaseModel):
@@ -55,6 +157,7 @@ class AgentResponse(BaseModel):
     vm: VmConfig
     setup_complete: bool = False
     model_id: Optional[str] = None  # Selected LLM model ID
+    android: Optional[AndroidConfigResponse] = None  # Android emulator config
 
 
 class SetAgentModelRequest(BaseModel):
@@ -110,9 +213,19 @@ def list_agents():
     manager = get_agent_config_manager()
     agents = manager.list_agents()
     
-    return AgentListResponse(
-        agents=[AgentResponse(**agent.model_dump()) for agent in agents]
-    )
+    response_agents = []
+    for agent in agents:
+        agent_dict = agent.model_dump()
+        # Convert android config to response format
+        if agent.vm.android:
+            agent_dict['android'] = AndroidConfigResponse(
+                device_serial=agent.vm.android.device_serial,
+                managed=agent.vm.android.managed,
+                avd_name=agent.vm.android.avd_name,
+            )
+        response_agents.append(AgentResponse(**agent_dict))
+    
+    return AgentListResponse(agents=response_agents)
 
 
 @router.get("/images", response_model=List[AvailableImageResponse])
@@ -132,23 +245,69 @@ def get_agent(agent_id: str):
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
     
-    return AgentResponse(**agent.model_dump())
+    agent_dict = agent.model_dump()
+    # Convert android config to response format
+    if agent.vm.android:
+        agent_dict['android'] = AndroidConfigResponse(
+            device_serial=agent.vm.android.device_serial,
+            managed=agent.vm.android.managed,
+            avd_name=agent.vm.android.avd_name,
+        )
+    
+    return AgentResponse(**agent_dict)
 
 
 @router.post("", response_model=AgentResponse)
 def create_agent(request: CreateAgentRequest):
-    """Create a new AIC agent"""
+    """
+    Create a new AIC agent.
+    
+    Supports different agent types:
+    - 'chat': Pure chat agent (no VM/AVD)
+    - 'linux': Linux VM agent
+    - 'android': Android AVD agent  
+    - 'hybrid': Both Linux VM and Android AVD
+    """
     manager = get_agent_config_manager()
     
     try:
+        agent_type = request.agent_type
+        
+        # Prepare Android config if needed
+        android_config = None
+        if agent_type in ("android", "hybrid") and request.android:
+            android_config = _prepare_android_config(request.android, request.name)
+        
+        # Prepare VM config if needed
+        # Support both new vm_config and legacy fields
+        vm_params = {}
+        if agent_type in ("linux", "hybrid"):
+            if request.vm_config:
+                vm_params = {
+                    "backend": request.vm_config.backend,
+                    "os_type": request.vm_config.os_type,
+                    "os_version": request.vm_config.os_version,
+                    "memory": request.vm_config.memory,
+                    "cpus": request.vm_config.cpus,
+                    "source_image": request.vm_config.source_image,
+                }
+            else:
+                # Use legacy fields or defaults
+                vm_params = {
+                    "backend": request.backend or "qemu",
+                    "os_type": request.os_type or "ubuntu",
+                    "os_version": request.os_version or "24.04",
+                    "memory": request.memory or "4096",
+                    "cpus": request.cpus or 4,
+                    "source_image": request.source_image,
+                }
+        
+        # Create agent with appropriate configuration
         agent = manager.create_agent(
             name=request.name,
-            backend=request.backend,
-            os_type=request.os_type,
-            os_version=request.os_version,
-            memory=request.memory,
-            cpus=request.cpus,
-            source_image=request.source_image,
+            agent_type=agent_type,
+            android_config=android_config,
+            **vm_params,
         )
         
         # Auto-create main SubAgent for the new agent
@@ -174,22 +333,64 @@ def create_agent(request: CreateAgentRequest):
         if request.model:
             response_dict['model_id'] = request.model
         
+        # Add android config to response
+        if agent.vm.android:
+            response_dict['android'] = AndroidConfigResponse(
+                device_serial=agent.vm.android.device_serial,
+                managed=agent.vm.android.managed,
+                avd_name=agent.vm.android.avd_name,
+            )
+        
         return AgentResponse(**response_dict)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.patch("/{agent_id}", response_model=AgentResponse)
 def update_agent(agent_id: str, request: UpdateAgentRequest):
-    """Update an existing agent"""
+    """
+    Update an existing agent.
+    
+    Supports partial updates:
+    - name: Update agent name
+    - vm_config: Add or update Linux VM configuration
+    - android: Add or update Android configuration
+    - setup_complete: Mark VM setup as complete
+    """
     manager = get_agent_config_manager()
     
     # Get old agent to check setup_complete change
     old_agent = manager.get_agent(agent_id)
-    was_setup_complete = old_agent.setup_complete if old_agent else False
+    if old_agent is None:
+        raise HTTPException(status_code=404, detail="Agent not found")
     
-    update_data = request.model_dump(exclude_none=True)
-    agent = manager.update_agent(agent_id, **update_data)
+    was_setup_complete = old_agent.setup_complete
+    
+    # Build update data
+    update_kwargs = {}
+    
+    if request.name is not None:
+        update_kwargs["name"] = request.name
+    
+    if request.setup_complete is not None:
+        update_kwargs["setup_complete"] = request.setup_complete
+    
+    # Handle VM config update (new format)
+    if request.vm_config is not None:
+        vm_config_dict = request.vm_config.model_dump(exclude_none=True)
+        update_kwargs["vm_config"] = vm_config_dict
+    # Handle legacy vm field
+    elif request.vm is not None:
+        update_kwargs["vm_config"] = request.vm
+    
+    # Handle Android config update
+    if request.android is not None:
+        android_config = _prepare_android_config(request.android, old_agent.name)
+        update_kwargs["android_config"] = android_config
+    
+    agent = manager.update_agent(agent_id, **update_kwargs)
     
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
@@ -225,7 +426,16 @@ def update_agent(agent_id: str, request: UpdateAgentRequest):
         except Exception as e:
             print(f"[Agents] Warning: Failed to store bootstrap message: {e}")
     
-    return AgentResponse(**agent.model_dump())
+    # Build response
+    response_dict = agent.model_dump()
+    if agent.vm.android:
+        response_dict['android'] = AndroidConfigResponse(
+            device_serial=agent.vm.android.device_serial,
+            managed=agent.vm.android.managed,
+            avd_name=agent.vm.android.avd_name,
+        )
+    
+    return AgentResponse(**response_dict)
 
 
 @router.delete("/{agent_id}")

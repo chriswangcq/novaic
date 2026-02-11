@@ -49,15 +49,23 @@ class AgentRepository:
         vm_config: Dict[str, Any],
         ports: Dict[str, Any],
         setup_complete: bool = False,
+        agent_type: str = "linux",  # 'chat' | 'linux' | 'android' | 'hybrid'
     ) -> Dict[str, Any]:
-        """Create a new agent."""
+        """
+        Create a new agent.
+        
+        agent_type is stored in vm_config as '_agent_type' for persistence.
+        """
         created_at = utc_now_iso()
+        
+        # Store agent_type in vm_config for persistence
+        vm_config_with_type = {**vm_config, "_agent_type": agent_type}
         
         with self.db.transaction("agent", resource_id=id):
             self.db.execute(
                 """INSERT INTO agents (id, name, created_at, vm_config, ports, setup_complete)
                    VALUES (?, ?, ?, ?, ?, ?)""",
-                (id, name, created_at, json.dumps(vm_config), json.dumps(ports), 1 if setup_complete else 0)
+                (id, name, created_at, json.dumps(vm_config_with_type), json.dumps(ports), 1 if setup_complete else 0)
             )
         
         return self.get_agent(id)

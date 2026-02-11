@@ -21,4 +21,10 @@ pub enum VmError {
     
     #[error("VNC error: {0}")]
     VncError(String),
+    
+    #[error("Scrcpy error: {0}")]
+    ScrcpyError(String),
+    
+    #[error("Android error: {0}")]
+    AndroidError(String),
 }
