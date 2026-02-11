@@ -500,7 +500,7 @@ export function DeviceSidebar({ className = '' }: DeviceSidebarProps) {
   
   return (
     <>
-      <div className={`w-40 bg-nb-surface border-l border-nb-border flex flex-col ${className}`}>
+      <div className={`w-52 bg-nb-surface border-l border-nb-border flex flex-col ${className}`}>
         {/* 标题 */}
         <div className="h-10 px-2 flex items-center justify-center border-b border-nb-border">
           <span className="text-[10px] font-medium text-nb-text-muted">设备</span>

@@ -7,6 +7,7 @@ use tokio::process::Command;
 use tokio::sync::RwLock;
 use serde::{Deserialize, Serialize};
 use crate::error::VmError;
+use crate::scrcpy::ensure_scrcpy_server;
 use super::avd::{AvdManager, DeviceDefinition, CreateAvdParams};
 
 /// Android 设备状态
@@ -254,6 +255,27 @@ impl AndroidManager {
         }
 
         tracing::info!("Emulator started: serial={}, pid={:?}", serial, pid);
+        
+        // 在后台启动 scrcpy-server（不阻塞返回）
+        let serial_clone = serial.clone();
+        tokio::spawn(async move {
+            // 等待设备完全启动
+            tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+            
+            // 启动持久化的 scrcpy-server
+            match ensure_scrcpy_server(&serial_clone).await {
+                Ok((video_port, control_port)) => {
+                    tracing::info!(
+                        "Persistent scrcpy-server started for {} on ports {}/{}",
+                        serial_clone, video_port, control_port
+                    );
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to start scrcpy-server for {}: {}", serial_clone, e);
+                }
+            }
+        });
+        
         Ok(device)
     }
 
@@ -347,6 +369,9 @@ impl AndroidManager {
         let adb = self.adb_path();
 
         tracing::info!("Stopping emulator: {}", serial);
+        
+        // 先停止 scrcpy-server
+        crate::scrcpy::stop_scrcpy_server(serial).await;
 
         // 使用 adb emu kill 命令停止模拟器
         let output = Command::new(&adb)

@@ -7,6 +7,8 @@ use clap::Parser;
 
 use vmcontrol::api::{ApiServer, routes::AppState};
 use vmcontrol::api::routes::vm::VmManager;
+use vmcontrol::android::AndroidManager;
+use vmcontrol::scrcpy::ensure_scrcpy_server;
 
 /// VM Control Service
 #[derive(Parser, Debug)]
@@ -41,6 +43,9 @@ async fn main() -> anyhow::Result<()> {
 
     // Auto-discover and register running VMs on startup
     auto_register_running_vms(state.clone()).await;
+    
+    // Pre-start scrcpy-server for connected Android devices
+    pre_start_scrcpy_servers().await;
 
     // Create and run API server
     let server = ApiServer::new(args.port);
@@ -131,4 +136,60 @@ async fn auto_register_running_vms(state: AppState) {
     } else {
         tracing::debug!("No running VMs found");
     }
+}
+
+/// Pre-start scrcpy-server for all connected Android devices
+/// 
+/// This ensures that when users open the Android view, the scrcpy-server
+/// is already running and the connection will be instant.
+async fn pre_start_scrcpy_servers() {
+    let android_manager = AndroidManager::new();
+    
+    // Get list of connected devices
+    let devices: Vec<vmcontrol::android::AndroidDevice> = match android_manager.list_all_devices().await {
+        Ok(d) => d,
+        Err(e) => {
+            tracing::debug!("No Android devices found: {}", e);
+            return;
+        }
+    };
+    
+    let connected_devices: Vec<_> = devices
+        .into_iter()
+        .filter(|d| d.status == vmcontrol::android::AndroidStatus::Connected)
+        .collect();
+    
+    if connected_devices.is_empty() {
+        tracing::debug!("No connected Android devices");
+        return;
+    }
+    
+    tracing::info!("Pre-starting scrcpy-server for {} Android device(s)", connected_devices.len());
+    
+    // Start scrcpy-server for each device in parallel
+    let handles: Vec<_> = connected_devices
+        .into_iter()
+        .map(|device| {
+            let serial = device.serial.clone();
+            tokio::spawn(async move {
+                match ensure_scrcpy_server(&serial).await {
+                    Ok((video_port, control_port)) => {
+                        tracing::info!(
+                            "✓ Pre-started scrcpy-server for {} on ports {}/{}",
+                            serial, video_port, control_port
+                        );
+                    }
+                    Err(e) => {
+                        tracing::warn!("Failed to pre-start scrcpy-server for {}: {}", serial, e);
+                    }
+                }
+            })
+        })
+        .collect();
+    
+    // Wait for all to complete (with timeout)
+    let _ = tokio::time::timeout(
+        tokio::time::Duration::from_secs(30),
+        futures::future::join_all(handles)
+    ).await;
 }

@@ -7,6 +7,26 @@ use crate::error::VmError;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::io::{AsyncReadExt, AsyncWriteExt, BufReader};
+use std::collections::HashMap;
+use tokio::sync::RwLock;
+use once_cell::sync::Lazy;
+
+/// 持久化的 scrcpy-server 信息
+struct PersistentServer {
+    scid: u32,
+    video_port: u16,
+    control_port: u16,
+    #[allow(dead_code)]
+    process: tokio::process::Child,
+}
+
+/// 服务器映射类型
+type ServerMap = HashMap<String, Arc<tokio::sync::Mutex<PersistentServer>>>;
+
+/// 全局的 scrcpy-server 管理器
+/// 为每个设备维护一个持久运行的 scrcpy-server
+static SCRCPY_SERVERS: Lazy<RwLock<ServerMap>> = 
+    Lazy::new(|| RwLock::new(HashMap::new()));
 
 /// scrcpy-server 版本 (必须与服务器版本匹配)
 const SCRCPY_VERSION: &str = "3.3.4";
@@ -87,6 +107,193 @@ pub struct DeviceMetadata {
     pub height: u32,
 }
 
+/// 为设备分配端口（基于设备序列号）
+fn allocate_ports_for_device(device_serial: &str) -> (u16, u16) {
+    // 从设备序列号中提取端口偏移
+    // emulator-5554 -> 5554, emulator-5556 -> 5556
+    let port_offset: u16 = device_serial
+        .split('-')
+        .last()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(5554);
+    
+    // 使用不同的基础端口避免冲突
+    // 视频端口: 27000 + (port_offset - 5554) * 2
+    // 控制端口: 27001 + (port_offset - 5554) * 2
+    let base = 27000 + ((port_offset - 5554) / 2) * 2;
+    (base, base + 1)
+}
+
+/// 启动持久化的 scrcpy-server（如果还没有运行）
+pub async fn ensure_scrcpy_server(device_serial: &str) -> Result<(u16, u16), VmError> {
+    // 检查是否已有运行的服务器
+    {
+        let servers = SCRCPY_SERVERS.read().await;
+        if let Some(server) = servers.get(device_serial) {
+            let server = server.lock().await;
+            tracing::info!("Reusing existing scrcpy-server for {}, scid={:08x}", device_serial, server.scid);
+            return Ok((server.video_port, server.control_port));
+        }
+    }
+    
+    // 需要启动新的服务器
+    tracing::info!("Starting persistent scrcpy-server for {}", device_serial);
+    
+    let adb_path = get_adb_path();
+    let server_path = get_scrcpy_server_path();
+    
+    // 检查本地服务器文件
+    if !std::path::Path::new(&server_path).exists() {
+        return Err(VmError::ScrcpyError(format!(
+            "scrcpy-server not found at {}",
+            server_path
+        )));
+    }
+    
+    // 推送 scrcpy-server（如果需要）
+    let check_output = Command::new(&adb_path)
+        .args(["-s", device_serial, "shell", "test -f /data/local/tmp/scrcpy-server.jar && echo EXISTS"])
+        .output()
+        .await;
+    
+    let need_push = match check_output {
+        Ok(output) => String::from_utf8_lossy(&output.stdout).trim() != "EXISTS",
+        Err(_) => true,
+    };
+    
+    if need_push {
+        tracing::info!("Pushing scrcpy-server to {}", device_serial);
+        let output = Command::new(&adb_path)
+            .args(["-s", device_serial, "push", &server_path, "/data/local/tmp/scrcpy-server.jar"])
+            .output()
+            .await
+            .map_err(|e| VmError::ScrcpyError(format!("Failed to push: {}", e)))?;
+        
+        if !output.status.success() {
+            return Err(VmError::ScrcpyError("Failed to push scrcpy-server".to_string()));
+        }
+    }
+    
+    // 杀掉可能存在的旧进程
+    let _ = Command::new(&adb_path)
+        .args(["-s", device_serial, "shell", "pkill -f scrcpy"])
+        .output()
+        .await;
+    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    
+    // 生成 scid 和分配端口
+    let scid = {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+        (duration.as_nanos() & 0x7FFFFFFF) as u32
+    };
+    let (video_port, control_port) = allocate_ports_for_device(device_serial);
+    let socket_name = format!("scrcpy_{:08x}", scid);
+    
+    // 设置端口转发
+    let _ = Command::new(&adb_path)
+        .args(["-s", device_serial, "forward", "--remove", &format!("tcp:{}", video_port)])
+        .output()
+        .await;
+    let _ = Command::new(&adb_path)
+        .args(["-s", device_serial, "forward", "--remove", &format!("tcp:{}", control_port)])
+        .output()
+        .await;
+    
+    let forward_target = format!("localabstract:{}", socket_name);
+    
+    let output = Command::new(&adb_path)
+        .args(["-s", device_serial, "forward", &format!("tcp:{}", video_port), &forward_target])
+        .output()
+        .await
+        .map_err(|e| VmError::ScrcpyError(format!("Failed to forward video: {}", e)))?;
+    
+    if !output.status.success() {
+        return Err(VmError::ScrcpyError("Failed to forward video port".to_string()));
+    }
+    
+    let output = Command::new(&adb_path)
+        .args(["-s", device_serial, "forward", &format!("tcp:{}", control_port), &forward_target])
+        .output()
+        .await
+        .map_err(|e| VmError::ScrcpyError(format!("Failed to forward control: {}", e)))?;
+    
+    if !output.status.success() {
+        return Err(VmError::ScrcpyError("Failed to forward control port".to_string()));
+    }
+    
+    // 启动 scrcpy-server
+    let server_args = format!(
+        "CLASSPATH=/data/local/tmp/scrcpy-server.jar app_process / com.genymobile.scrcpy.Server {} \
+        scid={:08x} \
+        log_level=info \
+        tunnel_forward=true \
+        video=true \
+        audio=false \
+        control=true \
+        video_bit_rate=8000000 \
+        max_size=0 \
+        max_fps=60 \
+        video_codec=h264 \
+        send_device_meta=true \
+        send_frame_meta=true \
+        send_codec_meta=true \
+        send_dummy_byte=true \
+        cleanup=false \
+        power_off_on_close=false \
+        clipboard_autosync=false \
+        downsize_on_error=true",
+        SCRCPY_VERSION,
+        scid
+    );
+    
+    tracing::info!("Starting scrcpy-server for {} with scid={:08x}, ports={}/{}", 
+        device_serial, scid, video_port, control_port);
+    
+    let process = Command::new(&adb_path)
+        .args(["-s", device_serial, "shell", &server_args])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| VmError::ScrcpyError(format!("Failed to start server: {}", e)))?;
+    
+    // 等待服务器启动
+    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+    
+    // 保存到全局状态
+    let server = PersistentServer {
+        scid,
+        video_port,
+        control_port,
+        process,
+    };
+    
+    {
+        let mut servers = SCRCPY_SERVERS.write().await;
+        servers.insert(device_serial.to_string(), Arc::new(tokio::sync::Mutex::new(server)));
+    }
+    
+    tracing::info!("Persistent scrcpy-server started for {}", device_serial);
+    Ok((video_port, control_port))
+}
+
+/// 停止设备的 scrcpy-server
+pub async fn stop_scrcpy_server(device_serial: &str) {
+    let mut servers = SCRCPY_SERVERS.write().await;
+    if let Some(server) = servers.remove(device_serial) {
+        let mut server = server.lock().await;
+        let _ = server.process.kill().await;
+        tracing::info!("Stopped scrcpy-server for {}", device_serial);
+    }
+    
+    // 杀掉设备上的进程
+    let adb_path = get_adb_path();
+    let _ = Command::new(&adb_path)
+        .args(["-s", device_serial, "shell", "pkill -f scrcpy"])
+        .output()
+        .await;
+}
+
 /// Android 设备流代理 - 使用真正的 scrcpy-server
 pub struct ScrcpyProxy {
     device_serial: String,
@@ -99,20 +306,34 @@ impl ScrcpyProxy {
         }
     }
 
-    /// 推送 scrcpy-server 到设备
+    /// 推送 scrcpy-server 到设备（如果需要）
     async fn push_server(&self) -> Result<(), VmError> {
         let adb_path = get_adb_path();
         let server_path = get_scrcpy_server_path();
         
-        tracing::info!("Pushing scrcpy-server from {} to device {}", server_path, self.device_serial);
-        
-        // 检查服务器文件是否存在
+        // 检查本地服务器文件是否存在
         if !std::path::Path::new(&server_path).exists() {
             return Err(VmError::ScrcpyError(format!(
                 "scrcpy-server not found at {}. Install scrcpy with: brew install scrcpy",
                 server_path
             )));
         }
+        
+        // 检查设备上是否已有 scrcpy-server（通过检查文件是否存在）
+        let check_output = Command::new(&adb_path)
+            .args(["-s", &self.device_serial, "shell", "test -f /data/local/tmp/scrcpy-server.jar && echo EXISTS"])
+            .output()
+            .await;
+        
+        if let Ok(output) = check_output {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            if stdout.trim() == "EXISTS" {
+                tracing::info!("scrcpy-server already exists on device {}, skipping push", self.device_serial);
+                return Ok(());
+            }
+        }
+        
+        tracing::info!("Pushing scrcpy-server from {} to device {}", server_path, self.device_serial);
         
         let output = Command::new(&adb_path)
             .args(["-s", &self.device_serial, "push", &server_path, "/data/local/tmp/scrcpy-server.jar"])
@@ -136,9 +357,26 @@ impl ScrcpyProxy {
         (duration.as_nanos() & 0x7FFFFFFF) as u32
     }
 
+    /// 杀掉可能存在的旧 scrcpy-server 进程
+    async fn kill_existing_server(&self) {
+        let adb_path = get_adb_path();
+        
+        // 杀掉所有 scrcpy 相关进程
+        let _ = Command::new(&adb_path)
+            .args(["-s", &self.device_serial, "shell", "pkill -f scrcpy"])
+            .output()
+            .await;
+        
+        // 短暂等待进程退出
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    }
+    
     /// 启动 scrcpy-server
     async fn start_server(&self, scid: u32) -> Result<tokio::process::Child, VmError> {
         let adb_path = get_adb_path();
+        
+        // 先杀掉可能存在的旧进程
+        self.kill_existing_server().await;
         
         // scrcpy 3.x 启动命令
         // 参考: https://github.com/Genymobile/scrcpy/blob/master/doc/develop.md
@@ -159,7 +397,7 @@ impl ScrcpyProxy {
             send_frame_meta=true \
             send_codec_meta=true \
             send_dummy_byte=true \
-            cleanup=true \
+            cleanup=false \
             power_off_on_close=false \
             clipboard_autosync=false \
             downsize_on_error=true",
@@ -231,21 +469,28 @@ impl ScrcpyProxy {
         
         tracing::info!("Port forwarding established");
         
-        // 等待服务器启动
-        tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+        // 等待服务器启动（减少初始等待时间）
+        tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
         
         // 连接到视频 socket (第一个 socket)
+        // 使用更短的重试间隔，更多的重试次数
         let mut retry_count = 0;
         let video_stream = loop {
             match TcpStream::connect(format!("127.0.0.1:{}", video_port)).await {
                 Ok(stream) => break stream,
                 Err(e) => {
                     retry_count += 1;
-                    if retry_count > 10 {
+                    if retry_count > 20 {
                         return Err(VmError::ScrcpyError(format!("Failed to connect to video socket after {} retries: {}", retry_count, e)));
                     }
-                    tracing::warn!("Retry {} connecting to video socket: {}", retry_count, e);
-                    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+                    if retry_count <= 5 {
+                        // 前 5 次快速重试
+                        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                    } else {
+                        // 之后慢一点
+                        tracing::warn!("Retry {} connecting to video socket: {}", retry_count, e);
+                        tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
+                    }
                 }
             }
         };
@@ -324,23 +569,12 @@ impl ScrcpyProxy {
         
         let (mut ws_sender, mut ws_receiver) = ws.split();
         
-        // 生成唯一的 scid
-        let scid = Self::generate_scid();
-        tracing::info!("Generated scid: {:08x}", scid);
-        
-        // 1. 推送 scrcpy-server
-        if let Err(e) = self.push_server().await {
-            let error_msg = serde_json::json!({
-                "type": "error",
-                "message": e.to_string()
-            });
-            let _ = ws_sender.send(Message::Text(error_msg.to_string())).await;
-            return Err(e);
-        }
-        
-        // 2. 启动 scrcpy-server
-        let mut server_process = match self.start_server(scid).await {
-            Ok(p) => p,
+        // 使用持久化服务器（如果可用）或启动新的
+        let (video_port, control_port) = match ensure_scrcpy_server(&self.device_serial).await {
+            Ok(ports) => {
+                tracing::info!("Using scrcpy-server on ports {}/{}", ports.0, ports.1);
+                ports
+            }
             Err(e) => {
                 let error_msg = serde_json::json!({
                     "type": "error",
@@ -351,25 +585,94 @@ impl ScrcpyProxy {
             }
         };
         
-        // 3. 建立端口转发并连接
-        let (mut video_stream, mut control_stream) = match self.setup_and_connect(scid).await {
-            Ok(streams) => streams,
+        // 连接到视频和控制端口
+        let mut video_stream = match TcpStream::connect(format!("127.0.0.1:{}", video_port)).await {
+            Ok(s) => s,
             Err(e) => {
-                let _ = server_process.kill().await;
-                let error_msg = serde_json::json!({
-                    "type": "error",
-                    "message": e.to_string()
-                });
-                let _ = ws_sender.send(Message::Text(error_msg.to_string())).await;
-                return Err(e);
+                // 连接失败，可能服务器已经被上一个连接消耗了，重新启动
+                tracing::warn!("Failed to connect to existing server, restarting: {}", e);
+                stop_scrcpy_server(&self.device_serial).await;
+                
+                // 重新启动服务器
+                let (new_video_port, new_control_port) = match ensure_scrcpy_server(&self.device_serial).await {
+                    Ok(ports) => ports,
+                    Err(e) => {
+                        let error_msg = serde_json::json!({
+                            "type": "error",
+                            "message": e.to_string()
+                        });
+                        let _ = ws_sender.send(Message::Text(error_msg.to_string())).await;
+                        return Err(e);
+                    }
+                };
+                
+                // 等待服务器准备好
+                tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
+                
+                match TcpStream::connect(format!("127.0.0.1:{}", new_video_port)).await {
+                    Ok(s) => {
+                        // 更新端口变量（虽然这里不能直接修改，但我们需要用新端口连接控制）
+                        let control_stream = TcpStream::connect(format!("127.0.0.1:{}", new_control_port))
+                            .await
+                            .map_err(|e| VmError::ScrcpyError(format!("Failed to connect control: {}", e)))?;
+                        
+                        // 读取元数据
+                        let mut video = s;
+                        let metadata = match self.read_metadata(&mut video).await {
+                            Ok(m) => m,
+                            Err(e) => {
+                                let error_msg = serde_json::json!({
+                                    "type": "error",
+                                    "message": e.to_string()
+                                });
+                                let _ = ws_sender.send(Message::Text(error_msg.to_string())).await;
+                                return Err(e);
+                            }
+                        };
+                        
+                        // 发送设备信息
+                        let info_msg = serde_json::json!({
+                            "type": "info",
+                            "device": metadata.device_name,
+                            "codec": metadata.codec.as_str(),
+                            "width": metadata.width,
+                            "height": metadata.height,
+                        });
+                        if ws_sender.send(Message::Text(info_msg.to_string())).await.is_err() {
+                            return Err(VmError::ScrcpyError("Failed to send device info".to_string()));
+                        }
+                        
+                        // 继续处理流
+                        return self.handle_streams(video, control_stream, ws_sender, ws_receiver, metadata.width, metadata.height).await;
+                    }
+                    Err(e) => {
+                        let error_msg = serde_json::json!({
+                            "type": "error",
+                            "message": format!("Failed to connect after restart: {}", e)
+                        });
+                        let _ = ws_sender.send(Message::Text(error_msg.to_string())).await;
+                        return Err(VmError::ScrcpyError(format!("Failed to connect: {}", e)));
+                    }
+                }
             }
         };
         
-        // 4. 读取元数据
+        let mut control_stream = match TcpStream::connect(format!("127.0.0.1:{}", control_port)).await {
+            Ok(s) => s,
+            Err(e) => {
+                let error_msg = serde_json::json!({
+                    "type": "error",
+                    "message": format!("Failed to connect control: {}", e)
+                });
+                let _ = ws_sender.send(Message::Text(error_msg.to_string())).await;
+                return Err(VmError::ScrcpyError(format!("Failed to connect control: {}", e)));
+            }
+        };
+        
+        // 读取元数据
         let metadata = match self.read_metadata(&mut video_stream).await {
             Ok(m) => m,
             Err(e) => {
-                let _ = server_process.kill().await;
                 let error_msg = serde_json::json!({
                     "type": "error",
                     "message": e.to_string()
@@ -388,16 +691,28 @@ impl ScrcpyProxy {
             "height": metadata.height,
         });
         if ws_sender.send(Message::Text(info_msg.to_string())).await.is_err() {
-            let _ = server_process.kill().await;
             return Err(VmError::ScrcpyError("Failed to send device info".to_string()));
         }
+        
+        // 处理流
+        self.handle_streams(video_stream, control_stream, ws_sender, ws_receiver, metadata.width, metadata.height).await
+    }
+    
+    /// 处理视频和控制流
+    async fn handle_streams(
+        &self,
+        video_stream: TcpStream,
+        mut control_stream: TcpStream,
+        mut ws_sender: futures_util::stream::SplitSink<WebSocket, Message>,
+        mut ws_receiver: futures_util::stream::SplitStream<WebSocket>,
+        screen_width: u32,
+        screen_height: u32,
+    ) -> Result<(), VmError> {
+        let device_serial = self.device_serial.clone();
         
         let stop_flag = Arc::new(AtomicBool::new(false));
         let stop_flag_video = stop_flag.clone();
         let stop_flag_control = stop_flag.clone();
-        
-        let screen_width = metadata.width;
-        let screen_height = metadata.height;
         
         // 任务1: 读取视频流并转发到 WebSocket
         // 
@@ -514,21 +829,31 @@ impl ScrcpyProxy {
         
         stop_flag.store(true, Ordering::Relaxed);
         
-        // 清理
-        let _ = server_process.kill().await;
+        tracing::info!("Scrcpy proxy session ended for {}", device_serial);
         
-        // 移除端口转发
-        let adb_path = get_adb_path();
-        let _ = Command::new(&adb_path)
-            .args(["-s", &self.device_serial, "forward", "--remove", "tcp:27183"])
-            .output()
-            .await;
-        let _ = Command::new(&adb_path)
-            .args(["-s", &self.device_serial, "forward", "--remove", "tcp:27184"])
-            .output()
-            .await;
-
-        tracing::info!("Scrcpy proxy session ended");
+        // 连接断开后，重新启动 scrcpy-server 以便下次连接
+        // 在后台执行，不阻塞返回
+        tokio::spawn(async move {
+            // 先停止旧的服务器
+            stop_scrcpy_server(&device_serial).await;
+            
+            // 短暂等待
+            tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+            
+            // 重新启动服务器
+            match ensure_scrcpy_server(&device_serial).await {
+                Ok((video_port, control_port)) => {
+                    tracing::info!(
+                        "Restarted scrcpy-server for {} on ports {}/{} (ready for next connection)",
+                        device_serial, video_port, control_port
+                    );
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to restart scrcpy-server for {}: {}", device_serial, e);
+                }
+            }
+        });
+        
         Ok(())
     }
 }
