@@ -536,6 +536,13 @@ class GatewayInternalClient:
     def set_subagent_sleeping(self, agent_id: str, subagent_id: str) -> dict:
         return self._request("POST", f"/internal/subagents/{agent_id}/{subagent_id}/sleeping", {})
 
+    def set_subagent_completed(self, agent_id: str, subagent_id: str, result: str = None) -> dict:
+        """Set Sub SubAgent to completed status with result."""
+        payload = {}
+        if result is not None:
+            payload["result"] = result
+        return self._request("POST", f"/internal/subagents/{agent_id}/{subagent_id}/completed", payload)
+
     def get_subagent(self, agent_id: str, subagent_id: str) -> dict:
         return self._request("GET", f"/internal/subagents/{agent_id}/{subagent_id}", None)
 
@@ -626,6 +633,31 @@ class GatewayInternalClient:
         return self._request("POST", "/internal/messages/inject-wake", {
             "agent_id": agent_id,
             "metadata": metadata or {},
+        })
+    
+    def inject_subagent_completed_message(
+        self,
+        agent_id: str,
+        subagent_id: str,
+        parent_subagent_id: str,
+        result: str = None,
+    ) -> dict:
+        """Inject a SUBAGENT_COMPLETED message to notify parent SubAgent.
+        
+        Args:
+            agent_id: Agent ID
+            subagent_id: Completed Sub SubAgent ID
+            parent_subagent_id: Target SubAgent to notify (usually main-xxx)
+            result: Task result summary
+            
+        Returns:
+            {"success": bool, "message_id": str}
+        """
+        return self._request("POST", "/internal/messages/inject-subagent-completed", {
+            "agent_id": agent_id,
+            "subagent_id": subagent_id,
+            "parent_subagent_id": parent_subagent_id,
+            "result": result or "",
         })
 
     # ---------- Messages (Watchdog) ----------

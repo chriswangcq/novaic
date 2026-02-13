@@ -39,16 +39,16 @@ def get_unread_messages(agent_id: str):
 
 @router.get("/messages/unread-sent/{agent_id}")
 def get_unread_sent_messages(agent_id: str):
-    """Get unread sent messages for an agent (USER_MESSAGE and SYSTEM_WAKE)."""
+    """Get unread sent messages for an agent (USER_MESSAGE, SYSTEM_WAKE, SUBAGENT_COMPLETED)."""
     from gateway.db.repositories.message import MessageRepository
 
     db = get_db()
     repo = MessageRepository(db)
     messages = repo.get_unread(agent_id)
     
-    # Include both USER_MESSAGE and SYSTEM_WAKE types
-    # Both are treated as user role messages in the LLM context
-    valid_types = ("USER_MESSAGE", "SYSTEM_WAKE")
+    # Include USER_MESSAGE, SYSTEM_WAKE, and SUBAGENT_COMPLETED types
+    # All are treated as user role messages in the LLM context
+    valid_types = ("USER_MESSAGE", "SYSTEM_WAKE", "SUBAGENT_COMPLETED")
     user_messages = [
         {"id": m["id"], "content": m["content"], "timestamp": m["timestamp"], "type": m.get("type")}
         for m in messages if m.get("type") in valid_types
@@ -328,6 +328,76 @@ def mark_messages_processed(data: Dict[str, Any]):
     return {"status": "ok"}
 
 
+@router.post("/messages/inject-subagent-completed")
+def inject_subagent_completed_message(data: Dict[str, Any]):
+    """Inject a SUBAGENT_COMPLETED message to notify parent SubAgent.
+    
+    Used by RuntimeComplete Saga to notify Main SubAgent when a Sub SubAgent
+    completes its task. The message will be picked up by Watchdog and either:
+    - Read by ReactThink if Main is running
+    - Trigger wake-up if Main is sleeping
+    
+    Args:
+        data: {
+            "agent_id": str - Agent ID
+            "subagent_id": str - Completed Sub SubAgent ID
+            "parent_subagent_id": str - Target SubAgent to notify
+            "result": str - Task result summary (optional)
+        }
+    """
+    from gateway.db.repositories.message import MessageRepository
+    from gateway.db.repositories.subagent import SubAgentRepository
+    
+    db = get_db()
+    message_repo = MessageRepository(db)
+    subagent_repo = SubAgentRepository(db)
+    
+    agent_id = data.get("agent_id")
+    subagent_id = data.get("subagent_id")
+    parent_subagent_id = data.get("parent_subagent_id")
+    result = data.get("result", "")
+    
+    if not agent_id:
+        return {"success": False, "error": "agent_id is required"}
+    if not subagent_id:
+        return {"success": False, "error": "subagent_id is required"}
+    
+    # 如果没有指定 parent，尝试从 SubAgent 记录获取，否则默认 main
+    if not parent_subagent_id:
+        subagent = subagent_repo.get_by_id(subagent_id, agent_id)
+        if subagent and subagent.parent_subagent_id:
+            parent_subagent_id = subagent.parent_subagent_id
+        else:
+            parent_subagent_id = f"main-{agent_id[:8]}"
+    
+    # 构建消息内容
+    result_summary = result[:500] + "..." if len(result) > 500 else result
+    content = f"[子任务完成通知]\n\n子任务 {subagent_id} 已完成。"
+    if result_summary:
+        content += f"\n\n结果摘要:\n{result_summary}"
+    
+    # 创建消息，status=sending 会被 Watchdog 监测
+    msg = message_repo.add_message(
+        agent_id=agent_id,
+        type="SUBAGENT_COMPLETED",
+        content=content,
+        metadata={
+            "subagent_id": subagent_id,
+            "parent_subagent_id": parent_subagent_id,
+            "result": result,
+        },
+        status="sending",  # Watchdog will process this
+    )
+    
+    return {
+        "success": True,
+        "message_id": msg["id"],
+        "agent_id": agent_id,
+        "subagent_id": subagent_id,
+        "parent_subagent_id": parent_subagent_id,
+    }
+
+
 @router.post("/messages/inject-wake")
 def inject_wake_message(data: Dict[str, Any]):
     """Inject a SYSTEM_WAKE message to trigger agent wake-up.
@@ -384,21 +454,31 @@ def inject_wake_message(data: Dict[str, Any]):
 
 @router.post("/messages")
 def create_message(data: Dict[str, Any]):
-    """Create a chat message (for agent replies).
+    """Create a chat message.
     
-    Agent replies use status='sent' directly (no Monitor processing needed).
+    - USER_MESSAGE, SYSTEM_WAKE, SPAWN_SUBAGENT, SUBAGENT_COMPLETED: 
+      Use status='sending' so Watchdog can detect and process them.
+    - AGENT_REPLY, AGENT_ASK, etc.: 
+      Use status='sent' directly (no Watchdog processing needed).
     """
     from gateway.db.repositories.message import MessageRepository
     
     db = get_db()
     repo = MessageRepository(db)
     
+    # 需要 Watchdog 处理的消息类型
+    watchdog_types = {"USER_MESSAGE", "SYSTEM_WAKE", "SPAWN_SUBAGENT", "SUBAGENT_COMPLETED"}
+    msg_type = data.get("type", "")
+    
+    # 根据消息类型决定初始状态
+    initial_status = "sending" if msg_type in watchdog_types else "sent"
+    
     msg = repo.add_message(
         agent_id=data["agent_id"],
         type=data["type"],
         content=data["content"],
         metadata=data.get("metadata"),
-        status="sent",  # v18: Agent replies skip Monitor queue
+        status=initial_status,
     )
     
     return msg

@@ -102,3 +102,40 @@ def handle_subagent_set_sleeping(payload: Dict[str, Any], ctx: dict) -> Dict[str
         "subagent_id": result.subagent_id,
         "status": result.status,
     }
+
+
+@register_handler(TaskTopics.SUBAGENT_SET_COMPLETED)
+def handle_subagent_set_completed(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
+    """
+    设置 Sub SubAgent 为 completed 状态（带 result）
+    
+    用于 RuntimeComplete Saga 完成后，将 Sub SubAgent 的结果写入 subagents.result 字段。
+    仅用于 Sub SubAgent（subagent_id 以 'sub-' 开头）。
+    
+    Payload:
+        agent_id: str
+        subagent_id: str
+        result: str (可选，任务执行结果)
+        
+    Raises:
+        ValidationError: 当必填字段缺失时
+    """
+    # 验证必填字段
+    if not payload.get("agent_id"):
+        raise ValidationError("Missing required field: agent_id")
+    if not payload.get("subagent_id"):
+        raise ValidationError("Missing required field: subagent_id")
+    
+    biz = SubAgentBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
+    
+    result = biz.set_completed(
+        agent_id=payload["agent_id"],
+        subagent_id=payload["subagent_id"],
+        result=payload.get("result"),
+    )
+    
+    return {
+        "success": result.success,
+        "subagent_id": result.subagent_id,
+        "status": result.status,
+    }

@@ -182,6 +182,8 @@ class WatchdogSync:
             saga_created = self._create_message_process_saga(msg_id, agent_id, msg_type)
         elif msg_type == "SYSTEM_WAKE":
             saga_created = self._create_message_process_saga(msg_id, agent_id, msg_type)
+        elif msg_type == "SUBAGENT_COMPLETED":
+            saga_created = self._create_subagent_completed_saga(msg_id, agent_id, metadata)
         elif msg_type == "SPAWN_SUBAGENT":
             saga_created = self._create_spawn_subagent_saga(msg_id, agent_id, metadata)
         elif msg_type == "INTERRUPT":
@@ -241,6 +243,47 @@ class WatchdogSync:
             self.metrics.errors += 1
             return False
     
+    def _create_subagent_completed_saga(self, msg_id: str, agent_id: str, metadata: Dict[str, Any]) -> bool:
+        """创建 message_process Saga（用于 SUBAGENT_COMPLETED 通知）
+        
+        当 Sub SubAgent 完成时，通知 Parent SubAgent（通常是 Main）。
+        统一走 message_process saga，与 USER_MESSAGE/SYSTEM_WAKE 流程一致。
+        
+        如果 Parent 正在运行，消息会被 ReactThink 的 context.read 读取。
+        如果 Parent 已休眠，会触发唤醒流程。
+        
+        Returns:
+            True 如果 Saga 创建成功，False 如果失败
+        """
+        parent_subagent_id = metadata.get("parent_subagent_id")
+        subagent_id = metadata.get("subagent_id")
+        
+        # 如果没有指定 parent，默认通知 main
+        if not parent_subagent_id:
+            parent_subagent_id = f"main-{agent_id[:8]}"
+        
+        try:
+            saga_id = self.saga_client.start(
+                saga_type="message_process",
+                context={
+                    "message_id": msg_id,
+                    "agent_id": agent_id,
+                    "subagent_id": parent_subagent_id,  # 目标是 Parent SubAgent
+                    "trigger_type": "subagent_completed",
+                    "completed_subagent_id": subagent_id,
+                },
+                idempotency_key=f"message-process-{msg_id}",
+            )
+            
+            self._log(f"Created MessageProcess Saga {saga_id} for subagent completion notification (target: {parent_subagent_id})")
+            self.metrics.sagas_created += 1
+            return True
+                
+        except Exception as e:
+            self._log(f"Failed to create saga for subagent completion: {e}", level="error")
+            self.metrics.errors += 1
+            return False
+
     def _create_spawn_subagent_saga(self, msg_id: str, agent_id: str, metadata: Dict[str, Any]) -> bool:
         """创建 message_process Saga（用于 SubAgent spawn）
         

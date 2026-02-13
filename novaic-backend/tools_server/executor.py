@@ -780,8 +780,10 @@ class ToolExecutor:
                 return self._handle_response(response)
             
             elif tool_name == "runtime_history":
+                # 兼容 target_runtime_id（schema 定义）和 runtime_id（旧用法）
+                target_runtime_id = arguments.get("target_runtime_id") or arguments.get("runtime_id") or self.runtime_id
                 response = await client.post(
-                    f"/internal/runtimes/{self.runtime_id}/history",
+                    f"/internal/runtimes/{target_runtime_id}/history",
                     json={
                         "limit": arguments.get("limit", 50),
                         "offset": arguments.get("offset", 0),
@@ -790,7 +792,8 @@ class ToolExecutor:
                 return self._handle_response(response)
             
             elif tool_name == "runtime_send":
-                target_runtime_id = arguments.get("runtime_id", self.runtime_id)
+                # 兼容 target_runtime_id（schema 定义）和 runtime_id（旧用法）
+                target_runtime_id = arguments.get("target_runtime_id") or arguments.get("runtime_id") or self.runtime_id
                 response = await client.post(
                     f"/internal/runtimes/{target_runtime_id}/send",
                     json={"message": arguments.get("message", "")}
@@ -933,18 +936,20 @@ class ToolExecutor:
                 return self._handle_response(response)
             
             elif tool_name == "subagent_query":
-                target_subagent_id = arguments.get("subagent_id")
+                # 兼容 target_subagent_id（schema 定义）和 subagent_id（旧用法）
+                target_subagent_id = arguments.get("target_subagent_id") or arguments.get("subagent_id")
                 if not target_subagent_id:
-                    return {"success": False, "error": "subagent_id is required"}
+                    return {"success": False, "error": "target_subagent_id is required"}
                 response = await client.get(
                     f"/internal/rt/{self.runtime_id}/subagent/{target_subagent_id}/status"
                 )
                 return self._handle_response(response)
             
             elif tool_name == "subagent_cancel":
-                target_subagent_id = arguments.get("subagent_id")
+                # 兼容 target_subagent_id（schema 定义）和 subagent_id（旧用法）
+                target_subagent_id = arguments.get("target_subagent_id") or arguments.get("subagent_id")
                 if not target_subagent_id:
-                    return {"success": False, "error": "subagent_id is required"}
+                    return {"success": False, "error": "target_subagent_id is required"}
                 response = await client.post(
                     f"/internal/rt/{self.runtime_id}/subagent/{target_subagent_id}/cancel"
                 )

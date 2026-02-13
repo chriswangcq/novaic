@@ -131,6 +131,39 @@ class SubAgentBusiness:
             error=response.get("error", ""),
         )
     
+    def set_completed(
+        self,
+        agent_id: str,
+        subagent_id: str,
+        result: Optional[str] = None,
+    ) -> SubAgentStateResult:
+        """
+        设置 Sub SubAgent 为 completed（带 result）
+        
+        用于 RuntimeComplete Saga 完成后，将 Sub SubAgent 的结果写入。
+        仅用于 Sub SubAgent（subagent_id 以 'sub-' 开头）。
+        
+        Args:
+            agent_id: Agent ID
+            subagent_id: SubAgent ID
+            result: 任务执行结果
+            
+        Returns:
+            SubAgentStateResult
+        """
+        response = self.client.set_subagent_completed(agent_id, subagent_id, result=result)
+        status = response.get("status")
+        if not status and response.get("success"):
+            status = self.get_status(agent_id, subagent_id) or "completed"
+        return SubAgentStateResult(
+            success=response.get("success", True),
+            subagent_id=subagent_id,
+            previous_status=response.get("previous_status", ""),
+            status=status or "completed",
+            message=response.get("message", ""),
+            error=response.get("error", ""),
+        )
+    
     def get(
         self,
         agent_id: str,

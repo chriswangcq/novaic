@@ -48,11 +48,13 @@ class TaskTopics:
     MESSAGE_PROCESS = "message.process"
     MESSAGE_CLAIM = "message.claim"
     MESSAGE_ROUTE = "message.route"
+    MESSAGE_NOTIFY_PARENT = "message.notify_parent"  # Sub SubAgent 完成后通知 Parent
     
     # SubAgent Tasks - SubAgent 状态管理
     # SUBAGENT_WAKE = "subagent.wake"  # DELETED: 用 get_or_create_runtime 替代
     SUBAGENT_SET_AWAKE = "subagent.set_awake"
     SUBAGENT_SET_SLEEPING = "subagent.set_sleeping"
+    SUBAGENT_SET_COMPLETED = "subagent.set_completed"
     
     # Summary Tasks - 摘要和历史合并
     SUMMARY_MERGE_HISTORY = "summary.merge_history"

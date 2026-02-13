@@ -432,11 +432,20 @@ class SagaWorkerSync:
         """执行 Task 步骤（同步）"""
         # 检查条件
         if step.condition:
+            # 构建条件检查上下文：合并 context 和 step_results
+            # 这样条件函数可以访问 saga context（如 subagent_id）和前一步的结果
             decision = step_results.get("_decision")
             if decision is None:
                 prev_step_name = list(step_results.keys())[-1] if step_results else None
                 decision = step_results.get(prev_step_name, {}) if prev_step_name else {}
-            if not step.condition(decision):
+            
+            # 合并 context 和 decision，context 优先（用于访问 subagent_id 等）
+            condition_ctx = {**decision, **context, "step_results": step_results}
+            
+            # DEBUG: 打印条件检查信息
+            self._log(f"DEBUG condition check for step {step.name}: subagent_id={condition_ctx.get('subagent_id')}, condition_result={step.condition(condition_ctx)}")
+            
+            if not step.condition(condition_ctx):
                 self._log(f"Step {step.name} skipped (condition not met)")
                 return {"skipped": True}
         
@@ -618,22 +627,28 @@ class SagaWorkerSync:
         return {"success": True, "results": sorted_results}
     
     def _build_payload(self, step: Any, context: Dict[str, Any], step_results: Dict[str, Any]) -> Dict[str, Any]:
-        """构建步骤的 payload"""
+        """构建步骤的 payload
+        
+        payload builder 函数可以通过 ctx["step_results"] 访问之前步骤的结果。
+        """
         if step.build_payload:
             import inspect
             sig = inspect.signature(step.build_payload)
             params = list(sig.parameters.keys())
             
+            # 将 step_results 添加到 context 中，让 payload builder 可以访问
+            ctx_with_results = {**context, "step_results": step_results}
+            
             if len(params) == 1:
-                return step.build_payload(context)
+                return step.build_payload(ctx_with_results)
             elif len(params) == 2:
                 decision = step_results.get("_decision")
                 if decision is None:
                     prev_step_name = list(step_results.keys())[-1] if step_results else None
                     decision = step_results.get(prev_step_name, {}) if prev_step_name else {}
-                return step.build_payload(context, decision)
+                return step.build_payload(ctx_with_results, decision)
             else:
-                return step.build_payload(context)
+                return step.build_payload(ctx_with_results)
         return {}
     
     def _build_parallel_tasks(self, step: Any, context: Dict[str, Any], step_results: Dict[str, Any]) -> List[Dict[str, Any]]:

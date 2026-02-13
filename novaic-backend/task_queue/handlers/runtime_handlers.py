@@ -437,6 +437,7 @@ def handle_generate_simple_summary(payload: Dict[str, Any], ctx: dict) -> Dict[s
     return {
         "success": True,
         "runtime_id": runtime_id,
+        "simple_summary": simple_summary,  # 返回 summary 内容，用于 SubAgent result
         "summary_length": len(simple_summary),
         "rounds_count": rounds_count,
     }
