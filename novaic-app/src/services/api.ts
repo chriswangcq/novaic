@@ -758,6 +758,43 @@ export const api = {
 
   // ==================== Cleanup API ====================
 
+  // ==================== Android VM API ====================
+
+  /**
+   * Start Android emulator via Gateway
+   */
+  async startAndroid(agentId: string): Promise<{ success: boolean; device_serial?: string; message?: string }> {
+    return invoke('gateway_post', {
+      path: '/api/vm/android/start',
+      body: { agent_id: agentId },
+    });
+  },
+
+  /**
+   * Stop Android emulator via Gateway
+   */
+  async stopAndroid(agentId: string): Promise<{ success: boolean; message?: string }> {
+    return invoke('gateway_post', {
+      path: '/api/vm/android/stop',
+      body: { agent_id: agentId },
+    });
+  },
+
+  /**
+   * Get Android emulator status via Gateway
+   */
+  async getAndroidStatus(agentId: string): Promise<{
+    agent_id: string;
+    has_android: boolean;
+    avd_name?: string;
+    device_serial?: string;
+    running: boolean;
+  }> {
+    return invoke('gateway_get', {
+      path: `/api/vm/android/status/${agentId}`,
+    });
+  },
+
   /**
    * Clean up garbage files and cache
    */

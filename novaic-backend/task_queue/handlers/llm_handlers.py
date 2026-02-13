@@ -85,8 +85,9 @@ def handle_llm_call(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
         }
     
     model = llm_config["model"]
-    agent_id = llm_config.get("agent_id")
-    subagent_id = llm_config.get("subagent_id", "main")
+    # 优先从 payload 获取（与 tool_handlers.py 保持一致）
+    agent_id = payload.get("agent_id") or llm_config.get("agent_id")
+    subagent_id = payload.get("subagent_id") or llm_config.get("subagent_id", "main")
 
     # 通过 Tools Server HTTP API 获取工具列表
     if not tools:

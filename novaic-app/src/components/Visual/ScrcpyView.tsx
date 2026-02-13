@@ -10,7 +10,6 @@ import { Play, Loader2, Smartphone, Square } from 'lucide-react';
 import {
   subscribeToStream,
   sendControlMessage,
-  getStreamCanvas,
   reconnectStream,
   StreamStatus,
   DeviceInfo,

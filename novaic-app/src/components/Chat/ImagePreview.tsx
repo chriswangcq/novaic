@@ -20,8 +20,17 @@ export function ImagePreview({ src, alt = 'Screenshot', className = '' }: ImageP
   const handleRotate = () => setRotation(r => (r + 90) % 360);
   const handleReset = () => { setScale(1); setRotation(0); };
 
-  // Ensure src is a valid data URL
-  const imageSrc = src.startsWith('data:') ? src : `data:image/png;base64,${src}`;
+  // Ensure src is a valid image source
+  const imageSrc = (() => {
+    // Already a data URL
+    if (src.startsWith('data:')) return src;
+    // Internal API URL - use as-is (relative URL works with same origin)
+    if (src.startsWith('/api/images/')) return src;
+    // External HTTP URL
+    if (src.startsWith('http://') || src.startsWith('https://')) return src;
+    // Assume base64 data without prefix
+    return `data:image/png;base64,${src}`;
+  })();
 
   return (
     <>

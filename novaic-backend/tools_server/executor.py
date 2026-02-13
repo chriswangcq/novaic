@@ -39,8 +39,43 @@ GATEWAY_URL = os.environ.get("GATEWAY_URL", "http://127.0.0.1:19999")
 # vmcontrol API 基础 URL
 VMCONTROL_URL = os.environ.get("VMCONTROL_URL", "http://127.0.0.1:8080")
 
+# Mobile 工具映射表：工具名 -> (endpoint, None)
+# 这些工具会被路由到 vmcontrol 的 /api/android/:serial/:endpoint
+# 格式与 VM_TOOL_MAPPING 保持一致：(endpoint, operation)，operation 为 None 表示直接使用 endpoint
+MOBILE_TOOL_MAPPING = {
+    # Phase 1 tools (existing)
+    "mobile_screenshot": ("screenshot", None),
+    "mobile_touch": ("touch", None),
+    "mobile_input": ("input", None),
+    "mobile_shell": ("shell", None),
+    # Phase 2 - App Management
+    "mobile_app_install": ("app/install", None),
+    "mobile_app_uninstall": ("app/uninstall", None),
+    "mobile_app_launch": ("app/launch", None),
+    "mobile_app_list": ("app/list", None),
+    "mobile_app_stop": ("app/stop", None),
+    # Phase 2 - Browser
+    "mobile_browser_open": ("browser/open", None),
+    "mobile_browser_get_url": ("browser/get_url", None),
+    "mobile_browser_back": ("browser/back", None),
+    "mobile_browser_refresh": ("browser/refresh", None),
+    # Phase 3 - UI Automation
+    "mobile_ui_dump": ("ui/dump", None),
+    "mobile_ui_find": ("ui/find", None),
+    "mobile_ui_wait": ("ui/wait", None),
+    "mobile_ui_scroll": ("ui/scroll", None),
+    "mobile_ui_click_element": ("ui/click_element", None),
+    # Phase 3 - File Management
+    "mobile_file_push": ("file/push", None),
+    "mobile_file_pull": ("file/pull", None),
+    "mobile_file_list": ("file/list", None),
+    "mobile_file_delete": ("file/delete", None),
+    "mobile_file_mkdir": ("file/mkdir", None),
+    "mobile_file_read": ("file/read", None),
+}
+
 # VM 工具映射表：工具名 -> (tool, operation)
-# 这些工具会被路由到 vmcontrol 的 /api/vms/:id/vmuse/:tool/:operation
+# 这些工具会被路由到 vmcontrol 的 /api/vmuse/:agent_id/:tool/:operation
 VM_TOOL_MAPPING = {
     # Browser tools
     "browser_navigate": ("browser", "navigate"),
@@ -193,6 +228,36 @@ BUILTIN_TOOL_NAMES = {
     "clipboard_get",
     "clipboard_set",
     "environment_info",
+    
+    # Mobile 工具（通过 vmcontrol 访问 Android 设备）
+    "mobile_screenshot",
+    "mobile_touch",
+    "mobile_input",
+    "mobile_shell",
+    # Phase 2 - App Management
+    "mobile_app_install",
+    "mobile_app_uninstall",
+    "mobile_app_launch",
+    "mobile_app_list",
+    "mobile_app_stop",
+    # Phase 2 - Browser
+    "mobile_browser_open",
+    "mobile_browser_get_url",
+    "mobile_browser_back",
+    "mobile_browser_refresh",
+    # Phase 3 - UI Automation
+    "mobile_ui_dump",
+    "mobile_ui_find",
+    "mobile_ui_wait",
+    "mobile_ui_scroll",
+    "mobile_ui_click_element",
+    # Phase 3 - File Management
+    "mobile_file_push",
+    "mobile_file_pull",
+    "mobile_file_list",
+    "mobile_file_delete",
+    "mobile_file_mkdir",
+    "mobile_file_read",
 }
 
 
@@ -1172,30 +1237,84 @@ class ToolExecutor:
                     "subagent_id": self.subagent_id,
                 }
             
-            # ==================== VM 工具（直接通过端口转发访问）====================
+            # ==================== Mobile 工具（通过 vmcontrol 访问 Android 设备）====================
+            elif tool_name in MOBILE_TOOL_MAPPING:
+                # 获取 agent 的 Android 设备 serial
+                try:
+                    agent_response = await client.get(f"{GATEWAY_URL}/internal/agents/{self.agent_id}")
+                    agent_data = agent_response.json()
+                    device_serial = agent_data.get("android", {}).get("device_serial")
+                    if not device_serial:
+                        return {"success": False, "error": "No Android device configured for this agent"}
+                except Exception as e:
+                    logger.warning(f"[ToolExecutor] Could not get agent Android config: {e}")
+                    return {"success": False, "error": f"Failed to get Android config: {e}"}
+                
+                # 调用 vmcontrol Mobile API
+                # MOBILE_TOOL_MAPPING 格式: (endpoint, None)
+                endpoint, _ = MOBILE_TOOL_MAPPING[tool_name]
+                url = f"{VMCONTROL_URL}/api/android/{device_serial}/{endpoint}"
+                
+                logger.info(f"[ToolExecutor] Calling Mobile API: {url}")
+                
+                try:
+                    async with httpx.AsyncClient(timeout=60.0) as mobile_client:
+                        # mobile_app_list 和 mobile_file_list 使用 GET 方法，其他使用 POST
+                        if tool_name in ("mobile_app_list", "mobile_file_list"):
+                            response = await mobile_client.get(url, params=arguments)
+                        else:
+                            response = await mobile_client.post(url, json=arguments)
+                        response.raise_for_status()
+                        mobile_result = response.json()
+                    
+                    # 检查是否成功
+                    is_success = (
+                        mobile_result.get("success") is True or
+                        mobile_result.get("status") == "success"
+                    )
+                    
+                    if not is_success:
+                        error_msg = mobile_result.get("error", "Unknown Mobile API error")
+                        logger.error(f"[ToolExecutor] Mobile API error for {tool_name}: {error_msg}")
+                        return {
+                            "success": False,
+                            "error": error_msg,
+                        }
+                    
+                    # 统一 success 字段
+                    mobile_result["success"] = True
+                    mobile_result.pop("status", None)
+                    
+                    return mobile_result
+                
+                except httpx.HTTPStatusError as e:
+                    error_text = e.response.text if e.response else str(e)
+                    logger.error(f"[ToolExecutor] Mobile API HTTP error for {tool_name}: {e.response.status_code} - {error_text}")
+                    return {
+                        "success": False,
+                        "error": f"Mobile API error: {e.response.status_code}",
+                    }
+                except Exception as e:
+                    logger.error(f"[ToolExecutor] Mobile API request failed for {tool_name}: {e}", exc_info=True)
+                    return {
+                        "success": False,
+                        "error": f"Mobile API request failed: {str(e)}",
+                    }
+            
+            # ==================== VM 工具（通过 vmcontrol 代理访问）====================
             elif tool_name in VM_TOOL_MAPPING:
                 # 从映射表获取 tool 和 operation
                 tool, operation = VM_TOOL_MAPPING[tool_name]
                 
-                # 获取 agent 的 VMUSE 端口
-                # VM 内的服务监听 8080，通过 QEMU 端口转发到宿主机的 ports.vmuse
-                try:
-                    async with httpx.AsyncClient(timeout=5.0) as client:
-                        agent_response = await client.get(f"{GATEWAY_URL}/internal/agents/{self.agent_id}")
-                        agent_data = agent_response.json()
-                        vmuse_port = agent_data.get("vm", {}).get("ports", {}).get("vmuse", 18080)
-                except Exception as e:
-                    logger.warning(f"[ToolExecutor] Could not get agent VMUSE port, using default 18080: {e}")
-                    vmuse_port = 18080
+                # 通过 vmcontrol 代理访问 VM 的 VMUSE 服务
+                # vmcontrol 会自动从 Gateway 获取端口并转发
+                url = f"{VMCONTROL_URL}/api/vmuse/{self.agent_id}/{tool}/{operation}"
                 
-                # 直接访问 VM 的 VMUSE HTTP 服务（通过端口转发）
-                url = f"http://127.0.0.1:{vmuse_port}/api/{tool}/{operation}"
-                
-                logger.info(f"[ToolExecutor] Calling VMUSE directly: {url} (port {vmuse_port})")
+                logger.info(f"[ToolExecutor] Calling VMUSE via vmcontrol: {url}")
                 
                 try:
-                    async with httpx.AsyncClient(timeout=30.0) as client:
-                        response = await client.post(url, json=arguments)
+                    async with httpx.AsyncClient(timeout=60.0) as vmuse_client:
+                        response = await vmuse_client.post(url, json=arguments)
                         response.raise_for_status()
                         vm_result = response.json()
                     

@@ -3,20 +3,27 @@ VM API Endpoints
 
 REST API for VM management (setup, start, stop, status).
 Replaces Tauri's VM commands.
+
+Also includes Android emulator management APIs.
 """
 
 import json
 import logging
+import os
 import subprocess
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+import httpx
 
 from gateway.vm import get_vm_manager, VmSetup, get_ssh_key_manager
 from gateway.vm.deployer import get_vmuse_deployer
 
 logger = logging.getLogger(__name__)
+
+# vmcontrol service URL
+VMCONTROL_URL = os.environ.get("VMCONTROL_URL", "http://127.0.0.1:8080")
 
 # Constants for setup status monitoring
 SSH_TIMEOUT = 5
@@ -847,3 +854,316 @@ def get_setup_status(agent_id: str):
             "error": str(e),
             "steps": {},
         }
+
+
+# ==================== Android Emulator Management ====================
+
+class AndroidStartRequest(BaseModel):
+    """Request to start Android emulator."""
+    agent_id: str
+
+
+class AndroidStartResponse(BaseModel):
+    """Response for Android emulator start."""
+    success: bool
+    device_serial: Optional[str] = None
+    message: Optional[str] = None
+
+
+class AndroidStopRequest(BaseModel):
+    """Request to stop Android emulator."""
+    agent_id: str
+
+
+class AndroidStopResponse(BaseModel):
+    """Response for Android emulator stop."""
+    success: bool
+    message: Optional[str] = None
+
+
+class AndroidStatusResponse(BaseModel):
+    """Response for Android emulator status."""
+    agent_id: str
+    has_android: bool
+    avd_name: Optional[str] = None
+    device_serial: Optional[str] = None
+    running: bool = False
+    message: Optional[str] = None
+
+
+@router.post("/android/start", response_model=AndroidStartResponse)
+async def start_android(request: AndroidStartRequest):
+    """
+    Start Android emulator for an agent.
+    
+    1. Get agent configuration
+    2. Check if agent has Android config
+    3. Call vmcontrol API to start emulator
+    4. Update agent's device_serial
+    5. Return result
+    """
+    from gateway.config import get_agent_config_manager
+    from gateway.config.agents_db import AndroidConfig
+    
+    agent_id = request.agent_id
+    logger.info(f"[Android API] Starting emulator for agent {agent_id}")
+    
+    try:
+        # 1. Get agent configuration
+        manager = get_agent_config_manager()
+        agent = manager.get_agent(agent_id)
+        
+        if not agent:
+            return AndroidStartResponse(
+                success=False,
+                message=f"Agent not found: {agent_id}"
+            )
+        
+        # 2. Check if agent has Android config
+        if not agent.vm.android:
+            return AndroidStartResponse(
+                success=False,
+                message="Agent does not have Android configuration"
+            )
+        
+        android_config = agent.vm.android
+        
+        # Check if AVD name is configured
+        if not android_config.avd_name:
+            return AndroidStartResponse(
+                success=False,
+                message="AVD name not configured for this agent"
+            )
+        
+        # 3. Call vmcontrol API to start emulator
+        async with httpx.AsyncClient(timeout=180.0) as client:
+            vmcontrol_url = f"{VMCONTROL_URL}/api/android/emulator/start"
+            payload = {
+                "avd": android_config.avd_name,
+                "headless": True,
+                "wait_boot": True,
+                "timeout": 120
+            }
+            
+            logger.info(f"[Android API] Calling vmcontrol: {vmcontrol_url}")
+            logger.debug(f"[Android API] Payload: {payload}")
+            
+            response = await client.post(vmcontrol_url, json=payload)
+            
+            if response.status_code != 200:
+                error_msg = f"vmcontrol returned {response.status_code}: {response.text}"
+                logger.error(f"[Android API] {error_msg}")
+                return AndroidStartResponse(
+                    success=False,
+                    message=error_msg
+                )
+            
+            result = response.json()
+            logger.info(f"[Android API] vmcontrol response: {result}")
+            
+            if not result.get("success"):
+                return AndroidStartResponse(
+                    success=False,
+                    message=result.get("message", "Failed to start emulator")
+                )
+            
+            # 4. Update agent's device_serial
+            device_info = result.get("device", {})
+            device_serial = device_info.get("serial")
+            
+            if device_serial:
+                # Update Android config with new device_serial
+                updated_android_config = AndroidConfig(
+                    device_serial=device_serial,
+                    managed=android_config.managed,
+                    avd_name=android_config.avd_name
+                )
+                manager.update_agent(agent_id, android_config=updated_android_config)
+                logger.info(f"[Android API] Updated device_serial to {device_serial}")
+            
+            # 5. Return result
+            return AndroidStartResponse(
+                success=True,
+                device_serial=device_serial,
+                message=result.get("message", "Emulator started successfully")
+            )
+    
+    except httpx.TimeoutException:
+        logger.error(f"[Android API] Timeout starting emulator for agent {agent_id}")
+        return AndroidStartResponse(
+            success=False,
+            message="Timeout waiting for emulator to start"
+        )
+    except httpx.ConnectError:
+        logger.error(f"[Android API] Cannot connect to vmcontrol at {VMCONTROL_URL}")
+        return AndroidStartResponse(
+            success=False,
+            message=f"Cannot connect to vmcontrol service at {VMCONTROL_URL}"
+        )
+    except Exception as e:
+        logger.error(f"[Android API] Error starting emulator: {e}", exc_info=True)
+        return AndroidStartResponse(
+            success=False,
+            message=str(e)
+        )
+
+
+@router.post("/android/stop", response_model=AndroidStopResponse)
+async def stop_android(request: AndroidStopRequest):
+    """
+    Stop Android emulator for an agent.
+    
+    1. Get agent configuration
+    2. Get device_serial
+    3. Call vmcontrol API to stop emulator
+    4. Return result
+    """
+    from gateway.config import get_agent_config_manager
+    
+    agent_id = request.agent_id
+    logger.info(f"[Android API] Stopping emulator for agent {agent_id}")
+    
+    try:
+        # 1. Get agent configuration
+        manager = get_agent_config_manager()
+        agent = manager.get_agent(agent_id)
+        
+        if not agent:
+            return AndroidStopResponse(
+                success=False,
+                message=f"Agent not found: {agent_id}"
+            )
+        
+        # 2. Get device_serial
+        if not agent.vm.android:
+            return AndroidStopResponse(
+                success=False,
+                message="Agent does not have Android configuration"
+            )
+        
+        device_serial = agent.vm.android.device_serial
+        
+        if not device_serial:
+            return AndroidStopResponse(
+                success=False,
+                message="No device_serial found for this agent. Emulator may not be running."
+            )
+        
+        # 3. Call vmcontrol API to stop emulator
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            vmcontrol_url = f"{VMCONTROL_URL}/api/android/emulator/stop"
+            payload = {"serial": device_serial}
+            
+            logger.info(f"[Android API] Calling vmcontrol: {vmcontrol_url}")
+            logger.debug(f"[Android API] Payload: {payload}")
+            
+            response = await client.post(vmcontrol_url, json=payload)
+            
+            if response.status_code != 200:
+                error_msg = f"vmcontrol returned {response.status_code}: {response.text}"
+                logger.error(f"[Android API] {error_msg}")
+                return AndroidStopResponse(
+                    success=False,
+                    message=error_msg
+                )
+            
+            result = response.json()
+            logger.info(f"[Android API] vmcontrol response: {result}")
+            
+            # 4. Return result
+            return AndroidStopResponse(
+                success=result.get("success", False),
+                message=result.get("message", "Emulator stopped")
+            )
+    
+    except httpx.TimeoutException:
+        logger.error(f"[Android API] Timeout stopping emulator for agent {agent_id}")
+        return AndroidStopResponse(
+            success=False,
+            message="Timeout waiting for emulator to stop"
+        )
+    except httpx.ConnectError:
+        logger.error(f"[Android API] Cannot connect to vmcontrol at {VMCONTROL_URL}")
+        return AndroidStopResponse(
+            success=False,
+            message=f"Cannot connect to vmcontrol service at {VMCONTROL_URL}"
+        )
+    except Exception as e:
+        logger.error(f"[Android API] Error stopping emulator: {e}", exc_info=True)
+        return AndroidStopResponse(
+            success=False,
+            message=str(e)
+        )
+
+
+@router.get("/android/status/{agent_id}", response_model=AndroidStatusResponse)
+async def get_android_status(agent_id: str):
+    """
+    Get Android emulator status for an agent.
+    
+    Checks:
+    1. Agent configuration for Android settings
+    2. Device serial from config
+    3. Actual device status from vmcontrol
+    """
+    from gateway.config import get_agent_config_manager
+    
+    logger.info(f"[Android API] Getting status for agent {agent_id}")
+    
+    try:
+        # 1. Get agent configuration
+        manager = get_agent_config_manager()
+        agent = manager.get_agent(agent_id)
+        
+        if not agent:
+            raise HTTPException(status_code=404, detail=f"Agent not found: {agent_id}")
+        
+        # 2. Check if agent has Android config
+        if not agent.vm.android:
+            return AndroidStatusResponse(
+                agent_id=agent_id,
+                has_android=False,
+                message="Agent does not have Android configuration"
+            )
+        
+        android_config = agent.vm.android
+        device_serial = android_config.device_serial
+        avd_name = android_config.avd_name
+        
+        # 3. If we have a device_serial, check actual status from vmcontrol
+        running = False
+        if device_serial:
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    # Get device list from vmcontrol
+                    vmcontrol_url = f"{VMCONTROL_URL}/api/android/devices"
+                    response = await client.get(vmcontrol_url)
+                    
+                    if response.status_code == 200:
+                        result = response.json()
+                        devices = result.get("devices", [])
+                        
+                        # Check if our device is in the list and online
+                        for device in devices:
+                            if device.get("serial") == device_serial:
+                                status = device.get("status", "")
+                                running = status in ("online", "device", "connected")
+                                break
+            except Exception as e:
+                logger.warning(f"[Android API] Failed to check device status: {e}")
+                # Continue without running status
+        
+        return AndroidStatusResponse(
+            agent_id=agent_id,
+            has_android=True,
+            avd_name=avd_name,
+            device_serial=device_serial if device_serial else None,
+            running=running,
+            message="Emulator is running" if running else "Emulator is not running"
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[Android API] Error getting status: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))

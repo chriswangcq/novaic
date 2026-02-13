@@ -15,6 +15,15 @@ const isBase64Image = (value: unknown): boolean => {
          (value.length > 100 && /^[A-Za-z0-9+/=]+$/.test(value.substring(0, 100)));
 };
 
+const isImageUrl = (value: unknown): boolean => {
+  if (typeof value !== 'string') return false;
+  // Check for our internal image API URLs
+  if (value.startsWith('/api/images/')) return true;
+  // Check for external image URLs
+  if (/^https?:\/\/.*\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i.test(value)) return true;
+  return false;
+};
+
 const isUrl = (value: unknown): boolean => {
   if (typeof value !== 'string') return false;
   return /^https?:\/\//.test(value);
@@ -42,7 +51,13 @@ function ImagePreview({ src, alt = 'Image' }: ImagePreviewProps) {
   const [error, setError] = useState(false);
 
   const imageSrc = useMemo(() => {
+    // Already a data URL
     if (src.startsWith('data:image/')) return src;
+    // Internal API URL - use as-is (relative URL works with same origin)
+    if (src.startsWith('/api/images/')) return src;
+    // External HTTP URL
+    if (src.startsWith('http://') || src.startsWith('https://')) return src;
+    // Assume base64 data without prefix
     return `data:image/png;base64,${src}`;
   }, [src]);
 
@@ -139,7 +154,11 @@ function JsonTree({ data, level = 0, defaultExpanded = true }: JsonTreeProps) {
   if (typeof data === 'number') return <span className="text-cyan-400/80">{data}</span>;
   
   if (typeof data === 'string') {
+    // Check for image URLs first (including our internal /api/images/ URLs)
+    if (isImageUrl(data)) return <ImagePreview src={data} />;
+    // Then check for base64 images
     if (isBase64Image(data)) return <ImagePreview src={data} />;
+    // Regular URLs (non-image)
     if (isUrl(data)) {
       return (
         <a 

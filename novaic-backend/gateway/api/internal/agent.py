@@ -66,8 +66,8 @@ def get_agent_internal(agent_id: str):
     if not agent:
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
     
-    # Return agent data with VM ports for tools server
-    return {
+    # Return agent data with VM ports and Android config for tools server
+    result = {
         "agent_id": agent.id,
         "name": agent.name,
         "vm": {
@@ -78,6 +78,16 @@ def get_agent_internal(agent_id: str):
             } if agent.vm and agent.vm.ports else {}
         } if agent.vm else {}
     }
+    
+    # Add Android config if present (stored in vm.android)
+    if agent.vm and agent.vm.android:
+        result["android"] = {
+            "device_serial": agent.vm.android.device_serial,
+            "managed": agent.vm.android.managed,
+            "avd_name": agent.vm.android.avd_name,
+        }
+    
+    return result
 
 
 # 工具服务由 Backend 组件 Tools Server 提供（api/internal_mcp.py）；Master 调 Tools Server /internal/mcp/*

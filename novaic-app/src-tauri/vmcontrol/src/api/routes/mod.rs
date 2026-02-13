@@ -8,6 +8,7 @@ pub mod browser;
 pub mod vmuse;
 pub mod scrcpy;
 pub mod android;
+pub mod mobile;
 
 use axum::{Router, routing::{get, post, delete}};
 use std::sync::Arc;
@@ -50,6 +51,37 @@ pub fn create_router(state: AppState) -> Router {
         .route("/avd/:name", delete(android::delete_avd))
         .with_state(android_manager);
     
+    // 创建 Mobile Use API 路由 (无状态)
+    let mobile_router = Router::new()
+        .route("/:serial/screenshot", post(mobile::screenshot))
+        .route("/:serial/touch", post(mobile::touch))
+        .route("/:serial/input", post(mobile::input))
+        .route("/:serial/shell", post(mobile::shell))
+        // App 管理 API
+        .route("/:serial/app/install", post(mobile::app_install))
+        .route("/:serial/app/uninstall", post(mobile::app_uninstall))
+        .route("/:serial/app/launch", post(mobile::app_launch))
+        .route("/:serial/app/list", get(mobile::app_list))
+        .route("/:serial/app/stop", post(mobile::app_stop))
+        // Browser control APIs
+        .route("/:serial/browser/open", post(mobile::browser_open))
+        .route("/:serial/browser/get_url", post(mobile::browser_get_url))
+        .route("/:serial/browser/back", post(mobile::browser_back))
+        .route("/:serial/browser/refresh", post(mobile::browser_refresh))
+        // File management APIs
+        .route("/:serial/file/push", post(mobile::file_push))
+        .route("/:serial/file/pull", post(mobile::file_pull))
+        .route("/:serial/file/list", get(mobile::file_list))
+        .route("/:serial/file/delete", post(mobile::file_delete))
+        .route("/:serial/file/mkdir", post(mobile::file_mkdir))
+        .route("/:serial/file/read", post(mobile::file_read))
+        // UI Automation APIs
+        .route("/:serial/ui/dump", post(mobile::ui_dump))
+        .route("/:serial/ui/find", post(mobile::ui_find))
+        .route("/:serial/ui/wait", post(mobile::ui_wait))
+        .route("/:serial/ui/scroll", post(mobile::ui_scroll))
+        .route("/:serial/ui/click_element", post(mobile::ui_click_element));
+    
     Router::new()
         .route("/health", get(health::health_check))
         .route("/api/vms", get(vm::list_vms).post(vm::register_vm))
@@ -73,6 +105,8 @@ pub fn create_router(state: AppState) -> Router {
         .route("/api/vms/:id/browser/screenshot", post(browser::screenshot))
         // VMUSE Generic Proxy - supports all tools (browser, desktop, shell, files, etc.)
         .route("/api/vms/:id/vmuse/:tool/:operation", post(vmuse::vmuse_proxy))
+        // VMUSE Agent Proxy - routes VMUSE calls via agent_id to VM's port-forwarded VMUSE server
+        .route("/api/vmuse/:agent_id/:tool/:operation", post(vmuse::vmuse_agent_proxy))
         // VNC WebSocket endpoint
         .route("/api/vms/:id/vnc", get(vnc::vnc_websocket))
         // Scrcpy endpoints (legacy, for backward compatibility)
@@ -81,4 +115,6 @@ pub fn create_router(state: AppState) -> Router {
         .with_state(state)
         // Android emulator management endpoints
         .nest("/api/android", android_router)
+        // Mobile Use API endpoints
+        .nest("/api/android", mobile_router)
 }

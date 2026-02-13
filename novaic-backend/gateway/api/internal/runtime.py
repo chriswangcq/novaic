@@ -980,10 +980,12 @@ def rt_chat_event(runtime_id: str, data: Dict[str, Any]):
     if broadcaster:
         try:
             from gateway.sse.broadcaster import SSEEvent
-            broadcaster.broadcast(
+            import asyncio
+            # Use asyncio.create_task to run async broadcast without blocking
+            asyncio.create_task(broadcaster.broadcast(
                 event_type=SSEEvent.NEW_MESSAGE,
                 data={"message_id": message_id, "agent_id": agent_id, "type": event_type, "content": content},
-            )
+            ))
         except Exception:
             pass
     

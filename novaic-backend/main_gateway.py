@@ -12,6 +12,7 @@ Backend 四组件（Gateway、Tools Server、Master、Worker）均由 Tauri 统�
 import os
 import sys
 import logging
+import argparse
 from datetime import datetime
 
 from common.utils.time import utc_now_iso
@@ -19,6 +20,19 @@ from common.utils.time import utc_now_iso
 # Set no_proxy to avoid proxy issues with local services
 os.environ['no_proxy'] = 'localhost,127.0.0.1,::1'
 os.environ['NO_PROXY'] = 'localhost,127.0.0.1,::1'
+
+# ==================== Command Line Arguments ====================
+# Parse command line arguments first to support Tauri's invocation style
+# Usage: novaic-backend gateway --port 19999 --data-dir /path/to/data
+parser = argparse.ArgumentParser(description='NovAIC Gateway')
+parser.add_argument('command', nargs='?', default='gateway', help='Command (gateway)')
+parser.add_argument('--port', type=int, default=19999, help='Gateway port')
+parser.add_argument('--data-dir', type=str, help='Data directory')
+args, unknown = parser.parse_known_args()
+
+# Set NOVAIC_DATA_DIR from command line if provided
+if args.data_dir:
+    os.environ['NOVAIC_DATA_DIR'] = args.data_dir
 
 # ==================== Environment Variables Debug ====================
 print("[Gateway] === Environment Variables ===")
@@ -30,9 +44,9 @@ print(f"[Gateway] Executable path: {sys.executable}")
 print("[Gateway] ===============================")
 
 # ==================== Data Directory Setup ====================
-# NOVAIC_DATA_DIR is required (passed from Tauri app)
+# NOVAIC_DATA_DIR is required (passed from Tauri app via --data-dir or env var)
 if not os.environ.get("NOVAIC_DATA_DIR"):
-    print("[Gateway] ERROR: NOVAIC_DATA_DIR environment variable is required")
+    print("[Gateway] ERROR: NOVAIC_DATA_DIR environment variable or --data-dir argument is required")
     print("[Gateway] Please start Gateway through the NovAIC app")
     sys.exit(1)
 
@@ -184,7 +198,8 @@ from gateway.db.repositories.agent_state import AgentStateRepository
 
 # Configuration
 HOST = os.getenv("NOVAIC_HOST", "127.0.0.1")
-PORT = int(os.getenv("NOVAIC_PORT", "19999"))
+# Use command line port if provided, otherwise env var, otherwise default
+PORT = args.port if args.port != 19999 else int(os.getenv("NOVAIC_PORT", "19999"))
 SOCKET_PATH = os.getenv("NOVAIC_SOCKET", "")  # Unix socket path, if set use UDS mode
 DEBUG = os.getenv("NOVAIC_DEBUG", "false").lower() == "true"
 
@@ -346,7 +361,7 @@ async def lifespan(app: FastAPI):
     
     # Initialize Worker SSE broadcaster (v11)
     from gateway.sse import init_worker_broadcaster, shutdown_worker_broadcaster
-    init_worker_broadcaster()
+    await init_worker_broadcaster()
     print("[Gateway] Worker SSE broadcaster initialized")
     
     # v2.0: Task Queue and Saga are now managed by Queue Service (port 19997)
@@ -1693,6 +1708,109 @@ def wake_agent(data: dict = {}):
         "previous_rest_reason": previous_state.get("reason"),
         "handoff_notes": previous_state.get("handoff_notes"),
     }
+
+
+# ==================== Image Storage API ====================
+# Serves images stored by ImageStorage service to avoid large base64 in database
+
+from task_queue.utils.image_storage import get_image_storage, set_image_storage, ImageStorage
+from fastapi.responses import FileResponse
+
+# Initialize image storage with data directory
+_images_dir = os.path.join(NOVAIC_DATA_DIR, "images")
+os.makedirs(_images_dir, exist_ok=True)
+set_image_storage(ImageStorage(base_dir=_images_dir))
+print(f"[Gateway] Image storage initialized at: {_images_dir}")
+
+
+@app.get("/api/images/{agent_id}/{filename}")
+def get_image(agent_id: str, filename: str):
+    """
+    Serve an image file.
+    
+    Images are stored by ImageStorage to avoid large base64 data in database.
+    
+    Args:
+        agent_id: Agent ID
+        filename: Image filename (e.g., "1234567890_abc123.png")
+    """
+    storage = get_image_storage()
+    url = f"/api/images/{agent_id}/{filename}"
+    file_path = storage.get_file_path(url)
+    
+    if not file_path or not file_path.exists():
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Image not found")
+    
+    # Determine media type
+    suffix = file_path.suffix.lower()
+    media_types = {
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".gif": "image/gif",
+        ".webp": "image/webp",
+    }
+    media_type = media_types.get(suffix, "application/octet-stream")
+    
+    return FileResponse(file_path, media_type=media_type)
+
+
+@app.get("/api/images/{agent_id}/{subagent_id}/{filename}")
+def get_image_with_subagent(agent_id: str, subagent_id: str, filename: str):
+    """
+    Serve an image file with subagent path.
+    
+    Args:
+        agent_id: Agent ID
+        subagent_id: Subagent ID
+        filename: Image filename
+    """
+    storage = get_image_storage()
+    url = f"/api/images/{agent_id}/{subagent_id}/{filename}"
+    file_path = storage.get_file_path(url)
+    
+    if not file_path or not file_path.exists():
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Image not found")
+    
+    suffix = file_path.suffix.lower()
+    media_types = {
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".gif": "image/gif",
+        ".webp": "image/webp",
+    }
+    media_type = media_types.get(suffix, "application/octet-stream")
+    
+    return FileResponse(file_path, media_type=media_type)
+
+
+@app.get("/api/images/stats")
+def get_image_stats(agent_id: Optional[str] = None):
+    """
+    Get image storage statistics.
+    
+    Args:
+        agent_id: Optional agent ID to limit scope
+    """
+    storage = get_image_storage()
+    return storage.get_storage_stats(agent_id)
+
+
+@app.post("/api/images/cleanup")
+def cleanup_images(max_age_days: int = 7, agent_id: Optional[str] = None):
+    """
+    Clean up old images.
+    
+    Args:
+        max_age_days: Maximum age in days (default: 7)
+        agent_id: Optional agent ID to limit scope
+    """
+    storage = get_image_storage()
+    deleted = storage.cleanup_old_images(max_age_days, agent_id)
+    return {"deleted_count": deleted}
 
 
 # Static files (React Web UI) - mount last to catch-all

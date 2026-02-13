@@ -541,7 +541,18 @@ export const useAppStore = create<AppStore>((set, get) => ({
         currentAgents.length !== response.agents.length ||
         currentAgents.some((a, i) => {
           const newAgent = response.agents[i];
-          return !newAgent || a.id !== newAgent.id || a.name !== newAgent.name || a.created_at !== newAgent.created_at;
+          if (!newAgent || a.id !== newAgent.id || a.name !== newAgent.name || a.created_at !== newAgent.created_at) {
+            return true;
+          }
+          // 检查 android 配置变化
+          const oldAndroid = a.android;
+          const newAndroid = newAgent.android;
+          if (oldAndroid?.device_serial !== newAndroid?.device_serial ||
+              oldAndroid?.avd_name !== newAndroid?.avd_name ||
+              oldAndroid?.managed !== newAndroid?.managed) {
+            return true;
+          }
+          return false;
         });
       
       if (agentsChanged) {

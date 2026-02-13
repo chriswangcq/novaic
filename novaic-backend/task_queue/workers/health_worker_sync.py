@@ -4,6 +4,7 @@
 特点：
 - 纯同步代码（无 async/await）
 - 直接调用 Queue Service 恢复 API
+- 检测并恢复卡住的 Runtime
 - 无需心跳（健康检查本身很轻量）
 - 单线程串行（定期检查）
 """
@@ -26,6 +27,7 @@ class HealthWorkerMetrics:
     checks_performed: int = 0
     tasks_recovered: int = 0
     sagas_recovered: int = 0
+    runtimes_recovered: int = 0  # 新增：恢复的 runtime 数量
     errors: int = 0
     last_check_at: Optional[str] = None
     started_at: Optional[str] = None
@@ -35,6 +37,7 @@ class HealthWorkerMetrics:
             "checks_performed": self.checks_performed,
             "tasks_recovered": self.tasks_recovered,
             "sagas_recovered": self.sagas_recovered,
+            "runtimes_recovered": self.runtimes_recovered,
             "errors": self.errors,
             "last_check_at": self.last_check_at,
             "started_at": self.started_at,
@@ -48,6 +51,7 @@ class HealthWorkerSync:
     职责：
     1. 定期调用 Queue Service 的恢复 API
     2. 恢复超时的任务和 Saga
+    3. 检测并恢复卡住的 Runtime（新增）
     
     优势：
     - 纯同步代码，简单直接
@@ -59,26 +63,33 @@ class HealthWorkerSync:
     
     def __init__(
         self,
+        gateway_url: str = None,
         queue_service_url: str = None,
         check_interval: float = 30.0,
         task_timeout: int = 60,
         saga_timeout: int = 300,
+        runtime_timeout: int = 600,  # 新增：Runtime 超时时间（10分钟）
     ):
+        # Gateway URL: 参数 > 环境变量 > 默认值
+        self.gateway_url = (gateway_url or 
+                            os.environ.get("GATEWAY_URL", ServiceConfig.GATEWAY_URL)).rstrip("/")
         # Queue Service URL: 参数 > 环境变量 > 默认值
         self.queue_service_url = (queue_service_url or 
                                    os.environ.get("QUEUE_SERVICE_URL", ServiceConfig.QUEUE_SERVICE_URL)).rstrip("/")
         self.check_interval = check_interval
         self.task_timeout = task_timeout
         self.saga_timeout = saga_timeout
+        self.runtime_timeout = runtime_timeout
         self.worker_id = f"health-sync-{uuid.uuid4().hex[:8]}"
         
         self._running = False
         self._client: Optional[httpx.Client] = None
+        self._gateway_client: Optional[httpx.Client] = None
         
         self.metrics = HealthWorkerMetrics()
     
     def _get_client(self) -> httpx.Client:
-        """获取 HTTP 客户端"""
+        """获取 Queue Service HTTP 客户端"""
         if self._client is None or self._client.is_closed:
             self._client = httpx.Client(
                 base_url=self.queue_service_url,
@@ -86,6 +97,16 @@ class HealthWorkerSync:
                 trust_env=False,
             )
         return self._client
+    
+    def _get_gateway_client(self) -> httpx.Client:
+        """获取 Gateway HTTP 客户端"""
+        if self._gateway_client is None or self._gateway_client.is_closed:
+            self._gateway_client = httpx.Client(
+                base_url=self.gateway_url,
+                timeout=30.0,
+                trust_env=False,
+            )
+        return self._gateway_client
     
     def run(self):
         """主循环（同步）"""

@@ -6,7 +6,7 @@ Storage: $NOVAIC_DATA_DIR/agents.json
 NOVAIC_DATA_DIR is required (passed from Tauri app).
 """
 
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, TYPE_CHECKING
 from pathlib import Path
 from datetime import datetime
 from pydantic import BaseModel, Field
@@ -17,6 +17,9 @@ import shutil
 import platform
 
 from common.utils.time import utc_now_iso
+
+if TYPE_CHECKING:
+    from .agents_db import AndroidConfig
 
 
 class PortConfig(BaseModel):
@@ -44,6 +47,7 @@ class VmConfig(BaseModel):
     memory: str = "4096"   # Memory in MB
     cpus: int = 4          # CPU cores
     ports: PortConfig = Field(default_factory=PortConfig)
+    android: Optional["AndroidConfig"] = None  # Android emulator config (optional)
 
 
 class AICAgent(BaseModel):

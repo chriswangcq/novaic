@@ -483,8 +483,145 @@ class ChatRepository:
     
     # ==================== Execution Logs ====================
     
-    def _row_to_execution_log(self, row: Dict[str, Any]) -> Dict[str, Any]:
-        """Convert a database row to an execution log dict."""
+    # Maximum size for data fields in logs (50KB) - larger images will be saved to file
+    MAX_LOG_DATA_SIZE = 50 * 1024
+    
+    # Known image field names
+    IMAGE_FIELD_NAMES = ('screenshot', 'image', 'image_data', 'base64', 'data')
+    
+    # Base64 image prefixes
+    BASE64_IMAGE_PREFIXES = ('iVBOR', '/9j/', 'R0lGOD', 'data:image')
+    
+    def _is_base64_image(self, value: str) -> bool:
+        """Check if a string looks like base64 encoded image data."""
+        if not isinstance(value, str):
+            return False
+        return value.startswith(self.BASE64_IMAGE_PREFIXES)
+    
+    def _save_image_to_file(self, base64_data: str, agent_id: str, subagent_id: str = "main") -> str:
+        """
+        Save base64 image to file and return URL.
+        
+        Args:
+            base64_data: Base64 encoded image data
+            agent_id: Agent ID for organizing images
+            subagent_id: Subagent ID
+            
+        Returns:
+            URL path to access the image (e.g., "/api/images/agent_id/abc123.png")
+        """
+        try:
+            from task_queue.utils.image_storage import get_image_storage
+            storage = get_image_storage()
+            url = storage.save_image(agent_id, base64_data, subagent_id)
+            return url
+        except Exception as e:
+            # If saving fails, return truncated placeholder
+            logger.warning(f"[ChatRepository] Failed to save image to file: {e}")
+            return "[IMAGE_SAVE_FAILED]"
+    
+    def _convert_large_images_to_urls(
+        self,
+        data: Any,
+        agent_id: str,
+        subagent_id: str = "main",
+        max_size: int = None,
+    ) -> Any:
+        """
+        Recursively convert large base64 images to file URLs.
+        
+        Instead of truncating, saves large images to files and replaces with URLs.
+        This allows images to be viewed on demand without bloating the database.
+        
+        Args:
+            data: Data to process
+            agent_id: Agent ID for organizing images
+            subagent_id: Subagent ID
+            max_size: Size threshold in bytes
+            
+        Returns:
+            Processed data with large images replaced by URLs
+        """
+        if max_size is None:
+            max_size = self.MAX_LOG_DATA_SIZE
+            
+        if data is None:
+            return None
+            
+        if isinstance(data, str):
+            if len(data) > max_size and self._is_base64_image(data):
+                # Save to file and return URL
+                return self._save_image_to_file(data, agent_id, subagent_id)
+            elif len(data) > max_size:
+                # Non-image large data: truncate
+                return data[:1000] + f"... [TRUNCATED: {len(data)} bytes]"
+            return data
+            
+        if isinstance(data, dict):
+            result = {}
+            for key, value in data.items():
+                # Check if this is a known image field with large data
+                if key in self.IMAGE_FIELD_NAMES and isinstance(value, str) and len(value) > max_size:
+                    if self._is_base64_image(value):
+                        result[key] = self._save_image_to_file(value, agent_id, subagent_id)
+                    else:
+                        result[key] = value[:1000] + f"... [TRUNCATED: {len(value)} bytes]"
+                else:
+                    result[key] = self._convert_large_images_to_urls(value, agent_id, subagent_id, max_size)
+            return result
+            
+        if isinstance(data, list):
+            return [self._convert_large_images_to_urls(item, agent_id, subagent_id, max_size) for item in data]
+            
+        return data
+    
+    def _truncate_large_data(self, data: Any, max_size: int = None) -> Any:
+        """
+        Recursively truncate large data fields (for reading from DB).
+        
+        This is used when reading logs to prevent memory issues.
+        Note: New logs should use _convert_large_images_to_urls instead.
+        """
+        if max_size is None:
+            max_size = self.MAX_LOG_DATA_SIZE
+            
+        if data is None:
+            return None
+            
+        if isinstance(data, str):
+            # If it's already a URL, keep it
+            if data.startswith('/api/images/'):
+                return data
+            if len(data) > max_size:
+                if self._is_base64_image(data):
+                    return "[IMAGE_DATA_TRUNCATED]"
+                return data[:1000] + f"... [TRUNCATED: {len(data)} bytes]"
+            return data
+            
+        if isinstance(data, dict):
+            result = {}
+            for key, value in data.items():
+                if key in self.IMAGE_FIELD_NAMES and isinstance(value, str) and len(value) > max_size:
+                    if self._is_base64_image(value):
+                        result[key] = "[IMAGE_DATA_TRUNCATED]"
+                    else:
+                        result[key] = value[:1000] + f"... [TRUNCATED: {len(value)} bytes]"
+                else:
+                    result[key] = self._truncate_large_data(value, max_size)
+            return result
+            
+        if isinstance(data, list):
+            return [self._truncate_large_data(item, max_size) for item in data]
+            
+        return data
+    
+    def _row_to_execution_log(self, row: Dict[str, Any], truncate_large: bool = True) -> Dict[str, Any]:
+        """Convert a database row to an execution log dict.
+        
+        Args:
+            row: Database row
+            truncate_large: If True, truncate large data fields (screenshots, etc.)
+        """
         data = {}
         if row.get("data"):
             try:
@@ -492,10 +629,19 @@ class ChatRepository:
             except json.JSONDecodeError:
                 pass
         
+        # Truncate large data to prevent memory issues
+        if truncate_large:
+            data = self._truncate_large_data(data)
+        
         # Extract input and result from data if present (for backward compatibility)
         # These are stored in data by upsert_execution_log, but should be returned as top-level fields
         input_data = data.pop("input", None) if isinstance(data, dict) else None
         result_data = data.pop("result", None) if isinstance(data, dict) else None
+        
+        # Also truncate input and result
+        if truncate_large:
+            input_data = self._truncate_large_data(input_data)
+            result_data = self._truncate_large_data(result_data)
         
         return {
             "id": row["id"],
@@ -539,15 +685,22 @@ class ChatRepository:
         status: str = "complete",
         event_key: Optional[str] = None,
     ) -> int:
-        """Add an execution log for an agent."""
+        """Add an execution log for an agent.
+        
+        Note: Large images (>50KB) will be saved to files and replaced with URLs.
+        """
         now = utc_now_iso()
+        
+        # Convert large images to file URLs to prevent database bloat
+        processed_data = self._convert_large_images_to_urls(data, agent_id, subagent_id) if data else None
+        
         with self.db.transaction("agent", resource_id=agent_id):
             cursor = self.db.execute(
                 """INSERT INTO execution_logs 
                    (agent_id, subagent_id, type, kind, status, event_key, timestamp, data, updated_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (agent_id, subagent_id, type, kind, status, event_key, 
-                 timestamp, json.dumps(data) if data else None, now)
+                 timestamp, json.dumps(processed_data) if processed_data else None, now)
             )
             row_id = cursor.lastrowid
         
@@ -598,7 +751,9 @@ class ChatRepository:
         if result_data:
             merged_data["result"] = result_data
         
-        data_json = json.dumps(merged_data) if merged_data else None
+        # Convert large images to file URLs to prevent database bloat
+        processed_data = self._convert_large_images_to_urls(merged_data, agent_id, subagent_id) if merged_data else None
+        data_json = json.dumps(processed_data) if processed_data else None
         
         with self.db.transaction("agent", resource_id=agent_id):
             # Check if record exists to merge data properly
@@ -617,9 +772,9 @@ class ChatRepository:
                         pass
                 
                 # Deep merge: keep existing fields, add/update new fields
-                final_data = {**existing_data, **merged_data}
+                final_data = {**existing_data, **processed_data} if processed_data else existing_data
                 # Ensure input is preserved if it existed
-                if "input" in existing_data and "input" not in merged_data:
+                if "input" in existing_data and (not processed_data or "input" not in processed_data):
                     final_data["input"] = existing_data["input"]
                 
                 final_data_json = json.dumps(final_data) if final_data else None

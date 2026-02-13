@@ -20,11 +20,15 @@ Tools Server - 工具定义
   - File (4): read, write, list, info
   - Window (7): list_windows, focus_window, maximize_window, minimize_window, close_window, resize_window, launch_app
   - Context (7): system_snapshot, directory_snapshot, app_state, clipboard_get, clipboard_set, recent_files, environment_info
+- mobile: 13 个工具 (mobile_screenshot, mobile_touch, mobile_input, mobile_shell,
+                      mobile_app_install, mobile_app_uninstall, mobile_app_launch, mobile_app_list, mobile_app_stop,
+                      mobile_browser_open, mobile_browser_get_url, mobile_browser_back, mobile_browser_refresh)
+  - Android 设备控制工具集
 - drive: 3 个工具 (drive_update_profile, drive_update_relationship, memory_update)
 - quadrant_task: 6 个工具 (task_create, task_complete, task_update, task_board_list, task_delete, drive_log_growth)
   - 四象限任务管理：q1(紧急重要), q2(紧急不重要), q3(不紧急重要), q4(不紧急不重要)
 
-总计: 80 个工具
+总计: 93 个工具
 """
 
 from typing import Dict, List, Any, Optional
@@ -1414,6 +1418,320 @@ QUADRANT_TASK_TOOLS: List[Dict[str, Any]] = [
 ]
 
 
+# ==================== Mobile Tools (Android device control) ====================
+
+MOBILE_TOOLS: List[Dict[str, Any]] = [
+    {
+        "name": "mobile_screenshot",
+        "description": "Take screenshot of Android device screen. Returns base64 PNG image with optional coordinate grid overlay.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "grid": {"type": "boolean", "description": "Show coordinate grid overlay", "default": True},
+                "region": {
+                    "type": "object",
+                    "properties": {
+                        "x": {"type": "integer"},
+                        "y": {"type": "integer"},
+                        "width": {"type": "integer"},
+                        "height": {"type": "integer"}
+                    },
+                    "description": "Optional region to capture"
+                }
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "mobile_touch",
+        "description": "Touch control on Android device. Use 'aim' first to get aim_id, then use aim_id for tap/swipe/etc.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "action": {"type": "string", "enum": ["aim", "tap", "long_press", "swipe", "double"]},
+                "x": {"type": "integer", "description": "X coordinate (for aim)"},
+                "y": {"type": "integer", "description": "Y coordinate (for aim)"},
+                "aim_id": {"type": "string", "description": "Aim ID from previous aim action"},
+                "zoom": {"type": "number", "description": "Zoom factor for aim (default 2.0)", "default": 2.0},
+                "duration": {"type": "integer", "description": "Duration in ms for long_press"},
+                "end_x": {"type": "integer", "description": "End X for swipe"},
+                "end_y": {"type": "integer", "description": "End Y for swipe"}
+            },
+            "required": ["action"]
+        }
+    },
+    {
+        "name": "mobile_input",
+        "description": "Input text or key on Android device",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "action": {"type": "string", "enum": ["text", "key"]},
+                "text": {"type": "string", "description": "Text to input (for action=text)"},
+                "keycode": {"type": "integer", "description": "Android keycode (for action=key). Common: BACK=4, HOME=3, ENTER=66"}
+            },
+            "required": ["action"]
+        }
+    },
+    {
+        "name": "mobile_shell",
+        "description": "Execute shell command on Android device via ADB",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "command": {"type": "string", "description": "Shell command to execute"},
+                "timeout": {"type": "integer", "description": "Timeout in seconds", "default": 30}
+            },
+            "required": ["command"]
+        }
+    },
+    # Phase 2 - App Management Tools
+    {
+        "name": "mobile_app_install",
+        "description": "Install an APK file on Android device",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "apk_path": {"type": "string", "description": "Path to the APK file"},
+                "allow_downgrade": {"type": "boolean", "description": "Allow downgrade installation", "default": False}
+            },
+            "required": ["apk_path"]
+        }
+    },
+    {
+        "name": "mobile_app_uninstall",
+        "description": "Uninstall an app from Android device",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "package_name": {"type": "string", "description": "Package name to uninstall"},
+                "keep_data": {"type": "boolean", "description": "Keep app data after uninstall", "default": False}
+            },
+            "required": ["package_name"]
+        }
+    },
+    {
+        "name": "mobile_app_launch",
+        "description": "Launch an app on Android device",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "package_name": {"type": "string", "description": "Package name to launch"},
+                "activity": {"type": "string", "description": "Optional activity name"}
+            },
+            "required": ["package_name"]
+        }
+    },
+    {
+        "name": "mobile_app_list",
+        "description": "List installed apps on Android device",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "third_party_only": {"type": "boolean", "description": "Only list third-party apps", "default": True}
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "mobile_app_stop",
+        "description": "Force stop an app on Android device",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "package_name": {"type": "string", "description": "Package name to stop"}
+            },
+            "required": ["package_name"]
+        }
+    },
+    # Phase 2 - Browser Tools
+    {
+        "name": "mobile_browser_open",
+        "description": "Open a URL in browser on Android device",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "url": {"type": "string", "description": "URL to open"},
+                "browser": {"type": "string", "description": "Optional browser package name"}
+            },
+            "required": ["url"]
+        }
+    },
+    {
+        "name": "mobile_browser_get_url",
+        "description": "Get current URL from browser on Android device",
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+    },
+    {
+        "name": "mobile_browser_back",
+        "description": "Go back in browser on Android device",
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+    },
+    {
+        "name": "mobile_browser_refresh",
+        "description": "Refresh current page in browser on Android device",
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+    },
+    # Phase 3 - UI Automation Tools
+    {
+        "name": "mobile_ui_dump",
+        "description": "Dump current UI hierarchy of Android device. Returns structured UI elements.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "compressed": {"type": "boolean", "description": "Return compressed output with key attributes only", "default": True}
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "mobile_ui_find",
+        "description": "Find UI elements matching criteria on Android device",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "text": {"type": "string", "description": "Find by exact text"},
+                "text_contains": {"type": "string", "description": "Find by text containing"},
+                "resource_id": {"type": "string", "description": "Find by resource ID"},
+                "class": {"type": "string", "description": "Find by class name"},
+                "content_desc": {"type": "string", "description": "Find by content description"},
+                "clickable_only": {"type": "boolean", "description": "Only return clickable elements", "default": False}
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "mobile_ui_wait",
+        "description": "Wait for UI element to appear on Android device",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "text": {"type": "string", "description": "Wait for element with text"},
+                "text_contains": {"type": "string", "description": "Wait for element containing text"},
+                "resource_id": {"type": "string", "description": "Wait for element with resource ID"},
+                "timeout": {"type": "integer", "description": "Timeout in seconds", "default": 10},
+                "interval": {"type": "integer", "description": "Poll interval in milliseconds", "default": 500}
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "mobile_ui_scroll",
+        "description": "Scroll on Android device screen",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "direction": {"type": "string", "enum": ["up", "down", "left", "right"], "description": "Scroll direction"},
+                "distance": {"type": "integer", "description": "Scroll distance in pixels"},
+                "x": {"type": "integer", "description": "Center X coordinate"},
+                "y": {"type": "integer", "description": "Center Y coordinate"}
+            },
+            "required": ["direction"]
+        }
+    },
+    {
+        "name": "mobile_ui_click_element",
+        "description": "Click UI element by finding it first on Android device",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "text": {"type": "string", "description": "Click element with text"},
+                "text_contains": {"type": "string", "description": "Click element containing text"},
+                "resource_id": {"type": "string", "description": "Click element with resource ID"},
+                "content_desc": {"type": "string", "description": "Click element with content description"}
+            },
+            "required": []
+        }
+    },
+    # Phase 3 - File Management Tools
+    {
+        "name": "mobile_file_push",
+        "description": "Push file from local to Android device",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "local_path": {"type": "string", "description": "Local file path"},
+                "remote_path": {"type": "string", "description": "Remote path on device"}
+            },
+            "required": ["local_path", "remote_path"]
+        }
+    },
+    {
+        "name": "mobile_file_pull",
+        "description": "Pull file from Android device to local",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "remote_path": {"type": "string", "description": "Remote file path on device"},
+                "local_path": {"type": "string", "description": "Local path to save"}
+            },
+            "required": ["remote_path", "local_path"]
+        }
+    },
+    {
+        "name": "mobile_file_list",
+        "description": "List directory contents on Android device",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Directory path on device"},
+                "show_hidden": {"type": "boolean", "description": "Show hidden files", "default": False}
+            },
+            "required": ["path"]
+        }
+    },
+    {
+        "name": "mobile_file_delete",
+        "description": "Delete file or directory on Android device",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Path to delete"},
+                "recursive": {"type": "boolean", "description": "Delete recursively for directories", "default": False}
+            },
+            "required": ["path"]
+        }
+    },
+    {
+        "name": "mobile_file_mkdir",
+        "description": "Create directory on Android device",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Directory path to create"},
+                "parents": {"type": "boolean", "description": "Create parent directories", "default": True}
+            },
+            "required": ["path"]
+        }
+    },
+    {
+        "name": "mobile_file_read",
+        "description": "Read file content from Android device",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "File path to read"},
+                "base64": {"type": "boolean", "description": "Return content as base64", "default": False},
+                "max_bytes": {"type": "integer", "description": "Maximum bytes to read"}
+            },
+            "required": ["path"]
+        }
+    },
+]
+
+
 # ==================== Drive Tools (Agent autonomous behavior) ====================
 
 DRIVE_TOOLS: List[Dict[str, Any]] = [
@@ -1507,6 +1825,7 @@ BUILTIN_TOOLS: Dict[str, List[Dict[str, Any]]] = {
     "qemu": QEMU_TOOLS,
     "task": TASK_TOOLS,
     "vm": VM_TOOLS,  # VM USE tools (browser, desktop, shell, file, window, context)
+    "mobile": MOBILE_TOOLS,  # Mobile USE tools (Android device control)
 }
 
 # Tool name to category mapping (for quick lookup)

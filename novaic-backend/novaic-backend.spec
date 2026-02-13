@@ -1,188 +1,130 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""
-NovAIC Backend - Unified PyInstaller Spec
 
-v4.0: Single binary for gateway and workers (Saga/Task Architecture).
-Uses onedir mode for faster startup and shared libraries.
+# NovAIC Backend - Unified Entry Point
+# Uses main_novaic.py which handles all subcommands:
+# - gateway, tools-server, queue-service
+# - watchdog, task-worker, saga-worker, health, scheduler
 
-Build:
-    pyinstaller --clean --noconfirm novaic-backend.spec
-
-Output:
-    dist/novaic-backend/
-    ├── novaic-backend          # Main executable
-    └── _internal/              # Shared runtime and libraries
-
-Entry points (via main_novaic.py unified CLI):
-    - main_novaic.py    Unified entry point with subcommands:
-        gateway         Gateway (API + SSE + DB)
-        mcp-gateway     MCP Gateway (MCP aggregation)
-        watchdog        Watchdog (message monitor, triggers Saga)
-        task-worker     Task Worker (executes tasks)
-        saga-worker     Saga Worker (orchestrates workflows)
-        health          Health Worker (timeout recovery)
-"""
-
-from PyInstaller.utils.hooks import copy_metadata, collect_all, collect_submodules
-
-# ==================== Metadata Collection ====================
-# Required for packages that use importlib.metadata
-datas = []
-for pkg in [
-    'aiohttp', 'aiofiles', 'httpx',
-    'uvicorn', 'fastapi', 'starlette', 'pydantic', 'anyio', 'websockets',
-]:
-    try:
-        datas += copy_metadata(pkg)
-    except Exception:
-        pass  # Package may not be installed
-
-# ==================== Package Collection ====================
-binaries = []
-hiddenimports = []
-
-# Collect all files from critical packages
-critical_packages = [
-    'aiohttp',    # SSE and HTTP client
-]
-
-for pkg in critical_packages:
-    try:
-        d, b, h = collect_all(pkg)
-        datas += d
-        binaries += b
-        hiddenimports += h
-    except Exception:
-        pass
-
-# ==================== Analysis ====================
 a = Analysis(
-    ['main_novaic.py'],  # Unified entry point (v4)
+    ['main_novaic.py'],  # Unified entry point
     pathex=[],
-    binaries=binaries,
-    datas=datas + [
-        # ===== Common package (shared utilities, DB, locks) =====
+    binaries=[],
+    datas=[
         ('common', 'common'),
-        # ===== Gateway package (all modules under gateway/) =====
         ('gateway', 'gateway'),
-        # ===== MCP Client package =====
-        ('mcp_client', 'mcp_client'),
-        # ===== Tools Server (HTTP API for tools) =====
-        ('tools_server', 'tools_server'),
-        # ===== Task Queue (Saga/Task Architecture) =====
         ('task_queue', 'task_queue'),
-        # ===== Queue Service (Task/Saga 队列管理) =====
         ('queue_service', 'queue_service'),
-        # ===== Entry points (for imports by main_novaic.py) =====
+        ('tools_server', 'tools_server'),
+        ('mcp_client', 'mcp_client'),
+        # Include individual main files for imports
         ('main_gateway.py', '.'),
         ('main_tools.py', '.'),
-        ('main_watchdog.py', '.'),
-        ('main_task.py', '.'),
         ('main_saga.py', '.'),
+        ('main_task.py', '.'),
+        ('main_watchdog.py', '.'),
         ('main_health.py', '.'),
     ],
-    hiddenimports=hiddenimports + [
-        # ----- uvicorn -----
-        'uvicorn.logging',
-        'uvicorn.protocols.http',
-        'uvicorn.protocols.http.auto',
-        'uvicorn.protocols.websockets',
-        'uvicorn.protocols.websockets.auto',
-        'uvicorn.lifespan.on',
-        'uvicorn.lifespan.off',
-        # ----- http clients -----
-        'httpx',
-        'httpx._client',
-        'httpx._transports',
-        'httpx._transports.default',
-        'httpx_sse',
-        'aiohttp',
-        'aiohttp.client',
-        'aiohttp.connector',
-        'aiohttp.http_parser',
-        # ----- async io -----
-        'aiosqlite',
-        'aiofiles',
-        'asyncio',
-        # ----- fastapi & pydantic -----
+    hiddenimports=[
+        # FastAPI and dependencies
         'fastapi',
-        'fastapi.middleware',
-        'fastapi.middleware.cors',
+        'fastapi.applications',
+        'fastapi.routing',
         'fastapi.responses',
         'fastapi.staticfiles',
+        'fastapi.middleware',
+        'fastapi.middleware.cors',
         'pydantic',
-        'starlette',
-        'starlette.routing',
-        'starlette.responses',
-        'starlette.middleware',
-        # ----- anyio -----
-        'anyio',
-        'anyio._backends',
-        'anyio._backends._asyncio',
-        # ----- websockets -----
-        'websockets',
-        'websockets.legacy',
-        'websockets.server',
-        # ----- aiohttp dependencies -----
-        'multidict',
-        'multidict._multidict',
-        'yarl',
-        'yarl._url',
-        # ----- httpx dependencies -----
-        'h11',
-        'httpcore',
-        'httpcore._async',
-        'httpcore._sync',
-        'sniffio',
-        # ----- ssl -----
-        'ssl',
-        'certifi',
-        # ----- ssh clients -----
-        'asyncssh',
+        'pydantic.fields',
+        # Uvicorn
+        'uvicorn',
+        'uvicorn.main',
+        'uvicorn.lifespan.on', 
+        'uvicorn.lifespan.off', 
+        'uvicorn.lifespan', 
+        'uvicorn.protocols.websockets.auto', 
+        'uvicorn.protocols.websockets.wsproto_impl', 
+        'uvicorn.protocols.websockets.websockets_impl', 
+        'uvicorn.protocols.http.auto', 
+        'uvicorn.protocols.http.h11_impl', 
+        'uvicorn.protocols.http.httptools_impl', 
+        'uvicorn.logging',
+        # PIL
+        'PIL', 
+        'PIL.Image',
+        # SQLite
+        'sqlite3', 
+        '_sqlite3',
+        # Paramiko (SSH)
         'paramiko',
-        'paramiko.rsakey',
-        'paramiko.ecdsakey',
-        'paramiko.ed25519key',
         'paramiko.transport',
-        'paramiko.client',
+        'paramiko.sftp',
         'paramiko.sftp_client',
-        # ----- cryptography (paramiko dependency) -----
+        'paramiko.ssh_exception',
+        # Cryptography (for paramiko)
         'cryptography',
-        'cryptography.hazmat',
-        'cryptography.hazmat.primitives',
+        'cryptography.hazmat.primitives.kdf.pbkdf2',
         'cryptography.hazmat.backends',
-        # ----- other -----
-        'PIL',
+        # bcrypt (for paramiko)
+        'bcrypt',
+        # nacl (for paramiko)
+        'nacl',
+        'nacl.bindings',
+        # httpx
+        'httpx',
+        'httpx._transports',
+        'httpx._transports.default',
+        # anyio
+        'anyio',
+        'anyio._backends._asyncio',
+        # Starlette
+        'starlette',
+        'starlette.responses',
+        'starlette.staticfiles',
+        'starlette.routing',
+        'starlette.middleware',
+        # SSE
+        'sse_starlette',
+        'sse_starlette.sse',
+        # Queue service
+        'queue_service',
+        'queue_service.main',
+        # Task queue workers
+        'task_queue.workers',
+        'task_queue.workers.watchdog',
+        'task_queue.workers.task_worker_sync',
+        'task_queue.workers.health_worker_sync',
+        'task_queue.workers.scheduler_worker_sync',
+        'task_queue.handlers',
+        # Tools server
+        'tools_server',
+        'tools_server.api',
+        'tools_server.executor',
+        'tools_server.tools',
+        'tools_server.runtime_manager',
+        # MCP client
+        'mcp_client',
+        'mcp_client.mcp_client',
+        'mcp_client.registry',
+        # Main modules
+        'main_gateway',
+        'main_tools',
+        'main_saga',
     ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[
-        # Exclude unnecessary packages to reduce size
-        'tkinter',
-        'unittest',
-        'test',
-        'tests',
-        'pip',
-        'setuptools',
-        'wheel',
-        'distutils',
-        'pkg_resources',
-    ],
+    excludes=[],
     noarchive=False,
     optimize=0,
 )
-
-# ==================== PYZ Archive ====================
 pyz = PYZ(a.pure)
 
-# ==================== Executable ====================
-# onedir mode: executable + _internal folder
 exe = EXE(
     pyz,
     a.scripts,
-    [],                      # Empty - binaries go to COLLECT
-    exclude_binaries=True,   # Key: separate binaries to _internal
+    a.binaries,
+    a.datas,
+    [],
     name='novaic-backend',
     debug=False,
     bootloader_ignore_signals=False,
@@ -196,15 +138,4 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-)
-
-# ==================== Collect (onedir output) ====================
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.datas,
-    strip=False,
-    upx=True,
-    upx_exclude=[],
-    name='novaic-backend',  # Output directory name
 )

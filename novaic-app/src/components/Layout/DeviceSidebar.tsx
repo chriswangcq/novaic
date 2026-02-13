@@ -444,21 +444,15 @@ export function DeviceSidebar({ className = '' }: DeviceSidebarProps) {
   };
   
   const handleStartAndroid = async () => {
-    if (!currentAgentId || !currentAgent?.android?.avd_name) return;
+    if (!currentAgentId) return;
     setIsLoading(true);
     try {
-      const result = await androidService.startEmulator(currentAgent.android.avd_name);
-      // 更新 Agent 配置中的 device_serial
-      if (result.serial) {
-        await api.updateAgent(currentAgentId, {
-          android: {
-            device_serial: result.serial,
-            managed: currentAgent.android.managed ?? true,
-            avd_name: currentAgent.android.avd_name,
-          },
-        });
-        // 重新加载 agents 以更新状态
+      const result = await api.startAndroid(currentAgentId);
+      if (result.success) {
+        // Gateway 已经更新了 device_serial，只需刷新 agent 列表
         await loadAgents();
+      } else {
+        console.error('[DeviceSidebar] Failed to start Android:', result.message);
       }
       await fetchAndroidStatus();
     } catch (error) {
@@ -469,10 +463,15 @@ export function DeviceSidebar({ className = '' }: DeviceSidebarProps) {
   };
   
   const handleStopAndroid = async () => {
-    if (!currentAgent?.android?.device_serial) return;
+    if (!currentAgentId) return;
     setIsLoading(true);
     try {
-      await androidService.stopEmulator(currentAgent.android.device_serial);
+      const result = await api.stopAndroid(currentAgentId);
+      if (!result.success) {
+        console.error('[DeviceSidebar] Failed to stop Android:', result.message);
+      }
+      // 刷新状态
+      await loadAgents();
       await fetchAndroidStatus();
     } catch (error) {
       console.error('[DeviceSidebar] Failed to stop Android:', error);
