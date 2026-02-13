@@ -199,6 +199,8 @@ function App() {
   }, []);
 
   // Handle agent created from modal
+  // Note: 创建 Agent 后不自动进入 setup，用户需要在右侧点击"创建 VM"按钮
+  // 这与 Android 的逻辑保持一致
   const handleAgentCreated = useCallback(async () => {
     // Get the newly created agent from store (it should be the current one after creation)
     const storeState = useAppStore.getState();
@@ -207,14 +209,11 @@ function App() {
       : null;
     
     if (newAgent) {
-      console.log('[App] Agent created, entering setup:', newAgent.id);
+      console.log('[App] Agent created:', newAgent.id);
       await selectAgent(newAgent.id);
-      setSetupConfig({
-        agent: newAgent,
-        sourceImage: 'ubuntu-24.04',
-        useCnMirrors: navigator.language?.startsWith('zh') || false,
-      });
-      setCurrentPage('setup');
+      // 不自动进入 setup，保持在 workspace 页面
+      // 用户可以在右侧 DeviceSidebar 点击"+ Linux VM"来创建 VM
+      setCurrentPage('workspace');
     }
   }, [selectAgent]);
 
