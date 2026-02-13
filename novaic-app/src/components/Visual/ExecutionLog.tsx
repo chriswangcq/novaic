@@ -869,6 +869,8 @@ interface LogCardProps {
 
 function LogCard({ log, isExpanded, onToggle, showSubagent }: LogCardProps) {
   const [showLLMModal, setShowLLMModal] = useState(false);
+  const [isLoadingInput, setIsLoadingInput] = useState(false);
+  const store = useAppStore();
 
   // 提取数据
   const getInputData = (): unknown => {
@@ -917,14 +919,32 @@ function LogCard({ log, isExpanded, onToggle, showSubagent }: LogCardProps) {
   const result = getResultData();
   const thinkingContent = getThinkingContent();
   const llmInput = getLLMInput();
+  const llmInputSummary = log.input_summary;
+  const hasFullInput = Boolean(llmInput?.messages);
+  const hasInputSummary = Boolean(llmInputSummary && log.kind === 'think');
   const toolName = log.data?.tool || log.event_key || '';
   const isThink = log.kind === 'think' || log.type === 'thinking';
   const isTool = log.kind === 'tool' || log.type === 'tool_start' || log.type === 'tool_end';
   const isRunning = log.status === 'running';
   const isFailed = log.status === 'failed' || log.data?.success === false || !!(log.result?.error || log.data?.error);
   
+  // 加载完整 input 的函数，加载后直接打开弹窗
+  const loadInputAndShowModal = async () => {
+    if (log.id && !hasFullInput && !isLoadingInput) {
+      setIsLoadingInput(true);
+      try {
+        const input = await store.fetchLogInput(log.id);
+        if (input) {
+          setShowLLMModal(true);  // 加载成功后直接打开弹窗
+        }
+      } finally {
+        setIsLoadingInput(false);
+      }
+    }
+  };
+  
   const hasDetails = Boolean(
-    (isThink && (thinkingContent || llmInput)) ||
+    (isThink && (thinkingContent || hasFullInput || hasInputSummary)) ||
     (isTool && (input || result))
   );
 
@@ -1053,74 +1073,54 @@ function LogCard({ log, isExpanded, onToggle, showSubagent }: LogCardProps) {
         <div className="px-3 pb-3 space-y-2">
           <div className="h-px bg-nb-border/30" />
           
-          {/* LLM 输入（messages） */}
-          {isThink && llmInput?.messages ? (
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-[10px] text-blue-400/70 font-medium">
-                  <Terminal size={10} />
-                  <span>LLM 输入</span>
-                  {llmInput.provider && (
-                    <span className="px-1.5 py-0.5 bg-nb-surface-2 text-nb-text-secondary text-[9px] rounded">
-                      {llmInput.provider}
-                    </span>
-                  )}
-                  {llmInput.model && (
-                    <span className="px-1.5 py-0.5 bg-nb-surface-2 text-nb-text-secondary text-[9px] rounded">
-                      {llmInput.model}
-                    </span>
-                  )}
-                  <span className="text-nb-text-secondary text-[9px]">
-                    {llmInput.messages.length} 条消息
-                  </span>
-                  {llmInput.tools && llmInput.tools.length > 0 && (
-                    <span className="text-nb-text-secondary text-[9px]">
-                      · {llmInput.tools.length} 个工具
-                    </span>
-                  )}
-                </div>
-                <button
-                  onClick={(e) => { e.stopPropagation(); setShowLLMModal(true); }}
-                  className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-nb-text-secondary hover:text-nb-text hover:bg-nb-hover transition-colors"
-                >
-                  <Maximize2 size={10} />
-                  <span>展开查看</span>
-                </button>
-              </div>
-              <div className="bg-nb-bg rounded-md border border-nb-border/30 max-h-[200px] overflow-y-auto">
-                {llmInput.messages.slice(0, 5).map((msg, idx) => {
-                  // 使用 parseMessageContent 处理多模态内容
-                  const parsed = parseMessageContent(msg);
-                  return (
-                    <div key={idx} className={`p-2 border-b border-nb-border/20 last:border-b-0 ${
-                      msg.role === 'system' ? 'bg-amber-500/5' : 
-                      msg.role === 'user' ? 'bg-blue-500/5' : 
-                      msg.role === 'assistant' ? 'bg-green-500/5' : 
-                      msg.role === 'tool' ? 'bg-purple-500/5' : ''
-                    }`}>
-                      <div className={`text-[9px] font-medium mb-1 flex items-center gap-1.5 ${
-                        msg.role === 'system' ? 'text-amber-400/70' : 
-                        msg.role === 'user' ? 'text-blue-400/70' : 
-                        msg.role === 'assistant' ? 'text-green-400/70' : 
-                        msg.role === 'tool' ? 'text-purple-400/70' : 'text-nb-text-secondary'
-                      }`}>
-                        <span>{msg.role.toUpperCase()}</span>
-                        {parsed.hasToolCalls && <span className="text-orange-400">[+tools]</span>}
-                        {parsed.hasImages && <span className="text-cyan-400">[+{parsed.imageCount}img]</span>}
-                        <span className="text-nb-text-muted">· {(parsed.rawSize / 1024).toFixed(1)}KB</span>
-                      </div>
-                      <div className="text-[11px] text-nb-text-muted whitespace-pre-wrap break-words line-clamp-3">
-                        {parsed.displayText.length > 300 ? parsed.displayText.slice(0, 300) + '...' : parsed.displayText}
-                      </div>
-                    </div>
-                  );
-                })}
-                {llmInput.messages.length > 5 && (
-                  <div className="p-2 text-center text-[10px] text-nb-text-secondary">
-                    还有 {llmInput.messages.length - 5} 条消息，点击"展开查看"查看全部
-                  </div>
+          {/* LLM 输入（messages）- 只显示摘要和按钮，点击直接打开弹窗 */}
+          {isThink && (hasInputSummary || hasFullInput) ? (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-[10px] text-blue-400/70 font-medium">
+                <Terminal size={10} />
+                <span>LLM 输入</span>
+                {(llmInputSummary || llmInput) && (
+                  <>
+                    {(llmInputSummary?.provider || llmInput?.provider) && (
+                      <span className="px-1.5 py-0.5 bg-nb-surface-2 text-nb-text-secondary text-[9px] rounded">
+                        {llmInputSummary?.provider || llmInput?.provider}
+                      </span>
+                    )}
+                    {(llmInputSummary?.model || llmInput?.model) && (
+                      <span className="px-1.5 py-0.5 bg-nb-surface-2 text-nb-text-secondary text-[9px] rounded">
+                        {llmInputSummary?.model || llmInput?.model}
+                      </span>
+                    )}
+                    {(llmInputSummary?.message_count || llmInput?.messages?.length) && (
+                      <span className="text-nb-text-secondary text-[9px]">
+                        {llmInputSummary?.message_count || llmInput?.messages?.length} 条消息
+                      </span>
+                    )}
+                    {(llmInputSummary?.tool_count || llmInput?.tools?.length) && (
+                      <span className="text-nb-text-secondary text-[9px]">
+                        · {llmInputSummary?.tool_count || llmInput?.tools?.length} 个工具
+                      </span>
+                    )}
+                  </>
                 )}
               </div>
+              
+              {/* 查看详情按钮 - 未加载时先加载再打开弹窗，已加载直接打开弹窗 */}
+              <button
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  if (hasFullInput) {
+                    setShowLLMModal(true);
+                  } else {
+                    loadInputAndShowModal();
+                  }
+                }}
+                disabled={isLoadingInput}
+                className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-nb-text-secondary hover:text-nb-text hover:bg-nb-hover transition-colors disabled:opacity-50"
+              >
+                {isLoadingInput ? <Loader2 size={10} className="animate-spin" /> : <Maximize2 size={10} />}
+                <span>{isLoadingInput ? '加载中...' : '查看详情'}</span>
+              </button>
             </div>
           ) : null}
           

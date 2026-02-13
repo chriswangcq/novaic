@@ -139,6 +139,14 @@ export interface Attachment {
   type: string;
 }
 
+// Think 类型日志的 input 摘要（当不加载完整 input 时返回）
+export interface InputSummary {
+  message_count?: number;   // messages 数量
+  tool_count?: number;      // tools 数量
+  model?: string;           // 模型名称
+  provider?: string;        // 提供商
+}
+
 // Log Entry for execution logs (id 来自后端，用于增量拉取 after_id)
 export interface LogEntry {
   id?: number;
@@ -151,7 +159,8 @@ export interface LogEntry {
   status?: 'running' | 'complete' | 'failed';
   kind?: 'think' | 'tool';
   event_key?: string;
-  input?: any;
+  input?: any;              // 完整 input（按需加载）
+  input_summary?: InputSummary;  // input 摘要
   result?: any;
   updated_at?: string;
 }

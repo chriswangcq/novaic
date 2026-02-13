@@ -27,14 +27,14 @@ echo "  Installing dependencies..."
 echo "  Building novaic-backend (onedir mode)..."
 ./.venv/bin/pyinstaller --clean --noconfirm novaic-backend.spec
 
-# Check build result
-if [ ! -f "dist/novaic-backend/novaic-backend" ]; then
+# Check build result (onefile mode produces single executable)
+if [ ! -f "dist/novaic-backend" ]; then
     echo "ERROR: Build failed - novaic-backend not found"
     exit 1
 fi
 
 BACKEND_SIZE=$(du -sh dist/novaic-backend | cut -f1)
-echo "  Built: dist/novaic-backend/ ($BACKEND_SIZE)"
+echo "  Built: dist/novaic-backend ($BACKEND_SIZE)"
 
 cd "$SCRIPT_DIR"
 
@@ -298,11 +298,12 @@ echo ""
 echo "[3/4] Copying resources to Tauri..."
 mkdir -p "$RESOURCES_DIR"
 
-# Copy unified Backend (onedir)
+# Copy unified Backend (onefile mode - single executable)
 echo "  Copying novaic-backend..."
 rm -rf "$RESOURCES_DIR/novaic-backend"
-cp -r novaic-backend/dist/novaic-backend "$RESOURCES_DIR/"
-echo "  Copied: $RESOURCES_DIR/novaic-backend/"
+cp novaic-backend/dist/novaic-backend "$RESOURCES_DIR/novaic-backend"
+chmod +x "$RESOURCES_DIR/novaic-backend"
+echo "  Copied: $RESOURCES_DIR/novaic-backend"
 
 # Copy vmcontrol binary
 echo "  Copying vmcontrol..."

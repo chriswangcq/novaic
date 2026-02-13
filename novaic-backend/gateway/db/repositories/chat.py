@@ -615,12 +615,18 @@ class ChatRepository:
             
         return data
     
-    def _row_to_execution_log(self, row: Dict[str, Any], truncate_large: bool = True) -> Dict[str, Any]:
+    def _row_to_execution_log(
+        self,
+        row: Dict[str, Any],
+        truncate_large: bool = True,
+        exclude_input: bool = False,
+    ) -> Dict[str, Any]:
         """Convert a database row to an execution log dict.
         
         Args:
             row: Database row
             truncate_large: If True, truncate large data fields (screenshots, etc.)
+            exclude_input: If True, don't return full input, only input_summary for think types
         """
         data = {}
         if row.get("data"):
@@ -643,21 +649,58 @@ class ChatRepository:
             input_data = self._truncate_large_data(input_data)
             result_data = self._truncate_large_data(result_data)
         
+        # Generate input_summary for think types when exclude_input is True
+        # Only exclude input for think types, tool types should always have input
+        input_summary = None
+        kind = row.get("kind", "tool")
+        should_exclude_input = exclude_input and kind == "think"
+        
+        if should_exclude_input and input_data and isinstance(input_data, dict):
+            input_summary = {
+                "message_count": len(input_data.get("messages", [])),
+                "tool_count": len(input_data.get("tools", [])),
+                "model": input_data.get("model"),
+                "provider": input_data.get("provider"),
+            }
+        
         return {
             "id": row["id"],
             "agent_id": row.get("agent_id"),
             "subagent_id": row.get("subagent_id", "main"),
             "type": row["type"],
-            "kind": row.get("kind", "tool"),
+            "kind": kind,
             "status": row.get("status", "complete"),
             "event_key": row.get("event_key"),
             "timestamp": row["timestamp"],
             "data": data,
-            "input": input_data,
+            "input": None if should_exclude_input else input_data,  # Only exclude for think types
+            "input_summary": input_summary,
             "result": result_data,
             "created_at": row.get("created_at"),
             "updated_at": row.get("updated_at"),
         }
+    
+    def get_execution_log_input(self, log_id: int) -> Optional[Dict[str, Any]]:
+        """Get the input data for a specific execution log.
+        
+        Args:
+            log_id: The execution log ID
+            
+        Returns:
+            The input data dict, or None if not found
+        """
+        row = self.db.fetchone(
+            "SELECT data FROM execution_logs WHERE id = ?",
+            (log_id,)
+        )
+        if not row or not row.get("data"):
+            return None
+        
+        try:
+            data = json.loads(row["data"])
+            return data.get("input") if isinstance(data, dict) else None
+        except json.JSONDecodeError:
+            return None
     
     def list_execution_logs(
         self,
@@ -805,6 +848,7 @@ class ChatRepository:
         after_id: Optional[int] = None,
         before_id: Optional[int] = None,
         limit: int = None,
+        exclude_input: bool = False,
     ) -> List[Dict[str, Any]]:
         """
         Get execution logs with optional filters.
@@ -815,6 +859,7 @@ class ChatRepository:
             after_id: Optional ID to fetch logs after (for incremental fetch)
             before_id: Optional ID to fetch logs before (for pagination)
             limit: Maximum number of logs to return
+            exclude_input: If True, don't return full input, only input_summary
         
         Returns:
             List of execution logs with all fields
@@ -850,7 +895,7 @@ class ChatRepository:
         if before_id is not None:
             rows = list(reversed(rows))
         
-        return [self._row_to_execution_log(row) for row in rows]
+        return [self._row_to_execution_log(row, exclude_input=exclude_input) for row in rows]
     
     def get_log_subagents(self, agent_id: str) -> List[str]:
         """
@@ -897,9 +942,16 @@ class ChatRepository:
         agent_id: str,
         limit: int = 20,
         subagent_id: Optional[str] = None,
+        exclude_input: bool = False,
     ) -> List[Dict[str, Any]]:
         """
         Get recent execution logs (newest first), optionally filtered by subagent_id.
+        
+        Args:
+            agent_id: Agent ID
+            limit: Maximum number of logs to return
+            subagent_id: Optional SubAgent ID filter
+            exclude_input: If True, don't return full input, only input_summary
         
         Returns logs in chronological order (oldest to newest).
         """
@@ -916,7 +968,7 @@ class ChatRepository:
         
         rows = self.db.fetchall(query, tuple(params))
         # Reverse to return in chronological order (oldest to newest)
-        return [self._row_to_execution_log(row) for row in reversed(rows)]
+        return [self._row_to_execution_log(row, exclude_input=exclude_input) for row in reversed(rows)]
 
     def get_execution_logs_after(
         self,
@@ -924,9 +976,18 @@ class ChatRepository:
         after_id: int,
         limit: int = 50,
         subagent_id: Optional[str] = None,
+        exclude_input: bool = False,
     ) -> List[Dict[str, Any]]:
-        """Get execution logs with id > after_id (for incremental fetch)."""
-        return self.get_execution_logs(agent_id, subagent_id=subagent_id, after_id=after_id, limit=limit)
+        """Get execution logs with id > after_id (for incremental fetch).
+        
+        Args:
+            agent_id: Agent ID
+            after_id: Return logs with id > after_id
+            limit: Maximum number of logs to return
+            subagent_id: Optional SubAgent ID filter
+            exclude_input: If True, don't return full input, only input_summary
+        """
+        return self.get_execution_logs(agent_id, subagent_id=subagent_id, after_id=after_id, limit=limit, exclude_input=exclude_input)
 
     # ==================== Agent Runtime State ====================
     

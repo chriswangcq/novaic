@@ -1275,6 +1275,7 @@ def get_log_entries(
     after_id: Optional[int] = Query(None, description="Return entries with id > after_id (incremental fetch)"),
     before_id: Optional[int] = Query(None, description="Return entries with id < before_id (pagination for older logs)"),
     limit: int = Query(50, ge=1, le=100, description="Max entries to return"),
+    include_input: bool = Query(False, description="Include full input data (default: false, only returns input_summary)"),
 ):
     """
     分页拉取执行日志。前端用 after_id 增量拉取，before_id 加载更多历史日志。
@@ -1285,10 +1286,12 @@ def get_log_entries(
     - after_id: 返回 id > after_id 的记录 (增量拉取)
     - before_id: 返回 id < before_id 的记录 (向前翻页加载更多)
     - limit: 最大返回条数 (1-100)
+    - include_input: 是否包含完整 input 数据 (默认 false，只返回 input_summary)
     
     返回的每条记录包含：
     - id, agent_id, type, timestamp, data (原有字段)
     - subagent_id, kind, status, event_key, input, result (新增字段)
+    - input_summary: 当 include_input=false 时，返回 input 的摘要信息
     - has_more: 是否还有更多历史日志 (当使用 before_id 时)
     """
     if not agent_id:
@@ -1298,14 +1301,17 @@ def get_log_entries(
     # Fetch limit + 1 to check if there are more entries
     fetch_limit = limit + 1 if before_id is not None else limit
     
+    # Convert include_input to exclude_input for data layer
+    exclude_input = not include_input
+    
     if after_id is not None:
         entries = chat_service.repo.get_execution_logs_after(
-            agent_id, after_id, limit=fetch_limit, subagent_id=subagent_id
+            agent_id, after_id, limit=fetch_limit, subagent_id=subagent_id, exclude_input=exclude_input
         )
         return {"success": True, "entries": entries, "has_more": False}
     elif before_id is not None:
         entries = chat_service.repo.get_execution_logs(
-            agent_id, subagent_id=subagent_id, before_id=before_id, limit=fetch_limit
+            agent_id, subagent_id=subagent_id, before_id=before_id, limit=fetch_limit, exclude_input=exclude_input
         )
         # Check if there are more entries (we fetched limit + 1)
         has_more = len(entries) > limit
@@ -1314,11 +1320,32 @@ def get_log_entries(
         return {"success": True, "entries": entries, "has_more": has_more}
     else:
         entries = chat_service.repo.get_recent_execution_logs(
-            agent_id, limit=limit, subagent_id=subagent_id
+            agent_id, limit=limit, subagent_id=subagent_id, exclude_input=exclude_input
         )
         # For initial load, check if there are more by comparing with count
         # We'll let the frontend determine has_more based on the returned count
         return {"success": True, "entries": entries, "has_more": len(entries) >= limit}
+
+
+@app.get("/api/logs/entry/{log_id}/input")
+def get_log_entry_input(log_id: int):
+    """
+    获取单条执行日志的完整 input 数据（按需加载）。
+    
+    参数：
+    - log_id: 日志 ID (路径参数)
+    
+    返回：
+    - success: bool
+    - input: dict - 完整的 input 数据（think 类型包含 messages、model、tools、provider 等）
+    """
+    chat_service = get_chat_service()
+    input_data = chat_service.repo.get_execution_log_input(log_id)
+    
+    if input_data is None:
+        return {"success": False, "error": "Log entry not found or has no input data", "input": None}
+    
+    return {"success": True, "input": input_data}
 
 
 @app.get("/api/logs/subagents")
@@ -1368,7 +1395,7 @@ def logs_sse(agent_id: str = None):
         try:
             # 1. 先推送最近日志（类似 Chat SSE）
             chat_service = get_chat_service()
-            recent_logs = chat_service.repo.get_recent_execution_logs(agent_id, limit=50)
+            recent_logs = chat_service.repo.get_recent_execution_logs(agent_id, limit=50, exclude_input=True)
             for log in recent_logs:
                 yield f"data: {json_module.dumps({'event': 'log_entry', 'agent_id': agent_id, 'entry': log})}\n\n"
             

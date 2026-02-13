@@ -133,6 +133,9 @@ interface AppStore extends AppState {
   logSubagents: string[];
   setLogSubagentId: (id: string | null) => void;
   fetchLogSubagents: (agentId: string) => Promise<void>;
+  // Log input cache
+  logInputCache: Map<number, any>;
+  fetchLogInput: (logId: number) => Promise<any>;
 }
 
 
@@ -184,6 +187,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
   // Log subagent filtering
   logSubagentId: null as string | null,
   logSubagents: [] as string[],
+  // Log input cache
+  logInputCache: new Map(),
 
   // Initialize app - connect to SSE streams
   initialize: async () => {
@@ -981,6 +986,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
           kind: e.kind,
           event_key: e.event_key,
           input: e.input,
+          input_summary: e.input_summary,
           result: e.result,
           updated_at: e.updated_at,
         }));
@@ -1046,6 +1052,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
             kind: e.kind,
             event_key: e.event_key,
             input: e.input,
+            input_summary: e.input_summary,
             result: e.result,
             updated_at: e.updated_at,
           };
@@ -1111,6 +1118,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
             kind: e.kind,
             event_key: e.event_key,
             input: e.input,
+            input_summary: e.input_summary,
             result: e.result,
             updated_at: e.updated_at,
           }));
@@ -1135,6 +1143,39 @@ export const useAppStore = create<AppStore>((set, get) => ({
       }
     } catch (e) {
       console.error('[Store] Failed to fetch log subagents:', e);
+    }
+  },
+
+  // Fetch full input data for a specific log entry (on-demand loading)
+  fetchLogInput: async (logId: number) => {
+    const { logInputCache } = get();
+    
+    // Check cache first
+    if (logInputCache.has(logId)) {
+      return logInputCache.get(logId);
+    }
+    
+    try {
+      const res = await api.getLogInput(logId);
+      if (res.success && res.input) {
+        // Update cache
+        set((state) => ({
+          logInputCache: new Map(state.logInputCache).set(logId, res.input),
+        }));
+        
+        // Update the corresponding log entry
+        set((state) => ({
+          logs: state.logs.map((log) => 
+            log.id === logId ? { ...log, input: res.input } : log
+          ),
+        }));
+        
+        return res.input;
+      }
+      return null;
+    } catch (e) {
+      console.error('[Store] Failed to fetch log input:', e);
+      return null;
     }
   },
 
@@ -1252,6 +1293,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
           kind: e.kind,
           event_key: e.event_key,
           input: e.input,
+          input_summary: e.input_summary,
           result: e.result,
           updated_at: e.updated_at,
         }));

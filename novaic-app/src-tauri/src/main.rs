@@ -766,24 +766,24 @@ fn kill_zombie_processes() {
 /// Returns (path, is_binary, gateway_dir_for_dev)
 /// 
 /// v2.11: Uses unified novaic-backend binary for all modes (gateway, master, worker)
+/// v2.12: Supports both onefile mode (novaic-backend) and onedir mode (novaic-backend/novaic-backend)
 fn get_backend_info(app: &AppHandle) -> (PathBuf, bool, Option<PathBuf>) {
     // Try to use bundled binary first (production mode)
-    // onedir mode: binary is at novaic-backend/novaic-backend (relative to resource_dir)
     if let Ok(resource_dir) = app.path().resource_dir() {
-        // Check unified backend structure (novaic-backend/novaic-backend)
-        let backend_path = resource_dir.join("novaic-backend/novaic-backend");
-        println!("[Backend] Checking unified binary at: {:?}", backend_path);
-        if backend_path.exists() {
-            println!("[Backend] Found unified binary, using production mode");
-            return (backend_path, true, None);
+        // Check onefile mode first: binary is directly at novaic-backend (relative to resource_dir)
+        let onefile_path = resource_dir.join("novaic-backend");
+        println!("[Backend] Checking onefile binary at: {:?}", onefile_path);
+        if onefile_path.exists() && onefile_path.is_file() {
+            println!("[Backend] Found onefile binary, using production mode");
+            return (onefile_path, true, None);
         }
         
-        // Legacy fallback: check old structure (novaic-backend/novaic-backend)
-        let legacy_path = resource_dir.join("novaic-backend/novaic-backend");
-        println!("[Backend] Checking legacy binary at: {:?}", legacy_path);
-        if legacy_path.exists() {
-            println!("[Backend] Found legacy binary, using production mode");
-            return (legacy_path, true, None);
+        // Check onedir mode: binary is at novaic-backend/novaic-backend (relative to resource_dir)
+        let onedir_path = resource_dir.join("novaic-backend/novaic-backend");
+        println!("[Backend] Checking onedir binary at: {:?}", onedir_path);
+        if onedir_path.exists() {
+            println!("[Backend] Found onedir binary, using production mode");
+            return (onedir_path, true, None);
         }
         
         println!("[Backend] Bundled binary not found");

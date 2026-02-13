@@ -161,10 +161,10 @@ def get_llm_config_full():
 def _build_llm_config_for_agent(db, agent_id: str) -> Dict[str, Any]:
     """Build LLM config for a specific agent (internal helper)."""
     
-    # 1. Check agent exists (agents table may not have model_id column)
+    # 1. Check agent exists and get its model_id
     with db.get_connection("agent", resource_id=agent_id, timeout=ServiceConfig.DB_TRANSACTION_TIMEOUT) as conn:
         cursor = conn.execute(
-            "SELECT id FROM agents WHERE id = ?",
+            "SELECT id, model_id FROM agents WHERE id = ?",
             (agent_id,)
         )
         row = cursor.fetchone()
@@ -176,11 +176,16 @@ def _build_llm_config_for_agent(db, agent_id: str) -> Dict[str, Any]:
             "agent_id": agent_id,
         }
     
-    # 2. Use default model from config (agents table doesn't have model_id column yet)
-    with db.get_connection("global", timeout=ServiceConfig.DB_TRANSACTION_TIMEOUT) as conn:
-        cursor = conn.execute("SELECT value FROM config WHERE key = 'default_model'")
-        default_row = cursor.fetchone()
-    model_id = default_row[0].strip('"') if default_row else "gpt-4o"
+    agent_model_id = row[1] if row[1] else None
+    
+    # 2. Use agent's model_id if set, otherwise use default model from config
+    if agent_model_id:
+        model_id = agent_model_id
+    else:
+        with db.get_connection("global", timeout=ServiceConfig.DB_TRANSACTION_TIMEOUT) as conn:
+            cursor = conn.execute("SELECT value FROM config WHERE key = 'default_model'")
+            default_row = cursor.fetchone()
+        model_id = default_row[0].strip('"') if default_row else "gpt-4o"
     
     # 3. 从DB查询model和api_key配置
     with db.get_connection("global", timeout=ServiceConfig.DB_TRANSACTION_TIMEOUT) as conn:

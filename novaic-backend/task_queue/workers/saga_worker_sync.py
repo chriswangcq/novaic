@@ -548,15 +548,20 @@ class SagaWorkerSync:
             return {"success": True, "results": []}
         
         # 1. 发布所有任务
-        # 使用业务 ID（runtime_id）作为幂等键
+        # 幂等键格式：{business_key}-round{round_num}-{step.name}-{unique_id}
+        # unique_id 优先使用 payload 中的 tool_call_id（确保每个工具调用唯一），否则用索引
         business_key = context.get("runtime_id") or context.get("message_id") or saga_id
+        round_num = context.get("round_num", 0)
         task_ids = []
         for i, cfg in enumerate(tasks_config):
             try:
+                # 优先使用 tool_call_id 作为唯一标识，确保不同工具调用不会冲突
+                payload = cfg.get("payload", {})
+                unique_id = payload.get("tool_call_id") or payload.get("idempotency_key") or str(i)
                 task_id = self.task_client.publish(
                     topic=cfg["topic"],
-                    payload=cfg.get("payload", {}),
-                    idempotency_key=f"{business_key}-{step.name}-{i}",
+                    payload=payload,
+                    idempotency_key=f"{business_key}-round{round_num}-{step.name}-{unique_id}",
                 )
                 task_ids.append(task_id)
                 self.metrics.tasks_published += 1
