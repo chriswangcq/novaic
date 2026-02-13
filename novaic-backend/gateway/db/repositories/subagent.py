@@ -661,6 +661,26 @@ class SubAgentRepository:
             """, (now, subagent_id, agent_id))
             conn.commit()
 
+    def update_result(self, subagent_id: str, agent_id: str, result: str):
+        """Update SubAgent result without changing status.
+        
+        Used by subagent_report tool for Sub SubAgents to report their execution result.
+        This allows the SubAgent to report results before the runtime completes.
+        
+        Args:
+            subagent_id: SubAgent ID (should start with 'sub-')
+            agent_id: Agent ID
+            result: The execution result to store
+        """
+        now = utc_now_iso()
+        with self.db.get_connection("agent", resource_id=agent_id) as conn:
+            conn.execute("""
+                UPDATE subagents 
+                SET result = ?, updated_at = ?
+                WHERE subagent_id = ? AND agent_id = ?
+            """, (result, now, subagent_id, agent_id))
+            conn.commit()
+
     def get_due_for_wake(self) -> List['SubAgent']:
         """Find sleeping SubAgents whose wake_at has passed."""
         now = utc_now_iso()

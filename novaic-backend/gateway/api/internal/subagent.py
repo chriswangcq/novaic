@@ -124,16 +124,30 @@ def set_subagent_summarizing(agent_id: str, subagent_id: str):
 
 @router.post("/subagents/{agent_id}/{subagent_id}/completed")
 def set_subagent_completed(agent_id: str, subagent_id: str, data: Dict[str, Any] = None):
-    """Set SubAgent to completed status with result."""
+    """Set SubAgent to completed status with result.
+    
+    If the SubAgent already has a result (e.g., from subagent_report tool),
+    the existing result will be preserved and the new result will be ignored.
+    This allows SubAgents to proactively report their results before completion.
+    """
     from gateway.db.repositories import SubAgentRepository
     
     db = get_db()
     repo = SubAgentRepository(db)
     
+    # Check if SubAgent already has a result (from subagent_report tool)
+    existing_subagent = repo.get_by_id(subagent_id, agent_id)
+    existing_result = existing_subagent.result if existing_subagent else None
+    
+    # If already has result, preserve it; otherwise use the new result
     result = data.get("result") if data else None
+    if existing_result:
+        # Keep the existing result (from subagent_report)
+        result = existing_result
+    
     repo.set_completed(subagent_id, agent_id, result=result)
     
-    return {"status": "ok"}
+    return {"status": "ok", "result_preserved": bool(existing_result)}
 
 
 @router.post("/subagents/{agent_id}/{subagent_id}/failed")

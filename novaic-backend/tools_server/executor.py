@@ -164,6 +164,7 @@ BUILTIN_TOOL_NAMES = {
     "subagent_spawn",
     "subagent_query",
     "subagent_cancel",
+    "subagent_report",
     
     # Web 工具
     "web_search",
@@ -952,6 +953,24 @@ class ToolExecutor:
                     return {"success": False, "error": "target_subagent_id is required"}
                 response = await client.post(
                     f"/internal/rt/{self.runtime_id}/subagent/{target_subagent_id}/cancel"
+                )
+                return self._handle_response(response)
+            
+            elif tool_name == "subagent_report":
+                # 校验是 Sub SubAgent
+                if not self.subagent_id or not self.subagent_id.startswith("sub-"):
+                    return {
+                        "success": False,
+                        "error": "subagent_report is only available for Sub SubAgents"
+                    }
+                
+                result = arguments.get("result")
+                if not result:
+                    return {"success": False, "error": "result is required"}
+                
+                response = await client.post(
+                    f"/internal/rt/{self.runtime_id}/subagent/report",
+                    json={"result": result}
                 )
                 return self._handle_response(response)
             

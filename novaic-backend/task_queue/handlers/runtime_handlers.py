@@ -107,6 +107,7 @@ def handle_runtime_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
             client,
             task=user_message,  # Pass user message for auto-matching
             auto_match_skills=True,
+            subagent_id=subagent_id,  # Pass subagent_id for Sub SubAgent specific prompts
         )
         if sys_prompt:
             initial_context.insert(0, {

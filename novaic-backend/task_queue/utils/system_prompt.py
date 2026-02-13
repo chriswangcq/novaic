@@ -61,6 +61,7 @@ def build_system_prompt(
     client: GatewayInternalClient,
     task: Optional[str] = None,
     auto_match_skills: bool = True,
+    subagent_id: Optional[str] = None,
 ) -> Optional[str]:
     """
     构建基础系统提示词（统一的，不区分场景）
@@ -70,6 +71,7 @@ def build_system_prompt(
         client: GatewayInternalClient 实例
         task: 用户任务描述（用于自动匹配技能）
         auto_match_skills: 是否自动匹配技能（基于任务关键词）
+        subagent_id: SubAgent ID（用于检测是否为 Sub SubAgent）
         
     Returns:
         System prompt 字符串，或 None（如果构建失败）
@@ -313,6 +315,40 @@ Q3 是「重要但不紧急」，最容易被遗忘：
 - 尊重用户时间，回复简洁有价值
 - 任务不是负担，是你关心的事情的记录"""
     
+    # Sub SubAgent 特定指引
+    sub_subagent_guide = ""
+    if subagent_id and subagent_id.startswith("sub-"):
+        sub_subagent_guide = """
+
+## 🎯 子任务执行要求
+
+你是一个子 Agent，正在执行父 Agent 分配的任务。
+
+**重要**：在完成任务前，你**必须**调用 `subagent_report` 工具来汇报你的执行结果。
+这个结果会被父 Agent 读取，用于了解你的工作成果。
+
+### 汇报内容应包括：
+- 任务执行的关键发现
+- 最终结论或答案
+- 如有必要，说明遇到的问题或限制
+
+### 工作流程：
+1. 理解任务要求
+2. 执行任务（搜索、分析、操作等）
+3. **调用 `subagent_report` 汇报结果**
+4. 调用 `runtime_rest` 完成任务
+
+### 示例：
+```
+# 完成任务后，先汇报结果
+subagent_report(result="经过搜索和分析，发现：1. xxx 2. yyy 3. zzz。结论是：...")
+
+# 然后进入休息状态
+runtime_rest(reason="任务完成")
+```
+
+⚠️ **不要忘记调用 `subagent_report`**！否则父 Agent 将无法获取你的工作成果。"""
+    
     return f"""[系统] 你是 {agent_name}，一个运行在用户桌面虚拟机中的 AI Agent。
 你有持久记忆和学习能力，能够跨对话记住用户的偏好和习惯。
 
@@ -339,7 +375,7 @@ Q3 是「重要但不紧急」，最容易被遗忘：
 {profile_str}
 {skills_section}{custom_section}{self_drive_section}
 
-{behavior_guide}"""
+{behavior_guide}{sub_subagent_guide}"""
 
 
 def build_wake_message(

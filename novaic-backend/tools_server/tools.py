@@ -6,8 +6,8 @@ Tools Server - 工具定义
 工具分类：
 - memory: 10 个工具 (memory_save, memory_recall, memory_delete, memory_list_namespaces, 
                      task_log, task_history, goal_set, goal_progress, goal_complete, session_state)
-- runtime: 7 个工具 (runtime_list, runtime_history, runtime_send, runtime_rest,
-                     subagent_spawn, subagent_query, subagent_cancel)
+- runtime: 8 个工具 (runtime_list, runtime_history, runtime_send, runtime_rest,
+                     subagent_spawn, subagent_query, subagent_cancel, subagent_report)
 - chat: 6 个工具 (chat_reply, chat_ask, chat_notify, chat_show_image, chat_history, chat_get_message)
 - web: 2 个工具 (web_search, web_fetch)
 - qemu: 5 个工具 (qemu_ssh_exec, qemu_status, qemu_start_vm, qemu_restart_vm, qemu_shutdown_vm)
@@ -716,6 +716,20 @@ RUNTIME_TOOLS: List[Dict[str, Any]] = [
                 }
             },
             "required": ["target_subagent_id"]
+        }
+    },
+    {
+        "name": "subagent_report",
+        "description": "Report the execution result of current SubAgent task. Use this to report your findings and conclusions to the parent agent before completing. Only available for Sub SubAgents.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "result": {
+                    "type": "string",
+                    "description": "The execution result or findings to report to parent agent. Should include key findings, conclusions, and any issues encountered."
+                }
+            },
+            "required": ["result"]
         }
     },
 ]

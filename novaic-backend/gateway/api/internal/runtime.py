@@ -1253,6 +1253,55 @@ def rt_subagent_cancel(runtime_id: str, target_subagent_id: str):
     return {"success": True}
 
 
+@router.post("/rt/{runtime_id}/subagent/report")
+def rt_subagent_report(runtime_id: str, data: Dict[str, Any]):
+    """Report result for current SubAgent.
+    
+    Only available for Sub SubAgents (subagent_id starts with 'sub-').
+    This allows the SubAgent to report its execution result before the runtime completes.
+    The result will be stored in the subagents.result field and can be queried by the parent.
+    
+    Request body:
+        result: str - The execution result or findings to report to parent agent
+        
+    Returns:
+        success: bool
+        subagent_id: str
+        message: str
+    """
+    from gateway.db.repositories import SubAgentRepository
+    
+    _, agent_id, subagent_id = resolve_runtime_ids(runtime_id)
+    
+    # Validate this is a Sub SubAgent
+    if not subagent_id or not subagent_id.startswith("sub-"):
+        return {
+            "success": False,
+            "error": "subagent_report is only available for Sub SubAgents (subagent_id must start with 'sub-')"
+        }
+    
+    result = data.get("result")
+    if not result:
+        return {"success": False, "error": "result is required"}
+    
+    db = get_db()
+    subagent_repo = SubAgentRepository(db)
+    
+    # Check if SubAgent exists
+    subagent = subagent_repo.get_by_id(subagent_id, agent_id)
+    if not subagent:
+        return {"success": False, "error": "SubAgent not found"}
+    
+    # Update the result
+    subagent_repo.update_result(subagent_id, agent_id, result)
+    
+    return {
+        "success": True,
+        "subagent_id": subagent_id,
+        "message": "Result reported successfully. Parent agent can now query your findings."
+    }
+
+
 # ---------- QEMU APIs (via runtime_id) ----------
 
 @router.post("/rt/{runtime_id}/qemu/ssh-exec")
