@@ -1,15 +1,18 @@
 """
-SubAgent Business - SubAgent 状态管理
+SubAgent Business - SubAgent 状态管理 (v3)
 
 业务逻辑：
-- 唤醒 SubAgent (sleeping → awaking)
-- 设置 awake (awaking → awake)
+- 设置 awake (sleeping → awake)
 - 设置 sleeping (any → sleeping)
 
-状态转换图：
-    sleeping ──(wake)──> awaking ──(set_awake)──> awake
-        ^                                            │
-        └────────────(set_sleeping)──────────────────┘
+状态转换图 (v3 简化)：
+    sleeping ──(set_awake)──> awake
+        ^                        │
+        └────(set_sleeping)──────┘
+
+v3 变更：
+- 删除 awaking 中间状态
+- wake 方法已废弃，用 get_or_create_runtime 原子操作替代
 """
 
 from dataclasses import dataclass
@@ -101,14 +104,13 @@ class SubAgentBusiness:
         runtime_id: str,
     ) -> SubAgentStateResult:
         """
-        设置 SubAgent 为 awake (awaking → awake)
+        设置 SubAgent 为 awake (sleeping → awake)
         
         用于 RuntimeStart Saga 完成后，确认 Runtime 启动成功。
         
         幂等性：
-        - awaking → awake: 成功
+        - sleeping → awake: 成功
         - awake: 已经是目标状态（幂等）
-        - 其他状态: 失败
         
         Args:
             agent_id: Agent ID
@@ -118,7 +120,7 @@ class SubAgentBusiness:
         Returns:
             SubAgentStateResult
         """
-        # CAS: awaking → awake
+        # 直接设置为 awake（v3: 删除 awaking 中间状态）
         response = self.client.set_subagent_awake(agent_id, subagent_id)
         if response.get("success"):
             status = response.get("status")

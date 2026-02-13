@@ -3,14 +3,15 @@ Runtime Business - Runtime 生命周期管理
 
 业务逻辑：
 - 创建 Runtime
-- 更新 Phase (CAS)
 - 设置 Status (CAS)
 - 增加 Round
+
+DEPRECATED:
+- 更新 Phase (CAS) - 已删除，Saga 步骤替代 phase 状态
 """
 
 from dataclasses import dataclass
 from common.enums import RuntimeStatus
-from ..constants import PHASE_NEED_THINK
 from typing import Dict, Any, List, Optional
 
 from ..client import GatewayInternalClient
@@ -44,7 +45,6 @@ class RuntimeBusiness:
     
     所有方法都是幂等的：
     - create: 通过 idempotency_key 检查
-    - update_phase: 通过 CAS 检查
     - set_status: 通过 CAS 检查
     
     Example:
@@ -104,57 +104,10 @@ class RuntimeBusiness:
             runtime_id=runtime.get("runtime_id", ""),
             created=True,
             status=runtime.get("status", RuntimeStatus.ACTIVE.value),
-            phase=runtime.get("phase", PHASE_NEED_THINK),
+            phase=runtime.get("phase", ""),  # phase 已废弃，保留字段兼容
         )
     
-    def update_phase(
-        self,
-        runtime_id: str,
-        expected_phase: str,
-        new_phase: str,
-        *,
-        round_id: Optional[str] = None,
-    ) -> RuntimeUpdateResult:
-        """
-        更新 Runtime phase (CAS)
-        
-        幂等性：如果已经是目标状态，返回成功
-        
-        Args:
-            runtime_id: Runtime ID
-            expected_phase: 期望的当前 phase
-            new_phase: 目标 phase
-            round_id: Round ID（可选）
-            
-        Returns:
-            RuntimeUpdateResult
-        """
-        claim = self.client.claim_phase(runtime_id, expected_phase, new_phase, round_id)
-        if claim.get("success"):
-            return RuntimeUpdateResult(
-                success=True,
-                runtime_id=runtime_id,
-                previous_value=expected_phase,
-                new_value=new_phase,
-            )
-
-        # 检查当前状态（幂等）
-        runtime = self.client.get_runtime(runtime_id)
-        current_phase = runtime.get("phase") if runtime else "not_found"
-
-        result = RuntimeUpdateResult(
-            success=current_phase == new_phase,
-            runtime_id=runtime_id,
-            current_value=current_phase,
-            new_value=new_phase,
-            message="Already in target phase" if current_phase == new_phase else "Phase mismatch",
-        )
-        if not result.success:
-            print(
-                f"[Runtime] Phase mismatch: runtime_id={runtime_id}, "
-                f"expected={expected_phase}, current={current_phase}, target={new_phase}"
-            )
-        return result
+    # DEPRECATED: update_phase 已删除，Saga 步骤替代 phase 状态
     
     def set_status(
         self,

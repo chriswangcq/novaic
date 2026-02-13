@@ -1,12 +1,15 @@
 """
-SubAgent Handlers - SubAgent 状态管理
+SubAgent Handlers - SubAgent 状态管理 (v3)
 
 Topics:
-- subagent.wake: 唤醒 SubAgent (sleeping → awaking)
-- subagent.set_awake: 设置 awake 状态 (awaking → awake)
+- subagent.wake: 唤醒 SubAgent (DEPRECATED - 用 get_or_create_runtime 替代)
+- subagent.set_awake: 设置 awake 状态 (sleeping → awake)
 - subagent.set_sleeping: 设置 sleeping 状态
 
-使用 task_queue.business.SubAgentBusiness 业务逻辑层。
+v3 变更：
+- 删除 awaking 中间状态
+- subagent.wake 已废弃，用 get_or_create_runtime 原子操作替代
+- set_awake 直接从 sleeping 转换为 awake
 """
 
 from typing import Dict, Any
@@ -57,12 +60,11 @@ def handle_subagent_set_awake(payload: Dict[str, Any], ctx: dict) -> Dict[str, A
     """
     设置 SubAgent 为 awake 状态（RuntimeStart Saga 完成后调用）
     
-    状态转换：awaking → awake
+    状态转换：sleeping → awake（v3: 删除 awaking 中间状态）
     
     幂等性：
-    - awaking → awake: 正常转换
+    - sleeping → awake: 正常转换
     - awake: 已经是目标状态，成功
-    - 其他状态: 失败
     
     Payload:
         agent_id: str

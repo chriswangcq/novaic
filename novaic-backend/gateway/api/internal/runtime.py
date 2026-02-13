@@ -162,6 +162,42 @@ def create_runtime(data: Dict[str, Any]):
     return _runtime_to_dict(runtime)
 
 
+@router.post("/runtimes/get-or-create")
+def get_or_create_runtime(data: Dict[str, Any]):
+    """原子操作：获取或创建 active runtime。
+    
+    如果已有 active runtime，返回它；否则创建新的。
+    用于替代 awaking 状态，保证同一时间只有一个 active runtime。
+    
+    Request body:
+        agent_id: str - Agent ID
+        subagent_id: str - SubAgent ID (default: "main")
+        initial_context: List[Dict] - 新创建时的初始 context (optional)
+        
+    Returns:
+        runtime: Runtime dict
+        just_created: bool - 是否新创建的
+    """
+    from gateway.db.repositories import RuntimeRepository
+    
+    agent_id = data.get("agent_id")
+    subagent_id = data.get("subagent_id", "main")
+    initial_context = data.get("initial_context", [])
+    
+    if not agent_id:
+        raise HTTPException(status_code=400, detail="agent_id required")
+    
+    db = get_db()
+    repo = RuntimeRepository(db)
+    runtime, just_created = repo.get_or_create_active_runtime(
+        subagent_id, agent_id, initial_context
+    )
+    
+    result = _runtime_to_dict(runtime)
+    result["just_created"] = just_created
+    return result
+
+
 @router.post("/runtimes/main")
 def create_main_runtime(data: Dict[str, Any]):
     """Create a new Main Runtime (deprecated, use POST /runtimes)."""
@@ -336,38 +372,7 @@ def advance_runtime_round(runtime_id: str, data: Dict[str, Any] = None):
     return {"round_id": new_round_id, "success": True}
 
 
-@router.post("/runtimes/{runtime_id}/claim-phase")
-def try_claim_phase(runtime_id: str, data: Dict[str, Any]):
-    """Atomically claim a phase transition (CAS operation).
-    
-    Used to prevent race conditions where multiple Masters try to
-    process the same runtime's results simultaneously.
-    
-    Args:
-        data: {
-            "expected_phase": current phase that must match
-            "new_phase": phase to transition to if CAS succeeds
-        }
-    
-    Returns:
-        {"success": True} if claimed, {"success": False} if CAS failed
-    """
-    expected_phase = data.get("expected_phase")
-    new_phase = data.get("new_phase")
-    round_id = data.get("round_id")
-    
-    if not expected_phase or not new_phase:
-        raise HTTPException(status_code=400, detail="expected_phase and new_phase required")
-    
-    from gateway.db.repositories import RuntimeRepository
-    
-    db = get_db()
-    runtime_repo = RuntimeRepository(db)
-    
-    # Atomic CAS: only update if phase matches expected (v14: use runtime_id)
-    success = runtime_repo.cas_update_phase(runtime_id, expected_phase, new_phase, round_id)
-    
-    return {"success": success}
+# DEPRECATED: /runtimes/{runtime_id}/claim-phase 已删除，Saga 步骤替代 phase 状态
 
 
 @router.post("/runtimes/{runtime_id}/context/append")

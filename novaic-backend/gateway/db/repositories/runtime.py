@@ -243,6 +243,92 @@ class RuntimeRepository:
             row = cursor.fetchone()
             return row is not None
     
+    def get_or_create_active_runtime(
+        self,
+        subagent_id: str,
+        agent_id: str,
+        initial_context: Optional[List[Dict[str, Any]]] = None
+    ) -> tuple[AgentRuntime, bool]:
+        """原子操作：获取或创建 active runtime。
+        
+        如果已有 active runtime，返回它；否则创建新的。
+        用于替代 awaking 状态，保证同一时间只有一个 active runtime。
+        
+        Args:
+            subagent_id: SubAgent ID
+            agent_id: Agent ID
+            initial_context: 新创建时的初始 context
+            
+        Returns:
+            (runtime, just_created): runtime 对象和是否新创建的标志
+        """
+        # 使用全局锁保证原子性
+        with self.db.get_connection("global") as conn:
+            # 1. 检查是否已有 active runtime
+            cursor = conn.execute(f"""
+                SELECT {self._COLUMNS} FROM agent_runtimes 
+                WHERE subagent_id = ? AND agent_id = ? AND status IN (?, ?)
+                ORDER BY created_at DESC
+                LIMIT 1
+            """, (subagent_id, agent_id, RuntimeStatus.ACTIVE.value, RuntimeStatus.RESTING.value))
+            row = cursor.fetchone()
+            
+            if row:
+                # 已有 active runtime，直接返回
+                return self._row_to_runtime(row), False
+            
+            # 2. 创建新的 runtime
+            runtime_id = f"rt-{uuid.uuid4().hex[:12]}"
+            now = utc_now_iso()
+            
+            runtime = AgentRuntime(
+                runtime_id=runtime_id,
+                subagent_id=subagent_id,
+                agent_id=agent_id,
+                current_round_id="round-1",
+                current_round_num=1,
+                phase='need_think',  # 保留字段兼容，但不再用于流程控制
+                context=initial_context or [],
+                created_at=now,
+                updated_at=now,
+            )
+            
+            conn.execute("""
+                INSERT INTO agent_runtimes (
+                    runtime_id, subagent_id, agent_id, mcp_url,
+                    current_round_id, current_round_num, phase,
+                    context, pending_actions, status, error,
+                    summary, is_merged, summarized, need_rest,
+                    simple_summary, hot_summary, cold_summary,
+                    tool_ports, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                runtime.runtime_id,
+                runtime.subagent_id,
+                runtime.agent_id,
+                runtime.mcp_url,
+                runtime.current_round_id,
+                runtime.current_round_num,
+                runtime.phase,
+                json.dumps(runtime.context),
+                json.dumps(runtime.pending_actions),
+                runtime.status,
+                runtime.error,
+                runtime.summary,
+                1 if runtime.is_merged else 0,
+                runtime.summarized,
+                runtime.need_rest,
+                runtime.simple_summary,
+                runtime.hot_summary,
+                runtime.cold_summary,
+                json.dumps(runtime.tool_ports) if runtime.tool_ports else None,
+                runtime.created_at,
+                runtime.updated_at,
+            ))
+            conn.commit()
+            
+            return runtime, True
+    
     def get_latest_runtimes(
         self, 
         subagent_id: str, 

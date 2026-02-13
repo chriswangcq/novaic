@@ -408,17 +408,23 @@ class GatewayInternalClient:
         }
         return self._request("POST", "/internal/runtimes", payload)
 
+    def get_or_create_runtime(self, agent_id: str, subagent_id: str, initial_context: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+        """原子操作：获取或创建 active runtime。
+        
+        Returns:
+            dict with runtime fields + just_created: bool
+        """
+        payload = {
+            "agent_id": agent_id,
+            "subagent_id": subagent_id,
+            "initial_context": initial_context or [],
+        }
+        return self._request("POST", "/internal/runtimes/get-or-create", payload)
+
     def update_runtime(self, runtime_id: str, data: Dict[str, Any]) -> dict:
         return self._request("PATCH", f"/internal/runtimes/{runtime_id}", data)
 
-    def claim_phase(self, runtime_id: str, expected_phase: str, new_phase: str, round_id: Optional[str] = None) -> dict:
-        payload: Dict[str, Any] = {
-            "expected_phase": expected_phase,
-            "new_phase": new_phase,
-        }
-        if round_id:
-            payload["round_id"] = round_id
-        return self._request("POST", f"/internal/runtimes/{runtime_id}/claim-phase", payload)
+    # DEPRECATED: claim_phase 已删除，Saga 步骤替代 phase 状态
 
     def advance_round(self, runtime_id: str, expected_round_num: Optional[int] = None) -> dict:
         payload = {"expected_round_num": expected_round_num} if expected_round_num is not None else {}

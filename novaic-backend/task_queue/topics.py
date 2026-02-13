@@ -19,7 +19,7 @@ class TaskTopics:
     
     # Runtime Tasks - Runtime 生命周期管理
     RUNTIME_CREATE = "runtime.create"
-    RUNTIME_UPDATE_PHASE = "runtime.update_phase"
+    # RUNTIME_UPDATE_PHASE = "runtime.update_phase"  # DEPRECATED: Saga 步骤替代 phase 状态
     RUNTIME_SET_STATUS = "runtime.set_status"
     RUNTIME_INCREMENT_ROUND = "runtime.increment_round"
     RUNTIME_SET_SUMMARIZED = "runtime.set_summarized"

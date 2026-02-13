@@ -333,10 +333,13 @@ class SagaWorkerSync:
         payload = self._build_payload(step, context, step_results)
         
         # 1. 发布任务
+        # 使用业务 ID（runtime_id）作为幂等键，而不是 saga_id
+        # 这样 Saga 重试时，已完成的 Task 会直接返回结果
+        business_key = context.get("runtime_id") or context.get("message_id") or saga_id
         task_id = self.task_client.publish(
             topic=step.topic,
             payload=payload,
-            idempotency_key=f"{saga_id}-{step.name}",
+            idempotency_key=f"{business_key}-{step.name}",
         )
         self.metrics.tasks_published += 1
         
@@ -404,13 +407,15 @@ class SagaWorkerSync:
             return []
         
         # 1. 发布所有任务
+        # 使用业务 ID（runtime_id）作为幂等键
+        business_key = context.get("runtime_id") or context.get("message_id") or saga_id
         task_ids = []
         for i, cfg in enumerate(tasks_config):
             try:
                 task_id = self.task_client.publish(
                     topic=cfg["topic"],
                     payload=cfg.get("payload", {}),
-                    idempotency_key=f"{saga_id}-{step.name}-{i}",
+                    idempotency_key=f"{business_key}-{step.name}-{i}",
                 )
                 task_ids.append(task_id)
                 self.metrics.tasks_published += 1

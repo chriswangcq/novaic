@@ -1,30 +1,21 @@
 """
-ReactActions Saga - ReAct Actions 阶段 (v2)
+ReactActions Saga - ReAct Actions 阶段 (v3)
 
 流程：
-1. 设置 phase 为 waiting_actions
-2. 并行执行所有 tool_calls（done/reset 会设置 need_rest=1）
-3. 并行保存所有 tool results 到 context
-4. 检查是否有新消息 + need_rest 状态
-5. 决策：
+1. 并行执行所有 tool_calls（done/reset 会设置 need_rest=1）
+2. 并行保存所有 tool results 到 context
+3. 检查是否有新消息 + need_rest 状态
+4. 决策：
    - 无新消息 且 need_rest=1 → RuntimeComplete
    - 其他情况 → ReactThink（继续循环）
+
+v3 变更：
+- 删除 set_phase_waiting_actions 步骤（Saga 步骤即进度，不需要额外 phase 状态）
 """
 
 from ..saga import SagaDefinition
-from ..constants import PHASE_NEED_THINK, PHASE_WAITING_ACTIONS
 from . import register_saga_definition
 from ..topics import TaskTopics, SagaTopics
-
-
-def _build_update_phase_payload(ctx):
-    """构建 runtime.update_phase payload"""
-    return {
-        "runtime_id": ctx["runtime_id"],
-        "expected_phase": PHASE_NEED_THINK,
-        "new_phase": PHASE_WAITING_ACTIONS,
-        "round_id": f"round-{ctx.get('round_num', 1)}",
-    }
 
 
 def _build_tool_execute_tasks(ctx):
@@ -160,42 +151,35 @@ def _build_trigger_complete_payload(ctx, decision):
     }
 
 
-# ReactActions Saga 定义 (v2)
+# ReactActions Saga 定义 (v3)
 REACT_ACTIONS_SAGA = SagaDefinition("react_actions")
 
-# Step 1: 设置 phase
-REACT_ACTIONS_SAGA.add_task_step(
-    name="set_phase_waiting_actions",
-    topic=TaskTopics.RUNTIME_UPDATE_PHASE,
-    build_payload=_build_update_phase_payload,
-)
-
-# Step 2: 并行执行 tool_calls
+# Step 1: 并行执行 tool_calls
 REACT_ACTIONS_SAGA.add_parallel_step(
     name="execute_tools",
     build_tasks=_build_tool_execute_tasks,
 )
 
-# Step 3: 并行保存结果
+# Step 2: 并行保存结果
 REACT_ACTIONS_SAGA.add_parallel_step(
     name="save_results",
     build_tasks=_build_save_results_tasks,
 )
 
-# Step 4: 检查是否继续（查询新消息 + runtime status）
+# Step 3: 检查是否继续（查询新消息 + runtime status）
 REACT_ACTIONS_SAGA.add_task_step(
     name="check_continue",
     topic=TaskTopics.RUNTIME_CHECK_NEW_MESSAGES,
     build_payload=_build_check_continue_payload,
 )
 
-# Step 5: 决策
+# Step 4: 决策
 REACT_ACTIONS_SAGA.add_decision_step(
     name="decide_continue",
     decide=_decide_continue,
 )
 
-# Step 6a: 继续下一轮 Think
+# Step 5a: 继续下一轮 Think
 REACT_ACTIONS_SAGA.add_task_step(
     name="trigger_next_think",
     topic=SagaTopics.SAGA_TRIGGER,
@@ -203,7 +187,7 @@ REACT_ACTIONS_SAGA.add_task_step(
     condition=lambda d: not d.get("should_complete", False),
 )
 
-# Step 6b: 结束 Runtime
+# Step 5b: 结束 Runtime
 REACT_ACTIONS_SAGA.add_task_step(
     name="trigger_complete",
     topic=SagaTopics.SAGA_TRIGGER,

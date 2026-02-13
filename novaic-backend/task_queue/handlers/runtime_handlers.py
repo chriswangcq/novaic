@@ -3,12 +3,14 @@ Runtime Handlers - Runtime 生命周期管理
 
 Topics:
 - runtime.create: 创建 Runtime 记录（包含历史 Context 构建）
-- runtime.update_phase: 更新 phase (CAS)
 - runtime.set_status: 设置 status (CAS)
 - runtime.set_summarized: 设置 summarized 标志
 - runtime.set_need_rest: 设置 need_rest 标志
 - runtime.increment_round: 增加 round 计数
 - runtime.check_new_messages: 检查是否有新消息 + need_rest
+
+DEPRECATED:
+- runtime.update_phase: 已删除，Saga 步骤替代 phase 状态
 
 使用 task_queue.business.RuntimeBusiness 业务逻辑层。
 """
@@ -130,44 +132,7 @@ def handle_runtime_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     }
 
 
-@register_handler(TaskTopics.RUNTIME_UPDATE_PHASE)
-def handle_runtime_update_phase(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
-    """
-    更新 Runtime phase
-    
-    幂等性：CAS - 检查 expected_phase
-    
-    Payload:
-        runtime_id: str
-        expected_phase: str
-        new_phase: str
-        round_id: str (可选)
-    """
-    biz = RuntimeBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
-    
-    result = biz.update_phase(
-        runtime_id=payload["runtime_id"],
-        expected_phase=payload["expected_phase"],
-        new_phase=payload["new_phase"],
-        round_id=payload.get("round_id"),
-    )
-    
-    response = {
-        "success": result.success,
-        "runtime_id": result.runtime_id,
-    }
-    
-    if result.previous_value:
-        response["previous_phase"] = result.previous_value
-    if result.new_value:
-        response["new_phase"] = result.new_value
-    if result.current_value:
-        response["current_phase"] = result.current_value
-        response["expected_phase"] = payload["expected_phase"]
-    if result.message:
-        response["message"] = result.message
-    
-    return response
+# DEPRECATED: handle_runtime_update_phase 已删除，Saga 步骤替代 phase 状态
 
 
 @register_handler(TaskTopics.RUNTIME_SET_STATUS)

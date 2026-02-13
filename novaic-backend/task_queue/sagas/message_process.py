@@ -1,10 +1,15 @@
 """
-MessageProcess Saga - 消息处理入口 (v2)
+MessageProcess Saga - 消息处理入口 (v3)
 
 流程：
 1. claim 消息 (sending → sent)
-2. 判断 SubAgent 状态，决定路由
-3. 根据路由触发 RuntimeStart 或跳过
+2. 原子获取或创建 Runtime（替代 awaking 状态）
+3. 如果新创建，触发 RuntimeStart Saga
+
+v3 变更：
+- 删除 awaking 状态，用 get_or_create_runtime 原子操作替代
+- route_message 返回 runtime_id 和 just_created
+- 用 runtime_id 作为 Saga 幂等键
 """
 
 from ..saga import SagaDefinition
@@ -18,7 +23,7 @@ def _build_claim_payload(ctx):
 
 
 def _build_route_payload(ctx):
-    """Step 2: 判断路由"""
+    """Step 2: 原子获取或创建 Runtime"""
     return {
         "agent_id": ctx["agent_id"],
         "subagent_id": ctx["subagent_id"],
@@ -29,25 +34,31 @@ def _build_route_payload(ctx):
 def _decide_action(ctx, results):
     """决策下一步"""
     route_result = results.get("route_message", {})
-    # route_result 直接就是 {"success": true, "action": "start_runtime", ...}
     return {
         "action": route_result.get("action", "skip"),
         "message_id": ctx["message_id"],
+        "runtime_id": route_result.get("runtime_id"),
+        "just_created": route_result.get("just_created", False),
     }
 
 
 def _build_trigger_runtime_start(ctx, decision):
-    """触发 RuntimeStart Saga"""
+    """触发 RuntimeStart Saga
+    
+    用 runtime_id 作为幂等键，保证同一个 runtime 只启动一次
+    """
+    runtime_id = decision.get("runtime_id")
     return {
         "saga_type": "runtime_start",
         "context": {
             "agent_id": ctx["agent_id"],
             "subagent_id": ctx["subagent_id"],
+            "runtime_id": runtime_id,  # 传递已创建的 runtime_id
             "trigger_id": ctx["message_id"],
             "trigger_type": ctx.get("trigger_type", "user_message"),
-            # 移除 initial_context - Watchdog 只负责唤醒，不传递消息内容
         },
-        "idempotency_key": f"runtime-start-{ctx['message_id']}",
+        # 用 runtime_id 作为幂等键，而不是 message_id
+        "idempotency_key": f"runtime-start-{runtime_id}",
     }
 
 
