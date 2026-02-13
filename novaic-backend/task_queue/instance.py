@@ -1,14 +1,17 @@
 """
-Task Queue 单例管理
+Task Queue 单例管理 (v3)
 
 提供 TaskQueue、SagaOrchestrator 的全局单例访问。
 在 Gateway 启动时初始化，供 API routes 使用。
+
+v3 变更：
+- 使用 queue_service.saga_repo 中的 SagaOrchestrator
 """
 
 from typing import Optional, Dict, Any
 
 from .queue import TaskQueue
-from .saga import SagaOrchestrator, SagaRepository
+from queue_service.saga_repo import SagaOrchestrator, SagaRepository
 from .sagas import get_all_saga_definitions
 
 # 全局单例

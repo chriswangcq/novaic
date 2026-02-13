@@ -13,6 +13,7 @@ v3 变更：
 
 from typing import Dict, Any
 from common.enums import SubagentStatus
+from common.exceptions import ValidationError
 from . import register_handler
 from ..business import SubAgentBusiness
 from ..client import GatewayInternalClient
@@ -32,7 +33,13 @@ def handle_message_claim(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     
     Payload:
         message_id: str
+        
+    Raises:
+        ValidationError: 当必填字段缺失时
     """
+    if not payload.get("message_id"):
+        raise ValidationError("Missing required field: message_id")
+    
     message_id = payload["message_id"]
     biz = MessageBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
     return biz.claim_message(message_id)
@@ -55,7 +62,18 @@ def handle_message_route(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
         action: "start_runtime" | "skip_active"
         runtime_id: str (如果有 active runtime)
         just_created: bool (是否新创建的 runtime)
+        
+    Raises:
+        ValidationError: 当必填字段缺失时
     """
+    # 验证必填字段
+    if not payload.get("agent_id"):
+        raise ValidationError("Missing required field: agent_id")
+    if not payload.get("subagent_id"):
+        raise ValidationError("Missing required field: subagent_id")
+    if not payload.get("message_id"):
+        raise ValidationError("Missing required field: message_id")
+    
     client = ctx.get("gateway_client") or GatewayInternalClient(ctx["gateway_url"])
     
     agent_id = payload["agent_id"]
@@ -74,6 +92,7 @@ def handle_message_route(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     
     runtime_id = result.get("runtime_id")
     just_created = result.get("just_created", False)
+    runtime_status = result.get("status", "active")
     
     if just_created:
         # 新创建的 runtime，需要启动

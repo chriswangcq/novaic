@@ -10,7 +10,7 @@ Topics:
 
 v2 变更：
 - need_rest 由 MCP 工具内部设置（runtime_rest 工具）
-- done/final 等工具在 ReactThink 阶段被转换为 runtime_rest
+- done/final 等工具在 ReactThink 阶段被转换为 runtime_complete
 """
 
 import json
@@ -19,6 +19,7 @@ from . import register_handler
 from ..business import MCPBusiness
 from ..utils import sync_broadcast_log, BroadcastType
 from ..topics import TaskTopics
+from common.exceptions import ValidationError
 
 
 @register_handler(TaskTopics.TOOL_EXECUTE)
@@ -28,8 +29,7 @@ def handle_tool_execute(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     
     功能：
     1. 执行 MCP 工具
-    2. done/reset 执行时设置 runtime status=resting (v2)
-    3. 广播 tool 事件到前端（执行前 running，执行后 complete）
+    2. 广播 tool 事件到前端（执行前 running，执行后 complete）
     
     幂等性：工具本身负责保证幂等性
     
@@ -40,12 +40,25 @@ def handle_tool_execute(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
         tool_name: str
         arguments: str | dict
         agent_id: str (可选，用于广播)
+        
+    Raises:
+        ValidationError: 当必填字段缺失时
     """
+    # 验证必填字段
+    if not payload.get("runtime_id"):
+        raise ValidationError("Missing required field: runtime_id")
+    if not payload.get("round_id"):
+        raise ValidationError("Missing required field: round_id")
+    if not payload.get("tool_call_id"):
+        raise ValidationError("Missing required field: tool_call_id")
+    if not payload.get("tool_name"):
+        raise ValidationError("Missing required field: tool_name")
+    
     runtime_id = payload["runtime_id"]
     round_id = payload["round_id"]
     tool_call_id = payload["tool_call_id"]
     tool_name = payload["tool_name"]
-    arguments = payload["arguments"]
+    arguments = payload.get("arguments", {})
     
     # ✅ 修改：优先从 payload 获取
     agent_id = payload.get("agent_id")

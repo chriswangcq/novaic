@@ -47,13 +47,29 @@ class TaskQueueClient:
     def _get_session(self) -> httpx.Client:
         """获取或创建 HTTP session"""
         if self._session is None:
-            self._session = httpx.Client(timeout=self.timeout, trust_env=False)
+            self._session = httpx.Client(
+                timeout=httpx.Timeout(self.timeout, connect=10.0),
+                limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
+                trust_env=False,
+            )
         return self._session
     
     def close(self):
-        """关闭 HTTP session"""
-        if self._session:
-            self._session.close()
+        """关闭 HTTP session（可安全多次调用）"""
+        if self._session is not None:
+            try:
+                self._session.close()
+            except Exception:
+                pass
+            finally:
+                self._session = None
+    
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False  # 不吞掉异常
     
     def _request(
         self,
@@ -230,12 +246,29 @@ class SagaClient:
     
     def _get_session(self) -> httpx.Client:
         if self._session is None:
-            self._session = httpx.Client(timeout=self.timeout, trust_env=False)
+            self._session = httpx.Client(
+                timeout=httpx.Timeout(self.timeout, connect=10.0),
+                limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
+                trust_env=False,
+            )
         return self._session
     
     def close(self):
-        if self._session:
-            self._session.close()
+        """关闭 HTTP session（可安全多次调用）"""
+        if self._session is not None:
+            try:
+                self._session.close()
+            except Exception:
+                pass
+            finally:
+                self._session = None
+    
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False  # 不吞掉异常
     
     def _request(
         self,
@@ -346,6 +379,26 @@ class SagaClient:
         self._request("POST", f"/api/queue/sagas/{saga_id}/fail", {
             "error": error,
         })
+    
+    def release(
+        self,
+        saga_id: str,
+        reason: str = "",
+    ) -> bool:
+        """
+        释放 Saga 回 pending 状态（用于可重试错误）
+        
+        Args:
+            saga_id: Saga ID
+            reason: 释放原因（用于日志）
+            
+        Returns:
+            是否成功释放
+        """
+        data = self._request("POST", f"/api/queue/sagas/{saga_id}/release", {
+            "reason": reason,
+        })
+        return data.get("success", False)
 
 
 class GatewayInternalClient:
@@ -366,12 +419,29 @@ class GatewayInternalClient:
 
     def _get_session(self) -> httpx.Client:
         if self._session is None:
-            self._session = httpx.Client(timeout=self.timeout, trust_env=False)
+            self._session = httpx.Client(
+                timeout=httpx.Timeout(self.timeout, connect=10.0),
+                limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
+                trust_env=False,
+            )
         return self._session
 
     def close(self):
-        if self._session:
-            self._session.close()
+        """关闭 HTTP session（可安全多次调用）"""
+        if self._session is not None:
+            try:
+                self._session.close()
+            except Exception:
+                pass
+            finally:
+                self._session = None
+
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False  # 不吞掉异常
 
     def _request(self, method: str, path: str, json_data: Optional[dict] = None, params: Optional[dict] = None) -> dict:
         session = self._get_session()
@@ -458,12 +528,7 @@ class GatewayInternalClient:
         return self._request("PATCH", "/internal/messages/mark-read", {"message_ids": message_ids})
 
     # ---------- SubAgents ----------
-    def wake_subagent(self, agent_id: str, subagent_id: str, target_status: str = "awaking") -> dict:
-        return self._request(
-            "POST",
-            f"/internal/subagents/{agent_id}/{subagent_id}/wake?target_status={target_status}",
-            {},
-        )
+    # wake_subagent() DELETED: 用 get_or_create_runtime 替代
 
     def set_subagent_awake(self, agent_id: str, subagent_id: str) -> dict:
         return self._request("POST", f"/internal/subagents/{agent_id}/{subagent_id}/awake", {})
@@ -565,9 +630,37 @@ class GatewayInternalClient:
 
     # ---------- Messages (Watchdog) ----------
     def claim_and_prepare_message(self) -> Optional[Dict[str, Any]]:
-        """Claim 并准备一条 sending 消息"""
+        """Claim 并准备一条 sending 消息
+        
+        DEPRECATED: 使用 find_sending_message() + confirm_message() 两阶段提交替代
+        """
         data = self._request("POST", "/internal/messages/claim-and-prepare", {})
         return data.get("message")
+    
+    def find_sending_message(self) -> Optional[Dict[str, Any]]:
+        """查找一条 sending 状态的消息（不改变状态）
+        
+        两阶段提交第一阶段：只查询，不更新状态。
+        调用方需要在 Saga 创建成功后调用 confirm_message() 确认。
+        
+        Returns:
+            找到的消息，或 None（队列为空）
+        """
+        data = self._request("POST", "/internal/messages/find-sending", {})
+        return data.get("message")
+    
+    def confirm_message(self, message_id: str) -> dict:
+        """确认消息（sending → sent）
+        
+        两阶段提交第二阶段：Saga 创建成功后调用此方法确认消息。
+        
+        Args:
+            message_id: 消息 ID
+            
+        Returns:
+            {"success": bool, "message_id": str, "confirmed": bool}
+        """
+        return self._request("POST", f"/internal/messages/{message_id}/confirm", {})
     
     # ---------- Execution Log Broadcast (Worker -> Gateway -> SSE) ----------
     def broadcast_log(
@@ -631,7 +724,7 @@ class GatewayInternalClient:
             return False
 
     # ---------- Task Queue Recovery ----------
-    def recover_all(self, task_timeout: int = 60, saga_timeout: int = 120) -> Dict[str, Any]:
+    def recover_all(self, task_timeout: int = 120, saga_timeout: int = 600) -> Dict[str, Any]:
         """恢复所有超时的 Task 和 Saga"""
         return self._request("POST", "/internal/tq/recover/all", None, params={
             "task_timeout": task_timeout,

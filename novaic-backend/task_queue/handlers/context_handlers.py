@@ -13,6 +13,7 @@ from typing import Dict, Any
 from . import register_handler
 from ..business import MessageBusiness
 from ..topics import TaskTopics
+from common.exceptions import ValidationError, NotFoundError
 
 
 @register_handler(TaskTopics.CONTEXT_READ)
@@ -27,7 +28,14 @@ def handle_context_read(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     Payload:
         runtime_id: str
         filter_sending: bool (可选，默认 True)
+        
+    Raises:
+        ValidationError: 当必填字段缺失时
+        NotFoundError: 当 Runtime 不存在时
     """
+    if not payload.get("runtime_id"):
+        raise ValidationError("Missing required field: runtime_id")
+    
     runtime_id = payload["runtime_id"]
     filter_sending = payload.get("filter_sending", True)
 
@@ -35,7 +43,7 @@ def handle_context_read(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     client = ctx.get("gateway_client") or GatewayInternalClient(ctx["gateway_url"])
     runtime = client.get_runtime(runtime_id)
     if not runtime:
-        return {"success": False, "error": "Runtime not found"}
+        raise NotFoundError(f"Runtime not found: {runtime_id}")
 
     context = runtime.get("context") or []
     agent_id = runtime.get("agent_id")
@@ -98,7 +106,15 @@ def handle_context_append(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
         message_type: str (llm_response / tool_result / user / etc.)
         round_id: str
         idempotency_key: str (可选)
+        
+    Raises:
+        ValidationError: 当必填字段缺失时
     """
+    if not payload.get("runtime_id"):
+        raise ValidationError("Missing required field: runtime_id")
+    if not payload.get("message"):
+        raise ValidationError("Missing required field: message")
+    
     biz = MessageBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
     
     result = biz.append_to_context(
@@ -131,13 +147,20 @@ def handle_context_get(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     
     Payload:
         runtime_id: str
+        
+    Raises:
+        ValidationError: 当必填字段缺失时
+        NotFoundError: 当 Runtime 不存在时
     """
+    if not payload.get("runtime_id"):
+        raise ValidationError("Missing required field: runtime_id")
+    
     biz = MessageBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
     
     context = biz.get_context(payload["runtime_id"])
     
     if context is None:
-        return {"success": False, "error": "Runtime not found"}
+        raise NotFoundError(f"Runtime not found: {payload['runtime_id']}")
     
     return {
         "success": True,

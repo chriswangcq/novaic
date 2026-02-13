@@ -46,17 +46,31 @@ def _build_trigger_runtime_start(ctx, decision):
     """触发 RuntimeStart Saga
     
     用 runtime_id 作为幂等键，保证同一个 runtime 只启动一次
+    
+    支持传递：
+    - trigger_id: 触发 ID（spawn_subagent 时从 ctx 获取，否则用 message_id）
+    - initial_context: sub-subagent 的初始上下文（任务描述等）
     """
     runtime_id = decision.get("runtime_id")
+    
+    # trigger_id: spawn_subagent 有专门的 trigger_id，其他用 message_id
+    trigger_id = ctx.get("trigger_id") or ctx["message_id"]
+    
+    context = {
+        "agent_id": ctx["agent_id"],
+        "subagent_id": ctx["subagent_id"],
+        "runtime_id": runtime_id,  # 传递已创建的 runtime_id
+        "trigger_id": trigger_id,
+        "trigger_type": ctx.get("trigger_type", "user_message"),
+    }
+    
+    # 传递 initial_context（sub-subagent spawn 时需要）
+    if "initial_context" in ctx and ctx["initial_context"]:
+        context["initial_context"] = ctx["initial_context"]
+    
     return {
         "saga_type": "runtime_start",
-        "context": {
-            "agent_id": ctx["agent_id"],
-            "subagent_id": ctx["subagent_id"],
-            "runtime_id": runtime_id,  # 传递已创建的 runtime_id
-            "trigger_id": ctx["message_id"],
-            "trigger_type": ctx.get("trigger_type", "user_message"),
-        },
+        "context": context,
         # 用 runtime_id 作为幂等键，而不是 message_id
         "idempotency_key": f"runtime-start-{runtime_id}",
     }

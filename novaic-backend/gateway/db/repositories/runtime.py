@@ -39,7 +39,7 @@ class AgentRuntime:
     pending_actions: List[str] = field(default_factory=list)  # Task IDs
     
     # Status
-    status: str = 'active'  # active, resting, completed
+    status: str = 'active'  # active, completed, failed
     error: Optional[str] = None
     
     # Summary (v14)
@@ -197,14 +197,14 @@ class RuntimeRepository:
             return None
     
     def get_active_runtime(self, subagent_id: str, agent_id: str) -> Optional[AgentRuntime]:
-        """Get the active runtime for a SubAgent (status in active, resting)."""
+        """Get the active runtime for a SubAgent (status = active)."""
         with self.db.get_connection("agent", resource_id=agent_id) as conn:
             cursor = conn.execute(f"""
                 SELECT {self._COLUMNS} FROM agent_runtimes 
-                WHERE subagent_id = ? AND agent_id = ? AND status IN (?, ?)
+                WHERE subagent_id = ? AND agent_id = ? AND status = ?
                 ORDER BY created_at DESC
                 LIMIT 1
-            """, (subagent_id, agent_id, RuntimeStatus.ACTIVE.value, RuntimeStatus.RESTING.value))
+            """, (subagent_id, agent_id, RuntimeStatus.ACTIVE.value))
             row = cursor.fetchone()
             if row:
                 return self._row_to_runtime(row)
@@ -215,9 +215,9 @@ class RuntimeRepository:
         with self.db.get_connection("agent", resource_id=agent_id) as conn:
             cursor = conn.execute(f"""
                 SELECT {self._COLUMNS} FROM agent_runtimes 
-                WHERE agent_id = ? AND status IN (?, ?)
+                WHERE agent_id = ? AND status = ?
                 ORDER BY created_at ASC
-            """, (agent_id, RuntimeStatus.ACTIVE.value, RuntimeStatus.RESTING.value))
+            """, (agent_id, RuntimeStatus.ACTIVE.value))
             rows = cursor.fetchall()
             return [self._row_to_runtime(row) for row in rows]
     
@@ -226,9 +226,9 @@ class RuntimeRepository:
         with self.db.get_connection("global") as conn:
             cursor = conn.execute(f"""
                 SELECT {self._COLUMNS} FROM agent_runtimes 
-                WHERE status IN (?, ?)
+                WHERE status = ?
                 ORDER BY created_at ASC
-            """, (RuntimeStatus.ACTIVE.value, RuntimeStatus.RESTING.value))
+            """, (RuntimeStatus.ACTIVE.value,))
             rows = cursor.fetchall()
             return [self._row_to_runtime(row) for row in rows]
     
@@ -237,9 +237,9 @@ class RuntimeRepository:
         with self.db.get_connection("agent", resource_id=agent_id) as conn:
             cursor = conn.execute("""
                 SELECT 1 FROM agent_runtimes 
-                WHERE subagent_id = ? AND agent_id = ? AND status IN (?, ?)
+                WHERE subagent_id = ? AND agent_id = ? AND status = ?
                 LIMIT 1
-            """, (subagent_id, agent_id, RuntimeStatus.ACTIVE.value, RuntimeStatus.RESTING.value))
+            """, (subagent_id, agent_id, RuntimeStatus.ACTIVE.value))
             row = cursor.fetchone()
             return row is not None
     
@@ -267,10 +267,10 @@ class RuntimeRepository:
             # 1. 检查是否已有 active runtime
             cursor = conn.execute(f"""
                 SELECT {self._COLUMNS} FROM agent_runtimes 
-                WHERE subagent_id = ? AND agent_id = ? AND status IN (?, ?)
+                WHERE subagent_id = ? AND agent_id = ? AND status = ?
                 ORDER BY created_at DESC
                 LIMIT 1
-            """, (subagent_id, agent_id, RuntimeStatus.ACTIVE.value, RuntimeStatus.RESTING.value))
+            """, (subagent_id, agent_id, RuntimeStatus.ACTIVE.value))
             row = cursor.fetchone()
             
             if row:
@@ -506,24 +506,6 @@ class RuntimeRepository:
                 SET status = ?, error = ?, updated_at = ?
                 WHERE runtime_id = ?
             """, (RuntimeStatus.FAILED.value, error, now, runtime_id))
-            conn.commit()
-    
-    def set_resting(self, runtime_id: str):
-        """Set runtime to resting state.
-        
-        v14: Simplified - just sets status='resting'.
-        Wake triggers are now stored in SubAgent.
-        
-        v18: ActionsCollector checks status='resting' to skip further
-        think rounds and go directly to summarize.
-        """
-        now = utc_now_iso()
-        with self.db.get_connection("agent", resource_id=runtime_id) as conn:
-            conn.execute("""
-                UPDATE agent_runtimes 
-                SET status = ?, updated_at = ?
-                WHERE runtime_id = ?
-            """, (RuntimeStatus.RESTING.value, now, runtime_id))
             conn.commit()
     
     # ========================================

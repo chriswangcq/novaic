@@ -21,12 +21,17 @@ from ..business import RuntimeBusiness
 from ..client import GatewayInternalClient
 from ..utils.context_builder import build_initial_context
 from ..topics import TaskTopics
+from common.exceptions import ValidationError, NotFoundError
 
 
 @register_handler(TaskTopics.RUNTIME_CREATE)
 def handle_runtime_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
-    创建 Runtime 记录，并从历史构建初始 Context
+    创建或初始化 Runtime 记录，并从历史构建初始 Context
+    
+    v3 变更：
+    - 支持传入 runtime_id（初始化已有 runtime）
+    - 如果没有 runtime_id，则创建新的（兼容旧逻辑）
     
     初始 Context 构建规则：
     1. historical_summary: SubAgent 的合并历史摘要
@@ -38,6 +43,7 @@ def handle_runtime_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     Payload:
         agent_id: str
         subagent_id: str
+        runtime_id: str (可选，v3 新增) - 已创建的 runtime_id
         idempotency_key: str (可选)
         user_message: str (可选) - 用户消息，用于自动匹配技能
         
@@ -50,9 +56,19 @@ def handle_runtime_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
         phase: str
         context_parts: int - 初始 context 部分数量
         matched_skills: list - 自动匹配的技能名称列表
+        
+    Raises:
+        ValidationError: 当必填字段缺失时
     """
+    # 验证必填字段
+    if not payload.get("agent_id"):
+        raise ValidationError("Missing required field: agent_id")
+    if not payload.get("subagent_id"):
+        raise ValidationError("Missing required field: subagent_id")
+    
     agent_id = payload["agent_id"]
     subagent_id = payload["subagent_id"]
+    runtime_id = payload.get("runtime_id")  # v3: 可能已经创建
     user_message = payload.get("user_message")  # For auto-matching skills
     
     # 获取或创建 client
@@ -112,6 +128,26 @@ def handle_runtime_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     except Exception as e:
         print(f"[runtime.create] Failed to build system prompt for {subagent_id}: {e}")
     
+    # v3: 如果已有 runtime_id，更新其 context；否则创建新的
+    if runtime_id:
+        # 初始化已有 runtime：更新 context
+        try:
+            client.update_runtime(runtime_id, {"context": initial_context})
+            print(f"[runtime.create] Initialized existing runtime {runtime_id} with {context_parts} context parts")
+            return {
+                "success": True,
+                "runtime_id": runtime_id,
+                "created": False,
+                "message": "Runtime initialized",
+                "status": "active",
+                "phase": "",
+                "context_parts": context_parts,
+                "matched_skills": matched_skills,
+            }
+        except Exception as e:
+            print(f"[runtime.create] Failed to initialize runtime {runtime_id}: {e}")
+            # 继续尝试创建新的
+    
     # 创建 runtime
     result = biz.create(
         agent_id=agent_id,
@@ -146,7 +182,18 @@ def handle_runtime_set_status(payload: Dict[str, Any], ctx: dict) -> Dict[str, A
         runtime_id: str
         expected_status: str
         new_status: str
+        
+    Raises:
+        ValidationError: 当必填字段缺失时
     """
+    # 验证必填字段
+    if not payload.get("runtime_id"):
+        raise ValidationError("Missing required field: runtime_id")
+    if not payload.get("expected_status"):
+        raise ValidationError("Missing required field: expected_status")
+    if not payload.get("new_status"):
+        raise ValidationError("Missing required field: new_status")
+    
     biz = RuntimeBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
     
     result = biz.set_status(
@@ -179,7 +226,13 @@ def handle_runtime_increment_round(payload: Dict[str, Any], ctx: dict) -> Dict[s
     
     Payload:
         runtime_id: str
+        
+    Raises:
+        ValidationError: 当必填字段缺失时
     """
+    if not payload.get("runtime_id"):
+        raise ValidationError("Missing required field: runtime_id")
+    
     biz = RuntimeBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
     return biz.increment_round(payload["runtime_id"])
 
@@ -193,7 +246,13 @@ def handle_runtime_set_summarized(payload: Dict[str, Any], ctx: dict) -> Dict[st
     
     Payload:
         runtime_id: str
+        
+    Raises:
+        ValidationError: 当必填字段缺失时
     """
+    if not payload.get("runtime_id"):
+        raise ValidationError("Missing required field: runtime_id")
+    
     biz = RuntimeBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
     
     result = biz.set_summarized(payload["runtime_id"])
@@ -219,7 +278,13 @@ def handle_runtime_set_need_rest(payload: Dict[str, Any], ctx: dict) -> Dict[str
     Payload:
         runtime_id: str
         value: bool (可选，默认 True)
+        
+    Raises:
+        ValidationError: 当必填字段缺失时
     """
+    if not payload.get("runtime_id"):
+        raise ValidationError("Missing required field: runtime_id")
+    
     biz = RuntimeBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
     
     result = biz.set_need_rest(
@@ -256,7 +321,15 @@ def handle_check_new_messages(payload: Dict[str, Any], ctx: dict) -> Dict[str, A
         has_new_messages: bool - 是否有新消息
         need_rest: bool - 是否需要休息（重置后的值）
         need_rest_reset: bool - 是否进行了重置
+        
+    Raises:
+        ValidationError: 当必填字段缺失时
     """
+    if not payload.get("runtime_id"):
+        raise ValidationError("Missing required field: runtime_id")
+    if not payload.get("agent_id"):
+        raise ValidationError("Missing required field: agent_id")
+    
     runtime_id = payload["runtime_id"]
     agent_id = payload["agent_id"]
     biz = RuntimeBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
@@ -312,9 +385,16 @@ def handle_generate_simple_summary(payload: Dict[str, Any], ctx: dict) -> Dict[s
         runtime_id: str
         summary_length: int - summary 字符长度
         rounds_count: int - 识别的轮次数
+        
+    Raises:
+        ValidationError: 当必填字段缺失时
+        NotFoundError: 当 Runtime 不存在时
     """
     from ..utils.simple_summary import generate_simple_summary
     from ..client import GatewayInternalClient
+    
+    if not payload.get("runtime_id"):
+        raise ValidationError("Missing required field: runtime_id")
     
     runtime_id = payload["runtime_id"]
     
@@ -324,11 +404,7 @@ def handle_generate_simple_summary(payload: Dict[str, Any], ctx: dict) -> Dict[s
     # 1. 获取 runtime context
     runtime = client.get_runtime(runtime_id)
     if not runtime:
-        return {
-            "success": False,
-            "runtime_id": runtime_id,
-            "error": "Runtime not found",
-        }
+        raise NotFoundError(f"Runtime not found: {runtime_id}")
     
     context = runtime.get("context") or []
     

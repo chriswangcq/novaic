@@ -3,17 +3,19 @@ Saga repository/orchestrator (Gateway DB implementation).
 
 This module holds the DB-backed SagaRepository/SagaOrchestrator so that
 non-gateway code does not directly touch the database.
+
+v3 变更：
+- 删除对异步 SagaExecutor 的依赖
+- SagaOrchestrator 仅用于测试，内联同步执行逻辑
 """
 
-# threading import removed - using db.transaction() instead
 import json
 import uuid
-from datetime import datetime
 from typing import Optional, Dict, Any, List
 
 from queue_service.exceptions import SagaError, SagaStepError
 from common.utils.time import utc_now_iso
-from queue_service.saga import TaskQueueProtocol, SagaDefinition, SagaExecutor, StepType
+from task_queue.saga import SagaDefinition, StepType
 
 
 class SagaRepository:
@@ -26,7 +28,7 @@ class SagaRepository:
     - 不需要额外的 saga.run Task
     """
     
-    def __init__(self, db, queue: Optional[TaskQueueProtocol] = None):
+    def __init__(self, db, queue=None):
         """
         Args:
             db: 数据库连接
@@ -180,6 +182,32 @@ class SagaRepository:
                 WHERE id = ?
             """, (error, now, saga_id))
     
+    def release(self, saga_id: str, reason: str = "") -> bool:
+        """
+        释放 Saga 回 pending 状态（用于可重试错误）
+        
+        Args:
+            saga_id: Saga ID
+            reason: 释放原因（用于日志）
+            
+        Returns:
+            是否成功释放
+        """
+        now = utc_now_iso()
+        with self.db.transaction(lock_type="saga", resource_id=saga_id):
+            cursor = self.db.execute("""
+                UPDATE tq_sagas 
+                SET status = 'pending',
+                    claimed_by = NULL,
+                    claimed_at = NULL,
+                    heartbeat_at = NULL,
+                    updated_at = ?
+                WHERE id = ? AND status = 'running'
+            """, (now, saga_id))
+            success = cursor.rowcount > 0
+            cursor.close()
+        return success
+    
     def get_pending(self) -> List[Dict[str, Any]]:
         """获取待执行/运行中的 Saga"""
         with self.db.transaction(lock_type="global"):
@@ -265,12 +293,10 @@ class SagaOrchestrator(SagaRepository):
     """
     兼容旧接口的 Saga 协调器 (用于测试)
     
-    提供两种模式：
-    1. 异步模式 (推荐): create() 立即返回，由 SagaWorker 执行
-    2. 同步模式 (测试): start() 同步执行 (在同进程)
+    注意：此类仅用于测试目的，生产环境使用 SagaWorkerSync
     """
     
-    def __init__(self, queue: TaskQueueProtocol, db):
+    def __init__(self, queue, db):
         super().__init__(db, queue)
         self._definitions: Dict[str, SagaDefinition] = {}
     
@@ -281,112 +307,6 @@ class SagaOrchestrator(SagaRepository):
     def get_definition(self, saga_type: str) -> Optional[SagaDefinition]:
         """获取定义"""
         return self._definitions.get(saga_type)
-    
-    def start(
-        self,
-        saga_type: str,
-        context: Dict[str, Any],
-        idempotency_key: Optional[str] = None,
-    ) -> str:
-        """启动 Saga (同步执行，用于测试)"""
-        if saga_type not in self._definitions:
-            raise SagaError(f"Unknown saga type: {saga_type}")
-        
-        if idempotency_key:
-            existing = self.get_by_idempotency_key(idempotency_key)
-            if existing:
-                return existing["id"]
-        
-        saga_id = f"saga-{uuid.uuid4().hex[:12]}"
-        now = utc_now_iso()
-        
-        with self.db.transaction(lock_type="global"):
-            self.db.execute("""
-                INSERT INTO tq_sagas (
-                    id, saga_type, context, idempotency_key,
-                    current_step, status, step_results, created_at
-                )
-                VALUES (?, ?, ?, ?, 0, 'running', '{}', ?)
-            """, (saga_id, saga_type, json.dumps(context), idempotency_key, now))
-        
-        definition = self._definitions[saga_type]
-        executor = SagaExecutor(self.queue, self, self._definitions)
-        
-        saga = self.get(saga_id)
-        step_results = saga["step_results"]
-        
-        for i in range(len(definition.steps)):
-            step = definition.steps[i]
-            
-            if step.condition:
-                decision = step_results.get("_decision", {})
-                if not step.condition(decision):
-                    continue
-            
-            try:
-                result = executor._execute_step(saga_id, step, context, step_results)
-                
-                if step.step_type == StepType.DECISION:
-                    step_results["_decision"] = result
-                else:
-                    step_results[step.name] = result
-                
-                self.update_progress(saga_id, i + 1, step_results)
-                
-            except Exception as e:
-                if step.optional:
-                    step_results[step.name] = {"error": str(e)}
-                    self.update_progress(saga_id, i + 1, step_results)
-                else:
-                    self.mark_failed(saga_id, str(e))
-                    raise SagaStepError(step.name, str(e), e)
-        
-        self.mark_completed(saga_id, step_results)
-        return saga_id
-    
-    def resume(self, saga_id: str):
-        """恢复执行"""
-        saga = self.get(saga_id)
-        if not saga or saga["status"] not in ("pending", "running"):
-            return
-        
-        self.update_progress(saga_id, saga["current_step"], saga["step_results"], "running")
-        
-        definition = self._definitions.get(saga["saga_type"])
-        if not definition:
-            return
-        
-        executor = SagaExecutor(self.queue, self, self._definitions)
-        context = saga["context"]
-        step_results = saga["step_results"]
-        
-        for i in range(saga["current_step"], len(definition.steps)):
-            step = definition.steps[i]
-            
-            if step.condition:
-                decision = step_results.get("_decision", {})
-                if not step.condition(decision):
-                    continue
-            
-            try:
-                result = executor._execute_step(saga_id, step, context, step_results)
-                
-                if step.step_type == StepType.DECISION:
-                    step_results["_decision"] = result
-                else:
-                    step_results[step.name] = result
-                
-                self.update_progress(saga_id, i + 1, step_results)
-                
-            except Exception as e:
-                if step.optional:
-                    step_results[step.name] = {"error": str(e)}
-                    self.update_progress(saga_id, i + 1, step_results)
-                else:
-                    self.mark_failed(saga_id, str(e))
-                    raise
-        
-        self.mark_completed(saga_id, step_results)
     
     def get_pending_sagas(self) -> List[Dict[str, Any]]:
         """获取待执行的 Saga (兼容旧接口)"""

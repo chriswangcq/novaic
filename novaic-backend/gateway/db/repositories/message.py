@@ -89,6 +89,8 @@ class MessageRepository:
         
         Returns:
             认领成功的消息，或 None（队列为空）
+            
+        DEPRECATED: 使用 find_sending() + confirm_message() 两阶段提交替代
         """
         # 全局锁：因为需要先查询再更新，涉及多条记录的竞争
         with self.db.transaction("global") as conn:
@@ -129,6 +131,63 @@ class MessageRepository:
                 "metadata": json.loads(row[4] or "{}"),
                 "timestamp": row[5],
             }
+    
+    def find_sending(self) -> Optional[Dict[str, Any]]:
+        """
+        查找一条 sending 状态的消息（不改变状态）。
+        
+        两阶段提交第一阶段：只查询，不更新状态。
+        调用方需要在 Saga 创建成功后调用 confirm_message() 确认。
+        
+        Returns:
+            找到的消息，或 None（队列为空）
+        """
+        # 全局锁：保证同一时间只有一个 worker 能获取到同一条消息
+        with self.db.transaction("global") as conn:
+            cursor = conn.execute(
+                """SELECT id, agent_id, type, content, metadata, timestamp
+                   FROM chat_messages 
+                   WHERE status = 'sending' 
+                   ORDER BY created_at ASC 
+                   LIMIT 1"""
+            )
+            row = cursor.fetchone()
+            
+            if not row:
+                return None
+            
+            return {
+                "id": row[0],
+                "agent_id": row[1],
+                "type": row[2],
+                "content": row[3],
+                "metadata": json.loads(row[4] or "{}"),
+                "timestamp": row[5],
+            }
+    
+    def confirm_message(self, message_id: str) -> bool:
+        """
+        确认消息（sending → sent）。
+        
+        两阶段提交第二阶段：Saga 创建成功后调用此方法确认消息。
+        使用 CAS 保证幂等性。
+        
+        Args:
+            message_id: 消息 ID
+            
+        Returns:
+            True 如果确认成功，False 如果消息不存在或已被确认
+        """
+        now = utc_now_iso()
+        with self.db.transaction("message", resource_id=message_id):
+            cursor = self.db.execute(
+                """UPDATE chat_messages 
+                   SET status = 'sent', claimed_at = ?
+                   WHERE id = ? AND status = 'sending'""",
+                (now, message_id)
+            )
+        
+        return cursor.rowcount > 0
     
     def get_sending_count(self) -> int:
         """获取 sending 状态的消息数量（用于监控）。"""

@@ -50,7 +50,7 @@ class TaskTopics:
     MESSAGE_ROUTE = "message.route"
     
     # SubAgent Tasks - SubAgent 状态管理
-    SUBAGENT_WAKE = "subagent.wake"
+    # SUBAGENT_WAKE = "subagent.wake"  # DELETED: 用 get_or_create_runtime 替代
     SUBAGENT_SET_AWAKE = "subagent.set_awake"
     SUBAGENT_SET_SLEEPING = "subagent.set_sleeping"
     

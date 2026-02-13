@@ -23,6 +23,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List
 import traceback
 from queue import Queue
+import httpx
 
 from task_queue.client import SagaClient, TaskQueueClient
 from task_queue.heartbeat_sync import HeartbeatSync
@@ -31,12 +32,27 @@ from common.config import ServiceConfig
 from common.utils.time import utc_now_iso
 
 
+# 可重试的基础设施异常类型
+RETRYABLE_EXCEPTIONS = (
+    httpx.TimeoutException,
+    httpx.ConnectError,
+    httpx.NetworkError,
+    ConnectionError,
+    TimeoutError,
+    OSError,  # 包含网络相关的 socket 错误
+)
+
+# 最大重试次数（超过后才标记 failed）
+MAX_SAGA_RETRIES = 3
+
+
 @dataclass
 class SagaWorkerMetrics:
     """性能指标"""
     sagas_processed: int = 0
     sagas_succeeded: int = 0
     sagas_failed: int = 0
+    sagas_retried: int = 0  # 因可重试错误释放回 pending 的次数
     steps_executed: int = 0
     tasks_published: int = 0
     tasks_waited: int = 0
@@ -49,6 +65,7 @@ class SagaWorkerMetrics:
             "sagas_processed": self.sagas_processed,
             "sagas_succeeded": self.sagas_succeeded,
             "sagas_failed": self.sagas_failed,
+            "sagas_retried": self.sagas_retried,
             "steps_executed": self.steps_executed,
             "tasks_published": self.tasks_published,
             "tasks_waited": self.tasks_waited,
@@ -240,7 +257,7 @@ class SagaWorkerSync:
             traceback.print_exc()
     
     def _execute_saga(self, saga: Dict[str, Any]):
-        """执行 Saga（同步）"""
+        """执行 Saga（同步）- 实现"Saga 永不失败"机制"""
         saga_id = saga["id"]
         saga_type = saga["saga_type"]
         context = saga.get("context", {})
@@ -252,14 +269,18 @@ class SagaWorkerSync:
         if isinstance(step_results, str):
             step_results = json.loads(step_results)
         
+        # 获取重试计数（存储在 step_results 的 _retry_count 字段）
+        retry_count = step_results.get("_retry_count", 0)
+        
         self.metrics.sagas_processed += 1
         self.metrics.last_saga_at = utc_now_iso()
         
-        self._log(f"Executing saga {saga_id} (type={saga_type}, step={current_step})")
+        self._log(f"Executing saga {saga_id} (type={saga_type}, step={current_step}, retry={retry_count})")
         
         # 获取 Saga 定义
         definition = self._definitions.get(saga_type)
         if not definition:
+            # 配置错误，不可重试，直接失败
             self.saga_client.mark_failed(saga_id, f"Unknown saga type: {saga_type}")
             self.metrics.sagas_failed += 1
             return
@@ -280,6 +301,10 @@ class SagaWorkerSync:
                     step_results["_decision"] = result
                 self.metrics.steps_executed += 1
                 
+                # 重置重试计数（步骤成功执行后）
+                if "_retry_count" in step_results:
+                    del step_results["_retry_count"]
+                
                 # 更新进度
                 self._update_progress(saga_id, step_idx + 1, step_results)
             
@@ -289,10 +314,84 @@ class SagaWorkerSync:
             self._log(f"Saga {saga_id} completed")
             
         except Exception as e:
-            self._log(f"Saga {saga_id} failed: {e}", level="error")
-            traceback.print_exc()
-            self.saga_client.mark_failed(saga_id, str(e))
-            self.metrics.sagas_failed += 1
+            self._handle_saga_exception(saga_id, e, step_results, retry_count)
+    
+    def _is_retryable_error(self, error: Exception) -> bool:
+        """判断是否是可重试的基础设施错误"""
+        # 检查是否是已知的可重试异常类型
+        if isinstance(error, RETRYABLE_EXCEPTIONS):
+            return True
+        
+        # 检查错误消息中是否包含可重试的关键词
+        error_msg = str(error).lower()
+        retryable_keywords = [
+            "timeout", "connection", "network", "socket",
+            "temporarily unavailable", "service unavailable",
+            "too many requests", "rate limit",
+        ]
+        return any(keyword in error_msg for keyword in retryable_keywords)
+    
+    def _handle_saga_exception(
+        self,
+        saga_id: str,
+        error: Exception,
+        step_results: Dict[str, Any],
+        retry_count: int,
+    ):
+        """处理 Saga 执行异常 - 区分可重试和不可重试错误"""
+        error_str = str(error)
+        
+        if self._is_retryable_error(error):
+            # 可重试错误
+            new_retry_count = retry_count + 1
+            
+            if new_retry_count < MAX_SAGA_RETRIES:
+                # 还可以重试，释放回 pending
+                self._log(
+                    f"Saga {saga_id} encountered retryable error (attempt {new_retry_count}/{MAX_SAGA_RETRIES}): {error_str}",
+                    level="warning"
+                )
+                
+                # 保存重试计数到 step_results
+                step_results["_retry_count"] = new_retry_count
+                step_results["_last_error"] = error_str
+                
+                # 先更新进度（保存重试计数）
+                try:
+                    self.saga_client.update_progress(
+                        saga_id,
+                        step_results.get("_current_step", 0),
+                        step_results,
+                        status="running"
+                    )
+                except Exception as update_err:
+                    self._log(f"Failed to update progress before release: {update_err}", level="warning")
+                
+                # 释放回 pending
+                try:
+                    released = self.saga_client.release(saga_id, f"Retryable error: {error_str}")
+                    if released:
+                        self.metrics.sagas_retried += 1
+                        self._log(f"Saga {saga_id} released back to pending for retry")
+                        return
+                    else:
+                        self._log(f"Failed to release saga {saga_id}, marking as failed", level="warning")
+                except Exception as release_err:
+                    self._log(f"Failed to release saga {saga_id}: {release_err}", level="error")
+            else:
+                # 重试次数耗尽
+                self._log(
+                    f"Saga {saga_id} exhausted retries ({MAX_SAGA_RETRIES}), marking as failed: {error_str}",
+                    level="error"
+                )
+        else:
+            # 不可重试错误（如配置错误、业务逻辑错误）
+            self._log(f"Saga {saga_id} failed with non-retryable error: {error_str}", level="error")
+        
+        # 标记失败
+        traceback.print_exc()
+        self.saga_client.mark_failed(saga_id, error_str)
+        self.metrics.sagas_failed += 1
     
     def _execute_step(
         self,
@@ -301,15 +400,27 @@ class SagaWorkerSync:
         context: Dict[str, Any],
         step_results: Dict[str, Any],
     ) -> Any:
-        """执行单个步骤（同步）"""
-        if step.step_type == StepType.TASK:
-            return self._execute_task_step(saga_id, step, context, step_results)
-        elif step.step_type == StepType.DECISION:
-            return self._execute_decision_step(step, context, step_results)
-        elif step.step_type == StepType.PARALLEL:
-            return self._execute_parallel_step(saga_id, step, context, step_results)
-        else:
-            raise ValueError(f"Unknown step type: {step.step_type}")
+        """执行单个步骤（同步）- 支持 optional 步骤"""
+        try:
+            if step.step_type == StepType.TASK:
+                result = self._execute_task_step(saga_id, step, context, step_results)
+            elif step.step_type == StepType.DECISION:
+                result = self._execute_decision_step(step, context, step_results)
+            elif step.step_type == StepType.PARALLEL:
+                result = self._execute_parallel_step(saga_id, step, context, step_results)
+            else:
+                raise ValueError(f"Unknown step type: {step.step_type}")
+            
+            return result
+            
+        except Exception as e:
+            # 检查是否是 optional 步骤
+            is_optional = getattr(step, 'optional', False)
+            if is_optional:
+                self._log(f"Optional step '{step.name}' failed, continuing: {e}", level="warning")
+                return {"success": False, "error": str(e), "optional_skipped": True}
+            # 非 optional 步骤，重新抛出异常
+            raise
     
     def _execute_task_step(
         self,
@@ -333,13 +444,19 @@ class SagaWorkerSync:
         payload = self._build_payload(step, context, step_results)
         
         # 1. 发布任务
-        # 使用业务 ID（runtime_id）作为幂等键，而不是 saga_id
-        # 这样 Saga 重试时，已完成的 Task 会直接返回结果
+        # 使用业务 ID（runtime_id）作为幂等键基础
+        # 如果有 round_num，也包含在幂等键中，避免不同 round 的 Task 冲突
         business_key = context.get("runtime_id") or context.get("message_id") or saga_id
+        round_num = context.get("round_num")
+        if round_num is not None:
+            idempotency_key = f"{business_key}-round{round_num}-{step.name}"
+        else:
+            idempotency_key = f"{business_key}-{step.name}"
+        
         task_id = self.task_client.publish(
             topic=step.topic,
             payload=payload,
-            idempotency_key=f"{business_key}-{step.name}",
+            idempotency_key=idempotency_key,
         )
         self.metrics.tasks_published += 1
         
@@ -387,9 +504,13 @@ class SagaWorkerSync:
         context: Dict[str, Any],
         step_results: Dict[str, Any],
     ) -> Dict[str, Any]:
-        """执行决策步骤（同步）"""
+        """执行决策步骤（同步）- 永不抛出异常"""
         if step.decide:
-            return step.decide(context, step_results)
+            try:
+                return step.decide(context, step_results)
+            except Exception as e:
+                self._log(f"Decision step '{step.name}' failed: {e}", level="warning")
+                return {"success": False, "error": str(e), "decision_failed": True}
         return {}
     
     def _execute_parallel_step(
@@ -398,13 +519,24 @@ class SagaWorkerSync:
         step: Any,
         context: Dict[str, Any],
         step_results: Dict[str, Any],
-    ) -> List[Dict[str, Any]]:
-        """执行并行步骤（同步 + 多线程）"""
+    ) -> Dict[str, Any]:
+        """执行并行步骤（同步 + 多线程）
+        
+        返回结构化结果，让后续 DECISION 步骤可以处理部分失败情况。
+        
+        Returns:
+            {
+                "success": bool,
+                "results": List[Dict],  # 各任务的结果
+                "error": str,           # 失败时的错误信息（可选）
+                "partial_failure": bool # 是否部分失败（可选）
+            }
+        """
         # 构建任务配置
         tasks_config = self._build_parallel_tasks(step, context, step_results)
         
         if not tasks_config:
-            return []
+            return {"success": True, "results": []}
         
         # 1. 发布所有任务
         # 使用业务 ID（runtime_id）作为幂等键
@@ -419,8 +551,9 @@ class SagaWorkerSync:
                 )
                 task_ids.append(task_id)
                 self.metrics.tasks_published += 1
-            except:
+            except Exception as e:
                 task_ids.append(None)
+                self._log(f"Failed to publish task {i} for step {step.name}: {e}", level="warning")
         
         # 2. 并行等待（使用线程池）
         results = []
@@ -434,7 +567,7 @@ class SagaWorkerSync:
                 except Exception as e:
                     result = {"success": False, "error": str(e)}
             else:
-                result = {"error": "Failed to publish"}
+                result = {"success": False, "error": "Failed to publish"}
             
             with results_lock:
                 results.append((idx, result))
@@ -449,7 +582,40 @@ class SagaWorkerSync:
         
         # 按索引排序
         results.sort(key=lambda x: x[0])
-        return [r[1] for r in results]
+        sorted_results = [r[1] for r in results]
+        
+        # 3. 检查失败并根据策略处理
+        failure_policy = getattr(step, 'failure_policy', 'fail_fast')
+        
+        # 检测失败的结果
+        failed_results = [
+            r for r in sorted_results 
+            if r.get("success") is False or r.get("error")
+        ]
+        
+        if failed_results:
+            failed_count = len(failed_results)
+            total_count = len(sorted_results)
+            
+            if failure_policy == 'ignore_failures':
+                # 忽略失败，继续执行
+                self._log(
+                    f"Parallel step '{step.name}': {failed_count}/{total_count} tasks failed (ignored per policy)",
+                    level="warning"
+                )
+                return {"success": True, "results": sorted_results, "failures_ignored": failed_count}
+            else:
+                # fail_fast 或 require_all：返回失败结果（不抛异常，让 DECISION 处理）
+                error_msg = f"{failed_count}/{total_count} tasks failed"
+                self._log(f"Parallel step '{step.name}': {error_msg}", level="warning")
+                return {
+                    "success": False,
+                    "error": error_msg,
+                    "results": sorted_results,
+                    "partial_failure": True,
+                }
+        
+        return {"success": True, "results": sorted_results}
     
     def _build_payload(self, step: Any, context: Dict[str, Any], step_results: Dict[str, Any]) -> Dict[str, Any]:
         """构建步骤的 payload"""

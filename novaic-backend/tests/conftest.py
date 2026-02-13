@@ -18,19 +18,13 @@ import pytest_asyncio
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from gateway.db.database import Database
+from common.db import Database
 from fastapi import FastAPI
 from httpx import AsyncClient, ASGITransport
 
 from task_queue.instance import init_task_queue, init_saga_orchestrator, set_handler_context, shutdown_task_queue, get_handler_context
-from task_queue.routes import (
-    create_task_queue_router,
-    create_handler_router,
-    create_business_router,
-    create_recovery_router,
-)
 from gateway.api.internal import router as internal_router
-import gateway.db.database as db_module
+import common.db as db_module
 
 
 # ==================== Event Loop ====================

@@ -32,29 +32,4 @@ def get_stuck_sending_count(timeout_seconds: int = None):
     return {"count": count}
 
 
-@router.get("/health/stuck-awaking")
-def get_stuck_awaking_count(timeout_seconds: int = None):
-    """Get count of SubAgents stuck in 'awaking' state."""
-    if timeout_seconds is None:
-        timeout_seconds = ServiceConfig.STUCK_AWAKING_TIMEOUT
-    from gateway.db.repositories import SubAgentRepository
-    
-    db = get_db()
-    repo = SubAgentRepository(db)
-    count = repo.get_stuck_awaking_count(timeout_seconds)
-    
-    return {"count": count}
-
-
-@router.post("/health/reset-stuck-awaking")
-def reset_stuck_awaking(timeout_seconds: int = None):
-    """Reset SubAgents stuck in 'awaking' state to 'sleeping'."""
-    if timeout_seconds is None:
-        timeout_seconds = ServiceConfig.STUCK_AWAKING_TIMEOUT
-    from gateway.db.repositories import SubAgentRepository
-    
-    db = get_db()
-    repo = SubAgentRepository(db)
-    count = repo.reset_stuck_awaking(timeout_seconds)
-    
-    return {"reset_count": count}
+# DELETED: stuck-awaking APIs - v3 删除 awaking 状态，用 get_or_create_runtime 替代

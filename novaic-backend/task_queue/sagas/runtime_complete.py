@@ -9,7 +9,7 @@ RuntimeComplete Saga - Runtime 完成流程 (v2)
 5. 异步触发 Summarize Saga
 """
 
-from common.enums import RuntimePhase
+from common.enums import RuntimeStatus
 from ..saga import SagaDefinition
 from . import register_saga_definition
 from ..topics import TaskTopics, SagaTopics
@@ -19,8 +19,8 @@ def _build_set_completed_payload(ctx):
     """构建 runtime.set_status payload"""
     return {
         "runtime_id": ctx["runtime_id"],
-        "expected_status": "active",  # v2: status 只有 active/completed
-        "new_status": RuntimePhase.COMPLETED.value,
+        "expected_status": "active",  # v3: status 只有 active/completed
+        "new_status": RuntimeStatus.COMPLETED.value,
     }
 
 

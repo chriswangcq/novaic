@@ -8,6 +8,7 @@ Topics:
 from typing import Dict, Any
 from . import register_handler
 from ..topics import SagaTopics
+from common.exceptions import ValidationError, ConfigurationError
 
 
 @register_handler(SagaTopics.SAGA_TRIGGER)
@@ -21,7 +22,14 @@ def handle_saga_trigger(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
         saga_type: str (runtime_start / react_think / react_actions / runtime_complete)
         context: dict
         idempotency_key: str (可选)
+        
+    Raises:
+        ValidationError: 当必填字段缺失时
+        ConfigurationError: 当 Saga client 未配置时
     """
+    if not payload.get("saga_type"):
+        raise ValidationError("Missing required field: saga_type")
+    
     saga_client = ctx.get("saga_client")
     
     saga_type = payload["saga_type"]
@@ -29,10 +37,7 @@ def handle_saga_trigger(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     idempotency_key = payload.get("idempotency_key")
     
     if not saga_client:
-        return {
-            "success": False,
-            "error": "Saga client not configured",
-        }
+        raise ConfigurationError("Saga client not configured")
     
     try:
         # Prefer async create (non-blocking) when available.

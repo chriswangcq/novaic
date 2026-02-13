@@ -75,33 +75,7 @@ def get_subagent(agent_id: str, subagent_id: str):
     return _subagent_to_dict(subagent)
 
 
-@router.post("/subagents/{agent_id}/{subagent_id}/wake")
-def wake_subagent(agent_id: str, subagent_id: str, target_status: str = SubagentStatus.AWAKE.value):
-    """Atomically wake a SubAgent (sleeping -> target_status).
-    
-    Args:
-        target_status: "awaking" (intermediate) or "awake" (final)
-    
-    Returns success=True if wake succeeded, False if already awake/awaking.
-    """
-    from gateway.db.repositories import SubAgentRepository
-    
-    db = get_db()
-    repo = SubAgentRepository(db)
-    success = repo.try_wake(subagent_id, agent_id, target_status=target_status)
-    
-    # Clear wake_at timer on successful wake
-    if success:
-        repo.clear_wake_at(subagent_id, agent_id)
-    
-    subagent = repo.get_by_id(subagent_id, agent_id)
-    current_status = subagent.status if subagent else None
-    return {
-        "success": success,
-        "status": current_status,
-        "previous_status": None,
-        "message": "Wake succeeded" if success else "Wake skipped",
-    }
+# DELETED: wake_subagent() - 用 get_or_create_runtime 替代
 
 
 @router.post("/subagents/{agent_id}/{subagent_id}/sleeping")
@@ -262,8 +236,8 @@ def spawn_subagent(agent_id: str, data: Dict[str, Any]):
         "content": f"[SubAgent Task]\n{task_description}"
     })
     
-    # Set SubAgent to awaking status
-    subagent_repo.try_wake(subagent.subagent_id, agent_id, target_status="awaking")
+    # v3: 不再设置 awaking 状态，由 message_process Saga 通过 get_or_create_runtime 原子操作处理
+    # SubAgent 创建时默认是 sleeping 状态，Watchdog 会监测消息并触发 Saga
     
     # v2.1: 写入 SPAWN_SUBAGENT 消息，由 Watchdog 创建 Saga
     # Gateway 不再直接调用 Queue Service

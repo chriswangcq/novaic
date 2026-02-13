@@ -14,6 +14,7 @@ Handler 接口：
 """
 
 from typing import Dict, Any, Callable, Awaitable
+from common.exceptions import ConfigurationError
 
 # Handler 类型
 HandlerFunc = Callable[[Dict[str, Any]], Awaitable[Dict[str, Any]]]
@@ -31,10 +32,14 @@ def register_handler(topic: str):
 
 
 def get_handler(topic: str) -> HandlerFunc:
-    """获取 Handler"""
+    """获取 Handler
+    
+    Raises:
+        ConfigurationError: 当 topic 未注册时抛出（业务错误，不重试）
+    """
     handler = _handlers.get(topic)
     if not handler:
-        raise ValueError(f"No handler registered for topic: {topic}")
+        raise ConfigurationError(f"No handler registered for topic: {topic}")
     return handler
 
 

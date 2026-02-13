@@ -1630,7 +1630,7 @@ def agent_rest(data: dict):
     
     return {
         "success": True,
-        "state": "resting",
+        "state": "resting",  # Agent-level rest state (not runtime status)
         "reason": reason,
         "handoff_notes": handoff_notes,
     }

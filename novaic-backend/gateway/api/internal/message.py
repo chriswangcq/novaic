@@ -118,6 +118,8 @@ def claim_and_prepare_message():
     
     Returns:
         {"message": {...}} if claimed, {"message": null} if queue is empty
+        
+    DEPRECATED: 使用 /messages/find-sending + /messages/{id}/confirm 两阶段提交替代
     """
     from gateway.db.repositories.message import MessageRepository
     
@@ -126,6 +128,66 @@ def claim_and_prepare_message():
     message = repo.claim_sending()
     
     return {"message": message}
+
+
+@router.post("/messages/find-sending")
+def find_sending_message():
+    """Find one sending message without changing its status.
+    
+    两阶段提交第一阶段：
+    1. 查找一条 sending 状态的消息
+    2. 返回消息但不改变状态
+    
+    调用方需要：
+    1. 先创建 Saga（幂等，使用 message_id 作为幂等键）
+    2. Saga 创建成功后，调用 /messages/{id}/confirm 确认消息
+    
+    Returns:
+        {"message": {...}} if found, {"message": null} if queue is empty
+    """
+    from gateway.db.repositories.message import MessageRepository
+    
+    db = get_db()
+    repo = MessageRepository(db)
+    message = repo.find_sending()
+    
+    return {"message": message}
+
+
+@router.post("/messages/{message_id}/confirm")
+def confirm_message(message_id: str):
+    """Confirm a message (sending → sent).
+    
+    两阶段提交第二阶段：
+    Saga 创建成功后调用此方法确认消息。
+    
+    使用 CAS 保证幂等性：
+    - 如果消息状态是 sending，更新为 sent
+    - 如果消息已经是 sent，返回成功（幂等）
+    
+    Returns:
+        {"success": bool, "message_id": str, "confirmed": bool}
+    """
+    from gateway.db.repositories.message import MessageRepository
+    
+    db = get_db()
+    repo = MessageRepository(db)
+    
+    confirmed = repo.confirm_message(message_id)
+    
+    if confirmed:
+        return {"success": True, "message_id": message_id, "confirmed": True}
+    
+    # 检查当前状态，判断是否已经确认（幂等）
+    msg = repo.get_message(message_id)
+    current_status = msg["status"] if msg else "not_found"
+    
+    return {
+        "success": current_status == "sent",  # 如果已经是 sent，视为成功
+        "message_id": message_id,
+        "confirmed": False,
+        "current_status": current_status,
+    }
 
 
 @router.post("/messages/{message_id}/claim")

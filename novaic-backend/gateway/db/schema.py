@@ -554,7 +554,7 @@ CREATE TABLE IF NOT EXISTS agent_runtimes (
     pending_actions TEXT DEFAULT '[]', -- Current round's pending action task IDs
     
     -- Status
-    status TEXT DEFAULT 'active',      -- active, resting, completed
+    status TEXT DEFAULT 'active',      -- active, completed, failed
     error TEXT,
     
     -- Summary (v14, v20)

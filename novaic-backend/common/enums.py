@@ -19,7 +19,6 @@ class RuntimePhase(str, Enum):
 class RuntimeStatus(str, Enum):
     """Runtime 状态"""
     ACTIVE = "active"
-    RESTING = "resting"
     COMPLETED = "completed"
     FAILED = "failed"
 

@@ -26,9 +26,14 @@ class ServiceConfig:
     VMCONTROL_URL = os.getenv("VMCONTROL_URL", f"http://{VMCONTROL_HOST}:{VMCONTROL_PORT}")
     
     # Timeouts
+    # 超时配置计算逻辑：
+    # - LLM_TIMEOUT = 300s
+    # - max_retries = 3 (共 4 次尝试)
+    # - Task 总执行时间 = 300s × 4 = 1200s
+    # - 确保 SAGA_STEP_TIMEOUT > LLM_TIMEOUT × (max_retries + 1)
     TASK_TIMEOUT = int(os.getenv("TASK_TIMEOUT", "60"))
-    SAGA_TIMEOUT = int(os.getenv("SAGA_TIMEOUT", "300"))
-    SAGA_STEP_TIMEOUT = int(os.getenv("SAGA_STEP_TIMEOUT", "300"))
+    SAGA_STEP_TIMEOUT = int(os.getenv("SAGA_STEP_TIMEOUT", "1500"))  # 25 分钟，覆盖 Task 重试
+    SAGA_TIMEOUT = int(os.getenv("SAGA_TIMEOUT", "1800"))  # 30 分钟，Saga 整体超时
     HTTP_TIMEOUT = float(os.getenv("HTTP_TIMEOUT", "30.0"))
     
     # Intervals

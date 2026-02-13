@@ -12,7 +12,7 @@ SubAgent Business - SubAgent 状态管理 (v3)
 
 v3 变更：
 - 删除 awaking 中间状态
-- wake 方法已废弃，用 get_or_create_runtime 原子操作替代
+- 删除 wake 方法，用 get_or_create_runtime 原子操作替代
 """
 
 from dataclasses import dataclass
@@ -40,8 +40,8 @@ class SubAgentBusiness:
     
     Example:
         >>> from task_queue.business import SubAgentBusiness
-        >>> subagent_biz = SubAgentBusiness(db)
-        >>> result = subagent_biz.wake(agent_id="agent-1", subagent_id="main")
+        >>> subagent_biz = SubAgentBusiness(gateway_url)
+        >>> result = subagent_biz.set_awake(agent_id="agent-1", subagent_id="main", runtime_id="rt-xxx")
         >>> if result.success:
         ...     print(f"Status: {result.previous_status} → {result.status}")
     """
@@ -53,49 +53,6 @@ class SubAgentBusiness:
             client: 可复用的 GatewayInternalClient
         """
         self.client = client or GatewayInternalClient(gateway_url)
-    
-    def wake(
-        self,
-        agent_id: str,
-        subagent_id: str,
-    ) -> SubAgentStateResult:
-        """
-        唤醒 SubAgent (sleeping/failed → awaking)
-        
-        用于消息触发时的第一步，锁定 SubAgent 防止并发唤醒。
-        
-        幂等性：
-        - sleeping/failed → awaking: 成功
-        - awaking: 正在启动，返回成功（幂等）
-        - awake: 已经唤醒，返回成功（幂等）
-        
-        Args:
-            agent_id: Agent ID
-            subagent_id: SubAgent ID
-            
-        Returns:
-            SubAgentStateResult
-        """
-        response = self.client.wake_subagent(agent_id, subagent_id, target_status="awaking")
-        if response.get("success"):
-            status = response.get("status")
-            if not status:
-                status = self.get_status(agent_id, subagent_id) or "awaking"
-            return SubAgentStateResult(
-                success=True,
-                subagent_id=subagent_id,
-                previous_status=response.get("previous_status", ""),
-                status=status,
-                message=response.get("message", ""),
-            )
-
-        return SubAgentStateResult(
-            success=False,
-            subagent_id=subagent_id,
-            previous_status=response.get("previous_status", ""),
-            status=response.get("status", ""),
-            error=response.get("error", "Wake failed"),
-        )
     
     def set_awake(
         self,

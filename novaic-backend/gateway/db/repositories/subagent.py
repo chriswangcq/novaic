@@ -237,31 +237,7 @@ class SubAgentRepository:
     # Status Operations (Atomic)
     # ========================================
     
-    def try_wake(
-        self, 
-        subagent_id: str, 
-        agent_id: str, 
-        target_status: str = SubagentStatus.AWAKE.value
-    ) -> bool:
-        """
-        Atomically wake a SubAgent (sleeping/failed -> target_status).
-        Uses CAS to ensure only one caller succeeds.
-        
-        Args:
-            target_status: "awaking" (intermediate) or "awake" (final)
-        
-        Returns True if wake succeeded, False if already awake/awaking.
-        """
-        now = utc_now_iso()
-        with self.db.get_connection("agent", resource_id=agent_id) as conn:
-            # CAS: sleeping OR failed → target_status
-            cursor = conn.execute("""
-                UPDATE subagents 
-                SET status = ?, updated_at = ?
-                WHERE subagent_id = ? AND agent_id = ? AND status IN (?, ?)
-            """, (target_status, now, subagent_id, agent_id, SubagentStatus.SLEEPING.value, SubagentStatus.FAILED.value))
-            conn.commit()
-            return cursor.rowcount > 0
+    # DELETED: try_wake() - v3 删除 awaking 状态，用 get_or_create_runtime 替代
     
     def set_sleeping(self, subagent_id: str, agent_id: str):
         """Set SubAgent to sleeping status."""
@@ -559,42 +535,7 @@ class SubAgentRepository:
             updated_at=row[17],
         )
     
-    # ========================================
-    # Health Monitor Operations (v18)
-    # ========================================
-    
-    def get_stuck_awaking_count(self, timeout_seconds: int = None) -> int:
-        """Get count of SubAgents stuck in 'awaking' state."""
-        if timeout_seconds is None:
-            timeout_seconds = ServiceConfig.STUCK_AWAKING_TIMEOUT
-        
-        result = self.db.fetchone(
-            """SELECT COUNT(*) as count FROM subagents 
-               WHERE status = 'awaking' 
-               AND datetime(updated_at, '+' || ? || ' seconds') < datetime('now')""",
-            (timeout_seconds,)
-        )
-        return result["count"] if result else 0
-    
-    def reset_stuck_awaking(self, timeout_seconds: int = None) -> int:
-        """Reset SubAgents stuck in 'awaking' state to 'sleeping'.
-        
-        Returns number of SubAgents reset.
-        """
-        if timeout_seconds is None:
-            timeout_seconds = ServiceConfig.STUCK_AWAKING_TIMEOUT
-        
-        now = utc_now_iso()
-        with self.db.get_connection("global") as conn:
-            cursor = conn.execute(
-                """UPDATE subagents 
-                   SET status = ?, updated_at = ?
-                   WHERE status = 'awaking' 
-                   AND datetime(updated_at, '+' || ? || ' seconds') < datetime('now')""",
-                (SubagentStatus.SLEEPING.value, now, timeout_seconds)
-            )
-            conn.commit()
-            return cursor.rowcount
+    # DELETED: Health Monitor Operations for awaking - v3 删除 awaking 状态
     
     # ========================================
     # HRL and Summary Lock Operations (v24)

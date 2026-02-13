@@ -17,6 +17,7 @@ from . import register_handler
 from ..business import LLMBusiness
 from ..utils import sync_broadcast_log, BroadcastType
 from common.config import ServiceConfig
+from common.exceptions import ValidationError
 from ..topics import TaskTopics
 
 
@@ -65,7 +66,18 @@ def handle_llm_call(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
         tools: list (可选)
         agent_id: str (可选，用于广播)
         provider: str (可选，openai/anthropic)
+        
+    Raises:
+        ValidationError: 当必填字段缺失时
     """
+    # 验证必填字段
+    if not payload.get("runtime_id"):
+        raise ValidationError("Missing required field: runtime_id")
+    if not payload.get("round_id"):
+        raise ValidationError("Missing required field: round_id")
+    if not payload.get("messages"):
+        raise ValidationError("Missing required field: messages")
+    
     runtime_id = payload["runtime_id"]
     round_id = payload["round_id"]
     messages = payload["messages"]
@@ -223,7 +235,13 @@ def handle_llm_call_summary(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any
         agent_id: str (可选，用于获取 LLM 配置)
         model: str (可选，默认使用 agent 配置)
         system_prompt: str (可选，摘要提示词)
+        
+    Raises:
+        ValidationError: 当必填字段缺失时
     """
+    if not payload.get("runtime_id"):
+        raise ValidationError("Missing required field: runtime_id")
+    
     runtime_id = payload["runtime_id"]
     
     # 通过 Gateway 内部 API 获取 Runtime 对应的 LLM 配置
@@ -284,7 +302,13 @@ def handle_llm_call_hot_cold_summary(payload: Dict[str, Any], ctx: dict) -> Dict
     Payload:
         runtime_id: str
         model: str (可选，默认使用 agent 配置)
+        
+    Raises:
+        ValidationError: 当必填字段缺失时
     """
+    if not payload.get("runtime_id"):
+        raise ValidationError("Missing required field: runtime_id")
+    
     runtime_id = payload["runtime_id"]
     
     # 通过 Gateway 内部 API 获取 Runtime 对应的 LLM 配置

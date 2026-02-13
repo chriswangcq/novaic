@@ -193,7 +193,7 @@ def run_queue_service():
 def run_watchdog():
     """Run the Watchdog service (message monitor)."""
     import argparse
-    import asyncio
+    import signal
     
     parser = argparse.ArgumentParser(description="NovAIC Watchdog Service")
     parser.add_argument("--gateway-url", default=ServiceConfig.GATEWAY_URL, help="Gateway URL")
@@ -202,31 +202,25 @@ def run_watchdog():
     
     from task_queue.workers.watchdog import Watchdog
     
-    async def run():
-        worker = Watchdog(
-            gateway_url=args.gateway_url,
-            queue_service_url=args.queue_service_url,
-            poll_interval=ServiceConfig.POLL_INTERVAL,
-        )
-        
-        import signal
-        loop = asyncio.get_running_loop()
-        
-        def shutdown_handler():
-            print("[watchdog] Received shutdown signal")
-            asyncio.create_task(worker.shutdown())
-        
-        for sig in (signal.SIGTERM, signal.SIGINT):
-            loop.add_signal_handler(sig, shutdown_handler)
-        
-        print(f"[watchdog] Starting...")
-        print(f"[watchdog] Gateway URL: {args.gateway_url}")
-        print(f"[watchdog] Queue Service URL: {args.queue_service_url}")
-        
-        await worker.run()
-        print("[watchdog] Shutdown complete")
+    worker = Watchdog(
+        gateway_url=args.gateway_url,
+        queue_service_url=args.queue_service_url,
+        poll_interval=ServiceConfig.POLL_INTERVAL,
+    )
     
-    asyncio.run(run())
+    def shutdown_handler(signum, frame):
+        print("[watchdog] Received shutdown signal")
+        worker.shutdown()
+    
+    signal.signal(signal.SIGTERM, shutdown_handler)
+    signal.signal(signal.SIGINT, shutdown_handler)
+    
+    print(f"[watchdog] Starting...")
+    print(f"[watchdog] Gateway URL: {args.gateway_url}")
+    print(f"[watchdog] Queue Service URL: {args.queue_service_url}")
+    
+    worker.run()
+    print("[watchdog] Shutdown complete")
 
 
 def run_task_worker():

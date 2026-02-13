@@ -103,7 +103,7 @@ def get_runtimes_with_tools():
     """Get all active runtimes that have tool_ports registered.
     
     Used by Tools Server on startup to restore runtime tool contexts.
-    Returns only runtimes with status in (active, resting) AND tool_ports IS NOT NULL.
+    Returns only runtimes with status = 'active' AND tool_ports IS NOT NULL.
     
     NOTE: Must be defined BEFORE /runtimes/{runtime_id} to avoid route conflict.
     """
@@ -256,8 +256,6 @@ def update_runtime(runtime_id: str, data: Dict[str, Any]):
             repo.mark_completed(runtime_id)
         elif data["status"] == RuntimeStatus.FAILED.value:
             repo.mark_failed(runtime_id, data.get("error", "Unknown error"))
-        elif data["status"] == RuntimeStatus.RESTING.value:
-            repo.set_resting(runtime_id)
         elif data["status"] == RuntimeStatus.ACTIVE.value:
             repo.set_status(runtime_id, RuntimeStatus.ACTIVE.value)
     
@@ -277,15 +275,15 @@ def update_runtime(runtime_id: str, data: Dict[str, Any]):
 @router.post("/runtimes/{runtime_id}/rest")
 def rest_runtime(runtime_id: str, data: Dict[str, Any]):
     """
-    Put a runtime into resting state (v14).
+    Set runtime need_rest flag and update SubAgent wake triggers.
     
-    Called by runtime_rest tool. Sets runtime status to 'resting' and
-    updates the SubAgent's wake_triggers.
+    Called by runtime_rest tool. Sets need_rest=1 on runtime and
+    updates the SubAgent's wake_triggers for scheduled wake.
     
     Args:
         runtime_id: Runtime ID
         data: {
-            "reason": str - Why the runtime is resting
+            "reason": str - Why the runtime needs rest
             "wake_triggers": list - Conditions to wake up
             "handoff_notes": str - Notes for next activation
         }
@@ -323,7 +321,7 @@ def rest_runtime(runtime_id: str, data: Dict[str, Any]):
     
     return {
         "success": True,
-        "state": "resting",
+        "state": "need_rest",
         "reason": reason,
         "triggers_set": len(wake_triggers),
         "estimated_wake": wake_at,
@@ -632,7 +630,7 @@ def get_latest_runtimes(agent_id: str, subagent_id: str, limit: int = 30):
 
 @router.get("/agents/{agent_id}/subagents/{subagent_id}/has-active-runtime")
 def has_active_runtime(agent_id: str, subagent_id: str):
-    """Check if SubAgent has an active runtime (active/resting status)."""
+    """Check if SubAgent has an active runtime (status = active)."""
     from gateway.db.repositories import RuntimeRepository
     
     db = get_db()
@@ -1142,8 +1140,8 @@ def rt_subagent_spawn(runtime_id: str, data: Dict[str, Any]):
     
     initial_context.append({"role": "user", "content": f"[SubAgent Task]\n{task_description}"})
     
-    # Set SubAgent to awaking status
-    subagent_repo.try_wake(subagent.subagent_id, agent_id, target_status="awaking")
+    # v3: 不再设置 awaking 状态，由 message_process Saga 通过 get_or_create_runtime 原子操作处理
+    # SubAgent 创建时默认是 sleeping 状态，Watchdog 会监测消息并触发 Saga
     
     # v2.1: 写入 SPAWN_SUBAGENT 消息，由 Watchdog 创建 Saga
     # Gateway 不再直接调用 Queue Service

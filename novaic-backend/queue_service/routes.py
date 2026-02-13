@@ -99,6 +99,10 @@ class SagaFailRequest(BaseModel):
     error: str
 
 
+class SagaReleaseRequest(BaseModel):
+    reason: str = ""
+
+
 class StatsResponse(BaseModel):
     counts: Dict[str, int]
 
@@ -265,6 +269,12 @@ def create_task_queue_router(
             orchestrator.mark_failed(saga_id, req.error)
             return SuccessResponse(success=True)
         
+        @router.post("/sagas/{saga_id}/release", response_model=SuccessResponse)
+        def release_saga(saga_id: str, req: SagaReleaseRequest):
+            """释放 Saga 回 pending 状态 (用于可重试错误)"""
+            success = orchestrator.release(saga_id, req.reason)
+            return SuccessResponse(success=success)
+        
         @router.post("/sagas/{saga_id}/resume", response_model=SuccessResponse)
         def resume_saga(saga_id: str):
             """恢复 Saga (发布 saga.run Task)"""
@@ -337,8 +347,8 @@ def create_recovery_router(
     
     @router.post("/all", response_model=RecoveryResponse)
     def recover_all(
-        task_timeout: int = 60,
-        saga_timeout: int = 120,
+        task_timeout: int = 120,
+        saga_timeout: int = 600,
     ):
         """恢复所有超时任务和 Saga"""
         tasks_recovered = queue.recover_stale(task_timeout)

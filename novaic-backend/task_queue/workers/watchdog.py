@@ -1,6 +1,20 @@
 """
 Watchdog - 消息监视器 (Agent 唤醒系统)
 
+⚠️ DEPRECATED: 此文件已被 watchdog_sync.py 替代。
+生产环境请使用 watchdog_sync.py (通过 start_workers_sync.sh 启动)。
+
+此文件保留用于：
+- 向后兼容（main_watchdog.py, main_novaic.py 仍引用此文件）
+- 本地开发测试
+
+与 watchdog_sync.py 的差异：
+- 本文件直接使用 httpx.Client，watchdog_sync.py 使用 SDK
+- 本文件包含 INTERRUPT 处理逻辑（watchdog_sync.py 暂未实现）
+- 两者的核心消息处理逻辑保持一致
+
+---
+
 监视 sending 状态的消息，为每条消息创建 MessageProcess Saga。
 
 架构定位：
@@ -193,7 +207,7 @@ class Watchdog:
         elif msg_type == "SYSTEM_WAKE":
             self._create_message_process_saga(msg_id, agent_id, msg_type)
         elif msg_type == "SPAWN_SUBAGENT":
-            self._create_runtime_start_saga(msg_id, agent_id, metadata)
+            self._create_spawn_subagent_saga(msg_id, agent_id, metadata)
         elif msg_type == "INTERRUPT":
             self._handle_interrupt(msg_id, agent_id, metadata)
         else:
@@ -201,6 +215,10 @@ class Watchdog:
     
     def _create_message_process_saga(self, msg_id: str, agent_id: str, msg_type: str = "USER_MESSAGE"):
         """创建 message_process Saga"""
+        # Phase 4: Lifecycle hook — 用户消息自动计数
+        if msg_type == "USER_MESSAGE":
+            self._increment_drive_interaction(agent_id)
+        
         client = self._get_queue_client()
         subagent_id = f"main-{agent_id[:8]}"
         
@@ -232,8 +250,13 @@ class Watchdog:
             self._log(f"Failed to create message_process saga: {e}", level="error")
             self.metrics.errors += 1
     
-    def _create_runtime_start_saga(self, msg_id: str, agent_id: str, metadata: Dict[str, Any]):
-        """创建 runtime_start Saga (用于 SubAgent spawn)"""
+    def _create_spawn_subagent_saga(self, msg_id: str, agent_id: str, metadata: Dict[str, Any]):
+        """创建 message_process Saga (用于 SubAgent spawn)
+        
+        统一走 message_process saga，与 USER_MESSAGE/SYSTEM_WAKE 流程一致。
+        message_process 会调用 route_message -> get_or_create_runtime，
+        然后触发 runtime_start saga。
+        """
         client = self._get_queue_client()
         
         subagent_id = metadata.get("subagent_id")
@@ -249,29 +272,42 @@ class Watchdog:
             resp = client.post(
                 "/api/queue/sagas/start",
                 json={
-                    "saga_type": "runtime_start",
+                    "saga_type": "message_process",
                     "context": {
+                        "message_id": msg_id,
                         "agent_id": agent_id,
                         "subagent_id": subagent_id,
+                        "trigger_type": "spawn_subagent",
                         "trigger_id": trigger_id,
                         "initial_context": initial_context,
                     },
-                    "idempotency_key": f"runtime-start-{trigger_id}",
+                    "idempotency_key": f"message-process-{msg_id}",
                 }
             )
             
             if resp.status_code == 200:
                 data = resp.json()
                 saga_id = data.get("saga_id")
-                self._log(f"Created runtime_start Saga {saga_id} for subagent {subagent_id}")
+                self._log(f"Created message_process Saga {saga_id} for subagent spawn {subagent_id}")
                 self.metrics.sagas_created += 1
             else:
-                self._log(f"Failed to create runtime_start saga: {resp.status_code} - {resp.text}", level="error")
+                self._log(f"Failed to create message_process saga for spawn: {resp.status_code} - {resp.text}", level="error")
                 self.metrics.errors += 1
                 
         except Exception as e:
-            self._log(f"Failed to create runtime_start saga: {e}", level="error")
+            self._log(f"Failed to create message_process saga for spawn: {e}", level="error")
             self.metrics.errors += 1
+    
+    def _increment_drive_interaction(self, agent_id: str):
+        """增加 drive interaction 计数 - 调用 Gateway"""
+        client = self._get_gateway_client()
+        
+        try:
+            resp = client.post(f"/internal/agents/{agent_id}/drive/increment-interaction")
+            if resp.status_code != 200:
+                self._log(f"Failed to increment drive interaction: {resp.status_code}", level="error")
+        except Exception:
+            pass  # non-critical, don't block message processing
     
     def _handle_interrupt(self, msg_id: str, agent_id: str, metadata: Dict[str, Any]):
         """处理 INTERRUPT 消息 - 调用 QS cancel API"""

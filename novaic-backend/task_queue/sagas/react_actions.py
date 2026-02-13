@@ -48,13 +48,23 @@ def _build_save_results_tasks(ctx, prev_results):
     
     注意：必须保存所有 tool results（包括失败的），因为 LLM API 要求
     每个 tool_call 都必须有对应的 tool result。
+    
+    prev_results 格式（并行步骤返回）：
+    - {"success": bool, "results": [...], ...}
     """
     import json
     runtime_id = ctx["runtime_id"]
     round_num = ctx.get("round_num", 1)
     
+    # 从并行步骤结果中提取 results 列表
+    if isinstance(prev_results, dict):
+        results_list = prev_results.get("results", [])
+    else:
+        # 兼容旧格式（直接是 list）
+        results_list = prev_results if isinstance(prev_results, list) else []
+    
     tasks = []
-    for i, result in enumerate(prev_results):
+    for i, result in enumerate(results_list):
         tool_call_id = result.get("tool_call_id") or f"tool-{i}"
         
         # 构建 content（成功或失败都要保存）

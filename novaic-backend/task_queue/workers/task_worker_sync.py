@@ -24,8 +24,10 @@ import traceback
 
 from task_queue.client import TaskQueueClient, GatewayInternalClient, SagaClient
 from task_queue.heartbeat_sync import HeartbeatSync
+from task_queue.exceptions import RETRYABLE_EXCEPTIONS, is_retryable_error
 from common.config import ServiceConfig
 from common.utils.time import utc_now_iso
+from common.exceptions import BusinessError
 
 
 @dataclass
@@ -175,6 +177,11 @@ class TaskWorkerSync:
         执行任务（同步）
         
         这里的代码完全同步，无需 async/await
+        
+        错误处理策略：
+        - BusinessError: 业务逻辑错误，不重试
+        - RETRYABLE_EXCEPTIONS: 基础设施错误（网络、超时），重试
+        - 其他 Exception: 未知错误，默认重试（保守策略）
         """
         task_id = task["id"]
         topic = task["topic"]
@@ -191,13 +198,31 @@ class TaskWorkerSync:
             self.metrics.tasks_succeeded += 1
             self._log(f"Task {task_id} completed")
             
-        except Exception as e:
-            # 标记失败
+        except BusinessError as e:
+            # 业务逻辑错误，不重试
+            error_msg = str(e)
+            self.client.fail(task_id, error_msg, retry=False)
+            
+            self.metrics.tasks_failed += 1
+            self._log(f"Task {task_id} failed (business error, no retry): {error_msg}", level="error")
+            
+        except RETRYABLE_EXCEPTIONS as e:
+            # 基础设施错误（网络、超时等），重试
             error_msg = str(e)
             self.client.fail(task_id, error_msg, retry=True)
             
             self.metrics.tasks_failed += 1
-            self._log(f"Task {task_id} failed: {error_msg}", level="error")
+            self._log(f"Task {task_id} failed (infra error, will retry): {error_msg}", level="error")
+            
+        except Exception as e:
+            # 未知错误，检查是否可重试
+            error_msg = str(e)
+            should_retry = is_retryable_error(e)
+            self.client.fail(task_id, error_msg, retry=should_retry)
+            
+            self.metrics.tasks_failed += 1
+            retry_hint = "will retry" if should_retry else "no retry"
+            self._log(f"Task {task_id} failed (unknown error, {retry_hint}): {error_msg}", level="error")
         
         finally:
             self.metrics.tasks_processed += 1
@@ -210,9 +235,13 @@ class TaskWorkerSync:
         Handler 通过 GatewayInternalClient 调用 Gateway API 访问数据库
         """
         from task_queue.handlers import get_handler
+        from task_queue.handlers.validation import validate_basic_payload
         
         topic = task["topic"]
-        payload = task.get("payload", {})
+        payload = task.get("payload")
+        
+        # 基础 payload 验证（确保是 dict）
+        payload = validate_basic_payload(payload, topic)
         
         # 获取 handler
         handler = get_handler(topic)

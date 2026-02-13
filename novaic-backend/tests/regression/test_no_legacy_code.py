@@ -244,17 +244,36 @@ class TestImportIntegrity:
         """No imports of deleted modules."""
         deleted_modules = [
             'agent.events',
-            'agent.inbox', 
+            'agent.inbox',
             'agent.runner',
             'agent.subagent',
             'api.inbox_service',
             'db.repositories.inbox',
             'process.manager',  # ProcessManager 已移除，Worker 由 Tauri 统一拉起
+            # 异步模块已移除，使用 sync 版本
+            'task_queue.heartbeat',   # 已删除，使用 task_queue.heartbeat_sync
+            'task_queue.health',      # 已删除
+            'task_queue.worker',      # 已删除，使用 task_queue.workers.*_sync
+            'queue_service.saga',     # 已删除，使用 queue_service.saga_repo
         ]
         
+        # 模块名相近时的排除规则（避免误报 heartbeat_sync, workers, saga_repo）
+        exclude_if_contains = {
+            'task_queue.heartbeat': 'heartbeat_sync',
+            'task_queue.worker': 'workers',
+            'queue_service.saga': 'saga_repo',
+        }
+
         for module in deleted_modules:
-            matches = search_in_codebase(f'from {module}')
-            actual = [m for m in matches if '/tests/' not in m]
+            # 检查 "from module import" 和 "import module"
+            from_matches = search_in_codebase(f'from {module}')
+            import_matches = search_in_codebase(f'import {module}')
+            actual = [
+                m for m in from_matches + import_matches
+                if '/tests/' not in m
+                and not (exclude_if_contains.get(module, '') and
+                         exclude_if_contains[module] in m)
+            ]
             
             assert len(actual) == 0, f"Found import of deleted module {module}: {actual}"
 

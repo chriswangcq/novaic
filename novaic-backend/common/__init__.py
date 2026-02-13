@@ -5,3 +5,12 @@ NovAIC Backend Common Library
 """
 
 __version__ = "1.0.0"
+
+# 导出常用异常类
+from .exceptions import (
+    BusinessError,
+    ValidationError,
+    NotFoundError,
+    StateConflictError,
+    ConfigurationError,
+)

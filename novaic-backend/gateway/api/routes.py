@@ -827,11 +827,11 @@ def interrupt(agent_id: str = Query(..., description="Agent ID (required)")):
         """, (now,))
         interrupted_runtimes = cursor.rowcount
         
-        # Set SubAgents to sleeping
+        # Set SubAgents to sleeping (v3: 删除 awaking 状态)
         db.execute("""
             UPDATE subagents 
             SET status = 'sleeping', updated_at = ?
-            WHERE status IN ('awake', 'awaking')
+            WHERE status = 'awake'
         """, (now,))
     
     # 2. 写入 INTERRUPT 消息，Watchdog 会调用 QS cancel API

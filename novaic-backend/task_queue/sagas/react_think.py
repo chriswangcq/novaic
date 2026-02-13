@@ -46,17 +46,24 @@ def _build_llm_call_payload(ctx, prev_result):
 
 def _build_save_response_payload(ctx, prev_result):
     """Step 3: 保存 LLM 响应"""
-    response = prev_result.get("response", {})
-    message = response.get("choices", [{}])[0].get("message", {})
-    
-    # 确保 message 有效（至少有 role 或 content）
-    if not message or (not message.get("role") and not message.get("content")):
-        # 如果 LLM 返回空响应，构建一个占位消息
+    # 检查 call_llm 是否失败
+    if prev_result.get("success") is False:
+        error_msg = prev_result.get("error", "Unknown LLM error")
         message = {
             "role": "assistant",
-            "content": "[No response from LLM]",
+            "content": f"[LLM Error] {error_msg}",
         }
-    
+    else:
+        response = prev_result.get("response", {})
+        message = response.get("choices", [{}])[0].get("message", {})
+
+        # 确保 message 有效（至少有 role 或 content）
+        if not message or (not message.get("role") and not message.get("content")):
+            message = {
+                "role": "assistant",
+                "content": "[No response from LLM]",
+            }
+
     return {
         "runtime_id": ctx["runtime_id"],
         "message": message,
