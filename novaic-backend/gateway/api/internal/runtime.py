@@ -1309,21 +1309,25 @@ async def rt_qemu_ssh_exec(runtime_id: str, data: Dict[str, Any]):
     """Execute command via SSH on VM. Agent ID resolved from runtime."""
     import asyncio
     from gateway.vm.ssh import get_ssh_key_manager
-    from gateway.config.agents import allocate_ports_for_agent, get_agent_config_manager
+    from gateway.config.agents import get_agent_config_manager
+    from gateway.api.vm import _get_device_ports
     
     _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     command = data.get("command", "")
     timeout = data.get("timeout", 30)
     
-    # Get agent port configuration from database
+    # Get agent port configuration (from devices or legacy agent.vm)
     config_mgr = get_agent_config_manager()
     agent = config_mgr.get_agent(agent_id)
     
-    if not agent or not agent.vm or not agent.vm.ports:
-        raise HTTPException(status_code=404, detail="Agent not found or has no port configuration")
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
     
-    ssh_port = agent.vm.ports.ssh
+    ports = _get_device_ports(agent)
+    ssh_port = ports.get("ssh")
+    if not ssh_port:
+        raise HTTPException(status_code=404, detail="Agent has no SSH port (no Linux device?)")
     
     try:
         import asyncssh
@@ -1351,18 +1355,24 @@ async def rt_qemu_ssh_exec(runtime_id: str, data: Dict[str, Any]):
 def rt_qemu_status(runtime_id: str):
     """Get QEMU VM status. Agent ID resolved from runtime."""
     import os
+    from gateway.config.agents_db import PortConfig
     from gateway.config.agents import get_agent_config_manager
     from gateway.vm.repository import VmProcessRepository
+    from gateway.api.vm import _get_device_ports
     
     _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     config_mgr = get_agent_config_manager()
     agent = config_mgr.get_agent(agent_id)
     
-    if not agent or not agent.vm or not agent.vm.ports:
-        raise HTTPException(status_code=404, detail="Agent not found or has no port configuration")
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
     
-    ports = agent.vm.ports
+    port_dict = _get_device_ports(agent)
+    if not port_dict.get("ssh"):
+        raise HTTPException(status_code=404, detail="Agent has no port configuration (no Linux device?)")
+    
+    ports = PortConfig(ssh=port_dict["ssh"], vmuse=port_dict.get("vmuse", 0))
     
     # Get VM process info from database (not from filesystem PID file)
     repo = VmProcessRepository()
@@ -1395,12 +1405,23 @@ def rt_qemu_status(runtime_id: str):
 def rt_qemu_start(runtime_id: str, data: Dict[str, Any]):
     """Start the QEMU VM. Agent ID resolved from runtime."""
     from gateway.vm import get_vm_manager
+    from gateway.config.agents_db import PortConfig
     from gateway.config.agents import get_agent_config_manager
+    from gateway.api.vm import _get_device_ports, _get_device_image_path
     
     _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     memory = data.get("memory", "4096")
     cpus = data.get("cpus", 4)
+    
+    config_mgr = get_agent_config_manager()
+    agent = config_mgr.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    
+    port_dict = _get_device_ports(agent)
+    ports = PortConfig(ssh=port_dict.get("ssh", 0), vmuse=port_dict.get("vmuse", 0)) if port_dict.get("ssh") else None
+    image_path = _get_device_image_path(agent)
     
     try:
         manager = get_vm_manager()
@@ -1408,6 +1429,8 @@ def rt_qemu_start(runtime_id: str, data: Dict[str, Any]):
             agent_id=agent_id,
             memory=memory,
             cpus=cpus,
+            ports=ports,
+            image_path=image_path,
         )
         return {"success": True, **result}
     except Exception as e:
@@ -1440,11 +1463,22 @@ def rt_qemu_shutdown(runtime_id: str, data: Dict[str, Any]):
 def rt_qemu_restart(runtime_id: str, data: Dict[str, Any]):
     """Restart the QEMU VM (stop then start). Agent ID resolved from runtime."""
     from gateway.vm import get_vm_manager
+    from gateway.config.agents_db import PortConfig
     from gateway.config.agents import get_agent_config_manager
+    from gateway.api.vm import _get_device_ports, _get_device_image_path
     
     _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     graceful = data.get("graceful", True)
+    
+    config_mgr = get_agent_config_manager()
+    agent = config_mgr.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    
+    port_dict = _get_device_ports(agent)
+    ports = PortConfig(ssh=port_dict.get("ssh", 0), vmuse=port_dict.get("vmuse", 0)) if port_dict.get("ssh") else None
+    image_path = _get_device_image_path(agent)
     
     try:
         manager = get_vm_manager()
@@ -1456,11 +1490,13 @@ def rt_qemu_restart(runtime_id: str, data: Dict[str, Any]):
             quick=False,  # Use normal timeout for restart
         )
         
-        # Start the VM again
+        # Start the VM again (pass ports/image_path for v38 device model)
         start_result = manager.start(
             agent_id=agent_id,
-            memory="4096",  # Default memory
-            cpus=4,         # Default CPUs
+            memory="4096",
+            cpus=4,
+            ports=ports,
+            image_path=image_path,
         )
         
         return {

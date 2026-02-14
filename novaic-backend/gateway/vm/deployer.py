@@ -225,7 +225,7 @@ class VmuseDeployer:
                 ],
                 capture_output=True,
                 text=True,
-                timeout=120,
+                timeout=180,
             )
             
             if scp_result.returncode != 0:
@@ -259,6 +259,7 @@ rm -f /tmp/vmuse.tar.gz
 echo "VMUSE installation completed"
 """
             
+            # pip install -e . with playwright can take 5-10+ min (downloads browser binaries)
             ssh_result = subprocess.run(
                 [
                     "ssh",
@@ -271,7 +272,7 @@ echo "VMUSE installation completed"
                 ],
                 capture_output=True,
                 text=True,
-                timeout=120,
+                timeout=600,
             )
             
             if ssh_result.returncode != 0:
@@ -340,6 +341,30 @@ echo "VMUSE installation completed"
         
         return result
     
+    def _wait_for_ssh(self, vm_ip: str, ssh_port: int, ssh_user: str, max_wait: int = 120):
+        """Poll until SSH is ready (every 5s). First boot ~60s, subsequent ~15s."""
+        ssh_manager = get_ssh_key_manager()
+        key_path = ssh_manager.get_private_key_path()
+        poll_interval = 5
+        last_log = 0
+        
+        for elapsed in range(0, max_wait, poll_interval):
+            r = subprocess.run(
+                ["ssh", "-i", str(key_path), "-p", str(ssh_port),
+                 "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null",
+                 "-o", "ConnectTimeout=3", f"{ssh_user}@{vm_ip}", "echo ok"],
+                capture_output=True, text=True, timeout=5,
+            )
+            if r.returncode == 0:
+                if elapsed > 0:
+                    logger.info(f"[VmuseDeployer] SSH ready in {elapsed}s")
+                return
+            if elapsed - last_log >= 15:
+                logger.info(f"[VmuseDeployer] Waiting for SSH... ({elapsed}s)")
+                last_log = elapsed
+            time.sleep(poll_interval)
+        logger.warning(f"[VmuseDeployer] SSH not ready after {max_wait}s, will retry in deploy loop")
+    
     def _deploy_with_retry(
         self,
         agent_id: str,
@@ -379,7 +404,9 @@ echo "VMUSE installation completed"
         start_time = time.time()
         retry_interval = 30  # Check every 30 seconds
         
-        logger.info(f"[VmuseDeployer] Starting aggressive deployment (timeout: {timeout//60}m)")
+        # Poll for SSH readiness instead of fixed wait (first boot ~60s, subsequent ~15s)
+        logger.info(f"[VmuseDeployer] Starting aggressive deployment (timeout: {timeout//60}m), waiting for SSH...")
+        self._wait_for_ssh(vm_ip, ssh_port, ssh_user, max_wait=120)
         
         while time.time() - start_time < timeout:
             result["attempts"] += 1
@@ -472,7 +499,7 @@ echo "VMUSE installation completed"
                 ],
                 capture_output=True,
                 text=True,
-                timeout=120,
+                timeout=180,
             )
             if scp_result.returncode != 0:
                 raise RuntimeError(f"SCP failed: {scp_result.stderr}")
@@ -492,6 +519,7 @@ tar -xzf /tmp/vmuse.tar.gz --strip-components=1
 rm -f /tmp/vmuse.tar.gz
 echo "Installation completed"
 """
+            # pip install -e . with playwright can take 5-10+ min (downloads browser binaries)
             ssh_result = subprocess.run(
                 [
                     "ssh",
@@ -505,10 +533,18 @@ echo "Installation completed"
                 ],
                 capture_output=True,
                 text=True,
-                timeout=120,
+                timeout=600,
             )
             if ssh_result.returncode != 0:
-                raise RuntimeError(f"Installation failed: {ssh_result.stderr}")
+                out = (ssh_result.stdout or "").strip()
+                err = (ssh_result.stderr or "").strip()
+                err_msg = f"Installation failed (exit {ssh_result.returncode})"
+                if out:
+                    err_msg += f" stdout: {out[:500]}{'...' if len(out) > 500 else ''}"
+                if err:
+                    err_msg += f" stderr: {err[:500]}{'...' if len(err) > 500 else ''}"
+                logger.warning(f"[VmuseDeployer] {err_msg}")
+                raise RuntimeError(err_msg)
             result["steps"]["install"] = "ok"
             
             # Step 4: Start service

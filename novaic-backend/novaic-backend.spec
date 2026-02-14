@@ -54,6 +54,8 @@ a = Analysis(
         # SQLite
         'sqlite3', 
         '_sqlite3',
+        # AsyncSSH (SSH for qemu_ssh_exec)
+        'asyncssh',
         # Paramiko (SSH)
         'paramiko',
         'paramiko.transport',

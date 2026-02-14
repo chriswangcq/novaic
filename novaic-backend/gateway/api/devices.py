@@ -520,7 +520,7 @@ def _setup_android_device(device: AndroidDevice, request: SetupDeviceRequest, re
 
 
 def _start_linux_device(device: LinuxDevice, repo: DeviceRepository):
-    """Start a Linux VM."""
+    """Start a Linux VM and deploy VMUSE service."""
     from gateway.vm.manager import get_vm_manager
     from gateway.config.agents_db import PortConfig
     
@@ -543,6 +543,19 @@ def _start_linux_device(device: LinuxDevice, repo: DeviceRepository):
         )
         
         repo.update_status(device.id, DeviceStatus.RUNNING)
+        
+        # Schedule VMUSE deployment (required for screenshot, shell_exec, etc.)
+        if port_config.ssh and port_config.vmuse:
+            import threading
+            from gateway.api.vm import _deploy_vmuse_background
+            threading.Thread(
+                target=_deploy_vmuse_background,
+                args=(device.agent_id, port_config.ssh, port_config.vmuse),
+                daemon=True,
+            ).start()
+            logger.info(f"[Devices] Scheduled VMUSE deployment for agent {device.agent_id}")
+            result["vmuse_deployment"] = "scheduled"
+        
         return {"status": "ok", "message": "Linux VM started", **result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

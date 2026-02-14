@@ -35,6 +35,7 @@ router = APIRouter(prefix="/api/vm", tags=["vm"])
 def _get_device_ports(agent) -> Dict[str, int]:
     """
     Get SSH and VMUSE ports from agent's devices (v38) or fallback to agent.vm.ports.
+    When agent.devices is empty, directly queries devices table as fallback.
     
     Returns:
         Dict with 'ssh' and 'vmuse' ports
@@ -71,6 +72,35 @@ def _get_device_ports(agent) -> Dict[str, int]:
             vmuse_port = agent.vm.ports.vmuse
     
     return {'ssh': ssh_port, 'vmuse': vmuse_port}
+
+
+def _get_device_image_path(agent) -> Optional[str]:
+    """
+    Get disk image path from agent's Linux device (v38) or fallback to agent.vm.image_path.
+    """
+    # Try devices first (v38)
+    if hasattr(agent, 'devices') and agent.devices:
+        for device in agent.devices:
+            if isinstance(device, dict) and device.get('type') == 'linux':
+                path = device.get('image_path')
+                if path:
+                    from pathlib import Path
+                    if Path(path).exists():
+                        return path
+                break
+            elif hasattr(device, 'type') and getattr(device, 'type', None) == 'linux':
+                path = getattr(device, 'image_path', None)
+                if path:
+                    from pathlib import Path
+                    if Path(path).exists():
+                        return path
+                break
+    # Fallback to agent.vm.image_path
+    if hasattr(agent, 'vm') and agent.vm and agent.vm.image_path:
+        from pathlib import Path
+        if Path(agent.vm.image_path).exists():
+            return agent.vm.image_path
+    return None
 
 
 # ==================== Request/Response Models ====================
@@ -503,9 +533,13 @@ def _deploy_vmuse_background(agent_id: str, ssh_port: int, vmuse_port: int):
 def deploy_vmuse_manual(
     agent_id: str,
     aggressive: bool = True,
+    wait: bool = False,
 ):
     """
     Manually trigger VMUSE code deployment to VM.
+    
+    Runs in background by default (returns immediately). Deploy takes 5-10+ min
+    (pip install playwright downloads browser binaries).
     
     Useful for:
     - Updating VMUSE code after changes
@@ -515,12 +549,12 @@ def deploy_vmuse_manual(
     Args:
         agent_id: Agent ID
         aggressive: Use aggressive deployment (retry until success). Default: True
+        wait: If True, wait for deploy to complete (can take 10+ min). Default: False
     
     Returns:
-        Deployment result
+        {"scheduled": true} if wait=False, else full deployment result
     """
     try:
-        # Get agent ports
         from gateway.config import get_agent_config_manager
         agent_manager = get_agent_config_manager()
         agent = agent_manager.get_agent(agent_id)
@@ -531,22 +565,42 @@ def deploy_vmuse_manual(
         ports = _get_device_ports(agent)
         if not ports['ssh']:
             raise HTTPException(status_code=400, detail="Agent ports not configured")
+        logger.info(f"[VM API] Deploy VMUSE for agent {agent_id}: ssh_port={ports['ssh']}, vmuse_port={ports['vmuse']}")
         
-        # Deploy
-        deployer = get_vmuse_deployer()
-        result = deployer.deploy(
-            agent_id=agent_id,
-            ssh_port=ports['ssh'],
-            aggressive=aggressive,
-        )
-        
-        # Health check
-        if result["success"]:
-            result["health_check"] = deployer.health_check(
-                vmuse_port=ports['vmuse']
+        def _run_deploy():
+            deployer = get_vmuse_deployer()
+            result = deployer.deploy(
+                agent_id=agent_id,
+                ssh_port=ports['ssh'],
+                aggressive=aggressive,
             )
+            if result["success"]:
+                deployer.health_check(vmuse_port=ports['vmuse'])
         
-        return result
+        if wait:
+            # Synchronous: caller waits (can take 10+ min)
+            deployer = get_vmuse_deployer()
+            result = deployer.deploy(
+                agent_id=agent_id,
+                ssh_port=ports['ssh'],
+                aggressive=aggressive,
+            )
+            if result["success"]:
+                result["health_check"] = deployer.health_check(vmuse_port=ports['vmuse'])
+            return result
+        
+        # Background: return immediately
+        import threading
+        t = threading.Thread(target=_run_deploy, daemon=True)
+        t.start()
+        logger.info(f"[VM API] Deploy VMUSE scheduled for agent {agent_id}")
+        return {
+            "scheduled": True,
+            "agent_id": agent_id,
+            "ssh_port": ports["ssh"],
+            "vmuse_port": ports["vmuse"],
+            "message": f"Deployment started in background. Check GET /api/vm/{agent_id}/vmuse-health for status.",
+        }
     
     except HTTPException:
         raise

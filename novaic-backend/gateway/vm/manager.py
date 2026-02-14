@@ -176,6 +176,12 @@ class VmManager:
                 agent_dir / "vm" / "disk" / "novaic-vm.qcow2",    # Old Tauri path in agents
                 self.data_dir / "vms" / agent_id / "disk.qcow2",  # Old Tauri path in vms
             ]
+            # v38 device model: agents/{agent_id}/devices/{device_id}/disk.qcow2
+            devices_dir = agent_dir / "devices"
+            if devices_dir.exists():
+                for subdir in sorted(devices_dir.iterdir()):
+                    if subdir.is_dir():
+                        possible_paths.insert(1, subdir / "disk.qcow2")
             
             disk_path = None
             for path in possible_paths:

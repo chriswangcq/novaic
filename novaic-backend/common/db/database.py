@@ -151,7 +151,9 @@ class Database:
         cursor = self.execute(sql, params)
         rows = cursor.fetchall()
         return [dict(row) for row in rows]
-    
+
+    fetch_all = fetchall  # Alias for compatibility (some code paths expect fetch_all)
+
     def commit(self):
         """Commit current transaction."""
         if self._initialized:

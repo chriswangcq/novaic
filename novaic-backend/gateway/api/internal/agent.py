@@ -57,7 +57,12 @@ def set_agent_sleep(agent_id: str, data: Dict[str, Any] = None):
 
 @router.get("/agents/{agent_id}")
 def get_agent_internal(agent_id: str):
-    """Get agent information for internal use (tools server)."""
+    """Get agent information for internal use (tools server).
+    
+    Returns vm.ports and android for VM tools (screenshot, desktop) and Mobile tools
+    (mobile_screenshot, etc.). Uses unified devices (v38) when legacy agent.vm / agent.android
+    are empty.
+    """
     from gateway.config import get_agent_config_manager
     
     agent_manager = get_agent_config_manager()
@@ -66,26 +71,68 @@ def get_agent_internal(agent_id: str):
     if not agent:
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
     
-    # Return agent data with VM ports and Android config for tools server
+    # Build vm.ports - from legacy agent.vm or from devices (Linux device)
+    vm_ports = {"ssh": None, "vmuse": None}
+    if agent.vm and agent.vm.ports and (agent.vm.ports.ssh or agent.vm.ports.vmuse):
+        vm_ports["ssh"] = agent.vm.ports.ssh or None
+        vm_ports["vmuse"] = agent.vm.ports.vmuse or None
+    # Fallback: get from first Linux device (v38 unified model)
+    if not vm_ports["vmuse"] and getattr(agent, "devices", None):
+        for d in agent.devices:
+            if isinstance(d, dict) and d.get("type") == "linux":
+                ports = d.get("ports") or {}
+                if ports.get("vmuse"):
+                    vm_ports["ssh"] = ports.get("ssh")
+                    vm_ports["vmuse"] = ports.get("vmuse")
+                    break
+            elif hasattr(d, "type") and getattr(d, "type", None) == "linux":
+                ports = getattr(d, "ports", None) or {}
+                if ports.get("vmuse"):
+                    vm_ports["ssh"] = ports.get("ssh")
+                    vm_ports["vmuse"] = ports.get("vmuse")
+                    break
+    
     result = {
         "agent_id": agent.id,
         "name": agent.name,
         "vm": {
             "backend": agent.vm.backend if agent.vm else None,
-            "ports": {
-                "ssh": agent.vm.ports.ssh if agent.vm and agent.vm.ports else None,
-                "vmuse": agent.vm.ports.vmuse if agent.vm and agent.vm.ports else None,
-            } if agent.vm and agent.vm.ports else {}
-        } if agent.vm else {}
+            "ports": vm_ports,
+        } if agent.vm or vm_ports["vmuse"] else {}
     }
     
-    # Add Android config if present (now independent field)
-    if agent.android:
-        result["android"] = {
+    # Build android config - from legacy agent.android or from devices (Android device)
+    android_config = None
+    if agent.android and agent.android.device_serial:
+        android_config = {
             "device_serial": agent.android.device_serial,
             "managed": agent.android.managed,
             "avd_name": agent.android.avd_name,
         }
+    # Fallback: get from first Android device (v38 unified model)
+    if not android_config and getattr(agent, "devices", None):
+        for d in agent.devices:
+            if isinstance(d, dict) and d.get("type") == "android":
+                serial = d.get("device_serial") or d.get("avd_name")
+                if serial or d.get("avd_name"):
+                    android_config = {
+                        "device_serial": d.get("device_serial", ""),
+                        "managed": d.get("managed", True),
+                        "avd_name": d.get("avd_name", ""),
+                    }
+                    break
+            elif hasattr(d, "type") and getattr(d, "type", None) == "android":
+                serial = getattr(d, "device_serial", None) or getattr(d, "avd_name", None)
+                if serial:
+                    android_config = {
+                        "device_serial": getattr(d, "device_serial", "") or "",
+                        "managed": getattr(d, "managed", True),
+                        "avd_name": getattr(d, "avd_name", ""),
+                    }
+                    break
+    
+    if android_config:
+        result["android"] = android_config
     
     return result
 

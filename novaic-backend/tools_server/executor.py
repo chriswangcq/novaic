@@ -1379,9 +1379,14 @@ class ToolExecutor:
                 except httpx.HTTPStatusError as e:
                     error_text = e.response.text if e.response else str(e)
                     logger.error(f"[ToolExecutor] VMUSE HTTP error for {tool_name}: {e.response.status_code} - {error_text}")
+                    # 502 = vmcontrol 无法连接 VM 内 VMUSE（服务未部署/未就绪）
+                    if e.response.status_code == 502:
+                        err_msg = "VMUSE 服务未就绪，正在部署中，请稍后重试"
+                    else:
+                        err_msg = f"VMUSE HTTP error: {e.response.status_code}"
                     return {
                         "success": False,
-                        "error": f"VMUSE HTTP error: {e.response.status_code}",
+                        "error": err_msg,
                         "content": []
                     }
                 except Exception as e:
