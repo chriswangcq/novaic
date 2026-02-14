@@ -75,7 +75,7 @@ impl VmControlProcess {
     fn new() -> Self {
         Self {
             process: None,
-            port: 8080,
+            port: 19996,
         }
     }
     

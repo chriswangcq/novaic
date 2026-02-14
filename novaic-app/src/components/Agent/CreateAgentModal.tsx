@@ -96,7 +96,8 @@ export function CreateAgentModal({ isOpen, onClose, onCreated }: CreateAgentModa
     setError('');
 
     try {
-      // Create agent with minimal config
+      // Create agent (no VM by default)
+      // User can add VM later via DeviceSidebar
       const agent = await createAgent({
         name: name.trim(),
       });

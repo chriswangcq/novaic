@@ -5,6 +5,7 @@
  */
 
 import { invoke } from '@tauri-apps/api/core';
+import type { Device, DeviceStatus } from '../types';
 
 /**
  * AppConfig - Application configuration from backend.
@@ -87,11 +88,6 @@ export interface VmConfig {
   memory: string;
   cpus: number;
   ports: PortConfig;
-  android?: {
-    device_serial: string;
-    managed: boolean;
-    avd_name?: string;
-  };
 }
 
 // Setup progress info (for UI display during setup, not persisted)
@@ -114,14 +110,13 @@ export interface AICAgent {
     managed?: boolean;       // 是否由 novaic 管理
     avd_name?: string;       // 托管模式下的 AVD 名称
   };
+  // 统一设备列表（新架构）
+  devices?: Device[];
 }
 
 export interface AgentListResponse {
   agents: AICAgent[];
 }
-
-// Agent 类型
-export type AgentType = 'linux' | 'android' | 'hybrid';
 
 // Android 管理模式
 export type AndroidManageMode = 'managed' | 'external';
@@ -147,6 +142,43 @@ export interface VmConfigRequest {
   source_image?: string;
 }
 
+// ==================== Device API Types ====================
+
+export interface CreateLinuxDeviceRequest {
+  name?: string;
+  memory?: number;
+  cpus?: number;
+  os_type?: string;
+  os_version?: string;
+}
+
+export interface CreateAndroidDeviceRequest {
+  name?: string;
+  memory?: number;
+  cpus?: number;
+  avd_name?: string;
+  managed?: boolean;
+  system_image?: string;
+  device_serial?: string;  // 外部设备模式下的设备序列号
+}
+
+export interface UpdateDeviceRequest {
+  name?: string;
+  memory?: number;
+  cpus?: number;
+  status?: DeviceStatus;
+  os_type?: string;
+  os_version?: string;
+  avd_name?: string;
+  device_serial?: string;
+  managed?: boolean;
+}
+
+export interface SetupDeviceRequest {
+  source_image?: string;
+  use_cn_mirrors?: boolean;
+}
+
 // Android 配置请求
 export interface AndroidConfigRequest {
   managed: boolean;           // 是否由 novaic 管理
@@ -156,20 +188,7 @@ export interface AndroidConfigRequest {
 
 export interface CreateAgentRequest {
   name: string;
-  model?: string;             // LLM 模型 ID
-  // Agent 类型: 'chat' | 'linux' | 'android' | 'hybrid'
-  agent_type?: AgentType;
-  // Linux VM 配置（新格式）
-  vm_config?: VmConfigRequest;
-  // Android 配置
-  android?: AndroidConfigRequest;
-  // Legacy fields for backward compatibility
-  backend?: string;
-  os_type?: string;
-  os_version?: string;
-  memory?: string;
-  cpus?: number;
-  source_image?: string;
+  model?: string;  // LLM 模型 ID
 }
 
 // 更新 Agent 请求
@@ -446,6 +465,20 @@ export const api = {
    */
   async deleteAgent(agentId: string): Promise<void> {
     await invoke('gateway_delete', { path: `/api/agents/${agentId}` });
+  },
+
+  /**
+   * Remove VM configuration from an agent
+   */
+  async removeVmConfig(agentId: string): Promise<void> {
+    await invoke('gateway_delete', { path: `/api/agents/${agentId}/vm` });
+  },
+
+  /**
+   * Remove Android configuration from an agent
+   */
+  async removeAndroidConfig(agentId: string): Promise<void> {
+    await invoke('gateway_delete', { path: `/api/agents/${agentId}/android` });
   },
 
   /**
@@ -803,6 +836,155 @@ export const api = {
     return invoke('gateway_get', {
       path: `/api/vm/android/status/${agentId}`,
     });
+  },
+
+  // ==================== Android Device/AVD Management API ====================
+
+  android: {
+    /**
+     * List all Android devices
+     */
+    listDevices: async (): Promise<{ devices: Array<{ serial: string; status: string; avd_name?: string; managed?: boolean }> }> => {
+      return invoke('gateway_get', { path: '/api/vm/android/devices' });
+    },
+
+    /**
+     * List all AVDs
+     */
+    listAvds: async (): Promise<{ avds: Array<{ name: string; device?: string; path?: string; target?: string; abi?: string }> }> => {
+      return invoke('gateway_get', { path: '/api/vm/android/avds' });
+    },
+
+    /**
+     * Check Android system image availability
+     */
+    checkSystemImage: async (): Promise<{ available: boolean; message?: string; path?: string }> => {
+      return invoke('gateway_get', { path: '/api/vm/android/system-image/check' });
+    },
+
+    /**
+     * List device definitions for AVD creation
+     */
+    listDeviceDefinitions: async (): Promise<{ devices: Array<{ id: string; name: string; manufacturer: string; screenSize: string; resolution: string; density: number }> }> => {
+      return invoke('gateway_get', { path: '/api/vm/android/device-definitions' });
+    },
+
+    /**
+     * Create a new AVD
+     */
+    createAvd: async (params: { avd_name: string; device?: string; memory?: number; cores?: number }): Promise<{ success: boolean; avd_name: string }> => {
+      return invoke('gateway_post', { path: '/api/vm/android/avd/create', body: params });
+    },
+
+    /**
+     * Delete an AVD
+     */
+    deleteAvd: async (avdName: string): Promise<{ success: boolean; message?: string }> => {
+      return invoke('gateway_delete', { path: `/api/vm/android/avd/${avdName}` });
+    },
+
+    /**
+     * Check scrcpy availability
+     */
+    checkScrcpyStatus: async (): Promise<{ available: boolean; version?: string }> => {
+      return invoke('gateway_get', { path: '/api/vm/android/scrcpy/status' });
+    },
+  },
+
+  // ==================== Device API ====================
+
+  devices: {
+    /**
+     * List all devices for an agent
+     */
+    list: async (agentId: string): Promise<{ devices: Device[] }> => {
+      return invoke('gateway_get', { path: `/api/agents/${agentId}/devices` });
+    },
+
+    /**
+     * Create a Linux device
+     */
+    createLinux: async (agentId: string, data: CreateLinuxDeviceRequest): Promise<Device> => {
+      return invoke('gateway_post', { 
+        path: `/api/agents/${agentId}/devices/linux`, 
+        body: data 
+      });
+    },
+
+    /**
+     * Create an Android device
+     */
+    createAndroid: async (agentId: string, data: CreateAndroidDeviceRequest): Promise<Device> => {
+      return invoke('gateway_post', { 
+        path: `/api/agents/${agentId}/devices/android`, 
+        body: data 
+      });
+    },
+
+    /**
+     * Get a device
+     */
+    get: async (agentId: string, deviceId: string): Promise<Device> => {
+      return invoke('gateway_get', { 
+        path: `/api/agents/${agentId}/devices/${deviceId}` 
+      });
+    },
+
+    /**
+     * Update a device
+     */
+    update: async (agentId: string, deviceId: string, data: UpdateDeviceRequest): Promise<Device> => {
+      return invoke('gateway_patch', { 
+        path: `/api/agents/${agentId}/devices/${deviceId}`, 
+        body: data 
+      });
+    },
+
+    /**
+     * Delete a device
+     */
+    delete: async (agentId: string, deviceId: string): Promise<void> => {
+      await invoke('gateway_delete', { 
+        path: `/api/agents/${agentId}/devices/${deviceId}` 
+      });
+    },
+
+    /**
+     * Setup a device
+     */
+    setup: async (deviceId: string, data?: SetupDeviceRequest): Promise<{ status: string; message: string }> => {
+      return invoke('gateway_post', { 
+        path: `/api/devices/${deviceId}/setup`, 
+        body: data || {} 
+      });
+    },
+
+    /**
+     * Start a device
+     */
+    start: async (deviceId: string): Promise<{ status: string; message: string }> => {
+      return invoke('gateway_post', { 
+        path: `/api/devices/${deviceId}/start` 
+      });
+    },
+
+    /**
+     * Stop a device
+     */
+    stop: async (deviceId: string): Promise<{ status: string; message: string }> => {
+      return invoke('gateway_post', { 
+        path: `/api/devices/${deviceId}/stop` 
+      });
+    },
+
+    /**
+     * Get device status
+     */
+    status: async (deviceId: string): Promise<{ device_id: string; type: string; status: string; running: boolean }> => {
+      return invoke('gateway_get', { 
+        path: `/api/devices/${deviceId}/status` 
+      });
+    },
   },
 
   /**

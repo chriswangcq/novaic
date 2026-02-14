@@ -6,11 +6,11 @@
     "mapping": {
         "device": "flash",
         "executable": {
-            "filename": "/opt/homebrew/Cellar/qemu/10.2.0/share/qemu/edk2-aarch64-code.fd",
+            "filename": "/opt/homebrew/Cellar/qemu/10.2.1/share/qemu/edk2-aarch64-code.fd",
             "format": "raw"
         },
         "nvram-template": {
-            "filename": "/opt/homebrew/Cellar/qemu/10.2.0/share/qemu/edk2-arm-vars.fd",
+            "filename": "/opt/homebrew/Cellar/qemu/10.2.1/share/qemu/edk2-arm-vars.fd",
             "format": "raw"
         }
     },

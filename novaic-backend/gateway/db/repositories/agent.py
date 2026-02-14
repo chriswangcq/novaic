@@ -28,6 +28,9 @@ class AgentRepository:
             row["vm_config"] = json.loads(row.get("vm_config", "{}"))
             row["ports"] = json.loads(row.get("ports", "{}"))
             row["setup_complete"] = bool(row.get("setup_complete", 0))
+            # Parse android_config (v37)
+            android_config_json = row.get("android_config")
+            row["android_config"] = json.loads(android_config_json) if android_config_json else None
         return rows
     
     def get_agent(self, agent_id: str) -> Optional[Dict[str, Any]]:
@@ -40,6 +43,9 @@ class AgentRepository:
             row["vm_config"] = json.loads(row.get("vm_config", "{}"))
             row["ports"] = json.loads(row.get("ports", "{}"))
             row["setup_complete"] = bool(row.get("setup_complete", 0))
+            # Parse android_config (v37)
+            android_config_json = row.get("android_config")
+            row["android_config"] = json.loads(android_config_json) if android_config_json else None
         return row
     
     def create_agent(
@@ -49,23 +55,30 @@ class AgentRepository:
         vm_config: Dict[str, Any],
         ports: Dict[str, Any],
         setup_complete: bool = False,
-        agent_type: str = "linux",  # 'chat' | 'linux' | 'android' | 'hybrid'
+        android_config: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """
         Create a new agent.
         
-        agent_type is stored in vm_config as '_agent_type' for persistence.
+        Args:
+            id: Agent ID
+            name: Agent name
+            vm_config: VM configuration dict
+            ports: Port configuration dict
+            setup_complete: Whether VM setup is complete (default False)
+            android_config: Android emulator configuration dict (v37)
+        
+        Returns:
+            Created agent dict
         """
         created_at = utc_now_iso()
         
-        # Store agent_type in vm_config for persistence
-        vm_config_with_type = {**vm_config, "_agent_type": agent_type}
-        
         with self.db.transaction("agent", resource_id=id):
             self.db.execute(
-                """INSERT INTO agents (id, name, created_at, vm_config, ports, setup_complete)
-                   VALUES (?, ?, ?, ?, ?, ?)""",
-                (id, name, created_at, json.dumps(vm_config_with_type), json.dumps(ports), 1 if setup_complete else 0)
+                """INSERT INTO agents (id, name, created_at, vm_config, ports, setup_complete, android_config)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (id, name, created_at, json.dumps(vm_config), json.dumps(ports), 
+                 1 if setup_complete else 0, json.dumps(android_config) if android_config else None)
             )
         
         return self.get_agent(id)
@@ -78,6 +91,7 @@ class AgentRepository:
         ports: Optional[Dict[str, Any]] = None,
         setup_complete: Optional[bool] = None,
         cloud_init_complete: Optional[bool] = None,
+        android_config: Optional[Dict[str, Any]] = None,
     ) -> Optional[Dict[str, Any]]:
         """Update an agent."""
         updates = []
@@ -98,6 +112,9 @@ class AgentRepository:
         if cloud_init_complete is not None:
             updates.append("cloud_init_complete = ?")
             params.append(1 if cloud_init_complete else 0)
+        if android_config is not None:
+            updates.append("android_config = ?")
+            params.append(json.dumps(android_config))
         
         if not updates:
             return self.get_agent(agent_id)

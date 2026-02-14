@@ -23,6 +23,7 @@
 - [系统稳定性与连接管理](./system-stability-and-connection-management.md) - 长连接 vs 按需连接、QMP 重构案例
 - [数据一致性与级联删除](./data-consistency-and-cascade-deletion.md) - 外键约束、孤立数据清理、删除最佳实践
 - [架构重构方法论](./architecture-refactoring-methodology.md) - 问题诊断、对比学习、渐进式重构、用户体验设计
+- [Saga 与 SubAgent 调试经验](./saga-subagent-debugging.md) - 消息驱动架构调试、Watchdog 排查、SubAgent 通信、工具开发
 
 ---
 
@@ -644,6 +645,39 @@ cat ~/Library/Application\ Support/com.novaic.app/*.log | tail -100
 - [数据一致性与级联删除](./data-consistency-and-cascade-deletion.md)
 - [架构重构方法论](./architecture-refactoring-methodology.md)
 
+### 2026-02-13：SubAgent 通信机制完善
+
+完成了 SubAgent 通信机制的调试和 `subagent_report` 工具的开发：
+
+1. **SUBAGENT_COMPLETED 消息处理修复**：
+   - 问题：Sub SubAgent 完成后，Main Agent 没有被唤醒
+   - 根因：Watchdog 不处理 `SUBAGENT_COMPLETED` 消息类型
+   - 修复：在 `watchdog.py` 中添加 `_create_subagent_completed_saga` 方法
+   - 教训：新增消息类型时必须同步更新 Watchdog
+
+2. **消息初始状态修复**：
+   - 问题：`create_message` API 所有消息都用 `status=sent`
+   - 根因：需要 Watchdog 处理的消息应该用 `status=sending`
+   - 修复：根据消息类型设置正确的初始状态
+
+3. **subagent_report 工具开发**：
+   - 功能：让 Sub SubAgent 主动汇报执行结果
+   - 设计：只允许 Sub SubAgent 调用，覆盖写入，保留兜底逻辑
+   - 实现：Gateway API + Tools Server + System Prompt 指引
+
+4. **调试方法论**：
+   - 追踪消息状态流转（sending → sent）
+   - 检查 Watchdog 日志（Unknown message type）
+   - 验证 Saga 创建和执行
+   - 查看 Runtime context 中的 tool_call
+
+**关键教训**：
+- **消息驱动架构调试**：从消息状态开始追踪，Watchdog 日志是关键
+- **新增消息类型**：必须同时更新 Watchdog 处理逻辑和消息初始状态
+- **工具开发流程**：Gateway API → Repository → Tools Server → System Prompt → 端到端测试
+
+详细经验总结见：[Saga 与 SubAgent 调试经验](./saga-subagent-debugging.md)
+
 ---
 
-*最后更新：2026-02-07*
+*最后更新：2026-02-13*

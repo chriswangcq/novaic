@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react';
 import { X, Monitor, Check, AlertCircle, Download, Settings } from 'lucide-react';
 import { useAppStore } from '../../store';
 import { api, AvailableImage } from '../../services/api';
-import { vmService } from '../../services/vm';
+import * as setup from '../../services/setup';
 
 interface AddLinuxVMModalProps {
   isOpen: boolean;
@@ -121,66 +121,6 @@ export function AddLinuxVMModal({ isOpen, onClose, onCreated }: AddLinuxVMModalP
     }
   };
 
-  // Poll setup status
-  const pollSetupStatus = async (agentId: string) => {
-    let attempts = 0;
-    const maxAttempts = 300; // 5 minutes max (1s interval)
-    
-    while (attempts < maxAttempts) {
-      try {
-        const status = await vmService.getSetupStatus(agentId);
-        
-        if (!status) {
-          attempts++;
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          continue;
-        }
-        
-        // Update progress based on phase
-        const phaseMap: Record<string, SetupPhase> = {
-          'creating': 'creating',
-          'booting': 'setting_up',
-          'cloud-init': 'setting_up',
-          'vmuse-deploy': 'setting_up',
-          'complete': 'complete',
-          'error': 'error',
-        };
-        
-        const phase = phaseMap[status.phase] || 'setting_up';
-        
-        setSetupProgress({
-          phase,
-          progress: status.progress,
-          message: status.message,
-          error: status.error || undefined,
-        });
-        
-        if (status.phase === 'complete') {
-          return true;
-        }
-        
-        if (status.phase === 'error') {
-          return false;
-        }
-        
-        attempts++;
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      } catch (error) {
-        console.error('[AddLinuxVMModal] Poll status error:', error);
-        attempts++;
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    }
-    
-    setSetupProgress({
-      phase: 'error',
-      progress: 0,
-      message: 'Setup timeout',
-      error: 'Setup took too long. Please check the logs.',
-    });
-    return false;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -195,67 +135,104 @@ export function AddLinuxVMModal({ isOpen, onClose, onCreated }: AddLinuxVMModalP
     }
 
     try {
-      // Phase 1: Update agent VM config
+      // Phase 1: Create Linux device using unified device API
       setSetupProgress({
         phase: 'creating',
-        progress: 10,
-        message: 'Updating agent configuration...',
+        progress: 5,
+        message: 'Creating Linux device...',
       });
       
-      await api.updateAgent(currentAgentId, {
-        vm_config: {
-          os_type: osType,
-          os_version: osVersion,
-          memory,
-          cpus,
-        },
+      const device = await api.devices.createLinux(currentAgentId, {
+        name: 'Linux VM',
+        memory: parseInt(memory),
+        cpus,
+        os_type: osType,
+        os_version: osVersion,
       });
       
-      // Phase 2: Setup VM (download image, create disk, cloud-init)
-      setSetupProgress({
-        phase: 'downloading',
-        progress: 20,
-        message: 'Setting up VM...',
-      });
+      console.log('[AddLinuxVMModal] Created device:', device.id);
       
-      // Determine source image
-      const sourceImage = baseImage || `${osType}-${osVersion}`;
+      // Phase 2: Check/Download image
+      let imagePath = baseImage;
       
-      await vmService.setupVm({
-        agentId: currentAgentId,
-        sourceImage,
-        useCnMirrors,
-      });
-      
-      // Phase 3: Poll for completion
-      setSetupProgress({
-        phase: 'setting_up',
-        progress: 30,
-        message: 'Initializing VM...',
-      });
-      
-      const success = await pollSetupStatus(currentAgentId);
-      
-      if (success) {
+      if (!baseImage) {
+        // Check if image already exists
         setSetupProgress({
-          phase: 'complete',
-          progress: 100,
-          message: 'VM setup complete!',
+          phase: 'downloading',
+          progress: 10,
+          message: 'Checking cloud image...',
         });
         
-        // Reload agents to get updated config
-        await loadAgents();
+        const imageCheck = await setup.checkCloudImage(osType, osVersion);
         
-        // Call onCreated callback
-        if (onCreated) {
-          onCreated();
+        if (imageCheck.exists && imageCheck.path) {
+          // Image already downloaded
+          console.log('[AddLinuxVMModal] Image already exists:', imageCheck.path);
+          imagePath = imageCheck.path;
+        } else {
+          // Download cloud image
+          setSetupProgress({
+            phase: 'downloading',
+            progress: 15,
+            message: 'Downloading cloud image...',
+          });
+          
+          imagePath = await setup.downloadCloudImage(
+            osType,
+            osVersion,
+            useCnMirrors,
+            (progress) => {
+              setSetupProgress({
+                phase: 'downloading',
+                progress: 15 + Math.floor(progress.percent * 0.4), // 15-55%
+                message: `Downloading: ${progress.percent}%`,
+              });
+            }
+          );
         }
-        
-        // Close modal after a short delay
-        setTimeout(() => {
-          onClose();
-        }, 1500);
       }
+      
+      // Phase 3: Setup device (create disk, cloud-init) using unified device API
+      setSetupProgress({
+        phase: 'setting_up',
+        progress: 60,
+        message: 'Setting up VM disk...',
+      });
+      
+      await api.devices.setup(device.id, {
+        source_image: imagePath,
+        use_cn_mirrors: useCnMirrors,
+      });
+      
+      // Phase 4: Start device using unified device API
+      setSetupProgress({
+        phase: 'setting_up',
+        progress: 80,
+        message: 'Starting VM...',
+      });
+      
+      await api.devices.start(device.id);
+      
+      // Phase 5: Complete
+      setSetupProgress({
+        phase: 'complete',
+        progress: 100,
+        message: 'VM setup complete!',
+      });
+      
+      // Reload agents to get updated config
+      await loadAgents();
+      
+      // Call onCreated callback
+      if (onCreated) {
+        onCreated();
+      }
+      
+      // Close modal after a short delay
+      setTimeout(() => {
+        onClose();
+      }, 1500);
+      
     } catch (error) {
       console.error('[AddLinuxVMModal] Setup failed:', error);
       setSetupProgress({

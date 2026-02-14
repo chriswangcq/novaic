@@ -181,6 +181,7 @@ from gateway.api.agents import router as agents_router
 from gateway.api.vm import router as vm_router
 from gateway.api.internal import router as internal_router
 from gateway.api.vmcontrol import router as vmcontrol_router
+from gateway.api.devices import router as devices_router
 from gateway.config import get_config_manager
 
 # Import database module
@@ -449,6 +450,9 @@ app.include_router(vm_router)
 
 # VmControl proxy routes (already has /api/vmcontrol prefix)
 app.include_router(vmcontrol_router)
+
+# Unified Device API routes (already has /api prefix)
+app.include_router(devices_router)
 
 # Internal API routes (v2.10 - for services, has /internal prefix)
 app.include_router(internal_router)

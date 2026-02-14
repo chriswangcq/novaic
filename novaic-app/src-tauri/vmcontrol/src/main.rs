@@ -16,7 +16,7 @@ use vmcontrol::scrcpy::ensure_scrcpy_server;
 #[command(about = "VM Control Service with VNC WebSocket support", long_about = None)]
 struct Args {
     /// Port to listen on
-    #[arg(short, long, default_value = "8080")]
+    #[arg(short, long, default_value = "19996")]
     port: u16,
 
     /// Host to bind to

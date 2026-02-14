@@ -39,15 +39,15 @@ class PortConfig(BaseModel):
 
 
 class VmConfig(BaseModel):
-    """VM configuration for an agent"""
+    """Linux VM configuration for an agent"""
     backend: str = "qemu"  # qemu | virtualization_framework
-    image_path: str = ""   # Path to qcow2 image
+    image_path: str = ""   # Path to qcow2 image (empty = no VM)
     os_type: str = "ubuntu"  # ubuntu, debian, etc.
     os_version: str = "24.04"  # 24.04, 22.04, etc.
     memory: str = "4096"   # Memory in MB
     cpus: int = 4          # CPU cores
     ports: PortConfig = Field(default_factory=PortConfig)
-    android: Optional["AndroidConfig"] = None  # Android emulator config (optional)
+    # Note: android field removed in v37, now AICAgent.android is independent
 
 
 class AICAgent(BaseModel):

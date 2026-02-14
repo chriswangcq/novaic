@@ -23,13 +23,54 @@ from gateway.vm.deployer import get_vmuse_deployer
 logger = logging.getLogger(__name__)
 
 # vmcontrol service URL
-VMCONTROL_URL = os.environ.get("VMCONTROL_URL", "http://127.0.0.1:8080")
+VMCONTROL_URL = os.environ.get("VMCONTROL_URL", "http://127.0.0.1:19996")
 
 # Constants for setup status monitoring
 SSH_TIMEOUT = 5
 SSH_CONNECT_TIMEOUT = 3
 
 router = APIRouter(prefix="/api/vm", tags=["vm"])
+
+
+def _get_device_ports(agent) -> Dict[str, int]:
+    """
+    Get SSH and VMUSE ports from agent's devices (v38) or fallback to agent.vm.ports.
+    
+    Returns:
+        Dict with 'ssh' and 'vmuse' ports
+    """
+    ssh_port = 20000  # default
+    vmuse_port = 18000  # default
+    
+    # Try devices first (v38 unified model)
+    if hasattr(agent, 'devices') and agent.devices:
+        for device in agent.devices:
+            if isinstance(device, dict):
+                if device.get('type') == 'linux':
+                    ports = device.get('ports', {})
+                    if ports.get('ssh'):
+                        ssh_port = ports['ssh']
+                    if ports.get('vmuse'):
+                        vmuse_port = ports['vmuse']
+                    break
+            else:
+                # Device object
+                if getattr(device, 'type', None) == 'linux':
+                    ports = getattr(device, 'ports', {})
+                    if ports.get('ssh'):
+                        ssh_port = ports['ssh']
+                    if ports.get('vmuse'):
+                        vmuse_port = ports['vmuse']
+                    break
+    
+    # Fallback to agent.vm.ports (legacy)
+    if ssh_port == 20000 and hasattr(agent, 'vm') and agent.vm and agent.vm.ports:
+        if agent.vm.ports.ssh:
+            ssh_port = agent.vm.ports.ssh
+        if agent.vm.ports.vmuse:
+            vmuse_port = agent.vm.ports.vmuse
+    
+    return {'ssh': ssh_port, 'vmuse': vmuse_port}
 
 
 # ==================== Request/Response Models ====================
@@ -152,17 +193,19 @@ def start_vm(request: VmStartRequest, auto_deploy_vmuse: bool = True):
             agent_manager = get_agent_config_manager()
             agent = agent_manager.get_agent(request.agent_id)
             
-            if agent and agent.vm.ports:
-                # Schedule deployment task (non-blocking)
-                import threading
-                deploy_thread = threading.Thread(
-                    target=_deploy_vmuse_background,
-                    args=(request.agent_id, agent.vm.ports.ssh, agent.vm.ports.vmuse),
-                    daemon=True
-                )
-                deploy_thread.start()
-                logger.info(f"[VM API] Scheduled VMUSE deployment for agent {request.agent_id}")
-                result["vmuse_deployment"] = "scheduled"
+            if agent:
+                ports = _get_device_ports(agent)
+                if ports['ssh'] and ports['vmuse']:
+                    # Schedule deployment task (non-blocking)
+                    import threading
+                    deploy_thread = threading.Thread(
+                        target=_deploy_vmuse_background,
+                        args=(request.agent_id, ports['ssh'], ports['vmuse']),
+                        daemon=True
+                    )
+                    deploy_thread.start()
+                    logger.info(f"[VM API] Scheduled VMUSE deployment for agent {request.agent_id}")
+                    result["vmuse_deployment"] = "scheduled"
         
         return {"success": True, **result}
     except Exception as e:
@@ -359,7 +402,7 @@ async def get_vnc_status(agent_id: str):
         "vnc_socket_path": "",
         "vmcontrol_healthy": False,
         "vm_registered": False,
-        "vnc_url": f"ws://localhost:8080/api/vms/{agent_id}/vnc",
+        "vnc_url": f"ws://localhost:19996/api/vms/{agent_id}/vnc",
         "reason": ""
     }
     
@@ -485,21 +528,22 @@ def deploy_vmuse_manual(
         if not agent:
             raise HTTPException(status_code=404, detail="Agent not found")
         
-        if not agent.vm.ports:
+        ports = _get_device_ports(agent)
+        if not ports['ssh']:
             raise HTTPException(status_code=400, detail="Agent ports not configured")
         
         # Deploy
         deployer = get_vmuse_deployer()
         result = deployer.deploy(
             agent_id=agent_id,
-            ssh_port=agent.vm.ports.ssh,
+            ssh_port=ports['ssh'],
             aggressive=aggressive,
         )
         
         # Health check
         if result["success"]:
             result["health_check"] = deployer.health_check(
-                vmuse_port=agent.vm.ports.vmuse
+                vmuse_port=ports['vmuse']
             )
         
         return result
@@ -530,17 +574,18 @@ def check_vmuse_health(agent_id: str):
         if not agent:
             raise HTTPException(status_code=404, detail="Agent not found")
         
-        if not agent.vm.ports:
+        ports = _get_device_ports(agent)
+        if not ports['vmuse']:
             raise HTTPException(status_code=400, detail="Agent ports not configured")
         
         deployer = get_vmuse_deployer()
-        healthy = deployer.health_check(vmuse_port=agent.vm.ports.vmuse)
+        healthy = deployer.health_check(vmuse_port=ports['vmuse'])
         
         return {
             "agent_id": agent_id,
             "healthy": healthy,
-            "vmuse_port": agent.vm.ports.vmuse,
-            "url": f"http://127.0.0.1:{agent.vm.ports.vmuse}",
+            "vmuse_port": ports['vmuse'],
+            "url": f"http://127.0.0.1:{ports['vmuse']}",
         }
     
     except HTTPException:
@@ -670,8 +715,12 @@ def get_setup_status(agent_id: str):
         response["steps"]["vm_created"] = True
         response["steps"]["vm_booted"] = True
         
+        # Get device ports (v38 unified model)
+        device_ports = _get_device_ports(agent)
+        ssh_port = device_ports['ssh']
+        vmuse_port = device_ports['vmuse']
+        
         # Phase 2: Check SSH accessibility
-        ssh_port = agent.vm.ports.ssh if agent.vm.ports else 20000
         ssh_accessible = False
         
         try:
@@ -781,8 +830,7 @@ def get_setup_status(agent_id: str):
             response["steps"]["cloud_init"] = True
             logger.debug(f"[Setup Status] Agent {agent_id}: cloud-init done")
             
-            # Phase 4: Check VMUSE deployment
-            vmuse_port = agent.vm.ports.vmuse if agent.vm.ports else 18000
+            # Phase 4: Check VMUSE deployment (vmuse_port already set above)
             deployer = get_vmuse_deployer()
             vmuse_healthy = deployer.health_check(vmuse_port=vmuse_port)
             
@@ -806,6 +854,15 @@ def get_setup_status(agent_id: str):
             logger.info(f"[Setup Status] Agent {agent_id}: Cloud-init complete!")
             try:
                 agent_manager.update_agent(agent_id, cloud_init_complete=True)
+                # Also update device's cloud_init_complete flag (v38)
+                if agent.devices:
+                    from gateway.db.repositories.device import DeviceRepository
+                    from gateway.db.access import get_db
+                    device_repo = DeviceRepository(get_db())
+                    for device in agent.devices:
+                        if device.get('type') == 'linux':
+                            device_repo.update(device['id'], cloud_init_complete=True)
+                            break
             except Exception as e:
                 logger.warning(f"[Setup Status] Failed to update cloud_init_complete flag: {e}")
             
@@ -919,14 +976,14 @@ async def start_android(request: AndroidStartRequest):
                 message=f"Agent not found: {agent_id}"
             )
         
-        # 2. Check if agent has Android config
-        if not agent.vm.android:
+        # 2. Check if agent has Android config (now independent field)
+        if not agent.android:
             return AndroidStartResponse(
                 success=False,
                 message="Agent does not have Android configuration"
             )
         
-        android_config = agent.vm.android
+        android_config = agent.android
         
         # Check if AVD name is configured
         if not android_config.avd_name:
@@ -1034,14 +1091,14 @@ async def stop_android(request: AndroidStopRequest):
                 message=f"Agent not found: {agent_id}"
             )
         
-        # 2. Get device_serial
-        if not agent.vm.android:
+        # 2. Get device_serial (android is now independent field)
+        if not agent.android:
             return AndroidStopResponse(
                 success=False,
                 message="Agent does not have Android configuration"
             )
         
-        device_serial = agent.vm.android.device_serial
+        device_serial = agent.android.device_serial
         
         if not device_serial:
             return AndroidStopResponse(
@@ -1118,15 +1175,15 @@ async def get_android_status(agent_id: str):
         if not agent:
             raise HTTPException(status_code=404, detail=f"Agent not found: {agent_id}")
         
-        # 2. Check if agent has Android config
-        if not agent.vm.android:
+        # 2. Check if agent has Android config (now independent field)
+        if not agent.android:
             return AndroidStatusResponse(
                 agent_id=agent_id,
                 has_android=False,
                 message="Agent does not have Android configuration"
             )
         
-        android_config = agent.vm.android
+        android_config = agent.android
         device_serial = android_config.device_serial
         avd_name = android_config.avd_name
         
@@ -1167,3 +1224,160 @@ async def get_android_status(agent_id: str):
     except Exception as e:
         logger.error(f"[Android API] Error getting status: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== Android Device/AVD Management (Proxy to vmcontrol) ====================
+
+@router.get("/android/devices")
+async def list_android_devices():
+    """列出所有 Android 设备"""
+    logger.info("[Android API] Listing Android devices")
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(f"{VMCONTROL_URL}/api/android/devices")
+            if response.status_code != 200:
+                logger.error(f"[Android API] vmcontrol returned {response.status_code}: {response.text}")
+                raise HTTPException(status_code=response.status_code, detail=response.text)
+            return response.json()
+    except httpx.ConnectError:
+        logger.error(f"[Android API] Cannot connect to vmcontrol at {VMCONTROL_URL}")
+        raise HTTPException(status_code=503, detail=f"Cannot connect to vmcontrol service at {VMCONTROL_URL}")
+    except httpx.TimeoutException:
+        logger.error("[Android API] Timeout connecting to vmcontrol")
+        raise HTTPException(status_code=504, detail="Timeout connecting to vmcontrol service")
+
+
+@router.get("/android/avds")
+async def list_avds():
+    """列出所有 AVD"""
+    logger.info("[Android API] Listing AVDs")
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(f"{VMCONTROL_URL}/api/android/avds")
+            if response.status_code != 200:
+                logger.error(f"[Android API] vmcontrol returned {response.status_code}: {response.text}")
+                raise HTTPException(status_code=response.status_code, detail=response.text)
+            return response.json()
+    except httpx.ConnectError:
+        logger.error(f"[Android API] Cannot connect to vmcontrol at {VMCONTROL_URL}")
+        raise HTTPException(status_code=503, detail=f"Cannot connect to vmcontrol service at {VMCONTROL_URL}")
+    except httpx.TimeoutException:
+        logger.error("[Android API] Timeout connecting to vmcontrol")
+        raise HTTPException(status_code=504, detail="Timeout connecting to vmcontrol service")
+
+
+@router.get("/android/system-image/check")
+async def check_system_image():
+    """检查 Android 系统镜像"""
+    logger.info("[Android API] Checking system image")
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(f"{VMCONTROL_URL}/api/android/system-image/check")
+            if response.status_code != 200:
+                logger.error(f"[Android API] vmcontrol returned {response.status_code}: {response.text}")
+                raise HTTPException(status_code=response.status_code, detail=response.text)
+            return response.json()
+    except httpx.ConnectError:
+        logger.error(f"[Android API] Cannot connect to vmcontrol at {VMCONTROL_URL}")
+        raise HTTPException(status_code=503, detail=f"Cannot connect to vmcontrol service at {VMCONTROL_URL}")
+    except httpx.TimeoutException:
+        logger.error("[Android API] Timeout connecting to vmcontrol")
+        raise HTTPException(status_code=504, detail="Timeout connecting to vmcontrol service")
+
+
+@router.get("/android/device-definitions")
+async def list_device_definitions():
+    """列出设备定义"""
+    logger.info("[Android API] Listing device definitions")
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(f"{VMCONTROL_URL}/api/android/device-definitions")
+            if response.status_code != 200:
+                logger.error(f"[Android API] vmcontrol returned {response.status_code}: {response.text}")
+                raise HTTPException(status_code=response.status_code, detail=response.text)
+            return response.json()
+    except httpx.ConnectError:
+        logger.error(f"[Android API] Cannot connect to vmcontrol at {VMCONTROL_URL}")
+        raise HTTPException(status_code=503, detail=f"Cannot connect to vmcontrol service at {VMCONTROL_URL}")
+    except httpx.TimeoutException:
+        logger.error("[Android API] Timeout connecting to vmcontrol")
+        raise HTTPException(status_code=504, detail="Timeout connecting to vmcontrol service")
+
+
+class CreateAvdRequest(BaseModel):
+    """Request to create AVD."""
+    avd_name: str
+    device: Optional[str] = None
+    memory: Optional[int] = None
+    cores: Optional[int] = None
+
+
+@router.post("/android/avd/create")
+async def create_avd(request: CreateAvdRequest):
+    """创建 AVD"""
+    logger.info(f"[Android API] Creating AVD: {request.avd_name}")
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            # vmcontrol expects 'name' not 'avd_name'
+            payload = {
+                "name": request.avd_name,
+            }
+            if request.device:
+                payload["device"] = request.device
+            if request.memory:
+                payload["memory"] = str(request.memory)
+            if request.cores:
+                payload["cores"] = request.cores
+            
+            response = await client.post(
+                f"{VMCONTROL_URL}/api/android/avd/create",
+                json=payload
+            )
+            if response.status_code != 200:
+                logger.error(f"[Android API] vmcontrol returned {response.status_code}: {response.text}")
+                raise HTTPException(status_code=response.status_code, detail=response.text)
+            return response.json()
+    except httpx.ConnectError:
+        logger.error(f"[Android API] Cannot connect to vmcontrol at {VMCONTROL_URL}")
+        raise HTTPException(status_code=503, detail=f"Cannot connect to vmcontrol service at {VMCONTROL_URL}")
+    except httpx.TimeoutException:
+        logger.error("[Android API] Timeout creating AVD")
+        raise HTTPException(status_code=504, detail="Timeout creating AVD")
+
+
+@router.delete("/android/avd/{avd_name}")
+async def delete_avd(avd_name: str):
+    """删除 AVD"""
+    logger.info(f"[Android API] Deleting AVD: {avd_name}")
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.delete(f"{VMCONTROL_URL}/api/android/avd/{avd_name}")
+            if response.status_code != 200:
+                logger.error(f"[Android API] vmcontrol returned {response.status_code}: {response.text}")
+                raise HTTPException(status_code=response.status_code, detail=response.text)
+            return response.json()
+    except httpx.ConnectError:
+        logger.error(f"[Android API] Cannot connect to vmcontrol at {VMCONTROL_URL}")
+        raise HTTPException(status_code=503, detail=f"Cannot connect to vmcontrol service at {VMCONTROL_URL}")
+    except httpx.TimeoutException:
+        logger.error("[Android API] Timeout deleting AVD")
+        raise HTTPException(status_code=504, detail="Timeout deleting AVD")
+
+
+@router.get("/android/scrcpy/status")
+async def check_scrcpy_status():
+    """检查 scrcpy 可用性"""
+    logger.info("[Android API] Checking scrcpy status")
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(f"{VMCONTROL_URL}/api/android/scrcpy/status")
+            if response.status_code != 200:
+                logger.error(f"[Android API] vmcontrol returned {response.status_code}: {response.text}")
+                raise HTTPException(status_code=response.status_code, detail=response.text)
+            return response.json()
+    except httpx.ConnectError:
+        logger.error(f"[Android API] Cannot connect to vmcontrol at {VMCONTROL_URL}")
+        raise HTTPException(status_code=503, detail=f"Cannot connect to vmcontrol service at {VMCONTROL_URL}")
+    except httpx.TimeoutException:
+        logger.error("[Android API] Timeout checking scrcpy status")
+        raise HTTPException(status_code=504, detail="Timeout checking scrcpy status")

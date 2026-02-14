@@ -59,15 +59,15 @@ class AndroidConfig(BaseModel):
 
 
 class VmConfig(BaseModel):
-    """VM configuration for an agent."""
+    """Linux VM configuration for an agent."""
     backend: str = "qemu"
-    image_path: str = ""
+    image_path: str = ""  # Empty = no VM
     os_type: str = "ubuntu"
     os_version: str = "24.04"
     memory: str = "4096"
     cpus: int = 4
     ports: PortConfig = Field(default_factory=PortConfig)
-    android: Optional[AndroidConfig] = None  # Android emulator config (optional)
+    # Note: android field removed in v37, now AICAgent.android is independent
 
 
 class AICAgent(BaseModel):
@@ -76,8 +76,14 @@ class AICAgent(BaseModel):
     name: str
     created_at: str = Field(default_factory=lambda: utc_now_iso())
     vm: VmConfig = Field(default_factory=VmConfig)
+    android: Optional[AndroidConfig] = None  # Independent Android config (v37)
     setup_complete: bool = False  # VM setup complete (disk, config)
     cloud_init_complete: bool = False  # Cloud-init initialization complete
+    model_id: Optional[str] = None  # Selected LLM model ID
+    
+    # New unified devices list (v38)
+    # Will be populated from devices table when loading agent
+    devices: List[Any] = Field(default_factory=list)
 
 
 def get_agent_port(agent_index: int, service: str) -> int:
@@ -146,6 +152,18 @@ class AgentConfigManagerDB:
         self._data_dir.mkdir(parents=True, exist_ok=True)
         self._agents_dir.mkdir(parents=True, exist_ok=True)
     
+    def _load_devices_for_agent(self, agent_id: str) -> List[Dict[str, Any]]:
+        """Load devices from devices table for an agent (v38)."""
+        try:
+            from gateway.db.repositories.device import DeviceRepository
+            device_repo = DeviceRepository(self.db)
+            devices = device_repo.list_by_agent(agent_id)
+            # Convert Device objects to dicts for JSON serialization
+            return [d.model_dump() for d in devices]
+        except Exception as e:
+            logger.warning(f"[AgentConfigManager] Failed to load devices for agent {agent_id}: {e}")
+            return []
+    
     def _get_agent_vm_dir(self, agent_id: str) -> Path:
         """Get VM directory for an agent (matches qemudebug.py path)."""
         return self._agents_dir / agent_id
@@ -192,16 +210,22 @@ class AgentConfigManagerDB:
             
             vm_config["ports"] = PortConfig(**ports) if ports else PortConfig()
             
-            # Parse Android config if present
-            if "android" in vm_config and vm_config["android"]:
-                vm_config["android"] = AndroidConfig(**vm_config["android"])
+            # Parse independent android_config
+            android_config = row.get("android_config")
+            android = AndroidConfig(**android_config) if android_config else None
+            
+            # Load devices from devices table (v38)
+            devices = self._load_devices_for_agent(row["id"])
             
             agents.append(AICAgent(
                 id=row["id"],
                 name=row["name"],
                 created_at=row.get("created_at", ""),
                 vm=VmConfig(**vm_config),
+                android=android,
                 setup_complete=row.get("setup_complete", False),
+                model_id=row.get("model_id"),
+                devices=devices,
             ))
         return agents
     
@@ -216,94 +240,56 @@ class AgentConfigManagerDB:
         
         vm_config["ports"] = PortConfig(**ports) if ports else PortConfig()
         
-        # Parse Android config if present
-        if "android" in vm_config and vm_config["android"]:
-            vm_config["android"] = AndroidConfig(**vm_config["android"])
+        # Parse independent android_config
+        android_config = row.get("android_config")
+        android = AndroidConfig(**android_config) if android_config else None
+        
+        # Load devices from devices table (v38)
+        devices = self._load_devices_for_agent(agent_id)
         
         return AICAgent(
             id=row["id"],
             name=row["name"],
             created_at=row.get("created_at", ""),
             vm=VmConfig(**vm_config),
+            android=android,
             setup_complete=row.get("setup_complete", False),
             cloud_init_complete=row.get("cloud_init_complete", False),
+            model_id=row.get("model_id"),
+            devices=devices,
         )
     
     def create_agent(
         self,
         name: str,
-        agent_type: str = "linux",  # 'chat' | 'linux' | 'android' | 'hybrid'
-        backend: str = "qemu",
-        os_type: str = "ubuntu",
-        os_version: str = "24.04",
-        memory: str = "4096",
-        cpus: int = 4,
-        source_image: Optional[str] = None,
-        android_config: Optional["AndroidConfig"] = None,
+        model_id: Optional[str] = None,
     ) -> AICAgent:
         """
-        Create a new agent.
+        创建 Agent，默认无设备配置。
+        用户可以后续通过 update_agent 添加 VM 或 Android 配置。
         
-        Agent types:
-        - 'chat': Pure chat agent (no VM/AVD, just LLM)
-        - 'linux': Linux VM agent
-        - 'android': Android AVD agent
-        - 'hybrid': Both Linux VM and Android AVD
+        Args:
+            name: Agent 名称
+            model_id: LLM 模型 ID（可选，由 API 层处理）
+        
+        Returns:
+            新创建的 AICAgent
         """
         self._ensure_dirs()
         
         agent_id = str(uuid.uuid4())
         
-        # Initialize VM config and ports based on agent type
-        vm_config = {}
-        ports = PortConfig()  # Default empty ports
+        # 创建空的 VM 配置（无 image_path 表示无 VM）
+        vm_config = VmConfig()  # 默认 image_path=""
         
-        # Only allocate ports and setup VM for types that need it
-        needs_vm = agent_type in ("linux", "hybrid")
-        needs_android = agent_type in ("android", "hybrid")
-        
-        if needs_vm:
-            # Allocate ports for VM
-            ports = self._allocate_new_ports()
-            
-            # Build VM config
-            vm_config = {
-                "backend": backend,
-                "os_type": os_type,
-                "os_version": os_version,
-                "memory": memory,
-                "cpus": cpus,
-                "image_path": str(self._get_agent_vm_dir(agent_id) / f"{os_type}-{os_version}.qcow2"),
-            }
-        
-        # Add Android config if provided
-        if needs_android and android_config:
-            vm_config["android"] = android_config.model_dump()
-        
-        # Create in database
         self.repo.create_agent(
             id=agent_id,
             name=name,
-            vm_config=vm_config,
-            ports=ports.model_dump(),
-            setup_complete=not needs_vm,  # Chat-only agents are always "setup complete"
-            agent_type=agent_type,
+            vm_config=vm_config.model_dump(),
+            ports={},  # 无端口分配
         )
         
-        # Only create VM directory and setup for VM-based agents
-        if needs_vm:
-            # Create VM directory
-            vm_dir = self._get_agent_vm_dir(agent_id)
-            vm_dir.mkdir(parents=True, exist_ok=True)
-            
-            # Copy source image if provided
-            if source_image and Path(source_image).exists():
-                dest_image = Path(vm_config["image_path"])
-                print(f"[AgentConfig] Copying image from {source_image} to {dest_image}")
-                shutil.copy2(source_image, dest_image)
-            
-            # Setup UEFI firmware
-            self._setup_uefi_firmware(vm_dir)
+        # model_id 由 API 层直接更新数据库
         
         return self.get_agent(agent_id)
     
@@ -324,7 +310,7 @@ class AgentConfigManagerDB:
         - setup_complete: Mark VM setup as complete
         - cloud_init_complete: Mark cloud-init as complete
         - vm_config: Update VM configuration (merged with existing)
-        - android_config: Add or update Android configuration
+        - android_config: Add or update Android configuration (independent field)
         """
         current = self.get_agent(agent_id)
         if not current:
@@ -332,27 +318,23 @@ class AgentConfigManagerDB:
         
         update_vm = None
         update_ports = None
+        update_android = None
         
         # Handle VM config update
         if vm_config:
             # Merge with existing VM config
             current_vm = current.vm.model_dump()
             ports = current_vm.pop("ports", {})
-            android = current_vm.pop("android", None)  # Preserve existing android config
             
             if "ports" in vm_config:
                 ports.update(vm_config.pop("ports"))
             
             current_vm.update(vm_config)
             
-            # Restore android config if not being updated
-            if android and "android" not in current_vm:
-                current_vm["android"] = android
-            
             update_vm = current_vm
             update_ports = ports
             
-            # If adding VM config to a chat-only agent, allocate ports
+            # If adding VM config to a chat-only agent, allocate ports and set image_path
             if not ports.get("ssh") and not ports.get("vmuse"):
                 new_ports = self._allocate_new_ports()
                 update_ports = new_ports.model_dump()
@@ -361,16 +343,22 @@ class AgentConfigManagerDB:
                 vm_dir = self._get_agent_vm_dir(agent_id)
                 vm_dir.mkdir(parents=True, exist_ok=True)
                 self._setup_uefi_firmware(vm_dir)
+                
+                # Set image_path to the standard disk location
+                # VmSetup.setup_vm will create disk.qcow2 at this location
+                update_vm["image_path"] = str(vm_dir / "disk.qcow2")
+            # Ensure image_path is set when ports exist but image_path is empty
+            elif ports.get("ssh") or ports.get("vmuse"):
+                current_image_path = current.vm.image_path if current.vm else ""
+                if not current_image_path:
+                    vm_dir = self._get_agent_vm_dir(agent_id)
+                    vm_dir.mkdir(parents=True, exist_ok=True)
+                    self._setup_uefi_firmware(vm_dir)
+                    update_vm["image_path"] = str(vm_dir / "disk.qcow2")
         
-        # Handle Android config update
+        # Handle Android config update (independent field)
         if android_config:
-            if update_vm is None:
-                # Start with current VM config
-                current_vm = current.vm.model_dump()
-                update_ports = current_vm.pop("ports", {})
-                update_vm = current_vm
-            
-            update_vm["android"] = android_config.model_dump()
+            update_android = android_config.model_dump()
         
         self.repo.update_agent(
             agent_id=agent_id,
@@ -379,6 +367,7 @@ class AgentConfigManagerDB:
             cloud_init_complete=cloud_init_complete,
             vm_config=update_vm,
             ports=update_ports,
+            android_config=update_android,
         )
         
         return self.get_agent(agent_id)
@@ -450,6 +439,35 @@ class AgentConfigManagerDB:
                 f.write(b"\x00" * (64 * 1024 * 1024))
             print(f"[AgentConfig] Created UEFI VARS at {dest_vars}")
     
+    def remove_vm_config(self, agent_id: str) -> bool:
+        """移除 VM 配置"""
+        agent = self.get_agent(agent_id)
+        if not agent:
+            return False
+        
+        # 重置 VM 配置为空
+        empty_vm = VmConfig()  # image_path=""
+        self.repo.update_agent(
+            agent_id=agent_id,
+            vm_config=empty_vm.model_dump(),
+            ports={},
+            setup_complete=False,
+            cloud_init_complete=False,
+        )
+        return True
+
+    def remove_android_config(self, agent_id: str) -> bool:
+        """移除 Android 配置"""
+        agent = self.get_agent(agent_id)
+        if not agent:
+            return False
+        
+        self.repo.update_agent(
+            agent_id=agent_id,
+            android_config=None,
+        )
+        return True
+
     def get_available_images(self) -> List[Dict[str, Any]]:
         """Get list of available base images for cloning."""
         images = []

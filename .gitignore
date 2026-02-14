@@ -178,6 +178,7 @@ paper/
 .cursor/
 
 # Tauri bundled resources (copied during build)
+novaic-app/src-tauri/resources/novaic-backend
 novaic-app/src-tauri/resources/novaic-backend/
 
 # External projects

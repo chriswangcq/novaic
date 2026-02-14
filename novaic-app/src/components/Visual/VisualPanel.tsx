@@ -4,13 +4,9 @@ import { ScrcpyView } from './ScrcpyView';
 import { ExecutionLog } from './ExecutionLog';
 import { useAppStore } from '../../store';
 import { GripHorizontal, Maximize2, Monitor, Smartphone } from 'lucide-react';
+import { isLinuxDevice, isAndroidDevice, LinuxDevice, AndroidDevice } from '../../types';
 
 type ActiveView = 'linux' | 'android';
-
-// 测试用：硬编码 Android 设备信息（Agent 模型扩展后可从 agent.android 获取）
-const ANDROID_DEVICE_FOR_TEST = {
-  deviceSerial: 'emulator-5554',
-};
 
 // Layout persistence key
 const VM_HEIGHT_STORAGE_KEY = 'novaic-vm-height-ratio';
@@ -53,13 +49,16 @@ export function VisualPanel({ isThumbnail = false }: VisualPanelProps) {
   const [activeView, setActiveView] = useState<ActiveView>('linux');
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // 判断 Agent 是否同时配置了 Linux VM 和 Android
+  // 从 agent.devices 获取设备信息
   const currentAgent = currentAgentId ? agents.find((a) => a.id === currentAgentId) : null;
-  const hasLinux = Boolean(currentAgent?.vm);
-  const hasAndroid = Boolean(
-    currentAgent &&
-    (currentAgent.android?.device_serial || currentAgent.android?.avd_name || ANDROID_DEVICE_FOR_TEST.deviceSerial)
-  );
+  
+  // 获取设备列表
+  const linuxDevice = currentAgent?.devices?.find(isLinuxDevice) as LinuxDevice | undefined;
+  const androidDevice = currentAgent?.devices?.find(isAndroidDevice) as AndroidDevice | undefined;
+  
+  // 判断是否有设备
+  const hasLinux = Boolean(linuxDevice);
+  const hasAndroid = Boolean(androidDevice);
   const showViewSwitch = hasLinux && hasAndroid;
 
   // 根据 Agent 配置自动选择默认视图
@@ -130,9 +129,8 @@ export function VisualPanel({ isThumbnail = false }: VisualPanelProps) {
     );
   }
 
-  // 获取 Android 设备序列号（优先从 Agent 配置，否则用硬编码测试值）
-  const androidDeviceSerial =
-    currentAgent?.android?.device_serial || ANDROID_DEVICE_FOR_TEST.deviceSerial;
+  // 获取 Android 设备序列号（从统一设备模型获取）
+  const androidDeviceSerial = androidDevice?.device_serial;
 
   // Full mode or normal mode: VM on top, logs on bottom
   return (

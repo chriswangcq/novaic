@@ -79,12 +79,12 @@ def get_agent_internal(agent_id: str):
         } if agent.vm else {}
     }
     
-    # Add Android config if present (stored in vm.android)
-    if agent.vm and agent.vm.android:
+    # Add Android config if present (now independent field)
+    if agent.android:
         result["android"] = {
-            "device_serial": agent.vm.android.device_serial,
-            "managed": agent.vm.android.managed,
-            "avd_name": agent.vm.android.avd_name,
+            "device_serial": agent.android.device_serial,
+            "managed": agent.android.managed,
+            "avd_name": agent.android.avd_name,
         }
     
     return result

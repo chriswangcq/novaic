@@ -116,8 +116,13 @@ class ChatRepository:
         if limit is None:
             limit = ServiceConfig.MAX_MESSAGES_PER_PAGE
         
-        # Always exclude SYSTEM_WAKE messages from UI queries
-        query = "SELECT * FROM chat_messages WHERE agent_id = ? AND type != 'SYSTEM_WAKE'"
+        # Always exclude internal messages from UI queries
+        # These are system/internal messages that should not appear in the chat UI:
+        # - SYSTEM_WAKE: 系统唤醒消息
+        # - SUBAGENT_COMPLETED: 子任务完成通知
+        # - SPAWN_SUBAGENT: 子代理创建任务
+        # - SYSTEM_MESSAGE: 系统消息（如 setup bootstrap）
+        query = "SELECT * FROM chat_messages WHERE agent_id = ? AND type NOT IN ('SYSTEM_WAKE', 'SUBAGENT_COMPLETED', 'SPAWN_SUBAGENT', 'SYSTEM_MESSAGE')"
         params: List[Any] = [agent_id]
         
         if read is not None:

@@ -22,7 +22,7 @@ class ServiceConfig:
     
     # VMControl (Rust service)
     VMCONTROL_HOST = os.getenv("VMCONTROL_HOST", "127.0.0.1")
-    VMCONTROL_PORT = int(os.getenv("VMCONTROL_PORT", "8080"))
+    VMCONTROL_PORT = int(os.getenv("VMCONTROL_PORT", "19996"))
     VMCONTROL_URL = os.getenv("VMCONTROL_URL", f"http://{VMCONTROL_HOST}:{VMCONTROL_PORT}")
     
     # Timeouts

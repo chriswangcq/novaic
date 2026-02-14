@@ -107,10 +107,7 @@ export const WS_CONFIG = {
   VNC_RECONNECT_DELAY: 500,
   
   /** vmcontrol 服务端口 */
-  VMCONTROL_PORT: parseInt(import.meta.env.VITE_VMCONTROL_PORT || '8080'),
-  
-  /** 旧版 websockify 端口（兼容） */
-  WEBSOCKIFY_PORT: parseInt(import.meta.env.VITE_WS_PORT || '20007'),
+  VMCONTROL_PORT: parseInt(import.meta.env.VITE_VMCONTROL_PORT || '19996'),
 } as const;
 
 /** UI 配置 */

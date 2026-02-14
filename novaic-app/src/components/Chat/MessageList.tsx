@@ -28,8 +28,12 @@ export function MessageList({ messages, onUnreadCountChange, scrollToBottomRef, 
     hasMoreMessages, 
     isLoadingMore, 
     loadMoreMessages,
-    currentAgentId 
+    currentAgentId,
+    logs
   } = useAppStore();
+  
+  // 检测是否有执行日志（用于调整顶部 padding，避免被 ExecutionLog 遮挡）
+  const hasLogs = logs.length > 0;
 
   // 计算哪些消息需要显示头像
   // 规则：
@@ -250,8 +254,8 @@ export function MessageList({ messages, onUnreadCountChange, scrollToBottomRef, 
   return (
     <div 
       ref={parentRef}
-      className={`h-full overflow-auto px-4 py-3 relative ${isReady ? 'opacity-100' : 'opacity-0'}`}
-      style={{ transition: 'none' }}
+      className={`h-full overflow-auto px-4 pb-3 relative ${isReady ? 'opacity-100' : 'opacity-0'}`}
+      style={{ transition: 'none', paddingTop: hasLogs ? '90px' : '12px' }}
       onScroll={handleScroll}
     >
       {/* 加载更多指示器 */}

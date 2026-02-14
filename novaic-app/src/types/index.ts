@@ -2,6 +2,70 @@
  * NB-CC Type Definitions
  */
 
+// ==================== Unified Device Types ====================
+
+export type DeviceType = 'linux' | 'android';
+
+export type DeviceStatus = 'created' | 'setup' | 'ready' | 'running' | 'stopped' | 'error';
+
+/**
+ * Base device configuration
+ */
+export interface DeviceConfig {
+  id: string;
+  agent_id: string;
+  type: DeviceType;
+  name: string;
+  created_at: string;
+  status: DeviceStatus;
+  memory: number;
+  cpus: number;
+  data_path: string;
+  ports: Record<string, number>;
+}
+
+/**
+ * Linux VM device configuration
+ */
+export interface LinuxDevice extends DeviceConfig {
+  type: 'linux';
+  backend: string;
+  os_type: string;
+  os_version: string;
+  image_path: string;
+  cloud_init_complete: boolean;
+}
+
+/**
+ * Android device configuration
+ */
+export interface AndroidDevice extends DeviceConfig {
+  type: 'android';
+  avd_name: string;
+  device_serial: string;
+  managed: boolean;
+  system_image: string;
+}
+
+/**
+ * Union type for any device
+ */
+export type Device = LinuxDevice | AndroidDevice;
+
+/**
+ * Type guard for Linux device
+ */
+export function isLinuxDevice(device: Device): device is LinuxDevice {
+  return device.type === 'linux';
+}
+
+/**
+ * Type guard for Android device
+ */
+export function isAndroidDevice(device: Device): device is AndroidDevice {
+  return device.type === 'android';
+}
+
 // User
 export interface User {
   id: string;
@@ -105,7 +169,11 @@ export type ChatMessageType =
   | 'AGENT_ASK'
   | 'AGENT_NOTIFY'
   | 'AGENT_IMAGE'
-  | 'STATUS_UPDATE';
+  | 'STATUS_UPDATE'
+  // Internal messages (should be hidden from chat UI)
+  | 'SPAWN_SUBAGENT'      // 子代理创建任务
+  | 'SUBAGENT_COMPLETED'  // 子任务完成通知
+  | 'SYSTEM_WAKE';        // 系统唤醒消息
 
 export interface ChatSSEMessage {
   id: string;
@@ -207,8 +275,6 @@ export interface CandidateModel {
   is_custom: boolean;       // Custom model added by user
 }
 
-// Legacy alias for backward compatibility
-export type AvailableModel = CandidateModel;
 
 // API Key Info (public, for display)
 export interface ApiKeyInfo {
@@ -238,11 +304,6 @@ export interface VmConfig {
   memory: string;
   cpus: number;
   ports: PortConfig;
-  android?: {
-    device_serial: string;
-    managed: boolean;
-    avd_name?: string;
-  };
 }
 
 // UI display status (derived from setup_complete + VM status)
@@ -276,6 +337,36 @@ export interface AICAgent {
     managed?: boolean;       // 是否由 novaic 管理
     avd_name?: string;       // 托管模式下的 AVD 名称
   };
+  // 统一设备列表（新架构）
+  devices?: Device[];
+}
+
+/**
+ * Agent interface with unified devices support
+ */
+export interface Agent {
+  id: string;
+  name: string;
+  created_at: string;
+  model_id?: string;
+  
+  // Legacy fields (for backward compatibility)
+  vm?: VmConfig;
+  android?: AndroidConfig;
+  setup_complete?: boolean;
+  cloud_init_complete?: boolean;
+  
+  // New unified devices list
+  devices: Device[];
+}
+
+/**
+ * Android configuration (legacy)
+ */
+export interface AndroidConfig {
+  device_serial: string;
+  managed?: boolean;
+  avd_name?: string;
 }
 
 // App State
@@ -292,7 +383,7 @@ export interface AppState {
   layoutMode: LayoutMode;
   leftPanelWidth: number;
   // Model selection
-  availableModels: AvailableModel[];
+  availableModels: CandidateModel[];
   apiKeys: ApiKeyInfo[];
   selectedModel: string;
   // AIC Agents

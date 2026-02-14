@@ -6,11 +6,11 @@
     "mapping": {
         "device": "flash",
         "executable": {
-            "filename": "/opt/homebrew/Cellar/qemu/10.2.0/share/qemu/edk2-riscv-code.fd",
+            "filename": "/opt/homebrew/Cellar/qemu/10.2.1/share/qemu/edk2-riscv-code.fd",
             "format": "raw"
         },
         "nvram-template": {
-            "filename": "/opt/homebrew/Cellar/qemu/10.2.0/share/qemu/edk2-riscv-vars.fd",
+            "filename": "/opt/homebrew/Cellar/qemu/10.2.1/share/qemu/edk2-riscv-vars.fd",
             "format": "raw"
         }
     },

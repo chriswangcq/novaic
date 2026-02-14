@@ -7,7 +7,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import type { PortConfig } from './api';
-import { VM_CONFIG, API_CONFIG, WS_CONFIG } from '../config';
+import { VM_CONFIG, API_CONFIG, DEFAULT_PORTS, WS_CONFIG } from '../config';
 
 // VM 状态类型 - matches Gateway VmStatus
 export interface VmStatus {
@@ -195,13 +195,13 @@ class VmService {
       }
       
       // 回退方式 2：使用旧的 websockify URL（默认 Agent 0）
-      const websockifyUrl = `ws://localhost:${WS_CONFIG.WEBSOCKIFY_PORT}/websockify`;
+      const websockifyUrl = `ws://localhost:${DEFAULT_PORTS.WEBSOCKET}/websockify`;
       console.log(`[VM Service] Falling back to websockify: ${websockifyUrl}`);
       return websockifyUrl;
     } catch (error) {
       console.error('[VM Service] Get VNC URL failed:', error);
       // 最终回退到默认 websockify URL
-      return `ws://localhost:${WS_CONFIG.WEBSOCKIFY_PORT}/websockify`;
+      return `ws://localhost:${DEFAULT_PORTS.WEBSOCKET}/websockify`;
     }
   }
 
@@ -341,7 +341,7 @@ class VmService {
         vnc_socket_path: '',
         vmcontrol_healthy: false,
         vm_registered: false,
-        vnc_url: `ws://localhost:8080/api/vms/${agentId}/vnc`,
+        vnc_url: `ws://localhost:${WS_CONFIG.VMCONTROL_PORT}/api/vms/${agentId}/vnc`,
         reason: String(error)
       };
     }

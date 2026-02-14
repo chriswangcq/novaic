@@ -8,6 +8,7 @@ v12: Added RuntimeRepository for Master-driven Agent Runtime management.
 v14: Added SubAgentRepository for SubAgent state management.
 v15: Three-Task Architecture - pipeline_tasks based system.
 v16: Removed v11 legacy (ActionTaskRepository, MCPExecutionRepository, WorkerRepository).
+v38: Added DeviceRepository for unified device management.
 """
 
 from .config import ConfigRepository
@@ -23,6 +24,7 @@ from .message import MessageRepository
 from .runtime import RuntimeRepository, AgentRuntime
 from .subagent import SubAgentRepository, SubAgent
 from .task import TaskRepository
+from .device import DeviceRepository
 from gateway.db.access import get_db
 
 
@@ -51,6 +53,7 @@ __all__ = [
     "SubAgentRepository",
     "SubAgent",
     "TaskRepository",
+    "DeviceRepository",
     "get_message_repo",
     "get_agent_state_repo",
 ]

@@ -28,7 +28,7 @@ v25: Tools Server persistence - agent_runtimes.tool_ports for Tools Server recov
 v33: Alive Agent Phase 1 - Bootstrap markdown files and active hours for agent_drive.
 """
 
-SCHEMA_VERSION = 36
+SCHEMA_VERSION = 38
 
 SCHEMA_SQL = """
 -- ========================================
@@ -93,7 +93,8 @@ CREATE TABLE IF NOT EXISTS agents (
     ports TEXT NOT NULL DEFAULT '{}',
     setup_complete INTEGER DEFAULT 0,
     model_id TEXT,  -- Selected LLM model ID (v20)
-    cloud_init_complete INTEGER DEFAULT 0  -- Cloud-init initialization status
+    cloud_init_complete INTEGER DEFAULT 0,  -- Cloud-init initialization status
+    android_config TEXT DEFAULT NULL  -- Android emulator config (v37, independent from vm_config)
 );
 
 -- ========================================
@@ -718,6 +719,46 @@ CREATE INDEX IF NOT EXISTS idx_agent_tasks_agent ON agent_tasks(agent_id);
 CREATE INDEX IF NOT EXISTS idx_agent_tasks_quadrant ON agent_tasks(agent_id, quadrant);
 CREATE INDEX IF NOT EXISTS idx_agent_tasks_status ON agent_tasks(agent_id, status);
 CREATE INDEX IF NOT EXISTS idx_agent_tasks_due ON agent_tasks(agent_id, due_date);
+
+-- ========================================
+-- Unified Devices Table (v38)
+-- ========================================
+-- Replaces vm_config + android_config with a unified device model.
+-- Each agent can have multiple devices (Linux VM, Android emulator).
+
+CREATE TABLE IF NOT EXISTS devices (
+    id TEXT PRIMARY KEY,
+    agent_id TEXT NOT NULL,
+    type TEXT NOT NULL CHECK(type IN ('linux', 'android')),
+    name TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    status TEXT DEFAULT 'created' CHECK(status IN ('created', 'setup', 'ready', 'running', 'stopped', 'error')),
+    
+    -- Common resource config
+    memory INTEGER DEFAULT 4096,
+    cpus INTEGER DEFAULT 4,
+    data_path TEXT DEFAULT '',
+    ports TEXT DEFAULT '{}',
+    
+    -- Linux specific fields
+    backend TEXT DEFAULT 'qemu',
+    os_type TEXT DEFAULT 'ubuntu',
+    os_version TEXT DEFAULT '24.04',
+    image_path TEXT DEFAULT '',
+    cloud_init_complete INTEGER DEFAULT 0,
+    
+    -- Android specific fields
+    avd_name TEXT DEFAULT '',
+    device_serial TEXT DEFAULT '',
+    managed INTEGER DEFAULT 1,
+    system_image TEXT DEFAULT '',
+    
+    FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_devices_agent ON devices(agent_id);
+CREATE INDEX IF NOT EXISTS idx_devices_type ON devices(type);
+CREATE INDEX IF NOT EXISTS idx_devices_status ON devices(status);
 """
 
 DEFAULT_CONFIG = {
@@ -798,6 +839,223 @@ def init_schema_sync(conn):
             # Ignore errors for existing indexes
             if "already exists" not in str(e).lower():
                 pass
+    
+    conn.commit()
+
+
+def _migrate_android_config_v37(conn):
+    """
+    Migrate vm_config.android to independent android_config field.
+    
+    This migration:
+    1. Reads vm_config JSON from each agent
+    2. Extracts the 'android' field if present
+    3. Saves it to the new android_config column
+    4. Removes 'android' from vm_config
+    """
+    import json
+    
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, vm_config FROM agents WHERE vm_config IS NOT NULL")
+    
+    migrated_count = 0
+    for row in cursor.fetchall():
+        agent_id, vm_config_json = row
+        if vm_config_json:
+            try:
+                vm_config = json.loads(vm_config_json)
+                android = vm_config.pop("android", None)
+                if android:
+                    # Update both vm_config (without android) and android_config
+                    conn.execute(
+                        "UPDATE agents SET vm_config = ?, android_config = ? WHERE id = ?",
+                        (json.dumps(vm_config), json.dumps(android), agent_id)
+                    )
+                    migrated_count += 1
+                    print(f"[schema] Migration v37: Migrated android config for agent {agent_id}")
+            except json.JSONDecodeError:
+                print(f"[schema] Migration v37: Failed to parse vm_config for agent {agent_id}")
+    
+    if migrated_count > 0:
+        print(f"[schema] Migration v37: Migrated {migrated_count} agents with android config")
+    
+    conn.commit()
+
+
+def _migrate_to_devices_v38(conn):
+    """
+    Migrate vm_config and android_config from agents table to unified devices table.
+    
+    This migration:
+    1. Creates the devices table if not exists
+    2. For each agent with vm_config (Linux VM), creates a linux device
+    3. For each agent with android_config, creates an android device
+    4. Preserves all existing configuration data
+    
+    Note: The old vm_config and android_config columns are NOT dropped,
+    allowing for rollback if needed. They can be removed in a future migration.
+    """
+    import json
+    import uuid
+    from datetime import datetime
+    
+    # First, ensure all required columns exist in agents table
+    cursor = conn.cursor()
+    cursor.execute("PRAGMA table_info(agents)")
+    existing_columns = {col[1] for col in cursor.fetchall()}
+    
+    # Add missing columns if needed
+    if "cloud_init_complete" not in existing_columns:
+        conn.execute("ALTER TABLE agents ADD COLUMN cloud_init_complete INTEGER DEFAULT 0")
+        print("[schema] Migration v38: Added cloud_init_complete column to agents")
+    
+    if "android_config" not in existing_columns:
+        conn.execute("ALTER TABLE agents ADD COLUMN android_config TEXT DEFAULT NULL")
+        print("[schema] Migration v38: Added android_config column to agents")
+    
+    # Create devices table if not exists (in case schema wasn't applied yet)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS devices (
+            id TEXT PRIMARY KEY,
+            agent_id TEXT NOT NULL,
+            type TEXT NOT NULL CHECK(type IN ('linux', 'android')),
+            name TEXT DEFAULT '',
+            created_at TEXT DEFAULT (datetime('now')),
+            status TEXT DEFAULT 'created' CHECK(status IN ('created', 'setup', 'ready', 'running', 'stopped', 'error')),
+            memory INTEGER DEFAULT 4096,
+            cpus INTEGER DEFAULT 4,
+            data_path TEXT DEFAULT '',
+            ports TEXT DEFAULT '{}',
+            backend TEXT DEFAULT 'qemu',
+            os_type TEXT DEFAULT 'ubuntu',
+            os_version TEXT DEFAULT '24.04',
+            image_path TEXT DEFAULT '',
+            cloud_init_complete INTEGER DEFAULT 0,
+            avd_name TEXT DEFAULT '',
+            device_serial TEXT DEFAULT '',
+            managed INTEGER DEFAULT 1,
+            system_image TEXT DEFAULT '',
+            FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE
+        )
+    """)
+    
+    cursor = conn.cursor()
+    
+    # Check which columns exist in agents table
+    cursor.execute("PRAGMA table_info(agents)")
+    columns = {col[1] for col in cursor.fetchall()}
+    
+    # Build SELECT query based on available columns
+    select_cols = ["id", "name", "vm_config", "ports", "setup_complete", "created_at"]
+    if "android_config" in columns:
+        select_cols.insert(3, "android_config")
+    if "cloud_init_complete" in columns:
+        select_cols.append("cloud_init_complete")
+    
+    cursor.execute(f"SELECT {', '.join(select_cols)} FROM agents")
+    
+    linux_count = 0
+    android_count = 0
+    
+    for row in cursor.fetchall():
+        # Parse row based on available columns
+        row_dict = dict(zip(select_cols, row))
+        agent_id = row_dict["id"]
+        agent_name = row_dict["name"]
+        vm_config_json = row_dict["vm_config"]
+        android_config_json = row_dict.get("android_config")
+        ports_json = row_dict["ports"]
+        setup_complete = row_dict["setup_complete"]
+        cloud_init_complete = row_dict.get("cloud_init_complete", 0)
+        created_at = row_dict["created_at"]
+        
+        # Migrate Linux VM config
+        if vm_config_json:
+            try:
+                vm_config = json.loads(vm_config_json)
+                # Only migrate if there's actual VM config (image_path is set)
+                if vm_config.get("image_path"):
+                    device_id = str(uuid.uuid4())
+                    
+                    # Determine status based on setup_complete
+                    if setup_complete:
+                        status = "ready"
+                    else:
+                        status = "created"
+                    
+                    # Get ports from vm_config or agent ports
+                    vm_ports = vm_config.get("ports", {})
+                    if isinstance(vm_ports, dict) and vm_ports:
+                        ports = json.dumps(vm_ports)
+                    elif ports_json:
+                        ports = ports_json
+                    else:
+                        ports = "{}"
+                    
+                    conn.execute("""
+                        INSERT INTO devices (
+                            id, agent_id, type, name, created_at, status,
+                            memory, cpus, data_path, ports,
+                            backend, os_type, os_version, image_path, cloud_init_complete
+                        ) VALUES (?, ?, 'linux', ?, ?, ?, ?, ?, '', ?, ?, ?, ?, ?, ?)
+                    """, (
+                        device_id,
+                        agent_id,
+                        f"{agent_name} - Linux VM",
+                        created_at or datetime.now().isoformat(),
+                        status,
+                        int(vm_config.get("memory", "4096")),
+                        vm_config.get("cpus", 4),
+                        ports,
+                        vm_config.get("backend", "qemu"),
+                        vm_config.get("os_type", "ubuntu"),
+                        vm_config.get("os_version", "24.04"),
+                        vm_config.get("image_path", ""),
+                        1 if cloud_init_complete else 0,
+                    ))
+                    linux_count += 1
+                    print(f"[schema] Migration v38: Created linux device for agent {agent_id}")
+            except json.JSONDecodeError:
+                print(f"[schema] Migration v38: Failed to parse vm_config for agent {agent_id}")
+        
+        # Migrate Android config
+        if android_config_json:
+            try:
+                android_config = json.loads(android_config_json)
+                device_id = str(uuid.uuid4())
+                
+                # Determine status based on device_serial
+                if android_config.get("device_serial"):
+                    status = "ready"
+                else:
+                    status = "created"
+                
+                conn.execute("""
+                    INSERT INTO devices (
+                        id, agent_id, type, name, created_at, status,
+                        memory, cpus, data_path, ports,
+                        avd_name, device_serial, managed, system_image
+                    ) VALUES (?, ?, 'android', ?, ?, ?, ?, ?, '', '{}', ?, ?, ?, ?)
+                """, (
+                    device_id,
+                    agent_id,
+                    f"{agent_name} - Android",
+                    created_at or datetime.now().isoformat(),
+                    status,
+                    android_config.get("memory", 4096),
+                    android_config.get("cpus", 4),
+                    android_config.get("avd_name", ""),
+                    android_config.get("device_serial", ""),
+                    1 if android_config.get("managed", True) else 0,
+                    android_config.get("system_image", ""),
+                ))
+                android_count += 1
+                print(f"[schema] Migration v38: Created android device for agent {agent_id}")
+            except json.JSONDecodeError:
+                print(f"[schema] Migration v38: Failed to parse android_config for agent {agent_id}")
+    
+    if linux_count > 0 or android_count > 0:
+        print(f"[schema] Migration v38: Migrated {linux_count} linux devices, {android_count} android devices")
     
     conn.commit()
 
@@ -1090,6 +1348,28 @@ def run_migration_sync(conn, from_version: int):
             pass
         conn.execute("PRAGMA user_version = 36")
         print("[schema] Migrated to v36: agent_tasks task_type and progress_notes")
+
+    # v37: Add android_config column and migrate data from vm_config.android
+    if from_version < 37:
+        # Add android_config column
+        try:
+            conn.execute("ALTER TABLE agents ADD COLUMN android_config TEXT DEFAULT NULL")
+            print("[schema] Migration v37: Added android_config column to agents")
+        except Exception as e:
+            if "duplicate column" not in str(e).lower():
+                print(f"[schema] Migration v37 warning (android_config): {e}")
+        
+        # Migrate data from vm_config.android to android_config
+        _migrate_android_config_v37(conn)
+        
+        conn.execute("PRAGMA user_version = 37")
+        print("[schema] Migrated to v37: android_config as independent field")
+
+    # v38: Unified devices table - migrate vm_config and android_config to devices
+    if from_version < 38:
+        _migrate_to_devices_v38(conn)
+        conn.execute("PRAGMA user_version = 38")
+        print("[schema] Migrated to v38: unified devices table")
 
     # Update version
     conn.execute(

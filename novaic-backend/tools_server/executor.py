@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 GATEWAY_URL = os.environ.get("GATEWAY_URL", "http://127.0.0.1:19999")
 
 # vmcontrol API 基础 URL
-VMCONTROL_URL = os.environ.get("VMCONTROL_URL", "http://127.0.0.1:8080")
+VMCONTROL_URL = os.environ.get("VMCONTROL_URL", "http://127.0.0.1:19996")
 
 # Mobile 工具映射表：工具名 -> (endpoint, None)
 # 这些工具会被路由到 vmcontrol 的 /api/android/:serial/:endpoint

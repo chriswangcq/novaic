@@ -5,6 +5,8 @@
  * 解决缩略图和全屏视图之间的连接冲突问题
  */
 
+import { WS_CONFIG } from '../config';
+
 export interface DeviceInfo {
   device: string;
   codec: string;
@@ -351,7 +353,7 @@ function connectStream(deviceSerial: string) {
   state.decoderConfigured = false;
   state.pendingFrames = [];
   
-  const wsUrl = `ws://localhost:8080/api/android/scrcpy?device=${deviceSerial}`;
+  const wsUrl = `ws://localhost:${WS_CONFIG.VMCONTROL_PORT}/api/android/scrcpy?device=${deviceSerial}`;
   const ws = new WebSocket(wsUrl);
   ws.binaryType = 'arraybuffer';
   state.ws = ws;
@@ -502,6 +504,24 @@ export function subscribeToStream(deviceSerial: string, subscriber: StreamSubscr
   subscriber.onStatusChange(state.status);
   if (state.deviceInfo) {
     subscriber.onDeviceInfo(state.deviceInfo);
+  }
+  
+  // 如果已连接且 canvas 有内容，立即发送当前帧
+  // 这解决了屏幕静止时新订阅者看到黑屏的问题
+  if (state.status === 'connected' && state.canvas.width > 0 && state.canvas.height > 0) {
+    // 检查 canvas 是否有实际内容（不是全黑）
+    const ctx = state.canvas.getContext('2d');
+    if (ctx) {
+      try {
+        // 尝试读取像素确认 canvas 有内容
+        ctx.getImageData(0, 0, 1, 1);
+        // 只要有任何像素数据就发送（即使是黑色也可能是有效内容）
+        subscriber.onFrame(state.canvas);
+        console.log(`[ScrcpyStream] Sent initial frame to new subscriber for ${deviceSerial}`);
+      } catch {
+        // canvas 可能还没有内容，忽略
+      }
+    }
   }
   
   // 如果还没连接，开始连接

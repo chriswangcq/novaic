@@ -1,13 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Monitor, Smartphone, Plus, Play, Square, Trash2, X, ExternalLink } from 'lucide-react';
+import { Monitor, Smartphone, Plus, Play, Square, Trash2, X, ExternalLink, MoreHorizontal } from 'lucide-react';
 import { useAppStore } from '../../store';
-import { vmService, VmStatus } from '../../services/vm';
-import { androidService, AndroidDevice } from '../../services/android';
 import { api } from '../../services/api';
-import { VNCView } from '../Visual/VNCView';
+import { VNCViewShared } from '../Visual/VNCViewShared';
 import { ScrcpyView } from '../Visual/ScrcpyView';
 import { AddLinuxVMModal } from '../VM/AddLinuxVMModal';
 import { AddAndroidModal } from '../VM/AddAndroidModal';
+import { Device, isLinuxDevice, isAndroidDevice, AndroidDevice as AndroidDeviceType } from '../../types';
 
 interface DeviceSidebarProps {
   className?: string;
@@ -28,8 +27,6 @@ interface DeviceInfo {
 // 设备卡片组件
 interface DeviceCardProps {
   device: DeviceInfo;
-  isActive?: boolean;
-  onClick?: () => void;
   onStart?: () => void;
   onStop?: () => void;
   onOpenDisplay?: () => void;
@@ -38,23 +35,24 @@ interface DeviceCardProps {
 
 function DeviceCard({ 
   device, 
-  isActive, 
-  onClick,
   onStart,
   onStop,
   onOpenDisplay,
   onDelete,
 }: DeviceCardProps) {
-  const [showActions, setShowActions] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const Icon = device.type === 'linux' ? Monitor : Smartphone;
   const isRunning = device.status === 'online';
+  const isConnecting = device.status === 'connecting';
   
-  const handleClick = () => {
-    if (device.status === 'online' && onOpenDisplay) {
-      onOpenDisplay();
-    } else {
-      onClick?.();
+  // 主按钮点击：运行中打开显示，未运行则启动
+  const handleMainAction = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isRunning) {
+      onOpenDisplay?.();
+    } else if (!isConnecting) {
+      onStart?.();
     }
   };
 
@@ -63,46 +61,57 @@ function DeviceCard({
     if (showDeleteConfirm) {
       onDelete?.();
       setShowDeleteConfirm(false);
+      setShowMenu(false);
     } else {
       setShowDeleteConfirm(true);
-      // 3秒后自动取消确认状态
       setTimeout(() => setShowDeleteConfirm(false), 3000);
     }
   };
+
+  const handleMenuToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowMenu(!showMenu);
+    setShowDeleteConfirm(false);
+  };
+
+  // 点击外部关闭菜单
+  const handleClickOutside = () => {
+    setShowMenu(false);
+    setShowDeleteConfirm(false);
+  };
   
   return (
-    <div
-      className="relative"
-      onMouseEnter={() => setShowActions(true)}
-      onMouseLeave={() => {
-        setShowActions(false);
-        setShowDeleteConfirm(false);
-      }}
-    >
-      <button
-        onClick={handleClick}
+    <div className="relative" onClick={handleClickOutside}>
+      <div
         className={`
           w-full p-2 rounded-lg border transition-all
-          ${isActive 
+          ${showMenu 
             ? 'bg-nb-accent/20 border-nb-accent/50' 
             : 'bg-nb-surface border-nb-border hover:bg-nb-surface-2 hover:border-nb-border-hover'
           }
         `}
-        title={`${device.name}\n状态: ${device.status === 'online' ? '运行中' : device.status === 'connecting' ? '连接中' : '已停止'}`}
       >
-        {/* 缩略图或图标 */}
-        <div className="relative mx-auto mb-1.5">
+        {/* 右上角更多按钮 */}
+        <button
+          onClick={handleMenuToggle}
+          className="absolute top-1 right-1 p-1 rounded hover:bg-nb-surface-2 text-nb-text-secondary hover:text-nb-text z-10"
+          title="更多操作"
+        >
+          <MoreHorizontal size={12} />
+        </button>
+
+        {/* 缩略图或图标 - 点击执行主操作 */}
+        <div 
+          className="relative mx-auto mb-1.5 cursor-pointer"
+          onClick={handleMainAction}
+        >
           {isRunning ? (
-            // 运行中：显示实时缩略图
-            // Linux: 横屏 16:10，Android: 竖屏 9:20
             <div 
               className="w-full overflow-hidden rounded border border-nb-border bg-black relative"
-              style={{ 
-                aspectRatio: device.type === 'linux' ? '16/10' : '9/20'
-              }}
+              style={{ aspectRatio: device.type === 'linux' ? '16/10' : '9/20' }}
             >
               {device.type === 'linux' ? (
-                <VNCView isThumbnail />
+                <VNCViewShared isThumbnail />
               ) : (
                 <ScrcpyView 
                   deviceSerial={device.serial} 
@@ -110,28 +119,23 @@ function DeviceCard({
                   autoConnect={true}
                 />
               )}
-              {/* 状态指示点 */}
               <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-nb-surface bg-nb-success" />
             </div>
           ) : (
-            // 未运行：显示图标，保持与运行时相同的宽高比
             <div 
               className={`
                 w-full rounded-lg flex items-center justify-center relative
                 ${device.type === 'linux' ? 'bg-blue-500/20' : 'bg-green-500/20'}
               `}
-              style={{ 
-                aspectRatio: device.type === 'linux' ? '16/10' : '9/20'
-              }}
+              style={{ aspectRatio: device.type === 'linux' ? '16/10' : '9/20' }}
             >
               <Icon 
                 size={24} 
                 className={device.type === 'linux' ? 'text-blue-400' : 'text-green-400'} 
               />
-              {/* 状态指示点 */}
               <span className={`
                 absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-nb-surface
-                ${device.status === 'connecting' ? 'bg-nb-warning animate-pulse' : 'bg-nb-text-secondary'}
+                ${isConnecting ? 'bg-nb-warning animate-pulse' : 'bg-nb-text-secondary'}
               `} />
             </div>
           )}
@@ -142,63 +146,77 @@ function DeviceCard({
           {device.name}
         </div>
         
-        {/* 状态文字 */}
-        <div className="flex items-center justify-center gap-1 mt-1">
-          <span className="text-[9px] text-nb-text-secondary">
-            {device.status === 'online' ? '运行中' : 
-             device.status === 'connecting' ? '连接中' : 
-             '已停止'}
-          </span>
-        </div>
-      </button>
+        {/* 主按钮 */}
+        <button
+          onClick={handleMainAction}
+          disabled={isConnecting}
+          className={`
+            w-full mt-1.5 px-2 py-1 text-[9px] rounded flex items-center justify-center gap-1 transition-colors
+            ${isConnecting 
+              ? 'bg-nb-surface-2 text-nb-text-secondary cursor-not-allowed'
+              : isRunning
+                ? 'bg-nb-accent hover:bg-nb-accent/80 text-white'
+                : 'bg-nb-success/80 hover:bg-nb-success text-white'
+            }
+          `}
+        >
+          {isConnecting ? (
+            <>连接中...</>
+          ) : isRunning ? (
+            <>
+              <ExternalLink size={10} />
+              显示
+            </>
+          ) : (
+            <>
+              <Play size={10} />
+              启动
+            </>
+          )}
+        </button>
+      </div>
 
-      {/* 悬停操作按钮 */}
-      {showActions && (
-        <div className="absolute inset-0 bg-nb-surface/95 rounded-lg flex flex-col items-center justify-center gap-1.5 p-1.5">
-          {device.status === 'online' ? (
+      {/* 下拉菜单 */}
+      {showMenu && (
+        <div className="absolute top-8 right-1 z-20 bg-nb-surface border border-nb-border rounded-lg shadow-lg py-1 min-w-[80px]">
+          {isRunning && (
             <>
               <button
-                onClick={(e) => { e.stopPropagation(); onOpenDisplay?.(); }}
-                className="w-full px-2 py-1 text-[9px] bg-nb-accent hover:bg-nb-accent/80 text-white rounded flex items-center justify-center gap-1"
-                title="打开显示"
+                onClick={(e) => { e.stopPropagation(); onOpenDisplay?.(); setShowMenu(false); }}
+                className="w-full px-3 py-1.5 text-[10px] text-nb-text hover:bg-nb-surface-2 flex items-center gap-2"
               >
                 <ExternalLink size={10} />
                 显示
               </button>
               <button
-                onClick={(e) => { e.stopPropagation(); onStop?.(); }}
-                className="w-full px-2 py-1 text-[9px] bg-nb-error/80 hover:bg-nb-error text-white rounded flex items-center justify-center gap-1"
-                title="停止"
+                onClick={(e) => { e.stopPropagation(); onStop?.(); setShowMenu(false); }}
+                className="w-full px-3 py-1.5 text-[10px] text-nb-text hover:bg-nb-surface-2 flex items-center gap-2"
               >
                 <Square size={10} />
                 停止
               </button>
             </>
-          ) : device.status === 'connecting' ? (
-            <span className="text-[9px] text-nb-text-secondary">连接中...</span>
-          ) : (
+          )}
+          {!isRunning && !isConnecting && (
             <button
-              onClick={(e) => { e.stopPropagation(); onStart?.(); }}
-              className="w-full px-2 py-1 text-[9px] bg-nb-success/80 hover:bg-nb-success text-white rounded flex items-center justify-center gap-1"
-              title="启动"
+              onClick={(e) => { e.stopPropagation(); onStart?.(); setShowMenu(false); }}
+              className="w-full px-3 py-1.5 text-[10px] text-nb-text hover:bg-nb-surface-2 flex items-center gap-2"
             >
               <Play size={10} />
               启动
             </button>
           )}
-          
-          {/* 删除按钮 */}
+          <div className="border-t border-nb-border my-1" />
           <button
             onClick={handleDelete}
-            className={`w-full px-2 py-1 text-[9px] rounded flex items-center justify-center gap-1 ${
+            className={`w-full px-3 py-1.5 text-[10px] flex items-center gap-2 ${
               showDeleteConfirm 
-                ? 'bg-red-600 hover:bg-red-700 text-white' 
-                : 'bg-nb-surface-2 hover:bg-nb-error/20 text-nb-text-secondary hover:text-nb-error'
+                ? 'bg-red-600 text-white' 
+                : 'text-nb-error hover:bg-nb-error/10'
             }`}
-            title={showDeleteConfirm ? '确认删除' : '删除设备'}
           >
             <Trash2 size={10} />
-            {showDeleteConfirm ? '确认?' : '删除'}
+            {showDeleteConfirm ? '确认删除?' : '删除'}
           </button>
         </div>
       )}
@@ -275,7 +293,7 @@ function DeviceDisplayModal({ device, onClose }: DeviceDisplayModalProps) {
         {/* 内容区域 */}
         <div className="flex-1 overflow-hidden">
           {device.type === 'linux' ? (
-            <VNCView />
+            <VNCViewShared />
           ) : (
             <ScrcpyView 
               deviceSerial={device.serial} 
@@ -290,13 +308,12 @@ function DeviceDisplayModal({ device, onClose }: DeviceDisplayModalProps) {
 
 export function DeviceSidebar({ className = '' }: DeviceSidebarProps) {
   const { currentAgentId, agents, loadAgents } = useAppStore();
-  const [activeDevice, setActiveDevice] = useState<string | null>(null);
   const [displayDevice, setDisplayDevice] = useState<DeviceInfo | null>(null);
   
-  // 设备状态
-  const [vmStatus, setVmStatus] = useState<VmStatus | null>(null);
-  const [androidDevices, setAndroidDevices] = useState<AndroidDevice[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  // 设备状态（使用统一设备 API）
+  const [deviceStatuses, setDeviceStatuses] = useState<Record<string, boolean>>({});
+  // 每个设备独立的加载状态
+  const [loadingDevices, setLoadingDevices] = useState<Set<string>>(new Set());
   
   // Modal 状态
   const [showAddVMModal, setShowAddVMModal] = useState(false);
@@ -307,176 +324,105 @@ export function DeviceSidebar({ className = '' }: DeviceSidebarProps) {
     ? agents.find(a => a.id === currentAgentId) 
     : null;
   
-  // 判断设备配置
-  const hasLinuxConfig = Boolean(currentAgent?.vm);
-  // 检查是否有 Android 配置（托管模式检查 avd_name，外部模式检查 device_serial）
-  const hasAndroidConfig = Boolean(currentAgent?.android?.avd_name || currentAgent?.android?.device_serial);
+  // 从 agent.devices 获取设备列表
+  const linuxDevices = currentAgent?.devices?.filter(isLinuxDevice) || [];
+  const androidDevices = currentAgent?.devices?.filter(isAndroidDevice) || [];
   
-  // 获取 VM 状态
-  const fetchVmStatus = useCallback(async () => {
-    if (!currentAgentId || !hasLinuxConfig) {
-      setVmStatus(null);
+  // 判断是否有设备
+  const hasLinuxDevice = linuxDevices.length > 0;
+  const hasAndroidDevice = androidDevices.length > 0;
+  
+  // 获取所有设备状态（使用统一设备 API）
+  const fetchDeviceStatuses = useCallback(async () => {
+    if (!currentAgent?.devices || currentAgent.devices.length === 0) {
+      setDeviceStatuses({});
       return;
     }
     
-    try {
-      const status = await vmService.getStatus(currentAgentId);
-      setVmStatus(status);
-    } catch (error) {
-      console.error('[DeviceSidebar] Failed to fetch VM status:', error);
-      setVmStatus(null);
-    }
-  }, [currentAgentId, hasLinuxConfig]);
-  
-  // 获取 Android 设备状态
-  const fetchAndroidStatus = useCallback(async () => {
-    if (!hasAndroidConfig) {
-      setAndroidDevices([]);
-      return;
-    }
-    
-    const deviceSerial = currentAgent?.android?.device_serial;
-    
-    // 如果有 device_serial，尝试获取状态
-    if (deviceSerial) {
+    const statuses: Record<string, boolean> = {};
+    for (const device of currentAgent.devices) {
       try {
-        const status = await androidService.getStatus(deviceSerial);
-        setAndroidDevices([status]);
-        return;
-      } catch (error) {
-        console.error('[DeviceSidebar] Failed to fetch Android status:', error);
+        const status = await api.devices.status(device.id);
+        statuses[device.id] = status.running;
+      } catch {
+        statuses[device.id] = false;
       }
     }
-    
-    // 尝试获取所有设备列表
-    try {
-      const devices = await androidService.listDevices();
-      if (deviceSerial) {
-        const targetDevice = devices.find(d => d.serial === deviceSerial);
-        if (targetDevice) {
-          setAndroidDevices([targetDevice]);
-          return;
-        }
-      }
-      // 如果是托管模式但还没有 serial，显示空列表（设备未启动）
-      setAndroidDevices([]);
-    } catch {
-      setAndroidDevices([]);
-    }
-  }, [hasAndroidConfig, currentAgent?.android?.device_serial]);
+    setDeviceStatuses(statuses);
+  }, [currentAgent?.devices]);
   
   // 定期轮询状态
   useEffect(() => {
-    fetchVmStatus();
-    fetchAndroidStatus();
+    fetchDeviceStatuses();
     
     const interval = setInterval(() => {
-      fetchVmStatus();
-      fetchAndroidStatus();
+      fetchDeviceStatuses();
     }, 5000);
     
     return () => clearInterval(interval);
-  }, [fetchVmStatus, fetchAndroidStatus]);
+  }, [fetchDeviceStatuses]);
   
-  // 构建设备列表
-  const devices: DeviceInfo[] = [];
-  
-  // Linux VM
-  if (hasLinuxConfig) {
-    const status: DeviceStatus = vmStatus?.running 
+  // 构建设备列表（从 agent.devices 转换为 DeviceInfo）
+  const devices: DeviceInfo[] = (currentAgent?.devices || []).map((device: Device) => {
+    const isRunning = deviceStatuses[device.id] || false;
+    const isDeviceLoading = loadingDevices.has(device.id);
+    const status: DeviceStatus = isRunning 
       ? 'online' 
-      : isLoading 
+      : isDeviceLoading 
         ? 'connecting' 
         : 'offline';
     
-    devices.push({
-      id: 'linux-vm',
-      type: 'linux',
-      name: 'Linux VM',
-      status,
-    });
-  }
+    if (isLinuxDevice(device)) {
+      return {
+        id: device.id,
+        type: 'linux' as const,
+        name: device.name || 'Linux VM',
+        status,
+      };
+    } else {
+      const androidDev = device as AndroidDeviceType;
+      return {
+        id: device.id,
+        type: 'android' as const,
+        name: device.name || androidDev.avd_name || 'Android',
+        status,
+        serial: androidDev.device_serial,
+      };
+    }
+  });
   
-  // Android 设备
-  if (hasAndroidConfig && currentAgent?.android) {
-    const deviceSerial = currentAgent.android.device_serial;
-    const androidDevice = deviceSerial ? androidDevices.find(d => d.serial === deviceSerial) : null;
-    const status: DeviceStatus = androidDevice?.status === 'online' || androidDevice?.status === 'connected'
-      ? 'online'
-      : androidDevice?.status === 'booting'
-        ? 'connecting'
-        : 'offline';
-    
-    devices.push({
-      id: 'android-avd',
-      type: 'android',
-      name: currentAgent.android.avd_name || 'Android',
-      status,
-      serial: deviceSerial,
-    });
-  }
-  
-  // 操作处理函数
-  const handleStartLinux = async () => {
-    if (!currentAgentId) return;
-    setIsLoading(true);
+  // 操作处理函数（使用统一设备 API）
+  const handleStartDevice = async (device: Device) => {
+    setLoadingDevices(prev => new Set(prev).add(device.id));
     try {
-      await vmService.start(currentAgentId);
-      await fetchVmStatus();
+      await api.devices.start(device.id);
+      await fetchDeviceStatuses();
+      await loadAgents();  // 刷新 agent 列表以获取最新状态
     } catch (error) {
-      console.error('[DeviceSidebar] Failed to start VM:', error);
+      console.error('[DeviceSidebar] Failed to start device:', error);
     } finally {
-      setIsLoading(false);
+      setLoadingDevices(prev => {
+        const next = new Set(prev);
+        next.delete(device.id);
+        return next;
+      });
     }
   };
   
-  const handleStopLinux = async () => {
-    if (!currentAgentId) return;
-    setIsLoading(true);
+  const handleStopDevice = async (device: Device) => {
+    setLoadingDevices(prev => new Set(prev).add(device.id));
     try {
-      await vmService.stop(currentAgentId);
-      await fetchVmStatus();
-    } catch (error) {
-      console.error('[DeviceSidebar] Failed to stop VM:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const handleStartAndroid = async () => {
-    if (!currentAgentId) return;
-    setIsLoading(true);
-    try {
-      const result = await api.startAndroid(currentAgentId);
-      if (result.success) {
-        // Gateway 已经更新了 device_serial，只需刷新 agent 列表
-        await loadAgents();
-      } else {
-        console.error('[DeviceSidebar] Failed to start Android:', result.message);
-      }
-      await fetchAndroidStatus();
-    } catch (error) {
-      console.error('[DeviceSidebar] Failed to start Android:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const handleStopAndroid = async () => {
-    if (!currentAgentId) return;
-    setIsLoading(true);
-    try {
-      const result = await api.stopAndroid(currentAgentId);
-      if (!result.success) {
-        console.error('[DeviceSidebar] Failed to stop Android:', result.message);
-      }
-      // 刷新状态
+      await api.devices.stop(device.id);
+      await fetchDeviceStatuses();
       await loadAgents();
-      await fetchAndroidStatus();
     } catch (error) {
-      console.error('[DeviceSidebar] Failed to stop Android:', error);
+      console.error('[DeviceSidebar] Failed to stop device:', error);
     } finally {
-      setIsLoading(false);
+      setLoadingDevices(prev => {
+        const next = new Set(prev);
+        next.delete(device.id);
+        return next;
+      });
     }
   };
   
@@ -492,9 +438,26 @@ export function DeviceSidebar({ className = '' }: DeviceSidebarProps) {
     setShowAddAndroidModal(true);
   };
   
-  const handleDeleteDevice = (device: DeviceInfo) => {
-    // TODO: 实现删除设备逻辑
-    console.log('[DeviceSidebar] Delete device:', device.id);
+  const handleDeleteDevice = async (device: DeviceInfo) => {
+    if (!currentAgentId) return;
+    
+    try {
+      // 使用统一设备 API 删除设备
+      await api.devices.delete(currentAgentId, device.id);
+      
+      // 刷新 Agent 列表
+      await loadAgents();
+      
+      // 刷新设备状态
+      await fetchDeviceStatuses();
+    } catch (error) {
+      console.error('[DeviceSidebar] Failed to delete device:', error);
+    }
+  };
+  
+  // 根据 DeviceInfo 找到对应的 Device 对象
+  const findDevice = (deviceInfo: DeviceInfo): Device | undefined => {
+    return currentAgent?.devices?.find(d => d.id === deviceInfo.id);
   };
   
   return (
@@ -508,21 +471,22 @@ export function DeviceSidebar({ className = '' }: DeviceSidebarProps) {
         {/* 设备列表 */}
         <div className="flex-1 p-2 space-y-2 overflow-y-auto">
           {/* Linux VM 区域 */}
-          {hasLinuxConfig ? (
+          {hasLinuxDevice ? (
             devices
               .filter(d => d.type === 'linux')
-              .map(device => (
-                <DeviceCard
-                  key={device.id}
-                  device={device}
-                  isActive={activeDevice === device.id}
-                  onClick={() => setActiveDevice(activeDevice === device.id ? null : device.id)}
-                  onStart={handleStartLinux}
-                  onStop={handleStopLinux}
-                  onOpenDisplay={() => handleOpenDisplay(device)}
-                  onDelete={() => handleDeleteDevice(device)}
-                />
-              ))
+              .map(device => {
+                const realDevice = findDevice(device);
+                return (
+                  <DeviceCard
+                    key={device.id}
+                    device={device}
+                    onStart={realDevice ? () => handleStartDevice(realDevice) : undefined}
+                    onStop={realDevice ? () => handleStopDevice(realDevice) : undefined}
+                    onOpenDisplay={() => handleOpenDisplay(device)}
+                    onDelete={() => handleDeleteDevice(device)}
+                  />
+                );
+              })
           ) : (
             <AddDeviceButton type="linux" onClick={handleAddLinux} />
           )}
@@ -531,21 +495,22 @@ export function DeviceSidebar({ className = '' }: DeviceSidebarProps) {
           <div className="border-t border-nb-border my-2" />
           
           {/* Android 区域 */}
-          {hasAndroidConfig ? (
+          {hasAndroidDevice ? (
             devices
               .filter(d => d.type === 'android')
-              .map(device => (
-                <DeviceCard
-                  key={device.id}
-                  device={device}
-                  isActive={activeDevice === device.id}
-                  onClick={() => setActiveDevice(activeDevice === device.id ? null : device.id)}
-                  onStart={handleStartAndroid}
-                  onStop={handleStopAndroid}
-                  onOpenDisplay={() => handleOpenDisplay(device)}
-                  onDelete={() => handleDeleteDevice(device)}
-                />
-              ))
+              .map(device => {
+                const realDevice = findDevice(device);
+                return (
+                  <DeviceCard
+                    key={device.id}
+                    device={device}
+                    onStart={realDevice ? () => handleStartDevice(realDevice) : undefined}
+                    onStop={realDevice ? () => handleStopDevice(realDevice) : undefined}
+                    onOpenDisplay={() => handleOpenDisplay(device)}
+                    onDelete={() => handleDeleteDevice(device)}
+                  />
+                );
+              })
           ) : (
             <AddDeviceButton type="android" onClick={handleAddAndroid} />
           )}
@@ -558,9 +523,9 @@ export function DeviceSidebar({ className = '' }: DeviceSidebarProps) {
             title="添加设备"
             onClick={() => {
               // 根据当前缺少的设备类型决定添加哪种
-              if (!hasLinuxConfig) {
+              if (!hasLinuxDevice) {
                 handleAddLinux();
-              } else if (!hasAndroidConfig) {
+              } else if (!hasAndroidDevice) {
                 handleAddAndroid();
               }
             }}
@@ -580,9 +545,10 @@ export function DeviceSidebar({ className = '' }: DeviceSidebarProps) {
       <AddLinuxVMModal
         isOpen={showAddVMModal}
         onClose={() => setShowAddVMModal(false)}
-        onCreated={() => {
-          // 刷新 VM 状态
-          fetchVmStatus();
+        onCreated={async () => {
+          // 刷新 Agent 列表和设备状态
+          await loadAgents();
+          await fetchDeviceStatuses();
         }}
       />
       
@@ -590,9 +556,10 @@ export function DeviceSidebar({ className = '' }: DeviceSidebarProps) {
       <AddAndroidModal
         isOpen={showAddAndroidModal}
         onClose={() => setShowAddAndroidModal(false)}
-        onCreated={() => {
-          // 刷新 Android 状态
-          fetchAndroidStatus();
+        onCreated={async () => {
+          // 刷新 Agent 列表和设备状态
+          await loadAgents();
+          await fetchDeviceStatuses();
         }}
       />
     </>

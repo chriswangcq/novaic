@@ -19,11 +19,11 @@ import {
   AppState, 
   LayoutMode,
   LayoutSettings,
-  AvailableModel,
   ApiKeyInfo,
   ChatSSEMessage,
   MessageStatus,
   SetupProgressInfo,
+  CandidateModel,
 } from '../types';
 import { 
   API_CONFIG, 
@@ -100,7 +100,7 @@ interface AppStore extends AppState {
   setLayoutMode: (mode: LayoutMode) => void;
   setLeftPanelWidth: (width: number) => void;
   // Model actions
-  setAvailableModels: (models: AvailableModel[]) => void;
+  setAvailableModels: (models: CandidateModel[]) => void;
   setSelectedModel: (model: string) => Promise<void>;
   loadModelsFromConfig: () => Promise<void>;
   // Agent actions
@@ -478,7 +478,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   // Model & Mode actions
-  setAvailableModels: (models: AvailableModel[]) => {
+  setAvailableModels: (models: CandidateModel[]) => {
     set({ availableModels: models });
   },
 
@@ -519,7 +519,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
         provider: k.provider as ApiKeyInfo['provider'],
       }));
       
-      set({ availableModels: enabledModels as AvailableModel[], apiKeys });
+      set({ availableModels: enabledModels as CandidateModel[], apiKeys });
       
       // Auto-select first enabled model if not already selected
       const { selectedModel } = get();
@@ -858,19 +858,15 @@ export const useAppStore = create<AppStore>((set, get) => ({
             break;
             
           case 'SYSTEM_MESSAGE':
-            // System-generated message (bootstrap, scheduled tasks, etc.)
-            // Display as a special "system" message - using assistant role with system indicator
-            addMessage({
-              id: msg.id,
-              role: 'assistant',
-              content: `🔧 **System:** ${msg.message || msg.content || ''}`,
-              timestamp: new Date(msg.timestamp),
-              events: [{
-                type: 'status',
-                timestamp: msg.timestamp,
-                data: { type: 'system', source: (msg as ChatSSEMessage & { source?: string }).source }
-              }],
-            });
+          case 'SPAWN_SUBAGENT':
+          case 'SUBAGENT_COMPLETED':
+          case 'SYSTEM_WAKE':
+            // Internal messages - do not display in chat UI
+            // These are system/internal messages that should be hidden:
+            // - SYSTEM_MESSAGE: 系统消息（如 setup bootstrap）
+            // - SPAWN_SUBAGENT: 子代理创建任务
+            // - SUBAGENT_COMPLETED: 子任务完成通知
+            // - SYSTEM_WAKE: 系统唤醒消息
             break;
             
           case 'AGENT_REPLY':

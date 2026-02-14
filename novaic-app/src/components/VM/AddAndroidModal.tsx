@@ -11,12 +11,28 @@ import { useState, useEffect, useCallback } from 'react';
 import { X, Loader2, Smartphone, Check, AlertCircle, RefreshCw } from 'lucide-react';
 import { useAppStore } from '../../store';
 import { api } from '../../services';
-import { 
-  androidService, 
-  AndroidDevice, 
-  DeviceDefinition, 
-  SystemImageCheckResult 
-} from '../../services/android';
+
+// Types for Android API responses (internal use for listing connected devices)
+interface ConnectedAndroidDevice {
+  serial: string;
+  status: 'offline' | 'booting' | 'online' | 'connected';
+  avdName?: string;
+  managed?: boolean;
+}
+
+interface DeviceDefinition {
+  id: string;
+  name: string;
+  manufacturer: string;
+  screenSize: string;
+  resolution: string;
+  density: number;
+}
+
+interface SystemImageCheckResult {
+  installed: boolean;
+  path?: string;
+}
 
 interface AddAndroidModalProps {
   isOpen: boolean;
@@ -57,7 +73,7 @@ export function AddAndroidModal({ isOpen, onClose, onCreated }: AddAndroidModalP
   const [autoStart, setAutoStart] = useState<boolean>(true);
   
   // External mode state
-  const [connectedDevices, setConnectedDevices] = useState<AndroidDevice[]>([]);
+  const [connectedDevices, setConnectedDevices] = useState<ConnectedAndroidDevice[]>([]);
   const [selectedSerial, setSelectedSerial] = useState<string>('');
   const [manualSerial, setManualSerial] = useState<string>('');
   const [useManualInput, setUseManualInput] = useState<boolean>(false);
@@ -92,12 +108,25 @@ export function AddAndroidModal({ isOpen, onClose, onCreated }: AddAndroidModalP
   const loadInitialData = useCallback(async () => {
     setIsLoadingData(true);
     try {
-      // Load all data in parallel
-      const [imageStatus, definitions, devices] = await Promise.all([
-        androidService.checkSystemImage().catch(() => ({ installed: false })),
-        androidService.listDeviceDefinitions().catch(() => []),
-        androidService.listDevices().catch(() => []),
+      // Load all data in parallel via Gateway API
+      const [imageStatusRes, definitionsRes, devicesRes] = await Promise.all([
+        api.android.checkSystemImage().catch(() => ({ available: false })),
+        api.android.listDeviceDefinitions().catch(() => ({ devices: [] })),
+        api.android.listDevices().catch(() => ({ devices: [] })),
       ]);
+      
+      // Transform API responses to component types
+      const imageStatus: SystemImageCheckResult = {
+        installed: imageStatusRes.available,
+        path: (imageStatusRes as { path?: string }).path,
+      };
+      const definitions: DeviceDefinition[] = definitionsRes.devices || [];
+      const devices: ConnectedAndroidDevice[] = (devicesRes.devices || []).map((d: { serial: string; status: string; avd_name?: string; managed?: boolean }) => ({
+        serial: d.serial,
+        status: d.status as ConnectedAndroidDevice['status'],
+        avdName: d.avd_name,
+        managed: d.managed,
+      }));
       
       setSystemImageStatus(imageStatus);
       setDeviceDefinitions(definitions);
@@ -125,7 +154,13 @@ export function AddAndroidModal({ isOpen, onClose, onCreated }: AddAndroidModalP
   const refreshDevices = async () => {
     setIsLoadingData(true);
     try {
-      const devices = await androidService.listDevices();
+      const devicesRes = await api.android.listDevices();
+      const devices: ConnectedAndroidDevice[] = (devicesRes.devices || []).map((d: { serial: string; status: string; avd_name?: string; managed?: boolean }) => ({
+        serial: d.serial,
+        status: d.status as ConnectedAndroidDevice['status'],
+        avdName: d.avd_name,
+        managed: d.managed,
+      }));
       setConnectedDevices(devices);
     } catch (err) {
       console.error('[AddAndroidModal] Failed to refresh devices:', err);
@@ -175,67 +210,41 @@ export function AddAndroidModal({ isOpen, onClose, onCreated }: AddAndroidModalP
   const handleManagedCreation = async () => {
     if (!currentAgentId) return;
     
-    // Step 1: Check system image
+    // Step 1: Check system image via Gateway API
     setCreationProgress('检查系统镜像...');
-    const imageCheck = await androidService.checkSystemImage();
-    if (!imageCheck.installed) {
+    const imageCheckRes = await api.android.checkSystemImage();
+    if (!imageCheckRes.available) {
       throw new Error('Android 34 系统镜像未安装。请先安装系统镜像。');
     }
     
-    // Step 2: Create AVD
-    setCreationProgress('创建 AVD...');
+    // Step 2: Create Android device using unified device API
+    setCreationProgress('创建 Android 设备...');
     const finalAvdName = avdName.trim() || generateAvdName();
-    const result = await androidService.createAvd(
-      finalAvdName,
-      selectedDevice,
-      memory,
-      cpuCores
-    );
     
-    if (!result.success) {
-      throw new Error('创建 AVD 失败');
-    }
-    
-    // Step 3: Update agent config
-    setCreationProgress('更新 Agent 配置...');
-    console.log('[AddAndroidModal] Updating agent config:', {
-      agentId: currentAgentId,
-      android: {
-        device_serial: '',
-        managed: true,
-        avd_name: result.avdName,
-      },
+    const device = await api.devices.createAndroid(currentAgentId, {
+      name: finalAvdName,
+      memory: parseInt(memory, 10),
+      cpus: cpuCores,
+      avd_name: finalAvdName,
+      managed: true,
+      system_image: 'system-images;android-34;google_apis_playstore;arm64-v8a',
     });
-    try {
-      const updateResult = await api.updateAgent(currentAgentId, {
-        android: {
-          device_serial: '', // Will be set when emulator starts
-          managed: true,
-          avd_name: result.avdName,
-        },
-      });
-      console.log('[AddAndroidModal] Update result:', updateResult);
-    } catch (updateErr) {
-      console.error('[AddAndroidModal] Failed to update agent config:', updateErr);
-      throw updateErr;
-    }
     
-    // Step 4: Optionally start emulator
+    console.log('[AddAndroidModal] Created device:', device.id);
+    
+    // Step 3: Setup device (create AVD)
+    setCreationProgress('初始化 AVD...');
+    await api.devices.setup(device.id);
+    
+    // Step 4: Optionally start device
     if (autoStart) {
       setCreationProgress('启动模拟器...');
       try {
-        const startResult = await androidService.startEmulator(result.avdName);
-        // Update with actual serial
-        await api.updateAgent(currentAgentId, {
-          android: {
-            device_serial: startResult.serial,
-            managed: true,
-            avd_name: result.avdName,
-          },
-        });
+        await api.devices.start(device.id);
+        console.log('[AddAndroidModal] Emulator started');
       } catch (startErr) {
         console.warn('[AddAndroidModal] Failed to auto-start emulator:', startErr);
-        // Not a critical error, AVD is created
+        // Not a critical error, device is created
       }
     }
     
@@ -251,9 +260,15 @@ export function AddAndroidModal({ isOpen, onClose, onCreated }: AddAndroidModalP
       throw new Error('请选择或输入设备序列号');
     }
     
-    // Step 1: Verify device is online
+    // Step 1: Verify device is online via Gateway API
     setCreationProgress('验证设备状态...');
-    const devices = await androidService.listDevices();
+    const devicesRes = await api.android.listDevices();
+    const devices = (devicesRes.devices || []).map((d: { serial: string; status: string; avd_name?: string; managed?: boolean }) => ({
+      serial: d.serial,
+      status: d.status as ConnectedAndroidDevice['status'],
+      avdName: d.avd_name,
+      managed: d.managed,
+    }));
     const targetDevice = devices.find(d => d.serial === serial);
     
     if (!targetDevice) {
@@ -264,14 +279,19 @@ export function AddAndroidModal({ isOpen, onClose, onCreated }: AddAndroidModalP
       throw new Error(`设备 ${serial} 不在线 (状态: ${targetDevice.status})。请确保设备已启动并连接。`);
     }
     
-    // Step 2: Update agent config
-    setCreationProgress('更新 Agent 配置...');
-    await api.updateAgent(currentAgentId, {
-      android: {
-        device_serial: serial,
-        managed: false,
-        avd_name: targetDevice.avdName,
-      },
+    // Step 2: Create Android device using unified device API (external mode)
+    setCreationProgress('创建 Android 设备...');
+    const device = await api.devices.createAndroid(currentAgentId, {
+      name: targetDevice.avdName || `External Android (${serial})`,
+      managed: false,
+      device_serial: serial,
+    });
+    
+    console.log('[AddAndroidModal] Created external device:', device.id);
+    
+    // Step 3: Update device status to ready (external devices don't need setup)
+    await api.devices.update(currentAgentId, device.id, {
+      status: 'ready',
     });
     
     setCreationProgress('完成！');

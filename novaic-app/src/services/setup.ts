@@ -145,19 +145,6 @@ export async function deployAgent(
 }
 
 /**
- * Quick deploy (DEPRECATED - no longer needed, kept for backward compatibility)
- * All dependencies are now installed via cloud-init during VM first boot.
- */
-export async function quickDeployAgent(
-  _sshPort: number,
-  _onProgress: (progress: DeployProgress) => void
-): Promise<void> {
-  // This function is no longer needed but kept for backward compatibility
-  // It will do nothing in the backend
-  throw new Error('quickDeployAgent is deprecated - all dependencies are installed via cloud-init');
-}
-
-/**
  * Get user's SSH public key (via Gateway API)
  */
 export async function getSshPubkey(): Promise<string | null> {

@@ -124,14 +124,20 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       }
 
       // Create agent via API
-      const agent = await api.createAgent({
+      let agent = await api.createAgent({
         name: agentName,
-        backend: 'qemu',
-        os_type: osType,
-        os_version: osVersion,
-        memory,
-        cpus,
-        source_image: sourceImage,
+      });
+
+      // Add VM configuration
+      agent = await api.updateAgent(agent.id, {
+        vm_config: {
+          backend: 'qemu',
+          os_type: osType,
+          os_version: osVersion,
+          memory,
+          cpus,
+          source_image: sourceImage,
+        },
       });
 
       setCreatedAgentId(agent.id);

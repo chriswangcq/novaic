@@ -46,10 +46,15 @@ def get_vm_manager() -> "VmManager":
 
 
 @dataclass
-class VmConfig:
-    """VM configuration for QEMU."""
+class VmRunConfig:
+    """
+    VM runtime configuration for QEMU (non-persistent).
+    
+    Note: This is distinct from gateway.config.agents_db.VmConfig which is
+    the persistent VM configuration stored in the database.
+    """
     agent_id: str
-    ports: PortConfig  # 必需字段，从 agent 配置中获取
+    ports: PortConfig  # Required, from agent config
     memory: str = "4096"
     cpus: int = 4
     image_path: Optional[str] = None
@@ -108,6 +113,8 @@ class VmManager:
         agent_id: str,
         memory: str = "4096",
         cpus: int = 4,
+        ports: Optional["PortConfig"] = None,
+        image_path: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Start VM for an agent.
@@ -116,22 +123,28 @@ class VmManager:
             agent_id: Agent ID
             memory: Memory size (e.g., "4096")
             cpus: Number of CPUs
+            ports: Optional port configuration. If not provided, reads from agent config.
+            image_path: Optional image path. If not provided, auto-detects.
         
         Returns:
             Dict with VM status info.
         
-        端口配置从 agent 配置中获取
+        端口配置可以直接传入，或从 agent 配置中获取
         """
+        from gateway.config.agents_db import PortConfig
         
-        # 从数据库获取 agent 配置
-        from gateway.config.agents_db import AgentConfigManagerDB
-        agent_service = AgentConfigManagerDB()
-        agent = agent_service.get_agent(agent_id)
+        # 如果没有传入端口配置，从数据库获取 agent 配置
+        if ports is None:
+            from gateway.config.agents_db import AgentConfigManagerDB
+            agent_service = AgentConfigManagerDB()
+            agent = agent_service.get_agent(agent_id)
+            
+            if not agent or not agent.vm or not agent.vm.ports:
+                raise ValueError(f"Agent {agent_id} not found or has no port configuration")
+            
+            ports = agent.vm.ports
         
-        if not agent or not agent.vm or not agent.vm.ports:
-            raise ValueError(f"Agent {agent_id} not found or has no port configuration")
-        
-        logger.info(f"[VmManager] Starting VM for agent {agent_id} (ssh_port={agent.vm.ports.ssh})")
+        logger.info(f"[VmManager] Starting VM for agent {agent_id} (ssh_port={ports.ssh})")
         
         # Check if already running
         process_info = self.repo.get_process(agent_id)
@@ -140,33 +153,38 @@ class VmManager:
                 logger.info(f"[VmManager] VM for agent {agent_id} already running")
                 return {"status": "already_running", "pid": process_info["pid"]}
         
-        # Build config - 使用持久化的端口配置
-        config = VmConfig(
+        # Build config - 使用传入的或持久化的端口配置
+        config = VmRunConfig(
             agent_id=agent_id,
-            ports=agent.vm.ports,
+            ports=ports,
             memory=memory,
             cpus=cpus,
         )
         
-        # Get image path - check multiple possible locations
+        # Always get agent_dir (needed for QEMU args like UEFI files)
         agent_dir = self.get_agent_dir(agent_id)
         
-        # Possible disk paths (in order of preference)
-        possible_paths = [
-            agent_dir / "disk.qcow2",                         # New setup path
-            agent_dir / "vm" / "disk.qcow2",                  # Alternative path
-            agent_dir / "vm" / "disk" / "novaic-vm.qcow2",    # Old Tauri path in agents
-            self.data_dir / "vms" / agent_id / "disk.qcow2",  # Old Tauri path in vms
-        ]
-        
-        disk_path = None
-        for path in possible_paths:
-            if path.exists():
-                disk_path = path
-                break
-        
-        if disk_path is None:
-            raise RuntimeError(f"VM disk not found in any of: {[str(p) for p in possible_paths]}. Run setup first.")
+        # Get image path - use provided path or auto-detect
+        if image_path and Path(image_path).exists():
+            disk_path = Path(image_path)
+        else:
+            # Auto-detect image path - check multiple possible locations
+            # Possible disk paths (in order of preference)
+            possible_paths = [
+                agent_dir / "disk.qcow2",                         # New setup path
+                agent_dir / "vm" / "disk.qcow2",                  # Alternative path
+                agent_dir / "vm" / "disk" / "novaic-vm.qcow2",    # Old Tauri path in agents
+                self.data_dir / "vms" / agent_id / "disk.qcow2",  # Old Tauri path in vms
+            ]
+            
+            disk_path = None
+            for path in possible_paths:
+                if path.exists():
+                    disk_path = path
+                    break
+            
+            if disk_path is None:
+                raise RuntimeError(f"VM disk not found in any of: {[str(p) for p in possible_paths]}. Run setup first.")
         
         logger.info(f"[VmManager] Using disk: {disk_path}")
         config.image_path = str(disk_path)
@@ -400,7 +418,7 @@ class VmManager:
             agent_healthy=True,  # Gateway is always healthy
             mcp_healthy=False,  # MCP no longer used
             ports=ports,
-            vnc_url=f"ws://localhost:8080/api/vms/{agent_id}/vnc",  # vmcontrol WebSocket URL
+            vnc_url=f"ws://localhost:19996/api/vms/{agent_id}/vnc",  # vmcontrol WebSocket URL
             mcp_url="",  # MCP no longer used
             pid=pid,
             started_at=process_info.get("started_at"),
@@ -582,7 +600,7 @@ class VmManager:
         
         return None
     
-    def _build_qemu_args(self, config: VmConfig, agent_dir: Path) -> List[str]:
+    def _build_qemu_args(self, config: VmRunConfig, agent_dir: Path) -> List[str]:
         """Build QEMU command arguments."""
         ports = config.ports
         
@@ -622,7 +640,7 @@ class VmManager:
     
     def _build_arm64_args(
         self,
-        config: VmConfig,
+        config: VmRunConfig,
         agent_dir: Path,
         port_forward: str,
     ) -> List[str]:
@@ -636,15 +654,24 @@ class VmManager:
         logger.info(f"[VmManager] Using vars: {vars_path}")
         
         # Check for cloud-init ISO in multiple locations
+        # First try device directory (v38 unified model) - derive from image_path
         seed_iso = None
-        for iso_path in [
-            agent_dir / "cloud-init.iso",
-            agent_dir / "vm" / "iso" / "cloud-init-seed.iso",
-            self.data_dir / "vms" / agent_id / "cloud-init-seed.iso",
-        ]:
-            if iso_path.exists():
-                seed_iso = iso_path
-                break
+        if config.image_path:
+            device_dir = Path(config.image_path).parent
+            device_iso = device_dir / "cloud-init.iso"
+            if device_iso.exists():
+                seed_iso = device_iso
+        
+        # Fallback to legacy locations
+        if not seed_iso:
+            for iso_path in [
+                agent_dir / "cloud-init.iso",
+                agent_dir / "vm" / "iso" / "cloud-init-seed.iso",
+                self.data_dir / "vms" / agent_id / "cloud-init-seed.iso",
+            ]:
+                if iso_path.exists():
+                    seed_iso = iso_path
+                    break
         
         # Socket 路径 - 使用固定的 /tmp/novaic 避免路径过长
         socket_dir = Path("/tmp/novaic")
@@ -701,13 +728,24 @@ class VmManager:
     
     def _build_x86_args(
         self,
-        config: VmConfig,
+        config: VmRunConfig,
         agent_dir: Path,
         port_forward: str,
     ) -> List[str]:
         """Build QEMU args for x86_64."""
         agent_id = agent_dir.name
-        seed_iso = agent_dir / "cloud-init.iso"
+        
+        # Check for cloud-init ISO - try device directory first (v38), then legacy
+        seed_iso = None
+        if config.image_path:
+            device_dir = Path(config.image_path).parent
+            device_iso = device_dir / "cloud-init.iso"
+            if device_iso.exists():
+                seed_iso = device_iso
+        if not seed_iso:
+            legacy_iso = agent_dir / "cloud-init.iso"
+            if legacy_iso.exists():
+                seed_iso = legacy_iso
         
         # Socket 路径 - 使用固定的 /tmp/novaic 避免路径过长
         socket_dir = Path("/tmp/novaic")
@@ -753,7 +791,8 @@ class VmManager:
         if qemu_share_dir:
             args.extend(["-L", qemu_share_dir])
         
-        if seed_iso.exists():
+        if seed_iso and seed_iso.exists():
+            logger.info(f"[VmManager] Using cloud-init ISO: {seed_iso}")
             args.extend(["-cdrom", str(seed_iso)])
         
         return args

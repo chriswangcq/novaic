@@ -11,6 +11,7 @@ import {
   subscribeToStream,
   sendControlMessage,
   reconnectStream,
+  getStreamCanvas,
   StreamStatus,
   DeviceInfo,
 } from '../../services/scrcpyStream';
@@ -118,6 +119,18 @@ function ScrcpyViewComponent({
       unsubscribe();
     };
   }, [deviceSerial, autoConnect, copyFrame, onConnected, onDisconnected, onError, isThumbnail]);
+  
+  // 当状态变为 connected 时，主动从共享 canvas 复制一帧
+  // 解决订阅时 canvasRef 还没准备好导致初始帧丢失的问题
+  useEffect(() => {
+    if (status !== 'connected' || !deviceSerial || !canvasRef.current) return;
+    
+    const sourceCanvas = getStreamCanvas(deviceSerial);
+    if (sourceCanvas && sourceCanvas.width > 0 && sourceCanvas.height > 0) {
+      copyFrame(sourceCanvas);
+      console.log(`[ScrcpyView] Copied initial frame from shared canvas for ${deviceSerial}`);
+    }
+  }, [status, deviceSerial, copyFrame]);
   
   // 手动连接
   const connect = useCallback(() => {

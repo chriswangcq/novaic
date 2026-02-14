@@ -94,32 +94,10 @@ class VmConfigRequest(BaseModel):
 class CreateAgentRequest(BaseModel):
     """
     Request to create a new agent.
-    
-    Agent types:
-    - 'chat': Pure chat agent (no VM/AVD, just LLM)
-    - 'linux': Linux VM agent
-    - 'android': Android AVD agent
-    - 'hybrid': Both Linux VM and Android AVD
-    
-    For 'chat' type, vm_config and android are ignored.
-    For 'linux' type, vm_config is required (or uses defaults).
-    For 'android' type, android is required.
-    For 'hybrid' type, both vm_config and android are required.
+    Agent is created with no devices. Use update_agent to add VM or Android.
     """
     name: str
-    model: Optional[str] = None  # LLM model (e.g., "kimi-k2.5", "gpt-4o")
-    agent_type: str = "linux"  # 'chat' | 'linux' | 'android' | 'hybrid'
-    # Linux VM config (optional, used for 'linux' and 'hybrid' types)
-    vm_config: Optional[VmConfigRequest] = None
-    # Android config (optional, used for 'android' and 'hybrid' types)
-    android: Optional[AndroidConfigRequest] = None
-    # Legacy fields for backward compatibility (deprecated, use vm_config instead)
-    backend: Optional[str] = None
-    os_type: Optional[str] = None
-    os_version: Optional[str] = None
-    memory: Optional[str] = None
-    cpus: Optional[int] = None
-    source_image: Optional[str] = None
+    model: Optional[str] = None  # LLM model ID
 
 
 class UpdateAgentRequest(BaseModel):
@@ -138,8 +116,6 @@ class UpdateAgentRequest(BaseModel):
     vm_config: Optional[VmConfigRequest] = None  # Update VM config
     android: Optional[AndroidConfigRequest] = None  # Update Android config
     setup_complete: Optional[bool] = None
-    # Legacy field for backward compatibility
-    vm: Optional[dict] = None
 
 
 class AndroidConfigResponse(BaseModel):
@@ -158,6 +134,7 @@ class AgentResponse(BaseModel):
     setup_complete: bool = False
     model_id: Optional[str] = None  # Selected LLM model ID
     android: Optional[AndroidConfigResponse] = None  # Android emulator config
+    devices: List[dict] = []  # Unified devices list (v38)
 
 
 class SetAgentModelRequest(BaseModel):
@@ -216,12 +193,12 @@ def list_agents():
     response_agents = []
     for agent in agents:
         agent_dict = agent.model_dump()
-        # Convert android config to response format
-        if agent.vm.android:
+        # Convert android config to response format (now independent field)
+        if agent.android:
             agent_dict['android'] = AndroidConfigResponse(
-                device_serial=agent.vm.android.device_serial,
-                managed=agent.vm.android.managed,
-                avd_name=agent.vm.android.avd_name,
+                device_serial=agent.android.device_serial,
+                managed=agent.android.managed,
+                avd_name=agent.android.avd_name,
             )
         response_agents.append(AgentResponse(**agent_dict))
     
@@ -246,12 +223,12 @@ def get_agent(agent_id: str):
         raise HTTPException(status_code=404, detail="Agent not found")
     
     agent_dict = agent.model_dump()
-    # Convert android config to response format
-    if agent.vm.android:
+    # Convert android config to response format (now independent field)
+    if agent.android:
         agent_dict['android'] = AndroidConfigResponse(
-            device_serial=agent.vm.android.device_serial,
-            managed=agent.vm.android.managed,
-            avd_name=agent.vm.android.avd_name,
+            device_serial=agent.android.device_serial,
+            managed=agent.android.managed,
+            avd_name=agent.android.avd_name,
         )
     
     return AgentResponse(**agent_dict)
@@ -262,52 +239,15 @@ def create_agent(request: CreateAgentRequest):
     """
     Create a new AIC agent.
     
-    Supports different agent types:
-    - 'chat': Pure chat agent (no VM/AVD)
-    - 'linux': Linux VM agent
-    - 'android': Android AVD agent  
-    - 'hybrid': Both Linux VM and Android AVD
+    Agent is created with no devices (no VM, no Android).
+    Use update_agent to add VM or Android configuration later.
     """
     manager = get_agent_config_manager()
     
     try:
-        agent_type = request.agent_type
-        
-        # Prepare Android config if needed
-        android_config = None
-        if agent_type in ("android", "hybrid") and request.android:
-            android_config = _prepare_android_config(request.android, request.name)
-        
-        # Prepare VM config if needed
-        # Support both new vm_config and legacy fields
-        vm_params = {}
-        if agent_type in ("linux", "hybrid"):
-            if request.vm_config:
-                vm_params = {
-                    "backend": request.vm_config.backend,
-                    "os_type": request.vm_config.os_type,
-                    "os_version": request.vm_config.os_version,
-                    "memory": request.vm_config.memory,
-                    "cpus": request.vm_config.cpus,
-                    "source_image": request.vm_config.source_image,
-                }
-            else:
-                # Use legacy fields or defaults
-                vm_params = {
-                    "backend": request.backend or "qemu",
-                    "os_type": request.os_type or "ubuntu",
-                    "os_version": request.os_version or "24.04",
-                    "memory": request.memory or "4096",
-                    "cpus": request.cpus or 4,
-                    "source_image": request.source_image,
-                }
-        
-        # Create agent with appropriate configuration
+        # Create agent with no device configuration
         agent = manager.create_agent(
             name=request.name,
-            agent_type=agent_type,
-            android_config=android_config,
-            **vm_params,
         )
         
         # Auto-create main SubAgent for the new agent
@@ -318,7 +258,7 @@ def create_agent(request: CreateAgentRequest):
         subagent_repo = SubAgentRepository(db)
         subagent_repo.get_or_create_main_subagent(agent.id)
         
-        # Set model_id if provided
+        # Set model_id if provided (also handled in create_agent, but ensure DB is updated)
         if request.model:
             with db.transaction(lock_type="agent", resource_id=agent.id):
                 db.execute(
@@ -328,17 +268,32 @@ def create_agent(request: CreateAgentRequest):
         
         # v2.7: Tools contexts are created per-Runtime by Master, not per-Agent
         
+        # 发送唤醒消息，让 Agent 开始工作
+        from gateway.db.repositories.message import MessageRepository
+        msg_repo = MessageRepository(db)
+        msg_repo.add_message(
+            agent_id=agent.id,
+            type="SYSTEM_WAKE",
+            content="Agent created. Ready to assist you.",
+            metadata={
+                "action": "agent_created",
+                "reason": "new_agent",
+                "source": "system:create",
+            },
+            status="sending",  # 确保 Watchdog 能检测到
+        )
+        
         # Re-fetch agent to get model_id
         response_dict = agent.model_dump()
         if request.model:
             response_dict['model_id'] = request.model
         
-        # Add android config to response
-        if agent.vm.android:
+        # Add android config to response (will be None for new agents)
+        if agent.android:
             response_dict['android'] = AndroidConfigResponse(
-                device_serial=agent.vm.android.device_serial,
-                managed=agent.vm.android.managed,
-                avd_name=agent.vm.android.avd_name,
+                device_serial=agent.android.device_serial,
+                managed=agent.android.managed,
+                avd_name=agent.android.avd_name,
             )
         
         return AgentResponse(**response_dict)
@@ -377,13 +332,10 @@ def update_agent(agent_id: str, request: UpdateAgentRequest):
     if request.setup_complete is not None:
         update_kwargs["setup_complete"] = request.setup_complete
     
-    # Handle VM config update (new format)
+    # Handle VM config update
     if request.vm_config is not None:
         vm_config_dict = request.vm_config.model_dump(exclude_none=True)
         update_kwargs["vm_config"] = vm_config_dict
-    # Handle legacy vm field
-    elif request.vm is not None:
-        update_kwargs["vm_config"] = request.vm
     
     # Handle Android config update
     if request.android is not None:
@@ -405,10 +357,11 @@ def update_agent(agent_id: str, request: UpdateAgentRequest):
             db = get_db()
             msg_repo = MessageRepository(db)
             
-            # Store message - Monitor will detect and create Runtime
+            # Store message - Watchdog will detect and create Runtime
+            # 使用 SYSTEM_WAKE 类型，因为它在 watchdog_types 中，会被正确处理
             msg = msg_repo.add_message(
                 agent_id=agent_id,
-                type="SYSTEM_MESSAGE",
+                type="SYSTEM_WAKE",
                 content="VM setup complete. Execute skill agent-bootstrap to configure the agent environment.",
                 metadata={
                     "action": "bootstrap",
@@ -417,6 +370,7 @@ def update_agent(agent_id: str, request: UpdateAgentRequest):
                     "priority": "high",
                     "source": "system:bootstrap",
                 },
+                status="sending",  # 确保 Watchdog 能检测到
             )
             
             # v12: No broadcast_new_message needed
@@ -428,11 +382,11 @@ def update_agent(agent_id: str, request: UpdateAgentRequest):
     
     # Build response
     response_dict = agent.model_dump()
-    if agent.vm.android:
+    if agent.android:
         response_dict['android'] = AndroidConfigResponse(
-            device_serial=agent.vm.android.device_serial,
-            managed=agent.vm.android.managed,
-            avd_name=agent.vm.android.avd_name,
+            device_serial=agent.android.device_serial,
+            managed=agent.android.managed,
+            avd_name=agent.android.avd_name,
         )
     
     return AgentResponse(**response_dict)
@@ -450,6 +404,71 @@ def delete_agent(agent_id: str):
         raise HTTPException(status_code=404, detail="Agent not found")
     
     return {"status": "ok", "message": "Agent deleted"}
+
+
+@router.delete("/{agent_id}/vm")
+def remove_vm_config(agent_id: str):
+    """移除 Agent 的 Linux VM 配置"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    manager = get_agent_config_manager()
+    
+    # 检查 Agent 是否存在
+    agent = manager.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    
+    # 1. 停止 VM（如果运行中）
+    from ..vm.manager import get_vm_manager
+    vm_manager = get_vm_manager()
+    try:
+        status = vm_manager.get_status(agent_id)
+        if status and status.running:
+            vm_manager.stop(agent_id)
+    except Exception as e:
+        logger.warning(f"Failed to stop VM for agent {agent_id}: {e}")
+    
+    # 2. 清除 VM 配置
+    success = manager.remove_vm_config(agent_id)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to remove VM config")
+    
+    return {"status": "ok", "message": "VM config removed"}
+
+
+@router.delete("/{agent_id}/android")
+def remove_android_config(agent_id: str):
+    """移除 Agent 的 Android 配置"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    manager = get_agent_config_manager()
+    
+    # 检查 Agent 是否存在
+    agent = manager.get_agent(agent_id)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    
+    # 1. 停止 Android（如果运行中）
+    # 可以调用 vmcontrol 的 stop 接口
+    if agent.android and agent.android.device_serial:
+        try:
+            VMCONTROL_URL = "http://localhost:19996"
+            with httpx.Client() as client:
+                client.post(
+                    f"{VMCONTROL_URL}/api/android/emulator/stop",
+                    json={"serial": agent.android.device_serial}
+                )
+        except Exception as e:
+            logger.warning(f"Failed to stop Android for agent {agent_id}: {e}")
+    
+    # 2. 清除 Android 配置
+    success = manager.remove_android_config(agent_id)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to remove Android config")
+    
+    return {"status": "ok", "message": "Android config removed"}
 
 
 # ==================== VM Control (delegated to Tauri) ====================

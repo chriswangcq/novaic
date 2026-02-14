@@ -142,16 +142,10 @@ function App() {
           await selectAgent(targetAgent.id);
         }
         
-        // If agent needs setup, go to setup page
-        if (targetAgent && !targetAgent.setup_complete) {
-          setCurrentPage('setup');
-          // Use default setup config
-          setSetupConfig({
-            agent: targetAgent,
-            sourceImage: 'ubuntu-24.04',
-            useCnMirrors: false,
-          });
-        }
+        // 不再自动进入 setup 页面
+        // 用户可以在右侧 DeviceSidebar 点击"+ Linux VM"来手动创建 VM
+        // 这与 Android 的逻辑保持一致
+        setCurrentPage('workspace');
       } catch (error) {
         console.error('Failed to load agents:', error);
       } finally {
