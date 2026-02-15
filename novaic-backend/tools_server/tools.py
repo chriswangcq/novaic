@@ -86,7 +86,7 @@ VM_TOOLS = [
     },
     {
         "name": "browser_screenshot",
-        "description": "Take a screenshot of the current browser page. Returns base64-encoded image. Use for visual verification, debugging, or capturing data.",
+        "description": "Take a screenshot of the current browser page. Returns file_url in File Service. Use display(file_url) to show to LLM for analysis.",
         "inputSchema": {
             "type": "object",
             "properties": {},
@@ -176,7 +176,7 @@ VM_TOOLS = [
     },
     {
         "name": "screenshot",
-        "description": "Take a desktop screenshot of the VM with optional coordinate grid overlay. Grid displays pixel coordinates for precise positioning. Returns base64-encoded image with width/height. Use for visual inspection or as first step in aim-based mouse positioning.",
+        "description": "Take a desktop screenshot of the VM with optional coordinate grid overlay. Grid displays pixel coordinates for precise positioning. Returns file_url in File Service. Use display(file_url) to show to LLM for analysis.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -269,67 +269,54 @@ VM_TOOLS = [
         }
     },
     {
-        "name": "file_read",
-        "description": "Read a file from the VM filesystem. Returns content as string, size, and MIME type. Supports text and binary files. Use to inspect config files, logs, or data files.",
+        "name": "display",
+        "description": "Display a file from File Service for LLM context. Use when you need to show an image, audio, video, or text file to the LLM. Returns the file in LLM-ready format. Call this with file_url from previous tool results (screenshot, file_pull, etc.) when you want the LLM to analyze that file.",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "path": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "path"
-            ]
-        }
-    },
-    {
-        "name": "file_write",
-        "description": "Write content to a file in the VM, creating it if it doesn't exist or overwriting if it does. Returns success status, size, and path. Use for creating config files, scripts, or saving data.",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "path": {
-                    "type": "string"
+                "file_url": {
+                    "type": "string",
+                    "description": "File Service URL (e.g. /api/files/images/agent-xxx/screenshot.png)"
                 },
-                "content": {
-                    "type": "string"
+                "modality": {
+                    "type": "string",
+                    "description": "Optional: image | audio | video | text. Auto-detected from file if omitted.",
+                    "enum": ["image", "audio", "video", "text"]
                 }
             },
-            "required": [
-                "path",
-                "content"
-            ]
+            "required": ["file_url"]
         }
     },
     {
-        "name": "file_list",
-        "description": "List files and directories in a path. Returns array with name, type (file/directory), size, modified time, and permissions. Use to browse filesystem or check file existence.",
+        "name": "file_pull",
+        "description": "Pull a file from VM to File Service. Specify path on VM. File is stored and file_url is returned for use with file_push. Use to download files from VM.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "path": {
                     "type": "string",
-                    "default": "."
+                    "description": "File path on VM (e.g. /tmp/config.json)"
                 }
             },
-            "required": []
+            "required": ["path"]
         }
     },
     {
-        "name": "file_info",
-        "description": "Get detailed information about a file or directory: size, permissions, owner, timestamps (created/modified/accessed), MIME type, and is_directory flag. Use to check file metadata before operations.",
+        "name": "file_push",
+        "description": "Push a file from File Service to VM. Specify file_url (from file_pull or other tool) and target path on VM. Use to upload files to VM.",
         "inputSchema": {
             "type": "object",
             "properties": {
+                "file_url": {
+                    "type": "string",
+                    "description": "File Service URL (e.g. /api/files/binaries/agent-xxx/file.txt)"
+                },
                 "path": {
                     "type": "string",
-                    "description": "File or directory path"
+                    "description": "Target path on VM"
                 }
             },
-            "required": [
-                "path"
-            ]
+            "required": ["file_url", "path"]
         }
     },
     {
@@ -1192,7 +1179,7 @@ QUADRANT_TASK_TOOLS: List[Dict[str, Any]] = [
 MOBILE_TOOLS: List[Dict[str, Any]] = [
     {
         "name": "mobile_screenshot",
-        "description": "Capture Android device screen. Returns base64-encoded image with width/height. Use for visual verification, UI analysis, or documenting app state.",
+        "description": "Capture Android device screen. Returns file_url in File Service. Use display(file_url) to show to LLM for analysis.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -1324,13 +1311,13 @@ MOBILE_TOOLS: List[Dict[str, Any]] = [
     },
     {
         "name": "mobile_app_install",
-        "description": "Install an APK on Android device from local path or URL. Returns success status and package name. Use for app deployment or testing.",
+        "description": "Install an APK on Android device. The APK must come from File Service (file_url from mobile_file_pull or other tool). Returns success status and package name. Use for app deployment or testing.",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "apk_path": {
+                "file_url": {
                     "type": "string",
-                    "description": "Path to the APK file"
+                    "description": "File Service URL of the APK (e.g. /api/files/apk/agent-xxx/app.apk from mobile_file_pull)"
                 },
                 "allow_downgrade": {
                     "type": "boolean",
@@ -1339,7 +1326,7 @@ MOBILE_TOOLS: List[Dict[str, Any]] = [
                 }
             },
             "required": [
-                "apk_path"
+                "file_url"
             ]
         }
     },
@@ -1430,43 +1417,38 @@ MOBILE_TOOLS: List[Dict[str, Any]] = [
     },
     {
         "name": "mobile_file_push",
-        "description": "Push a file from local system to Android device. Specify local_path and remote_path (on device). Returns success status. Use for deploying test data or configuration files.",
+        "description": "Push a file to Android device. The file must come from File Service (file_url from a previous mobile_file_pull or other tool). Returns success status. Use for deploying test data or configuration files.",
         "inputSchema": {
             "type": "object",
             "properties": {
-                "local_path": {
+                "file_url": {
                     "type": "string",
-                    "description": "Local file path"
+                    "description": "File Service URL (e.g. /api/files/images/agent-xxx/filename.png from previous mobile_file_pull result)"
                 },
                 "remote_path": {
                     "type": "string",
-                    "description": "Remote path on device"
+                    "description": "Target path on device (e.g. /sdcard/Download/file.png)"
                 }
             },
             "required": [
-                "local_path",
+                "file_url",
                 "remote_path"
             ]
         }
     },
     {
         "name": "mobile_file_pull",
-        "description": "Pull a file from Android device to local system. Specify remote_path (on device) and local_path. Returns success status and file size. Use to retrieve logs, screenshots, or app data.",
+        "description": "Pull a file from Android device. File is stored in File Service and a result_id is returned for LLM context. Use file_url from the result when pushing back with mobile_file_push.",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "remote_path": {
                     "type": "string",
-                    "description": "Remote file path on device"
-                },
-                "local_path": {
-                    "type": "string",
-                    "description": "Local path to save"
+                    "description": "File path on device (e.g. /sdcard/Download/photo.png)"
                 }
             },
             "required": [
-                "remote_path",
-                "local_path"
+                "remote_path"
             ]
         }
     },

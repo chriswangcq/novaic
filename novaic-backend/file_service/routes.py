@@ -27,7 +27,7 @@ class FromBase64Request(BaseModel):
     category: Optional[str] = None
     subagent_id: Optional[str] = None
     mime_type: Optional[str] = "application/octet-stream"
-    filename: Optional[str] = None  # 新增：可选的自定义文件名
+    filename: Optional[str] = None  # 方案 C：已忽略，由 File Service 生成唯一名
 
 
 def create_router(storage: FileStorage) -> APIRouter:
@@ -92,17 +92,19 @@ def create_router(storage: FileStorage) -> APIRouter:
                 detail=f"Data too large: estimated {estimated} > {size_limit}",
             )
 
+        # 方案 C：不传 filename，由 File Service 用 _generate_filename 生成唯一名，避免冲突
         url = storage.save_from_base64(
-            data, cat, req.agent_id, req.subagent_id, mime_type, 
-            filename=req.filename  # 新增：支持自定义文件名
+            data, cat, req.agent_id, req.subagent_id, mime_type,
+            filename=None,
         )
         info = storage.get_info(url)
+        filename = url.rsplit("/", 1)[-1].split("?")[0] if url else None
         return {
             "url": url,
             "category": cat,
             "size": info["size"] if info else 0,
-            "mime_type": mime_type,  # 新增：返回 mime_type
-            "filename": info.get("name") if info else None,  # 新增：返回文件名
+            "mime_type": mime_type,
+            "filename": filename,
         }
 
     @router.get("/info")

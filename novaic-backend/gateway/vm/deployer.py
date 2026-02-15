@@ -506,13 +506,15 @@ echo "VMUSE installation completed"
             result["steps"]["transfer"] = "ok"
             
             # Step 3: Install (this is where dependencies are needed)
+            # Use sudo for directory operations to handle permission issues from cloud-init
             install_script = """
 set -e
 cd /opt/novaic
 if [ -d "novaic-mcp-vmuse" ]; then
-    mv novaic-mcp-vmuse novaic-mcp-vmuse.bak.$(date +%Y%m%d%H%M%S) || true
+    sudo mv novaic-mcp-vmuse novaic-mcp-vmuse.bak.$(date +%Y%m%d%H%M%S) || true
 fi
-mkdir -p novaic-mcp-vmuse
+sudo mkdir -p novaic-mcp-vmuse
+sudo chown ubuntu:ubuntu novaic-mcp-vmuse
 cd novaic-mcp-vmuse
 tar -xzf /tmp/vmuse.tar.gz --strip-components=1
 /opt/novaic/venv/bin/pip install -e . --quiet

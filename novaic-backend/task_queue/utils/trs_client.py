@@ -31,19 +31,28 @@ def expand_result_id_to_content(
     result_id: str,
     provider: str = "openai",
     trs_url: Optional[str] = None,
+    include_display: bool = True,
 ) -> str:
-    """[委托 TRS SDK] 转为 process_multimodal_messages 期望的 JSON 字符串。"""
+    """
+    [委托 TRS SDK] 转为 LLM 消息格式的 JSON 字符串。
+
+    Args:
+        include_display: 是否包含 display_files 中的图片。
+                         True: 当前 round，展示图片
+                         False: 历史 round，仅保留文本
+    """
     client = get_trs_client(trs_url) if trs_url else get_trs_client()
-    return client.to_llm_content(result_id, provider)
+    return client.to_llm_content(result_id, provider, include_display=include_display)
 
 
 def fetch_result_for_llm(
     result_id: str,
     provider: str = "openai",
     trs_url: Optional[str] = None,
+    include_display: bool = True,
 ) -> str:
     """[委托 TRS SDK] 用于 LLM 的完整 content。"""
-    return expand_result_id_to_content(result_id, provider=provider, trs_url=trs_url)
+    return expand_result_id_to_content(result_id, provider=provider, trs_url=trs_url, include_display=include_display)
 
 
 def fetch_result_preview(
@@ -60,10 +69,16 @@ def expand_messages_for_llm(
     messages: List[Dict[str, Any]],
     provider: str = "openai",
     trs_url: Optional[str] = None,
+    current_round_id: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """
     按需展开：仅对将要发给 LLM 的 tool 消息展开 result_id → 完整 content。
     用于 LLM 调用前。
+
+    Args:
+        current_round_id: 当前 round ID。若提供，则只有当前 round 的 tool 消息
+                          会包含 display_files 中的图片；历史 round 仅保留文本。
+                          若不提供，则所有消息都包含 display_files。
     """
     out = []
     for msg in messages:
@@ -73,7 +88,10 @@ def expand_messages_for_llm(
             # tool 消息必须有 result_id
             if not result_id:
                 raise ValueError(f"Tool message missing result_id: {msg}")
-            content = fetch_result_for_llm(result_id, provider, trs_url)
+            # 判断是否为当前 round（决定是否展示 display_files）
+            msg_round_id = msg.get("_round_id")
+            include_display = (current_round_id is None) or (msg_round_id == current_round_id)
+            content = fetch_result_for_llm(result_id, provider, trs_url, include_display=include_display)
             new_msg = {k: v for k, v in msg.items() if k not in ("result_id", "_round_id", "_message_type", "_idempotency_key")}
             new_msg["content"] = content
             out.append(new_msg)
@@ -105,15 +123,3 @@ def expand_messages_for_summary(
         else:
             out.append(msg)
     return out
-
-
-def expand_context_result_ids(
-    context: List[Dict[str, Any]],
-    trs_url: Optional[str] = None,
-) -> List[Dict[str, Any]]:
-    """
-    [已废弃] 统一展开所有 result_id，建议改用：
-    - expand_messages_for_llm：LLM 调用时
-    - expand_messages_for_summary：摘要生成时
-    """
-    return expand_messages_for_llm(context, provider="openai", trs_url=trs_url)

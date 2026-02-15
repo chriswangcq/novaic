@@ -9,7 +9,7 @@ import {
   getErrorInfo 
 } from '../../utils/logFormatters';
 import { UI_CONFIG } from '../../config';
-import { getTrsFull, toFileUrl, type TrsContentItem } from '../../services/trs';
+import { getTrsFull, toFileUrl, normalizedToContent, type TrsContentItem } from '../../services/trs';
 
 function TrsResultRenderer({ items }: { items: TrsContentItem[] }) {
   if (!items?.length) return null;
@@ -69,7 +69,10 @@ function ToolResultDisplay({
     setTrsLoading(true);
     getTrsFull(resultId).then((res) => {
       if (cancelled) return;
-      if (res.success && res.normalized?.content) setTrsContent(res.normalized.content);
+      if (res.success && res.normalized) {
+        const content = normalizedToContent(res.normalized);
+        if (content.length) setTrsContent(content);
+      }
     }).finally(() => { if (!cancelled) setTrsLoading(false); });
     return () => { cancelled = true; };
   }, [resultId]);

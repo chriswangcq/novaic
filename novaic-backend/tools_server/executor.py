@@ -26,6 +26,8 @@ from typing import Dict, Any, Optional, List, TYPE_CHECKING, Union
 
 import httpx
 
+from .tool_result_adapter import adapt_tool_result as _adapt_tool_result, tool_result as _tool_result, filename_from_url as _filename_from_url
+
 if TYPE_CHECKING:
     from mcp_client.mcp_client import MCPServerConnection
     from tools_server.runtime_manager import RuntimeContext, RuntimeManager
@@ -37,6 +39,15 @@ GATEWAY_URL = os.environ.get("GATEWAY_URL", "http://127.0.0.1:19999")
 
 # vmcontrol API 基础 URL
 VMCONTROL_URL = os.environ.get("VMCONTROL_URL", "http://127.0.0.1:19996")
+
+# File Service URL（用于 mobile_file_push/pull、截图存储等）
+FILE_SERVICE_URL = os.environ.get("FILE_SERVICE_URL", "http://127.0.0.1:19995").rstrip("/")
+
+
+# _tool_result 和 _filename_from_url 从 tool_result_adapter 导入
+
+
+
 
 # Mobile 工具映射表：工具名 -> (endpoint, None)
 # 这些工具会被路由到 vmcontrol 的 /api/android/:serial/:endpoint
@@ -93,11 +104,6 @@ VM_TOOL_MAPPING = {
     "keyboard": ("desktop", "keyboard"),
     # Shell tools
     "shell_exec": ("shell", "command"),
-    # File tools
-    "file_read": ("file", "read"),
-    "file_write": ("file", "write"),
-    "file_list": ("file", "list"),
-    "file_info": ("file", "info"),
     # Window tools
     "list_windows": ("window", "list"),
     "focus_window": ("window", "focus"),
@@ -149,6 +155,8 @@ BUILTIN_TOOL_NAMES = {
     "runtime_send",
     "runtime_rest",
     
+    # Display 工具
+    "display",
     # Chat 工具
     "chat_event",
     "chat_reply",
@@ -200,9 +208,8 @@ BUILTIN_TOOL_NAMES = {
     "browser_content",
     "browser_scroll",
     "browser_evaluate",
-    "file_read",
-    "file_write",
-    "file_list",
+    "file_pull",
+    "file_push",
     "shell_exec",
     "screenshot",
     "mouse",
@@ -353,7 +360,12 @@ class ToolExecutor:
                 result = await self._execute_builtin(tool_name, arguments)
             else:
                 result = await self._execute_external(tool_name, arguments)
-            
+                # MCP/外部工具：尝试将 content/_mcp_content 中的 base64 转为 URL
+                if result.get("success"):
+                    adapted = await _adapt_tool_result(tool_name, result, self.agent_id)
+                    if adapted is not None:
+                        result = adapted
+
             return result
         except Exception as e:
             logger.error(f"[ToolExecutor] Failed to execute {tool_name}: {e}")
@@ -894,6 +906,36 @@ class ToolExecutor:
                 )
                 return self._handle_response(response)
             
+            elif tool_name == "display":
+                # Display: 将 File Service 中的文件引用加入 LLM 上下文
+                file_url = (arguments.get("file_url") or "").strip()
+                if not file_url:
+                    return {"success": False, "error": "file_url is required"}
+                modality = (arguments.get("modality") or "").lower() or "image"
+                # 支持 /api/files/...、api/files/...、完整 http URL
+                if file_url.startswith("http://") or file_url.startswith("https://"):
+                    fetch_url = file_url
+                elif file_url.startswith("/"):
+                    fetch_url = f"{FILE_SERVICE_URL}{file_url}"
+                else:
+                    fetch_url = f"{FILE_SERVICE_URL}/{file_url.lstrip('/')}"
+                try:
+                    async with httpx.AsyncClient(timeout=30.0, trust_env=False) as client:
+                        # 用 GET 检查文件是否存在（stream=True 避免下载全部内容）
+                        async with client.stream("GET", fetch_url) as resp:
+                            resp.raise_for_status()
+                except Exception as e:
+                    logger.warning(f"[ToolExecutor] display: file not found or inaccessible: {e}")
+                    return {"success": False, "error": f"File not found or inaccessible: {e}"}
+                raw_name = file_url.split("/")[-1] if "/" in file_url else file_url
+                filename = raw_name.split("?")[0] if "?" in raw_name else raw_name or "file"
+                file_ref = {"url": file_url, "filename": filename, "modality": modality}
+                # display: 不创建文件，只展示
+                return _tool_result(
+                    text=f"Displaying file: {filename}.",
+                    files_created=[],
+                    display_files=[file_ref],
+                )
             elif tool_name == "chat_show_image":
                 # 显示图片
                 response = await client.post(
@@ -1118,7 +1160,119 @@ class ToolExecutor:
                     logger.warning(f"[ToolExecutor] Could not get agent Android config: {e}")
                     return {"success": False, "error": f"Failed to get Android config: {e}"}
                 
-                # 调用 vmcontrol Mobile API
+                # ===== mobile_file_pull: 拉取到 File Service，返回 file_url 供后续 push 使用 =====
+                if tool_name == "mobile_file_pull":
+                    remote_path = arguments.get("remote_path")
+                    if not remote_path:
+                        return {"success": False, "error": "remote_path is required"}
+                    try:
+                        async with httpx.AsyncClient(timeout=None, trust_env=False) as mobile_client:
+                            response = await mobile_client.post(
+                                f"{VMCONTROL_URL}/api/android/{device_serial}/file/pull-content",
+                                json={"remote_path": remote_path},
+                            )
+                            response.raise_for_status()
+                            data = response.json()
+                        if not data.get("success") or not data.get("content"):
+                            return {"success": False, "error": data.get("message", "Pull failed or empty file")}
+                        # 直接存入 File Service
+                        content = data["content"]
+                        mime_type = data.get("mime_type", "application/octet-stream")
+                        size = data.get("size", 0)
+                        async with httpx.AsyncClient(timeout=None, trust_env=False) as fs_client:
+                            fs_resp = await fs_client.post(
+                                f"{FILE_SERVICE_URL}/api/files/from-base64",
+                                json={
+                                    "data": content,
+                                    "agent_id": self.agent_id,
+                                    "category": "binaries",
+                                    "mime_type": mime_type,
+                                },
+                            )
+                            fs_resp.raise_for_status()
+                            fs_result = fs_resp.json()
+                        file_url = fs_result.get("url", "")
+                        filename = _filename_from_url(file_url)
+                        modality = "image" if (mime_type or "").startswith("image/") else "resource"
+                        file_ref = {"url": file_url, "filename": filename, "modality": modality}
+                        # mobile_file_pull: 创建文件，不展示（仅传输用途）
+                        return _tool_result(
+                            text=f"File pulled: {filename} ({size} bytes). Use file_url for mobile_file_push.",
+                            files_created=[file_ref],
+                            display_files=[],
+                            extra={"size": size},
+                        )
+                    except Exception as e:
+                        logger.error(f"[ToolExecutor] mobile_file_pull failed: {e}", exc_info=True)
+                        return {"success": False, "error": str(e)}
+                
+                # ===== mobile_app_install: 从 File Service 拉取 APK 后安装 =====
+                if tool_name == "mobile_app_install":
+                    file_url = arguments.get("file_url")
+                    allow_downgrade = arguments.get("allow_downgrade", False)
+                    if not file_url:
+                        return {"success": False, "error": "file_url is required"}
+                    fetch_url = f"{FILE_SERVICE_URL}{file_url}" if file_url.startswith("/") else file_url
+                    try:
+                        async with httpx.AsyncClient(timeout=None, trust_env=False) as fs_client:
+                            resp = await fs_client.get(fetch_url)
+                            resp.raise_for_status()
+                            file_bytes = resp.content
+                        import base64
+                        b64_data = base64.b64encode(file_bytes).decode("utf-8")
+                        async with httpx.AsyncClient(timeout=None, trust_env=False) as mobile_client:
+                            response = await mobile_client.post(
+                                f"{VMCONTROL_URL}/api/android/{device_serial}/app/install-from-base64",
+                                json={"data": b64_data, "allow_downgrade": allow_downgrade},
+                            )
+                            response.raise_for_status()
+                            data = response.json()
+                        # mobile_app_install: 不创建文件，不展示
+                        return _tool_result(
+                            text=data.get("message", "APK installed."),
+                            extra={k: v for k, v in data.items() if k not in ("success", "message")},
+                        )
+                    except Exception as e:
+                        logger.error(f"[ToolExecutor] mobile_app_install failed: {e}", exc_info=True)
+                        return {"success": False, "error": str(e)}
+                
+                # ===== mobile_file_push: 从 File Service 拉取后推送 =====
+                if tool_name == "mobile_file_push":
+                    file_url = arguments.get("file_url")
+                    remote_path = arguments.get("remote_path")
+                    if not file_url or not remote_path:
+                        return {"success": False, "error": "file_url and remote_path are required"}
+                    # 解析 file_url：支持 /api/files/xxx 或完整 URL
+                    if file_url.startswith("/"):
+                        fetch_url = f"{FILE_SERVICE_URL}{file_url}"
+                    else:
+                        fetch_url = file_url
+                    try:
+                        async with httpx.AsyncClient(timeout=None, trust_env=False) as fs_client:
+                            resp = await fs_client.get(fetch_url)
+                            resp.raise_for_status()
+                            file_bytes = resp.content
+                        import base64
+                        b64_data = base64.b64encode(file_bytes).decode("utf-8")
+                        async with httpx.AsyncClient(timeout=None, trust_env=False) as mobile_client:
+                            response = await mobile_client.post(
+                                f"{VMCONTROL_URL}/api/android/{device_serial}/file/push-from-base64",
+                                json={"data": b64_data, "remote_path": remote_path},
+                            )
+                            response.raise_for_status()
+                            result = response.json()
+                        if not result.get("success"):
+                            return {"success": False, "error": result.get("message", "Push failed")}
+                        # mobile_file_push: 不创建文件，不展示
+                        return _tool_result(
+                            text=result.get("message", "File pushed to device"),
+                            extra={"bytes_transferred": result.get("bytes_transferred")},
+                        )
+                    except Exception as e:
+                        logger.error(f"[ToolExecutor] mobile_file_push failed: {e}", exc_info=True)
+                        return {"success": False, "error": str(e)}
+                
+                # 调用 vmcontrol Mobile API（通用逻辑）
                 # MOBILE_TOOL_MAPPING 格式: (endpoint, None)
                 endpoint, _ = MOBILE_TOOL_MAPPING[tool_name]
                 url = f"{VMCONTROL_URL}/api/android/{device_serial}/{endpoint}"
@@ -1150,6 +1304,10 @@ class ToolExecutor:
                             "error": error_msg,
                         }
                     
+                    # 截图类工具：适配层转为 File Service URL
+                    adapted = await _adapt_tool_result(tool_name, mobile_result, self.agent_id)
+                    if adapted is not None:
+                        return adapted
                     # 统一 success 字段
                     mobile_result["success"] = True
                     mobile_result.pop("status", None)
@@ -1171,8 +1329,95 @@ class ToolExecutor:
                     }
             
             # ==================== VM 工具（通过 vmcontrol 代理访问）====================
-            elif tool_name in VM_TOOL_MAPPING:
-                # 从映射表获取 tool 和 operation
+            elif tool_name in ("file_pull", "file_push") or tool_name in VM_TOOL_MAPPING:
+                # ===== file_pull: VM 路径 → File Service，返回 file_url =====
+                if tool_name == "file_pull":
+                    path = arguments.get("path")
+                    if not path:
+                        return {"success": False, "error": "path is required"}
+                    try:
+                        async with httpx.AsyncClient(timeout=None, trust_env=False) as vmuse_client:
+                            response = await vmuse_client.post(
+                                f"{VMCONTROL_URL}/api/vmuse/{self.agent_id}/file/read",
+                                json={"path": path},
+                            )
+                            response.raise_for_status()
+                            data = response.json()
+                        content_raw = data.get("data") or data.get("content")
+                        if content_raw is None and not data.get("success", True):
+                            return {"success": False, "error": data.get("error", "Read failed")}
+                        if content_raw is None:
+                            return {"success": False, "error": "File empty or not found"}
+                        import base64
+                        content_b64 = base64.b64encode(
+                            content_raw.encode("utf-8") if isinstance(content_raw, str) else content_raw
+                        ).decode("utf-8")
+                        async with httpx.AsyncClient(timeout=None, trust_env=False) as fs_client:
+                            fs_resp = await fs_client.post(
+                                f"{FILE_SERVICE_URL}/api/files/from-base64",
+                                json={
+                                    "data": content_b64,
+                                    "agent_id": self.agent_id,
+                                    "category": "binaries",
+                                    "mime_type": "application/octet-stream",
+                                },
+                            )
+                            fs_resp.raise_for_status()
+                            fs_result = fs_resp.json()
+                        file_url = fs_result.get("url", "")
+                        filename = _filename_from_url(file_url)
+                        size = len(content_raw) if isinstance(content_raw, str) else len(content_raw)
+                        modality = "image" if filename.lower().endswith((".png", ".jpg", ".jpeg", ".gif", ".webp")) else "resource"
+                        file_ref = {"url": file_url, "filename": filename, "modality": modality}
+                        # file_pull: 创建文件，不展示（仅传输用途）
+                        return _tool_result(
+                            text=f"File pulled: {filename} ({size} bytes). Use file_url for file_push.",
+                            files_created=[file_ref],
+                            display_files=[],
+                            extra={"size": size},
+                        )
+                    except Exception as e:
+                        logger.error(f"[ToolExecutor] file_pull failed: {e}", exc_info=True)
+                        return {"success": False, "error": str(e)}
+                
+                # ===== file_push: File Service → VM 路径（shell 写入，支持二进制）=====
+                if tool_name == "file_push":
+                    file_url = arguments.get("file_url")
+                    path = arguments.get("path")
+                    if not file_url or not path:
+                        return {"success": False, "error": "file_url and path are required"}
+                    fetch_url = f"{FILE_SERVICE_URL}{file_url}" if file_url.startswith("/") else file_url
+                    try:
+                        async with httpx.AsyncClient(timeout=None, trust_env=False) as fs_client:
+                            resp = await fs_client.get(fetch_url)
+                            resp.raise_for_status()
+                            file_bytes = resp.content
+                        import base64
+                        b64_data = base64.b64encode(file_bytes).decode("ascii")
+                        path_escaped = path.replace("'", "'\"'\"'")
+                        parent = f"$(dirname '{path_escaped}')"
+                        cmd = f"mkdir -p \"{parent}\" && printf '%s' '{b64_data}' | base64 -d > '{path_escaped}'"
+                        async with httpx.AsyncClient(timeout=60.0, trust_env=False) as vmuse_client:
+                            response = await vmuse_client.post(
+                                f"{VMCONTROL_URL}/api/vmuse/{self.agent_id}/shell/command",
+                                json={"command": cmd},
+                            )
+                            response.raise_for_status()
+                            result = response.json()
+                        exit_code = result.get("exit_code", 0)
+                        if not result.get("success") or (exit_code is not None and exit_code != 0):
+                            err = result.get("stderr", "") or result.get("error", "Write failed")
+                            return {"success": False, "error": err or f"Exit code {exit_code}"}
+                        # file_push: 不创建文件（写入 VM），不展示
+                        return _tool_result(
+                            text=f"File pushed to VM at {path} ({len(file_bytes)} bytes).",
+                            extra={"path": path, "size": len(file_bytes)},
+                        )
+                    except Exception as e:
+                        logger.error(f"[ToolExecutor] file_push failed: {e}", exc_info=True)
+                        return {"success": False, "error": str(e)}
+                
+                # 从映射表获取 tool 和 operation（通用 VM 工具）
                 tool, operation = VM_TOOL_MAPPING[tool_name]
                 
                 # 通过 vmcontrol 代理访问 VM 的 VMUSE 服务
@@ -1207,15 +1452,16 @@ class ToolExecutor:
                             "error": error_msg,
                         }
                     
-                    # 转换旧格式 {"data": "..."} -> {"screenshot": "..."}
+                    # 转换旧格式 {"data": "..."} -> {"screenshot": "..."}（供适配层识别）
                     if "data" in vm_result and "screenshot" not in vm_result:
-                        # 检测是否是图片数据（base64）
                         data_value = vm_result.get("data", "")
                         if isinstance(data_value, str) and len(data_value) > 100:
                             vm_result["screenshot"] = data_value
-                            # 移除旧字段
                             vm_result.pop("data", None)
-                    
+                    # 截图类工具：适配层转为 File Service URL
+                    adapted = await _adapt_tool_result(tool_name, vm_result, self.agent_id)
+                    if adapted is not None:
+                        return adapted
                     # 统一 success 字段
                     vm_result["success"] = True
                     vm_result.pop("status", None)

@@ -86,6 +86,15 @@ impl VmControlProcess {
             return Ok(());
         }
         
+        // Kill any orphan vmcontrol processes on our port
+        #[cfg(unix)]
+        {
+            let _ = std::process::Command::new("sh")
+                .args(["-c", &format!("lsof -ti :{} | xargs kill -9 2>/dev/null", self.port)])
+                .output();
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+        
         // Get vmcontrol binary path from resources
         let resource_dir = app.path().resource_dir()
             .map_err(|e| format!("Failed to get resource dir: {}", e))?;
@@ -1406,6 +1415,26 @@ fn main() {
                         _ => {
                             if i == 14 {
                                 println!("[Services] Tools Server not ready after 15s, starting workers anyway");
+                            }
+                        }
+                    }
+                }
+                
+                // 5c. 等 Queue Service 就绪（health check）
+                println!("[Services] Waiting for Queue Service to be ready...");
+                let qs_health_url = "http://127.0.0.1:19997/health";
+                
+                for i in 0..15 {
+                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                    
+                    match client.get(qs_health_url).send().await {
+                        Ok(resp) if resp.status().is_success() => {
+                            println!("[Services] Queue Service is ready after {}s", i + 1);
+                            break;
+                        }
+                        _ => {
+                            if i == 14 {
+                                println!("[Services] Queue Service not ready after 15s, starting workers anyway");
                             }
                         }
                     }

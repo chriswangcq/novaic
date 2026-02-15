@@ -14,11 +14,23 @@ export type TrsContentItem =
   | { type: 'image'; url: string; mimeType?: string }
   | { type: 'resource'; url: string; mimeType?: string };
 
-/** TRS /full 响应 */
+/** 文件引用（三要素格式） */
+export interface TrsFileRef {
+  url: string;
+  filename?: string;
+  modality?: 'image' | 'resource';
+}
+
+/** TRS /full 响应（兼容旧 content 数组和新三要素格式） */
 export interface TrsFullResponse {
   success: boolean;
   normalized?: {
+    // 旧格式
     content?: TrsContentItem[];
+    // 新三要素格式
+    text?: string;
+    files_created?: TrsFileRef[];
+    display_files?: TrsFileRef[];
   };
 }
 
@@ -38,6 +50,44 @@ export async function getTrsFull(resultId: string): Promise<TrsFullResponse> {
     path: `/api/trs/${resultId}/full`,
   });
   return res as TrsFullResponse;
+}
+
+/**
+ * 将三要素格式转换为 content 数组（兼容旧格式）
+ */
+export function normalizedToContent(normalized: TrsFullResponse['normalized']): TrsContentItem[] {
+  if (!normalized) return [];
+
+  // 如果已经是旧格式（有 content 数组），直接返回
+  if (normalized.content) {
+    return normalized.content;
+  }
+
+  // 转换三要素格式为 content 数组
+  const content: TrsContentItem[] = [];
+
+  // 1. 文本
+  if (normalized.text) {
+    content.push({ type: 'text', text: normalized.text });
+  }
+
+  // 2. files_created
+  if (normalized.files_created) {
+    for (const f of normalized.files_created) {
+      const itemType = f.modality === 'image' ? 'image' : 'resource';
+      content.push({ type: itemType, url: f.url } as TrsContentItem);
+    }
+  }
+
+  // 3. display_files
+  if (normalized.display_files) {
+    for (const f of normalized.display_files) {
+      const itemType = f.modality === 'image' ? 'image' : 'resource';
+      content.push({ type: itemType, url: f.url } as TrsContentItem);
+    }
+  }
+
+  return content;
 }
 
 /**

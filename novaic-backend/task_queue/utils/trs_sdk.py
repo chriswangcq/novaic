@@ -1,15 +1,21 @@
 """
-TRS SDK - 创建与消费 Tool Result 的统一入口
+TRS SDK - Tool Result Service 客户端
 
-Create: create_from_raw() 将工具原始结果推入 TRS，返回 result_id
-Consume: get_content_list()、get_types()、get_texts()、get_preview()、to_llm_content()
-各场景统一通过 SDK 访问，按需获取。
+Create: create_from_raw() 将工具结果推入 TRS，返回 result_id
+Consume: to_llm_content() 获取 LLM 可用的内容
+
+normalized 结构（三要素）:
+{
+    "text": "...",
+    "files_created": [{url, filename, modality}, ...],
+    "display_files": [{url, filename, modality}, ...]
+}
 """
 
 import json
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Literal, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import httpx
 
@@ -18,49 +24,15 @@ from common.config import ServiceConfig
 logger = logging.getLogger(__name__)
 
 
-ContentType = Literal["text", "image", "resource"]
-
-
 @dataclass
-class ContentItem:
-    """
-    TRS 中的单条 content 项。
-    
-    type: "text" | "image" | "resource"
-    根据 type 不同，有效字段不同：
-    - text: text
-    - image: data (base64), mime_type; 或 url (未 resolve 时)
-    - resource: data, mime_type; 或 url
-    """
+class FileRef:
+    """文件引用"""
+    url: str
+    filename: str
+    modality: str  # "image" | "resource"
 
-    type: Literal["text", "image", "resource"]
-    index: int = 0
-
-    # text 类型
-    text: Optional[str] = None
-
-    # image / resource 类型（resolve 后）
-    data: Optional[str] = None  # base64
-    mime_type: Optional[str] = None
-
-    # image / resource 未 resolve 时（仅 URL）
-    url: Optional[str] = None
-
-    # 原始项，保留以备需要
-    raw: Optional[Dict[str, Any]] = None
-
-    def as_dict(self) -> Dict[str, Any]:
-        """转为 dict，便于序列化"""
-        d = {"type": self.type, "index": self.index}
-        if self.text is not None:
-            d["text"] = self.text
-        if self.data is not None:
-            d["data"] = self.data
-        if self.mime_type is not None:
-            d["mime_type"] = self.mime_type
-        if self.url is not None:
-            d["url"] = self.url
-        return d
+    def to_dict(self) -> Dict[str, Any]:
+        return {"url": self.url, "filename": self.filename, "modality": self.modality}
 
 
 @dataclass
@@ -70,109 +42,121 @@ class ResultMeta:
     agent_id: Optional[str] = None
     tool_name: Optional[str] = None
     created_at: Optional[str] = None
-    content_count: int = 0
+    files_created_count: int = 0
+    display_files_count: int = 0
 
 
 def _get_trs_url() -> str:
     return ServiceConfig.TOOL_RESULT_SERVICE_URL.rstrip("/")
 
 
-def _parse_raw_to_items(raw: Any) -> List[Tuple[str, Dict[str, Any]]]:
+def _parse_tool_result(raw: Any) -> Dict[str, Any]:
     """
-    解析 raw tool result 为 (type, item) 列表。
-    type: text | image | resource
+    解析工具原始结果为三要素格式。
+
+    支持的输入格式：
+    1. 统一格式: {text, files_created, display_files}
+    2. 旧格式: {text, files} -> files 作为 display_files
+    3. MCP 格式: {content: [{type, text/data}]}
+    4. 纯文本: str
+
+    Returns:
+        {"text": "...", "files_created": [...], "display_files": [...]}
     """
-    from . import multimodal
+    if raw is None:
+        return {"text": "", "files_created": [], "display_files": []}
 
-    items: List[Tuple[str, Dict[str, Any]]] = []
+    if isinstance(raw, str):
+        return {"text": raw, "files_created": [], "display_files": []}
 
-    def add_inner(inner: Any):
-        if inner is None:
-            return
-        if isinstance(inner, str):
-            items.append(("text", {"text": inner}))
-            return
-        if isinstance(inner, list):
-            for x in inner:
-                add_inner(x)
-            return
-        if not isinstance(inner, dict):
-            items.append(("text", {"text": str(inner)}))
-            return
+    if not isinstance(raw, dict):
+        return {"text": str(raw), "files_created": [], "display_files": []}
 
-        if "result" in inner and isinstance(inner["result"], (dict, list, str)):
-            add_inner(inner["result"])
-            return
+    # 解包嵌套的 result 字段
+    if "result" in raw and isinstance(raw["result"], dict):
+        raw = raw["result"]
 
-        t = inner.get("type")
-        if t == "text":
-            items.append(("text", {"text": inner.get("text", "")}))
-            return
-        if t == "image" and inner.get("data"):
-            items.append(("image", {"data": inner["data"], "mimeType": inner.get("mimeType", "image/png")}))
-            return
-        if t == "resource":
-            res = inner.get("resource", inner)
-            blob = res.get("blob") if isinstance(res, dict) else None
-            if blob:
-                items.append(("resource", {"data": blob, "mimeType": (res or {}).get("mimeType", "application/octet-stream")}))
-                return
+    # 1. 统一格式（三要素）
+    if "display_files" in raw or "files_created" in raw:
+        text_parts = []
+        if raw.get("text"):
+            text_parts.append(str(raw["text"]))
+        # 把 files_created 的 URL 写入文本
+        files_created = raw.get("files_created") or []
+        if files_created and isinstance(files_created, list):
+            urls = [f.get("url") for f in files_created if isinstance(f, dict) and f.get("url")]
+            if urls:
+                text_parts.append(f"file_url: {urls[0]}" if len(urls) == 1 else f"file_urls: {', '.join(urls)}")
+        return {
+            "text": "\n".join(text_parts),
+            "files_created": files_created,
+            "display_files": raw.get("display_files") or [],
+        }
 
-        content = inner.get("content") or inner.get("_mcp_content")
-        if isinstance(content, list):
-            for item in content:
-                if not isinstance(item, dict):
-                    continue
-                t = item.get("type", "")
-                if t == "text":
-                    items.append(("text", {"text": item.get("text", "")}))
-                elif t == "image":
-                    data = item.get("data")
-                    if data:
-                        items.append(("image", {"data": data, "mimeType": item.get("mimeType", "image/png")}))
-                elif t == "resource":
-                    res = item.get("resource", {})
-                    blob = res.get("blob")
-                    if blob:
-                        items.append(("resource", {"data": blob, "mimeType": res.get("mimeType", "application/octet-stream")}))
-                    elif item.get("text"):
-                        items.append(("text", {"text": item.get("text", "")}))
-                else:
-                    items.append(("text", {"text": json.dumps(item, ensure_ascii=False)}))
-            return
+    # 2. 旧格式 files 字段（向后兼容）
+    if "files" in raw and isinstance(raw["files"], list):
+        text_parts = []
+        if raw.get("text"):
+            text_parts.append(str(raw["text"]))
+        files = raw["files"]
+        urls = [f.get("url") for f in files if isinstance(f, dict) and f.get("url")]
+        if urls:
+            text_parts.append(f"file_url: {urls[0]}" if len(urls) == 1 else f"file_urls: {', '.join(urls)}")
+        return {
+            "text": "\n".join(text_parts),
+            "files_created": [],
+            "display_files": files,  # 旧 files 作为 display_files
+        }
 
-        for field in multimodal.IMAGE_FIELD_NAMES:
-            val = inner.get(field)
-            if val and multimodal.has_images({field: val}):
-                mime = "image/jpeg" if "jpeg" in field or "jpg" in field else "image/png"
-                items.append(("image", {"data": val, "mimeType": mime}))
-                break
-        else:
-            text_parts = []
-            for k, v in inner.items():
-                if k in ("result", "content", "_mcp_content") or k in multimodal.IMAGE_FIELD_NAMES:
-                    continue
-                if isinstance(v, str) and len(v) > 10000:
-                    continue
-                text_parts.append(f"{k}: {v}" if v is not None else k)
-            if text_parts:
-                items.append(("text", {"text": "\n".join(text_parts)}))
+    # 3. MCP 格式 content 数组
+    content = raw.get("content") or raw.get("_mcp_content")
+    if isinstance(content, list):
+        text_parts = []
+        display_files = []
+        for item in content:
+            if not isinstance(item, dict):
+                continue
+            t = item.get("type", "")
+            if t == "text":
+                text_parts.append(item.get("text", ""))
+            elif t == "image":
+                # base64 图片 -> 需要先上传到 File Service（由调用方处理）
+                # 这里只记录 URL
+                if item.get("url"):
+                    display_files.append({
+                        "url": item["url"],
+                        "filename": "",
+                        "modality": "image",
+                    })
+            elif t == "resource":
+                if item.get("url"):
+                    display_files.append({
+                        "url": item["url"],
+                        "filename": "",
+                        "modality": "resource",
+                    })
+        return {
+            "text": "\n".join(text_parts),
+            "files_created": [],
+            "display_files": display_files,
+        }
 
-    add_inner(raw)
-    return items
+    # 4. 其他 dict：提取 text 字段或序列化
+    if raw.get("text"):
+        return {"text": str(raw["text"]), "files_created": [], "display_files": []}
+
+    # 5. 兜底：序列化为 JSON
+    return {"text": json.dumps(raw, ensure_ascii=False), "files_created": [], "display_files": []}
 
 
 class TRSClient:
     """
     TRS SDK - 结构化访问
-    
+
     Example:
         >>> client = TRSClient()
-        >>> items = client.get_content_list("res_xxx")
-        >>> for item in items:
-        ...     print(item.type, item.text or item.data or item.url)
-        >>> types = client.get_types("res_xxx")
-        >>> texts = client.get_texts("res_xxx")
+        >>> result_id = client.create_from_raw(raw_result, "agent-1", "screenshot")
+        >>> content = client.to_llm_content(result_id, include_display=True)
     """
 
     def __init__(self, base_url: Optional[str] = None):
@@ -180,6 +164,33 @@ class TRSClient:
         self._timeout = 15.0
 
     # ==================== Create ====================
+
+    def create(
+        self,
+        agent_id: str,
+        tool_name: str = "unknown",
+        tool_call_id: Optional[str] = None,
+        text: str = "",
+        files_created: Optional[List[Dict[str, Any]]] = None,
+        display_files: Optional[List[Dict[str, Any]]] = None,
+    ) -> Optional[str]:
+        """
+        创建 tool result，直接传入三要素。
+
+        Returns:
+            result_id
+        """
+        with httpx.Client(timeout=self._timeout, trust_env=False) as c:
+            r = c.post(f"{self._base_url}/api/create", json={
+                "agent_id": agent_id,
+                "tool_name": tool_name,
+                "tool_call_id": tool_call_id,
+                "text": text,
+                "files_created": files_created or [],
+                "display_files": display_files or [],
+            })
+            r.raise_for_status()
+            return r.json().get("result_id")
 
     def create_from_raw(
         self,
@@ -190,49 +201,17 @@ class TRSClient:
     ) -> Optional[str]:
         """
         将工具原始返回推入 TRS，返回 result_id。
-        用于 Tools Server 在工具执行后创建。
+        自动解析为三要素格式。
         """
-        items = _parse_raw_to_items(raw_result)
-        if not items:
-            items = [(
-                "text",
-                {"text": json.dumps(raw_result, ensure_ascii=False) if not isinstance(raw_result, str) else str(raw_result)},
-            )]
-        return self._create_from_items(items, agent_id, tool_name, tool_call_id)
-
-    def _create_from_items(
-        self,
-        items: List[Tuple[str, Dict[str, Any]]],
-        agent_id: str,
-        tool_name: str,
-        tool_call_id: Optional[str],
-    ) -> Optional[str]:
-        with httpx.Client(timeout=self._timeout, trust_env=False) as c:
-            r = c.post(f"{self._base_url}/api/create", json={
-                "agent_id": agent_id,
-                "tool_name": tool_name,
-                "tool_call_id": tool_call_id,
-            })
-            r.raise_for_status()
-            result_id = r.json().get("result_id")
-            if not result_id:
-                raise ValueError(f"[TRSSDK] create returned no result_id")
-
-            for typ, item in items:
-                if typ == "text":
-                    r2 = c.post(f"{self._base_url}/api/{result_id}/insert/text", json={"text": item.get("text", "")})
-                elif typ == "image":
-                    r2 = c.post(f"{self._base_url}/api/{result_id}/insert/image", json={
-                        "data": item.get("data"),
-                        "mimeType": item.get("mimeType", "image/png"),
-                    })
-                else:
-                    r2 = c.post(f"{self._base_url}/api/{result_id}/insert/resource", json={
-                        "data": item.get("data"),
-                        "mimeType": item.get("mimeType", "application/octet-stream"),
-                    })
-                r2.raise_for_status()
-            return result_id
+        parsed = _parse_tool_result(raw_result)
+        return self.create(
+            agent_id=agent_id,
+            tool_name=tool_name,
+            tool_call_id=tool_call_id,
+            text=parsed["text"],
+            files_created=parsed["files_created"],
+            display_files=parsed["display_files"],
+        )
 
     # ==================== Consume ====================
 
@@ -240,166 +219,81 @@ class TRSClient:
         self,
         result_id: str,
         provider: str = "openai",
+        include_display: bool = True,
     ) -> str:
         """
-        转为 process_multimodal_messages 期望的 JSON 字符串。
-        用于 LLM 调用前 expand tool 消息。
-        """
-        items = self._fetch_for_llm(result_id, provider)
-        converted = []
-        for it in items:
-            if it.type == "text":
-                converted.append({"type": "text", "text": it.text or ""})
-            elif it.type == "image" and it.data:
-                converted.append({"type": "image", "data": it.data, "mimeType": it.mime_type or "image/png"})
-            else:
-                converted.append({"type": "text", "text": str(it.raw or it)})
-        return json.dumps({"_mcp_content": converted}, ensure_ascii=False)
-
-    def get_content_list(
-        self,
-        result_id: str,
-        *,
-        resolve_images: bool = True,
-        provider: str = "openai",
-    ) -> List[ContentItem]:
-        """
-        获取 content 列表，每个 item 包含 type 及对应字段。
+        转为 LLM 消息格式的 JSON 字符串。
 
         Args:
             result_id: TRS result_id
-            resolve_images: 是否将图片 URL 解析为 base64（默认 True，调用 /for-llm）
-            provider: openai | anthropic，resolve 时使用
+            provider: "openai" | "anthropic"
+            include_display: 是否包含 display_files 中的图片。
+                             True: 当前 round，展示图片
+                             False: 历史 round，仅返回文本
 
         Returns:
-            ContentItem 列表
+            JSON 字符串，格式为 {"_mcp_content": [...]}
         """
-        if resolve_images:
-            return self._fetch_for_llm(result_id, provider)
-        return self._fetch_raw(result_id)
-
-    def _fetch_raw(self, result_id: str) -> List[ContentItem]:
-        """GET /{result_id} 原始 normalized"""
-        try:
-            with httpx.Client(timeout=self._timeout, trust_env=False) as client:
-                r = client.get(f"{self._base_url}/api/{result_id}")
-                r.raise_for_status()
-                data = r.json()
-        except Exception as e:
-            logger.warning(f"[TRSSDK] get_content_list raw failed for {result_id}: {e}")
-            return []
-
-        normalized = data.get("normalized", {})
-        content = normalized.get("content", [])
-        items = []
-        for i, raw in enumerate(content):
-            t = raw.get("type", "text")
-            if t == "text":
-                items.append(ContentItem(
-                    type="text",
-                    index=i,
-                    text=raw.get("text", ""),
-                    raw=dict(raw),
-                ))
-            elif t == "image":
-                items.append(ContentItem(
-                    type="image",
-                    index=i,
-                    url=raw.get("url"),
-                    mime_type=raw.get("mimeType"),
-                    raw=dict(raw),
-                ))
-            elif t == "resource":
-                items.append(ContentItem(
-                    type="resource",
-                    index=i,
-                    url=raw.get("url"),
-                    mime_type=raw.get("mimeType"),
-                    raw=dict(raw),
-                ))
-            else:
-                items.append(ContentItem(
-                    type="text",
-                    index=i,
-                    text=str(raw),
-                    raw=dict(raw) if isinstance(raw, dict) else None,
-                ))
-        return items
-
-    def _fetch_for_llm(self, result_id: str, provider: str) -> List[ContentItem]:
-        """GET /{result_id}/for-llm 含 base64 图片"""
         try:
             with httpx.Client(timeout=self._timeout, trust_env=False) as client:
                 r = client.get(
                     f"{self._base_url}/api/{result_id}/for-llm",
-                    params={"provider": provider},
+                    params={"provider": provider, "include_display": str(include_display).lower()},
                 )
                 r.raise_for_status()
                 data = r.json()
         except Exception as e:
-            logger.warning(f"[TRSSDK] get_content_list for_llm failed for {result_id}: {e}")
-            return []
+            logger.warning(f"[TRSSDK] to_llm_content failed for {result_id}: {e}")
+            return json.dumps({"_mcp_content": [{"type": "text", "text": f"[Failed to load result: {e}]"}]})
 
         content = data.get("content", [])
-        items = []
-        for i, raw in enumerate(content):
-            t = raw.get("type", "text")
+        # 转换为 _mcp_content 格式
+        converted = []
+        for item in content:
+            t = item.get("type", "text")
             if t == "text":
-                items.append(ContentItem(
-                    type="text",
-                    index=i,
-                    text=raw.get("text", ""),
-                    raw=dict(raw),
-                ))
+                converted.append({"type": "text", "text": item.get("text", "")})
             elif t == "image_url":
-                img = raw.get("image_url", {})
+                # OpenAI 格式 -> 提取 data URL
+                img = item.get("image_url", {})
                 url = img.get("url", "")
-                data_b64 = ""
-                mime = "image/png"
                 if url.startswith("data:"):
                     parts = url.split(",", 1)
+                    mime = "image/png"
                     if len(parts) >= 1 and ";" in parts[0]:
                         mime = parts[0].split(";")[0].replace("data:", "")
                     data_b64 = parts[1] if len(parts) > 1 else ""
-                items.append(ContentItem(
-                    type="image",
-                    index=i,
-                    data=data_b64,
-                    mime_type=mime,
-                    raw=dict(raw),
-                ))
+                    converted.append({"type": "image", "data": data_b64, "mimeType": mime})
+                else:
+                    converted.append({"type": "text", "text": f"[Image: {url}]"})
             elif t == "image":
-                src = raw.get("source", {})
-                items.append(ContentItem(
-                    type="image",
-                    index=i,
-                    data=src.get("data", ""),
-                    mime_type=src.get("media_type", "image/png"),
-                    raw=dict(raw),
-                ))
+                # Anthropic 格式
+                src = item.get("source", {})
+                converted.append({
+                    "type": "image",
+                    "data": src.get("data", ""),
+                    "mimeType": src.get("media_type", "image/png"),
+                })
             else:
-                items.append(ContentItem(
-                    type="text",
-                    index=i,
-                    text=str(raw),
-                    raw=dict(raw) if isinstance(raw, dict) else None,
-                ))
-        return items
+                converted.append({"type": "text", "text": str(item)})
 
-    def get_types(self, result_id: str) -> List[str]:
-        """仅获取 type 列表，轻量（不 resolve 图片）"""
-        items = self.get_content_list(result_id, resolve_images=False)
-        return [it.type for it in items]
+        return json.dumps({"_mcp_content": converted}, ensure_ascii=False)
 
-    def get_texts(self, result_id: str) -> List[str]:
-        """仅提取 text 类型内容"""
-        items = self.get_content_list(result_id, resolve_images=False)
-        return [it.text or "" for it in items if it.type == "text"]
+    def get_normalized(self, result_id: str) -> Optional[Dict[str, Any]]:
+        """获取 normalized 结构（三要素）"""
+        try:
+            with httpx.Client(timeout=self._timeout, trust_env=False) as client:
+                r = client.get(f"{self._base_url}/api/{result_id}")
+                r.raise_for_status()
+                return r.json().get("normalized")
+        except Exception as e:
+            logger.warning(f"[TRSSDK] get_normalized failed for {result_id}: {e}")
+            return None
 
     def get_preview(self, result_id: str, max_text_len: int = 500) -> str:
         """文本预览，用于摘要等"""
         try:
-            with httpx.Client(timeout=10.0, trust_env=False) as client:
+            with httpx.Client(timeout=self._timeout, trust_env=False) as client:
                 r = client.get(
                     f"{self._base_url}/api/{result_id}/preview",
                     params={"max_text_len": max_text_len},
@@ -422,14 +316,15 @@ class TRSClient:
                 agent_id=data.get("agent_id"),
                 tool_name=data.get("tool_name"),
                 created_at=data.get("created_at"),
-                content_count=data.get("content_count", 0),
+                files_created_count=data.get("files_created_count", 0),
+                display_files_count=data.get("display_files_count", 0),
             )
         except Exception as e:
             logger.warning(f"[TRSSDK] get_meta failed for {result_id}: {e}")
             return None
 
 
-# 默认单例，便于直接使用
+# 默认单例
 _default_client: Optional[TRSClient] = None
 
 

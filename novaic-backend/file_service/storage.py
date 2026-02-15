@@ -120,18 +120,14 @@ class FileStorage:
         if len(data) > size_limit:
             raise ValueError(f"File too large: {len(data)} > {size_limit}")
 
-        if filename:
-            if not _is_safe_segment(filename):
-                raise ValueError(f"Invalid filename: {filename}")
-            ext = Path(filename).suffix.lstrip(".") or "bin"
+        # 方案 C：始终由 File Service 生成唯一名，忽略传入的 filename
+        if category == "images":
+            ext, _ = _detect_image_type(data)
+        elif mime_type and mime_type in MIME_TO_CATEGORY:
+            _, ext = MIME_TO_CATEGORY[mime_type]
         else:
-            if category == "images":
-                ext, _ = _detect_image_type(data)
-            elif mime_type and mime_type in MIME_TO_CATEGORY:
-                _, ext = MIME_TO_CATEGORY[mime_type]
-            else:
-                ext = "bin"
-            filename = _generate_filename(data, ext)
+            ext = "bin"
+        filename = _generate_filename(data, ext)
 
         dir_path = self._get_dir(category, agent_id, subagent_id)
         file_path = dir_path / filename

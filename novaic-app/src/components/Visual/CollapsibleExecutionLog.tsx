@@ -1,56 +1,16 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Terminal, ChevronUp, Loader2, CheckCircle, XCircle, Brain, X, GripHorizontal } from 'lucide-react';
+import { Terminal, ChevronDown, Loader2, CheckCircle, XCircle, Brain, X, Maximize2 } from 'lucide-react';
 import { useAppStore } from '../../store';
 import { ExecutionLog } from './ExecutionLog';
 import { LogEntry } from '../../types';
 
 interface CollapsibleExecutionLogProps {
   className?: string;
-}
-
-// 拖拽 Hook
-function useDraggable(initialPosition: { x: number; y: number }) {
-  const [position, setPosition] = useState(initialPosition);
-  const [isDragging, setIsDragging] = useState(false);
-  const dragRef = useRef<HTMLDivElement>(null);
-  const offsetRef = useRef({ x: 0, y: 0 });
-
-  useEffect(() => {
-    if (!isDragging) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      setPosition({
-        x: e.clientX - offsetRef.current.x,
-        y: e.clientY - offsetRef.current.y,
-      });
-    };
-
-    const handleMouseUp = () => {
-      setIsDragging(false);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDragging]);
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (dragRef.current) {
-      const rect = dragRef.current.getBoundingClientRect();
-      offsetRef.current = {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      };
-      setIsDragging(true);
-    }
-  };
-
-  return { position, isDragging, dragRef, handleMouseDown, setPosition };
+  /** 展开到半屏时的回调 */
+  onExpand?: () => void;
+  /** 是否已展开为半屏 */
+  isExpanded?: boolean;
 }
 
 // 获取日志的简短描述
@@ -168,17 +128,15 @@ function FullLogModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => voi
   return createPortal(modalContent, document.body);
 }
 
-export function CollapsibleExecutionLog({ className = '' }: CollapsibleExecutionLogProps) {
+export function CollapsibleExecutionLog({ className = '', onExpand, isExpanded = false }: CollapsibleExecutionLogProps) {
   const { logs, currentAgentId } = useAppStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const { position, isDragging, dragRef, handleMouseDown } = useDraggable({ x: 16, y: 16 });
   
-  // 获取最近的日志（折叠时显示2条，悬停时显示4条）
+  // 始终显示 4 条日志（不再根据悬停状态变化）
   const recentLogs = useMemo(() => {
-    const count = isHovered ? 4 : 2;
-    return logs.slice(-count);
-  }, [logs, isHovered]);
+    return logs.slice(-4);
+  }, [logs]);
   
   // 统计运行中的任务数
   const runningCount = useMemo(() => {
@@ -189,49 +147,29 @@ export function CollapsibleExecutionLog({ className = '' }: CollapsibleExecution
   if (!currentAgentId || logs.length === 0) {
     return null;
   }
+
+  // 如果已展开为半屏，不显示浮动组件（由父组件渲染半屏版本）
+  if (isExpanded) {
+    return null;
+  }
   
   return (
     <>
       <div 
-        ref={dragRef}
         className={`
           absolute top-4 left-1/2 -translate-x-1/2 z-50 
           w-[70%]
-          bg-nb-surface/85 backdrop-blur-md 
+          bg-nb-surface/95 backdrop-blur-md 
           rounded-lg shadow-lg border border-nb-border
           transition-all duration-200 ease-out
-          ${isDragging ? 'cursor-grabbing shadow-xl scale-[1.02]' : ''}
-          ${isHovered ? 'bg-nb-surface/95 shadow-xl' : ''}
           ${className}
         `}
-        style={
-          isDragging
-            ? { top: position.y, left: position.x, transform: 'none' }
-            : undefined
-        }
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        {/* 拖拽手柄 */}
-        <div 
-          className={`
-            absolute -top-0 left-1/2 -translate-x-1/2 
-            px-3 py-0.5 cursor-grab
-            text-nb-text-muted/50 hover:text-nb-text-muted
-            transition-opacity duration-200
-            ${isHovered ? 'opacity-100' : 'opacity-0'}
-          `}
-          onMouseDown={handleMouseDown}
-        >
-          <GripHorizontal size={12} />
-        </div>
-        
         {/* 头部 */}
-        <div 
-          className="px-3 py-2 cursor-pointer"
-          onClick={() => setIsModalOpen(true)}
-        >
-          {/* 第一行：标题和展开按钮 */}
+        <div className="px-3 py-2">
+          {/* 第一行：标题和按钮 */}
           <div className="flex items-center gap-2 mb-1.5">
             <Terminal size={12} className="text-nb-text-secondary shrink-0" />
             <span className="text-[11px] font-medium text-nb-text-muted">Execution Log</span>
@@ -251,22 +189,43 @@ export function CollapsibleExecutionLog({ className = '' }: CollapsibleExecution
             
             <div className="flex-1" />
             
-            {/* 展开按钮 */}
+            {/* 展开到半屏按钮（悬停时显示） */}
+            {onExpand && (
+              <button
+                className={`
+                  flex items-center gap-1 px-2 py-1 rounded 
+                  text-[10px] text-nb-text-secondary 
+                  hover:text-nb-text hover:bg-nb-hover/50 
+                  transition-all duration-200
+                  ${isHovered ? 'opacity-100' : 'opacity-0'}
+                `}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onExpand();
+                }}
+                title="展开到半屏"
+              >
+                <ChevronDown size={12} />
+                展开
+              </button>
+            )}
+            
+            {/* 全屏按钮（悬停时显示） */}
             <button
               className={`
-                flex items-center gap-1 px-2 py-0.5 rounded 
+                flex items-center gap-1 px-2 py-1 rounded 
                 text-[10px] text-nb-text-secondary 
                 hover:text-nb-text hover:bg-nb-hover/50 
                 transition-all duration-200
-                ${isHovered ? 'opacity-100' : 'opacity-60'}
+                ${isHovered ? 'opacity-100' : 'opacity-0'}
               `}
               onClick={(e) => {
                 e.stopPropagation();
                 setIsModalOpen(true);
               }}
+              title="全屏查看"
             >
-              <ChevronUp size={10} />
-              展开
+              <Maximize2 size={10} />
             </button>
           </div>
           

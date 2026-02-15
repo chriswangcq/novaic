@@ -9,7 +9,7 @@ import { useScrollPagination } from '../../hooks/useScrollPagination';
 import { LOG_ESTIMATE_SIZE, LOG_OVERSCAN } from '../../constants/scroll';
 import { SmartValue } from './SmartValue';
 import { formatTime } from '../../utils/time';
-import { getTrsFull, toFileUrl, type TrsContentItem } from '../../services/trs';
+import { getTrsFull, toFileUrl, normalizedToContent, type TrsContentItem } from '../../services/trs';
 
 // ==================== LLM Message Types ====================
 
@@ -151,7 +151,10 @@ function InlineTrsResult({ resultId }: { resultId: string }) {
     setLoading(true);
     getTrsFull(resultId).then((res) => {
       if (cancelled) return;
-      if (res.success && res.normalized?.content) setItems(res.normalized.content);
+      if (res.success && res.normalized) {
+        const content = normalizedToContent(res.normalized);
+        if (content.length) setItems(content);
+      }
     }).finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [resultId]);
@@ -220,8 +223,13 @@ function ToolResultContent({ content, resultId, toolCallId, toolName }: ToolResu
     getTrsFull(resultId)
       .then((res) => {
         if (cancelled) return;
-        if (res.success && res.normalized?.content) {
-          setTrsContent(res.normalized.content);
+        if (res.success && res.normalized) {
+          const content = normalizedToContent(res.normalized);
+          if (content.length) {
+            setTrsContent(content);
+          } else {
+            setTrsError('TRS fetch failed');
+          }
         } else {
           setTrsError('TRS fetch failed');
         }
