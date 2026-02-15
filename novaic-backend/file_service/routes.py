@@ -7,6 +7,7 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from pydantic import BaseModel
 
 from .config import (
     URL_PREFIX,
@@ -17,6 +18,16 @@ from .config import (
 from .storage import FileStorage, _generate_filename
 
 logger = logging.getLogger(__name__)
+
+
+class FromBase64Request(BaseModel):
+    """Base64 上传请求 (JSON body)"""
+    data: str
+    agent_id: str
+    category: Optional[str] = None
+    subagent_id: Optional[str] = None
+    mime_type: Optional[str] = "application/octet-stream"
+    filename: Optional[str] = None  # 新增：可选的自定义文件名
 
 
 def create_router(storage: FileStorage) -> APIRouter:
@@ -53,16 +64,15 @@ def create_router(storage: FileStorage) -> APIRouter:
         return {"url": url, "category": cat, "size": len(data)}
 
     @router.post("/from-base64")
-    async def from_base64(
-        data: str = Form(..., alias="data"),
-        agent_id: str = Form(...),
-        category: Optional[str] = Form(None),
-        subagent_id: Optional[str] = Form(None),
-        mime_type: str = Form("application/octet-stream"),
-    ):
+    async def from_base64(req: FromBase64Request):
         """
         提交 base64 数据，存盘后返回 URL。
+        支持 JSON body，无 multipart 大小限制。
         """
+        data = req.data
+        mime_type = req.mime_type or "application/octet-stream"
+        
+        # 处理 data URI scheme
         if data.startswith("data:"):
             # data:image/png;base64,xxxxx
             parts = data.split(",", 1)
@@ -72,7 +82,7 @@ def create_router(storage: FileStorage) -> APIRouter:
                 if ":" in header and ";" in header:
                     mime_type = header.split(":")[1].split(";")[0]
 
-        cat, _ = get_category_and_ext(mime_type, category)
+        cat, _ = get_category_and_ext(mime_type, req.category)
         size_limit = get_size_limit(cat)
         # base64 大小约为原文 4/3
         estimated = len(data) * 3 // 4
@@ -82,12 +92,17 @@ def create_router(storage: FileStorage) -> APIRouter:
                 detail=f"Data too large: estimated {estimated} > {size_limit}",
             )
 
-        url = storage.save_from_base64(data, cat, agent_id, subagent_id, mime_type)
+        url = storage.save_from_base64(
+            data, cat, req.agent_id, req.subagent_id, mime_type, 
+            filename=req.filename  # 新增：支持自定义文件名
+        )
         info = storage.get_info(url)
         return {
             "url": url,
             "category": cat,
             "size": info["size"] if info else 0,
+            "mime_type": mime_type,  # 新增：返回 mime_type
+            "filename": info.get("name") if info else None,  # 新增：返回文件名
         }
 
     @router.get("/info")

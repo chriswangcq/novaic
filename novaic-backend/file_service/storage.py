@@ -149,6 +149,7 @@ class FileStorage:
         agent_id: str,
         subagent_id: Optional[str] = None,
         mime_type: str = "application/octet-stream",
+        filename: Optional[str] = None,  # 新增：支持自定义文件名
     ) -> str:
         """base64 存盘，返回 URL"""
         if base64_data.startswith("data:"):
@@ -159,7 +160,7 @@ class FileStorage:
         else:
             b64 = base64_data
         data = base64.b64decode(b64)
-        return self.save_bytes(data, category, agent_id, subagent_id, mime_type=mime_type)
+        return self.save_bytes(data, category, agent_id, subagent_id, filename=filename, mime_type=mime_type)
 
     def load_bytes(self, url: str) -> Optional[bytes]:
         """URL -> 原始字节"""

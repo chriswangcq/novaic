@@ -31,26 +31,29 @@ class FileServiceClient:
         category: str,
         mime_type: str = "application/octet-stream",
         subagent_id: Optional[str] = None,
+        filename: Optional[str] = None,  # 新增：支持自定义文件名
     ) -> Optional[str]:
         """
         提交 base64 到 File Service，返回 URL 路径（如 /api/files/images/agent-1/xxx.png）
+        使用 JSON body，无 multipart 大小限制
         """
         try:
             client = await self._get_client()
-            form = {
+            payload = {
                 "data": data,
                 "agent_id": agent_id,
                 "mime_type": mime_type,
+                "category": category,
             }
             if subagent_id:
-                form["subagent_id"] = subagent_id
-            if category:
-                form["category"] = category
+                payload["subagent_id"] = subagent_id
+            if filename:
+                payload["filename"] = filename
 
-            # 使用 files= 参数发送 multipart/form-data，而不是 data=
+            # 使用 JSON body 而不是 multipart/form-data
             resp = await client.post(
                 f"{self.base_url}/api/files/from-base64",
-                files={k: (None, v) for k, v in form.items()},
+                json=payload,  # ✅ JSON，无大小限制
             )
             resp.raise_for_status()
             result = resp.json()
