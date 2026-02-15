@@ -582,7 +582,8 @@ class GatewayInternalClient:
     def call_runtime_tool(self, runtime_id: str, tool_name: str, arguments: dict) -> dict:
         """调用 Runtime 的工具"""
         tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", ServiceConfig.TOOLS_SERVER_URL)
-        with httpx.Client(timeout=30.0, trust_env=False) as client:
+        # 工具执行无超时限制，由心跳机制管理
+        with httpx.Client(timeout=None, trust_env=False) as client:
             resp = client.post(f"{tools_server_url}/internal/runtimes/{runtime_id}/tools/call", json={
                 "name": tool_name,
                 "arguments": arguments,
@@ -882,6 +883,25 @@ class GatewayInternalClient:
             return self._request("GET", f"/api/agents/{agent_id}/skills", None)
         except Exception:
             return {"skills": []}
+    
+    def get_all_memory(self, agent_id: str) -> dict:
+        """Get all memory data for an agent (all namespaces).
+        
+        Returns:
+            {
+                "success": True,
+                "namespaces": {
+                    "default": {"key1": "value1", ...},
+                    "preferences": {...},
+                    ...
+                }
+            }
+        """
+        try:
+            return self._request("GET", f"/internal/agents/{agent_id}/memory/all", None)
+        except Exception as e:
+            print(f"[GatewayInternalClient] Failed to get all memory for {agent_id}: {e}")
+            return {"success": False, "namespaces": {}}
     
     def match_skills_for_task(self, task: str, max_skills: int = 3) -> dict:
         """

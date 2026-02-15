@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
     logger.info("[MCP Gateway] MCPManager initialized")
     
     # Initialize TaskManager (in-memory mode, no DB persistence)
-    # This enables task_async, task_query, etc. tools in AggregateMCP
+    # For AggregateMCP (legacy; task tools removed, use subagent_spawn / trs_get_full)
     task_manager = TaskManager(db=None)
     set_task_manager(task_manager)
     logger.info("[MCP Gateway] TaskManager initialized (in-memory mode)")

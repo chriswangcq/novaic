@@ -80,15 +80,30 @@ function App() {
 
   const [isLoadingAgents, setIsLoadingAgents] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(true);
-  
+  const [initTimeout, setInitTimeout] = useState(false);
+
   // Page state: 'setup' | 'workspace'
   const [currentPage, setCurrentPage] = useState<'setup' | 'workspace'>('workspace');
   const [setupConfig, setSetupConfig] = useState<SetupConfig | null>(null);
 
   useEffect(() => {
-    // Initialize app on mount
     initialize();
   }, [initialize]);
+
+  // 连接超时：超过 35 秒未就绪则显示错误和重试
+  useEffect(() => {
+    if (isInitialized) {
+      setInitTimeout(false);
+      return;
+    }
+    if (initTimeout) return;
+    const t = setTimeout(() => {
+      if (!useAppStore.getState().isInitialized) {
+        setInitTimeout(true);
+      }
+    }, 35000);
+    return () => clearTimeout(t);
+  }, [isInitialized, initTimeout]);
 
   // Load agents after gateway is initialized and auto-select/restore agent
   useEffect(() => {
@@ -210,6 +225,28 @@ function App() {
       setCurrentPage('workspace');
     }
   }, [selectAgent]);
+
+  // 连接超时：显示错误和重试
+  if (initTimeout && !isInitialized) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-nb-bg gap-4">
+        <AlertTriangle size={40} className="text-nb-warning" />
+        <p className="text-nb-text text-center max-w-sm">
+          连接 Gateway 超时，请确认后端服务已启动（端口 19999）
+        </p>
+        <button
+          onClick={() => {
+            setInitTimeout(false);
+            initialize();
+          }}
+          className="flex items-center gap-2 px-4 py-2 bg-nb-surface hover:bg-nb-surface-2 rounded-lg text-nb-text transition-colors"
+        >
+          <RefreshCw size={16} />
+          重试
+        </button>
+      </div>
+    );
+  }
 
   // Show loading screen while initializing
   if (!isInitialized || isLoadingAgents) {

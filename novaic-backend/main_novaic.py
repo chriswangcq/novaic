@@ -56,6 +56,8 @@ Usage:
     novaic-backend health [options]        Backend 组件: Health Worker (超时回收)
     novaic-backend scheduler [options]     Backend 组件: Scheduler Worker (定时唤醒)
     novaic-backend vmcontrol [options]     Backend 组件: VMControl (VM 管理服务)
+    novaic-backend file-service [options]       Backend 组件: File Service (文件管理服务)
+    novaic-backend tool-result-service [options] Backend 组件: Tool Result Service (结果规范化)
 
 Gateway options:
     --port PORT         Port to listen on (default: 19999)
@@ -95,6 +97,14 @@ VMControl options:
     --port PORT         Port for VMControl (default: 8080)
     --host HOST         Host to bind to (default: 127.0.0.1)
     --vmcontrol-bin     Path to vmcontrol binary (default: auto-detect)
+
+File Service options:
+    --port PORT         Port for File Service (default: 19995)
+    --base-dir PATH     Base data directory (default: NOVAIC_DATA_DIR/files)
+
+Tool Result Service options:
+    --port PORT         Port (default: 19994)
+    --data-dir PATH     Data directory (sets NOVAIC_DATA_DIR)
 
 Examples:
     novaic-backend gateway --port 19999
@@ -340,6 +350,58 @@ def run_scheduler():
     print("[scheduler] Shutdown complete")
 
 
+def run_file_service():
+    """Run the File Service (file storage, URL management)."""
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="NovAIC File Service")
+    parser.add_argument("--port", type=int, default=ServiceConfig.FILE_SERVICE_PORT, help=f"Port for File Service (default: {ServiceConfig.FILE_SERVICE_PORT})")
+    parser.add_argument("--data-dir", help="Data directory (overrides NOVAIC_DATA_DIR)")
+    args = parser.parse_args()
+    
+    if args.data_dir:
+        os.environ["NOVAIC_DATA_DIR"] = args.data_dir
+    if not os.environ.get("NOVAIC_DATA_DIR"):
+        print("[File Service] ERROR: NOVAIC_DATA_DIR required (use --data-dir or set env)")
+        sys.exit(1)
+    
+    os.environ["FILE_SERVICE_PORT"] = str(args.port)
+    
+    from file_service.main import create_app
+    import uvicorn
+    
+    base_dir = os.environ["NOVAIC_DATA_DIR"]
+    app = create_app(base_dir=base_dir)
+    
+    print(f"[File Service] Starting on port {args.port}")
+    uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="info")
+
+
+def run_tool_result_service():
+    """Run the Tool Result Service (result normalization)."""
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="NovAIC Tool Result Service")
+    parser.add_argument("--port", type=int, default=ServiceConfig.TOOL_RESULT_SERVICE_PORT, help=f"Port (default: {ServiceConfig.TOOL_RESULT_SERVICE_PORT})")
+    parser.add_argument("--data-dir", help="Data directory (overrides NOVAIC_DATA_DIR)")
+    args = parser.parse_args()
+    
+    if args.data_dir:
+        os.environ["NOVAIC_DATA_DIR"] = args.data_dir
+    if not os.environ.get("NOVAIC_DATA_DIR"):
+        print("[Tool Result Service] ERROR: NOVAIC_DATA_DIR required (use --data-dir or set env)")
+        sys.exit(1)
+    
+    os.environ["TOOL_RESULT_SERVICE_PORT"] = str(args.port)
+    
+    from tool_result_service.main import create_app
+    import uvicorn
+    
+    app = create_app()
+    print(f"[Tool Result Service] Starting on port {args.port}")
+    uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="info")
+
+
 def run_vmcontrol():
     """Run the VMControl service (Rust binary)."""
     import argparse
@@ -524,6 +586,8 @@ def main():
         print(f"[Config] Queue Service: {ServiceConfig.QUEUE_SERVICE_URL}")
         print(f"[Config] Tools Server: {ServiceConfig.TOOLS_SERVER_URL}")
         print(f"[Config] VMControl: {ServiceConfig.VMCONTROL_URL}")
+        print(f"[Config] File Service: {ServiceConfig.FILE_SERVICE_URL}")
+        print(f"[Config] Tool Result Service: {ServiceConfig.TOOL_RESULT_SERVICE_URL}")
     except ValueError as e:
         print(f"[Config] Configuration error: {e}")
         sys.exit(1)
@@ -561,6 +625,10 @@ def main():
         run_scheduler()
     elif mode == "vmcontrol":
         run_vmcontrol()
+    elif mode == "file-service":
+        run_file_service()
+    elif mode == "tool-result-service":
+        run_tool_result_service()
     elif mode in ["--help", "-h", "help"]:
         print_usage()
         sys.exit(0)

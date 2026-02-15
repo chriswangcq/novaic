@@ -6,6 +6,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { ChevronDown, ChevronRight, ExternalLink, Image, Copy, Check, X, Maximize2 } from 'lucide-react';
+import { toFileUrl } from '../../services/trs';
 
 // ==================== 工具函数 ====================
 
@@ -17,9 +18,7 @@ const isBase64Image = (value: unknown): boolean => {
 
 const isImageUrl = (value: unknown): boolean => {
   if (typeof value !== 'string') return false;
-  // Check for our internal image API URLs
-  if (value.startsWith('/api/images/')) return true;
-  // Check for external image URLs
+  if (value.startsWith('/api/images/') || value.startsWith('/api/files/')) return true;
   if (/^https?:\/\/.*\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i.test(value)) return true;
   return false;
 };
@@ -51,13 +50,11 @@ function ImagePreview({ src, alt = 'Image' }: ImagePreviewProps) {
   const [error, setError] = useState(false);
 
   const imageSrc = useMemo(() => {
-    // Already a data URL
     if (src.startsWith('data:image/')) return src;
-    // Internal API URL - use as-is (relative URL works with same origin)
-    if (src.startsWith('/api/images/')) return src;
-    // External HTTP URL
     if (src.startsWith('http://') || src.startsWith('https://')) return src;
-    // Assume base64 data without prefix
+    // /api/files/* 经 Gateway 代理 File Service，需转完整 URL
+    if (src.startsWith('/api/files/')) return toFileUrl(src);
+    if (src.startsWith('/api/images/')) return toFileUrl(src);
     return `data:image/png;base64,${src}`;
   }, [src]);
 

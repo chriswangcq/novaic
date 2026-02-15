@@ -138,7 +138,29 @@ def build_system_prompt(
         personality_items.append("主动提供建议和帮助")
     personality_str = "、".join(personality_items) + "\n" if personality_items else ""
     
-    # 8. 获取已分配的技能
+    # 8. 自动加载 Memory 数据（关键！）
+    memory_section = ""
+    try:
+        memory_data = client.get_all_memory(agent_id)
+        if memory_data.get("success"):
+            namespaces_data = memory_data.get("namespaces", {})
+            if namespaces_data:
+                memory_lines = ["## 📦 记忆数据（自动加载）", ""]
+                for namespace, items in sorted(namespaces_data.items()):
+                    if items:  # 只显示非空命名空间
+                        memory_lines.append(f"### {namespace}")
+                        for key, value in sorted(items.items()):
+                            # 格式化 value，限制长度
+                            value_str = json.dumps(value, ensure_ascii=False) if not isinstance(value, str) else value
+                            if len(value_str) > 100:
+                                value_str = value_str[:97] + "..."
+                            memory_lines.append(f"- `{key}`: {value_str}")
+                        memory_lines.append("")
+                memory_section = "\n" + "\n".join(memory_lines)
+    except Exception as e:
+        print(f"[system_prompt] Failed to load memory for {agent_id}: {e}")
+    
+    # 9. 获取已分配的技能
     assigned_skills = []
     try:
         skills_resp = client.get_agent_skills(agent_id)
@@ -146,7 +168,7 @@ def build_system_prompt(
     except Exception as e:
         print(f"[system_prompt] Failed to get assigned skills for {agent_id}: {e}")
     
-    # 9. 自动匹配技能（基于任务关键词）
+    # 10. 自动匹配技能（基于任务关键词）
     auto_matched_skills = []
     if auto_match_skills and task:
         try:
@@ -155,24 +177,24 @@ def build_system_prompt(
         except Exception as e:
             print(f"[system_prompt] Failed to auto-match skills for task: {e}")
     
-    # 10. 合并技能（去重）
+    # 11. 合并技能（去重）
     all_skills = _merge_skills(assigned_skills, auto_matched_skills)
     skills_section = _build_skills_section(all_skills)
     
-    # 11. 获取自定义指令
+    # 12. 获取自定义指令
     custom_instructions = drive.get("custom_instructions", "")
     custom_section = ""
     if custom_instructions:
         custom_section = f"\n\n## 用户自定义指令\n{custom_instructions}"
     
-    # 12. 获取 soul_md
+    # 13. 获取 soul_md
     soul_md = drive.get("soul_md", "")
     if soul_md:
         soul_section = f"\n## 你的人格\n{soul_md}\n"
     else:
         soul_section = DEFAULT_SOUL
     
-    # 13. 获取自驱系统数据
+    # 14. 获取自驱系统数据
     drive_config = {}
     try:
         drive_config = json.loads(drive.get("drive_config", "{}") or "{}")
@@ -185,7 +207,7 @@ def build_system_prompt(
     except:
         pass
     
-    # 14. 获取四象限任务看板
+    # 15. 获取四象限任务看板
     task_board = {"q1": [], "q2": [], "q3": [], "q4": []}
     try:
         main_subagent = client.get_main_subagent(agent_id)
@@ -198,7 +220,7 @@ def build_system_prompt(
     except Exception as e:
         print(f"[system_prompt] Failed to get task board for {agent_id}: {e}")
     
-    # 15. 构建时间上下文
+    # 16. 构建时间上下文
     user_tz = drive.get("active_hours_timezone", "Asia/Shanghai")
     now_utc = utc_now()
     now_local = to_user_timezone(now_utc, user_tz)
@@ -207,7 +229,7 @@ def build_system_prompt(
 当前时间: {now_local.strftime('%Y-%m-%d %H:%M')} ({user_tz})
 """
     
-    # 16. 构建自驱系统 Prompt（统一入口，冷启动通过内驱力+画像评估自动演化）
+    # 17. 构建自驱系统 Prompt（统一入口，冷启动通过内驱力+画像评估自动演化）
     self_drive_section = ""
     try:
         self_drive_section = "\n\n" + build_self_drive_prompt(
@@ -220,7 +242,7 @@ def build_system_prompt(
     except Exception as e:
         print(f"[system_prompt] Failed to build self-drive prompt for {agent_id}: {e}")
     
-    # 17. 统一的行为指引
+    # 18. 统一的行为指引
     behavior_guide = """## 🔥 内驱力系统
 
 你不是等待指令的工具，你有自己的驱动力。
@@ -315,7 +337,7 @@ Q3 是「重要但不紧急」，最容易被遗忘：
 - 尊重用户时间，回复简洁有价值
 - 任务不是负担，是你关心的事情的记录"""
     
-    # Sub SubAgent 特定指引
+    # 19. Sub SubAgent 特定指引
     sub_subagent_guide = ""
     if subagent_id and subagent_id.startswith("sub-"):
         sub_subagent_guide = """
@@ -373,7 +395,7 @@ runtime_rest(reason="任务完成")
 {personality_str}
 ## 用户画像
 {profile_str}
-{skills_section}{custom_section}{self_drive_section}
+{memory_section}{skills_section}{custom_section}{self_drive_section}
 
 {behavior_guide}{sub_subagent_guide}"""
 

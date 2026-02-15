@@ -139,14 +139,15 @@ def handle_llm_call(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     # 事件标识
     think_event_key = f"think:{runtime_id}:{round_id}"
     
-    # 预处理 messages（与 LLMBusiness.call 完全一致）
-    # 这样记录的就是 LLM 实际收到的入参
+    # 按需展开：仅对 tool 消息的 result_id 拉取 LLM 需要的完整 content（仅用于 LLM 调用）
+    from ..utils.trs_client import expand_messages_for_llm
     from ..utils import sanitize_context, process_multimodal_messages
-    sanitized_messages = sanitize_context(messages)
+    messages_for_llm = expand_messages_for_llm(messages, provider=provider)
+    sanitized_messages = sanitize_context(messages_for_llm)
     processed_messages = process_multimodal_messages(sanitized_messages, provider)
     
     # 广播 think running 事件（LLM 调用前）
-    # 记录完整的 LLM 调用入参，可用于复现调用
+    # 不展开 result_id，前端通过 TRS 客户端按需拉取；保持 result_id 以便前端渲染
     if agent_id:
         sync_broadcast_log(
             ctx,
@@ -157,18 +158,18 @@ def handle_llm_call(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
             event_key=think_event_key,
             data={"type": "think"},
             input_data={
-                "messages": processed_messages,  # 处理后的 messages，与 LLM 实际收到的一致
+                "messages": messages,  # 原始 messages（含 result_id），前端用 TRS 展开
                 "model": model,
-                "tools": tools,  # 完整的 tools 定义
+                "tools": tools,
                 "provider": llm_config.get("provider", "openai"),
             },
         )
     
-    # 使用业务逻辑层调用 LLM（内部会再次处理，但结果一致）
+    # 使用业务逻辑层调用 LLM（传入已展开的 messages）
     biz = LLMBusiness(ctx["gateway_url"], llm_client, client=ctx.get("gateway_client"))
     
     result = biz.call(
-        messages=messages,
+        messages=messages_for_llm,
         model=model,
         tools=tools,
         provider=provider,

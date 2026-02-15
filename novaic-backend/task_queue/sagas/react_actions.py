@@ -13,6 +13,7 @@ v3 变更：
 - 删除 set_phase_waiting_actions 步骤（Saga 步骤即进度，不需要额外 phase 状态）
 """
 
+import json
 from ..saga import SagaDefinition
 from . import register_saga_definition
 from ..topics import TaskTopics, SagaTopics
@@ -48,13 +49,10 @@ def _build_save_results_tasks(ctx, prev_results):
     
     注意：必须保存所有 tool results（包括失败的），因为 LLM API 要求
     每个 tool_call 都必须有对应的 tool result。
-    
-    prev_results 格式（并行步骤返回）：
-    - {"success": bool, "results": [...], ...}
     """
-    import json
     runtime_id = ctx["runtime_id"]
     round_num = ctx.get("round_num", 1)
+    agent_id = ctx.get("agent_id")
     
     # 从并行步骤结果中提取 results 列表
     if isinstance(prev_results, dict):
@@ -66,31 +64,37 @@ def _build_save_results_tasks(ctx, prev_results):
     tasks = []
     for i, result in enumerate(results_list):
         tool_call_id = result.get("tool_call_id") or f"tool-{i}"
-        
-        # 构建 content（成功或失败都要保存）
-        if result.get("success"):
-            # 成功：保存 result 字段
-            tool_result = result.get("result", "")
-        else:
-            # 失败：保存错误信息
+        result_id = result.get("result_id")
+
+        # 工具执行失败：将错误信息作为 tool result 存入 context（让 LLM 看到错误）
+        if not result.get("success"):
             error_msg = result.get("error", "Tool execution failed")
-            tool_result = {"error": error_msg, "success": False}
+            # 将错误存入 TRS，获取 result_id（必须成功）
+            from task_queue.utils.trs_sdk import get_trs_client
+            error_data = {"error": error_msg, "success": False}
+            result_id = get_trs_client().create_from_raw(
+                error_data,
+                agent_id=agent_id,
+                tool_name=result.get("tool_name", "unknown"),
+                tool_call_id=tool_call_id,
+            )
         
-        # 正确序列化 result：使用 json.dumps 而不是 str()
-        if isinstance(tool_result, (dict, list)):
-            content = json.dumps(tool_result, ensure_ascii=False)
-        else:
-            content = str(tool_result)
-        
+        # 必须有 result_id
+        if not result_id:
+            raise Exception(f"Tool execution succeeded but no result_id returned for {tool_call_id}")
+
+        # 仅存 result_id，不存 content
+        message = {
+            "role": "tool",
+            "tool_call_id": result.get("tool_call_id"),
+            "result_id": result_id,
+        }
+
         tasks.append({
             "topic": TaskTopics.CONTEXT_APPEND,
             "payload": {
                 "runtime_id": runtime_id,
-                "message": {
-                    "role": "tool",
-                    "tool_call_id": result.get("tool_call_id"),
-                    "content": content,
-                },
+                "message": message,
                 "message_type": "tool_result",
                 "round_id": f"round-{round_num}",
                 "idempotency_key": f"{runtime_id}-round{round_num}-{tool_call_id}",

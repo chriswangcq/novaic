@@ -12,7 +12,6 @@ Tool Executor - 执行工具调用
 - chat_* 工具: POST/GET /internal/rt/{runtime_id}/chat/*
 - web_* 工具: POST /internal/web/*
 - qemu_* 工具: POST/GET /internal/rt/{runtime_id}/qemu/*
-- task_* 工具: POST/GET /internal/rt/{runtime_id}/tasks/* 或 /internal/tasks/*
 
 特殊工具：
 - goal_set, goal_progress, goal_complete: 通过 memory_save/memory_recall 间接实现
@@ -94,7 +93,6 @@ VM_TOOL_MAPPING = {
     "keyboard": ("desktop", "keyboard"),
     # Shell tools
     "shell_exec": ("shell", "command"),
-    "run_python": ("shell", "run_python"),
     # File tools
     "file_read": ("file", "read"),
     "file_write": ("file", "write"),
@@ -176,15 +174,6 @@ BUILTIN_TOOL_NAMES = {
     "qemu_start_vm",
     "qemu_restart_vm",
     "qemu_shutdown_vm",
-    
-    # Task 工具
-    "task_spawn",
-    "task_async",
-    "task_list",
-    "task_query",
-    "task_cancel",
-    "task_result",
-    "task_summary",
     
     # Session 工具
     "session_state",
@@ -331,7 +320,9 @@ class ToolExecutor:
         if self._http_client is None or self._http_client.is_closed:
             self._http_client = httpx.AsyncClient(
                 base_url=GATEWAY_URL,
-                timeout=httpx.Timeout(connect=10.0, read=60.0, write=30.0, pool=10.0),
+                # 工具执行超时由心跳机制管理，HTTP 层不做限制
+                # read=None 表示无超时限制，只要 Worker 还在发心跳，工具就可以一直执行
+                timeout=httpx.Timeout(connect=10.0, read=None, write=30.0, pool=10.0),
                 transport=httpx.AsyncHTTPTransport(proxy=None),
                 trust_env=False,
             )
@@ -362,11 +353,6 @@ class ToolExecutor:
                 result = await self._execute_builtin(tool_name, arguments)
             else:
                 result = await self._execute_external(tool_name, arguments)
-            
-            # 自动截断处理
-            from common.config import ServiceConfig
-            if ServiceConfig.AUTO_TRUNCATE_ENABLED:
-                result = await self._handle_long_result(result, tool_name)
             
             return result
         except Exception as e:
@@ -1071,148 +1057,6 @@ class ToolExecutor:
             
             
             # ==================== Task 工具 ====================
-            elif tool_name == "task_spawn":
-                response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/tasks/spawn",
-                    json={
-                        "task_type": arguments.get("task_type", "tool"),
-                        "config": arguments.get("config", {}),
-                        "label": arguments.get("label"),
-                        "timeout_seconds": arguments.get("timeout_seconds", 0),
-                        "notify_on": arguments.get("notify_on"),
-                    }
-                )
-                return self._handle_response(response)
-            
-            elif tool_name == "task_list":
-                status = arguments.get("status")
-                params = {}
-                if status:
-                    params["status"] = status
-                response = await client.get(
-                    f"/internal/rt/{self.runtime_id}/tasks",
-                    params=params,
-                )
-                return self._handle_response(response)
-            
-            elif tool_name == "task_query":
-                task_id = arguments.get("task_id")
-                if not task_id:
-                    return {
-                        "success": False,
-                        "error": "task_id is required",
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": "Error: task_id is required"
-                            }
-                        ]
-                    }
-                params = {
-                    "include_outputs": arguments.get("include_outputs", False),
-                }
-                if arguments.get("start_line") is not None:
-                    params["start_line"] = arguments["start_line"]
-                if arguments.get("end_line") is not None:
-                    params["end_line"] = arguments["end_line"]
-                if arguments.get("tail_lines") is not None:
-                    params["tail_lines"] = arguments["tail_lines"]
-                response = await client.get(
-                    f"/internal/tasks/{task_id}",
-                    params=params,
-                )
-                result = self._handle_response(response)
-                
-                # 转换为新格式
-                if not result.get("success"):
-                    # 错误情况
-                    return {
-                        "success": False,
-                        "error": result.get("error", "Unknown error"),
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": json.dumps(result, ensure_ascii=False)
-                            }
-                        ]
-                    }
-                
-                # 成功情况 - 获取任务结果
-                task_result = result.get("result")
-                
-                # 如果任务结果已经是新格式（包含 content 数组），直接返回
-                if isinstance(task_result, dict) and "content" in task_result and isinstance(task_result.get("content"), list):
-                    # 已经是新格式，直接返回（保留图片等多模态数据）
-                    return {
-                        "success": result.get("success", True),
-                        "content": task_result["content"]
-                    }
-                
-                # 如果是旧格式或其他格式，转换为新格式
-                return {
-                    "success": True,
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": json.dumps(result, ensure_ascii=False)
-                        }
-                    ]
-                }
-            
-            elif tool_name == "task_cancel":
-                task_id = arguments.get("task_id")
-                if not task_id:
-                    return {"success": False, "error": "task_id is required"}
-                reason = arguments.get("reason")
-                params = {}
-                if reason:
-                    params["reason"] = reason
-                response = await client.post(
-                    f"/internal/tasks/{task_id}/cancel",
-                    params=params,
-                )
-                return self._handle_response(response)
-            
-            elif tool_name == "task_result":
-                task_id = arguments.get("task_id")
-                if not task_id:
-                    return {"success": False, "error": "task_id is required"}
-                response = await client.get(
-                    f"/internal/tasks/{task_id}/result",
-                    params={"format": arguments.get("format", "summary")},
-                )
-                return self._handle_response(response)
-            
-            elif tool_name == "task_async":
-                # 异步执行任何工具
-                tool = arguments.get("tool")
-                if not tool:
-                    return {"success": False, "error": "tool is required"}
-                response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/tasks/spawn",
-                    json={
-                        "task_type": "tool",
-                        "config": {
-                            "tool": tool,
-                            "args": arguments.get("args", {}),
-                        },
-                        "label": arguments.get("label"),
-                        "timeout_seconds": 0,  # No timeout for async tasks
-                    }
-                )
-                return self._handle_response(response)
-            
-            elif tool_name == "task_summary":
-                # 获取任务的 AI 摘要
-                task_id = arguments.get("task_id")
-                if not task_id:
-                    return {"success": False, "error": "task_id is required"}
-                response = await client.get(
-                    f"/internal/tasks/{task_id}/result",
-                    params={"format": "summary"},
-                )
-                return self._handle_response(response)
-            
             elif tool_name == "task_log":
                 # 记录任务日志（使用 memory_log_task）
                 response = await client.post(
@@ -1282,7 +1126,8 @@ class ToolExecutor:
                 logger.info(f"[ToolExecutor] Calling Mobile API: {url}")
                 
                 try:
-                    async with httpx.AsyncClient(timeout=60.0) as mobile_client:
+                    # Mobile 工具也使用无超时限制，由心跳机制管理
+                    async with httpx.AsyncClient(timeout=None, trust_env=False) as mobile_client:
                         # mobile_app_list 和 mobile_file_list 使用 GET 方法，其他使用 POST
                         if tool_name in ("mobile_app_list", "mobile_file_list"):
                             response = await mobile_client.get(url, params=arguments)
@@ -1337,7 +1182,8 @@ class ToolExecutor:
                 logger.info(f"[ToolExecutor] Calling VMUSE via vmcontrol: {url}")
                 
                 try:
-                    async with httpx.AsyncClient(timeout=60.0) as vmuse_client:
+                    # VMUSE 工具也使用无超时限制，由心跳机制管理
+                    async with httpx.AsyncClient(timeout=None, trust_env=False) as vmuse_client:
                         response = await vmuse_client.post(url, json=arguments)
                         response.raise_for_status()
                         vm_result = response.json()
@@ -1464,279 +1310,6 @@ class ToolExecutor:
             }
         except Exception as e:
             return {"success": False, "error": str(e)}
-    
-    async def _handle_long_result(
-        self,
-        result: Dict[str, Any],
-        tool_name: str
-    ) -> Dict[str, Any]:
-        """
-        处理长结果
-        
-        策略：
-        - < 4KB: 不处理
-        - 4KB - 10KB: head_tail 策略
-        - > 10KB: reference_only 策略
-        
-        注意：只计算文本大小，图像/视频不计入
-        
-        Args:
-            result: 工具执行结果
-            tool_name: 工具名称
-        
-        Returns:
-            处理后的结果（可能被截断）
-        """
-        from common.config import ServiceConfig
-        
-        # 获取 content 数组
-        content = result.get("content", [])
-        if not isinstance(content, list):
-            # 如果没有 content 数组，不处理
-            return result
-        
-        # 计算内容大小（只计算文本）
-        total_size = self._calculate_content_size(content)
-        
-        # 小于 4KB：不处理
-        if total_size < ServiceConfig.AUTO_TRUNCATE_THRESHOLD_SMALL:
-            return result
-        
-        # 保存完整内容
-        task_id = await self._save_full_result(result, tool_name, total_size)
-        
-        # 4KB - 10KB：head_tail 策略
-        if total_size <= ServiceConfig.AUTO_TRUNCATE_THRESHOLD_LARGE:
-            max_size = ServiceConfig.AUTO_TRUNCATE_HEAD_SIZE + ServiceConfig.AUTO_TRUNCATE_TAIL_SIZE
-            truncated_content = self._truncate_head_tail(content, max_size)
-            
-            # 添加截断信息
-            truncated_content.append({
-                "type": "text",
-                "text": f"[Content truncated: {total_size} bytes total, showing head+tail]",
-                "_truncated": True,
-                "_truncation": {
-                    "strategy": "head_tail",
-                    "original_size": total_size,
-                    "truncated_size": max_size,
-                    "task_id": task_id,
-                    "message": f"Use task_query(task_id='{task_id}') to retrieve full content."
-                }
-            })
-            
-            return {
-                "success": result.get("success", True),
-                "content": truncated_content,
-                "task_id": task_id
-            }
-        
-        # > 10KB：reference_only 策略
-        else:
-            return {
-                "success": result.get("success", True),
-                "content": [
-                    {
-                        "type": "text",
-                        "text": f"Output is very large ({total_size} bytes). Full content saved to task.",
-                        "_truncated": True,
-                        "_truncation": {
-                            "strategy": "reference_only",
-                            "original_size": total_size,
-                            "task_id": task_id,
-                            "message": f"Use task_query(task_id='{task_id}') to retrieve full content."
-                        }
-                    }
-                ],
-                "task_id": task_id
-            }
-    
-    def _calculate_content_size(self, content: List[Dict[str, Any]]) -> int:
-        """
-        计算 content 数组的总大小（字节）
-        
-        注意：只计算文本大小，图像/视频等二进制内容不计入（不应被截断）
-        
-        Args:
-            content: content 数组
-        
-        Returns:
-            总大小（字节）
-        """
-        total = 0
-        for item in content:
-            if item.get("type") == "text":
-                total += len(item.get("text", "").encode("utf-8"))
-            # 图像、视频等不计入大小（不会被截断）
-        return total
-    
-    def _truncate_head_tail(
-        self,
-        content: List[Dict[str, Any]],
-        max_size: int
-    ) -> List[Dict[str, Any]]:
-        """
-        保留头尾文本内容
-        
-        重要：只截断文本，图像/视频/音频等二进制内容完整保留
-        
-        Args:
-            content: content 数组
-            max_size: 最大保留大小（字节）
-        
-        Returns:
-            截断后的 content 数组
-        """
-        from common.config import ServiceConfig
-        
-        head_size = ServiceConfig.AUTO_TRUNCATE_HEAD_SIZE
-        tail_size = ServiceConfig.AUTO_TRUNCATE_TAIL_SIZE
-        
-        result = []
-        text_accumulated = 0  # 已累积的文本大小
-        
-        # 收集头部
-        for item in content:
-            if item.get("type") == "text":
-                text = item.get("text", "")
-                text_bytes = text.encode("utf-8")
-                
-                if text_accumulated + len(text_bytes) <= head_size:
-                    result.append(item)
-                    text_accumulated += len(text_bytes)
-                else:
-                    # 部分截断文本
-                    remaining = head_size - text_accumulated
-                    if remaining > 0:
-                        # 按字节截断，然后解码
-                        truncated_bytes = text_bytes[:remaining]
-                        # 处理可能的 UTF-8 截断问题
-                        try:
-                            truncated_text = truncated_bytes.decode("utf-8")
-                        except UnicodeDecodeError:
-                            # 回退到安全的截断点
-                            while len(truncated_bytes) > 0:
-                                try:
-                                    truncated_text = truncated_bytes.decode("utf-8")
-                                    break
-                                except UnicodeDecodeError:
-                                    truncated_bytes = truncated_bytes[:-1]
-                            else:
-                                truncated_text = ""
-                        
-                        if truncated_text:
-                            result.append({
-                                "type": "text",
-                                "text": truncated_text
-                            })
-                    text_accumulated = head_size
-                    break
-            else:
-                # 图像、视频、音频等完整保留
-                result.append(item)
-        
-        # 如果文本被截断，添加省略标记
-        if text_accumulated >= head_size:
-            result.append({
-                "type": "text",
-                "text": "\n... [middle text content removed] ...\n"
-            })
-            
-            # 收集尾部文本（从后往前）
-            tail_items = []
-            text_accumulated = 0
-            
-            for item in reversed(content):
-                if item.get("type") == "text":
-                    text = item.get("text", "")
-                    text_bytes = text.encode("utf-8")
-                    
-                    if text_accumulated + len(text_bytes) <= tail_size:
-                        tail_items.insert(0, item)
-                        text_accumulated += len(text_bytes)
-                    else:
-                        # 部分截断文本
-                        remaining = tail_size - text_accumulated
-                        if remaining > 0:
-                            # 从尾部截断
-                            truncated_bytes = text_bytes[-remaining:]
-                            # 处理可能的 UTF-8 截断问题
-                            try:
-                                truncated_text = truncated_bytes.decode("utf-8")
-                            except UnicodeDecodeError:
-                                # 回退到安全的截断点
-                                while len(truncated_bytes) > 0:
-                                    try:
-                                        truncated_text = truncated_bytes.decode("utf-8")
-                                        break
-                                    except UnicodeDecodeError:
-                                        truncated_bytes = truncated_bytes[1:]
-                                else:
-                                    truncated_text = ""
-                            
-                            if truncated_text:
-                                tail_items.insert(0, {
-                                    "type": "text",
-                                    "text": truncated_text
-                                })
-                        break
-                else:
-                    # 图像、视频、音频等完整保留
-                    tail_items.insert(0, item)
-            
-            result.extend(tail_items)
-        
-        return result
-    
-    async def _save_full_result(
-        self,
-        result: Dict[str, Any],
-        tool_name: str,
-        size: int
-    ) -> str:
-        """
-        保存完整结果到 TaskManager
-        
-        Args:
-            result: 完整结果
-            tool_name: 工具名称
-            size: 内容大小
-        
-        Returns:
-            task_id: 用于查询完整内容
-        """
-        from common.config import ServiceConfig
-        
-        gateway_url = os.environ.get("NOVAIC_GATEWAY_URL") or ServiceConfig.GATEWAY_URL
-        
-        # 序列化完整结果
-        full_output = json.dumps(result, ensure_ascii=False)
-        
-        # 生成截断版本（简单的前 500 字符）
-        truncated_result = full_output[:500] + "..." if len(full_output) > 500 else full_output
-        
-        # 调用 Gateway API 创建 completed task
-        client = await self._get_http_client()
-        
-        try:
-            resp = await client.post(
-                f"{gateway_url}/internal/tasks/create-completed",
-                json={
-                    "tool_name": tool_name,
-                    "truncated_result": truncated_result,
-                    "full_output": full_output,
-                    "ttl_hours": ServiceConfig.AUTO_TRUNCATE_TTL_HOURS,
-                    "agent_id": self.agent_id
-                }
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            return data["task_id"]
-        except Exception as e:
-            logger.error(f"[ToolExecutor] Failed to save full result: {e}")
-            # 生成一个临时的 task_id（如果保存失败）
-            import hashlib
-            temp_id = hashlib.md5(full_output.encode()).hexdigest()[:12]
-            return f"so_temp_{temp_id}"
     
     def is_builtin_tool(self, tool_name: str) -> bool:
         """检查是否是内置工具"""

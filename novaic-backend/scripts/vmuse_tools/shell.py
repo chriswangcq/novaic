@@ -2,7 +2,7 @@
 Shell Tools - Execute commands and Python code
 
 Simplified in v4: synchronous execution with timeout protection.
-For long-running commands (>30s), use task_async from MCP Gateway.
+For long-running commands (>30s), use subagent_spawn to run in background.
 """
 
 import asyncio
@@ -39,15 +39,15 @@ class ShellTools:
         Timeout behavior:
         - Default timeout: 30 seconds
         - If command doesn't complete in time, returns partial output with warning
-        - For long-running commands (>30s), use task_async from MCP Gateway
+        - For long-running commands (>30s), use subagent_spawn
         
         For long-running commands (builds, downloads, etc.):
-        Use task_async instead: task_async(tool="run_command", args={"command": "npm run build"}, label="Build")
+        Use subagent_spawn for long commands: subagent_spawn(task="Run: npm run build")
         
         Recommended usage:
         - Quick commands (ls, cat, etc.): run_command(command="ls -la")
         - Medium commands (installs): run_command(command="pip install pkg", timeout=60)
-        - Long commands: Use task_async instead!
+        - Long commands: Use subagent_spawn instead!
         
         Examples:
             run_command(command="ls -la")  # Fast command
@@ -172,7 +172,7 @@ class ShellTools:
                 "stderr_lines": stderr_lines,
                 "truncated": True,
                 "timed_out": True,
-                "warning": f"Command timed out after {timeout}s. For long-running commands, use task_async(tool='run_command', args={{\"command\": \"...\"}}) from MCP Gateway.",
+                "warning": f"Command timed out after {timeout}s. For long-running commands, use subagent_spawn(task='Run: ...').",
             }
     
     @staticmethod

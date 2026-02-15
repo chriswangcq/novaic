@@ -137,4 +137,41 @@ def get_agent_internal(agent_id: str):
     return result
 
 
+@router.get("/agents/{agent_id}/memory/all")
+def get_all_agent_memory(agent_id: str):
+    """Get all memory data for an agent (all namespaces).
+    
+    Used by system_prompt builder to auto-load memory into system prompt.
+    
+    Returns:
+        {
+            "success": True,
+            "namespaces": {
+                "default": {"key1": "value1", ...},
+                "preferences": {...},
+                ...
+            }
+        }
+    """
+    from gateway.db.repositories.memory import MemoryRepository
+    
+    db = get_db()
+    repo = MemoryRepository(db)
+    
+    # Get all namespaces
+    namespaces = repo.list_namespaces(agent_id)
+    
+    # Get all data from each namespace
+    result = {}
+    for ns in namespaces:
+        ns_data = repo.recall(agent_id=agent_id, key=None, namespace=ns)
+        if ns_data.get("success"):
+            result[ns] = ns_data.get("memories", {})
+    
+    return {
+        "success": True,
+        "namespaces": result
+    }
+
+
 # 工具服务由 Backend 组件 Tools Server 提供（api/internal_mcp.py）；Master 调 Tools Server /internal/mcp/*

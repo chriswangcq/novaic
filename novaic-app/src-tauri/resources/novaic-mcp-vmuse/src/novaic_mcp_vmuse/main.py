@@ -391,16 +391,15 @@ async def browser_close_tab(index: Optional[int] = None) -> Dict[str, Any]:
 **Timeout behavior:**
 - Default timeout: 30 seconds
 - If command doesn't complete in time, returns partial output with warning
-- For long-running commands (>30s), use task_async from MCP Gateway
+- For long-running commands (>30s), use subagent_spawn
 
 **For long-running commands (builds, downloads, etc.):**
-Use task_async from MCP Gateway instead:
-  task_async(tool="run_command", args={"command": "npm run build"}, label="Build")
+Use subagent_spawn: subagent_spawn(task="Run: npm run build")
 
 **Recommended usage:**
 - Quick commands (ls, cat, etc.): run_command(command="ls -la")
 - Medium commands (installs): run_command(command="pip install pkg", timeout=60)
-- Long commands: Use task_async instead!
+- Long commands: Use subagent_spawn instead!
 
 Examples:
 - run_command(command="ls -la")  # Fast command

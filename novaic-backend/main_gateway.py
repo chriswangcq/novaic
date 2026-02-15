@@ -166,7 +166,7 @@ import asyncio
 from typing import Optional
 
 import uvicorn
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import contextmanager, asynccontextmanager
@@ -1842,6 +1842,79 @@ def cleanup_images(max_age_days: int = 7, agent_id: Optional[str] = None):
     storage = get_image_storage()
     deleted = storage.cleanup_old_images(max_age_days, agent_id)
     return {"deleted_count": deleted}
+
+
+# ==================== TRS & File Service 代理 ====================
+# 前端通过 Gateway 访问 TRS 和 File Service，文件和图片用 URL 展示
+# TRS/File Service 可由 Tauri 自动启动，或单独运行：
+#   python -m novaic_main tool-result-service --port 19994
+#   python -m novaic_main file-service --port 19995
+
+from common.config import ServiceConfig
+import httpx
+from starlette.responses import Response, JSONResponse
+
+TRS_BASE = (os.environ.get("TOOL_RESULT_SERVICE_URL") or ServiceConfig.TOOL_RESULT_SERVICE_URL).rstrip("/")
+FILES_BASE = (os.environ.get("FILE_SERVICE_URL") or ServiceConfig.FILE_SERVICE_URL).rstrip("/")
+
+
+@app.api_route("/api/trs/{path:path}", methods=["GET", "POST"])
+async def proxy_trs(path: str, request: Request):
+    """代理 TRS 请求，前端按 result_id 拉取内容"""
+    url = f"{TRS_BASE}/api/{path}"
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            if request.method == "GET":
+                resp = await client.get(url, params=dict(request.query_params))
+            else:
+                body = await request.body()
+                resp = await client.post(
+                    url, content=body,
+                    headers={"Content-Type": request.headers.get("Content-Type", "application/json")}
+                )
+        media = resp.headers.get("Content-Type") or "application/json"
+        return Response(content=resp.content, status_code=resp.status_code, media_type=media)
+    except httpx.ConnectError as e:
+        return JSONResponse(
+            status_code=503,
+            content={"success": False, "error": "TRS unavailable", "detail": str(e)},
+        )
+    except httpx.TimeoutException as e:
+        return JSONResponse(
+            status_code=504,
+            content={"success": False, "error": "TRS timeout", "detail": str(e)},
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=502,
+            content={"success": False, "error": "TRS proxy error", "detail": str(e)},
+        )
+
+
+@app.api_route("/api/files/{path:path}", methods=["GET"])
+async def proxy_files(path: str):
+    """代理 File Service，用于图片/文件 URL 展示"""
+    url = f"{FILES_BASE}/api/files/{path}"
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.get(url)
+        media = resp.headers.get("Content-Type") or "application/octet-stream"
+        return Response(content=resp.content, status_code=resp.status_code, media_type=media)
+    except httpx.ConnectError as e:
+        return JSONResponse(
+            status_code=503,
+            content={"success": False, "error": "File Service unavailable", "detail": str(e)},
+        )
+    except httpx.TimeoutException as e:
+        return JSONResponse(
+            status_code=504,
+            content={"success": False, "error": "File Service timeout", "detail": str(e)},
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=502,
+            content={"success": False, "error": "File Service proxy error", "detail": str(e)},
+        )
 
 
 # Static files (React Web UI) - mount last to catch-all

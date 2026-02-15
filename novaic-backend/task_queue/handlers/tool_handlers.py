@@ -134,8 +134,9 @@ def handle_tool_execute(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     )
     
     # 广播 tool complete 事件（执行后）
+    # 必须成功且有 result_id
     if agent_id:
-        if result.success:
+        if result.success and result.result_id:
             sync_broadcast_log(
                 ctx,
                 agent_id,
@@ -144,9 +145,10 @@ def handle_tool_execute(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
                 status="complete",
                 event_key=tool_event_key,
                 data={"type": "tool"},
-                result_data={"result": result.result},
+                result_data={"result_id": result.result_id},
             )
         else:
+            error_msg = result.error if result.error else "Tool execution failed or no result_id"
             sync_broadcast_log(
                 ctx,
                 agent_id,
@@ -155,10 +157,10 @@ def handle_tool_execute(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
                 status="complete",
                 event_key=tool_event_key,
                 data={"type": "tool"},
-                result_data={"error": result.error if result.error else "Unknown error"},
+                result_data={"error": error_msg},
             )
     
-    # 返回结果
+    # 返回结果（只返回 result_id）
     return {
         "success": result.success,
         "status": result.status,
@@ -166,6 +168,6 @@ def handle_tool_execute(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
         "round_id": round_id,
         "tool_call_id": result.tool_call_id,
         "tool_name": result.tool_name,
-        "result": result.result,
+        "result_id": result.result_id if result.success else None,
         "error": result.error if result.error else None,
     }

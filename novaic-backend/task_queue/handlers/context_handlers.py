@@ -84,6 +84,10 @@ def handle_context_read(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
                     print(f"[context.read] Failed to append message {msg['id']}: {e}")
                     continue
     
+    # 不在此展开 result_id，由使用方按需展开：
+    # - LLM 调用前：expand_messages_for_llm
+    # - 摘要生成：expand_messages_for_summary
+
     return {
         "success": True,
         "runtime_id": runtime_id,
@@ -97,6 +101,8 @@ def handle_context_read(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
 def handle_context_append(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     追加消息到 runtime context
+    
+    tool_result：由 Tools Server 推 TRS，此处仅存储 result_id。
     
     幂等性：通过 idempotency_key 或 round_id + message_type 检查
     
@@ -114,13 +120,19 @@ def handle_context_append(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
         raise ValidationError("Missing required field: runtime_id")
     if not payload.get("message"):
         raise ValidationError("Missing required field: message")
-    
+
+    message = dict(payload["message"])
+    message_type = payload.get("message_type", "unknown")
+
+    # tool_result：不再在此推送 TRS，由 Tools Server 在 call_tool 时推送。
+    # message 必须包含 result_id（工具执行成功时）。
+
     biz = MessageBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
-    
+
     result = biz.append_to_context(
         runtime_id=payload["runtime_id"],
-        message=payload["message"],
-        message_type=payload.get("message_type", "unknown"),
+        message=message,
+        message_type=message_type,
         round_id=payload.get("round_id"),
         idempotency_key=payload.get("idempotency_key"),
     )
@@ -158,10 +170,12 @@ def handle_context_get(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     biz = MessageBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
     
     context = biz.get_context(payload["runtime_id"])
-    
+
     if context is None:
         raise NotFoundError(f"Runtime not found: {payload['runtime_id']}")
-    
+
+    # 不在此展开，由使用方按需展开
+
     return {
         "success": True,
         "runtime_id": payload["runtime_id"],

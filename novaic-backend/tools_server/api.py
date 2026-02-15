@@ -29,13 +29,14 @@ class CallToolRequest(BaseModel):
     """工具调用请求"""
     name: str
     arguments: dict = {}
+    tool_call_id: Optional[str] = None
 
 
 class CallToolResponse(BaseModel):
     """工具调用响应"""
     success: bool
-    result: Any = None
     error: Optional[str] = None
+    result_id: Optional[str] = None
 
 
 class SkillInfo(BaseModel):
@@ -357,18 +358,56 @@ async def call_tool(runtime_id: str, request: CallToolRequest):
             actual_result = result
             actual_success = True
             actual_error = None
+
+        # 成功时推入 TRS，获取 result_id（必须成功）
+        result_id = None
+        if actual_success and runtime.agent_id:
+            try:
+                from task_queue.utils.trs_sdk import get_trs_client
+                result_id = get_trs_client().create_from_raw(
+                    actual_result,
+                    agent_id=runtime.agent_id,
+                    tool_name=request.name,
+                    tool_call_id=request.tool_call_id,
+                )
+                if result_id:
+                    logger.info(f"[ToolsAPI] Tool {request.name} result pushed to TRS: {result_id}")
+                else:
+                    logger.error(f"[ToolsAPI] TRS create_from_raw returned None for {request.name}")
+                    # TRS 推送失败（SDK 返回 None）视为工具执行失败
+                    return CallToolResponse(
+                        success=False,
+                        error="Failed to store result in TRS: create_from_raw returned None",
+                        result_id=None,
+                    )
+            except Exception as trs_error:
+                logger.error(f"[ToolsAPI] Failed to push result to TRS for {request.name}: {trs_error}")
+                # TRS 推送失败视为工具执行失败
+                return CallToolResponse(
+                    success=False,
+                    error=f"Failed to store result in TRS: {trs_error}",
+                    result_id=None,
+                )
+        elif actual_success and not runtime.agent_id:
+            logger.warning(f"[ToolsAPI] Tool {request.name} succeeded but no agent_id, cannot push to TRS")
+            # 没有 agent_id 无法推送 TRS，视为失败
+            return CallToolResponse(
+                success=False,
+                error="No agent_id available, cannot store result",
+                result_id=None,
+            )
         
+        # 只返回 result_id，不返回 result
         return CallToolResponse(
             success=actual_success,
-            result=actual_result,
             error=actual_error,
+            result_id=result_id,
         )
         
     except Exception as e:
         logger.error(f"[ToolsAPI] Tool call failed: {request.name} - {e}")
         return CallToolResponse(
             success=False,
-            result=None,
             error=str(e),
         )
 

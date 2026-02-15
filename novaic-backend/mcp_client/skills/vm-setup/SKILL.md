@@ -59,8 +59,7 @@ description: VM setup tools reference. Download image, create VM, start VM are h
 
 | 工具 | 用途 |
 |------|------|
-| `task_async` | 异步执行工具 |
-| `task_query` | 查询任务状态 |
+| `subagent_spawn` | 异步执行任务（派生子 Agent） |
 | `chat_notify` | 通知用户 |
 | `chat_ask` | 询问用户 |
 
@@ -85,31 +84,29 @@ description: VM setup tools reference. Download image, create VM, start VM are h
 
 ### 阶段 0: 下载镜像 (首次，约5分钟)
 
+> **Note**: task_async/task_query 已移除，改用 subagent_spawn 执行长任务。
+
 ```python
 chat_notify("📥 检查 Ubuntu 云镜像...", level="info")
 
-# 异步下载镜像 (下载到共享目录，所有 agent 共用)
-task_id = task_async(
-    tool="qemu_download_image",
-    args={"version": "24.04"},
-    label="下载 Ubuntu 镜像"
-)["task_id"]
+# 派生子 Agent 下载镜像
+spawn = subagent_spawn(
+    task="使用 qemu_download_image 工具下载 Ubuntu 24.04 云镜像到共享目录。完成后报告结果。",
+    share_context=False,
+    timeout_minutes=10,
+)
+subagent_id = spawn["subagent_id"]
 
 chat_notify("⏳ 下载镜像中，这可能需要几分钟... 您可以问我其他问题！", level="info")
 
 # 轮询等待
 while True:
-    result = task_query(task_id=task_id)
-    if result["status"] == "completed":
-        if result["result"]["success"]:
-            if result["result"]["downloaded"]:
-                size = result["result"]["size_mb"]
-                chat_notify(f"✅ 镜像下载完成！({size} MB)", level="success")
-            else:
-                chat_notify("✅ 镜像已存在，跳过下载", level="success")
+    result = subagent_query(target_subagent_id=subagent_id)
+    if result.get("completed"):
+        if result.get("status") == "completed":
+            chat_notify("✅ 镜像下载完成！", level="success")
         else:
-            chat_notify(f"❌ 下载失败: {result['result']['error']}", level="error")
-            return
+            chat_notify(f"❌ 下载失败", level="error")
         break
     # 等待后重试
 ```
@@ -119,17 +116,11 @@ while True:
 ```python
 chat_notify("🔧 创建 VM 磁盘和配置...", level="info")
 
-task_id = task_async(
-    tool="qemu_create_vm",
-    args={"disk_size": "40G", "memory": "4096", "cpus": 4},
-    label="创建 VM"
-)["task_id"]
-
-result = task_query(task_id=task_id)
-if result["result"]["success"]:
+result = qemu_create_vm(disk_size="40G", memory="4096", cpus=4)
+if result.get("success"):
     chat_notify("✅ VM 创建完成！", level="success")
 else:
-    chat_notify(f"❌ 创建失败: {result['result']['error']}", level="error")
+    chat_notify(f"❌ 创建失败: {result.get('error')}", level="error")
     return
 ```
 
@@ -138,24 +129,18 @@ else:
 ```python
 chat_notify("🚀 启动 VM...", level="info")
 
-task_id = task_async(
-    tool="qemu_start_vm",
-    args={"memory": "4096", "cpus": 4, "daemon": True},
-    label="启动 VM"
-)["task_id"]
-
-result = task_query(task_id=task_id)
-if result["result"]["success"]:
-    ports = result["result"]["ports"]
+result = qemu_start_vm(memory="4096", cpus=4, daemon=True)
+if result.get("success"):
+    ports = result.get("ports", {})
     chat_notify(
         f"✅ VM 已启动！\n"
-        f"- SSH: localhost:{ports['ssh']}\n"
-        f"- VNC: localhost:{ports['vnc']}\n"
-        f"- MCP: localhost:{ports['mcp']}",
+        f"- SSH: localhost:{ports.get('ssh')}\n"
+        f"- VNC: localhost:{ports.get('vnc')}\n"
+        f"- MCP: localhost:{ports.get('mcp')}",
         level="success"
     )
 else:
-    chat_notify(f"❌ 启动失败: {result['result']['error']}", level="error")
+    chat_notify(f"❌ 启动失败: {result.get('error')}", level="error")
     return
 ```
 
@@ -163,29 +148,17 @@ else:
 
 ```python
 chat_notify("⏳ 等待 SSH 可用，这可能需要 2-3 分钟...", level="info")
-chat_notify("别担心，我会持续检查状态。您可以问我其他问题！", level="info")
 
 max_retries = 30
-retry_count = 0
-
-while retry_count < max_retries:
-    task_id = task_async(
-        tool="qemu_status",
-        args={},
-        label="检查 SSH"
-    )["task_id"]
-    
-    # 等待 10 秒后查询
-    result = task_query(task_id=task_id)
-    if result["result"]["ssh_reachable"]:
+for retry_count in range(max_retries):
+    result = qemu_status()
+    if result.get("ssh_reachable"):
         chat_notify("✅ SSH 已就绪！", level="success")
         break
-    
-    retry_count += 1
-    if retry_count % 6 == 0:  # 每分钟提示一次
+    if retry_count % 6 == 0:
         chat_notify(f"⏳ 仍在等待 SSH... ({retry_count * 10}秒)", level="info")
-
-if retry_count >= max_retries:
+    time.sleep(10)
+else:
     chat_notify("❌ SSH 连接超时，请检查 VM 状态", level="error")
     return
 ```
@@ -199,31 +172,20 @@ chat_notify(
     level="info"
 )
 
-max_retries = 60  # 最多等待 10 分钟
-retry_count = 0
-
-while retry_count < max_retries:
-    task_id = task_async(
-        tool="qemu_ssh_exec",
-        args={
-            "command": "test -f /var/log/novaic-init-done.log && echo 'DONE' || echo 'PENDING'",
-            "timeout": 10
-        },
-        label="检查 cloud-init"
-    )["task_id"]
-    
-    result = task_query(task_id=task_id)
-    stdout = str(result.get("result", {}).get("stdout", ""))
-    
+max_retries = 60
+for retry_count in range(max_retries):
+    result = qemu_ssh_exec(
+        command="test -f /var/log/novaic-init-done.log && echo 'DONE' || echo 'PENDING'",
+        timeout=10,
+    )
+    stdout = str(result.get("stdout", ""))
     if "DONE" in stdout:
         chat_notify("✅ 系统初始化完成！", level="success")
         break
-    
-    retry_count += 1
-    if retry_count % 6 == 0:  # 每分钟提示一次
+    if retry_count % 6 == 0:
         chat_notify(f"⏳ cloud-init 仍在运行... ({retry_count * 10}秒)", level="info")
-
-if retry_count >= max_retries:
+    time.sleep(10)
+else:
     chat_notify("⚠️ cloud-init 超时，但可以尝试继续", level="warning")
 ```
 
@@ -232,24 +194,13 @@ if retry_count >= max_retries:
 ```python
 chat_notify("📦 部署 MCP Server 代码...", level="info")
 
-task_id = task_async(
-    tool="qemu_deploy_vmuse_code",
-    args={"restart_service": True},
-    label="部署 MCP Server"
-)["task_id"]
-
-while True:
-    result = task_query(task_id=task_id)
-    
-    if result["status"] == "completed":
-        deploy_result = result["result"]
-        if deploy_result.get("success"):
-            files = ", ".join(deploy_result.get("files_copied", []))
-            chat_notify(f"✅ 代码部署完成！\n已复制: {files}", level="success")
-        else:
-            chat_notify(f"❌ 部署失败: {deploy_result.get('error')}", level="error")
-            return
-        break
+result = qemu_deploy_vmuse_code(restart_service=True)
+if result.get("success"):
+    files = ", ".join(result.get("files_copied", []))
+    chat_notify(f"✅ 代码部署完成！\n已复制: {files}", level="success")
+else:
+    chat_notify(f"❌ 部署失败: {result.get('error')}", level="error")
+    return
 ```
 
 ### 阶段 6: 验证 MCP Server
@@ -257,17 +208,9 @@ while True:
 ```python
 chat_notify("🔍 验证 MCP Server...", level="info")
 
-# 等待服务启动 (几秒)
-task_id = task_async(
-    tool="qemu_status",
-    args={},
-    label="验证 MCP"
-)["task_id"]
+status = qemu_status()
 
-result = task_query(task_id=task_id)
-status = result["result"]
-
-if status["mcp_reachable"]:
+if status.get("mcp_reachable"):
     chat_notify(
         "🎉 安装完成！MCP Server 已就绪！\n\n"
         "现在可以使用 VM 内的工具了：\n"

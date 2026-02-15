@@ -175,6 +175,36 @@ impl QueueServiceProcess {
     }
 }
 
+/// Backend 组件: File Service - 文件管理服务
+struct FileServiceProcess {
+    process: Option<Child>,
+    port: u16,
+}
+
+impl FileServiceProcess {
+    fn new() -> Self {
+        Self {
+            process: None,
+            port: 19995,
+        }
+    }
+}
+
+/// Backend 组件: Tool Result Service - 工具结果规范化服务
+struct ToolResultServiceProcess {
+    process: Option<Child>,
+    port: u16,
+}
+
+impl ToolResultServiceProcess {
+    fn new() -> Self {
+        Self {
+            process: None,
+            port: 19994,
+        }
+    }
+}
+
 /// Backend 组件: Service Process - 通用服务进程管理器
 /// v4.0: Saga/Task Architecture (Watchdog, Task Worker, Saga Worker, Health)
 /// Services only communicate with Gateway (Tools ops proxied through Gateway)
@@ -645,8 +675,194 @@ impl Drop for QueueServiceProcess {
     }
 }
 
+impl FileServiceProcess {
+    fn start(&mut self, backend_path: &PathBuf, is_binary: bool, data_dir: &PathBuf, resource_dir: Option<&PathBuf>) -> Result<(), String> {
+        if self.process.is_some() {
+            println!("[File Service] Already running");
+            return Ok(());
+        }
+
+        let data_dir_str = data_dir.to_string_lossy().to_string();
+        let provided_resource_dir = resource_dir.map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
+        let resource_dir_str = if is_binary && provided_resource_dir.is_empty() {
+            if let Some(parent) = backend_path.parent() {
+                if let Some(grandparent) = parent.parent() {
+                    grandparent.to_string_lossy().to_string()
+                } else {
+                    String::new()
+                }
+            } else {
+                String::new()
+            }
+        } else {
+            provided_resource_dir
+        };
+
+        let child = if is_binary {
+            if !backend_path.exists() {
+                return Err(format!("Backend binary not found at {:?}", backend_path));
+            }
+            Command::new(backend_path)
+                .arg("file-service")
+                .arg("--port")
+                .arg(self.port.to_string())
+                .arg("--data-dir")
+                .arg(&data_dir_str)
+                .env("NOVAIC_RESOURCE_DIR", &resource_dir_str)
+                .env("NO_PROXY", "localhost,127.0.0.1,::1")
+                .env("no_proxy", "localhost,127.0.0.1,::1")
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn()
+                .map_err(|e| format!("Failed to start File Service binary: {}", e))?
+        } else {
+            let gateway_dir = backend_path;
+            let venv_python = gateway_dir.join("venv/bin/python");
+            let python = if venv_python.exists() {
+                venv_python.to_string_lossy().to_string()
+            } else if cfg!(target_os = "windows") {
+                "python".to_string()
+            } else {
+                "python3".to_string()
+            };
+            Command::new(&python)
+                .arg("-m")
+                .arg("novaic_main")
+                .arg("file-service")
+                .arg("--port")
+                .arg(self.port.to_string())
+                .arg("--data-dir")
+                .arg(&data_dir_str)
+                .current_dir(&gateway_dir)
+                .env("NOVAIC_DATA_DIR", &data_dir_str)
+                .env("NO_PROXY", "localhost,127.0.0.1,::1")
+                .env("no_proxy", "localhost,127.0.0.1,::1")
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
+                .spawn()
+                .map_err(|e| format!("Failed to start File Service: {}", e))?
+        };
+
+        self.process = Some(child);
+        println!("[File Service] Started on port {}", self.port);
+        Ok(())
+    }
+
+    fn stop(&mut self) {
+        if let Some(mut process) = self.process.take() {
+            let pid = process.id();
+            println!("[File Service] Stopping process (PID: {})...", pid);
+            #[cfg(unix)]
+            unsafe { libc::kill(pid as i32, libc::SIGTERM); }
+            std::thread::sleep(std::time::Duration::from_millis(AppConfig::PROCESS_TERM_WAIT_MS));
+            match process.try_wait() {
+                Ok(Some(_)) => {}
+                Ok(None) => { let _ = process.kill(); let _ = process.wait(); }
+                Err(_) => { let _ = process.kill(); }
+            }
+            println!("[File Service] Stopped");
+        }
+    }
+}
+
+impl Drop for FileServiceProcess {
+    fn drop(&mut self) {
+        self.stop();
+    }
+}
+
+impl ToolResultServiceProcess {
+    fn start(&mut self, backend_path: &PathBuf, is_binary: bool, data_dir: &PathBuf, resource_dir: Option<&PathBuf>) -> Result<(), String> {
+        if self.process.is_some() {
+            println!("[Tool Result Service] Already running");
+            return Ok(());
+        }
+        let data_dir_str = data_dir.to_string_lossy().to_string();
+        let provided_resource_dir = resource_dir.map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
+        let resource_dir_str = if is_binary && provided_resource_dir.is_empty() {
+            if let Some(parent) = backend_path.parent() {
+                if let Some(grandparent) = parent.parent() {
+                    grandparent.to_string_lossy().to_string()
+                } else { String::new() }
+            } else { String::new() }
+        } else {
+            provided_resource_dir
+        };
+        let child = if is_binary {
+            if !backend_path.exists() {
+                return Err(format!("Backend binary not found at {:?}", backend_path));
+            }
+            Command::new(backend_path)
+                .arg("tool-result-service")
+                .arg("--port")
+                .arg(self.port.to_string())
+                .arg("--data-dir")
+                .arg(&data_dir_str)
+                .env("NOVAIC_RESOURCE_DIR", &resource_dir_str)
+                .env("NO_PROXY", "localhost,127.0.0.1,::1")
+                .env("no_proxy", "localhost,127.0.0.1,::1")
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn()
+                .map_err(|e| format!("Failed to start Tool Result Service binary: {}", e))?
+        } else {
+            let gateway_dir = backend_path;
+            let venv_python = gateway_dir.join("venv/bin/python");
+            let python = if venv_python.exists() {
+                venv_python.to_string_lossy().to_string()
+            } else if cfg!(target_os = "windows") {
+                "python".to_string()
+            } else {
+                "python3".to_string()
+            };
+            Command::new(&python)
+                .arg("-m")
+                .arg("novaic_main")
+                .arg("tool-result-service")
+                .arg("--port")
+                .arg(self.port.to_string())
+                .arg("--data-dir")
+                .arg(&data_dir_str)
+                .current_dir(&gateway_dir)
+                .env("NOVAIC_DATA_DIR", &data_dir_str)
+                .env("NO_PROXY", "localhost,127.0.0.1,::1")
+                .env("no_proxy", "localhost,127.0.0.1,::1")
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
+                .spawn()
+                .map_err(|e| format!("Failed to start Tool Result Service: {}", e))?
+        };
+        self.process = Some(child);
+        println!("[Tool Result Service] Started on port {}", self.port);
+        Ok(())
+    }
+    fn stop(&mut self) {
+        if let Some(mut process) = self.process.take() {
+            let pid = process.id();
+            println!("[Tool Result Service] Stopping process (PID: {})...", pid);
+            #[cfg(unix)]
+            unsafe { libc::kill(pid as i32, libc::SIGTERM); }
+            std::thread::sleep(std::time::Duration::from_millis(AppConfig::PROCESS_TERM_WAIT_MS));
+            match process.try_wait() {
+                Ok(Some(_)) => {}
+                Ok(None) => { let _ = process.kill(); let _ = process.wait(); }
+                Err(_) => { let _ = process.kill(); }
+            }
+            println!("[Tool Result Service] Stopped");
+        }
+    }
+}
+
+impl Drop for ToolResultServiceProcess {
+    fn drop(&mut self) {
+        self.stop();
+    }
+}
+
 type GatewayState = Arc<Mutex<GatewayProcess>>;
 type ToolsServerState = Arc<Mutex<ToolsServerProcess>>;
+type FileServiceState = Arc<Mutex<FileServiceProcess>>;
+type ToolResultServiceState = Arc<Mutex<ToolResultServiceProcess>>;
 type VmControlState = Arc<Mutex<VmControlProcess>>;
 // v4.0: Four services (Watchdog, Task Worker, Saga Worker, Health)
 type WatchdogState = Arc<Mutex<ServiceProcess>>;
@@ -698,7 +914,7 @@ fn kill_zombie_processes() {
         }
         
         // Step 2: Kill processes occupying our ports (in case of orphaned processes)
-        let ports = [19999, 19998, 19997];  // Gateway, Tools Server, Queue Service
+        let ports = [19999, 19998, 19997, 19995, 19994];  // Gateway, Tools Server, Queue Service, File Service, Tool Result Service
         for port in ports {
             // Find process using the port via lsof
             let lsof_result = Command::new("lsof")
@@ -1008,6 +1224,14 @@ fn main() {
             let queue_service = Arc::new(Mutex::new(QueueServiceProcess::new()));
             app.manage(queue_service.clone());
             
+            // Backend 组件: File Service（文件管理服务）
+            let file_service = Arc::new(Mutex::new(FileServiceProcess::new()));
+            app.manage(file_service.clone());
+            
+            // Backend 组件: Tool Result Service（工具结果规范化服务）
+            let tool_result_service = Arc::new(Mutex::new(ToolResultServiceProcess::new()));
+            app.manage(tool_result_service.clone());
+            
             // 获取 Gateway URL (所有服务只与 Gateway 通信)
             let gateway_url = {
                 let gw = tauri::async_runtime::block_on(async { gateway.lock().await });
@@ -1067,6 +1291,8 @@ fn main() {
             let vmcontrol_for_start = vmcontrol.clone();
             let tools_server_for_start = tools_server.clone();
             let queue_service_for_start = queue_service.clone();
+            let file_service_for_start = file_service.clone();
+            let tool_result_service_for_start = tool_result_service.clone();
             let data_dir_for_gateway = data_dir.clone();
             let backend_path_clone = backend_path.clone();
             let gateway_dir_clone = gateway_dir.clone();
@@ -1118,6 +1344,28 @@ fn main() {
                         Ok(_) => println!("[Queue Service] Auto-started successfully"),
                         Err(e) => {
                             println!("[Queue Service] Failed to auto-start: {}", e);
+                        }
+                    }
+                }
+                
+                // 4b. Backend 组件: File Service（文件管理服务）
+                {
+                    let mut fs = file_service_for_start.lock().await;
+                    match fs.start(&backend_path, is_binary, &data_dir_for_gateway, resource_dir.as_ref()) {
+                        Ok(_) => println!("[File Service] Auto-started successfully"),
+                        Err(e) => {
+                            println!("[File Service] Failed to auto-start: {}", e);
+                        }
+                    }
+                }
+                
+                // 4c. Backend 组件: Tool Result Service（工具结果规范化服务）
+                {
+                    let mut trs = tool_result_service_for_start.lock().await;
+                    match trs.start(&backend_path, is_binary, &data_dir_for_gateway, resource_dir.as_ref()) {
+                        Ok(_) => println!("[Tool Result Service] Auto-started successfully"),
+                        Err(e) => {
+                            println!("[Tool Result Service] Failed to auto-start: {}", e);
                         }
                     }
                 }

@@ -45,9 +45,9 @@ class ToolExecuteResult:
     success: bool
     tool_call_id: str
     tool_name: str
-    result: Any = None
     error: str = ""
     status: str = ""  # executed / failed
+    result_id: Optional[str] = None  # TRS result_id（Tools Server 推送后返回）
 
 
 class MCPBusiness:
@@ -252,21 +252,26 @@ class MCPBusiness:
         tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", ServiceConfig.TOOLS_SERVER_URL)
         
         try:
-            with httpx.Client(timeout=ServiceConfig.MCP_CALL_TIMEOUT, trust_env=False) as client:
+            # 工具执行无超时限制，由心跳机制管理
+            with httpx.Client(timeout=None, trust_env=False) as client:
                 resp = client.post(
                     f"{tools_server_url}/internal/runtimes/{runtime_id}/tools/call",
-                    json={"name": tool_name, "arguments": arguments}
+                    json={
+                        "name": tool_name,
+                        "arguments": arguments,
+                        "tool_call_id": tool_call_id,
+                    },
                 )
                 resp.raise_for_status()
                 result = resp.json()
-                
+
                 if result.get("success"):
                     return ToolExecuteResult(
                         success=True,
                         tool_call_id=tool_call_id,
                         tool_name=tool_name,
-                        result=result.get("result"),
                         status="executed",
+                        result_id=result.get("result_id"),
                     )
                 else:
                     return ToolExecuteResult(
@@ -326,7 +331,8 @@ class ToolsServerClient:
         Returns:
             工具执行结果
         """
-        with httpx.Client(timeout=ServiceConfig.MCP_CALL_TIMEOUT, trust_env=False) as client:
+        # 工具执行无超时限制，由心跳机制管理
+        with httpx.Client(timeout=None, trust_env=False) as client:
             resp = client.post(
                 f"{self._tools_server_url}/internal/runtimes/{runtime_id}/tools/call",
                 json={"name": tool_name, "arguments": arguments}

@@ -383,7 +383,7 @@ def append_runtime_context(runtime_id: str, data: Dict[str, Any]):
     # 检查 message 是否为 None 或空字典（空字典视为无效消息）
     if message is None:
         raise HTTPException(status_code=400, detail="message required")
-    # 空字典 {} 也视为无效消息，但返回成功（幂等处理）
+    # 空字典 {} 也视为无效消息
     if not message or (isinstance(message, dict) and not message.get("role") and not message.get("content")):
         return {
             "success": True,

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { LogEntry } from '../../types';
 import { ChevronDown, ChevronRight, Copy, Check } from 'lucide-react';
 import { 
@@ -9,6 +9,107 @@ import {
   getErrorInfo 
 } from '../../utils/logFormatters';
 import { UI_CONFIG } from '../../config';
+import { getTrsFull, toFileUrl, type TrsContentItem } from '../../services/trs';
+
+function TrsResultRenderer({ items }: { items: TrsContentItem[] }) {
+  if (!items?.length) return null;
+  return (
+    <div className="space-y-2">
+      {items.map((item, i) => {
+        if (item.type === 'text') {
+          return (
+            <pre key={i} className="whitespace-pre-wrap text-nb-text-muted font-mono text-[11px]">
+              {item.text || ''}
+            </pre>
+          );
+        }
+        if (item.type === 'image' && item.url) {
+          const src = toFileUrl(item.url);
+          return (
+            <img
+              key={i}
+              src={src}
+              alt="Tool result"
+              className="max-w-full max-h-48 rounded border border-nb-border object-contain"
+            />
+          );
+        }
+        if (item.type === 'resource' && item.url) {
+          return (
+            <a key={i} href={toFileUrl(item.url)} target="_blank" rel="noopener noreferrer" className="text-nb-accent text-[11px] hover:underline">
+              [Resource]
+            </a>
+          );
+        }
+        return null;
+      })}
+    </div>
+  );
+}
+
+function ToolResultDisplay({
+  result,
+  error,
+  copied,
+  copyToClipboard,
+}: {
+  result: unknown;
+  error: string | null;
+  copied: string | null;
+  copyToClipboard: (text: string, label: string) => void;
+}) {
+  const robj = result as Record<string, unknown> | null;
+  const resultId = robj?.result_id as string | undefined;
+  const [trsContent, setTrsContent] = useState<TrsContentItem[] | null>(null);
+  const [trsLoading, setTrsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!resultId) return;
+    let cancelled = false;
+    setTrsLoading(true);
+    getTrsFull(resultId).then((res) => {
+      if (cancelled) return;
+      if (res.success && res.normalized?.content) setTrsContent(res.normalized.content);
+    }).finally(() => { if (!cancelled) setTrsLoading(false); });
+    return () => { cancelled = true; };
+  }, [resultId]);
+
+  if (resultId && (trsLoading || trsContent)) {
+    return (
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-nb-success font-medium">📤 执行结果</span>
+          <button onClick={() => copyToClipboard(resultId, 'result')} className="p-1 hover:bg-nb-surface rounded" title="复制">
+            {copied === 'result' ? <Check size={12} className="text-nb-success" /> : <Copy size={12} />}
+          </button>
+        </div>
+        {trsLoading ? (
+          <span className="text-nb-text-muted text-[11px]">加载中...</span>
+        ) : trsContent ? (
+          <div className="bg-nb-surface p-2 rounded max-h-40 overflow-auto">
+            <TrsResultRenderer items={trsContent} />
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <span className={error ? 'text-nb-error font-medium' : 'text-nb-success font-medium'}>
+          {error ? '❌ 执行结果（错误）' : '📤 执行结果'}
+        </span>
+        <button onClick={() => copyToClipboard(formatJsonForDisplay(result), 'result')} className="p-1 hover:bg-nb-surface rounded" title="复制">
+          {copied === 'result' ? <Check size={12} className="text-nb-success" /> : <Copy size={12} />}
+        </button>
+      </div>
+      <pre className={`whitespace-pre-wrap bg-nb-surface p-2 rounded max-h-40 overflow-auto font-mono ${error ? 'text-nb-error' : 'text-nb-text-muted'}`}>
+        {formatJsonForDisplay(result)}
+      </pre>
+    </div>
+  );
+}
 
 interface LogDetailProps {
   log: LogEntry;
@@ -93,24 +194,13 @@ export function LogDetail({ log, isExpanded, onToggle }: LogDetailProps) {
           )}
 
           {/* Tool 类型显示执行结果 */}
-          {(log.kind === 'tool' || log.type === 'tool_end') && !!result && (
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className={error ? 'text-nb-error font-medium' : 'text-nb-success font-medium'}>
-                  {error ? '❌ 执行结果（错误）' : '📤 执行结果'}
-                </span>
-                <button
-                  onClick={() => copyToClipboard(formatJsonForDisplay(result), 'result')}
-                  className="p-1 hover:bg-nb-surface rounded"
-                  title="复制"
-                >
-                  {copied === 'result' ? <Check size={12} className="text-nb-success" /> : <Copy size={12} />}
-                </button>
-              </div>
-              <pre className={`whitespace-pre-wrap bg-nb-surface p-2 rounded max-h-40 overflow-auto font-mono ${error ? 'text-nb-error' : 'text-nb-text-muted'}`}>
-                {formatJsonForDisplay(result)}
-              </pre>
-            </div>
+          {(log.kind === 'tool' || log.type === 'tool_end') && (!!result || !!(result as Record<string, unknown>)?.result_id) && (
+            <ToolResultDisplay
+              result={result}
+              error={error}
+              copied={copied}
+              copyToClipboard={copyToClipboard}
+            />
           )}
 
           {/* 单独显示错误（如果有且未在 result 中显示） */}

@@ -88,21 +88,25 @@ pip install -r requirements.txt
 后端服务有依赖关系，必须按以下顺序启动：
 
 ```
-1. Gateway (核心)
+1. Gateway (核心) - 端口 19999
    ↓
-2. Queue Service (队列)
+2. Queue Service (队列) - 端口 19997
    ↓
-3. Tools Server (工具)
+3. Tools Server (工具) - 端口 19998
    ↓
-4. Watchdog (监控)
+4. File Service (文件) - 端口 19995
    ↓
-5. Task Workers (执行任务)
+5. Tool Result Service (TRS) - 端口 19994
    ↓
-6. Saga Workers (编排)
+6. Watchdog (监控) - 1个
    ↓
-7. Health Worker (健康检查)
+7. Task Workers (执行任务) - 3个
    ↓
-8. Scheduler (定时任务)
+8. Saga Workers (编排) - 3个
+   ↓
+9. Health Worker (健康检查) - 1个
+   ↓
+10. Scheduler (定时任务) - 1个
 ```
 
 ### 各服务启动命令
@@ -145,7 +149,33 @@ curl http://127.0.0.1:19997/health
 python -m novaic_main tools-server --port 19998 --data-dir ./data --gateway-url http://127.0.0.1:19999
 ```
 
-#### 2.4 Watchdog
+#### 2.4 File Service (端口 19995)
+
+文件管理服务，存储和检索文件（图片、文档等）。
+
+```bash
+python -m novaic_main file-service --port 19995 --data-dir ./data
+```
+
+**验证启动**:
+```bash
+curl http://127.0.0.1:19995/api/health
+```
+
+#### 2.5 Tool Result Service (端口 19994)
+
+工具结果规范化服务（TRS），处理和存储工具执行结果。
+
+```bash
+python -m novaic_main tool-result-service --port 19994 --data-dir ./data
+```
+
+**验证启动**:
+```bash
+curl http://127.0.0.1:19994/api/health
+```
+
+#### 2.6 Watchdog
 
 监控新消息，触发处理流程。
 
@@ -153,7 +183,7 @@ python -m novaic_main tools-server --port 19998 --data-dir ./data --gateway-url 
 python -m novaic_main watchdog --gateway-url http://127.0.0.1:19999 --queue-service-url http://127.0.0.1:19997
 ```
 
-#### 2.5 Task Worker (可启动多个)
+#### 2.7 Task Worker (可启动多个)
 
 执行具体任务。
 
@@ -162,7 +192,7 @@ python -m novaic_main watchdog --gateway-url http://127.0.0.1:19999 --queue-serv
 python -m novaic_main task-worker --gateway-url http://127.0.0.1:19999 --queue-service-url http://127.0.0.1:19997
 ```
 
-#### 2.6 Saga Worker (可启动多个)
+#### 2.8 Saga Worker (可启动多个)
 
 处理 Saga 编排流程。
 
@@ -170,7 +200,7 @@ python -m novaic_main task-worker --gateway-url http://127.0.0.1:19999 --queue-s
 python -m novaic_main saga-worker --gateway-url http://127.0.0.1:19999 --queue-service-url http://127.0.0.1:19997
 ```
 
-#### 2.7 Health Worker
+#### 2.9 Health Worker
 
 监控并回收超时的任务和 Saga。
 
@@ -178,7 +208,7 @@ python -m novaic_main saga-worker --gateway-url http://127.0.0.1:19999 --queue-s
 python -m novaic_main health --queue-service-url http://127.0.0.1:19997
 ```
 
-#### 2.8 Scheduler
+#### 2.10 Scheduler
 
 定时唤醒 sleeping agents。
 

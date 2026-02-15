@@ -9,6 +9,7 @@ import { useScrollPagination } from '../../hooks/useScrollPagination';
 import { LOG_ESTIMATE_SIZE, LOG_OVERSCAN } from '../../constants/scroll';
 import { SmartValue } from './SmartValue';
 import { formatTime } from '../../utils/time';
+import { getTrsFull, toFileUrl, type TrsContentItem } from '../../services/trs';
 
 // ==================== LLM Message Types ====================
 
@@ -28,6 +29,7 @@ interface LLMMessage {
   }>;
   tool_call_id?: string;  // tool role 消息
   name?: string;          // tool role 消息的工具名
+  result_id?: string;     // tool role 消息，TRS result_id（不展开，前端按需拉取）
 }
 
 // ==================== Helper Functions ====================
@@ -93,8 +95,8 @@ function parseMessageContent(msg: LLMMessage): {
 
   // tool role 消息
   if (msg.role === 'tool' && msg.tool_call_id) {
-    const prefix = `[Tool Result for: ${msg.tool_call_id}${msg.name ? ` (${msg.name})` : ''}]\n\n`;
-    displayText = prefix + displayText;
+    const prefix = `[Tool Result for: ${msg.tool_call_id}${msg.name ? ` (${msg.name})` : ''}${(msg as LLMMessage).result_id ? ` · TRS: ${(msg as LLMMessage).result_id}` : ''}]\n\n`;
+    displayText = prefix + (displayText || '');
   }
 
   return {
@@ -133,57 +135,157 @@ function getMessageJson(msg: LLMMessage, truncateImages = true): string {
 
 interface ToolResultContentProps {
   content?: string | ContentPart[];
+  resultId?: string;
   toolCallId?: string;
   toolName?: string;
 }
 
 /**
- * 渲染 tool role 消息的内容
- * - 尝试解析 JSON 并用 SmartValue 渲染（支持树形展开和图片预览）
- * - 如果不是 JSON，则显示纯文本
+ * 内联 TRS 结果（用于 LogCard 工具输出）
  */
-function ToolResultContent({ content, toolCallId, toolName }: ToolResultContentProps) {
-  // 提取文本内容
+function InlineTrsResult({ resultId }: { resultId: string }) {
+  const [items, setItems] = useState<TrsContentItem[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    getTrsFull(resultId).then((res) => {
+      if (cancelled) return;
+      if (res.success && res.normalized?.content) setItems(res.normalized.content);
+    }).finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [resultId]);
+  if (loading) return <span className="text-[11px] text-nb-text-muted">加载中...</span>;
+  if (!items?.length) return null;
+  return <TrsContentRenderer items={items} />;
+}
+
+/**
+ * 渲染 TRS content 数组（text + image URL，图片经 File Service）
+ */
+function TrsContentRenderer({ items }: { items: TrsContentItem[] }) {
+  if (!items?.length) return <span className="text-nb-text-muted text-[11px]">(empty)</span>;
+  return (
+    <div className="space-y-2">
+      {items.map((item, i) => {
+        if (item.type === 'text') {
+          return (
+            <pre key={i} className="text-[11px] text-nb-text-muted whitespace-pre-wrap break-words font-mono leading-relaxed">
+              {item.text || ''}
+            </pre>
+          );
+        }
+        if (item.type === 'image' && item.url) {
+          const src = toFileUrl(item.url);
+          return (
+            <div key={i} className="mt-2">
+              <img
+                src={src}
+                alt="Tool result"
+                className="max-w-full max-h-[300px] rounded border border-nb-border object-contain"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            </div>
+          );
+        }
+        if (item.type === 'resource' && item.url) {
+          const href = toFileUrl(item.url);
+          return (
+            <a key={i} href={href} target="_blank" rel="noopener noreferrer" className="text-[11px] text-nb-accent hover:underline">
+              [Resource: {item.mimeType || 'file'}]
+            </a>
+          );
+        }
+        return null;
+      })}
+    </div>
+  );
+}
+
+/**
+ * 渲染 tool role 消息的内容
+ * - 有 result_id：从 TRS 拉取，用 URL 展示图片/文件
+ * - 无 result_id：用 content 渲染（降级）
+ */
+function ToolResultContent({ content, resultId, toolCallId, toolName }: ToolResultContentProps) {
+  const [trsContent, setTrsContent] = useState<TrsContentItem[] | null>(null);
+  const [trsLoading, setTrsLoading] = useState(false);
+  const [trsError, setTrsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!resultId) return;
+    let cancelled = false;
+    setTrsLoading(true);
+    setTrsError(null);
+    getTrsFull(resultId)
+      .then((res) => {
+        if (cancelled) return;
+        if (res.success && res.normalized?.content) {
+          setTrsContent(res.normalized.content);
+        } else {
+          setTrsError('TRS fetch failed');
+        }
+      })
+      .catch((e) => {
+        if (!cancelled) setTrsError(String(e));
+      })
+      .finally(() => {
+        if (!cancelled) setTrsLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [resultId]);
+
+  if (resultId) {
+    if (trsLoading) return <div className="text-[11px] text-nb-text-muted">加载中...</div>;
+    if (trsError) return <div className="text-[11px] text-nb-error">加载失败: {trsError}</div>;
+    if (trsContent) {
+      return (
+        <div className="space-y-2">
+          {(toolCallId || toolName) && (
+            <div className="text-[10px] text-purple-400/70 mb-2">
+              {toolName && <span className="font-medium">{toolName}</span>}
+              {toolCallId && <span className="text-nb-text-muted ml-2">({toolCallId})</span>}
+            </div>
+          )}
+          <TrsContentRenderer items={trsContent} />
+        </div>
+      );
+    }
+  }
+
+  // 降级：用 content 渲染
   let textContent = '';
   if (typeof content === 'string') {
     textContent = content;
   } else if (Array.isArray(content)) {
-    // 多模态 content，提取 text 部分
     textContent = content
       .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
       .map(part => part.text)
       .join('\n');
   }
 
-  // 尝试解析 JSON
   let parsedJson: unknown = null;
   let isJson = false;
-  
   if (textContent) {
     try {
       parsedJson = JSON.parse(textContent);
       isJson = typeof parsedJson === 'object' && parsedJson !== null;
     } catch {
-      // 不是 JSON，保持 isJson = false
+      /* ignore */
     }
   }
 
   return (
     <div className="space-y-2">
-      {/* Tool Call ID 信息 */}
       {(toolCallId || toolName) && (
         <div className="text-[10px] text-purple-400/70 mb-2">
           {toolName && <span className="font-medium">{toolName}</span>}
           {toolCallId && <span className="text-nb-text-muted ml-2">({toolCallId})</span>}
         </div>
       )}
-      
-      {/* 内容渲染 */}
       {isJson ? (
-        // JSON 用 SmartValue 渲染（树形展开 + 图片预览）
         <SmartValue value={parsedJson} copyable={false} />
       ) : (
-        // 非 JSON 用纯文本
         <pre className="text-[11px] text-nb-text-muted whitespace-pre-wrap break-words font-mono leading-relaxed">
           {textContent || '(empty)'}
         </pre>
@@ -776,7 +878,12 @@ function LLMInputModal({ isOpen, onClose, messages, model, tools, provider }: LL
               ) : (
                 <div className="p-3 max-h-[400px] overflow-y-auto">
                   {original.role === 'tool' ? (
-                    <ToolResultContent content={original.content} toolCallId={original.tool_call_id} toolName={original.name} />
+                    <ToolResultContent
+                      content={original.content}
+                      resultId={original.result_id}
+                      toolCallId={original.tool_call_id}
+                      toolName={original.name}
+                    />
                   ) : (
                     <pre className="text-[11px] text-nb-text-muted whitespace-pre-wrap break-words font-mono leading-relaxed">
                       {parsed.displayText}
@@ -1163,7 +1270,7 @@ function LogCard({ log, isExpanded, onToggle, showSubagent }: LogCardProps) {
           ) : null}
           
           {/* 工具输出 */}
-          {isTool && result ? (
+          {isTool && (result || (result as Record<string, unknown>)?.result_id) ? (
             <div className="space-y-1.5">
               <div className={`flex items-center gap-1.5 text-[10px] font-medium ${
                 isFailed ? 'text-nb-error/70' : 'text-nb-success/70'
@@ -1174,7 +1281,11 @@ function LogCard({ log, isExpanded, onToggle, showSubagent }: LogCardProps) {
               <div className={`bg-nb-bg rounded-md p-2.5 border ${
                 isFailed ? 'border-nb-error/20' : 'border-nb-border/30'
               }`}>
-                <SmartValue value={result} isError={isFailed} copyable />
+                {!isFailed && (result as Record<string, unknown>)?.result_id ? (
+                  <InlineTrsResult resultId={(result as Record<string, unknown>).result_id as string} />
+                ) : (
+                  <SmartValue value={result} isError={isFailed} copyable />
+                )}
               </div>
             </div>
           ) : null}

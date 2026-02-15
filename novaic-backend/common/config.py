@@ -25,6 +25,16 @@ class ServiceConfig:
     VMCONTROL_PORT = int(os.getenv("VMCONTROL_PORT", "19996"))
     VMCONTROL_URL = os.getenv("VMCONTROL_URL", f"http://{VMCONTROL_HOST}:{VMCONTROL_PORT}")
     
+    # File Service
+    FILE_SERVICE_HOST = os.getenv("FILE_SERVICE_HOST", "127.0.0.1")
+    FILE_SERVICE_PORT = int(os.getenv("FILE_SERVICE_PORT", "19995"))
+    FILE_SERVICE_URL = os.getenv("FILE_SERVICE_URL", f"http://{FILE_SERVICE_HOST}:{FILE_SERVICE_PORT}")
+    
+    # Tool Result Service
+    TOOL_RESULT_SERVICE_HOST = os.getenv("TOOL_RESULT_SERVICE_HOST", "127.0.0.1")
+    TOOL_RESULT_SERVICE_PORT = int(os.getenv("TOOL_RESULT_SERVICE_PORT", "19994"))
+    TOOL_RESULT_SERVICE_URL = os.getenv("TOOL_RESULT_SERVICE_URL", f"http://{TOOL_RESULT_SERVICE_HOST}:{TOOL_RESULT_SERVICE_PORT}")
+    
     # Timeouts
     # 超时配置计算逻辑：
     # - LLM_TIMEOUT = 300s
@@ -142,6 +152,12 @@ class ServiceConfig:
         
         if not (1024 <= cls.VMCONTROL_PORT <= 65535):
             errors.append(f"Invalid VMCONTROL_PORT: {cls.VMCONTROL_PORT}")
+        
+        if not (1024 <= cls.FILE_SERVICE_PORT <= 65535):
+            errors.append(f"Invalid FILE_SERVICE_PORT: {cls.FILE_SERVICE_PORT}")
+        
+        if not (1024 <= cls.TOOL_RESULT_SERVICE_PORT <= 65535):
+            errors.append(f"Invalid TOOL_RESULT_SERVICE_PORT: {cls.TOOL_RESULT_SERVICE_PORT}")
         
         # 验证超时值
         if cls.TASK_TIMEOUT <= 0:
