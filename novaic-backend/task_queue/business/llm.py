@@ -149,7 +149,9 @@ class LLMBusiness:
             return SummaryResult(success=True, summary=runtime.get("summary", ""), cached=True)
 
         context = runtime.get("context") or []
-        
+        from ..utils.trs_client import expand_messages_for_summary
+        context = expand_messages_for_summary(context)
+
         if not context:
             return SummaryResult(success=True, summary="", error="No conversation to summarize")
         
@@ -256,9 +258,11 @@ class LLMBusiness:
         runtime = self.client.get_runtime(runtime_id)
         if not runtime:
             return HotColdSummaryResult(success=False, error="Runtime not found")
-        
+
         context = runtime.get("context") or []
-        
+        from ..utils.trs_client import expand_messages_for_summary
+        context = expand_messages_for_summary(context)
+
         if not context:
             return HotColdSummaryResult(
                 success=True, 

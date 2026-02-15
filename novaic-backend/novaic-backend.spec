@@ -16,6 +16,8 @@ a = Analysis(
         ('queue_service', 'queue_service'),
         ('tools_server', 'tools_server'),
         ('mcp_client', 'mcp_client'),
+        ('file_service', 'file_service'),
+        ('tool_result_service', 'tool_result_service'),
         # Include individual main files for imports
         ('main_gateway.py', '.'),
         ('main_tools.py', '.'),
@@ -103,6 +105,19 @@ a = Analysis(
         'tools_server.executor',
         'tools_server.tools',
         'tools_server.runtime_manager',
+        # File service
+        'file_service',
+        'file_service.main',
+        'file_service.routes',
+        'file_service.storage',
+        # Tool result service
+        'tool_result_service',
+        'tool_result_service.main',
+        'tool_result_service.api',
+        'tool_result_service.storage',
+        'tool_result_service.normalizer',
+        'tool_result_service.resolver',
+        'tool_result_service.clients',
         # MCP client
         'mcp_client',
         'mcp_client.mcp_client',

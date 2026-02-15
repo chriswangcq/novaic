@@ -711,8 +711,8 @@ impl FileServiceProcess {
                 .env("NOVAIC_RESOURCE_DIR", &resource_dir_str)
                 .env("NO_PROXY", "localhost,127.0.0.1,::1")
                 .env("no_proxy", "localhost,127.0.0.1,::1")
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
                 .spawn()
                 .map_err(|e| format!("Failed to start File Service binary: {}", e))?
         } else {
@@ -801,8 +801,8 @@ impl ToolResultServiceProcess {
                 .env("NOVAIC_RESOURCE_DIR", &resource_dir_str)
                 .env("NO_PROXY", "localhost,127.0.0.1,::1")
                 .env("no_proxy", "localhost,127.0.0.1,::1")
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
                 .spawn()
                 .map_err(|e| format!("Failed to start Tool Result Service binary: {}", e))?
         } else {
@@ -893,7 +893,7 @@ fn kill_zombie_processes() {
             "main_health.py",
             "main_scheduler.py",
             "queue_service",         // Queue service module
-            "novaic_main.py",        // Legacy unified entry
+            "novaic_main",           // Unified entry (matches both .py and -m novaic_main)
         ];
         
         let mut killed_count = 0;
