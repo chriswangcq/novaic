@@ -191,7 +191,7 @@ VM_TOOLS = [
     },
     {
         "name": "mouse",
-        "description": "Control mouse in VM using two-phase aim system. Phase 1: 'aim' action takes screenshot with crosshair and returns aim_id. Phase 2: Use aim_id with Delta adjustments to click/right_click/double/scroll. Supports zoom (2x-10x) for precision. Aim_id expires in 10 minutes.",
+        "description": "Control mouse in VM with two-phase aim workflow. Phase 1: call action='aim' with x,y to get a zoomed crosshair screenshot and an aim_id. You can refine aim with delta-based re-aim, then execute click/right_click/double/scroll using aim_id. aim_id is reusable within TTL (10 minutes).",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -206,16 +206,20 @@ VM_TOOLS = [
                     ]
                 },
                 "x": {
-                    "type": "integer"
+                    "type": "integer",
+                    "description": "X coordinate for action=aim"
                 },
                 "y": {
-                    "type": "integer"
+                    "type": "integer",
+                    "description": "Y coordinate for action=aim"
                 },
                 "aim_id": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Aim ID from a previous aim step. Required for click/right_click/double/scroll, and for delta-based re-aim."
                 },
                 "zoom": {
                     "type": "number",
+                    "description": "Zoom factor for action=aim (typical range: 2-10)",
                     "default": 2.0
                 }
             },
@@ -717,7 +721,7 @@ RUNTIME_TOOLS: List[Dict[str, Any]] = [
 CHAT_TOOLS: List[Dict[str, Any]] = [
     {
         "name": "chat_reply",
-        "description": "Send a reply message to the user. Non-blocking, supports attachments (images, files). Message is broadcasted via SSE to frontend in real-time. Use for status updates, results, and notifications.",
+        "description": "Send a reply message to the user. Non-blocking, supports attachments (images, files via File Service URLs). Message is broadcasted via SSE to frontend in real-time. Use for status updates, results, notifications, and sharing files/images with user.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -728,41 +732,28 @@ CHAT_TOOLS: List[Dict[str, Any]] = [
                 "attachments": {
                     "type": "array",
                     "items": {
-                        "type": "string"
+                        "type": "object",
+                        "properties": {
+                            "url": {
+                                "type": "string",
+                                "description": "File Service URL (e.g. /api/files/images/agent-xxx/screenshot.png)"
+                            },
+                            "filename": {
+                                "type": "string",
+                                "description": "Display filename"
+                            },
+                            "mime_type": {
+                                "type": "string",
+                                "description": "MIME type (e.g. image/png)"
+                            }
+                        },
+                        "required": ["url"]
                     },
-                    "description": "Optional list of attachment URLs or file paths"
+                    "description": "Optional list of file attachments to show in chat (images will be displayed inline)"
                 }
             },
             "required": [
                 "message"
-            ]
-        }
-    },
-    {
-        "name": "chat_ask",
-        "description": "Ask user a question and wait for response. Blocks until user replies or timeout. Can provide preset options for user selection. Use when user input is required to proceed.",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "question": {
-                    "type": "string",
-                    "description": "Question to ask the user"
-                },
-                "options": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "description": "Optional list of choices for the user"
-                },
-                "timeout_seconds": {
-                    "type": "integer",
-                    "description": "How long to wait for response (default: 300)",
-                    "default": 300
-                }
-            },
-            "required": [
-                "question"
             ]
         }
     },
@@ -1212,7 +1203,7 @@ MOBILE_TOOLS: List[Dict[str, Any]] = [
     },
     {
         "name": "mobile_touch",
-        "description": "Perform touch actions on Android device using two-phase aim system. Phase 1: 'aim' with (x,y) returns aim_id and zoomed screenshot. Phase 2: Use aim_id with Delta to tap/long_press/swipe. Similar to desktop mouse but for touchscreen.",
+        "description": "Perform Android touch control with strict two-phase aim workflow. Phase 1: action='aim' with x,y returns aim_id and a zoomed screenshot. Phase 2: all coordinate actions must use aim_id (no direct execute coordinates). For swipe, provide both start aim_id and end_aim_id. aim_id is reusable within TTL (10 minutes).",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -1221,22 +1212,23 @@ MOBILE_TOOLS: List[Dict[str, Any]] = [
                     "enum": [
                         "aim",
                         "tap",
+                        "double_tap",
                         "long_press",
                         "swipe",
-                        "double"
+                        "scroll"
                     ]
                 },
                 "x": {
                     "type": "integer",
-                    "description": "X coordinate (for aim)"
+                    "description": "X coordinate for action=aim"
                 },
                 "y": {
                     "type": "integer",
-                    "description": "Y coordinate (for aim)"
+                    "description": "Y coordinate for action=aim"
                 },
                 "aim_id": {
                     "type": "string",
-                    "description": "Aim ID from previous aim action"
+                    "description": "Start Aim ID from previous aim action. Required for tap/double_tap/long_press/swipe/scroll."
                 },
                 "zoom": {
                     "type": "number",
@@ -1245,15 +1237,20 @@ MOBILE_TOOLS: List[Dict[str, Any]] = [
                 },
                 "duration": {
                     "type": "integer",
-                    "description": "Duration in ms for long_press"
+                    "description": "Duration in ms (used by long_press/swipe/scroll)"
                 },
-                "end_x": {
-                    "type": "integer",
-                    "description": "End X for swipe"
+                "end_aim_id": {
+                    "type": "string",
+                    "description": "End Aim ID for swipe destination (required for action=swipe)"
                 },
-                "end_y": {
+                "direction": {
+                    "type": "string",
+                    "enum": ["up", "down", "left", "right"],
+                    "description": "Scroll direction (required for action=scroll)"
+                },
+                "distance": {
                     "type": "integer",
-                    "description": "End Y for swipe"
+                    "description": "Scroll distance in pixels (used by action=scroll; default 500)"
                 }
             },
             "required": [

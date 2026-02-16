@@ -136,8 +136,11 @@ paper/benchmarks/
 # Note: The actual ~/.nb-cc directory is outside the repo
 paper/benchmarks/data/
 *.db
+*.db-shm
+*.db-wal
 *.sqlite
 *.sqlite3
+novaic-backend/data/
 
 # Log files
 logs/

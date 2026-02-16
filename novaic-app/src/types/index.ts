@@ -165,10 +165,7 @@ export interface Message {
 export type ChatMessageType = 
   | 'USER_MESSAGE'
   | 'SYSTEM_MESSAGE'  // System-generated messages (bootstrap, scheduled tasks, etc.)
-  | 'AGENT_REPLY' 
-  | 'AGENT_ASK'
-  | 'AGENT_NOTIFY'
-  | 'AGENT_IMAGE'
+  | 'AGENT_REPLY'     // Agent reply with optional attachments
   | 'STATUS_UPDATE'
   // Internal messages (should be hidden from chat UI)
   | 'SPAWN_SUBAGENT'      // 子代理创建任务
@@ -182,17 +179,8 @@ export interface ChatSSEMessage {
   // Agent ID for filtering messages
   agent_id?: string;
   // For USER_MESSAGE and AGENT_REPLY
-  content?: string;
+  content?: string | { text: string; attachments?: Array<{ url: string; filename: string; mime_type?: string }> };
   message?: string;
-  // For AGENT_ASK
-  question?: string;
-  options?: Array<{ id: string; label: string }>;
-  request_id?: string;
-  // For AGENT_NOTIFY
-  level?: 'info' | 'success' | 'warning' | 'error';
-  // For AGENT_IMAGE
-  image_url?: string;
-  caption?: string;
   // For STATUS_UPDATE
   message_id?: string;
   status?: MessageStatus;
@@ -205,6 +193,12 @@ export interface Attachment {
   path: string;
   size: number;
   type: string;
+  /** URL from File Service (use with toFileUrl for display) */
+  url?: string;
+  /** MIME type for images/resources */
+  mime_type?: string;
+  /** 'image' for inline preview, 'resource' for download link */
+  modality?: 'image' | 'resource';
 }
 
 // Think 类型日志的 input 摘要（当不加载完整 input 时返回）

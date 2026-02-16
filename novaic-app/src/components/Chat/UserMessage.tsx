@@ -3,6 +3,7 @@ import { Message, MessageStatus } from '../../types';
 import { Check, CheckCheck, Clock, AlertCircle, ChevronDown } from 'lucide-react';
 import { Markdown } from './Markdown';
 import { useAppStore } from '../../store';
+import { FileAttachmentList } from './FileAttachment';
 
 interface UserMessageProps {
   message: Message;
@@ -71,17 +72,10 @@ export function UserMessage({ message, showHeader = true, showStatus = true }: U
         <span>{statusInfo.text}</span>
       </div>
 
-      {/* Attachments - right aligned */}
+      {/* Attachments - 微信风格文件卡片 */}
       {message.attachments && message.attachments.length > 0 && (
-        <div className="mt-1.5 flex flex-wrap gap-1.5 justify-end">
-          {message.attachments.map((attachment) => (
-            <div
-              key={attachment.id}
-              className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-nb-surface border border-nb-border text-[11px] text-nb-text-muted"
-            >
-              <span className="truncate max-w-[120px]">{attachment.name}</span>
-            </div>
-          ))}
+        <div className="mt-1.5 flex justify-end">
+          <FileAttachmentList attachments={message.attachments} />
         </div>
       )}
     </div>

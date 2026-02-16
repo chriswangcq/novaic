@@ -120,13 +120,17 @@ class FileStorage:
         if len(data) > size_limit:
             raise ValueError(f"File too large: {len(data)} > {size_limit}")
 
-        # 方案 C：始终由 File Service 生成唯一名，忽略传入的 filename
-        if category == "images":
+        # 确定扩展名：优先从原始文件名提取，其次从 MIME 类型推断
+        ext = "bin"
+        if filename and "." in filename:
+            # 从原始文件名提取扩展名
+            ext = filename.rsplit(".", 1)[-1].lower()
+        elif category == "images":
             ext, _ = _detect_image_type(data)
         elif mime_type and mime_type in MIME_TO_CATEGORY:
             _, ext = MIME_TO_CATEGORY[mime_type]
-        else:
-            ext = "bin"
+        
+        # 生成唯一文件名（保留扩展名）
         filename = _generate_filename(data, ext)
 
         dir_path = self._get_dir(category, agent_id, subagent_id)

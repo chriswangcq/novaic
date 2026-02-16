@@ -37,6 +37,23 @@ def get_unread_messages(agent_id: str):
     return {"messages": user_messages}
 
 
+def _parse_message_content(content) -> dict:
+    """Parse stored content: JSON {"text","attachments"} or plain string -> dict."""
+    if content is None:
+        return {"text": "", "attachments": []}
+    if isinstance(content, dict):
+        return content
+    s = str(content).strip()
+    if not s:
+        return {"text": "", "attachments": []}
+    if s.startswith("{") and "attachments" in s:
+        try:
+            return json.loads(s)
+        except json.JSONDecodeError:
+            pass
+    return {"text": s, "attachments": []}
+
+
 @router.get("/messages/unread-sent/{agent_id}")
 def get_unread_sent_messages(agent_id: str):
     """Get unread sent messages for an agent (USER_MESSAGE, SYSTEM_WAKE, SUBAGENT_COMPLETED)."""
@@ -49,10 +66,17 @@ def get_unread_sent_messages(agent_id: str):
     # Include USER_MESSAGE, SYSTEM_WAKE, and SUBAGENT_COMPLETED types
     # All are treated as user role messages in the LLM context
     valid_types = ("USER_MESSAGE", "SYSTEM_WAKE", "SUBAGENT_COMPLETED")
-    user_messages = [
-        {"id": m["id"], "content": m["content"], "timestamp": m["timestamp"], "type": m.get("type")}
-        for m in messages if m.get("type") in valid_types
-    ]
+    user_messages = []
+    for m in messages:
+        if m.get("type") not in valid_types:
+            continue
+        content = _parse_message_content(m["content"])
+        user_messages.append({
+            "id": m["id"],
+            "content": content,
+            "timestamp": m["timestamp"],
+            "type": m.get("type"),
+        })
 
     return {"messages": user_messages}
 

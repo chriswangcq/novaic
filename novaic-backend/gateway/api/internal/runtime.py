@@ -938,29 +938,34 @@ def rt_chat_event(runtime_id: str, data: Dict[str, Any]):
     
     # Extract content based on event type
     if event_type == "AGENT_REPLY":
-        content = event_data.get("message", "")
+        text = event_data.get("message", "")
         
         # HEARTBEAT_OK 协议：静默完成，不写入消息（双重保险，executor.py 应该已经拦截）
-        message_stripped = content.strip() if content else ""
+        message_stripped = text.strip() if text else ""
         if message_stripped == "HEARTBEAT_OK" or message_stripped.startswith("HEARTBEAT_OK"):
             print(f"[rt_chat_event] HEARTBEAT_OK received for runtime {runtime_id}, silent completion (fallback)")
             return {"success": True, "silent": True, "message": "Heartbeat acknowledged silently."}
-    elif event_type == "AGENT_ASK":
-        question = event_data.get("question", "")
-        options = event_data.get("options")
-        content = question
-        if options:
-            content += "\n\n选项: " + ", ".join(options)
-    elif event_type == "AGENT_NOTIFY":
-        content = event_data.get("message", "")
-        level = event_data.get("level", "info")
-        content = f"[{level}] {content}"
-    elif event_type == "AGENT_IMAGE":
-        image_url = event_data.get("image_url", "")
-        caption = event_data.get("caption", "")
-        content = f"[图片: {image_url}]"
-        if caption:
-            content += f"\n{caption}"
+        
+        # 处理 attachments（统一格式 {url, filename, mime_type}）
+        raw_attachments = event_data.get("attachments") or []
+        attachments = []
+        for a in raw_attachments:
+            if isinstance(a, dict) and a.get("url"):
+                att = {
+                    "url": a["url"],
+                    "filename": a.get("filename") or a["url"].rsplit("/", 1)[-1].split("?")[0] or "file",
+                    "mime_type": a.get("mime_type", "application/octet-stream"),
+                }
+                att["modality"] = "image" if att["mime_type"].startswith("image/") else "resource"
+                attachments.append(att)
+            elif isinstance(a, str) and a:
+                # 兼容纯 URL 字符串
+                filename = a.rsplit("/", 1)[-1].split("?")[0] or "file"
+                attachments.append({"url": a, "filename": filename, "mime_type": "application/octet-stream", "modality": "resource"})
+        
+        # 存储为 JSON 格式 {text, attachments}
+        content_obj = {"text": text, "attachments": attachments}
+        content = json.dumps(content_obj, ensure_ascii=False)
     else:
         content = event_data.get("message", "") or json.dumps(event_data)
     
@@ -1003,21 +1008,15 @@ def rt_chat_event(runtime_id: str, data: Dict[str, Any]):
             "type": event_type,
             "timestamp": timestamp,
             "agent_id": agent_id,
-            # Include both 'message' and 'content' for compatibility
-            "message": content,
-            "content": content,
         }
         
-        # Add extra fields based on event type
-        if event_type == "AGENT_ASK":
-            ui_message["question"] = event_data.get("question", "")
-            ui_message["options"] = event_data.get("options")
-            ui_message["request_id"] = event_data.get("request_id")
-        elif event_type == "AGENT_NOTIFY":
-            ui_message["level"] = event_data.get("level", "info")
-        elif event_type == "AGENT_IMAGE":
-            ui_message["image_url"] = event_data.get("image_url", "")
-            ui_message["caption"] = event_data.get("caption", "")
+        # AGENT_REPLY: 发送 content 对象（前端解析 {text, attachments}）
+        if event_type == "AGENT_REPLY":
+            ui_message["content"] = content_obj  # 直接发对象，前端已支持解析
+            ui_message["message"] = text  # 兼容旧前端
+        else:
+            ui_message["message"] = content
+            ui_message["content"] = content
         
         # Push to all UI SSE subscribers
         for queue in _chat_subscribers.values():
@@ -1070,14 +1069,14 @@ def rt_chat_history(
     
     result_messages = []
     for m in messages:
-        content = m.get("content", "") or ""
-        if summary_length > 0 and len(content) > summary_length:
-            content = content[:summary_length] + "..."
+        # content 已被 Repository 统一解析为 dict
+        content = m.get("content") or {"text": "", "attachments": []}
         msg_type = m.get("type", "")
         role = "user" if msg_type == "USER_MESSAGE" else "assistant"
         result_messages.append({
             "id": m.get("id"), "role": role, "type": msg_type,
-            "content": content, "timestamp": m.get("timestamp"),
+            "content": content,  # dict 格式，Agent 可直接使用
+            "timestamp": m.get("timestamp"),
         })
     
     return {"messages": result_messages, "has_more": len(messages) >= limit}

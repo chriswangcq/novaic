@@ -57,8 +57,28 @@ function parseMessageContent(msg: LLMMessage): {
 
   // 处理 content
   if (typeof msg.content === 'string') {
-    displayText = msg.content;
-    rawSize = msg.content.length;
+    // 尝试解析 JSON 格式 {"text": "...", "attachments": [...]}
+    try {
+      const parsed = JSON.parse(msg.content);
+      if (typeof parsed === 'object' && parsed !== null && ('text' in parsed || 'attachments' in parsed)) {
+        displayText = parsed.text || '';
+        rawSize = msg.content.length;
+        // 处理 attachments
+        if (parsed.attachments && Array.isArray(parsed.attachments)) {
+          const attNames = parsed.attachments.map((a: { filename?: string; url?: string }) => a.filename || a.url || 'file').join(', ');
+          if (attNames) {
+            displayText += displayText ? `\n\n[附件: ${attNames}]` : `[附件: ${attNames}]`;
+          }
+        }
+      } else {
+        displayText = msg.content;
+        rawSize = msg.content.length;
+      }
+    } catch {
+      // 不是 JSON，当作普通字符串
+      displayText = msg.content;
+      rawSize = msg.content.length;
+    }
   } else if (Array.isArray(msg.content)) {
     // 多模态 content 数组
     const textParts: string[] = [];
@@ -82,6 +102,17 @@ function parseMessageContent(msg: LLMMessage): {
       }
     }
     displayText = textParts.join('\n\n');
+  } else if (typeof msg.content === 'object' && msg.content !== null) {
+    // 对象格式 {"text": "...", "attachments": [...]}（非数组）
+    const contentObj = msg.content as { text?: string; attachments?: Array<{ filename?: string; url?: string }> };
+    displayText = contentObj.text || '';
+    rawSize = JSON.stringify(msg.content).length;
+    if (contentObj.attachments && Array.isArray(contentObj.attachments)) {
+      const attNames = contentObj.attachments.map(a => a.filename || a.url || 'file').join(', ');
+      if (attNames) {
+        displayText += displayText ? `\n\n[附件: ${attNames}]` : `[附件: ${attNames}]`;
+      }
+    }
   }
 
   // 处理 tool_calls
@@ -965,6 +996,7 @@ function LLMInputModal({ isOpen, onClose, messages, model, tools, provider }: LL
 
 interface ExecutionLogProps {
   logs: LogEntry[];
+  showHeader?: boolean;
 }
 
 // 截断字符串
@@ -1305,7 +1337,7 @@ function LogCard({ log, isExpanded, onToggle, showSubagent }: LogCardProps) {
 
 // ==================== 主组件 ====================
 
-export function ExecutionLog({ logs }: ExecutionLogProps) {
+export function ExecutionLog({ logs, showHeader = true }: ExecutionLogProps) {
   const { 
     currentAgentId, 
     logSubagentId, 
@@ -1416,44 +1448,46 @@ export function ExecutionLog({ logs }: ExecutionLogProps) {
   return (
     <div className="h-full flex flex-col bg-nb-bg">
       {/* Header */}
-      <div className="h-10 px-4 flex items-center gap-3 bg-nb-surface border-b border-nb-border">
-        <div className="flex items-center gap-2">
-          <Terminal size={14} className="text-nb-text-secondary" />
-          <span className="text-xs font-medium text-nb-text-muted">Execution Log</span>
-        </div>
+      {showHeader && (
+        <div className="h-10 px-4 flex items-center gap-3 bg-nb-surface border-b border-nb-border">
+          <div className="flex items-center gap-2">
+            <Terminal size={14} className="text-nb-text-secondary" />
+            <span className="text-xs font-medium text-nb-text-muted">Execution Log</span>
+          </div>
 
-        {/* Subagent tabs */}
-        {logSubagents.length > 0 && (
-          <>
-            <div className="w-px h-4 bg-nb-border" />
-            <div className="flex items-center gap-1">
-              <button
-                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
-                  logSubagentId === null 
-                    ? 'bg-white/10 text-nb-text' 
-                    : 'text-nb-text-secondary hover:text-nb-text-muted hover:bg-nb-hover'
-                }`}
-                onClick={() => setLogSubagentId(null)}
-              >
-                全部
-              </button>
-              {logSubagents.map(id => (
+          {/* Subagent tabs */}
+          {logSubagents.length > 0 && (
+            <>
+              <div className="w-px h-4 bg-nb-border" />
+              <div className="flex items-center gap-1">
                 <button
-                  key={id}
                   className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
-                    logSubagentId === id 
+                    logSubagentId === null 
                       ? 'bg-white/10 text-nb-text' 
                       : 'text-nb-text-secondary hover:text-nb-text-muted hover:bg-nb-hover'
                   }`}
-                  onClick={() => setLogSubagentId(id)}
+                  onClick={() => setLogSubagentId(null)}
                 >
-                  {id}
+                  全部
                 </button>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
+                {logSubagents.map(id => (
+                  <button
+                    key={id}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
+                      logSubagentId === id 
+                        ? 'bg-white/10 text-nb-text' 
+                        : 'text-nb-text-secondary hover:text-nb-text-muted hover:bg-nb-hover'
+                    }`}
+                    onClick={() => setLogSubagentId(id)}
+                  >
+                    {id}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Log content */}
       <div

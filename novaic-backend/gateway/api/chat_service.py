@@ -95,19 +95,18 @@ class ChatService:
             type_filter=type_filter,
         )
         
-        # Create summarized messages if needed
+        # Create message list (no truncation - frontend handles display)
         summarized = []
         for msg in messages:
             content = msg.get("content") or ""
-            is_truncated = summary_length > 0 and len(content) > summary_length
             
             summary_msg = {
                 "id": msg.get("id"),
                 "type": msg.get("type"),
                 "timestamp": msg.get("timestamp"),
                 "read": msg.get("read", False),
-                "summary": content[:summary_length] + "..." if is_truncated else content,
-                "is_truncated": is_truncated,
+                "summary": content,
+                "is_truncated": False,
             }
             
             # Include metadata fields

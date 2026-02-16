@@ -27,6 +27,30 @@ class ChatRepository:
     def __init__(self, db: Database):
         self.db = db
     
+    def _parse_content(self, content: Any) -> Dict[str, Any]:
+        """
+        统一解析 content 字段：JSON 字符串或 dict -> dict
+        
+        数据库存储的是 JSON 字符串，读取时统一解析为 dict。
+        """
+        if content is None:
+            return {"text": "", "attachments": []}
+        if isinstance(content, dict):
+            return content
+        s = str(content).strip()
+        if not s:
+            return {"text": "", "attachments": []}
+        if s.startswith("{"):
+            try:
+                parsed = json.loads(s)
+                if isinstance(parsed, dict):
+                    if "text" not in parsed and "attachments" not in parsed:
+                        return {"text": s, "attachments": []}
+                    return parsed
+            except json.JSONDecodeError:
+                pass
+        return {"text": s, "attachments": []}
+    
     # ==================== Unified Chat Messages ====================
     
     def add_message(
@@ -250,7 +274,7 @@ class ChatRepository:
             except json.JSONDecodeError:
                 pass
         
-        content = row.get("content")
+        content = self._parse_content(row.get("content"))  # 统一解析为 dict
         msg_type = row["type"]
         
         result = {
@@ -266,9 +290,9 @@ class ChatRepository:
         # Add 'message' field for AGENT_REPLY (frontend compatibility)
         # Frontend expects: msg.message || msg.content
         if msg_type == "AGENT_REPLY":
-            result["message"] = content
+            result["message"] = content.get("text", "") if isinstance(content, dict) else content
         elif msg_type == "AGENT_ASK":
-            result["question"] = content
+            result["question"] = content.get("text", "") if isinstance(content, dict) else content
         
         return result
     

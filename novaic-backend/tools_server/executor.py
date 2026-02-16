@@ -160,9 +160,6 @@ BUILTIN_TOOL_NAMES = {
     # Chat 工具
     "chat_event",
     "chat_reply",
-    "chat_ask",
-    "chat_notify",
-    "chat_show_image",
     "chat_history",
     "chat_get_message",
     
@@ -877,35 +874,6 @@ class ToolExecutor:
                 )
                 return self._handle_response(response)
             
-            elif tool_name == "chat_ask":
-                # 向用户提问
-                response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/chat/event",
-                    json={
-                        "type": "AGENT_ASK",
-                        "data": {
-                            "question": arguments.get("question", ""),
-                            "options": arguments.get("options"),
-                            "timeout_seconds": arguments.get("timeout_seconds", 300),
-                        },
-                    }
-                )
-                return self._handle_response(response)
-            
-            elif tool_name == "chat_notify":
-                # 发送通知
-                response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/chat/event",
-                    json={
-                        "type": "AGENT_NOTIFY",
-                        "data": {
-                            "message": arguments.get("message", ""),
-                            "level": arguments.get("level", "info"),
-                        },
-                    }
-                )
-                return self._handle_response(response)
-            
             elif tool_name == "display":
                 # Display: 将 File Service 中的文件引用加入 LLM 上下文
                 file_url = (arguments.get("file_url") or "").strip()
@@ -936,20 +904,6 @@ class ToolExecutor:
                     files_created=[],
                     display_files=[file_ref],
                 )
-            elif tool_name == "chat_show_image":
-                # 显示图片
-                response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/chat/event",
-                    json={
-                        "type": "AGENT_IMAGE",
-                        "data": {
-                            "image_url": arguments.get("image_path", ""),
-                            "caption": arguments.get("caption", ""),
-                        },
-                    }
-                )
-                return self._handle_response(response)
-            
             # ==================== SubAgent 工具 ====================
             elif tool_name == "subagent_spawn":
                 # 兼容 task 和 prompt 参数（部分 LLM 可能使用 prompt）
@@ -1242,35 +1196,70 @@ class ToolExecutor:
                     remote_path = arguments.get("remote_path")
                     if not file_url or not remote_path:
                         return {"success": False, "error": "file_url and remote_path are required"}
+                    
                     # 解析 file_url：支持 /api/files/xxx 或完整 URL
                     if file_url.startswith("/"):
                         fetch_url = f"{FILE_SERVICE_URL}{file_url}"
-                    else:
+                    elif file_url.startswith("http://") or file_url.startswith("https://"):
                         fetch_url = file_url
+                    else:
+                        # 可能是相对路径或其他格式，尝试作为 File Service 路径
+                        fetch_url = f"{FILE_SERVICE_URL}/api/files/{file_url}"
+                    
+                    logger.info(f"[ToolExecutor] mobile_file_push: fetching file from {fetch_url}")
+                    
                     try:
-                        async with httpx.AsyncClient(timeout=None, trust_env=False) as fs_client:
+                        # 1. 从 File Service 或 URL 获取文件
+                        async with httpx.AsyncClient(timeout=httpx.Timeout(600.0), trust_env=False) as fs_client:
                             resp = await fs_client.get(fetch_url)
-                            resp.raise_for_status()
+                            if resp.status_code != 200:
+                                logger.error(f"[ToolExecutor] mobile_file_push: failed to fetch file, status={resp.status_code}, body={resp.text[:500]}")
+                                return {"success": False, "error": f"Failed to fetch file from {file_url}: HTTP {resp.status_code}"}
                             file_bytes = resp.content
+                        
+                        file_size_mb = len(file_bytes) / (1024 * 1024)
+                        logger.info(f"[ToolExecutor] mobile_file_push: fetched {len(file_bytes)} bytes ({file_size_mb:.2f} MB), pushing to {remote_path}")
+                        
+                        # 2. 推送到设备
                         import base64
                         b64_data = base64.b64encode(file_bytes).decode("utf-8")
-                        async with httpx.AsyncClient(timeout=None, trust_env=False) as mobile_client:
+                        b64_size_mb = len(b64_data) / (1024 * 1024)
+                        logger.info(f"[ToolExecutor] mobile_file_push: base64 encoded size: {b64_size_mb:.2f} MB, sending to vmcontrol...")
+                        
+                        async with httpx.AsyncClient(timeout=httpx.Timeout(600.0), trust_env=False) as mobile_client:
+                            push_url = f"{VMCONTROL_URL}/api/android/{device_serial}/file/push-from-base64"
+                            logger.info(f"[ToolExecutor] mobile_file_push: POST to {push_url}")
                             response = await mobile_client.post(
-                                f"{VMCONTROL_URL}/api/android/{device_serial}/file/push-from-base64",
+                                push_url,
                                 json={"data": b64_data, "remote_path": remote_path},
                             )
-                            response.raise_for_status()
+                            logger.info(f"[ToolExecutor] mobile_file_push: vmcontrol response status={response.status_code}")
+                            if response.status_code != 200:
+                                error_body = response.text[:1000] if response.text else "(empty)"
+                                logger.error(f"[ToolExecutor] mobile_file_push: push failed, status={response.status_code}, body={error_body}")
+                                return {"success": False, "error": f"Push to device failed: HTTP {response.status_code} - {error_body[:200]}"}
                             result = response.json()
+                        
+                        logger.info(f"[ToolExecutor] mobile_file_push: vmcontrol result={result}")
                         if not result.get("success"):
-                            return {"success": False, "error": result.get("message", "Push failed")}
+                            error_msg = result.get("message") or result.get("error") or "Push failed (unknown reason)"
+                            logger.error(f"[ToolExecutor] mobile_file_push: vmcontrol returned success=false, error={error_msg}")
+                            return {"success": False, "error": error_msg}
+                        
                         # mobile_file_push: 不创建文件，不展示
                         return _tool_result(
-                            text=result.get("message", "File pushed to device"),
-                            extra={"bytes_transferred": result.get("bytes_transferred")},
+                            text=result.get("message", f"File pushed to device: {remote_path}"),
+                            extra={"bytes_transferred": result.get("bytes_transferred"), "remote_path": remote_path},
                         )
+                    except httpx.TimeoutException as e:
+                        logger.error(f"[ToolExecutor] mobile_file_push timeout: {e}")
+                        return {"success": False, "error": f"Timeout while pushing file: {str(e)}"}
+                    except httpx.RequestError as e:
+                        logger.error(f"[ToolExecutor] mobile_file_push request error: {e}", exc_info=True)
+                        return {"success": False, "error": f"Request error: {str(e)}"}
                     except Exception as e:
                         logger.error(f"[ToolExecutor] mobile_file_push failed: {e}", exc_info=True)
-                        return {"success": False, "error": str(e)}
+                        return {"success": False, "error": f"Unexpected error: {str(e)}"}
                 
                 # 调用 vmcontrol Mobile API（通用逻辑）
                 # MOBILE_TOOL_MAPPING 格式: (endpoint, None)
@@ -1291,13 +1280,21 @@ class ToolExecutor:
                         mobile_result = response.json()
                     
                     # 检查是否成功
+                    # 注意：mobile_shell 的 success 表示 exit_code == 0，但命令本身可能执行成功
+                    # 所以对于 mobile_shell，我们总是返回结果，让 Agent 自己判断
                     is_success = (
                         mobile_result.get("success") is True or
                         mobile_result.get("status") == "success"
                     )
                     
+                    # mobile_shell 特殊处理：即使 exit_code != 0，也返回结果
+                    if tool_name == "mobile_shell":
+                        # 总是返回 shell 结果，包含 stdout/stderr/exit_code
+                        mobile_result["success"] = True  # 标记工具调用成功
+                        return mobile_result
+                    
                     if not is_success:
-                        error_msg = mobile_result.get("error", "Unknown Mobile API error")
+                        error_msg = mobile_result.get("error") or mobile_result.get("message") or "Unknown Mobile API error"
                         logger.error(f"[ToolExecutor] Mobile API error for {tool_name}: {error_msg}")
                         return {
                             "success": False,

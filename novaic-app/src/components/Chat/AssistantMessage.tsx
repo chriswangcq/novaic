@@ -4,6 +4,7 @@ import { Markdown } from './Markdown';
 import { Sparkles, AlertTriangle, ChevronDown } from 'lucide-react';
 import { useAppStore } from '../../store';
 import { formatTime } from '../../utils/time';
+import { FileAttachmentList } from './FileAttachment';
 
 interface AssistantMessageProps {
   message: Message;
@@ -207,6 +208,11 @@ function AssistantMessageInner({ message, showHeader = true }: AssistantMessageP
             <span className="animate-pulse" style={{ animationDelay: '150ms' }}>●</span>
             <span className="animate-pulse" style={{ animationDelay: '300ms' }}>●</span>
           </div>
+        )}
+
+        {/* Attachments (Phase 2: Agent → User) - 微信风格文件卡片 */}
+        {message.attachments && message.attachments.length > 0 && (
+          <FileAttachmentList attachments={message.attachments} />
         )}
       </div>
     </div>

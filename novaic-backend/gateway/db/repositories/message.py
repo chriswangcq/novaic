@@ -25,10 +25,41 @@ class MessageRepository:
     消息存储在 chat_messages 表中：
     - read: 0=未读, 1=已读（用于 Agent 消费）
     - status: sending/sent（用于 Monitor 消费队列）
+    - content: JSON 字符串格式 {"text": "...", "attachments": [...]}
+    
+    注意：content 在数据库中存储为 JSON 字符串，Repository 读取时统一解析为 dict。
     """
     
     def __init__(self, db):
         self.db = db
+    
+    def _parse_content(self, content: Any) -> Dict[str, Any]:
+        """
+        统一解析 content 字段：JSON 字符串或 dict -> dict
+        
+        数据库存储的是 JSON 字符串，读取时统一解析为 dict。
+        这样上层代码不需要关心格式，统一使用 dict。
+        """
+        if content is None:
+            return {"text": "", "attachments": []}
+        if isinstance(content, dict):
+            return content
+        s = str(content).strip()
+        if not s:
+            return {"text": "", "attachments": []}
+        # 尝试解析 JSON
+        if s.startswith("{"):
+            try:
+                parsed = json.loads(s)
+                if isinstance(parsed, dict):
+                    # 确保有 text 字段
+                    if "text" not in parsed and "attachments" not in parsed:
+                        return {"text": s, "attachments": []}
+                    return parsed
+            except json.JSONDecodeError:
+                pass
+        # 纯文本消息，包装为 dict
+        return {"text": s, "attachments": []}
     
     def add_message(
         self,
@@ -237,7 +268,7 @@ class MessageRepository:
                 "id": row["id"],
                 "agent_id": row["agent_id"],
                 "type": row["type"],
-                "content": row["content"],
+                "content": self._parse_content(row["content"]),  # 统一解析为 dict
                 "read": row["read"],
                 "status": row.get("status", "sent"),
                 "metadata": json.loads(row["metadata"] or "{}"),
@@ -266,7 +297,7 @@ class MessageRepository:
             {
                 "id": row["id"],
                 "type": row["type"],
-                "content": row["content"],
+                "content": self._parse_content(row["content"]),  # 统一解析为 dict
                 "timestamp": row["timestamp"],
             }
             for row in rows
@@ -345,7 +376,7 @@ class MessageRepository:
                 "id": row["id"],
                 "agent_id": row["agent_id"],
                 "type": row["type"],
-                "content": row["content"],
+                "content": self._parse_content(row["content"]),  # 统一解析为 dict
                 "read": row["read"],
                 "status": row.get("status", "sent"),
                 "metadata": json.loads(row["metadata"] or "{}"),
@@ -376,7 +407,7 @@ class MessageRepository:
             "id": row["id"],
             "agent_id": row["agent_id"],
             "type": row["type"],
-            "content": row["content"],
+            "content": self._parse_content(row["content"]),  # 统一解析为 dict
             "read": row["read"],
             "status": row.get("status", "sent"),
             "metadata": json.loads(row["metadata"] or "{}"),

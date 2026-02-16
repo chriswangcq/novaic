@@ -119,7 +119,7 @@ function FullLogModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => voi
         
         {/* Content */}
         <div className="flex-1 min-h-0 overflow-hidden">
-          <ExecutionLog logs={logs} />
+          <ExecutionLog logs={logs} showHeader={false} />
         </div>
       </div>
     </div>

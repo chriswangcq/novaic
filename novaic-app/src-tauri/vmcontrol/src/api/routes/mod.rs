@@ -10,12 +10,15 @@ pub mod scrcpy;
 pub mod android;
 pub mod mobile;
 
-use axum::{Router, routing::{get, post, delete}};
+use axum::{Router, routing::{get, post, delete}, extract::DefaultBodyLimit};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use std::collections::HashMap;
 
 use crate::android::AndroidManager;
+
+/// 大文件上传的 body 大小限制 (500MB)
+const LARGE_BODY_LIMIT: usize = 500 * 1024 * 1024;
 
 /// Application state shared across all routes
 pub type AppState = Arc<RwLock<HashMap<String, vm::VmManager>>>;
@@ -52,6 +55,7 @@ pub fn create_router(state: AppState) -> Router {
         .with_state(android_manager);
     
     // 创建 Mobile Use API 路由 (无状态)
+    // 注意：大文件上传路由需要增加 body 大小限制
     let mobile_router = Router::new()
         .route("/:serial/screenshot", post(mobile::screenshot))
         .route("/:serial/touch", post(mobile::touch))
@@ -59,6 +63,8 @@ pub fn create_router(state: AppState) -> Router {
         .route("/:serial/shell", post(mobile::shell))
         // App 管理 API
         .route("/:serial/app/install", post(mobile::app_install))
+        .route("/:serial/app/install-from-base64", post(mobile::app_install_from_base64)
+            .layer(DefaultBodyLimit::max(LARGE_BODY_LIMIT)))  // 500MB for APK install
         .route("/:serial/app/uninstall", post(mobile::app_uninstall))
         .route("/:serial/app/launch", post(mobile::app_launch))
         .route("/:serial/app/list", get(mobile::app_list))
@@ -68,13 +74,18 @@ pub fn create_router(state: AppState) -> Router {
         .route("/:serial/browser/get_url", post(mobile::browser_get_url))
         .route("/:serial/browser/back", post(mobile::browser_back))
         .route("/:serial/browser/refresh", post(mobile::browser_refresh))
-        // File management APIs
+        // File management APIs (大文件需要增加 body 限制)
         .route("/:serial/file/push", post(mobile::file_push))
+        .route("/:serial/file/push-from-base64", post(mobile::file_push_from_base64)
+            .layer(DefaultBodyLimit::max(LARGE_BODY_LIMIT)))  // 500MB for file push
         .route("/:serial/file/pull", post(mobile::file_pull))
+        .route("/:serial/file/pull-content", post(mobile::file_pull_content)
+            .layer(DefaultBodyLimit::max(LARGE_BODY_LIMIT)))  // 500MB for file pull (response can be large)
         .route("/:serial/file/list", get(mobile::file_list))
         .route("/:serial/file/delete", post(mobile::file_delete))
         .route("/:serial/file/mkdir", post(mobile::file_mkdir))
-        .route("/:serial/file/read", post(mobile::file_read))
+        .route("/:serial/file/read", post(mobile::file_read)
+            .layer(DefaultBodyLimit::max(LARGE_BODY_LIMIT)))  // 500MB for file read
         // UI Automation APIs
         .route("/:serial/ui/dump", post(mobile::ui_dump))
         .route("/:serial/ui/find", post(mobile::ui_find))

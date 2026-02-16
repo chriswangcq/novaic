@@ -169,7 +169,7 @@ def handle_llm_call(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     biz = LLMBusiness(ctx["gateway_url"], llm_client, client=ctx.get("gateway_client"))
     
     result = biz.call(
-        messages=messages_for_llm,
+        messages=processed_messages,
         model=model,
         tools=tools,
         provider=provider,

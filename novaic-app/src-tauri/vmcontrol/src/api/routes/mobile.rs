@@ -149,16 +149,14 @@ pub enum ScrollDirection {
 #[derive(Debug, Deserialize)]
 pub struct TouchRequest {
     pub action: TouchAction,
-    /// 起点 X 坐标 (aim/tap/long_press/swipe)
+    /// 起点 X 坐标 (仅 aim)
     pub x: Option<i32>,
-    /// 起点 Y 坐标
+    /// 起点 Y 坐标 (仅 aim)
     pub y: Option<i32>,
-    /// Aim ID (tap/long_press/swipe/scroll 时使用)
+    /// 起点 Aim ID (tap/long_press/swipe/scroll 必填)
     pub aim_id: Option<String>,
-    /// 终点 X 坐标 (swipe)
-    pub end_x: Option<i32>,
-    /// 终点 Y 坐标 (swipe)
-    pub end_y: Option<i32>,
+    /// 终点 Aim ID (swipe 必填)
+    pub end_aim_id: Option<String>,
     /// 长按时长 ms (默认 500)
     #[serde(default = "default_duration")]
     pub duration: i32,
@@ -709,22 +707,15 @@ pub async fn touch(
 
         TouchAction::Swipe => {
             let (x, y) = get_coordinates(&request).await?;
-            let end_x = request.end_x.ok_or_else(|| {
+            let end_aim_id = request.end_aim_id.as_ref().ok_or_else(|| {
                 (
                     StatusCode::BAD_REQUEST,
                     Json(ApiError {
-                        error: "end_x is required for swipe action".to_string(),
+                        error: "end_aim_id is required for swipe action".to_string(),
                     }),
                 )
             })?;
-            let end_y = request.end_y.ok_or_else(|| {
-                (
-                    StatusCode::BAD_REQUEST,
-                    Json(ApiError {
-                        error: "end_y is required for swipe action".to_string(),
-                    }),
-                )
-            })?;
+            let (end_x, end_y) = get_coordinates_by_aim_id(end_aim_id).await?;
             let duration = request.duration;
 
             let output = Command::new(&adb_path)
@@ -850,38 +841,33 @@ pub async fn touch(
 async fn get_coordinates(
     request: &TouchRequest,
 ) -> Result<(i32, i32), (StatusCode, Json<ApiError>)> {
-    if let Some(aim_id) = &request.aim_id {
-        let cache = AIM_CACHE.read().await;
-        if let Some(entry) = cache.get(aim_id) {
-            return Ok((entry.x, entry.y));
-        } else {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                Json(ApiError {
-                    error: format!("Invalid or expired aim_id: {}", aim_id),
-                }),
-            ));
-        }
+    let aim_id = request.aim_id.as_ref().ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ApiError {
+                error: "aim_id is required for this action. Use action=aim first.".to_string(),
+            }),
+        )
+    })?;
+
+    get_coordinates_by_aim_id(aim_id).await
+}
+
+/// 通过 aim_id 解析坐标
+async fn get_coordinates_by_aim_id(
+    aim_id: &str,
+) -> Result<(i32, i32), (StatusCode, Json<ApiError>)> {
+    let cache = AIM_CACHE.read().await;
+    if let Some(entry) = cache.get(aim_id) {
+        Ok((entry.x, entry.y))
+    } else {
+        Err((
+            StatusCode::BAD_REQUEST,
+            Json(ApiError {
+                error: format!("Invalid or expired aim_id: {}", aim_id),
+            }),
+        ))
     }
-
-    let x = request.x.ok_or_else(|| {
-        (
-            StatusCode::BAD_REQUEST,
-            Json(ApiError {
-                error: "x is required (or provide aim_id)".to_string(),
-            }),
-        )
-    })?;
-    let y = request.y.ok_or_else(|| {
-        (
-            StatusCode::BAD_REQUEST,
-            Json(ApiError {
-                error: "y is required (or provide aim_id)".to_string(),
-            }),
-        )
-    })?;
-
-    Ok((x, y))
 }
 
 /// 输入 API
@@ -1558,6 +1544,16 @@ pub struct AppInstallResponse {
     pub message: Option<String>,
 }
 
+/// 从 base64 安装 APK（配合 File Service 使用）
+#[derive(Debug, Deserialize)]
+pub struct AppInstallFromBase64Request {
+    /// base64 编码的 APK 内容
+    pub data: String,
+    /// 是否允许降级安装
+    #[serde(default)]
+    pub allow_downgrade: bool,
+}
+
 /// App 卸载请求
 #[derive(Debug, Deserialize)]
 pub struct AppUninstallRequest {
@@ -1703,6 +1699,103 @@ pub async fn app_install(
         success,
         package_name
     );
+
+    Ok(Json(AppInstallResponse {
+        success,
+        package_name,
+        message,
+    }))
+}
+
+/// 从 base64 安装 APK
+///
+/// POST /api/android/{serial}/app/install-from-base64
+pub async fn app_install_from_base64(
+    Path(serial): Path<String>,
+    Json(request): Json<AppInstallFromBase64Request>,
+) -> Result<Json<AppInstallResponse>, (StatusCode, Json<ApiError>)> {
+    tracing::info!(
+        "Installing APK from base64 for device: {}, data_len={}, allow_downgrade={}",
+        serial,
+        request.data.len(),
+        request.allow_downgrade
+    );
+
+    let bytes = BASE64
+        .decode(&request.data)
+        .map_err(|e| {
+            tracing::error!("APK base64 decode failed: {}", e);
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ApiError {
+                    error: format!("Invalid base64: {}", e),
+                }),
+            )
+        })?;
+
+    let temp = tempfile::Builder::new()
+        .suffix(".apk")
+        .tempfile()
+        .map_err(|e| {
+            tracing::error!("Failed to create temp file: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiError {
+                    error: format!("Failed to create temp file: {}", e),
+                }),
+            )
+        })?;
+    let temp_path = temp.path().to_path_buf();
+    std::fs::write(&temp_path, &bytes).map_err(|e| {
+        tracing::error!("Failed to write temp APK: {}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiError {
+                error: format!("Failed to write temp file: {}", e),
+            }),
+        )
+    })?;
+
+    let adb_path = get_adb_path();
+    let mut args = vec![
+        "-s",
+        &serial,
+        "install",
+    ];
+    if request.allow_downgrade {
+        args.push("-d");
+    }
+    args.push(temp_path.to_str().unwrap());
+
+    let output = Command::new(&adb_path)
+        .args(&args)
+        .output()
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to execute adb install: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiError {
+                    error: format!("Failed to execute adb install: {}", e),
+                }),
+            )
+        })?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+    let success = output.status.success() && stdout.contains("Success");
+    let package_name = if success {
+        get_package_name_from_apk(temp_path.to_str().unwrap())
+            .await
+            .ok()
+    } else {
+        None
+    };
+    let message = if success {
+        Some("APK installed successfully".to_string())
+    } else {
+        Some(format!("Installation failed: {} {}", stdout.trim(), stderr.trim()))
+    };
 
     Ok(Json(AppInstallResponse {
         success,
@@ -3080,6 +3173,233 @@ pub async fn file_pull(
         success,
         bytes_transferred,
         message,
+    }))
+}
+
+/// 从 base64 推送到设备（配合 File Service 使用）
+///
+/// POST /api/android/{serial}/file/push-from-base64
+#[derive(Debug, Deserialize)]
+pub struct FilePushFromBase64Request {
+    /// base64 编码的文件内容
+    pub data: String,
+    /// 设备上的目标路径
+    pub remote_path: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct FilePushFromBase64Response {
+    pub success: bool,
+    pub bytes_transferred: Option<i64>,
+    pub message: Option<String>,
+}
+
+pub async fn file_push_from_base64(
+    Path(serial): Path<String>,
+    Json(request): Json<FilePushFromBase64Request>,
+) -> Result<Json<FilePushFromBase64Response>, (StatusCode, Json<ApiError>)> {
+    tracing::info!(
+        "Pushing from base64 to device: {}, remote={}, data_len={}",
+        serial,
+        request.remote_path,
+        request.data.len()
+    );
+
+    let bytes = BASE64
+        .decode(&request.data)
+        .map_err(|e| {
+            tracing::error!("Base64 decode failed: {}", e);
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ApiError {
+                    error: format!("Invalid base64: {}", e),
+                }),
+            )
+        })?;
+
+    let adb_path = get_adb_path();
+    let ext = std::path::Path::new(&request.remote_path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("bin");
+    let temp = tempfile::Builder::new()
+        .suffix(&format!(".{}", ext))
+        .tempfile()
+        .map_err(|e| {
+            tracing::error!("Failed to create temp file: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiError {
+                    error: format!("Failed to create temp file: {}", e),
+                }),
+            )
+        })?;
+    let temp_path = temp.path().to_path_buf();
+    std::fs::write(&temp_path, &bytes).map_err(|e| {
+        tracing::error!("Failed to write temp file: {}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiError {
+                error: format!("Failed to write temp file: {}", e),
+            }),
+        )
+    })?;
+
+    let output = Command::new(&adb_path)
+        .args([
+            "-s",
+            &serial,
+            "push",
+            temp_path.to_str().unwrap(),
+            &request.remote_path,
+        ])
+        .output()
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to execute adb push: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiError {
+                    error: format!("Failed to execute adb push: {}", e),
+                }),
+            )
+        })?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+    let success = output.status.success();
+    let bytes_transferred = if success {
+        parse_bytes_from_adb_output(&stdout).or(Some(bytes.len() as i64))
+    } else {
+        None
+    };
+    let message = if success {
+        Some(format!("File pushed to {}", request.remote_path))
+    } else {
+        Some(format!("Push failed: {} {}", stdout.trim(), stderr.trim()))
+    };
+
+    Ok(Json(FilePushFromBase64Response {
+        success,
+        bytes_transferred,
+        message,
+    }))
+}
+
+/// 从设备拉取文件内容（返回 base64，配合 File Service 使用）
+///
+/// POST /api/android/{serial}/file/pull-content
+#[derive(Debug, Deserialize)]
+pub struct FilePullContentRequest {
+    /// 设备上的文件路径
+    pub remote_path: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct FilePullContentResponse {
+    pub success: bool,
+    pub content: Option<String>,
+    pub filename: Option<String>,
+    #[serde(default = "default_octet_stream")]
+    pub mime_type: String,
+    pub size: i64,
+    pub message: Option<String>,
+}
+
+fn default_octet_stream() -> String {
+    "application/octet-stream".to_string()
+}
+
+fn infer_mime_from_ext(path: &str) -> String {
+    let ext = std::path::Path::new(path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_lowercase())
+        .unwrap_or_default();
+    match ext.as_str() {
+        "png" => "image/png".to_string(),
+        "jpg" | "jpeg" => "image/jpeg".to_string(),
+        "gif" => "image/gif".to_string(),
+        "webp" => "image/webp".to_string(),
+        "pdf" => "application/pdf".to_string(),
+        "json" => "application/json".to_string(),
+        "txt" => "text/plain".to_string(),
+        "xml" => "application/xml".to_string(),
+        "apk" => "application/vnd.android.package-archive".to_string(),
+        _ => "application/octet-stream".to_string(),
+    }
+}
+
+pub async fn file_pull_content(
+    Path(serial): Path<String>,
+    Json(request): Json<FilePullContentRequest>,
+) -> Result<Json<FilePullContentResponse>, (StatusCode, Json<ApiError>)> {
+    tracing::info!("Pulling file content from device: {}, path={}", serial, request.remote_path);
+
+    let adb_path = get_adb_path();
+    let filename = std::path::Path::new(&request.remote_path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("file")
+        .to_string();
+    let mime_type = infer_mime_from_ext(&request.remote_path);
+
+    let temp = tempfile::Builder::new().tempfile().map_err(|e| {
+        tracing::error!("Failed to create temp file: {}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiError {
+                error: format!("Failed to create temp file: {}", e),
+            }),
+        )
+    })?;
+    let temp_path = temp.path().to_path_buf();
+
+    let output = Command::new(&adb_path)
+        .args(["-s", &serial, "pull", &request.remote_path, temp_path.to_str().unwrap()])
+        .output()
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to execute adb pull: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiError {
+                    error: format!("Failed to execute adb pull: {}", e),
+                }),
+            )
+        })?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(ApiError {
+                error: format!("Pull failed: {}", stderr.trim()),
+            }),
+        ));
+    }
+
+    let bytes = std::fs::read(&temp_path).map_err(|e| {
+        tracing::error!("Failed to read temp file: {}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ApiError {
+                error: format!("Failed to read pulled file: {}", e),
+            }),
+        )
+    })?;
+    let size = bytes.len() as i64;
+    let content = BASE64.encode(&bytes);
+
+    tracing::info!("Pulled {} bytes from device", size);
+
+    Ok(Json(FilePullContentResponse {
+        success: true,
+        content: Some(content),
+        filename: Some(filename),
+        mime_type,
+        size,
+        message: Some(format!("File pulled, {} bytes", size)),
     }))
 }
 

@@ -6,6 +6,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import type { Device, DeviceStatus } from '../types';
+import { API_CONFIG } from '../config';
 
 /**
  * AppConfig - Application configuration from backend.
@@ -524,15 +525,42 @@ export const api = {
   // ==================== Chat API (Fire-and-Forget) ====================
 
   /**
+   * Upload a file for chat attachment (uses fetch for multipart/form-data)
+   * @param file - The file to upload
+   * @param agentId - Target agent ID (required by File Service)
+   * @returns Upload result with url, filename, mime_type
+   */
+  async uploadChatFile(file: File, agentId: string): Promise<{ url: string; filename: string; mime_type: string }> {
+    const base = API_CONFIG.GATEWAY_URL.replace(/\/$/, '');
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('agent_id', agentId);
+    formData.append('category', 'chat_attachments');
+
+    const res = await fetch(`${base}/api/files/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error((err as { detail?: string }).detail || `Upload failed: ${res.status}`);
+    }
+    const data = (await res.json()) as { url: string; filename: string; mime_type: string };
+    return { url: data.url, filename: data.filename, mime_type: data.mime_type };
+  },
+
+  /**
    * Send a chat message (async, fire-and-forget style)
    * @param message - The message content to send
    * @param options - Optional parameters
+   * @param options.attachments - File attachments (url, filename, mime_type from upload)
    * @param options.agent_id - Target agent ID
    * @param options.model - Model to use for the response
    * @param options.mode - Chat mode ('agent' or 'chat')
    * @param options.api_key_id - API key ID to use
    */
   async sendChatMessage(message: string, options?: {
+    attachments?: Array<{ url: string; filename: string; mime_type: string }>;
     agent_id?: string;
     model?: string;
     mode?: 'agent' | 'chat';
@@ -542,6 +570,7 @@ export const api = {
       path: '/api/chat/send',
       body: {
         message,
+        attachments: options?.attachments,
         agent_id: options?.agent_id,
         model: options?.model,
         mode: options?.mode || 'agent',

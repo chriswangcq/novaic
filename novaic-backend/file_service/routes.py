@@ -56,12 +56,23 @@ def create_router(storage: FileStorage) -> APIRouter:
                 detail=f"File too large: {len(data)} > {size_limit}",
             )
 
-        filename = file.filename
-        if not filename or filename == "blob":
-            filename = _generate_filename(data, ext)
+        original_filename = file.filename or "file"
+        if not original_filename or original_filename == "blob":
+            original_filename = _generate_filename(data, ext)
 
-        url = storage.save_bytes(data, cat, agent_id, subagent_id, filename=filename)
-        return {"url": url, "category": cat, "size": len(data)}
+        url = storage.save_bytes(data, cat, agent_id, subagent_id, filename=original_filename)
+        # 从 URL 提取实际保存的文件名（File Service 可能会重命名）
+        actual_filename = url.rsplit("/", 1)[-1] if "/" in url else original_filename
+        ext = actual_filename.rsplit(".", 1)[-1].lower() if "." in actual_filename else "bin"
+        mime_type = get_mime_for_ext(ext) if content_type == "application/octet-stream" else content_type
+        return {
+            "url": url,
+            "filename": actual_filename,  # 返回实际保存的文件名
+            "original_filename": original_filename,  # 保留原始文件名供参考
+            "mime_type": mime_type,
+            "category": cat,
+            "size": len(data),
+        }
 
     @router.post("/from-base64")
     async def from_base64(req: FromBase64Request):

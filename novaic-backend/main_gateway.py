@@ -1020,19 +1020,24 @@ def get_chat_history(
     has_more = len(all_messages) > limit
     messages = all_messages[-limit:] if len(all_messages) > limit else all_messages
     
-    # Create summarized messages
+    # Create message list - content 已被 Repository 统一解析为 dict
+    # 返回给前端时序列化为 JSON 字符串（前端 parseMessageContent 会解析）
     summarized = []
     for msg in messages:
-        content = msg.get("message") or msg.get("question") or msg.get("content") or ""
-        is_truncated = summary_length > 0 and len(content) > summary_length
+        content = msg.get("content") or {}
+        # content 现在是 dict，序列化为 JSON 字符串
+        if isinstance(content, dict):
+            summary = json_module.dumps(content, ensure_ascii=False)
+        else:
+            summary = str(content) if content else ""
         
         summary_msg = {
             "id": msg.get("id"),
             "type": msg.get("type"),
             "timestamp": msg.get("timestamp"),
-            "summary": content[:summary_length] + "..." if is_truncated else content,
-            "is_truncated": is_truncated,
-            "read": msg.get("read", False),  # Include read status for frontend
+            "summary": summary,
+            "is_truncated": False,
+            "read": msg.get("read", False),
         }
         # Include level for notifications
         if msg.get("level"):
@@ -1202,25 +1207,44 @@ def send_chat_message(data: dict):
     2. Broadcast to UI SSE and Worker SSE
     3. Worker will claim and process via /api/claim/message
     
-    Returns immediately with message_id.
+    Supports attachments: {message, attachments?: [{url, filename, mime_type}], agent_id, ...}
+    content stored as JSON: {"text": "...", "attachments": [...]}
     """
     agent_id = data.get("agent_id")
     
     if not agent_id:
         return {"success": False, "error": "agent_id is required"}
     
-    content = data.get("message", "").strip()
+    text = data.get("message", "").strip()
+    attachments = data.get("attachments") or []
+    if isinstance(attachments, dict):
+        attachments = [attachments]
     model = data.get("model")
     api_key_id = data.get("api_key_id")
     
-    if not content:
-        return {"success": False, "error": "Message content required"}
+    if not text and not attachments:
+        return {"success": False, "error": "Message content or attachments required"}
+    
+    # Normalize attachments
+    att_list = []
+    for a in attachments:
+        if isinstance(a, dict) and a.get("url"):
+            att = {
+                "url": a["url"],
+                "filename": a.get("filename", ""),
+                "mime_type": a.get("mime_type", "application/octet-stream"),
+            }
+            att["modality"] = "image" if (att["mime_type"] or "").startswith("image/") else "resource"
+            att_list.append(att)
+    
+    content_obj = {"text": text, "attachments": att_list}
+    content_str = json_module.dumps(content_obj, ensure_ascii=False)
     
     # 1. Store message using MessageRepository
     msg = message_repo.add_message(
         agent_id=agent_id,
         type="USER_MESSAGE",
-        content=content,
+        content=content_str,
         metadata={"model": model, "api_key_id": api_key_id},
     )
     
@@ -1228,7 +1252,7 @@ def send_chat_message(data: dict):
     user_msg = {
         "id": msg["id"],
         "type": "USER_MESSAGE",
-        "content": content,
+        "content": content_obj,
         "timestamp": msg["timestamp"],
         "status": "delivered",
         "agent_id": agent_id,
@@ -1250,7 +1274,7 @@ def send_chat_message(data: dict):
                     chat_service.repo.add_question_response(
                         agent_id=agent_id,
                         request_id=request_id,
-                        response=content,
+                        response=text,
                         selected_option=None,
                     )
                     print(f"[Chat] Auto-responded to pending question {request_id}")
@@ -1891,12 +1915,45 @@ async def proxy_trs(path: str, request: Request):
         )
 
 
+@app.post("/api/files/upload")
+async def proxy_files_upload(request: Request):
+    """代理 File Service multipart 上传，用于聊天附件（支持大文件如 APK）"""
+    url = f"{FILES_BASE}/api/files/upload"
+    try:
+        # 读取原始 body 和 headers 并转发
+        body = await request.body()
+        content_type = request.headers.get("Content-Type", "")
+        async with httpx.AsyncClient(timeout=600.0) as client:  # 10 分钟超时，支持大文件
+            resp = await client.post(
+                url,
+                content=body,
+                headers={"Content-Type": content_type},
+            )
+        media = resp.headers.get("Content-Type") or "application/json"
+        return Response(content=resp.content, status_code=resp.status_code, media_type=media)
+    except httpx.ConnectError as e:
+        return JSONResponse(
+            status_code=503,
+            content={"success": False, "error": "File Service unavailable", "detail": str(e)},
+        )
+    except httpx.TimeoutException as e:
+        return JSONResponse(
+            status_code=504,
+            content={"success": False, "error": "File Service timeout", "detail": str(e)},
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=502,
+            content={"success": False, "error": "File upload proxy error", "detail": str(e)},
+        )
+
+
 @app.api_route("/api/files/{path:path}", methods=["GET"])
 async def proxy_files(path: str):
-    """代理 File Service，用于图片/文件 URL 展示"""
+    """代理 File Service，用于图片/文件 URL 展示（支持大文件下载）"""
     url = f"{FILES_BASE}/api/files/{path}"
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=600.0) as client:  # 10 分钟超时，支持大文件
             resp = await client.get(url)
         media = resp.headers.get("Content-Type") or "application/octet-stream"
         return Response(content=resp.content, status_code=resp.status_code, media_type=media)

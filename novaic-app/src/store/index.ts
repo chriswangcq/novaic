@@ -43,6 +43,78 @@ function loadStoredAgentId(): string | null {
   }
 }
 
+/**
+ * 解析消息内容（统一处理 AGENT_REPLY 的 JSON 格式）
+ * 
+ * 后端存储格式：{"text": "...", "attachments": [...]}
+ * 需要解析为：{ text: string, attachments: Attachment[] }
+ */
+interface ParsedMessageContent {
+  text: string;
+  attachments?: Array<{
+    id: string;
+    name: string;
+    path: string;
+    size: number;
+    type: string;
+    url?: string;
+    mime_type?: string;
+    modality?: 'image' | 'resource';
+  }>;
+}
+
+function parseMessageContent(
+  content: string | { text?: string; attachments?: Array<{ url: string; filename: string; mime_type?: string }> } | null | undefined,
+  messageId: string
+): ParsedMessageContent {
+  if (!content) {
+    return { text: '' };
+  }
+  
+  // 如果已经是对象
+  if (typeof content === 'object') {
+    const text = content.text ?? '';
+    const attachments = content.attachments?.map((a, i) => ({
+      id: `att-${messageId}-${i}`,
+      name: a.filename,
+      path: a.url,
+      size: 0,
+      type: a.mime_type ?? 'application/octet-stream',
+      url: a.url,
+      mime_type: a.mime_type,
+      modality: (a.mime_type?.startsWith('image/') ? 'image' : 'resource') as 'image' | 'resource',
+    }));
+    return { text, attachments: attachments?.length ? attachments : undefined };
+  }
+  
+  // 字符串：尝试解析 JSON
+  if (typeof content === 'string') {
+    // 尝试解析 {"text": "...", "attachments": [...]} 格式
+    try {
+      const parsed = JSON.parse(content);
+      if (typeof parsed === 'object' && parsed !== null && ('text' in parsed || 'attachments' in parsed)) {
+        const text = parsed.text ?? '';
+        const attachments = parsed.attachments?.map((a: { url: string; filename: string; mime_type?: string }, i: number) => ({
+          id: `att-${messageId}-${i}`,
+          name: a.filename,
+          path: a.url,
+          size: 0,
+          type: a.mime_type ?? 'application/octet-stream',
+          url: a.url,
+          mime_type: a.mime_type,
+          modality: (a.mime_type?.startsWith('image/') ? 'image' : 'resource') as 'image' | 'resource',
+        }));
+        return { text, attachments: attachments?.length ? attachments : undefined };
+      }
+    } catch {
+      // 不是 JSON，当作纯文本
+    }
+    return { text: content };
+  }
+  
+  return { text: String(content) };
+}
+
 function saveAgentId(agentId: string | null): void {
   try {
     if (agentId) {
@@ -81,7 +153,7 @@ function saveLayoutSettings(settings: LayoutSettings): void {
 
 interface AppStore extends AppState {
   initialize: () => Promise<void>;
-  sendMessage: (content: string) => Promise<void>;
+  sendMessage: (content: string, attachments?: File[]) => Promise<void>;
   stopExecution: () => void;
   addMessage: (message: Message) => void;
   updateMessage: (id: string, updates: Partial<Message>) => void;
@@ -247,17 +319,21 @@ export const useAppStore = create<AppStore>((set, get) => ({
             const filteredMessages = history.messages.filter(
               (msg) => msg.type !== 'SYSTEM_WAKE'
             );
-            const messages: Message[] = filteredMessages.map((msg) => ({
-              id: msg.id,
-              role: msg.type === 'USER_MESSAGE' ? 'user' : 'assistant',
-              content: msg.summary || '',
-              timestamp: new Date(msg.timestamp),
-              isTruncated: msg.is_truncated,  // 保存截断状态
-              // Use backend read status: read=true -> 'read', read=false -> 'delivered'
-              status: msg.type === 'USER_MESSAGE' 
-                ? (msg.read ? 'read' : 'delivered') as MessageStatus 
-                : undefined,
-            }));
+            const messages: Message[] = filteredMessages.map((msg) => {
+              // 解析消息内容（处理 AGENT_REPLY 的 JSON 格式）
+              const parsed = parseMessageContent(msg.summary, msg.id);
+              return {
+                id: msg.id,
+                role: msg.type === 'USER_MESSAGE' ? 'user' : 'assistant',
+                content: parsed.text,
+                timestamp: new Date(msg.timestamp),
+                isTruncated: msg.is_truncated,
+                attachments: parsed.attachments,
+                status: msg.type === 'USER_MESSAGE' 
+                  ? (msg.read ? 'read' : 'delivered') as MessageStatus 
+                  : undefined,
+              };
+            });
             set({ messages, hasMoreMessages: history.has_more });
             console.log(`[Store] Loaded ${messages.length} messages from history (filtered ${history.messages.length - filteredMessages.length} SYSTEM_WAKE), has_more: ${history.has_more}`);
           }
@@ -282,7 +358,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   // Send message (fire-and-forget style, like WeChat/WhatsApp)
-  sendMessage: async (content: string) => {
+  sendMessage: async (content: string, attachments?: File[]) => {
     const { addMessage, updateMessageStatus, isInitialized, initialize, selectedModel, currentAgentId } = get();
     
     if (!isInitialized) {
@@ -299,16 +375,43 @@ export const useAppStore = create<AppStore>((set, get) => ({
       return;
     }
     
+    // Upload attachments first (if any)
+    let attachmentInfos: Array<{ url: string; filename: string; mime_type: string }> = [];
+    const files = attachments ?? [];
+    if (files.length > 0) {
+      try {
+        attachmentInfos = await Promise.all(
+          files.map((f) => api.uploadChatFile(f, currentAgentId))
+        );
+      } catch (e) {
+        console.error('[Store] File upload failed:', e);
+        return;
+      }
+    }
+    
     // Generate message ID locally
     const messageId = `user-${Date.now()}`;
     
-    // Add user message immediately with 'sending' status
+    // Build Attachment[] for UI (id, name, url, mime_type, modality)
+    const msgAttachments = attachmentInfos.map((a, i) => ({
+      id: `att-${messageId}-${i}`,
+      name: a.filename,
+      path: a.url,
+      size: 0,
+      type: a.mime_type,
+      url: a.url,
+      mime_type: a.mime_type,
+      modality: (a.mime_type?.startsWith('image/') ? 'image' : 'resource') as 'image' | 'resource',
+    }));
+    
+    // Add user message with 'sending' status (including attachments)
     const userMessage: Message = {
       id: messageId,
       role: 'user',
       content,
       timestamp: new Date(),
       status: 'sending',
+      attachments: msgAttachments.length ? msgAttachments : undefined,
     };
     addMessage(userMessage);
     
@@ -335,6 +438,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
       
       const result = await Promise.race([
         api.sendChatMessage(content, {
+          attachments: attachmentInfos.length ? attachmentInfos : undefined,
           agent_id: currentAgentId,
           model: modelId,
           mode: 'agent',
@@ -650,16 +754,20 @@ export const useAppStore = create<AppStore>((set, get) => ({
           const filteredMessages = history.messages.filter(
             (msg) => msg.type !== 'SYSTEM_WAKE'
           );
-          const messages: Message[] = filteredMessages.map((msg) => ({
-            id: msg.id,
-            role: msg.type === 'USER_MESSAGE' ? 'user' : 'assistant',
-            content: msg.summary || '',
-            timestamp: new Date(msg.timestamp),
-            isTruncated: msg.is_truncated,
-            status: msg.type === 'USER_MESSAGE' 
-              ? (msg.read ? 'read' : 'delivered') as MessageStatus 
-              : undefined,
-          }));
+          const messages: Message[] = filteredMessages.map((msg) => {
+            const parsed = parseMessageContent(msg.summary, msg.id);
+            return {
+              id: msg.id,
+              role: msg.type === 'USER_MESSAGE' ? 'user' : 'assistant',
+              content: parsed.text,
+              timestamp: new Date(msg.timestamp),
+              isTruncated: msg.is_truncated,
+              attachments: parsed.attachments,
+              status: msg.type === 'USER_MESSAGE' 
+                ? (msg.read ? 'read' : 'delivered') as MessageStatus 
+                : undefined,
+            };
+          });
           set({ messages, hasMoreMessages: history.has_more });
           console.log(`[Store] Loaded ${messages.length} messages for agent ${agentId} (filtered ${history.messages.length - filteredMessages.length} SYSTEM_WAKE), has_more: ${history.has_more}`);
         }
@@ -871,60 +979,15 @@ export const useAppStore = create<AppStore>((set, get) => ({
             
           case 'AGENT_REPLY':
             // Agent replied - add as assistant message
+            // 使用统一的解析函数处理 content（支持 JSON 字符串或对象格式）
+            const rawContent = msg.content ?? msg.message;
+            const parsedReply = parseMessageContent(rawContent, msg.id);
             addMessage({
               id: msg.id,
               role: 'assistant',
-              content: msg.message || msg.content || '',
+              content: parsedReply.text,
               timestamp: new Date(msg.timestamp),
-            });
-            break;
-            
-          case 'AGENT_ASK':
-            // Agent asking a question
-            addMessage({
-              id: msg.id,
-              role: 'assistant',
-              content: msg.question || '',
-              timestamp: new Date(msg.timestamp),
-              // Store request_id for responding
-              events: [{
-                type: 'status',
-                timestamp: msg.timestamp,
-                data: { 
-                  request_id: msg.request_id,
-                  options: msg.options,
-                  type: 'question'
-                }
-              }],
-            });
-            break;
-            
-          case 'AGENT_NOTIFY':
-            // Agent notification (info/warning/error)
-            addMessage({
-              id: msg.id,
-              role: 'assistant',
-              content: `[${msg.level?.toUpperCase() || 'INFO'}] ${msg.message || ''}`,
-              timestamp: new Date(msg.timestamp),
-            });
-            break;
-            
-          case 'AGENT_IMAGE':
-            // Agent showing an image
-            addMessage({
-              id: msg.id,
-              role: 'assistant',
-              content: msg.caption || 'Image',
-              timestamp: new Date(msg.timestamp),
-              // Store image URL in events (use 'image' type for rendering)
-              events: [{
-                type: 'image',
-                timestamp: msg.timestamp,
-                data: { 
-                  image_url: msg.image_url || (msg as unknown as Record<string, unknown>).image_path,
-                  caption: msg.caption 
-                }
-              }],
+              attachments: parsedReply.attachments,
             });
             break;
             
@@ -1222,16 +1285,20 @@ export const useAppStore = create<AppStore>((set, get) => ({
           (msg) => msg.type !== 'SYSTEM_WAKE'
         );
         // Convert API messages to local Message format
-        const olderMessages: Message[] = filteredMessages.map((msg) => ({
-          id: msg.id,
-          role: msg.type === 'USER_MESSAGE' ? 'user' : 'assistant',
-          content: msg.summary || '',
-          timestamp: new Date(msg.timestamp),
-          isTruncated: msg.is_truncated,
-          status: msg.type === 'USER_MESSAGE' 
-            ? (msg.read ? 'read' : 'delivered') as MessageStatus 
-            : undefined,
-        }));
+        const olderMessages: Message[] = filteredMessages.map((msg) => {
+          const parsed = parseMessageContent(msg.summary, msg.id);
+          return {
+            id: msg.id,
+            role: msg.type === 'USER_MESSAGE' ? 'user' : 'assistant',
+            content: parsed.text,
+            timestamp: new Date(msg.timestamp),
+            isTruncated: msg.is_truncated,
+            attachments: parsed.attachments,
+            status: msg.type === 'USER_MESSAGE' 
+              ? (msg.read ? 'read' : 'delivered') as MessageStatus 
+              : undefined,
+          };
+        });
         
         // Prepend older messages to the list
         set((state) => ({

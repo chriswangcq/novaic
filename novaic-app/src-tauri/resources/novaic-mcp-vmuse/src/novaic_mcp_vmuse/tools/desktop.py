@@ -56,11 +56,8 @@ class AimCache:
         return entry
     
     def consume(self, aim_id: str) -> Optional[Dict[str, Any]]:
-        """Get and remove aim_id (one-time use)"""
-        entry = self.get(aim_id)
-        if entry and aim_id in self._cache:
-            del self._cache[aim_id]
-        return entry
+        """Backward-compatible alias of get(); aim_id is reusable."""
+        return self.get(aim_id)
     
     def _cleanup(self):
         """Remove expired entries"""
@@ -1330,9 +1327,6 @@ Click:  mouse(action='click', aim_id='{new_aim_id}')"""
             
             # ========== CLICK ==========
             if action == "click":
-                # Consume aim_id (one-time use)
-                _aim_cache.consume(aim_id)
-                
                 cmd = ["xdotool", "mousemove", str(pos_x), str(pos_y), "click", "1"]
                 result = subprocess.run(cmd, capture_output=True, text=True)
                 
@@ -1348,8 +1342,6 @@ Click:  mouse(action='click', aim_id='{new_aim_id}')"""
             
             # ========== DOUBLE CLICK ==========
             elif action == "double":
-                _aim_cache.consume(aim_id)
-                
                 cmd = ["xdotool", "mousemove", str(pos_x), str(pos_y), 
                        "click", "--repeat", "2", "--delay", "100", "1"]
                 result = subprocess.run(cmd, capture_output=True, text=True)
@@ -1366,8 +1358,6 @@ Click:  mouse(action='click', aim_id='{new_aim_id}')"""
             
             # ========== RIGHT CLICK ==========
             elif action == "right_click":
-                _aim_cache.consume(aim_id)
-                
                 cmd = ["xdotool", "mousemove", str(pos_x), str(pos_y), "click", "3"]
                 result = subprocess.run(cmd, capture_output=True, text=True)
                 

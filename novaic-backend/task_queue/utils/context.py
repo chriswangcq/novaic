@@ -259,13 +259,29 @@ def process_multimodal_messages(
                     })
             else:
                 processed.append(msg)
-        else:
-            # 非 tool result 消息
-            # 如果有待添加的图片，先把它们添加进来
+        elif role == "user":
+            # User message: 若有 {text, attachments} 格式，转为 LLM content 数组
+            # 注意：Repository 层已统一将 content 解析为 dict
             if pending_images:
                 processed.extend(pending_images)
                 pending_images = []
             
+            if isinstance(content, dict) and "attachments" in content and content["attachments"]:
+                # 有附件，转为 LLM 格式（文本 + 附件描述）
+                from .user_content import user_content_to_llm
+                llm_content = user_content_to_llm(content, provider=provider)
+                processed.append({"role": "user", "content": llm_content})
+            elif isinstance(content, dict) and "text" in content:
+                # 无附件，直接使用 text
+                processed.append({"role": "user", "content": content.get("text", "")})
+            else:
+                # 兼容旧格式（纯字符串）
+                processed.append(msg)
+        else:
+            # 其他消息
+            if pending_images:
+                processed.extend(pending_images)
+                pending_images = []
             processed.append(msg)
     
     # 处理末尾剩余的图片

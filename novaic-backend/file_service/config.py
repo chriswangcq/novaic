@@ -6,7 +6,7 @@ category、MIME、大小限制等
 from typing import Dict, Optional, Tuple
 
 # 支持的 category
-CATEGORIES = ("images", "apk", "audio", "video", "documents", "binaries")
+CATEGORIES = ("images", "apk", "audio", "video", "documents", "binaries", "chat_attachments")
 
 # category -> (默认扩展名, 大小限制 bytes)
 CATEGORY_CONFIG: Dict[str, Tuple[str, int]] = {
@@ -15,7 +15,8 @@ CATEGORY_CONFIG: Dict[str, Tuple[str, int]] = {
     "audio": ("bin", 50 * 1024 * 1024),        # 50MB
     "video": ("mp4", 200 * 1024 * 1024),       # 200MB
     "documents": ("pdf", 50 * 1024 * 1024),    # 50MB
-    "binaries": ("bin", 100 * 1024 * 1024),   # 100MB
+    "binaries": ("bin", 500 * 1024 * 1024),   # 500MB, 文件中转站
+    "chat_attachments": ("bin", 500 * 1024 * 1024),  # 500MB, 聊天附件（支持大文件如 APK）
 }
 
 # MIME -> (category, 扩展名)

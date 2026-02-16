@@ -57,7 +57,7 @@ export function ChatPanel() {
           
           {/* 半屏 Content */}
           <div className="flex-1 min-h-0 overflow-hidden">
-            <ExecutionLog logs={logs} />
+            <ExecutionLog logs={logs} showHeader={false} />
           </div>
         </div>
       )}

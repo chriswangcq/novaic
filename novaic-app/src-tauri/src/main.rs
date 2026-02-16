@@ -499,6 +499,14 @@ impl ToolsServerProcess {
             if !backend_path.exists() {
                 return Err(format!("Backend binary not found at {:?}", backend_path));
             }
+            // 创建日志文件
+            let log_dir = std::path::Path::new(&data_dir_str).join("logs");
+            std::fs::create_dir_all(&log_dir).ok();
+            let log_file = std::fs::File::create(log_dir.join("tools-server.log"))
+                .map_err(|e| format!("Failed to create tools-server log file: {}", e))?;
+            let log_file_err = log_file.try_clone()
+                .map_err(|e| format!("Failed to clone log file: {}", e))?;
+            
             Command::new(backend_path)
                 .arg("tools-server")
                 .arg("--port")
@@ -509,8 +517,8 @@ impl ToolsServerProcess {
                 .env("NOVAIC_GATEWAY_URL", format!("http://127.0.0.1:19999"))
                 .env("NO_PROXY", "localhost,127.0.0.1,::1")
                 .env("no_proxy", "localhost,127.0.0.1,::1")
-                .stdout(Stdio::null())
-                .stderr(Stdio::null())
+                .stdout(Stdio::from(log_file))
+                .stderr(Stdio::from(log_file_err))
                 .spawn()
                 .map_err(|e| format!("Failed to start Tools Server binary: {}", e))?
         } else {
@@ -1158,6 +1166,131 @@ async fn gateway_health(
     client.health_check().await
 }
 
+/// Tauri command: Download file to app cache directory
+#[tauri::command]
+async fn download_file_to_cache(
+    app: AppHandle,
+    url: String,
+    filename: String,
+) -> Result<serde_json::Value, String> {
+    use std::io::Write;
+    
+    // Get cache directory
+    let cache_dir = app.path().app_cache_dir()
+        .map_err(|e| format!("Failed to get cache dir: {}", e))?;
+    
+    // Create downloads subdirectory
+    let downloads_dir = cache_dir.join("downloads");
+    std::fs::create_dir_all(&downloads_dir)
+        .map_err(|e| format!("Failed to create downloads dir: {}", e))?;
+    
+    // Generate unique filename if exists
+    let mut target_path = downloads_dir.join(&filename);
+    let mut counter = 1;
+    while target_path.exists() {
+        let stem = std::path::Path::new(&filename)
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("file");
+        let ext = std::path::Path::new(&filename)
+            .extension()
+            .and_then(|s| s.to_str())
+            .unwrap_or("");
+        let new_name = if ext.is_empty() {
+            format!("{}_{}", stem, counter)
+        } else {
+            format!("{}_{}.{}", stem, counter, ext)
+        };
+        target_path = downloads_dir.join(new_name);
+        counter += 1;
+    }
+    
+    // Download file
+    let client = reqwest::Client::new();
+    let response = client.get(&url)
+        .send()
+        .await
+        .map_err(|e| format!("Download failed: {}", e))?;
+    
+    if !response.status().is_success() {
+        return Err(format!("Download failed: HTTP {}", response.status()));
+    }
+    
+    let bytes = response.bytes()
+        .await
+        .map_err(|e| format!("Failed to read response: {}", e))?;
+    
+    // Write to file
+    let mut file = std::fs::File::create(&target_path)
+        .map_err(|e| format!("Failed to create file: {}", e))?;
+    file.write_all(&bytes)
+        .map_err(|e| format!("Failed to write file: {}", e))?;
+    
+    Ok(serde_json::json!({
+        "success": true,
+        "path": target_path.to_string_lossy()
+    }))
+}
+
+/// Tauri command: Open file with default application
+#[tauri::command]
+async fn open_file(path: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("Failed to open file: {}", e))?;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("cmd")
+            .args(["/C", "start", "", &path])
+            .spawn()
+            .map_err(|e| format!("Failed to open file: {}", e))?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("Failed to open file: {}", e))?;
+    }
+    Ok(())
+}
+
+/// Tauri command: Show file in folder (Finder/Explorer)
+#[tauri::command]
+async fn show_in_folder(path: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .args(["-R", &path])
+            .spawn()
+            .map_err(|e| format!("Failed to show in folder: {}", e))?;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .args(["/select,", &path])
+            .spawn()
+            .map_err(|e| format!("Failed to show in folder: {}", e))?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        // Try to open parent directory
+        let parent = std::path::Path::new(&path)
+            .parent()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|| path.clone());
+        std::process::Command::new("xdg-open")
+            .arg(&parent)
+            .spawn()
+            .map_err(|e| format!("Failed to show in folder: {}", e))?;
+    }
+    Ok(())
+}
+
 fn main() {
     // Set NO_PROXY to avoid proxy issues with local services
     std::env::set_var("NO_PROXY", "localhost,127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16");
@@ -1655,6 +1788,10 @@ fn main() {
             gateway_put,
             gateway_delete,
             gateway_health,
+            // File operations
+            download_file_to_cache,
+            open_file,
+            show_in_folder,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

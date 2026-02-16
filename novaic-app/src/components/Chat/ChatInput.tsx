@@ -1,10 +1,26 @@
 import { useState, useRef, KeyboardEvent, useEffect, useMemo, useCallback } from 'react';
-import { ArrowUp, ChevronDown, Bot, X, ArrowDown } from 'lucide-react';
+import { ArrowUp, ChevronDown, Bot, X, ArrowDown, Paperclip } from 'lucide-react';
 import { useAppStore } from '../../store';
 import { CandidateModel } from '../../types';
 
+const MAX_ATTACHMENTS = 5;
+const MAX_FILE_SIZE_MB = 500; // 支持大文件（如 APK）
+const MAX_FILE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024;
+// 支持图片和常见文件类型
+const ALLOWED_TYPES = [
+  // 图片
+  'image/png', 'image/jpeg', 'image/gif', 'image/webp',
+  // 文档
+  'application/pdf', 'text/plain',
+  // 安装包
+  'application/vnd.android.package-archive', // APK
+  'application/octet-stream', // 通用二进制
+  // 压缩包
+  'application/zip', 'application/x-rar-compressed', 'application/x-7z-compressed',
+];
+
 interface ChatInputProps {
-  onSend: (content: string) => void;
+  onSend: (content: string, attachments?: File[]) => void;
   placeholder?: string;
   unreadCount?: number;
   onScrollToBottom?: () => void;
@@ -17,8 +33,11 @@ export function ChatInput({
   onScrollToBottom
 }: ChatInputProps) {
   const [content, setContent] = useState('');
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [attachError, setAttachError] = useState<string | null>(null);
   const [isFocused, setIsFocused] = useState(false);
   const [showModelDropdown, setShowModelDropdown] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -90,16 +109,42 @@ export function ChatInput({
     return grouped;
   }, [availableModels]);
 
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = '';
+    setAttachError(null);
+    const toAdd: File[] = [];
+    for (const f of files) {
+      if (attachments.length + toAdd.length >= MAX_ATTACHMENTS) {
+        setAttachError(`最多 ${MAX_ATTACHMENTS} 个附件`);
+        break;
+      }
+      if (f.size > MAX_FILE_SIZE) {
+        setAttachError(`${f.name} 超过 ${MAX_FILE_SIZE_MB}MB`);
+        break;
+      }
+      toAdd.push(f);
+    }
+    setAttachments((prev) => [...prev, ...toAdd]);
+  }, [attachments.length]);
+
+  const removeAttachment = useCallback((index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+    setAttachError(null);
+  }, []);
+
   const handleSend = () => {
     // Check if agent is selected
     if (!hasAgent) {
       return;
     }
     const trimmed = content.trim();
-    if (trimmed) {
+    if (trimmed || attachments.length > 0) {
       // Fire-and-forget: allow sending even when agent is busy
-      onSend(trimmed);
+      onSend(trimmed || '', attachments.length ? attachments : undefined);
       setContent('');
+      setAttachments([]);
+      setAttachError(null);
       resetHeight();
     }
   };
@@ -149,8 +194,52 @@ export function ChatInput({
         </div>
       )}
       
+      {/* Attachment preview */}
+      {attachments.length > 0 && (
+        <div className="w-full max-w-[480px] flex flex-wrap gap-1.5">
+          {attachments.map((f, i) => (
+            <div
+              key={`${f.name}-${i}`}
+              className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/[0.06] border border-white/10 text-[11px] text-white/80"
+            >
+              <span className="truncate max-w-[120px]">{f.name}</span>
+              <button
+                type="button"
+                onClick={() => removeAttachment(i)}
+                className="text-white/40 hover:text-white/80 transition-colors"
+                aria-label="Remove"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          ))}
+          {attachError && (
+            <span className="text-[11px] text-amber-400/80">{attachError}</span>
+          )}
+        </div>
+      )}
+
       {/* Main input row */}
       <div className="flex items-center gap-3 w-full max-w-[480px]">
+        {/* File attach button */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept={ALLOWED_TYPES.join(',') + ',.apk,.pdf,.txt,.zip,.rar,.7z'}
+          onChange={handleFileSelect}
+          className="hidden"
+        />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={!hasAgent || attachments.length >= MAX_ATTACHMENTS}
+          className="w-[32px] h-[32px] rounded-full flex items-center justify-center shrink-0 bg-white/[0.04] hover:bg-white/[0.08] text-white/60 hover:text-white/80 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          title="添加附件"
+        >
+          <Paperclip size={14} />
+        </button>
+
         {/* Input container */}
         <div 
           className={`
@@ -179,10 +268,10 @@ export function ChatInput({
           />
         </div>
 
-        {/* Send button - always available (fire-and-forget mode) */}
+        {/* Send button - enabled when has content or attachments */}
         <button
           onClick={handleSend}
-          disabled={!hasAgent || !content.trim()}
+          disabled={!hasAgent || (!content.trim() && attachments.length === 0)}
           className={`w-[32px] h-[32px] rounded-full transition-all flex items-center justify-center shrink-0 ${
             hasAgent && content.trim()
               ? 'bg-white/20 hover:bg-white/25 text-white'
