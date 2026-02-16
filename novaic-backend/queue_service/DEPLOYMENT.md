@@ -229,7 +229,7 @@ echo "✅ Cleanup complete"
 1. **备份现有数据**：
 
 ```bash
-sqlite3 $NOVAIC_DATA_DIR/novaic.db <<EOF
+sqlite3 $NOVAIC_DATA_DIR/gateway.db <<EOF
 .output /tmp/tq_tasks_backup.sql
 .dump tq_tasks
 .output /tmp/tq_sagas_backup.sql
@@ -243,7 +243,7 @@ EOF
 
 ```bash
 # 仅迁移待处理的任务
-sqlite3 $NOVAIC_DATA_DIR/novaic.db <<EOF
+sqlite3 $NOVAIC_DATA_DIR/gateway.db <<EOF
 .mode insert tq_tasks
 SELECT * FROM tq_tasks WHERE status IN ('pending', 'claimed');
 EOF > /tmp/pending_tasks.sql

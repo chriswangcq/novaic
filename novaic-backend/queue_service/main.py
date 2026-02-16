@@ -13,27 +13,19 @@ import sys
 import logging
 from datetime import datetime
 from pathlib import Path
+from common.config import ServiceConfig
 
 # 添加父目录到 Python 路径（确保可以导入 common 和 queue_service）
 BACKEND_DIR = Path(__file__).parent.parent.absolute()
 if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
-# ==================== Environment Variables ====================
-print("[Queue Service] === Environment Variables ===")
-print(f"[Queue Service] NOVAIC_DATA_DIR: {os.environ.get('NOVAIC_DATA_DIR', 'NOT SET')}")
-print(f"[Queue Service] Current working directory: {os.getcwd()}")
-print(f"[Queue Service] Executable path: {sys.executable}")
-print("[Queue Service] ===============================")
-
-# Validate NOVAIC_DATA_DIR
-if not os.environ.get("NOVAIC_DATA_DIR"):
-    print("[Queue Service] ERROR: NOVAIC_DATA_DIR environment variable is required")
-    print("[Queue Service] Please start Queue Service through the NovAIC app")
+# ==================== Strict Config ====================
+NOVAIC_DATA_DIR = ServiceConfig.DATA_DIR
+if not NOVAIC_DATA_DIR:
+    print("[Queue Service] ERROR: paths.data_dir is required in config/services.json")
     sys.exit(1)
-
-NOVAIC_DATA_DIR = os.environ["NOVAIC_DATA_DIR"]
-print(f"[Queue Service] Data directory: {NOVAIC_DATA_DIR}")
+print(f"[Queue Service] Data directory (strict config): {NOVAIC_DATA_DIR}")
 
 # ==================== Logging Setup ====================
 LOG_DIR = os.path.join(NOVAIC_DATA_DIR, "logs")
@@ -169,8 +161,7 @@ async def shutdown_event():
 
 if __name__ == "__main__":
     import uvicorn
-    
-    PORT = int(os.environ.get("QUEUE_SERVICE_PORT", "19997"))
+    PORT = ServiceConfig.QUEUE_SERVICE_PORT
     
     logger.info(f"[Queue Service] Starting server on port {PORT}")
     

@@ -45,6 +45,7 @@ import traceback
 from common.config import ServiceConfig
 from common.utils.time import utc_now_iso
 import httpx
+from common.http.clients import internal_client
 
 
 @dataclass
@@ -107,7 +108,7 @@ class Watchdog:
     def _get_gateway_client(self) -> httpx.Client:
         """获取 Gateway HTTP 客户端"""
         if self._gateway_client is None:
-            self._gateway_client = httpx.Client(
+            self._gateway_client = internal_client(
                 base_url=self.gateway_url,
                 timeout=self.timeout,
             )
@@ -116,7 +117,7 @@ class Watchdog:
     def _get_queue_client(self) -> httpx.Client:
         """获取 Queue Service HTTP 客户端"""
         if self._queue_client is None:
-            self._queue_client = httpx.Client(
+            self._queue_client = internal_client(
                 base_url=self.queue_service_url,
                 timeout=self.timeout,
             )

@@ -11,7 +11,6 @@ Topics:
 """
 
 import json
-import os
 from typing import Dict, Any
 from . import register_handler
 from ..business import LLMBusiness
@@ -38,9 +37,9 @@ def _create_llm_client(provider: str, api_key: str, api_base: str):
 
 def _fetch_llm_config_from_gateway(gateway_url: str, runtime_id: str) -> Dict[str, Any]:
     """Fetch LLM config by runtime_id from Gateway internal API."""
-    import httpx
+    from common.http.clients import internal_client
     url = f"{gateway_url.rstrip('/')}/internal/config/llm/runtime/{runtime_id}"
-    with httpx.Client(timeout=ServiceConfig.HTTP_TIMEOUT_SHORT, trust_env=False) as client:
+    with internal_client(timeout=ServiceConfig.HTTP_TIMEOUT_SHORT) as client:
         resp = client.get(url)
         resp.raise_for_status()
         return resp.json()
@@ -104,9 +103,9 @@ def handle_llm_call(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     # 通过 Tools Server HTTP API 获取工具列表
     if not tools:
         try:
-            tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", ServiceConfig.TOOLS_SERVER_URL)
-            import httpx
-            with httpx.Client(timeout=ServiceConfig.HTTP_TIMEOUT_SHORT, trust_env=False) as client:
+            from common.http.clients import internal_client
+            tools_server_url = ServiceConfig.TOOLS_SERVER_URL
+            with internal_client(timeout=ServiceConfig.HTTP_TIMEOUT_SHORT) as client:
                 resp = client.get(f"{tools_server_url}/internal/runtimes/{runtime_id}/tools")
                 if resp.status_code == 200:
                     tools_data = resp.json()

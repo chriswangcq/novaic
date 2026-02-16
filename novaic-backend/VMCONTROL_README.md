@@ -332,7 +332,7 @@ python3 novaic-backend/main_vmcontrol.py --port 8080 --host 0.0.0.0
 
 ## 相关文档
 
-- [PHASE_4_1_README.md](../PHASE_4_1_README.md) - Phase 4.1 完整文档
+- Phase 4.1 完整文档（历史文档已归档）
 - [VNC_WEBSOCKET_IMPLEMENTATION_COMPLETE.md](../VNC_WEBSOCKET_IMPLEMENTATION_COMPLETE.md) - VNC WebSocket 实现
 - [novaic-app/src-tauri/vmcontrol/README.md](../novaic-app/src-tauri/vmcontrol/README.md) - vmcontrol Rust 代码文档
 

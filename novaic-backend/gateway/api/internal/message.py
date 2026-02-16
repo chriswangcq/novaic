@@ -13,18 +13,142 @@ from common.enums import RuntimeStatus, SubagentStatus
 from common.utils.time import utc_now_iso
 from common.config import ServiceConfig
 from gateway.db.access import get_db
-from .helpers import resolve_runtime_ids, get_runtime_context, _runtime_to_dict, _subagent_to_dict
+from .helpers import (
+    resolve_runtime_ids,
+    get_runtime_context,
+    _runtime_to_dict,
+    _subagent_to_dict,
+    maybe_forward_to_runtime_orchestrator,
+)
 
 router = APIRouter(tags=["internal"])
 
 # ==================== Message Operations ====================
 
+@router.get("/chat/history")
+async def get_chat_history(
+    agent_id: str = Query(..., description="Agent ID"),
+    limit: int = Query(100, ge=1, le=1000),
+):
+    """Get chat history for one agent."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "GET",
+        "/internal/chat/history",
+        params={"agent_id": agent_id, "limit": limit},
+    )
+    if proxied is not None:
+        return proxied
+
+    db = get_db()
+    rows = db.fetchall(
+        """
+        SELECT id, type, content, timestamp, read
+        FROM chat_messages
+        WHERE agent_id = ? AND type != 'SYSTEM_WAKE'
+        ORDER BY timestamp DESC
+        LIMIT ?
+        """,
+        (agent_id, limit),
+    )
+    messages = [
+        {
+            "id": row["id"],
+            "type": row["type"],
+            "content": row["content"],
+            "timestamp": row["timestamp"],
+            "read": bool(row["read"]),
+        }
+        for row in reversed(rows)
+    ]
+    return {"messages": messages}
+
+
+@router.post("/chat/clear")
+async def clear_chat_history(agent_id: str = Query(..., description="Agent ID")):
+    """Mark one agent's chat history as read."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST",
+        "/internal/chat/clear",
+        params={"agent_id": agent_id},
+    )
+    if proxied is not None:
+        return proxied
+
+    db = get_db()
+    with db.transaction(lock_type="agent", resource_id=agent_id, timeout=10.0):
+        db.execute(
+            "UPDATE chat_messages SET read = 1 WHERE agent_id = ?",
+            (agent_id,),
+        )
+    return {"status": "ok", "message": "History cleared (messages marked as read)"}
+
+
+@router.post("/agents/{agent_id}/interrupt")
+async def interrupt_agent(agent_id: str):
+    """Interrupt one agent and enqueue INTERRUPT message."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST",
+        f"/internal/agents/{agent_id}/interrupt",
+    )
+    if proxied is not None:
+        return proxied
+
+    from gateway.db.repositories.message import MessageRepository
+
+    db = get_db()
+    now = utc_now_iso()
+
+    with db.transaction(lock_type="agent", resource_id=agent_id, timeout=15.0):
+        runtime_cursor = db.execute(
+            """
+            UPDATE agent_runtimes
+            SET status = 'completed', phase = 'completed', updated_at = ?
+            WHERE agent_id = ? AND status = 'active'
+            """,
+            (now, agent_id),
+        )
+        interrupted_runtimes = runtime_cursor.rowcount
+
+        db.execute(
+            """
+            UPDATE subagents
+            SET status = 'sleeping', updated_at = ?
+            WHERE agent_id = ? AND status = 'awake'
+            """,
+            (now, agent_id),
+        )
+
+    message_repo = MessageRepository(db)
+    msg = message_repo.add_message(
+        agent_id=agent_id,
+        type="INTERRUPT",
+        content="User requested interrupt",
+        status="sending",
+        metadata={
+            "action": "cancel_all",
+            "target_agent_id": agent_id,
+            "interrupted_runtimes": interrupted_runtimes,
+        },
+    )
+    return {
+        "status": "ok",
+        "message_id": msg["id"],
+        "interrupted_runtimes": interrupted_runtimes,
+        "note": "Tasks/sagas cancellation is async via Watchdog",
+    }
+
 @router.get("/messages/unread/{agent_id}")
-def get_unread_messages(agent_id: str):
+async def get_unread_messages(agent_id: str):
     """Get unread messages for an agent (for Scheduler to include in context).
     
     Uses read=0 to find messages that haven't been processed yet.
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "GET", f"/internal/messages/unread/{agent_id}"
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.message import MessageRepository
     
     db = get_db()
@@ -55,14 +179,20 @@ def _parse_message_content(content) -> dict:
 
 
 @router.get("/messages/unread-sent/{agent_id}")
-def get_unread_sent_messages(agent_id: str):
+async def get_unread_sent_messages(agent_id: str):
     """Get unread sent messages for an agent (USER_MESSAGE, SYSTEM_WAKE, SUBAGENT_COMPLETED)."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "GET", f"/internal/messages/unread-sent/{agent_id}"
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.message import MessageRepository
 
     db = get_db()
     repo = MessageRepository(db)
     messages = repo.get_unread(agent_id)
-    
+
     # Include USER_MESSAGE, SYSTEM_WAKE, and SUBAGENT_COMPLETED types
     # All are treated as user role messages in the LLM context
     valid_types = ("USER_MESSAGE", "SYSTEM_WAKE", "SUBAGENT_COMPLETED")
@@ -82,11 +212,17 @@ def get_unread_sent_messages(agent_id: str):
 
 
 @router.get("/messages/unread-count/{agent_id}")
-def get_unread_count(agent_id: str):
+async def get_unread_count(agent_id: str):
     """Get count of unread messages (for Monitor to detect new messages).
     
     Uses read=0 to find messages that haven't been processed yet.
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "GET", f"/internal/messages/unread-count/{agent_id}"
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.message import MessageRepository
     
     db = get_db()
@@ -97,13 +233,18 @@ def get_unread_count(agent_id: str):
 
 
 @router.get("/messages/unread-grouped")
-def get_unread_messages_grouped(agent_id: Optional[str] = None):
+async def get_unread_messages_grouped(agent_id: Optional[str] = None):
     """Get unread messages grouped by agent_id (v14 for Monitor).
     
     Returns all agents with unread USER_MESSAGE messages.
     Uses read=0 to find messages that haven't been processed yet.
     """
-    
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "GET", "/internal/messages/unread-grouped", params={"agent_id": agent_id} if agent_id else None
+    )
+    if proxied is not None:
+        return proxied
+
     db = get_db()
     
     # Get all unread messages with their agent_id
@@ -132,7 +273,7 @@ def get_unread_messages_grouped(agent_id: Optional[str] = None):
 
 
 @router.post("/messages/claim-and-prepare")
-def claim_and_prepare_message():
+async def claim_and_prepare_message():
     """Claim one sending message and prepare for processing.
     
     Used by Watchdog to:
@@ -145,6 +286,12 @@ def claim_and_prepare_message():
         
     DEPRECATED: 使用 /messages/find-sending + /messages/{id}/confirm 两阶段提交替代
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", "/internal/messages/claim-and-prepare"
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.message import MessageRepository
     
     db = get_db()
@@ -155,7 +302,7 @@ def claim_and_prepare_message():
 
 
 @router.post("/messages/find-sending")
-def find_sending_message():
+async def find_sending_message():
     """Find one sending message without changing its status.
     
     两阶段提交第一阶段：
@@ -169,6 +316,12 @@ def find_sending_message():
     Returns:
         {"message": {...}} if found, {"message": null} if queue is empty
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", "/internal/messages/find-sending"
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.message import MessageRepository
     
     db = get_db()
@@ -179,7 +332,7 @@ def find_sending_message():
 
 
 @router.post("/messages/{message_id}/confirm")
-def confirm_message(message_id: str):
+async def confirm_message(message_id: str):
     """Confirm a message (sending → sent).
     
     两阶段提交第二阶段：
@@ -192,6 +345,12 @@ def confirm_message(message_id: str):
     Returns:
         {"success": bool, "message_id": str, "confirmed": bool}
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/messages/{message_id}/confirm"
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.message import MessageRepository
     
     db = get_db()
@@ -215,12 +374,18 @@ def confirm_message(message_id: str):
 
 
 @router.post("/messages/{message_id}/claim")
-def claim_message(message_id: str):
+async def claim_message(message_id: str):
     """
     Claim a message (sending -> sent) with CAS.
     
     Uses FIFO lock (sharded by message_id) to ensure fair ordering.
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/messages/{message_id}/claim"
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.message import MessageRepository
     
     db = get_db()
@@ -243,8 +408,14 @@ def claim_message(message_id: str):
 
 
 @router.get("/messages/has-new/{agent_id}")
-def has_new_messages(agent_id: str):
+async def has_new_messages(agent_id: str):
     """Check if agent has new sent unread user messages."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "GET", f"/internal/messages/has-new/{agent_id}"
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.message import MessageRepository
 
     db = get_db()
@@ -255,8 +426,14 @@ def has_new_messages(agent_id: str):
 
 
 @router.patch("/messages/mark-read")
-def mark_messages_read(data: Dict[str, Any]):
+async def mark_messages_read(data: Dict[str, Any]):
     """Mark messages as read and broadcast status update."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "PATCH", "/internal/messages/mark-read", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     import uuid as uuid_module
     from gateway.db.repositories.message import MessageRepository
     
@@ -302,11 +479,17 @@ def mark_messages_read(data: Dict[str, Any]):
 
 
 @router.patch("/messages/mark-processed")
-def mark_messages_processed(data: Dict[str, Any]):
+async def mark_messages_processed(data: Dict[str, Any]):
     """Mark messages as read and broadcast status update to SSE.
     
     Note: 'processed' concept is merged into 'read'. Once read=1, message is considered processed.
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "PATCH", "/internal/messages/mark-processed", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     import uuid as uuid_module
     from gateway.db.repositories.message import MessageRepository
     
@@ -353,7 +536,7 @@ def mark_messages_processed(data: Dict[str, Any]):
 
 
 @router.post("/messages/inject-subagent-completed")
-def inject_subagent_completed_message(data: Dict[str, Any]):
+async def inject_subagent_completed_message(data: Dict[str, Any]):
     """Inject a SUBAGENT_COMPLETED message to notify parent SubAgent.
     
     Used by RuntimeComplete Saga to notify Main SubAgent when a Sub SubAgent
@@ -369,6 +552,12 @@ def inject_subagent_completed_message(data: Dict[str, Any]):
             "result": str - Task result summary (optional)
         }
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", "/internal/messages/inject-subagent-completed", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.message import MessageRepository
     from gateway.db.repositories.subagent import SubAgentRepository
     
@@ -423,7 +612,7 @@ def inject_subagent_completed_message(data: Dict[str, Any]):
 
 
 @router.post("/messages/inject-wake")
-def inject_wake_message(data: Dict[str, Any]):
+async def inject_wake_message(data: Dict[str, Any]):
     """Inject a SYSTEM_WAKE message to trigger agent wake-up.
     
     Used by SchedulerWorker to wake sleeping agents via the normal
@@ -438,6 +627,12 @@ def inject_wake_message(data: Dict[str, Any]):
             "metadata": dict - Wake metadata (wake_reason, handoff_notes, etc.)
         }
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", "/internal/messages/inject-wake", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.message import MessageRepository
     from task_queue.client import GatewayInternalClient
     from task_queue.utils.system_prompt import build_wake_message
@@ -477,7 +672,7 @@ def inject_wake_message(data: Dict[str, Any]):
 
 
 @router.post("/messages")
-def create_message(data: Dict[str, Any]):
+async def create_message(data: Dict[str, Any]):
     """Create a chat message.
     
     - USER_MESSAGE, SYSTEM_WAKE, SPAWN_SUBAGENT, SUBAGENT_COMPLETED: 
@@ -485,6 +680,12 @@ def create_message(data: Dict[str, Any]):
     - AGENT_REPLY, AGENT_ASK, etc.: 
       Use status='sent' directly (no Watchdog processing needed).
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", "/internal/messages", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.message import MessageRepository
     
     db = get_db()

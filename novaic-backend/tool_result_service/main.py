@@ -4,9 +4,9 @@ Tool Result Service - 入口
 
 import argparse
 import logging
-import os
 
 import uvicorn
+from common.config import ServiceConfig
 
 logging.basicConfig(
     level=logging.INFO,
@@ -34,13 +34,10 @@ def create_app():
 
 def main():
     parser = argparse.ArgumentParser(description="NovaIC Tool Result Service")
-    parser.add_argument("--port", type=int, default=int(os.getenv("TOOL_RESULT_SERVICE_PORT", "19994")))
-    parser.add_argument("--host", type=str, default="127.0.0.1")
-    parser.add_argument("--data-dir", help="Data directory (sets NOVAIC_DATA_DIR)")
+    parser.add_argument("--port", type=int, default=ServiceConfig.TOOL_RESULT_SERVICE_PORT)
+    parser.add_argument("--host", type=str, default=ServiceConfig.TOOL_RESULT_SERVICE_HOST)
+    parser.add_argument("--data-dir", default=ServiceConfig.DATA_DIR, help="Data directory")
     args = parser.parse_args()
-
-    if args.data_dir:
-        os.environ["NOVAIC_DATA_DIR"] = args.data_dir
 
     app = create_app()
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")

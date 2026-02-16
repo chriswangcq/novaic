@@ -56,7 +56,7 @@
 
 | 内容 | 路径 |
 |------|------|
-| 数据库 | `~/Library/Application Support/com.novaic.app/novaic.db` |
+| 数据库 | `~/Library/Application Support/com.novaic.app/gateway.db`<br>`~/Library/Application Support/com.novaic.app/runtime_orchestrator.db`<br>`~/Library/Application Support/com.novaic.app/queue.db` |
 | 日志 | `~/Library/Application Support/com.novaic.app/logs/` |
 | 后端代码 | `novaic-backend/` |
 | 前端代码 | `novaic-app/src/` |

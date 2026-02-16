@@ -16,6 +16,7 @@ from typing import Dict, List, Optional, Any
 
 import httpx
 
+from common.http.clients import internal_client, internal_async_client
 from mcp_client.registry import ToolRegistry
 
 logger = logging.getLogger(__name__)
@@ -312,7 +313,7 @@ class RuntimeManager:
             return
         
         try:
-            with httpx.Client(timeout=5.0, trust_env=False) as client:
+            with internal_client(timeout=5.0) as client:
                 client.post(
                     f"{self._gateway_url}/internal/runtimes/{runtime_id}/tool-ports",
                     json={"ports": ports},
@@ -341,7 +342,7 @@ class RuntimeManager:
         data = None
         for attempt in range(1, max_retries + 1):
             try:
-                async with httpx.AsyncClient(timeout=10.0, trust_env=False) as client:
+                async with internal_async_client(timeout=10.0) as client:
                     resp = await client.get(f"{self._gateway_url}/internal/runtimes/with-tools")
                     resp.raise_for_status()
                     data = resp.json()

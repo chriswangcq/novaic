@@ -4,14 +4,9 @@ Saga Worker 启动入口 (同步版本)
 执行 Saga 流程编排。
 """
 
-import os
 import sys
 import signal
 import argparse
-
-# 设置环境
-os.environ['no_proxy'] = 'localhost,127.0.0.1,::1'
-os.environ['NO_PROXY'] = 'localhost,127.0.0.1,::1'
 
 # Import unified configuration
 from common.config import ServiceConfig
@@ -22,14 +17,16 @@ def main():
     from task_queue.sagas import get_all_saga_definitions, get_all_saga_types, validate_saga_registration
     
     parser = argparse.ArgumentParser(description="Saga Worker (sync)")
-    parser.add_argument("--gateway-url", default=ServiceConfig.GATEWAY_URL, help="Gateway URL")
-    parser.add_argument("--queue-service-url", default=ServiceConfig.QUEUE_SERVICE_URL, help="Queue Service URL")
-    parser.add_argument("--max-concurrent", type=int, default=ServiceConfig.MAX_CONCURRENT_SAGAS, help="Max concurrent sagas")
+    parser.add_argument("--gateway-url", required=True, help="Gateway URL")
+    parser.add_argument("--queue-service-url", required=True, help="Queue Service URL")
+    parser.add_argument("--runtime-orchestrator-url", required=True, help="Runtime Orchestrator URL")
+    parser.add_argument("--max-concurrent", type=int, required=True, help="Max concurrent sagas")
     args = parser.parse_args()
     
     gateway_url = args.gateway_url
     queue_service_url = args.queue_service_url
     max_concurrent = args.max_concurrent
+    ServiceConfig.RUNTIME_ORCHESTRATOR_URL = args.runtime_orchestrator_url
     
     # 验证并获取所有已注册的 Saga 类型（自动发现）
     validate_saga_registration()

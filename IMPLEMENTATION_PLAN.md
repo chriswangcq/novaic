@@ -66,7 +66,7 @@
 
 **具体措施**:
 - 标准文档（`MULTIMODAL_STANDARD.md`）
-- 迁移指南（`MIGRATION_GUIDE.md`）
+- 迁移指南（已归档）
 - API 变更说明（`API_CHANGES.md`）
 - 测试指南（`TESTING_GUIDE.md`）
 
@@ -417,7 +417,7 @@ async def screenshot(vm_id: str, format: str = "json"):
    - [x] 最佳实践
    - [x] FAQ
 
-2. **MIGRATION_GUIDE.md** ✅
+2. **迁移指南（历史）** ✅
    - [x] 迁移步骤
    - [x] 代码示例
    - [x] 常见问题
@@ -1288,7 +1288,7 @@ psql novaic_db < backup_before_mcp.sql
 ### 文档指标
 
 - [ ] **标准文档**: `MULTIMODAL_STANDARD.md` 完成 ✅
-- [ ] **迁移指南**: `MIGRATION_GUIDE.md` 完成 ✅
+- [ ] **迁移指南（历史）** 完成 ✅
 - [ ] **实施计划**: `IMPLEMENTATION_PLAN.md` 完成 ✅
 - [ ] **API 文档**: `API_CHANGES.md` 完成
 - [ ] **测试指南**: `TESTING_GUIDE.md` 完成

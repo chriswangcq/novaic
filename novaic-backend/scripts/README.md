@@ -20,7 +20,11 @@ python novaic-backend/scripts/migrate_agent_index_to_ports.py --dry-run
 python novaic-backend/scripts/migrate_agent_index_to_ports.py
 ```
 
-**详细文档**：查看 [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md)
+更多参数请使用：
+
+```bash
+python novaic-backend/scripts/migrate_agent_index_to_ports.py --help
+```
 
 ## 其他脚本
 

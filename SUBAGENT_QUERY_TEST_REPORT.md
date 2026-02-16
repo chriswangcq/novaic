@@ -17,12 +17,14 @@
 
 ### 1.2 数据库路径
 
-- **主数据库**: `/Users/wangchaoqun/Library/Application Support/com.novaic.app/novaic.db`
+- **Gateway数据库**: `/Users/wangchaoqun/Library/Application Support/com.novaic.app/gateway.db`
+- **Runtime Orchestrator数据库**: `/Users/wangchaoqun/Library/Application Support/com.novaic.app/runtime_orchestrator.db`
+- **Queue数据库**: `/Users/wangchaoqun/Library/Application Support/com.novaic.app/queue.db`
 
 ### 1.3 现有 SubAgent 数据
 
 ```bash
-sqlite3 ".../novaic.db" "SELECT subagent_id, agent_id, type, status, task, result FROM subagents LIMIT 10;"
+sqlite3 ".../runtime_orchestrator.db" "SELECT subagent_id, agent_id, type, status, task, result FROM subagents LIMIT 10;"
 ```
 
 ---

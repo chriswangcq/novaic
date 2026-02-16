@@ -9,6 +9,8 @@ from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime
 import json
 
+import httpx
+
 from common.enums import RuntimeStatus, SubagentStatus
 from common.config import ServiceConfig
 from gateway.db.access import get_db
@@ -115,5 +117,69 @@ def _subagent_to_dict(subagent) -> Dict[str, Any]:
         "updated_at": subagent.updated_at,
     }
 
+# ==================== Phase 4 Runtime Orchestrator Proxy ====================
+
+_RUNTIME_ORCHESTRATOR_PROCESS = False
+
+
+def set_runtime_orchestrator_process(is_runtime_orchestrator: bool) -> None:
+    """Mark current process role to avoid self-proxy recursion."""
+    global _RUNTIME_ORCHESTRATOR_PROCESS
+    _RUNTIME_ORCHESTRATOR_PROCESS = is_runtime_orchestrator
+
+
+async def maybe_forward_to_runtime_orchestrator(
+    method: str,
+    path: str,
+    *,
+    params: Optional[Dict[str, Any]] = None,
+    json_body: Optional[Dict[str, Any]] = None,
+) -> Optional[Dict[str, Any]]:
+    """
+    If RUNTIME_ORCHESTRATOR_URL is set, forward the request and return the JSON response.
+    Otherwise return None (caller should use local behavior).
+
+    On proxy HTTP error, raises HTTPException with same status_code and detail.
+    """
+    from gateway.clients.runtime_orchestrator import (
+        RuntimeOrchestratorClient,
+        get_runtime_orchestrator_client,
+    )
+
+    # In Runtime Orchestrator process itself, always execute local handlers.
+    # Otherwise requests would proxy to itself and recurse forever.
+    if _RUNTIME_ORCHESTRATOR_PROCESS:
+        return None
+
+    if not RuntimeOrchestratorClient.is_enabled():
+        raise HTTPException(
+            status_code=500,
+            detail="Runtime Orchestrator URL is not configured; Gateway requires it for internal API forwarding",
+        )
+
+    client = get_runtime_orchestrator_client()
+    try:
+        result = await client.forward(method, path, params=params, json=json_body)
+        return result
+    except httpx.HTTPStatusError as e:
+        status_code = e.response.status_code
+        detail = str(e)
+        try:
+            body = e.response.json()
+            if isinstance(body, dict) and "detail" in body:
+                detail = body["detail"] if isinstance(body["detail"], str) else str(body["detail"])
+        except Exception:
+            if e.response.text:
+                detail = e.response.text[:500]
+        raise HTTPException(status_code=status_code, detail=detail)
+
+
 # Exported functions
-__all__ = ['resolve_runtime_ids', 'get_runtime_context', '_runtime_to_dict', '_subagent_to_dict']
+__all__ = [
+    "resolve_runtime_ids",
+    "get_runtime_context",
+    "_runtime_to_dict",
+    "_subagent_to_dict",
+    "set_runtime_orchestrator_process",
+    "maybe_forward_to_runtime_orchestrator",
+]

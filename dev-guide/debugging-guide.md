@@ -35,31 +35,33 @@ curl -s "http://127.0.0.1:19999/api/logs/entries?agent_id=xxx&limit=10" | python
 ### 数据库位置
 
 ```
-~/Library/Application Support/com.novaic.app/novaic.db
+~/Library/Application Support/com.novaic.app/gateway.db
+~/Library/Application Support/com.novaic.app/runtime_orchestrator.db
+~/Library/Application Support/com.novaic.app/queue.db
 ```
 
 ### 常用查询
 
 ```bash
 # 查看最近消息
-sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
+sqlite3 ~/Library/Application\ Support/com.novaic.app/runtime_orchestrator.db \
   "SELECT id, type, content, timestamp FROM chat_messages ORDER BY timestamp DESC LIMIT 10;"
 
-# 查看执行日志
-sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
-  "SELECT id, kind, status, event_key, timestamp FROM execution_logs ORDER BY id DESC LIMIT 10;"
+# 查看执行日志（如果存在）
+sqlite3 ~/Library/Application\ Support/com.novaic.app/gateway.db \
+  "SELECT id, kind, status, event_key, timestamp FROM execution_logs ORDER BY id DESC LIMIT 10;" 2>/dev/null || echo "execution_logs table may not exist"
 
 # 查看任务队列
-sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
-  "SELECT id, topic, status, error FROM tasks ORDER BY created_at DESC LIMIT 10;"
+sqlite3 ~/Library/Application\ Support/com.novaic.app/queue.db \
+  "SELECT id, topic, status, error FROM tq_tasks ORDER BY created_at DESC LIMIT 10;"
 
 # 查看 Saga 状态
-sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
-  "SELECT id, saga_type, status, current_step, error FROM sagas ORDER BY created_at DESC LIMIT 5;"
+sqlite3 ~/Library/Application\ Support/com.novaic.app/queue.db \
+  "SELECT id, saga_type, status, current_step, error FROM tq_sagas ORDER BY created_at DESC LIMIT 5;"
 
 # 查看 Runtime 状态
-sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
-  "SELECT id, agent_id, status, phase FROM runtimes ORDER BY created_at DESC LIMIT 5;"
+sqlite3 ~/Library/Application\ Support/com.novaic.app/runtime_orchestrator.db \
+  "SELECT runtime_id, agent_id, status, phase FROM agent_runtimes ORDER BY created_at DESC LIMIT 5;"
 ```
 
 ---

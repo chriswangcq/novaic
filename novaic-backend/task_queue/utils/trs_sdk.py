@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Optional
 import httpx
 
 from common.config import ServiceConfig
+from common.http.clients import internal_client
 
 logger = logging.getLogger(__name__)
 
@@ -180,7 +181,7 @@ class TRSClient:
         Returns:
             result_id
         """
-        with httpx.Client(timeout=self._timeout, trust_env=False) as c:
+        with internal_client(timeout=self._timeout) as c:
             r = c.post(f"{self._base_url}/api/create", json={
                 "agent_id": agent_id,
                 "tool_name": tool_name,
@@ -235,7 +236,7 @@ class TRSClient:
             JSON 字符串，格式为 {"_mcp_content": [...]}
         """
         try:
-            with httpx.Client(timeout=self._timeout, trust_env=False) as client:
+            with internal_client(timeout=self._timeout) as client:
                 r = client.get(
                     f"{self._base_url}/api/{result_id}/for-llm",
                     params={"provider": provider, "include_display": str(include_display).lower()},
@@ -282,7 +283,7 @@ class TRSClient:
     def get_normalized(self, result_id: str) -> Optional[Dict[str, Any]]:
         """获取 normalized 结构（三要素）"""
         try:
-            with httpx.Client(timeout=self._timeout, trust_env=False) as client:
+            with internal_client(timeout=self._timeout) as client:
                 r = client.get(f"{self._base_url}/api/{result_id}")
                 r.raise_for_status()
                 return r.json().get("normalized")
@@ -293,7 +294,7 @@ class TRSClient:
     def get_preview(self, result_id: str, max_text_len: int = 500) -> str:
         """文本预览，用于摘要等"""
         try:
-            with httpx.Client(timeout=self._timeout, trust_env=False) as client:
+            with internal_client(timeout=self._timeout) as client:
                 r = client.get(
                     f"{self._base_url}/api/{result_id}/preview",
                     params={"max_text_len": max_text_len},
@@ -307,7 +308,7 @@ class TRSClient:
     def get_meta(self, result_id: str) -> Optional[ResultMeta]:
         """获取 result 元信息"""
         try:
-            with httpx.Client(timeout=self._timeout, trust_env=False) as client:
+            with internal_client(timeout=self._timeout) as client:
                 r = client.get(f"{self._base_url}/api/{result_id}/preview")
                 r.raise_for_status()
                 data = r.json()

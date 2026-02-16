@@ -12,14 +12,20 @@ import json
 from common.enums import RuntimeStatus, SubagentStatus
 from common.config import ServiceConfig
 from gateway.db.access import get_db
-from .helpers import resolve_runtime_ids, get_runtime_context, _runtime_to_dict, _subagent_to_dict
+from .helpers import (
+    resolve_runtime_ids,
+    get_runtime_context,
+    _runtime_to_dict,
+    _subagent_to_dict,
+    maybe_forward_to_runtime_orchestrator,
+)
 
 router = APIRouter(tags=["internal"])
 
 # ==================== SubAgent Operations (v14) ====================
 
 @router.get("/subagents/due-wake")
-def get_subagents_due_for_wake():
+async def get_subagents_due_for_wake():
     """Get sleeping SubAgents whose wake_at timer has expired.
     
     Used by SchedulerWorker to find agents that need to be woken up.
@@ -27,13 +33,17 @@ def get_subagents_due_for_wake():
     Returns:
         {"subagents": [{"agent_id": ..., "subagent_id": ..., "wake_at": ..., "handoff_notes": ...}, ...]}
     """
+    proxied = await maybe_forward_to_runtime_orchestrator("GET", "/internal/subagents/due-wake")
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import SubAgentRepository
-    
+
     db = get_db()
     repo = SubAgentRepository(db)
-    
+
     due = repo.get_due_for_wake()
-    
+
     return {
         "subagents": [
             {
@@ -49,29 +59,41 @@ def get_subagents_due_for_wake():
 
 
 @router.get("/subagents/{agent_id}/main")
-def get_main_subagent(agent_id: str):
+async def get_main_subagent(agent_id: str):
     """Get the main SubAgent for an agent (creates if not exists)."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "GET", f"/internal/subagents/{agent_id}/main"
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import SubAgentRepository
-    
+
     db = get_db()
     repo = SubAgentRepository(db)
     subagent = repo.get_or_create_main_subagent(agent_id)
-    
+
     return _subagent_to_dict(subagent)
 
 
 @router.get("/subagents/{agent_id}/{subagent_id}")
-def get_subagent(agent_id: str, subagent_id: str):
+async def get_subagent(agent_id: str, subagent_id: str):
     """Get a SubAgent by ID."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "GET", f"/internal/subagents/{agent_id}/{subagent_id}"
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import SubAgentRepository
-    
+
     db = get_db()
     repo = SubAgentRepository(db)
     subagent = repo.get_by_id(subagent_id, agent_id)
-    
+
     if not subagent:
         raise HTTPException(status_code=404, detail="SubAgent not found")
-    
+
     return _subagent_to_dict(subagent)
 
 
@@ -79,10 +101,16 @@ def get_subagent(agent_id: str, subagent_id: str):
 
 
 @router.post("/subagents/{agent_id}/{subagent_id}/sleeping")
-def set_subagent_sleeping(agent_id: str, subagent_id: str):
+async def set_subagent_sleeping(agent_id: str, subagent_id: str):
     """Set SubAgent to sleeping status."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/subagents/{agent_id}/{subagent_id}/sleeping", json_body=None
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import SubAgentRepository
-    
+
     db = get_db()
     repo = SubAgentRepository(db)
     repo.set_sleeping(subagent_id, agent_id)
@@ -95,10 +123,16 @@ def set_subagent_sleeping(agent_id: str, subagent_id: str):
 
 
 @router.post("/subagents/{agent_id}/{subagent_id}/awake")
-def set_subagent_awake(agent_id: str, subagent_id: str):
+async def set_subagent_awake(agent_id: str, subagent_id: str):
     """Set SubAgent to awake status (after runtime created successfully)."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/subagents/{agent_id}/{subagent_id}/awake", json_body=None
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import SubAgentRepository
-    
+
     db = get_db()
     repo = SubAgentRepository(db)
     repo.set_awake(subagent_id, agent_id)
@@ -111,64 +145,90 @@ def set_subagent_awake(agent_id: str, subagent_id: str):
 
 
 @router.post("/subagents/{agent_id}/{subagent_id}/summarizing")
-def set_subagent_summarizing(agent_id: str, subagent_id: str):
+async def set_subagent_summarizing(agent_id: str, subagent_id: str):
     """Set SubAgent to summarizing status."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/subagents/{agent_id}/{subagent_id}/summarizing", json_body=None
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import SubAgentRepository
-    
+
     db = get_db()
     repo = SubAgentRepository(db)
     repo.set_summarizing(subagent_id, agent_id)
-    
+
     return {"status": "ok"}
 
 
 @router.post("/subagents/{agent_id}/{subagent_id}/completed")
-def set_subagent_completed(agent_id: str, subagent_id: str, data: Dict[str, Any] = None):
+async def set_subagent_completed(agent_id: str, subagent_id: str, data: Dict[str, Any] = None):
     """Set SubAgent to completed status with result.
-    
+
     If the SubAgent already has a result (e.g., from subagent_report tool),
     the existing result will be preserved and the new result will be ignored.
     This allows SubAgents to proactively report their results before completion.
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/subagents/{agent_id}/{subagent_id}/completed",
+        json_body=data,
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import SubAgentRepository
-    
+
     db = get_db()
     repo = SubAgentRepository(db)
-    
+
     # Check if SubAgent already has a result (from subagent_report tool)
     existing_subagent = repo.get_by_id(subagent_id, agent_id)
     existing_result = existing_subagent.result if existing_subagent else None
-    
+
     # If already has result, preserve it; otherwise use the new result
     result = data.get("result") if data else None
     if existing_result:
         # Keep the existing result (from subagent_report)
         result = existing_result
-    
+
     repo.set_completed(subagent_id, agent_id, result=result)
-    
+
     return {"status": "ok", "result_preserved": bool(existing_result)}
 
 
 @router.post("/subagents/{agent_id}/{subagent_id}/failed")
-def set_subagent_failed(agent_id: str, subagent_id: str, data: Dict[str, Any] = None):
+async def set_subagent_failed(agent_id: str, subagent_id: str, data: Dict[str, Any] = None):
     """Set SubAgent to failed status with error message."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/subagents/{agent_id}/{subagent_id}/failed",
+        json_body=data,
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import SubAgentRepository
-    
+
     db = get_db()
     repo = SubAgentRepository(db)
-    
+
     error = data.get("error") if data else None
     repo.set_failed(subagent_id, agent_id, error=error)
-    
+
     return {"status": "ok"}
 
 
 @router.patch("/subagents/{agent_id}/{subagent_id}")
-def update_subagent(agent_id: str, subagent_id: str, data: Dict[str, Any]):
+async def update_subagent(agent_id: str, subagent_id: str, data: Dict[str, Any]):
     """Update SubAgent fields."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "PATCH", f"/internal/subagents/{agent_id}/{subagent_id}", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import SubAgentRepository
-    
+
     db = get_db()
     repo = SubAgentRepository(db)
     
@@ -187,7 +247,7 @@ def update_subagent(agent_id: str, subagent_id: str, data: Dict[str, Any]):
 
 
 @router.post("/subagents/{agent_id}/spawn")
-def spawn_subagent(agent_id: str, data: Dict[str, Any]):
+async def spawn_subagent(agent_id: str, data: Dict[str, Any]):
     """
     Spawn a new SubAgent and its Runtime (async mode).
     
@@ -203,6 +263,12 @@ def spawn_subagent(agent_id: str, data: Dict[str, Any]):
     Returns:
         subagent_id: Use this to query status
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/subagents/{agent_id}/spawn", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import SubAgentRepository, RuntimeRepository
     from datetime import datetime, timedelta
     import uuid
@@ -283,7 +349,7 @@ def spawn_subagent(agent_id: str, data: Dict[str, Any]):
 
 
 @router.get("/subagents/{agent_id}/{subagent_id}/status")
-def get_subagent_status(agent_id: str, subagent_id: str):
+async def get_subagent_status(agent_id: str, subagent_id: str):
     """
     Get SubAgent status for async spawn polling.
     
@@ -296,6 +362,12 @@ def get_subagent_status(agent_id: str, subagent_id: str):
         error: Error message (when failed)
         runtime_id: Active runtime ID
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "GET", f"/internal/subagents/{agent_id}/{subagent_id}/status"
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import SubAgentRepository, RuntimeRepository
     from datetime import datetime
     
@@ -356,43 +428,55 @@ def get_subagent_status(agent_id: str, subagent_id: str):
 
 
 @router.post("/subagents/{agent_id}/{subagent_id}/cancel")
-def cancel_subagent(agent_id: str, subagent_id: str):
+async def cancel_subagent(agent_id: str, subagent_id: str):
     """
     Cancel a running SubAgent.
-    
+
     Sets status to 'cancelled' and cancels all pending tasks.
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/subagents/{agent_id}/{subagent_id}/cancel", json_body=None
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import SubAgentRepository, RuntimeRepository
     from datetime import datetime
-    
+
     db = get_db()
     subagent_repo = SubAgentRepository(db)
     runtime_repo = RuntimeRepository(db)
-    
+
     subagent = subagent_repo.get_by_id(subagent_id, agent_id)
     if not subagent:
         raise HTTPException(status_code=404, detail="SubAgent not found")
-    
+
     # Only cancel if running
     if subagent.status != SubagentStatus.RUNNING.value:
         return {"success": False, "reason": f"SubAgent is not running (status: {subagent.status})"}
-    
+
     # Set SubAgent to cancelled
     subagent_repo.set_cancelled(subagent_id, agent_id)
-    
+
     # Cancel all active runtimes for this SubAgent
     runtime_ids = runtime_repo.get_runtime_ids_for_subagent(subagent_id, agent_id)
     for runtime_id in runtime_ids:
         runtime_repo.set_status(runtime_id, 'cancelled')
-    
+
     return {"success": True}
 
 
 @router.delete("/subagents/{agent_id}/{subagent_id}")
-def delete_subagent(agent_id: str, subagent_id: str):
+async def delete_subagent(agent_id: str, subagent_id: str):
     """Delete a SubAgent and its runtimes."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "DELETE", f"/internal/subagents/{agent_id}/{subagent_id}", json_body=None
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import SubAgentRepository, RuntimeRepository
-    
+
     db = get_db()
     subagent_repo = SubAgentRepository(db)
     runtime_repo = RuntimeRepository(db)
@@ -414,19 +498,25 @@ def delete_subagent(agent_id: str, subagent_id: str):
 # ==================== HRL and Summary Lock Operations (v24) ====================
 
 @router.get("/subagents/{agent_id}/{subagent_id}/hrl")
-def get_hrl(agent_id: str, subagent_id: str):
+async def get_hrl(agent_id: str, subagent_id: str):
     """Get Hot Runtime List for a SubAgent.
-    
+
     Returns:
         hrl: List of runtime_ids in HRL
         length: Number of runtimes in HRL
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "GET", f"/internal/subagents/{agent_id}/{subagent_id}/hrl"
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import SubAgentRepository
-    
+
     db = get_db()
     repo = SubAgentRepository(db)
     hrl = repo.get_hrl(subagent_id, agent_id)
-    
+
     return {
         "hrl": hrl,
         "length": len(hrl),
@@ -434,7 +524,7 @@ def get_hrl(agent_id: str, subagent_id: str):
 
 
 @router.post("/subagents/{agent_id}/{subagent_id}/hrl/add")
-def add_to_hrl(agent_id: str, subagent_id: str, data: Dict[str, Any]):
+async def add_to_hrl(agent_id: str, subagent_id: str, data: Dict[str, Any]):
     """Add a runtime to HRL.
     
     Body:
@@ -445,18 +535,25 @@ def add_to_hrl(agent_id: str, subagent_id: str, data: Dict[str, Any]):
         hrl: Updated HRL list
         length: Updated HRL length
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/subagents/{agent_id}/{subagent_id}/hrl/add",
+        json_body=data,
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import SubAgentRepository
-    
+
     db = get_db()
     repo = SubAgentRepository(db)
-    
+
     runtime_id = data.get("runtime_id")
     if not runtime_id:
         raise HTTPException(status_code=400, detail="runtime_id is required")
-    
+
     success = repo.add_to_hrl(subagent_id, agent_id, runtime_id)
     hrl = repo.get_hrl(subagent_id, agent_id)
-    
+
     return {
         "success": success,
         "hrl": hrl,
@@ -465,55 +562,75 @@ def add_to_hrl(agent_id: str, subagent_id: str, data: Dict[str, Any]):
 
 
 @router.get("/subagents/{agent_id}/{subagent_id}/summary-lock")
-def get_summary_lock(agent_id: str, subagent_id: str):
+async def get_summary_lock(agent_id: str, subagent_id: str):
     """Get summary_lock status for a SubAgent.
-    
+
     Returns:
         summary_lock: 0 = idle, 1 = locked
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "GET", f"/internal/subagents/{agent_id}/{subagent_id}/summary-lock"
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import SubAgentRepository
-    
+
     db = get_db()
     repo = SubAgentRepository(db)
     lock = repo.get_summary_lock(subagent_id, agent_id)
-    
+
     return {"summary_lock": lock}
 
 
 @router.post("/subagents/{agent_id}/{subagent_id}/summary-lock/acquire")
-def acquire_summary_lock(agent_id: str, subagent_id: str):
+async def acquire_summary_lock(agent_id: str, subagent_id: str):
     """Try to acquire summary_lock using CAS.
     
     Returns:
         success: True if lock acquired, False if lock already held
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/subagents/{agent_id}/{subagent_id}/summary-lock/acquire",
+        json_body=None,
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import SubAgentRepository
-    
+
     db = get_db()
     repo = SubAgentRepository(db)
     success = repo.acquire_summary_lock(subagent_id, agent_id)
-    
+
     return {"success": success}
 
 
 @router.post("/subagents/{agent_id}/{subagent_id}/summary-lock/release")
-def release_summary_lock(agent_id: str, subagent_id: str):
+async def release_summary_lock(agent_id: str, subagent_id: str):
     """Release summary_lock.
     
     Returns:
         success: Always True
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/subagents/{agent_id}/{subagent_id}/summary-lock/release",
+        json_body=None,
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import SubAgentRepository
-    
+
     db = get_db()
     repo = SubAgentRepository(db)
     repo.release_summary_lock(subagent_id, agent_id)
-    
+
     return {"success": True}
 
 
 @router.post("/subagents/{agent_id}/{subagent_id}/merge-history")
-def merge_history(agent_id: str, subagent_id: str, data: Dict[str, Any]):
+async def merge_history(agent_id: str, subagent_id: str, data: Dict[str, Any]):
     """Atomically update historical_summary and remove runtimes from HRL.
     
     Body:
@@ -523,41 +640,60 @@ def merge_history(agent_id: str, subagent_id: str, data: Dict[str, Any]):
     Returns:
         success: True if successful
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/subagents/{agent_id}/{subagent_id}/merge-history",
+        json_body=data,
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import SubAgentRepository
-    
+
     db = get_db()
     repo = SubAgentRepository(db)
-    
+
     new_history = data.get("new_history", "")
     remove_runtime_ids = data.get("remove_runtime_ids", [])
-    
+
     success = repo.atomic_update_history_and_hrl(
         subagent_id=subagent_id,
         agent_id=agent_id,
         new_history=new_history,
         remove_runtime_ids=remove_runtime_ids
     )
-    
+
     return {"success": success}
 
 
 # ==================== Drive Prompt Data (Phase 3) ====================
 
 @router.get("/agents/{agent_id}/drive")
-def get_agent_drive(agent_id: str):
+async def get_agent_drive(agent_id: str):
     """Get agent drive record for Drive Prompt builder."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "GET", f"/internal/agents/{agent_id}/drive"
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.drive import DriveRepository
-    
+
     db = get_db()
     repo = DriveRepository(db)
     return repo.get_or_create(agent_id)
 
 
 @router.get("/agents/{agent_id}/notebook-summary")
-def get_agent_notebook_summary(agent_id: str):
+async def get_agent_notebook_summary(agent_id: str):
     """Get notebook summary for Drive Prompt builder."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "GET", f"/internal/agents/{agent_id}/notebook-summary"
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.notebook import NotebookRepository
-    
+
     db = get_db()
     repo = NotebookRepository(db)
     return repo.get_summary(agent_id)
@@ -566,31 +702,43 @@ def get_agent_notebook_summary(agent_id: str):
 # ==================== Agent Info & Drive Lifecycle (Phase 4) ====================
 
 @router.post("/agents/{agent_id}/drive/increment-interaction")
-def increment_drive_interaction(agent_id: str):
+async def increment_drive_interaction(agent_id: str):
     """Increment interaction count and reset no-response streak in agent_drive.
     
     Called by Watchdog when processing USER_MESSAGE.
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/agents/{agent_id}/drive/increment-interaction", json_body=None
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.drive import DriveRepository
-    
+
     db = get_db()
     repo = DriveRepository(db)
     return repo.increment_interaction(agent_id)
 
 
 @router.get("/agents/{agent_id}/info")
-def get_agent_info(agent_id: str):
+async def get_agent_info(agent_id: str):
     """Get basic agent info for system prompt builder."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "GET", f"/internal/agents/{agent_id}/info"
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.config.agents import get_agent_config_manager
-    
+
     config_mgr = get_agent_config_manager()
     agent = config_mgr.get_agent(agent_id)
-    
+
     if not agent:
         return {"name": "NovAIC Agent", "os": "unknown", "agent_id": agent_id}
-    
+
     return {
         "name": agent.name,
-        "os": getattr(agent, 'os', 'unknown'),
+        "os": getattr(agent, "os", "unknown"),
         "agent_id": agent_id,
     }

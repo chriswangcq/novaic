@@ -38,7 +38,10 @@ if [ -f "$PID_FILE" ]; then
 else
     echo "⚠️  PID file not found, trying to kill by name..."
     
-    # 按进程名杀死
+    # 按进程名杀死（兼容旧入口 + main_novaic 子命令）
+    pkill -f "main_novaic.py" || true
+    sleep 1
+    pkill -9 -f "main_novaic.py" || true
     pkill -f "main_gateway.py" || true
     pkill -f "queue_service.main" || true
     pkill -f "task_worker_sync" || true

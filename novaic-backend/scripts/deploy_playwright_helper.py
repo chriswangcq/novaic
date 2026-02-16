@@ -24,6 +24,8 @@ import base64
 from pathlib import Path
 import httpx
 
+from common.http.clients import internal_async_client
+
 
 async def deploy_playwright_helper(vm_id: str, vmcontrol_url: str = "http://localhost:9527") -> None:
     """
@@ -47,8 +49,8 @@ async def deploy_playwright_helper(vm_id: str, vmcontrol_url: str = "http://loca
     
     print(f"✅ Read script ({len(script_content)} bytes)")
     
-    # Create HTTP client
-    async with httpx.AsyncClient(base_url=vmcontrol_url, timeout=30.0) as client:
+    # Create HTTP client (internal vmcontrol service)
+    async with internal_async_client(base_url=vmcontrol_url, timeout=30.0) as client:
         try:
             # Test vmcontrol connection
             print(f"📡 Connecting to vmcontrol service...")

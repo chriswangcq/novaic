@@ -7,6 +7,7 @@ v3 变更：
 
 import pytest
 
+from common.exceptions import ConfigurationError
 from task_queue.handlers import get_all_topics, get_handler
 
 
@@ -19,7 +20,7 @@ def test_get_all_topics():
 
 
 def test_get_handler_not_found():
-    with pytest.raises(ValueError, match="No handler"):
+    with pytest.raises(ConfigurationError, match="No handler"):
         get_handler("nonexistent.topic")
 
 

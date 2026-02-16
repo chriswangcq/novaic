@@ -55,9 +55,9 @@ def _create_llm_client(provider: str, api_key: str, api_base: str):
 
 def _fetch_llm_config_by_agent(gateway_url: str, agent_id: str) -> Dict[str, Any]:
     """Fetch LLM config by agent_id from Gateway internal API."""
-    import httpx
+    from common.http.clients import internal_client
     url = f"{gateway_url.rstrip('/')}/internal/config/llm/agent/{agent_id}"
-    with httpx.Client(timeout=ServiceConfig.HTTP_TIMEOUT_SHORT, trust_env=False) as client:
+    with internal_client(timeout=ServiceConfig.HTTP_TIMEOUT_SHORT) as client:
         resp = client.get(url)
         resp.raise_for_status()
         return resp.json()

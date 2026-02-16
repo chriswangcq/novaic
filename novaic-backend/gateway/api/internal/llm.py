@@ -150,7 +150,6 @@ def compact_context_with_llm(data: Dict[str, Any]):
     This endpoint calls an LLM to generate a summary of older messages.
     Used by Master's Scheduler for context compaction.
     """
-    import httpx
     from gateway.config.settings import get_context_compaction_settings
     
     messages_to_compact = data.get("messages", [])
@@ -192,7 +191,8 @@ def compact_context_with_llm(data: Dict[str, Any]):
     ]
     
     try:
-        with httpx.Client(timeout=ServiceConfig.LLM_CALL_TIMEOUT, trust_env=False) as client:
+        from common.http.clients import external_client
+        with external_client(timeout=ServiceConfig.LLM_CALL_TIMEOUT) as client:
             response = client.post(
                 f"{base_url}/chat/completions",
                 headers={

@@ -354,7 +354,7 @@ curl -X POST http://localhost:19999/internal/rt/rt-xxx/qemu/start
 curl http://localhost:19999/internal/rt/rt-xxx/qemu/status
 
 # 3. 验证数据库
-sqlite3 data/novaic.db "SELECT * FROM vm_processes;"
+sqlite3 data/gateway.db "SELECT * FROM vm_processes;"
 ```
 
 ### 3. 压力测试

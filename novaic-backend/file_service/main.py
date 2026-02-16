@@ -12,6 +12,7 @@ import logging
 import os
 
 import uvicorn
+from common.config import ServiceConfig
 
 from .storage import FileStorage
 from .routes import create_router
@@ -29,7 +30,7 @@ def create_app(base_dir: str = None, url_prefix: str = "/api/files"):
     from fastapi import FastAPI
 
     if base_dir is None:
-        base_dir = os.environ.get("NOVAIC_DATA_DIR") or os.path.expanduser("~/.novaic")
+        base_dir = ServiceConfig.DATA_DIR
     files_dir = os.path.join(base_dir, "files")
     os.makedirs(files_dir, exist_ok=True)
 
@@ -52,12 +53,12 @@ def create_app(base_dir: str = None, url_prefix: str = "/api/files"):
 
 def main():
     parser = argparse.ArgumentParser(description="NovaIC File Service")
-    parser.add_argument("--port", type=int, default=9100, help="Port to listen")
-    parser.add_argument("--host", type=str, default="127.0.0.1", help="Host to bind")
-    parser.add_argument("--base-dir", type=str, help="Base data directory")
+    parser.add_argument("--port", type=int, default=ServiceConfig.FILE_SERVICE_PORT, help="Port to listen")
+    parser.add_argument("--host", type=str, default=ServiceConfig.FILE_SERVICE_HOST, help="Host to bind")
+    parser.add_argument("--base-dir", type=str, default=ServiceConfig.DATA_DIR, help="Base data directory")
     args = parser.parse_args()
 
-    base_dir = args.base_dir or os.environ.get("NOVAIC_DATA_DIR") or os.path.expanduser("~/.novaic")
+    base_dir = args.base_dir
     app = create_app(base_dir=base_dir)
 
     uvicorn.run(app, host=args.host, port=args.port)

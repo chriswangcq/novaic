@@ -12,7 +12,13 @@ import json
 from common.enums import RuntimeStatus, SubagentStatus
 from common.config import ServiceConfig
 from gateway.db.access import get_db
-from .helpers import resolve_runtime_ids, get_runtime_context, _runtime_to_dict, _subagent_to_dict
+from .helpers import (
+    resolve_runtime_ids,
+    get_runtime_context,
+    _runtime_to_dict,
+    _subagent_to_dict,
+    maybe_forward_to_runtime_orchestrator,
+)
 
 router = APIRouter(tags=["internal"])
 
@@ -51,16 +57,16 @@ def get_ssh_private_key_path():
 # ---------- VM Tools Discovery API ----------
 
 @router.get("/runtimes/{runtime_id}/vm-tools")
-def get_runtime_vm_tools(runtime_id: str):
+async def get_runtime_vm_tools(runtime_id: str):
     """
     获取 Runtime 的 VM 工具列表
-    
+
     用于 Tools Server 发现 VM 工具（不通过 MCP）。
     如果 Runtime 关联的 Agent 有 VM 配置，返回 VM 工具列表。
-    
+
     Args:
         runtime_id: Runtime ID (rt-xxx)
-    
+
     Returns:
         {
             "tools": [...],  # VM 工具列表（MCP 格式）
@@ -68,9 +74,15 @@ def get_runtime_vm_tools(runtime_id: str):
             "vm_available": true/false
         }
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "GET", f"/internal/runtimes/{runtime_id}/vm-tools"
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import RuntimeRepository
     from gateway.config.agents import get_agent_config_manager
-    from tools_server.tools import VM_TOOLS
+    from common.tools import VM_TOOLS
     
     # 1. 检查 Runtime 是否存在
     db = get_db()

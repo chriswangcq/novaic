@@ -2,7 +2,7 @@
 
 > **更新时间**: 2026-02-04  
 > **适用版本**: v22+ (Task Queue v2 + Saga 架构)  
-> **最新修复**: 参见 [fixes-20260204.md](./fixes-20260204.md) - 完整AI回复流程验证通过 ✅
+> **最新修复**: 旧修复记录已归档，本文档已按当前严格 Runtime Orchestrator 架构更新。
 
 本文档记录后端冒烟测试的完整流程、常见问题和解决方案。
 
@@ -64,7 +64,7 @@ export NOVAIC_GATEWAY_URL=http://127.0.0.1:19999
 pkill -9 -f "python.*main_" 2>/dev/null
 
 # 清理数据库（完全重新开始）
-rm -f ~/.novaic/novaic.db
+rm -f ~/.novaic/gateway.db ~/.novaic/runtime_orchestrator.db ~/.novaic/queue.db
 
 # 清理日志
 rm -f /tmp/*.log
@@ -117,7 +117,7 @@ curl -s http://127.0.0.1:19997/api/health
 
 ### Step 1: 配置 LLM API Key 和 Model
 
-**重要**: 必须先配置 API Key 和 Model 才能完成 LLM 调用测试。详细步骤参见 [fixes-20260204.md](./fixes-20260204.md) 的"DB配置初始化流程"部分。
+**重要**: 必须先配置 API Key 和 Model 才能完成 LLM 调用测试。
 
 #### 快速配置命令
 
@@ -141,8 +141,8 @@ with httpx.Client(trust_env=False, timeout=10.0) as client:
 import sqlite3
 from pathlib import Path
 
-db_path = Path.home() / ".novaic" / "novaic.db"
-conn = sqlite3.connect(str(db_path))
+gateway_db = Path.home() / ".novaic" / "gateway.db"
+conn = sqlite3.connect(str(gateway_db))
 
 # 获取刚创建的api_key_id
 key_id = conn.execute(
@@ -177,8 +177,8 @@ curl -s -X POST http://127.0.0.1:19999/api/agents \
   }'
 
 # 验证
-sqlite3 ~/.novaic/novaic.db "SELECT id, name, model_id FROM agents;"
-sqlite3 ~/.novaic/novaic.db "SELECT subagent_id, agent_id FROM subagents;"
+sqlite3 ~/.novaic/gateway.db "SELECT id, name, model_id FROM agents;"
+sqlite3 ~/.novaic/runtime_orchestrator.db "SELECT subagent_id, agent_id FROM subagents;"
 ```
 
 **注意**: 从 2026-02-04 起，创建 Agent 时会自动创建 main SubAgent，无需手动插入。
@@ -195,7 +195,7 @@ curl -s -X POST http://127.0.0.1:19999/api/chat/send \
 sleep 10
 
 # 检查 AI 回复
-sqlite3 ~/.novaic/novaic.db "
+sqlite3 ~/.novaic/runtime_orchestrator.db "
   SELECT type, content, timestamp 
   FROM chat_messages 
   WHERE type='AGENT_REPLY' 
@@ -204,7 +204,7 @@ sqlite3 ~/.novaic/novaic.db "
 "
 
 # 检查任务状态
-sqlite3 ~/.novaic/novaic.db "
+sqlite3 ~/.novaic/queue.db "
   SELECT topic, status, COUNT(*) 
   FROM tq_tasks 
   GROUP BY topic, status 
@@ -230,31 +230,31 @@ ps aux | grep "python.*main_" | grep -v grep
 ### Saga 状态
 
 ```bash
-sqlite3 ~/.novaic/novaic.db "SELECT id, saga_type, status, current_step FROM tq_sagas ORDER BY created_at DESC LIMIT 5;"
+sqlite3 ~/.novaic/queue.db "SELECT id, saga_type, status, current_step FROM tq_sagas ORDER BY created_at DESC LIMIT 5;"
 ```
 
 ### Task 状态
 
 ```bash
-sqlite3 ~/.novaic/novaic.db "SELECT id, topic, status FROM tq_tasks WHERE status != 'done' ORDER BY created_at DESC LIMIT 10;"
+sqlite3 ~/.novaic/queue.db "SELECT id, topic, status FROM tq_tasks WHERE status != 'done' ORDER BY created_at DESC LIMIT 10;"
 ```
 
 ### Task 分布统计
 
 ```bash
-sqlite3 ~/.novaic/novaic.db "SELECT topic, status, count(*) FROM tq_tasks GROUP BY topic, status ORDER BY status, topic;"
+sqlite3 ~/.novaic/queue.db "SELECT topic, status, count(*) FROM tq_tasks GROUP BY topic, status ORDER BY status, topic;"
 ```
 
 ### Runtime 状态
 
 ```bash
-sqlite3 ~/.novaic/novaic.db "SELECT runtime_id, status, phase, need_rest FROM agent_runtimes ORDER BY created_at DESC LIMIT 3;"
+sqlite3 ~/.novaic/runtime_orchestrator.db "SELECT runtime_id, status, phase, need_rest FROM agent_runtimes ORDER BY created_at DESC LIMIT 3;"
 ```
 
 ### SubAgent 状态
 
 ```bash
-sqlite3 ~/.novaic/novaic.db "SELECT subagent_id, agent_id, type, status FROM subagents;"
+sqlite3 ~/.novaic/runtime_orchestrator.db "SELECT subagent_id, agent_id, type, status FROM subagents;"
 ```
 
 ### 查看日志
@@ -285,7 +285,7 @@ tail -20 /tmp/task.log
 AGENT_ID="your-agent-id"
 SUBAGENT_ID="main-${AGENT_ID:0:8}"
 
-sqlite3 ~/.novaic/novaic.db "INSERT INTO subagents (subagent_id, agent_id, type, status, created_at) VALUES ('$SUBAGENT_ID', '$AGENT_ID', 'main', 'sleeping', datetime('now'));"
+sqlite3 ~/.novaic/runtime_orchestrator.db "INSERT INTO subagents (subagent_id, agent_id, type, status, created_at) VALUES ('$SUBAGENT_ID', '$AGENT_ID', 'main', 'sleeping', datetime('now'));"
 ```
 
 ### 2. LLM 调用失败（401 / API key错误）
@@ -295,11 +295,11 @@ sqlite3 ~/.novaic/novaic.db "INSERT INTO subagents (subagent_id, agent_id, type,
 **解决方案**:
 1. 检查 API Key 配置
    ```bash
-   sqlite3 ~/.novaic/novaic.db "SELECT id, name, provider, api_base FROM api_keys;"
+   sqlite3 ~/.novaic/gateway.db "SELECT id, name, provider, api_base FROM api_keys;"
    ```
 2. 检查 candidate_models 配置
    ```bash
-   sqlite3 ~/.novaic/novaic.db "SELECT name, provider, api_key_id, available FROM candidate_models;"
+   sqlite3 ~/.novaic/gateway.db "SELECT name, provider, api_key_id, available FROM candidate_models;"
    ```
 3. 验证 LLM 配置（不需要重启）
    ```bash
@@ -315,10 +315,10 @@ sqlite3 ~/.novaic/novaic.db "INSERT INTO subagents (subagent_id, agent_id, type,
 **解决方案**:
 ```bash
 # 检查 agent 的 model_id
-sqlite3 ~/.novaic/novaic.db "SELECT id, name, model_id FROM agents;"
+sqlite3 ~/.novaic/gateway.db "SELECT id, name, model_id FROM agents;"
 
 # 检查可用模型
-sqlite3 ~/.novaic/novaic.db "SELECT name, available FROM candidate_models;"
+sqlite3 ~/.novaic/gateway.db "SELECT name, available FROM candidate_models;"
 
 # 如果模型不存在，添加它（参见 Step 1）
 ```
@@ -352,10 +352,10 @@ nohup python main_task.py > /tmp/task.log 2>&1 &
 **诊断**:
 ```bash
 # 检查 pending/claimed 任务
-sqlite3 ~/.novaic/novaic.db "SELECT topic, status, count(*) FROM tq_tasks WHERE status IN ('pending', 'claimed') GROUP BY topic, status;"
+sqlite3 ~/.novaic/queue.db "SELECT topic, status, count(*) FROM tq_tasks WHERE status IN ('pending', 'claimed') GROUP BY topic, status;"
 
 # 检查 saga 的 step_results
-sqlite3 ~/.novaic/novaic.db "SELECT step_results FROM tq_sagas WHERE id = '<saga-id>';"
+sqlite3 ~/.novaic/queue.db "SELECT step_results FROM tq_sagas WHERE id = '<saga-id>';"
 ```
 
 ### 6. "cannot commit transaction - SQL statements in progress"
@@ -370,11 +370,13 @@ sqlite3 ~/.novaic/novaic.db "SELECT step_results FROM tq_sagas WHERE id = '<saga
 
 **解决方案**: 清理 runtime 数据
 ```bash
-sqlite3 ~/.novaic/novaic.db "
+sqlite3 ~/.novaic/runtime_orchestrator.db "
 DELETE FROM agent_runtimes; 
+DELETE FROM chat_messages;
+"
+sqlite3 ~/.novaic/queue.db "
 DELETE FROM tq_sagas; 
 DELETE FROM tq_tasks;
-DELETE FROM chat_messages;
 "
 ```
 
@@ -389,7 +391,7 @@ DELETE FROM chat_messages;
 pkill -9 -f "python.*main_" 2>/dev/null
 
 # 删除数据库
-rm -f ~/.novaic/novaic.db
+rm -f ~/.novaic/gateway.db ~/.novaic/runtime_orchestrator.db ~/.novaic/queue.db
 
 # 清理日志
 rm -f /tmp/*.log
@@ -401,12 +403,14 @@ rm -f /tmp/*.log
 
 ```bash
 # 只清理运行时数据
-sqlite3 ~/.novaic/novaic.db "
+sqlite3 ~/.novaic/runtime_orchestrator.db "
 DELETE FROM agent_runtimes;
-DELETE FROM tq_sagas;
-DELETE FROM tq_tasks;
 DELETE FROM chat_messages;
 UPDATE subagents SET status = 'sleeping';
+"
+sqlite3 ~/.novaic/queue.db "
+DELETE FROM tq_sagas;
+DELETE FROM tq_tasks;
 "
 ```
 
@@ -471,12 +475,14 @@ nohup python main_saga.py > /tmp/saga.log 2>&1 &
 nohup python main_health.py > /tmp/health.log 2>&1 &
 sleep 3
 
-sqlite3 ~/.novaic/novaic.db "
+sqlite3 ~/.novaic/runtime_orchestrator.db "
 DELETE FROM agent_runtimes;
-DELETE FROM tq_sagas;
-DELETE FROM tq_tasks;
 DELETE FROM chat_messages;
 UPDATE subagents SET status = 'sleeping';
+"
+sqlite3 ~/.novaic/queue.db "
+DELETE FROM tq_sagas;
+DELETE FROM tq_tasks;
 "
 
 # 2) 发送测试消息
@@ -486,9 +492,9 @@ curl -s -X POST http://127.0.0.1:19999/api/chat/send \
 
 # 3) 等待并验证
 sleep 35
-sqlite3 ~/.novaic/novaic.db "SELECT id, topic, status, substr(result, 1, 200) FROM tq_tasks ORDER BY created_at DESC LIMIT 10;"
-sqlite3 ~/.novaic/novaic.db "SELECT id, saga_type, status, current_step FROM tq_sagas ORDER BY created_at DESC LIMIT 5;"
-sqlite3 ~/.novaic/novaic.db "SELECT type, substr(content, 1, 120) FROM chat_messages ORDER BY timestamp DESC LIMIT 5;"
+sqlite3 ~/.novaic/queue.db "SELECT id, topic, status, substr(result, 1, 200) FROM tq_tasks ORDER BY created_at DESC LIMIT 10;"
+sqlite3 ~/.novaic/queue.db "SELECT id, saga_type, status, current_step FROM tq_sagas ORDER BY created_at DESC LIMIT 5;"
+sqlite3 ~/.novaic/runtime_orchestrator.db "SELECT type, substr(content, 1, 120) FROM chat_messages ORDER BY timestamp DESC LIMIT 5;"
 ```
 
 ### 验证标准（期望输出）

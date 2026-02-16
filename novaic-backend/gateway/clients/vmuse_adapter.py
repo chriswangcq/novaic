@@ -16,6 +16,7 @@ import secrets
 import time
 
 from common.config import ServiceConfig
+from common.http.clients import internal_async_client
 
 logger = logging.getLogger(__name__)
 
@@ -105,9 +106,9 @@ class VmuseAdapter:
         """
         self.vmcontrol_url = vmcontrol_url or ServiceConfig.VMCONTROL_URL
         self.timeout = timeout
-        self.client = httpx.AsyncClient(
+        self.client = internal_async_client(
             base_url=self.vmcontrol_url,
-            timeout=timeout
+            timeout=timeout,
         )
         self.aim_cache = AimCache(ttl_seconds=600)
         logger.info(f"[VmuseAdapter] Initialized with vmcontrol_url={self.vmcontrol_url}")
@@ -2037,7 +2038,7 @@ class VmuseAdapter:
         }
         
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with internal_async_client(timeout=30.0) as client:
                 response = await client.post(url, json=payload)
                 response.raise_for_status()
                 return response.json()

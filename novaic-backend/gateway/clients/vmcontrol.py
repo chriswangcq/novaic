@@ -9,6 +9,7 @@ from typing import Optional, Dict, Any
 import httpx
 
 from common.config import ServiceConfig
+from common.http.clients import internal_async_client
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,7 @@ class VmControlClient:
             base_url: vmcontrol 服务 URL，默认从配置读取
         """
         self.base_url = base_url or ServiceConfig.VMCONTROL_URL
-        self.client = httpx.AsyncClient(
+        self.client = internal_async_client(
             base_url=self.base_url,
             timeout=ServiceConfig.HTTP_TIMEOUT,
         )
@@ -41,12 +42,17 @@ class VmControlClient:
         Returns:
             bool: 服务是否健康
         """
-        try:
-            response = await self.client.get("/api/health")
-            return response.status_code == 200
-        except Exception as e:
-            logger.warning(f"[VmControlClient] Health check failed: {e}")
-            return False
+        # vmcontrol currently exposes /health (not /api/health) in production.
+        # Probe both endpoints for compatibility across versions.
+        for endpoint in ("/health", "/api/health"):
+            try:
+                response = await self.client.get(endpoint)
+                if response.status_code == 200:
+                    return True
+            except Exception:
+                continue
+        logger.warning("[VmControlClient] Health check failed on both /health and /api/health")
+        return False
     
     async def get_vm_info(self, vm_id: str) -> Dict[str, Any]:
         """
@@ -174,6 +180,35 @@ class VmControlClient:
             }
         )
         response.raise_for_status()
+        return response.json()
+
+    async def shutdown_vm(self, vm_id: str) -> Dict[str, Any]:
+        """
+        请求 vmcontrol 对指定 VM 执行优雅关机。
+
+        Args:
+            vm_id: VM ID
+
+        Returns:
+            关机结果
+        """
+        response = await self.client.post(f"/api/vms/{vm_id}/shutdown")
+        response.raise_for_status()
+        if not response.text:
+            return {"success": True}
+        return response.json()
+
+    async def shutdown_all_vms(self) -> Dict[str, Any]:
+        """
+        请求 vmcontrol 对所有已注册 VM 执行优雅关机。
+
+        Returns:
+            结果映射
+        """
+        response = await self.client.post("/api/vms/shutdown-all")
+        response.raise_for_status()
+        if not response.text:
+            return {"success": True}
         return response.json()
 
 

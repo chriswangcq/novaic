@@ -26,6 +26,8 @@ from typing import Dict, Any, Optional, List, TYPE_CHECKING, Union
 
 import httpx
 
+from common.config import ServiceConfig
+from common.http.clients import internal_async_client
 from .tool_result_adapter import adapt_tool_result as _adapt_tool_result, tool_result as _tool_result, filename_from_url as _filename_from_url
 
 if TYPE_CHECKING:
@@ -35,13 +37,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # Gateway API 基础 URL
-GATEWAY_URL = os.environ.get("GATEWAY_URL", "http://127.0.0.1:19999")
+GATEWAY_URL = ServiceConfig.GATEWAY_URL
 
 # vmcontrol API 基础 URL
-VMCONTROL_URL = os.environ.get("VMCONTROL_URL", "http://127.0.0.1:19996")
+VMCONTROL_URL = ServiceConfig.VMCONTROL_URL
 
 # File Service URL（用于 mobile_file_push/pull、截图存储等）
-FILE_SERVICE_URL = os.environ.get("FILE_SERVICE_URL", "http://127.0.0.1:19995").rstrip("/")
+FILE_SERVICE_URL = ServiceConfig.FILE_SERVICE_URL.rstrip("/")
 
 
 # _tool_result 和 _filename_from_url 从 tool_result_adapter 导入
@@ -322,13 +324,11 @@ class ToolExecutor:
     async def _get_http_client(self) -> httpx.AsyncClient:
         """获取或创建 HTTP 客户端"""
         if self._http_client is None or self._http_client.is_closed:
-            self._http_client = httpx.AsyncClient(
+            self._http_client = internal_async_client(
                 base_url=GATEWAY_URL,
                 # 工具执行超时由心跳机制管理，HTTP 层不做限制
-                # read=None 表示无超时限制，只要 Worker 还在发心跳，工具就可以一直执行
                 timeout=httpx.Timeout(connect=10.0, read=None, write=30.0, pool=10.0),
                 transport=httpx.AsyncHTTPTransport(proxy=None),
-                trust_env=False,
             )
         return self._http_client
     
@@ -888,7 +888,7 @@ class ToolExecutor:
                 else:
                     fetch_url = f"{FILE_SERVICE_URL}/{file_url.lstrip('/')}"
                 try:
-                    async with httpx.AsyncClient(timeout=30.0, trust_env=False) as client:
+                    async with internal_async_client(timeout=30.0) as client:
                         # 用 GET 检查文件是否存在（stream=True 避免下载全部内容）
                         async with client.stream("GET", fetch_url) as resp:
                             resp.raise_for_status()
@@ -1120,7 +1120,7 @@ class ToolExecutor:
                     if not remote_path:
                         return {"success": False, "error": "remote_path is required"}
                     try:
-                        async with httpx.AsyncClient(timeout=None, trust_env=False) as mobile_client:
+                        async with internal_async_client(timeout=None) as mobile_client:
                             response = await mobile_client.post(
                                 f"{VMCONTROL_URL}/api/android/{device_serial}/file/pull-content",
                                 json={"remote_path": remote_path},
@@ -1133,7 +1133,7 @@ class ToolExecutor:
                         content = data["content"]
                         mime_type = data.get("mime_type", "application/octet-stream")
                         size = data.get("size", 0)
-                        async with httpx.AsyncClient(timeout=None, trust_env=False) as fs_client:
+                        async with internal_async_client(timeout=None) as fs_client:
                             fs_resp = await fs_client.post(
                                 f"{FILE_SERVICE_URL}/api/files/from-base64",
                                 json={
@@ -1168,13 +1168,13 @@ class ToolExecutor:
                         return {"success": False, "error": "file_url is required"}
                     fetch_url = f"{FILE_SERVICE_URL}{file_url}" if file_url.startswith("/") else file_url
                     try:
-                        async with httpx.AsyncClient(timeout=None, trust_env=False) as fs_client:
+                        async with internal_async_client(timeout=None) as fs_client:
                             resp = await fs_client.get(fetch_url)
                             resp.raise_for_status()
                             file_bytes = resp.content
                         import base64
                         b64_data = base64.b64encode(file_bytes).decode("utf-8")
-                        async with httpx.AsyncClient(timeout=None, trust_env=False) as mobile_client:
+                        async with internal_async_client(timeout=None) as mobile_client:
                             response = await mobile_client.post(
                                 f"{VMCONTROL_URL}/api/android/{device_serial}/app/install-from-base64",
                                 json={"data": b64_data, "allow_downgrade": allow_downgrade},
@@ -1210,7 +1210,7 @@ class ToolExecutor:
                     
                     try:
                         # 1. 从 File Service 或 URL 获取文件
-                        async with httpx.AsyncClient(timeout=httpx.Timeout(600.0), trust_env=False) as fs_client:
+                        async with internal_async_client(timeout=httpx.Timeout(600.0)) as fs_client:
                             resp = await fs_client.get(fetch_url)
                             if resp.status_code != 200:
                                 logger.error(f"[ToolExecutor] mobile_file_push: failed to fetch file, status={resp.status_code}, body={resp.text[:500]}")
@@ -1226,7 +1226,7 @@ class ToolExecutor:
                         b64_size_mb = len(b64_data) / (1024 * 1024)
                         logger.info(f"[ToolExecutor] mobile_file_push: base64 encoded size: {b64_size_mb:.2f} MB, sending to vmcontrol...")
                         
-                        async with httpx.AsyncClient(timeout=httpx.Timeout(600.0), trust_env=False) as mobile_client:
+                        async with internal_async_client(timeout=httpx.Timeout(600.0)) as mobile_client:
                             push_url = f"{VMCONTROL_URL}/api/android/{device_serial}/file/push-from-base64"
                             logger.info(f"[ToolExecutor] mobile_file_push: POST to {push_url}")
                             response = await mobile_client.post(
@@ -1270,7 +1270,7 @@ class ToolExecutor:
                 
                 try:
                     # Mobile 工具也使用无超时限制，由心跳机制管理
-                    async with httpx.AsyncClient(timeout=None, trust_env=False) as mobile_client:
+                    async with internal_async_client(timeout=None) as mobile_client:
                         # mobile_app_list 和 mobile_file_list 使用 GET 方法，其他使用 POST
                         if tool_name in ("mobile_app_list", "mobile_file_list"):
                             response = await mobile_client.get(url, params=arguments)
@@ -1333,7 +1333,7 @@ class ToolExecutor:
                     if not path:
                         return {"success": False, "error": "path is required"}
                     try:
-                        async with httpx.AsyncClient(timeout=None, trust_env=False) as vmuse_client:
+                        async with internal_async_client(timeout=None) as vmuse_client:
                             response = await vmuse_client.post(
                                 f"{VMCONTROL_URL}/api/vmuse/{self.agent_id}/file/read",
                                 json={"path": path},
@@ -1349,7 +1349,7 @@ class ToolExecutor:
                         content_b64 = base64.b64encode(
                             content_raw.encode("utf-8") if isinstance(content_raw, str) else content_raw
                         ).decode("utf-8")
-                        async with httpx.AsyncClient(timeout=None, trust_env=False) as fs_client:
+                        async with internal_async_client(timeout=None) as fs_client:
                             fs_resp = await fs_client.post(
                                 f"{FILE_SERVICE_URL}/api/files/from-base64",
                                 json={
@@ -1385,7 +1385,7 @@ class ToolExecutor:
                         return {"success": False, "error": "file_url and path are required"}
                     fetch_url = f"{FILE_SERVICE_URL}{file_url}" if file_url.startswith("/") else file_url
                     try:
-                        async with httpx.AsyncClient(timeout=None, trust_env=False) as fs_client:
+                        async with internal_async_client(timeout=None) as fs_client:
                             resp = await fs_client.get(fetch_url)
                             resp.raise_for_status()
                             file_bytes = resp.content
@@ -1394,7 +1394,7 @@ class ToolExecutor:
                         path_escaped = path.replace("'", "'\"'\"'")
                         parent = f"$(dirname '{path_escaped}')"
                         cmd = f"mkdir -p \"{parent}\" && printf '%s' '{b64_data}' | base64 -d > '{path_escaped}'"
-                        async with httpx.AsyncClient(timeout=60.0, trust_env=False) as vmuse_client:
+                        async with internal_async_client(timeout=60.0) as vmuse_client:
                             response = await vmuse_client.post(
                                 f"{VMCONTROL_URL}/api/vmuse/{self.agent_id}/shell/command",
                                 json={"command": cmd},
@@ -1425,7 +1425,7 @@ class ToolExecutor:
                 
                 try:
                     # VMUSE 工具也使用无超时限制，由心跳机制管理
-                    async with httpx.AsyncClient(timeout=None, trust_env=False) as vmuse_client:
+                    async with internal_async_client(timeout=None) as vmuse_client:
                         response = await vmuse_client.post(url, json=arguments)
                         response.raise_for_status()
                         vm_result = response.json()
@@ -1527,6 +1527,9 @@ class ToolExecutor:
         """
         处理 HTTP 响应
         
+        支持 unified contract：operation failures 返回 HTTP 200 + {success: false, error}，
+        不依赖 HTTP status 判断成功与否，需解析 body 中的 success 字段。
+        
         Args:
             response: httpx Response 对象
         
@@ -1536,9 +1539,9 @@ class ToolExecutor:
         try:
             response.raise_for_status()
             result = response.json()
-            # 确保结果包含 success 字段
+            # 确保结果包含 success 字段（unified contract 兼容）
             if "success" not in result:
-                result["success"] = True
+                result["success"] = "error" not in result
             return result
         except httpx.HTTPStatusError as e:
             error_text = ""

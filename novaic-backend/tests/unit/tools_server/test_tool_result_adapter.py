@@ -27,7 +27,8 @@ class TestToolResultAdapter:
         assert result["success"] is True
         assert result["files_created"] == [{"url": fake_url, "filename": "1234_abc.png", "modality": "image"}]
         assert result["display_files"] == result["files_created"]
-        assert "screenshot captured" in result["text"]
+        assert '"screenshot"' in result["text"]
+        assert "file_url: /api/files/images/agent-1/1234_abc.png" in result["text"]
 
     @pytest.mark.asyncio
     async def test_unregistered_tool_returns_none(self):
@@ -65,7 +66,8 @@ class TestToolResultAdapter:
         assert result is not None
         assert result["success"] is True
         assert len(result["files_created"]) == 1
-        assert "some_mcp_tool: content includes 1 image" in result["text"]
+        assert '"content"' in result["text"]
+        assert "file_url: /api/files/images/agent-1/mcp_abc.png" in result["text"]
 
     @pytest.mark.asyncio
     async def test_clipboard_get_no_display(self):

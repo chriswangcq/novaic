@@ -48,11 +48,12 @@ sending → sent (被 Watchdog 处理后)
 ### 常用调试命令
 
 ```bash
-DB_PATH="/Users/wangchaoqun/Library/Application Support/com.novaic.app/novaic.db"
+GATEWAY_DB="/Users/wangchaoqun/Library/Application Support/com.novaic.app/gateway.db"
+RUNTIME_DB="/Users/wangchaoqun/Library/Application Support/com.novaic.app/runtime_orchestrator.db"
 QUEUE_DB="/Users/wangchaoqun/Library/Application Support/com.novaic.app/queue.db"
 
 # 查看消息状态
-sqlite3 "$DB_PATH" "SELECT id, type, status, read FROM chat_messages ORDER BY created_at DESC LIMIT 10;"
+sqlite3 "$RUNTIME_DB" "SELECT id, type, status, read FROM chat_messages ORDER BY created_at DESC LIMIT 10;"
 
 # 查看 Saga 状态
 sqlite3 "$QUEUE_DB" "SELECT id, saga_type, status, current_step FROM tq_sagas ORDER BY created_at DESC LIMIT 10;"
@@ -331,12 +332,13 @@ def set_subagent_completed(agent_id: str, subagent_id: str, data: Dict[str, Any]
 
 ```bash
 # 1. 清理测试数据
-DB_PATH="/Users/wangchaoqun/Library/Application Support/com.novaic.app/novaic.db"
+GATEWAY_DB="/Users/wangchaoqun/Library/Application Support/com.novaic.app/gateway.db"
+RUNTIME_DB="/Users/wangchaoqun/Library/Application Support/com.novaic.app/runtime_orchestrator.db"
 QUEUE_DB="/Users/wangchaoqun/Library/Application Support/com.novaic.app/queue.db"
 
 sqlite3 "$QUEUE_DB" "DELETE FROM tq_sagas; DELETE FROM tq_tasks;"
-sqlite3 "$DB_PATH" "UPDATE agent_runtimes SET status = 'completed' WHERE status = 'active';"
-sqlite3 "$DB_PATH" "UPDATE subagents SET status = 'sleeping' WHERE status IN ('awake', 'completed');"
+sqlite3 "$RUNTIME_DB" "UPDATE agent_runtimes SET status = 'completed' WHERE status = 'active';"
+sqlite3 "$RUNTIME_DB" "UPDATE subagents SET status = 'sleeping' WHERE status IN ('awake', 'completed');"
 
 # 2. 重启服务
 pkill -f "main_gateway.py"

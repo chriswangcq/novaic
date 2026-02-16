@@ -8,8 +8,8 @@ import os
 from fastapi import APIRouter, HTTPException
 from typing import Optional, List
 from pydantic import BaseModel
-import httpx
 
+from common.http.clients import internal_client
 from gateway.config.agents import (
     get_agent_config_manager,
     AICAgent,
@@ -18,6 +18,7 @@ from gateway.config.agents import (
     AndroidConfig,
 )
 from gateway.db.access import get_db
+from .runtime_orchestrator_forward import forward_to_runtime_orchestrator
 
 router = APIRouter(prefix="/api/agents", tags=["agents"])
 
@@ -250,37 +251,37 @@ def create_agent(request: CreateAgentRequest):
             name=request.name,
         )
         
-        # Auto-create main SubAgent for the new agent
-        from gateway.db.repositories import SubAgentRepository
-        from gateway.db.access import get_database
-        
-        db = get_database()
-        subagent_repo = SubAgentRepository(db)
-        subagent_repo.get_or_create_main_subagent(agent.id)
-        
-        # Set model_id if provided (also handled in create_agent, but ensure DB is updated)
+        # Auto-create main SubAgent in Runtime Orchestrator DB.
+        forward_to_runtime_orchestrator(
+            "GET",
+            f"/internal/subagents/{agent.id}/main",
+        )
+
+        # model_id remains Gateway-owned agent metadata.
         if request.model:
+            db = get_db()
             with db.transaction(lock_type="agent", resource_id=agent.id):
                 db.execute(
                     "UPDATE agents SET model_id = ? WHERE id = ?",
-                    (request.model, agent.id)
+                    (request.model, agent.id),
                 )
         
         # v2.7: Tools contexts are created per-Runtime by Master, not per-Agent
         
-        # 发送唤醒消息，让 Agent 开始工作
-        from gateway.db.repositories.message import MessageRepository
-        msg_repo = MessageRepository(db)
-        msg_repo.add_message(
-            agent_id=agent.id,
-            type="SYSTEM_WAKE",
-            content="Agent created. Ready to assist you.",
-            metadata={
-                "action": "agent_created",
-                "reason": "new_agent",
-                "source": "system:create",
+        # 发送唤醒消息，让 Agent 开始工作（via Runtime Orchestrator）
+        forward_to_runtime_orchestrator(
+            "POST",
+            "/internal/messages",
+            json_body={
+                "agent_id": agent.id,
+                "type": "SYSTEM_WAKE",
+                "content": "Agent created. Ready to assist you.",
+                "metadata": {
+                    "action": "agent_created",
+                    "reason": "new_agent",
+                    "source": "system:create",
+                },
             },
-            status="sending",  # 确保 Watchdog 能检测到
         )
         
         # Re-fetch agent to get model_id
@@ -352,31 +353,28 @@ def update_agent(agent_id: str, request: UpdateAgentRequest):
     if request.setup_complete is True and not was_setup_complete:
         # Send bootstrap message using v12 Master-driven architecture
         try:
-            from gateway.db.repositories.message import MessageRepository
-            
-            db = get_db()
-            msg_repo = MessageRepository(db)
-            
-            # Store message - Watchdog will detect and create Runtime
-            # 使用 SYSTEM_WAKE 类型，因为它在 watchdog_types 中，会被正确处理
-            msg = msg_repo.add_message(
-                agent_id=agent_id,
-                type="SYSTEM_WAKE",
-                content="VM setup complete. Execute skill agent-bootstrap to configure the agent environment.",
-                metadata={
-                    "action": "bootstrap",
-                    "skill": "agent-bootstrap",
-                    "reason": "setup_complete",
-                    "priority": "high",
-                    "source": "system:bootstrap",
+            # Store message via Runtime Orchestrator.
+            forward_to_runtime_orchestrator(
+                "POST",
+                "/internal/messages",
+                json_body={
+                    "agent_id": agent_id,
+                    "type": "SYSTEM_WAKE",
+                    "content": "VM setup complete. Execute skill agent-bootstrap to configure the agent environment.",
+                    "metadata": {
+                        "action": "bootstrap",
+                        "skill": "agent-bootstrap",
+                        "reason": "setup_complete",
+                        "priority": "high",
+                        "source": "system:bootstrap",
+                    },
                 },
-                status="sending",  # 确保 Watchdog 能检测到
             )
             
             # v12: No broadcast_new_message needed
             # Monitor polls for unread messages and creates Runtimes
             
-            print(f"[Agents] Bootstrap message stored for agent {agent_id}, Monitor will process")
+            print(f"[Agents] Bootstrap message forwarded for agent {agent_id}, Monitor will process")
         except Exception as e:
             print(f"[Agents] Warning: Failed to store bootstrap message: {e}")
     
@@ -454,8 +452,9 @@ def remove_android_config(agent_id: str):
     # 可以调用 vmcontrol 的 stop 接口
     if agent.android and agent.android.device_serial:
         try:
-            VMCONTROL_URL = "http://localhost:19996"
-            with httpx.Client() as client:
+            from common.config import ServiceConfig
+            VMCONTROL_URL = ServiceConfig.VMCONTROL_URL
+            with internal_client() as client:
                 client.post(
                     f"{VMCONTROL_URL}/api/android/emulator/stop",
                     json={"serial": agent.android.device_serial}

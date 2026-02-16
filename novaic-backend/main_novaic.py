@@ -16,25 +16,22 @@ Backend v2 架构由以下组件构成：
 所有 Worker 通过 Gateway 和 Queue Service 通信。
 
 Usage:
-    novaic-backend gateway [--port PORT] [--data-dir PATH]
-    novaic-backend tools-server [--port PORT] [--data-dir PATH] [--gateway-url URL]
-    novaic-backend queue-service [--port PORT] [--data-dir PATH]
-    novaic-backend watchdog --gateway-url URL --queue-service-url URL
-    novaic-backend task-worker --gateway-url URL --queue-service-url URL [--num-workers N]
-    novaic-backend saga-worker --gateway-url URL --queue-service-url URL [--max-concurrent N]
-    novaic-backend health --queue-service-url URL
-    novaic-backend scheduler --gateway-url URL
-    novaic-backend vmcontrol [--port PORT] [--host HOST]
+    novaic-backend gateway --host HOST --port PORT --data-dir PATH --runtime-orchestrator-url URL --queue-service-url URL --tools-server-url URL --vmcontrol-url URL --file-service-url URL --tool-result-service-url URL
+    novaic-backend tools-server --host HOST --port PORT --data-dir PATH --gateway-url URL
+    novaic-backend queue-service --host HOST --port PORT --data-dir PATH
+    novaic-backend watchdog --gateway-url URL --queue-service-url URL --runtime-orchestrator-url URL --data-dir PATH
+    novaic-backend task-worker --gateway-url URL --queue-service-url URL --tools-server-url URL --runtime-orchestrator-url URL --num-workers N --data-dir PATH
+    novaic-backend saga-worker --gateway-url URL --queue-service-url URL --runtime-orchestrator-url URL --max-concurrent N --data-dir PATH
+    novaic-backend health --gateway-url URL --queue-service-url URL --runtime-orchestrator-url URL --check-interval N --task-timeout N --saga-timeout N --data-dir PATH
+    novaic-backend scheduler --gateway-url URL --runtime-orchestrator-url URL --check-interval N --data-dir PATH
+    novaic-backend runtime-orchestrator --host HOST --port PORT --data-dir PATH
+    novaic-backend vmcontrol --host HOST --port PORT [--vmcontrol-bin PATH]
 
 v2.0: Saga/Task Architecture 替代旧的 Master/Worker/Launcher/Collector 架构
 """
 
 import sys
 import os
-
-# Set no_proxy to avoid proxy issues with local services
-os.environ['no_proxy'] = 'localhost,127.0.0.1,::1'
-os.environ['NO_PROXY'] = 'localhost,127.0.0.1,::1'
 
 # Import unified configuration
 from common.config import ServiceConfig
@@ -55,126 +52,148 @@ Usage:
     novaic-backend saga-worker [options]   Backend 组件: Saga Worker (流程编排)
     novaic-backend health [options]        Backend 组件: Health Worker (超时回收)
     novaic-backend scheduler [options]     Backend 组件: Scheduler Worker (定时唤醒)
+    novaic-backend runtime-orchestrator [options] Backend 组件: Runtime Orchestrator (internal API service)
     novaic-backend vmcontrol [options]     Backend 组件: VMControl (VM 管理服务)
     novaic-backend file-service [options]       Backend 组件: File Service (文件管理服务)
     novaic-backend tool-result-service [options] Backend 组件: Tool Result Service (结果规范化)
 
 Gateway options:
-    --port PORT         Port to listen on (default: 19999)
-    --data-dir PATH     Data directory (default: from NOVAIC_DATA_DIR env)
+    --host HOST         Required host
+    --port PORT         Required port
+    --data-dir PATH     Required data directory
 
 Tools Server options:
-    --port PORT         Port for Tools Server (default: 19998)
-    --data-dir PATH     Data directory (与 Gateway 共用)
-    --gateway-url URL   Gateway URL (default: http://127.0.0.1:19999)
+    --host HOST         Required host
+    --port PORT         Required port
+    --data-dir PATH     Required data directory
+    --gateway-url URL   Required gateway URL
 
 Queue Service options:
-    --port PORT         Port for Queue Service (default: 19997)
-    --data-dir PATH     Data directory (与 Gateway 共用)
+    --host HOST         Required host
+    --port PORT         Required port
+    --data-dir PATH     Required data directory
 
 Watchdog options:
-    --gateway-url URL       Gateway URL (default: http://127.0.0.1:19999)
-    --queue-service-url URL Queue Service URL (default: http://127.0.0.1:19997)
+    --gateway-url URL       Required gateway URL
+    --queue-service-url URL Required queue service URL
+    --runtime-orchestrator-url URL Required runtime orchestrator URL
+    --data-dir PATH         Required data directory
 
 Task Worker options:
-    --gateway-url URL       Gateway URL (default: http://127.0.0.1:19999)
-    --queue-service-url URL Queue Service URL (default: http://127.0.0.1:19997)
-    --num-workers N         Number of worker threads (default: 5)
+    --gateway-url URL       Required gateway URL
+    --queue-service-url URL Required queue service URL
+    --tools-server-url URL  Required tools server URL
+    --runtime-orchestrator-url URL Required runtime orchestrator URL
+    --num-workers N         Required worker thread count
+    --data-dir PATH         Required data directory
 
 Saga Worker options:
-    --gateway-url URL       Gateway URL (default: http://127.0.0.1:19999)
-    --queue-service-url URL Queue Service URL (default: http://127.0.0.1:19997)
-    --max-concurrent N      Max concurrent sagas (default: 10)
+    --gateway-url URL       Required gateway URL
+    --queue-service-url URL Required queue service URL
+    --runtime-orchestrator-url URL Required runtime orchestrator URL
+    --max-concurrent N      Required max concurrent sagas
+    --data-dir PATH         Required data directory
 
 Health Worker options:
-    --queue-service-url URL Queue Service URL (default: http://127.0.0.1:19997)
+    --gateway-url URL       Required gateway URL
+    --queue-service-url URL Required queue service URL
+    --runtime-orchestrator-url URL Required runtime orchestrator URL
+    --check-interval N      Required check interval
+    --task-timeout N        Required task timeout
+    --saga-timeout N        Required saga timeout
+    --data-dir PATH         Required data directory
 
 Scheduler Worker options:
-    --gateway-url URL       Gateway URL (default: http://127.0.0.1:19999)
-    --check-interval SECS   Check interval in seconds (default: 10.0)
+    --gateway-url URL       Required gateway URL
+    --runtime-orchestrator-url URL Required runtime orchestrator URL
+    --check-interval SECS   Required check interval in seconds
+    --data-dir PATH         Required data directory
+
+Runtime Orchestrator options:
+    --host HOST         Required host
+    --port PORT         Required port
+    --data-dir PATH     Required data directory
 
 VMControl options:
-    --port PORT         Port for VMControl (default: 8080)
-    --host HOST         Host to bind to (default: 127.0.0.1)
+    --host HOST         Required host
+    --port PORT         Required port
     --vmcontrol-bin     Path to vmcontrol binary (default: auto-detect)
 
 File Service options:
-    --port PORT         Port for File Service (default: 19995)
-    --base-dir PATH     Base data directory (default: NOVAIC_DATA_DIR/files)
+    --host HOST         Required host
+    --port PORT         Required port
+    --data-dir PATH     Required data directory
 
 Tool Result Service options:
-    --port PORT         Port (default: 19994)
-    --data-dir PATH     Data directory (sets NOVAIC_DATA_DIR)
+    --host HOST         Required host
+    --port PORT         Required port
+    --data-dir PATH     Required data directory
 
 Examples:
-    novaic-backend gateway --port 19999
-    novaic-backend tools-server --port 19998
-    novaic-backend queue-service --port 19997
-    novaic-backend watchdog --gateway-url http://127.0.0.1:19999 --queue-service-url http://127.0.0.1:19997
-    novaic-backend task-worker --gateway-url http://127.0.0.1:19999 --queue-service-url http://127.0.0.1:19997
-    novaic-backend saga-worker --gateway-url http://127.0.0.1:19999 --queue-service-url http://127.0.0.1:19997
-    novaic-backend health --queue-service-url http://127.0.0.1:19997
-    novaic-backend scheduler --gateway-url http://127.0.0.1:19999
-    novaic-backend vmcontrol --port 8080
+    novaic-backend queue-service --host 127.0.0.1 --port 19997 --data-dir /Users/me/.novaic
+    novaic-backend runtime-orchestrator --host 127.0.0.1 --port 19993 --data-dir /Users/me/.novaic
+    novaic-backend gateway --host 127.0.0.1 --port 19999 --data-dir /Users/me/.novaic --runtime-orchestrator-url http://127.0.0.1:19993 --queue-service-url http://127.0.0.1:19997 --tools-server-url http://127.0.0.1:19998 --vmcontrol-url http://127.0.0.1:19996 --file-service-url http://127.0.0.1:19995 --tool-result-service-url http://127.0.0.1:19994
+    novaic-backend task-worker --gateway-url http://127.0.0.1:19999 --queue-service-url http://127.0.0.1:19997 --tools-server-url http://127.0.0.1:19998 --runtime-orchestrator-url http://127.0.0.1:19993 --num-workers 5 --data-dir /Users/me/.novaic
+    novaic-backend vmcontrol --host 127.0.0.1 --port 8080
 """)
 
 
 def run_gateway():
     """Run the Gateway server."""
     import argparse
-    
+
     parser = argparse.ArgumentParser(description="NovAIC Gateway Server")
-    parser.add_argument("--port", type=int, default=ServiceConfig.GATEWAY_PORT, help="Port to listen on")
-    parser.add_argument("--data-dir", help="Data directory (overrides NOVAIC_DATA_DIR)")
+    parser.add_argument("--host", required=True, help="Gateway host")
+    parser.add_argument("--port", required=True, type=int, help="Gateway port")
+    parser.add_argument("--data-dir", required=True, help="Data directory")
+    parser.add_argument("--runtime-orchestrator-url", required=True, help="Runtime Orchestrator URL")
+    parser.add_argument("--queue-service-url", required=True, help="Queue Service URL")
+    parser.add_argument("--tools-server-url", required=True, help="Tools Server URL")
+    parser.add_argument("--vmcontrol-url", required=True, help="VMControl URL")
+    parser.add_argument("--file-service-url", required=True, help="File Service URL")
+    parser.add_argument("--tool-result-service-url", required=True, help="Tool Result Service URL")
     args = parser.parse_args()
-    
-    # Set data directory
-    if args.data_dir:
-        os.environ["NOVAIC_DATA_DIR"] = args.data_dir
-    
-    # Import and run gateway main
-    # Note: main_gateway.py expects NOVAIC_DATA_DIR to be set
-    if not os.environ.get("NOVAIC_DATA_DIR"):
-        print("[Gateway] ERROR: NOVAIC_DATA_DIR environment variable is required")
-        print("[Gateway] Use --data-dir option or set NOVAIC_DATA_DIR environment variable")
-        sys.exit(1)
-    
-    # Set port via environment
-    os.environ["NOVAIC_PORT"] = str(args.port)
-    
+
+    # Apply runtime config from CLI (no fallback).
+    ServiceConfig.DATA_DIR = args.data_dir
+    ServiceConfig.GATEWAY_HOST = args.host
+    ServiceConfig.GATEWAY_PORT = args.port
+    ServiceConfig.GATEWAY_URL = f"http://{args.host}:{args.port}"
+    ServiceConfig.RUNTIME_ORCHESTRATOR_URL = args.runtime_orchestrator_url
+    ServiceConfig.QUEUE_SERVICE_URL = args.queue_service_url
+    ServiceConfig.TOOLS_SERVER_URL = args.tools_server_url
+    ServiceConfig.VMCONTROL_URL = args.vmcontrol_url
+    ServiceConfig.FILE_SERVICE_URL = args.file_service_url
+    ServiceConfig.TOOL_RESULT_SERVICE_URL = args.tool_result_service_url
+
     # Import gateway main module (v4: renamed from main.py to main_gateway.py)
     from main_gateway import app
     import uvicorn
     
-    print(f"[Gateway] Starting on port {args.port}")
-    uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="info")
+    print(f"[Gateway] Starting on {args.host}:{args.port}")
+    uvicorn.run(app, host=args.host, port=args.port, log_level="info")
 
 
 def run_tools_server():
     """Run the Tools Server (HTTP API for tools, replaces MCP Gateway)."""
     import argparse
-    
+
     parser = argparse.ArgumentParser(description="NovAIC Tools Server")
-    parser.add_argument("--port", type=int, default=ServiceConfig.TOOLS_SERVER_PORT, help=f"Port for Tools Server (default: {ServiceConfig.TOOLS_SERVER_PORT})")
-    parser.add_argument("--data-dir", help="Data directory (overrides NOVAIC_DATA_DIR)")
-    parser.add_argument("--gateway-url", help=f"Gateway URL (default: {ServiceConfig.GATEWAY_URL})")
+    parser.add_argument("--host", required=True, help="Tools Server host")
+    parser.add_argument("--port", required=True, type=int, help="Tools Server port")
+    parser.add_argument("--data-dir", required=True, help="Data directory")
+    parser.add_argument("--gateway-url", required=True, help="Gateway URL")
     args = parser.parse_args()
-    
-    if args.data_dir:
-        os.environ["NOVAIC_DATA_DIR"] = args.data_dir
-    if not os.environ.get("NOVAIC_DATA_DIR"):
-        print("[Tools Server] ERROR: NOVAIC_DATA_DIR required (use --data-dir or set env)")
-        sys.exit(1)
-    
-    os.environ["NOVAIC_TOOLS_PORT"] = str(args.port)
-    if args.gateway_url:
-        os.environ["GATEWAY_URL"] = args.gateway_url
-    elif not os.environ.get("GATEWAY_URL"):
-        os.environ["GATEWAY_URL"] = ServiceConfig.GATEWAY_URL
+
+    ServiceConfig.DATA_DIR = args.data_dir
+    ServiceConfig.TOOLS_SERVER_HOST = args.host
+    ServiceConfig.TOOLS_SERVER_PORT = args.port
+    ServiceConfig.TOOLS_SERVER_URL = f"http://{args.host}:{args.port}"
+    ServiceConfig.GATEWAY_URL = args.gateway_url
     
     from main_tools import app
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="info")
+    uvicorn.run(app, host=args.host, port=args.port, log_level="info")
 
 
 def run_queue_service():
@@ -182,22 +201,21 @@ def run_queue_service():
     import argparse
     
     parser = argparse.ArgumentParser(description="NovAIC Queue Service")
-    parser.add_argument("--port", type=int, default=ServiceConfig.QUEUE_SERVICE_PORT, help=f"Port for Queue Service (default: {ServiceConfig.QUEUE_SERVICE_PORT})")
-    parser.add_argument("--data-dir", help="Data directory (overrides NOVAIC_DATA_DIR)")
+    parser.add_argument("--host", required=True, help="Queue Service host")
+    parser.add_argument("--port", required=True, type=int, help="Queue Service port")
+    parser.add_argument("--data-dir", required=True, help="Data directory")
     args = parser.parse_args()
-    
-    if args.data_dir:
-        os.environ["NOVAIC_DATA_DIR"] = args.data_dir
-    if not os.environ.get("NOVAIC_DATA_DIR"):
-        print("[Queue Service] ERROR: NOVAIC_DATA_DIR required (use --data-dir or set env)")
-        sys.exit(1)
-    os.environ["NOVAIC_QUEUE_PORT"] = str(args.port)
+
+    ServiceConfig.DATA_DIR = args.data_dir
+    ServiceConfig.QUEUE_SERVICE_HOST = args.host
+    ServiceConfig.QUEUE_SERVICE_PORT = args.port
+    ServiceConfig.QUEUE_SERVICE_URL = f"http://{args.host}:{args.port}"
     
     from queue_service.main import app
     import uvicorn
     
-    print(f"[Queue Service] Starting on port {args.port}")
-    uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="info")
+    print(f"[Queue Service] Starting on {args.host}:{args.port}")
+    uvicorn.run(app, host=args.host, port=args.port, log_level="info")
 
 
 def run_watchdog():
@@ -206,9 +224,17 @@ def run_watchdog():
     import signal
     
     parser = argparse.ArgumentParser(description="NovAIC Watchdog Service")
-    parser.add_argument("--gateway-url", default=ServiceConfig.GATEWAY_URL, help="Gateway URL")
-    parser.add_argument("--queue-service-url", default=ServiceConfig.QUEUE_SERVICE_URL, help="Queue Service URL")
+    parser.add_argument("--gateway-url", required=True, help="Gateway URL")
+    parser.add_argument("--queue-service-url", required=True, help="Queue Service URL")
+    parser.add_argument("--runtime-orchestrator-url", required=True, help="Runtime Orchestrator URL")
+    parser.add_argument("--data-dir", required=True, help="Data directory")
     args = parser.parse_args()
+
+    ServiceConfig.DATA_DIR = args.data_dir
+    ServiceConfig.GATEWAY_URL = args.gateway_url
+    ServiceConfig.QUEUE_SERVICE_URL = args.queue_service_url
+    ServiceConfig.RUNTIME_ORCHESTRATOR_URL = args.runtime_orchestrator_url
+    _setup_worker_logging("watchdog")
     
     from task_queue.workers.watchdog import Watchdog
     
@@ -239,10 +265,21 @@ def run_task_worker():
     import signal
     
     parser = argparse.ArgumentParser(description="NovAIC Task Worker Service")
-    parser.add_argument("--gateway-url", default=ServiceConfig.GATEWAY_URL, help="Gateway URL")
-    parser.add_argument("--queue-service-url", default=ServiceConfig.QUEUE_SERVICE_URL, help="Queue Service URL")
-    parser.add_argument("--num-workers", type=int, default=ServiceConfig.NUM_WORKERS, help="Number of worker threads (reserved)")
+    parser.add_argument("--gateway-url", required=True, help="Gateway URL")
+    parser.add_argument("--queue-service-url", required=True, help="Queue Service URL")
+    parser.add_argument("--tools-server-url", required=True, help="Tools Server URL")
+    parser.add_argument("--runtime-orchestrator-url", required=True, help="Runtime Orchestrator URL")
+    parser.add_argument("--num-workers", type=int, required=True, help="Number of worker threads")
+    parser.add_argument("--data-dir", required=True, help="Data directory")
     args = parser.parse_args()
+
+    ServiceConfig.DATA_DIR = args.data_dir
+    ServiceConfig.GATEWAY_URL = args.gateway_url
+    ServiceConfig.QUEUE_SERVICE_URL = args.queue_service_url
+    ServiceConfig.TOOLS_SERVER_URL = args.tools_server_url
+    ServiceConfig.RUNTIME_ORCHESTRATOR_URL = args.runtime_orchestrator_url
+    ServiceConfig.NUM_WORKERS = args.num_workers
+    _setup_worker_logging("task-worker")
     
     from task_queue.workers.task_worker_sync import TaskWorkerSync
     from task_queue.handlers import get_all_topics
@@ -267,6 +304,7 @@ def run_task_worker():
     print(f"[task-worker] Starting...")
     print(f"[task-worker] Gateway URL: {args.gateway_url}")
     print(f"[task-worker] Queue Service URL: {args.queue_service_url}")
+    print(f"[task-worker] Tools Server URL: {args.tools_server_url}")
     print(f"[task-worker] Num workers: {args.num_workers} (reserved)")
     
     worker.run()
@@ -275,9 +313,31 @@ def run_task_worker():
 
 def run_saga_worker():
     """Run the Saga Worker service."""
-    # main_saga.py 已经使用 argparse 处理所有参数：
-    # --gateway-url, --queue-service-url, --max-concurrent
-    # 直接调用即可，argv 已在 main() 中处理好
+    import argparse
+
+    parser = argparse.ArgumentParser(description="NovAIC Saga Worker Service")
+    parser.add_argument("--gateway-url", required=True, help="Gateway URL")
+    parser.add_argument("--queue-service-url", required=True, help="Queue Service URL")
+    parser.add_argument("--runtime-orchestrator-url", required=True, help="Runtime Orchestrator URL")
+    parser.add_argument("--max-concurrent", type=int, required=True, help="Max concurrent sagas")
+    parser.add_argument("--data-dir", required=True, help="Data directory")
+    args = parser.parse_args()
+
+    ServiceConfig.DATA_DIR = args.data_dir
+    ServiceConfig.GATEWAY_URL = args.gateway_url
+    ServiceConfig.QUEUE_SERVICE_URL = args.queue_service_url
+    ServiceConfig.RUNTIME_ORCHESTRATOR_URL = args.runtime_orchestrator_url
+    ServiceConfig.MAX_CONCURRENT_SAGAS = args.max_concurrent
+    _setup_worker_logging("saga-worker")
+
+    # Forward required CLI args to main_saga (no defaults).
+    sys.argv = [
+        sys.argv[0],
+        "--gateway-url", args.gateway_url,
+        "--queue-service-url", args.queue_service_url,
+        "--runtime-orchestrator-url", args.runtime_orchestrator_url,
+        "--max-concurrent", str(args.max_concurrent),
+    ]
     from main_saga import main as saga_run
     saga_run()
 
@@ -288,12 +348,22 @@ def run_health():
     import signal
     
     parser = argparse.ArgumentParser(description="NovAIC Health Worker Service")
-    parser.add_argument("--gateway-url", default=ServiceConfig.GATEWAY_URL, help="Gateway URL (accepted but not used)")
-    parser.add_argument("--queue-service-url", default=ServiceConfig.QUEUE_SERVICE_URL, help="Queue Service URL")
-    parser.add_argument("--check-interval", type=float, default=30.0, help="Health check interval in seconds")
-    parser.add_argument("--task-timeout", type=int, default=ServiceConfig.TASK_TIMEOUT, help="Task timeout in seconds")
-    parser.add_argument("--saga-timeout", type=int, default=ServiceConfig.SAGA_TIMEOUT, help="Saga timeout in seconds")
+    parser.add_argument("--gateway-url", required=True, help="Gateway URL (accepted but not used)")
+    parser.add_argument("--queue-service-url", required=True, help="Queue Service URL")
+    parser.add_argument("--runtime-orchestrator-url", required=True, help="Runtime Orchestrator URL")
+    parser.add_argument("--check-interval", type=float, required=True, help="Health check interval in seconds")
+    parser.add_argument("--task-timeout", type=int, required=True, help="Task timeout in seconds")
+    parser.add_argument("--saga-timeout", type=int, required=True, help="Saga timeout in seconds")
+    parser.add_argument("--data-dir", required=True, help="Data directory")
     args = parser.parse_args()
+
+    ServiceConfig.DATA_DIR = args.data_dir
+    ServiceConfig.GATEWAY_URL = args.gateway_url
+    ServiceConfig.QUEUE_SERVICE_URL = args.queue_service_url
+    ServiceConfig.RUNTIME_ORCHESTRATOR_URL = args.runtime_orchestrator_url
+    ServiceConfig.TASK_TIMEOUT = args.task_timeout
+    ServiceConfig.SAGA_TIMEOUT = args.saga_timeout
+    _setup_worker_logging("health")
     
     from task_queue.workers.health_worker_sync import HealthWorkerSync
     
@@ -324,9 +394,16 @@ def run_scheduler():
     import signal
     
     parser = argparse.ArgumentParser(description="NovAIC Scheduler Worker Service")
-    parser.add_argument("--gateway-url", default=ServiceConfig.GATEWAY_URL, help="Gateway URL")
-    parser.add_argument("--check-interval", type=float, default=10.0, help="Check interval in seconds")
+    parser.add_argument("--gateway-url", required=True, help="Gateway URL")
+    parser.add_argument("--runtime-orchestrator-url", required=True, help="Runtime Orchestrator URL")
+    parser.add_argument("--check-interval", type=float, required=True, help="Check interval in seconds")
+    parser.add_argument("--data-dir", required=True, help="Data directory")
     args = parser.parse_args()
+
+    ServiceConfig.DATA_DIR = args.data_dir
+    ServiceConfig.GATEWAY_URL = args.gateway_url
+    ServiceConfig.RUNTIME_ORCHESTRATOR_URL = args.runtime_orchestrator_url
+    _setup_worker_logging("scheduler")
     
     from task_queue.workers.scheduler_worker_sync import SchedulerWorkerSync
     
@@ -355,26 +432,24 @@ def run_file_service():
     import argparse
     
     parser = argparse.ArgumentParser(description="NovAIC File Service")
-    parser.add_argument("--port", type=int, default=ServiceConfig.FILE_SERVICE_PORT, help=f"Port for File Service (default: {ServiceConfig.FILE_SERVICE_PORT})")
-    parser.add_argument("--data-dir", help="Data directory (overrides NOVAIC_DATA_DIR)")
+    parser.add_argument("--host", required=True, help="File Service host")
+    parser.add_argument("--port", type=int, required=True, help="File Service port")
+    parser.add_argument("--data-dir", required=True, help="Data directory")
     args = parser.parse_args()
-    
-    if args.data_dir:
-        os.environ["NOVAIC_DATA_DIR"] = args.data_dir
-    if not os.environ.get("NOVAIC_DATA_DIR"):
-        print("[File Service] ERROR: NOVAIC_DATA_DIR required (use --data-dir or set env)")
-        sys.exit(1)
-    
-    os.environ["FILE_SERVICE_PORT"] = str(args.port)
+
+    ServiceConfig.DATA_DIR = args.data_dir
+    ServiceConfig.FILE_SERVICE_HOST = args.host
+    ServiceConfig.FILE_SERVICE_PORT = args.port
+    ServiceConfig.FILE_SERVICE_URL = f"http://{args.host}:{args.port}"
     
     from file_service.main import create_app
     import uvicorn
     
-    base_dir = os.environ["NOVAIC_DATA_DIR"]
+    base_dir = args.data_dir
     app = create_app(base_dir=base_dir)
     
-    print(f"[File Service] Starting on port {args.port}")
-    uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="info")
+    print(f"[File Service] Starting on {args.host}:{args.port}")
+    uvicorn.run(app, host=args.host, port=args.port, log_level="info")
 
 
 def run_tool_result_service():
@@ -382,24 +457,27 @@ def run_tool_result_service():
     import argparse
     
     parser = argparse.ArgumentParser(description="NovAIC Tool Result Service")
-    parser.add_argument("--port", type=int, default=ServiceConfig.TOOL_RESULT_SERVICE_PORT, help=f"Port (default: {ServiceConfig.TOOL_RESULT_SERVICE_PORT})")
-    parser.add_argument("--data-dir", help="Data directory (overrides NOVAIC_DATA_DIR)")
+    parser.add_argument("--host", required=True, help="Tool Result Service host")
+    parser.add_argument("--port", type=int, required=True, help="Tool Result Service port")
+    parser.add_argument("--data-dir", required=True, help="Data directory")
     args = parser.parse_args()
-    
-    if args.data_dir:
-        os.environ["NOVAIC_DATA_DIR"] = args.data_dir
-    if not os.environ.get("NOVAIC_DATA_DIR"):
-        print("[Tool Result Service] ERROR: NOVAIC_DATA_DIR required (use --data-dir or set env)")
-        sys.exit(1)
-    
-    os.environ["TOOL_RESULT_SERVICE_PORT"] = str(args.port)
+
+    ServiceConfig.DATA_DIR = args.data_dir
+    ServiceConfig.TOOL_RESULT_SERVICE_HOST = args.host
+    ServiceConfig.TOOL_RESULT_SERVICE_PORT = args.port
+    ServiceConfig.TOOL_RESULT_SERVICE_URL = f"http://{args.host}:{args.port}"
     
     from tool_result_service.main import create_app
     import uvicorn
     
     app = create_app()
-    print(f"[Tool Result Service] Starting on port {args.port}")
-    uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="info")
+    print(f"[Tool Result Service] Starting on {args.host}:{args.port}")
+    uvicorn.run(
+        app,
+        host=args.host,
+        port=args.port,
+        log_level="info",
+    )
 
 
 def run_vmcontrol():
@@ -412,8 +490,8 @@ def run_vmcontrol():
     import requests
     
     parser = argparse.ArgumentParser(description="NovAIC VMControl Service")
-    parser.add_argument("--port", type=int, default=ServiceConfig.VMCONTROL_PORT, help=f"Port for VMControl (default: {ServiceConfig.VMCONTROL_PORT})")
-    parser.add_argument("--host", default=ServiceConfig.VMCONTROL_HOST, help=f"Host to bind to (default: {ServiceConfig.VMCONTROL_HOST})")
+    parser.add_argument("--port", type=int, required=True, help="Port for VMControl")
+    parser.add_argument("--host", required=True, help="Host to bind to")
     parser.add_argument("--vmcontrol-bin", help="Path to vmcontrol binary (default: auto-detect)")
     args = parser.parse_args()
     
@@ -525,13 +603,40 @@ def run_vmcontrol():
         sys.exit(1)
 
 
+def run_runtime_orchestrator():
+    """Run Runtime Orchestrator service."""
+    import argparse
+
+    parser = argparse.ArgumentParser(description="NovAIC Runtime Orchestrator")
+    parser.add_argument("--host", required=True, help="Runtime Orchestrator host")
+    parser.add_argument("--port", type=int, required=True, help="Runtime Orchestrator port")
+    parser.add_argument("--data-dir", required=True, help="Data directory")
+    args = parser.parse_args()
+
+    ServiceConfig.DATA_DIR = args.data_dir
+    ServiceConfig.RUNTIME_ORCHESTRATOR_HOST = args.host
+    ServiceConfig.RUNTIME_ORCHESTRATOR_PORT = args.port
+    ServiceConfig.RUNTIME_ORCHESTRATOR_URL = f"http://{args.host}:{args.port}"
+
+    from main_runtime_orchestrator import app
+    import uvicorn
+
+    print(f"[Runtime Orchestrator] Starting on {args.host}:{args.port}")
+    uvicorn.run(
+        app,
+        host=args.host,
+        port=args.port,
+        log_level="info",
+    )
+
+
 def _setup_worker_logging(mode: str):
     """Setup file logging for worker processes.
     
     Worker processes in binary mode have stdout/stderr set to null by Tauri.
     This redirects output to a log file so we can debug startup failures.
     """
-    data_dir = os.environ.get("NOVAIC_DATA_DIR")
+    data_dir = ServiceConfig.DATA_DIR
     if not data_dir:
         return  # Can't log without data dir
     
@@ -579,19 +684,6 @@ def main():
         script_dir = os.path.dirname(os.path.abspath(__file__))
         sys.path.insert(0, script_dir)
     
-    # Validate configuration
-    try:
-        ServiceConfig.validate()
-        print(f"[Config] Gateway: {ServiceConfig.GATEWAY_URL}")
-        print(f"[Config] Queue Service: {ServiceConfig.QUEUE_SERVICE_URL}")
-        print(f"[Config] Tools Server: {ServiceConfig.TOOLS_SERVER_URL}")
-        print(f"[Config] VMControl: {ServiceConfig.VMCONTROL_URL}")
-        print(f"[Config] File Service: {ServiceConfig.FILE_SERVICE_URL}")
-        print(f"[Config] Tool Result Service: {ServiceConfig.TOOL_RESULT_SERVICE_URL}")
-    except ValueError as e:
-        print(f"[Config] Configuration error: {e}")
-        sys.exit(1)
-    
     # Parse mode
     if len(sys.argv) < 2:
         print_usage()
@@ -601,11 +693,6 @@ def main():
     
     # Remove mode from argv so argparse in sub-commands works correctly
     sys.argv = [sys.argv[0]] + sys.argv[2:]
-    
-    # Setup file logging for worker processes (stdout is null in binary mode)
-    # Gateway, Tools Server, Queue Service handle their own logging
-    if mode in ("watchdog", "task-worker", "saga-worker", "health", "scheduler"):
-        _setup_worker_logging(mode)
     
     if mode == "gateway":
         run_gateway()
@@ -625,6 +712,8 @@ def main():
         run_scheduler()
     elif mode == "vmcontrol":
         run_vmcontrol()
+    elif mode == "runtime-orchestrator":
+        run_runtime_orchestrator()
     elif mode == "file-service":
         run_file_service()
     elif mode == "tool-result-service":

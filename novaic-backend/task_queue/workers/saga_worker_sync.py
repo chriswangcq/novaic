@@ -13,7 +13,6 @@
 - 性能相当（都是 I/O 密集型）
 """
 
-import os
 import time
 import uuid
 import json
@@ -108,8 +107,7 @@ class SagaWorkerSync:
     ):
         self.saga_types = saga_types
         self.gateway_url = gateway_url or ServiceConfig.GATEWAY_URL
-        # Queue Service URL: 参数 > 环境变量 > 默认值
-        self.queue_service_url = queue_service_url or os.environ.get("QUEUE_SERVICE_URL", ServiceConfig.QUEUE_SERVICE_URL)
+        self.queue_service_url = queue_service_url or ServiceConfig.QUEUE_SERVICE_URL
         self.poll_interval = poll_interval if poll_interval is not None else ServiceConfig.POLL_INTERVAL
         self.step_timeout = step_timeout if step_timeout is not None else ServiceConfig.SAGA_STEP_TIMEOUT
         self.max_concurrent = max_concurrent if max_concurrent is not None else ServiceConfig.MAX_CONCURRENT_SAGAS
@@ -721,7 +719,12 @@ def start_worker(
             "runtime_complete",
         ]
     
-    worker = SagaWorkerSync(saga_types, gateway_url, max_concurrent=max_concurrent)
+    worker = SagaWorkerSync(
+        saga_types=saga_types,
+        gateway_url=gateway_url,
+        queue_service_url=queue_service_url,
+        max_concurrent=max_concurrent,
+    )
     
     # 注册 Saga 定义
     from task_queue.sagas import get_all_saga_definitions
@@ -732,12 +735,9 @@ def start_worker(
 
 
 if __name__ == "__main__":
-    import sys
-    import os
-    
-    queue_service_url = os.environ.get("QUEUE_SERVICE_URL", ServiceConfig.QUEUE_SERVICE_URL)
-    gateway_url = os.environ.get("GATEWAY_URL", ServiceConfig.GATEWAY_URL)
-    max_concurrent = int(os.environ.get("MAX_CONCURRENT", str(ServiceConfig.MAX_CONCURRENT_SAGAS)))
+    queue_service_url = ServiceConfig.QUEUE_SERVICE_URL
+    gateway_url = ServiceConfig.GATEWAY_URL
+    max_concurrent = ServiceConfig.MAX_CONCURRENT_SAGAS
     
     print("=" * 60)
     print("同步 SagaWorker (多线程)")
@@ -748,4 +748,8 @@ if __name__ == "__main__":
     print("=" * 60)
     print()
     
-    start_worker(gateway_url=gateway_url, max_concurrent=max_concurrent)
+    start_worker(
+        queue_service_url=queue_service_url,
+        gateway_url=gateway_url,
+        max_concurrent=max_concurrent,
+    )

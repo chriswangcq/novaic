@@ -27,8 +27,7 @@ def web_search(data: Dict[str, Any]):
     Used by Tools Server for web_search tool.
     """
     import os
-    import httpx
-    
+
     BRAVE_API_KEY = os.environ.get("BRAVE_API_KEY", "")
     
     if not BRAVE_API_KEY:
@@ -42,7 +41,8 @@ def web_search(data: Dict[str, Any]):
     freshness = data.get("freshness")
     
     try:
-        with httpx.Client(timeout=30.0) as client:
+        from common.http.clients import external_client
+        with external_client(timeout=30.0) as client:
             params = {"q": query, "count": count}
             if freshness:
                 params["freshness"] = freshness
@@ -83,14 +83,14 @@ def web_fetch(data: Dict[str, Any]):
     Used by Tools Server for web_fetch tool.
     """
     import re
-    import httpx
-    
+
     url = data.get("url", "")
     extract_main_content = data.get("extract_main_content", True)
     max_length = data.get("max_length", 50000)
     
     try:
-        with httpx.Client(
+        from common.http.clients import external_client
+        with external_client(
             timeout=30.0,
             follow_redirects=True,
             headers={

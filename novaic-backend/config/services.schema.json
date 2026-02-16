@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NovaIC Services Configuration",
+  "type": "object",
+  "required": [
+    "paths",
+    "database",
+    "services",
+    "timeouts",
+    "worker",
+    "runtime",
+    "llm",
+    "text_truncate",
+    "auto_truncate",
+    "image",
+    "retry"
+  ],
+  "properties": {
+    "paths": {
+      "type": "object",
+      "required": ["data_dir", "resource_dir"],
+      "properties": {
+        "data_dir": { "type": "string", "minLength": 1 },
+        "resource_dir": { "type": "string" }
+      }
+    },
+    "database": {
+      "type": "object",
+      "required": ["gateway_db_file", "runtime_orchestrator_db_file"],
+      "properties": {
+        "gateway_db_file": { "type": "string", "minLength": 1 },
+        "runtime_orchestrator_db_file": { "type": "string", "minLength": 1 }
+      }
+    },
+    "services": {
+      "type": "object",
+      "required": [
+        "gateway",
+        "queue_service",
+        "tools_server",
+        "vmcontrol",
+        "file_service",
+        "tool_result_service",
+        "runtime_orchestrator"
+      ]
+    }
+  }
+}

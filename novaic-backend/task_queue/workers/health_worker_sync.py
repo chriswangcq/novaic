@@ -8,7 +8,6 @@
 - 单线程串行（定期检查）
 """
 
-import os
 import time
 import traceback
 import uuid
@@ -17,6 +16,7 @@ from typing import Optional
 
 import httpx
 from common.config import ServiceConfig
+from common.http.clients import internal_client
 from common.utils.time import utc_now_iso
 
 
@@ -64,9 +64,7 @@ class HealthWorkerSync:
         task_timeout: int = 120,  # Task 超时时间
         saga_timeout: int = 600,  # Saga 超时时间（与 recover_all 默认值一致）
     ):
-        # Queue Service URL: 参数 > 环境变量 > 默认值
-        self.queue_service_url = (queue_service_url or 
-                                   os.environ.get("QUEUE_SERVICE_URL", ServiceConfig.QUEUE_SERVICE_URL)).rstrip("/")
+        self.queue_service_url = (queue_service_url or ServiceConfig.QUEUE_SERVICE_URL).rstrip("/")
         self.check_interval = check_interval
         self.task_timeout = task_timeout
         self.saga_timeout = saga_timeout
@@ -80,10 +78,9 @@ class HealthWorkerSync:
     def _get_client(self) -> httpx.Client:
         """获取 Queue Service HTTP 客户端"""
         if self._client is None or self._client.is_closed:
-            self._client = httpx.Client(
+            self._client = internal_client(
                 base_url=self.queue_service_url,
                 timeout=30.0,
-                trust_env=False,
             )
         return self._client
     
@@ -190,7 +187,7 @@ def start_worker(queue_service_url: str = None):
 
 
 if __name__ == "__main__":
-    queue_service_url = os.environ.get("QUEUE_SERVICE_URL", ServiceConfig.QUEUE_SERVICE_URL)
+    queue_service_url = ServiceConfig.QUEUE_SERVICE_URL
     
     print("=" * 60)
     print("同步 HealthWorker (单线程)")

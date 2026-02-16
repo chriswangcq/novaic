@@ -9,13 +9,11 @@ MCP Business - MCP Server 管理
 
 from dataclasses import dataclass
 from typing import Dict, Any, Optional
-import os
 import time
-
-import httpx
 
 from ..client import GatewayInternalClient
 from common.config import ServiceConfig
+from common.http.clients import internal_client
 
 
 @dataclass
@@ -117,12 +115,12 @@ class MCPBusiness:
 
         try:
             # 1. 在 Tools Server 创建 runtime context（带重试）
-            tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", ServiceConfig.TOOLS_SERVER_URL)
+            tools_server_url = ServiceConfig.TOOLS_SERVER_URL
             max_retries = 3
             last_error = None
             for attempt in range(max_retries + 1):
                 try:
-                    with httpx.Client(timeout=10.0, trust_env=False) as http_client:
+                    with internal_client(timeout=10.0) as http_client:
                         resp = http_client.post(
                             f"{tools_server_url}/internal/runtimes",
                             json={
@@ -202,8 +200,8 @@ class MCPBusiness:
         agent_id = runtime.get("agent_id")
         try:
             # 1. 删除 Tools Server runtime context
-            tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", ServiceConfig.TOOLS_SERVER_URL)
-            with httpx.Client(timeout=10.0, trust_env=False) as http_client:
+            tools_server_url = ServiceConfig.TOOLS_SERVER_URL
+            with internal_client(timeout=10.0) as http_client:
                 resp = http_client.delete(
                     f"{tools_server_url}/internal/runtimes/{runtime_id}"
                 )
@@ -249,11 +247,11 @@ class MCPBusiness:
         Returns:
             ToolExecuteResult
         """
-        tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", ServiceConfig.TOOLS_SERVER_URL)
+        tools_server_url = ServiceConfig.TOOLS_SERVER_URL
         
         try:
             # 工具执行无超时限制，由心跳机制管理
-            with httpx.Client(timeout=None, trust_env=False) as client:
+            with internal_client(timeout=None) as client:
                 resp = client.post(
                     f"{tools_server_url}/internal/runtimes/{runtime_id}/tools/call",
                     json={
@@ -317,7 +315,7 @@ class ToolsServerClient:
     """
 
     def __init__(self):
-        self._tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", "http://127.0.0.1:19998")
+        self._tools_server_url = ServiceConfig.TOOLS_SERVER_URL
 
     def call_tool(self, runtime_id: str, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -332,7 +330,7 @@ class ToolsServerClient:
             工具执行结果
         """
         # 工具执行无超时限制，由心跳机制管理
-        with httpx.Client(timeout=None, trust_env=False) as client:
+        with internal_client(timeout=None) as client:
             resp = client.post(
                 f"{self._tools_server_url}/internal/runtimes/{runtime_id}/tools/call",
                 json={"name": tool_name, "arguments": arguments}
@@ -355,7 +353,7 @@ class ToolsServerClient:
         Returns:
             工具列表
         """
-        with httpx.Client(timeout=ServiceConfig.MCP_CALL_TIMEOUT, trust_env=False) as client:
+        with internal_client(timeout=ServiceConfig.MCP_CALL_TIMEOUT) as client:
             resp = client.get(
                 f"{self._tools_server_url}/internal/runtimes/{runtime_id}/tools"
             )

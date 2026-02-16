@@ -63,7 +63,7 @@ NovAIC 是一个基于 **Master-Driven + Saga/Task 三层架构** 的分布式 A
 │         │                 │                  │                      │
 │         ▼                 ▼                  ▼                      │
 │  ┌──────────┐      ┌──────────┐      ┌──────────────┐             │
-│  │novaic.db │      │queue.db  │      │ Gateway API  │             │
+│  │gateway.db│      │queue.db  │      │ Runtime      │             │
 │  │ 2.2 MB   │      │  68 KB   │      │ (内部调用)   │             │
 │  └──────────┘      └──────────┘      └──────────────┘             │
 │         ▲                 ▲                                         │
@@ -109,7 +109,7 @@ NovAIC 是一个基于 **Master-Driven + Saga/Task 三层架构** 的分布式 A
 #### 技术栈
 - Python 3.11+
 - FastAPI + Uvicorn
-- SQLite (novaic.db)
+- SQLite (gateway.db + runtime_orchestrator.db)
 - asyncio + aiohttp
 
 #### 核心职责
@@ -117,7 +117,7 @@ NovAIC 是一个基于 **Master-Driven + Saga/Task 三层架构** 的分布式 A
 | 模块 | 功能 | 关键实现 |
 |------|------|---------|
 | **API 网关** | REST API 接口 | `gateway/api/routes.py` |
-| **Internal API** | 供 Workers/Tools 调用 | `gateway/api/internal/` |
+| **Internal API** | Workers/internal clients default direct to Runtime Orchestrator `/internal/*`; Gateway `/internal` is proxy/aggregator only | `gateway/api/internal/` (proxy), Runtime Orchestrator (handler) |
 | **Runtime 管理** | Runtime 生命周期管理 | `gateway/db/repositories/runtime.py` |
 | **SubAgent 管理** | SubAgent 状态机 | `gateway/db/repositories/subagent.py` |
 | **消息处理** | Chat 消息持久化 | `gateway/db/repositories/message.py` |
@@ -419,7 +419,7 @@ ToolExecutor.execute()
 判断工具类型
     ├─→ 内置工具 → _execute_builtin()
     │              ↓
-    │        调用 Gateway Internal API (httpx)
+    │        调用 Runtime Orchestrator Internal API (httpx)
     │        • Memory: POST /internal/rt/{runtime_id}/memory/*
     │        • Chat: POST /internal/rt/{runtime_id}/chat/*
     │        • QEMU: POST /internal/rt/{runtime_id}/qemu/*
@@ -888,7 +888,7 @@ summary.merge_history_if_needed # 检查并触发历史合并
 │    步骤 1: runtime.update_phase → waiting_actions               │
 │    步骤 2: PARALLEL → tool.execute (并行执行所有工具)            │
 │            → TaskWorker 调用 Tools Server                       │
-│            → Tools Server 调用 Gateway Internal API             │
+│            → Tools Server 调用 Runtime Orchestrator Internal API │
 │    步骤 3: PARALLEL → context.append (并行保存所有结果)          │
 │    步骤 4: runtime.check_new_messages → 检查新消息              │
 │    步骤 5: DECISION → 决定继续或完成                            │
@@ -910,7 +910,7 @@ summary.merge_history_if_needed # 检查并触发历史合并
                      ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │ 8. SSE 推送: Gateway → Frontend                                 │
-│    • Worker 通过 Gateway Internal API 广播事件                  │
+│    • Worker 通过 Gateway 公共 API 广播事件                      │
 │    • Gateway 通过 SSE 推送给前端                                 │
 │    • 前端实时更新 UI                                             │
 └─────────────────────────────────────────────────────────────────┘
@@ -943,7 +943,7 @@ summary.merge_history_if_needed # 检查并触发历史合并
 │ 4. Tools Server: ToolExecutor.execute()                         │
 │    判断工具类型:                                                  │
 │    ├─→ 内置工具 (如 memory_save)                                │
-│    │   • 调用 Gateway Internal API                              │
+│    │   • 调用 Runtime Orchestrator Internal API                 │
 │    │   • POST /internal/rt/{runtime_id}/memory/save            │
 │    │                                                             │
 │    └─→ 外部工具 (如 custom_mcp_tool)                            │
@@ -1005,7 +1005,8 @@ summary.merge_history_if_needed # 检查并触发历史合并
 
 | 组件 | 用途 | 大小 |
 |------|------|------|
-| **SQLite** | Gateway 数据库 (novaic.db) | 2.2 MB |
+| **SQLite** | Gateway 数据库 (gateway.db) | - |
+| **SQLite** | Runtime Orchestrator 数据库 (runtime_orchestrator.db) | - |
 | **SQLite** | Queue Service 数据库 (queue.db) | 68 KB |
 
 ### 虚拟化
@@ -1027,10 +1028,11 @@ summary.merge_history_if_needed # 检查并触发历史合并
 ┌──────────────────────────────────────────────────────┐
 │                   启动顺序                            │
 ├──────────────────────────────────────────────────────┤
-│  1. Gateway (19999)         ← 最先启动，提供 API     │
-│  2. Queue Service (19997)   ← 任务队列服务           │
-│  3. Tools Server (19998)    ← 工具服务 (可选)       │
-│  4. Workers                 ← 执行任务               │
+│  1. Runtime Orchestrator (19993) ← 最先启动，内部编排 │
+│  2. Gateway (19999)              ← API 聚合与代理    │
+│  3. Queue Service (19997)        ← 任务队列服务      │
+│  4. Tools Server (19998)         ← 工具服务 (可选)   │
+│  5. Workers                      ← 执行任务           │
 │     • TaskWorker (2进程)                             │
 │     • SagaWorker (1进程)                             │
 │     • HealthWorker                                   │
@@ -1046,7 +1048,7 @@ summary.merge_history_if_needed # 检查并触发历史合并
 | **TaskWorker** | 2 | 认领并执行 Task | Queue Service (19997) |
 | **SagaWorker** | 1 | 认领并执行 Saga | Queue Service (19997) |
 | **HealthWorker** | 1 | 监控超时任务/Saga | Queue Service (19997) |
-| **Watchdog** | 1 | 监控消息，触发 Saga | Gateway (19999) |
+| **Watchdog** | 1 | 监控消息，触发 Saga | Runtime Orchestrator (19993) |
 
 ### 端口分配
 
@@ -1061,7 +1063,8 @@ summary.merge_history_if_needed # 检查并触发历史合并
 
 ```
 $NOVAIC_DATA_DIR/
-├── novaic.db                    # Gateway 数据库 (2.2 MB)
+├── gateway.db                   # Gateway 数据库
+├── runtime_orchestrator.db      # Runtime Orchestrator 数据库
 ├── queue.db                     # Queue Service 数据库 (68 KB)
 ├── logs/
 │   ├── gateway.log              # Gateway 日志
@@ -1225,7 +1228,7 @@ export HRL_KEEP_RECENT=5
 - **26 个任务类型**: Runtime (8), LLM (3), MCP (2), Tool (1), Context (3), Message (3), SubAgent (3), Summary (3)
 - **6 个 Saga 流程**: message_process, runtime_start, react_think, react_actions, runtime_complete, summarize
 - **67 个内置工具**: Memory (10), Runtime (7), Chat (6), Web (2), QEMU (5), Task (5), VM (32)
-- **2 个数据库**: novaic.db (2.2 MB), queue.db (68 KB)
+- **3 个数据库**: gateway.db, runtime_orchestrator.db, queue.db
 - **4 个端口**: 19999 (Gateway), 19997 (Queue), 19998 (Tools), 8080 (VMControl)
 
 ### 技术亮点

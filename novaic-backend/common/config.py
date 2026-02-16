@@ -1,39 +1,53 @@
-"""统一配置管理模块"""
-import os
+"""Unified strict configuration facade."""
+
+from common.strict_config import load_services_config
+
+
+_CFG = load_services_config()
 
 
 class ServiceConfig:
     """服务配置"""
+
+    # Database files (hard split, no legacy compatibility)
+    GATEWAY_DB_FILE = _CFG.get("database", "gateway_db_file")
+    RUNTIME_ORCHESTRATOR_DB_FILE = _CFG.get("database", "runtime_orchestrator_db_file")
+    DATA_DIR = _CFG.get("paths", "data_dir")
     
     # Gateway
-    GATEWAY_HOST = os.getenv("GATEWAY_HOST", "127.0.0.1")
-    GATEWAY_PORT = int(os.getenv("GATEWAY_PORT", "19999"))
-    GATEWAY_URL = os.getenv("GATEWAY_URL", f"http://{GATEWAY_HOST}:{GATEWAY_PORT}")
+    GATEWAY_HOST = _CFG.get("services", "gateway", "host")
+    GATEWAY_PORT = int(_CFG.get("services", "gateway", "port"))
+    GATEWAY_URL = _CFG.get("services", "gateway", "url")
     
     # Queue Service
-    QUEUE_SERVICE_HOST = os.getenv("QUEUE_SERVICE_HOST", "127.0.0.1")
-    QUEUE_SERVICE_PORT = int(os.getenv("QUEUE_SERVICE_PORT", "19997"))
-    QUEUE_SERVICE_URL = os.getenv("QUEUE_SERVICE_URL", f"http://{QUEUE_SERVICE_HOST}:{QUEUE_SERVICE_PORT}")
+    QUEUE_SERVICE_HOST = _CFG.get("services", "queue_service", "host")
+    QUEUE_SERVICE_PORT = int(_CFG.get("services", "queue_service", "port"))
+    QUEUE_SERVICE_URL = _CFG.get("services", "queue_service", "url")
     
     # Tools Server
-    TOOLS_SERVER_HOST = os.getenv("TOOLS_SERVER_HOST", "127.0.0.1")
-    TOOLS_SERVER_PORT = int(os.getenv("TOOLS_SERVER_PORT", "19998"))
-    TOOLS_SERVER_URL = os.getenv("TOOLS_SERVER_URL", f"http://{TOOLS_SERVER_HOST}:{TOOLS_SERVER_PORT}")
+    TOOLS_SERVER_HOST = _CFG.get("services", "tools_server", "host")
+    TOOLS_SERVER_PORT = int(_CFG.get("services", "tools_server", "port"))
+    TOOLS_SERVER_URL = _CFG.get("services", "tools_server", "url")
     
     # VMControl (Rust service)
-    VMCONTROL_HOST = os.getenv("VMCONTROL_HOST", "127.0.0.1")
-    VMCONTROL_PORT = int(os.getenv("VMCONTROL_PORT", "19996"))
-    VMCONTROL_URL = os.getenv("VMCONTROL_URL", f"http://{VMCONTROL_HOST}:{VMCONTROL_PORT}")
+    VMCONTROL_HOST = _CFG.get("services", "vmcontrol", "host")
+    VMCONTROL_PORT = int(_CFG.get("services", "vmcontrol", "port"))
+    VMCONTROL_URL = _CFG.get("services", "vmcontrol", "url")
     
     # File Service
-    FILE_SERVICE_HOST = os.getenv("FILE_SERVICE_HOST", "127.0.0.1")
-    FILE_SERVICE_PORT = int(os.getenv("FILE_SERVICE_PORT", "19995"))
-    FILE_SERVICE_URL = os.getenv("FILE_SERVICE_URL", f"http://{FILE_SERVICE_HOST}:{FILE_SERVICE_PORT}")
+    FILE_SERVICE_HOST = _CFG.get("services", "file_service", "host")
+    FILE_SERVICE_PORT = int(_CFG.get("services", "file_service", "port"))
+    FILE_SERVICE_URL = _CFG.get("services", "file_service", "url")
     
     # Tool Result Service
-    TOOL_RESULT_SERVICE_HOST = os.getenv("TOOL_RESULT_SERVICE_HOST", "127.0.0.1")
-    TOOL_RESULT_SERVICE_PORT = int(os.getenv("TOOL_RESULT_SERVICE_PORT", "19994"))
-    TOOL_RESULT_SERVICE_URL = os.getenv("TOOL_RESULT_SERVICE_URL", f"http://{TOOL_RESULT_SERVICE_HOST}:{TOOL_RESULT_SERVICE_PORT}")
+    TOOL_RESULT_SERVICE_HOST = _CFG.get("services", "tool_result_service", "host")
+    TOOL_RESULT_SERVICE_PORT = int(_CFG.get("services", "tool_result_service", "port"))
+    TOOL_RESULT_SERVICE_URL = _CFG.get("services", "tool_result_service", "url")
+
+    # Runtime Orchestrator (Phase 4)
+    RUNTIME_ORCHESTRATOR_HOST = _CFG.get("services", "runtime_orchestrator", "host")
+    RUNTIME_ORCHESTRATOR_PORT = int(_CFG.get("services", "runtime_orchestrator", "port"))
+    RUNTIME_ORCHESTRATOR_URL = _CFG.get("services", "runtime_orchestrator", "url")
     
     # Timeouts
     # 超时配置计算逻辑：
@@ -41,99 +55,101 @@ class ServiceConfig:
     # - max_retries = 3 (共 4 次尝试)
     # - Task 总执行时间 = 300s × 4 = 1200s
     # - 确保 SAGA_STEP_TIMEOUT > LLM_TIMEOUT × (max_retries + 1)
-    TASK_TIMEOUT = int(os.getenv("TASK_TIMEOUT", "60"))
-    SAGA_STEP_TIMEOUT = int(os.getenv("SAGA_STEP_TIMEOUT", "1500"))  # 25 分钟，覆盖 Task 重试
-    SAGA_TIMEOUT = int(os.getenv("SAGA_TIMEOUT", "1800"))  # 30 分钟，Saga 整体超时
-    HTTP_TIMEOUT = float(os.getenv("HTTP_TIMEOUT", "30.0"))
+    TASK_TIMEOUT = int(_CFG.get("timeouts", "task_timeout"))
+    SAGA_STEP_TIMEOUT = int(_CFG.get("timeouts", "saga_step_timeout"))  # 25 分钟，覆盖 Task 重试
+    SAGA_TIMEOUT = int(_CFG.get("timeouts", "saga_timeout"))  # 30 分钟，Saga 整体超时
+    HTTP_TIMEOUT = float(_CFG.get("timeouts", "http_timeout"))
+    # Internal service-to-service HTTP calls should bypass system proxy by default.
+    INTERNAL_HTTP_TRUST_ENV = bool(_CFG.get("timeouts", "internal_http_trust_env"))
     
     # Intervals
-    HEARTBEAT_INTERVAL = float(os.getenv("HEARTBEAT_INTERVAL", "10.0"))
-    POLL_INTERVAL = float(os.getenv("POLL_INTERVAL", "0.1"))
+    HEARTBEAT_INTERVAL = float(_CFG.get("worker", "heartbeat_interval"))
+    POLL_INTERVAL = float(_CFG.get("worker", "poll_interval"))
     
     # Concurrency
-    NUM_WORKERS = int(os.getenv("NUM_WORKERS", "5"))
-    MAX_CONCURRENT_SAGAS = int(os.getenv("MAX_CONCURRENT_SAGAS", "10"))
+    NUM_WORKERS = int(_CFG.get("worker", "num_workers"))
+    MAX_CONCURRENT_SAGAS = int(_CFG.get("worker", "max_concurrent_sagas"))
     
     # ===== 业务逻辑配置 =====
     
     # HRL (Hot Runtime List) 配置
-    HRL_TRIGGER_LENGTH = int(os.getenv("HRL_TRIGGER_LENGTH", "15"))
-    HRL_KEEP_RECENT = int(os.getenv("HRL_KEEP_RECENT", "5"))
+    HRL_TRIGGER_LENGTH = int(_CFG.get("runtime", "hrl_trigger_length"))
+    HRL_KEEP_RECENT = int(_CFG.get("runtime", "hrl_keep_recent"))
     
     # Summary 配置
-    SUMMARY_LAST_ROUNDS_FULL = int(os.getenv("SUMMARY_LAST_ROUNDS_FULL", "3"))
-    SUMMARY_LAST_ROUNDS_HOT = int(os.getenv("SUMMARY_LAST_ROUNDS_HOT", "5"))
+    SUMMARY_LAST_ROUNDS_FULL = int(_CFG.get("runtime", "summary_last_rounds_full"))
+    SUMMARY_LAST_ROUNDS_HOT = int(_CFG.get("runtime", "summary_last_rounds_hot"))
     
     # 分页配置
-    MAX_MESSAGES_PER_PAGE = int(os.getenv("MAX_MESSAGES_PER_PAGE", "100"))
-    MAX_EXECUTION_LOGS_PER_PAGE = int(os.getenv("MAX_EXECUTION_LOGS_PER_PAGE", "100"))
-    MAX_RUNTIME_CONTEXT_PER_PAGE = int(os.getenv("MAX_RUNTIME_CONTEXT_PER_PAGE", "50"))
-    DEFAULT_CHAT_LIMIT = int(os.getenv("DEFAULT_CHAT_LIMIT", "20"))
-    DEFAULT_SUMMARY_LENGTH = int(os.getenv("DEFAULT_SUMMARY_LENGTH", "50"))
+    MAX_MESSAGES_PER_PAGE = int(_CFG.get("runtime", "max_messages_per_page"))
+    MAX_EXECUTION_LOGS_PER_PAGE = int(_CFG.get("runtime", "max_execution_logs_per_page"))
+    MAX_RUNTIME_CONTEXT_PER_PAGE = int(_CFG.get("runtime", "max_runtime_context_per_page"))
+    DEFAULT_CHAT_LIMIT = int(_CFG.get("runtime", "default_chat_limit"))
+    DEFAULT_SUMMARY_LENGTH = int(_CFG.get("runtime", "default_summary_length"))
     
     # 清理配置
-    CLEANUP_KEEP_MESSAGES = int(os.getenv("CLEANUP_KEEP_MESSAGES", "200"))
-    CLEANUP_KEEP_EXECUTION_LOGS = int(os.getenv("CLEANUP_KEEP_EXECUTION_LOGS", "500"))
+    CLEANUP_KEEP_MESSAGES = int(_CFG.get("runtime", "cleanup_keep_messages"))
+    CLEANUP_KEEP_EXECUTION_LOGS = int(_CFG.get("runtime", "cleanup_keep_execution_logs"))
     
     # Stuck 检测配置
-    STUCK_AWAKING_TIMEOUT = int(os.getenv("STUCK_AWAKING_TIMEOUT", "60"))
-    STUCK_SENDING_TIMEOUT = int(os.getenv("STUCK_SENDING_TIMEOUT", "30"))
+    STUCK_AWAKING_TIMEOUT = int(_CFG.get("runtime", "stuck_awakening_timeout"))
+    STUCK_SENDING_TIMEOUT = int(_CFG.get("runtime", "stuck_sending_timeout"))
     
     # ===== 超时配置扩展 =====
     
-    HTTP_TIMEOUT_SHORT = float(os.getenv("HTTP_TIMEOUT_SHORT", "10.0"))
-    LLM_CALL_TIMEOUT = float(os.getenv("LLM_CALL_TIMEOUT", "60.0"))
-    MCP_CALL_TIMEOUT = float(os.getenv("MCP_CALL_TIMEOUT", "30.0"))
-    DB_TRANSACTION_TIMEOUT = float(os.getenv("DB_TRANSACTION_TIMEOUT", "10.0"))
-    DB_TRANSACTION_TIMEOUT_LONG = float(os.getenv("DB_TRANSACTION_TIMEOUT_LONG", "15.0"))
+    HTTP_TIMEOUT_SHORT = float(_CFG.get("timeouts", "http_timeout_short"))
+    LLM_CALL_TIMEOUT = float(_CFG.get("timeouts", "llm_call_timeout"))
+    MCP_CALL_TIMEOUT = float(_CFG.get("timeouts", "mcp_call_timeout"))
+    DB_TRANSACTION_TIMEOUT = float(_CFG.get("timeouts", "db_transaction_timeout"))
+    DB_TRANSACTION_TIMEOUT_LONG = float(_CFG.get("timeouts", "db_transaction_timeout_long"))
     
     # VM 配置
-    VM_MCP_TIMEOUT = int(os.getenv("VM_MCP_TIMEOUT", "120"))
-    SSH_QUICK_TIMEOUT = int(os.getenv("SSH_QUICK_TIMEOUT", "3"))
-    SSH_NORMAL_TIMEOUT = int(os.getenv("SSH_NORMAL_TIMEOUT", "10"))
+    VM_MCP_TIMEOUT = int(_CFG.get("runtime", "vm_mcp_timeout"))
+    SSH_QUICK_TIMEOUT = int(_CFG.get("runtime", "ssh_quick_timeout"))
+    SSH_NORMAL_TIMEOUT = int(_CFG.get("runtime", "ssh_normal_timeout"))
     
     # ===== VMUSE 配置 =====
     
     # 使用传统 VMUSE MCP 还是新的 vmcontrol 适配器
-    USE_LEGACY_VMUSE = os.getenv("USE_LEGACY_VMUSE", "false").lower() == "true"
-    VMUSE_MCP_URL = os.getenv("VMUSE_MCP_URL", "http://127.0.0.1:8080/mcp")
+    USE_LEGACY_VMUSE = bool(_CFG.get("runtime", "use_legacy_vmuse"))
+    VMUSE_MCP_URL = _CFG.get("runtime", "vmuse_mcp_url")
     
     # ===== LLM 配置 =====
     
-    LLM_MAX_TOKENS_DEFAULT = int(os.getenv("LLM_MAX_TOKENS_DEFAULT", "2000"))
-    LLM_TEMPERATURE_DEFAULT = float(os.getenv("LLM_TEMPERATURE_DEFAULT", "0.3"))
+    LLM_MAX_TOKENS_DEFAULT = int(_CFG.get("llm", "max_tokens_default"))
+    LLM_TEMPERATURE_DEFAULT = float(_CFG.get("llm", "temperature_default"))
     
     # ===== 文本截断配置 =====
     
-    TEXT_TRUNCATE_THINK = int(os.getenv("TEXT_TRUNCATE_THINK", "500"))
-    TEXT_TRUNCATE_ARGS = int(os.getenv("TEXT_TRUNCATE_ARGS", "200"))
-    TEXT_TRUNCATE_RESULT = int(os.getenv("TEXT_TRUNCATE_RESULT", "2000"))
-    TEXT_TRUNCATE_LLM_INPUT = int(os.getenv("TEXT_TRUNCATE_LLM_INPUT", "1000"))
-    TEXT_TRUNCATE_ERROR = int(os.getenv("TEXT_TRUNCATE_ERROR", "200"))
-    TEXT_TRUNCATE_REASONING = int(os.getenv("TEXT_TRUNCATE_REASONING", "500"))
-    TEXT_TRUNCATE_MESSAGE = int(os.getenv("TEXT_TRUNCATE_MESSAGE", "500"))
+    TEXT_TRUNCATE_THINK = int(_CFG.get("text_truncate", "think"))
+    TEXT_TRUNCATE_ARGS = int(_CFG.get("text_truncate", "args"))
+    TEXT_TRUNCATE_RESULT = int(_CFG.get("text_truncate", "result"))
+    TEXT_TRUNCATE_LLM_INPUT = int(_CFG.get("text_truncate", "llm_input"))
+    TEXT_TRUNCATE_ERROR = int(_CFG.get("text_truncate", "error"))
+    TEXT_TRUNCATE_REASONING = int(_CFG.get("text_truncate", "reasoning"))
+    TEXT_TRUNCATE_MESSAGE = int(_CFG.get("text_truncate", "message"))
     
     # ===== 长结果截断配置 =====
     
-    AUTO_TRUNCATE_ENABLED = bool(os.getenv("AUTO_TRUNCATE_ENABLED", "true").lower() == "true")
-    AUTO_TRUNCATE_THRESHOLD_SMALL = int(os.getenv("AUTO_TRUNCATE_THRESHOLD_SMALL", "4096"))  # 4KB（仅文本）
-    AUTO_TRUNCATE_THRESHOLD_LARGE = int(os.getenv("AUTO_TRUNCATE_THRESHOLD_LARGE", "10240"))  # 10KB（仅文本）
-    AUTO_TRUNCATE_HEAD_SIZE = int(os.getenv("AUTO_TRUNCATE_HEAD_SIZE", "1536"))  # 1.5KB
-    AUTO_TRUNCATE_TAIL_SIZE = int(os.getenv("AUTO_TRUNCATE_TAIL_SIZE", "1536"))  # 1.5KB
-    AUTO_TRUNCATE_TTL_HOURS = int(os.getenv("AUTO_TRUNCATE_TTL_HOURS", "24"))
+    AUTO_TRUNCATE_ENABLED = bool(_CFG.get("auto_truncate", "enabled"))
+    AUTO_TRUNCATE_THRESHOLD_SMALL = int(_CFG.get("auto_truncate", "threshold_small"))  # 4KB（仅文本）
+    AUTO_TRUNCATE_THRESHOLD_LARGE = int(_CFG.get("auto_truncate", "threshold_large"))  # 10KB（仅文本）
+    AUTO_TRUNCATE_HEAD_SIZE = int(_CFG.get("auto_truncate", "head_size"))  # 1.5KB
+    AUTO_TRUNCATE_TAIL_SIZE = int(_CFG.get("auto_truncate", "tail_size"))  # 1.5KB
+    AUTO_TRUNCATE_TTL_HOURS = int(_CFG.get("auto_truncate", "ttl_hours"))
     
     # ===== 图像处理配置 =====
     
-    IMAGE_COMPRESS_ENABLED = bool(os.getenv("IMAGE_COMPRESS_ENABLED", "true").lower() == "true")
-    IMAGE_MAX_SIZE_KB = int(os.getenv("IMAGE_MAX_SIZE_KB", "500"))  # 500KB
-    IMAGE_MAX_DIMENSION = int(os.getenv("IMAGE_MAX_DIMENSION", "1920"))  # 1920px
-    IMAGE_QUALITY = int(os.getenv("IMAGE_QUALITY", "85"))  # 85%
+    IMAGE_COMPRESS_ENABLED = bool(_CFG.get("image", "compress_enabled"))
+    IMAGE_MAX_SIZE_KB = int(_CFG.get("image", "max_size_kb"))  # 500KB
+    IMAGE_MAX_DIMENSION = int(_CFG.get("image", "max_dimension"))  # 1920px
+    IMAGE_QUALITY = int(_CFG.get("image", "quality"))  # 85%
     
     # ===== 重试配置 =====
     
-    DEFAULT_MAX_RETRIES = int(os.getenv("DEFAULT_MAX_RETRIES", "3"))
-    RETRY_BACKOFF_BASE = float(os.getenv("RETRY_BACKOFF_BASE", "2.0"))
-    RETRY_BACKOFF_MAX = float(os.getenv("RETRY_BACKOFF_MAX", "60.0"))
+    DEFAULT_MAX_RETRIES = int(_CFG.get("retry", "default_max_retries"))
+    RETRY_BACKOFF_BASE = float(_CFG.get("retry", "backoff_base"))
+    RETRY_BACKOFF_MAX = float(_CFG.get("retry", "backoff_max"))
     
     @classmethod
     def validate(cls):

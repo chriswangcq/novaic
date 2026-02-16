@@ -1,0 +1,57 @@
+# NovAIC Code Ownership — Phase 1 Scaffolding
+#
+# PLACEHOLDER: Replace @novaic/* team handles with your real GitHub teams.
+# Create these teams in your org: novaic/gateway-core, novaic/runtime-orchestrator,
+# novaic/vm-domain, novaic/platform-qa
+#
+# Paths are evaluated in order; the last matching pattern wins.
+# Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# =============================================================================
+# Gateway Core — API, DB, SSE, config, clients
+# PLACEHOLDER: @novaic/gateway-core
+# =============================================================================
+/novaic-backend/gateway/api/                  @novaic/gateway-core
+/novaic-backend/gateway/core/                 @novaic/gateway-core
+/novaic-backend/gateway/db/                   @novaic/gateway-core
+/novaic-backend/gateway/sse/                  @novaic/gateway-core
+/novaic-backend/gateway/config/               @novaic/gateway-core
+/novaic-backend/gateway/clients/              @novaic/gateway-core
+/novaic-backend/common/                       @novaic/gateway-core
+/novaic-backend/main_gateway.py              @novaic/gateway-core
+
+# VM-specific API paths (override gateway-core; last match wins)
+/novaic-backend/gateway/api/vm.py               @novaic/vm-domain
+/novaic-backend/gateway/api/vmcontrol.py        @novaic/vm-domain
+/novaic-backend/gateway/api/devices.py          @novaic/vm-domain
+/novaic-backend/gateway/api/internal/vm.py      @novaic/vm-domain
+
+# =============================================================================
+# VM Domain — VM lifecycle, deploy, manager, device/runtime bindings
+# PLACEHOLDER: @novaic/vm-domain
+# =============================================================================
+/novaic-backend/gateway/vm/                  @novaic/vm-domain
+
+# =============================================================================
+# Runtime Orchestrator — Task queue, saga, workers, tools server, MCP
+# PLACEHOLDER: @novaic/runtime-orchestrator
+# =============================================================================
+/novaic-backend/task_queue/                  @novaic/runtime-orchestrator
+/novaic-backend/queue_service/                @novaic/runtime-orchestrator
+/novaic-backend/tools_server/                 @novaic/runtime-orchestrator
+/novaic-backend/mcp_client/                   @novaic/runtime-orchestrator
+/novaic-backend/file_service/                 @novaic/runtime-orchestrator
+/novaic-backend/tool_result_service/          @novaic/runtime-orchestrator
+/novaic-backend/main_task.py                 @novaic/runtime-orchestrator
+/novaic-backend/main_saga.py                 @novaic/runtime-orchestrator
+/novaic-backend/main_watchdog.py              @novaic/runtime-orchestrator
+/novaic-backend/main_tools.py                 @novaic/runtime-orchestrator
+/novaic-backend/main_novaic.py                @novaic/runtime-orchestrator
+/novaic-backend/main_health.py                @novaic/runtime-orchestrator
+
+# =============================================================================
+# Platform QA — Tests and CI
+# PLACEHOLDER: @novaic/platform-qa
+# =============================================================================
+/novaic-backend/tests/                       @novaic/platform-qa
+/.github/                                    @novaic/platform-qa

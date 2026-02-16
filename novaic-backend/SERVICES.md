@@ -5,6 +5,14 @@
 
 ---
 
+## 配置来源（严格模式）
+
+- 运行时配置统一来自 `config/services.json`
+- 不再依赖环境变量注入服务 URL/端口
+- 若配置缺失，服务启动会直接失败（fail-fast）
+
+---
+
 ## 🏗️ 服务架构
 
 ```
@@ -19,7 +27,7 @@
 └────────┬─────────┘         └────────┬─────────┘
          ↓                            ↓
    ┌──────────┐                 ┌──────────┐
-   │novaic.db │                 │ queue.db │
+   │gateway.db│                 │ queue.db │
    │  2.2 MB  │                 │   68 KB  │
    └──────────┘                 └──────────┘
          ↑                            ↑
@@ -49,7 +57,7 @@
 - Chat 消息处理
 - SSE 推送
 
-**数据库：** novaic.db (2.2 MB)
+**数据库：** gateway.db + runtime_orchestrator.db
 
 **启动命令：**
 ```bash
@@ -91,7 +99,7 @@ venv/bin/python3 -m queue_service.main
 
 **Watchdog Worker（1进程）**
 - 监控消息状态
-- 连接：Gateway (19999)
+- 连接：Runtime Orchestrator (19993)
 
 ---
 
@@ -148,7 +156,8 @@ venv/bin/python3 -m task_queue.workers.health_worker_sync
 
 | 数据库 | 大小 | 表数量 | 所属服务 |
 |--------|------|--------|----------|
-| novaic.db | 2.2 MB | 20+ | Gateway |
+| gateway.db | - | 20+ | Gateway |
+| runtime_orchestrator.db | - | runtime/subagent/message tables | Runtime Orchestrator |
 | **queue.db** | **68 KB** | **3** | **Queue Service** |
 
 **queue.db 表：**
@@ -198,10 +207,16 @@ SELECT status, COUNT(*) as count FROM tq_sagas GROUP BY status;
 EOF
 
 # Gateway 统计
-sqlite3 $NOVAIC_DATA_DIR/novaic.db <<EOF
+sqlite3 $NOVAIC_DATA_DIR/gateway.db <<EOF
 SELECT 'Agents:' as info;
 SELECT COUNT(*) FROM agents;
 SELECT '';
+SELECT 'Agents:' as info;
+SELECT COUNT(*) FROM agents;
+EOF
+
+# Runtime Orchestrator 统计
+sqlite3 $NOVAIC_DATA_DIR/runtime_orchestrator.db <<EOF
 SELECT 'Runtimes:' as info;
 SELECT status, COUNT(*) FROM agent_runtimes GROUP BY status;
 EOF
@@ -360,16 +375,17 @@ python3 stress_test_queue_service.py
 ### 新架构特点
 
 - ✅ **服务解耦**：Gateway + Queue Service 独立
-- ✅ **数据库隔离**：novaic.db + queue.db 分离
+- ✅ **数据库隔离**：gateway.db + runtime_orchestrator.db + queue.db 分离
 - ✅ **性能提升**：并发 3x，延迟 50%↓
 - ✅ **故障隔离**：服务间完全独立
 - ✅ **易于扩展**：可独立演进
 
 ### 启动顺序
 
-1. Gateway (19999)
-2. Queue Service (19997)
-3. Workers (连接 19997)
+1. Runtime Orchestrator (19993)
+2. Gateway (19999)
+3. Queue Service (19997)
+4. Workers (连接 19997 + 19993/internal/*)
 
 ### 关键改进
 

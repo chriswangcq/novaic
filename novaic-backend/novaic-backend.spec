@@ -10,6 +10,7 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[
+        ('config', 'config'),
         ('common', 'common'),
         ('gateway', 'gateway'),
         ('task_queue', 'task_queue'),
@@ -25,6 +26,7 @@ a = Analysis(
         ('main_task.py', '.'),
         ('main_watchdog.py', '.'),
         ('main_health.py', '.'),
+        ('main_runtime_orchestrator.py', '.'),
     ],
     hiddenimports=[
         # FastAPI and dependencies
@@ -126,6 +128,7 @@ a = Analysis(
         'main_gateway',
         'main_tools',
         'main_saga',
+        'main_runtime_orchestrator',
     ],
     hookspath=[],
     hooksconfig={},

@@ -6,6 +6,7 @@ import httpx
 from typing import Generator, Optional, List, Dict, Any
 import json
 from abc import ABC, abstractmethod
+from common.http import external_client
 
 
 # Default settings (can be overridden via instance attributes)
@@ -131,10 +132,9 @@ class OpenAIClient(BaseLLMClient):
         print(f"[OpenAI] Calling {url} with model {payload['model']}")
         
         try:
-            with httpx.Client(
-                timeout=self.timeout, 
+            with external_client(
+                timeout=self.timeout,
                 proxy=None,
-                trust_env=False
             ) as client:
                 response = client.post(
                     url,
@@ -187,10 +187,9 @@ class OpenAIClient(BaseLLMClient):
         url = f"{self.api_base}/chat/completions"
         print(f"[OpenAI] Streaming from {url} with model {payload['model']}")
         
-        with httpx.Client(
+        with external_client(
             timeout=self.timeout,
             proxy=None,
-            trust_env=False
         ) as client:
             with client.stream(
                 "POST",
@@ -239,10 +238,9 @@ class OpenAIClient(BaseLLMClient):
         print(f"[OpenAI] Calling responses API: {url} with model {payload['model']}")
         
         try:
-            with httpx.Client(
+            with external_client(
                 timeout=self.timeout,
                 proxy=None,
-                trust_env=False
             ) as client:
                 response = client.post(
                     url,
@@ -515,10 +513,9 @@ class AnthropicClient(BaseLLMClient):
         print(f"[Anthropic] Calling {url} with model {payload['model']}")
         
         try:
-            with httpx.Client(
-                timeout=self.timeout, 
+            with external_client(
+                timeout=self.timeout,
                 proxy=None,
-                trust_env=False
             ) as client:
                 response = client.post(
                     url,
@@ -573,10 +570,9 @@ class AnthropicClient(BaseLLMClient):
         url = f"{self.api_base}/v1/messages"
         print(f"[Anthropic] Streaming from {url} with model {payload['model']}")
         
-        with httpx.Client(
+        with external_client(
             timeout=self.timeout,
             proxy=None,
-            trust_env=False
         ) as client:
             with client.stream(
                 "POST",
@@ -674,10 +670,9 @@ class AzureOpenAIClient(BaseLLMClient):
         print(f"[Azure] Calling {url}")
         
         try:
-            with httpx.Client(
-                timeout=self.timeout, 
+            with external_client(
+                timeout=self.timeout,
                 proxy=None,
-                trust_env=False
             ) as client:
                 response = client.post(
                     url,
@@ -717,10 +712,9 @@ class AzureOpenAIClient(BaseLLMClient):
         url = f"{self.api_base}/openai/deployments/{self.deployment_name}/chat/completions?api-version={self.api_version}"
         print(f"[Azure] Streaming from {url}")
         
-        with httpx.Client(
+        with external_client(
             timeout=self.timeout,
             proxy=None,
-            trust_env=False
         ) as client:
             with client.stream(
                 "POST",
@@ -946,10 +940,9 @@ class GoogleAIClient(BaseLLMClient):
         print(f"[Google] Calling with model {model_name}, tools: {len(tools) if tools else 0}")
         
         try:
-            with httpx.Client(
-                timeout=self.timeout, 
+            with external_client(
+                timeout=self.timeout,
                 proxy=None,
-                trust_env=False
             ) as client:
                 response = client.post(
                     url,
@@ -998,10 +991,9 @@ class GoogleAIClient(BaseLLMClient):
         url = f"{self.api_base}/models/{model_name}:streamGenerateContent?key={self.api_key}&alt=sse"
         print(f"[Google] Streaming with model {model_name}")
         
-        with httpx.Client(
+        with external_client(
             timeout=self.timeout,
             proxy=None,
-            trust_env=False
         ) as client:
             with client.stream(
                 "POST",

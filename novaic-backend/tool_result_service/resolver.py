@@ -8,6 +8,7 @@ from typing import Optional
 
 import httpx
 
+from common.http.clients import internal_async_client
 from .config import FILE_SERVICE_URL
 
 logger = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ async def resolve_url_to_base64(url: str) -> Optional[str]:
         fetch_url = f"{base}/api/files/{url.lstrip('/')}"
 
     try:
-        async with httpx.AsyncClient(timeout=30.0, trust_env=False) as client:
+        async with internal_async_client(timeout=30.0) as client:
             resp = await client.get(fetch_url)
             resp.raise_for_status()
             import base64

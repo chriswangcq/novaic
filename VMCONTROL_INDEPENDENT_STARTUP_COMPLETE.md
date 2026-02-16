@@ -510,7 +510,7 @@ novaic-backend vmcontrol      # 启动 vmcontrol ✨ NEW
 - [VMCONTROL_README.md](novaic-backend/VMCONTROL_README.md) - 完整使用文档
 - [VMCONTROL_STARTUP_GUIDE.md](VMCONTROL_STARTUP_GUIDE.md) - 快速启动指南
 - [VNC_WEBSOCKET_IMPLEMENTATION_COMPLETE.md](VNC_WEBSOCKET_IMPLEMENTATION_COMPLETE.md) - VNC WebSocket 实现
-- [PHASE_4_1_README.md](PHASE_4_1_README.md) - Phase 4.1 项目文档
+- Phase 4.1 项目文档（历史文档已归档）
 
 ## 总结
 

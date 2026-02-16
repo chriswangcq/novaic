@@ -20,20 +20,64 @@ from .access import get_db
 logger = logging.getLogger(__name__)
 
 
+def _candidate_config_paths(data_dir: Path) -> List[Path]:
+    """Return possible legacy config paths (highest priority first)."""
+    candidates: List[Path] = [
+        data_dir / "config.json",
+        data_dir / "appConfig.json",
+    ]
+
+    home = Path.home()
+    candidates.extend([
+        home / ".novaic" / "config.json",
+        home / "Library" / "Application Support" / "com.novaic.app" / "appConfig.json",
+        home / "Library" / "Application Support" / "com.novaic" / "appConfig.json",
+        home / ".local" / "share" / "com.novaic.app" / "appConfig.json",
+        home / ".local" / "share" / "com.novaic" / "appConfig.json",
+    ])
+
+    appdata = os.environ.get("APPDATA")
+    if appdata:
+        appdata_path = Path(appdata)
+        candidates.extend([
+            appdata_path / "com.novaic.app" / "appConfig.json",
+            appdata_path / "com.novaic" / "appConfig.json",
+        ])
+
+    # Preserve order while de-duplicating.
+    deduped: List[Path] = []
+    seen = set()
+    for path in candidates:
+        key = str(path)
+        if key not in seen:
+            seen.add(key)
+            deduped.append(path)
+    return deduped
+
+
+def _load_legacy_config(data_dir: Path) -> tuple[Optional[Path], Optional[Dict[str, Any]]]:
+    """Load first available legacy config payload from known paths."""
+    for path in _candidate_config_paths(data_dir):
+        if not path.exists():
+            continue
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return path, json.load(f)
+        except Exception as e:
+            logger.warning(f"[Migration] Failed to read config from {path}: {e}")
+    return None, None
+
+
 def migrate_config(db: Database, data_dir: Path) -> bool:
-    """Migrate config.json to database."""
-    config_file = data_dir / "config.json"
-    
-    if not config_file.exists():
-        logger.info("[Migration] No config.json found, skipping")
+    """Migrate legacy config/appConfig JSON into DB tables."""
+    config_file, data = _load_legacy_config(data_dir)
+    if not config_file or not data:
+        logger.info("[Migration] No legacy config found, skipping")
         return False
     
     logger.info(f"[Migration] Migrating config from {config_file}")
     
     try:
-        with open(config_file, "r") as f:
-            data = json.load(f)
-        
         with db.transaction("global"):
             # Migrate general settings
             if "version" in data:
@@ -81,28 +125,63 @@ def migrate_config(db: Database, data_dir: Path) -> bool:
                 )
             
             # Migrate models (candidate_models preferred, fallback to available_models)
-            models = data.get("candidate_models", data.get("available_models", []))
+            models = data.get("candidate_models") or data.get("available_models") or []
             for model in models:
+                model_id = model.get("id")
+                api_key_id = model.get("api_key_id")
+                if not model_id or not api_key_id:
+                    continue
                 db.execute(
                     """INSERT OR REPLACE INTO candidate_models 
                        (id, name, provider, api_key_id, available, is_custom)
                        VALUES (?, ?, ?, ?, ?, ?)""",
                     (
-                        model["id"],
-                        model["name"],
-                        model["provider"],
-                        model["api_key_id"],
+                        model_id,
+                        model.get("name", model_id),
+                        model.get("provider", "openai"),
+                        api_key_id,
                         1 if model.get("available", model.get("enabled", True)) else 0,
                         1 if model.get("is_custom", False) else 0,
                     )
                 )
+
+            # If default_model exists but missing from candidate_models, recover it from first key.
+            default_model = data.get("default_model")
+            if default_model:
+                row = db.fetchone(
+                    "SELECT id FROM candidate_models WHERE id = ? LIMIT 1",
+                    (default_model,),
+                )
+                if not row:
+                    key_row = db.fetchone(
+                        "SELECT id, provider FROM api_keys ORDER BY created_at LIMIT 1"
+                    )
+                    if key_row:
+                        db.execute(
+                            """INSERT OR IGNORE INTO candidate_models
+                               (id, name, provider, api_key_id, available, is_custom)
+                               VALUES (?, ?, ?, ?, 1, 1)""",
+                            (
+                                default_model,
+                                default_model,
+                                key_row["provider"],
+                                key_row["id"],
+                            ),
+                        )
+                        logger.info(
+                            "[Migration] Added missing default_model '%s' to candidate_models",
+                            default_model,
+                        )
         
         logger.info(f"[Migration] Migrated config: {len(data.get('api_keys', []))} API keys, {len(models)} models")
         
-        # Backup old file
-        backup_file = config_file.with_suffix(".json.bak")
-        config_file.rename(backup_file)
-        logger.info(f"[Migration] Backed up config.json to {backup_file}")
+        # Only backup files inside NOVAIC_DATA_DIR; do not mutate external app directories.
+        if config_file.parent == data_dir:
+            backup_file = config_file.with_suffix(".json.bak")
+            config_file.rename(backup_file)
+            logger.info(f"[Migration] Backed up {config_file.name} to {backup_file}")
+        else:
+            logger.info(f"[Migration] Source config outside data dir, skip backup rename: {config_file}")
         
         return True
         

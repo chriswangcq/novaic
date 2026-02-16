@@ -24,6 +24,8 @@ import json
 import asyncio
 import httpx
 
+from common.http.clients import external_async_client
+
 logger = logging.getLogger(__name__)
 
 
@@ -122,11 +124,10 @@ class MCPServerConnection:
     
     def _create_client(self) -> httpx.AsyncClient:
         """创建 HTTP 客户端"""
-        return httpx.AsyncClient(
+        return external_async_client(
             # MCP 工具执行无超时限制，由心跳机制管理
             timeout=httpx.Timeout(connect=10.0, read=None, write=30.0, pool=10.0),
             transport=httpx.AsyncHTTPTransport(proxy=None),
-            trust_env=False,
         )
     
     def _next_request_id(self) -> int:
@@ -232,10 +233,9 @@ class MCPServerConnection:
             return False
         
         try:
-            async with httpx.AsyncClient(
+            async with external_async_client(
                 timeout=httpx.Timeout(connect=timeout, read=timeout, write=timeout, pool=timeout),
                 transport=httpx.AsyncHTTPTransport(proxy=None),
-                trust_env=False,
             ) as client:
                 headers = {
                     "Content-Type": "application/json",

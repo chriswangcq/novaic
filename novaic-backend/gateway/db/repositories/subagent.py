@@ -100,6 +100,7 @@ class SubAgentRepository:
     def create_main_subagent(self, agent_id: str) -> SubAgent:
         """Create the main SubAgent for an agent."""
         now = utc_now_iso()
+        self._ensure_agent_exists(agent_id)
         
         # v14: subagent_id 带编号，方便区分不同 agent 的 main subagent
         subagent_id = f"main-{agent_id[:8]}"
@@ -115,6 +116,24 @@ class SubAgentRepository:
         
         self._insert(subagent)
         return subagent
+
+    def _ensure_agent_exists(self, agent_id: str) -> None:
+        """
+        Ensure agent row exists for subagent FK constraints.
+
+        In split-db mode, Runtime Orchestrator DB may receive subagent creation
+        before the corresponding agent row is synced. We create a minimal stub
+        row to keep strict flow running without Gateway-side fallback.
+        """
+        with self.db.get_connection("agent", resource_id=agent_id) as conn:
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO agents (id, name, vm_config, ports)
+                VALUES (?, ?, '{}', '{}')
+                """,
+                (agent_id, f"agent-{agent_id[:8]}"),
+            )
+            conn.commit()
     
     def create_sub_subagent(
         self, 

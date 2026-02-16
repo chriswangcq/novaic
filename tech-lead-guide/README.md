@@ -50,7 +50,9 @@
 │  - novaic-backend/tools_server/                             │
 ├─────────────────────────────────────────────────────────────┤
 │  SQLite Database                                            │
-│  - ~/Library/Application Support/com.novaic.app/novaic.db   │
+│  - ~/Library/Application Support/com.novaic.app/gateway.db │
+│  - ~/Library/Application Support/com.novaic.app/runtime_orchestrator.db │
+│  - ~/Library/Application Support/com.novaic.app/queue.db │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -183,7 +185,9 @@ Frontend 收到 SSE，显示回复
 
 ```bash
 # 数据库
-~/Library/Application Support/com.novaic.app/novaic.db
+~/Library/Application Support/com.novaic.app/gateway.db
+~/Library/Application Support/com.novaic.app/runtime_orchestrator.db
+~/Library/Application Support/com.novaic.app/queue.db
 
 # 日志
 ~/Library/Application Support/com.novaic.app/*.log
@@ -193,20 +197,20 @@ Frontend 收到 SSE，显示回复
 
 ```bash
 # 查看消息
-sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
+sqlite3 ~/Library/Application\ Support/com.novaic.app/runtime_orchestrator.db \
   "SELECT id, type, content, timestamp FROM chat_messages ORDER BY timestamp DESC LIMIT 10;"
 
 # 查看任务队列
-sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
-  "SELECT id, topic, status, error FROM tasks ORDER BY created_at DESC LIMIT 10;"
+sqlite3 ~/Library/Application\ Support/com.novaic.app/queue.db \
+  "SELECT id, topic, status, error FROM tq_tasks ORDER BY created_at DESC LIMIT 10;"
 
 # 查看 Saga 状态
-sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
-  "SELECT id, saga_type, status, current_step, error FROM sagas ORDER BY created_at DESC LIMIT 5;"
+sqlite3 ~/Library/Application\ Support/com.novaic.app/queue.db \
+  "SELECT id, saga_type, status, current_step, error FROM tq_sagas ORDER BY created_at DESC LIMIT 5;"
 
-# 查看执行日志
-sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
-  "SELECT id, kind, status, event_key, timestamp FROM execution_logs ORDER BY id DESC LIMIT 10;"
+# 查看执行日志（如果存在）
+sqlite3 ~/Library/Application\ Support/com.novaic.app/gateway.db \
+  "SELECT id, kind, status, event_key, timestamp FROM execution_logs ORDER BY id DESC LIMIT 10;" 2>/dev/null || echo "execution_logs table may not exist"
 
 # 查看应用日志
 cat ~/Library/Application\ Support/com.novaic.app/*.log | tail -100
@@ -347,7 +351,7 @@ curl -s "http://127.0.0.1:19999/api/chat/history?agent_id=xxx&limit=10"
 # 发现：API 返回的最后一条是用户消息，缺少 AI 回复
 
 # 步骤 2：查数据库
-sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db \
+sqlite3 ~/Library/Application\ Support/com.novaic.app/runtime_orchestrator.db \
   "SELECT id, type, timestamp FROM chat_messages ORDER BY timestamp DESC LIMIT 5;"
 
 # 发现：数据库里有 AI 回复
@@ -532,7 +536,8 @@ input_data = log.get("input") or log.get("input_data")
 sh build.sh
 
 # 查看数据库
-sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db
+sqlite3 ~/Library/Application\ Support/com.novaic.app/gateway.db
+# 或 runtime_orchestrator.db / queue.db 根据查询的表而定
 
 # 调用 API
 curl -s "http://127.0.0.1:19999/api/xxx" | python3 -m json.tool

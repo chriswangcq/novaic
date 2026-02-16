@@ -14,7 +14,6 @@
 - 性能更好（多核 CPU）
 """
 
-import os
 import time
 import uuid
 from dataclasses import dataclass
@@ -76,12 +75,11 @@ class TaskWorkerSync:
         self.timeout = timeout if timeout is not None else ServiceConfig.TASK_TIMEOUT
         self.worker_id = f"task-sync-{uuid.uuid4().hex[:8]}"
         
-        # Gateway URL: 参数 > 环境变量 > 默认值
-        self.gateway_url = gateway_url or os.environ.get("NOVAIC_GATEWAY_URL", ServiceConfig.GATEWAY_URL)
+        self.gateway_url = gateway_url or ServiceConfig.GATEWAY_URL
         
         # 使用现有的同步 SDK
-        self.client = TaskQueueClient(queue_service_url, timeout=timeout)  # 连接 Queue Service
-        self.saga_client = SagaClient(queue_service_url, timeout=timeout)  # 用于 saga.trigger handler
+        self.client = TaskQueueClient(self.queue_service_url, timeout=timeout)  # 连接 Queue Service
+        self.saga_client = SagaClient(self.queue_service_url, timeout=timeout)  # 用于 saga.trigger handler
         self.gateway_client = GatewayInternalClient(self.gateway_url, timeout=timeout)
         
         self._running = False
@@ -272,16 +270,17 @@ class TaskWorkerSync:
 
 # ==================== 启动脚本 ====================
 
-def start_worker(topics: List[str], queue_service_url: str = None):
+def start_worker(topics: List[str], queue_service_url: str = None, gateway_url: str = None):
     """启动一个 Worker（在当前进程）"""
-    worker = TaskWorkerSync(topics, queue_service_url)
+    worker = TaskWorkerSync(topics, queue_service_url, gateway_url=gateway_url)
     worker.run()
 
 
 def start_multiple_workers(
     num_workers: int = None,
     topics: List[str] = None,
-    queue_service_url: str = None
+    queue_service_url: str = None,
+    gateway_url: str = None,
 ):
     """启动多个 Worker（多进程）"""
     from multiprocessing import Process
@@ -298,7 +297,7 @@ def start_multiple_workers(
     for i in range(num_workers):
         p = Process(
             target=start_worker,
-            args=(topics, queue_service_url),
+            args=(topics, queue_service_url, gateway_url),
             name=f"TaskWorker-{i+1}",
             daemon=False
         )
@@ -322,12 +321,11 @@ def start_multiple_workers(
 
 if __name__ == "__main__":
     import sys
-    import os
     
     # 获取配置
-    num_workers = int(os.environ.get("NUM_WORKERS", str(ServiceConfig.NUM_WORKERS)))
-    queue_service_url = os.environ.get("QUEUE_SERVICE_URL", ServiceConfig.QUEUE_SERVICE_URL)
-    gateway_url = os.environ.get("GATEWAY_URL", ServiceConfig.GATEWAY_URL)
+    num_workers = ServiceConfig.NUM_WORKERS
+    queue_service_url = ServiceConfig.QUEUE_SERVICE_URL
+    gateway_url = ServiceConfig.GATEWAY_URL
     
     # 支持命令行参数
     if len(sys.argv) > 1:
@@ -342,4 +340,8 @@ if __name__ == "__main__":
     print("=" * 60)
     print()
     
-    start_multiple_workers(num_workers=num_workers, queue_service_url=queue_service_url)
+    start_multiple_workers(
+        num_workers=num_workers,
+        queue_service_url=queue_service_url,
+        gateway_url=gateway_url,
+    )

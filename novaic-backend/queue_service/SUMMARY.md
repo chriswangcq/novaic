@@ -52,7 +52,7 @@ novaic-backend/
 ├── gateway/
 │   └── db/
 │       ├── access.py       # Gateway 数据库访问
-│       └── schema.py       # Gateway Schema (novaic.db)
+│       └── schema.py       # Gateway Schema (gateway.db)
 │
 └── queue_service/
     ├── main.py             # Queue Service 入口

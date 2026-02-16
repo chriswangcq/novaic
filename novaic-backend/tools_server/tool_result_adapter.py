@@ -10,9 +10,12 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import httpx
 
+from common.config import ServiceConfig
+from common.http.clients import internal_async_client
+
 logger = logging.getLogger(__name__)
 
-FILE_SERVICE_URL = __import__("os").environ.get("FILE_SERVICE_URL", "http://127.0.0.1:19995").rstrip("/")
+FILE_SERVICE_URL = ServiceConfig.FILE_SERVICE_URL.rstrip("/")
 MIN_B64_LEN = 100
 
 
@@ -61,7 +64,7 @@ async def _upload_base64_to_file_service(
     mime_type: str = "image/png",
 ) -> Optional[str]:
     try:
-        async with httpx.AsyncClient(timeout=30.0, trust_env=False) as client:
+        async with internal_async_client(timeout=30.0) as client:
             resp = await client.post(
                 f"{FILE_SERVICE_URL}/api/files/from-base64",
                 json={"data": base64_data, "agent_id": agent_id, "category": category, "mime_type": mime_type},

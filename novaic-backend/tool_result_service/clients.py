@@ -7,6 +7,7 @@ from typing import Optional
 
 import httpx
 
+from common.http.clients import internal_async_client
 from .config import FILE_SERVICE_URL, GATEWAY_URL
 
 logger = logging.getLogger(__name__)
@@ -21,7 +22,7 @@ class FileServiceClient:
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None:
-            self._client = httpx.AsyncClient(timeout=30.0, trust_env=False)
+            self._client = internal_async_client(timeout=30.0)
         return self._client
 
     async def save_from_base64(
@@ -80,7 +81,7 @@ class GatewayClient:
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None:
-            self._client = httpx.AsyncClient(timeout=30.0, trust_env=False)
+            self._client = internal_async_client(timeout=30.0)
         return self._client
 
     async def create_completed(

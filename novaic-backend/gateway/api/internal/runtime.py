@@ -13,39 +13,55 @@ from common.enums import RuntimeStatus, SubagentStatus
 from common.utils.time import utc_now, utc_now_iso
 from common.config import ServiceConfig
 from gateway.db.access import get_db
-from .helpers import resolve_runtime_ids, get_runtime_context, _runtime_to_dict, _subagent_to_dict
+from .helpers import (
+    resolve_runtime_ids,
+    get_runtime_context,
+    _runtime_to_dict,
+    _subagent_to_dict,
+    maybe_forward_to_runtime_orchestrator,
+)
 
 router = APIRouter(tags=["internal"])
 
 # ==================== Runtime Operations ====================
 
 @router.get("/runtimes/active")
-def get_active_runtimes():
+async def get_active_runtimes():
     """Get all active runtimes."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "GET", "/internal/runtimes/active"
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import RuntimeRepository
-    
+
     db = get_db()
     repo = RuntimeRepository(db)
     runtimes = repo.get_all_active_runtimes()
-    
+
     return {
         "runtimes": [_runtime_to_dict(r) for r in runtimes]
     }
 
 
 @router.get("/runtimes/list")
-def list_active_runtimes_for_mcp():
+async def list_active_runtimes_for_mcp():
     """List all active runtimes.
     
     Used by Tools Server for runtime_list tool.
     NOTE: Must be defined BEFORE /runtimes/{runtime_id} to avoid route conflict.
     """
+    proxied = await maybe_forward_to_runtime_orchestrator("GET", "/internal/runtimes/list")
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import RuntimeRepository
-    
+
     db = get_db()
     runtime_repo = RuntimeRepository(db)
     runtimes = runtime_repo.get_all_active_runtimes()
-    
+
     return {
         "runtimes": [
             {
@@ -62,7 +78,7 @@ def list_active_runtimes_for_mcp():
 
 
 @router.post("/runtimes/batch")
-def get_runtimes_batch(data: Dict[str, Any]):
+async def get_runtimes_batch(data: Dict[str, Any]):
     """Get multiple runtimes by IDs (for context building).
     
     Request body:
@@ -71,6 +87,12 @@ def get_runtimes_batch(data: Dict[str, Any]):
     Returns:
         runtimes: List of runtime dicts with summaries, in input order
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", "/internal/runtimes/batch", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import RuntimeRepository
     
     runtime_ids = data.get("runtime_ids", [])
@@ -99,7 +121,7 @@ def get_runtimes_batch(data: Dict[str, Any]):
 
 
 @router.get("/runtimes/with-tools")
-def get_runtimes_with_tools():
+async def get_runtimes_with_tools():
     """Get all active runtimes that have tool_ports registered.
     
     Used by Tools Server on startup to restore runtime tool contexts.
@@ -107,6 +129,12 @@ def get_runtimes_with_tools():
     
     NOTE: Must be defined BEFORE /runtimes/{runtime_id} to avoid route conflict.
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "GET", "/internal/runtimes/with-tools"
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import RuntimeRepository
     
     db = get_db()
@@ -129,41 +157,53 @@ def get_runtimes_with_tools():
 
 
 @router.get("/runtimes/{runtime_id}")
-def get_runtime(runtime_id: str):
+async def get_runtime(runtime_id: str):
     """Get a single runtime by ID."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "GET", f"/internal/runtimes/{runtime_id}"
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import RuntimeRepository
-    
+
     db = get_db()
     repo = RuntimeRepository(db)
     runtime = repo.get_by_id(runtime_id)
-    
+
     if not runtime:
         raise HTTPException(status_code=404, detail="Runtime not found")
-    
+
     return _runtime_to_dict(runtime)
 
 
 @router.post("/runtimes")
-def create_runtime(data: Dict[str, Any]):
+async def create_runtime(data: Dict[str, Any]):
     """Create a new Runtime for a SubAgent (v14)."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", "/internal/runtimes", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import RuntimeRepository
-    
+
     agent_id = data.get("agent_id")
     subagent_id = data.get("subagent_id", "main")
     initial_context = data.get("initial_context", [])
-    
+
     if not agent_id:
         raise HTTPException(status_code=400, detail="agent_id required")
-    
+
     db = get_db()
     repo = RuntimeRepository(db)
     runtime = repo.create_runtime(subagent_id, agent_id, initial_context)
-    
+
     return _runtime_to_dict(runtime)
 
 
 @router.post("/runtimes/get-or-create")
-def get_or_create_runtime(data: Dict[str, Any]):
+async def get_or_create_runtime(data: Dict[str, Any]):
     """原子操作：获取或创建 active runtime。
     
     如果已有 active runtime，返回它；否则创建新的。
@@ -178,6 +218,12 @@ def get_or_create_runtime(data: Dict[str, Any]):
         runtime: Runtime dict
         just_created: bool - 是否新创建的
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", "/internal/runtimes/get-or-create", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import RuntimeRepository
     
     agent_id = data.get("agent_id")
@@ -199,8 +245,14 @@ def get_or_create_runtime(data: Dict[str, Any]):
 
 
 @router.post("/runtimes/main")
-def create_main_runtime(data: Dict[str, Any]):
+async def create_main_runtime(data: Dict[str, Any]):
     """Create a new Main Runtime (deprecated, use POST /runtimes)."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", "/internal/runtimes/main", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import RuntimeRepository, SubAgentRepository
     
     agent_id = data.get("agent_id")
@@ -228,10 +280,16 @@ def create_main_runtime(data: Dict[str, Any]):
 
 
 @router.patch("/runtimes/{runtime_id}")
-def update_runtime(runtime_id: str, data: Dict[str, Any]):
+async def update_runtime(runtime_id: str, data: Dict[str, Any]):
     """Update runtime fields."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "PATCH", f"/internal/runtimes/{runtime_id}", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import RuntimeRepository
-    
+
     db = get_db()
     repo = RuntimeRepository(db)
     
@@ -273,7 +331,7 @@ def update_runtime(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.post("/runtimes/{runtime_id}/rest")
-def rest_runtime(runtime_id: str, data: Dict[str, Any]):
+async def rest_runtime(runtime_id: str, data: Dict[str, Any]):
     """
     Set runtime need_rest flag and update SubAgent wake triggers.
     
@@ -288,6 +346,12 @@ def rest_runtime(runtime_id: str, data: Dict[str, Any]):
             "handoff_notes": str - Notes for next activation
         }
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/runtimes/{runtime_id}/rest", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import RuntimeRepository, SubAgentRepository
     
     db = get_db()
@@ -331,12 +395,18 @@ def rest_runtime(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.post("/runtimes/{runtime_id}/wake")
-def wake_runtime(runtime_id: str):
+async def wake_runtime(runtime_id: str):
     """Wake a sleeping runtime (deprecated in v14, use SubAgent wake).
     
     Returns success=True only if the runtime was actually woken up.
     Returns success=False if runtime was already active or not found.
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/runtimes/{runtime_id}/wake"
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import RuntimeRepository
     
     db = get_db()
@@ -347,12 +417,19 @@ def wake_runtime(runtime_id: str):
 
 
 @router.post("/runtimes/{runtime_id}/advance")
-def advance_runtime_round(runtime_id: str, data: Dict[str, Any] = None):
+async def advance_runtime_round(runtime_id: str, data: Dict[str, Any] = None):
     """Advance runtime to next round (with optional CAS).
     
     Args:
         data: Optional dict with 'expected_round_num' for CAS operation
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/runtimes/{runtime_id}/advance",
+        json_body=data if data else None,
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import RuntimeRepository
     
     db = get_db()
@@ -374,8 +451,14 @@ def advance_runtime_round(runtime_id: str, data: Dict[str, Any] = None):
 
 
 @router.post("/runtimes/{runtime_id}/context/append")
-def append_runtime_context(runtime_id: str, data: Dict[str, Any]):
+async def append_runtime_context(runtime_id: str, data: Dict[str, Any]):
     """Append a message to runtime context with idempotency."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/runtimes/{runtime_id}/context/append", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import RuntimeRepository
     from task_queue.utils import multimodal
 
@@ -436,8 +519,14 @@ def append_runtime_context(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.post("/runtimes/{runtime_id}/set-status")
-def set_runtime_status(runtime_id: str, data: Dict[str, Any]):
+async def set_runtime_status(runtime_id: str, data: Dict[str, Any]):
     """Set runtime status with CAS on expected status list."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/runtimes/{runtime_id}/set-status", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import RuntimeRepository
 
     expected_status = data.get("expected_status")
@@ -471,8 +560,15 @@ def set_runtime_status(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.post("/runtimes/{runtime_id}/summarized")
-def set_runtime_summarized(runtime_id: str):
+async def set_runtime_summarized(runtime_id: str, data: Dict[str, Any] = None):
     """Set runtime summarized flag to 1 (idempotent)."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/runtimes/{runtime_id}/summarized",
+        json_body=data if data else None,
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import RuntimeRepository
 
     db = get_db()
@@ -496,12 +592,18 @@ def set_runtime_summarized(runtime_id: str):
 
 
 @router.post("/runtimes/{runtime_id}/hot-cold-summary")
-def set_runtime_hot_cold_summary(runtime_id: str, data: Dict[str, Any]):
+async def set_runtime_hot_cold_summary(runtime_id: str, data: Dict[str, Any]):
     """Set both hot and cold summaries for a runtime (v24).
     
     Hot summary: Earlier rounds summarized + last 3 rounds full content
     Cold summary: All rounds summarized by LLM
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/runtimes/{runtime_id}/hot-cold-summary", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import RuntimeRepository
 
     hot_summary = data.get("hot_summary", "")
@@ -519,13 +621,19 @@ def set_runtime_hot_cold_summary(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.post("/runtimes/{runtime_id}/need-rest")
-def set_runtime_need_rest(runtime_id: str, data: Dict[str, Any]):
+async def set_runtime_need_rest(runtime_id: str, data: Dict[str, Any]):
     """Set runtime need_rest flag (idempotent).
     
     Note: 使用非 CAS 版本的 set_need_rest，因为：
     1. 这个操作本身是幂等的（设置为固定值）
     2. 不需要检查当前值
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/runtimes/{runtime_id}/need-rest", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import RuntimeRepository
 
     value = bool(data.get("value", True))
@@ -550,7 +658,7 @@ def set_runtime_need_rest(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.post("/runtimes/{runtime_id}/tool-ports")
-def set_runtime_tool_ports(runtime_id: str, data: Dict[str, Any]):
+async def set_runtime_tool_ports(runtime_id: str, data: Dict[str, Any]):
     """Save Tools Server MCP ports for a runtime.
     
     Called by Tools Server when registering/unregistering a runtime.
@@ -559,6 +667,12 @@ def set_runtime_tool_ports(runtime_id: str, data: Dict[str, Any]):
     Request body:
         ports: dict - MCP ports (e.g. {"vmuse": 8080}), or null to clear
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/runtimes/{runtime_id}/tool-ports", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import RuntimeRepository
     
     ports = data.get("ports")
@@ -575,8 +689,14 @@ def set_runtime_tool_ports(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.delete("/runtimes/{runtime_id}")
-def delete_runtime(runtime_id: str):
+async def delete_runtime(runtime_id: str):
     """Delete a runtime."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "DELETE", f"/internal/runtimes/{runtime_id}"
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import RuntimeRepository
     
     db = get_db()
@@ -587,56 +707,85 @@ def delete_runtime(runtime_id: str):
 
 
 @router.get("/runtimes/main/{agent_id}")
-def get_main_runtime(agent_id: str):
+async def get_main_runtime(agent_id: str):
     """Get active main runtime for an agent (v14: from main SubAgent)."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "GET", f"/internal/runtimes/main/{agent_id}"
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import RuntimeRepository
-    
+
     db = get_db()
     repo = RuntimeRepository(db)
     runtime = repo.get_active_runtime("main", agent_id)
-    
+
     if not runtime:
         return {"runtime": None}
-    
+
     return {"runtime": _runtime_to_dict(runtime)}
 
 
 @router.get("/runtimes/subagent/{agent_id}/{subagent_id}")
-def get_subagent_runtime(agent_id: str, subagent_id: str):
+async def get_subagent_runtime(agent_id: str, subagent_id: str):
     """Get active runtime for a SubAgent (v14)."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "GET", f"/internal/runtimes/subagent/{agent_id}/{subagent_id}"
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import RuntimeRepository
-    
+
     db = get_db()
     repo = RuntimeRepository(db)
     runtime = repo.get_active_runtime(subagent_id, agent_id)
-    
+
     if not runtime:
         return {"runtime": None}
-    
+
     return {"runtime": _runtime_to_dict(runtime)}
 
 
 @router.get("/runtimes/latest/{agent_id}/{subagent_id}")
-def get_latest_runtimes(agent_id: str, subagent_id: str, limit: int = 30):
+async def get_latest_runtimes(
+    agent_id: str, subagent_id: str, limit: int = 30
+):
     """Get latest completed runtimes for a SubAgent (for context preparation, v14)."""
+    params = {"limit": limit}
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "GET",
+        f"/internal/runtimes/latest/{agent_id}/{subagent_id}",
+        params=params,
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import RuntimeRepository
-    
+
     db = get_db()
     repo = RuntimeRepository(db)
     runtimes = repo.get_latest_runtimes(subagent_id, agent_id, limit)
-    
+
     return {"runtimes": [_runtime_to_dict(r) for r in runtimes]}
 
 
 @router.get("/agents/{agent_id}/subagents/{subagent_id}/has-active-runtime")
-def has_active_runtime(agent_id: str, subagent_id: str):
+async def has_active_runtime(agent_id: str, subagent_id: str):
     """Check if SubAgent has an active runtime (status = active)."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "GET", f"/internal/agents/{agent_id}/subagents/{subagent_id}/has-active-runtime"
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import RuntimeRepository
-    
+
     db = get_db()
     repo = RuntimeRepository(db)
     has_active = repo.has_active_runtime(subagent_id, agent_id)
-    
+
     return {"has_active_runtime": has_active}
 
 
@@ -645,12 +794,18 @@ def has_active_runtime(agent_id: str, subagent_id: str):
 # NOTE: /runtimes/list moved to line ~480 (before /runtimes/{runtime_id}) to fix route conflict.
 
 @router.post("/runtimes/{runtime_id}/history")
-def get_runtime_history(runtime_id: str, data: Dict[str, Any]):
+async def get_runtime_history(runtime_id: str, data: Dict[str, Any]):
     """Get message history for a runtime.
     
     Used by Tools Server for runtime_history tool.
     Queries runtime's context which contains the conversation history.
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/runtimes/{runtime_id}/history", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import RuntimeRepository
     
     db = get_db()
@@ -689,12 +844,18 @@ def get_runtime_history(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.post("/runtimes/{runtime_id}/send")
-def send_to_runtime(runtime_id: str, data: Dict[str, Any]):
+async def send_to_runtime(runtime_id: str, data: Dict[str, Any]):
     """Send a message to a runtime.
     
     Used by Tools Server for runtime_send tool.
     Appends the message to the runtime's context.
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/runtimes/{runtime_id}/send", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import RuntimeRepository
     
     db = get_db()
@@ -730,10 +891,16 @@ def send_to_runtime(runtime_id: str, data: Dict[str, Any]):
 # ---------- Memory APIs (via runtime_id) ----------
 
 @router.post("/rt/{runtime_id}/memory/save")
-def rt_memory_save(runtime_id: str, data: Dict[str, Any]):
+async def rt_memory_save(runtime_id: str, data: Dict[str, Any]):
     """Save memory value. Agent ID resolved from runtime."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/rt/{runtime_id}/memory/save", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.memory import MemoryRepository
-    
+
     _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     db = get_db()
@@ -747,10 +914,16 @@ def rt_memory_save(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.post("/rt/{runtime_id}/memory/recall")
-def rt_memory_recall(runtime_id: str, data: Dict[str, Any]):
+async def rt_memory_recall(runtime_id: str, data: Dict[str, Any]):
     """Recall memory value(s). Agent ID resolved from runtime."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/rt/{runtime_id}/memory/recall", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.memory import MemoryRepository
-    
+
     _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     db = get_db()
@@ -763,10 +936,16 @@ def rt_memory_recall(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.post("/rt/{runtime_id}/memory/delete")
-def rt_memory_delete(runtime_id: str, data: Dict[str, Any]):
+async def rt_memory_delete(runtime_id: str, data: Dict[str, Any]):
     """Delete memory value. Agent ID resolved from runtime."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/rt/{runtime_id}/memory/delete", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.memory import MemoryRepository
-    
+
     _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     db = get_db()
@@ -779,10 +958,16 @@ def rt_memory_delete(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.get("/rt/{runtime_id}/memory/namespaces")
-def rt_memory_list_namespaces(runtime_id: str):
+async def rt_memory_list_namespaces(runtime_id: str):
     """List all memory namespaces. Agent ID resolved from runtime."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "GET", f"/internal/rt/{runtime_id}/memory/namespaces"
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.memory import MemoryRepository
-    
+
     _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     db = get_db()
@@ -792,10 +977,16 @@ def rt_memory_list_namespaces(runtime_id: str):
 
 
 @router.post("/rt/{runtime_id}/memory/task/log")
-def rt_memory_log_task(runtime_id: str, data: Dict[str, Any]):
+async def rt_memory_log_task(runtime_id: str, data: Dict[str, Any]):
     """Log a task action. Agent ID resolved from runtime."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/rt/{runtime_id}/memory/task/log", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.memory import MemoryRepository
-    
+
     _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     db = get_db()
@@ -809,10 +1000,16 @@ def rt_memory_log_task(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.post("/rt/{runtime_id}/memory/task/history")
-def rt_memory_get_task_history(runtime_id: str, data: Dict[str, Any]):
+async def rt_memory_get_task_history(runtime_id: str, data: Dict[str, Any]):
     """Get task history. Agent ID resolved from runtime."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/rt/{runtime_id}/memory/task/history", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.memory import MemoryRepository
-    
+
     _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     db = get_db()
@@ -827,8 +1024,14 @@ def rt_memory_get_task_history(runtime_id: str, data: Dict[str, Any]):
 # ==================== Notebook 工具 ====================
 
 @router.post("/rt/{runtime_id}/notebook/write")
-def rt_notebook_write(runtime_id: str, data: Dict[str, Any]):
+async def rt_notebook_write(runtime_id: str, data: Dict[str, Any]):
     """Write a new notebook entry. Agent ID resolved from runtime."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/rt/{runtime_id}/notebook/write", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.notebook import NotebookRepository
     import logging
     
@@ -855,12 +1058,18 @@ def rt_notebook_write(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.post("/rt/{runtime_id}/notebook/read")
-def rt_notebook_read(runtime_id: str, data: Dict[str, Any]):
+async def rt_notebook_read(runtime_id: str, data: Dict[str, Any]):
     """Read a single notebook entry. Agent ID resolved from runtime."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/rt/{runtime_id}/notebook/read", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.notebook import NotebookRepository
-    
+
     _, agent_id, _ = resolve_runtime_ids(runtime_id)
-    
+
     db = get_db()
     repo = NotebookRepository(db)
     return repo.read(
@@ -870,12 +1079,18 @@ def rt_notebook_read(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.post("/rt/{runtime_id}/notebook/list")
-def rt_notebook_list(runtime_id: str, data: Dict[str, Any]):
+async def rt_notebook_list(runtime_id: str, data: Dict[str, Any]):
     """List notebook entries with filters. Agent ID resolved from runtime."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/rt/{runtime_id}/notebook/list", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.notebook import NotebookRepository
-    
+
     _, agent_id, _ = resolve_runtime_ids(runtime_id)
-    
+
     db = get_db()
     repo = NotebookRepository(db)
     return repo.list_entries(
@@ -888,8 +1103,14 @@ def rt_notebook_list(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.post("/rt/{runtime_id}/notebook/update")
-def rt_notebook_update(runtime_id: str, data: Dict[str, Any]):
+async def rt_notebook_update(runtime_id: str, data: Dict[str, Any]):
     """Update a notebook entry. Agent ID resolved from runtime."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/rt/{runtime_id}/notebook/update", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.notebook import NotebookRepository
     
     _, agent_id, _ = resolve_runtime_ids(runtime_id)
@@ -908,10 +1129,16 @@ def rt_notebook_update(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.post("/rt/{runtime_id}/notebook/delete")
-def rt_notebook_delete(runtime_id: str, data: Dict[str, Any]):
+async def rt_notebook_delete(runtime_id: str, data: Dict[str, Any]):
     """Delete a notebook entry. Agent ID resolved from runtime."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/rt/{runtime_id}/notebook/delete", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.notebook import NotebookRepository
-    
+
     _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     db = get_db()
@@ -925,12 +1152,18 @@ def rt_notebook_delete(runtime_id: str, data: Dict[str, Any]):
 # ---------- Chat APIs (via runtime_id) ----------
 
 @router.post("/rt/{runtime_id}/chat/event")
-def rt_chat_event(runtime_id: str, data: Dict[str, Any]):
+async def rt_chat_event(runtime_id: str, data: Dict[str, Any]):
     """Send a chat event. Agent ID resolved from runtime."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/rt/{runtime_id}/chat/event", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     import uuid
     import asyncio
     from gateway.sse.broadcaster import get_worker_broadcaster
-    
+
     _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     event_type = data.get("type", "AGENT_REPLY")
@@ -1049,9 +1282,9 @@ def rt_chat_event(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.get("/rt/{runtime_id}/chat/history")
-def rt_chat_history(
-    runtime_id: str, 
-    limit: int = None, 
+async def rt_chat_history(
+    runtime_id: str,
+    limit: int = None,
     summary_length: int = None
 ):
     """Get chat history. Agent ID resolved from runtime."""
@@ -1059,8 +1292,19 @@ def rt_chat_history(
         limit = ServiceConfig.DEFAULT_CHAT_LIMIT
     if summary_length is None:
         summary_length = ServiceConfig.DEFAULT_SUMMARY_LENGTH
+    params = {}
+    if limit is not None:
+        params["limit"] = limit
+    if summary_length is not None:
+        params["summary_length"] = summary_length
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "GET", f"/internal/rt/{runtime_id}/chat/history", params=params or None
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.message import MessageRepository
-    
+
     _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     db = get_db()
@@ -1083,19 +1327,25 @@ def rt_chat_history(
 
 
 @router.get("/rt/{runtime_id}/chat/message/{message_id}")
-def rt_chat_get_message(runtime_id: str, message_id: str):
+async def rt_chat_get_message(runtime_id: str, message_id: str):
     """Get full content of a chat message."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "GET", f"/internal/rt/{runtime_id}/chat/message/{message_id}"
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.message import MessageRepository
-    
+
     # Validate runtime exists (also verifies access)
     resolve_runtime_ids(runtime_id)
-    
+
     db = get_db()
     repo = MessageRepository(db)
     message = repo.get_message(message_id)
     if not message:
         return {"success": False, "error": "Message not found"}
-    
+
     msg_type = message.get("type", "")
     role = "user" if msg_type == "USER_MESSAGE" else "assistant"
     return {
@@ -1107,8 +1357,14 @@ def rt_chat_get_message(runtime_id: str, message_id: str):
 # ---------- SubAgent APIs (via runtime_id) ----------
 
 @router.post("/rt/{runtime_id}/subagent/spawn")
-def rt_subagent_spawn(runtime_id: str, data: Dict[str, Any]):
+async def rt_subagent_spawn(runtime_id: str, data: Dict[str, Any]):
     """Spawn a SubAgent. Agent ID and parent SubAgent ID resolved from runtime."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/rt/{runtime_id}/subagent/spawn", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import SubAgentRepository, RuntimeRepository
     import uuid
     
@@ -1173,10 +1429,16 @@ def rt_subagent_spawn(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.get("/rt/{runtime_id}/subagent/{target_subagent_id}/status")
-def rt_subagent_query(runtime_id: str, target_subagent_id: str):
+async def rt_subagent_query(runtime_id: str, target_subagent_id: str):
     """Query SubAgent status. Agent ID resolved from runtime."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "GET", f"/internal/rt/{runtime_id}/subagent/{target_subagent_id}/status"
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import SubAgentRepository, RuntimeRepository
-    
+
     _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     db = get_db()
@@ -1225,8 +1487,14 @@ def rt_subagent_query(runtime_id: str, target_subagent_id: str):
 
 
 @router.post("/rt/{runtime_id}/subagent/{target_subagent_id}/cancel")
-def rt_subagent_cancel(runtime_id: str, target_subagent_id: str):
+async def rt_subagent_cancel(runtime_id: str, target_subagent_id: str):
     """Cancel a running SubAgent."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/rt/{runtime_id}/subagent/{target_subagent_id}/cancel"
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import SubAgentRepository, RuntimeRepository
     
     _, agent_id, _ = resolve_runtime_ids(runtime_id)
@@ -1253,7 +1521,7 @@ def rt_subagent_cancel(runtime_id: str, target_subagent_id: str):
 
 
 @router.post("/rt/{runtime_id}/subagent/report")
-def rt_subagent_report(runtime_id: str, data: Dict[str, Any]):
+async def rt_subagent_report(runtime_id: str, data: Dict[str, Any]):
     """Report result for current SubAgent.
     
     Only available for Sub SubAgents (subagent_id starts with 'sub-').
@@ -1268,8 +1536,14 @@ def rt_subagent_report(runtime_id: str, data: Dict[str, Any]):
         subagent_id: str
         message: str
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/rt/{runtime_id}/subagent/report", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories import SubAgentRepository
-    
+
     _, agent_id, subagent_id = resolve_runtime_ids(runtime_id)
     
     # Validate this is a Sub SubAgent
@@ -1306,12 +1580,18 @@ def rt_subagent_report(runtime_id: str, data: Dict[str, Any]):
 @router.post("/rt/{runtime_id}/qemu/ssh-exec")
 async def rt_qemu_ssh_exec(runtime_id: str, data: Dict[str, Any]):
     """Execute command via SSH on VM. Agent ID resolved from runtime."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/rt/{runtime_id}/qemu/ssh-exec", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
+    _, agent_id, _ = resolve_runtime_ids(runtime_id)
+
     import asyncio
     from gateway.vm.ssh import get_ssh_key_manager
     from gateway.config.agents import get_agent_config_manager
     from gateway.api.vm import _get_device_ports
-    
-    _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     command = data.get("command", "")
     timeout = data.get("timeout", 30)
@@ -1351,64 +1631,88 @@ async def rt_qemu_ssh_exec(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.get("/rt/{runtime_id}/qemu/status")
-def rt_qemu_status(runtime_id: str):
-    """Get QEMU VM status. Agent ID resolved from runtime."""
-    import os
-    from gateway.config.agents_db import PortConfig
-    from gateway.config.agents import get_agent_config_manager
-    from gateway.vm.repository import VmProcessRepository
-    from gateway.api.vm import _get_device_ports
-    
+async def rt_qemu_status(runtime_id: str):
+    """Get QEMU VM status. Agent ID resolved from runtime.
+    Phase3: vmcontrol-only source-of-truth for VM runtime state (no local VmProcessRepository/PID).
+    Unified contract: 200 + success/error body; no HTTP 5xx for operation failures.
+    """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "GET", f"/internal/rt/{runtime_id}/qemu/status"
+    )
+    if proxied is not None:
+        return proxied
+
     _, agent_id, _ = resolve_runtime_ids(runtime_id)
-    
+
+    import httpx
+    from gateway.config.agents import get_agent_config_manager
+    from gateway.api.vm import _get_device_ports
+    from gateway.clients.vmcontrol import get_vmcontrol_client
+
     config_mgr = get_agent_config_manager()
     agent = config_mgr.get_agent(agent_id)
-    
+
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
-    
+
     port_dict = _get_device_ports(agent)
     if not port_dict.get("ssh"):
         raise HTTPException(status_code=404, detail="Agent has no port configuration (no Linux device?)")
-    
-    ports = PortConfig(ssh=port_dict["ssh"], vmuse=port_dict.get("vmuse", 0))
-    
-    # Get VM process info from database (not from filesystem PID file)
-    repo = VmProcessRepository()
-    process_info = repo.get_process(agent_id)
-    
-    qemu_running = False
-    qemu_pid = None
-    
-    if process_info:
-        qemu_pid = process_info.get("pid")
-        # Check if process is actually alive
-        if qemu_pid:
-            try:
-                os.kill(qemu_pid, 0)
-                qemu_running = True
-            except (ProcessLookupError, PermissionError):
-                # Process not found or no permission - mark as not running
-                qemu_running = False
-    
+
+    # Phase3: Query vmcontrol for VM runtime state (no local manager/process-table fallback).
+    # Unified contract: operation failures return 200 + success:false + error (no HTTP 5xx).
+    client = get_vmcontrol_client()
+    try:
+        vm_info = await client.get_vm_info(agent_id)
+    except httpx.HTTPStatusError as e:
+        if e.response is not None and e.response.status_code == 404:
+            return {
+                "success": True,
+                "qemu_running": False,
+                "qemu_pid": None,
+                "ports": {"ssh": port_dict["ssh"]},
+                "agent_id": agent_id,
+            }
+        return {
+            "success": False,
+            "error": f"vmcontrol error: {str(e)}",
+            "agent_id": agent_id,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"vmcontrol unavailable: {str(e)}",
+            "agent_id": agent_id,
+        }
+
+    vm_status = (vm_info.get("status") or "").lower()
+    qemu_running = vm_status in {"running", "started", "active"}
+    qemu_pid = vm_info.get("pid")
+
     return {
         "success": True,
         "qemu_running": qemu_running,
         "qemu_pid": qemu_pid,
-        "ports": {"ssh": ports.ssh},
+        "ports": {"ssh": port_dict["ssh"]},
         "agent_id": agent_id,
     }
 
 
 @router.post("/rt/{runtime_id}/qemu/start")
-def rt_qemu_start(runtime_id: str, data: Dict[str, Any]):
+async def rt_qemu_start(runtime_id: str, data: Dict[str, Any]):
     """Start the QEMU VM. Agent ID resolved from runtime."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/rt/{runtime_id}/qemu/start", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
+    _, agent_id, _ = resolve_runtime_ids(runtime_id)
+
     from gateway.vm import get_vm_manager
     from gateway.config.agents_db import PortConfig
     from gateway.config.agents import get_agent_config_manager
     from gateway.api.vm import _get_device_ports, _get_device_image_path
-    
-    _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     memory = data.get("memory", "4096")
     cpus = data.get("cpus", 4)
@@ -1437,11 +1741,17 @@ def rt_qemu_start(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.post("/rt/{runtime_id}/qemu/shutdown")
-def rt_qemu_shutdown(runtime_id: str, data: Dict[str, Any]):
+async def rt_qemu_shutdown(runtime_id: str, data: Dict[str, Any]):
     """Shutdown the QEMU VM gracefully. Agent ID resolved from runtime."""
-    from gateway.vm import get_vm_manager
-    
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/rt/{runtime_id}/qemu/shutdown", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     _, agent_id, _ = resolve_runtime_ids(runtime_id)
+
+    from gateway.vm import get_vm_manager
     
     graceful = data.get("graceful", True)
     quick = data.get("quick", False)
@@ -1459,14 +1769,20 @@ def rt_qemu_shutdown(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.post("/rt/{runtime_id}/qemu/restart")
-def rt_qemu_restart(runtime_id: str, data: Dict[str, Any]):
+async def rt_qemu_restart(runtime_id: str, data: Dict[str, Any]):
     """Restart the QEMU VM (stop then start). Agent ID resolved from runtime."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/rt/{runtime_id}/qemu/restart", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
+    _, agent_id, _ = resolve_runtime_ids(runtime_id)
+
     from gateway.vm import get_vm_manager
     from gateway.config.agents_db import PortConfig
     from gateway.config.agents import get_agent_config_manager
     from gateway.api.vm import _get_device_ports, _get_device_image_path
-    
-    _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     graceful = data.get("graceful", True)
     
@@ -1509,8 +1825,14 @@ def rt_qemu_restart(runtime_id: str, data: Dict[str, Any]):
 # ---------- Task APIs (via runtime_id) ----------
 
 @router.post("/rt/{runtime_id}/tasks/spawn")
-def rt_task_spawn(runtime_id: str, data: Dict[str, Any]):
+async def rt_task_spawn(runtime_id: str, data: Dict[str, Any]):
     """Spawn a new task. Agent ID resolved from runtime."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/rt/{runtime_id}/tasks/spawn", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.core.task_manager import get_task_manager
     
     _, agent_id, _ = resolve_runtime_ids(runtime_id)
@@ -1531,12 +1853,19 @@ def rt_task_spawn(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.get("/rt/{runtime_id}/tasks")
-def rt_task_list(runtime_id: str, status: Optional[str] = None):
+async def rt_task_list(runtime_id: str, status: Optional[str] = None):
     """List tasks. Agent ID resolved from runtime."""
+    params = {"status": status} if status is not None else None
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "GET", f"/internal/rt/{runtime_id}/tasks", params=params
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.core.task_manager import get_task_manager
-    
+
     _, agent_id, _ = resolve_runtime_ids(runtime_id)
-    
+
     task_manager = get_task_manager()
     if not task_manager:
         raise HTTPException(status_code=503, detail="TaskManager not available")
@@ -1550,14 +1879,20 @@ def rt_task_list(runtime_id: str, status: Optional[str] = None):
 
 # ==================== Drive 工具 (Agent 自驱力) ====================
 
-@router.get("/internal/rt/{runtime_id}/drive")
-def get_runtime_drive(runtime_id: str):
+@router.get("/rt/{runtime_id}/drive")
+async def get_runtime_drive(runtime_id: str):
     """
     Get drive configuration for a runtime's agent.
     Used by Tools Server to fetch bootstrap files for memory_update tool.
     """
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "GET", f"/internal/rt/{runtime_id}/drive"
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.drive import DriveRepository
-    
+
     _, agent_id, _ = resolve_runtime_ids(runtime_id)
     
     db = get_db()
@@ -1590,20 +1925,32 @@ def get_runtime_drive(runtime_id: str):
 
 
 @router.post("/rt/{runtime_id}/drive/get")
-def rt_drive_get(runtime_id: str):
-    """Get agent drive configuration. Agent ID resolved from runtime."""
+async def rt_drive_get(runtime_id: str, data: Optional[Dict[str, Any]] = None):
+    """Get agent drive configuration (get_or_create). Agent ID resolved from runtime."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/rt/{runtime_id}/drive/get", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.drive import DriveRepository
-    
+
     _, agent_id, _ = resolve_runtime_ids(runtime_id)
-    
+
     db = get_db()
     repo = DriveRepository(db)
     return repo.get_or_create(agent_id)
 
 
 @router.post("/rt/{runtime_id}/drive/update-profile")
-def rt_drive_update_profile(runtime_id: str, data: Dict[str, Any]):
+async def rt_drive_update_profile(runtime_id: str, data: Dict[str, Any]):
     """Update a key in user_profile. Agent ID resolved from runtime."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/rt/{runtime_id}/drive/update-profile", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.drive import DriveRepository
     
     _, agent_id, _ = resolve_runtime_ids(runtime_id)
@@ -1619,8 +1966,14 @@ def rt_drive_update_profile(runtime_id: str, data: Dict[str, Any]):
 
 
 @router.post("/rt/{runtime_id}/drive/update")
-def rt_drive_update(runtime_id: str, data: Dict[str, Any]):
+async def rt_drive_update(runtime_id: str, data: Dict[str, Any]):
     """Update drive fields (relationship, proactiveness, etc). Agent ID resolved from runtime."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "POST", f"/internal/rt/{runtime_id}/drive/update", json_body=data
+    )
+    if proxied is not None:
+        return proxied
+
     from gateway.db.repositories.drive import DriveRepository
     
     _, agent_id, _ = resolve_runtime_ids(runtime_id)

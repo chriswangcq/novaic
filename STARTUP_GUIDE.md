@@ -88,30 +88,45 @@ pip install -r requirements.txt
 后端服务有依赖关系，必须按以下顺序启动：
 
 ```
-1. Gateway (核心) - 端口 19999
+1. Runtime Orchestrator (内部编排核心) - 端口 19993
    ↓
-2. Queue Service (队列) - 端口 19997
+2. Gateway (API 聚合/代理) - 端口 19999
    ↓
-3. Tools Server (工具) - 端口 19998
+3. Queue Service (队列) - 端口 19997
    ↓
-4. File Service (文件) - 端口 19995
+4. Tools Server (工具) - 端口 19998
    ↓
-5. Tool Result Service (TRS) - 端口 19994
+5. File Service (文件) - 端口 19995
    ↓
-6. Watchdog (监控) - 1个
+6. Tool Result Service (TRS) - 端口 19994
    ↓
-7. Task Workers (执行任务) - 3个
+7. Watchdog (监控) - 1个
    ↓
-8. Saga Workers (编排) - 3个
+8. Task Workers (执行任务) - 3个
    ↓
-9. Health Worker (健康检查) - 1个
+9. Saga Workers (编排) - 3个
    ↓
-10. Scheduler (定时任务) - 1个
+10. Health Worker (健康检查) - 1个
+   ↓
+11. Scheduler (定时任务) - 1个
 ```
 
 ### 各服务启动命令
 
-#### 2.1 Gateway (端口 19999)
+#### 2.1 Runtime Orchestrator (端口 19993)
+
+内部 `/internal/*` 编排服务，需先于 Gateway 启动。
+
+```bash
+python -m novaic_main runtime-orchestrator --port 19993 --data-dir ./data
+```
+
+**验证启动**:
+```bash
+curl http://127.0.0.1:19993/api/health
+```
+
+#### 2.2 Gateway (端口 19999)
 
 核心服务，提供 REST API 和数据库管理。
 
@@ -128,7 +143,7 @@ python main_gateway.py
 curl http://127.0.0.1:19999/health
 ```
 
-#### 2.2 Queue Service (端口 19997)
+#### 2.3 Queue Service (端口 19997)
 
 管理任务队列和 Saga 队列。
 
@@ -141,7 +156,7 @@ python -m novaic_main queue-service --port 19997 --data-dir ./data
 curl http://127.0.0.1:19997/health
 ```
 
-#### 2.3 Tools Server (端口 19998)
+#### 2.4 Tools Server (端口 19998)
 
 执行各种工具调用。
 
@@ -149,7 +164,7 @@ curl http://127.0.0.1:19997/health
 python -m novaic_main tools-server --port 19998 --data-dir ./data --gateway-url http://127.0.0.1:19999
 ```
 
-#### 2.4 File Service (端口 19995)
+#### 2.5 File Service (端口 19995)
 
 文件管理服务，存储和检索文件（图片、文档等）。
 
@@ -162,7 +177,7 @@ python -m novaic_main file-service --port 19995 --data-dir ./data
 curl http://127.0.0.1:19995/api/health
 ```
 
-#### 2.5 Tool Result Service (端口 19994)
+#### 2.6 Tool Result Service (端口 19994)
 
 工具结果规范化服务（TRS），处理和存储工具执行结果。
 
@@ -175,7 +190,7 @@ python -m novaic_main tool-result-service --port 19994 --data-dir ./data
 curl http://127.0.0.1:19994/api/health
 ```
 
-#### 2.6 Watchdog
+#### 2.7 Watchdog
 
 监控新消息，触发处理流程。
 
@@ -183,7 +198,9 @@ curl http://127.0.0.1:19994/api/health
 python -m novaic_main watchdog --gateway-url http://127.0.0.1:19999 --queue-service-url http://127.0.0.1:19997
 ```
 
-#### 2.7 Task Worker (可启动多个)
+> 说明：`gateway-url` 参数用于公共 API；`/internal/*` 生产流量默认按 `RUNTIME_ORCHESTRATOR_URL` 直连 Runtime Orchestrator。
+
+#### 2.8 Task Worker (可启动多个)
 
 执行具体任务。
 
@@ -192,7 +209,7 @@ python -m novaic_main watchdog --gateway-url http://127.0.0.1:19999 --queue-serv
 python -m novaic_main task-worker --gateway-url http://127.0.0.1:19999 --queue-service-url http://127.0.0.1:19997
 ```
 
-#### 2.8 Saga Worker (可启动多个)
+#### 2.9 Saga Worker (可启动多个)
 
 处理 Saga 编排流程。
 
@@ -200,7 +217,7 @@ python -m novaic_main task-worker --gateway-url http://127.0.0.1:19999 --queue-s
 python -m novaic_main saga-worker --gateway-url http://127.0.0.1:19999 --queue-service-url http://127.0.0.1:19997
 ```
 
-#### 2.9 Health Worker
+#### 2.10 Health Worker
 
 监控并回收超时的任务和 Saga。
 
@@ -208,7 +225,7 @@ python -m novaic_main saga-worker --gateway-url http://127.0.0.1:19999 --queue-s
 python -m novaic_main health --queue-service-url http://127.0.0.1:19997
 ```
 
-#### 2.10 Scheduler
+#### 2.11 Scheduler
 
 定时唤醒 sleeping agents。
 
@@ -360,7 +377,8 @@ npm run tauri:dev
 
 ```
 $NOVAIC_DATA_DIR/
-├── novaic.db          # Gateway 数据库
+├── gateway.db         # Gateway 数据库
+├── runtime_orchestrator.db # Runtime Orchestrator 数据库
 ├── queue.db           # Queue Service 数据库
 ├── logs/              # 日志文件
 └── vms/               # 虚拟机文件
@@ -428,7 +446,7 @@ pip install -r requirements.txt
 
 ### 3. "Connection refused"
 
-检查服务启动顺序，Gateway 必须先启动。
+检查服务启动顺序，Runtime Orchestrator 必须先于 Gateway 启动。
 
 ### 4. "Database is locked"
 

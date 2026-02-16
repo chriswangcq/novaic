@@ -284,7 +284,9 @@ FROM {table_name};
 #!/bin/bash
 # check_orphaned_data.sh
 
-DB_PATH=~/Library/Application\ Support/com.novaic.app/novaic.db
+GATEWAY_DB=~/Library/Application\ Support/com.novaic.app/gateway.db
+RUNTIME_DB=~/Library/Application\ Support/com.novaic.app/runtime_orchestrator.db
+QUEUE_DB=~/Library/Application\ Support/com.novaic.app/queue.db
 
 sqlite3 "$DB_PATH" << 'SQL'
 .headers on

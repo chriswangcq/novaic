@@ -31,6 +31,19 @@ use tauri::{
 
 use config::AppConfig;
 
+const LOOPBACK_HOST: &str = "127.0.0.1";
+const PORT_RUNTIME_ORCHESTRATOR: u16 = 19993;
+const PORT_TOOL_RESULT_SERVICE: u16 = 19994;
+const PORT_FILE_SERVICE: u16 = 19995;
+const PORT_VMCONTROL: u16 = 19996;
+const PORT_QUEUE_SERVICE: u16 = 19997;
+const PORT_TOOLS_SERVER: u16 = 19998;
+const PORT_GATEWAY: u16 = 19999;
+
+fn local_url(port: u16) -> String {
+    format!("http://{LOOPBACK_HOST}:{port}")
+}
+
 /// Backend 组件: Gateway - API + DB，不含工具服务（工具服务由 Tools Server 独立进程提供）
 struct GatewayProcess {
     process: Option<Child>,
@@ -41,12 +54,12 @@ impl GatewayProcess {
     fn new() -> Self {
         Self {
             process: None,
-            port: 19999,
+            port: PORT_GATEWAY,
         }
     }
 
     fn base_url(&self) -> String {
-        format!("http://127.0.0.1:{}", self.port)
+        local_url(self.port)
     }
 }
 
@@ -60,7 +73,7 @@ impl ToolsServerProcess {
     fn new() -> Self {
         Self {
             process: None,
-            port: 19998,
+            port: PORT_TOOLS_SERVER,
         }
     }
 }
@@ -75,7 +88,7 @@ impl VmControlProcess {
     fn new() -> Self {
         Self {
             process: None,
-            port: 19996,
+            port: PORT_VMCONTROL,
         }
     }
     
@@ -111,7 +124,7 @@ impl VmControlProcess {
             .arg("--port")
             .arg(self.port.to_string())
             .arg("--host")
-            .arg("127.0.0.1")
+            .arg(LOOPBACK_HOST)
             .env("RUST_LOG", "vmcontrol=info,tower_http=debug")
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -159,7 +172,7 @@ impl VmControlProcess {
     }
     
     fn base_url(&self) -> String {
-        format!("http://127.0.0.1:{}", self.port)
+        local_url(self.port)
     }
 }
 
@@ -179,7 +192,7 @@ impl QueueServiceProcess {
     fn new() -> Self {
         Self {
             process: None,
-            port: 19997,
+            port: PORT_QUEUE_SERVICE,
         }
     }
 }
@@ -194,7 +207,7 @@ impl FileServiceProcess {
     fn new() -> Self {
         Self {
             process: None,
-            port: 19995,
+            port: PORT_FILE_SERVICE,
         }
     }
 }
@@ -209,7 +222,7 @@ impl ToolResultServiceProcess {
     fn new() -> Self {
         Self {
             process: None,
-            port: 19994,
+            port: PORT_TOOL_RESULT_SERVICE,
         }
     }
 }
@@ -307,6 +320,13 @@ impl GatewayProcess {
             provided_resource_dir
         };
         println!("[Gateway] Using resource_dir: {}", resource_dir_str);
+        let runtime_orchestrator_url = local_url(PORT_RUNTIME_ORCHESTRATOR);
+        let queue_service_url = local_url(PORT_QUEUE_SERVICE);
+        let tools_server_url = local_url(PORT_TOOLS_SERVER);
+        let vmcontrol_url = local_url(PORT_VMCONTROL);
+        let file_service_url = local_url(PORT_FILE_SERVICE);
+        let tool_result_service_url = local_url(PORT_TOOL_RESULT_SERVICE);
+        let runtime_orchestrator_port = PORT_RUNTIME_ORCHESTRATOR.to_string();
 
         let child = if is_binary {
             // Production mode: run unified novaic-backend binary
@@ -317,12 +337,30 @@ impl GatewayProcess {
             
             Command::new(gateway_path)
                 .arg("gateway")  // Subcommand
+                .arg("--host")
+                .arg("127.0.0.1")
                 .arg("--port")
                 .arg(self.port.to_string())
                 .arg("--data-dir")
                 .arg(&data_dir_str)
+                .arg("--runtime-orchestrator-url")
+                .arg(&runtime_orchestrator_url)
+                .arg("--queue-service-url")
+                .arg(&queue_service_url)
+                .arg("--tools-server-url")
+                .arg(&tools_server_url)
+                .arg("--vmcontrol-url")
+                .arg(&vmcontrol_url)
+                .arg("--file-service-url")
+                .arg(&file_service_url)
+                .arg("--tool-result-service-url")
+                .arg(&tool_result_service_url)
                 .env("NOVAIC_RESOURCE_DIR", &resource_dir_str)
-                .env("NOVAIC_TOOLS_SERVER_URL", "http://127.0.0.1:19998")
+                .env("NOVAIC_DB_FILE", "gateway.db")
+                .env("NOVAIC_TOOLS_SERVER_URL", &tools_server_url)
+                .env("RUNTIME_ORCHESTRATOR_URL", &runtime_orchestrator_url)
+                .env("RUNTIME_ORCHESTRATOR_HOST", LOOPBACK_HOST)
+                .env("RUNTIME_ORCHESTRATOR_PORT", &runtime_orchestrator_port)
                 .env("NO_PROXY", "localhost,127.0.0.1,::1")
                 .env("no_proxy", "localhost,127.0.0.1,::1")
                 // Use null to discard output - prevents pipe buffer from filling up
@@ -353,13 +391,31 @@ impl GatewayProcess {
             Command::new(&python)
                 .arg(&novaic_main)
                 .arg("gateway")
+                .arg("--host")
+                .arg("127.0.0.1")
                 .arg("--port")
                 .arg(self.port.to_string())
                 .arg("--data-dir")
                 .arg(&data_dir_str)
+                .arg("--runtime-orchestrator-url")
+                .arg(&runtime_orchestrator_url)
+                .arg("--queue-service-url")
+                .arg(&queue_service_url)
+                .arg("--tools-server-url")
+                .arg(&tools_server_url)
+                .arg("--vmcontrol-url")
+                .arg(&vmcontrol_url)
+                .arg("--file-service-url")
+                .arg(&file_service_url)
+                .arg("--tool-result-service-url")
+                .arg(&tool_result_service_url)
                 .current_dir(gateway_dir)
                 .env("NOVAIC_RESOURCE_DIR", &resource_dir_str)
-                .env("NOVAIC_TOOLS_SERVER_URL", "http://127.0.0.1:19998")
+                .env("NOVAIC_DB_FILE", "gateway.db")
+                .env("NOVAIC_TOOLS_SERVER_URL", &tools_server_url)
+                .env("RUNTIME_ORCHESTRATOR_URL", &runtime_orchestrator_url)
+                .env("RUNTIME_ORCHESTRATOR_HOST", LOOPBACK_HOST)
+                .env("RUNTIME_ORCHESTRATOR_PORT", &runtime_orchestrator_port)
                 .env("NO_PROXY", "localhost,127.0.0.1,::1")
                 .env("no_proxy", "localhost,127.0.0.1,::1")
                 // Dev mode: inherit console so we can see logs directly
@@ -494,6 +550,7 @@ impl ToolsServerProcess {
             provided_resource_dir
         };
         println!("[Tools Server] Using resource_dir: {}", resource_dir_str);
+        let gateway_url = local_url(PORT_GATEWAY);
 
         let child = if is_binary {
             if !backend_path.exists() {
@@ -509,12 +566,16 @@ impl ToolsServerProcess {
             
             Command::new(backend_path)
                 .arg("tools-server")
+                .arg("--host")
+                .arg("127.0.0.1")
                 .arg("--port")
                 .arg(self.port.to_string())
                 .arg("--data-dir")
                 .arg(&data_dir_str)
+                .arg("--gateway-url")
+                .arg(&gateway_url)
                 .env("NOVAIC_RESOURCE_DIR", &resource_dir_str)
-                .env("NOVAIC_GATEWAY_URL", format!("http://127.0.0.1:19999"))
+                .env("NOVAIC_GATEWAY_URL", &gateway_url)
                 .env("NO_PROXY", "localhost,127.0.0.1,::1")
                 .env("no_proxy", "localhost,127.0.0.1,::1")
                 .stdout(Stdio::from(log_file))
@@ -537,13 +598,17 @@ impl ToolsServerProcess {
                 .arg("-m")
                 .arg("novaic_main")
                 .arg("tools-server")
+                .arg("--host")
+                .arg("127.0.0.1")
                 .arg("--port")
                 .arg(self.port.to_string())
                 .arg("--data-dir")
                 .arg(&data_dir_str)
+                .arg("--gateway-url")
+                .arg(&gateway_url)
                 .current_dir(&gateway_dir)
                 .env("NOVAIC_TOOLS_PORT", self.port.to_string())
-                .env("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
+                .env("NOVAIC_GATEWAY_URL", &gateway_url)
                 .env("NOVAIC_DATA_DIR", &data_dir_str)
                 .env("NO_PROXY", "localhost,127.0.0.1,::1")
                 .env("no_proxy", "localhost,127.0.0.1,::1")
@@ -613,6 +678,7 @@ impl QueueServiceProcess {
             provided_resource_dir
         };
         println!("[Queue Service] Using resource_dir: {}", resource_dir_str);
+        let gateway_url = local_url(PORT_GATEWAY);
 
         let child = if is_binary {
             if !backend_path.exists() {
@@ -620,12 +686,14 @@ impl QueueServiceProcess {
             }
             Command::new(backend_path)
                 .arg("queue-service")
+                .arg("--host")
+                .arg("127.0.0.1")
                 .arg("--port")
                 .arg(self.port.to_string())
                 .arg("--data-dir")
                 .arg(&data_dir_str)
                 .env("NOVAIC_RESOURCE_DIR", &resource_dir_str)
-                .env("NOVAIC_GATEWAY_URL", format!("http://127.0.0.1:19999"))
+                .env("NOVAIC_GATEWAY_URL", &gateway_url)
                 .env("NO_PROXY", "localhost,127.0.0.1,::1")
                 .env("no_proxy", "localhost,127.0.0.1,::1")
                 .stdout(Stdio::null())
@@ -648,13 +716,15 @@ impl QueueServiceProcess {
                 .arg("-m")
                 .arg("novaic_main")
                 .arg("queue-service")
+                .arg("--host")
+                .arg("127.0.0.1")
                 .arg("--port")
                 .arg(self.port.to_string())
                 .arg("--data-dir")
                 .arg(&data_dir_str)
                 .current_dir(&gateway_dir)
                 .env("NOVAIC_QUEUE_PORT", self.port.to_string())
-                .env("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
+                .env("NOVAIC_GATEWAY_URL", &gateway_url)
                 .env("NOVAIC_DATA_DIR", &data_dir_str)
                 .env("NO_PROXY", "localhost,127.0.0.1,::1")
                 .env("no_proxy", "localhost,127.0.0.1,::1")
@@ -721,11 +791,14 @@ impl FileServiceProcess {
             }
             Command::new(backend_path)
                 .arg("file-service")
+                .arg("--host")
+                .arg("127.0.0.1")
                 .arg("--port")
                 .arg(self.port.to_string())
                 .arg("--data-dir")
                 .arg(&data_dir_str)
                 .env("NOVAIC_RESOURCE_DIR", &resource_dir_str)
+                .env("NOVAIC_DB_FILE", "runtime_orchestrator.db")
                 .env("NO_PROXY", "localhost,127.0.0.1,::1")
                 .env("no_proxy", "localhost,127.0.0.1,::1")
                 .stdout(Stdio::inherit())
@@ -746,6 +819,8 @@ impl FileServiceProcess {
                 .arg("-m")
                 .arg("novaic_main")
                 .arg("file-service")
+                .arg("--host")
+                .arg("127.0.0.1")
                 .arg("--port")
                 .arg(self.port.to_string())
                 .arg("--data-dir")
@@ -811,6 +886,8 @@ impl ToolResultServiceProcess {
             }
             Command::new(backend_path)
                 .arg("tool-result-service")
+                .arg("--host")
+                .arg("127.0.0.1")
                 .arg("--port")
                 .arg(self.port.to_string())
                 .arg("--data-dir")
@@ -836,6 +913,8 @@ impl ToolResultServiceProcess {
                 .arg("-m")
                 .arg("novaic_main")
                 .arg("tool-result-service")
+                .arg("--host")
+                .arg("127.0.0.1")
                 .arg("--port")
                 .arg(self.port.to_string())
                 .arg("--data-dir")
@@ -876,8 +955,126 @@ impl Drop for ToolResultServiceProcess {
     }
 }
 
+/// Backend 组件: Runtime Orchestrator - 内部运行时编排服务（Gateway 代理请求到此）
+struct RuntimeOrchestratorProcess {
+    process: Option<Child>,
+    port: u16,
+}
+
+impl RuntimeOrchestratorProcess {
+    fn new() -> Self {
+        Self {
+            process: None,
+            port: PORT_RUNTIME_ORCHESTRATOR,
+        }
+    }
+
+    fn start(&mut self, backend_path: &PathBuf, is_binary: bool, data_dir: &PathBuf, resource_dir: Option<&PathBuf>) -> Result<(), String> {
+        if self.process.is_some() {
+            println!("[Runtime Orchestrator] Already running");
+            return Ok(());
+        }
+
+        let data_dir_str = data_dir.to_string_lossy().to_string();
+
+        let provided_resource_dir = resource_dir.map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
+        let resource_dir_str = if is_binary && provided_resource_dir.is_empty() {
+            if let Some(parent) = backend_path.parent() {
+                if let Some(grandparent) = parent.parent() {
+                    grandparent.to_string_lossy().to_string()
+                } else {
+                    String::new()
+                }
+            } else {
+                String::new()
+            }
+        } else {
+            provided_resource_dir
+        };
+        println!("[Runtime Orchestrator] Using resource_dir: {}", resource_dir_str);
+
+        let child = if is_binary {
+            if !backend_path.exists() {
+                return Err(format!("Backend binary not found at {:?}", backend_path));
+            }
+            Command::new(backend_path)
+                .arg("runtime-orchestrator")
+                .arg("--host")
+                .arg("127.0.0.1")
+                .arg("--port")
+                .arg(self.port.to_string())
+                .arg("--data-dir")
+                .arg(&data_dir_str)
+                .env("NOVAIC_RESOURCE_DIR", &resource_dir_str)
+                .env("NO_PROXY", "localhost,127.0.0.1,::1")
+                .env("no_proxy", "localhost,127.0.0.1,::1")
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .spawn()
+                .map_err(|e| format!("Failed to start Runtime Orchestrator binary: {}", e))?
+        } else {
+            let gateway_dir = backend_path;
+            let venv_python = gateway_dir.join("venv/bin/python");
+            let python = if venv_python.exists() {
+                venv_python.to_string_lossy().to_string()
+            } else if cfg!(target_os = "windows") {
+                "python".to_string()
+            } else {
+                "python3".to_string()
+            };
+            Command::new(&python)
+                .arg("-m")
+                .arg("novaic_main")
+                .arg("runtime-orchestrator")
+                .arg("--host")
+                .arg("127.0.0.1")
+                .arg("--port")
+                .arg(self.port.to_string())
+                .arg("--data-dir")
+                .arg(&data_dir_str)
+                .current_dir(gateway_dir)
+                .env("NOVAIC_DATA_DIR", &data_dir_str)
+                .env("NOVAIC_DB_FILE", "runtime_orchestrator.db")
+                .env("NO_PROXY", "localhost,127.0.0.1,::1")
+                .env("no_proxy", "localhost,127.0.0.1,::1")
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
+                .spawn()
+                .map_err(|e| format!("Failed to start Runtime Orchestrator: {}", e))?
+        };
+
+        self.process = Some(child);
+        println!("[Runtime Orchestrator] Started on port {}", self.port);
+        Ok(())
+    }
+
+    fn stop(&mut self) {
+        if let Some(mut process) = self.process.take() {
+            let pid = process.id();
+            println!("[Runtime Orchestrator] Stopping process (PID: {})...", pid);
+            #[cfg(unix)]
+            unsafe { libc::kill(pid as i32, libc::SIGTERM); }
+            std::thread::sleep(std::time::Duration::from_millis(AppConfig::PROCESS_TERM_WAIT_MS));
+            match process.try_wait() {
+                Ok(Some(_)) => {}
+                Ok(None) => { let _ = process.kill(); let _ = process.wait(); }
+                Err(_) => { let _ = process.kill(); }
+            }
+            println!("[Runtime Orchestrator] Stopped");
+        }
+    }
+}
+
+impl Drop for RuntimeOrchestratorProcess {
+    fn drop(&mut self) {
+        self.stop();
+    }
+}
+
 type GatewayState = Arc<Mutex<GatewayProcess>>;
+type RuntimeOrchestratorState = Arc<Mutex<RuntimeOrchestratorProcess>>;
 type ToolsServerState = Arc<Mutex<ToolsServerProcess>>;
+type QueueServiceState = Arc<Mutex<QueueServiceProcess>>;
 type FileServiceState = Arc<Mutex<FileServiceProcess>>;
 type ToolResultServiceState = Arc<Mutex<ToolResultServiceProcess>>;
 type VmControlState = Arc<Mutex<VmControlProcess>>;
@@ -911,6 +1108,7 @@ fn kill_zombie_processes() {
             "main_scheduler.py",
             "queue_service",         // Queue service module
             "novaic_main",           // Unified entry (matches both .py and -m novaic_main)
+            "runtime-orchestrator",  // Runtime Orchestrator subcommand/script
         ];
         
         let mut killed_count = 0;
@@ -931,7 +1129,7 @@ fn kill_zombie_processes() {
         }
         
         // Step 2: Kill processes occupying our ports (in case of orphaned processes)
-        let ports = [19999, 19998, 19997, 19995, 19994];  // Gateway, Tools Server, Queue Service, File Service, Tool Result Service
+        let ports = [19999, 19998, 19997, 19995, 19994, 19993];  // Gateway, Tools Server, Queue Service, File Service, Tool Result Service, Runtime Orchestrator
         for port in ports {
             // Find process using the port via lsof
             let lsof_result = Command::new("lsof")
@@ -1353,6 +1551,10 @@ fn main() {
             // Backend 组件: Gateway（API + DB）
             let gateway = Arc::new(Mutex::new(GatewayProcess::new()));
             app.manage(gateway.clone());
+
+            // Backend 组件: Runtime Orchestrator（内部运行时编排服务，Gateway 代理请求到此）
+            let runtime_orchestrator = Arc::new(Mutex::new(RuntimeOrchestratorProcess::new()));
+            app.manage(runtime_orchestrator.clone());
             
             // Backend 组件: VmControl（VM 控制服务，Rust 原生）
             let vmcontrol = Arc::new(Mutex::new(VmControlProcess::new()));
@@ -1429,6 +1631,7 @@ fn main() {
             }
             println!("[Backend] Is binary: {}", is_binary);
             
+            let runtime_orchestrator_for_start = runtime_orchestrator.clone();
             let gateway_for_start = gateway.clone();
             let vmcontrol_for_start = vmcontrol.clone();
             let tools_server_for_start = tools_server.clone();
@@ -1444,7 +1647,41 @@ fn main() {
                 // Kill any zombie backend processes before starting
                 kill_zombie_processes();
                 
-                // 1. Backend 组件: Gateway
+                // 1. Backend 组件: Runtime Orchestrator（必须先启动，Gateway 依赖它）
+                {
+                    let mut ro = runtime_orchestrator_for_start.lock().await;
+                    match ro.start(&backend_path, is_binary, &data_dir_for_gateway, resource_dir.as_ref()) {
+                        Ok(_) => println!("[Runtime Orchestrator] Auto-started successfully"),
+                        Err(e) => {
+                            println!("[Runtime Orchestrator] Failed to auto-start: {}", e);
+                            return;
+                        }
+                    }
+                }
+                
+                // 2. 严格等待 Runtime Orchestrator /api/health 就绪（超时则中止，不启动 Gateway/Workers）
+                const RO_HEALTH_TIMEOUT_SECS: u64 = 30;
+                println!("[Services] Waiting for Runtime Orchestrator to be ready (strict)...");
+                let ro_health_url = format!("{}/api/health", local_url(PORT_RUNTIME_ORCHESTRATOR));
+                let client = reqwest::Client::new();
+                let mut ro_ready = false;
+                for i in 0..RO_HEALTH_TIMEOUT_SECS {
+                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                    match client.get(&ro_health_url).send().await {
+                        Ok(resp) if resp.status().is_success() => {
+                            println!("[Services] Runtime Orchestrator is ready after {}s", i + 1);
+                            ro_ready = true;
+                            break;
+                        }
+                        _ => {}
+                    }
+                }
+                if !ro_ready {
+                    println!("[Services] Runtime Orchestrator not ready after {}s - aborting startup (Gateway/Workers not started)", RO_HEALTH_TIMEOUT_SECS);
+                    return;
+                }
+                
+                // 3. Backend 组件: Gateway
                 {
                     let mut gw = gateway_for_start.lock().await;
                     match gw.start(&backend_path, is_binary, &data_dir_for_gateway, resource_dir.as_ref()) {
@@ -1456,7 +1693,7 @@ fn main() {
                     }
                 }
                 
-                // 2. Backend 组件: VmControl（VM 控制服务）
+                // 4. Backend 组件: VmControl（VM 控制服务）
                 {
                     let mut vc = vmcontrol_for_start.lock().await;
                     match vc.start(&app_handle_for_vmcontrol) {
@@ -1468,7 +1705,7 @@ fn main() {
                     }
                 }
                 
-                // 3. Backend 组件: Tools Server
+                // 5. Backend 组件: Tools Server
                 {
                     let mut ts = tools_server_for_start.lock().await;
                     match ts.start(&backend_path, is_binary, &data_dir_for_gateway, resource_dir.as_ref()) {
@@ -1479,7 +1716,7 @@ fn main() {
                     }
                 }
                 
-                // 4. Backend 组件: Queue Service（Task/Saga 队列管理）
+                // 6. Backend 组件: Queue Service（Task/Saga 队列管理）
                 {
                     let mut qs = queue_service_for_start.lock().await;
                     match qs.start(&backend_path, is_binary, &data_dir_for_gateway, resource_dir.as_ref()) {
@@ -1490,7 +1727,7 @@ fn main() {
                     }
                 }
                 
-                // 4b. Backend 组件: File Service（文件管理服务）
+                // 7. Backend 组件: File Service（文件管理服务）
                 {
                     let mut fs = file_service_for_start.lock().await;
                     match fs.start(&backend_path, is_binary, &data_dir_for_gateway, resource_dir.as_ref()) {
@@ -1501,7 +1738,7 @@ fn main() {
                     }
                 }
                 
-                // 4c. Backend 组件: Tool Result Service（工具结果规范化服务）
+                // 8. Backend 组件: Tool Result Service（工具结果规范化服务）
                 {
                     let mut trs = tool_result_service_for_start.lock().await;
                     match trs.start(&backend_path, is_binary, &data_dir_for_gateway, resource_dir.as_ref()) {
@@ -1512,84 +1749,95 @@ fn main() {
                     }
                 }
                 
-                // 5. 等 Gateway 就绪（health check）
-                println!("[Services] Waiting for Gateway to be ready...");
+                // 9. 严格等待 Gateway 就绪（health check）（超时则中止，不启动 Workers）
+                // Gateway startup can include migrations and warm-up work in production bundles.
+                // Keep strict readiness, but allow a larger window to avoid false-negative aborts.
+                const GW_HEALTH_TIMEOUT_SECS: u64 = 90;
+                println!("[Services] Waiting for Gateway to be ready (strict)...");
                 let client = reqwest::Client::new();
                 let health_url = format!("{}/api/health", gateway_url);
-                
-                for i in 0..30 {
+                let mut gw_ready = false;
+                for i in 0..GW_HEALTH_TIMEOUT_SECS {
                     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-                    
                     match client.get(&health_url).send().await {
                         Ok(resp) if resp.status().is_success() => {
                             println!("[Services] Gateway is ready after {}s", i + 1);
+                            gw_ready = true;
                             break;
                         }
-                        _ => {
-                            if i == 29 {
-                                println!("[Services] Gateway not ready after 30s, starting services anyway");
-                            }
-                        }
+                        _ => {}
                     }
                 }
+                if !gw_ready {
+                    println!("[Services] Gateway not ready after {}s - aborting startup (Workers not started)", GW_HEALTH_TIMEOUT_SECS);
+                    return;
+                }
                 
-                // 5b. 等 Tools Server 就绪（health check）
-                println!("[Services] Waiting for Tools Server to be ready...");
-                let ts_health_url = "http://127.0.0.1:19998/api/health";
-                
-                for i in 0..15 {
+                // 10. 严格等待 Tools Server 就绪（health check）（超时则中止，不启动 Workers）
+                const TS_HEALTH_TIMEOUT_SECS: u64 = 15;
+                println!("[Services] Waiting for Tools Server to be ready (strict)...");
+                let ts_health_url = format!("{}/api/health", local_url(PORT_TOOLS_SERVER));
+                let mut ts_ready = false;
+                for i in 0..TS_HEALTH_TIMEOUT_SECS {
                     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-                    
-                    match client.get(ts_health_url).send().await {
+                    match client.get(&ts_health_url).send().await {
                         Ok(resp) if resp.status().is_success() => {
                             println!("[Services] Tools Server is ready after {}s", i + 1);
+                            ts_ready = true;
                             break;
                         }
-                        _ => {
-                            if i == 14 {
-                                println!("[Services] Tools Server not ready after 15s, starting workers anyway");
-                            }
-                        }
+                        _ => {}
                     }
                 }
+                if !ts_ready {
+                    println!("[Services] Tools Server not ready after {}s - aborting startup (Workers not started)", TS_HEALTH_TIMEOUT_SECS);
+                    return;
+                }
                 
-                // 5c. 等 Queue Service 就绪（health check）
-                println!("[Services] Waiting for Queue Service to be ready...");
-                let qs_health_url = "http://127.0.0.1:19997/health";
-                
-                for i in 0..15 {
+                // 11. 严格等待 Queue Service 就绪（health check）（超时则中止，不启动 Workers）
+                const QS_HEALTH_TIMEOUT_SECS: u64 = 15;
+                println!("[Services] Waiting for Queue Service to be ready (strict)...");
+                let qs_health_url = format!("{}/health", local_url(PORT_QUEUE_SERVICE));
+                let mut qs_ready = false;
+                for i in 0..QS_HEALTH_TIMEOUT_SECS {
                     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-                    
-                    match client.get(qs_health_url).send().await {
+                    match client.get(&qs_health_url).send().await {
                         Ok(resp) if resp.status().is_success() => {
                             println!("[Services] Queue Service is ready after {}s", i + 1);
+                            qs_ready = true;
                             break;
                         }
-                        _ => {
-                            if i == 14 {
-                                println!("[Services] Queue Service not ready after 15s, starting workers anyway");
-                            }
-                        }
+                        _ => {}
                     }
                 }
+                if !qs_ready {
+                    println!("[Services] Queue Service not ready after {}s - aborting startup (Workers not started)", QS_HEALTH_TIMEOUT_SECS);
+                    return;
+                }
                 
-                // 6-9. 直接启动 Worker 服务（和 Gateway 一样简单）
+                // 12. 直接启动 Worker 服务（和 Gateway 一样简单）
                 // v4.1: Saga/Task Architecture - multiple workers for parallelism
                 // 配置：可通过 AppConfig 调整 Worker 数量
                 let num_task_workers = AppConfig::NUM_TASK_WORKERS;
                 let num_saga_workers = AppConfig::NUM_SAGA_WORKERS;
                 
                 if is_binary {
-                    let gateway_url = "http://127.0.0.1:19999";
-                    let queue_service_url = "http://127.0.0.1:19997";
+                    let gateway_url = local_url(PORT_GATEWAY);
+                    let queue_service_url = local_url(PORT_QUEUE_SERVICE);
+                    let runtime_orchestrator_url = local_url(PORT_RUNTIME_ORCHESTRATOR);
+                    let tools_server_url = local_url(PORT_TOOLS_SERVER);
                     
                     // Watchdog: 监控 sending 消息，触发 MessageProcess Saga (1 个)
                     match Command::new(&backend_path_clone)
                         .arg("watchdog")
                         .arg("--gateway-url")
-                        .arg(gateway_url)
+                        .arg(&gateway_url)
                         .arg("--queue-service-url")
-                        .arg(queue_service_url)
+                        .arg(&queue_service_url)
+                        .arg("--runtime-orchestrator-url")
+                        .arg(&runtime_orchestrator_url)
+                        .arg("--data-dir")
+                        .arg(data_dir_for_gateway.to_string_lossy().to_string())
                         .stdout(Stdio::null())
                         .stderr(Stdio::null())
                         .spawn()
@@ -1603,9 +1851,17 @@ fn main() {
                         match Command::new(&backend_path_clone)
                             .arg("task-worker")
                             .arg("--gateway-url")
-                            .arg(gateway_url)
+                            .arg(&gateway_url)
                             .arg("--queue-service-url")
-                            .arg(queue_service_url)
+                            .arg(&queue_service_url)
+                            .arg("--tools-server-url")
+                            .arg(&tools_server_url)
+                            .arg("--runtime-orchestrator-url")
+                            .arg(&runtime_orchestrator_url)
+                            .arg("--num-workers")
+                            .arg("5")
+                            .arg("--data-dir")
+                            .arg(data_dir_for_gateway.to_string_lossy().to_string())
                             .stdout(Stdio::null())
                             .stderr(Stdio::null())
                             .spawn()
@@ -1620,9 +1876,15 @@ fn main() {
                         match Command::new(&backend_path_clone)
                             .arg("saga-worker")
                             .arg("--gateway-url")
-                            .arg(gateway_url)
+                            .arg(&gateway_url)
                             .arg("--queue-service-url")
-                            .arg(queue_service_url)
+                            .arg(&queue_service_url)
+                            .arg("--runtime-orchestrator-url")
+                            .arg(&runtime_orchestrator_url)
+                            .arg("--max-concurrent")
+                            .arg("10")
+                            .arg("--data-dir")
+                            .arg(data_dir_for_gateway.to_string_lossy().to_string())
                             .stdout(Stdio::null())
                             .stderr(Stdio::null())
                             .spawn()
@@ -1636,9 +1898,19 @@ fn main() {
                     match Command::new(&backend_path_clone)
                         .arg("health")
                         .arg("--gateway-url")
-                        .arg(gateway_url)
+                        .arg(&gateway_url)
                         .arg("--queue-service-url")
-                        .arg(queue_service_url)
+                        .arg(&queue_service_url)
+                        .arg("--runtime-orchestrator-url")
+                        .arg(&runtime_orchestrator_url)
+                        .arg("--check-interval")
+                        .arg("30")
+                        .arg("--task-timeout")
+                        .arg("60")
+                        .arg("--saga-timeout")
+                        .arg("1800")
+                        .arg("--data-dir")
+                        .arg(data_dir_for_gateway.to_string_lossy().to_string())
                         .stdout(Stdio::null())
                         .stderr(Stdio::null())
                         .spawn()
@@ -1651,7 +1923,13 @@ fn main() {
                     match Command::new(&backend_path_clone)
                         .arg("scheduler")
                         .arg("--gateway-url")
-                        .arg(gateway_url)
+                        .arg(&gateway_url)
+                        .arg("--runtime-orchestrator-url")
+                        .arg(&runtime_orchestrator_url)
+                        .arg("--check-interval")
+                        .arg("10")
+                        .arg("--data-dir")
+                        .arg(data_dir_for_gateway.to_string_lossy().to_string())
                         .stdout(Stdio::null())
                         .stderr(Stdio::null())
                         .spawn()
@@ -1669,16 +1947,23 @@ fn main() {
                         "python3".to_string()
                     };
                     
-                    let gateway_url = "http://127.0.0.1:19999";
-                    let queue_service_url = "http://127.0.0.1:19997";
+                    let gateway_url = local_url(PORT_GATEWAY);
+                    let queue_service_url = local_url(PORT_QUEUE_SERVICE);
+                    let runtime_orchestrator_url = local_url(PORT_RUNTIME_ORCHESTRATOR);
+                    let tools_server_url = local_url(PORT_TOOLS_SERVER);
                     
                     // Watchdog (1 个)
                     match Command::new(&python)
-                        .arg("main_watchdog.py")
+                        .arg("main_novaic.py")
+                        .arg("watchdog")
                         .arg("--gateway-url")
-                        .arg(gateway_url)
+                        .arg(&gateway_url)
                         .arg("--queue-service-url")
-                        .arg(queue_service_url)
+                        .arg(&queue_service_url)
+                        .arg("--runtime-orchestrator-url")
+                        .arg(&runtime_orchestrator_url)
+                        .arg("--data-dir")
+                        .arg(data_dir_for_gateway.to_string_lossy().to_string())
                         .current_dir(&gateway_dir)
                         .stdout(Stdio::inherit())
                         .stderr(Stdio::inherit())
@@ -1691,11 +1976,20 @@ fn main() {
                     // Task Workers
                     for i in 1..=num_task_workers {
                         match Command::new(&python)
-                            .arg("main_task.py")
+                            .arg("main_novaic.py")
+                            .arg("task-worker")
                             .arg("--gateway-url")
-                            .arg(gateway_url)
+                            .arg(&gateway_url)
                             .arg("--queue-service-url")
-                            .arg(queue_service_url)
+                            .arg(&queue_service_url)
+                            .arg("--tools-server-url")
+                            .arg(&tools_server_url)
+                            .arg("--runtime-orchestrator-url")
+                            .arg(&runtime_orchestrator_url)
+                            .arg("--num-workers")
+                            .arg("5")
+                            .arg("--data-dir")
+                            .arg(data_dir_for_gateway.to_string_lossy().to_string())
                             .current_dir(&gateway_dir)
                             .stdout(Stdio::inherit())
                             .stderr(Stdio::inherit())
@@ -1709,11 +2003,18 @@ fn main() {
                     // Saga Workers
                     for i in 1..=num_saga_workers {
                         match Command::new(&python)
-                            .arg("main_saga.py")
+                            .arg("main_novaic.py")
+                            .arg("saga-worker")
                             .arg("--gateway-url")
-                            .arg(gateway_url)
+                            .arg(&gateway_url)
                             .arg("--queue-service-url")
-                            .arg(queue_service_url)
+                            .arg(&queue_service_url)
+                            .arg("--runtime-orchestrator-url")
+                            .arg(&runtime_orchestrator_url)
+                            .arg("--max-concurrent")
+                            .arg("10")
+                            .arg("--data-dir")
+                            .arg(data_dir_for_gateway.to_string_lossy().to_string())
                             .current_dir(&gateway_dir)
                             .stdout(Stdio::inherit())
                             .stderr(Stdio::inherit())
@@ -1726,9 +2027,22 @@ fn main() {
                     
                     // Health (1 个)
                     match Command::new(&python)
-                        .arg("main_health.py")
+                        .arg("main_novaic.py")
+                        .arg("health")
+                        .arg("--gateway-url")
+                        .arg(&gateway_url)
                         .arg("--queue-service-url")
-                        .arg(queue_service_url)
+                        .arg(&queue_service_url)
+                        .arg("--runtime-orchestrator-url")
+                        .arg(&runtime_orchestrator_url)
+                        .arg("--check-interval")
+                        .arg("30")
+                        .arg("--task-timeout")
+                        .arg("60")
+                        .arg("--saga-timeout")
+                        .arg("1800")
+                        .arg("--data-dir")
+                        .arg(data_dir_for_gateway.to_string_lossy().to_string())
                         .current_dir(&gateway_dir)
                         .stdout(Stdio::inherit())
                         .stderr(Stdio::inherit())
@@ -1740,9 +2054,16 @@ fn main() {
                     
                     // Scheduler (1 个)
                     match Command::new(&python)
-                        .arg("main_scheduler.py")
+                        .arg("main_novaic.py")
+                        .arg("scheduler")
                         .arg("--gateway-url")
-                        .arg(gateway_url)
+                        .arg(&gateway_url)
+                        .arg("--runtime-orchestrator-url")
+                        .arg(&runtime_orchestrator_url)
+                        .arg("--check-interval")
+                        .arg("10")
+                        .arg("--data-dir")
+                        .arg(data_dir_for_gateway.to_string_lossy().to_string())
                         .current_dir(&gateway_dir)
                         .stdout(Stdio::inherit())
                         .stderr(Stdio::inherit())
@@ -1855,6 +2176,33 @@ fn main() {
                             ts.stop();
                         });
                     }
+
+                    // Stop Backend 组件: Queue Service
+                    if let Some(queue_service) = app_handle.try_state::<QueueServiceState>() {
+                        let qs_clone = queue_service.inner().clone();
+                        tauri::async_runtime::block_on(async {
+                            let mut qs = qs_clone.lock().await;
+                            qs.stop();
+                        });
+                    }
+
+                    // Stop Backend 组件: File Service
+                    if let Some(file_service) = app_handle.try_state::<FileServiceState>() {
+                        let fs_clone = file_service.inner().clone();
+                        tauri::async_runtime::block_on(async {
+                            let mut fs = fs_clone.lock().await;
+                            fs.stop();
+                        });
+                    }
+
+                    // Stop Backend 组件: Tool Result Service
+                    if let Some(tool_result_service) = app_handle.try_state::<ToolResultServiceState>() {
+                        let trs_clone = tool_result_service.inner().clone();
+                        tauri::async_runtime::block_on(async {
+                            let mut trs = trs_clone.lock().await;
+                            trs.stop();
+                        });
+                    }
                     
                     // Step 1: 先通过 vmcontrol 发送 shutdown 信号给所有 VM
                     // 这会发送 QMP system_powerdown 命令，让 VM 优雅关闭
@@ -1901,7 +2249,16 @@ fn main() {
                         });
                     }
                     
-                    // Step 3: Stop Backend 组件: Gateway（并停所有 VM 进程）
+                    // Step 3: Stop Backend 组件: Runtime Orchestrator
+                    if let Some(runtime_orchestrator) = app_handle.try_state::<RuntimeOrchestratorState>() {
+                        let ro_clone = runtime_orchestrator.inner().clone();
+                        tauri::async_runtime::block_on(async {
+                            let mut ro = ro_clone.lock().await;
+                            ro.stop();
+                        });
+                    }
+                    
+                    // Step 4: Stop Backend 组件: Gateway（并停所有 VM 进程）
                     if let Some(gateway) = app_handle.try_state::<GatewayState>() {
                         let gateway_clone = gateway.inner().clone();
                         tauri::async_runtime::block_on(async {

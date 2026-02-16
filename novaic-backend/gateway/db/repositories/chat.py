@@ -540,7 +540,7 @@ class ChatRepository:
             URL path to access the image (e.g., "/api/images/agent_id/abc123.png")
         """
         try:
-            from task_queue.utils.image_storage import get_image_storage
+            from common.utils.image_storage import get_image_storage
             storage = get_image_storage()
             url = storage.save_image(agent_id, base64_data, subagent_id)
             return url

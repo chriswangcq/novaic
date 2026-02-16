@@ -23,8 +23,11 @@ from fastapi import FastAPI
 from httpx import AsyncClient, ASGITransport
 
 from task_queue.instance import init_task_queue, init_saga_orchestrator, set_handler_context, shutdown_task_queue, get_handler_context
+from queue_service.routes import create_task_queue_router, create_recovery_router
 from gateway.api.internal import router as internal_router
 import common.db as db_module
+from gateway.db.schema import init_schema_sync as init_gateway_schema
+from queue_service.db.schema import init_schema as init_queue_schema
 
 
 # ==================== Event Loop ====================
@@ -52,11 +55,17 @@ async def db() -> AsyncGenerator[Database, None]:
         db_path = Path(f.name)
     
     database = Database(db_path)
-    await database.connect()
+
+    def _init_test_schema(conn):
+        # Shared test DB needs both Gateway and Queue Service schemas.
+        init_gateway_schema(conn)
+        init_queue_schema(conn)
+
+    database.connect(init_schema_func=_init_test_schema)
     
     yield database
     
-    await database.close()
+    database.close()
     # Clean up temp file
     try:
         db_path.unlink()
@@ -174,8 +183,6 @@ async def gateway_app(db: Database) -> AsyncGenerator[FastAPI, None]:
 
     app.include_router(internal_router, prefix="/internal")
     app.include_router(create_task_queue_router(queue, orchestrator), prefix="/internal/tq")
-    app.include_router(create_handler_router(lambda: get_handler_context()), prefix="/internal/tq/handlers")
-    app.include_router(create_business_router(orchestrator, lambda: get_handler_context()), prefix="/internal/tq/business")
     app.include_router(create_recovery_router(queue, orchestrator), prefix="/internal/tq/recover")
 
     gateway_client = TestGatewayClient(app)

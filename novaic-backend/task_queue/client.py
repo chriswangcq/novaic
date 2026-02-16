@@ -6,12 +6,12 @@ TaskQueueClient - 通过 HTTP API 访问 Gateway 的 TaskQueue
 """
 
 import json
-import os
 import httpx
 from typing import Optional, List, Dict, Any
 
 from .exceptions import TaskQueueError, TaskNotFoundError
 from common.config import ServiceConfig
+from common.http import internal_client
 from common.utils.time import utc_now_iso
 
 
@@ -47,10 +47,8 @@ class TaskQueueClient:
     def _get_session(self) -> httpx.Client:
         """获取或创建 HTTP session"""
         if self._session is None:
-            self._session = httpx.Client(
+            self._session = internal_client(
                 timeout=httpx.Timeout(self.timeout, connect=10.0),
-                limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
-                trust_env=False,
             )
         return self._session
     
@@ -246,10 +244,8 @@ class SagaClient:
     
     def _get_session(self) -> httpx.Client:
         if self._session is None:
-            self._session = httpx.Client(
+            self._session = internal_client(
                 timeout=httpx.Timeout(self.timeout, connect=10.0),
-                limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
-                trust_env=False,
             )
         return self._session
     
@@ -403,26 +399,33 @@ class SagaClient:
 
 class GatewayInternalClient:
     """
-    Gateway Internal API 客户端
+    Runtime Orchestrator Internal API 客户端（兼容旧命名）。
 
     供非 Gateway 代码调用 /internal/* 接口，避免直接访问 DB。
+    生产默认：/internal/* 直连 Runtime Orchestrator，不经过 Gateway 中转。
     """
 
     def __init__(
         self,
         gateway_url: str,
+        internal_url: Optional[str] = None,
         timeout: float = 30.0,
     ):
         self.gateway_url = gateway_url.rstrip("/")
+        # Internal APIs must hit Runtime Orchestrator directly.
+        resolved_internal = (internal_url or ServiceConfig.RUNTIME_ORCHESTRATOR_URL).rstrip("/")
+        if not resolved_internal:
+            raise ValueError(
+                "Runtime Orchestrator URL is required for GatewayInternalClient internal traffic"
+            )
+        self.internal_url = resolved_internal
         self.timeout = timeout
         self._session: Optional[httpx.Client] = None
 
     def _get_session(self) -> httpx.Client:
         if self._session is None:
-            self._session = httpx.Client(
+            self._session = internal_client(
                 timeout=httpx.Timeout(self.timeout, connect=10.0),
-                limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
-                trust_env=False,
             )
         return self._session
 
@@ -445,7 +448,8 @@ class GatewayInternalClient:
 
     def _request(self, method: str, path: str, json_data: Optional[dict] = None, params: Optional[dict] = None) -> dict:
         session = self._get_session()
-        url = f"{self.gateway_url}{path}"
+        base_url = self.internal_url if path.startswith("/internal/") else self.gateway_url
+        url = f"{base_url}{path}"
         try:
             resp = session.request(method, url, json=json_data, params=params)
             
@@ -552,8 +556,8 @@ class GatewayInternalClient:
     # ---------- Tools Server ----------
     def create_runtime_tools(self, runtime_id: str, agent_id: str, subagent_id: str, ports: dict = None) -> dict:
         """在 Tools Server 创建 Runtime 工具上下文"""
-        tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", ServiceConfig.TOOLS_SERVER_URL)
-        with httpx.Client(timeout=30.0, trust_env=False) as client:
+        tools_server_url = ServiceConfig.TOOLS_SERVER_URL
+        with internal_client(timeout=30.0) as client:
             resp = client.post(f"{tools_server_url}/internal/runtimes", json={
                 "runtime_id": runtime_id,
                 "agent_id": agent_id,
@@ -565,25 +569,25 @@ class GatewayInternalClient:
 
     def destroy_runtime_tools(self, runtime_id: str) -> dict:
         """在 Tools Server 删除 Runtime 工具上下文"""
-        tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", ServiceConfig.TOOLS_SERVER_URL)
-        with httpx.Client(timeout=ServiceConfig.HTTP_TIMEOUT_SHORT, trust_env=False) as client:
+        tools_server_url = ServiceConfig.TOOLS_SERVER_URL
+        with internal_client(timeout=ServiceConfig.HTTP_TIMEOUT_SHORT) as client:
             resp = client.delete(f"{tools_server_url}/internal/runtimes/{runtime_id}")
             resp.raise_for_status()
             return resp.json()
 
     def list_runtime_tools(self, runtime_id: str) -> dict:
         """获取 Runtime 的工具列表"""
-        tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", ServiceConfig.TOOLS_SERVER_URL)
-        with httpx.Client(timeout=ServiceConfig.HTTP_TIMEOUT_SHORT, trust_env=False) as client:
+        tools_server_url = ServiceConfig.TOOLS_SERVER_URL
+        with internal_client(timeout=ServiceConfig.HTTP_TIMEOUT_SHORT) as client:
             resp = client.get(f"{tools_server_url}/internal/runtimes/{runtime_id}/tools")
             resp.raise_for_status()
             return resp.json()
 
     def call_runtime_tool(self, runtime_id: str, tool_name: str, arguments: dict) -> dict:
         """调用 Runtime 的工具"""
-        tools_server_url = os.environ.get("NOVAIC_TOOLS_SERVER_URL", ServiceConfig.TOOLS_SERVER_URL)
+        tools_server_url = ServiceConfig.TOOLS_SERVER_URL
         # 工具执行无超时限制，由心跳机制管理
-        with httpx.Client(timeout=None, trust_env=False) as client:
+        with internal_client(timeout=None) as client:
             resp = client.post(f"{tools_server_url}/internal/runtimes/{runtime_id}/tools/call", json={
                 "name": tool_name,
                 "arguments": arguments,

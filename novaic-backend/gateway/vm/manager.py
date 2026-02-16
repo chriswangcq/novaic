@@ -3,6 +3,9 @@ VM Manager - Manages QEMU virtual machine processes
 
 Migrated from Tauri's manager.rs to Python for Gateway control.
 State is persisted to database for crash recovery.
+
+Phase3 strict mode: vmcontrol is the single VM runtime source-of-truth.
+Registration/re-registration failures surface as errors; no degrade/fallback.
 """
 
 import os
@@ -264,13 +267,17 @@ class VmManager:
             
             logger.info(f"[VmManager] VM for agent {agent_id} started successfully")
             
-            # Register VM with vmcontrol service (async call in sync context)
-            # Use asyncio.run to execute the async registration
+            # Phase3 strict: vmcontrol registration failure = VM start failure (no fallback).
+            agent_name = self._get_agent_name_for_registration(agent_id)
             try:
                 import asyncio
-                asyncio.run(self._register_vm_with_vmcontrol(agent_id, agent.name, config.ports))
+                asyncio.run(self._register_vm_with_vmcontrol(agent_id, agent_name, config.ports))
             except Exception as e:
-                logger.warning(f"[VmManager] Failed to register VM with vmcontrol (non-fatal): {e}")
+                logger.error(f"[VmManager] Failed to register VM with vmcontrol (fatal): {e}")
+                # ensure local QEMU does not keep running without vmcontrol backend
+                self._kill_process(process.pid, quick=True)
+                self.repo.update_status(agent_id, "error", error_message=f"vmcontrol registration failed: {e}")
+                raise RuntimeError(f"vmcontrol registration failed: {e}")
             
             return {
                 "status": "running",
@@ -465,7 +472,8 @@ class VmManager:
         Recover running VMs after Gateway restart.
         
         Checks DB for VMs marked as running and verifies they're still alive.
-        Also re-registers all running VMs with vmcontrol service.
+        Re-registers all running VMs with vmcontrol service.
+        Phase3 strict: re-registration failures propagate (no silent continuation).
         """
         logger.info("[VmManager] Recovering VM processes...")
         
@@ -507,15 +515,13 @@ class VmManager:
         # Re-register all running VMs with vmcontrol
         if running_vms:
             logger.info(f"[VmManager] Re-registering {len(running_vms)} VMs with vmcontrol...")
-            try:
-                import asyncio
-                asyncio.run(self._batch_register_vms(running_vms))
-            except Exception as e:
-                logger.warning(f"[VmManager] Failed to batch register VMs: {e}")
+            import asyncio
+            asyncio.run(self._batch_register_vms(running_vms))
     
     async def _batch_register_vms(self, vms: List[Dict[str, Any]]):
         """
         Batch register multiple VMs with vmcontrol service.
+        Phase3 strict: any registration failure raises; no partial-success continuation.
         
         Args:
             vms: List of dicts with agent_id, agent_name, ports
@@ -526,8 +532,7 @@ class VmManager:
         
         # Check if vmcontrol is available
         if not await client.health_check():
-            logger.warning(f"[VmManager] vmcontrol not available, skipping batch registration")
-            return
+            raise RuntimeError("vmcontrol not available for batch registration")
         
         # Register each VM
         registered = 0
@@ -548,7 +553,7 @@ class VmManager:
                 registered += 1
                 
             except Exception as e:
-                logger.warning(f"[VmManager] Failed to register VM {agent_id}: {e}")
+                raise RuntimeError(f"failed to register VM {agent_id}: {e}")
         
         logger.info(f"[VmManager] Batch registration complete: {registered}/{len(vms)} VMs registered")
     
@@ -835,9 +840,16 @@ class VmManager:
         except Exception:
             return False
     
+    def _get_agent_name_for_registration(self, agent_id: str) -> str:
+        """Resolve agent name for vmcontrol registration (agent may be undefined if ports were passed in)."""
+        from gateway.config.agents_db import AgentConfigManagerDB
+        agent = AgentConfigManagerDB().get_agent(agent_id)
+        return agent.name if agent else agent_id
+
     async def _register_vm_with_vmcontrol(self, agent_id: str, agent_name: str, ports: PortConfig):
         """
-        Register VM with vmcontrol service
+        Register VM with vmcontrol service.
+        Phase3 strict: failures propagate; caller treats as fatal.
         
         Args:
             agent_id: Agent ID (VM ID)
@@ -851,8 +863,7 @@ class VmManager:
             
             # Check if vmcontrol is available
             if not await client.health_check():
-                logger.warning(f"[VmManager] vmcontrol not available, skipping VM registration")
-                return
+                raise RuntimeError("vmcontrol not available")
             
             # Build QMP socket path
             qmp_socket = f"/tmp/novaic/novaic-qmp-{agent_id}.sock"
@@ -867,8 +878,8 @@ class VmManager:
             logger.info(f"[VmManager] VM {agent_id} registered with vmcontrol: {result}")
             
         except Exception as e:
-            logger.warning(f"[VmManager] Failed to register VM with vmcontrol: {e}")
-            # Don't fail VM start if registration fails
+            logger.error(f"[VmManager] Failed to register VM with vmcontrol: {e}")
+            raise
     
     def _is_pid_alive(self, pid: Optional[int]) -> bool:
         """Check if a process is still running."""

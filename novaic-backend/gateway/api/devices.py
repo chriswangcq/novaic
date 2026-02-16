@@ -12,6 +12,8 @@ import logging
 import shutil
 from pathlib import Path
 
+from common.config import ServiceConfig
+from common.http.clients import internal_client
 from gateway.db.access import get_database, Database
 from gateway.db.repositories import DeviceRepository
 from gateway.config.devices import (
@@ -488,8 +490,6 @@ def _setup_linux_device(device: LinuxDevice, request: SetupDeviceRequest, repo: 
 
 def _setup_android_device(device: AndroidDevice, request: SetupDeviceRequest, repo: DeviceRepository):
     """Setup an Android device."""
-    import httpx
-    
     if not device.managed:
         # External device, just mark as ready
         repo.update_status(device.id, DeviceStatus.READY)
@@ -499,8 +499,8 @@ def _setup_android_device(device: AndroidDevice, request: SetupDeviceRequest, re
     
     try:
         # Create AVD via vmcontrol
-        VMCONTROL_URL = "http://localhost:19996"
-        with httpx.Client(timeout=60.0) as client:
+        VMCONTROL_URL = ServiceConfig.VMCONTROL_URL
+        with internal_client(timeout=60.0) as client:
             response = client.post(
                 f"{VMCONTROL_URL}/api/android/avd/create",
                 json={
@@ -563,12 +563,10 @@ def _start_linux_device(device: LinuxDevice, repo: DeviceRepository):
 
 def _start_android_device(device: AndroidDevice, repo: DeviceRepository):
     """Start an Android device."""
-    import httpx
-    
-    VMCONTROL_URL = "http://localhost:19996"
-    
+    VMCONTROL_URL = ServiceConfig.VMCONTROL_URL
+
     try:
-        with httpx.Client(timeout=60.0) as client:  # Longer timeout for emulator start
+        with internal_client(timeout=60.0) as client:  # Longer timeout for emulator start
             response = client.post(
                 f"{VMCONTROL_URL}/api/android/emulator/start",
                 json={"avd": device.avd_name}  # vmcontrol expects "avd" not "avd_name"
@@ -599,9 +597,8 @@ def _stop_device(device: Device):
         vm_manager.stop(device.agent_id)
         return {"status": "ok", "message": "Linux VM stopped"}
     else:
-        import httpx
-        VMCONTROL_URL = "http://localhost:19996"
-        with httpx.Client(timeout=30.0) as client:
+        VMCONTROL_URL = ServiceConfig.VMCONTROL_URL
+        with internal_client(timeout=30.0) as client:
             client.post(
                 f"{VMCONTROL_URL}/api/android/emulator/stop",
                 json={"serial": device.device_serial}
@@ -619,11 +616,10 @@ def _is_linux_device_running(device: LinuxDevice) -> bool:
 
 def _is_android_device_running(device: AndroidDevice) -> bool:
     """Check if Android device is running."""
-    import httpx
-    VMCONTROL_URL = "http://localhost:19996"
-    
+    VMCONTROL_URL = ServiceConfig.VMCONTROL_URL
+
     try:
-        with httpx.Client(timeout=5.0) as client:
+        with internal_client(timeout=5.0) as client:
             response = client.get(f"{VMCONTROL_URL}/api/android/devices")
             devices = response.json().get('devices', [])
             for d in devices:
@@ -640,7 +636,6 @@ def _is_android_device_running(device: AndroidDevice) -> bool:
 
 def _delete_avd(avd_name: str):
     """Delete an AVD via vmcontrol."""
-    import httpx
-    VMCONTROL_URL = "http://localhost:19996"
-    with httpx.Client(timeout=30.0) as client:
+    VMCONTROL_URL = ServiceConfig.VMCONTROL_URL
+    with internal_client(timeout=30.0) as client:
         client.delete(f"{VMCONTROL_URL}/api/android/avd/{avd_name}")

@@ -153,7 +153,7 @@ curl http://localhost:19999/api/vm/running
 tail -f ~/Library/Application\ Support/com.novaic.app/logs/gateway-*.log | grep -i recover
 
 # 3. 检查数据库状态
-sqlite3 ~/Library/Application\ Support/com.novaic.app/novaic.db "SELECT agent_id, status FROM vm_processes;"
+sqlite3 ~/Library/Application\ Support/com.novaic.app/gateway.db "SELECT agent_id, status FROM vm_processes;"
 ```
 
 ### 问题：vmcontrol 重启后未自动发现

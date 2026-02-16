@@ -1,15 +1,13 @@
-"""
-Tool Result Service - 配置
-"""
+"""Tool Result Service - strict config constants."""
 
-import os
+from common.config import ServiceConfig
 
 # 服务端口
-SERVICE_PORT = int(os.getenv("TOOL_RESULT_SERVICE_PORT", "19994"))
+SERVICE_PORT = ServiceConfig.TOOL_RESULT_SERVICE_PORT
 
 # 依赖服务 URL
-FILE_SERVICE_URL = os.getenv("FILE_SERVICE_URL", "http://127.0.0.1:19995")
-GATEWAY_URL = os.getenv("GATEWAY_URL", "http://127.0.0.1:19999")
+FILE_SERVICE_URL = ServiceConfig.FILE_SERVICE_URL
+GATEWAY_URL = ServiceConfig.GATEWAY_URL
 
 # 文本截断阈值（字节）
 TEXT_TRUNCATE_THRESHOLD = 4 * 1024  # 4KB

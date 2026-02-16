@@ -319,8 +319,8 @@ def get_prompts_preview(agent_id: str):
 @router.get("/tools/categories")
 def get_tool_categories():
     """Get all available tool categories and their tools."""
-    from tools_server.tools import BUILTIN_TOOLS
-    
+    from common.tools import BUILTIN_TOOLS
+
     categories = {}
     for cat_name, tools_list in BUILTIN_TOOLS.items():
         categories[cat_name] = {

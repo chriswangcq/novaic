@@ -5,6 +5,8 @@
 
 pub struct AppConfig;
 
+// Some constants are stage-specific and not always referenced by every build path.
+#[allow(dead_code)]
 impl AppConfig {
     // ===== VM Operation Timeouts =====
     

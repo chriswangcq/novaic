@@ -4,6 +4,10 @@ VM API Endpoints
 REST API for VM management (setup, start, stop, status).
 Replaces Tauri's VM commands.
 
+Phase3: vmcontrol is the single VM backend for runtime state. No local VM manager
+fallback for VM runtime (start/stop/status/setup-status). Local vm_manager is still
+used for QEMU process spawning and recovery; runtime queries go to vmcontrol.
+
 Also includes Android emulator management APIs.
 """
 
@@ -17,13 +21,16 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import httpx
 
-from gateway.vm import get_vm_manager, VmSetup, get_ssh_key_manager
+from common.config import ServiceConfig
+from common.http.clients import internal_async_client
+from gateway.vm import VmSetup, get_ssh_key_manager
 from gateway.vm.deployer import get_vmuse_deployer
+from gateway.clients.vmcontrol import get_vmcontrol_client
 
 logger = logging.getLogger(__name__)
 
-# vmcontrol service URL
-VMCONTROL_URL = os.environ.get("VMCONTROL_URL", "http://127.0.0.1:19996")
+# vmcontrol service URL (use ServiceConfig for consistency)
+VMCONTROL_URL = os.environ.get("VMCONTROL_URL") or ServiceConfig.VMCONTROL_URL
 
 # Constants for setup status monitoring
 SSH_TIMEOUT = 5
@@ -139,7 +146,7 @@ class VmStatusResponse(BaseModel):
     agent_healthy: bool
     mcp_healthy: bool
     ports: Dict[str, int]
-    vnc_url: str  # vmcontrol WebSocket URL: ws://localhost:8080/api/vms/{agent_id}/vnc
+    vnc_url: str  # vmcontrol WebSocket URL: ws://localhost:19996/api/vms/{agent_id}/vnc
     mcp_url: str
     pid: Optional[int] = None
     started_at: Optional[str] = None
@@ -199,73 +206,90 @@ def setup_vm(request: VmSetupRequest):
 # ==================== VM Lifecycle ====================
 
 @router.post("/start")
-def start_vm(request: VmStartRequest, auto_deploy_vmuse: bool = True):
+async def start_vm(request: VmStartRequest, auto_deploy_vmuse: bool = True):
     """
-    Start VM for an agent.
-    
-    Starts QEMU and waits for services to be ready.
+    Register an already-running VM into vmcontrol backend.
     
     Args:
         request: VM start request
         auto_deploy_vmuse: Automatically deploy VMUSE after VM starts (default: True)
     """
     try:
-        manager = get_vm_manager()
-        result = manager.start(
-            agent_id=request.agent_id,
-            memory=request.memory,
-            cpus=request.cpus,
-        )
-        
-        # Trigger automatic VMUSE deployment if enabled
+        from gateway.config import get_agent_config_manager
+
+        # Phase3: Gateway only aggregates/forwards VM control to vmcontrol.
+        # This endpoint now performs vmcontrol registration for an already-running VM.
+        agent_manager = get_agent_config_manager()
+        agent = agent_manager.get_agent(request.agent_id)
+        if not agent:
+            raise HTTPException(status_code=404, detail=f"Agent not found: {request.agent_id}")
+
+        qmp_socket = f"/tmp/novaic/novaic-qmp-{request.agent_id}.sock"
+        if not Path(qmp_socket).exists():
+            raise HTTPException(
+                status_code=409,
+                detail=f"QMP socket not found: {qmp_socket}. VM is not running or not ready."
+            )
+
+        client = get_vmcontrol_client()
+        try:
+            result = await client.register_vm(
+                vm_id=request.agent_id,
+                name=agent.name,
+                qmp_socket=qmp_socket,
+            )
+            vm_status = "registered"
+        except httpx.HTTPStatusError as e:
+            # vmcontrol returns 409 when already registered
+            if e.response is not None and e.response.status_code == 409:
+                result = {"message": "VM already registered in vmcontrol"}
+                vm_status = "already_registered"
+            else:
+                raise
+
+        # Optional: keep existing auto deployment behavior for VMUSE when VM is ready.
         if auto_deploy_vmuse:
-            from gateway.config import get_agent_config_manager
-            agent_manager = get_agent_config_manager()
-            agent = agent_manager.get_agent(request.agent_id)
-            
-            if agent:
-                ports = _get_device_ports(agent)
-                if ports['ssh'] and ports['vmuse']:
-                    # Schedule deployment task (non-blocking)
-                    import threading
-                    deploy_thread = threading.Thread(
-                        target=_deploy_vmuse_background,
-                        args=(request.agent_id, ports['ssh'], ports['vmuse']),
-                        daemon=True
-                    )
-                    deploy_thread.start()
-                    logger.info(f"[VM API] Scheduled VMUSE deployment for agent {request.agent_id}")
+            ports = _get_device_ports(agent)
+            if ports['ssh'] and ports['vmuse']:
+                import threading
+                deploy_thread = threading.Thread(
+                    target=_deploy_vmuse_background,
+                    args=(request.agent_id, ports['ssh'], ports['vmuse']),
+                    daemon=True
+                )
+                deploy_thread.start()
+                logger.info(f"[VM API] Scheduled VMUSE deployment for agent {request.agent_id}")
+                if isinstance(result, dict):
                     result["vmuse_deployment"] = "scheduled"
-        
-        return {"success": True, **result}
+
+        return {"success": True, "status": vm_status, **(result if isinstance(result, dict) else {})}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"[VM API] Start failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/stop")
-def stop_vm(request: VmStopRequest):
+async def stop_vm(request: VmStopRequest):
     """
-    Stop VM for an agent.
-    
-    Attempts graceful shutdown via SSH, then force kills if needed.
-    Use quick=True for faster shutdown (shorter timeouts).
+    Stop VM for an agent via vmcontrol backend.
     """
     try:
-        manager = get_vm_manager()
-        result = manager.stop(
-            agent_id=request.agent_id,
-            graceful=request.graceful,
-            quick=request.quick,
-        )
-        return {"success": True, **result}
+        # Phase3: vmcontrol is the single VM backend.
+        # Gateway only forwards/aggregates VM control API.
+        client = get_vmcontrol_client()
+        result = await client.shutdown_vm(request.agent_id)
+        if not isinstance(result, dict):
+            result = {"result": result}
+        return {"success": True, "status": "shutdown_sent", **result}
     except Exception as e:
         logger.error(f"[VM API] Stop failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/stop-all")
-def stop_all_vms(quick: bool = False, graceful: bool = True):
+async def stop_all_vms(quick: bool = False, graceful: bool = True):
     """Stop all running VMs in parallel.
     
     Args:
@@ -273,8 +297,10 @@ def stop_all_vms(quick: bool = False, graceful: bool = True):
         graceful: Try SSH poweroff before force kill
     """
     try:
-        manager = get_vm_manager()
-        result = manager.stop_all(graceful=graceful, quick=quick)
+        client = get_vmcontrol_client()
+        result = await client.shutdown_all_vms()
+        if not isinstance(result, dict):
+            result = {"result": result}
         return {"success": True, "results": result}
     except Exception as e:
         logger.error(f"[VM API] Stop all failed: {e}")
@@ -284,64 +310,105 @@ def stop_all_vms(quick: bool = False, graceful: bool = True):
 # ==================== VM Status ====================
 
 @router.get("/status/{agent_id}")
-def get_vm_status(agent_id: str):
+async def get_vm_status(agent_id: str):
     """Get VM status for a specific agent."""
-    manager = get_vm_manager()
-    status = manager.get_status(agent_id)
-    
-    if not status:
+    client = get_vmcontrol_client()
+    try:
+        vm_info = await client.get_vm_info(agent_id)
+    except httpx.HTTPStatusError as e:
+        if e.response is not None and e.response.status_code == 404:
+            raise HTTPException(status_code=404, detail="VM not found")
+        raise HTTPException(status_code=500, detail=f"vmcontrol error: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"vmcontrol unavailable: {str(e)}")
+
+    if not vm_info:
         raise HTTPException(status_code=404, detail="VM not found")
-    
+
+    running = (vm_info.get("status") or "").lower() in {"running", "started", "active"}
+
+    ports: Dict[str, int] = {}
+    try:
+        from gateway.config import get_agent_config_manager
+        agent = get_agent_config_manager().get_agent(agent_id)
+        if agent:
+            ports = _get_device_ports(agent)
+    except Exception:
+        ports = {}
+
     return VmStatusResponse(
-        agent_id=status.agent_id,
-        running=status.running,
-        agent_healthy=status.agent_healthy,
-        mcp_healthy=status.mcp_healthy,
-        ports=status.ports,
-        vnc_url=status.vnc_url,
-        mcp_url=status.mcp_url,
-        pid=status.pid,
-        started_at=status.started_at,
-        error_message=status.error_message,
+        agent_id=agent_id,
+        running=running,
+        agent_healthy=True,
+        mcp_healthy=False,
+        ports=ports,
+        vnc_url=f"ws://localhost:19996/api/vms/{agent_id}/vnc",
+        mcp_url="",
+        pid=vm_info.get("pid"),
+        started_at=vm_info.get("started_at"),
+        error_message=vm_info.get("error_message"),
     )
 
 
 @router.get("/status")
-def get_all_vm_status():
+async def get_all_vm_status():
     """Get status for all VMs."""
-    manager = get_vm_manager()
-    all_status = manager.get_all_status()
-    
-    return {
-        agent_id: VmStatusResponse(
-            agent_id=status.agent_id,
-            running=status.running,
-            agent_healthy=status.agent_healthy,
-            mcp_healthy=status.mcp_healthy,
-            ports=status.ports,
-            vnc_url=status.vnc_url,
-            mcp_url=status.mcp_url,
-            pid=status.pid,
-            started_at=status.started_at,
-            error_message=status.error_message,
+    client = get_vmcontrol_client()
+    try:
+        vms = await client.list_vms()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"vmcontrol unavailable: {str(e)}")
+
+    result: Dict[str, VmStatusResponse] = {}
+    for vm in vms:
+        agent_id = vm.get("id")
+        if not agent_id:
+            continue
+        running = (vm.get("status") or "").lower() in {"running", "started", "active"}
+        result[agent_id] = VmStatusResponse(
+            agent_id=agent_id,
+            running=running,
+            agent_healthy=True,
+            mcp_healthy=False,
+            ports={},
+            vnc_url=f"ws://localhost:19996/api/vms/{agent_id}/vnc",
+            mcp_url="",
+            pid=vm.get("pid"),
+            started_at=vm.get("started_at"),
+            error_message=vm.get("error_message"),
         )
-        for agent_id, status in all_status.items()
-    }
+    return result
 
 
 @router.get("/running")
-def get_running_agents():
+async def get_running_agents():
     """Get list of running agent IDs."""
-    manager = get_vm_manager()
-    agents = manager.get_running_agents()
+    client = get_vmcontrol_client()
+    try:
+        vms = await client.list_vms()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"vmcontrol unavailable: {str(e)}")
+    agents = [
+        vm.get("id")
+        for vm in vms
+        if vm.get("id") and (vm.get("status") or "").lower() in {"running", "started", "active"}
+    ]
     return {"agents": agents}
 
 
 @router.get("/is-running/{agent_id}")
-def is_vm_running(agent_id: str):
+async def is_vm_running(agent_id: str):
     """Check if a specific VM is running."""
-    manager = get_vm_manager()
-    running = manager.is_running(agent_id)
+    client = get_vmcontrol_client()
+    try:
+        vm_info = await client.get_vm_info(agent_id)
+    except httpx.HTTPStatusError as e:
+        if e.response is not None and e.response.status_code == 404:
+            return {"running": False}
+        raise HTTPException(status_code=500, detail=f"vmcontrol error: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"vmcontrol unavailable: {str(e)}")
+    running = (vm_info.get("status") or "").lower() in {"running", "started", "active"}
     return {"running": running}
 
 
@@ -422,45 +489,19 @@ async def get_vnc_status(agent_id: str):
             "reason": str                   # Status reason or error message
         }
     """
-    from pathlib import Path
-    from gateway.clients.vmcontrol import get_vmcontrol_client
-    
+    # Phase3: vmcontrol is the single source of truth for VM runtime status.
     result = {
         "available": False,
         "vm_running": False,
-        "vnc_socket_exists": False,
-        "vnc_socket_path": "",
+        "vnc_socket_exists": None,
+        "vnc_socket_path": None,
         "vmcontrol_healthy": False,
         "vm_registered": False,
         "vnc_url": f"ws://localhost:19996/api/vms/{agent_id}/vnc",
         "reason": ""
     }
-    
-    # 1. Check if VM is running
-    manager = get_vm_manager()
-    process_info = manager.repo.get_process(agent_id)
-    
-    if not process_info:
-        result["reason"] = "VM not started"
-        return result
-    
-    pid = process_info.get("pid")
-    if not pid or not manager._is_pid_alive(pid):
-        result["reason"] = "VM process not running"
-        return result
-    
-    result["vm_running"] = True
-    
-    # 2. Check VNC Socket file
-    socket_path = Path(f"/tmp/novaic/novaic-vnc-{agent_id}.sock")
-    result["vnc_socket_path"] = str(socket_path)
-    result["vnc_socket_exists"] = socket_path.exists()
-    
-    if not result["vnc_socket_exists"]:
-        result["reason"] = "VNC socket not found (VM may still be booting)"
-        return result
-    
-    # 3. Check VmControl service health
+
+    # 1. Check vmcontrol health
     try:
         client = get_vmcontrol_client()
         result["vmcontrol_healthy"] = await client.health_check()
@@ -471,26 +512,27 @@ async def get_vnc_status(agent_id: str):
     if not result["vmcontrol_healthy"]:
         result["reason"] = "VmControl service not available"
         return result
-    
-    # 4. Check if VM is registered in VmControl
+
+    # 2. Check VM registration + runtime state via vmcontrol
     try:
-        vms = await client.list_vms()
-        result["vm_registered"] = any(
-            vm.get("id") == agent_id or vm.get("agent_id") == agent_id 
-            for vm in vms
-        )
+        vm_info = await client.get_vm_info(agent_id)
+        result["vm_registered"] = True
+        vm_status = (vm_info.get("status") or "").lower()
+        result["vm_running"] = vm_status in {"running", "started", "active"}
     except Exception as e:
-        logger.warning(f"[VNC Status] Failed to list VMs from VmControl: {e}")
+        logger.warning(f"[VNC Status] Failed to get VM status from VmControl: {e}")
         result["vm_registered"] = False
-    
+
     if not result["vm_registered"]:
-        result["reason"] = "VM not registered in VmControl (may need to restart VmControl)"
+        result["reason"] = "VM not registered in VmControl"
         return result
-    
-    # All checks passed
+
+    if not result["vm_running"]:
+        result["reason"] = "VM is registered but not running"
+        return result
+
     result["available"] = True
-    result["reason"] = "VNC ready"
-    
+    result["reason"] = "VNC ready (vmcontrol)"
     return result
 
 
@@ -669,33 +711,37 @@ def _run_ssh_command(key_path: Path, ssh_port: int, command: str, timeout: int =
 
 
 @router.get("/{agent_id}/setup-status")
-def get_setup_status(agent_id: str):
+async def get_setup_status(agent_id: str):
     """
     Get detailed setup status for a VM during initialization.
-    
+
+    Phase3: vmcontrol is the sole source of VM runtime truth.
+    VM process status (created/booting/running) is determined via vmcontrol get_vm_info.
+    Cloud-init and SSH checks remain unchanged.
+
     Returns progress information for frontend to display:
     - Phase: creating/booting/cloud-init/vmuse-deploy/complete/error
     - Progress: 0-100%
     - Message: Human-readable status
     - Steps: Detailed breakdown of each phase
-    
+
     Args:
         agent_id: Agent ID
-    
+
     Returns:
         Detailed setup status
     """
     try:
         from gateway.config import get_agent_config_manager
-        
+
         agent_manager = get_agent_config_manager()
         agent = agent_manager.get_agent(agent_id)
-        
+
         if not agent:
             raise HTTPException(status_code=404, detail="Agent not found")
-        
+
         logger.debug(f"[Setup Status] Checking status for agent {agent_id}")
-        
+
         # Base response structure
         response = {
             "agent_id": agent_id,
@@ -705,7 +751,7 @@ def get_setup_status(agent_id: str):
             "steps": {},
             "error": None,
         }
-        
+
         # Get SSH key path upfront (needed for multiple checks)
         key_path = None
         try:
@@ -721,7 +767,7 @@ def get_setup_status(agent_id: str):
                 "error": str(e),
                 "steps": {},
             }
-        
+
         # Check if cloud-init is already complete
         if agent.cloud_init_complete:
             logger.debug(f"[Setup Status] Agent {agent_id} already marked as complete")
@@ -737,24 +783,45 @@ def get_setup_status(agent_id: str):
                 }
             })
             return response
-        
-        # Phase 1: Check VM process status
-        vm_manager = get_vm_manager()
-        vm_process = vm_manager.repo.get_process(agent_id)
-        
-        if not vm_process:
-            logger.debug(f"[Setup Status] Agent {agent_id}: VM process not found")
-            response.update({
-                "phase": "creating",
-                "progress": 5,
-                "message": "正在创建虚拟机...",
-                "steps": {"vm_created": False}
-            })
-            return response
-        
-        vm_status = vm_process.get("status", "stopped")
-        if vm_status != "running":
-            logger.debug(f"[Setup Status] Agent {agent_id}: VM status = {vm_status}")
+
+        # Phase 1: Check VM runtime status via vmcontrol (Phase3: no local vm_processes)
+        vm_info = None
+        try:
+            client = get_vmcontrol_client()
+            vm_info = await client.get_vm_info(agent_id)
+        except httpx.HTTPStatusError as e:
+            if e.response is not None and e.response.status_code == 404:
+                logger.debug(f"[Setup Status] Agent {agent_id}: VM not registered in vmcontrol")
+                response.update({
+                    "phase": "creating",
+                    "progress": 5,
+                    "message": "正在创建虚拟机...",
+                    "steps": {"vm_created": False}
+                })
+                return response
+            logger.error(f"[Setup Status] vmcontrol error for {agent_id}: {e}")
+            return {
+                "agent_id": agent_id,
+                "phase": "error",
+                "progress": 0,
+                "message": "获取 VM 状态失败",
+                "error": str(e),
+                "steps": {},
+            }
+        except Exception as e:
+            logger.error(f"[Setup Status] vmcontrol unavailable for {agent_id}: {e}")
+            return {
+                "agent_id": agent_id,
+                "phase": "error",
+                "progress": 0,
+                "message": "VM 控制服务不可用",
+                "error": str(e),
+                "steps": {},
+            }
+
+        vm_status = (vm_info.get("status") or "").lower()
+        if vm_status not in {"running", "started", "active"}:
+            logger.debug(f"[Setup Status] Agent {agent_id}: vmcontrol status = {vm_status}")
             response.update({
                 "phase": "booting",
                 "progress": 10,
@@ -765,7 +832,7 @@ def get_setup_status(agent_id: str):
                 }
             })
             return response
-        
+
         response["steps"]["vm_created"] = True
         response["steps"]["vm_booted"] = True
         
@@ -1047,7 +1114,7 @@ async def start_android(request: AndroidStartRequest):
             )
         
         # 3. Call vmcontrol API to start emulator
-        async with httpx.AsyncClient(timeout=180.0) as client:
+        async with internal_async_client(timeout=180.0) as client:
             vmcontrol_url = f"{VMCONTROL_URL}/api/android/emulator/start"
             payload = {
                 "avd": android_config.avd_name,
@@ -1161,7 +1228,7 @@ async def stop_android(request: AndroidStopRequest):
             )
         
         # 3. Call vmcontrol API to stop emulator
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with internal_async_client(timeout=30.0) as client:
             vmcontrol_url = f"{VMCONTROL_URL}/api/android/emulator/stop"
             payload = {"serial": device_serial}
             
@@ -1245,7 +1312,7 @@ async def get_android_status(agent_id: str):
         running = False
         if device_serial:
             try:
-                async with httpx.AsyncClient(timeout=10.0) as client:
+                async with internal_async_client(timeout=10.0) as client:
                     # Get device list from vmcontrol
                     vmcontrol_url = f"{VMCONTROL_URL}/api/android/devices"
                     response = await client.get(vmcontrol_url)
@@ -1287,7 +1354,7 @@ async def list_android_devices():
     """列出所有 Android 设备"""
     logger.info("[Android API] Listing Android devices")
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with internal_async_client(timeout=30.0) as client:
             response = await client.get(f"{VMCONTROL_URL}/api/android/devices")
             if response.status_code != 200:
                 logger.error(f"[Android API] vmcontrol returned {response.status_code}: {response.text}")
@@ -1306,7 +1373,7 @@ async def list_avds():
     """列出所有 AVD"""
     logger.info("[Android API] Listing AVDs")
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with internal_async_client(timeout=30.0) as client:
             response = await client.get(f"{VMCONTROL_URL}/api/android/avds")
             if response.status_code != 200:
                 logger.error(f"[Android API] vmcontrol returned {response.status_code}: {response.text}")
@@ -1325,7 +1392,7 @@ async def check_system_image():
     """检查 Android 系统镜像"""
     logger.info("[Android API] Checking system image")
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with internal_async_client(timeout=30.0) as client:
             response = await client.get(f"{VMCONTROL_URL}/api/android/system-image/check")
             if response.status_code != 200:
                 logger.error(f"[Android API] vmcontrol returned {response.status_code}: {response.text}")
@@ -1344,7 +1411,7 @@ async def list_device_definitions():
     """列出设备定义"""
     logger.info("[Android API] Listing device definitions")
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with internal_async_client(timeout=30.0) as client:
             response = await client.get(f"{VMCONTROL_URL}/api/android/device-definitions")
             if response.status_code != 200:
                 logger.error(f"[Android API] vmcontrol returned {response.status_code}: {response.text}")
@@ -1371,7 +1438,7 @@ async def create_avd(request: CreateAvdRequest):
     """创建 AVD"""
     logger.info(f"[Android API] Creating AVD: {request.avd_name}")
     try:
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        async with internal_async_client(timeout=120.0) as client:
             # vmcontrol expects 'name' not 'avd_name'
             payload = {
                 "name": request.avd_name,
@@ -1404,7 +1471,7 @@ async def delete_avd(avd_name: str):
     """删除 AVD"""
     logger.info(f"[Android API] Deleting AVD: {avd_name}")
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with internal_async_client(timeout=30.0) as client:
             response = await client.delete(f"{VMCONTROL_URL}/api/android/avd/{avd_name}")
             if response.status_code != 200:
                 logger.error(f"[Android API] vmcontrol returned {response.status_code}: {response.text}")
@@ -1423,7 +1490,7 @@ async def check_scrcpy_status():
     """检查 scrcpy 可用性"""
     logger.info("[Android API] Checking scrcpy status")
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with internal_async_client(timeout=10.0) as client:
             response = await client.get(f"{VMCONTROL_URL}/api/android/scrcpy/status")
             if response.status_code != 200:
                 logger.error(f"[Android API] vmcontrol returned {response.status_code}: {response.text}")

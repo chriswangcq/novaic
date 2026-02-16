@@ -26,6 +26,7 @@ from .schemas import (
 )
 from gateway.config import get_config_manager, ProviderType
 from gateway.db.access import get_db
+from .runtime_orchestrator_forward import forward_to_runtime_orchestrator
 
 router = APIRouter()
 
@@ -221,7 +222,8 @@ def add_model(key_id: str, data: CustomModelAdd):
 def test_api_key(key_id: str):
     """Test API key connection by making a simple API call"""
     import httpx
-    
+    from common.http.clients import external_client
+
     config = get_config_manager().load()
     entry = config.get_api_key_by_id(key_id)
     if entry is None:
@@ -232,7 +234,7 @@ def test_api_key(key_id: str):
     
     try:
         base_url = entry.get_effective_base_url()
-        with httpx.Client(timeout=10.0) as client:
+        with external_client(timeout=10.0) as client:
             # Try a simple models list request
             if entry.provider.value == "openai":
                 url = f"{base_url}/models"
@@ -278,8 +280,8 @@ def test_api_key(key_id: str):
 @router.get("/config/api-keys/{key_id}/fetch-models")
 def fetch_models_for_key(key_id: str):
     """Fetch available models from the provider API"""
-    import httpx
-    
+    from common.http.clients import external_client
+
     config = get_config_manager().load()
     entry = config.get_api_key_by_id(key_id)
     if entry is None:
@@ -290,7 +292,7 @@ def fetch_models_for_key(key_id: str):
     
     try:
         base_url = entry.get_effective_base_url()
-        with httpx.Client(timeout=30.0) as client:
+        with external_client(timeout=30.0) as client:
             if entry.provider.value in ["openai", "azure", "openai_compatible"]:
                 url = f"{base_url}/models"
                 headers = {"Authorization": f"Bearer {entry.api_key}"}
@@ -495,7 +497,7 @@ def chat(request: ChatRequest):
     Send a message to the Agent's inbox.
     
     v12: Uses Master-driven architecture.
-    - Message is stored in inbox (chat_messages table)
+    - Message is forwarded to Runtime Orchestrator inbox
     - Monitor detects unread messages
     - Master creates Runtime and drives ReACT loop
     - Agent replies via SSE events (subscribe to /api/chat/events)
@@ -505,7 +507,6 @@ def chat(request: ChatRequest):
     - message_id: ID of the stored message
     - timestamp: When the message was stored
     """
-    from gateway.db.repositories.message import MessageRepository
     from gateway.config.agents import get_agent_config_manager
     
     # agent_id is required
@@ -543,16 +544,15 @@ def chat(request: ChatRequest):
     if request.api_key_id:
         metadata["api_key_id"] = request.api_key_id
     
-    # Store message in inbox (status=sending for Monitor queue)
-    db = get_db()
-    message_repo = MessageRepository(db)
-    
-    msg = message_repo.add_message(
-        agent_id=agent_id,
-        type="USER_MESSAGE",
-        content=content,
-        metadata=metadata if metadata else None,
-        status="sending",  # v18: Monitor will consume and change to 'sent'
+    msg = forward_to_runtime_orchestrator(
+        "POST",
+        "/internal/messages",
+        json_body={
+            "agent_id": agent_id,
+            "type": "USER_MESSAGE",
+            "content": content,
+            "metadata": metadata if metadata else None,
+        },
     )
     
     # Broadcast to UI SSE (for display)
@@ -591,7 +591,6 @@ def chat_stream(request: ChatRequest):
     Note: This endpoint stores the message and then subscribes to events.
     For better control, use POST /chat + GET /api/chat/events separately.
     """
-    from gateway.db.repositories.message import MessageRepository
     from gateway.config.agents import get_agent_config_manager
     import asyncio
     
@@ -629,16 +628,15 @@ def chat_stream(request: ChatRequest):
     if request.api_key_id:
         metadata["api_key_id"] = request.api_key_id
     
-    # Store message in inbox (status=sending for Monitor queue)
-    db = get_db()
-    message_repo = MessageRepository(db)
-    
-    msg = message_repo.add_message(
-        agent_id=agent_id,
-        type="USER_MESSAGE",
-        content=content,
-        metadata=metadata if metadata else None,
-        status="sending",  # v18: Monitor will consume and change to 'sent'
+    msg = forward_to_runtime_orchestrator(
+        "POST",
+        "/internal/messages",
+        json_body={
+            "agent_id": agent_id,
+            "type": "USER_MESSAGE",
+            "content": content,
+            "metadata": metadata if metadata else None,
+        },
     )
     
     user_message_id = msg["id"]
@@ -736,41 +734,24 @@ def resolve_api_config(config, request: ChatRequest) -> tuple:
     return provider, api_base, api_key
 
 
-# ==================== History (v12: Use chat_messages table) ====================
+# ==================== History ====================
 
 @router.get("/history", response_model=HistoryResponse)
 def get_history(agent_id: str = Query(..., description="Agent ID (required)")):
     """
     Get chat history.
     
-    v12: Uses chat_messages table instead of NovAICAgent session.
+    Reads history from Runtime Orchestrator.
     """
     if not agent_id:
         raise HTTPException(status_code=400, detail="agent_id is required")
     
-    db = get_db()
-    rows = db.fetchall(
-        """
-        SELECT id, type, content, timestamp, read 
-        FROM chat_messages 
-        WHERE agent_id = ? AND type != 'SYSTEM_WAKE'
-        ORDER BY timestamp DESC 
-        LIMIT 100
-        """,
-        (agent_id,)
+    payload = forward_to_runtime_orchestrator(
+        "GET",
+        "/internal/chat/history",
+        params={"agent_id": agent_id, "limit": 100},
     )
-    
-    messages = []
-    for row in rows:
-        messages.append({
-            "id": row["id"],
-            "type": row["type"],
-            "content": row["content"],
-            "timestamp": row["timestamp"],
-            "read": bool(row["read"]),
-        })
-    
-    return HistoryResponse(messages=list(reversed(messages)))
+    return HistoryResponse(messages=payload.get("messages", []))
 
 
 @router.post("/clear")
@@ -778,19 +759,16 @@ def clear_history(agent_id: str = Query(..., description="Agent ID (required)"))
     """
     Clear chat history.
     
-    v12: Marks all messages as read instead of deleting.
+    Delegates clear operation to Runtime Orchestrator.
     """
     if not agent_id:
         raise HTTPException(status_code=400, detail="agent_id is required")
     
-    db = get_db()
-    with db.transaction(lock_type="agent", resource_id=agent_id, timeout=10.0):
-        db.execute(
-            "UPDATE chat_messages SET read = 1 WHERE agent_id = ?",
-            (agent_id,)
-        )
-    
-    return {"status": "ok", "message": "History cleared (messages marked as read)"}
+    return forward_to_runtime_orchestrator(
+        "POST",
+        "/internal/chat/clear",
+        params={"agent_id": agent_id},
+    )
 
 
 # ==================== Control (v12: Master-driven) ====================
@@ -800,64 +778,14 @@ def interrupt(agent_id: str = Query(..., description="Agent ID (required)")):
     """
     Interrupt current execution.
     
-    v4.1: Gateway 不再直接调用 Queue Service。
-    - Gateway 立即更新自己的数据库（runtimes, subagents）
-    - 写入 INTERRUPT 消息，由 Watchdog 调用 QS cancel API
-    
-    这样用户得到立即响应，QS 的取消是异步处理。
+    Delegates interruption to Runtime Orchestrator.
     """
-    from gateway.db.repositories.message import MessageRepository
-    import uuid
-    
     if not agent_id:
         raise HTTPException(status_code=400, detail="agent_id is required")
-    
-    db = get_db()
-    now = utc_now_iso()
-    
-    interrupted_runtimes = 0
-    
-    # 1. 立即更新 Gateway 自己的数据库
-    with db.transaction(lock_type="global", timeout=15.0):
-        # Mark active runtimes as interrupted
-        cursor = db.execute("""
-            UPDATE agent_runtimes 
-            SET status = 'completed', phase = 'completed', updated_at = ?
-            WHERE status = 'active'
-        """, (now,))
-        interrupted_runtimes = cursor.rowcount
-        
-        # Set SubAgents to sleeping (v3: 删除 awaking 状态)
-        db.execute("""
-            UPDATE subagents 
-            SET status = 'sleeping', updated_at = ?
-            WHERE status = 'awake'
-        """, (now,))
-    
-    # 2. 写入 INTERRUPT 消息，Watchdog 会调用 QS cancel API
-    # v2.1: Gateway 不再直接调用 Queue Service
-    message_repo = MessageRepository(db)
-    
-    msg = message_repo.add_message(
-        agent_id=agent_id,
-        type="INTERRUPT",
-        content="User requested interrupt",
-        status="sending",  # Watchdog 监测 sending 状态
-        metadata={
-            "action": "cancel_all",
-            "target_agent_id": agent_id,
-            "interrupted_runtimes": interrupted_runtimes,
-        }
+    return forward_to_runtime_orchestrator(
+        "POST",
+        f"/internal/agents/{agent_id}/interrupt",
     )
-    
-    print(f"[Gateway] Created INTERRUPT message {msg['id']}, Watchdog will cancel tasks/sagas")
-    
-    return {
-        "status": "ok",
-        "message_id": msg["id"],
-        "interrupted_runtimes": interrupted_runtimes,
-        "note": "Tasks/sagas cancellation is async via Watchdog",
-    }
 
 
 @router.post("/init")

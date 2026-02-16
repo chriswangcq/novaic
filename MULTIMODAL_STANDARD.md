@@ -659,7 +659,7 @@ python -m novaic.utils.validate_mcp --input result.json
 
 ### 相关文档
 
-- `MIGRATION_GUIDE.md` - 迁移指南
+- 迁移指南（历史文档，已归档）
 - `IMPLEMENTATION_PLAN.md` - 实施计划
 - `API_CHANGES.md` - API 变更说明
 - `TESTING_GUIDE.md` - 测试指南

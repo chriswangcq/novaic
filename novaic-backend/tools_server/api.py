@@ -12,6 +12,7 @@ from typing import Dict, Any, List, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from common.config import ServiceConfig
 
 logger = logging.getLogger(__name__)
 
@@ -264,9 +265,9 @@ async def get_tools(runtime_id: str):
         agent_id = getattr(runtime, "agent_id", None)
         if agent_id:
             try:
-                import httpx
-                gateway_url = os.environ.get("NOVAIC_GATEWAY_URL", "http://127.0.0.1:19999")
-                with httpx.Client(timeout=5.0, trust_env=False) as client:
+                from common.http.clients import internal_client
+                gateway_url = ServiceConfig.GATEWAY_URL
+                with internal_client(timeout=5.0) as client:
                     resp = client.get(f"{gateway_url}/api/agents/{agent_id}/tools-config")
                     if resp.status_code == 200:
                         config = resp.json()

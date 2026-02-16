@@ -222,8 +222,8 @@ queue_service/
 如果需要迁移现有任务：
 
 ```bash
-# 从 gateway.db 导出任务
-sqlite3 $NOVAIC_DATA_DIR/novaic.db "SELECT * FROM tq_tasks" > tasks.sql
+# 从 Gateway DB 导出任务（历史环境）
+sqlite3 $NOVAIC_DATA_DIR/gateway.db "SELECT * FROM tq_tasks" > tasks.sql
 
 # 导入到 queue.db
 sqlite3 $NOVAIC_DATA_DIR/queue.db < tasks.sql

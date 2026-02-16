@@ -12,66 +12,75 @@ Backend 四组件（Gateway、Tools Server、Master、Worker）均由 Tauri 统�
 import os
 import sys
 import logging
-import argparse
 from datetime import datetime
 
 from common.utils.time import utc_now_iso
+from common.config import ServiceConfig
 
-# Set no_proxy to avoid proxy issues with local services
-os.environ['no_proxy'] = 'localhost,127.0.0.1,::1'
-os.environ['NO_PROXY'] = 'localhost,127.0.0.1,::1'
-
-# ==================== Command Line Arguments ====================
-# Parse command line arguments first to support Tauri's invocation style
-# Usage: novaic-backend gateway --port 19999 --data-dir /path/to/data
-parser = argparse.ArgumentParser(description='NovAIC Gateway')
-parser.add_argument('command', nargs='?', default='gateway', help='Command (gateway)')
-parser.add_argument('--port', type=int, default=19999, help='Gateway port')
-parser.add_argument('--data-dir', type=str, help='Data directory')
-args, unknown = parser.parse_known_args()
-
-# Set NOVAIC_DATA_DIR from command line if provided
-if args.data_dir:
-    os.environ['NOVAIC_DATA_DIR'] = args.data_dir
-
-# ==================== Environment Variables Debug ====================
-print("[Gateway] === Environment Variables ===")
-print(f"[Gateway] NOVAIC_DATA_DIR: {os.environ.get('NOVAIC_DATA_DIR', 'NOT SET')}")
-print(f"[Gateway] NOVAIC_RESOURCE_DIR: {os.environ.get('NOVAIC_RESOURCE_DIR', 'NOT SET')}")
-print(f"[Gateway] NOVAIC_TOOLS_SERVER_URL: {os.environ.get('NOVAIC_TOOLS_SERVER_URL', 'NOT SET')}")
-print(f"[Gateway] Current working directory: {os.getcwd()}")
-print(f"[Gateway] Executable path: {sys.executable}")
-print("[Gateway] ===============================")
-
-# ==================== Data Directory Setup ====================
-# NOVAIC_DATA_DIR is required (passed from Tauri app via --data-dir or env var)
-if not os.environ.get("NOVAIC_DATA_DIR"):
-    print("[Gateway] ERROR: NOVAIC_DATA_DIR environment variable or --data-dir argument is required")
-    print("[Gateway] Please start Gateway through the NovAIC app")
+# ==================== Strict Config ====================
+NOVAIC_DATA_DIR = ServiceConfig.DATA_DIR
+if not NOVAIC_DATA_DIR:
+    print("[Gateway] ERROR: paths.data_dir is required in config/services.json")
     sys.exit(1)
-
-NOVAIC_DATA_DIR = os.environ["NOVAIC_DATA_DIR"]
-print(f"[Gateway] Data directory: {NOVAIC_DATA_DIR}")
+print(f"[Gateway] Data directory (strict config): {NOVAIC_DATA_DIR}")
+print(f"[Gateway] DB file (strict config): {ServiceConfig.GATEWAY_DB_FILE}")
 
 # ==================== Data Migration ====================
 # Migrate data from old ~/.novaic/ to new $NOVAIC_DATA_DIR
 def migrate_old_data():
     """Migrate data from ~/.novaic/ to $NOVAIC_DATA_DIR if needed"""
+    import shutil
+
+    def _tauri_app_config_candidates():
+        home = os.path.expanduser("~")
+        candidates = []
+        if sys.platform == "darwin":
+            candidates.extend([
+                os.path.join(home, "Library", "Application Support", "com.novaic.app", "appConfig.json"),
+                os.path.join(home, "Library", "Application Support", "com.novaic", "appConfig.json"),
+            ])
+        elif sys.platform.startswith("linux"):
+            candidates.extend([
+                os.path.join(home, ".local", "share", "com.novaic.app", "appConfig.json"),
+                os.path.join(home, ".local", "share", "com.novaic", "appConfig.json"),
+            ])
+        else:
+            appdata = os.environ.get("APPDATA", "")
+            if appdata:
+                candidates.extend([
+                    os.path.join(appdata, "com.novaic.app", "appConfig.json"),
+                    os.path.join(appdata, "com.novaic", "appConfig.json"),
+                ])
+        return candidates
+
     old_dir = os.path.expanduser("~/.novaic")
     new_dir = NOVAIC_DATA_DIR
-    
-    if not os.path.exists(old_dir):
-        return  # No old data to migrate
-    
-    if old_dir == new_dir:
-        return  # Same directory, no migration needed
-    
-    print(f"[Gateway] Found old data directory: {old_dir}")
-    print(f"[Gateway] Migrating to: {new_dir}")
+    old_dir_exists = os.path.exists(old_dir)
+    same_dir = old_dir == new_dir
+
+    if old_dir_exists and not same_dir:
+        print(f"[Gateway] Found old data directory: {old_dir}")
+        print(f"[Gateway] Migrating to: {new_dir}")
     
     # Ensure new directory exists
     os.makedirs(new_dir, exist_ok=True)
     
+    migrated = []
+
+    # Also migrate Tauri appConfig.json -> data_dir/config.json (higher priority than ~/.novaic).
+    new_config_path = os.path.join(new_dir, "config.json")
+    if not os.path.exists(new_config_path):
+        for src in _tauri_app_config_candidates():
+            if not os.path.exists(src):
+                continue
+            try:
+                shutil.copy2(src, new_config_path)
+                migrated.append(f"config.json (from {src})")
+                print(f"[Gateway] Migrated Tauri appConfig.json -> {new_config_path}")
+                break
+            except Exception as e:
+                print(f"[Gateway] Failed to migrate Tauri appConfig from {src}: {e}")
+
     # Files/directories to migrate
     items_to_migrate = [
         "config.json",
@@ -82,26 +91,26 @@ def migrate_old_data():
         "memory",  # MCP Memory storage
     ]
     
-    migrated = []
-    for item in items_to_migrate:
-        old_path = os.path.join(old_dir, item)
-        new_path = os.path.join(new_dir, item)
-        
-        if os.path.exists(old_path) and not os.path.exists(new_path):
-            try:
-                import shutil
-                if os.path.isdir(old_path):
-                    shutil.copytree(old_path, new_path)
-                else:
-                    shutil.copy2(old_path, new_path)
-                migrated.append(item)
-                print(f"[Gateway] Migrated: {item}")
-            except Exception as e:
-                print(f"[Gateway] Failed to migrate {item}: {e}")
+    if old_dir_exists and not same_dir:
+        for item in items_to_migrate:
+            old_path = os.path.join(old_dir, item)
+            new_path = os.path.join(new_dir, item)
+            
+            if os.path.exists(old_path) and not os.path.exists(new_path):
+                try:
+                    if os.path.isdir(old_path):
+                        shutil.copytree(old_path, new_path)
+                    else:
+                        shutil.copy2(old_path, new_path)
+                    migrated.append(item)
+                    print(f"[Gateway] Migrated: {item}")
+                except Exception as e:
+                    print(f"[Gateway] Failed to migrate {item}: {e}")
     
     if migrated:
         print(f"[Gateway] Migration complete. Migrated {len(migrated)} items.")
-        print(f"[Gateway] You can safely delete the old directory: {old_dir}")
+        if old_dir_exists and not same_dir:
+            print(f"[Gateway] You can safely delete the old directory: {old_dir}")
     else:
         print(f"[Gateway] No migration needed (data already exists or nothing to migrate)")
 
@@ -179,7 +188,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from gateway.api.routes import router as api_router
 from gateway.api.agents import router as agents_router
 from gateway.api.vm import router as vm_router
-from gateway.api.internal import router as internal_router
+from gateway.api.internal_proxy import router as internal_proxy_router
 from gateway.api.vmcontrol import router as vmcontrol_router
 from gateway.api.devices import router as devices_router
 from gateway.config import get_config_manager
@@ -198,11 +207,10 @@ from gateway.db.repositories.agent_state import AgentStateRepository
 
 
 # Configuration
-HOST = os.getenv("NOVAIC_HOST", "127.0.0.1")
-# Use command line port if provided, otherwise env var, otherwise default
-PORT = args.port if args.port != 19999 else int(os.getenv("NOVAIC_PORT", "19999"))
-SOCKET_PATH = os.getenv("NOVAIC_SOCKET", "")  # Unix socket path, if set use UDS mode
-DEBUG = os.getenv("NOVAIC_DEBUG", "false").lower() == "true"
+HOST = ServiceConfig.GATEWAY_HOST
+PORT = ServiceConfig.GATEWAY_PORT
+SOCKET_PATH = ""
+DEBUG = False
 
 # Global instances
 task_manager: TaskManager = None
@@ -326,7 +334,10 @@ async def lifespan(app: FastAPI):
     
     # Initialize database
     print("[Gateway] Initializing database...")
-    db = init_database()
+    db = init_database(
+        data_dir=ServiceConfig.DATA_DIR,
+        db_file=ServiceConfig.GATEWAY_DB_FILE,
+    )
     print(f"[Gateway] Database initialized: {db.db_path}")
     
     # Run migrations (from file-based storage to SQLite)
@@ -340,7 +351,12 @@ async def lifespan(app: FastAPI):
     # Load config (now from database)
     config = get_config_manager().load()
     print(f"🤖 Default model: {config.default_model}")
-    
+
+    # Strict Runtime Orchestrator health check (no fallback)
+    from gateway.clients.runtime_orchestrator import check_runtime_orchestrator_health
+    await check_runtime_orchestrator_health()
+    print("[Gateway] Runtime Orchestrator health check passed")
+
     # Initialize all systems
     initialize_systems(config)
     
@@ -348,13 +364,11 @@ async def lifespan(app: FastAPI):
     print("[Gateway] 工具服务由 Tools Server 提供")
     
     # Recover VM processes (check for running VMs from previous Gateway session)
-    try:
-        from gateway.vm import get_vm_manager
-        vm_manager = get_vm_manager()
-        vm_manager.recover_processes()
-        print("[Gateway] VM process recovery complete")
-    except Exception as e:
-        print(f"[Gateway] Warning: Failed to recover VM processes: {e}")
+    # Phase3 strict: vmcontrol re-registration failures surface as errors (no silent continuation).
+    from gateway.vm import get_vm_manager
+    vm_manager = get_vm_manager()
+    vm_manager.recover_processes()
+    print("[Gateway] VM process recovery complete")
     
     # Start periodic cleanup task
     _cleanup_task = asyncio.create_task(periodic_task_cleanup())
@@ -454,8 +468,8 @@ app.include_router(vmcontrol_router)
 # Unified Device API routes (already has /api prefix)
 app.include_router(devices_router)
 
-# Internal API routes (v2.10 - for services, has /internal prefix)
-app.include_router(internal_router)
+# Internal API routes are strictly proxied to Runtime Orchestrator.
+app.include_router(internal_proxy_router)
 
 
 # Root endpoint
@@ -1768,7 +1782,7 @@ def wake_agent(data: dict = {}):
 # ==================== Image Storage API ====================
 # Serves images stored by ImageStorage service to avoid large base64 in database
 
-from task_queue.utils.image_storage import get_image_storage, set_image_storage, ImageStorage
+from common.utils.image_storage import get_image_storage, set_image_storage, ImageStorage
 from fastapi.responses import FileResponse
 
 # Initialize image storage with data directory
@@ -1874,12 +1888,13 @@ def cleanup_images(max_age_days: int = 7, agent_id: Optional[str] = None):
 #   python -m novaic_main tool-result-service --port 19994
 #   python -m novaic_main file-service --port 19995
 
-from common.config import ServiceConfig
 import httpx
+from common.config import ServiceConfig
+from common.http.clients import internal_async_client
 from starlette.responses import Response, JSONResponse
 
-TRS_BASE = (os.environ.get("TOOL_RESULT_SERVICE_URL") or ServiceConfig.TOOL_RESULT_SERVICE_URL).rstrip("/")
-FILES_BASE = (os.environ.get("FILE_SERVICE_URL") or ServiceConfig.FILE_SERVICE_URL).rstrip("/")
+TRS_BASE = ServiceConfig.TOOL_RESULT_SERVICE_URL.rstrip("/")
+FILES_BASE = ServiceConfig.FILE_SERVICE_URL.rstrip("/")
 
 
 @app.api_route("/api/trs/{path:path}", methods=["GET", "POST"])
@@ -1887,7 +1902,7 @@ async def proxy_trs(path: str, request: Request):
     """代理 TRS 请求，前端按 result_id 拉取内容"""
     url = f"{TRS_BASE}/api/{path}"
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with internal_async_client(timeout=30.0) as client:
             if request.method == "GET":
                 resp = await client.get(url, params=dict(request.query_params))
             else:
@@ -1923,7 +1938,7 @@ async def proxy_files_upload(request: Request):
         # 读取原始 body 和 headers 并转发
         body = await request.body()
         content_type = request.headers.get("Content-Type", "")
-        async with httpx.AsyncClient(timeout=600.0) as client:  # 10 分钟超时，支持大文件
+        async with internal_async_client(timeout=600.0) as client:  # 10 分钟超时，支持大文件
             resp = await client.post(
                 url,
                 content=body,
@@ -1953,7 +1968,7 @@ async def proxy_files(path: str):
     """代理 File Service，用于图片/文件 URL 展示（支持大文件下载）"""
     url = f"{FILES_BASE}/api/files/{path}"
     try:
-        async with httpx.AsyncClient(timeout=600.0) as client:  # 10 分钟超时，支持大文件
+        async with internal_async_client(timeout=600.0) as client:  # 10 分钟超时，支持大文件
             resp = await client.get(url)
         media = resp.headers.get("Content-Type") or "application/octet-stream"
         return Response(content=resp.content, status_code=resp.status_code, media_type=media)
