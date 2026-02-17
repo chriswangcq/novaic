@@ -355,6 +355,7 @@ impl GatewayProcess {
                 .arg(&file_service_url)
                 .arg("--tool-result-service-url")
                 .arg(&tool_result_service_url)
+                .current_dir(&data_dir_str)
                 .env("NOVAIC_RESOURCE_DIR", &resource_dir_str)
                 .env("NOVAIC_DB_FILE", "gateway.db")
                 .env("NOVAIC_TOOLS_SERVER_URL", &tools_server_url)
@@ -551,6 +552,8 @@ impl ToolsServerProcess {
         };
         println!("[Tools Server] Using resource_dir: {}", resource_dir_str);
         let gateway_url = local_url(PORT_GATEWAY);
+        let runtime_orchestrator_url = local_url(PORT_RUNTIME_ORCHESTRATOR);
+        let tool_result_service_url = local_url(PORT_TOOL_RESULT_SERVICE);
 
         let child = if is_binary {
             if !backend_path.exists() {
@@ -574,6 +577,10 @@ impl ToolsServerProcess {
                 .arg(&data_dir_str)
                 .arg("--gateway-url")
                 .arg(&gateway_url)
+                .arg("--runtime-orchestrator-url")
+                .arg(&runtime_orchestrator_url)
+                .arg("--tool-result-service-url")
+                .arg(&tool_result_service_url)
                 .env("NOVAIC_RESOURCE_DIR", &resource_dir_str)
                 .env("NOVAIC_GATEWAY_URL", &gateway_url)
                 .env("NO_PROXY", "localhost,127.0.0.1,::1")
@@ -606,6 +613,10 @@ impl ToolsServerProcess {
                 .arg(&data_dir_str)
                 .arg("--gateway-url")
                 .arg(&gateway_url)
+                .arg("--runtime-orchestrator-url")
+                .arg(&runtime_orchestrator_url)
+                .arg("--tool-result-service-url")
+                .arg(&tool_result_service_url)
                 .current_dir(&gateway_dir)
                 .env("NOVAIC_TOOLS_PORT", self.port.to_string())
                 .env("NOVAIC_GATEWAY_URL", &gateway_url)
@@ -1005,6 +1016,7 @@ impl RuntimeOrchestratorProcess {
                 .arg(self.port.to_string())
                 .arg("--data-dir")
                 .arg(&data_dir_str)
+                .current_dir(&data_dir_str)
                 .env("NOVAIC_RESOURCE_DIR", &resource_dir_str)
                 .env("NO_PROXY", "localhost,127.0.0.1,::1")
                 .env("no_proxy", "localhost,127.0.0.1,::1")
@@ -1705,18 +1717,7 @@ fn main() {
                     }
                 }
                 
-                // 5. Backend 组件: Tools Server
-                {
-                    let mut ts = tools_server_for_start.lock().await;
-                    match ts.start(&backend_path, is_binary, &data_dir_for_gateway, resource_dir.as_ref()) {
-                        Ok(_) => println!("[Tools Server] Auto-started successfully"),
-                        Err(e) => {
-                            println!("[Tools Server] Failed to auto-start: {}", e);
-                        }
-                    }
-                }
-                
-                // 6. Backend 组件: Queue Service（Task/Saga 队列管理）
+                // 5. Backend 组件: Queue Service（Task/Saga 队列管理）
                 {
                     let mut qs = queue_service_for_start.lock().await;
                     match qs.start(&backend_path, is_binary, &data_dir_for_gateway, resource_dir.as_ref()) {
@@ -1727,7 +1728,7 @@ fn main() {
                     }
                 }
                 
-                // 7. Backend 组件: File Service（文件管理服务）
+                // 6. Backend 组件: File Service（文件管理服务）
                 {
                     let mut fs = file_service_for_start.lock().await;
                     match fs.start(&backend_path, is_binary, &data_dir_for_gateway, resource_dir.as_ref()) {
@@ -1738,13 +1739,46 @@ fn main() {
                     }
                 }
                 
-                // 8. Backend 组件: Tool Result Service（工具结果规范化服务）
+                // 7. Backend 组件: Tool Result Service（工具结果规范化服务）
                 {
                     let mut trs = tool_result_service_for_start.lock().await;
                     match trs.start(&backend_path, is_binary, &data_dir_for_gateway, resource_dir.as_ref()) {
                         Ok(_) => println!("[Tool Result Service] Auto-started successfully"),
                         Err(e) => {
                             println!("[Tool Result Service] Failed to auto-start: {}", e);
+                        }
+                    }
+                }
+
+                // 7.5 严格等待 TRS 就绪（Tools Server 启动前强依赖）
+                const TRS_HEALTH_TIMEOUT_SECS: u64 = 30;
+                println!("[Services] Waiting for Tool Result Service to be ready (strict)...");
+                let trs_health_url = format!("{}/api/health", local_url(PORT_TOOL_RESULT_SERVICE));
+                let trs_client = reqwest::Client::new();
+                let mut trs_ready = false;
+                for i in 0..TRS_HEALTH_TIMEOUT_SECS {
+                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                    match trs_client.get(&trs_health_url).send().await {
+                        Ok(resp) if resp.status().is_success() => {
+                            println!("[Services] Tool Result Service is ready after {}s", i + 1);
+                            trs_ready = true;
+                            break;
+                        }
+                        _ => {}
+                    }
+                }
+                if !trs_ready {
+                    println!("[Services] Tool Result Service not ready after {}s - aborting startup (Tools/Workers not started)", TRS_HEALTH_TIMEOUT_SECS);
+                    return;
+                }
+
+                // 8. Backend 组件: Tools Server（依赖 TRS，必须在 TRS 后启动）
+                {
+                    let mut ts = tools_server_for_start.lock().await;
+                    match ts.start(&backend_path, is_binary, &data_dir_for_gateway, resource_dir.as_ref()) {
+                        Ok(_) => println!("[Tools Server] Auto-started successfully"),
+                        Err(e) => {
+                            println!("[Tools Server] Failed to auto-start: {}", e);
                         }
                     }
                 }
@@ -1826,6 +1860,7 @@ fn main() {
                     let queue_service_url = local_url(PORT_QUEUE_SERVICE);
                     let runtime_orchestrator_url = local_url(PORT_RUNTIME_ORCHESTRATOR);
                     let tools_server_url = local_url(PORT_TOOLS_SERVER);
+                    let tool_result_service_url = local_url(PORT_TOOL_RESULT_SERVICE);
                     
                     // Watchdog: 监控 sending 消息，触发 MessageProcess Saga (1 个)
                     match Command::new(&backend_path_clone)
@@ -1858,6 +1893,8 @@ fn main() {
                             .arg(&tools_server_url)
                             .arg("--runtime-orchestrator-url")
                             .arg(&runtime_orchestrator_url)
+                            .arg("--tool-result-service-url")
+                            .arg(&tool_result_service_url)
                             .arg("--num-workers")
                             .arg("5")
                             .arg("--data-dir")
@@ -1951,6 +1988,7 @@ fn main() {
                     let queue_service_url = local_url(PORT_QUEUE_SERVICE);
                     let runtime_orchestrator_url = local_url(PORT_RUNTIME_ORCHESTRATOR);
                     let tools_server_url = local_url(PORT_TOOLS_SERVER);
+                    let tool_result_service_url = local_url(PORT_TOOL_RESULT_SERVICE);
                     
                     // Watchdog (1 个)
                     match Command::new(&python)
@@ -1986,6 +2024,8 @@ fn main() {
                             .arg(&tools_server_url)
                             .arg("--runtime-orchestrator-url")
                             .arg(&runtime_orchestrator_url)
+                            .arg("--tool-result-service-url")
+                            .arg(&tool_result_service_url)
                             .arg("--num-workers")
                             .arg("5")
                             .arg("--data-dir")
