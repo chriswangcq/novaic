@@ -1,0 +1,10 @@
+{"ts":"2026-02-19T03:49:26.447386+00:00","stage":"app-bootstrap","status":"start","detail":"tauri setup started"}
+{"ts":"2026-02-19T03:49:27.385577+00:00","stage":"cleanup","status":"ok","detail":"zombie cleanup completed"}
+{"ts":"2026-02-19T03:49:27.385772+00:00","stage":"port-preflight","status":"ok","detail":"all required ports are available"}
+{"ts":"2026-02-19T03:49:27.386865+00:00","stage":"runtime-orchestrator","status":"started","detail":"runtime orchestrator started"}
+{"ts":"2026-02-19T03:49:37.413542+00:00","stage":"gateway","status":"started","detail":"gateway started"}
+{"ts":"2026-02-19T03:49:37.551682+00:00","stage":"vmcontrol","status":"started","detail":"vmcontrol started"}
+{"ts":"2026-02-19T03:49:37.551896+00:00","stage":"queue-service","status":"started","detail":"queue service started"}
+{"ts":"2026-02-19T03:49:37.552047+00:00","stage":"file-service","status":"started","detail":"file service started"}
+{"ts":"2026-02-19T03:49:37.552202+00:00","stage":"tool-result-service","status":"started","detail":"tool result service started"}
+{"ts":"2026-02-19T03:49:57.609094+00:00","stage":"tools-server","status":"started","detail":"tools server started"}

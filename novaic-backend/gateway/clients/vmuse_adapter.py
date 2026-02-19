@@ -117,6 +117,10 @@ class VmuseAdapter:
         """关闭客户端连接"""
         await self.client.aclose()
         logger.debug("[VmuseAdapter] Client closed")
+
+    def _as_text_content(self, payload: Dict[str, Any]) -> List[Dict[str, str]]:
+        """Build MCP-style text content for compatibility."""
+        return [{"type": "text", "text": json.dumps(payload, ensure_ascii=False)}]
     
     async def call_tool(
         self,
@@ -293,23 +297,25 @@ class VmuseAdapter:
             
             return {
                 "success": result.get("success", True),
-                "content": [
-                    {
-                        "type": "text",
-                        "text": json.dumps(result, ensure_ascii=False)
-                    }
-                ]
+                "result": result,
+                "content": self._as_text_content(result),
             }
         except httpx.HTTPStatusError as e:
             return {
                 "success": False,
-                "error": f"HTTP {e.response.status_code}: {e.response.text}",
+                "error": f"HTTP error: HTTP {e.response.status_code}: {e.response.text}",
+                "content": []
+            }
+        except httpx.HTTPError as e:
+            return {
+                "success": False,
+                "error": f"HTTP error: {str(e)}",
                 "content": []
             }
         except Exception as e:
             return {
                 "success": False,
-                "error": str(e),
+                "error": f"Adapter error: {str(e)}",
                 "content": []
             }
     
@@ -1011,12 +1017,8 @@ class VmuseAdapter:
             
             return {
                 "success": True,
-                "content": [
-                    {
-                        "type": "text",
-                        "text": json.dumps(file_data, ensure_ascii=False)
-                    }
-                ]
+                "result": file_data,
+                "content": self._as_text_content(file_data),
             }
         
         except httpx.HTTPStatusError as e:
@@ -1081,15 +1083,11 @@ class VmuseAdapter:
         wait = arguments.get("wait", True)
         
         try:
-            # 为命令添加 DISPLAY=:0 以确保 GUI 程序在 VNC 窗口显示
-            # 对于非 GUI 命令，这不会造成问题
-            command_with_display = f"DISPLAY=:0 {command}"
-            
             response = await self.client.post(
                 f"/api/vms/{vm_id}/guest/exec",
                 json={
                     "path": "/bin/bash",
-                    "args": ["-c", command_with_display],
+                    "args": ["-c", command],
                     "wait": wait
                 }
             )
@@ -1107,13 +1105,9 @@ class VmuseAdapter:
             }
             
             return {
-                "success": True,
-                "content": [
-                    {
-                        "type": "text",
-                        "text": json.dumps(exec_data, ensure_ascii=False)
-                    }
-                ]
+                "success": exec_data["exit_code"] == 0,
+                "result": exec_data,
+                "content": self._as_text_content(exec_data),
             }
         
         except httpx.HTTPStatusError as e:
@@ -1188,8 +1182,16 @@ class VmuseAdapter:
                 }
             ]
             
+            screenshot_result = {
+                "format": result.get("format", "png"),
+                "width": result.get("width"),
+                "height": result.get("height"),
+                "image_data": image_data,
+            }
+
             return {
                 "success": True,
+                "result": screenshot_result,
                 "content": content
             }
         

@@ -18,7 +18,7 @@ from datetime import datetime
 from typing import Optional
 import traceback
 
-from task_queue.client import GatewayInternalClient
+from task_queue.client import GatewayBusinessClient, RuntimeOrchestratorClient
 from common.config import ServiceConfig
 from common.utils.time import utc_now_iso
 
@@ -69,7 +69,9 @@ class SchedulerWorkerSync:
         self.worker_id = f"sched-sync-{uuid.uuid4().hex[:8]}"
         
         self._running = False
-        self.gateway_client = GatewayInternalClient(self.gateway_url)
+        internal_url = (ServiceConfig.RUNTIME_ORCHESTRATOR_URL or "").rstrip("/")
+        self.gateway_client = GatewayBusinessClient(self.gateway_url)
+        self.ro_client = RuntimeOrchestratorClient(internal_url)
         
         self.metrics = SchedulerMetrics()
     
@@ -99,6 +101,7 @@ class SchedulerWorkerSync:
         finally:
             self._running = False
             self.gateway_client.close()
+            self.ro_client.close()
             self._log("Stopped")
     
     def shutdown(self):
@@ -113,7 +116,7 @@ class SchedulerWorkerSync:
         
         try:
             # 1. 查询到期的 SubAgent
-            due_agents = self.gateway_client.get_due_for_wake()
+            due_agents = self.ro_client.get_due_for_wake()
             
             if not due_agents:
                 return

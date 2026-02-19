@@ -11,7 +11,11 @@ from dataclasses import dataclass
 from typing import Dict, Any, Optional
 import time
 
-from ..client import GatewayInternalClient
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from ..client import GatewayInternalClient, GatewayBusinessClient, RuntimeOrchestratorClient
+
 from common.config import ServiceConfig
 from common.http.clients import internal_client
 
@@ -62,13 +66,31 @@ class MCPBusiness:
         ...     print(f"MCP URL: {result.mcp_url}")
     """
     
-    def __init__(self, gateway_url: str, client: Optional[GatewayInternalClient] = None):
+    def __init__(
+        self,
+        gateway_url: str,
+        gateway_client: "GatewayBusinessClient" = None,
+        ro_client: "RuntimeOrchestratorClient" = None,
+        client: Optional["GatewayInternalClient"] = None,
+    ):
         """
         Args:
-            gateway_url: Gateway base URL
-            client: 可复用的 GatewayInternalClient
+            gateway_url: Gateway base URL (used when clients not provided)
+            gateway_client: GatewayBusinessClient for tools server (preferred)
+            ro_client: RuntimeOrchestratorClient for runtime (preferred)
+            client: Legacy GatewayInternalClient
         """
-        self.client = client or GatewayInternalClient(gateway_url)
+        if client is not None:
+            self.gateway_client = client.gateway_client
+            self.ro_client = client.ro_client
+        elif gateway_client is not None and ro_client is not None:
+            self.gateway_client = gateway_client
+            self.ro_client = ro_client
+        else:
+            raise ValueError(
+                "MCPBusiness requires explicit gateway_client and ro_client "
+                "(fallback creation is disabled)"
+            )
 
 
     def create(
@@ -88,7 +110,7 @@ class MCPBusiness:
         Returns:
             MCPCreateResult
         """
-        runtime = self.client.get_runtime(runtime_id)
+        runtime = self.ro_client.get_runtime(runtime_id)
         if not runtime:
             return MCPCreateResult(
                 success=False,
@@ -147,14 +169,14 @@ class MCPBusiness:
                     error=f"Tools Server registration failed after {max_retries} retries: {last_error}",
                 )
             
-            # 2. 创建 aggregate MCP（向后兼容）
-            resp = self.client.create_aggregate_mcp(
-                agent_id=agent_id,
+            # 2. 创建 runtime tools 上下文
+            resp = self.gateway_client.create_runtime_tools(
                 runtime_id=runtime_id,
+                agent_id=agent_id,
                 subagent_id=subagent_id,
             )
             mcp_url = resp.get("mcp_url") or f"/mcp/aggregate/{runtime_id}/"
-            self.client.update_runtime(runtime_id, {"mcp_url": mcp_url})
+            self.ro_client.update_runtime(runtime_id, {"mcp_url": mcp_url})
         except Exception as e:
             return MCPCreateResult(
                 success=False,
@@ -181,7 +203,7 @@ class MCPBusiness:
         Returns:
             MCPDestroyResult
         """
-        runtime = self.client.get_runtime(runtime_id)
+        runtime = self.ro_client.get_runtime(runtime_id)
         if not runtime:
             return MCPDestroyResult(
                 success=True,
@@ -208,8 +230,8 @@ class MCPBusiness:
                 if resp.status_code != 404:  # Ignore 404
                     resp.raise_for_status()
             
-            # 2. 删除 aggregate MCP（向后兼容）
-            self.client.destroy_aggregate_mcp(agent_id, runtime_id)
+            # 2. 删除 runtime tools 上下文
+            self.gateway_client.destroy_runtime_tools(runtime_id)
         except Exception as e:
             if "not found" not in str(e).lower():
                 return MCPDestroyResult(
@@ -218,7 +240,7 @@ class MCPBusiness:
                     error=str(e),
                 )
 
-        self.client.update_runtime(runtime_id, {"mcp_url": None})
+        self.ro_client.update_runtime(runtime_id, {"mcp_url": None})
 
         return MCPDestroyResult(
             success=True,
@@ -298,7 +320,7 @@ class MCPBusiness:
         Returns:
             MCP URL 或 None
         """
-        runtime = self.client.get_runtime(runtime_id)
+        runtime = self.ro_client.get_runtime(runtime_id)
         return runtime.get("mcp_url") if runtime else None
 
 

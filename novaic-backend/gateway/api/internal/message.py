@@ -272,35 +272,6 @@ async def get_unread_messages_grouped(agent_id: Optional[str] = None):
     return {"messages_by_agent": messages_by_agent}
 
 
-@router.post("/messages/claim-and-prepare")
-async def claim_and_prepare_message():
-    """Claim one sending message and prepare for processing.
-    
-    Used by Watchdog to:
-    1. Find a sending message
-    2. Claim it (sending → sent) atomically
-    3. Return message info for saga creation
-    
-    Returns:
-        {"message": {...}} if claimed, {"message": null} if queue is empty
-        
-    DEPRECATED: 使用 /messages/find-sending + /messages/{id}/confirm 两阶段提交替代
-    """
-    proxied = await maybe_forward_to_runtime_orchestrator(
-        "POST", "/internal/messages/claim-and-prepare"
-    )
-    if proxied is not None:
-        return proxied
-
-    from gateway.db.repositories.message import MessageRepository
-    
-    db = get_db()
-    repo = MessageRepository(db)
-    message = repo.claim_sending()
-    
-    return {"message": message}
-
-
 @router.post("/messages/find-sending")
 async def find_sending_message():
     """Find one sending message without changing its status.
@@ -633,9 +604,8 @@ async def inject_wake_message(data: Dict[str, Any]):
     if proxied is not None:
         return proxied
 
+    from gateway.core.prompt_builder import build_wake_message
     from gateway.db.repositories.message import MessageRepository
-    from task_queue.client import GatewayInternalClient
-    from task_queue.utils.system_prompt import build_wake_message
     
     db = get_db()
     repo = MessageRepository(db)
@@ -648,9 +618,7 @@ async def inject_wake_message(data: Dict[str, Any]):
     
     # 生成完整的 wake message 内容
     try:
-        client = GatewayInternalClient(ServiceConfig.GATEWAY_URL)
-        wake_content = build_wake_message(agent_id, client)
-        client.close()
+        wake_content = build_wake_message(agent_id, db)
     except Exception as e:
         # 降级到简单消息
         print(f"[inject_wake] Failed to build wake message: {e}")
@@ -669,6 +637,26 @@ async def inject_wake_message(data: Dict[str, Any]):
         "message_id": msg["id"],
         "agent_id": agent_id,
     }
+
+
+@router.get("/messages/{message_id}")
+async def get_message(message_id: str):
+    """Get a single message by ID. Used by chat_get_message tool."""
+    proxied = await maybe_forward_to_runtime_orchestrator(
+        "GET", f"/internal/messages/{message_id}"
+    )
+    if proxied is not None:
+        return proxied
+
+    from gateway.db.repositories.message import MessageRepository
+
+    db = get_db()
+    repo = MessageRepository(db)
+    msg = repo.get_message(message_id)
+    if not msg:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=f"Message not found: {message_id}")
+    return msg
 
 
 @router.post("/messages")

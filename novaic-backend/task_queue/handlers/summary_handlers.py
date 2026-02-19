@@ -16,7 +16,7 @@ import logging
 from typing import Dict, Any, List
 
 from . import register_handler
-from ..client import GatewayInternalClient
+from common.exceptions import ValidationError
 from common.config import ServiceConfig
 from ..topics import TaskTopics
 
@@ -113,19 +113,23 @@ def handle_merge_history(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     """
     subagent_id = payload["subagent_id"]
     agent_id = payload["agent_id"]
-    
     gateway_url = ctx.get("gateway_url", ServiceConfig.GATEWAY_URL)
-    client = ctx.get("gateway_client") or GatewayInternalClient(gateway_url)
-    
+
+    ro_client = ctx.get("ro_client")
+    if not ro_client:
+        raise ValidationError(
+            "Missing required client in ctx: ro_client "
+            "(fallback creation is disabled)"
+        )
     # 1. 尝试获取锁
-    lock_result = client.acquire_summary_lock(agent_id, subagent_id)
+    lock_result = ro_client.acquire_summary_lock(agent_id, subagent_id)
     if not lock_result.get("success"):
         logger.info(f"[MergeHistory] Lock held for {agent_id}/{subagent_id}, skipping")
         return {"status": "skipped", "reason": "lock_held"}
     
     try:
         # 2. 获取 HRL
-        hrl_result = client.get_hrl(agent_id, subagent_id)
+        hrl_result = ro_client.get_hrl(agent_id, subagent_id)
         hrl = hrl_result.get("hrl", [])
         
         if len(hrl) <= ServiceConfig.HRL_TRIGGER_LENGTH:
@@ -139,7 +143,7 @@ def handle_merge_history(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
         # 4. 获取这些 runtime 的 cold_summary
         summaries = []
         for runtime_id in sshrl:
-            runtime = client.get_runtime(runtime_id)
+            runtime = ro_client.get_runtime(runtime_id)
             if runtime:
                 # 优先使用 cold_summary，回退到 simple_summary，再回退到 summary
                 summary = (
@@ -155,7 +159,7 @@ def handle_merge_history(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
             return {"status": "skipped", "reason": "no_summaries", "runtime_count": len(sshrl)}
         
         # 5. 获取现有 history
-        subagent = client.get_subagent(agent_id, subagent_id)
+        subagent = ro_client.get_subagent(agent_id, subagent_id)
         existing_history = subagent.get("subagent", {}).get("historical_summary", "") if subagent else ""
         
         # 6. 获取 LLM 配置
@@ -192,7 +196,7 @@ def handle_merge_history(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
             return {"status": "failed", "error": "LLM returned empty response"}
         
         # 8. 原子更新：更新 history + 移除 sshrl
-        merge_result = client.atomic_merge_history(
+        merge_result = ro_client.atomic_merge_history(
             agent_id=agent_id,
             subagent_id=subagent_id,
             new_history=merged_history,
@@ -213,7 +217,7 @@ def handle_merge_history(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     finally:
         # 9. 释放锁（无论成功失败都要释放）
         try:
-            client.release_summary_lock(agent_id, subagent_id)
+            ro_client.release_summary_lock(agent_id, subagent_id)
         except Exception as e:
             logger.error(f"[MergeHistory] Failed to release lock for {agent_id}/{subagent_id}: {e}")
 
@@ -236,10 +240,13 @@ def handle_add_to_hrl(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     agent_id = payload["agent_id"]
     subagent_id = payload["subagent_id"]
     
-    gateway_url = ctx.get("gateway_url", ServiceConfig.GATEWAY_URL)
-    client = ctx.get("gateway_client") or GatewayInternalClient(gateway_url)
-    
-    result = client.add_to_hrl(agent_id, subagent_id, runtime_id)
+    ro_client = ctx.get("ro_client")
+    if not ro_client:
+        raise ValidationError(
+            "Missing required client in ctx: ro_client "
+            "(fallback creation is disabled)"
+        )
+    result = ro_client.add_to_hrl(agent_id, subagent_id, runtime_id)
     logger.info(f"[AddToHRL] Added {runtime_id} to HRL for {agent_id}/{subagent_id}: {result}")
     
     return {"success": True, "runtime_id": runtime_id}
@@ -266,13 +273,15 @@ def handle_merge_history_if_needed(payload: Dict[str, Any], ctx: dict) -> Dict[s
     subagent_id = payload["subagent_id"]
     
     gateway_url = ctx.get("gateway_url", ServiceConfig.GATEWAY_URL)
-    client = ctx.get("gateway_client") or GatewayInternalClient(gateway_url)
-    
-    # 检查条件
-    hrl_result = client.get_hrl(agent_id, subagent_id)
+    ro_client = ctx.get("ro_client")
+    if not ro_client:
+        raise ValidationError(
+            "Missing required client in ctx: ro_client "
+            "(fallback creation is disabled)"
+        )
+    hrl_result = ro_client.get_hrl(agent_id, subagent_id)
     hrl = hrl_result.get("hrl", [])
-    
-    lock_result = client.get_summary_lock(agent_id, subagent_id)
+    lock_result = ro_client.get_summary_lock(agent_id, subagent_id)
     lock = lock_result.get("summary_lock", 0)
     
     if len(hrl) <= ServiceConfig.HRL_TRIGGER_LENGTH or lock != 0:

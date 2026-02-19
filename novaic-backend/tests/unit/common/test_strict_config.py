@@ -19,6 +19,12 @@ def _minimal_valid_config() -> dict:
             "tool_result_service": {"host": "127.0.0.1", "port": 19994, "url": "http://127.0.0.1:19994"},
             "runtime_orchestrator": {"host": "127.0.0.1", "port": 19993, "url": "http://127.0.0.1:19993"},
         },
+        "tools_reliability": {
+            "request_timeout_seconds": 300.0,
+            "execution_timeout_seconds": None,
+            "global_timeout_seconds": 1800.0,
+            "max_concurrent_per_runtime": 4,
+        },
         "timeouts": {
             "task_timeout": 60,
             "saga_step_timeout": 1500,

@@ -48,17 +48,21 @@ DEFAULT_SOUL = """## 你是谁
 ### 连续性
 每次 session 你都是全新醒来的。你的笔记本和记忆文件就是你的延续。读它们，更新它们，它们是你持久存在的方式。
 """
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, TYPE_CHECKING
 
-from ..client import GatewayInternalClient
+if TYPE_CHECKING:
+    from ..client import GatewayInternalClient, GatewayBusinessClient, RuntimeOrchestratorClient
 
 # 自驱系统模块
 from .self_drive_prompt import build_self_drive_prompt
 
 
 def build_system_prompt(
-    agent_id: str, 
-    client: GatewayInternalClient,
+    agent_id: str,
+    gateway_client=None,
+    ro_client=None,
+    *,
+    client=None,
     task: Optional[str] = None,
     auto_match_skills: bool = True,
     subagent_id: Optional[str] = None,
@@ -68,17 +72,29 @@ def build_system_prompt(
     
     Args:
         agent_id: Agent ID
-        client: GatewayInternalClient 实例
+        gateway_client: GatewayBusinessClient (preferred)
+        ro_client: RuntimeOrchestratorClient (preferred)
+        client: Legacy GatewayInternalClient - if provided, extracts gateway_client and ro_client
         task: 用户任务描述（用于自动匹配技能）
-        auto_match_skills: 是否自动匹配技能（基于任务关键词）
-        subagent_id: SubAgent ID（用于检测是否为 Sub SubAgent）
+        auto_match_skills: 是否自动匹配技能
+        subagent_id: SubAgent ID
         
     Returns:
-        System prompt 字符串，或 None（如果构建失败）
+        System prompt 字符串，或 None
     """
+    # Backward compat: client (GatewayInternalClient) or gateway_client passed as legacy client
+    if client is not None and hasattr(client, "gateway_client") and hasattr(client, "ro_client"):
+        gateway_client = client.gateway_client
+        ro_client = client.ro_client
+    elif gateway_client is not None and hasattr(gateway_client, "ro_client"):
+        # Legacy: build_system_prompt(agent_id, client) - 2nd arg maps to gateway_client param
+        ro_client = gateway_client.ro_client
+        gateway_client = gateway_client.gateway_client
+    if gateway_client is None or ro_client is None:
+        return None  # Cannot build without both clients
     # 1. 获取 Agent 基本信息
     try:
-        agent_info = client.get_agent_info(agent_id)
+        agent_info = ro_client.get_agent_info(agent_id)
         agent_name = agent_info.get("name", "NovAIC Agent")
     except Exception as e:
         print(f"[system_prompt] Failed to get agent info for {agent_id}: {e}")
@@ -86,14 +102,14 @@ def build_system_prompt(
     
     # 2. 获取 Drive 配置（包含用户画像和交流风格）
     try:
-        drive = client.get_agent_drive(agent_id)
+        drive = ro_client.get_agent_drive(agent_id)
     except Exception as e:
         print(f"[system_prompt] Failed to get drive for {agent_id}: {e}")
         drive = {}
     
     # 3. 获取 Agent 状态
     try:
-        state = client.get_agent_state(agent_id)
+        state = ro_client.get_agent_state(agent_id)
     except Exception as e:
         print(f"[system_prompt] Failed to get state for {agent_id}: {e}")
         state = {}
@@ -139,9 +155,13 @@ def build_system_prompt(
     personality_str = "、".join(personality_items) + "\n" if personality_items else ""
     
     # 8. 自动加载 Memory 数据（关键！）
+    # memory/all 属于 Gateway API，必须用 gateway_client 获取；无 gateway 时退化为空
     memory_section = ""
     try:
-        memory_data = client.get_all_memory(agent_id)
+        if gateway_client and hasattr(gateway_client, "get_all_memory"):
+            memory_data = gateway_client.get_all_memory(agent_id)
+        else:
+            memory_data = {"success": False, "namespaces": {}}
         if memory_data.get("success"):
             namespaces_data = memory_data.get("namespaces", {})
             if namespaces_data:
@@ -163,7 +183,7 @@ def build_system_prompt(
     # 9. 获取已分配的技能
     assigned_skills = []
     try:
-        skills_resp = client.get_agent_skills(agent_id)
+        skills_resp = gateway_client.get_agent_skills(agent_id)
         assigned_skills = skills_resp.get("skills", [])
     except Exception as e:
         print(f"[system_prompt] Failed to get assigned skills for {agent_id}: {e}")
@@ -172,7 +192,7 @@ def build_system_prompt(
     auto_matched_skills = []
     if auto_match_skills and task:
         try:
-            match_resp = client.match_skills_for_task(task)
+            match_resp = gateway_client.match_skills_for_task(task)
             auto_matched_skills = match_resp.get("matched_skills", [])
         except Exception as e:
             print(f"[system_prompt] Failed to auto-match skills for task: {e}")
@@ -210,13 +230,16 @@ def build_system_prompt(
     # 15. 获取四象限任务看板
     task_board = {"q1": [], "q2": [], "q3": [], "q4": []}
     try:
-        main_subagent = client.get_main_subagent(agent_id)
+        main_subagent = ro_client.get_main_subagent(agent_id)
         if main_subagent:
-            runtime_id = main_subagent.get("runtime_id")
-            if runtime_id:
-                board_result = client.get_quadrant_task_board(runtime_id)
-                if board_result.get("success"):
-                    task_board = board_result.get("board", task_board)
+            sid = main_subagent.get("subagent_id") or main_subagent.get("id", "main")
+            if isinstance(sid, str) and sid.startswith("main-"):
+                pass
+            elif main_subagent.get("id") and isinstance(main_subagent["id"], str) and main_subagent["id"].startswith("main-"):
+                sid = main_subagent["id"]
+            board_result = gateway_client.get_quadrant_task_board_by_subagent(sid)
+            if board_result.get("success", True):  # fallback format has q1/q2/q3/q4 directly
+                task_board = board_result.get("board", {k: board_result.get(k, []) for k in ["q1", "q2", "q3", "q4"]}) or task_board
     except Exception as e:
         print(f"[system_prompt] Failed to get task board for {agent_id}: {e}")
     
@@ -402,22 +425,30 @@ runtime_rest(reason="任务完成")
 
 def build_wake_message(
     agent_id: str,
-    client: GatewayInternalClient,
+    ro_client=None,
+    *,
+    client=None,
 ) -> str:
     """
     构建定时唤醒时发送给 LLM 的 user message
     
-    这个消息会作为 user role 发送，包含唤醒上下文信息
+    Args:
+        agent_id: Agent ID
+        ro_client: RuntimeOrchestratorClient (preferred)
+        client: Legacy - GatewayInternalClient; uses client.ro_client if provided
     """
+    c = ro_client if ro_client is not None else (client.ro_client if client else None)
+    if c is None:
+        return "[系统定时唤醒]\n无法加载上下文"
     # 获取 Drive 配置
     try:
-        drive = client.get_agent_drive(agent_id)
+        drive = c.get_agent_drive(agent_id)
     except Exception:
         drive = {}
     
     # 获取 Agent 状态
     try:
-        state = client.get_agent_state(agent_id)
+        state = c.get_agent_state(agent_id)
     except Exception:
         state = {}
     
@@ -473,7 +504,7 @@ def build_wake_message(
     
     # 笔记本摘要
     try:
-        notebook = client.get_notebook_summary(agent_id)
+        notebook = c.get_notebook_summary(agent_id)
         notebook_entries = notebook.get("entries", [])
         if notebook_entries:
             ready_count = sum(1 for e in notebook_entries if e.get("status") == "ready")

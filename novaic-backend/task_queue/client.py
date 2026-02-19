@@ -178,6 +178,7 @@ class TaskQueueClient:
         task_id: str,
         error: str,
         retry: bool = True,
+        retry_delay_seconds: Optional[float] = None,
     ) -> str:
         """
         标记任务失败
@@ -193,6 +194,7 @@ class TaskQueueClient:
         data = self._request("POST", f"/api/queue/tasks/{task_id}/fail", {
             "error": error,
             "retry": retry,
+            "retry_delay_seconds": retry_delay_seconds,
         })
         return data.get("final_status", "unknown")
     
@@ -207,6 +209,49 @@ class TaskQueueClient:
             success: 是否成功
         """
         data = self._request("POST", f"/api/queue/tasks/{task_id}/heartbeat", {})
+        return data.get("success", False)
+
+    def acquire_idempotency_execution(
+        self,
+        task_id: str,
+        idempotency_key: str,
+        owner_token: str,
+        lease_seconds: int = 120,
+    ) -> Dict[str, Any]:
+        data = self._request("POST", f"/api/queue/tasks/{task_id}/idempotency/acquire", {
+            "idempotency_key": idempotency_key,
+            "owner_token": owner_token,
+            "lease_seconds": lease_seconds,
+        })
+        return {
+            "action": data.get("action", "in_progress"),
+            "result": data.get("result"),
+        }
+
+    def complete_idempotency_execution(
+        self,
+        task_id: str,
+        idempotency_key: str,
+        owner_token: str,
+        result: Optional[Dict[str, Any]] = None,
+    ) -> bool:
+        data = self._request("POST", f"/api/queue/tasks/{task_id}/idempotency/complete", {
+            "idempotency_key": idempotency_key,
+            "owner_token": owner_token,
+            "result": result,
+        })
+        return data.get("success", False)
+
+    def release_idempotency_execution(
+        self,
+        task_id: str,
+        idempotency_key: str,
+        owner_token: str,
+    ) -> bool:
+        data = self._request("POST", f"/api/queue/tasks/{task_id}/idempotency/release", {
+            "idempotency_key": idempotency_key,
+            "owner_token": owner_token,
+        })
         return data.get("success", False)
     
     def get_task(self, task_id: str) -> Optional[Dict[str, Any]]:
@@ -397,28 +442,11 @@ class SagaClient:
         return data.get("success", False)
 
 
-class GatewayInternalClient:
-    """
-    Runtime Orchestrator Internal API 客户端（兼容旧命名）。
+class _BaseInternalApiClient:
+    """Shared sync HTTP client for internal API calls."""
 
-    供非 Gateway 代码调用 /internal/* 接口，避免直接访问 DB。
-    生产默认：/internal/* 直连 Runtime Orchestrator，不经过 Gateway 中转。
-    """
-
-    def __init__(
-        self,
-        gateway_url: str,
-        internal_url: Optional[str] = None,
-        timeout: float = 30.0,
-    ):
-        self.gateway_url = gateway_url.rstrip("/")
-        # Internal APIs must hit Runtime Orchestrator directly.
-        resolved_internal = (internal_url or ServiceConfig.RUNTIME_ORCHESTRATOR_URL).rstrip("/")
-        if not resolved_internal:
-            raise ValueError(
-                "Runtime Orchestrator URL is required for GatewayInternalClient internal traffic"
-            )
-        self.internal_url = resolved_internal
+    def __init__(self, base_url: str, timeout: float = 30.0):
+        self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         self._session: Optional[httpx.Client] = None
 
@@ -430,7 +458,6 @@ class GatewayInternalClient:
         return self._session
 
     def close(self):
-        """关闭 HTTP session（可安全多次调用）"""
         if self._session is not None:
             try:
                 self._session.close()
@@ -439,6 +466,406 @@ class GatewayInternalClient:
             finally:
                 self._session = None
 
+    def request(
+        self,
+        method: str,
+        path: str,
+        json_data: Optional[dict] = None,
+        params: Optional[dict] = None,
+    ) -> dict:
+        session = self._get_session()
+        url = f"{self.base_url}{path}"
+        try:
+            resp = session.request(method, url, json=json_data, params=params)
+            if not resp.text or not resp.text.strip():
+                raise TaskQueueError(f"Empty response from {url} (status: {resp.status_code})")
+            try:
+                data = resp.json()
+            except Exception as json_err:
+                raise TaskQueueError(
+                    f"Failed to parse JSON from {url}: {json_err}, content: {resp.text[:200]}"
+                )
+            if resp.status_code >= 400:
+                error_msg = data.get("detail", str(data))
+                raise TaskQueueError(f"API error ({resp.status_code}): {error_msg}")
+            return data
+        except httpx.HTTPError as e:
+            raise TaskQueueError(f"HTTP error: {e}")
+
+
+class GatewayBusinessClient(_BaseInternalApiClient):
+    """
+    Client for Gateway-owned business-domain APIs.
+
+    Covers: /internal/messages*, /internal/chat*, /internal/vm*, /internal/config*,
+    /internal/subagents/{id}/quadrant-tasks*, /api/*, and Tools Server operations.
+    """
+
+    def __init__(
+        self,
+        base_url: str,
+        timeout: float = 30.0,
+        tools_server_url: Optional[str] = None,
+        queue_service_url: Optional[str] = None,
+    ):
+        super().__init__(base_url, timeout)
+        self.tools_server_url = (tools_server_url or getattr(ServiceConfig, "TOOLS_SERVER_URL", "") or "").rstrip("/")
+        self.queue_service_url = (
+            (queue_service_url if queue_service_url is not None else getattr(ServiceConfig, "QUEUE_SERVICE_URL", ""))
+            or ""
+        ).rstrip("/")
+
+    # ---------- Messages (Gateway) ----------
+    def claim_message(self, message_id: str) -> dict:
+        return self.request("POST", f"/internal/messages/{message_id}/claim", {})
+
+    def has_new_messages(self, agent_id: str) -> dict:
+        return self.request("GET", f"/internal/messages/has-new/{agent_id}", None)
+
+    def get_unread_sent_messages(self, agent_id: str) -> List[Dict[str, Any]]:
+        data = self.request("GET", f"/internal/messages/unread-sent/{agent_id}", None)
+        return data.get("messages", [])
+
+    def mark_messages_read(self, message_ids: List[str]) -> dict:
+        return self.request("PATCH", "/internal/messages/mark-read", {"message_ids": message_ids})
+
+    def find_sending_message(self) -> Optional[Dict[str, Any]]:
+        data = self.request("POST", "/internal/messages/find-sending", {})
+        return data.get("message")
+
+    def confirm_message(self, message_id: str) -> dict:
+        return self.request("POST", f"/internal/messages/{message_id}/confirm", {})
+
+    def inject_wake_message(self, agent_id: str, metadata: dict = None) -> dict:
+        return self.request("POST", "/internal/messages/inject-wake", {
+            "agent_id": agent_id,
+            "metadata": metadata or {},
+        })
+
+    def inject_subagent_completed_message(
+        self,
+        agent_id: str,
+        subagent_id: str,
+        parent_subagent_id: str,
+        result: str = None,
+    ) -> dict:
+        return self.request("POST", "/internal/messages/inject-subagent-completed", {
+            "agent_id": agent_id,
+            "subagent_id": subagent_id,
+            "parent_subagent_id": parent_subagent_id,
+            "result": result or "",
+        })
+
+    # ---------- Broadcast (Gateway /api) ----------
+    def broadcast_log(
+        self,
+        agent_id: str,
+        log_type: str = None,
+        data: Dict[str, Any] = None,
+        timestamp: Optional[str] = None,
+        *,
+        subagent_id: str = "main",
+        kind: str = None,
+        status: str = "complete",
+        event_key: str = None,
+        input_data: Dict[str, Any] = None,
+        result_data: Dict[str, Any] = None,
+    ) -> bool:
+        payload = {
+            "agent_id": agent_id,
+            "subagent_id": subagent_id,
+            "timestamp": timestamp or utc_now_iso(),
+        }
+        if log_type:
+            payload["type"] = log_type
+        if data:
+            payload["data"] = data
+        if kind:
+            payload["kind"] = kind
+        if status:
+            payload["status"] = status
+        if event_key:
+            payload["event_key"] = event_key
+        if input_data:
+            payload["input_data"] = input_data
+        if result_data:
+            payload["result_data"] = result_data
+        try:
+            self.request("POST", "/api/logs/broadcast", payload)
+            return True
+        except Exception:
+            return False
+
+    # ---------- Task Queue Recovery (Queue Service /api/queue/recover/all) ----------
+    def recover_all(self, task_timeout: int = 120, saga_timeout: int = 600) -> Dict[str, Any]:
+        """Recover stale tasks and sagas. Targets Queue Service, not Gateway."""
+        if not self.queue_service_url:
+            raise TaskQueueError("QUEUE_SERVICE_URL not configured for recover_all")
+        with internal_client(
+            base_url=self.queue_service_url,
+            timeout=httpx.Timeout(self.timeout, connect=10.0),
+        ) as client:
+            resp = client.post(
+                "/api/queue/recover/all",
+                params={"task_timeout": task_timeout, "saga_timeout": saga_timeout},
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    # ---------- Gateway API (agents, skills) ----------
+    def get_agent_skills(self, agent_id: str) -> dict:
+        try:
+            return self.request("GET", f"/api/agents/{agent_id}/skills", None)
+        except Exception:
+            return {"skills": []}
+
+    def match_skills_for_task(self, task: str, max_skills: int = 3) -> dict:
+        try:
+            return self.request("POST", "/api/skills/match", {
+                "task": task,
+                "max_skills": max_skills,
+            })
+        except Exception as e:
+            print(f"[client] Failed to match skills for task: {e}")
+            return {"matched_skills": []}
+
+    # ---------- Agent Memory (Gateway /internal/agents/{id}/memory/all) ----------
+    def get_all_memory(self, agent_id: str) -> dict:
+        """Get all memory data for an agent (all namespaces). Gateway-owned API."""
+        try:
+            return self.request("GET", f"/internal/agents/{agent_id}/memory/all", None)
+        except Exception as e:
+            print(f"[GatewayBusinessClient] Failed to get all memory for {agent_id}: {e}")
+            return {"success": False, "namespaces": {}}
+
+    # ---------- Quadrant-tasks (Gateway) ----------
+    def get_quadrant_task_board_by_subagent(self, subagent_id: str) -> Dict[str, Any]:
+        try:
+            return self.request("GET", f"/internal/subagents/{subagent_id}/quadrant-tasks/board")
+        except Exception as e:
+            print(f"[client] get_quadrant_task_board failed: {e}")
+            return {"q1": {"count": 0, "tasks": []}, "q2": {"count": 0, "tasks": []}, "q3": {"count": 0, "tasks": []}, "q4": {"count": 0, "tasks": []}}
+
+    # ---------- Tools Server (direct) ----------
+    def create_runtime_tools(self, runtime_id: str, agent_id: str, subagent_id: str, ports: dict = None) -> dict:
+        if not self.tools_server_url:
+            raise TaskQueueError("TOOLS_SERVER_URL not configured for create_runtime_tools")
+        with internal_client(timeout=30.0) as client:
+            resp = client.post(f"{self.tools_server_url}/internal/runtimes", json={
+                "runtime_id": runtime_id,
+                "agent_id": agent_id,
+                "subagent_id": subagent_id,
+                "ports": ports or {},
+            })
+            resp.raise_for_status()
+            return resp.json()
+
+    def destroy_runtime_tools(self, runtime_id: str) -> dict:
+        if not self.tools_server_url:
+            raise TaskQueueError("TOOLS_SERVER_URL not configured for destroy_runtime_tools")
+        with internal_client(timeout=ServiceConfig.HTTP_TIMEOUT_SHORT) as client:
+            resp = client.delete(f"{self.tools_server_url}/internal/runtimes/{runtime_id}")
+            resp.raise_for_status()
+            return resp.json()
+
+    def list_runtime_tools(self, runtime_id: str) -> dict:
+        if not self.tools_server_url:
+            raise TaskQueueError("TOOLS_SERVER_URL not configured for list_runtime_tools")
+        with internal_client(timeout=ServiceConfig.HTTP_TIMEOUT_SHORT) as client:
+            resp = client.get(f"{self.tools_server_url}/internal/runtimes/{runtime_id}/tools")
+            resp.raise_for_status()
+            return resp.json()
+
+    def call_runtime_tool(self, runtime_id: str, tool_name: str, arguments: dict) -> dict:
+        if not self.tools_server_url:
+            raise TaskQueueError("TOOLS_SERVER_URL not configured for call_runtime_tool")
+        with internal_client(timeout=None) as client:
+            resp = client.post(f"{self.tools_server_url}/internal/runtimes/{runtime_id}/tools/call", json={
+                "name": tool_name,
+                "arguments": arguments,
+            })
+            resp.raise_for_status()
+            return resp.json()
+
+
+class RuntimeOrchestratorClient(_BaseInternalApiClient):
+    """
+    Client for RO-owned orchestration APIs.
+
+    Covers: /internal/runtimes*, /internal/subagents* (core), /internal/agents* (RO-owned subset).
+    """
+
+    # ---------- Runtime ----------
+    def get_runtime(self, runtime_id: str) -> Optional[Dict[str, Any]]:
+        data = self.request("GET", f"/internal/runtimes/{runtime_id}", None)
+        return data.get("runtime") if isinstance(data, dict) and "runtime" in data else data
+
+    def create_runtime(self, agent_id: str, subagent_id: str, initial_context: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+        payload = {"agent_id": agent_id, "subagent_id": subagent_id, "initial_context": initial_context or []}
+        return self.request("POST", "/internal/runtimes", payload)
+
+    def get_or_create_runtime(self, agent_id: str, subagent_id: str, initial_context: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+        payload = {"agent_id": agent_id, "subagent_id": subagent_id, "initial_context": initial_context or []}
+        return self.request("POST", "/internal/runtimes/get-or-create", payload)
+
+    def update_runtime(self, runtime_id: str, data: Dict[str, Any]) -> dict:
+        return self.request("PATCH", f"/internal/runtimes/{runtime_id}", data)
+
+    def advance_round(self, runtime_id: str, expected_round_num: Optional[int] = None) -> dict:
+        payload = {"expected_round_num": expected_round_num} if expected_round_num is not None else {}
+        return self.request("POST", f"/internal/runtimes/{runtime_id}/advance", payload)
+
+    def get_subagent_runtime(self, agent_id: str, subagent_id: str) -> Optional[Dict[str, Any]]:
+        data = self.request("GET", f"/internal/runtimes/subagent/{agent_id}/{subagent_id}", None)
+        return data.get("runtime")
+
+    def append_context(self, runtime_id: str, message: Dict[str, Any], message_type: str, round_id: Optional[str], idempotency_key: Optional[str]) -> dict:
+        payload = {"message": message, "message_type": message_type, "round_id": round_id, "idempotency_key": idempotency_key}
+        return self.request("POST", f"/internal/runtimes/{runtime_id}/context/append", payload)
+
+    def set_runtime_summarized(self, runtime_id: str) -> dict:
+        return self.request("POST", f"/internal/runtimes/{runtime_id}/summarized", {})
+
+    def set_runtime_hot_cold_summary(self, runtime_id: str, hot_summary: str, cold_summary: str) -> dict:
+        return self.request("POST", f"/internal/runtimes/{runtime_id}/hot-cold-summary", {"hot_summary": hot_summary, "cold_summary": cold_summary})
+
+    def set_runtime_need_rest(self, runtime_id: str, value: bool) -> dict:
+        return self.request("POST", f"/internal/runtimes/{runtime_id}/need-rest", {"value": value})
+
+    def set_runtime_status(self, runtime_id: str, expected_status: List[str], new_status: str, error: Optional[str] = None) -> dict:
+        payload: Dict[str, Any] = {"expected_status": expected_status, "new_status": new_status}
+        if error:
+            payload["error"] = error
+        return self.request("POST", f"/internal/runtimes/{runtime_id}/set-status", payload)
+
+    # ---------- SubAgents ----------
+    def set_subagent_awake(self, agent_id: str, subagent_id: str) -> dict:
+        return self.request("POST", f"/internal/subagents/{agent_id}/{subagent_id}/awake", {})
+
+    def set_subagent_sleeping(self, agent_id: str, subagent_id: str) -> dict:
+        return self.request("POST", f"/internal/subagents/{agent_id}/{subagent_id}/sleeping", {})
+
+    def set_subagent_completed(self, agent_id: str, subagent_id: str, result: str = None) -> dict:
+        payload = {"result": result} if result is not None else {}
+        return self.request("POST", f"/internal/subagents/{agent_id}/{subagent_id}/completed", payload)
+
+    def get_subagent(self, agent_id: str, subagent_id: str) -> dict:
+        return self.request("GET", f"/internal/subagents/{agent_id}/{subagent_id}", None)
+
+    def get_subagent_status(self, agent_id: str, subagent_id: str) -> dict:
+        return self.request("GET", f"/internal/subagents/{agent_id}/{subagent_id}/status", None)
+
+    def get_main_subagent(self, agent_id: str) -> Optional[Dict[str, Any]]:
+        try:
+            return self.request("GET", f"/internal/subagents/{agent_id}/main", None)
+        except Exception:
+            return None
+
+    def get_due_for_wake(self) -> list:
+        data = self.request("GET", "/internal/subagents/due-wake", None)
+        return data.get("subagents", [])
+
+    # ---------- HRL and Summary Lock ----------
+    def get_hrl(self, agent_id: str, subagent_id: str) -> dict:
+        return self.request("GET", f"/internal/subagents/{agent_id}/{subagent_id}/hrl", None)
+
+    def add_to_hrl(self, agent_id: str, subagent_id: str, runtime_id: str) -> dict:
+        return self.request("POST", f"/internal/subagents/{agent_id}/{subagent_id}/hrl/add", {"runtime_id": runtime_id})
+
+    def get_summary_lock(self, agent_id: str, subagent_id: str) -> dict:
+        return self.request("GET", f"/internal/subagents/{agent_id}/{subagent_id}/summary-lock", None)
+
+    def acquire_summary_lock(self, agent_id: str, subagent_id: str) -> dict:
+        return self.request("POST", f"/internal/subagents/{agent_id}/{subagent_id}/summary-lock/acquire", {})
+
+    def release_summary_lock(self, agent_id: str, subagent_id: str) -> dict:
+        return self.request("POST", f"/internal/subagents/{agent_id}/{subagent_id}/summary-lock/release", {})
+
+    def atomic_merge_history(self, agent_id: str, subagent_id: str, new_history: str, remove_runtime_ids: List[str]) -> dict:
+        return self.request("POST", f"/internal/subagents/{agent_id}/{subagent_id}/merge-history", {
+            "new_history": new_history,
+            "remove_runtime_ids": remove_runtime_ids,
+        })
+
+    # ---------- Runtime Batch ----------
+    def get_runtimes_by_ids(self, runtime_ids: List[str]) -> List[Dict[str, Any]]:
+        if not runtime_ids:
+            return []
+        data = self.request("POST", "/internal/runtimes/batch", {"runtime_ids": runtime_ids})
+        return data.get("runtimes", [])
+
+    # ---------- Agents (RO-owned) ----------
+    def get_agent_drive(self, agent_id: str) -> dict:
+        return self.request("GET", f"/internal/agents/{agent_id}/drive", None)
+
+    def get_notebook_summary(self, agent_id: str) -> dict:
+        return self.request("GET", f"/internal/agents/{agent_id}/notebook-summary", None)
+
+    def get_agent_state(self, agent_id: str) -> dict:
+        try:
+            main_subagent = self.request("GET", f"/internal/subagents/{agent_id}/main", None)
+            return {
+                "status": main_subagent.get("status"),
+                "last_active_at": main_subagent.get("updated_at"),
+                "wake_triggers": main_subagent.get("wake_triggers"),
+                "handoff_notes": main_subagent.get("handoff_notes"),
+            }
+        except Exception:
+            return {}
+
+    def increment_drive_interaction(self, agent_id: str) -> dict:
+        return self.request("POST", f"/internal/agents/{agent_id}/drive/increment-interaction", {})
+
+    def get_agent_info(self, agent_id: str) -> dict:
+        try:
+            return self.request("GET", f"/internal/agents/{agent_id}/info", None)
+        except Exception:
+            return {"name": "NovAIC Agent", "os": "unknown"}
+
+    def get_drive_config(self, agent_id: str) -> Dict[str, Any]:
+        try:
+            return self.request("GET", f"/internal/agents/{agent_id}/drive", None)
+        except Exception as e:
+            print(f"[client] get_drive_config failed: {e}")
+            return {"success": True, "config": {"core_value": "为用户服务是第一目标", "curiosity": 0.7, "knowledge": 0.6, "growth": 0.5, "proactive_level": 0.5, "reflection_frequency": "daily"}}
+
+
+class GatewayInternalClient:
+    """
+    兼容层：组合 GatewayBusinessClient + RuntimeOrchestratorClient。
+
+    历史调用方无需改名，内部按接口归属分发：
+    - Gateway: /internal/messages*, /internal/chat*, /internal/vm*, /internal/config*,
+      /internal/subagents/{subagent_id}/quadrant-tasks*, /internal/subagents/{subagent_id}/growth-logs
+    - RO: /internal/runtimes*, /internal/subagents* (core), /internal/agents* (RO-owned subset)
+    """
+
+    def __init__(
+        self,
+        gateway_url: str,
+        internal_url: Optional[str] = None,
+        timeout: float = 30.0,
+    ):
+        self.gateway_url = gateway_url.rstrip("/")
+        resolved_internal = (internal_url or ServiceConfig.RUNTIME_ORCHESTRATOR_URL).rstrip("/")
+        if not resolved_internal:
+            raise ValueError(
+                "Runtime Orchestrator URL is required for GatewayInternalClient internal traffic"
+            )
+        self.internal_url = resolved_internal
+        self.timeout = timeout
+        self.gateway_client = GatewayBusinessClient(self.gateway_url, timeout=timeout)
+        self.ro_client = RuntimeOrchestratorClient(self.internal_url, timeout=timeout)
+
+    def close(self):
+        """关闭 HTTP session（可安全多次调用）"""
+        self.gateway_client.close()
+        self.ro_client.close()
+
+    def _get_session(self):
+        """Backward-compatible hook for legacy tests/monkeypatching."""
+        return None
+
     def __enter__(self):
         return self
     
@@ -446,28 +873,60 @@ class GatewayInternalClient:
         self.close()
         return False  # 不吞掉异常
 
-    def _request(self, method: str, path: str, json_data: Optional[dict] = None, params: Optional[dict] = None) -> dict:
+    @staticmethod
+    def _is_gateway_internal_path(path: str) -> bool:
+        # Explicit Gateway business-domain internal APIs.
+        if path.startswith("/internal/messages/") or path.startswith("/internal/chat/"):
+            return True
+        if path.startswith("/internal/vm/") or path.startswith("/internal/config/"):
+            return True
+        if path.startswith("/internal/agents/"):
+            # Gateway owns most /internal/agents/* business APIs.
+            # RO-owned subset is explicitly excluded here.
+            ro_owned_suffixes = (
+                "/drive",
+                "/notebook-summary",
+                "/drive/increment-interaction",
+                "/info",
+            )
+            if any(path.endswith(suffix) for suffix in ro_owned_suffixes):
+                return False
+            return True
+        if "/quadrant-tasks" in path or "/growth-logs" in path:
+            return True
+        return False
+
+    def _request(
+        self,
+        method: str,
+        path: str,
+        json_data: Optional[dict] = None,
+        params: Optional[dict] = None,
+    ) -> dict:
+        # Keep compatibility for tests that monkeypatch _get_session to inspect URL routing.
         session = self._get_session()
-        base_url = self.internal_url if path.startswith("/internal/") else self.gateway_url
-        url = f"{base_url}{path}"
-        try:
-            resp = session.request(method, url, json=json_data, params=params)
-            
-            # 检查空响应
-            if not resp.text or not resp.text.strip():
-                raise TaskQueueError(f"Empty response from {url} (status: {resp.status_code})")
-            
+        if session is not None:
+            if not path.startswith("/internal/") or self._is_gateway_internal_path(path):
+                base_url = self.gateway_url
+            else:
+                base_url = self.internal_url
+            url = f"{base_url}{path}"
             try:
+                resp = session.request(method, url, json=json_data, params=params)
+                if not resp.text or not resp.text.strip():
+                    raise TaskQueueError(f"Empty response from {url} (status: {resp.status_code})")
                 data = resp.json()
-            except Exception as json_err:
-                raise TaskQueueError(f"Failed to parse JSON from {url}: {json_err}, content: {resp.text[:200]}")
-            
-            if resp.status_code >= 400:
-                error_msg = data.get("detail", str(data))
-                raise TaskQueueError(f"API error ({resp.status_code}): {error_msg}")
-            return data
-        except httpx.HTTPError as e:
-            raise TaskQueueError(f"HTTP error: {e}")
+                if resp.status_code >= 400:
+                    error_msg = data.get("detail", str(data))
+                    raise TaskQueueError(f"API error ({resp.status_code}): {error_msg}")
+                return data
+            except httpx.HTTPError as e:
+                raise TaskQueueError(f"HTTP error: {e}")
+
+        # Normal path: explicit client split.
+        if not path.startswith("/internal/") or self._is_gateway_internal_path(path):
+            return self.gateway_client.request(method, path, json_data=json_data, params=params)
+        return self.ro_client.request(method, path, json_data=json_data, params=params)
 
     # ---------- Runtime ----------
     def get_runtime(self, runtime_id: str) -> Optional[Dict[str, Any]]:
@@ -595,15 +1054,6 @@ class GatewayInternalClient:
             resp.raise_for_status()
             return resp.json()
 
-    # 向后兼容别名
-    def create_aggregate_mcp(self, agent_id: str, runtime_id: str, subagent_id: str) -> dict:
-        """向后兼容：创建 Runtime 工具上下文"""
-        return self.create_runtime_tools(runtime_id, agent_id, subagent_id)
-
-    def destroy_aggregate_mcp(self, agent_id: str, runtime_id: str) -> dict:
-        """向后兼容：删除 Runtime 工具上下文"""
-        return self.destroy_runtime_tools(runtime_id)
-
     # ---------- Runtime flags ----------
     def set_runtime_summarized(self, runtime_id: str) -> dict:
         return self._request("POST", f"/internal/runtimes/{runtime_id}/summarized", {})
@@ -666,14 +1116,6 @@ class GatewayInternalClient:
         })
 
     # ---------- Messages (Watchdog) ----------
-    def claim_and_prepare_message(self) -> Optional[Dict[str, Any]]:
-        """Claim 并准备一条 sending 消息
-        
-        DEPRECATED: 使用 find_sending_message() + confirm_message() 两阶段提交替代
-        """
-        data = self._request("POST", "/internal/messages/claim-and-prepare", {})
-        return data.get("message")
-    
     def find_sending_message(self) -> Optional[Dict[str, Any]]:
         """查找一条 sending 状态的消息（不改变状态）
         
@@ -760,13 +1202,10 @@ class GatewayInternalClient:
         except Exception:
             return False
 
-    # ---------- Task Queue Recovery ----------
+    # ---------- Task Queue Recovery (delegates to GatewayBusinessClient → Queue Service) ----------
     def recover_all(self, task_timeout: int = 120, saga_timeout: int = 600) -> Dict[str, Any]:
-        """恢复所有超时的 Task 和 Saga"""
-        return self._request("POST", "/internal/tq/recover/all", None, params={
-            "task_timeout": task_timeout,
-            "saga_timeout": saga_timeout,
-        })
+        """恢复所有超时的 Task 和 Saga。调用 Queue Service /api/queue/recover/all"""
+        return self.gateway_client.recover_all(task_timeout=task_timeout, saga_timeout=saga_timeout)
 
     # ---------- HRL and Summary Lock Operations (v24) ----------
     def get_hrl(self, agent_id: str, subagent_id: str) -> dict:
@@ -889,23 +1328,8 @@ class GatewayInternalClient:
             return {"skills": []}
     
     def get_all_memory(self, agent_id: str) -> dict:
-        """Get all memory data for an agent (all namespaces).
-        
-        Returns:
-            {
-                "success": True,
-                "namespaces": {
-                    "default": {"key1": "value1", ...},
-                    "preferences": {...},
-                    ...
-                }
-            }
-        """
-        try:
-            return self._request("GET", f"/internal/agents/{agent_id}/memory/all", None)
-        except Exception as e:
-            print(f"[GatewayInternalClient] Failed to get all memory for {agent_id}: {e}")
-            return {"success": False, "namespaces": {}}
+        """Get all memory data for an agent (all namespaces). Uses Gateway, not RO."""
+        return self.gateway_client.get_all_memory(agent_id)
     
     def match_skills_for_task(self, task: str, max_skills: int = 3) -> dict:
         """
@@ -939,53 +1363,33 @@ class GatewayInternalClient:
             return None
     
     def get_quadrant_task_board(self, agent_id: str) -> Dict[str, Any]:
-        """获取四象限任务看板"""
-        # 需要先获取 runtime_id，这里使用 agent_id 作为 runtime_id 的一部分
-        # 实际上应该通过 subagent 获取，这里简化处理
+        """获取四象限任务看板。使用 /internal/subagents/{subagent_id}/quadrant-tasks/board (Gateway)。"""
         try:
-            # 尝试获取 main subagent
             subagent = self.get_main_subagent(agent_id)
-            if subagent:
-                runtime_id = f"{agent_id}:{subagent.get('id', 'main')}:0"
-            else:
-                runtime_id = f"{agent_id}:main:0"
-            
-            resp = self._request("GET", f"/internal/rt/{runtime_id}/quadrant-tasks/board")
+            subagent_id = subagent.get("subagent_id") or subagent.get("id", "main") if subagent else "main"
+            if subagent and isinstance(subagent.get("id"), str) and subagent["id"].startswith("main-"):
+                subagent_id = subagent["id"]
+            elif subagent and subagent.get("subagent_id"):
+                subagent_id = subagent["subagent_id"]
+            resp = self._request("GET", f"/internal/subagents/{subagent_id}/quadrant-tasks/board")
             return resp
         except Exception as e:
             print(f"[client] get_quadrant_task_board failed: {e}")
             return {"q1": {"count": 0, "tasks": []}, "q2": {"count": 0, "tasks": []}, "q3": {"count": 0, "tasks": []}, "q4": {"count": 0, "tasks": []}}
     
     def get_growth_log(self, agent_id: str, limit: int = 10, category: str = None) -> Dict[str, Any]:
-        """获取成长日志"""
-        try:
-            subagent = self.get_main_subagent(agent_id)
-            if subagent:
-                runtime_id = f"{agent_id}:{subagent.get('id', 'main')}:0"
-            else:
-                runtime_id = f"{agent_id}:main:0"
-            
-            params = {"limit": limit}
-            if category:
-                params["category"] = category
-            
-            resp = self._request("GET", f"/internal/rt/{runtime_id}/self-drive/growth-log", params=params)
-            return resp
-        except Exception as e:
-            print(f"[client] get_growth_log failed: {e}")
-            return {"entries": [], "total_count": 0}
+        """获取成长日志。self-drive API 已移除，返回明确的不支持错误。"""
+        return {
+            "success": False,
+            "error": "get_growth_log: self-drive API has been removed; use /internal/agents/{agent_id}/drive or notebook summary instead",
+            "entries": [],
+            "total_count": 0,
+        }
     
     def get_drive_config(self, agent_id: str) -> Dict[str, Any]:
-        """获取内驱力配置"""
+        """获取内驱力配置。self-drive API 已移除，使用 /internal/agents/{agent_id}/drive 替代。"""
         try:
-            subagent = self.get_main_subagent(agent_id)
-            if subagent:
-                runtime_id = f"{agent_id}:{subagent.get('id', 'main')}:0"
-            else:
-                runtime_id = f"{agent_id}:main:0"
-            
-            resp = self._request("GET", f"/internal/rt/{runtime_id}/self-drive/config")
-            return resp
+            return self._request("GET", f"/internal/agents/{agent_id}/drive", None)
         except Exception as e:
             print(f"[client] get_drive_config failed: {e}")
             return {
@@ -1001,16 +1405,8 @@ class GatewayInternalClient:
             }
     
     def get_self_drive_state(self, agent_id: str) -> Dict[str, Any]:
-        """获取完整的自驱系统状态"""
-        try:
-            subagent = self.get_main_subagent(agent_id)
-            if subagent:
-                runtime_id = f"{agent_id}:{subagent.get('id', 'main')}:0"
-            else:
-                runtime_id = f"{agent_id}:main:0"
-            
-            resp = self._request("GET", f"/internal/rt/{runtime_id}/self-drive/state")
-            return resp
-        except Exception as e:
-            print(f"[client] get_self_drive_state failed: {e}")
-            return {"success": False, "error": str(e)}
+        """获取自驱系统状态。self-drive API 已移除，返回明确的不支持错误。"""
+        return {
+            "success": False,
+            "error": "get_self_drive_state: self-drive API has been removed; use get_agent_state or get_agent_drive instead",
+        }

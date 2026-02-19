@@ -58,3 +58,25 @@ def test_internal_url_falls_back_to_default_ro_when_env_missing(monkeypatch):
     client.get_runtime("rt-2")
 
     assert fake.calls[0]["url"] == "http://127.0.0.1:19993/internal/runtimes/rt-2"
+
+
+def test_agent_memory_path_uses_gateway_url(monkeypatch):
+    monkeypatch.setenv("RUNTIME_ORCHESTRATOR_URL", "http://127.0.0.1:19993")
+    client = GatewayInternalClient("http://127.0.0.1:19999")
+    fake = _FakeSession()
+    monkeypatch.setattr(client, "_get_session", lambda: fake)
+
+    client._request("GET", "/internal/agents/agent-1/memory/all")
+
+    assert fake.calls[0]["url"] == "http://127.0.0.1:19999/internal/agents/agent-1/memory/all"
+
+
+def test_ro_owned_agent_drive_path_uses_runtime_orchestrator_url(monkeypatch):
+    monkeypatch.setenv("RUNTIME_ORCHESTRATOR_URL", "http://127.0.0.1:19993")
+    client = GatewayInternalClient("http://127.0.0.1:19999")
+    fake = _FakeSession()
+    monkeypatch.setattr(client, "_get_session", lambda: fake)
+
+    client._request("GET", "/internal/agents/agent-1/drive")
+
+    assert fake.calls[0]["url"] == "http://127.0.0.1:19993/internal/agents/agent-1/drive"

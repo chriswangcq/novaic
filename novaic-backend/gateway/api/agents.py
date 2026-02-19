@@ -4,7 +4,6 @@ NovAIC Gateway（Backend 组件）- AIC Agent 管理 API.
 提供 Agent 管理 REST 接口。
 """
 
-import os
 from fastapi import APIRouter, HTTPException
 from typing import Optional, List
 from pydantic import BaseModel
@@ -21,6 +20,21 @@ from gateway.db.access import get_db
 from .runtime_orchestrator_forward import forward_to_runtime_orchestrator
 
 router = APIRouter(prefix="/api/agents", tags=["agents"])
+
+
+def _enqueue_system_wake_message(agent_id: str, content: str, metadata: Optional[dict] = None) -> None:
+    """Create SYSTEM_WAKE message in Gateway message domain (status=sending)."""
+    from gateway.db.repositories.message import MessageRepository
+
+    db = get_db()
+    repo = MessageRepository(db)
+    repo.add_message(
+        agent_id=agent_id,
+        type="SYSTEM_WAKE",
+        content=content,
+        metadata=metadata or {},
+        status="sending",
+    )
 
 
 def _prepare_android_config(
@@ -66,11 +80,6 @@ def _prepare_android_config(
             managed=False,
             avd_name=None,
         )
-
-
-def _get_tools_server_url() -> Optional[str]:
-    """Tools Server URL when tools are served from separate process."""
-    return os.environ.get("NOVAIC_TOOLS_SERVER_URL") or None
 
 
 # ==================== Request/Response Models ====================
@@ -268,19 +277,14 @@ def create_agent(request: CreateAgentRequest):
         
         # v2.7: Tools contexts are created per-Runtime by Master, not per-Agent
         
-        # 发送唤醒消息，让 Agent 开始工作（via Runtime Orchestrator）
-        forward_to_runtime_orchestrator(
-            "POST",
-            "/internal/messages",
-            json_body={
-                "agent_id": agent.id,
-                "type": "SYSTEM_WAKE",
-                "content": "Agent created. Ready to assist you.",
-                "metadata": {
-                    "action": "agent_created",
-                    "reason": "new_agent",
-                    "source": "system:create",
-                },
+        # 发送唤醒消息，让 Agent 开始工作（Gateway owns /internal/messages domain）
+        _enqueue_system_wake_message(
+            agent.id,
+            "Agent created. Ready to assist you.",
+            {
+                "action": "agent_created",
+                "reason": "new_agent",
+                "source": "system:create",
             },
         )
         
@@ -353,21 +357,16 @@ def update_agent(agent_id: str, request: UpdateAgentRequest):
     if request.setup_complete is True and not was_setup_complete:
         # Send bootstrap message using v12 Master-driven architecture
         try:
-            # Store message via Runtime Orchestrator.
-            forward_to_runtime_orchestrator(
-                "POST",
-                "/internal/messages",
-                json_body={
-                    "agent_id": agent_id,
-                    "type": "SYSTEM_WAKE",
-                    "content": "VM setup complete. Execute skill agent-bootstrap to configure the agent environment.",
-                    "metadata": {
-                        "action": "bootstrap",
-                        "skill": "agent-bootstrap",
-                        "reason": "setup_complete",
-                        "priority": "high",
-                        "source": "system:bootstrap",
-                    },
+            # Store message in Gateway message domain.
+            _enqueue_system_wake_message(
+                agent_id,
+                "VM setup complete. Execute skill agent-bootstrap to configure the agent environment.",
+                {
+                    "action": "bootstrap",
+                    "skill": "agent-bootstrap",
+                    "reason": "setup_complete",
+                    "priority": "high",
+                    "source": "system:bootstrap",
                 },
             )
             
@@ -494,20 +493,20 @@ def get_agent_status(agent_id: str):
     }
 
 
-# ==================== MCP Management (v2.7) ====================
-# Deprecated: Legacy MCP proxy endpoints.
+# ==================== MCP Management ====================
+# Compatibility endpoints for old MCP status queries.
 
 @router.get("/mcp/status")
 def get_mcp_status():
     """Get MCP status.
     
-    NOTE: Legacy MCP Gateway has been deprecated.
+    NOTE: MCP Gateway endpoints are deprecated.
     Tools are now served via Tools Server (HTTP API).
     """
     return {
         "status": "deprecated",
         "message": "Legacy MCP Gateway has been replaced by Tools Server",
-        "tools_server_url": os.environ.get("NOVAIC_TOOLS_SERVER_URL", ServiceConfig.TOOLS_SERVER_URL),
+        "tools_server_url": ServiceConfig.TOOLS_SERVER_URL,
     }
 
 
@@ -515,7 +514,7 @@ def get_mcp_status():
 def list_mcp_runtimes():
     """List MCP runtimes.
     
-    NOTE: Legacy MCP Gateway has been deprecated.
+    NOTE: MCP Gateway endpoints are deprecated.
     Use Tools Server APIs instead.
     """
     return {
@@ -523,7 +522,7 @@ def list_mcp_runtimes():
         "message": "Legacy MCP Gateway has been replaced by Tools Server",
         "runtimes": [],
         "total": 0,
-        "tools_server_url": os.environ.get("NOVAIC_TOOLS_SERVER_URL", ServiceConfig.TOOLS_SERVER_URL),
+        "tools_server_url": ServiceConfig.TOOLS_SERVER_URL,
     }
 
 

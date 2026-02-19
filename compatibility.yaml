@@ -1,0 +1,50 @@
+version: "1.0"
+generated_at: "2026-02-19"
+owner_team: "platform"
+
+runtime_matrix:
+  python:
+    min: "3.11"
+    max_tested: "3.12"
+  node:
+    min: "20"
+    max_tested: "20"
+  rust:
+    toolchain: "stable"
+
+repos:
+  - id: "novaic-backend"
+    language: "python"
+    runtime:
+      python: "3.11"
+    ci_template: "python-service.yml"
+    contract_set: "backend-internal-v1"
+  - id: "novaic-app"
+    language: "frontend+rust"
+    runtime:
+      node: "20"
+      rust: "stable"
+    ci_template: "frontend-app.yml"
+    contract_set: "desktop-gateway-v1"
+  - id: "novaic-mcp-vmuse"
+    language: "python"
+    runtime:
+      python: "3.11"
+    ci_template: "python-service.yml"
+    contract_set: "mcp-tools-v1"
+  - id: "novaic-gateway"
+    language: "python"
+    runtime:
+      python: "3.11"
+    ci_template: "python-service.yml"
+    contract_set: "gateway-public-v1"
+  - id: "openclaw-main"
+    language: "rust"
+    runtime:
+      rust: "stable"
+    ci_template: "rust-service.yml"
+    contract_set: "runtime-host-v1"
+
+policy:
+  enforce_on_pr: true
+  block_on_unsupported_runtime: true

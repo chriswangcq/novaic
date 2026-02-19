@@ -11,6 +11,141 @@ env:
 
 jobs:
   # ============================================================
+  # Platform Compatibility Matrix (Week 1 baseline)
+  # ============================================================
+  compatibility-matrix:
+    name: Compatibility Matrix Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate compatibility.yaml and template set
+        run: |
+          python - <<'PY'
+          import pathlib
+          import sys
+          import re
+
+          root = pathlib.Path(".")
+          compatibility = root / "compatibility.yaml"
+          templates_dir = root / ".github" / "ci-templates"
+          counting_rule = root / "ops-rounds" / "governance" / "compatibility-consumption-counting-rule.md"
+          effective_rule = root / "ops-rounds" / "governance" / "effective-compatibility-counting-rule.md"
+          governance_index = root / "ops-rounds" / "governance" / "governance-index.md"
+          evidence_latest = root / "ops-rounds" / "governance" / "compatibility-consumption-evidence-latest.md"
+
+          if not compatibility.exists():
+              raise SystemExit("compatibility.yaml is missing")
+          if not templates_dir.exists():
+              raise SystemExit(".github/ci-templates is missing")
+          if not counting_rule.exists():
+              raise SystemExit("compatibility counting rule doc is missing")
+          if not effective_rule.exists():
+              raise SystemExit("effective compatibility counting rule reference is missing")
+          if not governance_index.exists():
+              raise SystemExit("governance index is missing")
+          if not evidence_latest.exists():
+              raise SystemExit("compatibility evidence latest doc is missing")
+
+          text = compatibility.read_text(encoding="utf-8")
+          repo_lines = [line for line in text.splitlines() if line.strip().startswith("- id:")]
+          if len(repo_lines) < 5:
+              raise SystemExit("compatibility.yaml must include at least 5 repos")
+
+          required_templates = {
+              "python-service.yml",
+              "rust-service.yml",
+              "frontend-app.yml",
+          }
+          existing = {p.name for p in templates_dir.glob("*.yml")}
+          missing = required_templates - existing
+          if missing:
+              raise SystemExit(f"missing required templates: {sorted(missing)}")
+
+          # Enforce official counting rule markers and unique component threshold.
+          evidence_text = evidence_latest.read_text(encoding="utf-8")
+          required_markers = [
+              "counting_rule_id: compat-count-v1",
+              "counting_rule_version: v1",
+              "evidence_path_policy: evergreen",
+              "component_count_check: PASS",
+          ]
+          for marker in required_markers:
+              if marker not in evidence_text:
+                  raise SystemExit(f"missing required marker in evidence file: {marker}")
+
+          component_matches = re.findall(r"^- component:\s*`?([^`\n]+)`?", evidence_text, flags=re.MULTILINE)
+          unique_components = sorted(set(component_matches))
+          if len(unique_components) < 5:
+              raise SystemExit(
+                  f"compatibility evidence must contain at least 5 unique components, got {len(unique_components)}"
+              )
+
+          for component in unique_components:
+              block_pattern = rf"- component:\s*`?{re.escape(component)}`?(?:.|\n)*?workflow_reference:"
+              if not re.search(block_pattern, evidence_text):
+                  raise SystemExit(f"component missing workflow_reference in evidence file: {component}")
+
+          effective_text = effective_rule.read_text(encoding="utf-8")
+          if "effective_rule_id: `compat-count-v1`" not in effective_text:
+              raise SystemExit("effective rule doc does not point to compat-count-v1")
+
+          governance_index_text = governance_index.read_text(encoding="utf-8")
+          if "effective-compatibility-counting-rule.md" not in governance_index_text:
+              raise SystemExit("governance index missing effective compatibility rule reference")
+
+          print("compatibility matrix and CI templates validated")
+          PY
+
+  # ============================================================
+  # Governance Report Integrity (Round 009)
+  # ============================================================
+  governance-report-integrity:
+    name: Governance Report Integrity Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate DONE_WITH_GAPS decision metadata
+        run: |
+          python - <<'PY'
+          import pathlib
+          import re
+
+          root = pathlib.Path(".")
+          report_files = sorted(root.glob("ops-rounds/round-009/20-reports/team-*-report.md"))
+          if not report_files:
+              raise SystemExit("no team reports found under ops-rounds/round-009/20-reports")
+
+          failures = []
+          status_pattern = re.compile(r"status:\s*`?DONE_WITH_GAPS`?", re.IGNORECASE)
+          for path in report_files:
+              text = path.read_text(encoding="utf-8")
+              if not status_pattern.search(text):
+                  continue
+
+              lower_text = text.lower()
+              if "decision needed" not in lower_text:
+                  failures.append(f"{path}: DONE_WITH_GAPS without Decision Needed section")
+                  continue
+
+              if re.search(r"owner\s*:", text, re.IGNORECASE) is None:
+                  failures.append(f"{path}: DONE_WITH_GAPS missing owner in Decision Needed")
+              if re.search(r"deadline\s*:", text, re.IGNORECASE) is None:
+                  failures.append(f"{path}: DONE_WITH_GAPS missing deadline in Decision Needed")
+
+          if failures:
+              print("Governance report integrity check failed:")
+              for item in failures:
+                  print(f"- {item}")
+              raise SystemExit(1)
+
+          print("governance report integrity check passed")
+          PY
+
+  # ============================================================
   # Frontend (React + TypeScript)
   # ============================================================
   frontend:
@@ -88,6 +223,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Preflight probe prerequisites (Round 005)
+        working-directory: novaic-backend
+        run: bash scripts/tools/ci_preflight_probe_prereqs.sh
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
@@ -96,7 +235,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install ruff
+          pip install ruff pytest
 
       # 语法检查
       - name: Syntax check (novaic-agent)
@@ -119,20 +258,200 @@ jobs:
           ruff check novaic-mcp-vmuse/src/ --select=E,F --ignore=E501 || true
         continue-on-error: true  # 暂时不强制要求
 
+      - name: Strict config check (novaic-backend)
+        working-directory: novaic-backend
+        run: pytest -q tests/unit/common/test_strict_config.py
+
+      - name: Policy sync check (Tools runner support)
+        working-directory: novaic-backend
+        run: pytest -q tests/unit/tools_server/test_policy_doc_sync.py
+
+      - name: Agent runtime diagnostics policy gate
+        working-directory: novaic-backend
+        run: python scripts/check_idempotency_diagnostics_policy.py
+
+  # ============================================================
+  # Gateway Isolated Startup Smoke
+  # Canonical policy:
+  # ops-rounds/governance/gateway-smoke-port-strategy.md
+  # ============================================================
+  gateway-smoke:
+    name: Gateway Startup Smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install backend dependencies
+        working-directory: novaic-backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run gateway startup smoke
+        working-directory: novaic-backend
+        run: bash scripts/smoke_gateway_independent_startup.sh
+
+  # ============================================================
+  # Desktop Operability Policy Gate (Round 007)
+  # Policy: CI enforces scriptable replay; GUI installer replay on QA cadence.
+  # ============================================================
+  desktop-operability:
+    name: Desktop Operability Gate
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: novaic-app/package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install desktop dependencies
+        working-directory: novaic-app
+        run: npm ci
+
+      - name: Run acceptance cargo check
+        run: cargo check --manifest-path "novaic-app/src-tauri/Cargo.toml"
+
+      - name: Build desktop bundles
+        working-directory: novaic-app
+        run: npm run tauri:build
+
+      - name: Replay fresh-profile validation
+        run: |
+          chmod +x novaic-app/scripts/validate_fresh_profile.sh
+          RUN_LABEL="ci-gate" \
+          OPERATOR_ID="ci-desktop-operability" \
+          EVIDENCE_DIR="${RUNNER_TEMP}/desktop-evidence" \
+          novaic-app/scripts/validate_fresh_profile.sh
+
+      - name: Validate stable desktop governance docs
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          policy = Path("ops-rounds/governance/desktop-operability-policy.md")
+          checklist = Path("ops-rounds/governance/desktop-operator-quick-checklist.md")
+          if not policy.exists():
+              raise SystemExit("missing stable governance doc: desktop-operability-policy.md")
+          if not checklist.exists():
+              raise SystemExit("missing stable governance doc: desktop-operator-quick-checklist.md")
+
+          text = policy.read_text(encoding="utf-8")
+          required = [
+              "desktop-operability-policy-v1",
+              "Primary owner: Desktop Team",
+              "Governance co-owner: Platform CI Owner",
+              "QA owner: QA Release Owner",
+              "CI scriptable replay: every PR/push CI run.",
+          ]
+          for marker in required:
+              if marker not in text:
+                  raise SystemExit(f"policy missing required marker: {marker}")
+          print("desktop governance policy markers validated")
+          PY
+
+      - name: Upload desktop replay evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-operability-evidence
+          path: ${{ runner.temp }}/desktop-evidence/**
+          if-no-files-found: error
+
+  # ============================================================
+  # Storage Contract Governance
+  # Canonical policy: contracts/STORAGE_SCHEMA_GOVERNANCE.md
+  # Local CI simulation rule: STORAGE-GOV-001 (same file)
+  # ============================================================
+  storage-contract-governance:
+    name: Storage Contract Governance Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate schema change guardrail
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          import pathlib
+          import subprocess
+          import sys
+
+          schema_path = "contracts/schema/storage-api.v1.schema.json"
+          evidence_path = "contracts/evidence/storage-contract-diff-latest.md"
+          changelog_path = "contracts/STORAGE_SCHEMA_CHANGELOG.md"
+
+          base_sha = os.environ.get("PR_BASE_SHA") or os.environ.get("PUSH_BEFORE_SHA")
+          head_sha = os.environ.get("HEAD_SHA")
+          if not base_sha or base_sha == "0000000000000000000000000000000000000000":
+              base_sha = subprocess.check_output(["git", "rev-parse", "HEAD~1"], text=True).strip()
+
+          changed = subprocess.check_output(
+              ["git", "diff", "--name-only", base_sha, head_sha], text=True
+          ).splitlines()
+          changed_set = set(changed)
+          print(f"Changed files between {base_sha} and {head_sha}:")
+          for item in changed:
+              print(item)
+
+          if schema_path in changed_set:
+              missing = [p for p in (evidence_path, changelog_path) if p not in changed_set]
+              if missing:
+                  raise SystemExit(f"Schema changed but required companion files not updated: {missing}")
+
+              evidence_text = pathlib.Path(evidence_path).read_text(encoding="utf-8")
+              for marker in ("schema_version_check: PASS", "schema_owner_check: PASS"):
+                  if marker not in evidence_text:
+                      raise SystemExit(f"Missing required marker in {evidence_path}: {marker}")
+
+              changelog_text = pathlib.Path(changelog_path).read_text(encoding="utf-8")
+              if "storage-api.v1.schema.json" not in changelog_text:
+                  raise SystemExit(
+                      f"Missing schema reference in {changelog_path}: storage-api.v1.schema.json"
+                  )
+
+          print("Storage contract governance guardrail passed")
+          PY
+
   # ============================================================
   # 汇总检查结果
   # ============================================================
   ci-success:
     name: CI Success
-    needs: [frontend, tauri, python]
+    needs: [compatibility-matrix, governance-report-integrity, frontend, tauri, python, gateway-smoke, desktop-operability, storage-contract-governance]
     runs-on: ubuntu-latest
     if: always()
     steps:
       - name: Check all jobs
         run: |
-          if [[ "${{ needs.frontend.result }}" == "failure" ]] || \
+          if [[ "${{ needs.compatibility-matrix.result }}" == "failure" ]] || \
+             [[ "${{ needs.governance-report-integrity.result }}" == "failure" ]] || \
+             [[ "${{ needs.frontend.result }}" == "failure" ]] || \
              [[ "${{ needs.tauri.result }}" == "failure" ]] || \
-             [[ "${{ needs.python.result }}" == "failure" ]]; then
+             [[ "${{ needs.python.result }}" == "failure" ]] || \
+             [[ "${{ needs.gateway-smoke.result }}" == "failure" ]] || \
+             [[ "${{ needs.desktop-operability.result }}" == "failure" ]] || \
+             [[ "${{ needs.storage-contract-governance.result }}" == "failure" ]]; then
             echo "One or more jobs failed"
             exit 1
           fi

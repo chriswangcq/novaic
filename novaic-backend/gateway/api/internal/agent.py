@@ -59,9 +59,8 @@ def set_agent_sleep(agent_id: str, data: Dict[str, Any] = None):
 def get_agent_internal(agent_id: str):
     """Get agent information for internal use (tools server).
     
-    Returns vm.ports and android for VM tools (screenshot, desktop) and Mobile tools
-    (mobile_screenshot, etc.). Uses unified devices (v38) when legacy agent.vm / agent.android
-    are empty.
+    Returns vm.ports and android for VM tools (screenshot, desktop)
+    and mobile tools, using unified devices as the source of truth.
     """
     from gateway.config import get_agent_config_manager
     
@@ -70,69 +69,42 @@ def get_agent_internal(agent_id: str):
     
     if not agent:
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
-    
-    # Build vm.ports - from legacy agent.vm or from devices (Linux device)
+
+    linux_device = None
+    android_device = None
+    for device in (getattr(agent, "devices", None) or []):
+        if not isinstance(device, dict):
+            continue
+        if device.get("type") == "linux" and linux_device is None:
+            linux_device = device
+        elif device.get("type") == "android" and android_device is None:
+            android_device = device
+        if linux_device and android_device:
+            break
+
     vm_ports = {"ssh": None, "vmuse": None}
-    if agent.vm and agent.vm.ports and (agent.vm.ports.ssh or agent.vm.ports.vmuse):
-        vm_ports["ssh"] = agent.vm.ports.ssh or None
-        vm_ports["vmuse"] = agent.vm.ports.vmuse or None
-    # Fallback: get from first Linux device (v38 unified model)
-    if not vm_ports["vmuse"] and getattr(agent, "devices", None):
-        for d in agent.devices:
-            if isinstance(d, dict) and d.get("type") == "linux":
-                ports = d.get("ports") or {}
-                if ports.get("vmuse"):
-                    vm_ports["ssh"] = ports.get("ssh")
-                    vm_ports["vmuse"] = ports.get("vmuse")
-                    break
-            elif hasattr(d, "type") and getattr(d, "type", None) == "linux":
-                ports = getattr(d, "ports", None) or {}
-                if ports.get("vmuse"):
-                    vm_ports["ssh"] = ports.get("ssh")
-                    vm_ports["vmuse"] = ports.get("vmuse")
-                    break
-    
+    vm_backend = None
+    if linux_device:
+        ports = linux_device.get("ports") or {}
+        vm_ports["ssh"] = ports.get("ssh")
+        vm_ports["vmuse"] = ports.get("vmuse")
+        vm_backend = linux_device.get("backend")
+
     result = {
         "agent_id": agent.id,
         "name": agent.name,
         "vm": {
-            "backend": agent.vm.backend if agent.vm else None,
+            "backend": vm_backend,
             "ports": vm_ports,
-        } if agent.vm or vm_ports["vmuse"] else {}
+        } if linux_device else {}
     }
-    
-    # Build android config - from legacy agent.android or from devices (Android device)
-    android_config = None
-    if agent.android and agent.android.device_serial:
-        android_config = {
-            "device_serial": agent.android.device_serial,
-            "managed": agent.android.managed,
-            "avd_name": agent.android.avd_name,
+
+    if android_device:
+        result["android"] = {
+            "device_serial": android_device.get("device_serial", "") or "",
+            "managed": android_device.get("managed", True),
+            "avd_name": android_device.get("avd_name", ""),
         }
-    # Fallback: get from first Android device (v38 unified model)
-    if not android_config and getattr(agent, "devices", None):
-        for d in agent.devices:
-            if isinstance(d, dict) and d.get("type") == "android":
-                serial = d.get("device_serial") or d.get("avd_name")
-                if serial or d.get("avd_name"):
-                    android_config = {
-                        "device_serial": d.get("device_serial", ""),
-                        "managed": d.get("managed", True),
-                        "avd_name": d.get("avd_name", ""),
-                    }
-                    break
-            elif hasattr(d, "type") and getattr(d, "type", None) == "android":
-                serial = getattr(d, "device_serial", None) or getattr(d, "avd_name", None)
-                if serial:
-                    android_config = {
-                        "device_serial": getattr(d, "device_serial", "") or "",
-                        "managed": getattr(d, "managed", True),
-                        "avd_name": getattr(d, "avd_name", ""),
-                    }
-                    break
-    
-    if android_config:
-        result["android"] = android_config
     
     return result
 
@@ -172,6 +144,181 @@ def get_all_agent_memory(agent_id: str):
         "success": True,
         "namespaces": result
     }
+
+
+# ==================== Memory CRUD (agent-scoped; migrated from /internal/rt/*) ====================
+
+@router.post("/agents/{agent_id}/memory/save")
+def memory_save(agent_id: str, data: Dict[str, Any]):
+    """Save memory value. Replaces /internal/rt/{runtime_id}/memory/save."""
+    from gateway.db.repositories.memory import MemoryRepository
+    db = get_db()
+    repo = MemoryRepository(db)
+    return repo.save(
+        agent_id=agent_id,
+        key=data.get("key", ""),
+        value=data.get("value"),
+        namespace=data.get("namespace", "default"),
+    )
+
+
+@router.post("/agents/{agent_id}/memory/recall")
+def memory_recall(agent_id: str, data: Dict[str, Any]):
+    """Recall memory value. Replaces /internal/rt/{runtime_id}/memory/recall."""
+    from gateway.db.repositories.memory import MemoryRepository
+    db = get_db()
+    repo = MemoryRepository(db)
+    return repo.recall(
+        agent_id=agent_id,
+        key=data.get("key"),
+        namespace=data.get("namespace", "default"),
+    )
+
+
+@router.post("/agents/{agent_id}/memory/delete")
+def memory_delete(agent_id: str, data: Dict[str, Any]):
+    """Delete memory value. Replaces /internal/rt/{runtime_id}/memory/delete."""
+    from gateway.db.repositories.memory import MemoryRepository
+    db = get_db()
+    repo = MemoryRepository(db)
+    return repo.delete(
+        agent_id=agent_id,
+        key=data.get("key", ""),
+        namespace=data.get("namespace", "default"),
+    )
+
+
+@router.get("/agents/{agent_id}/memory/namespaces")
+def memory_list_namespaces(agent_id: str):
+    """List memory namespaces. Replaces /internal/rt/{runtime_id}/memory/namespaces."""
+    from gateway.db.repositories.memory import MemoryRepository
+    db = get_db()
+    repo = MemoryRepository(db)
+    ns = repo.list_namespaces(agent_id)
+    return {"success": True, "namespaces": ns}
+
+
+@router.post("/agents/{agent_id}/memory/task/log")
+def memory_log_task(agent_id: str, data: Dict[str, Any]):
+    """Log task action. Replaces /internal/rt/{runtime_id}/memory/task/log."""
+    from gateway.db.repositories.memory import MemoryRepository
+    db = get_db()
+    repo = MemoryRepository(db)
+    return repo.log_task(
+        agent_id=agent_id,
+        action=data.get("action", ""),
+        details=data.get("details"),
+        status=data.get("status", "completed"),
+    )
+
+
+@router.post("/agents/{agent_id}/memory/task/history")
+def memory_get_task_history(agent_id: str, data: Dict[str, Any]):
+    """Get task history. Replaces /internal/rt/{runtime_id}/memory/task/history."""
+    from gateway.db.repositories.memory import MemoryRepository
+    db = get_db()
+    repo = MemoryRepository(db)
+    return repo.get_task_history(
+        agent_id=agent_id,
+        limit=data.get("limit", 20),
+        status_filter=data.get("status_filter"),
+    )
+
+
+# ==================== Notebook CRUD (agent-scoped; migrated from /internal/rt/*) ====================
+
+@router.post("/agents/{agent_id}/notebook/write")
+def notebook_write(agent_id: str, data: Dict[str, Any]):
+    """Write notebook entry. Replaces /internal/rt/{runtime_id}/notebook/write."""
+    from gateway.db.repositories.notebook import NotebookRepository
+    db = get_db()
+    repo = NotebookRepository(db)
+    return repo.write(
+        agent_id=agent_id,
+        entry_type=data.get("entry_type", "note"),
+        title=data.get("title", ""),
+        content=data.get("content", ""),
+        related_topics=data.get("related_topics", []),
+        relevance_score=data.get("relevance_score", 0.5),
+        expires_at=data.get("expires_at"),
+    )
+
+
+@router.post("/agents/{agent_id}/notebook/list")
+def notebook_list(agent_id: str, data: Dict[str, Any]):
+    """List notebook entries. Replaces /internal/rt/{runtime_id}/notebook/list."""
+    from gateway.db.repositories.notebook import NotebookRepository
+    db = get_db()
+    repo = NotebookRepository(db)
+    return repo.list_entries(
+        agent_id=agent_id,
+        entry_type=data.get("entry_type"),
+        status=data.get("status"),
+        limit=data.get("limit", 20),
+        include_expired=data.get("include_expired", False),
+    )
+
+
+@router.post("/agents/{agent_id}/notebook/read")
+def notebook_read(agent_id: str, data: Dict[str, Any]):
+    """Read notebook entry. Replaces /internal/rt/{runtime_id}/notebook/read."""
+    from gateway.db.repositories.notebook import NotebookRepository
+    db = get_db()
+    repo = NotebookRepository(db)
+    entry_id = data.get("entry_id")
+    if entry_id is None:
+        raise HTTPException(status_code=400, detail="entry_id is required")
+    return repo.read(agent_id=agent_id, entry_id=int(entry_id))
+
+
+@router.post("/agents/{agent_id}/notebook/update")
+def notebook_update(agent_id: str, data: Dict[str, Any]):
+    """Update notebook entry. Replaces /internal/rt/{runtime_id}/notebook/update."""
+    from gateway.db.repositories.notebook import NotebookRepository
+    db = get_db()
+    repo = NotebookRepository(db)
+    entry_id = data.get("entry_id")
+    if entry_id is None:
+        raise HTTPException(status_code=400, detail="entry_id is required")
+    return repo.update(
+        agent_id=agent_id,
+        entry_id=int(entry_id),
+        status=data.get("status"),
+        content=data.get("content"),
+        title=data.get("title"),
+        relevance_score=data.get("relevance_score"),
+        expires_at=data.get("expires_at"),
+    )
+
+
+# ==================== Drive (agent-scoped; migrated from /internal/rt/*) ====================
+
+@router.post("/agents/{agent_id}/drive/update-profile")
+def drive_update_profile(agent_id: str, data: Dict[str, Any]):
+    """Update drive profile. Replaces /internal/rt/{runtime_id}/drive/update-profile."""
+    from gateway.db.repositories.drive import DriveRepository
+    db = get_db()
+    repo = DriveRepository(db)
+    return repo.update_profile(
+        agent_id=agent_id,
+        key=data.get("key", ""),
+        value=data.get("value"),
+        reason=data.get("reason", ""),
+    )
+
+
+@router.post("/agents/{agent_id}/drive/update")
+def drive_update(agent_id: str, data: Dict[str, Any]):
+    """Update drive relationship. Replaces /internal/rt/{runtime_id}/drive/update."""
+    from gateway.db.repositories.drive import DriveRepository
+    db = get_db()
+    repo = DriveRepository(db)
+    return repo.update_drive(
+        agent_id=agent_id,
+        relationship_delta=data.get("relationship_delta"),
+        proactiveness_delta=data.get("proactiveness_delta"),
+        reason=data.get("reason", ""),
+    )
 
 
 # 工具服务由 Backend 组件 Tools Server 提供（api/internal_mcp.py）；Master 调 Tools Server /internal/mcp/*

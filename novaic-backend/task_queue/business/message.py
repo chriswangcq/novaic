@@ -10,7 +10,10 @@ Message Business - 消息处理
 from dataclasses import dataclass
 from typing import Dict, Any, List, Optional
 
-from ..client import GatewayInternalClient
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from ..client import GatewayInternalClient, GatewayBusinessClient, RuntimeOrchestratorClient
 
 
 @dataclass
@@ -50,13 +53,31 @@ class MessageBusiness:
         ... )
     """
     
-    def __init__(self, gateway_url: str, client: Optional[GatewayInternalClient] = None):
+    def __init__(
+        self,
+        gateway_url: str,
+        gateway_client: "GatewayBusinessClient" = None,
+        ro_client: "RuntimeOrchestratorClient" = None,
+        client: Optional["GatewayInternalClient"] = None,
+    ):
         """
         Args:
-            gateway_url: Gateway URL
-            client: 可复用的 GatewayInternalClient
+            gateway_url: Gateway URL (used when clients not provided)
+            gateway_client: GatewayBusinessClient for messages (preferred)
+            ro_client: RuntimeOrchestratorClient for runtime/subagent (preferred)
+            client: Legacy GatewayInternalClient; if provided, extracts .gateway_client and .ro_client
         """
-        self.client = client or GatewayInternalClient(gateway_url)
+        if client is not None:
+            self.gateway_client = client.gateway_client
+            self.ro_client = client.ro_client
+        elif gateway_client is not None and ro_client is not None:
+            self.gateway_client = gateway_client
+            self.ro_client = ro_client
+        else:
+            raise ValueError(
+                "MessageBusiness requires explicit gateway_client and ro_client "
+                "(fallback creation is disabled)"
+            )
     
     def append_to_context(
         self,
@@ -82,7 +103,7 @@ class MessageBusiness:
         Returns:
             ContextAppendResult
         """
-        response = self.client.append_context(
+        response = self.ro_client.append_context(
             runtime_id=runtime_id,
             message=message,
             message_type=message_type,
@@ -115,7 +136,7 @@ class MessageBusiness:
         Returns:
             Context 列表或 None
         """
-        runtime = self.client.get_runtime(runtime_id)
+        runtime = self.ro_client.get_runtime(runtime_id)
         if not runtime:
             return None
         return runtime.get("context") or []
@@ -132,7 +153,7 @@ class MessageBusiness:
         Returns:
             {"success": bool, "claimed": bool, "current_status": str}
         """
-        return self.client.claim_message(message_id)
+        return self.gateway_client.claim_message(message_id)
     
     def find_active_runtime(
         self,
@@ -149,5 +170,5 @@ class MessageBusiness:
         Returns:
             Runtime ID 或 None
         """
-        runtime = self.client.get_subagent_runtime(agent_id, subagent_id)
+        runtime = self.ro_client.get_subagent_runtime(agent_id, subagent_id)
         return runtime.get("runtime_id") if runtime else None

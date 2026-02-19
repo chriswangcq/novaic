@@ -1,0 +1,9 @@
+event_count=10
+error_timeout_count=0
+stages=app-bootstrap,cleanup,port-preflight,runtime-orchestrator,gateway,vmcontrol,queue-service,file-service,tool-result-service,tools-server
+last_events:
+{"ts": "2026-02-19T03:22:24.236070+00:00", "stage": "vmcontrol", "status": "started", "detail": "vmcontrol started"}
+{"ts": "2026-02-19T03:22:24.236267+00:00", "stage": "queue-service", "status": "started", "detail": "queue service started"}
+{"ts": "2026-02-19T03:22:24.236413+00:00", "stage": "file-service", "status": "started", "detail": "file service started"}
+{"ts": "2026-02-19T03:22:24.236558+00:00", "stage": "tool-result-service", "status": "started", "detail": "tool result service started"}
+{"ts": "2026-02-19T03:22:43.280286+00:00", "stage": "tools-server", "status": "started", "detail": "tools server started"}

@@ -73,14 +73,15 @@ def handle_tool_execute(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     
     # 如果 payload 中没有，从 runtime 获取（兼容旧逻辑）
     if not subagent_id or not agent_id:
-        from ..client import GatewayInternalClient
         import logging
-        
-        gateway_url = ctx.get("gateway_url")
-        client = ctx.get("gateway_client") or GatewayInternalClient(gateway_url)
-        
+        ro_client = ctx.get("ro_client")
+        if not ro_client:
+            raise ValidationError(
+                "Missing required client in ctx: ro_client "
+                "(fallback creation is disabled)"
+            )
         try:
-            runtime = client.get_runtime(runtime_id)
+            runtime = ro_client.get_runtime(runtime_id)
             if not runtime:
                 logging.warning(
                     f"[tool_handlers] Runtime not found: {runtime_id}, "
@@ -123,7 +124,8 @@ def handle_tool_execute(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     # 注：need_rest 由 MCP runtime_reset 工具内部设置
     biz = MCPBusiness(
         gateway_url=ctx["gateway_url"],
-        client=ctx.get("gateway_client"),
+        gateway_client=ctx.get("gateway_client"),
+        ro_client=ctx.get("ro_client"),
     )
     
     result = biz.execute_tool(

@@ -9,6 +9,7 @@ from .schema import init_schema_sync
 _database = None
 _database_file = ServiceConfig.GATEWAY_DB_FILE
 _data_dir = ServiceConfig.DATA_DIR
+_init_schema_func = init_schema_sync
 
 
 def get_db() -> Database:
@@ -18,26 +19,29 @@ def get_db() -> Database:
         db_path = Path(_data_dir) / _database_file
         db_path.parent.mkdir(parents=True, exist_ok=True)
         _database = Database(db_path)
-        _database.connect(init_schema_func=init_schema_sync)
+        _database.connect(init_schema_func=_init_schema_func)
     
     return _database
 
 
-def set_database_target(data_dir: str, db_file: str) -> None:
+def set_database_target(data_dir: str, db_file: str, init_schema_func=None) -> None:
     """Set target database path before initialization."""
-    global _database_file, _data_dir, _database
+    global _database_file, _data_dir, _database, _init_schema_func
     if _database is not None:
         raise RuntimeError("Database already initialized; set target before init_database()")
     _data_dir = data_dir
     _database_file = db_file
+    if init_schema_func is not None:
+        _init_schema_func = init_schema_func
 
 
-def init_database(data_dir: str | None = None, db_file: str | None = None) -> Database:
+def init_database(data_dir: str | None = None, db_file: str | None = None, init_schema_func=None) -> Database:
     """Initialize and return the global Gateway database instance."""
-    if data_dir is not None or db_file is not None:
+    if data_dir is not None or db_file is not None or init_schema_func is not None:
         set_database_target(
             data_dir=data_dir or _data_dir,
             db_file=db_file or _database_file,
+            init_schema_func=init_schema_func,
         )
     return get_db()
 

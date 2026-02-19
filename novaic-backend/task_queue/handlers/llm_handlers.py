@@ -35,14 +35,44 @@ def _create_llm_client(provider: str, api_key: str, api_base: str):
         return OpenAIClient(api_base=api_base, api_key=api_key)
 
 
-def _fetch_llm_config_from_gateway(gateway_url: str, runtime_id: str) -> Dict[str, Any]:
-    """Fetch LLM config by runtime_id from Gateway internal API."""
+def _fetch_llm_config_from_gateway(
+    gateway_url: str,
+    runtime_id: str,
+    *,
+    agent_id: str = None,
+    subagent_id: str = None,
+    ro_client=None,
+) -> Dict[str, Any]:
+    """Fetch LLM config from Gateway internal API.
+
+    In split-DB mode, Gateway is the source of truth for agent-level LLM config.
+    Runtime-based config lookup is not used here.
+    """
     from common.http.clients import internal_client
-    url = f"{gateway_url.rstrip('/')}/internal/config/llm/runtime/{runtime_id}"
+
+    if not agent_id:
+        if not runtime_id:
+            raise ValidationError("Missing required field: runtime_id")
+        if ro_client is None:
+            raise ValidationError("Missing required context: ro_client")
+        runtime = ro_client.get_runtime(runtime_id)
+        if not runtime:
+            raise ValidationError(f"Runtime not found: {runtime_id}")
+        agent_id = runtime.get("agent_id")
+        if not agent_id:
+            raise ValidationError(f"Runtime missing agent_id: {runtime_id}")
+        if not subagent_id:
+            subagent_id = runtime.get("subagent_id")
+
+    base = gateway_url.rstrip("/")
     with internal_client(timeout=ServiceConfig.HTTP_TIMEOUT_SHORT) as client:
-        resp = client.get(url)
-        resp.raise_for_status()
-        return resp.json()
+        agent_url = f"{base}/internal/config/llm/agent/{agent_id}"
+        agent_resp = client.get(agent_url)
+        agent_resp.raise_for_status()
+        data = agent_resp.json()
+        if subagent_id and isinstance(data, dict) and not data.get("subagent_id"):
+            data["subagent_id"] = subagent_id
+        return data
 
 
 @register_handler(TaskTopics.LLM_CALL)
@@ -85,7 +115,13 @@ def handle_llm_call(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     
     # 通过 Gateway 内部 API 获取 Runtime 对应的 LLM 配置
     gateway_url = ctx.get("gateway_url", ServiceConfig.GATEWAY_URL)
-    llm_config = _fetch_llm_config_from_gateway(gateway_url, runtime_id)
+    llm_config = _fetch_llm_config_from_gateway(
+        gateway_url,
+        runtime_id,
+        agent_id=payload.get("agent_id"),
+        subagent_id=payload.get("subagent_id"),
+        ro_client=ctx.get("ro_client"),
+    )
     
     if not llm_config.get("success"):
         return {
@@ -165,7 +201,7 @@ def handle_llm_call(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
         )
     
     # 使用业务逻辑层调用 LLM（传入已展开的 messages）
-    biz = LLMBusiness(ctx["gateway_url"], llm_client, client=ctx.get("gateway_client"))
+    biz = LLMBusiness(ctx["gateway_url"], llm_client, ro_client=ctx.get("ro_client"))
     
     result = biz.call(
         messages=processed_messages,
@@ -246,7 +282,13 @@ def handle_llm_call_summary(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any
     
     # 通过 Gateway 内部 API 获取 Runtime 对应的 LLM 配置
     gateway_url = ctx.get("gateway_url", ServiceConfig.GATEWAY_URL)
-    llm_config = _fetch_llm_config_from_gateway(gateway_url, runtime_id)
+    llm_config = _fetch_llm_config_from_gateway(
+        gateway_url,
+        runtime_id,
+        agent_id=payload.get("agent_id"),
+        subagent_id=payload.get("subagent_id"),
+        ro_client=ctx.get("ro_client"),
+    )
     
     if not llm_config.get("success"):
         return {
@@ -264,7 +306,7 @@ def handle_llm_call_summary(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any
     # 使用 payload 中的 model 或 runtime 的默认 model
     model = payload.get("model") or llm_config["model"]
     
-    biz = LLMBusiness(ctx["gateway_url"], llm_client, client=ctx.get("gateway_client"))
+    biz = LLMBusiness(ctx["gateway_url"], llm_client, ro_client=ctx.get("ro_client"))
     
     result = biz.generate_summary(
         runtime_id=runtime_id,
@@ -313,7 +355,13 @@ def handle_llm_call_hot_cold_summary(payload: Dict[str, Any], ctx: dict) -> Dict
     
     # 通过 Gateway 内部 API 获取 Runtime 对应的 LLM 配置
     gateway_url = ctx.get("gateway_url", ServiceConfig.GATEWAY_URL)
-    llm_config = _fetch_llm_config_from_gateway(gateway_url, runtime_id)
+    llm_config = _fetch_llm_config_from_gateway(
+        gateway_url,
+        runtime_id,
+        agent_id=payload.get("agent_id"),
+        subagent_id=payload.get("subagent_id"),
+        ro_client=ctx.get("ro_client"),
+    )
     
     if not llm_config.get("success"):
         return {
@@ -331,7 +379,7 @@ def handle_llm_call_hot_cold_summary(payload: Dict[str, Any], ctx: dict) -> Dict
     # 使用 payload 中的 model 或 runtime 的默认 model
     model = payload.get("model") or llm_config["model"]
     
-    biz = LLMBusiness(ctx["gateway_url"], llm_client, client=ctx.get("gateway_client"))
+    biz = LLMBusiness(ctx["gateway_url"], llm_client, ro_client=ctx.get("ro_client"))
     
     result = biz.generate_hot_cold_summary(
         runtime_id=runtime_id,

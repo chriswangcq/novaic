@@ -216,6 +216,22 @@ class SubAgentRepository:
             if row:
                 return self._row_to_subagent(row)
             return None
+
+    def get_by_subagent_id(self, subagent_id: str) -> Optional[SubAgent]:
+        """Get a SubAgent by subagent_id only (subagent_id is globally unique).
+        
+        Uses global connection since agent_id is unknown; for Gateway business APIs
+        that accept subagent_id-only input and need to resolve agent_id.
+        """
+        with self.db.get_connection("global") as conn:
+            cursor = conn.execute(
+                f"SELECT {self._COLUMNS} FROM subagents WHERE subagent_id = ?",
+                (subagent_id,)
+            )
+            row = cursor.fetchone()
+            if row:
+                return self._row_to_subagent(row)
+            return None
     
     def get_main_subagent(self, agent_id: str) -> Optional[SubAgent]:
         """Get the main SubAgent for an agent."""

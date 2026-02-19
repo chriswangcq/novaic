@@ -1,0 +1,6 @@
+run_label=operator-b
+operator_id=desktop-operator-b
+app_bundle=/Users/wangchaoqun/novaic/novaic-app/src-tauri/target/release/bundle/macos/NovAIC.app
+wait_seconds=75
+clean_home=/tmp/novaic-round006-fresh-home.x6YNki
+timestamp_utc=2026-02-19T03:23:33Z

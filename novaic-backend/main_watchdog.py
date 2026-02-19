@@ -27,9 +27,9 @@ def main():
     )
     args = parser.parse_args()
     
-    from task_queue.workers.watchdog import Watchdog
-    
-    worker = Watchdog(
+    from task_queue.workers.watchdog_sync import WatchdogSync
+
+    worker = WatchdogSync(
         gateway_url=args.gateway_url,
         queue_service_url=args.queue_service_url,
         poll_interval=0.1,

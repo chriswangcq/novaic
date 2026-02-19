@@ -15,7 +15,76 @@ from common.enums import RuntimeStatus, SubagentStatus
 from common.config import ServiceConfig
 from gateway.db.access import get_db
 
+# ==================== SubAgent Resolution Helper (Gateway Business APIs) ====================
+# Gateway does NOT understand runtime; use subagent_id-only resolution for business endpoints.
+# Resolution is done via RO API (RO owns subagent data); Gateway does NOT query local DB.
+
+
+def resolve_agent_id_from_subagent(subagent_id: str) -> str:
+    """
+    Resolve agent_id from subagent_id via RO internal API (no local DB lookup).
+    
+    For Gateway business APIs that accept subagent_id-only input.
+    Gateway must not perform runtime lookup logic or read subagent table locally.
+    
+    Args:
+        subagent_id: SubAgent ID (globally unique)
+    
+    Returns:
+        agent_id: Agent that owns this SubAgent
+    
+    Raises:
+        HTTPException: If subagent not found (404 from RO) or RO unavailable
+    """
+    from gateway.clients.runtime_orchestrator import RuntimeOrchestratorClient
+
+    if not RuntimeOrchestratorClient.is_enabled():
+        raise HTTPException(
+            status_code=500,
+            detail="Runtime Orchestrator URL is not configured; subagent resolution requires RO",
+        )
+
+    base_url = ServiceConfig.RUNTIME_ORCHESTRATOR_URL.rstrip("/")
+    path = f"/internal/subagents/by-id/{subagent_id}"
+    try:
+        from common.http.clients import internal_client
+
+        with internal_client(
+            base_url=base_url,
+            timeout=getattr(ServiceConfig, "HTTP_TIMEOUT", 30.0),
+        ) as client:
+            response = client.get(path)
+            response.raise_for_status()
+            result = response.json()
+    except httpx.HTTPStatusError as e:
+        status_code = e.response.status_code
+        detail = str(e)
+        try:
+            body = e.response.json()
+            if isinstance(body, dict) and "detail" in body:
+                detail = body["detail"] if isinstance(body["detail"], str) else str(body["detail"])
+        except Exception:
+            if e.response.text:
+                detail = e.response.text[:500]
+        raise HTTPException(status_code=status_code, detail=detail)
+    except httpx.RequestError as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to reach Runtime Orchestrator for subagent resolution: {e}",
+        )
+
+    agent_id = result.get("agent_id")
+    if not agent_id:
+        raise HTTPException(
+            status_code=502,
+            detail="Invalid response from RO: missing agent_id",
+        )
+    return agent_id
+
+
 # ==================== Runtime Resolution Helper ====================
+# NOTE: resolve_runtime_ids uses Runtime table lookup; do NOT use in Gateway business handlers.
+# Kept for runtime-state APIs (/internal/runtimes*) and Runtime Orchestrator only.
 
 def resolve_runtime_ids(runtime_id: str) -> Tuple[str, str, str]:
     """
@@ -120,6 +189,10 @@ def _subagent_to_dict(subagent) -> Dict[str, Any]:
 # ==================== Phase 4 Runtime Orchestrator Proxy ====================
 
 _RUNTIME_ORCHESTRATOR_PROCESS = False
+# Only /internal/runtimes and /internal/runtimes/* are forwarded to RO.
+# /internal/subagents* moved to RO (RO owns them); Gateway no longer exposes them.
+# /internal/rt, /internal/vm, /internal/messages stay in Gateway.
+_RO_FORWARDED_PREFIX = "/internal/runtimes"
 
 
 def set_runtime_orchestrator_process(is_runtime_orchestrator: bool) -> None:
@@ -151,6 +224,11 @@ async def maybe_forward_to_runtime_orchestrator(
     if _RUNTIME_ORCHESTRATOR_PROCESS:
         return None
 
+    # Forward only /internal/runtimes and /internal/runtimes/* to RO.
+    # /internal/subagents* moved to RO. Business-domain (/internal/rt, /internal/vm, /internal/messages) stay in Gateway.
+    if path != _RO_FORWARDED_PREFIX and not path.startswith(_RO_FORWARDED_PREFIX + "/"):
+        return None
+
     if not RuntimeOrchestratorClient.is_enabled():
         raise HTTPException(
             status_code=500,
@@ -176,6 +254,7 @@ async def maybe_forward_to_runtime_orchestrator(
 
 # Exported functions
 __all__ = [
+    "resolve_agent_id_from_subagent",
     "resolve_runtime_ids",
     "get_runtime_context",
     "_runtime_to_dict",

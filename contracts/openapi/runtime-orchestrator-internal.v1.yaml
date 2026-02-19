@@ -1,0 +1,24 @@
+openapi: 3.1.0
+info:
+  title: NovAIC Runtime Orchestrator Internal API
+  version: v1
+  description: Week 1 baseline internal contract placeholder.
+servers:
+  - url: http://localhost:8091
+paths:
+  /internal/health:
+    get:
+      summary: Internal health check
+      operationId: getRuntimeOrchestratorHealth
+      responses:
+        "200":
+          description: Internal service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                required: [status]

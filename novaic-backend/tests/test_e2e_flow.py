@@ -175,9 +175,6 @@ class TestGatewayClientTwoPhaseCommit:
         assert hasattr(client, "find_sending_message")
         assert hasattr(client, "confirm_message")
         
-        # 旧方法（DEPRECATED）
-        assert hasattr(client, "claim_and_prepare_message")
-        
         client.close()
 
 

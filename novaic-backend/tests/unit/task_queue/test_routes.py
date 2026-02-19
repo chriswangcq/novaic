@@ -93,3 +93,10 @@ async def test_heartbeat(gateway_http_client):
     resp = await gateway_http_client.post(f"/internal/tq/tasks/{task_id}/heartbeat", json={})
     assert resp.status_code == 200
     assert resp.json()["success"] is True
+
+
+@pytest.mark.asyncio
+async def test_task_stats_endpoint_not_shadowed_by_task_id_route(gateway_http_client):
+    resp = await gateway_http_client.get("/internal/tq/tasks/stats")
+    assert resp.status_code == 200
+    assert "counts" in resp.json()

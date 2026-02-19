@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://novaic.dev/contracts/schema/task-message.v1.schema.json",
+  "title": "TaskMessageV1",
+  "type": "object",
+  "properties": {
+    "task_id": {
+      "type": "string"
+    },
+    "runtime_id": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": ["task_id", "runtime_id", "message", "created_at"],
+  "additionalProperties": false
+}

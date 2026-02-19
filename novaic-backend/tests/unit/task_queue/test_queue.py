@@ -40,8 +40,12 @@ async def complete_task(client, task_id, result=None):
     return resp.json().get("success", False)
 
 
-async def fail_task(client, task_id, error, retry=True):
-    resp = await client.post(f"/internal/tq/tasks/{task_id}/fail", json={"error": error, "retry": retry})
+async def fail_task(client, task_id, error, retry=True, retry_delay_seconds=None):
+    resp = await client.post(f"/internal/tq/tasks/{task_id}/fail", json={
+        "error": error,
+        "retry": retry,
+        "retry_delay_seconds": retry_delay_seconds,
+    })
     assert resp.status_code == 200
     return resp.json().get("final_status")
 
@@ -209,7 +213,13 @@ class TestFail:
         task_id = await publish_task(gateway_http_client, "test_topic", {"key": "value"}, max_retries=3)
         await claim_task(gateway_http_client, ["test_topic"], "worker-1")
         
-        final_status = await fail_task(gateway_http_client, task_id, "some error", retry=True)
+        final_status = await fail_task(
+            gateway_http_client,
+            task_id,
+            "some error",
+            retry=True,
+            retry_delay_seconds=1.0,
+        )
         
         assert final_status == "pending"
         
@@ -217,6 +227,16 @@ class TestFail:
         assert task["status"] == "pending"
         assert task["retry_count"] == 1
         assert task["claimed_by"] is None
+        assert task["next_retry_at"] is not None
+
+        # next_retry_at 生效前不可再次 claim
+        task_early = await claim_task(gateway_http_client, ["test_topic"], "worker-2")
+        assert task_early is None
+
+        await asyncio.sleep(1.1)
+        task_late = await claim_task(gateway_http_client, ["test_topic"], "worker-2")
+        assert task_late is not None
+        assert task_late["id"] == task_id
     
     @pytest.mark.asyncio
     async def test_fail_max_retries_exceeded(self, gateway_http_client):
@@ -290,9 +310,9 @@ class TestRecoverStale:
 
         await asyncio.sleep(1)
 
-        resp = await gateway_http_client.post("/internal/tq/tasks/recover", json={"timeout_seconds": 0})
+        resp = await gateway_http_client.post("/internal/tq/recover/tasks?timeout_seconds=0")
         assert resp.status_code == 200
-        recovered = resp.json().get("recovered", 0)
+        recovered = resp.json().get("tasks_recovered", 0)
         
         assert recovered == 1
         

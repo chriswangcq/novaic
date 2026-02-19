@@ -91,6 +91,7 @@ def _validate_required_keys(data: Dict[str, Any]) -> None:
         "paths",
         "database",
         "services",
+        "tools_reliability",
         "timeouts",
         "worker",
         "runtime",
@@ -108,6 +109,7 @@ def _validate_required_keys(data: Dict[str, Any]) -> None:
     _expect_type("paths", data["paths"], dict)
     _expect_type("database", data["database"], dict)
     _expect_type("services", data["services"], dict)
+    _expect_type("tools_reliability", data["tools_reliability"], dict)
     _expect_type("timeouts", data["timeouts"], dict)
     _expect_type("worker", data["worker"], dict)
     _expect_type("runtime", data["runtime"], dict)
@@ -139,6 +141,10 @@ def _validate_required_keys(data: Dict[str, Any]) -> None:
         ("services", "runtime_orchestrator", "host"),
         ("services", "runtime_orchestrator", "port"),
         ("services", "runtime_orchestrator", "url"),
+        ("tools_reliability", "request_timeout_seconds"),
+        ("tools_reliability", "execution_timeout_seconds"),
+        ("tools_reliability", "global_timeout_seconds"),
+        ("tools_reliability", "max_concurrent_per_runtime"),
         ("timeouts", "task_timeout"),
         ("timeouts", "saga_step_timeout"),
         ("timeouts", "saga_timeout"),

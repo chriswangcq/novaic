@@ -18,7 +18,6 @@ DEPRECATED:
 from typing import Dict, Any
 from . import register_handler
 from ..business import RuntimeBusiness
-from ..client import GatewayInternalClient
 from ..utils.context_builder import build_initial_context
 from ..topics import TaskTopics
 from common.exceptions import ValidationError, NotFoundError
@@ -71,9 +70,14 @@ def handle_runtime_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     runtime_id = payload.get("runtime_id")  # v3: 可能已经创建
     user_message = payload.get("user_message")  # For auto-matching skills
     
-    # 获取或创建 client
-    client = ctx.get("gateway_client") or GatewayInternalClient(ctx["gateway_url"])
-    biz = RuntimeBusiness(ctx["gateway_url"], client=client)
+    gateway_client = ctx.get("gateway_client")
+    ro_client = ctx.get("ro_client")
+    if not gateway_client or not ro_client:
+        raise ValidationError(
+            "Missing required clients in ctx: gateway_client and ro_client "
+            "(fallback creation is disabled)"
+        )
+    biz = RuntimeBusiness(ctx["gateway_url"], ro_client=ro_client)
     
     # 构建初始 context
     # 优先使用 payload 中的 initial_context（用于 sub-subagent，包含任务描述）
@@ -90,7 +94,7 @@ def handle_runtime_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     else:
         # Main subagent: 从历史摘要构建
         try:
-            initial_context = build_initial_context(agent_id, subagent_id, client)
+            initial_context = build_initial_context(agent_id, subagent_id, ro_client=ro_client)
             context_parts = len(initial_context)
             if context_parts > 0:
                 print(f"[runtime.create] Built initial context with {context_parts} parts for {subagent_id}")
@@ -103,8 +107,9 @@ def handle_runtime_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     try:
         from ..utils.system_prompt import build_system_prompt
         sys_prompt = build_system_prompt(
-            agent_id, 
-            client,
+            agent_id,
+            gateway_client=gateway_client,
+            ro_client=ro_client,
             task=user_message,  # Pass user message for auto-matching
             auto_match_skills=True,
             subagent_id=subagent_id,  # Pass subagent_id for Sub SubAgent specific prompts
@@ -120,7 +125,7 @@ def handle_runtime_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
             # Try to get matched skills for logging
             if user_message:
                 try:
-                    match_resp = client.match_skills_for_task(user_message)
+                    match_resp = gateway_client.match_skills_for_task(user_message)
                     matched_skills = [s.get("name") for s in match_resp.get("matched_skills", [])]
                     if matched_skills:
                         print(f"[runtime.create] Auto-matched skills: {matched_skills}")
@@ -133,7 +138,7 @@ def handle_runtime_create(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     if runtime_id:
         # 初始化已有 runtime：更新 context
         try:
-            client.update_runtime(runtime_id, {"context": initial_context})
+            ro_client.update_runtime(runtime_id, {"context": initial_context})
             print(f"[runtime.create] Initialized existing runtime {runtime_id} with {context_parts} context parts")
             return {
                 "success": True,
@@ -195,7 +200,7 @@ def handle_runtime_set_status(payload: Dict[str, Any], ctx: dict) -> Dict[str, A
     if not payload.get("new_status"):
         raise ValidationError("Missing required field: new_status")
     
-    biz = RuntimeBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
+    biz = RuntimeBusiness(ctx["gateway_url"], ro_client=ctx.get("ro_client"))
     
     result = biz.set_status(
         runtime_id=payload["runtime_id"],
@@ -234,7 +239,7 @@ def handle_runtime_increment_round(payload: Dict[str, Any], ctx: dict) -> Dict[s
     if not payload.get("runtime_id"):
         raise ValidationError("Missing required field: runtime_id")
     
-    biz = RuntimeBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
+    biz = RuntimeBusiness(ctx["gateway_url"], ro_client=ctx.get("ro_client"))
     return biz.increment_round(payload["runtime_id"])
 
 
@@ -254,7 +259,7 @@ def handle_runtime_set_summarized(payload: Dict[str, Any], ctx: dict) -> Dict[st
     if not payload.get("runtime_id"):
         raise ValidationError("Missing required field: runtime_id")
     
-    biz = RuntimeBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
+    biz = RuntimeBusiness(ctx["gateway_url"], ro_client=ctx.get("ro_client"))
     
     result = biz.set_summarized(payload["runtime_id"])
     
@@ -286,7 +291,7 @@ def handle_runtime_set_need_rest(payload: Dict[str, Any], ctx: dict) -> Dict[str
     if not payload.get("runtime_id"):
         raise ValidationError("Missing required field: runtime_id")
     
-    biz = RuntimeBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
+    biz = RuntimeBusiness(ctx["gateway_url"], ro_client=ctx.get("ro_client"))
     
     result = biz.set_need_rest(
         payload["runtime_id"],
@@ -333,13 +338,17 @@ def handle_check_new_messages(payload: Dict[str, Any], ctx: dict) -> Dict[str, A
     
     runtime_id = payload["runtime_id"]
     agent_id = payload["agent_id"]
-    biz = RuntimeBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
+    biz = RuntimeBusiness(ctx["gateway_url"], ro_client=ctx.get("ro_client"))
     runtime = biz.get(runtime_id)
     need_rest = bool(runtime.get("need_rest")) if runtime else False
 
-    from ..client import GatewayInternalClient
-    client = ctx.get("gateway_client") or GatewayInternalClient(ctx["gateway_url"])
-    msg_resp = client.has_new_messages(agent_id)
+    gateway_client = ctx.get("gateway_client")
+    if not gateway_client:
+        raise ValidationError(
+            "Missing required client in ctx: gateway_client "
+            "(fallback creation is disabled)"
+        )
+    msg_resp = gateway_client.has_new_messages(agent_id)
     has_new = bool(msg_resp.get("has_new_messages"))
     
     # 关键逻辑：如果有新消息且 need_rest=1，重置 need_rest=0
@@ -392,18 +401,20 @@ def handle_generate_simple_summary(payload: Dict[str, Any], ctx: dict) -> Dict[s
         NotFoundError: 当 Runtime 不存在时
     """
     from ..utils.simple_summary import generate_simple_summary
-    from ..client import GatewayInternalClient
     
     if not payload.get("runtime_id"):
         raise ValidationError("Missing required field: runtime_id")
     
     runtime_id = payload["runtime_id"]
-    
-    # 获取 GatewayInternalClient
-    client = ctx.get("gateway_client") or GatewayInternalClient(ctx["gateway_url"])
+    ro_client = ctx.get("ro_client")
+    if not ro_client:
+        raise ValidationError(
+            "Missing required client in ctx: ro_client "
+            "(fallback creation is disabled)"
+        )
     
     # 1. 获取 runtime context
-    runtime = client.get_runtime(runtime_id)
+    runtime = ro_client.get_runtime(runtime_id)
     if not runtime:
         raise NotFoundError(f"Runtime not found: {runtime_id}")
     
@@ -421,7 +432,7 @@ def handle_generate_simple_summary(payload: Dict[str, Any], ctx: dict) -> Dict[s
     
     # 3. 保存到 runtime
     try:
-        client.update_runtime(runtime_id, {"simple_summary": simple_summary})
+        ro_client.update_runtime(runtime_id, {"simple_summary": simple_summary})
     except Exception as e:
         return {
             "success": False,

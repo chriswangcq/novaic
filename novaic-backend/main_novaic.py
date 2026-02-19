@@ -17,10 +17,10 @@ Backend v2 架构由以下组件构成：
 
 Usage:
     novaic-backend gateway --host HOST --port PORT --data-dir PATH --runtime-orchestrator-url URL --queue-service-url URL --tools-server-url URL --vmcontrol-url URL --file-service-url URL --tool-result-service-url URL
-    novaic-backend tools-server --host HOST --port PORT --data-dir PATH --gateway-url URL
+    novaic-backend tools-server --host HOST --port PORT --data-dir PATH --gateway-url URL --runtime-orchestrator-url URL --tool-result-service-url URL
     novaic-backend queue-service --host HOST --port PORT --data-dir PATH
     novaic-backend watchdog --gateway-url URL --queue-service-url URL --runtime-orchestrator-url URL --data-dir PATH
-    novaic-backend task-worker --gateway-url URL --queue-service-url URL --tools-server-url URL --runtime-orchestrator-url URL --num-workers N --data-dir PATH
+    novaic-backend task-worker --gateway-url URL --queue-service-url URL --tools-server-url URL --runtime-orchestrator-url URL --tool-result-service-url URL --num-workers N --data-dir PATH
     novaic-backend saga-worker --gateway-url URL --queue-service-url URL --runtime-orchestrator-url URL --max-concurrent N --data-dir PATH
     novaic-backend health --gateway-url URL --queue-service-url URL --runtime-orchestrator-url URL --check-interval N --task-timeout N --saga-timeout N --data-dir PATH
     novaic-backend scheduler --gateway-url URL --runtime-orchestrator-url URL --check-interval N --data-dir PATH
@@ -67,6 +67,8 @@ Tools Server options:
     --port PORT         Required port
     --data-dir PATH     Required data directory
     --gateway-url URL   Required gateway URL
+    --runtime-orchestrator-url URL Required runtime orchestrator URL
+    --tool-result-service-url URL Required tool result service URL
 
 Queue Service options:
     --host HOST         Required host
@@ -84,6 +86,7 @@ Task Worker options:
     --queue-service-url URL Required queue service URL
     --tools-server-url URL  Required tools server URL
     --runtime-orchestrator-url URL Required runtime orchestrator URL
+    --tool-result-service-url URL Required tool result service URL
     --num-workers N         Required worker thread count
     --data-dir PATH         Required data directory
 
@@ -133,7 +136,7 @@ Examples:
     novaic-backend queue-service --host 127.0.0.1 --port 19997 --data-dir /Users/me/.novaic
     novaic-backend runtime-orchestrator --host 127.0.0.1 --port 19993 --data-dir /Users/me/.novaic
     novaic-backend gateway --host 127.0.0.1 --port 19999 --data-dir /Users/me/.novaic --runtime-orchestrator-url http://127.0.0.1:19993 --queue-service-url http://127.0.0.1:19997 --tools-server-url http://127.0.0.1:19998 --vmcontrol-url http://127.0.0.1:19996 --file-service-url http://127.0.0.1:19995 --tool-result-service-url http://127.0.0.1:19994
-    novaic-backend task-worker --gateway-url http://127.0.0.1:19999 --queue-service-url http://127.0.0.1:19997 --tools-server-url http://127.0.0.1:19998 --runtime-orchestrator-url http://127.0.0.1:19993 --num-workers 5 --data-dir /Users/me/.novaic
+    novaic-backend task-worker --gateway-url http://127.0.0.1:19999 --queue-service-url http://127.0.0.1:19997 --tools-server-url http://127.0.0.1:19998 --runtime-orchestrator-url http://127.0.0.1:19993 --tool-result-service-url http://127.0.0.1:19994 --num-workers 5 --data-dir /Users/me/.novaic
     novaic-backend vmcontrol --host 127.0.0.1 --port 8080
 """)
 
@@ -177,12 +180,15 @@ def run_gateway():
 def run_tools_server():
     """Run the Tools Server (HTTP API for tools, replaces MCP Gateway)."""
     import argparse
+    import httpx
 
     parser = argparse.ArgumentParser(description="NovAIC Tools Server")
     parser.add_argument("--host", required=True, help="Tools Server host")
     parser.add_argument("--port", required=True, type=int, help="Tools Server port")
     parser.add_argument("--data-dir", required=True, help="Data directory")
     parser.add_argument("--gateway-url", required=True, help="Gateway URL")
+    parser.add_argument("--runtime-orchestrator-url", required=True, help="Runtime Orchestrator URL")
+    parser.add_argument("--tool-result-service-url", required=True, help="Tool Result Service URL")
     args = parser.parse_args()
 
     ServiceConfig.DATA_DIR = args.data_dir
@@ -190,6 +196,28 @@ def run_tools_server():
     ServiceConfig.TOOLS_SERVER_PORT = args.port
     ServiceConfig.TOOLS_SERVER_URL = f"http://{args.host}:{args.port}"
     ServiceConfig.GATEWAY_URL = args.gateway_url
+    ServiceConfig.RUNTIME_ORCHESTRATOR_URL = args.runtime_orchestrator_url
+    ServiceConfig.TOOL_RESULT_SERVICE_URL = args.tool_result_service_url
+
+    # Fail fast on misconfigured/unreachable Runtime Orchestrator.
+    ro_health_url = f"{args.runtime_orchestrator_url.rstrip('/')}/api/health"
+    try:
+        with httpx.Client(timeout=5.0, trust_env=False) as client:
+            response = client.get(ro_health_url)
+            response.raise_for_status()
+    except Exception as exc:
+        print(f"[Tools Server] ERROR: Runtime Orchestrator health check failed: {ro_health_url} ({exc})")
+        sys.exit(1)
+
+    # Fail fast on misconfigured/unreachable Tool Result Service.
+    trs_health_url = f"{args.tool_result_service_url.rstrip('/')}/api/health"
+    try:
+        with httpx.Client(timeout=5.0, trust_env=False) as client:
+            response = client.get(trs_health_url)
+            response.raise_for_status()
+    except Exception as exc:
+        print(f"[Tools Server] ERROR: Tool Result Service health check failed: {trs_health_url} ({exc})")
+        sys.exit(1)
     
     from main_tools import app
     import uvicorn
@@ -236,9 +264,9 @@ def run_watchdog():
     ServiceConfig.RUNTIME_ORCHESTRATOR_URL = args.runtime_orchestrator_url
     _setup_worker_logging("watchdog")
     
-    from task_queue.workers.watchdog import Watchdog
-    
-    worker = Watchdog(
+    from task_queue.workers.watchdog_sync import WatchdogSync
+
+    worker = WatchdogSync(
         gateway_url=args.gateway_url,
         queue_service_url=args.queue_service_url,
         poll_interval=ServiceConfig.POLL_INTERVAL,
@@ -269,6 +297,7 @@ def run_task_worker():
     parser.add_argument("--queue-service-url", required=True, help="Queue Service URL")
     parser.add_argument("--tools-server-url", required=True, help="Tools Server URL")
     parser.add_argument("--runtime-orchestrator-url", required=True, help="Runtime Orchestrator URL")
+    parser.add_argument("--tool-result-service-url", required=True, help="Tool Result Service URL")
     parser.add_argument("--num-workers", type=int, required=True, help="Number of worker threads")
     parser.add_argument("--data-dir", required=True, help="Data directory")
     args = parser.parse_args()
@@ -278,6 +307,7 @@ def run_task_worker():
     ServiceConfig.QUEUE_SERVICE_URL = args.queue_service_url
     ServiceConfig.TOOLS_SERVER_URL = args.tools_server_url
     ServiceConfig.RUNTIME_ORCHESTRATOR_URL = args.runtime_orchestrator_url
+    ServiceConfig.TOOL_RESULT_SERVICE_URL = args.tool_result_service_url
     ServiceConfig.NUM_WORKERS = args.num_workers
     _setup_worker_logging("task-worker")
     

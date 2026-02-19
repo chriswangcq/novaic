@@ -48,6 +48,7 @@ class CompleteRequest(BaseModel):
 class FailRequest(BaseModel):
     error: str
     retry: bool = True
+    retry_delay_seconds: Optional[float] = None
 
 
 class SuccessResponse(BaseModel):
@@ -105,6 +106,33 @@ class SagaReleaseRequest(BaseModel):
 
 class StatsResponse(BaseModel):
     counts: Dict[str, int]
+
+
+class IdempotencyAcquireRequest(BaseModel):
+    idempotency_key: str
+    owner_token: str
+    lease_seconds: int = 120
+
+
+class IdempotencyAcquireResponse(BaseModel):
+    action: str
+    result: Optional[Dict[str, Any]] = None
+
+
+class IdempotencyCompleteRequest(BaseModel):
+    idempotency_key: str
+    owner_token: str
+    result: Optional[Dict[str, Any]] = None
+
+
+class IdempotencyReleaseRequest(BaseModel):
+    idempotency_key: str
+    owner_token: str
+
+
+class IdempotencyDiagnosticsResponse(BaseModel):
+    diagnostics: List[Dict[str, Any]]
+    count: int
 
 
 # ============================================================
@@ -170,7 +198,12 @@ def create_task_queue_router(
     @router.post("/tasks/{task_id}/fail", response_model=StatusResponse)
     def fail_task(task_id: str, req: FailRequest):
         """标记任务失败"""
-        final_status = queue.fail(task_id, req.error, req.retry)
+        final_status = queue.fail(
+            task_id,
+            req.error,
+            req.retry,
+            retry_delay_seconds=req.retry_delay_seconds,
+        )
         logger.warning(
             "[TaskQueue] Task failed (task_id=%s, final_status=%s, retry=%s)",
             task_id,
@@ -185,6 +218,12 @@ def create_task_queue_router(
         success = queue.heartbeat(task_id)
         return SuccessResponse(success=success)
     
+    @router.get("/tasks/stats", response_model=StatsResponse)
+    def get_task_stats(topic: Optional[str] = None):
+        """获取任务统计"""
+        counts = queue.count_by_status(topic)
+        return StatsResponse(counts=counts)
+
     @router.get("/tasks/{task_id}", response_model=TaskResponse)
     def get_task(task_id: str):
         """获取任务详情"""
@@ -192,12 +231,46 @@ def create_task_queue_router(
         if not task:
             raise HTTPException(status_code=404, detail="Task not found")
         return TaskResponse(task=task)
-    
-    @router.get("/tasks/stats", response_model=StatsResponse)
-    def get_task_stats(topic: Optional[str] = None):
-        """获取任务统计"""
-        counts = queue.count_by_status(topic)
-        return StatsResponse(counts=counts)
+
+    @router.post("/tasks/{task_id}/idempotency/acquire", response_model=IdempotencyAcquireResponse)
+    def acquire_idempotency_execution(task_id: str, req: IdempotencyAcquireRequest):
+        data = queue.acquire_idempotency_execution(
+            task_id=task_id,
+            idempotency_key=req.idempotency_key,
+            owner_token=req.owner_token,
+            lease_seconds=req.lease_seconds,
+        )
+        return IdempotencyAcquireResponse(action=data.get("action", "in_progress"), result=data.get("result"))
+
+    @router.post("/tasks/{task_id}/idempotency/complete", response_model=SuccessResponse)
+    def complete_idempotency_execution(task_id: str, req: IdempotencyCompleteRequest):
+        success = queue.complete_idempotency_execution(
+            task_id=task_id,
+            idempotency_key=req.idempotency_key,
+            owner_token=req.owner_token,
+            result=req.result,
+        )
+        return SuccessResponse(success=success)
+
+    @router.post("/tasks/{task_id}/idempotency/release", response_model=SuccessResponse)
+    def release_idempotency_execution(task_id: str, req: IdempotencyReleaseRequest):
+        success = queue.release_idempotency_execution(
+            task_id=task_id,
+            idempotency_key=req.idempotency_key,
+            owner_token=req.owner_token,
+        )
+        return SuccessResponse(success=success)
+
+    @router.get("/tasks/idempotency/diagnostics", response_model=IdempotencyDiagnosticsResponse)
+    def get_idempotency_diagnostics(limit: int = 20, only_contended: bool = False):
+        diagnostics = queue.get_idempotency_diagnostics(
+            limit=limit,
+            only_contended=only_contended,
+        )
+        return IdempotencyDiagnosticsResponse(
+            diagnostics=diagnostics,
+            count=len(diagnostics),
+        )
     
     @router.get("/topics")
     def get_topics():

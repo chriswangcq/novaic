@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://novaic.local/contracts/schema/storage-api.v1.schema.json",
+  "title": "Storage API Contract Baseline v1",
+  "x-contract-version": "v1.0.0",
+  "x-contract-owners": [
+    "Platform Team",
+    "API Team",
+    "Storage-A/B Team"
+  ],
+  "type": "object",
+  "required": [
+    "file_service",
+    "tool_result_service"
+  ],
+  "properties": {
+    "file_service": {
+      "type": "object",
+      "required": [
+        "from_base64_response_required_fields",
+        "artifact_required_fields"
+      ],
+      "properties": {
+        "from_base64_response_required_fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "artifact_required_fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "description": "Shared artifact metadata fields aligned with storage-artifact schema."
+        }
+      },
+      "additionalProperties": true
+    },
+    "tool_result_service": {
+      "type": "object",
+      "required": [
+        "create_response_required_fields",
+        "get_response_required_fields",
+        "normalized_required_fields"
+      ],
+      "properties": {
+        "create_response_required_fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "get_response_required_fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "normalized_required_fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true,
+  "examples": [
+    {
+      "file_service": {
+        "from_base64_response_required_fields": [
+          "url",
+          "category",
+          "size",
+          "mime_type",
+          "filename"
+        ],
+        "artifact_required_fields": [
+          "artifact_id",
+          "artifact_kind",
+          "file_url",
+          "checksum_sha256",
+          "size_bytes",
+          "created_at"
+        ]
+      },
+      "tool_result_service": {
+        "create_response_required_fields": [
+          "success",
+          "result_id"
+        ],
+        "get_response_required_fields": [
+          "success",
+          "result_id",
+          "normalized"
+        ],
+        "normalized_required_fields": [
+          "text",
+          "files_created",
+          "display_files"
+        ]
+      }
+    }
+  ]
+}

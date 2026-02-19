@@ -18,7 +18,10 @@ v3 变更：
 from dataclasses import dataclass
 from typing import Optional
 
-from ..client import GatewayInternalClient
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from ..client import GatewayInternalClient, RuntimeOrchestratorClient
 
 
 @dataclass
@@ -46,13 +49,26 @@ class SubAgentBusiness:
         ...     print(f"Status: {result.previous_status} → {result.status}")
     """
     
-    def __init__(self, gateway_url: str, client: Optional[GatewayInternalClient] = None):
+    def __init__(
+        self,
+        gateway_url: str,
+        ro_client: "RuntimeOrchestratorClient" = None,
+        client: Optional["GatewayInternalClient"] = None,
+    ):
         """
         Args:
-            gateway_url: Gateway URL
-            client: 可复用的 GatewayInternalClient
+            gateway_url: Gateway URL (used when ro_client not provided)
+            ro_client: RuntimeOrchestratorClient (preferred)
+            client: Legacy GatewayInternalClient; if provided, uses client.ro_client
         """
-        self.client = client or GatewayInternalClient(gateway_url)
+        if client is not None:
+            self.ro_client = client.ro_client
+        elif ro_client is not None:
+            self.ro_client = ro_client
+        else:
+            raise ValueError(
+                "SubAgentBusiness requires explicit ro_client (fallback creation is disabled)"
+            )
     
     def set_awake(
         self,
@@ -78,7 +94,7 @@ class SubAgentBusiness:
             SubAgentStateResult
         """
         # 直接设置为 awake（v3: 删除 awaking 中间状态）
-        response = self.client.set_subagent_awake(agent_id, subagent_id)
+        response = self.ro_client.set_subagent_awake(agent_id, subagent_id)
         if response.get("success"):
             status = response.get("status")
             if not status:
@@ -118,7 +134,7 @@ class SubAgentBusiness:
         Returns:
             SubAgentStateResult
         """
-        response = self.client.set_subagent_sleeping(agent_id, subagent_id)
+        response = self.ro_client.set_subagent_sleeping(agent_id, subagent_id)
         status = response.get("status")
         if not status and response.get("success"):
             status = self.get_status(agent_id, subagent_id) or "sleeping"
@@ -151,7 +167,7 @@ class SubAgentBusiness:
         Returns:
             SubAgentStateResult
         """
-        response = self.client.set_subagent_completed(agent_id, subagent_id, result=result)
+        response = self.ro_client.set_subagent_completed(agent_id, subagent_id, result=result)
         status = response.get("status")
         if not status and response.get("success"):
             status = self.get_status(agent_id, subagent_id) or "completed"
@@ -179,7 +195,7 @@ class SubAgentBusiness:
         Returns:
             SubAgent 信息或 None
         """
-        response = self.client.get_subagent(agent_id, subagent_id)
+        response = self.ro_client.get_subagent(agent_id, subagent_id)
         return response.get("subagent") if response else None
     
     def get_status(
@@ -197,5 +213,5 @@ class SubAgentBusiness:
         Returns:
             状态字符串或 None
         """
-        response = self.client.get_subagent_status(agent_id, subagent_id)
+        response = self.ro_client.get_subagent_status(agent_id, subagent_id)
         return response.get("status") if response else None

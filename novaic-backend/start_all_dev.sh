@@ -49,22 +49,22 @@ nohup python -m novaic_main queue-service --port 19997 --data-dir "$NOVAIC_DATA_
     > "$NOVAIC_DATA_DIR/logs/queue-dev.log" 2>&1 &
 sleep 2
 
-# 3. 启动 Tools Server
-echo -e "${GREEN}[3/10] 启动 Tools Server (19998)...${NC}"
-nohup python -m novaic_main tools-server --port 19998 --data-dir "$NOVAIC_DATA_DIR" --gateway-url http://127.0.0.1:19999 \
-    > "$NOVAIC_DATA_DIR/logs/tools-dev.log" 2>&1 &
-sleep 2
-
-# 4. 启动 File Service
+# 3. 启动 File Service
 echo -e "${GREEN}[4/10] 启动 File Service (19995)...${NC}"
 nohup python -m file_service.main --port 19995 --base-dir "$NOVAIC_DATA_DIR" \
     > "$NOVAIC_DATA_DIR/logs/file-service-dev.log" 2>&1 &
 sleep 2
 
-# 5. 启动 Tool Result Service (TRS)
+# 4. 启动 Tool Result Service (TRS)
 echo -e "${GREEN}[5/10] 启动 Tool Result Service (19994)...${NC}"
 nohup python -m tool_result_service.main --port 19994 \
     > "$NOVAIC_DATA_DIR/logs/trs-dev.log" 2>&1 &
+sleep 2
+
+# 5. 启动 Tools Server
+echo -e "${GREEN}[3/10] 启动 Tools Server (19998)...${NC}"
+nohup python -m novaic_main tools-server --port 19998 --data-dir "$NOVAIC_DATA_DIR" --gateway-url http://127.0.0.1:19999 --runtime-orchestrator-url http://127.0.0.1:19993 --tool-result-service-url http://127.0.0.1:19994 \
+    > "$NOVAIC_DATA_DIR/logs/tools-dev.log" 2>&1 &
 sleep 2
 
 # 等待核心服务就绪

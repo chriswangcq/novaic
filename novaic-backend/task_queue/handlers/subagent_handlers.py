@@ -45,7 +45,7 @@ def handle_subagent_set_awake(payload: Dict[str, Any], ctx: dict) -> Dict[str, A
     if not payload.get("runtime_id"):
         raise ValidationError("Missing required field: runtime_id")
     
-    biz = SubAgentBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
+    biz = SubAgentBusiness(ctx["gateway_url"], ro_client=ctx.get("ro_client"))
     
     result = biz.set_awake(
         agent_id=payload["agent_id"],
@@ -90,7 +90,7 @@ def handle_subagent_set_sleeping(payload: Dict[str, Any], ctx: dict) -> Dict[str
     if not payload.get("subagent_id"):
         raise ValidationError("Missing required field: subagent_id")
     
-    biz = SubAgentBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
+    biz = SubAgentBusiness(ctx["gateway_url"], ro_client=ctx.get("ro_client"))
     
     result = biz.set_sleeping(
         agent_id=payload["agent_id"],
@@ -126,7 +126,7 @@ def handle_subagent_set_completed(payload: Dict[str, Any], ctx: dict) -> Dict[st
     if not payload.get("subagent_id"):
         raise ValidationError("Missing required field: subagent_id")
     
-    biz = SubAgentBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
+    biz = SubAgentBusiness(ctx["gateway_url"], ro_client=ctx.get("ro_client"))
     
     result = biz.set_completed(
         agent_id=payload["agent_id"],

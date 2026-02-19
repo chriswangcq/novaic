@@ -1,0 +1,15 @@
+bundle_timestamp_utc=20260219T040036Z
+bundle_archive=/Users/wangchaoqun/novaic/ops-rounds/round-009/20-reports/desktop-evidence-bundle/release-evidence-20260219T040036Z.tar.gz
+included_dir=/Users/wangchaoqun/novaic/ops-rounds/round-009/20-reports/desktop-evidence-bundle/release-evidence-20260219T040036Z
+sha256:
+132e6c33884267207b4981751a81374311ac500213d795952122523b8e8207a4  /Users/wangchaoqun/novaic/ops-rounds/round-009/20-reports/desktop-evidence-bundle/release-evidence-20260219T040036Z.tar.gz
+files:
+ops-rounds/round-009/20-reports/desktop-evidence-bundle/release-evidence-20260219T040036Z/NovAIC_0.3.0_aarch64.dmg
+ops-rounds/round-009/20-reports/desktop-evidence-bundle/release-evidence-20260219T040036Z/desktop-ci-qa-handoff-round009.md
+ops-rounds/round-009/20-reports/desktop-evidence-bundle/release-evidence-20260219T040036Z/desktop-clean-profile-replay-round009.md
+ops-rounds/round-009/20-reports/desktop-evidence-bundle/release-evidence-20260219T040036Z/desktop-evidence/fresh-profile-round009-non-author-metadata.txt
+ops-rounds/round-009/20-reports/desktop-evidence-bundle/release-evidence-20260219T040036Z/desktop-evidence/fresh-profile-round009-non-author-startup-diagnostics.jsonl
+ops-rounds/round-009/20-reports/desktop-evidence-bundle/release-evidence-20260219T040036Z/desktop-evidence/fresh-profile-round009-non-author-startup.log
+ops-rounds/round-009/20-reports/desktop-evidence-bundle/release-evidence-20260219T040036Z/desktop-evidence/fresh-profile-round009-non-author-summary.txt
+ops-rounds/round-009/20-reports/desktop-evidence-bundle/release-evidence-20260219T040036Z/team-desktop-report.md
+ops-rounds/round-009/20-reports/desktop-evidence-bundle/release-evidence-20260219T040036Z/validate_fresh_profile.sh

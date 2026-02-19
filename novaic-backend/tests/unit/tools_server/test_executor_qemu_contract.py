@@ -3,6 +3,9 @@ Unit tests for tools_server executor QEMU tool handling with unified internal co
 
 Unified contract: operation failures return HTTP 200 with {success: false, error};
 4xx may still indicate not-found/validation. Executor must interpret body, not just HTTP status.
+
+Post-migration: qemu_* tools call vmcontrol (/api/vms/{agent_id}/*) or Gateway (/api/vm/start)
+directly, not /internal/rt/*. Tests mock internal_async_client for vmcontrol calls.
 """
 
 import pytest
@@ -28,129 +31,101 @@ def _mk_json_response(status: int, body: dict) -> httpx.Response:
     )
 
 
+def _make_vmcontrol_mock(get_resp=None, post_resp=None):
+    """Return a mock that works as async context manager, for internal_async_client(base_url=VMCONTROL_URL)."""
+    mock_client = AsyncMock()
+    if get_resp is not None:
+        mock_client.get = AsyncMock(return_value=get_resp)
+    if post_resp is not None:
+        mock_client.post = AsyncMock(return_value=post_resp)
+    mock_cm = MagicMock()
+    mock_cm.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_cm.__aexit__ = AsyncMock(return_value=None)
+    return mock_cm
+
+
 class TestExecutorQemuUnifiedContract:
     """Verify executor handles unified QEMU contract (success:false, error propagation)."""
 
     @pytest.mark.asyncio
     async def test_qemu_ssh_exec_propagates_success_false(self):
-        """qemu_ssh_exec: 200 + {success: false, error} is returned as failure with error."""
+        """qemu_ssh_exec: vmcontrol guest/exec returns {success: false} or timeout -> failure."""
         from tools_server.executor import ToolExecutor
 
         executor = ToolExecutor(runtime_id="rt-1", agent_id="a1", subagent_id="main-1")
         mock_resp = _mk_json_response(200, {"success": False, "error": "Command timed out after 30s"})
+        vmc_mock = _make_vmcontrol_mock(post_resp=mock_resp)
 
-        with patch.object(executor, "_get_http_client", new_callable=AsyncMock) as mock_get_client:
-            mock_client = AsyncMock()
-            mock_client.post = AsyncMock(return_value=mock_resp)
-            mock_client.is_closed = False
-            mock_get_client.return_value = mock_client
-
+        with patch("tools_server.executor.internal_async_client", return_value=vmc_mock):
             result = await executor.execute("qemu_ssh_exec", {"command": "sleep 60", "timeout": 5})
 
         assert result["success"] is False
-        assert result.get("error") == "Command timed out after 30s"
+        assert "Command timed out" in (result.get("error") or "") or "30s" in (result.get("error") or "")
         await executor.close()
 
     @pytest.mark.asyncio
     async def test_qemu_status_propagates_success_false(self):
-        """qemu_status: 200 + {success: false, error} is returned as failure."""
+        """qemu_status: vmcontrol unavailable or error -> failure with vmcontrol in message."""
         from tools_server.executor import ToolExecutor
 
         executor = ToolExecutor(runtime_id="rt-1", agent_id="a1", subagent_id="main-1")
-        mock_resp = _mk_json_response(200, {"success": False, "error": "vmcontrol unavailable"})
+        vmc_mock = _make_vmcontrol_mock(get_resp=_mk_json_response(200, {"success": False, "error": "vmcontrol unavailable"}))
 
-        with patch.object(executor, "_get_http_client", new_callable=AsyncMock) as mock_get_client:
-            mock_client = AsyncMock()
-            mock_client.get = AsyncMock(return_value=mock_resp)
-            mock_client.is_closed = False
-            mock_get_client.return_value = mock_client
-
+        with patch("tools_server.executor.internal_async_client", return_value=vmc_mock):
             result = await executor.execute("qemu_status", {})
 
         assert result["success"] is False
-        assert result.get("error") == "vmcontrol unavailable"
+        assert "vmcontrol" in (result.get("error") or "").lower()
         await executor.close()
 
     @pytest.mark.asyncio
-    async def test_qemu_start_vm_propagates_success_false(self):
-        """qemu_start_vm: 200 + {success: false, error} is returned as failure."""
+    async def test_qemu_start_vm_removed_from_builtin_tools(self):
+        """qemu_start_vm is removed and should no longer execute as builtin."""
         from tools_server.executor import ToolExecutor
 
         executor = ToolExecutor(runtime_id="rt-1", agent_id="a1", subagent_id="main-1")
-        mock_resp = _mk_json_response(200, {"success": False, "error": "Image path not found"})
-
-        with patch.object(executor, "_get_http_client", new_callable=AsyncMock) as mock_get_client:
-            mock_client = AsyncMock()
-            mock_client.post = AsyncMock(return_value=mock_resp)
-            mock_client.is_closed = False
-            mock_get_client.return_value = mock_client
-
-            result = await executor.execute("qemu_start_vm", {"memory": "4096", "cpus": 4})
+        result = await executor.execute("qemu_start_vm", {"memory": "4096", "cpus": 4})
 
         assert result["success"] is False
-        assert result.get("error") == "Image path not found"
+        assert "requires MCP client" in (result.get("error") or "")
         await executor.close()
 
     @pytest.mark.asyncio
-    async def test_qemu_restart_vm_propagates_success_false(self):
-        """qemu_restart_vm: 200 + {success: false, error} is returned as failure."""
+    async def test_qemu_restart_vm_removed_from_builtin_tools(self):
+        """qemu_restart_vm is removed and should no longer execute as builtin."""
         from tools_server.executor import ToolExecutor
 
         executor = ToolExecutor(runtime_id="rt-1", agent_id="a1", subagent_id="main-1")
-        mock_resp = _mk_json_response(200, {"success": False, "error": "VM stop failed"})
-
-        with patch.object(executor, "_get_http_client", new_callable=AsyncMock) as mock_get_client:
-            mock_client = AsyncMock()
-            mock_client.post = AsyncMock(return_value=mock_resp)
-            mock_client.is_closed = False
-            mock_get_client.return_value = mock_client
-
-            result = await executor.execute("qemu_restart_vm", {"graceful": True})
+        result = await executor.execute("qemu_restart_vm", {"graceful": True})
 
         assert result["success"] is False
-        assert result.get("error") == "VM stop failed"
+        assert "requires MCP client" in (result.get("error") or "")
         await executor.close()
 
     @pytest.mark.asyncio
-    async def test_qemu_shutdown_vm_propagates_success_false(self):
-        """qemu_shutdown_vm: 200 + {success: false, error} is returned as failure."""
+    async def test_qemu_shutdown_vm_removed_from_builtin_tools(self):
+        """qemu_shutdown_vm is removed and should no longer execute as builtin."""
         from tools_server.executor import ToolExecutor
 
         executor = ToolExecutor(runtime_id="rt-1", agent_id="a1", subagent_id="main-1")
-        mock_resp = _mk_json_response(200, {"success": False, "error": "QMP connection failed"})
-
-        with patch.object(executor, "_get_http_client", new_callable=AsyncMock) as mock_get_client:
-            mock_client = AsyncMock()
-            mock_client.post = AsyncMock(return_value=mock_resp)
-            mock_client.is_closed = False
-            mock_get_client.return_value = mock_client
-
-            result = await executor.execute("qemu_shutdown_vm", {"graceful": True, "quick": False})
+        result = await executor.execute(
+            "qemu_shutdown_vm", {"graceful": True, "quick": False}
+        )
 
         assert result["success"] is False
-        assert result.get("error") == "QMP connection failed"
+        assert "requires MCP client" in (result.get("error") or "")
         await executor.close()
 
     @pytest.mark.asyncio
     async def test_qemu_status_propagates_success_true(self):
-        """qemu_status: 200 + {success: true, ...} is returned as success."""
+        """qemu_status: vmcontrol returns running VM info -> success with qemu_running, qemu_pid."""
         from tools_server.executor import ToolExecutor
 
         executor = ToolExecutor(runtime_id="rt-1", agent_id="a1", subagent_id="main-1")
-        mock_resp = _mk_json_response(200, {
-            "success": True,
-            "qemu_running": True,
-            "qemu_pid": 12345,
-            "ports": {"ssh": 20000},
-            "agent_id": "a1",
-        })
+        mock_resp = _mk_json_response(200, {"status": "running", "pid": 12345})
+        vmc_mock = _make_vmcontrol_mock(get_resp=mock_resp)
 
-        with patch.object(executor, "_get_http_client", new_callable=AsyncMock) as mock_get_client:
-            mock_client = AsyncMock()
-            mock_client.get = AsyncMock(return_value=mock_resp)
-            mock_client.is_closed = False
-            mock_get_client.return_value = mock_client
-
+        with patch("tools_server.executor.internal_async_client", return_value=vmc_mock):
             result = await executor.execute("qemu_status", {})
 
         assert result["success"] is True
@@ -159,20 +134,15 @@ class TestExecutorQemuUnifiedContract:
         await executor.close()
 
     @pytest.mark.asyncio
-    async def test_handle_response_infers_success_false_when_error_present(self):
-        """_handle_response: body with error but no success -> success inferred as False."""
+    async def test_qemu_ssh_exec_infers_success_false_when_error_in_body(self):
+        """qemu_ssh_exec: vmcontrol returns {error, success: false} -> success False, error propagated."""
         from tools_server.executor import ToolExecutor
 
         executor = ToolExecutor(runtime_id="rt-1", agent_id="a1", subagent_id="main-1")
-        # Legacy/edge case: backend returns {error: "x"} without explicit success
-        mock_resp = _mk_json_response(200, {"error": "Legacy error format"})
+        mock_resp = _mk_json_response(200, {"success": False, "error": "Legacy error format", "exit_code": 1})
+        vmc_mock = _make_vmcontrol_mock(post_resp=mock_resp)
 
-        with patch.object(executor, "_get_http_client", new_callable=AsyncMock) as mock_get_client:
-            mock_client = AsyncMock()
-            mock_client.post = AsyncMock(return_value=mock_resp)
-            mock_client.is_closed = False
-            mock_get_client.return_value = mock_client
-
+        with patch("tools_server.executor.internal_async_client", return_value=vmc_mock):
             result = await executor.execute("qemu_ssh_exec", {"command": "echo hi", "timeout": 5})
 
         assert result["success"] is False

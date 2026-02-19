@@ -81,17 +81,43 @@ GATEWAY_PID=$!
 echo "   Gateway PID: $GATEWAY_PID"
 wait_for_health "$GATEWAY_URL/api/health" "Gateway" 60
 
+# ==================== 启动 Tool Result Service ====================
+echo ""
+echo "3️⃣  Starting Tool Result Service..."
+TRS_HOST="$(python3 - <<'PY'
+from urllib.parse import urlparse
+import json
+import pathlib
+cfg = json.loads(pathlib.Path("config/services.json").read_text(encoding="utf-8"))
+u = urlparse(cfg["services"]["tool_result_service"]["url"])
+print(u.hostname or "127.0.0.1")
+PY
+)"
+TRS_PORT="$(python3 - <<'PY'
+from urllib.parse import urlparse
+import json
+import pathlib
+cfg = json.loads(pathlib.Path("config/services.json").read_text(encoding="utf-8"))
+u = urlparse(cfg["services"]["tool_result_service"]["url"])
+print(u.port or 19994)
+PY
+)"
+venv/bin/python3 main_novaic.py tool-result-service --host "$TRS_HOST" --port "$TRS_PORT" --data-dir "$NOVAIC_DATA_DIR" > "$NOVAIC_DATA_DIR/logs/tool-result-service.log" 2>&1 &
+TRS_PID=$!
+echo "   Tool Result Service PID: $TRS_PID"
+wait_for_health "$TOOL_RESULT_SERVICE_URL/api/health" "Tool Result Service" 60
+
 # ==================== 启动 Tools Server ====================
 echo ""
-echo "3️⃣  Starting Tools Server ($TOOLS_HOST:$TOOLS_PORT)..."
-venv/bin/python3 main_novaic.py tools-server --host "$TOOLS_HOST" --port "$TOOLS_PORT" --data-dir "$NOVAIC_DATA_DIR" --gateway-url "$GATEWAY_URL" > "$NOVAIC_DATA_DIR/logs/tools-server.log" 2>&1 &
+echo "4️⃣  Starting Tools Server ($TOOLS_HOST:$TOOLS_PORT)..."
+venv/bin/python3 main_novaic.py tools-server --host "$TOOLS_HOST" --port "$TOOLS_PORT" --data-dir "$NOVAIC_DATA_DIR" --gateway-url "$GATEWAY_URL" --runtime-orchestrator-url "$RO_URL" --tool-result-service-url "$TOOL_RESULT_SERVICE_URL" > "$NOVAIC_DATA_DIR/logs/tools-server.log" 2>&1 &
 TOOLS_PID=$!
 echo "   Tools Server PID: $TOOLS_PID"
 wait_for_health "$TOOLS_URL/api/health" "Tools Server" 60
 
 # ==================== 启动 Queue Service ====================
 echo ""
-echo "4️⃣  Starting Queue Service ($QUEUE_HOST:$QUEUE_PORT)..."
+echo "5️⃣  Starting Queue Service ($QUEUE_HOST:$QUEUE_PORT)..."
 venv/bin/python3 main_novaic.py queue-service --host "$QUEUE_HOST" --port "$QUEUE_PORT" --data-dir "$NOVAIC_DATA_DIR" > "$NOVAIC_DATA_DIR/logs/queue-service.log" 2>&1 &
 QUEUE_PID=$!
 echo "   Queue Service PID: $QUEUE_PID"
@@ -99,7 +125,7 @@ wait_for_health "$QUEUE_URL/health" "Queue Service" 40
 
 # ==================== 启动 Workers ====================
 echo ""
-echo "5️⃣  Starting Workers..."
+echo "6️⃣  Starting Workers..."
 
 # Watchdog
 echo "   - Watchdog..."
@@ -109,7 +135,7 @@ echo "     PID: $WATCHDOG_PID"
 
 # Task Worker
 echo "   - Task Worker..."
-venv/bin/python3 main_novaic.py task-worker --gateway-url "$GATEWAY_URL" --queue-service-url "$QUEUE_URL" --tools-server-url "$TOOLS_URL" --runtime-orchestrator-url "$RO_URL" --num-workers "$NUM_WORKERS" --data-dir "$NOVAIC_DATA_DIR" > "$NOVAIC_DATA_DIR/logs/task-worker.log" 2>&1 &
+venv/bin/python3 main_novaic.py task-worker --gateway-url "$GATEWAY_URL" --queue-service-url "$QUEUE_URL" --tools-server-url "$TOOLS_URL" --runtime-orchestrator-url "$RO_URL" --tool-result-service-url "$TOOL_RESULT_SERVICE_URL" --num-workers "$NUM_WORKERS" --data-dir "$NOVAIC_DATA_DIR" > "$NOVAIC_DATA_DIR/logs/task-worker.log" 2>&1 &
 TASK_WORKER_PID=$!
 echo "     PID: $TASK_WORKER_PID"
 
@@ -137,6 +163,7 @@ watchdog=$WATCHDOG_PID
 task_worker=$TASK_WORKER_PID
 saga_worker=$SAGA_WORKER_PID
 health_worker=$HEALTH_WORKER_PID
+tool_result_service=$TRS_PID
 EOF
 
 echo ""

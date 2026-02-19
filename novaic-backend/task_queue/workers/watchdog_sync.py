@@ -19,7 +19,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any
 import traceback
 
-from task_queue.client import SagaClient, GatewayInternalClient
+from task_queue.client import SagaClient, GatewayBusinessClient, RuntimeOrchestratorClient
 from common.config import ServiceConfig
 from common.utils.time import utc_now_iso
 
@@ -75,9 +75,13 @@ class WatchdogSync:
         
         self._running = False
         
-        # 使用 SDK
         self.saga_client = SagaClient(queue_service_url, timeout=timeout)
-        self.gateway_client = GatewayInternalClient(gateway_url, timeout=timeout)
+        internal_url = (ServiceConfig.RUNTIME_ORCHESTRATOR_URL or "").rstrip("/")
+        self.gateway_client = GatewayBusinessClient(
+            (gateway_url or ServiceConfig.GATEWAY_URL).rstrip("/"),
+            timeout=timeout,
+        )
+        self.ro_client = RuntimeOrchestratorClient(internal_url, timeout=timeout)
         
         self.metrics = WatchdogMetrics()
     
@@ -123,6 +127,7 @@ class WatchdogSync:
             self._running = False
             self.saga_client.close()
             self.gateway_client.close()
+            self.ro_client.close()
             self._log("Stopped")
     
     def shutdown(self):
@@ -215,7 +220,7 @@ class WatchdogSync:
         # Phase 4: Lifecycle hook — 用户消息自动计数
         if msg_type == "USER_MESSAGE":
             try:
-                self.gateway_client.increment_drive_interaction(agent_id)
+                self.ro_client.increment_drive_interaction(agent_id)
             except Exception:
                 pass  # non-critical
         

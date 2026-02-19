@@ -16,14 +16,15 @@
 
 import time
 import uuid
+from collections import OrderedDict
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 import traceback
 
-from task_queue.client import TaskQueueClient, GatewayInternalClient, SagaClient
+from task_queue.client import TaskQueueClient, GatewayBusinessClient, RuntimeOrchestratorClient, SagaClient
 from task_queue.heartbeat_sync import HeartbeatSync
-from task_queue.exceptions import RETRYABLE_EXCEPTIONS, is_retryable_error
+from task_queue.retry_policy import RetryPolicy
 from common.config import ServiceConfig
 from common.utils.time import utc_now_iso
 from common.exceptions import BusinessError
@@ -76,11 +77,20 @@ class TaskWorkerSync:
         self.worker_id = f"task-sync-{uuid.uuid4().hex[:8]}"
         
         self.gateway_url = gateway_url or ServiceConfig.GATEWAY_URL
+        self.internal_url = (ServiceConfig.RUNTIME_ORCHESTRATOR_URL or "").rstrip("/")
         
         # 使用现有的同步 SDK
         self.client = TaskQueueClient(self.queue_service_url, timeout=timeout)  # 连接 Queue Service
         self.saga_client = SagaClient(self.queue_service_url, timeout=timeout)  # 用于 saga.trigger handler
-        self.gateway_client = GatewayInternalClient(self.gateway_url, timeout=timeout)
+        self.gateway_client = GatewayBusinessClient(
+            self.gateway_url,
+            timeout=timeout,
+            tools_server_url=getattr(ServiceConfig, "TOOLS_SERVER_URL", None),
+        )
+        self.ro_client = RuntimeOrchestratorClient(self.internal_url, timeout=timeout)
+        self.retry_policy = RetryPolicy()
+        self._completed_idempotency_keys: "OrderedDict[str, None]" = OrderedDict()
+        self._completed_idempotency_cache_size = 5000
         
         self._running = False
         self.metrics = TaskWorkerMetrics()
@@ -117,6 +127,7 @@ class TaskWorkerSync:
             self.client.close()
             self.saga_client.close()
             self.gateway_client.close()
+            self.ro_client.close()
             self._log("Stopped")
     
     def shutdown(self):
@@ -183,15 +194,58 @@ class TaskWorkerSync:
         """
         task_id = task["id"]
         topic = task["topic"]
+        idempotency_key = str(task.get("idempotency_key") or task_id)
+        execution_token = f"{self.worker_id}:{uuid.uuid4().hex[:8]}"
         
         self._log(f"Executing task {task_id} (topic: {topic})")
         
         try:
+            guard = self.client.acquire_idempotency_execution(
+                task_id=task_id,
+                idempotency_key=idempotency_key,
+                owner_token=execution_token,
+                lease_seconds=max(30, int(self.timeout or 120)),
+            )
+            action = guard.get("action")
+
+            if action == "completed":
+                self.client.complete(
+                    task_id,
+                    guard.get("result") or {"deduplicated": True, "source": "idempotency-ledger"},
+                )
+                self.metrics.tasks_succeeded += 1
+                self._log(
+                    f"Task {task_id} skipped duplicate side-effect (idempotency_key={idempotency_key})"
+                )
+                return
+            if action == "in_progress":
+                error_msg = "Idempotency guard is in progress by another worker"
+                self.client.fail(
+                    task_id,
+                    error_msg,
+                    retry=True,
+                    retry_delay_seconds=self.retry_policy.backoff_seconds(1),
+                )
+                self.metrics.tasks_failed += 1
+                self._log(
+                    f"Task {task_id} delayed by idempotency guard contention",
+                    level="warning",
+                )
+                return
+
             # 调用 Handler（通过 Gateway API）
             result = self._call_handler(task)
             
+            # 先持久化幂等完成，再标记任务完成（防止 complete 调用失败触发重复副作用）
+            self.client.complete_idempotency_execution(
+                task_id=task_id,
+                idempotency_key=idempotency_key,
+                owner_token=execution_token,
+                result=result,
+            )
             # 标记完成
             self.client.complete(task_id, result)
+            self._remember_completed_idempotency_key(idempotency_key)
             
             self.metrics.tasks_succeeded += 1
             self._log(f"Task {task_id} completed")
@@ -199,28 +253,47 @@ class TaskWorkerSync:
         except BusinessError as e:
             # 业务逻辑错误，不重试
             error_msg = str(e)
+            self.client.release_idempotency_execution(
+                task_id=task_id,
+                idempotency_key=idempotency_key,
+                owner_token=execution_token,
+            )
             self.client.fail(task_id, error_msg, retry=False)
             
             self.metrics.tasks_failed += 1
             self._log(f"Task {task_id} failed (business error, no retry): {error_msg}", level="error")
             
-        except RETRYABLE_EXCEPTIONS as e:
-            # 基础设施错误（网络、超时等），重试
-            error_msg = str(e)
-            self.client.fail(task_id, error_msg, retry=True)
-            
-            self.metrics.tasks_failed += 1
-            self._log(f"Task {task_id} failed (infra error, will retry): {error_msg}", level="error")
-            
         except Exception as e:
-            # 未知错误，检查是否可重试
             error_msg = str(e)
-            should_retry = is_retryable_error(e)
-            self.client.fail(task_id, error_msg, retry=should_retry)
-            
+            attempt = int(task.get("retry_count") or 0) + 1
+            max_attempts = int(task.get("max_retries") or self.retry_policy.max_attempts)
+            decision = self.retry_policy.evaluate(
+                e,
+                attempt=attempt,
+                max_attempts=max_attempts,
+            )
+            should_retry = decision.retry
+            self.client.release_idempotency_execution(
+                task_id=task_id,
+                idempotency_key=idempotency_key,
+                owner_token=execution_token,
+            )
+            self.client.fail(
+                task_id,
+                error_msg,
+                retry=should_retry,
+                retry_delay_seconds=decision.backoff_seconds if should_retry else None,
+            )
+
             self.metrics.tasks_failed += 1
             retry_hint = "will retry" if should_retry else "no retry"
-            self._log(f"Task {task_id} failed (unknown error, {retry_hint}): {error_msg}", level="error")
+            self._log(
+                (
+                    f"Task {task_id} failed ({decision.reason}, {retry_hint}, "
+                    f"attempt={decision.attempt}/{decision.max_attempts}): {error_msg}"
+                ),
+                level="error",
+            )
         
         finally:
             self.metrics.tasks_processed += 1
@@ -244,16 +317,26 @@ class TaskWorkerSync:
         # 获取 handler
         handler = get_handler(topic)
         
-        # 构建 handler 上下文
+        # 构建 handler 上下文 (explicit split clients)
         ctx = {
-            "gateway_url": self.gateway_client.gateway_url,
+            "gateway_url": self.gateway_url,
             "gateway_client": self.gateway_client,
+            "ro_client": self.ro_client,
             "saga_client": self.saga_client,
             "queue_service_url": self.queue_service_url,
         }
         
         # 执行 handler（同步）
         return handler(payload, ctx)
+
+    def _remember_completed_idempotency_key(self, idempotency_key: str):
+        """Remember successful keys to suppress duplicate side-effects in-process."""
+        if not idempotency_key:
+            return
+        self._completed_idempotency_keys[idempotency_key] = None
+        self._completed_idempotency_keys.move_to_end(idempotency_key)
+        while len(self._completed_idempotency_keys) > self._completed_idempotency_cache_size:
+            self._completed_idempotency_keys.popitem(last=False)
     
     def _log(self, message: str, level: str = "info"):
         """日志"""

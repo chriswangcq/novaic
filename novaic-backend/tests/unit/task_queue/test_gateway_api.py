@@ -7,25 +7,31 @@ import pytest
 
 @pytest.mark.asyncio
 async def test_list_handler_topics(gateway_http_client):
-    resp = await gateway_http_client.get("/internal/tq/handlers/topics")
+    # Queue topics are discovered from published tasks.
+    pub = await gateway_http_client.post("/internal/tq/tasks/publish", json={
+        "topic": "message.route",
+        "payload": {"message_id": "msg-seed", "agent_id": "agent-1"},
+    })
+    assert pub.status_code == 200
+
+    resp = await gateway_http_client.get("/internal/tq/topics")
     assert resp.status_code == 200
     data = resp.json()
     assert "topics" in data
-    assert "subagent.wake" in data["topics"]
+    assert "message.route" in data["topics"]
 
 
 @pytest.mark.asyncio
-async def test_business_message_process_wake_only(gateway_http_client):
-    # Ensure main subagent exists
-    resp = await gateway_http_client.get("/internal/subagents/agent-1/main")
-    assert resp.status_code == 200
-
-    resp = await gateway_http_client.post("/internal/tq/business/message/process", json={
-        "message_id": "msg-1",
-        "agent_id": "agent-1",
-        "content": "Hello",
+async def test_message_route_task_can_be_published(gateway_http_client):
+    """Business entry is async via queue topic publish."""
+    resp = await gateway_http_client.post("/internal/tq/tasks/publish", json={
+        "topic": "message.route",
+        "payload": {
+            "message_id": "msg-1",
+            "agent_id": "agent-1",
+            "content": "Hello",
+        },
     })
     assert resp.status_code == 200
     data = resp.json()
-    assert data["success"] is True
-    assert data["action"] in ("wake_only", "runtime_start", "pending")
+    assert "task_id" in data and data["task_id"]

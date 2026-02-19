@@ -281,37 +281,29 @@ def save_agent_tools_config(agent_id: str, data: Dict[str, Any]):
 @router.get("/agents/{agent_id}/prompts-preview")
 def get_prompts_preview(agent_id: str):
     """Preview the system prompt and drive prompt for an agent."""
-    from task_queue.client import GatewayInternalClient
-    from common.config import ServiceConfig
-    
-    # Build prompts using the same builders that runtime uses
-    client = GatewayInternalClient(ServiceConfig.GATEWAY_URL)
-    
+    from gateway.core.prompt_builder import build_system_prompt, build_wake_message
+    db = get_db()
+
+    # System prompt (统一的，不区分场景)
     try:
-        from task_queue.utils.system_prompt import build_system_prompt, build_wake_message
-        
-        # System prompt (统一的，不区分场景)
-        try:
-            system_prompt = build_system_prompt(agent_id, client)
-        except Exception as e:
-            system_prompt = f"[Error building system prompt: {e}]"
-        
-        # Wake message (定时唤醒时的消息内容，写入 DB 作为 user message)
-        try:
-            wake_message = build_wake_message(agent_id, client)
-        except Exception as e:
-            wake_message = f"[Error building wake message: {e}]"
-        
-        return {
-            "agent_id": agent_id,
-            "system_prompt": system_prompt or "",
-            "system_prompt_length": len(system_prompt or ""),
-            "wake_message": wake_message or "",
-            "wake_message_length": len(wake_message or ""),
-            "note": "System Prompt 统一。定时唤醒时，wake_message 作为普通消息写入 DB，由 ReactThink 统一读取。",
-        }
-    finally:
-        client.close()
+        system_prompt = build_system_prompt(agent_id, db)
+    except Exception as e:
+        system_prompt = f"[Error building system prompt: {e}]"
+
+    # Wake message (定时唤醒时的消息内容，写入 DB 作为 user message)
+    try:
+        wake_message = build_wake_message(agent_id, db)
+    except Exception as e:
+        wake_message = f"[Error building wake message: {e}]"
+
+    return {
+        "agent_id": agent_id,
+        "system_prompt": system_prompt or "",
+        "system_prompt_length": len(system_prompt or ""),
+        "wake_message": wake_message or "",
+        "wake_message_length": len(wake_message or ""),
+        "note": "System Prompt 统一。定时唤醒时，wake_message 作为普通消息写入 DB，由 ReactThink 统一读取。",
+    }
 
 
 # ==================== Available Tools ====================

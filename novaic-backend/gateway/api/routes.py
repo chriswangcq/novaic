@@ -9,14 +9,12 @@ v12: Master-driven architecture
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
-from typing import Optional, List
-from datetime import timedelta
+from typing import List
 import json
 import os
 import shutil
 import time
 from pathlib import Path
-import glob
 
 from common.utils.time import utc_now_iso
 from .schemas import (
@@ -435,7 +433,7 @@ def cleanup_garbage(
                 agent_config = agent_mgr.reload()
                 valid_agent_ids = {a.id for a in agent_config.agents}
                 
-                # Check both vms/ and agents/ directories (legacy support)
+                # Check known runtime data directories.
                 for dir_name in ["vms", "agents"]:
                     check_dir = data_dir / dir_name
                     if check_dir.exists():
@@ -791,29 +789,13 @@ def interrupt(agent_id: str = Query(..., description="Agent ID (required)")):
 @router.post("/init")
 def init_agent():
     """
-    Initialize the agent (for backward compatibility).
-    
-    v12: Not needed - Master handles initialization.
+    Compatibility endpoint kept for older clients.
+    Initialization is handled by runtime orchestration flow.
     """
-    return {"status": "ok", "message": "v12: Agent initialization handled by Master"}
+    return {"status": "ok", "message": "Initialization is handled automatically"}
 
 
 # ==================== VNC ====================
-
-import socket
-
-def _check_port(port: int, host: str = "127.0.0.1", timeout: float = 0.5) -> bool:
-    """Check if a port is listening"""
-    try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(timeout)
-        result = sock.connect_ex((host, port))
-        sock.close()
-        return result == 0
-    except:
-        return False
-
-
 
 @router.get("/vnc/status")
 def vnc_status():

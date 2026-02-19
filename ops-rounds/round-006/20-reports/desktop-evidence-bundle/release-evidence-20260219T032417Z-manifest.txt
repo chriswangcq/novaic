@@ -1,0 +1,19 @@
+bundle_timestamp_utc=20260219T032417Z
+bundle_archive=/Users/wangchaoqun/novaic/ops-rounds/round-006/20-reports/desktop-evidence-bundle/release-evidence-20260219T032417Z.tar.gz
+included_dir=/Users/wangchaoqun/novaic/ops-rounds/round-006/20-reports/desktop-evidence-bundle/release-evidence-20260219T032417Z
+sha256:
+b83e6093088c85bfeb9b2a1abbc2e177ce7e37c7a196b0c962dc20ff55cfe40a  /Users/wangchaoqun/novaic/ops-rounds/round-006/20-reports/desktop-evidence-bundle/release-evidence-20260219T032417Z.tar.gz
+files:
+ops-rounds/round-006/20-reports/desktop-evidence-bundle/release-evidence-20260219T032417Z/NovAIC_0.3.0_aarch64.dmg
+ops-rounds/round-006/20-reports/desktop-evidence-bundle/release-evidence-20260219T032417Z/desktop-ci-qa-handoff-round006.md
+ops-rounds/round-006/20-reports/desktop-evidence-bundle/release-evidence-20260219T032417Z/desktop-clean-profile-replay-round006.md
+ops-rounds/round-006/20-reports/desktop-evidence-bundle/release-evidence-20260219T032417Z/desktop-evidence/fresh-profile-operator-a-metadata.txt
+ops-rounds/round-006/20-reports/desktop-evidence-bundle/release-evidence-20260219T032417Z/desktop-evidence/fresh-profile-operator-a-startup-diagnostics.jsonl
+ops-rounds/round-006/20-reports/desktop-evidence-bundle/release-evidence-20260219T032417Z/desktop-evidence/fresh-profile-operator-a-startup.log
+ops-rounds/round-006/20-reports/desktop-evidence-bundle/release-evidence-20260219T032417Z/desktop-evidence/fresh-profile-operator-a-summary.txt
+ops-rounds/round-006/20-reports/desktop-evidence-bundle/release-evidence-20260219T032417Z/desktop-evidence/fresh-profile-operator-b-metadata.txt
+ops-rounds/round-006/20-reports/desktop-evidence-bundle/release-evidence-20260219T032417Z/desktop-evidence/fresh-profile-operator-b-startup-diagnostics.jsonl
+ops-rounds/round-006/20-reports/desktop-evidence-bundle/release-evidence-20260219T032417Z/desktop-evidence/fresh-profile-operator-b-startup.log
+ops-rounds/round-006/20-reports/desktop-evidence-bundle/release-evidence-20260219T032417Z/desktop-evidence/fresh-profile-operator-b-summary.txt
+ops-rounds/round-006/20-reports/desktop-evidence-bundle/release-evidence-20260219T032417Z/team-desktop-report.md
+ops-rounds/round-006/20-reports/desktop-evidence-bundle/release-evidence-20260219T032417Z/validate_fresh_profile.sh

@@ -1,0 +1,37 @@
+name: Rust Service Template
+
+on:
+  workflow_call:
+    inputs:
+      service_path:
+        required: true
+        type: string
+      rust_toolchain:
+        required: false
+        type: string
+        default: "stable"
+
+jobs:
+  rust-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ inputs.rust_toolchain }}
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ${{ inputs.service_path }}
+
+      - name: Cargo check
+        working-directory: ${{ inputs.service_path }}
+        run: cargo check
+
+      - name: Cargo test
+        working-directory: ${{ inputs.service_path }}
+        run: cargo test --locked

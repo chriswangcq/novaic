@@ -14,7 +14,10 @@ from dataclasses import dataclass
 from common.enums import RuntimeStatus
 from typing import Dict, Any, List, Optional
 
-from ..client import GatewayInternalClient
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from ..client import GatewayInternalClient, RuntimeOrchestratorClient
 
 
 @dataclass
@@ -54,13 +57,26 @@ class RuntimeBusiness:
         >>> print(result.runtime_id)
     """
     
-    def __init__(self, gateway_url: str, client: Optional[GatewayInternalClient] = None):
+    def __init__(
+        self,
+        gateway_url: str,
+        ro_client: "RuntimeOrchestratorClient" = None,
+        client: Optional["GatewayInternalClient"] = None,
+    ):
         """
         Args:
-            gateway_url: Gateway URL
-            client: 可复用的 GatewayInternalClient
+            gateway_url: Gateway URL (used when ro_client not provided)
+            ro_client: RuntimeOrchestratorClient for RO-owned APIs (preferred)
+            client: Legacy GatewayInternalClient; if provided, uses client.ro_client
         """
-        self.client = client or GatewayInternalClient(gateway_url)
+        if client is not None:
+            self.ro_client = client.ro_client
+        elif ro_client is not None:
+            self.ro_client = ro_client
+        else:
+            raise ValueError(
+                "RuntimeBusiness requires explicit ro_client (fallback creation is disabled)"
+            )
     
     def create(
         self,
@@ -86,7 +102,7 @@ class RuntimeBusiness:
         """
         # 幂等检查：只复用 active 状态的 runtime
         if idempotency_key:
-            existing = self.client.get_subagent_runtime(agent_id, subagent_id)
+            existing = self.ro_client.get_subagent_runtime(agent_id, subagent_id)
             if existing and existing.get("status") == RuntimeStatus.ACTIVE.value:
                 return RuntimeCreateResult(
                     success=True,
@@ -98,7 +114,7 @@ class RuntimeBusiness:
                 )
 
         # 创建 runtime，传入 initial_context（可能包含历史摘要）
-        runtime = self.client.create_runtime(agent_id, subagent_id, initial_context or [])
+        runtime = self.ro_client.create_runtime(agent_id, subagent_id, initial_context or [])
         return RuntimeCreateResult(
             success=True,
             runtime_id=runtime.get("runtime_id", ""),
@@ -134,7 +150,7 @@ class RuntimeBusiness:
         else:
             expected_list = expected_status
         
-        resp = self.client.set_runtime_status(runtime_id, expected_list, new_status)
+        resp = self.ro_client.set_runtime_status(runtime_id, expected_list, new_status)
         if resp.get("success"):
             return RuntimeUpdateResult(
                 success=True,
@@ -162,11 +178,11 @@ class RuntimeBusiness:
         Returns:
             {"success": bool, "round_num": int}
         """
-        result = self.client.advance_round(runtime_id)
+        result = self.ro_client.advance_round(runtime_id)
         if not result.get("success"):
             return {"success": False, "runtime_id": runtime_id, "round_num": None}
 
-        runtime = self.client.get_runtime(runtime_id)
+        runtime = self.ro_client.get_runtime(runtime_id)
         return {
             "success": True,
             "runtime_id": runtime_id,
@@ -185,7 +201,7 @@ class RuntimeBusiness:
         Returns:
             RuntimeUpdateResult
         """
-        resp = self.client.set_runtime_summarized(runtime_id)
+        resp = self.ro_client.set_runtime_summarized(runtime_id)
         if resp.get("success"):
             return RuntimeUpdateResult(
                 success=True,
@@ -215,7 +231,7 @@ class RuntimeBusiness:
         Returns:
             RuntimeUpdateResult
         """
-        resp = self.client.set_runtime_need_rest(runtime_id, value)
+        resp = self.ro_client.set_runtime_need_rest(runtime_id, value)
         target = "1" if value else "0"
         return RuntimeUpdateResult(
             success=resp.get("success") or resp.get("current_value") == target,
@@ -235,4 +251,4 @@ class RuntimeBusiness:
         Returns:
             Runtime 信息或 None
         """
-        return self.client.get_runtime(runtime_id)
+        return self.ro_client.get_runtime(runtime_id)

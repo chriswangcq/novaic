@@ -36,6 +36,7 @@ class TaskRepository:
         title: str,
         quadrant: str,
         source: str,
+        task_type: str = "one_time",
         description: str = "",
         reasoning: Optional[str] = None,
         due_date: Optional[str] = None,
@@ -47,6 +48,7 @@ class TaskRepository:
         Args:
             agent_id: Agent ID
             title: Task title
+            task_type: one_time/recurring/ongoing
             quadrant: q1/q2/q3/q4 (Eisenhower Matrix quadrant)
             source: Task source (user_request/user_mention/inference/curiosity/learning/self_improvement)
             description: Task description
@@ -64,10 +66,10 @@ class TaskRepository:
         with self.db.transaction(lock_type="agent", resource_id=agent_id):
             cursor = self.db.execute(
                 """INSERT INTO agent_tasks 
-                   (agent_id, title, description, quadrant, source, reasoning,
+                   (agent_id, title, description, task_type, quadrant, source, reasoning,
                     due_date, context, related_profile_keys, created_at, updated_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (agent_id, title, description, quadrant, source, reasoning,
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (agent_id, title, description, task_type, quadrant, source, reasoning,
                  due_date, context, profile_keys_json, now, now)
             )
             task_id = cursor.lastrowid
@@ -76,6 +78,7 @@ class TaskRepository:
             "success": True,
             "id": task_id,
             "title": title,
+            "task_type": task_type,
             "quadrant": quadrant,
             "source": source,
             "status": "pending",
@@ -96,7 +99,7 @@ class TaskRepository:
             Dict with task info or not found
         """
         row = self.db.fetchone(
-            """SELECT id, agent_id, title, description, quadrant, status, source,
+            """SELECT id, agent_id, title, description, task_type, quadrant, status, source,
                       reasoning, due_date, reminder_at, context, related_profile_keys,
                       completed_at, completion_notes, created_at, updated_at
                FROM agent_tasks 
@@ -146,7 +149,7 @@ class TaskRepository:
         params.append(min(limit, 100))
         
         rows = self.db.fetchall(
-            f"""SELECT id, agent_id, title, description, quadrant, status, source,
+            f"""SELECT id, agent_id, title, description, task_type, quadrant, status, source,
                        reasoning, due_date, reminder_at, context, related_profile_keys,
                        completed_at, completion_notes, created_at, updated_at
                 FROM agent_tasks
@@ -476,7 +479,7 @@ class TaskRepository:
         now = utc_now_iso()
         
         rows = self.db.fetchall(
-            """SELECT id, agent_id, title, description, quadrant, status, source,
+            """SELECT id, agent_id, title, description, task_type, quadrant, status, source,
                       reasoning, due_date, reminder_at, context, related_profile_keys,
                       completed_at, completion_notes, created_at, updated_at
                FROM agent_tasks
@@ -537,6 +540,7 @@ class TaskRepository:
             "agent_id": row["agent_id"],
             "title": row["title"],
             "description": row["description"],
+            "task_type": row["task_type"],
             "quadrant": row["quadrant"],
             "status": row["status"],
             "source": row["source"],

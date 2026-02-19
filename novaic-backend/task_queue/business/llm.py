@@ -10,7 +10,10 @@ import json
 from dataclasses import dataclass
 from typing import Dict, Any, List, Optional
 
-from ..client import GatewayInternalClient
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from ..client import GatewayInternalClient, RuntimeOrchestratorClient
 
 # 使用模块化工具
 from ..utils import sanitize_context, process_multimodal_messages
@@ -60,15 +63,29 @@ class LLMBusiness:
         ...     print(result.response)
     """
     
-    def __init__(self, gateway_url: str, llm_client=None, client: Optional[GatewayInternalClient] = None):
+    def __init__(
+        self,
+        gateway_url: str,
+        llm_client=None,
+        ro_client: "RuntimeOrchestratorClient" = None,
+        client: Optional["GatewayInternalClient"] = None,
+    ):
         """
         Args:
-            gateway_url: Gateway URL
+            gateway_url: Gateway URL (used when ro_client not provided)
             llm_client: LLM 客户端
-            client: 可复用的 GatewayInternalClient
+            ro_client: RuntimeOrchestratorClient (preferred)
+            client: Legacy GatewayInternalClient; if provided, uses client.ro_client
         """
         self.llm_client = llm_client
-        self.client = client or GatewayInternalClient(gateway_url)
+        if client is not None:
+            self.ro_client = client.ro_client
+        elif ro_client is not None:
+            self.ro_client = ro_client
+        else:
+            raise ValueError(
+                "LLMBusiness requires explicit ro_client (fallback creation is disabled)"
+            )
     
     def call(
         self,
@@ -140,7 +157,7 @@ class LLMBusiness:
             system_prompt = "Please summarize this conversation concisely, highlighting key points and decisions made."
         
         # 1. 获取 runtime 信息
-        runtime = self.client.get_runtime(runtime_id)
+        runtime = self.ro_client.get_runtime(runtime_id)
         if not runtime:
             return SummaryResult(success=False, error="Runtime not found")
 
@@ -176,7 +193,7 @@ class LLMBusiness:
             summary = response.get("choices", [{}])[0].get("message", {}).get("content", "")
             
             # 4. 保存摘要
-            self.client.update_runtime(runtime_id, {"summary": summary})
+            self.ro_client.update_runtime(runtime_id, {"summary": summary})
             
             return SummaryResult(success=True, summary=summary)
             
@@ -255,7 +272,7 @@ class LLMBusiness:
         )
         
         # 1. 获取 runtime 信息
-        runtime = self.client.get_runtime(runtime_id)
+        runtime = self.ro_client.get_runtime(runtime_id)
         if not runtime:
             return HotColdSummaryResult(success=False, error="Runtime not found")
 
@@ -322,7 +339,7 @@ class LLMBusiness:
         
         # 5. 保存到数据库
         try:
-            self.client.set_runtime_hot_cold_summary(runtime_id, hot_summary, cold_summary)
+            self.ro_client.set_runtime_hot_cold_summary(runtime_id, hot_summary, cold_summary)
         except Exception as e:
             return HotColdSummaryResult(
                 success=False, 

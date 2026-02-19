@@ -7,16 +7,17 @@ Context 构建规则：
 3. hrl[-N:] 的 hot_summary: 最近的 runtime（有 hot 用 hot，无 hot 用 simple）
 """
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 
-from ..client import GatewayInternalClient
 from common.config import ServiceConfig
 
 
 def build_initial_context(
     agent_id: str,
     subagent_id: str,
-    client: GatewayInternalClient,
+    ro_client=None,
+    *,
+    client=None,
 ) -> List[Dict[str, Any]]:
     """
     为新 Runtime 构建初始 Context
@@ -31,16 +32,20 @@ def build_initial_context(
     Args:
         agent_id: Agent ID
         subagent_id: SubAgent ID
-        client: GatewayInternalClient 实例
+        ro_client: RuntimeOrchestratorClient (preferred) - has get_subagent, get_hrl, get_runtimes_by_ids
+        client: Legacy/fallback - object with get_subagent, get_hrl, get_runtimes_by_ids (e.g. GatewayInternalClient)
         
     Returns:
         消息列表，作为 LLM 的历史上下文
     """
+    c = ro_client if ro_client is not None else client
+    if c is None:
+        return []
     context_parts = []
     
     # 1. 获取 SubAgent 信息（包含 historical_summary）
     try:
-        subagent = client.get_subagent(agent_id, subagent_id)
+        subagent = c.get_subagent(agent_id, subagent_id)
     except Exception as e:
         print(f"[context_builder] Failed to get subagent {subagent_id}: {e}")
         return []
@@ -54,7 +59,7 @@ def build_initial_context(
     
     # 2. 获取 HRL
     try:
-        hrl_resp = client.get_hrl(agent_id, subagent_id)
+        hrl_resp = c.get_hrl(agent_id, subagent_id)
         hrl = hrl_resp.get("hrl", [])
     except Exception as e:
         print(f"[context_builder] Failed to get HRL for {subagent_id}: {e}")
@@ -66,7 +71,7 @@ def build_initial_context(
     
     # 3. 获取所有 runtime 的 summary 信息
     try:
-        runtimes = client.get_runtimes_by_ids(hrl)
+        runtimes = c.get_runtimes_by_ids(hrl)
     except Exception as e:
         print(f"[context_builder] Failed to get runtimes by ids: {e}")
         return context_parts
@@ -123,7 +128,9 @@ def build_initial_context(
 def build_context_summary(
     agent_id: str,
     subagent_id: str,
-    client: GatewayInternalClient,
+    ro_client=None,
+    *,
+    client=None,
 ) -> Dict[str, Any]:
     """
     构建 Context 并返回统计信息
@@ -133,7 +140,8 @@ def build_context_summary(
     Args:
         agent_id: Agent ID
         subagent_id: SubAgent ID
-        client: GatewayInternalClient 实例
+        ro_client: RuntimeOrchestratorClient (preferred)
+        client: Legacy fallback
         
     Returns:
         {
@@ -147,7 +155,7 @@ def build_context_summary(
             }
         }
     """
-    context = build_initial_context(agent_id, subagent_id, client)
+    context = build_initial_context(agent_id, subagent_id, ro_client=ro_client, client=client)
     
     stats = {
         "has_historical_summary": False,

@@ -48,6 +48,15 @@ class ServiceConfig:
     RUNTIME_ORCHESTRATOR_HOST = _CFG.get("services", "runtime_orchestrator", "host")
     RUNTIME_ORCHESTRATOR_PORT = int(_CFG.get("services", "runtime_orchestrator", "port"))
     RUNTIME_ORCHESTRATOR_URL = _CFG.get("services", "runtime_orchestrator", "url")
+
+    # Tools reliability policy (round-002)
+    TOOLS_REQUEST_TIMEOUT_SECONDS = float(_CFG.get("tools_reliability", "request_timeout_seconds"))
+    _tools_execution_timeout_raw = _CFG.get("tools_reliability", "execution_timeout_seconds")
+    TOOLS_EXECUTION_TIMEOUT_SECONDS = (
+        float(_tools_execution_timeout_raw) if _tools_execution_timeout_raw is not None else None
+    )
+    TOOLS_GLOBAL_TIMEOUT_SECONDS = float(_CFG.get("tools_reliability", "global_timeout_seconds"))
+    TOOLS_MAX_CONCURRENT_PER_RUNTIME = int(_CFG.get("tools_reliability", "max_concurrent_per_runtime"))
     
     # Timeouts
     # 超时配置计算逻辑：
@@ -187,6 +196,20 @@ class ServiceConfig:
         
         if cls.HTTP_TIMEOUT <= 0:
             errors.append(f"Invalid HTTP_TIMEOUT: {cls.HTTP_TIMEOUT}")
+
+        if cls.TOOLS_REQUEST_TIMEOUT_SECONDS <= 0:
+            errors.append(f"Invalid TOOLS_REQUEST_TIMEOUT_SECONDS: {cls.TOOLS_REQUEST_TIMEOUT_SECONDS}")
+
+        if cls.TOOLS_EXECUTION_TIMEOUT_SECONDS is not None and cls.TOOLS_EXECUTION_TIMEOUT_SECONDS <= 0:
+            errors.append(f"Invalid TOOLS_EXECUTION_TIMEOUT_SECONDS: {cls.TOOLS_EXECUTION_TIMEOUT_SECONDS}")
+
+        if cls.TOOLS_GLOBAL_TIMEOUT_SECONDS <= 0:
+            errors.append(f"Invalid TOOLS_GLOBAL_TIMEOUT_SECONDS: {cls.TOOLS_GLOBAL_TIMEOUT_SECONDS}")
+
+        if cls.TOOLS_MAX_CONCURRENT_PER_RUNTIME <= 0:
+            errors.append(
+                f"Invalid TOOLS_MAX_CONCURRENT_PER_RUNTIME: {cls.TOOLS_MAX_CONCURRENT_PER_RUNTIME}"
+            )
         
         # 验证间隔值
         if cls.HEARTBEAT_INTERVAL <= 0:

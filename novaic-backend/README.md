@@ -13,7 +13,7 @@ novaic-backend/
 │   ├── handlers/                 # Task handlers
 │   └── business/                 # 业务逻辑层
 ├── services/                     # Worker 进程
-│   ├── watchdog.py               # 消息监控
+│   ├── watchdog_sync.py          # 消息监控
 │   ├── task_worker_v2.py         # Task 执行
 │   ├── saga_worker_v2.py         # Saga 编排
 │   └── health_worker_v2.py       # 健康监控

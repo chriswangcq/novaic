@@ -3,32 +3,35 @@ Tool Executor - 执行工具调用
 
 负责执行内置工具和外部工具的调用。
 
-内置工具：直接调用 Gateway API（使用 httpx.AsyncClient）
+内置工具：直接调用 Gateway / RO / vmcontrol API（使用 httpx.AsyncClient）
 外部工具：通过 MCPServerConnection 调用
 
-工具路由规则：
-- memory_* 工具: POST/GET /internal/rt/{runtime_id}/memory/*
-- runtime_* 工具: GET/POST /internal/runtimes/* 或 /internal/rt/{runtime_id}/*
-- chat_* 工具: POST/GET /internal/rt/{runtime_id}/chat/*
-- web_* 工具: POST /internal/web/*
-- qemu_* 工具: POST/GET /internal/rt/{runtime_id}/qemu/*
+工具路由规则（ migrated from /internal/rt/* ):
+- memory_save, memory_delete: POST /internal/agents/{agent_id}/memory/* (Gateway)
+- notebook_* 工具: POST /internal/agents/{agent_id}/notebook/* (Gateway)
+- runtime_* 工具: GET/POST RO /internal/runtimes/* (Runtime Orchestrator)
+- chat_history, chat_reply: POST /internal/messages, GET /internal/chat/history (Gateway)
+- subagent_* 工具: RO /internal/subagents/{agent_id}/{subagent_id}/* (Runtime Orchestrator)
+- quadrant tasks: Gateway /internal/subagents/{subagent_id}/quadrant-tasks/*
+- qemu_ssh_exec, qemu_status: vmcontrol /api/vms/{agent_id}/* (direct vmcontrol)
 
 特殊工具：
-- goal_set, goal_progress, goal_complete: 通过 memory_save/memory_recall 间接实现
-- session_state: 调用两个 API 并合并结果
 - runtime_rest: 只有 Main Runtime 可以调用
 """
 
 import os
 import json
 import logging
+import asyncio
 from typing import Dict, Any, Optional, List, TYPE_CHECKING, Union
 
 import httpx
 
 from common.config import ServiceConfig
 from common.http.clients import internal_async_client
+from common.tools.definitions import BUILTIN_TOOLS as DEFINITION_BUILTIN_TOOLS
 from .tool_result_adapter import adapt_tool_result as _adapt_tool_result, tool_result as _tool_result, filename_from_url as _filename_from_url
+from .reliability import ToolsReliabilityPolicy, get_tools_reliability_policy
 
 if TYPE_CHECKING:
     from mcp_client.mcp_client import MCPServerConnection
@@ -38,6 +41,9 @@ logger = logging.getLogger(__name__)
 
 # Gateway API 基础 URL
 GATEWAY_URL = ServiceConfig.GATEWAY_URL
+
+# Runtime Orchestrator URL (owns /internal/runtimes*, /internal/subagents*)
+RO_URL = getattr(ServiceConfig, "RUNTIME_ORCHESTRATOR_URL", None)
 
 # vmcontrol API 基础 URL
 VMCONTROL_URL = ServiceConfig.VMCONTROL_URL
@@ -62,28 +68,15 @@ MOBILE_TOOL_MAPPING = {
     "mobile_shell": ("shell", None),
     # Phase 2 - App Management
     "mobile_app_install": ("app/install", None),
-    "mobile_app_uninstall": ("app/uninstall", None),
     "mobile_app_launch": ("app/launch", None),
     "mobile_app_list": ("app/list", None),
-    "mobile_app_stop": ("app/stop", None),
-    # Phase 2 - Browser
-    "mobile_browser_open": ("browser/open", None),
-    "mobile_browser_get_url": ("browser/get_url", None),
-    "mobile_browser_back": ("browser/back", None),
-    "mobile_browser_refresh": ("browser/refresh", None),
     # Phase 3 - UI Automation
     "mobile_ui_dump": ("ui/dump", None),
     "mobile_ui_find": ("ui/find", None),
-    "mobile_ui_wait": ("ui/wait", None),
-    "mobile_ui_scroll": ("ui/scroll", None),
-    "mobile_ui_click_element": ("ui/click_element", None),
     # Phase 3 - File Management
     "mobile_file_push": ("file/push", None),
     "mobile_file_pull": ("file/pull", None),
     "mobile_file_list": ("file/list", None),
-    "mobile_file_delete": ("file/delete", None),
-    "mobile_file_mkdir": ("file/mkdir", None),
-    "mobile_file_read": ("file/read", None),
 }
 
 # VM 工具映射表：工具名 -> (tool, operation)
@@ -94,7 +87,6 @@ VM_TOOL_MAPPING = {
     "browser_click": ("browser", "click"),
     "browser_type": ("browser", "type"),
     "browser_screenshot": ("browser", "screenshot"),
-    "browser_content": ("browser", "content"),
     "browser_scroll": ("browser", "scroll"),
     "browser_evaluate": ("browser", "evaluate"),
     "browser_get_tabs": ("browser", "get_tabs"),
@@ -109,152 +101,33 @@ VM_TOOL_MAPPING = {
     # Window tools
     "list_windows": ("window", "list"),
     "focus_window": ("window", "focus"),
-    "maximize_window": ("window", "maximize"),
-    "minimize_window": ("window", "minimize"),
-    "close_window": ("window", "close"),
-    "resize_window": ("window", "resize"),
     "launch_app": ("window", "launch_app"),
     # Context tools
     "system_snapshot": ("context", "system_snapshot"),
     "directory_snapshot": ("context", "directory_snapshot"),
-    "app_state": ("context", "app_state"),
     "clipboard_get": ("context", "clipboard_get"),
     "clipboard_set": ("context", "clipboard_set"),
-    "recent_files": ("context", "recent_files"),
-    "environment_info": ("context", "environment_info"),
 }
 
-# 内置工具名称集合（这些工具直接调用 Gateway API 或 vmcontrol）
-# 注意：这是工具名称集合，不同于 tools.py 中的 BUILTIN_TOOLS（工具定义字典）
-BUILTIN_TOOL_NAMES = {
-    # Memory 工具
-    "memory_save",
-    "memory_recall",
-    "memory_delete",
-    "memory_list_namespaces",
-    "memory_log_task",
-    "memory_get_task_history",
-    
-    # Notebook 工具
-    "notebook_write",
-    "notebook_list",
-    "notebook_read",
-    "notebook_update",
-    
-    # Drive 工具
-    "drive_update_profile",
-    "drive_update_relationship",
-    "memory_update",
-    
-    # Goal 工具（通过 memory 实现）
-    "goal_set",
-    "goal_progress",
-    "goal_complete",
-    
-    # Runtime 工具
-    "runtime_list",
-    "runtime_history",
-    "runtime_send",
-    "runtime_rest",
-    
-    # Display 工具
-    "display",
-    # Chat 工具
-    "chat_event",
-    "chat_reply",
-    "chat_history",
-    "chat_get_message",
-    
-    # SubAgent 工具
-    "subagent_spawn",
-    "subagent_query",
-    "subagent_cancel",
-    "subagent_report",
-    
-    # Web 工具
-    "web_search",
-    "web_fetch",
-    
-    # QEMU 工具
-    "qemu_ssh_exec",
-    "qemu_status",
-    "qemu_start_vm",
-    "qemu_restart_vm",
-    "qemu_shutdown_vm",
-    
-    # Session 工具
-    "session_state",
-    
-    # Task history (memory 分类中定义)
-    "task_log",
-    "task_history",
-    
-    # 四象限任务管理工具
-    "task_create",
-    "task_start",
-    "task_progress",
-    "task_complete",
-    "task_update",
-    "task_board_list",
-    "task_delete",
-    "drive_log_growth",
-    
-    # VM 工具（直接调用 vmcontrol）
-    "browser_navigate",
-    "browser_click",
-    "browser_type",
-    "browser_screenshot",
-    "browser_content",
-    "browser_scroll",
-    "browser_evaluate",
-    "file_pull",
-    "file_push",
-    "shell_exec",
-    "screenshot",
-    "mouse",
-    "keyboard",
-    "list_windows",
-    "focus_window",
-    "maximize_window",
-    "minimize_window",
-    "close_window",
-    "resize_window",
-    "launch_app",
-    "system_snapshot",
-    "clipboard_get",
-    "clipboard_set",
-    "environment_info",
-    
-    # Mobile 工具（通过 vmcontrol 访问 Android 设备）
-    "mobile_screenshot",
-    "mobile_touch",
-    "mobile_input",
-    "mobile_shell",
-    # Phase 2 - App Management
-    "mobile_app_install",
-    "mobile_app_uninstall",
-    "mobile_app_launch",
-    "mobile_app_list",
-    "mobile_app_stop",
-    # Phase 2 - Browser
-    "mobile_browser_open",
-    "mobile_browser_get_url",
-    "mobile_browser_back",
-    "mobile_browser_refresh",
-    # Phase 3 - UI Automation
-    "mobile_ui_dump",
-    "mobile_ui_find",
-    "mobile_ui_wait",
-    "mobile_ui_scroll",
-    "mobile_ui_click_element",
-    # Phase 3 - File Management
-    "mobile_file_push",
-    "mobile_file_pull",
-    "mobile_file_list",
-    "mobile_file_delete",
-    "mobile_file_mkdir",
-    "mobile_file_read",
-}
+def _collect_defined_tool_names() -> set[str]:
+    names: set[str] = set()
+    for tools in DEFINITION_BUILTIN_TOOLS.values():
+        for tool in tools:
+            name = tool.get("name")
+            if name:
+                names.add(name)
+    return names
+
+
+# Single source of truth for public builtin tools.
+DEFINED_BUILTIN_TOOL_NAMES = _collect_defined_tool_names()
+
+# Internal/backward-compatible builtin tools that are intentionally not exposed
+# in common.tools.definitions yet.
+INTERNAL_ONLY_BUILTIN_TOOL_NAMES = set()
+# Intentionally empty after removing all internal-only builtins.
+
+BUILTIN_TOOL_NAMES = DEFINED_BUILTIN_TOOL_NAMES | INTERNAL_ONLY_BUILTIN_TOOL_NAMES
 
 
 class ToolExecutor:
@@ -276,6 +149,7 @@ class ToolExecutor:
         agent_id: Optional[str] = None,
         subagent_id: Optional[str] = None,
         external_mcp_client: Optional["MCPServerConnection"] = None,
+        reliability_policy: Optional[ToolsReliabilityPolicy] = None,
         # 兼容 api.py 的参数
         runtime: Optional["RuntimeContext"] = None,
         manager: Optional["RuntimeManager"] = None,
@@ -320,17 +194,27 @@ class ToolExecutor:
         
         self.external_mcp_client = external_mcp_client
         self._http_client: Optional[httpx.AsyncClient] = None
+        self._reliability_policy = reliability_policy or get_tools_reliability_policy()
     
     async def _get_http_client(self) -> httpx.AsyncClient:
-        """获取或创建 HTTP 客户端"""
+        """获取或创建 HTTP 客户端（Gateway）"""
         if self._http_client is None or self._http_client.is_closed:
             self._http_client = internal_async_client(
                 base_url=GATEWAY_URL,
-                # 工具执行超时由心跳机制管理，HTTP 层不做限制
                 timeout=httpx.Timeout(connect=10.0, read=None, write=30.0, pool=10.0),
                 transport=httpx.AsyncHTTPTransport(proxy=None),
             )
         return self._http_client
+
+    def _get_ro_client(self):
+        """Returns RO AsyncClient (context manager). /internal/runtimes* must target RO."""
+        if not RO_URL:
+            raise RuntimeError("RUNTIME_ORCHESTRATOR_URL is not configured for tools-server")
+        return internal_async_client(
+            base_url=RO_URL,
+            timeout=httpx.Timeout(connect=10.0, read=None, write=30.0, pool=10.0),
+            transport=httpx.AsyncHTTPTransport(proxy=None),
+        )
     
     async def close(self):
         """关闭资源"""
@@ -351,22 +235,43 @@ class ToolExecutor:
         Returns:
             工具执行结果 dict，包含 success 字段
         """
+        timeout_seconds = self._reliability_policy.resolve_execution_timeout(tool_name, arguments)
         try:
-            # 执行工具
-            if tool_name in BUILTIN_TOOL_NAMES:
-                result = await self._execute_builtin(tool_name, arguments)
+            if timeout_seconds is not None:
+                result = await asyncio.wait_for(
+                    self._execute_impl(tool_name, arguments),
+                    timeout=timeout_seconds,
+                )
             else:
-                result = await self._execute_external(tool_name, arguments)
-                # MCP/外部工具：尝试将 content/_mcp_content 中的 base64 转为 URL
-                if result.get("success"):
-                    adapted = await _adapt_tool_result(tool_name, result, self.agent_id)
-                    if adapted is not None:
-                        result = adapted
-
+                result = await self._execute_impl(tool_name, arguments)
             return result
+        except asyncio.TimeoutError:
+            logger.warning(
+                "[ToolExecutor] Tool execution timed out: %s (timeout=%ss)",
+                tool_name,
+                timeout_seconds,
+            )
+            # Ensure client connections are not leaked after cancellation.
+            await self.close()
+            return {
+                "success": False,
+                "error": f"Tool execution timeout after {timeout_seconds:.1f}s",
+            }
         except Exception as e:
             logger.error(f"[ToolExecutor] Failed to execute {tool_name}: {e}")
             return {"success": False, "error": str(e)}
+
+    async def _execute_impl(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        if tool_name in BUILTIN_TOOL_NAMES:
+            return await self._execute_builtin(tool_name, arguments)
+
+        result = await self._execute_external(tool_name, arguments)
+        # MCP/外部工具：尝试将 content/_mcp_content 中的 base64 转为 URL
+        if result.get("success"):
+            adapted = await _adapt_tool_result(tool_name, result, self.agent_id)
+            if adapted is not None:
+                result = adapted
+        return result
     
     async def _execute_builtin(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -384,10 +289,10 @@ class ToolExecutor:
         client = await self._get_http_client()
         
         try:
-            # ==================== Memory 工具 ====================
+            # ==================== Memory 工具 (Gateway /internal/agents/{agent_id}/memory/*) ====================
             if tool_name == "memory_save":
                 response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/memory/save",
+                    f"/internal/agents/{self.agent_id}/memory/save",
                     json={
                         "key": arguments.get("key"),
                         "value": arguments.get("value"),
@@ -396,19 +301,9 @@ class ToolExecutor:
                 )
                 return self._handle_response(response)
             
-            elif tool_name == "memory_recall":
-                response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/memory/recall",
-                    json={
-                        "key": arguments.get("key"),
-                        "namespace": arguments.get("namespace", "default"),
-                    }
-                )
-                return self._handle_response(response)
-            
             elif tool_name == "memory_delete":
                 response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/memory/delete",
+                    f"/internal/agents/{self.agent_id}/memory/delete",
                     json={
                         "key": arguments.get("key"),
                         "namespace": arguments.get("namespace", "default"),
@@ -416,37 +311,10 @@ class ToolExecutor:
                 )
                 return self._handle_response(response)
             
-            elif tool_name == "memory_list_namespaces":
-                response = await client.get(
-                    f"/internal/rt/{self.runtime_id}/memory/namespaces"
-                )
-                return self._handle_response(response)
-            
-            elif tool_name == "memory_log_task":
-                response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/memory/task/log",
-                    json={
-                        "action": arguments.get("action"),
-                        "details": arguments.get("details"),
-                        "status": arguments.get("status", "completed"),
-                    }
-                )
-                return self._handle_response(response)
-            
-            elif tool_name == "memory_get_task_history":
-                response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/memory/task/history",
-                    json={
-                        "limit": arguments.get("limit", 20),
-                        "status_filter": arguments.get("status_filter"),
-                    }
-                )
-                return self._handle_response(response)
-            
-            # ==================== Notebook 工具 ====================
+            # ==================== Notebook 工具 (Gateway /internal/agents/{agent_id}/notebook/*) ====================
             elif tool_name == "notebook_write":
                 response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/notebook/write",
+                    f"/internal/agents/{self.agent_id}/notebook/write",
                     json={
                         "entry_type": arguments.get("entry_type"),
                         "title": arguments.get("title"),
@@ -460,7 +328,7 @@ class ToolExecutor:
             
             elif tool_name == "notebook_list":
                 response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/notebook/list",
+                    f"/internal/agents/{self.agent_id}/notebook/list",
                     json={
                         "entry_type": arguments.get("entry_type"),
                         "status": arguments.get("status"),
@@ -472,7 +340,7 @@ class ToolExecutor:
             
             elif tool_name == "notebook_read":
                 response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/notebook/read",
+                    f"/internal/agents/{self.agent_id}/notebook/read",
                     json={"entry_id": arguments.get("entry_id")}
                 )
                 return self._handle_response(response)
@@ -484,88 +352,20 @@ class ToolExecutor:
                     if val is not None:
                         payload[key] = val
                 response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/notebook/update",
+                    f"/internal/agents/{self.agent_id}/notebook/update",
                     json=payload
                 )
                 return self._handle_response(response)
             
-            # ==================== Drive 工具 ====================
-            elif tool_name == "drive_update_profile":
-                response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/drive/update-profile",
-                    json={
-                        "key": arguments.get("key"),
-                        "value": arguments.get("value"),
-                        "reason": arguments.get("reason"),
-                    }
-                )
-                return self._handle_response(response)
-            
-            elif tool_name == "drive_update_relationship":
-                payload = {"reason": arguments.get("reason", "")}
-                if arguments.get("relationship_delta") is not None:
-                    payload["relationship_delta"] = arguments["relationship_delta"]
-                if arguments.get("proactiveness_delta") is not None:
-                    payload["proactiveness_delta"] = arguments["proactiveness_delta"]
-                response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/drive/update",
-                    json=payload
-                )
-                return self._handle_response(response)
-            
-            elif tool_name == "memory_update":
-                target = arguments.get("target", "memory")
-                content = arguments.get("content")
-                append_content = arguments.get("append")
-                reason = arguments.get("reason", "")
-                
-                # 确定要更新的字段
-                field = "memory_md" if target == "memory" else "user_md"
-                
-                # 如果是 append 模式，先获取现有内容
-                final_content = content
-                if append_content and not content:
-                    # 获取现有内容
-                    try:
-                        drive_resp = await client.get(
-                            f"/api/agents/{self.agent_id}/bootstrap-files"
-                        )
-                        if drive_resp.status_code == 200:
-                            drive_data = drive_resp.json()
-                            current = drive_data.get(field, "")
-                            final_content = (current + "\n\n" + append_content) if current else append_content
-                        else:
-                            final_content = append_content
-                    except Exception as e:
-                        logger.warning(f"[ToolExecutor] Failed to get current {field}: {e}")
-                        final_content = append_content
-                
-                if not final_content:
-                    return {"success": False, "error": "Either 'content' or 'append' must be provided"}
-                
-                # 调用 API 更新
-                response = await client.post(
-                    f"/api/agents/{self.agent_id}/bootstrap-files",
-                    json={field: final_content}
-                )
-                
-                result = self._handle_response(response)
-                if result.get("success"):
-                    result["target"] = target
-                    result["field"] = field
-                    result["reason"] = reason
-                    result["content_length"] = len(final_content)
-                    logger.info(f"[ToolExecutor] memory_update: updated {field} for agent {self.agent_id}, length={len(final_content)}, reason={reason}")
-                
-                return result
-            
-            # ==================== 四象限任务管理工具 ====================
+            # ==================== 四象限任务管理工具 (Gateway /internal/subagents/{subagent_id}/quadrant-tasks/*) ====================
             elif tool_name == "task_create":
-                # 创建四象限任务
+                if not self.subagent_id:
+                    return {"success": False, "error": "subagent_id is required for quadrant tasks"}
                 response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/quadrant-tasks",
+                    f"/internal/subagents/{self.subagent_id}/quadrant-tasks",
                     json={
                         "title": arguments.get("title"),
+                        "task_type": arguments.get("task_type", "one_time"),
                         "quadrant": arguments.get("quadrant"),
                         "source": arguments.get("source"),
                         "description": arguments.get("description"),
@@ -577,36 +377,33 @@ class ToolExecutor:
                 return self._handle_response(response)
             
             elif tool_name == "task_complete":
-                # 完成任务
                 task_id = arguments.get("task_id")
                 if not task_id:
                     return {"success": False, "error": "task_id is required"}
+                if not self.subagent_id:
+                    return {"success": False, "error": "subagent_id is required for quadrant tasks"}
                 response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/quadrant-tasks/{task_id}/complete",
-                    json={
-                        "notes": arguments.get("notes"),
-                    }
+                    f"/internal/subagents/{self.subagent_id}/quadrant-tasks/{task_id}/complete",
+                    json={"notes": arguments.get("notes")}
                 )
                 return self._handle_response(response)
             
             elif tool_name == "task_update":
-                # 更新任务
                 task_id = arguments.get("task_id")
                 if not task_id:
                     return {"success": False, "error": "task_id is required"}
-                payload = {}
-                for key in ("status", "quadrant", "title", "due_date"):
-                    val = arguments.get(key)
-                    if val is not None:
-                        payload[key] = val
+                if not self.subagent_id:
+                    return {"success": False, "error": "subagent_id is required for quadrant tasks"}
+                payload = {k: v for k, v in (("status", arguments.get("status")), ("quadrant", arguments.get("quadrant")), ("title", arguments.get("title")), ("due_date", arguments.get("due_date"))) if v is not None}
                 response = await client.patch(
-                    f"/internal/rt/{self.runtime_id}/quadrant-tasks/{task_id}",
-                    json=payload
+                    f"/internal/subagents/{self.subagent_id}/quadrant-tasks/{task_id}",
+                    json=payload or {}
                 )
                 return self._handle_response(response)
             
             elif tool_name == "task_board_list":
-                # 列出任务板上的任务
+                if not self.subagent_id:
+                    return {"success": False, "error": "subagent_id is required for quadrant tasks"}
                 params = {}
                 if arguments.get("quadrant"):
                     params["quadrant"] = arguments["quadrant"]
@@ -615,261 +412,86 @@ class ToolExecutor:
                 if arguments.get("limit"):
                     params["limit"] = arguments["limit"]
                 response = await client.get(
-                    f"/internal/rt/{self.runtime_id}/quadrant-tasks",
+                    f"/internal/subagents/{self.subagent_id}/quadrant-tasks",
                     params=params,
                 )
                 return self._handle_response(response)
             
             elif tool_name == "task_delete":
-                # 删除任务
                 task_id = arguments.get("task_id")
                 if not task_id:
                     return {"success": False, "error": "task_id is required"}
+                if not self.subagent_id:
+                    return {"success": False, "error": "subagent_id is required for quadrant tasks"}
                 response = await client.delete(
-                    f"/internal/rt/{self.runtime_id}/quadrant-tasks/{task_id}"
+                    f"/internal/subagents/{self.subagent_id}/quadrant-tasks/{task_id}"
                 )
                 return self._handle_response(response)
             
-            elif tool_name == "task_start":
-                # 开始执行任务
-                task_id = arguments.get("task_id")
-                if not task_id:
-                    return {"success": False, "error": "task_id is required"}
-                response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/quadrant-tasks/{task_id}/start"
-                )
-                return self._handle_response(response)
-            
-            elif tool_name == "task_progress":
-                # 记录任务进展
-                task_id = arguments.get("task_id")
-                if not task_id:
-                    return {"success": False, "error": "task_id is required"}
-                # 兼容 LLM 可能使用的不同参数名
-                note = arguments.get("note") or arguments.get("progress_notes") or arguments.get("progress") or ""
-                response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/quadrant-tasks/{task_id}/progress",
-                    json={
-                        "note": note,
-                        "set_ongoing": arguments.get("set_ongoing", False),
-                    }
-                )
-                return self._handle_response(response)
-            
-            elif tool_name == "drive_log_growth":
-                # 记录成长日志
-                response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/growth-logs",
-                    json={
-                        "content": arguments.get("content"),
-                        "category": arguments.get("category", "learning"),
-                    }
-                )
-                return self._handle_response(response)
-            
-            # ==================== Goal 工具（通过 Memory 实现）====================
-            elif tool_name == "goal_set":
-                # 保存 goal 到 memory 的 goals namespace
-                goal_data = {
-                    "description": arguments.get("description"),
-                    "status": "active",
-                    "progress": 0,
-                    "steps": arguments.get("steps", []),
-                    "metadata": arguments.get("metadata", {}),
-                }
-                response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/memory/save",
-                    json={
-                        "key": arguments.get("goal_id", "current_goal"),
-                        "value": goal_data,
-                        "namespace": "goals",
-                    }
-                )
-                result = self._handle_response(response)
-                if result.get("success"):
-                    result["goal_id"] = arguments.get("goal_id", "current_goal")
-                    result["message"] = f"Goal set: {goal_data['description']}"
-                return result
-            
-            elif tool_name == "goal_progress":
-                # 读取当前 goal，更新进度，然后保存
-                goal_id = arguments.get("goal_id", "current_goal")
-                
-                # 读取当前 goal
-                recall_response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/memory/recall",
-                    json={"key": goal_id, "namespace": "goals"}
-                )
-                recall_result = self._handle_response(recall_response)
-                
-                if not recall_result.get("success") or not recall_result.get("value"):
-                    return {"success": False, "error": f"Goal not found: {goal_id}"}
-                
-                goal_data = recall_result["value"]
-                if isinstance(goal_data, str):
-                    import json
-                    try:
-                        goal_data = json.loads(goal_data)
-                    except:
-                        goal_data = {"description": goal_data, "status": "active", "progress": 0}
-                
-                # 更新进度
-                goal_data["progress"] = arguments.get("progress", goal_data.get("progress", 0))
-                if arguments.get("step_completed"):
-                    goal_data.setdefault("completed_steps", []).append(arguments["step_completed"])
-                if arguments.get("notes"):
-                    goal_data.setdefault("progress_notes", []).append(arguments["notes"])
-                
-                # 保存更新后的 goal
-                save_response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/memory/save",
-                    json={"key": goal_id, "value": goal_data, "namespace": "goals"}
-                )
-                result = self._handle_response(save_response)
-                if result.get("success"):
-                    result["goal_id"] = goal_id
-                    result["progress"] = goal_data["progress"]
-                    result["message"] = f"Goal progress updated to {goal_data['progress']}%"
-                return result
-            
-            elif tool_name == "goal_complete":
-                # 标记 goal 为完成
-                goal_id = arguments.get("goal_id", "current_goal")
-                
-                # 读取当前 goal
-                recall_response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/memory/recall",
-                    json={"key": goal_id, "namespace": "goals"}
-                )
-                recall_result = self._handle_response(recall_response)
-                
-                if not recall_result.get("success") or not recall_result.get("value"):
-                    return {"success": False, "error": f"Goal not found: {goal_id}"}
-                
-                goal_data = recall_result["value"]
-                if isinstance(goal_data, str):
-                    import json
-                    try:
-                        goal_data = json.loads(goal_data)
-                    except:
-                        goal_data = {"description": goal_data}
-                
-                # 更新状态
-                goal_data["status"] = "completed"
-                goal_data["progress"] = 100
-                goal_data["completion_result"] = arguments.get("result", "")
-                
-                # 保存更新后的 goal
-                save_response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/memory/save",
-                    json={"key": goal_id, "value": goal_data, "namespace": "goals"}
-                )
-                result = self._handle_response(save_response)
-                if result.get("success"):
-                    result["goal_id"] = goal_id
-                    result["message"] = "Goal marked as completed"
-                return result
-            
-            # ==================== Runtime 工具 ====================
+            # ==================== Runtime 工具 (RO /internal/runtimes/*) ====================
             elif tool_name == "runtime_list":
-                response = await client.get("/internal/runtimes/list")
+                async with self._get_ro_client() as ro_client:
+                    response = await ro_client.get("/internal/runtimes/list")
                 return self._handle_response(response)
             
             elif tool_name == "runtime_history":
-                # 兼容 target_runtime_id（schema 定义）和 runtime_id（旧用法）
                 target_runtime_id = arguments.get("target_runtime_id") or arguments.get("runtime_id") or self.runtime_id
-                response = await client.post(
-                    f"/internal/runtimes/{target_runtime_id}/history",
-                    json={
-                        "limit": arguments.get("limit", 50),
-                        "offset": arguments.get("offset", 0),
-                    }
-                )
+                async with self._get_ro_client() as ro_client:
+                    response = await ro_client.post(
+                        f"/internal/runtimes/{target_runtime_id}/history",
+                        json={
+                            "limit": arguments.get("limit", 50),
+                            "offset": arguments.get("offset", 0),
+                        }
+                    )
                 return self._handle_response(response)
             
             elif tool_name == "runtime_send":
-                # 兼容 target_runtime_id（schema 定义）和 runtime_id（旧用法）
                 target_runtime_id = arguments.get("target_runtime_id") or arguments.get("runtime_id") or self.runtime_id
-                response = await client.post(
-                    f"/internal/runtimes/{target_runtime_id}/send",
-                    json={"message": arguments.get("message", "")}
-                )
+                async with self._get_ro_client() as ro_client:
+                    response = await ro_client.post(
+                        f"/internal/runtimes/{target_runtime_id}/send",
+                        json={"message": arguments.get("message", "")}
+                    )
                 return self._handle_response(response)
             
             elif tool_name == "runtime_rest":
-                # Both Main Runtime and SubAgent can call rest
-                # Main Runtime: enters rest state and waits for user response
-                # SubAgent: completes its task and reports back to parent
-                response = await client.post(
-                    f"/internal/runtimes/{self.runtime_id}/rest",
-                    json={
-                        "reason": arguments.get("reason", "Agent requested rest"),
-                        "wake_triggers": arguments.get("wake_triggers", [{"type": "user_response"}]),
-                        "handoff_notes": arguments.get("handoff_notes"),
-                        "rest_duration_minutes": arguments.get("rest_duration_minutes", 30),
-                    }
-                )
+                async with self._get_ro_client() as ro_client:
+                    response = await ro_client.post(
+                        f"/internal/runtimes/{self.runtime_id}/rest",
+                        json={
+                            "reason": arguments.get("reason", "Agent requested rest"),
+                            "wake_triggers": arguments.get("wake_triggers", [{"type": "user_response"}]),
+                            "handoff_notes": arguments.get("handoff_notes"),
+                            "rest_duration_minutes": arguments.get("rest_duration_minutes", 30),
+                        }
+                    )
                 return self._handle_response(response)
             
-            # ==================== Chat 工具 ====================
-            elif tool_name == "chat_event":
-                response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/chat/event",
-                    json={
-                        "type": arguments.get("type", "AGENT_REPLY"),
-                        "data": arguments.get("data", {}),
-                    }
-                )
-                return self._handle_response(response)
-            
+            # ==================== Chat 工具 (Gateway /internal/messages, /internal/chat/history) ====================
             elif tool_name == "chat_history":
                 limit = arguments.get("limit", 20)
-                summary_length = arguments.get("summary_length", 50)
                 response = await client.get(
-                    f"/internal/rt/{self.runtime_id}/chat/history",
-                    params={"limit": limit, "summary_length": summary_length},
-                )
-                return self._handle_response(response)
-            
-            elif tool_name == "chat_get_message":
-                message_id = arguments.get("message_id")
-                if not message_id:
-                    return {"success": False, "error": "message_id is required"}
-                response = await client.get(
-                    f"/internal/rt/{self.runtime_id}/chat/message/{message_id}"
+                    "/internal/chat/history",
+                    params={"agent_id": self.agent_id, "limit": limit},
                 )
                 return self._handle_response(response)
             
             elif tool_name == "chat_reply":
-                # 兼容 message 和 content 两种参数名（有些 LLM 会用 content）
                 message = (arguments.get("message") or arguments.get("content") or "").strip()
-                
-                # HEARTBEAT_OK 协议：如果消息是 HEARTBEAT_OK，静默完成不发送给用户
                 if message == "HEARTBEAT_OK" or message.startswith("HEARTBEAT_OK"):
                     logger.info(f"[ToolExecutor] HEARTBEAT_OK received for runtime {self.runtime_id}, silent completion")
-                    return {
-                        "success": True,
-                        "silent": True,
-                        "message": "Heartbeat acknowledged. No message sent to user."
-                    }
-                
-                # 空消息校验：拒绝发送空消息
+                    return {"success": True, "silent": True, "message": "Heartbeat acknowledged. No message sent to user."}
                 if not message:
                     logger.warning(f"[ToolExecutor] chat_reply called with empty message for runtime {self.runtime_id}")
-                    return {
-                        "success": False,
-                        "error": "message 不能为空。请提供要回复给用户的内容。"
-                    }
-                
-                # 正常发送回复消息
+                    return {"success": False, "error": "message 不能为空。请提供要回复给用户的内容。"}
                 response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/chat/event",
+                    "/internal/messages",
                     json={
+                        "agent_id": self.agent_id,
                         "type": "AGENT_REPLY",
-                        "data": {
-                            "message": message,
-                            "attachments": arguments.get("attachments", []),
-                        },
+                        "content": message,
+                        "metadata": {"attachments": arguments.get("attachments", [])},
                     }
                 )
                 return self._handle_response(response)
@@ -904,159 +526,101 @@ class ToolExecutor:
                     files_created=[],
                     display_files=[file_ref],
                 )
-            # ==================== SubAgent 工具 ====================
+            # ==================== SubAgent 工具 (RO /internal/subagents/{agent_id}/{subagent_id}/*) ====================
             elif tool_name == "subagent_spawn":
-                # 兼容 task 和 prompt 参数（部分 LLM 可能使用 prompt）
                 task_desc = arguments.get("task") or arguments.get("prompt", "")
-                response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/subagent/spawn",
-                    json={
-                        "task": task_desc,
-                        "share_context": arguments.get("share_context", False),
-                        "timeout_minutes": arguments.get("timeout_minutes", 30),
-                    }
-                )
+                async with self._get_ro_client() as ro_client:
+                    response = await ro_client.post(
+                        f"/internal/subagents/{self.agent_id}/spawn",
+                        json={
+                            "parent_subagent_id": self.subagent_id or "main",
+                            "task": task_desc,
+                            "share_context": arguments.get("share_context", False),
+                            "timeout_minutes": arguments.get("timeout_minutes", 30),
+                        }
+                    )
                 return self._handle_response(response)
             
             elif tool_name == "subagent_query":
-                # 兼容 target_subagent_id（schema 定义）和 subagent_id（旧用法）
                 target_subagent_id = arguments.get("target_subagent_id") or arguments.get("subagent_id")
                 if not target_subagent_id:
                     return {"success": False, "error": "target_subagent_id is required"}
-                response = await client.get(
-                    f"/internal/rt/{self.runtime_id}/subagent/{target_subagent_id}/status"
-                )
+                async with self._get_ro_client() as ro_client:
+                    response = await ro_client.get(
+                        f"/internal/subagents/{self.agent_id}/{target_subagent_id}/status"
+                    )
                 return self._handle_response(response)
             
             elif tool_name == "subagent_cancel":
-                # 兼容 target_subagent_id（schema 定义）和 subagent_id（旧用法）
                 target_subagent_id = arguments.get("target_subagent_id") or arguments.get("subagent_id")
                 if not target_subagent_id:
                     return {"success": False, "error": "target_subagent_id is required"}
-                response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/subagent/{target_subagent_id}/cancel"
-                )
+                async with self._get_ro_client() as ro_client:
+                    response = await ro_client.post(
+                        f"/internal/subagents/{self.agent_id}/{target_subagent_id}/cancel"
+                    )
                 return self._handle_response(response)
             
             elif tool_name == "subagent_report":
-                # 校验是 Sub SubAgent
                 if not self.subagent_id or not self.subagent_id.startswith("sub-"):
-                    return {
-                        "success": False,
-                        "error": "subagent_report is only available for Sub SubAgents"
-                    }
-                
+                    return {"success": False, "error": "subagent_report is only available for Sub SubAgents"}
                 result = arguments.get("result")
                 if not result:
                     return {"success": False, "error": "result is required"}
-                
-                response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/subagent/report",
-                    json={"result": result}
-                )
+                async with self._get_ro_client() as ro_client:
+                    response = await ro_client.post(
+                        f"/internal/subagents/{self.agent_id}/{self.subagent_id}/completed",
+                        json={"result": result}
+                    )
                 return self._handle_response(response)
             
-            # ==================== Web 工具 ====================
-            elif tool_name == "web_search":
-                response = await client.post(
-                    "/internal/web/search",
-                    json={
-                        "query": arguments.get("query", ""),
-                        "count": arguments.get("count", 10),
-                        "freshness": arguments.get("freshness"),
-                    }
-                )
-                return self._handle_response(response)
-            
-            elif tool_name == "web_fetch":
-                response = await client.post(
-                    "/internal/web/fetch",
-                    json={
-                        "url": arguments.get("url", ""),
-                        "extract_main_content": arguments.get("extract_main_content", True),
-                        "max_length": arguments.get("max_length", 50000),
-                    }
-                )
-                result = self._handle_response(response)
-                
-                # 转换为新格式
-                if not result.get("success"):
-                    # 错误情况
-                    return {
-                        "success": False,
-                        "error": result.get("error", "Unknown error"),
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": json.dumps(result, ensure_ascii=False)
-                            }
-                        ]
-                    }
-                
-                # 成功情况 - 转换为新格式
-                # web_fetch 返回的内容可能很大
-                return {
-                    "success": True,
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": json.dumps(result, ensure_ascii=False)
-                        }
-                    ]
-                }
-            
-            # ==================== QEMU 工具 ====================
+            # ==================== QEMU 工具 (vmcontrol /api/vms/{agent_id}/*, Gateway /api/vm/*) ====================
             elif tool_name == "qemu_ssh_exec":
-                response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/qemu/ssh-exec",
-                    json={
-                        "command": arguments.get("command", ""),
-                        "timeout": arguments.get("timeout", 30),
-                    }
-                )
-                return self._handle_response(response)
+                async with internal_async_client(base_url=VMCONTROL_URL, timeout=httpx.Timeout(arguments.get("timeout", 30) + 5)) as vmc:
+                    response = await vmc.post(
+                        f"/api/vms/{self.agent_id}/guest/exec",
+                        json={
+                            "path": "/bin/bash",
+                            "args": ["-c", arguments.get("command", "")],
+                            "wait": True,
+                        }
+                    )
+                data = response.json()
+                ok = response.status_code == 200 and data.get("success", "error" not in data)
+                out = {
+                    "success": ok,
+                    "exit_code": data.get("exit_code", -1),
+                    "stdout": data.get("stdout", ""),
+                    "stderr": data.get("stderr", ""),
+                    "command": arguments.get("command", ""),
+                }
+                if not ok and data.get("error"):
+                    out["error"] = data["error"]
+                return out
             
             elif tool_name == "qemu_status":
-                response = await client.get(
-                    f"/internal/rt/{self.runtime_id}/qemu/status"
-                )
-                return self._handle_response(response)
-            
-            elif tool_name == "qemu_start_vm":
-                response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/qemu/start",
-                    json={
-                        "memory": arguments.get("memory", "4096"),
-                        "cpus": arguments.get("cpus", 4),
+                try:
+                    async with internal_async_client(base_url=VMCONTROL_URL, timeout=10.0) as vmc:
+                        response = await vmc.get(f"/api/vms/{self.agent_id}")
+                    if response.status_code != 200:
+                        return {"success": False, "error": f"vmcontrol returned {response.status_code}"}
+                    vm_info = response.json()
+                    if vm_info.get("success") is False:
+                        return {"success": False, "error": vm_info.get("error", "vmcontrol error")}
+                    status = (vm_info.get("status") or "").lower()
+                    return {
+                        "success": True,
+                        "qemu_running": status in ("running", "started", "active"),
+                        "qemu_pid": vm_info.get("pid"),
+                        "agent_id": self.agent_id,
                     }
-                )
-                return self._handle_response(response)
+                except Exception as e:
+                    return {"success": False, "error": f"vmcontrol unavailable: {e}"}
             
-            elif tool_name == "qemu_restart_vm":
-                response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/qemu/restart",
-                    json={
-                        "graceful": arguments.get("graceful", True),
-                    }
-                )
-                return self._handle_response(response)
-            
-            elif tool_name == "qemu_shutdown_vm":
-                response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/qemu/shutdown",
-                    json={
-                        "graceful": arguments.get("graceful", True),
-                        "quick": arguments.get("quick", False),
-                    }
-                )
-                return self._handle_response(response)
-            
-            
-            # ==================== Task 工具 ====================
+            # ==================== Task 工具 (Gateway /internal/agents/{agent_id}/memory/task/*) ====================
             elif tool_name == "task_log":
-                # 记录任务日志（使用 memory_log_task）
                 response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/memory/task/log",
+                    f"/internal/agents/{self.agent_id}/memory/task/log",
                     json={
                         "action": arguments.get("action"),
                         "details": arguments.get("details"),
@@ -1066,40 +630,14 @@ class ToolExecutor:
                 return self._handle_response(response)
             
             elif tool_name == "task_history":
-                # 获取任务历史（使用 memory_get_task_history）
                 response = await client.post(
-                    f"/internal/rt/{self.runtime_id}/memory/task/history",
+                    f"/internal/agents/{self.agent_id}/memory/task/history",
                     json={
                         "limit": arguments.get("limit", 20),
                         "status_filter": arguments.get("status_filter"),
                     }
                 )
                 return self._handle_response(response)
-            
-            # ==================== Session 工具 ====================
-            elif tool_name == "session_state":
-                # 调用两个 API 并合并结果
-                # 1. 获取 runtime 信息
-                runtime_response = await client.get(
-                    f"/internal/runtimes/{self.runtime_id}"
-                )
-                runtime_result = self._handle_response(runtime_response)
-                
-                # 2. 获取 subagent 信息
-                subagent_response = await client.get(
-                    f"/internal/subagents/{self.agent_id}/{self.subagent_id}"
-                )
-                subagent_result = self._handle_response(subagent_response)
-                
-                # 合并结果
-                return {
-                    "success": True,
-                    "runtime": runtime_result if runtime_result.get("success", True) else None,
-                    "subagent": subagent_result if subagent_result.get("success", True) else None,
-                    "runtime_id": self.runtime_id,
-                    "agent_id": self.agent_id,
-                    "subagent_id": self.subagent_id,
-                }
             
             # ==================== Mobile 工具（通过 vmcontrol 访问 Android 设备）====================
             elif tool_name in MOBILE_TOOL_MAPPING:

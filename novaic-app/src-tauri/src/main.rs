@@ -9,6 +9,7 @@ mod gateway_client;
 mod config;
 
 use gateway_client::GatewayClient;
+use serde::Serialize;
 
 // VM management is now handled by Gateway - Tauri only handles:
 // - Gateway process management
@@ -19,6 +20,9 @@ use vm::deploy::deploy_agent;
 use std::sync::Arc;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
+use std::net::TcpListener;
+use std::fs::{self, OpenOptions};
+use std::io::Write;
 use tokio::sync::Mutex;
 use tauri::{
     AppHandle,
@@ -40,8 +44,102 @@ const PORT_QUEUE_SERVICE: u16 = 19997;
 const PORT_TOOLS_SERVER: u16 = 19998;
 const PORT_GATEWAY: u16 = 19999;
 
+#[derive(Serialize)]
+struct StartupDiagnosticEvent {
+    ts: String,
+    stage: String,
+    status: String,
+    detail: String,
+}
+
 fn local_url(port: u16) -> String {
     format!("http://{LOOPBACK_HOST}:{port}")
+}
+
+fn append_startup_diagnostic(data_dir: &PathBuf, stage: &str, status: &str, detail: impl Into<String>) {
+    let log_dir = data_dir.join("logs");
+    if fs::create_dir_all(&log_dir).is_err() {
+        return;
+    }
+
+    let log_path = log_dir.join("startup-diagnostics.jsonl");
+    let mut file = match OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_path)
+    {
+        Ok(file) => file,
+        Err(_) => return,
+    };
+
+    let event = StartupDiagnosticEvent {
+        ts: chrono::Utc::now().to_rfc3339(),
+        stage: stage.to_string(),
+        status: status.to_string(),
+        detail: detail.into(),
+    };
+    if let Ok(line) = serde_json::to_string(&event) {
+        let _ = writeln!(file, "{}", line);
+    }
+}
+
+fn ensure_ports_available(data_dir: &PathBuf, ports: &[(u16, &str)]) -> Result<(), String> {
+    let mut occupied: Vec<String> = Vec::new();
+    for (port, service_name) in ports {
+        if TcpListener::bind((LOOPBACK_HOST, *port)).is_err() {
+            occupied.push(format!("{service_name}({LOOPBACK_HOST}:{port})"));
+        }
+    }
+
+    if occupied.is_empty() {
+        append_startup_diagnostic(data_dir, "port-preflight", "ok", "all required ports are available");
+        return Ok(());
+    }
+
+    let detail = format!(
+        "required ports are occupied: {}; please stop conflicting processes and retry",
+        occupied.join(", ")
+    );
+    append_startup_diagnostic(data_dir, "port-preflight", "error", detail.clone());
+    Err(detail)
+}
+
+fn resolve_vmcontrol_binary_path(app: &AppHandle) -> Result<PathBuf, String> {
+    let mut candidates: Vec<PathBuf> = Vec::new();
+
+    if let Ok(from_env) = std::env::var("NOVAIC_VMCONTROL_BIN") {
+        if !from_env.trim().is_empty() {
+            candidates.push(PathBuf::from(from_env.trim()));
+        }
+    }
+
+    if let Ok(resource_dir) = app.path().resource_dir() {
+        candidates.push(resource_dir.join("vmcontrol/vmcontrol"));
+    }
+
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            let src_tauri_dir = exe_dir.join("../..");
+            candidates.push(src_tauri_dir.join("vmcontrol/target/debug/vmcontrol"));
+            candidates.push(src_tauri_dir.join("vmcontrol/target/release/vmcontrol"));
+        }
+    }
+
+    for candidate in &candidates {
+        if candidate.exists() && candidate.is_file() {
+            return Ok(candidate.clone());
+        }
+    }
+
+    let checked = candidates
+        .iter()
+        .map(|p| p.to_string_lossy().to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+    Err(format!(
+        "VmControl binary not found. Checked: [{}]. You can set NOVAIC_VMCONTROL_BIN to override.",
+        checked
+    ))
 }
 
 /// Backend 组件: Gateway - API + DB，不含工具服务（工具服务由 Tools Server 独立进程提供）
@@ -108,14 +206,16 @@ impl VmControlProcess {
             std::thread::sleep(std::time::Duration::from_millis(100));
         }
         
-        // Get vmcontrol binary path from resources
-        let resource_dir = app.path().resource_dir()
-            .map_err(|e| format!("Failed to get resource dir: {}", e))?;
-        let vmcontrol_path = resource_dir.join("vmcontrol/vmcontrol");
-        
-        if !vmcontrol_path.exists() {
-            return Err(format!("VmControl binary not found at {:?}", vmcontrol_path));
-        }
+        let vmcontrol_path = resolve_vmcontrol_binary_path(app)?;
+        let data_dir = app.path().app_data_dir()
+            .map_err(|e| format!("Failed to get app data dir for VmControl logs: {}", e))?;
+        let log_dir = data_dir.join("logs");
+        fs::create_dir_all(&log_dir)
+            .map_err(|e| format!("Failed to create VmControl log dir {:?}: {}", log_dir, e))?;
+        let log_file = std::fs::File::create(log_dir.join("vmcontrol.log"))
+            .map_err(|e| format!("Failed to create vmcontrol.log: {}", e))?;
+        let log_file_err = log_file.try_clone()
+            .map_err(|e| format!("Failed to clone vmcontrol.log fd: {}", e))?;
         
         println!("[VmControl] Starting from {:?}", vmcontrol_path);
         println!("[VmControl] Port: {}", self.port);
@@ -126,8 +226,8 @@ impl VmControlProcess {
             .arg("--host")
             .arg(LOOPBACK_HOST)
             .env("RUST_LOG", "vmcontrol=info,tower_http=debug")
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
+            .stdout(Stdio::from(log_file))
+            .stderr(Stdio::from(log_file_err))
             .spawn()
             .map_err(|e| format!("Failed to start VmControl: {}", e))?;
         
@@ -1556,6 +1656,7 @@ fn main() {
                 .unwrap_or_else(|_| PathBuf::from("."));
             
             println!("[App] Data directory: {:?}", data_dir);
+            append_startup_diagnostic(&data_dir, "app-bootstrap", "start", "tauri setup started");
             
             // Backend 五组件（Gateway、MCP Gateway、Watchdog、Task Worker、Saga Worker、Health）均由 Tauri 统一拉起
             // v4.0: Saga/Task Architecture
@@ -1658,14 +1759,33 @@ fn main() {
             tauri::async_runtime::spawn(async move {
                 // Kill any zombie backend processes before starting
                 kill_zombie_processes();
+                append_startup_diagnostic(&data_dir_for_gateway, "cleanup", "ok", "zombie cleanup completed");
+                
+                let required_ports = [
+                    (PORT_RUNTIME_ORCHESTRATOR, "runtime-orchestrator"),
+                    (PORT_TOOL_RESULT_SERVICE, "tool-result-service"),
+                    (PORT_FILE_SERVICE, "file-service"),
+                    (PORT_VMCONTROL, "vmcontrol"),
+                    (PORT_QUEUE_SERVICE, "queue-service"),
+                    (PORT_TOOLS_SERVER, "tools-server"),
+                    (PORT_GATEWAY, "gateway"),
+                ];
+                if let Err(e) = ensure_ports_available(&data_dir_for_gateway, &required_ports) {
+                    println!("[Startup] Port preflight failed: {}", e);
+                    return;
+                }
                 
                 // 1. Backend 组件: Runtime Orchestrator（必须先启动，Gateway 依赖它）
                 {
                     let mut ro = runtime_orchestrator_for_start.lock().await;
                     match ro.start(&backend_path, is_binary, &data_dir_for_gateway, resource_dir.as_ref()) {
-                        Ok(_) => println!("[Runtime Orchestrator] Auto-started successfully"),
+                        Ok(_) => {
+                            println!("[Runtime Orchestrator] Auto-started successfully");
+                            append_startup_diagnostic(&data_dir_for_gateway, "runtime-orchestrator", "started", "runtime orchestrator started");
+                        }
                         Err(e) => {
                             println!("[Runtime Orchestrator] Failed to auto-start: {}", e);
+                            append_startup_diagnostic(&data_dir_for_gateway, "runtime-orchestrator", "error", e);
                             return;
                         }
                     }
@@ -1690,6 +1810,12 @@ fn main() {
                 }
                 if !ro_ready {
                     println!("[Services] Runtime Orchestrator not ready after {}s - aborting startup (Gateway/Workers not started)", RO_HEALTH_TIMEOUT_SECS);
+                    append_startup_diagnostic(
+                        &data_dir_for_gateway,
+                        "runtime-orchestrator-health",
+                        "timeout",
+                        format!("not ready after {}s", RO_HEALTH_TIMEOUT_SECS),
+                    );
                     return;
                 }
                 
@@ -1697,9 +1823,13 @@ fn main() {
                 {
                     let mut gw = gateway_for_start.lock().await;
                     match gw.start(&backend_path, is_binary, &data_dir_for_gateway, resource_dir.as_ref()) {
-                        Ok(_) => println!("[Gateway] Auto-started successfully"),
+                        Ok(_) => {
+                            println!("[Gateway] Auto-started successfully");
+                            append_startup_diagnostic(&data_dir_for_gateway, "gateway", "started", "gateway started");
+                        }
                         Err(e) => {
                             println!("[Gateway] Failed to auto-start: {}", e);
+                            append_startup_diagnostic(&data_dir_for_gateway, "gateway", "error", e);
                             return;
                         }
                     }
@@ -1709,9 +1839,13 @@ fn main() {
                 {
                     let mut vc = vmcontrol_for_start.lock().await;
                     match vc.start(&app_handle_for_vmcontrol) {
-                        Ok(_) => println!("[VmControl] Auto-started successfully"),
+                        Ok(_) => {
+                            println!("[VmControl] Auto-started successfully");
+                            append_startup_diagnostic(&data_dir_for_gateway, "vmcontrol", "started", "vmcontrol started");
+                        }
                         Err(e) => {
                             println!("[VmControl] Failed to auto-start: {}", e);
+                            append_startup_diagnostic(&data_dir_for_gateway, "vmcontrol", "error", e);
                             // VmControl 失败不影响其他服务继续启动
                         }
                     }
@@ -1721,9 +1855,13 @@ fn main() {
                 {
                     let mut qs = queue_service_for_start.lock().await;
                     match qs.start(&backend_path, is_binary, &data_dir_for_gateway, resource_dir.as_ref()) {
-                        Ok(_) => println!("[Queue Service] Auto-started successfully"),
+                        Ok(_) => {
+                            println!("[Queue Service] Auto-started successfully");
+                            append_startup_diagnostic(&data_dir_for_gateway, "queue-service", "started", "queue service started");
+                        }
                         Err(e) => {
                             println!("[Queue Service] Failed to auto-start: {}", e);
+                            append_startup_diagnostic(&data_dir_for_gateway, "queue-service", "error", e);
                         }
                     }
                 }
@@ -1732,9 +1870,13 @@ fn main() {
                 {
                     let mut fs = file_service_for_start.lock().await;
                     match fs.start(&backend_path, is_binary, &data_dir_for_gateway, resource_dir.as_ref()) {
-                        Ok(_) => println!("[File Service] Auto-started successfully"),
+                        Ok(_) => {
+                            println!("[File Service] Auto-started successfully");
+                            append_startup_diagnostic(&data_dir_for_gateway, "file-service", "started", "file service started");
+                        }
                         Err(e) => {
                             println!("[File Service] Failed to auto-start: {}", e);
+                            append_startup_diagnostic(&data_dir_for_gateway, "file-service", "error", e);
                         }
                     }
                 }
@@ -1743,9 +1885,13 @@ fn main() {
                 {
                     let mut trs = tool_result_service_for_start.lock().await;
                     match trs.start(&backend_path, is_binary, &data_dir_for_gateway, resource_dir.as_ref()) {
-                        Ok(_) => println!("[Tool Result Service] Auto-started successfully"),
+                        Ok(_) => {
+                            println!("[Tool Result Service] Auto-started successfully");
+                            append_startup_diagnostic(&data_dir_for_gateway, "tool-result-service", "started", "tool result service started");
+                        }
                         Err(e) => {
                             println!("[Tool Result Service] Failed to auto-start: {}", e);
+                            append_startup_diagnostic(&data_dir_for_gateway, "tool-result-service", "error", e);
                         }
                     }
                 }
@@ -1769,6 +1915,12 @@ fn main() {
                 }
                 if !trs_ready {
                     println!("[Services] Tool Result Service not ready after {}s - aborting startup (Tools/Workers not started)", TRS_HEALTH_TIMEOUT_SECS);
+                    append_startup_diagnostic(
+                        &data_dir_for_gateway,
+                        "tool-result-service-health",
+                        "timeout",
+                        format!("not ready after {}s", TRS_HEALTH_TIMEOUT_SECS),
+                    );
                     return;
                 }
 
@@ -1776,9 +1928,13 @@ fn main() {
                 {
                     let mut ts = tools_server_for_start.lock().await;
                     match ts.start(&backend_path, is_binary, &data_dir_for_gateway, resource_dir.as_ref()) {
-                        Ok(_) => println!("[Tools Server] Auto-started successfully"),
+                        Ok(_) => {
+                            println!("[Tools Server] Auto-started successfully");
+                            append_startup_diagnostic(&data_dir_for_gateway, "tools-server", "started", "tools server started");
+                        }
                         Err(e) => {
                             println!("[Tools Server] Failed to auto-start: {}", e);
+                            append_startup_diagnostic(&data_dir_for_gateway, "tools-server", "error", e);
                         }
                     }
                 }
@@ -1804,6 +1960,12 @@ fn main() {
                 }
                 if !gw_ready {
                     println!("[Services] Gateway not ready after {}s - aborting startup (Workers not started)", GW_HEALTH_TIMEOUT_SECS);
+                    append_startup_diagnostic(
+                        &data_dir_for_gateway,
+                        "gateway-health",
+                        "timeout",
+                        format!("not ready after {}s", GW_HEALTH_TIMEOUT_SECS),
+                    );
                     return;
                 }
                 
@@ -1825,6 +1987,12 @@ fn main() {
                 }
                 if !ts_ready {
                     println!("[Services] Tools Server not ready after {}s - aborting startup (Workers not started)", TS_HEALTH_TIMEOUT_SECS);
+                    append_startup_diagnostic(
+                        &data_dir_for_gateway,
+                        "tools-server-health",
+                        "timeout",
+                        format!("not ready after {}s", TS_HEALTH_TIMEOUT_SECS),
+                    );
                     return;
                 }
                 
@@ -1846,6 +2014,12 @@ fn main() {
                 }
                 if !qs_ready {
                     println!("[Services] Queue Service not ready after {}s - aborting startup (Workers not started)", QS_HEALTH_TIMEOUT_SECS);
+                    append_startup_diagnostic(
+                        &data_dir_for_gateway,
+                        "queue-service-health",
+                        "timeout",
+                        format!("not ready after {}s", QS_HEALTH_TIMEOUT_SECS),
+                    );
                     return;
                 }
                 

@@ -7,12 +7,15 @@ Tools Server HTTP API（使用 FastAPI）
 
 import os
 import logging
+import asyncio
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
+import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from common.config import ServiceConfig
+from tools_server.reliability import get_tools_reliability_policy
 
 logger = logging.getLogger(__name__)
 
@@ -111,13 +114,29 @@ async def health_check():
     from tools_server.runtime_manager import get_runtime_manager
     
     manager = get_runtime_manager()
+    trs_healthy = False
+    trs_health_error = None
+    trs_url = ServiceConfig.TOOL_RESULT_SERVICE_URL.rstrip("/")
+    if trs_url:
+        try:
+            with httpx.Client(timeout=3.0, trust_env=False) as client:
+                response = client.get(f"{trs_url}/api/health")
+                response.raise_for_status()
+                trs_healthy = True
+        except Exception as exc:
+            trs_health_error = str(exc)
     
-    return {
+    payload = {
         "status": "healthy",
         "service": "tools-server",
         "manager_initialized": manager is not None,
         "runtime_count": len(manager.list_all()) if manager else 0,
+        "trs_healthy": trs_healthy,
+        "trs_url": trs_url,
     }
+    if trs_health_error:
+        payload["trs_health_error"] = trs_health_error
+    return payload
 
 
 # ==================== Runtime Management ====================
@@ -333,14 +352,32 @@ async def call_tool(runtime_id: str, request: CallToolRequest):
     if not runtime:
         raise HTTPException(status_code=404, detail=f"Runtime {runtime_id} not found")
     
+    reliability_policy = get_tools_reliability_policy()
+    request_timeout_seconds = reliability_policy.request_timeout_seconds
+    execution_semaphore = getattr(runtime, "execution_semaphore", None)
+
+    async def _run_tool_call() -> Dict[str, Any]:
+        executor = ToolExecutor(runtime=runtime, manager=manager, reliability_policy=reliability_policy)
+        try:
+            return await executor.execute(
+                tool_name=request.name,
+                arguments=request.arguments,
+            )
+        finally:
+            await executor.close()
+
     try:
-        # 为每次调用创建新的 ToolExecutor
-        executor = ToolExecutor(runtime=runtime, manager=manager)
-        
-        result = await executor.execute(
-            tool_name=request.name,
-            arguments=request.arguments,
-        )
+        if execution_semaphore is not None:
+            async with execution_semaphore:
+                if request_timeout_seconds is not None:
+                    result = await asyncio.wait_for(_run_tool_call(), timeout=request_timeout_seconds)
+                else:
+                    result = await _run_tool_call()
+        else:
+            if request_timeout_seconds is not None:
+                result = await asyncio.wait_for(_run_tool_call(), timeout=request_timeout_seconds)
+            else:
+                result = await _run_tool_call()
         
         # 解包工具返回的 {success, result, error} 格式（避免双层嵌套）
         if isinstance(result, dict):
@@ -405,6 +442,18 @@ async def call_tool(runtime_id: str, request: CallToolRequest):
             result_id=result_id,
         )
         
+    except asyncio.TimeoutError:
+        logger.warning(
+            "[ToolsAPI] Tool call request timeout: runtime=%s tool=%s timeout=%ss",
+            runtime_id,
+            request.name,
+            request_timeout_seconds,
+        )
+        return CallToolResponse(
+            success=False,
+            error=f"Tool call request timeout after {request_timeout_seconds:.1f}s",
+            result_id=None,
+        )
     except Exception as e:
         logger.error(f"[ToolsAPI] Tool call failed: {request.name} - {e}")
         return CallToolResponse(

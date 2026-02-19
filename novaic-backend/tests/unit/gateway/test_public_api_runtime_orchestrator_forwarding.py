@@ -120,25 +120,31 @@ def test_create_agent_forwards_subagent_init_and_wake_message():
     manager = SimpleNamespace(create_agent=lambda name: created)
 
     calls = []
+    wake_calls = []
 
     def _forward(method, path, *, params=None, json_body=None):
         calls.append((method, path, params, json_body))
         if path.endswith("/main"):
             return {"subagent_id": "main-agent-1"}
-        return {"id": "wake-1"}
+        return {"ok": True}
+
+    def _enqueue(agent_id, content, metadata):
+        wake_calls.append((agent_id, content, metadata))
 
     with (
         patch("gateway.api.agents.get_agent_config_manager", return_value=manager),
         patch("gateway.api.agents.forward_to_runtime_orchestrator", side_effect=_forward),
+        patch("gateway.api.agents._enqueue_system_wake_message", side_effect=_enqueue),
     ):
         resp = client.post("/api/agents", json={"name": "Agent One"})
 
     assert resp.status_code == 200
     assert calls[0][0] == "GET"
     assert calls[0][1] == "/internal/subagents/agent-1/main"
-    assert calls[1][0] == "POST"
-    assert calls[1][1] == "/internal/messages"
-    assert calls[1][3]["type"] == "SYSTEM_WAKE"
+    assert len(calls) == 1
+    assert len(wake_calls) == 1
+    assert wake_calls[0][0] == "agent-1"
+    assert "Agent created" in wake_calls[0][1]
 
 
 def test_update_agent_setup_complete_forwards_bootstrap_message():
@@ -153,6 +159,7 @@ def test_update_agent_setup_complete_forwards_bootstrap_message():
     )
 
     forwarded = {}
+    wake_calls = []
 
     def _forward(method, path, *, params=None, json_body=None):
         forwarded["method"] = method
@@ -160,9 +167,13 @@ def test_update_agent_setup_complete_forwards_bootstrap_message():
         forwarded["json"] = json_body
         return {"id": "bootstrap-1"}
 
+    def _enqueue(agent_id, content, metadata):
+        wake_calls.append((agent_id, content, metadata))
+
     with (
         patch("gateway.api.agents.get_agent_config_manager", return_value=manager),
         patch("gateway.api.agents.forward_to_runtime_orchestrator", side_effect=_forward),
+        patch("gateway.api.agents._enqueue_system_wake_message", side_effect=_enqueue),
     ):
         resp = client.patch(
             "/api/agents/agent-1",
@@ -170,6 +181,7 @@ def test_update_agent_setup_complete_forwards_bootstrap_message():
         )
 
     assert resp.status_code == 200
-    assert forwarded["method"] == "POST"
-    assert forwarded["path"] == "/internal/messages"
-    assert forwarded["json"]["type"] == "SYSTEM_WAKE"
+    assert forwarded == {}
+    assert len(wake_calls) == 1
+    assert wake_calls[0][0] == "agent-1"
+    assert "bootstrap" in wake_calls[0][2]["action"]

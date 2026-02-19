@@ -39,9 +39,14 @@ def handle_context_read(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     runtime_id = payload["runtime_id"]
     filter_sending = payload.get("filter_sending", True)
 
-    from ..client import GatewayInternalClient
-    client = ctx.get("gateway_client") or GatewayInternalClient(ctx["gateway_url"])
-    runtime = client.get_runtime(runtime_id)
+    gateway_client = ctx.get("gateway_client")
+    ro_client = ctx.get("ro_client")
+    if not gateway_client or not ro_client:
+        raise ValidationError(
+            "Missing required clients in ctx: gateway_client and ro_client "
+            "(fallback creation is disabled)"
+        )
+    runtime = ro_client.get_runtime(runtime_id)
     if not runtime:
         raise NotFoundError(f"Runtime not found: {runtime_id}")
 
@@ -55,14 +60,14 @@ def handle_context_read(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     # 注：context 里的消息已经是 sent 的，这里主要是获取新的 user messages
     if filter_sending:
         # 获取新的 sent 消息（未被读取的）
-        new_messages = client.get_unread_sent_messages(agent_id)
+        new_messages = gateway_client.get_unread_sent_messages(agent_id)
 
         if new_messages:
             # 逐个处理消息：append 成功后再标记为已读（原子性）
             for msg in new_messages:
                 try:
                     # 先 append 到 context
-                    append_result = client.append_context(
+                    append_result = ro_client.append_context(
                         runtime_id=runtime_id,
                         message={"role": "user", "content": msg["content"]},
                         message_type="user",
@@ -72,7 +77,7 @@ def handle_context_read(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
                     
                     # append 成功后，才标记为已读
                     if append_result.get("success"):
-                        client.mark_messages_read([msg["id"]])
+                        gateway_client.mark_messages_read([msg["id"]])
                         context.append({
                             "role": "user",
                             "content": msg["content"],
@@ -127,7 +132,11 @@ def handle_context_append(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     # tool_result：不再在此推送 TRS，由 Tools Server 在 call_tool 时推送。
     # message 必须包含 result_id（工具执行成功时）。
 
-    biz = MessageBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
+    biz = MessageBusiness(
+        ctx["gateway_url"],
+        gateway_client=ctx.get("gateway_client"),
+        ro_client=ctx.get("ro_client"),
+    )
 
     result = biz.append_to_context(
         runtime_id=payload["runtime_id"],
@@ -167,7 +176,11 @@ def handle_context_get(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     if not payload.get("runtime_id"):
         raise ValidationError("Missing required field: runtime_id")
     
-    biz = MessageBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
+    biz = MessageBusiness(
+        ctx["gateway_url"],
+        gateway_client=ctx.get("gateway_client"),
+        ro_client=ctx.get("ro_client"),
+    )
     
     context = biz.get_context(payload["runtime_id"])
 

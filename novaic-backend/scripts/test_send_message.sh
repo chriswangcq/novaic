@@ -70,7 +70,11 @@ echo ""
 echo "3️⃣  Starting Workers..."
 export GATEWAY_URL="${GATEWAY_URL:-http://127.0.0.1:19999}"
 export QUEUE_SERVICE_URL="${QUEUE_SERVICE_URL:-http://127.0.0.1:19997}"
-$PYTHON main_watchdog.py --gateway-url "$GATEWAY_URL" --queue-service-url "$QUEUE_SERVICE_URL" > "$NOVAIC_DATA_DIR/logs/watchdog.log" 2>&1 &
+$PYTHON main_novaic.py watchdog \
+  --gateway-url "$GATEWAY_URL" \
+  --queue-service-url "$QUEUE_SERVICE_URL" \
+  --runtime-orchestrator-url "${RUNTIME_ORCHESTRATOR_URL:-http://127.0.0.1:19993}" \
+  --data-dir "$NOVAIC_DATA_DIR" > "$NOVAIC_DATA_DIR/logs/watchdog.log" 2>&1 &
 $PYTHON -m task_queue.workers.task_worker_sync > "$NOVAIC_DATA_DIR/logs/task-worker.log" 2>&1 &
 $PYTHON -m task_queue.workers.saga_worker_sync > "$NOVAIC_DATA_DIR/logs/saga-worker.log" 2>&1 &
 sleep 2

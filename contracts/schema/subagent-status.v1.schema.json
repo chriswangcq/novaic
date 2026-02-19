@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://novaic.dev/contracts/schema/subagent-status.v1.schema.json",
+  "title": "SubagentStatusV1",
+  "type": "object",
+  "properties": {
+    "subagent_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "running", "completed", "failed", "cancelled"]
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": ["subagent_id", "status", "updated_at"],
+  "additionalProperties": false
+}

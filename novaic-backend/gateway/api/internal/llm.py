@@ -83,7 +83,10 @@ def debug_llm_call(request: DebugLLMRequest):
         messages = request.messages
         if request.preprocess:
             try:
-                from task_queue.utils import sanitize_context, process_multimodal_messages
+                from gateway.core.message_context import (
+                    process_multimodal_messages,
+                    sanitize_context,
+                )
                 messages = sanitize_context(messages)
                 messages = process_multimodal_messages(messages, provider)
             except Exception as e:

@@ -7,7 +7,7 @@ Queue Service Database Schema
 - config: 配置表（版本管理）
 """
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 4
 
 SCHEMA_SQL = """
 -- ========================================
@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS tq_tasks (
     -- Retry control
     retry_count INTEGER DEFAULT 0,
     max_retries INTEGER DEFAULT 3,
+    next_retry_at TEXT,               -- When task becomes claimable again
     
     -- Result
     result TEXT,                      -- JSON: execution result
@@ -70,6 +71,8 @@ CREATE TABLE IF NOT EXISTS tq_tasks (
 
 -- Task queue indexes
 CREATE INDEX IF NOT EXISTS idx_tq_tasks_pending ON tq_tasks(topic, status, created_at) 
+    WHERE status = 'pending';
+CREATE INDEX IF NOT EXISTS idx_tq_tasks_pending_retry_at ON tq_tasks(status, next_retry_at)
     WHERE status = 'pending';
 CREATE INDEX IF NOT EXISTS idx_tq_tasks_heartbeat ON tq_tasks(status, heartbeat_at) 
     WHERE status = 'claimed';
@@ -116,6 +119,22 @@ CREATE INDEX IF NOT EXISTS idx_tq_sagas_heartbeat ON tq_sagas(status, heartbeat_
     WHERE status = 'running';
 CREATE INDEX IF NOT EXISTS idx_tq_sagas_type ON tq_sagas(saga_type, status);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_tq_sagas_idempotency ON tq_sagas(idempotency_key);
+
+-- idempotency execution ledger: cross-process side-effect guard
+CREATE TABLE IF NOT EXISTS tq_idempotency_ledger (
+    idempotency_key TEXT PRIMARY KEY,
+    status TEXT NOT NULL,             -- in_progress, completed
+    owner_token TEXT,
+    task_id TEXT,
+    result TEXT,                      -- JSON snapshot for completed execution
+    contention_count INTEGER DEFAULT 0,
+    last_contended_at TEXT,
+    lease_until TEXT,
+    updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_tq_idempotency_lease ON tq_idempotency_ledger(status, lease_until)
+    WHERE status = 'in_progress';
 """
 
 DEFAULT_CONFIG = {
@@ -157,6 +176,51 @@ def init_schema(conn):
 
 def run_migration(conn, from_version: int):
     """Run migrations."""
+    if from_version < 2:
+        # v2: add retry scheduling visibility for pending tasks
+        try:
+            conn.execute("ALTER TABLE tq_tasks ADD COLUMN next_retry_at TEXT")
+        except Exception:
+            # Column may already exist in some environments.
+            pass
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tq_tasks_pending_retry_at ON tq_tasks(status, next_retry_at) "
+            "WHERE status = 'pending'"
+        )
+    if from_version < 3:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS tq_idempotency_ledger (
+                idempotency_key TEXT PRIMARY KEY,
+                status TEXT NOT NULL,
+                owner_token TEXT,
+                task_id TEXT,
+                result TEXT,
+                contention_count INTEGER DEFAULT 0,
+                last_contended_at TEXT,
+                lease_until TEXT,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tq_idempotency_lease ON tq_idempotency_ledger(status, lease_until) "
+            "WHERE status = 'in_progress'"
+        )
+    if from_version < 4:
+        try:
+            conn.execute(
+                "ALTER TABLE tq_idempotency_ledger ADD COLUMN contention_count INTEGER DEFAULT 0"
+            )
+        except Exception:
+            pass
+        try:
+            conn.execute(
+                "ALTER TABLE tq_idempotency_ledger ADD COLUMN last_contended_at TEXT"
+            )
+        except Exception:
+            pass
+
     # Update version
     conn.execute(
         "INSERT OR REPLACE INTO config (key, value) VALUES ('version', ?)",

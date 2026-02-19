@@ -22,27 +22,13 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List
 import traceback
 from queue import Queue
-import httpx
 
 from task_queue.client import SagaClient, TaskQueueClient
 from task_queue.heartbeat_sync import HeartbeatSync
+from task_queue.retry_policy import RetryPolicy
 from task_queue.saga import StepType
 from common.config import ServiceConfig
 from common.utils.time import utc_now_iso
-
-
-# 可重试的基础设施异常类型
-RETRYABLE_EXCEPTIONS = (
-    httpx.TimeoutException,
-    httpx.ConnectError,
-    httpx.NetworkError,
-    ConnectionError,
-    TimeoutError,
-    OSError,  # 包含网络相关的 socket 错误
-)
-
-# 最大重试次数（超过后才标记 failed）
-MAX_SAGA_RETRIES = 3
 
 
 @dataclass
@@ -121,6 +107,7 @@ class SagaWorkerSync:
         self._lock = threading.Lock()
         self._running_sagas: Dict[str, RunningSaga] = {}
         self._definitions: Dict[str, Any] = {}
+        self.retry_policy = RetryPolicy(max_attempts=getattr(ServiceConfig, "DEFAULT_MAX_RETRIES", 3))
         
         self.metrics = SagaWorkerMetrics()
     
@@ -314,21 +301,6 @@ class SagaWorkerSync:
         except Exception as e:
             self._handle_saga_exception(saga_id, e, step_results, retry_count)
     
-    def _is_retryable_error(self, error: Exception) -> bool:
-        """判断是否是可重试的基础设施错误"""
-        # 检查是否是已知的可重试异常类型
-        if isinstance(error, RETRYABLE_EXCEPTIONS):
-            return True
-        
-        # 检查错误消息中是否包含可重试的关键词
-        error_msg = str(error).lower()
-        retryable_keywords = [
-            "timeout", "connection", "network", "socket",
-            "temporarily unavailable", "service unavailable",
-            "too many requests", "rate limit",
-        ]
-        return any(keyword in error_msg for keyword in retryable_keywords)
-    
     def _handle_saga_exception(
         self,
         saga_id: str,
@@ -338,53 +310,54 @@ class SagaWorkerSync:
     ):
         """处理 Saga 执行异常 - 区分可重试和不可重试错误"""
         error_str = str(error)
-        
-        if self._is_retryable_error(error):
-            # 可重试错误
-            new_retry_count = retry_count + 1
-            
-            if new_retry_count < MAX_SAGA_RETRIES:
-                # 还可以重试，释放回 pending
-                self._log(
-                    f"Saga {saga_id} encountered retryable error (attempt {new_retry_count}/{MAX_SAGA_RETRIES}): {error_str}",
-                    level="warning"
+        next_attempt = retry_count + 1
+        decision = self.retry_policy.evaluate(error, attempt=next_attempt)
+
+        if decision.retry:
+            self._log(
+                (
+                    f"Saga {saga_id} encountered retryable error "
+                    f"(attempt {decision.attempt}/{decision.max_attempts}): {error_str}"
+                ),
+                level="warning",
+            )
+
+            # 保存重试计数到 step_results
+            step_results["_retry_count"] = next_attempt
+            step_results["_last_error"] = error_str
+
+            # 先更新进度（保存重试计数）
+            try:
+                self.saga_client.update_progress(
+                    saga_id,
+                    step_results.get("_current_step", 0),
+                    step_results,
+                    status="running"
                 )
-                
-                # 保存重试计数到 step_results
-                step_results["_retry_count"] = new_retry_count
-                step_results["_last_error"] = error_str
-                
-                # 先更新进度（保存重试计数）
-                try:
-                    self.saga_client.update_progress(
-                        saga_id,
-                        step_results.get("_current_step", 0),
-                        step_results,
-                        status="running"
-                    )
-                except Exception as update_err:
-                    self._log(f"Failed to update progress before release: {update_err}", level="warning")
-                
-                # 释放回 pending
-                try:
-                    released = self.saga_client.release(saga_id, f"Retryable error: {error_str}")
-                    if released:
-                        self.metrics.sagas_retried += 1
-                        self._log(f"Saga {saga_id} released back to pending for retry")
-                        return
-                    else:
-                        self._log(f"Failed to release saga {saga_id}, marking as failed", level="warning")
-                except Exception as release_err:
-                    self._log(f"Failed to release saga {saga_id}: {release_err}", level="error")
-            else:
-                # 重试次数耗尽
-                self._log(
-                    f"Saga {saga_id} exhausted retries ({MAX_SAGA_RETRIES}), marking as failed: {error_str}",
-                    level="error"
-                )
+            except Exception as update_err:
+                self._log(f"Failed to update progress before release: {update_err}", level="warning")
+
+            if decision.backoff_seconds > 0:
+                time.sleep(decision.backoff_seconds)
+
+            # 释放回 pending
+            try:
+                released = self.saga_client.release(saga_id, f"Retryable error: {error_str}")
+                if released:
+                    self.metrics.sagas_retried += 1
+                    self._log(f"Saga {saga_id} released back to pending for retry")
+                    return
+                self._log(f"Failed to release saga {saga_id}, marking as failed", level="warning")
+            except Exception as release_err:
+                self._log(f"Failed to release saga {saga_id}: {release_err}", level="error")
         else:
-            # 不可重试错误（如配置错误、业务逻辑错误）
-            self._log(f"Saga {saga_id} failed with non-retryable error: {error_str}", level="error")
+            self._log(
+                (
+                    f"Saga {saga_id} failed ({decision.reason}, "
+                    f"attempt={decision.attempt}/{decision.max_attempts}): {error_str}"
+                ),
+                level="error",
+            )
         
         # 标记失败
         traceback.print_exc()

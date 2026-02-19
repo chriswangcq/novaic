@@ -6,6 +6,7 @@
     "paths",
     "database",
     "services",
+    "tools_reliability",
     "timeouts",
     "worker",
     "runtime",
@@ -43,6 +44,21 @@
         "tool_result_service",
         "runtime_orchestrator"
       ]
+    },
+    "tools_reliability": {
+      "type": "object",
+      "required": [
+        "request_timeout_seconds",
+        "execution_timeout_seconds",
+        "global_timeout_seconds",
+        "max_concurrent_per_runtime"
+      ],
+      "properties": {
+        "request_timeout_seconds": { "type": "number", "exclusiveMinimum": 0 },
+        "execution_timeout_seconds": { "type": ["number", "null"] },
+        "global_timeout_seconds": { "type": "number", "exclusiveMinimum": 0 },
+        "max_concurrent_per_runtime": { "type": "integer", "minimum": 1 }
+      }
     }
   }
 }

@@ -17,12 +17,14 @@ Usage:
     watchdog.run()
 """
 
-from .watchdog import Watchdog, MessageWorkerV2  # MessageWorkerV2 is alias for backward compat
+from .watchdog_sync import WatchdogSync
 from .saga_worker_sync import SagaWorkerSync
 from .task_worker_sync import TaskWorkerSync
 from .health_worker_sync import HealthWorkerSync
 
 # Backward compat aliases
+Watchdog = WatchdogSync
+MessageWorkerV2 = WatchdogSync
 SagaWorkerV2 = SagaWorkerSync
 TaskWorkerV2 = TaskWorkerSync
 HealthWorkerV2 = HealthWorkerSync

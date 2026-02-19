@@ -1,0 +1,42 @@
+name: Frontend App Template
+
+on:
+  workflow_call:
+    inputs:
+      app_path:
+        required: true
+        type: string
+      node_version:
+        required: false
+        type: string
+        default: "20"
+      build_command:
+        required: false
+        type: string
+        default: "npm run build"
+
+jobs:
+  frontend-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node_version }}
+          cache: npm
+          cache-dependency-path: ${{ inputs.app_path }}/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ${{ inputs.app_path }}
+        run: npm ci
+
+      - name: Type check
+        working-directory: ${{ inputs.app_path }}
+        run: npx tsc --noEmit
+
+      - name: Build
+        working-directory: ${{ inputs.app_path }}
+        run: ${{ inputs.build_command }}

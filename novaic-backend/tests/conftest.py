@@ -149,14 +149,18 @@ class TestGatewayClient:
     async def get_subagent_status(self, agent_id: str, subagent_id: str):
         return await self._request("GET", f"/internal/subagents/{agent_id}/{subagent_id}/status")
 
-    async def create_aggregate_mcp(self, agent_id: str, runtime_id: str, subagent_id: str):
+    async def create_runtime_tools(self, runtime_id: str, agent_id: str, subagent_id: str, ports=None):
         return await self._request("POST", "/internal/mcp/aggregate", {
             "agent_id": agent_id,
             "runtime_id": runtime_id,
             "subagent_id": subagent_id,
         })
 
-    async def destroy_aggregate_mcp(self, agent_id: str, runtime_id: str):
+    async def destroy_runtime_tools(self, runtime_id: str):
+        runtime = await self.get_runtime(runtime_id)
+        agent_id = (runtime or {}).get("agent_id")
+        if not agent_id:
+            return {"success": True}
         return await self._request("DELETE", f"/internal/mcp/aggregate/{agent_id}/{runtime_id}")
 
     async def set_runtime_summarized(self, runtime_id: str):

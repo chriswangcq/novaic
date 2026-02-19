@@ -1,0 +1,15 @@
+bundle_timestamp_utc=20260219T034121Z
+bundle_archive=/Users/wangchaoqun/novaic/ops-rounds/round-007/20-reports/desktop-evidence-bundle/release-evidence-20260219T034121Z.tar.gz
+included_dir=/Users/wangchaoqun/novaic/ops-rounds/round-007/20-reports/desktop-evidence-bundle/release-evidence-20260219T034121Z
+sha256:
+3233aa068efce0e3544e164a7825e78e85408a66e035213d90023205f24b9328  /Users/wangchaoqun/novaic/ops-rounds/round-007/20-reports/desktop-evidence-bundle/release-evidence-20260219T034121Z.tar.gz
+files:
+ops-rounds/round-007/20-reports/desktop-evidence-bundle/release-evidence-20260219T034121Z/NovAIC_0.3.0_aarch64.dmg
+ops-rounds/round-007/20-reports/desktop-evidence-bundle/release-evidence-20260219T034121Z/desktop-ci-qa-handoff-round007.md
+ops-rounds/round-007/20-reports/desktop-evidence-bundle/release-evidence-20260219T034121Z/desktop-clean-profile-replay-round007.md
+ops-rounds/round-007/20-reports/desktop-evidence-bundle/release-evidence-20260219T034121Z/desktop-evidence/fresh-profile-round007-main-metadata.txt
+ops-rounds/round-007/20-reports/desktop-evidence-bundle/release-evidence-20260219T034121Z/desktop-evidence/fresh-profile-round007-main-startup-diagnostics.jsonl
+ops-rounds/round-007/20-reports/desktop-evidence-bundle/release-evidence-20260219T034121Z/desktop-evidence/fresh-profile-round007-main-startup.log
+ops-rounds/round-007/20-reports/desktop-evidence-bundle/release-evidence-20260219T034121Z/desktop-evidence/fresh-profile-round007-main-summary.txt
+ops-rounds/round-007/20-reports/desktop-evidence-bundle/release-evidence-20260219T034121Z/team-desktop-report.md
+ops-rounds/round-007/20-reports/desktop-evidence-bundle/release-evidence-20260219T034121Z/validate_fresh_profile.sh

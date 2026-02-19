@@ -16,7 +16,6 @@ from common.enums import SubagentStatus
 from common.exceptions import ValidationError
 from . import register_handler
 from ..business import SubAgentBusiness
-from ..client import GatewayInternalClient
 from ..business import MessageBusiness
 from ..topics import TaskTopics
 
@@ -41,7 +40,11 @@ def handle_message_claim(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
         raise ValidationError("Missing required field: message_id")
     
     message_id = payload["message_id"]
-    biz = MessageBusiness(ctx["gateway_url"], client=ctx.get("gateway_client"))
+    biz = MessageBusiness(
+        ctx["gateway_url"],
+        gateway_client=ctx.get("gateway_client"),
+        ro_client=ctx.get("ro_client"),
+    )
     return biz.claim_message(message_id)
 
 
@@ -92,11 +95,14 @@ def handle_message_notify_parent(payload: Dict[str, Any], ctx: dict) -> Dict[str
         result_summary = result[:200] + "..." if len(result) > 200 else result
     content = f"[子任务完成通知]\n\n子任务 {subagent_id} 已完成。\n\n结果摘要: {result_summary}" if result_summary else f"[子任务完成通知]\n\n子任务 {subagent_id} 已完成。"
     
-    # 通过 Gateway API 注入消息
-    client = ctx.get("gateway_client") or GatewayInternalClient(ctx["gateway_url"])
-    
+    gateway_client = ctx.get("gateway_client")
+    if not gateway_client:
+        raise ValidationError(
+            "Missing required client in ctx: gateway_client "
+            "(fallback creation is disabled)"
+        )
     try:
-        response = client.inject_subagent_completed_message(
+        response = gateway_client.inject_subagent_completed_message(
             agent_id=agent_id,
             subagent_id=subagent_id,
             parent_subagent_id=parent_subagent_id,
@@ -152,24 +158,26 @@ def handle_message_route(payload: Dict[str, Any], ctx: dict) -> Dict[str, Any]:
     if not payload.get("message_id"):
         raise ValidationError("Missing required field: message_id")
     
-    client = ctx.get("gateway_client") or GatewayInternalClient(ctx["gateway_url"])
-    
+    ro_client = ctx.get("ro_client")
+    if not ro_client:
+        raise ValidationError(
+            "Missing required client in ctx: ro_client "
+            "(fallback creation is disabled)"
+        )
     agent_id = payload["agent_id"]
     subagent_id = payload["subagent_id"]
     message_id = payload["message_id"]
     
     # v3.1: 先检查 SubAgent 状态
-    # 如果 SubAgent 是 sleeping，但有残留的 active Runtime，需要先清理
     try:
-        subagent_info = client.get_subagent_status(agent_id, subagent_id)
+        subagent_info = ro_client.get_subagent_status(agent_id, subagent_id)
         subagent_status = subagent_info.get("status", "sleeping")
     except Exception as e:
-        # 获取状态失败，假设是 sleeping（保守处理）
         print(f"[MESSAGE_ROUTE] Failed to get subagent status: {e}, assuming sleeping")
         subagent_status = "sleeping"
     
     # 原子操作：获取或创建 active runtime
-    result = client.get_or_create_runtime(agent_id, subagent_id)
+    result = ro_client.get_or_create_runtime(agent_id, subagent_id)
     
     if not result:
         return {

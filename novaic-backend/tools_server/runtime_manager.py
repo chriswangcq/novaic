@@ -16,8 +16,13 @@ from typing import Dict, List, Optional, Any
 
 import httpx
 
+from common.config import ServiceConfig
 from common.http.clients import internal_client, internal_async_client
 from mcp_client.registry import ToolRegistry
+from tools_server.reliability import get_tools_reliability_policy
+
+# /internal/runtimes* must target Runtime Orchestrator, not Gateway
+RO_URL = getattr(ServiceConfig, "RUNTIME_ORCHESTRATOR_URL", None) or ServiceConfig.GATEWAY_URL
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +37,7 @@ class RuntimeContext:
     created_at: datetime
     external_tools: List[dict] = field(default_factory=list)  # 外部 MCP 发现的工具
     discovery_task: Optional[asyncio.Task] = None  # 外部工具发现任务
+    execution_semaphore: Optional[asyncio.Semaphore] = None  # 每个 runtime 的工具并发隔离
 
 
 class RuntimeManager:
@@ -55,6 +61,10 @@ class RuntimeManager:
         self._registry: Optional[ToolRegistry] = None
         self._lock = asyncio.Lock()
         self._gateway_url = gateway_url
+        self._reliability_policy = get_tools_reliability_policy()
+        self._max_concurrent_tools_per_runtime = (
+            self._reliability_policy.max_concurrent_tools_per_runtime
+        )
         
         logger.info(f"[RuntimeManager] Initialized (gateway={gateway_url})")
     
@@ -91,6 +101,7 @@ class RuntimeManager:
             created_at=datetime.utcnow(),
             external_tools=[],
             discovery_task=None,
+            execution_semaphore=asyncio.Semaphore(self._max_concurrent_tools_per_runtime),
         )
         
         self._runtimes[runtime_id] = context
@@ -303,19 +314,20 @@ class RuntimeManager:
     # ========================================
     
     def _persist_tool_ports(self, runtime_id: str, ports: Optional[dict]) -> None:
-        """Persist tool_ports to Gateway DB via API (best-effort, non-blocking).
+        """Persist tool_ports to RO DB via API (best-effort, non-blocking).
+        /internal/runtimes* targets Runtime Orchestrator, not Gateway.
         
         Args:
             runtime_id: Runtime ID
             ports: MCP ports dict, or None to clear
         """
-        if not self._gateway_url:
+        base = self._gateway_url or RO_URL
+        if not base:
             return
-        
         try:
-            with internal_client(timeout=5.0) as client:
+            with internal_client(base_url=RO_URL, timeout=5.0) as client:
                 client.post(
-                    f"{self._gateway_url}/internal/runtimes/{runtime_id}/tool-ports",
+                    f"/internal/runtimes/{runtime_id}/tool-ports",
                     json={"ports": ports},
                 )
             logger.debug(f"[RuntimeManager] Persisted tool_ports for {runtime_id}: {ports}")
@@ -342,8 +354,8 @@ class RuntimeManager:
         data = None
         for attempt in range(1, max_retries + 1):
             try:
-                async with internal_async_client(timeout=10.0) as client:
-                    resp = await client.get(f"{self._gateway_url}/internal/runtimes/with-tools")
+                async with internal_async_client(base_url=RO_URL, timeout=10.0) as client:
+                    resp = await client.get("/internal/runtimes/with-tools")
                     resp.raise_for_status()
                     data = resp.json()
                     break  # Success
@@ -388,6 +400,7 @@ class RuntimeManager:
                     created_at=datetime.utcnow(),
                     external_tools=[],
                     discovery_task=None,
+                    execution_semaphore=asyncio.Semaphore(self._max_concurrent_tools_per_runtime),
                 )
                 self._runtimes[runtime_id] = context
                 

@@ -15,9 +15,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from common.config import ServiceConfig
-from gateway.api.internal.helpers import set_runtime_orchestrator_process
-from gateway.api.internal import router as internal_router
-from gateway.db import close_database, init_database, run_migration
+from runtime_orchestrator.api.internal.helpers import set_runtime_orchestrator_process
+from runtime_orchestrator.api.internal import router as internal_runtime_router
+from runtime_orchestrator.db import close_database, init_database, init_runtime_schema_sync
 
 
 def parse_args():
@@ -32,8 +32,8 @@ async def lifespan(app: FastAPI):
     db = init_database(
         data_dir=ServiceConfig.DATA_DIR,
         db_file=ServiceConfig.RUNTIME_ORCHESTRATOR_DB_FILE,
+        init_schema_func=init_runtime_schema_sync,
     )
-    run_migration(db)
     yield
     close_database()
 
@@ -53,7 +53,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(internal_router)
+app.include_router(internal_runtime_router)
 # Runtime Orchestrator serves /internal APIs directly, never proxy to itself.
 set_runtime_orchestrator_process(True)
 

@@ -4,8 +4,7 @@ VM API Endpoints
 REST API for VM management (setup, start, stop, status).
 Replaces Tauri's VM commands.
 
-Phase3: vmcontrol is the single VM backend for runtime state. No local VM manager
-fallback for VM runtime (start/stop/status/setup-status). Local vm_manager is still
+Phase3: vmcontrol is the single VM backend for runtime state. Local vm_manager is still
 used for QEMU process spawning and recovery; runtime queries go to vmcontrol.
 
 Also includes Android emulator management APIs.
@@ -29,8 +28,8 @@ from gateway.clients.vmcontrol import get_vmcontrol_client
 
 logger = logging.getLogger(__name__)
 
-# vmcontrol service URL (use ServiceConfig for consistency)
-VMCONTROL_URL = os.environ.get("VMCONTROL_URL") or ServiceConfig.VMCONTROL_URL
+# vmcontrol service URL (strictly from service config)
+VMCONTROL_URL = ServiceConfig.VMCONTROL_URL
 
 # Constants for setup status monitoring
 SSH_TIMEOUT = 5
@@ -41,16 +40,14 @@ router = APIRouter(prefix="/api/vm", tags=["vm"])
 
 def _get_device_ports(agent) -> Dict[str, int]:
     """
-    Get SSH and VMUSE ports from agent's devices (v38) or fallback to agent.vm.ports.
-    When agent.devices is empty, directly queries devices table as fallback.
+    Get SSH and VMUSE ports from agent's unified devices (v38).
     
     Returns:
         Dict with 'ssh' and 'vmuse' ports
     """
-    ssh_port = 20000  # default
-    vmuse_port = 18000  # default
-    
-    # Try devices first (v38 unified model)
+    ssh_port = None
+    vmuse_port = None
+
     if hasattr(agent, 'devices') and agent.devices:
         for device in agent.devices:
             if isinstance(device, dict):
@@ -70,43 +67,24 @@ def _get_device_ports(agent) -> Dict[str, int]:
                     if ports.get('vmuse'):
                         vmuse_port = ports['vmuse']
                     break
-    
-    # Fallback to agent.vm.ports (legacy)
-    if ssh_port == 20000 and hasattr(agent, 'vm') and agent.vm and agent.vm.ports:
-        if agent.vm.ports.ssh:
-            ssh_port = agent.vm.ports.ssh
-        if agent.vm.ports.vmuse:
-            vmuse_port = agent.vm.ports.vmuse
-    
+
     return {'ssh': ssh_port, 'vmuse': vmuse_port}
 
 
 def _get_device_image_path(agent) -> Optional[str]:
-    """
-    Get disk image path from agent's Linux device (v38) or fallback to agent.vm.image_path.
-    """
-    # Try devices first (v38)
+    """Get disk image path from Linux device in unified devices model."""
     if hasattr(agent, 'devices') and agent.devices:
         for device in agent.devices:
-            if isinstance(device, dict) and device.get('type') == 'linux':
-                path = device.get('image_path')
-                if path:
-                    from pathlib import Path
-                    if Path(path).exists():
-                        return path
-                break
-            elif hasattr(device, 'type') and getattr(device, 'type', None) == 'linux':
-                path = getattr(device, 'image_path', None)
-                if path:
-                    from pathlib import Path
-                    if Path(path).exists():
-                        return path
-                break
-    # Fallback to agent.vm.image_path
-    if hasattr(agent, 'vm') and agent.vm and agent.vm.image_path:
-        from pathlib import Path
-        if Path(agent.vm.image_path).exists():
-            return agent.vm.image_path
+            if isinstance(device, dict):
+                is_linux = device.get('type') == 'linux'
+                image_path = device.get('image_path')
+            else:
+                is_linux = getattr(device, 'type', None) == 'linux'
+                image_path = getattr(device, 'image_path', None)
+            if not is_linux or not image_path:
+                continue
+            if Path(image_path).exists():
+                return image_path
     return None
 
 
@@ -840,6 +818,14 @@ async def get_setup_status(agent_id: str):
         device_ports = _get_device_ports(agent)
         ssh_port = device_ports['ssh']
         vmuse_port = device_ports['vmuse']
+        if not ssh_port:
+            return {
+                "agent_id": agent_id,
+                "phase": "error",
+                "progress": 0,
+                "message": "缺少 Linux device 端口配置（ssh）",
+                "steps": response.get("steps", {}),
+            }
         
         # Phase 2: Check SSH accessibility
         ssh_accessible = False
@@ -882,17 +868,17 @@ async def get_setup_status(agent_id: str):
                 logger.debug(f"[Setup Status] Agent {agent_id}: cloud-init status = {cloud_init_status}")
         except Exception as e:
             logger.debug(f"[Setup Status] Agent {agent_id}: Failed to parse cloud-init JSON: {e}")
-            # Fallback to simple status check
+            # Secondary parser for non-JSON cloud-init output
             try:
                 result = _run_ssh_command(key_path, ssh_port, "cloud-init status")
                 # Parse output like "status: running"
                 for line in result.stdout.split('\n'):
                     if line.startswith('status:'):
                         cloud_init_status = line.split(':', 1)[1].strip()
-                        logger.debug(f"[Setup Status] Agent {agent_id}: cloud-init status (fallback) = {cloud_init_status}")
+                        logger.debug(f"[Setup Status] Agent {agent_id}: cloud-init status (plain) = {cloud_init_status}")
                         break
             except Exception as e2:
-                logger.debug(f"[Setup Status] Agent {agent_id}: Fallback cloud-init check failed: {e2}")
+                logger.debug(f"[Setup Status] Agent {agent_id}: plain cloud-init check failed: {e2}")
         
         # Handle cloud-init status = None (SSH works but cloud-init not responding)
         if cloud_init_status is None:

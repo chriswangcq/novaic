@@ -2,8 +2,11 @@
 Internal API Contract Baseline Tests
 
 Lightweight pytest module validating:
-- Endpoint route existence for /internal/runtimes, /internal/subagents, /internal/messages, /internal/vm
-- Response envelope fields for representative handlers
+- Endpoint route existence and response envelopes per domain boundary:
+  - RO owns /internal/runtimes* and /internal/subagents* (runtime orchestration); Gateway does NOT expose them
+  - Gateway owns business internals: /internal/messages, /internal/vm,
+    /internal/task (and related agent/config/llm/web). Self-drive API removed.
+- Gateway business API: subagent_id-only where migrated (no runtime_id in migrated paths)
 
 Kept robust and non-flaky; uses unit-style checks (router inspection) that require no app startup.
 """
@@ -22,29 +25,46 @@ class TestInternalApiRouteExistence:
         assert router is not None
         assert hasattr(router, "routes")
 
-    def test_runtimes_routes_exist(self):
-        """Key /internal/runtimes routes exist."""
-        from gateway.api.internal import runtime as runtime_module
+    def test_gateway_does_not_expose_runtimes_routes(self):
+        """Gateway does NOT expose /internal/runtimes* (RO domain only; delegated implementation)."""
+        from gateway.api.internal import router as internal_router
 
-        router = runtime_module.router
-        paths = set()
-        for r in getattr(router, "routes", []) or []:
-            p = getattr(r, "path", "")
-            m = getattr(r, "methods") or set()
-            if p and m:
-                paths.add((p, next(iter(m))))
-        path_strs = {p for p, _ in paths}
+        def collect_paths(routes, prefix=""):
+            out = []
+            for r in routes or []:
+                p = getattr(r, "path", None)
+                if p is not None:
+                    full = (prefix + p) if prefix else p
+                    out.append(full)
+                out.extend(collect_paths(getattr(r, "routes", []) or [], prefix + (p or "")))
+            return out
 
-        assert "/runtimes/active" in path_strs
-        assert "/runtimes/list" in path_strs
-        assert "/runtimes/batch" in path_strs
-        assert "/runtimes" in path_strs
-        assert "/runtimes/get-or-create" in path_strs
-        assert "/runtimes/with-tools" in path_strs
+        all_paths = collect_paths(internal_router.routes or [])
+        runtimes_paths = [p for p in all_paths if "runtimes" in p]
+        assert not runtimes_paths, f"Gateway must not expose /internal/runtimes*; found: {runtimes_paths}"
 
-    def test_subagents_routes_exist(self):
-        """Key /internal/subagents routes exist."""
-        from gateway.api.internal import subagent as subagent_module
+    def test_gateway_does_not_expose_subagents_core_routes(self):
+        """Gateway does NOT expose /internal/subagents/due-wake (RO domain); task/vm /subagents/{subagent_id}/* stay on Gateway."""
+        from gateway.api.internal import router as internal_router
+
+        def collect_paths(routes, prefix=""):
+            out = []
+            for r in routes or []:
+                p = getattr(r, "path", None)
+                if p is not None:
+                    full = (prefix + p) if prefix else p
+                    out.append(full)
+                out.extend(collect_paths(getattr(r, "routes", []) or [], prefix + (p or "")))
+            return out
+
+        all_paths = collect_paths(internal_router.routes or [])
+        # due-wake is the key RO-owned subagent route; Gateway must not have it
+        forbidden = [p for p in all_paths if "due-wake" in p]
+        assert not forbidden, f"Gateway must not expose /internal/subagents/due-wake (RO domain); found: {forbidden}"
+
+    def test_subagents_routes_exist_on_ro(self):
+        """Key /internal/subagents routes exist on RO (RO domain; Gateway does NOT expose them)."""
+        from runtime_orchestrator.api.internal import subagent as subagent_module
 
         router = subagent_module.router
         paths = set()
@@ -56,9 +76,27 @@ class TestInternalApiRouteExistence:
         path_strs = {p for p, _ in paths}
 
         assert "/subagents/due-wake" in path_strs
+        # Gateway resolves subagent->agent via RO; RO must expose by-id lookup
+        assert any("by-id" in p for p in path_strs)
+
+    def test_task_subagent_routes_exist(self):
+        """Key /internal/subagents/{subagent_id}/quadrant-tasks routes exist (Gateway business API)."""
+        from gateway.api.internal import task as task_module
+
+        router = task_module.router
+        paths = set()
+        for r in getattr(router, "routes", []) or []:
+            p = getattr(r, "path", "")
+            m = getattr(r, "methods") or set()
+            if p and m:
+                paths.add((p, next(iter(m))))
+        path_strs = {p for p, _ in paths}
+
+        assert "/subagents/{subagent_id}/quadrant-tasks" in path_strs
+        assert "/subagents/{subagent_id}/growth-logs" in path_strs
 
     def test_messages_routes_exist(self):
-        """Key /internal/messages routes exist."""
+        """Key /internal/messages routes exist (Gateway domain)."""
         from gateway.api.internal import message as message_module
 
         router = message_module.router
@@ -74,12 +112,11 @@ class TestInternalApiRouteExistence:
             "unread-sent" in px for px in path_strs
         )
         assert "/messages/has-new" in path_strs or any("has-new" in px for px in path_strs)
-        assert "/messages/claim-and-prepare" in path_strs
         assert "/messages/mark-read" in path_strs
         assert "/messages/unread" in path_strs or any("unread" in px for px in path_strs)
 
     def test_vm_routes_exist(self):
-        """Key /internal/vm routes exist."""
+        """Key /internal/vm routes exist (Gateway domain)."""
         from gateway.api.internal import vm as vm_module
 
         router = vm_module.router
@@ -93,7 +130,7 @@ class TestInternalApiRouteExistence:
 
         assert "/vm/ssh/public-key" in path_strs
         assert "/vm/ssh/private-key-path" in path_strs
-        assert any("/runtimes/" in p and "vm-tools" in p for p in path_strs)
+        assert any("/subagents/" in p and "vm-tools" in p for p in path_strs)
 
 
 class TestInternalApiResponseEnvelope:
@@ -101,13 +138,6 @@ class TestInternalApiResponseEnvelope:
 
     Uses static inspection only; no HTTP calls to avoid flakiness.
     """
-
-    def test_runtimes_list_envelope_documented(self):
-        """GET /runtimes/list returns {runtimes: [...]} per contract."""
-        from gateway.api.internal.runtime import list_active_runtimes_for_mcp
-
-        # Static check: docstring or we inspect the return structure
-        assert list_active_runtimes_for_mcp is not None
 
     def test_messages_unread_sent_envelope_documented(self):
         """GET /messages/unread-sent/{agent_id} returns {messages: [...]} per contract."""
@@ -124,8 +154,9 @@ class TestInternalApiResponseEnvelope:
 
 @pytest.fixture
 def minimal_internal_client():
-    """Build minimal FastAPI app with internal router only (no task queue).
+    """Build minimal FastAPI app with Gateway internal router only (no task queue).
     Patches gateway.db.access for db; uses temp SQLite. Self-contained for contract tests.
+    Gateway does NOT include /internal/subagents* or /internal/runtimes* (RO owns those).
     """
     import tempfile
     from pathlib import Path
@@ -133,6 +164,7 @@ def minimal_internal_client():
     from httpx import AsyncClient, ASGITransport
     from common.db import Database
     from gateway.api.internal import router as internal_router
+    from gateway.api.internal.helpers import set_runtime_orchestrator_process
     from gateway.db import access as db_access
     from gateway.db.schema import init_schema_sync
 
@@ -140,6 +172,7 @@ def minimal_internal_client():
         db_path = Path(f.name)
     prev_process_flag = os.environ.get("NOVAIC_RUNTIME_ORCHESTRATOR_PROCESS")
     os.environ["NOVAIC_RUNTIME_ORCHESTRATOR_PROCESS"] = "true"
+    set_runtime_orchestrator_process(True)
     try:
         db = Database(db_path)
         db.connect(init_schema_func=init_schema_sync)
@@ -149,6 +182,7 @@ def minimal_internal_client():
         app.include_router(internal_router)  # router has prefix=/internal
         yield AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
     finally:
+        set_runtime_orchestrator_process(False)
         if prev_process_flag is None:
             os.environ.pop("NOVAIC_RUNTIME_ORCHESTRATOR_PROCESS", None)
         else:
@@ -160,6 +194,33 @@ def minimal_internal_client():
             pass
 
 
+@pytest.fixture
+def minimal_ro_internal_client():
+    """Build minimal FastAPI app with RO internal router (subagents, runtimes).
+    Uses RO DB; for testing /internal/subagents* and /internal/runtimes* on RO.
+    """
+    import tempfile
+    from pathlib import Path
+    from fastapi import FastAPI
+    from httpx import AsyncClient, ASGITransport
+    from runtime_orchestrator.db import init_database, close_database
+    from runtime_orchestrator.api.internal import router as ro_internal_router
+    from runtime_orchestrator.db.schema import init_runtime_schema_sync
+
+    with tempfile.TemporaryDirectory() as tmp:
+        init_database(
+            data_dir=tmp,
+            db_file="ro_test.db",
+            init_schema_func=init_runtime_schema_sync,
+        )
+        try:
+            app = FastAPI()
+            app.include_router(ro_internal_router)
+            yield AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+        finally:
+            close_database()
+
+
 @pytest.mark.asyncio
 class TestInternalApiHttpResponses:
     """HTTP tests validating status class and envelope fields.
@@ -168,18 +229,14 @@ class TestInternalApiHttpResponses:
     gateway_app/gateway_http_client fixture chain.
     """
 
-    async def test_runtimes_list_status_and_envelope(self, minimal_internal_client):
-        """GET /internal/runtimes/list returns 2xx and has runtimes key."""
+    async def test_runtimes_route_removed_from_gateway(self, minimal_internal_client):
+        """GET /internal/runtimes/list returns 404 (route removed from Gateway; RO-only)."""
         resp = await minimal_internal_client.get("/internal/runtimes/list")
-        assert resp.status_code in (200, 404, 500), "Unexpected status"
-        if resp.status_code == 200:
-            data = resp.json()
-            assert "runtimes" in data
-            assert isinstance(data["runtimes"], list)
+        assert resp.status_code == 404, "Gateway must not expose /internal/runtimes*"
 
-    async def test_subagents_due_wake_status_and_envelope(self, minimal_internal_client):
-        """GET /internal/subagents/due-wake returns 2xx and has subagents key."""
-        resp = await minimal_internal_client.get("/internal/subagents/due-wake")
+    async def test_subagents_due_wake_status_and_envelope(self, minimal_ro_internal_client):
+        """GET /internal/subagents/due-wake on RO returns 2xx and has subagents key."""
+        resp = await minimal_ro_internal_client.get("/internal/subagents/due-wake")
         assert resp.status_code in (200, 404, 500)
         if resp.status_code == 200:
             data = resp.json()
@@ -193,41 +250,6 @@ class TestInternalApiHttpResponses:
         if resp.status_code == 200:
             data = resp.json()
             assert "public_key" in data
-
-    async def test_runtimes_get_404_for_missing(self, minimal_internal_client):
-        """GET /internal/runtimes/nonexistent returns 4xx (route exists, proper error)."""
-        resp = await minimal_internal_client.get("/internal/runtimes/rt-nonexistent-id-12345")
-        assert resp.status_code in (404, 422, 500)
-
-    # ---------- Runtimes (additional coverage) ----------
-    async def test_runtimes_active_status_and_envelope(self, minimal_internal_client):
-        """GET /internal/runtimes/active returns 2xx and has runtimes key."""
-        resp = await minimal_internal_client.get("/internal/runtimes/active")
-        assert resp.status_code in (200, 404, 500)
-        if resp.status_code == 200:
-            data = resp.json()
-            assert "runtimes" in data
-            assert isinstance(data["runtimes"], list)
-
-    async def test_runtimes_batch_status_and_envelope(self, minimal_internal_client):
-        """POST /internal/runtimes/batch returns 2xx and has runtimes key."""
-        resp = await minimal_internal_client.post(
-            "/internal/runtimes/batch", json={"runtime_ids": []}
-        )
-        assert resp.status_code in (200, 404, 422, 500)
-        if resp.status_code == 200:
-            data = resp.json()
-            assert "runtimes" in data
-            assert isinstance(data["runtimes"], list)
-
-    async def test_runtimes_with_tools_status_and_envelope(self, minimal_internal_client):
-        """GET /internal/runtimes/with-tools returns 2xx and has runtimes key."""
-        resp = await minimal_internal_client.get("/internal/runtimes/with-tools")
-        assert resp.status_code in (200, 404, 500)
-        if resp.status_code == 200:
-            data = resp.json()
-            assert "runtimes" in data
-            assert isinstance(data["runtimes"], list)
 
     # ---------- Messages (additional coverage) ----------
     async def test_messages_unread_sent_status_and_envelope(self, minimal_internal_client):
@@ -251,14 +273,6 @@ class TestInternalApiHttpResponses:
             data = resp.json()
             assert "has_new_messages" in data
 
-    async def test_messages_claim_and_prepare_status_and_envelope(self, minimal_internal_client):
-        """POST /internal/messages/claim-and-prepare returns 2xx and has message key."""
-        resp = await minimal_internal_client.post("/internal/messages/claim-and-prepare")
-        assert resp.status_code in (200, 404, 500)
-        if resp.status_code == 200:
-            data = resp.json()
-            assert "message" in data
-
     async def test_messages_mark_read_status_and_envelope(self, minimal_internal_client):
         """PATCH /internal/messages/mark-read returns 2xx and has status key."""
         resp = await minimal_internal_client.patch(
@@ -269,29 +283,38 @@ class TestInternalApiHttpResponses:
             data = resp.json()
             assert "status" in data
 
-    # ---------- Subagents (additional coverage) ----------
+    # ---------- Subagents (RO domain; use minimal_ro_internal_client) ----------
     # NOTE: /subagents/{agent_id}/main requires subagents table; get_or_create can
     # return None in minimal DB setup. Route existence covered in TestInternalApiRouteExistence.
-    async def test_subagents_get_404_for_missing(self, minimal_internal_client):
-        """GET /internal/subagents/{aid}/{sid} returns 404 for nonexistent subagent."""
-        resp = await minimal_internal_client.get(
+    async def test_subagents_get_404_for_missing(self, minimal_ro_internal_client):
+        """GET /internal/subagents/{aid}/{sid} on RO returns 404 for nonexistent subagent."""
+        resp = await minimal_ro_internal_client.get(
             "/internal/subagents/test-agent-ct-1/sub-nonexistent-xyz"
         )
         assert resp.status_code in (404, 422, 500)
 
-    async def test_subagents_status_404_for_missing(self, minimal_internal_client):
-        """GET /internal/subagents/{aid}/{sid}/status returns 404 for nonexistent."""
-        resp = await minimal_internal_client.get(
+    async def test_subagents_status_404_for_missing(self, minimal_ro_internal_client):
+        """GET /internal/subagents/{aid}/{sid}/status on RO returns 404 for nonexistent."""
+        resp = await minimal_ro_internal_client.get(
             "/internal/subagents/test-agent-ct-1/sub-nonexistent-xyz/status"
         )
         assert resp.status_code in (404, 422, 500)
 
-    # ---------- VM (additional coverage) ----------
-    # NOTE: /vm/ssh/private-key-path requires ssh_keys table; route existence
-    # covered in TestInternalApiRouteExistence.
-    async def test_vm_tools_404_for_missing_runtime(self, minimal_internal_client):
-        """GET /internal/runtimes/{id}/vm-tools returns 404 for nonexistent runtime."""
-        resp = await minimal_internal_client.get(
-            "/internal/runtimes/rt-nonexistent-id-12345/vm-tools"
+    async def test_subagents_by_id_404_for_missing(self, minimal_ro_internal_client):
+        """GET /internal/subagents/by-id/{subagent_id} on RO returns 404 for nonexistent."""
+        resp = await minimal_ro_internal_client.get(
+            "/internal/subagents/by-id/sub-nonexistent-xyz"
         )
-        assert resp.status_code in (404, 422, 500)
+        assert resp.status_code == 404
+        data = resp.json()
+        assert "detail" in data and "SubAgent not found" in str(data["detail"])
+
+    # ---------- VM (additional coverage) ----------
+    # vm-tools via /internal/subagents/{subagent_id}/vm-tools is on Gateway (vm module)
+    # Resolution goes via RO; 502 when RO unreachable (minimal_internal_client has no RO)
+    async def test_vm_subagent_tools_route_exists(self, minimal_internal_client):
+        """GET /internal/subagents/{id}/vm-tools returns 2xx/4xx/5xx (route exists on Gateway vm)."""
+        resp = await minimal_internal_client.get(
+            "/internal/subagents/sub-nonexistent-xyz/vm-tools"
+        )
+        assert resp.status_code in (200, 404, 422, 500, 502)

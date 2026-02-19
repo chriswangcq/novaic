@@ -188,7 +188,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from gateway.api.routes import router as api_router
 from gateway.api.agents import router as agents_router
 from gateway.api.vm import router as vm_router
-from gateway.api.internal_proxy import router as internal_proxy_router
+from gateway.api.internal import router as internal_router
 from gateway.api.vmcontrol import router as vmcontrol_router
 from gateway.api.devices import router as devices_router
 from gateway.config import get_config_manager
@@ -468,8 +468,10 @@ app.include_router(vmcontrol_router)
 # Unified Device API routes (already has /api prefix)
 app.include_router(devices_router)
 
-# Internal API routes are strictly proxied to Runtime Orchestrator.
-app.include_router(internal_proxy_router)
+# Internal APIs:
+# - business-domain internals execute in Gateway
+# - agent-runtime internals are forwarded by per-handler policy
+app.include_router(internal_router)
 
 
 # Root endpoint
