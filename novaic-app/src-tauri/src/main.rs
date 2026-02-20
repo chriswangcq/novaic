@@ -7,6 +7,7 @@ mod commands;
 mod http_client;
 mod gateway_client;
 mod config;
+mod split_runtime;
 
 use gateway_client::GatewayClient;
 use serde::Serialize;
@@ -146,6 +147,7 @@ fn resolve_vmcontrol_binary_path(app: &AppHandle) -> Result<PathBuf, String> {
 struct GatewayProcess {
     process: Option<Child>,
     port: u16,
+    base_url_override: Option<String>,
 }
 
 impl GatewayProcess {
@@ -153,11 +155,21 @@ impl GatewayProcess {
         Self {
             process: None,
             port: PORT_GATEWAY,
+            base_url_override: None,
         }
     }
 
     fn base_url(&self) -> String {
-        local_url(self.port)
+        self.base_url_override
+            .clone()
+            .unwrap_or_else(|| local_url(self.port))
+    }
+
+    fn set_base_url_override(&mut self, base_url: String) {
+        self.base_url_override = Some(base_url.clone());
+        if let Some(parsed_port) = split_runtime::parse_gateway_port(&base_url) {
+            self.port = parsed_port;
+        }
     }
 }
 
@@ -1371,6 +1383,12 @@ async fn start_gateway(
     gateway: tauri::State<'_, GatewayState>,
     app: AppHandle,
 ) -> Result<String, String> {
+    if split_runtime::external_services_mode() {
+        return Ok(format!(
+            "External services mode enabled; using gateway {}",
+            split_runtime::gateway_base_url()
+        ));
+    }
     let (gateway_path, is_binary) = get_gateway_info(&app);
     let data_dir = app.path().app_data_dir()
         .map_err(|e| format!("Failed to get app data dir: {}", e))?;
@@ -1662,7 +1680,9 @@ fn main() {
             // v4.0: Saga/Task Architecture
             
             // Backend 组件: Gateway（API + DB）
-            let gateway = Arc::new(Mutex::new(GatewayProcess::new()));
+            let mut gateway_state = GatewayProcess::new();
+            gateway_state.set_base_url_override(split_runtime::gateway_base_url());
+            let gateway = Arc::new(Mutex::new(gateway_state));
             app.manage(gateway.clone());
 
             // Backend 组件: Runtime Orchestrator（内部运行时编排服务，Gateway 代理请求到此）
@@ -1757,6 +1777,40 @@ fn main() {
             let app_handle_for_vmcontrol = app.handle().clone();
             
             tauri::async_runtime::spawn(async move {
+                if split_runtime::external_services_mode() {
+                    let external_gateway = {
+                        let gw = gateway_for_start.lock().await;
+                        gw.base_url()
+                    };
+                    let health_url = format!("{}/api/health", external_gateway.trim_end_matches('/'));
+                    let client = reqwest::Client::new();
+                    match client.get(&health_url).send().await {
+                        Ok(resp) if resp.status().is_success() => {
+                            append_startup_diagnostic(
+                                &data_dir_for_gateway,
+                                "external-services",
+                                "ok",
+                                format!("gateway health reachable at {}", health_url),
+                            );
+                        }
+                        Ok(resp) => {
+                            let detail = format!(
+                                "gateway health returned {} at {}",
+                                resp.status(),
+                                health_url
+                            );
+                            append_startup_diagnostic(&data_dir_for_gateway, "external-services", "error", detail);
+                            return;
+                        }
+                        Err(err) => {
+                            let detail = format!("gateway health probe failed at {}: {}", health_url, err);
+                            append_startup_diagnostic(&data_dir_for_gateway, "external-services", "error", detail);
+                            return;
+                        }
+                    }
+                    return;
+                }
+
                 // Kill any zombie backend processes before starting
                 kill_zombie_processes();
                 append_startup_diagnostic(&data_dir_for_gateway, "cleanup", "ok", "zombie cleanup completed");

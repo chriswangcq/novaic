@@ -13,6 +13,7 @@ use tauri::Manager;
 
 use crate::gateway_client::GatewayClient;
 use crate::config::AppConfig;
+use crate::split_runtime;
 
 /// Deploy progress information
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -81,7 +82,7 @@ async fn get_ssh_key_from_gateway(app: &tauri::AppHandle) -> Result<PathBuf, Str
     let key_path = ssh_dir.join("id_novaic");
     
     // Fetch private key from Gateway
-    let client = GatewayClient::new("http://127.0.0.1:19999".to_string());
+    let client = GatewayClient::new(split_runtime::gateway_base_url());
     let response = client.get("/api/vm/ssh/private-key").await?;
     
     let private_key = response

@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
 use tauri::Emitter;
 
-// Use 127.0.0.1 instead of localhost to avoid IPv6 connection issues
-const AGENT_BASE_URL: &str = "http://127.0.0.1:19999";
+fn agent_base_url() -> String {
+    crate::split_runtime::gateway_base_url()
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct InitResponse {
@@ -42,7 +43,7 @@ pub async fn init_agent(token: String, cloud_api_base: Option<String>) -> Result
     let api_base = cloud_api_base.unwrap_or_else(|| "https://api.nb-cc.com".to_string());
     
     let response = client
-        .post(format!("{}/api/init", AGENT_BASE_URL))
+        .post(format!("{}/api/init", agent_base_url()))
         .json(&serde_json::json!({
             "user_token": token,
             "cloud_api_base": api_base
@@ -133,7 +134,8 @@ pub async fn init_agent_with_app_config(app: tauri::AppHandle) -> Result<InitRes
     }
 
     let json_body = init_data.to_string();
-    println!("[Agent] Initializing agent via curl to {}/api/init with provider: {}", AGENT_BASE_URL, provider);
+    let base_url = agent_base_url();
+    println!("[Agent] Initializing agent via curl to {}/api/init with provider: {}", base_url, provider);
 
     // Use curl command to make the request (works reliably)
     let output = Command::new("curl")
@@ -141,7 +143,7 @@ pub async fn init_agent_with_app_config(app: tauri::AppHandle) -> Result<InitRes
             "-s",                           // Silent mode
             "-m", "30",                     // 30 second timeout
             "-X", "POST",
-            &format!("{}/api/init", AGENT_BASE_URL),
+            &format!("{}/api/init", base_url),
             "-H", "Content-Type: application/json",
             "-d", &json_body,
         ])
@@ -168,7 +170,8 @@ pub async fn init_agent_with_app_config(app: tauri::AppHandle) -> Result<InitRes
 pub async fn send_message(message: String) -> Result<ChatResponse, String> {
     use tokio::process::Command;
     
-    println!("[Agent] Sending message via curl to {}/api/chat", AGENT_BASE_URL);
+    let base_url = agent_base_url();
+    println!("[Agent] Sending message via curl to {}/api/chat", base_url);
     
     // Escape the message for JSON (handle backslash, quotes, newlines, tabs, etc.)
     let escaped_message = message
@@ -186,7 +189,7 @@ pub async fn send_message(message: String) -> Result<ChatResponse, String> {
             "-s",                           // Silent mode
             "-m", &timeout,                 // Long timeout for chat
             "-X", "POST",
-            &format!("{}/api/chat", AGENT_BASE_URL),
+            &format!("{}/api/chat", base_url),
             "-H", "Content-Type: application/json",
             "-d", &json_body,
         ])
@@ -218,7 +221,7 @@ pub async fn get_health() -> Result<HealthResponse, String> {
         .map_err(|e| format!("Failed to create HTTP client: {}", e))?;
     
     let response = client
-        .get(format!("{}/api/health", AGENT_BASE_URL))
+        .get(format!("{}/api/health", agent_base_url()))
         .send()
         .await
         .map_err(|e| format!("Failed to check health: {}", e))?;
@@ -336,7 +339,8 @@ pub async fn send_message_stream(
         }
     };
     
-    println!("[Agent] Starting streaming message via curl to {}/api/chat/stream", AGENT_BASE_URL);
+    let base_url = agent_base_url();
+    println!("[Agent] Starting streaming message via curl to {}/api/chat/stream", base_url);
     println!("[Agent] Model: {}, Provider: {}, API Base: {}", model_name, provider, api_base);
     
     // Build JSON body with all required fields
@@ -357,7 +361,7 @@ pub async fn send_message_stream(
             "-N",                           // No buffer (stream immediately)
             "-m", &timeout,                 // Long timeout for streaming chat
             "-X", "POST",
-            &format!("{}/api/chat/stream", AGENT_BASE_URL),
+            &format!("{}/api/chat/stream", base_url),
             "-H", "Content-Type: application/json",
             "-d", &json_body,
         ])
