@@ -11,9 +11,7 @@
   - expected_marker: `DESKTOP_BUILD=PASS`
   - repo_url: `https://github.com/chriswangcq/novaic`
   - commit_sha: `49cdace72edd4c04f9259c59cdc51e6fec22400a`
-  - migrated_paths:
-    - `novaic-app/src-tauri/src/main.rs` — `SPLIT_CONFIG_STRICT_ABORT` block (from round-009, now on remote)
-    - `novaic-app/src-tauri/src/split_runtime.rs` — `gateway_url_explicit()`, `validate_split_config()` (from round-009, now on remote)
+  - migrated_paths: `novaic-app/src-tauri/src/main.rs`, `novaic-app/src-tauri/src/split_runtime.rs`
   - artifact_path: `novaic-app/src-tauri/src/main.rs`
 - status: DONE
 
@@ -28,8 +26,7 @@
   - expected_marker: `TOOLS_HOP=FAIL`
   - repo_url: `https://github.com/chriswangcq/novaic`
   - commit_sha: `49cdace72edd4c04f9259c59cdc51e6fec22400a`
-  - migrated_paths:
-    - `novaic-control-plane/rounds/round-010/split-fix/round010-failure-path-diag.txt` — fresh round-010 diagnostics artifact
+  - migrated_paths: `novaic-control-plane/rounds/round-010/split-fix/round010-failure-path-diag.txt`
   - artifact_path: `novaic-control-plane/rounds/round-010/split-fix/round010-failure-path-diag.txt`
 - status: DONE
 
@@ -44,9 +41,7 @@
   - expected_marker: `COMMIT_REACHABILITY=PASS`
   - repo_url: `https://github.com/chriswangcq/novaic`
   - commit_sha: `49cdace72edd4c04f9259c59cdc51e6fec22400a`
-  - migrated_paths:
-    - `novaic-control-plane/rounds/round-010/split-close/repos/novaic-evidence-audit/scripts/check_commit_reachability.py` — new reachability checker
-    - `novaic-control-plane/rounds/round-010/split-fix/desktop-closure-bundle-round010.md` — new clean-clone operability bundle
+  - migrated_paths: `novaic-control-plane/rounds/round-010/split-close/repos/novaic-evidence-audit/scripts/check_commit_reachability.py`, `novaic-control-plane/rounds/round-010/split-fix/desktop-closure-bundle-round010.md`
   - artifact_path: `novaic-control-plane/rounds/round-010/split-fix/desktop-closure-bundle-round010.md`
 - status: DONE
 
