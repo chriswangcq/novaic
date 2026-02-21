@@ -1,0 +1,2 @@
+{"ts":"2026-02-21T01:58:25.628600+00:00","stage":"app-bootstrap","status":"start","detail":"tauri setup started"}
+{"ts":"2026-02-21T01:58:25.633050+00:00","stage":"external-services","status":"ok","detail":"gateway health reachable at http://127.0.0.1:62999/api/health"}

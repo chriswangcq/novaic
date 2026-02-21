@@ -5,7 +5,7 @@
  * 解决缩略图和全屏视图之间的连接冲突问题
  */
 
-import { WS_CONFIG } from '../config';
+import { WS_CONFIG, LOCAL_ENDPOINTS } from '../config';
 
 export interface DeviceInfo {
   device: string;
@@ -353,7 +353,7 @@ function connectStream(deviceSerial: string) {
   state.decoderConfigured = false;
   state.pendingFrames = [];
   
-  const wsUrl = `ws://localhost:${WS_CONFIG.VMCONTROL_PORT}/api/android/scrcpy?device=${deviceSerial}`;
+  const wsUrl = `ws://${LOCAL_ENDPOINTS.WS_HOST}:${WS_CONFIG.VMCONTROL_PORT}/api/android/scrcpy?device=${deviceSerial}`;
   const ws = new WebSocket(wsUrl);
   ws.binaryType = 'arraybuffer';
   state.ws = ws;

@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { vmService, VmStatus } from '../services/vm';
 import { useAppStore } from '../store';
-import { POLL_CONFIG, VM_CONFIG, DEFAULT_PORTS } from '../config';
+import { POLL_CONFIG, VM_CONFIG, DEFAULT_PORTS, LOCAL_ENDPOINTS } from '../config';
 
 interface UseVmReturn {
   status: VmStatus | null;
@@ -31,8 +31,8 @@ const DEFAULT_STATUS: VmStatus = {
     websocket: DEFAULT_PORTS.WEBSOCKET,
     ssh: DEFAULT_PORTS.SSH,
   },
-  vnc_url: `ws://localhost:${DEFAULT_PORTS.WEBSOCKET}/websockify`,
-  mcp_url: `http://127.0.0.1:${DEFAULT_PORTS.VM}/mcp`,
+  vnc_url: `ws://${LOCAL_ENDPOINTS.WS_HOST}:${DEFAULT_PORTS.WEBSOCKET}/websockify`,
+  mcp_url: `http://${LOCAL_ENDPOINTS.HTTP_HOST}:${DEFAULT_PORTS.VM}/mcp`,
 };
 
 export function useVm(): UseVmReturn {

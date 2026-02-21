@@ -15,6 +15,8 @@ declare global {
       readonly VITE_LOG_LEVEL?: string;
       readonly VITE_WS_PORT?: string;
       readonly VITE_VMCONTROL_PORT?: string;
+      readonly VITE_LOCAL_HTTP_HOST?: string;
+      readonly VITE_LOCAL_WS_HOST?: string;
       readonly DEV: boolean;
     };
   }
@@ -42,6 +44,14 @@ export const API_CONFIG = {
   
   /** 重试延迟（毫秒） */
   RETRY_DELAY: 1000,
+} as const;
+
+/** 本地服务主机配置（用于 split 模式 endpoint 覆盖） */
+export const LOCAL_ENDPOINTS = {
+  /** 本地 HTTP 服务主机 */
+  HTTP_HOST: import.meta.env.VITE_LOCAL_HTTP_HOST || '127.0.0.1',
+  /** 本地 WS 服务主机 */
+  WS_HOST: import.meta.env.VITE_LOCAL_WS_HOST || '127.0.0.1',
 } as const;
 
 /** SSE 连接配置 */
@@ -262,6 +272,7 @@ export const LAYOUT_CONFIG = {
 
 // 导出类型定义
 export type ApiConfig = typeof API_CONFIG;
+export type LocalEndpoints = typeof LOCAL_ENDPOINTS;
 export type SseConfig = typeof SSE_CONFIG;
 export type PollConfig = typeof POLL_CONFIG;
 export type VmConfig = typeof VM_CONFIG;

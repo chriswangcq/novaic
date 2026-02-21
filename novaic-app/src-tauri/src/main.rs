@@ -702,43 +702,96 @@ impl ToolsServerProcess {
                 .spawn()
                 .map_err(|e| format!("Failed to start Tools Server binary: {}", e))?
         } else {
-            // Dev mode: backend_path is the novaic-backend directory (has main.py, novaic_main.py)
-            let gateway_dir = backend_path;
-            let venv_python = gateway_dir.join("venv/bin/python");
-            let python = if venv_python.exists() {
-                venv_python.to_string_lossy().to_string()
-            } else if cfg!(target_os = "windows") {
-                "python".to_string()
+            // Dev mode: resolve split tools repo in split mode and refuse monorepo leak.
+            let split_repo_env = std::env::var("NOVAIC_TOOLS_SERVER_SPLIT_REPO")
+                .ok()
+                .map(|v| v.trim().to_string())
+                .filter(|v| !v.is_empty());
+            let split_repo_auto = if split_runtime::external_services_mode() {
+                split_runtime::tools_server_repo_dir()
+                    .map(|p| p.to_string_lossy().to_string())
             } else {
-                "python3".to_string()
+                None
             };
-            // Run from gateway dir so python -m novaic_main works (novaic_main.py in novaic-backend)
-            Command::new(&python)
-                .arg("-m")
-                .arg("novaic_main")
-                .arg("tools-server")
-                .arg("--host")
-                .arg("127.0.0.1")
-                .arg("--port")
-                .arg(self.port.to_string())
-                .arg("--data-dir")
-                .arg(&data_dir_str)
-                .arg("--gateway-url")
-                .arg(&gateway_url)
-                .arg("--runtime-orchestrator-url")
-                .arg(&runtime_orchestrator_url)
-                .arg("--tool-result-service-url")
-                .arg(&tool_result_service_url)
-                .current_dir(&gateway_dir)
-                .env("NOVAIC_TOOLS_PORT", self.port.to_string())
-                .env("NOVAIC_GATEWAY_URL", &gateway_url)
-                .env("NOVAIC_DATA_DIR", &data_dir_str)
-                .env("NO_PROXY", "localhost,127.0.0.1,::1")
-                .env("no_proxy", "localhost,127.0.0.1,::1")
-                .stdout(Stdio::inherit())
-                .stderr(Stdio::inherit())
-                .spawn()
-                .map_err(|e| format!("Failed to start Tools Server: {}", e))?
+            let split_repo_dir = split_repo_env.or(split_repo_auto);
+
+            if let Some(ref split_repo_dir) = split_repo_dir {
+                // Split-first mode: spawn main_tools.py from the extracted split repo.
+                let split_path = std::path::Path::new(split_repo_dir);
+                let main_tools = split_path.join("main_tools.py");
+                if !main_tools.exists() {
+                    return Err(format!(
+                        "[Tools Server] NOVAIC_TOOLS_SERVER_SPLIT_REPO={:?} but main_tools.py not found; refusing to fall back to monorepo",
+                        split_repo_dir
+                    ));
+                }
+                let venv_python = split_path.join("venv/bin/python");
+                let python = if venv_python.exists() {
+                    venv_python.to_string_lossy().to_string()
+                } else if cfg!(target_os = "windows") {
+                    "python".to_string()
+                } else {
+                    "python3".to_string()
+                };
+                println!("[Tools Server] SPLIT MODE: spawning from {:?}", split_repo_dir);
+                Command::new(&python)
+                    .arg("main_tools.py")
+                    .current_dir(split_path)
+                    .env("NOVAIC_TOOLS_PORT", self.port.to_string())
+                    .env("NOVAIC_GATEWAY_URL", &gateway_url)
+                    .env("NOVAIC_RUNTIME_ORCHESTRATOR_URL", &runtime_orchestrator_url)
+                    .env("NOVAIC_TOOL_RESULT_SERVICE_URL", &tool_result_service_url)
+                    .env("NOVAIC_DATA_DIR", &data_dir_str)
+                    .env("NOVAIC_TOOLS_SERVER_SPLIT_REPO", split_repo_dir)
+                    .env("NO_PROXY", "localhost,127.0.0.1,::1")
+                    .env("no_proxy", "localhost,127.0.0.1,::1")
+                    .stdout(Stdio::inherit())
+                    .stderr(Stdio::inherit())
+                    .spawn()
+                    .map_err(|e| format!("Failed to start split Tools Server: {}", e))?
+            } else if split_runtime::external_services_mode() {
+                return Err(
+                    "[Tools Server] split mode enabled but split repo path is missing; set NOVAIC_TOOLS_SERVER_SPLIT_REPO or provide sibling novaic-tools-server"
+                        .to_string(),
+                );
+            } else {
+                // Monorepo mode (no split env var set).
+                let gateway_dir = backend_path;
+                let venv_python = gateway_dir.join("venv/bin/python");
+                let python = if venv_python.exists() {
+                    venv_python.to_string_lossy().to_string()
+                } else if cfg!(target_os = "windows") {
+                    "python".to_string()
+                } else {
+                    "python3".to_string()
+                };
+                Command::new(&python)
+                    .arg("-m")
+                    .arg("novaic_main")
+                    .arg("tools-server")
+                    .arg("--host")
+                    .arg("127.0.0.1")
+                    .arg("--port")
+                    .arg(self.port.to_string())
+                    .arg("--data-dir")
+                    .arg(&data_dir_str)
+                    .arg("--gateway-url")
+                    .arg(&gateway_url)
+                    .arg("--runtime-orchestrator-url")
+                    .arg(&runtime_orchestrator_url)
+                    .arg("--tool-result-service-url")
+                    .arg(&tool_result_service_url)
+                    .current_dir(&gateway_dir)
+                    .env("NOVAIC_TOOLS_PORT", self.port.to_string())
+                    .env("NOVAIC_GATEWAY_URL", &gateway_url)
+                    .env("NOVAIC_DATA_DIR", &data_dir_str)
+                    .env("NO_PROXY", "localhost,127.0.0.1,::1")
+                    .env("no_proxy", "localhost,127.0.0.1,::1")
+                    .stdout(Stdio::inherit())
+                    .stderr(Stdio::inherit())
+                    .spawn()
+                    .map_err(|e| format!("Failed to start Tools Server: {}", e))?
+            }
         };
 
         self.process = Some(child);

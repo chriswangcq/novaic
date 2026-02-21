@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-// Default to Agent 0's VM MCP port (BASE_PORT=20000 + OFFSET_VM=0)
-// This should ideally be obtained from VmManager at runtime
-const AGENT_BASE_URL: &str = "http://localhost:20000";
+fn agent_base_url() -> String {
+    crate::split_runtime::agent_base_url()
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FileUploadResponse {
@@ -59,7 +59,7 @@ pub async fn upload_file(local_path: String, vm_path: Option<String>) -> Result<
                 .file_name(file_name.clone())
         );
     
-    let mut url = format!("{}/api/upload", AGENT_BASE_URL);
+    let mut url = format!("{}/api/upload", agent_base_url());
     if let Some(vm_dir) = vm_path {
         url = format!("{}?path={}", url, urlencoding::encode(&vm_dir));
     }
@@ -90,7 +90,7 @@ pub async fn download_file(vm_path: String, local_path: String) -> Result<String
         .map_err(|e| format!("Failed to create client: {}", e))?;
     
     let response = client
-        .get(format!("{}/api/download", AGENT_BASE_URL))
+        .get(format!("{}/api/download", agent_base_url()))
         .query(&[("path", &vm_path)])
         .send()
         .await
@@ -120,7 +120,7 @@ pub async fn list_vm_files(path: Option<String>) -> Result<FileListResponse, Str
         .build()
         .map_err(|e| format!("Failed to create client: {}", e))?;
     
-    let mut url = format!("{}/api/files", AGENT_BASE_URL);
+    let mut url = format!("{}/api/files", agent_base_url());
     if let Some(dir_path) = path {
         url = format!("{}?path={}", url, urlencoding::encode(&dir_path));
     }
