@@ -9,7 +9,7 @@
   - expected_marker:
     - `status: DONE`
   - repo_url:
-    - `git@github.com:chriswangcq/novaic.git`
+    - `https://github.com/chriswangcq/novaic`
   - commit_sha:
     - `c6cc702f8fb5dc18ed97190f28872ee3d886b1bd`
   - migrated_paths:
@@ -28,7 +28,7 @@
   - expected_marker:
     - `Finished 'dev' profile`
   - repo_url:
-    - `git@github.com:chriswangcq/novaic.git`
+    - `https://github.com/chriswangcq/novaic`
   - commit_sha:
     - `c6cc702f8fb5dc18ed97190f28872ee3d886b1bd`
   - migrated_paths:
@@ -50,9 +50,10 @@
   - expected_marker:
     - `error_timeout_count=0`
     - `stages=app-bootstrap,external-services`
+    - `DESKTOP_HOP=PASS`
     - `SPLIT_E2E_CHAIN=PASS`
   - repo_url:
-    - `git@github.com:chriswangcq/novaic.git`
+    - `https://github.com/chriswangcq/novaic`
   - commit_sha:
     - `c6cc702f8fb5dc18ed97190f28872ee3d886b1bd`
   - migrated_paths:

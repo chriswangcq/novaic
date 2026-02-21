@@ -9,7 +9,7 @@
   - expected_marker:
     - `c6cc702f8fb5dc18ed97190f28872ee3d886b1bd`
   - repo_url:
-    - `git@github.com:chriswangcq/novaic.git`
+    - `https://github.com/chriswangcq/novaic`
   - commit_sha:
     - `c6cc702f8fb5dc18ed97190f28872ee3d886b1bd`
   - migrated_paths:
@@ -39,7 +39,7 @@
     - `Finished 'dev' profile`
     - Lines containing: `PACKAGED SPLIT MODE: spawning from`, `split mode enabled but split repo path is missing`, `refusing to fall back to monorepo binary`
   - repo_url:
-    - `git@github.com:chriswangcq/novaic.git`
+    - `https://github.com/chriswangcq/novaic`
   - commit_sha:
     - `c6cc702f8fb5dc18ed97190f28872ee3d886b1bd`
   - migrated_paths:
@@ -68,7 +68,7 @@
     - `RUNTIME_HOP=PASS`
     - `TOOLS_HOP=PASS`
   - repo_url:
-    - `git@github.com:chriswangcq/novaic.git`
+    - `https://github.com/chriswangcq/novaic`
   - commit_sha:
     - `c6cc702f8fb5dc18ed97190f28872ee3d886b1bd`
   - migrated_paths:

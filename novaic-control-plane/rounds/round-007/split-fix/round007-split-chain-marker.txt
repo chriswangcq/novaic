@@ -1,0 +1,9 @@
+DESKTOP_HOP=PASS
+GATEWAY_HOP=PASS
+RUNTIME_HOP=PASS
+TOOLS_HOP=SKIP_NO_TRS
+SPLIT_E2E_CHAIN=PASS
+round=round-007
+operator=team-desktop
+canonical_repo_url=https://github.com/chriswangcq/novaic
+commit_sha=c6cc702f8fb5dc18ed97190f28872ee3d886b1bd

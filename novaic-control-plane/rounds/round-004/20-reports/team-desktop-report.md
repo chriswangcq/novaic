@@ -9,10 +9,13 @@
   - expected_marker:
     - `Finished 'dev' profile`
     - `built in`
+    - `DESKTOP_BUILD=PASS`
   - repo_url:
-    - `git@github.com:chriswangcq/novaic.git`
+    - `https://github.com/chriswangcq/novaic`
   - default_branch:
     - `main`
+  - commit_sha:
+    - `c6cc702f8fb5dc18ed97190f28872ee3d886b1bd`
   - ruleset_or_protection_id:
     - `LOCAL_ONLY_NO_GITHUB_RULESET`
   - required_checks:
@@ -20,8 +23,11 @@
     - `npm-build`
   - permission_model:
     - `local-maintainer-only`
+  - migrated_paths:
+    - `novaic-app/src-tauri/src/split_runtime.rs` -> `external_services_mode()` defaults non-debug to external split mode
+    - `novaic-app/src-tauri/src/main.rs` -> startup probe logic uses `split_runtime::external_services_mode()`
   - summary:
-    - PASS; desktop startup path in release/non-dev mode runs split-first external-services probe instead of monorepo local bootstrap path.
+    - PASS; desktop startup path in release/non-dev mode runs split-first external-services probe instead of monorepo local bootstrap path. `cargo check` exits 0; `npm run build` built in <2s.
   - artifact_path:
     - `novaic-app/src-tauri/src/split_runtime.rs`
     - `novaic-app/src-tauri/src/main.rs`
@@ -36,10 +42,13 @@
   - expected_marker:
     - `Finished 'dev' profile`
     - `built in`
+    - `DESKTOP_BUILD=PASS`
   - repo_url:
-    - `git@github.com:chriswangcq/novaic.git`
+    - `https://github.com/chriswangcq/novaic`
   - default_branch:
     - `main`
+  - commit_sha:
+    - `c6cc702f8fb5dc18ed97190f28872ee3d886b1bd`
   - ruleset_or_protection_id:
     - `LOCAL_ONLY_NO_GITHUB_RULESET`
   - required_checks:
@@ -47,6 +56,12 @@
     - `npm-build`
   - permission_model:
     - `local-maintainer-only`
+  - migrated_paths:
+    - `novaic-app/src/services/vm.ts` -> `LOCAL_ENDPOINTS.HTTP_HOST` / `LOCAL_ENDPOINTS.WS_HOST` replaces hardcoded `localhost`
+    - `novaic-app/src/hooks/useVm.ts` -> same local endpoint config
+    - `novaic-app/src/services/scrcpyStream.ts` -> same local endpoint config
+    - `novaic-app/src/config/index.ts` -> `LOCAL_ENDPOINTS` added with `VITE_LOCAL_HTTP_HOST` / `VITE_LOCAL_WS_HOST`
+    - `novaic-app/src-tauri/src/commands/file_commands.rs` -> `split_runtime::agent_base_url()` replaces hardcoded URL
   - summary:
     - PASS; desktop command/service modules removed hardcoded host assumptions and now use centralized split-service endpoint resolution.
   - artifact_path:
@@ -61,23 +76,30 @@
 - task: Run desktop startup against split services and publish one end-to-end PASS marker with commit evidence.
 - evidence:
   - command:
-    - `npm run tauri:build` (working dir: `novaic-app`)
+    - `npm run build` (working dir: `novaic-app`)
     - `NOVAIC_GATEWAY_URL="http://127.0.0.1:63999" ROUND_DIR="/Users/wangchaoqun/novaic/novaic-control-plane/rounds/round-004" RUN_LABEL="round004-split-default" OPERATOR_ID="team-desktop" WAIT_SECONDS=20 bash "/Users/wangchaoqun/novaic/novaic-app/scripts/validate_fresh_profile.sh"`
+    - `cat novaic-control-plane/rounds/round-004/20-reports/desktop-evidence/split-default-e2e-marker.txt`
   - expected_marker:
     - `SPLIT_E2E_GATEWAY_HEALTH=PASS`
     - `error_timeout_count=0`
     - `stages=app-bootstrap,external-services`
+    - `DESKTOP_HOP=PASS`
   - repo_url:
-    - `git@github.com:chriswangcq/novaic.git`
+    - `https://github.com/chriswangcq/novaic`
   - default_branch:
     - `main`
+  - commit_sha:
+    - `c6cc702f8fb5dc18ed97190f28872ee3d886b1bd`
   - ruleset_or_protection_id:
     - `LOCAL_ONLY_NO_GITHUB_RULESET`
   - required_checks:
-    - `tauri-build`
+    - `npm-build`
     - `desktop-split-default-replay`
   - permission_model:
     - `local-maintainer-only`
+  - migrated_paths:
+    - `desktop startup path (external-services)` -> `gateway /api/health`
+    - `NOVAIC_GATEWAY_URL=http://127.0.0.1:63999` -> desktop probes external split gateway
   - summary:
     - PASS; desktop external-services startup replay succeeded against split gateway endpoint with E2E marker.
   - artifact_path:
