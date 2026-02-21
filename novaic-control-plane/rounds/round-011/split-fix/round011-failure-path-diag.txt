@@ -1,0 +1,9 @@
+DESKTOP_HOP=PASS
+GATEWAY_HOP=PASS
+RUNTIME_HOP=PASS
+TOOLS_HOP=FAIL
+TOOLS_UNAVAILABLE=true
+round=round-009
+scenario=tools-endpoint-unavailable
+canonical_repo_url=https://github.com/chriswangcq/novaic
+FAILURE_PATH_REPLAY=PASS
