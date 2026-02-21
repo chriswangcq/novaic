@@ -41,7 +41,7 @@ is initialized. Errors are appended as `startup-diagnostics.jsonl` entries with
   `DESKTOP_BUILD=PASS`
 
 - repo_url: `https://github.com/chriswangcq/novaic`
-- commit_sha: `PENDING_COMMIT`
+- commit_sha: `12294d78dcded3fae4242e57ff691564ac5447be`
 - migrated_paths:
   - `novaic-app/src-tauri/src/split_runtime.rs` → added `gateway_url_explicit()` and `validate_split_config()`
   - `novaic-app/src-tauri/src/main.rs` → early `validate_split_config()` call at setup with diagnostic write
@@ -121,7 +121,7 @@ a 9-second startup window, probed all three endpoints. Recorded the result in
   `TOOLS_HOP=FAIL` is deterministic: tools-server is not running, curl returns non-zero.
 
 - repo_url: `https://github.com/chriswangcq/novaic`
-- commit_sha: `PENDING_COMMIT`
+- commit_sha: `12294d78dcded3fae4242e57ff691564ac5447be`
 - migrated_paths:
   - `rounds/round-008/split-fix/round008-failure-path-marker.txt` (new evidence artifact)
 - summary:
@@ -167,7 +167,7 @@ containing:
   `DESKTOP_OPERABILITY_BUNDLE=PASS`
 
 - repo_url: `https://github.com/chriswangcq/novaic`
-- commit_sha: `PENDING_COMMIT`
+- commit_sha: `12294d78dcded3fae4242e57ff691564ac5447be`
 - migrated_paths:
   - `rounds/round-008/split-fix/desktop-closure-bundle-round008.md` (new, non-author reproducible operability doc)
 - summary:

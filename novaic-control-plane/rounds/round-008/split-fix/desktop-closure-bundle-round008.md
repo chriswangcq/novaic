@@ -6,7 +6,7 @@
 |-------|-------|
 | canonical_repo_url | `https://github.com/chriswangcq/novaic` |
 | branch | `add-virtual-mobile` |
-| commit_sha | `PENDING_COMMIT` (updated after round-008 commit) |
+| commit_sha | `12294d78dcded3fae4242e57ff691564ac5447be` |
 | round | round-008 |
 | operator | team-desktop |
 | generated_at | 2026-02-21 |
