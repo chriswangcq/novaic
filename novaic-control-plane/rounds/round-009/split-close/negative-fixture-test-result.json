@@ -1,0 +1,12 @@
+{
+  "round": "round-009",
+  "generated_at": "2026-02-21T03:43:23Z",
+  "fixture_a_sha": "b7499015ae32741d",
+  "fixture_b_sha": "74dd1f62eb8e61d9",
+  "fixture_a_passed": true,
+  "fixture_b_passed": true,
+  "fixture_a_failures": [],
+  "fixture_b_failures": [],
+  "overall_passed": true,
+  "marker": "ROUND009_NEGATIVE_FIXTURE_PASS"
+}

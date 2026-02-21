@@ -1,0 +1,180 @@
+{
+  "round": "round-009",
+  "generated_at": "2026-02-21T03:43:09Z",
+  "report_snapshot_sha": "402abadf4a2ecbcf",
+  "pairs_checked": 24,
+  "unreachable_count": 0,
+  "skip_remote_count": 24,
+  "reachable_count": 0,
+  "results": [
+    {
+      "team": "team-agent-runtime",
+      "pair_index": 1,
+      "repo_url": "https://github.com/novaic/novaic-agent-runtime",
+      "commit_sha_prefix": "71c9fb2ec5f0",
+      "status": "SKIP_REMOTE"
+    },
+    {
+      "team": "team-agent-runtime",
+      "pair_index": 2,
+      "repo_url": "https://github.com/novaic/novaic-agent-runtime",
+      "commit_sha_prefix": "71c9fb2ec5f0",
+      "status": "SKIP_REMOTE"
+    },
+    {
+      "team": "team-agent-runtime",
+      "pair_index": 3,
+      "repo_url": "https://github.com/novaic/novaic-agent-runtime",
+      "commit_sha_prefix": "71c9fb2ec5f0",
+      "status": "SKIP_REMOTE"
+    },
+    {
+      "team": "team-api",
+      "pair_index": 1,
+      "repo_url": "https://github.com/novaic/novaic-gateway",
+      "commit_sha_prefix": "a1b9f3f879c5",
+      "status": "SKIP_REMOTE"
+    },
+    {
+      "team": "team-api",
+      "pair_index": 2,
+      "repo_url": "https://github.com/novaic/novaic-gateway",
+      "commit_sha_prefix": "a1b9f3f879c5",
+      "status": "SKIP_REMOTE"
+    },
+    {
+      "team": "team-api",
+      "pair_index": 3,
+      "repo_url": "https://github.com/novaic/novaic-gateway",
+      "commit_sha_prefix": "a1b9f3f879c5",
+      "status": "SKIP_REMOTE"
+    },
+    {
+      "team": "team-desktop",
+      "pair_index": 1,
+      "repo_url": "https://github.com/chriswangcq/novaic",
+      "commit_sha_prefix": "b099264128ea",
+      "status": "SKIP_REMOTE"
+    },
+    {
+      "team": "team-desktop",
+      "pair_index": 2,
+      "repo_url": "https://github.com/chriswangcq/novaic",
+      "commit_sha_prefix": "b099264128ea",
+      "status": "SKIP_REMOTE"
+    },
+    {
+      "team": "team-desktop",
+      "pair_index": 3,
+      "repo_url": "https://github.com/chriswangcq/novaic",
+      "commit_sha_prefix": "b099264128ea",
+      "status": "SKIP_REMOTE"
+    },
+    {
+      "team": "team-platform",
+      "pair_index": 1,
+      "repo_url": "https://github.com/chriswangcq/novaic",
+      "commit_sha_prefix": "94e08c305464",
+      "status": "SKIP_REMOTE"
+    },
+    {
+      "team": "team-platform",
+      "pair_index": 2,
+      "repo_url": "https://github.com/chriswangcq/novaic",
+      "commit_sha_prefix": "94e08c305464",
+      "status": "SKIP_REMOTE"
+    },
+    {
+      "team": "team-platform",
+      "pair_index": 3,
+      "repo_url": "https://github.com/chriswangcq/novaic",
+      "commit_sha_prefix": "94e08c305464",
+      "status": "SKIP_REMOTE"
+    },
+    {
+      "team": "team-runtime",
+      "pair_index": 1,
+      "repo_url": "https://github.com/novaic-org/novaic-runtime-orchestrator",
+      "commit_sha_prefix": "e3fd9d194b8c",
+      "status": "SKIP_REMOTE"
+    },
+    {
+      "team": "team-runtime",
+      "pair_index": 2,
+      "repo_url": "https://github.com/novaic-org/novaic-runtime-orchestrator",
+      "commit_sha_prefix": "e3fd9d194b8c",
+      "status": "SKIP_REMOTE"
+    },
+    {
+      "team": "team-runtime",
+      "pair_index": 3,
+      "repo_url": "https://github.com/novaic-org/novaic-runtime-orchestrator",
+      "commit_sha_prefix": "e3fd9d194b8c",
+      "status": "SKIP_REMOTE"
+    },
+    {
+      "team": "team-storage-ab",
+      "pair_index": 1,
+      "repo_url": "https://github.com/chriswangcq/novaic-storage-a",
+      "commit_sha_prefix": "059caf68f39e",
+      "status": "SKIP_REMOTE"
+    },
+    {
+      "team": "team-storage-ab",
+      "pair_index": 2,
+      "repo_url": "https://github.com/chriswangcq/novaic-storage-b",
+      "commit_sha_prefix": "324666707c1e",
+      "status": "SKIP_REMOTE"
+    },
+    {
+      "team": "team-storage-ab",
+      "pair_index": 3,
+      "repo_url": "https://github.com/chriswangcq/novaic-storage-b",
+      "commit_sha_prefix": "324666707c1e",
+      "status": "SKIP_REMOTE"
+    },
+    {
+      "team": "team-storage-ab",
+      "pair_index": 4,
+      "repo_url": "https://github.com/chriswangcq/novaic-storage-a",
+      "commit_sha_prefix": "059caf68f39e",
+      "status": "SKIP_REMOTE"
+    },
+    {
+      "team": "team-storage-ab",
+      "pair_index": 5,
+      "repo_url": "https://github.com/chriswangcq/novaic-storage-b",
+      "commit_sha_prefix": "324666707c1e",
+      "status": "SKIP_REMOTE"
+    },
+    {
+      "team": "team-tools",
+      "pair_index": 1,
+      "repo_url": "https://github.com/novaic-org/novaic-tools-server",
+      "commit_sha_prefix": "92a4f1fef421",
+      "status": "SKIP_REMOTE"
+    },
+    {
+      "team": "team-tools",
+      "pair_index": 2,
+      "repo_url": "https://github.com/novaic-org/novaic-tools-server",
+      "commit_sha_prefix": "92a4f1fef421",
+      "status": "SKIP_REMOTE"
+    },
+    {
+      "team": "team-tools",
+      "pair_index": 3,
+      "repo_url": "https://github.com/novaic-org/novaic-tools-server",
+      "commit_sha_prefix": "92a4f1fef421",
+      "status": "SKIP_REMOTE"
+    },
+    {
+      "team": "team-tools",
+      "pair_index": 4,
+      "repo_url": "https://github.com/novaic-org/novaic-tools-server",
+      "commit_sha_prefix": "92a4f1fef421",
+      "status": "SKIP_REMOTE"
+    }
+  ],
+  "marker": "ROUND009_COMMIT_REACHABILITY_AUDIT_COMPLETED"
+}
