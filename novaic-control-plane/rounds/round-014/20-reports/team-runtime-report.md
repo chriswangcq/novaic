@@ -15,7 +15,7 @@
 - expected_marker: `0`
 - repo_url: `https://github.com/chriswangcq/novaic`
 - branch: `add-virtual-mobile`
-- commit_sha: `PLACEHOLDER_SHA`
+- commit_sha: `b029e4f0ea9f028ddfc04859defba4ac90f5005f`
 - migrated_paths: `novaic-control-plane/rounds/round-003/split-move/repos/novaic-runtime-orchestrator/.git (deleted)`
 - artifact_path: `novaic-control-plane/rounds/round-014/split-close/runtime-round014-replay-bundle.md`
 - status: `DONE`
