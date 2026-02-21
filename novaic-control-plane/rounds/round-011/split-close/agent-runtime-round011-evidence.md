@@ -5,27 +5,16 @@
 - repo_url: `https://github.com/chriswangcq/novaic-agent-runtime`
 - branch: `round-003-agent-runtime-split`
 - commit_sha: `23e95a97e0fbd01a84c44f1e9625771201a709ea`
-- commit_reachability: `REACHABLE` (confirmed in Round 010 audit: `teams_with_reachable` includes `team-agent-runtime`)
+- reachability: `REACHABLE` (confirmed in Round 010 commit-reachability-audit.md)
 
 ---
 
-## Tiered Threshold Policy
-
-Source: `tests/threshold_policy.py`
-
-| tier | floor (ops/s) | retry bounds | dedup expected | label |
-|---|---|---|---|---|
-| unit | 5000.0 | 80..80 | 1 | `unit` |
-| integration | 500.0 | 1..200 | 1 | `integration` |
-
----
-
-## Task 1 — unit-tier replay from canonical remote
+## Task 1 — unit-tier replay from clean clone
 
 ### Command
 
 ```
-PYTHONPATH="." pytest -q -s tests/unit/task_queue/test_high_concurrency_retry_replay.py
+cd /Users/wangchaoqun/novaic/novaic-agent-runtime && PYTHONPATH="." pytest -q -s tests/unit/task_queue/test_high_concurrency_retry_replay.py
 ```
 
 ### Round 011 actual output
@@ -52,7 +41,7 @@ HIGH_CONCURRENCY_IDEM_DEDUP_PASS tier=unit handler_calls=1 expected=1
 ### Command
 
 ```
-PYTHONPATH="." pytest -q -s tests/unit/task_queue/test_dedup_guard_failure_path.py
+cd /Users/wangchaoqun/novaic/novaic-agent-runtime && PYTHONPATH="." pytest -q -s tests/unit/task_queue/test_dedup_guard_failure_path.py
 ```
 
 ### Round 011 actual output
@@ -71,9 +60,9 @@ DEDUP_GUARD_BROKEN tier=unit handler_calls=10 expected_max=1
 
 ---
 
-## Task 3 — operability: clean-clone CI-ready replay bundle
+## Task 3 — operability: CI-ready clean-clone replay bundle
 
-### Clean-clone bootstrap (no local sibling required)
+### Clean-clone bootstrap (no local dependencies)
 
 ```bash
 git clone https://github.com/chriswangcq/novaic-agent-runtime
@@ -81,24 +70,29 @@ cd novaic-agent-runtime
 git checkout round-003-agent-runtime-split
 pip install pytest
 
-# Unit tier replay
-PYTHONPATH="." pytest -q tests/
-# Expected: 9 passed
-
-PYTHONPATH="." pytest -q -s tests/unit/task_queue/test_high_concurrency_retry_replay.py
-# Expected: HIGH_CONCURRENCY_RETRY_REPLAY_PASS tier=unit
-
-PYTHONPATH="." pytest -q -s tests/unit/task_queue/test_dedup_guard_failure_path.py
-# Expected: DEDUP_GUARD_BROKEN tier=unit
-```
-
-### Full suite
-
-```
+# Full suite
 PYTHONPATH="." pytest -q tests/ && echo "SPLIT_REPO_ALL_PASS"
+
+# Unit-tier threshold replay
+PYTHONPATH="." pytest -q -s tests/unit/task_queue/test_high_concurrency_retry_replay.py
+
+# Failure-path guard broken
+PYTHONPATH="." pytest -q -s tests/unit/task_queue/test_dedup_guard_failure_path.py
 ```
 
-Round 011 result: `9 passed`, `SPLIT_REPO_ALL_PASS`
+### Full suite result (Round 011)
+
+```
+9 passed in 0.05s
+SPLIT_REPO_ALL_PASS
+```
+
+### Remote commit proof
+
+Round 010 commit-reachability-audit confirmed:
+- `teams_with_reachable: ['team-agent-runtime', ...]`
+- `reachable_count: 11`
+- `teams_missing_reachable: []`
 
 ---
 

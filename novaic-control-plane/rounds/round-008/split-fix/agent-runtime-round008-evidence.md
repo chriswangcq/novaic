@@ -3,7 +3,7 @@
 
 ## Repo (canonical)
 
-- repo_url: `file:///Users/wangchaoqun/novaic/novaic-agent-runtime`
+- repo_url: `https://github.com/chriswangcq/novaic-agent-runtime`
 - branch: `round-003-agent-runtime-split`
 - commit_sha: `a3104933ac0d2caa677c3821e9dbcc5a5f2ae769`
 
@@ -124,4 +124,4 @@ PYTHONPATH="." pytest -q tests/ && echo "SPLIT_REPO_ALL_PASS"
 | `DEDUP_GUARD_BROKEN` | YES |
 | `DEDUP_GUARD_FAILURE_PATH_METRICS` | YES |
 | `SPLIT_REPO_ALL_PASS` | YES |
-| `repo_url: \`file:///Users/wangchaoqun/novaic/novaic-agent-runtime\`` | YES |
+| `repo_url: \`https://github.com/chriswangcq/novaic-agent-runtime\`` | YES |

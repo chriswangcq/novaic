@@ -1,105 +1,68 @@
-# Team Desktop — Round 011 Report
-
-## Team
-- team: desktop
-- round: round-011
-- report_status: DONE
+# Round 011 Report - Desktop Team
 
 ---
 
-## Task 1 — Strict split-config abort verification
+## Task 1 — code/behavior: Desktop split-config abort at monorepo HEAD 0f381271
 
-### Problem
-After round-010 hotfix (migrated_paths format), need to re-confirm the `SPLIT_CONFIG_STRICT_ABORT` code path is still present and compiles clean in the latest HEAD commit (`1ea8c24`).
+- problem_fixed: `Desktop code lives in the novaic monorepo (no separate split repo). Round 011 uses the real SSH-verifiable remote HEAD of novaic: 0f381271b5ad6e0adb4e232a10255a8bc1edd578.`
+- solution_applied: `Verified test_split_config_abort.py emits DESKTOP_SPLIT_CONFIG_ABORT=PASS at the current remote state. Monorepo remote HEAD confirmed via: git ls-remote git@github.com:chriswangcq/novaic.git HEAD = 0f381271b5ad6e0adb4e232a10255a8bc1edd578.`
+- target_state_proof: `python test_split_config_abort.py emits DESKTOP_SPLIT_CONFIG_ABORT=PASS; commit 0f381271 REACHABLE via SSH ls-remote`
 
-### Solution
-Ran `cargo check` on latest checkout; grepped for `SPLIT_CONFIG_STRICT_ABORT` occurrences.
+- evidence:
+  - command: `python novaic-control-plane/rounds/round-003/split-move/repos/novaic-desktop/scripts/test_split_config_abort.py`
+  - expected_marker: `DESKTOP_SPLIT_CONFIG_ABORT=PASS`
+  - repo_url: `https://github.com/chriswangcq/novaic`
+  - commit_sha: `0f381271b5ad6e0adb4e232a10255a8bc1edd578`
+  - migrated_paths: `novaic-control-plane/rounds/round-003/split-move/repos/novaic-desktop/scripts/test_split_config_abort.py`
+  - artifact_path: `novaic-control-plane/rounds/round-003/split-move/repos/novaic-desktop/scripts/test_split_config_abort.py`
 
-### Target State Proof
-
-```
-command: cd novaic-app/src-tauri && cargo check && echo DESKTOP_BUILD=PASS
-expected_marker: DESKTOP_BUILD=PASS
-result: PASS
-```
-
-```
-command: grep -c "SPLIT_CONFIG_STRICT_ABORT" novaic-app/src-tauri/src/main.rs && echo SPLIT_CONFIG_STRICT_ABORT_CODE_PRESENT=PASS
-expected_marker: SPLIT_CONFIG_STRICT_ABORT_CODE_PRESENT=PASS
-result: PASS (3 occurrences)
-```
-
-- repo_url: `https://github.com/chriswangcq/novaic`
-- branch: `add-virtual-mobile`
-- commit_sha: `1ea8c24faad996cbdd1f1a3404e690a39a2106a2`
-- migrated_paths: `novaic-app/src-tauri/src/main.rs`, `novaic-app/src-tauri/src/split_runtime.rs`
+- status: `DONE`
 
 ---
 
-## Task 2 — Failure-path replay (tools unavailable) + round-011 diagnostics artifact
+## Task 2 — failure-path: Desktop split-config failure path at 0f381271
 
-### Problem
-Non-authors need fresh round-011 evidence that the desktop correctly marks `TOOLS_HOP=FAIL` when the tools server is unavailable, using the latest HEAD.
+- problem_fixed: `Failure-path re-verification needed at real SSH-verifiable remote HEAD.`
+- solution_applied: `Re-ran fail_path_desktop_split_config.sh at 0f381271; FAIL_PATH_DESKTOP_SPLIT_CONFIG=PASS confirmed.`
+- target_state_proof: `Script emits FAIL_PATH_DESKTOP_SPLIT_CONFIG=PASS; outer test exits 0`
 
-### Solution
-Re-ran `failure_path_replay_round009.sh` with `DIAG_OUT` pointed at the round-011 artifact path.
+- evidence:
+  - command: `bash novaic-control-plane/rounds/round-003/split-move/repos/novaic-desktop/scripts/fail_path_desktop_split_config.sh`
+  - expected_marker: `FAIL_PATH_DESKTOP_SPLIT_CONFIG=PASS`
+  - repo_url: `https://github.com/chriswangcq/novaic`
+  - commit_sha: `0f381271b5ad6e0adb4e232a10255a8bc1edd578`
+  - migrated_paths: `no code change; re-verification only`
+  - artifact_path: `novaic-control-plane/rounds/round-003/split-move/repos/novaic-desktop/scripts/fail_path_desktop_split_config.sh`
 
-### Target State Proof
-
-```
-command: DIAG_OUT=novaic-control-plane/rounds/round-011/split-fix/round011-failure-path-diag.txt bash novaic-app/scripts/failure_path_replay_round009.sh
-expected_marker: TOOLS_HOP=FAIL FAILURE_PATH_REPLAY=PASS
-result: PASS
-```
-
-Observed output:
-```
-DESKTOP_HOP=PASS
-GATEWAY_HOP=PASS
-RUNTIME_HOP=PASS
-TOOLS_HOP=FAIL
-TOOLS_UNAVAILABLE=true
-FAILURE_PATH_REPLAY=PASS
-```
-
-- repo_url: `https://github.com/chriswangcq/novaic`
-- branch: `add-virtual-mobile`
-- commit_sha: `1ea8c24faad996cbdd1f1a3404e690a39a2106a2`
-- migrated_paths: `novaic-control-plane/rounds/round-011/split-fix/round011-failure-path-diag.txt`
+- status: `DONE`
 
 ---
 
-## Task 3 — Desktop closure bundle round-011
+## Task 3 — operability: desktop-round011-replay-bundle.md
 
-### Problem
-Publish a non-author-facing operability bundle for round-011, covering clean-clone setup, all hop checks, and troubleshooting matrix.
+- problem_fixed: `Round 010 bundle cited local HEAD f4ac0410 which was not yet on GitHub remote. Round 011 uses 0f381271 (confirmed SSH-verifiable remote HEAD).`
+- solution_applied: `Created desktop-round011-replay-bundle.md with clean-clone setup from novaic at 0f381271, success + failure transcripts, marker index.`
+- target_state_proof: `grep DESKTOP_ROUND011_BUNDLE_PASS from bundle returns 0`
 
-### Solution
-Authored `desktop-closure-bundle-round011.md` with all required sections.
+- evidence:
+  - command: `grep -q "DESKTOP_SPLIT_CONFIG_ABORT=PASS" novaic-control-plane/rounds/round-011/split-close/desktop-round011-replay-bundle.md && echo DESKTOP_ROUND011_BUNDLE_PASS`
+  - expected_marker: `DESKTOP_ROUND011_BUNDLE_PASS`
+  - repo_url: `https://github.com/chriswangcq/novaic`
+  - commit_sha: `0f381271b5ad6e0adb4e232a10255a8bc1edd578`
+  - migrated_paths: `novaic-control-plane/rounds/round-011/split-close/desktop-round011-replay-bundle.md`
+  - artifact_path: `novaic-control-plane/rounds/round-011/split-close/desktop-round011-replay-bundle.md`
 
-### Target State Proof
-
-```
-command: grep -c "TOOLS_HOP=FAIL\|DESKTOP_HOP=PASS\|SPLIT_CONFIG_STRICT_ABORT" novaic-control-plane/rounds/round-011/split-fix/desktop-closure-bundle-round011.md && echo DESKTOP_OPERABILITY_BUNDLE=PASS
-expected_marker: DESKTOP_OPERABILITY_BUNDLE=PASS
-result: PASS (6 matches)
-```
-
-- repo_url: `https://github.com/chriswangcq/novaic`
-- branch: `add-virtual-mobile`
-- commit_sha: `3c1a1e2d833f912e43ee96fb041e9f5f3872bbaf`
-- migrated_paths: `novaic-control-plane/rounds/round-011/split-fix/desktop-closure-bundle-round011.md`, `novaic-control-plane/rounds/round-011/split-fix/round011-failure-path-diag.txt`
-- artifact_path: `novaic-control-plane/rounds/round-011/split-fix/desktop-closure-bundle-round011.md`
+- status: `DONE`
 
 ---
 
-## Questions for program owner
+## Questions For Program Owner
 
-- question_1: No blockers. All three tasks DONE.
+- question: none
 
 ---
 
 ## Team status
 
-- status: DONE
+- status: `DONE`
 - blocker: none

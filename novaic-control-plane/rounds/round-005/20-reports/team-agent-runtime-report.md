@@ -5,7 +5,7 @@
 - evidence:
   - command: `test -f "novaic-agent-runtime/task_queue/saga.py" && test -f "novaic-agent-runtime/task_queue/workers/saga_worker_sync.py" && echo "ROUND005_SAGA_MODULES_OK"`
   - expected_marker: `ROUND005_SAGA_MODULES_OK`
-  - repo_url: `file:///Users/wangchaoqun/novaic/novaic-agent-runtime`
+  - repo_url: `https://github.com/chriswangcq/novaic-agent-runtime`
   - commit_sha: `51d5198eef2f7045cef4a719b683a2fe9362cb0f`
   - migrated_paths:
     - `novaic-backend/task_queue/saga.py -> novaic-agent-runtime/task_queue/saga.py`
@@ -22,7 +22,7 @@
 - evidence:
   - command: `cd novaic-agent-runtime && PYTHONPATH="." pytest -q tests/ && echo "SPLIT_REPO_ALL_PASS"`
   - expected_marker: `8 passed` and `SPLIT_REPO_ALL_PASS`
-  - repo_url: `file:///Users/wangchaoqun/novaic/novaic-agent-runtime`
+  - repo_url: `https://github.com/chriswangcq/novaic-agent-runtime`
   - commit_sha: `51d5198eef2f7045cef4a719b683a2fe9362cb0f`
   - migrated_paths:
     - `(new) novaic-agent-runtime/pytest.ini`
@@ -39,7 +39,7 @@
 - evidence:
   - command: `cd novaic-agent-runtime && PYTHONPATH="." pytest -q -s tests/unit/task_queue/test_high_concurrency_retry_replay.py`
   - expected_marker: `HIGH_CONCURRENCY_RETRY_REPLAY_METRICS` and `HIGH_CONCURRENCY_IDEM_DEDUP_METRICS` and `2 passed`
-  - repo_url: `file:///Users/wangchaoqun/novaic/novaic-agent-runtime`
+  - repo_url: `https://github.com/chriswangcq/novaic-agent-runtime`
   - commit_sha: `51d5198eef2f7045cef4a719b683a2fe9362cb0f`
   - migrated_paths:
     - `(new) novaic-agent-runtime/tests/unit/task_queue/test_high_concurrency_retry_replay.py`

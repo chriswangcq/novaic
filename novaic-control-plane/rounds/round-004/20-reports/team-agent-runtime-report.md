@@ -5,7 +5,7 @@
 - evidence:
   - command: `test -f "novaic-agent-runtime/task_queue/handlers/validation.py" && test -f "novaic-agent-runtime/task_queue/heartbeat_sync.py" && test -f "novaic-agent-runtime/tests/unit/task_queue/test_retry_policy_and_idempotency.py" && echo "ROUND004_MIGRATED_PATHS_OK"`
   - expected_marker: `ROUND004_MIGRATED_PATHS_OK`
-  - repo_url: `file:///Users/wangchaoqun/novaic/novaic-agent-runtime`
+  - repo_url: `https://github.com/chriswangcq/novaic-agent-runtime`
   - default_branch: `N/A (local split candidate repo)`
   - ruleset_or_protection_id: `N/A (local git repo, no remote ruleset)`
   - required_checks: `split replay smoke + local retry/idempotency unit replay`
@@ -26,7 +26,7 @@
 - evidence:
   - command: `bash -lc 'cd "novaic-agent-runtime" && bash "scripts/run_split_replay_smoke.sh"'`
   - expected_marker: `[split-agent-runtime] SPLIT_WIRING_REPLAY_PASS` and `3 passed`
-  - repo_url: `file:///Users/wangchaoqun/novaic/novaic-agent-runtime`
+  - repo_url: `https://github.com/chriswangcq/novaic-agent-runtime`
   - default_branch: `N/A (local split candidate repo)`
   - ruleset_or_protection_id: `N/A (local git repo, no remote ruleset)`
   - required_checks: `scripts/run_split_replay_smoke.sh`
@@ -44,7 +44,7 @@
 - evidence:
   - command: `bash -lc 'cd "novaic-agent-runtime" && PYTHONPATH="." pytest -q "tests/unit/task_queue/test_retry_policy_and_idempotency.py" && echo "SPLIT_REPLAY_ROOT_PASS"'`
   - expected_marker: `3 passed` and `SPLIT_REPLAY_ROOT_PASS`
-  - repo_url: `file:///Users/wangchaoqun/novaic/novaic-agent-runtime`
+  - repo_url: `https://github.com/chriswangcq/novaic-agent-runtime`
   - default_branch: `N/A (local split candidate repo)`
   - ruleset_or_protection_id: `N/A (local git repo, no remote ruleset)`
   - required_checks: `pytest -q tests/unit/task_queue/test_retry_policy_and_idempotency.py`

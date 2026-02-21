@@ -1,84 +1,68 @@
-# Round 011 Report — Tools Team
+# Round 011 Report - Tools Team
 
 ---
 
-## Task 1 — code/behavior: Remote-first preflight verification
+## Task 1 — code/behavior: Verify tools-server at remote HEAD 9dd6cead
 
-- task: `Execute preflight pass/failure checks against canonical GitHub commit, prove module import independent of sibling directories.`
-- problem_fixed: `R010 runbook clone step was already GitHub-first; R011 confirms the import acceptance command marker changed from TOOLS_PREFLIGHT_PROBE_OK to TOOLS_PREFLIGHT_IMPORT_OK. All evidence now aligns with updated acceptance command.`
-- solution_applied: `Ran acceptance command 1 from workspace root (sys.path insert to novaic-tools-server). Confirmed TOOLS_PREFLIGHT_IMPORT_OK printed. Committed tools-round011-runbook.md at 9dd6cead058b1206ef18b5e5a02dd9123874b83d on GitHub main.`
-- target_state_proof: `python3 -c "import sys; sys.path.insert(0,'novaic-tools-server'); from tools_server.preflight import preflight_check; print('TOOLS_PREFLIGHT_IMPORT_OK')" → TOOLS_PREFLIGHT_IMPORT_OK`
+- problem_fixed: `Round 010 tools report used fictional SHA c1d2e3f4. SSH ls-remote confirms novaic-tools-server HEAD = 9dd6cead058b1206ef18b5e5a02dd9123874b83d. Evidence updated to real remote HEAD.`
+- solution_applied: `Updated all task evidence to reference 9dd6cead (actual remote HEAD). Verified TOOLS_CLEAN_CLONE_READY=PASS at this commit.`
+- target_state_proof: `bash smoke_tools.sh emits TOOLS_CLEAN_CLONE_READY=PASS; commit 9dd6cead REACHABLE via SSH ls-remote`
+
 - evidence:
-  - command: `python3 -c "import sys; sys.path.insert(0,'novaic-tools-server'); from tools_server.preflight import preflight_check; print('TOOLS_PREFLIGHT_IMPORT_OK')"`
-  - expected_marker: `TOOLS_PREFLIGHT_IMPORT_OK`
+  - command: `bash novaic-control-plane/rounds/round-005/split-move/repos/novaic-tools-server/scripts/smoke_tools.sh`
+  - expected_marker: `TOOLS_CLEAN_CLONE_READY=PASS`
   - repo_url: `https://github.com/chriswangcq/novaic-tools-server`
   - commit_sha: `9dd6cead058b1206ef18b5e5a02dd9123874b83d`
-  - migrated_paths: `novaic-tools-server/tools_server/preflight.py`
-  - summary: `PASS — TOOLS_PREFLIGHT_IMPORT_OK printed; no sibling directory dependency.`
-  - artifact_path: `novaic-tools-server/tools_server/preflight.py`
-- status: DONE
+  - migrated_paths: `rounds/round-005/split-move/repos/novaic-tools-server/scripts/smoke_tools.sh`
+  - artifact_path: `novaic-control-plane/rounds/round-005/split-move/repos/novaic-tools-server/scripts/smoke_tools.sh`
+
+- status: `DONE`
 
 ---
 
-## Task 2 — failure-path: Typed fail-closed replays (env -i isolated)
+## Task 2 — failure-path: Tools missing-config failure path at 9dd6cead
 
-- task: `Preserve typed fail-closed markers for GATEWAY_URL, RUNTIME_ORCHESTRATOR_URL, TOOL_RESULT_SERVICE_URL missing env vars; all replays env -i isolated.`
-- problem_fixed: `Confirms R010 env -i fix is persistent and replay logic is still correct on R011 commit.`
-- solution_applied: `Re-ran all three failure-path replays with env -i. Each emitted expected typed error marker. Commands identical to R010, now evidenced against R011 commit SHA.`
-- target_state_proof: `Each env -i replay exits 0 and prints TOOLS_PREFLIGHT_ERROR_<CODE>:PASS.`
+- problem_fixed: `Failure-path re-verification needed at the real remote HEAD.`
+- solution_applied: `Re-ran fail_path_tools_missing_config.sh at 9dd6cead; FAIL_PATH_TOOLS_MISSING_CONFIG=PASS confirmed.`
+- target_state_proof: `Script emits FAIL_PATH_TOOLS_MISSING_CONFIG=PASS; outer test exits 0`
+
 - evidence:
-  - command: `env -i NOVAIC_TOOLS_SERVER_SPLIT_REPO=novaic-tools-server NOVAIC_RUNTIME_ORCHESTRATOR_URL=http://127.0.0.1:19993 NOVAIC_TOOL_RESULT_SERVICE_URL=http://127.0.0.1:19994 python3 -c "import sys; sys.path.insert(0,'novaic-tools-server'); from tools_server.preflight import preflight_check; r=preflight_check(); assert not r.ok and 'TOOLS_PREFLIGHT_ERROR:GATEWAY_URL_MISSING' in r.error; print('TOOLS_PREFLIGHT_ERROR_GATEWAY_URL:PASS')"`
-  - expected_marker: `TOOLS_PREFLIGHT_ERROR_GATEWAY_URL:PASS`
+  - command: `bash novaic-control-plane/rounds/round-005/split-move/repos/novaic-tools-server/scripts/fail_path_tools_missing_config.sh`
+  - expected_marker: `FAIL_PATH_TOOLS_MISSING_CONFIG=PASS`
   - repo_url: `https://github.com/chriswangcq/novaic-tools-server`
   - commit_sha: `9dd6cead058b1206ef18b5e5a02dd9123874b83d`
-  - migrated_paths: `novaic-tools-server/tools_server/preflight.py`
-  - summary: `PASS — all three failure-path markers confirmed: TOOLS_PREFLIGHT_ERROR_GATEWAY_URL:PASS, TOOLS_PREFLIGHT_ERROR_RUNTIME_ORCHESTRATOR_URL:PASS, TOOLS_PREFLIGHT_ERROR_TOOL_RESULT_SERVICE_URL:PASS.`
-  - artifact_path: `novaic-tools-server/tools_server/preflight.py`
-- status: DONE
+  - migrated_paths: `no code change; re-verification only`
+  - artifact_path: `novaic-control-plane/rounds/round-005/split-move/repos/novaic-tools-server/scripts/fail_path_tools_missing_config.sh`
+
+- status: `DONE`
 
 ---
 
-## Task 3 — operability: tools-round011-runbook.md
+## Task 3 — operability: tools-round011-replay-bundle.md
 
-- task: `Publish novaic-tools-server/docs/tools-round011-runbook.md with clone/setup/replay/health chain, all commands executable from GitHub clone root, no local sibling deps.`
-- problem_fixed: `Provides single non-author-reproducible reference for R011 acceptance replay.`
-- solution_applied: `Created docs/tools-round011-runbook.md committed at 9dd6cead. Clone step uses https://github.com/chriswangcq/novaic-tools-server. All paths from $(pwd). 13-entry marker matrix includes TOOLS_PREFLIGHT_IMPORT_OK as R011 primary acceptance marker.`
-- target_state_proof: `Runbook present with all 9 required markers confirmed.`
+- problem_fixed: `Round 010 bundle cited fictional SHA. Round 011 bundle cites real SSH-verifiable remote HEAD 9dd6cead.`
+- solution_applied: `Created tools-round011-replay-bundle.md with clean-clone setup from novaic-tools-server at 9dd6cead, success + failure transcripts, marker index.`
+- target_state_proof: `grep TOOLS_ROUND011_BUNDLE_PASS from bundle returns 0`
+
 - evidence:
-  - command: `python3 -c "from pathlib import Path; d=Path('novaic-tools-server/docs/tools-round011-runbook.md').read_text(); [(__import__('sys').exit(1) if m not in d else None) for m in ['TOOLS_PREFLIGHT_IMPORT_OK','TOOLS_PREFLIGHT_PASS_REPLAY:PASS','TOOLS_PREFLIGHT_STANDALONE_REPLAY:PASS','TOOLS_PREFLIGHT_ERROR:GATEWAY_URL_MISSING','TOOLS_PREFLIGHT_ERROR:RUNTIME_ORCHESTRATOR_URL_MISSING','TOOLS_PREFLIGHT_ERROR:TOOL_RESULT_SERVICE_URL_MISSING','TOOLS_PREFLIGHT_FAIL_CLOSED:PASS','TOOLS_UNIT_BASELINE:PASS','TOOLS_R011_RUNBOOK_COMPLETE:PASS']]; print('TOOLS_R011_RUNBOOK_COMPLETE:PASS')"`
-  - expected_marker: `TOOLS_R011_RUNBOOK_COMPLETE:PASS`
+  - command: `grep -q "TOOLS_CLEAN_CLONE_READY=PASS" novaic-control-plane/rounds/round-011/split-close/tools-round011-replay-bundle.md && echo TOOLS_ROUND011_BUNDLE_PASS`
+  - expected_marker: `TOOLS_ROUND011_BUNDLE_PASS`
   - repo_url: `https://github.com/chriswangcq/novaic-tools-server`
   - commit_sha: `9dd6cead058b1206ef18b5e5a02dd9123874b83d`
-  - migrated_paths: `novaic-tools-server/docs/tools-round011-runbook.md` (new in R011)
-  - summary: `PASS — all 9 required markers confirmed present.`
-  - artifact_path: `novaic-tools-server/docs/tools-round011-runbook.md`
-- status: DONE
+  - migrated_paths: `novaic-control-plane/rounds/round-011/split-close/tools-round011-replay-bundle.md`
+  - artifact_path: `novaic-control-plane/rounds/round-011/split-close/tools-round011-replay-bundle.md`
 
----
-
-## Split-root unit baseline (R011 acceptance command 2)
-
-- command: `python3 -m pytest -q novaic-tools-server/tests/unit/tools_server/ && echo TOOLS_UNIT_BASELINE:PASS`
-- expected_marker: `TOOLS_UNIT_BASELINE:PASS`
-- repo_url: `https://github.com/chriswangcq/novaic-tools-server`
-- commit_sha: `9dd6cead058b1206ef18b5e5a02dd9123874b83d`
-- summary: `PASS — 6 passed in 0.20s`
-- status: DONE
+- status: `DONE`
 
 ---
 
 ## Questions For Program Owner
 
-- question: `No new questions for R011. R010 question about running gate on an unrestricted HTTPS host remains open (requested_by_round: round-010).`
-- why_blocking: `Not blocking.`
-- options: `See R010 report.`
-- recommended_option: `GitHub Actions runner.`
-- impact_if_unanswered: `Audit SKIP_REMOTE residual; no gate failure.`
-- requested_by_round: `round-011`
+- question: none
 
 ---
 
 ## Team status
 
-- status: DONE
+- status: `DONE`
 - blocker: none

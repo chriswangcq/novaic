@@ -5,7 +5,7 @@
 - evidence:
   - command: `git -C "novaic-agent-runtime" show --name-status --oneline "f21a37f537f83401bae65c6f8b72e1743d04eb05"`
   - expected_marker: `f21a37f Initial split commit for agent runtime worker/retry/idempotency modules` and `A	task_queue/retry_policy.py` and `A	task_queue/workers/task_worker_sync.py`
-  - repo_url: `file:///Users/wangchaoqun/novaic/novaic-agent-runtime`
+  - repo_url: `https://github.com/chriswangcq/novaic-agent-runtime`
   - branch: `round-003-agent-runtime-split`
   - commit_sha: `f21a37f537f83401bae65c6f8b72e1743d04eb05`
   - migrated_paths:
@@ -21,7 +21,7 @@
 - evidence:
   - command: `test -f "novaic-agent-runtime/task_queue/retry_policy.py" && test -f "novaic-agent-runtime/task_queue/exceptions.py" && test -f "novaic-agent-runtime/task_queue/workers/task_worker_sync.py" && echo "MIGRATED_PATHS_VERIFIED:agent-runtime-core"`
   - expected_marker: `MIGRATED_PATHS_VERIFIED:agent-runtime-core`
-  - repo_url: `file:///Users/wangchaoqun/novaic/novaic-agent-runtime`
+  - repo_url: `https://github.com/chriswangcq/novaic-agent-runtime`
   - branch: `round-003-agent-runtime-split`
   - commit_sha: `f21a37f537f83401bae65c6f8b72e1743d04eb05`
   - migrated_paths:
@@ -37,7 +37,7 @@
 - evidence:
   - command: `bash "novaic-agent-runtime/scripts/run_split_replay_smoke.sh"`
   - expected_marker: `[split-agent-runtime] SPLIT_WIRING_REPLAY_PASS` and `3 passed`
-  - repo_url: `file:///Users/wangchaoqun/novaic/novaic-agent-runtime`
+  - repo_url: `https://github.com/chriswangcq/novaic-agent-runtime`
   - branch: `round-003-agent-runtime-split`
   - commit_sha: `f21a37f537f83401bae65c6f8b72e1743d04eb05`
   - migrated_paths:

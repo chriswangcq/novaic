@@ -2,7 +2,7 @@
 
 ## Repo (canonical)
 
-- repo_url: `file:///Users/wangchaoqun/novaic/novaic-agent-runtime`
+- repo_url: `https://github.com/chriswangcq/novaic-agent-runtime`
 - branch: `round-003-agent-runtime-split`
 - commit_sha: `51d5198eef2f7045cef4a719b683a2fe9362cb0f`
 

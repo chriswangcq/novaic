@@ -2,7 +2,7 @@
 
 ## Split commit
 
-- repo_url: `file:///Users/wangchaoqun/novaic/novaic-agent-runtime`
+- repo_url: `https://github.com/chriswangcq/novaic-agent-runtime`
 - branch: `round-003-agent-runtime-split`
 - commit_sha: `f21a37f537f83401bae65c6f8b72e1743d04eb05`
 

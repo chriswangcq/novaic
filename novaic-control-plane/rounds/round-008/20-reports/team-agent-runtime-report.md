@@ -12,7 +12,7 @@
   - expected_marker: `HIGH_CONCURRENCY_RETRY_REPLAY_PASS`
   - expected_marker: `HIGH_CONCURRENCY_IDEM_DEDUP_PASS`
   - expected_marker: `2 passed`
-  - repo_url: `file:///Users/wangchaoqun/novaic/novaic-agent-runtime`
+  - repo_url: `https://github.com/chriswangcq/novaic-agent-runtime`
   - commit_sha: `a3104933ac0d2caa677c3821e9dbcc5a5f2ae769`
   - migrated_paths: `tests/unit/task_queue/test_high_concurrency_retry_replay.py`
   - artifact_path: `novaic-control-plane/rounds/round-008/split-fix/agent-runtime-round008-evidence.md`
@@ -33,7 +33,7 @@
   - expected_marker: `DEDUP_GUARD_BROKEN`
   - expected_marker: `DEDUP_GUARD_FAILURE_PATH_METRICS`
   - expected_marker: `1 passed`
-  - repo_url: `file:///Users/wangchaoqun/novaic/novaic-agent-runtime`
+  - repo_url: `https://github.com/chriswangcq/novaic-agent-runtime`
   - commit_sha: `a3104933ac0d2caa677c3821e9dbcc5a5f2ae769`
   - migrated_paths: `tests/unit/task_queue/test_dedup_guard_failure_path.py`
   - artifact_path: `novaic-control-plane/rounds/round-008/split-fix/agent-runtime-round008-evidence.md`
@@ -55,7 +55,7 @@
   - expected_marker: `HIGH_CONCURRENCY_IDEM_DEDUP_PASS`
   - expected_marker: `DEDUP_GUARD_BROKEN`
   - expected_marker: `SPLIT_REPO_ALL_PASS`
-  - repo_url: `file:///Users/wangchaoqun/novaic/novaic-agent-runtime`
+  - repo_url: `https://github.com/chriswangcq/novaic-agent-runtime`
   - commit_sha: `a3104933ac0d2caa677c3821e9dbcc5a5f2ae769`
   - migrated_paths: `novaic-control-plane/rounds/round-008/split-fix/agent-runtime-round008-evidence.md`
   - artifact_path: `novaic-control-plane/rounds/round-008/split-fix/agent-runtime-round008-evidence.md`

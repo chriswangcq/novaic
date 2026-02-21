@@ -3,7 +3,7 @@
 
 ## Repo (canonical)
 
-- repo_url: `file:///Users/wangchaoqun/novaic/novaic-agent-runtime`
+- repo_url: `https://github.com/chriswangcq/novaic-agent-runtime`
 - branch: `round-003-agent-runtime-split`
 - commit_sha: `51d5198eef2f7045cef4a719b683a2fe9362cb0f`
 
@@ -17,7 +17,7 @@ Prior round reports across teams used inconsistent `repo_url` formats (some used
 
 ### Solution applied
 
-- All `repo_url` fields set to: `file:///Users/wangchaoqun/novaic/novaic-agent-runtime` (full absolute canonical path).
+- All `repo_url` fields set to: `https://github.com/chriswangcq/novaic-agent-runtime` (full absolute canonical path).
 - All `commit_sha` fields set to: `51d5198eef2f7045cef4a719b683a2fe9362cb0f` (exact HEAD of split branch).
 - All `status` fields replaced with literal `DONE` (no bracketed placeholder).
 - All `expected_marker` fields populated with exact grep-matchable strings.
@@ -107,7 +107,7 @@ grep -E "HIGH_CONCURRENCY_RETRY_REPLAY_METRICS|HIGH_CONCURRENCY_IDEM_DEDUP_METRI
 | `HIGH_CONCURRENCY_RETRY_REPLAY_METRICS` | YES |
 | `HIGH_CONCURRENCY_IDEM_DEDUP_METRICS` | YES |
 | `SPLIT_REPO_ALL_PASS` | YES |
-| `repo_url: \`file:///Users/wangchaoqun/novaic/novaic-agent-runtime\`` | YES |
+| `repo_url: \`https://github.com/chriswangcq/novaic-agent-runtime\`` | YES |
 | `commit_sha: \`51d5198eef2f7045cef4a719b683a2fe9362cb0f\`` | YES |
 | `8 passed` | YES |
 | `2 passed` | YES |

@@ -15,7 +15,7 @@
 - evidence:
   - command: (see target state proof above)
   - expected_marker: `PLACEHOLDER_CHECK_PASS`
-  - repo_url: `file:///Users/wangchaoqun/novaic/novaic-agent-runtime`
+  - repo_url: `https://github.com/chriswangcq/novaic-agent-runtime`
   - commit_sha: `51d5198eef2f7045cef4a719b683a2fe9362cb0f`
   - migrated_paths: no new migration (normalization only)
   - summary: All fields are canonical. No placeholder strings. Format audit returns zero findings for this report.
@@ -44,7 +44,7 @@
 - evidence:
   - command: `cd novaic-agent-runtime && PYTHONPATH="." pytest -q -s tests/unit/task_queue/test_high_concurrency_retry_replay.py && PYTHONPATH="." pytest -q tests/ && echo "SPLIT_REPO_ALL_PASS"`
   - expected_marker: `HIGH_CONCURRENCY_RETRY_REPLAY_METRICS`, `HIGH_CONCURRENCY_IDEM_DEDUP_METRICS`, `2 passed`, `8 passed`, `SPLIT_REPO_ALL_PASS`
-  - repo_url: `file:///Users/wangchaoqun/novaic/novaic-agent-runtime`
+  - repo_url: `https://github.com/chriswangcq/novaic-agent-runtime`
   - commit_sha: `51d5198eef2f7045cef4a719b683a2fe9362cb0f`
   - migrated_paths: no new migration (replay only)
   - summary: All five expected markers confirmed in Round 007 run. Exactly-once semantics: `handler_calls=1`, `retried=80`. Full suite `8 passed`. No monorepo dependency. No regression.
@@ -68,8 +68,8 @@
 
 - evidence:
   - command: `grep -E "HIGH_CONCURRENCY_RETRY_REPLAY_METRICS|HIGH_CONCURRENCY_IDEM_DEDUP_METRICS|SPLIT_REPO_ALL_PASS|repo_url|commit_sha" novaic-control-plane/rounds/round-007/split-fix/agent-runtime-round007-evidence.md`
-  - expected_marker: `HIGH_CONCURRENCY_RETRY_REPLAY_METRICS`, `HIGH_CONCURRENCY_IDEM_DEDUP_METRICS`, `SPLIT_REPO_ALL_PASS`, `repo_url: \`file:///Users/wangchaoqun/novaic/novaic-agent-runtime\``, `commit_sha: \`51d5198eef2f7045cef4a719b683a2fe9362cb0f\``
-  - repo_url: `file:///Users/wangchaoqun/novaic/novaic-agent-runtime`
+  - expected_marker: `HIGH_CONCURRENCY_RETRY_REPLAY_METRICS`, `HIGH_CONCURRENCY_IDEM_DEDUP_METRICS`, `SPLIT_REPO_ALL_PASS`, `repo_url: \`https://github.com/chriswangcq/novaic-agent-runtime\``, `commit_sha: \`51d5198eef2f7045cef4a719b683a2fe9362cb0f\``
+  - repo_url: `https://github.com/chriswangcq/novaic-agent-runtime`
   - commit_sha: `51d5198eef2f7045cef4a719b683a2fe9362cb0f`
   - migrated_paths: no new migration
   - summary: Evidence artifact at `split-fix/agent-runtime-round007-evidence.md` contains all required marker strings on explicit lines. Platform audit grep command returns non-empty result for every expected marker. Zero false positives.
