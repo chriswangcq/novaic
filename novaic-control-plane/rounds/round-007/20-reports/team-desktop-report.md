@@ -11,7 +11,7 @@
   - repo_url:
     - `https://github.com/chriswangcq/novaic`
   - commit_sha:
-    - `PENDING_COMMIT`
+    - `63774fdd3ed7e6d5c665fd8f1ce685eea7186e12`
   - migrated_paths:
     - `rounds/round-003/20-reports/team-desktop-report.md` -> `repo_url` SSH → HTTPS canonical
     - `rounds/round-004/20-reports/team-desktop-report.md` -> `repo_url` SSH → HTTPS canonical; `commit_sha` added (was absent)
@@ -38,7 +38,7 @@
   - repo_url:
     - `https://github.com/chriswangcq/novaic`
   - commit_sha:
-    - `PENDING_COMMIT`
+    - `63774fdd3ed7e6d5c665fd8f1ce685eea7186e12`
   - migrated_paths:
     - `rounds/round-003/20-reports/team-desktop-report.md` task 1 expected_marker -> added `DESKTOP_BUILD=PASS`
     - `rounds/round-003/20-reports/team-desktop-report.md` task 3 expected_marker -> added `DESKTOP_HOP=PASS`
@@ -68,7 +68,7 @@
   - repo_url:
     - `https://github.com/chriswangcq/novaic`
   - commit_sha:
-    - `PENDING_COMMIT`
+    - `63774fdd3ed7e6d5c665fd8f1ce685eea7186e12`
   - migrated_paths:
     - `desktop startup (external-services)` -> `gateway /api/health (63999)` -> `runtime-orchestrator /api/health (63993)`
   - summary:
