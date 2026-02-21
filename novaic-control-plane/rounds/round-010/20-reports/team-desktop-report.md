@@ -10,7 +10,7 @@
   - command: `cd /Users/wangchaoqun/novaic/novaic-app/src-tauri && cargo check && echo DESKTOP_BUILD=PASS`
   - expected_marker: `DESKTOP_BUILD=PASS`
   - repo_url: `https://github.com/chriswangcq/novaic`
-  - commit_sha: `PENDING_COMMIT`
+  - commit_sha: `49cdace72edd4c04f9259c59cdc51e6fec22400a`
   - migrated_paths:
     - `novaic-app/src-tauri/src/main.rs` — `SPLIT_CONFIG_STRICT_ABORT` block (from round-009, now on remote)
     - `novaic-app/src-tauri/src/split_runtime.rs` — `gateway_url_explicit()`, `validate_split_config()` (from round-009, now on remote)
@@ -27,7 +27,7 @@
   - command: `DIAG_OUT=/Users/wangchaoqun/novaic/novaic-control-plane/rounds/round-010/split-fix/round010-failure-path-diag.txt bash /Users/wangchaoqun/novaic/novaic-app/scripts/failure_path_replay_round009.sh`
   - expected_marker: `TOOLS_HOP=FAIL`
   - repo_url: `https://github.com/chriswangcq/novaic`
-  - commit_sha: `PENDING_COMMIT`
+  - commit_sha: `49cdace72edd4c04f9259c59cdc51e6fec22400a`
   - migrated_paths:
     - `novaic-control-plane/rounds/round-010/split-fix/round010-failure-path-diag.txt` — fresh round-010 diagnostics artifact
   - artifact_path: `novaic-control-plane/rounds/round-010/split-fix/round010-failure-path-diag.txt`
@@ -43,7 +43,7 @@
   - command: `python3 /Users/wangchaoqun/novaic/novaic-control-plane/rounds/round-010/split-close/repos/novaic-evidence-audit/scripts/check_commit_reachability.py`
   - expected_marker: `COMMIT_REACHABILITY=PASS`
   - repo_url: `https://github.com/chriswangcq/novaic`
-  - commit_sha: `PENDING_COMMIT`
+  - commit_sha: `49cdace72edd4c04f9259c59cdc51e6fec22400a`
   - migrated_paths:
     - `novaic-control-plane/rounds/round-010/split-close/repos/novaic-evidence-audit/scripts/check_commit_reachability.py` — new reachability checker
     - `novaic-control-plane/rounds/round-010/split-fix/desktop-closure-bundle-round010.md` — new clean-clone operability bundle
