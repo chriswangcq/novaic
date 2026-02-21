@@ -668,39 +668,90 @@ impl ToolsServerProcess {
         let tool_result_service_url = local_url(PORT_TOOL_RESULT_SERVICE);
 
         let child = if is_binary {
-            if !backend_path.exists() {
-                return Err(format!("Backend binary not found at {:?}", backend_path));
-            }
-            // 创建日志文件
+            // Packaged mode: check split repo override before falling back to monorepo binary.
+            let split_repo_env = std::env::var("NOVAIC_TOOLS_SERVER_SPLIT_REPO")
+                .ok()
+                .map(|v| v.trim().to_string())
+                .filter(|v| !v.is_empty());
+            let split_repo_auto = if split_runtime::external_services_mode() {
+                split_runtime::tools_server_repo_dir()
+                    .map(|p| p.to_string_lossy().to_string())
+            } else {
+                None
+            };
+            let packaged_split_repo = split_repo_env.or(split_repo_auto);
+
+            // Always prepare log files for packaged mode (used by both paths).
             let log_dir = std::path::Path::new(&data_dir_str).join("logs");
             std::fs::create_dir_all(&log_dir).ok();
             let log_file = std::fs::File::create(log_dir.join("tools-server.log"))
                 .map_err(|e| format!("Failed to create tools-server log file: {}", e))?;
             let log_file_err = log_file.try_clone()
                 .map_err(|e| format!("Failed to clone log file: {}", e))?;
-            
-            Command::new(backend_path)
-                .arg("tools-server")
-                .arg("--host")
-                .arg("127.0.0.1")
-                .arg("--port")
-                .arg(self.port.to_string())
-                .arg("--data-dir")
-                .arg(&data_dir_str)
-                .arg("--gateway-url")
-                .arg(&gateway_url)
-                .arg("--runtime-orchestrator-url")
-                .arg(&runtime_orchestrator_url)
-                .arg("--tool-result-service-url")
-                .arg(&tool_result_service_url)
-                .env("NOVAIC_RESOURCE_DIR", &resource_dir_str)
-                .env("NOVAIC_GATEWAY_URL", &gateway_url)
-                .env("NO_PROXY", "localhost,127.0.0.1,::1")
-                .env("no_proxy", "localhost,127.0.0.1,::1")
-                .stdout(Stdio::from(log_file))
-                .stderr(Stdio::from(log_file_err))
-                .spawn()
-                .map_err(|e| format!("Failed to start Tools Server binary: {}", e))?
+
+            if let Some(ref split_repo_dir) = packaged_split_repo {
+                // Packaged split-first: spawn main_tools.py from split repo via Python.
+                let split_path = std::path::Path::new(split_repo_dir);
+                let main_tools = split_path.join("main_tools.py");
+                if !main_tools.exists() {
+                    return Err(format!(
+                        "[Tools Server] PACKAGED SPLIT MODE: NOVAIC_TOOLS_SERVER_SPLIT_REPO={:?} but main_tools.py not found; refusing to fall back to monorepo binary",
+                        split_repo_dir
+                    ));
+                }
+                let venv_python = split_path.join("venv/bin/python");
+                let python = if venv_python.exists() {
+                    venv_python.to_string_lossy().to_string()
+                } else if cfg!(target_os = "windows") {
+                    "python".to_string()
+                } else {
+                    "python3".to_string()
+                };
+                println!("[Tools Server] PACKAGED SPLIT MODE: spawning from {:?}", split_repo_dir);
+                Command::new(&python)
+                    .arg("main_tools.py")
+                    .current_dir(split_path)
+                    .env("NOVAIC_TOOLS_PORT", self.port.to_string())
+                    .env("NOVAIC_GATEWAY_URL", &gateway_url)
+                    .env("NOVAIC_RUNTIME_ORCHESTRATOR_URL", &runtime_orchestrator_url)
+                    .env("NOVAIC_TOOL_RESULT_SERVICE_URL", &tool_result_service_url)
+                    .env("NOVAIC_DATA_DIR", &data_dir_str)
+                    .env("NOVAIC_RESOURCE_DIR", &resource_dir_str)
+                    .env("NOVAIC_TOOLS_SERVER_SPLIT_REPO", split_repo_dir)
+                    .env("NO_PROXY", "localhost,127.0.0.1,::1")
+                    .env("no_proxy", "localhost,127.0.0.1,::1")
+                    .stdout(Stdio::from(log_file))
+                    .stderr(Stdio::from(log_file_err))
+                    .spawn()
+                    .map_err(|e| format!("Failed to start split Tools Server (packaged): {}", e))?
+            } else {
+                // Packaged monorepo mode: use the compiled novaic-backend binary.
+                if !backend_path.exists() {
+                    return Err(format!("Backend binary not found at {:?}", backend_path));
+                }
+                Command::new(backend_path)
+                    .arg("tools-server")
+                    .arg("--host")
+                    .arg("127.0.0.1")
+                    .arg("--port")
+                    .arg(self.port.to_string())
+                    .arg("--data-dir")
+                    .arg(&data_dir_str)
+                    .arg("--gateway-url")
+                    .arg(&gateway_url)
+                    .arg("--runtime-orchestrator-url")
+                    .arg(&runtime_orchestrator_url)
+                    .arg("--tool-result-service-url")
+                    .arg(&tool_result_service_url)
+                    .env("NOVAIC_RESOURCE_DIR", &resource_dir_str)
+                    .env("NOVAIC_GATEWAY_URL", &gateway_url)
+                    .env("NO_PROXY", "localhost,127.0.0.1,::1")
+                    .env("no_proxy", "localhost,127.0.0.1,::1")
+                    .stdout(Stdio::from(log_file))
+                    .stderr(Stdio::from(log_file_err))
+                    .spawn()
+                    .map_err(|e| format!("Failed to start Tools Server binary: {}", e))?
+            }
         } else {
             // Dev mode: resolve split tools repo in split mode and refuse monorepo leak.
             let split_repo_env = std::env::var("NOVAIC_TOOLS_SERVER_SPLIT_REPO")
@@ -1728,10 +1779,20 @@ fn main() {
             
             println!("[App] Data directory: {:?}", data_dir);
             append_startup_diagnostic(&data_dir, "app-bootstrap", "start", "tauri setup started");
-            
+
+            // Validate split config early: fail-fast with explicit diagnostic when
+            // NOVAIC_EXTERNAL_SERVICES_MODE is active but NOVAIC_GATEWAY_URL is absent.
+            if let Err(ref cfg_err) = split_runtime::validate_split_config() {
+                append_startup_diagnostic(&data_dir, "split-config-validation", "error", cfg_err.clone());
+                eprintln!("[split-config-validation] {}", cfg_err);
+            } else if split_runtime::external_services_mode() {
+                append_startup_diagnostic(&data_dir, "split-config-validation", "ok",
+                    format!("explicit gateway URL: {}", split_runtime::gateway_base_url()));
+            }
+
             // Backend 五组件（Gateway、MCP Gateway、Watchdog、Task Worker、Saga Worker、Health）均由 Tauri 统一拉起
             // v4.0: Saga/Task Architecture
-            
+
             // Backend 组件: Gateway（API + DB）
             let mut gateway_state = GatewayProcess::new();
             gateway_state.set_base_url_override(split_runtime::gateway_base_url());
