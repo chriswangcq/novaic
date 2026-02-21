@@ -55,7 +55,7 @@
 - expected_marker: `EXISTS`
 - repo_url: `https://github.com/chriswangcq/novaic`
 - branch: `add-virtual-mobile`
-- commit_sha: `PLACEHOLDER`
+- commit_sha: `5a7e6e2da4380802c198b9fc37aa78ee63e77055`
 - migrated_paths: `novaic-control-plane/rounds/round-012/split-close/runtime-round012-replay-bundle.md`
 - artifact_path: `novaic-control-plane/rounds/round-012/split-close/runtime-round012-replay-bundle.md`
 - status: `DONE`
