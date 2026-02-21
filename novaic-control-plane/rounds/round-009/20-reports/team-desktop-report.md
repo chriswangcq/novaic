@@ -10,7 +10,7 @@
   - command: `cd /Users/wangchaoqun/novaic/novaic-app/src-tauri && cargo check && echo DESKTOP_BUILD=PASS`
   - expected_marker: `DESKTOP_BUILD=PASS`
   - repo_url: `https://github.com/chriswangcq/novaic`
-  - commit_sha: `PENDING_COMMIT`
+  - commit_sha: `b099264128eabce2669744e18a705b6f62a0f947`
   - migrated_paths:
     - `novaic-app/src-tauri/src/main.rs` — external-services spawn block: `gw.base_url()` replaced with `split_runtime::gateway_url_explicit()` + strict abort on `None`
   - artifact_path: `novaic-app/src-tauri/src/main.rs`
@@ -26,7 +26,7 @@
   - command: `DIAG_OUT=/Users/wangchaoqun/novaic/novaic-control-plane/rounds/round-009/split-fix/round009-failure-path-diag.txt bash /Users/wangchaoqun/novaic/novaic-app/scripts/failure_path_replay_round009.sh`
   - expected_marker: `TOOLS_HOP=FAIL`
   - repo_url: `https://github.com/chriswangcq/novaic`
-  - commit_sha: `PENDING_COMMIT`
+  - commit_sha: `b099264128eabce2669744e18a705b6f62a0f947`
   - migrated_paths:
     - `novaic-app/scripts/failure_path_replay_round009.sh` — new, ports fixed to valid range (61993/61999), DIAG_OUT support
     - `novaic-control-plane/rounds/round-009/split-fix/round009-failure-path-diag.txt` — committed diagnostics artifact
@@ -43,7 +43,7 @@
   - command: `grep -c "TOOLS_HOP=FAIL\|DESKTOP_HOP=PASS\|SPLIT_CONFIG_STRICT_ABORT" /Users/wangchaoqun/novaic/novaic-control-plane/rounds/round-009/split-fix/desktop-closure-bundle-round009.md && echo DESKTOP_OPERABILITY_BUNDLE=PASS`
   - expected_marker: `DESKTOP_OPERABILITY_BUNDLE=PASS`
   - repo_url: `https://github.com/chriswangcq/novaic`
-  - commit_sha: `PENDING_COMMIT`
+  - commit_sha: `b099264128eabce2669744e18a705b6f62a0f947`
   - migrated_paths:
     - `novaic-control-plane/rounds/round-009/split-fix/desktop-closure-bundle-round009.md` — new, ports corrected, strict-abort section added
   - artifact_path: `novaic-control-plane/rounds/round-009/split-fix/desktop-closure-bundle-round009.md`
