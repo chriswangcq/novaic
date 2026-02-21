@@ -1892,9 +1892,26 @@ fn main() {
             
             tauri::async_runtime::spawn(async move {
                 if split_runtime::external_services_mode() {
-                    let external_gateway = {
-                        let gw = gateway_for_start.lock().await;
-                        gw.base_url()
+                    // Round 009: strict enforcement — require NOVAIC_GATEWAY_URL to be
+                    // explicitly set. Abort with SPLIT_CONFIG_STRICT_ABORT instead of
+                    // silently falling back to the default monorepo localhost port.
+                    let external_gateway = match split_runtime::gateway_url_explicit() {
+                        Some(url) => url,
+                        None => {
+                            append_startup_diagnostic(
+                                &data_dir_for_gateway,
+                                "external-services",
+                                "error",
+                                "SPLIT_CONFIG_STRICT_ABORT: NOVAIC_EXTERNAL_SERVICES_MODE is active \
+                                 but NOVAIC_GATEWAY_URL is not set. Refusing to fall back to \
+                                 localhost:19999. Set NOVAIC_GATEWAY_URL=http://<host>:<port>.",
+                            );
+                            eprintln!(
+                                "[external-services] SPLIT_CONFIG_STRICT_ABORT: \
+                                 NOVAIC_GATEWAY_URL not set in split mode"
+                            );
+                            return;
+                        }
                     };
                     let health_url = format!("{}/api/health", external_gateway.trim_end_matches('/'));
                     let client = reqwest::Client::new();
