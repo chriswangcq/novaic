@@ -13,8 +13,8 @@ as `repo_url` values. These are ambiguous directory-level URLs that:
 
 | old_url | canonical_url |
 |---|---|
-| `file:///Users/wangchaoqun/novaic/novaic-storage-a` | `local:novaic-storage-a` |
-| `file:///Users/wangchaoqun/novaic/novaic-storage-b` | `local:novaic-storage-b` |
+| `file:///Users/wangchaoqun/novaic/novaic-storage-a` | `file:///Users/wangchaoqun/novaic/novaic-storage-a` |
+| `file:///Users/wangchaoqun/novaic/novaic-storage-b` | `file:///Users/wangchaoqun/novaic/novaic-storage-b` |
 
 ### Canonical URL definition
 

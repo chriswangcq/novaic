@@ -1,0 +1,126 @@
+# Round 003 Report - Storage-A/B Team
+
+## Task 1
+- task: Split storage domains into two independent repo candidates and push first split commits.
+- evidence:
+  - command:
+    - `git -C "/Users/wangchaoqun/novaic/novaic-storage-a" rev-parse --abbrev-ref HEAD`
+    - `git -C "/Users/wangchaoqun/novaic/novaic-storage-a" rev-parse HEAD`
+    - `git -C "/Users/wangchaoqun/novaic/novaic-storage-b" rev-parse --abbrev-ref HEAD`
+    - `git -C "/Users/wangchaoqun/novaic/novaic-storage-b" rev-parse HEAD`
+    - `echo "STORAGE_AB_SPLIT_COMMITS=PASS"`
+  - expected_marker:
+    - `STORAGE_AB_SPLIT_COMMITS=PASS`
+  - repo_url:
+    - `file:///Users/wangchaoqun/novaic/novaic-storage-a`
+    - `file:///Users/wangchaoqun/novaic/novaic-storage-b`
+  - branch:
+    - `split/round-003-storage-a`
+    - `split/round-003-storage-b`
+  - commit_sha:
+    - `001a550a77451ecd4d5b8f775a41577ee213c6c6`
+    - `ac1b88ccdab29b49f21cdaf897aae2fec7813a09`
+  - migrated_paths:
+    - `novaic-backend/file_service/** -> novaic-storage-a/file_service/**`
+    - `novaic-backend/tool_result_service/** -> novaic-storage-b/tool_result_service/**`
+  - summary:
+    - PASS; two independent split candidate repos were created with root split commits and dedicated startup smoke scripts.
+  - artifact_path:
+    - `novaic-storage-a/README.md`
+    - `novaic-storage-b/README.md`
+- status: DONE
+
+## Task 2
+- task: Publish `split-move/storage-ab-migration-map.md` with A/B source->target path mapping and schema ownership split.
+- evidence:
+  - command:
+    - `test -f "novaic-control-plane/rounds/round-003/split-move/storage-ab-migration-map.md" && echo "STORAGE_AB_MIGRATION_MAP=PASS"`
+  - expected_marker:
+    - `STORAGE_AB_MIGRATION_MAP=PASS`
+  - repo_url:
+    - `file:///Users/wangchaoqun/novaic/novaic-storage-a`
+    - `file:///Users/wangchaoqun/novaic/novaic-storage-b`
+  - branch:
+    - `split/round-003-storage-a`
+    - `split/round-003-storage-b`
+  - commit_sha:
+    - `001a550a77451ecd4d5b8f775a41577ee213c6c6`
+    - `ac1b88ccdab29b49f21cdaf897aae2fec7813a09`
+  - migrated_paths:
+    - `novaic-backend/file_service/** -> novaic-storage-a/file_service/**`
+    - `novaic-backend/tool_result_service/** -> novaic-storage-b/tool_result_service/**`
+  - summary:
+    - PASS; migration map includes source->target mappings, target repo URLs, and split commit SHAs.
+  - artifact_path:
+    - `novaic-control-plane/rounds/round-003/split-move/storage-ab-migration-map.md`
+- status: DONE
+
+## Task 3
+- task: Run one restore/smoke path per domain from split candidate roots and record PASS markers.
+- evidence:
+  - command:
+    - `cd "/Users/wangchaoqun/novaic/novaic-storage-a" && bash scripts/smoke_storage_a.sh`
+  - expected_marker:
+    - `STORAGE_A_SMOKE_OK=true`
+  - repo_url:
+    - `file:///Users/wangchaoqun/novaic/novaic-storage-a`
+  - branch:
+    - `split/round-003-storage-a`
+  - commit_sha:
+    - `001a550a77451ecd4d5b8f775a41577ee213c6c6`
+  - migrated_paths:
+    - `novaic-backend/file_service/** -> novaic-storage-a/file_service/**`
+  - summary:
+    - PASS; Storage-A split candidate starts independently and passes health + write/read smoke checks.
+  - artifact_path:
+    - `novaic-storage-a/artifacts/storage-a-smoke-latest.md`
+- evidence:
+  - command:
+    - `cd "/Users/wangchaoqun/novaic/novaic-storage-b" && bash scripts/smoke_storage_b.sh`
+  - expected_marker:
+    - `STORAGE_B_SMOKE_OK=true`
+  - repo_url:
+    - `file:///Users/wangchaoqun/novaic/novaic-storage-b`
+  - branch:
+    - `split/round-003-storage-b`
+  - commit_sha:
+    - `ac1b88ccdab29b49f21cdaf897aae2fec7813a09`
+  - migrated_paths:
+    - `novaic-backend/tool_result_service/** -> novaic-storage-b/tool_result_service/**`
+  - summary:
+    - PASS; Storage-B split candidate starts independently and passes health + write/read smoke checks.
+  - artifact_path:
+    - `novaic-storage-b/artifacts/storage-b-smoke-latest.md`
+- evidence:
+  - command:
+    - `bash "novaic-control-plane/rounds/round-003/20-reports/run_storage_ab_cross_repo_e2e.sh"`
+  - expected_marker:
+    - `CROSS_REPO_CHAIN=PASS`
+  - repo_url:
+    - `file:///Users/wangchaoqun/novaic/novaic-storage-a`
+    - `file:///Users/wangchaoqun/novaic/novaic-storage-b`
+  - branch:
+    - `split/round-003-storage-a`
+    - `split/round-003-storage-b`
+  - commit_sha:
+    - `001a550a77451ecd4d5b8f775a41577ee213c6c6`
+    - `ac1b88ccdab29b49f21cdaf897aae2fec7813a09`
+  - migrated_paths:
+    - `novaic-storage-a/file_service/** -> consumed by novaic-storage-b/tool_result_service/resolver.py via FILE_SERVICE_URL`
+  - summary:
+    - PASS; cross-repo end-to-end call chain verified (Storage-B resolves image URL from Storage-A in `/for-llm` response).
+  - artifact_path:
+    - `novaic-control-plane/rounds/round-003/20-reports/team-storage-ab-cross-repo-e2e.md`
+- status: DONE
+
+## Decision Needed (optional)
+- issue:
+- options:
+- recommendation:
+- impact:
+- owner:
+- target_round:
+
+## Team status
+- status: DONE
+- blocker: none

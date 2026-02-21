@@ -8,8 +8,8 @@
 - findings_count: `3`
 
 ## Fail List
-- team-api: repo_url is not canonical
-- team-desktop: repo_url is not canonical
+- team-storage-ab: missing replayable command
+- team-storage-ab: missing expected_marker
 - team-storage-ab: repo_url is not canonical
 
 ## Marker

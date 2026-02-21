@@ -1,0 +1,159 @@
+# Round 004 Report - Storage-A/B Team
+
+## Task 1
+- task: Move remaining file-service and tool-result-service domain code from monorepo into split storage-a/storage-b repos.
+- evidence:
+  - command:
+    - `git -C "/Users/wangchaoqun/novaic/novaic-storage-a" rev-parse HEAD`
+    - `git -C "/Users/wangchaoqun/novaic/novaic-storage-b" rev-parse HEAD`
+    - `test -f "/Users/wangchaoqun/novaic/novaic-storage-a/scripts/storage_a_backup.sh" && test -f "/Users/wangchaoqun/novaic/novaic-storage-a/scripts/storage_a_restore.sh" && test -f "/Users/wangchaoqun/novaic/novaic-storage-b/scripts/storage_b_backup.sh" && test -f "/Users/wangchaoqun/novaic/novaic-storage-b/scripts/storage_b_restore.sh" && test -f "/Users/wangchaoqun/novaic/novaic-storage-b/scripts/validate_storage_b_restore.sh" && echo "STORAGE_AB_CODE_MOVE_ROUND004=PASS"`
+  - expected_marker:
+    - `STORAGE_AB_CODE_MOVE_ROUND004=PASS`
+  - repo_url:
+    - `file:///Users/wangchaoqun/novaic/novaic-storage-a`
+    - `file:///Users/wangchaoqun/novaic/novaic-storage-b`
+  - default_branch:
+    - `split/round-003-storage-a`
+    - `split/round-003-storage-b`
+  - ruleset_or_protection_id:
+    - `LOCAL_ONLY_NO_GITHUB_RULESET`
+  - required_checks:
+    - `storage-a-smoke`
+    - `storage-b-restore-validate`
+    - `storage-b-smoke`
+  - permission_model:
+    - `local-maintainer-only`
+  - commit_sha:
+    - `b7cde077160cb3cfdeb03ba845e5a05cde1f82c7`
+    - `221b177d7d45c473101426932c85b60ac94fce65`
+  - migrated_paths:
+    - `novaic-backend/scripts/storage_ab_backup.sh -> novaic-storage-a/scripts/storage_a_backup.sh`
+    - `novaic-backend/scripts/storage_ab_restore.sh -> novaic-storage-a/scripts/storage_a_restore.sh`
+    - `novaic-backend/scripts/storage_ab_backup.sh -> novaic-storage-b/scripts/storage_b_backup.sh`
+    - `novaic-backend/scripts/storage_ab_restore.sh -> novaic-storage-b/scripts/storage_b_restore.sh`
+    - `novaic-backend/scripts/storage_ab_validate_restore.sh -> novaic-storage-b/scripts/validate_storage_b_restore.sh`
+  - summary:
+    - PASS; remaining storage domain operational scripts were moved into split repos and committed.
+  - artifact_path:
+    - `novaic-control-plane/rounds/round-004/github-rollout/storage-ab-repo-governance.md`
+- status: DONE
+
+## Task 2
+- task: Replace monorepo cross-imports with API-based integration between storage-a and storage-b where needed.
+- evidence:
+  - command:
+    - `python - <<'PY' ... scan novaic-storage-b/tool_result_service for common.http.clients ... PY`
+  - expected_marker:
+    - `STORAGE_B_IMPORT_DECOUPLE=PASS`
+  - repo_url:
+    - `file:///Users/wangchaoqun/novaic/novaic-storage-b`
+  - default_branch:
+    - `split/round-003-storage-b`
+  - ruleset_or_protection_id:
+    - `LOCAL_ONLY_NO_GITHUB_RULESET`
+  - required_checks:
+    - `cross-repo-chain-round004`
+  - permission_model:
+    - `local-maintainer-only`
+  - commit_sha:
+    - `221b177d7d45c473101426932c85b60ac94fce65`
+  - migrated_paths:
+    - `novaic-backend/tool_result_service/clients.py (common internal client import) -> novaic-storage-b/tool_result_service/clients.py (direct HTTP API client)`
+    - `novaic-backend/tool_result_service/resolver.py (common internal client import) -> novaic-storage-b/tool_result_service/resolver.py (direct HTTP API client)`
+  - summary:
+    - PASS; Storage-B now calls Storage-A over HTTP API without monorepo `common.http.clients` dependency.
+  - artifact_path:
+    - `novaic-control-plane/rounds/round-004/github-rollout/storage-ab-repo-governance.md`
+- status: DONE
+
+## Task 3
+- task: Run smoke/restore from both split repo roots and one cross-repo chain replay, then publish PASS markers with commit evidence.
+- evidence:
+  - command:
+    - `cd "/Users/wangchaoqun/novaic/novaic-storage-a" && bash scripts/smoke_storage_a.sh`
+  - expected_marker:
+    - `STORAGE_A_SMOKE_OK=true`
+  - repo_url:
+    - `file:///Users/wangchaoqun/novaic/novaic-storage-a`
+  - default_branch:
+    - `split/round-003-storage-a`
+  - ruleset_or_protection_id:
+    - `LOCAL_ONLY_NO_GITHUB_RULESET`
+  - required_checks:
+    - `storage-a-smoke`
+  - permission_model:
+    - `local-maintainer-only`
+  - commit_sha:
+    - `b7cde077160cb3cfdeb03ba845e5a05cde1f82c7`
+  - migrated_paths:
+    - `novaic-backend/file_service/** -> novaic-storage-a/file_service/**`
+  - summary:
+    - PASS; Storage-A split repo root startup/health/write-read smoke passed.
+  - artifact_path:
+    - `novaic-storage-a/artifacts/storage-a-smoke-latest.md`
+- evidence:
+  - command:
+    - `cd "/Users/wangchaoqun/novaic/novaic-storage-b" && bash scripts/validate_storage_b_restore.sh && bash scripts/smoke_storage_b.sh`
+  - expected_marker:
+    - `STORAGE_B_RESTORE_VALIDATE=PASS`
+    - `STORAGE_B_SMOKE_OK=true`
+  - repo_url:
+    - `file:///Users/wangchaoqun/novaic/novaic-storage-b`
+  - default_branch:
+    - `split/round-003-storage-b`
+  - ruleset_or_protection_id:
+    - `LOCAL_ONLY_NO_GITHUB_RULESET`
+  - required_checks:
+    - `storage-b-restore-validate`
+    - `storage-b-smoke`
+  - permission_model:
+    - `local-maintainer-only`
+  - commit_sha:
+    - `221b177d7d45c473101426932c85b60ac94fce65`
+  - migrated_paths:
+    - `novaic-backend/tool_result_service/** -> novaic-storage-b/tool_result_service/**`
+    - `novaic-backend/scripts/storage_ab_validate_restore.sh -> novaic-storage-b/scripts/validate_storage_b_restore.sh`
+  - summary:
+    - PASS; Storage-B split repo root restore validation and smoke both passed.
+  - artifact_path:
+    - `novaic-storage-b/artifacts/storage-b-restore-validate-latest.md`
+    - `novaic-storage-b/artifacts/storage-b-smoke-latest.md`
+- evidence:
+  - command:
+    - `bash "/Users/wangchaoqun/novaic/novaic-control-plane/rounds/round-004/20-reports/run_storage_ab_cross_repo_e2e_round004.sh"`
+  - expected_marker:
+    - `CROSS_REPO_CHAIN_ROUND004=PASS`
+  - repo_url:
+    - `file:///Users/wangchaoqun/novaic/novaic-storage-a`
+    - `file:///Users/wangchaoqun/novaic/novaic-storage-b`
+  - default_branch:
+    - `split/round-003-storage-a`
+    - `split/round-003-storage-b`
+  - ruleset_or_protection_id:
+    - `LOCAL_ONLY_NO_GITHUB_RULESET`
+  - required_checks:
+    - `cross-repo-chain-round004`
+  - permission_model:
+    - `local-maintainer-only`
+  - commit_sha:
+    - `b7cde077160cb3cfdeb03ba845e5a05cde1f82c7`
+    - `221b177d7d45c473101426932c85b60ac94fce65`
+  - migrated_paths:
+    - `novaic-storage-b/tool_result_service/resolver.py -> API call to novaic-storage-a/file_service`
+  - summary:
+    - PASS; cross-repo chain replay passed and returned image_url payload from Storage-A resource resolved by Storage-B.
+  - artifact_path:
+    - `novaic-control-plane/rounds/round-004/20-reports/team-storage-ab-cross-repo-e2e.md`
+- status: DONE
+
+## Decision Needed (optional)
+- issue:
+- options:
+- recommendation:
+- impact:
+- owner:
+- target_round:
+
+## Team status
+- status: DONE
+- blocker: none

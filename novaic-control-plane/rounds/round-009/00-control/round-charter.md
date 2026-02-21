@@ -2,7 +2,7 @@
 
 ## Window
 - Round ID: round-009
-- Round status: ACTIVE
+- Round status: CLOSED
 - Cadence: sync and submission happen within the round
 
 ## Objective

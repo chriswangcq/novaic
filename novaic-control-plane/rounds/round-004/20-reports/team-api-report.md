@@ -1,0 +1,112 @@
+# Round 004 Report - API Team
+
+## Task 1
+- task: Continue gateway extraction by moving remaining runtime-forwarding and health route code from monorepo gateway module into split gateway repo.
+- evidence:
+  - command:
+    - `git rev-parse HEAD`
+    - `git ls-remote --heads origin round-003-split`
+  - expected_marker:
+    - `3f34b6fe3451e23cb5bdc4da29353d62ecc32ce8`
+    - `refs/heads/round-003-split`
+  - repo_url:
+    - `file:///Users/wangchaoqun/novaic/novaic-control-plane/rounds/round-003/split-move/remotes/novaic-gateway.git`
+  - default_branch:
+    - `main`
+  - ruleset_or_protection_id:
+    - `branch-protection-baseline-v1 (BRANCH_PROTECTION_BASELINE.md)`
+  - required_checks:
+    - `smoke`
+  - permission_model:
+    - `PR required + CODEOWNERS (* @platform-team)`
+  - commit_sha:
+    - `3f34b6fe3451e23cb5bdc4da29353d62ecc32ce8`
+  - migrated_paths:
+    - `novaic-backend/gateway/clients/runtime_orchestrator.py -> rounds/round-003/split-move/repos/novaic-gateway/clients/runtime_orchestrator.py`
+    - `novaic-backend/main_gateway.py (/api, /api/health, /api/system/status route subset) -> rounds/round-003/split-move/repos/novaic-gateway/services/health_routes.py`
+    - `novaic-backend/main_gateway.py (startup runtime health check behavior) -> rounds/round-003/split-move/repos/novaic-gateway/services/gateway_api.py`
+  - summary:
+    - PASS; round-004 split commit pushed with migrated runtime-forwarding and health route subsets in target split repo.
+  - artifact_path:
+    - `rounds/round-003/split-move/repos/novaic-gateway/clients/runtime_orchestrator.py`
+    - `rounds/round-003/split-move/repos/novaic-gateway/services/health_routes.py`
+    - `rounds/round-003/split-move/repos/novaic-gateway/services/gateway_api.py`
+- status: DONE
+
+## Task 2
+- task: Update gateway service wiring to consume split runtime repo endpoint/config, not monorepo internal shortcuts.
+- evidence:
+  - command:
+    - `python3 -c "from pathlib import Path; p=Path('services/gateway_api.py'); t=p.read_text(encoding='utf-8'); ok=('check_runtime_orchestrator_health()' in t and 'ServiceConfig.RUNTIME_ORCHESTRATOR_URL' in Path('api/runtime_orchestrator_forward.py').read_text(encoding='utf-8')); print('SPLIT_RUNTIME_WIRING_CHECK=PASS' if ok else 'SPLIT_RUNTIME_WIRING_CHECK=FAIL')"`
+  - expected_marker:
+    - `SPLIT_RUNTIME_WIRING_CHECK=PASS`
+  - repo_url:
+    - `file:///Users/wangchaoqun/novaic/novaic-control-plane/rounds/round-003/split-move/remotes/novaic-gateway.git`
+  - default_branch:
+    - `main`
+  - ruleset_or_protection_id:
+    - `branch-protection-baseline-v1 (BRANCH_PROTECTION_BASELINE.md)`
+  - required_checks:
+    - `smoke`
+  - permission_model:
+    - `PR required + CODEOWNERS (* @platform-team)`
+  - commit_sha:
+    - `3f34b6fe3451e23cb5bdc4da29353d62ecc32ce8`
+  - migrated_paths:
+    - `novaic-backend/common/config.py (runtime endpoint config behavior subset) -> rounds/round-003/split-move/repos/novaic-gateway/config/service_config.py`
+    - `novaic-backend/gateway/api/runtime_orchestrator_forward.py -> rounds/round-003/split-move/repos/novaic-gateway/api/runtime_orchestrator_forward.py`
+    - `novaic-backend/main_gateway.py (runtime startup health dependency) -> rounds/round-003/split-move/repos/novaic-gateway/services/gateway_api.py`
+  - summary:
+    - PASS; gateway wiring now reads split-runtime endpoint from split config module and performs strict startup health check.
+  - artifact_path:
+    - `rounds/round-003/split-move/repos/novaic-gateway/config/service_config.py`
+    - `rounds/round-003/split-move/repos/novaic-gateway/api/runtime_orchestrator_forward.py`
+    - `rounds/round-003/split-move/repos/novaic-gateway/services/gateway_api.py`
+- status: DONE
+
+## Task 3
+- task: Run gateway repo-root startup and one end-to-end call path to runtime, with PASS markers and commit evidence.
+- evidence:
+  - command:
+    - `bash rounds/round-003/split-move/repos/novaic-gateway/scripts/smoke_gateway_repo_root.sh`
+    - `cat /tmp/novaic-gateway-split.log`
+  - expected_marker:
+    - `SPLIT_RUNTIME_HEALTH=PASS`
+    - `SPLIT_GATEWAY_HEALTH=PASS`
+    - `SPLIT_GATEWAY_STATUS_ROUTE=PASS`
+    - `SPLIT_E2E_RUNTIME_FORWARD=PASS`
+    - `SPLIT_RUNTIME_STARTUP_CHECK=PASS`
+  - repo_url:
+    - `file:///Users/wangchaoqun/novaic/novaic-control-plane/rounds/round-003/split-move/remotes/novaic-gateway.git`
+  - default_branch:
+    - `main`
+  - ruleset_or_protection_id:
+    - `branch-protection-baseline-v1 (BRANCH_PROTECTION_BASELINE.md)`
+  - required_checks:
+    - `smoke`
+  - permission_model:
+    - `PR required + CODEOWNERS (* @platform-team)`
+  - commit_sha:
+    - `3f34b6fe3451e23cb5bdc4da29353d62ecc32ce8`
+  - migrated_paths:
+    - `novaic-backend/scripts/smoke_gateway_independent_startup.sh (pattern) -> rounds/round-003/split-move/repos/novaic-gateway/scripts/smoke_gateway_repo_root.sh`
+    - `novaic-backend/main_gateway.py (/api/system/status) -> rounds/round-003/split-move/repos/novaic-gateway/services/health_routes.py`
+  - summary:
+    - PASS; split gateway starts from repo root, health/status routes pass, and runtime forward call path is end-to-end green.
+  - artifact_path:
+    - `rounds/round-003/split-move/repos/novaic-gateway/scripts/smoke_gateway_repo_root.sh`
+    - `/tmp/novaic-gateway-split.log`
+    - `rounds/round-003/split-move/repos/novaic-gateway/services/health_routes.py`
+- status: DONE
+
+## Decision Needed (optional)
+- issue: none
+- options: n/a
+- recommendation: n/a
+- impact: n/a
+- owner: n/a
+- target_round: n/a
+
+## Team status
+- status: DONE
+- blocker: none

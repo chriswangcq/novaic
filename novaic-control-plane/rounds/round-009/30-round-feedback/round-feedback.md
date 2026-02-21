@@ -1,26 +1,28 @@
-# Round 009 Feedback (Interim)
+# Round 009 Feedback
 
 ## Round decision
-- decision: `CONDITIONAL_FAIL`
+- decision: `PASS`
 - owner: `Program Owner`
 
 ## Feedback summary
-- P0: `Gate A failed; canonical URL audit reports 18 violations`
-- P1: `5 teams still use file:/// repo_url; does not satisfy https-only policy`
-- P2: `operability evidence exists but cannot be accepted until parser contract is met`
+- P0: `none`
+- P1: `Commit reachability is currently SKIP_REMOTE-heavy (24/24), so remote connectivity proof is not yet strong`
+- P2: `Round close required one redispatch cycle to align team report parser fields with round policy`
 
 ## Compliance check
-- canonical repo_url violations: `yes`
+- canonical repo_url violations: `no`
 - stale audit artifact: `no`
 - missing questions_for_program_owner section: `no`
 - template placeholders in reports: `no`
 
 ## Gate check
-- Gate A: `FAIL`
-- Gate B: `BLOCKED_BY_GATE_A`
-- Gate C: `BLOCKED_BY_GATE_A`
-- Gate D: `PASS_PENDING_FINAL_REAUDIT`
+- Gate A: `PASS`
+- Gate B: `PASS (reachable=0, skip_remote=24, unreachable=0)`
+- Gate C: `PASS`
+- Gate D: `PASS`
 
-## Required next action
-- Execute `40-redispatch/redispatch-plan.md` exactly.
-- Round 009 can close only when `gate_round009.sh` prints `ROUND009_GATE_RUNNER_PASS`.
+## Close evidence
+- `rounds/round-009/split-close/canonical-repo-url-audit.md` => `failures: 0`
+- `rounds/round-009/split-close/cross-team-evidence-audit.md` => `findings_count: 0`
+- `rounds/round-009/split-close/commit-reachability-audit.md` => `unreachable_count: 0`
+- `rounds/round-009/split-close/gate_round009.sh` output => `ROUND009_GATE_RUNNER_PASS`

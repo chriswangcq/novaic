@@ -1,0 +1,16 @@
+{
+  "round": "round-008",
+  "generated_at": "2026-02-21T03:09:37Z",
+  "fixture_sha": "755226cae8997141",
+  "found_issues": [
+    "missing expected_marker",
+    "missing replayable command",
+    "repo_url not canonical ('local:novaic-badrepo')",
+    "team status not DONE (got 'PLANNED')"
+  ],
+  "expected_issues_present": true,
+  "url_violation_flagged": true,
+  "test_passed": true,
+  "missing_detections": [],
+  "marker": "ROUND008_NEGATIVE_FIXTURE_PASS"
+}

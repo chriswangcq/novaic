@@ -1,0 +1,44 @@
+version: "2"
+round: "round-002"
+purpose: "first-wave physical split compatibility baseline"
+
+shared_kernel:
+  repo: "novaic-shared-kernel"
+  version: "v2.0.0"
+
+first_wave_matrix:
+  - profile: "fw-001"
+    gateway:
+      repo: "novaic-gateway"
+      version: "v2.0.0"
+    runtime:
+      repo: "novaic-backend"
+      version: "v2.0.0"
+    tools:
+      repo: "novaic-mcp-vmuse"
+      version: "v2.0.0"
+    desktop:
+      repo: "novaic-app"
+      version: "v2.0.0"
+    contract_set: "contracts@v2.0.0"
+    health_contract: "health.v1"
+
+  - profile: "fw-002"
+    gateway:
+      repo: "novaic-gateway"
+      version: "v2.1.0-rc1"
+    runtime:
+      repo: "novaic-backend"
+      version: "v2.0.0"
+    tools:
+      repo: "novaic-mcp-vmuse"
+      version: "v2.0.0"
+    desktop:
+      repo: "novaic-app"
+      version: "v2.0.0"
+    contract_set: "contracts@v2.1.0-rc1"
+    health_contract: "health.v1"
+
+replay_notes:
+  - "All profiles require startup pass and health pass markers."
+  - "Contract replay must run before smoke and health checks."

@@ -23,7 +23,7 @@
     - `python3 rounds/round-009/split-close/repos/novaic-evidence-audit/scripts/check_commit_reachability.py`
   - required_commit_or_path: `rounds/round-009/20-reports/team-api-report.md`
   - target_round: `round-009`
-  - status: `PLANNED`
+  - status: `DONE`
 
 - team: `Runtime`
   - finding_reference: `team-runtime has 3 non-https repo_url findings in canonical audit`
@@ -36,7 +36,7 @@
     - `python3 rounds/round-009/split-close/repos/novaic-evidence-audit/scripts/check_commit_reachability.py`
   - required_commit_or_path: `rounds/round-009/20-reports/team-runtime-report.md`
   - target_round: `round-009`
-  - status: `PLANNED`
+  - status: `DONE`
 
 - team: `Agent Runtime`
   - finding_reference: `team-agent-runtime has 3 non-https repo_url findings in canonical audit`
@@ -49,7 +49,7 @@
     - `python3 rounds/round-009/split-close/repos/novaic-evidence-audit/scripts/check_commit_reachability.py`
   - required_commit_or_path: `rounds/round-009/20-reports/team-agent-runtime-report.md`
   - target_round: `round-009`
-  - status: `PLANNED`
+  - status: `DONE`
 
 - team: `Tools`
   - finding_reference: `team-tools has 4 non-https repo_url findings in canonical audit`
@@ -62,7 +62,7 @@
     - `python3 rounds/round-009/split-close/repos/novaic-evidence-audit/scripts/check_commit_reachability.py`
   - required_commit_or_path: `rounds/round-009/20-reports/team-tools-report.md`
   - target_round: `round-009`
-  - status: `PLANNED`
+  - status: `DONE`
 
 - team: `Storage-A/B`
   - finding_reference: `team-storage-ab has 5 non-https repo_url findings in canonical audit`
@@ -75,7 +75,7 @@
     - `python3 rounds/round-009/split-close/repos/novaic-evidence-audit/scripts/check_commit_reachability.py`
   - required_commit_or_path: `rounds/round-009/20-reports/team-storage-ab-report.md`
   - target_round: `round-009`
-  - status: `PLANNED`
+  - status: `DONE`
 
 - team: `Platform`
   - finding_reference: `Gate A failed; full round still blocked`
@@ -87,8 +87,8 @@
     - `bash rounds/round-009/split-close/gate_round009.sh`
   - required_commit_or_path: `rounds/round-009/split-close/`
   - target_round: `round-009`
-  - status: `PLANNED`
+  - status: `DONE`
 
 ## Status
-- status: `ACTIVE`
-- blocker: `missing canonical GitHub repo URLs for 5 teams`
+- status: `CLOSED`
+- blocker: `none`

@@ -1,0 +1,53 @@
+{
+  "round": "round-010",
+  "generated_at": "2026-02-21T08:26:28Z",
+  "report_snapshot_sha": "24a1384fd92c3529",
+  "teams": [
+    {
+      "team": "team-agent-runtime",
+      "urls_checked": 3,
+      "violations": [],
+      "pass": true
+    },
+    {
+      "team": "team-api",
+      "urls_checked": 3,
+      "violations": [],
+      "pass": true
+    },
+    {
+      "team": "team-desktop",
+      "urls_checked": 3,
+      "violations": [],
+      "pass": true
+    },
+    {
+      "team": "team-platform",
+      "urls_checked": 3,
+      "violations": [],
+      "pass": true
+    },
+    {
+      "team": "team-runtime",
+      "urls_checked": 3,
+      "violations": [],
+      "pass": true
+    },
+    {
+      "team": "team-storage-ab",
+      "urls_checked": 6,
+      "violations": [],
+      "pass": true
+    },
+    {
+      "team": "team-tools",
+      "urls_checked": 3,
+      "violations": [],
+      "pass": true
+    }
+  ],
+  "violation_count": 0,
+  "violations": [],
+  "gate_pass": true,
+  "marker": "ROUND010_CANONICAL_REPO_URL_AUDIT_COMPLETED"
+}

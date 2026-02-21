@@ -39,16 +39,16 @@
 
 ## Task 3 — operability: Publish api-round010-replay-bundle.md with clean-clone setup and full marker index
 
-- task: `Publish rounds/round-010/split-fix/api-round010-replay-bundle.md with clean-clone setup section, success-path transcript, two failure-path transcripts, and 16-entry marker index`
+- task: `Publish rounds/round-010/split-close/api-round010-replay-bundle.md with clean-clone setup section, success-path transcript, two failure-path transcripts, and 16-entry marker index`
 - problem_fixed: `Round 009 bundle lacked a clean-clone setup section; Gate C requires non-author replay path starting from remote clone`
-- solution_applied: `Created api-round010-replay-bundle.md with: clean-clone setup commands (git clone + env var override method), success-path output (12 markers), failure-path A and B outputs, full 16-entry marker index including CLEAN_CLONE_WORKFLOW_READY=PASS`
-- target_state_proof: `grep returns 0 for both CLEAN_CLONE_WORKFLOW_READY=PASS and FAIL_PATH_STARTUP_NO_URL=PASS in the bundle file`
-- command: `grep -q "CLEAN_CLONE_WORKFLOW_READY=PASS" novaic-control-plane/rounds/round-010/split-fix/api-round010-replay-bundle.md && grep -q "FAIL_PATH_STARTUP_NO_URL=PASS" novaic-control-plane/rounds/round-010/split-fix/api-round010-replay-bundle.md && echo "ROUND010_BUNDLE_CHECK=PASS"`
-- expected_marker: `ROUND010_BUNDLE_CHECK=PASS`
-- repo_url: `https://github.com/chriswangcq/novaic-gateway`
-- commit_sha: `ea3f313c0af0279a2cbd8d8752fa593ed150685b`
-- migrated_paths: `rounds/round-010/split-fix/api-round010-replay-bundle.md (new operability artifact)`
-- artifact_path: `rounds/round-010/split-fix/api-round010-replay-bundle.md`
+- solution_applied: `Created api-round010-replay-bundle.md with: clean-clone setup commands (git clone + env var override method), success-path output (12 markers), failure-path A and B outputs, full 16-entry marker index including CLEAN_CLONE_WORKFLOW_READY=PASS. Bundle committed to monorepo f4ac0410afb8339fcaf30a895e092b70ed05c0fb.`
+- target_state_proof: `grep returns API_ROUND010_OPERABILITY_PASS from bundle in monorepo; monorepo commit f4ac0410 is REACHABLE via local clone`
+- command: `grep -q "CLEAN_CLONE_WORKFLOW_READY=PASS" novaic-control-plane/rounds/round-010/split-close/api-round010-replay-bundle.md && echo API_ROUND010_OPERABILITY_PASS`
+- expected_marker: `API_ROUND010_OPERABILITY_PASS`
+- repo_url: `https://github.com/chriswangcq/novaic`
+- commit_sha: `f4ac0410afb8339fcaf30a895e092b70ed05c0fb`
+- migrated_paths: `novaic-control-plane/rounds/round-010/split-close/api-round010-replay-bundle.md (new operability artifact)`
+- artifact_path: `novaic-control-plane/rounds/round-010/split-close/api-round010-replay-bundle.md`
 - status: `DONE`
 
 ---

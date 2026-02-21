@@ -1,0 +1,12 @@
+DESKTOP_ROUND001_ARTIFACT_ALIGNMENT_START
+PATH_CHECK PASS novaic-control-plane/rounds/round-001/split-plan/desktop-boundary.md
+PATH_CHECK PASS novaic-control-plane/rounds/round-001/split-plan/desktop-runtime-dependency-map.md
+PATH_CHECK PASS novaic-app/dist
+PATH_CHECK PASS novaic-app/src-tauri/target/release/bundle/macos/NovAIC.app
+PATH_CHECK PASS novaic-app/src-tauri/target/release/bundle/dmg/NovAIC_0.3.0_aarch64.dmg
+PATH_CHECK PASS novaic-control-plane/rounds/round-001/20-reports/desktop-evidence/fresh-profile-round001-baseline-summary.txt
+PATH_CHECK PASS novaic-control-plane/rounds/round-001/20-reports/desktop-evidence/fresh-profile-round001-baseline-startup-diagnostics.jsonl
+PATH_CHECK PASS novaic-control-plane/rounds/round-001/20-reports/desktop-evidence/fresh-profile-round001-baseline-startup.log
+PATH_CHECK PASS novaic-control-plane/rounds/round-001/20-reports/desktop-evidence/fresh-profile-round001-baseline-metadata.txt
+DESKTOP_ROUND001_ARTIFACT_PATH_CHECK=PASS
+MISSING_COUNT=0

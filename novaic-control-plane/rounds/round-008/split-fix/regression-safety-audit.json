@@ -1,0 +1,9 @@
+{
+  "round": "round-008",
+  "generated_at": "2026-02-21T03:24:59Z",
+  "report_snapshot_sha": "51a11b116524e56f",
+  "prior_green_teams_checked": 5,
+  "regressions_found": 0,
+  "regressions": [],
+  "marker": "ROUND008_REGRESSION_SAFETY_AUDIT_COMPLETED"
+}

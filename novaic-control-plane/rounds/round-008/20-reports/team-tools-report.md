@@ -78,7 +78,3 @@
 ## Team status
 - status: DONE
 - blocker: none
-
-## Team status
-- status: DONE
-- blocker: none
