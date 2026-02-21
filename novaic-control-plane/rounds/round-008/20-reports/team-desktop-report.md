@@ -27,7 +27,7 @@
   - command: `bash /Users/wangchaoqun/novaic/novaic-app/scripts/failure_path_replay_round008.sh`
   - expected_marker: `TOOLS_HOP=FAIL`
   - repo_url: `https://github.com/chriswangcq/novaic`
-  - commit_sha: `PENDING_COMMIT`
+  - commit_sha: `7a6a03ddf08557825e54eb4bd45b6813ac58f787`
   - migrated_paths:
     - `novaic-app/scripts/failure_path_replay_round008.sh` — new failure-path replay script
   - artifact_path: `novaic-app/scripts/failure_path_replay_round008.sh`
