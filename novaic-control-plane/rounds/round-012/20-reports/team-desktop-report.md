@@ -31,7 +31,7 @@ result: PASS
 
 - repo_url: `https://github.com/chriswangcq/novaic`
 - branch: `add-virtual-mobile`
-- commit_sha: PENDING_COMMIT
+- commit_sha: `8f0183c5d12c0abec17ba3a5d5bf91a2c3a976fb`
 - migrated_paths: `novaic-control-plane/rounds/round-003/split-move/repos/novaic-desktop/scripts/test_split_config_abort.py`, `novaic-control-plane/rounds/round-003/split-move/repos/novaic-desktop/scripts/fail_path_desktop_split_config.sh`
 - artifact_path: `novaic-control-plane/rounds/round-003/split-move/repos/novaic-desktop/scripts/test_split_config_abort.py`
 
@@ -65,7 +65,7 @@ FAILURE_PATH_REPLAY=PASS
 
 - repo_url: `https://github.com/chriswangcq/novaic`
 - branch: `add-virtual-mobile`
-- commit_sha: PENDING_COMMIT
+- commit_sha: `8f0183c5d12c0abec17ba3a5d5bf91a2c3a976fb`
 - migrated_paths: `novaic-control-plane/rounds/round-012/split-fix/round012-failure-path-diag.txt`
 - artifact_path: `novaic-control-plane/rounds/round-012/split-fix/round012-failure-path-diag.txt`
 
@@ -95,7 +95,7 @@ result: PASS
 
 - repo_url: `https://github.com/chriswangcq/novaic`
 - branch: `add-virtual-mobile`
-- commit_sha: PENDING_COMMIT
+- commit_sha: `8f0183c5d12c0abec17ba3a5d5bf91a2c3a976fb`
 - migrated_paths: `novaic-control-plane/rounds/round-012/split-close/desktop-round012-replay-bundle.md`, `novaic-control-plane/rounds/round-012/split-close/repos/novaic-evidence-audit/scripts/artifact_existence_audit.py`
 - artifact_path: `novaic-control-plane/rounds/round-012/split-close/desktop-round012-replay-bundle.md`
 
