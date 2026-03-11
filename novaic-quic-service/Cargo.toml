@@ -1,0 +1,21 @@
+[package]
+name = "novaic-quic-service"
+version = "0.1.0"
+edition = "2021"
+description = "STUN (RFC 5389) + QUIC Relay for NovAIC P2P"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+anyhow = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls"] }
+urlencoding = "2"
+quinn = { version = "0.11", features = ["rustls"] }
+rustls = { version = "0.23", features = ["ring"] }
+rustls-pemfile = "2"
+rcgen = "0.13"
+# 当前使用 quinn 裸流 + JSON 握手（非 HTTP/3）
+bytes = "1"
