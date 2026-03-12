@@ -1,0 +1,18 @@
+{
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "",
+        "width": 1280,
+        "height": 800
+      }
+    ]
+  },
+  "bundle": {
+    "iOS": {
+      "developmentTeam": "K9FF74JCRL",
+      "minimumSystemVersion": "15.0"
+    }
+  }
+}

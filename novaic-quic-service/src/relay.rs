@@ -21,8 +21,8 @@ struct PcEntry {
 /// session_id -> PcEntry（等待手机配对，超时自动清理）
 type PcRegistry = Arc<RwLock<HashMap<String, PcEntry>>>;
 
-/// session 过期时间：PC 注册后若 2 分钟内无手机连接则视为过期
-const SESSION_TTL: Duration = Duration::from_secs(120);
+/// session 过期时间：PC 注册后若无手机连接则视为过期
+const SESSION_TTL: Duration = Duration::from_secs(10);
 
 /// 从 PEM 文件加载 TLS 证书（生产环境，如 Let's Encrypt）
 fn load_server_crypto_from_files(
@@ -166,6 +166,19 @@ async fn handle_connection(
             send_response(&mut send, &ConnectResponse::failure("Invalid JWT")).await?;
             return Ok(());
         }
+        // 校验 session：双方必须持 relay-request 创建的 session_id 建联，无效则快速失败
+        if auth::validate_relay_session(
+            gateway_url,
+            &req.jwt,
+            &req.session_id,
+            &req.device_id,
+        )
+        .await
+        .is_err()
+        {
+            send_response(&mut send, &ConnectResponse::failure("invalid or expired session")).await?;
+            return Ok(());
+        }
         {
             let mut reg = pc_registry.write().await;
             reg.retain(|_, e| e.registered_at.elapsed() <= SESSION_TTL);
@@ -192,20 +205,42 @@ async fn handle_connection(
             return Ok(());
         }
 
-        let pc_conn = pc_registry.write().await.remove(&req.session_id);
-        let pc_conn = match pc_conn {
-            Some(entry) => {
-                if entry.registered_at.elapsed() > SESSION_TTL {
+        // 校验 session：relay-request 创建且未过期，无效则快速失败，避免无谓等待
+        if auth::validate_relay_session(
+            gateway_url,
+            &req.jwt,
+            &req.session_id,
+            &req.target_device_id,
+        )
+        .await
+        .is_err()
+        {
+            send_response(&mut send, &ConnectResponse::failure("invalid or expired session")).await?;
+            return Ok(());
+        }
+
+        // 长等待：PC 可能尚未 RegisterPc（推送有延迟），轮询等待最多 10s
+        const WAIT_FOR_PC_TIMEOUT: Duration = Duration::from_secs(10);
+        const POLL_INTERVAL: Duration = Duration::from_millis(300);
+
+        let pc_conn = {
+            let deadline = Instant::now() + WAIT_FOR_PC_TIMEOUT;
+            loop {
+                if let Some(entry) = pc_registry.write().await.remove(&req.session_id) {
+                    if entry.registered_at.elapsed() <= SESSION_TTL {
+                        break Some(entry.conn);
+                    }
                     send_response(&mut send, &ConnectResponse::failure("Session expired (TTL exceeded)")).await?;
                     return Ok(());
                 }
-                entry.conn
+                if Instant::now() >= deadline {
+                    send_response(&mut send, &ConnectResponse::failure("PC offline or session expired")).await?;
+                    return Ok(());
+                }
+                tokio::time::sleep(POLL_INTERVAL).await;
             }
-            None => {
-                send_response(&mut send, &ConnectResponse::failure("PC offline or session expired")).await?;
-                return Ok(());
-            }
-        };
+        }
+        .expect("loop breaks with Some");
 
         send_response(&mut send, &ConnectResponse::success()).await?;
         info!("[Relay] Paired session={}", &req.session_id[..8.min(req.session_id.len())]);

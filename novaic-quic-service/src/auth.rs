@@ -44,6 +44,38 @@ pub async fn validate_jwt_and_device(
     }
 }
 
+/// 校验 relay session：由 relay-request 创建且未过期则返回 Ok，否则快速失败
+pub async fn validate_relay_session(
+    gateway_url: &str,
+    jwt: &str,
+    session_id: &str,
+    target_device_id: &str,
+) -> anyhow::Result<()> {
+    let sid = urlencoding::encode(session_id);
+    let tid = urlencoding::encode(target_device_id);
+    let url = format!(
+        "{}/api/p2p/validate-relay-session?session_id={}&target_device_id={}",
+        gateway_url, sid, tid
+    );
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(5))
+        .build()?;
+
+    let resp = client
+        .get(&url)
+        .header("Authorization", format!("Bearer {}", jwt))
+        .send()
+        .await?;
+
+    if resp.status().as_u16() == 404 {
+        anyhow::bail!("invalid or expired session");
+    }
+    if !resp.status().is_success() {
+        anyhow::bail!("session validation failed: status {}", resp.status());
+    }
+    Ok(())
+}
+
 /// 仅校验 JWT（无 device 时用，如部分场景）
 pub async fn validate_jwt(gateway_url: &str, jwt: &str) -> anyhow::Result<String> {
     let url = format!("{}/internal/auth/validate", gateway_url);

@@ -14,6 +14,7 @@ Environment=STUN_PORT=3478
 Environment=RELAY_TLS_CERT_PATH=/etc/letsencrypt/live/relay.gradievo.com/fullchain.pem
 Environment=RELAY_TLS_KEY_PATH=/etc/letsencrypt/live/relay.gradievo.com/privkey.pem
 Environment=RUST_LOG=info
+# RUST_LOG=debug 可查看连接尝试（排查 VNC 连接问题时临时启用）
 
 ExecStart=/opt/novaic/novaic-quic-service/novaic-quic-service
 Restart=always

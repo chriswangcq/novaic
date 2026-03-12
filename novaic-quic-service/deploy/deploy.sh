@@ -12,21 +12,27 @@ SSH_OPTS="${SSH_OPTS:--o StrictHostKeyChecking=accept-new}"
 
 echo "=== 1. 创建远程目录并推送源码 ==="
 ssh $SSH_OPTS "$SERVER" 'mkdir -p /opt/novaic/novaic-quic-service'
-rsync -avz -e "ssh $SSH_OPTS" \
-  --exclude target \
-  --exclude .git \
+RSYNC_EXCLUDES="--exclude target --exclude .git"
+# 海外服务器不使用国内镜像，排除 .cargo/config.toml
+[ -n "$DEPLOY_OVERSEAS" ] && RSYNC_EXCLUDES="$RSYNC_EXCLUDES --exclude .cargo"
+rsync -avz -e "ssh $SSH_OPTS" $RSYNC_EXCLUDES \
   "$PROJECT_DIR/" "$SERVER:/opt/novaic/novaic-quic-service/"
 
 echo ""
 echo "=== 2. 远程编译 ==="
-ssh $SSH_OPTS "$SERVER" 'bash -s' << 'REMOTE_BUILD'
+ssh $SSH_OPTS "$SERVER" "DEPLOY_OVERSEAS=$DEPLOY_OVERSEAS bash -s" << 'REMOTE_BUILD'
 set -e
 cd /opt/novaic/novaic-quic-service
 if ! command -v cargo >/dev/null 2>&1; then
-  echo "安装 Rust（使用国内镜像）..."
-  export RUSTUP_DIST_SERVER=https://rsproxy.cn
-  export RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
-  curl --proto '=https' --tlsv1.2 -sSf https://rsproxy.cn/rustup-init.sh | sh -s -- -y
+  if [ -n "$DEPLOY_OVERSEAS" ]; then
+    echo "安装 Rust（官方源，海外服务器）..."
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+  else
+    echo "安装 Rust（使用国内镜像）..."
+    export RUSTUP_DIST_SERVER=https://rsproxy.cn
+    export RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
+    curl --proto '=https' --tlsv1.2 -sSf https://rsproxy.cn/rustup-init.sh | sh -s -- -y
+  fi
   . "$HOME/.cargo/env"
 fi
 cargo build --release
