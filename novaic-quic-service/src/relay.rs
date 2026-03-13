@@ -22,7 +22,7 @@ struct PcEntry {
 type PcRegistry = Arc<RwLock<HashMap<String, PcEntry>>>;
 
 /// session 过期时间：PC 注册后若无手机连接则视为过期
-const SESSION_TTL: Duration = Duration::from_secs(10);
+const SESSION_TTL: Duration = Duration::from_secs(25); // P2 R3 余量：与 Gateway _PENDING_SESSION_TTL_SECS 对齐
 
 /// 从 PEM 文件加载 TLS 证书（生产环境，如 Let's Encrypt）
 fn load_server_crypto_from_files(
@@ -219,8 +219,8 @@ async fn handle_connection(
             return Ok(());
         }
 
-        // 长等待：PC 可能尚未 RegisterPc（推送有延迟），轮询等待最多 10s
-        const WAIT_FOR_PC_TIMEOUT: Duration = Duration::from_secs(10);
+        // 长等待：PC 可能尚未 RegisterPc（推送有延迟），轮询等待最多 25s（P2 R3 余量）
+        const WAIT_FOR_PC_TIMEOUT: Duration = Duration::from_secs(25);
         const POLL_INTERVAL: Duration = Duration::from_millis(300);
 
         let pc_conn = {
