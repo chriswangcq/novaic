@@ -45,7 +45,7 @@ git log --oneline -5                  # 最近 commit 消息
 cd /Users/wangchaoqun/new-build-novaic
 git add HANDOVER.md
 git commit -m "docs: update HANDOVER.md — [简要说明本次对话做了什么]"
-git push origin main:new-build
+git push
 ```
 
 ## 注意事项
