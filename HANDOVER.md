@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-14（实现前后端 Agent/Device 增量同步与 SSE 广播机制，部署最新服务及前端）
+> 最后更新：2026-03-14（Agent Config SWR 架构落地：SettingsModal render 只读 DB，消除全部直连 API）
 
 ---
 
@@ -751,10 +751,28 @@ Tauri App 与云端 Gateway 通过 WebSocket (`/internal/pc/ws`) 保持长连接
 | `src/db/messageSubscription.ts` | 消息变更订阅 `subscribe(userId, agentId, cb)` |
 | `src/db/logRepo.ts` | 日志 CRUD |
 | `src/db/logSubscription.ts` | 日志变更订阅 |
+| `src/db/agentRepo.ts` | Agent 列表缓存 CRUD |
+| `src/db/agentSubscription.ts` | Agent 列表变更订阅 |
+| `src/db/agentConfigRepo.ts` | **Per-agent 配置缓存**（tools config, skills, bootstrap files, prompts），键 `agent_id` |
+| `src/db/agentConfigSubscription.ts` | Agent config 变更订阅 `subscribe(userId, agentId, cb)` |
+| `src/db/deviceRepo.ts` | Device 列表缓存 CRUD |
+| `src/db/deviceSubscription.ts` | Device 列表变更订阅 |
 | `src/db/prefsRepo.ts` | 偏好 k/v 持久化 |
 | `src/db/fileRepo.ts` | 附件缓存（图片 Blob、文件 local_path） |
 
-**数据流**：`messageRepo.putMessages()` → `notifyMessageChange()` → `useMessagesFromDB` 的 callback → `refetch()` 从 DB 读 → 渲染。日志同理。
+**数据流**：`messageRepo.putMessages()` → `notifyMessageChange()` → `useMessagesFromDB` 的 callback → `refetch()` 从 DB 读 → 渲染。日志、Agent 列表、Agent Config 均同理。
+
+**IndexedDB 表一览（DB_VERSION=5）**：
+
+| 表 | keyPath | 用途 |
+|---|---|---|
+| `messages` | `id` | 聊天消息 |
+| `logs` | `id` | 执行日志 |
+| `prefs` | `key` | 偏好 k/v |
+| `files` | `id` | 附件缓存 |
+| `agents` | `id` | Agent 列表缓存 |
+| `devices` | `id` | Device 列表缓存 |
+| `agent_configs` | `agent_id` | Per-agent 配置缓存（tools config, skills, bootstrap files, prompts, 含 `fetched_at` 时间戳） |
 
 ### Gateway 子层 `src/gateway/`
 
@@ -793,7 +811,8 @@ Tauri App 与云端 Gateway 通过 WebSocket (`/internal/pc/ws`) 保持长连接
 | `src/components/hooks/useAgent.ts` | Agent hook（含 VM setup 流程） |
 | `src/components/hooks/useModels.ts` | 模型 hook |
 | `src/components/hooks/useLayout.ts` | 布局 hook |
-| `src/components/hooks/useSettings.ts` | 设置 hook（API keys、models、skills、agent tools） |
+| `src/components/hooks/useSettings.ts` | 设置 hook（API keys、models、skills、agent tools）；全局 TTL 缓存（getToolCategories, getSkills） |
+| `src/hooks/useAgentConfigFromDB.ts` | **Agent 配置 SWR hook**：从 IndexedDB 读取 + 订阅变更，UI 层唯一数据源 |
 
 ### VM Setup 服务
 
@@ -1207,9 +1226,32 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 - **CollapsibleExecutionLog**：inline 时 Tab 在底部；非 inline 时已废弃（不再使用顶部浮动）
 - **模型相关**：`useModels` 读 store；`getModelService().setModel` 写 store + prefs + gateway
 
-### AgentToolsTab 加载数据
+### AgentToolsTab 数据架构（SWR — 2026-03-14 重构）
 
-`loadData` 并行拉取：`getToolCategories`、`getAgentToolsConfig`、`getSkills`、`getAgentSkills`、`api.devices.listForUser`、`api.getAgentBinding`、`api.getAgentModel`，以及 `getPromptsPreview`、`getBootstrapFiles`。选择 Agent 后自动触发。
+**原则**：与 chat/log 完全一致 —— **render 只读 DB，永不直连 API**。
+
+**数据流**：
+```
+打开 Agent Tab / 切换 Agent
+  → useAgentConfigFromDB(agentId)  // Phase 1: 从 IndexedDB 瞬间读取缓存
+  →   有缓存 → setState → 立即渲染
+  →   无缓存 → 骨架屏
+  → revalidate()                   // Phase 2: 后台静默从 API 拉取最新
+  →   Promise.allSettled(6 个配置请求)
+  →   agentConfigRepo.putAgentConfig()  // 写入 IDB
+  →   notifyAgentConfigChange()         // subscription 通知
+  →   useAgentConfigFromDB 收到回调 → 重新读 IDB → setState → 无感更新
+
+  → binding / model / devices       // Phase 1b: 从 Zustand store 直读
+  →   agent.binding（agent 列表 API 已包含）
+  →   agent.model_id + availableModels
+  →   getDevices(userId) from IDB
+  → revalidate() 也会后台刷新这些
+```
+
+**handleSave 写通**：Save 成功后 → API 写入 + `agentConfigRepo.patchAgentConfig()` 写入 IDB → subscription 触发 UI 刷新。
+
+**第一次**打开某个 Agent 配置时，IDB 无缓存，等后台 revalidate 完成后写入 IDB，UI 自动填充。**第二次以后**瞬间从 IDB 缓存渲染。
 
 ### ExecutionLog 与 CollapsibleExecutionLog
 
@@ -1309,21 +1351,15 @@ EOF
 
 ### 2. 缓存不到位 / 制约性能的部分 (Data Lists)
 
-这些部分的共性是：数据流仅仅走 **Gateway API -> Zustand Store (内存)** 的链路，完全缺乏硬盘（IndexedDB/LocalStorage）的持久化兜底。
+> ✅ **2026-03-14 已全部解决**：以下三个问题均已通过 SWR + IDB 架构修复。
 
-*   **Agents 列表 (`AgentDrawer.tsx`, `agentService.ts`)**
-    *   **现状**：存储在 Zustand 驱动的内存中 (`useAppStore(s => s.agents)`)。每当侧边栏 Drawer 被打开 (`isOpen=true`)，都会固定调用 `loadAgents()` 向网关发起一次全量 `api.listAgents()`。
-    *   **缺点**：如果网络轻微波折，或者 Gateway 高负载，这部分会直接让侧边栏陷入漫长的空白读取状态；并且重启应用后在没有网的前提下这会是一片空白。缺乏 `agentRepo.ts` 进行硬盘级别的状态保留。
-*   **Devices 列表 (`DeviceManagerPage.tsx`, `AgentDrawer.tsx`)**
-    *   **现状**：同样是全量的 `api.devices.listForUser()` 获取，并落入 `deviceManagerDevices` 这个纯内存中。同时结合 `useDeviceStatusPolling` 处理状态获取。
-    *   **缺点**：设备名称、配置等静态元数据和实时变动的 `status` 没有剥离开。设备基础信息理应像 Logs 一样被离线化缓存，由于频繁整体抓获取拉跨了首屏性能感。
-*   **代理设置 & 工具/技能列表 (`SettingsModal.tsx - AgentToolsTab / SkillsTab`)**
-    *   **现状**：不仅没有本地存储机制，连内存缓存/去重机制都很薄弱。打开 `Agent Tools` 这个内嵌界面的一瞬间，通过并行的 `Promise.allSettled` 发送了 **7 个单独的 Gateway 请求** （包括 `getToolCategories`, `getAgentToolsConfig`, `getSkills`, `getAgentSkills`, 以及重新请求一次设备的 `listForUser`、获取 model 等）。
-    *   **缺点**：这是一个明显的请求放大点（Fetch Waterfall）。其中 `Skills`、`Tool Categories` 是属于全局级别的低频改动数据，不仅每次打开弹出 Modal 都要强网路拉取，并且每次都会覆盖，造成较大的点击延迟感。
+*   **Agents 列表** — ✅ 已有 `agentRepo.ts` + `useAgentsFromDB` hook，SWR 模式落地。
+*   **Devices 列表** — ✅ 已有 `deviceRepo.ts` + `useDevicesFromDB` hook，SWR 模式落地。
+*   **代理配置（Agent Tools/Skills/Bootstrap）** — ✅ 新增 `agentConfigRepo.ts` + `useAgentConfigFromDB` hook（DB_VERSION 5），SettingsModal 的 `AgentToolsTab` 完全遵循 render 只读 DB 原则。
 
-### 3. 可以强化的优化方向 (Suggestions)
+### 3. 已完成的优化项
 
-1. **为核心 List 构建 IDB Repo**：引入类似 `agentRepo.ts` 和 `deviceRepo.ts`，为基础结构物缓存（持久化到 IndexedDB ）。
-2. **读策略从即时全量转为 SWR (Stale-While-Revalidate)**：像 Agent 清单和 Device 清单在组件挂载时，优先读取 IDB 返回数据供 UI 铺设，后台接着拉取 API 更新 DB 和 UI，让用户完全无感知白屏加载。
-3. **请求级别 / Service 级别对低频静态数据增加内存 TTL 缓存**：如 `getToolCategories()` 和 内置 `Skills`，这类不会高频变更的结构应当实现 TTL 缓存锁（或引入类似 React Query 级管理），避免组件级别的高并发重建请求。
-4. **设备数据采取 "基建 + Delta" 的模式**：设备静态属性离线缓存，实时运转的状态 (`running`/`stopped`) 可依赖现在的轮询或者并入 SSE 主通道进行。 
+1. ✅ **核心 List 构建 IDB Repo**：`agentRepo.ts`、`deviceRepo.ts`、`agentConfigRepo.ts` 均已实现。
+2. ✅ **SWR (Stale-While-Revalidate)**：Agent 列表、Device 列表、Agent 配置均已实现 IDB 优先读取 + 后台静默刷新。
+3. ✅ **低频数据 TTL 缓存**：`getToolCategories()` 和 `getSkills(builtin)` 已在 `useSettings.ts` 中实现 15 分钟 TTL 内存缓存。
+4. ✅ **SSE 广播多端同步**：`AGENT_METADATA_UPDATED` 和 `DEVICE_METADATA_UPDATED` SSE 事件已实现，前端 `syncService.ts` 接入。
