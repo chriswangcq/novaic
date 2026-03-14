@@ -33,7 +33,7 @@
 └── NovAIC.app (Tauri)
     ├── 前端 React/Vite          ← novaic-app/src/
     │   ├── IndexedDB 本地缓存   ← 消息、日志、偏好、附件（按 userId 隔离）
-    │   └── SSE 连接             ← 当前按 agent 维度，计划改为 user 维度
+    │   └── SSE 连接             ← User 维度（一个用户一条长连接）
     └── Rust 后端
         ├── vmcontrol（内嵌）     ← novaic-app/src-tauri/vmcontrol/
         │   ├── 管理 QEMU Linux VM (QMP socket)
@@ -335,7 +335,11 @@ Couldn't load -exportOptionsPlist The file ".tmpXXXX" couldn't be opened
 
 ---
 
-## 六、云端部署详细说明（novaic-gateway）
+## 六、云端部署详细说明
+
+> 日常部署推荐使用 `./deploy` CLI（见第五节）。以下为底层细节和首次配置参考。
+
+### Gateway（api.gradievo.com）
 
 ### 服务器信息
 
@@ -347,22 +351,14 @@ Couldn't load -exportOptionsPlist The file ".tmpXXXX" couldn't be opened
 | 数据目录 | `/opt/novaic/data/` |
 | 数据库 | `/opt/novaic/data/gateway.db` (SQLite) |
 
-### 部署流程（标准）
+### 部署流程
 
 ```bash
-# 方式 A：使用部署脚本（推荐，rsync 同步代码，避免 git pull 冲突）
-cd novaic-gateway
-git add -A && git commit -m "..." && git push
-./scripts/deploy-gateway.sh root@api.gradievo.com
+# 推荐：使用统一 CLI
+./deploy gateway
 
-# 方式 B：手动 git pull（若服务器有本地修改可能冲突）
-cd novaic-gateway
-git add -A && git commit -m "..." && git push
-ssh root@api.gradievo.com 'cd /opt/novaic/services/novaic-gateway && git pull'
-ssh root@api.gradievo.com 'cp /opt/novaic/services/novaic-gateway/scripts/restart_gw.sh /opt/novaic/ && bash /opt/novaic/restart_gw.sh'
-
-# 验证
-ssh root@api.gradievo.com 'ss -tlnp | grep 19999'
+# 或手动 rsync 部署
+cd novaic-gateway && ./scripts/deploy-gateway.sh root@api.gradievo.com
 ```
 
 ### 重启脚本（repo 内维护）
@@ -379,7 +375,7 @@ ssh root@api.gradievo.com 'ss -tlnp | grep 19999'
 - **生产部署**：`novaic-cloud.conf` 含占位符，需替换后部署。运行 `nginx/deploy-nginx.sh` 生成配置，再 scp 到服务器并 reload。若修改了 novaic-cloud.conf（如新增公开路由），需重新部署 nginx 配置
 - HTTP(80) → HTTPS(301) 跳转
 - HTTPS(443) 代理到 `127.0.0.1:19999`
-- **认证方式（2026-03 起）**：Nginx `auth_request` 调用 `/internal/auth/validate`，验证 Clerk RS256 JWT，提取 `sub` 作为 `X-User-ID` 注入下游请求
+- **认证方式（2026-03 起）**：Nginx `auth_request` 调用 `/internal/auth/validate`，验证 HS256 JWT，提取 `sub` 作为 `X-User-ID` 注入下游请求
 - 客户端伪造的 `X-User-ID` header 在 Nginx 层被剥离（`proxy_set_header X-User-ID ""`）
 - SSE 路由（`/api/chat/messages`、`/api/logs/stream`、`/api/user/chat/stream`、`/api/user/logs/stream` 等）关闭 proxy buffering、超时 3600s
 - CloudBridge WebSocket：`/internal/pc/ws`，超时 3600s，Auth token 通过 `Authorization: Bearer` header 传入
@@ -398,7 +394,7 @@ ssh root@api.gradievo.com 'tail -f /opt/novaic/data/logs/gateway-$(date +%Y%m%d)
 
 ---
 
-## 五附、novaic-quic-service（STUN + Relay）
+### novaic-quic-service（STUN + Relay）
 
 > P2P 直连不可达时的兜底服务。打洞已移除，手机连接 PC 时直接走 relay 建立 QUIC 连接，用户无感知。
 
@@ -485,13 +481,11 @@ ssh root@relay.gradievo.com "bash -s" < novaic-quic-service/deploy/setup-certbot
 
 **OTA 调试**：浏览器打开 CDN URL 时，`sessionStorage.setItem('novaic_ota_debug', '1')` 后刷新，控制台输出 `[OTA] Debug` 信息。
 
-#### 一键部署（推荐）
+#### 一键部署
 
 ```bash
-./scripts/deploy-all.sh [version]   # version 默认 0.3.0
+./deploy all [version]    # 推荐，见第五节
 ```
-
-依次执行：1) 前端构建并 rsync 到 relay；2) novaic-quic-service 推送并重启；3) iOS 构建安装；4) macOS 桌面 App 构建。完成后需手动更新 Gateway 的 `FRONTEND_CDN_URL` 并重启。
 
 #### 前端部署完整流程（三步）
 
@@ -530,7 +524,7 @@ export FRONTEND_VERSION=0.3.0
 
 **三、手机端构建**
 
-iOS 一键构建并安装：`cd novaic-app && ./scripts/build-and-install-ios.sh`
+iOS 一键构建并安装：`./deploy ios`
 
 Android：`npm run tauri:build:android`
 
@@ -550,7 +544,7 @@ ssh -p 52222 root@47.243.221.45 "bash -s" < novaic-quic-service/deploy/setup-cnd
 
 **后续热更新**：修改前端 → 执行上述一、二步（版本号按需调整）→ 用户下次启动自动加载新版本。
 
-详见 `docs/HOT_UPDATE_DEPLOY_STEPS.md`。
+详见 `docs/design/HOT_UPDATE_DEPLOY_STEPS.md`。
 
 ### 本地开发
 
@@ -603,14 +597,13 @@ cargo run
 
 ### 相关文档
 
-- `docs/PHASE5-DEPLOYMENT.md` — 部署详细流程
-- `docs/HOT_UPDATE_DEPLOY_STEPS.md` — 前端热更新部署（frontend.gradievo.com）
-- `docs/DESIGN-novaic-quic-service.md` — 服务设计
-- `docs/DESIGN-P2P-UNIFIED.md` — P2P 架构总览
+- `docs/design/HOT_UPDATE_DEPLOY_STEPS.md` — 前端热更新部署
+- `docs/design/DESIGN-novaic-quic-service.md` — 服务设计
+- `docs/design/DESIGN-P2P-UNIFIED.md` — P2P 架构总览
 
 ---
 
-## 六、认证体系（2026-03 重构：自定义 JWT）
+## 七、认证体系（自定义 JWT）
 
 ### 整体流程
 
@@ -663,7 +656,7 @@ cargo run
 
 ---
 
-## 七、关键架构决策与注意点
+## 八、关键架构决策与注意点
 
 ### VmControl — VM 状态检测（Scheme A）
 
@@ -733,7 +726,7 @@ Tauri App 与云端 Gateway 通过 WebSocket (`/internal/pc/ws`) 保持长连接
 
 ---
 
-## 八、前端关键文件
+## 九、前端关键文件
 
 > 前端采用 **Render / Business / DB 三层架构**（详见 `novaic-app/FRONTEND_ARCHITECTURE.md`）。
 
@@ -959,7 +952,7 @@ PC 式（宽度 ≥ LAYOUT_THRESHOLD）：
 
 ---
 
-## 九、模型与 Agent 配置
+## 十、模型与 Agent 配置
 
 ### 模型选择流程
 
@@ -994,7 +987,7 @@ AgentService.selectAgent(agentId)
 
 ---
 
-## 十、数据库 Schema 关键表
+## 十一、数据库 Schema 关键表
 
 > 数据库：`/opt/novaic/data/gateway.db` (SQLite, schema v45)
 
@@ -1022,9 +1015,9 @@ AgentService.selectAgent(agentId)
 
 ---
 
-## 十一、SSE 事件与连接管理
+## 十二、SSE 事件与连接管理
 
-### 当前逻辑（Agent 维度）
+### 当前逻辑（User 维度）
 
 - **Chat SSE**：`GET /api/user/chat/stream`（User 维度，无 agent_id）
 - **Logs SSE**：`GET /api/user/logs/stream`（User 维度，无 agent_id）
@@ -1055,7 +1048,7 @@ AgentService.selectAgent(agentId)
 
 ---
 
-## 十二、常见问题
+## 十三、常见问题
 
 | 问题 | 原因 | 解决 |
 |---|---|---|
@@ -1112,7 +1105,7 @@ AgentService.selectAgent(agentId)
 
 ---
 
-## 十三、环境变量与配置
+## 十四、环境变量与配置
 
 ### 本地 Tauri App
 
@@ -1169,7 +1162,7 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 
 ---
 
-## 十四、待办 / 技术债
+## 十五、待办 / 技术债
 
 - [ ] **iOS 键盘输入框适配**：原生 `--keyboard-height` 注入方案已实现（main.mm），Header 固定 OK，但输入框仍可能不可见。需要在真机上验证并调试。可能原因：OTA 导航后 WKWebView 引用失效、键盘通知被 Tauri 框架重新注册
 - [ ] `execution_logs` 的 `subagent_id = 'main'` legacy 数据迁移为 `'main-{agent_id[:8]}'`（消除前端兼容逻辑）
@@ -1234,7 +1227,7 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 
 ---
 
-## 十五、数据库操作安全规范
+## 十六、数据库操作安全规范
 
 SQLite WAL 模式下，**gateway 运行时可以直接用 sqlite3 读写 DB**（多读单写并发）。
 
