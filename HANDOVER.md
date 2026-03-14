@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-13（VNC 统一复用 DeviceDesktopView、maindesk 展开修复、竞态修复）
+> 最后更新：2026-03-14（iOS 键盘原生修复 main.mm、仓库整理 submodule+文档分类、移动端 UI 优化）
 
 ---
 
@@ -65,24 +65,54 @@
 
 ## 二、代码仓库说明
 
-| 仓库目录 | GitHub | 用途 |
+父仓库 `chriswangcq/novaic`（分支 `new-build`），所有服务均为 **git submodule**（`.gitmodules` 已注册 13 个）。
+
+```bash
+# Clone 全部
+git clone --recurse-submodules -b new-build git@github.com:chriswangcq/novaic.git
+# 已 clone 后初始化
+git submodule update --init --recursive
+```
+
+| Submodule | GitHub | 用途 |
 |---|---|---|
-| `novaic-app` | chriswangcq/novaic-app | Tauri 桌面应用（主仓库） |
+| `novaic-app` | chriswangcq/novaic-app | Tauri 桌面+移动端应用 |
 | `novaic-gateway` | chriswangcq/novaic-gateway | 云端 Gateway（API + DB） |
 | `novaic-quic-service` | chriswangcq/novaic-quic-service | STUN + Relay（P2P 兜底） |
-| 其余子目录 | 各自独立 repo | agent runtime、工具服务等，部署在云端 |
+| `novaic-agent-runtime` | chriswangcq/novaic-agent-runtime | Agent 运行时 |
+| `novaic-runtime-orchestrator` | chriswangcq/novaic-runtime-orchestrator | 运行时编排器 |
+| `novaic-contracts` | chriswangcq/novaic-contracts | 共享协议/类型定义 |
+| `novaic-shared-kernel` | chriswangcq/novaic-shared-kernel | 共享核心库 |
+| `novaic-shared-runtime-common` | chriswangcq/novaic-shared-runtime-common | 共享运行时公共库 |
+| `novaic-control-plane` | chriswangcq/novaic-control-plane | 控制面板 |
+| `novaic-storage-a` | chriswangcq/novaic-storage-a | 存储服务 A |
+| `novaic-storage-b` | chriswangcq/novaic-storage-b | 存储服务 B |
+| `novaic-tools-server` | chriswangcq/novaic-tools-server | 工具服务 |
+| `novaic-mcp-vmuse` | chriswangcq/novaic-mcp-vmuse | MCP VMuse 集成 |
 
-**注意**：每个子目录都是独立 git repo，不是 monorepo，`.git` 在子目录内。父仓库 `new-build-novaic` 无 remote 时仅作本地聚合。
+### 仓库目录结构（2026-03-14 整理后）
 
-### 分支与合并（2026-03）
-
-| 仓库 | 主分支 | 说明 |
-|---|---|---|
-| novaic-app | main | fix/ios-black-screen-saturated 已合并 |
-| novaic-gateway | main | multi-user 已合并 |
-| novaic-tools-server | main | multi-user 已合并 |
-| novaic-mcp-vmuse | main | multi-user 已合并 |
-| novaic-quic-service | main | 独立 repo，已推送到 GitHub |
+```
+new-build-novaic/
+├── README.md              # 项目概览
+├── HANDOVER.md            # 接手文档（本文件）
+├── .gitmodules            # 13 个 submodule 注册
+├── .gitignore             # dist/, .pytest_cache/
+├── docs/                  # 文档（分类）
+│   ├── design/     (36)   # 系统设计/方案
+│   ├── device/     (16)   # 设备管理
+│   ├── vnc/        (54)   # VNC 连接
+│   ├── ota/        (12)   # OTA 热更新
+│   ├── p2p/        (12)   # P2P 连接
+│   ├── research/   (32)   # 技术调研/分析
+│   ├── review/     (32)   # 代码审查/报告
+│   ├── misc/       (26)   # 其他
+│   └── submodules/ (88)   # 各 submodule 文档副本
+├── scripts/               # 构建/部署/运维脚本
+│   └── submodules/ (58)   # 各 submodule 脚本副本
+├── examples/              # 示例项目 (tauri-ios-hello)
+└── 13 个 submodule/
+```
 
 ---
 
@@ -251,21 +281,21 @@ Couldn't load -exportOptionsPlist The file ".tmpXXXX" couldn't be opened
 3. **tauri.ios.conf.json**：覆盖 `decorations`、`transparent`、`center` 等桌面配置
 4. **Google Fonts**：`display=optional` 减少首屏阻塞
 
-#### iOS 缩放与键盘行为
+#### iOS 缩放与键盘行为（2026-03-14 原生修复）
 
-- **防缩放**：`index.html` viewport 含 `maximum-scale=1, minimum-scale=1, user-scalable=no`；`index.css` 含 `touch-action: manipulation`
-- **键盘弹出**：`interactive-widget=resizes-content` + `visualViewport` polyfill，使内容区缩小而非整页上推
+- **防缩放**：`index.html` viewport 含 `maximum-scale=1, minimum-scale=1, user-scalable=no, interactive-widget=resizes-content`；`index.css` 含 `touch-action: manipulation`
+- **键盘弹出 — 原生层修复**（`src-tauri/gen/apple/Sources/novaic/main.mm`）：
+  1. 移除 WKWebView 的键盘通知观察者 → 阻止 iOS 自动滚动页面（Header 不被推）
+  2. 注册自定义键盘通知监听 → 获取精确键盘高度 → 通过 `evaluateJavaScript` 注入 CSS 变量 `--keyboard-height`
+  3. 每次键盘事件强制 `contentOffset = CGPointZero`
+  - **前端配合**：`LayoutContainer.tsx` 移动端容器用 `position: fixed; bottom: var(--keyboard-height, 0px)` 自动适配
+  - **为什么不用 JS 方案**：`visualViewport.height` 在 Tauri WKWebView 中移除键盘观察者后不更新；`scrollEnabled=NO` 不能阻止程序化 contentOffset；`interactive-widget=resizes-content` 在 WKWebView 中无效
+- **移动端不自动聚焦**：`ChatInput.tsx` 中 `useEffect` 检测 `ontouchstart`，移动端不调用 `.focus()`，避免进入聊天页键盘自动弹出
+- **`main.mm` 注意事项**：`ffi::start_app()` 启动 UIKit run loop 且永不返回，所有 `dispatch_after` 必须在它**之前**调用
 
 #### 调试用 Hello World 项目
 
-独立最小项目 `tauri-ios-hello/` 用于验证 Tauri iOS 构建流程，与主应用解耦：
-
-```bash
-cd tauri-ios-hello
-./scripts/build-and-install-ios.sh
-```
-
-配置与 novaic-app 相同（Team、bundle `com.novaic.app.hello`），便于单独调试。
+独立最小项目 `examples/tauri-ios-hello/` 用于验证 Tauri iOS 构建流程，与主应用解耦。
 
 ---
 
@@ -1105,13 +1135,7 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 
 ## 十四、待办 / 技术债
 
-- [x] 将 `/tmp/restart_gw.sh` 移到 `/opt/novaic/restart_gw.sh` 防止重启丢失 ✓
-- [x] SSE 广播按 `user_id + agent_id` 隔离 ✓
-- [x] `UserRepository` 写操作加 `transaction()` 防止锁悬挂 ✓
-- [x] SSE 使用 Tauri `get_gateway_url` 与 HTTP 一致 ✓
-- [x] **SSE 改为 User 维度**：一个用户一条长连接，切换 agent 不断连 ✓（见 docs/SSE_USER_LEVEL_MIGRATION.md）
-- [x] **VM 准备 API 迁入 vmcontrol**：环境检查、镜像检查/下载、部署等待统一走 Gateway → Cloud Bridge → vmcontrol ✓
-- [x] **VNC 统一复用**：Device tab 与 Agent tab 均用 DeviceDesktopView，移除 VNCViewShared/vncStream ✓（2026-03-13）
+- [ ] **iOS 键盘输入框适配**：原生 `--keyboard-height` 注入方案已实现（main.mm），Header 固定 OK，但输入框仍可能不可见。需要在真机上验证并调试。可能原因：OTA 导航后 WKWebView 引用失效、键盘通知被 Tauri 框架重新注册
 - [ ] `execution_logs` 的 `subagent_id = 'main'` legacy 数据迁移为 `'main-{agent_id[:8]}'`（消除前端兼容逻辑）
 - [ ] VM 停机后 socket 文件清理（当前 VNC socket 在 VM 停后仍残留）
 - [ ] scrcpy 重连后 `retryCount` 上限（当前 3 次后停止，用户需手动点"连接设备"）
@@ -1158,24 +1182,19 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 
 ### 相关文档
 
+> 注：文档已于 2026-03-14 分类整理到 `docs/` 子目录。路径格式：`docs/{category}/{filename}.md`
+
 | 文档 | 说明 |
 |---|---|
 | `novaic-app/FRONTEND_ARCHITECTURE.md` | Render/Business/DB 三层、hooks 约束、数据流 |
-| `novaic-app/docs/ARCHITECTURE_OVERVIEW.md` | 架构总览、数据流图 |
-| `novaic-app/docs/DB_DRIVEN_ARCHITECTURE_CHECK.md` | DB 驱动架构检查清单 |
-| `docs/SSE_USER_LEVEL_MIGRATION.md` | SSE 改为 User 维度改造方案 |
-| `docs/COMMANDS_SPLIT_DESIGN.md` | Tauri 命令拆分、vm/vmcontrol 关系 |
-| `docs/DESIGN-P2P-UNIFIED.md` | P2P 架构、Relay 兜底、Registry/Discovery |
-| `docs/PHASE5-DEPLOYMENT.md` | novaic-quic-service 部署指南 |
-| `docs/HOT_UPDATE_DEPLOY_STEPS.md` | 前端热更新部署（relay.gradievo.com/resource/frontend/） |
-| `docs/OTA_RE_ENABLE_IMPLEMENTATION_PLAN_V2.md` | OTA 重新启用实施方案 |
-| `docs/RELAY_MIGRATION_8_TO_47.md` | Relay 迁移 8.146.233.64→47.243.221.45 |
-| `SYSTEM_DESIGN.md` | 系统设计 |
-| `novaic-app/VNC_SCRCPY_WS_CONNECTIONS.md` | VNC/scrcpy WebSocket 连接说明 |
-| `docs/VNC_FRONTEND_TO_VMCONTROL_FLOW.md` | VNC 前端到 vmcontrol 流程 |
-| `docs/VNC_MAINDESK_SUBUSER_DIFFS_BEFORE_P2P.md` | maindesk/subuser 差异说明 |
-| 本文档「四、构建与发布 → iOS 部署流程」 | iOS 完整部署流程、黑屏修复、脚本说明 |
-| `docs/IOS_BLACK_SCREEN_ISSUE_REPORT.md` | iOS 黑屏问题分析与修复记录 |
+| `docs/submodules/novaic-app/ARCHITECTURE_OVERVIEW.md` | 架构总览、数据流图 |
+| `docs/design/SSE_USER_LEVEL_MIGRATION.md` | SSE 改为 User 维度改造方案 |
+| `docs/design/COMMANDS_SPLIT_DESIGN.md` | Tauri 命令拆分、vm/vmcontrol 关系 |
+| `docs/design/DESIGN-P2P-UNIFIED.md` | P2P 架构、Relay 兜底、Registry/Discovery |
+| `docs/ota/OTA_RE_ENABLE_IMPLEMENTATION_PLAN_V2.md` | OTA 重新启用实施方案 |
+| `docs/design/SYSTEM_DESIGN.md` | 系统设计 |
+| `docs/vnc/VNC_FRONTEND_TO_VMCONTROL_FLOW.md` | VNC 前端到 vmcontrol 流程 |
+| 本文档「四 → iOS 部署流程」 | iOS 完整部署流程、黑屏修复、键盘原生修复 |
 
 ---
 
