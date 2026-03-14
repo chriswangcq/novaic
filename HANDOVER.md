@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-14（修复 getCachedUser() 无限循环导致 Device/Agents tab 卡死；Agent Config SWR 架构落地）
+> 最后更新：2026-03-14（修复消息不可见 bug；全面 Chat DOM 优化；修复 getCachedUser 无限循环；Agent Config SWR 架构）
 
 ---
 
@@ -1109,6 +1109,7 @@ AgentService.selectAgent(agentId)
 | 本地 DB 缓存异常 | IndexedDB 数据损坏或需强制刷新 | Settings → Clear Cache → 清空本地 DB 缓存，然后刷新页面 |
 | **Device tab 点击卡死 / UI 全面冻结** | `getCachedUser()` 每次返回新对象，放进 `useEffect([user])` 导致无限 re-render 循环 | 已修复：`useDevicesFromDB`/`useAgentsFromDB`/`useAgentConfigFromDB` 全部改为 `const userId = getCachedUser()?.user_id ?? null` 用 `string` 做依赖 |
 | `...` 按钮（MoreVertical）点不开 | 同上，无限循环占满主线程导致 UI 无响应 | 同上 |
+| **宽屏模式消息不可见（能复制但看不到）** | 两个叠加原因：① `opacity-0`/`isReady` timer 在 SSE 期间被反复取消永远不 fire；② `h-full` 在 flex-column 父元素无明确 height 时解析为 0 | 已修复：彻底移除 opacity-0 模式，MessageList 改用 `flex-1 min-h-0` 替代 `h-full` |
 | LLM think 失败（429 / engine_overloaded） | Moonshot 等 API 限流或过载 | 间歇性，非 context 问题；建议对 429 做指数退避重试 |
 | 截图无法截到指定 subuser 的屏幕（shell 可以） | `runtime_context` 缺少 `display` 字段 | 已修复：`build_runtime_context` 为 vm_user 注入 `display: ":11"` 等 |
 | iOS 安装后黑屏 | custom-protocol 在 WKWebView 有已知问题；或 VITE_GATEWAY_URL 缺失导致启动抛错 | 已修复：iOS 用 `--features mobile` 不含 custom-protocol；config 兜底默认 Gateway URL |
