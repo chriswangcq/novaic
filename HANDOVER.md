@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-14（iOS 键盘原生修复 main.mm、仓库整理 submodule+文档分类、移动端 UI 优化）
+> 最后更新：2026-03-14（服务器数据清理、deploy CLI 改造、iOS 键盘原生修复、仓库整理）
 
 ---
 
@@ -1106,6 +1106,30 @@ AgentService.selectAgent(agentId)
 
 脚本：`novaic-agent-runtime/scripts/trace_llm_call.py`（需从 saga 取 context，勿用 `runtime.context`）。
 
+### 服务器数据维护
+
+> 2026-03-14 执行清理后：内存 52%→28%，磁盘 10GB→6.1GB
+
+#### 定期清理项目
+
+| 项目 | 命令 | 说明 |
+|---|---|---|
+| **Orchestrator 已完成 context** | `sqlite3 runtime_orchestrator.db "UPDATE agent_runtimes SET context='[]' WHERE status='completed'; VACUUM;"` | 已完成 runtime 保留了 LLM context JSON，不清理会膨胀到数百 MB；上次清理后 473MB→9MB |
+| **Queue 已完成任务** | `sqlite3 queue.db "DELETE FROM tq_tasks WHERE status IN ('done','failed'); DELETE FROM tq_sagas WHERE status!='active'; VACUUM;"` | 上次清理后 1.9GB→3MB |
+| **日志轮转** | `find /opt/novaic/data/logs/ -name '*.log' -mtime +7 -delete` | 删除 7 天前的日志 |
+| **日志截断** | `find /opt/novaic/data/logs/ -name '*.log' -size +50M -exec truncate -s 10M {} \;` | 截断超大日志文件 |
+
+所有操作在 `/opt/novaic/data/` 目录下执行，gateway 运行时可安全执行（SQLite WAL 模式）。清理后建议 `./deploy orchestrator` 重启释放内存。
+
+#### 服务器资源概况（2026-03-14）
+
+| 服务器 | 配置 | 内存 | 磁盘 |
+|---|---|---|---|
+| api.gradievo.com | 1核 3.3GB | 28% (953MB/3.3GB) | 6.1GB data |
+| relay (47.243.221.45) | 2核 1.6GB | 29% (462MB/1.6GB) | 6GB total |
+
+后端共 16 个 Python 进程：6 个 HTTP 服务 + 4 task-worker + 2 saga-worker + watchdog + health + scheduler + STUN。
+
 ---
 
 ## 十四、环境变量与配置
@@ -1167,12 +1191,14 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 
 ## 十五、待办 / 技术债
 
-- [ ] **iOS 键盘输入框适配**：原生 `--keyboard-height` 注入方案已实现（main.mm），Header 固定 OK，但输入框仍可能不可见。需要在真机上验证并调试。可能原因：OTA 导航后 WKWebView 引用失效、键盘通知被 Tauri 框架重新注册
+- [ ] **iOS 键盘输入框适配**：原生 `--keyboard-height` 注入方案已实现（main.mm），Header 固定 OK，但输入框仍可能不可见。需要在真机上验证并调试
+- [ ] **服务端数据自动清理**：runtime 完成时自动清空 context（修改 `RuntimeRepository.complete_runtime`）；queue 定期清理已完成任务；日志 logrotate
 - [ ] `execution_logs` 的 `subagent_id = 'main'` legacy 数据迁移为 `'main-{agent_id[:8]}'`（消除前端兼容逻辑）
 - [ ] VM 停机后 socket 文件清理（当前 VNC socket 在 VM 停后仍残留）
 - [ ] scrcpy 重连后 `retryCount` 上限（当前 3 次后停止，用户需手动点"连接设备"）
 - [ ] 设备状态轮询与 DB 状态同步（现在可能出现 DB 状态落后于实际运行状态的情况）
-- [ ] Gateway DB 访问改为异步（当前同步 SQLite 在 async FastAPI 中，高并发下仍有阻塞风险；长期方案：`aiosqlite` 或 `run_in_executor`）
+- [ ] Gateway DB 访问改为异步（当前同步 SQLite 在 async FastAPI 中，高并发下仍有阻塞风险）
+- [ ] API 服务器升级到 2 核（当前 1 核跑 16 个进程，高并发时会有瓶颈）
 
 ### 前端修改注意事项
 
