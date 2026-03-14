@@ -69,11 +69,11 @@
 
 ## 二、代码仓库说明
 
-父仓库 `chriswangcq/novaic`（分支 `new-build`），所有服务均为 **git submodule**（`.gitmodules` 已注册 13 个）。
+父仓库 `chriswangcq/novaic`（默认分支 `main`，旧代码在 `legacy` 分支），所有服务均为 **git submodule**（`.gitmodules` 已注册 13 个）。
 
 ```bash
 # Clone 全部
-git clone --recurse-submodules -b new-build git@github.com:chriswangcq/novaic.git
+git clone --recurse-submodules git@github.com:chriswangcq/novaic.git
 # 已 clone 后初始化
 git submodule update --init --recursive
 ```
