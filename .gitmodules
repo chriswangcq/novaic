@@ -1,3 +1,9 @@
 [submodule "novaic-quic-service"]
 	path = novaic-quic-service
 	url = https://github.com/chriswangcq/novaic-quic-service.git
+[submodule "novaic-app"]
+	path = novaic-app
+	url = git@github.com:chriswangcq/novaic-app.git
+[submodule "novaic-agent-runtime"]
+	path = novaic-agent-runtime
+	url = git@github.com:chriswangcq/novaic-agent-runtime.git
