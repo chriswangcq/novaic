@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-14（修复消息不可见 bug；全面 Chat DOM 优化；修复 getCachedUser 无限循环；Agent Config SWR 架构）
+> 最后更新：2026-03-14（VNC 手动连接架构重构；ChatInput 状态精简；消息 DOM 优化；getCachedUser 修复；Agent Config SWR）
 
 ---
 
@@ -803,7 +803,8 @@ Tauri App 与云端 Gateway 通过 WebSocket (`/internal/pc/ws`) 保持长连接
 
 | 文件 | 用途 |
 |---|---|
-| `src/application/store.ts` | Zustand 全局状态（纯状态容器 + 同步 setter） |
+| `src/application/store.ts` | Zustand 全局状态（纯状态容器 + 同步 setter），含 `chatUnreadCount` |
+| `src/application/chatScrollRegistry.ts` | 模块级 `scrollToBottom` 注册表，MessageList 注册、ChatInput 调用，避免 prop drilling |
 | `src/application/index.ts` | Service 单例工厂（`userId`-scoped 懒惰初始化） |
 | `src/application/messageService.ts` | 消息完整生命周期（发送、delta sync、SSE 处理） |
 | `src/application/logService.ts` | 日志业务逻辑 |
@@ -848,6 +849,20 @@ Tauri App 与云端 Gateway 通过 WebSocket (`/internal/pc/ws`) 保持长连接
 | `src/services/scrcpyStream.ts` | scrcpy 视频流共享管理（WebSocket + WebCodecs） |
 
 > **vncStream 已移除**（2026-03）：VNC 统一走 createVncTransport + useVnc + VncCanvas，不再使用 vncStream 订阅模式。
+
+#### VNC 手动连接架构（2026-03-14）
+
+**核心原则**：`DeviceDesktopView` / `AgentDesktopView` 本身 **mount 即连接**，不含门控。"点击才连接"的逻辑由**父组件**负责，在 mount 组件之前拦截。
+
+| 调用场景 | 父组件 | 门控方式 |
+|---|---|---|
+| Chat 右侧浮窗 | `DeviceFloatingPanel` | `vncActivated` state，未激活时渲染 chip（类似 StoppedDeviceChip），点击 Connect 后才 mount DeviceDesktopView |
+| Chat 缩略图 | `VisualPanel (isThumbnail)` | `vncActivated` state，未激活时显示 Monitor 图标，点击后 mount AgentDesktopView |
+| Device tab / 设备管理 | `DeviceVNCView` / `DeviceManagerPage` | 直接 mount，自动连接（用户已在 Device tab，意图明确） |
+| 侧边栏缩略图 | `DeviceSidebar` | 不渲染 VNC，只显示 Monitor 图标 |
+| 侧边栏弹窗 | `DeviceDisplayModal` | 直接 mount，自动连接 |
+
+**不要在 DeviceDesktopView/AgentDesktopView 内部加门控！** 这会导致父级已确认后还需二次确认。
 
 ### 关键 UI 组件
 
@@ -1241,8 +1256,9 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 
 ### 前端修改注意事项
 
-- **DeviceFloatingPanel**：main/vm_user 均用 DeviceDesktopView；改布局参数只改 `FLOATING_PANEL_LAYOUT` 和 `getPreviewSize`
-- **VNC 相关**：所有 VNC 场景统一用 DeviceDesktopView；修改连接逻辑优先改 useVnc/vncBridge，避免多实例共享同一 transport 时重建 RFB
+- **DeviceFloatingPanel**：main/vm_user 均用 DeviceDesktopView；改布局参数只改 `FLOATING_PANEL_LAYOUT` 和 `getPreviewSize`；VNC 门控在 FloatingPanel 层（`vncActivated` chip）
+- **VNC 相关**：所有 VNC 场景统一用 DeviceDesktopView；修改连接逻辑优先改 useVnc/vncBridge；**门控只加在父组件，不要在 DeviceDesktopView/AgentDesktopView 内部加门控**
+- **ChatInput 状态**：`chatUnreadCount` 从 Zustand store 读；`scrollToBottom` 从 `chatScrollRegistry` 调用；不再 prop drill
 - **CollapsibleExecutionLog**：inline 时 Tab 在底部；非 inline 时已废弃（不再使用顶部浮动）
 - **模型相关**：`useModels` 读 store；`getModelService().setModel` 写 store + prefs + gateway
 
@@ -1356,30 +1372,3 @@ EOF
 ```
 
 > 若迁移的表正在被频繁写入（如 `chat_messages`、`execution_logs`），可以先停 gateway 再操作以避免冲突等待。
-
----
-
-## Tauri 客户端数据缓存及列表加载分析
-
-根据目前的代码结构，Tauri 客户端的数据加载和缓存策略呈现出明显的“两极分化”：高频大量更新的数据缓存得很完善，但常规的基础列表/元数据极度依赖内存状态和网络，这会导致部分 UI （你提到的 Agent Tab 等）出现白屏和感知性能下降。
-
-### 1. 缓存做得比较好的部分
-
-*   **消息与日志（Messages & Logs）**：这是应用内数据量最大和变动最快的部分。使用了 `IndexedDB` 进行大量本地缓存。在 `messageRepo.ts` 和 `logRepo.ts` 的支持下，数据能在本地完整落地，配合 `useMessagesFromDB` 等 hooks，通过事件分发 (`mitt` 等库或类似机制) 监听 DB 变更，做到了本地极速渲染和历史记录翻看的顺滑支持。
-*   **配置首选项（References & Presets）**：像用户最后选中的模型 `selectedModel` 等都在 `prefsRepo.ts` 做足了本地缓存（IDB 或 LocalStorage），应用启动不易丢失焦点。
-*   **同步机制（SSE）**：借助 `sse.ts` 和 `syncService.ts` 做到了后端向前端的流式增量推送同步，减少了客户端通过拉模式进行数据拉取的代价。
-
-### 2. 缓存不到位 / 制约性能的部分 (Data Lists)
-
-> ✅ **2026-03-14 已全部解决**：以下三个问题均已通过 SWR + IDB 架构修复。
-
-*   **Agents 列表** — ✅ 已有 `agentRepo.ts` + `useAgentsFromDB` hook，SWR 模式落地。
-*   **Devices 列表** — ✅ 已有 `deviceRepo.ts` + `useDevicesFromDB` hook，SWR 模式落地。
-*   **代理配置（Agent Tools/Skills/Bootstrap）** — ✅ 新增 `agentConfigRepo.ts` + `useAgentConfigFromDB` hook（DB_VERSION 5），SettingsModal 的 `AgentToolsTab` 完全遵循 render 只读 DB 原则。
-
-### 3. 已完成的优化项
-
-1. ✅ **核心 List 构建 IDB Repo**：`agentRepo.ts`、`deviceRepo.ts`、`agentConfigRepo.ts` 均已实现。
-2. ✅ **SWR (Stale-While-Revalidate)**：Agent 列表、Device 列表、Agent 配置均已实现 IDB 优先读取 + 后台静默刷新。
-3. ✅ **低频数据 TTL 缓存**：`getToolCategories()` 和 `getSkills(builtin)` 已在 `useSettings.ts` 中实现 15 分钟 TTL 内存缓存。
-4. ✅ **SSE 广播多端同步**：`AGENT_METADATA_UPDATED` 和 `DEVICE_METADATA_UPDATED` SSE 事件已实现，前端 `syncService.ts` 接入。
