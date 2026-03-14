@@ -314,24 +314,27 @@ Couldn't load -exportOptionsPlist The file ".tmpXXXX" couldn't be opened
 ./deploy desktop           # 构建 macOS .app
 
 # ── 后端服务 (api.gradievo.com) ──
-./deploy gateway           # Gateway          (port 19999)
-./deploy runtime           # Agent Runtime    (仅 queue-service)
-./deploy runtime-all       # Agent Runtime    (全部 9 个 worker)
-./deploy orchestrator      # Runtime Orchestrator (port 19993)
-./deploy tools             # Tools Server     (port 19998)
-./deploy storage-a         # Storage A        (port 19995)
-./deploy storage-b         # Storage B        (port 19994)
+./deploy gateway           # rsync + restart_gw.sh（仅重启 Gateway）
+./deploy runtime           # rsync + start.sh 全部重启
+./deploy orchestrator      # rsync + start.sh 全部重启
+./deploy tools             # rsync + start.sh 全部重启
+./deploy storage-a         # rsync + start.sh 全部重启
+./deploy storage-b         # rsync + start.sh 全部重启
+./deploy services          # rsync 全部 + start.sh 重启（推荐）
 
-# ── 基础设施 (relay) ──
-./deploy relay             # QUIC/Relay 服务（git pull + cargo build + systemctl restart）
+# ── 基础设施 ──
+./deploy relay             # git pull + cargo build + systemctl restart
 
-# ── 聚合 ──
-./deploy services          # 部署全部 6 个后端服务
-./deploy all [ver]         # 全部（前端+后端+relay+客户端）
-./deploy status            # 检查所有服务运行状态
+# ── 运维 ──
+./deploy status            # 检查所有服务状态
+./deploy logs [svc]        # 查看日志 (gateway|orchestrator|tools|runtime|worker|relay)
+./deploy all [ver]         # 部署全部
 ```
 
-**原理**：后端服务统一使用 `rsync` 同步代码到 `/opt/novaic/services/{name}/`，然后 `pkill` 旧进程 + `nohup .venv/bin/python` 重启。Gateway 使用专用 `restart_gw.sh`。Relay 使用 `git pull` + `cargo build --release` + `systemctl restart`。
+**原理**：`./deploy` **只负责 rsync 同步代码**，进程管理交给服务器端：
+- **Gateway**：`/opt/novaic/restart_gw.sh`（含 JWT_SECRET、RELAY_URL）
+- **其他后端**：`/opt/novaic/start.sh`（含完整启动参数、端口检测、独立日志、worker pool 分组）
+- **Relay**：`systemctl restart novaic-quic-service`
 
 ---
 
