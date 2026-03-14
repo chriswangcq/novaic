@@ -1,6 +1,9 @@
 #!/bin/bash
 # NovAIC 统一部署入口
 # 用法: ./deploy <target> [options]
+#
+# 代码同步: 本地 rsync → 服务器
+# 进程管理: 服务器端 start.sh / restart_gw.sh（不在本地 nohup）
 
 set -e
 
@@ -13,6 +16,7 @@ API_HOST="root@api.gradievo.com"
 API_SSH="ssh $API_HOST"
 VERSION="${2:-0.3.0}"
 SERVICES_DIR="/opt/novaic/services"
+RSYNC_EXCLUDE="--exclude .git --exclude __pycache__ --exclude '*.pyc' --exclude target --exclude .venv --exclude node_modules"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -25,30 +29,16 @@ ok()    { echo -e "${GREEN}✓ $1${NC}"; }
 warn()  { echo -e "${YELLOW}⚠ $1${NC}"; }
 fail()  { echo -e "${RED}✗ $1${NC}"; exit 1; }
 
-# ── 通用：部署 Python 服务到 api.gradievo.com ─────────────────────────────────
-# 用法: deploy_service <service-name> <process-pattern> <start-command>
-deploy_service() {
+# ── 通用：同步代码到服务器（不重启） ──────────────────────────────────────────
+rsync_service() {
   local name="$1"
-  local proc_pattern="$2"
-  local start_cmd="$3"
   local local_dir="$REPO_ROOT/$name"
-
   [ -d "$local_dir" ] || fail "本地目录不存在: $local_dir"
-
-  info "部署 $name 到 api.gradievo.com"
-
-  info "同步代码..."
-  rsync -avz --exclude '.git' --exclude '__pycache__' --exclude '*.pyc' \
-    --exclude 'target' --exclude '.venv' --exclude 'node_modules' \
-    -e ssh "$local_dir/" "$API_HOST:$SERVICES_DIR/$name/" || fail "rsync 失败"
-
-  info "重启 $name..."
-  $API_SSH "pkill -f '$proc_pattern' 2>/dev/null || true; sleep 1; cd $SERVICES_DIR/$name && $start_cmd" || fail "重启失败"
-
-  ok "$name 已部署"
+  info "同步 $name..."
+  rsync -avz $RSYNC_EXCLUDE -e ssh "$local_dir/" "$API_HOST:$SERVICES_DIR/$name/" || fail "rsync $name 失败"
 }
 
-# ── 各服务部署 ────────────────────────────────────────────────────────────────
+# ── 客户端部署 ────────────────────────────────────────────────────────────────
 
 deploy_frontend() {
   local ver="${1:-$VERSION}"
@@ -60,82 +50,6 @@ deploy_frontend() {
   $RELAY_SSH "mkdir -p /opt/novaic/static/v${ver}"
   rsync -avz --delete -e "ssh -p $RELAY_PORT" dist/ root@$RELAY_HOST:/opt/novaic/static/v${ver}/ || fail "rsync 失败"
   ok "前端 v${ver} 已部署到 https://relay.gradievo.com/resource/frontend/v${ver}/"
-}
-
-deploy_gateway() {
-  info "部署 Gateway 到 api.gradievo.com"
-  cd "$REPO_ROOT/novaic-gateway"
-  info "同步代码..."
-  rsync -avz --exclude '.git' --exclude '__pycache__' --exclude '*.pyc' \
-    -e ssh . $API_HOST:$SERVICES_DIR/novaic-gateway/ || fail "rsync 失败"
-  info "重启 Gateway..."
-  $API_SSH 'bash /opt/novaic/restart_gw.sh' || fail "重启失败"
-  sleep 2
-  $API_SSH 'ss -tlnp | grep 19999' && ok "Gateway 已部署 (port 19999)" || warn "端口 19999 未监听"
-}
-
-deploy_runtime() {
-  deploy_service "novaic-agent-runtime" "main_novaic.py" \
-    "nohup .venv/bin/python main_novaic.py queue-service >> /opt/novaic/data/logs/runtime-\$(date +%Y%m%d).log 2>&1 &"
-  info "注意: runtime 包含多个 worker (task-worker×4, saga-worker×2, watchdog, health, scheduler)"
-  info "如需全部重启，请运行: ./deploy runtime-all"
-}
-
-deploy_runtime_all() {
-  info "重启 Agent Runtime 全部进程"
-  cd "$REPO_ROOT/novaic-agent-runtime"
-
-  info "同步代码..."
-  rsync -avz --exclude '.git' --exclude '__pycache__' --exclude '*.pyc' \
-    --exclude 'target' --exclude '.venv' \
-    -e ssh . $API_HOST:$SERVICES_DIR/novaic-agent-runtime/ || fail "rsync 失败"
-
-  info "停止所有 runtime 进程..."
-  $API_SSH "pkill -f 'main_novaic.py' 2>/dev/null || true; sleep 2"
-
-  info "启动 queue-service + workers..."
-  $API_SSH "cd $SERVICES_DIR/novaic-agent-runtime && \
-    nohup .venv/bin/python main_novaic.py queue-service >> /opt/novaic/data/logs/runtime-\$(date +%Y%m%d).log 2>&1 & \
-    nohup .venv/bin/python main_novaic.py watchdog >> /opt/novaic/data/logs/runtime-\$(date +%Y%m%d).log 2>&1 & \
-    nohup .venv/bin/python main_novaic.py health >> /opt/novaic/data/logs/runtime-\$(date +%Y%m%d).log 2>&1 & \
-    nohup .venv/bin/python main_novaic.py scheduler >> /opt/novaic/data/logs/runtime-\$(date +%Y%m%d).log 2>&1 & \
-    for i in 1 2 3 4; do nohup .venv/bin/python main_novaic.py task-worker >> /opt/novaic/data/logs/runtime-\$(date +%Y%m%d).log 2>&1 & done; \
-    for i in 1 2; do nohup .venv/bin/python main_novaic.py saga-worker >> /opt/novaic/data/logs/runtime-\$(date +%Y%m%d).log 2>&1 & done"
-
-  sleep 2
-  local count=$($API_SSH "pgrep -f main_novaic.py | wc -l")
-  ok "Agent Runtime 已启动 ($count 个进程)"
-}
-
-deploy_orchestrator() {
-  deploy_service "novaic-runtime-orchestrator" "main_runtime_orchestrator.py" \
-    "nohup .venv/bin/python main_runtime_orchestrator.py --host 127.0.0.1 --port 19993 >> /opt/novaic/data/logs/orchestrator-\$(date +%Y%m%d).log 2>&1 &"
-}
-
-deploy_tools() {
-  deploy_service "novaic-tools-server" "main_tools.py" \
-    "nohup .venv/bin/python main_tools.py --host 127.0.0.1 --port 19998 >> /opt/novaic/data/logs/tools-\$(date +%Y%m%d).log 2>&1 &"
-}
-
-deploy_storage_a() {
-  deploy_service "novaic-storage-a" "main_file_service.py" \
-    "nohup .venv/bin/python main_file_service.py --host 127.0.0.1 --port 19995 >> /opt/novaic/data/logs/storage-a-\$(date +%Y%m%d).log 2>&1 &"
-}
-
-deploy_storage_b() {
-  deploy_service "novaic-storage-b" "main_tool_result_service.py" \
-    "nohup .venv/bin/python main_tool_result_service.py --host 127.0.0.1 --port 19994 >> /opt/novaic/data/logs/storage-b-\$(date +%Y%m%d).log 2>&1 &"
-}
-
-deploy_relay() {
-  info "部署 novaic-quic-service 到 relay"
-  cd "$REPO_ROOT/novaic-quic-service"
-  info "推送代码到 GitHub..."
-  git add -A && git diff --cached --quiet || git commit -m "deploy: $(date +%Y-%m-%d)"
-  git push origin main 2>/dev/null || true
-  info "服务器拉取并编译..."
-  $RELAY_SSH 'cd /opt/novaic/novaic-quic-service && git pull origin main && cargo build --release && systemctl stop novaic-quic-service && cp target/release/novaic-quic-service ./ && systemctl start novaic-quic-service' || fail "编译或重启失败"
-  $RELAY_SSH 'systemctl is-active novaic-quic-service' && ok "Relay 已部署" || warn "服务未运行"
 }
 
 deploy_ios() {
@@ -156,19 +70,57 @@ deploy_desktop() {
   ok "桌面应用: src-tauri/target/release/bundle/macos/NovAIC.app"
 }
 
-# ── 聚合命令 ──────────────────────────────────────────────────────────────────
+# ── 后端服务部署（rsync + 服务器端 start.sh 管理进程） ────────────────────────
+
+deploy_gateway() {
+  info "部署 Gateway"
+  rsync_service "novaic-gateway"
+  info "重启 Gateway..."
+  $API_SSH 'bash /opt/novaic/restart_gw.sh' || fail "重启失败"
+  sleep 2
+  $API_SSH 'ss -tlnp | grep 19999' && ok "Gateway 已部署 (port 19999)" || warn "端口 19999 未监听"
+}
+
+deploy_single_service() {
+  local name="$1"
+  rsync_service "$name"
+  info "重启全部后端服务（通过 start.sh）..."
+  $API_SSH 'bash /opt/novaic/start.sh --stop && bash /opt/novaic/start.sh' || fail "重启失败"
+  ok "$name 已部署（全部服务已重启）"
+}
 
 deploy_services() {
   info "部署全部后端服务到 api.gradievo.com"
-  deploy_gateway
-  deploy_runtime_all
-  deploy_orchestrator
-  deploy_tools
-  deploy_storage_a
-  deploy_storage_b
+  echo ""
+
+  # 同步所有服务代码
+  for svc in novaic-gateway novaic-agent-runtime novaic-runtime-orchestrator \
+             novaic-tools-server novaic-storage-a novaic-storage-b; do
+    rsync_service "$svc"
+  done
+
+  echo ""
+  info "重启全部服务（start.sh）..."
+  $API_SSH 'bash /opt/novaic/start.sh --stop' || true
+  sleep 2
+  $API_SSH 'bash /opt/novaic/start.sh' || fail "启动失败"
+
   echo ""
   ok "全部后端服务已部署！"
 }
+
+deploy_relay() {
+  info "部署 novaic-quic-service 到 relay"
+  cd "$REPO_ROOT/novaic-quic-service"
+  info "推送代码到 GitHub..."
+  git add -A && git diff --cached --quiet || git commit -m "deploy: $(date +%Y-%m-%d)"
+  git push origin main 2>/dev/null || true
+  info "服务器拉取并编译..."
+  $RELAY_SSH 'cd /opt/novaic/novaic-quic-service && git pull origin main && cargo build --release && systemctl stop novaic-quic-service && cp target/release/novaic-quic-service ./ && systemctl start novaic-quic-service' || fail "编译或重启失败"
+  $RELAY_SSH 'systemctl is-active novaic-quic-service' && ok "Relay 已部署" || warn "服务未运行"
+}
+
+# ── 聚合命令 ──────────────────────────────────────────────────────────────────
 
 deploy_all() {
   deploy_frontend "$1"
@@ -185,26 +137,45 @@ deploy_all() {
 check_status() {
   info "检查 api.gradievo.com 服务状态"
   echo ""
-  $API_SSH 'echo "  PID   | PORT  | SERVICE"
-    echo "  ------|-------|--------"
-    ss -tlnp 2>/dev/null | grep -oP "127.0.0.1:\K\d+" | sort -n | while read port; do
-      pid=$(ss -tlnp | grep ":$port " | grep -oP "pid=\K\d+")
+  $API_SSH '
+    echo "  PORT  | PID    | SERVICE"
+    echo "  ------|--------|--------"
+    for port in 19993 19994 19995 19998 19999; do
+      pid=$(ss -tlnp 2>/dev/null | grep ":$port " | grep -oP "pid=\K\d+" | head -1)
       case $port in
         19993) svc="orchestrator" ;;
         19994) svc="storage-b" ;;
         19995) svc="storage-a" ;;
         19998) svc="tools-server" ;;
         19999) svc="gateway" ;;
-        *)     svc="unknown" ;;
       esac
-      printf "  %-6s| %-6s| %s\n" "$pid" "$port" "$svc"
+      if [ -n "$pid" ]; then
+        printf "  %-6s| %-7s| ✓ %s\n" "$port" "$pid" "$svc"
+      else
+        printf "  %-6s| %-7s| ✗ %s (DOWN)\n" "$port" "-" "$svc"
+      fi
     done
     echo ""
-    runtime_count=$(pgrep -f main_novaic.py | wc -l)
-    echo "  Agent Runtime: $runtime_count 进程"'
+    runtime_count=$(pgrep -f main_novaic.py 2>/dev/null | wc -l)
+    echo "  Agent Runtime: $runtime_count 进程 (queue-service, watchdog, health, scheduler, 4×task-worker, 2×saga-worker)"
+  '
   echo ""
   info "检查 relay 服务状态"
   $RELAY_SSH 'systemctl is-active novaic-quic-service && echo "  Relay: ✓ running" || echo "  Relay: ✗ stopped"'
+}
+
+check_logs() {
+  local svc="${2:-gateway}"
+  info "查看 $svc 最新日志"
+  case "$svc" in
+    gateway)      $API_SSH "tail -50 /opt/novaic/data/logs/gateway-\$(date +%Y%m%d).log" ;;
+    orchestrator) $API_SSH "tail -50 /opt/novaic/data/logs/runtime-orchestrator.log" ;;
+    tools)        $API_SSH "tail -50 /opt/novaic/data/logs/tools-server.log" ;;
+    runtime)      $API_SSH "tail -50 /opt/novaic/data/logs/queue-service.log" ;;
+    worker)       $API_SSH "tail -50 /opt/novaic/data/logs/task-worker-control-1.log" ;;
+    relay)        $RELAY_SSH "journalctl -u novaic-quic-service --no-pager -n 50" ;;
+    *)            fail "未知服务: $svc (可选: gateway, orchestrator, tools, runtime, worker, relay)" ;;
+  esac
 }
 
 # ── 主入口 ────────────────────────────────────────────────────────────────────
@@ -213,7 +184,7 @@ show_help() {
   echo ""
   echo -e "${CYAN}NovAIC 部署工具${NC}"
   echo ""
-  echo "用法: ./deploy <target> [version]"
+  echo "用法: ./deploy <target> [option]"
   echo ""
   echo -e "${CYAN}客户端:${NC}"
   echo "  frontend [ver]    部署前端 OTA (默认 v0.3.0)"
@@ -221,38 +192,39 @@ show_help() {
   echo "  desktop           构建 macOS 桌面应用"
   echo ""
   echo -e "${CYAN}后端服务 (api.gradievo.com):${NC}"
-  echo "  gateway           Gateway          (port 19999)"
-  echo "  runtime           Agent Runtime    (queue-service only)"
-  echo "  runtime-all       Agent Runtime    (全部 worker)"
-  echo "  orchestrator      Runtime Orchestrator (port 19993)"
-  echo "  tools             Tools Server     (port 19998)"
-  echo "  storage-a         Storage A        (port 19995)"
-  echo "  storage-b         Storage B        (port 19994)"
+  echo "  gateway           部署 Gateway (rsync + restart_gw.sh)"
+  echo "  runtime           部署 Agent Runtime (rsync + 全部重启)"
+  echo "  orchestrator      部署 Runtime Orchestrator (rsync + 全部重启)"
+  echo "  tools             部署 Tools Server (rsync + 全部重启)"
+  echo "  storage-a         部署 Storage A (rsync + 全部重启)"
+  echo "  storage-b         部署 Storage B (rsync + 全部重启)"
+  echo "  services          部署全部后端 (rsync all + start.sh 重启)"
   echo ""
-  echo -e "${CYAN}基础设施 (relay):${NC}"
-  echo "  relay             QUIC/Relay 服务"
+  echo -e "${CYAN}基础设施:${NC}"
+  echo "  relay             部署 QUIC/Relay 到 relay 服务器"
   echo ""
-  echo -e "${CYAN}聚合:${NC}"
-  echo "  services          部署全部后端服务"
-  echo "  all [ver]         部署全部（前端+后端+客户端）"
+  echo -e "${CYAN}聚合 & 运维:${NC}"
+  echo "  all [ver]         部署全部"
   echo "  status            检查所有服务状态"
+  echo "  logs [svc]        查看日志 (gateway|orchestrator|tools|runtime|worker|relay)"
   echo ""
 }
 
 case "${1}" in
   frontend)     deploy_frontend "$2" ;;
   gateway)      deploy_gateway ;;
-  runtime)      deploy_runtime ;;
-  runtime-all)  deploy_runtime_all ;;
-  orchestrator) deploy_orchestrator ;;
-  tools)        deploy_tools ;;
-  storage-a)    deploy_storage_a ;;
-  storage-b)    deploy_storage_b ;;
+  runtime)      deploy_single_service "novaic-agent-runtime" ;;
+  orchestrator) deploy_single_service "novaic-runtime-orchestrator" ;;
+  tools)        deploy_single_service "novaic-tools-server" ;;
+  storage-a)    deploy_single_service "novaic-storage-a" ;;
+  storage-b)    deploy_single_service "novaic-storage-b" ;;
+  services)     deploy_services ;;
   relay)        deploy_relay ;;
   ios)          deploy_ios ;;
   desktop)      deploy_desktop ;;
-  services)     deploy_services ;;
   all)          deploy_all "$2" ;;
   status)       check_status ;;
+  logs)         check_logs "$@" ;;
   *)            show_help ;;
 esac
+
