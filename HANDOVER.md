@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-11（OTA CI 校验、P2P 打洞移除、setup show 修复、deploy-all 一键部署）
+> 最后更新：2026-03-13（VNC 统一复用 DeviceDesktopView、maindesk 展开修复、竞态修复）
 
 ---
 
@@ -16,8 +16,9 @@
 | **一键部署全部** | `./scripts/deploy-all.sh [version]`（默认 0.3.0）：前端→Relay→iOS→macOS。relay SSH 端口 52222。 |
 | **部署前端热更新** | 一、构建并 rsync 到 relay；二、更新 Gateway 环境变量并重启；三、手机端 `./scripts/build-and-install-ios.sh`。relay 用 52222 时需 `-e "ssh -p 52222"`。详见五附「前端热更新」 |
 | 改消息/日志逻辑 | `messageService.ts`、`logService.ts`、`syncService.ts` |
+| 改 VNC 连接 | `vncBridge.ts`、`vncTransport.ts`、`useVnc.ts`、`DeviceDesktopView.tsx` |
 | 清空本地缓存 | Settings → Clear Cache → 清空本地 DB 缓存 |
-| 查架构 | `novaic-app/FRONTEND_ARCHITECTURE.md`、`docs/DESIGN-P2P-UNIFIED.md`、`docs/COMMANDS_SPLIT_DESIGN.md` |
+| 查架构 | `novaic-app/FRONTEND_ARCHITECTURE.md`、`docs/DESIGN-P2P-UNIFIED.md`、`docs/COMMANDS_SPLIT_DESIGN.md`、`docs/VNC_FRONTEND_TO_VMCONTROL_FLOW.md` |
 
 ---
 
@@ -651,12 +652,18 @@ Tauri App 与云端 Gateway 通过 WebSocket (`/internal/pc/ws`) 保持长连接
 - **deploy-wait**：Gateway 从 `get_private_key_for_agent(agent_id)` 获取 SSH 私钥，在请求体中传给 vmcontrol
 - **vmcontrol 路由**：`vmcontrol/src/api/routes/vm_prep.rs`
 
-### VncProxy（桌面+移动端）
+### VncProxy 与 VNC 前端统一（2026-03-13）
 
 - **桌面**：本地路径（QUIC loopback）+ 远端路径（Gateway locate + P2P）
 - **移动端**：仅远端路径（无本地 VmControl，`local_vmcontrol` 恒为 None）
 - **P2P 流程**：打洞已移除，远端 VNC/Scrcpy 仅走 relay（relay-request → connect_via_relay）
 - **命令**：`get_vnc_proxy_url`、`get_scrcpy_proxy_url` 在 `commands/vnc_urls.rs`（全平台）
+
+**VNC 前端统一（2026-03）**：Device tab 与 Agent tab 均使用 `DeviceDesktopView` + `createVncTransport` + `useVnc` + `VncCanvas`，移除 `VNCViewShared` 和 `vncStream` 订阅模式。maindesk 与 subuser 共用同一套连接逻辑，连接池按 `pool_key = vm_id:username` 管理。
+
+**关键修复**：
+- `vncBridge._doConnect` 返回时检查已关闭，避免向 disconnected RFB 投递数据（"Got data while disconnected"）
+- `useVnc.doConnect` 已连接时仅更新 viewOnly/scaleViewport/clipViewport，不重建 RFB（maindesk 展开时 viewOnly 变化触发 effect 导致 "Unexpected server connection while connecting"）
 
 ---
 
@@ -737,14 +744,19 @@ Tauri App 与云端 Gateway 通过 WebSocket (`/internal/pc/ws`) 保持长连接
 
 | 文件 | 用途 |
 |---|---|
-| `src/services/vncStream.ts` | noVNC 共享连接管理（单例，多组件共享） |
+| `src/services/vncTransport.ts` | VNC 传输创建与缓存（createVncTransport，按 resourceId\|username 缓存） |
+| `src/services/vncBridge.ts` | VncBridgeTransport，实现 noVNC 所需 WebSocket 兼容接口，走 vnc_stream_connect IPC |
+| `src/hooks/useVnc.ts` | VNC 会话管理（连接、重连、断开），RFB 生命周期 |
 | `src/services/scrcpyStream.ts` | scrcpy 视频流共享管理（WebSocket + WebCodecs） |
+
+> **vncStream 已移除**（2026-03）：VNC 统一走 createVncTransport + useVnc + VncCanvas，不再使用 vncStream 订阅模式。
 
 ### 关键 UI 组件
 
 | 文件 | 用途 |
 |---|---|
-| `src/components/Layout/DeviceFloatingPanel.tsx` | VM/AVD 悬浮窗（preview/expanded/operating 三态） |
+| `src/components/Layout/DeviceFloatingPanel.tsx` | VM/AVD 悬浮窗（preview/expanded/operating 三态）；main/vm_user 均用 DeviceDesktopView |
+| `src/components/Visual/DeviceDesktopView.tsx` | VNC 主桌面/子用户视图，统一入口（createVncTransport + useVnc + VncCanvas） |
 | `src/components/Visual/ExecutionLog.tsx` | Execution Log 完整视图（树形 subagent 分组） |
 | `src/components/Visual/MainAgentLogPreview.tsx` | 主 Agent 执行日志预览（独立组件） |
 | `src/components/Visual/SubagentList.tsx` | Subagent 列表（独立组件，与 MainAgentLogPreview 无联动） |
@@ -1006,6 +1018,8 @@ AgentService.selectAgent(agentId)
 | VNC WebSocket 连接 127.0.0.1 失败 | ATS 默认阻止 ws:// | patch-ios-xcode.sh 已注入 `NSAllowsLocalNetworking` |
 | VNC 连接被对方重置 (code 1006) | 移动端用 agent UUID 做 P2P locate，而 locate 需要 VmControl Ed25519 device_id | 已修复：`get_vnc_proxy_url` 在无 local_vmcontrol 时调用 `GET /api/p2p/my-devices` 取第一个 online 的 device_id |
 | VNC 间歇性失败（连接被对方重置） | Relay 竞态、CloudBridge JWT 过期、VncProxy 未发 Close 帧 | 2026-03-11 修复：relay 初始延迟 2s→6s；connect_relay 用最新 token；vnc_proxy 错误时发送 Close 帧 |
+| maindesk 缩略图可连、展开报错 | 展开时 viewOnly 变化触发 effect，doConnect 重建 RFB 导致 "Unexpected server connection while connecting" | 2026-03-13 修复：useVnc 已连接时仅更新 options 不重建 RFB |
+| "Got data while disconnected" | _doConnect 期间 transport 被关闭，返回后仍 setupListeners 向已 disconnected RFB 投递数据 | 2026-03-13 修复：vncBridge._doConnect 返回时检查 CLOSED/CLOSING，跳过 setupListeners |
 | 排查 P2P 请求是否到达 Gateway | 需确认 locate 是否被调用 | `GET /api/p2p/debug`（需 JWT）返回最近 50 条 P2P 事件；`novaic-gateway/scripts/check-p2p-debug.sh` |
 | VNC locate 返回 online 但连接失败 | PC 端 STUN 失败，ext_addr=0.0.0.0 不可连接 | Gateway 已修复：ext_addr 为 0.0.0.0 时返回 online=False；PC 端每 5 分钟重试 STUN。需确保 PC 允许 UDP 出站（stun.l.google.com:19302） |
 | 调试 STUN 是否可用 | 验证本机能否获取外网地址 | `python3 novaic-app/scripts/test-stun.py [port]`（port 默认 19998，若被占用用其他如 45678） |
@@ -1097,6 +1111,7 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 - [x] SSE 使用 Tauri `get_gateway_url` 与 HTTP 一致 ✓
 - [x] **SSE 改为 User 维度**：一个用户一条长连接，切换 agent 不断连 ✓（见 docs/SSE_USER_LEVEL_MIGRATION.md）
 - [x] **VM 准备 API 迁入 vmcontrol**：环境检查、镜像检查/下载、部署等待统一走 Gateway → Cloud Bridge → vmcontrol ✓
+- [x] **VNC 统一复用**：Device tab 与 Agent tab 均用 DeviceDesktopView，移除 VNCViewShared/vncStream ✓（2026-03-13）
 - [ ] `execution_logs` 的 `subagent_id = 'main'` legacy 数据迁移为 `'main-{agent_id[:8]}'`（消除前端兼容逻辑）
 - [ ] VM 停机后 socket 文件清理（当前 VNC socket 在 VM 停后仍残留）
 - [ ] scrcpy 重连后 `retryCount` 上限（当前 3 次后停止，用户需手动点"连接设备"）
@@ -1105,7 +1120,8 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 
 ### 前端修改注意事项
 
-- **DeviceFloatingPanel**：改布局参数只改 `FLOATING_PANEL_LAYOUT` 和 `getPreviewSize`
+- **DeviceFloatingPanel**：main/vm_user 均用 DeviceDesktopView；改布局参数只改 `FLOATING_PANEL_LAYOUT` 和 `getPreviewSize`
+- **VNC 相关**：所有 VNC 场景统一用 DeviceDesktopView；修改连接逻辑优先改 useVnc/vncBridge，避免多实例共享同一 transport 时重建 RFB
 - **CollapsibleExecutionLog**：inline 时 Tab 在底部；非 inline 时已废弃（不再使用顶部浮动）
 - **模型相关**：`useModels` 读 store；`getModelService().setModel` 写 store + prefs + gateway
 
@@ -1123,6 +1139,7 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 
 | 需求 | 文件 |
 |---|---|
+| 改 VNC 连接逻辑 | `vncBridge.ts`、`vncTransport.ts`、`useVnc.ts` |
 | 改浮窗尺寸/位置 | `DeviceFloatingPanel.tsx` → FLOATING_PANEL_LAYOUT |
 | 改 Execution Log 布局 | `MainAgentLogPreview.tsx`、`SubagentList.tsx`、`ChatPanel.tsx` |
 | 改模型选择 UI | `SettingsModal.tsx` → AgentToolsTab |
@@ -1155,6 +1172,8 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 | `docs/RELAY_MIGRATION_8_TO_47.md` | Relay 迁移 8.146.233.64→47.243.221.45 |
 | `SYSTEM_DESIGN.md` | 系统设计 |
 | `novaic-app/VNC_SCRCPY_WS_CONNECTIONS.md` | VNC/scrcpy WebSocket 连接说明 |
+| `docs/VNC_FRONTEND_TO_VMCONTROL_FLOW.md` | VNC 前端到 vmcontrol 流程 |
+| `docs/VNC_MAINDESK_SUBUSER_DIFFS_BEFORE_P2P.md` | maindesk/subuser 差异说明 |
 | 本文档「四、构建与发布 → iOS 部署流程」 | iOS 完整部署流程、黑屏修复、脚本说明 |
 | `docs/IOS_BLACK_SCREEN_ISSUE_REPORT.md` | iOS 黑屏问题分析与修复记录 |
 
