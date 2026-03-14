@@ -8,49 +8,70 @@ description: 当 context 即将超限时，将本次对话的关键变更 summar
 
 ## 执行步骤
 
-1. 读取当前 `HANDOVER.md` 全文
+### 1. 回顾本次对话做了什么
 
-2. 运行以下命令获取本次变更范围：
+在脑中列出本次对话的所有工作项，分为：
+- **代码变更**：改了哪些文件/模块，为什么改
+- **架构决策**：做了什么选择，为什么（这是最重要的，下次 AI 需要知道）
+- **部署操作**：部署了什么，服务器做了什么变更
+- **未完成的工作**：做到哪一步了，下一步该做什么
+
+### 2. 获取变更范围
+
+// turbo
 ```bash
 cd /Users/wangchaoqun/new-build-novaic
-git diff HEAD~3..HEAD --stat         # 最近几次 commit 的变更文件
-git log --oneline -5                  # 最近 commit 消息
+git log --oneline -10 2>/dev/null || echo "shallow clone"
 ```
+
+### 3. 读取 HANDOVER.md 并检查章节结构
+
+读取 HANDOVER.md，用 `grep -n "^## " HANDOVER.md` 确认当前章节编号，避免引用错误的编号。
+
 // turbo
 
-3. 根据本次对话中的工作内容，更新 HANDOVER.md：
+### 4. 精确更新 HANDOVER.md
 
-   **必须更新的部分：**
-   - 第 3 行：更新 "最后更新" 日期和摘要
-   - 修正所有 `docs/` 路径引用（文档已分类到 `docs/design/`、`docs/vnc/` 等子目录）
+使用 `multi_replace_file_content` 精确修改（**不要覆盖全文**）。
 
-   **按需更新的部分（有变更才改）：**
-   - 如果改了架构/新增了模块 → 更新「一、项目整体架构」
-   - 如果改了仓库结构/submodule → 更新「二、代码仓库说明」
-   - 如果改了构建/部署流程 → 更新「四、构建与发布」或「五、云端部署」
-   - 如果改了前端组件/布局 → 更新「八、前端关键文件」
-   - 如果改了 iOS 原生 → 更新「四、iOS 部署流程」→「iOS 缩放与键盘行为」
-   - 如果修了 bug → 在「十二、常见问题」表格末尾追加
-   - 如果完成了 TODO → 在「十四、待办」中标记 [x]
+**必须更新：**
+- 第 3 行：`> 最后更新：YYYY-MM-DD（简要摘要）`
 
-   **清理规则：**
-   - 删除超过 2 周的已完成 TODO（标记 [x] 的）
-   - 不要删除任何没有受影响的章节
-   - 不要重写整个文件，只改变更相关的部分
+**按需更新（有变更才改，先检查是否本次对话已经更新过）：**
 
-4. 写回 HANDOVER.md（使用 multi_replace_file_content 精确修改，不要覆盖全文）
+| 变更类型 | 更新章节 |
+|---|---|
+| 架构/模块变更 | 一、项目整体架构 |
+| 仓库结构/submodule | 二、代码仓库说明 |
+| 构建/部署流程 | 四/五/六 相关章节 |
+| 前端组件/布局 | 九、前端关键文件 |
+| iOS 原生改动 | 四、iOS 缩放与键盘行为 |
+| 新 bug 修复 | 十三、常见问题（表格末尾追加） |
+| 完成了 TODO | 十五、待办（标记 [x] 或删除） |
+| 新增 TODO | 十五、待办（追加） |
+| 服务器变更 | 十三 末尾「服务器数据维护」 |
 
-5. commit 并 push：
+**写作原则：**
+- 写 **决策和原因**，不只是"改了 X 文件"
+- 写 **当前状态**，不只是"做了 Y 操作"
+- 如果有未完成的工作，在 TODO 写清楚进度和下一步
+- submodule 的变更也要记录
+
+**清理规则：**
+- 删除超过 2 周的已完成 TODO
+- 不删除没受影响的章节
+
+### 5. commit 并 push
+
 ```bash
 cd /Users/wangchaoqun/new-build-novaic
 git add HANDOVER.md
-git commit -m "docs: update HANDOVER.md — [简要说明本次对话做了什么]"
+git commit -m "docs: update HANDOVER.md — [本次对话的一句话总结]"
 git push
 ```
 
 ## 注意事项
 
-- HANDOVER.md 是给**下一次对话的 AI** 看的，所以要写清楚：改了什么、为什么改、当前状态、下一步该做什么
-- 重点写 **决策和原因**，不只是列代码变更
-- 如果有未完成的工作，在 TODO 区域明确标注当前进度和下一步
-- submodule 的变更也要包含（novaic-app 等子仓库的改动）
+- HANDOVER.md 是给 **下一次对话的 AI** 看的
+- 如果本次对话中已经多次更新过 HANDOVER.md，只需补充遗漏的部分
+- commit message 中写清楚本次对话做了什么（Session summary）
