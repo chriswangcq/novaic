@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-14（Agent Config SWR 架构落地：SettingsModal render 只读 DB，消除全部直连 API）
+> 最后更新：2026-03-14（修复 getCachedUser() 无限循环导致 Device/Agents tab 卡死；Agent Config SWR 架构落地）
 
 ---
 
@@ -661,6 +661,23 @@ cargo run
 
 ## 八、关键架构决策与注意点
 
+### ⚠️ `getCachedUser()` 不可放进 useEffect 依赖
+
+`auth.ts` 的 `getCachedUser()` 每次调用返回 **新对象**（`return { user_id, email, display_name }`）。若写成 `useEffect(..., [user])`，**必然触发无限 re-render 循环**并冻结 UI。
+
+**正确做法**：提取稳定的基础类型值作为依赖。
+```typescript
+// ❌ 错误 — 无限循环
+const user = getCachedUser();
+useEffect(() => { ... }, [user]);
+
+// ✅ 正确 — string 引用稳定
+const userId = getCachedUser()?.user_id ?? null;
+useEffect(() => { ... }, [userId]);
+```
+
+涉及 hook: `useAgentsFromDB`、`useDevicesFromDB`、`useAgentConfigFromDB`（均已修复）。
+
 ### VmControl — VM 状态检测（Scheme A）
 
 **决策**：判断 Linux VM 是否运行，只检查 QMP socket 文件是否存在，不尝试连接。
@@ -1090,6 +1107,8 @@ AgentService.selectAgent(agentId)
 | 数据迁移后数据丢失 | 在 gateway 有未提交事务时执行了 `PRAGMA wal_checkpoint(TRUNCATE)`，把未提交数据截断 | **禁止**在 gateway 运行时执行 `wal_checkpoint(TRUNCATE)`；正常迁移直接用 `BEGIN/COMMIT` 即可 |
 | SSE SSL 错误 | 前端 SSE 曾用 VITE_GATEWAY_URL，与 Tauri 的 gateway_url.txt 不一致 | 已修复：SSE 使用 `invoke('get_gateway_url')` 与 HTTP 一致 |
 | 本地 DB 缓存异常 | IndexedDB 数据损坏或需强制刷新 | Settings → Clear Cache → 清空本地 DB 缓存，然后刷新页面 |
+| **Device tab 点击卡死 / UI 全面冻结** | `getCachedUser()` 每次返回新对象，放进 `useEffect([user])` 导致无限 re-render 循环 | 已修复：`useDevicesFromDB`/`useAgentsFromDB`/`useAgentConfigFromDB` 全部改为 `const userId = getCachedUser()?.user_id ?? null` 用 `string` 做依赖 |
+| `...` 按钮（MoreVertical）点不开 | 同上，无限循环占满主线程导致 UI 无响应 | 同上 |
 | LLM think 失败（429 / engine_overloaded） | Moonshot 等 API 限流或过载 | 间歇性，非 context 问题；建议对 429 做指数退避重试 |
 | 截图无法截到指定 subuser 的屏幕（shell 可以） | `runtime_context` 缺少 `display` 字段 | 已修复：`build_runtime_context` 为 vm_user 注入 `display: ":11"` 等 |
 | iOS 安装后黑屏 | custom-protocol 在 WKWebView 有已知问题；或 VITE_GATEWAY_URL 缺失导致启动抛错 | 已修复：iOS 用 `--features mobile` 不含 custom-protocol；config 兜底默认 Gateway URL |
