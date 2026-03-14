@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-14（服务器数据清理、deploy CLI 改造、iOS 键盘原生修复、仓库整理）
+> 最后更新：2026-03-14（实现前后端 Agent/Device 增量同步与 SSE 广播机制，部署最新服务及前端）
 
 ---
 
@@ -1294,3 +1294,36 @@ EOF
 ```
 
 > 若迁移的表正在被频繁写入（如 `chat_messages`、`execution_logs`），可以先停 gateway 再操作以避免冲突等待。
+
+---
+
+## Tauri 客户端数据缓存及列表加载分析
+
+根据目前的代码结构，Tauri 客户端的数据加载和缓存策略呈现出明显的“两极分化”：高频大量更新的数据缓存得很完善，但常规的基础列表/元数据极度依赖内存状态和网络，这会导致部分 UI （你提到的 Agent Tab 等）出现白屏和感知性能下降。
+
+### 1. 缓存做得比较好的部分
+
+*   **消息与日志（Messages & Logs）**：这是应用内数据量最大和变动最快的部分。使用了 `IndexedDB` 进行大量本地缓存。在 `messageRepo.ts` 和 `logRepo.ts` 的支持下，数据能在本地完整落地，配合 `useMessagesFromDB` 等 hooks，通过事件分发 (`mitt` 等库或类似机制) 监听 DB 变更，做到了本地极速渲染和历史记录翻看的顺滑支持。
+*   **配置首选项（References & Presets）**：像用户最后选中的模型 `selectedModel` 等都在 `prefsRepo.ts` 做足了本地缓存（IDB 或 LocalStorage），应用启动不易丢失焦点。
+*   **同步机制（SSE）**：借助 `sse.ts` 和 `syncService.ts` 做到了后端向前端的流式增量推送同步，减少了客户端通过拉模式进行数据拉取的代价。
+
+### 2. 缓存不到位 / 制约性能的部分 (Data Lists)
+
+这些部分的共性是：数据流仅仅走 **Gateway API -> Zustand Store (内存)** 的链路，完全缺乏硬盘（IndexedDB/LocalStorage）的持久化兜底。
+
+*   **Agents 列表 (`AgentDrawer.tsx`, `agentService.ts`)**
+    *   **现状**：存储在 Zustand 驱动的内存中 (`useAppStore(s => s.agents)`)。每当侧边栏 Drawer 被打开 (`isOpen=true`)，都会固定调用 `loadAgents()` 向网关发起一次全量 `api.listAgents()`。
+    *   **缺点**：如果网络轻微波折，或者 Gateway 高负载，这部分会直接让侧边栏陷入漫长的空白读取状态；并且重启应用后在没有网的前提下这会是一片空白。缺乏 `agentRepo.ts` 进行硬盘级别的状态保留。
+*   **Devices 列表 (`DeviceManagerPage.tsx`, `AgentDrawer.tsx`)**
+    *   **现状**：同样是全量的 `api.devices.listForUser()` 获取，并落入 `deviceManagerDevices` 这个纯内存中。同时结合 `useDeviceStatusPolling` 处理状态获取。
+    *   **缺点**：设备名称、配置等静态元数据和实时变动的 `status` 没有剥离开。设备基础信息理应像 Logs 一样被离线化缓存，由于频繁整体抓获取拉跨了首屏性能感。
+*   **代理设置 & 工具/技能列表 (`SettingsModal.tsx - AgentToolsTab / SkillsTab`)**
+    *   **现状**：不仅没有本地存储机制，连内存缓存/去重机制都很薄弱。打开 `Agent Tools` 这个内嵌界面的一瞬间，通过并行的 `Promise.allSettled` 发送了 **7 个单独的 Gateway 请求** （包括 `getToolCategories`, `getAgentToolsConfig`, `getSkills`, `getAgentSkills`, 以及重新请求一次设备的 `listForUser`、获取 model 等）。
+    *   **缺点**：这是一个明显的请求放大点（Fetch Waterfall）。其中 `Skills`、`Tool Categories` 是属于全局级别的低频改动数据，不仅每次打开弹出 Modal 都要强网路拉取，并且每次都会覆盖，造成较大的点击延迟感。
+
+### 3. 可以强化的优化方向 (Suggestions)
+
+1. **为核心 List 构建 IDB Repo**：引入类似 `agentRepo.ts` 和 `deviceRepo.ts`，为基础结构物缓存（持久化到 IndexedDB ）。
+2. **读策略从即时全量转为 SWR (Stale-While-Revalidate)**：像 Agent 清单和 Device 清单在组件挂载时，优先读取 IDB 返回数据供 UI 铺设，后台接着拉取 API 更新 DB 和 UI，让用户完全无感知白屏加载。
+3. **请求级别 / Service 级别对低频静态数据增加内存 TTL 缓存**：如 `getToolCategories()` 和 内置 `Skills`，这类不会高频变更的结构应当实现 TTL 缓存锁（或引入类似 React Query 级管理），避免组件级别的高并发重建请求。
+4. **设备数据采取 "基建 + Delta" 的模式**：设备静态属性离线缓存，实时运转的状态 (`running`/`stopped`) 可依赖现在的轮询或者并入 SSE 主通道进行。 
