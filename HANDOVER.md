@@ -9,16 +9,20 @@
 | 需求 | 操作 |
 |---|---|
 | 本地跑起来 | `cd novaic-app && npm install && npm run tauri:dev` |
-| **iOS 构建安装** | `cd novaic-app && ./scripts/build-and-install-ios.sh` |
+| **部署前端 OTA** | `./deploy frontend [version]` |
+| **部署 Gateway** | `./deploy gateway` |
+| **部署全部后端** | `./deploy services` |
+| **部署 Relay** | `./deploy relay` |
+| **构建安装 iOS** | `./deploy ios` |
+| **构建桌面 App** | `./deploy desktop` |
+| **部署全部** | `./deploy all [version]` |
+| **查看服务状态** | `./deploy status` |
 | 改前端 UI | 改 `novaic-app/src/components/`，热更新生效 |
-| 改 Gateway API | 改 `novaic-gateway/`，部署见第五节 |
-| 改 Relay 服务 | 改 `novaic-quic-service/`，`git push` 后 `ssh relay 'cd /opt/novaic/novaic-quic-service && git pull && cargo build --release && cp target/release/novaic-quic-service ./ && systemctl restart novaic-quic-service'` |
-| **一键部署全部** | `./scripts/deploy-all.sh [version]`（默认 0.3.0）：前端→Relay→iOS→macOS。relay SSH 端口 52222。 |
-| **部署前端热更新** | 一、构建并 rsync 到 relay；二、更新 Gateway 环境变量并重启；三、手机端 `./scripts/build-and-install-ios.sh`。relay 用 52222 时需 `-e "ssh -p 52222"`。详见五附「前端热更新」 |
 | 改消息/日志逻辑 | `messageService.ts`、`logService.ts`、`syncService.ts` |
 | 改 VNC 连接 | `vncBridge.ts`、`vncTransport.ts`、`useVnc.ts`、`DeviceDesktopView.tsx` |
 | 清空本地缓存 | Settings → Clear Cache → 清空本地 DB 缓存 |
-| 查架构 | `novaic-app/FRONTEND_ARCHITECTURE.md`、`docs/DESIGN-P2P-UNIFIED.md`、`docs/COMMANDS_SPLIT_DESIGN.md`、`docs/VNC_FRONTEND_TO_VMCONTROL_FLOW.md` |
+| 查架构 | `novaic-app/FRONTEND_ARCHITECTURE.md`、`docs/design/DESIGN-P2P-UNIFIED.md` |
+
 
 ---
 
@@ -299,7 +303,39 @@ Couldn't load -exportOptionsPlist The file ".tmpXXXX" couldn't be opened
 
 ---
 
-## 五、云端部署（novaic-gateway）
+## 五、统一部署 CLI
+
+所有部署操作通过根目录 `./deploy` 脚本统一管理：
+
+```bash
+# ── 客户端 ──
+./deploy frontend [ver]    # 构建前端 + rsync 到 relay OTA (默认 v0.3.0)
+./deploy ios               # 构建 IPA + 安装到已连接 iPhone
+./deploy desktop           # 构建 macOS .app
+
+# ── 后端服务 (api.gradievo.com) ──
+./deploy gateway           # Gateway          (port 19999)
+./deploy runtime           # Agent Runtime    (仅 queue-service)
+./deploy runtime-all       # Agent Runtime    (全部 9 个 worker)
+./deploy orchestrator      # Runtime Orchestrator (port 19993)
+./deploy tools             # Tools Server     (port 19998)
+./deploy storage-a         # Storage A        (port 19995)
+./deploy storage-b         # Storage B        (port 19994)
+
+# ── 基础设施 (relay) ──
+./deploy relay             # QUIC/Relay 服务（git pull + cargo build + systemctl restart）
+
+# ── 聚合 ──
+./deploy services          # 部署全部 6 个后端服务
+./deploy all [ver]         # 全部（前端+后端+relay+客户端）
+./deploy status            # 检查所有服务运行状态
+```
+
+**原理**：后端服务统一使用 `rsync` 同步代码到 `/opt/novaic/services/{name}/`，然后 `pkill` 旧进程 + `nohup .venv/bin/python` 重启。Gateway 使用专用 `restart_gw.sh`。Relay 使用 `git pull` + `cargo build --release` + `systemctl restart`。
+
+---
+
+## 六、云端部署详细说明（novaic-gateway）
 
 ### 服务器信息
 
