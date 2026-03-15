@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-15（PC OTA 默认启用、HD 设备浮层兼容、isMain 扩展 default subject_type）
+> 最后更新：2026-03-15（WebRTC HD/LVM 连接修复、操控实现、颜色修正、性能优化）
 
 ---
 
@@ -724,6 +724,55 @@ useEffect(() => { ... }, [userId]);
 | broadcaster pump 内双重锁 `BROADCASTERS → broadcaster` | 死锁导致帧停推 | keyframe cache 改为独立 `Arc<Mutex>` |
 
 **H.264 NALU 检测**：`detect_nalu_type()` 扫描 Annex B start codes，分类返回 `CodecConfig`（SPS=7/PPS=8）、`Idr`（type=5）、`Other`。
+
+### WebRTC HD/LVM 连接修复与操控实现（2026-03-15）
+
+**问题**：HD 和 Linux VM 的 WebRTC 连接完全无法建立，点击展开无任何反应。Android 正常。
+
+**根因与修复**：
+
+| # | 问题 | 根因 | 修复 | 文件 |
+|---|------|------|------|------|
+| 1 | **连接不发起** | `useWebRtc.ts` 的 `connectingRef` 在 HMR/re-mount 时未重置，卡死为 `true`，`connect()` 被防重入 guard 永远跳过 | useEffect 开头加 `connectingRef.current = false` | `useWebRtc.ts` |
+| 2 | **LVM 颜色失真** | VNC SetPixelFormat red_shift=16 → 字节序 [B,G,R,X]，但 `rgba_to_yuv420` 按 [R,G,B] 读取，R/B 互换 | 交换 `rgba[idx]` 和 `rgba[idx+2]` | `webrtc_vm.rs` |
+| 3 | **HD/LVM 无操控** | 前端发 `type:'mouse'` + 归一化坐标，后端期望 `type:'mousedown'` + 像素坐标 | 统一消息格式，使用 RFB button_mask | `WebRtcScrcpyView.tsx` |
+| 4 | **LVM 操控未实现** | control_task 收到消息直接丢弃（TODO） | 拆分 VNC socket 读写，control task 通过 mpsc channel 发 RFB PointerEvent/KeyEvent | `webrtc_vm.rs` |
+| 5 | **坐标偏移** | 视频 `object-contain` 有黑边，坐标计算未排除 letterbox/pillarbox 偏移 | 计算实际渲染区域，扣除黑边偏移 | `WebRtcScrcpyView.tsx` |
+
+**LVM 操控架构**（消除 Mutex 竞争）：
+
+```
+Control Task ──(mpsc channel 零等待)──► Capture Loop ──(独占 VNC WriteHalf)──► VNC socket
+                                           │
+                                        每帧开始时 try_recv 批量 drain 控制消息
+                                        然后发 FramebufferUpdateRequest + 读帧
+```
+
+- `build_rfb_message()`: 纯 CPU 函数，JSON → RFB 字节（PointerEvent/KeyEvent/Scroll）
+- capture loop 独占 VNC write，先 drain 控制消息再发 FBUR，零锁竞争
+
+**前端鼠标操作**：
+- `buttonMaskRef` (bitmask) 跟踪所有按键状态：bit0=left, bit1=middle, bit2=right
+- `jsButtonToRfbBit()` 映射 JS `e.button` → RFB button_mask bit
+- 每个 mousedown/mouseup 更新 mask，每个事件发送完整 mask（RFB 协议要求）
+- `handleContextMenu` 屏蔽右键菜单（HD/Linux 需要右键）
+- `handleMouseLeave` 清零所有按键
+- mousemove 节流到 ~30fps
+
+**性能优化**：
+- 帧率 15fps → 30fps
+- 双缓冲 `std::mem::swap` 消除每帧 `full_fb.clone()` 8MB 拷贝
+
+**已知限制**：
+- **键盘 keycode 映射缺失**：前端发 JS `e.keyCode`，LVM 后端需要 X11 keysym，HD 后端需要 macOS virtual keycode，当前未做映射
+- **openh264 软编码延迟**：1080p 单帧 30-80ms，是操控延迟的主要来源
+- **LVM 建议后续切回 noVNC 直连**（本地场景零编码延迟），WebRTC 保留给远程/手机场景
+
+**关键文件**：
+- `useWebRtc.ts`: WebRTC 连接 hook，`connectingRef` 重置修复
+- `WebRtcScrcpyView.tsx`: 统一鼠标/键盘事件处理，object-contain 坐标修正
+- `webrtc_vm.rs`: VNC socket 拆分读写，RFB 控制消息注入，颜色修正
+- `webrtc_hd.rs`: HD 截屏 + openh264 + InputInjector（操控已实现）
 
 ### Gateway 设备启停状态门控
 
