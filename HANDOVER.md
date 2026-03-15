@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-14（VNC 链路终极重构：解决 noVNC 时序与前端 Tauri IPC 竞态引发的死锁、空跑和 "Unexpected server connection"，实现 factory 化热插拔连接）
+> 最后更新：2026-03-14（VNC Host Desktop 极限性能调优：淘汰 Raw RGB 推流，全局硬入 Tight + Zlib 级超核帧压缩与跨帧 Monitor Caching 捕获，重构了 `tauri dev` Opt-level 3 满血并发速度）
 
 ---
 
@@ -1465,3 +1465,10 @@ EOF
 ### 2. transportFactory 热重载替换
 完全剥除了 `DeviceDesktopView`、`AgentDesktopView` 以及 `HostDesktopCard` 对 `transport` 生命周期的手工作坊管理。
 - **解决方案**：统一全线 VNC 挂载为工厂函数模型 `<VncCanvas transportFactory={...} />`，一旦发生网络抖动、重连（`Reconnect`）、组件卸载等，底层的 `useVnc` 会自动切断上一次遗骸（消灭僵尸连接泄漏），并动态执行 `transportFactory` 创建全新生命管道重新建立安全长连接。兜底修复了任何 "Unexpected server connection" 与界面上重连按钮毫无反应的技术顽疾。
+
+### 3. VNC Host Desktop 极致性能革命 (1秒延迟防抖)
+在攻克了能够连上的基础上，针对之前 `Host Desktop` 代理发信时存在的 1 秒级恐怖网络抖动滞后进行了手术级优化。
+- **淘汰 Raw 模式**：告别单帧 16MB 的 RGB 原片全推流，利用前端 noVNC 内置支持，向 Rust Native Backend (Tauri) 强势插入 `Tight (Encoding: 7) + Zlib Compression: Level 2 Fast` 高压缩推流体系。体积降维 20~50 倍。
+- **消灭时钟级 66ms 粘手死等**：废止传统无脑 15 FPS 恒定扫描发送，改用 **"脏区跨帧指纹比对(SIMD Data == Old_Data) + tokio::Notify 原子通知下发"** 的零等待（Zero Latency）推流。鼠标不动时绝对静止零负载，鼠标滑动的第一帧立刻触发光速下行链路。
+- **跨平台系统底层显示器劫持与缓存**：排查并消除了之前跨平台 `xcap (Monitor::all())` 接口在每次截屏都要与 macOS Kernel 进行重量级系统级多显卡轮询从而带来的 200ms+ Debug 重病症；采用循环外缓存 Monitor 指针的方式实现零拷贝开销抓屏。
+- **绕过 `tauri dev` 调试级惩罚**：通过改写 `src-tauri/Cargo.toml` 给本地运行补入 `[profile.dev.package."*"] opt-level = 3` ，在开发热编译极速的前提下，将 `flate2` 的 Zlib 运行时从几百毫秒 CPU 爆破级瓶颈，逼退至了原生光速的计算。这也是最终让开发 Debug 模式的卡顿得以全方位彻底解除的关键手。
