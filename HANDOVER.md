@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-15（WebRTC Scrcpy 多客户端 Broadcaster 架构：H.264 SPS/PPS+IDR 分层缓存、DTLS 时序修复、独立锁消除死锁）
+> 最后更新：2026-03-15（PC OTA 默认启用、HD 设备浮层兼容、isMain 扩展 default subject_type）
 
 ---
 
@@ -468,7 +468,7 @@ ssh root@relay.gradievo.com "bash -s" < novaic-quic-service/deploy/setup-certbot
 
 > App 启动时请求 Gateway `GET /api/config/frontend` 获取 CDN URL，成功则 `navigate(remote_url)`，失败或超时则使用本地 bundled 前端。Hybrid Local First 方案。桌面+手机均生效。
 
-**OTA 开关**：默认关闭。需在 App 启动环境设置 `NOVAIC_OTA_ENABLED=1`（或 `true`/`yes`/`on`）才启用 OTA。未设置时始终使用本地打包前端。
+**OTA 开关**：默认启用（`is_ota_enabled()` 始终返回 `true`）。Release 构建启动时自动请求 Gateway 获取 CDN URL 并 navigate。Dev 模式下跳过。
 
 **OTA 三处同步**：新增或变更 CDN 域名时，需同时修改以下三处，否则会 navigate 失败或 invoke 不可用：
 
@@ -1363,7 +1363,7 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 
 ### 前端修改注意事项
 
-- **DeviceFloatingPanel**：main/vm_user 均用 DeviceDesktopView；改布局参数只改 `FLOATING_PANEL_LAYOUT` 和 `getPreviewSize`；VNC 门控在 FloatingPanel 层（`vncActivated` chip）
+- **DeviceFloatingPanel**：main/vm_user/default 均用 DeviceDesktopView；`isMain` 条件含 `'main' | 'default' | 空值`，确保 HD（host_desktop）设备也走 isMain 分支；改布局参数只改 `FLOATING_PANEL_LAYOUT` 和 `getPreviewSize`；VNC 门控在 FloatingPanel 层（`vncActivated` chip）
 - **VNC 相关**：所有 VNC 场景统一用 DeviceDesktopView；修改连接逻辑优先改 useVnc/vncBridge；**门控只加在父组件，不要在 DeviceDesktopView/AgentDesktopView 内部加门控**
 - **ChatInput 状态**：`chatUnreadCount` 从 Zustand store 读；`scrollToBottom` 从 `chatScrollRegistry` 调用；不再 prop drill
 - **CollapsibleExecutionLog**：inline 时 Tab 在底部；非 inline 时已废弃（不再使用顶部浮动）
