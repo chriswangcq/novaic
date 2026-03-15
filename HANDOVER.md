@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-14（VNC Host Desktop 极限性能调优：淘汰 Raw RGB 推流，全局硬入 Tight + Zlib 级超核帧压缩与跨帧 Monitor Caching 捕获，重构了 `tauri dev` Opt-level 3 满血并发速度）
+> 最后更新：2026-03-15（WebRTC Scrcpy 多客户端 Broadcaster 架构：H.264 SPS/PPS+IDR 分层缓存、DTLS 时序修复、独立锁消除死锁）
 
 ---
 
@@ -700,6 +700,31 @@ useEffect(() => { ... }, [userId]);
 
 **修复**：`scrcpy/mod.rs` 控制任务 Text 分支加 `break`，WebSocket 关闭触发前端 2s 后自动重连。
 
+### WebRTC Scrcpy 多客户端 Broadcaster 架构（2026-03-15）
+
+**目标**：让多个客户端（桌面 + 手机）同时连接观看/操控同一台 Android 设备。
+
+**架构**：
+- **ScrcpyBroadcaster**：每个 `device_serial` 一个 broadcaster，持有唯一的 scrcpy TCP 连接
+- **tokio::sync::broadcast**：broadcaster 从 scrcpy TCP 读帧 → broadcast 到所有订阅者
+- **session_id**：每个客户端连接获得唯一 UUID session_id，stop 时只断自己
+- **keyframe_cache**：独立 `Arc<Mutex<(Option<Bytes>, Option<Bytes>)>>`，分别存 codec config (SPS/PPS) 和 last IDR
+- **alive flag**：broadcaster pump 结束时标记 `alive=false`，新连接检测到死 broadcaster 会重建
+
+**关键文件**：
+- `webrtc_scrcpy.rs`：`ScrcpyBroadcaster`、`subscriber_pump`、`detect_nalu_type`
+- `WebRtcScrcpyView.tsx`：前端 WebRTC 组件，存 `sessionIdRef` 用于精确 stop
+
+**三个关键 bug 修复**：
+
+| Bug | 症状 | 修复 |
+|-----|------|------|
+| keyframe 在 ICE 连接前 `write_sample` | DTLS 未协商完，帧被丢弃 → 黑屏 | subscriber_pump 轮询等待 `peer_connection.connection_state() == Connected` 再写 |
+| SPS/PPS 和 IDR 用同一缓存字段 | IDR 覆盖 SPS/PPS → 解码器没有 codec config → 黑屏 | 拆为 `(codec_config, last_idr)` 分别缓存，按顺序发送 |
+| broadcaster pump 内双重锁 `BROADCASTERS → broadcaster` | 死锁导致帧停推 | keyframe cache 改为独立 `Arc<Mutex>` |
+
+**H.264 NALU 检测**：`detect_nalu_type()` 扫描 Annex B start codes，分类返回 `CodecConfig`（SPS=7/PPS=8）、`Idr`（type=5）、`Other`。
+
 ### Gateway 设备启停状态门控
 
 `start_device` 允许状态：`READY` / `STOPPED` / `ERROR`（ERROR 状态可以重试启动）
@@ -1328,6 +1353,9 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 - [ ] `execution_logs` 的 `subagent_id = 'main'` legacy 数据迁移为 `'main-{agent_id[:8]}'`（消除前端兼容逻辑）
 - [ ] VM 停机后 socket 文件清理（当前 VNC socket 在 VM 停后仍残留）
 - [ ] scrcpy 重连后 `retryCount` 上限（当前 3 次后停止，用户需手动点"连接设备"）
+- [ ] WebRTC Scrcpy 断开后自动重连（当前 peer failed 后需手动点重连）
+- [ ] TURN 服务器集成（当前仅 STUN，某些 NAT 类型下可能无法打洞）
+- [ ] WebRTC 多客户端操控冲突处理（当前多端操控不互斥，可能产生输入冲突）
 - [ ] 设备状态轮询与 DB 状态同步（现在可能出现 DB 状态落后于实际运行状态的情况）
 - [ ] Gateway DB 访问改为异步（当前同步 SQLite 在 async FastAPI 中，高并发下仍有阻塞风险）
 - [ ] **Skill 商店 / ClawHub 集成**：需要 ClawHub API 端点和文档，在 Skills tab 第二栏增加「商店」入口，支持浏览/搜索/安装 skill
