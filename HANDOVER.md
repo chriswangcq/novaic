@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-14（Host Desktop VNC 链路重构：对齐 LVM 统一走 open_vnc_stream 解决手机端闭链问题）
+> 最后更新：2026-03-14（VNC 链路终极重构：解决 noVNC 时序与前端 Tauri IPC 竞态引发的死锁、空跑和 "Unexpected server connection"，实现 factory 化热插拔连接）
 
 ---
 
@@ -1453,3 +1453,15 @@ EOF
 ```
 
 > 若迁移的表正在被频繁写入（如 `chat_messages`、`execution_logs`），可以先停 gateway 再操作以避免冲突等待。
+
+---
+
+## 十七、2026-03-14 VNC连接竞态消除与架构重构
+
+### 1. 消除 HD 与 LVM 通信在桌面秒开的 IPC 竞态 (丢包死锁问题)
+由于 Host Desktop 服务跑在左近本地，当服务端瞬间连上极速发送握手流（`RFB 003.008\n`）时，前端 `invoke` 刚返回，`listen` （数据接收挂载）却尚未完成，导致头包丢失，此时 `noVNC` 会永远卡死在“Connecting”并抛出后续一系列连接打断崩溃报错。
+- **解决方案**：引入客户端源头预分发 UUID 作为 `streamId`机制。发起 `invoke` 连通前，前端率先使用预设的 `streamId` 闭环布置好 `listen(data)`，确保即使 HD 光速响应，包也能 100% 撞击落网。
+
+### 2. transportFactory 热重载替换
+完全剥除了 `DeviceDesktopView`、`AgentDesktopView` 以及 `HostDesktopCard` 对 `transport` 生命周期的手工作坊管理。
+- **解决方案**：统一全线 VNC 挂载为工厂函数模型 `<VncCanvas transportFactory={...} />`，一旦发生网络抖动、重连（`Reconnect`）、组件卸载等，底层的 `useVnc` 会自动切断上一次遗骸（消灭僵尸连接泄漏），并动态执行 `transportFactory` 创建全新生命管道重新建立安全长连接。兜底修复了任何 "Unexpected server connection" 与界面上重连按钮毫无反应的技术顽疾。
