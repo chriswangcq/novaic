@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-14（currentAgentId 重构为 local state；Skills 独立为主 tab + 第二栏列表；SSE 去掉 agent 过滤）
+> 最后更新：2026-03-14（Devices tab 重构为 PC Client 管理页 + 内联 VNC 展开态 + subuser 桌面切换）
 
 ---
 
@@ -954,6 +954,49 @@ PC 式（宽度 ≥ LAYOUT_THRESHOLD）：
 - **PrimaryTab**：`chats | agents | devices | skills | setting`，主导航五个 tab
 - **activeView**：`chat | agents | devices`，决定 Main 区渲染 ChatPanel、AgentDrawer 配置 还是 DeviceManagerPage
 
+#### Devices tab 三栏结构（2026-03-14 重构）
+
+**设计决策**：Devices tab 不再层层钻入单个设备页面，而是采用 PC Client 管理页 + 内联 VNC 展开态。
+
+```
+第二栏（AgentDrawer.devicesContent）：
+  PC Client 列表（每个 app_instance 一张卡片，显示名称/在线状态/设备数）
+
+第三栏（PcClientDeviceList）：
+  选中 PC Client → 管理页（统计条 + 设备卡片列表）
+  设备卡片点击 Eye → 展开 VNC（手风琴式，同时只展开一个设备）
+```
+
+**关键文件**：
+
+| 文件 | 用途 |
+|---|---|
+| `PcClientDeviceList.tsx` | 第三栏：PC Client 管理页，含设备列表、内联 VNC 展开态、subuser 桌面切换 |
+| `AgentDrawer.tsx` (devicesContent) | 第二栏：PC Client 列表选择器 |
+| `LayoutContainer.tsx` | 宽屏/窄屏路由：`selectedPcClientId` → `PcClientDeviceList` |
+
+**DeviceCard 展开态（内联 VNC）**：
+
+- 点击 Eye 按钮 → 卡片向下展开 360px，显示 VNC 画面
+- Linux 设备：展开区域包含**桌面切换 Tab Bar**（🏠 Main + 子用户 tabs + ➕ 添加用户）
+- 子用户 tab 悬停显示操作按钮（↻ Restart VNC / ✕ Delete）
+- Android 设备：直接显示 VNC 画面
+- 切换 tab 通过 `key` prop 强制 re-mount VNC 组件
+- 同时只有一个设备展开（`expandedDeviceId` state）
+
+**窄屏（手机）支持**：
+
+- 第二栏 AgentDrawer 传入 `selectedPcClientId` / `onSelectPcClient`
+- 点击 PC Client → `onNarrowPageChange('devices')` 跳转第三栏
+- 第三栏渲染 `PcClientDeviceList`，返回按钮清除 `selectedPcClientId` + 回到 sidebar
+
+**Store 新增字段**：
+
+| 字段 | 类型 | 用途 |
+|---|---|---|
+| `byAppInstance` | `AppInstance[]` | PC Client 列表（含设备、在线状态） |
+| `selectedPcClientId` | `string \| null` | 当前选中的 PC Client floor key |
+
 #### currentAgentId 重构（2026-03-14）
 
 **核心改动**：`currentAgentId` 不再是影响全局的单例游标。Chats 和 Agents 两个 tab 各自独立管理选中状态。
@@ -992,7 +1035,7 @@ PC 式（宽度 ≥ LAYOUT_THRESHOLD）：
 | Header | 左右占位 div |
 | DeviceManagerPage | 标题栏 |
 | SettingsModal | 标题栏 |
-| NarrowHeader | 整行 |
+| NarrowHeader | 整行（macOS 58px / 手机 58px + safe-area-inset-top） |
 
 #### Header 回调
 
@@ -1337,6 +1380,7 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 | 改 Agent 列表 | `AgentDrawer.tsx`、`useAgent.ts` |
 | 改主布局/导航 | `LayoutContainer.tsx`、`PrimaryNav.tsx`、`BottomTabBar.tsx`、`App.tsx` |
 | 改 Skills 列表/详情 | `AgentDrawer.tsx`（skillsContent）、`SettingsModal.tsx`（SkillsTab） |
+| 改 Devices tab / PC Client 管理 | `PcClientDeviceList.tsx`、`AgentDrawer.tsx`（devicesContent） |
 | 改 Gateway 配置 API | `novaic-gateway/gateway/api/internal/config.py` |
 | 改 VM 准备（环境/镜像/部署） | `novaic-gateway/gateway/api/vm.py`、`vmcontrol/src/api/routes/vm_prep.rs` |
 | 改 Relay 服务 | `novaic-quic-service/src/relay.rs`、`protocol.rs`、`auth.rs` |
