@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-14（VNC 手动连接架构重构；ChatInput 状态精简；消息 DOM 优化；getCachedUser 修复；Agent Config SWR）
+> 最后更新：2026-03-14（currentAgentId 重构为 local state；Skills 独立为主 tab + 第二栏列表；SSE 去掉 agent 过滤）
 
 ---
 
@@ -808,7 +808,7 @@ Tauri App 与云端 Gateway 通过 WebSocket (`/internal/pc/ws`) 保持长连接
 | `src/application/index.ts` | Service 单例工厂（`userId`-scoped 懒惰初始化） |
 | `src/application/messageService.ts` | 消息完整生命周期（发送、delta sync、SSE 处理） |
 | `src/application/logService.ts` | 日志业务逻辑 |
-| `src/application/syncService.ts` | SSE 生命周期 + delta sync 协调；`switchAgent(agentId)` 时 disconnect → load → connectChat + connectLogs |
+| `src/application/syncService.ts` | SSE 生命周期 + delta sync 协调；`switchAgent(agentId)` 时 disconnect → load → connectChat + connectLogs。**注意**：subagent SSE 不过滤 agentId（SSE 是 User 维度） |
 | `src/application/agentService.ts` | Agent CRUD + 初始化 + VM setup 流程 |
 | `src/application/modelService.ts` | 模型配置管理 |
 | `src/application/layoutService.ts` | 布局持久化 |
@@ -933,9 +933,11 @@ FLOATING_PANEL_LAYOUT = {
 
 #### Settings 模态与 Tab
 
-- **Tab 类型**：`models | agents | skills | agent-tools | cache | user`
+- **Tab 类型**：`models | skills | agent-tools | cache | user`（Skills 已从 Settings 列表移除，独立为主 tab）
 - **User tab**：邮箱、显示名称、退出登录
 - **Agent Tools**：选择 Agent → 配置 Skills、Device Binding、Model、Bootstrap 文件等
+- **`overrideAgentId` prop**：从 Agents tab 传入，不依赖全局 `currentAgentId`
+- **`overrideSkillId` prop**：从 Skills tab 传入，自动打开指定 skill 的详情/编辑页
 
 #### 主布局结构（LayoutContainer）
 
@@ -944,13 +946,40 @@ PC 式（宽度 ≥ LAYOUT_THRESHOLD）：
   PrimaryNav | AgentDrawer | Main(Header + ChatPanel/DeviceManagerPage/SettingsModal)
 
 手机式（宽度 < 阈值）：
-  - 第二栏（narrowPage=sidebar）：NarrowHeader + AgentDrawer（含 agents/devices/setting 列表）
-  - 第三栏（narrowPage=chat/devices/settings）：Header + 对应内容，底 tab 隐藏，可返回
+  - 第二栏（narrowPage=sidebar）：NarrowHeader + AgentDrawer（含 chats/agents/devices/skills/setting 列表）
+  - 第三栏（narrowPage=chat/agents/devices/skills/settings）：Header + 对应内容，底 tab 隐藏，可返回
 ```
 
-- **narrowPage**：`sidebar | chat | devices | settings`，控制手机式下当前显示哪一栏
-- **PrimaryTab**：`agents | devices | setting`，主导航三个 tab
-- **activeView**：`chat | devices`，决定 Main 区渲染 ChatPanel 还是 DeviceManagerPage
+- **narrowPage**：`sidebar | chat | agents | create-agent | devices | skills | settings | more`，控制手机式下当前显示哪一栏
+- **PrimaryTab**：`chats | agents | devices | skills | setting`，主导航五个 tab
+- **activeView**：`chat | agents | devices`，决定 Main 区渲染 ChatPanel、AgentDrawer 配置 还是 DeviceManagerPage
+
+#### currentAgentId 重构（2026-03-14）
+
+**核心改动**：`currentAgentId` 不再是影响全局的单例游标。Chats 和 Agents 两个 tab 各自独立管理选中状态。
+
+| 状态 | 管理位置 | 用途 |
+|---|---|---|
+| `currentAgentId` | Zustand store（`useAppStore`） | **仅 Chats tab**：消息/日志加载、ChatInput 门控、SSE switchAgent |
+| `configAgentId` | LayoutContainer local state | **仅 Agents tab**：agent 配置页选中状态，传给 `SettingsModal.overrideAgentId` |
+| `selectedSkillId` | LayoutContainer local state | **仅 Skills tab**：skill 详情页选中状态，传给 `SettingsModal.overrideSkillId` |
+
+**行为**：
+- Chats tab 选中 Agent A 聊天 → 切到 Agents tab 配置 Agent B → 切回 Chats → **仍然在和 Agent A 聊天**
+- SSE `onSubagentUpdate` 不再按 `currentAgentId` 过滤（SSE 是 by user 的）
+- Devices tab 不再显示「当前 Agent」标签（设备是 User 维度资源）
+
+#### Skills tab（2026-03-14）
+
+**Skills 从 Settings 子项独立为主导航 tab**（位于 Devices 和 Settings 之间，✨ Sparkles 图标）。
+
+| 栏 | 内容 |
+|---|---|
+| 第二栏（AgentDrawer） | Skills 列表：分「自定义」和「内置」两组，紫色/蓝色视觉区分，显示名称/描述/关键词标签。顶部 "+" 创建按钮 |
+| 第三栏 | 无选中 → 空状态；点击 skill → 详情（内置只读/自定义编辑表单）；点击 "+" → 新建表单 |
+
+- Skills 数据在切到 Skills tab 时**懒加载**（`import('../../services/api')` + `skillsFetched` ref）
+- SkillsTab 接受 `initialSkillId` prop，自动打开对应 skill 详情（`'__create__'` 表示新建模式）
 
 #### Tauri 窗口拖拽区
 
@@ -1252,6 +1281,7 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 - [ ] scrcpy 重连后 `retryCount` 上限（当前 3 次后停止，用户需手动点"连接设备"）
 - [ ] 设备状态轮询与 DB 状态同步（现在可能出现 DB 状态落后于实际运行状态的情况）
 - [ ] Gateway DB 访问改为异步（当前同步 SQLite 在 async FastAPI 中，高并发下仍有阻塞风险）
+- [ ] **Skill 商店 / ClawHub 集成**：需要 ClawHub API 端点和文档，在 Skills tab 第二栏增加「商店」入口，支持浏览/搜索/安装 skill
 - [ ] API 服务器升级到 2 核（当前 1 核跑 16 个进程，高并发时会有瓶颈）
 
 ### 前端修改注意事项
@@ -1305,7 +1335,8 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 | 改模型选择 UI | `SettingsModal.tsx` → AgentToolsTab |
 | 改消息发送 | `ChatInput.tsx`、`messageService.ts` |
 | 改 Agent 列表 | `AgentDrawer.tsx`、`useAgent.ts` |
-| 改主布局/导航 | `LayoutContainer.tsx`、`PrimaryNav.tsx`、`App.tsx` |
+| 改主布局/导航 | `LayoutContainer.tsx`、`PrimaryNav.tsx`、`BottomTabBar.tsx`、`App.tsx` |
+| 改 Skills 列表/详情 | `AgentDrawer.tsx`（skillsContent）、`SettingsModal.tsx`（SkillsTab） |
 | 改 Gateway 配置 API | `novaic-gateway/gateway/api/internal/config.py` |
 | 改 VM 准备（环境/镜像/部署） | `novaic-gateway/gateway/api/vm.py`、`vmcontrol/src/api/routes/vm_prep.rs` |
 | 改 Relay 服务 | `novaic-quic-service/src/relay.rs`、`protocol.rs`、`auth.rs` |
