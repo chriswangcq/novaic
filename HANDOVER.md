@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-14（Devices tab 重构为 PC Client 管理页 + 内联 VNC 展开态 + subuser 桌面切换）
+> 最后更新：2026-03-14（Host Desktop VNC 链路重构：对齐 LVM 统一走 open_vnc_stream 解决手机端闭链问题）
 
 ---
 
@@ -740,9 +740,15 @@ Tauri App 与云端 Gateway 通过 WebSocket (`/internal/pc/ws`) 保持长连接
 
 **VNC 前端统一（2026-03）**：Device tab 与 Agent tab 均使用 `DeviceDesktopView` + `createVncTransport` + `useVnc` + `VncCanvas`，移除 `VNCViewShared` 和 `vncStream` 订阅模式。maindesk 与 subuser 共用同一套连接逻辑，连接池按 `pool_key = vm_id:username` 管理。
 
+**Host Desktop VNC 统一（2026-03-14）**：
+- **前端**：移除独立的 `HostDesktopTransport` 类和 React 画布组件，PC 端完全使用与 Linux 虚拟机 (LVM) 一致的 `DeviceDesktopView` 和 `VncBridgeTransport` 链路。
+- **后端**：在 `route_vnc_to_channel` 中根据 `vm_id` 前缀（`hd-`）路由，若匹配则调用 `open_host_desktop_stream`（类型 0x03），否则调用 `open_vnc_stream`（类型 0x01）。
+- **Tunnel**：修改了 PC 端 `tunnel.rs`，在 VNC（0x01）链路中检测 `vm_id` 是否以 `hd-` 开头，直接连接 `/tmp/novaic/host-vnc.sock`，跨过了 `resolve_vnc_endpoint_via_http` HTTP 请求探测环节，解决手机端没有 Local VmControl 时长链断裂导致连接失败（Connection failed）的问题。
+
 **关键修复**：
-- `vncBridge._doConnect` 返回时检查已关闭，避免向 disconnected RFB 投递数据（"Got data while disconnected"）
-- `useVnc.doConnect` 已连接时仅更新 viewOnly/scaleViewport/clipViewport，不重建 RFB（maindesk 展开时 viewOnly 变化触发 effect 导致 "Unexpected server connection while connecting"）
+- `vncBridge._doConnect` 严格遵循时序：`invoke → readyState = OPEN → onopen() → yield一帧 → setupListeners()`，避免在 onopen 前注册监听导致 noVNC 报 "Got data while disconnected" 提前断开。
+- `vncBridge._doConnect` 返回时检查已关闭，避免向 disconnected RFB 投递数据。
+- `useVnc.doConnect` 已连接时仅更新 viewOnly/scaleViewport/clipViewport，不重建 RFB（maindesk 展开时 viewOnly 变化触发 effect 导致 "Unexpected server connection while connecting"）。
 
 ---
 
