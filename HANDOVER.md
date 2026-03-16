@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-15（WebRTC HD/LVM 连接修复、操控实现、颜色修正、性能优化）
+> 最后更新：2026-03-16（CGEvent 键盘 + pbcopy 剪贴板修复 macOS 线程崩溃、虚拟物理键盘 VirtualKeyboard）
 
 ---
 
@@ -19,7 +19,8 @@
 | **查看服务状态** | `./deploy status` |
 | 改前端 UI | 改 `novaic-app/src/components/`，热更新生效 |
 | 改消息/日志逻辑 | `messageService.ts`、`logService.ts`、`syncService.ts` |
-| 改 VNC 连接 | `vncBridge.ts`、`vncTransport.ts`、`useVnc.ts`、`DeviceDesktopView.tsx` |
+| 改 VNC 连接 | `vncBridge.ts`、`vncTransport.ts`、`useVnc.ts`、`DeviceDesktopView.tsx`（已由 DeviceConsole 替代） |
+| 改设备操控台 | `DeviceConsole.tsx`、`ConsoleToolbar.tsx`、`useWebRtc.ts`、`useRemoteInput.ts` |
 | 清空本地缓存 | Settings → Clear Cache → 清空本地 DB 缓存 |
 | 查架构 | `novaic-app/FRONTEND_ARCHITECTURE.md`、`docs/design/DESIGN-P2P-UNIFIED.md` |
 
@@ -764,9 +765,58 @@ Control Task ──(mpsc channel 零等待)──► Capture Loop ──(独占 
 - 双缓冲 `std::mem::swap` 消除每帧 `full_fb.clone()` 8MB 拷贝
 
 **已知限制**：
-- **键盘 keycode 映射缺失**：前端发 JS `e.keyCode`，LVM 后端需要 X11 keysym，HD 后端需要 macOS virtual keycode，当前未做映射
 - **openh264 软编码延迟**：1080p 单帧 30-80ms，是操控延迟的主要来源
 - **LVM 建议后续切回 noVNC 直连**（本地场景零编码延迟），WebRTC 保留给远程/手机场景
+
+### macOS 输入注入架构修复（2026-03-16）
+
+**问题**：HD（Host Desktop）模式下，从手机端发送键盘输入或剪贴板内容会导致 App 崩溃。
+
+**根因**：`enigo` 库的 `key()` 方法内部调用 macOS `TSMGetInputSourceProperty`（Text Services Manager），此 API **必须在主线程（main dispatch queue）调用**。但 input-handler 运行在工作线程，导致 `dispatch_assert_queue_fail` → SIGTRAP 崩溃。类似地，`arboard` 库的 `Clipboard::new()` 访问 `NSPasteboard`，也有主线程限制。
+
+**修复方案**：
+
+| 功能 | 旧方案（崩溃） | 新方案（线程安全） |
+|------|---------------|-------------------|
+| 键盘注入 | `enigo::Keyboard::key()` → TSMGetInputSourceProperty | `CGEvent::new_keyboard_event()` + `event.post(HID)` |
+| 剪贴板设置 | `arboard::Clipboard::set_text()` → NSPasteboard | `pbcopy` 命令（子进程，任意线程） |
+| 剪贴板读取 | `arboard::Clipboard::get_text()` → NSPasteboard | `pbpaste` 命令 |
+
+**CGEvent 键盘**：完整映射了 macOS virtual keycodes（0x00-0x7E），覆盖所有字母、数字、功能键、修饰键、方向键。对于没有直接映射的 Unicode 字符，使用 `CGEvent.set_string_from_utf16_unchecked()` 注入。
+
+**新增依赖**：`core-graphics = "0.24"` (macOS only, `[target.'cfg(target_os = "macos")'.dependencies]`)
+
+**关键文件**：
+- `vmcontrol/src/input/handler.rs`：`cg_key_event()`, `cg_type_string()`, `enigo_key_to_cg_keycode()`, `char_to_keycode()`
+- `vmcontrol/src/input/clipboard.rs`：`set_text_clipboard()` 使用 pbcopy, `get_local_clipboard()` 使用 pbpaste
+- `vmcontrol/Cargo.toml`：新增 `core-graphics` 条件依赖
+
+### 虚拟物理键盘 VirtualKeyboard（2026-03-16）
+
+手机端原来的"键盘"按钮会弹出系统输入法，但系统输入法无法发送功能键（F1-F12）、修饰键组合（Ctrl+C）等。
+
+**新实现**：`VirtualKeyboard.tsx` 虚拟物理键盘，还原完整 PC 键盘布局：
+
+```
+┌─────────────────────────────────────────────┐
+│ ‹ │ Esc F1 F2 F3 F4 F5 F6 ... F12 │ ›   │ ← Fn 行，可左右滚动
+├─────────────────────────────────────────────┤
+│ !  @  #  $  %  ^  &  *  (  )   ←          │ ← 数字行 + shift 提示 + ⌫
+│ 1  2  3  4  5  6  7  8  9  0               │
+├─────────────────────────────────────────────┤
+│ Q  W  E  R  T  Y  U  I  O  P              │ ← QWERTY 行
+├─────────────────────────────────────────────┤
+│ A  S  D  F  G  H  J  K  L  ↵              │ ← ASDF 行 + Enter
+├─────────────────────────────────────────────┤
+│ Shift  Z  X  C  V  B  N  M  Shift         │ ← ZXCV 行
+├─────────────────────────────────────────────┤
+│ Ctrl  Alt  ⌘  │  Space  │ ← ↓ ↑ →         │ ← 底部行
+└─────────────────────────────────────────────┘
+```
+
+**修饰键 toggle 模式**：Shift/Ctrl/Alt/⌘ 点按后高亮激活，按完其他键后自动释放（单次使用模式），类似 iOS AssistiveTouch。
+
+**深色毛玻璃背景**：`rgba(13,13,20,0.92)` + `backdrop-filter: blur(20px)`，与设计图一致。
 
 **关键文件**：
 - `useWebRtc.ts`: WebRTC 连接 hook，`connectingRef` 重置修复
@@ -775,6 +825,111 @@ Control Task ──(mpsc channel 零等待)──► Capture Loop ──(独占 
 - `webrtc_hd.rs`: HD 截屏 + openh264 + InputInjector（操控已实现）
 
 ### Gateway 设备启停状态门控
+
+### 统一设备操控台 DeviceConsole（2026-03-16）
+
+**背景**：此前设备操控分散在 `DeviceDesktopView`（VNC）和 `WebRtcView`（WebRTC 预览）中，交互碎片化。统一改为一个浮层式操控台 `DeviceConsole`，**全链路走 WebRTC**（不再用 VNC）。
+
+#### 组件体系
+
+```
+src/components/Console/
+├── index.ts             — 统一导出
+├── types.ts             — 类型定义（DeviceType, ConsoleViewMode, ConsoleInputMode 等）
+├── DeviceConsole.tsx     — ★ 主组件（fixed 浮层 z-[9999]）
+├── ConsoleToolbar.tsx    — 固定底部工具栏（不覆盖画面，有自己的空间）
+├── VirtualKeyboard.tsx  — ★ 虚拟物理键盘（完整 QWERTY + Fn + 修饰键 toggle）
+├── PipMinimap.tsx       — PiP 缩略图（缩放时角落显示全景 + 蓝色视口矩形）
+└── SoftwareCursor.tsx   — 软件光标（PC 端箭头 / 手机端红点）
+
+src/hooks/
+├── useViewTransform.ts — 缩放/平移管理 Hook（pinch + 滚轮 + 鼠标拖动）
+├── useWebRtc.ts        — WebRTC PeerConnection + DataChannel
+└── useRemoteInput.ts   — 鼠标/键盘/触摸 → DataChannel 序列化
+```
+
+#### 协议与信令
+
+| 设备类型 | WebRTC 信令路径 | 输入通道 |
+|:---|:---|:---|
+| Linux VM | `POST /api/vmcontrol/vm/webrtc/start` | DataChannel (`key_event`, `mouse_event`) |
+| Host Desktop | `POST /api/vmcontrol/hd/webrtc/start` | DataChannel (`key_event`, `mouse_event`) |
+| Android | `POST /api/vmcontrol/android/webrtc/start` | DataChannel (`touch_event`, `mobile_action`) |
+
+**不再使用 VNC**。`DeviceDesktopView`、`DeviceVNCView` 保留但不再是主入口。
+
+#### 接入点
+
+| 入口文件 | 触发方式 | 改动说明 |
+|:---|:---|:---|
+| `DeviceFloatingPanel.tsx` | overlay div `onDoubleClick` | 替换了旧的 `expand() + setOperating(true)` 逻辑；展开工具栏的"操控台"按钮也可触发 |
+| `PcClientDeviceList.tsx` | MousePointer2 按钮 | 新增操控台按钮；Eye 按钮保留做内联 WebRTC 预览 |
+| `DeviceSidebar.tsx` | "显示"按钮 | 替换旧的 `DeviceDisplayModal`（已删除） |
+| `DeviceManagerPage.tsx` | 右面板"→ 打开操控台"链接 | 内联预览保留 + DeviceConsole 叠加 |
+
+#### 两段式布局
+
+```
+┌─────────────────────────────┐
+│                             │
+│      画面区 (flex-1)         │ ← video + transform + cursor
+│                             │
+├─────────────────────────────┤
+│  工具栏 (固定 52px)          │ ← DeviceInfo | 模式 | 按钮
+│  状态行 (18px, optional)     │ ← 分辨率 / fps / 延迟 / 码率
+└─────────────────────────────┘
+```
+
+**工具栏不浮在画面上方**，有独立的固定空间。
+
+#### Adjust ↔ Fixed 模式
+
+| 模式 | 功能 | 视觉反馈 |
+|:---|:---|:---|
+| **Fixed (操控中)** | 鼠标/键盘/触摸事件发送到远程 | indigo 发光边框、光标隐藏 |
+| **Adjust (缩放调整)** | 滚轮缩放 + 鼠标拖动平移 + 双指 pinch | 琥珀色提示条 "缩放调整中" |
+
+- ESC 键：Fixed → Adjust；再按 ESC → 关闭操控台
+- 切换按钮在工具栏中间区域（PC 和手机都显示）
+
+#### 工具栏功能
+
+| 功能 | PC 端 | 手机端 |
+|:---|:---|:---|
+| 模式切换（操控/缩放） | ✅ | ✅ |
+| 输入模式（鼠标/Trackpad/Touch/View） | 显示"鼠标操控"badge | 三选一切换 |
+| 快捷键菜单 | ✅ Linux 7项 / macOS 3项 | ✅ |
+| Android 导航键 | ✅ Back/Home/Recent | ✅ |
+| 虚拟键盘 | ✅ VirtualKeyboard（完整 QWERTY） | ✅ |
+| 剪贴板发送 | ✅ 文本框 + 发送 + 自动 Ctrl+V 粘贴 | ✅ |
+| 刷新画面 (keyframe) | ✅ | ✅ |
+| 截图 (下载 PNG) | ✅ | ✅ |
+| 全屏 | ✅ | ✅ |
+| 状态行 | 分辨率/fps/延迟/码率/编码器 | 同左 |
+
+#### ⚠️ 关键实现注意事项
+
+1. **containerRef 挂载**：`useRemoteInput` 内部创建 `containerRef = useRef(null)`，其 useEffect 依赖 `containerRef.current`。DeviceConsole 通过 ref callback 同步赋值，并用 `const [mounted, setMounted] = useState(false) + useEffect(() => setMounted(true), [])` 强制二次 render，否则 hook 内部 effect 拿不到 DOM 元素，输入事件不会绑定。
+
+2. **不要用 forceUpdate 在 ref callback 里**：会导致无限循环（inline ref function 每次 render 新建 → React cleanup+re-call → setState → re-render → 循环）。
+
+3. **onPanStart 闭包陷阱**：`useCallback([viewMode, transform])` 依赖 transform，滚轮缩放后 transform 频繁变化导致 onPanStart 重建，useEffect 重新绑定事件。解决：`setTransform(prev => {...})` 读取最新值，依赖只保留 `[viewMode]`。
+
+4. **overlay div 的 onDoubleClick**：`DeviceFloatingPanel.tsx` 有一个覆盖在画面上的透明 div（z-20），原来的 `onDoubleClick` 直接调用 `expand() + setOperating(true)` 走旧路径。必须改这里，而非 handleClick 函数。
+
+#### 关键文件
+
+| 文件 | 用途 |
+|---|---|
+| `Console/DeviceConsole.tsx` | 主组件：WebRTC + 输入 + 缩放 + 工具栏整合 |
+| `Console/ConsoleToolbar.tsx` | 工具栏：模式切换、快捷键、剪贴板、导航键 |
+| `Console/VirtualKeyboard.tsx` | 虚拟物理键盘组件 |
+| `Console/PipMinimap.tsx` | PiP 缩略图 |
+| `Console/SoftwareCursor.tsx` | 软件光标 |
+| `Console/types.ts` | 类型定义 |
+| `hooks/useViewTransform.ts` | 缩放/平移（pinch + wheel + drag） |
+| `hooks/useWebRtc.ts` | WebRTC 连接管理 |
+| `hooks/useRemoteInput.ts` | 输入事件 → DataChannel 序列化 |
 
 `start_device` 允许状态：`READY` / `STOPPED` / `ERROR`（ERROR 状态可以重试启动）
 
@@ -1404,6 +1559,8 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 - [ ] scrcpy 重连后 `retryCount` 上限（当前 3 次后停止，用户需手动点"连接设备"）
 - [ ] WebRTC Scrcpy 断开后自动重连（当前 peer failed 后需手动点重连）
 - [ ] TURN 服务器集成（当前仅 STUN，某些 NAT 类型下可能无法打洞）
+- [x] **macOS 键盘/剪贴板崩溃修复**：enigo→CGEvent、arboard→pbcopy/pbpaste（2026-03-16）
+- [x] **虚拟物理键盘**：VirtualKeyboard.tsx 完整 QWERTY 布局（2026-03-16）
 - [ ] WebRTC 多客户端操控冲突处理（当前多端操控不互斥，可能产生输入冲突）
 - [ ] 设备状态轮询与 DB 状态同步（现在可能出现 DB 状态落后于实际运行状态的情况）
 - [ ] Gateway DB 访问改为异步（当前同步 SQLite 在 async FastAPI 中，高并发下仍有阻塞风险）
@@ -1455,7 +1612,8 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 
 | 需求 | 文件 |
 |---|---|
-| 改 VNC 连接逻辑 | `vncBridge.ts`、`vncTransport.ts`、`useVnc.ts` |
+| 改 VNC 连接逻辑 | `vncBridge.ts`、`vncTransport.ts`、`useVnc.ts`（已由 DeviceConsole 替代） |
+| 改设备操控台 | `DeviceConsole.tsx`、`ConsoleToolbar.tsx`、`useWebRtc.ts`、`useRemoteInput.ts`、`useViewTransform.ts` |
 | 改浮窗尺寸/位置 | `DeviceFloatingPanel.tsx` → FLOATING_PANEL_LAYOUT |
 | 改 Execution Log 布局 | `MainAgentLogPreview.tsx`、`SubagentList.tsx`、`ChatPanel.tsx` |
 | 改模型选择 UI | `SettingsModal.tsx` → AgentToolsTab |
