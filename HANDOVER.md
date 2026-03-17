@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-17（远程光标通道 + 放大镜闪烁修复 + 工具栏竖屏重构 + 剪贴板 Modal + 键盘收起按钮）
+> 最后更新：2026-03-17（反慢动作修复 + 自动 Keyframe 恢复 + 工具执行架构分析）
 
 ---
 
@@ -1566,6 +1566,7 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 - [ ] Gateway DB 访问改为异步（当前同步 SQLite 在 async FastAPI 中，高并发下仍有阻塞风险）
 - [ ] **Skill 商店 / ClawHub 集成**：需要 ClawHub API 端点和文档，在 Skills tab 第二栏增加「商店」入口，支持浏览/搜索/安装 skill
 - [ ] API 服务器升级到 2 核（当前 1 核跑 16 个进程，高并发时会有瓶颈）
+- [ ] **HD 设备工具体系集成**：将 Host Desktop 纳入 Agent Binding + mounted_tools 权限体系，支持 shell/截图/文件/剪贴板工具调用。需要修改 Gateway（agent_binding.py 增加 HD 设备支持）、VmControl（增加 HD shell/screenshot/file 路由）、Tools Server（识别 HD 设备类型走不同代理路径）
 
 ### 前端修改注意事项
 
@@ -1906,3 +1907,112 @@ Row 2: 操作按钮居中 (键盘/剪贴板/刷新/截图/全屏/关闭)
 | `DeviceConsole.tsx` | 统一 dpr 缩放计算 |
 | `ConsoleToolbar.tsx` | 多行竖屏布局，移除快捷键，Modal 剪贴板 |
 | `VirtualKeyboard.tsx` | 收起按钮移至顶部 |
+
+---
+
+## 二十二、反慢动作修复与自动 Keyframe 恢复（2026-03-17）
+
+### 1. 反慢动作（Anti-Slowmo）
+
+**问题**：前端画面偶尔出现慢动作效果，特别是在网络波动或编码器产出不均匀时。
+
+**根因**：
+- `subscriber_pump`（`peer.rs`）使用固定 `Sample.duration = 16ms`，但帧到达并不均匀
+- 当帧积压后一次性发出，浏览器按 16ms 间隔逐帧渲染，产生慢放效果
+- `frame_tx` channel 满时调用 `force_keyframe()`，HDR 帧 5-10x 大于 P 帧，加剧拥塞
+
+**修复**：
+
+| 修改 | 文件 | 说明 |
+|:---|:---|:---|
+| 动态 Sample.duration | `peer.rs` subscriber_pump | 使用 wall-clock 经过时间代替固定 16ms，让浏览器正确解释帧时序 |
+| 帧 drain 机制 | `peer.rs` subscriber_pump | 循环 `try_recv` 丢弃旧帧，只发最新帧，消除积压 |
+| drain 后请求 keyframe | `peer.rs` subscriber_pump | drain 导致帧不连续，立即请求 IDR 帮助解码器恢复 |
+| 移除 backpressure keyframe | `webrtc_hd.rs` SCK+xcap | channel 满时不再 `force_keyframe()`，只降码率 |
+
+**关键代码**（`peer.rs` subscriber_pump）：
+```rust
+// 使用 wall-clock 经过时间作为 sample duration
+let elapsed = last_write.elapsed();
+let duration_us = elapsed.as_micros().max(1) as u64;
+sample.duration = Duration::from_micros(duration_us);
+
+// drain 旧帧，只保留最新
+let mut drained = 0;
+while let Ok(newer) = frame_rx.try_recv() {
+    latest = newer;
+    drained += 1;
+}
+if drained > 0 {
+    keyframe_tx.send(true).ok(); // 请求 keyframe
+}
+```
+
+### 2. 切应用后画面冻结自动恢复
+
+**问题**：切出应用再切回来，WebRTC 画面冻结，需手动点 IDR 刷新按钮。
+
+**根因**：浏览器在页面不可见时暂停 WebRTC 视频解码，恢复后无法自动续播。
+
+**修复**：`DeviceConsole.tsx` 添加 `useEffect` 监听 `visibilitychange` + `window.focus` 事件，200ms 延迟后自动请求 keyframe。
+
+**关键文件**：
+
+| 文件 | 变更 |
+|:---|:---|
+| `peer.rs` | subscriber_pump 动态 duration + drain 机制 |
+| `webrtc_hd.rs` | 移除 SCK/xcap 路径的 backpressure force_keyframe |
+| `DeviceConsole.tsx` | visibilitychange/focus 自动请求 keyframe |
+
+---
+
+## 二十三、工具执行架构概览（2026-03-17 分析）
+
+### Agent 工具调用全链路
+
+```
+LLM tool_call (e.g. shell_exec)
+  → Tools Server (ToolExecutor._execute_builtin)
+    → VM_TOOL_MAPPING: "shell_exec" → ("shell", "command")
+    → POST /internal/agents/{agent_id}/vm/shell/command
+  → Gateway (proxy_vm_tool)
+    → resolve_agent_runtime_context → binding + device + mounted_tools
+    → is_tool_mounted → 检查权限
+    → PC Client WebSocket 转发
+  → VmControl (vmuse_agent_proxy)
+    → reqwest POST http://127.0.0.1:{vmuse_port}/api/shell/command
+  → VMUSE Server (Python, VM 内 port 8080)
+    → ShellTools.run_command → asyncio.create_subprocess_shell
+```
+
+### 工具分类与路由
+
+| 类别 | 工具数 | 路由路径 |
+|:---|:---|:---|
+| VM (desktop/shell/file/browser/window/context) | 25 | Gateway → PC Client WS → VmControl → VMUSE |
+| Mobile (screen/shell/file/app/browser/ui) | 22 | Gateway → PC Client WS → VmControl → adb |
+| Memory/Notebook/Chat/Goal/Task | ~30 | 直接调 Gateway API |
+| QEMU (ssh_exec/status/start) | 5 | Gateway → PC Client WS → VmControl |
+
+### Agent Binding 与 Mounted Tools
+
+Agent 绑定设备时选择 `mounted_tools` 控制工具权限：
+
+| 设备类型 | 支持的 Tool Categories |
+|:---|:---|
+| Linux VM | desktop, file, shell, clipboard, qemu |
+| Android | screen, file, shell, app, browser, ui |
+| Host Desktop | ❌ 未定义（当前走 Android else 分支，返回错误的 supported_tools） |
+
+### 关键文件速查
+
+| 需求 | 文件 |
+|:---|:---|
+| 工具定义（schema） | `novaic-tools-server/common/tools/definitions.py` |
+| 工具路由+执行 | `novaic-tools-server/tools_server/executor.py` |
+| 工具权限+挂载 | `novaic-gateway/gateway/agent_binding.py` |
+| VM 代理路由 | `novaic-gateway/gateway/api/internal/agent.py` (proxy_vm_tool) |
+| VmControl VMUSE 代理 | `novaic-app/src-tauri/vmcontrol/src/api/routes/vmuse.rs` |
+| VMUSE Shell 实现 | `novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/shell.py` |
+| Mobile 工具路由 | `novaic-app/src-tauri/vmcontrol/src/api/routes/mobile.rs` |
+| 前端工具配置 UI | `novaic-app/src/components/Settings/SettingsModal.tsx` (AgentToolsTab) |
