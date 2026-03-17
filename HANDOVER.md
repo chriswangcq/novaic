@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-16（CGEvent 键盘 + pbcopy 剪贴板修复 macOS 线程崩溃、虚拟物理键盘 VirtualKeyboard）
+> 最后更新：2026-03-16（RustDesk 优化落地：BGRA 直编 + 自适应 QoS + 编码 Fallback / Apple 键盘反馈 / PiP 缩略图修复）
 
 ---
 
@@ -1707,3 +1707,132 @@ EOF
 - **消灭时钟级 66ms 粘手死等**：废止传统无脑 15 FPS 恒定扫描发送，改用 **"脏区跨帧指纹比对(SIMD Data == Old_Data) + tokio::Notify 原子通知下发"** 的零等待（Zero Latency）推流。鼠标不动时绝对静止零负载，鼠标滑动的第一帧立刻触发光速下行链路。
 - **跨平台系统底层显示器劫持与缓存**：排查并消除了之前跨平台 `xcap (Monitor::all())` 接口在每次截屏都要与 macOS Kernel 进行重量级系统级多显卡轮询从而带来的 200ms+ Debug 重病症；采用循环外缓存 Monitor 指针的方式实现零拷贝开销抓屏。
 - **绕过 `tauri dev` 调试级惩罚**：通过改写 `src-tauri/Cargo.toml` 给本地运行补入 `[profile.dev.package."*"] opt-level = 3` ，在开发热编译极速的前提下，将 `flate2` 的 Zlib 运行时从几百毫秒 CPU 爆破级瓶颈，逼退至了原生光速的计算。这也是最终让开发 Debug 模式的卡顿得以全方位彻底解除的关键手。
+
+---
+
+## 十八、RustDesk 优化落地（2026-03-16）
+
+深入分析 RustDesk 源码后，将其 8 大优化类别逐一落地到 NovAIC 远程流管线中。
+
+### 1. BGRA 直接 GPU 编码（消除 CPU 色彩转换）
+
+**旧路径**：ScreenCaptureKit BGRA → `bgra_to_yuv420_fast()` (CPU ~5ms) → I420 → `fill_nv12()` → NV12 CVPixelBuffer → VT 编码
+
+**新路径**：ScreenCaptureKit BGRA → BGRA CVPixelBuffer → VT **GPU 自行 BGRA→NV12** → 编码
+
+- H264Encoder trait 新增 `encode_bgra()` 方法，默认实现走 BGRA→YUV→encode（软编码 fallback）
+- VT 编码器覆盖 `encode_bgra()`：创建 `kCVPixelFormatType_32BGRA` CVPixelBuffer，填入 BGRA 数据，GPU 内部自行转换
+- SCK 捕获循环已切换为优先调用 `encode_bgra()`
+- 新增 `fill_bgra()` + 公共 `encode_pixelbuffer()` 消除 NV12/BGRA 路径的代码重复
+
+**关键文件**：
+- `vmcontrol/src/webrtc/vt_encoder.rs`：`encode_bgra()`, `fill_bgra()`, `encode_pixelbuffer()`
+- `vmcontrol/src/webrtc/encoder.rs`：trait 新增 `encode_bgra()`, `set_bitrate()`, `is_hardware()`
+- `webrtc_hd.rs`：SCK 捕获循环改用 `encoder.encode_bgra()`
+
+### 2. 分辨率感知码率公式（学习 RustDesk base_bitrate + calc_bitrate）
+
+替换旧的固定三档码率（3/5/8 Mbps）为 RustDesk 风格的查表插值 + 衰减因子：
+
+```rust
+// 12 档分辨率预设查表（含 MacBook Air/Pro 特殊分辨率）
+const PRESETS: &[(u32, u32, u32)] = &[
+    (640, 480, 400), (1280, 720, 1000), (1512, 982, 1500),
+    (1920, 1080, 2073), (2880, 1800, 4000), (3840, 2160, 5000), ...
+];
+// 找最近分辨率，按像素比插值，再乘衰减因子防爆
+let factor = if base > 2000 { 1.0 + 1.0 / (1.0 + (base - 2000) * 0.001) } else { 2.0 };
+```
+
+**函数**：`base_bitrate(w, h) -> kbps`，`calc_bitrate(w, h, ratio) -> kbps`
+
+### 3. 动态码率调整 API
+
+- H264Encoder trait 新增 `set_bitrate(kbps) -> bool`
+- VT 编码器实现：`VTSessionSetProperty(kVTCompressionPropertyKey_AverageBitRate)` 实时生效
+- SCK 捕获循环每秒检查 QoS ratio 变化，自动调用 `encoder.set_bitrate()`
+
+### 4. VideoQoS 自适应控制器（学习 RustDesk video_qos.rs）
+
+新模块 `vmcontrol/src/webrtc/video_qos.rs`，基于网络延迟动态调整 FPS 和码率比率：
+
+| 延迟范围 | FPS 调整 | 码率调整（每 3 秒） |
+|:---|:---|:---|
+| < 50ms | +2 fps | ratio × 1.15（仅动态屏幕） |
+| 50-100ms | +1 fps | ratio × 1.10 |
+| 100-150ms | 维持 | ratio × 1.05 |
+| 150-200ms | fps × (150/delay) | ratio × 0.95 |
+| 200-300ms | max(8, 150×8/delay) | ratio × 0.90 |
+| > 300ms | MIN_FPS=5 | ratio × 0.80 |
+
+- 新连接前 1 秒限制 15fps 防突发冲击
+- `update_delay(ms)` 接收延迟样本（来自 WebRTC getStats 或 DataChannel ping）
+- `update_send_count(count)` 每秒调用，驱动码率 ratio 调整
+- SCK 捕获循环基于 `qos.spf()` 控制帧间隔
+
+### 5. 编码失败自动 Fallback（学习 RustDesk encode_fail_counter）
+
+- `qos.encode_failed()` 追踪连续失败次数
+- 硬件编码器（VT）连续 3 次失败 → 自动降级到 openh264 软编码
+- 降级后不黑屏，平滑切换
+- H264Encoder trait 新增 `is_hardware()` 区分编码器类型
+
+**关键代码**（webrtc_hd.rs SCK 捕获循环）：
+```rust
+None => {
+    encode_fail_count += 1;
+    if qos.encode_failed() && encoder.is_hardware() {
+        encoder = Box::new(OpenH264Encoder::new(cap_w, cap_h).expect("fallback"));
+    }
+}
+```
+
+### 优化效果汇总
+
+| 优化 | 效果 | 状态 |
+|:---|:---|:---|
+| VideoToolbox GPU 编码 | 编码 30ms→2ms | ✅ 已上线 |
+| BGRA 直接编码 | 消除 ~5ms CPU 色彩转换 | ✅ 本次新增 |
+| 分辨率感知码率 | 更优画质/带宽平衡 | ✅ 本次新增 |
+| 动态码率调整 | 网络波动自适应 | ✅ 本次新增 |
+| VideoQoS 控制器 | FPS+码率双维自适应 | ✅ 本次新增 |
+| 编码失败 Fallback | 硬件异常不黑屏 | ✅ 本次新增 |
+| broadcast 通道缩容 | 延迟 -3.5s | ✅ 已上线 |
+
+---
+
+## 十九、虚拟键盘 Apple 风格视觉反馈（2026-03-16）
+
+增强 `VirtualKeyboard.tsx` 按键反馈，对标 iOS 系统键盘体验：
+
+| 效果 | 实现 |
+|:---|:---|
+| **弹出气泡** | 按字母/数字键时，在按键上方弹出放大字符气泡（底部小三角指向按键），150ms 后消失 |
+| **缩放动画** | 按下 `scale(0.88)`，松开 `scale(1)` + `ease-out` 缓动 |
+| **发光效果** | `box-shadow: 0 0 18px rgba(99,102,241,0.65)` + `inset 0 0 8px rgba(255,255,255,0.15)` + `brightness(1.3)` |
+| **基础阴影** | 所有按键默认 `box-shadow: 0 1px 2px rgba(0,0,0,0.3)` 立体感 |
+| **弹出动画** | CSS `@keyframes vk-popup`：`scale(0.6)→scale(1.05)→scale(1)` 弹性展开 |
+
+气泡仅对普通键和数字键显示，修饰键（Shift/Ctrl/Alt/⌘）和功能键（F1-F12）不显示。
+
+**关键文件**：`src/components/Console/VirtualKeyboard.tsx`
+
+---
+
+## 二十、PiP 缩略图操控模式点击修复（2026-03-16）
+
+**问题**：在操控模式（`viewMode === 'fixed'`）下缩放画面后，点击角落的 PiP 全景缩略图无法恢复全景。
+
+**根因**：`useRemoteInput` 在 viewport 容器上注册了原生 `touchstart`/`mousedown` 事件监听器（bubble 阶段）。PiP 缩略图虽然用了 `e.stopPropagation()`，但 React 事件系统的 `stopPropagation` 无法阻止同一 DOM 元素上通过 `addEventListener` 注册的原生监听器。
+
+**修复**：
+
+| 修改 | 说明 |
+|:---|:---|
+| `stopImmediatePropagation()` | 阻止同一元素上所有后续监听器（包括原生注册的 useRemoteInput 处理器） |
+| 全方位事件拦截 | `onTouchStart` + `onMouseDown` + `onPointerDown` + `onTouchEnd` + `onTouchMove` |
+| z-index 提升 | `z-40` → `z-50`，确保在操控边框等覆盖层之上 |
+| `pointerEvents: 'auto'` | 显式声明可交互 |
+
+**关键文件**：`src/components/Console/PipMinimap.tsx`
+

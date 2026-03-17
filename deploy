@@ -10,7 +10,7 @@ set -e
 # ── 配置 ──────────────────────────────────────────────────────────────────────
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 RELAY_HOST="47.243.221.45"
-RELAY_PORT="52222"
+RELAY_PORT="22"
 RELAY_SSH="ssh -p $RELAY_PORT root@$RELAY_HOST"
 API_HOST="root@api.gradievo.com"
 API_SSH="ssh $API_HOST"

@@ -3,3 +3,4 @@
 dist/
 .pytest_cache/
 examples/tauri-ios-hello/node_modules/
+rustdesk-ref/
