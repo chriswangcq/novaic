@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-16（RustDesk 优化落地：BGRA 直编 + 自适应 QoS + 编码 Fallback / Apple 键盘反馈 / PiP 缩略图修复）
+> 最后更新：2026-03-17（远程光标通道 + 放大镜闪烁修复 + 工具栏竖屏重构 + 剪贴板 Modal + 键盘收起按钮）
 
 ---
 
@@ -1836,3 +1836,73 @@ None => {
 
 **关键文件**：`src/components/Console/PipMinimap.tsx`
 
+---
+
+## 二十一、远程光标通道与放大镜优化（2026-03-17）
+
+### 1. 远程光标 DataChannel
+
+RustDesk 风格双 DataChannel 架构：control channel（UI→远程）+ cursor channel（远程→UI）。
+
+- **后端**：`cursor.rs` 追踪 macOS 光标形状，变化时序列化 RGBA + 宽高 + 热点坐标，通过 `cursor_shape` JSON 消息发送
+- **前端**：`useWebRtc.ts` 接收 `cursor_shape` → base64 解码 → canvas 生成 data URL → 更新 `remoteCursor` state
+- **渲染**：`RemoteCursor.tsx` 在视频画面上叠加光标图像
+
+### 2. DPR 缩放统一
+
+**决策**：光标尺寸缩放逻辑集中在 `DeviceConsole.tsx`，`RemoteCursor` 和 `CursorMagnifier` 直接消费缩放后的值。
+
+```
+DeviceConsole (统一 dpr 缩放)
+  ├── scaledCursorWidth = width / devicePixelRatio
+  ├── scaledHotx = hotx / dpr
+  ├── scaledHoty = hoty / dpr
+  ├── → RemoteCursor (直接用)
+  └── → CursorMagnifier (直接用)
+```
+
+**原因**：macOS `NSImage.size` 返回 pt 而非 px，16pt 在 2x Retina = 32px 图像但报 `width:16`。除以 dpr 使得 CSS 像素下的显示大小约为系统光标的 2 倍。
+
+### 3. CursorMagnifier 闪烁修复
+
+**问题**：光标形状变化时（箭头→手指→I-beam），`cursorHotx/hoty/width` 在 useEffect 依赖数组中，触发 RAF 循环重启，`currentOpacity` 归零导致闪烁。
+
+**修复**：将 `cursorHotx`、`cursorHoty`、`cursorWidth` 改为 ref 存储，从 useEffect deps 移除。RAF 循环不中断，下一帧自然读到新值。
+
+### 4. ConsoleToolbar 竖屏布局重构
+
+**旧布局**：所有控件挤一行 `flex-wrap`，竖屏换行后无结构。
+
+**新布局**：
+```
+Row 1: 设备名+状态 | (flex) | 输入模式切换 | 操控/缩放切换
+Row 2: 操作按钮居中 (键盘/剪贴板/刷新/截图/全屏/关闭)
+状态行: 分辨率·fps·延迟·码率·编码 (居中)
+```
+
+- 移除了快捷键（`ShortcutMenu`）和 Android 导航（`AndroidNav`）组件
+- 操作按钮统一 `p-2 rounded-lg` + `size={16}`，触摸友好
+
+### 5. 剪贴板发送 Modal（iOS 键盘兼容）
+
+**旧实现**：`absolute bottom-full` 小弹窗 → iOS 上超出屏幕 + 被软键盘遮挡。
+
+**新实现**：`fixed` 顶部居中 Modal，`top: max(safe-area-inset-top, 44px)`，400px max-width 居中。
+
+- iOS 软键盘弹出不遮挡（对话框在屏幕顶部）
+- 横屏：max-w-400px 居中，不撑满
+- textarea `stopPropagation` 防止按键同时发到远程桌面
+
+### 6. VirtualKeyboard 收起按钮
+
+"收起键盘 ▾" 从键盘底部移到顶部（Fn 行上方），始终可见。
+
+### 关键文件
+
+| 文件 | 变更 |
+|:---|:---|
+| `CursorMagnifier.tsx` | ref 存储光标属性，消除闪烁 |
+| `RemoteCursor.tsx` | 消费 DPR 缩放后的值 |
+| `DeviceConsole.tsx` | 统一 dpr 缩放计算 |
+| `ConsoleToolbar.tsx` | 多行竖屏布局，移除快捷键，Modal 剪贴板 |
+| `VirtualKeyboard.tsx` | 收起按钮移至顶部 |
