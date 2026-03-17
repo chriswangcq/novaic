@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-17（反慢动作修复 + 自动 Keyframe 恢复 + 工具执行架构分析）
+> 最后更新：2026-03-17（Agent Runtime 架构分析 + Watchdog 重复 Runtime Bug 定位 + SYSTEM_WAKE 风暴修复）
 
 ---
 
@@ -1565,8 +1565,9 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 - [ ] 设备状态轮询与 DB 状态同步（现在可能出现 DB 状态落后于实际运行状态的情况）
 - [ ] Gateway DB 访问改为异步（当前同步 SQLite 在 async FastAPI 中，高并发下仍有阻塞风险）
 - [ ] **Skill 商店 / ClawHub 集成**：需要 ClawHub API 端点和文档，在 Skills tab 第二栏增加「商店」入口，支持浏览/搜索/安装 skill
-- [ ] API 服务器升级到 2 核（当前 1 核跑 16 个进程，高并发时会有瓶颈）
+- [x] API 服务器升级到 2 核（2026-03-17 已升级至 2C/7.2G）
 - [ ] **HD 设备工具体系集成**：将 Host Desktop 纳入 Agent Binding + mounted_tools 权限体系，支持 shell/截图/文件/剪贴板工具调用。需要修改 Gateway（agent_binding.py 增加 HD 设备支持）、VmControl（增加 HD shell/screenshot/file 路由）、Tools Server（识别 HD 设备类型走不同代理路径）
+- [ ] **Watchdog v2：Per-Agent 轮询**：将 Watchdog 从逐条消息创建 Saga 改为按 Agent 分组批量处理，防止消息积压导致同一 Subagent 创建多个 Runtime（详见二十四节）
 
 ### 前端修改注意事项
 
@@ -2016,3 +2017,125 @@ Agent 绑定设备时选择 `mounted_tools` 控制工具权限：
 | VMUSE Shell 实现 | `novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/shell.py` |
 | Mobile 工具路由 | `novaic-app/src-tauri/vmcontrol/src/api/routes/mobile.rs` |
 | 前端工具配置 UI | `novaic-app/src/components/Settings/SettingsModal.tsx` (AgentToolsTab) |
+
+---
+
+## 二十四、Agent Runtime 后端架构（2026-03-17 深度分析）
+
+### 后端服务组件一览
+
+| 进程 | Repo | 职责 |
+|:---|:---|:---|
+| Gateway | novaic-gateway | API、DB (chat_messages/subagents/agents)、SSE |
+| Runtime Orchestrator (RO) | novaic-runtime-orchestrator | Runtime CRUD、agent_runtimes 表 |
+| Queue Service | novaic-agent-runtime/queue_service | Task/Saga 队列管理 |
+| Watchdog | novaic-agent-runtime | 轮询 `sending` 消息，创建 MessageProcess Saga |
+| Task Worker | novaic-agent-runtime | 执行 Task（LLM 调用、工具执行、context 读写等）|
+| Saga Worker | novaic-agent-runtime | Saga 流程编排（步骤推进、决策、触发子 Saga）|
+| Health Worker | novaic-agent-runtime | 超时任务/Saga 回收 |
+| Scheduler Worker | novaic-agent-runtime | 定时唤醒 sleeping agent（检查 wake_at）|
+| Tools Server | novaic-tools-server | 工具执行（shell/browser/file 等）|
+
+### 消息 → Runtime 完整链路
+
+```
+用户发消息
+  → Gateway: chat_messages INSERT (type=USER_MESSAGE, status=sending, read=0)
+  → Watchdog: find_sending() → 创建 MessageProcess Saga
+  → Saga Step 1 (claim_message): sending → sent
+  → Saga Step 2 (route_message): RO get_or_create_runtime()
+    → 有 active runtime? → skip（消息由 context.read 消费）
+    → 无 active? → 创建 rt-xxx（status=active）→ just_created=true
+  → Saga Step 3 (decide): just_created → action=start_runtime
+  → Saga Step 4 (trigger): 创建 RuntimeStart Saga
+    → Set subagent awake
+    → Build initial context (historical_summary + HRL summaries + system prompt)
+    → Trigger ReactThink
+```
+
+### Agent Loop（ReactThink ↔ ReactActions）
+
+```
+ReactThink:
+  Step 1 (context.read):     读 RO context + Gateway 未读消息(read=0) → 合入 context
+  Step 2 (context.mark_read): 标记消息 read=1
+  Step 3 (llm.call):          调 LLM（kimi-k2.5/gpt-4o）
+  Step 4 (context.save):      保存 assistant response 到 context
+  Step 5 (decide):            有 tool_calls? → trigger ReactActions
+                              无 tool_calls? → 重试机制 → 最终 subagent_rest
+
+ReactActions:
+  Step 1 (execute_tools):    并行执行所有 tool_calls（Tools Server）
+  Step 2 (save_results):     保存 tool results 到 context
+  Step 3 (check_continue):   调 has_new_messages + check_and_clear_need_rest
+  Step 4 (decide):
+    has_new=false && need_rest=true → trigger RuntimeComplete
+    else                            → trigger 下一轮 ReactThink
+```
+
+### subagent_rest 完成流程
+
+```
+LLM 调 subagent_rest
+  → Tools Server: POST Gateway /internal/subagents/{agent_id}/{subagent_id}/rest
+  → Gateway: set need_rest=1, wake_at=now+30min, wake_triggers=[{type:user_response}]
+  → ReactActions check_continue:
+    → Gateway check-and-clear-rest (CAS): 读 need_rest=1 并清零
+    → has_new_messages: 查 read=0 的 USER_MESSAGE
+    → should_complete = !has_new && need_rest → true → RuntimeComplete
+  → RuntimeComplete Saga:
+    → Generate simple_summary
+    → Add to HRL
+    → Set runtime status=completed
+    → Set subagent sleeping
+```
+
+### 关键数据库分布
+
+| 数据 | 所在 DB | 表 |
+|:---|:---|:---|
+| 用户消息 | Gateway (gateway.db) | chat_messages (status: sending/sent, read: 0/1) |
+| SubAgent 状态 | Gateway | subagents (status, need_rest, wake_at, hrl) |
+| Runtime 及 Context | RO (runtime_orchestrator.db) | agent_runtimes (status, context JSON, round) |
+| Task/Saga 队列 | Queue Service (queue.db) | tasks, sagas |
+
+### 已知 Bug：消息积压导致重复 Runtime（2026-03-17 定位）
+
+**问题**：SYSTEM_WAKE 风暴（scheduler 对过期 wake_at 反复触发）导致数百条 `sending` 消息积压。Watchdog 为每条消息创建独立的 MessageProcess Saga。这些 Saga 排队执行，当前一个 Runtime 已 completed 后，后续 Saga 的 `get_or_create_runtime` 发现无 active runtime，又创建新的。
+
+```
+T=0s    Watchdog: 为 100 条消息创建 100 个 Saga（毫秒级）
+T=0.1s  Saga-1: get_or_create → 创建 rt-aaa (active)
+T=0.2s  Saga-2: get_or_create → rt-aaa active → skip ✅
+T=30s   rt-aaa completed
+T=30.1s Saga-50: get_or_create → 无 active → 创建 rt-bbb ❌
+...循环
+```
+
+**三个 agent 在 16:43~16:57 都创建了 5~10 个串行 runtime**，时间高度对齐。
+
+**根因**：`get_or_create_active_runtime` 有全局锁、单次调用原子正确。但 Saga 排队执行跨越了 Runtime 的整个生命周期（30s+），锁早已释放。
+
+**临时修复**：清理了所有 active runtime，重置 subagent 为 sleeping，杀掉 scheduler 进程，清理 SYSTEM_WAKE 消息。
+
+**设计中的根治方案 — Watchdog v2 Per-Agent 轮询**：
+- Watchdog 一次拿全部 sending 消息（`find_all_sending`）
+- 按 `(agent_id, subagent_id)` 分组，每组只创建 1 个 Saga
+- 每轮 `sleep(3s)` 天然冷却
+- SPAWN_SUBAGENT 不合并（不同 subagent），INTERRUPT 直接处理不走 Saga
+- 详细方案见 artifacts: `watchdog_v2_design.md`
+
+### 关键文件速查
+
+| 需求 | 文件 |
+|:---|:---|
+| Watchdog 主循环 | `novaic-agent-runtime/task_queue/workers/watchdog_sync.py` |
+| MessageProcess Saga | `novaic-agent-runtime/task_queue/sagas/message_process.py` |
+| route_message handler | `novaic-agent-runtime/task_queue/handlers/message_handlers.py` |
+| ReactThink Saga | `novaic-agent-runtime/task_queue/sagas/react_think.py` |
+| ReactActions Saga | `novaic-agent-runtime/task_queue/sagas/react_actions.py` |
+| check_new_messages handler | `novaic-agent-runtime/task_queue/handlers/runtime_handlers.py` |
+| get_or_create_runtime (RO) | `novaic-runtime-orchestrator/gateway/db/repositories/runtime.py` |
+| subagent_rest endpoint | `novaic-gateway/gateway/api/internal/subagent.py` (line 453) |
+| has_new_messages / get_pending_count | `novaic-gateway/gateway/db/repositories/message.py` (line 486) |
+| Scheduler Worker | `novaic-agent-runtime/task_queue/workers/scheduler_worker_sync.py` |

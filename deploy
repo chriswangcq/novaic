@@ -78,10 +78,9 @@ deploy_desktop() {
 deploy_gateway() {
   info "部署 Gateway"
   rsync_service "novaic-gateway"
-  info "重启 Gateway..."
-  $API_SSH 'bash /opt/novaic/restart_gw.sh' || fail "重启失败"
-  sleep 2
-  $API_SSH 'ss -tlnp | grep 19999' && ok "Gateway 已部署 (port 19999)" || warn "端口 19999 未监听"
+  info "重启全部后端服务（通过 start.sh）..."
+  $API_SSH 'bash /opt/novaic/start.sh --stop && bash /opt/novaic/start.sh' || fail "重启失败"
+  ok "Gateway 已部署（全部服务已重启）"
 }
 
 deploy_single_service() {
