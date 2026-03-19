@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-19（WebRTC 统一入口代码精简 + 旧路由删除 + subuser 光标/Console 修复）
+> 最后更新：2026-03-19（WebRTC 精简 + subuser 修复 + 原生视频渲染方案调研）
 
 ---
 
@@ -1377,6 +1377,7 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 - [x] API 服务器升级到 2 核（2026-03-17 已升级至 2C/7.2G）
 - [ ] **HD 设备工具体系集成**：将 Host Desktop 纳入 Agent Binding + mounted_tools 权限体系，支持 shell/截图/文件/剪贴板工具调用。需要修改 Gateway（agent_binding.py 增加 HD 设备支持）、VmControl（增加 HD shell/screenshot/file 路由）、Tools Server（识别 HD 设备类型走不同代理路径）
 - [ ] **Watchdog v2：Per-Agent 轮询**：将 Watchdog 从逐条消息创建 Saga 改为按 Agent 分组批量处理，防止消息积压导致同一 Subagent 创建多个 Runtime（详见二十三节）
+- [ ] **移动端原生视频渲染**：VideoToolbox (iOS) / MediaCodec (Android) + Metal/GL 替代 WebRTC `<video>` 解码，降低功耗+延迟（见二十五节）
 
 ### 前端修改注意事项
 
@@ -2010,3 +2011,52 @@ T=30.1s Saga-50: get_or_create → 无 active → 创建 rt-bbb ❌
 | 远程光标组件 | `Console/RemoteCursor.tsx`（默认箭头 fallback） |
 | 设备预览列表 | `Layout/PcClientDeviceList.tsx`（showToolbar=false、蒙层修复） |
 | 设备显示统一组件 | `Visual/DeviceVNCView.tsx`（精简后 33 行） |
+
+## 二十五、移动端原生视频渲染方案调研（2026-03-19）
+
+### 背景
+
+当前移动端视频渲染走 WebRTC MediaTrack → `<video>` 元素，在 WKWebView 中解码。问题：
+- 手机发烫（软解码吃 CPU）
+- 延迟较高（jitter buffer + WebView 渲染管线）
+- 光标合成用 DOM overlay，有异步延迟
+
+### 方案：Rust 原生解码 + Metal/GL 渲染
+
+```
+H.264 NALUs → VideoToolbox (iOS) / MediaCodec (Android)
+  → GPU texture → Metal/GL 渲染 → CAMetalLayer
+  → 放在 WKWebView 后面，WebView 视频区透明
+```
+
+### 可行性结论：✅ 可行
+
+1. **WKWebView 原生支持透明**：`isOpaque = false` + `backgroundColor = .clear` 是 Apple 官方 API
+2. **已有控制权**：`main.mm` 已拿到 `g_webView` + `UIWindow`，可以 `insertSubview:belowSubview:`
+3. **性能影响可忽略**：`isOpaque=false` GPU 混合开销 < 1ms
+4. **不需要触摸穿透**：触摸仍在 WebView 透明 div 上捕获，通过 invoke 发给 Rust
+5. **服务端不需要改**：`VideoBroadcaster` 已输出裸 H.264 Bytes，只需新增 WebSocket 推送端点
+
+### 实施计划（6 个 Phase，~13 天）
+
+| Phase | 内容 | 工期 |
+|-------|------|------|
+| 0 | 传输通道：服务端 WebSocket 裸帧推送（复用 VideoBroadcaster） | 2天 |
+| 1 | 原生解码器：VideoToolbox (iOS) / MediaCodec (Android) | 3天 |
+| 2 | 原生渲染层：CAMetalLayer + WKWebView 透明 ★ | 4天 |
+| 3 | 光标合成：Metal drawcall 同帧渲染 | 1天 |
+| 4 | 输入桥接：触摸 invoke → Rust → VNC PointerEvent | 1天 |
+| 5 | 前端集成：`useNativeVideo` hook + 协议切换 | 2天 |
+
+### 验证 PoC（半天）
+
+在 `main.mm` 加 30 行代码：创建红色 UIView 插在 WebView 后面，前端视频区 CSS 透明。手机上能透过 WebView 看到红色方块 → 方案确认可行。
+
+### 关键文件
+
+| 需求 | 文件 |
+|:---|:---|
+| iOS 原生入口 | `gen/apple/Sources/novaic/main.mm`（已有 WKWebView 控制权） |
+| H.264 帧广播 | `vmcontrol/src/webrtc/broadcaster.rs`（VideoFrame 裸 NALUs） |
+| 详细方案 | artifacts: `native_video_plan.md`、`native_render_feasibility.md` |
+
