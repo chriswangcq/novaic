@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-19（WebRTC 精简 + subuser 修复 + 原生视频渲染调研 + 语音录制）
+> 最后更新：2026-03-19（WebRTC 精简 + 语音录制 + VT 编码器固定帧预算调研）
 
 ---
 
@@ -2100,3 +2100,58 @@ Rust: 停止采集 → hound 写 WAV → base64 返回
 - WAV 格式通用性好但文件较大（48kHz 立体声 ~11MB/分钟），未来可压缩为 Opus
 - macOS 首次使用需要授权麦克风权限（系统弹窗）
 - 前端 UI：点击 🎙️ 开始 → 按钮变红脉冲+计时 → 再次点击停止
+
+## 二十七、VideoToolbox 固定帧预算编码调研（2026-03-19）
+
+### 背景
+
+需要适配固定带宽信道（移动端 4G/5G），要求编码帧大小不超过信道带宽预算，且零额外延迟。
+
+### 当前编码器架构
+
+```
+create_best_encoder() 优先级：
+  1. macOS VideoToolbox GPU ← 当前在用（~2ms/帧，CPU ≈ 0%）
+  2. FFmpeg 硬件编码  ← 未启用
+  3. openh264 软编码   ← fallback
+```
+
+### H.264 帧大小不恒定的原因
+
+- I 帧（IDR）：50-200KB，完整画面
+- P 帧（无变化）：0.5-2KB
+- P 帧（大变化）：10-50KB
+- CBR 只是时间窗口平均码率恒定，单帧仍波动
+
+### 解决方案：VT DataRateLimits 硬上限
+
+VideoToolbox 的 `kVTCompressionPropertyKey_DataRateLimits` 属性：
+
+```
+DataRateLimits = [bytes_limit, seconds_limit]
+
+举例：2 Mbps 信道, 30fps
+  → 每帧预算 = 2M / 8 / 30 = ~8333 bytes
+  → DataRateLimits = [8333 bytes, 0.033s]
+```
+
+效果：编码器内部自动调 QP，保证每 33ms 窗口内输出不超标。宁可降画质也不排队。
+
+### I 帧突发解决
+
+| 方案 | 原理 |
+|:---|:---|
+| 降低 IDR 频率 | `MaxKeyFrameInterval = 600`（20s） |
+| **Intra Refresh** | 每帧别几行宏块，永远没有完整 IDR 突发 |
+
+### 待实现
+
+- 在 `vt_encoder.rs` 中加 `DataRateLimits` 属性设置（~30 行）
+- 可选：暴露信道带宽参数到前端配置
+
+### 关键文件
+
+| 文件 | 内容 |
+|:---|:---|
+| `vmcontrol/src/webrtc/vt_encoder.rs` | VideoToolbox GPU 编码器（当前仅设 AverageBitRate） |
+| `vmcontrol/src/webrtc/encoder.rs` | H264Encoder trait + openh264 fallback + 码率计算 |
