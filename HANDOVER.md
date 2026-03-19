@@ -1363,20 +1363,11 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 
 - [ ] **iOS 键盘输入框适配**：原生 `--keyboard-height` 注入方案已实现（main.mm），Header 固定 OK，但输入框仍可能不可见。需要在真机上验证并调试
 - [ ] **服务端数据自动清理**：runtime 完成时自动清空 context（修改 `RuntimeRepository.complete_runtime`）；queue 定期清理已完成任务；日志 logrotate
-- [ ] `execution_logs` 的 `subagent_id = 'main'` legacy 数据迁移为 `'main-{agent_id[:8]}'`（消除前端兼容逻辑）
-- [ ] VM 停机后 socket 文件清理（VmControl VNC/QMP socket 在 VM 停后仍残留）
-- [ ] scrcpy 重连后 `retryCount` 上限（当前 3 次后停止，用户需手动点"连接设备"）
+- [ ] **Watchdog v2：Per-Agent 轮询**：将 Watchdog 从逐条消息创建 Saga 改为按 Agent 分组批量处理，防止消息积压导致同一 Subagent 创建多个 Runtime（详见二十三节）
 - [ ] WebRTC Scrcpy 断开后自动重连（当前 peer failed 后需手动点重连）
-- [x] TURN 服务器集成（coturn 已部署，f246332）
-- [x] **macOS 键盘/剪贴板崩溃修复**：enigo→CGEvent、arboard→pbcopy/pbpaste（2026-03-16）
-- [x] **虚拟物理键盘**：VirtualKeyboard.tsx 完整 QWERTY 布局（2026-03-16）
 - [ ] WebRTC 多客户端操控冲突处理（当前多端操控不互斥，可能产生输入冲突）
-- [ ] 设备状态轮询与 DB 状态同步（现在可能出现 DB 状态落后于实际运行状态的情况）
 - [ ] Gateway DB 访问改为异步（当前同步 SQLite 在 async FastAPI 中，高并发下仍有阻塞风险）
 - [ ] **Skill 商店 / ClawHub 集成**：需要 ClawHub API 端点和文档，在 Skills tab 第二栏增加「商店」入口，支持浏览/搜索/安装 skill
-- [x] API 服务器升级到 2 核（2026-03-17 已升级至 2C/7.2G）
-- [ ] **HD 设备工具体系集成**：将 Host Desktop 纳入 Agent Binding + mounted_tools 权限体系，支持 shell/截图/文件/剪贴板工具调用。需要修改 Gateway（agent_binding.py 增加 HD 设备支持）、VmControl（增加 HD shell/screenshot/file 路由）、Tools Server（识别 HD 设备类型走不同代理路径）
-- [ ] **Watchdog v2：Per-Agent 轮询**：将 Watchdog 从逐条消息创建 Saga 改为按 Agent 分组批量处理，防止消息积压导致同一 Subagent 创建多个 Runtime（详见二十三节）
 - [ ] **移动端原生视频渲染**：VideoToolbox (iOS) / MediaCodec (Android) + Metal/GL 替代 WebRTC `<video>` 解码，降低功耗+延迟（见二十五节）
 
 ### 前端修改注意事项
