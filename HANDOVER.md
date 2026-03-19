@@ -1368,7 +1368,7 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 - [ ] WebRTC 多客户端操控冲突处理（当前多端操控不互斥，可能产生输入冲突）
 - [ ] Gateway DB 访问改为异步（当前同步 SQLite 在 async FastAPI 中，高并发下仍有阻塞风险）
 - [ ] **Skill 商店 / ClawHub 集成**：需要 ClawHub API 端点和文档，在 Skills tab 第二栏增加「商店」入口，支持浏览/搜索/安装 skill
-- [ ] **移动端原生视频渲染**：VideoToolbox (iOS) / MediaCodec (Android) + Metal/GL 替代 WebRTC `<video>` 解码，降低功耗+延迟（见二十五节）
+- [ ] **原生视频渲染（全客户端）**：所有客户端（iOS/Android/macOS/Web）用原生解码替代 WebRTC `<video>` 标签渲染，降低功耗+延迟+画质损失。iOS: VideoToolbox+Metal；Android: MediaCodec+GL；macOS: VideoToolbox+Metal；Web: WebCodecs API（见二十五节）
 
 ### 前端修改注意事项
 
