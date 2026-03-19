@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-17（Agent Runtime 架构分析 + Watchdog 重复 Runtime Bug 定位 + SYSTEM_WAKE 风暴修复）
+> 最后更新：2026-03-19（WebRTC 统一入口代码精简 + 旧路由删除 + subuser 光标/Console 修复）
 
 ---
 
@@ -19,7 +19,7 @@
 | **查看服务状态** | `./deploy status` |
 | 改前端 UI | 改 `novaic-app/src/components/`，热更新生效 |
 | 改消息/日志逻辑 | `messageService.ts`、`logService.ts`、`syncService.ts` |
-| 改 VNC 连接 | `vncBridge.ts`、`vncTransport.ts`、`useVnc.ts`、`DeviceDesktopView.tsx`（已由 DeviceConsole 替代） |
+| 改远程桌面连接 | `useWebRtc.ts`、`WebRtcScrcpyView.tsx`（统一 WebRTC，noVNC 已全部移除） |
 | 改设备操控台 | `DeviceConsole.tsx`、`ConsoleToolbar.tsx`、`useWebRtc.ts`、`useRemoteInput.ts` |
 | 清空本地缓存 | Settings → Clear Cache → 清空本地 DB 缓存 |
 | 查架构 | `novaic-app/FRONTEND_ARCHITECTURE.md`、`docs/design/DESIGN-P2P-UNIFIED.md` |
@@ -34,21 +34,23 @@
 └── NovAIC.app (Tauri)
     ├── 前端 React/Vite          ← novaic-app/src/
     │   ├── IndexedDB 本地缓存   ← 消息、日志、偏好、附件（按 userId 隔离）
-    │   └── SSE 连接             ← User 维度（一个用户一条长连接）
+    │   ├── SSE 连接             ← User 维度（一个用户一条长连接）
+    │   └── WebRTC 客户端        ← 所有远程桌面显示（VM/Android/HD/Subuser）
     └── Rust 后端
+        ├── Tauri Commands       ← gateway_* HTTP 代理（唯一 IPC 通道）
         ├── vmcontrol（内嵌）     ← novaic-app/src-tauri/vmcontrol/
+        │   ├── WebRTC Engine     ← H.264 编码 + peer connection（统一管线）
         │   ├── 管理 QEMU Linux VM (QMP socket)
-        │   ├── 管理 Android 模拟器 (scrcpy 代理)
+        │   ├── 管理 Android 模拟器 (scrcpy WebRTC)
         │   ├── VM 准备 API：环境检查、镜像检查/下载、部署等待
         │   └── 供 Gateway 经 Cloud Bridge 调用
-        ├── vnc_proxy             ← 桌面+移动端：P2P 连接 VNC/Scrcpy（移动端仅远端路径）
         └── CloudBridge WebSocket ──► 云端 Gateway（在 vmcontrol 内）
 
 云端服务器 api.gradievo.com
 └── Nginx (HTTPS/443 → 127.0.0.1:19999)
     ├── auth_request → /internal/auth/validate  ← HS256 JWT 验证，注入 X-User-ID
     └── Gateway (Python/FastAPI, port 19999)
-        ├── SSE: /api/user/chat/stream, /api/user/logs/stream（User 维度）；兼容 /api/chat/messages?agent_id=xxx
+        ├── SSE: /api/user/chat/stream, /api/user/logs/stream（User 维度）
         ├── REST: /api/**, /internal/**
         ├── CloudBridge WebSocket: /internal/pc/ws
         ├── P2P: /api/p2p/heartbeat, locate, relay-request
@@ -57,9 +59,59 @@
 云端服务器 relay.gradievo.com + stun.gradievo.com（novaic-quic-service 同机）
 └── STUN (UDP 3478) + Relay (QUIC 443) + Nginx 静态前端
     ├── STUN: 供 PC 获取外网地址（RFC 5389）
-    ├── Relay: P2P 直连不可达时兜底，配对 PC/手机 QUIC 连接并转发 stream（打洞已移除，仅 relay）
-    └── relay.gradievo.com/resource/frontend/: App 热更新 CDN，版本化路径 /resource/frontend/v{version}/，见五附「前端热更新」
+    ├── Relay: P2P 直连不可达时兜底
+    └── relay.gradievo.com/resource/frontend/: App 热更新 CDN
 ```
+
+### 远程桌面架构（WebRTC 统一管线 + Device Registry，2026-03-19）
+
+所有设备类型统一走 WebRTC。**前端只传 `device_id`**，VmControl 从本地 SQLite Device Registry 查设备类型并自动分发：
+
+**统一入口（新）**
+
+```
+前端 useWebRtc.ts
+  ↓  POST /api/vmcontrol/webrtc/start
+     { device_id, sdp_offer, [username] }
+  ↓
+VmControl: GET device FROM sqlite WHERE device_id = ?
+  ↓ linux_vm   → webrtc_vm.rs  → VNC socket → H.264
+  ↓ android    → webrtc_scrcpy.rs → Scrcpy → H.264
+  ↓ host_desktop → webrtc_hd.rs → Screen Capture → H.264
+```
+
+**Device Registry 同步流程（Gateway → VmControl）**
+
+```
+VmControl CloudBridge 连接 Gateway /internal/pc/ws
+  → Gateway 推送 sync_devices（pc_client_id 绑定的设备列表）
+  → VmControl upsert 到本地 sqlx SQLite（vmcontrol.db）
+
+触发时机（三重保障）：
+  1. PC 连接建立后 200ms（全量）
+  2. vm_status_report DB 写完后立即回推（关键补救）
+  3. 设备 CRUD 时增量推送
+```
+
+| 文件 | 职责 |
+|------|------|
+| `vmcontrol/src/db/mod.rs` | SQLite 初始化，`devices` 表 schema |
+| `vmcontrol/src/db/device_repo.rs` | `get_device()`, `upsert_many()`, `DeviceKind` enum |
+| `vmcontrol/src/api/routes/webrtc_unified.rs` | 统一入口 handler，查 registry → dispatch |
+| `vmcontrol/src/cloud_bridge.rs` | `SyncDevices` 消息处理，写入 registry |
+| `gateway/api/internal/pc_client.py` | `_push_sync_devices()` 推送逻辑 |
+| `gateway/api/devices.py` | `_broadcast_device_update()` 增量推送 |
+| `src/hooks/useWebRtc.ts` | 前端：统一用 `UNIFIED_START/STOP`，不感知 device_type |
+
+**旧路由（保留兼容，未来计划删除）**
+
+| 设备类型 | 旧路径 | 新路径 |
+|----------|--------|--------|
+| Linux VM | `/api/vmcontrol/vm/webrtc/start` | `/api/vmcontrol/webrtc/start` |
+| Host Desktop | `/api/vmcontrol/host-desktop/webrtc/start` | 同上 |
+| Android | `/api/vmcontrol/android/webrtc/start` | 同上 |
+
+> ⚠️ **noVNC 已于 2026-03-19 全栈移除**（前端 14 个文件 + Tauri Rust 6 个文件 + 755 行 vnc_proxy.rs）。所有远程桌面均走 WebRTC。
 
 ### Gateway URL 配置
 
@@ -106,7 +158,7 @@ new-build-novaic/
 ├── docs/                  # 文档（分类）
 │   ├── design/     (36)   # 系统设计/方案
 │   ├── device/     (16)   # 设备管理
-│   ├── vnc/        (54)   # VNC 连接
+│   ├── vnc/        (54)   # VNC 连接（历史文档，代码已迁移至 WebRTC）
 │   ├── ota/        (12)   # OTA 热更新
 │   ├── p2p/        (12)   # P2P 连接
 │   ├── research/   (32)   # 技术调研/分析
@@ -630,9 +682,9 @@ cargo run
 |---|---|
 | `novaic-app/src/App.tsx` | 自定义 `AuthScreen`（邮箱+密码表单），登录态存 localStorage |
 | `novaic-app/src/services/auth.ts` | `login/register/logout/getAccessToken()`，token 存 localStorage，55min 自动 refresh |
-| `novaic-app/src-tauri/src/main.rs` | 单一入口，setup 内 `#[cfg]` 分支；桌面：Tray、VmControl、VncProxy；`update_cloud_token` 命令 |
+| `novaic-app/src-tauri/src/main.rs` | 单一入口，setup 内 `#[cfg]` 分支；桌面：Tray、VmControl；`update_cloud_token` 命令 |
 | `novaic-app/src-tauri/src/mobile.rs` | 移动端 setup：调用 setup::setup_shared，默认云端 Gateway |
-| `novaic-app/src-tauri/src/setup.rs` | 共享 setup：Gateway URL、StorageBackend、VncProxy 统一注入（桌面+移动端） |
+| `novaic-app/src-tauri/src/setup.rs` | 共享 setup：Gateway URL、StorageBackend、P2P 状态统一注入（桌面+移动端） |
 | `novaic-app/src-tauri/vmcontrol/src/cloud_bridge.rs` | Cloud Bridge：WebSocket 握手读取 token，设置 `Authorization: Bearer` |
 | `novaic-gateway/gateway/api/auth.py` | `/auth/login`、`/auth/register`、`/auth/refresh`、`/auth/logout`、`/internal/auth/validate` |
 | `novaic-gateway/gateway/db/repositories/user.py` | users / refresh_tokens 表 CRUD |
@@ -713,7 +765,7 @@ useEffect(() => { ... }, [userId]);
 - **alive flag**：broadcaster pump 结束时标记 `alive=false`，新连接检测到死 broadcaster 会重建
 
 **关键文件**：
-- `webrtc_scrcpy.rs`：`ScrcpyBroadcaster`、`subscriber_pump`、`detect_nalu_type`
+- `api/routes/webrtc_scrcpy.rs`：`ScrcpyBroadcaster`、`subscriber_pump`、`detect_nalu_type`
 - `WebRtcScrcpyView.tsx`：前端 WebRTC 组件，存 `sessionIdRef` 用于精确 stop
 
 **三个关键 bug 修复**：
@@ -766,7 +818,7 @@ Control Task ──(mpsc channel 零等待)──► Capture Loop ──(独占 
 
 **已知限制**：
 - **openh264 软编码延迟**：1080p 单帧 30-80ms，是操控延迟的主要来源
-- **LVM 建议后续切回 noVNC 直连**（本地场景零编码延迟），WebRTC 保留给远程/手机场景
+- **已知限制**：openh264 软编码 1080p 单帧 30-80ms，是操控延迟的主要来源
 
 ### macOS 输入注入架构修复（2026-03-16）
 
@@ -821,14 +873,12 @@ Control Task ──(mpsc channel 零等待)──► Capture Loop ──(独占 
 **关键文件**：
 - `useWebRtc.ts`: WebRTC 连接 hook，`connectingRef` 重置修复
 - `WebRtcScrcpyView.tsx`: 统一鼠标/键盘事件处理，object-contain 坐标修正
-- `webrtc_vm.rs`: VNC socket 拆分读写，RFB 控制消息注入，颜色修正
-- `webrtc_hd.rs`: HD 截屏 + openh264 + InputInjector（操控已实现）
-
-### Gateway 设备启停状态门控
+- `api/routes/webrtc_vm.rs`: VNC socket 拆分读写，RFB 控制消息注入，颜色修正
+- `api/routes/webrtc_hd.rs`: HD 截屏 + openh264 + InputInjector（操控已实现）
 
 ### 统一设备操控台 DeviceConsole（2026-03-16）
 
-**背景**：此前设备操控分散在 `DeviceDesktopView`（VNC）和 `WebRtcView`（WebRTC 预览）中，交互碎片化。统一改为一个浮层式操控台 `DeviceConsole`，**全链路走 WebRTC**（不再用 VNC）。
+**背景**：统一设备操控为浮层式操控台 `DeviceConsole`，全链路走 WebRTC。
 
 #### 组件体系
 
@@ -840,6 +890,8 @@ src/components/Console/
 ├── ConsoleToolbar.tsx    — 固定底部工具栏（不覆盖画面，有自己的空间）
 ├── VirtualKeyboard.tsx  — ★ 虚拟物理键盘（完整 QWERTY + Fn + 修饰键 toggle）
 ├── PipMinimap.tsx       — PiP 缩略图（缩放时角落显示全景 + 蓝色视口矩形）
+├── RemoteCursor.tsx     — 远程光标（服务端推送坐标，前端渲染）
+├── CursorMagnifier.tsx  — 放大镜（precision mode）
 └── SoftwareCursor.tsx   — 软件光标（PC 端箭头 / 手机端红点）
 
 src/hooks/
@@ -850,13 +902,7 @@ src/hooks/
 
 #### 协议与信令
 
-| 设备类型 | WebRTC 信令路径 | 输入通道 |
-|:---|:---|:---|
-| Linux VM | `POST /api/vmcontrol/vm/webrtc/start` | DataChannel (`key_event`, `mouse_event`) |
-| Host Desktop | `POST /api/vmcontrol/hd/webrtc/start` | DataChannel (`key_event`, `mouse_event`) |
-| Android | `POST /api/vmcontrol/android/webrtc/start` | DataChannel (`touch_event`, `mobile_action`) |
-
-**不再使用 VNC**。`DeviceDesktopView`、`DeviceVNCView` 保留但不再是主入口。
+> 信令路径详见第一节「远程桌面架构」表格。所有设备类型统一通过 WebRTC + DataChannel 连接。
 
 #### 接入点
 
@@ -931,11 +977,7 @@ src/hooks/
 | `hooks/useWebRtc.ts` | WebRTC 连接管理 |
 | `hooks/useRemoteInput.ts` | 输入事件 → DataChannel 序列化 |
 
-`start_device` 允许状态：`READY` / `STOPPED` / `ERROR`（ERROR 状态可以重试启动）
-
-`stop_device` 无状态门控：无论 DB 状态如何，都尝试停止（防止 DB 状态过期导致无法停机）。
-
-**文件**：`novaic-gateway/gateway/api/devices.py`
+> `start_device` 允许状态：`READY` / `STOPPED` / `ERROR`（ERROR 状态可以重试启动）；`stop_device` 无状态门控，无论 DB 状态如何都尝试停止。**文件**：`novaic-gateway/gateway/api/devices.py`
 
 ### CloudBridge — 本地与云端通信
 
@@ -960,24 +1002,59 @@ Tauri App 与云端 Gateway 通过 WebSocket (`/internal/pc/ws`) 保持长连接
 - **deploy-wait**：Gateway 从 `get_private_key_for_agent(agent_id)` 获取 SSH 私钥，在请求体中传给 vmcontrol
 - **vmcontrol 路由**：`vmcontrol/src/api/routes/vm_prep.rs`
 
-### VncProxy 与 VNC 前端统一（2026-03-13）
+### 远程桌面架构详细（WebRTC 代码流程）
 
-- **桌面**：本地路径（QUIC loopback）+ 远端路径（Gateway locate + P2P）
-- **移动端**：仅远端路径（无本地 VmControl，`local_vmcontrol` 恒为 None）
-- **P2P 流程**：打洞已移除，远端 VNC/Scrcpy 仅走 relay（relay-request → connect_via_relay）
-- **命令**：`get_vnc_proxy_url`、`get_scrcpy_proxy_url` 在 `commands/vnc_urls.rs`（全平台）
+**信令流程**：
+```
+前端 useWebRtc.ts
+  → createOffer()
+  → invoke('gateway_post', { path: '/api/vmcontrol/vm/webrtc/start', body: { sdp_offer, vm_id } })
+  → VmControl api/routes/webrtc_vm.rs → create peer + broadcaster
+  → SDP Answer 返回 → setRemoteDescription()
+  → H.264 video stream via DTLS-SRTP → <video> 标签
+  → DataChannel 双向传输键盘/鼠标输入
+```
 
-**VNC 前端统一（2026-03）**：Device tab 与 Agent tab 均使用 `DeviceDesktopView` + `createVncTransport` + `useVnc` + `VncCanvas`，移除 `VNCViewShared` 和 `vncStream` 订阅模式。maindesk 与 subuser 共用同一套连接逻辑，连接池按 `pool_key = vm_id:username` 管理。
+**Tauri Rust 层**（清理后仅保留 7 个 commands 模块）：
 
-**Host Desktop VNC 统一（2026-03-14）**：
-- **前端**：移除独立的 `HostDesktopTransport` 类和 React 画布组件，PC 端完全使用与 Linux 虚拟机 (LVM) 一致的 `DeviceDesktopView` 和 `VncBridgeTransport` 链路。
-- **后端**：在 `route_vnc_to_channel` 中根据 `vm_id` 前缀（`hd-`）路由，若匹配则调用 `open_host_desktop_stream`（类型 0x03），否则调用 `open_vnc_stream`（类型 0x01）。
-- **Tunnel**：修改了 PC 端 `tunnel.rs`，在 VNC（0x01）链路中检测 `vm_id` 是否以 `hd-` 开头，直接连接 `/tmp/novaic/host-vnc.sock`，跨过了 `resolve_vnc_endpoint_via_http` HTTP 请求探测环节，解决手机端没有 Local VmControl 时长链断裂导致连接失败（Connection failed）的问题。
+```
+src-tauri/src/
+├── lib.rs              # Tauri Builder + 20 个命令注册 + VmControl 启动
+├── setup.rs            # 共享状态初始化 + 前端 OTA 热更新（spawn_frontend_ota_task）
+├── p2p_state.rs        # P2P 启动状态（41 行，替代旧 755 行 vnc_proxy.rs）
+├── commands/
+│   ├── gateway.rs      # ★ gateway_get/post/patch/put/delete（所有后端调用的唯一通道）
+│   ├── config.rs       # Gateway URL 管理
+│   ├── auth.rs         # Cloud token 更新
+│   ├── app_instance.rs # App 实例身份查询
+│   ├── file.rs         # 文件下载/打开
+│   └── secure_storage.rs # 安全存储
+├── state/vmcontrol.rs  # VmControlEmbedded 嵌入式 HTTP 服务
+└── (core/, platform/)  # 启动引导 + 平台差异
+```
 
-**关键修复**：
-- `vncBridge._doConnect` 严格遵循时序：`invoke → readyState = OPEN → onopen() → yield一帧 → setupListeners()`，避免在 onopen 前注册监听导致 noVNC 报 "Got data while disconnected" 提前断开。
-- `vncBridge._doConnect` 返回时检查已关闭，避免向 disconnected RFB 投递数据。
-- `useVnc.doConnect` 已连接时仅更新 viewOnly/scaleViewport/clipViewport，不重建 RFB（maindesk 展开时 viewOnly 变化触发 effect 导致 "Unexpected server connection while connecting"）。
+**VmControl WebRTC Engine**（`vmcontrol/src/webrtc/`）：
+
+| 文件 | 职责 |
+|------|------|
+| `broadcaster.rs` | WebRTC 广播器，管理 peer connections |
+| `peer.rs` | 单个 peer connection（ICE + DTLS + SRTP + DataChannel） |
+| `encoder.rs` | 视频编码管理器 |
+| `vt_encoder.rs` | macOS VideoToolbox H.264 硬编码 |
+| `ffmpeg_encoder.rs` | FFmpeg 软编码（fallback） |
+| `video_qos.rs` | 自适应码率/帧率 |
+| `h264.rs` | H.264 Annex B NALU 解析与处理 |
+| `cursor.rs` | 远程光标数据处理 |
+| `audio_capture.rs` | 音频采集（预留） |
+
+**已删除的旧模块**（2026-03-19）：
+- `vnc_proxy.rs` (755行) — P2P QUIC 隧道 + Scrcpy WS 代理
+- `commands/vnc_bridge.rs` — VNC IPC 桥接
+- `commands/vnc_stream.rs` — VNC IPC 流
+- `commands/vnc_urls.rs` — VNC/Scrcpy 代理 URL
+- `commands/webrtc_scrcpy.rs` — WebRTC scrcpy IPC
+- `commands/host_desktop.rs` — Host Desktop IPC
+- 前端 14 个 VNC 相关文件（services/hooks/types/components）
 
 ---
 
@@ -987,85 +1064,36 @@ Tauri App 与云端 Gateway 通过 WebSocket (`/internal/pc/ws`) 保持长连接
 
 ### 应用启动与 Agent 选择流程
 
-1. **登录**：`auth.ts` 存 token → `App.tsx` 调用 `update_cloud_token` 推给 Rust → `initialize()` 启动 VmControl
+1. **登录**：`auth.ts` 存 token → `App.tsx` 调用 `pushToken()` → `invoke(update_cloud_token)` 推给 Rust → 成功后 `agentService.initialize()`（pushToken 失败则 3s 轮询重试）
 2. **恢复 Agent**：从 `prefsRepo.getSelectedAgent()` 或 localStorage 恢复上次选中的 agentId
-3. **选择 Agent**：`AgentService.selectAgent(agentId)` → `SyncService.switchAgent(agentId)` → 断开旧 SSE → load 消息/日志 → 建立新 SSE
+3. **选择 Agent**：`AgentService.selectAgent(agentId)` → store 写入 + prefs → SSE 不断开（User 维度常驻）→ `switchAgent(agentId)` 并行 load 消息/日志 + `modelService.loadForAgent`
 4. **登出**：`getSyncService().disconnect()` 断开 SSE，`resetServices()` 清空 Service 单例
 
 ### DB 层 `src/db/`（DB 驱动渲染）
 
-**原则**：IndexedDB 为单一事实来源，消息/日志全部来自 DB，UI 通过订阅响应变更。
+> 文件清单见 `src/db/` 目录，schema 与版本号见 `src/db/index.ts`。
 
-| 文件 | 用途 |
-|---|---|
-| `src/db/index.ts` | IndexedDB 初始化 / schema / `getDb(userId)` 工厂 / `clearLocalDb()` |
-| `src/db/messageRepo.ts` | 消息 CRUD，写后 `notifyMessageChange` |
-| `src/db/messageSubscription.ts` | 消息变更订阅 `subscribe(userId, agentId, cb)` |
-| `src/db/logRepo.ts` | 日志 CRUD |
-| `src/db/logSubscription.ts` | 日志变更订阅 |
-| `src/db/agentRepo.ts` | Agent 列表缓存 CRUD |
-| `src/db/agentSubscription.ts` | Agent 列表变更订阅 |
-| `src/db/agentConfigRepo.ts` | **Per-agent 配置缓存**（tools config, skills, bootstrap files, prompts），键 `agent_id` |
-| `src/db/agentConfigSubscription.ts` | Agent config 变更订阅 `subscribe(userId, agentId, cb)` |
-| `src/db/deviceRepo.ts` | Device 列表缓存 CRUD |
-| `src/db/deviceSubscription.ts` | Device 列表变更订阅 |
-| `src/db/prefsRepo.ts` | 偏好 k/v 持久化 |
-| `src/db/fileRepo.ts` | 附件缓存（图片 Blob、文件 local_path） |
-
-**数据流**：`messageRepo.putMessages()` → `notifyMessageChange()` → `useMessagesFromDB` 的 callback → `refetch()` 从 DB 读 → 渲染。日志、Agent 列表、Agent Config 均同理。
-
-**IndexedDB 表一览（DB_VERSION=5）**：
-
-| 表 | keyPath | 用途 |
-|---|---|---|
-| `messages` | `id` | 聊天消息 |
-| `logs` | `id` | 执行日志 |
-| `prefs` | `key` | 偏好 k/v |
-| `files` | `id` | 附件缓存 |
-| `agents` | `id` | Agent 列表缓存 |
-| `devices` | `id` | Device 列表缓存 |
-| `agent_configs` | `agent_id` | Per-agent 配置缓存（tools config, skills, bootstrap files, prompts, 含 `fetched_at` 时间戳） |
+- **原则**：IndexedDB 为单一事实来源，UI 通过 `*Subscription.ts` 订阅响应变更
+- **数据流**：`repo.put*()` → `notify*Change()` → `use*FromDB` 回调 → `refetch()` 从 DB 读 → 渲染
+- **注意**：DB 按 `userId` 隔离，表名 `novaic_local_{userId}`
 
 ### Gateway 子层 `src/gateway/`
 
-| 文件 | 用途 |
-|---|---|
-| `src/gateway/client.ts` | re-export `api` 单例（所有 HTTP REST 入口），供 Services 层调用 |
-| `src/gateway/sse.ts` | `SSEManager`：Chat SSE + Logs SSE 连接生命周期管理 |
-| `src/gateway/auth.ts` | Token 获取 / URL 注入 |
+> SSE 连接管理（`sse.ts`）、Token 注入（`auth.ts`）
 
 ### Business 层 `src/application/`
 
-| 文件 | 用途 |
-|---|---|
-| `src/application/store.ts` | Zustand 全局状态（纯状态容器 + 同步 setter），含 `chatUnreadCount` |
-| `src/application/chatScrollRegistry.ts` | 模块级 `scrollToBottom` 注册表，MessageList 注册、ChatInput 调用，避免 prop drilling |
-| `src/application/index.ts` | Service 单例工厂（`userId`-scoped 懒惰初始化） |
-| `src/application/messageService.ts` | 消息完整生命周期（发送、delta sync、SSE 处理） |
-| `src/application/logService.ts` | 日志业务逻辑 |
-| `src/application/syncService.ts` | SSE 生命周期 + delta sync 协调；`switchAgent(agentId)` 时 disconnect → load → connectChat + connectLogs。**注意**：subagent SSE 不过滤 agentId（SSE 是 User 维度） |
-| `src/application/agentService.ts` | Agent CRUD + 初始化 + VM setup 流程 |
-| `src/application/modelService.ts` | 模型配置管理 |
-| `src/application/layoutService.ts` | 布局持久化 |
-| `src/application/converters.ts` | RawMessage ↔ VM ↔ ServerRow 纯函数转换 |
-| `src/application/messagePaginationStore.ts` | 消息分页状态（hasMore、isLoading，按 agentId） |
-| `src/application/logPaginationStore.ts` | 日志分页状态（hasMore、isLoading、lastLogId，按 agentId + logSubagentId） |
-| `src/application/logFilterStore.ts` | 日志过滤（logSubagentId、logSubagents） |
-| `src/application/logInputCacheStore.ts` | 日志 input 按需加载缓存 |
+> 详见 `FRONTEND_ARCHITECTURE.md`，文件清单见 `src/application/` 目录。
+
+- **核心 Services**：`messageService`（消息生命周期）、`logService`（日志）、`syncService`（SSE + delta sync）、`agentService`（Agent CRUD + VM setup）、`modelService`（模型配置）
+- **状态**：`store.ts`（Zustand 全局状态）、`*PaginationStore`（分页）、`logFilterStore`（日志过滤）
+- **⚠️ 注意**：subagent SSE 不过滤 agentId（SSE 是 User 维度）
 
 ### Render 层 `src/components/` 与 `src/hooks/`
 
-| 文件 | 用途 |
-|---|---|
-| `src/hooks/useMessagesFromDB.ts` | DB 驱动消息列表，订阅 `messageSubscription`，变更时 refetch |
-| `src/hooks/useLogsFromDB.ts` | DB 驱动日志列表，订阅 `logSubscription` |
-| `src/components/hooks/useMessages.ts` | 消息 hook（组合 useMessagesFromDB + messagePaginationStore + messageService） |
-| `src/components/hooks/useLogs.ts` | 日志 hook（组合 useLogsFromDB + logPaginationStore + logService） |
-| `src/components/hooks/useAgent.ts` | Agent hook（含 VM setup 流程） |
-| `src/components/hooks/useModels.ts` | 模型 hook |
-| `src/components/hooks/useLayout.ts` | 布局 hook |
-| `src/components/hooks/useSettings.ts` | 设置 hook（API keys、models、skills、agent tools）；全局 TTL 缓存（getToolCategories, getSkills） |
-| `src/hooks/useAgentConfigFromDB.ts` | **Agent 配置 SWR hook**：从 IndexedDB 读取 + 订阅变更，UI 层唯一数据源 |
+> DB 驱动 hooks 见 `src/hooks/use*FromDB.ts`，组合 hooks 见 `src/components/hooks/`。
+
+- `useAgentConfigFromDB.ts`：**Agent 配置 SWR hook**，UI 层唯一数据源
 
 ### VM Setup 服务
 
@@ -1074,190 +1102,39 @@ Tauri App 与云端 Gateway 通过 WebSocket (`/internal/pc/ws`) 保持长连接
 | `src/services/setup.ts` | 环境检查、镜像检查/下载、VM 创建、部署等待（均通过 gateway_get/post 调用 Gateway） |
 | `src/components/Setup/EnvironmentCheck.tsx` | 环境检查 UI（调用 `gateway_get('/api/vm/environment')`） |
 
-### 媒体流服务（Tauri 专属）
+### 远程桌面服务（WebRTC 统一）
 
 | 文件 | 用途 |
 |---|---|
-| `src/services/vncTransport.ts` | VNC 传输创建与缓存（createVncTransport，按 resourceId\|username 缓存） |
-| `src/services/vncBridge.ts` | VncBridgeTransport，实现 noVNC 所需 WebSocket 兼容接口，走 vnc_stream_connect IPC |
-| `src/hooks/useVnc.ts` | VNC 会话管理（连接、重连、断开），RFB 生命周期 |
-| `src/services/scrcpyStream.ts` | scrcpy 视频流共享管理（WebSocket + WebCodecs） |
+| `src/hooks/useWebRtc.ts` (17KB) | ★ 统一 WebRTC 连接管理（PeerConnection + DataChannel + 自动重连） |
+| `src/hooks/useRemoteInput.ts` (35KB) | 远程输入采集（鼠标/键盘/触摸 → DataChannel 序列化） |
+| `src/hooks/useViewTransform.ts` | 视图缩放/平移管理（pinch + 滚轮 + 拖动） |
+| `src/components/Visual/WebRtcScrcpyView.tsx` (17KB) | 统一 WebRTC 视图组件（VM + Android + HD） |
+| `src/components/Visual/DeviceVNCView.tsx` | 设备显示容器（名字遗留，内部全 WebRTC） |
 
-> **vncStream 已移除**（2026-03）：VNC 统一走 createVncTransport + useVnc + VncCanvas，不再使用 vncStream 订阅模式。
 
-#### VNC 手动连接架构（2026-03-14）
+> 信令路径详见第一节「远程桌面架构」表格。所有信令通过 `invoke('gateway_post', ...)` 中转。
 
-**核心原则**：`DeviceDesktopView` / `AgentDesktopView` 本身 **mount 即连接**，不含门控。"点击才连接"的逻辑由**父组件**负责，在 mount 组件之前拦截。
+### 前端布局与交互
 
-| 调用场景 | 父组件 | 门控方式 |
-|---|---|---|
-| Chat 右侧浮窗 | `DeviceFloatingPanel` | `vncActivated` state，未激活时渲染 chip（类似 StoppedDeviceChip），点击 Connect 后才 mount DeviceDesktopView |
-| Chat 缩略图 | `VisualPanel (isThumbnail)` | `vncActivated` state，未激活时显示 Monitor 图标，点击后 mount AgentDesktopView |
-| Device tab / 设备管理 | `DeviceVNCView` / `DeviceManagerPage` | 直接 mount，自动连接（用户已在 Device tab，意图明确） |
-| 侧边栏缩略图 | `DeviceSidebar` | 不渲染 VNC，只显示 Monitor 图标 |
-| 侧边栏弹窗 | `DeviceDisplayModal` | 直接 mount，自动连接 |
+> 详细布局参数见各组件文件顶部常量，以下仅记录关键设计决策。
 
-**不要在 DeviceDesktopView/AgentDesktopView 内部加门控！** 这会导致父级已确认后还需二次确认。
+#### 核心布局
 
-### 关键 UI 组件
+- **ChatPanel**：`MessageList` + 展开式 `ExecutionLog`（可拖拽高度）+ `ChatInput`；右上角 `DeviceFloatingPanel` 浮层
+- **DeviceFloatingPanel**：preview/expanded/operating 三态，参数集中在 `FLOATING_PANEL_LAYOUT` 常量（见 `DeviceFloatingPanel.tsx`）
+- **LayoutContainer**：PC 三栏（PrimaryNav | AgentDrawer | Main）/ 手机 narrowPage 单栏切换（见 `LayoutContainer.tsx`）
+- **Devices tab**：PC Client 列表 → 设备卡片 + 内联 WebRTC 展开（见 `PcClientDeviceList.tsx`）
 
-| 文件 | 用途 |
-|---|---|
-| `src/components/Layout/DeviceFloatingPanel.tsx` | VM/AVD 悬浮窗（preview/expanded/operating 三态）；main/vm_user 均用 DeviceDesktopView |
-| `src/components/Visual/DeviceDesktopView.tsx` | VNC 主桌面/子用户视图，统一入口（createVncTransport + useVnc + VncCanvas） |
-| `src/components/Visual/ExecutionLog.tsx` | Execution Log 完整视图（树形 subagent 分组） |
-| `src/components/Visual/MainAgentLogPreview.tsx` | 主 Agent 执行日志预览（独立组件） |
-| `src/components/Visual/SubagentList.tsx` | Subagent 列表（独立组件，与 MainAgentLogPreview 无联动） |
-| `src/components/Visual/LogCapsule.tsx` | 单个 subagent 的日志胶囊组件 |
+#### 关键设计决策
 
-### 前端布局与交互（2026-03 更新）
+- **currentAgentId 隔离**：Chats 用 `currentAgentId`（Zustand），Agents 用 `configAgentId`（local state），Skills 用 `selectedSkillId`（local state）。切换 tab 不互相干扰
+- **模型选择**：在 Agent Tools 中配置，ChatInput 不含模型选择器。`modelService.setModel(agentId, compositeId)`
+- **Skills tab**：从 Settings 独立为主导航 tab，懒加载（见 `AgentDrawer.tsx`）
+- **Header**：`...` 按钮替代原 Settings 图标，左右循环切换 Agent
 
-#### ChatPanel 布局结构
 
-```
-ChatPanel
-├── DeviceFloatingPanel (compact)     ← 右上角浮层，不占布局
-├── 主内容区 (flex-1)
-│   ├── MessageList
-│   └── Execution Log（展开时，可拖拽调整高度）
-└── 底部 (shrink-0)
-    ├── CollapsibleExecutionLog（收起时，在输入框上方）
-    └── ChatInput
-```
-
-#### MainAgentLogPreview 与 SubagentList
-
-- **独立组件**：主 Agent 执行日志与 Subagent 列表上下分离，无联动
-- **MainAgentLogPreview**：主 Agent 日志预览（最多 4 条），sleeping 时不显示
-- **SubagentList**：Subagent 胶囊列表，点击打开该 agent 的完整日志弹窗
-- **位置**：输入框正上方（与展开态 Execution Log 一致）
-
-#### DeviceFloatingPanel 浮窗配置
-
-**所有参数集中**：`DeviceFloatingPanel.tsx` 顶部 `FLOATING_PANEL_LAYOUT`
-
-```typescript
-FLOATING_PANEL_LAYOUT = {
-  right: 20,           // 距视口右边 (px)
-  gap: 10,             // 卡片间距
-  previewMaxH: 200,    // 预览最大高度
-  previewBaseW: 154,   // 高度计算基准宽度
-  deviceRatio: { linux: 16/10, android: 9/19.5 },
-  stackTop: 100,       // 顶部浮窗距顶
-  stackBottom: 96,     // 底部浮窗距底
-  overlayHPad, overlayTopPad, overlayBottomPad, headerH,
-  chipH: 40,
-  spacerExtra: 8,
-}
-```
-
-- **尺寸计算唯一入口**：`getPreviewSize(type)`，高度受 `previewMaxH` 限制，宽度按宽高比自适应
-- **compact 模式**：右上角浮层，不占布局空间；点击展开逻辑不变
-
-#### 模型选择
-
-- **配置入口**：Settings → Agent Tools → 选择 Agent → Model 下拉
-- **ChatInput**：已移除模型选择器，模型在 Agent Tools 中配置
-- **存储**：`getModelService().setModel(agentId, compositeId)`，composite 格式 `api_key_id:model_id`
-
-#### Header 与导航
-
-- **左右切换**：使用 `agents` 数组顺序，循环切换
-- **标题居中**：`grid grid-cols-[auto_1fr_auto]`
-- **右上角**：`...` 按钮（MoreVertical），替代原 Settings 图标
-
-#### Settings 模态与 Tab
-
-- **Tab 类型**：`models | skills | agent-tools | cache | user`（Skills 已从 Settings 列表移除，独立为主 tab）
-- **User tab**：邮箱、显示名称、退出登录
-- **Agent Tools**：选择 Agent → 配置 Skills、Device Binding、Model、Bootstrap 文件等
-- **`overrideAgentId` prop**：从 Agents tab 传入，不依赖全局 `currentAgentId`
-- **`overrideSkillId` prop**：从 Skills tab 传入，自动打开指定 skill 的详情/编辑页
-
-#### 主布局结构（LayoutContainer）
-
-```
-PC 式（宽度 ≥ LAYOUT_THRESHOLD）：
-  PrimaryNav | AgentDrawer | Main(Header + ChatPanel/DeviceManagerPage/SettingsModal)
-
-手机式（宽度 < 阈值）：
-  - 第二栏（narrowPage=sidebar）：NarrowHeader + AgentDrawer（含 chats/agents/devices/skills/setting 列表）
-  - 第三栏（narrowPage=chat/agents/devices/skills/settings）：Header + 对应内容，底 tab 隐藏，可返回
-```
-
-- **narrowPage**：`sidebar | chat | agents | create-agent | devices | skills | settings | more`，控制手机式下当前显示哪一栏
-- **PrimaryTab**：`chats | agents | devices | skills | setting`，主导航五个 tab
-- **activeView**：`chat | agents | devices`，决定 Main 区渲染 ChatPanel、AgentDrawer 配置 还是 DeviceManagerPage
-
-#### Devices tab 三栏结构（2026-03-14 重构）
-
-**设计决策**：Devices tab 不再层层钻入单个设备页面，而是采用 PC Client 管理页 + 内联 VNC 展开态。
-
-```
-第二栏（AgentDrawer.devicesContent）：
-  PC Client 列表（每个 app_instance 一张卡片，显示名称/在线状态/设备数）
-
-第三栏（PcClientDeviceList）：
-  选中 PC Client → 管理页（统计条 + 设备卡片列表）
-  设备卡片点击 Eye → 展开 VNC（手风琴式，同时只展开一个设备）
-```
-
-**关键文件**：
-
-| 文件 | 用途 |
-|---|---|
-| `PcClientDeviceList.tsx` | 第三栏：PC Client 管理页，含设备列表、内联 VNC 展开态、subuser 桌面切换 |
-| `AgentDrawer.tsx` (devicesContent) | 第二栏：PC Client 列表选择器 |
-| `LayoutContainer.tsx` | 宽屏/窄屏路由：`selectedPcClientId` → `PcClientDeviceList` |
-
-**DeviceCard 展开态（内联 VNC）**：
-
-- 点击 Eye 按钮 → 卡片向下展开 360px，显示 VNC 画面
-- Linux 设备：展开区域包含**桌面切换 Tab Bar**（🏠 Main + 子用户 tabs + ➕ 添加用户）
-- 子用户 tab 悬停显示操作按钮（↻ Restart VNC / ✕ Delete）
-- Android 设备：直接显示 VNC 画面
-- 切换 tab 通过 `key` prop 强制 re-mount VNC 组件
-- 同时只有一个设备展开（`expandedDeviceId` state）
-
-**窄屏（手机）支持**：
-
-- 第二栏 AgentDrawer 传入 `selectedPcClientId` / `onSelectPcClient`
-- 点击 PC Client → `onNarrowPageChange('devices')` 跳转第三栏
-- 第三栏渲染 `PcClientDeviceList`，返回按钮清除 `selectedPcClientId` + 回到 sidebar
-
-**Store 新增字段**：
-
-| 字段 | 类型 | 用途 |
-|---|---|---|
-| `byAppInstance` | `AppInstance[]` | PC Client 列表（含设备、在线状态） |
-| `selectedPcClientId` | `string \| null` | 当前选中的 PC Client floor key |
-
-#### currentAgentId 重构（2026-03-14）
-
-**核心改动**：`currentAgentId` 不再是影响全局的单例游标。Chats 和 Agents 两个 tab 各自独立管理选中状态。
-
-| 状态 | 管理位置 | 用途 |
-|---|---|---|
-| `currentAgentId` | Zustand store（`useAppStore`） | **仅 Chats tab**：消息/日志加载、ChatInput 门控、SSE switchAgent |
-| `configAgentId` | LayoutContainer local state | **仅 Agents tab**：agent 配置页选中状态，传给 `SettingsModal.overrideAgentId` |
-| `selectedSkillId` | LayoutContainer local state | **仅 Skills tab**：skill 详情页选中状态，传给 `SettingsModal.overrideSkillId` |
-
-**行为**：
-- Chats tab 选中 Agent A 聊天 → 切到 Agents tab 配置 Agent B → 切回 Chats → **仍然在和 Agent A 聊天**
-- SSE `onSubagentUpdate` 不再按 `currentAgentId` 过滤（SSE 是 by user 的）
-- Devices tab 不再显示「当前 Agent」标签（设备是 User 维度资源）
-
-#### Skills tab（2026-03-14）
-
-**Skills 从 Settings 子项独立为主导航 tab**（位于 Devices 和 Settings 之间，✨ Sparkles 图标）。
-
-| 栏 | 内容 |
-|---|---|
-| 第二栏（AgentDrawer） | Skills 列表：分「自定义」和「内置」两组，紫色/蓝色视觉区分，显示名称/描述/关键词标签。顶部 "+" 创建按钮 |
-| 第三栏 | 无选中 → 空状态；点击 skill → 详情（内置只读/自定义编辑表单）；点击 "+" → 新建表单 |
-
-- Skills 数据在切到 Skills tab 时**懒加载**（`import('../../services/api')` + `skillsFetched` ref）
-- SkillsTab 接受 `initialSkillId` prop，自动打开对应 skill 详情（`'__create__'` 表示新建模式）
+## 十、前端实现细节
 
 #### Tauri 窗口拖拽区
 
@@ -1303,68 +1180,6 @@ PC 式（宽度 ≥ LAYOUT_THRESHOLD）：
   3. VM 创建：`gateway_post('/api/vm/setup', ...)` → vmcontrol
   4. 部署等待：`gateway_post('/api/vm/deploy-wait', {agent_id, ssh_port})` → vmcontrol（Gateway 注入 private_key）
 
-### noVNC 版本锁定
-
-```json
-"@novnc/novnc": "^1.5.0"
-```
-
-> ⚠️ 不要升级到 1.6+。新版本使用 top-level await，与 Vite 开发模式不兼容，会报 `top-level await` 错误。
-
----
-
-## 十、模型与 Agent 配置
-
-### 模型选择流程
-
-```
-用户选择模型 (composite: api_key_id:model_id)
-  → getModelService().setModel(agentId, composite)
-  → 更新 store.selectedModel + prefsRepo
-  → gateway.setAgentModel(agentId, modelId)  // modelId = composite 中冒号后的部分
-```
-
-### Gateway 模型 API
-
-| 接口 | 说明 |
-|---|---|
-| `GET /api/agents/{id}/model` | 获取 agent 当前模型配置 |
-| `PUT /api/agents/{id}/model` | 设置 agent 模型，body: `{ model_id: string }` |
-
-### candidate_models 表
-
-- `id` + `api_key_id` 联合主键
-- `agents.model_id` 存 model id，与 `candidate_models.id` 匹配
-
-### 切换 Agent 时模型加载
-
-```
-AgentService.selectAgent(agentId)
-  → ModelService.loadForAgent(agentId)
-  → gateway.getAgentModel(agentId)
-  → store.patchState({ selectedModel: composite })
-  → prefsRepo.setSelectedModel(userId, composite)
-```
-
----
-
-## 十一、数据库 Schema 关键表
-
-> 数据库：`/opt/novaic/data/gateway.db` (SQLite, schema v45)
-
-| 表 | 用途 |
-|---|---|
-| `agents` | Agent 实体（每个用户对话对象） |
-| `subagents` | SubAgent（main + sub，有 `parent_subagent_id` 树结构） |
-| `subagent_context` | SubAgent 的 LLM context 消息（append-only） |
-| `execution_logs` | 工具调用日志（`subagent_id` 归属，支持 upsert） |
-| `sessions` | 会话 |
-| `chat_messages` | 用户/Agent 消息 |
-| `devices` | VM/Android 设备（`status` 字段可能落后于实际状态） |
-| `tasks` | 异步后台任务（shell/browser/tool 等） |
-| `users` | 用户表（为内部 JWT auth 预留，Clerk 模式下不用此表做登录） |
-| `refresh_tokens` | 内部 JWT refresh token（Clerk 模式下不用） |
-
 ### 多用户相关表字段
 
 所有业务数据表均含 `user_id TEXT NOT NULL DEFAULT ''` 字段（schema v44+ 迁移后不再有空值）。
@@ -1376,7 +1191,7 @@ AgentService.selectAgent(agentId)
 
 ---
 
-## 十二、SSE 事件与连接管理
+## 十一、SSE 事件与连接管理
 
 ### 当前逻辑（User 维度）
 
@@ -1403,23 +1218,23 @@ AgentService.selectAgent(agentId)
 | `logs_updated` | 有新日志（轻量通知，前端需再 GET /api/logs/entries 拉取） |
 | `subagent_update` | SubAgent 生命周期变更（spawned/sleeping/awake/running/completed/failed/cancelled） |
 
-### SSE 改造计划（User 维度）
+### SSE 架构（已完成 User 维度迁移）
 
-目标：一个用户一条长连接，切换 agent 不断连，事件持续写入 DB。详见 **docs/SSE_USER_LEVEL_MIGRATION.md**。
+> 已完成：一个用户一条长连接，切换 agent 不断连。改造方案详见 `docs/design/SSE_USER_LEVEL_MIGRATION.md`。
 
 ---
 
-## 十三、常见问题
+## 十二、常见问题
 
 | 问题 | 原因 | 解决 |
 |---|---|---|
 | LVM 启动失败（设备状态 `error`） | DB 状态为 `error` 被 `start_device` 拒绝 | 已修复：`error` 状态允许重试启动 |
-| VNC 连接不上（重启 App 后自动好） | QMP 单客户端限制 / 内存状态丢失 | Scheme A：只检查 socket 文件存在性 |
+| VM 状态检测不准确 | QMP 单客户端限制 / 内存状态丢失 | Scheme A：只检查 socket 文件存在性 |
 | scrcpy 操作模式无响应（Broken Pipe 刷屏） | 控制 TCP 连接断了但 task 不退出 | 已修复：write 失败后 break，触发重连 |
 | AVD 停机失败 | DB `device_serial` 为空 | 已修复：从 live 设备列表动态解析 serial |
 | Port 1420 已占用 | 上次 tauri:dev 未退出 | `kill $(lsof -ti:1420)` |
 | `npm run tauri build --ci` 报错 | `--ci` 只接受 true/false | 改用 `npm run tauri:build -- --bundles app` |
-| noVNC top-level await 报错 | 版本 >= 1.6 | 保持 `@novnc/novnc: ^1.5.0` |
+
 | CloudBridge 500 / auth validate 500 | gateway 进程没有 `JWT_SECRET` 环境变量 | 用 `bash /opt/novaic/restart_gw.sh` 而非直接 nohup 启动 |
 | App 一直显示 "Connecting..." | Rust `initialize()` 在 JWT 推送前执行 | `App.tsx` 已修复：`await pushToken()` 后再调 `initialize()` |
 | Rust panic "Cannot block current thread" | 在 async fn 里用了 `blocking_read()` | 改为 `token.read().await.clone()` |
@@ -1438,14 +1253,8 @@ AgentService.selectAgent(agentId)
 | `tauri ios run` 报 exportOptionsPlist 找不到 | Tauri CLI 传相对路径，xcodebuild 工作目录不对 | 用 `tauri ios build` + `devicectl device install app`，见 `scripts/build-and-install-ios.sh` |
 | iOS 构建报 "Arch specified by Xcode was invalid" | project.yml 含 `${FORCE_COLOR}` 被解析为 arch 参数 | 运行 `bash scripts/patch-ios-xcode.sh` 修复 |
 | iOS 构建报 `no method named 'show' found for WebviewWindow` | `WebviewWindow::show` 仅 `#[cfg(desktop)]` 存在，移动端无此方法 | 已修复：`setup.rs` 中 `show_main_window` 用 `#[cfg(desktop)]` 包裹，移动端窗口默认可见 |
-| VNC WebSocket 连接 127.0.0.1 失败 | ATS 默认阻止 ws:// | patch-ios-xcode.sh 已注入 `NSAllowsLocalNetworking` |
-| VNC 连接被对方重置 (code 1006) | 移动端用 agent UUID 做 P2P locate，而 locate 需要 VmControl Ed25519 device_id | 已修复：`get_vnc_proxy_url` 在无 local_vmcontrol 时调用 `GET /api/p2p/my-devices` 取第一个 online 的 device_id |
-| VNC 间歇性失败（连接被对方重置） | Relay 竞态、CloudBridge JWT 过期、VncProxy 未发 Close 帧 | 2026-03-11 修复：relay 初始延迟 2s→6s；connect_relay 用最新 token；vnc_proxy 错误时发送 Close 帧 |
-| maindesk 缩略图可连、展开报错 | 展开时 viewOnly 变化触发 effect，doConnect 重建 RFB 导致 "Unexpected server connection while connecting" | 2026-03-13 修复：useVnc 已连接时仅更新 options 不重建 RFB |
-| "Got data while disconnected" | _doConnect 期间 transport 被关闭，返回后仍 setupListeners 向已 disconnected RFB 投递数据 | 2026-03-13 修复：vncBridge._doConnect 返回时检查 CLOSED/CLOSING，跳过 setupListeners |
-| 排查 P2P 请求是否到达 Gateway | 需确认 locate 是否被调用 | `GET /api/p2p/debug`（需 JWT）返回最近 50 条 P2P 事件；`novaic-gateway/scripts/check-p2p-debug.sh` |
-| VNC locate 返回 online 但连接失败 | PC 端 STUN 失败，ext_addr=0.0.0.0 不可连接 | Gateway 已修复：ext_addr 为 0.0.0.0 时返回 online=False；PC 端每 5 分钟重试 STUN。需确保 PC 允许 UDP 出站（stun.l.google.com:19302） |
-| 调试 STUN 是否可用 | 验证本机能否获取外网地址 | `python3 novaic-app/scripts/test-stun.py [port]`（port 默认 19998，若被占用用其他如 45678） |
+| 排查 P2P 请求是否到达 Gateway | 需确认 locate 是否被调用 | `GET /api/p2p/debug`（需 JWT）返回最近 50 条 P2P 事件 |
+| 调试 STUN 是否可用 | 验证本机能否获取外网地址 | `python3 novaic-app/scripts/test-stun.py [port]` |
 | 自建 STUN 服务器 | 默认 stun.gradievo.com:3478（novaic-quic-service） | 覆盖用 `NOVAIC_STUN_SERVER=stun.l.google.com:19302` |
 | SSE 连接失败（User chat/logs） | 可能 TLS、401 或网络 | 需 Xcode 控制台查看 Rust 错误；后续可改进 Rust 向 JS 传递错误详情 |
 | Relay 连接失败（P2P 兜底） | relay 服务未部署、TLS 证书、防火墙 443/udp | 检查 novaic-quic-service 状态；`NOVAIC_RELAY_INSECURE=1` 仅限本地调试 |
@@ -1493,7 +1302,7 @@ AgentService.selectAgent(agentId)
 
 ---
 
-## 十四、环境变量与配置
+## 十三、环境变量与配置
 
 ### 本地 Tauri App
 
@@ -1504,7 +1313,7 @@ AgentService.selectAgent(agentId)
 **VmControl 读取的路径约定**：
 - SSH Key：`~/.novaic/.ssh/id_rsa`（`DATA_DIR` 由 App 启动时确定）
 - QMP Socket：`/tmp/novaic/novaic-qmp-{agent_id}.sock`
-- VNC Socket：`/tmp/novaic/novaic-vnc-{id}.sock`
+- VNC Socket（VmControl 内部使用）：`/tmp/novaic/novaic-vnc-{id}.sock`
 
 ### 云端 Gateway 启动参数
 
@@ -1543,22 +1352,22 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 | 配置块 | 关键项 |
 |---|---|
 | API_CONFIG | GATEWAY_URL, HTTP_TIMEOUT |
-| LAYOUT_CONFIG | LAYOUT_THRESHOLD(1024), DRAWER_WIDTH(288), LOG_HEIGHT_RATIO(0.5) |
+| LAYOUT_CONFIG | LAYOUT_THRESHOLD(1024), DRAWER_WIDTH(304) |
 | SSE_CONFIG | RECONNECT_DELAY, MAX_RECONNECT_ATTEMPTS |
 | POLL_CONFIG | GATEWAY_HEALTH_INTERVAL |
 | STORAGE_KEYS | selectedAgent, selectedModel 等 prefs 键名 |
 
 ---
 
-## 十五、待办 / 技术债
+## 十四、待办 / 技术债
 
 - [ ] **iOS 键盘输入框适配**：原生 `--keyboard-height` 注入方案已实现（main.mm），Header 固定 OK，但输入框仍可能不可见。需要在真机上验证并调试
 - [ ] **服务端数据自动清理**：runtime 完成时自动清空 context（修改 `RuntimeRepository.complete_runtime`）；queue 定期清理已完成任务；日志 logrotate
 - [ ] `execution_logs` 的 `subagent_id = 'main'` legacy 数据迁移为 `'main-{agent_id[:8]}'`（消除前端兼容逻辑）
-- [ ] VM 停机后 socket 文件清理（当前 VNC socket 在 VM 停后仍残留）
+- [ ] VM 停机后 socket 文件清理（VmControl VNC/QMP socket 在 VM 停后仍残留）
 - [ ] scrcpy 重连后 `retryCount` 上限（当前 3 次后停止，用户需手动点"连接设备"）
 - [ ] WebRTC Scrcpy 断开后自动重连（当前 peer failed 后需手动点重连）
-- [ ] TURN 服务器集成（当前仅 STUN，某些 NAT 类型下可能无法打洞）
+- [x] TURN 服务器集成（coturn 已部署，f246332）
 - [x] **macOS 键盘/剪贴板崩溃修复**：enigo→CGEvent、arboard→pbcopy/pbpaste（2026-03-16）
 - [x] **虚拟物理键盘**：VirtualKeyboard.tsx 完整 QWERTY 布局（2026-03-16）
 - [ ] WebRTC 多客户端操控冲突处理（当前多端操控不互斥，可能产生输入冲突）
@@ -1567,12 +1376,11 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 - [ ] **Skill 商店 / ClawHub 集成**：需要 ClawHub API 端点和文档，在 Skills tab 第二栏增加「商店」入口，支持浏览/搜索/安装 skill
 - [x] API 服务器升级到 2 核（2026-03-17 已升级至 2C/7.2G）
 - [ ] **HD 设备工具体系集成**：将 Host Desktop 纳入 Agent Binding + mounted_tools 权限体系，支持 shell/截图/文件/剪贴板工具调用。需要修改 Gateway（agent_binding.py 增加 HD 设备支持）、VmControl（增加 HD shell/screenshot/file 路由）、Tools Server（识别 HD 设备类型走不同代理路径）
-- [ ] **Watchdog v2：Per-Agent 轮询**：将 Watchdog 从逐条消息创建 Saga 改为按 Agent 分组批量处理，防止消息积压导致同一 Subagent 创建多个 Runtime（详见二十四节）
+- [ ] **Watchdog v2：Per-Agent 轮询**：将 Watchdog 从逐条消息创建 Saga 改为按 Agent 分组批量处理，防止消息积压导致同一 Subagent 创建多个 Runtime（详见二十三节）
 
 ### 前端修改注意事项
 
-- **DeviceFloatingPanel**：main/vm_user/default 均用 DeviceDesktopView；`isMain` 条件含 `'main' | 'default' | 空值`，确保 HD（host_desktop）设备也走 isMain 分支；改布局参数只改 `FLOATING_PANEL_LAYOUT` 和 `getPreviewSize`；VNC 门控在 FloatingPanel 层（`vncActivated` chip）
-- **VNC 相关**：所有 VNC 场景统一用 DeviceDesktopView；修改连接逻辑优先改 useVnc/vncBridge；**门控只加在父组件，不要在 DeviceDesktopView/AgentDesktopView 内部加门控**
+- **DeviceFloatingPanel**：所有设备类型使用 WebRtcView；`isMain` 条件含 `'main' | 'default' | 空值`，确保 HD（host_desktop）设备也走 isMain 分支；改布局参数只改 `FLOATING_PANEL_LAYOUT` 和 `getPreviewSize`
 - **ChatInput 状态**：`chatUnreadCount` 从 Zustand store 读；`scrollToBottom` 从 `chatScrollRegistry` 调用；不再 prop drill
 - **CollapsibleExecutionLog**：inline 时 Tab 在底部；非 inline 时已废弃（不再使用顶部浮动）
 - **模型相关**：`useModels` 读 store；`getModelService().setModel` 写 store + prefs + gateway
@@ -1614,7 +1422,7 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 
 | 需求 | 文件 |
 |---|---|
-| 改 VNC 连接逻辑 | `vncBridge.ts`、`vncTransport.ts`、`useVnc.ts`（已由 DeviceConsole 替代） |
+| 改远程桌面连接 | `useWebRtc.ts`、`WebRtcScrcpyView.tsx`（统一 WebRTC） |
 | 改设备操控台 | `DeviceConsole.tsx`、`ConsoleToolbar.tsx`、`useWebRtc.ts`、`useRemoteInput.ts`、`useViewTransform.ts` |
 | 改浮窗尺寸/位置 | `DeviceFloatingPanel.tsx` → FLOATING_PANEL_LAYOUT |
 | 改 Execution Log 布局 | `MainAgentLogPreview.tsx`、`SubagentList.tsx`、`ChatPanel.tsx` |
@@ -1647,12 +1455,11 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 | `docs/design/DESIGN-P2P-UNIFIED.md` | P2P 架构、Relay 兜底、Registry/Discovery |
 | `docs/ota/OTA_RE_ENABLE_IMPLEMENTATION_PLAN_V2.md` | OTA 重新启用实施方案 |
 | `docs/design/SYSTEM_DESIGN.md` | 系统设计 |
-| `docs/vnc/VNC_FRONTEND_TO_VMCONTROL_FLOW.md` | VNC 前端到 vmcontrol 流程 |
 | 本文档「四 → iOS 部署流程」 | iOS 完整部署流程、黑屏修复、键盘原生修复 |
 
 ---
 
-## 十六、数据库操作安全规范
+## 十五、数据库操作安全规范
 
 SQLite WAL 模式下，**gateway 运行时可以直接用 sqlite3 读写 DB**（多读单写并发）。
 
@@ -1693,26 +1500,14 @@ EOF
 
 ---
 
-## 十七、2026-03-14 VNC连接竞态消除与架构重构
+## 十六、（已归档：VNC 连接竞态消除与架构重构）
 
-### 1. 消除 HD 与 LVM 通信在桌面秒开的 IPC 竞态 (丢包死锁问题)
-由于 Host Desktop 服务跑在左近本地，当服务端瞬间连上极速发送握手流（`RFB 003.008\n`）时，前端 `invoke` 刚返回，`listen` （数据接收挂载）却尚未完成，导致头包丢失，此时 `noVNC` 会永远卡死在“Connecting”并抛出后续一系列连接打断崩溃报错。
-- **解决方案**：引入客户端源头预分发 UUID 作为 `streamId`机制。发起 `invoke` 连通前，前端率先使用预设的 `streamId` 闭环布置好 `listen(data)`，确保即使 HD 光速响应，包也能 100% 撞击落网。
 
-### 2. transportFactory 热重载替换
-完全剥除了 `DeviceDesktopView`、`AgentDesktopView` 以及 `HostDesktopCard` 对 `transport` 生命周期的手工作坊管理。
-- **解决方案**：统一全线 VNC 挂载为工厂函数模型 `<VncCanvas transportFactory={...} />`，一旦发生网络抖动、重连（`Reconnect`）、组件卸载等，底层的 `useVnc` 会自动切断上一次遗骸（消灭僵尸连接泄漏），并动态执行 `transportFactory` 创建全新生命管道重新建立安全长连接。兜底修复了任何 "Unexpected server connection" 与界面上重连按钮毫无反应的技术顽疾。
-
-### 3. VNC Host Desktop 极致性能革命 (1秒延迟防抖)
-在攻克了能够连上的基础上，针对之前 `Host Desktop` 代理发信时存在的 1 秒级恐怖网络抖动滞后进行了手术级优化。
-- **淘汰 Raw 模式**：告别单帧 16MB 的 RGB 原片全推流，利用前端 noVNC 内置支持，向 Rust Native Backend (Tauri) 强势插入 `Tight (Encoding: 7) + Zlib Compression: Level 2 Fast` 高压缩推流体系。体积降维 20~50 倍。
-- **消灭时钟级 66ms 粘手死等**：废止传统无脑 15 FPS 恒定扫描发送，改用 **"脏区跨帧指纹比对(SIMD Data == Old_Data) + tokio::Notify 原子通知下发"** 的零等待（Zero Latency）推流。鼠标不动时绝对静止零负载，鼠标滑动的第一帧立刻触发光速下行链路。
-- **跨平台系统底层显示器劫持与缓存**：排查并消除了之前跨平台 `xcap (Monitor::all())` 接口在每次截屏都要与 macOS Kernel 进行重量级系统级多显卡轮询从而带来的 200ms+ Debug 重病症；采用循环外缓存 Monitor 指针的方式实现零拷贝开销抓屏。
-- **绕过 `tauri dev` 调试级惩罚**：通过改写 `src-tauri/Cargo.toml` 给本地运行补入 `[profile.dev.package."*"] opt-level = 3` ，在开发热编译极速的前提下，将 `flate2` 的 Zlib 运行时从几百毫秒 CPU 爆破级瓶颈，逼退至了原生光速的计算。这也是最终让开发 Debug 模式的卡顿得以全方位彻底解除的关键手。
-
+> 原 noVNC 管线（IPC 竞态修复、transportFactory 热重载、Tight 编码优化等）已于 2026-03-19 随 WebRTC 统一迁移全部移除。
+> 当前所有远程桌面均走 WebRTC，架构详见第八节「远程桌面架构（2026-03-19 WebRTC 统一）」。
 ---
 
-## 十八、RustDesk 优化落地（2026-03-16）
+## 十七、RustDesk 优化落地（2026-03-16）
 
 深入分析 RustDesk 源码后，将其 8 大优化类别逐一落地到 NovAIC 远程流管线中。
 
@@ -1803,7 +1598,7 @@ None => {
 
 ---
 
-## 十九、虚拟键盘 Apple 风格视觉反馈（2026-03-16）
+## 十八、虚拟键盘 Apple 风格视觉反馈（2026-03-16）
 
 增强 `VirtualKeyboard.tsx` 按键反馈，对标 iOS 系统键盘体验：
 
@@ -1821,7 +1616,7 @@ None => {
 
 ---
 
-## 二十、PiP 缩略图操控模式点击修复（2026-03-16）
+## 十九、PiP 缩略图操控模式点击修复（2026-03-16）
 
 **问题**：在操控模式（`viewMode === 'fixed'`）下缩放画面后，点击角落的 PiP 全景缩略图无法恢复全景。
 
@@ -1840,7 +1635,7 @@ None => {
 
 ---
 
-## 二十一、远程光标通道与放大镜优化（2026-03-17）
+## 二十、远程光标通道与放大镜优化（2026-03-17）
 
 ### 1. 远程光标 DataChannel
 
@@ -1911,7 +1706,7 @@ Row 2: 操作按钮居中 (键盘/剪贴板/刷新/截图/全屏/关闭)
 
 ---
 
-## 二十二、反慢动作修复与自动 Keyframe 恢复（2026-03-17）
+## 二十一、反慢动作修复与自动 Keyframe 恢复（2026-03-17）
 
 ### 1. 反慢动作（Anti-Slowmo）
 
@@ -1967,7 +1762,7 @@ if drained > 0 {
 
 ---
 
-## 二十三、工具执行架构概览（2026-03-17 分析）
+## 二十二、工具执行架构概览（2026-03-17 分析）
 
 ### Agent 工具调用全链路
 
@@ -2020,7 +1815,7 @@ Agent 绑定设备时选择 `mounted_tools` 控制工具权限：
 
 ---
 
-## 二十四、Agent Runtime 后端架构（2026-03-17 深度分析）
+## 二十三、Agent Runtime 后端架构（2026-03-17 深度分析）
 
 ### 后端服务组件一览
 
@@ -2139,3 +1934,79 @@ T=30.1s Saga-50: get_or_create → 无 active → 创建 rt-bbb ❌
 | subagent_rest endpoint | `novaic-gateway/gateway/api/internal/subagent.py` (line 453) |
 | has_new_messages / get_pending_count | `novaic-gateway/gateway/db/repositories/message.py` (line 486) |
 | Scheduler Worker | `novaic-agent-runtime/task_queue/workers/scheduler_worker_sync.py` |
+
+## 二十四、WebRTC 统一入口代码精简（2026-03-19）
+
+### 背景
+
+前期已完成 WebRTC 统一入口（所有设备类型走 `/api/webrtc/start` + `/api/webrtc/stop`），本次清理所有旧的 per-type 路由和前端死代码。
+
+### 删除的代码
+
+#### Gateway (`novaic-gateway/gateway/api/vmcontrol.py`)
+
+删除 6 个旧路由函数（~150 行）：
+- `POST /android/webrtc/start` / `stop`
+- `POST /host-desktop/webrtc/start` / `stop`
+- `POST /vm/webrtc/start` / `stop`
+
+保留：`POST /webrtc/start` 和 `/webrtc/stop`（统一入口）
+
+#### VmControl (`vmcontrol/src/api/routes/mod.rs`)
+
+删除 6 个旧 axum 路由注册（8 行）。模块文件 `webrtc_vm.rs`、`webrtc_hd.rs`、`webrtc_scrcpy.rs` **保留**（`webrtc_unified.rs` 内部仍调用它们的函数）。
+
+#### 前端
+
+| 文件 | 变更 |
+|---|---|
+| `useWebRtc.ts` | 删除 3 处 `?? 'host_desktop'` fallback |
+| `DeviceFloatingPanel.tsx` | `deviceId="host_desktop"` → `deviceId={device.id}` |
+| `DeviceSidebar.tsx` | 同上 |
+| `PcClientDeviceList.tsx` | `deviceId="host-desktop"` → `deviceId={device.id}`（x2）+ `showToolbar={false}` |
+| `DeviceVNCView.tsx` | 123→33 行，删除 Linux/Android 分支和 start/stop 按钮，统一走 WebRtcView |
+| `vm.ts` | 删除 `getVncStatus()`（零调用）+ unused imports |
+| `main.tsx` | 删除 noVNC console.error 过滤器 |
+| `types/novnc.d.ts` | **删除文件** |
+| `types/novnc-rfb.d.ts` | **删除文件** |
+
+### Bug 修复
+
+#### 1. Subuser 进入操控台连到 main desktop
+
+**根因**：`PcClientDeviceList.tsx` 蒙层点击 `onClick={() => { setConsoleOpen(true); onToggleExpand(); }}` 同时收起面板 → `useEffect` 检测到 `!expanded` → `setSelectedUser(null)` → `DeviceConsole` 拿到的是 `subjectType='main'`。
+
+**修复**：蒙层点击只开操控台不收起面板：`onClick={() => setConsoleOpen(true)}`
+
+#### 2. 设备预览页工具栏无法点击
+
+**根因**：预览区有蒙层覆盖（"进入操控台"），底部工具栏按钮点不到。
+
+**修复**：`WebRtcView` 传 `showToolbar={false}`；触控/鼠标切换按钮改为仅 Android 显示。
+
+#### 3. Subuser WebRTC 连接后光标不显示
+
+**根因**：VNC Cursor pseudo-encoding 是被动的——只在光标形状变化时推送。Subuser VNC 会话的 X11 root window 默认光标为空，直到打开窗口后窗口管理器才设置光标。
+
+**修复**：`RemoteCursor.tsx` 在没有远程 cursor shape 时显示默认白色箭头 SVG。同时在 `webrtc_vm.rs` VNC 握手后发 PointerEvent 尝试触发服务端光标（辅助措施）。
+
+### 当前架构
+
+```
+前端 → device.id
+  → POST /api/vmcontrol/webrtc/start { device_id, sdp_offer }
+  → Gateway forward_request
+  → VmControl /api/webrtc/start
+  → webrtc_unified.rs: SQLite Device Registry → DeviceKind → 分发
+```
+
+**零硬编码、零 fallback、单一路由入口。**
+
+### 关键文件速查
+
+| 需求 | 文件 |
+|:---|:---|
+| 统一 WebRTC 路由 | `vmcontrol/src/api/routes/webrtc_unified.rs` |
+| 远程光标组件 | `Console/RemoteCursor.tsx`（默认箭头 fallback） |
+| 设备预览列表 | `Layout/PcClientDeviceList.tsx`（showToolbar=false、蒙层修复） |
+| 设备显示统一组件 | `Visual/DeviceVNCView.tsx`（精简后 33 行） |
