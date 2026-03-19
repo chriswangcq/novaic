@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-19（WebRTC 精简 + subuser 修复 + 原生视频渲染方案调研）
+> 最后更新：2026-03-19（WebRTC 精简 + subuser 修复 + 原生视频渲染调研 + 语音录制）
 
 ---
 
@@ -2060,3 +2060,43 @@ H.264 NALUs → VideoToolbox (iOS) / MediaCodec (Android)
 | H.264 帧广播 | `vmcontrol/src/webrtc/broadcaster.rs`（VideoFrame 裸 NALUs） |
 | 详细方案 | artifacts: `native_video_plan.md`、`native_render_feasibility.md` |
 
+## 二十六、语音录制功能（2026-03-19）
+
+### 背景
+
+聊天需要语音输入，能录音并作为音频文件附件上传。
+
+### 技术难点
+
+Tauri macOS WebView（WKWebView + HTTP）中 `navigator.mediaDevices` 为 `undefined`，`getUserMedia` 完全不可用。
+
+### 方案：Rust cpal 原生录音
+
+```
+前端 → invoke('start_audio_recording')
+        ↓
+Rust: cpal 打开麦克风 → 采集 PCM f32 数据 → 缓存
+        ↓
+前端 → invoke('stop_audio_recording')
+        ↓
+Rust: 停止采集 → hound 写 WAV → base64 返回
+        ↓
+前端: base64 → File 对象 → attachments → 现有上传流程
+```
+
+### 改动文件
+
+| 文件 | 改动 |
+|:---|:---|
+| `Cargo.toml` | 新增 `cpal = "0.15"` + `hound = "3.5"` |
+| `src/audio_recorder.rs` | 新模块：录音状态管理 + cpal 采集 + WAV 编码 + base64 输出 |
+| `src/lib.rs` | 注册 `mod audio_recorder` + 两个 Tauri command |
+| `permissions/allow-app-commands.toml` | 新增 `start_audio_recording` / `stop_audio_recording` 权限 |
+| `ChatInput.tsx` | 删除 MediaRecorder 代码 → 改用 `invoke` 调 Rust 录音，点击切换模式 |
+
+### 注意事项
+
+- `cpal::Stream` 不是 `Send`，用 `SendStream` newtype wrapper + `unsafe impl Send/Sync` 绕过
+- WAV 格式通用性好但文件较大（48kHz 立体声 ~11MB/分钟），未来可压缩为 Opus
+- macOS 首次使用需要授权麦克风权限（系统弹窗）
+- 前端 UI：点击 🎙️ 开始 → 按钮变红脉冲+计时 → 再次点击停止
