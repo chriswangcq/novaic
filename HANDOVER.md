@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-19（WebRTC 精简 + 语音录制 + VT 编码器固定帧预算调研）
+> 最后更新：2026-03-19（DataRateLimits 固定帧预算方案实现 + ABR 动态码率删除）
 
 ---
 
@@ -2144,14 +2144,28 @@ DataRateLimits = [bytes_limit, seconds_limit]
 | 降低 IDR 频率 | `MaxKeyFrameInterval = 600`（20s） |
 | **Intra Refresh** | 每帧别几行宏块，永远没有完整 IDR 突发 |
 
-### 待实现
+### 已实现（2026-03-19）
 
-- 在 `vt_encoder.rs` 中加 `DataRateLimits` 属性设置（~30 行）
-- 可选：暴露信道带宽参数到前端配置
+| 文件 | 改动 |
+|:---|:---|
+| `vt_encoder.rs` | 新增 `DataRateLimits` FFI（CFArrayCreate + kCFTypeArrayCallBacks），构造函数设 AverageBitRate=80% + DataRateLimits=100% |
+| `encoder.rs` | 删除 `set_bitrate` trait 方法、`base_bitrate`、`calc_bitrate`；`create_best_encoder` 新增 `bandwidth_kbps` 参数 |
+| `video_qos.rs` | 从 200 行精简到 33 行，只保留 `encode_failed` 检测 |
+| `webrtc_hd.rs` | 删除 Layer1/Layer2 滑动窗口 + 场景预判 + 动态 `encoder_kbps`（~150 行） |
+| `webrtc_vm.rs` | 删除每秒粗调 + per-frame 紧急刹车 + 带宽门控（~60 行） |
+
+### 架构决策
+
+- **删除动态码率 ABR**：DataRateLimits 是编码器硬件级硬上限，外部再调 `set_bitrate()` 会和它打架
+- **保留动态帧率逻辑**：不在此次删除，因为动态帧率省电省包，与 DataRateLimits 不冲突
+- **静态区域不受影响**：H.264 P 帧只编码变化区域，DataRateLimits 只在超标时介入
 
 ### 关键文件
 
 | 文件 | 内容 |
 |:---|:---|
-| `vmcontrol/src/webrtc/vt_encoder.rs` | VideoToolbox GPU 编码器（当前仅设 AverageBitRate） |
-| `vmcontrol/src/webrtc/encoder.rs` | H264Encoder trait + openh264 fallback + 码率计算 |
+| `vmcontrol/src/webrtc/vt_encoder.rs` | VT GPU 编码器，已设 AverageBitRate + DataRateLimits |
+| `vmcontrol/src/webrtc/encoder.rs` | H264Encoder trait（无 set_bitrate） + openh264 fallback |
+| `vmcontrol/src/webrtc/video_qos.rs` | 仅 encode_failed 检测，无 fps/ratio 调整 |
+| `api/routes/webrtc_hd.rs` | HD 捕获循环，无滑动窗口码率控制 |
+| `api/routes/webrtc_vm.rs` | VM 编码线程，无闭环反馈码率调整 |
