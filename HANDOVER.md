@@ -1436,8 +1436,8 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 - [ ] Gateway DB 访问改为异步（当前同步 SQLite 在 async FastAPI 中，高并发下仍有阻塞风险）
 - [ ] **Skill 商店 / ClawHub 集成**：需要 ClawHub API 端点和文档，在 Skills tab 第二栏增加「商店」入口，支持浏览/搜索/安装 skill
 - [ ] **原生视频渲染（全客户端）**：所有客户端（iOS/Android/macOS/Web）用原生解码替代 WebRTC `<video>` 标签渲染，降低功耗+延迟+画质损失。iOS: VideoToolbox+Metal；Android: MediaCodec+GL；macOS: VideoToolbox+Metal；Web: WebCodecs API（见二十五节）
-- [ ] **历史消息 file_id 回填**：历史聊天附件无 file_id，需在 `files` 表补注册记录，待 OSS 迁移时用
-- [ ] `vm_start`/`vm_stop`/`android_start`/`android_stop` 迁移到 WS（当前仍走 HTTP）
+- [x] **历史消息 file_id 回填**：已增加脚本 `scripts/backfill_file_id.py`，因服务器连通性问题待后续手动执行
+- [x] `vm_start`/`vm_stop`/`android_start`/`android_stop` 迁移到 WS（前端 `vm.ts` / `api.ts` 已改，后端 `app_client.py` 增加分发）
 
 ### 前端修改注意事项
 
