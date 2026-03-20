@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-20（文件服务统一：/api/images/ 合并进 /api/files/；file_id 系统 + Gateway 权限鉴权；HTTP→WS 全通道迁移）
+> 最后更新：2026-03-20（实时消息/日志 WebSocket 稳定推送与前端展示修复）
 
 ---
 
@@ -2359,3 +2359,26 @@ from gateway.api.deps import check_agent_access
 - `/opt/novaic/data/files/files/images/` — File Service 存新截图
 - Gateway `[ImageStorage] Wired to File Service: http://127.0.0.1:19995` — 已确认
 - Runtime Orchestrator `ImageStorage wired to File Service: http://127.0.0.1:19995` — 已确认
+
+---
+
+## 三十、实时同步与 WebSocket 稳定性修复（2026-03-20）
+
+**问题背景**：客户端无法实时接收来自其他设备发出的消息和 Agent 运行日志，经常发生 WebSocket 短期内断开连接、消息未送达问题。
+
+**排查与修复流程**：
+
+### 1. Tauri (Rust) WebSocket Ping/Pong 解析修正
+- **病因**：Rust 端的心跳机制之前误用协议层 WebSocket Ping 帧（`Message::Ping`）。而 Gateway FastAPI 端的 `app_ws_endpoint` 是通过接收 JSON `{"type": "ping"}` 处理心跳机制，进而重置 90 秒的断开超时时间。因为格式不匹配，心跳未被 Gateway 注册，导致 Gateway 在 90 秒无完整 API 请求后主动断开了 App 端的连接。
+- **修复**：修改 `novaic-app/src-tauri/src/core/app_bridge.rs` 中心跳定时器的发送逻辑，改为发出 `{"type": "ping"}` 并在对端返回 `pong` 消息时正确重置。彻底解决了客户端随机掉线重连问题。
+
+### 2. Gateway Python 推送线程静默异常修复
+- **病因**：在 `sse_state.py` 里的 `_ws_push` 等消息分发逻辑，由于部分是通过非异步的 worker 或其他位置调用，原先的 `create_task()` 直接由于不在 async 事件循环内抛出 `RuntimeError: no running event loop` 并被 `debug` 日志静默吃掉。这使得很多重要的 WebSocket 推送从没进入到队列。
+- **修复**：恢复了 `loop.create_task`（基于传入的或获取的 loop），将这种 `RuntimeError` 的捕捉升级为 `WARNING` 级别日志。
+- **日志强化**：并在 `app_client.py::push_to_user` 内增加了 `INFO` 级别统计，详细打印事件（`chat_message`, `logs_updated` 等）成功推送的 clients 数量。
+
+### 3. 前端 WS Message 捕获与去重
+- **病因**：前端在 `sse.ts` 捕获到 WS 分发的事件后，对于 `USER_MESSAGE` 并没有回调给上层的 `messageService` 或 UI，只 `break` 出了 Switch，因此自己手机端发送的话，电脑端永远无法展示内容。
+- **修复**：
+  1. `sse.ts` 里对 `USER_MESSAGE` 调用 `onAgentReply` 并携带正确的 User ID 头像和内容。
+  2. 加入去重保障。在 `messageRepo.ts` 中加入 `findTempByContent()` 按格式化文本查重。在 `messageService.ts` 收到 `USER_MESSAGE` 时，比对自己本地暂存或刚刚乐观保存（Optimistic Write）的相同结构信息，如果已经存在则直接丢弃，不导致 UI 短暂看到两条相同信息。解决了本地乐观更新和云端推回重复碰撞的问题。
