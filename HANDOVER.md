@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-19（DataRateLimits 固定帧预算方案实现 + ABR 动态码率删除）
+> 最后更新：2026-03-20（HTTP→WS 全通道迁移：chat_send / interrupt / webrtc_stop 全走 AppBridge WS）
 
 ---
 
@@ -113,7 +113,74 @@ VmControl CloudBridge 连接 Gateway /internal/pc/ws
 
 > ⚠️ **noVNC 已于 2026-03-19 全栈移除**（前端 14 个文件 + Tauri Rust 6 个文件 + 755 行 vnc_proxy.rs）。所有远程桌面均走 WebRTC。
 
-### Gateway URL 配置
+### WebRTC 全通道 WS 信令（方案 B，2026-03-20）
+
+**旧方案**：SDP 走 HTTP（`gateway_post`），ICE candidates 走 WS。两条通道不同步，导致竞态（session_id 未返回时 candidate 已到达、remoteDescription 未设置时已收到 candidate 等）。
+
+**新方案（方案 B）**：**offer / answer / candidates 全走同一条 AppBridge WS**。WS 保证消息顺序：answer 必在 candidates 之前到达，天然无竞态。
+
+**信令流程**：
+
+```
+前端 invoke('send_webrtc_offer')
+  → AppBridge WS: {"type":"webrtc_offer","device_id":"...","sdp_offer":"..."}
+  → Gateway app_client.py: _relay_webrtc_offer_to_pc()
+  → CloudBridge WS: {"type":"webrtc_offer",...} push to PC
+  → VmControl cloud_bridge.rs: Router::oneshot("/api/webrtc/start")
+  → axum handler 创建 peer + answer
+  → CloudBridge WS: {"type":"webrtc_answer","device_id":"...","session_id":"...","sdp_answer":"..."}
+  → Gateway pc_client.py: push_webrtc_answer_to_user()
+  → AppBridge WS push: {"type":"push","event":"webrtc_answer","data":{...}}
+  → 前端 listen('gateway_push') 收到 answer → setRemoteDescription
+
+ICE candidates（双向，同一条 WS）：
+  前端 → AppBridge WS → Gateway → CloudBridge WS → VmControl
+  VmControl → CloudBridge WS → Gateway → AppBridge WS push → 前端
+```
+
+| 文件 | 改动 |
+|------|------|
+| `useWebRtc.ts` | `invoke('send_webrtc_offer')` 替代 `gateway_post`；单 listener 处理 `webrtc_answer` + `ice_candidate`；Promise 等 answer |
+| `commands/webrtc.rs` | 新增 `send_webrtc_offer` Tauri command |
+| `app_bridge.rs` | 新增 `OutgoingMessage::WebrtcOffer` + `send_webrtc_offer()` 方法 |
+| `app_client.py` | 新增 `_relay_webrtc_offer_to_pc()` + `push_webrtc_answer_to_user()` |
+| `pc_client.py` | 新增 `webrtc_answer` 消息处理 |
+| `cloud_bridge.rs` | 新增 `IncomingMessage::WebrtcOffer` + `OutgoingMessage::WebrtcAnswer`；`Router::oneshot()` 调本地 axum |
+| `permissions/allow-app-commands.toml` | 添加 `send_webrtc_offer` + `send_ice_candidate` 到 Tauri v2 权限 |
+
+### App→Gateway WS 请求/响应通道（2026-03-20）
+
+**问题**：`chat_send`、`interrupt`、`webrtc_stop` 等操作走 HTTP，与 WS 推送通道并行，产生竞态且多一次 TLS 握手。
+
+**方案**：在现有 AppBridge WS 上实现请求/响应信道（类似 JSON-RPC over WS），所有操作型调用全走同一条 WS。WS 未连接时**直接报错，不回退 HTTP**（静默降级掩盖连接问题）。
+
+**消息格式**：
+```json
+// 前端 → Gateway（Request）
+{ "type": "request", "request_id": "uuid", "action": "chat_send", "path": "/api/chat/send", "data": {...} }
+// Gateway → 前端（Response）
+{ "type": "response", "request_id": "uuid", "data": {...}, "error": null }
+```
+
+**关键实现**：
+
+| 层 | 文件 | 职责 |
+|---|------|------|
+| Rust AppBridge | `app_bridge.rs` | `OutgoingMessage::Request`/`IncomingMessage::Response` + `pending_requests: Arc<Mutex<HashMap<String, oneshot::Sender>>>` + `send_request()` |
+| Tauri Command | `commands/gateway.rs` | `gateway_ws_request(action, path?, data?)` — WS 未连接直接 Err |
+| Gateway Python | `app_client.py` | `_handle_ws_request()` + `_dispatch_request()` — 直接调进程内函数，不走内部 HTTP |
+
+**Gateway dispatch 逻辑（进程内直接调用，零 HTTP）**：
+- `webrtc_stop` → `send_push_to_device(target_pc, "webrtc_stop", data)` via CloudBridge WS
+- `chat_send` → `message_repo.add_message()` + `notify_chat_subscribers()`（直接写 DB + 广播 SSE）
+- `interrupt` → `agent.interrupt()`（with ImportError graceful fallback）
+
+**前端已迁移的调用**：
+- `useWebRtc.ts`：`disconnect()` + `connect()` 的 pre-stop → `gateway_ws_request("webrtc_stop")`
+- `services/api.ts`：`sendChatMessage()` → `gateway_ws_request("chat_send")`
+- `services/api.ts`：`interruptAgent()` → `gateway_ws_request("interrupt")`
+
+**Rust 生命周期修复**：`Response` 处理时 clone `Arc<Mutex<pending_requests>>`（先 drop RwLockReadGuard），再 `.lock().await.remove()` 赋值给 `let tx` 后 drop MutexGuard，最后 if-let 使用，避免 E0597。
 
 - **Tauri HTTP 请求**：通过 `gateway_get` / `gateway_post` 等命令，URL 来自 Rust 的 `gateway_url.txt`（`{data_dir}/gateway_url.txt`，默认 `https://api.gradievo.com`）
 - **前端 SSE**：使用 `invoke('get_gateway_url')` 获取运行时 URL，与 HTTP 保持一致，避免本地开发时 SSL 错误
@@ -2160,3 +2227,60 @@ DataRateLimits = [bytes_limit, seconds_limit]
 | `vmcontrol/src/webrtc/video_qos.rs` | 仅 encode_failed 检测，无 fps/ratio 调整 |
 | `api/routes/webrtc_hd.rs` | HD 捕获循环，无滑动窗口码率控制 |
 | `api/routes/webrtc_vm.rs` | VM 编码线程，无闭环反馈码率调整 |
+
+---
+
+## 二十八、HTTP→WS 全通道迁移（2026-03-20）
+
+### 背景与决策
+
+将所有操作型 HTTP 调用迁移到 AppBridge WS：
+- **消除竞态**：chat_send 消息 ID 与 WS 推送在同一有序通道，不再乱序
+- **减少延迟**：复用已建立的 TLS/WS 连接，无需新建
+- **架构一致性**：App ↔ Gateway 只有一条双向通道
+
+**原则：WS 未连接直接失败，不静默回退 HTTP。** 回退会掩盖连接问题，让用户看不到实际错误。
+
+### 变更清单
+
+| 文件 | 变更 |
+|------|------|
+| `src-tauri/src/core/app_bridge.rs` | 新增 `OutgoingMessage::Request`、`IncomingMessage::Response`；新增 `pending_requests: Arc<Mutex<HashMap>>` 字段；实现 `send_request()` 方法（30s 超时）；修复 E0597：clone Arc + 分两步 remove |
+| `src-tauri/src/commands/gateway.rs` | 新增 `gateway_ws_request(action, path?, data?)` — WS 未连接直接返回 Err，移除 HTTP 回退逻辑 |
+| `src-tauri/src/lib.rs` | 注册 `gateway_ws_request` 到 invoke_handler |
+| `src-tauri/permissions/allow-app-commands.toml` | 添加 `gateway_ws_request` 权限 |
+| `gateway/api/app_client.py` | 新增 `_handle_ws_request()`、`_dispatch_request()`；`app_ws_endpoint` 处理 `type=="request"` 消息 |
+| `src/hooks/useWebRtc.ts` | `disconnect()` + `connect()` pre-stop 改用 `gateway_ws_request("webrtc_stop")` |
+| `src/services/api.ts` | `sendChatMessage()` 改用 `gateway_ws_request("chat_send")`；`interruptAgent()` 改用 `gateway_ws_request("interrupt")` |
+
+### Gateway 进程内 dispatch（无内部 HTTP）
+
+`_dispatch_request` 直接调用进程内函数，不走任何 HTTP 中转：
+
+```python
+# webrtc_stop
+await send_push_to_device(target_pc, "webrtc_stop", data)  # CloudBridge WS
+
+# chat_send
+message_repo = get_message_repo()
+msg = message_repo.add_message(agent_id, "USER_MESSAGE", content_str, metadata)
+notify_chat_subscribers(user_msg, user_id, agent_id)  # SSE broadcast
+
+# interrupt
+agent = get_agent()  # with ImportError fallback
+agent.interrupt()
+```
+
+### 关键 imports（已验证在服务器 venv 可用）
+
+```python
+from gateway.db import get_database
+from gateway.db.repositories import get_message_repo
+from gateway.sse_state import notify_chat_subscribers
+from gateway.api.deps import check_agent_access
+```
+
+### 后续 TODO
+
+- [ ] `vm_start`/`vm_stop`/`android_start`/`android_stop` 迁移到 WS（当前暂未迁移，仍走 HTTP）
+- [ ] 考虑 WS 连接断开时的前端提示（当前只是 invoke 报错，可加 toast 提示）
