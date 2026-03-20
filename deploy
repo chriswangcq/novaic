@@ -56,7 +56,7 @@ deploy_ios() {
   info "构建 iOS IPA 并安装"
   cd "$REPO_ROOT/novaic-app"
   npm run tauri ios build -- --export-method debugging || fail "iOS 构建失败"
-  local IPA="src-tauri/gen/apple/build/arm64/NovAIC.ipa"
+  local IPA="src-tauri/gen/apple/build/arm64/ByClaw.ipa"
   [ -f "$IPA" ] || fail "IPA 不存在: $IPA"
   local DEVICE=$(xcrun devicectl list devices 2>/dev/null | awk '/connected/ && !/Simulator/ {for(i=1;i<=NF;i++) if($i~/^[0-9A-F]{8}-/) {print $i;break}}' | head -1)
   if [ -z "$DEVICE" ]; then warn "未找到设备，IPA 在: $IPA"
@@ -68,9 +68,9 @@ deploy_desktop() {
   cd "$REPO_ROOT/novaic-app"
   npm run tauri:build -- --bundles app || fail "桌面构建失败"
   info "安装到 /Applications"
-  rm -rf /Applications/NovAIC.app
-  cp -R src-tauri/target/release/bundle/macos/NovAIC.app /Applications/
-  ok "桌面应用已部署到 /Applications/NovAIC.app"
+  rm -rf /Applications/ByClaw.app
+  cp -R src-tauri/target/release/bundle/macos/ByClaw.app /Applications/
+  ok "桌面应用已部署到 /Applications/ByClaw.app"
 }
 
 # ── 后端服务部署（rsync + 服务器端 start.sh 管理进程） ────────────────────────
