@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-20（HTTP→WS 全通道迁移：chat_send / interrupt / webrtc_stop 全走 AppBridge WS）
+> 最后更新：2026-03-20（文件服务统一：/api/images/ 合并进 /api/files/；file_id 系统 + Gateway 权限鉴权；HTTP→WS 全通道迁移）
 
 ---
 
@@ -1436,6 +1436,8 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 - [ ] Gateway DB 访问改为异步（当前同步 SQLite 在 async FastAPI 中，高并发下仍有阻塞风险）
 - [ ] **Skill 商店 / ClawHub 集成**：需要 ClawHub API 端点和文档，在 Skills tab 第二栏增加「商店」入口，支持浏览/搜索/安装 skill
 - [ ] **原生视频渲染（全客户端）**：所有客户端（iOS/Android/macOS/Web）用原生解码替代 WebRTC `<video>` 标签渲染，降低功耗+延迟+画质损失。iOS: VideoToolbox+Metal；Android: MediaCodec+GL；macOS: VideoToolbox+Metal；Web: WebCodecs API（见二十五节）
+- [ ] **历史消息 file_id 回填**：历史聊天附件无 file_id，需在 `files` 表补注册记录，待 OSS 迁移时用
+- [ ] `vm_start`/`vm_stop`/`android_start`/`android_stop` 迁移到 WS（当前仍走 HTTP）
 
 ### 前端修改注意事项
 
@@ -2284,3 +2286,76 @@ from gateway.api.deps import check_agent_access
 
 - [ ] `vm_start`/`vm_stop`/`android_start`/`android_stop` 迁移到 WS（当前暂未迁移，仍走 HTTP）
 - [ ] 考虑 WS 连接断开时的前端提示（当前只是 invoke 报错，可加 toast 提示）
+
+---
+
+## 二十九、文件服务统一：/api/images/ → /api/files/（2026-03-20）
+
+### 背景与决策
+
+历史上文件存储有两套独立系统：
+- **`/api/images/`**：Agent 截图，`ImageStorage` 直接写磁盘，Gateway 和 Runtime Orchestrator 各自维护
+- **`/api/files/`**：聊天附件，File Service（novaic-storage-a）统一管理
+
+两套系统导致：鉴权不一致、无法统一迁移到 OSS、前端需判断两个 URL 前缀。
+
+**决策：全部统一到 /api/files/，/api/images/ 路由完全删除。**
+
+### 变更清单
+
+**Gateway（novaic-gateway）**
+
+| 文件 | 变更 |
+|------|------|
+| `gateway/files/registry.py` | 新增：`files` 表 DDL（file_id/user_id/storage_key 等）；`register_file()`、`check_file_access()`、`delete_file_record()` |
+| `gateway/files/__init__.py` | 新增：package init |
+| `main_gateway.py` | 删除 4 个 `/api/images/` 路由（`get_image`、`get_image_with_subagent`、`get_image_stats`、`cleanup_images`）；upload 端点注册 file_id + user_id；GET `/api/files/{file_id}` 验证归属；DELETE `/api/files/{file_id}` 验证归属后删除 |
+| `common/utils/image_storage.py` | 新增 `file_service_url` 参数；`save_image()` 分发到 `_save_via_file_service()`（POST `/api/files/from-base64`）或 `_save_to_disk()`（backward compat）；`resolve_image_to_base64` 支持 `/api/files/` URL |
+
+**novaic-shared-runtime-common**
+
+| 文件 | 变更 |
+|------|------|
+| `shared_runtime_common/common/utils/image_storage.py` | 同 Gateway 版本，加 `file_service_url` + `_save_via_file_service()` |
+
+**Runtime Orchestrator（novaic-runtime-orchestrator）**
+
+| 文件 | 变更 |
+|------|------|
+| `main_runtime_orchestrator.py` | lifespan 中 `set_image_storage(ImageStorage(file_service_url=...))` —— 截图写到 File Service |
+
+**Frontend（novaic-app）**
+
+| 文件 | 变更 |
+|------|------|
+| `src/services/api.ts` | `uploadChatFile` 返回 `file_id`；`sendChatMessage` attachments 包含 `file_id?` |
+| `src/application/messageService.ts` | `Attachment.id = file_id ?? generated`；存储 `file_id` 字段 |
+| `src/types/index.ts` | `Attachment` 接口加 `file_id?: string` |
+| `src/components/Visual/SmartValue.tsx` | `isImageUrl` 只识别 `/api/files/`，删掉 `/api/images/` |
+
+### 数据流（新）
+
+```
+截图（Agent/Execution Log）
+  ImageStorage.save_image()
+    → POST http://127.0.0.1:19995/api/files/from-base64
+    → File Service 写磁盘 /opt/novaic/data/files/files/images/{agent_id}/xxx.png
+    → 返回 URL: /api/files/images/{agent_id}/xxx.png
+
+聊天附件
+  前端 uploadChatFile()
+    → Gateway POST /api/files/upload
+    → 注册到 files 表，返回 { file_id, url }
+    → file_id 存入 messageService Attachment.id
+
+文件访问（鉴权）
+  GET /api/files/{file_id}  → Gateway 查 files 表验证 user_id → 代理到 File Service
+  GET /api/files/{any_path} → 历史兼容路径直接代理（无 registry 校验）
+```
+
+### 服务器状态（2026-03-20）
+
+- `/opt/novaic/data/images/` — 已删除（历史文件已清空）
+- `/opt/novaic/data/files/files/images/` — File Service 存新截图
+- Gateway `[ImageStorage] Wired to File Service: http://127.0.0.1:19995` — 已确认
+- Runtime Orchestrator `ImageStorage wired to File Service: http://127.0.0.1:19995` — 已确认
