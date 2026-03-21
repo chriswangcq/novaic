@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-20（实时消息/日志 WebSocket 稳定推送与前端展示修复）
+> 最后更新：2026-03-21（OTA-First 薄壳架构重构与 tauri-plugin-sql 集成）
 
 ---
 
@@ -28,6 +28,13 @@
 ---
 
 ## 一、项目整体架构
+
+### OTA-First 薄壳架构（2026-03-21）
+
+彻底重构为**基于云端 OTA 的 Thin Client (薄壳) 模式**，旨在极大提升跨端（Desktop + Mobile）的前端迭代速度：
+1. **体积缩减百倍**：现在 `novaic-app` Release 仅内嵌极简的 24KB 静态 Loading 页面（`src-tauri/loading/index.html`），摒弃了以往动辄数 MB 的全量 assets bundle。
+2. **纯云端按需加载**：客户端启动后，请求 Relay 源获取 CDN 链接，无缝跳转（navigate）到最新版的 Frontend-UI，使得修 Bug 终于可以通过 `./deploy frontend` 秒发版而不再需要缓慢打包/升版/引导下载桌面 binary。
+3. **Rust 原生 API 透传前端**：集成了极其强劲的官方 `@tauri-apps/plugin-sql`（其底层依赖更新了版本的 `sqlx 0.8.0`），授予通过 OTA 运行于客户端前端的 JS/React 执行本地 SQLite 数据操作的直接权限。自今日起，涉及 App 配置、持久化、离线缓存和消息回看的功能将全部在**纯前端侧直接建表操作原生存储**。
 
 ```
 用户 macOS 桌面
@@ -1299,6 +1306,7 @@ src-tauri/src/
 | VM 状态检测不准确 | QMP 单客户端限制 / 内存状态丢失 | Scheme A：只检查 socket 文件存在性 |
 | scrcpy 操作模式无响应（Broken Pipe 刷屏） | 控制 TCP 连接断了但 task 不退出 | 已修复：write 失败后 break，触发重连 |
 | AVD 停机失败 | DB `device_serial` 为空 | 已修复：从 live 设备列表动态解析 serial |
+| WebRTC 多端同连被互踢/崩溃报警 | `stop_peers` 疯狂杀同设备连接，且没启 `UDPMux` 致 UDP 端口逐渐泄漏枯竭 | 已修复：移除 aggressive 强杀，开启 `UDPMuxDefault` 复用本地单一 UDP 端口并设置候选收集超时丢弃 |
 | Port 1420 已占用 | 上次 tauri:dev 未退出 | `kill $(lsof -ti:1420)` |
 | `npm run tauri build --ci` 报错 | `--ci` 只接受 true/false | 改用 `npm run tauri:build -- --bundles app` |
 
@@ -1431,7 +1439,7 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 - [ ] **iOS 键盘输入框适配**：原生 `--keyboard-height` 注入方案已实现（main.mm），Header 固定 OK，但输入框仍可能不可见。需要在真机上验证并调试
 - [ ] **服务端数据自动清理**：runtime 完成时自动清空 context（修改 `RuntimeRepository.complete_runtime`）；queue 定期清理已完成任务；日志 logrotate
 - [ ] **Watchdog v2：Per-Agent 轮询**：将 Watchdog 从逐条消息创建 Saga 改为按 Agent 分组批量处理，防止消息积压导致同一 Subagent 创建多个 Runtime（详见二十三节）
-- [ ] WebRTC Scrcpy 断开后自动重连（当前 peer failed 后需手动点重连）
+- [x] ~~WebRTC 同端并发预览支持~~：现已修复本地 UDP 连接泄漏及旧逻辑暴力互相顶回的 bug，可安全在不同设备同时预览。
 - [ ] WebRTC 多客户端操控冲突处理（当前多端操控不互斥，可能产生输入冲突）
 - [ ] Gateway DB 访问改为异步（当前同步 SQLite 在 async FastAPI 中，高并发下仍有阻塞风险）
 - [ ] **Skill 商店 / ClawHub 集成**：需要 ClawHub API 端点和文档，在 Skills tab 第二栏增加「商店」入口，支持浏览/搜索/安装 skill
