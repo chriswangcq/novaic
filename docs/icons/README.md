@@ -60,15 +60,23 @@
 3. 这一步把 iOS 所需要的所有满屏正方形都生成并且落到了 `src-tauri/gen/apple/Assets.xcassets` 里。**但是它同时又把你刚刚辛辛苦苦做好的 macOS `.icns` 全弄成了巨大的直角大方块！**
 
 ### 第三步：使用 Git 还原 macOS 的那一部分 (拼接融合)
-既然此时 iOS 的目录是对的，而 macOS 的目录是错的，我们用 git 将 macOS 的那一套独立恢复成第一步生成的最终成果：
-```bash
-# 假设你在第一步做完之后，进行了一次 git commit 保存过了 macOS 的那一套！
-# 或者你使用底层工具将 iOS 输出完之后，再把原来的 macOS .icns 复制覆写回来。
+既然此时 iOS 的目录是对的，而 macOS 的目录是错的，我们用 git 将 macOS 的那一套独立恢复成最终成果：
 
-# 最终你的代码提交记录（git status）应该呈现：
-# - src-tauri/icons/ 里面留着带透明边的 png 和 icns (macOS 专属)
-# - src-tauri/gen/apple/.../AppIcon.appiconset/ 里面留着实心大方块 (iOS 专属)
-```
+#### 黄金版本对照表 (The Golden Git Reference)
+为了彻底解决冲突，我们在当前的代码库里采用了以下两个强绑定的 Git 版本：
+
+**🏆 macOS 锚定版本：`b53273c` (神级通透松鼠圆角)**
+*该版本拥有最完美的 Apple HIG 透明留白与圆角*
+受管辖的特定文件必须来源于此版本：
+- `novaic-app/src-tauri/icons/icon.icns` (及同级下所有 `.png`)
+- `novaic-app/public/icon.png`
+*(还原指令: `git checkout b53273c -- src-tauri/icons public/icon.png`)*
+
+**🏆 iOS 锚定版本：`6f3dfca` (神级消灭白圈满屏方块)**
+*该版去除了所有透明通道，专治移动端端白圈 Bug*
+受管辖的特定文件夹必须来源于此版本：
+- `novaic-app/src-tauri/gen/apple/Assets.xcassets/AppIcon.appiconset/`
+*(还原指令: `git checkout 6f3dfca -- src-tauri/gen/apple/Assets.xcassets/AppIcon.appiconset/`)*
 
 > **最佳实践**：我们目前的 Git 记录（`b53273c` 的 `.icns` + `6f3dfca` 的 `xcassets`）就是靠以上的拼接术最终合并出的一套黄金标准模板。在任何情况下，请通过 Git Checkout 保证它们各司其职，千万别用一张图同时去打包双端。
 
