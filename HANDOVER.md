@@ -2390,3 +2390,73 @@ from gateway.api.deps import check_agent_access
 - **修复**：
   1. `sse.ts` 里对 `USER_MESSAGE` 调用 `onAgentReply` 并携带正确的 User ID 头像和内容。
   2. 加入去重保障。在 `messageRepo.ts` 中加入 `findTempByContent()` 按格式化文本查重。在 `messageService.ts` 收到 `USER_MESSAGE` 时，比对自己本地暂存或刚刚乐观保存（Optimistic Write）的相同结构信息，如果已经存在则直接丢弃，不导致 UI 短暂看到两条相同信息。解决了本地乐观更新和云端推回重复碰撞的问题。
+
+---
+
+## 三十一、iOS 构建失败：aws-lc-sys + Xcode 26.x 兼容性问题（2026-03-21，**未解决**）
+
+### 问题现象
+
+`./deploy ios` 执行 `tauri ios build` 时，`aws-lc-sys` crate 的 build script（通过 `cc-rs`）编译 HOST（macOS）端 C 代码失败：
+
+```
+error occurred in cc-rs: command did not execute successfully:
+  "cc" "--target=arm64-apple-macosx" "-mmacosx-version-min=26.2" ...
+  "-isysroot /path/to/iPhoneOS26.2.sdk" ...
+  "-c" ".../aws-lc-sys-0.38.0/aws-lc/crypto/rand_extra/getentropy.c"
+```
+
+关键警告：`clang: warning: using sysroot for 'iPhoneOS' but targeting 'MacOSX'`
+
+### 根因分析
+
+1. **Xcode 26.3 beta** 的 macOS SDK 命名为 `MacOSX26.2.sdk`（而实际 macOS 是 15.7.4）
+2. `xcodebuild` 在 iOS 构建环境中设置 `SDKROOT` 为 iPhoneOS SDK
+3. `aws-lc-sys` 的 build.rs 使用 `cc-rs` 编译 HOST 端（macOS）代码，`cc-rs` 错误地使用了 iPhoneOS 的 sysroot 来编译 macOS 目标代码
+4. 这导致两个问题：(a) sysroot 不匹配（iPhoneOS SDK 缺少 macOS 头文件），(b) `-mmacosx-version-min=26.2` 不合理
+
+### aws-lc-sys 进入依赖树的路径
+
+```
+tokio-tungstenite → tokio-rustls (default features 含 aws_lc_rs)
+                  → rustls (default features 含 aws_lc_rs)
+                  → aws-lc-rs → aws-lc-sys
+```
+
+注意：`tauri-plugin-sql → sqlx → sqlx-core → rustls` 也通过 Cargo feature unification 参与了 `aws_lc_rs` feature 的启用。
+
+### 为什么之前能构建？
+
+最可能的原因：**Xcode 版本更新**。之前使用非 beta 的 Xcode（如 16.x），macOS SDK 命名为 `MacOSX15.x.sdk`，`-mmacosx-version-min=15.x` 完全正常，sysroot 也正确。更新到 Xcode 26.3 beta 后，SDK 路径和版本号发生了变化，导致 `cc-rs` 的自动检测逻辑出错。
+
+### 已尝试但未成功的方案
+
+| 方案 | 为什么不行 |
+|------|-----------|
+| `rustls = { default-features = false }` | Cargo feature unification：其他 crate 仍启用 `aws_lc_rs` |
+| 顶层加 `tokio-rustls = { default-features = false, features = ["ring"] }` | 不能阻止 `rustls` 自身被其他 dep 启用 default features |
+| `.cargo/config.toml` 设 `MACOSX_DEPLOYMENT_TARGET = "15.0"` | xcodebuild 环境的 `SDKROOT` 指向 iPhoneOS，cc-rs 用 SDKROOT 而非此变量来检测 |
+| `run-ios-xcode-script.sh` 里 `export MACOSX_DEPLOYMENT_TARGET="15.0"` | cc-rs 不使用此变量来设置 sysroot，核心问题是 SDKROOT 不对 |
+| 先 `cargo build --release` 再跑 iOS build（预热 HOST 缓存） | cargo fingerprint 不同（xcodebuild 环境变量不同），不复用缓存 |
+
+### 推荐的下一步修复方向
+
+**方向 A（修复 sysroot）**：在 `scripts/run-ios-xcode-script.sh` 里设置 `SDKROOT` 为 macOS SDK + `CFLAGS_aarch64_apple_darwin="-isysroot $(xcrun --sdk macosx --show-sdk-path)"`。当前已部分实现但未测试。需注意不能破坏 iOS 交叉编译（`tauri ios xcode-script` 通过 `--sdk-root` CLI 参数接收 iOS SDK 路径）。
+
+**方向 B（移除 aws-lc-sys）**：使用 `[patch.crates-io]` 将 `aws-lc-rs` 替换为空 crate，或找到 Cargo 配置方式强制全局禁用 `rustls/aws_lc_rs` feature。
+
+**方向 C（降级 Xcode）**：回退到正式版 Xcode（非 beta），macOS SDK 命名恢复正常。
+
+### 当前文件状态
+
+以下文件在本次 session 中被修改：
+
+| 文件 | 状态 | 说明 |
+|------|------|------|
+| `novaic-app/src-tauri/Cargo.toml` | ⚠️ 已修改 | `rustls` 改回了 `features = ["ring"]`（无 default-features=false），`tauri-plugin-sql` 保留 |
+| `novaic-app/src-tauri/Cargo.lock` | ⚠️ 已修改 | 从 commit `2d9a8ba` 恢复后被 `cargo generate-lockfile` 更新 |
+| `novaic-app/scripts/run-ios-xcode-script.sh` | ⚠️ 已修改 | 加了 SDKROOT + CFLAGS 修复（未验证） |
+| `novaic-app/src-tauri/.cargo/config.toml` | 🆕 新增 | MACOSX_DEPLOYMENT_TARGET force=true（可能无效，可删除） |
+| `deploy` | ⚠️ 已修改 | deploy_ios() 加了 MACOSX_DEPLOYMENT_TARGET export（可能无效） |
+| `novaic-app/package.json` + `package-lock.json` | ⚠️ 已修改 | NPM 包版本对齐到 Cargo crate 版本 |
+
