@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-21（OTA-First 薄壳架构重构与 tauri-plugin-sql 集成）
+> 最后更新：2026-03-22（macOS TSM crash fix、restart_gw.sh 清理、coturn TLS 修复）
 
 ---
 
@@ -69,6 +69,26 @@
     ├── Relay: P2P 直连不可达时兜底
     └── relay.gradievo.com/resource/frontend/: App 热更新 CDN
 ```
+
+### macOS 桌面版 SIGTRAP 崩溃修复（2026-03-22）
+
+**问题**：桌面版 (ByClaw.app) 运行时随机崩溃 SIGTRAP，crash 线程总是 `tokio-runtime-worker`。
+
+**根因**：`InputHandler::sync_modifiers()` 和 `release_all_keys()` 调用 `enigo.key()` 处理 modifier 键，enigo 内部调用了 macOS `TSMCurrentKeyboardInputSourceRefCreate`（Text Services Manager API），该 API **必须在主线程执行**。tokio worker 线程上调用触发 `dispatch_assert_queue` 断言失败 → SIGTRAP。
+
+**修复**：新增 `send_modifier_event()` 方法，macOS 上所有 modifier key 事件走 `CGEvent`（线程安全），非 macOS 走 enigo。`handle_key()` 中已有相同的 CGEvent workaround（只是 `sync_modifiers` 漏了）。
+
+| 文件 | 改动 |
+|------|------|
+| `vmcontrol/src/input/handler.rs` | `sync_modifiers()` 和 `release_all_keys()` 改用 `send_modifier_event()` |
+
+### TURN 服务器维护（relay.gradievo.com，2026-03-22）
+
+**coturn 配置**：`/etc/turnserver.conf`（端口 3478 UDP/TCP，realm gradievo.com，use-auth-secret）
+
+**TLS 证书权限问题（已修复）**：coturn 以 `turnserver` 用户运行，但 Let's Encrypt `/etc/letsencrypt/live/` 和 `/etc/letsencrypt/archive/` 默认权限 `700`（仅 root），导致 TURNS (5349) 无法启动。修复：`chmod 755` + privkey `chgrp turnserver`。
+
+**coturn 长时间运行问题**：coturn 跑 6+ 天后积累大量僵尸 session（`Connection reset by peer`），可能导致新 TURN allocation 失败。重启即恢复。建议定期重启或设置 session 超时。
 
 ### 远程桌面架构（WebRTC 统一管线 + Device Registry，2026-03-19）
 
@@ -441,7 +461,7 @@ Couldn't load -exportOptionsPlist The file ".tmpXXXX" couldn't be opened
 ./deploy desktop           # 构建 macOS .app
 
 # ── 后端服务 (api.gradievo.com) ──
-./deploy gateway           # rsync + restart_gw.sh（仅重启 Gateway）
+./deploy gateway           # rsync + start.sh 全部重启
 ./deploy runtime           # rsync + start.sh 全部重启
 ./deploy orchestrator      # rsync + start.sh 全部重启
 ./deploy tools             # rsync + start.sh 全部重启
@@ -459,9 +479,10 @@ Couldn't load -exportOptionsPlist The file ".tmpXXXX" couldn't be opened
 ```
 
 **原理**：`./deploy` **只负责 rsync 同步代码**，进程管理交给服务器端：
-- **Gateway**：`/opt/novaic/restart_gw.sh`（含 JWT_SECRET、RELAY_URL）
-- **其他后端**：`/opt/novaic/start.sh`（含完整启动参数、端口检测、独立日志、worker pool 分组）
+- **所有后端服务（含 Gateway）**：`/opt/novaic/start.sh --stop && /opt/novaic/start.sh`（含完整启动参数、端口检测、独立日志、worker pool 分组）
 - **Relay**：`systemctl restart novaic-quic-service`
+
+> ⚠️ `restart_gw.sh` 已于 2026-03-22 删除。它只单独重启 Gateway 而不重启其他服务，导致服务间状态不一致（WebRTC 连不上等问题）。**所有重启必须走 `start.sh`。**
 
 ---
 
@@ -491,13 +512,13 @@ Couldn't load -exportOptionsPlist The file ".tmpXXXX" couldn't be opened
 cd novaic-gateway && ./scripts/deploy-gateway.sh root@api.gradievo.com
 ```
 
-### 重启脚本（repo 内维护）
+### 重启方式
 
-- **源文件**：`novaic-gateway/scripts/restart_gw.sh`（进 git）
-- **部署位置**：`/opt/novaic/restart_gw.sh`（deploy-gateway.sh 会 rsync 同步）
-- **deploy-gateway.sh**：rsync 部署代码（避免 git pull 冲突）、同步 restart_gw.sh、若 jwt_secret.env 缺 FRONTEND_CDN_URL 则自动追加
-- **依赖**：`/opt/novaic/jwt_secret.env` 含 `JWT_SECRET`、可选 `RELAY_URL`、可选 `FRONTEND_CDN_URL`（前端 OTA）
+- **正确方式**：`/opt/novaic/start.sh --stop && /opt/novaic/start.sh`（重启全部服务）
+- **依赖**：`/opt/novaic/jwt_secret.env` 含 `JWT_SECRET`、`TURN_SECRET`、可选 `RELAY_URL`、可选 `FRONTEND_CDN_URL`（前端 OTA）
 - **模板**：`scripts/jwt_secret.env.example`，首次部署时复制并填写
+
+> ⚠️ 旧脚本 `restart_gw.sh` 已删除，不要手动创建。单独重启 Gateway 会导致服务状态不一致。
 
 ### Nginx 配置
 
@@ -650,7 +671,7 @@ export FRONTEND_CDN_URL=https://relay.gradievo.com/resource/frontend/v0.3.0/
 export FRONTEND_VERSION=0.3.0
 ```
 
-重启 Gateway：`ssh root@api.gradievo.com 'bash /opt/novaic/restart_gw.sh'`
+重启全部服务：`ssh root@api.gradievo.com 'bash /opt/novaic/start.sh --stop && bash /opt/novaic/start.sh'`
 
 **三、手机端构建**
 
