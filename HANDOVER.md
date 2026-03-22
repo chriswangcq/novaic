@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-22（macOS TSM SIGTRAP 全面修复、TURN 连接排查、restart_gw.sh 清理、coturn TLS 修复）
+> 最后更新：2026-03-22（TURN 凭证注入修复：Gateway→VmControl 全链路打通、macOS TSM SIGTRAP 全面修复、coturn TLS 修复）
 
 ---
 
@@ -94,18 +94,29 @@
 
 **coturn 长时间运行问题**：coturn 跑 6+ 天后积累大量僵尸 session（`Connection reset by peer`），可能导致新 TURN allocation 失败。重启即恢复。建议定期重启或设置 session 超时。
 
-**TURN 凭证流转架构（2026-03-22 排查记录）**：
+**TURN 凭证流转架构（2026-03-22 修复完成）**：
 
-TURN 凭证使用 coturn time-limited credentials（HMAC-SHA1），两条独立路径：
+TURN 凭证使用 coturn time-limited credentials（HMAC-SHA1）。
+
+**旧架构（已废弃）**：客户端和 VmControl 各自独立生成 TURN 凭证。VmControl 从 `TURN_SECRET` 环境变量生成，但桌面端没有该变量 → STUN-only → 非局域网黑屏。
+
+**新架构（2026-03-22 修复）**：Gateway 统一注入 TURN 凭证到 `webrtc_offer` 消息，VmControl 直接使用，不再依赖本地 `TURN_SECRET`。
 
 | 端 | 凭证来源 | 关键文件 |
 |---|---|---|
-| **客户端** (useWebRtc.ts) | Gateway HTTP `/api/turn/credentials` 返回 | `useWebRtc.ts` L201-213, `gateway/api/turn.py` |
-| **VmControl** (peer.rs) | 直接读 `TURN_SECRET` 环境变量 | `peer.rs::build_ice_servers()` L896-941 |
+| **客户端** (useWebRtc.ts) | Gateway HTTP `/api/turn/credentials` 返回 | `useWebRtc.ts`, `gateway/api/turn.py` |
+| **VmControl** (peer.rs) | **Gateway 注入到 webrtc_offer 的 `ice_servers` 字段**（回退：本地 `build_ice_servers()`） | `peer.rs::parse_ice_servers_json()` |
 
-⚠️ **已知问题**：桌面 App 的 vmcontrol 进程内**无 `TURN_SECRET` 环境变量**，导致 `build_ice_servers()` 回退到 STUN-only。客户端侧从 Gateway 拿到 TURN 凭证，但服务端侧缺失。**两端都需要 TURN 凭证才能通过 relay 通信**。
+**修改文件（4 个）**：
 
-**排查结果**：`relay.gradievo.com:3478` STUN 正常（UDP 100-byte response）。DNS 解析 `198.18.0.93`（可达）。问题不在服务器侧。
+| 文件 | 改动 |
+|---|---|
+| `gateway/api/app_client.py` | `_relay_webrtc_offer_to_pc()` 调用 `generate_turn_credentials()` 注入 `ice_servers` 字段 |
+| `vmcontrol/src/cloud_bridge.rs` | `WebrtcOffer` 枚举新增 `ice_servers: Option<Value>`，透传到本地 router |
+| `vmcontrol/src/api/routes/webrtc_unified.rs` | `UnifiedStartReq` 新增 `ice_servers` 字段，传给 `create_peer_for_broadcaster_with_target` |
+| `vmcontrol/src/webrtc/peer.rs` | 新增 `parse_ice_servers_json()` 解析 Gateway JSON → `RTCIceServer`（含 TURN username/credential），None 时回退 `build_ice_servers()` |
+
+**日志确认**：成功时 VmControl 输出 `[WebRTC] Using 2 ICE servers from Gateway (TURN=true)`。
 
 ### 远程桌面架构（WebRTC 统一管线 + Device Registry，2026-03-19）
 
