@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-22（TURN 凭证注入修复：Gateway→VmControl 全链路打通、macOS TSM SIGTRAP 全面修复、coturn TLS 修复）
+> 最后更新：2026-03-22（LLM Factory 集中化重构：所有 LLM 调用走 Factory 代理，api_key 密封在 Factory 内部，用户偏好迁至 Gateway 本地 DB）
 
 ---
 
@@ -268,6 +268,7 @@ git submodule update --init --recursive
 | `novaic-storage-b` | chriswangcq/novaic-storage-b | 存储服务 B |
 | `novaic-tools-server` | chriswangcq/novaic-tools-server | 工具服务 |
 | `novaic-mcp-vmuse` | chriswangcq/novaic-mcp-vmuse | MCP VMuse 集成 |
+| `novaic-llm-factory` | chriswangcq/novaic-llm-factory | LLM Factory（集中化 LLM 代理） |
 
 ### 仓库目录结构（2026-03-14 整理后）
 
@@ -2509,3 +2510,86 @@ tokio-tungstenite → tokio-rustls (default features 含 aws_lc_rs)
 | `deploy` | ⚠️ 已修改 | deploy_ios() 加了 MACOSX_DEPLOYMENT_TARGET export（可能无效） |
 | `novaic-app/package.json` + `package-lock.json` | ⚠️ 已修改 | NPM 包版本对齐到 Cargo crate 版本 |
 
+
+## 三十二、LLM Factory 集中化重构（2026-03-22）
+
+### 架构概述
+
+**决策**：所有 LLM 调用统一走 LLM Factory 的 `POST /v1/chat/completions` 端点。api_key 只在 Factory 内部解密，其他服务（Gateway、agent-runtime、tools-server、runtime-orchestrator）不接触明文密钥。
+
+**动机**：之前 api_key 在多个服务间传递（Gateway resolve → agent-runtime 直接调 OpenAI），存在安全风险和维护负担。
+
+```
+调用方（agent-runtime / tools-server / orchestrator）
+  → Gateway: 查 agent.model_id + user.default/audio_model
+  → 返回 {model_id, model_name, user_id, factory_url}（不含 api_key）
+  → Factory POST /v1/chat/completions
+  → Factory 内部: resolve_model → 解密 api_key → 创建 provider → 调 LLM → 记日志 → 返回结果
+```
+
+### LLM Factory 服务
+
+| 项目 | 值 |
+|---|---|
+| 域名 | `newapi.gradievo.com` |
+| SSH | `ssh root@newapi.gradievo.com` |
+| 代码路径 | `/opt/novaic/llm-factory` |
+| 端口 | 19990（systemd: `llm-factory.service`） |
+| 部署 | `./deploy factory` |
+| 数据库 | SQLite（加密存储 api_key） |
+
+**Factory API 端点**：
+
+| 端点 | 用途 |
+|------|------|
+| `POST /v1/chat/completions` | LLM 代理调用（唯一 LLM 出口） |
+| `GET/POST/DELETE /v1/config/api-keys/*` | 管理 API Key（前端设置页） |
+| `GET/POST/PUT/DELETE /v1/config/models/*` | 管理模型 |
+| `GET /v1/config/models/{model_id}` | 查询单个模型元数据（不含 api_key） |
+| `POST /v1/config/api-keys/{id}/test` | 测试 API Key 有效性 |
+| `GET /v1/config/api-keys/{id}/fetch-models` | 从 provider 拉取可用模型 |
+| `GET /v1/logs` | 查询 LLM 调用日志 |
+
+**已删除的端点**（安全加固）：
+- ~~`GET /v1/config/resolve`~~（返回明文 api_key，已删除）
+- ~~`GET/PUT /v1/config/defaults/{user_id}`~~（用户偏好迁至 Gateway 本地 DB）
+
+### 改动文件清单
+
+| 服务 | 文件 | 改动 |
+|------|------|------|
+| **agent-runtime** | `task_queue/factory_client.py` (新) | `FactoryLLMClient` — 接口兼容 `OpenAIClient.chat()`，实际 POST Factory |
+| **agent-runtime** | `task_queue/handlers/llm_handlers.py` | 3 个 handler 全部使用 `FactoryLLMClient`；广播用 `model_display`（人类可读名字） |
+| **agent-runtime** | `task_queue/handlers/summary_handlers.py` | `handle_merge_history` 使用 `FactoryLLMClient` |
+| **tools-server** | `tools_server/executor.py` | `audio_qa` 直接 POST Factory，删除 provider 分支 |
+| **orchestrator** | `gateway/core/task_manager.py` | `_generate_summary` 直接 POST Factory |
+| **gateway** | `gateway/api/internal/factory_client.py` | 删除 `resolve_model_from_factory`/`set_user_defaults`；新增 `_resolve_model_name` 带 TTL 缓存 |
+| **gateway** | `gateway/api/routes.py` | `GET /config` 从本地 DB 读 defaults；`set_default_model` 写本地 DB |
+| **factory** | `factory/routes/config_routes.py` | 删除 `/resolve`、`/defaults` 端点；新增 `GET /models/{model_id}` |
+
+### 用户偏好存储（default_model / audio_model）
+
+**单一来源**：Gateway 本地 `config` 表（SQLite）。
+
+| 操作 | 端点/方法 | 存储 |
+|------|-----------|------|
+| 设置默认模型 | `POST /api/config/default-model` | Gateway config 表 |
+| 设置语音模型 | `PATCH /api/config/settings` `{audio_model}` | Gateway config 表 |
+| 读取（前端设置页） | `GET /api/config` → `default_model` 字段 | Gateway config 表 |
+| 读取（LLM 调用时） | `build_llm_config_for_agent_via_factory()` | Gateway config 表 |
+
+### Model Name 缓存
+
+`_resolve_model_name(model_id)` 在 Gateway 内存缓存 model_id → model_name 映射：
+- **命中**：直接返回（0ms）
+- **未命中**：调 Factory `GET /models/{model_id}`，缓存 5 分钟
+- **Factory 不可达**：fallback 用 UUID，30s 短 TTL 后重试
+
+权威来源始终是 Factory，Gateway 只缓存避免重复调用。
+
+### 查看 Factory 日志
+
+```bash
+# 从 Factory 机器查最近调用日志
+ssh root@newapi.gradievo.com 'curl -s "http://127.0.0.1:19990/v1/logs?limit=5"'
+```
