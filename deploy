@@ -55,6 +55,10 @@ deploy_frontend() {
 deploy_ios() {
   info "构建 iOS IPA 并安装"
   cd "$REPO_ROOT/novaic-app"
+  # Fix: Xcode 26.x beta ships MacOSX26.2.sdk, causing aws-lc-sys (cc-rs) to
+  # use -mmacosx-version-min=26.2 for host code, which fails compilation.
+  # Force a sane deployment target for the host (macOS) build.
+  export MACOSX_DEPLOYMENT_TARGET="15.0"
   npm run tauri ios build -- --export-method debugging || fail "iOS 构建失败"
   local IPA="src-tauri/gen/apple/build/arm64/ByClaw.ipa"
   [ -f "$IPA" ] || fail "IPA 不存在: $IPA"
@@ -193,7 +197,7 @@ show_help() {
   echo "  desktop           构建 macOS 桌面应用"
   echo ""
   echo -e "${CYAN}后端服务 (api.gradievo.com):${NC}"
-  echo "  gateway           部署 Gateway (rsync + restart_gw.sh)"
+  echo "  gateway           部署 Gateway (rsync + 全部重启)"
   echo "  runtime           部署 Agent Runtime (rsync + 全部重启)"
   echo "  orchestrator      部署 Runtime Orchestrator (rsync + 全部重启)"
   echo "  tools             部署 Tools Server (rsync + 全部重启)"
