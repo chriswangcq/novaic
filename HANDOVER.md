@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-22（LLM Factory 集中化重构：所有 LLM 调用走 Factory 代理，api_key 密封在 Factory 内部，用户偏好迁至 Gateway 本地 DB）
+> 最后更新：2026-03-22（实时配置同步 + SSE legacy 全面清除：多端模型列表 WS push 同步，sse_state.py → push_state.py，删除前端 SSE 端点）
 
 ---
 
@@ -1315,36 +1315,48 @@ src-tauri/src/
 
 ---
 
-## 十一、SSE 事件与连接管理
+## 十一、实时推送事件（WS Push）
 
-### 当前逻辑（User 维度）
+### 架构（2026-03-22 SSE→WS 完成）
 
-- **Chat SSE**：`GET /api/user/chat/stream`（User 维度，无 agent_id）
-- **Logs SSE**：`GET /api/user/logs/stream`（User 维度，无 agent_id）
-- **前端**：登录后 `connectUserStream()` 建立一次连接；`switchAgent(agentId)` 仅 load，不断连
-- **SSE URL**：前端通过 `invoke('get_gateway_url')` 获取，与 Tauri HTTP 请求一致
+- **前端 SSE 已完全删除**：`GET /api/user/chat/stream` 和 `GET /api/user/logs/stream` 两个端点已移除
+- **所有前端实时事件走 AppBridge WS**：`app_client.push_to_user()` → Rust `gateway_push` Tauri event
+- **前端**：登录后 `connectUserStream()` 监听 `gateway_push` 事件；`switchAgent(agentId)` 仅 load，不断连
+- **Worker SSE（`gateway/sse/broadcaster.py`）保留**：这是 Gateway→Worker 进程间通信，不是前端通道
 
-### Chat SSE 事件
+### 文件变更
 
-| 事件 | 说明 |
+- `gateway/sse_state.py` → **`gateway/push_state.py`**（已重命名全部 import）
+- `push_state.py` 只包含 3 个公开函数：`notify_chat_subscribers`、`notify_log_subscribers`、`broadcast_subagent_update`
+- 不再有 `asyncio.Queue`、`register/unregister_*_subscriber` 等 SSE queue 机制
+
+### WS Push 事件（gateway_push payload）
+
+| event | data 关键字段 | 说明 |
+|---|---|---|
+| `chat_message` | `type`, `agent_id`, `content` | 聊天消息推送 |
+| `logs_updated` | `event`, `agent_id`, `log_id` | 日志通知（轻量通知，前端 GET 拉取） |
+| `config_updated` | `scope` (settings/default_model/agent_model) | 配置变更同步（新增） |
+
+### Chat 消息类型
+
+| type | 说明 |
 |---|---|
-| `AGENT_REPLY` | Agent 文字回复 |
+| `AGENT_REPLY` / `USER_MESSAGE` | 文字消息 |
 | `AGENT_ASK` | Agent 提问 |
 | `AGENT_NOTIFY` | Agent 通知 |
-| `STATUS_UPDATE` | 消息已读状态更新 |
+| `STATUS_UPDATE` | 消息已读状态 |
+| `AGENT_METADATA_UPDATED` | Agent 元数据变更 |
+| `DEVICE_METADATA_UPDATED` | 设备元数据变更 |
 
-### Log SSE 事件
+### Log 事件子类型（`data.event`）
 
-| 事件 | 说明 |
+| event | 说明 |
 |---|---|
 | `log_entry` | 单条新日志 |
-| `log_batch` | 连接时推送历史日志批次 |
-| `logs_updated` | 有新日志（轻量通知，前端需再 GET /api/logs/entries 拉取） |
-| `subagent_update` | SubAgent 生命周期变更（spawned/sleeping/awake/running/completed/failed/cancelled） |
-
-### SSE 架构（已完成 User 维度迁移）
-
-> 已完成：一个用户一条长连接，切换 agent 不断连。改造方案详见 `docs/design/SSE_USER_LEVEL_MIGRATION.md`。
+| `log_batch` | 批量日志 |
+| `logs_updated` | 有新日志通知 |
+| `subagent_update` | SubAgent 生命周期变更 |
 
 ---
 
@@ -1496,6 +1508,9 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 - [ ] **原生视频渲染（全客户端）**：所有客户端（iOS/Android/macOS/Web）用原生解码替代 WebRTC `<video>` 标签渲染，降低功耗+延迟+画质损失。iOS: VideoToolbox+Metal；Android: MediaCodec+GL；macOS: VideoToolbox+Metal；Web: WebCodecs API（见二十五节）
 - [x] **历史消息 file_id 回填**：已增加脚本 `scripts/backfill_file_id.py`，因服务器连通性问题待后续手动执行
 - [x] `vm_start`/`vm_stop`/`android_start`/`android_stop` 迁移到 WS（前端 `vm.ts` / `api.ts` 已改，后端 `app_client.py` 增加分发）
+- [x] **前端 SSE 全面下掉**：`sse_state.py` → `push_state.py`，删除 SSE queue subscriber + SSE stream 端点，SSE 注释清理
+- [x] **多端配置同步**：`config_updated` WS push 事件 + debounced `loadConfig()`，解决双端模型列表不一致
+- [x] **Agent 模型持久化修复**：`GET/PUT /{agent_id}/model` 从 Factory API 查模型（不再查本地 `candidate_models` 表）
 
 ### 前端修改注意事项
 
@@ -2593,3 +2608,56 @@ tokio-tungstenite → tokio-rustls (default features 含 aws_lc_rs)
 # 从 Factory 机器查最近调用日志
 ssh root@newapi.gradievo.com 'curl -s "http://127.0.0.1:19990/v1/logs?limit=5"'
 ```
+
+## 三十三、多端配置同步 & SSE Legacy 清除（2026-03-22）
+
+### 问题
+
+1. **Agent 模型保存后再次进入显示空**：`GET /{agent_id}/model` 查 Gateway 本地 `candidate_models` 表，但表中模型 ID 是旧格式（非 UUID），与 Factory 的 UUID 不匹配
+2. **双端模型列表不一致**：一端改了 audio_model / default_model / agent model，另一端看到的还是旧值
+3. **SSE 命名误导**：`sse_state.py`、import、注释都说 SSE，但实际通道是 WS push
+
+### 解决方案
+
+#### Agent 模型持久化
+
+`agents.py` 里 `GET/PUT /{agent_id}/model` 改为调 Factory `get_models(user_id)` 获取权威模型列表。不再查本地 `candidate_models` 表。
+
+#### 多端配置同步（WS push 通知 + 按需拉取）
+
+```
+客户端 A 改 audio_model
+  → Gateway 写 DB + push_to_user("config_updated", {scope:"settings"})
+  → 客户端 B 的 SSEManager 收到 config_updated 事件
+  → SyncService.debouncedReloadConfig()（500ms 去抖）
+  → modelService.loadConfig()（从服务端重新拉取全部配置）
+  → Zustand store 更新 → UI 自动刷新
+```
+
+**Gateway 端**（3 个触发点）：
+
+| 函数 | 文件 | scope |
+|------|------|-------|
+| `update_settings` | `routes.py` | `settings` |
+| `set_default_model` | `routes.py` | `default_model` |
+| `set_agent_model` | `agents.py` | `agent_model` |
+
+均通过 `_broadcast_config_updated(user_id, scope)` → `push_to_user()` 广播。
+
+**前端**：
+- `gateway/sse.ts`：`SSEManager` 增加 `config_updated` 事件处理
+- `application/syncService.ts`：`onConfigUpdated` handler 调用 `debouncedReloadConfig()`
+
+#### SSE Legacy 清除
+
+| 项目 | 变更 |
+|------|------|
+| `gateway/sse_state.py` | 重命名 → `gateway/push_state.py` + 删除所有 SSE queue 代码（163 → 85 行） |
+| 6 个 import 文件 | `sed` 批量替换 `gateway.sse_state` → `gateway.push_state` |
+| `main_gateway.py` | 删除 `GET /api/user/chat/stream` 和 `/api/user/logs/stream` 两个 SSE 端点（~60 行） |
+| `main_gateway.py` | 删除 `register/unregister_*_subscriber` import |
+| 注释清理 | `main_gateway.py` ~20 处 "SSE" → "WS push" |
+| `gateway/sse.ts` | 日志前缀 `[SSEManager]` → `[PushManager]` |
+| `syncService.ts` | 日志 "SSE" → "WS" |
+
+**保留不动的**：`gateway/sse/broadcaster.py`（Worker SSE）——这是 Gateway→Worker 进程间通信，属于不同层级。
