@@ -1,168 +1,230 @@
-# NovAIC 项目交接文档 (2026 重构版)
+# NovAIC 项目交接文档 (2026 全面重构版)
 
-> 最后更新时间：2026-03-22。
-> 说明：本文档由原先长期维护的 2600+ 行变更日志提炼重写而来。重点描述**当前的稳定架构、开发部署流程以及核心业务链路**，去除了过时的历史演进细节。
+> 最后更新时间：2026-03-22
+> **文档说明**：本文档由原先近 3000 行变更日志进行结构化重构而来。以模块和功能为维度，完整提取了历史技术方案、避坑指南、调试指令以及排查记录等核心信息，旨在为接手者提供全链路的上下文。
 
 ---
 
-## 快速上手指南
+## 目录
+1. [快速上手](#一-快速上手)
+2. [项目整体架构纲要](#二-项目整体架构纲要)
+3. [仓库结构与代码管理](#三-仓库结构与代码管理)
+4. [本地开发与客户端构建指南](#四-本地开发与客户端构建指南)
+5. [云端微服务部署与服务器运维](#五-云端微服务部署与服务器运维)
+6. [六大核心架构细节](#六-六大核心架构细节)
+    - 6.1 [认证体系与多租户权限隔离](#61-认证体系与多租户权限隔离)
+    - 6.2 [WebRTC 统一远程桌面防卡顿管线](#62-webrtc-统一远程桌面防卡顿管线)
+    - 6.3 [实时 WebSocket Push 与配置同步](#63-实时-websocket-push-与配置同步)
+    - 6.4 [前端业务流转与 SWR 更新架构](#64-前端业务流转与-swr-更新架构)
+    - 6.5 [Agent Runtime 后端回路与工具代理](#65-agent-runtime-后端回路与工具代理)
+    - 6.6 [大语言模型 Gateway - LLM Factory](#66-大语言模型-gateway---llm-factory)
+7. [历史暗坑与排障速查大全 (Troubleshooting)](#七-历史暗坑与排障速查大全-troubleshooting)
+8. [技术债与待办重点](#八-技术债与待办重点)
 
-| 需求 | 操作 / 脚本 |
+---
+
+## 一、 快速上手
+
+| 需求场景 | 执行指令 |
 |---|---|
-| 本地完整跑起来 | `cd novaic-app && npm install && npm run tauri:dev` |
-| 纯 UI 调试 | `cd novaic-app && npm run dev` (http://localhost:5173) |
-| iOS 部署 | `./deploy ios` (需要连接手机) |
-| macOS 打包 | `./deploy desktop` |
-| 一键发版全后端 | `./deploy services` |
-| 一键更新前端 (OTA) | `./deploy frontend [version]` |
-| 一键部署全平台 | `./deploy all [version]` |
-| 查服务状态与日志 | `./deploy status` / `./deploy logs [service_name]` |
-| 清空本地缓存 | 前端界面：Settings → Clear Cache → 清空本地 DB 缓存 |
-| 修改前端 UI | 编辑 `novaic-app/src/components/` ( Vite 热更新立即生效) |
+| **本地 UI 开发** | `cd novaic-app && npm install && npm run dev` |
+| **本地 Rust 调试** | `cd novaic-app && npm run tauri:dev` |
+| **构建桌面发行版** | `./deploy desktop` (等价 `npm run tauri:build -- --bundles app`)|
+| **构建安装 iOS** | `./deploy ios` (需要 USB 连接授信 iPhone 真机)|
+| **应用前端 OTA 发布** | `./deploy frontend [version]` (编译 + 同步到 Relay CDN)|
+| **热更并重启 Gateway** | `./deploy gateway` |
+| **一键全量服务发版** | `./deploy services` |
+| **P2P Relay 部署** | `./deploy relay` |
+| **查在线服务状态** | `./deploy status` |
+| **看指定服务日志** | `./deploy logs [gateway\|orchestrator\|tools\|runtime\|worker\|relay]`|
+| **清空手机/电脑缓存** | Frontend Settings → Clear Cache → 刷新页面 |
 
 ---
 
-## 一、 系统架构全景
+## 二、 项目整体架构纲要
 
-NovAIC 采用 **OTA-First 薄壳客户端 + 强云端协同** 的多服务分布式架构。
+NovAIC 目前采用 **OTA-First 薄壳客户端 + 边缘中继协同** 的体系：
 
-### 1.1 核心拓扑图
+1. **OTA 极简直出版 (24KB)**：客户端安装包已移除巨量资源，App 启动后访问 Relay CDN 获取最新包直接跳传 (Navigate)，修 Bug 可做到秒级发版覆盖 iOS/Android/macOS。内置的 Tauri 功能则通过 Rust 暴露 Native 接口（如原生键鼠操控、底层 IndexedDB SQLite 同级操作）。
+2. **纯 WebRTC 穿透链路**：废弃了所有过往基于 H5 Canvas / NoVNC 的画面投射，统一切换至基于 H.264 的 VideoToolbox 硬编与 WebRTC DataChannel 并发传输，彻底解决网络重传慢、编码占 CPU 发热大以及坐标投射失真问题。
+3. **消除 SSE 与 HTTP 极简流操作**：移除了所有的 RESTful SSE 推送通道，所有前端实时事件走 `AppBridge WS` 全量信令与 payload 推送通道。
+
 ```text
-[ 前端客户端 (macOS App / iOS / Android / Web) ]
- ├── React/Vite (薄壳UI, 仅24KB内置, OTA热更新)
- ├── IndexedDB (本地持久化: 消息/日志/偏好/Agent配置)
- ├── AppBridge WS (单例长连接: 接收 Gateway 推送的聊天与配置同步)
- └── WebRTC PeerConnection (H.264 零延迟远程桌面收流与触控反馈)
+[ 用户端设备 ] 
+ ├── Web Frontend (React/Vite)
+ │   ├── UI/交互 (Tailwind + Zustand)
+ │   ├── IndexedDB 实体缓存 (通过 Tauri SqlDB)
+ │   ├── Push Manager (监听 Gateway 下发的 gateway_push，触发重新拉取)
+ │   └── DeviceConsole / Webrtc View (负责H264视频解码与输入劫持反馈)
+ │
+ └── Rust Tauri 后台 (VmControl)
+     ├── WebRTC Engine (macOS VideoToolbox GPU硬编 / FFmpeg 软编)
+     ├── 键盘鼠标注入器 (全平台兼容：macOS CGEvent API 规避主线程崩溃)
+     └── Android Scrcpy Bridge / QEMU vnc_proxy
+      
+[ 云端总线 api.gradievo.com ]
+ └── Nginx
+     └── FastAPI Gateway (19999)    ←  维护全局数据库、路由权限过滤(`X-User-ID`)
+         ├── WebSocket CloudBridge  ←  连接到客户端的 VmControl 获取画面通道、推设备列表
+         └── SQLite                 ←  保存 Config，Devices, agents
 
-[ 本地 Rust Sidecar (VmControl) ] - 桌面端内置，提供底层操作能力
- ├── WebRTC Engine (macOS VideoToolbox GPU编码 / openh264)
- ├── 本机操控 (CGEvent键鼠模拟) / Android 操控 (scrcpy) / Linux VM (QEMU+VNC)
- └── CloudBridge WebSocket (直连云端，接收并执行云端的虚拟设备控制指令)
+[ 云端 AI 控制回路 ]
+ ├── LLM Factory (19990)            ←  唯一的对外网络，收纳所有 API_KEY 解密调用
+ ├── Runtime Orchestrator           ←  存储执行的完整状态 JSON Context
+ ├── Queue Service                  ←  分发 Message Processing Saga
+ └── Tools Server                   ←  Docker 环境或连入的手机 / VM 内下发系统 Shell 操作指令
 
-[ 云端服务 api.gradievo.com (Python / FastAPI / SQLite) ]
- ├── Nginx反代 (HTTPS/443, /internal/auth/validate JWT认证清洗)
- ├── Gateway (19999) —— 核心大脑，路由转发
- │    ├── API REST / CloudBridge WS / App WS 推送
- │    ├── 局域网/广域网串流协商 (Webrtc 信令中转)
- │    └── SQLite (agents, devices, config 用户设定)
- ├── LLM Factory (19990) —— 所有大模型 API Key 加密存储与请求收口
- ├── Agent Runtime Worker & Watchdog —— 异步处理 LLM 对话和状态图 (Sagas)
- ├── Tools Server —— 隔离执行 Shell、文件、浏览器等工具调用
- └── File Service —— 聊天附件与截图的统一存储
- 
-[ 兜底网络服务 relay.gradievo.com (Rust) ]
- └── novaic-quic-service (STUN 3478 UDP + QUIC Relay 443 + OTA Web Server)
+[ 穿透与 OTA 节点 relay.gradievo.com ]
+ └── Rust STUN (3478 UDP) + HTTPS Relay (443 QUIC) + OTA 前端分发 Nginx
 ```
-
-### 1.2 架构演进关键决策 (2026-03 最新状态)
-* **Frontend-OTA 热更新**：客户端极简，启动时通过 `GET /api/config/frontend` 拿到最新 CDN 链接跳走。做到前端修 Bug 无需审核、秒级部署（`./deploy frontend`）。
-* **全信道 WS Push 化**：彻底废弃前端 HTTP长轮询 和 SSE (Server-Sent Events) ，聊天更新、Agent 状态更迭、配置项同步 (`config_updated`) 采用单例 AppBridge WebSocket 进行实时推送和前端的 Zustand Store 去抖拉取。
-* **原生 LLM Factory 收口**：大模型调用被全部抽取到 `llm-factory`。Gateway 与 Agent Runtime 均不可见明文 `api_key`，避免密钥在大仓库里各处明文流通。
-* **全景 WebRTC 化**：废弃了 noVNC 与内部 WebSocket 屏幕传输，包括本地 Host Desktop 控制、虚拟机和安卓手机屏幕的传输，全部跑在自适应码率和降级的 H.264/WebRTC 通道上。
-* **苹果端注入修正**：全方位修复了 iOS 原生的软键盘高度注入、macOS 原生底层的 `CGEvent` 处理以隔离主线程奔溃等问题。
 
 ---
 
-## 二、 代码仓库与结构
+## 三、 仓库结构与代码管理
 
-采用 `git submodules` 形式组织（共13个子包，存放于 `chriswangcq/novaic/` 下）：
+根仓库为 `chriswangcq/novaic` (默认 `main` 分支)，内部由 13 个 Git **Submodule** 组合运转：
+`git clone --recurse-submodules git@github.com:chriswangcq/novaic.git`
 
-```bash
-git clone --recurse-submodules git@github.com:chriswangcq/novaic.git
-```
-
-| 模块名 (novaic-*) | 职责与语言 |
+| Submodule | 用途描述 |
 |---|---|
-| `app` | React 前端 + Tauri (含 VmControl) |
-| `gateway` | 后端核心 API，用户设备 / 配置管理 (Python) |
-| `llm-factory` | 模型 Proxy，统一管理 API Key (Python) |
-| `agent-runtime` | 对话轮询、Saga、Watchdog 任务处理 (Python) |
-| `tools-server` | Agent 执行计算机与设备操作指令 (Python)|
-| `runtime-orchestrator` | Runtime 生命周期流转编排、单次运行 Context 维护 (Python)|
-| `quic-service` | STUN / P2P Relay / OTA 配置下发 (Rust) |
-| 其他干系包 | Python 公共合约、组件库、抽象层与类型定义 (kernel, contracts...) |
+| `novaic-app` | Tauri 桌面+移动端薄壳应用前端代码及本地 Rust 伴随进程 |
+| `novaic-gateway` | 云端统一前端网关入口，提供 Auth、推送、代理桥接 |
+| `novaic-llm-factory` | 后置 LLM 的管理收口微服务 |
+| `novaic-quic-service` | STUN/Relay 服务实现以及静态文件的存储节点 |
+| `novaic-agent-runtime` | Task Saga、Watchdog 的任务编排后端 |
+| `novaic-runtime-orchestrator` | 上下文与生命周期追踪编排器 |
+| `novaic-tools-server` | Agent 可以使用的指令执行节点 |
+| `novaic-mcp-vmuse` | 提供 VM 使用相关 MCP Server |
+| `novaic-storage-*` | 文件 / 附件图库存储集群 |
+| `基础协议库` | `kernel` / `contracts` / `shared-runtime-common` 公共类库 |
 
 ---
 
-## 三、 开发与部署指南
+## 四、 本地开发与客户端构建指南
 
-### 3.1 本地开发
-* **环境要求**：Node >= 18, RustUp (Stable), macOS 需要 Xcode Command Line Tools。
-* **开发与编译**：
-  ```bash
-  # 常规启动带 Rust 的整套前端开发
-  cd novaic-app && npm run tauri:dev
-  # 如果 1420 占线，可以： kill $(lsof -ti:1420)
-  ```
+### 4.1 桌面端编译规范
+执行 `npm run tauri:build -- --bundles app`（**切勿**在使用 `--ci`，脚本会自动 `env -u CI`以防在工作流意外）。
+`macOS` 发行版中若涉及 QEMU 内置镜像自动下载等功能，构建产物将被输出至 `src-tauri/target/release/bundle/macos/NovAIC.app`。
 
-### 3.2 统一部署 (deploy CLI)
-代码根目录封装了自动化程度极高的 `./deploy` 工具，它只会打包和同步增量代码 (Rsync)，重启等控制操作由目标服务器的 `/opt/novaic/start.sh` 执行，无需手动介入重启顺序。
+### 4.2 iOS 移动端编译与签下坑点
+**完整构建命令：**
 ```bash
-./deploy frontend [ver]   # 构建前端、同步到 Relay Nginx 下作热更 CDN
-./deploy ios              # 本地编译 IPA 并安装给连接到 USB 的真机
-./deploy gateway          # 热更 Gateway 代码并让远程重启所有关联进程
-./deploy services         # 更新全部后端微服务代码并全量安全重启
-./deploy all [ver]        # 万用一键全发版
+cd novaic-app && ./scripts/build-and-install-ios.sh
 ```
+这个脚本自动化了如下手动流程：
+1. 若 `gen/apple` 不存在，使用 `tauri ios init` 创建模板 （需要配置 `tauri.ios.conf.json` 开发 Team）。
+2. 调用 `scripts/patch-ios-xcode.sh` 修复原工程存在的一系列变数环境（特别是移除 FORCE_COLOR 防止被识别成错误的体系结构 Arch 配置！）。
+3. 调用 Xcode 工具链进行 Debug 签名。
+4. 调用 `devicectl device install app` 走局域网或者真实 USB 部署到手机。
 
-### 3.3 云端运维常识 (api.gradievo.com)
-* 所有的后端服务在生产路径 `/opt/novaic/services/` (Data在 `/data/`)。
-* 服务由 `/opt/novaic/start.sh` 和 systemd 协同管控进程组。**请不要使用被废弃的 `restart_gw.sh` 脚本进行单一重启**。
-* **环境变量管控**：密钥存放于 `/opt/novaic/jwt_secret.env`。
-* **清理日志与DB维护**：为避免服务器磁盘与内存膨胀，可通过以下命令对运行时落盘数据清理：
-  ```bash
-  # 登入 api.gradievo.com 后
-  sqlite3 /opt/novaic/data/queue.db "DELETE FROM tq_tasks WHERE status IN ('done','failed'); VACUUM;"
-  sqlite3 /opt/novaic/data/runtime_orchestrator.db "UPDATE agent_runtimes SET context='[]' WHERE status='completed'; VACUUM;"
-  find /opt/novaic/data/logs/ -name '*.log' -mtime +7 -delete
-  ```
+**iOS 历史大坑必须知晓：**
+1. **不要用 `tauri ios run` ！！！**：它的 `-exportOptionsPlist` 使用存在硬伤传递相对路径，会导致 `Couldn't load The file ".tmpXXXX" couldn't be opened` 的长历史 Bug。使用 `build-and-install-ios` 规避。
+2. iOS Xcode 26.3 SDK (iOS15.7 底包) 针对 `aws-lc-sys` 的编译可能会因缺少特定 macOS 头而报错 `using sysroot for 'iPhoneOS' but targeting 'MacOSX'`。需要在 `run-ios-xcode-script.sh` 手动注入 `CFLAGS_aarch64_apple_darwin="-isysroot $(xcrun --sdk macosx --show-sdk-path)"` 作为预补救。
+3. **黑屏问题（ WKWebView 限制）**：iOS 决不能使用 `custom-protocol`。构建 Features 必须用 `--no-default-features --features mobile`。由于屏蔽了 `custom-protocol`，一旦 `VITE_GATEWAY_URL` 缺失会导致闪退，故已设置硬编码保底。
 
----
-
-## 四、 核心业务域与代码流转
-
-### 4.1 统一认证与数据隔离 (Auth & User Mapping)
-* **JWT 流转**：用户走 `/auth/login` → `api.gradievo.com` 返回 HS256 JWT Token。该 Token 缓存在客户端 `localStorage`。前端调用将 Token 放 header `Authorization`；Tauri Rust 通过 `invoke(update_cloud_token)` 知道最新态，所有 Rust 发向网关的请求同理携带 Token。
-* **Nginx 解析**：云端所有对内的保护路由均由 Nginx 配置的 `auth_request` 预请求 `/internal/auth/validate`。校验通过后，Nginx 滤掉客户端伪造头，强制塞入真实的 `X-User-ID`。
-* **数据库级隔离**：后端所有微服务查询 `agents, config, ssh_keys, devices` 必定带 `WHERE user_id = {request.x_user_id}` 物理隔离。
-
-### 4.2 前端 SWR (Stale-While-Revalidate) 更新体系
-* **架构演变**：前端对配置、模型、代理、偏好大量采用 IDB(IndexedDB) 首屏直出 + 后台拉新机制。
-* **配置跨端协同**：比如 A 设备修改了 Agent 模型为 o1，Gateway 存库后向 B 设备广播 WS 事件：`gateway_push: config_updated`。B 设备前端的 `SyncService` 收到后利用 500ms 去抖动(Debounce)，随后触发对网关全量 `loadConfig()` 更新 Zustand State。
-* **注意陷阱**：在 React Hooks 获取用户信息时，`getCachedUser()` 会返回新的对象引用，不要随意将其塞入 `useEffect([user])` 的 deps 数组中，应当提取其纯字符串类似 `userId = user?.user_id` 作为 deps，否则会导致程序崩溃（无限重新渲染）。
-
-### 4.3 远程桌面协同管线 (WebRTC DataChannel 管线)
-现在所有设备类型 (Host Desktop / Linux QEMU / Android Scrcpy) 全面归口向统一 WebRTC：
-* WebRTC 信令交互全部基于**唯一长连接**。发送 offer / answer 都在 AppBridge 与 CloudBridge 中转，以此杜绝曾因 HTTP 并发发送导致的网络时序竞态条件（错序崩溃）。
-* 视频质量使用了苹果原生 `VideoToolbox CGEvent`、带宽通过 `video_qos` 根据延迟 `[100ms - 300ms]` 自动伸放码率来确保丝滑。
-* 设备的触控和键位被前端抽取在 `RemoteConsole / VirtualKeyboard` (虚拟苹果风键盘，完美对应各种功能键)，透过 `DataChannel` 发往后端。
-
-### 4.4 Agent 工作引擎全链路
-用户发出消息后：
-1. **持久化并发送**：网关写库 `chat_messages`。
-2. **Watchdog 轮询捕获**：Runtime 项目中的 Watchdog 检测到未处理的 Sending 消息，分配对应 Saga 触发 Agent 工作流 (`Runtime Orchestrator`) 构建独立的运行沙箱（Runtime_X）。
-3. **ReactThink**：通过调用 `LLM Factory` 思考。
-4. **ReactActions**：通过挂载于这台设备的 `Tools Server` 解析该 Agent 有权使用的工具并发出真实的请求执行；并把结果填回。
-5. **结束判断与清理**：一旦不包含 `tool_call` 或者达到轮询边界，打入 completed 并触发完成。
+### 4.3 其它端
+* Android 端需具有完好 NDK 的 Android Studio 前置。通过 `tauri:build:android` 打包，支持 `custom-protocol`。
 
 ---
 
-## 五、 问题避坑与技术债
+## 五、 云端微服务部署与服务器运维
 
-### 已知待办 (TODO)
-* [ ] **原生视频渲染层 (WebRTC Native Render)**：计划将 iOS/macOS 移动端的 WebRTC `video` 标签直接替换为 `CAMetalLayer` 原生贴片透明渲染层，降低手机硬件发热及解码功耗。
-* [ ] **技能集联通商店 (ClawHub)**：待补齐 `skill` 和中央市场 ClawHub 之间的双向浏览与安装功能。
-* [ ] **Gateway DB Async 化**：网关中 SQLite 仍然有很多同步直达调用，在异步极高的 FastAPI 中长时间阻塞会有性能瓶颈需要后续换 Async Drivers。
-* [ ] **Watchdog 聚合创建优化**：当离线定时任务被过期触发时（比如 System Wake 风暴），Watchdog 可能瞬间创建大量的 Message Process 导致处理重复运行，需要合并为一个 Subagent Saga 处理锁。
-* [ ] **iOS 真机键盘高度偏移**：已使用 `main.mm` 对键盘做高度注入以避让安全区，但由于 React `LayoutContainer` 渲染时序，可能在非常用输入法切换时框体会短暂遮挡或偏下。
+所有发版完全依托基于 rsync 实现的代码增量 `./deploy` 工具。它只更新文件，由服务器远端的 `start.sh` 执行启停工作。
+> 🚨 **绝对禁止执行 `restart_gw.sh` 对网关单独重启，这会造成 WebRTC 及进程内推送队列丢失并长期宕机挂死。无论改什么后端文件，一律以 `/opt/novaic/start.sh --stop && start.sh` 完整重启生态组为标准。**
 
-### 疑难解答与排坑
-| 异常表征 | 可能原因与解决方案 |
+### 5.1 Relay / STUN / OTA 节点运维 (relay.gradievo.com)
+Relay 目前独立承载跨设备不能直连时的 `QUIC兜底`，以及前端动态切换的 CDN源，运维端口 `SSH: 52222`。
+* 前端打包命令 `VITE_BASE="/resource/frontend/v0.3.0/" npm run build`。
+* 前端会随 `./deploy frontend` 进入该服务器 `/opt/novaic/static/v0.3.0/` 中。
+* 要更换全局版本号，修改 Gateway 配置 `/opt/novaic/jwt_secret.env` 中的 `FRONTEND_CDN_URL` 的路径即可。
+* **长时间黑屏/UDP枯竭**：若 `coturn` 服务器运行超 6 天可能积累过多无意义丢包 zombie session，`./deploy relay` 会拉代码并触发 systemctl 释放所有连接复原服务。
+
+### 5.2 数据库维护与清理操作 (api.gradievo.com)
+长时间运行之后 SQLite 的事务 WAL 会导致磁盘剧增（Orchestrator和 Queue），必须定期用如下命令减负（支持无锁情况热执行）：
+```bash
+# 1. 回收队列脏任务
+sqlite3 /opt/novaic/data/queue.db "DELETE FROM tq_tasks WHERE status IN ('done','failed'); DELETE FROM tq_sagas WHERE status!='active'; VACUUM;"
+# 2. 清理 Orchestrator 中的巨大的上下文存储
+sqlite3 /opt/novaic/data/runtime_orchestrator.db "UPDATE agent_runtimes SET context='[]' WHERE status='completed'; VACUUM;"
+# 3. 删除堆积 Log 文本
+find /opt/novaic/data/logs/ -name '*.log' -mtime +7 -delete 
+find /opt/novaic/data/logs/ -name '*.log' -size +50M -exec truncate -s 10M {} \;
+```
+*(操作完建议通过 deploy orchestrator 释放一轮内存即可。)*
+
+> 🚨 **安全警告：运行时执行 PRAGMA wal_checkpoint(TRUNCATE)**
+绝对不允许在 Gateway 活动时用 `sqlite3 ... "PRAGMA wal_checkpoint(TRUNCATE)"` 强断数据库 WAL 后缀，可能会斩断进程中还未 Flush 的完整聊天写入事件，造成永久掉表！！若要移动 DB 请标准走 `BEGIN...COMMIT` 软拷贝。
+
+---
+
+## 六、 六大核心架构细节
+
+### 6.1 认证体系与多租户权限隔离
+* **令牌颁放**：用户获取的是有效时间 60 分钟且轮替可刷新的自定义域 `HS256 JWT`。前端自行倒计在临期小于 5 分钟请求 `/auth/refresh`。
+* **Rust Context 交互**：Tauri Rust 层因需和 Gateway 建立长连接，前端会在登录态变化时调用 `invoke(update_cloud_token)` 推送令牌，存储进入 `Arc<RwLock>` 中给所有出向 WebSocket 的 `Authorization Header` 携带上。
+* **Nginx 无信任接管**：Nginx 配置了对于 `/api/**` 全域开启 `auth_request -> /internal/auth/validate`。一旦解析正确，将会获得 uuid 并设置请求头 `proxy_set_header X-User-ID "$sub"`；如果是用户刻意构造的 `X-User-ID` 进包头，Nginx 会把它强制置空。
+*  Gateway 下所有的 Router 读取用户身份全从请求依赖 `Dependency(get_current_user)` 读取这个头，杜绝了后端对复杂 Token的逆运算，所有的 Repository CRUD 无论什么情况，默认携带 `WHERE user_id = ?`。
+
+### 6.2 WebRTC 统一远程桌面防卡顿管线
+> 该架构已被完整重写，之前用于连接 Linux 的 vnc_proxy/QEMU、控制安卓的 scrcpy IPC 被统一合并。前端一律不需要感知背后是啥物理连接，只要发起 `useWebRtc (device.id)`。云端的 `CloudBridge` 会通过在设备列表中的注册判定派发向谁进行渲染。
+1. WebRTC **信令与ICE 全部从 HTTP 迁移到 WS** 内部通信（也就是现在的 WS Push 同道），前后序完美保证了 Answer 的投递百分之百在 Candidates 之前，杜绝连接中途中断重连异常。
+2. **TURN 密码凭证由 Gateway 下发代理**：过去一直困扰的广域网无法分配 Turn Credential 的问题被修复为由 Gateway 内核统一使用 HMAC 生成 `webrtc_offer` 中的 `ice_servers` 进行注入。前端直接解析即可打洞。
+3. **帧传输的彻底优化**：
+    * 剥离了过去的固定时间流逝和重构积压引发的“视频出现超级慢放问题”（Anti-slowmo）。`Subscriber_pump` 使用真实物理流失时钟，遇阻主动 `drain` 抛弃多余非 I 帧追赶直播时间戳。
+    * VNC / 手机切屏后解码器冰冻，已经加入了屏幕可见度的 React 监听恢复，切屏自动 `POST key_frame`。
+4. **macOS 极低CPU发热硬编码改造**：通过接入 VideoToolbox 的 `DataRateLimits` 接口进行 CBR 强制预估分配。在源端使用 `CGEvent` 取代 `enigo`（后者会在 tokio 异步中触发 macOS 主线程校验保护机制然后使得原生系统 `SIGTRAP` 奔溃退出桌面 App）。
+
+### 6.3 实时 WebSocket Push 与配置同步
+本系统原本含有多个依赖于 `HTTP SSE (Server-Sent Event)` 流来检测新消息和更新配置的长连接节点。在最新版本重构中所有被命名为 SSE 的类名与业务已全量废标，统称为 **PushManager**。
+1. Frontend 发起的唯一长链接将接管来自后备的各类型投递，包括事件 `chat_message`，`logs_updated`。
+2. **多端互斥配置**：若端 A 修改配置，会在后端触发向全域在线且同 ID 用户终端推送 `config_updated` 事件，客户端通过去抖计时器延迟重新加载 `reLoadConfig` 达到无刷新修改。（由于大模型选取存在这种场景，此法有效修复了不同步导致保存了配置读取仍为空的问题）。
+3. 当客户端与终端主动需要断连重置，只发停止心跳与移除监听而不断开通道复用。
+
+### 6.4 前端业务流转与 SWR 更新架构
+* 系统分为三级设计：`视图 (Components)` ← `业务层 (useXYZ hook / Zustands)` ← `本地数据库 DB (IndexedDB)`。
+* 当打开或者选取 Agent Tab 或者加载某页，立刻呈现 `IndexedDB` 给入的数据。在此之下发送异步网关请求核对是否有改动，若有改动重新覆盖 IndexedDB 并利用注册的 Observer 通知 UI 隐匿重刷。（Stale-While-Revalidate）。
+* **UI组件排布约束**：不采用 `window_resize` 做绝对值判断，全部采用 Flex。历史的 `opacity-0` 逻辑与 `visibilitychange` 多端冲突引发的窗口看不到文字但可以选择复制的历史 Bug，已被替换为用父级 `min-h-0` + Flex 的约束完美兼容全设备。
+
+### 6.5 Agent Runtime 后端回路与工具代理
+核心运行流通过事件图 `Sagas` 状态机接管：
+1. Agent Message 压入 -> Watchdog 检测。
+2. *(历史大坑)*：Watchdog 会因为调度死锁堆满从而在一秒内开启百个线程为同意 Agent 创建不同 Runtime 互斥覆盖。现已改进为批量拿消息且在分组层面 `Per-Agent` 限流重试机制。
+3. 唤醒 `ReactThink` (向大模型交涉) 发现要执行工具，切换 `ReactActions` 抛向下属。
+4. 对于比如涉及到操作桌面的本地请求，ToolsServer 会直接发起 `/internal/agents/{agent_id}/vm/shell/command` 给 Gateway，网关找到该代理绑定的设备归属设备，并往 `CloudBridge WebSocket` 直接向桌面端 Rust 后台内的 `VMuse` 微型 Python 虚拟环境打过去真实的运行反馈。
+
+### 6.6 大语言模型 Gateway - LLM Factory
+已完成集中化架构迁移：
+* 把任何向外部供应商（OpeAI, Kimi）发起的调用封装到 `newapi.gradievo.com` 的 LLM-Factory。
+* 所有服务的原始 LLM 配置数据在 DB 被切断成 `composite_id (api_key_id:model_id)`。调取链路从提取密码变为主程只要告诉 Factory `user_id` 和请求参数，Factory 再从独立 SQLite 里解出对称密钥发出请求，大幅提高了系统对 Key 的安全度以及日志集中排查体验。
+
+---
+
+## 七、 历史暗坑与排障速查大全 (Troubleshooting)
+
+若运行开发或线上排查遇到各类莫名失效，请首选参考此处前人走通的死胡同记录：
+
+| 故障现象表征 | 深度根因解禁与快速恢复办法 |
 |---|---|
-| `./deploy ios` 失败 (aws-lc-sys 报错) | Xcode 26.x BETA 版更改了 `macOS SDK` 的签名，这破坏了 rust 依赖 `aws-lc-sys` 的交叉编译预期，降级到正式版 Xcode 15 即可，或尝试配置 CFLAGS 为真机目录。 |
-| LLM 一直想事情但是总是超时，也不回复 | 检查 API 限流（特别是 429 报错），可通过查阅 `task-worker-*.log` 获取到具体的 `tool_call` 被中断的原因；不要过度依赖 Context 全表。|
-| Gateway 完全无响应或者启动不了 | 有强可能为前一次强杀的时候没有关闭 `SQLite` 连接。恢复需清除脏写入（`rm -f /opt/novaic/data/gateway.db-wal` 然后完全重启进程组）。|
-| P2P WebRTC 链接不上但是日志显示正常 | Relay (Turn Server) 长时间不断跑会引发僵尸会话池满了，如果重启两端程序不能解决连接问题，需要在 `47.xxx` 的机器上 `systemctl restart novaic-quic-service` 刷新一下打孔端口池。|
+| **macOS 上报 "Tokio runtime SIGTRAP 崩溃"** | Rust 库包 `enigo::key()` 和 `arboard` 去操作系统的原生态度必须严格使用苹果主队列（Dispatch Mian Queue），跨出事件会遭遇系统直接捕杀进程。全链路已经替换为具有纯无锁队列事件转发能力的苹果原声 `CGEvent` 组件。不要动那个地方了。 |
+| **设备列表页在操作时 UI 直接完全死锁卡住** | `auth.ts` 暴露给出的 `getCachedUser()` 函数如果被带在 `useEffect` 的 Deps 中，因为它的对象实现是每次新建一份不同的 Object 变量！这将致使 React Diff 爆炸死锁！解法：依赖项改为具体的单纯标量 (如 `getCachedUser()?.user_id`)。 |
+| **LLM 想一想抛 429 和超时 Failed** | 绝大多数非本地出错，都是外部模型商动态过载或单机 Rate Limit 被干爆。排查方式是拿到 `task-worker-*.log` 找 task_id，取 JSON 数据直接在 factory 反向验证一下。通常直接给请求层再包一层被动回退重试策略即可。 |
+| **截图服务失效：命令好使，截完是黑屏或错的** | 由于新加入的多账号系统 `subusers`，截屏需要挂载独立的桌面指针 `DISPLAY`。目前的解法是在 `build_runtime_context` 时区分 `main_user(:10)` 外为不同 user 注入 `:{display_num}` 并带进 VMuse 内让 Scort 等截图程序指向正确对象即可。目前系统已全自动下推。 |
+| **`npm run tauri:dev` 提示 1420 冲突** | Vite 进程没关干净。暴力清理：`kill $(lsof -ti:1420)`。|
+| **找不到 Gateway 连接（各种 500 / CORS 满天飞）** | Rust 中的 HTTP/WS 均默认不走用户态的代理。有时候本地有工具拦截或者强制走了 Global Proxy 会把请求直接丢错，注意看是否有无正确带上 `no_proxy`。以及 JWT_SECRET 在重启时是否因为未在 env 而未读到。|
+| **iOS / Mac 使用过程中软键盘虚拟键按下没有作用** | 防止出现和真机系统抢劫行为，`VirtualKeyboard` 使用的是 Toggle Mode 处理组合。比如点击一下了 `Shift` 如果高亮会驻留一次输入动作并在敲回退或其他下个按键释放，千万别一直按着长按。 |
 
 ---
-**本文档由最新演进状态重构而来。**
+
+## 八、 技术债与待办重点
+
+下面是遗留待处理的任务积压池（近期被提出未进行清理或闭环的任务）：
+
+1. **[基础能力] iOS 键盘输入框上顶错位**：原生端针对高度 `--keyboard-height` 的计算回调由于生命周期的变动极易出现失效导致消息框底被盖着，亟待真机联调深度重算 React Hook 同步时机。
+2. **[生命管理] 服务端海量 Context 僵尸存储定时清零**：目前的 DB 清理依靠手动进入 Gateway 的 SQLite 删除或者 `./deploy cleanup`。需要加入系统原生 `complete_runtime` 函数内对不涉及以后学习的长时 Context 做截肢。
+3. **[重要管控] Watchdog v2 的正式版上线**：已经做好的文档规划（使用 Per-Agent 的排队而不是消息循环 Saga）未最终闭环。防高并发崩溃需要落实。
+4. **[原生体验] 视频的原生 Layer**：前端渲染视频的延时终极瓶颈为 Web 渲染和解码消耗。把 Tauri 窗口贴附并叠加底层的原生播放器 `CAMetalLayer/VideoCodec GL`，做到硬解析硬出屏这块要尽快排期以彻底榨干多端兼容红利。
+5. **[用户侧体验] 联机能力与 ClawHub 双切**：需联通主服 API 将商店内置能力与用户选择模块激活能力打通，支持按需使用插件扩充能力。
+6. **[性能隐患] Gateway FastAPI 内部的同步 Block 函数消除**：一些读字典或者简单直达表还在直接依赖未经过 Async 封皮的读取，在高负荷高轮询很容易使主线程 IO 卡死变慢。
+
+---
+📝 *文档致敬所有前人熬夜填过的暗坑！祝下一个接手系统的协作者武运昌隆。*
