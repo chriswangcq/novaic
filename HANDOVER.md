@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-22（macOS TSM crash fix、restart_gw.sh 清理、coturn TLS 修复）
+> 最后更新：2026-03-22（macOS TSM SIGTRAP 全面修复、TURN 连接排查、restart_gw.sh 清理、coturn TLS 修复）
 
 ---
 
@@ -70,17 +70,21 @@
     └── relay.gradievo.com/resource/frontend/: App 热更新 CDN
 ```
 
-### macOS 桌面版 SIGTRAP 崩溃修复（2026-03-22）
+### macOS 桌面版 SIGTRAP 崩溃修复（2026-03-22，全面修复）
 
 **问题**：桌面版 (ByClaw.app) 运行时随机崩溃 SIGTRAP，crash 线程总是 `tokio-runtime-worker`。
 
-**根因**：`InputHandler::sync_modifiers()` 和 `release_all_keys()` 调用 `enigo.key()` 处理 modifier 键，enigo 内部调用了 macOS `TSMCurrentKeyboardInputSourceRefCreate`（Text Services Manager API），该 API **必须在主线程执行**。tokio worker 线程上调用触发 `dispatch_assert_queue` 断言失败 → SIGTRAP。
+**根因**：`enigo.key()` / `enigo.text()` 内部调用 macOS `TSMCurrentKeyboardInputSourceRefCreate`（Text Services Manager API），该 API **必须在 main dispatch queue 执行**。tokio worker 线程上调用触发 `dispatch_assert_queue` 断言失败 → SIGTRAP。
 
-**修复**：新增 `send_modifier_event()` 方法，macOS 上所有 modifier key 事件走 `CGEvent`（线程安全），非 macOS 走 enigo。`handle_key()` 中已有相同的 CGEvent workaround（只是 `sync_modifiers` 漏了）。
+**修复（三轮）**：macOS 上所有 enigo 键盘操作替换为 `CGEvent`（`core_graphics` crate，线程安全）。非 macOS 平台不受影响。
 
-| 文件 | 改动 |
-|------|------|
-| `vmcontrol/src/input/handler.rs` | `sync_modifiers()` 和 `release_all_keys()` 改用 `send_modifier_event()` |
+| 文件 | 改动 | 轮次 |
+|------|------|------|
+| `vmcontrol/src/input/handler.rs` | `sync_modifiers()` / `release_all_keys()` 改用 `send_modifier_event()`（CGEvent）| 第 1 轮 |
+| `vmcontrol/src/api/routes/hd_tools.rs` | `hd_keyboard()` 全部替换为 `hd_cg_key_event()` / `hd_cg_type_string()`（CGEvent）| 第 2 轮 |
+| `vmcontrol/src/input/handler.rs` | 未知键 fallback 从 `enigo.key()` 改为 `cg_type_string()` Unicode 注入 | 第 3 轮 |
+
+**结论**：macOS 上 **零** `enigo.key()` / `enigo.text()` 调用残留。鼠标操作（`enigo.move_mouse` / `enigo.button` / `enigo.scroll`）不触发 TSM，保留使用 enigo。
 
 ### TURN 服务器维护（relay.gradievo.com，2026-03-22）
 
@@ -89,6 +93,19 @@
 **TLS 证书权限问题（已修复）**：coturn 以 `turnserver` 用户运行，但 Let's Encrypt `/etc/letsencrypt/live/` 和 `/etc/letsencrypt/archive/` 默认权限 `700`（仅 root），导致 TURNS (5349) 无法启动。修复：`chmod 755` + privkey `chgrp turnserver`。
 
 **coturn 长时间运行问题**：coturn 跑 6+ 天后积累大量僵尸 session（`Connection reset by peer`），可能导致新 TURN allocation 失败。重启即恢复。建议定期重启或设置 session 超时。
+
+**TURN 凭证流转架构（2026-03-22 排查记录）**：
+
+TURN 凭证使用 coturn time-limited credentials（HMAC-SHA1），两条独立路径：
+
+| 端 | 凭证来源 | 关键文件 |
+|---|---|---|
+| **客户端** (useWebRtc.ts) | Gateway HTTP `/api/turn/credentials` 返回 | `useWebRtc.ts` L201-213, `gateway/api/turn.py` |
+| **VmControl** (peer.rs) | 直接读 `TURN_SECRET` 环境变量 | `peer.rs::build_ice_servers()` L896-941 |
+
+⚠️ **已知问题**：桌面 App 的 vmcontrol 进程内**无 `TURN_SECRET` 环境变量**，导致 `build_ice_servers()` 回退到 STUN-only。客户端侧从 Gateway 拿到 TURN 凭证，但服务端侧缺失。**两端都需要 TURN 凭证才能通过 relay 通信**。
+
+**排查结果**：`relay.gradievo.com:3478` STUN 正常（UDP 100-byte response）。DNS 解析 `198.18.0.93`（可达）。问题不在服务器侧。
 
 ### 远程桌面架构（WebRTC 统一管线 + Device Registry，2026-03-19）
 
