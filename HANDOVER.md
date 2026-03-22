@@ -41,7 +41,7 @@
 └── NovAIC.app (Tauri)
     ├── 前端 React/Vite          ← novaic-app/src/
     │   ├── IndexedDB 本地缓存   ← 消息、日志、偏好、附件（按 userId 隔离）
-    │   ├── SSE 连接             ← User 维度（一个用户一条长连接）
+    │   ├── AppBridge WS 推送    ← User 维度（接收 chat_message / config_updated）
     │   └── WebRTC 客户端        ← 所有远程桌面显示（VM/Android/HD/Subuser）
     └── Rust 后端
         ├── Tauri Commands       ← gateway_* HTTP 代理（唯一 IPC 通道）
@@ -57,8 +57,8 @@
 └── Nginx (HTTPS/443 → 127.0.0.1:19999)
     ├── auth_request → /internal/auth/validate  ← HS256 JWT 验证，注入 X-User-ID
     └── Gateway (Python/FastAPI, port 19999)
-        ├── SSE: /api/user/chat/stream, /api/user/logs/stream（User 维度）
         ├── REST: /api/**, /internal/**
+        ├── WS Push: 通过 pc_client 下发 gateway_push 事件 (无 SSE 端点)
         ├── CloudBridge WebSocket: /internal/pc/ws
         ├── P2P: /api/p2p/heartbeat, locate, relay-request
         └── SQLite: /opt/novaic/data/gateway.db
@@ -238,7 +238,7 @@ ICE candidates（双向，同一条 WS）：
 **Rust 生命周期修复**：`Response` 处理时 clone `Arc<Mutex<pending_requests>>`（先 drop RwLockReadGuard），再 `.lock().await.remove()` 赋值给 `let tx` 后 drop MutexGuard，最后 if-let 使用，避免 E0597。
 
 - **Tauri HTTP 请求**：通过 `gateway_get` / `gateway_post` 等命令，URL 来自 Rust 的 `gateway_url.txt`（`{data_dir}/gateway_url.txt`，默认 `https://api.gradievo.com`）
-- **前端 SSE**：使用 `invoke('get_gateway_url')` 获取运行时 URL，与 HTTP 保持一致，避免本地开发时 SSL 错误
+- **前端 WS 推送**：Rust 统一监听 `gateway_push` 事件，无需维护单独的长连接 URL
 
 ---
 
@@ -557,7 +557,6 @@ cd novaic-gateway && ./scripts/deploy-gateway.sh root@api.gradievo.com
 - HTTPS(443) 代理到 `127.0.0.1:19999`
 - **认证方式（2026-03 起）**：Nginx `auth_request` 调用 `/internal/auth/validate`，验证 HS256 JWT，提取 `sub` 作为 `X-User-ID` 注入下游请求
 - 客户端伪造的 `X-User-ID` header 在 Nginx 层被剥离（`proxy_set_header X-User-ID ""`）
-- SSE 路由（`/api/chat/messages`、`/api/logs/stream`、`/api/user/chat/stream`、`/api/user/logs/stream` 等）关闭 proxy buffering、超时 3600s
 - CloudBridge WebSocket：`/internal/pc/ws`，超时 3600s，Auth token 通过 `Authorization: Bearer` header 传入
 - **前端 OTA**：`/api/config/frontend` 为公开接口（无需 JWT），App 启动时调用，返回 CDN URL；限流 burst=30
 
@@ -1190,8 +1189,8 @@ src-tauri/src/
 
 1. **登录**：`auth.ts` 存 token → `App.tsx` 调用 `pushToken()` → `invoke(update_cloud_token)` 推给 Rust → 成功后 `agentService.initialize()`（pushToken 失败则 3s 轮询重试）
 2. **恢复 Agent**：从 `prefsRepo.getSelectedAgent()` 或 localStorage 恢复上次选中的 agentId
-3. **选择 Agent**：`AgentService.selectAgent(agentId)` → store 写入 + prefs → SSE 不断开（User 维度常驻）→ `switchAgent(agentId)` 并行 load 消息/日志 + `modelService.loadForAgent`
-4. **登出**：`getSyncService().disconnect()` 断开 SSE，`resetServices()` 清空 Service 单例
+3. **选择 Agent**：`AgentService.selectAgent(agentId)` → store 写入 + prefs → 监听 `gateway_push` (User 维度) 不断开 → `switchAgent(agentId)` 并行 load 消息/日志 + `modelService.loadForAgent`
+4. **登出**：`getSyncService().disconnect()` 停止派发事件，`resetServices()` 清空 Service 单例
 
 ### DB 层 `src/db/`（DB 驱动渲染）
 
@@ -1203,15 +1202,15 @@ src-tauri/src/
 
 ### Gateway 子层 `src/gateway/`
 
-> SSE 连接管理（`sse.ts`）、Token 注入（`auth.ts`）
+> WS Push 事件监听（`sse.ts` 已重构为 PushManager）、Token 注入（`auth.ts`）
 
 ### Business 层 `src/application/`
 
 > 详见 `FRONTEND_ARCHITECTURE.md`，文件清单见 `src/application/` 目录。
 
-- **核心 Services**：`messageService`（消息生命周期）、`logService`（日志）、`syncService`（SSE + delta sync）、`agentService`（Agent CRUD + VM setup）、`modelService`（模型配置）
+- **核心 Services**：`messageService`（消息生命周期）、`logService`（日志）、`syncService`（WS 推送整合 + delta sync）、`agentService`（Agent CRUD + VM setup）、`modelService`（模型配置）
 - **状态**：`store.ts`（Zustand 全局状态）、`*PaginationStore`（分页）、`logFilterStore`（日志过滤）
-- **⚠️ 注意**：subagent SSE 不过滤 agentId（SSE 是 User 维度）
+- **⚠️ 注意**：日志/消息等 WS 推送事件属于 User 维度，接收后需匹配当前选中的 agentId
 
 ### Render 层 `src/components/` 与 `src/hooks/`
 
@@ -1379,11 +1378,10 @@ src-tauri/src/
 | Gateway 无响应（重启后恢复） | 强制 kill gateway 后 WAL/SHM 文件损坏，新进程被旧锁卡住 | `rm -f /opt/novaic/data/gateway.db-wal /opt/novaic/data/gateway.db-shm` 后再 `bash /opt/novaic/restart_gw.sh` |
 | Gateway 注册/登录 500（写锁悬挂） | `UserRepository` 写操作缺少 `db.transaction()` 包裹，INSERT 后事务未提交，写锁永不释放 | 已修复（`user.py`）：所有写操作改为 `with db.transaction("global")` |
 | 数据迁移后数据丢失 | 在 gateway 有未提交事务时执行了 `PRAGMA wal_checkpoint(TRUNCATE)`，把未提交数据截断 | **禁止**在 gateway 运行时执行 `wal_checkpoint(TRUNCATE)`；正常迁移直接用 `BEGIN/COMMIT` 即可 |
-| SSE SSL 错误 | 前端 SSE 曾用 VITE_GATEWAY_URL，与 Tauri 的 gateway_url.txt 不一致 | 已修复：SSE 使用 `invoke('get_gateway_url')` 与 HTTP 一致 |
 | 本地 DB 缓存异常 | IndexedDB 数据损坏或需强制刷新 | Settings → Clear Cache → 清空本地 DB 缓存，然后刷新页面 |
 | **Device tab 点击卡死 / UI 全面冻结** | `getCachedUser()` 每次返回新对象，放进 `useEffect([user])` 导致无限 re-render 循环 | 已修复：`useDevicesFromDB`/`useAgentsFromDB`/`useAgentConfigFromDB` 全部改为 `const userId = getCachedUser()?.user_id ?? null` 用 `string` 做依赖 |
 | `...` 按钮（MoreVertical）点不开 | 同上，无限循环占满主线程导致 UI 无响应 | 同上 |
-| **宽屏模式消息不可见（能复制但看不到）** | 两个叠加原因：① `opacity-0`/`isReady` timer 在 SSE 期间被反复取消永远不 fire；② `h-full` 在 flex-column 父元素无明确 height 时解析为 0 | 已修复：彻底移除 opacity-0 模式，MessageList 改用 `flex-1 min-h-0` 替代 `h-full` |
+| **宽屏模式消息不可见（能复制但看不到）** | 两个叠加原因：① `opacity-0`/`isReady` timer 在早期推送同步期间被反复取消；② `h-full` 在 flex-column 父元素无明确 height 时解析为 0 | 已修复：彻底移除 opacity-0 模式，MessageList 改用 `flex-1 min-h-0` 替代 `h-full` |
 | LLM think 失败（429 / engine_overloaded） | Moonshot 等 API 限流或过载 | 间歇性，非 context 问题；建议对 429 做指数退避重试 |
 | 截图无法截到指定 subuser 的屏幕（shell 可以） | `runtime_context` 缺少 `display` 字段 | 已修复：`build_runtime_context` 为 vm_user 注入 `display: ":11"` 等 |
 | iOS 安装后黑屏 | custom-protocol 在 WKWebView 有已知问题；或 VITE_GATEWAY_URL 缺失导致启动抛错 | 已修复：iOS 用 `--features mobile` 不含 custom-protocol；config 兜底默认 Gateway URL |
@@ -1393,7 +1391,6 @@ src-tauri/src/
 | 排查 P2P 请求是否到达 Gateway | 需确认 locate 是否被调用 | `GET /api/p2p/debug`（需 JWT）返回最近 50 条 P2P 事件 |
 | 调试 STUN 是否可用 | 验证本机能否获取外网地址 | `python3 novaic-app/scripts/test-stun.py [port]` |
 | 自建 STUN 服务器 | 默认 stun.gradievo.com:3478（novaic-quic-service） | 覆盖用 `NOVAIC_STUN_SERVER=stun.l.google.com:19302` |
-| SSE 连接失败（User chat/logs） | 可能 TLS、401 或网络 | 需 Xcode 控制台查看 Rust 错误；后续可改进 Rust 向 JS 传递错误详情 |
 | Relay 连接失败（P2P 兜底） | relay 服务未部署、TLS 证书、防火墙 443/udp | 检查 novaic-quic-service 状态；`NOVAIC_RELAY_INSECURE=1` 仅限本地调试 |
 | Relay handshake timeout | Relay 用 open_bi 而非 accept_bi | 已修复：relay.rs 改为 accept_bi() |
 | P2P registry missing field 'ok' | 401 时 body 为 `{"detail":"..."}`，按 HeartbeatResponse 解析失败 | 已修复：rendezvous.rs 先判断 status 再解析 body |
@@ -1501,16 +1498,10 @@ VITE_GATEWAY_URL=https://api.gradievo.com
 - [ ] **iOS 键盘输入框适配**：原生 `--keyboard-height` 注入方案已实现（main.mm），Header 固定 OK，但输入框仍可能不可见。需要在真机上验证并调试
 - [ ] **服务端数据自动清理**：runtime 完成时自动清空 context（修改 `RuntimeRepository.complete_runtime`）；queue 定期清理已完成任务；日志 logrotate
 - [ ] **Watchdog v2：Per-Agent 轮询**：将 Watchdog 从逐条消息创建 Saga 改为按 Agent 分组批量处理，防止消息积压导致同一 Subagent 创建多个 Runtime（详见二十三节）
-- [x] ~~WebRTC 同端并发预览支持~~：现已修复本地 UDP 连接泄漏及旧逻辑暴力互相顶回的 bug，可安全在不同设备同时预览。
 - [ ] WebRTC 多客户端操控冲突处理（当前多端操控不互斥，可能产生输入冲突）
 - [ ] Gateway DB 访问改为异步（当前同步 SQLite 在 async FastAPI 中，高并发下仍有阻塞风险）
 - [ ] **Skill 商店 / ClawHub 集成**：需要 ClawHub API 端点和文档，在 Skills tab 第二栏增加「商店」入口，支持浏览/搜索/安装 skill
 - [ ] **原生视频渲染（全客户端）**：所有客户端（iOS/Android/macOS/Web）用原生解码替代 WebRTC `<video>` 标签渲染，降低功耗+延迟+画质损失。iOS: VideoToolbox+Metal；Android: MediaCodec+GL；macOS: VideoToolbox+Metal；Web: WebCodecs API（见二十五节）
-- [x] **历史消息 file_id 回填**：已增加脚本 `scripts/backfill_file_id.py`，因服务器连通性问题待后续手动执行
-- [x] `vm_start`/`vm_stop`/`android_start`/`android_stop` 迁移到 WS（前端 `vm.ts` / `api.ts` 已改，后端 `app_client.py` 增加分发）
-- [x] **前端 SSE 全面下掉**：`sse_state.py` → `push_state.py`，删除 SSE queue subscriber + SSE stream 端点，SSE 注释清理
-- [x] **多端配置同步**：`config_updated` WS push 事件 + debounced `loadConfig()`，解决双端模型列表不一致
-- [x] **Agent 模型持久化修复**：`GET/PUT /{agent_id}/model` 从 Factory API 查模型（不再查本地 `candidate_models` 表）
 
 ### 前端修改注意事项
 
