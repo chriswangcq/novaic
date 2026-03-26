@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档
 
-> 最后更新：2026-03-22（实时配置同步 + SSE legacy 全面清除：多端模型列表 WS push 同步，sse_state.py → push_state.py，删除前端 SSE 端点）
+> 最后更新：2026-03-26（Gateway 迁移至 Entangled 数据流 - 完成部署及依赖/死锁修复，API 正常唤起）
 
 ---
 
@@ -69,6 +69,50 @@
     ├── Relay: P2P 直连不可达时兜底
     └── relay.gradievo.com/resource/frontend/: App 热更新 CDN
 ```
+
+### Entity Layer Migration (Phase 1-3 完成，2026-03-23)
+
+**背景**：Gateway 层的数据库操作曾充斥大量手写 SQL 的 `*Repository`，导致数据层和业务层耦合，且缺乏统一的事件通知和 Schema 管理机制。
+
+**新架构**：引入统一的 `EntityStore` (基于 `EntityDef` 实体抽象)，实现：
+1. **统一 CRUD**：用统一的 `create`, `list`, `get`, `update`, `delete`, `upsert` 操作替代零散 SQL
+2. **声明式 Schema**：所有字段和类型在 `EntityDef` 内定义
+3. **自动通知**：执行 CRUD 操作自动调用 `notify_entity_change` 推送给前端
+
+**已完成迁移（Phase 1-3 安全区域）**：
+- `agent-tools`：修改了 `agents.py` 及相关 bootstrap-files 逻辑，全面调用 `get_entity_store()`
+- `vm-users`：替换了所有用户存取逻辑，并改造了 `_next_display_num` 等副作用函数
+- `skills`：重构了 `SkillRepository`，拆分了 builtin 文件加载（只读）与 custom 记录存取（使用 `EntityStore`）
+- `agent-binding`：重构 `AgentDeviceBindingRepository`，使其完全代理到 `EntityStore`（忽略 `user_id`）
+- `agent-state`：将零散的 `agent_runtime_state` (K-V 模型) 迁移至结构化的 `agent_state` 实体表。淘汰了旧版全局 `get_runtime_state` 方法，完全打通 `EntityStore.upsert` 记录 Agent 休眠与唤醒状态。
+
+**Stream Entities 架构迁移 (2026-03-23)**：
+- 扩展了 `EntityStore` 的类型抽象，加入了 `EntityType.STREAM`，支持高频写入和实时广播。
+- 添加了 `store.append`，`store.cas_update` 以及高级游标分页 `store.list_stream` 方法，以满足高吞吐场景与 CAS 控制需求并支持复杂的过滤和时间复合排序。
+- `messages`：已通过拦截器加底层代理的方式修改了 `MessageRepository` 的内部实现，`add_message` 现委托给 `EntityStore.append` 自动分发事件，`claim_by_id` 和 `confirm_message` 现使用 `EntityStore.cas_update` 移除硬编码的 SQL。`get_messages` 替换为 `list_stream`。
+- `execution_logs`：已升级为第一级别 `STREAM` 实体。全线替换 `ChatRepository.upsert_execution_log` / `add_execution_log` 等冗长逻辑为 `EntityStore.cas_update` / `append`，底层完全依赖 `list_stream` 完成带 Cursor 分页。
+
+**大流量文件（Base64 图片）防爆与拦截架构 (2026-03-23)**：
+- Gateway 的 `ChatRepository` 已完全剥除所有祖传 `_convert_large_images_to_urls` 防线。
+- 剥离脏活逻辑至边缘侧：`novaic-tools-server` 被定义为最终兜底层。
+- 引入 `TOOL_ADAPTER_REGISTRY` 与递归扫描拦截：所有 Tool 返回（不论是原生 MCP `content`，还是野节点的深层 JSON 字典）只要被探测到超标大小的 Base64，边缘侧自动将其就地 POST 到 `novaic-storage-a/b` 的 `/api/files/from-base64`，并立刻转化为几十字节的 `fs://images/...` 指针后再发入 Gateway 的 `EntityStore`。Gateway 网络彻底摆脱巨型带宽损耗污染。
+
+**规划外/暂缓迁移（风险区域）**：
+- `api-keys`：完全不适用（因安全隔离）
+
+### Entangled Sync Protocol (Phase 1-3 完成，2026-03-25)
+
+**背景**：原有 `EntityStore` 只通过 WS 发送离散颗粒的增量更新（CREATED/UPDATED/DELETED），导致前端为了维持复杂关联（如 Agent 删除了其 Binding 应该同步消失、List 添加或删除需要人工维护顺序）堆砌了大量硬编码 Hook (`entityGraph.ts`, `data/entities/*`)。
+
+**新架构：Entangled Delta Sync (Phase 1-3 Backend 基础设施已迁移)**：
+1. **统一缓存协议**：用 Rust (Tauri 内核) 实现高性能、带 LRU 淘汰的本地一致性缓存。服务端 Gateway 发送标准 `Snapshot`（全量快照）和 `Delta` (增量 Ops)，前端无脑还原最新状态。
+2. **WebSocket 多路复用**：去掉了原定新增的单独 `/api/sync/ws`，通过复用 `novaic-gateway` 已有的 `/api/app/ws`，下发 `sync` mode 的 action 进行协议融合。 
+3. **乐观 UI 与 RequestId 链路**：打通了 `request_id` 的全链路传递 (`React -> AppBridge -> Gateway -> EntityStore -> SyncRegistry -> AppBridge -> React`)，用来确保 UI 乐观操作后收到云端通知时能够精准核销 (`pendingOps`)。
+4. **延迟与 Stream 限制**：修复了 `messages` 和 `execution-logs` 等 stream 数据被 `entangled.server.sync` 一次性拉取全部的问题，引入了 `limit: 100` 以确保初始同步不会将上万条历史包发给客户端。
+5. **隐式级联自动 Invalidate**：针对 `agent` 删除需要客户端顺带淘汰由于 SQLite `CASCADE` 被静默清理的 `agent-binding` 问题，直接注入 `notify("invalidated", "agent-binding")` 使客户端响应式淘汰陈旧关系。
+6. **Rust Tauri 暴露**：`novaic-app/src-tauri` 现已完全集成了 `@entangled/client-rust`，能够接收 `IncomingMessage::Sync` 并通过 Rust 更新本地内存大表库，仅将 `changes` 事件向前端发射。
+
+> **当前交接状态（Phase 4：Frontend Cleanup 待完成）**：后端 + Rust Core 均编译/运转正常。但是，前端 `@entangled/react` 在应用 `ListStore.getData()` 剥离后存在 84 处 TS 静态断言错误（由于没有补齐类型与 `@tauri-apps/api` 的 PeerDependencies）。下一任代理请运行 `cd novaic-app && npm run build` 根据报错修复 TypeScript，以完成全面切流。
 
 ### macOS 桌面版 SIGTRAP 崩溃修复（2026-03-22，全面修复）
 
@@ -2652,3 +2696,39 @@ ssh root@newapi.gradievo.com 'curl -s "http://127.0.0.1:19990/v1/logs?limit=5"'
 | `syncService.ts` | 日志 "SSE" → "WS" |
 
 **保留不动的**：`gateway/sse/broadcaster.py`（Worker SSE）——这是 Gateway→Worker 进程间通信，属于不同层级。
+
+## 三十四、Gateway 迁移至 Entangled 数据流部署修复（2026-03-26）
+
+### 问题背景
+
+在完成了 Entangled 基础设施的重排以及 `novaic-gateway` 后端依赖代码的切割后，尝试部署到 `api.gradievo.com` 时遭遇严重阻碍，导致服务无法启动。主要问题包含底层环境的依赖缺失、数据库 DDL 语句锁级别导致的 SQLite 死锁、以及 Entity 继承与底层 schema 处理的生命周期错位。
+
+### 核心崩溃点与修复记录
+
+#### 1. Entangled 模块依赖解析失败
+
+**故障**：`gateway/api/internal/pc_client.py` 内部调用的 `import entangled.server` 等操作在服务器环境中出现 `ModuleNotFoundError`。但在本地开发环境中（Pycharm）正常工作。
+**根因**：服务器环境和部署构建 (`./deploy gateway` 和 `./deploy services`) 在设计时只专注对 `novaic-gateway`（以及各微服务 repo）进行同步。由于 Entangled 现重构作为一个独立的子仓库，它在服务器的 `/opt/novaic/Entangled` 路径下缺失代码，导致 Python `sys.path` (即 `__file__.parent.parent / 'Entangled...`) 加载失败。
+**修复**：在 `deploy` 核心脚本的 `deploy_gateway_func` 及 `rsync_all` 函数中增加了对 `Entangled/`（排除了 `packages/client-rust`、`node_modules`）的强制 rsync 同步。确保了 `gateway` / `tools` / `runtime` 启动前一定拥有最新的 `entangled.server` 包副本。
+
+#### 2. DDL SQLite Scheme 构建死锁（LockType Sharded）
+
+**故障**：服务尝试执行 `gateway.entity.store.EntityStore.ensure_schema` 创建底层表结构时抛出 `ValueError`。
+**根因**：原定 `ensure_schema()` 会引用该实体指定的默认 `lock_type`（比如 `skills` 是 `ShardedFIFOLock`)，但 sharded lock 要求传入 `resource_id` 参数。由于 `CREATE TABLE / ALTER TABLE` 这样的 DDL 语言属于数据库全局操作，并不涉及资源子集，因此强行利用局部锁导致锁工厂报措。
+**修复**：修改 `store.py` 内部机制，令 `ensure_schema` 内的 `self.db.transaction()` 实参强行固定传入 `"global"`，不再复用具体的实例 `lock_type`。
+
+#### 3. AgentState Timestamp 空白指针对齐崩溃
+
+**故障**：`/api/subagents/xxx/awake` 等核心守护进程发出的状态转换使得 `EntityStore.upsert('agent-state', ...)` 触发，抛出 SQLite `OperationalError: no such column: updated_at`。
+**根因**：在 `EntityDef` 默认中 `auto_timestamps = True`。框架会自动尝试注入 `updated_at = datetime('now')` 到 `upsert` 的 `UPDATE` 参数里。然而在 `gateway/entity/defs.py` 关于 `AGENT_STATE` 的 `fields` 列表里没有明确定义该列（因为该模型实际设计只使用了 `last_active_at`）。由于 `ensure_schema` 检测不到应当创建该列，造成后续注入该列时 SQL 引擎报错。
+**修复**：直接在 `gateway/entity/defs.py` 的 `AGENT_STATE` 定义末尾补充了 `auto_timestamps=False` 后端开关。
+
+#### 4. SubagentStatus 全局变量缺失报错
+
+**故障**：内部 Daemon 服务轮询 `get_subagents_due_for_wake` 并调用 `set_subagent_sleeping` 强制将 SubAgent 切入睡眠状态时应用层崩溃：`NameError: name 'SubagentStatus' is not defined.`
+**根因**：API 拆分与迁移重排后，遗漏了 `common.enums` 的依赖包倒入。
+**修复**：在 `gateway/api/internal/subagent.py` 头加入了 `from common.enums import SubagentStatus`，修复调度挂起 bug。
+
+### 总结
+
+以上 4 个点阻塞了 Entangled 代码树的第一版全面部署。修复完成后，`api.gradievo.com` 的 Gateway 能正常连通至本地 SQLite 以及拉起所有后端服务，`19999` 端口顺利监听。客户端终于可以正常与重排过的 Entangled 数据层交互。
