@@ -14,9 +14,11 @@ RELAY_PORT="22"
 RELAY_SSH="ssh -p $RELAY_PORT root@$RELAY_HOST"
 API_HOST="root@api.gradievo.com"
 API_SSH="ssh $API_HOST"
+FACTORY_HOST="root@newapi.gradievo.com"
+FACTORY_SSH="ssh $FACTORY_HOST"
 VERSION="${2:-0.3.0}"
 SERVICES_DIR="/opt/novaic/services"
-RSYNC_EXCLUDE="--exclude .git --exclude __pycache__ --exclude '*.pyc' --exclude target --exclude .venv --exclude node_modules"
+RSYNC_EXCLUDE="--exclude .git --exclude __pycache__ --exclude '*.pyc' --exclude target --exclude .venv --exclude node_modules --exclude '*.db'"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -80,11 +82,12 @@ deploy_desktop() {
 # ── 后端服务部署（rsync + 服务器端 start.sh 管理进程） ────────────────────────
 
 deploy_gateway() {
-  info "部署 Gateway"
+  info "部署 Gateway and Entangled"
   rsync_service "novaic-gateway"
+  rsync_service "Entangled"
   info "重启全部后端服务（通过 start.sh）..."
   $API_SSH 'bash /opt/novaic/start.sh --stop && bash /opt/novaic/start.sh' || fail "重启失败"
-  ok "Gateway 已部署（全部服务已重启）"
+  ok "Gateway & Entangled 已部署（全部服务已重启）"
 }
 
 deploy_single_service() {
@@ -101,7 +104,7 @@ deploy_services() {
 
   # 同步所有服务代码
   for svc in novaic-gateway novaic-agent-runtime novaic-runtime-orchestrator \
-             novaic-tools-server novaic-storage-a novaic-storage-b; do
+             novaic-tools-server novaic-storage-a novaic-storage-b Entangled; do
     rsync_service "$svc"
   done
 
@@ -123,6 +126,18 @@ deploy_relay() {
   info "服务器拉取并编译..."
   $RELAY_SSH 'export PATH="$HOME/.cargo/bin:$PATH" && cd /opt/novaic/novaic-quic-service && cargo build --release && systemctl stop novaic-quic-service && cp target/release/novaic-quic-service ./ && systemctl start novaic-quic-service' || fail "编译或重启失败"
   $RELAY_SSH 'systemctl is-active novaic-quic-service' && ok "Relay 已部署" || warn "服务未运行"
+}
+
+deploy_factory() {
+  info "部署 LLM Factory 到 newapi.gradievo.com"
+  local local_dir="$REPO_ROOT/novaic-llm-factory"
+  [ -d "$local_dir" ] || fail "本地目录不存在: $local_dir"
+  info "同步代码..."
+  rsync -avz $RSYNC_EXCLUDE -e ssh "$local_dir/" "$FACTORY_HOST:/opt/novaic/llm-factory/" || fail "rsync 失败"
+  info "安装依赖 + 重启..."
+  $FACTORY_SSH 'cd /opt/novaic/llm-factory && source .venv/bin/activate && pip install -q -r requirements.txt && systemctl restart llm-factory' || fail "重启失败"
+  sleep 2
+  $FACTORY_SSH 'curl -sf http://127.0.0.1:19990/health' && ok "LLM Factory 已部署 (newapi.gradievo.com)" || fail "健康检查失败"
 }
 
 # ── 聚合命令 ──────────────────────────────────────────────────────────────────
@@ -207,6 +222,7 @@ show_help() {
   echo ""
   echo -e "${CYAN}基础设施:${NC}"
   echo "  relay             部署 QUIC/Relay 到 relay 服务器"
+  echo "  factory           部署 LLM Factory 到 newapi.gradievo.com"
   echo ""
   echo -e "${CYAN}聚合 & 运维:${NC}"
   echo "  all [ver]         部署全部"
@@ -225,6 +241,7 @@ case "${1}" in
   storage-b)    deploy_single_service "novaic-storage-b" ;;
   services)     deploy_services ;;
   relay)        deploy_relay ;;
+  factory)      deploy_factory ;;
   ios)          deploy_ios ;;
   desktop)      deploy_desktop ;;
   all)          deploy_all "$2" ;;
