@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档（2026 重构版）
 
-> 最后更新：2026-03-27（Entangled 同步引擎大重构：ws_handler 增强背压/心跳/load_more，Rust Cache TTL 与稳定 paramsKey，store 级游标验证）
+> 最后更新：2026-03-27（Entangled：`current_version` 持久化至 `gateway.db` 表 `entangled_sync_versions`；`get_ops_since` 在空 op_log 时正确返回 gap）
 > 本文档由原始近 3000 行变更日志按功能模块重新组织，完整保留所有有价值的技术细节、文件速查、排障指南与架构决策。
 
 ---
@@ -812,8 +812,8 @@ cd novaic-gateway && PYTHONPATH=. python -m unittest tests.test_deps_internal_ta
 **近期已落地（审计收尾，2026-03）**：
 - Entangled 同步引擎重构：Gateway `store.py` 支持游标 `SELECT EXISTS()` 替换 N+1 翻页 hack；`ws_handler` 增加 1000 上限背压队列、30s Server 心跳；`load_more` 纳入独立协议；`cache.rs` 增加 `last_accessed` TTL 垃圾回收；React hook 解除 `JSON.stringify` 带来的依赖开销。
 - API 稳定与性能：Gateway `list`/`list_all` WS 上限；`agent-binding` notify 使用 `agent_id`；删除 agent 清空 `currentAgentId`；`EntityStore._notify` 失败打 `logger.exception`；`syncService` 重连次数用尽后停止自动重连。
+- Entangled **`current_version` 持久化**（2026-03-27）：表 `entangled_sync_versions`，`entangled_bridge` hydrate + 每次 mutation upsert；`sync.get_ops_since` 空 op_log 且客户端落后 → gap；op-log 本体仍内存。
 - [ ] **Entangled: Rust Cache `Mutex` 串行**：需要改用 `RwLock` 或 `r2d2` 提升高并发读写性能。
-- [ ] **Entangled: Op-log 纯内存**：目前 Gateway 重启会导致 version 重置，所有客户端被迫全量 resync。需将 `current_version` 持久化到 DB。
 - [ ] **Entangled: subscription_cascade 服务端化**：级联订阅逻辑目前在 React 客户端实现，非 React 宿主需要重写，需将服务端 subscribe 自动展开。
 - [ ] **Entangled: invalidate 恢复逻辑在 React 层**：当收到 invalidate 时，目前的自动恢复严重依赖 React hook，需实现 Rust client 内部自治恢复。
 - [ ] **iOS 键盘输入框适配**：`--keyboard-height` 注入已实现，需真机验证
