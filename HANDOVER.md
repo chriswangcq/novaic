@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档（2026 重构版）
 
-> 最后更新：2026-03-27（Entangled：`current_version` 持久化至 `gateway.db` 表 `entangled_sync_versions`；`get_ops_since` 在空 op_log 时正确返回 gap）
+> 最后更新：2026-03-27（Entangled：`current_version` 持久化 + client 桥接重试与 `app_bridge`/`api.ts` 错误串对齐、去除不可达代码；`index.html` 省略 WebKit 忽略的 `interactive-widget`）
 > 本文档由原始近 3000 行变更日志按功能模块重新组织，完整保留所有有价值的技术细节、文件速查、排障指南与架构决策。
 
 ---
@@ -208,6 +208,7 @@ xcrun devicectl device install app --device "$DEVICE" "$IPA_PATH"
 - 注册自定义监听 → 精确键盘高度 → 注入 CSS `--keyboard-height`
 - `LayoutContainer.tsx` 移动端用 `position: fixed; bottom: var(--keyboard-height, 0px)`
 - `ffi::start_app()` 启动 UIKit run loop 且永不返回，所有 `dispatch_after` 必须在它之前调用
+- `index.html` viewport **不含** `interactive-widget=`（WebKit 忽略该 token，仅减控制台噪音）；键盘与视口布局以 **main.mm + `LayoutContainer`** 为准，不依赖该 meta。
 
 **iOS Xcode 26.x 兼容性问题（未解决）**：`aws-lc-sys` crate 在 Xcode 26.3 beta 下因 SDKROOT 指向 iPhoneOS 而非 macOS SDK 导致交叉编译失败。推荐降级到正式版 Xcode 或手动注入 CFLAGS。
 
