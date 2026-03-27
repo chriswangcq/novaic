@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档（2026 重构版）
 
-> 最后更新：2026-03-26（全面完成 Entangled 引擎迁移，剥离旧版 IndexedDB 管道，修复超大消息引发的 WS 64MB 崩溃问题）
+> 最后更新：2026-03-26（Gateway `deps`：JWT 优先 + X-User-ID 对齐、内部任务 `INTERNAL_TASKS_SECRET`；Rust `entities_changed` 带 `params`；ChatPanel 单例 `useLogs`/`useMessages`；`syncService` 达上限停止重连；`api.ts` 架构注释；`unittest` 覆盖 `verify_internal_tasks`）
 > 本文档由原始近 3000 行变更日志按功能模块重新组织，完整保留所有有价值的技术细节、文件速查、排障指南与架构决策。
 
 ---
@@ -388,8 +388,16 @@ bash /opt/novaic/start.sh
 | `src-tauri/src/setup.rs` | Gateway URL、StorageBackend 统一注入 |
 | `vmcontrol/src/cloud_bridge.rs` | WebSocket 握手读取 token |
 | `gateway/api/auth.py` | login/register/refresh/logout/validate |
-| `gateway/api/deps.py` | `get_current_user(x_user_id: Header)` |
+| `gateway/infra/deps.py` | `get_current_user`（Bearer JWT 优先；`X-User-ID` 须与 `sub` 一致；`TRUST_GATEWAY_X_USER_ID`）、`verify_internal_tasks`（`/api/internal/tasks*`，见环境变量） |
 | `gateway/nginx/novaic-cloud.conf` | auth_request 配置 |
+
+### 8.5 环境变量（与 `gateway/infra/deps.py` 一致）
+
+| 变量 | 含义 |
+|---|---|
+| `TRUST_GATEWAY_X_USER_ID` | 默认 `true`：无 Bearer 时可信任 nginx 注入的 `X-User-ID`。直连公网且要防伪造时设为 `false`，强制只认 JWT。 |
+| `INTERNAL_TASKS_SECRET` | 非空时：`POST/GET /api/internal/tasks*` 须带 `X-Internal-Secret` 与之相同。未设置时仅允许**回环**调用；跨主机必须配置。 |
+| `DEV_MODE` | 未授权时的调试日志开关，不改变生产鉴权主逻辑。 |
 
 ---
 
@@ -540,6 +548,12 @@ Gateway 3 个触发点：`update_settings`、`set_default_model`、`set_agent_mo
 
 Gateway `_dispatch_request` 直接调进程内函数，零 HTTP 中转。
 
+### 10.6 App WebSocket（`/api/app/ws`）认证与设备分组
+
+- **身份**：连接必须带 **`Authorization: Bearer <access_token>`**，`user_id` **仅**来自 JWT 的 `sub`。**不再**允许仅凭 `X-User-ID` 连接（防冒充）。若同时带 `X-User-ID`，必须与 `sub` 一致，否则 **4003** 关闭。
+- **设备分组**：`GET /api/devices/grouped` 仍可用；桌面客户端优先 **`devices.grouped` entity action**（经 AppBridge WS），减轻 Nginx `api_limit`；**WS 瞬断**时 `api.ts` 回退 **HTTP**（仅此路径，与 `gateway_ws_request` 注释中的「一般不回退」并存）。
+- **实现**：`compute_grouped_devices` 使用 `DeviceRegistry.get_user_devices`；与 `grouped_action` 共用逻辑。
+
 ---
 
 ## 十一、前端架构与关键文件
@@ -557,6 +571,9 @@ Gateway `_dispatch_request` 直接调进程内函数，零 HTTP 中转。
 **DB 层**（Entangled 为单一事实来源）：
 - **所有 IndexedDB (messageRepo/logRepo) 已移除**，改用 Entangled Stream Store（由 Rust SQLite 缓存 + Server Push 同步）。
 - 数据流向：Subscribe → Server sync → Rust SQLite cache → `entities_changed` 事件 → React UI 重新渲染。
+- **`entities_changed` 载荷**：Rust（`Entangled/packages/client-rust/src/push.rs`）在 `EntityChanged` 中携带 **`params`**（与订阅 key 一致），供 `@entangled/react` 的 `syncListener` 按带参 `queryKey` 失效，避免只按实体名全量 invalidate。
+- **订阅 refcount**：`subscriptionSchema.acquireSubscribe` 在首次 `subscribe` 成功后再记 1；AppBridge 重连时用 **wire-only** `subscribe`（`entangledBootstrap`）避免 eager 双计数。
+- **聊天主面板**：`ChatPanel` 唯一调用 `useMessages` / `useLogs`，`MessageList`、`ExecutionLog`、`MainAgentLogPreview`、`SubagentList` 等通过 **props** 注入，避免同一 agent **重复订阅** stream。
 
 **Business 层**：
 - `messagesStore` / `logsStore` (实体数据)，`syncService`（WS + delta sync）、`agentService`（CRUD + VM setup）、`modelService`（模型配置）
@@ -579,7 +596,9 @@ Gateway `_dispatch_request` 直接调进程内函数，零 HTTP 中转。
 | 改操控台 | `DeviceConsole.tsx`、`ConsoleToolbar.tsx`、`useRemoteInput.ts` |
 | 改浮窗 | `DeviceFloatingPanel.tsx` → FLOATING_PANEL_LAYOUT |
 | 改模型选择 | `SettingsModal.tsx` → AgentToolsTab |
-| 改消息发送 | `ChatInput.tsx`、`messageService.ts` |
+| 改消息发送 | `ChatInput.tsx`、Entangled `messagesStore` / `useMessages` |
+| 改执行日志 UI | `ExecutionLog.tsx`、`LogCapsule.tsx`（与 `ChatPanel` 共享 `useLogs` 上下文） |
+| Gateway HTTP 辅助与类型 | `src/services/api.ts`（数据写操作优先 `entangledMethod`，勿在此新增 Agent CRUD） |
 | 改主布局 | `LayoutContainer.tsx`、`PrimaryNav.tsx`、`App.tsx` |
 | 改 Gateway 配置 | `novaic-gateway/gateway/api/internal/config.py` |
 | 改 VM 准备 | `gateway/api/vm.py`、`vmcontrol/src/api/routes/vm_prep.rs` |
@@ -738,6 +757,19 @@ macOS：`~/Library/Application Support/com.novaic.app`
 | LAYOUT_CONFIG | LAYOUT_THRESHOLD(1024), DRAWER_WIDTH(304) |
 | POLL_CONFIG | GATEWAY_HEALTH_INTERVAL |
 
+### 14.3 Gateway 进程环境（鉴权 / 内部 API）
+
+与 **`gateway/infra/deps.py`** 对齐，生产环境在 `jwt_secret.env` 或 systemd `Environment=` 中配置：
+
+- `TRUST_GATEWAY_X_USER_ID`、`INTERNAL_TASKS_SECRET`（见 **§8.5**）。
+- 内部任务 API 跨 Docker/局域网调用时：**必须**设置 `INTERNAL_TASKS_SECRET`，客户端带 `X-Internal-Secret`。
+
+**本地自测（无需 pytest）**：
+
+```bash
+cd novaic-gateway && PYTHONPATH=. python -m unittest tests.test_deps_internal_tasks -v
+```
+
 ---
 
 ## 十五、常见问题排障大全
@@ -776,6 +808,8 @@ macOS：`~/Library/Application Support/com.novaic.app`
 ---
 
 ## 十六、技术债与待办
+
+**近期已落地（审计收尾，2026-03）**：Gateway `list`/`list_all` WS 上限；`agent-binding` notify 使用 `agent_id`；删除 agent 清空 `currentAgentId`；`EntityStore._notify` 失败打 `logger.exception`；`syncService` 重连次数用尽后停止自动重连。
 
 - [ ] **iOS 键盘输入框适配**：`--keyboard-height` 注入已实现，需真机验证
 - [ ] **服务端数据自动清理**：runtime 完成时自动清空 context；queue 定期清理；logrotate
