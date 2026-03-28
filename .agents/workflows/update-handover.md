@@ -61,11 +61,44 @@ git log --oneline -10 2>/dev/null || echo "shallow clone"
 - 删除超过 2 周的已完成 TODO
 - 不删除没受影响的章节
 
-### 5. commit 并 push
+### 5. 先 commit 有变更的子 repo
+
+**必须先提交子 repo，再提交主 repo**（否则主 repo 的 submodule 指针无处指向）。
+
+检查哪些子 repo 有未提交变更：
+
+// turbo
+```bash
+cd /Users/wangchaoqun/new-build-novaic
+git submodule foreach 'git status --short | grep -q "." && echo "$name has changes" || true'
+```
+
+对每个有变更的子 repo 依次 commit + push：
+
+```bash
+# 示例（按实际变更的子 repo 操作）
+cd /Users/wangchaoqun/new-build-novaic/novaic-gateway
+git add -A
+git commit -m "chore: [描述本次变更]"
+git push
+
+cd /Users/wangchaoqun/new-build-novaic/Entangled
+git add -A
+git commit -m "chore: [描述本次变更]"
+git push
+
+cd /Users/wangchaoqun/new-build-novaic/novaic-app
+git add -A
+git commit -m "chore: [描述本次变更]"
+git push
+```
+
+### 6. 最后 commit 主 repo（含 HANDOVER.md + submodule 指针更新）
 
 ```bash
 cd /Users/wangchaoqun/new-build-novaic
 git add HANDOVER.md
+git add novaic-gateway Entangled novaic-app  # 更新 submodule 指针（只加有变更的）
 git commit -m "docs: update HANDOVER.md — [本次对话的一句话总结]"
 git push
 ```
@@ -75,3 +108,4 @@ git push
 - HANDOVER.md 是给 **下一次对话的 AI** 看的
 - 如果本次对话中已经多次更新过 HANDOVER.md，只需补充遗漏的部分
 - commit message 中写清楚本次对话做了什么（Session summary）
+- **子 repo 必须先 push，主 repo 后 push**，顺序不能错

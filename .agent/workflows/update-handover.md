@@ -61,51 +61,51 @@ git log --oneline -10 2>/dev/null || echo "shallow clone"
 - 删除超过 2 周的已完成 TODO
 - 不删除没受影响的章节
 
-### 5. 提交所有子仓库和主仓库到 GitHub
+### 5. 先 commit 有变更的子 repo
 
-先提交所有有变更的子仓库（submodule），再提交主仓库。一条命令完成全部操作。
+**必须先提交子 repo，再提交主 repo**（否则主 repo 的 submodule 指针无处指向）。
 
-// turbo-all
+检查哪些子 repo 有未提交变更：
 
-**5a. 检查哪些子仓库有变更：**
-
+// turbo
 ```bash
 cd /Users/wangchaoqun/new-build-novaic
-git submodule foreach --quiet 'if [ -n "$(git status --porcelain)" ]; then echo "$sm_path"; fi'
+git submodule foreach 'git status --short | grep -q "." && echo "$name has changes" || true'
 ```
 
-**5b. 提交所有有变更的子仓库（每个子仓库执行 add + commit + push）：**
+对每个有变更的子 repo 依次 commit + push：
 
 ```bash
-cd /Users/wangchaoqun/new-build-novaic
-SUMMARY="本次对话的一句话总结"
-git submodule foreach --quiet '
-  if [ -n "$(git status --porcelain)" ]; then
-    echo "▸ 提交子仓库: $sm_path"
-    git add -A
-    git commit -m "chore: '"$SUMMARY"'"
-    git push
-  fi
-'
-```
-
-> ⚠️ **注意**：`$SUMMARY` 需要替换为本次对话的实际一句话总结，不能用占位符。
-
-**5c. 提交主仓库（包含 submodule 指针更新 + HANDOVER.md）：**
-
-```bash
-cd /Users/wangchaoqun/new-build-novaic
+# 示例（按实际变更的子 repo 操作）
+cd /Users/wangchaoqun/new-build-novaic/novaic-gateway
 git add -A
-git commit -m "docs: update HANDOVER.md — $SUMMARY"
+git commit -m "chore: [描述本次变更]"
+git push
+
+cd /Users/wangchaoqun/new-build-novaic/Entangled
+git add -A
+git commit -m "chore: [描述本次变更]"
+git push
+
+cd /Users/wangchaoqun/new-build-novaic/novaic-app
+git add -A
+git commit -m "chore: [描述本次变更]"
 git push
 ```
 
-> 如果子仓库有新 commit，主仓库的 `git add -A` 会自动包含 submodule 指针变更。
+### 6. 最后 commit 主 repo（含 HANDOVER.md + submodule 指针更新）
+
+```bash
+cd /Users/wangchaoqun/new-build-novaic
+git add HANDOVER.md
+git add novaic-gateway Entangled novaic-app  # 更新 submodule 指针（只加有变更的）
+git commit -m "docs: update HANDOVER.md — [本次对话的一句话总结]"
+git push
+```
 
 ## 注意事项
 
 - HANDOVER.md 是给 **下一次对话的 AI** 看的
 - 如果本次对话中已经多次更新过 HANDOVER.md，只需补充遗漏的部分
 - commit message 中写清楚本次对话做了什么（Session summary）
-- **必须先提交子仓库再提交主仓库**，否则主仓库会引用本地才有的 submodule commit
-- 如果某个子仓库 push 失败（权限/网络），记录失败信息并继续处理其他仓库
+- **子 repo 必须先 push，主 repo 后 push**，顺序不能错
