@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档（2026 重构版）
 
-> 最后更新：2026-03-28 **Entangled 单 Store 架构重构完成**：彻底删除 bridge closures 层与第二个 EntangledStore，NovAIC `EntityStore` 直接满足 Entangled 协议（新增 `sync_type` property、`sync_limit`、`op_log_size`、`relations`、`get_all_defs()`），subscription_cascade 升级为**纯服务端**控制，所有 WS handler 统一使用同一个 store。`entangled_bridge.py` 从 269 行缩减到 160 行，仅做 SyncRegistry 初始化 + cascade relations 构建 + notifier 注册三件事。
+> 最后更新：2026-03-28 **Entangled 单 Store 架构重构完成**：彻底删除 bridge closures 层、旧的 `_dispatch_entity_crud` 与第二个 EntangledStore 空壳，NovAIC `EntityStore` 完全对接 Entangled 协议（支持鸭子类型分页 `list_stream`/`exists_before`，新增 `get_schema()` 等方法直调）。重构消除了中间层 `gateway.entity.notifier` 负担，客户端在 WS 握手时热更新 `capabilities` schema，前端 `toSnakeParams` 等工具流归一化。
 > 本文档由原始近 3000 行变更日志按功能模块重新组织，完整保留所有有价值的技术细节、文件速查、排障指南与架构决策。
 
 ---
@@ -586,6 +586,11 @@ handle_unsubscribe(client_id, msg, store=store)  # unsubscribe
 ```
 
 **subscription_cascade 服务端化**：客户端仅发 `subscribe A`，`handle_subscribe` 在服务端读 `store.get_def(A).subscription_cascade` 自动展开，Push 所有 cascade 实体的初始 sync。非 React 宿主（Rust / 其他）无需感知级联逻辑。
+
+**最后一公里：能力协商与去除中间层**：
+- **鸭子类型**：`ws_handler` 能够 duck-typing 识别 `store` 的 `exists_before()` / `list_stream()`，免除了手动注入 wrapper。
+- **Schema 热推送**：WS 连接打通时服务端计算实体 `capabilities`（`listStream`, `upsert`等）下发，取代之前的硬编码；
+- **清理与合并**：消除了 NovAIC 重复的 `_dispatch_entity_crud` (~144行)，所有 mutation 操作直接流向 Entangled；抽离公共前端工具 `toSnakeParams` 到 `utils.ts`；省略 `gateway.entity.notifier` 代理层，直接调用 `entangled.server.notifier` 减阻。
 
 ---
 
