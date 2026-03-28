@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档（2026 重构版）
 
-> 最后更新：2026-03-27（晚）**AppBridge `/api/app/ws` 断连根因已定位并修复**：Gateway `EntityStore.exists_before` 使用 `ref["rowid"]` 在部分 SQLite→dict 路径下触发 **`KeyError: 'rowid'`**，`subscribe` 时崩溃 → 客户端见 **RST / Connection reset without closing handshake**。修复：`SELECT … AS _cf, rowid AS _rid` + 使用 `_cf`/`_rid`（`list_stream` 游标同理）。服务端排查：`grep '\[AppWS\]' /opt/novaic/data/logs/gateway-$(date +%Y%m%d).log`。另：Rust **`app_bridge`** 增强日志（`conn_seq`、`ConnectionEnd`、biased `select!`、协议层 **Ping→Pong**）、`gateway_ws_request` 拒绝时 **`app_bridge_diag`**；Entangled React **`syncListener` / `client`** 重连与 Strict Mode；**`devices.grouped` 仅走 Entangled/AppBridge，无 HTTP 回退**。
+> 最后更新：2026-03-28 **Entangled 单 Store 架构重构完成**：彻底删除 bridge closures 层与第二个 EntangledStore，NovAIC `EntityStore` 直接满足 Entangled 协议（新增 `sync_type` property、`sync_limit`、`op_log_size`、`relations`、`get_all_defs()`），subscription_cascade 升级为**纯服务端**控制，所有 WS handler 统一使用同一个 store。`entangled_bridge.py` 从 269 行缩减到 160 行，仅做 SyncRegistry 初始化 + cascade relations 构建 + notifier 注册三件事。
 > 本文档由原始近 3000 行变更日志按功能模块重新组织，完整保留所有有价值的技术细节、文件速查、排障指南与架构决策。
 
 ---
@@ -559,7 +559,36 @@ Gateway `_dispatch_request` 直接调进程内函数，零 HTTP 中转。
 - **设备分组**：`GET /api/devices/grouped` 仍可用（浏览器/其他客户端）。**桌面 Tauri 客户端**：**`devices.grouped` 仅通过 Entangled `entangledMethod` / AppBridge WS**，**不设 HTTP 回退**（与「数据面统一走 AppBridge」一致；断连时 UI 应等待重连而非静默换通道）。
 - **实现**：`compute_grouped_devices` 使用 `DeviceRegistry.get_user_devices`；与 `grouped_action` 共用逻辑。
 
+### 10.7 Entangled 单 Store 架构（2026-03-28 重构）
+
+**核心改动**：NovAIC `EntityStore` 直接作为 Entangled 的 store，消除了旧的双层结构（bridge closures + 第二个 EntangledStore 空壳）。
+
+**`gateway/entity/store.py` 变更**：`EntityDef` 新增字段：
+```python
+sync_type: property  # 自动推导：STREAM → "stream"，其他 → "list"
+sync_limit: int      # stream head_n 窗口（bridge init 时自动设为 50）
+op_log_size: int     # 每个 (entity, params) 的 op-log 最大条数（默认 1000）
+relations: List      # EntityRelation 级联关系（bridge 从 parent tuples 自动构建）
+```
+`EntityStore` 新增 `get_all_defs()` 方法（Entangled notifier `set_store()` 需要）。
+
+**`gateway/entity/entangled_bridge.py` 新职责（仅 3 件事）**：
+1. `SyncRegistry` 初始化 + 版本从 DB hydrate + 每次 mutation 持久化
+2. `_build_relations()`：扫描所有 `EntityDef.parent` 元组 → 自动生成 `EntityRelation` 写入 `parent_def.relations`
+3. `set_entangled_store(gw_store)`：将 NovAIC store 注册给 Entangled notifier
+
+**`gateway/api/app_client.py` 接入**：三个 handler 统一使用 `get_entity_store()`：
+```python
+store = get_entity_store()
+await handle_subscribe(client, store, ...)    # subscribe（含 cascade）
+await handle_load_more(client, store, ...)   # load_more（含 cursor hasMore）
+handle_unsubscribe(client_id, msg, store=store)  # unsubscribe
+```
+
+**subscription_cascade 服务端化**：客户端仅发 `subscribe A`，`handle_subscribe` 在服务端读 `store.get_def(A).subscription_cascade` 自动展开，Push 所有 cascade 实体的初始 sync。非 React 宿主（Rust / 其他）无需感知级联逻辑。
+
 ---
+
 
 ## 十一、前端架构与关键文件
 
@@ -820,7 +849,7 @@ cd novaic-gateway && PYTHONPATH=. python -m unittest tests.test_deps_internal_ta
 - API 稳定与性能：Gateway `list`/`list_all` WS 上限；`agent-binding` notify 使用 `agent_id`；删除 agent 清空 `currentAgentId`；`EntityStore._notify` 失败打 `logger.exception`；`syncService` 重连次数用尽后停止自动重连。
 - Entangled **`current_version` 持久化**（2026-03-27）：表 `entangled_sync_versions`，`entangled_bridge` hydrate + 每次 mutation upsert；`sync.get_ops_since` 空 op_log 且客户端落后 → gap；op-log 本体仍内存。
 - [ ] **Entangled: Rust Cache `Mutex` 串行**：需要改用 `RwLock` 或 `r2d2` 提升高并发读写性能。
-- [ ] **Entangled: subscription_cascade 服务端化**：级联订阅逻辑目前在 React 客户端实现，非 React 宿主需要重写，需将服务端 subscribe 自动展开。
+- [x] **Entangled: subscription_cascade 服务端化**（2026-03-28 完成）：`handle_subscribe` 现在在服务端自动展开，读 `EntityDef.subscription_cascade`，非 React 宿主同样受益。
 - [ ] **Entangled: invalidate 恢复逻辑在 React 层**：当收到 invalidate 时，目前的自动恢复严重依赖 React hook，需实现 Rust client 内部自治恢复。
 - [ ] **iOS 键盘输入框适配**：`--keyboard-height` 注入已实现，需真机验证
 - [ ] **服务端数据自动清理**：runtime 完成时自动清空 context；queue 定期清理；logrotate
