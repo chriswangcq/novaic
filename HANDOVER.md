@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档（2026 重构版）
 
-> 最后更新：2026-03-27（Entangled：`current_version` 持久化 + client 桥接重试与 `app_bridge`/`api.ts` 错误串对齐、去除不可达代码；`index.html` 省略 WebKit 忽略的 `interactive-widget`）
+> 最后更新：2026-03-27（晚）**AppBridge `/api/app/ws` 断连根因已定位并修复**：Gateway `EntityStore.exists_before` 使用 `ref["rowid"]` 在部分 SQLite→dict 路径下触发 **`KeyError: 'rowid'`**，`subscribe` 时崩溃 → 客户端见 **RST / Connection reset without closing handshake**。修复：`SELECT … AS _cf, rowid AS _rid` + 使用 `_cf`/`_rid`（`list_stream` 游标同理）。服务端排查：`grep '\[AppWS\]' /opt/novaic/data/logs/gateway-$(date +%Y%m%d).log`。另：Rust **`app_bridge`** 增强日志（`conn_seq`、`ConnectionEnd`、biased `select!`、协议层 **Ping→Pong**）、`gateway_ws_request` 拒绝时 **`app_bridge_diag`**；Entangled React **`syncListener` / `client`** 重连与 Strict Mode；**`devices.grouped` 仅走 Entangled/AppBridge，无 HTTP 回退**。
 > 本文档由原始近 3000 行变更日志按功能模块重新组织，完整保留所有有价值的技术细节、文件速查、排障指南与架构决策。
 
 ---
@@ -258,7 +258,7 @@ npm run tauri:build:android   # 使用 custom-protocol（与 iOS 不同）
 | 数据目录 | `/opt/novaic/data/` |
 | 数据库 | `/opt/novaic/data/gateway.db` (SQLite) |
 | 依赖 | `/opt/novaic/jwt_secret.env` 含 `JWT_SECRET`、`TURN_SECRET`、`FRONTEND_CDN_URL` |
-| 日志 | `tail -f /opt/novaic/data/logs/gateway-$(date +%Y%m%d).log` |
+| 日志 | `tail -f /opt/novaic/data/logs/gateway-$(date +%Y%m%d).log`；App WS 排障：`grep -E '\[AppWS\]|Message loop crashed' ...` |
 
 **Gateway 启动参数**：
 ```
@@ -535,8 +535,12 @@ Gateway 3 个触发点：`update_settings`、`set_default_model`、`set_agent_mo
 ### 10.4 WS 稳定性修复
 
 1. **Ping/Pong 格式修正**：Rust 改为发 `{"type":"ping"}`（非协议层 Ping 帧），Gateway 正确重置 90s 超时
-2. **推送线程静默异常**：`create_task()` 在非 async 上下文抛 RuntimeError 被静默吃掉 → 恢复 `loop.create_task`，升级为 WARNING
-3. **USER_MESSAGE 去重**：前端对 `USER_MESSAGE` 调用 `onAgentReply`；`messageRepo.findTempByContent()` 按文本去重，防乐观更新与推回重复
+2. **协议层 WebSocket Ping**：Tauri **`app_bridge`** 对 **`Message::Ping`** 回复 **`Message::Pong`**（与 Uvicorn `ws_ping_interval` / 代理保活对齐）；读循环 **`select!` 偏置**先处理入站，避免心跳饿死读
+3. **推送线程静默异常**：`create_task()` 在非 async 上下文抛 RuntimeError 被静默吃掉 → 恢复 `loop.create_task`，升级为 WARNING
+4. **USER_MESSAGE 去重**：前端对 `USER_MESSAGE` 调用 `onAgentReply`；`messageRepo.findTempByContent()` 按文本去重，防乐观更新与推回重复
+5. **Gateway `subscribe` 崩溃 → 客户端 RST**：若见 **`WebSocket protocol error: Connection reset without closing handshake`**，先查 Gateway 日志 **`[AppWS] Message loop crashed`** 与 Python traceback；已修复一类根因：**`gateway/entity/store.py` `exists_before` / `list_stream` 游标** 对 `sqlite3.Row`→`dict` 的 **`rowid` 键不稳定**（含列名冲突可能）→ **`KeyError: 'rowid'`**。修复：别名 **`_cf` / `_rid`**。
+6. **Rust 侧可观测性**：`novaic-app/src-tauri/src/core/app_bridge.rs` 记录 **`conn_seq`**、连接结束原因；`commands/gateway.rs` 中 **`gateway_ws_request`** 拒绝时打 **`target: app_bridge_diag`**（`connected` / `sink_installed`），与前端 **`WS not connected (action=entity)`** 对照时间戳
+7. **Entangled React**：`Entangled/packages/react` — `syncListener` / `client` 重连、卸载 **`stopSyncListener`**、generation 与 Strict Mode 双挂载
 
 ### 10.5 App→Gateway WS Request/Response
 
@@ -552,7 +556,7 @@ Gateway `_dispatch_request` 直接调进程内函数，零 HTTP 中转。
 ### 10.6 App WebSocket（`/api/app/ws`）认证与设备分组
 
 - **身份**：连接必须带 **`Authorization: Bearer <access_token>`**，`user_id` **仅**来自 JWT 的 `sub`。**不再**允许仅凭 `X-User-ID` 连接（防冒充）。若同时带 `X-User-ID`，必须与 `sub` 一致，否则 **4003** 关闭。
-- **设备分组**：`GET /api/devices/grouped` 仍可用；桌面客户端优先 **`devices.grouped` entity action**（经 AppBridge WS），减轻 Nginx `api_limit`；**WS 瞬断**时 `api.ts` 回退 **HTTP**（仅此路径，与 `gateway_ws_request` 注释中的「一般不回退」并存）。
+- **设备分组**：`GET /api/devices/grouped` 仍可用（浏览器/其他客户端）。**桌面 Tauri 客户端**：**`devices.grouped` 仅通过 Entangled `entangledMethod` / AppBridge WS**，**不设 HTTP 回退**（与「数据面统一走 AppBridge」一致；断连时 UI 应等待重连而非静默换通道）。
 - **实现**：`compute_grouped_devices` 使用 `DeviceRegistry.get_user_devices`；与 `grouped_action` 共用逻辑。
 
 ---
@@ -777,6 +781,7 @@ cd novaic-gateway && PYTHONPATH=. python -m unittest tests.test_deps_internal_ta
 
 | 问题 | 原因 | 解决 |
 |---|---|---|
+| **AppBridge 秒断 / `WS not connected (action=entity)`** | 多为 Gateway **`/api/app/ws` handler 异常退出**（客户端见 TCP RST）；曾见 **`exists_before` → `KeyError: 'rowid'`** | 已修复：`store.py` 游标查询 **`AS _cf, AS _rid`**；服务器 **`grep Message loop crashed gateway-*.log`**，对齐 **`[AppWS] accepted` / `handler exiting`** |
 | macOS SIGTRAP 崩溃 | enigo.key() 必须 main queue | 已修复：全换 CGEvent |
 | **Entangled WS 断连 (Message too long)** | head_n 未下发 LIMIT 导致 Gateway 查全量几十MB数据撑爆 WS 帧 | 已修复：在 Gateway 桥接及 Entangled server 透传 `limit` |
 | **UI 全面冻结 / Device tab 卡死** | `getCachedUser()` 返新对象 → useEffect 无限循环 | 提取 userId string 做依赖 |
@@ -811,7 +816,7 @@ cd novaic-gateway && PYTHONPATH=. python -m unittest tests.test_deps_internal_ta
 ## 十六、技术债与待办
 
 **近期已落地（审计收尾，2026-03）**：
-- Entangled 同步引擎重构：Gateway `store.py` 支持游标 `SELECT EXISTS()` 替换 N+1 翻页 hack；`ws_handler` 增加 1000 上限背压队列、30s Server 心跳；`load_more` 纳入独立协议；`cache.rs` 增加 `last_accessed` TTL 垃圾回收；React hook 解除 `JSON.stringify` 带来的依赖开销。
+- Entangled 同步引擎重构：Gateway `store.py` 支持游标 `SELECT EXISTS()` 替换 N+1 翻页 hack；**`exists_before` / `list_stream` before 游标** 使用 **`_cf`/`_rid` 别名** 避免 `rowid` 键缺失导致 **`subscribe` 崩溃断连**；`ws_handler` 增加 1000 上限背压队列、30s Server 心跳；`load_more` 纳入独立协议；`cache.rs` 增加 `last_accessed` TTL 垃圾回收；React hook 解除 `JSON.stringify` 带来的依赖开销。
 - API 稳定与性能：Gateway `list`/`list_all` WS 上限；`agent-binding` notify 使用 `agent_id`；删除 agent 清空 `currentAgentId`；`EntityStore._notify` 失败打 `logger.exception`；`syncService` 重连次数用尽后停止自动重连。
 - Entangled **`current_version` 持久化**（2026-03-27）：表 `entangled_sync_versions`，`entangled_bridge` hydrate + 每次 mutation upsert；`sync.get_ops_since` 空 op_log 且客户端落后 → gap；op-log 本体仍内存。
 - [ ] **Entangled: Rust Cache `Mutex` 串行**：需要改用 `RwLock` 或 `r2d2` 提升高并发读写性能。
