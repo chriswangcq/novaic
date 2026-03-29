@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档（2026 重构版）
 
-> 最后更新：2026-03-29 **Entangled 架构大一统完成（Optimistic 引擎 & Store ABC）**：彻底修复长久以来的代码碎片问题。前端封装出 `useOptimistic.ts`，让 `useList` (CRUD) 和 `useStream` (Append) 共享一套带 TTL 的 pending 引擎，并同时接入 `entities_changed` invalidate；后端通过定义严格的 `EntityStoreProtocol(ABC)`，让 base Store 与 NovAIC SQL Store 无缝融合，消除冗余 CRUD 实现，从底层约束跨库 Store 的接口安全。重构消除了大量冗余代码，并提高了组件健壮性。
+> 最后更新：2026-03-29 **Entangled React 层彻底极简与 Rust 编排化**：完全删除了大量死代码 `@entangled/react` 包（~850行）。通过在 Rust 端新增 `entangled_method_optimistic`，将 Request ID 生成、写 Pending Op、触发 `entities_changed` 刷新、调用 Server、清理本地缓存和回滚的完整乐观更新生命周期收敛到 Tauri IPC 另一侧。React 层 `hooks.tsx` 退化为薄薄的声明式钩子，代码量锐减。
 > 本文档由原始近 3000 行变更日志按功能模块重新组织，完整保留所有有价值的技术细节、文件速查、排障指南与架构决策。
 
 ---
@@ -587,11 +587,10 @@ handle_unsubscribe(client_id, msg, store=store)  # unsubscribe
 
 **subscription_cascade 服务端化**：客户端仅发 `subscribe A`，`handle_subscribe` 在服务端读 `store.get_def(A).subscription_cascade` 自动展开，Push 所有 cascade 实体的初始 sync。非 React 宿主（Rust / 其他）无需感知级联逻辑。
 
-**前端引擎统一**：
-- 新增 **`useOptimistic.ts`** 提供 `useOptimisticOps()` hook。
-- `useList` 和 `useStream` 丢弃了各自的 ref/cleanup 碎尸逻辑，全部路由到新引擎。
-- 引擎支持两种模式：`confirmMode: 'requestId'` (用于 List 强验证) 和 `confirmMode: 'serverIdDedup'` (用于 Stream ID去重)。
-- `pendingOps` 文件降级为纯 re-export 兼容层（包含 `@deprecated` 标识）。
+**前端极其精简的 React Glue**：
+- 废弃并彻底删除了 850 行的 `@entangled/react` 历史死代码包。
+- 移除前端的复杂请求编排。Rust 层新增 `entangled_method_optimistic` 闭环包揽生成 ID、写入 Pending 缓存、推送事件刷新 UI、多轮 Server 重试及失败拦截。前端组件只剩下简简单单的 `invoke()`。
+- `hooks.tsx` 大幅减负并重构成精简的工厂函数（`createListStore` 等）主要为了满足 DRY，其核心已不再是厚重的同步状态机层。
 
 **最后一公里：能力协商与去除中间层**：
 - **协议基类**：`entangled/server/store.py` 引入 `EntityStoreProtocol(ABC)` 提取出 `list, get, create, update, delete` 抽象方法，NovAIC Store 直接继承，由 base fallback 到 `_sql_...` 的内部调用，接口边界变得极其清晰。
@@ -864,9 +863,9 @@ cd novaic-gateway && PYTHONPATH=. python -m unittest tests.test_deps_internal_ta
   - **EntityDef 与 EntityStore 大一统（2026-03-29 完成）**：NovAIC `gateway/entity/store.py` 完全继承 `entangled/server/store.py` (新增 ABC Protocol)，移除了大量冗余端点实现。彻底解决了双边 Schema 和 CRUD 实现不一致的问题，将通知流入口收敛到了 BaseStore。
   - `subscription_cascade` 服务端化：`handle_subscribe` 现在在服务端自动展开级联逻辑。
   - `current_version` 持久化：表 `entangled_sync_versions`，`entangled_bridge` 每次 mutation 时 upsert。
-  - **前端乐观更新引擎统一（2026-03-29 完成）**：抽离 `useOptimistic.ts`，修复了 `useStream` 缺乏清理机制、没有 `entities_changed` 监听的缺陷，与 `useList` 共享核心合并逻辑。
+  - **前端客户端极致瘦身与 Rust 编排化（2026-03-29 完成）**：彻底删除死代码 `@entangled/react` SDK。废除了前端复杂的编排逻辑，新增 Rust 级命令 `entangled_method_optimistic` 闭环处理 Request ID 生成、并发控制和本地回滚。React `hooks.tsx` 浓缩为 ~250 行精简工厂函数。
 - API 稳定与性能：Gateway `list`/`list_all` WS 上限；`agent-binding` notify 使用 `agent_id`。
-- [ ] **Entangled: invalidate 恢复逻辑在 React 层**：当收到 invalidate 时，目前的自动恢复严重依赖 React hook，需实现 Rust client 内部自治恢复。
+- [x] **Entangled: invalidate 自愈已移入 Rust**：`app_bridge.rs` 检测到 `invalidated` action 时自动发送 `subscribe(version=null)`，不再依赖 React hook。`cache.rs` 的 invalidate op 同时清空 stale items。
 - [ ] **iOS 键盘输入框适配**：`--keyboard-height` 注入已实现，需真机验证
 - [ ] **服务端数据自动清理**：runtime 完成时自动清空 context；queue 定期清理；logrotate
 - [ ] **Watchdog v2：Per-Agent 轮询**：按 Agent 分组批量处理，防重复 Runtime
