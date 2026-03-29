@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档（2026 重构版）
 
-> 最后更新：2026-03-28 **Entangled 单 Store 架构重构完成**：彻底删除 bridge closures 层、旧的 `_dispatch_entity_crud` 与第二个 EntangledStore 空壳，NovAIC `EntityStore` 完全对接 Entangled 协议（支持鸭子类型分页 `list_stream`/`exists_before`，新增 `get_schema()` 等方法直调）。重构消除了中间层 `gateway.entity.notifier` 负担，客户端在 WS 握手时热更新 `capabilities` schema，前端 `toSnakeParams` 等工具流归一化。
+> 最后更新：2026-03-29 **Entangled 架构大一统完成（Optimistic 引擎 & Store ABC）**：彻底修复长久以来的代码碎片问题。前端封装出 `useOptimistic.ts`，让 `useList` (CRUD) 和 `useStream` (Append) 共享一套带 TTL 的 pending 引擎，并同时接入 `entities_changed` invalidate；后端通过定义严格的 `EntityStoreProtocol(ABC)`，让 base Store 与 NovAIC SQL Store 无缝融合，消除冗余 CRUD 实现，从底层约束跨库 Store 的接口安全。重构消除了大量冗余代码，并提高了组件健壮性。
 > 本文档由原始近 3000 行变更日志按功能模块重新组织，完整保留所有有价值的技术细节、文件速查、排障指南与架构决策。
 
 ---
@@ -559,9 +559,9 @@ Gateway `_dispatch_request` 直接调进程内函数，零 HTTP 中转。
 - **设备分组**：`GET /api/devices/grouped` 仍可用（浏览器/其他客户端）。**桌面 Tauri 客户端**：**`devices.grouped` 仅通过 Entangled `entangledMethod` / AppBridge WS**，**不设 HTTP 回退**（与「数据面统一走 AppBridge」一致；断连时 UI 应等待重连而非静默换通道）。
 - **实现**：`compute_grouped_devices` 使用 `DeviceRegistry.get_user_devices`；与 `grouped_action` 共用逻辑。
 
-### 10.7 Entangled 单 Store 架构（2026-03-28 重构）
+### 10.7 Entangled 单 Store 架构与前端引擎统一（2026-03 重构）
 
-**核心改动**：NovAIC `EntityStore` 直接作为 Entangled 的 store，消除了旧的双层结构（bridge closures + 第二个 EntangledStore 空壳）。
+**后端改动**：NovAIC `EntityStore` 直接作为 Entangled 的 store，消除了旧的双层结构（bridge closures + 第二个 EntangledStore 空壳）。新增 `EntityStoreProtocol(ABC)` 规范接口。
 
 **`gateway/entity/store.py` 变更**：`EntityDef` 新增字段：
 ```python
@@ -587,10 +587,17 @@ handle_unsubscribe(client_id, msg, store=store)  # unsubscribe
 
 **subscription_cascade 服务端化**：客户端仅发 `subscribe A`，`handle_subscribe` 在服务端读 `store.get_def(A).subscription_cascade` 自动展开，Push 所有 cascade 实体的初始 sync。非 React 宿主（Rust / 其他）无需感知级联逻辑。
 
+**前端引擎统一**：
+- 新增 **`useOptimistic.ts`** 提供 `useOptimisticOps()` hook。
+- `useList` 和 `useStream` 丢弃了各自的 ref/cleanup 碎尸逻辑，全部路由到新引擎。
+- 引擎支持两种模式：`confirmMode: 'requestId'` (用于 List 强验证) 和 `confirmMode: 'serverIdDedup'` (用于 Stream ID去重)。
+- `pendingOps` 文件降级为纯 re-export 兼容层（包含 `@deprecated` 标识）。
+
 **最后一公里：能力协商与去除中间层**：
+- **协议基类**：`entangled/server/store.py` 引入 `EntityStoreProtocol(ABC)` 提取出 `list, get, create, update, delete` 抽象方法，NovAIC Store 直接继承，由 base fallback 到 `_sql_...` 的内部调用，接口边界变得极其清晰。
 - **鸭子类型**：`ws_handler` 能够 duck-typing 识别 `store` 的 `exists_before()` / `list_stream()`，免除了手动注入 wrapper。
 - **Schema 热推送**：WS 连接打通时服务端计算实体 `capabilities`（`listStream`, `upsert`等）下发，取代之前的硬编码；
-- **清理与合并**：消除了 NovAIC 重复的 `_dispatch_entity_crud` (~144行)，所有 mutation 操作直接流向 Entangled；抽离公共前端工具 `toSnakeParams` 到 `utils.ts`；省略 `gateway.entity.notifier` 代理层，直接调用 `entangled.server.notifier` 减阻。
+- **清理与合并**：消除了 NovAIC 重复的 `_dispatch_entity_crud` (~144行)；抽离公共前端工具 `toSnakeParams` 到 `utils.ts`；省略 `gateway.entity.notifier` 代理层，直接调用 `entangled.server.notifier` 减阻。
 
 ---
 
@@ -850,11 +857,15 @@ cd novaic-gateway && PYTHONPATH=. python -m unittest tests.test_deps_internal_ta
 ## 十六、技术债与待办
 
 **近期已落地（审计收尾，2026-03）**：
-- Entangled 同步引擎重构：Gateway `store.py` 支持游标 `SELECT EXISTS()` 替换 N+1 翻页 hack；**`exists_before` / `list_stream` before 游标** 使用 **`_cf`/`_rid` 别名** 避免 `rowid` 键缺失导致 **`subscribe` 崩溃断连**；`ws_handler` 增加 1000 上限背压队列、30s Server 心跳；`load_more` 纳入独立协议；`cache.rs` 增加 `last_accessed` TTL 垃圾回收；React hook 解除 `JSON.stringify` 带来的依赖开销。
-- API 稳定与性能：Gateway `list`/`list_all` WS 上限；`agent-binding` notify 使用 `agent_id`；删除 agent 清空 `currentAgentId`；`EntityStore._notify` 失败打 `logger.exception`；`syncService` 重连次数用尽后停止自动重连。
-- Entangled **`current_version` 持久化**（2026-03-27）：表 `entangled_sync_versions`，`entangled_bridge` hydrate + 每次 mutation upsert；`sync.get_ops_since` 空 op_log 且客户端落后 → gap；op-log 本体仍内存。
-- [ ] **Entangled: Rust Cache `Mutex` 串行**：需要改用 `RwLock` 或 `r2d2` 提升高并发读写性能。
-- [x] **Entangled: subscription_cascade 服务端化**（2026-03-28 完成）：`handle_subscribe` 现在在服务端自动展开，读 `EntityDef.subscription_cascade`，非 React 宿主同样受益。
+- **Entangled 同步引擎重构**：
+  - Gateway `store.py` 支持游标 `SELECT EXISTS()` 替换 N+1 翻页 hack；使用 `_cf`/`_rid` 别名避免 `rowid` 键缺失导致 Subscribe 崩溃。
+  - `ws_handler` 增加 1000 上限背压队列、30s Server 心跳；`load_more` 纳入独立协议；`cache.rs` 增加 `last_accessed` TTL 垃圾回收。
+  - React hook 解除 `JSON.stringify` 带来的依赖开销。
+  - **EntityDef 与 EntityStore 大一统（2026-03-29 完成）**：NovAIC `gateway/entity/store.py` 完全继承 `entangled/server/store.py` (新增 ABC Protocol)，移除了大量冗余端点实现。彻底解决了双边 Schema 和 CRUD 实现不一致的问题，将通知流入口收敛到了 BaseStore。
+  - `subscription_cascade` 服务端化：`handle_subscribe` 现在在服务端自动展开级联逻辑。
+  - `current_version` 持久化：表 `entangled_sync_versions`，`entangled_bridge` 每次 mutation 时 upsert。
+  - **前端乐观更新引擎统一（2026-03-29 完成）**：抽离 `useOptimistic.ts`，修复了 `useStream` 缺乏清理机制、没有 `entities_changed` 监听的缺陷，与 `useList` 共享核心合并逻辑。
+- API 稳定与性能：Gateway `list`/`list_all` WS 上限；`agent-binding` notify 使用 `agent_id`。
 - [ ] **Entangled: invalidate 恢复逻辑在 React 层**：当收到 invalidate 时，目前的自动恢复严重依赖 React hook，需实现 Rust client 内部自治恢复。
 - [ ] **iOS 键盘输入框适配**：`--keyboard-height` 注入已实现，需真机验证
 - [ ] **服务端数据自动清理**：runtime 完成时自动清空 context；queue 定期清理；logrotate
