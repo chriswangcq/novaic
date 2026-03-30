@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档（2026 重构版）
 
-> 最后更新：2026-03-29 **Entangled React 层彻底极简与 Rust 编排化**：完全删除了大量死代码 `@entangled/react` 包（~850行）。通过在 Rust 端新增 `entangled_method_optimistic`，将 Request ID 生成、写 Pending Op、触发 `entities_changed` 刷新、调用 Server、清理本地缓存和回滚的完整乐观更新生命周期收敛到 Tauri IPC 另一侧。React 层 `hooks.tsx` 退化为薄薄的声明式钩子，代码量锐减。
+> 最后更新：2026-03-30 **Entangled Headless 架构 Path C 全量完成**：`nav_changed` Rust 命令驱动所有订阅生命周期（路由表覆盖全部实体），前端零 `entangled_subscribe/unsubscribe` 调用；`dispatch()` 统一意图总线取代所有 `useMutation`；`writePipeline.ts` 550行→52行（仅保留 `shallowDiff`）；App.tsx 三独立 navChanged effect 无冗余触发；vm-users 组件级 navChanged 自主管理。**React 现在只做三件事：读（hook）、写（dispatch）、告知路由（navChanged）。**
 > 本文档由原始近 3000 行变更日志按功能模块重新组织，完整保留所有有价值的技术细节、文件速查、排障指南与架构决策。
 
 ---
@@ -648,9 +648,39 @@ handle_unsubscribe(client_id, msg, store=store)  # unsubscribe
 | 改 Gateway 配置 | `novaic-gateway/gateway/api/internal/config.py` |
 | 改 VM 准备 | `gateway/api/vm.py`、`vmcontrol/src/api/routes/vm_prep.rs` |
 
+### 11.4 Entangled Headless 架构（Path C，2026-03-30 完成）
+
+**核心理念：React 是纯展示 + 意图分发层。Rust Entangled 引擎自主运转订阅/缓存/同步/重连。**
+
+**三个动词**：
+- **读**：`useList/useForm/useStream` → `staleTime=Infinity`，仅由 `entities_changed` 事件驱动刷新
+- **写**：`dispatch(intent)` → `entangled_method_optimistic`（CRUD）或 `entangled_method`（自定义 action）
+- **路由**：`navChanged(route, params)` → Rust `nav_changed` 命令 → 路由表 → 自主 subscribe/unsubscribe
+
+**路由表（`src-tauri/src/commands/nav.rs`）**：
+
+| 路由 | 订阅实体 |
+|------|----------|
+| `home` | agents, models, devices |
+| `conversation` | agents, models, devices, messages(agentId), execution-logs(agentId), agent-tools(agentId) |
+| `settings` | agents, models, devices, api-keys, skills |
+| `vm-context` | vm-users(deviceId)（组件级调用） |
+
+**App.tsx 三独立 Effect（无冗余）**：
+1. `[isInitialized]` → `navChanged('home')` 初始 eager 订阅
+2. `[isInitialized, currentAgentId]` → `navChanged('conversation', { agentId })`（settings 打开时跳过）
+3. `[isInitialized, settingsOpen]` → `navChanged('settings')` 或回退 conversation
+
+**关键文件**：
+- `src-tauri/src/commands/nav.rs` — 路由表 + `nav_changed` Tauri 命令
+- `src/data/entangled/dispatch.ts` — 统一意图总线（取代所有 useMutation）
+- `src/data/entangled/nav.ts` — TS 包装，含 `navChanged()` + `useNavChanged()`
+- `src/data/entangled/hooks.tsx` — 精简工厂函数，零订阅逻辑
+- `src/data/writePipeline.ts` — 已精简至 52 行（仅 `shallowDiff` 工具函数）
+- `src/components/hooks/useVmUsers.ts` — 组件级 navChanged('vm-context') 动态订阅
+
 ---
 
-## 十二、Agent Runtime 后端架构
 
 ### 12.1 后端服务组件
 
@@ -864,6 +894,7 @@ cd novaic-gateway && PYTHONPATH=. python -m unittest tests.test_deps_internal_ta
   - `subscription_cascade` 服务端化：`handle_subscribe` 现在在服务端自动展开级联逻辑。
   - `current_version` 持久化：表 `entangled_sync_versions`，`entangled_bridge` 每次 mutation 时 upsert。
   - **前端客户端极致瘦身与 Rust 编排化（2026-03-29 完成）**：彻底删除死代码 `@entangled/react` SDK。废除了前端复杂的编排逻辑，新增 Rust 级命令 `entangled_method_optimistic` 闭环处理 Request ID 生成、并发控制和本地回滚。React `hooks.tsx` 浓缩为 ~250 行精简工厂函数。
+  - **Headless 架构 Path C（2026-03-30 完成）**：`nav_changed` Rust 命令完全接管订阅生命周期。路由表覆盖所有实体（home/conversation/settings/vm-context）。`dispatch()` 统一意图总线。`writePipeline.ts` 550行→52行。React 零 subscribe/unsubscribe 调用。详见 §11.4。
 - API 稳定与性能：Gateway `list`/`list_all` WS 上限；`agent-binding` notify 使用 `agent_id`。
 - [x] **Entangled: invalidate 自愈已移入 Rust**：`app_bridge.rs` 检测到 `invalidated` action 时自动发送 `subscribe(version=null)`，不再依赖 React hook。`cache.rs` 的 invalidate op 同时清空 stale items。
 - [ ] **iOS 键盘输入框适配**：`--keyboard-height` 注入已实现，需真机验证
