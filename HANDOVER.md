@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档（2026 重构版）
 
-> 最后更新：2026-03-30 **Entangled Headless 架构 Path C 全量完成**：`nav_changed` Rust 命令驱动所有订阅生命周期（路由表覆盖全部实体），前端零 `entangled_subscribe/unsubscribe` 调用；`dispatch()` 统一意图总线取代所有 `useMutation`；`writePipeline.ts` 550行→52行（仅保留 `shallowDiff`）；App.tsx 三独立 navChanged effect 无冗余触发；vm-users 组件级 navChanged 自主管理。**React 现在只做三件事：读（hook）、写（dispatch）、告知路由（navChanged）。**
+> 最后更新：2026-03-30 **Slot-based NavState v2 + Schema Codegen + HTTP→Entangled 大迁移**：nav.rs 重构为 per-AppHandle managed state（NavState HashMap<slot, Vec<SubSpec>>），支持多窗口/多实例 slot-based 隔离与 nav_release_slot 自主释放；新增 `scripts/generate_entity_types.py` 从 Python EntityDef 自动生成 20 个 TS 接口（`--check` CI 模式检测 drift）；api-keys/settings/bootstrap 等 9 类 HTTP→entangledMethod 统一通道，api.ts 净减 150+ 行。modelService 完全切到 Entangled 缓存，删除 api.getConfig+prefsRepo 三层 fallback。
 > 本文档由原始近 3000 行变更日志按功能模块重新组织，完整保留所有有价值的技术细节、文件速查、排障指南与架构决策。
 
 ---
@@ -679,6 +679,67 @@ handle_unsubscribe(client_id, msg, store=store)  # unsubscribe
 - `src/data/writePipeline.ts` — 已精简至 52 行（仅 `shallowDiff` 工具函数）
 - `src/components/hooks/useVmUsers.ts` — 组件级 navChanged('vm-context') 动态订阅
 
+### 11.5 Slot-based NavState v2（2026-03-30）
+
+**问题**：Path C 的 nav_changed 使用全局 `PREV_NAV_SUBS` 静态变量，存在三个缺陷：
+1. 多窗口互相覆盖（同一 static 被两个 AppHandle 共享）
+2. 无法叠加订阅（conversation 路由覆盖 vm-context 的 vm-users）
+3. 多实例组件 refcount 混乱（多个 VmPanel 共用全局状态）
+
+**方案**：`NavState` 是 Tauri `manage()` 注入的 per-AppHandle 状态，内部结构 `HashMap<slot_name, Vec<SubSpec>>`。每个 slot 独立管理自己的订阅集，互不干扰。
+
+**API**：
+```typescript
+// 默认 slot="main"（兼容现有调用）
+navChanged('conversation', { agentId })
+
+// 组件级 slot（useNavChanged 自动 release on unmount）
+useNavChanged('vm-context', { deviceId }, [deviceId], { slot: `vm-${deviceId}` })
+
+// 手动释放
+navReleaseSlot(`vm-${deviceId}`)
+```
+
+**关键文件**：
+- `src-tauri/src/commands/nav.rs` — `NavState` managed state + `nav_release_slot` command
+- `src/data/entangled/nav.ts` — slot 参数支持 + `navReleaseSlot()` + `useNavChanged` 自动清理 hook
+
+### 11.6 Schema Codegen（2026-03-30）
+
+**问题**：Python `EntityDef`（defs.py）和 TS 接口手动同步，字段改名不感知 → 运行时 crash。
+
+**方案**：`scripts/generate_entity_types.py` 读取 `ALL_ENTITIES`，自动生成 `novaic-app/src/data/entities/__generated__.ts`（20 个实体接口 + checksum）。
+
+```bash
+python scripts/generate_entity_types.py          # 生成
+python scripts/generate_entity_types.py --check   # CI 校验 drift
+```
+
+### 11.7 HTTP→Entangled 通道统一（2026-03-30）
+
+| 操作 | Before | After |
+|------|--------|-------|
+| addApiKey / updateApiKey / deleteApiKey | `invoke('gateway_post/patch/delete')` | `entangledMethod('api-keys', 'create/update/delete')` |
+| updateSettings | `invoke('gateway_patch', '/api/config/settings')` | `entangledMethod('user-preferences', 'upsert')` |
+| getBootstrapFiles / saveBootstrapFiles | `invoke('gateway_get/post', '/api/agents/:id/bootstrap-files')` | `entangledMethod('agent-tools', 'get_bootstrap/save_bootstrap')` |
+| skills match / fork / getToolCategories | `api.matchSkillsForTask` / `api.forkSkill` / `api.getToolCategories` | `entangledMethod('skills', 'match/fork/get_tool_categories')` |
+| skills CRUD (create/update/delete) | `api.createSkill` / `api.updateSkill` / `api.deleteSkill` | `entangledMethod('skills', 'create/update/delete')` |
+| modelService.loadConfig | `api.getConfig()` HTTP + `prefsRepo` IDB 三层 fallback | `cacheGetList('models') + cacheGetList('api-keys') + cacheGetItem('user-preferences')` 纯 Entangled 缓存 |
+| syncService reconnect | 手动遍历 12 个 entity key `invalidateQueries` | 删除（Rust `resubscribe_all → entities_changed` 自动处理） |
+
+**Python 新增文件**：
+- `gateway/api/skill_actions.py` — match/fork/get_tool_categories action 函数
+- `defs.py` SKILLS EntityDef — 注册 `match / fork / get_tool_categories` actions（lazy import）
+- `defs.py` AGENT_TOOLS EntityDef — 注册 `get_bootstrap / save_bootstrap` actions
+
+**api.ts 保留的真正 HTTP（无法迁移）**：
+- 文件上传（binary multipart）
+- 健康检查 / 进程管理（WS 未建立时需要）
+- Android 设备枚举 / AVD 管理
+- 历史日志带 subagent 过滤的复杂查询
+- WebRTC 信令
+
+
 ---
 
 
@@ -895,8 +956,15 @@ cd novaic-gateway && PYTHONPATH=. python -m unittest tests.test_deps_internal_ta
   - `current_version` 持久化：表 `entangled_sync_versions`，`entangled_bridge` 每次 mutation 时 upsert。
   - **前端客户端极致瘦身与 Rust 编排化（2026-03-29 完成）**：彻底删除死代码 `@entangled/react` SDK。废除了前端复杂的编排逻辑，新增 Rust 级命令 `entangled_method_optimistic` 闭环处理 Request ID 生成、并发控制和本地回滚。React `hooks.tsx` 浓缩为 ~250 行精简工厂函数。
   - **Headless 架构 Path C（2026-03-30 完成）**：`nav_changed` Rust 命令完全接管订阅生命周期。路由表覆盖所有实体（home/conversation/settings/vm-context）。`dispatch()` 统一意图总线。`writePipeline.ts` 550行→52行。React 零 subscribe/unsubscribe 调用。详见 §11.4。
+  - **Slot-based NavState v2（2026-03-30 完成）**：nav.rs 重构为 per-AppHandle managed state，支持多窗口/多实例 slot-based 隔离。详见 §11.5。
+  - **Schema Codegen（2026-03-30 完成）**：`scripts/generate_entity_types.py` 从 Python EntityDef 自动生成 20 个 TS 接口，`--check` CI 模式检测 drift。详见 §11.6。
+  - **HTTP→Entangled 通道统一（2026-03-30 完成）**：api-keys CRUD、settings、bootstrap files、skills match/fork/getToolCategories 等 9 类接口迁移到 entangledMethod。modelService 完全切到 Entangled 缓存。详见 §11.7。
 - API 稳定与性能：Gateway `list`/`list_all` WS 上限；`agent-binding` notify 使用 `agent_id`。
 - [x] **Entangled: invalidate 自愈已移入 Rust**：`app_bridge.rs` 检测到 `invalidated` action 时自动发送 `subscribe(version=null)`，不再依赖 React hook。`cache.rs` 的 invalidate op 同时清空 stale items。
+- [x] **Schema Codegen 完成**：Python→TS 实体自动生成，CI 可集成 `--check` 模式
+- [x] **HTTP→Entangled 通道迁移完成**：api.ts 净减 150+ 行，统一 AppBridge 通道
+- [x] **syncService 重连冗余 invalidate 已删除**：Rust `resubscribe_all` 自动处理
+- [x] **modelService IndexedDB 依赖已移除**：不再读写 prefsRepo selectedModel/AudioModel
 - [ ] **iOS 键盘输入框适配**：`--keyboard-height` 注入已实现，需真机验证
 - [ ] **服务端数据自动清理**：runtime 完成时自动清空 context；queue 定期清理；logrotate
 - [ ] **Watchdog v2：Per-Agent 轮询**：按 Agent 分组批量处理，防重复 Runtime
@@ -905,4 +973,4 @@ cd novaic-gateway && PYTHONPATH=. python -m unittest tests.test_deps_internal_ta
 - [ ] **Skill 商店 / ClawHub 集成**：浏览/搜索/安装 skill
 - [ ] **原生视频渲染**：iOS VideoToolbox+Metal / Android MediaCodec+GL / macOS Metal / Web WebCodecs
 - [ ] WS 连接断开时前端 toast 提示
-- [ ] `vm_start`/`vm_stop`/`android_start`/`android_stop` 迁移到 WS
+- [ ] `prefsRepo` IndexedDB 彻底移除：selectedAgent 改为 Entangled entity，layout 持久化评估
