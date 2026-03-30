@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档（2026 重构版）
 
-> 最后更新：2026-03-30 **Slot-based NavState v2 + Schema Codegen + HTTP→Entangled 大迁移**：nav.rs 重构为 per-AppHandle managed state（NavState HashMap<slot, Vec<SubSpec>>），支持多窗口/多实例 slot-based 隔离与 nav_release_slot 自主释放；新增 `scripts/generate_entity_types.py` 从 Python EntityDef 自动生成 20 个 TS 接口（`--check` CI 模式检测 drift）；api-keys/settings/bootstrap 等 9 类 HTTP→entangledMethod 统一通道，api.ts 净减 150+ 行。modelService 完全切到 Entangled 缓存，删除 api.getConfig+prefsRepo 三层 fallback。
+> 最后更新：2026-03-30 **Slot-based NavState v2 + Schema Codegen + HTTP→Entangled 大迁移**：nav.rs 重构为 per-AppHandle managed state（NavState HashMap<slot, Vec<SubSpec>>），支持多窗口/多实例 slot-based 隔离与 nav_release_slot 自主释放；新增 `scripts/generate_entity_types.py` 从 Python EntityDef 自动生成 20 个 TS 接口（`--check` CI 模式检测 drift）；api-keys/settings/bootstrap 等 9 类 HTTP→entangledMethod 统一通道，api.ts 净减近 1000 行（彻底清除所有 `gateway_*` 运行时，变为纯类型导出文件）。modelService 完全切到 Entangled 缓存，删除 api.getConfig+prefsRepo 三层 fallback。
 > 本文档由原始近 3000 行变更日志按功能模块重新组织，完整保留所有有价值的技术细节、文件速查、排障指南与架构决策。
 
 ---
@@ -958,11 +958,11 @@ cd novaic-gateway && PYTHONPATH=. python -m unittest tests.test_deps_internal_ta
   - **Headless 架构 Path C（2026-03-30 完成）**：`nav_changed` Rust 命令完全接管订阅生命周期。路由表覆盖所有实体（home/conversation/settings/vm-context）。`dispatch()` 统一意图总线。`writePipeline.ts` 550行→52行。React 零 subscribe/unsubscribe 调用。详见 §11.4。
   - **Slot-based NavState v2（2026-03-30 完成）**：nav.rs 重构为 per-AppHandle managed state，支持多窗口/多实例 slot-based 隔离。详见 §11.5。
   - **Schema Codegen（2026-03-30 完成）**：`scripts/generate_entity_types.py` 从 Python EntityDef 自动生成 20 个 TS 接口，`--check` CI 模式检测 drift。详见 §11.6。
-  - **HTTP→Entangled 通道统一（2026-03-30 完成）**：api-keys CRUD、settings、bootstrap files、skills match/fork/getToolCategories 等 9 类接口迁移到 entangledMethod。modelService 完全切到 Entangled 缓存。详见 §11.7。
+  - **HTTP→Entangled 通道统一（2026-03-30 完成）**：Gateway 注册 16 个 new action（`get_config`, `test_api_key`, `available_images` 等），四个业务 Service 层彻底迁移至 `entangledMethod`。`api.ts` 净减近 1000 行，清除了全部 57 个 `gateway_*` HTTP 函数，全库已无运行时 HTTP 调用，彻底拥抱 Entangled。详见 §11.7。
 - API 稳定与性能：Gateway `list`/`list_all` WS 上限；`agent-binding` notify 使用 `agent_id`。
 - [x] **Entangled: invalidate 自愈已移入 Rust**：`app_bridge.rs` 检测到 `invalidated` action 时自动发送 `subscribe(version=null)`，不再依赖 React hook。`cache.rs` 的 invalidate op 同时清空 stale items。
 - [x] **Schema Codegen 完成**：Python→TS 实体自动生成，CI 可集成 `--check` 模式
-- [x] **HTTP→Entangled 通道迁移完成**：api.ts 净减 150+ 行，统一 AppBridge 通道
+- [x] **HTTP→Entangled 通道迁移完成**：核心 Service 均改用 Entangled actions，api.ts 纯类型化（减负近千行代码）
 - [x] **syncService 重连冗余 invalidate 已删除**：Rust `resubscribe_all` 自动处理
 - [x] **modelService IndexedDB 依赖已移除**：不再读写 prefsRepo selectedModel/AudioModel
 - [ ] **iOS 键盘输入框适配**：`--keyboard-height` 注入已实现，需真机验证
