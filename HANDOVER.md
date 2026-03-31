@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档（2026 重构版）
 
-> 最后更新：2026-03-30 **Slot-based NavState v2 + Schema Codegen + HTTP→Entangled 大迁移**：nav.rs 重构为 per-AppHandle managed state（NavState HashMap<slot, Vec<SubSpec>>），支持多窗口/多实例 slot-based 隔离与 nav_release_slot 自主释放；新增 `scripts/generate_entity_types.py` 从 Python EntityDef 自动生成 20 个 TS 接口（`--check` CI 模式检测 drift）；api-keys/settings/bootstrap 等 9 类 HTTP→entangledMethod 统一通道，api.ts 净减近 1000 行（彻底清除所有 `gateway_*` 运行时，变为纯类型导出文件）。modelService 完全切到 Entangled 缓存，删除 api.getConfig+prefsRepo 三层 fallback。
+> 最后更新：2026-03-31 **Gateway Zero Raw SQL 大迁移完成**：彻底消除 `gateway/api` 及 `gateway/api/internal` 业务层对直连 SQL（`get_db()`）的依赖，全面切换至基于 `EntityStore` 的纯正隔离架构。重构了 `SkillRepository`、`ChatRepository`、`AgentConfigService`、`MessageRepository` 等使它们支持无状态实例化。修复了 Entangled Server 存在的 `Message too long` crash，将 websocket 数据传输上限改为通过 `head_n` 开启服务端游标分页拉取机制。
 > 本文档由原始近 3000 行变更日志按功能模块重新组织，完整保留所有有价值的技术细节、文件速查、排障指南与架构决策。
 
 ---
