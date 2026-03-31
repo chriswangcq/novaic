@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档（2026 重构版）
 
-> 最后更新：2026-03-31 **Gateway Zero Raw SQL 大迁移完成**：彻底消除 `gateway/api` 及 `gateway/api/internal` 业务层对直连 SQL（`get_db()`）的依赖，全面切换至基于 `EntityStore` 的纯正隔离架构。重构了 `SkillRepository`、`ChatRepository`、`AgentConfigService`、`MessageRepository` 等使它们支持无状态实例化。修复了 Entangled Server 存在的 `Message too long` crash，将 websocket 数据传输上限改为通过 `head_n` 开启服务端游标分页拉取机制。
+> 最后更新：2026-03-31 **Agent-Binding 持久化修复**：彻底修复了 agent-device 绑定保存后消失的问题。根因：前端 dispatch `update`（SQL UPDATE），但绑定记录可能不存在 → 0 行更新；且 `nav.rs` 路由表缺少 `agent-binding` 订阅导致 Rust 缓存永远为空，UI 读不到数据。修复：`agentBinding.ts` 改 `optimistic:false` 走 `upsert`；`nav.rs` conversation/settings 路由新增 `agent-binding(agentId)` 订阅；`App.tsx` settings 打开时传 `agentId`；`useAgentBinding.ts` 完全迁移至 `agentBindingStore.useForm()`，设备面板实时响应。
 > 本文档由原始近 3000 行变更日志按功能模块重新组织，完整保留所有有价值的技术细节、文件速查、排障指南与架构决策。
 
 ---
@@ -662,14 +662,14 @@ handle_unsubscribe(client_id, msg, store=store)  # unsubscribe
 | 路由 | 订阅实体 |
 |------|----------|
 | `home` | agents, models, devices |
-| `conversation` | agents, models, devices, messages(agentId), execution-logs(agentId), agent-tools(agentId) |
-| `settings` | agents, models, devices, api-keys, skills |
+| `conversation` | agents, models, devices, messages(agentId), execution-logs(agentId), agent-tools(agentId), **agent-binding(agentId)** |
+| `settings` | agents, models, devices, api-keys, skills, **agent-binding(agentId), agent-tools(agentId)**（有agentId时） |
 | `vm-context` | vm-users(deviceId)（组件级调用） |
 
 **App.tsx 三独立 Effect（无冗余）**：
 1. `[isInitialized]` → `navChanged('home')` 初始 eager 订阅
 2. `[isInitialized, currentAgentId]` → `navChanged('conversation', { agentId })`（settings 打开时跳过）
-3. `[isInitialized, settingsOpen]` → `navChanged('settings')` 或回退 conversation
+3. `[isInitialized, settingsOpen]` → `navChanged('settings', { agentId })` ← **修复：传 agentId，保证 agent-binding/agent-tools 订阅生效**；或回退 conversation
 
 **关键文件**：
 - `src-tauri/src/commands/nav.rs` — 路由表 + `nav_changed` Tauri 命令
@@ -933,6 +933,8 @@ cd novaic-gateway && PYTHONPATH=. python -m unittest tests.test_deps_internal_ta
 | WebRTC 多端互踢 | stop_peers 强杀 + UDP 泄漏 | 已修复：移除强杀 + UDPMux |
 | coturn 新连接失败 | 僵尸 session 积累 | 重启 coturn |
 | Relay handshake timeout | 服务端用 open_bi | 已修复：改 accept_bi |
+| **agent-binding 保存成功 UI 显示成功但重开后消失** | ① 前端用 `update` 而非 `upsert`（首次无记录→0行）；② `nav.rs` 缺 `agent-binding` 订阅→Rust缓存为空→读不到数据 | **已修复**：`agentBinding.ts` `optimistic:false` 走 upsert；nav.rs conversation/settings 加 agent-binding 订阅；App.tsx settings 传 agentId |
+| **聊天窗口 device 浮窗不显示** | `useAgentBinding` 读 `agent.binding`（agents实体无此字段），Rust缓存为空返回null | **已修复**：`useAgentBinding.ts` 改用 `agentBindingStore.useForm()` 直接读 Entangled 缓存 |
 | ⚠️ `PRAGMA wal_checkpoint(TRUNCATE)` | 截断未提交事务 | **禁止运行时执行** |
 
 ### LLM 调用失败排查
