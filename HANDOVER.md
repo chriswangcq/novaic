@@ -1,5 +1,7 @@
 # NovAIC 项目交接文档（2026 重构版）
 
+> 最后更新：2026-04-01 — **Form 写后 UI + agent-binding + 执行日志预览**：非乐观 `upsert` 成功即用返回行 `setQueryData` 并 invalidate（`hooks.tsx` `createFormStore`）；`agent-binding` 支持无记录 `allowMissing`、无设备保存用 `bindingData?.device_id` 触发清绑（`agentBinding.ts`、`AgentToolsPanel.tsx`）；`ChatPanel` 主 Agent 日志预览改 `flex justify-center px-4`，避免 Framer Motion 与 `translate-x` 抢 `transform`。细节与排障见 **§十五** 表内三行新条目。
+> 最后更新：2026-04-01 **全局订阅丢失与主键解析 Bug 排查**：定位了清空本地缓存后 models/skills/devices 数据消失的线上问题。根因之一（时序竞争）：`App.tsx` 启动时 `navChanged('home')` 和 `navChanged('conversation')` 并发使用默认 `slot: "main"`，发生即时覆盖，导致 `home` 被迅速取消订阅。根因之二（主键硬编码）：Rust Entangled 客户端底层持久化时硬编码查找 JSON 属性 `"id"`，而针对主键非 `id`的实体（如 models 为 `model_id`），在连接不含升级补丁的云端 Gateway（未下发 `idField` 机制）时被默默丢弃。相关修复计划转移至纯客户端侧，如提供基于 schema 的回退机制或拆分独立 slot。
 > 最后更新：2026-03-31 **Agent-Binding 持久化修复**：彻底修复了 agent-device 绑定保存后消失的问题。根因：前端 dispatch `update`（SQL UPDATE），但绑定记录可能不存在 → 0 行更新；且 `nav.rs` 路由表缺少 `agent-binding` 订阅导致 Rust 缓存永远为空，UI 读不到数据。修复：`agentBinding.ts` 改 `optimistic:false` 走 `upsert`；`nav.rs` conversation/settings 路由新增 `agent-binding(agentId)` 订阅；`App.tsx` settings 打开时传 `agentId`；`useAgentBinding.ts` 完全迁移至 `agentBindingStore.useForm()`，设备面板实时响应。
 > 本文档由原始近 3000 行变更日志按功能模块重新组织，完整保留所有有价值的技术细节、文件速查、排障指南与架构决策。
 
@@ -642,7 +644,7 @@ handle_unsubscribe(client_id, msg, store=store)  # unsubscribe
 | 改浮窗 | `DeviceFloatingPanel.tsx` → FLOATING_PANEL_LAYOUT |
 | 改模型选择 | `SettingsModal.tsx` → AgentToolsTab |
 | 改消息发送 | `ChatInput.tsx`、Entangled `messagesStore` / `useMessages` |
-| 改执行日志 UI | `ExecutionLog.tsx`、`LogCapsule.tsx`（与 `ChatPanel` 共享 `useLogs` 上下文） |
+| 改执行日志 UI | `ExecutionLog.tsx`、`LogCapsule.tsx`、`ChatPanel.tsx`（`MainAgentLogPreview` 叠层布局；与 `MessageList` 共享 `useLogs`） |
 | Gateway HTTP 辅助与类型 | `src/services/api.ts`（数据写操作优先 `entangledMethod`，勿在此新增 Agent CRUD） |
 | 改主布局 | `LayoutContainer.tsx`、`PrimaryNav.tsx`、`App.tsx` |
 | 改 Gateway 配置 | `novaic-gateway/gateway/api/internal/config.py` |
@@ -934,6 +936,9 @@ cd novaic-gateway && PYTHONPATH=. python -m unittest tests.test_deps_internal_ta
 | coturn 新连接失败 | 僵尸 session 积累 | 重启 coturn |
 | Relay handshake timeout | 服务端用 open_bi | 已修复：改 accept_bi |
 | **agent-binding 保存成功 UI 显示成功但重开后消失** | ① 前端用 `update` 而非 `upsert`（首次无记录→0行）；② `nav.rs` 缺 `agent-binding` 订阅→Rust缓存为空→读不到数据 | **已修复**：`agentBinding.ts` `optimistic:false` 走 upsert；nav.rs conversation/settings 加 agent-binding 订阅；App.tsx settings 传 agentId |
+| **绑定保存后界面仍显示旧设备 / 无绑定首屏报错** | `entangled_method` 不发 `entities_changed`；RQ `staleTime=Infinity`；无行时 `entity_get` 抛错 | **已修复**：`hooks.tsx` `createFormStore` upsert `onSuccess` → `setQueryData`+invalidate；`allowMissing`；`agentBinding.ts` 泛型含 null |
+| **选「无设备」保存后仍绑定** | 保存分支用 `currentBinding`，选无设备时被 `handleDeviceChange` 清空 | **已修复**：`AgentToolsPanel` 用 `bindingData?.device_id` 触发 `clearAgentBinding` |
+| **聊天区执行日志预览条偏右、与消息不齐** | Framer Motion `transform` 覆盖 `translate-x` 居中 | **已修复**：`ChatPanel.tsx` flex 居中 + `px-4`，去横向 mask |
 | **聊天窗口 device 浮窗不显示** | `useAgentBinding` 读 `agent.binding`（agents实体无此字段），Rust缓存为空返回null | **已修复**：`useAgentBinding.ts` 改用 `agentBindingStore.useForm()` 直接读 Entangled 缓存 |
 | ⚠️ `PRAGMA wal_checkpoint(TRUNCATE)` | 截断未提交事务 | **禁止运行时执行** |
 
@@ -976,3 +981,69 @@ cd novaic-gateway && PYTHONPATH=. python -m unittest tests.test_deps_internal_ta
 - [ ] **原生视频渲染**：iOS VideoToolbox+Metal / Android MediaCodec+GL / macOS Metal / Web WebCodecs
 - [ ] WS 连接断开时前端 toast 提示
 - [ ] `prefsRepo` IndexedDB 彻底移除：selectedAgent 改为 Entangled entity，layout 持久化评估
+- [ ] **Model 实体规范化重构**（详见下方 §17）
+
+---
+
+## 十七、Model 实体规范化重构方案
+
+### 17.1 现状问题
+
+当前 `candidate_models` 表（EntityDef name=`"models"`）三职合一：
+
+| 职责 | 字段 | 问题 |
+|------|------|------|
+| 模型元数据 | `model_id`, `name`, `provider` | 同一个 gpt-4o 绑两个 key 就存两行，数据重复 |
+| API Key 关联 | `api_key_id` | 用扁平外键代替关系，无法表达 1:N |
+| 用户启用状态 | `available=0/1` | 启用状态混在模型记录里，难以独立管理 |
+
+`refresh_models` action 每次需要全量 diff + 手动批量 upsert + 额外 `notify_entity_change`，逻辑复杂。
+
+### 17.2 目标架构（三实体分离）
+
+```
+models (Form Entity, 全局模型注册表)
+  model_id  PK    "gpt-4o", "claude-3-5-sonnet" …
+  name            展示名
+  provider        openai / anthropic / google / azure / openai_compatible
+  context_window  可选，上下文长度
+  is_custom       0/1
+
+api-key-models (List Entity, child of api-keys)
+  id        PK
+  api_key_id  FK → api_keys.id  ON DELETE CASCADE
+  model_id    → models.model_id
+  UNIQUE(api_key_id, model_id)
+
+available-models (List Entity, user-scoped)
+  id        PK
+  user_id   FK
+  model_id  → models.model_id
+  api_key_id  决定使用哪个 key 来调用该 model
+  UNIQUE(user_id, model_id)
+```
+
+### 17.3 变更影响
+
+| 层 | 变更内容 |
+|------|------|
+| Gateway `defs.py` | 新增 `MODELS`（form）、`API_KEY_MODELS`（list）、`AVAILABLE_MODELS`（list）实体；删除旧 `CANDIDATE_MODELS` |
+| Gateway `defs.py` | `refresh_models` action 只需 upsert `api-key-models`，models 表单独维护 |
+| Gateway DB | migration：数据从 `candidate_models` 拆分填入三张新表 |
+| 前端 `data/entities/__generated__.ts` | 重新 codegen |
+| 前端 `SettingsModal.tsx` | `modelsStore.useList()` 改为读 `apiKeyModelsStore` + `availableModelsStore` |
+| 前端 `useAppStore` | `availableModels` 读 `availableModelsStore` |
+| 前端 `modelConfigService.ts` | `toggleModel` → 操作 `available-models` entity；`addCustomModel` → 同时写 `models` + `api-key-models` |
+
+### 17.4 预期收益
+
+- `refresh_models` 极简：拉模型列表 → upsert `api-key-models`，Entangled 自动通知，零手动 notify
+- 删 api_key 时 `api-key-models` 级联清理，available-models 也自动失效
+- 模型元数据去重：gpt-4o 无论挂几个 key，`models` 表只有一行
+- `available-models` 可扩展：加优先级、别名、per-model system prompt 等字段
+
+### 17.5 工作量估算
+
+约 1.5 天：Gateway defs + DB migration（0.5d）+ 前端 UI + hooks（0.5d）+ codegen + 测试（0.5d）
+
+> **当前状态**：`candidate_models` 扁平实现维持可用。待 agent-binding 和 device 功能稳定后再启动本重构。
