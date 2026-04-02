@@ -29,6 +29,15 @@ jobs:
       - name: Install frontend deps
         run: cd novaic-app && npm ci
 
+      - name: Typecheck (novaic-app)
+        run: cd novaic-app && npx tsc --noEmit
+
+      - name: Vitest unit tests (e.g. deriveDesiredMainNav)
+        run: cd novaic-app && npm run test:unit
+
+      - name: ESLint (novaic-app)
+        run: cd novaic-app && npm run lint
+
       - name: OTA config sync check
         run: bash scripts/check-ota-sync.sh
 
@@ -42,6 +51,11 @@ jobs:
 
       - name: Entity store getId vs idField JSON
         run: python3 scripts/check_entity_store_pk.py
+
+      - name: Gateway Sync Contract (schema + version parity)
+        run: |
+          python3 -m pip install -q -r novaic-gateway/requirements.txt
+          cd novaic-gateway && python3 -m unittest tests.unit.gateway.test_sync_contract_schema -v
 
       - name: Cargo check (desktop)
         run: cd novaic-app/src-tauri && cargo check -p novaic --features desktop
