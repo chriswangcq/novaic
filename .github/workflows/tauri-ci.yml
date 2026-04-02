@@ -21,11 +21,27 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Install frontend deps
         run: cd novaic-app && npm ci
 
       - name: OTA config sync check
         run: bash scripts/check-ota-sync.sh
+
+      - name: Entity idField JSON sync (Gateway / Rust / App)
+        run: |
+          cmp novaic-gateway/gateway/entity/generated_entity_id_fields.json Entangled/packages/client-rust/entity_id_fields.json
+          cmp novaic-gateway/gateway/entity/generated_entity_id_fields.json novaic-app/src/data/entangled/generated_entity_id_fields.json
+
+      - name: Entity TS interfaces codegen check
+        run: python3 scripts/generate_entity_types.py --check
+
+      - name: Entity store getId vs idField JSON
+        run: python3 scripts/check_entity_store_pk.py
 
       - name: Cargo check (desktop)
         run: cd novaic-app/src-tauri && cargo check -p novaic --features desktop
