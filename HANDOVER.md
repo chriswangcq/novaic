@@ -1,5 +1,6 @@
 # NovAIC 项目交接文档（2026 重构版）
 
+> 最后更新：2026-04-02 — **Skills 领域文档 + OpenClaw 子模块**：新增 `docs/skills-domain-investigation-reports.md`（五份独立子领域报告：发现与存储、Prompt/Token、运行时匹配与 Agent 绑定、安装分发与市场、安全运维；对照 OpenClaw 文件模型与 NovAIC 的 DB+builtin `mcp_client/skills`）。**`thirdparty/openclaw`** 为 `.gitmodules` 登记的 **git 子模块**（上游 `openclaw/openclaw`），用于代码级审计与能力对比；初始化：`git submodule update --init thirdparty/openclaw`。架构速览仍见 `docs/agent-approve-points/02-openclaw-architecture.md`。OpenClaw 侧可借鉴点（skills 多根合并/compact 限额、tool profile、before_tool_call 类钩子）见该调查报告与对话归档，**不**改变当前 NovAIC 运行时拓扑。
 > 最后更新：2026-04-01 — **Sync Contract 审查修复**：`/api/app/ws` 首次 **schema push** 的 `data` 已含 **`syncContractVersion`**（`gateway.entity.sync_contract`，与 REST、Entangled `ws_handler` 一致；此前 AppWS 仅 `{ entities, hash }`，桌面多靠 REST 设 Rust 原子量）。**`tests/unit/gateway/test_sync_contract_schema.py`**：无 monorepo 下 `Entangled/packages/server-python` 时 **skip** 与 `ws_handler` 的版本 parity，独立 checkout `novaic-gateway` 的 CI 可过。**桌面**：`App.tsx` 中 `handleSelectAgent` / `handleAgentCreated` 依赖 **`agents`** 防陈旧闭包；**登出** 置 **`settingsOpen: false`**；CloudBridge 日志仅记 token **长度**（不打印前缀）。**`client.ts`**：`syncContractVersion` 非有限数字时 **`console.warn`**。**`app_bridge.rs`**：慢路径 / join 失败日志与模块注释统一为 **`process_sync_with_contract`**。
 > 最后更新：2026-04-01 **Sync Contract Phase 1–3**：规范与清单见 `docs/SYNC_CONTRACT.md`、`docs/sync-contract-execution-checklist.md`。要点：主槽 `navChanged`/`nav_release_slot` 串行 + Rust 每槽 `tokio::Mutex`；Gateway REST/WS schema 携带 `syncContractVersion`（`gateway/entity/sync_contract.py` 与 Entangled `ws_handler.SYNC_CONTRACT_VERSION` 须同号）；Rust `process_sync_with_contract` 在合约 ≥2 且 snapshot/head_n 缺 `idField` 时记 ERROR（`metric=sync_frame_missing_id_field_v2`，仍用 build 回退）；TS `loadSubscriptionSchema` 解析 `{ entities, syncContractVersion }` 并 `invoke('entangled_set_sync_contract_version')`，`defaultIdFieldForEntity` 优先用 schema 的 `idField`。**1.4**：`deriveDesiredMainNav`（`nav.ts`）+ `App.tsx` 单一 effect；**1.3**：`npm run verify:sync-contract-schema`（需环境变量）+ 发版前仍建议桌面清缓存 spot-check。
 > 最后更新：2026-04-01 — **Form 写后 UI + agent-binding + 执行日志预览**：非乐观 `upsert` 成功即用返回行 `setQueryData` 并 invalidate（`hooks.tsx` `createFormStore`）；`agent-binding` 支持无记录 `allowMissing`、无设备保存用 `bindingData?.device_id` 触发清绑（`agentBinding.ts`、`AgentToolsPanel.tsx`）；`ChatPanel` 主 Agent 日志预览改 `flex justify-center px-4`，避免 Framer Motion 与 `translate-x` 抢 `transform`。细节与排障见 **§十五** 表内三行新条目。
@@ -108,7 +109,7 @@
 
 ## 三、代码仓库与目录结构
 
-父仓库 `chriswangcq/novaic`（默认 `main`），所有服务为 **git submodule**（`.gitmodules` 注册 13 个）。
+父仓库 `chriswangcq/novaic`（默认 `main`），服务与依赖多为 **git submodule**（见 `.gitmodules`；含 **`thirdparty/openclaw`** 等参考树，非线上服务）。
 
 ```bash
 git clone --recurse-submodules git@github.com:chriswangcq/novaic.git
@@ -130,15 +131,17 @@ git clone --recurse-submodules git@github.com:chriswangcq/novaic.git
 | `novaic-shared-runtime-common` | 共享运行时公共库 |
 | `novaic-storage-a / b` | 存储服务 |
 | `novaic-control-plane` | 控制面板 |
+| `thirdparty/openclaw` | 上游 OpenClaw 源码（参考/审计；Skills & Gateway 行为对比） |
 
 ```
 new-build-novaic/
 ├── HANDOVER.md / NEW_HANDOVER.md   # 交接文档
 ├── deploy                          # 统一部署 CLI
-├── .gitmodules                     # 13 个 submodule
-├── docs/                           # 文档（design/ device/ ota/ p2p/ research/ ...）
+├── .gitmodules                     # submodule 清单（含 novaic-* 与 thirdparty/openclaw）
+├── docs/                           # 文档（含 `skills-domain-investigation-reports.md`、`SYNC_CONTRACT.md`、`agent-approve-points/`）
+├── thirdparty/openclaw/            # OpenClaw 子模块（需 init）
 ├── scripts/                        # 构建/部署/运维脚本
-└── 13 个 submodule 子目录
+└── 各 submodule 子目录
 ```
 
 ---
@@ -651,6 +654,8 @@ handle_unsubscribe(client_id, msg, store=store)  # unsubscribe
 | 改主布局 | `LayoutContainer.tsx`、`PrimaryNav.tsx`、`App.tsx` |
 | 改 Gateway 配置 | `novaic-gateway/gateway/api/internal/config.py` |
 | 改 VM 准备 | `gateway/api/vm.py`、`vmcontrol/src/api/routes/vm_prep.rs` |
+| 改技能（UI/同步） | `Settings/SkillsPage.tsx`、`hooks/useSkills.ts`、`application/skillsService.ts`、`data/entities/skills.ts` |
+| 改技能进 LLM 上下文 | `novaic-agent-runtime/task_queue/utils/system_prompt.py`（`_build_skills_section`）；匹配逻辑 `novaic-gateway/gateway/db/repositories/skill.py` |
 
 ### 11.4 Entangled Headless 架构（Path C，2026-03-30 完成）
 
@@ -742,6 +747,12 @@ python scripts/generate_entity_types.py --check   # CI 校验 drift
 - Android 设备枚举 / AVD 管理
 - 历史日志带 subagent 过滤的复杂查询
 - WebRTC 信令
+
+### 11.8 Skills 领域文档（2026-04）
+
+- **调查报告（五子领域）**：`docs/skills-domain-investigation-reports.md` — 存储与发现、Prompt 注入与预算、运行时匹配、市场形态、安全运维；与 **`thirdparty/openclaw`** 对照，供立项 Skill 商店 / 限额 / 导入器时引用。  
+- **OpenClaw 代码地图（笔记）**：`docs/agent-approve-points/02-openclaw-architecture.md`（嵌入式 runner、插件 hooks；路径以子模块 `thirdparty/openclaw/src/` 为准）。  
+- **待办**：产品级 Skill 商店仍见 **§十六**；调查报告为「现状与差距分析」，非实现交付。
 
 
 ---
@@ -978,6 +989,7 @@ cd novaic-gateway && PYTHONPATH=. python -m unittest tests.test_deps_internal_ta
 - [x] **syncService 重连冗余 invalidate 已删除**：Rust `resubscribe_all` 自动处理
 - [x] **AppWS schema push 与 Sync Contract 对齐**：`app_client.py` 首包带 `syncContractVersion`；网关 unittest 在无 Entangled 兄弟目录时 skip parity
 - [x] **modelService IndexedDB 依赖已移除**：不再读写 prefsRepo selectedModel/AudioModel
+- [x] **Skills 领域分调查报告**：`docs/skills-domain-investigation-reports.md`（对照 OpenClaw；落地商店/限额/导入前读）
 - [ ] **iOS 键盘输入框适配**：`--keyboard-height` 注入已实现，需真机验证
 - [ ] **服务端数据自动清理**：runtime 完成时自动清空 context；queue 定期清理；logrotate
 - [ ] **Watchdog v2：Per-Agent 轮询**：按 Agent 分组批量处理，防重复 Runtime
