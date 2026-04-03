@@ -40,3 +40,6 @@
 [submodule "byclaw-website"]
 	path = byclaw-website
 	url = https://github.com/chriswangcq/byclaw-website.git
+[submodule "thirdparty/openclaw"]
+	path = thirdparty/openclaw
+	url = https://github.com/openclaw/openclaw.git
