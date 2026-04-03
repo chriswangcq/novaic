@@ -1067,3 +1067,38 @@ available-models (List Entity, user-scoped)
 约 1.5 天：Gateway defs + DB migration（0.5d）+ 前端 UI + hooks（0.5d）+ codegen + 测试（0.5d）
 
 > **当前状态**：`candidate_models` 扁平实现维持可用。待 agent-binding 和 device 功能稳定后再启动本重构。
+
+---
+
+## 十八、Context Stack 运行时架构（2026-04 重构完成）
+
+Context Stack 引擎作为 NovAIC 下一代核心运行时基石，采用**基于微交易与严格生命周期的架构**设计，将「上下文管理」、「记忆扩展」、「技能执行」三位一体闭环统一。
+
+### 18.1 核心设计理念
+
+1. **Facade 模式零耦合**：对外仅暴露 5 个接口（`run`, `run_meta`, `run_recall`, `match`, `status`），只需宿主注入 4 个 Protocol（`AgentExecutor`, `Summarizer`, `TokenCounter`, `MemoryBackend`），彻底隔离 Agent 循环与上下文存储。
+2. **绝对统一的 6 步生命周期**：所有 Agent 任务（无一例外）均经历 6 个阶段：
+   - ① **CHECKPOINT**：保存状态快照、token 预算与起始消息索引
+   - ② **PRE-HOOKS**：注入 Skill prompt，加载工具环境
+   - ③ **EXECUTE**：启动 Agent 循环调用（引擎不干涉，交由宿主执行）
+   - ④ **POST-HOOKS**：拦截验证、提取关键元数据（使用的工具、修改的文件等）
+   - ⑤ **SUMMARIZE**：将 scope 内长文本行为转换为统一的结构化报告
+   - ⑥ **RELOAD**：原始海量消息被单条摘要替换，同时 raw_messages 入库落盘
+3. **三种互备 Skill 体系**：
+   - **Normal Skill**：带 Prompt、Workflow、指定工具集
+   - **Meta Skill**：默认兜底容器。让未匹配到任务的散乱消息也强制在安全沙箱内执行，**消除系统中的孤儿消息**。
+   - **Recall Skill**：系统自主回忆机制。为 Agent 自动注入 `memory_expand`（L0-L3 逐级下钻详情）与 `memory_search` 搜索旧 Scope，实现真正的自主探索式检索发现。
+
+### 18.2 已落地的七大生产级机制（Fix #1-#7）
+
+1. **Prompt 污染隔离**（Fix #1）：过滤拦截带有 `skill_prompt` 的消息落盘 raw memory，确保 Recall 搜索到的内容无冗余指令噪音。
+2. **隐藏工具路由闭环**（Fix #3）：`RecallToolRouter` 引擎透明拦截并处理了 Agent 对记忆回放工具的调用，对宿主机呈现零感知封装。
+3. **决策自动提取**（Fix #2）：SUMMARIZE 阶段通过 NLP/规则正则精准提取 "chose X over Y" / "decided to" 等微观意图存入元数据，大幅提升恢复 Agent 的上下文连续性。
+4. **防套娃的重入锁**（Fix #5）：通过 `_active` 原语与 `finally` 保障机制，拦截大模型在 EXECUTE 时尝试套环/递归触发子生命周期的失控行为。
+5. **记忆预算控制**（Fix #6）：`raw_max_chars_per_scope` 硬性阻断截断策略，保证持久化上下文不出现超纲崩盘。
+6. **多并发线程安全**（Fix #7）：对统计指标增量以及核心的 `MemoryScopeStore` 数据流读写实施精细的原子化 `threading.Lock`。
+7. **三级退避降压（Micro/Auto/Emergency Compact）**：从无损工具长文截断，到基于触发器的按段 Summary，最终到暴跌求生熔断，保障全天候上下文可用。
+
+### 18.3 接入与替换
+
+目前该引擎完全独立实现在 `context-stack` 模块目录，199 项边界行为单元测试已绿。具备脱离本业务线成为泛化生态基模的条件，下一步将被用于直接替代上层旧版本解耦和不充分的 `CompactPipeline`。
