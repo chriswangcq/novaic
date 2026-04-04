@@ -27,6 +27,7 @@ from .prompt import SkillPromptBuilder
 from .protocols import SkillStore, TokenEstimator
 from .registry import SkillRegistry
 from .types import Skill, SkillBody, SkillMatchResult, SkillMetadata, SkillSource
+from .fs_store import FileSystemSkillStore
 
 logger = logging.getLogger("skill_engine")
 
@@ -54,6 +55,8 @@ __all__ = [
     "HooksConfig",
     "execute_hook",
     "register_hook_callback",
+    # File System Store
+    "FileSystemSkillStore",
 ]
 
 
