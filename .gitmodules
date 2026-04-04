@@ -43,3 +43,6 @@
 [submodule "thirdparty/openclaw"]
 	path = thirdparty/openclaw
 	url = https://github.com/openclaw/openclaw.git
+[submodule "Entangled"]
+	path = Entangled
+	url = git@github.com:chriswangcq/Entangled.git
