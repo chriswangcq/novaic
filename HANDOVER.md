@@ -131,7 +131,8 @@ git clone --recurse-submodules git@github.com:chriswangcq/novaic.git
 | `novaic-contracts` | 共享协议/类型定义 |
 | `novaic-shared-kernel` | 共享核心库 |
 | `novaic-shared-runtime-common` | 共享运行时公共库 |
-| `novaic-storage-a / b` | 存储服务 |
+| `novaic-storage-a` | File Service（文件存储） |
+| `novaic-cortex` | Cortex 引擎（workspace / steps / file resolver） |
 | `novaic-control-plane` | 控制面板 |
 | `thirdparty/openclaw` | 上游 OpenClaw 源码（参考/审计；Skills & Gateway 行为对比） |
 
@@ -239,7 +240,7 @@ npm run tauri:build:android   # 使用 custom-protocol（与 iOS 不同）
 
 # ── 后端服务 (api.gradievo.com) ──
 ./deploy gateway           # rsync + start.sh 全部重启
-./deploy runtime / orchestrator / tools / storage-a / storage-b
+./deploy runtime / orchestrator / tools / storage-a / cortex
 ./deploy services          # rsync 全部 + start.sh 重启（推荐）
 
 # ── 基础设施 ──
@@ -276,7 +277,6 @@ npm run tauri:build:android   # 使用 custom-protocol（与 iOS 不同）
 --queue-service-url http://127.0.0.1:19997
 --tools-server-url http://127.0.0.1:19998
 --file-service-url http://127.0.0.1:19995
---tool-result-service-url http://127.0.0.1:19994
 ```
 
 **Nginx 配置**（`/etc/nginx/sites-enabled/novaic`）：
@@ -284,7 +284,7 @@ npm run tauri:build:android   # 使用 custom-protocol（与 iOS 不同）
 - CloudBridge WebSocket `/internal/pc/ws` 超时 3600s
 - 前端 OTA `/api/config/frontend` 无需 JWT，限流 burst=30
 
-**后端共 16 个 Python 进程**：6 HTTP 服务 + 4 task-worker + 2 saga-worker + watchdog + health + scheduler + STUN。
+**后端共 15 个 Python 进程**：5 HTTP 服务 + 4 task-worker + 2 saga-worker + watchdog + health + scheduler + STUN。（TRS/storage-b 已移除，工具结果由 Cortex steps 管理）
 
 ### 7.2 Relay / STUN（relay.gradievo.com）
 

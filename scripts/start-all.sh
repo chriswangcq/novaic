@@ -40,15 +40,12 @@ echo ""
 echo -e "${YELLOW}Stopping existing services...${NC}"
 pkill -f "novaic-gateway" 2>/dev/null || true
 pkill -f "novaic-runtime-orchestrator" 2>/dev/null || true
-pkill -f "novaic-tools-server" 2>/dev/null || true
 pkill -f "novaic-storage-a" 2>/dev/null || true
-pkill -f "novaic-storage-b" 2>/dev/null || true
+pkill -f "main_cortex" 2>/dev/null || true
 pkill -f "novaic-agent-runtime" 2>/dev/null || true
 pkill -f "file_service.main" 2>/dev/null || true
-pkill -f "tool_result_service.main" 2>/dev/null || true
 pkill -f "main_gateway" 2>/dev/null || true
 pkill -f "main_runtime_orchestrator" 2>/dev/null || true
-pkill -f "main_tools" 2>/dev/null || true
 sleep 2
 
 start_service() {
@@ -76,7 +73,6 @@ if [ "$MODE" = "binary" ]; then
     start_service "runtime-orchestrator" 19993 "$BUILD_DIR/novaic-runtime-orchestrator --port 19993"
     start_service "gateway" 19999 "$BUILD_DIR/novaic-gateway --port 19999"
     start_service "storage-a" 19995 "$BUILD_DIR/novaic-storage-a --port 19995"
-    start_service "storage-b" 19994 "$BUILD_DIR/novaic-storage-b --port 19994 --file-service-url http://127.0.0.1:19995 --gateway-url http://127.0.0.1:19999"
     start_service "tools-server" 19998 "$BUILD_DIR/novaic-tools-server --port 19998 --gateway-url http://127.0.0.1:19999"
     
     # Workers
@@ -91,7 +87,6 @@ if [ "$MODE" = "binary" ]; then
         --queue-service-url http://127.0.0.1:19997 \
         --tools-server-url http://127.0.0.1:19998 \
         --runtime-orchestrator-url http://127.0.0.1:19993 \
-        --tool-result-service-url http://127.0.0.1:19994 \
         > "$DATA_DIR/logs/task-worker.log" 2>&1 &
     
     echo -e "  ${GREEN}✓ Workers started${NC}"
@@ -115,15 +110,10 @@ else
     source .venv/bin/activate 2>/dev/null || source venv/bin/activate 2>/dev/null || true
     start_service "storage-a" 19995 "python -m file_service.main --port 19995"
     
-    # Storage B (TRS)
-    cd "$SCRIPT_DIR/novaic-storage-b"
+    # Cortex
+    cd "$SCRIPT_DIR/novaic-cortex"
     source .venv/bin/activate 2>/dev/null || source venv/bin/activate 2>/dev/null || true
-    start_service "storage-b" 19994 "python -m tool_result_service.main --port 19994 --file-service-url http://127.0.0.1:19995 --gateway-url http://127.0.0.1:19999"
-    
-    # Tools Server
-    cd "$SCRIPT_DIR/novaic-tools-server"
-    source .venv/bin/activate 2>/dev/null || source venv/bin/activate 2>/dev/null || true
-    start_service "tools-server" 19998 "python main_tools.py"
+    start_service "cortex" 19996 "python -m novaic_cortex.main_cortex"
     
     # Workers
     cd "$SCRIPT_DIR/novaic-agent-runtime"
@@ -138,9 +128,7 @@ else
     nohup python main_novaic.py task-worker \
         --gateway-url http://127.0.0.1:19999 \
         --queue-service-url http://127.0.0.1:19997 \
-        --tools-server-url http://127.0.0.1:19998 \
         --runtime-orchestrator-url http://127.0.0.1:19993 \
-        --tool-result-service-url http://127.0.0.1:19994 \
         > "$DATA_DIR/logs/task-worker.log" 2>&1 &
     
     echo -e "  ${GREEN}✓ Workers started${NC}"
@@ -155,7 +143,6 @@ echo "Service Status:"
 echo "  Runtime Orchestrator: http://127.0.0.1:19993/api/health"
 echo "  Gateway:              http://127.0.0.1:19999/health"
 echo "  File Service:         http://127.0.0.1:19995/api/health"
-echo "  TRS:                  http://127.0.0.1:19994/api/health"
-echo "  Tools Server:         http://127.0.0.1:19998/health"
+echo "  Cortex:               http://127.0.0.1:19996/health"
 echo ""
 echo "Logs: $DATA_DIR/logs/"
