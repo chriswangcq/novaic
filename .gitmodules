@@ -31,12 +31,6 @@
 [submodule "novaic-storage-a"]
 	path = novaic-storage-a
 	url = git@github.com:chriswangcq/novaic-storage-a.git
-[submodule "novaic-storage-b"]
-	path = novaic-storage-b
-	url = git@github.com:chriswangcq/novaic-storage-b.git
-[submodule "novaic-tools-server"]
-	path = novaic-tools-server
-	url = git@github.com:chriswangcq/novaic-tools-server.git
 [submodule "byclaw-website"]
 	path = byclaw-website
 	url = https://github.com/chriswangcq/byclaw-website.git
