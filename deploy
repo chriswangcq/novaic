@@ -104,7 +104,8 @@ deploy_services() {
 
   # 同步所有服务代码
   for svc in novaic-gateway novaic-agent-runtime novaic-runtime-orchestrator \
-             novaic-tools-server novaic-storage-a novaic-storage-b Entangled; do
+             novaic-storage-a novaic-cortex \
+             novaic-shared-kernel novaic-shared-runtime-common Entangled; do
     rsync_service "$svc"
   done
 
@@ -160,13 +161,12 @@ check_status() {
   $API_SSH '
     echo "  PORT  | PID    | SERVICE"
     echo "  ------|--------|--------"
-    for port in 19993 19994 19995 19998 19999; do
+    for port in 19993 19995 19996 19999; do
       pid=$(ss -tlnp 2>/dev/null | grep ":$port " | grep -oP "pid=\K\d+" | head -1)
       case $port in
         19993) svc="orchestrator" ;;
-        19994) svc="storage-b" ;;
         19995) svc="storage-a" ;;
-        19998) svc="tools-server" ;;
+        19996) svc="cortex" ;;
         19999) svc="gateway" ;;
       esac
       if [ -n "$pid" ]; then
@@ -224,11 +224,12 @@ check_logs() {
   case "$svc" in
     gateway)      $API_SSH "tail -50 /opt/novaic/data/logs/gateway-\$(date +%Y%m%d).log" ;;
     orchestrator) $API_SSH "tail -50 /opt/novaic/data/logs/runtime-orchestrator.log" ;;
+    cortex)       $API_SSH "tail -50 /opt/novaic/data/logs/cortex.log" ;;
     tools)        $API_SSH "tail -50 /opt/novaic/data/logs/tools-server.log" ;;
     runtime)      $API_SSH "tail -50 /opt/novaic/data/logs/queue-service.log" ;;
     worker)       $API_SSH "tail -50 /opt/novaic/data/logs/task-worker-control-1.log" ;;
     relay)        $RELAY_SSH "journalctl -u novaic-quic-service --no-pager -n 50" ;;
-    *)            fail "未知服务: $svc (可选: gateway, orchestrator, tools, runtime, worker, relay)" ;;
+    *)            fail "未知服务: $svc (可选: gateway, orchestrator, cortex, tools, runtime, worker, relay)" ;;
   esac
 }
 
@@ -250,8 +251,8 @@ show_help() {
   echo "  runtime           部署 Agent Runtime (rsync + 全部重启)"
   echo "  orchestrator      部署 Runtime Orchestrator (rsync + 全部重启)"
   echo "  tools             部署 Tools Server (rsync + 全部重启)"
-  echo "  storage-a         部署 Storage A (rsync + 全部重启)"
-  echo "  storage-b         部署 Storage B (rsync + 全部重启)"
+  echo "  storage-a         部署 Storage A / File Service (rsync + 全部重启)"
+  echo "  cortex            部署 Cortex (rsync + 全部重启)"
   echo "  services          部署全部后端 (rsync all + start.sh 重启)"
   echo ""
   echo -e "${CYAN}基础设施:${NC}"
@@ -273,7 +274,7 @@ case "${1}" in
   orchestrator) deploy_single_service "novaic-runtime-orchestrator" ;;
   tools)        deploy_single_service "novaic-tools-server" ;;
   storage-a)    deploy_single_service "novaic-storage-a" ;;
-  storage-b)    deploy_single_service "novaic-storage-b" ;;
+  cortex)       deploy_single_service "novaic-cortex" ;;
   services)     deploy_services ;;
   relay)        deploy_relay ;;
   factory)      deploy_factory ;;
