@@ -46,3 +46,6 @@
 [submodule "Entangled"]
 	path = Entangled
 	url = git@github.com:chriswangcq/Entangled.git
+[submodule "novaic-cortex"]
+	path = novaic-cortex
+	url = git@github.com:chriswangcq/novaic-cortex.git
