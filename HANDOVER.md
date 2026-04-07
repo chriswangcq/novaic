@@ -1,5 +1,11 @@
 # NovAIC 项目交接文档（2026 重构版）
 
+> 最后更新：2026-04-06 — **Cortex 存储模型修正 + DFS Step Tree 上下文拼装**：
+> - **存储 ACL 修正**：`/ro/` = Cortex 管理区（scope、config、skills、knowledge），agent 只读；`/rw/` = Agent 自由空间（scratch）。活跃 scope 从 `/rw/active/` 迁移至 `/ro/active/`。Workspace 新增 `_sys_write`/`_sys_write_json`/`_sys_append_line` 系统写入方法，scope 管理操作绕过 agent ACL。
+> - **DFS Step Tree 上下文拼装**：上下文原子单位是 step 而非 message。`ContextEngine` 通过 DFS 遍历 step tree：闭合 scope → 折叠为 summary；开放 scope → 展开子 step。tool results 存在 `steps/` 目录，不写入 `context.jsonl`。详见 `docs/cortex-architecture.md` + `docs/context-assembly-dfs-step-tree.md`。
+> - **过时文档归档**：8 份过时设计文档（旧 Cortex 设计、Context Stack v2 被动式设计、统一引擎架构等）移至 `docs/archived/`，避免误导 AI。
+> 最后更新：2026-04-06 — **桌面「清空本地缓存」与 Entangled SQLite**：`entity_cache_clear` → `Cache::clear_all()` 现对 **`sqlite_master` 中全部用户表** 执行 `DELETE`（含 **`pending_ops`**，即乐观发送未收敛的 `_opt_*` 行）、随后 **`VACUUM`**，并重置内存 **`SEQ_COUNTER`**。避免仅清空 `entity_items`/`entity_meta` 时 **`pending_ops` 残留**导致聊天仍显示 **Sending...**。实现：`Entangled/packages/client-rust/src/cache.rs`。本地库路径（macOS）：`~/Library/Application Support/com.novaic.app/entangled_cache.db`。
+> 最后更新：2026-04-05 — **Agent Loop / LLM 上下文与工具执行统一**：（1）**no-tool**：不再注入合成 `tool_calls`；Cortex `cortex.prepare_llm_context` 在单次 LLM 调用前组装 messages + tools + 瞬态 `NO_TOOL_WARNING`；`llm_handlers` 仅传输，不注入工具列表。（2）**RuntimeStart**：已移除 `mcp.create`（Tools Server 已废弃）。（3）**工具结果**：`tool_handlers` 统一 dispatch 表，所有工具同步返回 `content`（JSON）；`react_actions` 直接 `context.append`，不再依赖 `result_id`。（4）**LLM Factory 日志页**：源码 `novaic-llm-factory/static/factory-logs.html`；线上 `https://api.gradievo.com/factory-logs`，API 经 Nginx `/factory-api/*` 代理至 Factory，请求头 `X-Admin-Key`（与 Nginx 中 `$factory_key` 一致）。详见 `docs/design-no-tool-system-message.md`。
 > 最后更新：2026-04-03 — **NovAIC Cortex (v3) 无状态引擎最终设计定稿**：完成了原 Context Stack 引擎向纯文件系统、无状态架构的 Cortex 重构设计。产出最终架构文档 `novaic_cortex_design.md`。核心重构围绕 CortexStore (基于 S3), Workspace (/ro+/rw隔离区), Sandbox (无状态 Shell), Compactor 与 Recall 五大组件展开。用四个标准 Tool 原语 (read, write, shell, scope_end) 统一所有状态交互，代码通过由 ~5600 LOC 骤降为 ~730 LOC 实现降低 87% 的理解复杂度，并确立基于 S3 的 4-Phase 架构演进路线。
 > 最后更新：2026-04-03 — **Context Stack 引擎重构闭环与健壮性审查**：完成统一 6 步生命周期（Normal/Meta/Recall通用），修复 7 项核心架构缺陷：1.Skill prompt隔离避免污染记忆；2.自动提取 decisions/tools/errors 元数据；3.新增 `RecallToolRouter` 自动拦截并处理记忆搜索工具；4.配置项打通；5.`_active` 重入防护解决嵌套死锁；6.`raw_messages` 截断与内存预算控制；7.`MemoryScopeStore` 与引擎统计算法的并发线程安全。单元测试现已达到 199 项全绿，Context Stack 模块已完全生产就绪，可接管旧引擎。
 > 最后更新：2026-04-02 — **Skills 领域文档 + OpenClaw 子模块**：新增 `docs/skills-domain-investigation-reports.md`（五份独立子领域报告：发现与存储、Prompt/Token、运行时匹配与 Agent 绑定、安装分发与市场、安全运维；对照 OpenClaw 文件模型与 NovAIC 的 DB+builtin `mcp_client/skills`）。**`thirdparty/openclaw`** 为 `.gitmodules` 登记的 **git 子模块**（上游 `openclaw/openclaw`），用于代码级审计与能力对比；初始化：`git submodule update --init thirdparty/openclaw`。架构速览仍见 `docs/agent-approve-points/02-openclaw-architecture.md`。OpenClaw 侧可借鉴点（skills 多根合并/compact 限额、tool profile、before_tool_call 类钩子）见该调查报告与对话归档，**不**改变当前 NovAIC 运行时拓扑。
@@ -31,7 +37,7 @@
 | 改消息/日志逻辑 | `messageService.ts`、`logService.ts`、`syncService.ts` |
 | 改远程桌面连接 | `useWebRtc.ts`、`WebRtcScrcpyView.tsx`（统一 WebRTC，noVNC 已全部移除） |
 | 改设备操控台 | `DeviceConsole.tsx`、`ConsoleToolbar.tsx`、`useWebRtc.ts`、`useRemoteInput.ts` |
-| 清空本地缓存 | Settings → Clear Cache → 清空本地 DB 缓存 |
+| 清空本地缓存 | Settings → Clear Cache → `clearLocalDb`：清 `localStorage` 用户偏好 + Rust **`entity_cache_clear`**（`entangled_cache.db` 全用户表含 **`pending_ops`** + `VACUUM`） |
 | 查架构 | `novaic-app/FRONTEND_ARCHITECTURE.md`、`docs/design/DESIGN-P2P-UNIFIED.md` |
 
 ---
@@ -124,15 +130,14 @@ git clone --recurse-submodules git@github.com:chriswangcq/novaic.git
 | `novaic-gateway` | 云端 Gateway（API + DB） |
 | `novaic-llm-factory` | LLM Factory（集中化 LLM 代理） |
 | `novaic-quic-service` | STUN + Relay（P2P 兜底） |
-| `novaic-agent-runtime` | Agent 运行时 |
-| `novaic-runtime-orchestrator` | 运行时编排器 |
-| `novaic-tools-server` | 工具服务 |
+| `novaic-agent-runtime` | Agent 运行时（Task/Saga Worker、Watchdog、Scheduler） |
+| ~~`novaic-runtime-orchestrator`~~ | **已删除**：职责已拆分至 Gateway + Cortex + Agent-Runtime |
+| ~~`novaic-tools-server`~~ | **已退役**：工具执行由 Agent-Runtime `tool_handlers` + Cortex 接管 |
 | `novaic-mcp-vmuse` | MCP VMuse 集成 |
 | `novaic-contracts` | 共享协议/类型定义 |
-| `novaic-shared-kernel` | 共享核心库 |
-| `novaic-shared-runtime-common` | 共享运行时公共库 |
+| `novaic-common` | 统一共享库（合并自 novaic-shared-kernel + novaic-shared-runtime-common） |
 | `novaic-storage-a` | File Service（文件存储） |
-| `novaic-cortex` | Cortex 引擎（workspace / steps / file resolver） |
+| `novaic-cortex` | Cortex 认知引擎 (:19996)：S3-backed scope tree + DFS 上下文拼装 + Recall + Sandbox |
 | `novaic-control-plane` | 控制面板 |
 | `thirdparty/openclaw` | 上游 OpenClaw 源码（参考/审计；Skills & Gateway 行为对比） |
 
@@ -141,7 +146,8 @@ new-build-novaic/
 ├── HANDOVER.md / NEW_HANDOVER.md   # 交接文档
 ├── deploy                          # 统一部署 CLI
 ├── .gitmodules                     # submodule 清单（含 novaic-* 与 thirdparty/openclaw）
-├── docs/                           # 文档（含 `skills-domain-investigation-reports.md`、`SYNC_CONTRACT.md`、`agent-approve-points/`）
+├── docs/                           # 文档（`cortex-architecture.md`、`context-assembly-dfs-step-tree.md`、`SYNC_CONTRACT.md`）
+│   └── archived/                   # 过时文档归档（旧设计文档，勿参考）
 ├── thirdparty/openclaw/            # OpenClaw 子模块（需 init）
 ├── scripts/                        # 构建/部署/运维脚本
 └── 各 submodule 子目录
@@ -273,9 +279,7 @@ npm run tauri:build:android   # 使用 custom-protocol（与 iOS 不同）
 **Gateway 启动参数**：
 ```
 --host 127.0.0.1 --port 19999 --data-dir /opt/novaic/data
---runtime-orchestrator-url http://127.0.0.1:19993
 --queue-service-url http://127.0.0.1:19997
---tools-server-url http://127.0.0.1:19998
 --file-service-url http://127.0.0.1:19995
 ```
 
@@ -326,6 +330,7 @@ CI 校验：`scripts/check-ota-sync.sh`。
 | 端口 | 19990（systemd: `llm-factory.service`） |
 | 部署 | `./deploy factory` |
 | 查日志 | `ssh root@newapi.gradievo.com 'curl -s "http://127.0.0.1:19990/v1/logs?limit=5"'` |
+| **运维日志 UI** | `https://api.gradievo.com/factory-logs`（密钥见 Nginx `api.gradievo.com` 中 `/factory-api/` 的 `$factory_key`；页面源码在子模块 `novaic-llm-factory/static/factory-logs.html`） |
 
 **API 端点**：
 
@@ -344,7 +349,6 @@ CI 校验：`scripts/check-ota-sync.sh`。
 
 | 项目 | 命令 |
 |---|---|
-| **Orchestrator 已完成 context** | `sqlite3 runtime_orchestrator.db "UPDATE agent_runtimes SET context='[]' WHERE status='completed'; VACUUM;"` |
 | **Queue 已完成任务** | `sqlite3 queue.db "DELETE FROM tq_tasks WHERE status IN ('done','failed'); DELETE FROM tq_sagas WHERE status!='active'; VACUUM;"` |
 | **日志轮转** | `find /opt/novaic/data/logs/ -name '*.log' -mtime +7 -delete` |
 | **日志截断** | `find /opt/novaic/data/logs/ -name '*.log' -size +50M -exec truncate -s 10M {} \;` |
@@ -628,6 +632,7 @@ handle_unsubscribe(client_id, msg, store=store)  # unsubscribe
 - **`entities_changed` 载荷**：Rust（`Entangled/packages/client-rust/src/push.rs`）在 `EntityChanged` 中携带 **`params`**（与订阅 key 一致），供 `@entangled/react` 的 `syncListener` 按带参 `queryKey` 失效，避免只按实体名全量 invalidate。
 - **订阅 refcount**：`subscriptionSchema.acquireSubscribe` 在首次 `subscribe` 成功后再记 1；AppBridge 重连时用 **wire-only** `subscribe`（`entangledBootstrap`）避免 eager 双计数。
 - **聊天主面板**：`ChatPanel` 唯一调用 `useMessages` / `useLogs`，`MessageList`、`ExecutionLog`、`MainAgentLogPreview`、`SubagentList` 等通过 **props** 注入，避免同一 agent **重复订阅** stream。
+- **Settings → 清空本地缓存**：`novaic-app/src/db/index.ts` 的 `clearLocalDb(userId)` → `invoke('entity_cache_clear')` → `Entangled/packages/client-rust/src/cache.rs` 的 **`Cache::clear_all()`**。必须清空 **`pending_ops`**：乐观发送若失败（如 WebSocket 未连接），临时行仍以 `_opt_*` 存在该表；与 `entity_items` 合并展示时 `useMessages` 会把 `id` 以 `_opt_` 开头的 **USER_MESSAGE** 映射为 **Sending...**。仅删 `entity_*` 不删 `pending_ops` 时，会出现「服务端已 sent、界面仍两条 Sending」的假象。
 
 **Business 层**：
 - `messagesStore` / `logsStore` (实体数据)，`syncService`（WS + delta sync）、`agentService`（CRUD + VM setup）、`modelService`（模型配置）
@@ -765,14 +770,14 @@ python scripts/generate_entity_types.py --check   # CI 校验 drift
 | 进程 | 职责 |
 |---|---|
 | Gateway | API、DB (chat_messages/subagents/agents)、WS Push |
-| Runtime Orchestrator (RO) | Runtime CRUD、agent_runtimes 表 |
+| Cortex | 认知基础设施 (:19996)：Workspace (S3-backed scope tree) + ContextEngine (DFS step tree) + Recall + Sandbox — 详见 §18 |
 | Queue Service | Task/Saga 队列管理 |
 | Watchdog | 轮询 sending 消息，创建 MessageProcess Saga |
 | Task Worker | 执行 Task（LLM 调用、工具执行、context 读写） |
 | Saga Worker | Saga 流程编排（步骤推进、决策、触发子 Saga） |
 | Health Worker | 超时任务/Saga 回收 |
 | Scheduler Worker | 定时唤醒 sleeping agent |
-| Tools Server | 工具执行（shell/browser/file） |
+| ~~Tools Server~~ | **已退役**（Agent ReAct 工具由 Task Worker `tool_handlers` + Cortex / Gateway；不再 `mcp.create`） |
 
 ### 12.2 消息 → Runtime 完整链路
 
@@ -792,35 +797,33 @@ python scripts/generate_entity_types.py --check   # CI 校验 drift
 
 ```
 ReactThink:
-  1. context.read:     RO context + Gateway 未读消息 → 合入
-  2. context.mark_read: 标记 read=1
-  3. llm.call:          调 LLM Factory
-  4. context.save:      保存 response
-  5. decide:            有 tool_calls → ReactActions / 无 → subagent_rest
+  1. cortex.prepare_llm_context: 委托 context.read + 加载 BUILTIN 工具 schema + 瞬态 NO_TOOL_WARNING（若需）
+  2. llm.call:                    调 LLM Factory（仅传输，不注入工具）
+  3. context.save:                保存 assistant response（过滤未知 tool_calls）
+  4. decide:                      有合法 tool_calls → ReactActions / 无 → retry 或 terminate
 
 ReactActions:
-  1. execute_tools:    并行执行所有 tool_calls（Tools Server）
-  2. save_results:     保存 tool results
+  1. execute_tools:    并行 tool.execute（见 12.4）
+  2. save_results:     将每条 tool 的 content 写入 context（统一合约，无 result_id 分支）
   3. check_continue:   has_new_messages + check_need_rest
   4. decide:           need_rest → RuntimeComplete / else → 下一轮 ReactThink
 ```
 
-### 12.4 工具执行全链路
+### 12.4 工具执行全链路（当前：Task Worker，无 Tools Server）
 
 ```
-LLM tool_call (e.g. shell_exec)
-  → Tools Server → VM_TOOL_MAPPING → POST /internal/agents/{agent_id}/vm/shell/command
-  → Gateway (proxy_vm_tool) → 检查 mounted_tools 权限
-  → CloudBridge WS → VmControl → VMUSE (Python, VM 内 port 8080)
-  → ShellTools.run_command → asyncio.create_subprocess_shell
+LLM tool_call
+  → task_queue TOOL_EXECUTE → tool_handlers.handle_tool_execute
+  → 统一 dispatch（chat_reply / subagent_* / sleep → Gateway internal API；shell / skill_* → CortexBridge）
+  → 返回 JSON content → context.append（tool 消息）
 ```
 
-| 类别 | 工具数 | 路由 |
+Sandbox 类命令（`shell` 等）经 **Cortex** 执行；生命周期类（`chat_reply`、`subagent_*` 等）经 **Gateway** internal API。不再经过独立的 Tools Server。
+
+| 类别 | 示例 | 路由 |
 |---|---|---|
-| VM (desktop/shell/file/browser) | 25 | Gateway → PC WS → VmControl → VMUSE |
-| Mobile (screen/shell/app/ui) | 22 | Gateway → PC WS → VmControl → adb |
-| Memory/Notebook/Chat | ~30 | 直接调 Gateway API |
-| QEMU (ssh_exec/status) | 5 | Gateway → PC WS → VmControl |
+| 生命周期 | chat_reply, subagent_*, sleep | Gateway `internal/` |
+| Cortex | shell, skill_begin, skill_end | `CortexBridge` → Cortex |
 
 ### 12.5 LLM Factory 集中化
 
@@ -857,10 +860,14 @@ SYSTEM_WAKE 风暴导致大量 sending 消息 → Watchdog 为每条创建 Saga 
 | MessageProcess Saga | `agent-runtime/task_queue/sagas/message_process.py` |
 | ReactThink | `agent-runtime/task_queue/sagas/react_think.py` |
 | ReactActions | `agent-runtime/task_queue/sagas/react_actions.py` |
+| Cortex 准备 LLM 上下文 | `agent-runtime/task_queue/handlers/cortex_handlers.py`；实际拼装逻辑在 `novaic-cortex/novaic_cortex/context_stack/engine.py` (DFS step tree) |
+| LLM 纯传输 | `agent-runtime/task_queue/handlers/llm_handlers.py` |
+| 工具执行（统一 dispatch） | `agent-runtime/task_queue/handlers/tool_handlers.py` |
+| LLM 面向工具 schema | `novaic-cortex/novaic_cortex/tool_schemas.py`（`BUILTIN_TOOL_SCHEMAS`） |
+| Cortex 架构文档 | `docs/cortex-architecture.md`、`docs/context-assembly-dfs-step-tree.md` |
 | FactoryLLMClient | `agent-runtime/task_queue/factory_client.py` |
-| 工具定义 | `tools-server/common/tools/definitions.py` |
-| 工具路由+执行 | `tools-server/tools_server/executor.py` |
-| 工具权限+挂载 | `gateway/gateway/agent_binding.py` |
+| LLM Factory 日志页 | `novaic-llm-factory/static/factory-logs.html` |
+| 工具权限+挂载（VM 等） | `gateway/gateway/agent_binding.py`（VM 工具路径仍经 Gateway/PC，与 Agent loop 内 Cortex 工具并行存在） |
 | VM 代理 | `gateway/gateway/api/internal/agent.py` (proxy_vm_tool) |
 | VMUSE Shell | `mcp-vmuse/src/novaic_mcp_vmuse/tools/shell.py` |
 
@@ -992,7 +999,8 @@ cd novaic-gateway && PYTHONPATH=. python -m unittest tests.test_deps_internal_ta
 - [x] **AppWS schema push 与 Sync Contract 对齐**：`app_client.py` 首包带 `syncContractVersion`；网关 unittest 在无 Entangled 兄弟目录时 skip parity
 - [x] **modelService IndexedDB 依赖已移除**：不再读写 prefsRepo selectedModel/AudioModel
 - [x] **Skills 领域分调查报告**：`docs/skills-domain-investigation-reports.md`（对照 OpenClaw；落地商店/限额/导入前读）
-- [x] **Context Stack 引擎生产就绪**：实现 6 步统一生命周期，修复 7 项核心缺陷（重入防护、工具路由拦截、决策提取等），单元测试全绿，准备接管旧引擎。
+- [x] **Context Stack → Cortex DFS Step Tree**：旧 `context-stack/` 独立引擎（6 步生命周期）已被 Cortex 内置的 DFS Step Tree 上下文拼装替代。旧设计文档归档至 `docs/archived/`。当前实现：`novaic-cortex/novaic_cortex/context_stack/`（ContextEngine + StepTreeBuilder + budget_compact）。
+- [x] **Cortex 存储 ACL 修正**：`/ro/` = Cortex 管理区，`/rw/` = Agent 自由空间。活跃 scope 在 `/ro/active/`（非 `/rw/active/`）。Workspace 使用 `_sys_*` 方法绕过 agent ACL。
 - [ ] **iOS 键盘输入框适配**：`--keyboard-height` 注入已实现，需真机验证
 - [ ] **服务端数据自动清理**：runtime 完成时自动清空 context；queue 定期清理；logrotate
 - [ ] **Watchdog v2：Per-Agent 轮询**：按 Agent 分组批量处理，防重复 Runtime
@@ -1071,35 +1079,83 @@ available-models (List Entity, user-scoped)
 
 ---
 
-## 十八、Context Stack 运行时架构（2026-04 重构完成）
+## 十八、NovAIC Cortex 认知引擎（2026-04 当前架构）
 
-Context Stack 引擎作为 NovAIC 下一代核心运行时基石，采用**基于微交易与严格生命周期的架构**设计，将「上下文管理」、「记忆扩展」、「技能执行」三位一体闭环统一。
+> **完整架构文档**：`docs/cortex-architecture.md`  
+> **DFS Step Tree 设计**：`docs/context-assembly-dfs-step-tree.md`  
+> **过时文档已归档**：`docs/archived/`（旧 Cortex 设计、Context Stack v2、统一引擎架构等 8 份）
 
-### 18.1 核心设计理念
+Cortex 是 NovAIC Agent 的认知基础设施——独立 HTTP 服务（`:19996`），S3-backed，管理 Agent 的工作空间、上下文拼装、历史记忆和工具执行。
 
-1. **Facade 模式零耦合**：对外仅暴露 5 个接口（`run`, `run_meta`, `run_recall`, `match`, `status`），只需宿主注入 4 个 Protocol（`AgentExecutor`, `Summarizer`, `TokenCounter`, `MemoryBackend`），彻底隔离 Agent 循环与上下文存储。
-2. **绝对统一的 6 步生命周期**：所有 Agent 任务（无一例外）均经历 6 个阶段：
-   - ① **CHECKPOINT**：保存状态快照、token 预算与起始消息索引
-   - ② **PRE-HOOKS**：注入 Skill prompt，加载工具环境
-   - ③ **EXECUTE**：启动 Agent 循环调用（引擎不干涉，交由宿主执行）
-   - ④ **POST-HOOKS**：拦截验证、提取关键元数据（使用的工具、修改的文件等）
-   - ⑤ **SUMMARIZE**：将 scope 内长文本行为转换为统一的结构化报告
-   - ⑥ **RELOAD**：原始海量消息被单条摘要替换，同时 raw_messages 入库落盘
-3. **三种互备 Skill 体系**：
-   - **Normal Skill**：带 Prompt、Workflow、指定工具集
-   - **Meta Skill**：默认兜底容器。让未匹配到任务的散乱消息也强制在安全沙箱内执行，**消除系统中的孤儿消息**。
-   - **Recall Skill**：系统自主回忆机制。为 Agent 自动注入 `memory_expand`（L0-L3 逐级下钻详情）与 `memory_search` 搜索旧 Scope，实现真正的自主探索式检索发现。
+### 18.1 存储模型
 
-### 18.2 已落地的七大生产级机制（Fix #1-#7）
+| 区域 | 管理者 | Agent 权限 | 内容 |
+|------|--------|-----------|------|
+| `/ro/` | **Cortex** | 只读 | `active/` (活跃 scope)、`scopes/` (归档)、`config/`、`skills/`、`knowledge/` |
+| `/rw/` | **Agent** | 读写 | `scratch/`（agent 自由空间） |
 
-1. **Prompt 污染隔离**（Fix #1）：过滤拦截带有 `skill_prompt` 的消息落盘 raw memory，确保 Recall 搜索到的内容无冗余指令噪音。
-2. **隐藏工具路由闭环**（Fix #3）：`RecallToolRouter` 引擎透明拦截并处理了 Agent 对记忆回放工具的调用，对宿主机呈现零感知封装。
-3. **决策自动提取**（Fix #2）：SUMMARIZE 阶段通过 NLP/规则正则精准提取 "chose X over Y" / "decided to" 等微观意图存入元数据，大幅提升恢复 Agent 的上下文连续性。
-4. **防套娃的重入锁**（Fix #5）：通过 `_active` 原语与 `finally` 保障机制，拦截大模型在 EXECUTE 时尝试套环/递归触发子生命周期的失控行为。
-5. **记忆预算控制**（Fix #6）：`raw_max_chars_per_scope` 硬性阻断截断策略，保证持久化上下文不出现超纲崩盘。
-6. **多并发线程安全**（Fix #7）：对统计指标增量以及核心的 `MemoryScopeStore` 数据流读写实施精细的原子化 `threading.Lock`。
-7. **三级退避降压（Micro/Auto/Emergency Compact）**：从无损工具长文截断，到基于触发器的按段 Summary，最终到暴跌求生熔断，保障全天候上下文可用。
+**关键概念**：scope 是 Cortex 系统对象，不是 agent 文件。所有 scope 操作（创建、写 step、归档）使用 `_sys_*` 内部方法，绕过 `/rw/` ACL。
 
-### 18.3 接入与替换
+### 18.2 Scope 树与 DFS 上下文拼装
 
-目前该引擎完全独立实现在 `context-stack` 模块目录，199 项边界行为单元测试已绿。具备脱离本业务线成为泛化生态基模的条件，下一步将被用于直接替代上层旧版本解耦和不充分的 `CompactPipeline`。
+**上下文的原子单位是 step，不是 message。**
+
+每个 scope 内部是一棵 step tree，由 `steps/_index.jsonl` 索引维护。Step 分两种：
+- **tool**（叶子）：工具调用+结果，存为 JSON 文件
+- **scope**（复合）：`skill_begin` 创建的子 scope 目录
+
+`ContextEngine.prepare_messages_for_llm()` 对 step tree 做 DFS 遍历：
+- **闭合 scope** → 折叠为一条 summary system message（跳过子树）
+- **开放 scope** → 展开子 step（递归）
+- **tool step** → 生成 assistant tool_call + tool result message
+
+```
+DFS(node):
+  if node.type == "tool":
+    yield tool_message(node)
+  elif node.type == "scope":
+    if node.closed:
+      yield fold_message(node)      # 只输出 summary
+    else:
+      for child in node.children:
+        yield* DFS(child)           # 递归展开
+```
+
+### 18.3 context.jsonl 瘦身
+
+`context.jsonl` 只存放非 step 消息（system prompt、recall、user messages、assistant messages）。Tool results 存在 `steps/` 目录，由 `ContextEngine` 在拼装时从 step 文件读取并合并。
+
+### 18.4 Recall（历史记忆）
+
+`Recall` 读取 `/ro/scopes/_index.jsonl`，为每个归档 scope 生成一条 system message（summary level）。Agent 可通过 `novaic read /ro/scopes/{sid}/...` 自行浏览详细步骤。
+
+### 18.5 核心组件
+
+| 组件 | 文件 | 职责 |
+|------|------|------|
+| `Workspace` | `workspace.py` | 文件系统抽象 + scope/step/context CRUD |
+| `WorkspaceRegistry` | `registry.py` | 多租户缓存（per user_id + agent_id） |
+| `ContextEngine` | `context_stack/engine.py` | DFS step tree 上下文拼装 |
+| `StepTreeBuilder` | `context_stack/step_tree.py` | 从 S3 构建内存 step tree |
+| `budget_compact` | `context_stack/budget.py` | 三级 token 预算压缩 |
+| `Recall` | `recall.py` | 归档 scope → system messages |
+| `CortexBridge` | `agent-runtime/.../cortex_bridge.py` | HTTP 客户端（runtime 侧） |
+
+### 18.6 Agent Runtime 集成
+
+Agent Runtime 通过 `CortexBridge`（`httpx.Client`）调用 Cortex API，不直接 import Cortex 代码。
+
+关键约定：
+- `skill_begin` / `skill_end` 直接管理 scope 生命周期，**不写入** tool step（避免 `_index.jsonl` 重复）
+- 其他工具结果通过 `POST /v1/steps/write` 写入 step 文件
+- `resolve_active_scope_path` 自动路由到最深活跃 scope（每层 1 次 S3 读取）
+
+### 18.7 部署
+
+| 项 | 值 |
+|----|-----|
+| 端口 | 19996 |
+| S3 | `novaic-s3-bucket` / `cortex/` / `oss-cn-hongkong` |
+| 环境变量 | `ALIBABA_CLOUD_ACCESS_KEY_ID`、`ALIBABA_CLOUD_ACCESS_KEY_SECRET` |
+| 启动 | `.venv/bin/python -m novaic_cortex.main_cortex` |
+| 健康检查 | `GET http://localhost:19996/health` |

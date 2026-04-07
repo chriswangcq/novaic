@@ -13,15 +13,6 @@
 [submodule "novaic-mcp-vmuse"]
 	path = novaic-mcp-vmuse
 	url = git@github.com:chriswangcq/novaic-mcp-vmuse.git
-[submodule "novaic-runtime-orchestrator"]
-	path = novaic-runtime-orchestrator
-	url = git@github.com:chriswangcq/novaic-runtime-orchestrator.git
-[submodule "novaic-shared-kernel"]
-	path = novaic-shared-kernel
-	url = git@github.com:chriswangcq/novaic-shared-kernel.git
-[submodule "novaic-shared-runtime-common"]
-	path = novaic-shared-runtime-common
-	url = git@github.com:chriswangcq/novaic-shared-runtime-common.git
 [submodule "novaic-storage-a"]
 	path = novaic-storage-a
 	url = git@github.com:chriswangcq/novaic-storage-a.git
@@ -37,3 +28,6 @@
 [submodule "novaic-cortex"]
 	path = novaic-cortex
 	url = git@github.com:chriswangcq/novaic-cortex.git
+[submodule "novaic-common"]
+	path = novaic-common
+	url = git@github.com:chriswangcq/novaic-common.git
