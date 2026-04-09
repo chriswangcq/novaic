@@ -23,6 +23,8 @@
 | 内置工具 schema、技能安装 | **[cortex/builtin-tools-and-skills.md](cortex/builtin-tools-and-skills.md)** |
 | Hooks、协议、StepTree、压缩建议 | **[cortex/extension-points.md](cortex/extension-points.md)** |
 | Entangled、`fs://`、TRS 等 | **[cortex/satellite-modules.md](cortex/satellite-modules.md)** |
+| `budget_compact` 算法（micro/warm/emergency） | **[cortex/budget-compact-algorithm.md](cortex/budget-compact-algorithm.md)** |
+| Agent Runtime → `prepare_for_llm` 调用链 | **[cortex/agent-runtime-cortex-call-chain.md](cortex/agent-runtime-cortex-call-chain.md)** |
 | 索引与学习路径 | **[cortex/README.md](cortex/README.md)** |
 
 
@@ -189,7 +191,8 @@
 ## 11. 与 Agent Runtime 的衔接
 
 - Agent Runtime 注册 topic `**cortex.prepare_llm_context**`（见 `novaic-agent-runtime/task_queue/handlers/cortex_handlers.py`），内部 HTTP 调用 Cortex 的 `**/v1/context/...**` 与 `**context_prepare_for_llm**`，将返回的 **messages + tools** 交给 `**llm_handlers`**。  
-- 因此：**「prepare_llm_context」是跨服务约定名称**；Cortex 仓库内对应实现为 `**context_prepare_for_llm` HTTP 端点 + `ContextEngine`**，而非 `runtime.py` 里同名方法。
+- 因此：**「prepare_llm_context」是跨服务约定名称**；Cortex 仓库内对应实现为 `**context_prepare_for_llm` HTTP 端点 + `ContextEngine`**，而非 `runtime.py` 里同名方法。  
+- **逐步调用链（Saga → Bridge → HTTP → `budget_compact`）** 见专题 **[cortex/agent-runtime-cortex-call-chain.md](cortex/agent-runtime-cortex-call-chain.md)**。
 
 ---
 

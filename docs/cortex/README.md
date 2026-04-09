@@ -15,6 +15,8 @@
 | [sandbox-shell.md](sandbox-shell.md) | `Sandbox.exec`：物化、`NOVAIC_TOKEN`、与 VM/proxy shell 的区别 |
 | [compactor-and-gem-fusion.md](compactor-and-gem-fusion.md) | `Compactor.compact`、归档、`__fused__`、gem fusion 批次 |
 | [engine-config-and-metrics.md](engine-config-and-metrics.md) | `EngineConfig`、`/ro/config/engine.json`、`budget_compact`、`CortexMetrics` |
+| [budget-compact-algorithm.md](budget-compact-algorithm.md) | `budget_compact`：micro / warm / emergency、轮边界、`CompactConfig` 与 HTTP 路径 |
+| [agent-runtime-cortex-call-chain.md](agent-runtime-cortex-call-chain.md) | Topic `cortex.prepare_llm_context` → `CortexBridge` → `prepare_for_llm` → `llm.call` |
 | [runtime-facade.md](runtime-facade.md) | `Cortex` 门面：initialize、builtin tools、`skill_*` 与 compactor |
 | [http-api.md](http-api.md) | `api.py` 全部路由：Agent / CLI / Internal 分层 |
 | [proxy-cli-auth.md](proxy-cli-auth.md) | 能力 JWT、`GatewayProxy`、`novaic` CLI |
@@ -35,15 +37,17 @@
 4. **记忆从哪来** → [recall.md](recall.md)
 5. **scope 结束摘要与可选融合** → [compactor-and-gem-fusion.md](compactor-and-gem-fusion.md)
 6. **窗口与压缩阈值** → [engine-config-and-metrics.md](engine-config-and-metrics.md)
-7. **shell 在本地盘跑一圈** → [sandbox-shell.md](sandbox-shell.md)
-8. **`Cortex` 类怎么串起来** → [runtime-facade.md](runtime-facade.md)
-9. **HTTP 入口一览** → [http-api.md](http-api.md)
-10. **JWT / Gateway / CLI** → [proxy-cli-auth.md](proxy-cli-auth.md)
-11. **日志与单测从哪找** → [observability-and-tests.md](observability-and-tests.md)
-12. **进程怎么起、OSS 要什么** → [deployment-and-startup.md](deployment-and-startup.md)
-13. **Agent 能写哪、Cortex 怎么写 `/ro`** → [workspace-acl-and-sys-writes.md](workspace-acl-and-sys-writes.md)
-14. **工具 JSON 与技能目录从哪来** → [builtin-tools-and-skills.md](builtin-tools-and-skills.md)
-15. **Hook / 注入摘要器 / StepTree 与 Engine 分工** → [extension-points.md](extension-points.md)
-16. **Entangled、`fs://`、TRS 从哪进** → [satellite-modules.md](satellite-modules.md)
+7. **`budget_compact` 三档（micro / warm / emergency）** → [budget-compact-algorithm.md](budget-compact-algorithm.md)
+8. **Agent Runtime → Cortex（`cortex.prepare_llm_context`）** → [agent-runtime-cortex-call-chain.md](agent-runtime-cortex-call-chain.md)
+9. **shell 在本地盘跑一圈** → [sandbox-shell.md](sandbox-shell.md)
+10. **`Cortex` 类怎么串起来** → [runtime-facade.md](runtime-facade.md)
+11. **HTTP 入口一览** → [http-api.md](http-api.md)
+12. **JWT / Gateway / CLI** → [proxy-cli-auth.md](proxy-cli-auth.md)
+13. **日志与单测从哪找** → [observability-and-tests.md](observability-and-tests.md)
+14. **进程怎么起、OSS 要什么** → [deployment-and-startup.md](deployment-and-startup.md)
+15. **Agent 能写哪、Cortex 怎么写 `/ro`** → [workspace-acl-and-sys-writes.md](workspace-acl-and-sys-writes.md)
+16. **工具 JSON 与技能目录从哪来** → [builtin-tools-and-skills.md](builtin-tools-and-skills.md)
+17. **Hook / 注入摘要器 / StepTree 与 Engine 分工** → [extension-points.md](extension-points.md)
+18. **Entangled、`fs://`、TRS 从哪进** → [satellite-modules.md](satellite-modules.md)
 
-（1–4 为第一拨；5–11 第二拨；12–16 第三拨，可按需跳读。）
+（1–4 为第一拨；5–8 为「配置 + 压缩 + Runtime 链」；9–13 第二拨；14–18 第三拨。可按需跳读。）

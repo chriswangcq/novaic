@@ -70,8 +70,9 @@
 
 在 **`prepare_messages_for_llm`** 末尾对**整条消息列表**调用：
 
-- 根据 **`CompactConfig`**（来自 `EngineConfig` / `context_window`、阈值等）计算 **usage ratio**。
-- **紧急 / 温和**两档：可丢弃部分旧消息、截断过长 **tool** 内容等（见 `budget.py` 内 `_emergency_compact` / `_warm_compact` / `_micro_compact`）。
+- 根据 **`CompactConfig`**（`context_window`、阈值、`micro_*` 等）与 **`count_all_tokens`** 算 **ratio**，再进入 **micro / warm / emergency** 三路径（见 **`budget.py`**）。
+
+逐步说明、轮边界、`stack_top` 与 HTTP **`prepare_for_llm`** 是否读 **`engine.json`**：**[budget-compact-algorithm.md](budget-compact-algorithm.md)**。
 
 **`ContextEngine.status()`** 可基于已生成消息估算 token 与 `usage_ratio`（供上层 `suggest_compact` 等使用）。
 
@@ -86,5 +87,7 @@
 
 ## 相关文档
 
+- [budget-compact-algorithm.md](budget-compact-algorithm.md) — `budget_compact` 详解  
+- [agent-runtime-cortex-call-chain.md](agent-runtime-cortex-call-chain.md) — Runtime 如何调 `prepare_for_llm`  
 - [scope-lifecycle.md](scope-lifecycle.md) — scope 何时 `archived`、summary 谁写  
 - [recall.md](recall.md) — 归档**根** scope 如何进入全局记忆索引  
