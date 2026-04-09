@@ -29,7 +29,7 @@
 | [agent-pipeline.md](architecture/agent-pipeline.md)                         | 后端进程、Saga、工具、源码表                  |
 | [cortex.md](architecture/cortex.md)                                         | Cortex 纲要                         |
 | **[cortex-architecture.md](cortex-architecture.md)**                        | Cortex 详细总览（子模块源码级）               |
-| **[cortex/README.md](cortex/README.md)**                                    | Cortex 专题拆页（存储、Sandbox、API、Proxy 等） |
+| **[cortex/README.md](cortex/README.md)**                                    | Cortex 专题（时间线 schema、meta、Internal API、Runtime topics、Proxy 路由等） |
 | [app-ui.md](architecture/app-ui.md)                                         | 前端 Path C、HTTP→Entangled 表        |
 
 
@@ -39,7 +39,7 @@
 | 文档                                                               | 内容        |
 | ---------------------------------------------------------------- | --------- |
 | [submodules.md](reference/submodules.md)                         | 子模块表      |
-| [config-and-environment.md](reference/config-and-environment.md) | 路径、env    |
+| [config-and-environment.md](reference/config-and-environment.md) | 路径、env；**Cortex / NOVAIC_CORTEX_*** |
 | [file-service.md](reference/file-service.md)                     | 文件 API、语音 |
 
 
