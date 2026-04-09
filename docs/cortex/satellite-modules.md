@@ -6,6 +6,7 @@
 
 - **`get_entangled_client()`**：单例 **`EntangledClient`**，读 **Entangled** 实体（如 agent 元数据）。
 - 环境：**`ENTANGLED_SERVICE_URL`**，或回退 **`common.config.ServiceConfig`** / 默认 `http://127.0.0.1:19900`。
+  > 注：Entangled 独立服务已并入 `Entangled/packages/server-python/entangled/app`，启动方式：`python -m entangled.app.main`。
 - 注释说明：**多数业务仍应走 `GatewayProxy`**；直连适用于纯数据读、或 Cortex 组装上下文时的特殊需求。
 
 ## 2. `file_resolver.py`
