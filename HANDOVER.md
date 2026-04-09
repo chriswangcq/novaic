@@ -30,6 +30,7 @@
 
 > （由 `/update-handover` Slash 工作流命令追记生成使用，请自顶向下追加）
 
+> 最后更新：2026-04-09 — **横跨架构维度的终局补充**：建立了统一数据字典（Entity Data Models）、Common 依赖生成链库（解决了多端类型生成与19996本地夺口战）、以及记录了处于公网隔离最顶层的 Nginx 网关重载 /internal 保卫阵列布置，完美闭环封库。
 > 最后更新：2026-04-09 — **全域架构文档 L3 级大爆发与总盘瘦身**：针对 Entangled, Gateway, Runtime, Vmcontrol, MCP, Frontend, Network, Storage 等由于年久失修积攒的大量特性，重新生成了专属的大目录与几十篇细节详表，挂载于 `docs/` 目录下。本文档 `HANDOVER.md` 正式抛弃过往动辄上千行的繁重冗余组件解说，转为纯粹的变更追踪集。
 > 最后更新：2026-04-09 — **Entangled 架构三层大一统**：废弃独立 `entangled-service` repo，逻辑全部并入 Entangled 本库（分拆为 server / sql / app 三层）。清理过时的架构文档（移除了 Tools Server、TRS 等端口引用），统一通过自带的 `entangled.app` 启动外壳。
 > 最后更新：2026-04-09 — **§12 与 schema v63**：用户消息与 Agent/SubAgent 业务实体持久化已完全归顺于 **Entangled**（Path C）；Gateway `gateway.db` 仅保留运维与用户注册表（`agents` / `chat_messages` / `subagents` 等由于耦合已彻底 DROP 斩断）。
