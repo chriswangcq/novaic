@@ -40,6 +40,9 @@
 | **[network-architecture.md](network-architecture.md)**                      | 边缘网络与穿透节点总览                        |
 | **[network/README.md](network/README.md)**                                  | 网络设施流转拆解                          |
 | **[storage-architecture.md](storage-architecture.md)**                      | 独立 File Storage 大件存储转存架构总览        |
+| **[common-architecture.md](common-architecture.md)**                        | 跨端共享与契约 (Common) 架构总览             |
+| **[common/README.md](common/README.md)**                                    | 共享端口/代码生成字典拆解                     |
+| **[entity-data-models.md](architecture/entity-data-models.md)**                 | **大一统核心实体字典全集**（必须掌握的结构基元）   |
 
 
 ## 参考
@@ -62,6 +65,7 @@
 | [deploy.md](runbooks/deploy.md)                       | `./deploy` 子命令                            |
 | [build-and-release.md](runbooks/build-and-release.md) | 桌面 / iOS 完整 / Android                     |
 | [cloud-production.md](runbooks/cloud-production.md)   | §六§七：deploy 原理、Gateway/Relay/Factory、维护命令 |
+| **[ci-cd-and-env.md](runbooks/ci-cd-and-env.md)**         | **隐形 Nginx 分流矩阵与部署环境全貌** (高阶运维必看) |
 | [troubleshooting.md](runbooks/troubleshooting.md)     | 排障大全表                                     |
 
 
