@@ -29,7 +29,7 @@
 | [agent-pipeline.md](architecture/agent-pipeline.md)                         | 后端进程、Saga、工具、源码表                  |
 | [cortex.md](architecture/cortex.md)                                         | Cortex 纲要                         |
 | **[cortex-architecture.md](cortex-architecture.md)**                        | Cortex 详细总览（子模块源码级）               |
-| **[cortex/README.md](cortex/README.md)**                                    | **Scope / 时间线·DFS / Recall** 专题拆页 |
+| **[cortex/README.md](cortex/README.md)**                                    | Cortex 专题拆页（存储、Sandbox、API、Proxy 等） |
 | [app-ui.md](architecture/app-ui.md)                                         | 前端 Path C、HTTP→Entangled 表        |
 
 
