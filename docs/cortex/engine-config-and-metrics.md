@@ -35,9 +35,9 @@
 
 ## 3. `budget_compact`（与 `ContextEngine`）
 
-- **`ContextEngine.prepare_messages_for_llm`** 末尾调用 **`budget_compact(messages, CompactConfig, counter)`**。  
-- **`CompactConfig`** 由 **`EngineConfig`** 映射而来（见 `context_stack/types.py` 与 engine 构造链）。  
-- 行为摘要见 [context-timeline-and-dfs.md](context-timeline-and-dfs.md) §6；细节读 **`budget.py`**。
+- **`ContextEngine.prepare_messages_for_llm`** 末尾调用 **`budget_compact(messages, self.config, counter=self._counter)`**，使用 **`CompactConfig`**（`context_stack/types.py`）。字段与 **`EngineConfig`** 在语义上可对齐（窗口、阈值、micro 截断等），但 **字段名不完全相同**（例如 `micro_preserve_recent` vs `micro_preserve_recent_rounds`）。  
+- **`Cortex.initialize()`** 会 **`load_engine_config`** 并作用于 **`Sandbox` / `Recall` / `Compactor`**；**HTTP** **`POST /v1/context/prepare_for_llm`** 当前构造 **`ContextEngine(...)` 时未传入从 `engine.json` 映射的 `CompactConfig`**，故该路径上 **`budget_compact` 使用 `CompactConfig()` 默认值**（与默认 **`EngineConfig`** 数值相近，但改 **`engine.json` 不会自动反映到该 HTTP 路径**，除非在 `api.py` 侧显式映射）。详见 [budget-compact-algorithm.md](budget-compact-algorithm.md) §8。  
+- 算法逐步说明：[budget-compact-algorithm.md](budget-compact-algorithm.md)；时间线前半段：[context-timeline-and-dfs.md](context-timeline-and-dfs.md)。
 
 ---
 
@@ -56,5 +56,7 @@
 ## 相关
 
 - [context-timeline-and-dfs.md](context-timeline-and-dfs.md)  
+- [budget-compact-algorithm.md](budget-compact-algorithm.md)  
+- [agent-runtime-cortex-call-chain.md](agent-runtime-cortex-call-chain.md)  
 - [compactor-and-gem-fusion.md](compactor-and-gem-fusion.md)  
 - [sandbox-shell.md](sandbox-shell.md)  
