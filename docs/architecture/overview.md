@@ -85,6 +85,7 @@
 | 后端管线、源码表 | [agent-pipeline.md](agent-pipeline.md) |
 | Cortex（纲要） | [cortex.md](cortex.md) |
 | Cortex（详细，源码级） | [../cortex-architecture.md](../cortex-architecture.md) |
+| Cortex（Scope/DFS/Recall 拆页） | [../cortex/README.md](../cortex/README.md) |
 | 前端 Path C | [app-ui.md](app-ui.md) |
 | 子模块 | [../reference/submodules.md](../reference/submodules.md) |
 | 配置与环境 | [../reference/config-and-environment.md](../reference/config-and-environment.md) |

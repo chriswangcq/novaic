@@ -2,6 +2,17 @@
 
 本文档基于 `**novaic-cortex**` 子模块源码整理，并与 `**novaic-agent-runtime**` 中 `cortex.prepare_llm_context` 调用链对照。历史设计长文仍可从父仓 **[historical-doc-links.md](historical-doc-links.md)** 用 `git show` 查看。
 
+## 专题拆页（更细）
+
+
+| 主题                                        | 文档                                                                           |
+| ----------------------------------------- | ---------------------------------------------------------------------------- |
+| Scope 创建、激活、归档、统一时间线                      | **[cortex/scope-lifecycle.md](cortex/scope-lifecycle.md)**                   |
+| `_index.jsonl`、DFS 展开/折叠、`budget_compact` | **[cortex/context-timeline-and-dfs.md](cortex/context-timeline-and-dfs.md)** |
+| `Recall` 类与全局记忆索引                         | **[cortex/recall.md](cortex/recall.md)**                                     |
+| 索引与阅读顺序                                   | **[cortex/README.md](cortex/README.md)**                                     |
+
+
 ---
 
 ## 1. Cortex 是什么
@@ -26,7 +37,7 @@
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Uvicorn 入口  | `python -m novaic_cortex.main_cortex` 或 `uvicorn novaic_cortex.main_cortex:app`                                                                                |
 | 启动钩子        | `main_cortex.py`：`startup` 时创建 OSS boto 客户端、`WorkspaceRegistry`、`GatewayProxy` 并注入全局                                                                           |
-| 对象存储        | 环境变量 `**ALIBABA_CLOUD_ACCESS_KEY_ID`**、`**ALIBABA_CLOUD_ACCESS_KEY_SECRET**`；`**NOVAIC_OSS_ENDPOINT**`、`**NOVAIC_OSS_REGION**`、`**NOVAIC_OSS_BUCKET**`（默认值见代码） |
+| 对象存储        | 环境变量 `**ALIBABA_CLOUD_ACCESS_KEY_ID`**、`**ALIBABA_CLOUD_ACCESS_KEY_SECRET`**；`**NOVAIC_OSS_ENDPOINT**`、`**NOVAIC_OSS_REGION**`、`**NOVAIC_OSS_BUCKET**`（默认值见代码） |
 | Gateway 侧信任 | `**GATEWAY_INTERNAL_URL**`（默认如 `http://127.0.0.1:19999`）、`**CORTEX_INTERNAL_KEY**`（`X-Internal-Key`）                                                           |
 
 
@@ -64,7 +75,7 @@
 ### 4.1 逻辑路径：`/ro` 与 `/rw`
 
 - `**/ro/**`：Cortex 管理（scopes、config、skills、knowledge）。Agent 仅可 **读**（`read` / `list_dir` / `exists`）；**写**须走 `**Workspace._sys_*`**（服务端/内部路径）。
-- `**/rw/`**：Agent **可读写**（`write`、`append_line`、`delete` 等），主要为 `**scratch`** 与 sandbox 回写。
+- `**/rw/`**：Agent 可读写（`write`、`append_line`、`delete` 等），主要为 `**scratch`** 与 sandbox 回写。
 
 ### 4.2 对象键（S3）
 
@@ -78,7 +89,7 @@
 ### 4.3 Scope 目录（概念）
 
 - 活跃根 scope：`/ro/active/{scope_id}/`
-- 归档后：`/ro/scopes/{scope_id}/`，并追加到 `**/ro/scopes/_index.jsonl**`
+- 归档后：`/ro/scopes/{scope_id}/`，并追加到 `**/ro/scopes/_index.jsonl`**
 - 子 scope 可在父 scope 的 `steps/` 下以目录形式出现；**Recall 仅对 depth==0 的根归档 scope 做记忆摘要**（见 `recall.py`）
 
 ---
@@ -90,15 +101,15 @@
 `ContextEngine` 顺序读取当前 scope 下的 `**steps/_index.jsonl`**，每条描述一步，类型包括（以 engine 为准）：
 
 - `**env`**：内联环境信息 → system 消息  
-- `**assistant**`：指向 JSON 文件 → assistant（含可选 `tool_calls` / `reasoning_content`）  
-- `**tool**`：指向 JSON 文件 → `role: tool` + `tool_call_id`  
+- `**assistant`**：指向 JSON 文件 → assistant（含可选 `tool_calls` / `reasoning_content`）  
+- `**tool`**：指向 JSON 文件 → `role: tool` + `tool_call_id`  
 - `**scope**`：子 scope 目录；若子 scope **已归档** → 折叠为一条 system（读 `summary.md`）；若仍 **开放** → **递归**子 `ContextEngine` 在子目录上 `_render_all_steps`（深度优先展开）
 
 ### 5.2 `prepare_messages_for_llm`（概要）
 
 1. 读当前 scope 的 `**meta.json`**：可选 `system_prompt`、`recall_messages`、`initial_context`
 2. 读 `**steps/_index.jsonl`**，按类型渲染
-3. 调用 `**budget_compact**`（`context_stack/budget.py`）：按 `EngineConfig` 的窗口与阈值做紧急/温和压缩、长 tool 结果截断等
+3. 调用 `**budget_compact`**（`context_stack/budget.py`）：按 `EngineConfig` 的窗口与阈值做紧急/温和压缩、长 tool 结果截断等
 
 ### 5.3 `StepTreeBuilder`（`step_tree.py`）
 
@@ -124,7 +135,7 @@
 ## 8. `Cortex` 运行时（`runtime.py`）
 
 - 聚合 `**Workspace`、`Sandbox`、`Recall`、`Compactor`**、hooks、metrics、可选 summarizer。  
-- `**prepare_system_prompt`**：调用 `**recall.generate()**`（注意：仓库内 **无** 名为 `prepare_llm_context` 的 Python 方法；该名称出现在 **Agent Runtime 的 topic** 中）。  
+- `**prepare_system_prompt`**：调用 `**recall.generate()`**（注意：仓库内 **无** 名为 `prepare_llm_context` 的 Python 方法；该名称出现在 **Agent Runtime 的 topic** 中）。  
 - `**skill_begin` / `skill_end`**：创建/结束 skill scope，`**skill_end` 会调用 `compactor.compact`**。  
 - 内置工具 schema 与 `load_tool_schemas`、技能安装 `install_skill` 等与 `**tool_schemas.py**`、`**/ro/skills**` 联动。
 
@@ -146,7 +157,7 @@
 - **CLI 风格**：`GET /v1/read`，`POST /v1/write`，`GET /v1/ls`，`GET /v1/recall`，`GET /v1/tools`，`POST /v1/proxy/{command}`  
 - **内部 Worker 风格（tenant 在 JSON body）**：  
   - `**/v1/scope/*`**：创建/结束/激活 scope 等  
-  - `**/v1/context/*`**：`**context_prepare_for_llm**`（对应 Agent Runtime 侧「组装 LLM 消息」）、`context_skill_begin/end`、`context_status`  
+  - `**/v1/context/*`**：`**context_prepare_for_llm`**（对应 Agent Runtime 侧「组装 LLM 消息」）、`context_skill_begin/end`、`context_status`  
   - `**/v1/meta/***`：会话 `meta.json`  
   - `**/v1/steps/***`：读写步骤、索引、预览  
   - `**/v1/internal/***`：内部 recall、shell、skill 等变体
@@ -172,8 +183,8 @@
 ## 12. 可观测性与测试
 
 - `**log_cortex(event, **kwargs)`**：统一前缀 `[CORTEX]`，值长度截断。  
-- 各模块广泛使用 `**logging.getLogger(__name__)**`。  
-- 测试位于 `**novaic-cortex/tests/**`（扁平目录），如 `test_workspace*.py`、`test_sandbox*.py`、`test_recall*.py`、`test_compactor*.py`、`test_context_budget*.py`、`test_engine_*.py` 等；`**ContextEngine` 多通过 API 与 budget/配置间接覆盖**。
+- 各模块广泛使用 `**logging.getLogger(__name__)`**。  
+- 测试位于 `**novaic-cortex/tests/`**（扁平目录），如 `test_workspace*.py`、`test_sandbox*.py`、`test_recall*.py`、`test_compactor*.py`、`test_context_budget*.py`、`test_engine_*.py` 等；`**ContextEngine` 多通过 API 与 budget/配置间接覆盖**。
 
 ---
 
