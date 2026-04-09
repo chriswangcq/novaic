@@ -87,6 +87,8 @@
 
 ## 相关文档
 
+- [step-index-and-payload-schema.md](step-index-and-payload-schema.md) — `_index.jsonl` 行与磁盘 JSON 形状  
+- [session-meta-json.md](session-meta-json.md) — `meta.json` 与 `prepare_messages_for_llm` 前缀  
 - [budget-compact-algorithm.md](budget-compact-algorithm.md) — `budget_compact` 详解  
 - [agent-runtime-cortex-call-chain.md](agent-runtime-cortex-call-chain.md) — Runtime 如何调 `prepare_for_llm`  
 - [scope-lifecycle.md](scope-lifecycle.md) — scope 何时 `archived`、summary 谁写  

@@ -44,5 +44,6 @@ HTTP 封装：**`POST /v1/proxy/{command}`**（见 [http-api.md](http-api.md)）
 
 ## 相关
 
+- [proxy-gateway-routes.md](proxy-gateway-routes.md) — `command` → Gateway 路径表  
 - [http-api.md](http-api.md)  
 - [sandbox-shell.md](sandbox-shell.md)  

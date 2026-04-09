@@ -25,6 +25,12 @@
 | Entangled、`fs://`、TRS 等 | **[cortex/satellite-modules.md](cortex/satellite-modules.md)** |
 | `budget_compact` 算法（micro/warm/emergency） | **[cortex/budget-compact-algorithm.md](cortex/budget-compact-algorithm.md)** |
 | Agent Runtime → `prepare_for_llm` 调用链 | **[cortex/agent-runtime-cortex-call-chain.md](cortex/agent-runtime-cortex-call-chain.md)** |
+| Runtime 全部 Cortex topic、`context.append` | **[cortex/agent-runtime-all-topics.md](cortex/agent-runtime-all-topics.md)** |
+| `steps/_index.jsonl` 与磁盘载荷 | **[cortex/step-index-and-payload-schema.md](cortex/step-index-and-payload-schema.md)** |
+| 会话 `meta.json` | **[cortex/session-meta-json.md](cortex/session-meta-json.md)** |
+| Internal API 请求/响应摘要 | **[cortex/internal-api-schemas.md](cortex/internal-api-schemas.md)** |
+| `/v1/proxy/{command}` → Gateway | **[cortex/proxy-gateway-routes.md](cortex/proxy-gateway-routes.md)** |
+| 源码中的设计稿引用 | **[cortex/design-doc-links.md](cortex/design-doc-links.md)** |
 | 索引与学习路径 | **[cortex/README.md](cortex/README.md)** |
 
 

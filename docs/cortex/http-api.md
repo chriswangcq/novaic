@@ -42,14 +42,15 @@
 |------|------|
 | POST | `/v1/scope/create` |
 | POST | `/v1/scope/end` |
-| POST | `/v1/scope/activate` |
-| POST | `/v1/scope/end_and_spawn` |
 | POST | `/v1/scope/write_assistant` |
 
 ### Internal — Context
 
 | 方法 | 路径 |
 |------|------|
+| POST | `/v1/context/read` |
+| POST | `/v1/context/append` |
+| POST | `/v1/context/batch` |
 | POST | `/v1/context/prepare_for_llm` |
 | POST | `/v1/context/skill_begin` |
 | POST | `/v1/context/skill_end` |
@@ -91,11 +92,14 @@
 
 ## 3. 与 Runtime 的衔接
 
-Agent Runtime 通过 **`POST /v1/context/prepare_for_llm`** 取 **messages + tools**，与 [context-timeline-and-dfs.md](context-timeline-and-dfs.md) 中的 **`ContextEngine`** 一致。
+Agent Runtime 通过 **`POST /v1/context/prepare_for_llm`** 取 **messages + tools**，与 [context-timeline-and-dfs.md](context-timeline-and-dfs.md) 中的 **`ContextEngine`** 一致。  
+请求/响应字段见 [internal-api-schemas.md](internal-api-schemas.md)。
 
 ---
 
 ## 相关
 
+- [internal-api-schemas.md](internal-api-schemas.md) — Internal 路由 body 摘要  
 - [proxy-cli-auth.md](proxy-cli-auth.md) — JWT vs Gateway `X-Internal-Key`  
+- [proxy-gateway-routes.md](proxy-gateway-routes.md) — `/v1/proxy/{command}` → Gateway  
 - [runtime-facade.md](runtime-facade.md) — `Cortex` 类  

@@ -92,3 +92,5 @@ LLM tool_call
 | VMUSE Shell | `novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/shell.py` |
 
 长文设计稿：[historical-doc-links.md](../historical-doc-links.md)。
+
+**Cortex 与 Runtime 专题（父仓）**：[cortex/README.md](../cortex/README.md)；Runtime 全部 Cortex topic 与 `context.append`：[cortex/agent-runtime-all-topics.md](../cortex/agent-runtime-all-topics.md)。
