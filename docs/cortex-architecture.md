@@ -18,6 +18,11 @@
 | HTTP 路由清单 | **[cortex/http-api.md](cortex/http-api.md)** |
 | JWT、`GatewayProxy`、`novaic` CLI | **[cortex/proxy-cli-auth.md](cortex/proxy-cli-auth.md)** |
 | `log_cortex`、测试目录 | **[cortex/observability-and-tests.md](cortex/observability-and-tests.md)** |
+| 部署启动、OSS 环境变量 | **[cortex/deployment-and-startup.md](cortex/deployment-and-startup.md)** |
+| `/ro`/`/rw` ACL、`_sys_*` | **[cortex/workspace-acl-and-sys-writes.md](cortex/workspace-acl-and-sys-writes.md)** |
+| 内置工具 schema、技能安装 | **[cortex/builtin-tools-and-skills.md](cortex/builtin-tools-and-skills.md)** |
+| Hooks、协议、StepTree、压缩建议 | **[cortex/extension-points.md](cortex/extension-points.md)** |
+| Entangled、`fs://`、TRS 等 | **[cortex/satellite-modules.md](cortex/satellite-modules.md)** |
 | 索引与学习路径 | **[cortex/README.md](cortex/README.md)** |
 
 
