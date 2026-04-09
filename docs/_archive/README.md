@@ -19,11 +19,24 @@ git tag -a docs-archive-2026-04-09-pre-rebuild -m "Docs snapshot before planned 
 git push origin docs-archive-2026-04-09-pre-rebuild
 ```
 
+**已打标签（本仓库）**：
+
+| Tag | 说明 |
+|-----|------|
+| `docs-archive-2026-04-09-post-runbooks` | **runbooks 迁移 + 文档工具链** 合并后快照（annotated，指向含该改动的提交） |
+
+```bash
+git push origin docs-archive-2026-04-09-post-runbooks
+```
+
 ### 按标签取回任意文件
 
 ```bash
 git show docs-archive-2026-04-09-pre-rebuild:docs/README.md
 git checkout docs-archive-2026-04-09-pre-rebuild -- docs/design/SYSTEM_DESIGN.md
+
+# 取 runbooks 阶段之后的树，例如：
+git show docs-archive-2026-04-09-post-runbooks:docs/runbooks/README.md
 ```
 
 ### 与历史 graveyard tag 的关系
