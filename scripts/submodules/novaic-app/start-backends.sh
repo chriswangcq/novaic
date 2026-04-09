@@ -22,7 +22,6 @@ PORT_TOOLS_SERVER=19998
 PORT_QUEUE_SERVICE=19997
 PORT_FILE_SERVICE=19995
 PORT_TOOL_RESULT_SERVICE=19994
-PORT_RUNTIME_ORCHESTRATOR=19993
 
 DATA_DIR="$HOME/Library/Application Support/com.novaic.app"
 LOG_DIR="$DATA_DIR/logs"
@@ -99,13 +98,11 @@ stop_backends() {
     local patterns=(
         "novaic-gateway"
         "novaic-tools-server"
-        "novaic-runtime-orchestrator"
         "novaic-agent-runtime"
         "novaic-storage-a"
         "novaic-storage-b"
         "main_gateway.py"
         "main_tools.py"
-        "main_runtime_orchestrator.py"
         "main_novaic.py"
         "main_file_service.py"
         "main_tool_result_service.py"
@@ -115,7 +112,7 @@ stop_backends() {
     done
     # Kill by port
     for port in $PORT_GATEWAY $PORT_TOOLS_SERVER $PORT_QUEUE_SERVICE \
-                $PORT_FILE_SERVICE $PORT_TOOL_RESULT_SERVICE $PORT_RUNTIME_ORCHESTRATOR; do
+                $PORT_FILE_SERVICE $PORT_TOOL_RESULT_SERVICE; do
         local pid
         pid=$(lsof -ti :"$port" 2>/dev/null || true)
         if [ -n "$pid" ]; then
@@ -135,7 +132,6 @@ show_status() {
         "$PORT_QUEUE_SERVICE:Queue Service"
         "$PORT_FILE_SERVICE:File Service"
         "$PORT_TOOL_RESULT_SERVICE:Tool Result Service"
-        "$PORT_RUNTIME_ORCHESTRATOR:Runtime Orchestrator"
     )
     for entry in "${services[@]}"; do
         local port="${entry%%:*}" name="${entry##*:}"
@@ -167,28 +163,12 @@ echo "LOG_DIR: $LOG_DIR"
 echo ""
 
 GW_URL="http://127.0.0.1:$PORT_GATEWAY"
-RO_URL="http://127.0.0.1:$PORT_RUNTIME_ORCHESTRATOR"
 QS_URL="http://127.0.0.1:$PORT_QUEUE_SERVICE"
 TS_URL="http://127.0.0.1:$PORT_TOOLS_SERVER"
 FS_URL="http://127.0.0.1:$PORT_FILE_SERVICE"
 TRS_URL="http://127.0.0.1:$PORT_TOOL_RESULT_SERVICE"
 
-# 1. Runtime Orchestrator
-RO_DIR="$ROOT/novaic-runtime-orchestrator"
-if [ -d "$RO_DIR" ]; then
-    echo "Starting Runtime Orchestrator..."
-    ensure_deps_installed "$RO_DIR"
-    PY=$(python_for_repo "$RO_DIR")
-    "$PY" "$RO_DIR/main_runtime_orchestrator.py" \
-        --host 127.0.0.1 --port "$PORT_RUNTIME_ORCHESTRATOR" \
-        --data-dir "$DATA_DIR" \
-        >> "$LOG_DIR/runtime-orchestrator.log" 2>&1 &
-    wait_port "$PORT_RUNTIME_ORCHESTRATOR" "Runtime Orchestrator"
-else
-    echo -e "  ${YELLOW}⚠ novaic-runtime-orchestrator not found at $RO_DIR${NC}"
-fi
-
-# 2. Gateway
+# 1. Gateway
 GW_DIR="$ROOT/novaic-gateway"
 if [ -d "$GW_DIR" ]; then
     echo "Starting Gateway..."
@@ -197,7 +177,6 @@ if [ -d "$GW_DIR" ]; then
     "$PY" "$GW_DIR/main_gateway.py" \
         --host 127.0.0.1 --port "$PORT_GATEWAY" \
         --data-dir "$DATA_DIR" \
-        --runtime-orchestrator-url "$RO_URL" \
         --queue-service-url "$QS_URL" \
         --tools-server-url "$TS_URL" \
         --file-service-url "$FS_URL" \
@@ -208,7 +187,7 @@ else
     echo -e "  ${YELLOW}⚠ novaic-gateway not found at $GW_DIR${NC}"
 fi
 
-# 3. Tools Server
+# 2. Tools Server
 TS_DIR="$ROOT/novaic-tools-server"
 if [ -d "$TS_DIR" ]; then
     echo "Starting Tools Server..."
@@ -225,7 +204,7 @@ else
     echo -e "  ${YELLOW}⚠ novaic-tools-server not found at $TS_DIR${NC}"
 fi
 
-# 4. Queue Service (part of novaic-agent-runtime)
+# 3. Queue Service (part of novaic-agent-runtime)
 AR_DIR="$ROOT/novaic-agent-runtime"
 if [ -d "$AR_DIR" ]; then
     echo "Starting Queue Service..."
@@ -240,7 +219,7 @@ else
     echo -e "  ${YELLOW}⚠ novaic-agent-runtime not found at $AR_DIR${NC}"
 fi
 
-# 5. File Service (novaic-storage-a)
+# 4. File Service (novaic-storage-a)
 SA_DIR="$ROOT/novaic-storage-a"
 if [ -d "$SA_DIR" ]; then
     echo "Starting File Service..."
@@ -255,7 +234,7 @@ else
     echo -e "  ${YELLOW}⚠ novaic-storage-a not found at $SA_DIR${NC}"
 fi
 
-# 6. Tool Result Service (novaic-storage-b)
+# 5. Tool Result Service (novaic-storage-b)
 SB_DIR="$ROOT/novaic-storage-b"
 if [ -d "$SB_DIR" ]; then
     echo "Starting Tool Result Service..."
@@ -272,7 +251,7 @@ else
     echo -e "  ${YELLOW}⚠ novaic-storage-b not found at $SB_DIR${NC}"
 fi
 
-# 7. Workers (watchdog, task-workers, saga-workers, health, scheduler)
+# 6. Workers (watchdog, task-workers, saga-workers, health, scheduler)
 if [ -d "$AR_DIR" ]; then
     echo "Starting Workers..."
     PY=$(python_for_repo "$AR_DIR")
@@ -281,7 +260,6 @@ if [ -d "$AR_DIR" ]; then
     "$PY" "$AR_DIR/main_novaic.py" watchdog \
         --gateway-url "$GW_URL" \
         --queue-service-url "$QS_URL" \
-        --runtime-orchestrator-url "$RO_URL" \
         --data-dir "$DATA_DIR" \
         >> "$LOG_DIR/watchdog.log" 2>&1 &
 
@@ -291,7 +269,6 @@ if [ -d "$AR_DIR" ]; then
             "$PY" "$AR_DIR/main_novaic.py" task-worker \
                 --gateway-url "$GW_URL" \
                 --queue-service-url "$QS_URL" \
-                --runtime-orchestrator-url "$RO_URL" \
                 --tools-server-url "$TS_URL" \
                 --tool-result-service-url "$TRS_URL" \
                 --pool "$pool" \
@@ -306,7 +283,6 @@ if [ -d "$AR_DIR" ]; then
         "$PY" "$AR_DIR/main_novaic.py" saga-worker \
             --gateway-url "$GW_URL" \
             --queue-service-url "$QS_URL" \
-            --runtime-orchestrator-url "$RO_URL" \
             --max-concurrent 4 \
             --data-dir "$DATA_DIR" \
             >> "$LOG_DIR/saga-worker-${i}.log" 2>&1 &
@@ -316,7 +292,6 @@ if [ -d "$AR_DIR" ]; then
     "$PY" "$AR_DIR/main_novaic.py" health \
         --gateway-url "$GW_URL" \
         --queue-service-url "$QS_URL" \
-        --runtime-orchestrator-url "$RO_URL" \
         --check-interval 30 \
         --task-timeout 3600 \
         --saga-timeout 3600 \
@@ -326,7 +301,6 @@ if [ -d "$AR_DIR" ]; then
     # Scheduler
     "$PY" "$AR_DIR/main_novaic.py" scheduler \
         --gateway-url "$GW_URL" \
-        --runtime-orchestrator-url "$RO_URL" \
         --check-interval 10 \
         --data-dir "$DATA_DIR" \
         >> "$LOG_DIR/scheduler.log" 2>&1 &

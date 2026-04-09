@@ -37,7 +37,7 @@ rsync_service() {
   local local_dir="$REPO_ROOT/$name"
   [ -d "$local_dir" ] || fail "本地目录不存在: $local_dir"
   info "同步 $name..."
-  rsync -avz $RSYNC_EXCLUDE -e ssh "$local_dir/" "$API_HOST:$SERVICES_DIR/$name/" || fail "rsync $name 失败"
+  rsync -avzL --delete $RSYNC_EXCLUDE -e ssh "$local_dir/" "$API_HOST:$SERVICES_DIR/$name/" || fail "rsync $name 失败"
 }
 
 # ── 客户端部署 ────────────────────────────────────────────────────────────────
@@ -83,6 +83,7 @@ deploy_desktop() {
 
 deploy_gateway() {
   info "部署 Gateway and Entangled"
+  rsync_service "novaic-common"
   rsync_service "novaic-gateway"
   rsync_service "Entangled"
   info "重启全部后端服务（通过 start.sh）..."
@@ -92,7 +93,13 @@ deploy_gateway() {
 
 deploy_single_service() {
   local name="$1"
+  rsync_service "novaic-common"
   rsync_service "$name"
+  # Install pip deps if requirements.txt exists
+  if [ -f "$REPO_ROOT/$name/requirements.txt" ]; then
+    info "安装 $name 依赖..."
+    $API_SSH "cd $SERVICES_DIR/$name && source .venv/bin/activate 2>/dev/null && pip install -q -r requirements.txt" || warn "pip install 失败（可能无 venv）"
+  fi
   info "重启全部后端服务（通过 start.sh）..."
   $API_SSH 'bash /opt/novaic/start.sh --stop && bash /opt/novaic/start.sh' || fail "重启失败"
   ok "$name 已部署（全部服务已重启）"
@@ -102,11 +109,18 @@ deploy_services() {
   info "部署全部后端服务到 api.gradievo.com"
   echo ""
 
-  # 同步所有服务代码
-  for svc in novaic-gateway novaic-agent-runtime novaic-runtime-orchestrator \
-             novaic-storage-a novaic-cortex \
-             novaic-shared-kernel novaic-shared-runtime-common Entangled; do
+  # 同步所有服务代码（novaic-common 必须先于 gateway/agent-runtime，因为它们的 common/ 是 symlink）
+  for svc in novaic-common novaic-gateway novaic-agent-runtime \
+             novaic-storage-a novaic-cortex Entangled; do
     rsync_service "$svc"
+  done
+
+  # Install pip deps for services with requirements.txt
+  for svc in novaic-cortex novaic-agent-runtime; do
+    if [ -f "$REPO_ROOT/$svc/requirements.txt" ]; then
+      info "安装 $svc 依赖..."
+      $API_SSH "cd $SERVICES_DIR/$svc && source .venv/bin/activate 2>/dev/null && pip install -q -r requirements.txt" || warn "$svc pip install 失败"
+    fi
   done
 
   echo ""
@@ -161,10 +175,9 @@ check_status() {
   $API_SSH '
     echo "  PORT  | PID    | SERVICE"
     echo "  ------|--------|--------"
-    for port in 19993 19995 19996 19999; do
+    for port in 19995 19996 19999; do
       pid=$(ss -tlnp 2>/dev/null | grep ":$port " | grep -oP "pid=\K\d+" | head -1)
       case $port in
-        19993) svc="orchestrator" ;;
         19995) svc="storage-a" ;;
         19996) svc="cortex" ;;
         19999) svc="gateway" ;;
@@ -223,13 +236,12 @@ check_logs() {
   info "查看 $svc 最新日志"
   case "$svc" in
     gateway)      $API_SSH "tail -50 /opt/novaic/data/logs/gateway-\$(date +%Y%m%d).log" ;;
-    orchestrator) $API_SSH "tail -50 /opt/novaic/data/logs/runtime-orchestrator.log" ;;
     cortex)       $API_SSH "tail -50 /opt/novaic/data/logs/cortex.log" ;;
     tools)        $API_SSH "tail -50 /opt/novaic/data/logs/tools-server.log" ;;
     runtime)      $API_SSH "tail -50 /opt/novaic/data/logs/queue-service.log" ;;
     worker)       $API_SSH "tail -50 /opt/novaic/data/logs/task-worker-control-1.log" ;;
     relay)        $RELAY_SSH "journalctl -u novaic-quic-service --no-pager -n 50" ;;
-    *)            fail "未知服务: $svc (可选: gateway, orchestrator, cortex, tools, runtime, worker, relay)" ;;
+    *)            fail "未知服务: $svc (可选: gateway, cortex, tools, runtime, worker, relay)" ;;
   esac
 }
 
@@ -249,7 +261,6 @@ show_help() {
   echo -e "${CYAN}后端服务 (api.gradievo.com):${NC}"
   echo "  gateway           部署 Gateway (rsync + 全部重启)"
   echo "  runtime           部署 Agent Runtime (rsync + 全部重启)"
-  echo "  orchestrator      部署 Runtime Orchestrator (rsync + 全部重启)"
   echo "  tools             部署 Tools Server (rsync + 全部重启)"
   echo "  storage-a         部署 Storage A / File Service (rsync + 全部重启)"
   echo "  cortex            部署 Cortex (rsync + 全部重启)"
@@ -262,7 +273,7 @@ show_help() {
   echo -e "${CYAN}聚合 & 运维:${NC}"
   echo "  all [ver]         部署全部"
   echo "  status            检查所有服务状态"
-  echo "  logs [svc]        查看日志 (gateway|orchestrator|tools|runtime|worker|relay)"
+  echo "  logs [svc]        查看日志 (gateway|cortex|tools|runtime|worker|relay)"
   echo "  reset-password <email>  在 api 机上重置该用户登录密码（交互输入；可选 NOVAIC_DEPLOY_NEW_PASSWORD）"
   echo ""
 }
@@ -271,7 +282,6 @@ case "${1}" in
   frontend)     deploy_frontend "$2" ;;
   gateway)      deploy_gateway ;;
   runtime)      deploy_single_service "novaic-agent-runtime" ;;
-  orchestrator) deploy_single_service "novaic-runtime-orchestrator" ;;
   tools)        deploy_single_service "novaic-tools-server" ;;
   storage-a)    deploy_single_service "novaic-storage-a" ;;
   cortex)       deploy_single_service "novaic-cortex" ;;

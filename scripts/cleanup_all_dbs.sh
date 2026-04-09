@@ -100,26 +100,6 @@ else
 fi
 echo ""
 
-# --- runtime_orchestrator.db ---
-echo ">>> 清理 runtime_orchestrator.db"
-RO="$DATA_DIR/runtime_orchestrator.db"
-if [[ -f "$RO" ]]; then
-    # chat_messages
-    N1=$(sqlite3 "$RO" "SELECT count(*) FROM chat_messages WHERE datetime(created_at) < datetime('now','-$KEEP_DAYS_CHAT days') OR datetime(timestamp) < datetime('now','-$KEEP_DAYS_CHAT days');" 2>/dev/null || echo 0)
-    sqlite3 "$RO" "DELETE FROM chat_messages WHERE datetime(created_at) < datetime('now','-$KEEP_DAYS_CHAT days') OR datetime(timestamp) < datetime('now','-$KEEP_DAYS_CHAT days');" 2>/dev/null || true
-    echo "  chat_messages: 删除约 $N1 条"
-
-    # execution_logs
-    N2=$(sqlite3 "$RO" "SELECT count(*) FROM execution_logs WHERE datetime(timestamp) < datetime('now','-$KEEP_DAYS_CHAT days');" 2>/dev/null || echo 0)
-    sqlite3 "$RO" "DELETE FROM execution_logs WHERE datetime(timestamp) < datetime('now','-$KEEP_DAYS_CHAT days');" 2>/dev/null || true
-    echo "  execution_logs: 删除约 $N2 条"
-
-    [[ $NO_VACUUM -eq 0 ]] && sqlite3 "$RO" "VACUUM;" 2>/dev/null && echo "  VACUUM 完成" || true
-else
-    echo "未找到 runtime_orchestrator.db"
-fi
-echo ""
-
 echo "=== 清理完成 ==="
 echo "当前 DB 大小:"
 ls -lh "$DATA_DIR"/*.db 2>/dev/null || true

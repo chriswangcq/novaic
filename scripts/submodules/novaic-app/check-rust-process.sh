@@ -2,8 +2,8 @@
 # check-rust-process.sh — Round 016 post-delete desktop decoupling check.
 #
 # Verifies that the desktop Rust source no longer references deleted in-repo
-# backend service directory paths (runtime_orchestrator, tools_server,
-# file_service, tool_result_service as path strings).
+# backend service directory paths (legacy RO dir, tools_server, file_service,
+# tool_result_service as path strings).
 #
 # Does NOT require the desktop app to be running — this is a static source audit.
 #
@@ -24,7 +24,6 @@ echo ""
 
 # Deleted in-repo paths — must NOT appear as literal directory paths in desktop source
 DELETED_PATHS=(
-  "novaic-backend/runtime_orchestrator"
   "novaic-backend/tools_server"
   "novaic-backend/file_service"
   "novaic-backend/tool_result_service"

@@ -82,7 +82,6 @@ JSON_FIELD_OVERRIDES: dict[tuple[str, str], str] = {
     ("agent-binding","mounted_tools"):          "string[]",
     ("agent-state",  "wake_triggers"):          "unknown[]",
     ("subagents",    "wake_triggers"):          "unknown[]",
-    ("subagents",    "hrl"):                    "unknown[]",
     ("subagents",    "tool_ports"):             "Record<string, unknown> | null",
     ("execution-logs","data"):                  "Record<string, unknown>",
     ("log-payloads", "input"):                  "Record<string, unknown>",
