@@ -1,8 +1,8 @@
 # Cortex 认知引擎（当前架构）
 
-> **详细总览（与源码对齐）**：`**[../cortex-architecture.md](../cortex-architecture.md)`**。本节为纲要；对应原 `**HANDOVER.md` §十八**。历史长文：[historical-doc-links.md](../historical-doc-links.md)；归档旧稿：`git show docs-graveyard-p2:docs/archived/`。
+> **详细总览**：[../cortex-architecture.md](../cortex-architecture.md)。**专题拆页**（Scope、时间线·DFS、Recall）：[../cortex/README.md](../cortex/README.md)。本节为纲要；对应原 **HANDOVER.md** §十八。历史长文：[historical-doc-links.md](../historical-doc-links.md)；归档旧稿：`git show docs-graveyard-p2:docs/archived/`。
 
-Cortex 为 **独立 HTTP 服务**（默认 `**19996`**，`CORTEX_PORT`），S3-backed：Workspace、**DFS Step Tree** 上下文、Recall、Sandbox。
+Cortex 为 **独立 HTTP 服务**（默认 **19996**，`CORTEX_PORT`），S3-backed：Workspace、**DFS Step Tree** 上下文、Recall、Sandbox。
 
 ## 存储模型
 
@@ -13,7 +13,7 @@ Cortex 为 **独立 HTTP 服务**（默认 `**19996`**，`CORTEX_PORT`），S3-b
 | `/rw/` | Agent  | 读写       | `scratch/`                                           |
 
 
-Scope 为系统对象；创建 / 写 step / 归档用 `**_sys_`***，绕过 `/rw/` ACL。
+Scope 为系统对象；创建 / 写 step / 归档用 **`_sys_*`**，绕过 `/rw/` ACL。
 
 ## Scope 树与 DFS 上下文拼装
 
