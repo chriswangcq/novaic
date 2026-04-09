@@ -21,6 +21,5 @@ kill_from_pidfile() {
 
 kill_from_pidfile "$RUN_DIR/app.pid" "app"
 kill_from_pidfile "$RUN_DIR/gateway.pid" "gateway"
-kill_from_pidfile "$RUN_DIR/runtime-orchestrator.pid" "runtime-orchestrator"
 
 echo "[stop-split-only] done"

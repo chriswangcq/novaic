@@ -33,7 +33,7 @@ deploy() {
     echo "Pulling novaic-tools-server..."
     cd /opt/novaic/services/novaic-tools-server && git pull 2>/dev/null || echo "Tools server path may differ, check manually"
     echo "Restarting Gateway..."
-    bash /opt/novaic/restart_gw.sh 2>/dev/null || bash /tmp/restart_gw.sh 2>/dev/null || { pkill -f main_gateway.py 2>/dev/null; sleep 1; cd /opt/novaic/services/novaic-gateway && nohup .venv/bin/python main_gateway.py --host 127.0.0.1 --port 19999 --data-dir /opt/novaic/data --runtime-orchestrator-url http://127.0.0.1:19993 --queue-service-url http://127.0.0.1:19997 --tools-server-url http://127.0.0.1:19998 --file-service-url http://127.0.0.1:19995 --tool-result-service-url http://127.0.0.1:19994 >> /opt/novaic/data/logs/gateway-$(date +%Y%m%d).log 2>&1 & }
+    bash /opt/novaic/restart_gw.sh 2>/dev/null || bash /tmp/restart_gw.sh 2>/dev/null || { pkill -f main_gateway.py 2>/dev/null; sleep 1; cd /opt/novaic/services/novaic-gateway && nohup .venv/bin/python main_gateway.py --host 127.0.0.1 --port 19999 --data-dir /opt/novaic/data --queue-service-url http://127.0.0.1:19997 --tools-server-url http://127.0.0.1:19998 --file-service-url http://127.0.0.1:19995 >> /opt/novaic/data/logs/gateway-$(date +%Y%m%d).log 2>&1 & }
     echo "Restarting Tools Server (if separate process)..."
     pkill -f main_tools.py 2>/dev/null || true
     sleep 2

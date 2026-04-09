@@ -39,13 +39,11 @@ echo ""
 # Kill existing processes
 echo -e "${YELLOW}Stopping existing services...${NC}"
 pkill -f "novaic-gateway" 2>/dev/null || true
-pkill -f "novaic-runtime-orchestrator" 2>/dev/null || true
 pkill -f "novaic-storage-a" 2>/dev/null || true
 pkill -f "main_cortex" 2>/dev/null || true
 pkill -f "novaic-agent-runtime" 2>/dev/null || true
 pkill -f "file_service.main" 2>/dev/null || true
 pkill -f "main_gateway" 2>/dev/null || true
-pkill -f "main_runtime_orchestrator" 2>/dev/null || true
 sleep 2
 
 start_service() {
@@ -70,7 +68,6 @@ if [ "$MODE" = "binary" ]; then
     # Binary mode
     echo -e "${GREEN}Running from binaries...${NC}"
     
-    start_service "runtime-orchestrator" 19993 "$BUILD_DIR/novaic-runtime-orchestrator --port 19993"
     start_service "gateway" 19999 "$BUILD_DIR/novaic-gateway --port 19999"
     start_service "storage-a" 19995 "$BUILD_DIR/novaic-storage-a --port 19995"
     start_service "tools-server" 19998 "$BUILD_DIR/novaic-tools-server --port 19998 --gateway-url http://127.0.0.1:19999"
@@ -86,7 +83,6 @@ if [ "$MODE" = "binary" ]; then
         --gateway-url http://127.0.0.1:19999 \
         --queue-service-url http://127.0.0.1:19997 \
         --tools-server-url http://127.0.0.1:19998 \
-        --runtime-orchestrator-url http://127.0.0.1:19993 \
         > "$DATA_DIR/logs/task-worker.log" 2>&1 &
     
     echo -e "  ${GREEN}✓ Workers started${NC}"
@@ -94,11 +90,6 @@ if [ "$MODE" = "binary" ]; then
 else
     # Dev mode (python -m)
     echo -e "${GREEN}Running from source (dev mode)...${NC}"
-    
-    # Runtime Orchestrator
-    cd "$SCRIPT_DIR/novaic-runtime-orchestrator"
-    source .venv/bin/activate 2>/dev/null || source venv/bin/activate 2>/dev/null || true
-    start_service "runtime-orchestrator" 19993 "python main_runtime_orchestrator.py"
     
     # Gateway
     cd "$SCRIPT_DIR/novaic-gateway"
@@ -128,7 +119,6 @@ else
     nohup python main_novaic.py task-worker \
         --gateway-url http://127.0.0.1:19999 \
         --queue-service-url http://127.0.0.1:19997 \
-        --runtime-orchestrator-url http://127.0.0.1:19993 \
         > "$DATA_DIR/logs/task-worker.log" 2>&1 &
     
     echo -e "  ${GREEN}✓ Workers started${NC}"
@@ -140,7 +130,6 @@ echo -e "${GREEN}  All Services Started!                ${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 echo "Service Status:"
-echo "  Runtime Orchestrator: http://127.0.0.1:19993/api/health"
 echo "  Gateway:              http://127.0.0.1:19999/health"
 echo "  File Service:         http://127.0.0.1:19995/api/health"
 echo "  Cortex:               http://127.0.0.1:19996/health"

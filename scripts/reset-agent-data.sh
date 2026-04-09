@@ -4,7 +4,6 @@
 set -euo pipefail
 
 GW_DB="/opt/novaic/data/gateway.db"
-RO_DB="/opt/novaic/data/runtime_orchestrator.db"
 QU_DB="/opt/novaic/data/queue.db"
 
 echo "=== 1. Stop services ==="
@@ -13,19 +12,14 @@ sleep 2
 
 echo "=== 2. Clean Gateway DB ==="
 sqlite3 "$GW_DB" << 'SQL'
--- History / runtime data
 DELETE FROM chat_messages;
 DELETE FROM subagent_context;
 DELETE FROM session_messages;
 DELETE FROM sessions;
 DELETE FROM execution_logs;
 DELETE FROM execution_log_payloads;
-DELETE FROM agent_runtime_state;
-DELETE FROM agent_runtimes;
 DELETE FROM agent_task_history;
 DELETE FROM agent_tasks;
-DELETE FROM task_outputs;
-DELETE FROM pipeline_tasks;
 DELETE FROM agent_notebook;
 DELETE FROM agent_memory;
 DELETE FROM agent_state;
@@ -39,12 +33,10 @@ DELETE FROM subagents WHERE type = 'sub';
 -- Reset main subagents to clean sleeping state
 UPDATE subagents SET
     status = 'sleeping',
-    historical_summary = NULL,
+    current_scope_id = NULL,
     wake_triggers = '[{"type": "user_response"}]',
     handoff_notes = NULL,
     wake_at = NULL,
-    hrl = '[]',
-    summary_lock = 0,
     need_rest = 0,
     tool_ports = NULL,
     log_count = 0;
@@ -56,30 +48,7 @@ SELECT 'Gateway: agents=' || (SELECT count(*) FROM agents)
 SQL
 echo "  Gateway DB cleaned."
 
-echo "=== 3. Clean Runtime Orchestrator DB ==="
-sqlite3 "$RO_DB" << 'SQL'
-DELETE FROM agent_runtimes;
-DELETE FROM agent_runtime_state;
-DELETE FROM subagent_context;
-DELETE FROM execution_logs;
-DELETE FROM chat_messages;
-DELETE FROM session_messages;
-DELETE FROM sessions;
-DELETE FROM agent_task_history;
-DELETE FROM agent_tasks;
-DELETE FROM task_outputs;
-DELETE FROM pipeline_tasks;
-DELETE FROM agent_notebook;
-DELETE FROM agent_memory;
-DELETE FROM agent_state;
-DELETE FROM agent_drive;
-DELETE FROM pending_questions;
-DELETE FROM question_responses;
-SELECT 'RO: runtimes=' || (SELECT count(*) FROM agent_runtimes);
-SQL
-echo "  RO DB cleaned."
-
-echo "=== 4. Clean Queue DB ==="
+echo "=== 3. Clean Queue DB ==="
 sqlite3 "$QU_DB" << 'SQL'
 DELETE FROM tq_tasks;
 DELETE FROM tq_sagas;
@@ -89,7 +58,7 @@ SELECT 'Queue: tasks=' || (SELECT count(*) FROM tq_tasks)
 SQL
 echo "  Queue DB cleaned."
 
-echo "=== 5. Clean OSS agent data ==="
+echo "=== 4. Clean OSS agent data ==="
 source /opt/novaic/cortex_oss.env
 python3 << 'PYEOF'
 import boto3, os
@@ -118,11 +87,11 @@ for page in paginator.paginate(Bucket=BUCKET, Prefix=prefix):
 print(f"  OSS: deleted {deleted} objects under {prefix}")
 PYEOF
 
-echo "=== 6. Clean local Cortex data ==="
+echo "=== 5. Clean local Cortex data ==="
 rm -rf /opt/novaic/data/cortex/*
 echo "  Local Cortex data cleaned."
 
-echo "=== 7. Restart services ==="
+echo "=== 6. Restart services ==="
 bash /opt/novaic/start.sh
 echo ""
 echo "=== Done! All agent history cleared. ==="

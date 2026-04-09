@@ -3,7 +3,7 @@ import os
 sys.path.insert(0, os.path.abspath('novaic-gateway'))
 
 from gateway.db.access import init_database, get_database
-from gateway.db.repositories.skill import SkillRepository
+from gateway.entity.repos.skill import SkillRepository
 from gateway.entity.store import get_entity_store
 import gateway.entity.defs
 

@@ -46,10 +46,7 @@ mkdir -p "$BUILD_DIR"
 # Build order matters for dependencies
 REPOS=(
     "novaic-storage-a"
-    "novaic-storage-b"
-    "novaic-runtime-orchestrator"
     "novaic-gateway"
-    "novaic-tools-server"
     "novaic-agent-runtime"
 )
 
@@ -106,11 +103,8 @@ ls -la "$BUILD_DIR/"
 
 echo ""
 echo "To run services:"
-echo "  $BUILD_DIR/novaic-runtime-orchestrator --port 19993"
 echo "  $BUILD_DIR/novaic-gateway --port 19999"
 echo "  $BUILD_DIR/novaic-storage-a --port 19995"
-echo "  $BUILD_DIR/novaic-storage-b --port 19994 --file-service-url http://127.0.0.1:19995 --gateway-url http://127.0.0.1:19999"
-echo "  $BUILD_DIR/novaic-tools-server --port 19998 --gateway-url http://127.0.0.1:19999"
 echo "  $BUILD_DIR/novaic-agent-runtime watchdog --gateway-url http://127.0.0.1:19999 --queue-service-url http://127.0.0.1:19997"
 echo ""
 echo "To build Tauri DMG, run: ./build-all.sh --tauri"

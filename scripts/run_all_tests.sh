@@ -12,9 +12,6 @@ if [[ ! -x "$VENV_PYTHON" ]]; then
     VENV_PYTHON="python"
 fi
 
-# 确保 shared 已安装
-"$VENV_PYTHON" -m pip install -e ./novaic-shared-runtime-common -q 2>/dev/null || true
-
 FAILED=()
 PASSED=()
 
@@ -28,7 +25,7 @@ run_tests() {
     fi
     echo ""
     echo "========== $name =========="
-    local cmd="cd $dir && $VENV_PYTHON -m pip install -e $ROOT/novaic-shared-runtime-common -q 2>/dev/null; $VENV_PYTHON -m pip install -r requirements.txt -q 2>/dev/null; $VENV_PYTHON -m pytest tests/ $filter -v --tb=short"
+    local cmd="cd $dir && $VENV_PYTHON -m pip install -r requirements.txt -q 2>/dev/null; $VENV_PYTHON -m pytest tests/ $filter -v --tb=short"
     if eval "$cmd" 2>&1; then
         PASSED+=("$name")
         echo "[PASS] $name"
@@ -40,19 +37,13 @@ run_tests() {
     fi
 }
 
-# 1. shared-runtime-common
-run_tests "novaic-shared-runtime-common" "shared-runtime-common" "" || true
-
-# 2. agent-runtime (unit)
+# 1. agent-runtime (unit)
 run_tests "novaic-agent-runtime" "agent-runtime" "tests/unit/" || true
 
-# 3. tools-server
+# 2. tools-server
 run_tests "novaic-tools-server" "tools-server" "" || true
 
-# 4. runtime-orchestrator (skip flaky ordering test)
-run_tests "novaic-runtime-orchestrator" "runtime-orchestrator" "tests/unit/ -k 'not test_active_runtime_listing'" || true
-
-# 5. storage-a, storage-b
+# 3. storage-a, storage-b
 run_tests "novaic-storage-a" "storage-a" "" || true
 run_tests "novaic-storage-b" "storage-b" "" || true
 
