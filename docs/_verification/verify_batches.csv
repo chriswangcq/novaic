@@ -101,7 +101,7 @@ batch_id,index_in_batch,path,repo_root
 13,4,docs/misc/RO_GATEWAY_CALL_RELATIONSHIP.md,/Users/wangchaoqun/new-build-novaic
 13,5,docs/misc/TEST_RUN_REPORT.md,/Users/wangchaoqun/new-build-novaic
 13,6,docs/misc/VMCONTROL-TAURI-INTEGRATION-PLAN.md,/Users/wangchaoqun/new-build-novaic
-13,7,docs/misc/VPN_DEPLOYMENT_GUIDE.md,/Users/wangchaoqun/new-build-novaic
+13,7,docs/runbooks/VPN_DEPLOYMENT_GUIDE.md,/Users/wangchaoqun/new-build-novaic
 13,8,docs/misc/phase1-device-identity.md,/Users/wangchaoqun/new-build-novaic
 14,1,docs/misc/phase2-local-discovery.md,/Users/wangchaoqun/new-build-novaic
 14,2,docs/misc/phase3-p2p-remote.md,/Users/wangchaoqun/new-build-novaic

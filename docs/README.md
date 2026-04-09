@@ -58,6 +58,7 @@
 
 - **原文档快照（推荐）**：在重大重组前打 **git tag**，见 [`_archive/README.md`](_archive/README.md)；可用 `docs/_scripts/snapshot_docs_manifest.sh` 生成本目录下 **`MANIFEST-*.txt`** 路径清单。
 - **新文档体系构思**：见 [**NEW_DOCUMENTATION_BLUEPRINT.md**](NEW_DOCUMENTATION_BLUEPRINT.md)（信息架构、迁移顺序、成功标准与待决策项）。
+- **开 PR 时**：父仓 **[`.github/pull_request_template.md`](../.github/pull_request_template.md)** 要求勾选是否改协议 / 端口 / 文档（与 Sync Contract 落地一致）。
 
 ## 激进整理策略（草案）
 

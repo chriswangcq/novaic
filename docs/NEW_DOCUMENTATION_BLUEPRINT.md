@@ -69,8 +69,8 @@
 ## 6. 待决策（负责人填）
 
 - [x] **物理目录 `docs/_legacy/`**：已建 **`_legacy/README.md`**（索引说明；未搬移 `design/` 正文）。
-- [ ] `design/` 是整目录标为 L3 还是择优合并成少数 ADR？
-- [ ] 是否要求 **PR 模板** 勾选「是否改协议/端口/文档」？
+- [x] **`design/` 策略（已定）**：**整目录保持为 L3 过程稿**（不强制合并为 ADR）；与 L1 冲突时以 **`architecture-verification`** + 代码为准；若将来要合并 ADR，单独立项。
+- [x] **PR 模板**：父仓 **`.github/pull_request_template.md`** 已含「文档与契约」勾选（协议 / 端口 / Sync Contract）。
 
 ---
 

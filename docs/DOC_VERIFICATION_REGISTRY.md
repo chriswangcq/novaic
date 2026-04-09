@@ -131,7 +131,6 @@
 | `docs/misc/RO_GATEWAY_CALL_RELATIONSHIP.md` | L2/L3 misc | partial | batch13 8-way; subagent code↔doc pass |
 | `docs/misc/TEST_RUN_REPORT.md` | L2/L3 misc | partial | batch13 8-way; subagent code↔doc pass |
 | `docs/misc/VMCONTROL-TAURI-INTEGRATION-PLAN.md` | L2/L3 misc | partial | batch13 8-way; subagent code↔doc pass |
-| `docs/misc/VPN_DEPLOYMENT_GUIDE.md` | L2/L3 misc | partial | batch13 8-way; subagent code↔doc pass |
 | `docs/misc/phase1-device-identity.md` | L2/L3 misc | partial | batch13 8-way; subagent code↔doc pass |
 | `docs/misc/phase2-local-discovery.md` | L2/L3 misc | partial | batch14 8-way; subagent code↔doc pass |
 | `docs/misc/phase3-p2p-remote.md` | L2/L3 misc | partial | batch14 8-way; subagent code↔doc pass |
@@ -188,6 +187,7 @@
 | `docs/runbooks/E2E_READINESS.md` | L1 runbooks | partial | batch12 8-way; subagent code↔doc pass; moved from docs/misc/ (rebuild phase1) |
 | `docs/runbooks/HOT_UPDATE_DEPLOY_STEPS.md` | L1 runbooks | partial | batch12 8-way; subagent code↔doc pass; moved from docs/misc/ (rebuild phase1) |
 | `docs/runbooks/README.md` | L1 runbooks | verified | Phase1 索引；链至 E2E / 服务矩阵 / 热更新 |
+| `docs/runbooks/VPN_DEPLOYMENT_GUIDE.md` | L1 runbooks | partial | batch13 8-way; subagent code↔doc pass; moved from docs/misc/ (rebuild phase2) |
 | `docs/scope-driven-agent-lifecycle.md` | docs 根 | partial | batch20 8-way: subagent_cancel; unify-vnc; submodules index |
 | `docs/skills-domain-investigation-reports.md` | docs 根 | partial | batch20 8-way: subagent_cancel; unify-vnc; submodules index |
 | `docs/submodules/README.md` | 子模块 README | partial | batch20 8-way: subagent_cancel; unify-vnc; submodules index |

@@ -176,7 +176,6 @@ docs/
 │   ├── TAURI2_OTA_UPDATER_REPORT.json
 │   ├── TEST_RUN_REPORT.md
 │   ├── VMCONTROL-TAURI-INTEGRATION-PLAN.md
-│   ├── VPN_DEPLOYMENT_GUIDE.md
 │   └── 设计文档.md
 ├── ota/
 │   ├── OTA_CHANGES_4_AGENT_REVIEW.md
@@ -231,7 +230,8 @@ docs/
 │   ├── ARCHITECTURE-SERVICES-AND-HANDLERS.md
 │   ├── E2E_READINESS.md
 │   ├── HOT_UPDATE_DEPLOY_STEPS.md
-│   └── README.md
+│   ├── README.md
+│   └── VPN_DEPLOYMENT_GUIDE.md
 ├── submodules/
 │   ├── novaic-agent-runtime/
 │   │   └── README.md

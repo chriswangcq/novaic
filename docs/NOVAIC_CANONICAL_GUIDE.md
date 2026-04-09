@@ -15,6 +15,10 @@
 | **L2 子系统专章** | Cortex / Entangled / Sync：见下表 | 专章内部可能仍含时点表述，以页眉为准 |
 | **L3 过程稿** | [`design/`](design/)、[`research/`](research/)、[`device/`](device/)、[`gateway-upgrade/`](gateway-upgrade/)、[`ota/`](ota/)、[`p2p/`](p2p/) 等 | **默认视为历史或方案讨论**；引用前看页眉；**不**与 L1 逐句对齐期望 |
 
+**运维 Runbook（可执行）**：[`runbooks/`](runbooks/) — E2E、服务矩阵、热更新、环境类部署步骤；**与 L1 冲突时仍以 L1 + verification 为准**。
+
+**重建与维护**：父仓 PR 使用 **`.github/pull_request_template.md`**；改协议 / 端口 / Entangled 订阅时请勾选其中「Documentation & contracts」并更新对应 `docs/`。
+
 **树形索引**：[`TREE.md`](TREE.md) — `docs/` 下**完整物理目录树**（脚本生成）与 **DFS 从 L0 到最底层叶子**的阅读说明；大规模改目录后请重跑 `python3 docs/_scripts/generate_docs_tree.py`。
 
 **原则**：需要「一条链路讲清楚」→ 先看 **L1**；需要「当时为什么这样设计」→ **L3**；需要「合并后的端口与运维补丁」→ **§3 本页汇总表 + verification**（两处互补，冲突以 verification 与代码为准）。
