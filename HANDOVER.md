@@ -1,5 +1,7 @@
 # NovAIC 项目交接文档（2026 重构版）
 
+> **分册文档**：父仓库 **`docs/README.md`** 已将本章有价值内容拆为 **架构 / 认证 / WebRTC / 数据归属 / 排障** 等页面；**本文档仍是完整原文、版本记录与深度细节**。
+>
 > **父仓库 `docs/`（2026-04-09）**：已**整目录移除**，便于按代码重写。恢复旧文件：`git checkout docs-pre-full-rewrite-2026-04-09 -- docs/`。正文里曾出现的 **`docs/...` 文件名**已汇总至 **`docs/historical-doc-links.md`**（含 `git show` 用法）。
 >
 > 最后更新：2026-04-09 — **§12 与 schema v63**：用户消息与 Agent/SubAgent **业务实体**持久化在 **Entangled**；Gateway `gateway.db` 仅运维表（见 `novaic-gateway/gateway/db/schema.py` v63，`agents` / `chat_messages` / `subagents` 等已 DROP）。§12.1、§12.2、§12.6 已与历史文档 `architecture-verification-2026-04.md` 一致（见 **`docs/historical-doc-links.md`**）。
@@ -41,7 +43,7 @@
 | 改远程桌面连接 | `useWebRtc.ts`、`WebRtcScrcpyView.tsx`（统一 WebRTC，noVNC 已全部移除） |
 | 改设备操控台 | `DeviceConsole.tsx`、`ConsoleToolbar.tsx`、`useWebRtc.ts`、`useRemoteInput.ts` |
 | 清空本地缓存 | Settings → Clear Cache → `clearLocalDb`：清 `localStorage` 用户偏好 + Rust **`entity_cache_clear`**（`entangled_cache.db` 全用户表含 **`pending_ops`** + `VACUUM`） |
-| 查架构 | `docs/architecture/overview.md`、`novaic-app/FRONTEND_ARCHITECTURE.md` |
+| 查架构 | [`docs/README.md`](docs/README.md) 文档地图、`docs/architecture/overview.md`、`novaic-app/FRONTEND_ARCHITECTURE.md` |
 
 ---
 

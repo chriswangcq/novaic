@@ -39,38 +39,56 @@
 
 以下为主机 `127.0.0.1` 上的**约定端口**（本地开发常用；若冲突请改环境变量或配置）。
 
-| 服务键 (`services.json`) | 端口 | 说明 |
-|--------------------------|------|------|
-| `gateway` | 19999 | Gateway HTTP |
-| `queue_service` | 19997 | 队列相关服务端点 |
-| `tools_server` | 19998 | 历史/兼容命名；当前工具链以 Agent-Runtime + Cortex 为主（见 `HANDOVER`） |
-| `vmcontrol` | 19996 | 本地 VmControl HTTP（Tauri 侧嵌入控制面） |
-| `file_service` | 19995 | 文件服务 |
-| `tool_result_service` | 19994 | 工具结果服务 |
-| `entangled_service` | 19900 | Entangled 相关本地服务端口约定 |
 
-**Cortex**（`novaic-cortex`）默认 **`19996`**（环境变量 `CORTEX_PORT`），与 `services.json` 中 `vmcontrol` 端口数字相同；**同一台机器同时起 VmControl 与 Cortex 时需避免端口冲突**（调整其一）。
+| 服务键 (`services.json`) | 端口    | 说明                                                     |
+| --------------------- | ----- | ------------------------------------------------------ |
+| `gateway`             | 19999 | Gateway HTTP                                           |
+| `queue_service`       | 19997 | 队列相关服务端点                                               |
+| `tools_server`        | 19998 | 历史/兼容命名；当前工具链以 Agent-Runtime + Cortex 为主（见 `HANDOVER`） |
+| `vmcontrol`           | 19996 | 本地 VmControl HTTP（Tauri 侧嵌入控制面）                        |
+| `file_service`        | 19995 | 文件服务                                                   |
+| `tool_result_service` | 19994 | 工具结果服务                                                 |
+| `entangled_service`   | 19900 | Entangled 相关本地服务端口约定                                   |
+
+
+**Cortex**（`novaic-cortex`）默认 **19996**（环境变量 `CORTEX_PORT`），与 `services.json` 中 `vmcontrol` 端口数字相同；**同一台机器同时起 VmControl 与 Cortex 时需避免端口冲突**（调整其一）。
 
 ## 4. Submodule 速查
 
-| 目录 | 角色 |
+
+| 目录                     | 角色                                                   |
+| ---------------------- | ---------------------------------------------------- |
+| `novaic-app`           | 客户端 UI、Tauri、VmControl 嵌入、与 Gateway/Entangled 交互     |
+| `novaic-gateway`       | API 网关、运维向 SQLite（`gateway.db` 等；业务实体以 Entangled 为准） |
+| `novaic-agent-runtime` | Agent 运行时、工具执行管线                                     |
+| `novaic-cortex`        | Cortex HTTP、Workspace/Scope/Sandbox                  |
+| `novaic-llm-factory`   | 集中化 LLM 代理（运维与 URL 见 `HANDOVER.md`）                  |
+| `novaic-quic-service`  | STUN/Relay/静态资源                                      |
+| `novaic-common`        | 共享配置与工具（含 `config/services.json`）                    |
+| `novaic-contracts`     | 协议与类型                                                |
+| `novaic-storage-a`     | 文件存储服务                                               |
+| `novaic-mcp-vmuse`     | MCP VMuse                                            |
+| `novaic-control-plane` | 控制面板                                                 |
+| `thirdparty/openclaw`  | 上游参考（非线上服务）                                          |
+
+
+## 5. 文档地图（由 HANDOVER 拆分）
+
+| 主题 | 文档 |
 |------|------|
-| `novaic-app` | 客户端 UI、Tauri、VmControl 嵌入、与 Gateway/Entangled 交互 |
-| `novaic-gateway` | API 网关、运维向 SQLite（`gateway.db` 等；业务实体以 Entangled 为准） |
-| `novaic-agent-runtime` | Agent 运行时、工具执行管线 |
-| `novaic-cortex` | Cortex HTTP、Workspace/Scope/Sandbox |
-| `novaic-llm-factory` | 集中化 LLM 代理（运维与 URL 见 `HANDOVER.md`） |
-| `novaic-quic-service` | STUN/Relay/静态资源 |
-| `novaic-common` | 共享配置与工具（含 `config/services.json`） |
-| `novaic-contracts` | 协议与类型 |
-| `novaic-storage-a` | 文件存储服务 |
-| `novaic-mcp-vmuse` | MCP VMuse |
-| `novaic-control-plane` | 控制面板 |
-| `thirdparty/openclaw` | 上游参考（非线上服务） |
+| OTA 薄壳、生产拓扑、TURN/macOS 键盘 | [thin-client-and-topology.md](thin-client-and-topology.md) |
+| JWT、Nginx、`X-User-ID` | [authentication.md](authentication.md) |
+| 远程桌面 WebRTC、VmControl | [webrtc.md](webrtc.md) |
+| App WS、Entangled、Sync Contract 索引 | [realtime-sync.md](realtime-sync.md) |
+| Entangled vs gateway.db、消息持久化 | [data-ownership.md](data-ownership.md) |
+| Saga、ReactThink、工具、LLM Factory | [agent-pipeline.md](agent-pipeline.md) |
+| Cortex、DFS Step Tree | [cortex.md](cortex.md) |
+| 前端 Path C、路由、codegen | [app-ui.md](app-ui.md) |
+| 子模块列表 | [../reference/submodules.md](../reference/submodules.md) |
+| 环境变量与本地路径 | [../reference/config-and-environment.md](../reference/config-and-environment.md) |
+| 文件 API、语音录制 | [../reference/file-service.md](../reference/file-service.md) |
 
-## 5. 进一步阅读
+**Runbooks**：[local-dev.md](../runbooks/local-dev.md) · [local-backends.md](../runbooks/local-backends.md) · [deploy.md](../runbooks/deploy.md) · [build-and-release.md](../runbooks/build-and-release.md) · [cloud-production.md](../runbooks/cloud-production.md) · [troubleshooting.md](../runbooks/troubleshooting.md)
 
-- 根目录 **`HANDOVER.md`** — 上手、部署、排障、历史决策；旧 **`docs/...`** 文件名见 **`docs/historical-doc-links.md`**。
-- **Runbooks**：[`../runbooks/local-dev.md`](../runbooks/local-dev.md)、[`../runbooks/local-backends.md`](../runbooks/local-backends.md)、[`../runbooks/deploy.md`](../runbooks/deploy.md)。
-- **`novaic-app/FRONTEND_ARCHITECTURE.md`** — 前端结构。
-- 各 submodule 内 **`README.md`** 与 **`docs/`**（若存在）。
+根目录 **`HANDOVER.md`** 仍为全文与变更历史；旧 `docs/...` 文件名见 [**`historical-doc-links.md`**](../historical-doc-links.md)。**`novaic-app/FRONTEND_ARCHITECTURE.md`** — 前端分层详解。
+
