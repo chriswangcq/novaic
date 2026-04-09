@@ -35,7 +35,7 @@
 
 1. **`ws = _get_workspace(user_id, agent_id)`**  
 2. **`scope_path = /ro/active/{scope_id}`**（根 scope 前缀常量 **`ROOT_SCOPE_PREFIX`**）  
-3. **`ContextEngine(workspace=ws, scope_path=scope_path)`** → **`await engine.prepare_messages_for_llm()`**（内部含 **`budget_compact`**，见 [budget-compact-algorithm.md](budget-compact-algorithm.md)）  
+3. **`load_engine_config(ws)`** → **`engine_config_to_compact_config(...)`** → **`ContextEngine(..., config=compact_cfg)`** → **`await engine.prepare_messages_for_llm()`**（内部 **`budget_compact`** 使用与 **`/ro/config/engine.json`** 对齐的 **`CompactConfig`**，见 [budget-compact-algorithm.md](budget-compact-algorithm.md) §8.1）  
 4. **`engine.status(messages)`** → 返回 **`estimated_tokens`、`usage_ratio`** 等  
 5. 响应 JSON：**`messages`、`stack`（当前 `status` 里 frames 多为占位）、`estimated_tokens`**
 
