@@ -5,12 +5,20 @@
 ## 专题拆页（更细）
 
 
-| 主题                                        | 文档                                                                           |
-| ----------------------------------------- | ---------------------------------------------------------------------------- |
-| Scope 创建、激活、归档、统一时间线                      | **[cortex/scope-lifecycle.md](cortex/scope-lifecycle.md)**                   |
+| 主题 | 文档 |
+| --- | --- |
+| Scope 创建、激活、归档、统一时间线 | **[cortex/scope-lifecycle.md](cortex/scope-lifecycle.md)** |
 | `_index.jsonl`、DFS 展开/折叠、`budget_compact` | **[cortex/context-timeline-and-dfs.md](cortex/context-timeline-and-dfs.md)** |
-| `Recall` 类与全局记忆索引                         | **[cortex/recall.md](cortex/recall.md)**                                     |
-| 索引与阅读顺序                                   | **[cortex/README.md](cortex/README.md)**                                     |
+| `Recall` 与全局记忆索引 | **[cortex/recall.md](cortex/recall.md)** |
+| `CortexStore`、注册表、对象键 | **[cortex/storage-and-keys.md](cortex/storage-and-keys.md)** |
+| `Sandbox.exec`、物化与回写 | **[cortex/sandbox-shell.md](cortex/sandbox-shell.md)** |
+| `Compactor`、归档、gem fusion | **[cortex/compactor-and-gem-fusion.md](cortex/compactor-and-gem-fusion.md)** |
+| `EngineConfig`、`engine.json`、指标 | **[cortex/engine-config-and-metrics.md](cortex/engine-config-and-metrics.md)** |
+| `Cortex` 运行时门面 | **[cortex/runtime-facade.md](cortex/runtime-facade.md)** |
+| HTTP 路由清单 | **[cortex/http-api.md](cortex/http-api.md)** |
+| JWT、`GatewayProxy`、`novaic` CLI | **[cortex/proxy-cli-auth.md](cortex/proxy-cli-auth.md)** |
+| `log_cortex`、测试目录 | **[cortex/observability-and-tests.md](cortex/observability-and-tests.md)** |
+| 索引与学习路径 | **[cortex/README.md](cortex/README.md)** |
 
 
 ---

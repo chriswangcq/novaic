@@ -1,0 +1,101 @@
+# HTTP API 分层
+
+> 源码：`novaic_cortex/api.py`（**唯一** `FastAPI` `app`）。**以文件内 `@app.get/post` 为准**；下表与 `api.py` 顶部三层注释一致。
+
+## 1. 三层路由
+
+| 层 | 认证 | 典型调用方 |
+|----|------|------------|
+| **Agent Tool API** | **`Authorization: Bearer`** + `auth.verify_capability_token` | Sandbox 内工具（shell、skill） |
+| **CLI API** | 同上 | `novaic` CLI（read/write/ls/recall/tools/proxy） |
+| **Internal API** | **无** Bearer；body 里带 **`user_id` / `agent_id`**（`_TenantMixin`） | Agent Runtime worker |
+
+另有 **`GET /health`**（无业务认证）、**`POST /v1/token`**（签发能力 JWT，**不要求**已有 Bearer）。
+
+---
+
+## 2. 路由清单（与实现一致）
+
+### Agent Tool API（JWT）
+
+| 方法 | 路径 |
+|------|------|
+| POST | `/v1/shell` |
+| POST | `/v1/skill/begin` |
+| POST | `/v1/skill/end` |
+
+### CLI API（JWT）
+
+| 方法 | 路径 |
+|------|------|
+| GET | `/v1/read` |
+| POST | `/v1/write` |
+| GET | `/v1/ls` |
+| GET | `/v1/skill/list` |
+| GET | `/v1/recall` |
+| GET | `/v1/tools` |
+| POST | `/v1/proxy/{command}` |
+
+### Internal — Scope
+
+| 方法 | 路径 |
+|------|------|
+| POST | `/v1/scope/create` |
+| POST | `/v1/scope/end` |
+| POST | `/v1/scope/activate` |
+| POST | `/v1/scope/end_and_spawn` |
+| POST | `/v1/scope/write_assistant` |
+
+### Internal — Context
+
+| 方法 | 路径 |
+|------|------|
+| POST | `/v1/context/prepare_for_llm` |
+| POST | `/v1/context/skill_begin` |
+| POST | `/v1/context/skill_end` |
+| POST | `/v1/context/status` |
+
+### Internal — Meta / Steps
+
+| 方法 | 路径 |
+|------|------|
+| POST | `/v1/meta/read` |
+| POST | `/v1/meta/update` |
+| POST | `/v1/steps/write` |
+| POST | `/v1/steps/list` |
+| POST | `/v1/steps/read` |
+| POST | `/v1/steps/index` |
+| POST | `/v1/steps/read_formatted` |
+| POST | `/v1/steps/read_preview` |
+
+### Internal — 其它
+
+| 方法 | 路径 |
+|------|------|
+| POST | `/v1/internal/tools` |
+| POST | `/v1/internal/recall` |
+| POST | `/v1/internal/recall_messages` |
+| POST | `/v1/internal/reindex` |
+| POST | `/v1/internal/shell` |
+| POST | `/v1/internal/skill/begin` |
+| POST | `/v1/internal/skill/end` |
+
+### 签发与健康
+
+| 方法 | 路径 |
+|------|------|
+| POST | `/v1/token` |
+| GET | `/health` |
+
+---
+
+## 3. 与 Runtime 的衔接
+
+Agent Runtime 通过 **`POST /v1/context/prepare_for_llm`** 取 **messages + tools**，与 [context-timeline-and-dfs.md](context-timeline-and-dfs.md) 中的 **`ContextEngine`** 一致。
+
+---
+
+## 相关
+
+- [proxy-cli-auth.md](proxy-cli-auth.md) — JWT vs Gateway `X-Internal-Key`  
+- [runtime-facade.md](runtime-facade.md) — `Cortex` 类  
