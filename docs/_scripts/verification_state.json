@@ -1,0 +1,926 @@
+{
+  "_meta": {
+    "schema": 1,
+    "description": "Only list non-pending entries; omitted paths = pending. status: verified | partial | stale | skipped | generated"
+  },
+  "docs/_legacy/README.md": {
+    "status": "verified",
+    "date": "2026-04-09",
+    "notes": "L3 档案角色说明（无正文搬迁）"
+  },
+  "docs/agent-approve-points/01-novaic-architecture.md": {
+    "status": "verified",
+    "date": "2026-04-09",
+    "notes": "§4.3 design-level (four-tier names); §4.4 vs sync_broadcast_log + kind/status + optional BroadcastType; §5 table + idempotency ledger; sagas/handlers/queue vs repo"
+  },
+  "docs/agent-approve-points/02-openclaw-architecture.md": {
+    "status": "verified",
+    "date": "2026-04-09",
+    "notes": "thirdparty/openclaw: pi-embedded-runner/run.ts + run/attempt.ts + pi-embedded-subscribe.ts line counts; PLUGIN_HOOK_NAMES 28 in plugins/types.ts; tool-catalog ToolProfileId minimal/coding/messaging/full; runEmbeddedPiAgent export chain; §3.1 outer loop vs while(true)+MAX_RUN_LOOP_ITERATIONS; subscribe stripBlockTags + EmbeddedBlockChunker; §6 JSONL entry 类型未在 vendor 内逐条核对"
+  },
+  "docs/agent-approve-points/03-optimization-points.md": {
+    "status": "verified",
+    "date": "2026-04-09",
+    "notes": "NovAIC 现状 vs novaic-agent-runtime + gateway; OpenClaw 对比未核"
+  },
+  "docs/agent-approve-points/README.md": {
+    "status": "verified",
+    "date": "2026-04-09",
+    "notes": "索引表链接 ./01–03；与同目录文件一致"
+  },
+  "docs/agent-handoff-context.md": {
+    "status": "verified",
+    "date": "2026-04-09",
+    "notes": "Gateway v63/schema/migration; main_gateway routers; internal_proxy + pc /ws; entangled_access/ServiceConfig; Cortex engine.prepare_messages_for_llm + step types; Runtime GatewayBusinessClient; §7/§13 markdown"
+  },
+  "docs/architecture-verification-2026-04.md": {
+    "status": "verified",
+    "date": "2026-04-09",
+    "notes": "§1–3 vs gateway/schema/deploy"
+  },
+  "docs/backend-architecture.md": {
+    "status": "verified",
+    "date": "2026-04-09",
+    "notes": "ports + ServiceConfig/tool_result 19994; v63 _SHADOW_AND_DEAD_TABLES; deploy Entangled/ vs entangled-service/ + factory llm-factory path; start.sh Entangled caveat; V2 Gateway row; watchdog path workers/"
+  },
+  "docs/claude-code-skills-architecture-analysis.md": {
+    "status": "verified",
+    "date": "2026-04-09",
+    "notes": "NovAIC 两行可核对：system_prompt._build_skills_section、SkillRepository.match_skills_for_task；Claude Code 树为外部快照非本仓"
+  },
+  "docs/context-assembly-dfs-step-tree.md": {
+    "status": "verified",
+    "date": "2026-04-09",
+    "notes": "§4.3 + §6 vs novaic-cortex api.py + context_stack/engine.py; legacy §4.1–4.2 retained"
+  },
+  "docs/cortex-architecture.md": {
+    "status": "verified",
+    "date": "2026-04-09",
+    "notes": "CORTEX_PORT/HOST; api.py routes vs §6; S3 users/{user_id}/ + agents/{agent_id}/ vs NOVAIC_OSS_PREFIX on s3_store_aliyun_oss only"
+  },
+  "docs/design-no-tool-system-message.md": {
+    "status": "verified",
+    "date": "2026-04-09",
+    "notes": "NO_TOOL_WARNING + cortex_handlers.prepare_llm_context；react_think scope_id/MAX_NO_TOOL_RETRIES/two triggers；tool_handlers _EXECUTORS；react_actions content steps + skill_end root"
+  },
+  "docs/design/CHATS_AGENTS_TABS_DESIGN.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "v63/Entangled header + novaic-app paths in §四；正文与实现需对照 Layout/*"
+  },
+  "docs/design/COMMANDS_SPLIT_DESIGN.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "持疑对照 novaic-app/src-tauri/src/lib.rs + commands/；路径 lib.rs、get_cached_file/fetch_cached_bytes、无 vnc_urls.rs/gateway_sse；ACL 与 invoke 可能不同步"
+  },
+  "docs/design/DESIGN-ELIMINATE-RUNTIME-FROM-GATEWAY-TOOLS-SERVER.md": {
+    "status": "verified",
+    "date": "2026-04-09",
+    "notes": "Gateway helpers + schema v63 + tool_handlers scope_id/runtime_id payload; Tools Server = split repo; historical phases archived"
+  },
+  "docs/design/DESIGN-ELIMINATE-RUNTIME-ROOT-PLAN.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "§1.2 RO 边界 vs gateway ServiceConfig/main_gateway；§7 e2e；余下 Phase 表为历史计划"
+  },
+  "docs/design/DESIGN-GATEWAY-FILTERED-TOOLS-TASKS.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "TOOL_NAME_TO_MOUNTED in gateway/agent_binding.py (incl. qemu/hd); no builtin-tools route in-tree agent.py; Tools Server split repo; Runtime tool list via Cortex (see cortex_handlers)"
+  },
+  "docs/design/DESIGN-gateway-no-forward.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "no RO forward helpers in gateway; internal_proxy has no vm.py; §1 historical; agent.py VmControl WS not RO HTTP"
+  },
+  "docs/design/DESIGN-GATEWAY-RETURNS-FILTERED-TOOLS.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "gateway/agent_binding.py: TOOL_NAME_TO_MOUNTED + proxy vm/mobile/hd + normalize_mounted; agent.py: no GET /internal/agents/{id}/builtin-tools nor _filter_builtin_tools_for_agent; tools_server split repo — doc §3 flow not fully implemented here"
+  },
+  "docs/design/DESIGN-LOCAL-RELAY.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "Aligned paths: novaic-quic-service (main/config/relay/protocol/auth). novaic-app: no local_relay/p2p/self_relay_url; setup_shared in setup.rs. LAN IP helper not in repo."
+  },
+  "docs/design/DESIGN-novaic-quic-service-IMPLEMENTATION.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch2 agent aborted; spot: align with novaic-quic-service crate; full pass later"
+  },
+  "docs/design/DESIGN-novaic-quic-service.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "§6.3+§7+§9 vs novaic-quic-service auth.rs/config.rs; novaic-quic-service layout matches §7; Gateway /api/p2p/* not present under novaic-gateway/gateway/api in this tree (expect deploy/other branch)"
+  },
+  "docs/design/DESIGN-P2P-ORCHESTRATOR-PROPOSAL-C.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "术语：Orchestrator=P2P/relay 编排，非已移除的 RO；设计稿对照 backend-architecture + architecture-verification"
+  },
+  "docs/design/DESIGN-P2P-REGISTRATION-DISCOVERY.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "无 Registry/Discovery/ServerDescriptor 实现；无 p2p crate；quic-service=STUN+relay；vmcontrol WebRTC 主线；文内已加 2026-04-09 对齐段"
+  },
+  "docs/design/DESIGN-P2P-UNIFIED.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "novaic-quic-service src layout matches; P2pServer/P2pClient p2p crate not in repo—design aspirational; fixed doc paths + PHASE5 ref"
+  },
+  "docs/design/DESIGN-subagent-centric-gateway-migration.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "v63 header + key lines"
+  },
+  "docs/design/DESIGN-subagent-wake-message-gateway-db.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "v63 header"
+  },
+  "docs/design/DEVICE_SUBJECT_DESIGN.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "2026-04-09 batch3: header + spot-check vs v63/Entangled"
+  },
+  "docs/design/EXECUTION_LOG_SUBAGENT_CAPSULES_DESIGN.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "2026-04-09 batch3: header + spot-check vs v63/Entangled"
+  },
+  "docs/design/HOT_UPDATE_EXECUTION_PLAN.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "2026-04-09 batch3: header + spot-check vs v63/Entangled"
+  },
+  "docs/design/IMPLEMENTATION-PLAN-runtime-cleanup-subagent-centric.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "2026-04-09 batch3: header + spot-check vs v63/Entangled"
+  },
+  "docs/design/IMPLEMENTATION-PLAN-tools-server-remove-runtime-ro.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "2026-04-09 batch3: header + spot-check vs v63/Entangled"
+  },
+  "docs/design/LAYOUT_CONTAINER_REFACTORING_DESIGN.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "2026-04-09 batch3: header + spot-check vs v63/Entangled"
+  },
+  "docs/design/MOBILE_FILE_LIST_REMOVAL_PLAN.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "2026-04-09 batch3: header + spot-check vs v63/Entangled"
+  },
+  "docs/design/MULTI_USER_DESIGN.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "2026-04-09 batch3: header + spot-check vs v63/Entangled"
+  },
+  "docs/design/OPTIMIZATION_PLAN.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch4 8-way: spot-check"
+  },
+  "docs/design/PARALLEL_SERVICE_STARTUP_PROPOSAL.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch4 8-way"
+  },
+  "docs/design/RESPONSIVE_LAYOUT_DESIGN_V2.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch4 8-way"
+  },
+  "docs/design/SECURE_STORAGE_DESIGN.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch4 8-way"
+  },
+  "docs/design/SSE_USER_LEVEL_MIGRATION.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch4 8-way"
+  },
+  "docs/design/SUBUSER_MAINDESK_MOVE_TO_COLUMN3_DESIGN.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch4 8-way"
+  },
+  "docs/design/SYSTEM_DESIGN.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch4 8-way"
+  },
+  "docs/design/TAURI2_MOBILE_MODULARIZATION_PLAN.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch4 8-way"
+  },
+  "docs/design/UNIFIED_DESIGN_TASK_ASSIGNMENT.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch5 8-way"
+  },
+  "docs/design/UNIFIED_LAYOUT_AND_EXECUTION_LOG_DESIGN.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch5 8-way"
+  },
+  "docs/design/VM_STATUS_REPORT_STOPPED_DEVICES_PLAN.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch5 8-way"
+  },
+  "docs/device/DEVICE_AGENT_DECOUPLE_DATAFLOW_RESEARCH_ROUND2.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch5 8-way"
+  },
+  "docs/device/DEVICE_DATAFLOW_RESEARCH_ROUND1.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch5 8-way"
+  },
+  "docs/device/DEVICE_FLOATING_PANEL_DEVICEMODE_RESEARCH_ROUND3.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch5 8-way"
+  },
+  "docs/device/DEVICE_ITERATION_REVIEW_CONTEXT.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch5 8-way"
+  },
+  "docs/device/DEVICE_MANAGEMENT_DATA_STRUCTURE_REPORT.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch5 8-way; v63 Entangled vs gateway.db (entity vs shadow; pc_clients local)"
+  },
+  "docs/device/DEVICE_MANAGER_FLOATING_PANEL_DATA_SOURCE_RESEARCH.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch6 8-way"
+  },
+  "docs/device/DEVICE_PC_CLIENT_ONLINE_PLAN.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch6 8-way"
+  },
+  "docs/device/DEVICE_PC_CLIENT_ONLINE_REVIEW_R2.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch6 8-way"
+  },
+  "docs/device/DEVICE_PC_CLIENT_ONLINE_REVIEW_R3.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch6 8-way"
+  },
+  "docs/device/DEVICE_PC_CLIENT_ONLINE_REVIEW_R3_AGENT_DRAWER.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch6 8-way"
+  },
+  "docs/device/DEVICE_PC_CLIENT_ONLINE_REVIEW_R3_SECURITY.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch6 8-way"
+  },
+  "docs/device/DEVICE_SETUP_START_PC_CLIENT_ID_REVIEW.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch6 8-way"
+  },
+  "docs/device/DEVICE_STATUS_RACE_MULTI_PC_RESEARCH_ROUND3.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch6 8-way"
+  },
+  "docs/device/DEVICE_STATUS_STORE_POLLING_RESEARCH_ROUND2.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch7 8-way"
+  },
+  "docs/device/DEVICE_SWITCH_FLOW_ANALYSIS.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch7 8-way"
+  },
+  "docs/device/PC_CLIENT_HANDLE_DEVICE_MESSAGE_REVIEW.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch7 8-way; subagent retry: v63 header + line caveat"
+  },
+  "docs/device/README.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch7 8-way"
+  },
+  "docs/DOC_VERIFICATION_REGISTRY.md": {
+    "status": "generated",
+    "date": "",
+    "notes": "this registry"
+  },
+  "docs/DOCUMENT_AGGRESSIVE_STRATEGY.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "策略与保留集；非代码事实断言"
+  },
+  "docs/DOCUMENT_INVENTORY.md": {
+    "status": "generated",
+    "date": "",
+    "notes": "auto list; no factual claims"
+  },
+  "docs/DOCUMENT_INVENTORY_ANNOTATED.md": {
+    "status": "generated",
+    "date": "",
+    "notes": "auto list"
+  },
+  "docs/entangled-architecture-upgrade-design-complete.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "目标架构 ADR；与 SSOT 导言一致；细节未逐条对代码"
+  },
+  "docs/entangled-architecture-upgrade-plan.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "路线图过程稿；分层路径与仓库结构一致"
+  },
+  "docs/entangled-cleanup-design.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "技术债清零方案过程稿；未逐条验证实现进度"
+  },
+  "docs/entangled-load-test.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch8 8-way"
+  },
+  "docs/entangled-multi-worker-threat-model.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch8 8-way"
+  },
+  "docs/entangled-params-canonical.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch8 8-way"
+  },
+  "docs/entangled-pk-conventions.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch8 8-way; v63 header aligned post-review"
+  },
+  "docs/entangled-push-to-all-audit.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch8 8-way"
+  },
+  "docs/entangled-rust-single-writer-notes.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch8 8-way"
+  },
+  "docs/entangled-serviceization-design.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch8 8-way"
+  },
+  "docs/entangled-sync-protocol-v1.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch8 8-way"
+  },
+  "docs/entangled-tauri-capabilities-audit.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch9 8-way"
+  },
+  "docs/entity-design-audit.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch9 8-way"
+  },
+  "docs/gateway-upgrade/00-design.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch9 8-way: 过程稿；现行 main_gateway include_router 真值表 vs 历史 chat.py/tasks_api 计划；pointer architecture-verification §2"
+  },
+  "docs/gateway-upgrade/01-chat-router.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch9 8-way"
+  },
+  "docs/gateway-upgrade/02-monitoring-router.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch9 8-way"
+  },
+  "docs/gateway-upgrade/03-files-proxy-router.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch9 8-way; batch9 follow-up: header 行号快照说明"
+  },
+  "docs/gateway-upgrade/04-tasks-and-system-router.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch9 8-way; batch9 follow-up: header 行号快照说明"
+  },
+  "docs/gateway-upgrade/05-main-gateway-slim.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch9 8-way; batch9 follow-up: header 行号快照说明"
+  },
+  "docs/gateway-upgrade/06-schema-slim.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch11 8-way"
+  },
+  "docs/gateway-upgrade/07-repository-cleanup.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch11 8-way; checklist 指向 entity/repos/chat"
+  },
+  "docs/gateway-upgrade/08-docstrings-deadcode.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch11 8-way"
+  },
+  "docs/gateway-upgrade/README.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch11 8-way"
+  },
+  "docs/icons/README.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch11 8-way"
+  },
+  "docs/im-tool-design.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch11 8-way"
+  },
+  "docs/misc/AGENTS_TAB_API_CONTRACT_VALIDATION.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch11 8-way"
+  },
+  "docs/misc/AGENTS_TAB_CONFIG_GATEWAY_API_REPORT.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch11 8-way"
+  },
+  "docs/misc/CLIENT_DB_ARCHITECTURE.md": {
+    "status": "verified",
+    "date": "2026-04-09",
+    "notes": "重写为现行端侧数据；对齐 sync_design 与 novaic-app"
+  },
+  "docs/misc/CROSS_PLATFORM_ARCHITECTURE.md": {
+    "status": "verified",
+    "date": "2026-04-09",
+    "notes": "去掉 batch 批注；存储表述对齐 sync_design"
+  },
+  "docs/misc/CURRENT_STATE_SURVEY_SUMMARY.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch12 8-way; subagent code↔doc pass"
+  },
+  "docs/misc/FRONTEND_HOT_UPDATE_SUMMARY.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch12 8-way; subagent code↔doc pass"
+  },
+  "docs/misc/IOS_BLACK_SCREEN_ISSUE_REPORT.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch12 8-way; subagent code↔doc pass"
+  },
+  "docs/misc/MOBILE_DESKTOP_UNIFICATION_PROGRESS.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch13 8-way; subagent code↔doc pass"
+  },
+  "docs/misc/phase1-device-identity.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch13 8-way; subagent code↔doc pass"
+  },
+  "docs/misc/phase2-local-discovery.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch14 8-way; subagent code↔doc pass"
+  },
+  "docs/misc/phase3-p2p-remote.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch14 8-way; subagent code↔doc pass"
+  },
+  "docs/misc/phase4-multi-user.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch14 8-way; subagent code↔doc pass"
+  },
+  "docs/misc/README.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch14 follow-up: survey git 指针"
+  },
+  "docs/misc/RELAY_MIGRATION_8_TO_47.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch13 8-way; subagent code↔doc pass"
+  },
+  "docs/misc/RO_GATEWAY_CALL_RELATIONSHIP.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch13 8-way; subagent code↔doc pass"
+  },
+  "docs/misc/survey-2026/README.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch14 follow-up: code↔doc (OTA_FLOW whitelist; CHANGES; survey header)"
+  },
+  "docs/misc/TEST_RUN_REPORT.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch13 8-way; subagent code↔doc pass"
+  },
+  "docs/misc/VMCONTROL-TAURI-INTEGRATION-PLAN.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch13 8-way; subagent code↔doc pass"
+  },
+  "docs/misc/VPN_DEPLOYMENT_GUIDE.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch13 8-way; subagent code↔doc pass"
+  },
+  "docs/misc/设计文档.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch14 8-way; subagent code↔doc pass"
+  },
+  "docs/model-entity-refactor.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch14 8-way; subagent code↔doc pass"
+  },
+  "docs/NOVAIC_CANONICAL_GUIDE.md": {
+    "status": "verified",
+    "date": "2026-04-09",
+    "notes": "§3 ports vs services.json"
+  },
+  "docs/ota/OTA_CHANGES_4_AGENT_REVIEW.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch14 follow-up: code↔doc (OTA_FLOW whitelist; CHANGES; survey header)"
+  },
+  "docs/ota/OTA_FLOW_CAPABILITY_SWITCH.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch14 follow-up: code↔doc (OTA_FLOW whitelist; CHANGES; survey header)"
+  },
+  "docs/ota/OTA_INVOKE_4_AGENT_REPORT.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch15 second pass: routes.py; OTA_FLOW cross-refs; V2 window poll"
+  },
+  "docs/ota/OTA_INVOKE_ROOT_CAUSE_ANALYSIS.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch15 second pass: routes.py; OTA_FLOW cross-refs; V2 window poll"
+  },
+  "docs/ota/OTA_PLAN_REVIEW_SUMMARY.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch15 second pass: routes.py; OTA_FLOW cross-refs; V2 window poll"
+  },
+  "docs/ota/OTA_RE_ENABLE_FRONTEND_REVIEW.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch15 second pass: routes.py; OTA_FLOW cross-refs; V2 window poll"
+  },
+  "docs/ota/OTA_RE_ENABLE_IMPLEMENTATION_PLAN.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch15 second pass: routes.py; OTA_FLOW cross-refs; V2 window poll"
+  },
+  "docs/ota/OTA_RE_ENABLE_IMPLEMENTATION_PLAN_REVIEW.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch15 second pass: routes.py; OTA_FLOW cross-refs; V2 window poll"
+  },
+  "docs/ota/OTA_RE_ENABLE_IMPLEMENTATION_PLAN_V2.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch15 second pass: routes.py; OTA_FLOW cross-refs; V2 window poll"
+  },
+  "docs/ota/OTA_V2_FRONTEND_3_AGENT_SUMMARY.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch15 second pass: routes.py; OTA_FLOW cross-refs; V2 window poll"
+  },
+  "docs/ota/OTA_V2_FRONTEND_REVIEW.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch16 8-way: OTA favicon/routes; P2P paths archival note"
+  },
+  "docs/p2p/P2P-FIXES-2026-03-11.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch16 8-way: OTA favicon/routes; P2P paths archival note"
+  },
+  "docs/p2p/P2P-PHASE4-CODE-REVIEW-REPORT.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch16 8-way: OTA favicon/routes; P2P paths archival note"
+  },
+  "docs/p2p/P2P-REVIEW-CONTEXT.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch16 8-way: OTA favicon/routes; P2P paths archival note"
+  },
+  "docs/p2p/P2P-SUBAGENT-FIX-LIST.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch16 8-way: OTA favicon/routes; P2P paths archival note"
+  },
+  "docs/p2p/P2P_ARCHITECTURE_SURVEY_ROUND1.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch16 8-way: §2.3 p2p.py strikethrough"
+  },
+  "docs/p2p/P2P_CRITICAL_REVIEW_ROUND2.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch16 8-way: OTA favicon/routes; P2P paths archival note"
+  },
+  "docs/p2p/P2P_RACE_AND_ERROR_HANDLING_RESEARCH_ROUND3.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch16 8-way: OTA favicon/routes; P2P paths archival note"
+  },
+  "docs/p2p/P2P_REFACTOR_PROPOSAL_A.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch17 8-way: P2P archival; Agents Tab Entangled/skillsService"
+  },
+  "docs/p2p/P2P_REFACTOR_SUMMARY_ABC.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch17 8-way: P2P archival; Agents Tab Entangled/skillsService"
+  },
+  "docs/p2p/P2P_RELAY_RACE_ANALYSIS.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch17 8-way: P2P archival; Agents Tab Entangled/skillsService"
+  },
+  "docs/p2p/P2P_SERVER_ISSUE_REPORT.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch17 8-way: P2P archival; Agents Tab Entangled/skillsService"
+  },
+  "docs/PENDING_DOC_VERIFICATION.md": {
+    "status": "generated",
+    "date": "",
+    "notes": "regen_verification_registry.py 待办总表"
+  },
+  "docs/README.md": {
+    "status": "verified",
+    "date": "2026-04-09",
+    "notes": "必读表与链接自检；持疑流程与 PENDING 优先级一致"
+  },
+  "docs/research/AGENTS_TAB_CONFIG_8_AGENT_ANALYSIS_SUMMARY.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch17 8-way: P2P archival; Agents Tab Entangled/skillsService"
+  },
+  "docs/research/AGENTS_TAB_CONFIG_AGENT_SELECTION_ANALYSIS.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch17 8-way: P2P archival; Agents Tab Entangled/skillsService"
+  },
+  "docs/research/AGENTS_TAB_CONFIG_ANALYSIS.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch17 8-way: P2P archival; Agents Tab Entangled/skillsService"
+  },
+  "docs/research/AGENTS_TAB_CONFIG_API_ANALYSIS.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch17 8-way: P2P archival; Agents Tab Entangled/skillsService"
+  },
+  "docs/research/BACKEND_STARTUP_SLOWNESS_ANALYSIS.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch18 8-way: research↔repo (lib.rs cmds; p2p paths; RO lines)"
+  },
+  "docs/research/COMMANDS_ANALYSIS.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch18 8-way: research↔repo (lib.rs cmds; p2p paths; RO lines)"
+  },
+  "docs/research/DB-LOG-ANALYSIS-subagent.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch18 8-way: research↔repo (lib.rs cmds; p2p paths; RO lines)"
+  },
+  "docs/research/GATEWAY_VS_TAURI_RESPONSIBILITY_BOUNDARY_RESEARCH_ROUND3.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch18 8-way: research↔repo (lib.rs cmds; p2p paths; RO lines)"
+  },
+  "docs/research/QUEUE_SERVER_DISCONNECTED_ROOT_CAUSE_ANALYSIS.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch18 8-way: research↔repo (lib.rs cmds; p2p paths; RO lines)"
+  },
+  "docs/research/README.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch18 8-way: research↔repo (lib.rs cmds; p2p paths; RO lines)"
+  },
+  "docs/research/RELAY_IPV6_FIX_ANALYSIS.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch18 8-way: research↔repo (lib.rs cmds; p2p paths; RO lines)"
+  },
+  "docs/research/RESEARCH_APP_INSTANCE.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch18 8-way: research↔repo (lib.rs cmds; p2p paths; RO lines)"
+  },
+  "docs/research/RESEARCH_APP_INSTANCE_MYDEVICES_LINKAGE.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch19 8-way: p2p/my-devices archival; subagent_cancel entangled"
+  },
+  "docs/research/RESEARCH_APP_INSTANCE_OVERVIEW.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch19 8-way: p2p/my-devices archival; subagent_cancel entangled"
+  },
+  "docs/research/RESEARCH_APP_INSTANCE_SYNC_AND_FAILURE_SCENARIOS.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch19 8-way: p2p/my-devices archival; subagent_cancel entangled"
+  },
+  "docs/research/RESEARCH_CONNECT_RELAY_FLOW.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch19 8-way: p2p/my-devices archival; subagent_cancel entangled"
+  },
+  "docs/research/RESEARCH_DEVICE_BACKEND.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch19 8-way: p2p/my-devices archival; subagent_cancel entangled"
+  },
+  "docs/research/RESEARCH_DEVICE_FRONTEND.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch19 8-way: p2p/my-devices archival; subagent_cancel entangled"
+  },
+  "docs/research/RESEARCH_P2P_RELAY_TUNNEL_DETAILS.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch19 8-way: p2p/my-devices archival; subagent_cancel entangled"
+  },
+  "docs/research/TOOL_ERRORS_ANALYSIS.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch19 8-way: p2p/my-devices archival; subagent_cancel entangled"
+  },
+  "docs/research/TOOL_ERRORS_TROUBLESHOOTING.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch20 8-way: subagent_cancel; unify-vnc; submodules index"
+  },
+  "docs/research/UNIFIED_CURRENT_STATE_AND_RESEARCH.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch20 8-way: subagent_cancel; unify-vnc; submodules index"
+  },
+  "docs/review/README.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch20 8-way: subagent_cancel; unify-vnc; submodules index"
+  },
+  "docs/runbooks/ARCHITECTURE-SERVICES-AND-HANDLERS.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch12 8-way; subagent code↔doc pass; moved from docs/misc/ (rebuild phase1)"
+  },
+  "docs/runbooks/E2E_READINESS.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch12 8-way; subagent code↔doc pass; moved from docs/misc/ (rebuild phase1)"
+  },
+  "docs/runbooks/HOT_UPDATE_DEPLOY_STEPS.md": {
+    "status": "partial",
+    "date": "2026-04-10",
+    "notes": "batch12 8-way; subagent code↔doc pass; moved from docs/misc/ (rebuild phase1)"
+  },
+  "docs/runbooks/README.md": {
+    "status": "verified",
+    "date": "2026-04-09",
+    "notes": "Phase1 索引；链至 E2E / 服务矩阵 / 热更新"
+  },
+  "docs/scope-driven-agent-lifecycle.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch20 8-way: subagent_cancel; unify-vnc; submodules index"
+  },
+  "docs/skills-domain-investigation-reports.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch20 8-way: subagent_cancel; unify-vnc; submodules index"
+  },
+  "docs/submodules/novaic-agent-runtime/README.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch20 8-way: subagent_cancel; unify-vnc; submodules index"
+  },
+  "docs/submodules/novaic-app/README.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch20 8-way: subagent_cancel; unify-vnc; submodules index"
+  },
+  "docs/submodules/novaic-contracts/README.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch21 8-way: submodule index + sync checklist caveat"
+  },
+  "docs/submodules/novaic-control-plane/README.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch21 8-way: submodule index + sync checklist caveat"
+  },
+  "docs/submodules/novaic-gateway/README.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch21 8-way: submodule index + sync checklist caveat"
+  },
+  "docs/submodules/novaic-runtime-orchestrator/README.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch21 8-way: submodule index + sync checklist caveat"
+  },
+  "docs/submodules/novaic-shared-kernel/README.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch21 8-way: submodule index + sync checklist caveat"
+  },
+  "docs/submodules/novaic-storage-b/README.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch21 8-way: submodule index + sync checklist caveat"
+  },
+  "docs/submodules/novaic-tools-server/README.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch21 8-way: submodule index + sync checklist caveat"
+  },
+  "docs/submodules/README.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "batch20 8-way: subagent_cancel; unify-vnc; submodules index"
+  },
+  "docs/sync-contract-execution-checklist.md": {
+    "status": "verified",
+    "date": "2026-04-09",
+    "notes": "配套 SYNC_CONTRACT；页眉已去批次标签"
+  },
+  "docs/SYNC_CONTRACT.md": {
+    "status": "verified",
+    "date": "2026-04-09",
+    "notes": "路径与 novaic-app 子模块一致；v0.1 与 Path C 一致"
+  },
+  "docs/sync_design/implementation_plan.md": {
+    "status": "verified",
+    "date": "2026-04-09",
+    "notes": "与 novaic-app 现行实现一致（Entangled、prefs、列表 store）"
+  },
+  "docs/sync_design/multi_device_sync_caching.md": {
+    "status": "verified",
+    "date": "2026-04-09",
+    "notes": "与 novaic-app 现行实现一致（Entangled、prefs、列表 store）"
+  },
+  "docs/TREE.md": {
+    "status": "generated",
+    "date": "",
+    "notes": "generate_docs_tree.py"
+  },
+  "docs/vnc/README.md": {
+    "status": "verified",
+    "date": "2026-04-09",
+    "notes": "索引页；实现见 novaic-app / vmcontrol；旧正文用 git 历史检索"
+  },
+  "HANDOVER.md": {
+    "status": "partial",
+    "date": "2026-04-09",
+    "notes": "§2.1/§11.1 已对齐现行存储（2026-04）；全篇未逐段重读"
+  }
+}

@@ -1,9 +1,10 @@
 # NovAIC 项目交接文档（2026 重构版）
 
+> 最后更新：2026-04-09 — **§12 与 schema v63**：用户消息与 Agent/SubAgent **业务实体**持久化在 **Entangled**；Gateway `gateway.db` 仅运维表（见 `novaic-gateway/gateway/db/schema.py` v63，`agents` / `chat_messages` / `subagents` 等已 DROP）。§12.1、§12.2、§12.6 已与 `docs/architecture-verification-2026-04.md` 一致。
 > 最后更新：2026-04-06 — **Cortex 存储模型修正 + DFS Step Tree 上下文拼装**：
 > - **存储 ACL 修正**：`/ro/` = Cortex 管理区（scope、config、skills、knowledge），agent 只读；`/rw/` = Agent 自由空间（scratch）。活跃 scope 从 `/rw/active/` 迁移至 `/ro/active/`。Workspace 新增 `_sys_write`/`_sys_write_json`/`_sys_append_line` 系统写入方法，scope 管理操作绕过 agent ACL。
 > - **DFS Step Tree 上下文拼装**：上下文原子单位是 step 而非 message。`ContextEngine` 通过 DFS 遍历 step tree：闭合 scope → 折叠为 summary；开放 scope → 展开子 step。tool results 存在 `steps/` 目录，不写入 `context.jsonl`。详见 `docs/cortex-architecture.md` + `docs/context-assembly-dfs-step-tree.md`。
-> - **过时文档归档**：8 份过时设计文档（旧 Cortex 设计、Context Stack v2 被动式设计、统一引擎架构等）移至 `docs/archived/`，避免误导 AI。
+> - **过时设计稿**：`docs/archived/` 下旧稿已不在当前工作树；历史版本见 `git show docs-graveyard-p2:docs/archived/`（与 §十八、§十六 一致）。
 > 最后更新：2026-04-06 — **桌面「清空本地缓存」与 Entangled SQLite**：`entity_cache_clear` → `Cache::clear_all()` 现对 **`sqlite_master` 中全部用户表** 执行 `DELETE`（含 **`pending_ops`**，即乐观发送未收敛的 `_opt_*` 行）、随后 **`VACUUM`**，并重置内存 **`SEQ_COUNTER`**。避免仅清空 `entity_items`/`entity_meta` 时 **`pending_ops` 残留**导致聊天仍显示 **Sending...**。实现：`Entangled/packages/client-rust/src/cache.rs`。本地库路径（macOS）：`~/Library/Application Support/com.novaic.app/entangled_cache.db`。
 > 最后更新：2026-04-05 — **Agent Loop / LLM 上下文与工具执行统一**：（1）**no-tool**：不再注入合成 `tool_calls`；Cortex `cortex.prepare_llm_context` 在单次 LLM 调用前组装 messages + tools + 瞬态 `NO_TOOL_WARNING`；`llm_handlers` 仅传输，不注入工具列表。（2）**RuntimeStart**：已移除 `mcp.create`（Tools Server 已废弃）。（3）**工具结果**：`tool_handlers` 统一 dispatch 表，所有工具同步返回 `content`（JSON）；`react_actions` 直接 `context.append`，不再依赖 `result_id`。（4）**LLM Factory 日志页**：源码 `novaic-llm-factory/static/factory-logs.html`；线上 `https://api.gradievo.com/factory-logs`，API 经 Nginx `/factory-api/*` 代理至 Factory，请求头 `X-Admin-Key`（与 Nginx 中 `$factory_key` 一致）。详见 `docs/design-no-tool-system-message.md`。
 > 最后更新：2026-04-03 — **NovAIC Cortex (v3) 无状态引擎最终设计定稿**：完成了原 Context Stack 引擎向纯文件系统、无状态架构的 Cortex 重构设计。产出最终架构文档 `novaic_cortex_design.md`。核心重构围绕 CortexStore (基于 S3), Workspace (/ro+/rw隔离区), Sandbox (无状态 Shell), Compactor 与 Recall 五大组件展开。用四个标准 Tool 原语 (read, write, shell, scope_end) 统一所有状态交互，代码通过由 ~5600 LOC 骤降为 ~730 LOC 实现降低 87% 的理解复杂度，并确立基于 S3 的 4-Phase 架构演进路线。
@@ -55,7 +56,7 @@
 用户 macOS 桌面
 └── NovAIC.app (Tauri)
     ├── 前端 React/Vite          ← novaic-app/src/
-    │   ├── IndexedDB 本地缓存   ← 消息、日志、偏好、附件（按 userId 隔离）
+    │   ├── 本地数据               ← **偏好** `localStorage`（`prefsRepo`）；**消息 / 日志 / 实体** Entangled + Rust SQLite（`entangled_cache`），非 Dexie/IndexedDB 业务主存
     │   ├── AppBridge WS 推送    ← User 维度（接收 chat_message / config_updated）
     │   └── WebRTC 客户端        ← 所有远程桌面显示（VM/Android/HD/Subuser）
     └── Rust 后端
@@ -147,7 +148,6 @@ new-build-novaic/
 ├── deploy                          # 统一部署 CLI
 ├── .gitmodules                     # submodule 清单（含 novaic-* 与 thirdparty/openclaw）
 ├── docs/                           # 文档（`cortex-architecture.md`、`context-assembly-dfs-step-tree.md`、`SYNC_CONTRACT.md`）
-│   └── archived/                   # 过时文档归档（旧设计文档，勿参考）
 ├── thirdparty/openclaw/            # OpenClaw 子模块（需 init）
 ├── scripts/                        # 构建/部署/运维脚本
 └── 各 submodule 子目录
@@ -246,11 +246,15 @@ npm run tauri:build:android   # 使用 custom-protocol（与 iOS 不同）
 
 # ── 后端服务 (api.gradievo.com) ──
 ./deploy gateway           # rsync + start.sh 全部重启
-./deploy runtime / orchestrator / tools / storage-a / cortex
+./deploy runtime           # novaic-agent-runtime
+./deploy storage-a         # novaic-storage-a（File Service）
+./deploy cortex            # novaic-cortex（:19996）
+./deploy tools             # novaic-tools-server（目录不存在则失败；HANDOVER 记业务已退役，与脚本并存时需自知）
 ./deploy services          # rsync 全部 + start.sh 重启（推荐）
+# 注意：无 ./deploy orchestrator（RO 子模块已删除）
 
 # ── 基础设施 ──
-./deploy relay             # git pull + cargo build + systemctl restart
+./deploy relay             # rsync + cargo build + systemctl（非「仅 git pull」；见 deploy 实现）
 ./deploy factory           # rsync + systemctl restart llm-factory
 
 # ── 运维 ──
@@ -552,7 +556,7 @@ Gateway 3 个触发点：`update_settings`、`set_default_model`、`set_agent_mo
 3. **推送线程静默异常**：`create_task()` 在非 async 上下文抛 RuntimeError 被静默吃掉 → 恢复 `loop.create_task`，升级为 WARNING
 4. **USER_MESSAGE 去重**：前端对 `USER_MESSAGE` 调用 `onAgentReply`；`messageRepo.findTempByContent()` 按文本去重，防乐观更新与推回重复
 5. **Gateway `subscribe` 崩溃 → 客户端 RST**：若见 **`WebSocket protocol error: Connection reset without closing handshake`**，先查 Gateway 日志 **`[AppWS] Message loop crashed`** 与 Python traceback；已修复一类根因：**`gateway/entity/store.py` `exists_before` / `list_stream` 游标** 对 `sqlite3.Row`→`dict` 的 **`rowid` 键不稳定**（含列名冲突可能）→ **`KeyError: 'rowid'`**。修复：别名 **`_cf` / `_rid`**。
-6. **Rust 侧可观测性**：`novaic-app/src-tauri/src/core/app_bridge.rs` 记录 **`conn_seq`**、连接结束原因；`commands/gateway.rs` 中 **`gateway_ws_request`** 拒绝时打 **`target: app_bridge_diag`**（`connected` / `sink_installed`），与前端 **`WS not connected (action=entity)`** 对照时间戳
+6. **Rust 侧可观测性**：`novaic-app/src-tauri/src/core/app_bridge.rs` 记录 **`conn_seq`**、连接结束原因；Entity CRUD 已直连 Entangled Service（不再经过 AppBridge WS）
 7. **Entangled React**：`Entangled/packages/react` — `syncListener` / `client` 重连、卸载 **`stopSyncListener`**、generation 与 Strict Mode 双挂载
 
 ### 10.5 App→Gateway WS Request/Response
@@ -638,7 +642,7 @@ handle_unsubscribe(client_id, msg, store=store)  # unsubscribe
 - `messagesStore` / `logsStore` (实体数据)，`syncService`（WS + delta sync）、`agentService`（CRUD + VM setup）、`modelService`（模型配置）
 - Zustand 全局状态（`store.ts`）
 
-**AgentToolsTab SWR**：打开 Tab → IndexedDB 瞬间读缓存渲染 → 后台 `Promise.allSettled(6 个配置请求)` → 写 IDB → subscription 无感更新。
+**AgentToolsTab**：打开 Tab 时经 **`useSettings()`** 并行拉取工具分类 / builtin skills 等（含 **模块级 TTL 缓存**，见 `useSettings.ts`）；数据以 **Entangled 列表 + 缓存** 与 TanStack Query 为准，**不**使用 IndexedDB 业务表作主存。
 
 ### 11.2 关键设计决策
 
@@ -769,7 +773,7 @@ python scripts/generate_entity_types.py --check   # CI 校验 drift
 
 | 进程 | 职责 |
 |---|---|
-| Gateway | API、DB (chat_messages/subagents/agents)、WS Push |
+| Gateway | HTTP API、WS Push、`gateway.db` **运维表**；**业务实体**（messages/agents/subagents 等）经 **EntangledClient**（非 v63 后 `gateway.db` 主表） |
 | Cortex | 认知基础设施 (:19996)：Workspace (S3-backed scope tree) + ContextEngine (DFS step tree) + Recall + Sandbox — 详见 §18 |
 | Queue Service | Task/Saga 队列管理 |
 | Watchdog | 轮询 sending 消息，创建 MessageProcess Saga |
@@ -783,10 +787,10 @@ python scripts/generate_entity_types.py --check   # CI 校验 drift
 
 ```
 用户发消息
-  → Gateway: chat_messages INSERT (status=sending, read=0)
+  → Gateway: MessageRepository → **Entangled** `messages` 实体写入（status=sending, read=0；**非** `gateway.db.chat_messages` — v63 已 DROP 该 shadow 表）
   → Watchdog: find_sending() → 创建 MessageProcess Saga
   → Saga Step 1 (claim_message): sending → sent
-  → Saga Step 2 (route_message): RO get_or_create_runtime()
+  → Saga Step 2 (route_message): Runtime 获取/创建（Queue/Runtime 子系统，RO 已移除）
     → 有 active runtime? → skip
     → 无 active? → 创建 rt-xxx(active) → just_created=true
   → Saga Step 3 (decide): start_runtime
@@ -839,12 +843,14 @@ Sandbox 类命令（`shell` 等）经 **Cortex** 执行；生命周期类（`cha
 
 ### 12.6 关键数据库分布
 
-| 数据 | DB | 表 |
+| 数据 | 权威位置 | 说明 |
 |---|---|---|
-| 用户消息 | Gateway | chat_messages (sending/sent, read 0/1) |
-| SubAgent 状态 | Gateway | subagents (need_rest, wake_at, hrl) |
-| Runtime 及 Context | RO | agent_runtimes (status, context JSON) |
-| Task/Saga | Queue Service | tasks, sagas |
+| 用户消息 / Agent / SubAgent **业务行** | **Entangled Service** SQLite | 实体如 `messages`（定义里常见 `table="chat_messages"` 指 **Entangled 引擎表名**，不是 `gateway.db`）；`MessageRepository` 见 `gateway/entity/repos/message.py` |
+| Gateway `gateway.db`（**schema v63**） | 仅 **operational** 表 | `config`、`entangled_sync_versions`、`pending_questions`、`question_responses`、`ssh_keys`、`vm_processes`、`pc_clients`、`subagent_context` 等；`agents` / `subagents` / `chat_messages` 等在 `_SHADOW_AND_DEAD_TABLES` 中 **已 DROP**（见 `gateway/db/schema.py`） |
+| Task/Saga | Queue Service | `tasks`, `sagas` |
+| 上下文 / Workspace | Cortex（S3，:19996） | scope、steps、context 等（§18）；RO 已删除，无 `agent_runtimes` |
+
+**与旧稿差异**：若他处仍写「Gateway 本地 `chat_messages` INSERT」，按 **schema v63** 与 **`docs/architecture-verification-2026-04.md` §1–2** 理解；流程上仍是 Gateway 进程发起写，**持久化在 Entangled**。
 
 ### 12.7 已知 Bug：消息积压重复 Runtime
 
@@ -999,7 +1005,7 @@ cd novaic-gateway && PYTHONPATH=. python -m unittest tests.test_deps_internal_ta
 - [x] **AppWS schema push 与 Sync Contract 对齐**：`app_client.py` 首包带 `syncContractVersion`；网关 unittest 在无 Entangled 兄弟目录时 skip parity
 - [x] **modelService IndexedDB 依赖已移除**：不再读写 prefsRepo selectedModel/AudioModel
 - [x] **Skills 领域分调查报告**：`docs/skills-domain-investigation-reports.md`（对照 OpenClaw；落地商店/限额/导入前读）
-- [x] **Context Stack → Cortex DFS Step Tree**：旧 `context-stack/` 独立引擎（6 步生命周期）已被 Cortex 内置的 DFS Step Tree 上下文拼装替代。旧设计文档归档至 `docs/archived/`。当前实现：`novaic-cortex/novaic_cortex/context_stack/`（ContextEngine + StepTreeBuilder + budget_compact）。
+- [x] **Context Stack → Cortex DFS Step Tree**：旧 `context-stack/` 独立引擎（6 步生命周期）已被 Cortex 内置的 DFS Step Tree 上下文拼装替代。旧设计文档曾归档于 `docs/archived/`（已从工作树删除，见 tag `docs-graveyard-p2`）。当前实现：`novaic-cortex/novaic_cortex/context_stack/`（ContextEngine + StepTreeBuilder + budget_compact）。
 - [x] **Cortex 存储 ACL 修正**：`/ro/` = Cortex 管理区，`/rw/` = Agent 自由空间。活跃 scope 在 `/ro/active/`（非 `/rw/active/`）。Workspace 使用 `_sys_*` 方法绕过 agent ACL。
 - [ ] **iOS 键盘输入框适配**：`--keyboard-height` 注入已实现，需真机验证
 - [ ] **服务端数据自动清理**：runtime 完成时自动清空 context；queue 定期清理；logrotate
@@ -1083,7 +1089,7 @@ available-models (List Entity, user-scoped)
 
 > **完整架构文档**：`docs/cortex-architecture.md`  
 > **DFS Step Tree 设计**：`docs/context-assembly-dfs-step-tree.md`  
-> **过时文档已归档**：`docs/archived/`（旧 Cortex 设计、Context Stack v2、统一引擎架构等 8 份）
+> **过时设计稿**：已从工作树删除；历史在 **`git show docs-graveyard-p2:docs/archived/`**（旧 Cortex 设计、Context Stack v2、统一引擎架构等 8 份）
 
 Cortex 是 NovAIC Agent 的认知基础设施——独立 HTTP 服务（`:19996`），S3-backed，管理 Agent 的工作空间、上下文拼装、历史记忆和工具执行。
 

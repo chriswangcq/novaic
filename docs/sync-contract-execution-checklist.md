@@ -1,3 +1,5 @@
+> **文档说明**：Sync Contract 落地的**执行清单**（与 `SYNC_CONTRACT.md` 配套）。与 **`architecture-verification-2026-04.md`** 交叉阅读；**`nav.rs`、`entangled_*`、CI 工作流** 路径/文件名随提交而变，**以仓库现文件与 `rg` 为准**。勾选项表示**当时**验收，**不**自动保证后续提交仍成立。
+
 # Sync Contract — execution checklist
 
 Status: `[ ]` todo · `[x]` done · `[~]` in progress
@@ -23,7 +25,7 @@ Status: `[ ]` todo · `[x]` done · `[~]` in progress
 
 ## Phase 3 — Protocol version
 
-- [x] **3.1** Schema push + REST: `syncContractVersion` (`ws_handler`, `gateway/entity/sync_contract.py`, TS `loadSubscriptionSchema`, `entangled_set_sync_contract_version`, AppBridge `schema` push)
+- [x] **3.1** `syncContractVersion`: **REST** `GET /api/entangled/schema` (`gateway/api/entangled.py`, `gateway/entity/sync_contract.py`) → TS `loadSubscriptionSchema` → `entangled_set_sync_contract_version`; **Entangled WS** connect-time schema message (`entangled_transport.rs`; server e.g. `entangled_service/api/ws.py` or Entangled `ws_handler.py`, aligned via `sync_contract.py`). AppBridge does not push Entangled schema (entity sync is direct Entangled WS; see `app_bridge.rs`).
 - [x] **3.2** v2: client ERROR log if snapshot/head_n missing `idField` when contract ≥ 2 (`process_sync_with_contract`); server subscribe/notifier already send `idField`
 
 ## Phase 4 — Observability + HANDOVER
