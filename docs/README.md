@@ -16,21 +16,30 @@
 
 ## 架构
 
-
 | 文档                                                                          | 内容                                |
 | --------------------------------------------------------------------------- | --------------------------------- |
 | [overview.md](architecture/overview.md)                                     | 拓扑、端口、**文档地图**                    |
 | [thin-client-and-topology.md](architecture/thin-client-and-topology.md)     | OTA、拓扑、TURN                       |
 | [authentication.md](architecture/authentication.md)                         | JWT、deps                          |
 | [webrtc.md](architecture/webrtc.md)                                         | 远程桌面                              |
-| [realtime-sync.md](architecture/realtime-sync.md)                           | Push、App WS（摘要）                   |
-| [entangled-store-and-app-ws.md](architecture/entangled-store-and-app-ws.md) | 单 Store、schema push、稳定性（详）        |
-| [data-ownership.md](architecture/data-ownership.md)                         | Entangled vs gateway.db v63       |
 | [agent-pipeline.md](architecture/agent-pipeline.md)                         | 后端进程、Saga、工具、源码表                  |
-| [cortex.md](architecture/cortex.md)                                         | Cortex 纲要                         |
 | **[cortex-architecture.md](cortex-architecture.md)**                        | Cortex 详细总览（子模块源码级）               |
-| **[cortex/README.md](cortex/README.md)**                                    | Cortex 专题（时间线 schema、meta、Internal API、Runtime topics、Proxy 路由等） |
-| [app-ui.md](architecture/app-ui.md)                                         | 前端 Path C、HTTP→Entangled 表        |
+| **[cortex/README.md](cortex/README.md)**                                    | Cortex 专题（详细设计与组件） |
+| **[entangled-architecture.md](entangled-architecture.md)**                  | Entangled 详细总览（全端库重构版）            |
+| **[entangled/README.md](entangled/README.md)**                              | Entangled 专题拆解（全栈集成与 Rust Client） |
+| **[gateway-architecture.md](gateway-architecture.md)**                      | Gateway 网关详细总览                      |
+| **[gateway/README.md](gateway/README.md)**                                  | Gateway 网关专题拆解                     |
+| **[runtime-architecture.md](runtime-architecture.md)**                      | Agent Runtime 详细总览                |
+| **[runtime/README.md](runtime/README.md)**                                  | Agent Runtime 专题拆解（Watchdog/Saga等）|
+| **[frontend-architecture.md](frontend-architecture.md)**                    | Frontend (React) 详细总览             |
+| **[frontend/README.md](frontend/README.md)**                                | Frontend 专题拆解 (Zustand/DOM/Virtual)  |
+| **[vmcontrol-architecture.md](vmcontrol-architecture.md)**                  | VmControl (Rust 终端引擎) 详细总览              |
+| **[vmcontrol/README.md](vmcontrol/README.md)**                              | VmControl 各平台坑防拆解 (Webrtc/Scrcpy/MacOs)|
+| **[mcp-vmuse-architecture.md](mcp-vmuse-architecture.md)**                  | MCP VMuse (模型之手) 总览                 |
+| **[mcp-vmuse/README.md](mcp-vmuse/README.md)**                              | MCP VMuse 专题                         |
+| **[network-architecture.md](network-architecture.md)**                      | 边缘网络与穿透节点总览                        |
+| **[network/README.md](network/README.md)**                                  | 网络设施流转拆解                          |
+| **[storage-architecture.md](storage-architecture.md)**                      | 独立 File Storage 大件存储转存架构总览        |
 
 
 ## 参考

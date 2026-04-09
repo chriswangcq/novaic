@@ -8,55 +8,56 @@
 - **实现代码**：在 **submodule** 或同级目录内；改行为时请进入对应目录并以其 README 为准。
 - **`.gitmodules`**：权威 submodule 清单；初始化：`git submodule update --init --recursive`。
 
-## 2. 逻辑拓扑
+## 2. 逻辑拓扑与数据流
 
+```text
+                           ┌─────────────────┐
+                           │   LLM Factory   │ (独立 API 代理: 19990)
+                           └────────▲────────┘
+                                    │ HTTP
+┌────────────────┐ WebRTC  ┌────────┴────────┐ HTTP ┌────────────────┐
+│ Relay / STUN   │◄───────►│  Agent Runtime  ├─────►│     Cortex     │
+│ (quic-service) │ 信令穿透 │ (Watchdog/Worker)│      │  (:19996 HTTP) │
+└───────┬────────┘         └────────┬────────┘      │ - Scope / DFS  │
+        │                           │ 读写数据库/队列 │ - Recall       │
+        │                           │                 └────────────────┘
+ ┌──────▼───────┐          ┌────────▼────────────────────────────────┐
+ │  novaic-app  │  WS/REST │             Gateway (:19999)            │
+ │  (Tauri 壳)  │◄────────►│ HTTP 引擎 / p2p 信令 / VM prep          │
+ │ - VmControl  │          │ Entangled.sql (服务端实时实体同步引擎)  │
+ │ - Entangled  │          └────────────────┬────────────────────────┘
+ │   Rust Client│                           │
+ └──────┬───────┘                  ┌────────▼────────┐
+        ▼                          │  Server SQLite  │ (gateway.db /
+    本地 SQLite                     │                 │  queue.db )
+(entangled_cache.db)               └─────────────────┘
 ```
-                    ┌─────────────────┐
-                    │  Relay / STUN   │  novaic-quic-service（P2P 兜底 + 静态资源 CDN）
-                    └────────┬────────┘
-                             │
-  ┌──────────────┐    ┌──────▼──────┐    ┌──────────────────┐
-  │  novaic-app  │◄──►│   Gateway   │◄──►│ Agent Runtime    │
-  │  (Tauri UI)  │    │ (FastAPI)   │    │ (任务/Saga/工具)  │
-  └──────┬───────┘    └──────┬──────┘    └────────┬─────────┘
-         │                   │                    │
-         │   ┌───────────────┤                    ▼
-         │   │               │           ┌──────────────────┐
-         │   ▼               └──────────►│ Cortex (HTTP)    │  认知/Scope/Sandbox
-         │ Entangled                     └──────────────────┘
-         │ (实时同步引擎)
-         │   • entangled.server  协议层
-         │   • entangled.sql     SQL 存储层
-         │   • entangled.app     独立服务壳
-         ▼
-  本地 SQLite（Gateway 内嵌 Entangled 同步；客户端缓存）
-```
 
-- **桌面/移动端**：`novaic-app` — React/Vite + Tauri；经 CloudBridge / REST / WebSocket 与 Gateway 通信。
-- **云端 API**：`novaic-gateway` — REST + WS 网关；实体层使用 `entangled.sql.SqlEntityStore`，业务扩展在 `gateway/entity/store.py`（serializer/deserializer 钩子）；生产环境前面有 Nginx。
-- **Agent 执行**：`novaic-agent-runtime` — 任务队列（Queue Service :19997）、Saga、工具分发；与 Cortex 协作。
-- **Cortex**：`novaic-cortex` — 独立 HTTP 服务（:19996），Agent 通过工具调用与之交互，不直连业务 UI。
-- **Entangled**：实时实体同步引擎。三层架构：
-  - `entangled.server` — 通用同步协议（不依赖存储）
-  - `entangled.sql` — SQLite 存储层（FieldDef / EntityDef / EntityStore / Database / Locks）
-  - `entangled.app` — 可选独立服务壳（FastAPI + WS + CRUD + Auth），可 `python -m entangled.app.main` 启动
-- **P2P**：`novaic-quic-service` — STUN/TURN，配合 Gateway 与客户端 WebRTC。
-- **共享库**：`novaic-common`（含统一 `config/services.json`）。
+- **客户端（本地）**：`novaic-app`（React + Tauri）。内嵌 **VmControl** 处理所有 WebRTC/VNC 连接；内嵌 **Entangled Rust Client** 处理业务实体的实时订阅，数据持久化在**本地 SQLite**（不再依赖 IndexedDB）。
+- **云端接入（API/WS）**：`novaic-gateway`。完全融合了 `Entangled` 引擎作为其底层的实体存储层（内部直接走 `entangled.sql` 操作 Server SQLite）。前端所有的增删改查和实时聊天都通过 WebSocket 甚至 REST 汇聚在这里。
+- **异步执行管线**：`novaic-agent-runtime`。包含 Watchdog 和 Task/Saga Workers。**不再有** Tools Server，不仅编排流程，同时也内置了工具分发逻辑。
+- **认知基础设施**：`novaic-cortex`。独立的无状态 HTTP 服务。Agent 运行时通过 `CortexBridge` 向其实时追加（Append）运行状态、调用 Recall，而它背后拼装出向 LLM Factory 发起的上下文。
+- **LLM 隔离层**：`novaic-llm-factory`。隐藏了所有的 api-keys 和底层厂商差异，只暴露标准的 OpenAI HTTP 端点。
+- **边缘 P2P 与存储**：`novaic-quic-service` 负责 WebRTC 打洞和热更新 CDN；`novaic-storage-a` 负责二进制文件上传。
 
-## 3. 典型本地端口（`novaic-common/config/services.json`）
+## 3. 典型本地端口约定
 
-以下为主机 `127.0.0.1` 上的**约定端口**（本地开发常用；若冲突请改环境变量或配置）。
+由于采用云端/本地分离的架构，这里分为 **云端后端服务** 与 **本地客户端端侧服务**。注意 `19996` 端口存在历史复用。
 
-| 服务键 (`services.json`) | 端口    | 说明                                                               |
+**Backend（云端后端逻辑）**：
+| 服务名                 | 端口    | 说明                                                               |
 | --------------------- | ----- | ---------------------------------------------------------------- |
 | `gateway`             | 19999 | Gateway HTTP + WS（主入口，novaic-gateway）                           |
-| `queue_service`       | 19997 | Queue Service（novaic-agent-runtime `queue-service` 子命令）          |
-| `vmcontrol`           | 19996 | 本地 VmControl HTTP（Tauri 嵌入，`novaic-app/src-tauri/vmcontrol/`）  |
-| `cortex`              | 19996 | Cortex HTTP (`novaic-cortex`)，开发时需避开与 vmcontrol 的端口冲突           |
+| `queue_service`       | 19997 | Queue Service（novaic-agent-runtime `queue-service`）                 |
+| `cortex`              | 19996 | Cortex 认知引擎 HTTP (`novaic-cortex`)，提供 Workspace/DFS/Recall (依赖 `CORTEX_PORT`，生产环境必备) |
 | `file_service`        | 19995 | 文件服务（novaic-storage-a）                                          |
-| `entangled_service`   | 19900 | Entangled 独立服务（`python -m entangled.app.main`，按需启动）              |
 
-> **注意**：**Cortex** 在 `services.json` 中没有独立字段（依赖环境变量 `CORTEX_PORT`），默认端口 19996 与 `vmcontrol` 冲突。同一台机器上开发时需调整其一。
+**App / Client（客户端端侧逻辑）**：
+| 服务名                 | 端口    | 说明                                                               |
+| --------------------- | ----- | ---------------------------------------------------------------- |
+| `vmcontrol`           | 19996 | **这是给 App 用的**：嵌入在 Tauri 内的本地 VmControl HTTP 及 WebRTC 引擎，仅在用户个人 Mac 上运行。 |
+
+> **端口冲突避雷**：`19996` 这个数字，在用户 macOS 上是被 `vmcontrol` 占据的；而在后端的云服务器上，是被 `cortex` 占据的。它们处于完全不交叉的两端网络，设计上合理。只有当你**完全在本地同一台机器**上同时把全栈服务（既跑 Tauri UI 又强行跑所有的云端 Backend）都起起来时，才会发生 :19996 冲突。此时建议用环境变量 `CORTEX_PORT=19990` 把你的本地 Cortex 移开。
 
 ## 4. 模块速查
 
