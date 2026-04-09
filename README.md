@@ -19,7 +19,7 @@ novaic/
 ├── novaic-tools-server/         # 工具服务
 ├── novaic-mcp-vmuse/            # MCP VMuse 集成
 ├── novaic-quic-service/         # QUIC relay 服务
-├── docs/                        # 父仓文档（入口 docs/README.md、architecture/、runbooks/）
+├── docs/                        # 父仓文档（HANDOVER 纲要：README.md、architecture/、reference/、runbooks/）
 ├── scripts/                     # 构建/部署/运维脚本
 └── examples/                    # 示例项目
 ```
