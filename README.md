@@ -19,15 +19,7 @@ novaic/
 ├── novaic-tools-server/         # 工具服务
 ├── novaic-mcp-vmuse/            # MCP VMuse 集成
 ├── novaic-quic-service/         # QUIC relay 服务
-├── docs/                        # 文档
-│   ├── design/                  # 系统设计文档
-│   ├── device/                  # 设备管理相关
-│   ├── vnc/                     # VNC 连接相关
-│   ├── ota/                     # OTA 热更新相关
-│   ├── p2p/                     # P2P 连接相关
-│   ├── research/                # 技术调研/分析
-│   ├── review/                  # 代码审查/报告
-│   └── misc/                    # 其他文档
+├── docs/                        # 文档（重建中；见 docs/README.md）
 ├── scripts/                     # 构建/部署/运维脚本
 └── examples/                    # 示例项目
 ```
