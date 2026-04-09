@@ -6,14 +6,16 @@
 
 <!-- How you verified (commands, manual steps). -->
 
-## Documentation & contracts
+## Documentation
 
-Check **all** that apply; unchecked means N/A.
+父仓库 **`docs/`** 正在按代码重写；若本 PR 涉及行为或架构变更，请更新：
 
-- [ ] **No** user-visible API, port, Entangled subscription, Sync Contract, or `nav` / bootstrap behavior changed — **docs not required** for this PR.
-- [ ] **Docs updated** (`docs/…`, `HANDOVER.md`, or submodule READMEs) for any **ports**, **protocol**, **routing table**, or **client sync** change.
-- [ ] **Sync Contract / desktop**: if touching `nav.rs`, Entangled schema, `SYNC_CONTRACT.md`, or `novaic-app` bootstrap paths, skim **`docs/sync-contract-execution-checklist.md`** and note what was verified.
+- [ ] **N/A** — 无对外可见行为 / 架构变更  
+- [ ] **已更新** 仓库根 **`HANDOVER.md`** 和/或 **相关子模块** 内 `README.md`、`docs/`（子仓）  
+- [ ] **协议 / 端口 / 同步**：若改 Gateway、Entangled、`nav`、客户端启动路径，请在子模块或 HANDOVER 中写明，并注明是否需后续父仓 `docs/` 专章
 
-## Submodules / large repos
+（旧父仓 `docs/` 下 checklist 路径已移除；恢复历史：`git checkout docs-pre-full-rewrite-2026-04-09 -- docs/`）
 
-- [ ] Submodule pointers or `git submodule` instructions unchanged — **or** updated in `HANDOVER.md` / `docs/submodules/`.
+## Submodules
+
+- [ ] Submodule 指针或说明无变更 — **或** 已在 `HANDOVER.md` / 子模块 README 中更新

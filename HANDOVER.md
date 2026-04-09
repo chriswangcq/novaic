@@ -1,5 +1,7 @@
 # NovAIC 项目交接文档（2026 重构版）
 
+> **父仓库 `docs/`（2026-04-09）**：已**整目录移除**，便于按代码重写。恢复旧文件：`git checkout docs-pre-full-rewrite-2026-04-09 -- docs/`。在下文完成修订前，凡指向 **`docs/…` 的路径均失效**。
+>
 > 最后更新：2026-04-09 — **§12 与 schema v63**：用户消息与 Agent/SubAgent **业务实体**持久化在 **Entangled**；Gateway `gateway.db` 仅运维表（见 `novaic-gateway/gateway/db/schema.py` v63，`agents` / `chat_messages` / `subagents` 等已 DROP）。§12.1、§12.2、§12.6 已与 `docs/architecture-verification-2026-04.md` 一致。
 > 最后更新：2026-04-06 — **Cortex 存储模型修正 + DFS Step Tree 上下文拼装**：
 > - **存储 ACL 修正**：`/ro/` = Cortex 管理区（scope、config、skills、knowledge），agent 只读；`/rw/` = Agent 自由空间（scratch）。活跃 scope 从 `/rw/active/` 迁移至 `/ro/active/`。Workspace 新增 `_sys_write`/`_sys_write_json`/`_sys_append_line` 系统写入方法，scope 管理操作绕过 agent ACL。
