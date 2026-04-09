@@ -4,6 +4,7 @@
 >
 > **父仓库 `docs/`（2026-04-09）**：已**整目录移除**，便于按代码重写。恢复旧文件：`git checkout docs-pre-full-rewrite-2026-04-09 -- docs/`。正文里曾出现的 **`docs/...` 文件名**已汇总至 **`docs/historical-doc-links.md`**（含 `git show` 用法）。
 >
+> 最后更新：2026-04-09 — **Entangled 架构三层大一统**：废弃独立 `entangled-service` repo，逻辑全部并入 Entangled repo（分拆为 server / sql / app 三层）。清理过时的架构文档（移除了 Tools Server、TRS 等端口引用），统一通过 `entangled.app` 启动。
 > 最后更新：2026-04-09 — **§12 与 schema v63**：用户消息与 Agent/SubAgent **业务实体**持久化在 **Entangled**；Gateway `gateway.db` 仅运维表（见 `novaic-gateway/gateway/db/schema.py` v63，`agents` / `chat_messages` / `subagents` 等已 DROP）。§12.1、§12.2、§12.6 已与历史文档 `architecture-verification-2026-04.md` 一致（见 **`docs/historical-doc-links.md`**）。
 > 最后更新：2026-04-06 — **Cortex 存储模型修正 + DFS Step Tree 上下文拼装**：
 > - **存储 ACL 修正**：`/ro/` = Cortex 管理区（scope、config、skills、knowledge），agent 只读；`/rw/` = Agent 自由空间（scratch）。活跃 scope 从 `/rw/active/` 迁移至 `/ro/active/`。Workspace 新增 `_sys_write`/`_sys_write_json`/`_sys_append_line` 系统写入方法，scope 管理操作绕过 agent ACL。
@@ -132,19 +133,19 @@ git clone --recurse-submodules git@github.com:chriswangcq/novaic.git
 | Submodule | 用途 |
 |---|---|
 | `novaic-app` | Tauri 桌面+移动端应用 |
-| `novaic-gateway` | 云端 Gateway（API + DB） |
-| `novaic-llm-factory` | LLM Factory（集中化 LLM 代理） |
-| `novaic-quic-service` | STUN + Relay（P2P 兜底） |
-| `novaic-agent-runtime` | Agent 运行时（Task/Saga Worker、Watchdog、Scheduler） |
-| ~~`novaic-runtime-orchestrator`~~ | **已删除**：职责已拆分至 Gateway + Cortex + Agent-Runtime |
-| ~~`novaic-tools-server`~~ | **已退役**：工具执行由 Agent-Runtime `tool_handlers` + Cortex 接管 |
-| `novaic-mcp-vmuse` | MCP VMuse 集成 |
-| `novaic-contracts` | 共享协议/类型定义 |
-| `novaic-common` | 统一共享库（合并自 novaic-shared-kernel + novaic-shared-runtime-common） |
-| `novaic-storage-a` | File Service（文件存储） |
-| `novaic-cortex` | Cortex 认知引擎 (:19996)：S3-backed scope tree + DFS 上下文拼装 + Recall + Sandbox |
-| `novaic-control-plane` | 控制面板 |
-| `thirdparty/openclaw` | 上游 OpenClaw 源码（参考/审计；Skills & Gateway 行为对比） |
+| `novaic-gateway` | 云端 Gateway（涵盖 REST + WS + 实体管理） |
+| `Entangled` | 实时同步引擎（分 server/sql/app 三层，替代旧的 entangled-service） |
+| `novaic-llm-factory` | LLM Factory（集中化 LLM 代理，注：独立仓库非 submodule） |
+| `novaic-quic-service` | STUN + Relay（P2P 兜底） + 静态前端 CDN |
+| `novaic-agent-runtime` | Agent 运行时（Queue Service / Task Worker / Watchdog） |
+| ~~`novaic-runtime-orchestrator`~~ | **已删除**：职责拆分至 Gateway / Cortex / Runtime |
+| ~~`novaic-tools-server`~~ | **已退役**：工具执行已内置于 Agent Runtime + Cortex |
+| `novaic-mcp-vmuse` | MCP VMuse（基于 VM 的浏览器操作能力） |
+| `novaic-common` | 统一共享库（含 `config/services.json`） |
+| `novaic-storage-a` | File Service（文件存储服务，:19995） |
+| `novaic-cortex` | Cortex 认知引擎 (:19996)：Workspace / Sandbox / DFS Recall |
+| `byclaw-website` | 官方网站源码 |
+| `thirdparty/openclaw` | 上游参考源码（非线上服务） |
 
 ```
 new-build-novaic/
