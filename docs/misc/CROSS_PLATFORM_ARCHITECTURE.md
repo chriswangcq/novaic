@@ -1,7 +1,11 @@
+> **文档状态（2026-04）**：本文为过程稿、调研快照或子模块镜像，**非**仓库唯一现行架构来源。权威总览见仓库根 `docs/backend-architecture.md`；与代码/部署对齐的核查见 `docs/architecture-verification-2026-04.md`。
+>
+> 下文「现状」表格中的路径与命名以 **`docs/architecture-verification-2026-04.md` 与 `novaic-app` 源码**为准；若与实现不一致，以实仓为准。仓库已含 **Tauri 2 iOS/Android**（`package.json` 中 `tauri:*:ios` / `tauri:*:android`）。
+
 # 跨平台架构：差异化与组件化分析
 
-> 目标平台：Mac、Windows、Android、iPhone（不含 Web，不含 VMControl）  
-> 当前：Tauri + React，连接云端 Gateway
+> 目标平台：Mac、Windows、Android、iPhone（不含 Web；**VMControl 在 Tauri 仍可能有代码路径**，本文不展开）  
+> 当前：Tauri + React，连接云端 Gateway / Entangled
 
 ---
 
@@ -14,11 +18,11 @@
 | 能力 | 当前实现 | Mac/Windows | Android | iPhone |
 |------|----------|-------------|---------|--------|
 | **HTTP / Gateway** | `invoke('gateway_get/post/...')` | Tauri reqwest | 需原生 HTTP + JWT | 同左 |
-| **SSE 连接** | `invoke('gateway_sse_connect')`，Rust 侧 reqwest 绕过 WebView CORS | Tauri | 需原生 SSE 或 WebView fetch | 同左 |
+| **推送 / 长连接** | 现行多见 **`pushManager.ts`** + `app_bridge_*` + Entangled；**无** `gateway/sse.ts` / `gateway_sse_connect` 与 `lib.rs` 注册一一对应（权限表可能残留旧名） | Tauri | 同左 | 同左 |
 | **Token 同步** | `invoke('update_cloud_token')` | Tauri CloudTokenState | 需 Keychain/Keystore | Keychain |
 | **文件打开** | `invoke('open_file')` / `show_in_folder` | Tauri shell | Intent / Share | UIDocumentInteractionController |
-| **文件下载缓存** | `invoke('download_file_to_cache')` | Tauri fs | 需原生下载 + 沙盒路径 | 同左 |
-| **认证图片** | `invoke('fetch_authenticated_bytes')` | Tauri 带 JWT 请求 | 需原生或 WebView 带 Header | 同左 |
+| **文件下载缓存** | `invoke('get_cached_file')` 等（见 `components/Chat/FileAttachment.tsx`） | Tauri fs | 需原生下载 + 沙盒路径 | 同左 |
+| **认证图片** | `invoke('fetch_cached_bytes')`（见 `useAuthenticatedImage.ts` 等） | Tauri 带 JWT 请求 | 需原生或 WebView 带 Header | 同左 |
 
 **组件化建议**：
 
@@ -61,7 +65,7 @@ interface IPlatformBridge {
 
 | 存储 | 当前 | 跨平台差异 |
 |------|------|-------------|
-| **IndexedDB** | idb，messages/logs/prefs/files | ✅ 各平台 WebView 均支持 |
+| **IndexedDB** | 消息/实体等走 **Entangled + Rust 缓存**；prefs 等多为 **localStorage**（见 `prefsRepo.ts`） | 列表与同步见 `docs/sync_design/` |
 | **localStorage** | Token、user_info | ⚠️ 移动端建议用 SecureStorage |
 | **Rust data_dir** | api_key.txt, gateway_url.txt | ❌ 仅 Tauri，移动端需替代 |
 
@@ -107,8 +111,8 @@ layout/
 
 **现状**：
 
-- `FileAttachment.tsx`：`invoke('open_file')`、`invoke('show_in_folder')`、`invoke('download_file_to_cache')`
-- 图片：`invoke('fetch_authenticated_bytes')` + IndexedDB 缓存
+- `src/components/Chat/FileAttachment.tsx`：`invoke('open_file')`、`invoke('show_in_folder')`、`invoke('get_cached_file')` 等
+- 图片：`invoke('fetch_cached_bytes')` + 缓存策略以代码为准（非旧版「IndexedDB 全文」叙述）
 
 **组件化建议**：
 
@@ -126,7 +130,7 @@ components/FileAttachment/
 
 **现状**：
 
-- `auth.ts`：localStorage 存 Token，`invoke('update_cloud_token')` 推给 Rust
+- `services/auth.ts` / `gateway/auth.ts` / `App.tsx` 等：Token 与 `invoke('update_cloud_token')` 推给 Rust（勿理解为单一 `auth.ts`）
 - 云端 Gateway 校验 JWT
 
 **跨平台差异**：
@@ -149,7 +153,7 @@ auth/
 
 ### 6. API 客户端（Gateway Client）
 
-**现状**：`services/api.ts` 全部通过 `invoke('gateway_*')`，Rust 侧带 JWT 请求 Gateway。
+**现状**：`src/services/api.ts` 多为**类型/stub**；运行时 Gateway HTTP 与 Entangled 分散在 `auth.ts`、`setup.ts`、`data/entangledBootstrap.ts` 等，**并非**单文件全量 `gateway_*`。
 
 **组件化建议**：
 
@@ -166,10 +170,10 @@ gateway/
 
 ### 7. SSE 连接（SSE Stream）
 
-**现状**：
+**现状（以仓库为准）**：
 
-- `gateway/sse.ts`：`invoke('gateway_sse_connect')`，Rust 用 reqwest 建 SSE，通过 Tauri event 回传
-- 目的：绕过 WebView CORS/SSL 限制
+- 勿假设存在 `gateway/sse.ts`；长连接/推送以 **`pushManager.ts`、AppBridge、Entangled** 等实现为准
+- 目的：绕过 WebView CORS/SSL 限制（实现路径已演进）
 
 **跨平台差异**：
 

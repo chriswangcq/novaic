@@ -1,3 +1,5 @@
+> **文档状态（2026-04）**：本文为过程稿、调研快照或子模块镜像，**非**仓库唯一现行架构来源。权威总览见仓库根 `docs/backend-architecture.md`；与代码/部署对齐的核查见 `docs/architecture-verification-2026-04.md`。
+
 # 前端热更新部署步骤（relay.gradievo.com/resource/frontend/）
 
 ## 构建说明（VITE_BASE）
@@ -25,6 +27,7 @@ ssh root@relay.gradievo.com "bash -s" < novaic-quic-service/deploy/setup-cnd-fro
 
 ```bash
 cd novaic-app
+# deploy-frontend.sh 第三参为 SSH 端口，默认 52222（见脚本）；若主机用 22，请传第三参 22
 ./scripts/deploy-frontend.sh root@relay.gradievo.com 0.3.0
 ```
 
@@ -34,7 +37,7 @@ cd novaic-app
 
 ## 二、更新 Gateway 配置
 
-在 `jwt_secret.env` 或 `restart_gw.sh` 使用的环境中增加（可选，有默认值）：
+在服务器 **`/opt/novaic/jwt_secret.env`**（或等价环境）中增加（可选，有默认值）：
 
 ```bash
 export FRONTEND_CDN_URL=https://relay.gradievo.com/resource/frontend/v0.3.0/
@@ -49,7 +52,7 @@ git add -A && git commit -m "feat: frontend OTA relay.gradievo.com" && git push
 ./scripts/deploy-gateway.sh root@api.gradievo.com
 ```
 
-或仅重启：`ssh root@api.gradievo.com 'bash /opt/novaic/restart_gw.sh'`
+或仅重启：**`restart_gw.sh` 已删除**（见根目录 `HANDOVER.md`）；请用 **`/opt/novaic/start.sh`** 或团队现行运维脚本，勿照抄已移除路径
 
 ---
 
@@ -94,7 +97,7 @@ npm run tauri:build:android   # 或 tauri:dev:android
 - **iOS**：Xcode、Apple Developer 账号；首次需 `tauri ios init`；`tauri.ios.conf.json` 中填写 `developmentTeam`
 - **Android**：Android Studio、NDK、`ANDROID_HOME`；首次需 `tauri android init`
 
-详见 `HANDOVER.md` 第四「构建与发布 → 移动端构建（Android / iOS）」及「iOS 部署流程（完整）」。
+详见根目录 `HANDOVER.md` **第五「构建与发布」**（§5.2 iOS / §5.3 Android）及「iOS 部署流程（完整）」。
 
 ---
 
