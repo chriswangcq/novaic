@@ -35,8 +35,9 @@
 
 ## 3. `budget_compact`（与 `ContextEngine`）
 
-- **`ContextEngine.prepare_messages_for_llm`** 末尾调用 **`budget_compact(messages, self.config, counter=self._counter)`**，使用 **`CompactConfig`**（`context_stack/types.py`）。字段与 **`EngineConfig`** 在语义上可对齐（窗口、阈值、micro 截断等），但 **字段名不完全相同**（例如 `micro_preserve_recent` vs `micro_preserve_recent_rounds`）。  
-- **`Cortex.initialize()`** 会 **`load_engine_config`** 并作用于 **`Sandbox` / `Recall` / `Compactor`**；**HTTP** **`POST /v1/context/prepare_for_llm`** 当前构造 **`ContextEngine(...)` 时未传入从 `engine.json` 映射的 `CompactConfig`**，故该路径上 **`budget_compact` 使用 `CompactConfig()` 默认值**（与默认 **`EngineConfig`** 数值相近，但改 **`engine.json` 不会自动反映到该 HTTP 路径**，除非在 `api.py` 侧显式映射）。详见 [budget-compact-algorithm.md](budget-compact-algorithm.md) §8。  
+- **`ContextEngine.prepare_messages_for_llm`** 末尾调用 **`budget_compact(messages, self.config, counter=self._counter)`**，使用 **`CompactConfig`**（`context_stack/types.py`）。字段与 **`EngineConfig`** 在 **`engine.json`** 中语义对应，但 **字段名**在 **`EngineConfig`** 与 **`CompactConfig`** 之间不完全相同（例如 **`micro_preserve_recent`** ↔ **`micro_preserve_recent_rounds`** 由 **`engine_config_to_compact_config`** 映射）。  
+- **`Cortex.initialize()`** 会 **`load_engine_config`** 并作用于 **`Sandbox` / `Recall` / `Compactor`**。  
+- **`POST /v1/context/prepare_for_llm`**（`api.py`）在构造 **`ContextEngine`** 前同样 **`load_engine_config(ws)`**，再 **`engine_config_to_compact_config(engine_cfg)`** 传入 **`config=`**，因此 **修改** **`/ro/config/engine.json`** 中的 **`context_window`、`compact_threshold`、`emergency_threshold`、`micro_*`、`max_skill_depth`、`auto_summary_max_tokens`** 等**会影响**拼 LLM 上下文时的 **`budget_compact`**。详见 [budget-compact-algorithm.md](budget-compact-algorithm.md) §8.1。  
 - 算法逐步说明：[budget-compact-algorithm.md](budget-compact-algorithm.md)；时间线前半段：[context-timeline-and-dfs.md](context-timeline-and-dfs.md)。
 
 ---

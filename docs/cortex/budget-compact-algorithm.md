@@ -90,9 +90,15 @@ messages = budget_compact(messages, self.config, counter=self._counter)
 - **`EngineConfig`**（`config.py`）里 **`micro_preserve_recent`** 等字段 **语义对应** 预算侧，但 **字段名不完全相同**（`micro_preserve` vs `micro_preserve_recent_rounds`）。  
 - **`Cortex.suggest_compact`**（`context_budget.py` + `runtime.py`）用 **`usage_ratio` / `compact_level`** 给 **宿主** 提示档位，**不执行** `budget_compact`；与 [extension-points.md](extension-points.md) 一致。
 
-### 8.1 HTTP `prepare_for_llm` 当前行为
+### 8.1 HTTP `prepare_for_llm` 与 `engine.json`
 
-**`POST /v1/context/prepare_for_llm`**（`api.py`）里 **`ContextEngine(workspace, scope_path)` 未传入 `config`**，因此使用 **`CompactConfig()` 默认值**，**不会**自动 **`load_engine_config`**。若要让线上阈值与 **`/ro/config/engine.json`** 完全一致，需要在 **`context_prepare_for_llm`**（或 `ContextEngine`）侧 **把 `EngineConfig` 映射为 `CompactConfig`** 后再构造引擎（当前代码未做该映射）。
+**`POST /v1/context/prepare_for_llm`**（`api.py` **`context_prepare_for_llm`**）会：
+
+1. **`engine_cfg = await load_engine_config(ws)`** — 读 **`/ro/config/engine.json`**（缺失或坏 JSON 时同 **`load_engine_config`** 既有规则）。  
+2. **`compact_cfg = engine_config_to_compact_config(engine_cfg)`** — 见 **`config.py`** 中 **`engine_config_to_compact_config`**（`micro_preserve_recent` → **`micro_preserve_recent_rounds`** 等）。  
+3. **`ContextEngine(..., config=compact_cfg)`** — 故 **`budget_compact`** 使用的窗口与阈值与 **`EngineConfig`** 对齐。
+
+仅存在于 **`CompactConfig`** 的项（如 **`nested_skill_fold`**、**`nested_fold_stash_threshold`**）仍取 **`CompactConfig`** 默认值；若将来要可配，需扩展 **`engine.json`** 与映射函数。
 
 ---
 
