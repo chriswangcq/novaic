@@ -70,6 +70,7 @@
 
 ## 5. 进一步阅读
 
-- 根目录 **`HANDOVER.md`** — 上手、部署、排障、历史决策（文中部分旧 `docs/...` 链接需在文档重写后逐步替换）。
+- 根目录 **`HANDOVER.md`** — 上手、部署、排障、历史决策；旧 **`docs/...`** 文件名见 **`docs/historical-doc-links.md`**。
+- **Runbooks**：[`../runbooks/local-dev.md`](../runbooks/local-dev.md)、[`../runbooks/local-backends.md`](../runbooks/local-backends.md)、[`../runbooks/deploy.md`](../runbooks/deploy.md)。
 - **`novaic-app/FRONTEND_ARCHITECTURE.md`** — 前端结构。
 - 各 submodule 内 **`README.md`** 与 **`docs/`**（若存在）。

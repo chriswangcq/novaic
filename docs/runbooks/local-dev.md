@@ -33,4 +33,4 @@ npm run tauri:dev
 
 ## 相关服务
 
-本地若需 Gateway、Cortex、Agent-Runtime 等，请查阅对应 submodule 的 README 与 `novaic-common/config/services.json` 中的端口；架构关系见 **`docs/architecture/overview.md`**。
+本地若需 Gateway、Cortex、Agent-Runtime 等，见 **[`local-backends.md`](local-backends.md)**（`scripts/start-all.sh` / `novaic-app/scripts/start-backends.sh`）；端口见 **`novaic-common/config/services.json`**；架构关系见 **[`../architecture/overview.md`](../architecture/overview.md)**。
