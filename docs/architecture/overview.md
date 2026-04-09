@@ -6,7 +6,7 @@
 
 - **父仓库**：聚合脚本（`deploy`）、共享配置（`novaic-common`）、顶层文档（本目录）。
 - **实现代码**：几乎都在 **submodule** 内；改行为时请进入对应目录并以其 CI/README 为准。
-- **`.gitmodules`**：权威 submodule 清单；初始化：`git submodule update --init --recursive`。
+- `**.gitmodules`**：权威 submodule 清单；初始化：`git submodule update --init --recursive`。
 
 ## 2. 逻辑拓扑（简化）
 
@@ -72,23 +72,24 @@
 | `thirdparty/openclaw`  | 上游参考（非线上服务）                                          |
 
 
-## 5. 文档地图（由 HANDOVER 拆分）
+## 5. 文档地图
 
 | 主题 | 文档 |
 |------|------|
-| OTA 薄壳、生产拓扑、TURN/macOS 键盘 | [thin-client-and-topology.md](thin-client-and-topology.md) |
-| JWT、Nginx、`X-User-ID` | [authentication.md](authentication.md) |
-| 远程桌面 WebRTC、VmControl | [webrtc.md](webrtc.md) |
-| App WS、Entangled、Sync Contract 索引 | [realtime-sync.md](realtime-sync.md) |
-| Entangled vs gateway.db、消息持久化 | [data-ownership.md](data-ownership.md) |
-| Saga、ReactThink、工具、LLM Factory | [agent-pipeline.md](agent-pipeline.md) |
-| Cortex、DFS Step Tree | [cortex.md](cortex.md) |
-| 前端 Path C、路由、codegen | [app-ui.md](app-ui.md) |
-| 子模块列表 | [../reference/submodules.md](../reference/submodules.md) |
-| 环境变量与本地路径 | [../reference/config-and-environment.md](../reference/config-and-environment.md) |
-| 文件 API、语音录制 | [../reference/file-service.md](../reference/file-service.md) |
+| OTA、拓扑、TURN | [thin-client-and-topology.md](thin-client-and-topology.md) |
+| JWT | [authentication.md](authentication.md) |
+| WebRTC | [webrtc.md](webrtc.md) |
+| Push、App WS（摘要） | [realtime-sync.md](realtime-sync.md) |
+| Entangled Store、schema push | [entangled-store-and-app-ws.md](entangled-store-and-app-ws.md) |
+| 数据归属 v63 | [data-ownership.md](data-ownership.md) |
+| 后端管线、源码表 | [agent-pipeline.md](agent-pipeline.md) |
+| Cortex | [cortex.md](cortex.md) |
+| 前端 Path C | [app-ui.md](app-ui.md) |
+| 子模块 | [../reference/submodules.md](../reference/submodules.md) |
+| 配置与环境 | [../reference/config-and-environment.md](../reference/config-and-environment.md) |
+| 文件与语音 | [../reference/file-service.md](../reference/file-service.md) |
+| 技术债、Model 方案 | [../roadmap/technical-debt.md](../roadmap/technical-debt.md)、[../roadmap/model-entity-refactor.md](../roadmap/model-entity-refactor.md) |
 
 **Runbooks**：[local-dev.md](../runbooks/local-dev.md) · [local-backends.md](../runbooks/local-backends.md) · [deploy.md](../runbooks/deploy.md) · [build-and-release.md](../runbooks/build-and-release.md) · [cloud-production.md](../runbooks/cloud-production.md) · [troubleshooting.md](../runbooks/troubleshooting.md)
 
-根目录 **`HANDOVER.md`** 仍为全文与变更历史；旧 `docs/...` 文件名见 [**`historical-doc-links.md`**](../historical-doc-links.md)。**`novaic-app/FRONTEND_ARCHITECTURE.md`** — 前端分层详解。
-
+根目录 **HANDOVER.md** 保留变更史；旧路径见 [historical-doc-links.md](../historical-doc-links.md)。**novaic-app/FRONTEND_ARCHITECTURE.md** — 前端分层详解。

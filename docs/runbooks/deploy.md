@@ -2,7 +2,9 @@
 
 父仓库根目录 **`deploy`** 为统一部署入口：本地 **rsync** 到远端，进程由服务器上的 **`/opt/novaic/start.sh`** 管理（不在本机 `nohup` 长期跑）。
 
-> 细节以仓库内 **`./deploy` 源码**为准；下列为摘要。
+> **原理、Gateway/Relay/Factory 主机表、OTA 三处同步、维护命令** 的完整版见 [**`cloud-production.md`**](cloud-production.md)。本节为命令速查。
+
+细节以仓库内 **`./deploy` 源码**为准。
 
 ## 前置
 

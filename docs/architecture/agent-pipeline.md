@@ -1,60 +1,94 @@
-# Agent Runtime：消息、Saga、工具与 LLM
+# 后端服务与 Agent 管线（§12）
 
-> 对应 **`HANDOVER.md` §12**。代码在 **`novaic-agent-runtime`**、**`novaic-gateway`**、**`novaic-cortex`**。
+> 与当前 **`novaic-agent-runtime`** / **`novaic-gateway`** / **`novaic-cortex`** 一致；对应原 **`HANDOVER.md` §12**（文中无单独「十二章」标题，此处为完整后端管线篇）。
 
-## 后端进程（摘要）
+## 12.1 后端服务组件
 
 | 进程 | 职责 |
 |------|------|
-| Gateway | HTTP、WS Push、`gateway.db` 运维表；业务实体经 Entangled |
-| Cortex | 认知服务 `:19996`（Workspace、DFS 上下文、Recall、Sandbox） |
+| Gateway | HTTP、WS Push、`gateway.db` **运维表**；业务实体经 **EntangledClient** |
+| Cortex | `:19996`，Workspace + ContextEngine（DFS）+ Recall + Sandbox |
 | Queue Service | Task / Saga 队列 |
 | Watchdog | `sending` 消息 → MessageProcess Saga |
-| Task / Saga / Health / Scheduler Workers | 执行与回收 |
-| ~~Tools Server~~ | **已退役**；工具由 Task Worker `tool_handlers` + Cortex / Gateway |
+| Task Worker | LLM、工具、context |
+| Saga Worker | 流程编排 |
+| Health / Scheduler Workers | 回收、定时唤醒 |
+| ~~Tools Server~~ | **已退役**（`tool_handlers` + Cortex / Gateway） |
 
-## 消息 → Runtime（链路）
-
-```
-用户消息 → Entangled 写入 → Watchdog → MessageProcess Saga
-  → claim / route → RuntimeStart → ReactThink → …
-```
-
-## ReactThink / ReactActions（概念）
-
-**ReactThink**：`cortex.prepare_llm_context` → `llm.call`（Factory，仅传输）→ `context.save` → `decide`（工具或结束）。
-
-**ReactActions**：并行 `execute_tools` → `save_results`（统一 JSON `content`）→ `check_continue` → 下一轮或 `RuntimeComplete`。
-
-## 工具路由（无独立 Tools Server）
+## 12.2 消息 → Runtime 完整链路
 
 ```
-tool_call → task_queue TOOL_EXECUTE → tool_handlers
-  → chat_reply / subagent_* / sleep → Gateway internal API
+用户发消息
+  → Gateway: MessageRepository → Entangled `messages`（status=sending；非 gateway.db.chat_messages — v63 已 DROP shadow）
+  → Watchdog: find_sending() → MessageProcess Saga
+  → Step 1 claim_message: sending → sent
+  → Step 2 route_message: Runtime 获取/创建
+  → Step 3 decide: start_runtime
+  → Step 4 trigger: RuntimeStart → ReactThink
+```
+
+## 12.3 Agent Loop
+
+```
+ReactThink:
+  1. cortex.prepare_llm_context
+  2. llm.call → LLM Factory（仅传输）
+  3. context.save
+  4. decide → ReactActions 或结束
+
+ReactActions:
+  1. execute_tools
+  2. save_results（统一 JSON content）
+  3. check_continue
+  4. decide → RuntimeComplete 或下一轮 ReactThink
+```
+
+## 12.4 工具执行（无独立 Tools Server）
+
+```
+LLM tool_call
+  → TOOL_EXECUTE → tool_handlers.handle_tool_execute
+  → chat_reply / subagent_* / sleep → Gateway internal
   → shell / skill_* → CortexBridge → Cortex
+  → JSON content → context.append
 ```
 
-## LLM Factory
+| 类别 | 示例 | 路由 |
+|------|------|------|
+| 生命周期 | chat_reply, subagent_*, sleep | Gateway `internal/` |
+| Cortex | shell, skill_begin, skill_end | CortexBridge |
 
-- 统一 **`POST /v1/chat/completions`**；密钥只在 Factory 内解密。
-- Gateway 侧返回 `model_id`、`factory_url` 等，**不含** api_key。
-- 用户默认模型等：`gateway` `config` 表 + TTL 缓存。
+## 12.5 LLM Factory
 
-## 已知问题（规划）
+- 统一 **`POST /v1/chat/completions`**；api_key 仅在 Factory 内解密。
+- Gateway 返回 `model_id`、`factory_url` 等，**不含**密钥。
+- 用户偏好：`gateway` `config` 表；模型名 TTL 缓存（5min，不可达时 30s）。
 
-- **Watchdog v2**：`SYSTEM_WAKE` 风暴可能导致重复 Saga；方向为 **按 agent 分组**批量处理（见 HANDOVER §12.7）。
+## 12.6 关键数据库分布
 
-## 文件速查（子模块路径）
+详见 [**data-ownership.md**](data-ownership.md)（Entangled vs `gateway.db` v63、Queue、Cortex）。
 
-| 主题 | 路径 |
+## 12.7 已知问题：消息积压与重复 Runtime
+
+`SYSTEM_WAKE` 风暴 → 多条 `sending` → Watchdog 为每条建 Saga。**规划**：Watchdog v2 **按 `(agent_id, subagent_id)` 分组**，每组一个 Saga。
+
+## 12.8 源码速查
+
+路径相对于各子模块仓库根（父仓 submodule）：
+
+| 需求 | 路径 |
 |------|------|
-| Watchdog | `novaic-agent-runtime/.../watchdog_sync.py` |
-| MessageProcess | `.../sagas/message_process.py` |
-| ReactThink / ReactActions | `.../sagas/react_think.py`、`react_actions.py` |
-| 工具 dispatch | `.../handlers/tool_handlers.py` |
-| LLM 传输 | `.../handlers/llm_handlers.py` |
-| Cortex 上下文 | `novaic-cortex/novaic_cortex/context_stack/engine.py` |
-| Factory 客户端 | `.../factory_client.py` |
+| Watchdog | `novaic-agent-runtime/task_queue/workers/watchdog_sync.py` |
+| MessageProcess Saga | `novaic-agent-runtime/task_queue/sagas/message_process.py` |
+| ReactThink / ReactActions | `novaic-agent-runtime/task_queue/sagas/react_think.py`、`react_actions.py` |
+| Cortex 上下文 | `novaic-agent-runtime/.../cortex_handlers.py`；引擎 `novaic-cortex/novaic_cortex/context_stack/engine.py` |
+| LLM 传输 | `novaic-agent-runtime/task_queue/handlers/llm_handlers.py` |
+| 工具 dispatch | `novaic-agent-runtime/task_queue/handlers/tool_handlers.py` |
+| BUILTIN 工具 schema | `novaic-cortex/novaic_cortex/tool_schemas.py` |
+| Factory 客户端 | `novaic-agent-runtime/task_queue/factory_client.py` |
 | LLM Factory 日志页 | `novaic-llm-factory/static/factory-logs.html` |
+| Agent 绑定 / VM 工具 | `novaic-gateway/gateway/agent_binding.py` |
+| VM 代理 | `novaic-gateway/gateway/api/internal/agent.py` |
+| VMUSE Shell | `novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/shell.py` |
 
-长文设计稿见 [`historical-doc-links.md`](../historical-doc-links.md)（Cortex / no-tool 等）。
+长文设计稿：[historical-doc-links.md](../historical-doc-links.md)。
