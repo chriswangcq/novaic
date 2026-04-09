@@ -1,6 +1,6 @@
 # NovAIC 项目交接文档（2026 重构版）
 
-> **分册文档**：父仓库 **`docs/README.md`** 已将本章有价值内容拆为 **架构 / 认证 / WebRTC / 数据归属 / 排障** 等页面；**本文档仍是完整原文、版本记录与深度细节**。
+> **分册文档**：父仓库 **`docs/README.md`** 已收录与当前代码一致的架构、Runbook、参考、路线图（含构建/生产、Entangled 详稿、后端管线、排障、待办与 Model 方案）；**本文档仍保留全文与按日「最后更新」changelog**。
 >
 > **父仓库 `docs/`（2026-04-09）**：已**整目录移除**，便于按代码重写。恢复旧文件：`git checkout docs-pre-full-rewrite-2026-04-09 -- docs/`。正文里曾出现的 **`docs/...` 文件名**已汇总至 **`docs/historical-doc-links.md`**（含 `git show` 用法）。
 >
