@@ -24,7 +24,8 @@
 | [entangled-store-and-app-ws.md](architecture/entangled-store-and-app-ws.md) | 单 Store、schema push、稳定性（详） |
 | [data-ownership.md](architecture/data-ownership.md) | Entangled vs gateway.db v63 |
 | [agent-pipeline.md](architecture/agent-pipeline.md) | 后端进程、Saga、工具、源码表 |
-| [cortex.md](architecture/cortex.md) | Cortex 全架构（当前） |
+| [cortex.md](architecture/cortex.md) | Cortex 纲要 |
+| [**cortex-architecture.md**](cortex-architecture.md) | **Cortex 详细总览（子模块源码级）** |
 | [app-ui.md](architecture/app-ui.md) | 前端 Path C、HTTP→Entangled 表 |
 
 ## 参考
