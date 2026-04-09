@@ -2,6 +2,8 @@
 
 > 对应 **`HANDOVER.md` §三**。权威清单：根目录 **`.gitmodules`**。
 
+**文档策略**：架构、API、Runbook **只维护在父仓库 `docs/`**。各子模块 **不维护** `docs/` 文档树，仅保留根目录 **`README.md`**（项目一句说明 + 开发/运行命令）。详细说明以父仓库为准。
+
 ```bash
 git clone --recurse-submodules git@github.com:chriswangcq/novaic.git
 git submodule update --init --recursive
