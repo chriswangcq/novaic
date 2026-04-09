@@ -41,7 +41,7 @@
 | 改远程桌面连接 | `useWebRtc.ts`、`WebRtcScrcpyView.tsx`（统一 WebRTC，noVNC 已全部移除） |
 | 改设备操控台 | `DeviceConsole.tsx`、`ConsoleToolbar.tsx`、`useWebRtc.ts`、`useRemoteInput.ts` |
 | 清空本地缓存 | Settings → Clear Cache → `clearLocalDb`：清 `localStorage` 用户偏好 + Rust **`entity_cache_clear`**（`entangled_cache.db` 全用户表含 **`pending_ops`** + `VACUUM`） |
-| 查架构 | `novaic-app/FRONTEND_ARCHITECTURE.md`、`docs/design/DESIGN-P2P-UNIFIED.md` |
+| 查架构 | `docs/architecture/overview.md`、`novaic-app/FRONTEND_ARCHITECTURE.md` |
 
 ---
 
@@ -149,7 +149,7 @@ new-build-novaic/
 ├── HANDOVER.md / NEW_HANDOVER.md   # 交接文档
 ├── deploy                          # 统一部署 CLI
 ├── .gitmodules                     # submodule 清单（含 novaic-* 与 thirdparty/openclaw）
-├── docs/                           # 文档（`cortex-architecture.md`、`context-assembly-dfs-step-tree.md`、`SYNC_CONTRACT.md`）
+├── docs/                           # 父仓文档（入口 `docs/README.md`、`architecture/overview.md`）
 ├── thirdparty/openclaw/            # OpenClaw 子模块（需 init）
 ├── scripts/                        # 构建/部署/运维脚本
 └── 各 submodule 子目录
