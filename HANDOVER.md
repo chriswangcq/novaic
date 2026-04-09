@@ -1,19 +1,19 @@
 # NovAIC 项目交接文档（2026 重构版）
 
-> **父仓库 `docs/`（2026-04-09）**：已**整目录移除**，便于按代码重写。恢复旧文件：`git checkout docs-pre-full-rewrite-2026-04-09 -- docs/`。在下文完成修订前，凡指向 **`docs/…` 的路径均失效**。
+> **父仓库 `docs/`（2026-04-09）**：已**整目录移除**，便于按代码重写。恢复旧文件：`git checkout docs-pre-full-rewrite-2026-04-09 -- docs/`。正文里曾出现的 **`docs/...` 文件名**已汇总至 **`docs/historical-doc-links.md`**（含 `git show` 用法）。
 >
-> 最后更新：2026-04-09 — **§12 与 schema v63**：用户消息与 Agent/SubAgent **业务实体**持久化在 **Entangled**；Gateway `gateway.db` 仅运维表（见 `novaic-gateway/gateway/db/schema.py` v63，`agents` / `chat_messages` / `subagents` 等已 DROP）。§12.1、§12.2、§12.6 已与 `docs/architecture-verification-2026-04.md` 一致。
+> 最后更新：2026-04-09 — **§12 与 schema v63**：用户消息与 Agent/SubAgent **业务实体**持久化在 **Entangled**；Gateway `gateway.db` 仅运维表（见 `novaic-gateway/gateway/db/schema.py` v63，`agents` / `chat_messages` / `subagents` 等已 DROP）。§12.1、§12.2、§12.6 已与历史文档 `architecture-verification-2026-04.md` 一致（见 **`docs/historical-doc-links.md`**）。
 > 最后更新：2026-04-06 — **Cortex 存储模型修正 + DFS Step Tree 上下文拼装**：
 > - **存储 ACL 修正**：`/ro/` = Cortex 管理区（scope、config、skills、knowledge），agent 只读；`/rw/` = Agent 自由空间（scratch）。活跃 scope 从 `/rw/active/` 迁移至 `/ro/active/`。Workspace 新增 `_sys_write`/`_sys_write_json`/`_sys_append_line` 系统写入方法，scope 管理操作绕过 agent ACL。
-> - **DFS Step Tree 上下文拼装**：上下文原子单位是 step 而非 message。`ContextEngine` 通过 DFS 遍历 step tree：闭合 scope → 折叠为 summary；开放 scope → 展开子 step。tool results 存在 `steps/` 目录，不写入 `context.jsonl`。详见 `docs/cortex-architecture.md` + `docs/context-assembly-dfs-step-tree.md`。
+> - **DFS Step Tree 上下文拼装**：上下文原子单位是 step 而非 message。`ContextEngine` 通过 DFS 遍历 step tree：闭合 scope → 折叠为 summary；开放 scope → 展开子 step。tool results 存在 `steps/` 目录，不写入 `context.jsonl`。长文见 **`docs/historical-doc-links.md`**（`cortex-architecture`、`context-assembly-dfs-step-tree`）。
 > - **过时设计稿**：`docs/archived/` 下旧稿已不在当前工作树；历史版本见 `git show docs-graveyard-p2:docs/archived/`（与 §十八、§十六 一致）。
 > 最后更新：2026-04-06 — **桌面「清空本地缓存」与 Entangled SQLite**：`entity_cache_clear` → `Cache::clear_all()` 现对 **`sqlite_master` 中全部用户表** 执行 `DELETE`（含 **`pending_ops`**，即乐观发送未收敛的 `_opt_*` 行）、随后 **`VACUUM`**，并重置内存 **`SEQ_COUNTER`**。避免仅清空 `entity_items`/`entity_meta` 时 **`pending_ops` 残留**导致聊天仍显示 **Sending...**。实现：`Entangled/packages/client-rust/src/cache.rs`。本地库路径（macOS）：`~/Library/Application Support/com.novaic.app/entangled_cache.db`。
-> 最后更新：2026-04-05 — **Agent Loop / LLM 上下文与工具执行统一**：（1）**no-tool**：不再注入合成 `tool_calls`；Cortex `cortex.prepare_llm_context` 在单次 LLM 调用前组装 messages + tools + 瞬态 `NO_TOOL_WARNING`；`llm_handlers` 仅传输，不注入工具列表。（2）**RuntimeStart**：已移除 `mcp.create`（Tools Server 已废弃）。（3）**工具结果**：`tool_handlers` 统一 dispatch 表，所有工具同步返回 `content`（JSON）；`react_actions` 直接 `context.append`，不再依赖 `result_id`。（4）**LLM Factory 日志页**：源码 `novaic-llm-factory/static/factory-logs.html`；线上 `https://api.gradievo.com/factory-logs`，API 经 Nginx `/factory-api/*` 代理至 Factory，请求头 `X-Admin-Key`（与 Nginx 中 `$factory_key` 一致）。详见 `docs/design-no-tool-system-message.md`。
+> 最后更新：2026-04-05 — **Agent Loop / LLM 上下文与工具执行统一**：（1）**no-tool**：不再注入合成 `tool_calls`；Cortex `cortex.prepare_llm_context` 在单次 LLM 调用前组装 messages + tools + 瞬态 `NO_TOOL_WARNING`；`llm_handlers` 仅传输，不注入工具列表。（2）**RuntimeStart**：已移除 `mcp.create`（Tools Server 已废弃）。（3）**工具结果**：`tool_handlers` 统一 dispatch 表，所有工具同步返回 `content`（JSON）；`react_actions` 直接 `context.append`，不再依赖 `result_id`。（4）**LLM Factory 日志页**：源码 `novaic-llm-factory/static/factory-logs.html`；线上 `https://api.gradievo.com/factory-logs`，API 经 Nginx `/factory-api/*` 代理至 Factory，请求头 `X-Admin-Key`（与 Nginx 中 `$factory_key` 一致）。详见 **`docs/historical-doc-links.md`**（`design-no-tool-system-message`）。
 > 最后更新：2026-04-03 — **NovAIC Cortex (v3) 无状态引擎最终设计定稿**：完成了原 Context Stack 引擎向纯文件系统、无状态架构的 Cortex 重构设计。产出最终架构文档 `novaic_cortex_design.md`。核心重构围绕 CortexStore (基于 S3), Workspace (/ro+/rw隔离区), Sandbox (无状态 Shell), Compactor 与 Recall 五大组件展开。用四个标准 Tool 原语 (read, write, shell, scope_end) 统一所有状态交互，代码通过由 ~5600 LOC 骤降为 ~730 LOC 实现降低 87% 的理解复杂度，并确立基于 S3 的 4-Phase 架构演进路线。
 > 最后更新：2026-04-03 — **Context Stack 引擎重构闭环与健壮性审查**：完成统一 6 步生命周期（Normal/Meta/Recall通用），修复 7 项核心架构缺陷：1.Skill prompt隔离避免污染记忆；2.自动提取 decisions/tools/errors 元数据；3.新增 `RecallToolRouter` 自动拦截并处理记忆搜索工具；4.配置项打通；5.`_active` 重入防护解决嵌套死锁；6.`raw_messages` 截断与内存预算控制；7.`MemoryScopeStore` 与引擎统计算法的并发线程安全。单元测试现已达到 199 项全绿，Context Stack 模块已完全生产就绪，可接管旧引擎。
-> 最后更新：2026-04-02 — **Skills 领域文档 + OpenClaw 子模块**：新增 `docs/skills-domain-investigation-reports.md`（五份独立子领域报告：发现与存储、Prompt/Token、运行时匹配与 Agent 绑定、安装分发与市场、安全运维；对照 OpenClaw 文件模型与 NovAIC 的 DB+builtin `mcp_client/skills`）。**`thirdparty/openclaw`** 为 `.gitmodules` 登记的 **git 子模块**（上游 `openclaw/openclaw`），用于代码级审计与能力对比；初始化：`git submodule update --init thirdparty/openclaw`。架构速览仍见 `docs/agent-approve-points/02-openclaw-architecture.md`。OpenClaw 侧可借鉴点（skills 多根合并/compact 限额、tool profile、before_tool_call 类钩子）见该调查报告与对话归档，**不**改变当前 NovAIC 运行时拓扑。
+> 最后更新：2026-04-02 — **Skills 领域文档 + OpenClaw 子模块**：新增 **Skills 调查报告**（五份独立子领域报告：发现与存储、Prompt/Token、运行时匹配与 Agent 绑定、安装分发与市场、安全运维；对照 OpenClaw 文件模型与 NovAIC 的 DB+builtin `mcp_client/skills`；见 **`docs/historical-doc-links.md`**）。**`thirdparty/openclaw`** 为 `.gitmodules` 登记的 **git 子模块**（上游 `openclaw/openclaw`），用于代码级审计与能力对比；初始化：`git submodule update --init thirdparty/openclaw`。OpenClaw 架构笔记见 **`docs/historical-doc-links.md`**（`agent-approve-points/02-openclaw-architecture`）。OpenClaw 侧可借鉴点（skills 多根合并/compact 限额、tool profile、before_tool_call 类钩子）见该调查报告与对话归档，**不**改变当前 NovAIC 运行时拓扑。
 > 最后更新：2026-04-01 — **Sync Contract 审查修复**：`/api/app/ws` 首次 **schema push** 的 `data` 已含 **`syncContractVersion`**（`gateway.entity.sync_contract`，与 REST、Entangled `ws_handler` 一致；此前 AppWS 仅 `{ entities, hash }`，桌面多靠 REST 设 Rust 原子量）。**`tests/unit/gateway/test_sync_contract_schema.py`**：无 monorepo 下 `Entangled/packages/server-python` 时 **skip** 与 `ws_handler` 的版本 parity，独立 checkout `novaic-gateway` 的 CI 可过。**桌面**：`App.tsx` 中 `handleSelectAgent` / `handleAgentCreated` 依赖 **`agents`** 防陈旧闭包；**登出** 置 **`settingsOpen: false`**；CloudBridge 日志仅记 token **长度**（不打印前缀）。**`client.ts`**：`syncContractVersion` 非有限数字时 **`console.warn`**。**`app_bridge.rs`**：慢路径 / join 失败日志与模块注释统一为 **`process_sync_with_contract`**。
-> 最后更新：2026-04-01 **Sync Contract Phase 1–3**：规范与清单见 `docs/SYNC_CONTRACT.md`、`docs/sync-contract-execution-checklist.md`。要点：主槽 `navChanged`/`nav_release_slot` 串行 + Rust 每槽 `tokio::Mutex`；Gateway REST/WS schema 携带 `syncContractVersion`（`gateway/entity/sync_contract.py` 与 Entangled `ws_handler.SYNC_CONTRACT_VERSION` 须同号）；Rust `process_sync_with_contract` 在合约 ≥2 且 snapshot/head_n 缺 `idField` 时记 ERROR（`metric=sync_frame_missing_id_field_v2`，仍用 build 回退）；TS `loadSubscriptionSchema` 解析 `{ entities, syncContractVersion }` 并 `invoke('entangled_set_sync_contract_version')`，`defaultIdFieldForEntity` 优先用 schema 的 `idField`。**1.4**：`deriveDesiredMainNav`（`nav.ts`）+ `App.tsx` 单一 effect；**1.3**：`npm run verify:sync-contract-schema`（需环境变量）+ 发版前仍建议桌面清缓存 spot-check。
+> 最后更新：2026-04-01 **Sync Contract Phase 1–3**：规范与清单见 **`docs/historical-doc-links.md`**（`SYNC_CONTRACT`、`sync-contract-execution-checklist`）。要点：主槽 `navChanged`/`nav_release_slot` 串行 + Rust 每槽 `tokio::Mutex`；Gateway REST/WS schema 携带 `syncContractVersion`（`gateway/entity/sync_contract.py` 与 Entangled `ws_handler.SYNC_CONTRACT_VERSION` 须同号）；Rust `process_sync_with_contract` 在合约 ≥2 且 snapshot/head_n 缺 `idField` 时记 ERROR（`metric=sync_frame_missing_id_field_v2`，仍用 build 回退）；TS `loadSubscriptionSchema` 解析 `{ entities, syncContractVersion }` 并 `invoke('entangled_set_sync_contract_version')`，`defaultIdFieldForEntity` 优先用 schema 的 `idField`。**1.4**：`deriveDesiredMainNav`（`nav.ts`）+ `App.tsx` 单一 effect；**1.3**：`npm run verify:sync-contract-schema`（需环境变量）+ 发版前仍建议桌面清缓存 spot-check。
 > 最后更新：2026-04-01 — **Form 写后 UI + agent-binding + 执行日志预览**：非乐观 `upsert` 成功即用返回行 `setQueryData` 并 invalidate（`hooks.tsx` `createFormStore`）；`agent-binding` 支持无记录 `allowMissing`、无设备保存用 `bindingData?.device_id` 触发清绑（`agentBinding.ts`、`AgentToolsPanel.tsx`）；`ChatPanel` 主 Agent 日志预览改 `flex justify-center px-4`，避免 Framer Motion 与 `translate-x` 抢 `transform`。细节与排障见 **§十五** 表内三行新条目。
 > 最后更新：2026-04-01 **全局订阅丢失与主键解析 Bug 排查**：定位了清空本地缓存后 models/skills/devices 数据消失的线上问题。根因之一（时序竞争）：`App.tsx` 启动时 `navChanged('home')` 和 `navChanged('conversation')` 并发使用默认 `slot: "main"`，发生即时覆盖，导致 `home` 被迅速取消订阅。根因之二（主键硬编码）：Rust Entangled 客户端底层持久化时硬编码查找 JSON 属性 `"id"`，而针对主键非 `id`的实体（如 models 为 `model_id`），在连接不含升级补丁的云端 Gateway（未下发 `idField` 机制）时被默默丢弃。相关修复计划转移至纯客户端侧，如提供基于 schema 的回退机制或拆分独立 slot。
 > 最后更新：2026-03-31 **Agent-Binding 持久化修复**：彻底修复了 agent-device 绑定保存后消失的问题。根因：前端 dispatch `update`（SQL UPDATE），但绑定记录可能不存在 → 0 行更新；且 `nav.rs` 路由表缺少 `agent-binding` 订阅导致 Rust 缓存永远为空，UI 读不到数据。修复：`agentBinding.ts` 改 `optimistic:false` 走 `upsert`；`nav.rs` conversation/settings 路由新增 `agent-binding(agentId)` 订阅；`App.tsx` settings 打开时传 `agentId`；`useAgentBinding.ts` 完全迁移至 `agentBindingStore.useForm()`，设备面板实时响应。
@@ -763,8 +763,8 @@ python scripts/generate_entity_types.py --check   # CI 校验 drift
 
 ### 11.8 Skills 领域文档（2026-04）
 
-- **调查报告（五子领域）**：`docs/skills-domain-investigation-reports.md` — 存储与发现、Prompt 注入与预算、运行时匹配、市场形态、安全运维；与 **`thirdparty/openclaw`** 对照，供立项 Skill 商店 / 限额 / 导入器时引用。  
-- **OpenClaw 代码地图（笔记）**：`docs/agent-approve-points/02-openclaw-architecture.md`（嵌入式 runner、插件 hooks；路径以子模块 `thirdparty/openclaw/src/` 为准）。  
+- **调查报告（五子领域）**：见 **`docs/historical-doc-links.md`**（`skills-domain-investigation-reports.md`）— 存储与发现、Prompt 注入与预算、运行时匹配、市场形态、安全运维；与 **`thirdparty/openclaw`** 对照，供立项 Skill 商店 / 限额 / 导入器时引用。  
+- **OpenClaw 代码地图（笔记）**：见 **`docs/historical-doc-links.md`**（`agent-approve-points/02-openclaw-architecture.md`；嵌入式 runner、插件 hooks；路径以子模块 `thirdparty/openclaw/src/` 为准）。  
 - **待办**：产品级 Skill 商店仍见 **§十六**；调查报告为「现状与差距分析」，非实现交付。
 
 
@@ -852,7 +852,7 @@ Sandbox 类命令（`shell` 等）经 **Cortex** 执行；生命周期类（`cha
 | Task/Saga | Queue Service | `tasks`, `sagas` |
 | 上下文 / Workspace | Cortex（S3，:19996） | scope、steps、context 等（§18）；RO 已删除，无 `agent_runtimes` |
 
-**与旧稿差异**：若他处仍写「Gateway 本地 `chat_messages` INSERT」，按 **schema v63** 与 **`docs/architecture-verification-2026-04.md` §1–2** 理解；流程上仍是 Gateway 进程发起写，**持久化在 Entangled**。
+**与旧稿差异**：若他处仍写「Gateway 本地 `chat_messages` INSERT」，按 **schema v63** 与历史文档 **`docs/historical-doc-links.md`**（`architecture-verification-2026-04` §1–2）理解；流程上仍是 Gateway 进程发起写，**持久化在 Entangled**。
 
 ### 12.7 已知 Bug：消息积压重复 Runtime
 
@@ -872,7 +872,7 @@ SYSTEM_WAKE 风暴导致大量 sending 消息 → Watchdog 为每条创建 Saga 
 | LLM 纯传输 | `agent-runtime/task_queue/handlers/llm_handlers.py` |
 | 工具执行（统一 dispatch） | `agent-runtime/task_queue/handlers/tool_handlers.py` |
 | LLM 面向工具 schema | `novaic-cortex/novaic_cortex/tool_schemas.py`（`BUILTIN_TOOL_SCHEMAS`） |
-| Cortex 架构文档 | `docs/cortex-architecture.md`、`docs/context-assembly-dfs-step-tree.md` |
+| Cortex 架构文档 | 见 **`docs/historical-doc-links.md`**（`cortex-architecture`、`context-assembly-dfs-step-tree`） |
 | FactoryLLMClient | `agent-runtime/task_queue/factory_client.py` |
 | LLM Factory 日志页 | `novaic-llm-factory/static/factory-logs.html` |
 | 工具权限+挂载（VM 等） | `gateway/gateway/agent_binding.py`（VM 工具路径仍经 Gateway/PC，与 Agent loop 内 Cortex 工具并行存在） |
@@ -1006,7 +1006,7 @@ cd novaic-gateway && PYTHONPATH=. python -m unittest tests.test_deps_internal_ta
 - [x] **syncService 重连冗余 invalidate 已删除**：Rust `resubscribe_all` 自动处理
 - [x] **AppWS schema push 与 Sync Contract 对齐**：`app_client.py` 首包带 `syncContractVersion`；网关 unittest 在无 Entangled 兄弟目录时 skip parity
 - [x] **modelService IndexedDB 依赖已移除**：不再读写 prefsRepo selectedModel/AudioModel
-- [x] **Skills 领域分调查报告**：`docs/skills-domain-investigation-reports.md`（对照 OpenClaw；落地商店/限额/导入前读）
+- [x] **Skills 领域分调查报告**：见 **`docs/historical-doc-links.md`**（对照 OpenClaw；落地商店/限额/导入前读）
 - [x] **Context Stack → Cortex DFS Step Tree**：旧 `context-stack/` 独立引擎（6 步生命周期）已被 Cortex 内置的 DFS Step Tree 上下文拼装替代。旧设计文档曾归档于 `docs/archived/`（已从工作树删除，见 tag `docs-graveyard-p2`）。当前实现：`novaic-cortex/novaic_cortex/context_stack/`（ContextEngine + StepTreeBuilder + budget_compact）。
 - [x] **Cortex 存储 ACL 修正**：`/ro/` = Cortex 管理区，`/rw/` = Agent 自由空间。活跃 scope 在 `/ro/active/`（非 `/rw/active/`）。Workspace 使用 `_sys_*` 方法绕过 agent ACL。
 - [ ] **iOS 键盘输入框适配**：`--keyboard-height` 注入已实现，需真机验证
@@ -1089,8 +1089,7 @@ available-models (List Entity, user-scoped)
 
 ## 十八、NovAIC Cortex 认知引擎（2026-04 当前架构）
 
-> **完整架构文档**：`docs/cortex-architecture.md`  
-> **DFS Step Tree 设计**：`docs/context-assembly-dfs-step-tree.md`  
+> **完整架构文档 / DFS Step Tree 设计**：见 **`docs/historical-doc-links.md`**（`cortex-architecture`、`context-assembly-dfs-step-tree`）  
 > **过时设计稿**：已从工作树删除；历史在 **`git show docs-graveyard-p2:docs/archived/`**（旧 Cortex 设计、Context Stack v2、统一引擎架构等 8 份）
 
 Cortex 是 NovAIC Agent 的认知基础设施——独立 HTTP 服务（`:19996`），S3-backed，管理 Agent 的工作空间、上下文拼装、历史记忆和工具执行。

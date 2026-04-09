@@ -8,10 +8,14 @@
 |------|------|------|
 | **L0** | 从哪读起、谁拥有哪段真相 | 本页 |
 | **L1** | 系统拓扑、端口、submodule 表 | [`architecture/overview.md`](architecture/overview.md) |
-| **L2** | 可执行步骤（本地开发等） | [`runbooks/local-dev.md`](runbooks/local-dev.md) |
+| **L2** | 可执行步骤 | [`runbooks/local-dev.md`](runbooks/local-dev.md)、[`runbooks/local-backends.md`](runbooks/local-backends.md)、[`runbooks/deploy.md`](runbooks/deploy.md) |
 | **L3** | 深度设计、合约、各域细节 | 各 **submodule** 内 `README.md` / `docs/`，以及根目录 **`HANDOVER.md`** |
 
-## 恢复删除前的 `docs/` 树
+## 历史 `docs/` 路径索引
+
+重写前正文中大量引用的 **`docs/...` 旧路径**（已不在当前默认树）汇总在 [`historical-doc-links.md`](historical-doc-links.md)（含 `git show` / `git checkout` 用法）。
+
+## 恢复删除前的整棵 `docs/`
 
 ```bash
 git checkout docs-pre-full-rewrite-2026-04-09 -- docs/
@@ -29,4 +33,4 @@ git checkout docs-pre-full-rewrite-2026-04-09 -- docs/
 - `novaic-cortex/` — Cortex  
 - `novaic-common/config/services.json` — 本地服务端口等约定  
 
-父仓 **`HANDOVER.md`** 仍为总览与运维说明；其中指向旧 `docs/...` 的链接会随本目录补全而逐步修订。
+父仓 **`HANDOVER.md`** 仍为总览与运维说明；其中旧 **`docs/...`** 文件名已逐步改为指向 **`historical-doc-links.md`** 或本目录新页。
