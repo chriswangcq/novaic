@@ -553,10 +553,10 @@
     "date": "2026-04-10",
     "notes": "batch13 8-way; subagent code↔doc pass"
   },
-  "docs/misc/VPN_DEPLOYMENT_GUIDE.md": {
+  "docs/runbooks/VPN_DEPLOYMENT_GUIDE.md": {
     "status": "partial",
     "date": "2026-04-10",
-    "notes": "batch13 8-way; subagent code↔doc pass"
+    "notes": "batch13 8-way; subagent code↔doc pass; moved from docs/misc/ (rebuild phase2)"
   },
   "docs/misc/设计文档.md": {
     "status": "partial",

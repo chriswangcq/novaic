@@ -78,17 +78,17 @@
 | 3 | `docs/misc/survey-2026/README.md` | L2/L3 misc |
 | 4 | `docs/misc/TEST_RUN_REPORT.md` | L2/L3 misc |
 | 5 | `docs/misc/VMCONTROL-TAURI-INTEGRATION-PLAN.md` | L2/L3 misc |
-| 6 | `docs/misc/VPN_DEPLOYMENT_GUIDE.md` | L2/L3 misc |
-| 7 | `docs/misc/设计文档.md` | L2/L3 misc |
-| 8 | `docs/review/README.md` | 其他 |
+| 6 | `docs/misc/设计文档.md` | L2/L3 misc |
+| 7 | `docs/review/README.md` | 其他 |
+| 8 | `docs/runbooks/ARCHITECTURE-SERVICES-AND-HANDLERS.md` | L1 runbooks |
 
 ### 第 6 批（8 个）
 
 | # | 路径 | 层级 |
 |---|------|------|
-| 1 | `docs/runbooks/ARCHITECTURE-SERVICES-AND-HANDLERS.md` | L1 runbooks |
-| 2 | `docs/runbooks/E2E_READINESS.md` | L1 runbooks |
-| 3 | `docs/runbooks/HOT_UPDATE_DEPLOY_STEPS.md` | L1 runbooks |
+| 1 | `docs/runbooks/E2E_READINESS.md` | L1 runbooks |
+| 2 | `docs/runbooks/HOT_UPDATE_DEPLOY_STEPS.md` | L1 runbooks |
+| 3 | `docs/runbooks/VPN_DEPLOYMENT_GUIDE.md` | L1 runbooks |
 | 4 | `docs/_archive/README.md` | 其他 |
 | 5 | `docs/submodules/novaic-agent-runtime/README.md` | 子模块 README |
 | 6 | `docs/submodules/novaic-app/README.md` | 子模块 README |
@@ -319,12 +319,12 @@ docs/misc/RO_GATEWAY_CALL_RELATIONSHIP.md
 docs/misc/survey-2026/README.md
 docs/misc/TEST_RUN_REPORT.md
 docs/misc/VMCONTROL-TAURI-INTEGRATION-PLAN.md
-docs/misc/VPN_DEPLOYMENT_GUIDE.md
 docs/misc/设计文档.md
 docs/review/README.md
 docs/runbooks/ARCHITECTURE-SERVICES-AND-HANDLERS.md
 docs/runbooks/E2E_READINESS.md
 docs/runbooks/HOT_UPDATE_DEPLOY_STEPS.md
+docs/runbooks/VPN_DEPLOYMENT_GUIDE.md
 docs/_archive/README.md
 docs/submodules/novaic-agent-runtime/README.md
 docs/submodules/novaic-app/README.md

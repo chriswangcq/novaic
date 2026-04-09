@@ -119,7 +119,6 @@
 | `docs/misc/survey-2026/README.md` | survey-2026 占位 | 是 | 历史仅 git tag |
 | `docs/misc/TEST_RUN_REPORT.md` | 杂项与联调 | 部分 | 运维与协作记录 |
 | `docs/misc/VMCONTROL-TAURI-INTEGRATION-PLAN.md` | 杂项与联调 | 部分 | 运维与协作记录 |
-| `docs/misc/VPN_DEPLOYMENT_GUIDE.md` | 杂项与联调 | 部分 | 运维与协作记录 |
 | `docs/misc/设计文档.md` | 杂项与联调 | 部分 | 运维与协作记录 |
 | `docs/model-entity-refactor.md` | docs 根目录文档 | 部分 | 索引、协议或协作说明 |
 | `docs/NEW_DOCUMENTATION_BLUEPRINT.md` | 新文档体系重建蓝图（草案） | 部分 | 规划用；定稿后与 Canonical 对齐 |
@@ -175,6 +174,7 @@
 | `docs/runbooks/E2E_READINESS.md` | 运维 Runbook | 部分 | 联调与部署；以 backend-architecture 为准 |
 | `docs/runbooks/HOT_UPDATE_DEPLOY_STEPS.md` | 运维 Runbook | 部分 | 联调与部署；以 backend-architecture 为准 |
 | `docs/runbooks/README.md` | 运维 Runbook | 部分 | 联调与部署；以 backend-architecture 为准 |
+| `docs/runbooks/VPN_DEPLOYMENT_GUIDE.md` | 运维 Runbook | 部分 | 联调与部署；以 backend-architecture 为准 |
 | `docs/scope-driven-agent-lifecycle.md` | docs 根目录文档 | 部分 | 索引、协议或协作说明 |
 | `docs/skills-domain-investigation-reports.md` | docs 根目录文档 | 部分 | 索引、协议或协作说明 |
 | `docs/submodules/novaic-agent-runtime/README.md` | 子模块索引 | 是 | 指向各子仓；父仓不保留镜像 |

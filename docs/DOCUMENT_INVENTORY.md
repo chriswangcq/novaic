@@ -9,14 +9,14 @@
 | `design/` | 36 | 产品/网关/P2P/Tauri 等方案与迁移计划 |
 | `(根目录)/` | 35 | 总览、协议、Entangled/Cortex 专章、索引等 |
 | `research/` | 22 | 根因分析、历史栈调研、回合报告 |
-| `misc/` | 20 | 联调、运维、调查汇总 |
+| `misc/` | 19 | 联调、运维、调查汇总 |
 | `device/` | 17 | 设备管理、PC Client、多轮调查 |
 | `ota/` | 11 | OTA 热更新与前端审查 |
 | `p2p/` | 11 | P2P / Relay / 重构提案与审查 |
 | `gateway-upgrade/` | 10 | Gateway 瘦身与路由拆分系列（过程稿） |
 | `submodules/` | 10 | 各子模块：仅 README |
+| `runbooks/` | 5 | 现行运维（E2E、服务矩阵、热更新） |
 | `agent-approve-points/` | 4 | Agent 审核点（Runtime / OpenClaw / 优化） |
-| `runbooks/` | 4 | 现行运维（E2E、服务矩阵、热更新） |
 | `sync_design/` | 2 | 多端同步与本地缓存（现行说明） |
 | `_archive/` | 1 | 文档 |
 | `_legacy/` | 1 | L3 档案角色说明（索引页） |
@@ -143,7 +143,6 @@
 | `docs/misc/survey-2026/README.md` | `misc/` | 联调、运维、调查汇总 |
 | `docs/misc/TEST_RUN_REPORT.md` | `misc/` | 联调、运维、调查汇总 |
 | `docs/misc/VMCONTROL-TAURI-INTEGRATION-PLAN.md` | `misc/` | 联调、运维、调查汇总 |
-| `docs/misc/VPN_DEPLOYMENT_GUIDE.md` | `misc/` | 联调、运维、调查汇总 |
 | `docs/misc/设计文档.md` | `misc/` | 联调、运维、调查汇总 |
 | `docs/model-entity-refactor.md` | `(根目录)/` | 总览、协议、Entangled/Cortex 专章、索引等 |
 | `docs/NEW_DOCUMENTATION_BLUEPRINT.md` | `(根目录)/` | 总览、协议、Entangled/Cortex 专章、索引等 |
@@ -199,6 +198,7 @@
 | `docs/runbooks/E2E_READINESS.md` | `runbooks/` | 现行运维（E2E、服务矩阵、热更新） |
 | `docs/runbooks/HOT_UPDATE_DEPLOY_STEPS.md` | `runbooks/` | 现行运维（E2E、服务矩阵、热更新） |
 | `docs/runbooks/README.md` | `runbooks/` | 现行运维（E2E、服务矩阵、热更新） |
+| `docs/runbooks/VPN_DEPLOYMENT_GUIDE.md` | `runbooks/` | 现行运维（E2E、服务矩阵、热更新） |
 | `docs/scope-driven-agent-lifecycle.md` | `(根目录)/` | 总览、协议、Entangled/Cortex 专章、索引等 |
 | `docs/skills-domain-investigation-reports.md` | `(根目录)/` | 总览、协议、Entangled/Cortex 专章、索引等 |
 | `docs/submodules/novaic-agent-runtime/README.md` | `submodules/` | 各子模块：仅 README |
