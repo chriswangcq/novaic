@@ -77,6 +77,7 @@
 | [technical-debt.md](roadmap/technical-debt.md)               | 已落地摘要、待办勾选  |
 | [model-entity-refactor.md](roadmap/model-entity-refactor.md) | Model 三实体方案 |
 | **[claude-code-comparison.md](roadmap/claude-code-comparison.md)** | **Claude Code 对比与迭代优先级** |
+| **[gateway-decomposition.md](roadmap/gateway-decomposition.md)** | **Gateway 职责膨胀分析与拆分路线** |
 
 
 ## 历史 `docs/` 索引
