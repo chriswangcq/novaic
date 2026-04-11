@@ -30,6 +30,7 @@
 
 > （由 `/update-handover` Slash 工作流命令追记生成使用，请自顶向下追加）
 
+> 最后更新：2026-04-11 — **Gateway v2 事件驱动解耦 (完美收官)**：扫清最后盲区，撤除 `gateway/api/internal/subagent.py` 中的大量轮询僵尸端点与僵化方法，将内部 `spawn_subagent` 与 `subagent_send` 完全改写为直接向 Queue Service 推送的实时 dispatch 请求；新立 `HealthWorkerSync` `_scan_unhandled_messages` 兜底检查，接管网络波动遗留的实体用户消息发起强制 dispatch，系统彻底步入无状态秒秒即达的纯事件驱动架构。
 > 最后更新：2026-04-11 — **Gateway v2 事件驱动解耦 (Steps 1-4)**：新增 Queue Service Session Coordinator（`tq_active_sessions`、`tq_pending_triggers`）确保 session 排他性与原子分发；切断 Worker 对 Gateway 的依赖，所有 handler（`subagent`、`context`、`runtime`、`tool` 等）直写 EntityStore（基于新开辟的 Gateway `/internal/entities` 端点）；重写 Watchdog 仅保留定时唤醒和中断拦截，取消 `sending` 状态轮询；大幅清理废弃端点与死代码，全面从“轮询状态”倒向“事件并发队列”。
 > 最后更新：2026-04-10 — **Gateway 架构清理与 Cortex 配置正规化**：彻底移除了遗留的 Runtime Orchestrator (RO) 死代码，清理了 `agent.py` 及 `subagent.py` 中的大量废弃调用。同时修复了 Cortex URL 长期依赖硬编码环境变量的技术债，统一收口至 `services.json` 及 `strict_config.py`，所有 Runtime Worker 严格执行 `--cortex-url` 入参标准。
 > 最后更新：2026-04-09 — **横跨架构维度的终局补充**：建立了统一数据字典（Entity Data Models）、Common 依赖生成链库（解决了多端类型生成与19996本地夺口战）、以及记录了处于公网隔离最顶层的 Nginx 网关重载 /internal 保卫阵列布置，完美闭环封库。
