@@ -40,6 +40,9 @@
 - **表消亡与留存 (v63 Schema)**：大量的表已经在 schema `v63` 之后执行了 `DROP`：由于已切换 Entangled 规范，`agents` / `chat_messages` 等影子表全部销毁。保留下的主要是 `users`、应用级偏好统计等非实时的基建数据。
 - 对应遗留的那些 `repositories/...` 依然保留有原生的 SQLAlchemy/原石 Sqlite 逻辑管理这些底仓。
 
+### 2.5 事件驱动分发阵列 (Queue Service Dispatch)
+在 v2 架构演进中，原有的 Watchdog `status="sending"` 轮询机制已被完全废弃。现在 Gateway 中的高频触发行为（例如来自前端交互的 `USER_MESSAGE` 发送、以及 `agents.interrupt`）会直接被转化为无状态的 HTTP 调用，推向 Queue Service 的 `/api/queue/dispatch` 或 `/recover/cancel-all` 端点，实现纯基于事件的毫秒级调度唤醒，并将内部冗余的轮询探活彻底扫除了历史堆填区。
+
 ---
 
 ## 3. 设计思想补充说明
