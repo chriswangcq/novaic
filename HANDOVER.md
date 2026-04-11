@@ -30,6 +30,7 @@
 
 > （由 `/update-handover` Slash 工作流命令追记生成使用，请自顶向下追加）
 
+> 最后更新：2026-04-11 — **Gateway v2 事件驱动解耦 (Steps 1-4)**：新增 Queue Service Session Coordinator（`tq_active_sessions`、`tq_pending_triggers`）确保 session 排他性与原子分发；切断 Worker 对 Gateway 的依赖，所有 handler（`subagent`、`context`、`runtime`、`tool` 等）直写 EntityStore（基于新开辟的 Gateway `/internal/entities` 端点）；重写 Watchdog 仅保留定时唤醒和中断拦截，取消 `sending` 状态轮询；大幅清理废弃端点与死代码，全面从“轮询状态”倒向“事件并发队列”。
 > 最后更新：2026-04-10 — **Gateway 架构清理与 Cortex 配置正规化**：彻底移除了遗留的 Runtime Orchestrator (RO) 死代码，清理了 `agent.py` 及 `subagent.py` 中的大量废弃调用。同时修复了 Cortex URL 长期依赖硬编码环境变量的技术债，统一收口至 `services.json` 及 `strict_config.py`，所有 Runtime Worker 严格执行 `--cortex-url` 入参标准。
 > 最后更新：2026-04-09 — **横跨架构维度的终局补充**：建立了统一数据字典（Entity Data Models）、Common 依赖生成链库（解决了多端类型生成与19996本地夺口战）、以及记录了处于公网隔离最顶层的 Nginx 网关重载 /internal 保卫阵列布置，完美闭环封库。
 > 最后更新：2026-04-09 — **全域架构文档 L3 级大爆发与总盘瘦身**：针对 Entangled, Gateway, Runtime, Vmcontrol, MCP, Frontend, Network, Storage 等由于年久失修积攒的大量特性，重新生成了专属的大目录与几十篇细节详表，挂载于 `docs/` 目录下。本文档 `HANDOVER.md` 正式抛弃过往动辄上千行的繁重冗余组件解说，转为纯粹的变更追踪集。
