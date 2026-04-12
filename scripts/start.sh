@@ -2,7 +2,8 @@
 # NovAIC Backend Start Script (Linux/Cloud)
 #
 # Services:
-#   - Gateway       :19999  API + DB + WS
+#   - Entangled      :19900  Entity CRUD + WS Sync
+#   - Gateway        :19999  API + DB + WS
 #   - Queue Service  :19997  Task/Saga 队列
 #   - File Service   :19995  文件上传/下载
 #   - Cortex         :19996  认知基础设施 (Workspace / Recall / Sandbox)
@@ -15,11 +16,15 @@ DATA_DIR="/opt/novaic/data"
 LOG_DIR="$DATA_DIR/logs"
 mkdir -p "$LOG_DIR"
 
+PORT_ENTANGLED=19900
 PORT_GATEWAY=19999
 PORT_QUEUE_SERVICE=19997
 PORT_FILE_SERVICE=19995
 PORT_CORTEX=19996
 
+ENTANGLED_URL="http://127.0.0.1:$PORT_ENTANGLED"
+# Workers/Gateway both read ServiceConfig — this keeps Worker Entangled client aligned with Gateway when URLs match.
+export NOVAIC_ENTANGLED_URL="$ENTANGLED_URL"
 GW_URL="http://127.0.0.1:$PORT_GATEWAY"
 QS_URL="http://127.0.0.1:$PORT_QUEUE_SERVICE"
 FS_URL="http://127.0.0.1:$PORT_FILE_SERVICE"
@@ -48,6 +53,7 @@ wait_port_free() {
 }
 
 stop() {
+    pkill -9 -f "entangled.app.main" 2>/dev/null || true
     pkill -9 -f "main_gateway.py" 2>/dev/null || true
     pkill -9 -f "main_novaic.py" 2>/dev/null || true
     pkill -9 -f "main_file_service.py" 2>/dev/null || true
@@ -62,19 +68,31 @@ stop() {
 
 stop 2>/dev/null || true
 
-for port in $PORT_GATEWAY $PORT_QUEUE_SERVICE $PORT_FILE_SERVICE $PORT_CORTEX; do
+for port in $PORT_ENTANGLED $PORT_GATEWAY $PORT_QUEUE_SERVICE $PORT_FILE_SERVICE $PORT_CORTEX; do
     wait_port_free "$port" 8
 done
 
 echo "Starting NovAIC backends..."
 
-# Gateway
+# Entangled Service (must start before Gateway — Gateway registers schemas on startup)
 source /opt/novaic/jwt_secret.env
 source /opt/novaic/cortex_oss.env
 export JWT_SECRET
+export ENTANGLED_SERVICE_TOKEN="${ENTANGLED_SERVICE_TOKEN:-$JWT_SECRET}"
+export ENTANGLED_DB_PATH="$DATA_DIR/entangled.db"
+
+PYTHONPATH="$BASE/Entangled/packages/server-python:${PYTHONPATH:-}" \
+$(py novaic-gateway) -m entangled.app.main \
+    --host 127.0.0.1 --port "$PORT_ENTANGLED" \
+    --db-path "$DATA_DIR/entangled.db" \
+    >> "$LOG_DIR/entangled.log" 2>&1 &
+wait_port "$PORT_ENTANGLED" "Entangled Service"
+
+# Gateway
 $(py novaic-gateway) "$BASE/novaic-gateway/main_gateway.py" \
     --host 127.0.0.1 --port "$PORT_GATEWAY" --data-dir "$DATA_DIR" \
     --queue-service-url "$QS_URL" --file-service-url "$FS_URL" \
+    --entangled-url "$ENTANGLED_URL" \
     >> "$LOG_DIR/gateway-$(date +%Y%m%d).log" 2>&1 &
 wait_port "$PORT_GATEWAY" "Gateway" 30
 
@@ -102,7 +120,7 @@ wait_port "$PORT_CORTEX" "Cortex"
 # Workers
 PY=$(py novaic-agent-runtime)
 MAIN="$BASE/novaic-agent-runtime/main_novaic.py"
-WORKER_ARGS="--gateway-url $GW_URL --queue-service-url $QS_URL --data-dir $DATA_DIR"
+WORKER_ARGS="--gateway-url $GW_URL --queue-service-url $QS_URL --cortex-url $CORTEX_URL --data-dir $DATA_DIR"
 
 $PY $MAIN watchdog $WORKER_ARGS >> "$LOG_DIR/watchdog.log" 2>&1 &
 
@@ -119,6 +137,6 @@ for i in 1 2; do
 done
 
 $PY $MAIN health $WORKER_ARGS --check-interval 30 --task-timeout 3600 --saga-timeout 3600 >> "$LOG_DIR/health.log" 2>&1 &
-$PY $MAIN scheduler --gateway-url "$GW_URL" --check-interval 10 --data-dir "$DATA_DIR" >> "$LOG_DIR/scheduler.log" 2>&1 &
+$PY $MAIN scheduler --gateway-url "$GW_URL" --cortex-url "$CORTEX_URL" --check-interval 10 --data-dir "$DATA_DIR" >> "$LOG_DIR/scheduler.log" 2>&1 &
 
 echo "All backends started. Logs: $LOG_DIR"

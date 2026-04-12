@@ -1,28 +1,34 @@
-# 网关端的深度融合集成 (Gateway Integration)
+# 网关端 Entangled 集成（Gateway Integration）
 
-> 路径参考：`novaic-gateway/gateway/entity/store.py`
+> **2026-04**：与 `novaic-gateway/gateway/entity/store.py`、`scripts/start.sh` 一致。旧文描述的 **`GatewayEntityStore(db, defs, runtime, vmuse_mgr)`** 构造与「仅嵌入一层」叙述已过时，仅作历史参考。
 
-## 1. 从隔离双层架构到直接继承
-在早期的重构阶段，`novaic-gateway` 自己手写了一整套由大量 SQL CRUD 以及 `EntityStore` 原语构成的近两千行类库，然后再通过一个中层胶水闭包抛回给 `Entangled` 判定更新情况。这样的双层结构不仅庞大且难于演进表结构。
+## 1. 当前实现：`EntityStore` 与 `RemoteEntityStore`
 
-通过完全融入 `entangled.sql` 这个基础设层后，`Gateway` 代码体量锐减：
-```python
-# 现在，Gateway 自身就是 Entangled 的一个衍生数据库存储层实现
-from entangled.sql import SqlEntityStore
+- **`EntityStore`**（`gateway/entity/store.py`）：继承 `entangled.sql.SqlEntityStore`，CRUD 走本地 SQLite（`gateway.db`）。
+- **`RemoteEntityStore`**：当 `ServiceConfig` 中 **`ENTANGLED_URL` / `ENTANGLED_SERVICE_URL` 非空** 时，`get_entity_store()` 返回该类。
 
-class GatewayEntityStore(SqlEntityStore):
-    def __init__(self, db, defs, runtime, vmuse_mgr):
-        super().__init__(db, defs)
-        self.runtime = runtime 
-```
+### Entity Routing Split
 
-## 2. Before / After 自定义拦阻 Hook 的实现
-既然表单的操作都进入了父类的包里边，Gateway 需要在这时候安插大量的 NovAIC 专供业务：例如当我们下发了一台虚拟机的开机或销毁；或我们新来了一条聊天消息。
+`LOCAL_ONLY_ENTITIES = {users, refresh-tokens, api-keys, vm-users, models, api-key-models}` 留 `gateway.db`，其余（`devices` 等需同步到客户端的实体）代理到 Entangled HTTP。
 
-我们覆写了生命周期的钩子（Hook）：
-- **`before_insert` / `before_update`**:
-    执行像 `_generate_nanoid_for_agent` 这样的动态自增，或是遇到 `EntityId="device"` 的新建，进行向远程发送开启 `VMPrep` 打通云端准备指令的任务分配。
-- **`after_insert`**:
-    针对 `messages`（系统和聊天的主要事件通信）。Gateway 使用此钩子将 `sending` 的请求直接打包推送到 `watchdog`，或是将新创建的请求用它独有的 Queue Service 以 saga 的形式推去跑后续流水。
+- **`_local_store`** 注册**所有** entity 定义（含 remote 的），但只对 LOCAL entities 建表（`ensure_schema`）。这保证 `_scope_where` 的 parent 链查找正常（如 `vm-users.parent = ("devices", ...)`）。
+- 写操作经 **`EntangledServiceClient`** 调用独立 Entangled HTTP，并带 **`X-Notify: false`**；同步帧由 Gateway 侧 **`_notify_change` → `/app/ws`** 投递。
+- **Pre-delete hook**（`_cleanup_device_on_pc_client`）：`devices` entity 删除前向 PC Client 发 `vm_delete`（先 shutdown 再 `DELETE /api/vms/{id}` 删磁盘）/ `android_avd_delete` / `host_desktop_stop`，确保 WS entity delete 与 HTTP REST `DELETE /api/devices/{id}` 行为一致。
+- **`device_actions.py` → `_get_device_and_repo`**：先尝试 `DeviceRepository`（gateway.db），找不到时回退到 `EntityStore`（Entangled），用 `device_from_dict` 构造 Device 对象。`get_status_action` 自行处理状态查询，不再依赖只读 gateway.db 的 HTTP 端点。
 
-所有的这些逻辑不再充斥于各种零散的 REST Controller 端点，业务控制的强绑定和实体模型的持久化完成了统一。
+可选覆盖：`NOVAIC_ENTANGLED_URL` 在 ServiceConfig 层覆盖 JSON 中的基址（见 `common/entangled_url.py`）。
+
+## 2. 内部 API 与 Worker 路径
+
+- **`/internal/entities/*`**（`gateway/api/internal/entity.py`）：无鉴权，供内网调用；在 Remote 模式下与 `RemoteEntityStore` 一致：**Entangled HTTP `notify=false` + `remote_notify_after_entangled_http_write`**。
+- **`POST /internal/entangled/sync-notify`**：Runtime/Worker 在 **直连 Entangled HTTP** 且 `notify=false` 成功后，将 **`entity` / `action` / `data` / `params`** 交给 Gateway，由同一套 notifier 推送到 **`/app/ws`**。`novaic-agent-runtime` 的 **`GatewayBusinessClient`** 在 Remote 模式下对 `entity_*` 写操作自动调用该接口。
+
+## 3. 历史：从双层胶水到 `entangled.sql`
+
+早期 Gateway 曾用大量手写 SQL 与中层胶水对接 Entangled；现已收敛为 **`entangled.sql` 单栈** + 上述 Remote/Local 分支。业务钩子（序列化 `serializer`/`deserializer`、迁移热修等）仍在 `EntityStore` 子类中，见 `store.py`。
+
+## 相关
+
+- 独立 Entangled 对照清单：`docs/roadmap/entangled_standalone_checklist.md`
+- App WS 与稳定性：`docs/architecture/entangled-store-and-app-ws.md`
+- 客户端 WS 策略（契约）：`docs/entangled/client-ws-strategy.md`

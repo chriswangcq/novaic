@@ -24,17 +24,17 @@
  ┌──────▼───────┐          ┌────────▼────────────────────────────────┐
  │  novaic-app  │  WS/REST │             Gateway (:19999)            │
  │  (Tauri 壳)  │◄────────►│ HTTP 引擎 / p2p 信令 / VM prep          │
- │ - VmControl  │          │ Entangled.sql (服务端实时实体同步引擎)  │
+ │ - VmControl  │          │ 实体层：本地 EntityStore 或 Remote→HTTP  │
  │ - Entangled  │          └────────────────┬────────────────────────┘
  │   Rust Client│                           │
- └──────┬───────┘                  ┌────────▼────────┐
-        ▼                          │  Server SQLite  │ (gateway.db /
-    本地 SQLite                     │                 │  queue.db )
-(entangled_cache.db)               └─────────────────┘
+ └──────┬───────┘                  ┌────────▼────────┐        ┌──────────────────┐
+        ▼                          │  Server SQLite  │        │ Entangled (:19900)│
+    本地 SQLite                     │  (gateway 元数据) │◄──────►│ 独立进程 HTTP+WS   │
+(entangled_cache.db)               └─────────────────┘  可选   └──────────────────┘
 ```
 
 - **客户端（本地）**：`novaic-app`（React + Tauri）。内嵌 **VmControl** 处理所有 WebRTC/VNC 连接；内嵌 **Entangled Rust Client** 处理业务实体的实时订阅，数据持久化在**本地 SQLite**（不再依赖 IndexedDB）。
-- **云端接入（API/WS）**：`novaic-gateway`。完全融合了 `Entangled` 引擎作为其底层的实体存储层（内部直接走 `entangled.sql` 操作 Server SQLite）。前端所有的增删改查和实时聊天都通过 WebSocket 甚至 REST 汇聚在这里。
+- **云端接入（API/WS）**：`novaic-gateway`。实体层使用 **`entangled.sql`**：默认本地 SQLite；若配置了 **`ENTANGLED_URL`**，则 **`RemoteEntityStore`** 将 CRUD 代理到**独立 Entangled 进程**（见 `scripts/start.sh` 启动顺序），Gateway 仍负责 **`/app/ws`** 与 schema 推送。前端增删改查与实时同步以 Gateway 为主入口；可选直连 Entangled 的 `ws(s)://…/v1/sync`（由 `entangledWsUrl` 下发）。
 - **异步执行管线**：`novaic-agent-runtime`。包含 Watchdog 和 Task/Saga Workers。**不再有** Tools Server，不仅编排流程，同时也内置了工具分发逻辑。
 - **认知基础设施**：`novaic-cortex`。独立的无状态 HTTP 服务。Agent 运行时通过 `CortexBridge` 向其实时追加（Append）运行状态、调用 Recall，而它背后拼装出向 LLM Factory 发起的上下文。
 - **LLM 隔离层**：`novaic-llm-factory`。隐藏了所有的 api-keys 和底层厂商差异，只暴露标准的 OpenAI HTTP 端点。
