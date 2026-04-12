@@ -90,24 +90,26 @@
 
 ---
 
-## 待办
+## 待办 → 已全部完成 ✅
 
-### 前端集成
-- [ ] 用户发消息接口 → 调 Queue Service `POST /api/queue/dispatch`
-- [ ] Interrupt 接口 → 直接调 Queue `POST /api/queue/recover/cancel-all`
+### 前端集成 ✅
+- [x] 用户发消息接口 → Entangled action `messages.send` → `message_actions.send_action()` → Queue Service dispatch
+- [x] Interrupt 接口 → `POST /internal/agents/{id}/interrupt` → Queue `POST /api/queue/recover/cancel-all`
 
-### Gateway 端点清理（前端切换后）
-- [ ] 删除 `/internal/messages/find-sending`
-- [ ] 删除 `/internal/messages/{id}/confirm`
-- [ ] 删除 `/internal/subagents/{a}/{s}/awake`
-- [ ] 删除 `/internal/subagents/{a}/{s}/sleeping`
-- [ ] 删除 `/internal/subagents/{a}/{s}/completed`
-- [ ] 删除 `/internal/subagents/{a}/{s}/rest`
-- [ ] 删除 `/internal/subagents/{a}/{s}/check-and-clear-rest`
+### Gateway 端点清理 ✅
+- [x] 删除 `/internal/messages/find-sending` (已在 Step 4 commit 中移除)
+- [x] 删除 `/internal/messages/{id}/confirm` (已在 Step 4 commit 中移除)
+- [x] 删除 `/internal/subagents/{a}/{s}/awake`
+- [x] 删除 `/internal/subagents/{a}/{s}/sleeping`
+- [x] 删除 `/internal/subagents/{a}/{s}/completed`
+- [x] 删除 `/internal/subagents/{a}/{s}/rest`
+- [x] 删除 `/internal/subagents/{a}/{s}/check-and-clear-rest`
+- [x] 删除 `/internal/subagents/{a}/{s}/failed`
+- [x] 删除 `/internal/subagents/{a}/{s}/summarizing`
 
-### HealthWorker 兜底
-- [ ] 扫描 Entangled 有未读消息 + Queue 无活跃 session → 补发 dispatch
+### HealthWorker 兜底 ✅
+- [x] `_scan_unhandled_messages`: 扫描 Entangled 未读消息 + 查询 Queue 活跃 sessions → 仅为无活跃 session 的 agent 补发 dispatch
+- [x] 修复: `GatewayInternalClient` → `GatewayBusinessClient` (旧类已删除)
 
-### 文档
-- [ ] 更新 [service-topology.md](file:///Users/wangchaoqun/new-build-novaic/docs/architecture/service-topology.md)
-- [ ] 更新 [HANDOVER.md](file:///Users/wangchaoqun/new-build-novaic/HANDOVER.md)
+### 文档 ✅
+- [x] 本 checklist 已完结

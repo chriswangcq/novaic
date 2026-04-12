@@ -52,10 +52,13 @@ jobs:
       - name: Entity store getId vs idField JSON
         run: python3 scripts/check_entity_store_pk.py
 
-      - name: Gateway Sync Contract (schema + version parity)
+      - name: Gateway unit tests (sync contract + remote notify)
         run: |
           python3 -m pip install -q -r novaic-gateway/requirements.txt
-          cd novaic-gateway && python3 -m unittest tests.unit.gateway.test_sync_contract_schema -v
+          cd novaic-gateway && python3 -m unittest tests.unit.gateway.test_sync_contract_schema tests.unit.gateway.test_remote_notify -v
+
+      - name: Entangled server-python import smoke
+        run: cd Entangled/packages/server-python && python3 -c "from entangled.app import ws, crud; print('entangled app ok')"
 
       - name: Cargo check (desktop)
         run: cd novaic-app/src-tauri && cargo check -p novaic --features desktop
