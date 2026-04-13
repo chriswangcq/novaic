@@ -25,6 +25,8 @@ PORT_CORTEX=19996
 ENTANGLED_URL="http://127.0.0.1:$PORT_ENTANGLED"
 # Workers/Gateway both read ServiceConfig — this keeps Worker Entangled client aligned with Gateway when URLs match.
 export NOVAIC_ENTANGLED_URL="$ENTANGLED_URL"
+# Public WS URL for desktop/web clients to connect directly to Entangled (via nginx proxy).
+export NOVAIC_ENTANGLED_WS_URL="wss://api.gradievo.com/entangled/v1/sync"
 GW_URL="http://127.0.0.1:$PORT_GATEWAY"
 QS_URL="http://127.0.0.1:$PORT_QUEUE_SERVICE"
 FS_URL="http://127.0.0.1:$PORT_FILE_SERVICE"
@@ -88,7 +90,8 @@ $(py novaic-gateway) -m entangled.app.main \
     >> "$LOG_DIR/entangled.log" 2>&1 &
 wait_port "$PORT_ENTANGLED" "Entangled Service"
 
-# Gateway
+# Gateway (needs Entangled + novaic-common + shared-kernel + contracts on PYTHONPATH)
+PYTHONPATH="$BASE/Entangled/packages/server-python:$BASE/novaic-common:$BASE/novaic-shared-kernel:$BASE/novaic-contracts:${PYTHONPATH:-}" \
 $(py novaic-gateway) "$BASE/novaic-gateway/main_gateway.py" \
     --host 127.0.0.1 --port "$PORT_GATEWAY" --data-dir "$DATA_DIR" \
     --queue-service-url "$QS_URL" --file-service-url "$FS_URL" \

@@ -32,7 +32,7 @@
 
 ## Entangled 单 Store（摘要）
 
-- `**EntityStore**` 作为 Entangled store；**subscription_cascade** 服务端展开。
+- `**EntityStore**` 作为 Entangled store；一次写入 = 一次通知，无自动级联。
 - 详稿：**[entangled-store-and-app-ws.md](entangled-store-and-app-ws.md)**。
 
 ## Sync Contract 长文

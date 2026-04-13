@@ -53,20 +53,11 @@ Gateway `_dispatch_request` 进程内调用，零 HTTP 中转。
 sync_type: property   # STREAM → "stream"，其他 → "list"
 sync_limit: int      # stream head_n 窗口（bridge init 常设为 50）
 op_log_size: int     # 每 (entity, params) op-log 条数上限（默认 1000）
-relations: List       # EntityRelation；bridge 从 parent 元组构建
 ```
 
 `EntityStore` 提供 `get_all_defs()`（供 notifier `set_store()`）。
 
-`**gateway/entity/entangled_bridge.py`（三件核心事）**：
-
-1. `SyncRegistry` 初始化、版本从 DB hydrate、mutation 持久化
-2. `_build_relations()`：扫描 `EntityDef.parent` → 写入 `EntityRelation`
-3. `set_entangled_store(gw_store)`：注册给 Entangled notifier
-
-`**gateway/api/app_client.py`**：`handle_subscribe` / `handle_load_more` / `handle_unsubscribe` 统一 `get_entity_store()`；连接建立后首包 `**{ entities, hash, syncContractVersion }**`（版本来自 `gateway.entity.sync_contract`，与 REST `/api/entangled/schema`、Entangled `ws_handler` 对齐）。
-
-**subscription_cascade**：客户端只 `subscribe A`，服务端按 `subscription_cascade` 展开并推送级联实体初始 sync。
+**一次写入 = 一次通知**：Entangled 不存在自动级联。Gateway 按需写入所需实体，客户端渲染层自行决定联动更新策略。
 
 **前端**：以 Rust `**entangled_method_optimistic`** 为主闭环；`hooks.tsx` 工厂化；已移除历史 `**@entangled/react**` 大包。
 

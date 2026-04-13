@@ -17,7 +17,7 @@
 | 专题 | 说明 |
 |------|------|
 | [gateway-integration.md](gateway-integration.md) | `novaic-gateway` 如何放弃手写 SQL、全面继承 Hooks 等融合方案。 |
-| [schema-and-cascade-push.md](schema-and-cascade-push.md) | Entangled 本应如何下盘子节点的 Cascade 清理与首次 Schema 推送。 |
+| [schema-and-cascade-push.md](schema-and-cascade-push.md) | Schema 推送与通知机制（一次写入 = 一次通知，无自动级联）。 |
 
 ### 客户端侧 (Rust / React 侧)
 | 专题 | 说明 |
