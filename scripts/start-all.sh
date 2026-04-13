@@ -82,7 +82,6 @@ if [ "$MODE" = "binary" ]; then
     nohup $BUILD_DIR/novaic-agent-runtime task-worker \
         --gateway-url http://127.0.0.1:19999 \
         --queue-service-url http://127.0.0.1:19997 \
-        --tools-server-url http://127.0.0.1:19998 \
         > "$DATA_DIR/logs/task-worker.log" 2>&1 &
     
     echo -e "  ${GREEN}✓ Workers started${NC}"

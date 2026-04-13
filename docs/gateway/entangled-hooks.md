@@ -4,12 +4,9 @@
 
 ## 1. 从数据模型到行为声明 (`defs.py`)
 所有的业务对象的长相（属性名字/长度等），全部脱离 SQL DDL，集中用 Python 代码表达在 `gateway/entity/defs.py` 内（例如：`AGENT_TOOLS`, `SKILLS`, `MESSAGES`）。
-这些表述不是死的数据，它们带有能力与级联指令：
-```python
-# 例如声明级联更新：
-subscription_cascade = ["tool_logs", "agent_tools"]
-```
-如果新增这其中的行为被变动，提供给 UI 生成代码包的前置指令也会被同步更新，保证前后端数据类型 `TypeScript <-> Python` 的彻底对齐（参考：`scripts/generate_entity_types.py` 工具）。
+这些表述不是死的数据，它们带有能力声明（sync_type、subscription_mode、actions 等），保证前后端数据类型 `TypeScript <-> Python` 的彻底对齐。
+
+> **注意**: Entangled 遵循 "一次写入 = 一次通知" 原则，不存在自动级联。Gateway 按需写入所需实体，客户端渲染层自行决定联动更新策略。
 
 ## 2. 操作阻截：Before / After Hooks
 网关作为唯一直接处理各种新创建对象流经的口子。通过将自己派生为 `GatewayEntityStore(SqlEntityStore)`，其最大的工作集中于针对不同 Entity 执行干预方法。
