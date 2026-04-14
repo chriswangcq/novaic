@@ -172,10 +172,11 @@ def main() -> None:
     parser.add_argument("--check", action="store_true", help="Check mode (no file writes, exit 1 on drift)")
     args = parser.parse_args()
 
-    # Load entity defs
-    from gateway.entity.defs import ALL_ENTITIES
+    # Load entity defs from Business schema_push (canonical source)
+    from business.schema_push import ALL_BUSINESS_ENTITIES
+    all_entities = list(ALL_BUSINESS_ENTITIES.values())
 
-    ts_content = generate_ts(ALL_ENTITIES)
+    ts_content = generate_ts(all_entities)
     cs = checksum(ts_content)
 
     # Inject checksum into header
@@ -205,7 +206,7 @@ def main() -> None:
         print(f"[codegen] OK: {out_path.relative_to(REPO_ROOT)} is up to date.")
     else:
         out_path.write_text(ts_final)
-        entity_count = sum(1 for d in ALL_ENTITIES if d.fields)
+        entity_count = sum(1 for d in all_entities if d.fields)
         print(f"[codegen] Generated {entity_count} entity interfaces → {out_path.relative_to(REPO_ROOT)}")
 
 

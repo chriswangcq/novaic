@@ -19,25 +19,36 @@
 │ Relay / STUN   │◄───────►│  Agent Runtime  ├─────►│     Cortex     │
 │ (quic-service) │ 信令穿透 │ (Watchdog/Worker)│      │  (:19996 HTTP) │
 └───────┬────────┘         └────────┬────────┘      │ - Scope / DFS  │
-        │                           │ 读写数据库/队列 │ - Recall       │
-        │                           │                 └────────────────┘
- ┌──────▼───────┐          ┌────────▼────────────────────────────────┐
- │  novaic-app  │  WS/REST │             Gateway (:19999)            │
- │  (Tauri 壳)  │◄────────►│ HTTP 引擎 / p2p 信令 / VM prep          │
- │ - VmControl  │          │ 实体层：本地 EntityStore 或 Remote→HTTP  │
- │ - Entangled  │          └────────────────┬────────────────────────┘
- │   Rust Client│                           │
- └──────┬───────┘                  ┌────────▼────────┐        ┌──────────────────┐
-        ▼                          │  Server SQLite  │        │ Entangled (:19900)│
-    本地 SQLite                     │  (gateway 元数据) │◄──────►│ 独立进程 HTTP+WS   │
-(entangled_cache.db)               └─────────────────┘  可选   └──────────────────┘
+        │                           │ 读写实体/队列  │ - Recall       │
+        │                           │                └────────────────┘
+ ┌──────▼───────┐          ┌────────▼───────────────────────────────────────┐
+ │  novaic-app  │  WS/REST │           Nginx (公网入口 :443)                 │
+ │  (Tauri 壳)  │◄────────►│  /         → Gateway  (:19999)                │
+ │ - VmControl  │          │  /device/  → Device   (:19993)                │
+ │ - Entangled  │          │  /business → Business (:19994) [预留]          │
+ │   Rust Client│          └────┬───────────┬──────────┬───────────────────┘
+ └──────┬───────┘               │           │          │
+        ▼               ┌───────▼──┐ ┌──────▼───┐ ┌───▼──────────┐
+    本地 SQLite          │ Gateway  │ │ Business │ │   Device     │
+ (entangled_cache.db)   │ Auth+WS  │ │ Agent/   │ │ VM/PC-Bridge │
+                        │ Turn+File│ │ Skill/   │ │ WS + CRUD    │
+                        └────┬─────┘ │ Model    │ └──────┬───────┘
+                             │       └────┬─────┘        │
+                      ┌──────▼────────────▼──────────────▼──────┐
+                      │          Entangled (:19900)              │
+                      │    独立进程 HTTP+WS — 实体 CRUD + 同步      │
+                      │          (server SQLite)                 │
+                      └─────────────────────────────────────────┘
 ```
 
 - **客户端（本地）**：`novaic-app`（React + Tauri）。内嵌 **VmControl** 处理所有 WebRTC/VNC 连接；内嵌 **Entangled Rust Client** 处理业务实体的实时订阅，数据持久化在**本地 SQLite**（不再依赖 IndexedDB）。
-- **云端接入（API/WS）**：`novaic-gateway`。实体层使用 **`entangled.sql`**：默认本地 SQLite；若配置了 **`ENTANGLED_URL`**，则 **`RemoteEntityStore`** 将 CRUD 代理到**独立 Entangled 进程**（见 `scripts/start.sh` 启动顺序），Gateway 仍负责 **`/app/ws`** 与 schema 推送。前端增删改查与实时同步以 Gateway 为主入口；可选直连 Entangled 的 `ws(s)://…/v1/sync`（由 `entangledWsUrl` 下发）。
-- **异步执行管线**：`novaic-agent-runtime`。包含 Watchdog 和 Task/Saga Workers。**不再有** Tools Server，不仅编排流程，同时也内置了工具分发逻辑。
-- **认知基础设施**：`novaic-cortex`。独立的无状态 HTTP 服务。Agent 运行时通过 `CortexBridge` 向其实时追加（Append）运行状态、调用 Recall，而它背后拼装出向 LLM Factory 发起的上下文。
-- **LLM 隔离层**：`novaic-llm-factory`。隐藏了所有的 api-keys 和底层厂商差异，只暴露标准的 OpenAI HTTP 端点。
+- **云端网关**：`novaic-gateway`（`:19999`）。经过微服务拆分后瘦身为纯网关：Auth（JWT 签发/验证）、Entity Proxy（代理 Entangled CRUD）、Turn（对话调度）、File Proxy（文件下载代理）、App WS（实时推送）。不再包含 Agent/Skill/Device/VM 等业务逻辑。
+- **业务服务**：`novaic-business`（`:19994`）。从 Gateway 拆出的业务逻辑层：Agent CRUD、Skill 管理、Form 处理、Model 配置、消息操作、日志查询。共享 Gateway 的 Python venv，独立进程运行。
+- **设备服务**：`novaic-device`（`:19993`）。从 Gateway 拆出的设备管理层：Device CRUD、VM 生命周期、PC Client WebSocket Bridge、VmControl 路由。Nginx 通过 `/device/` 前缀路由转发。
+- **实体同步**：`Entangled`（`:19900`）。独立的实体存储与实时同步引擎。Gateway/Business/Device 均通过 `RemoteEntityStore` 代理到此服务。前端可选直连 `ws(s)://…/v1/sync`。
+- **异步执行管线**：`novaic-agent-runtime`。包含 Watchdog 和 Task/Saga Workers。内置工具分发逻辑，不再有独立 Tools Server。
+- **认知基础设施**：`novaic-cortex`。独立的无状态 HTTP 服务。Agent 运行时通过 `CortexBridge` 调用 Workspace/DFS/Recall。
+- **LLM 隔离层**：`novaic-llm-factory`。隐藏所有 api-keys 和底层厂商差异，只暴露标准 OpenAI HTTP 端点。
 - **边缘 P2P 与存储**：`novaic-quic-service` 负责 WebRTC 打洞和热更新 CDN；`novaic-storage-a` 负责二进制文件上传。
 
 ## 3. 典型本地端口约定
@@ -47,9 +58,12 @@
 **Backend（云端后端逻辑）**：
 | 服务名                 | 端口    | 说明                                                               |
 | --------------------- | ----- | ---------------------------------------------------------------- |
-| `gateway`             | 19999 | Gateway HTTP + WS（主入口，novaic-gateway）                           |
+| `entangled`           | 19900 | Entangled 实体同步引擎（HTTP + WS）                                     |
+| `gateway`             | 19999 | Gateway 网关（Auth/Turn/File Proxy/App WS）                          |
+| `business`            | 19994 | Business Service（Agent/Skill/Form/Model 业务逻辑）                    |
+| `device`              | 19993 | Device Service（设备管理/PC-Bridge WS/VM 操作）                          |
 | `queue_service`       | 19997 | Queue Service（novaic-agent-runtime `queue-service`）                 |
-| `cortex`              | 19996 | Cortex 认知引擎 HTTP (`novaic-cortex`)，提供 Workspace/DFS/Recall (依赖 `CORTEX_PORT`，生产环境必备) |
+| `cortex`              | 19996 | Cortex 认知引擎 HTTP (`novaic-cortex`)，提供 Workspace/DFS/Recall        |
 | `file_service`        | 19995 | 文件服务（novaic-storage-a）                                          |
 
 **App / Client（客户端端侧逻辑）**：
@@ -66,7 +80,9 @@
 | 目录                     | submodule | 角色                                                             |
 | ---------------------- | --------- | -------------------------------------------------------------- |
 | `novaic-app`           | ✅         | 客户端 UI（React/Vite + Tauri）、VmControl 嵌入                       |
-| `novaic-gateway`       | ✅         | API 网关、实体管理（基于 `entangled.sql`）、WS 同步                          |
+| `novaic-gateway`       | ✅         | API 网关（Auth/Turn/File Proxy/App WS），瘦身后不含业务逻辑               |
+| `novaic-business`      | ❌ 同仓目录 | Business Service：Agent/Skill/Form/Model/消息等业务逻辑（:19994）        |
+| `novaic-device`        | ❌ 同仓目录 | Device Service：设备管理/PC-Bridge WS/VM 操作（:19993）                 |
 | `novaic-agent-runtime` | ✅         | Agent 运行时：Queue Service、Task/Saga Worker、Watchdog、Scheduler    |
 | `novaic-cortex`        | ✅         | Cortex HTTP：Workspace / Scope / Sandbox / Recall               |
 | `novaic-storage-a`     | ✅         | 文件存储服务                                                         |
