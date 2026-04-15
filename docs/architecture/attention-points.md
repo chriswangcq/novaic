@@ -155,16 +155,19 @@ Gateway 完成微服务拆分（2026-04-14）：
 
 ---
 
-## 12. 文档与代码不一致（P2）
+## 12. ~~文档与代码不一致~~ ✅ 已修复（2026-04-15）
 
-| 位置 | 不一致描述 |
-|------|-----------|
-| Gateway 注释 | 仍提及 "reverse proxy `/internal/*` to Business"，实际 `/internal` 只有 auth |
-| `gateway/entity/schema_push.py` | no-op 函数，但 lifespan 仍调用它 |
-| Entangled README | 文档列出 `ENTANGLED_HOST` 等环境变量，但 `config.py` 已不读取任何环境变量 |
-| `task_queue/client.py` | 类和 docstring 多处写 "Gateway"，实际连接的是 Queue Service |
+已完成：
 
-**行动项：** 清理过时注释、删除 no-op 调用、更新 README。
+- Gateway 顶层 docstring、启动日志、API 描述改为准确表述：`/internal/auth/*` 仍在 Gateway，其余 domain internal API 由 Business / Device 直连
+- 删除 `gateway/entity/schema_push.py` 这个 no-op 空壳，并移除 `main_gateway.py` 中已失效的 lifespan 调用
+- `Entangled/README.md` 改为记录真实的 CLI 参数配置方式，不再声称读取 `ENTANGLED_HOST` 等环境变量
+- `novaic-agent-runtime/task_queue/client.py` 中 `TaskQueueClient` / `SagaClient` 的说明改为 Queue Service，去掉错误的 Gateway 表述
+
+结果：
+
+- 运维文档、代码注释和实际运行拓扑重新一致
+- 新开发者不会再被“Gateway 代理所有 internal API”或“Entangled 读环境变量”这类旧描述误导
 
 ---
 
@@ -198,9 +201,17 @@ Gateway 完成微服务拆分（2026-04-14）：
 
 ---
 
-## 16. `strict_config.py` 验证不完整（P3）
+## 16. ~~`strict_config.py` 验证不完整~~ ✅ 已修复（2026-04-15）
 
-`_validate_required_keys` 只检查顶层 section 和部分叶子路径（~15 个 key），但 `ServiceConfig` 实际读取 ~60 个 key。新增配置项时容易遗漏验证，上线后才发现 `KeyError`。
+已完成：
 
-**行动项：** 基于 `ServiceConfig` 的所有 `_CFG.get(...)` 调用自动生成验证清单，或改用 JSON Schema / Pydantic model 做全量校验。
+- `novaic-common/common/strict_config.py` 不再手写一份易漂移的 `leaf_keys` 清单
+- 改为直接从 `novaic-common/common/config.py` 的 AST 中抽取 `ServiceConfig` 实际使用的 `_CFG.get(...)` / `_url(...)` 路径，作为严格校验的必填项来源
+- `try/except` 包裹的可选配置（如 legacy `tools_server` alias）不会被误判为必填
+- 新增 `novaic-common/tests/test_strict_config.py`，覆盖 `runtime.max_messages_per_page`、`services.turn.port` 等此前会漏校验的路径
+
+结果：
+
+- `load_services_config()` 与 `ServiceConfig` 的真实读取路径保持自动对齐
+- 新增配置项时不会再出现“严格校验通过，但 import `common.config` 才因缺 key 崩溃”的漂移问题
 
