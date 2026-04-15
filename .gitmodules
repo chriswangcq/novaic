@@ -31,3 +31,9 @@
 [submodule "novaic-common"]
 	path = novaic-common
 	url = git@github.com:chriswangcq/novaic-common.git
+[submodule "novaic-business"]
+	path = novaic-business
+	url = git@github.com:chriswangcq/novaic-business.git
+[submodule "novaic-device"]
+	path = novaic-device
+	url = git@github.com:chriswangcq/novaic-device.git

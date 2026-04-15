@@ -81,8 +81,8 @@
 | ---------------------- | --------- | -------------------------------------------------------------- |
 | `novaic-app`           | ✅         | 客户端 UI（React/Vite + Tauri）、VmControl 嵌入                       |
 | `novaic-gateway`       | ✅         | API 网关（Auth/Turn/File Proxy/App WS），瘦身后不含业务逻辑               |
-| `novaic-business`      | ❌ 同仓目录 | Business Service：Agent/Skill/Form/Model/消息等业务逻辑（:19994）        |
-| `novaic-device`        | ❌ 同仓目录 | Device Service：设备管理/PC-Bridge WS/VM 操作（:19993）                 |
+| `novaic-business`      | ✅         | Business Service：Agent/Skill/Form/Model/消息等业务逻辑（:19994）        |
+| `novaic-device`        | ✅         | Device Service：设备管理/PC-Bridge WS/VM 操作（:19993）                 |
 | `novaic-agent-runtime` | ✅         | Agent 运行时：Queue Service、Task/Saga Worker、Watchdog、Scheduler    |
 | `novaic-cortex`        | ✅         | Cortex HTTP：Workspace / Scope / Sandbox / Recall               |
 | `novaic-storage-a`     | ✅         | 文件存储服务                                                         |
