@@ -14,7 +14,7 @@
 #   - Queue Service  :19997  Task/Saga queue management
 #   - File Service   :19995  File upload/download
 #   - Cortex         :19996  LLM orchestration, Workspace, Recall, Sandbox
-#   - Workers        watchdog ×1, task-worker ×4, saga-worker ×2, health ×1, scheduler ×1
+#   - Workers        task-worker ×4, saga-worker ×2, health ×1, scheduler ×1
 #
 # Communication:
 #   Workers → Business  (direct /internal/* calls)
@@ -168,8 +168,6 @@ PY=$(py novaic-agent-runtime)
 MAIN="$BASE/novaic-agent-runtime/main_novaic.py"
 WORKER_ARGS="--gateway-url $GW_URL --business-url $BIZ_URL --queue-service-url $QS_URL --cortex-url $CORTEX_URL --data-dir $DATA_DIR"
 
-$PY $MAIN watchdog $WORKER_ARGS >> "$LOG_DIR/watchdog.log" 2>&1 &
-
 for pool in control execution; do
     for i in 1 2; do
         $PY $MAIN task-worker $WORKER_ARGS \
@@ -183,6 +181,13 @@ for i in 1 2; do
 done
 
 $PY $MAIN health $WORKER_ARGS --check-interval 30 --task-timeout 3600 --saga-timeout 3600 >> "$LOG_DIR/health.log" 2>&1 &
-$PY $MAIN scheduler --gateway-url "$GW_URL" --business-url "$BIZ_URL" --cortex-url "$CORTEX_URL" --check-interval 10 --data-dir "$DATA_DIR" >> "$LOG_DIR/scheduler.log" 2>&1 &
+$PY $MAIN scheduler \
+    --gateway-url "$GW_URL" \
+    --business-url "$BIZ_URL" \
+    --queue-service-url "$QS_URL" \
+    --cortex-url "$CORTEX_URL" \
+    --check-interval 10 \
+    --data-dir "$DATA_DIR" \
+    >> "$LOG_DIR/scheduler.log" 2>&1 &
 
 echo "All backends started. Logs: $LOG_DIR"

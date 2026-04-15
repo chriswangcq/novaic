@@ -251,17 +251,17 @@ else
     echo -e "  ${YELLOW}⚠ novaic-storage-b not found at $SB_DIR${NC}"
 fi
 
-# 6. Workers (watchdog, task-workers, saga-workers, health, scheduler)
+# 6. Workers (task-workers, saga-workers, health, scheduler)
 if [ -d "$AR_DIR" ]; then
     echo "Starting Workers..."
     PY=$(python_for_repo "$AR_DIR")
 
-    # Watchdog
-    "$PY" "$AR_DIR/main_novaic.py" watchdog \
+    # Scheduler
+    "$PY" "$AR_DIR/main_novaic.py" scheduler \
         --gateway-url "$GW_URL" \
         --queue-service-url "$QS_URL" \
         --data-dir "$DATA_DIR" \
-        >> "$LOG_DIR/watchdog.log" 2>&1 &
+        >> "$LOG_DIR/scheduler.log" 2>&1 &
 
     # Task workers (2 control + 2 execution)
     for pool in control execution; do

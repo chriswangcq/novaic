@@ -74,10 +74,10 @@ if [ "$MODE" = "binary" ]; then
     
     # Workers
     echo -e "${GREEN}[Starting] Workers${NC}"
-    nohup $BUILD_DIR/novaic-agent-runtime watchdog \
+    nohup $BUILD_DIR/novaic-agent-runtime scheduler \
         --gateway-url http://127.0.0.1:19999 \
         --queue-service-url http://127.0.0.1:19997 \
-        > "$DATA_DIR/logs/watchdog.log" 2>&1 &
+        > "$DATA_DIR/logs/scheduler.log" 2>&1 &
     
     nohup $BUILD_DIR/novaic-agent-runtime task-worker \
         --gateway-url http://127.0.0.1:19999 \
@@ -110,10 +110,10 @@ else
     source .venv/bin/activate 2>/dev/null || source venv/bin/activate 2>/dev/null || true
     
     echo -e "${GREEN}[Starting] Workers${NC}"
-    nohup python main_novaic.py watchdog \
+    nohup python main_novaic.py scheduler \
         --gateway-url http://127.0.0.1:19999 \
         --queue-service-url http://127.0.0.1:19997 \
-        > "$DATA_DIR/logs/watchdog.log" 2>&1 &
+        > "$DATA_DIR/logs/scheduler.log" 2>&1 &
     
     nohup python main_novaic.py task-worker \
         --gateway-url http://127.0.0.1:19999 \
