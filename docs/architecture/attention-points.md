@@ -40,7 +40,7 @@ task_queue/
 ├── business/        # LLM 业务逻辑
 ├── sagas/           # Saga 流程编排
 ├── utils/           # 广播、系统提示词、截断等工具
-└── workers/         # Worker 进程（task、watchdog、scheduler、health、saga）
+└── workers/         # Worker 进程（task、scheduler、health、saga）
 ```
 
 **风险点：**
@@ -109,28 +109,37 @@ Gateway 完成微服务拆分（2026-04-14）：
 
 ---
 
-## 9. Watchdog 与 Scheduler 功能重复（P1）
+## 9. ~~Watchdog 与 Scheduler 功能重复~~ ✅ 已收敛到单一 Scheduler（2026-04-15）
 
-`WatchdogSync` 和 `SchedulerWorkerSync` 都执行相同逻辑：
+已完成：
 
-```python
-BusinessClient.get_due_for_wake()
-SagaClient.dispatch(..., trigger_type="scheduled_wake")
-```
+- 生产启动链路只保留 **`SchedulerWorkerSync`** 负责 `due_wake -> scheduled_wake dispatch`
+- `WatchdogSync` 降级为 **deprecated compatibility wrapper**，不再是生产职责所有者
+- `scheduler` 入口补齐 `QUEUE_SERVICE_URL` 初始化，消除原先的配置漂移
+- `scheduled_wake` dispatch 增加稳定 `idempotency_key`（基于 `agent_id + subagent_id + wake_at`）
+- Queue Service `SessionCoordinator.dispatch()` 支持按 `idempotency_key` 识别并返回 `deduped`
 
-差异仅在轮询间隔（watchdog 0.1s vs scheduler 可配置）和元数据丰富度。同时运行两者时，若后端无强幂等保证，会产生**重复唤醒**。
+结果：
 
-**行动项：** 合并为单一 Scheduler Worker，或在 Saga dispatch 层加幂等检查（`idempotency_key` 基于 wake 目标 + 时间窗口）。
+- 运行时只有一条定时唤醒轮询链路
+- 重启抖动或误配置下的重复 `scheduled_wake` 不会再重复创建 Saga
 
 ---
 
-## 10. Device 实体 Schema 所有权跨服务（P2）
+## 10. ~~Device 实体 Schema 所有权跨服务~~ ✅ 已收敛到 Device（2026-04-15）
 
-`devices` 和 `vm-users` 的 SQL Schema 定义在 **Business** (`schema_push.py`)，但 Action Handler 实现在 **Device** 服务。修改这两个实体需要同时改两个服务的代码并协调部署顺序。
+已完成：
 
-**行动项：**
-- 方案 A：将 `devices` / `vm-users` 的 Schema 定义移至 Device 服务，Device 自己推送
-- 方案 B：保持现状但在 CI 中加检查，确保 `ENTITY_ACTIONS` keys 与 `DEVICE_ACTIONS` keys 一致
+- `devices` / `vm-users` 的 schema 定义从 `novaic-business/business/schema_push.py` 移出
+- `novaic-device/device/schema_push.py` 成为唯一 owner，并在 `main_device.py` startup 时自行 push
+- `novaic-business` 删除对应 action hook 注册和跨服务 proxy 死代码
+- `scripts/generate_entity_types.py` 改为从 `Business + Device` 双 schema owner 汇总生成 TS 类型
+
+结果：
+
+- 修改设备实体字段时，只需要改 `novaic-device`
+- 设备 schema、action、runtime 行为归属一致
+- 不再存在 Business / Device 双边协调和“哪边才是真 owner”的歧义
 
 ---
 

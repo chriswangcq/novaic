@@ -60,7 +60,7 @@
 - CloudBridge WebSocket `/internal/pc/ws` 超时 3600s
 - 前端 OTA `/api/config/frontend` 无需 JWT，限流 burst=30
 
-**后端 Python 进程（HANDOVER 记载）**：5 HTTP 服务 + 4 task-worker + 2 saga-worker + watchdog + health + scheduler + STUN 等共 **15** 个进程表述（随 `start.sh` 演进以线上为准）。
+**后端 Python 进程（HANDOVER 记载）**：5 HTTP 服务 + 4 task-worker + 2 saga-worker + health + scheduler + STUN 等共 **14** 个进程表述（随 `start.sh` 演进以线上为准）。
 
 ## Relay / STUN（relay.gradievo.com）
 

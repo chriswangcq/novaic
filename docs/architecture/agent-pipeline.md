@@ -70,7 +70,7 @@ LLM tool_call
 
 ## 12.7 已知问题：消息积压与重复 Runtime
 
-`SYSTEM_WAKE` 风暴 → 多条 `sending` → Watchdog 为每条建 Saga。**规划**：Watchdog v2 **按 `(agent_id, subagent_id)` 分组**，每组一个 Saga。
+`SYSTEM_WAKE` 风暴 → 多条唤醒触发并发进入队列。当前方案：由 **Scheduler + Queue Session Coordinator** 按 `(agent_id, subagent_id)` 串行化，每组同一时刻只允许一个活跃 Saga。
 
 ## 12.8 源码速查
 
@@ -78,7 +78,7 @@ LLM tool_call
 
 | 需求 | 路径 |
 |------|------|
-| Watchdog | `novaic-agent-runtime/task_queue/workers/watchdog_sync.py` |
+| Scheduler | `novaic-agent-runtime/task_queue/workers/scheduler_worker_sync.py` |
 | MessageProcess Saga | `novaic-agent-runtime/task_queue/sagas/message_process.py` |
 | ReactThink / ReactActions | `novaic-agent-runtime/task_queue/sagas/react_think.py`、`react_actions.py` |
 | Cortex 上下文 | `novaic-agent-runtime/.../cortex_handlers.py`；引擎 `novaic-cortex/novaic_cortex/context_stack/engine.py` |

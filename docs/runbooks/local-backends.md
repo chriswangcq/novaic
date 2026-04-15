@@ -18,7 +18,7 @@ cd /path/to/novaic
 - Gateway `http://127.0.0.1:19999` — `novaic-gateway` 内 `python main_gateway.py`
 - File Service `19995` — `novaic-storage-a` 内 `python -m file_service.main --port 19995`
 - Cortex `19996` — `python -m novaic_cortex.main_cortex`
-- Agent Runtime — `watchdog` + `task-worker`（日志在 `NOVAIC_DATA_DIR`，默认 `~/.novaic/logs/`）
+- Agent Runtime — `scheduler` + `task-worker`（日志在 `NOVAIC_DATA_DIR`，默认 `~/.novaic/logs/`）
 
 健康检查 URL 见脚本末尾输出。
 

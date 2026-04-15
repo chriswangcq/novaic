@@ -32,17 +32,17 @@
 | **Gateway** | `19999` | API 网关 + Auth + Entangled 数据宿主 + CloudBridge WS + AppBridge WS |
 | **Tools Server** | (独立 repo) | HTTP API for tools（替代旧 MCP Gateway） |
 | **Queue Service** | `19997` | Saga 状态机 + 任务队列 + Worker 调度 |
-| **Watchdog** | (worker) | 监控 sending 消息 → 创建 MessageProcess Saga |
+| **Watchdog** | (worker) | 已弃用的兼容入口；生产不再承担定时唤醒职责 |
 | **Saga Worker** | (worker) | Saga 流程编排（MessageProcess、RuntimeComplete、SubAgentCreate 等） |
 | **Task Worker** | (worker) | 实际任务执行（ReactThink、ToolExec、SummarizeHistory 等） |
 | **Health Worker** | (worker) | 超时回收（过期 Task/Saga 清理） |
-| **Scheduler Worker** | (worker) | 定时唤醒 sleeping agents |
+| **Scheduler Worker** | (worker) | 唯一的定时唤醒轮询者（`due_wake -> scheduled_wake dispatch`） |
 | **Cortex** | `19996` | 认知引擎（上下文组装 + 记忆 + 压缩 + 沙盒执行 + **GatewayProxy 工具代理**） |
 | **LLM Factory** | `19994` | LLM 多提供商适配（OpenAI/Anthropic/本地模型路由） |
 | **VMControl** | (Tauri内嵌Rust) | 本地设备管理（QEMU/Scrcpy/adb/QMP），通过 CloudBridge 连 Gateway |
 | **Storage-A** | `19995` | 文件服务（独立 repo） |
 
-> ⚠️ **没有 Runtime Orchestrator（RO）**。原 RO 的职责已由 Saga Worker + Task Worker + Watchdog 三者接管。`--runtime-orchestrator-url` 参数虽存在于 CLI 但已标记 `argparse.SUPPRESS`。
+> ⚠️ **没有 Runtime Orchestrator（RO）**。原 RO 的职责已由 Saga Worker + Task Worker + Queue Session Coordinator 接管。`--runtime-orchestrator-url` 参数虽存在于 CLI 但已标记 `argparse.SUPPRESS`。
 
 ---
 
@@ -115,9 +115,9 @@
    触发 Entangled WS 推送 → 前端实时显示 "发送中"
         │
         ▼
-③ Watchdog (poll /internal/messages/find-sending)
-   发现 sending 消息 → POST /api/sagas → Queue Service
-   创建 MessageProcess Saga
+③ Queue Session Coordinator / Scheduler
+   用户消息或定时唤醒经 `/api/queue/dispatch`
+   创建或缓冲 MessageProcess / subagent_wake Saga
         │
         ▼
 ④ Saga Worker: 领取 Saga → 执行 MessageProcess 流程
@@ -156,7 +156,7 @@
 | 边界线 | 为什么在这里切 |
 |---|---|
 | Gateway ↔ Workers | Gateway 是**同步 HTTP**处理（毫秒级），Workers 是**长耗时推理**编排（秒~分钟级）。混在一起会阻塞 WS 推送 |
-| Watchdog ↔ Queue ↔ Workers | Watchdog 负责**发现**（轮询 sending），Queue 负责**可靠调度**（重试、超时、持久化），Workers 负责**执行**。分开后任何一环崩溃不丢任务 |
+| Scheduler/Queue ↔ Workers | Scheduler 负责**发现**到期唤醒，Queue 负责**可靠调度**（Session Coordinator、重试、超时、持久化），Workers 负责**执行**。分开后任何一环崩溃不丢任务 |
 | Saga Worker ↔ Task Worker | Saga 负责**流程编排**（状态机流转），Task 负责**原子执行**（单次 ReactThink/ToolExec）。分开后可独立扩缩：5 个 Task Worker + 1 个 Saga Worker |
 | Workers ↔ Cortex | Workers 是**通用调度器**（不知道什么是上下文），Cortex 是**领域引擎**（上下文 + 记忆 + 工具代理）。Cortex 通过 `GatewayProxy` 把 12 类工具命令（memory/notebook/qemu/shell/subagent 等）代理转发到 Gateway。分开后 Cortex 可独立复用 |
 | Gateway ↔ VMControl | 物理隔离——VMControl 跑在用户本地电脑上，Gateway 跑在云端。通过 CloudBridge WS 穿透 NAT |

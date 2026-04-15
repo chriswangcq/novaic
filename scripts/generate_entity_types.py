@@ -32,11 +32,17 @@ from typing import List
 SCRIPT_DIR   = Path(__file__).parent
 REPO_ROOT    = SCRIPT_DIR.parent
 GATEWAY_DIR  = REPO_ROOT / "novaic-gateway"
+BUSINESS_DIR = REPO_ROOT / "novaic-business"
+DEVICE_DIR   = REPO_ROOT / "novaic-device"
+COMMON_DIR   = REPO_ROOT / "novaic-common"
 ENTANGLED_PY = REPO_ROOT / "Entangled" / "packages" / "server-python"
 APP_DIR      = REPO_ROOT / "novaic-app"
 
 sys.path.insert(0, str(ENTANGLED_PY))
 sys.path.insert(0, str(GATEWAY_DIR))
+sys.path.insert(0, str(BUSINESS_DIR))
+sys.path.insert(0, str(DEVICE_DIR))
+sys.path.insert(0, str(COMMON_DIR))
 
 # ── Import entity defs ───────────────────────────────────────────────────────
 # Minimal stub to avoid pulling in all of Gateway's dependencies
@@ -139,7 +145,8 @@ def generate_ts(all_defs: List[EntityDef]) -> str:
         /**
          * THIS FILE IS AUTO-GENERATED. DO NOT EDIT MANUALLY.
          *
-         * Generated from: novaic-gateway/gateway/entity/defs.py
+         * Generated from: novaic-business/business/schema_push.py
+         *                 + novaic-device/device/schema_push.py
          * Generator:      scripts/generate_entity_types.py
          *
          * Regenerate:  python scripts/generate_entity_types.py
@@ -172,9 +179,10 @@ def main() -> None:
     parser.add_argument("--check", action="store_true", help="Check mode (no file writes, exit 1 on drift)")
     args = parser.parse_args()
 
-    # Load entity defs from Business schema_push (canonical source)
+    # Load entity defs from the current schema owners.
     from business.schema_push import ALL_BUSINESS_ENTITIES
-    all_entities = list(ALL_BUSINESS_ENTITIES.values())
+    from device.schema_push import ALL_DEVICE_ENTITIES
+    all_entities = list(ALL_BUSINESS_ENTITIES.values()) + list(ALL_DEVICE_ENTITIES.values())
 
     ts_content = generate_ts(all_entities)
     cs = checksum(ts_content)

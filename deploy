@@ -214,7 +214,7 @@ check_status() {
     echo ""
     worker_count=$(pgrep -f "main_novaic.py" 2>/dev/null | wc -l)
     queue_count=$(pgrep -cf "main_novaic.py queue-service" 2>/dev/null || echo 0)
-    echo "  Workers: $((worker_count - queue_count)) 进程 (watchdog, health, scheduler, task-workers, saga-workers)"
+    echo "  Workers: $((worker_count - queue_count)) 进程 (health, scheduler, task-workers, saga-workers)"
   '
   echo ""
   info "检查 relay 服务状态"
@@ -267,11 +267,10 @@ check_logs() {
     tools)        $API_SSH "tail -50 /opt/novaic/data/logs/tools-server.log" ;;
     runtime)      $API_SSH "tail -50 /opt/novaic/data/logs/queue-service.log" ;;
     worker)       $API_SSH "tail -50 /opt/novaic/data/logs/task-worker-control-1.log" ;;
-    watchdog)     $API_SSH "tail -50 /opt/novaic/data/logs/watchdog.log" ;;
     health)       $API_SSH "tail -50 /opt/novaic/data/logs/health.log" ;;
     scheduler)    $API_SSH "tail -50 /opt/novaic/data/logs/scheduler.log" ;;
     relay)        $RELAY_SSH "journalctl -u novaic-quic-service --no-pager -n 50" ;;
-    *)            fail "未知服务: $svc (可选: gateway, business, device, entangled, cortex, tools, runtime, worker, watchdog, health, scheduler, relay)" ;;
+    *)            fail "未知服务: $svc (可选: gateway, business, device, entangled, cortex, tools, runtime, worker, health, scheduler, relay)" ;;
   esac
 }
 
@@ -305,7 +304,7 @@ show_help() {
   echo -e "${CYAN}聚合 & 运维:${NC}"
   echo "  all [ver]         部署全部"
   echo "  status            检查所有服务状态"
-  echo "  logs [svc]        查看日志 (gateway|business|device|entangled|cortex|runtime|worker|watchdog|health|scheduler|relay)"
+  echo "  logs [svc]        查看日志 (gateway|business|device|entangled|cortex|runtime|worker|health|scheduler|relay)"
   echo "  reset-password <email>  在 api 机上重置该用户登录密码（交互输入；可选 NOVAIC_DEPLOY_NEW_PASSWORD）"
   echo ""
 }
