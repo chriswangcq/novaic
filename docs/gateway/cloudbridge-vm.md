@@ -1,21 +1,68 @@
-# 内网穿透中转桥：CloudBridge WS 与 Vm 管理
+# CloudBridge WS — Device Service ↔ VmControl 通信
 
-> 路径参考：`novaic-gateway/gateway/vm/manager.py` 和 `gateway/api/routes.py` 等。
+> 更新：2026-04-15（硬切完成后）
+> 硬切设计文档：[../architecture/cloudbridge-vmcontrol-hard-cut.md](../architecture/cloudbridge-vmcontrol-hard-cut.md)
 
-## 1. 为什么需要 CloudBridge？
-在一个“桌面端内嵌重重环境与虚拟机”（如我们的 Tauri UI 需要跑 QEMU 的 Linux，或是接远端手机屏幕）并在“云端拥有高管大脑（Gateway、Agent）”的网络拓扑里：
-云端那台网关没法主动往内网用户电脑里面发起请求：“喂，把你本地开的那个 Chrome 里的截图用 VNC 发我一下”。必须依靠一条由内打向外、且永远长连的隧道。
+## 1. 架构现状
 
-这套长连接被定义在路口：`/internal/pc/ws`。
-- Tauri 端本地启动的一个专属二进制包称为 **`VmControl`**，它一跑起来就会建立对云网关这条 Web Socket 直连。
-- 它在网关这边通过一个称为 `pc_client_manager` 的组件进行保持与生命期维持。它充当着云打着反向代理。
+CloudBridge WS 是 **Device Service** (`:19993`) 与用户 PC 上的 **VmControl** (Rust) 之间的长连接通道。
 
-## 2. CloudBridge 承载的内容
-由于内网控制权由本地 `VmControl` 把持，它反手把自己所有的能耐注册给了这条管道的事件流：
-- **上报虚拟机列表 (Agent List Sync)**：本地扫到了哪些虚拟机、配置及当前是否活着的进程状态，自动由网桥上抛告诉网关去更新（网关会在 `manager.py` 借以管理和修复重启列表）。
-- **执行指令 (Downstream Execute)**：当我们在云端发出的某些操作需要打碎重配虚拟机资源、或是获取某个本地 Vnc URL 资源。
-例如在 `api/vm.py` 里检查能否下载重置云镜像之类：网关是不碰真实的硬盘与资源的；全部请求只是封装成 JSON 从这边被塞进去打到了 `VmControl` 执行后抛结果上来。
+```
+App → Gateway (AppWS signaling) → Device Service → CloudBridge (typed WS) → VmControl
+```
 
-## 3. Strict 模式下的硬隔离
-进入 Phase 3 的部署，云端彻底被改作：云不产生执行态！
-云端在关于 VM 的一切操作，如果没有收到来自 `vmcontrol` 的确认或在系统初始化里发生 `health()` 健康度脱节：将强行抛出拒绝接纳请求。即完全通过 `manager.py` (The Single VM Source-of-Truth) 限定边界。
+关键边界：
+
+- **Gateway** 只负责 App 信令（WebRTC offer/answer/ICE）转发和 TURN 凭证注入，不拥有 CloudBridge
+- **Device Service** 拥有 CloudBridge WS (`/internal/pc/ws`)，作为设备路由和 typed command broker
+- **VmControl** 是唯一 runtime owner，负责 VM/WebRTC/输入控制/截图等全部执行
+
+## 2. 协议
+
+CloudBridge 采用 **typed WebSocket protocol**，每条消息都有明确的 `type` 字段。
+
+### Device Service → VmControl 命令
+
+```json
+{ "type": "vm_list", "request_id": "uuid" }
+{ "type": "vm_get", "request_id": "uuid", "vm_id": "agent-1" }
+{ "type": "vm_start", "request_id": "uuid", "vm_id": "agent-1", "payload": { ... } }
+{ "type": "vm_stop", "request_id": "uuid", "vm_id": "agent-1" }
+{ "type": "vm_restart", "request_id": "uuid", "vm_id": "agent-1" }
+{ "type": "vm_screenshot", "request_id": "uuid", "vm_id": "agent-1" }
+{ "type": "vm_input_keys", "request_id": "uuid", "vm_id": "agent-1", "payload": { ... } }
+{ "type": "webrtc_offer", "device_id": "dev-1", "session_id": "sess-1", "sdp_offer": "..." }
+{ "type": "webrtc_stop", "device_id": "dev-1", "session_id": "sess-1" }
+```
+
+### VmControl → Device Service 结果 / 事件
+
+```json
+{ "type": "command_result", "request_id": "uuid", "ok": true, "result": { ... } }
+{ "type": "command_error", "request_id": "uuid", "error": { "code": "vm_not_found", "message": "..." } }
+{ "type": "webrtc_answer", "device_id": "dev-1", "session_id": "sess-1", "sdp_answer": "..." }
+{ "type": "ice_candidate", "device_id": "dev-1", "session_id": "sess-1", "candidate": { ... } }
+{ "type": "vm_status_report", "vm_ids": [ ... ], "android_serials": [ ... ] }
+```
+
+## 3. 代码位置
+
+| 职责 | 文件 |
+|------|------|
+| CloudBridge WS 服务端 + typed command broker | `novaic-device/device/pc_client.py` |
+| CloudBridge WS 客户端 + typed command dispatch | `novaic-app/src-tauri/vmcontrol/src/cloud_bridge.rs` |
+| App 信令 (WebRTC relay) | `novaic-gateway/gateway/api/app_client.py` |
+| Northbound VM API | `novaic-device/device/vm_routes.py`, `vmcontrol_routes.py` |
+| Gateway → Device 内部 API | `novaic-device/device/gateway_facing_api.py` |
+| Agent tool proxy | `novaic-device/device/agent_vm_proxy.py` |
+
+## 4. 已删除的历史能力
+
+以下内容已在 2026-04-15 硬切中删除：
+
+- `proxy_request` / `proxy_response`（HTTP-over-WS 桥协议）
+- `gateway_url` fallback（VmControl 不再尝试连接 Gateway）
+- `VmManager` / 本地 QEMU 生命周期
+- VNC 路径（`/vnc` WS proxy、`vnc_url`、`restart_vnc`）
+- `legacy-*` device id fallback
+- `user_id="local"` fallback
