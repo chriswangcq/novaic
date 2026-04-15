@@ -11,8 +11,8 @@ Gateway 完成了从"God Module"到微服务的拆分：
 | 服务 | 端口 | 代码目录 | 职责 |
 |------|------|---------|------|
 | **Gateway** | `:19999` | `novaic-gateway/` | 瘦网关：Auth（JWT）、Entity Proxy、Turn（对话调度）、File Proxy、App WS |
-| **Business** | `:19994` | `novaic-business/` | Agent/Skill/Form/Model CRUD、消息操作、日志查询、Provider 代理 |
-| **Device** | `:19993` | `novaic-device/` | Device CRUD、VM 生命周期、PC Client WebSocket Bridge、VmControl 路由 |
+| **Business** | `:19994` | `novaic-business/`（submodule） | Agent/Skill/Form/Model CRUD、消息操作、日志查询、Provider 代理 |
+| **Device** | `:19993` | `novaic-device/`（submodule） | Device CRUD、VM 生命周期、PC Client WebSocket Bridge、VmControl 路由 |
 
 **关键设计决策**：
 - 三个服务共享 `novaic-common` 配置和 `novaic-gateway` 的 Python venv（Business/Device 没有独立 venv）

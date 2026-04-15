@@ -15,6 +15,8 @@ git submodule update --init --recursive
 |------|------|
 | `novaic-app` | Tauri 桌面 + 移动端 |
 | `novaic-gateway` | 云端 Gateway |
+| `novaic-business` | Business Service（Agent/Skill/Form/Model） |
+| `novaic-device` | Device Service（设备 / PC-Bridge WS / VM） |
 | `novaic-llm-factory` | LLM Factory |
 | `novaic-quic-service` | STUN + Relay |
 | `novaic-agent-runtime` | Agent 运行时（Task/Saga/Workers） |
