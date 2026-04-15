@@ -6,11 +6,12 @@
 `entangled.server` 作为核心协议层，它是严谨的心智基石。它**不关心底层通过什么存储**（内存、SQL 还是 NoSQL），只定义通信法则。
 
 ## 2. 核心抽象（`EntityStoreProtocol`）
-采用鸭子类型抽象的 `EntityStoreProtocol(ABC)` 提供 5 项泛型约定：
+采用鸭子类型抽象的 `EntityStoreProtocol(ABC)` 提供 6 项泛型约定：
 - `list(entity_type, user_id, ...)`
 - `get(entity_type, user_id, entity_id)`
 - `create(entity_type, user_id, params)`
 - `update(...)`
+- `upsert(...)` — create-or-update 语义，用于首次可能不存在的固定形态实体（如 agent-binding）
 - `delete(...)`
 
 所有的业务类必须满足协议要求，`gw_store` 会继承这些规则。由于实现了高维度的依赖反转，`entangled.server.notifier` 完全不知道下面跑的是数据库逻辑，只要能调用即可进行全局广播。

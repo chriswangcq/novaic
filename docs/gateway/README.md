@@ -12,7 +12,7 @@ Gateway 完成了从"God Module"到微服务的拆分：
 |------|------|---------|------|
 | **Gateway** | `:19999` | `novaic-gateway/` | 瘦网关：Auth（JWT）、Entity Proxy、Turn（对话调度）、File Proxy、App WS |
 | **Business** | `:19994` | `novaic-business/`（submodule） | Agent/Skill/Form/Model CRUD、消息操作、日志查询、Provider 代理 |
-| **Device** | `:19993` | `novaic-device/`（submodule） | Device CRUD、VM 生命周期、PC Client WebSocket Bridge、VmControl 路由 |
+| **Device** | `:19993` | `novaic-device/`（submodule） | Device registry、CloudBridge typed WS broker、VmControl typed command routing、northbound 设备 API |
 
 **关键设计决策**：
 - 三个服务共享 `novaic-common` 配置和 `novaic-gateway` 的 Python venv（Business/Device 没有独立 venv）
@@ -26,7 +26,8 @@ Gateway 完成了从"God Module"到微服务的拆分：
 | 专题 | 说明 |
 |------|------|
 | [rest-auth-and-deps.md](rest-auth-and-deps.md) | FastAPI 路由配置栈，双轨鉴权（Token VS. Nginx Header），以及全局权限依赖链 `get_current_user`。 |
-| [cloudbridge-vm.md](cloudbridge-vm.md) | `CloudBridge WS`：云网关是如何穿透回连开发者或客户端本机上的 `VmControl` 去管理 VM 资源的。**注意：PC Client WS 已移至 Device Service (:19993)**。 |
+| [cloudbridge-vm.md](cloudbridge-vm.md) | `CloudBridge WS`：Device Service ↔ VmControl 的 typed WebSocket 通信协议。PC Client WS 归属 Device Service (`:19993`)，Gateway 不拥有 CloudBridge。 |
+| [../architecture/cloudbridge-vmcontrol-hard-cut.md](../architecture/cloudbridge-vmcontrol-hard-cut.md) | CloudBridge / VmControl / Device Service 的硬切设计文档：删除本地 QEMU、VNC 与 `proxy_request`，收敛到 typed WS 协议。 |
 | [app-ws-and-signaling.md](app-ws-and-signaling.md) | `AppBridge WS`：不仅提供数据推送，且承载了 WebRTC Offer/Answer/ICE 打洞信令的共轨传输。 |
 
 ### 数据库层融合记录

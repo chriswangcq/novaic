@@ -13,6 +13,6 @@
 ## 3. JWT 集成与挂载路由 (`auth.py` / `ws.py`)
 被剥离的这套轻量服务自带全系端点（Endpoints）：
 - **Auth 验证**：它暴露 `/auth/login` 等签发独立 JWT 而非依赖重型的 `api.gradievo.com`。
-- **全系 REST APIs**：在 `crud.py` 里直接为你用元编程路由暴露增删改查。
+- **全系 REST APIs**：在 `crud.py` 里直接为你用元编程路由暴露增删改查。批量条件删除使用 `POST /{entity}/delete-where`（避免与 `DELETE /{entity}/{id}` 的路由冲突）。
 - **主 WebSocket 打通**：提供 `/api/ws` 可以用标准版的 React/Rust Client 直连。
 - 目前对于 NovAIC 产品全量架构，这种启动方式主要是供**外部轻量级参考或是独立 SDK 开发**使用的。NovAIC 在云端其实是用 `novaic-gateway` 以子模块**内部寄生使用**的形式去运转核心 Entangled 同步能力（参阅 gateway-integration 特集）。

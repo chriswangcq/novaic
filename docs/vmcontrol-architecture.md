@@ -10,7 +10,7 @@ Tauri 是一个用于挂载前台 WebUI (React/Vite) 的壳子，但你不能用
 `vmcontrol` 就是附着在这个进程边界里作为大后盾服务。
 
 - 对于同机启动的 `novaic-app`，它提供了本地极低延迟的高频鼠标轨迹与剪切板桥梁。
-- 对于身在云端的 `Cortex/Gateway` 来说，`vmcontrol` 是一双在内网“拥有眼睛与手的机器总管”：它通过 CloudBridge WS 时刻向外宣告：“我接管了一台 Android 设备，或者是一台 QEMU 的机器”。
+- 对于身在云端的 `Device Service` 来说，`vmcontrol` 是一双在内网“拥有眼睛与手的机器总管”：它通过 typed CloudBridge WS 连接 Device Service，时刻向外宣告：“我接管了一台 Android 设备，或者是一台 QEMU 的机器”。Gateway 只负责 App 信令转发，不直接与 VmControl 通信。
 
 ## 2. 核心大一统：全面进入 WebRTC
 如果你回溯了之前的系统版本，你会发现早年控制不同机器要开不同的网页（开 Android 要看 mjpeg，看 Linux 要调个无窗口的 noVNC iframe 刷流）。

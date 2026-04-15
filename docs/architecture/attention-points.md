@@ -190,14 +190,23 @@ Gateway 完成微服务拆分（2026-04-14）：
 
 ---
 
-## 15. Device 服务存在两条 VM 路径（P3）
+## 15. ~~Device 服务存在两条 VM 路径~~ ✅ 已完成硬切（2026-04-15）
 
-- **本地 QEMU**（`VmManager`）：启动时 `recover_processes()`，关闭时 `stop_all()`
-- **远程 VmControl**（`pc_client` WebSocket → 用户 PC 上的 Rust 进程）
+已完成：
 
-注释标记本地 QEMU 为 "legacy/local"，但代码仍活跃。两条路径并存增加理解成本和测试负担。
+- 删除 `VmManager`、`recover_processes()`、`stop_all()` 及整个 `device/vm/` 本地 QEMU runtime
+- 删除 VNC 路径（`/vnc` WS proxy、`vnc_url`、`restart_vnc`）
+- CloudBridge 协议从 `proxy_request/proxy_response`（HTTP-over-WS）改为 typed command/event 协议
+- `pc_client.py` 重写为 `DeviceCommandBroker`，所有 VM/Android/Desktop 操作通过 typed command 执行
+- `cloud_bridge.rs` 删除 `gateway_url` fallback，只连接 Device Service
+- SSH key 管理从 `device/vm/` 解耦至独立的 `device/ssh_keys.py`
 
-**行动项：** 若云端部署不再使用本地 QEMU，标记 `VmManager` 为 `@deprecated` 并在 `main_device.py` 中用 feature flag 控制是否启动。
+结果：
+
+- Device Service 启动/关闭不再触碰本地 VM 进程
+- `VmControl` 是唯一 runtime owner，通过 typed CloudBridge WS 与 Device Service 通信
+- WebRTC 是唯一远程控制视频面
+- 详见 [CloudBridge / VmControl / Device Service 硬切方案](cloudbridge-vmcontrol-hard-cut.md)
 
 ---
 
