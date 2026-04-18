@@ -132,7 +132,7 @@
 > **DoD**：没有任何业务代码手写 dispatch；dispatch 仅由 changefeed subscriber 发起。
 
 ### P2-1  选型 changefeed 载体
-- Status: `[ ]`
+- Status: `[x]`
 - Scope: `novaic-entangled/` + `novaic-business/` 决策会议
 - 任务：
   - [ ] 在三种方案中二选一：
@@ -144,8 +144,8 @@
 - 承诺：R6
 
 ### P2-2  实现 changefeed / outbox
-- Status: `[ ]`
-- Scope: 视 P2-1 决定
+- Status: `[x]`
+- Scope: `Entangled/packages/server-python/entangled/sql/entity_store.py` + `novaic-business/business/schema_push.py`
 - 方案 B 任务示例：
   - [ ] Entangled schema 新增 `message_outbox` 表 `(id, message_id, agent_id, type, created_at, delivered_at, attempts, last_error)`
   - [ ] 每次写 `chat_messages` 在同事务内插入 outbox 条目

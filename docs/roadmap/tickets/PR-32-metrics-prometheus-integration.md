@@ -32,6 +32,10 @@
 - [ ] `dispatch_latency_seconds{trigger_type}` histogram：记录 Assembler 完成 assemble 与发包的全链路耗时。
 - [ ] `dispatch_failed_total{caller="business"}` counter (PR-11)：记录 Fire-and-Forget 模式下的无声发包失败（Silent failure），防止消息孤儿现象。
 
+### 来自 PR-14 (Message Outbox)
+- [ ] `outbox_enqueued_total{trigger_type}` counter：每次同事务 INSERT message_outbox 时打一次。
+- [ ] `outbox_backlog_count` gauge：周期性 `COUNT(*) WHERE delivered_at IS NULL`，由 subscriber 或 scheduler 定时刷新。
+
 ## 3. 实施 Checklist
 
 - [ ] 在 `pyproject.toml` 或依赖配置中合理引入 `prometheus_client` 到所需模块（如 `novaic-common` 和 `novaic-business`）。
