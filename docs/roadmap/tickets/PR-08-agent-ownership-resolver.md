@@ -5,7 +5,7 @@
 | **Phase** | 1 |
 | **Milestone** | M1 |
 | **承诺** | R3 |
-| **Status** | `[ ]` |
+| **Status** | `[x]` |
 | **Depends on** | PR-01, PR-02, PR-05, PR-07 |
 | **Blocks** | PR-10 |
 | **估时** | 0.5 d |
@@ -22,8 +22,8 @@
 
 ## 前置 Checklist
 
-- [ ] PR-07 合并 + Business 已上线端点
-- [ ] PR-05 合并 + `internal_client` 可用
+- [x] PR-07 合并 + Business 已上线端点
+- [x] PR-05 合并 + `internal_client` 可用
 
 ## 实施 Checklist
 
@@ -55,46 +55,46 @@ class AgentOwnershipResolver:
 
 ### 必做
 
-- [ ] 缓存命中 + 未过期 → 直接返回
-- [ ] 过期/未命中 → 调 `GET /internal/agents/{id}/owner`
+- [x] 缓存命中 + 未过期 → 直接返回
+- [x] 过期/未命中 → 调 `GET /internal/agents/{id}/owner`
   - 200 → 存缓存，返回
   - 404 → 抛 `AgentNotOwnedError(agent_id=...)`（不缓存负例，避免竞态：agent 刚创建）
   - 网络错误 / 5xx → 抛 `DispatchError(kind="network", ...)`（不伪装成 404）
-- [ ] 并发保护：同一 `agent_id` 并发 resolve 只发一次 HTTP（用 `asyncio.Lock` 或 per-key future）
-- [ ] 无静默降级：**任何**失败都 raise
+- [x] 并发保护：同一 `agent_id` 并发 resolve 只发一次 HTTP（用 `asyncio.Lock` 或 per-key future）
+- [x] 无静默降级：**任何**失败都 raise
 
 ### 不做
 
-- [ ] 不做多级缓存（进程内 dict 够）
-- [ ] 不做 prefetch / batch（需要时 PR-30+ 再补）
-- [ ] 不做持久化（进程重启缓存清空，符合 TTL 语义）
+- [x] 不做多级缓存（进程内 dict 够）
+- [x] 不做 prefetch / batch（需要时 PR-30+ 再补）
+- [x] 不做持久化（进程重启缓存清空，符合 TTL 语义）
 
 ### 全局注入点
 
-- [ ] 提供一个模块级 `get_resolver()` 工厂（首次调用 lazy init，从 env 读 `BUSINESS_INTERNAL_URL`）
-- [ ] 或让 `DispatchAssembler` 构造时接收 resolver 实例（PR-10 决定）
+- [x] 提供一个模块级 `get_resolver()` 工厂（首次调用 lazy init，从 env 读 `BUSINESS_INTERNAL_URL`）
+- [x] 或让 `DispatchAssembler` 构造时接收 resolver 实例（PR-10 决定）
 
 ## 测试 Checklist
 
-- [ ] `tests/test_ownership.py`:
-  - [ ] 命中 → 直接返回，0 次 HTTP
-  - [ ] 首次 → 1 次 HTTP，结果进缓存
-  - [ ] TTL 过期 → 再发一次 HTTP
-  - [ ] 404 → `AgentNotOwnedError`
-  - [ ] 网络错误 → `DispatchError(kind="network")`
-  - [ ] 并发 resolve 同一 id → 只一次 HTTP（需 mock 可计数）
+- [x] `tests/test_ownership.py`:
+  - [x] 命中 → 直接返回，0 次 HTTP
+  - [x] 首次 → 1 次 HTTP，结果进缓存
+  - [x] TTL 过期 → 再发一次 HTTP
+  - [x] 404 → `AgentNotOwnedError`
+  - [x] 网络错误 → `DispatchError(kind="network")`
+  - [x] 并发 resolve 同一 id → 只一次 HTTP（需 mock 可计数）
 
 ## 可观测性 Checklist
 
-- [ ] metric `ownership_resolver_total{result=hit|miss|error}` counter
-- [ ] metric `ownership_resolver_latency_seconds` histogram（miss 路径）
-- [ ] log（DEBUG 级）：`resolver hit agent_id=... user_id=... from=cache|http`
+- [x] metric `ownership_resolver_total{result=hit|miss|error}` counter
+- [x] metric `ownership_resolver_latency_seconds` histogram（miss 路径）
+- [x] log（DEBUG 级）：`resolver hit agent_id=... user_id=... from=cache|http`
 
 ## 文档 Checklist
 
-- [ ] [message-wake-refactor.md](../message-wake-refactor.md) P1-3（第二半）→ `[x]`
-- [ ] 本工单 Status → `[x]`
-- [ ] 在 [architecture/authentication.md](../../architecture/authentication.md) 或新文档说明 "Cortex tenant 约束止于 Assembler"
+- [x] [message-wake-refactor.md](../message-wake-refactor.md) P1-3（第二半）→ `[x]`
+- [x] 本工单 Status → `[x]`
+- [x] 在 [architecture/authentication.md](../../architecture/authentication.md) 或新文档说明 "Cortex tenant 约束止于 Assembler"
 
 ## 验收命令
 

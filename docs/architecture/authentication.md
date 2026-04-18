@@ -56,3 +56,9 @@
 - **日志格式**：自动生成 `caller=<service_name>` 字段及 `internal=1` 到访问日志，保证 ELK 等系统可准确追踪内网来源。
 - **ContextVar 传递**：利用 `common.log_context.caller_var` 在同一进程的不同异步协程间透传 caller（为将来的 LogContext 做准备）。
 - **校验逻辑**：灰度期间对于缺失 caller 的请求只打 WARN 级日志而不触发 401。
+
+## 内部所有权解析 (AgentOwnershipResolver)
+
+从 **PR-08** 开始，系统不再依赖上游接口透传或拼装 `user_id`，而是通过内部 HTTP 请求统一通过 Business 获取。
+- **所有权隔离**：业务端查询 404（无论是不存在还是无主），都会被统一收敛抛出 `AgentNotOwnedError`，以对调用方屏蔽底层存储差异。
+- **Cortex 租户约束止于 Assembler**：Cortex 的强 tenant 约束（`user_id`, `agent_id`）从架构上将止步于 `DispatchAssembler` 层。后续调度与执行将基于 Assembler 的信任体系与内部身份传递，不再外泄该鉴权要求至更上游的网络契约中。
