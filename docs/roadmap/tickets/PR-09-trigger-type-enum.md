@@ -83,7 +83,7 @@ class TriggerType(str, Enum):
 
 - [x] 单测：`TriggerType.from_legacy("user_response") is TriggerType.USER_MESSAGE`
 - [x] 迁移脚本：在一份拷贝 DB 上跑一次；再跑一次；结果幂等
-- [x] 端到端：新建 subagent → `wake_triggers` 默认 `[{"type": "user_message"}]`
+- [/] 端到端：新建 subagent → `wake_triggers` 默认 `[{"type": "user_message"}]`（手工验证）
 
 ## 可观测性 Checklist
 
