@@ -175,7 +175,12 @@ rsync_one() {
     local dst_path="$REMOTE_ROOT/$src_name"
     echo "  [rsync] $src_name/ → $TARGET:$dst_path/"
     ssh "$TARGET" "mkdir -p $dst_path"
-    rsync -az --delete "${RSYNC_EXCLUDES[@]}" \
+    # -L (--copy-links) is required because several submodules have
+    # `common` as a symlink -> ../novaic-common/common for local dev;
+    # prod has them as real directory copies. Without -L, rsync fails
+    # with "cannot delete non-empty directory" when trying to replace
+    # a populated dir with a symlink.
+    rsync -azL --delete "${RSYNC_EXCLUDES[@]}" \
         "$src_path/" "$TARGET:$dst_path/"
 }
 
