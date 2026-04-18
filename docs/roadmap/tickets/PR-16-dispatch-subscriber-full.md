@@ -5,7 +5,7 @@
 | **Phase** | 2 |
 | **Milestone** | M2 |
 | **承诺** | R1 + R6 |
-| **Status** | `[x]` |
+| **Status** | `[ ]` |
 | **Depends on** | PR-15 |
 | **Blocks** | PR-17 |
 | **估时** | 1.5 d |
