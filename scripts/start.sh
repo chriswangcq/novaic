@@ -42,6 +42,18 @@ PORT_CORTEX=19996
 PORT_FILE_SERVICE=19995
 PORT_DEVICE=19993
 
+# ── Canary / Subscriber control (PR-17) ──────────────────────────────────────
+#   NOVAIC_ENABLE_SUBSCRIBER=1        → pass --enable-subscriber to Business
+#   NOVAIC_HEALTH_CHECK_INTERVAL=N    → override health worker --check-interval
+#                                        (default 30, Canary uses 5 for fast
+#                                        failover; see docs/runbooks/subscriber-canary.md)
+
+SUBSCRIBER_FLAG=""
+if [ "${NOVAIC_ENABLE_SUBSCRIBER:-0}" = "1" ] || [ "${NOVAIC_ENABLE_SUBSCRIBER:-}" = "--enable-subscriber" ]; then
+    SUBSCRIBER_FLAG="--enable-subscriber"
+fi
+HEALTH_CHECK_INTERVAL="${NOVAIC_HEALTH_CHECK_INTERVAL:-30}"
+
 # ── Derived URLs (used only as CLI arg values below) ─────────────────────────
 
 ENTANGLED_URL="http://$HOST:$PORT_ENTANGLED"
@@ -131,8 +143,12 @@ PYTHONPATH="$BASE/Entangled/packages/server-python:$BASE/novaic-common:$BASE/nov
 $(py novaic-gateway) "$BASE/novaic-business/main_business.py" \
     --host "$HOST" --port "$PORT_BUSINESS" --data-dir "$DATA_DIR" \
     --entangled-url "$ENTANGLED_URL" --gateway-url "$GW_URL" \
+    $SUBSCRIBER_FLAG \
     >> "$LOG_DIR/business-$(date +%Y%m%d).log" 2>&1 &
 wait_port "$PORT_BUSINESS" "Business Service"
+if [ -n "$SUBSCRIBER_FLAG" ]; then
+    echo "  NOTE: DispatchSubscriber enabled (Canary mode, PR-17)"
+fi
 
 PYTHONPATH="$BASE/Entangled/packages/server-python:$BASE/novaic-common:$BASE/novaic-device:${PYTHONPATH:-}" \
 $(py novaic-gateway) "$BASE/novaic-device/main_device.py" \
@@ -189,7 +205,10 @@ for i in 1 2; do
     $PY $MAIN saga-worker $WORKER_ARGS --max-concurrent 4 >> "$LOG_DIR/saga-worker-${i}.log" 2>&1 &
 done
 
-$PY $MAIN health $WORKER_ARGS --check-interval 30 --task-timeout 3600 --saga-timeout 3600 >> "$LOG_DIR/health.log" 2>&1 &
+$PY $MAIN health $WORKER_ARGS --check-interval "$HEALTH_CHECK_INTERVAL" --task-timeout 3600 --saga-timeout 3600 >> "$LOG_DIR/health.log" 2>&1 &
+if [ "$HEALTH_CHECK_INTERVAL" != "30" ]; then
+    echo "  NOTE: HealthWorker check-interval=${HEALTH_CHECK_INTERVAL}s (override, Canary/test)"
+fi
 $PY $MAIN scheduler \
     --gateway-url "$GW_URL" \
     --business-url "$BIZ_URL" \
