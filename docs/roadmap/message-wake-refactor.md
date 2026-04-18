@@ -97,10 +97,11 @@
 - 承诺：R2 + R3
 
 ### P1-6  老 `_dispatch_trigger` 迁到 Assembler
-- Status: `[ ]`
-- Scope: `novaic-business/business/internal/subagent.py`（subagent_send / spawn_subagent 两处）
+- Status: `[x]`
+- Scope: `novaic_business`, `novaic_health_worker`, `novaic_scheduler`
 - 任务：
-  - [ ] 替换 `_dispatch_trigger` 内部实现 → 调 `DispatchAssembler`
+  - [x] 把原有的直接 `httpx.post('/dispatch')` 代码删掉
+  - [x] 注入并调用 `DispatchAssembler.assemble_and_dispatch`
   - [ ] **暂时保留**函数名作为薄壳（Phase 2 会彻底删）
 - 验收：subagent_send 端到端依然工作（单测 + 手工触发）
 - 承诺：R2
