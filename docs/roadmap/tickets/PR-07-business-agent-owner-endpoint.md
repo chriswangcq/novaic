@@ -5,7 +5,7 @@
 | **Phase** | 1 |
 | **Milestone** | M1 |
 | **承诺** | R3 |
-| **Status** | `[ ]` |
+| **Status** | `[x]` |
 | **Depends on** | — |
 | **Blocks** | PR-08 |
 | **估时** | 0.5 d |
@@ -24,18 +24,18 @@
 
 ## 前置 Checklist
 
-- [ ] 确认数据源：
+- [x] 确认数据源：
   ```bash
   sqlite3 ~/.novaic/data/entangled.db "PRAGMA table_info(agents);"
   # 应有 user_id 字段
   ```
-- [ ] 如没有 owner 字段 → 单独一个先导 PR 补 schema；本 PR 阻塞
+- [x] 如没有 owner 字段 → 单独一个先导 PR 补 schema；本 PR 阻塞
 
 ## 实施 Checklist
 
 ### 路由
 
-- [ ] `GET /internal/agents/{agent_id}/owner`
+- [x] `GET /internal/agents/{agent_id}/owner`
   - 200 `{"agent_id": "...", "user_id": "..."}`
   - 404 `{"error": "agent not found", "agent_id": "..."}`
   - 内部端点，走已有 internal auth（X-Internal-Key）
@@ -57,31 +57,31 @@ async def get_owner(agent_id: str, store: EntangledStore = Depends(...)):
     return {"agent_id": agent_id, "user_id": user_id}
 ```
 
-- [ ] Handler 入口 log：`agent_owner_lookup agent_id=... user_id=... caller=<from X-Internal-Service>`
+- [x] Handler 入口 log：`agent_owner_lookup agent_id=... user_id=... caller=<from X-Internal-Service>`
 
 ### 边界
 
-- [ ] agent 存在但 `user_id IS NULL` → 400 vs 404 的语义选择：**404**（"no owner"），便于 resolver 统一抛 `AgentNotOwnedError`
-- [ ] 同一 `agent_id` 不可能有两个 owner（DB 级约束已保证）；仅返回第一条
+- [x] agent 存在但 `user_id IS NULL` → 400 vs 404 的语义选择：**404**（"no owner"），便于 resolver 统一抛 `AgentNotOwnedError`
+- [x] 同一 `agent_id` 不可能有两个 owner（DB 级约束已保证）；仅返回第一条
 
 ## 测试 Checklist
 
-- [ ] 单测：
-  - [ ] 正常 agent → 200 + user_id
-  - [ ] 不存在 → 404
-  - [ ] agent 存在但 user_id NULL → 404
-- [ ] 集成：start Business + curl 内部端点
+- [x] 单测：
+  - [x] 正常 agent → 200 + user_id
+  - [x] 不存在 → 404
+  - [x] agent 存在但 user_id NULL → 404
+- [x] 集成：start Business + curl 内部端点
 
 ## 可观测性 Checklist
 
-- [ ] metric `agent_owner_lookup_total{result=hit|miss}` counter
-- [ ] log 带 `caller=`（依赖 PR-06）
+- [-] metric `agent_owner_lookup_total{result=hit|miss}` counter
+- [x] log 带 `caller=`（依赖 PR-06）
 
 ## 文档 Checklist
 
-- [ ] [message-wake-refactor.md](../message-wake-refactor.md) P1-3（第一半）→ `[x]`
-- [ ] 本工单 Status → `[x]`
-- [ ] [docs/cortex/internal-api-schemas.md](../../cortex/internal-api-schemas.md) 里补 Business 这条内部端点契约
+- [x] [message-wake-refactor.md](../message-wake-refactor.md) P1-3（第一半）→ `[x]`
+- [x] 本工单 Status → `[x]`
+- [x] [docs/cortex/internal-api-schemas.md](../../cortex/internal-api-schemas.md) 里补 Business 这条内部端点契约
 
 ## 验收命令
 
