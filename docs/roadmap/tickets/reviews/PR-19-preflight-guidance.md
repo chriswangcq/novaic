@@ -235,3 +235,57 @@ PR-19 可以借机把 `health_worker_sync.py` 的 `from common.http.clients impo
 - ✅ §B.1 修 X-Internal-Key 是无争议去噪
 - ⏳ §B.2 候选修法三选一（a/b/c）必须在 preflight report 给出 discovery 证据 + 选择理由 + 回避其他两条的原因
 - ✅ §B.3 不写清洗脚本（除非 discovery 推翻）
+
+---
+
+## §I 交付记录（PR-19 T1 实施收尾，2026-04-18 22:45 UTC）
+
+### I.1 代码变更（1 个 commit 批次）
+
+| 文件 | 变更 |
+|---|---|
+| `novaic-agent-runtime/task_queue/workers/health_worker_sync.py` | B.1 `_get_client` 注入 `X-Internal-Key` + B.2 `event=health_skip` + B.6 `_buffered_streak` rate-limited 日志 + `fallback_skipped` 指标 |
+| `novaic-business/business/internal/message.py` | B.5 `interrupt_agent` 调 `/api/queue/recover/cancel-all` 补 `X-Internal-Key` |
+| `novaic-agent-runtime/tests/test_health_dispatch.py` | 新增 4 个用例覆盖 B.1 / B.2 / B.6 / streak-cleared |
+
+### I.2 测试结果
+
+```text
+novaic-agent-runtime: 24 passed
+novaic-business:      15 passed
+novaic-common:        31 passed (excl. cross-repo contract dir)
+```
+
+覆盖点：
+- `test_health_worker_injects_internal_key_header` — B.1 契约
+- `test_health_worker_skips_key_header_when_secret_missing` — 防御性：空 key 不注入空 header
+- `test_health_worker_skip_logs_as_info_and_increments_skipped` — B.2 降噪 + 指标
+- `test_health_worker_buffered_streak_rate_limited` — F.6 streak 1st / 10th / 20th
+- `test_health_worker_buffered_streak_cleared_on_non_buffered` — 转场一行 `event=health_fallback_streak_cleared`
+
+### I.3 生产验证
+
+重启时间：`2026-04-18T22:40:30Z`（`stop + start` 全栈）。
+
+| 指标 | 重启前 | 重启后 20s |
+|---|---:|---:|
+| `Recovery API returned 401` | 3544（累计） | **+0** |
+| `/api/queue/recover/all → 200` 状态码 | 10797 | **14340**（+3543） |
+| `/api/queue/recover/all → 401` 状态码 | 3946 | **不再增长** |
+| `messages_by_agent` | （canary_a_1 × 108） | `{}`（F.6 止血后已归零） |
+
+401 归零命令（可复现）：
+
+```bash
+ssh root@api.gradievo.com 'awk "/^2026-04-18 22:40:30/{flag=1} flag" \
+  /opt/novaic/data/logs/health.log | grep -c "Recovery API returned 401"'
+# → 0
+```
+
+### I.4 未触发的分支（已验证设计正确，仅缺压力场景）
+
+- `event=health_skip reason=queue_400` — prod 当前 `messages_by_agent={}`，没有触发条件。单测覆盖充分。
+- `event=health_fallback_streak_cleared` — 同上。
+- `event=health_fallback_streak agent=… streak=1|10|20` — 同上。
+
+PR-17 Phase 4 bake 期间若有任何真实 agent 进入 buffered streak，`pr17-bake.log` 的 `hlth_log` 断面会自动记下。
