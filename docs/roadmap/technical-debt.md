@@ -30,9 +30,8 @@
 - WS 断开前端 toast  
 - `prefsRepo` / IndexedDB 彻底移除（selectedAgent → Entangled 等）  
 - **Model 实体规范化**（见 [model-entity-refactor.md](model-entity-refactor.md)）
-- **内部 Key 未统一**：`QUEUE_SERVICE_INTERNAL_KEY` / `CORTEX_INTERNAL_KEY` / 其他服务 Key 各自独立。
-  后续 PR 统一为 `NOVAIC_INTERNAL_KEY` + 服务端 auth 兼容灰度。
-  （PR-05 调研期发现，刻意延后。见 reviews/PR-05-preflight-review.md §2。）
+- ~~**内部 Key 未统一**：PR-05 调研期发现。~~
+  **✗ 归档为"明确不做"（2026-04-18 PR-20 规划期复盘）**：每服务独立 key 提供**横向移动隔离**——Business 被打穿时，攻击者拿到的 key 只能认 Queue，不能直连 Cortex。我们的服务拓扑只有 5-6 个节点，多填几个 env 的"认知成本"远低于失去隔离的安全成本。PR-20（env 收窄）不改变这一设计，secrets 保留为 env 第一类。参考 `novaic-common/common/http/clients.py` 中的 `NOVAIC_INTERNAL_KEY is not set` WARNING 同步降级为 DEBUG（或干脆删除该变量），因为统一 key 的路径作废。
 - **重复的 Access Log**：Queue Service 等服务自带的 uvicorn `access_log=True` 和 `CallerLoggingMiddleware` 在同一请求上会各打一行日志（不冲突，但啰嗦），后续可统一关闭 uvicorn access log（PR-06 引入，待清理）。
 - **`internal_client` 命名陷阱**：在 `common.http.clients` 中，`internal_client` 只是 `internal_sync_client` 的 alias。这极易导致 asyncio 消费方误用（如在 PR-10 `DispatchAssembler` 中错误引用，导致 `await _client.post` 报 TypeError）。由于该 alias 散布于数十处代码，我们暂时不全局替换，但后续（或 PR-19 cleanup 时）应强制要求显式导入 `internal_sync_client` / `internal_async_client` 并删除此含糊不清的 alias。
 - **Silent Dispatch Failure 不可观测 (PR-11)**：Business 中调用 `DispatchAssembler` 发送消息采用了 Fire-and-Forget 语义。如果网络异常或 Queue 报错，虽然会打出 `logger.error`，但外部毫无感知（用户依然收到 HTTP 200）。这会导致严重的“消息孤儿”假象。目前已在 `PR-32` 中规划加入 `dispatch_failed_total{caller=business}` 计数器作为底线监控。
