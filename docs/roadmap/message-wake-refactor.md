@@ -58,12 +58,12 @@
 - 承诺：R7
 
 ### P1-3  `AgentOwnershipResolver` 实现
-- Status: `[ ]`
+- Status: `[x]`
 - Scope: `novaic_common/agents/ownership.py` + `novaic-business/business/internal/agents.py`
 - 任务：
   - [x] Business 新增 `GET /internal/agents/{agent_id}/owner` → `{user_id}` / 404
-  - [ ] `AgentOwnershipResolver`（进程内 TTL 缓存，默认 5 min）
-  - [ ] `resolve(agent_id) -> str | raise AgentNotOwnedError`
+  - [x] `AgentOwnershipResolver`（进程内 TTL 缓存，默认 5 min）
+  - [x] `resolve(agent_id) -> str | raise AgentNotOwnedError`
 - 验收：单测覆盖「命中 / 不存在 / 缓存命中 / TTL 过期」
 - 回归：mock Business 404 → resolver raise 明确错误
 - 承诺：R3
