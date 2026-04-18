@@ -5,7 +5,7 @@
 | **Phase** | 2 |
 | **Milestone** | M2 |
 | **承诺** | R1 |
-| **Status** | `[ ]` |
+| **Status** | `[/]` (code ready, Canary observation pending) |
 | **Depends on** | PR-16 |
 | **Blocks** | PR-18, PR-19 |
 | **估时** | 0.5 d（+ 24–48h 观察） |
@@ -18,22 +18,28 @@
 
 ## 范围
 
-- `scripts/start.sh`（`DISPATCH_SUBSCRIBER_ENABLED=1`）
-- `scripts/supervisor/*.conf`（如有）
-- 部署文档
+- `novaic-business/main_business.py`：新增 `--enable-subscriber` CLI flag（取代旧 `DISPATCH_SUBSCRIBER_ENABLED` env，环境变量保留作本地兜底）
+- `scripts/start.sh`：新增 `NOVAIC_ENABLE_SUBSCRIBER` / `NOVAIC_HEALTH_CHECK_INTERVAL` 环境入口
+- `scripts/deploy-business.sh`：首发（`--first-time`）+ 日常增量双模式部署脚本
+- `scripts/canary/traffic.py`：bootstrap / send / observe / watch 四合一 canary 工具
+- `docs/runbooks/subscriber-canary.md`：runbook（红线 / 分阶段 / 回滚）
+- `Entangled/.../outbox.py`：PR-16 follow-up — outbox 端点加 `db.transaction("global")`，修复与 `append` 并发下的 `database is locked`
 
 ## 前置 Checklist
 
-- [ ] PR-16 合并且本地/预发环境已跑通
-- [ ] 监控面板能看到 `subscriber_delivered_total` / `outbox_lag_seconds` / `healthworker_scan_total{result=ok}`
-- [ ] 有明确回滚路径（关 env）
+- [x] PR-16 合并且本地已跑通（Stage 0 dry-run 于 2026-04-18 完成，10 条并发消息 0 次 `database is locked`）
+- [-] 监控面板能看到 `subscriber_delivered_total` / `outbox_lag_seconds` / `healthworker_scan_total{result=ok}` → defer to PR-32；Canary 期用 runbook §Monitoring without Prometheus 的 shell 替身
+- [x] 有明确回滚路径（`NOVAIC_ENABLE_SUBSCRIBER=0` 重启 Business，HealthWorker 自动承接；SLO ≤ 45s）
 
 ## 实施 Checklist
 
-- [ ] `scripts/start.sh`：Business 启动命令加 `DISPATCH_SUBSCRIBER_ENABLED=1`
-- [ ] 若有 systemd / supervisor → 更新 service unit / program 定义
-- [ ] 部署文档 `docs/runbooks/deploy.md` 加一节 "dispatch_subscriber 开关与回滚"
-- [ ] 重启 Business → 日志应当看到 `dispatch_subscriber enabled`
+- [x] `novaic-business/main_business.py`：加 `--enable-subscriber` CLI flag；CLI 优先级高于 env；修复 PR-16 遗留的 `from common.client import` 错误 import；`outbox_client` 改为直接构造 `httpx.AsyncClient` + `X-Service-Token`（匹配 Entangled 认证）
+- [x] `scripts/start.sh`：Business 启动读 `NOVAIC_ENABLE_SUBSCRIBER`，HealthWorker 读 `NOVAIC_HEALTH_CHECK_INTERVAL`
+- [x] `scripts/deploy-business.sh`：`--first-time` 模式（停机 → 备份 DB → rsync → flag off 启动 → 健康检查 → 提示下一步）+ 默认增量模式
+- [x] `scripts/canary/traffic.py`：bootstrap（幂等创建 canary_u_1 / canary_a_1）、send、observe、watch
+- [x] `docs/runbooks/subscriber-canary.md`：红线警告（巨型集成上线）+ 4 阶段节拍 + 回滚 playbook
+- [x] `Entangled/.../outbox.py`：claim / mark_delivered / mark_failed 包一层 `db.transaction("global")`，与 `append` 串行化，消除 SQLite 写锁冲突
+- [ ] 生产重启 Business → 日志应当看到 `dispatch_subscriber enabled`（Phase 2，待发车）
 
 ## 观察期 Checklist（24–48h）
 

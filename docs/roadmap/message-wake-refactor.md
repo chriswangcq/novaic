@@ -160,17 +160,17 @@
 - 承诺：R6
 
 ### P2-3  Dispatch subscriber（Business 侧或独立进程）
-- Status: `[x]` (PR-15 Skeleton)
+- Status: `[x]` (PR-15 Skeleton + PR-16 Full + PR-17 Canary gating code ready)
 - Scope: `novaic-business/business/subscribers/dispatch_subscriber.py`（新建）
 - 任务：
-  - [ ] 订阅 outbox / changefeed
-  - [ ] 过滤：只消费 `wake-triggering` 消息类型（USER_MESSAGE / SUBAGENT_SEND / SPAWN_SUBAGENT / …）
-  - [ ] 幂等：同一 message_id 已 dispatch 过 → 跳过
-  - [ ] 调 `DispatchAssembler`
-  - [ ] 成功 → mark outbox delivered；失败 → attempts+1，retry backoff
+  - [x] 订阅 outbox / changefeed（PR-16: `/v1/outbox/claim` 原子出队）
+  - [x] 过滤：只消费 `wake-triggering` 消息类型（USER_MESSAGE / SUBAGENT_SEND / SPAWN_SUBAGENT）→ 写入侧已由 `SqlEntityDef.outbox_trigger_types` 过滤
+  - [x] 幂等：同一 message_id 已 dispatch 过 → 跳过（`idempotency_key=msg:{id}`，由 Queue Service 去重）
+  - [x] 调 `DispatchAssembler`
+  - [x] 成功 → mark outbox delivered；失败 → attempts+1，retry backoff（指数退避）
 - 验收：
-  - [ ] 发一条 USER_MESSAGE → Queue Service 收到且只收到一次 dispatch
-  - [ ] Subscriber 重启 → 未消费事件会被重放但最终 exactly-once（靠 message_id 去重）
+  - [-] 发一条 USER_MESSAGE → Queue Service 收到且只收到一次 dispatch（PR-17 Canary 观察期验证）
+  - [-] Subscriber 重启 → 未消费事件会被重放但最终 exactly-once（PR-17 Canary 验证，TTL 过期已在 Entangled 单测覆盖）
 - 承诺：R1 + R6
 
 ### P2-4  删除"消息写入处手写 dispatch"
