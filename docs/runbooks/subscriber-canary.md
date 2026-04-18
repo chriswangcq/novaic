@@ -91,8 +91,8 @@ On the production host:
 ssh root@api.gradievo.com
 export NOVAIC_ENABLE_SUBSCRIBER=1
 export NOVAIC_HEALTH_CHECK_INTERVAL=5          # tight loop for fast rollback verification
-bash /opt/novaic/services/scripts/start.sh --stop
-bash /opt/novaic/services/scripts/start.sh
+bash /opt/novaic/start.sh --stop
+bash /opt/novaic/start.sh
 ```
 
 Verify the start banner:
@@ -209,8 +209,8 @@ If Phase 1–4 all succeed:
 ssh root@api.gradievo.com
 unset NOVAIC_ENABLE_SUBSCRIBER
 unset NOVAIC_HEALTH_CHECK_INTERVAL
-bash /opt/novaic/services/scripts/start.sh --stop
-bash /opt/novaic/services/scripts/start.sh
+bash /opt/novaic/start.sh --stop
+bash /opt/novaic/start.sh
 ```
 
 Verification SLO: from the moment `--stop` returns to the moment
@@ -230,11 +230,11 @@ regression unrelated to subscriber):
 
 ```bash
 ssh root@api.gradievo.com
-bash /opt/novaic/services/scripts/start.sh --stop
+bash /opt/novaic/start.sh --stop
 cd /opt/novaic
 tar xzf snapshots/services-<TIMESTAMP>.tar.gz
 cp snapshots/entangled.db.bak-<TIMESTAMP> data/entangled.db
-bash services/scripts/start.sh
+bash /opt/novaic/start.sh
 ```
 
 Verify all `/health` endpoints are 200.
@@ -276,7 +276,7 @@ substitutes:
 | `/opt/novaic/services/novaic-business/`                       | Business service code               |
 | `/opt/novaic/services/Entangled/`                             | Entangled storage layer             |
 | `/opt/novaic/services/novaic-common/`                         | Shared library                      |
-| `/opt/novaic/services/scripts/start.sh`                       | Backend startup script (all services) |
+| `/opt/novaic/start.sh`                       | Backend startup script (all services) |
 | `/opt/novaic/services/scripts/canary/traffic.py`              | This runbook's traffic tool         |
 | `/opt/novaic/data/entangled.db`                               | SQLite file with `message_outbox`   |
 | `/opt/novaic/data/logs/business-YYYYMMDD.log`                 | Business log (daily rotated)        |
