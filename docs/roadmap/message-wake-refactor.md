@@ -117,10 +117,11 @@
 - 承诺：R2 + R3
 
 ### P1-8  `Scheduler worker` 迁到 Assembler
-- Status: `[ ]`
+- Status: `[x]`
 - Scope: `novaic-agent-runtime/task_queue/workers/scheduler_worker_sync.py`
-- 任务：类似 P1-7，同样走 Assembler
-- 验收：定时唤醒路径端到端仍工作
+- 任务：
+  - [x] 将旧的 `/dispatch` 定时唤醒调用迁为 `assembler.assemble_and_dispatch(TriggerType.SCHEDULED_WAKE, ...)`
+- 验收：`rg 'httpx\..*/dispatch' novaic-agent-runtime/` 应当不再包含 scheduler_worker
 - 承诺：R2
 
 ---
