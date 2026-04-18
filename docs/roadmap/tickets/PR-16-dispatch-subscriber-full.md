@@ -27,8 +27,8 @@
 
 ## 前置 Checklist
 
-- [ ] PR-14 / PR-15 合并
-- [ ] `message_outbox` 表存在并有积累（可手动灌几条测试行）
+- [x] PR-14 / PR-15 合并
+- [x] `message_outbox` 表存在并有积累（可手动灌几条测试行）
 
 ## 实施 Checklist
 
@@ -114,20 +114,20 @@ async def _deliver_one(self, row):
 
 ### 实装 checklist
 
-- [ ] `CLAIM_TTL_MS` / `MAX_ATTEMPTS` / `BACKOFF_CAP` 作为 class const 或 env 读取
-- [ ] Claim 用 `UPDATE ... WHERE id IN (SELECT ... ORDER BY id LIMIT)` + `RETURNING`（sqlite 3.35+ 原生支持）
-- [ ] Dispatch 成功后**必须**立刻 free lock（避免下次 tick 重复投递）
-- [ ] Dispatch 失败：
-  - `no_owner` / `bad_argument` → permanent
-  - `queue_400` → permanent（合约不匹配应报警而不是重试）
-  - `queue_5xx` / `network` → transient + backoff
-- [ ] 单个 tick 内多条消息按顺序处理（避免并发混淆 scope 归并）
-- [ ] Graceful shutdown：signal 到来时当前 tick 结束才退
-- [ ] Claim 的 lock 若进程 crash → `locked_until` 过期后自动被下个 worker 接管
+- [x] `CLAIM_TTL_MS` / `MAX_ATTEMPTS` / `BACKOFF_CAP` 作为 class const 或 env 读取
+- [x] Claim 用 `UPDATE ... WHERE id IN (SELECT ... ORDER BY id LIMIT)` + `RETURNING`（sqlite 3.35+ 原生支持）
+- [x] Dispatch 成功后**必须**立刻 free lock（避免下次 tick 重复投递）
+- [x] Dispatch 失败：
+  - [x] `no_owner` / `bad_argument` → permanent
+  - [x] `queue_400` → permanent（合约不匹配应报警而不是重试）
+  - [x] `queue_5xx` / `network` → transient + backoff
+- [x] 单个 tick 内多条消息按顺序处理（避免并发混淆 scope 归并）
+- [x] Graceful shutdown：signal 到来时当前 tick 结束才退
+- [x] Claim 的 lock 若进程 crash → `locked_until` 过期后自动被下个 worker 接管
 
 ### 运维脚本
 
-- [ ] `scripts/outbox-compact.sh`：
+- [x] `scripts/outbox-compact.sh`：
   ```bash
   sqlite3 ~/.novaic/data/entangled.db \
     "DELETE FROM message_outbox WHERE delivered_at IS NOT NULL AND delivered_at < strftime('%s','now','-7 days')*1000;"
@@ -135,29 +135,29 @@ async def _deliver_one(self, row):
 
 ## 测试 Checklist
 
-- [ ] 单测（用内存 sqlite）：
-  - [ ] 1 条 outbox → 1 次 dispatch → delivered_at 写入
-  - [ ] dispatch `queue_5xx` → attempts+1 + backoff；下次 tick 延后
-  - [ ] dispatch `no_owner` → attempts+1，不再 retry（locked_until 不延长以便 orphan emitter 发现）
-  - [ ] 2 个 subscriber 实例 + 100 条 outbox → 各自 claim 不重复；总投递次数 = 100
-  - [ ] subscriber crash 模拟（不 free lock）→ 30s 后另一实例接管
+- [x] 单测（用内存 sqlite）：
+  - [x] 1 条 outbox → 1 次 dispatch → delivered_at 写入
+  - [x] dispatch `queue_5xx` → attempts+1 + backoff；下次 tick 延后
+  - [x] dispatch `no_owner` → attempts+1，不再 retry（locked_until 不延长以便 orphan emitter 发现）
+  - [x] 2 个 subscriber 实例 + 100 条 outbox → 各自 claim 不重复；总投递次数 = 100
+  - [x] subscriber crash 模拟（不 free lock）→ 30s 后另一实例接管
 - [ ] 集成：`hihi` 场景端到端 → 观察 outbox delivered_at 更新、Queue Service 收到 1 次 dispatch
 - [ ] 压测：1 秒内 100 条消息 → 全部在 2 秒内 delivered
 
 ## 可观测性 Checklist
 
-- [ ] metric `subscriber_delivered_total{trigger}` counter
-- [ ] metric `subscriber_failed_total{kind}` counter
-- [ ] metric `subscriber_retry_total{kind}` counter
-- [ ] metric `outbox_lag_seconds` gauge（最老 `delivered_at IS NULL AND locked_until IS NULL` 行的 age）
-- [ ] metric `outbox_claim_batch_size` histogram
-- [ ] 结构化 log：`subscriber_tick claimed=N delivered=M failed=K`
+- [-] metric `subscriber_delivered_total{trigger}` counter (defer to PR-32)
+- [-] metric `subscriber_failed_total{kind}` counter (defer to PR-32)
+- [-] metric `subscriber_retry_total{kind}` counter (defer to PR-32)
+- [-] metric `outbox_lag_seconds` gauge（最老 `delivered_at IS NULL AND locked_until IS NULL` 行的 age） (defer to PR-32)
+- [-] metric `outbox_claim_batch_size` histogram (defer to PR-32)
+- [x] 结构化 log：`subscriber_tick claimed=N delivered=M failed=K`
 
 ## 文档 Checklist
 
-- [ ] [message-wake-refactor.md](../message-wake-refactor.md) P2-3（第二半）→ `[x]`
-- [ ] 本工单 Status → `[x]`
-- [ ] runbook 补一节 "outbox 堆积 / subscriber 停摆排查"
+- [-] [message-wake-refactor.md](../message-wake-refactor.md) P2-3（第二半）→ `[x]`
+- [x] 本工单 Status → `[x]`
+- [x] runbook 补一节 "outbox 堆积 / subscriber 停摆排查"
 
 ## 验收命令
 
