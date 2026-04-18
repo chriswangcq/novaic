@@ -160,7 +160,7 @@
 - 承诺：R6
 
 ### P2-3  Dispatch subscriber（Business 侧或独立进程）
-- Status: `[ ]`
+- Status: `[x]` (PR-15 Skeleton)
 - Scope: `novaic-business/business/subscribers/dispatch_subscriber.py`（新建）
 - 任务：
   - [ ] 订阅 outbox / changefeed

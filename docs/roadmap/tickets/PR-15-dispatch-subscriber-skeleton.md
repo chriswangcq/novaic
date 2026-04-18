@@ -5,7 +5,7 @@
 | **Phase** | 2 |
 | **Milestone** | M2 |
 | **承诺** | R6 |
-| **Status** | `[ ]` |
+| **Status** | `[x]` |
 | **Depends on** | PR-10, PR-14 |
 | **Blocks** | PR-16 |
 | **估时** | 0.5 d |
@@ -25,8 +25,8 @@
 
 ## 前置 Checklist
 
-- [ ] PR-10 合并，Assembler 可用
-- [ ] PR-14 合并，outbox 表存在
+- [x] PR-10 合平，Assembler 可用
+- [x] PR-14 合并，outbox 表存在
 
 ## 实施 Checklist
 
@@ -88,28 +88,28 @@ async def lifespan(app):
 
 ### 实装 checklist
 
-- [ ] 新建子包与空文件
-- [ ] `_tick()` 返回 0 占位（PR-16 填）
-- [ ] lifespan 集成 + 启动/退出日志
-- [ ] 启动期不连 DB / 不创建 session pool 的 lazy 初始化（不动生产路径）
-- [ ] `DISPATCH_SUBSCRIBER_ENABLED=0` 的情况下 **零副作用**（这是本 PR 最重要的不变量）
+- [x] 新建子包与空文件
+- [x] `_tick()` 返回 0 占位（PR-16 填）
+- [x] lifespan 集成 + 启动/退出日志
+- [x] 启动期不连 DB / 不创建 session pool 的 lazy 初始化（不动生产路径）
+- [x] `DISPATCH_SUBSCRIBER_ENABLED=0` 的情况下 **零副作用**（这是本 PR 最重要的不变量）
 
 ## 测试 Checklist
 
-- [ ] 本地启动 Business（不设 env）→ 日志 `dispatch_subscriber disabled`，outbox 不被触碰
-- [ ] 本地启动 Business + `DISPATCH_SUBSCRIBER_ENABLED=1` → 日志 `dispatch_subscriber enabled` + `starting worker_id=...`（但因 `_tick` 空转，不会有消费）
-- [ ] 单测：`_tick()` 返回 0 → run 循环正常 sleep
+- [x] 本地启动 Business（不设 env）→ 日志 `dispatch_subscriber disabled`，outbox 不被触碰
+- [x] 本地启动 Business + `DISPATCH_SUBSCRIBER_ENABLED=1` → 日志 `dispatch_subscriber enabled` + `starting worker_id=...`（但因 `_tick` 空转，不会有消费）
+- [x] 单测：`_tick()` 返回 0 → run 循环正常 sleep
 
 ## 可观测性 Checklist
 
-- [ ] 启动 log：`dispatch_subscriber enabled|disabled`
-- [ ] 运行 log（DEBUG）：`subscriber tick n=0 elapsed=XX ms`
+- [x] 启动 log：`dispatch_subscriber enabled|disabled`
+- [x] 运行 log（DEBUG）：`subscriber tick n=0 elapsed=XX ms`
 
 ## 文档 Checklist
 
-- [ ] [message-wake-refactor.md](../message-wake-refactor.md) P2-3（第一半）→ `[x]`
-- [ ] 本工单 Status → `[x]`
-- [ ] 更新 `scripts/start.sh`：默认不设 `DISPATCH_SUBSCRIBER_ENABLED`（保持 off）
+- [x] [message-wake-refactor.md](../message-wake-refactor.md) P2-3（第一半）→ `[x]`
+- [x] 本工单 Status → `[x]`
+- [x] 更新 `scripts/start.sh`：默认不设 `DISPATCH_SUBSCRIBER_ENABLED`（保持 off）
 
 ## 验收命令
 
