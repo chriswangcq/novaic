@@ -80,20 +80,20 @@
 - 承诺：R2
 
 ### P1-5  `DispatchAssembler` 实现
-- Status: `[ ]`
+- Status: `[x]`
 - Scope: `novaic_common/wake/assembler.py`
 - 任务：
-  - [ ] `DispatchRequest` dataclass（含所有 Queue Service 必填）
-  - [ ] `DispatchAssembler.assemble(trigger_source, agent_id, *, subagent_id=None, message_ids=None, metadata=None) -> DispatchRequest`
-    - [ ] 调 `AgentOwnershipResolver` 解析 user_id
-    - [ ] 默认 `subagent_id = f"main-{agent_id[:8]}"`
-    - [ ] 校验 trigger_source 是 `TriggerType` 枚举
-    - [ ] metadata 里附 `message_ids`（供 R4 的 scope.inputs 登记）
-  - [ ] `DispatchAssembler.dispatch(req) -> DispatchResult`（调 Queue Service `/dispatch`，走 P1-1 的 `internal_client`）
-  - [ ] 失败抛明确 `DispatchError(kind="no_owner"|"queue_400"|"queue_5xx"|"network")`，绝不吞
+  - [x] `DispatchRequest` dataclass（含所有 Queue Service 必填）
+  - [x] `DispatchAssembler.assemble(trigger_source, agent_id, *, subagent_id=None, message_ids=None, metadata=None) -> DispatchRequest`
+    - [x] 调 `AgentOwnershipResolver` 解析 user_id
+    - [x] 默认 `subagent_id = f"main-{agent_id[:8]}"`
+    - [x] 校验 trigger_source 是 `TriggerType` 枚举
+    - [x] metadata 里附 `message_ids`（供 R4 的 scope.inputs 登记）
+  - [x] `DispatchAssembler.dispatch(req) -> DispatchResult`（调 Queue Service `/dispatch`，走 P1-1 的 `internal_client`）
+  - [x] 失败抛明确 `DispatchError(kind="no_owner"|"queue_400"|"queue_5xx"|"network")`，绝不吞
 - 验收：
-  - [ ] 单测：mock resolver + mock HTTP，各路径覆盖
-  - [ ] 合约测试：assemble 输出必定通过 Queue Service `DispatchRequest.validate()`
+  - [x] 单测：mock resolver + mock HTTP，各路径覆盖
+  - [x] 合约测试：assemble 输出必定通过 Queue Service `DispatchRequest.validate()`
 - 承诺：R2 + R3
 
 ### P1-6  老 `_dispatch_trigger` 迁到 Assembler
