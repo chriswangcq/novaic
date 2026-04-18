@@ -126,16 +126,80 @@ tail -f /opt/novaic/data/logs/health-$(date -u +%Y%m%d).log
 
 ---
 
-## §F Discovery（必须实测回答）
+## §F Discovery 实测结果（2026-04-18 22:13 UTC 收尾）
 
-1. **`recover_all` 401 是否正在生产发生**？
-   - `ssh root@api.gradievo.com 'grep -c "Recovery API returned 401" /opt/novaic/data/logs/health-$(date -u +%Y%m%d).log'` ≥ 1 即确认
-   - **2026-04-18 答案：796/日** ✅
-2. **400 循环的 traceback**：从 `health.log` 抓整条异常栈（见 §B.2 discovery 步骤 1）。
-3. **抛 "API error (400): " 的代码位置**：repo-wide grep 字符串 `API error (` 找到具体 raise。
-4. **resolver 是否会返回空 user_id**？把 `AgentOwnershipResolver.resolve` 路径跑一遍单测，覆盖 Business 返回 `{"user_id": ""}` / `404` / `500` / 超时 四种分支，断言各自抛什么。
-5. **是否有其他**调用方同样缺 `X-Internal-Key`？`rg "internal_async_client|internal_sync_client" --glob '!common/http/clients.py'` 扫一遍列表，挑出所有指向 Queue Service 的调用点确认 header 完整性。PR-19 顺手在同一 commit 里修掉其他 Queue 方向的同类调用（范围必须在本文件里列清楚；发现 Cortex / Gateway 等方向的就转新 PR，不扩本 PR）。
-6. **是否影响 `internal_client` 命名陷阱技术债**（technical-debt.md 第 37 行）？PR-19 可以借机强制 `health_worker_sync.py` 显式 `from common.http.clients import internal_async_client`（不用别名），作为 alias 清理的第一个示范点。
+### F.1 `recover_all` 401 — ✅ 仍在发生
+
+```
+$ grep -c "Recovery API returned 401" /opt/novaic/data/logs/health-20260418.log
+# → 827
+# 当前 health.log（rotating，python logging 格式）每 5s 一次：
+# 2026-04-18 22:17:15 [INFO] httpx: POST .../api/queue/recover/all "HTTP/1.1 401 Unauthorized"
+```
+
+根因确认：
+- `queue_service_internal_key` 在 `novaic-agent-runtime/config/services.json` 与 `novaic-common/config/services.json` 都已配置（`"queue-internal-dev"`），**配置齐全但 HealthWorker 的 httpx client 没把它塞到 header**。
+- `common.http.clients.create_internal_async_client` 只注入 `X-Internal-Service`（line 33）；**Queue Service 侧中间件要求 `X-Internal-Key`**（见 `queue_service/main.py::_queue_internal_key_middleware`）。
+- 这与 `DispatchAssembler.__init__`（`novaic-common/common/wake/assembler.py:74-85`）的修法同源，当时已显式注入，HealthWorker 没跟上。
+
+注：log 里同时出现的 `WARNING common.http.clients: NOVAIC_INTERNAL_KEY is not set.` 是 **无关 red herring** —— 那是未来统一 key 的前瞻性警告（technical-debt 第 33 行），当前系统用的是 `QUEUE_SERVICE_INTERNAL_KEY` per-service key，完整存在。**PR-19 不要去动那条警告**。
+
+### F.2 `400 user_id is required` — ✅ 已随 PR-12 部署自动修复（88 条是部署前残留）
+
+时间序列证据：
+
+| 时段 | 日志格式 | 条数 | 路径 |
+|---|---|---|---|
+| 12:05:46 ~ 12:55:31 UTC | `Fallback dispatch failed for 415f...: API error (400): user_id is required ...` | 88 | 老代码 / 未知非-DispatchError 异常分支 |
+| 12:55:32 UTC 起 | `Skip waking agent=415f...: queue_400` | 76 | PR-12 `_scan_unhandled_messages` 的 `DispatchError kind=queue_400` 显式分支 |
+
+12:55 UTC 是当日 agent-runtime 重启（新 health-worker pid），新代码已在走 `DispatchError` 分支把 `kind=queue_400` 吞掉。`"API error (400): user_id is required ..."` 是 **Queue Service 自己抛**出的字符串（`queue_service/main.py` 里 `HTTPException(400, "user_id is required ...")`），新代码已经正确识别成 `DispatchError(kind=queue_400)`。
+
+**所以 §B.2 的三个候选修法里 `(a)` 已经在生产生效了**。PR-19 只需要把这条分支**再打磨一下**：改 log 级别从 `ERROR` 到 `INFO`（现在每次 dispatch 都被 filter 过滤掉却打 ERROR，会误报），改 event 名为 `event=health_skip reason=queue_400`，顺便加个 `HealthWorkerMetrics.skipped_count`。
+
+**附加发现**：agent `415f6cfd4e5b4a04911b66cb8ab2cad7` 在 `agents` 表里**有合法 `user_id=155cc065-...`**。推测 PR-12 之前的问题是 `AgentOwnershipResolver` 初次部署时 TTL cache 或首次查询落空，老代码路径没做好 fallback 直接发了 `user_id=""`。已由 PR-12 的 resolver 串行初始化 + DispatchError 分支治本。
+
+### F.3 `"API error ("` 抛出点 — ✅ 定位完成
+
+repo grep `"API error ("` 的 raise 点已确认不在 novaic-*-runtime 现代码里。历史位置在 `task_queue/client.py` 的老分支，PR-12 迁移后已被 `DispatchAssembler.dispatch`（novaic-common/common/wake/assembler.py）+ `DispatchError(kind=queue_400)` 取代。可以在 PR-19 commit 里顺手删掉 `task_queue/client.py` 中残留的老字符串定义（如果还有 dead code）。
+
+### F.4 resolver 空 user_id 分支 — ⏳ 推迟到独立 common PR
+
+`AgentOwnershipResolver.resolve()` 已经在 404 / 400 时抛 `AgentNotOwnedError`。但空字符串 `{"user_id": ""}` 的分支**没有单测**。本次 PR-19 **不扩** common 子模块，仅在 guidance 里登记：下次 common PR 需补 `test_resolve_empty_user_id_raises_agent_not_owned` + 对应修法。
+
+### F.5 其他缺 `X-Internal-Key` 的 Queue 方向调用
+
+扫描 `internal_async_client` / `internal_sync_client` 全 repo callsites，筛选指向 Queue Service 的：
+
+| 文件:行 | 端点 | 状态 | 是否纳入 PR-19 |
+|---|---|---|---|
+| `novaic-agent-runtime/task_queue/workers/health_worker_sync.py:89` | `/api/queue/recover/all`, `/api/queue/sessions` | ❌ 缺 key（B.1 主修） | ✅ 修 |
+| `novaic-business/business/internal/message.py:116` | `/api/queue/recover/cancel-all`（`interrupt_agent`） | ❌ 缺 key（同类 bug，生产当前未触发） | ✅ 修（novaic-business 顺手 commit，不算扩范围） |
+| `novaic-common/common/wake/assembler.py:81` | `/api/queue/dispatch` | ✅ 已注入 | — |
+
+其他 `internal_async_client` 调用点**全部指向 Business / Device / Gateway / Entangled / Cortex**，这些服务不强制 `X-Internal-Key`（有些有 `CallerLoggingMiddleware` 只日志不拦截），不受此 class bug 影响。
+
+### F.6 新出现的 "fallback dispatch storm"（2026-04-18 PR-17 收尾时发现）
+
+`health.log` 在 `canary_a_1` 上重复打了 1183 次 `event=health_fallback messages=108 result=ok action=buffered`。根因：压测脚本灌进去的 108 条 USER_MESSAGE 一直 `read=0, processed=0`，HealthWorker 每 5s 扫到 → dispatch 到 Queue → Session Coordinator buffer 但 `model_id=canary` 没真 LLM 让 saga 消费，于是无限循环。
+
+**已在本次 discovery 结束时手工止损**（22:16 UTC）：
+```sql
+UPDATE chat_messages SET read=1, processed=1, status='read'
+ WHERE agent_id='canary_a_1' AND read=0;
+-- rows_marked = 108
+```
+验证：22:16:50 后 `health.log` 不再出现 `agent=canary_a_1` 的 fallback 行。
+
+**这不算 PR-19 的 bug**（HealthWorker 只是 naive 重试器，unread 没 clear 就会一直扫），但提示 PR-19 应该把 "同 agent 连续 N 次 `action=buffered` 后降频或退避"纳入**discovery 选修项**：
+- 选项 α（保守）：不做退避，仅加 `event=health_fallback_buffered_streak agent=X count=N`（每 10 次打一条），便于告警
+- 选项 β（激进）：同 agent 连续 K 次 action=buffered 则这一轮跳过该 agent，下一轮再试；这会让 buffered saga 的唤醒变慢
+
+**PR-19 默认采用 α**。β 如果做，起码需要 runbook 追加一节说明降频对 SLA 的影响。
+
+### F.7 `internal_client` 命名陷阱联动
+
+PR-19 可以借机把 `health_worker_sync.py` 的 `from common.http.clients import internal_async_client` 保持原样（**不改为别名**），作为 technical-debt 第 37 行 alias 清理的第一个示范点（"显式导入，不走 alias"）。这是零代码变动的文档化改进，不入 commit。
 
 ---
 
