@@ -36,6 +36,7 @@
 - **重复的 Access Log**：Queue Service 等服务自带的 uvicorn `access_log=True` 和 `CallerLoggingMiddleware` 在同一请求上会各打一行日志（不冲突，但啰嗦），后续可统一关闭 uvicorn access log（PR-06 引入，待清理）。
 - **`AgentOwnershipResolver._locks` 内存无界增长**：`AgentOwnershipResolver` 为了防止缓存击穿（thundering herd），通过 `setdefault(agent_id, asyncio.Lock())` 给每个 agent 创建了一个锁，但该字典未实现淘汰机制（如 LRU 或随 TTL 清理）。如果是长期存活的服务处理大量不重复的 agent_id，会导致 `_locks` 字典持续膨胀。后续在整理缓存机制或重构为多级缓存时，可引入 `asyncache` 或手动周期性清理超时的 lock，或者只保存"正在请求中"的 Future。
 - **`get_resolver()` 工厂的跨事件循环共享隐患**：当前 `get_resolver()` 被过度重构为了 `async def`，并且其内部的 `_instance_lock` 使用了全局的模块级 `asyncio.Lock()`。这会导致该工厂方法绑定在首次调用它的那个事件循环上，将来在多 Worker 跨事件循环调用时会抛出 `RuntimeError: Lock bound to a different event loop`。PR-10 接入时必须改回 sync 工厂，并直接移除不必要的锁。
+- **`wake_triggers[].type` 与 `TriggerType` 枚举不对齐**：当前 `definitions.py` 的 LLM schema 中 `wake_triggers[].type` 包含 `["user_message", "timer", "event"]`，而主流程中的 `TriggerType` 枚举包含 `user_message`, `subagent_send`, `spawn_subagent` 等 6 个值。它们本质上是两个独立的枚举，却混用在一个语义下。由于目前它们只共享了 `user_message` 且互不干扰，我们在 PR-09 仅修正了漂移的 `user_response`。后续需要单独开 PR，理清 schema 定义与调度器触发类型枚举的关系。
 
 ## 路线 A：Entangled 引擎内置乐观写（未来演进）
 

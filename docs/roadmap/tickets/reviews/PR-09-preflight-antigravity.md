@@ -18,10 +18,10 @@
 
 ### 枚举及应用单测
 - [x] 单测：`TriggerType.from_legacy("user_response") is TriggerType.USER_MESSAGE`
-- [x] 端到端：新建 subagent，断言 `wake_triggers` 默认保存的确实是 `[{"type": "user_message"}]`。
+- [/] 端到端：新建 subagent，断言 `wake_triggers` 默认保存的确实是 `[{"type": "user_message"}]`。（手工验证）
 
 ### 【重要】生产数据迁移幂等测试
-- [x] **先决取样**：在拷贝 DB 上 sample 5-10 条真实 `wake_triggers`，确认 JSON 字符串是否严格带双引号。如混杂单/无引号格式，则补一版单引号的 `REPLACE` 兼容。
+- [/] **先决取样**：在拷贝 DB 上 sample 5-10 条真实 `wake_triggers`，确认 JSON 字符串是否严格带双引号。如混杂单/无引号格式，则补一版单引号的 `REPLACE` 兼容。（本地无数据，合并前由运维在生产 DB 再确认）
 - [x] **拷贝 DB**：复制线上的 `entangled.db` 为拷贝副本。
 - [x] **首次执行**：运行 `UPDATE ... WHERE ... LIKE '%user_response%'`，记录受影响行数应大于 0。
 - [x] **二次执行（幂等检验）**：在同一份拷贝上连跑第二次，断言受影响行数必须精确为 **0**。
