@@ -5,7 +5,7 @@
 | **Phase** | 2（主路径切换） |
 | **Milestone** | M2 |
 | **承诺** | R6 |
-| **Status** | `[ ]` |
+| **Status** | `[x]` |
 | **Depends on** | — |
 | **Blocks** | PR-15, PR-16, PR-21 |
 | **估时** | 1 d |
