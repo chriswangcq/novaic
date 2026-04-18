@@ -25,7 +25,7 @@
 | M0-3 | `[x]` | `docs/architecture/message-wake-principles.md` 接入 `docs/README.md` 架构表 | — |
 | M0-4 | `[x]` | `roadmap/technical-debt.md` 引用本页并标记"进行中" | — |
 | M0-5 | `[x]` | CI lint 规则：禁止业务代码直接 `httpx.post(...".../api/queue/dispatch"...)` 字符串（allowlist：`common/wake/assembler.py`、tests） | R2 |
-| M0-6 | `[ ]` | CI lint 规则：禁止业务代码直接 `httpx.Client()`（allowlist：`common/http/clients.py`、测试工具） | R7 |
+| M0-6 | `[x]` | CI lint 规则：禁止业务代码直接 `httpx.Client()`（allowlist：`common/http/clients.py`、测试工具） | R7 |
 
 ---
 
