@@ -69,12 +69,12 @@
 - 承诺：R3
 
 ### P1-4  `TriggerType` 权威枚举
-- Status: `[ ]`
+- Status: `[x]`
 - Scope: `novaic_common/wake/trigger_types.py`
 - 任务：
-  - [ ] `TriggerType(Enum)`：`USER_MESSAGE / SUBAGENT_SEND / SPAWN_SUBAGENT / SCHEDULED_WAKE / SYSTEM_WAKE / RECOVERED`
-  - [ ] 迁移现有字符串常量到枚举
-  - [ ] `wake_triggers` 默认值 `[{"type": "user_response"}]` **改为** `"user_message"`（schema 默认 + 迁移 SQL）
+  - [x] `TriggerType(Enum)`：`USER_MESSAGE / SUBAGENT_SEND / SPAWN_SUBAGENT / SCHEDULED_WAKE / SYSTEM_WAKE / RECOVERED`
+  - [x] 迁移现有字符串常量到枚举
+  - [x] `wake_triggers` 默认值 `[{"type": "user_response"}]` **改为** `"user_message"`（schema 默认 + 迁移 SQL）
 - 验收：`rg 'user_response'` 无剩余业务代码命中
 - 迁移：`UPDATE subagents SET wake_triggers = REPLACE(wake_triggers, 'user_response', 'user_message')`（Entangled schema push 版本号 +1）
 - 承诺：R2
