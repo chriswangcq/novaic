@@ -120,3 +120,101 @@ verdict            = OK
 1. 主仓 + 子模块 commits 落盘；主仓 bump submodule 指针。
 2. Canary runbook §Deployment Flow §Phase 1：在 `api.gradievo.com` 跑 `scripts/deploy-business.sh --first-time`。
 3. 按 Phase 2 → Phase 5 节奏推进，期间 `traffic.py watch` + `tail -F` 双通道观察。
+
+---
+
+## 6. Phase 1 生产执行实录（2026-04-18 20:03 — 20:24 CST）
+
+由 Assistant 亲自在 `api.gradievo.com` 执行。红线警告（§runbook 顶部）
+完全兑现：3 次 deploy 尝试才把代码拉齐，期间抓到 4 个新的潜伏 Bug，
+全部已修并热补生产。生产当前处于 **Phase 1 稳态（subscriber OFF, 所有
+7 backends 活）**。
+
+### 6.1 deploy-business.sh 自身的 2 个纸面错误
+
+| # | 现象 | 修复 |
+| --- | --- | --- |
+| S1 | `bash /opt/novaic/services/scripts/start.sh` 不存在（生产真实路径是 flat `/opt/novaic/start.sh`） | 脚本 rsync `scripts/start.sh → /opt/novaic/start.sh`；runbook 相关路径同步 |
+| S2 | `rsync -a --delete` 在 `novaic-agent-runtime/common/` 处失败（dev 是 symlink → `../novaic-common/common`，prod 是真实目录拷贝） | 改用 `rsync -azL --delete`（`-L` follow symlinks） |
+
+### 6.2 PR-05 contract-transitivity 导致的首次 deploy 崩盘
+
+首次 `--first-time` deploy 只 rsync 了 3 个子仓（novaic-business + Entangled + novaic-common）。
+结果：`novaic-common` 升级到 PR-05（`internal_sync_client` 强制 `service_name`
+参数），但 `novaic-device / novaic-gateway / novaic-agent-runtime` 依然跑
+pre-PR-05 代码。device 的 `hw_status` 每次被调都 `TypeError: internal_sync_client()
+missing 1 required positional argument: 'service_name'` → 500。
+
+**回滚耗时**：~20 秒（snapshot tarball 245 MB）。
+
+**修复**：`deploy-business.sh` 的 rsync 列表扩到 6 个子仓
+（加上 novaic-gateway、novaic-device、novaic-agent-runtime）。代码注释里
+明记：**PR-05 的 `service_name` 硬契约是 transitive 的，所有 internal_client
+caller 必须同步部署**。
+
+### 6.3 HealthWorker 启动崩：`common.wake` 循环 import
+
+第三次 deploy 成功拉齐全部 6 个子仓后，HealthWorker 在启动时抛：
+
+```
+ImportError: cannot import name 'AgentOwnershipResolver' from partially
+initialized module 'common.agents.ownership' (most likely due to a
+circular import)
+```
+
+**根因链路**：
+```
+task_queue.workers.wake.assembler_factory
+  → common.agents.ownership         (partial init starts)
+  → common.wake.errors
+  → common.wake/__init__.py          (runs top-level imports)
+  → common.wake.assembler
+  → common.agents.ownership          (re-entry on partial, crashes)
+```
+
+Business 服务走的是另一条 import 顺序（先 `common.wake.assembler`），
+所以没触发；HealthWorker 先 `common.agents.ownership` 就炸。
+
+**修复**：删掉 `common/wake/__init__.py` 的 eager `from .assembler import ...`，
+让 caller 直接 `from common.wake.assembler import ...`。
+
+### 6.4 HealthWorker + Scheduler：CLI 入口没 `asyncio.run`
+
+PR-12 / PR-13 已把 `HealthWorkerSync.run` / `SchedulerWorkerSync.run`
+改成 `async def`，但 `main_novaic.py` 的 `run_health()` / `run_scheduler()`
+CLI 入口仍然 `worker.run()` —— 直接调协程，触发
+
+```
+RuntimeWarning: coroutine 'HealthWorkerSync.run' was never awaited
+worker.run()
+```
+
+两个 worker 进程起来就退出。PR-12 的 deliverable 报告过"入口已 asyncio.run
+包覆"，但实际 commit 里没改到。PR-17 补上：两处改为 `asyncio.run(worker.run())`。
+
+### 6.5 稳态观察（20:24 起）
+
+| 项 | 结果 |
+| --- | --- |
+| 所有 7 backends + 4 task-worker + 2 saga-worker + 1 health + 1 scheduler | **全部存活** |
+| 10 min 内各服务新增 Traceback | business 0, gateway 0, queue 0, cortex 0（历史条目不计）；entangled 3（历史 PATCH subagents 500，non-increasing）；device: 只有历史 404 "devices not found"（昨天同模式 8560 次，非回归） |
+| `message_outbox` 表 | 已创建并就位；行数 = 0（**因为生产当前无 USER_MESSAGE 流量** — 昨天全天 0 条、前天全天 0 条，所以这是正确的空） |
+| Subscriber | OFF（符合 cold start 要求） |
+| Recovery API 401 | 每 30s 1 次（**前置技术债**，昨天 2714 次；与本次部署无关；由 `NOVAIC_INTERNAL_KEY` 未环境变量导入引起，PR-19 清一色治理） |
+| Rollback snapshots | `/opt/novaic/snapshots/services-20260418-201248.tar.gz` + `entangled.db.bak-20260418-201248` + `start.sh.bak-20260418-201248`（第三次 deploy 之后的版本，保存了 **pre-PR-17 的原始生产代码**；任何时刻 45s 内可回滚） |
+
+### 6.6 Lesson 登记（需要老板拍板下沉）
+
+1. **deploy-business.sh 的自动化单测**：三次失败都是 script 本身的纸面
+   错误（路径 + 参数 + symlink），根本不是代码逻辑问题。建议建立"空跑
+   模式"（dry-run flag：只 rsync 不重启）供未来所有类似 deploy 脚本先走。
+2. **import 顺序在单测里不覆盖**：`pytest novaic-common/tests/` 所有绿，
+   生产一起步就循环 import。要在 CI 加一条 `python -c "import
+   task_queue.workers.wake.assembler_factory"` 的冷启动导入 smoke test。
+3. **CLI 入口 async 调用缺单测**：PR-12/13 两次 commit 都说"入口 asyncio.run
+   就位"，实际没写；smoke test 要覆盖 `main_novaic.py health` 和
+   `main_novaic.py scheduler` 的 1 秒启停循环。
+4. **PR-05 transitive 契约的部署纪律**：所有"强制参数" migration 需要
+   在 CI 记一张"同步发"清单。单独升 novaic-common 等于半发，生产直接挂。
+
+这 4 条建议等你拍板是否起 PR-32 下一轮 backlog。
