@@ -2,6 +2,9 @@
 
 > 基于 [architecture/message-wake-principles.md](../architecture/message-wake-principles.md) 的 8 条架构承诺 (R1–R8) 下沉成**可执行、可勾选、可追溯**的六阶段清单。
 >
+> **更细粒度的 PR 级工单（每 PR 一文件，含完整 checklist）→ [tickets/](tickets/README.md)**
+> 本页仍是阶段/条目视角的 SSOT；tickets 目录是工程师每天做事用的工单。
+>
 > 状态标记：`[ ]` 未做、`[x]` 已完成、`[~]` 进行中、`[!]` 已确认为假警报（无需做）。
 >
 > 每项携带 ID（方便 PR/commit 引用）、承诺来源、严重度、范围、前置、验收标准、回归测试、可观测性要求、回滚方案。
@@ -21,7 +24,7 @@
 | M0-2 | `[ ]` | `novaic_common.agents.ownership` 包骨架 | R3 |
 | M0-3 | `[x]` | `docs/architecture/message-wake-principles.md` 接入 `docs/README.md` 架构表 | — |
 | M0-4 | `[x]` | `roadmap/technical-debt.md` 引用本页并标记"进行中" | — |
-| M0-5 | `[ ]` | CI lint 规则：禁止业务代码直接 `httpx.post(...".../api/queue/dispatch"...)` 字符串（allowlist：`common/wake/assembler.py`、tests） | R2 |
+| M0-5 | `[x]` | CI lint 规则：禁止业务代码直接 `httpx.post(...".../api/queue/dispatch"...)` 字符串（allowlist：`common/wake/assembler.py`、tests） | R2 |
 | M0-6 | `[ ]` | CI lint 规则：禁止业务代码直接 `httpx.Client()`（allowlist：`common/http/clients.py`、测试工具） | R7 |
 
 ---
