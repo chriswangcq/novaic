@@ -36,6 +36,13 @@
 - [ ] `outbox_enqueued_total{trigger_type}` counter：每次同事务 INSERT message_outbox 时打一次。
 - [ ] `outbox_backlog_count` gauge：周期性 `COUNT(*) WHERE delivered_at IS NULL`，由 subscriber 或 scheduler 定时刷新。
 
+### 来自 PR-16 (Dispatch Subscriber)
+- [ ] `subscriber_delivered_total{trigger}` counter：记录 subscriber 成功消费的数量。
+- [ ] `subscriber_failed_total{kind}` counter：记录 subscriber 发生 permanent 错误的数量。
+- [ ] `subscriber_retry_total{kind}` counter：记录 subscriber 发生 transient 错误的重试数量。
+- [ ] `outbox_lag_seconds` gauge：记录最老的未消费消息的时间延迟。
+- [ ] `outbox_claim_batch_size` histogram：记录每次 claim 捞起的行数分布。
+
 ## 3. 实施 Checklist
 
 - [ ] 在 `pyproject.toml` 或依赖配置中合理引入 `prometheus_client` 到所需模块（如 `novaic-common` 和 `novaic-business`）。
