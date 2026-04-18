@@ -40,6 +40,7 @@
 - **`wake_triggers[].type` 与 `TriggerType` 枚举不对齐**：当前 `definitions.py` 的 LLM schema 中 `wake_triggers[].type` 包含 `["user_message", "timer", "event"]`，而主流程中的 `TriggerType` 枚举包含 `user_message`, `subagent_send`, `spawn_subagent` 等 6 个值。它们本质上是两个独立的枚举，却混用在一个语义下。由于目前它们只共享了 `user_message` 且互不干扰，我们在 PR-09 仅修正了漂移的 `user_response`。后续需要单独开 PR，理清 schema 定义与调度器触发类型枚举的关系。
 - **`DispatchResult` 缺 `action` enum (PR-13)**：当前 `DispatchResult` 只有 `buffered: bool` 字段，无法清晰区分 `saga_started` 与 `deduped`（调度器触发时依赖区分是否排重）。在 PR-13 中我们临时取了 `result.raw.get("action")`，后续（可能伴随 PR-15/16）应在 `DispatchResult` 正式引入结构化的 `action` 字段。
 - **`scheduler_worker_sync.py` 命名已过时 (PR-13)**：在 PR-13 中我们将调度轮询主体从 `time.sleep` 改造为了 `async def run()` + `asyncio.sleep()` 以支撑 Assembler 协程，这让 `_sync` 后缀名不副实。为了防止本 PR scope 与 diff 爆炸，我们在 PR-13 暂不重命名，留待 PR-18 移除 legacy 薄壳时一并更名为 `scheduler_worker.py`。
+- **HealthWorker 空 user_id 导致静默失败的隐患 (PR-12已修复)**：历史上的 `HealthWorker` 在 fallback 发送时写死了 `user_id=""`，由于 Queue 的 `/dispatch` 端点会 400 拒绝空 user_id，导致该 fallback 一年多来从未真正成功过。PR-12 接入 `DispatchAssembler` 后，由于 `AgentOwnershipResolver` 会自动查出真实 `user_id`，该预存 bug 被附带修复。为了防止修复后历史挤压的 orphan messages 瞬间被打出洪峰，PR-12 中加入了 `MAX_FALLBACK_PER_TICK = 50` 保护。
 
 ## 路线 A：Entangled 引擎内置乐观写（未来演进）
 
