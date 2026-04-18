@@ -49,11 +49,11 @@
 - 承诺：R7
 
 ### P1-2  目标服务消费 `X-Internal-Service`
-- Status: `[ ]`
+- Status: `[x]`
 - Scope: `novaic-cortex/novaic_cortex/auth.py`（或等价位置）、`queue_service/auth.py`、`novaic-business/business/*/auth.py`
 - 任务：
-  - [ ] auth 中间件读取 `X-Internal-Service`，未提供 → 记 WARN（灰度期不拒）
-  - [ ] 访问日志字段 `caller` 必带
+  - [x] auth 中间件读取 `X-Internal-Service`，未提供 → 记 WARN（灰度期不拒）
+  - [x] 访问日志字段 `caller` 必带
 - 验收：手工用三种身份（cortex/runtime/business）调 Queue Service，日志里 caller 正确
 - 承诺：R7
 

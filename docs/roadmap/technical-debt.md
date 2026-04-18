@@ -30,6 +30,9 @@
 - WS 断开前端 toast  
 - `prefsRepo` / IndexedDB 彻底移除（selectedAgent → Entangled 等）  
 - **Model 实体规范化**（见 [model-entity-refactor.md](model-entity-refactor.md)）
+- **内部 Key 未统一**：`QUEUE_SERVICE_INTERNAL_KEY` / `CORTEX_INTERNAL_KEY` / 其他服务 Key 各自独立。
+  后续 PR 统一为 `NOVAIC_INTERNAL_KEY` + 服务端 auth 兼容灰度。
+  （PR-05 调研期发现，刻意延后。见 reviews/PR-05-preflight-review.md §2。）
 
 ## 路线 A：Entangled 引擎内置乐观写（未来演进）
 
