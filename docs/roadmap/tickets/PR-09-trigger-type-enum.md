@@ -5,7 +5,7 @@
 | **Phase** | 1 |
 | **Milestone** | M1 |
 | **承诺** | R2 |
-| **Status** | `[ ]` |
+| **Status** | `[x]` |
 | **Depends on** | PR-01 |
 | **Blocks** | PR-10 |
 | **估时** | 0.5 d（+ 生产数据迁移） |
@@ -25,9 +25,9 @@
 
 ## 前置 Checklist
 
-- [ ] `rg "'user_response'" novaic-*/' > /tmp/trig.txt` — 清点
-- [ ] `sqlite3 ~/.novaic/data/entangled.db "SELECT COUNT(*) FROM subagents WHERE wake_triggers LIKE '%user_response%';"` — 统计待迁移行数
-- [ ] **备份生产 Entangled DB**
+- [x] `rg "'user_response'" novaic-*/' > /tmp/trig.txt` — 清点
+- [x] `sqlite3 ~/.novaic/data/entangled.db "SELECT COUNT(*) FROM subagents WHERE wake_triggers LIKE '%user_response%';"` — 统计待迁移行数
+- [x] **备份生产 Entangled DB**
 
 ## 实施 Checklist
 
@@ -53,47 +53,47 @@ class TriggerType(str, Enum):
         return cls(s)
 ```
 
-- [ ] 添加上述枚举
-- [ ] `__all__ = ["TriggerType"]`
+- [x] 添加上述枚举
+- [x] `__all__ = ["TriggerType"]`
 
 ### 2. Schema 迁移
 
-- [ ] Entangled schema push：`subagents.wake_triggers` 默认值从 `[{"type": "user_response"}]` 改为 `[{"type": "user_message"}]`
-- [ ] Schema 版本号 +1
-- [ ] 迁移 SQL：
+- [x] Entangled schema push：`subagents.wake_triggers` 默认值从 `[{"type": "user_response"}]` 改为 `[{"type": "user_message"}]`
+- [x] Schema 版本号 +1
+- [x] 迁移 SQL：
   ```sql
   UPDATE subagents
      SET wake_triggers = REPLACE(wake_triggers, '"user_response"', '"user_message"')
    WHERE wake_triggers LIKE '%user_response%';
   ```
-- [ ] 迁移脚本幂等（多次执行结果不变）
+- [x] 迁移脚本幂等（多次执行结果不变）
 
 ### 3. 代码迁移
 
-- [ ] 所有业务代码中 `"user_response"` 字面量替换为 `TriggerType.USER_MESSAGE.value`
-- [ ] `trigger_type` 参数类型收紧（Pydantic 模型用 `TriggerType`，接收端用 `TriggerType.from_legacy` 宽容解析）
-- [ ] Queue Service `DispatchRequest.trigger_type` 也收紧为 `TriggerType`
+- [x] 所有业务代码中 `"user_response"` 字面量替换为 `TriggerType.USER_MESSAGE.value`
+- [x] `trigger_type` 参数类型收紧（Pydantic 模型用 `TriggerType`，接收端用 `TriggerType.from_legacy` 宽容解析）
+- [x] Queue Service `DispatchRequest.trigger_type` 也收紧为 `TriggerType`
 
 ### 4. 前端/其它 Client
 
-- [ ] Rust / TS 端若硬编码 `"user_response"` → 一并改
-- [ ] App config 若硬编码 → 一并改
+- [x] Rust / TS 端若硬编码 `"user_response"` → 一并改
+- [x] App config 若硬编码 → 一并改
 
 ## 测试 Checklist
 
-- [ ] 单测：`TriggerType.from_legacy("user_response") is TriggerType.USER_MESSAGE`
-- [ ] 迁移脚本：在一份拷贝 DB 上跑一次；再跑一次；结果幂等
-- [ ] 端到端：新建 subagent → `wake_triggers` 默认 `[{"type": "user_message"}]`
+- [x] 单测：`TriggerType.from_legacy("user_response") is TriggerType.USER_MESSAGE`
+- [x] 迁移脚本：在一份拷贝 DB 上跑一次；再跑一次；结果幂等
+- [x] 端到端：新建 subagent → `wake_triggers` 默认 `[{"type": "user_message"}]`
 
 ## 可观测性 Checklist
 
-- [ ] metric `dispatch_total{trigger_type=user_message|subagent_send|...}`（PR-10 会用到，这里先确保标签空间闭合）
+- [x] metric `dispatch_total{trigger_type=user_message|subagent_send|...}`（PR-10 会用到，这里先确保标签空间闭合）
 
 ## 文档 Checklist
 
-- [ ] [message-wake-refactor.md](../message-wake-refactor.md) P1-4 → `[x]`
-- [ ] 本工单 Status → `[x]`
-- [ ] 在 [message-wake-principles.md](../../architecture/message-wake-principles.md) §R2 里把枚举取值列清楚（当前已列出，核对一致）
+- [x] [message-wake-refactor.md](../message-wake-refactor.md) P1-4 → `[x]`
+- [x] 本工单 Status → `[x]`
+- [x] 在 [message-wake-principles.md](../../architecture/message-wake-principles.md) §R2 里把枚举取值列清楚（当前已列出，核对一致）
 
 ## 验收命令
 
