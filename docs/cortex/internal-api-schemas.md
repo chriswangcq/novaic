@@ -34,8 +34,8 @@ JWT 路由（`/v1/shell` 等）**不**在本文；见 [http-api.md](http-api.md)
 | POST | `/v1/context/append` | + `scope_id`, `message` (dict) | `ok` |
 | POST | `/v1/context/batch` | + `scope_id`, `messages` (list) | `ok` |
 | POST | `/v1/context/prepare_for_llm` | + `scope_id` | `messages`, `stack`, `estimated_tokens` |
-| POST | `/v1/context/skill_begin` | + `scope_id`, `skill_name`, `task?` | `ok`, `scope_id`, `child_path`, … 或 `error` |
-| POST | `/v1/context/skill_end` | + `scope_id`, `report`, `skill_name?`（Runtime 会带，服务端按 **active** 子 scope 结束） | `ok`, `child_path`, … 或 `warning`/`error` |
+| POST | `/v1/context/skill_begin` | + `scope_id`（根）, **`child_scope_id`**（LLM 选，全局唯一）, `skill_name`, `task?` | `ok`, `scope_id`, `child_path`, `parent_path`, `skill_name` 或 `{ok:false, error}` |
+| POST | `/v1/context/skill_end` | + `scope_id`（根）, **`child_scope_id`**（必须 == 当前栈顶）, `report`, `skill_name?` | `ok`, `scope_id`, `child_path`, `summary` 或 `{ok:false, error, stack_top?}` |
 | POST | `/v1/context/status` | + `scope_id` | `stack_depth`, `current_skill`, `frames`, `total_messages`, `estimated_tokens`, `usage_ratio` |
 
 ---
@@ -46,6 +46,8 @@ JWT 路由（`/v1/shell` 等）**不**在本文；见 [http-api.md](http-api.md)
 |------|------|--------|------|
 | POST | `/v1/meta/read` | + `scope_id` | `meta` |
 | POST | `/v1/meta/update` | + `scope_id`, `updates` (dict) | `meta` |
+| POST | `/v1/meta/advance_round` | + `scope_id` | `meta`, `round_num`（P2-1：服务端原子 +1） |
+| POST | `/v1/meta/counter_inc` | + `scope_id`, `name`, `delta?`（默认 1） | `value`, `name`, `counters`（P2-10：用于 `chat_reply` 独立限频） |
 
 ---
 
@@ -73,13 +75,13 @@ JWT 路由（`/v1/shell` 等）**不**在本文；见 [http-api.md](http-api.md)
 
 ---
 
-## 7. Internal — Shell / Skill（与 JWT 版类似，但无 Bearer）
+## 7. Internal — Shell（与 JWT 版类似，但无 Bearer）
 
 | 方法 | 路径 | 请求体 | 响应 |
 |------|------|--------|------|
 | POST | `/v1/internal/shell` | + `command`, `timeout?` | `stdout`, `stderr`, `exit_code`, `files_changed` |
-| POST | `/v1/internal/skill/begin` | + `scope_id`, `name`, `parent_scope_id?` | `Cortex.skill_begin` 返回值 |
-| POST | `/v1/internal/skill/end` | + `scope_id`, `instance_id`, `report?` | `Cortex.skill_end` 返回值 |
+
+> P2-2：**`/v1/internal/skill/begin|end` 已删除**。所有 skill 栈变更必须走 `/v1/context/skill_begin` 与 `/v1/context/skill_end`（加锁版本）。
 
 ---
 
@@ -91,7 +93,15 @@ JWT 路由（`/v1/shell` 等）**不**在本文；见 [http-api.md](http-api.md)
 
 ## 9. 类型与源码锚点
 
-完整字段以 **`api.py`** 中类定义为准：**`ScopeCreateRequest`**、**`StepWriteRequest`**、**`StepFormattedRequest`** 等。若与本文表格不一致，**以代码为准**。
+完整字段以 **`api.py`** 中类定义为准：**`ScopeCreateRequest`**、**`StepWriteRequest`**、**`StepFormattedRequest`**、**`ContextSkillBeginRequest`**、**`ContextSkillEndRequest`** 等。若与本文表格不一致，**以代码为准**。
+
+### 9.1 Skill lifecycle 关键语义（`ContextSkillBeginRequest` / `ContextSkillEndRequest`）
+
+- `scope_id` 是**当前会话根 scope id**（不变，调用方总是传同一个）。
+- `child_scope_id` 是**要开/要关的子 scope id**：
+  - `skill_begin`：LLM 自选；Cortex 用 **`_walk_scope_tree(root_scope_path)`** 扫描该会话下全部（active + archived）scope，发现重复即拒绝。
+  - `skill_end`：Cortex 调 **`resolve_active_scope_path(root)`** 取栈顶路径，提取末段 `scope_id`，与 `child_scope_id` 严格比较，不等则拒绝并回传 `stack_top` 给 LLM。
+- 详细策略见 [scope-lifecycle.md §9](scope-lifecycle.md#9-skill-scope-生命周期llm-可见栈式)。
 
 ---
 

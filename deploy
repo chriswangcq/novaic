@@ -37,6 +37,8 @@ rsync_service() {
   local local_dir="$REPO_ROOT/$name"
   [ -d "$local_dir" ] || fail "本地目录不存在: $local_dir"
   info "同步 $name..."
+  # Clean stale __pycache__ first so --delete can remove empty parent dirs
+  $API_SSH "find $SERVICES_DIR/$name -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null" || true
   rsync -avzL --delete $RSYNC_EXCLUDE -e ssh "$local_dir/" "$API_HOST:$SERVICES_DIR/$name/" || fail "rsync $name 失败"
 }
 
@@ -93,13 +95,15 @@ restart_all() {
 # ── 后端服务部署（rsync + 服务器端 start.sh 管理进程） ────────────────────────
 
 deploy_gateway() {
-  info "部署 Gateway + Entangled"
+  info "部署 Gateway + Business + Device + Entangled"
   rsync_service "novaic-common"
   rsync_service "novaic-gateway"
+  rsync_service "novaic-business"
+  rsync_service "novaic-device"
   rsync_service "Entangled"
   sync_start_sh
   restart_all
-  ok "Gateway & Entangled 已部署（全部服务已重启）"
+  ok "Gateway 全栈已部署（全部服务已重启）"
 }
 
 deploy_single_service() {
@@ -288,7 +292,7 @@ show_help() {
   echo "  desktop           构建 macOS 桌面应用"
   echo ""
   echo -e "${CYAN}后端服务 (api.gradievo.com):${NC}"
-  echo "  gateway           部署 Gateway + Entangled"
+  echo "  gateway           部署 Gateway + Business + Device + Entangled"
   echo "  business          部署 Business Service"
   echo "  device            部署 Device Service"
   echo "  runtime           部署 Agent Runtime (workers)"

@@ -10,6 +10,14 @@
 
 详述见 `**docs/architecture/`** 各篇（`app-ui.md`、`entangled-store-and-app-ws.md`、`agent-pipeline.md`）。
 
+## 进行中的系统性重构
+
+- **Message → Wake 主干重构**（2026-04-17 `hihi` 事件触发，涉 R1–R8 共 8 条架构承诺）
+  - 承诺文档（SSOT）：[architecture/message-wake-principles.md](../architecture/message-wake-principles.md)
+  - 实施清单（Phase 1–5 + checklist）：[message-wake-refactor.md](message-wake-refactor.md)
+  - 状态：Phase 0 诊断完成，待排期进入 Phase 1（合约对齐）
+  - 影响：Entangled / Business / Queue Service / Agent Runtime / Cortex 全链路
+
 ## 待办清单（HANDOVER 原文意图）
 
 - iOS 键盘输入框：`**--keyboard-height**` 真机充分验证  

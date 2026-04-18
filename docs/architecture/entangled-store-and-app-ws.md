@@ -30,24 +30,24 @@ Gateway `_dispatch_request` 进程内调用，零 HTTP 中转。
 - **桌面 Tauri**：`**devices.grouped`** 经 Entangled `**entangledMethod` / AppBridge WS**，**不设 HTTP 回退**；断连时应等待重连。
 - **实现**：`compute_grouped_devices` 与 `DeviceRegistry.get_user_devices`、`grouped_action` 共用逻辑。
 
-## Entity Routing Split（`RemoteEntityStore`，2026-04）
+## Entity Routing Split（`AuthEntityStore` + `GatewayBusinessEntityClient`，2026-04）
 
-`LOCAL_ONLY_ENTITIES = {users, refresh-tokens, api-keys, vm-users, models, api-key-models}` 留 `gateway.db`，其余（`devices` 等同步实体）代理到 Entangled HTTP。
+Gateway 现在采用 **`AuthEntityStore`**（本地 SQLite）+ **`GatewayBusinessEntityClient`**（HTTP 代理到 Business）的双层架构，取代了旧的 `RemoteEntityStore`。
 
-- **`_local_store`** 注册**所有** entity 定义（含 remote），但只对 LOCAL 建表。这样 `_scope_where` 的 parent 查找（如 `vm-users.parent = devices`）不会 KeyError。
-- **CRUD 路由**：每个方法检查 `_is_local(entity)` → 走 `_local_store` 或 `EntangledServiceClient`。
-- **Pre-delete hook**：`devices` entity 删除前调 `_cleanup_device_on_pc_client`，向 PC Client 发 `vm_delete`（Linux）/ `avd_delete`（Android）/ `host_desktop_stop`。
+- **`AuthEntityStore`**：仅管理认证相关实体（`users`、`refresh-tokens` 等），本地 SQLite（`gateway.db`）。Gateway **不再**继承 `SqlEntityStore` 为 `GatewayEntityStore`。
+- **`GatewayBusinessEntityClient`**：所有非本地实体（`devices`、`messages` 等）的 CRUD 通过 HTTP 代理到 **Business Service** `/internal/entities/*`，由 Business 直连 Entangled HTTP。
+- **设备生命周期管理**：由 Business Service 的 `DeviceOrchestrator` 负责，Gateway 不再直接调用 PC Client。
 - **`vm_status_report`**：只 update 已有设备的 `pc_client_id` + `status`，**不再 auto-create** 防止用户删后重建。
 
-## Worker 直写 Entangled 与 Gateway `/app/ws`（2026-04）
+## Worker 经 Business 写 Entangled（2026-04）
 
-当 **`ENTANGLED_URL`** 启用、Runtime **直连 Entangled HTTP** 写库时，须 **`X-Notify: false`** 并 **`POST /internal/entangled/sync-notify`**（或由 **`GatewayBusinessClient`** 自动完成），否则仅连 Gateway `/app/ws` 的客户端收不到与进程内 store 相同的 sync 帧。直连 **`/v1/sync`** 的客户端仍由 Entangled 进程内 notifier 投递。
+Workers **不再直连 Entangled HTTP**。所有 entity 写操作通过 **`BusinessClient.entity_*`** → Business `/internal/entities/*` → Entangled HTTP。Business Service 统一负责 `X-Notify: false` 与同步帧推送。直连 **`/v1/sync`** 的客户端仍由 Entangled 进程内 notifier 投递。
 
 ## Entangled 单 Store 与 schema push（2026-03）
 
-**后端**：NovAIC `**EntityStore`** 直接作为 Entangled 的 store；引入 `**EntityStoreProtocol(ABC)**`。（独立 Entangled 模式下 Gateway 仍注册同一 store 实例供 notifier，见 `entangled_bridge.py`。）
+**后端**：**Business Service** 直连 Entangled HTTP，是唯一与 Entangled 交互的服务；引入 `**EntityStoreProtocol(ABC)**`。Gateway 仅保留 `AuthEntityStore`（本地认证实体），不再注册为 Entangled store。
 
-`**gateway/entity/store.py` — `EntityDef` 字段示例**：
+`**EntityDef` 字段示例**：
 
 ```python
 sync_type: property   # STREAM → "stream"，其他 → "list"

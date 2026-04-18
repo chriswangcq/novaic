@@ -41,16 +41,26 @@
 
 ---
 
-## 4. Handler：拼 tools + 可选 `NO_TOOL_WARNING`
+## 4. Handler：合并消息 + 注入栈快照 + 可选 `NO_TOOL_WARNING`
 
-**`handle_cortex_prepare_llm_context`**（`cortex_handlers.py`）：
+**`handle_cortex_prepare_llm_context`**（`cortex_handlers.py`）**五步**：
 
-1. **`prepare_result = bridge.prepare_for_llm(scope_id)`**  
-2. **`_load_tool_schemas(bridge)`**：**`bridge.load_tool_schemas()`** → 转成 OpenAI **`tools[]`**（`type: function`），并收集 **`tool_names`**。  
-3. 若最后一条是 **`assistant`** 且 **无 `tool_calls`**：追加一条 **system** **`NO_TOOL_WARNING`**（瞬态提示，见 `system_prompt` 模块）。  
-4. 返回 **`success`、`messages`、`tools`、`tool_names`、`stack`**。
+1. **Step 1 `handle_context_read`**：拉 `context.jsonl` + 从 Entangled `messages` 实体把未读消息 `append_context` 进来并标记已读（过滤规则按 `subagent_id` / `msg_type` 路由，详见 `context_handlers.py`）。
+2. **Step 2 `bridge.prepare_for_llm(scope_id)`**：HTTP 调 Cortex（§3），拿回 **`messages`**（已 DFS 合并 + `budget_compact`）与 **`stack`**（frames）。
+3. **Step 3 `_load_tool_schemas(bridge)`**：`bridge.load_tool_schemas()` → 转成 OpenAI **`tools[]`**（`type: function`），收集 **`tool_names`**。
+4. **Step 4a `_format_skill_stack_system_message(stack)`**：若 `stack` 非空，追加一条瞬态 **system** 消息：
+   ```text
+   [Active skill stack (LIFO — close innermost first)]
+     depth 0: meta (scope_id=meta-<root>)
+     depth 1: debugging (scope_id=debug-1)
+   → Stack top: scope_id=debug-1 ... skill_end(scope_id='debug-1', report='...')
+   ```
+   LLM 由此知道该给 **`skill_end`** 的 `scope_id` 传什么。**不写 `context.jsonl`**，每轮重新生成。详见 [scope-lifecycle.md §9.4](scope-lifecycle.md#94-llm-上下文中的栈快照瞬态)。
+5. **Step 4b `NO_TOOL_WARNING`**：若最后一条是 **`assistant`** 且 **无 `tool_calls`**，追加一条瞬态 system 提示（`system_prompt.NO_TOOL_WARNING`，内容同步更新为要求 `skill_end(scope_id=..., report=...)`）。
 
-随后 Saga 的 **`call_llm`** 用 **`_build_llm_call_payload`**：把 **`prepare_context`** 步骤结果里的 **`messages`、`tools`** 传入 **`llm.call`**（**`llm_handlers.handle_llm_call`**）。**LLM handler 不负责决定工具列表**——注释写明由 Cortex 侧 schema 决定。
+返回 **`success`、`messages`、`tools`、`tool_names`、`stack`、`new_messages`**。
+
+随后 Saga 的 **`call_llm`** 用 **`_build_llm_call_payload`**：把 **`prepare_context`** 步骤结果里的 **`messages`、`tools`** 传入 **`llm.call`**（**`llm_handlers.handle_llm_call`**）。**LLM handler 不负责决定工具列表**——由 Cortex 侧 schema 决定。
 
 ---
 
@@ -58,13 +68,14 @@
 
 同一 **`CortexBridge`** 上还有（与「拼上下文」并列的技能与时间线操作）：
 
-| 方法 | HTTP |
-|------|------|
-| **`context_skill_begin`** | `POST /v1/context/skill_begin` |
-| **`context_skill_end`** | `POST /v1/context/skill_end` |
-| **`context_status`** | `POST /v1/context/status` |
+| 方法 | HTTP | 关键参数 |
+|------|------|---------|
+| **`context_skill_begin`** | `POST /v1/context/skill_begin` | `scope_id`（根）、**`child_scope_id`**（LLM 自选，全局唯一）、`skill_name`、`task?` |
+| **`context_skill_end`** | `POST /v1/context/skill_end` | `scope_id`（根）、**`child_scope_id`**（必须 == 当前栈顶）、`report` |
+| **`context_check_stack`** | （Runtime 内部 handler，未独立 HTTP） | 通过 `context_status` 判断栈是否只剩 Meta/为空 |
+| **`context_status`** | `POST /v1/context/status` | 返回 `stack_depth`、`frames[{depth,skill_name,scope_id}]` 等 |
 
-对应 handler：**`handle_cortex_skill_begin` / `handle_cortex_skill_end`**（`cortex_handlers.py`）。
+对应 handler：**`handle_cortex_skill_begin` / `handle_cortex_skill_end` / `handle_cortex_check_stack`**（`cortex_handlers.py`）。新的 Runtime topic **`CORTEX_CHECK_STACK = "cortex.check_stack"`** 由 **`react_actions`** saga 的 `check_skill_stack` 步调用，决定下一步是 `trigger_rest` 还是 `trigger_next_think`（见 [agent-runtime-all-topics.md §3](agent-runtime-all-topics.md#3-reactthink-saga与-cortex-的衔接)）。
 
 ---
 

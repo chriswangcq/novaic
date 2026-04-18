@@ -102,7 +102,7 @@ start.sh CLI 参数 (生产覆盖，ps aux 可见)
 ## 8. ~~`main_gateway.py` 仍是 God Module~~ ✅ 已通过微服务拆分解决
 
 Gateway 完成微服务拆分（2026-04-14）：
-- **Business Service** (`:19994`)：Agent/Skill/Form/Model 等业务逻辑独立为 `novaic-business/`
+- **Business Service** (`:19998`)：Agent/Skill/Form/Model 等业务逻辑独立为 `novaic-business/`
 - **Device Service** (`:19993`)：设备管理/PC-Bridge WS/VM 操作独立为 `novaic-device/`
 - `main_gateway.py` 从 ~1400 行瘦身至纯网关（Auth + Entity Proxy + Turn + File Proxy + App WS）
 - 所有删除代码（~27K 行）来自 `novaic-gateway`，业务逻辑迁移到独立服务

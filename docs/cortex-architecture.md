@@ -157,7 +157,7 @@
 
 - 聚合 `**Workspace`、`Sandbox`、`Recall`、`Compactor`**、hooks、metrics、可选 summarizer。  
 - `**prepare_system_prompt`**：调用 `**recall.generate()`**（注意：仓库内 **无** 名为 `prepare_llm_context` 的 Python 方法；该名称出现在 **Agent Runtime 的 topic** 中）。  
-- `**skill_begin` / `skill_end`**：创建/结束 skill scope，`**skill_end` 会调用 `compactor.compact`**。  
+- `**skill_begin(scope_id, child_scope_id, name, ...)` / `skill_end(scope_id, child_scope_id, report)`**：创建/结束 skill scope。`**child_scope_id`** 由 LLM 显式指定，**全局唯一**（跨 active + archived）；`**skill_end`** 严格 LIFO，只能关栈顶。`**skill_end`** 会调用 `**compactor.compact**`。详见 [cortex/scope-lifecycle.md §9](cortex/scope-lifecycle.md#9-skill-scope-生命周期llm-可见栈式)。  
 - 内置工具 schema 与 `load_tool_schemas`、技能安装 `install_skill` 等与 `**tool_schemas.py**`、`**/ro/skills**` 联动。
 
 ---
@@ -198,7 +198,13 @@
 
 - Agent Runtime 注册 topic `**cortex.prepare_llm_context**`（见 `novaic-agent-runtime/task_queue/handlers/cortex_handlers.py`），内部 HTTP 调用 Cortex 的 `**/v1/context/...**` 与 `**context_prepare_for_llm**`，将返回的 **messages + tools** 交给 `**llm_handlers`**。  
 - 因此：**「prepare_llm_context」是跨服务约定名称**；Cortex 仓库内对应实现为 `**context_prepare_for_llm` HTTP 端点 + `ContextEngine`**，而非 `runtime.py` 里同名方法。  
-- **逐步调用链（Saga → Bridge → HTTP → `budget_compact`）** 见专题 **[cortex/agent-runtime-cortex-call-chain.md](cortex/agent-runtime-cortex-call-chain.md)**。
+- **`handle_cortex_prepare_llm_context`** 会在消息末尾注入一条瞬态 **`[Active skill stack (LIFO ...)]`** system 消息（来自 `ContextEngine.status().frames`），让 LLM 看到**每层 scope_id**，`skill_end` 时才有得填。  
+- **Subagent 休息**已与「没有 tool_calls」解耦：**`react_actions`** saga 新增 **`check_skill_stack`** → **`CORTEX_CHECK_STACK`**，栈空才走 `subagent_rest`，非空继续下一轮 `react_think`。**`subagent_rest` 工具已删除**。  
+  `_decide_rest_or_continue` 依次判：**（a）** `round_num ≥ services.json runtime.max_rounds_before_force_rest`（默认 40）→ 强制 rest；**（b）** Cortex 查栈异常（`stack_known=False`）→ fail-safe 继续 think，不 rest；**（c）** `stack_depth == 0` → rest；否则继续 think。  
+- **`skill_begin` / `skill_end` 并发安全**：Cortex API 在 `/v1/context/skill_begin` 与 `/v1/context/skill_end` 两个端点使用**按 `(user_id, agent_id, root_scope_id)` 的 asyncio 互斥锁**（`_SKILL_LOCKS`），同一 root scope 内的技能生命周期操作全串行，避免 `resolve_active_scope_path` 并发竞态。锁条目在 `/v1/scope/end`（root）归档后通过 `_drop_skill_lock` 自动回收。  
+- **Meta skill**：`subagent_wake` saga 在 `session_init` 后**必需**执行 **`CORTEX_SKILL_BEGIN`**（`child_scope_id = meta-<root>`、`name = meta`，**不再是 optional**），保证唤醒后栈非空；同时 `/api/queue/dispatch` 要求 `user_id` 必填（为 Meta skill 提供 tenant 上下文）。  
+- **归档时的子 scope 收尾**：`Workspace.archive_root_scope` 在 move 到 `/ro/scopes/` 前会调用 `_auto_close_open_children` DFS 关闭所有仍 open 的子 scope（summary = `"[auto-closed on rest: scope left open by agent]"`），保证 archive 后 `phase` 全部一致。  
+- **逐步调用链（Saga → Bridge → HTTP → `budget_compact`）** 见专题 **[cortex/agent-runtime-cortex-call-chain.md](cortex/agent-runtime-cortex-call-chain.md)** 与 **[cortex/agent-runtime-all-topics.md](cortex/agent-runtime-all-topics.md)**。
 
 ---
 

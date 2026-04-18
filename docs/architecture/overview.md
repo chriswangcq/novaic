@@ -25,7 +25,7 @@
  │  novaic-app  │  WS/REST │           Nginx (公网入口 :443)                 │
  │  (Tauri 壳)  │◄────────►│  /         → Gateway  (:19999)                │
  │ - VmControl  │          │  /device/  → Device   (:19993)                │
- │ - Entangled  │          │  /business → Business (:19994) [预留]          │
+ │ - Entangled  │          │  /business → Business (:19998)                 │
  │   Rust Client│          └────┬───────────┬──────────┬───────────────────┘
  └──────┬───────┘               │           │          │
         ▼               ┌───────▼──┐ ┌──────▼───┐ ┌───▼──────────┐
@@ -34,7 +34,13 @@
                         │ Turn+File│ │ Skill/   │ │ WS + CRUD    │
                         └────┬─────┘ │ Model    │ └──────┬───────┘
                              │       └────┬─────┘        │
+                             │  /internal/entities/*      │
                       ┌──────▼────────────▼──────────────▼──────┐
+                      │          Business (:19998)               │
+                      │   中枢编排 + Entity CRUD Proxy            │
+                      └───────────────────┬─────────────────────┘
+                                          │ HTTP (sole consumer)
+                      ┌───────────────────▼─────────────────────┐
                       │          Entangled (:19900)              │
                       │    独立进程 HTTP+WS — 实体 CRUD + 同步      │
                       │          (server SQLite)                 │
@@ -42,12 +48,12 @@
 ```
 
 - **客户端（本地）**：`novaic-app`（React + Tauri）。内嵌 **VmControl** 作为唯一 runtime owner 处理所有 WebRTC 连接、VM 生命周期、输入控制与截图；内嵌 **Entangled Rust Client** 处理业务实体的实时订阅，数据持久化在**本地 SQLite**（不再依赖 IndexedDB）。
-- **云端网关**：`novaic-gateway`（`:19999`）。经过微服务拆分后瘦身为纯网关：Auth（JWT 签发/验证）、Entity Proxy（代理 Entangled CRUD）、Turn（对话调度）、File Proxy（文件下载代理）、App WS（实时推送）。不再包含 Agent/Skill/Device/VM 等业务逻辑。
-- **业务服务**：`novaic-business`（`:19994`）。从 Gateway 拆出的业务逻辑层：Agent CRUD、Skill 管理、Form 处理、Model 配置、消息操作、日志查询。共享 Gateway 的 Python venv，独立进程运行。
-- **设备服务**：`novaic-device`（`:19993`）。从 Gateway 拆出的设备管理层：Device registry、CloudBridge typed WS broker、VmControl typed command routing、northbound 设备 API。Nginx 通过 `/device/` 前缀路由转发。Device Service 不运行本地 VM，所有执行由 VmControl 承担。
-- **实体同步**：`Entangled`（`:19900`）。独立的实体存储与实时同步引擎。Gateway/Business/Device 均通过 `RemoteEntityStore` 代理到此服务。前端可选直连 `ws(s)://…/v1/sync`。
+- **云端网关**：`novaic-gateway`（`:19999`）。瘦网关：Auth（JWT 签发/验证）、File Proxy（文件代理）、App WS（实时推送 + WebRTC signaling）。不包含任何业务逻辑或设备调用。
+- **业务服务**：`novaic-business`（`:19998`）。**中枢编排层**：所有 Entangled 实体的 action hook 回调（包括 devices）、所有 `/internal/*` API（被 Workers 和 Cortex 直接调用）、Device 生命周期编排（通过 device_client → Device Service）。Cortex 的 BusinessProxy 直接指向此服务。
+- **设备服务**：`novaic-device`（`:19993`）。纯硬件基础设施：Device registry、CloudBridge typed WS broker、`/internal/hardware/*` 执行 API、VM/Mobile/HD tool proxy（转发到 VmControl）。不含业务逻辑，不拥有 action hook。所有业务调度由 Business Service 发起。
+- **实体同步**：`Entangled`（`:19900`）。独立的实体存储与实时同步引擎。**仅 Business Service 直接访问 Entangled HTTP**；Gateway、Device、Workers 均通过 Business `/internal/entities/*` 代理完成 entity CRUD。前端可选直连 `ws(s)://…/v1/sync`。
 - **异步执行管线**：`novaic-agent-runtime`。包含 Watchdog 和 Task/Saga Workers。内置工具分发逻辑，不再有独立 Tools Server。
-- **认知基础设施**：`novaic-cortex`。独立的无状态 HTTP 服务。Agent 运行时通过 `CortexBridge` 调用 Workspace/DFS/Recall。
+- **认知基础设施**：`novaic-cortex`。独立的无状态 HTTP 服务。Agent 运行时通过 `CortexBridge` 调用 Workspace/DFS/Recall。Cortex 通过 `BusinessProxy`（`--business-url`）将工具命令转发到 Business Service。
 - **LLM 隔离层**：`novaic-llm-factory`。隐藏所有 api-keys 和底层厂商差异，只暴露标准 OpenAI HTTP 端点。
 - **边缘 P2P 与存储**：`novaic-quic-service` 负责 WebRTC 打洞和热更新 CDN；`novaic-storage-a` 负责二进制文件上传。
 
@@ -60,7 +66,7 @@
 | --------------------- | ----- | ---------------------------------------------------------------- |
 | `entangled`           | 19900 | Entangled 实体同步引擎（HTTP + WS）                                     |
 | `gateway`             | 19999 | Gateway 网关（Auth/Turn/File Proxy/App WS）                          |
-| `business`            | 19994 | Business Service（Agent/Skill/Form/Model 业务逻辑）                    |
+| `business`            | 19998 | Business Service — 中枢编排层（Agent/Skill/Device/Model 业务逻辑 + 所有 action hooks） |
 | `device`              | 19993 | Device Service（设备 registry / CloudBridge typed WS broker / VmControl 命令路由）|
 | `queue_service`       | 19997 | Queue Service（novaic-agent-runtime `queue-service`）                 |
 | `cortex`              | 19996 | Cortex 认知引擎 HTTP (`novaic-cortex`)，提供 Workspace/DFS/Recall        |
@@ -81,7 +87,7 @@
 | ---------------------- | --------- | -------------------------------------------------------------- |
 | `novaic-app`           | ✅         | 客户端 UI（React/Vite + Tauri）、VmControl 嵌入                       |
 | `novaic-gateway`       | ✅         | API 网关（Auth/Turn/File Proxy/App WS），瘦身后不含业务逻辑               |
-| `novaic-business`      | ✅         | Business Service：Agent/Skill/Form/Model/消息等业务逻辑（:19994）        |
+| `novaic-business`      | ✅         | Business Service：中枢编排层 — Agent/Skill/Device/Model/消息等（:19998）   |
 | `novaic-device`        | ✅         | Device Service：设备 registry / CloudBridge typed WS broker（:19993）   |
 | `novaic-agent-runtime` | ✅         | Agent 运行时：Queue Service、Task/Saga Worker、Watchdog、Scheduler    |
 | `novaic-cortex`        | ✅         | Cortex HTTP：Workspace / Scope / Sandbox / Recall               |

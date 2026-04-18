@@ -1,6 +1,12 @@
 #!/bin/bash
-# Reset all agent history data for a clean Cortex-only start.
-# Run on the server: bash /opt/novaic/services/scripts/reset-agent-data.sh
+# Reset all agent runtime data for a clean test run.
+#
+# Preserves: users, refresh_tokens, ssh_keys, config, pc_clients, vm_processes
+# Wipes:    sessions, session_messages, pipeline_tasks,
+#           all tq_* queue tables, Redis cortex:lock:* keys,
+#           OSS users/* prefix, local Cortex data dir.
+#
+# Run on the server: bash /opt/novaic/reset-agent-data.sh
 set -euo pipefail
 
 GW_DB="/opt/novaic/data/gateway.db"
@@ -10,56 +16,55 @@ echo "=== 1. Stop services ==="
 bash /opt/novaic/start.sh --stop || true
 sleep 2
 
-echo "=== 2. Clean Gateway DB ==="
+echo "=== 2. Clean Gateway agent data (keep users/auth/config) ==="
 sqlite3 "$GW_DB" << 'SQL'
-DELETE FROM chat_messages;
-DELETE FROM subagent_context;
 DELETE FROM session_messages;
 DELETE FROM sessions;
-DELETE FROM execution_logs;
-DELETE FROM execution_log_payloads;
-DELETE FROM agent_task_history;
-DELETE FROM agent_tasks;
-DELETE FROM agent_notebook;
-DELETE FROM agent_memory;
-DELETE FROM agent_state;
-DELETE FROM agent_drive;
-DELETE FROM pending_questions;
-DELETE FROM question_responses;
-
--- Delete all sub-agents, keep only main ones
-DELETE FROM subagents WHERE type = 'sub';
-
--- Reset main subagents to clean sleeping state
-UPDATE subagents SET
-    status = 'sleeping',
-    current_scope_id = NULL,
-    wake_triggers = '[{"type": "user_response"}]',
-    handoff_notes = NULL,
-    wake_at = NULL,
-    need_rest = 0,
-    tool_ports = NULL,
-    log_count = 0;
-
-SELECT 'Gateway: agents=' || (SELECT count(*) FROM agents)
-    || ' subagents=' || (SELECT count(*) FROM subagents)
-    || ' chat_messages=' || (SELECT count(*) FROM chat_messages)
-    || ' context=' || (SELECT count(*) FROM subagent_context);
+DELETE FROM pipeline_tasks;
+DELETE FROM entangled_sync_versions;
+SELECT 'Gateway: sessions=' || (SELECT count(*) FROM sessions)
+    || ' messages=' || (SELECT count(*) FROM session_messages)
+    || ' pipeline_tasks=' || (SELECT count(*) FROM pipeline_tasks)
+    || ' users=' || (SELECT count(*) FROM users) || ' (preserved)';
 SQL
-echo "  Gateway DB cleaned."
 
 echo "=== 3. Clean Queue DB ==="
 sqlite3 "$QU_DB" << 'SQL'
 DELETE FROM tq_tasks;
 DELETE FROM tq_sagas;
 DELETE FROM tq_idempotency_ledger;
+DELETE FROM tq_active_sessions;
+DELETE FROM tq_pending_triggers;
 SELECT 'Queue: tasks=' || (SELECT count(*) FROM tq_tasks)
-    || ' sagas=' || (SELECT count(*) FROM tq_sagas);
+    || ' sagas=' || (SELECT count(*) FROM tq_sagas)
+    || ' active_sessions=' || (SELECT count(*) FROM tq_active_sessions)
+    || ' pending_triggers=' || (SELECT count(*) FROM tq_pending_triggers);
 SQL
-echo "  Queue DB cleaned."
 
-echo "=== 4. Clean OSS agent data ==="
+echo "=== 4. Clean Redis scope locks ==="
+# P3-6: Cortex uses Redis for distributed scope locks
+# (``cortex:lock:{user}:{agent}:{scope}``). After stopping services in
+# step 1 there should be nothing held, but flush anyway so tests start
+# from a pristine state instead of waiting for the 300s TTL.
+if command -v redis-cli >/dev/null 2>&1 && redis-cli ping >/dev/null 2>&1; then
+    flushed=$(redis-cli --no-raw eval "
+        local keys = redis.call('keys', ARGV[1])
+        for i=1,#keys,500 do
+            redis.call('del', unpack(keys, i, math.min(i+499, #keys)))
+        end
+        return #keys
+    " 0 'cortex:lock:*')
+    echo "  Redis: deleted ${flushed} cortex:lock:* keys (DBSIZE=$(redis-cli DBSIZE))."
+else
+    echo "  Redis: redis-cli unavailable or server down — Cortex will refuse to start."
+fi
+
+echo "=== 5. Clean OSS agent data (users/*) ==="
+# shellcheck disable=SC1091
 source /opt/novaic/cortex_oss.env
+# Activate Cortex venv for boto3.
+# shellcheck disable=SC1091
+source /opt/novaic/services/novaic-cortex/.venv/bin/activate
 python3 << 'PYEOF'
 import boto3, os
 from botocore.config import Config
@@ -72,26 +77,23 @@ s3 = boto3.client("s3",
     config=Config(s3={"addressing_style": "virtual"}))
 
 BUCKET = "novaic-s3-bucket"
-prefix = "users/"
+PREFIX = "users/"
+# Alibaba OSS's DeleteObjects requires a signed Content-MD5 which boto3
+# doesn't compute by default → use per-object delete_object instead.
 deleted = 0
-
-paginator = s3.get_paginator("list_objects_v2")
-for page in paginator.paginate(Bucket=BUCKET, Prefix=prefix):
-    objects = page.get("Contents", [])
-    if not objects:
-        continue
-    batch = [{"Key": o["Key"]} for o in objects]
-    s3.delete_objects(Bucket=BUCKET, Delete={"Objects": batch})
-    deleted += len(batch)
-
-print(f"  OSS: deleted {deleted} objects under {prefix}")
+for page in s3.get_paginator("list_objects_v2").paginate(Bucket=BUCKET, Prefix=PREFIX):
+    for o in page.get("Contents") or []:
+        s3.delete_object(Bucket=BUCKET, Key=o["Key"])
+        deleted += 1
+print(f"  OSS: deleted {deleted} objects under {PREFIX}")
 PYEOF
 
-echo "=== 5. Clean local Cortex data ==="
+echo "=== 6. Clean local Cortex data ==="
 rm -rf /opt/novaic/data/cortex/*
-echo "  Local Cortex data cleaned."
+echo "  /opt/novaic/data/cortex/ is now empty."
 
-echo "=== 6. Restart services ==="
+echo "=== 7. Restart services ==="
 bash /opt/novaic/start.sh
+
 echo ""
-echo "=== Done! All agent history cleared. ==="
+echo "=== Done! All agent runtime data cleared. ==="

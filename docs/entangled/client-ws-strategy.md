@@ -6,14 +6,16 @@
 
 | 模式 | URL | 适用 |
 |------|-----|------|
-| **仅 Gateway** | `wss://<gateway>/app/ws` | 统一入口：实体同步 + WebRTC 信令；实体写经 Gateway `RemoteEntityStore` 时，sync 由 Gateway 推送。 |
+| **仅 Gateway** | `wss://<gateway>/app/ws` | 统一入口：实体同步 + WebRTC 信令；实体写经 Business Service `/internal/entities/*` proxy 时，sync 由 Gateway 推送。 |
 | **直连 Entangled（可选）** | `entangledWsUrl`（如 `ws(s)://<host>:19900/v1/sync`） | 减轻 Gateway WS 负载或内网分流；需携带与 Gateway 相同的 JWT（`Authorization` 或 `?token=`）。 |
 
 `entangledWsUrl` 在 **有独立 Entangled HTTP**（`ENTANGLED_URL`）时由 schema / WS 首帧下发；仅嵌入模式时可为空。
 
-## 2. Worker 直写 Entangled 时的 UI
+## 2. Worker 经 Business Service 写实体时的 UI
 
-若 Agent Runtime **直连 Entangled HTTP** 写库，须 **`X-Notify: false`** 并 **`POST /internal/entangled/sync-notify`**（或使用已封装好的 **`GatewayBusinessClient.entity_*`**），否则只连 **`/app/ws`** 的客户端**不会**收到与 Gateway 一致的 sync 帧。见 `docs/roadmap/entangled_standalone_checklist.md`（F1）。
+> **⚠️ 2026-04-16 更新**：Workers（Agent Runtime）不再直连 Entangled HTTP，统一经 **Business Service `/internal/entities/*`** 代理写入。
+
+Workers 通过 `BusinessClient.entity_*` 方法调用 Business Service 的 entity proxy 端点。Business 作为唯一 Entangled HTTP 消费者负责写入并触发 sync-notify，确保只连 **`/app/ws`** 的客户端能收到一致的 sync 帧。
 
 ## 3. 协议与首帧
 
