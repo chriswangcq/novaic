@@ -1,0 +1,116 @@
+# AI-Native Org: Failure Pattern Registry
+# 制度记忆 — 所有已知的 agent 失败模式
+# 每条记录会在 Worker claim ticket 时注入 context 作为警告
+# Master review 时也会引用这些记录做风险判断
+
+patterns:
+  - id: "F-001"
+    name: "fake_checkmark"
+    description: |
+      Agent 把 ticket Status 标记为 [x]，但 body 中的逐项 checklist
+      仍全部为 [ ]。Status 是总开关，body 是凭证，两者必须吻合。
+    severity: "critical"
+    first_seen: "PR-06"
+    recurrences: ["PR-16"]
+    detection:
+      type: "script"
+      command: |
+        # 检查 ticket body 中 [x] 的数量是否与 evidence 条目数一致
+        # Status [x] 只有在所有非 defer 项都 [x] 或 [-] 后才允许
+        rg '^\| \*\*Status\*\* \| `\[x\]`' {ticket_file} && \
+        rg '^- \[ \]' {ticket_file} && echo "FAIL: body has unchecked items"
+    countermeasure: |
+      Gate Check 在 declare done 时自动验证：
+      - 统计 body 中 [x] 行数与 evidence 条目数
+      - Status [x] 仅当所有非 [-] 项都是 [x] 时放行
+
+  - id: "F-002"
+    name: "bundle_commit"
+    description: |
+      把 submodule bump 和 docs 改动绑在同一个 commit 里，
+      导致无法独立 revert 也无法做 git bisect。
+    severity: "high"
+    first_seen: "PR-15"
+    recurrences: ["PR-16"]
+    detection:
+      type: "script"
+      command: |
+        # 检查最近的 commit 是否同时修改了 submodule 指针和非 submodule 文件
+        git diff --name-only HEAD~1 HEAD | grep -E '^(Entangled|novaic-)' > /tmp/sub &&
+        git diff --name-only HEAD~1 HEAD | grep -v -E '^(Entangled|novaic-)' > /tmp/other &&
+        [ -s /tmp/sub ] && [ -s /tmp/other ] && echo "FAIL: bundle commit detected"
+    countermeasure: |
+      每种文件类型独立 commit：
+      - feat/test: 在子模块内提交
+      - chore: bump submodules（只动指针）
+      - docs: 只动 markdown
+
+  - id: "F-003"
+    name: "submodule_bump_forgotten"
+    description: |
+      子模块内的 commit 已提交，但主仓的 submodule 指针未更新。
+      git clone --recursive 的新机器会拉到旧代码。
+    severity: "critical"
+    first_seen: "PR-11"
+    recurrences: ["PR-16", "PR-16-rework"]
+    detection:
+      type: "script"
+      command: |
+        # 检查主仓是否有 dirty submodule
+        git status --short | grep -E '^.M (Entangled|novaic-)' && \
+        echo "FAIL: submodule pointer not bumped"
+    countermeasure: |
+      Declare Done 前强制执行：
+        git status --short
+      看到 M <submodule> 就必须再补一发 chore: bump。
+
+  - id: "F-004"
+    name: "fake_test"
+    description: |
+      测试通过了，但实际上没有测试声称要验证的语义。
+      例如 mock 返回硬编码数据，断言 mock 传参而非真实行为。
+    severity: "critical"
+    first_seen: "PR-16"
+    recurrences: []
+    detection:
+      type: "review_question"
+      question: "去掉生产代码，这个测试会红吗？"
+    countermeasure: |
+      CR Agent 必须对每个新测试回答：
+      "如果我删除/break 对应的生产代码，这个测试会 fail 吗？"
+      如果答不上来就要求补真实 DB / 真实 HTTP 的集成测试。
+
+  - id: "F-005"
+    name: "scope_drift"
+    description: |
+      Preflight 或实现中包含了不属于本 PR scope 的改动。
+      例如 PR-15 preflight 塞了 PR-16 的 claim SQL。
+    severity: "medium"
+    first_seen: "PR-15"
+    recurrences: []
+    detection:
+      type: "script"
+      command: |
+        # 检查 diff 涉及的文件是否超出 ticket scope
+        # 需要 ticket 定义 scope.includes
+        echo "需要对比 git diff --name-only 与 ticket scope.includes"
+    countermeasure: |
+      Gate Check 对比 git diff --name-only 与 ticket scope.includes。
+      超出范围的文件变更触发 warning，需要 Master 审批。
+
+  - id: "F-006"
+    name: "detail_handwave"
+    description: |
+      方向判断正确但具体实现细节模糊。例如 "通过 API 注入"
+      却没查明具体是哪个端点、什么参数、什么鉴权方式。
+    severity: "medium"
+    first_seen: "PR-15"
+    recurrences: ["PR-17"]
+    detection:
+      type: "review_question"
+      question: "T1 照这段描述能直接写出可编译的代码吗？"
+    countermeasure: |
+      Preflight 中每个技术决策必须包含：
+      - 具体的 API 端点 / 函数签名
+      - 示例请求 / 响应
+      - 如果依赖外部系统，附上实地查证的 stdout

@@ -1,0 +1,126 @@
+# AI-Native Org: Gate Check 规则定义
+# 每个阶段转换的准入条件
+# Gate Engine 在 ticket phase 变化时自动执行这些检查
+
+gates:
+  # ── Coder 提交代码后 → 等待 Review ──────────────────────────
+  "coding → review_pending":
+    description: "Coder 声称完成编码，进入 Review 队列"
+    checks:
+      - id: "git_clean"
+        type: "command"
+        command: "git status --short"
+        expect: "empty"  # 输出应为空（除了 untracked review 文件）
+        failure_message: "工作区不干净，有未提交的改动"
+
+      - id: "submodule_synced"
+        type: "command"
+        command: "git status --short | grep -E '^.M (Entangled|novaic-)'"
+        expect: "empty"  # 不应有 dirty submodule
+        failure_message: "子模块指针未更新（F-003 submodule_bump_forgotten）"
+
+      - id: "tests_pass"
+        type: "evidence_exists"
+        evidence_type: "stdout"
+        must_contain: ["passed", "0 failed"]
+        failure_message: "测试输出不存在或包含失败"
+
+      - id: "checklist_integrity"
+        type: "script"
+        description: |
+          验证 ticket body 中 [x] 数量 == evidence 条目数
+          防止 F-001 fake_checkmark
+        failure_message: "Checklist 勾选与 evidence 条目数不匹配"
+
+      - id: "scope_boundary"
+        type: "diff_scope"
+        description: |
+          对比 git diff --name-only 与 ticket scope.includes
+          超出范围的文件触发 warning
+        severity: "warning"  # warning 不阻塞，但会通知 Master
+        failure_message: "代码变更超出 ticket 定义的 scope"
+
+      - id: "failure_pattern_scan"
+        type: "registry_scan"
+        description: |
+          查询 failure_patterns.yaml，匹配当前 agent 的历史失败模式
+          对匹配到的模式执行 detection.command
+        severity: "warning"
+        failure_message: "检测到历史失败模式匹配"
+
+  # ── 分配 CR Agent ──────────────────────────────────────────
+  "review_pending → claimed:review":
+    description: "CR Agent 认领 review 任务"
+    checks:
+      - id: "reviewer_not_author"
+        type: "constraint"
+        rule: "assigned_to != previous_assigned_to"
+        failure_message: "CR Agent 不能是写代码的同一个 agent（防 F-004 fake_test）"
+
+  # ── CR 完成 → 进 QA ──────────────────────────────────────────
+  "review → qa_pending":
+    description: "CR 通过，进入 QA 队列"
+    checks:
+      - id: "review_verdict"
+        type: "evidence_exists"
+        evidence_type: "review"
+        must_contain_field: "verdict"
+        must_equal: "approved"
+        failure_message: "Review 未通过或无明确 verdict"
+
+      - id: "rework_addressed"
+        type: "evidence_exists"
+        description: "如果 review verdict 是 changes_requested，必须有后续 rework evidence"
+        conditional: true
+        failure_message: "Review 要求的返工未完成"
+
+  # ── QA 通过 → 等待 Merge ──────────────────────────────────────
+  "qa → merge_pending":
+    description: "QA 全绿，等待 Master merge 审批"
+    checks:
+      - id: "qa_all_green"
+        type: "evidence_exists"
+        evidence_type: "qa_report"
+        must_contain: ["ALL PASSED"]
+        failure_message: "QA 报告缺失或包含失败项"
+
+      - id: "no_regression"
+        type: "script"
+        description: "对比 main 分支的测试，确认无回归"
+        failure_message: "检测到回归测试失败"
+
+  # ── Merge → Canary（可选） ──────────────────────────────────
+  "merging → canary":
+    description: "代码合入 main，开始灰度观察"
+    checks:
+      - id: "merge_clean"
+        type: "command"
+        command: "git log --oneline -1 main"
+        description: "确认 merge commit 存在且无冲突标记"
+        failure_message: "Merge 异常"
+
+  # ── Canary → Done ─────────────────────────────────────────
+  "canary → done":
+    description: "灰度通过，工单完成"
+    checks:
+      - id: "canary_healthy"
+        type: "metric_check"
+        description: |
+          监控指标在阈值内（具体阈值由 ticket 定义）
+          - error rate < 0.1%
+          - latency P99 < 2s
+          - 无 permanent fail
+        failure_message: "灰度指标异常"
+
+      - id: "observation_window"
+        type: "time_check"
+        min_duration_hours: 4
+        description: "灰度观察期至少 4 小时"
+        failure_message: "观察期不足"
+
+      - id: "human_approval"
+        type: "approval"
+        approver: "human"
+        required_for: ["high_risk"]  # 仅高风险 ticket 需要
+        description: "高风险变更需要 Human 显式审批"
+        failure_message: "等待 Human 审批"
