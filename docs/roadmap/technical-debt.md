@@ -33,6 +33,7 @@
 - **内部 Key 未统一**：`QUEUE_SERVICE_INTERNAL_KEY` / `CORTEX_INTERNAL_KEY` / 其他服务 Key 各自独立。
   后续 PR 统一为 `NOVAIC_INTERNAL_KEY` + 服务端 auth 兼容灰度。
   （PR-05 调研期发现，刻意延后。见 reviews/PR-05-preflight-review.md §2。）
+- **重复的 Access Log**：Queue Service 等服务自带的 uvicorn `access_log=True` 和 `CallerLoggingMiddleware` 在同一请求上会各打一行日志（不冲突，但啰嗦），后续可统一关闭 uvicorn access log（PR-06 引入，待清理）。
 
 ## 路线 A：Entangled 引擎内置乐观写（未来演进）
 
