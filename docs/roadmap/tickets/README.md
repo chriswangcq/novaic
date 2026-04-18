@@ -38,7 +38,7 @@
 | PR-01 | `[x]` | [common.wake 包骨架](PR-01-wake-package-skeleton.md) | — | R2 | 0.5 h | __ |
 | PR-02 | `[x]` | [common.agents.ownership 包骨架](PR-02-ownership-package-skeleton.md) | — | R3 | 0.5 h | __ |
 | PR-03 | `[x]` | [CI lint：禁止直接 POST /api/queue/dispatch](PR-03-ci-ban-direct-dispatch.md) | — | R2 | 1 h | __ |
-| PR-04 | `[ ]` | [CI lint：禁止裸 httpx.Client()](PR-04-ci-ban-bare-httpx-client.md) | — | R7 | 1 h | __ |
+| PR-04 | `[x]` | [CI lint：禁止裸 httpx.Client()](PR-04-ci-ban-bare-httpx-client.md) | — | R7 | 1 h | __ |
 | PR-05 | `[ ]` | [internal_client(service_name=...) 必填](PR-05-internal-client-service-name.md) | — | R7 | 0.5 d | __ |
 | PR-06 | `[ ]` | [服务端消费 X-Internal-Service](PR-06-services-consume-caller-header.md) | PR-05 | R7 | 0.5 d | __ |
 | PR-07 | `[ ]` | [Business `GET /internal/agents/{id}/owner`](PR-07-business-agent-owner-endpoint.md) | — | R3 | 0.5 d | __ |
