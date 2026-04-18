@@ -43,7 +43,7 @@
 
 | 变量 | 含义 |
 |------|------|
-| `TRUST_GATEWAY_X_USER_ID` | 默认 `true`：无 Bearer 时可信任 nginx 注入的 `X-User-ID`。公网直连防伪造时可为 `false`。 |
+| `TRUST_GATEWAY_X_USER_ID` | 默认 `true`（仅在 Gateway 绑 `127.0.0.1` + 可信 nginx `auth_request` 注入 `X-User-ID` 的部署模式下安全）。**P3-4 生产硬化**：公网直连 / 容器网络等任何"非 loopback"暴露都应显式 `false`，强制 Bearer JWT 鉴权。Gateway 启动时会检测绑定地址并 `WARN` 非法组合（见 `main_gateway.py::lifespan`）。 |
 | `INTERNAL_TASKS_SECRET` | 非空时：`/api/internal/tasks*` 须带 `X-Internal-Secret`；跨主机需配置。 |
 | `DEV_MODE` | 未授权时的调试日志，不改变生产主逻辑。 |
 

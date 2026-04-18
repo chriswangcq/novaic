@@ -1,31 +1,41 @@
 # 网关端 Entangled 集成（Gateway Integration）
 
-> **2026-04**：与 `novaic-gateway/gateway/entity/store.py`、`scripts/start.sh` 一致。旧文描述的 **`GatewayEntityStore(db, defs, runtime, vmuse_mgr)`** 构造与「仅嵌入一层」叙述已过时，仅作历史参考。
+> **⚠️ 2026-04-16 更新**：本文档大部分内容已过时。当前架构中：
+> - Gateway 不再拥有 `RemoteEntityStore` 或 `EntangledServiceClient`
+> - Gateway 仅保留 `AuthEntityStore`（本地 SQLite，管理 users/refresh-tokens）
+> - 所有非 LOCAL_ONLY 的 entity CRUD 通过 `GatewayBusinessEntityClient` → Business `/internal/entities/*` → Entangled
+> - Workers 通过 `BusinessClient.entity_*` → Business → Entangled
+> - Device Service 通过 `BusinessEntityClient` → Business → Entangled
+> - **仅 Business Service 直连 Entangled HTTP**
 
-## 1. 当前实现：`EntityStore` 与 `RemoteEntityStore`
+> **2026-04**：旧文描述的 **`GatewayEntityStore(db, defs, runtime, vmuse_mgr)`** 构造与「仅嵌入一层」叙述已过时，仅作历史参考。
 
-- **`EntityStore`**（`gateway/entity/store.py`）：继承 `entangled.sql.SqlEntityStore`，CRUD 走本地 SQLite（`gateway.db`）。
-- **`RemoteEntityStore`**：当 `ServiceConfig` 中 **`ENTANGLED_URL` / `ENTANGLED_SERVICE_URL` 非空** 时，`get_entity_store()` 返回该类。
+## 1. 当前实现：`AuthEntityStore`（Gateway 本地）+ Business 代理
+
+- **`AuthEntityStore`**（`gateway/entity/store.py`）：本地 SQLite（`gateway.db`），仅管理 `users`、`refresh-tokens` 等认证相关实体。
+- **`GatewayBusinessEntityClient`**：Gateway 对所有非本地实体的 CRUD，通过 HTTP 代理到 **Business Service** `/internal/entities/*`，由 Business 直连 Entangled HTTP。
 
 ### Entity Routing Split
 
-`LOCAL_ONLY_ENTITIES = {users, refresh-tokens, api-keys, vm-users, models, api-key-models}` 留 `gateway.db`，其余（`devices` 等需同步到客户端的实体）代理到 Entangled HTTP。
+`AuthEntityStore` 仅处理认证实体（`users`、`refresh-tokens` 等），留在 `gateway.db`。其余所有业务实体（`devices`、`messages` 等）通过 `GatewayBusinessEntityClient` → Business `/internal/entities/*` → Entangled HTTP。
 
-- **`_local_store`** 注册**所有** entity 定义（含 remote 的），但只对 LOCAL entities 建表（`ensure_schema`）。这保证 `_scope_where` 的 parent 链查找正常（如 `vm-users.parent = ("devices", ...)`）。
-- 写操作经 **`EntangledServiceClient`** 调用独立 Entangled HTTP，并带 **`X-Notify: false`**；同步帧由 Gateway 侧 **`_notify_change` → `/app/ws`** 投递。
-- **Pre-delete hook**（`_cleanup_device_on_pc_client`）：`devices` entity 删除前向 PC Client 发 `vm_delete`（先 shutdown 再 `DELETE /api/vms/{id}` 删磁盘）/ `android_avd_delete` / `host_desktop_stop`，确保 WS entity delete 与 HTTP REST `DELETE /api/devices/{id}` 行为一致。
-- **`device_actions.py` → `_get_device_and_repo`**：先尝试 `DeviceRepository`（gateway.db），找不到时回退到 `EntityStore`（Entangled），用 `device_from_dict` 构造 Device 对象。`get_status_action` 自行处理状态查询，不再依赖只读 gateway.db 的 HTTP 端点。
+- Gateway **不再**拥有 `RemoteEntityStore` 或 `EntangledServiceClient`。
+- 写操作经 **Business Service** 调用 Entangled HTTP，并带 **`X-Notify: false`**；同步帧由 Business 侧通知机制投递。
+- **设备生命周期管理**（删除、状态等）由 **Business Service** 的 `DeviceOrchestrator` 负责编排，Gateway 不再直接参与设备操作。
 
-可选覆盖：`NOVAIC_ENTANGLED_URL` 在 ServiceConfig 层覆盖 JSON 中的基址（见 `common/entangled_url.py`）。
+可选覆盖：`NOVAIC_ENTANGLED_URL` 在 ServiceConfig 层覆盖 JSON 中的基址（见 `common/entangled_url.py`），但该配置仅对 Business Service 生效。
 
 ## 2. 内部 API 与 Worker 路径
 
-- **`/internal/entities/*`**（`gateway/api/internal/entity.py`）：无鉴权，供内网调用；在 Remote 模式下与 `RemoteEntityStore` 一致：**Entangled HTTP `notify=false` + `remote_notify_after_entangled_http_write`**。
-- **`POST /internal/entangled/sync-notify`**：Runtime/Worker 在 **直连 Entangled HTTP** 且 `notify=false` 成功后，将 **`entity` / `action` / `data` / `params`** 交给 Gateway，由同一套 notifier 推送到 **`/app/ws`**。`novaic-agent-runtime` 的 **`GatewayBusinessClient`** 在 Remote 模式下对 `entity_*` 写操作自动调用该接口。
+- **Business `/internal/entities/*`**（`business/internal/entity.py`）：无鉴权，供内网调用；Business 直连 Entangled HTTP `notify=false` + 推送通知。
+- **Workers**：通过 `BusinessClient.entity_*` → Business `/internal/entities/*` → Entangled HTTP。Workers 不再直连 Entangled。
+- **Device Service**：通过 `BusinessEntityClient` → Business `/internal/entities/*` → Entangled HTTP。
+- **Gateway**：通过 `GatewayBusinessEntityClient` → Business `/internal/entities/*` → Entangled HTTP。
+- **Business Service 是唯一直连 Entangled HTTP 的服务**。
 
-## 3. 历史：从双层胶水到 `entangled.sql`
+## 3. 历史：从双层胶水到 Business 中枢
 
-早期 Gateway 曾用大量手写 SQL 与中层胶水对接 Entangled；现已收敛为 **`entangled.sql` 单栈** + 上述 Remote/Local 分支。业务钩子（序列化 `serializer`/`deserializer`、迁移热修等）仍在 `EntityStore` 子类中，见 `store.py`。
+早期 Gateway 曾用大量手写 SQL 与中层胶水对接 Entangled，后收敛为 `RemoteEntityStore` + Local 分支。当前架构进一步演进：Gateway 退化为薄边缘网关（Auth, App WS, TURN, File Proxy），所有 Entangled 交互收归 **Business Service（:19998）** 统一管理。
 
 ## 相关
 

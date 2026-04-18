@@ -4,7 +4,7 @@
 
 ## 总原则
 
-- **用户消息 / Agent / SubAgent 等业务行** 权威在 **Entangled Service**（SQLite）；经 Gateway `MessageRepository` 等写入。
+- **用户消息 / Agent / SubAgent 等业务行** 权威在 **Entangled Service**（SQLite）；经 Business Service 写入（via Entangled HTTP）。
 - **`gateway.db`** 保留 **运维** 表：`config`、`entangled_sync_versions`、`pending_questions`、`question_responses`、`ssh_keys`、`vm_processes`、`pc_clients`、`subagent_context` 等。
 - **`agents` / `subagents` / `chat_messages` 等** 在 **`_SHADOW_AND_DEAD_TABLES`** 中 **已 DROP**（勿再当作业务主表）。
 
@@ -22,7 +22,7 @@
 
 | 数据 | 权威位置 | 说明 |
 |------|----------|------|
-| 用户消息 / Agent / SubAgent **业务行** | **Entangled** | `MessageRepository` 见 `gateway/entity/repos/message.py` |
+| 用户消息 / Agent / SubAgent **业务行** | **Entangled** | 经 Business → Entangled |
 | Gateway `gateway.db` | **运维表 only** | v63 见 `schema.py` |
 | Task / Saga | Queue Service | `tasks`, `sagas` |
 | Workspace / 上下文 | **Cortex**（S3，HTTP 默认 19996） | scope、steps 等 |

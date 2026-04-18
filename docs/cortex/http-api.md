@@ -62,6 +62,8 @@
 |------|------|
 | POST | `/v1/meta/read` |
 | POST | `/v1/meta/update` |
+| POST | `/v1/meta/advance_round` |
+| POST | `/v1/meta/counter_inc` |
 | POST | `/v1/steps/write` |
 | POST | `/v1/steps/list` |
 | POST | `/v1/steps/read` |
@@ -78,8 +80,8 @@
 | POST | `/v1/internal/recall_messages` |
 | POST | `/v1/internal/reindex` |
 | POST | `/v1/internal/shell` |
-| POST | `/v1/internal/skill/begin` |
-| POST | `/v1/internal/skill/end` |
+
+> `/v1/internal/skill/begin|end` 已删除（P2-2）。Skill 栈变更走 `/v1/context/skill_begin` 与 `/v1/context/skill_end`。
 
 ### 签发与健康
 

@@ -15,12 +15,12 @@
   - **偏好**：`localStorage`（`prefsRepo`）；**消息 / 日志 / 实体**：Entangled + Rust SQLite（`entangled_cache`），业务主存非 Dexie/IndexedDB。
   - **AppBridge WS**：用户维度推送（如 `chat_message`、`config_updated`）。
   - **WebRTC**：远程桌面（VM / Android / HD / Subuser）。
-  - **Rust**：Tauri Commands（`gateway_`* HTTP 代理为 IPC 主通道）、**vmcontrol**（`novaic-app/src-tauri/vmcontrol/`：WebRTC、QEMU、Android scrcpy、CloudBridge WS → 云端 Gateway）。
+  - **Rust**：Tauri Commands（`gateway_`* HTTP 代理为 IPC 主通道）、**vmcontrol**（`novaic-app/src-tauri/vmcontrol/`：WebRTC、QEMU、Android scrcpy、CloudBridge WS → 云端 Device Service）。
 
 ## 云端（概念）
 
 - **api.gradievo.com**：Nginx 443 → Gateway `127.0.0.1:19999`；`auth_request` → `/internal/auth/validate` 注入 `X-User-ID`。
-- Gateway：REST、WS Push（`pc_client`）、CloudBridge `/internal/pc/ws`、P2P 相关 API、`gateway.db`（运维向；业务实体见 [data-ownership.md](data-ownership.md)）。
+- Gateway：REST、App WS Push、TURN 凭证、File Proxy、`gateway.db`（仅 auth 实体：users/refresh-tokens）。CloudBridge 和设备管理由 Device Service (`:19993`) 承担。
 - **relay + STUN**：`novaic-quic-service`；STUN 3478、Relay QUIC 443、静态前端 CDN（`frontend` OTA 路径）。
 
 ## macOS 键盘与 SIGTRAP（摘要）

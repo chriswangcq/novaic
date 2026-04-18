@@ -137,7 +137,7 @@ wait_port "$PORT_BUSINESS" "Business Service"
 PYTHONPATH="$BASE/Entangled/packages/server-python:$BASE/novaic-common:$BASE/novaic-device:${PYTHONPATH:-}" \
 $(py novaic-gateway) "$BASE/novaic-device/main_device.py" \
     --host "$HOST" --port "$PORT_DEVICE" --data-dir "$DATA_DIR" \
-    --entangled-url "$ENTANGLED_URL" --gateway-url "$GW_URL" \
+    --gateway-url "$GW_URL" --business-url "$BIZ_URL" \
     >> "$LOG_DIR/device-$(date +%Y%m%d).log" 2>&1 &
 wait_port "$PORT_DEVICE" "Device Service"
 
@@ -152,13 +152,22 @@ $(py novaic-storage-a) "$BASE/novaic-storage-a/main_file_service.py" \
 wait_port "$PORT_FILE_SERVICE" "File Service"
 
 mkdir -p "$DATA_DIR/cortex"
+# P3-6: Redis-backed scope lock (MANDATORY). Loopback-only redis-server
+# runs on the same host (systemd unit `redis-server.service`, bound to
+# 127.0.0.1). Cortex refuses to start without a reachable Redis —
+# per-root-scope serialization (INV-1, INV-7) is held by Redis
+# `SET NX PX` + Lua release + heartbeat (see
+# ``novaic_cortex/scope_locks.py::RedisScopeLockManager``). Multi-worker /
+# multi-replica Cortex is therefore always safe.
 CORTEX_STORE_ROOT="$DATA_DIR/cortex" \
 $(py novaic-cortex) -m novaic_cortex.main_cortex \
     --host "$HOST" --port "$PORT_CORTEX" \
     --jwt-secret "$JWT_SECRET" \
-    --gateway-url "$GW_URL" --internal-key "$CORTEX_INTERNAL_KEY" \
+    --business-url "$BIZ_URL" --internal-key "$CORTEX_INTERNAL_KEY" \
     --oss-ak "$OSS_AK" --oss-sk "$OSS_SK" \
     --oss-endpoint "$OSS_ENDPOINT" --oss-region "$OSS_REGION" --oss-bucket "$OSS_BUCKET" \
+    --redis-url "redis://127.0.0.1:6379/0" \
+    --redis-lock-ttl-seconds 300 \
     >> "$LOG_DIR/cortex.log" 2>&1 &
 wait_port "$PORT_CORTEX" "Cortex"
 

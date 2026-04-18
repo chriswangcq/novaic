@@ -37,7 +37,7 @@ cd novaic-app/scripts
 
 父仓库亦有一份镜像脚本：`scripts/submodules/novaic-app/start-backends.sh`（与上逻辑一致时可任选其一）。
 
-脚本内端口与 **Tauri 常量**对齐（Gateway 19999、Queue 19997、Tools 19998、File 19995、Tool Result 19994 等）。完整逻辑见该文件注释。
+脚本内端口与 **Tauri 常量**对齐（Gateway 19999、Queue 19997、Business 19998（中枢编排）、Device 19993（设备服务）、File 19995 等）。完整逻辑见该文件注释。
 
 ## 方式 C：只跑客户端 UI
 

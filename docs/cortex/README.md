@@ -8,7 +8,7 @@
 
 | 文档 | 内容 |
 | --- | --- |
-| [scope-lifecycle.md](scope-lifecycle.md) | 根/子 scope、`/ro/active` 与 `/ro/scopes`、归档、`meta.json`、统一时间线写入 |
+| [scope-lifecycle.md](scope-lifecycle.md) | 根/子 scope、`/ro/active` 与 `/ro/scopes`、归档、`meta.json`、统一时间线写入；**§9 Skill scope 生命周期（scope_id 全局唯一、LIFO 严校验、Meta skill、瞬态栈快照）** |
 | [step-index-and-payload-schema.md](step-index-and-payload-schema.md) | `steps/_index.jsonl` 行类型、tool/assistant/env/scope 与磁盘 JSON |
 | [session-meta-json.md](session-meta-json.md) | `meta.json` 字段、`ContextEngine` 前缀、`/v1/meta/*` |
 | [context-timeline-and-dfs.md](context-timeline-and-dfs.md) | `ContextEngine`、DFS 展开与折叠、`budget_compact` |
@@ -32,6 +32,9 @@
 | [extension-points.md](extension-points.md) | Hooks、协议、StepTree、压缩建议 |
 | [satellite-modules.md](satellite-modules.md) | Entangled、`fs://`、TRS 等 |
 | [design-doc-links.md](design-doc-links.md) | 源码注释中的设计稿路径、历史文档 |
+| [invariants.md](invariants.md) | **硬约束 SSOT**：10 条跨服务 invariants、代码锚点、强制级别 |
+| [hardening-checklist.md](hardening-checklist.md) | Phase 0-3 加固清单 + 风险矩阵 |
+| [architecture-review-2026-04-17.md](architecture-review-2026-04-17.md) | 8 位架构师评审 + 8 位 summarizer 汇总 |
 
 ---
 

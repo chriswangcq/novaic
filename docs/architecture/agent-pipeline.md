@@ -6,7 +6,9 @@
 
 | 进程 | 职责 |
 |------|------|
-| Gateway | HTTP、WS Push、`gateway.db` **运维表**；业务实体经 **EntangledClient** |
+| Business | `:19998`，中枢编排：所有 `/internal/*` API、Entangled entity proxy、Device 编排 |
+| Gateway | 薄边缘网关：Auth、App WS、TURN、File Proxy |
+| Device | `:19993`，设备 registry、CloudBridge WS、硬件执行 API |
 | Cortex | `:19996`，Workspace + ContextEngine（DFS）+ Recall + Sandbox |
 | Queue Service | Task / Saga 队列 |
 | Watchdog | `sending` 消息 → MessageProcess Saga |
@@ -19,7 +21,7 @@
 
 ```
 用户发消息
-  → Gateway: MessageRepository → Entangled `messages`（status=sending；非 gateway.db.chat_messages — v63 已 DROP shadow）
+  → Gateway → Business: MessageRepository → Entangled `messages`（status=sending）
   → Watchdog: find_sending() → MessageProcess Saga
   → Step 1 claim_message: sending → sent
   → Step 2 route_message: Runtime 获取/创建
@@ -48,14 +50,14 @@ ReactActions:
 ```
 LLM tool_call
   → TOOL_EXECUTE → tool_handlers.handle_tool_execute
-  → chat_reply / subagent_* / sleep → Gateway internal
+  → chat_reply / subagent_* / sleep → Business internal
   → shell / skill_* → CortexBridge → Cortex
   → JSON content → context.append
 ```
 
 | 类别 | 示例 | 路由 |
 |------|------|------|
-| 生命周期 | chat_reply, subagent_*, sleep | Gateway `internal/` |
+| 生命周期 | chat_reply, subagent_*, sleep | Business `internal/` |
 | Cortex | shell, skill_begin, skill_end | CortexBridge |
 
 ## 12.5 LLM Factory
@@ -87,8 +89,8 @@ LLM tool_call
 | BUILTIN 工具 schema | `novaic-cortex/novaic_cortex/tool_schemas.py` |
 | Factory 客户端 | `novaic-agent-runtime/task_queue/factory_client.py` |
 | LLM Factory 日志页 | `novaic-llm-factory/static/factory-logs.html` |
-| Agent 绑定 / VM 工具 | `novaic-gateway/gateway/agent_binding.py` |
-| VM 代理 | `novaic-gateway/gateway/api/internal/agent.py` |
+| Agent 绑定 / VM 工具 | `novaic-device/device/agent_binding.py` |
+| VM 代理 | `novaic-business/business/internal/agent.py` |
 | VMUSE Shell | `novaic-mcp-vmuse/src/novaic_mcp_vmuse/tools/shell.py` |
 
 长文设计稿：[historical-doc-links.md](../historical-doc-links.md)。

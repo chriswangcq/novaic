@@ -1,24 +1,35 @@
 # Gateway 网关架构拆页地图
 
-> 本目录（`docs/gateway/`）提供 `novaic-gateway` 及拆分后的 Business/Device 微服务的架构拆解。
+> 本目录（`docs/gateway/`）提供 `novaic-gateway` 及 Business/Device 微服务的架构拆解。
 
 与主干架构文档 [docs/gateway-architecture.md](../gateway-architecture.md) 配合食用。
 
-## 微服务拆分（2026-04-14）
+## Business-Centric 架构（2026-04-15）
 
-Gateway 完成了从"God Module"到微服务的拆分：
+Gateway 完成了从"God Module"到三层微服务的拆分，Business Service 为中枢编排层：
 
 | 服务 | 端口 | 代码目录 | 职责 |
 |------|------|---------|------|
-| **Gateway** | `:19999` | `novaic-gateway/` | 瘦网关：Auth（JWT）、Entity Proxy、Turn（对话调度）、File Proxy、App WS |
-| **Business** | `:19994` | `novaic-business/`（submodule） | Agent/Skill/Form/Model CRUD、消息操作、日志查询、Provider 代理 |
-| **Device** | `:19993` | `novaic-device/`（submodule） | Device registry、CloudBridge typed WS broker、VmControl typed command routing、northbound 设备 API |
+| **Gateway** | `:19999` | `novaic-gateway/` | 薄边缘：Auth（JWT）、File Proxy、App WS（broadcast + WebRTC signaling）、前端配置 |
+| **Business** | `:19998` | `novaic-business/`（submodule） | **中枢**：所有 Entangled action hooks（含 devices）、所有 `/internal/*` API、Cortex `BusinessProxy` 目标、Device 生命周期编排 |
+| **Device** | `:19993` | `novaic-device/`（submodule） | 纯硬件：Device registry、CloudBridge typed WS broker、`/internal/hardware/*` 执行、VM/Mobile/HD tool proxy |
 
-**关键设计决策**：
-- 三个服务共享 `novaic-common` 配置和 `novaic-gateway` 的 Python venv（Business/Device 没有独立 venv）
-- 所有服务统一使用 `uvicorn.run(app, ...)` 直传 app 对象（避免字符串 import 导致 CLI args 在 worker 进程中丢失）
-- 通过 Nginx `/device/` 前缀路由区分 Device Service 流量
-- 所有业务实体 CRUD 通过 `RemoteEntityStore` 代理到 Entangled
+**调用链路**：
+- `Entangled → (ALL action hooks) → Business` — Entangled 仅回调 Business
+- `Workers / Cortex → /internal/* → Business` — 所有内部 API 指向 Business
+- `Gateway / Device / Workers → /internal/entities/* → Business → Entangled` — **所有 entity CRUD 经 Business 代理**
+- `Business → device_client.hw_*() → Device /internal/hardware/*` — Business 编排，Device 执行
+- `Business → device_client.proxy_qemu_request() → Device /internal/agents/...` — VM/QEMU tool 透传
+- `Device → /api/app/push → Gateway` — WebRTC ICE/Answer 推送
+
+**Gateway 仅保留**：
+- `POST /auth/*`（register, login, refresh, logout）
+- `GET /internal/auth/validate`（Nginx auth_request）
+- `WS /api/app/ws`（App WS + WebRTC signaling）
+- `POST /api/app/push`（server-to-app broadcast）
+- `GET/POST /api/files/*`（File Service proxy）
+- `GET /api/config/frontend`（前端配置）
+- 本地 SQLite：仅 `users`、`refresh-tokens`
 
 ## 目录索引
 

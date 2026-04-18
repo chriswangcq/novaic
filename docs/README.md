@@ -23,6 +23,7 @@
 | [authentication.md](architecture/authentication.md)                         | JWT、deps                          |
 | [webrtc.md](architecture/webrtc.md)                                         | 远程桌面                              |
 | [agent-pipeline.md](architecture/agent-pipeline.md)                         | 后端进程、Saga、工具、源码表                  |
+| **[message-wake-principles.md](architecture/message-wake-principles.md)**   | **消息 → wake 主干链路的 8 条架构承诺 (R1–R8)**（与 [cortex/invariants.md](cortex/invariants.md) 平级） |
 | **[cortex-architecture.md](cortex-architecture.md)**                        | Cortex 详细总览（子模块源码级）               |
 | **[cortex/README.md](cortex/README.md)**                                    | Cortex 专题（详细设计与组件） |
 | **[entangled-architecture.md](entangled-architecture.md)**                  | Entangled 详细总览（全端库重构版）            |
@@ -75,6 +76,7 @@
 | 文档                                                           | 内容          |
 | ------------------------------------------------------------ | ----------- |
 | [technical-debt.md](roadmap/technical-debt.md)               | 已落地摘要、待办勾选  |
+| **[message-wake-refactor.md](roadmap/message-wake-refactor.md)** | **Message → Wake 重构实施清单（R1–R8 下沉）**，阶段化 checklist |
 | [model-entity-refactor.md](roadmap/model-entity-refactor.md) | Model 三实体方案 |
 | **[claude-code-comparison.md](roadmap/claude-code-comparison.md)** | **Claude Code 对比与迭代优先级** |
 | **[gateway-decomposition.md](roadmap/gateway-decomposition.md)** | **Gateway 职责膨胀分析与拆分路线** |
