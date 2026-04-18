@@ -61,7 +61,7 @@
 - Status: `[ ]`
 - Scope: `novaic_common/agents/ownership.py` + `novaic-business/business/internal/agents.py`
 - 任务：
-  - [ ] Business 新增 `GET /internal/agents/{agent_id}/owner` → `{user_id}` / 404
+  - [x] Business 新增 `GET /internal/agents/{agent_id}/owner` → `{user_id}` / 404
   - [ ] `AgentOwnershipResolver`（进程内 TTL 缓存，默认 5 min）
   - [ ] `resolve(agent_id) -> str | raise AgentNotOwnedError`
 - 验收：单测覆盖「命中 / 不存在 / 缓存命中 / TTL 过期」

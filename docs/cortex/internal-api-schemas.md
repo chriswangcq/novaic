@@ -91,11 +91,21 @@ JWT 路由（`/v1/shell` 等）**不**在本文；见 [http-api.md](http-api.md)
 
 ---
 
-## 9. 类型与源码锚点
+## 9. Business Internal (Agent 所有权)
+
+| 方法 | 路径 | 鉴权 | 响应 | 失败 |
+|------|------|------|------|------|
+| GET | `/internal/agents/{agent_id}/owner` | `X-Internal-Key` | `{"agent_id": "...", "user_id": "..."}` | 404 `agent not found` 或 `agent has no owner` |
+
+> 提供权威的 Agent 归属查询（PR-07）。为 `AgentOwnershipResolver` 等下游屏蔽底层 `user_id` 与 `owner_user_id` 的命名差异。
+
+---
+
+## 10. 类型与源码锚点
 
 完整字段以 **`api.py`** 中类定义为准：**`ScopeCreateRequest`**、**`StepWriteRequest`**、**`StepFormattedRequest`**、**`ContextSkillBeginRequest`**、**`ContextSkillEndRequest`** 等。若与本文表格不一致，**以代码为准**。
 
-### 9.1 Skill lifecycle 关键语义（`ContextSkillBeginRequest` / `ContextSkillEndRequest`）
+### 10.1 Skill lifecycle 关键语义（`ContextSkillBeginRequest` / `ContextSkillEndRequest`）
 
 - `scope_id` 是**当前会话根 scope id**（不变，调用方总是传同一个）。
 - `child_scope_id` 是**要开/要关的子 scope id**：
