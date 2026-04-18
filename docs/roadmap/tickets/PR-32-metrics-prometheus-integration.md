@@ -27,9 +27,10 @@
 - [ ] `ownership_resolver_total{result="hit"|"miss"|"error"}` counter：记录 Resolver 请求 Business 并缓存过程中的缓存命中率与错误率。
 - [ ] `ownership_resolver_latency_seconds` histogram：记录 Resolver 解析所有权的耗时分布。
 
-### 来自 PR-10 (Dispatch Assembler)
+### 来自 PR-10 与 PR-11 (Dispatch Assembler)
 - [ ] `dispatch_total{trigger_type, result="ok"|"no_owner"|"queue_400"|"queue_5xx"|"network"}` counter：多维度的 dispatch 请求量与各类错误量监控。
 - [ ] `dispatch_latency_seconds{trigger_type}` histogram：记录 Assembler 完成 assemble 与发包的全链路耗时。
+- [ ] `dispatch_failed_total{caller="business"}` counter (PR-11)：记录 Fire-and-Forget 模式下的无声发包失败（Silent failure），防止消息孤儿现象。
 
 ## 3. 实施 Checklist
 
