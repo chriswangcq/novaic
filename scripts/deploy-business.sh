@@ -10,13 +10,24 @@
 #   scripts/deploy-business.sh user@host                  # incremental
 #   scripts/deploy-business.sh user@host --first-time     # full cold deploy
 #
+# Production layout (verified 2026-04-18 on api.gradievo.com):
+#   /opt/novaic/start.sh                 # the actual start script (flat path, NOT under services/)
+#   /opt/novaic/services/novaic-*        # per-service code trees
+#   /opt/novaic/services/novaic-business/business/subscribers/   # NEW (PR-15+)
+#   /opt/novaic/services/scripts/canary/ # NEW (PR-17, operator tools)
+#   /opt/novaic/data/entangled.db        # SQLite with message_outbox (PR-14+)
+#   /opt/novaic/data/logs/               # Rotated logs
+#   /opt/novaic/snapshots/               # Created by this script
+#
 # What it does:
 #   Incremental mode (default):
-#     1. rsync 3 submodules + scripts/ to /opt/novaic/services/
-#     2. Graceful stop + start (subscriber flag preserved from env)
+#     1. rsync 3 submodules to /opt/novaic/services/
+#     2. rsync scripts/start.sh → /opt/novaic/start.sh (prod's actual path)
+#     3. rsync scripts/canary/ → /opt/novaic/services/scripts/canary/
+#     4. Graceful stop + start (subscriber flag preserved from env)
 #
 #   --first-time mode (additionally):
-#     1. Backup entangled.db with timestamp suffix (救命稻草)
+#     1. Backup entangled.db + /opt/novaic/start.sh with timestamp suffix
 #     2. Take a full snapshot tarball of /opt/novaic/services/ (rollback target)
 #     3. rsync with verbose diff listing
 #     4. Start with SUBSCRIBER FLAG OFF (冷启动验证，不急开 subscriber)
@@ -29,8 +40,8 @@
 #   To enter Canary 阶段 1, on the production host:
 #     export NOVAIC_ENABLE_SUBSCRIBER=1
 #     export NOVAIC_HEALTH_CHECK_INTERVAL=5
-#     bash /opt/novaic/services/scripts/start.sh --stop
-#     bash /opt/novaic/services/scripts/start.sh
+#     bash /opt/novaic/start.sh --stop
+#     bash /opt/novaic/start.sh
 #
 # Safety:
 #   - --first-time ALWAYS backs up DB before touching code.
@@ -63,6 +74,7 @@ TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 REMOTE_ROOT="/opt/novaic/services"
 REMOTE_DATA="/opt/novaic/data"
 REMOTE_SNAPSHOT_DIR="/opt/novaic/snapshots"
+REMOTE_START_SCRIPT="/opt/novaic/start.sh"
 
 echo "================================================================="
 echo "  NovAIC Business Deploy (PR-17)"
@@ -109,10 +121,10 @@ if [ "$MODE" = "first-time" ]; then
     echo "=== [first-time] Pre-flight safety net ==="
     echo ""
     echo "[1/8] Stopping all services on $TARGET (so rsync doesn't race)..."
-    ssh "$TARGET" "bash $REMOTE_ROOT/scripts/start.sh --stop" || true
+    ssh "$TARGET" "bash $REMOTE_START_SCRIPT --stop" || true
     echo ""
 
-    echo "[2/8] Backing up entangled.db..."
+    echo "[2/8] Backing up entangled.db + current start.sh..."
     ssh "$TARGET" bash -s <<EOF
 set -eu
 mkdir -p $REMOTE_SNAPSHOT_DIR
@@ -122,6 +134,10 @@ if [ -f $REMOTE_DATA/entangled.db ]; then
     ls -lh $REMOTE_SNAPSHOT_DIR/entangled.db.bak-$TIMESTAMP
 else
     echo "  WARN: $REMOTE_DATA/entangled.db does not exist; nothing to backup"
+fi
+if [ -f $REMOTE_START_SCRIPT ]; then
+    cp -p $REMOTE_START_SCRIPT $REMOTE_SNAPSHOT_DIR/start.sh.bak-$TIMESTAMP
+    echo "  start.sh backed up to $REMOTE_SNAPSHOT_DIR/start.sh.bak-$TIMESTAMP"
 fi
 EOF
     echo ""
@@ -160,17 +176,26 @@ rsync_one() {
 rsync_one novaic-business
 rsync_one Entangled
 rsync_one novaic-common
-rsync_one scripts
+
+# scripts/start.sh deploys to prod's flat /opt/novaic/start.sh (NOT under services/)
+echo "  [rsync] scripts/start.sh → $TARGET:$REMOTE_START_SCRIPT"
+rsync -az --chmod=u+rx "$REPO_ROOT/scripts/start.sh" "$TARGET:$REMOTE_START_SCRIPT"
+
+# scripts/canary/ is an operator tool; mirror to services/scripts/canary/
+echo "  [rsync] scripts/canary/ → $TARGET:$REMOTE_ROOT/scripts/canary/"
+ssh "$TARGET" "mkdir -p $REMOTE_ROOT/scripts/canary"
+rsync -az --delete "${RSYNC_EXCLUDES[@]}" \
+    "$REPO_ROOT/scripts/canary/" "$TARGET:$REMOTE_ROOT/scripts/canary/"
 
 echo ""
 
 # ── Start services (subscriber flag OFF always — operator must opt-in) ───────
 echo "=== Starting services (subscriber flag OFF for cold start) ==="
-ssh "$TARGET" bash -s <<'EOF'
+ssh "$TARGET" bash -s <<EOF
 # Explicitly unset canary flags; this deploy NEVER auto-enables subscriber.
 unset NOVAIC_ENABLE_SUBSCRIBER || true
 unset NOVAIC_HEALTH_CHECK_INTERVAL || true
-bash /opt/novaic/services/scripts/start.sh
+bash $REMOTE_START_SCRIPT
 EOF
 echo ""
 
@@ -235,22 +260,23 @@ if [ "$MODE" = "first-time" ]; then
        ssh $TARGET bash -c '"
          export NOVAIC_ENABLE_SUBSCRIBER=1
          export NOVAIC_HEALTH_CHECK_INTERVAL=5
-         bash $REMOTE_ROOT/scripts/start.sh --stop
-         bash $REMOTE_ROOT/scripts/start.sh
+         bash $REMOTE_START_SCRIPT --stop
+         bash $REMOTE_START_SCRIPT
        "'
 
   3. Rollback (if anything goes wrong):
        ssh $TARGET bash -c '"
          unset NOVAIC_ENABLE_SUBSCRIBER
          unset NOVAIC_HEALTH_CHECK_INTERVAL
-         bash $REMOTE_ROOT/scripts/start.sh --stop
-         bash $REMOTE_ROOT/scripts/start.sh
+         bash $REMOTE_START_SCRIPT --stop
+         bash $REMOTE_START_SCRIPT
        "'
 
   4. Full code rollback (if subscriber rollback insufficient):
        ssh $TARGET "cd /opt/novaic && tar xzf snapshots/services-$TIMESTAMP.tar.gz"
        ssh $TARGET "cp $REMOTE_SNAPSHOT_DIR/entangled.db.bak-$TIMESTAMP $REMOTE_DATA/entangled.db"
-       ssh $TARGET "bash $REMOTE_ROOT/scripts/start.sh"
+       ssh $TARGET "cp $REMOTE_SNAPSHOT_DIR/start.sh.bak-$TIMESTAMP $REMOTE_START_SCRIPT"
+       ssh $TARGET "bash $REMOTE_START_SCRIPT"
 
   Reference: docs/runbooks/subscriber-canary.md
 
