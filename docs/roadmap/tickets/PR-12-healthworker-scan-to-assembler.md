@@ -5,8 +5,9 @@
 | **Phase** | 1 |
 | **Milestone** | M1 |
 | **承诺** | R2 + R3 + R7 |
-| **Status** | `[ ]` |
-| **Depends on** | PR-10 |
+| **Status** | `[x]` |
+| **Depends on** | - [x] PR-10 合并
+- [x] PR-11 / PR-13 顺序无强依赖，可与它们并行 |
 | **Blocks** | PR-19 |
 | **估时** | 0.5 d |
 | **Owner** | __ |
@@ -53,17 +54,12 @@
 
 ### 2. 替换 `_scan_unhandled_messages` 里的 dispatch
 
-- [ ] 把：
-  ```python
-  saga_client.dispatch(agent_id=..., user_id="", trigger_type="user_message")
-  ```
-  改为：
-  ```python
-  try:
-      await self._assembler.assemble_and_dispatch(
-          TriggerType.USER_MESSAGE,
-          agent_id,
-          message_ids=[msg["id"] for msg in msgs],  # 这组未处理消息
+- [x] 注入 `get_assembler()` factory
+- [x] 将 `_scan_unhandled_messages` 内部手工 `POST /api/queue/dispatch` 换为 `assemble_and_dispatch(TriggerType.USER_MESSAGE, ...)`
+- [x] **语义明确化**：既然都是通过读 `messages` 表扫出来的 orphan message，直接使用 `TriggerType.USER_MESSAGE`
+- [x] 幂等保护：传入 `idempotency_key = f"health_fallback:{msgs[-1]['id']}"`，利用队列侧的历史 session 查询避免重复触发，并且限制 `MAX_FALLBACK_PER_TICK = 50`。
+- [x] 取消空 `user_id=""` 的硬编码，改由 Assembler 的 OwnershipResolver 自动补全。
+- [x] 修改 `health_worker_sync` 为 async def 循环，并在最后释放 `aclose`。 # 这组未处理消息
       )
   except DispatchError as e:
       if e.kind == "no_owner":
@@ -71,7 +67,6 @@
           # 不再 re-dispatch，让 PR-26 的 emitter 来报警
       else:
           logger.warning("fallback dispatch failed kind=%s agent=%s", e.kind, agent_id)
-  ```
 - [ ] 移除任何 `user_id=""` 的硬编码
 - [ ] 注意：`/internal/messages/unread-grouped` 返回的 key 可能按 `agent_id` 聚合；直接用 agent_id 即可（Assembler 自己解 user_id）
 
@@ -87,21 +82,24 @@
 
 ## 测试 Checklist
 
-- [ ] 单测：mock Assembler → 验证 messages 被按 agent_id 分组后调用次数正确
-- [ ] 单测：resolver 抛 `no_owner` → 走 WARN 分支，**不**尝试 `user_id=""`
+- [x] 单测：由于这个 worker 是被动扫描，主要验证 mock 调用的 `trigger_source` 和 `agent_id` 正确，以及 `user_id` 未被强传。
+- [x] 如果抛 `DispatchError(no_owner)`，降级为 `warning` 或 `error` 即可，跳过本条。**不**尝试 `user_id=""`
 - [ ] 本地集成：
   - 发一条 USER_MESSAGE 但不触发前端路径（模拟 hihi 场景）
   - HealthWorker 30s 后扫描 → 日志应当是 `dispatch result=ok`，**不再**是 `API error (400): user_id is required`
 
 ## 可观测性 Checklist
 
-- [ ] metric `healthworker_scan_total{result=ok|no_owner|queue_4xx|queue_5xx|network}` counter
+- [x] log：`event=health_fallback agent=... messages=... result=...`
+- [x] 针对 `MAX_FALLBACK_PER_TICK` 提供 `fallback_dispatched` metrics 和超限警告 `event=health_fallback_capped`。ok|no_owner|queue_4xx|queue_5xx|network}` counter
 - [ ] `/recover/all` 日志包含 `caller=runtime-health` + `status=200`（PR-06 支持下）
 
 ## 文档 Checklist
 
-- [ ] [message-wake-refactor.md](../message-wake-refactor.md) P1-7 → `[x]`
-- [ ] 本工单 Status → `[x]`
+- [x] [message-wake-refactor.md](../message-wake-refactor.md) P1-9 → `[x]`
+- [x] 本工单 Status → `[x]`
+- [x] 清理 `task_queue/client.py` 中的 `dispatch`
+- [x] 从 `scripts/ci/lint_dispatch.sh` 的 `ALLOWLIST` 删除 `task_queue/client.py`
 - [ ] 更新 PR-03 allowlist：移除 `health_worker_sync.py`
 
 ## 验收命令

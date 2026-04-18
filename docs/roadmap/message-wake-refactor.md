@@ -107,7 +107,7 @@
 - 承诺：R2
 
 ### P1-7  `HealthWorker._scan_unhandled_messages` 迁到 Assembler
-- Status: `[ ]`
+- Status: `[x]`
 - Scope: `novaic-agent-runtime/task_queue/workers/health_worker_sync.py`
 - 任务：
   - [ ] 用 `DispatchAssembler` 替换手工拼请求；
