@@ -4,9 +4,7 @@ PATTERN='/api/queue/dispatch'
 ALLOWLIST=(
   'novaic-common/common/wake/assembler.py'
   'novaic-agent-runtime/queue_service/main.py'  # 端点定义
-  # TRANSITIONAL — remove after PR-11/PR-12/PR-13:
-  'novaic-business/business/internal/subagent.py'
-  'novaic-business/business/message_actions.py'
+  # TRANSITIONAL — remove after PR-12/PR-13:
   'novaic-agent-runtime/task_queue/client.py'
   # tests:
   'tests/'
