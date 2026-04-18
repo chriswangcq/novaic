@@ -48,3 +48,11 @@
 | `DEV_MODE` | 未授权时的调试日志，不改变生产主逻辑。 |
 
 更多本地路径见 [../reference/config-and-environment.md](../reference/config-and-environment.md)。
+
+## 内部调用的 caller 归因
+
+从 **PR-06** 开始，所有内部服务调用必须通过 HTTP Header `X-Internal-Service` 传递调用方的服务名。
+- **解析中间件**：`novaic-common/common/middlewares/caller_logging.py` 会在各服务 `main_*.py` 中注册。
+- **日志格式**：自动生成 `caller=<service_name>` 字段及 `internal=1` 到访问日志，保证 ELK 等系统可准确追踪内网来源。
+- **ContextVar 传递**：利用 `common.log_context.caller_var` 在同一进程的不同异步协程间透传 caller（为将来的 LogContext 做准备）。
+- **校验逻辑**：灰度期间对于缺失 caller 的请求只打 WARN 级日志而不触发 401。
