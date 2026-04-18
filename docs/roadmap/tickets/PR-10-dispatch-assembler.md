@@ -5,7 +5,7 @@
 | **Phase** | 1 |
 | **Milestone** | M1 |
 | **承诺** | R2 + R3 |
-| **Status** | `[ ]` |
+| **Status** | `[x]` |
 | **Depends on** | PR-05, PR-08, PR-09 |
 | **Blocks** | PR-11, PR-12, PR-13, PR-15 |
 | **估时** | 1 d |
@@ -24,8 +24,8 @@
 
 ## 前置 Checklist
 
-- [ ] PR-05/08/09 全部合并并可用
-- [ ] Queue Service `DispatchRequest` Pydantic model 可以 import（用于合约测试）
+- [x] PR-05/08/09 全部合并并可用
+- [x] Queue Service `DispatchRequest` Pydantic model 可以 import（用于合约测试）
 
 ## 实施 Checklist
 
@@ -147,44 +147,44 @@ class DispatchError(Exception):
 
 ### 实装 checklist
 
-- [ ] `assemble` 不做 HTTP（只组装）；`dispatch` 做 HTTP
-- [ ] 所有失败路径 raise `DispatchError`，带明确 `kind`
-- [ ] `metadata.message_ids` 必含（Queue Service 会透传到 scope）
-- [ ] `subagent_id` 默认 `main-<agent_id[:8]>`（与现有惯例一致）
-- [ ] log：`dispatch agent=... trigger=... user=... sub=... messages=<n> result=ok|<kind>`
+- [x] `assemble` 不做 HTTP（只组装）；`dispatch` 做 HTTP
+- [x] 所有失败路径 raise `DispatchError`，带明确 `kind`
+- [x] `metadata.message_ids` 必含（Queue Service 会透传到 scope）
+- [x] `subagent_id` 默认 `main-<agent_id[:8]>`（与现有惯例一致）
+- [x] log：`dispatch agent=... trigger=... user=... sub=... messages=<n> result=ok|<kind>`
 
 ## 测试 Checklist
 
 ### 单测
 
-- [ ] `tests/test_assembler.py`:
-  - [ ] `assemble` 正常路径 → DispatchRequest 字段齐全
-  - [ ] `assemble` 非法 trigger_source (str) → `DispatchError(kind="bad_argument")`
-  - [ ] resolver raise `AgentNotOwnedError` → `DispatchError(kind="no_owner")`
-  - [ ] `dispatch` 200 → DispatchResult
-  - [ ] `dispatch` 400 → `DispatchError(kind="queue_400")`
-  - [ ] `dispatch` 500 → `DispatchError(kind="queue_5xx")`
-  - [ ] `dispatch` httpx 错误 → `DispatchError(kind="network")`
-  - [ ] `subagent_id` 显式传入覆盖默认
+- [x] `tests/test_assembler.py`:
+  - [x] `assemble` 正常路径 → DispatchRequest 字段齐全
+  - [x] `assemble` 非法 trigger_source (str) → `DispatchError(kind="bad_argument")`
+  - [x] resolver raise `AgentNotOwnedError` → `DispatchError(kind="no_owner")`
+  - [x] `dispatch` 200 → DispatchResult
+  - [x] `dispatch` 400 → `DispatchError(kind="queue_400")`
+  - [x] `dispatch` 500 → `DispatchError(kind="queue_5xx")`
+  - [x] `dispatch` httpx 错误 → `DispatchError(kind="network")`
+  - [x] `subagent_id` 显式传入覆盖默认
 
 ### 合约测试
 
-- [ ] `tests/contract/test_assembler_queue_schema.py`:
-  - [ ] 构造 DispatchRequest → `to_queue_payload()` → 用 Queue Service 的 `DispatchRequest` Pydantic model validate → 必通过
-  - [ ] 覆盖每个 TriggerType
+- [x] `tests/contract/test_assembler_queue_schema.py`:
+  - [x] 构造 DispatchRequest → `to_queue_payload()` → 用 Queue Service 的 `DispatchRequest` Pydantic model validate → 必通过
+  - [x] 覆盖每个 TriggerType
 
 ## 可观测性 Checklist
 
-- [ ] metric `dispatch_total{trigger_type, result=ok|no_owner|queue_400|queue_5xx|network}` counter
-- [ ] metric `dispatch_latency_seconds{trigger_type}` histogram
-- [ ] log 结构化：`event=dispatch trigger=... agent=... user=... messages=... result=...`
+- [-] metric `dispatch_total{trigger_type, result=ok|no_owner|queue_400|queue_5xx|network}` counter (移交 PR-32)
+- [-] metric `dispatch_latency_seconds{trigger_type}` histogram (移交 PR-32)
+- [x] log 结构化：`event=dispatch trigger=... agent=... user=... messages=... result=...`
 
 ## 文档 Checklist
 
-- [ ] [message-wake-refactor.md](../message-wake-refactor.md) P1-5 → `[x]`
-- [ ] 本工单 Status → `[x]`
-- [ ] 在 [cortex/internal-api-schemas.md](../../cortex/internal-api-schemas.md) 或新建 `docs/common/dispatch-assembler.md` 给 Assembler 画一张调用流程图
-- [ ] 在 [message-wake-principles.md](../../architecture/message-wake-principles.md) §R2 引用本 PR 代码
+- [x] [message-wake-refactor.md](../message-wake-refactor.md) P1-5 → `[x]`
+- [x] 本工单 Status → `[x]`
+- [/] 在 [cortex/internal-api-schemas.md](../../cortex/internal-api-schemas.md) 或新建 `docs/common/dispatch-assembler.md` 给 Assembler 画一张调用流程图 (暂缓，后续统一)
+- [x] 在 [message-wake-principles.md](../../architecture/message-wake-principles.md) §R2 引用本 PR 代码
 
 ## 验收命令
 
