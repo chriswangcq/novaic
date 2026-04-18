@@ -21,7 +21,13 @@
 #
 # What it does:
 #   Incremental mode (default):
-#     1. rsync 3 submodules to /opt/novaic/services/
+#     1. rsync 6 submodules to /opt/novaic/services/
+#        (novaic-business + Entangled + novaic-common +
+#         novaic-gateway + novaic-device + novaic-agent-runtime)
+#        ** All 4 "caller" services MUST go together with novaic-common **
+#        because PR-05 made service_name a required positional arg of
+#        internal_client. A partial deploy crashes hw_status etc. with
+#        TypeError: missing 1 required positional argument: 'service_name'.
 #     2. rsync scripts/start.sh → /opt/novaic/start.sh (prod's actual path)
 #     3. rsync scripts/canary/ → /opt/novaic/services/scripts/canary/
 #     4. Graceful stop + start (subscriber flag preserved from env)
@@ -87,7 +93,7 @@ echo "================================================================="
 echo ""
 
 # ── Sanity: source dirs exist ────────────────────────────────────────────────
-for d in novaic-business Entangled novaic-common scripts; do
+for d in novaic-business Entangled novaic-common novaic-gateway novaic-device novaic-agent-runtime scripts; do
     if [ ! -d "$REPO_ROOT/$d" ]; then
         echo "ERROR: $REPO_ROOT/$d does not exist" >&2
         exit 1
@@ -176,6 +182,11 @@ rsync_one() {
 rsync_one novaic-business
 rsync_one Entangled
 rsync_one novaic-common
+# PR-05 contract is transitive: novaic-common signature change forces all
+# callers to ship together. Any partial deploy produces TypeError at runtime.
+rsync_one novaic-gateway
+rsync_one novaic-device
+rsync_one novaic-agent-runtime
 
 # scripts/start.sh deploys to prod's flat /opt/novaic/start.sh (NOT under services/)
 echo "  [rsync] scripts/start.sh → $TARGET:$REMOTE_START_SCRIPT"
@@ -230,14 +241,28 @@ if [ "$MODE" = "first-time" ]; then
     done
     echo ""
 
-    echo "[7/8] Checking for Traceback / ERROR in business startup log..."
-    ERR_COUNT=$(ssh "$TARGET" "grep -cE 'Traceback|ERROR' $REMOTE_DATA/logs/business-\$(date +%Y%m%d).log 2>/dev/null || echo 0")
-    if [ "$ERR_COUNT" -gt 0 ]; then
-        echo "  WARN: $ERR_COUNT ERROR/Traceback lines in business log; inspect before Canary:"
-        ssh "$TARGET" "grep -E 'Traceback|ERROR' $REMOTE_DATA/logs/business-\$(date +%Y%m%d).log | head -20"
-    else
-        echo "  OK: no Traceback/ERROR in business log"
+    echo "[7/8] Checking for Traceback / ERROR across all service logs..."
+    SVC_ERR_REPORT=$(ssh "$TARGET" bash -s <<'REMOTE'
+set -eu
+TODAY=$(date +%Y%m%d)
+for name in business device gateway entangled queue-service cortex health; do
+    # Prefer date-suffixed log, fall back to flat .log
+    f="/opt/novaic/data/logs/${name}-${TODAY}.log"
+    [ -f "$f" ] || f="/opt/novaic/data/logs/${name}.log"
+    [ -f "$f" ] || continue
+    n=$(grep -cE 'ERROR|Traceback' "$f" 2>/dev/null || true)
+    # grep -c prints one line per file even when 0, keep first integer
+    n=$(echo "$n" | head -1 | tr -dc '0-9')
+    [ -z "$n" ] && n=0
+    echo "  $name ($f): $n ERROR/Traceback lines"
+    if [ "$n" -gt 0 ]; then
+        echo "    --- first 5 ---"
+        grep -E 'Traceback|ERROR' "$f" | head -5 | sed 's/^/    /'
     fi
+done
+REMOTE
+    )
+    echo "$SVC_ERR_REPORT"
     echo ""
 
     echo "[8/8] Confirming subscriber is OFF (cold start correctness)..."
