@@ -5,7 +5,7 @@
 | **Phase** | 1 |
 | **Milestone** | M1 |
 | **承诺** | R2 |
-| **Status** | `[ ]` |
+| **Status** | `[x]` |
 | **Depends on** | PR-10 |
 | **Blocks** | — |
 | **估时** | 0.5 d |
@@ -23,34 +23,34 @@
 
 ## 前置 Checklist
 
-- [ ] PR-10 合并
-- [ ] PR-11 / PR-12 顺序无强依赖，可与它们并行
+- [x] PR-10 合并
+- [x] PR-11 / PR-12 顺序无强依赖，可与它们并行
 
 ## 实施 Checklist
 
-- [ ] Worker 构造 Assembler 实例，`service_name="runtime-scheduler"`
-- [ ] 替换所有 `POST /api/queue/dispatch` 的手工拼装 → `assembler.assemble_and_dispatch(TriggerType.SCHEDULED_WAKE, agent_id, ...)`
-- [ ] 若当前 scheduler 传 `trigger_type="system_wake"` 之类的字符串 → 用 `TriggerType.SCHEDULED_WAKE` 或 `SYSTEM_WAKE` 对应
-- [ ] `DispatchError` 处理：
+- [x] Worker 构造 Assembler 实例，`service_name="runtime-scheduler"`
+- [x] 替换所有 `POST /api/queue/dispatch` 的手工拼装 → `assembler.assemble_and_dispatch(TriggerType.SCHEDULED_WAKE, agent_id, ...)`
+- [x] 若当前 scheduler 传 `trigger_type="system_wake"` 之类的字符串 → 用 `TriggerType.SCHEDULED_WAKE` 或 `SYSTEM_WAKE` 对应
+- [x] `DispatchError` 处理：
   - `no_owner` → log ERROR + 跳过该次唤醒（标记 subagent 状态异常，后续靠 PR-26 alert）
   - `queue_4xx` → log ERROR（通常是合约 bug，不应重试）
   - `queue_5xx / network` → 保留默认重试（scheduler 的 tick 自然会再来）
 
 ## 测试 Checklist
 
-- [ ] 单测：mock Assembler → 验证到点被调一次
-- [ ] 集成：造一个 `wake_at = now - 1s` 的 subagent → scheduler tick 后 Assembler 调一次 dispatch
+- [x] 单测：mock Assembler → 验证到点被调一次
+- [x] 集成：造一个 `wake_at = now - 1s` 的 subagent → scheduler tick 后 Assembler 调一次 dispatch
 
 ## 可观测性 Checklist
 
-- [ ] metric `scheduler_wake_total{result}` counter
-- [ ] log：`event=scheduled_wake agent=... due_at=... result=...`
+- [x] metric `scheduler_wake_total{result}` counter
+- [x] log：`event=scheduled_wake agent=... due_at=... result=...`
 
 ## 文档 Checklist
 
-- [ ] [message-wake-refactor.md](../message-wake-refactor.md) P1-8 → `[x]`
-- [ ] 本工单 Status → `[x]`
-- [ ] PR-03 allowlist 移除 `scheduler_worker_sync.py`
+- [x] [message-wake-refactor.md](../message-wake-refactor.md) P1-8 → `[x]`
+- [x] 本工单 Status → `[x]`
+- [-] PR-03 allowlist 移除 `scheduler_worker_sync.py` (本 PR 不适用，已确认 `scheduler_worker_sync.py` 不在 allowlist 中)
 
 ## 验收命令
 

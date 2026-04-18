@@ -1,9 +1,10 @@
 # PR-05 T1 返工 Review — **90% 通过，但 novaic-common 重蹈覆辙**
 
-> 被审对象：6 个 rework commits + [`PR-05-t1-rework-notes.md`](PR-05-t1-rework-notes.md)
+> 被审对象：6 个 rework commits + `[PR-05-t1-rework-notes.md](PR-05-t1-rework-notes.md)`
 > 对照：[上一轮打回函](PR-05-t1-rejection.md) §6
 >
 > **结论：**
+>
 > - ✅ 10 DELETE 迁移、entity.py 11 处、3 个 SDK 契约测、SyntaxError 修复、lint 清理 — 全部到位
 > - ❌ 但 `novaic-common` 又有未提交改动 — **这是我上轮 §1.3 专门警告过的同一个错误**
 > - ⏸ 不能合并，但返工量极小（一个 commit + bump）
@@ -14,19 +15,22 @@
 
 逐条我都核验过：
 
-| 项 | 核验命令 | 结果 |
-| --- | --- | --- |
-| 所有 touched 文件 compile 过 | `py_compile` on 7 files | ✅ 全 OK（SyntaxError 已修） |
-| 10 个 DELETE 文件的 `httpx.Client()` 已消除 | `rg "httpx\.(Async)?Client\(" <10 files>` | ✅ 10/10 MIGRATED |
-| `lint_httpx.sh` allowlist 清理 | `wc -l scripts/ci/lint_httpx.sh` | 35 → 25 行，entries 15 → 6 ✅ |
-| SDK 类无漏网 | `grep "(Entangled\|TaskQueue\|Saga)Client\("` 过滤 test | ✅ 生产代码 call site 全部带 service_name |
-| 6 条单测 PASS | pytest（common 4 + runtime 2） | ✅ 6 passed |
-| 双 lint green（真 green） | `lint_httpx.sh && lint_dispatch.sh` | ✅ OK |
-| 5 submodule rework commit + 1 main bump | `git log` | ✅ 存在 |
+
+| 项                                       | 核验命令                                                | 结果                                |
+| --------------------------------------- | --------------------------------------------------- | --------------------------------- |
+| 所有 touched 文件 compile 过                 | `py_compile` on 7 files                             | ✅ 全 OK（SyntaxError 已修）            |
+| 10 个 DELETE 文件的 `httpx.Client()` 已消除    | `rg "httpx\.(Async)?Client\(" <10 files>`           | ✅ 10/10 MIGRATED                  |
+| `lint_httpx.sh` allowlist 清理            | `wc -l scripts/ci/lint_httpx.sh`                    | 35 → 25 行，entries 15 → 6 ✅        |
+| SDK 类无漏网                                | `grep "(Entangled|TaskQueue|Saga)Client\("` 过滤 test | ✅ 生产代码 call site 全部带 service_name |
+| 6 条单测 PASS                              | pytest（common 4 + runtime 2）                        | ✅ 6 passed                        |
+| 双 lint green（真 green）                   | `lint_httpx.sh && lint_dispatch.sh`                 | ✅ OK                              |
+| 5 submodule rework commit + 1 main bump | `git log`                                           | ✅ 存在                              |
+
 
 **加分项（你自己找出来的）**：
 
 Q2 调研表里没列的 4 处 SDK 实例化漏网——
+
 - `common/auth.py:69` — `EntangledServiceClient()`
 - `business/entity_store.py:28` — `EntangledServiceClient()`
 - `task_queue/workers/saga_worker_sync.py:82` — `SagaClient(...)`
@@ -60,8 +64,8 @@ $ cd .. && git submodule status novaic-common
 
 具体有两个文件处于未提交状态：
 
-1. **`common/auth.py`** — 你 bonus fix 把 `EntangledServiceClient()` 改成了 `EntangledServiceClient(service_name="common-auth")`，但没 commit
-2. **`tests/test_entangled_client.py`** — 你在 §6.3 打勾的那个 SDK 契约测，**根本没被 git 跟踪**
+1. `**common/auth.py`** — 你 bonus fix 把 `EntangledServiceClient()` 改成了 `EntangledServiceClient(service_name="common-auth")`，但没 commit
+2. `**tests/test_entangled_client.py**` — 你在 §6.3 打勾的那个 SDK 契约测，**根本没被 git 跟踪**
 
 ### 2.2 这不是"重复小错"，有实际爆炸半径
 
@@ -75,6 +79,7 @@ novaic-device/device/vm_routes.py 里调用了 10 次 check_agent_access：
 这些覆盖 VM start / stop / exec / input / screenshot 等几乎全部 VM 操作。
 
 **后果（fresh clone 场景）**：
+
 - 新拉代码的机器上 `common/auth.py` 还是裸 `EntangledServiceClient()`
 - `EntangledServiceClient.__init__` 现在必填 `service_name`
 - 所以 `check_agent_access()` 一次就 TypeError
@@ -132,11 +137,11 @@ novaic-business/business/agent_actions.py  间接走 business.auth → common.au
 
 **必做**：
 
-- [ ] `cd novaic-common && git add common/auth.py tests/test_entangled_client.py`
-- [ ] `git commit -m "fix(common): commit bonus EntangledServiceClient call site + SDK contract test (PR-05 rework cont.)"`（因为已经 push 过 `48716d7` 了，**不要再 amend**）
-- [ ] 决定 `service_name="common-auth"` 怎么改（§3 A/B/C 选一个，建议 B）。改完同 commit 提交。
-- [ ] `cd .. && git add novaic-common && git commit -m "chore: re-bump novaic-common for auth.py + contract test (PR-05 rework cont.)"`
-- [ ] Push all
+- `cd novaic-common && git add common/auth.py tests/test_entangled_client.py`
+- `git commit -m "fix(common): commit bonus EntangledServiceClient call site + SDK contract test (PR-05 rework cont.)"`（因为已经 push 过 `48716d7` 了，**不要再 amend**）
+- 决定 `service_name="common-auth"` 怎么改（§3 A/B/C 选一个，建议 B）。改完同 commit 提交。
+- `cd .. && git add novaic-common && git commit -m "chore: re-bump novaic-common for auth.py + contract test (PR-05 rework cont.)"`
+- Push all
 
 **验收**（这次我只看 2 条）：
 
@@ -157,12 +162,14 @@ pytest tests/ -q
 
 ## 5. 能力评估（这轮 vs 上轮）
 
-| 维度 | 上轮 T1 | 本轮返工 |
-| --- | --- | --- |
-| 核心改造执行 | ❌ 只做 12/33 还谎称全完成 | ✅ 33 + 4 bonus 都做了 |
-| 自我验收纪律 | ❌ 三条绿都是假象 | ✅ 真 green，而且自己补了 SDK grep 发现漏网 |
-| SyntaxError smoke | ❌ 整个 HealthWorker 起不来 | ✅ 全部 compile 过 |
-| submodule 提交闭环 | ❌ entangled_client.py 未提交 | ❌ **auth.py + 测文件未提交**（同款） |
+
+| 维度                | 上轮 T1                     | 本轮返工                           |
+| ----------------- | ------------------------- | ------------------------------ |
+| 核心改造执行            | ❌ 只做 12/33 还谎称全完成         | ✅ 33 + 4 bonus 都做了             |
+| 自我验收纪律            | ❌ 三条绿都是假象                 | ✅ 真 green，而且自己补了 SDK grep 发现漏网 |
+| SyntaxError smoke | ❌ 整个 HealthWorker 起不来     | ✅ 全部 compile 过                 |
+| submodule 提交闭环    | ❌ entangled_client.py 未提交 | ❌ **auth.py + 测文件未提交**（同款）     |
+
 
 **3/4 维度从错到对；但 submodule 提交闭环这一条连续两轮栽在同一处。**
 

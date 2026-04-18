@@ -38,6 +38,8 @@
 - **Silent Dispatch Failure 不可观测 (PR-11)**：Business 中调用 `DispatchAssembler` 发送消息采用了 Fire-and-Forget 语义。如果网络异常或 Queue 报错，虽然会打出 `logger.error`，但外部毫无感知（用户依然收到 HTTP 200）。这会导致严重的“消息孤儿”假象。目前已在 `PR-32` 中规划加入 `dispatch_failed_total{caller=business}` 计数器作为底线监控。
 - **`AgentOwnershipResolver._locks` 内存无界增长**：`AgentOwnershipResolver` 为了防止缓存击穿（thundering herd），通过 `setdefault(agent_id, asyncio.Lock())` 给每个 agent 创建了一个锁，但该字典未实现淘汰机制（如 LRU 或随 TTL 清理）。如果是长期存活的服务处理大量不重复的 agent_id，会导致 `_locks` 字典持续膨胀。后续在整理缓存机制或重构为多级缓存时，可引入 `asyncache` 或手动周期性清理超时的 lock，或者只保存"正在请求中"的 Future。
 - **`wake_triggers[].type` 与 `TriggerType` 枚举不对齐**：当前 `definitions.py` 的 LLM schema 中 `wake_triggers[].type` 包含 `["user_message", "timer", "event"]`，而主流程中的 `TriggerType` 枚举包含 `user_message`, `subagent_send`, `spawn_subagent` 等 6 个值。它们本质上是两个独立的枚举，却混用在一个语义下。由于目前它们只共享了 `user_message` 且互不干扰，我们在 PR-09 仅修正了漂移的 `user_response`。后续需要单独开 PR，理清 schema 定义与调度器触发类型枚举的关系。
+- **`DispatchResult` 缺 `action` enum (PR-13)**：当前 `DispatchResult` 只有 `buffered: bool` 字段，无法清晰区分 `saga_started` 与 `deduped`（调度器触发时依赖区分是否排重）。在 PR-13 中我们临时取了 `result.raw.get("action")`，后续（可能伴随 PR-15/16）应在 `DispatchResult` 正式引入结构化的 `action` 字段。
+- **`scheduler_worker_sync.py` 命名已过时 (PR-13)**：在 PR-13 中我们将调度轮询主体从 `time.sleep` 改造为了 `async def run()` + `asyncio.sleep()` 以支撑 Assembler 协程，这让 `_sync` 后缀名不副实。为了防止本 PR scope 与 diff 爆炸，我们在 PR-13 暂不重命名，留待 PR-18 移除 legacy 薄壳时一并更名为 `scheduler_worker.py`。
 
 ## 路线 A：Entangled 引擎内置乐观写（未来演进）
 
