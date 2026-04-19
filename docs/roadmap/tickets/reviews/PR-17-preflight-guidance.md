@@ -4,6 +4,13 @@
 **写者**：senior reviewer
 **状态**：此文件是**任务导航**，不是 preflight 报告本身。你读完后需要写 `docs/roadmap/tickets/reviews/PR-17-preflight-antigravity.md` 回答 §F 的 discovery 问题 + 确认实施方案，拿到批复后才进入 T1。
 
+> **2026-04-19 UPDATE — Canary bake gate 已撤销**
+> 零流量生产环境下 4 阶段 77h bake 是伪仪式，见
+> [`bake-gate-abandonment-2026-04-19.md`](./bake-gate-abandonment-2026-04-19.md)。
+> PR-17 本身视为已完成，直接进入 merge / deploy，部署后跑一次人工 smoke
+> （发一条消息 → agent 回复通 + 日志无 Traceback）即放行。
+> §E 指标表和 Phase 1~4 节保留作为**流量回来时恢复 bake 的参考模板**，不再是当前验收口径。
+
 ---
 
 ## §A 生产部署架构（先读明白，别瞎猜）

@@ -3,6 +3,12 @@
 **类型**：infrastructure refactor（与 message-wake 主线 PR-01~PR-32 正交）
 **状态**：**v2 — 决策已锁定**（见 §H），结构从"原子大 PR"**改为 5 步分 PR**（§D）
 **前置**：PR-33（env 收窄）完成或并行，但独立 mergeable
+
+> **2026-04-19 UPDATE — bake gate 全撤销**
+> 各 sub-PR 的 "merge 后 48h 生产 bake" gate 已取消，见
+> [`reviews/bake-gate-abandonment-2026-04-19.md`](reviews/bake-gate-abandonment-2026-04-19.md)。
+> 新验收：本地全量测试绿 + 部署后 1 次 real smoke（人工发一条消息看 agent 回复通）。
+> 每个 sub-PR 原文保留的"生产观察"节和指标阈值，作为流量回来时恢复 gate 的参考。
 **作者**：PR-17 Canary 收尾期的副产品
 **读者**：junior / senior reviewer
 **架构原则**（v2 基座，贯穿全篇决策）：
@@ -179,9 +185,9 @@ v1 草稿写的"Phase 2+3+4 原子 merge"是错误决定——大 PR 审 review 
 | sub-PR | 代号 | 内容 | 最重要的不变量 | diff 规模 | 状态 |
 |---|---|---|---|---:|---|
 | 34a | **双 API** | `DispatchAssembler` / `AgentOwnershipResolver` **保留 async 方法，并列新增 sync 方法**（`assemble_and_dispatch_sync`, `resolve_sync`） | 现有 async 调用点 0 行改动，线上行为零变化 | ~250 | ✅ merged → novaic-common `4e1d191`，主仓 submodule bumped |
-| 34b | **HealthWorker 先切** | HealthWorker 改用 sync 方法；`health_worker_sync.py` 内部改 sync 主循环；启动入口删 `asyncio.run` | 其他 worker / Business FastAPI 仍走 async，零耦合 | ~300（实测 199 insert + 125 del） | 🟡 PR 已开（agent-runtime#2, commit `7491837`），等 gate：PR-17 Phase 4 bake 绿 |
-| 34c | **SchedulerWorker 切** | 同 34b pattern | DispatchSubscriber + FastAPI 仍 async | ~200 | ⏳ 等 34b 生产 48h bake 稳定 |
-| 34d | **Subscriber 切 + 提取独立子进程** | Subscriber 改 sync + 新增 `main_subscriber.py` + `start.sh` 拉起 + Business lifespan 不再管 subscriber task | Business FastAPI handler 仍走 async 路径（`_dispatch_trigger` 仍 async，未动） | ~400 | ⏳ 等 34b/34c |
+| 34b | **HealthWorker 先切** | HealthWorker 改用 sync 方法；`health_worker_sync.py` 内部改 sync 主循环；启动入口删 `asyncio.run` | 其他 worker / Business FastAPI 仍走 async，零耦合 | ~300（实测 199 insert + 125 del） | 🟡 PR 已开（agent-runtime#2, commit `7491837`），可 merge（bake gate 已撤销） |
+| 34c | **SchedulerWorker 切** | 同 34b pattern | DispatchSubscriber + FastAPI 仍 async | ~200 | ⏳ 下一步 |
+| 34d | **Subscriber 切 + 提取独立子进程** | Subscriber 改 sync + 新增 `main_subscriber.py` + `start.sh` 拉起 + Business lifespan 不再管 subscriber task | Business FastAPI handler 仍走 async 路径（`_dispatch_trigger` 仍 async，未动） | ~400 | ⏳ |
 | 34e | **清理收尾** | FastAPI handler 侧 `_dispatch_trigger` 改 sync + `run_in_threadpool` bridge；删 async 方法 `assemble_and_dispatch`；加 CI 守卫；改名 `*_sync.py` → `*.py` | async 面降至最小 | ~250 | ⏳ |
 
 ### 34a — 双 API（零风险铺垫）
@@ -196,7 +202,7 @@ v1 草稿写的"Phase 2+3+4 原子 merge"是错误决定——大 PR 审 review 
 
 ### 34b — HealthWorker 切 sync（首只小白鼠）
 
-**状态（2026-04-19）**：PR `chriswangcq/novaic-agent-runtime#2`，commit `7491837`，分支 `feat/pr-34b-health-worker-sync`（off `origin/main`，不依赖 PR-35 hotfix）。等 PR-17 Phase 4 bake 绿 → merge → 单独 bake 48h → 34c 开工。
+**状态（2026-04-19 UPDATE）**：PR `chriswangcq/novaic-agent-runtime#2`，commit `7491837`，分支 `feat/pr-34b-health-worker-sync`（off `origin/main`，不依赖 PR-35 hotfix）。**bake gate 已撤销**（见 `reviews/bake-gate-abandonment-2026-04-19.md`），当前可直接 merge → 部署 → 下一阶段 34c 开工，不再等 48h 观察期。
 
 **已实施内容**：
 

@@ -12,6 +12,14 @@
 | **Owner** | wangchaoqun |
 | **PR 标题** | 见 §子 PR |
 
+> **2026-04-19 UPDATE — bake 监控后续被撤销**
+> B2 节描述的 `bake-snapshot.sh` 4h cron 监控在同日因 prod 零流量场景下的
+> 信号污染问题被整体停掉，见 [`reviews/bake-gate-abandonment-2026-04-19.md`](reviews/bake-gate-abandonment-2026-04-19.md)。
+> `event=tool_call_failed` 结构化日志本体**仍在线**（代码层面未动），
+> 失去的是"4h 一次 grep 快照"这一层外部消费。将来 PR-32 metrics 实时化时
+> 恢复。PR-35 本身的 2 层防御（Entangled `_apply_defaults` / `_check_required`
+> + business schema defaults）完全不受影响。
+
 ## 事件摘要
 
 生产 `chat_reply` 工具 19 次静默失败（2026-04-16 ~ 04-19）。表象：用户发消息，Agent 不回复，但系统无报警；Queue task 仍 `complete`；日志里埋着 `logger.error("[tool] chat_reply failed: ...")` 没人看。
