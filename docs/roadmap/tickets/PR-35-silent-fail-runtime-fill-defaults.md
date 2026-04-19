@@ -116,8 +116,18 @@ Pre-deploy 备份保留在 prod `/tmp/*.bak.20260419T*Z`。
 3. **双写路径**（Business 内部 helper vs 通用 CRUD）行为不一致
    → **沉淀**：所有 per-entity 语义必须下沉到 schema（`default="NOW"` 或类似），不允许散落在 caller-side helper。`_append_message` 里显式填 `timestamp` 的代码在 A 生效后可以删（单独 follow-up PR，非紧急，因为显式值不会被覆盖）。
 
-## Follow-ups（非阻塞）
+## Follow-ups
 
-- [ ] `novaic-business/business/internal/message.py:_append_message` 里显式填 `timestamp` 的代码可在 A merge 后删除（non-critical cleanup）
-- [ ] 全仓 sweep：所有 `SqlEntityDef` 里 `nullable=False` 的字段都应有明确 `default` 或 `auto=True`（P3，作为 `_apply_defaults` 的配套覆盖面保障）
+### ✅ 已落地
+
+- [x] **时间字段 CI 断言** (2026-04-19) — `novaic-business/tests/test_schema_invariants.py` 3 tests：
+  - `test_time_like_not_null_fields_declare_default` — 所有 `{timestamp, created_at, updated_at, scheduled_at, claimed_at, delivered_at, processed_at}` 名字的 NOT NULL 字段必须有 `default=...`，否则 fail。
+  - `test_messages_timestamp_activates_runtime_fill` — 对 `chat_reply` 故障字段的 loud sentinel。
+  - `test_execution_logs_timestamp_activates_runtime_fill` — 对下一颗同形炸弹的 loud sentinel。
+- [x] **`EXECUTION_LOGS_DEF.timestamp default="NOW"`** (2026-04-19) — preemptive 修复；0 次发射但 reachable via 通用 CRUD 代理。Commit `6862b79` 在 business hotfix branch。
+
+### 未落地
+
+- [ ] `novaic-business/business/internal/message.py:_append_message` 里显式填 `timestamp` 的代码可在 A merge 后删除（non-critical cleanup，等服务端 PR merge + 部署正式发布后做）
+- [ ] 非时间字段的 silent-fail 防御 —— 现状：`nullable=False` 业务必填字段（如 `agents.name`、`messages.agent_id`）走通用 CRUD 代理缺字段仍然 400。目前依赖 SQL loud-fail + caller 侧单测覆盖。长期可考虑让 Entangled `_apply_defaults` 对"NOT NULL + 无 default + 缺失"的情况**主动抛 ValidationError 含字段名**（比 SQLite 的 `NOT NULL constraint failed` 消息更友好），但这是独立 PR 的 scope，不在 PR-35 内做。
 - [ ] `handle_tool_execute` 的 `event=tool_call_failed` 正式纳入 ops dashboard（目前只在 4h 一次的 bake cron 里；将来 PR-32 metrics 时升级到实时）
