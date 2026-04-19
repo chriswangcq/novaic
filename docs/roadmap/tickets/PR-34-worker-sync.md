@@ -176,13 +176,13 @@ v1 草稿写的"Phase 2+3+4 原子 merge"是错误决定——大 PR 审 review 
 
 ### 全景
 
-| sub-PR | 代号 | 内容 | 最重要的不变量 | diff 规模 |
-|---|---|---|---|---:|
-| 34a | **双 API** | `DispatchAssembler` / `AgentOwnershipResolver` **保留 async 方法，并列新增 sync 方法**（`assemble_and_dispatch_sync`, `resolve_sync`） | 现有 async 调用点 0 行改动，线上行为零变化 | ~250 |
-| 34b | **HealthWorker 先切** | HealthWorker 改用 sync 方法；`health_worker_sync.py` 内部改 sync 主循环；启动入口删 `asyncio.run` | 其他 worker / Business FastAPI 仍走 async，零耦合 | ~300 |
-| 34c | **SchedulerWorker 切** | 同 34b pattern | DispatchSubscriber + FastAPI 仍 async | ~200 |
-| 34d | **Subscriber 切 + 提取独立子进程** | Subscriber 改 sync + 新增 `main_subscriber.py` + `start.sh` 拉起 + Business lifespan 不再管 subscriber task | Business FastAPI handler 仍走 async 路径（`_dispatch_trigger` 仍 async，未动） | ~400 |
-| 34e | **清理收尾** | FastAPI handler 侧 `_dispatch_trigger` 改 sync + `run_in_threadpool` bridge；删 async 方法 `assemble_and_dispatch`；加 CI 守卫；改名 `*_sync.py` → `*.py` | async 面降至最小 | ~250 |
+| sub-PR | 代号 | 内容 | 最重要的不变量 | diff 规模 | 状态 |
+|---|---|---|---|---:|---|
+| 34a | **双 API** | `DispatchAssembler` / `AgentOwnershipResolver` **保留 async 方法，并列新增 sync 方法**（`assemble_and_dispatch_sync`, `resolve_sync`） | 现有 async 调用点 0 行改动，线上行为零变化 | ~250 | ✅ merged → novaic-common `4e1d191`，主仓 submodule bumped |
+| 34b | **HealthWorker 先切** | HealthWorker 改用 sync 方法；`health_worker_sync.py` 内部改 sync 主循环；启动入口删 `asyncio.run` | 其他 worker / Business FastAPI 仍走 async，零耦合 | ~300（实测 199 insert + 125 del） | 🟡 PR 已开（agent-runtime#2, commit `7491837`），等 gate：PR-17 Phase 4 bake 绿 |
+| 34c | **SchedulerWorker 切** | 同 34b pattern | DispatchSubscriber + FastAPI 仍 async | ~200 | ⏳ 等 34b 生产 48h bake 稳定 |
+| 34d | **Subscriber 切 + 提取独立子进程** | Subscriber 改 sync + 新增 `main_subscriber.py` + `start.sh` 拉起 + Business lifespan 不再管 subscriber task | Business FastAPI handler 仍走 async 路径（`_dispatch_trigger` 仍 async，未动） | ~400 | ⏳ 等 34b/34c |
+| 34e | **清理收尾** | FastAPI handler 侧 `_dispatch_trigger` 改 sync + `run_in_threadpool` bridge；删 async 方法 `assemble_and_dispatch`；加 CI 守卫；改名 `*_sync.py` → `*.py` | async 面降至最小 | ~250 | ⏳ |
 
 ### 34a — 双 API（零风险铺垫）
 
@@ -196,15 +196,31 @@ v1 草稿写的"Phase 2+3+4 原子 merge"是错误决定——大 PR 审 review 
 
 ### 34b — HealthWorker 切 sync（首只小白鼠）
 
+**状态（2026-04-19）**：PR `chriswangcq/novaic-agent-runtime#2`，commit `7491837`，分支 `feat/pr-34b-health-worker-sync`（off `origin/main`，不依赖 PR-35 hotfix）。等 PR-17 Phase 4 bake 绿 → merge → 单独 bake 48h → 34c 开工。
+
+**已实施内容**：
+
 - `novaic-agent-runtime/task_queue/workers/health_worker_sync.py`：
   - `async def run` → `def run`，`asyncio.sleep` → `time.sleep`。
   - `async def _scan_unhandled_messages` → sync 版，`await get_assembler().assemble_and_dispatch(...)` → `get_assembler().assemble_and_dispatch_sync(...)`。
   - `async def _get_client` → `def _get_client`，`httpx.AsyncClient` → `httpx.Client`。
-- `novaic-agent-runtime/main_novaic.py::run_health`：删 `asyncio.run(worker.run())` 外壳，直接 `worker.run()`。
-- **测试**：`tests/test_health_dispatch.py` 整套从 `@pytest.mark.asyncio` + `AsyncMock` 迁到 sync + `MagicMock`（PR-19 新加的 4 例全在内）。
-- **生产观察**：merge 后单独 bake 48h，监控 PR-17 bake 的 `hlth_log recover_401` 保持 0，`fallback_ok` / `skip_queue_400` 计数正常增长（或因零流量冻结但不回退）。
-- **独立回滚**：revert → HealthWorker 回到 async 路径，业务无缝。
-- **不变量**：DispatchSubscriber / SchedulerWorker / Business 全部仍走 async，34b 的破坏半径仅在 health worker 本身。
+  - `internal_async_client` import → `internal_sync_client`；`await client.post/get` → `client.post/get`；`aclose()` → `close()`。
+- `novaic-agent-runtime/main_novaic.py::run_health`：删 `asyncio.run(worker.run())` 外壳，直接 `worker.run()`。`run_scheduler` 保持 async（34c 处理）。
+- **测试**：`tests/test_health_dispatch.py` 整套从 `@pytest.mark.asyncio` + `AsyncMock` 迁到 sync + `MagicMock`（PR-19 新加的 4 例全在内）。新增 2 个 34b invariant locks：
+  - `test_run_is_synchronous_callable` — `inspect.iscoroutinefunction` 拒绝未来把 async 偷偷塞回来的 regression。
+  - `test_module_does_not_import_asyncio` — 模块级 `asyncio` 导入即 fail。
+  这是对 §C.1.1 仓级 CI guardrail 的 per-file 补充，提前兜底（CI guardrail 要 34e 才上）。
+- **本地验证**：`pytest tests/test_health_dispatch.py` 8/8 绿；agent-runtime 全量 32 passed 0 regressions。
+
+**生产观察 gate（merge 后）**：单独 bake 48h，监控指标：
+
+- `grep -c "coroutine.*never awaited" /opt/novaic/data/logs/health-*.log` → **0**（任何一个都是 regression）
+- `grep -c "event=health_fallback" /opt/novaic/data/logs/health-*.log` → 正常增长（证明 sync dispatch 路径在生产流量下工作）
+- `grep -c "recover_401" /opt/novaic/data/logs/health-*.log` → 保持 0（PR-19 X-Internal-Key 契约在 34b 迁移中必须无漏）
+
+**独立回滚**：`git revert 7491837` → HealthWorker 回到 async 路径，业务无缝，HealthWorker 是 idempotent fallback 扫描，零数据风险。
+
+**不变量**：DispatchSubscriber / SchedulerWorker / Business 全部仍走 async，34b 的破坏半径仅在 health worker 本身。
 
 ### 34c — SchedulerWorker 切 sync
 
