@@ -101,7 +101,7 @@
 ## 文档 Checklist
 
 - [ ] [message-wake-refactor.md](../message-wake-refactor.md) P2-2 → `[x]`
-- [ ] 本工单 Status → `[x]`
+- [x] 本工单 Status → `[x]`
 - [ ] 在 [entangled/README.md](../../entangled/README.md) 加一节 "Message outbox（服务端 changefeed）"
 - [ ] 在 [message-wake-principles.md](../../architecture/message-wake-principles.md) §R6 引用本 schema
 

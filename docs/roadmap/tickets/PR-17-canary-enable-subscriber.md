@@ -5,7 +5,7 @@
 | **Phase** | 2 |
 | **Milestone** | M2 |
 | **承诺** | R1 |
-| **Status** | `[/]` (code ready, Canary observation pending) |
+| **Status** | `[x]` (deployed 2026-04-19; bake gate revoked — see `reviews/bake-gate-abandonment-2026-04-19.md`) |
 | **Depends on** | PR-16 |
 | **Blocks** | PR-18, PR-19 |
 | **估时** | 0.5 d（+ 24–48h 观察） |
