@@ -6,7 +6,7 @@
 
 > **2026-04-19 UPDATE — Canary bake gate 已撤销**
 > 零流量生产环境下 4 阶段 77h bake 是伪仪式，见
-> [`bake-gate-abandonment-2026-04-19.md`](./bake-gate-abandonment-2026-04-19.md)。
+> `[bake-gate-abandonment-2026-04-19.md](./bake-gate-abandonment-2026-04-19.md)`。
 > PR-17 本身视为已完成，直接进入 merge / deploy，部署后跑一次人工 smoke
 > （发一条消息 → agent 回复通 + 日志无 Traceback）即放行。
 > §E 指标表和 Phase 1~4 节保留作为**流量回来时恢复 bake 的参考模板**，不再是当前验收口径。
@@ -15,17 +15,19 @@
 
 ## §A 生产部署架构（先读明白，别瞎猜）
 
-| 事实 | 值 |
-|---|---|
-| 生产 host | `root@api.gradievo.com`（Gateway `deploy-gateway.sh` 同目标） |
-| 代码路径 | `/opt/novaic/services/<submodule>/` |
-| 启动脚本 | `/opt/novaic/services/scripts/start.sh` ← 这个 repo 里的 `scripts/start.sh` |
-| Business 启动行 | `start.sh` line 131-135，`python main_business.py --host ... --port ... --data-dir ... --entangled-url ... --gateway-url ...` |
-| Business 日志 | `/opt/novaic/data/logs/business-YYYYMMDD.log`（UTC 按日切） |
-| Entangled DB 路径 | `/opt/novaic/data/entangled.db`（SQLite，可 `sqlite3` 直查） |
-| 部署 Business 的脚本 | **不存在**（只有 `scripts/gateway/deploy-gateway.sh` 部署 Gateway）——你得写 |
-| 配置风格 | **Zero exports，纯 CLI args**（`start.sh` line 7 有明确声明） |
-| 当前 subscriber 状态 | **从未开过**（`start.sh` 里既没 `DISPATCH_SUBSCRIBER_ENABLED=1` export 也没 `--enable-subscriber` arg） |
+
+| 事实               | 值                                                                                                                            |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| 生产 host          | `root@api.gradievo.com`（Gateway `deploy-gateway.sh` 同目标）                                                                     |
+| 代码路径             | `/opt/novaic/services/<submodule>/`                                                                                          |
+| 启动脚本             | `/opt/novaic/services/scripts/start.sh` ← 这个 repo 里的 `scripts/start.sh`                                                      |
+| Business 启动行     | `start.sh` line 131-135，`python main_business.py --host ... --port ... --data-dir ... --entangled-url ... --gateway-url ...` |
+| Business 日志      | `/opt/novaic/data/logs/business-YYYYMMDD.log`（UTC 按日切）                                                                       |
+| Entangled DB 路径  | `/opt/novaic/data/entangled.db`（SQLite，可 `sqlite3` 直查）                                                                       |
+| 部署 Business 的脚本  | **不存在**（只有 `scripts/gateway/deploy-gateway.sh` 部署 Gateway）——你得写                                                              |
+| 配置风格             | **Zero exports，纯 CLI args**（`start.sh` line 7 有明确声明）                                                                         |
+| 当前 subscriber 状态 | **从未开过**（`start.sh` 里既没 `DISPATCH_SUBSCRIBER_ENABLED=1` export 也没 `--enable-subscriber` arg）                                 |
+
 
 ---
 
@@ -73,11 +75,11 @@ $(py novaic-gateway) "$BASE/novaic-business/main_business.py" \
 - 加 `--target <url>` 支持指向本地 or 生产
 - **一定要带 X-Internal-Key**（生产 business 有 CallerLoggingMiddleware，未鉴权请求会被拒）
 - 输出：每秒打印 sent/acked/error 计数
-- **严禁**写真实用户 ID——要用形如 `canary_u_*` / `canary_a_*` 的明显前缀，方便事后从生产 entangled.db 一键清理
+- **严禁**写真实用户 ID——要用形如 `canary_u_`* / `canary_a_*` 的明显前缀，方便事后从生产 entangled.db 一键清理
 
 压测前必须先在 Business 加一个 env/CLI flag `--allow-canary-user-prefix=canary_`，让 CallerLoggingMiddleware 或者 send_action 识别到 canary 前缀时走隔离路径（如 agent/user 不存在就返回 200 而不是 404）。**别直接往生产真数据表里灌垃圾**。
 
-实际上更简单的做法：**压测脚本先 create 一个固定的 `canary_u_fixed` 用户 + 5 个 `canary_a_*` agent，然后只对这几个账号发 message**。这样既真实走完整链路（走 ownership lookup / outbox insert / subscriber 消费），又不污染真实用户。
+实际上更简单的做法：**压测脚本先 create 一个固定的 `canary_u_fixed` 用户 + 5 个 `canary_a_`* agent，然后只对这几个账号发 message**。这样既真实走完整链路（走 ownership lookup / outbox insert / subscriber 消费），又不污染真实用户。
 
 ### B.5 `docs/runbooks/subscriber-canary.md`
 
@@ -120,6 +122,7 @@ done
 ```
 
 **继续条件（全部满足才进阶段 2）**：
+
 - `pending` ≤ 10（偶有排队正常，持续积累不行）
 - `oldest_age_s` 任何时刻 ≤ 5
 - `subscriber permanent fail` 计数 = 0
@@ -135,12 +138,14 @@ python scripts/canary/traffic.py --target https://api.gradievo.com --qps 3 --dur
 ```
 
 **继续条件**：
+
 - outbox `pending` P99 ≤ 50，P50 ≤ 5
 - `oldest_age_s` P99 ≤ 2
 - `subscriber transient` / `subscriber_delivered` 比例 < 5%
 - 压测期间真实用户（非 canary 前缀）的消息处理正常（人肉在另一个设备发几条真实 hihi 对话验证）
 
 **红线**：
+
 - `pending` 持续 > 200 → 回滚
 - `oldest_age_s` > 10s → 回滚
 - 任一 `subscriber permanent fail kind=no_owner` → 回滚（数据一致性问题）
@@ -169,6 +174,7 @@ EOF
 ```
 
 **关 flag 后 outbox 的长期副作用**：
+
 - `message_outbox` 表的 insert 是 Entangled 侧无条件的（PR-14 的 co-transaction），不受 Business flag 控制
 - 关了 subscriber，outbox 行会无人消费 → 无限堆积
 - `scripts/outbox-compact.sh` 只清理 `delivered_at IS NOT NULL` 的行，**对未消费行无能为力**
@@ -186,16 +192,18 @@ EOF
 
 因为 PR-32 的 Prometheus metric 要等到 Phase 2 后再做，Canary 的全部判定工具就是下面这张表。**背熟**。
 
-| 原 metric | 替代查询 | 红线阈值 |
-|---|---|---|
-| `subscriber_delivered_total` | `rg -c 'event=subscriber_delivered' business-*.log` | 单调增（不增 = 消费停了）|
-| `subscriber_failed_total{kind=no_owner}` | `rg -c 'subscriber permanent fail.*kind=no_owner' business-*.log` | = 0 |
-| `subscriber_failed_total{kind=other}` | `rg -c 'subscriber permanent fail' - 上一行 grep` | < `subscriber_delivered` 的 0.1% |
-| `subscriber_retry_total` | `rg -c 'subscriber transient' business-*.log` | < `subscriber_delivered` 的 5% |
-| `outbox_lag_seconds` | `SELECT MAX((strftime('%s','now')*1000 - created_at)/1000.0) FROM message_outbox WHERE delivered_at IS NULL` | P99 ≤ 2s |
-| `outbox_backlog_count` | `SELECT COUNT(*) FROM message_outbox WHERE delivered_at IS NULL` | 持续 < 50 |
-| `action=deduped` 比例 | `rg -c 'action=deduped' / rg -c 'event=subscriber_delivered'` | 阶段 1/2 应接近 1:1（因为 inline dispatch 先到），Canary 通过后 PR-18 删 inline 这个比例才会归 0 |
-| `healthworker_scan_total` 真 re-dispatch | `rg -c 'event=health_fallback' runtime/health-worker-*.log` | 应从 PR-12 的水平 → 接近 0（因为 subscriber 接管） |
+
+| 原 metric                                 | 替代查询                                                                                                         | 红线阈值                                                                      |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| `subscriber_delivered_total`             | `rg -c 'event=subscriber_delivered' business-*.log`                                                          | 单调增（不增 = 消费停了）                                                            |
+| `subscriber_failed_total{kind=no_owner}` | `rg -c 'subscriber permanent fail.*kind=no_owner' business-*.log`                                            | = 0                                                                       |
+| `subscriber_failed_total{kind=other}`    | `rg -c 'subscriber permanent fail' - 上一行 grep`                                                               | < `subscriber_delivered` 的 0.1%                                           |
+| `subscriber_retry_total`                 | `rg -c 'subscriber transient' business-*.log`                                                                | < `subscriber_delivered` 的 5%                                             |
+| `outbox_lag_seconds`                     | `SELECT MAX((strftime('%s','now')*1000 - created_at)/1000.0) FROM message_outbox WHERE delivered_at IS NULL` | P99 ≤ 2s                                                                  |
+| `outbox_backlog_count`                   | `SELECT COUNT(*) FROM message_outbox WHERE delivered_at IS NULL`                                             | 持续 < 50                                                                   |
+| `action=deduped` 比例                      | `rg -c 'action=deduped' / rg -c 'event=subscriber_delivered'`                                                | 阶段 1/2 应接近 1:1（因为 inline dispatch 先到），Canary 通过后 PR-18 删 inline 这个比例才会归 0 |
+| `healthworker_scan_total` 真 re-dispatch  | `rg -c 'event=health_fallback' runtime/health-worker-*.log`                                                  | 应从 PR-12 的水平 → 接近 0（因为 subscriber 接管）                                     |
+
 
 ---
 
@@ -207,8 +215,8 @@ EOF
 2. **生产 message_outbox 表是否存在**：`ssh root@api.gradievo.com "sqlite3 /opt/novaic/data/entangled.db '.schema message_outbox'"`——如果表不存在，意味着 Entangled 侧的 `ensure_schema` 没跑过 PR-14 的 outbox 分支，要先 rsync 新 Entangled + 重启
 3. **当前 outbox 积压量**（如果表存在）：`SELECT COUNT(*) FROM message_outbox WHERE delivered_at IS NULL` 应该很小，如果已经堆积几百条说明 PR-14 已在生产跑了但没人消费，**这是个更紧急的现状**
 4. **生产 Business 日志的格式**：`ssh root@api.gradievo.com "head -20 /opt/novaic/data/logs/business-$(date +%Y%m%d).log"`——确认日志能被 `rg` 解析（有 ASCII 文本，不是二进制/压缩过的）
-5. **`deploy-gateway.sh` 是否已经带上了 novaic-common / Entangled**：读一遍代码，看 rsync 的源目录清单。如果只有 `novaic-gateway/`，那生产的 novaic-common / Entangled 肯定不是最新版——回答"deploy-business.sh 需要 rsync 三个子仓库"。
-6. **压测脚本的隔离账号策略**：确认生产有没有现成的 `canary_*` 测试账号？没有的话，你的 canary traffic 第一步要先 bootstrap 这些账号。preflight 里列出 bootstrap SQL/API。
+5. `**deploy-gateway.sh` 是否已经带上了 novaic-common / Entangled**：读一遍代码，看 rsync 的源目录清单。如果只有 `novaic-gateway/`，那生产的 novaic-common / Entangled 肯定不是最新版——回答"deploy-business.sh 需要 rsync 三个子仓库"。
+6. **压测脚本的隔离账号策略**：确认生产有没有现成的 `canary_`* 测试账号？没有的话，你的 canary traffic 第一步要先 bootstrap 这些账号。preflight 里列出 bootstrap SQL/API。
 7. **回滚 SLO 测量方法**：本地阶段 0 演练时怎么测 "30s 内 HealthWorker 接管第一条 fallback"？具体 tail 哪个日志、看什么字段？
 
 ---
@@ -217,16 +225,19 @@ EOF
 
 **5 段 commit（2 子模块 + 3 主仓 docs/scripts）**：
 
-| # | 子模块 | Message |
-|---|---|---|
-| 1 | `novaic-business` | `feat(business): add --enable-subscriber CLI arg (PR-17)` |
-| 2 | 主仓 scripts | `feat(scripts): start.sh supports NOVAIC_ENABLE_SUBSCRIBER flag (PR-17)` |
-| 3 | 主仓 scripts | `feat(scripts): add deploy-business.sh (PR-17)` |
-| 4 | 主仓 scripts | `feat(scripts): add canary traffic.py for PR-17 observation` |
-| 5 | 主仓 docs | `docs: subscriber-canary runbook + PR-17 ticket check-off (partial)` |
-| 6 | 主仓 | `chore: bump submodules for PR-17`（独立拎出来，**不要又绑 docs**） |
+
+| #   | 子模块               | Message                                                                  |
+| --- | ----------------- | ------------------------------------------------------------------------ |
+| 1   | `novaic-business` | `feat(business): add --enable-subscriber CLI arg (PR-17)`                |
+| 2   | 主仓 scripts        | `feat(scripts): start.sh supports NOVAIC_ENABLE_SUBSCRIBER flag (PR-17)` |
+| 3   | 主仓 scripts        | `feat(scripts): add deploy-business.sh (PR-17)`                          |
+| 4   | 主仓 scripts        | `feat(scripts): add canary traffic.py for PR-17 observation`             |
+| 5   | 主仓 docs           | `docs: subscriber-canary runbook + PR-17 ticket check-off (partial)`     |
+| 6   | 主仓                | `chore: bump submodules for PR-17`（独立拎出来，**不要又绑 docs**）                  |
+
 
 **Declare Done 前三问自检**（PR-16 的教训）：
+
 1. 每个勾对应一段可执行凭证吗？
 2. 每个 commit 能独立 revert 吗？
 3. 去掉生产代码，测试会不会红？

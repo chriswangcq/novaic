@@ -39,23 +39,23 @@
 | PR-02 | `[x]` | [common.agents.ownership 包骨架](PR-02-ownership-package-skeleton.md) | — | R3 | 0.5 h | __ |
 | PR-03 | `[x]` | [CI lint：禁止直接 POST /api/queue/dispatch](PR-03-ci-ban-direct-dispatch.md) | — | R2 | 1 h | __ |
 | PR-04 | `[x]` | [CI lint：禁止裸 httpx.Client()](PR-04-ci-ban-bare-httpx-client.md) | — | R7 | 1 h | __ |
-| PR-05 | `[ ]` | [internal_client(service_name=...) 必填](PR-05-internal-client-service-name.md) | — | R7 | 0.5 d | __ |
-| PR-06 | `[ ]` | [服务端消费 X-Internal-Service](PR-06-services-consume-caller-header.md) | PR-05 | R7 | 0.5 d | __ |
-| PR-07 | `[ ]` | [Business `GET /internal/agents/{id}/owner`](PR-07-business-agent-owner-endpoint.md) | — | R3 | 0.5 d | __ |
-| PR-08 | `[ ]` | [AgentOwnershipResolver (TTL 缓存)](PR-08-agent-ownership-resolver.md) | PR-01, PR-02, PR-05, PR-07 | R3 | 0.5 d | __ |
-| PR-09 | `[ ]` | [TriggerType 权威枚举 + schema 迁移](PR-09-trigger-type-enum.md) | PR-01 | R2 | 0.5 d | __ |
-| PR-10 | `[ ]` | [DispatchAssembler 本体 + 合约测试](PR-10-dispatch-assembler.md) | PR-05, PR-08, PR-09 | R2+R3 | 1 d | __ |
-| PR-11 | `[ ]` | [Business `_dispatch_trigger` 迁到 Assembler](PR-11-business-trigger-to-assembler.md) | PR-10 | R2 | 0.5 d | __ |
-| PR-12 | `[ ]` | [HealthWorker `_scan_unhandled_messages` 迁到 Assembler](PR-12-healthworker-scan-to-assembler.md) | PR-10 | R2+R3+R7 | 0.5 d | __ |
-| PR-13 | `[ ]` | [SchedulerWorker 迁到 Assembler](PR-13-scheduler-worker-to-assembler.md) | PR-10 | R2 | 0.5 d | __ |
-| **M1** | — | **合约对齐** | PR-05..PR-13 | — | — | — |
-| PR-14 | `[ ]` | [Entangled `message_outbox` schema](PR-14-entangled-message-outbox.md) | — | R6 | 1 d | __ |
-| PR-15 | `[ ]` | [dispatch_subscriber 骨架（flag=off）](PR-15-dispatch-subscriber-skeleton.md) | PR-10, PR-14 | R6 | 0.5 d | __ |
-| PR-16 | `[ ]` | [dispatch_subscriber poll + dedupe + retry](PR-16-dispatch-subscriber-full.md) | PR-15 | R1+R6 | 1.5 d | __ |
-| PR-17 | `[ ]` | [灰度开启 dispatch_subscriber (canary)](PR-17-canary-enable-subscriber.md) | PR-16 | R1 | 0.5 d + 24–48h 观察 | __ |
-| PR-18 | `[ ]` | [删除 Business `_dispatch_trigger`](PR-18-remove-dispatch-trigger.md) | PR-17 | R1+R6 | 0.5 d | __ |
-| PR-19 | `[ ]` | [HealthWorker → recovery-only](PR-19-healthworker-recovery-only.md) | PR-17 | R1+R5 | 0.5 d | __ |
-| **M2** | — | **主路径切换** | PR-14..PR-19 | — | — | — |
+| PR-05 | `[x]` | [internal_client(service_name=...) 必填](PR-05-internal-client-service-name.md) | — | R7 | 0.5 d | __ |
+| PR-06 | `[x]` | [服务端消费 X-Internal-Service](PR-06-services-consume-caller-header.md) | PR-05 | R7 | 0.5 d | __ |
+| PR-07 | `[x]` | [Business `GET /internal/agents/{id}/owner`](PR-07-business-agent-owner-endpoint.md) | — | R3 | 0.5 d | __ |
+| PR-08 | `[x]` | [AgentOwnershipResolver (TTL 缓存)](PR-08-agent-ownership-resolver.md) | PR-01, PR-02, PR-05, PR-07 | R3 | 0.5 d | __ |
+| PR-09 | `[x]` | [TriggerType 权威枚举 + schema 迁移](PR-09-trigger-type-enum.md) | PR-01 | R2 | 0.5 d | __ |
+| PR-10 | `[x]` | [DispatchAssembler 本体 + 合约测试](PR-10-dispatch-assembler.md) | PR-05, PR-08, PR-09 | R2+R3 | 1 d | __ |
+| PR-11 | `[x]` | [Business `_dispatch_trigger` 迁到 Assembler](PR-11-business-trigger-to-assembler.md) | PR-10 | R2 | 0.5 d | __ |
+| PR-12 | `[x]` | [HealthWorker `_scan_unhandled_messages` 迁到 Assembler](PR-12-healthworker-scan-to-assembler.md) | PR-10 | R2+R3+R7 | 0.5 d | __ |
+| PR-13 | `[x]` | [SchedulerWorker 迁到 Assembler](PR-13-scheduler-worker-to-assembler.md) | PR-10 | R2 | 0.5 d | __ |
+| **M1** | — | **合约对齐 ✅** | PR-05..PR-13 | — | — | — |
+| PR-14 | `[x]` | [Entangled `message_outbox` schema](PR-14-entangled-message-outbox.md) | — | R6 | 1 d | __ |
+| PR-15 | `[x]` | [dispatch_subscriber 骨架（flag=off）](PR-15-dispatch-subscriber-skeleton.md) | PR-10, PR-14 | R6 | 0.5 d | __ |
+| PR-16 | `[x]` | [dispatch_subscriber poll + dedupe + retry](PR-16-dispatch-subscriber-full.md) | PR-15 | R1+R6 | 1.5 d | __ |
+| PR-17 | `[x]` | [灰度开启 dispatch_subscriber (canary)](PR-17-canary-enable-subscriber.md) | PR-16 | R1 | 0.5 d (bake gate revoked 2026-04-19) | __ |
+| PR-18 | `[x]` | [删除 Business `_dispatch_trigger`](PR-18-remove-dispatch-trigger.md) | PR-17 | R1+R6 | 0.5 d | __ |
+| PR-19 | `[x]` | [HealthWorker → recovery-only](PR-19-healthworker-recovery-only.md) | PR-17 | R1+R5 | 0.5 d | __ |
+| **M2** | — | **主路径切换 ✅** | PR-14..PR-19 | — | — | — |
 | PR-20 | `[ ]` | [Scope `meta.input_message_ids`](PR-20-scope-input-message-ids.md) | PR-10 | R4 | 1 d | __ |
 | PR-21 | `[ ]` | [`chat_messages.lifecycle` 枚举 + state_transition()](PR-21-message-lifecycle-enum.md) | PR-14 | R4+R8 | 1 d | __ |
 | PR-22 | `[ ]` | [subscriber 成功 dispatch → transition claimed](PR-22-subscriber-transition-claimed.md) | PR-16, PR-21 | R4 | 0.5 d | __ |

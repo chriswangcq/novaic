@@ -5,7 +5,7 @@
 | **Phase** | 1（合约对齐） |
 | **Milestone** | M1 |
 | **承诺** | R7 |
-| **Status** | `[ ]` |
+| **Status** | `[x]` |
 | **Depends on** | — |
 | **Blocks** | PR-06, PR-08, PR-10, PR-12 |
 | **估时** | 0.5 d |
