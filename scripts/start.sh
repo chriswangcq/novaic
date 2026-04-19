@@ -42,17 +42,16 @@ PORT_CORTEX=19996
 PORT_FILE_SERVICE=19995
 PORT_DEVICE=19993
 
-# ── Canary / Subscriber control (PR-17) ──────────────────────────────────────
-#   NOVAIC_ENABLE_SUBSCRIBER=1        → pass --enable-subscriber to Business
-#   NOVAIC_HEALTH_CHECK_INTERVAL=N    → override health worker --check-interval
-#                                        (default 30, Canary uses 5 for fast
-#                                        failover; see docs/runbooks/subscriber-canary.md)
-
-SUBSCRIBER_FLAG=""
-if [ "${NOVAIC_ENABLE_SUBSCRIBER:-0}" = "1" ] || [ "${NOVAIC_ENABLE_SUBSCRIBER:-}" = "--enable-subscriber" ]; then
-    SUBSCRIBER_FLAG="--enable-subscriber"
-fi
-HEALTH_CHECK_INTERVAL="${NOVAIC_HEALTH_CHECK_INTERVAL:-30}"
+# ── Canary / Subscriber / Health cadence (PR-33 Phase 3, 2026-04-20) ─────────
+# Historical (pre-PR-33): NOVAIC_ENABLE_SUBSCRIBER / NOVAIC_HEALTH_CHECK_INTERVAL
+# env bridges injected --enable-subscriber and --check-interval here. Both are
+# deleted — the three values they controlled now live under
+# services.json → runtime_switches.{subscriber_enabled,
+# health_check_interval_seconds, scheduler_poll_interval_seconds}. See
+# docs/roadmap/tickets/PR-33-env-shrink.md §C.2 and
+# docs/runbooks/subscriber-canary.md for the flip procedure (edit + restart).
+# The log_startup_snapshot() INFO line in each service/worker is now the only
+# audit trail for which switches this process believes in.
 
 # ── Derived URLs (used only as CLI arg values below) ─────────────────────────
 
@@ -143,12 +142,10 @@ PYTHONPATH="$BASE/Entangled/packages/server-python:$BASE/novaic-common:$BASE/nov
 $(py novaic-gateway) "$BASE/novaic-business/main_business.py" \
     --host "$HOST" --port "$PORT_BUSINESS" --data-dir "$DATA_DIR" \
     --entangled-url "$ENTANGLED_URL" --gateway-url "$GW_URL" \
-    $SUBSCRIBER_FLAG \
     >> "$LOG_DIR/business-$(date +%Y%m%d).log" 2>&1 &
 wait_port "$PORT_BUSINESS" "Business Service"
-if [ -n "$SUBSCRIBER_FLAG" ]; then
-    echo "  NOTE: DispatchSubscriber enabled (Canary mode, PR-17)"
-fi
+# PR-33 Phase 3: canary "NOTE" removed. Check runtime_switches in business.log:
+#   grep "runtime_switches=" "$LOG_DIR/business-$(date +%Y%m%d).log" | head -1
 
 PYTHONPATH="$BASE/Entangled/packages/server-python:$BASE/novaic-common:$BASE/novaic-device:${PYTHONPATH:-}" \
 $(py novaic-gateway) "$BASE/novaic-device/main_device.py" \
@@ -205,16 +202,18 @@ for i in 1 2; do
     $PY $MAIN saga-worker $WORKER_ARGS --max-concurrent 4 >> "$LOG_DIR/saga-worker-${i}.log" 2>&1 &
 done
 
-$PY $MAIN health $WORKER_ARGS --check-interval "$HEALTH_CHECK_INTERVAL" --task-timeout 3600 --saga-timeout 3600 >> "$LOG_DIR/health.log" 2>&1 &
-if [ "$HEALTH_CHECK_INTERVAL" != "30" ]; then
-    echo "  NOTE: HealthWorker check-interval=${HEALTH_CHECK_INTERVAL}s (override, Canary/test)"
-fi
+# PR-33 Phase 3: --check-interval removed from both workers. HealthWorker
+# reads ServiceConfig.HEALTH_CHECK_INTERVAL_SECONDS; SchedulerWorker reads
+# ServiceConfig.SCHEDULER_POLL_INTERVAL_SECONDS. To change cadence during
+# an incident: edit services.json and restart the worker. The
+# log_startup_snapshot line in each worker's log proves which value
+# actually took effect.
+$PY $MAIN health $WORKER_ARGS --task-timeout 3600 --saga-timeout 3600 >> "$LOG_DIR/health.log" 2>&1 &
 $PY $MAIN scheduler \
     --gateway-url "$GW_URL" \
     --business-url "$BIZ_URL" \
     --queue-service-url "$QS_URL" \
     --cortex-url "$CORTEX_URL" \
-    --check-interval 10 \
     --data-dir "$DATA_DIR" \
     >> "$LOG_DIR/scheduler.log" 2>&1 &
 
