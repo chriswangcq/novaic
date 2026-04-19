@@ -187,8 +187,10 @@ v1 草稿写的"Phase 2+3+4 原子 merge"是错误决定——大 PR 审 review 
 | 34a | **双 API** | `DispatchAssembler` / `AgentOwnershipResolver` **保留 async 方法，并列新增 sync 方法**（`assemble_and_dispatch_sync`, `resolve_sync`） | 现有 async 调用点 0 行改动，线上行为零变化 | ~250 | ✅ merged → novaic-common `4e1d191`，主仓 submodule bumped |
 | 34b | **HealthWorker 先切** | HealthWorker 改用 sync 方法；`health_worker_sync.py` 内部改 sync 主循环；启动入口删 `asyncio.run` | 其他 worker / Business FastAPI 仍走 async，零耦合 | ~300（实测 199 insert + 125 del） | ✅ merged (agent-runtime#2, 2026-04-19) |
 | 34c | **SchedulerWorker 切** | 同 34b pattern | DispatchSubscriber + FastAPI 仍 async | ~200 | ✅ merged (agent-runtime#3, 2026-04-19; commit 消息里错写成 34e，仅命名笔误，代码范围正是本行) |
-| 34d | **Subscriber 切 + 提取独立子进程** | Subscriber 改 sync + 新增 `main_subscriber.py` + `start.sh` 拉起 + Business lifespan 不再管 subscriber task | Business FastAPI handler 仍走 async 路径（`_dispatch_trigger` 仍 async，未动） | ~400 | ⏳ 下一步 |
-| 34e | **清理收尾** | FastAPI handler 侧 `_dispatch_trigger` 改 sync + `run_in_threadpool` bridge；删 async 方法 `assemble_and_dispatch`；加 CI 守卫；改名 `*_sync.py` → `*.py` | async 面降至最小 | ~250 | ⏳ |
+| 34d | **Subscriber 切 + 提取独立子进程** | Subscriber 改 sync + 新增 `main_subscriber.py` + `start.sh` 拉起 + Business lifespan 不再管 subscriber task | Business FastAPI handler 仍走 async 路径（`_dispatch_trigger` 已在 PR-18 清除，见下方补注） | ~400 | ✅ merged (2026-04-20，分支 `refactor/pr-34-final-sync-sweep`) |
+| 34e | **清理收尾** | 删 async 方法 `assemble` / `dispatch` / `assemble_and_dispatch` + `resolve`；加 CI 守卫 `check_no_internal_async.py`；改名 `scheduler_worker_sync.py` / `health_worker_sync.py` → 去后缀；文档 | async 面降至最小 | ~250 | ✅ merged (2026-04-20) |
+
+> **34e 落地补注 2026-04-20**：`_dispatch_trigger` 在 PR-18 阶段已经从 `message_actions.py` / `subagent.py` 清零（见 `grep -r "_dispatch_trigger" novaic-business/business/`），所以 34e 不需要再做 FastAPI handler 侧的 `run_in_threadpool` 桥接。实际 34e 工作集中在 async API 清零 + CI guard + 文档三件事。`saga_worker_sync.py` / `task_worker_sync.py` 的文件名保留 `_sync` 后缀未改（行为本身已是 sync），理由：避免扩大 rename 面；后续清扫 PR 可一并处理。
 
 > **补注 2026-04-19**：Saga/Task worker 其实在 PR-34 RFC 起草之前就已经用 `*_sync.py` 文件名落地为纯 sync 实现（`grep -r "async def\|asyncio\." task_queue/workers/{task,saga}_worker_sync.py` 返回 0 命中），所以它们不在本表内——34b/c/d/e 四列覆盖的是**当时尚未 sync 化**的四个 surface（Health / Scheduler / Subscriber / FastAPI-side）。
 
