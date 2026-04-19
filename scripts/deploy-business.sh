@@ -26,8 +26,10 @@
 #         novaic-gateway + novaic-device + novaic-agent-runtime)
 #        ** All 4 "caller" services MUST go together with novaic-common **
 #        because PR-05 made service_name a required positional arg of
-#        internal_client. A partial deploy crashes hw_status etc. with
-#        TypeError: missing 1 required positional argument: 'service_name'.
+#        internal_{sync,async}_client. A partial deploy crashes hw_status
+#        etc. with TypeError: missing 1 required positional argument:
+#        'service_name'. (TD-2, 2026-04-20: ``internal_client`` alias
+#        removed; the underlying requirement is unchanged.)
 #     2. rsync scripts/start.sh → /opt/novaic/start.sh (prod's actual path)
 #     3. rsync scripts/canary/ → /opt/novaic/services/scripts/canary/
 #     4. Graceful stop + start (subscriber flag preserved from env)
@@ -43,11 +45,18 @@
 #     8. Print next-step instructions (do NOT auto-enable subscriber)
 #
 # Post-deploy (operator-driven, NOT automated by this script):
-#   To enter Canary 阶段 1, on the production host:
-#     export NOVAIC_ENABLE_SUBSCRIBER=1
-#     export NOVAIC_HEALTH_CHECK_INTERVAL=5
-#     bash /opt/novaic/start.sh --stop
-#     bash /opt/novaic/start.sh
+#   To enter Canary 阶段 1, on the production host (PR-33 Phase 3 flow):
+#     1. Edit /opt/novaic/services/novaic-common/config/services.json and set
+#          "runtime_switches": {
+#            "subscriber_enabled": true,
+#            "health_check_interval_seconds": 5,
+#            ...
+#          }
+#     2. bash /opt/novaic/start.sh --stop
+#        bash /opt/novaic/start.sh
+#     3. Verify:
+#          grep "runtime_switches=" /opt/novaic/data/logs/business-$(date +%Y%m%d).log | head -1
+#        should show subscriber_enabled=true. No env exports any more.
 #
 # Safety:
 #   - --first-time ALWAYS backs up DB before touching code.
@@ -205,14 +214,13 @@ rsync -az --delete "${RSYNC_EXCLUDES[@]}" \
 
 echo ""
 
-# ── Start services (subscriber flag OFF always — operator must opt-in) ───────
-echo "=== Starting services (subscriber flag OFF for cold start) ==="
-ssh "$TARGET" bash -s <<EOF
-# Explicitly unset canary flags; this deploy NEVER auto-enables subscriber.
-unset NOVAIC_ENABLE_SUBSCRIBER || true
-unset NOVAIC_HEALTH_CHECK_INTERVAL || true
-bash $REMOTE_START_SCRIPT
-EOF
+# ── Start services ───────────────────────────────────────────────────────────
+# PR-33 Phase 3 (2026-04-20): canary toggle is now services.json →
+# runtime_switches.subscriber_enabled, not env. This script never rewrites
+# services.json — operators must opt-in to canary by editing the file and
+# restarting. No env exports required.
+echo "=== Starting services (canary flip = services.json edit + restart) ==="
+ssh "$TARGET" "bash $REMOTE_START_SCRIPT"
 echo ""
 
 # ── first-time only: verify schema + health ──────────────────────────────────
@@ -286,21 +294,17 @@ REMOTE
        ssh $TARGET "tail -F $REMOTE_DATA/logs/business-\$(date +%Y%m%d).log | grep -E 'ERROR|Traceback|agent_owner_lookup.*miss|caller=unknown'"
      All should remain empty.
 
-  2. If clean, enter Canary 阶段 1 (subscriber ON, 4-6h observation):
-       ssh $TARGET bash -c '"
-         export NOVAIC_ENABLE_SUBSCRIBER=1
-         export NOVAIC_HEALTH_CHECK_INTERVAL=5
-         bash $REMOTE_START_SCRIPT --stop
-         bash $REMOTE_START_SCRIPT
-       "'
+  2. If clean, enter Canary 阶段 1 (subscriber ON) — PR-33 flow:
+       edit /opt/novaic/services/novaic-common/config/services.json:
+         runtime_switches.subscriber_enabled = true
+         runtime_switches.health_check_interval_seconds = 5
+       then:
+         ssh $TARGET "bash $REMOTE_START_SCRIPT --stop && bash $REMOTE_START_SCRIPT"
+       verify in business log:
+         grep "runtime_switches=" /opt/novaic/data/logs/business-\$(date +%Y%m%d).log | head -1
 
-  3. Rollback (if anything goes wrong):
-       ssh $TARGET bash -c '"
-         unset NOVAIC_ENABLE_SUBSCRIBER
-         unset NOVAIC_HEALTH_CHECK_INTERVAL
-         bash $REMOTE_START_SCRIPT --stop
-         bash $REMOTE_START_SCRIPT
-       "'
+  3. Rollback (set subscriber_enabled back to false in services.json, restart):
+       ssh $TARGET "bash $REMOTE_START_SCRIPT --stop && bash $REMOTE_START_SCRIPT"
 
   4. Full code rollback (if subscriber rollback insufficient):
        ssh $TARGET "cd /opt/novaic && tar xzf snapshots/services-$TIMESTAMP.tar.gz"
