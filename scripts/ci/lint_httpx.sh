@@ -3,6 +3,7 @@ set -e
 PATTERN='httpx\.(Async)?Client\('
 ALLOWLIST=(
   'novaic-common/common/http/clients.py'
+  'novaic-business/main_subscriber.py'  # PR-34 34d: sync subscriber subprocess entry
   'tests/'
   # TRANSITIONAL — remove line-by-line as PRs migrate:
   'novaic-business/business/provider_client.py'

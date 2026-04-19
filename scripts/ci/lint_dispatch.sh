@@ -4,6 +4,7 @@ PATTERN='/api/queue/dispatch'
 ALLOWLIST=(
   'novaic-common/common/wake/assembler.py'
   'novaic-agent-runtime/queue_service/main.py'  # 端点定义
+  'novaic-business/main_subscriber.py'          # PR-34 34d: CLI help text only
   # tests:
   'tests/'
 )
