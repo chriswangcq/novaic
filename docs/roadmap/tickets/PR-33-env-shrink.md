@@ -1,10 +1,13 @@
-# PR-33 — Env 变量收窄（infra-track RFC）
+# PR-33 — Env 变量收窄（infra-track RFC, v2）
 
 **类型**：infrastructure refactor（与 message-wake 主线 PR-01~PR-32 正交）
-**状态**：草稿（RFC），待老板审阅后进入 T1
+**状态**：**v2 — 决策已锁定**（见 §H），等 PR-17 bake 放绿后启动 T1
 **前置**：PR-17 Phase 4 bake 通过（不阻塞本 RFC 起草，但实施阶段必须等 bake 放绿）
 **作者**：PR-17 Canary 收尾期的副产品
 **读者**：junior / senior reviewer
+**架构原则**（v2 基座，贯穿全篇决策）：
+1. **系统简单** — 配置路径越少越好，类别越少越好，重启是唯一的切换手段。
+2. **无静默失败** — 配置缺失必须在进程启动时 loud crash，永远不用 `default` 值掩盖缺失。
 
 ---
 
@@ -72,6 +75,23 @@
   - prod：在 `/opt/novaic/services/novaic-common/config/services.json` 本地编辑，或通过 `services.override.json`（gitignored, 若存在则 merge over）
   - 运维 runbook 的 "flip canary switch" 步骤：编辑 services.json → `bash start.sh --stop && bash start.sh`
 
+### C.2.1 启动必须打印完整 runtime_switches 快照（强制，反静默失败）
+
+每个 Python 进程（Gateway / Business / agent-runtime Worker / Queue Service / Cortex / File / Device）在 `main_*.py` lifespan 起始处必须打印一行 INFO 日志：
+
+```
+2026-04-19T03:00:00Z [INFO] ServiceConfig: runtime_switches={
+  "subscriber_enabled": true,
+  "health_check_interval_seconds": 5,
+  "scheduler_poll_interval_seconds": 1.0,
+  "fallback_max_per_tick": 50
+}
+```
+
+- 这是配置"生效状态"的**唯一可信快照**。运维判"这次重启有没有把 canary 开关打开"的唯一方法 = `grep "runtime_switches" business.log | head -1`。
+- 实现放在 `ServiceConfig` 里加一个 `ServiceConfig.log_startup_snapshot(logger)` 类方法，每个服务 lifespan 头部调用。
+- 禁止只打印部分字段或"本服务相关"字段——**全部 runtime_switches 打印**，因为一个字段在某服务不用也可能是被调用下游用到，需要审计。
+
 ### C.3 为什么不做"真正的热 reload"（Entangled config slot）
 
 - 我们当前 2 个开关都是 **deploy-time**（canary 灰度、health 周期）。两者都自带了"restart 重启过程"作为切换手段。
@@ -109,17 +129,34 @@
 - `novaic-common/tests/test_internal_client.py:20-21`：相应测试清理代码删除（如果测试是为了确保 warning 不影响注入，那测试可以保留但移除 env 相关 setup）。
 - **测试**：所有 common tests 继续绿。
 
-### Phase 5 — 删 ownership.py / assembler_factory.py 的 env fallback
+### Phase 5 — 删 ownership.py / assembler_factory.py 的 env fallback（反静默失败关键步）
+
+**为什么这条最重要**：PR-17 Canary 期间我们在 `assembler_factory.py` 就是因为这种 `getattr(ServiceConfig, "BUSINESS_INTERNAL_URL", os.environ.get(...))` 的三层 fallback，第一层字段名拼写错了静默落到第二层，第二层 env 没设静默落到 localhost，排查了两天才定位。这是**静默失败的教科书例子**。
 
 - `novaic-common/common/agents/ownership.py:97`: `business_url = os.getenv("BUSINESS_INTERNAL_URL", ...)` → 调用方必须显式传入 `business_url=ServiceConfig.BUSINESS_URL`。
-- `novaic-agent-runtime/task_queue/workers/wake/assembler_factory.py:13-14`: `getattr(ServiceConfig, "BUSINESS_URL", os.environ.get(...))` → 去掉 `os.environ` 兜底，`ServiceConfig.BUSINESS_URL` 在 strict_config 里就是强校验必有字段，兜底永远不会触发。
+- `novaic-agent-runtime/task_queue/workers/wake/assembler_factory.py:13-14`: `getattr(ServiceConfig, "BUSINESS_URL", os.environ.get(...))` → 直接 `ServiceConfig.BUSINESS_URL`，缺字段就在 `ServiceConfig` 加载阶段 `AttributeError`——loud crash 正是期望行为。
+- `common/strict_config.py` 在 `load_services_config()` 的 return 前做一次 schema 完整性校验：所有 `ServiceConfig` 引用的字段必须在 services.json 里存在（或有明确的 inline default）。
+- **测试**：新增 `test_service_config_missing_key_raises` —— 删一个字段后，import 应抛异常而不是静默。
 - **测试**：跑 runtime / business / common 全 suite，确保无回归。
 
 ### Phase 6 — runbook + 文档
 
 - 更新 `docs/runbooks/subscriber-canary.md`：翻 canary 开关的新流程（编辑 services.json → 重启），删掉所有 `export NOVAIC_ENABLE_SUBSCRIBER`。
 - 更新 `docs/roadmap/technical-debt.md`：关闭"env 膨胀"条目（目前还没登记，PR-33 merge 时写进"已还清"）。
-- 更新 `common/config.py` line 5 的 docstring：从 *"flows through the file or CLI args"* 改为 *"flows through services.json only"*（CLI args 至此基本清零）。
+- 更新 `common/config.py` 文件头 docstring：
+  ```
+  """Unified strict configuration facade.
+
+  services.json is the SINGLE SOURCE OF TRUTH. Missing keys raise
+  at startup (AttributeError / KeyError) — NEVER silently default.
+
+  No environment variables except the three whitelist categories
+  documented in docs/roadmap/tickets/PR-33-env-shrink.md §C.1:
+    1. OS standard (PATH / HOME / USER / TMPDIR)
+    2. Service identity (NOVAIC_SERVICE_NAME, set by start.sh)
+    3. Offline test tools (CANARY_* under scripts/canary/ only)
+  """
+  ```
 
 ---
 
@@ -127,10 +164,12 @@
 
 | 指标 | 手段 | 期望 |
 |---|---:|---|
-| repo 内非法 env 读取数 | `rg "os\.(environ|getenv)" --type py` 减去允许白名单 | **0** 条新增；仅剩 §B 中标 ✅ 的 4 条 |
+| repo 内非法 env 读取数 | `rg "os\.(environ\|getenv)" --type py` 减去允许白名单 | **0** 条新增；仅剩 §B 中标 ✅ 的 4 条 |
 | `NOVAIC_*` 前缀在代码里剩余数 | `rg "NOVAIC_" --type py --type sh` | 仅 `NOVAIC_SERVICE_NAME` 保留 |
 | health.log 中 `NOVAIC_INTERNAL_KEY is not set` 告警频率 | `grep -c` | **0**（Phase 4 后） |
 | canary 开关端到端翻转耗时（edit config → restart → subscriber up） | 人工 + 日志时间戳 | ≤ 15 s（和今天一致） |
+| 启动日志必含 runtime_switches 快照 | `grep "runtime_switches=" business.log \| head -1` | **每次重启必有一条**，否则 CI 要检测到（见下） |
+| 缺字段触发 loud crash | `pytest -k test_service_config_missing_key_raises` | ✅ 缺字段 → import 异常，不静默 default |
 
 ---
 
@@ -151,10 +190,16 @@
 
 ---
 
-## §H 老板决策需要在 T1 前确认
+## §H 决策（v2，已锁定）
 
-- ✅ C.1 的"3 类 env 白名单"范围够不够宽？（`DEV_MODE` / `DEBUG` 这类"调试开关"要不要额外允许一类？我倾向不允许，用 services.json 的 `dev_mode` 即可）
-- ✅ C.2 的"不做热 reload"是否接受？（我倾向接受，我们当前 2 个开关不需要）
-- ✅ Phase 5 的 fallback 删除是否激进？（严格来说不删也没 bug，但留着就是死代码，倾向删）
+按"系统简单 + 无静默失败"双尺衡量后的最终裁决：
 
-审通过后进入 T1（代码实施），预估 1 人·周完成所有 6 个 Phase + 测试 + 运维 runbook。
+| 决策点 | 结论 | 理由（简单 / 静默失败两轴） |
+|---|---|---|
+| C.1 env 白名单只保留 3 类 | ✅ **锁定** | 简单：类别越少越好，加第 4 类即是滑坡起点。静默：`os.environ.get("DEBUG")` 忘 set 就静默失效，改用 `ServiceConfig.DEV_MODE` + 标准 logging level |
+| C.2 不做热 reload | ✅ **锁定并强化** | 简单：watcher + partial-state semantics 是巨量复杂性。静默：watcher 挂了没人知道、reload 半新半旧状态都是经典静默失败。**强化**：每次进程启动强制打印完整 runtime_switches 快照（§C.2.1） |
+| Phase 5 删 fallback | ✅ **锁定** | 这正是反静默失败的关键步；PR-17 的 `BUSINESS_INTERNAL_URL` 两天 debug 事故就是这种 fallback 导致的。改为缺字段 loud crash |
+
+**T1 启动前提**：PR-17 Phase 4 bake 放绿（约 2026-04-19 22:40 UTC 满 24h）。
+
+预估 1 人·周完成 6 个 Phase + 测试 + 运维 runbook + startup snapshot 接入。

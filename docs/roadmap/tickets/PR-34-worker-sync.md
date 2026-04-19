@@ -1,10 +1,13 @@
-# PR-34 — Worker 同步化（infra-track RFC）
+# PR-34 — Worker 同步化（infra-track RFC, v2）
 
 **类型**：infrastructure refactor（与 message-wake 主线 PR-01~PR-32 正交）
-**状态**：草稿（RFC），待老板审阅后进入 T1
+**状态**：**v2 — 决策已锁定**（见 §H），结构从"原子大 PR"**改为 5 步分 PR**（§D）
 **前置**：PR-33（env 收窄）完成或并行，但独立 mergeable
 **作者**：PR-17 Canary 收尾期的副产品
 **读者**：junior / senior reviewer
+**架构原则**（v2 基座，贯穿全篇决策）：
+1. **系统简单** — async 是病毒式 coloring，只在 FastAPI edge 保留；worker = 独立进程（心智模型统一）；每步迁移 ≤ 400 行 diff，可独立审可独立回滚。
+2. **无静默失败** — `asyncio.create_task` + 未 handled 的异常、`await` 忘写、`AsyncMock` vs `MagicMock` 混用—— 这类 async bug **全部是静默失败**。把 async 面收缩到 framework edge 是工程上最可行的围堵。
 
 ---
 
@@ -58,14 +61,25 @@
 
 ## §C 目标态（Post-PR-34）
 
-### C.1 原则
+### C.1 原则（附 CI 强制）
 
 **async 只出现在两个地方**：
 
-1. FastAPI route handlers（框架强制）
-2. 真正的并发 fan-out（目前 repo 里没有这种场景，未来若有明确需要时再开个例）
+1. FastAPI route handler 所在文件（框架强制）、FastAPI middleware / WebSocket handler
+2. 明确标注 `# ASYNC-EDGE: reason=...` 的少数合法特例（如 Cortex LLM fan-out，未来真需要时才加）
 
 **Worker / business 模块 / common 模块一律同步**。调用 FastAPI → 内部工具 → HTTP client 的链路从头到尾同步，只在最外层（FastAPI handler）bridge。
+
+### C.1.1 CI 守卫（必须，反静默失败）
+
+新增 `scripts/ci/check_no_internal_async.py` 脚本（或等价 ruff 规则），CI 必跑：
+
+- 扫描所有 `async def`，白名单：
+  - 所在文件有 `@router.` / `@app.` / `FastAPI(` / `WebSocket` 装饰器或导入
+  - 文件头注释含 `# ASYNC-EDGE: reason=...`
+  - `tests/` 目录下的 `@pytest.mark.asyncio` 测试
+- 违反即 fail CI，打印具体行号。
+- 这是唯一的长期护栏——否则半年后 async 会重新感染。
 
 ### C.2 类层次（sync 化后）
 
@@ -93,21 +107,48 @@
 │    .resolve()                │
 └──────────────────────────────┘
 
-Workers（独立进程）：
-┌──────────────────────────────┐
-│  HealthWorker(sync)          │
-│  SchedulerWorker(sync)       │  ← 直接 while True + time.sleep
-│  DispatchSubscriber(sync)    │     直接调 assembler（零 asyncio）
-└──────────────────────────────┘
+Workers（全部独立进程，由 start.sh 拉起；统一心智模型）：
+┌──────────────────────────────┐  ┌──────────────────────────────┐
+│  HealthWorker (sync proc)    │  │  SchedulerWorker (sync proc) │
+│  while True:                 │  │  while True:                 │
+│      do_work(); time.sleep() │  │      do_work(); time.sleep() │
+└──────────────────────────────┘  └──────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│  DispatchSubscriber (sync proc) ← §C.3, 与 Business API 分离 │
+│  while True:                                                 │
+│      claim_batch(); deliver_all(); time.sleep()              │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-### C.3 HTTP client 选择
+### C.3 DispatchSubscriber 改为独立子进程（v2 关键升级，反静默失败）
+
+v1 RFC 写的是 `threading.Thread(daemon=True)`。v2 升级为 **独立子进程**，由 `start.sh` 拉起，和 HealthWorker / SchedulerWorker 同构。
+
+**选 subprocess 而不是 thread 的两条硬理由**：
+
+| 方案 | 简单性 | 静默失败暴露 |
+|---|---|---|
+| `asyncio.create_task` | 最差（要 lifespan + done_callback + 取消协调） | **静默**（task 默默死掉） |
+| `threading.Thread(daemon=True)` | 一般（1 行启，但 run() 里必须 try/except 包死） | **半静默**（死了 Business 本身不掉，日志里有 traceback 但外部监控看不到） |
+| **独立子进程**（v2 选择） | 最好（和 HealthWorker/SchedulerWorker 同心智模型） | **最好**（进程 exit code 可观测，`ps` 能看到，挂了 start.sh 重启时会报错） |
+
+**额外收益**：
+- Subscriber 崩溃不影响 Business API 响应（天然隔离）。
+- 日志分离：`/opt/novaic/data/logs/subscriber.log`（过去是和 Business 混在一起）。
+- 部署翻 canary 只需 restart subscriber 进程，不碰 Business API（PR-33 的 subscriber_enabled 开关仍生效）。
+
+**实现约束**：
+- 新增 `novaic-business/main_subscriber.py` 入口（复用 `main_novaic.py` 的 `argparse + logging` pattern）。
+- `scripts/start.sh` 加一段 subscriber 拉起逻辑，仿照 health/scheduler 启动块。
+- `scripts/start.sh --stop` 必须能 graceful kill subscriber（SIGTERM → 等 claim 超时 → SIGKILL）。
+
+### C.4 HTTP client 选择
 
 - **Sync 路径**：`httpx.Client`（`common/http/clients.py::internal_sync_client`，已存在，是 `internal_client` alias 指向的那个）
 - **Async 路径**（仅 FastAPI handler 直接调外部 API 时用）：`httpx.AsyncClient`（`internal_async_client`，保留但调用点急剧减少）
 - 连接池：sync Client 每个 worker 一个（复用），同 async 版本的 lifecycle 管理方式（`__enter__ / __exit__` 显式 close）。
 
-### C.4 Worker 主循环写法
+### C.5 Worker 主循环写法
 
 PR-13 / PR-16 时把 worker 主循环从 `time.sleep` 改成了 `asyncio.sleep`，**本次 PR-34 全部回退**：
 
@@ -129,96 +170,127 @@ Worker 进程入口从 `asyncio.run(worker.run())` 改为 `worker.run()`，`main
 
 ---
 
-## §D 实施拆分
+## §D 实施拆分：v2 改为 5 步分 PR（每步独立 mergeable + 独立 rollback）
 
-### Phase 1 — `AgentOwnershipResolver` 同步化（pure leaf, zero blast radius）
+v1 草稿写的"Phase 2+3+4 原子 merge"是错误决定——大 PR 审 review 时信息密度爆炸，diff 太大 reviewer 肉眼扫不完，反而成为新静默失败的温床。v2 改用 **dual-method 中间态**让每步 ≤ 400 行 diff、每步能独立回滚、每步都能在生产稳跑 48h 后再推下一步。
 
-- `novaic-common/common/agents/ownership.py`: `httpx.AsyncClient` → `httpx.Client`，`async def resolve` → `def resolve`。
-- 调用点只有 `DispatchAssembler.assemble`（Phase 2 同步迁）和一个 test mock。
-- **测试**：`novaic-common/tests/test_ownership.py`（如有）—— 去掉 `asyncio.run()` 包装。
-- **验证**：单独重跑 resolver 的单元测试，全绿再 merge。
+### 全景
 
-### Phase 2 — `DispatchAssembler` 同步化
+| sub-PR | 代号 | 内容 | 最重要的不变量 | diff 规模 |
+|---|---|---|---|---:|
+| 34a | **双 API** | `DispatchAssembler` / `AgentOwnershipResolver` **保留 async 方法，并列新增 sync 方法**（`assemble_and_dispatch_sync`, `resolve_sync`） | 现有 async 调用点 0 行改动，线上行为零变化 | ~250 |
+| 34b | **HealthWorker 先切** | HealthWorker 改用 sync 方法；`health_worker_sync.py` 内部改 sync 主循环；启动入口删 `asyncio.run` | 其他 worker / Business FastAPI 仍走 async，零耦合 | ~300 |
+| 34c | **SchedulerWorker 切** | 同 34b pattern | DispatchSubscriber + FastAPI 仍 async | ~200 |
+| 34d | **Subscriber 切 + 提取独立子进程** | Subscriber 改 sync + 新增 `main_subscriber.py` + `start.sh` 拉起 + Business lifespan 不再管 subscriber task | Business FastAPI handler 仍走 async 路径（`_dispatch_trigger` 仍 async，未动） | ~400 |
+| 34e | **清理收尾** | FastAPI handler 侧 `_dispatch_trigger` 改 sync + `run_in_threadpool` bridge；删 async 方法 `assemble_and_dispatch`；加 CI 守卫；改名 `*_sync.py` → `*.py` | async 面降至最小 | ~250 |
 
-- `novaic-common/common/wake/assembler.py`: 三个方法 `assemble`, `dispatch`, `assemble_and_dispatch` 全变 sync。
-- `httpx.AsyncClient` → `httpx.Client`，`await self._client.post(...)` → `self._client.post(...)`。
-- `_close()` / `aclose()` 对应改 `close()`。
-- **影响调用点**（Phase 3/4 改）：
-  - `business/message_actions.py::_dispatch_trigger`
-  - `business/internal/subagent.py::_dispatch_trigger`
-  - `business/subscribers/dispatch_subscriber.py::_deliver_one`
-  - `agent-runtime/scheduler_worker_sync.py::_check_and_wake`
-  - `agent-runtime/health_worker_sync.py::_scan_unhandled_messages`
-- **测试**：`novaic-common/tests/test_assembler.py` 全 9 例从 `@pytest.mark.asyncio` + `await` 改为同步调用。估计 ~100 行 test diff。
+### 34a — 双 API（零风险铺垫）
 
-### Phase 3 — 3 个 Worker 同步化
+- `novaic-common/common/wake/assembler.py`：在 `DispatchAssembler` 类里新增 `assemble_sync`, `dispatch_sync`, `assemble_and_dispatch_sync`。三个方法完全镜像现有 async 版本，但用 `httpx.Client`。
+- `novaic-common/common/agents/ownership.py`：新增 `resolve_sync`。
+- **初始共享内部 state**（httpx 客户端实例）？不要共享，避免 async/sync 混用时的 connection pool 竞态。新建 `self._sync_client = httpx.Client(...)` 独立生命周期。
+- **共享业务逻辑**：assemble/dispatch 的业务验证、请求构造、响应解析这些纯函数部分**必须提取成静态辅助方法**供两个版本共用，否则未来一边改一边忘就是静默 bug 温床。
+- **测试**：新增 `test_assembler_sync.py` 完整 9 例用例（镜像 async 套件），CI 同时跑两套。
+- **验证**：线上 0 行调用点变化，assembler 的 async behavior 完全不动。
+- **可独立回滚**：revert → sync 方法消失，没人调用过，零影响。
 
-对每个 worker：
+### 34b — HealthWorker 切 sync（首只小白鼠）
 
-1. 主循环：`async def run` → `def run`，`asyncio.sleep` → `time.sleep`。
-2. 业务方法：`async def _xxx` → `def _xxx`，所有 `await` 去掉。
-3. HTTP 客户端：`internal_async_client` → `internal_sync_client`（= `internal_client` alias，已有）。
-4. Worker 启动入口（`main_novaic.py::run_health` / `run_scheduler` / Business lifespan 里的 subscriber task）：
-   - HealthWorker: `asyncio.run(worker.run())` → `worker.run()`（直接跑在 Python subprocess）
-   - SchedulerWorker: 同上
-   - DispatchSubscriber: Business lifespan 里原 `asyncio.create_task(subscriber.run())` → `threading.Thread(target=subscriber.run, daemon=True).start()`
-5. 测试：`test_health_dispatch.py`, `test_dispatch_subscriber.py` 去掉 `@pytest.mark.asyncio`，mock 从 `AsyncMock` 改 `MagicMock`。估计 ~300 行 test diff。
+- `novaic-agent-runtime/task_queue/workers/health_worker_sync.py`：
+  - `async def run` → `def run`，`asyncio.sleep` → `time.sleep`。
+  - `async def _scan_unhandled_messages` → sync 版，`await get_assembler().assemble_and_dispatch(...)` → `get_assembler().assemble_and_dispatch_sync(...)`。
+  - `async def _get_client` → `def _get_client`，`httpx.AsyncClient` → `httpx.Client`。
+- `novaic-agent-runtime/main_novaic.py::run_health`：删 `asyncio.run(worker.run())` 外壳，直接 `worker.run()`。
+- **测试**：`tests/test_health_dispatch.py` 整套从 `@pytest.mark.asyncio` + `AsyncMock` 迁到 sync + `MagicMock`（PR-19 新加的 4 例全在内）。
+- **生产观察**：merge 后单独 bake 48h，监控 PR-17 bake 的 `hlth_log recover_401` 保持 0，`fallback_ok` / `skip_queue_400` 计数正常增长（或因零流量冻结但不回退）。
+- **独立回滚**：revert → HealthWorker 回到 async 路径，业务无缝。
+- **不变量**：DispatchSubscriber / SchedulerWorker / Business 全部仍走 async，34b 的破坏半径仅在 health worker 本身。
 
-### Phase 4 — FastAPI handler 桥
+### 34c — SchedulerWorker 切 sync
 
-`business/message_actions.py::_dispatch_trigger` 和 `business/internal/subagent.py::_dispatch_trigger` 改为 sync 版（Phase 2 已让 assembler 是 sync）。调用方仍是 async FastAPI handler：
+- 同 34b 模式，换文件：`novaic-agent-runtime/task_queue/workers/scheduler_worker_sync.py`。
+- **生产观察**：bake 48h，Scheduler 的定时唤醒要在日志里能观察到（`event=scheduler_woke agent=...`）。
+- **独立回滚**：revert → Scheduler 回到 async。
+- **依赖**：34b 必须已稳定（证明 sync assembler API 在生产负载下工作正常）。
 
-```python
-# Before
-async def send_action(...):
-    ...
-    await _dispatch_trigger(agent_id, user_id, msg_id)  # _dispatch_trigger was async
+### 34d — Subscriber 切 sync + 提取独立子进程（最大一步，但仍 ≤ 400 行）
 
-# After
-from fastapi.concurrency import run_in_threadpool
+**两个变更同时做的理由**：Subscriber 从 sync 化转入 subprocess，其实只是把现有 `asyncio.create_task` 替换为 `subprocess.Popen`（由 start.sh 代理），代码量反而更少。但两者分步会有中间态"Subscriber 已 sync 但仍在 Business lifespan 里 `threading.Thread` 托管"——这个中间态的意义不大，不如直接一步到位。
 
-async def send_action(...):
-    ...
-    await run_in_threadpool(_dispatch_trigger, agent_id, user_id, msg_id)
-```
+- 新增 `novaic-business/main_subscriber.py`（复用 `main_business.py` 的 argparse / logging），`if __name__ == "__main__": subscriber.run()` 作为 subprocess 入口。
+- `novaic-business/business/subscribers/dispatch_subscriber.py`：
+  - `async def run` → `def run`，`asyncio.sleep` → `time.sleep`。
+  - `async def _claim_batch`, `async def _deliver_one` → sync；`await self.assembler.assemble(...)` → `self.assembler.assemble_sync(...)`。
+  - 改用 `httpx.Client`（外框请求 outbox 的）。
+- `novaic-business/main_business.py`：删 lifespan 里 `asyncio.create_task(subscriber.run())` 和 SUBSCRIBER_ENABLED 判断（移到 start.sh，见下）。
+- `scripts/start.sh`：
+  - 新增 `start_subscriber()` 函数，参考现有 `start_health()` 结构。
+  - 当 `ServiceConfig.SUBSCRIBER_ENABLED == true` 时拉起 subscriber subprocess。注意这个读取依赖 PR-33 §C.2 的 runtime_switches。**如果 PR-33 尚未 merge，34d 暂用 env 读取**（tech-debt 登记一行 34e 收尾时清），不要为了等 PR-33 而阻塞 34d。
+  - `--stop` 支持 subscriber SIGTERM → 10s graceful → SIGKILL。
+- **测试**：`tests/test_dispatch_subscriber.py` 整套 sync 迁移 + 新增 `test_subscriber_subprocess_entry_script_runs`（仅校验 `main_subscriber.py` 能 import + 立即退出）。
+- **生产观察**：bake 48h，`ps aux | grep main_subscriber` 必有一条常驻进程，`/opt/novaic/data/logs/subscriber.log` 必在涨，outbox pending 保持 ≤ 1（subscriber 正常消费）。
+- **独立回滚**：revert → Subscriber 回到 Business lifespan 内 asyncio task。注意 revert 时 start.sh 也回滚，subscriber subprocess 自动消失。
+- **依赖**：34a（sync API 存在），34b/34c 其实不强依赖但**强烈建议**先稳，因为 34d 变更面最大。
 
-**验证**：关键 e2e — 发一条 chat_reply 消息，走完 message_actions → assembler → queue_service → saga 全链路，200 OK + DB 状态正确。
+### 34e — 清理收尾
 
-### Phase 5 — 清死代码与命名
-
-- `scheduler_worker_sync.py` → `scheduler_worker.py`（technical-debt.md 第 42 行早就说要改，借本 PR 搂走）。
-- `health_worker_sync.py` → `health_worker.py`。
-- `common.http.clients` 的 `internal_client` alias：**保留**（因为调用方现在都期望 sync，alias 是正确的）。technical-debt.md 第 37 行那条"命名陷阱"顺便降级为 ✓ 已解决（async 场景消失，alias 不再产生歧义）。
-- `main_novaic.py` 里所有 `asyncio.run(worker.run())` 删掉，直接 `worker.run()`。
-
-### Phase 6 — 文档
-
-- `docs/architecture/agent-pipeline.md`: 添加一节 "Sync-by-default, async-only-at-framework-edge"，把原则和桥接模式写清楚。
-- `docs/roadmap/technical-debt.md`:
-  - 关闭第 37 行 `internal_client 命名陷阱`
-  - 关闭第 42 行 `scheduler_worker_sync.py 命名已过时`
-  - 关闭第 44 行 `HealthWorker 空 user_id` 对应的 fallback scan 相关条目（其实 PR-19 已经关，本 PR 再确认一次）
+- `novaic-business/business/message_actions.py::_dispatch_trigger`：`async def` → `def`，删 `await`。
+- `novaic-business/business/internal/subagent.py::_dispatch_trigger`：同上。
+- FastAPI handler 调用处：`await _dispatch_trigger(...)` → `await run_in_threadpool(_dispatch_trigger, ...)`。
+- 删 `DispatchAssembler.assemble` / `.dispatch` / `.assemble_and_dispatch` 三个 async 方法（34a~34d 的调用者都已迁到 `_sync` 版）。
+- 删 `AgentOwnershipResolver.resolve` async 版。
+- 改名（technical-debt 第 42 行承诺）：
+  - `scheduler_worker_sync.py` → `scheduler_worker.py`
+  - `health_worker_sync.py` → `health_worker.py`
+- 加 CI 守卫：`scripts/ci/check_no_internal_async.py`（见 §C.1.1），在 `.github/workflows/ci.yml` 里 fail-on-violation。
+- 更新 `docs/architecture/agent-pipeline.md`：新增"Sync-by-default"原则节。
+- 更新 `docs/roadmap/technical-debt.md`：关闭 37 行 `internal_client` 命名陷阱、42 行 `scheduler_worker_sync.py` 命名条目。
+- **生产观察**：bake 7 天，确保没有 FastAPI handler 卡线程池（threadpool 默认 40，我们同时并发 ≤ 5，不会耗尽）。
+- **独立回滚**：revert → async 版方法回归，34a~34d 不受影响。
 
 ---
 
-## §E 验收 metrics
+## §E 验收 metrics（按 sub-PR 分段校验）
+
+### 每 sub-PR 必过关
+
+| sub-PR | 关键指标 | 手段 | 放行条件 |
+|---|---|---|---|
+| 34a | sync 方法测试全绿 | `pytest test_assembler_sync.py test_ownership_sync.py` | 9 + N 例全绿 |
+| 34b | HealthWorker 在 prod bake 48h 无 async 残留错 | `grep -c "coroutine.*never awaited" health.log` | 0 |
+| 34b | PR-19 的 4 个 health 测试迁 sync 后仍绿 | `pytest test_health_dispatch.py` | 绿 |
+| 34c | SchedulerWorker bake 48h 正常唤醒 | `grep "event=scheduler_woke" health.log \| wc -l` | > 0（有定时触发） |
+| 34d | Subscriber 独立子进程常驻 | `ps aux \| grep main_subscriber \| wc -l` | = 1（仅一个 subscriber 进程） |
+| 34d | Subscriber bake 48h outbox 保持 drain | `sqlite3 entangled.db "SELECT COUNT(*) FROM message_outbox WHERE delivered_at IS NULL"` | ≤ 1（零流量 steady state） |
+| 34e | CI 守卫拒 async 泄漏 | 故意加一个 `async def foo` 到 worker 文件 → CI 必须 fail | red ✓ |
+
+### 整体验收（34e merge 后）
 
 | 指标 | 手段 | 期望 |
 |---|---:|---|
-| repo 内 `async def` 数量 | `rg "async def" --type py -g '!tests/**' \| wc -l` | ≤ 原值的 **40%**（仅 FastAPI routes + middlewares 保留） |
-| repo 内 `internal_async_client` 调用点 | `rg "internal_async_client" --type py` | ≤ 5 处（只剩 FastAPI handler 直调外部 API 的极少数场景） |
-| repo 内 `asyncio.run(` 数量 | `rg "asyncio\.run\(" --type py` | **0**（全删） |
-| 全量测试 | `pytest` runtime + business + common | 全绿（现 70 例基础上可能 ±10 例数量变化，看合并后 test case 数） |
-| 生产 canary 短压测 | 复跑 PR-17 Phase 3 的 `traffic.py send --count 100 --tps 10` | 延迟 p99 不劣化 > 10%；无 coroutine-related ERROR |
+| repo 内 `async def` 数量（排除 tests） | `rg "async def" --type py -g '!tests/**' \| wc -l` | ≤ 原值的 **40%** |
+| repo 内 `internal_async_client` 调用点 | `rg "internal_async_client" --type py` | ≤ 5 处 |
+| repo 内 `asyncio.run(` 数量（非测试） | `rg "asyncio\.run\(" --type py -g '!tests/**'` | **0** |
+| 全量测试 | `pytest` runtime + business + common | 全绿 |
+| 生产复跑 PR-17 Phase 3 压测 | `traffic.py send --count 100 --tps 10` | p99 不劣化 > 10%，无 coroutine ERROR |
 
 ---
 
-## §F 回滚路径
+## §F 回滚路径（每一步独立可退）
 
-- Phase 1~4 每个都是独立 commit + 独立 revert 可行。
-- **Phase 2（assembler 同步化）是关键节点**：它之前，workers 仍用 async assembler（旧状态）；它之后，workers 还没转 sync 但 assembler 已经是 sync → **这个中间态是破的**（worker 的 `await` 会报错）。
-- **风控**：Phase 2 + Phase 3 / Phase 4 必须在同一 PR 里 merge，不可拆分。RFC 里把这条写死。
-- 整 PR 回滚路径：revert merge commit，所有调用点回到 async 状态，业务无缝。
+v2 的 5-PR 结构每一步都能独立 revert 且生产**无缝回到上一步稳态**。这是 v1 "原子大 PR" 方案无法达成的关键升级——原方案整 PR revert 才算回滚，现在每步都是安全节点。
+
+| sub-PR | 回滚动作 | 回滚后状态 | 数据风险 |
+|---|---|---|---|
+| 34a | `git revert <34a>` | sync 方法消失，没人调用过 | 零 |
+| 34b | `git revert <34b>` + 重启 HealthWorker | HealthWorker 回到 async 路径；其他组件不受影响 | 零（HealthWorker 是 idempotent 的兜底扫描） |
+| 34c | `git revert <34c>` + 重启 SchedulerWorker | SchedulerWorker 回到 async 路径 | 零 |
+| 34d | `git revert <34d>` + `bash start.sh --stop && bash start.sh` | Subscriber subprocess 消失；旧 Business lifespan 内 asyncio task 复活 | **短暂 outbox 积压**（10-20s），重启后自动 drain |
+| 34e | `git revert <34e>` | FastAPI handler 回走 async `_dispatch_trigger`；async 方法复活；CI 守卫消失 | 零 |
+
+**混合回滚场景**：假如 34b 生产稳定但 34c merge 后 scheduler 异常，可以只 revert 34c，34b 保持在 sync 态——两者隔离。
+
+**灾难场景**：假如 bake 后期（34d 已 merge）发现某个跨越 assembler 的性能问题，可一次性 revert 34d→34c→34b→34a，回到完全 async 的昨日状态，每步 revert ≤ 60s 生产影响。
 
 ---
 
@@ -232,11 +304,30 @@ async def send_action(...):
 
 ---
 
-## §H 老板决策需要在 T1 前确认
+## §H 决策（v2，已锁定）
 
-- ✅ §C.1 原则"async 只在 framework edge"是否接受？
-- ✅ §D Phase 3 的 Subscriber 用 `threading.Thread` 取代 `asyncio.create_task`，是否 OK？（我倾向是，worker 就应该是独立线程，而不是共享 event loop）
-- ✅ Phase 2+3+4 必须原子 merge（不可拆）—— 这条工程纪律接受吗？
-- ⏳ Subscriber 由 Business 进程内线程托管 vs 独立子进程：倾向**线程**（零外部依赖，`daemon=True` 随进程退出），但独立子进程也可行（PR-14 outbox 的设计本来就允许多实例）。T1 前决定。
+按"系统简单 + 无静默失败"双尺衡量后，以及对 v1 草稿的架构自审后，最终裁决：
 
-审通过后进入 T1，预估 **5 人·日** 完成所有 6 个 Phase + 测试重写 + 生产压测。
+| 决策点 | v1 倾向 | **v2 结论** | 理由（简单 / 静默失败两轴） |
+|---|---|---|---|
+| §C.1 async 只在 framework edge | ✅ | ✅ **锁定，并加 CI 守卫**（§C.1.1） | 简单：规则就一条，reviewer 易判。静默：没 CI 守卫则半年内必复发——async 是病毒式 coloring，人脑审不住，必须机器拒 |
+| Subscriber 托管方式 | `threading.Thread(daemon=True)`（倾向） | ❌ **改为独立子进程**（§C.3） | 简单：与 HealthWorker / SchedulerWorker 心智模型统一，运维 `ps` / 日志路径一致。静默：daemon thread 挂了 Business 本身不掉、外部无感——典型静默失败；subprocess 挂了 `ps` 立刻看得见，start.sh 重启会报错 |
+| Phase 2+3+4 原子 merge | 必须原子 | ❌ **拆为 5 步（34a-34e）**（§D） | 简单：每步 ≤ 400 行 diff，reviewer 能真正看完；每步可独立 bake 48h。静默：原子大 PR diff 过大就是静默 bug 温床，审不过来 |
+| 中间态如何保证不破 | v1 承认 Phase 2 中间态破、必须原子 | ✅ **双 API 中间态**（34a 并列 async + sync 方法），各步单调迁移 | 简单：中间态始终有 working baseline。静默：任何步挂了可即刻独立 revert，不牵连其他 |
+| `internal_async_client` 是否删 | 保留少数调用 | ✅ **保留但加调用点上限**（≤ 5 处，CI 检） | 简单：白名单 + 数量上限。静默：数量超限触发 CI fail |
+| FastAPI 外 async（WebSocket/Entangled） | 不碰 | ✅ **锁定不碰**（§G） | 简单：本就是 async 的合理使用。静默：WS 协议天然要 async，硬改 sync 反而会引入更多静默 bug |
+
+**T1 启动前提**：
+- PR-17 Phase 4 bake 放绿（约 2026-04-19 22:40 UTC 满 24h）
+- PR-33 进入至少 Phase 3（runtime_switches 已可读）；若 PR-33 未到，34d 用 env 过渡（登记为 tech-debt，34e 收尾清）
+
+预估工时（v2 分 PR 版）：
+
+| sub-PR | 工时 | 备注 |
+|---|---:|---|
+| 34a | 1 人·日 | 纯 add-only，双 API |
+| 34b | 1 人·日 | 测试迁移占大头 |
+| 34c | 0.5 人·日 | scheduler 较简单 |
+| 34d | 1.5 人·日 | subprocess + start.sh 改造 |
+| 34e | 1 人·日 | 清理 + CI 守卫 + 文档 |
+| 小计 | **5 人·日** | 与 v1 估算同，但风险显著降低 |
