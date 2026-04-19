@@ -114,7 +114,7 @@ Pre-deploy 备份保留在 prod `/tmp/*.bak.20260419T*Z`。
    → **沉淀**：tool handler 的 `except` 必须输出 `event=tool_call_failed ...` 结构化 sentinel，且 ops 监控（bake / dashboards）强制消费。新 tool 加进 `_EXECUTORS` 时 code review 检查点。
 
 3. **双写路径**（Business 内部 helper vs 通用 CRUD）行为不一致
-   → **沉淀**：所有 per-entity 语义必须下沉到 schema（`default="NOW"` 或类似），不允许散落在 caller-side helper。`_append_message` 里显式填 `timestamp` 的代码在 A 生效后可以删（单独 follow-up PR，非紧急，因为显式值不会被覆盖）。
+   → **沉淀**：所有 per-entity 语义必须下沉到 schema（`default="NOW"` 或类似），不允许散落在 caller-side helper。
 
 ## Follow-ups
 
@@ -125,9 +125,13 @@ Pre-deploy 备份保留在 prod `/tmp/*.bak.20260419T*Z`。
   - `test_messages_timestamp_activates_runtime_fill` — 对 `chat_reply` 故障字段的 loud sentinel。
   - `test_execution_logs_timestamp_activates_runtime_fill` — 对下一颗同形炸弹的 loud sentinel。
 - [x] **`EXECUTION_LOGS_DEF.timestamp default="NOW"`** (2026-04-19) — preemptive 修复；0 次发射但 reachable via 通用 CRUD 代理。Commit `6862b79` 在 business hotfix branch。
+- [x] **`_check_required` — 非时间 NOT NULL 字段归属感** (2026-04-19) — `Entangled/packages/server-python/entangled/sql/entity_store.py` 在 `_apply_defaults` 之后遍历所有 `nullable=False, non-primary, default is None, missing from row` 字段，一次性列出并抛 `ValueError("missing required field(s) on entity='<name>': <f1>, <f2>")`。原先 caller 漏字段走到 SQLite 拿到 `IntegrityError: NOT NULL constraint failed: <table>.<col>`（HTTP 层 → 不透明 400），现在 Entangled 层就 loud fail，字段名明确、一次列完。Commit `15a11e3` 在 Entangled PR#1，6 new tests covering single-missing / all-missing-enumeration / apply-defaults-filled-no-false-trigger / explicit-None-respected / upsert-path / happy-path。
+  - **显式 `None` 契约保留**：caller 提供 `{"agent_id": None}` 视为"明确意图写 NULL"，`_apply_defaults` 不覆盖、`_check_required` 也不抛（`name in row` 通过），SQLite 仍正常 raise NOT NULL — 对调用方的 deliberate None 不做 ergonomics。
+
+### 判定不做（记录理由，避免后人再次考虑）
+
+- ~~`novaic-business/business/internal/message.py:_store_add_message` 清理显式 `timestamp`~~ — **不清理**。该 helper 的显式 `timestamp` 不是 silent-failure 防御，而是业务层 HTTP response shape 的组成部分（`agent_chat_event` 返回 `{"timestamp": msg["timestamp"]}`）。`_apply_defaults` 生效后它只是冗余，无害；移除会让 response shape 依赖 Entangled 返回 row 的字段完整性，引入细微耦合。保留即最简。
 
 ### 未落地
 
-- [ ] `novaic-business/business/internal/message.py:_append_message` 里显式填 `timestamp` 的代码可在 A merge 后删除（non-critical cleanup，等服务端 PR merge + 部署正式发布后做）
-- [ ] 非时间字段的 silent-fail 防御 —— 现状：`nullable=False` 业务必填字段（如 `agents.name`、`messages.agent_id`）走通用 CRUD 代理缺字段仍然 400。目前依赖 SQL loud-fail + caller 侧单测覆盖。长期可考虑让 Entangled `_apply_defaults` 对"NOT NULL + 无 default + 缺失"的情况**主动抛 ValidationError 含字段名**（比 SQLite 的 `NOT NULL constraint failed` 消息更友好），但这是独立 PR 的 scope，不在 PR-35 内做。
 - [ ] `handle_tool_execute` 的 `event=tool_call_failed` 正式纳入 ops dashboard（目前只在 4h 一次的 bake cron 里；将来 PR-32 metrics 时升级到实时）
