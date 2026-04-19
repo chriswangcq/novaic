@@ -185,10 +185,12 @@ v1 草稿写的"Phase 2+3+4 原子 merge"是错误决定——大 PR 审 review 
 | sub-PR | 代号 | 内容 | 最重要的不变量 | diff 规模 | 状态 |
 |---|---|---|---|---:|---|
 | 34a | **双 API** | `DispatchAssembler` / `AgentOwnershipResolver` **保留 async 方法，并列新增 sync 方法**（`assemble_and_dispatch_sync`, `resolve_sync`） | 现有 async 调用点 0 行改动，线上行为零变化 | ~250 | ✅ merged → novaic-common `4e1d191`，主仓 submodule bumped |
-| 34b | **HealthWorker 先切** | HealthWorker 改用 sync 方法；`health_worker_sync.py` 内部改 sync 主循环；启动入口删 `asyncio.run` | 其他 worker / Business FastAPI 仍走 async，零耦合 | ~300（实测 199 insert + 125 del） | 🟡 PR 已开（agent-runtime#2, commit `7491837`），可 merge（bake gate 已撤销） |
-| 34c | **SchedulerWorker 切** | 同 34b pattern | DispatchSubscriber + FastAPI 仍 async | ~200 | ⏳ 下一步 |
-| 34d | **Subscriber 切 + 提取独立子进程** | Subscriber 改 sync + 新增 `main_subscriber.py` + `start.sh` 拉起 + Business lifespan 不再管 subscriber task | Business FastAPI handler 仍走 async 路径（`_dispatch_trigger` 仍 async，未动） | ~400 | ⏳ |
+| 34b | **HealthWorker 先切** | HealthWorker 改用 sync 方法；`health_worker_sync.py` 内部改 sync 主循环；启动入口删 `asyncio.run` | 其他 worker / Business FastAPI 仍走 async，零耦合 | ~300（实测 199 insert + 125 del） | ✅ merged (agent-runtime#2, 2026-04-19) |
+| 34c | **SchedulerWorker 切** | 同 34b pattern | DispatchSubscriber + FastAPI 仍 async | ~200 | ✅ merged (agent-runtime#3, 2026-04-19; commit 消息里错写成 34e，仅命名笔误，代码范围正是本行) |
+| 34d | **Subscriber 切 + 提取独立子进程** | Subscriber 改 sync + 新增 `main_subscriber.py` + `start.sh` 拉起 + Business lifespan 不再管 subscriber task | Business FastAPI handler 仍走 async 路径（`_dispatch_trigger` 仍 async，未动） | ~400 | ⏳ 下一步 |
 | 34e | **清理收尾** | FastAPI handler 侧 `_dispatch_trigger` 改 sync + `run_in_threadpool` bridge；删 async 方法 `assemble_and_dispatch`；加 CI 守卫；改名 `*_sync.py` → `*.py` | async 面降至最小 | ~250 | ⏳ |
+
+> **补注 2026-04-19**：Saga/Task worker 其实在 PR-34 RFC 起草之前就已经用 `*_sync.py` 文件名落地为纯 sync 实现（`grep -r "async def\|asyncio\." task_queue/workers/{task,saga}_worker_sync.py` 返回 0 命中），所以它们不在本表内——34b/c/d/e 四列覆盖的是**当时尚未 sync 化**的四个 surface（Health / Scheduler / Subscriber / FastAPI-side）。
 
 ### 34a — 双 API（零风险铺垫）
 
