@@ -31,8 +31,23 @@ else
 fi
 
 # 2. business log counters (PR-17 Canary judges)
+#
+# Business service names its log file at startup using the UTC start date
+# (e.g. business-20260418.log) and does NOT rotate daily. Once the process
+# crosses UTC midnight, today-dated file will not exist; we fall back to the
+# most recent business-*.log so the counters remain observable. This also
+# future-proofs the script in case daily rotation is added later (today-
+# dated file, when present, always wins).
+BSRC=""
 if [ -f "$BLOG" ]; then
-    echo "  biz_log  file=$BLOG size=$(stat -c%s "$BLOG")"
+    BSRC="$BLOG"
+else
+    BSRC="$(ls -1t "$LOGDIR"/business-*.log 2>/dev/null | head -n 1)"
+fi
+if [ -n "$BSRC" ] && [ -f "$BSRC" ]; then
+    label="$BSRC"
+    [ "$BSRC" != "$BLOG" ] && label="$BSRC (fallback: $(basename "$BLOG") not present)"
+    echo "  biz_log  file=$label size=$(stat -c%s "$BSRC")"
     for pat in \
         "event=subscriber_delivered:delivered" \
         "subscriber permanent fail:perm_fail" \
@@ -42,12 +57,12 @@ if [ -f "$BLOG" ]; then
         "action=buffered:buffered" ; do
         k="${pat##*:}"
         p="${pat%:*}"
-        n="$(grep -c -- "$p" "$BLOG" 2>/dev/null | head -n 1)"
+        n="$(grep -c -- "$p" "$BSRC" 2>/dev/null | head -n 1)"
         : "${n:=0}"
         printf "  biz_log  %-18s = %s\n" "$k" "$n"
     done
 else
-    echo "  biz_log  skip: $BLOG not found"
+    echo "  biz_log  skip: no business-*.log in $LOGDIR"
 fi
 
 # 3. health worker log counters (PR-19 will fix 401; tracked here as baseline)
