@@ -1,5 +1,32 @@
 # Runbook: Subscriber Canary (PR-17)
 
+> **PR-33 (2026-04-20) UPDATE — env flags are gone**
+>
+> The canary flip is no longer done via `export NOVAIC_ENABLE_SUBSCRIBER=1`.
+> Edit
+>
+> ```json
+>   "runtime_switches": {
+>     "subscriber_enabled": true,
+>     "health_check_interval_seconds": 5,
+>     ...
+>   }
+> ```
+>
+> in `/opt/novaic/services/novaic-common/config/services.json` and restart.
+> Verify it took effect with
+>
+> ```bash
+> grep "runtime_switches=" /opt/novaic/data/logs/business-$(date +%Y%m%d).log | head -1
+> ```
+>
+> (Every `main_*.py` now emits a `ServiceConfig: runtime_switches={...}` INFO
+> line at lifespan init — it is the single audit target for "what switches is
+> this process actually running with?". See
+> `docs/roadmap/tickets/PR-33-env-shrink.md` §C.2.1.) Old env-based snippets
+> below have been rewritten; if you see a leftover `export NOVAIC_*` line
+> during an incident, it is a stale clone — grep and fix.
+
 > **RED LINE — READ BEFORE TOUCHING PROD**
 >
 > This is NOT a small feature rollout. The target production environment is
@@ -85,24 +112,40 @@ before Phase 2**.
 
 ### Phase 2 — Enable subscriber (Canary 阶段 1)
 
+**PR-33 flow — no env vars, edit services.json and restart.**
+
 On the production host:
 
 ```bash
 ssh root@api.gradievo.com
-export NOVAIC_ENABLE_SUBSCRIBER=1
-export NOVAIC_HEALTH_CHECK_INTERVAL=5          # tight loop for fast rollback verification
+
+# 1. Edit runtime_switches (any editor; jq shown for scriptability):
+tmp=$(mktemp)
+jq '.runtime_switches.subscriber_enabled = true
+    | .runtime_switches.health_check_interval_seconds = 5' \
+   /opt/novaic/services/novaic-common/config/services.json > "$tmp" \
+   && mv "$tmp" /opt/novaic/services/novaic-common/config/services.json
+
+# 2. Restart the stack:
 bash /opt/novaic/start.sh --stop
 bash /opt/novaic/start.sh
 ```
 
-Verify the start banner:
+Verify in the startup snapshot — this line is the PR-33 audit target,
+every service prints it exactly once per lifespan:
 
 ```bash
-tail -50 /opt/novaic/data/logs/business-$(date +%Y%m%d).log | \
-    grep -E 'dispatch_subscriber|worker_id'
+tail -200 /opt/novaic/data/logs/business-$(date +%Y%m%d).log | \
+    grep -E 'runtime_switches=|dispatch_subscriber|worker_id'
 ```
 
-Expected: `dispatch_subscriber enabled worker_id=<host>:<pid>:<uuid8>`.
+Expected:
+* `ServiceConfig: runtime_switches={"fallback_max_per_tick": 50, "health_check_interval_seconds": 5, "scheduler_poll_interval_seconds": 1.0, "subscriber_enabled": true}`
+* `dispatch_subscriber enabled worker_id=<host>:<pid>:<uuid8>`
+
+If the `runtime_switches` line shows `subscriber_enabled: false` you
+edited the wrong `services.json` (there can be per-service copies
+under submodule trees — production ships the `novaic-common` copy).
 
 **Start the observation clock (T0).** Watch for **4 hours** continuously.
 
@@ -196,7 +239,9 @@ If Phase 1–4 all succeed:
 
 1. Commit a decision note in `docs/roadmap/tickets/PR-17-canary-enable-subscriber.md`
    with start/end timestamps, sample outbox stats, dedup ratios.
-2. Keep `NOVAIC_ENABLE_SUBSCRIBER=1` in production going forward.
+2. Keep `runtime_switches.subscriber_enabled = true` in the production
+   `services.json` going forward. (PR-33 landed 2026-04-20; the env var
+   `NOVAIC_ENABLE_SUBSCRIBER` is dead — do not re-introduce it.)
 3. Do NOT yet remove the inline `_dispatch_trigger` shim (that's PR-18).
 
 ---
@@ -205,17 +250,30 @@ If Phase 1–4 all succeed:
 
 ### Fast rollback — subscriber only (preserve data, < 45 s)
 
+**PR-33 flow**: flip `runtime_switches.subscriber_enabled` back to `false`
+in `services.json` and restart. There is no env var to unset.
+
 ```bash
 ssh root@api.gradievo.com
-unset NOVAIC_ENABLE_SUBSCRIBER
-unset NOVAIC_HEALTH_CHECK_INTERVAL
+
+tmp=$(mktemp)
+jq '.runtime_switches.subscriber_enabled = false
+    | .runtime_switches.health_check_interval_seconds = 30' \
+   /opt/novaic/services/novaic-common/config/services.json > "$tmp" \
+   && mv "$tmp" /opt/novaic/services/novaic-common/config/services.json
+
 bash /opt/novaic/start.sh --stop
 bash /opt/novaic/start.sh
 ```
 
 Verification SLO: from the moment `--stop` returns to the moment
-`business-*.log` prints `dispatch_subscriber disabled`, elapsed time MUST be
-≤ 45 s. If not, that is itself a bug — escalate.
+`business-*.log` prints `dispatch_subscriber disabled
+(runtime_switches.subscriber_enabled=false)`, elapsed time MUST be ≤ 45 s.
+If not, that is itself a bug — escalate. Also confirm the
+`runtime_switches=` snapshot line for this restart shows
+`subscriber_enabled: false`; if it still says `true`, the edit did not
+land (wrong file, or an error earlier in startup aborted before
+config reload).
 
 **Side effect to be aware of**: `message_outbox` will keep accumulating rows
 (Entangled co-transactionally writes them on every message), but with no
@@ -265,7 +323,7 @@ substitutes:
 | Subscriber delivers FIRST, inline deduped second     | Inline dispatch is broken (stuck `await`, network error, etc.)    | Confirm via `grep 'event=dispatch .*result=ok' business-*.log` — if rare, inline is down.  |
 | `oldest_pending_age` keeps growing                   | Subscriber crashed / not running                                  | Check `grep 'dispatch_subscriber' business-*.log \| tail`. Restart with flag ON if needed.  |
 | `health_fallback` rate spike                         | Inline dispatch is silently failing; fallback is catching         | Inspect `event=dispatch .*result=` distribution; rollback subscriber first, then debug.    |
-| Rollback elapsed time > 45 s                         | `NOVAIC_HEALTH_CHECK_INTERVAL` is still at 30 (forgot to export)  | Verify env var set before `start.sh`; this runbook step is not optional.                   |
+| Rollback elapsed time > 45 s                         | `runtime_switches.health_check_interval_seconds` still 30 in services.json | Confirm the `runtime_switches=` startup snapshot shows your edited value; if it does not, you edited the wrong services.json copy. |
 
 ---
 
