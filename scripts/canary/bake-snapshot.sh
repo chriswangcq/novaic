@@ -85,7 +85,33 @@ else
     echo "  hlth_log skip: neither $HLOG nor $HLOG_DATED"
 fi
 
-# 4. Phase 1 red lines (from docs/roadmap/tickets/reviews/PR-17-preflight-guidance.md §C phase 1)
+# 4. tool_call_failed counters (silent-failure sentinel from PR-33 §"no silent failure")
+#
+# Tool executors that raise end up emitting `event=tool_call_failed tool=<name> ...`
+# from tool_handlers.handle_tool_execute. These errors are otherwise buried in
+# tool_output and the Queue task still marks "complete" — i.e. classic silent
+# failure. Surfacing them here is non-optional: a non-zero count is a WARN.
+TWEXEC=( "$LOGDIR"/task-worker-execution-*.log )
+# Expand glob safely (nullglob isn't portable to minimal shells here).
+if [ -f "${TWEXEC[0]}" ]; then
+    total="$(grep -cE 'event=tool_call_failed' "${TWEXEC[@]}" 2>/dev/null \
+             | awk -F: '{s+=$NF} END{print s+0}')"
+    if [ "${total:-0}" -gt 0 ]; then
+        verdict="WARN(tool_failed=$total)"
+    else
+        verdict="OK"
+    fi
+    printf "  tool_err total=%s verdict=%s\n" "${total:-0}" "$verdict"
+    # Per-tool breakdown (top 5) so we know which tool is flaking.
+    grep -hE 'event=tool_call_failed' "${TWEXEC[@]}" 2>/dev/null \
+        | sed -n 's/.*tool=\([^ ]*\).*/\1/p' \
+        | sort | uniq -c | sort -rn | head -n 5 \
+        | awk '{printf "  tool_err   by_tool %-20s = %s\n", $2, $1}'
+else
+    echo "  tool_err skip: no task-worker-execution-*.log in $LOGDIR"
+fi
+
+# 5. Phase 1 red lines (from docs/roadmap/tickets/reviews/PR-17-preflight-guidance.md §C phase 1)
 #    Re-query the SQLite directly as a sanity cross-check vs traffic.py
 DB="/opt/novaic/data/entangled.db"
 if [ -r "$DB" ]; then
