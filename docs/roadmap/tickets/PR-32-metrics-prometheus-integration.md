@@ -67,6 +67,8 @@ oldest_pending_age_ms: int = -1    # now - MIN(created_at); -1 哨兵 = 无 pend
 | Business | `GET /metrics` | `main_business.py` 顶层 app，实现同上 |
 | Cortex | `GET /metrics` | `novaic_cortex/api.py` 早已存在（P3-7） |
 | Subscriber (subprocess) | `http://127.0.0.1:19985/metrics` | `main_subscriber.py` 启动时调 `start_metrics_http_server(args.metrics_host, args.metrics_port)` 拉 daemon 线程的 `ThreadingHTTPServer`；`--metrics-port` / `--metrics-host` CLI 可覆盖；bind 失败 → 启动期 crash（loud fail）。`subscriber.run()` 退出时 `metrics_server.shutdown()` 释放 FD |
+| Health Worker (subprocess) | `http://127.0.0.1:19984/metrics` | `main_novaic.py::run_health` 同上；TD-5（2026-04-21）新增 — 暴露 `orphans_total{severity}` + assembler-side `dispatch_total` |
+| Scheduler Worker (subprocess) | `http://127.0.0.1:19983/metrics` | `main_novaic.py::run_scheduler` 同上；TD-5（2026-04-21）新增 |
 
 FastAPI 服务 `/metrics` 不走 auth（scrape 默认 on-host，端口也 bind 到私网接口）；若未来要暴露到公网，再加 IP allowlist 中间件。
 
