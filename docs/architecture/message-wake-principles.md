@@ -142,7 +142,7 @@ Cortex Meta skill 需要 `user_id` → Queue Service `/dispatch` 硬性 `user_id
 **承诺**
 1. 明确阈值（建议起步 `pending > 30s` 异常，`> 5min` 严重），阈值可配置。
 2. 超时本身是**事件**，必须落在以下至少两处：
-   - **Metric**：`novaic_messages_pending_seconds`（histogram），`novaic_messages_orphaned_total`（counter）。
+   - **Metric**：`outbox_lag_seconds` / `outbox_backlog_count`（gauge，subscriber tick 每轮更新，PR-32），`orphans_total{severity=warn|crit|permanent}`（counter，HealthWorker scan，PR-26 + TD-5）。
    - **可查视图**：`GET /internal/messages/orphaned` 或 CLI 工具直接列出。
    - **Alert**：至少一条"超过阈值 N 条 orphaned 消息"的告警（先内部 SSE / 日志 marker，后接正式告警系统）。
 3. `HealthWorker` 职责转为 emitter：只负责检测 + emit 事件，**不再**隐式 re-dispatch（或 re-dispatch 必须带 `trigger_type=recovered` 在 metric 上可区分）。

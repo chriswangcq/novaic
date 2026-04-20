@@ -127,11 +127,16 @@ GET /internal/messages/orphaned?min_age_sec=30&limit=50
 
 ## 可观测性 Checklist
 
-- [ ] metric `messages_orphaned_total{severity, trigger_type}` counter
-- [ ] metric `messages_orphaned_count_crit` gauge
-- [ ] metric `messages_pending_count` gauge
-- [ ] metric `messages_pending_seconds` histogram
-- [ ] log：ERROR 级带 `ORPHAN` 前缀（便于 grep）
+> **落地偏差注记（TD-5, 2026-04-21）**：本节规划期命名为 `messages_orphaned_total`，
+> 落地时为了跟 subscriber/assembler 那批 metric 保持短前缀一致，采纳
+> `orphans_total` 作为最终名；label 也从 `{severity, trigger_type}` 收窄到
+> `{severity}`（warn/crit/permanent 三档已经足够分流告警，trigger_type
+> 在 `outbox_enqueued_total` / `dispatch_total` 已有覆盖）。
+
+- [x] metric `orphans_total{severity=warn|crit|permanent}` counter（HealthWorker scan + TD-5 hook 进 PR-32 registry）
+- [x] gauge `HealthWorkerMetrics.orphans_crit` / `.orphans_warned` / `.permanent_orphans` 内存计数（便于 `/health` debug 自省；Prometheus 侧以 `orphans_total` 为准）
+- [x] log：ERROR 级带 `ORPHAN` / `PERMANENT_ORPHAN` 前缀，WARN 级 `orphan_warn`（便于 grep）
+- [ ] histogram `messages_pending_seconds` — 规划期列出，落地时判断 `outbox_lag_seconds` gauge 已足够覆盖"整体感觉慢"这条查路径，histogram 推迟到真有按 percentile 看分布的需求时再加
 
 ## 文档 Checklist
 
