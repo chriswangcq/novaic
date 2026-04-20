@@ -66,7 +66,7 @@
 | PR-22  | `[x]`  | [subscriber 成功 dispatch → transition claimed](PR-22-subscriber-transition-claimed.md)           | PR-16, PR-21                      | R4          | 0.5 d                                | 2026-04-15 |
 | PR-23  | `[x]`  | [scope_end → transition inputs to consumed](PR-23-scope-end-consumed.md)                        | PR-20, PR-21                      | R4          | 0.5 d                                | 2026-04-15 |
 | PR-24  | `[ ]`  | [LogContext contextvar + service-wide bind](PR-24-logcontext-scope-id-binding.md)               | PR-20                             | R4          | 1.5 d                                | __         |
-| PR-25  | `[ ]`  | [Business `/internal/messages/{id}/trace](PR-25-message-trace-endpoint.md)`                     | PR-21                             | R4          | 0.5 d                                | __         |
+| PR-25  | `[x]`  | [Business `/internal/messages/{id}/trace](PR-25-message-trace-endpoint.md)`                     | PR-21                             | R4          | 0.5 d                                | 2026-04-15 |
 | PR-26  | `[x]`  | [recovery_worker orphan emitter + metrics](PR-26-orphan-emitter-metrics.md)                     | PR-19, PR-21                      | R5          | 1 d                                  | 2026-04-15 |
 | PR-27  | `[x]`  | [orphan re-dispatch (trigger_type=recovered)](PR-27-recovered-redispatch.md)                    | PR-26                             | R1+R5       | 0.5 d                                | 2026-04-15 |
 | **M3** | —      | **可观测**                                                                                         | PR-20..PR-27                      | —           | —                                    | —          |

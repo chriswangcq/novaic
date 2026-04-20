@@ -5,7 +5,7 @@
 | **Phase** | 3 |
 | **Milestone** | M3 |
 | **承诺** | R4 |
-| **Status** | `[ ]` |
+| **Status** | `[x]` (2026-04-15) |
 | **Depends on** | PR-21 |
 | **Blocks** | — |
 | **估时** | 0.5 d |
@@ -104,3 +104,37 @@ curl -s -H "X-Internal-Key: $NOVAIC_INTERNAL_KEY" \
 
 - 这是运维最实用的一个端点；可以让新人 30 秒学会查 "消息为什么没回复"。
 - 后续可以在这个基础上加 "per-agent pending list"、"orphan summary" 等（PR-26 会有类似端点）。
+
+## 实施总结（2026-04-15）
+
+1. **Entangled** 新增 `GET /v1/messages/{id}/trace`
+   （`entangled/app/message_state.py`）：
+   - SQL 层 `query_message_trace()` 做 chat_messages ⟕ message_outbox
+     LEFT JOIN，一次 round-trip 拿齐 lifecycle + outbox。
+   - 404 专给「chat_messages 行不存在」；行存在但 outbox 缺失 → 200 +
+     `outbox_*=null/0`（这本身是诊断信号：PR-15 co-insert 失败或该行早
+     于 PR-14）。
+   - 8 个单测覆盖：404、含 outbox happy、缺 outbox、四种 lifecycle、
+     `outbox.last_error` 透传。
+2. **Business** 新增 `GET /internal/messages/{id}/trace`
+   （`business/internal/message.py`）：
+   - 组合三路数据：
+     - (A) 走 Entangled trace（硬失败：404 / 502）
+     - (B) 本地 `agents` entity 读 `user_id`（软失败 → `errors[]`）
+     - (C) Cortex `POST /v1/meta/read` 拉 scope meta（软失败 → `errors[]`；
+       `claimed_by_scope` 为空时跳过，避免污染 cortex 日志）
+   - 响应字段：`lifecycle` / `outbox` / `scope.input_message_ids` /
+     `user_id` / `errors[]`。`scope` 只在成功拿到 meta 时非空。
+   - 13 个单测覆盖：404、Entangled 502、pending 无 scope 跳 Cortex、
+     claimed 组合 scope meta、Cortex 不可达软失败、Cortex 5xx 软失败、
+     agent lookup 缺失、五种 lifecycle 透传、outbox last_error 透传。
+3. **Cortex** — 复用已有 `POST /v1/meta/read`（不新增端点；PR-29 scope
+   状态机上线后再考虑 `GET /v1/scope/{id}/meta` 只读简化路径）。
+4. **Runbook** — `docs/runbooks/troubleshooting.md` 新增「消息没回复的
+   SOP」章节，第一步就是 `curl .../trace`。
+
+### 未覆盖 / 后续
+- `current_session`（Queue Service 当前 session 状态）留给 PR-29 scope
+  状态机，届时 Queue 会暴露 `GET /api/queue/sessions/{id}`。
+- `message_trace_requests_total` metric：沿用 `internal_sync_client` 的
+  caller 维度日志，先不加独立 counter，等 OBS-2 统一铺设。

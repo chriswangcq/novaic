@@ -37,6 +37,36 @@
 | **登出仍弹设置** | `settingsOpen` | `handleLogout` 置 **`settingsOpen: false`** |
 | **`PRAGMA wal_checkpoint(TRUNCATE)`** | 截断未提交事务 | **禁止运行时执行** |
 
+## 消息没回复的 SOP（PR-25 trace，2026-04-15）
+
+第一步不是 grep 日志，是 curl trace。端点把 chat_messages + message_outbox
++ Cortex scope meta 拉到一个响应里，节省四次 sqlite / 四份日志的翻阅。
+
+```bash
+MID="<message_id>"
+SVC="$(awk -F'= ' '/^service_token|^jwt_secret/{print $2; exit}' \
+        /opt/novaic/etc/services.toml 2>/dev/null)"
+
+curl -s -H "X-Service-Token: $SVC" \
+     -H "X-Internal-Service: ops" \
+     http://localhost:19998/internal/messages/$MID/trace | jq .
+```
+
+读返回的优先级：
+
+1. `lifecycle` —— `pending` 说明 subscriber 还没 claim；`claimed` 说明进了 scope
+   但 scope 尚未 end；`consumed` 正常；`orphaned` 看 `outbox.last_error`。
+2. `outbox.last_error` —— subscriber 最近一次失败原因（非空即需处理）。
+3. `outbox.delivered_at` 非空但 `lifecycle=pending` —— PR-22 wiring bug，
+   subscriber dispatched 成功但忘了 transition。对着 dispatch_subscriber.log
+   grep `message_id`。
+4. `scope.input_message_ids` —— 消息进了哪个 scope、同批还有谁。
+5. `errors[]` —— 如果有 `cortex: ...`，说明 Cortex 那半边读失败（trace 主干
+   仍可信），回去看 cortex.log。
+
+404 → 消息 id 根本不存在（typo / entity 未落盘）。
+502 → Entangled 起不来，先处理 Entangled。
+
 ## LLM 调用失败排查
 
 1. 日志：`grep -E "429|think.*failed" /opt/novaic/data/logs/task-worker-*.log`
