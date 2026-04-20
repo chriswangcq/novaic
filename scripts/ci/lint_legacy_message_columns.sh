@@ -1,19 +1,12 @@
 #!/usr/bin/env bash
 #
-# PR-30 (2026-04-15) — ban any re-introduction of the four legacy
-# chat_messages columns that were dropped after PR-21 (lifecycle state
-# machine) had stabilised.
-#
-# Why
-# ---
-# ``chat_messages.{processed,claimed_by,claimed_at,status}`` were the
-# pre-PR-21 way to track dispatch state. Production ran them in parallel
-# with ``lifecycle`` for one release, the live data was migrated by
-# ``backfill_lifecycle()``, and PR-30 drops the columns + rewrites every
-# Python writer to skip them. If a follow-up PR re-introduces any of
-# these names, we'd be back to the dual-source bug class that PR-21 was
-# built to eliminate (orphan-scan misses claimed rows, transition() and
-# raw UPDATE drift apart, etc.).
+# Ban re-introduction of the pre-PR-21 chat_messages dispatch-state
+# columns (``processed``/``claimed_by``/``claimed_at``/``status``).
+# The lifecycle state machine (``lifecycle`` + ``claimed_by_scope``)
+# is now the only dispatch-state surface; re-adding any of the old
+# columns would split writes across two sources and regress the exact
+# bug class PR-21 eliminated (orphan scan misses claimed rows, raw
+# UPDATEs drift apart from transition(), etc.).
 #
 # This lint covers two things:
 #   1. Schema declarations (``F.text("status", ...)`` and friends in
@@ -23,15 +16,9 @@
 #
 # The pattern set is deliberately narrow — common English words like
 # "status" and "processed" appear all over the codebase as variable
-# names; we only flag occurrences in ``business/`` schemas and writers
-# that target the messages table. ``read`` is intentionally NOT here:
-# it tracks user-visible read receipts, not dispatch state.
-#
-# Allowlist
-# ---------
-# * Entangled migration helpers (legacy column DROP + backfill).
-# * tests/ — fixtures still construct legacy-shaped rows to drive backfill.
-# * docs/ — RFC text references the column names.
+# names; we only flag occurrences in schemas and writers that target
+# the messages table. ``read`` is intentionally NOT here: it tracks
+# user-visible read receipts, not dispatch state.
 set -e
 
 # Match a chat_messages row literal (rough heuristic: the dict has both
@@ -54,8 +41,6 @@ PATTERNS=(
 )
 
 ALLOWLIST=(
-    'Entangled/packages/server-python/entangled/sql/message_state.py'
-    'Entangled/packages/server-python/entangled/sql/entity_store.py'
     'tests/'
     'docs/'
     'scripts/ci/lint_legacy_message_columns.sh'
@@ -81,8 +66,8 @@ done
 
 if [[ $violations -gt 0 ]]; then
     echo ""
-    echo "Context: PR-30 dropped chat_messages.{processed,claimed_by,"
-    echo "claimed_at,status}. Use ``lifecycle`` (via Entangled's"
+    echo "Context: chat_messages.{processed,claimed_by,claimed_at,status}"
+    echo "are banned. Use ``lifecycle`` (via Entangled's"
     echo "POST /v1/messages/{id}/transition) for dispatch state and"
     echo "``read`` for user-facing unread receipts. See"
     echo "docs/roadmap/tickets/PR-30-drop-legacy-message-fields.md."

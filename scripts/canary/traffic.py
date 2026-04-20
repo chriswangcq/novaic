@@ -21,19 +21,15 @@ What it exercises
 `send` posts to `/internal/entities/messages/action/send`, which invokes
 `message_actions.send_action(...)`. That write goes through Entangled's
 `SqlEntityStore.append()`:
-  * outbox row is written co-transactionally (PR-14)
+  * outbox row is written co-transactionally
   * DispatchSubscriber claims the outbox row and dispatches to Queue
-    (PR-18 removed the inline `_dispatch_trigger` path — subscriber is
-    now the single writer; PR-17 canary bake gate was revoked 2026-04-19)
 
 If everything is healthy:
   * `observe` shows no backlog older than ~5 s and `permanent_failed` == 0
   * Queue logs show exactly 1 subscriber dispatch per message
 
 If the system is broken (duplicate send, FK mismatch, orphan messages, etc),
-the outbox accumulates rows or `attempts` grows. TD-6 (2026-04-21) replaced
-the old `attempts = 999999` sentinel with a `permanent_failure` column;
-poisoned rows now keep a truthful attempts count.
+the outbox accumulates rows, `attempts` grows, or `permanent_failed` > 0.
 
 Safety
 ------
@@ -255,36 +251,17 @@ def _outbox_stats(db_path: str) -> dict[str, Any]:
         else:
             out["oldest_pending_age_sec"] = 0
 
-        # Retry / poison stats. TD-6 (2026-04-21) retired the
-        # ``attempts = 999999`` sentinel; permanent failures now carry
-        # ``permanent_failure = 1`` while keeping the truthful attempt
-        # count. We probe the column once (the script can be pointed
-        # at an older DB snapshot taken before Entangled ran the
-        # additive migration) and fall back to attempts-only if it's
-        # absent, so operators don't eat a "no such column" at observe
-        # time.
-        cols = {
-            r[1] for r in con.execute("PRAGMA table_info(message_outbox)").fetchall()
-        }
-        if "permanent_failure" in cols:
-            out["retrying"] = con.execute(
-                "SELECT COUNT(*) FROM message_outbox "
-                "WHERE delivered_at IS NULL AND attempts > 0 "
-                "  AND permanent_failure = 0"
-            ).fetchone()[0]
-            out["permanent_failed"] = con.execute(
-                "SELECT COUNT(*) FROM message_outbox "
-                "WHERE delivered_at IS NULL AND permanent_failure = 1"
-            ).fetchone()[0]
-        else:
-            # Pre-TD-6 DB: no way to distinguish permanent from transient,
-            # so fall back to raw attempt tiers. Operators seeing this
-            # branch should bounce Entangled to trigger the migration.
-            out["retrying"] = con.execute(
-                "SELECT COUNT(*) FROM message_outbox "
-                "WHERE delivered_at IS NULL AND attempts > 0"
-            ).fetchone()[0]
-            out["permanent_failed"] = "unavailable (pre-TD-6 schema; restart Entangled)"
+        # Retry stats: retrying = pending with non-zero attempts that
+        # still have budget; permanent_failed = flagged dead-letters.
+        out["retrying"] = con.execute(
+            "SELECT COUNT(*) FROM message_outbox "
+            "WHERE delivered_at IS NULL AND attempts > 0 "
+            "  AND permanent_failure = 0"
+        ).fetchone()[0]
+        out["permanent_failed"] = con.execute(
+            "SELECT COUNT(*) FROM message_outbox "
+            "WHERE delivered_at IS NULL AND permanent_failure = 1"
+        ).fetchone()[0]
 
         # By trigger type
         out["by_trigger"] = {
