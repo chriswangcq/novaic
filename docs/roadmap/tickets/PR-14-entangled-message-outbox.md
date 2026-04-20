@@ -94,9 +94,9 @@
 
 ## 可观测性 Checklist
 
-- [ ] metric `outbox_enqueued_total{trigger_type}` counter（每次 insert outbox 打一次）
-- [ ] metric `outbox_backlog_count` gauge（周期性 `COUNT(*) WHERE delivered_at IS NULL`），由后续 subscriber / scheduler 定时刷
-- [ ] log：`outbox_enqueue message_id=... agent=... trigger=...`
+- [x] metric `outbox_enqueued_total{trigger_type}` counter — 落地于 PR-32（`entity_store.py` co-tx 插入处 `metric_inc`）
+- [x] metric `outbox_backlog_count` gauge — 落地于 PR-32（subscriber 每 tick 从 `/v1/outbox/claim` 新加的 `backlog_count` 字段 `metric_set`）
+- [x] log：`event=outbox_enqueue message_id=... agent=... trigger=...`
 
 ## 文档 Checklist
 

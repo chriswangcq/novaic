@@ -28,7 +28,7 @@
 ## 前置 Checklist
 
 - [x] PR-16 合并且本地已跑通（Stage 0 dry-run 于 2026-04-18 完成，10 条并发消息 0 次 `database is locked`）
-- [-] 监控面板能看到 `subscriber_delivered_total` / `outbox_lag_seconds` / `healthworker_scan_total{result=ok}` → defer to PR-32；Canary 期用 runbook §Monitoring without Prometheus 的 shell 替身
+- [x] 监控面板能看到 `subscriber_delivered_total` / `outbox_lag_seconds` / `healthworker_scan_total{result=ok}` — 落地于 PR-32（Business `/metrics` + subscriber `127.0.0.1:19985/metrics`）；Canary 期历史记录仍用 runbook §Monitoring without Prometheus 的 shell 替身
 - [x] 有明确回滚路径（`NOVAIC_ENABLE_SUBSCRIBER=0` 重启 Business，HealthWorker 自动承接；SLO ≤ 45s）
 
 ## 实施 Checklist

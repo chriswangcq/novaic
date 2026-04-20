@@ -175,8 +175,8 @@ class DispatchError(Exception):
 
 ## 可观测性 Checklist
 
-- [-] metric `dispatch_total{trigger_type, result=ok|no_owner|queue_400|queue_5xx|network}` counter (移交 PR-32)
-- [-] metric `dispatch_latency_seconds{trigger_type}` histogram (移交 PR-32)
+- [x] metric `dispatch_total{trigger_type, result=ok|no_owner|queue_400|queue_5xx|network}` counter — 落地于 PR-32，五个 raise 点对称打点
+- [x] metric `dispatch_latency_seconds{trigger_type}` histogram — 落地于 PR-32，`dispatch_sync` POST 外围包 `metric_timer`
 - [x] log 结构化：`event=dispatch trigger=... agent=... user=... messages=... result=...`
 
 ## 文档 Checklist

@@ -155,8 +155,8 @@
   - [ ] 并发写 100 条消息，100 条 outbox 事件都被消费；无丢失无重复（看 metric `dispatch_by_subscriber_total`）
   - [ ] subscriber crash 后重启可继续
 - 可观测性：
-  - [ ] metric `outbox_lag_seconds`（新事件 - 最老未消费）
-  - [ ] metric `outbox_attempts_total{result=ok|retry|failed}`
+  - [x] metric `outbox_lag_seconds` — 落地于 PR-32（subscriber gauge）
+  - [x] metric `outbox_attempts_total{result=ok|retry|failed}` — 以 `subscriber_delivered_total` / `subscriber_retry_total` / `subscriber_failed_total` 三元对称形式落地于 PR-32
 - 承诺：R6
 
 ### P2-3  Dispatch subscriber（Business 侧或独立进程）
@@ -389,7 +389,7 @@
 | --- | --- | --- | --- |
 | OBS-1 | `[ ]` | 所有跨服务 HTTP 调用带 `X-Internal-Service` | R7 |
 | OBS-2 | `[ ]` | 所有跨服务日志带 `scope_id` 绑定 | R4 |
-| OBS-3 | `[ ]` | metric：`dispatch_total{trigger_type, result}`、`outbox_lag_seconds`、`messages_pending_count`、`messages_orphaned_total` 齐全 | R5 |
+| OBS-3 | `[x]` | metric：`dispatch_total{trigger_type, result}`、`outbox_lag_seconds`、`outbox_backlog_count`、`subscriber_*` 齐全（PR-32）；`messages_orphaned_total` 由 PR-26 `orphans_total` 提供 | R5 |
 | OBS-4 | `[ ]` | runbook：`docs/runbooks/troubleshooting.md` 加 "消息没回复的排查 SOP"（按 scope_id 聚合 / 查 orphan 视图 / 查 outbox lag） | R4 + R5 |
 | OBS-5 | `[ ]` | `docs/architecture/message-wake-principles.md` §五"对照表"每条都有 metric / log 证据指向 | 所有 |
 

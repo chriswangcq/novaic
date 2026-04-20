@@ -74,7 +74,7 @@ async def get_owner(agent_id: str, store: EntangledStore = Depends(...)):
 
 ## 可观测性 Checklist
 
-- [-] metric `agent_owner_lookup_total{result=hit|miss}` counter
+- [x] metric `agent_owner_lookup_total{result=hit|miss}` counter — 落地于 PR-32（`business/internal/agent.py::get_owner` 三个 return 点各打一次）
 - [x] log 带 `caller=`（依赖 PR-06）
 
 ## 文档 Checklist

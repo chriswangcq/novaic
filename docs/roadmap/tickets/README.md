@@ -74,6 +74,7 @@
 | PR-29  | `[x]`  | [Scope 状态机（Cortex）](PR-29-scope-state-machine.md)                                               | M2                                | R8          | 1.5 d                                | 2026-04-15 |
 | PR-30  | `[x]`  | [删除 `chat_messages` 旧字段（窄化：保留 `read`）](PR-30-drop-legacy-message-fields.md)                    | PR-21, PR-22, PR-23（稳定 1 release） | R4+R8       | 0.5 d                                | 2026-04-15 |
 | PR-31  | `[x]`  | `[*_state_transitions` 日志表（+ PR-31b subagent 状态机 server-side 化 + PR-31c 删除死 Counter）](PR-31-state-transition-log-tables.md) | PR-28, PR-29                      | R8          | 1 d                                  | 2026-04-15 |
+| PR-32  | `[x]`  | [Metrics 兜底落地（零依赖 registry + 13 条 golden signal）](PR-32-metrics-prometheus-integration.md) | PR-06, PR-07, PR-08, PR-10, PR-14, PR-16 | OBS-3 | 1 d                                  | 2026-04-21 |
 | **M4** | —      | **状态机化**                                                                                        | PR-28..PR-31                      | —           | —                                    | —          |
 | PR-33  | `[x]`  | [env shrink + services.json runtime_switches](PR-33-env-shrink.md)                              | PR-17                             | R-FAIL-LOUD | 1 d（2026-04-20 六阶段一轮落地）              | __         |
 

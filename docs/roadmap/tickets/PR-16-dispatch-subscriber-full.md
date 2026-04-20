@@ -146,11 +146,11 @@ async def _deliver_one(self, row):
 
 ## 可观测性 Checklist
 
-- [-] metric `subscriber_delivered_total{trigger}` counter (defer to PR-32)
-- [-] metric `subscriber_failed_total{kind}` counter (defer to PR-32)
-- [-] metric `subscriber_retry_total{kind}` counter (defer to PR-32)
-- [-] metric `outbox_lag_seconds` gauge（最老 `delivered_at IS NULL AND locked_until IS NULL` 行的 age） (defer to PR-32)
-- [-] metric `outbox_claim_batch_size` histogram (defer to PR-32)
+- [x] metric `subscriber_delivered_total{trigger}` counter — 落地于 PR-32（`_deliver_one_inner` 成功分支）
+- [x] metric `subscriber_failed_total{kind}` counter — 落地于 PR-32（permanent 分支：DispatchError / httpx.HTTPError / malformed payload 三处对称）
+- [x] metric `subscriber_retry_total{kind}` counter — 落地于 PR-32（transient 分支两处对称）
+- [x] metric `outbox_lag_seconds` gauge — 落地于 PR-32（`_claim_batch` 每 tick 从 `ClaimResponse.oldest_pending_age_ms` `metric_set`，`-1` 哨兵映射为 `0.0`）
+- [x] metric `outbox_claim_batch_size` histogram — 落地于 PR-32（`_claim_batch` 每 tick `metric_observe(len(rows))`）
 - [x] 结构化 log：`subscriber_tick claimed=N delivered=M failed=K`
 
 ## 文档 Checklist
