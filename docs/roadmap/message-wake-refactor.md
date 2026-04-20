@@ -13,6 +13,11 @@
 > - Phase 1 未清零前不允许对 `Business._dispatch_trigger` / `HealthWorker._scan_unhandled_messages` 做任何业务增量；  
 > - Phase 2 未清零前不允许新增消息类型（新 trigger_type）；  
 > - Phase 3 未清零前不允许声称系统具备"端到端异步可观测性"。
+>
+> **2026-04-21 SSOT note**：下方各 Phase 条目（P1-1..P5-N）里残留的 `Status: [ ]`
+> 是编制期勾位，**不是当前真相**。真实完成情况看 [tickets/README.md](tickets/README.md)
+> 的 index 表 —— PR-01 到 PR-35 全部 `[x]`，对应 Phase 下的 sub-task 也都跟着落地。
+> 本页留作阶段性叙述，新写代码前先对着 tickets 索引核验依赖。
 
 ---
 
