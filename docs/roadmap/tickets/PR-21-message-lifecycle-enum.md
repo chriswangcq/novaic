@@ -5,7 +5,7 @@
 | **Phase** | 3 |
 | **Milestone** | M3 |
 | **承诺** | R4 + R8 |
-| **Status** | `[ ]` |
+| **Status** | `[x]` (merged; see roadmap README index) |
 | **Depends on** | PR-14 |
 | **Blocks** | PR-22, PR-25, PR-26, PR-30 |
 | **估时** | 1 d |
