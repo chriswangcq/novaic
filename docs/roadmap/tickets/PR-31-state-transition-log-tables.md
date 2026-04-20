@@ -5,11 +5,11 @@
 | **Phase** | 5 |
 | **Milestone** | M4 |
 | **承诺** | R8 |
-| **Status** | `[ ]` |
+| **Status** | `[x]` |
 | **Depends on** | PR-28, PR-29, PR-21 |
 | **Blocks** | — |
 | **估时** | 1 d |
-| **Owner** | __ |
+| **Owner** | 2026-04-15 |
 | **PR 标题** | `feat(observability): state_transitions log tables for subagent/scope/message` |
 
 ## 目标
@@ -107,3 +107,67 @@ sqlite3 ~/.novaic/data/entangled.db \
 
 - 本 PR 完成后，"这个实体为什么还在 sleeping" 变成一次 history 查询。
 - 未来可将 metric emitter（PR-26）改为从 history 表驱动，统一事件源。
+
+---
+
+## 落地实现（2026-04-15）
+
+### 存储分布
+
+| 机器 | 位置 | 写入时机 | 读取入口 |
+| --- | --- | --- | --- |
+| **message** | Entangled SQL `message_state_transitions` 表 | `message_state.transition` 内部，co-transactional（`transaction("global")` 同块内 INSERT，和 `UPDATE chat_messages` 原子提交） | `GET /v1/state_transitions/message/{id}` / `GET /internal/messages/{id}/trace` 里的 `history[]` |
+| **subagent** | Entangled SQL `subagent_state_transitions` 表 | Business `subagent_state.transition` 成功 `store.update` 后，POST `/v1/state_transitions/subagent` （best-effort，失败仅 WARN 不 rollback） | `GET /v1/state_transitions/subagent/{id}` / `GET /internal/subagents/{agent_id}/{subagent_id}/state-history` |
+| **scope** | Cortex 本机 NDJSON 追加文件（默认 `~/.novaic/cortex/scope_state_transitions.ndjson`，`CORTEX_SCOPE_STATE_LOG` 覆盖） | `scope_state.transition` 在 meta.json 更新成功后 append | `GET /v1/scope/history?scope_path=...&limit=...` |
+
+Scope 侧选 NDJSON 而非 sqlite：Cortex 不依赖 Entangled，引入 HTTP/SQL 都是新的 coupling；NDJSON POSIX append 已是崩溃安全的写法，量级（每次对话几行）完全够用。跨主机聚合留给 sidecar（tail + 远送），不在本 PR 范围。
+
+### 幂等与静默
+
+- **self-loop 不写日志**。这是从 PR-23 / PR-29 延伸的不变式：订阅者/recovery 重试会触发 A→A 幂等路径，若 log 每次都写，一个 stuck message 就能淹没整张表。测试 `test_message_transition_noop_does_not_log` / `test_self_loop_does_not_log` / `test_self_loop_noop_skips_history_log` 把它钉住。
+- **子代理 log POST 失败不 rollback**。`subagents.status` 已经先写了，这时 Entangled 500 也不该让业务面看到假失败——用 `try/except` 吞下，WARN 一行。测试 `test_transition_swallows_log_hook_errors` 覆盖。
+- **message log 共事务**。因为它本来就在 Entangled 内部，能塞进同一个 `transaction("global")` 里，就正好不必容忍断档。
+
+### 新文件
+
+- `Entangled/packages/server-python/entangled/sql/state_transitions.py` — 两张表的 schema + reader/writer。
+- `Entangled/packages/server-python/entangled/app/state_transitions.py` — FastAPI router（POST/subagent、GET/subagent、GET/message）。
+- `Entangled/packages/server-python/tests/test_state_transitions.py` — 10 条用例。
+- `novaic-cortex/novaic_cortex/scope_state_log.py` — NDJSON 读写。
+- `novaic-cortex/tests/test_scope_state_log.py` — 9 条用例。
+
+### 修改点
+
+- `Entangled/.../sql/message_state.py`：`transition` 内 `INSERT INTO message_state_transitions`（co-tx）。
+- `Entangled/.../sql/entity_store.py::ensure_all_schemas`：调用 `ensure_state_transitions_schema(db)`。
+- `Entangled/.../app/factory.py`：注册 `state_transitions_router`。
+- `novaic-common/common/entangled_client.py`：新增 `record_subagent_transition` / `history_*`。
+- `novaic-business/business/internal/subagent_state.py`：`_record_transition` 后置 HTTP 上报。
+- `novaic-business/business/internal/subagent.py`：新增 `GET /subagents/{agent_id}/{subagent_id}/state-history`。
+- `novaic-business/business/internal/message.py`：`/internal/messages/{id}/trace` 的响应新增 `history[]`（soft-fail）。
+- `novaic-cortex/novaic_cortex/scope_state.py`：`transition` 成功后 `await append_transition(...)`。
+- `novaic-cortex/novaic_cortex/api.py`：新增 `GET /v1/scope/history`。
+
+### 验收
+
+```bash
+# Entangled 本地
+cd Entangled/packages/server-python
+pytest tests/test_state_transitions.py tests/test_message_state.py
+# 10 + 26 passed
+
+# Cortex 本地
+cd ../../../novaic-cortex
+pytest tests/test_scope_state.py tests/test_scope_state_log.py
+# 15 + 9 passed
+
+# Business 本地
+cd ../novaic-business
+pytest tests/test_subagent_state.py
+# 25 passed（含 PR-31 新增的 3 条 hook 用例）
+```
+
+### 后续可做
+
+- **PR-31b**（可选）：把 `record_subagent_transition` 改成同步 in-Entangled 路径——如果 Business 的幂等 state 写入迁移到 Entangled 侧，顺带合入。
+- **PR-31c**（可选）：metric emitter (PR-26) 改读 `*_state_transitions` 表，消除 "日志 grep + 表查询" 两条并行事件源。
