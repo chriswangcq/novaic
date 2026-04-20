@@ -247,6 +247,66 @@ curl -s -H "X-Service-Token: $SVC" \
 404 → 消息 id 根本不存在（typo / entity 未落盘）。
 502 → Entangled 起不来，先处理 Entangled。
 
+## 按 state-transition history 回放实体生命周期（PR-31，2026-04-15）
+
+PR-21/28/29 把 message/subagent/scope 的状态都收敛到了 `transition()`
+唯一入口，PR-31 把这些转移事件落到持久表里。要回答 "这个实体为什么还在
+\<某状态\>？" 不再靠翻日志，直接查历史表。
+
+### 三条查询入口
+
+```bash
+# A. 一条消息的生命周期（等价于 grep "message_state <id>" 但更整齐）
+curl -s -H "X-Service-Token: $SVC" \
+  http://biz/internal/messages/<message_id>/trace | jq '.history'
+# 或直接看原始表：
+curl -s -H "X-Service-Token: $SVC" \
+  http://entangled/v1/state_transitions/message/<message_id>
+
+# B. 一个 subagent 的状态机轨迹（和 /history 区分：那个是 chat 上下文）
+curl -s -H "X-Service-Token: $SVC" \
+  http://biz/internal/subagents/<agent_id>/<subagent_id>/state-history
+
+# C. 一个 scope 的阶段流转（NDJSON 日志，按 scope_path 过滤）
+curl -s -H "X-Internal-Key: $CORTEX_KEY" \
+  "http://cortex/v1/scope/history?scope_path=/ro/active/<scope_id>"
+```
+
+### 幂等不写日志的含义
+
+- 订阅者重投、recovery 重跑触发的 A→A 是 **noop**，history 表不记录。
+  所以 "claimed 状态但只看到一条 claimed 转移" 是对的，不是 bug。
+- 反过来，如果看到 history 为空但 `subagents.status` 不是初始值
+  （`sleeping`），说明转移发生在 PR-31 之前 — 查部署时间线，不要当事故。
+
+### 日志 vs 历史表的分工
+
+| 来源 | 用途 | 何时看 |
+| --- | --- | --- |
+| 日志 `rg "message_state <id>"` | 带时间戳、带 pid、跨服务 correlate | 要拼 Cortex/Queue/Worker 一起看时 |
+| `*_state_transitions` 表 | 纯状态机视图，oldest-first | 只关心 "这个 id 走了哪些状态" |
+
+### 表和文件在哪
+
+```bash
+sqlite3 ~/.novaic/data/entangled.db ".schema message_state_transitions"
+sqlite3 ~/.novaic/data/entangled.db ".schema subagent_state_transitions"
+# Scope 侧是 NDJSON：
+cat ~/.novaic/cortex/scope_state_transitions.ndjson | jq
+# 或按 CORTEX_SCOPE_STATE_LOG 覆盖过的路径。
+```
+
+### 出问题怎么恢复
+
+- **Entangled 写 history 行失败**：message 侧是 co-transactional，写失败
+  会让 UPDATE 一起回滚 — 日志里会看到 `sqlite3.OperationalError` 堆栈。
+  subagent 侧是 best-effort POST，失败只是 WARN 一行
+  `subagent_state transition log FAILED (continuing): ...`，状态还是正确
+  提交了的，history 少一条可接受。
+- **Cortex NDJSON 盘满**：`append_transition` 抛 `OSError`，同样 WARN 一行
+  `scope_state append_transition FAILED (continuing): ...`，`meta.phase`
+  仍然被更新。清盘后重启 Cortex 即可，不需要补写历史。
+
 ## Subscriber 每次 deploy 后回到 disabled（TD-5，2026-04-15 根治）
 
 **症状**：运维在生产跑 `deploy-business.sh` 之后，日志里重新出现
