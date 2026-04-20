@@ -25,3 +25,5 @@ jobs:
       run: ./scripts/ci/lint_subagent_status.sh
     - name: Run scope-phase lint (PR-29)
       run: ./scripts/ci/lint_scope_phase.sh
+    - name: Run legacy-message-columns lint (PR-30)
+      run: ./scripts/ci/lint_legacy_message_columns.sh
