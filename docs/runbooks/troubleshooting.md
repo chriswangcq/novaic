@@ -37,6 +37,48 @@
 | **登出仍弹设置** | `settingsOpen` | `handleLogout` 置 **`settingsOpen: false`** |
 | **`PRAGMA wal_checkpoint(TRUNCATE)`** | 截断未提交事务 | **禁止运行时执行** |
 
+## 跨服务按 scope_id 查问题（PR-24 LogContext，2026-04-15）
+
+每条日志都多了 4 列：`scope_id=... agent_id=... user_id=... caller=...`。
+拿一个 scope_id，可以在所有后端日志里串成一条完整时间线，不用再人肉
+join 四份文件。
+
+```bash
+# 1. 从 trace 端点（PR-25）或者数据库拿一个 scope_id
+SID="$(sqlite3 /opt/novaic/data/entangled.db \
+  "SELECT claimed_by_scope FROM chat_messages
+    WHERE claimed_by_scope IS NOT NULL
+    ORDER BY created_at DESC LIMIT 1;")"
+echo "scope_id=$SID"
+
+# 2. 跨日志 grep — 时间顺序合并
+cd /opt/novaic/data/logs
+rg "scope_id=$SID" business-*.log queue-service-*.log cortex.log \
+    runtime.log task-worker-*.log saga-worker-*.log health-*.log \
+    | sort -k1,2
+```
+
+### 常见信号
+
+| 现象 | 解读 |
+|------|------|
+| 只在 business 日志看到 scope_id | scope_id 在 session.init 之前就挂了（dispatcher 问题） |
+| business + queue 有，cortex 没 | Cortex 调用失败或 scope create 出错 —— 看 cortex.log 同时段的 WARNING |
+| cortex 有但 runtime 日志没后续 | saga/task worker 起不来或没领到 —— 查 queue-service `event=recover` |
+| `caller=unknown` 出现在 /internal/ 路径 | 有服务没挂 `X-Internal-Service` —— 找违规 caller，补 internal_sync_client |
+
+### 原理（一分钟）
+
+- 发消息时，runtime `handle_session_init` 第一件事就是
+  `common.log_context.bind(scope_id=..., agent_id=..., user_id=...)`。
+- 之后所有 `httpx.Client` / `AsyncClient`（只要是
+  `internal_sync_client` 创建的）在 outgoing 请求的 event_hook 里
+  自动塞 `X-Scope-Id` / `X-Agent-Id` / `X-User-Id` Header。
+- 每个服务的 `CallerLoggingMiddleware` 读到这三个 Header 就 bind 到
+  `ContextVar`，handler 返回前 reset。
+- stdlib `logging` 的 `ContextFilter` 把 ContextVar 的值注入每条
+  LogRecord，formatter 就能打印出来了。
+
 ## 消息没回复的 SOP（PR-25 trace，2026-04-15）
 
 第一步不是 grep 日志，是 curl trace。端点把 chat_messages + message_outbox
