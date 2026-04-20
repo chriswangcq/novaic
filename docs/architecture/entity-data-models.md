@@ -23,10 +23,12 @@
   * `message_id` (PK)
   * `role`: 标准划分，含 (`user`, `assistant`, 及极其特殊的 `system_log` 代表底层汇报情况不需人能全看懂) 
   * `content`: 文本、亦或者某些极度复杂的 JSON 字符串（前侧包含那些用来给被过滤解析了带有着 UI 面板组件命令的指令载荷）。
-  * `status`: 极其关键的控制流旗帜！
-      * `sending`: 代表由于刚刚被网段产生插入这行：这是一个“钩子”，**看门狗(WatchDog)** 的发疯扫描便是追踪所有处于此状态的消息触发脑子醒来（唤醒风暴根源）。
-      * `completed`: 表示流程跑完。
-      * `error`：携带 `error_msg`，往往伴随着对前端标红处理并且挂起相关的 Saga Worker 并发出警告提醒。
+  * `status`（**legacy**, PR-21 之后只读）: 老的控制流旗帜，仍保留是因为还有读路径在依赖。
+      * `sending` / `completed` / `error`：详见 git blame 历史。
+  * `lifecycle` (**PR-21 新增, 单一权威状态**): `pending → claimed → consumed | orphaned | deduped`，详见 [`docs/architecture/scope-lifecycle.md`](./scope-lifecycle.md)。
+      * 所有写入必须走 `Entangled` 的 `POST /v1/messages/{id}/transition` 单一入口，CI (`scripts/ci/lint_lifecycle.sh`) 强制阻挡裸 `UPDATE`。
+  * `claimed_by_scope` (PR-21): 当 `lifecycle='claimed'` 时记录认领它的 scope_id，便于 PR-26 孤儿扫描。
+  * `lifecycle_updated_at` (PR-21): epoch ms，用于诊断和 SLA 追踪。
 
 ## 3. Context & Memories 单切分快照
 

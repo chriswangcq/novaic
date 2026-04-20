@@ -19,3 +19,5 @@ jobs:
       run: ./scripts/ci/lint_httpx.sh
     - name: Run internal-async guard (PR-34 34e)
       run: python3 scripts/ci/check_no_internal_async.py
+    - name: Run lifecycle lint (PR-21)
+      run: ./scripts/ci/lint_lifecycle.sh
