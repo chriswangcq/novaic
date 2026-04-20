@@ -29,9 +29,20 @@ exception is not a valid removal reason — hoist to an edge handler or
 run_in_threadpool instead.
 
 Exit codes:
-    0  all guarded files clean
+    0  all guarded files clean, OR all guarded files are absent because
+       submodules aren't checked out (CI-without-PAT case; prints a loud
+       warning so it's obvious the run didn't actually verify anything)
     1  at least one guarded file re-introduced an async pattern
-    2  a guarded file is missing (probably a rename that skipped the guard)
+    2  some (but not all) guarded files are missing — probably a rename
+       that skipped the guard, and worth failing on
+
+The "all absent → exit 0" path exists because the main repo's CI workflow
+runs without ``submodules: recursive`` (GITHUB_TOKEN can't auth the
+cross-org submodules in .gitmodules). Locally and in pre-commit hooks
+every file is present, so the script still catches real regressions
+before they ship. A "partial present" state is more suspicious — it
+usually means one submodule was renamed and the pointer wasn't
+updated — so we keep exit 2 for that case.
 """
 from __future__ import annotations
 
@@ -140,10 +151,29 @@ def main() -> int:
             continue
         violations.extend(check_file(path))
 
+    if missing and len(missing) == len(GUARDED):
+        # All guarded files absent → we're running in an environment without
+        # submodule contents (main-repo CI without a PAT). Warn loudly so the
+        # run output makes it obvious this invocation verified nothing, then
+        # exit 0 so the workflow doesn't fail on a configuration issue that's
+        # orthogonal to what the guard checks. Local / pre-commit / submodule-
+        # CI invocations always have the files and still catch regressions.
+        print(
+            "check_no_internal_async: SKIPPED — all guarded files absent "
+            "(submodules not checked out). This run did NOT verify the async "
+            "invariants; rely on local pre-commit or per-submodule CI.",
+            file=sys.stderr,
+        )
+        return 0
+
     if missing:
+        # Partial presence is suspicious — one of the guarded files either
+        # got renamed without updating ``GUARDED`` or the submodule pointer
+        # was bumped past the rename. Fail so we notice.
         print(
             "check_no_internal_async: guarded file(s) missing — did a rename "
-            "skip this script?",
+            "skip this script? (Other guarded files are present, so this "
+            "isn't the submodules-absent case.)",
             file=sys.stderr,
         )
         for rel in missing:
