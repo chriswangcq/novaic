@@ -170,7 +170,7 @@ pytest tests/test_subagent_state.py
 ### 后续可做
 
 - **PR-31b**（已完成，2026-04-15）：见下方。
-- **PR-31c**（可选）：metric emitter (PR-26) 改读 `*_state_transitions` 表，消除 "日志 grep + 表查询" 两条并行事件源。
+- **PR-31c**（已完成，2026-04-15）：见下方。
 
 ---
 
@@ -266,5 +266,79 @@ pytest tests/  # 99 passed
 
 ### 后续可做
 
-- **PR-31c**（未动）：metric emitter (PR-26) 改读 `*_state_transitions` 表，统一事件源。
+- **PR-31c**（已完成）：见下方。
 - **补充 lint**：`scripts/ci/lint_subagent_status.sh` 已经禁止裸 `UPDATE subagents SET status`；PR-31b 后可以再加一条禁止直接 POST 到 `/v1/state_transitions/subagent`（强制走 `transition_subagent`），消除遗留 shim 的诱惑。
+
+---
+
+## PR-31c（删除 in-process `_transitions` Counter，统一事件源，2026-04-15）
+
+### 背景
+
+PR-31 + PR-31b 落地后，transition 事件有三条 parallel 路径：
+
+1. **canonical log line**（`rg subagent_state subagent=<id>` / `rg scope_state scope=<path>`）——operator 扫跨服务时间线用。
+2. **durable history table / NDJSON**（`subagent_state_transitions` / `message_state_transitions` / `scope_state_transitions.ndjson`）——机器可查，count/rate 查询 + 单实体生命周期 replay 用。
+3. **in-process `collections.Counter`**（`business.internal.subagent_state._transitions` / `novaic_cortex.scope_state._transitions`）——PR-28/29 上线时写的 pre-PR-31 stopgap，key 是 `"<from>-><to>/<reason>"`。
+
+源 3 是死路径：(a) `dump_transition_counters()` 全仓只有测试调，runbook 里写着 "operators can dump via..." 但从没有人真这么做过；(b) 每次部署重置；(c) 跨进程不可见。PR-31 的 durable table 和 PR-26 的 orphan emitter 把这个 Counter 承载的需求全覆盖了——留着只是多一条和真实数据漂移的可能性。
+
+PR-31c 就是把源 3 砍掉。剩下两条源：log line 做 human-timeline grep，durable table/NDJSON 做机器查询，分工干净。
+
+### 改动
+
+- `novaic-business/business/internal/subagent_state.py`：
+  - 删除 `_transitions: Counter`、`dump_transition_counters()`。
+  - `_bump_counter()` 改名 `_log_breadcrumb()`，只保留结构化 log 调用。
+  - `transition()` 在非 noop 分支调用 `_log_breadcrumb` 而不是 bump counter。
+  - `__all__` 去掉 `dump_transition_counters`。
+
+- `novaic-cortex/novaic_cortex/scope_state.py`：
+  - 删除 `_transitions: Counter`、`dump_transition_counters()`、`Counter` 导入。
+  - `_record_transition()` 改名 `_emit_transition()`，只保留 `logger.info` + `log_cortex`。transition() 仍然 await `append_transition` 写 NDJSON。
+  - `__all__` 去掉 `dump_transition_counters`。
+
+- `novaic-business/tests/test_subagent_state.py`：
+  - 删除 `_reset_counters` autouse fixture。
+  - 把所有 `assert subagent_state._transitions[...] == N` 的断言改成 `fake.transition_subagent.assert_called_once_with(...)` 或 `fake.call_args.kwargs[...] == ...`——比 Counter 断言更精确（直接 pin 了 wire 上的 kwargs）。
+  - `test_self_loop_noop_does_not_bump_counter` 改成 `test_self_loop_noop_returns_noop_true`，用 `caplog` 确认 breadcrumb log line 不出现（取代 Counter 为 0 的断言）。
+  - `test_metric_key_is_from_to_slash_reason` 改成 `test_each_transition_makes_one_client_call_with_reason`——同样的意图（reason 被正确透传），新的断言基于 mock call_args。
+
+- `novaic-cortex/tests/test_scope_state.py`：
+  - 把 `_reset_counters` 替换成 `log_mock` autouse fixture（patch `scope_state_log.append_transition`）。autouse 同时修了一个 pre-existing 隐患：PR-31 之后这些 test 的 `transition()` 非 noop 路径默默往 `$HOME/.novaic/cortex/` 写 NDJSON。
+  - 把 `dump_transition_counters()` 断言改成 `log_mock.await_args.kwargs` 或 `log_mock.await_count` 断言。
+  - `test_self_loop_is_noop_no_metric_bump` → `test_self_loop_is_noop_and_writes_no_log_row`（INV-5 测的是 "retry 不多写一行"，改成直接看 log_mock 没被 await 即可）。
+
+- `novaic-cortex/tests/test_scope_state_log.py`：删除 `_reset_counters` autouse（Counter 没了没什么可 reset 的）。
+
+### 不影响
+
+- Log line 完全保留——`rg subagent_state subagent=<id>` / `rg scope_state scope=<path>` 还是 operator 扫跨服务时间线的入口。
+- Durable table（`*_state_transitions`）+ Cortex NDJSON 完全保留，写入时机和 PR-31/PR-31b 一致。
+- Entangled 侧没有 Counter，不在 scope 内。
+
+### 验收（local）
+
+```bash
+# Business: 18/18 scope_state tests + 61/61 full suite
+cd novaic-business
+pytest tests/test_subagent_state.py -q
+pytest -q --ignore=tests/contract --ignore=tests/test_outbox_endpoints.py --ignore=tests/test_message_trace.py
+
+# Cortex: 24/24 scope_state + scope_state_log
+cd ../novaic-cortex
+pytest tests/test_scope_state.py tests/test_scope_state_log.py -q
+```
+
+全仓搜索 `dump_transition_counters` 和 `_transitions[` 只剩在 commit message / historical 文档里的引用，运行时代码 0 命中。
+
+### 生产影响
+
+纯代码精简，无 schema 变更，无新 endpoint，无部署 order 约束。部署后唯一的可观察差异：**不再可能**通过 `python -c "from business.internal.subagent_state import dump_transition_counters; print(dump_transition_counters())"` 拿到进程内 counter——该 helper 已删除。operator 想要等价信息，用：
+
+```bash
+curl -H "X-Service-Token: $TOKEN" \
+     "http://127.0.0.1:19900/v1/state_transitions/subagent/$SID?limit=50"
+```
+
+或者对 count/rate 查询直接 `sqlite3 entangled.db` + `SELECT COUNT(*) FROM subagent_state_transitions GROUP BY from_state, to_state, reason`。

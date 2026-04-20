@@ -123,7 +123,13 @@ rg "subagent_state" business-*.log | awk '{print $NF, $0}' | sort | tail
 - Runtime 侧 `entity_update("subagents", ...)` 在 payload 里挂
   `_transition_reason` / `_transition_actor`，业务 `PATCH /internal/entities/subagents/{id}`
   自动转路由到 `transition()`。
-- PR-31 将把模块级 Counter 迁到持久 `subagent_state_transitions` 表。
+- PR-31 把转移历史落到持久 `subagent_state_transitions` 表；PR-31c（2026-04-15）
+  进一步删除了进程内 `_transitions` Counter（曾经存在于
+  `business.internal.subagent_state` 和 `novaic_cortex.scope_state`）。想拿到
+  transition 计数/速率的话，不再有 `dump_transition_counters()`——直接查表：
+  `sqlite3 ~/.novaic/data/entangled.db "SELECT from_state, to_state, reason,
+  COUNT(*) FROM subagent_state_transitions GROUP BY 1,2,3"`，或者走
+  `GET /v1/state_transitions/subagent/<id>?limit=N` 单实体回放。
 
 ## Cortex Scope 状态异常查因（PR-29 state machine，2026-04-15）
 
