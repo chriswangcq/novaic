@@ -51,14 +51,10 @@ POST /v1/messages/{message_id}/transition
 
 裸 SQL `UPDATE chat_messages SET lifecycle = ...` 在仓库内会被 ripgrep 扫到并让 lint 失败，仅以下文件在白名单内：
 
-- `Entangled/packages/server-python/entangled/sql/message_state.py`（状态机本身 + `backfill_lifecycle`）
+- `Entangled/packages/server-python/entangled/sql/message_state.py`（状态机本身）
 - `Entangled/packages/server-python/entangled/app/message_state.py`（HTTP 入口）
 - `Entangled/packages/server-python/tests/`、根 `tests/`、`docs/`（测试 / 文档允许出现样例 SQL）
 - `scripts/gateway/`、`scripts/ci/lint_lifecycle.sh` 自身
-
-### 1.3 一次性 backfill
-
-`SqlEntityStore.ensure_schema(MESSAGES_DEF)` 在首次 deploy 后会自动调用 `backfill_lifecycle()`，对所有 `lifecycle='pending' AND (processed=1 OR claimed_by IS NOT NULL)` 的旧行做一次性回填到 `consumed`/`claimed`，**幂等**——后续重启不会重复回填。
 
 ---
 
