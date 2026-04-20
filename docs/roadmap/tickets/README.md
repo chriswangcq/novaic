@@ -77,6 +77,8 @@
 | PR-32  | `[x]`  | [Metrics 兜底落地（零依赖 registry + 13 条 golden signal）](PR-32-metrics-prometheus-integration.md) | PR-06, PR-07, PR-08, PR-10, PR-14, PR-16 | OBS-3 | 1 d                                  | 2026-04-21 |
 | **M4** | —      | **状态机化**                                                                                        | PR-28..PR-31                      | —           | —                                    | —          |
 | PR-33  | `[x]`  | [env shrink + services.json runtime_switches](PR-33-env-shrink.md)                              | PR-17                             | R-FAIL-LOUD | 1 d（2026-04-20 六阶段一轮落地）              | __         |
+| PR-34  | `[x]`  | [Worker 同步化（34a-34e 五步分 PR）](PR-34-worker-sync.md)                                              | PR-33（并行 mergeable）                | 系统简单        | 5 × 0.5 d（2026-04-19/20 bake gate 撤销） | __         |
+| PR-35  | `[x]`  | [chat_reply 静默 400 双层防御（hotfix）](PR-35-silent-fail-runtime-fill-defaults.md)                  | —                                 | 无静默失败       | 0.5 d（2026-04-19 prod 上线）              | wangchaoqun |
 
 
 ---
