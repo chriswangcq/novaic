@@ -249,13 +249,22 @@ $PY $MAIN scheduler \
 # log_startup_snapshot() line in the new subscriber log file
 # (subscriber-YYYYMMDD.log) is the audit trail.
 SUBSCRIBER_ENABLED=$(_cfg "['runtime_switches']['subscriber_enabled']")
+# PR-20 (2026-04-20): --cortex-url enables the buffered-dispatch
+# trace-append path (scope.meta.input_message_ids). Subscriber
+# soft-fails on Cortex transport errors — never blocks the core
+# outbox drain — so passing this URL is safe even during Cortex
+# restarts.
+#
+# PR-24 hotfix (2026-04-15): the comment block above USED TO live
+# between the ``PYTHONPATH=... \`` assignment and the ``python
+# main_subscriber.py`` invocation. That backslash-newline-comment
+# pattern is a bash silent-failure trap: the comment terminates the
+# line continuation, the assignment becomes a dangling shell variable
+# (NOT exported), and the subprocess launches WITHOUT PYTHONPATH →
+# ``from common.config import ServiceConfig`` raises ModuleNotFoundError
+# the instant the subscriber tries to boot. Keep comments here.
 if [ "$SUBSCRIBER_ENABLED" = "True" ]; then
     PYTHONPATH="$BASE/Entangled/packages/server-python:$BASE/novaic-common:$BASE/novaic-business:${PYTHONPATH:-}" \
-    # PR-20 (2026-04-20): --cortex-url enables the buffered-dispatch
-    # trace-append path (scope.meta.input_message_ids). Subscriber
-    # soft-fails on Cortex transport errors — never blocks the core
-    # outbox drain — so passing this URL is safe even during Cortex
-    # restarts.
     $(py novaic-gateway) "$BASE/novaic-business/main_subscriber.py" \
         --data-dir "$DATA_DIR" \
         --entangled-url "$ENTANGLED_URL" \
