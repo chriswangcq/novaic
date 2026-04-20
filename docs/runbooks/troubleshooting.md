@@ -125,6 +125,50 @@ rg "subagent_state" business-*.log | awk '{print $NF, $0}' | sort | tail
   自动转路由到 `transition()`。
 - PR-31 将把模块级 Counter 迁到持久 `subagent_state_transitions` 表。
 
+## Cortex Scope 状态异常查因（PR-29 state machine，2026-04-15）
+
+Cortex 的 scope 生命周期写入只有一条合法路径：
+`novaic_cortex.scope_state.transition(...)`（`workspace.complete_child_scope` /
+`workspace.archive_root_scope` / `workspace.create_scope` 都已迁过去）。
+每次合法转移会留下两行：
+
+```
+scope_state scope=<scope_path> <from_phase> -> <to_phase> reason=<r> actor=<a>
+[CORTEX] scope.state_transition scope_path=... from_state=... to_state=... reason=... actor=...
+```
+
+常见问题定位：
+
+```bash
+cd /opt/novaic/data/logs
+
+# 1. 某 scope 完整生命周期（创建 → 归档）
+rg "scope_state scope=/ro/active/<scope_id>" cortex-*.log
+
+# 2. 试图复活终态 scope（违反 INV-6）
+rg "InvalidScopeTransition|archived -> executing" cortex-*.log
+
+# 3. 重复 scope_end 是否被 idempotent self-loop 吞了（应见 noop=True）
+rg "scope_state scope=/ro/scopes/<scope_id> archived -> archived" cortex-*.log
+# 没结果是预期 —— self-loop 不会写日志/不 bump metric，只刷新 ended_at
+```
+
+### 常见信号
+
+| 现象 | 解读 |
+|------|------|
+| `reason=scope_end_root actor=cortex.workspace` | 用户主动 wake/interrupt 触发的根 scope 归档；正常 |
+| `reason=scope_end_child actor=cortex.workspace` | skill_end 关闭的子 scope；正常 |
+| `InvalidScopeTransition: archived -> executing` | 调用方在试图复活已归档 scope —— 一定是 bug，定位 caller |
+| `complete_child_scope` 的日志只有 `scope.child_completed` 没有 `scope_state` | 走了直写 `meta["phase"]` 旁路 —— `scripts/ci/lint_scope_phase.sh` 应该提前拦下 |
+
+### 原理
+
+- `scope_state.py` 的 `ALLOWED` 矩阵：`EXECUTING` 可去 `COMPACTING/ARCHIVED/FAILED`；`ARCHIVED`/`FAILED` 出度为 0（终态）。
+- INV-5（scope_end 幂等）由 `transition()` 内的 `current == to` 自环实现：noop 不 bump metric，但仍允许 `extra` 写入（让重试刷新 `ended_at`）。
+- INV-6（archival 方向性）由 `ARCHIVED` 出度为空集结构性保证，根本不可能写出 `archived -> executing`。
+- `scripts/ci/lint_scope_phase.sh` 禁止任何文件直写 `meta["phase"]` 或 dict 字面量 `"phase": "archived"`，强制走 `transition()`。
+
 ## 消息没回复的 SOP（PR-25 trace，2026-04-15）
 
 第一步不是 grep 日志，是 curl trace。端点把 chat_messages + message_outbox
