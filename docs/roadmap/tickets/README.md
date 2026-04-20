@@ -56,8 +56,8 @@
 | PR-18 | `[x]` | [删除 Business `_dispatch_trigger`](PR-18-remove-dispatch-trigger.md) | PR-17 | R1+R6 | 0.5 d | __ |
 | PR-19 | `[x]` | [HealthWorker → recovery-only](PR-19-healthworker-recovery-only.md) | PR-17 | R1+R5 | 0.5 d | __ |
 | **M2** | — | **主路径切换 ✅** | PR-14..PR-19 | — | — | — |
-| PR-20 | `[ ]` | [Scope `meta.input_message_ids`](PR-20-scope-input-message-ids.md) | PR-10 | R4 | 1 d | __ |
-| PR-21 | `[ ]` | [`chat_messages.lifecycle` 枚举 + state_transition()](PR-21-message-lifecycle-enum.md) | PR-14 | R4+R8 | 1 d | __ |
+| PR-20 | `[x]` | [Scope `meta.input_message_ids`](PR-20-scope-input-message-ids.md) | PR-10 | R4 | 1 d | 2026-04-15 |
+| PR-21 | `[x]` | [`chat_messages.lifecycle` 枚举 + state_transition()](PR-21-message-lifecycle-enum.md) | PR-14 | R4+R8 | 1 d | 2026-04-15 |
 | PR-22 | `[ ]` | [subscriber 成功 dispatch → transition claimed](PR-22-subscriber-transition-claimed.md) | PR-16, PR-21 | R4 | 0.5 d | __ |
 | PR-23 | `[ ]` | [scope_end → transition inputs to consumed](PR-23-scope-end-consumed.md) | PR-20, PR-21 | R4 | 0.5 d | __ |
 | PR-24 | `[ ]` | [LogContext contextvar + service-wide bind](PR-24-logcontext-scope-id-binding.md) | PR-20 | R4 | 1.5 d | __ |
