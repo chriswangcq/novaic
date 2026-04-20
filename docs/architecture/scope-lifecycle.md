@@ -172,5 +172,78 @@ PR-22 和 PR-23 都会被重试（outbox redelivery / saga re-entry）。如果 
 - **PR-22 (本页 §3.1)**：点亮 `claimed` 入口。
 - **PR-23 (本页 §3.2)**：点亮 `consumed` 出口。
 - **PR-25 (端到端追踪)**：依赖 PR-20 的 `input_message_ids` 反向索引拼链路图。
-- **PR-26 (孤儿扫描)**：依赖 PR-21 的 `lifecycle='claimed'` + `claimed_by_scope` 双字段，扫描"claimed 超过 N 分钟仍未 consumed"的行做兜底告警。
-- **PR-19 (HealthWorker recovery-only)**：恢复路径会调用 `transition(to='claimed')`，复用相同入口。
+- **PR-26 (本页 §4)**：已落地。依赖 PR-21 的 `lifecycle='pending'` + outbox JOIN 做"`pending` 超时"扫描告警。
+- **PR-27 (本页 §4)**：已落地。PR-26 扫到的 crit 孤儿走 `TriggerType.RECOVERED` 再派发，然后复用 PR-22 的 `claimed` 入口。
+- **PR-19 (HealthWorker recovery-only)**：HealthWorker 的唯一身份就是 Queue timeout recovery + PR-26/27 孤儿兜底；主路径 dispatch 全归 subscriber。
+
+---
+
+## 4. PR-26 / PR-27 — `pending` 超时的兜底告警 + 自愈
+
+PR-22/23 是"主路径成功时让状态机正确流动"，PR-26/27 是"主路径失败时有人
+能看到 + 有人能自愈"。这条链挂在 `HealthWorkerSync` 上（同一个 worker 进程、
+同一个 tick，`check_interval` 默认 30s）。
+
+### 4.1 PR-26 — 孤儿扫描 + 告警
+
+**查询源**：`GET /v1/orphans?min_age_sec=&limit=&include_delivered_pending=`
+（`Entangled/packages/server-python/entangled/app/orphans.py`）。做
+`chat_messages LEFT JOIN message_outbox`，返回 `{message_id, agent_id,
+age_seconds, severity, lifecycle, outbox_attempts, outbox_last_error,
+outbox_delivered_at, ...}`。
+
+**代理**：`GET /internal/messages/orphaned`（Business 薄代理），Entangled
+不可达时 502（blind scanner 比 noisy 的更糟）。
+
+**严重度**：server-side 计算
+- `created_at < now - 300s` → `crit`
+- 否则 → `warn`
+
+**告警**：`HealthWorker._scan_and_recover_orphans` 每 tick 拉一次，打日志：
+
+```
+crit:  ERROR   ORPHAN message_id=<id> agent=<a> age=<s>s attempts=<n> last_error=<...>
+warn:  WARNING orphan_warn message_id=<id> ...
+```
+
+**去重**：`(message_id, severity)` 级别，`ORPHAN_EMIT_DEDUP_SEC=600s`。
+同严重度不重复打；`warn → crit` 升级会在新严重度再打一次，所以 ops 用
+`rg ORPHAN` 能直接看到"什么时候升级的"。
+
+### 4.2 PR-27 — 孤儿再派发
+
+**入口**：`HealthWorker._maybe_recover(message_id, agent_id, attempts)`，
+仅 `severity='crit'` 的 row 会进来。
+
+**attempts 门**：`outbox.attempts < MAX_RECOVERED_ATTEMPTS`（默认 3）。到
+达 / 超过 → 打 `PERMANENT_ORPHAN` ERROR，`metrics.permanent_orphans++`，**不
+调 assembler**。ops 必须人工介入，因为这表示主路径已经连着试了 3 次都失败。
+
+**再派发**：走一个 **独立的** `DispatchAssembler`（`service_name="runtime-recovery"`），
+调 `assemble_and_dispatch_sync(TriggerType.RECOVERED, agent_id, message_ids=[id],
+metadata={"recovered_from": "orphan", ...})`。Queue Service metrics 以
+`caller` label 区分 `business-subscriber`（主路径）和 `runtime-recovery`
+（孤儿兜底）——**不要**让 caller 收到"recovery / 6000 dispatch = 0.1%"的时候
+以为主路径有问题。
+
+**claim**：成功后复用 PR-22 路径 —— `POST /internal/messages/bulk-transition`
+（batch size 1），`to="claimed" scope_id=result.scope_id reason="recovered"`。
+PR-23 的 noop 语义让这里和 subscriber 的并发 claim 无冲突。
+
+**错误分类**：
+
+| `DispatchError.kind`      | 动作                                        |
+|---------------------------|---------------------------------------------|
+| `no_owner` / `bad_argument` | 打 `PERMANENT_ORPHAN`，不重试                |
+| `queue_5xx` / `network`   | 只计数，下个 tick 再试（仍受 attempts 门约束）|
+| 未知异常                  | 同上                                        |
+
+### 4.3 这条链解决的"10 分钟没人发现"问题
+
+PR-26 前，一条 dispatched 但没进 saga 的 message 会永远停在 `pending`，
+没有任何 metric / log 会提醒。PR-26 后：
+- 30s 打 WARN，300s 打 ERROR `ORPHAN`
+- 300s 后 PR-27 自动尝试 re-dispatch（最多 3 次）
+- 超过 3 次自动打 `PERMANENT_ORPHAN`，这时日志里一定有 3 条带
+  `recovered_dispatched_failed` 的记录 + `outbox.last_error` 的具体原因。
+

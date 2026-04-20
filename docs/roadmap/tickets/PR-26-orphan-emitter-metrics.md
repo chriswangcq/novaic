@@ -5,12 +5,34 @@
 | **Phase** | 4（pending 告警） |
 | **Milestone** | M3 |
 | **承诺** | R5 |
-| **Status** | `[ ]` |
+| **Status** | `[x]` (2026-04-15) |
 | **Depends on** | PR-19, PR-21 |
 | **Blocks** | PR-27 |
 | **估时** | 1 d |
 | **Owner** | __ |
-| **PR 标题** | `feat(runtime+business): orphan emitter (metrics + alert + internal view)` |
+| **PR 标题** | `feat(runtime+business+entangled): orphan emitter (/v1/orphans JOIN + /internal/messages/orphaned proxy + HealthWorker scan)` |
+
+## 实施总结（2026-04-15）
+
+落地后的形态（与 RFC 的主要差异只在数据归位，不在行为）：
+
+- **Entangled** — 新增 `GET /v1/orphans?min_age_sec=&limit=&include_delivered_pending=`
+  （`entangled/app/orphans.py`）。做 `chat_messages LEFT JOIN message_outbox`，
+  server-side 计算 `age_seconds` / `severity`，返回 `{orphans[], count,
+  warn_count, crit_count, now_ms}`。LEFT JOIN 保证"有 chat_messages 但
+  没 outbox 行"这种**就是可疑的**状态不被掩盖（见 endpoint docstring）。
+- **Business** — 新增 `GET /internal/messages/orphaned`（thin proxy，
+  `business/internal/message.py`），复用现有的 bulk-transition HTTP
+  client，Entangled 不可达时 502（不是 empty list —— blind scanner 比
+  noisy 的更糟）。ops + runtime 通过这一个 URL 拿同样的数据。
+- **HealthWorker** — `task_queue/workers/health_worker.py` 的 `_perform_check`
+  里同时跑 recover-all + orphan scan，一个 tick 一次 round-trip 到 Business。
+  - dedup：`_orphan_emitted: {msg_id: (ts, severity)}`，`ORPHAN_EMIT_DEDUP_SEC`
+    （默认 600s）内同严重度不重复打 log；warn→crit 升级会再打一次。
+  - metrics：`orphans_seen / orphans_warned / orphans_crit` 走
+    `HealthWorkerMetrics.to_dict()`，没有 metrics 模块之前这就是 ops 能拿到的。
+- **阈值 env**：`PENDING_WARN_SEC=30` / `PENDING_CRIT_SEC=300` /
+  `ORPHAN_EMIT_DEDUP_SEC=600`（`MAX_RECOVERED_ATTEMPTS` 归 PR-27 用）。
 
 ## 目标
 
