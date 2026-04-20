@@ -169,5 +169,102 @@ pytest tests/test_subagent_state.py
 
 ### 后续可做
 
-- **PR-31b**（可选）：把 `record_subagent_transition` 改成同步 in-Entangled 路径——如果 Business 的幂等 state 写入迁移到 Entangled 侧，顺带合入。
+- **PR-31b**（已完成，2026-04-15）：见下方。
 - **PR-31c**（可选）：metric emitter (PR-26) 改读 `*_state_transitions` 表，消除 "日志 grep + 表查询" 两条并行事件源。
+
+---
+
+## PR-31b（subagent 状态机 server-side 化，2026-04-15）
+
+### 背景
+
+PR-31 原始实现里 Business 的 `subagent_state.transition` 走了 3 次 HTTP：
+
+1. `GET /v1/entities/subagents/{id}`（读当前 status）
+2. `PATCH /v1/entities/subagents/{id}`（写新 status）
+3. `POST /v1/state_transitions/subagent`（best-effort 写历史）
+
+步骤 2 和 3 之间不具原子性——Business 在这两步之间崩溃会导致 history 丢一条，这是 PR-31 最初就承认的观测性妥协。既然 `message_state.transition` 早在 PR-21 就做到"server-side transition + co-tx 历史"的范式，用同样的模式收掉 subagent 的历史断档显然是顺手的事。
+
+### 架构变化
+
+| 维度 | Before（PR-31） | After（PR-31b） |
+| --- | --- | --- |
+| HTTP 往返数 | 3（GET / PATCH / POST） | 1（POST `/v1/subagents/{agent_id}/{subagent_id}/transition`） |
+| 原子性 | status 写入独立于 history；crash 丢 history | `subagents.status UPDATE` + `subagent_state_transitions INSERT` 在同一个 `transaction("global")` 内 |
+| 校验位置 | Business 的 ALLOWED matrix + 自环检测 + Entangled 侧 PATCH 无校验 | Entangled 内部再次校验（defense in depth），Business 的 `ALLOWED` 退化为 informational |
+| 错误映射 | Business 本地 raise | HTTP 404 → `SubagentNotFound`，HTTP 409 → `SubagentInvalidTransition`；client 翻译回 Business 的 local exceptions |
+
+### 新文件
+
+- `Entangled/packages/server-python/entangled/sql/subagent_state.py` — `ALLOWED_TRANSITIONS` + `EXTRA_ALLOWLIST` + `transition(db, subagent_id, agent_id, *, to, reason, actor, extra)` core。
+- `Entangled/packages/server-python/entangled/app/subagent_state.py` — FastAPI router（`POST /v1/subagents/{agent_id}/{subagent_id}/transition`、`GET /v1/subagents/states`）。
+- `Entangled/packages/server-python/tests/test_subagent_state.py` — 9 条单测（atomic UPDATE、self-loop extras、illegal transition、missing subagent、bogus `extra` key 被 drop、co-tx history row）。
+
+### 修改点
+
+- `Entangled/.../app/factory.py`：注册 `subagent_state_router`；在 `lifespan` 里 eagerly 调用 `ensure_state_transitions_schema(db)`（PR-31 hotfix：`ensure_all_schemas` 从没被调用过，之前的 wiring 是死代码）。
+- `Entangled/.../sql/state_transitions.py`：`append_subagent_transition` 变成 transaction-agnostic（配合 `message_state` 现有模式）；deadlock hotfix，详见下方。
+- `Entangled/.../app/state_transitions.py`：遗留 `POST /v1/state_transitions/subagent` shim 显式 wrap 自己的 `transaction("global")`（因为 helper 不再开事务）。
+- `novaic-common/common/entangled_client.py`：新增 `transition_subagent`；`EntangledClientError` 挂上 `status_code` 字段；新增 `SubagentNotFound` / `SubagentInvalidTransition` 两个 typed exception。
+- `novaic-business/business/internal/subagent_state.py`：`transition()` 全量改为 delegate 到 client。`_record_transition` 改名 `_bump_counter`（不再发 HTTP，只维护进程内 Counter 给测试用）。`ALLOWED` / `SubagentStatus` 保留作后向兼容（introspection callers 还在读）。
+- `novaic-business/tests/test_subagent_state.py`：重写成 mock HTTP client 驱动，18 条全绿。
+
+### 部署阶段的两个活坑
+
+1. **死代码 schema wiring（PR-31 hotfix，生产跑了一次就炸）**：`ensure_state_transitions_schema` 最初挂在 `SqlEntityStore.ensure_all_schemas` 里，但那个方法在生产根本没人调用（Entangled 走的是 `POST /v1/schema/register` 动态注册链，只跑 `SqlEntityDef` 注册的实体）。结果第一次部署后 `sqlite3 .tables` 看不到 `message_state_transitions` / `subagent_state_transitions`——幂等 self-loop 过滤器把所有 transition 压住了，没暴露成 500。修：挪进 `app.factory.lifespan`，跑在每次启动的 sync_versions 之后。
+
+2. **嵌套事务死锁（PR-31b hotfix，smoke 15s timeout 才暴露）**：`append_subagent_transition` 原本自己 `with db.transaction("global"):`。遗留 shim 走得通是因为它是唯一 caller。PR-31b 让 `subagent_state.transition` 也调用它时——外层已经拿了 global 写锁——nested acquisition 在真 SQLite 上直接死锁。对比参考 `append_message_transition` 一直都是 transaction-agnostic。修：`append_subagent_transition` 去掉内层事务，让遗留 shim 自己 wrap。**单测没发现因为 `FakeDatabase` 的 CM 是无锁可重入的**。
+
+### 生产 smoke（2026-04-15，api.gradievo.com）
+
+```bash
+# Step 1: self-loop sleeping -> sleeping，应为 noop，不写日志
+curl -X POST http://127.0.0.1:19900/v1/subagents/$AID/$SID/transition \
+     -H "X-Service-Token: $TOKEN" \
+     -d '{"to": "sleeping", "reason": "smoke-selfloop", "actor": "ops-smoke"}'
+# → HTTP 200, {"noop": true}, history table unchanged
+
+# Step 2: sleeping -> awake，必须原子 UPDATE + 写 history row
+curl -X POST http://127.0.0.1:19900/v1/subagents/$AID/$SID/transition \
+     -H "X-Service-Token: $TOKEN" \
+     -d '{"to": "awake", "reason": "smoke-flip-awake", "actor": "ops-smoke"}'
+# → HTTP 200, {"noop": false}, subagents.status='awake', history row id=1
+
+# Step 3: awake -> sleeping with extras（need_rest=0）
+curl -X POST http://127.0.0.1:19900/v1/subagents/$AID/$SID/transition \
+     -H "X-Service-Token: $TOKEN" \
+     -d '{"to": "sleeping", "reason": "smoke-flip-sleeping", "actor": "ops-smoke",
+          "extra": {"need_rest": 0}}'
+# → HTTP 200, {"noop": false}, subagents.status='sleeping', history row id=2
+
+# History replay
+curl -H "X-Service-Token: $TOKEN" \
+     "http://127.0.0.1:19900/v1/state_transitions/subagent/$SID?limit=10"
+# → {"count": 2, "rows": [id=1 sleeping->awake, id=2 awake->sleeping]}
+```
+
+所有三次 call <3ms，端态 `sleeping → sleeping`（幂等无副作用），history 表精确记下 2 条非 noop 转移。
+
+### 验收（local）
+
+```bash
+# Entangled
+cd Entangled/packages/server-python
+pytest tests/test_subagent_state.py tests/test_state_transitions.py
+# 9 + 10 passed
+
+# Business
+cd ../../../novaic-business
+pytest tests/test_subagent_state.py
+# 18 passed
+
+# 全量回归
+cd ../Entangled/packages/server-python
+pytest tests/  # 99 passed
+```
+
+### 后续可做
+
+- **PR-31c**（未动）：metric emitter (PR-26) 改读 `*_state_transitions` 表，统一事件源。
+- **补充 lint**：`scripts/ci/lint_subagent_status.sh` 已经禁止裸 `UPDATE subagents SET status`；PR-31b 后可以再加一条禁止直接 POST 到 `/v1/state_transitions/subagent`（强制走 `transition_subagent`），消除遗留 shim 的诱惑。
