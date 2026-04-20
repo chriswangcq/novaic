@@ -45,18 +45,25 @@
 #     8. Print next-step instructions (do NOT auto-enable subscriber)
 #
 # Post-deploy (operator-driven, NOT automated by this script):
-#   To enter Canary 阶段 1, on the production host (PR-33 Phase 3 flow):
-#     1. Edit /opt/novaic/services/novaic-common/config/services.json and set
-#          "runtime_switches": {
+#   TD-5 (2026-04-15) flow — edit the OVERLAY file, never services.json.
+#   The overlay lives outside $REMOTE_ROOT so rsync cannot stomp it.
+#     1. Edit /opt/novaic/etc/runtime_switches.json (single file, all
+#        services read it via common/strict_config.py overlay merge):
+#          {
 #            "subscriber_enabled": true,
 #            "health_check_interval_seconds": 5,
-#            ...
+#            "scheduler_poll_interval_seconds": 1.0,
+#            "fallback_max_per_tick": 50
 #          }
+#        Only keys already defined in services.json's runtime_switches
+#        section are allowed — typos crash loudly at startup.
 #     2. bash /opt/novaic/start.sh --stop
 #        bash /opt/novaic/start.sh
 #     3. Verify:
 #          grep "runtime_switches=" /opt/novaic/data/logs/business-$(date +%Y%m%d).log | head -1
 #        should show subscriber_enabled=true. No env exports any more.
+#   Editing services.json on prod is a dead end — the overlay wins at
+#   load time and the next rsync stomps your edit anyway.
 #
 # Safety:
 #   - --first-time ALWAYS backs up DB before touching code.
@@ -133,6 +140,12 @@ RSYNC_EXCLUDES=(
     --exclude '*.db-wal'
     --exclude '*.db-shm'
     --exclude '.DS_Store'
+    # TD-5 (2026-04-15): runtime_switches.json lives on prod as an
+    # overlay (canonical path: /opt/novaic/etc/runtime_switches.json,
+    # read by common/strict_config.py). Excluding the per-service
+    # sibling form belt-and-braces: if anyone ever drops a sibling
+    # on prod we never stomp it during rsync.
+    --exclude 'runtime_switches.json'
 )
 
 # ── first-time only: DB backup + code snapshot ───────────────────────────────
@@ -221,12 +234,53 @@ rsync -az --delete "${RSYNC_EXCLUDES[@]}" \
 
 echo ""
 
+# ── Seed runtime_switches overlay (TD-5) ─────────────────────────────────────
+# PR-33's runtime_switches used to live inside services.json itself, so
+# every rsync -azL --delete run above would stomp operator flips (most
+# visibly: subscriber_enabled True → False on every deploy, forcing a
+# three-file hand-patch — see docs/runbooks/troubleshooting.md).
+#
+# TD-5 root-fix: the committed services.json still carries the defaults,
+# but common/strict_config.py now deep-merges an overlay at
+# /opt/novaic/etc/runtime_switches.json on top of them. That path lives
+# outside $REMOTE_ROOT (== /opt/novaic/services) so rsync physically
+# cannot touch it. The block below seeds the overlay on the FIRST deploy
+# only — after that it's an immutable operator-owned file.
+echo "=== Seeding runtime_switches overlay (TD-5, idempotent) ==="
+REMOTE_OVERLAY="/opt/novaic/etc/runtime_switches.json"
+ssh "$TARGET" bash -s <<EOF
+set -eu
+mkdir -p /opt/novaic/etc
+if [ -f "$REMOTE_OVERLAY" ]; then
+    echo "  overlay already exists → preserved as operator-owned source of truth"
+    echo "  current contents:"
+    cat "$REMOTE_OVERLAY" | sed 's/^/    /'
+else
+    # Seed with committed defaults from the freshly-rsynced
+    # novaic-common/config/services.json so the first-ever deploy
+    # still behaves exactly like before (subscriber off, canary off).
+    python3 - <<'PYEOF'
+import json
+import pathlib
+
+src = pathlib.Path("/opt/novaic/services/novaic-common/config/services.json")
+dst = pathlib.Path("/opt/novaic/etc/runtime_switches.json")
+payload = json.loads(src.read_text())
+dst.write_text(json.dumps(payload["runtime_switches"], indent=2, sort_keys=True) + "\n")
+print(f"  seeded {dst} from {src}")
+print(f"  initial contents: {dst.read_text().rstrip()}")
+PYEOF
+fi
+EOF
+echo ""
+
 # ── Start services ───────────────────────────────────────────────────────────
-# PR-33 Phase 3 (2026-04-20): canary toggle is now services.json →
-# runtime_switches.subscriber_enabled, not env. This script never rewrites
-# services.json — operators must opt-in to canary by editing the file and
-# restarting. No env exports required.
-echo "=== Starting services (canary flip = services.json edit + restart) ==="
+# TD-5 (2026-04-15): canary toggle is now a one-line edit to
+# /opt/novaic/etc/runtime_switches.json (single file, all services see
+# it) + restart. services.json copies in $REMOTE_ROOT are
+# rsync-owned — editing them is useless because the overlay wins and
+# the next deploy will stomp them anyway.
+echo "=== Starting services (canary flip = edit $REMOTE_OVERLAY + restart) ==="
 ssh "$TARGET" "bash $REMOTE_START_SCRIPT"
 echo ""
 
@@ -301,16 +355,19 @@ REMOTE
        ssh $TARGET "tail -F $REMOTE_DATA/logs/business-\$(date +%Y%m%d).log | grep -E 'ERROR|Traceback|agent_owner_lookup.*miss|caller=unknown'"
      All should remain empty.
 
-  2. If clean, enter Canary 阶段 1 (subscriber ON) — PR-33 flow:
-       edit /opt/novaic/services/novaic-common/config/services.json:
-         runtime_switches.subscriber_enabled = true
-         runtime_switches.health_check_interval_seconds = 5
+  2. If clean, enter Canary 阶段 1 (subscriber ON) — TD-5 overlay flow:
+       edit /opt/novaic/etc/runtime_switches.json:
+         {
+           "subscriber_enabled": true,
+           "health_check_interval_seconds": 5
+         }
        then:
          ssh $TARGET "bash $REMOTE_START_SCRIPT --stop && bash $REMOTE_START_SCRIPT"
        verify in business log:
          grep "runtime_switches=" /opt/novaic/data/logs/business-\$(date +%Y%m%d).log | head -1
+       (The overlay survives rsync; editing services.json has no effect.)
 
-  3. Rollback (set subscriber_enabled back to false in services.json, restart):
+  3. Rollback (flip overlay back to subscriber_enabled:false, restart):
        ssh $TARGET "bash $REMOTE_START_SCRIPT --stop && bash $REMOTE_START_SCRIPT"
 
   4. Full code rollback (if subscriber rollback insufficient):

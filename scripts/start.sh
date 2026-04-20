@@ -47,7 +47,8 @@ PORT_DEVICE=19993
 # env bridges injected --enable-subscriber and --check-interval here. Both are
 # deleted — the three values they controlled now live under
 # services.json → runtime_switches.{subscriber_enabled,
-# health_check_interval_seconds, scheduler_poll_interval_seconds}. See
+# health_check_interval_seconds, scheduler_poll_interval_seconds},
+# overlaid on prod by /opt/novaic/etc/runtime_switches.json (TD-5). See
 # docs/roadmap/tickets/PR-33-env-shrink.md §C.2 and
 # docs/runbooks/subscriber-canary.md for the flip procedure (edit + restart).
 # The log_startup_snapshot() INFO line in each service/worker is now the only
@@ -121,8 +122,31 @@ done
 echo "Starting NovAIC backends..."
 
 # ── Secrets (read from services.json, pass as CLI args) ──────────────────────
+#
+# TD-5 (2026-04-15): ``runtime_switches`` values are overlaid by
+# /opt/novaic/etc/runtime_switches.json (managed by operators, survives
+# rsync — see common/strict_config.py for the loader logic). The helper
+# below mirrors that deep-merge so this script sees exactly the same
+# value Python services do — otherwise start.sh would still launch the
+# subscriber based on the rsync-stomped committed default even though
+# Python saw the overlay's true value.
+_cfg() { python3 - "$1" <<PYEOF
+import json, os, pathlib, sys
 
-_cfg() { python3 -c "import json; d=json.load(open('$BASE/novaic-common/config/services.json')); print(eval('d'+\"$1\"))"; }
+path_expr = sys.argv[1]
+base = json.load(open("$BASE/novaic-common/config/services.json"))
+
+overlay_path = pathlib.Path("/opt/novaic/etc/runtime_switches.json")
+if overlay_path.exists():
+    overlay = json.loads(overlay_path.read_text())
+    if isinstance(overlay, dict) and "runtime_switches" in overlay and len(overlay) == 1:
+        overlay = overlay["runtime_switches"]
+    if isinstance(overlay, dict) and isinstance(base.get("runtime_switches"), dict):
+        base["runtime_switches"].update(overlay)
+
+print(eval("base" + path_expr))
+PYEOF
+}
 
 JWT_SECRET=$(_cfg "['secrets']['jwt_secret']")
 OSS_AK=$(_cfg "['secrets']['alibaba_cloud_access_key_id']")
@@ -243,9 +267,11 @@ $PY $MAIN scheduler \
 # now visible via `ps aux | grep main_subscriber` and a stale subscriber
 # can no longer take Business API traffic down with it.
 #
-# The runtime_switches.subscriber_enabled read uses the same _cfg helper
-# as the secrets block above. Flip the switch: edit services.json + run
-# `bash $0 --stop && bash $0` on the target host. The
+# The runtime_switches.subscriber_enabled read uses the overlay-aware
+# _cfg helper above: in prod the value is sourced from
+# /opt/novaic/etc/runtime_switches.json so flipping the canary is a
+# one-file edit that survives rsync. Flip the switch: edit that overlay
+# file + run `bash $0 --stop && bash $0` on the target host. The
 # log_startup_snapshot() line in the new subscriber log file
 # (subscriber-YYYYMMDD.log) is the audit trail.
 SUBSCRIBER_ENABLED=$(_cfg "['runtime_switches']['subscriber_enabled']")

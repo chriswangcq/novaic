@@ -247,6 +247,55 @@ curl -s -H "X-Service-Token: $SVC" \
 404 → 消息 id 根本不存在（typo / entity 未落盘）。
 502 → Entangled 起不来，先处理 Entangled。
 
+## Subscriber 每次 deploy 后回到 disabled（TD-5，2026-04-15 根治）
+
+**症状**：运维在生产跑 `deploy-business.sh` 之后，日志里重新出现
+`Subscriber: disabled (runtime_switches.subscriber_enabled=False)`，message_outbox
+停止 drain。手动改 `services.json` 三个拷贝（novaic-common / novaic-gateway /
+novaic-agent-runtime）→ restart 能救活，但下一次 deploy 再次复发。
+
+**根因**：`rsync -azL --delete` 把 committed `services.json` 覆盖回
+`subscriber_enabled: false`。修复前 `runtime_switches` 和代码默认值住在同一文件。
+
+**根治后的正确姿势**（PR-33 §C.2.2 TD-5）：只编辑
+`/opt/novaic/etc/runtime_switches.json`，位置在 `/opt/novaic/services` 之外，
+rsync 物理碰不到。`common/strict_config.py` 在 load 时 deep-merge 这个 overlay。
+
+```bash
+ssh root@api.gradievo.com
+cat /opt/novaic/etc/runtime_switches.json
+# {
+#   "subscriber_enabled": false,
+#   ...
+# }
+
+# 开 canary：
+cat > /opt/novaic/etc/runtime_switches.json <<'JSON'
+{
+  "subscriber_enabled": true,
+  "health_check_interval_seconds": 5,
+  "scheduler_poll_interval_seconds": 1.0,
+  "fallback_max_per_tick": 50
+}
+JSON
+bash /opt/novaic/start.sh --stop && bash /opt/novaic/start.sh
+
+# 确认生效：
+grep 'runtime_switches=' /opt/novaic/data/logs/business-$(date +%Y%m%d).log | head -1
+# → subscriber_enabled=true
+```
+
+**不要**再去编辑 `/opt/novaic/services/novaic-common/config/services.json`（或
+它的 novaic-gateway / novaic-agent-runtime 兄弟拷贝）—— overlay 会盖住你的改动，
+且下一次 deploy 会用 rsync 把文件回滚到 committed 版本。Overlay 里的 key 必须
+和 committed `services.json` 的 `runtime_switches` 段里声明过的 key 完全对齐；
+typo 会在启动时 `ConfigError: unknown key(s) [...]` 硬 fail，这是有意的 —
+静默 no-op 才是 TD-5 要消灭的失败模式。
+
+**首次部署**：`deploy-business.sh` 跑完会自动种子化
+`/opt/novaic/etc/runtime_switches.json`（从 committed defaults），
+已存在则保留 operator-owned 内容。
+
 ## LLM 调用失败排查
 
 1. 日志：`grep -E "429|think.*failed" /opt/novaic/data/logs/task-worker-*.log`
