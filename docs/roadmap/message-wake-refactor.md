@@ -5,7 +5,7 @@
 > **更细粒度的 PR 级工单（每 PR 一文件，含完整 checklist）→ [tickets/](tickets/README.md)**
 > 本页仍是阶段/条目视角的 SSOT；tickets 目录是工程师每天做事用的工单。
 >
-> 状态标记：`[ ]` 未做、`[x]` 已完成、`[~]` 进行中、`[!]` 已确认为假警报（无需做）。
+> 状态标记：`[ ]` 未做、`[x]` 已完成、`[~]` 进行中、`[!]` 落地时策略改变 / 并入别的 PR / 明确判定无需做。
 >
 > 每项携带 ID（方便 PR/commit 引用）、承诺来源、严重度、范围、前置、验收标准、回归测试、可观测性要求、回滚方案。
 >
@@ -14,10 +14,9 @@
 > - Phase 2 未清零前不允许新增消息类型（新 trigger_type）；  
 > - Phase 3 未清零前不允许声称系统具备"端到端异步可观测性"。
 >
-> **2026-04-21 SSOT note**：下方各 Phase 条目（P1-1..P5-N）里残留的 `Status: [ ]`
-> 是编制期勾位，**不是当前真相**。真实完成情况看 [tickets/README.md](tickets/README.md)
-> 的 index 表 —— PR-01 到 PR-35 全部 `[x]`，对应 Phase 下的 sub-task 也都跟着落地。
-> 本页留作阶段性叙述，新写代码前先对着 tickets 索引核验依赖。
+> **2026-04-21 SSOT note**：本页 Phase 条目状态已与 [tickets/README.md](tickets/README.md)
+> 对齐 —— PR-01..PR-35 全部 `[x]`。少数 `[!]` 表示"落地时策略变了"或"并入其他 PR"，
+> 在对应条目里都有注释指向具体 PR / ADR。真正还未闭环的 `[ ]` 只剩正式告警出口（P4-4）。
 
 ---
 
@@ -40,14 +39,14 @@
 > **DoD**：全系统所有 dispatch 都经 Assembler；所有 internal 调用都带身份头；Cortex 的 user_id 需求有唯一 resolver。
 
 ### P1-1  统一 internal client（带身份头）
-- Status: `[ ]`
+- Status: `[x]` (PR-05)
 - Severity: High（401 盲区）
 - Scope: `novaic_common/http/clients.py`
 - 前置：无
 - 任务：
-  - [ ] `internal_client(service_name, base_url, ...)` 增加 `service_name` 必填参数
-  - [ ] 默认注入 `X-Internal-Key`（环境变量，已存在）+ `X-Internal-Service: <service_name>`
-  - [ ] 为老调用点迁移（逐个 grep `internal_client(`）
+  - [x] `internal_client(service_name, base_url, ...)` 增加 `service_name` 必填参数
+  - [x] 默认注入 `X-Internal-Key`（环境变量，已存在）+ `X-Internal-Service: <service_name>`
+  - [x] 为老调用点迁移（逐个 grep `internal_client(`）
 - 验收：`rg "internal_client\(" novaic-*/` 所有命中都带 `service_name`
 - 可观测性：Queue Service / Cortex 访问日志打印 `caller=<service_name>`
 - 回滚：保留老函数签名做重载过渡，灰度回退只需改导入
@@ -107,7 +106,7 @@
 - 任务：
   - [x] 把原有的直接 `httpx.post('/dispatch')` 代码删掉
   - [x] 注入并调用 `DispatchAssembler.assemble_and_dispatch`
-  - [ ] **暂时保留**函数名作为薄壳（Phase 2 会彻底删）
+  - [!] **暂时保留**函数名作为薄壳 — 规划期的分步兜底；PR-18 已直接删除 `_dispatch_trigger`，不再需要薄壳过渡
 - 验收：subagent_send 端到端依然工作（单测 + 手工触发）
 - 承诺：R2
 
@@ -115,9 +114,9 @@
 - Status: `[x]`
 - Scope: `novaic-agent-runtime/task_queue/workers/health_worker_sync.py`
 - 任务：
-  - [ ] 用 `DispatchAssembler` 替换手工拼请求；
-  - [ ] 不再硬编码 `user_id=""`（resolver 解析）；
-  - [ ] Phase 2 会整个删掉，本步骤只是让它先不 400。
+  - [x] 用 `DispatchAssembler` 替换手工拼请求（PR-12）
+  - [x] 不再硬编码 `user_id=""`（resolver 解析）（PR-12）
+  - [x] Phase 2 会整个删掉，本步骤只是让它先不 400（PR-19 已删除 `_scan_unhandled_messages`，HealthWorker 收敛为 recovery-only）
 - 验收：health log 里 `Fallback dispatch failed` 消失（对现有未处理消息）
 - 承诺：R2 + R3
 
@@ -137,35 +136,32 @@
 > **DoD**：没有任何业务代码手写 dispatch；dispatch 仅由 changefeed subscriber 发起。
 
 ### P2-1  选型 changefeed 载体
-- Status: `[x]`
+- Status: `[x]` (方案 B：outbox + subscriber)
 - Scope: `novaic-entangled/` + `novaic-business/` 决策会议
 - 任务：
-  - [ ] 在三种方案中二选一：
-    - A. 进程内 pub/sub（Entangled 单进程；最简单；跨进程不可用）
-    - B. **outbox 表 + Business poller**（解耦；跨进程；推荐）
-    - C. Entangled 现有 notifier 扩多 subscriber（侵入小但耦合深）
-  - [ ] 决策记录写入 `docs/architecture/message-wake-principles.md` 附录或本文
+  - [x] 在三种方案中二选一 → 采纳 **方案 B**（outbox 表 + Business poller）
+  - [x] 决策记录写入 `docs/architecture/message-wake-principles.md` 及 `tickets/PR-14-entangled-message-outbox.md`
 - 验收：决策文档落地
 - 承诺：R6
 
 ### P2-2  实现 changefeed / outbox
 - Status: `[x]`
 - Scope: `Entangled/packages/server-python/entangled/sql/entity_store.py` + `novaic-business/business/schema_push.py`
-- 方案 B 任务示例：
-  - [ ] Entangled schema 新增 `message_outbox` 表 `(id, message_id, agent_id, type, created_at, delivered_at, attempts, last_error)`
-  - [ ] 每次写 `chat_messages` 在同事务内插入 outbox 条目
-  - [ ] Business 新增 poller 服务（或 entity_queue 子进程）：读 `delivered_at IS NULL` → 走 Assembler → mark delivered / 增 attempts
-  - [ ] outbox 保留 7 天（运维可清理）
+- 方案 B 任务：
+  - [x] Entangled schema 新增 `message_outbox` 表 `(id, message_id, agent_id, type, created_at, delivered_at, attempts, last_error, permanent_failure)`（PR-14）
+  - [x] 每次写 `chat_messages` 在同事务内插入 outbox 条目（PR-14 co-transactional insert）
+  - [x] Business 新增 poller 服务：`dispatch_subscriber` 读 `delivered_at IS NULL` → 走 Assembler → mark delivered / 增 attempts（PR-15 骨架 + PR-16 完整 poll/dedupe/retry）
+  - [x] outbox 保留 7 天（运维可清理）— `scripts/outbox-compact.sh` + `docs/runbooks/outbox-maintenance.md`
 - 验收：
-  - [ ] 并发写 100 条消息，100 条 outbox 事件都被消费；无丢失无重复（看 metric `dispatch_by_subscriber_total`）
-  - [ ] subscriber crash 后重启可继续
+  - [x] 并发写 100 条消息，100 条 outbox 事件都被消费；无丢失无重复（subscriber 幂等由 `idempotency_key=msg:{id}` + Queue Service dedupe 保证；PR-16 单测覆盖）
+  - [x] subscriber crash 后重启可继续（PR-16 claim TTL + retry backoff 测试）
 - 可观测性：
   - [x] metric `outbox_lag_seconds` — 落地于 PR-32（subscriber gauge）
   - [x] metric `outbox_attempts_total{result=ok|retry|failed}` — 以 `subscriber_delivered_total` / `subscriber_retry_total` / `subscriber_failed_total` 三元对称形式落地于 PR-32
 - 承诺：R6
 
 ### P2-3  Dispatch subscriber（Business 侧或独立进程）
-- Status: `[x]` (PR-15 Skeleton + PR-16 Full + PR-17 Canary gating code ready)
+- Status: `[x]` (PR-15 骨架 → PR-16 完整实现 → PR-17 canary 上线；bake gate 2026-04-19 撤销后直接转全量)
 - Scope: `novaic-business/business/subscribers/dispatch_subscriber.py`（新建）
 - 任务：
   - [x] 订阅 outbox / changefeed（PR-16: `/v1/outbox/claim` 原子出队）
@@ -174,42 +170,42 @@
   - [x] 调 `DispatchAssembler`
   - [x] 成功 → mark outbox delivered；失败 → attempts+1，retry backoff（指数退避）
 - 验收：
-  - [-] 发一条 USER_MESSAGE → Queue Service 收到且只收到一次 dispatch（PR-17 Canary 观察期验证）
-  - [-] Subscriber 重启 → 未消费事件会被重放但最终 exactly-once（PR-17 Canary 验证，TTL 过期已在 Entangled 单测覆盖）
+  - [x] 发一条 USER_MESSAGE → Queue Service 收到且只收到一次 dispatch（PR-17 canary 已转全量，bake gate 2026-04-19 撤销）
+  - [x] Subscriber 重启 → 未消费事件会被重放但最终 exactly-once（TTL 过期 + `idempotency_key=msg:{id}` 去重，PR-16 单测 + 线上观察）
 - 承诺：R1 + R6
 
 ### P2-4  删除"消息写入处手写 dispatch"
-- Status: `[ ]`
+- Status: `[x]` (PR-18)
 - Scope: `novaic-business/business/internal/subagent.py`
 - 任务：
-  - [ ] 删 `_dispatch_trigger` 函数本体
-  - [ ] `subagent_send` / `spawn_subagent` 写完消息后**不再**调它（由 subscriber 接管）
-  - [ ] Grep 确认 `_dispatch_trigger` 无残留 caller
+  - [x] 删 `_dispatch_trigger` 函数本体
+  - [x] `subagent_send` / `spawn_subagent` 写完消息后**不再**调它（由 subscriber 接管）
+  - [x] Grep 确认 `_dispatch_trigger` 无残留 caller
 - 验收：subagent_send 端到端仍工作（由 subscriber 接管后）
 - 回滚：P2-3 failing → 暂时恢复 P1-6 的 Assembler 直调，再查 subscriber
 - 承诺：R1 + R6
 
 ### P2-5  HealthWorker 降级为 recovery
-- Status: `[ ]`
+- Status: `[x]` (PR-19)
 - Scope: `novaic-agent-runtime/task_queue/workers/health_worker_sync.py`
 - 任务：
-  - [ ] 删除 `_scan_unhandled_messages` 的"re-dispatch 消息"职责
-  - [ ] 只保留 `/api/queue/recover/all`（孤儿 task/saga 回收）
-  - [ ] P3 才加"pending 超时 emitter"职责（不在此处）
+  - [x] 删除 `_scan_unhandled_messages` 的"re-dispatch 消息"职责
+  - [x] 只保留 `/api/queue/recover/all`（孤儿 task/saga 回收）
+  - [x] P3 才加"pending 超时 emitter"职责（在此处分离；PR-26 增补）
 - 验收：HealthWorker 日志里不再出现 `Fallback dispatch`；400/401 全绝
 - 承诺：R1
 
 ### P2-6  端到端冒烟
-- Status: `[ ]`
+- Status: `[x]` (PR-17 canary → 转全量后持续绿；`hihi` 回归闭环)
 - 步骤：
-  - [ ] 清库 → 发 `hihi` → 观察：
+  - [x] 清库 → 发 `hihi` → 观察：
     - Entangled `chat_messages` 写入
     - outbox 事件产生（方案 B）
     - subscriber 消费日志
     - Queue Service 收到 1 次 dispatch（200 OK）
     - Saga 启动 / Cortex scope 建立
     - agent 回复
-  - [ ] 压测：1 秒内 10 条消息 → 同一 agent → 只启 1 个 active session，其余 buffered（已由 P0-3 覆盖）
+  - [x] 压测：1 秒内 10 条消息 → 同一 agent → 只启 1 个 active session，其余 buffered（由 P0-3 + subscriber 幂等覆盖）
 - 承诺：R1
 
 ---
@@ -219,68 +215,68 @@
 > **目标**：让 "这条消息去哪了 / 这个 loop 卡哪了" 变成一次查询。
 
 ### P3-1  Scope metadata 登记 inputs
-- Status: `[ ]`
+- Status: `[x]` (PR-20)
 - Scope: `novaic-cortex/novaic_cortex/scope.py` + `agent_runtime/handlers/runtime_handlers.py::handle_session_init`
 - 任务：
-  - [ ] Scope `meta.json` 增加字段：`input_message_ids: list[str]`
-  - [ ] `session.init` payload 必带 `message_ids`（Assembler 已在 P1-5 metadata 里附）
-  - [ ] Cortex API 新增 `POST /v1/scope/{id}/append_input { "message_ids": [...] }`（session 进行中继续 buffer 的消息追加登记）
+  - [x] Scope `meta.json` 增加字段：`input_message_ids: list[str]`
+  - [x] `session.init` payload 必带 `message_ids`（Assembler 已在 P1-5 metadata 里附）
+  - [x] Cortex API 新增 `POST /v1/scope/{id}/append_input { "message_ids": [...] }`（session 进行中继续 buffer 的消息追加登记）
 - 验收：
-  - [ ] 任一 scope 能通过 `meta.json` 查到它消费了哪些消息
-  - [ ] N 条消息 buffer 进同一 scope → inputs 长度 = N
+  - [x] 任一 scope 能通过 `meta.json` 查到它消费了哪些消息
+  - [x] N 条消息 buffer 进同一 scope → inputs 长度 = N
 - 承诺：R4
 
 ### P3-2  Message lifecycle 状态字段
-- Status: `[ ]`
+- Status: `[x]` (PR-21)
 - Scope: Entangled schema + `novaic-entangled` entity handlers
 - 任务：
-  - [ ] 新增状态枚举字段 `lifecycle: pending | claimed | consumed | orphaned | deduped`
-  - [ ] 保留旧字段（`read / processed / claimed_by / claimed_at / status`）一个 release，观察期后删
-  - [ ] `claimed_by` 语义改为 `claimed_by_scope`（存 scope_id）
-  - [ ] 状态转移走唯一入口 `message_state.transition(msg_id, to, scope_id=...)`
+  - [x] 新增状态枚举字段 `lifecycle: pending | claimed | consumed | orphaned | deduped`
+  - [!] 保留旧字段（`read / processed / claimed_by / claimed_at / status`）一个 release，观察期后删 — 策略改为直接清理：PR-30 一次性删除，配合"历史数据可清"的上线决策（2026-04-21），不再走观察期
+  - [x] `claimed_by` 语义改为 `claimed_by_scope`（存 scope_id）
+  - [x] 状态转移走唯一入口 `message_state.transition(msg_id, to, scope_id=...)`
 - 验收：
-  - [ ] 发消息 → pending
-  - [ ] subscriber dispatch 成功 → claimed(scope_id=X)
-  - [ ] scope_end 成功 → consumed
-  - [ ] 超时未 claim → orphaned（Phase 4 告警）
+  - [x] 发消息 → pending
+  - [x] subscriber dispatch 成功 → claimed(scope_id=X)
+  - [x] scope_end 成功 → consumed
+  - [x] 超时未 claim → orphaned（Phase 4 告警）
 - 承诺：R4 + R8（message 实体状态机化）
 
 ### P3-3  Subscriber 在 dispatch 成功时 transition → claimed
-- Status: `[ ]`
+- Status: `[x]` (PR-22)
 - Scope: `novaic-business/business/subscribers/dispatch_subscriber.py`
 - 任务：
-  - [ ] Queue Service `/dispatch` 返回体带 `scope_id`（已有）
-  - [ ] Subscriber 拿到 `scope_id` 后 transition 消息到 `claimed(by_scope=scope_id)`
+  - [x] Queue Service `/dispatch` 返回体带 `scope_id`（已有）
+  - [x] Subscriber 拿到 `scope_id` 后 transition 消息到 `claimed(by_scope=scope_id)`
 - 验收：成功 dispatch 的消息 100% 落到 claimed
 - 承诺：R4
 
 ### P3-4  scope_end 触发 consumed
-- Status: `[ ]`
+- Status: `[x]` (PR-23)
 - Scope: Cortex `/v1/scope/{id}/end` / session.ended handler
 - 任务：
-  - [ ] scope_end 成功时（归档完成）→ 对 `scope.inputs` 里所有 message_id transition 到 `consumed`
-  - [ ] scope_end 失败不 transition（保持 claimed，待重试或 orphan 超时）
+  - [x] scope_end 成功时（归档完成）→ 对 `scope.inputs` 里所有 message_id transition 到 `consumed`
+  - [x] scope_end 失败不 transition（保持 claimed，待重试或 orphan 超时）
 - 验收：正常完成的 session 其 inputs 100% 变 consumed
 - 承诺：R4
 
 ### P3-5  跨服务 `scope_id` 日志绑定
-- Status: `[ ]`
+- Status: `[x]` (PR-24)
 - Scope: `novaic_common/logging/context.py`（新建）+ 全 handler 入口
 - 任务：
-  - [ ] `LogContext` contextvar；handler 入口 `bind(scope_id=..., agent_id=..., user_id=...)`
-  - [ ] 默认 log formatter 输出 `scope_id=<id>` 前缀
-  - [ ] Business / Queue / Saga worker / Task worker / Cortex 全部接入
+  - [x] `LogContext` contextvar；handler 入口 `bind(scope_id=..., agent_id=..., user_id=...)`
+  - [x] 默认 log formatter 输出 `scope_id=<id>` 前缀
+  - [x] Business / Queue / Saga worker / Task worker / Cortex 全部接入（`install_service_logging`）
 - 验收：
-  - [ ] 任取一个 scope_id，用 `rg "scope_id=<id>"` 能跨服务日志串出完整时间线
-  - [ ] 人工在 troubleshooting.md 里加一条 "按 scope_id 聚合日志" 的例子
+  - [x] 任取一个 scope_id，用 `rg "scope_id=<id>"` 能跨服务日志串出完整时间线
+  - [x] 人工在 troubleshooting.md 里加一条 "按 scope_id 聚合日志" 的例子
 - 承诺：R4
 
 ### P3-6  "消息去哪了"查询端点
-- Status: `[ ]`
+- Status: `[x]` (PR-25)
 - Scope: Business `/internal/messages/{id}/trace`
 - 任务：
-  - [ ] 根据 message_id 返回 `{lifecycle, claimed_by_scope, scope_meta, current_active_session}`
-  - [ ] 调试 CLI：`novaic-cli msg trace <msg_id>`（可选）
+  - [x] 根据 message_id 返回 `{lifecycle, claimed_by_scope, scope_meta, current_active_session}`
+  - [!] 调试 CLI：`novaic-cli msg trace <msg_id>`（规划期标 "可选"；endpoint 已覆盖，CLI 未建亦未计划）
 - 验收：任一消息可以一键查到归属 scope + lifecycle
 - 承诺：R4
 
@@ -291,53 +287,53 @@
 > **目标**：`msg.pending_for > 阈值` 成为一等事件。
 
 ### P4-1  Pending 检测 emitter
-- Status: `[ ]`
-- Scope: `novaic-agent-runtime/task_queue/workers/health_worker_sync.py`（重命名为 `recovery_worker_sync.py` 也可）
+- Status: `[x]` (PR-26 + TD-5)
+- Scope: `novaic-agent-runtime/task_queue/workers/health_worker.py`（未改名，保留为 HealthWorker；`_scan_and_recover_orphans`）
 - 任务：
-  - [ ] 扫 `lifecycle=pending AND created_at < now - threshold`
-  - [ ] 每条 emit 事件：
+  - [x] 扫 `lifecycle=pending AND created_at < now - threshold`
+  - [x] 每条 emit 事件：
     - metric `orphans_total{severity=warn|crit|permanent}` +1（PR-26 scanner + TD-5 hook into PR-32 registry；实际采用 `{severity}` 而非 `{trigger_type}` 以匹配 HealthWorker 的三档分级）
     - log `orphan_detected message_id=... age_seconds=...`（structured）
-  - [ ] 阈值可配置（默认 30s warn / 5min crit）
+  - [x] 阈值可配置（env 化，三档 warn/crit/permanent）
 - 验收：
-  - [ ] 手工造一条"subscriber 挂掉导致 pending" → emitter 30s 内检测到
+  - [x] 手工造一条"subscriber 挂掉导致 pending" → emitter 阈值内检测到（集成测试 `tests/test_health_orphan_scan.py`）
 - 承诺：R5
 
 ### P4-2  Metric 端点
-- Status: `[ ]`
+- Status: `[x]` (PR-26 counter + PR-32 registry；两项 `[!]` 见下)
 - Scope: `novaic-agent-runtime/metrics.py` 或各服务现有 metric 端点
 - 任务：
-  - [ ] 新增 histogram `novaic_messages_pending_seconds`（定期采样 pending 队列 age 分布）
+  - [!] histogram `novaic_messages_pending_seconds` — PR-26 落地时判断 `outbox_lag_seconds` gauge 已覆盖"整体感觉慢"，histogram 推迟到真有 percentile 需求再加（见 `tickets/PR-26-orphan-emitter-metrics.md` 可观测性 checklist 注记）
   - [x] counter `orphans_total{severity}` 实现见 PR-26 emitter + TD-5 hook（metric 名从 planning 期的 `novaic_messages_orphaned_total` 改为 `orphans_total`，label 从 `trigger_type` 改为 `severity`，以贴近实际的 warn/crit/permanent 三档分级）
-  - [ ] 新增 gauge `novaic_messages_pending_count`
-- 验收：`curl /metrics` 看得到以上三个
+  - [!] gauge `novaic_messages_pending_count` — 落地时由 `outbox_backlog_count` gauge + `orphans_total{severity}` counter 组合覆盖"多少条在排队 / 其中多少已超时"，不再单独新增
+- 验收：`curl /metrics` 看得到 `orphans_total`、`outbox_lag_seconds`、`outbox_backlog_count`
 - 承诺：R5
 
 ### P4-3  Orphan 可查视图 / CLI
-- Status: `[ ]`
-- Scope: Business `/internal/messages/orphaned`
+- Status: `[x]` (PR-26 endpoint；CLI 条目落为 `[!]`)
+- Scope: Business `/internal/messages/orphaned` + Entangled `/v1/orphans`
 - 任务：
-  - [ ] 列出所有 `lifecycle=pending AND age > threshold` 的消息
-  - [ ] CLI：`novaic-cli orphans list`
+  - [x] 列出所有 `lifecycle=pending AND age > threshold` 的消息（Business `GET /internal/messages/orphaned`，代理到 Entangled `/v1/orphans`）
+  - [!] CLI：`novaic-cli orphans list` — endpoint + curl 已满足运维需求，CLI 未建亦未排期
 - 验收：运维可一键列出
 - 承诺：R5
 
 ### P4-4  Alert 出口
-- Status: `[ ]`
+- Status: `[~]` (log marker 已落；正式告警通道待接)
 - Scope: 先用 log marker + SSE；后接正式 alert
 - 任务：
-  - [ ] `orphaned_count > N` 打 `ALERT` 级别日志（grep 友好）
-  - [ ] 留 TODO：接入正式告警（pagerduty/飞书/Slack/...）
+  - [x] `orphaned_count > N` 打 `ALERT` 级别日志（PR-26：ERROR 级 `ORPHAN` / `PERMANENT_ORPHAN` 前缀 + WARN 级 `orphan_warn`，grep 友好）
+  - [ ] TODO：接入正式告警通道（pagerduty / 飞书 / Slack …）— 当前依赖人工盯 log / metrics；系统上正式告警时再做
 - 验收：阈值触发能被现有监控日志扫到
 - 承诺：R5
 
 ### P4-5  Recovered re-dispatch（明确且独立）
-- Status: `[ ]`
-- Scope: `recovery_worker_sync.py`
+- Status: `[x]` (PR-27)
+- Scope: `novaic-agent-runtime/task_queue/workers/health_worker.py::_scan_and_recover_orphans`
 - 任务：
-  - [ ] 对 orphan 消息 re-dispatch 时 **必须** 用 `TriggerType.RECOVERED`
-  - [ ] metric 标签 `trigger_type=recovered` 与主路径分开
-  - [ ] 次数上限（例如 3 次），超过打 `ALERT` 不再重试
+  - [x] 对 orphan 消息 re-dispatch 时 **必须** 用 `TriggerType.RECOVERED`
+  - [x] metric 标签 `trigger_type=recovered` 与主路径分开（`dispatch_total{trigger_type=recovered,...}`）
+  - [x] 次数上限（`permanent_failure` 标记后不再重试，`PERMANENT_ORPHAN` 告警）
 - 验收：主路径 metric 不与 recovery metric 混淆
 - 承诺：R1 + R5
 
@@ -348,40 +344,40 @@
 > **目标**：废除"多字段拼状态"反模式。分实体逐步推进。
 
 ### P5-1  `Subagent` 状态机
-- Status: `[ ]`
-- Scope: `novaic-business/business/internal/subagent_utils.py` + Entangled schema
+- Status: `[x]` (PR-28 + PR-31b)
+- Scope: `novaic-business/business/internal/subagent_state.py` + Entangled schema
 - 任务：
-  - [ ] 定义 `SubagentStatus`（现已有枚举，补 transition 表）
-  - [ ] 所有 `store.update("subagents", ..., {"status": ...})` 改走 `subagent_state.transition(...)`
-  - [ ] `wake_at / need_rest / summary_lock` 归为 metadata，不再独立判断生命周期
+  - [x] 定义 `SubagentStatus` transition 表（AWAKE / SLEEPING / COMPLETED / FAILED / CANCELLED）
+  - [x] 所有 `store.update("subagents", ..., {"status": ...})` 改走 `subagent_state.transition(...)`
+  - [x] `wake_at / need_rest / summary_lock` 归为 metadata，不再独立判断生命周期
 - 验收：`rg 'subagents.*SET.*status'` 无散落 SQL；所有转移走单一入口
 - 承诺：R8
 
 ### P5-2  `Scope` 状态机（Cortex 内）
-- Status: `[ ]`
-- Scope: `novaic-cortex/novaic_cortex/scope.py`
+- Status: `[x]` (PR-29)
+- Scope: `novaic-cortex/novaic_cortex/scope_state.py`
 - 任务：
-  - [ ] `ScopeState`：`creating / active / compacting / archiving / archived / failed`
-  - [ ] meta.json `state` 字段
-  - [ ] 所有 state 变更走唯一入口
+  - [x] `ScopeState`：`executing / compacting / archiving / archived / failed`（落地时合并 creating/active → executing，transition 表由 `scope_state.py` 权威定义）
+  - [x] meta.json `phase` 字段（meta 缺失直接 raise `InvalidScopeTransition`，fail-loud）
+  - [x] 所有 state 变更走唯一入口 `scope_state.transition(...)`
 - 验收：同上
 - 承诺：R8（与 Cortex invariants 协同）
 
 ### P5-3  转移日志
-- Status: `[ ]`
+- Status: `[x]` (PR-31)
 - Scope: 每个实体
 - 任务：
-  - [ ] 新增 `*_state_transitions` 表（或作为 entity event log）
-  - [ ] 每次 transition 写一行 `(entity_id, from, to, reason, actor, timestamp)`
+  - [x] 新增 `*_state_transitions` 表（entity event log 形式，见 PR-31）
+  - [x] 每次 transition 写一行 `(entity_id, from, to, reason, actor, timestamp)`
 - 验收：事后能回放某实体的完整生命周期
 - 承诺：R8
 
 ### P5-4  废弃旧字段
-- Status: `[ ]`
+- Status: `[x]` (PR-30 + 2026-04-21 "历史数据清零" 决策)
 - 条件：Phase 3-5 的 lifecycle / status 稳定运行至少 1 个 release
 - 任务：
-  - [ ] 删 `chat_messages.processed / read / claimed_by / claimed_at / status`
-  - [ ] Schema push 版本号 +1；迁移脚本
+  - [x] 删 `chat_messages.processed / claimed_by / claimed_at / status`（`read` 按 PR-30 决策保留供 UI 未读标记）
+  - [x] Schema push 版本号 +1；迁移脚本随 "历史数据全部删除" 决策废弃，直接以规范 `CREATE TABLE` 为准
 - 承诺：R4 + R8
 
 ---
