@@ -109,9 +109,68 @@ scope.meta.input_message_ids ← 唯一的反向索引来源
 
 ---
 
-## 3. 与其它 PR 的关系
+## 3. PR-22 / PR-23 — 让状态机真正起效
 
-- **PR-17 (Dispatch Subscriber)**：物理上把 outbox→queue 的 dispatch 从 `chat_messages` 触发器搬到独立 subprocess。PR-20/21 是它落地后的"装仪表"动作。
+PR-21 只搭好了状态机的骨架（枚举 + transition 入口 + CI 守门）。**真正让流量里的每条消息走完 `pending → claimed → consumed` 这条主干**的动作分两步：
+
+### 3.1 PR-22 — `dispatch_ok → claimed`
+
+**写入者**：`DispatchSubscriber._try_transition_claimed`
+（`novaic-business/business/subscribers/dispatch_subscriber.py`）
+
+subscriber 成功把一条 outbox 行 dispatch 给 Queue 后，拿着 Queue 返回的 `result.scope_id` 调：
+
+```
+POST /v1/messages/{message_id}/transition
+{"to": "claimed", "scope_id": "<scope>", "reason": "subscriber_dispatch:saga_started"}
+```
+
+三种 Queue action 的处理：
+
+| action         | transition 行为 |
+|----------------|----------------|
+| `saga_started` | claim 到新 saga 的 scope_id |
+| `buffered`     | claim 到已 active 的 scope_id（PR-20 起 buffered 也回带 scope_id） |
+| `deduped`      | 不 transition——幂等键的胜者已经 claim 过 |
+
+**软失败策略**：
+- 409 (InvalidTransition) → INFO 日志，继续走。通常是 HealthWorker recovery 或前一次重试已经 claim 了。
+- 404 (MessageNotFound) → WARN 日志。这条 message 被外部删掉了。
+- 网络 / 5xx → WARN 日志。outbox 已标记 delivered，dispatch 本身是成功的；孤儿扫描（PR-26）会用 `delivered_at IS NOT NULL AND lifecycle='pending'` 的 join 兜底。
+
+### 3.2 PR-23 — `scope_end → consumed`
+
+**写入者**：`handle_cortex_scope_end` → `BusinessClient.bulk_transition_messages`
+（`novaic-agent-runtime/task_queue/handlers/cortex_handlers.py`）
+
+scope 成功归档（`/ro/scopes/`）后，把它的 `input_message_ids` 批量 transition 到 `consumed`：
+
+```
+POST /internal/messages/bulk-transition                  ← Business 代理入口
+{"message_ids": [...], "to": "consumed", "scope_id": "<scope>", "reason": "scope_end"}
+```
+
+Business 端 fan-out 到 Entangled 的单条 transition 入口，每条失败独立记录 (`results[i].error`)，不整体失败。
+
+**时序要点（严格遵守）**：
+
+1. **archive 之前**快照 `scope.meta.input_message_ids` —— archive 可能移动 scope 目录。
+2. **archive 之后**才 transition —— 如果 archive 自己失败了，让消息停在 `claimed`，recovery（PR-26）才能决定怎么处理。
+3. bulk-transition 整体 **soft-fail** —— 归档已经成功，丢一条 consumed trace 好过重跑 saga 让归档再发生一次。
+
+### 3.3 `transition(to == current)` 幂等 no-op（PR-23）
+
+PR-22 和 PR-23 都会被重试（outbox redelivery / saga re-entry）。如果 `transition()` 对"当前状态 == 目标状态"抛 `InvalidTransition`，所有调用点都得包 `try/except InvalidTransition/pass`。
+
+所以 `transition()` 内部把 self-loop 改成 **no-op**：不写 DB、不 bump `lifecycle_updated_at`，返回 `{"noop": true, ...}`。`ALLOWED_TRANSITIONS` 表仍然会拒绝真正非法的迁移（比如 `consumed → claimed`），只是"已经在终态再调一次"不当错误。
+
+---
+
+## 4. 与其它 PR 的关系
+
+- **PR-17 (Dispatch Subscriber)**：物理上把 outbox→queue 的 dispatch 从 `chat_messages` 触发器搬到独立 subprocess。PR-20/21/22/23 是它落地后的"装仪表"动作。
+- **PR-22 (本页 §3.1)**：点亮 `claimed` 入口。
+- **PR-23 (本页 §3.2)**：点亮 `consumed` 出口。
 - **PR-25 (端到端追踪)**：依赖 PR-20 的 `input_message_ids` 反向索引拼链路图。
 - **PR-26 (孤儿扫描)**：依赖 PR-21 的 `lifecycle='claimed'` + `claimed_by_scope` 双字段，扫描"claimed 超过 N 分钟仍未 consumed"的行做兜底告警。
 - **PR-19 (HealthWorker recovery-only)**：恢复路径会调用 `transition(to='claimed')`，复用相同入口。

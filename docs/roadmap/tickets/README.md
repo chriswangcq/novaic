@@ -58,8 +58,8 @@
 | **M2** | — | **主路径切换 ✅** | PR-14..PR-19 | — | — | — |
 | PR-20 | `[x]` | [Scope `meta.input_message_ids`](PR-20-scope-input-message-ids.md) | PR-10 | R4 | 1 d | 2026-04-15 |
 | PR-21 | `[x]` | [`chat_messages.lifecycle` 枚举 + state_transition()](PR-21-message-lifecycle-enum.md) | PR-14 | R4+R8 | 1 d | 2026-04-15 |
-| PR-22 | `[ ]` | [subscriber 成功 dispatch → transition claimed](PR-22-subscriber-transition-claimed.md) | PR-16, PR-21 | R4 | 0.5 d | __ |
-| PR-23 | `[ ]` | [scope_end → transition inputs to consumed](PR-23-scope-end-consumed.md) | PR-20, PR-21 | R4 | 0.5 d | __ |
+| PR-22 | `[x]` | [subscriber 成功 dispatch → transition claimed](PR-22-subscriber-transition-claimed.md) | PR-16, PR-21 | R4 | 0.5 d | 2026-04-15 |
+| PR-23 | `[x]` | [scope_end → transition inputs to consumed](PR-23-scope-end-consumed.md) | PR-20, PR-21 | R4 | 0.5 d | 2026-04-15 |
 | PR-24 | `[ ]` | [LogContext contextvar + service-wide bind](PR-24-logcontext-scope-id-binding.md) | PR-20 | R4 | 1.5 d | __ |
 | PR-25 | `[ ]` | [Business `/internal/messages/{id}/trace`](PR-25-message-trace-endpoint.md) | PR-21 | R4 | 0.5 d | __ |
 | PR-26 | `[ ]` | [recovery_worker orphan emitter + metrics](PR-26-orphan-emitter-metrics.md) | PR-19, PR-21 | R5 | 1 d | __ |
