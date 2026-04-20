@@ -246,11 +246,17 @@ $PY $MAIN scheduler \
 SUBSCRIBER_ENABLED=$(_cfg "['runtime_switches']['subscriber_enabled']")
 if [ "$SUBSCRIBER_ENABLED" = "True" ]; then
     PYTHONPATH="$BASE/Entangled/packages/server-python:$BASE/novaic-common:$BASE/novaic-business:${PYTHONPATH:-}" \
+    # PR-20 (2026-04-20): --cortex-url enables the buffered-dispatch
+    # trace-append path (scope.meta.input_message_ids). Subscriber
+    # soft-fails on Cortex transport errors — never blocks the core
+    # outbox drain — so passing this URL is safe even during Cortex
+    # restarts.
     $(py novaic-gateway) "$BASE/novaic-business/main_subscriber.py" \
         --data-dir "$DATA_DIR" \
         --entangled-url "$ENTANGLED_URL" \
         --business-url "$BIZ_URL" \
         --queue-service-url "$QS_URL" \
+        --cortex-url "$CORTEX_URL" \
         >> "$LOG_DIR/subscriber.log" 2>&1 &
     echo "  Subscriber: enabled (subprocess pid $!, logs: $LOG_DIR/subscriber-*.log)"
 else
