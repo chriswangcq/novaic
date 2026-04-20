@@ -298,14 +298,42 @@ cat ~/.novaic/cortex/scope_state_transitions.ndjson | jq
 
 ### 出问题怎么恢复
 
-- **Entangled 写 history 行失败**：message 侧是 co-transactional，写失败
-  会让 UPDATE 一起回滚 — 日志里会看到 `sqlite3.OperationalError` 堆栈。
-  subagent 侧是 best-effort POST，失败只是 WARN 一行
-  `subagent_state transition log FAILED (continuing): ...`，状态还是正确
-  提交了的，history 少一条可接受。
-- **Cortex NDJSON 盘满**：`append_transition` 抛 `OSError`，同样 WARN 一行
+- **Entangled 写 history 行失败（message）**：co-transactional，写失败会让
+  UPDATE 一起回滚 — 日志里会看到 `sqlite3.OperationalError` 堆栈。
+- **Entangled 写 history 行失败（subagent，PR-31b 之后）**：同样 co-transactional
+  —— 2026-04-15 之后 subagent 侧已从 best-effort POST 升级成 server-side
+  `transaction("global")` 原子提交。若 INSERT 失败，整个 transition 会 raise
+  HTTP 500，Business 的 client 会把它翻译成 `EntangledClientError` 冒泡出去，
+  调用方（subscriber / recovery_worker）会走各自的重试路径。换句话说：
+  **PR-31b 之后再也不会出现 "subagent.status 提交成功但 history 少一条" 的场景**。
+- **Cortex NDJSON 盘满**：`append_transition` 抛 `OSError`，WARN 一行
   `scope_state append_transition FAILED (continuing): ...`，`meta.phase`
   仍然被更新。清盘后重启 Cortex 即可，不需要补写历史。
+
+### PR-31b 新增：subagent 状态机独立查询入口
+
+`GET /v1/subagents/states` 直接返回 Entangled 内部的 `ALLOWED_TRANSITIONS` 矩阵，
+用来在运维时自问 "从 `failed` 能到哪里？"（答：只能 `sleeping` 或 `awake`，
+不能直接 `running`）：
+
+```bash
+curl -s -H "X-Service-Token: $SVC" http://entangled/v1/subagents/states | jq
+# {"states": [...], "allowed": {"sleeping": ["awake","running",...], ...}}
+```
+
+如果业务方对 transition 结果有疑问，直接去打同一个矩阵服务器的响应，避免
+Business 侧 `ALLOWED` 文案飘移（PR-31b 之后 Business 的矩阵只是 informational
+副本，规则以 Entangled 返回的为准）。
+
+### 陷阱：嵌套 `transaction("global")` 必 hang
+
+PR-31b 在 prod smoke 时踩过：`append_subagent_transition` 原来自己开事务，配合
+PR-31b 的外层 `subagent_state.transition` 形成嵌套写锁——SQLite 在同一连接上
+会"看似可重入"但对第二次 global lock 等待索的释放，端到端表现成 curl 15s 超时
+零日志。修复把 helper 改成 transaction-agnostic（参照 `append_message_transition`），
+规则：**任何 `append_*_transition` helper 不自己开事务，遗留的纯 HTTP shim
+自己 wrap**。今后新增同类 helper 务必照此模式，否则 smoke 会挂，单测的
+`FakeDatabase` 又不锁不会暴露。
 
 ## Subscriber 每次 deploy 后回到 disabled（TD-5，2026-04-15 根治）
 
