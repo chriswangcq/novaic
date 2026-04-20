@@ -1,31 +1,39 @@
 # Runbook: Subscriber Canary (PR-17)
 
-> **PR-33 (2026-04-20) UPDATE — env flags are gone**
+> **TD-5 (2026-04-15) UPDATE — edit the overlay, NOT services.json**
 >
-> The canary flip is no longer done via `export NOVAIC_ENABLE_SUBSCRIBER=1`.
-> Edit
+> The canary flip lives at `/opt/novaic/etc/runtime_switches.json` — a file
+> outside `/opt/novaic/services` that `rsync -azL --delete` cannot touch.
+> `common/strict_config.py` deep-merges it on top of the committed
+> `services.json` defaults at process startup.
 >
 > ```json
->   "runtime_switches": {
->     "subscriber_enabled": true,
->     "health_check_interval_seconds": 5,
->     ...
->   }
+> {
+>   "subscriber_enabled": true,
+>   "health_check_interval_seconds": 5,
+>   "scheduler_poll_interval_seconds": 1.0,
+>   "fallback_max_per_tick": 50
+> }
 > ```
 >
-> in `/opt/novaic/services/novaic-common/config/services.json` and restart.
-> Verify it took effect with
+> Verify:
 >
 > ```bash
 > grep "runtime_switches=" /opt/novaic/data/logs/business-$(date +%Y%m%d).log | head -1
 > ```
 >
-> (Every `main_*.py` now emits a `ServiceConfig: runtime_switches={...}` INFO
-> line at lifespan init — it is the single audit target for "what switches is
-> this process actually running with?". See
-> `docs/roadmap/tickets/PR-33-env-shrink.md` §C.2.1.) Old env-based snippets
-> below have been rewritten; if you see a leftover `export NOVAIC_*` line
-> during an incident, it is a stale clone — grep and fix.
+> **Do not edit** `/opt/novaic/services/novaic-common/config/services.json`
+> (or its sibling copies under `novaic-gateway` / `novaic-agent-runtime`).
+> The overlay wins, and the next `deploy-business.sh` run will rsync your
+> edit away anyway — this is exactly the failure mode TD-5 was born to
+> eliminate (PR-33 §C.2.2). Unknown keys in the overlay crash startup with
+> `ConfigError: unknown key(s)` — typos are loud, not silent.
+>
+> Every `main_*.py` emits a `ServiceConfig: runtime_switches={...}` INFO
+> line at lifespan init — that is the single audit target for "what
+> switches is this process actually running with?". If you see a leftover
+> `export NOVAIC_*` line or a raw `services.json` jq-edit during an
+> incident, it is a stale clone — grep and fix.
 
 > **RED LINE — READ BEFORE TOUCHING PROD**
 >
@@ -112,19 +120,24 @@ before Phase 2**.
 
 ### Phase 2 — Enable subscriber (Canary 阶段 1)
 
-**PR-33 flow — no env vars, edit services.json and restart.**
+**TD-5 flow — edit `/opt/novaic/etc/runtime_switches.json` and restart.**
+(PR-33 used to have you edit services.json directly; that was rsync-unsafe,
+see §C.2.2. Never edit services.json on prod.)
 
 On the production host:
 
 ```bash
 ssh root@api.gradievo.com
 
-# 1. Edit runtime_switches (any editor; jq shown for scriptability):
-tmp=$(mktemp)
-jq '.runtime_switches.subscriber_enabled = true
-    | .runtime_switches.health_check_interval_seconds = 5' \
-   /opt/novaic/services/novaic-common/config/services.json > "$tmp" \
-   && mv "$tmp" /opt/novaic/services/novaic-common/config/services.json
+# 1. Edit the runtime_switches overlay (single file, all services read it):
+cat > /opt/novaic/etc/runtime_switches.json <<'JSON'
+{
+  "subscriber_enabled": true,
+  "health_check_interval_seconds": 5,
+  "scheduler_poll_interval_seconds": 1.0,
+  "fallback_max_per_tick": 50
+}
+JSON
 
 # 2. Restart the stack:
 bash /opt/novaic/start.sh --stop
@@ -143,9 +156,13 @@ Expected:
 * `ServiceConfig: runtime_switches={"fallback_max_per_tick": 50, "health_check_interval_seconds": 5, "scheduler_poll_interval_seconds": 1.0, "subscriber_enabled": true}`
 * `dispatch_subscriber enabled worker_id=<host>:<pid>:<uuid8>`
 
-If the `runtime_switches` line shows `subscriber_enabled: false` you
-edited the wrong `services.json` (there can be per-service copies
-under submodule trees — production ships the `novaic-common` copy).
+If the `runtime_switches` line shows `subscriber_enabled: false`, the
+overlay at `/opt/novaic/etc/runtime_switches.json` is either missing,
+empty, or failed to load. Check:
+* `cat /opt/novaic/etc/runtime_switches.json` — file present + valid JSON?
+* `grep 'runtime_switches overlay applied' /opt/novaic/data/logs/business-$(date +%Y%m%d).log` — loader INFO line lists your keys?
+* Startup error line matching `unknown key(s)` — overlay has a typo'd key;
+  fix and restart.
 
 **Start the observation clock (T0).** Watch for **4 hours** continuously.
 
@@ -239,9 +256,12 @@ If Phase 1–4 all succeed:
 
 1. Commit a decision note in `docs/roadmap/tickets/PR-17-canary-enable-subscriber.md`
    with start/end timestamps, sample outbox stats, dedup ratios.
-2. Keep `runtime_switches.subscriber_enabled = true` in the production
-   `services.json` going forward. (PR-33 landed 2026-04-20; the env var
-   `NOVAIC_ENABLE_SUBSCRIBER` is dead — do not re-introduce it.)
+2. Keep `subscriber_enabled: true` in the production overlay
+   `/opt/novaic/etc/runtime_switches.json` going forward. (PR-33 landed
+   2026-04-20, TD-5 overlay 2026-04-15; the env var
+   `NOVAIC_ENABLE_SUBSCRIBER` is dead — do not re-introduce it. Editing
+   `services.json` on prod is also dead — overlay wins, next rsync stomps
+   your edit.)
 3. Do NOT yet remove the inline `_dispatch_trigger` shim (that's PR-18).
 
 ---
@@ -250,17 +270,21 @@ If Phase 1–4 all succeed:
 
 ### Fast rollback — subscriber only (preserve data, < 45 s)
 
-**PR-33 flow**: flip `runtime_switches.subscriber_enabled` back to `false`
-in `services.json` and restart. There is no env var to unset.
+**TD-5 flow**: flip `subscriber_enabled` back to `false` in the overlay
+and restart. There is no env var to unset and no services.json edit to
+revert.
 
 ```bash
 ssh root@api.gradievo.com
 
-tmp=$(mktemp)
-jq '.runtime_switches.subscriber_enabled = false
-    | .runtime_switches.health_check_interval_seconds = 30' \
-   /opt/novaic/services/novaic-common/config/services.json > "$tmp" \
-   && mv "$tmp" /opt/novaic/services/novaic-common/config/services.json
+cat > /opt/novaic/etc/runtime_switches.json <<'JSON'
+{
+  "subscriber_enabled": false,
+  "health_check_interval_seconds": 30,
+  "scheduler_poll_interval_seconds": 1.0,
+  "fallback_max_per_tick": 50
+}
+JSON
 
 bash /opt/novaic/start.sh --stop
 bash /opt/novaic/start.sh
@@ -323,7 +347,7 @@ substitutes:
 | Subscriber delivers FIRST, inline deduped second     | Inline dispatch is broken (stuck `await`, network error, etc.)    | Confirm via `grep 'event=dispatch .*result=ok' business-*.log` — if rare, inline is down.  |
 | `oldest_pending_age` keeps growing                   | Subscriber crashed / not running                                  | Check `grep 'dispatch_subscriber' business-*.log \| tail`. Restart with flag ON if needed.  |
 | `health_fallback` rate spike                         | Inline dispatch is silently failing; fallback is catching         | Inspect `event=dispatch .*result=` distribution; rollback subscriber first, then debug.    |
-| Rollback elapsed time > 45 s                         | `runtime_switches.health_check_interval_seconds` still 30 in services.json | Confirm the `runtime_switches=` startup snapshot shows your edited value; if it does not, you edited the wrong services.json copy. |
+| Rollback elapsed time > 45 s                         | overlay's `health_check_interval_seconds` still 30 | Confirm `/opt/novaic/etc/runtime_switches.json` holds your edited value AND the `runtime_switches=` startup snapshot reflects it; overlay miss ⇒ file missing / bad JSON / typo'd key (ConfigError in startup log). |
 
 ---
 
