@@ -394,7 +394,7 @@
 | --- | --- | --- | --- |
 | OBS-1 | `[x]` | 所有跨服务 HTTP 调用带 `X-Internal-Service` — PR-05（`service_name=` 必填）+ PR-06（服务端消费 + lint）；违例 CI 拦截 | R7 |
 | OBS-2 | `[x]` | 所有跨服务日志带 `scope_id` 绑定 — PR-24 LogContext contextvar + service-wide `install_service_logging` | R4 |
-| OBS-3 | `[x]` | metric：`dispatch_total{trigger_type, result}`、`outbox_lag_seconds`、`outbox_backlog_count`、`subscriber_*` 齐全（PR-32）；`messages_orphaned_total` 由 PR-26 `orphans_total` 提供 | R5 |
+| OBS-3 | `[x]` | metric：`dispatch_total{trigger_type, result}`、`outbox_lag_seconds`、`outbox_backlog_count`、`subscriber_*` 齐全（PR-32）；`orphans_total{severity=warn\|crit\|permanent}` 由 TD-5 hook 进 PR-32 共享 registry（HealthWorker `_scan_and_recover_orphans`） | R5 |
 | OBS-4 | `[x]` | runbook：`docs/runbooks/troubleshooting.md` 增加 "三条查路径"（`/trace` / orphan view / `/metrics` outbox lag），覆盖 PR-25/26/32 | R4 + R5 |
 | OBS-5 | `[x]` | `docs/architecture/message-wake-principles.md` §五"对照表"补 metric / log 证据列 | 所有 |
 
