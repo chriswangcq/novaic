@@ -20,8 +20,8 @@
 
 | ID | Status | Item | 来源 |
 | --- | --- | --- | --- |
-| M0-1 | `[ ]` | `novaic_common.wake` 包骨架（`__init__.py`、`assembler.py`、`trigger_types.py`、`errors.py`） | R2 |
-| M0-2 | `[ ]` | `novaic_common.agents.ownership` 包骨架 | R3 |
+| M0-1 | `[x]` | `novaic_common.wake` 包骨架（`__init__.py`、`assembler.py`、`trigger_types.py`、`errors.py`） — PR-01 | R2 |
+| M0-2 | `[x]` | `novaic_common.agents.ownership` 包骨架 — PR-02 | R3 |
 | M0-3 | `[x]` | `docs/architecture/message-wake-principles.md` 接入 `docs/README.md` 架构表 | — |
 | M0-4 | `[x]` | `roadmap/technical-debt.md` 引用本页并标记"进行中" | — |
 | M0-5 | `[x]` | CI lint 规则：禁止业务代码直接 `httpx.post(...".../api/queue/dispatch"...)` 字符串（allowlist：`common/wake/assembler.py`、tests） | R2 |
@@ -387,11 +387,11 @@
 
 | ID | Status | Item | 承诺 |
 | --- | --- | --- | --- |
-| OBS-1 | `[ ]` | 所有跨服务 HTTP 调用带 `X-Internal-Service` | R7 |
-| OBS-2 | `[ ]` | 所有跨服务日志带 `scope_id` 绑定 | R4 |
+| OBS-1 | `[x]` | 所有跨服务 HTTP 调用带 `X-Internal-Service` — PR-05（`service_name=` 必填）+ PR-06（服务端消费 + lint）；违例 CI 拦截 | R7 |
+| OBS-2 | `[x]` | 所有跨服务日志带 `scope_id` 绑定 — PR-24 LogContext contextvar + service-wide `install_service_logging` | R4 |
 | OBS-3 | `[x]` | metric：`dispatch_total{trigger_type, result}`、`outbox_lag_seconds`、`outbox_backlog_count`、`subscriber_*` 齐全（PR-32）；`messages_orphaned_total` 由 PR-26 `orphans_total` 提供 | R5 |
-| OBS-4 | `[ ]` | runbook：`docs/runbooks/troubleshooting.md` 加 "消息没回复的排查 SOP"（按 scope_id 聚合 / 查 orphan 视图 / 查 outbox lag） | R4 + R5 |
-| OBS-5 | `[ ]` | `docs/architecture/message-wake-principles.md` §五"对照表"每条都有 metric / log 证据指向 | 所有 |
+| OBS-4 | `[x]` | runbook：`docs/runbooks/troubleshooting.md` 增加 "三条查路径"（`/trace` / orphan view / `/metrics` outbox lag），覆盖 PR-25/26/32 | R4 + R5 |
+| OBS-5 | `[x]` | `docs/architecture/message-wake-principles.md` §五"对照表"补 metric / log 证据列 | 所有 |
 
 ---
 

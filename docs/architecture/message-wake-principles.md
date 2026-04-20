@@ -221,15 +221,28 @@ Queue Service `/recover/all` 加了 internal key 校验；HealthWorker 裸 `http
 
 ## 五、与本次 bug 的对照
 
-| 今日症状 | 被哪条彻底消解 |
-| --- | --- |
-| `user_id=""` 硬编码 → 400 | **R2 + R3**（Assembler 必然拿得到 user_id） |
-| `/recover/all` 401 没人发现 | **R7** |
-| HealthWorker 是唯一通路 | **R1 + R6** |
-| 10 分钟没人知道卡住 | **R5** |
-| 排查要串四份日志 | **R4**（scope_id 贯穿） |
-| `user_response` vs `user_message` 枚举漂移 | **R2**（枚举集中） |
-| `processed / read / claimed_by` 三字段各说各话 | **R4 + R8** |
+回归不能只靠承诺背书——每条都给出**可 grep 的当下证据**（metric 名 + 日志关键字），避免"说好了"但实际上没 hookup 的静默失败。evidence 列来自 PR-05 / PR-06 / PR-10 / PR-14 / PR-16 / PR-24 / PR-26 / PR-31 / PR-32 的落地位点。
+
+| 今日症状 | 被哪条彻底消解 | metric evidence | log evidence |
+| --- | --- | --- | --- |
+| `user_id=""` 硬编码 → 400 | **R2 + R3**（Assembler 必然拿得到 user_id） | `ownership_resolver_total{result=hit\|miss\|error}` / `dispatch_total{result=no_owner}` (PR-32) | `event=resolver_hit` / `event=dispatch action=... user_id=...`（common.wake.assembler DEBUG 线） |
+| `/recover/all` 401 没人发现 | **R7** | `internal_requests_total{caller,target,status}` (PR-06 + PR-32，response event-hook) | `common.middlewares.caller_logging` 写的 `incoming ... caller=...` 每条请求都带；401 → `status=401` label 直接上 metric |
+| HealthWorker 是唯一通路 | **R1 + R6** | `subscriber_delivered_total{trigger}` vs `healthworker_recovered_total` 比值（PR-19 + PR-32） | `event=outbox_enqueue message_id=... trigger=...`（Entangled write path） / `event=subscriber_delivered id=...` |
+| 10 分钟没人知道卡住 | **R5** | `outbox_lag_seconds` / `outbox_backlog_count` gauge (PR-32, subscriber tick) + `orphans_total{kind}` (PR-26) | `event=orphan_detected message_id=... scope_id=... kind=...` (recovery_worker) |
+| 排查要串四份日志 | **R4**（scope_id 贯穿） | — | `install_service_logging` 的 `%(scope_id)s` 列在 business/entangled/cortex/subscriber 四份日志上格式一致（PR-24）；`/internal/messages/<id>/trace` 把四份合成一个响应（PR-25） |
+| `user_response` vs `user_message` 枚举漂移 | **R2**（枚举集中） | `outbox_enqueued_total{trigger_type}` / `dispatch_total{trigger_type}` label 域由 `TriggerType` 枚举收敛（PR-09 + PR-32） | `event=outbox_enqueue ... trigger=<canonical>` — 非枚举值在入口 raise，不会落日志 |
+| `processed / read / claimed_by` 三字段各说各话 | **R4 + R8** | — | `message_state_transitions` 持久表（PR-21 + PR-31）+ `event=message_state msg=... from=... to=...` 日志；`subagent_state_transitions` 同形（PR-28 + PR-31b）；`transition("claimed")` 由 subscriber 独家写（PR-22） |
+
+补 metric 查询入门（`/metrics` 的两个常见用法）：
+
+```bash
+# 消息堆多少、最老一条多久了
+curl -s http://business:19998/metrics | grep -E '^(outbox_backlog_count|outbox_lag_seconds)'
+# 内部调用 401 / 5xx 占比
+curl -s http://business:19998/metrics | grep '^internal_requests_total{.*status=(4|5)'
+```
+
+后续恢复实时流量前，把这两条串进 `scripts/canary/bake-snapshot.sh` 的 `metric` 段（PR-35 §B2 曾取消的 cron 快照位已预留）。
 
 ---
 
