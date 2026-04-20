@@ -61,7 +61,7 @@
 
 ## 可观测性 Checklist
 
-- [-] metric `internal_requests_total{caller, target, status}` counter（如果服务已有 prometheus）
+- [x] metric `internal_requests_total{caller, target, status}` counter — 落地于 PR-32（零依赖 registry；在 `common/http/clients.py` 的 response event-hook 统一打点）
 - [x] 访问日志固定输出 `caller=` 字段
 
 ## 文档 Checklist
