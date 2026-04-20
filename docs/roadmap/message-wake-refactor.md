@@ -296,7 +296,7 @@
 - 任务：
   - [ ] 扫 `lifecycle=pending AND created_at < now - threshold`
   - [ ] 每条 emit 事件：
-    - metric `novaic_messages_orphaned_total{trigger_type=...}` +1
+    - metric `orphans_total{severity=warn|crit|permanent}` +1（PR-26 scanner + TD-5 hook into PR-32 registry；实际采用 `{severity}` 而非 `{trigger_type}` 以匹配 HealthWorker 的三档分级）
     - log `orphan_detected message_id=... age_seconds=...`（structured）
   - [ ] 阈值可配置（默认 30s warn / 5min crit）
 - 验收：
@@ -308,7 +308,7 @@
 - Scope: `novaic-agent-runtime/metrics.py` 或各服务现有 metric 端点
 - 任务：
   - [ ] 新增 histogram `novaic_messages_pending_seconds`（定期采样 pending 队列 age 分布）
-  - [ ] 新增 counter `novaic_messages_orphaned_total`
+  - [x] counter `orphans_total{severity}` 实现见 PR-26 emitter + TD-5 hook（metric 名从 planning 期的 `novaic_messages_orphaned_total` 改为 `orphans_total`，label 从 `trigger_type` 改为 `severity`，以贴近实际的 warn/crit/permanent 三档分级）
   - [ ] 新增 gauge `novaic_messages_pending_count`
 - 验收：`curl /metrics` 看得到以上三个
 - 承诺：R5
