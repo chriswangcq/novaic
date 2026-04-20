@@ -225,6 +225,21 @@ SQL
 
 ## 消息没回复的 SOP（PR-25 trace，2026-04-15）
 
+"三条查路径" 速查（OBS-4，2026-04-21）：
+
+| 信号 | 查哪里 | 什么时候走这条 |
+| --- | --- | --- |
+| **个案** — 用户报 "message_id=X 没回复" | `GET /internal/messages/<id>/trace`（见下） | 有具体 message_id 时 |
+| **批量** — 整体感觉慢，不知道哪条卡了 | Business `/metrics` → `outbox_backlog_count` / `outbox_lag_seconds` gauge（PR-32）；阈值 > 10 行或 > 30s → 抓 `top N` 看哪个 agent 堆积 | 用户报 "系统慢"、"消息堆积"，或收到 canary 告警 |
+| **孤儿** — dispatch 成功但 scope 不 end | `orphans_total{kind}` counter（PR-26, recovery_worker 扫描）；grep `event=orphan_detected` 定位到 `scope_id` 后按下一条 SOP 跑 scope_id 聚合查询 | metric 非零、或 user 报 "AI 卡住不回复但界面没报错" |
+
+`scope_id` 聚合（PR-24 LogContext）——从 trace 响应里抠出 `scope_id` 后，四份日志一把抓：
+
+```bash
+SID="<scope_id_from_trace>"
+rg "scope_id=$SID" /opt/novaic/data/logs/{business,entangled,cortex,subscriber}-*.log | sort -t: -k3
+```
+
 第一步不是 grep 日志，是 curl trace。端点把 chat_messages + message_outbox
 + Cortex scope meta 拉到一个响应里，节省四次 sqlite / 四份日志的翻阅。
 
