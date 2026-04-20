@@ -5,7 +5,7 @@
 | **Phase** | 3 |
 | **Milestone** | M3 |
 | **承诺** | R4 |
-| **Status** | `[ ]` |
+| **Status** | `[x]` (2026-04-15) |
 | **Depends on** | PR-16, PR-21 |
 | **Blocks** | PR-23 |
 | **估时** | 0.5 d |
