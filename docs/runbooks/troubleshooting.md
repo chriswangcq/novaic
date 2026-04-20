@@ -79,6 +79,52 @@ rg "scope_id=$SID" business-*.log queue-service-*.log cortex.log \
 - stdlib `logging` 的 `ContextFilter` 把 ContextVar 的值注入每条
   LogRecord，formatter 就能打印出来了。
 
+## Subagent 状态异常查因（PR-28 state machine，2026-04-15）
+
+所有 `subagents.status` 写入都会经过
+`business.internal.subagent_state.transition(...)`，留下一条固定格式的日志行：
+
+```
+subagent_state subagent=<subagent_id> <from_status> -> <to_status> reason=<reason> actor=<actor>
+```
+
+常见问题定位：
+
+```bash
+cd /opt/novaic/data/logs
+
+# 1. 某 subagent 最近的状态流水
+rg "subagent_state subagent=sub-xxxxxxxxxxxx" business-*.log | tail -50
+
+# 2. 本周被 reject 的非法转移（409）
+rg "InvalidTransition|completed -> awake|cancelled -> " business-*.log
+
+# 3. 当前卡在某状态超过 N 分钟的 subagent（结合 last transition log line 时间戳）
+rg "subagent_state" business-*.log | awk '{print $NF, $0}' | sort | tail
+```
+
+### 常见信号
+
+| 现象 | 解读 |
+|------|------|
+| `reason=timeout actor=business.status_query` | `RUNNING → FAILED`，任务没在 `timeout_at` 前上报完成；查 task-worker 是否卡住 |
+| `reason=interrupt actor=business.interrupt_agent` | 用户主动打断；正常链路 |
+| 429/409 `completed -> awake` | 有调用方试图复活终态 subagent — 检查调用 caller；这是 bug |
+| 某 subagent 长时间看不到新 transition | subagent 卡在中间态；查 runtime 对应 subagent 的 saga 状态 |
+
+### 原理（一分钟）
+
+- `subagent_state.py` 的 `ALLOWED` 矩阵明确规定每个状态允许的下一跳。终态
+  `completed`/`cancelled` 出度为 0 —— 任何试图 "复活" 都会 `InvalidTransition`，
+  业务层 409。
+- 业务侧所有 `store.update("subagents", ..., {"status": ...})` 都被
+  `scripts/ci/lint_subagent_status.sh` 禁止；必须走 `transition()` 或
+  `mark_*()` 便捷 wrapper。
+- Runtime 侧 `entity_update("subagents", ...)` 在 payload 里挂
+  `_transition_reason` / `_transition_actor`，业务 `PATCH /internal/entities/subagents/{id}`
+  自动转路由到 `transition()`。
+- PR-31 将把模块级 Counter 迁到持久 `subagent_state_transitions` 表。
+
 ## 消息没回复的 SOP（PR-25 trace，2026-04-15）
 
 第一步不是 grep 日志，是 curl trace。端点把 chat_messages + message_outbox
