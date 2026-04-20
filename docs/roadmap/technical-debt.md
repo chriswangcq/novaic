@@ -12,10 +12,10 @@
 
 ## 进行中的系统性重构
 
-- **Message → Wake 主干重构**（2026-04-17 `hihi` 事件触发，涉 R1–R8 共 8 条架构承诺）
+- ~~**Message → Wake 主干重构**（2026-04-17 `hihi` 事件触发，涉 R1–R8 共 8 条架构承诺）~~
   - 承诺文档（SSOT）：[architecture/message-wake-principles.md](../architecture/message-wake-principles.md)
   - 实施清单（Phase 1–5 + checklist）：[message-wake-refactor.md](message-wake-refactor.md)
-  - 状态：Phase 0 诊断完成，待排期进入 Phase 1（合约对齐）
+  - **✓ 全量落地（PR-01..PR-35，2026-04-21）**：以 [tickets/README.md](tickets/README.md) 为 SSOT；M0-* / OBS-* 全部 `[x]`。后续新增观测或防回归项（例如 TD-5 的 `orphans_total`）走常规 PR，不再挂在此总入口下。
   - 影响：Entangled / Business / Queue Service / Agent Runtime / Cortex 全链路
 
 ## 待办清单（HANDOVER 原文意图）
@@ -36,7 +36,8 @@
   **✓ 已还清（TD-1，2026-04-20）**：`novaic-agent-runtime/queue_service/main.py` 把 `uvicorn.run(..., access_log=False)` 显式关掉，`CallerLoggingMiddleware` 独占访问日志。
 - ~~**`internal_client` 命名陷阱**：在 `common.http.clients` 中，`internal_client` 只是 `internal_sync_client` 的 alias。这极易导致 asyncio 消费方误用（如在 PR-10 `DispatchAssembler` 中错误引用，导致 `await _client.post` 报 TypeError）。由于该 alias 散布于数十处代码，我们暂时不全局替换，但后续（或 PR-19 cleanup 时）应强制要求显式导入 `internal_sync_client` / `internal_async_client` 并删除此含糊不清的 alias。~~
   **✓ 已还清（TD-2，2026-04-20）**：删除 `common.http.clients.internal_client` / `external_client` alias，全仓改用显式 `internal_sync_client` / `internal_async_client`（agent-runtime / business / gateway 共 12 处调用点迁移完毕）。测试 `test_internal_client.py::test_internal_client_alias_removed` / `..._from_package_export` 作为不变量护栏，阻止 alias 重新引入。
-- **Silent Dispatch Failure 不可观测 (PR-11)**：Business 中调用 `DispatchAssembler` 发送消息采用了 Fire-and-Forget 语义。如果网络异常或 Queue 报错，虽然会打出 `logger.error`，但外部毫无感知（用户依然收到 HTTP 200）。这会导致严重的“消息孤儿”假象。目前已在 `PR-32` 中规划加入 `dispatch_failed_total{caller=business}` 计数器作为底线监控。
+- ~~**Silent Dispatch Failure 不可观测 (PR-11)**：Business 中调用 `DispatchAssembler` 发送消息采用了 Fire-and-Forget 语义。如果网络异常或 Queue 报错，虽然会打出 `logger.error`，但外部毫无感知（用户依然收到 HTTP 200）。~~
+  **✓ 已还清（PR-18 + PR-32，2026-04-21）**：PR-18 彻底删除了 `business/message_actions.py::_dispatch_trigger`（Business 不再 inline 派发），写入 `message_outbox` 由 subscriber 独家消费；PR-32 在 subscriber 的 permanent-fail 分支（`DispatchError` / `httpx.HTTPError` / `JSONDecodeError`）对称打 `dispatch_failed_total{caller="subscriber", kind=...}`，配合 `subscriber_failed_total` 与 `outbox_lag_seconds` gauge，`action=buffered` → 200 的静默失败路径已不存在。原先规划的 `caller=business` 标签值随 PR-18 一起作废。
 - ~~**DispatchSubscriber 静默死在 FastAPI lifespan (PR-17 / PR-34 前哨)**：DispatchSubscriber 原先作为 `asyncio.create_task` 挂在 Business 的 FastAPI lifespan 里，任何未捕获异常都会被 task 机制吞掉 → `message_outbox` 停止排空 → 没有告警、没有崩溃、只有一张越来越老的表。PR-17 Canary 靠 buffered-streak 日志打补丁，但"挂在 lifespan 里"这个形状没变。~~
   **✓ 已还清（PR-34 34d/34e，2026-04-20）**：
   1. **34d Subscriber 抽离**：`business/subscribers/dispatch_subscriber.py` 从 `async def run` + `asyncio.Event` + `httpx.AsyncClient` 改为 `threading.Event` + `time.sleep` + `httpx.Client`，调 `assembler.assemble_sync` / `dispatch_sync`。新增 `novaic-business/main_subscriber.py` 作为独立子进程入口（`argparse` 四个 URL、文件日志 `subscriber-YYYYMMDD.log`、`SIGTERM`/`SIGINT` → `subscriber.stop()`），`main_business.py` lifespan 彻底删掉 `asyncio.create_task(subscriber.run())` 块。`scripts/start.sh` 读 `ServiceConfig.SUBSCRIBER_ENABLED` 拉起子进程，`--stop` 路径 `SIGTERM → 等 5s → SIGKILL` graceful 回收。效果：subscriber 崩溃现在会让 `ps aux | grep main_subscriber` 直接看得到（进程没了），退出码非零，不再有"Business API 还活着但 outbox 不动"的静默模式。
@@ -63,7 +64,8 @@
   5. **`internal_client` 命名陷阱（F.7）**：PR-19 保留 `from common.http.clients import internal_async_client` 显式命名，全局 alias 删除留待独立 common PR。
 - ~~**Subscriber `_claim_batch` 无异常退避 (PR-16)**：当 Entangled 发生长时间故障时，`_claim_batch` 的 `logger.exception` 会每 0.5s 触发一次，导致海量日志刷屏。后续需要加上 error backoff 或者 rate-limited logging 机制。~~
   **✓ 已还清（PR-17 Canary 尾声）**：`_claim_batch` 现在返回 `Optional[list[dict]]`（`None` = 失败、`[]` = 正常空队列），失败触发 `run()` 侧指数退避（base 1s，cap 30s）。日志侧：首次失败打完整 traceback，之后每 30s 最多一条 `WARNING` 摘要（带 streak 计数与异常类型），恢复后打一行 `recovered after N consecutive failures`。回归测试：`novaic-business/tests/test_dispatch_subscriber.py::test_subscriber_claim_backoff_rate_limited_logging`。
-- **Subscriber `idempotency_key` 未传 (PR-17 Canary 尾声修复)**：PR-15/PR-16 的 subscriber 调 `assembler.assemble()` 时没传 `idempotency_key`，于是双发场景下由 Queue 的**同 agent session 协调器**去重（`action=buffered`），而不是**幂等台账**（`action=deduped`）。业务效果正确但与 runbook `§E` 跟踪的 `action=deduped` 信号不吻合。PR-17 观察阶段已修：subscriber 使用 `f"msg:{row['message_id']}"` 作为 key，与 inline 路径 (`business/message_actions.py::_dispatch_trigger`) 对齐。测试：`test_subscriber_passes_idempotency_key`。
+- ~~**Subscriber `idempotency_key` 未传 (PR-17 Canary 尾声修复)**：PR-15/PR-16 的 subscriber 调 `assembler.assemble()` 时没传 `idempotency_key`，于是双发场景下由 Queue 的**同 agent session 协调器**去重（`action=buffered`），而不是**幂等台账**（`action=deduped`）。~~
+  **✓ 已还清（PR-17 Canary 尾声，2026-04-18）**：subscriber 使用 `f"msg:{row['message_id']}"` 作为 key，与曾经的 inline 路径 (`business/message_actions.py::_dispatch_trigger`，PR-18 已删除) 对齐。测试 `test_subscriber_passes_idempotency_key` 作为不变量。
 - ~~**env 膨胀 / canary 静默失败风险 (PR-33 立项)**：`DISPATCH_SUBSCRIBER_ENABLED` / `NOVAIC_ENABLE_SUBSCRIBER` / `NOVAIC_HEALTH_CHECK_INTERVAL` 三处 env 在 Business main、start.sh、deploy-business.sh 之间穿行；`common/http/clients.py` 对一个已作废的 `NOVAIC_INTERNAL_KEY` 每次建 client 都打 WARN；`common/agents/ownership.py::get_resolver` 用 `os.getenv("BUSINESS_INTERNAL_URL", "http://localhost:8200")` 三层 fallback；`novaic-agent-runtime/.../assembler_factory.py` 用 `getattr(ServiceConfig, "BUSINESS_URL", os.environ.get(..., "http://127.0.0.1:19998"))` 三层 fallback。PR-17 bake 已经在这类形状上被烧过——字段拼错/env 未设都静默退回 localhost，每个 wake 打进虚空排查两天。~~
   **✓ 已还清（PR-33，2026-04-20，六阶段）**：
   1. **P1** — `services.json` 新增 `runtime_switches`（`subscriber_enabled` / `health_check_interval_seconds` / `scheduler_poll_interval_seconds` / `fallback_max_per_tick`），`ServiceConfig` 暴露四个常量 + `log_startup_snapshot(logger)` 类方法。`strict_config.py` 的 AST 校验自动覆盖新 key，缺键启动即 `ConfigError`。
@@ -73,6 +75,8 @@
   5. **P5** — `ownership.py::get_resolver` / `agent-runtime/.../assembler_factory.py::get_assembler` 删 env fallback，`ServiceConfig.BUSINESS_URL` / `QUEUE_SERVICE_URL` 作为唯一来源；缺键由 `strict_config` 在启动时大声炸。`ownership.py` 连 `import os` 都删掉，`test_ownership_module_does_not_import_os` 作为反向护栏。
   6. **P6** — `docs/runbooks/subscriber-canary.md` 的 Canary Phase 2 / fast rollback / troubleshooting 全部改写为 services.json + 重启流程；本节 TD-1..TD-4 + PR-33 全部归档。
   一句话：原来翻 canary 要在 3 个 shell 文件 / 2 个 python main 文件 / 1 个 env + 1 个 CLI 之间协调，任一漏一处就静默走另一个默认值；现在只剩"编辑 services.json + 重启"一条路，`grep "runtime_switches=" business.log | head -1` 就能一眼看出"这个进程自认正在跑什么开关"。
+- ~~**`orphans_total` metric 只在 in-memory `HealthWorkerMetrics` 里累加 (TD-5)**：PR-26 落地时只把 `orphans_seen / orphans_warned / orphans_crit / permanent_orphans` 增到 `HealthWorkerMetrics` 的实例字段里（`get_metrics()` 走 HTTP endpoint 返 JSON），没有走 PR-32 的共享 registry。结果 `docs/architecture/message-wake-principles.md` 第五节 / `docs/runbooks/troubleshooting.md` "三条查路径" / `docs/roadmap/message-wake-refactor.md` OBS-3 引用的 `orphans_total{kind}` Prometheus 计数器**实际上并不存在**——写文档的时候默认它会被 PR-32 自动接入，实际 PR-32 只接了 13 条显式 golden signal，没扫 HealthWorker。~~
+  **✓ 已还清（TD-5，2026-04-21）**：`novaic-agent-runtime/task_queue/workers/health_worker.py` 在 `_scan_and_recover_orphans` 每行 orphan（不做 dedup，SLO alert 要的就是"连续 N tick 非零"）和 `_maybe_recover` 的两处 `PERMANENT_ORPHAN` 分支打 `metric_inc("orphans_total", severity=warn|crit|permanent)`，label 值与 `row["severity"]` lockstep。测试 `tests/test_health_orphan_scan.py::test_orphans_total_metric_counts_warn_crit_permanent` 覆盖 warn/crit/permanent 三态。文档里"orphans_total{kind}"的 label 名同步改为 `{severity}`。顺便确认：这条 TD 不需要新 `/metrics` 端点——HealthWorker 目前挂在 `main_novaic.py health` 子命令进程里，后续想暴露的话可以和 subscriber 一样 `start_metrics_http_server(..., port=19984)`，但阻塞项是"还没人往那个端口 scrape"，不值得在 TD 关单时拉齐。
 
 ## 路线 A：Entangled 引擎内置乐观写（未来演进）
 

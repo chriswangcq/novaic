@@ -231,7 +231,7 @@ SQL
 | --- | --- | --- |
 | **个案** — 用户报 "message_id=X 没回复" | `GET /internal/messages/<id>/trace`（见下） | 有具体 message_id 时 |
 | **批量** — 整体感觉慢，不知道哪条卡了 | Business `/metrics` → `outbox_backlog_count` / `outbox_lag_seconds` gauge（PR-32）；阈值 > 10 行或 > 30s → 抓 `top N` 看哪个 agent 堆积 | 用户报 "系统慢"、"消息堆积"，或收到 canary 告警 |
-| **孤儿** — dispatch 成功但 scope 不 end | `orphans_total{kind}` counter（PR-26, recovery_worker 扫描）；grep `event=orphan_detected` 定位到 `scope_id` 后按下一条 SOP 跑 scope_id 聚合查询 | metric 非零、或 user 报 "AI 卡住不回复但界面没报错" |
+| **孤儿** — dispatch 成功但 scope 不 end | `orphans_total{severity=warn\|crit\|permanent}` counter（PR-26 扫描 + TD-5 hook 进 PR-32 registry）；grep `ORPHAN\|orphan_warn\|PERMANENT_ORPHAN` 取到 `message_id` / `agent` / `age`，再用 `/internal/messages/<id>/trace` 反查 `scope_id` 后按下一条 SOP 跑 scope_id 聚合查询 | metric 非零、或 user 报 "AI 卡住不回复但界面没报错" |
 
 `scope_id` 聚合（PR-24 LogContext）——从 trace 响应里抠出 `scope_id` 后，四份日志一把抓：
 
