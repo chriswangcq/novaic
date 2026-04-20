@@ -184,7 +184,12 @@ mkdir -p "$DATA_DIR/cortex"
 # `SET NX PX` + Lua release + heartbeat (see
 # ``novaic_cortex/scope_locks.py::RedisScopeLockManager``). Multi-worker /
 # multi-replica Cortex is therefore always safe.
+# PR-06 (2026-04-15): cortex/api.py imports common.middlewares.caller_logging
+# for the caller-logging middleware. Cortex runs out of its own venv
+# (novaic-cortex/.venv) which doesn't ship novaic-common as a pkg;
+# export PYTHONPATH so the import resolves to the sibling submodule.
 CORTEX_STORE_ROOT="$DATA_DIR/cortex" \
+PYTHONPATH="$BASE/novaic-common:${PYTHONPATH:-}" \
 $(py novaic-cortex) -m novaic_cortex.main_cortex \
     --host "$HOST" --port "$PORT_CORTEX" \
     --jwt-secret "$JWT_SECRET" \
