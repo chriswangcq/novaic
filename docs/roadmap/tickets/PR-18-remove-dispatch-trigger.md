@@ -5,7 +5,7 @@
 | **Phase** | 2 |
 | **Milestone** | M2 |
 | **承诺** | R1 + R6 |
-| **Status** | `[ ]` |
+| **Status** | `[x]` (merged; see roadmap README index) |
 | **Depends on** | PR-17（观察期通过） |
 | **Blocks** | — |
 | **估时** | 0.5 d |

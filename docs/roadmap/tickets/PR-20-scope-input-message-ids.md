@@ -5,7 +5,7 @@
 | **Phase** | 3（trace + lifecycle） |
 | **Milestone** | M3 |
 | **承诺** | R4 |
-| **Status** | `[ ]` |
+| **Status** | `[x]` (merged; see roadmap README index) |
 | **Depends on** | PR-10 |
 | **Blocks** | PR-23, PR-24 |
 | **估时** | 1 d |
