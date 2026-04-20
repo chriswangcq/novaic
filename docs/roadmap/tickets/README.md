@@ -71,7 +71,7 @@
 | PR-27  | `[x]`  | [orphan re-dispatch (trigger_type=recovered)](PR-27-recovered-redispatch.md)                    | PR-26                             | R1+R5       | 0.5 d                                | 2026-04-15 |
 | **M3** | —      | **可观测**                                                                                         | PR-20..PR-27                      | —           | —                                    | —          |
 | PR-28  | `[x]`  | [Subagent 状态机](PR-28-subagent-state-machine.md)                                                 | M2                                | R8          | 1.5 d                                | 2026-04-15 |
-| PR-29  | `[ ]`  | [Scope 状态机（Cortex）](PR-29-scope-state-machine.md)                                               | M2                                | R8          | 1.5 d                                | __         |
+| PR-29  | `[x]`  | [Scope 状态机（Cortex）](PR-29-scope-state-machine.md)                                               | M2                                | R8          | 1.5 d                                | 2026-04-15 |
 | PR-30  | `[ ]`  | [删除 `chat_messages` 旧字段](PR-30-drop-legacy-message-fields.md)                                   | PR-21, PR-22, PR-23（稳定 1 release） | R4+R8       | 0.5 d                                | __         |
 | PR-31  | `[ ]`  | `[*_state_transitions` 日志表](PR-31-state-transition-log-tables.md)                               | PR-28, PR-29                      | R8          | 1 d                                  | __         |
 | **M4** | —      | **状态机化**                                                                                        | PR-28..PR-31                      | —           | —                                    | —          |

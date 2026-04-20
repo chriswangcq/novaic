@@ -23,3 +23,5 @@ jobs:
       run: ./scripts/ci/lint_lifecycle.sh
     - name: Run subagent-status lint (PR-28)
       run: ./scripts/ci/lint_subagent_status.sh
+    - name: Run scope-phase lint (PR-29)
+      run: ./scripts/ci/lint_scope_phase.sh

@@ -5,11 +5,11 @@
 | **Phase** | 5 |
 | **Milestone** | M4 |
 | **承诺** | R8（与 INV-5/6 协同） |
-| **Status** | `[ ]` |
+| **Status** | `[x]` (2026-04-15) |
 | **Depends on** | M2 达成 |
 | **Blocks** | PR-31 |
 | **估时** | 1.5 d |
-| **Owner** | __ |
+| **Owner** | 2026-04-15 |
 | **PR 标题** | `refactor(cortex): scope state enum + scope_state.transition()` |
 
 ## 目标
@@ -109,3 +109,40 @@ rg 'meta.*"state"' novaic-cortex/novaic_cortex/ | rg -v 'scope_state.py|tests/'
 
 - 此 PR 会让 PR-25 `/trace` 端点的 `scope.state` 字段真实化（之前只能是 derived）。
 - `FAILED` 终态是故意的：手工 recovery 应当创建新 scope，不恢复老的。
+
+## 实施总结（2026-04-15）
+
+务实裁剪：今天 Cortex `meta.json` 里只出现两个 phase 值（`executing` / `archived`），没有 `creating` / `archiving` 这种中间态。引入 6 个状态会创造一堆没人写的 dead code，于是先按"现实状态 + 预留枚举"落地，把方法论搭好，等真有人需要 `compacting` / `failed` 再扩 `ALLOWED`。
+
+### 代码
+
+- `novaic-cortex/novaic_cortex/scope_state.py` —— 新模块：
+  - `ScopeState` enum (`EXECUTING` / `COMPACTING` / `ARCHIVED` / `FAILED`)
+  - `ALLOWED` 矩阵 + `InvalidScopeTransition` exception
+  - `transition(workspace, scope_path, *, to, reason, actor, extra)` —— 唯一写入口
+  - `mark_archived` 便捷封装（自动注入 `ended_at`）
+  - `initial_phase()` —— `create_scope` 写初始值的"白名单"入口
+  - 模块级 `Counter` + `dump_transition_counters()`
+- `novaic-cortex/novaic_cortex/workspace.py`:
+  - `create_scope` 用 `initial_phase()` 替代字符串字面量
+  - `complete_child_scope` 走 `mark_archived(reason="scope_end_child")`
+  - `archive_root_scope` 走 `mark_archived(reason="scope_end_root")`
+
+### 不变量映射
+
+- **INV-5（scope_end 幂等）**：自环 `ARCHIVED -> ARCHIVED` 在 `transition()` 内识别为 noop，不 bump metric，但仍允许写 `extra`（让重试刷新 `ended_at`）。
+- **INV-6（archival 方向性）**：`ARCHIVED` 的 out-set 是空集，`ARCHIVED -> EXECUTING` 在矩阵层硬性拒绝。
+
+### 测试
+
+- `novaic-cortex/tests/test_scope_state.py` —— 16 个用例：合法转移、终态、自环幂等、`extra` 校验、缺 `phase` 字段的旧 scope 兼容、metric key 形状、workspace 集成。
+
+### CI lint
+
+- `scripts/ci/lint_scope_phase.sh` —— 禁止任何文件（除 `scope_state.py` / `workspace.py` / `tests/` / `docs/`）出现 `meta["phase"] = ...` 或 `"phase": "archived"` 这类直写。已挂到 `.github/workflows/lint.yml` 的 lint job。
+
+### 验收
+
+- 单测全绿（16/16）
+- 全量 cortex 测试集相对 main 没有新增失败（21 个失败均为 main 上已有的 `/rw/active/` ↔ `/ro/active/` 路径漂移问题，与本 PR 无关）
+- lint 在裸 repo 上 OK
