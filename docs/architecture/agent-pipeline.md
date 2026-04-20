@@ -70,17 +70,35 @@ LLM tool_call
 
 详见 [**data-ownership.md**](data-ownership.md)（Entangled vs `gateway.db` v63、Queue、Cortex）。
 
-## 12.7 已知问题：消息积压与重复 Runtime
+## 12.7 Sync-by-default（PR-34 Worker-Sync 终态）
+
+内部 Wake / dispatch 链路一律 **同步**，`async` 只保留在 FastAPI 边缘：
+
+| 组件 | 运行形态 | 说明 |
+|------|---------|------|
+| DispatchAssembler | `assemble_sync` / `dispatch_sync`（同步） | PR-34 34e 起删除 async 孪生，唯一调用面 |
+| AgentOwnershipResolver | `resolve_sync`（同步，`threading.Lock` + FIFO 缓存） | PR-34 34e 删除 `async resolve` 与 `asyncio.Lock` 字典 |
+| DispatchSubscriber | **独立子进程** (`main_subscriber.py`) | PR-34 34d 从 Business lifespan 的 `asyncio.create_task` 拆出；崩溃以 `ps` 可见、退出码非零的方式"大声死亡"，而不是静默吞掉 `message_outbox` |
+| HealthWorker / SchedulerWorker | 同步线程 (`health_worker.py` / `scheduler_worker.py`) | `threading.Event` + `time.sleep`，`_sync` 后缀已去除 |
+| SagaWorker / TaskWorker | 同步线程 (`saga_worker_sync.py` / `task_worker_sync.py`) | 文件名保留 `_sync` 仅因未重命名；行为与上两者一致 |
+
+为什么：前版 DispatchSubscriber 作为 FastAPI lifespan 的 `asyncio.create_task` 运行，任意未捕获异常 → task 被悄悄取消 → `message_outbox` 停止排空；没有告警、没有崩溃，只有陈旧行。Worker-Sync 把所有内部路径搬到"一个失败 = 一个进程/线程退出"的模型，故障必然外显。
+
+CI 守门：[`scripts/ci/check_no_internal_async.py`](../../scripts/ci/check_no_internal_async.py) 对上述核心文件禁用 `async def` / `import asyncio` / `httpx.AsyncClient` / `await`，并在 `.github/workflows/lint.yml` 中强制运行。新增守门文件时按该脚本 `GUARDED` 列表注释说明理由。
+
+## 12.8 已知问题：消息积压与重复 Runtime
 
 `SYSTEM_WAKE` 风暴 → 多条唤醒触发并发进入队列。当前方案：由 **Scheduler + Queue Session Coordinator** 按 `(agent_id, subagent_id)` 串行化，每组同一时刻只允许一个活跃 Saga。
 
-## 12.8 源码速查
+## 12.9 源码速查
 
 路径相对于各子模块仓库根（父仓 submodule）：
 
 | 需求 | 路径 |
 |------|------|
-| Scheduler | `novaic-agent-runtime/task_queue/workers/scheduler_worker_sync.py` |
+| Scheduler | `novaic-agent-runtime/task_queue/workers/scheduler_worker.py` |
+| Health | `novaic-agent-runtime/task_queue/workers/health_worker.py` |
+| DispatchSubscriber (subprocess) | `novaic-business/business/subscribers/dispatch_subscriber.py`；入口 `novaic-business/main_subscriber.py` |
 | MessageProcess Saga | `novaic-agent-runtime/task_queue/sagas/message_process.py` |
 | ReactThink / ReactActions | `novaic-agent-runtime/task_queue/sagas/react_think.py`、`react_actions.py` |
 | Cortex 上下文 | `novaic-agent-runtime/.../cortex_handlers.py`；引擎 `novaic-cortex/novaic_cortex/context_stack/engine.py` |

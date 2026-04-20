@@ -11,9 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+      with:
+        submodules: recursive
     - name: Install ripgrep
       run: sudo apt-get update && sudo apt-get install -y ripgrep
     - name: Run dispatch lint
       run: ./scripts/ci/lint_dispatch.sh
     - name: Run httpx lint
       run: ./scripts/ci/lint_httpx.sh
+    - name: Run internal-async guard (PR-34 34e)
+      run: python3 scripts/ci/check_no_internal_async.py

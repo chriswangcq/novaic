@@ -86,6 +86,18 @@ wait_port_free() {
 }
 
 stop() {
+    # PR-34 34d: subscriber is an independent subprocess. Give it SIGTERM
+    # first so the in-flight claim finishes cleanly (avoids leaving a row
+    # half-claimed, which would block for claim_ttl_ms=30s under the next
+    # subscriber). A short grace window then SIGKILL as usual.
+    pkill -TERM -f "main_subscriber.py" 2>/dev/null || true
+    # 15 × 0.2s = 3s graceful window. Matches claim_ttl_ms/10 ≈ 3s budget.
+    for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+        pgrep -f "main_subscriber.py" >/dev/null 2>&1 || break
+        sleep 0.2
+    done
+    pkill -9 -f "main_subscriber.py" 2>/dev/null || true
+
     pkill -9 -f "entangled.app.main" 2>/dev/null || true
     pkill -9 -f "main_gateway.py" 2>/dev/null || true
     pkill -9 -f "main_business.py" 2>/dev/null || true
@@ -216,5 +228,33 @@ $PY $MAIN scheduler \
     --cortex-url "$CORTEX_URL" \
     --data-dir "$DATA_DIR" \
     >> "$LOG_DIR/scheduler.log" 2>&1 &
+
+# ── Dispatch Subscriber (PR-34 34d, 2026-04-20) ──────────────────────────────
+# Standalone subprocess launched ONLY when
+# services.json → runtime_switches.subscriber_enabled is true. Pre-34d the
+# subscriber ran as an asyncio task inside the Business FastAPI lifespan;
+# it died silently on first uncaught exception and the outbox stopped
+# draining without any external signal. Hoisting it out means death is
+# now visible via `ps aux | grep main_subscriber` and a stale subscriber
+# can no longer take Business API traffic down with it.
+#
+# The runtime_switches.subscriber_enabled read uses the same _cfg helper
+# as the secrets block above. Flip the switch: edit services.json + run
+# `bash $0 --stop && bash $0` on the target host. The
+# log_startup_snapshot() line in the new subscriber log file
+# (subscriber-YYYYMMDD.log) is the audit trail.
+SUBSCRIBER_ENABLED=$(_cfg "['runtime_switches']['subscriber_enabled']")
+if [ "$SUBSCRIBER_ENABLED" = "True" ]; then
+    PYTHONPATH="$BASE/Entangled/packages/server-python:$BASE/novaic-common:$BASE/novaic-business:${PYTHONPATH:-}" \
+    $(py novaic-gateway) "$BASE/novaic-business/main_subscriber.py" \
+        --data-dir "$DATA_DIR" \
+        --entangled-url "$ENTANGLED_URL" \
+        --business-url "$BIZ_URL" \
+        --queue-service-url "$QS_URL" \
+        >> "$LOG_DIR/subscriber.log" 2>&1 &
+    echo "  Subscriber: enabled (subprocess pid $!, logs: $LOG_DIR/subscriber-*.log)"
+else
+    echo "  Subscriber: disabled (runtime_switches.subscriber_enabled=False)"
+fi
 
 echo "All backends started. Logs: $LOG_DIR"
