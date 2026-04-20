@@ -267,7 +267,7 @@ pytest tests/  # 99 passed
 ### 后续可做
 
 - **PR-31c**（已完成）：见下方。
-- **补充 lint**：`scripts/ci/lint_subagent_status.sh` 已经禁止裸 `UPDATE subagents SET status`；PR-31b 后可以再加一条禁止直接 POST 到 `/v1/state_transitions/subagent`（强制走 `transition_subagent`），消除遗留 shim 的诱惑。
+- **补充 lint（已完成，2026-04-15）**：`scripts/ci/lint_subagent_status.sh` 现在同时禁止两件事——(1) 裸 `UPDATE subagents SET status`（PR-28 原始范围），(2) 直接使用遗留 `POST /v1/state_transitions/subagent` 端点，包括 `EntangledServiceClient.record_subagent_transition(...)` 方法调用和字面量路径 POST；唯一允许的 transition 写入通道是 `EntangledServiceClient.transition_subagent`。allowlist 只豁免 `novaic-common/common/entangled_client.py`（shim 定义自身）、`tests/`、`docs/`、lint 脚本自己。CI 的 `.github/workflows/lint.yml` 已经在跑它，不用动 workflow。验证手法：造一个含 `client.record_subagent_transition(...)` 的 probe 文件，lint 应该挂掉；删掉 probe 应该恢复绿色。
 
 ---
 

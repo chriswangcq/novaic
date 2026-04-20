@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 #
 # PR-28 (2026-04-15) — ban raw status writes on the ``subagents`` entity.
+# PR-31c (2026-04-15) — also ban POSTs to the legacy
+#                       ``/v1/state_transitions/subagent`` shim; all
+#                       transition writes must go via
+#                       ``EntangledServiceClient.transition_subagent``.
 #
 # Why
 # ---
@@ -14,10 +18,19 @@
 #     through silently),
 #   * ancillary fields (need_rest, progress, error, result) drift from
 #     status,
-#   * the PR-28 transition log line is never emitted, so PR-31's
-#     state-transition log table will have holes,
-#   * the transition metric counter is never bumped, so the runbook
-#     "dump subagent state churn" loses visibility into stuck subagents.
+#   * the PR-28 log line + PR-31 ``subagent_state_transitions`` history
+#     row are never written, so downstream observability (trace replay,
+#     metric queries) has holes.
+#
+# PR-31b then folded "update subagents.status + insert history row" into
+# a single server-side endpoint ``POST /v1/subagents/{agent}/{sid}/transition``
+# wrapped by ``EntangledServiceClient.transition_subagent``. The pre-PR-31b
+# ``POST /v1/state_transitions/subagent`` endpoint is kept around as a
+# shim only so any in-flight deploy survives a rolling restart — it is
+# NOT for new writers. Hitting the shim directly (a) splits the status
+# UPDATE and the history INSERT into two non-transactional calls (the
+# exact atomicity bug PR-31b closed) and (b) skips Entangled's ALLOWED
+# matrix check, so "completed -> awake" regressions get through.
 #
 # How
 # ---
@@ -40,17 +53,25 @@
 # ``mark_*`` helpers) from Business-side code, or attach
 # ``_transition_reason`` / ``_transition_actor`` to your entity_update
 # payload from a worker.
+#
+# For the shim ban, the only legitimate reference is
+# ``novaic-common/common/entangled_client.py`` where the back-compat
+# method itself is defined.
 set -e
 
-# Two patterns; we want to catch both direct store.update calls and the
-# runtime-side entity_update helper.
-PATTERNS=(
+violations=0
+
+# ── Pass 1: direct writes to subagents.status (PR-28) ──────────────────────
+#
+# Catches both direct store.update calls and the runtime-side
+# entity_update helper.
+STATUS_PATTERNS=(
     'store\.update\([^)]*subagents[^)]*status'
     'entity_update\([^)]*subagents[^)]*status'
     '\.update\([^)]*"subagents"[^)]*"status"'
 )
 
-ALLOWLIST=(
+STATUS_ALLOWLIST=(
     'novaic-business/business/internal/subagent_state.py'
     'novaic-business/business/internal/entity.py'
     'novaic-business/business/schema_push.py'
@@ -65,14 +86,13 @@ ALLOWLIST=(
     'scripts/ci/lint_subagent_status.sh'
 )
 
-violations=0
-for PATTERN in "${PATTERNS[@]}"; do
+for PATTERN in "${STATUS_PATTERNS[@]}"; do
     HITS=$(rg -l --pcre2 -U "$PATTERN" \
               --glob '*.py' \
               novaic-* 2>/dev/null || true)
     for f in $HITS; do
         ok=0
-        for a in "${ALLOWLIST[@]}"; do
+        for a in "${STATUS_ALLOWLIST[@]}"; do
             [[ "$f" == *"$a"* ]] && ok=1
         done
         if [[ $ok -eq 0 ]]; then
@@ -83,13 +103,64 @@ for PATTERN in "${PATTERNS[@]}"; do
     done
 done
 
+# ── Pass 2: legacy ``/v1/state_transitions/subagent`` shim POSTs (PR-31c) ──
+#
+# Two ways to hit the shim, both banned:
+#   a. call the client helper: ``client.record_subagent_transition(...)``
+#   b. raw POST with the literal path: anything matching the quoted string
+#      ``"/v1/state_transitions/subagent"`` (exact match terminated by
+#      a quote — the GET history endpoint is
+#      ``f"/v1/state_transitions/subagent/{subagent_id}"`` where the
+#      closing character is a slash, not a quote, so it does NOT match).
+#
+# The allowed replacement is ``EntangledServiceClient.transition_subagent``
+# (PR-31b); it's atomic and goes through Entangled's ALLOWED matrix.
+SHIM_PATTERNS=(
+    '\.record_subagent_transition\s*\('
+    '["'\'']/v1/state_transitions/subagent["'\'']'
+)
+
+SHIM_ALLOWLIST=(
+    # The shim method + its path literal live here.
+    'novaic-common/common/entangled_client.py'
+    'tests/'
+    'docs/'
+    'scripts/ci/lint_subagent_status.sh'
+)
+
+for PATTERN in "${SHIM_PATTERNS[@]}"; do
+    HITS=$(rg -l --pcre2 -U "$PATTERN" \
+              --glob '*.py' \
+              novaic-* Entangled/ 2>/dev/null || true)
+    for f in $HITS; do
+        ok=0
+        for a in "${SHIM_ALLOWLIST[@]}"; do
+            [[ "$f" == *"$a"* ]] && ok=1
+        done
+        if [[ $ok -eq 0 ]]; then
+            echo "BAN: $f uses the pre-PR-31b legacy shim"
+            echo "     (POST /v1/state_transitions/subagent splits status + history"
+            echo "      into two non-transactional writes — exactly what PR-31b closed)"
+            echo "     pattern matched: $PATTERN"
+            echo "     fix: EntangledServiceClient.transition_subagent(...)"
+            violations=$((violations + 1))
+        fi
+    done
+done
+
 if [[ $violations -gt 0 ]]; then
     echo ""
-    echo "Context: PR-28 mandates business.internal.subagent_state.transition()"
-    echo "as the only write path to subagents.status. See"
-    echo "novaic-business/business/internal/subagent_state.py for the ALLOWED"
-    echo "matrix and the mark_* convenience helpers, or"
-    echo "docs/roadmap/tickets/PR-28-subagent-state-machine.md for the RFC."
+    echo "Context:"
+    echo "  * PR-28 mandates business.internal.subagent_state.transition()"
+    echo "    as the only write path to subagents.status. See"
+    echo "    novaic-business/business/internal/subagent_state.py for the"
+    echo "    ALLOWED matrix and the mark_* convenience helpers, or"
+    echo "    docs/roadmap/tickets/PR-28-subagent-state-machine.md for the RFC."
+    echo "  * PR-31b + PR-31c mandate EntangledServiceClient.transition_subagent"
+    echo "    (novaic-common/common/entangled_client.py) for any transition write;"
+    echo "    the legacy /v1/state_transitions/subagent endpoint is a back-compat"
+    echo "    shim that splits the atomic write. See"
+    echo "    docs/roadmap/tickets/PR-31-state-transition-log-tables.md."
     exit 1
 fi
-echo "subagent_status lint OK"
+echo "subagent_status lint OK (status writes + legacy shim)"
