@@ -72,8 +72,31 @@
 - **热加载**：**不支持**，和其他 `services.json` 值一样，进程启动时读一次。需要切换 canary 就必须重启 Business / agent-runtime（反正我们一直这样做）。
 - **dev/prod 差异**：
   - dev：committed `services.json` 默认关 (`subscriber_enabled: false`, `health_check_interval_seconds: 30`)
-  - prod：在 `/opt/novaic/services/novaic-common/config/services.json` 本地编辑，或通过 `services.override.json`（gitignored, 若存在则 merge over）
-  - 运维 runbook 的 "flip canary switch" 步骤：编辑 services.json → `bash start.sh --stop && bash start.sh`
+  - prod：overlay file `/opt/novaic/etc/runtime_switches.json`（见下 TD-5），deep-merge 覆盖 committed defaults
+  - 运维 runbook 的 "flip canary switch" 步骤：编辑 **overlay file** → `bash start.sh --stop && bash start.sh`（不要编辑 services.json，rsync 会把你改的值冲掉）
+
+### C.2.2 TD-5 — `runtime_switches` overlay（2026-04-15 根治）
+
+**症状**：`deploy-business.sh` 每次跑 `rsync -azL --delete` 把 `novaic-common` / `novaic-gateway` / `novaic-agent-runtime` 三处 `services.json` 全覆盖，于是运维上一次开的 `subscriber_enabled=true` 会被悄悄改回 committed 的 `false`，subscriber 静默停摆。我们连着修了三次（每次手工 edit 三个 services.json + restart），问题总在下一次 deploy 复发。
+
+**根因**：`runtime_switches` 和其他代码默认值住在同一个 rsync-owned 文件里，code-shipped defaults 和 ops-owned live config 之间没有物理隔离。
+
+**根治**：overlay 机制。
+- `services.json` 保留 `runtime_switches` 段做 **defaults**，rsync 照常覆盖。
+- 新增 `/opt/novaic/etc/runtime_switches.json`，位置在 `$REMOTE_ROOT`（`/opt/novaic/services`）**之外**，rsync 物理碰不到。
+- `common/strict_config.py` 的 `_apply_runtime_switches_overlay` 在 load 时把 overlay deep-merge 到 `runtime_switches` 上，overlay 赢。
+- 查找顺序（先到先胜）：
+  1. `NOVAIC_RUNTIME_SWITCHES_PATH` env var（测试专用）
+  2. `$dirname(services.json)/runtime_switches.json`（dev 本地覆盖）
+  3. `/opt/novaic/etc/runtime_switches.json`（prod canonical，所有服务进程共享一份）
+- `deploy-business.sh` 的行为：
+  - `RSYNC_EXCLUDES` 加 `--exclude 'runtime_switches.json'`（belt-and-braces：即便谁不小心在 rsynced tree 里放一份 sibling 也不会被 delete）
+  - rsync 跑完后，若 `/opt/novaic/etc/runtime_switches.json` 不存在就用 committed defaults 种子化（**仅首次**），已存在则保留 operator-owned 内容。
+- `start.sh` 的 `_cfg` helper 做同样的 overlay merge，保证 bash 端读到的 `subscriber_enabled` 和 Python 端完全一致。
+
+**Fail-loud**：overlay 里出现 `services.json` 没声明过的 key（typo）→ ConfigError at startup。静默 no-op 是 TD-5 要消除的失败模式，不能在 overlay 里复活。
+
+**测试**：`novaic-common/tests/test_strict_config_runtime_switches_overlay.py` — no-overlay-keeps-defaults / sibling-overlay-wins / nested-wrapper-accepted / unknown-key-crashes / env-override-wins / env-missing-file-crashes / non-dict-crashes。
 
 ### C.2.1 启动必须打印完整 runtime_switches 快照（强制，反静默失败）
 
