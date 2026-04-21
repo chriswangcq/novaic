@@ -83,7 +83,7 @@
 | PR-37  | `[x]`  | [No-tool warning 显式信号通道](PR-37-no-tool-warning-explicit-signal.md)                                                          | —                                        | 显式 > 隐式    | 0.25 d（2026-04-22 完成）                 | wangchaoqun |
 | PR-38  | `[x]`  | [IM 消息渲染（sender / timestamp / msg_id header）](PR-38-im-message-rendering.md)                                                | PR-36                                    | 事件 > 片段    | 0.5 d（2026-04-22 完成）                  | wangchaoqun |
 | PR-39  | `[x]`  | [Context assembly 真·DFS（scope_id 匹配 + 嵌套 fold）](PR-39-context-assembly-dfs-recursion.md)                                    | —                                        | 一致性        | 0.5 d（2026-04-22 完成）                  | wangchaoqun |
-| PR-40  | `[x]`  | [Entangled id 兜底路径把 scope-key 误当主键（chat_reply UNIQUE 根治）](PR-40-entangled-id-fallback-scope-key-collision.md)                                      | —                                        | 无隐式契约 / fail-fast  | 0.5 d（2026-04-21 完成）             | wangchaoqun |
+| PR-40  | `[x]`  | [Entangled id 兜底删除 + chat_reply 显式填 id（fail-fast，chat_reply UNIQUE 根治）](PR-40-entangled-id-fallback-scope-key-collision.md)                       | —                                        | 无静默失败 / fail-fast  | 0.5 d（2026-04-21 完成）             | wangchaoqun |
 
 
 ---
