@@ -79,6 +79,10 @@
 | PR-33  | `[x]`  | [env shrink + services.json runtime_switches](PR-33-env-shrink.md)                                                          | PR-17                                    | R-FAIL-LOUD | 1 d（2026-04-20 六阶段一轮落地）               | __          |
 | PR-34  | `[x]`  | [Worker 同步化（34a-34e 五步分 PR）](PR-34-worker-sync.md)                                                                          | PR-33（并行 mergeable）                      | 系统简单        | 5 × 0.5 d（2026-04-19/20 bake gate 撤销） | __          |
 | PR-35  | `[x]`  | [chat_reply 静默 400 双层防御（hotfix）](PR-35-silent-fail-runtime-fill-defaults.md)                                                | —                                        | 无静默失败       | 0.5 d（2026-04-19 prod 上线）             | wangchaoqun |
+| PR-36  | `[x]`  | [用户消息顺序修复（messages 默认 ASC）](PR-36-messages-default-order-asc.md)                                                            | —                                        | 无静默失败 / 简单 | 0.25 d（2026-04-22 完成）                 | wangchaoqun |
+| PR-37  | `[x]`  | [No-tool warning 显式信号通道](PR-37-no-tool-warning-explicit-signal.md)                                                          | —                                        | 显式 > 隐式    | 0.25 d（2026-04-22 完成）                 | wangchaoqun |
+| PR-38  | `[x]`  | [IM 消息渲染（sender / timestamp / msg_id header）](PR-38-im-message-rendering.md)                                                | PR-36                                    | 事件 > 片段    | 0.5 d（2026-04-22 完成）                  | wangchaoqun |
+| PR-39  | `[x]`  | [Context assembly 真·DFS（scope_id 匹配 + 嵌套 fold）](PR-39-context-assembly-dfs-recursion.md)                                    | —                                        | 一致性        | 0.5 d（2026-04-22 完成）                  | wangchaoqun |
 
 
 ---
