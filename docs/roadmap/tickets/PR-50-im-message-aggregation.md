@@ -5,7 +5,7 @@
 | **Phase** | UX-side optimization（不是正确性 bug，是"观感 + 成本"问题） |
 | **Milestone** | R9 IM stream layer 完形 |
 | **承诺** | R9（IM 语义一致性） |
-| **Status** | `[✓ Wave 1]` — **已部署 prod 2026-04-22 18:00 UTC**。`WAKE_REPLAY_MAX_BYTES=16384` 在 runtime 内生效；观察 `wake_im_replay_truncated_total{reason=bytes}` 指标在长对话 agent 上是否开始计数。Wave 2（business outbox 聚合）保留在 `[ ]` 状态，后续独立 PR |
+| **Status** | `[✓ Wave 1 + Wave 2 code landed]` — Wave 1 **已部署 prod 2026-04-22 18:00 UTC**（`WAKE_REPLAY_MAX_BYTES=16384` runtime 生效）；Wave 2 **code 2026-04-24 合入**（`IM_AGGREGATION_WINDOW_SEC=60` default，独立 ticket [PR-50-wave-2](PR-50-wave-2-im-aggregation.md)，等部署窗口） |
 | **Depends on** | PR-38（IM 渲染）、PR-44（wake IM replay）、PR-46（by-ids 装配） |
 | **Blocks** | — |
 | **估时** | 0.5–1 d |
@@ -144,15 +144,17 @@ def _render_chat_history(messages: list[dict]) -> str:
 
 ## 实施 Checklist
 
-### A. 聚合（**Wave 2 — 延后独立 PR**）
-> 本 wave 跨父仓 runtime + submodule `novaic-business` 两端，需要 outbox repo 新增两个 SQL API、subscriber 重写 deliver 逻辑、跨 subscriber 并发幂等测试。单独一张票更清晰，与 Wave 1 解耦上线；Wave 1 的 byte cap 独立就有价值（防 token 预算爆破），不阻塞 Wave 2 周期。
+### A. 聚合（**Wave 2 — code 已合入 2026-04-24，等部署**）
+> **详细方案 + 部署 checklist 见独立工单 [PR-50-wave-2](PR-50-wave-2-im-aggregation.md)**。
+> 实际实现**没有**新增 Entangled 端点——`/v1/outbox/claim` 的 `batch_size=50` 已经一把回当前 pending 行快照，subscriber 内做 claim-batch 分组就够。父设计的 `peek_same_agent_same_sender` / `claim_many` 留作未来扩展点（实测需要再加）。
 
-- [ ] `outbox_repo.peek_same_agent_same_sender` 实现
-- [ ] `outbox_repo.claim_many` 原子 claim（单 SQL UPDATE ... WHERE id IN(...)）
-- [ ] `_deliver_one_inner` 聚合分支
-- [ ] 幂等 key 改为 `agg:{first_id}:{last_id}`（单条时仍用 `msg:{id}`）
-- [ ] env `IM_AGGREGATION_WINDOW_SEC` / `IM_AGGREGATION_MAX_BATCH`
-- [ ] metric `im_aggregated_total{count}`
+- [x] ~~`outbox_repo.peek_same_agent_same_sender`~~ → **放弃**：claim batch 天然提供快照
+- [x] ~~`outbox_repo.claim_many`~~ → **放弃**：同上
+- [x] `_group_for_aggregation` + `_deliver_aggregated` 实现（`DispatchSubscriber`）
+- [x] 幂等 key：`agg:{first_id}:{last_id}` 合批；单条仍 `msg:{id}`
+- [x] env `IM_AGGREGATION_WINDOW_SEC`（默认 60，0 = kill switch）、`IM_AGGREGATION_MAX_BATCH`（默认 10）
+- [x] metric `im_aggregated_total{count}` + `im_aggregated_fallback_total{reason}`
+- [x] 单测 22 例（`tests/test_im_aggregation.py`）
 
 ### B. CHAT_HISTORY cap — 已实现（Wave 1）
 - [x] `_budget_trim` 新增 `max_bytes` 参数 + 返回值扩展为 4 元组 `(kept, tokens, bytes, reason)`
