@@ -32,6 +32,13 @@
 - `ReadLints` 干净
 - 验收命令通过（粘到 PR 描述里）
 - 对应承诺 (R-x) 在 `message-wake-principles.md §五对照表` 里找得到证据
+- **部署 Checklist 全 `[x]`（未部署的票不能关）**——每张票在"验收命令"之后必须有一段 "部署 Checklist"，包含：
+  1. 代码已合入父仓库 main（含子模块 bump）
+  2. 已执行 `./deploy <target>`（gateway / runtime / services / cortex / …，视票的 Scope 选择）
+  3. **线上证据 ≥ 2 段**：日志 grep + `/metrics` 计数 + 必要时 SQL 状态 check；直接 paste 进 PR 关单评论
+  4. 如有一次性迁移（数据修复脚本），需已在 prod 跑过并留有备份文件名
+  ——参考 [PR-41](PR-41-agent-reply-not-orphan-eligible.md#部署-checklist必走不部署不算完成) / [PR-42](PR-42-wake-continuity-inject-handoff.md#部署-checklist必走不部署不算完成) / [PR-44](PR-44-wake-im-stream-replay.md#部署-checklist必走不部署不算完成) 的格式。
+  ——血教训：2026-04-21 连做三张票（PR-41/42/44）代码完、测试过、ticket 关单，但**没 push 没部署**，第二天用户又看到 AGENT_REPLY 自苏醒。所以"代码写完"不等于"bug 修复"，只有"线上指标验证生效"才算。
 
 ---
 
@@ -84,6 +91,10 @@
 | PR-38  | `[x]`  | [IM 消息渲染（sender / timestamp / msg_id header）](PR-38-im-message-rendering.md)                                                | PR-36                                    | 事件 > 片段    | 0.5 d（2026-04-22 完成）                  | wangchaoqun |
 | PR-39  | `[x]`  | [Context assembly 真·DFS（scope_id 匹配 + 嵌套 fold）](PR-39-context-assembly-dfs-recursion.md)                                    | —                                        | 一致性        | 0.5 d（2026-04-22 完成）                  | wangchaoqun |
 | PR-40  | `[x]`  | [Entangled id 兜底删除 + chat_reply 显式填 id（fail-fast，chat_reply UNIQUE 根治）](PR-40-entangled-id-fallback-scope-key-collision.md)                       | —                                        | 无静默失败 / fail-fast  | 0.5 d（2026-04-21 完成）             | wangchaoqun |
+| PR-41  | `[x]`  | [AGENT_REPLY 等非 wake-trigger 消息不再进入 orphan 候选（止血：5 分钟自动苏醒误循环）](PR-41-agent-reply-not-orphan-eligible.md) | PR-21, PR-26                        | R4 + R8 + 止血           | 0.5 d                        | __          |
+| PR-42  | `[x]`  | [Wake 时注入 handoff_notes + historical_summary 到新 scope（R9 文字层）](PR-42-wake-continuity-inject-handoff.md) | PR-13, PR-20                        | R9（新增）                | 1 d                          | __          |
+| PR-43  | `[ ]`  | [Scope 续链 previous_scope_id + cortex assembly 读上一次 scope 尾部 K 步（R9 状态层）](PR-43-scope-chain-previous-id.md) | PR-20, PR-29, PR-39, PR-42          | R9 + R4                 | 2–3 d                        | __          |
+| PR-44  | `[x]`  | [Wake 首轮 IM 流回放（最近 K 条 chat_messages 前置注入）](PR-44-wake-im-stream-replay.md) | PR-38, PR-42                        | R9 + R4                 | 0.5–1 d（2026-04-21 完成）                      | wangchaoqun          |
 
 
 ---
