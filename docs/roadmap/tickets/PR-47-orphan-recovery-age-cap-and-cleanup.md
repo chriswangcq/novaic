@@ -5,7 +5,7 @@
 | **Phase** | hotfix（PR-41 止血后的次生污染） |
 | **Milestone** | R5（orphan 有界可恢复） |
 | **承诺** | R5 + R1（单一事实 of 分发） |
-| **Status** | `[~]` — runtime + Entangled 状态机 + 迁移 SQL + 单测 9（runtime）+ 5（Entangled）全绿；待 staging 迁移与指标验证 |
+| **Status** | `[✓]` — runtime + Entangled 状态机 + 单测 9+5 全绿；**已部署 prod（2026-04-22 17:57 UTC）**。迁移 SQL 线上 run 为 no-op：PR-41 amend 已提前清空 `pending` 池（see 部署证据）；迁移保留作为防御性资产 |
 | **Depends on** | PR-27（recovery dispatch）、PR-46（by-ids 装配，否则清理前线上还会继续污染） |
 | **Blocks** | — |
 | **估时** | 0.5 d |
@@ -146,8 +146,13 @@ GROUP BY type, lifecycle;
 - [x] `scripts/migrations/047_cleanup_ancient_user_message_pending.sql` 写好
 - [x] 脚本内嵌前/后观测 SQL、备份表 `chat_messages_backup_pr47`、reason=`pr47_ancient_pending_cleanup`
 - [x] 幂等：重跑不产生二次变更（`WHERE lifecycle='pending'` 过滤）
-- [ ] prod 前 `cp entangled.db entangled.db.pr47.bak.$(date +%s)`（**部署时执行**）
-- [ ] prod 跑迁移 + 统计前后差值 paste 进 PR 关单评论（**部署后执行**）
+- [x] 修正 `created_at` 比较：prod 是 ISO-8601 TEXT（`datetime('now')` 默认），不是 epoch-millis；用 text-to-text 比较（SQL 里两次修复 commit）
+- [x] 修正 `message_state_transitions` 列名：prod schema 是 `(message_id, from_state, to_state, reason, actor, scope_id, metadata_json, created_at)`，与首版不同
+- [x] prod backup：`/opt/novaic/snapshots/entangled.db.pr47.bak.$(date +%s)`（deploy-business.sh incremental 模式不自动备份，手动 `cp`）
+- [x] prod run（2026-04-22 18:00 UTC）：迁移成功但 no-op。Before / After (>48h 窗口) 各自 `(USER_MESSAGE, claimed)=25 / (USER_MESSAGE, consumed)=121 / (USER_MESSAGE, pending)=0`；backup 表 0 行；audit 表 0 行。**原因**：PR-41 amend（`_stamp_consumed_if_non_trigger` 覆盖 `_sql_create`）已提前治本，使得"新增 pending AGENT_REPLY/TOOL_OUTPUT"的源头被掐断，加上 subscriber 正常消费把历史 pending 也清零了。该迁移的实际价值已降级为"防御性保留"（未来若状态机又出现同类漏水，可一键执行）。
+
+### 意外发现（不在 PR-47 范围 — 记作跟单）
+- 25 条 `USER_MESSAGE` 停在 `lifecycle='claimed'`，`claimed_by_scope='03a93597-6102-4c8e-889e-015fafe6e4e9'`，created_at 集中在 2026-04-18 13:03..13:14；scope 长期未回收。这是 *stuck-claimed* 而非 *stuck-pending*，属于独立问题（HealthWorker 的 `_scan_unhandled_messages` 只管 `pending`；`claimed` 靠 scope_end 和孤儿升级）。**建议另开工单 PR-51（stuck-claimed 回收）**。
 
 ### C. Business/Entangled reason 白名单 — 已实现
 - [x] `ALLOWED_TRANSITIONS` 扩展：`pending → {"claimed", "deduped", "consumed"}`（`consumed` 新增）
