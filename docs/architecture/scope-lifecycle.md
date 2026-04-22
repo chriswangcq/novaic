@@ -160,6 +160,29 @@ PR-22 和 PR-23 都会被重试（outbox redelivery / saga re-entry）。如果 
 
 所以 `transition()` 内部把 self-loop 改成 **no-op**：不写 DB、不 bump `lifecycle_updated_at`，返回 `{"noop": true, ...}`。`ALLOWED_TRANSITIONS` 表仍然会拒绝真正非法的迁移（比如 `consumed → claimed`），只是"已经在终态再调一次"不当错误。
 
+### 3.4 PR-52 — subscriber 重试路径的 scope-aliveness 护栏
+
+**写入者 / 读取者**：`DispatchSubscriber._check_stale_claim`
+（`novaic-business/business/subscribers/dispatch_subscriber.py`）
+
+PR-51 Part 1 踩到的坑：subscriber 重启触发 outbox 的 retry claim → 一条 `pending` 的 USER_MESSAGE 被 dispatch 给一个**全新**的 Queue session → 拉起新 scope → 老 scope 早已 archived，两头对不上，消息停在 `claimed(new_scope)` 永远没人消费。PR-51 Part 2 的 HealthWorker stuck-claimed 扫描兜底清，**但不能防止产生新的幽灵 scope**。
+
+PR-52 在 subscriber 侧做两道闸，**只针对 retry（`row.attempts > 0`）触发**，happy path 零开销：
+
+1. **Lifecycle 闸** — `GET /v1/entities/messages/{id}`：
+   - `pending` → 正常 retry dispatch（最常见场景）
+   - `consumed` → 已经由 scope_end 处理完，`mark_delivered` + 不 dispatch
+   - `claimed` → 进入 aliveness 闸
+   - 其它 / probe 失败 → fail-open 继续 dispatch
+2. **Aliveness 闸**（仅 claimed 分支）— Cortex `POST /v1/meta/read`：
+   - `meta.phase in {"executing", "compacting"}` → 活，`mark_delivered` + 不 dispatch（原 claim 正在处理，再 dispatch 会重复触发）
+   - `phase=archived|failed` 或 `meta=={}` → 死，`mark_delivered` + 打 `STALE_CLAIM_DEAD_SCOPE` 日志 + metric `subscriber_stale_claim_total{result=dead_scope}`。**不自己 transition**——claimed → consumed 归 PR-51 Part 2 scanner。
+   - probe 失败 → fail-open
+
+Kill switch：`SUBSCRIBER_STALE_CLAIM_CHECK=0` 恢复 pre-PR-52 行为。
+
+这条护栏不碰状态机、不写 DB，只是在 dispatch 前加读闸，所以与 §3.1 / §3.2 / §3.3 全兼容。真想要消除"幽灵 scope 诞生"，比这条护栏更强的方案需要 Queue Service 在 `dispatch` 时也做 scope-aliveness 检查，成本远高于收益（主路径上每条都要多一个 Cortex hop），记账到 backlog。
+
 ---
 
 ## 4. 与其它 PR 的关系
