@@ -5,7 +5,7 @@
 | **Phase** | Post-deploy 跟单（PR-47 部署过程中从 prod 现场发现） |
 | **Milestone** | R5（消息生命周期闭环） |
 | **承诺** | R5：`chat_messages.lifecycle` 不应出现"claimed 超过 N 小时仍非 consumed/orphaned" 的半死不活态 |
-| **Status** | `[~] Part 1 + Part 2 impl complete 2026-04-23`；Part 1 已上 prod (25/28 rows cleaned)，Part 2 代码 + 单测过，待部署 |
+| **Status** | `[✓] Part 1 + Part 2 deployed 2026-04-23`；Part 1 migration 清理 25/28 rows，Part 2 HealthWorker 扫描 + Entangled/Business 端点上 prod，剩 3 rows 待自然老化被扫掉（均为 2026-04-21 prod-agent 行，~23h，距 24h 门槛不足 1h） |
 | **Depends on** | PR-21（lifecycle 状态机）、PR-27（HealthWorker 孤儿扫描）、PR-41 amend（consumed-at-birth） |
 | **Blocks** | — |
 | **估时** | 0.5 d（一次性迁移）+ 0.5 d（HealthWorker 扩展）= 1 d |
@@ -368,18 +368,30 @@ systemctl restart novaic-runtime-subscriber  # HealthWorker 一起
 
 ### 部署 Checklist (Part 2)
 
-- [ ] 父仓 main 已 push
-- [ ] ``./scripts/deploy-business.sh`` 跑过 incremental（Entangled + business + runtime 三件套）
-- [ ] Prod smoke：
+- [x] 父仓 main 已 push（3 个 submodule commits + 1 父仓 bump commit）
+- [x] ``./scripts/deploy-business.sh root@api.gradievo.com`` 跑过 incremental（Entangled + business + runtime 三件套）——2026-04-23 18:25 完成
+- [x] Prod smoke 验证（默认 24h/72h 门槛）：
   ```bash
-  ssh root@api.gradievo.com 'curl -s localhost:19900/v1/stuck-claimed -H "X-Service-Token: $SVC_TOKEN" | jq .count'
-  # 预期: 0 或 3（剩下的那批 04-21 prod-agent 行已过 24h 门槛被即刻扫掉）
+  curl -s 'localhost:19998/internal/messages/stuck-claimed' | jq .count
+  # → 0（健康：3 剩余 prod-agent 行均 < 24h）
   ```
-- [ ] Prod 跟踪 HealthWorker 日志：
+- [x] Prod smoke 验证（放宽 20h 门槛确认 endpoint 工作）：
   ```bash
-  ssh root@api.gradievo.com 'grep stuck_claimed /opt/novaic/data/logs/*.log | tail -20'
-  # 预期：部署后首个 tick 清理完残留（≤ 3 行），之后 stuck_claimed_scan seen=0 稳态
+  curl -s 'localhost:19998/internal/messages/stuck-claimed?min_age_sec=72000' | jq '.stuck[0]'
+  # → {
+  #     "message_id": "cbfe6007196e",
+  #     "type": "USER_MESSAGE",
+  #     "claimed_by_scope": "a50cf5b1-...",
+  #     "lifecycle_age_seconds": 81372.5,  # ~22.6h
+  #     "matched_axis": "lifecycle"
+  #   }
   ```
-- [ ] 1 周后观察 `stuck_claimed_recovered_total`：
-  - ``== 0``：健康（PR-41 amend + PR-48 Turn Finalizer + PR-46 + 这个兜底组合已经不再产生新泄漏）
-  - ``> 0``：仍有新渠道漏，回溯日志里 `dead_scope` 字段定位漏源
+- [x] HealthWorker 确认按 30s 周期发 scan：
+  ```bash
+  grep stuck-claimed /opt/novaic/data/logs/health.log | tail -5
+  # → 每 30s 一次 GET /internal/messages/stuck-claimed → 200 OK
+  ```
+- [ ] 24h 后观察：3 剩余行应自动归零（``lifecycle_age_seconds`` 跨过 86400s → 下一 tick 扫掉 → ``stuck_claimed_recovered_total`` 计入 3）
+- [ ] 1 周后观察 `stuck_claimed_recovered_total` 稳态：
+  - ``== 3``：健康（PR-41 amend + PR-48 Turn Finalizer + PR-46 + 这个兜底组合已经不再产生新泄漏，只清理了历史残留）
+  - ``> 3``：仍有新渠道漏，回溯日志里 `STUCK_CLAIMED message_id=... dead_scope=...` 定位漏源 → 触发 **PR-52** (subscriber scope-aliveness check)
