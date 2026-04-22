@@ -586,7 +586,7 @@
 - P6-12: `[x]` 移除 `chat_messages.read` 字段的 runtime 读取约束，文档化为 "UI-only" 字段。**已落：P6-12 工单审计所有触点 + CI `lint_chat_messages_read.sh` 强制 R10 + 4 个僵尸 Business 路由贴弃用注释**（2026-04-24）。
 - P6-13: `[x]` `docs/roadmap/tickets/reviews/PR-45-review.md` 补 Wave 1F 线上证据。**已落：2026-04-24 review 完成；状态机证据 + 单测链覆盖到 §3.4**。Follow-ups：
     - `[✓ code]` **PR-45.1** 观测性补丁 — `DispatchSubscriber._resolve_continuity` 每次 dispatch 发一条 `event=continuity_resolve result=ok|empty|not_found ...` info log（3 分支 + 4 tests `test_pr451_resolve_*`），error 分支保留 Wave 1B 的 `logger.warning`，2026-04-24 合入等部署。
-    - `[ ]` `scripts/ci/lint_wake_continuity_contract.sh` — metadata producer → subscriber → session.init → handler contract lint。
+    - `[✓ code]` **PR-45.2** `scripts/ci/lint_wake_continuity_contract.sh` — consumer-layer file 中 `handoff_notes` / `historical_summary` 必须成对出现的 R9 contract lint + single-key tuple loop 防御。首次跑即抓到 `scheduler_worker._wake_metadata` 少了 `historical_summary` 的真实缺口，同 PR 顺手修。Wired into `.github/workflows/lint.yml`。2026-04-24 合入。
     - `[ ]` `scripts/canary/wake-continuity-smoke.sh` — PR-45.1 landed 后 canary 可直接 `grep result=ok` 作为通过条件。
 
 ---

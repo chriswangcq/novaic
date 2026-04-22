@@ -31,3 +31,5 @@ jobs:
       run: ./scripts/ci/lint_outbox_trigger_sync.sh
     - name: Run chat_messages.read UI-only lint (P6-12 / R10)
       run: ./scripts/ci/lint_chat_messages_read.sh
+    - name: Run wake-continuity contract lint (PR-45.2 / R9)
+      run: ./scripts/ci/lint_wake_continuity_contract.sh
