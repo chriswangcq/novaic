@@ -96,24 +96,27 @@ WHERE type = 'USER_MESSAGE'
   AND lifecycle = 'pending'
   AND created_at < datetime('now', '-48 hours');
 
--- Observability: a single grep-able marker row in the transitions
--- table so future ops can trace why these rows flipped. The
--- ``message_state_transitions`` table may not exist in all historical
--- DBs; INSERT OR IGNORE absorbs a missing-table error at the SQL
--- level as a no-op (actually SQLite raises; we wrap in a safe block
--- by checking via a CTE pattern before the INSERT).
--- NOTE: if ``message_state_transitions`` is absent in your deploy,
--- comment the INSERT below out — the data flip above is idempotent
--- and the audit trail is "nice to have", not load-bearing.
+-- Observability: one audit row per flipped message so future ops
+-- can grep ``message_state_transitions WHERE reason='pr47_...'`` and
+-- see exactly which IDs this migration terminated. Schema confirmed
+-- against prod 2026-04-23:
+--   (id PK autoincr, message_id, from_state, to_state, reason,
+--    actor, scope_id, metadata_json, created_at INTEGER epoch-millis)
+--
+-- ``actor='migration-047'`` marks admin-origin — distinguishes from
+-- the runtime's own ``actor='health_worker'`` / ``subscriber`` /
+-- ``scope_end`` on regular transitions.
 INSERT INTO message_state_transitions (
-    message_id, from_state, to_state, scope_id, reason, transitioned_at
+    message_id, from_state, to_state, reason, actor, scope_id, metadata_json, created_at
 )
 SELECT
     id,
     'pending',
     'consumed',
-    NULL,
     'pr47_ancient_pending_cleanup',
+    'migration-047',
+    NULL,
+    NULL,
     strftime('%s', 'now') * 1000
 FROM chat_messages_backup_pr47;
 
