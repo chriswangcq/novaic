@@ -5,7 +5,7 @@
 | **Phase** | R9 加强版（wake continuity 的"完整形态"） |
 | **Milestone** | — |
 | **承诺** | R9（见 PR-42）+ R4（context 可追溯） |
-| **Status** | `[Wave A ✓ (2026-04-24), Wave B/C 待开]` |
+| **Status** | `[Wave A ✓ (2026-04-24) · Wave B ✓ (2026-04-25) · Wave C ✓ (2026-04-25, deploy pending)]` |
 | **Depends on** | PR-20（scope meta inputs）、PR-29（scope 状态机）、PR-39（context assembly DFS） |
 | **Blocks** | — |
 | **估时** | 2–3 d（含 Cortex engine 配合） |
@@ -183,70 +183,85 @@ def assemble_context(scope_id, budget_tokens):
   - 决策 note：ticket 原稿写的是"cortex_scope_end 后独立一步 `update_subagent`"。落地时改为复用 terminal step 的 `entity_update` 同一次调用，避免"两次写可能部分失败"的 skew，同时承接 PR-45 A 的 `historical_summary` piggyback 模式，代码面扩散最小。
 - [x] 单测：`novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py` — 19 个用例覆盖 `_last_scope_fields` 守卫（5）、saga payload builder（4）、handler writeback（10，含 5 组 `pytest.parametrize` malformed-value 防御）
 
-### B. Assembler resolve previous_scope_id
+### B. Producer / Transport —— previous_scope_id 落到 dispatch metadata  *(landed 2026-04-25)*
 
-- [ ] 在 `DispatchAssembler.assemble` 里，针对 `trigger_source in {SCHEDULED_WAKE, RECOVERED, USER_MESSAGE, SUBAGENT_SEND}` 且 subagent_id 已知时：
-  - [ ] 查 `subagents.last_scope_id`（复用 `AgentOwnershipResolver` TTL 缓存模式，或新增 `LastScopeResolver`）
-  - [ ] 注入 `metadata["previous_scope_id"]`
-- [ ] `SPAWN_SUBAGENT` / 无 subagent_id 的路径不 resolve
-- [ ] Business 新增 `GET /internal/agents/{agent_id}/subagents/{sub_id}/last_scope` → `{scope_id, archived_at}` / 404
+落地决策：**不**引入独立的 `LastScopeResolver` / 新 GET endpoint。复用各 wake caller 已有的 `subagents` entity 读取路径，一处 resolve、统一在 metadata 边界把 `last_scope_id` 重命名为 `previous_scope_id`。
 
-### C. Dispatch 透传
+- [x] `DispatchSubscriber._resolve_continuity`（`novaic-business`）：`entity_get(subagents, ...)` 同一次调用里多返一个 `last_scope_id` 字段；`_deliver_one_inner` + 聚合分支均把该字段映射进 `metadata["previous_scope_id"]`（不覆盖上游 metadata）
+- [x] `HealthWorker._resolve_continuity`（`novaic-agent-runtime`）：同款改造，`_maybe_recover` 里在已有 handoff/historical 注入之后补 `previous_scope_id`
+- [x] `SchedulerWorker._wake_metadata`（`novaic-agent-runtime`）：`agent_info` 从 `/internal/subagents/due-wake` 拿到 `last_scope_id` → metadata
+- [x] Business `/internal/subagents/due-wake`（`novaic-business`）：返回体里把 `last_scope_id` 和 `historical_summary` 一并 expose（避免 scheduler 多一次 GET）
+- [x] 空值语义：`last_scope_id` 为 None / 空串 → 整个 `previous_scope_id` 键从 metadata 省略（不塞 sentinel，Wave C 靠 key 缺失判冷启动）
+- [x] `SPAWN_SUBAGENT`：以上三个 caller 都不经手子 agent spawn，自然不带 previous_scope_id；不需要额外 gate
+- [x] 单测：`novaic-business/tests/test_pr45_dispatch_continuity.py` 新增 5 用例 / `novaic-agent-runtime/tests/test_pr43_previous_scope_transport.py` 新增 11 用例覆盖 resolve → metadata 映射、upstream override 保护、falsy drop
 
-- [ ] `SessionRepository.dispatch`：saga_context 含 `previous_scope_id`（已经是 `**metadata` spread，零代码改动确认）
-- [ ] `_build_session_init_payload`：透传 `previous_scope_id` 到 payload
+### C. Dispatch 透传 & session.init  *(landed 2026-04-25)*
 
-### D. session.init 传给 Cortex
+- [x] `SessionRepository.dispatch`：`saga_context` 本身就是 `**metadata` spread —— 零代码确认 previous_scope_id 会直接出现在 saga ctx
+- [x] `_build_session_init_payload`（`subagent_wake.py`）：仅当 `ctx["previous_scope_id"]` truthy 才写入 payload（落袋测试 + falsy parametrize）
+- [x] `handle_session_init`（`runtime_handlers.py`）：`payload.get("previous_scope_id") or None` 读出后，立即作为 kwarg 传给 `bridge.create_scope`
+- [x] `CortexBridge.create_scope`：新增 `previous_scope_id` kwarg；conditionally 写进 `/v1/scope/create` payload（送 None 也合法，送"缺席"是最干净的 canary 信号，所以选后者）+ 日志行加 `prev=<id|->`
 
-- [ ] `handle_session_init`：`bridge.create_scope(scope_id=..., name=..., previous_scope_id=payload.get("previous_scope_id"))`
-- [ ] 单测：payload 带 prev → create_scope 调用带参；不带 → None
+### D. Cortex — 写 meta  *(landed 2026-04-25)*
 
-### E. Cortex — 写 meta
+- [x] `POST /v1/scope/create` 的 `ScopeCreateRequest` 新增 `previous_scope_id: str | None = None`（`_TenantMixin` 的 `extra='forbid'` 下必须显式声明，否则 422）
+- [x] `Workspace.create_scope` 形参新增 `previous_scope_id`；**仅 root scope**（`parent_path is None`）才写进 `meta.json`，子 scope 即便带该参数也 silent drop（续链颗粒度在 root 级）
+- [x] 单测（`novaic-cortex/tests/test_pr43_previous_scope_meta.py`）：root 写入、root 无参不写 sentinel、子 scope 忽略、Pydantic model 接受新字段 —— 4/4 通过
 
-- [ ] `create_scope` 路由接受 `previous_scope_id` 可选参
-- [ ] `workspace.create_scope` 写进 `meta.json`
-- [ ] 单测：meta.json 含 previous_scope_id
-- [ ] 状态机（PR-29）：previous_scope_id 是 executing 阶段的 constant，不参与 transition
+### E. Cortex — 读取 Tail  *(landed 2026-04-25)*
 
-### F. Cortex — 读取插入
+- [x] `Workspace.read_scope_tail(previous_scope_id, *, max_steps=20, max_tokens=8000, token_counter=None)`：
+  - [x] 读 `/ro/scopes/{previous_scope_id}/context.jsonl` 作为原始 messages
+  - [x] 读 `meta.json` 补 `archived_at`（来源优先级：`ended_at` > `archived_at` > `start_time`）
+  - [x] 先按 `max_steps` 截断尾部，然后 `max_tokens` front-drop 直到 ≤ 预算；单条消息超预算时保留整条（不切开避免破坏 tool_call 链）
+  - [x] soft-fail：read 异常 / 目录不存在 → `meta.found=False` + 空 messages，**不**抛异常污染 wake 关键路径
+- [x] `POST /v1/scope/read_tail` 新路由 + `ScopeTailRequest` pydantic model（`previous_scope_id` + 两个 budget cap，`_TenantMixin` 继承 `extra='forbid'`）
+- [x] 单测（`novaic-cortex/tests/test_pr43_read_scope_tail.py` — 7 用例）：happy path / missing archive soft-fail / max_steps 后截 / max_tokens front-drop / 单条超额保留 / `archived_at` 回填 / 请求 model 校验 —— 全通过
 
-- [ ] `read_scope_tail(scope_path, *, max_steps, max_tokens)` 新 API
-  - [ ] 逆序读 `steps/_index.jsonl` 最后 K 条
-  - [ ] 按 step type（tool_call / llm_message / sub_scope_ref）渲染成 messages
-  - [ ] 对 sub_scope_ref：仅渲染名字 + 摘要，不递归 DFS
-  - [ ] 超 `max_tokens` 提前截断；token 估算复用现有 tokenizer helper
-- [ ] `context_stack/engine.py` assembly 主循环：
-  - [ ] 读当前 scope meta；若 previous_scope_id 存在 → 在组装完当前 + 子 scope DFS 之后，若 budget 还剩 > `PREV_SCOPE_MIN_BUDGET` → 调 `read_scope_tail`
-  - [ ] 结果放在 system_prompt 之后、当前 scope context 之前
-  - [ ] 每条消息加 `_message_type="PREV_SCOPE_TAIL"`、包装 `<PREV_SCOPE_TAIL scope=X from=TS>`
+### F. Runtime — 注入 `<PREV_SCOPE_TAIL>`  *(landed 2026-04-25)*
 
-### G. 配置 & 上限
+- [x] `CortexBridge.read_scope_tail(previous_scope_id, *, max_steps, max_tokens)`：soft-fail 返回"空 found=False"结构；透明包装 `/v1/scope/read_tail`
+- [x] `handle_session_init`（在 `_build_continuity_block_for_wake` 之后）调 `_build_prev_scope_tail_messages`，结果追加到 `initial_context`
+- [x] 渲染策略（`_render_prev_tail_message`）：
+  - [x] `[USER]` / `[AGENT]` 前缀；`tool` / `system` 角色丢弃（避免孤儿 tool_call_id + 双注入 continuity）
+  - [x] assistant-only-tool_call 消息渲染为 `(tool_call: name1, name2)` 占位
+  - [x] 多模态 content（list of parts）拍平到 text-only
+  - [x] 单条 > 600 字符截断 + `…[truncated]` 标记
+- [x] Block 外层格式：`<PREV_SCOPE_TAIL scope_id="X" truncated="0|1" archived_at="TS">\n[USER] ... \n[AGENT] ...\n</PREV_SCOPE_TAIL>`，`_message_type="WAKE_CONTINUITY"`（跟 PR-42 同一家族，便于统一 budget 裁剪）
+- [x] 排序决策：注入点在 `HANDOFF_NOTES` / `HISTORICAL_SUMMARY` **之后** —— 把"系统 / agent 书写的摘要"放前，把"实证 transcript"放后，对齐给人做 briefing 的习惯
+- [x] 单测（`novaic-agent-runtime/tests/test_pr43_prev_scope_tail_inject.py` — 17 用例）：happy path、truncated 旗标、冷启动跳过、spawn_subagent 门禁、kill-switch 短路、bridge 异常 soft-fail、非渲染消息空 block 不发、env cap 生效、bridge kwargs 透传、消息渲染细节 —— 全通过
 
-- [ ] env：`PREV_SCOPE_MAX_STEPS=20`, `PREV_SCOPE_MAX_TOKENS=8000`, `PREV_SCOPE_MIN_BUDGET=4000`
-- [ ] 默认开启；可通过 `WAKE_CONTINUITY_PREV_SCOPE=0` 整体禁用做灰度
-- [ ] 如果 prev scope 不存在（已物理删除）→ log WARN + 降级到 PR-42 的"只有 handoff"
+### G. 配置 & 上限  *(landed 2026-04-25)*
+
+- [x] env：`WAKE_PREV_SCOPE_TAIL_ENABLED=1`（默认开；`=0` 瞬时关闭注入）
+- [x] env：`WAKE_PREV_SCOPE_TAIL_MAX_STEPS=20` / `WAKE_PREV_SCOPE_TAIL_MAX_TOKENS=6000`（默认值比 Cortex 侧 8k 更紧，因为 runtime 叠加了 handoff+historical 已用约 16KB）
+- [x] env 变量统一经 `_prev_scope_tail_caps()` 读取，malformed 回退默认，永不炸 handler
+- [x] soft-fail：Cortex 端不存在的 `previous_scope_id` → `meta.found=False` → runtime 直接不注入 block（wake 继续走 PR-42 text-layer）
 
 ## 测试 Checklist
 
-- [ ] 单测（runtime）：Assembler 对 SCHEDULED_WAKE + 已有 last_scope_id → metadata 含 previous_scope_id
-- [ ] 单测（cortex）：`read_scope_tail` 返回对的 step + 截断 + token 估算
-- [ ] 单测（cortex）：assembly 主循环接受 previous_scope_id → 输出含 `<PREV_SCOPE_TAIL>` wrapper
-- [ ] 集成端到端：
+- [x] 单测（runtime）—— producer/transport（Wave B）：4 × session_init payload + 5 × DispatchSubscriber resolve + 2 × HealthWorker resolve + mocked scheduler `_wake_metadata`（`tests/test_pr43_previous_scope_transport.py` × 11）
+- [x] 单测（runtime）—— session.init 渲染（Wave F）：17 用例（`tests/test_pr43_prev_scope_tail_inject.py`）覆盖门禁、kill-switch、soft-fail、cap 透传、消息渲染
+- [x] 单测（cortex）—— `read_scope_tail`（Wave E）：7 用例（`tests/test_pr43_read_scope_tail.py`）覆盖 happy / missing / max_steps / max_tokens / 单条超额 / `archived_at` / 请求模型
+- [x] 单测（cortex）—— `meta.previous_scope_id` 写入（Wave D）：4 用例（`tests/test_pr43_previous_scope_meta.py`）
+- [x] 单测（business）—— continuity resolve 扩展（Wave B）：`tests/test_pr45_dispatch_continuity.py` 17 用例全绿（其中 5 条新增 PR-43 Wave B 断言）
+- [ ] 集成端到端（待部署后执行）：
   - [ ] agent 在 scope X 调用 `read_file / edit_file` 若干次 → `subagent_rest(rest_duration_minutes=1)`
   - [ ] 等 SchedulerWorker 唤醒
   - [ ] 新 scope Y `meta.json` 含 `previous_scope_id=X`
-  - [ ] 首轮 think 的 LLM input 里能看到 X 末尾 K 步的 tool call + tool result
+  - [ ] 首轮 think 的 LLM input 里能看到 X 末尾 K 步的 `<PREV_SCOPE_TAIL>` block
   - [ ] agent 行为验证：连续对话不复读同样的 grep（人工 sanity check）
-- [ ] 回归：`SPAWN_SUBAGENT` 新生子 agent → previous_scope_id 为 None，不触发 read_scope_tail
-- [ ] 回归：prev scope 已物理删除（模拟）→ WARN log + 走降级路径
+- [x] 回归：`SPAWN_SUBAGENT` 触发类型在渲染层直接门禁挡掉（test_prev_scope_tail_spawn_subagent_trigger_skips_injection）
+- [x] 回归：Cortex 读不到 prev archive → soft-fail 空 block；runtime 端 bridge 异常也 soft-fail（test_prev_scope_tail_bridge_exception_soft_fails + test_read_scope_tail_missing_archive_soft_fails）
 
 ## 可观测性 Checklist
 
-- [ ] metric `prev_scope_tail_injected_total{result=ok|missing|skipped_budget}` counter
-- [ ] metric `prev_scope_tail_steps` histogram（实际注入了多少步）
-- [ ] metric `prev_scope_tail_tokens` histogram
-- [ ] log (session.init): `prev_scope linked=X archived_at=TS`
-- [ ] log (cortex assembly): `prev_scope_tail steps=K tokens=T budget_left=B`
+- [x] metric `wake_prev_scope_tail_total{result=injected|empty|error}` counter（runtime）
+- [x] log (cortex_bridge): `[CortexBridge] scope.created scope_id=Y path=... prev=X`（已含）
+- [x] log (runtime session.init): `event=prev_scope_tail_injected prev=X steps=K/total truncated=0|1`
+- [x] log (runtime session.init soft-fail): `event=prev_scope_tail_read_failed prev=X err=<ExcType>`
+- [x] log (cortex): `[Workspace] read_scope_tail read_context failed prev=X exc=<ExcType>`（miss 时 warn）
+- [ ] histogram `prev_scope_tail_steps` / `prev_scope_tail_tokens` —— 视部署后 log 洗量再决定是否补 histogram，当前 counter + log kv 已足够线上排障
 
 ## 文档 Checklist
 
