@@ -460,22 +460,28 @@
 
 ### P6-3  Wake continuity 状态层 — Scope 续链 previous_scope_id
 
-- Status: `[Wave A ✓ 2026-04-24, Wave B/C 待开]` (PR-43)
-- Wave A (2026-04-24) landed:
+- Status: `[Wave A ✓ 2026-04-24 · Wave B ✓ 2026-04-25 · Wave C ✓ 2026-04-25（deploy pending）]` (PR-43)
+- Wave A (2026-04-24) landed — **写入侧**：
   - Entangled `subagents` schema: `last_scope_id`, `last_scope_archived_at`（两字段 nullable，schema_push 自动迁移）
   - `subagent_rest` saga 新增 `_last_scope_fields(ctx)` helper（guards on `step_results.cortex_scope_end.success`），piggyback 到 `set_subagent_sleeping` / `set_subagent_completed` 的 entity_update（与 PR-45 A `historical_summary` 同原子写）
   - `handle_subagent_set_*` additive 写入（malformed value silent drop，不覆写已有）
   - 单测 `tests/test_pr43_last_scope_wiring.py` 19 个用例
-- Scope: `common/wake/assembler.py`（resolve last_scope_id）+ `queue_service/session_repo.py`（透传）+ `task_queue/sagas/subagent_rest.py`（写 last_scope_id）+ `novaic-cortex/context_stack/engine.py`（assembly 读尾部）+ Entangled schema（`subagents.last_scope_id`）
-- 任务：
-  - Entangled schema: `subagents.last_scope_id` / `last_scope_archived_at`
-  - `subagent_rest` saga: `cortex_scope_end` 成功后写 `last_scope_id`
-  - Assembler: 对 "续接类 trigger" resolve subagent.last_scope_id → metadata
-  - Cortex `create_scope` 接受 `previous_scope_id`，写入 meta.json
-  - Cortex assembly: 新增 `read_scope_tail(max_steps, max_tokens)`；当前 scope 组装完后，若 budget 剩余 > 阈值 → 前置注入 PREV_SCOPE_TAIL
-  - env 可配：`PREV_SCOPE_MAX_STEPS=20`, `PREV_SCOPE_MAX_TOKENS=8000`, `PREV_SCOPE_MIN_BUDGET=4000`, `WAKE_CONTINUITY_PREV_SCOPE=1`
-- 验收：新 scope `meta.previous_scope_id` 链接到上一次 archived root；首轮 think 的 LLM input 含 `<PREV_SCOPE_TAIL scope=X from=TS>` wrapper
-- 承诺：**R9 — 状态层**
+- Wave B (2026-04-25) landed — **producer / transport**：
+  - DispatchSubscriber / HealthWorker `_resolve_continuity` 多返 `last_scope_id`，在 metadata 边界 rename 为 `previous_scope_id`
+  - SchedulerWorker `_wake_metadata` 从 `/internal/subagents/due-wake` 拿 `last_scope_id`（新 expose）→ metadata
+  - `_build_session_init_payload` 透传 `previous_scope_id`；`handle_session_init` 转手传给 `bridge.create_scope(previous_scope_id=...)`
+  - Cortex `POST /v1/scope/create` 新增可选 `previous_scope_id`；`Workspace.create_scope` 仅 root scope 写进 `meta.json`（子 scope silent drop）
+  - 单测：runtime 11 + cortex 4 + business 5（新增）全绿
+- Wave C (2026-04-25) landed — **consumer / assembly**：
+  - `Workspace.read_scope_tail(previous_scope_id, *, max_steps, max_tokens, token_counter)`：读归档 scope 的 `context.jsonl` 尾部，`max_steps` 后截 + `max_tokens` front-drop（单条超额保留整条避免破坏 tool_call 链）；missing / read 异常 → `meta.found=False` 空 messages，**不**抛
+  - `POST /v1/scope/read_tail` 新路由（`ScopeTailRequest` pydantic，`_TenantMixin` 继承 `extra='forbid'`）
+  - `CortexBridge.read_scope_tail`：透明包装 + soft-fail（bridge 异常返回空 found=False）
+  - `handle_session_init` 在 HANDOFF/HISTORICAL 之后追加 `<PREV_SCOPE_TAIL scope_id=X truncated=0|1 archived_at=TS>`；`_render_prev_tail_message` 按 `[USER]`/`[AGENT]` 前缀渲染，`tool`/`system` 消息丢弃（避免孤儿 tool_call_id + 双注入 continuity），单条 > 600 字符截断
+  - kill-switch `WAKE_PREV_SCOPE_TAIL_ENABLED=0` / budget env `WAKE_PREV_SCOPE_TAIL_MAX_STEPS=20` / `WAKE_PREV_SCOPE_TAIL_MAX_TOKENS=6000`
+  - 可观测：metric `wake_prev_scope_tail_total{result=injected|empty|error}` + log `event=prev_scope_tail_injected prev=X steps=K/total truncated=0|1`
+  - 单测：cortex `test_pr43_read_scope_tail.py` 7 用例 + runtime `test_pr43_prev_scope_tail_inject.py` 17 用例，全通过
+- 验收（部署后）：新 scope `meta.previous_scope_id` 指向上一次 archived root；首轮 think 的 LLM input 含 `<PREV_SCOPE_TAIL scope_id=X ...>` block（位置在 `HANDOFF_NOTES` / `HISTORICAL_SUMMARY` 之后）；`wake_prev_scope_tail_total{result=injected}` 非 0
+- 承诺：**R9 — 状态层 全链路闭合**
 
 ### P6-4  Wake continuity IM 流层 — 首轮 chat_messages 回放
 
