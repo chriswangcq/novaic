@@ -570,16 +570,15 @@
 
 ### P6-10  IM 消息聚合 + CHAT_HISTORY 字节 cap（PR-50）
 
-- Status: `[ ]` (PR-50)
+- Status: `[~]` (PR-50 Wave 1 已部署；Wave 2 code 已合入等部署)
 - 触发：同 P6-5。根因 F — 用户连发 2 条消息触发 2 次 session.init；PR-44 CHAT_HISTORY 只有条数 cap 没字节 cap。
-- Scope: `novaic-business/business/subscribers/dispatch_subscriber.py`（60s 合批）+ `task_queue/handlers/context_handlers.py`（字节 cap）
+- Scope: `novaic-business/business/subscribers/dispatch_subscriber.py`（claim batch 内合批）+ `novaic-agent-runtime/task_queue/handlers/context_handlers.py`（字节 cap）
 - 任务：
-  - DispatchSubscriber 对 `USER_MESSAGE / SUBAGENT_SEND` trigger 做 60s 同 sender 合批（窗口内最多 10 条）
-  - `IM_AGGREGATION_WINDOW_SEC=60` / `IM_AGGREGATION_MAX_BATCH=10`
-  - `WAKE_IM_REPLAY_MAX_BYTES=16384` 双 cap，保留 `<TRUNCATED n_omitted=X>` 标记
-  - metric `im_aggregated_total{count}` / `wake_im_replay_truncated_total{reason}`
-- 验收：3 条连发消息触发 1 次 session.init；CHAT_HISTORY 长对话 agent 有 `reason="bytes"` 截断记录
-- 承诺：**R9（IM 语义一致性）**
+  - [x] **Wave 1 (byte cap)** — `WAKE_REPLAY_MAX_BYTES=16384` 双 cap + `<CHAT_HISTORY_TRUNCATED>` marker + metric `wake_im_replay_truncated_total{reason}`。**已部署 2026-04-22**。
+  - [x] **Wave 2 (burst 聚合)** — DispatchSubscriber 对 `USER_MESSAGE` trigger 做 claim-batch 内分组（`IM_AGGREGATION_WINDOW_SEC=60` / `IM_AGGREGATION_MAX_BATCH=10`，head-anchored 窗口）；幂等 key 切 `agg:{first}:{last}`；回退规则覆盖 PR-52 retry / bad payload / dispatch error；metric `im_aggregated_total{count}` + `im_aggregated_fallback_total{reason}`。**code 2026-04-24 合入 + 22 单测全绿**，等部署窗口。详见独立工单 [PR-50 Wave 2](tickets/PR-50-wave-2-im-aggregation.md)。
+- 验收：3 条连发消息触发 1 次 session.init（`im_aggregated_total{count="3"} ≥ 1`）；CHAT_HISTORY 长对话 agent 有 `reason="bytes"` 截断记录（Wave 1 已验证）
+- 承诺：**R9（IM 语义一致性）+ 成本预算**
+- **设计差异记录**：Wave 2 原计划加 Entangled `peek_same_agent_same_sender` + `claim_many` 新 API；实际因 `/v1/outbox/claim` 的 `batch_size=50` 已天然返回 pending 快照，subscriber 内做 claim-batch 分组就够用。新 API 留作未来可选扩展（跨 tick 合批需要时再加）。
 
 ### P6-11~13  Phase 6 联合收官（计划中）
 
