@@ -101,7 +101,7 @@
 | PR-48  | `[✓]` | [Turn Finalizer：LLM 回复后强制收敛 scope（chat_reply → auto rest / skill_end 兜底，根因 D）](PR-48-turn-finalizer-force-rest.md) **— deployed 2026-04-22** | PR-28, PR-29, PR-45                 | R8 + R9                  | 1 d                          | __          |
 | PR-49  | `[✓]` | [`subagent_rest` tool executor（PR-45 Wave 1.5，根因 C：让 LLM 自述 handoff_notes 真落地）](PR-49-subagent-rest-executor.md) **— deployed 2026-04-22** | PR-45, PR-28                        | R9 + R8                  | 0.5 d                        | __          |
 | PR-50  | `[~]`  | [IM 消息聚合 60s 合批 + `<CHAT_HISTORY>` 字节 cap（根因 F）— **Wave 1 (byte cap) deployed 2026-04-22**；Wave 2 (business outbox 聚合) 独立 PR 待开](PR-50-im-message-aggregation.md) | PR-38, PR-44, PR-46                 | R9                      | 0.5–1 d                     | __          |
-| PR-51  | `[~]`  | [卡住的 `claimed` 行回收 + HealthWorker 周期扫描 — **Part 1 migration 048 cleaned 25/28 rows on prod 2026-04-23**；Part 2 (HealthWorker claimed-age cap) 待实施](PR-51-stuck-claimed-cleanup.md) | PR-21, PR-27, PR-41 amend           | R5                      | 1 d                         | __          |
+| PR-51  | `[~]`  | [卡住的 `claimed` 行回收 + HealthWorker 周期扫描 — **Part 1 migration 048 cleaned 25/28 rows on prod 2026-04-23**；**Part 2 (HealthWorker claimed-age cap + Entangled `/v1/stuck-claimed` + Business proxy) impl+tests 完成，待 deploy**](PR-51-stuck-claimed-cleanup.md) | PR-21, PR-27, PR-41 amend           | R5                      | 1 d                         | __          |
 
 
 ---
