@@ -583,9 +583,9 @@
 
 ### P6-11~13  Phase 6 联合收官（计划中）
 
-- P6-11: 所有 P6 票部署完成后，补一张"事故复盘 + 新增 R-INV"承诺到 `docs/architecture/message-wake-principles.md`：runtime 消费端只信 dispatch 透传的 id 集合（由 PR-46 落地）。
-- P6-12: 移除 `chat_messages.read` 字段的 runtime 读取约束，文档化为 "UI-only" 字段。
-- P6-13: `docs/roadmap/tickets/reviews/PR-45-review.md` 补 Wave 1F 线上证据。
+- P6-11: `[x]` 所有 P6 票部署完成后，补一张"事故复盘 + 新增 R-INV"承诺到 `docs/architecture/message-wake-principles.md`：runtime 消费端只信 dispatch 透传的 id 集合（由 PR-46 落地）。**已落：R9 (Wake Continuity) + R10 (Consumer SSOT) 正式升为架构承诺；§七 P6 事故复盘补齐**（2026-04-24）。
+- P6-12: `[x]` 移除 `chat_messages.read` 字段的 runtime 读取约束，文档化为 "UI-only" 字段。**已落：P6-12 工单审计所有触点 + CI `lint_chat_messages_read.sh` 强制 R10 + 4 个僵尸 Business 路由贴弃用注释**（2026-04-24）。
+- P6-13: `[x]` `docs/roadmap/tickets/reviews/PR-45-review.md` 补 Wave 1F 线上证据。**已落：2026-04-24 review 完成；状态机证据 + 单测链覆盖到 §3.4；PR-45.1 观测性补丁 + canary 脚本作为 §五 follow-ups 交接**。
 
 ---
 

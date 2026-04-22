@@ -1,6 +1,8 @@
 # Message → Wake 架构承诺
 
-> **SSOT**。本文确立 "用户消息 / 系统事件 → Agent 唤醒 → Scope / Session → LLM 循环" 这条主干路径必须遵守的 **8 条架构承诺 (R1–R8)**。任何关于 Queue Service / dispatch / HealthWorker / Entangled 消息 / Cortex scope 的重构，都必须先对齐本页，再下沉到 [roadmap/message-wake-refactor.md](../roadmap/message-wake-refactor.md) 的实施清单。
+> **SSOT**。本文确立 "用户消息 / 系统事件 → Agent 唤醒 → Scope / Session → LLM 循环" 这条主干路径必须遵守的 **10 条架构承诺 (R1–R10)**。任何关于 Queue Service / dispatch / HealthWorker / Entangled 消息 / Cortex scope 的重构，都必须先对齐本页，再下沉到 [roadmap/message-wake-refactor.md](../roadmap/message-wake-refactor.md) 的实施清单。
+>
+> 2026-04-23 update：Phase 6（P6）收尾，将 `R9 Wake Continuity` 与 `R10 Consumer SSOT` 从 roadmap 标签**正式上升为架构承诺**，并补 §七 P6 事故复盘。
 >
 > 本文与 [cortex/invariants.md](../cortex/invariants.md) 平级：后者约束 Cortex 内部的并发/生命周期；本文约束 **跨服务的触发链路**。
 >
@@ -35,6 +37,8 @@
 | **R6** | Entangled 对 `messages`（以及任何"触发实体"）的写入 = **服务端可订阅 changefeed**；dispatch 是 subscriber，而不是写入者的责任 | `[CODE]` |
 | **R7** | Internal auth 走**唯一**颁发通道（统一 `internal_client`），加保护必须索引调用方 | `[CODE]` |
 | **R8** | 一等实体（message / subagent / scope / saga / task）有**唯一权威状态枚举**与**受控转移**；废除"多字段拼状态" | `[CONTRACT]` 逐步 `[CODE]` |
+| **R9** | **Wake Continuity**：agent 跨 sleep/wake 必须能继承**文字层（handoff notes + historical summary）**、**状态层（scope 链 / previous_scope_id）**、**IM 流层（chat history replay）**三层短期记忆，否则每次醒来都是失忆 | `[CODE]`（producer + consumer 两端） |
+| **R10** | **Consumer SSOT**：runtime/消费端**只信 dispatch 透传的 id 集合**（`scope.meta.input_message_ids` 由 `/v1/scope/append_input` 落地，由 session.init / dispatch metadata 透传）；**禁止**消费端自己扫 `lifecycle='pending'` / `read=0` 反推"这次要处理哪些消息" | `[CODE]`（由 PR-46 强制；fallback 路径加 kill switch 不算违反） |
 
 符号：
 - `[CODE]`：在代码/中间件/断言层面强制。
@@ -208,6 +212,71 @@ Queue Service `/recover/all` 加了 internal key 校验；HealthWorker 裸 `http
 
 ---
 
+### R9. Wake Continuity：跨 sleep/wake 的短期记忆三层
+
+**现状（P6 之前）**
+- Agent 每次醒来 session.init 拉一个纯净 context，只塞 system prompt + 当前 trigger message。
+- 上一次 scope 写的 `handoff_notes`、历史轮次压缩的 `historical_summary`、用户在 agent 睡眠期间发的未读 IM 消息，**全部不可见**。
+- 表现：用户发"继续上次那个任务"，agent 回"请问上次是哪个任务"；agent 自己写的"下次醒来先处理 X"便条永远没被自己读到。
+
+**承诺**（落地于 P6 Phase 6，2026-04-21 ~ 23 系列 PR）
+
+Wake continuity 分三层，任一层 producer 断链都算违反本承诺：
+
+1. **文字层**（PR-42 consumer + PR-45 / PR-49 producer）
+   - `subagents.handoff_notes` — LLM 自述便条，由 `subagent_rest` tool 工具调用写入（PR-49 实现 executor）
+   - `subagents.historical_summary` — 自动滚动摘要，由 rest saga 写入（PR-45 Wave A）
+   - session.init 渲染为 `<HANDOFF_NOTES>` / `<HISTORICAL_SUMMARY>` system message（PR-42 builder）
+   - Dispatch metadata 透传（PR-45 Wave B — DispatchSubscriber 注入 / HealthWorker 注入）
+2. **状态层**（PR-43，规划中）
+   - `scope.meta.previous_scope_id` 指向上一次该 agent 的已 archived scope 根
+   - session.init 可选读取 `<PREV_SCOPE_TAIL>` 段
+3. **IM 流层**（PR-44 + PR-50 Wave 1）
+   - session.init 在 trigger message 之外回溯最近 N 条 USER_MESSAGE/AGENT_REPLY 塞入 `<CHAT_HISTORY>` 段
+   - 字节 cap 由 `WAKE_REPLAY_MAX_BYTES` 控制，溢出时插入 `CHAT_HISTORY_TRUNCATED` 系统消息
+
+**边界**
+- Wake continuity 不等于"无限上下文"—— 它是 agent 自己 + 系统帮它省下的**必要、有界**短期记忆。
+- 每一层都可通过 env 关闭：`WAKE_CONTINUITY_TEXT=0` / `WAKE_SCOPE_CHAIN=0` / `WAKE_IM_REPLAY_ENABLED=0`。
+
+**反例**
+- P6 初期（2026-04-21）线上：`subagents.handoff_notes` 永远 NULL，因为 `subagent_rest` tool 没有 executor（PR-49 之前）；user 眼里是"agent 失忆"。
+- `scope` 永远不关（PR-48 之前）→ session.init 从不重跑 → R9 全层集体空跑。
+
+---
+
+### R10. Consumer SSOT：runtime 消费端只信 dispatch 透传的 id 集合
+
+**现状（P6 之前）**
+- Runtime 的 `handle_context_read` 每次被调用，都重新扫 Entangled `chat_messages where read=0`（"所有未读消息"）拼当前 context。
+- 多条消息挤到同一个 wake：第一条处理完、第二、三条还没 `read=1`，下一 LLM round 的 context-read 再扫一次，**把已经处理过的消息又读一遍**，agent 反复回复同一段内容。
+- 更恶性：`read=0` 的消息如果跨多个 agent，消费端无法区分"这是给我的"还是"给别人的"。
+
+**承诺**（落地于 PR-46，2026-04-22 部署）
+
+1. **SSOT**：本次 wake 的"输入消息集合"**只有一处**权威来源 —— `scope.meta.input_message_ids`：
+   - 写入者：Subscriber 在 dispatch 成功后调 `POST /v1/scope/append_input`（saga_started / buffered 两个分支都会）
+   - 写入者：Runtime `handle_session_init` 从 dispatch payload 的 `metadata.message_ids` 落地
+2. **读取**：消费端（`handle_context_read` / 其它任何 runtime consumer）**只信** `scope.meta.input_message_ids` 的内容，逐 id 调 `entity_get` 补齐 body。**禁止**：
+   - `SELECT * FROM chat_messages WHERE read=0`
+   - `SELECT * FROM chat_messages WHERE lifecycle='pending'`
+   - 任何不以 `input_message_ids` 为起点的扫表式拼装
+3. **Kill switch**：`CONTEXT_READ_BY_IDS=0` 恢复 legacy scan（仅供应急回退；正常请求必须走 by-ids 路径）。
+4. **新消息落地**：在 agent wake 执行中途到达的新消息，通过 `append_input` 扩充 `input_message_ids`，让下一 round 的 context-read 自然看见；不走"消费端再扫一次"的路径。
+
+**为什么叫 Consumer SSOT**  
+`R4 (Scope = trace 载体)` 已经承诺 scope.inputs 是双向链路，R10 是它的**强化版**：明确"**非授权扫表**是一等禁用行为"。这条在 P6 之前是"最佳实践"，在 PR-46 之后是 `[CODE]` 契约。
+
+**反例**（全部在 P6 期间修掉）
+- `handle_context_read` 扫 `read=0` → 重复消费 → 重复回复（PR-46 修）
+- `chat_messages.read` 字段被 runtime 读作"这条我见过没" → 已由 R10 明确降级为 **UI-only**（下方 §UI-only 列表）
+
+**UI-only 字段清单**（任何 runtime/subscriber/assembler/healthworker 代码对这些字段的**读取**都视为违反 R10；写入由 UI/Business API 层独占）：
+- `chat_messages.read` — 客户端未读气泡
+- `chat_messages.starred` / `chat_messages.pinned`（若后续引入）
+
+---
+
 ## 四、与 Cortex Invariants 的关系
 
 本页 R1–R8 与 [cortex/invariants.md](../cortex/invariants.md) 的 INV-1~10 **不冲突、层次不同**：
@@ -232,6 +301,12 @@ Queue Service `/recover/all` 加了 internal key 校验；HealthWorker 裸 `http
 | 排查要串四份日志 | **R4**（scope_id 贯穿） | — | `install_service_logging` 的 `%(scope_id)s` 列在 business/entangled/cortex/subscriber 四份日志上格式一致（PR-24）；`/internal/messages/<id>/trace` 把四份合成一个响应（PR-25） |
 | `user_response` vs `user_message` 枚举漂移 | **R2**（枚举集中） | `outbox_enqueued_total{trigger_type}` / `dispatch_total{trigger_type}` label 域由 `TriggerType` 枚举收敛（PR-09 + PR-32） | `event=outbox_enqueue ... trigger=<canonical>` — 非枚举值在入口 raise，不会落日志 |
 | `processed / read / claimed_by` 三字段各说各话 | **R4 + R8** | — | `message_state_transitions` 持久表（PR-21 + PR-31）+ `event=message_state msg=... from=... to=...` 日志；`subagent_state_transitions` 同形（PR-28 + PR-31b）；`transition("claimed")` 由 subscriber 独家写（PR-22） |
+| agent 每几分钟自动醒来（无用户动作） | **R10**（消费端不再扫 `read=0` 造假触发） + R8 amend（PR-41 非 trigger 类消息建 SQL 时就 `lifecycle=consumed`） | `orphans_total{severity=warn}` 应当趋零 | `event=message_state ... to=consumed reason=non_trigger_on_create`（PR-41 amend） |
+| agent 醒来看不见历史上下文（"失忆"） | **R9**（三层分别走完 producer → consumer） | `continuity_resolve_total{result=ok\|empty\|not_found\|error}`（PR-45 subscriber 侧） | `event=continuity_resolve agent=... result=ok`（DispatchSubscriber） / session.init 的 `<HANDOFF_NOTES>`/`<HISTORICAL_SUMMARY>` 段 |
+| 同一条 user message 被 agent 连续复读 | **R10**（PR-46: context.read 只读 `scope.meta.input_message_ids`） | — | `event=context_read source=input_message_ids count=N`（PR-46 log；legacy scan 路径被 env kill switch 隔离） |
+| scope 永远 running 导致 R9 全层空跑 | **R8 + R9 producer 闸**（PR-48 Turn Finalizer：LLM 只调 `chat_reply` 一类 closer 工具时强制 `subagent_rest`） | `turn_finalizer_forced_rest_total`（PR-48） | `event=turn_finalizer action=forced_rest reason=only_closer_tools` |
+| 消息停在 `claimed` 永远无人消费 | **R8 + R4**（PR-51 Part 2：HealthWorker 每 30s 扫双轴老 claimed 行，转 consumed） + **R10**（PR-52：subscriber 重试不再为死 scope 再起新 scope） | `stuck_claimed_total{axis=lifecycle\|created}`（PR-51 Part 2） / `subscriber_stale_claim_total{result=...}`（PR-52） | `STUCK_CLAIMED msg=... age=... axis=...`（HealthWorker） / `STALE_CLAIM_DEAD_SCOPE msg=... scope=...`（subscriber） |
+| `<CHAT_HISTORY>` 膨胀到 token 预算爆表 | **R9 IM 流层 + 预算纪律**（PR-50 Wave 1 `WAKE_REPLAY_MAX_BYTES` 硬字节 cap + 截断标记） | — | session.init context 尾部出现 `CHAT_HISTORY_TRUNCATED system message`（PR-50 Wave 1） |
 
 补 metric 查询入门（`/metrics` 的两个常见用法）：
 
@@ -246,7 +321,45 @@ curl -s http://business:19998/metrics | grep '^internal_requests_total{.*status=
 
 ---
 
-## 六、落地
+## 六、事故复盘 — P6 期间（2026-04-21 ~ 04-23）
+
+**起源**：两个用户抱怨串在一起爆出整条 wake continuity 生产线的裂纹。
+
+1. **"agent 每几分钟自动苏醒一次"** — 明明没发消息，日志里却有周期性 wake。
+2. **"苏醒时没有带历史 scope，上下文设计的很糟糕"** — 让 agent 续做上次的事，它当场失忆。
+
+**诊断**（六条根因，每条一张工单）
+
+| 根因 | 表现 | 修复 | 承诺落地 |
+| --- | --- | --- | --- |
+| **A** `handle_context_read` 扫 `read=0` 反推输入 | 同一条消息被 agent 反复回复 | **PR-46**：只按 `scope.meta.input_message_ids` 装配 context，逐 id `entity_get` | **R10** 成为 `[CODE]` |
+| **B** HealthWorker 无年龄上限地 recover 古老 `pending` 行 | 一条几天前的 `hihi` 突然被重新派发，唤出新 scope | **PR-47**：`MAX_RECOVERY_AGE_SEC` + `pending → consumed` 管理性短路 | R5 加固 |
+| **C** `subagent_rest` LLM 工具没有 executor | `handoff_notes` 永远 NULL，文字层 producer 断链 | **PR-49**：实现 `_exec_subagent_rest` 落库 | **R9 文字层 producer** 闭合 |
+| **D** scope 永远 running（LLM 只回复，不 rest） | session.init 从不重跑，R9 全层空跑 | **PR-48**：Turn Finalizer 强制 `subagent_rest` | **R8 + R9 producer 闸** |
+| **E** `chat_messages.lifecycle` 对非 trigger 类消息（AGENT_REPLY 等）默认 `pending` | HealthWorker 误以为有事，每 30s 刷一次"自动苏醒" | **PR-41 + amend**：`_sql_create` / `append` 统一走 `_stamp_consumed_if_non_trigger` | R8 amend |
+| **F** `<CHAT_HISTORY>` 无字节 cap + 聚合缺失 | 稠密会话下 token 预算爆表 | **PR-50 Wave 1** 字节 cap + 截断标记（Wave 2 business 端 60s 合批待开） | **R9 IM 流层 + 预算纪律** |
+
+**连锁反应**（P6 修复过程中新发现）
+
+| 连锁问题 | 触发条件 | 修复 |
+| --- | --- | --- |
+| `chat_messages.lifecycle='claimed'` 永不变 consumed（因原 scope 死亡 + PR-48 之前 scope 永不归档） | 任何 C/D/E 组合失败的历史残留 | **PR-51 Part 1**：一次性 SQL 迁移清 prod 25/28 行；**Part 2**：HealthWorker 双轴（`lifecycle_updated_at` 24h + `created_at` 72h）周期扫描 + Entangled/Business endpoint |
+| Subscriber 重试把一条老 `pending` 派到**新** Queue session → 拉起全新 scope 填满 stuck-claimed | outbox retry（subscriber 曾经 die 在 assemble_sync 与 mark_delivered 之间） | **PR-52**：subscriber 在 `attempts > 0` 上 probe `chat_messages.lifecycle` + Cortex `meta.phase`，死 scope / live scope / consumed 都 `mark_delivered` 不再派发 |
+
+**经验沉淀（新增 R-INV 的动因）**
+
+- **R9 上升为 `[CODE]`**：P6 之前 continuity 是 "PR-42 设计文档里写了"，生产线上全断；现在 producer 三条链路、consumer 三个 render 位点、kill switch、metric 全部 `[CODE]` 级绑定。
+- **R10 上升为 `[CODE]`**：根因 A 的教训——"消费端扫表自己反推输入"是**反模式**，必须 `[CODE]` 级禁止。PR-46 的 `CONTEXT_READ_BY_IDS` 默认 on 是技术落地，本页承诺是合同兜底。
+- **UI-only 字段**：`chat_messages.read` 被不同代码各自解读成 "这条我处理过没"，是 R8 "多字段拼状态" 的活化石。明确列在 R10 下限定用途。
+
+**Canary / 监控补齐**（待办，落在 P7）
+
+- `ghost_scope_rate` — `scope 被创建 → 1 分钟内被 archive 但 chat_messages 仍在 claimed` 的比例，需要 PR-25 trace 视角 + metric。
+- `wake_continuity_render_total{layer=text|state|im, result=ok|empty|truncated}` — 三层 render 落地率，一个指标看清 R9 是否还在活着。
+
+---
+
+## 七、落地
 
 - 实施清单（可勾选）：[roadmap/message-wake-refactor.md](../roadmap/message-wake-refactor.md)
 - 技术债索引：[roadmap/technical-debt.md](../roadmap/technical-debt.md)（已引用本页）
