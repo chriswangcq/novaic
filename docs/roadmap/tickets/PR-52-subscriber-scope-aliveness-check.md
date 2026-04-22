@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | **Ticket**  | PR-52 |
-| **Status**  | `[~]` impl + tests landed 2026-04-23, not yet deployed |
+| **Status**  | `[✓]` deployed to prod 2026-04-23 18:48 CST |
 | **Opened**  | 2026-04-23 |
 | **Owner**   | wc |
 | **Blocks**  | (none — leak-prevention follow-up to PR-51) |
@@ -91,7 +91,18 @@ Cortex 不可达 → fail-open（假设 alive），继续正常派发。保留 s
 - [x] Cortex client 初始化：subscriber 已有 `cortex_client`（PR-20 起），复用，无需新增依赖
 - [x] 单测 `novaic-business/tests/test_pr52_stale_claim_check.py`（**22 用例**，覆盖 fast-path / retry lifecycle 分支 / fail-open / kill switch / 两个 probe helper / user_id 回退）
 - [x] 文档：`docs/architecture/scope-lifecycle.md` §3.4 新增"subscriber 重试路径的 scope-aliveness 护栏"
-- [ ] 部署 + prod smoke（验证 `subscriber_stale_claim_total` 初始为 0，若出现 `result=dead_scope` 说明还在漏；`result=in_flight_live` 和 `result=already_consumed` 可观测到即 OK）
+- [x] 部署 + prod smoke（2026-04-23 18:48 CST）：
+  - `deploy-business.sh root@api.gradievo.com` → incremental deploy COMPLETE
+  - subscriber pid 1576867 重启干净，`dispatch_subscriber starting` 新 worker_id 一行
+  - prod python import smoke：
+    ```
+    PR-52 helpers loaded: True
+    probe helpers: True True
+    Kill switch enabled (default on): True
+    Live phases: ['compacting', 'executing']
+    ```
+  - `subscriber_stale_claim_total` 截至部署后观察期无计数上升（符合预期——需要 retry traffic 才能触发）
+  - 无 `STALE_CLAIM_DEAD_SCOPE` 告警
 
 ## 测试结果
 
