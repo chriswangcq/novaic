@@ -95,7 +95,32 @@
 | PR-42  | `[x]`  | [Wake 时注入 handoff_notes + historical_summary 到新 scope（R9 文字层）](PR-42-wake-continuity-inject-handoff.md) | PR-13, PR-20                        | R9（新增）                | 1 d                          | __          |
 | PR-43  | `[ ]`  | [Scope 续链 previous_scope_id + cortex assembly 读上一次 scope 尾部 K 步（R9 状态层）](PR-43-scope-chain-previous-id.md) | PR-20, PR-29, PR-39, PR-42          | R9 + R4                 | 2–3 d                        | __          |
 | PR-44  | `[x]`  | [Wake 首轮 IM 流回放（最近 K 条 chat_messages 前置注入）](PR-44-wake-im-stream-replay.md) | PR-38, PR-42                        | R9 + R4                 | 0.5–1 d（2026-04-21 完成）                      | wangchaoqun          |
+| PR-45  | `[~]`  | [Wake continuity 文字层 producer→consumer 接线（subagent_rest saga 持久化 historical_summary + DispatchSubscriber/HealthWorker 注入 continuity + 幂等清除 + kill switch）](PR-45-wake-continuity-text-producer-wiring.md) | PR-28, PR-42                        | R9 + R10                | 1–2 d（Wave 1A–E 已落 2026-04-22）              | wangchaoqun          |
+| PR-46  | `[ ]`  | [context.read 按 `payload.message_ids` 精确装配（废除"扫 agent pending" 反模式，根因 A）](PR-46-context-read-by-message-ids.md) | PR-20, PR-21, PR-38                 | R2 + R4 + R9             | 0.5–1 d                     | __          |
+| PR-47  | `[~]`  | [老毒 USER_MESSAGE 清理 + HealthWorker recovery age cap（根因 B）](PR-47-orphan-recovery-age-cap-and-cleanup.md) | PR-27, PR-46                        | R5 + R1                  | 0.5 d                        | __          |
+| PR-48  | `[~]`  | [Turn Finalizer：LLM 回复后强制收敛 scope（chat_reply → auto rest / skill_end 兜底，根因 D）](PR-48-turn-finalizer-force-rest.md) | PR-28, PR-29, PR-45                 | R8 + R9                  | 1 d                          | __          |
+| PR-49  | `[ ]`  | [`subagent_rest` tool executor（PR-45 Wave 1.5，根因 C：让 LLM 自述 handoff_notes 真落地）](PR-49-subagent-rest-executor.md) | PR-45, PR-28                        | R9 + R8                  | 0.5 d                        | __          |
+| PR-50  | `[~]`  | [IM 消息聚合 60s 合批 + `<CHAT_HISTORY>` 字节 cap（根因 F）— Wave 1 byte cap 已实现；Wave 2 聚合延后](PR-50-im-message-aggregation.md) | PR-38, PR-44, PR-46                 | R9                      | 0.5–1 d                     | __          |
 
+
+---
+
+## 2026-04-22 事故 → 工单映射
+
+用户发 "hi hi" / "现在几点了" 连发消息后 agent 反复回旧消息、continuity 层不生效的那次事故，根因 A~F 对应的票：
+
+| 现象（观察到的症状）                                             | 根因                                                                 | 票           | Phase           |
+| ---------------------------------------------------------- | ------------------------------------------------------------------ | ----------- | --------------- |
+| 新 user message 消失、11 条旧 USER_MESSAGE 每轮被重新注入 scope context | A：`handle_context_read` 扫 agent-wide `read=0` 而非 `payload.message_ids` | **PR-46**   | hotfix          |
+| HealthWorker 对 4 天前的 pending USER_MESSAGE 无限 recovery      | B：recovery 没有绝对年龄上限 + 历史脏数据从未清理                                   | **PR-47**   | hotfix          |
+| `subagents.handoff_notes` / `historical_summary` 一直 NULL    | C：LLM 端无 `_exec_subagent_rest` executor（PR-45 Wave 1.5 缺口）        | **PR-49**   | wave 1.5        |
+| scope 永不进入 sleeping，PR-42/44/45 注入路径从未跑到                  | D：agent chat_reply 之后不 rest 也不 skill_end，runtime 没兜底               | **PR-48**   | hotfix          |
+| PR-44 `<CHAT_HISTORY>` 回放始终为空                              | E：D 的衍生（scope 不关，session.init 从不重新跑，`wake_replay_pending` flag 无处设置）| 由 **PR-48** 治本；顺带由 **PR-50** 做字节 cap | — |
+| 连发 3 条消息 = 3 次 session.init；LLM 看到连珠炮拆散                   | F：subscriber 未做 IM 语义合批                                             | **PR-50**   | optimization    |
+
+**推荐执行顺序**：PR-46 → PR-48 + PR-49（并行）→ PR-47 → PR-50。PR-46 是主动脉修复；PR-48/49 治本 "agent 不关门"；PR-47 清历史渣；PR-50 做 IM 体感优化。
+
+**如果只能先上一张**：**PR-46**。它独立解决"新消息进不进 scope"的最严重一条，不需要 LLM 行为改变，也不依赖任何其他 PR，部署后今天这个事故模式立刻消失。
 
 ---
 
