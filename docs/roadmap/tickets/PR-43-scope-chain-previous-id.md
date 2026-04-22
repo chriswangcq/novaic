@@ -5,7 +5,7 @@
 | **Phase** | R9 加强版（wake continuity 的"完整形态"） |
 | **Milestone** | — |
 | **承诺** | R9（见 PR-42）+ R4（context 可追溯） |
-| **Status** | `[Wave A ✓ (2026-04-24) · Wave B ✓ (2026-04-25) · Wave C ✓ (2026-04-25, deploy pending)]` |
+| **Status** | `[Wave A ✓ (2026-04-24) · Wave B/C ✓ (2026-04-25) · prod deploy ✓ 2026-04-22 21:33 CST]` |
 | **Depends on** | PR-20（scope meta inputs）、PR-29（scope 状态机）、PR-39（context assembly DFS） |
 | **Blocks** | — |
 | **估时** | 2–3 d（含 Cortex engine 配合） |
@@ -288,6 +288,14 @@ curl -s .../cortex/v1/scope/$NEW_SCOPE/context?round=1 | jq '.messages[] | selec
 # 4) 查 metric
 curl -s .../metrics | rg 'prev_scope_tail'
 ```
+
+### Prod deploy record  *(2026-04-22 21:33 CST)*
+
+- **Deploy command**: `bash scripts/deploy-business.sh root@api.gradievo.com`（incremental，7 个 submodule + scripts/canary）
+- **Schema migration**: `sqlite3 /opt/novaic/data/entangled.db ".schema subagents"` 确认 `last_scope_id TEXT, last_scope_archived_at TEXT` 两列均已落位（schema_push 自动加列，nullable → 无需数据迁移）
+- **Cortex 新路由**: `/v1/scope/read_tail` 已出现在 `openapi.json` paths；手动 curl `previous_scope_id=nonexistent` 返回 `{"messages":[],"meta":{"found":false,...}}`（soft-fail 符合契约）
+- **服务健康**: business / cortex / queue / device / entangled / gateway 全部 `/health` 绿；subscriber 正常 claim outbox；当日日志 `Traceback|ERROR` 零命中
+- **功能入池**: 还需等待下一次 `subagent_rest` → `cortex_scope_end` 成功写入 `last_scope_id`，再下一次该 subagent 的 user_message / scheduled_wake 才会让 `<PREV_SCOPE_TAIL>` 首次注入；观察指标 `wake_prev_scope_tail_total{result=injected}` 预期 24h 内从 0 抬起
 
 ## 回滚
 
