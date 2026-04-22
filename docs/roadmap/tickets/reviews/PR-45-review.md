@@ -129,11 +129,11 @@ Canary runs as part of the **next release's** smoke pack; until then, this revie
 
 ## 五、Follow-ups
 
-| ID | Item | Notes |
-|---|---|---|
-| **PR-45.1** (observability) | Add a single `event=continuity_resolve result=ok\|empty` log line inside `DispatchSubscriber._resolve_continuity` | Removes §3.3's ambiguity; 3-line patch; defer to the same PR that opens Wave 2 (`lint_wake_continuity_contract.sh`). |
-| **Wave 2** (CI lint) | `scripts/ci/lint_wake_continuity_contract.sh` traces metadata flow producer → subscriber → session.init → handler | Deferred from PR-45 body; motivated by the unit-test-coverage gap around `_build_session_init_payload`. Not blocked on any other PR. |
-| **Canary test pack** | Dedicated `canary_b_1` agent + scripted USER_MESSAGE send through gateway | `scripts/canary/wake-continuity-smoke.sh` proposed; wire into `scripts/canary/bake-snapshot.sh` metric section (PR-35 §B2 hole). |
+| ID | Item | Status | Notes |
+|---|---|---|---|
+| **PR-45.1** (observability) | Add a single `event=continuity_resolve result=ok\|empty\|not_found` log line inside `DispatchSubscriber._resolve_continuity` | `[✓]` **landed 2026-04-24** | Three `logger.info` lines on ok / empty / not_found branches + 4 new tests (`test_pr451_resolve_*`) guarding each outcome. Error branch kept at WARNING (unchanged from Wave 1B). Removes §3.3's ambiguity — live operators can now `grep 'event=continuity_resolve result=ok'` for positive signal. |
+| **Wave 2** (CI lint) | `scripts/ci/lint_wake_continuity_contract.sh` traces metadata flow producer → subscriber → session.init → handler | `[ ]` | Deferred from PR-45 body; motivated by the unit-test-coverage gap around `_build_session_init_payload`. Not blocked on any other PR. |
+| **Canary test pack** | Dedicated `canary_b_1` agent + scripted USER_MESSAGE send through gateway | `[ ]` | `scripts/canary/wake-continuity-smoke.sh` proposed; wire into `scripts/canary/bake-snapshot.sh` metric section (PR-35 §B2 hole). With PR-45.1 landed, the canary can `grep result=ok` as its passing condition instead of chasing indirect `_state_transitions` evidence. |
 
 ---
 
@@ -142,7 +142,7 @@ Canary runs as part of the **next release's** smoke pack; until then, this revie
 - [x] Code review — self-reviewed during PR-45 authoring; 22 unit tests green on 2026-04-23 full regression.
 - [x] Deployment confirmed — submodule bump + status-flip commits on 2026-04-22, subscriber restart verified.
 - [x] Wave A / B / D evidence — state machine transitions show PR-48 + PR-49 preconditions work; subagent rows loaded by runtime; subscriber code path is reachable.
-- [~] Wave 1F direct evidence — **captured as "no negative signal"**; live positive signal deferred to the PR-45.1 observability patch + canary run (§五).
+- [~] Wave 1F direct evidence — **captured as "no negative signal"**; live positive signal deferred to the PR-45.1 observability patch + canary run (§五). **2026-04-24 update**: PR-45.1 observability patch landed (3 info log branches + 4 tests); a single `grep 'event=continuity_resolve result=ok' business.log` on prod after Wave 2 deploy promotes this to `[x]`.
 - [x] Ticket flip — [`README.md`](../README.md) / `[message-wake-refactor.md`](../../message-wake-refactor.md) P6-13 line ticked and cross-linked.
 
 **Verdict**: PR-45 closes with an asterisk on direct live observation, mitigated by (a) unit-test coverage of the exact producer/consumer invariants and (b) indirect state-machine evidence that Wave A's preconditions are satisfied. §五 Follow-ups are tracked and sized; none are blocking P6 completion.
