@@ -460,7 +460,8 @@
 
 ### P6-3  Wake continuity 状态层 — Scope 续链 previous_scope_id
 
-- Status: `[Wave A ✓ 2026-04-24 · Wave B/C ✓ 2026-04-25 · prod deploy ✓ 2026-04-22 21:33 CST]` (PR-43)
+- Status: `[Wave A ✓ 2026-04-24 · Wave B/C ✓ 2026-04-25 · prod deploy ✓ 2026-04-22 21:33 CST · 🚨 PR-53 hotfix 2026-04-25]` (PR-43)
+- **2026-04-25 重大事故修复 (PR-53)**：线上 smoke 发现 `subagents.last_scope_id / historical_summary / handoff_notes` 全表全空 → 根因 Entangled `sql/subagent_state.EXTRA_ALLOWLIST` 只认 `{need_rest, progress, error, result}` 四个老字段，runtime 通过 `PATCH /internal/entities/subagents/{id}` + `status="sleeping"` 走状态机路径时，所有续写列被**静默丢弃**。影响面：PR-42 handoff_notes（借 generic 路径勉强活）、PR-45 historical_summary、PR-43 Wave A last_scope_id 自 deploy 起**一次都没写进过 DB**。修复 = allowlist 加三个列 + 未列出 key 的 WARN 日志 + Business 跨层 e2e 集成测试（`test_pr53_continuity_allowlist_e2e.py`，3 cases）。详见独立工单 [PR-53](tickets/PR-53-entangled-continuity-allowlist.md)
 - Wave A (2026-04-24) landed — **写入侧**：
   - Entangled `subagents` schema: `last_scope_id`, `last_scope_archived_at`（两字段 nullable，schema_push 自动迁移）
   - `subagent_rest` saga 新增 `_last_scope_fields(ctx)` helper（guards on `step_results.cortex_scope_end.success`），piggyback 到 `set_subagent_sleeping` / `set_subagent_completed` 的 entity_update（与 PR-45 A `historical_summary` 同原子写）
