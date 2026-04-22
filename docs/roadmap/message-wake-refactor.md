@@ -587,7 +587,7 @@
 - P6-13: `[x]` `docs/roadmap/tickets/reviews/PR-45-review.md` 补 Wave 1F 线上证据。**已落：2026-04-24 review 完成；状态机证据 + 单测链覆盖到 §3.4**。Follow-ups：
     - `[✓ code]` **PR-45.1** 观测性补丁 — `DispatchSubscriber._resolve_continuity` 每次 dispatch 发一条 `event=continuity_resolve result=ok|empty|not_found ...` info log（3 分支 + 4 tests `test_pr451_resolve_*`），error 分支保留 Wave 1B 的 `logger.warning`，2026-04-24 合入等部署。
     - `[✓ code]` **PR-45.2** `scripts/ci/lint_wake_continuity_contract.sh` — consumer-layer file 中 `handoff_notes` / `historical_summary` 必须成对出现的 R9 contract lint + single-key tuple loop 防御。首次跑即抓到 `scheduler_worker._wake_metadata` 少了 `historical_summary` 的真实缺口，同 PR 顺手修。Wired into `.github/workflows/lint.yml`。2026-04-24 合入。
-    - `[ ]` `scripts/canary/wake-continuity-smoke.sh` — PR-45.1 landed 后 canary 可直接 `grep result=ok` 作为通过条件。
+    - `[✓ code]` **PR-45.3** `scripts/canary/wake-continuity-smoke.sh` — bootstrap 独立 `canary_b_1` agent + send 1 USER_MESSAGE + tail business.log 45s 等 PR-45.1 的 `event=continuity_resolve agent=canary_b_1` 出现。PASS = resolver 跑过且无 `result=error`；`ok` / `empty` / `not_found` 皆视为正信号（区分"链路跑通"和"notes 已填充"）。支持 `LOG_SOURCE=file|journalctl`，exit 0/1/2/3 对应 PASS/FAIL/prereq-fail/SKIP-no-log。traffic.py 顺手加 `CANARY_AGENT_ID` 等 env override 以支持双 canary 并存。2026-04-24 合入。
 
 ---
 
