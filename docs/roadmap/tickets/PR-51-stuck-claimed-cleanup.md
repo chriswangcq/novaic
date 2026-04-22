@@ -5,7 +5,7 @@
 | **Phase** | Post-deploy 跟单（PR-47 部署过程中从 prod 现场发现） |
 | **Milestone** | R5（消息生命周期闭环） |
 | **承诺** | R5：`chat_messages.lifecycle` 不应出现"claimed 超过 N 小时仍非 consumed/orphaned" 的半死不活态 |
-| **Status** | `[~] Part 1 landed 2026-04-23` — one-shot migration cleaned 25/28 rows on prod; Part 2 (HealthWorker scan) pending |
+| **Status** | `[~] Part 1 + Part 2 impl complete 2026-04-23`；Part 1 已上 prod (25/28 rows cleaned)，Part 2 代码 + 单测过，待部署 |
 | **Depends on** | PR-21（lifecycle 状态机）、PR-27（HealthWorker 孤儿扫描）、PR-41 amend（consumed-at-birth） |
 | **Blocks** | — |
 | **估时** | 0.5 d（一次性迁移）+ 0.5 d（HealthWorker 扩展）= 1 d |
@@ -293,3 +293,93 @@ Audit trail (message_state_transitions):
    ``claimed``). Fix: filter on live ``chat_messages`` or use
    ``NOT EXISTS`` against ``message_state_transitions``. The
    ``048b`` ad-hoc SQL above shows the correct pattern.
+
+## Part 2 实现记录（2026-04-23）
+
+### 代码变更
+
+1. **Entangled** ``packages/server-python/entangled/app/stuck_claimed.py`` (new):
+   - ``GET /v1/stuck-claimed`` 新端点
+   - 双轴年龄匹配：``lifecycle_updated_at < now - min_age_sec`` **OR** ``created_at < now - min_created_age_sec``
+   - 不再限制 message type（USER_MESSAGE / AGENT_REPLY / SYSTEM_NOTE 同样扫）——任何 type stuck-claimed 都是 bug
+   - 响应字段 ``matched_axis`` ∈ {``lifecycle``, ``created``, ``both``} 暴露命中的轴，方便 dashboard 辨识"是正常老化还是 subscriber 重启污染"
+   - ``matched_by_lifecycle`` / ``matched_by_created`` 汇总计数
+   - 测试 ``tests/test_stuck_claimed.py``：14 用例，覆盖空结果、两轴匹配、非-claimed 豁免、任意 type、order by lifecycle_updated_at ASC、limit、forensic ``claimed_by_scope`` 字段、off-by-one 门槛、kill-switch 行为
+   - ``app/factory.py`` 注册 router
+
+2. **Business** ``novaic-business/business/internal/message.py``:
+   - 新增 ``GET /internal/messages/stuck-claimed`` proxy（跟 orphan proxy 同形、复用 ``_get_bulk_transition_client()`` 的连接池）
+   - ``StuckClaimedItem`` / ``StuckClaimedListResponse`` Pydantic schema
+   - 默认参数 ``min_age_sec=86400`` (24h) + ``min_created_age_sec=259200`` (72h)
+   - 软失败：Entangled 不可达 → 502，不 raise
+
+3. **Runtime** ``novaic-agent-runtime/task_queue/workers/health_worker.py``:
+   - 新增 env ``STUCK_CLAIMED_AGE_SEC`` (24h default, 0 = kill-switch) + ``STUCK_CLAIMED_CREATED_AGE_SEC`` (72h default)
+   - 新 metrics ``stuck_claimed_seen`` / ``stuck_claimed_recovered`` / ``stuck_claimed_failed``
+   - 新方法 ``_scan_and_recover_stuck_claimed()``：
+     - 跟 orphan scan 独立 round-trip
+     - 每行调 ``_transition_to_consumed(msg_id, reason="stuck_claimed_timeout")`` —— 复用 PR-47 helper（``claimed → consumed`` 是 state machine 合法边，无 reason-gate）
+     - 单行异常不中断循环（``stuck_claimed_failed`` 计数）
+     - 新 metric family ``stuck_claimed_total{axis=lifecycle|created|both}``
+     - 新日志行 ``STUCK_CLAIMED message_id=... agent=... dead_scope=... axis=... lifecycle_age=... created_age=...`` (WARNING)
+   - ``_perform_check`` 挂一个新分支：受 ``STUCK_CLAIMED_AGE_SEC > 0`` 保护，异常独立兜底
+   - 测试 ``tests/test_health_stuck_claimed.py``：9 用例，覆盖单行 / 多行 / 双参数透传 / kill-switch / business 不可达软失败 / 5xx 软失败 / 空结果 no-op / 单行异常不中断 / 日志格式断言
+   - 回归：``tests/test_health_dispatch.py::test_health_worker_perform_check_calls_recover_and_orphan_scan`` 更新断言（Business 现在每 tick 发 **两** 个 GET：先 ``/orphaned`` 再 ``/stuck-claimed``）
+
+### 测试结果
+
+```text
+# Entangled
+cd Entangled/packages/server-python && python -m pytest -q
+  → 133 passed, 1 skipped
+
+# Runtime (--deselect 2 个不相关 pre-existing 失败：performance flake + WAKE_IM_REPLAY regression)
+cd novaic-agent-runtime && python -m pytest -q
+  → 217 passed, 4 deselected
+```
+
+### 状态机兼容性
+
+``claimed → consumed`` 本来就在 ``ALLOWED_TRANSITIONS`` 里（PR-21 ``message_state.py:66``），**不经过** ``_PENDING_CONSUMED_REASON_ALLOWLIST`` 的 reason-gate（那个只对 ``pending → consumed`` 生效）。所以 ``reason="stuck_claimed_timeout"`` 不需要加入 allow-list，状态机不会阻止转换。
+
+这跟 PR-47 的 ``pending → consumed`` 路径形成漂亮的互补：
+- PR-47 reason-gated，因为该边是从零新加的
+- PR-51 不 reason-gated，复用 PR-21 一直存在的边
+
+### 运维接口
+
+部署后 ops 可以用的查询：
+
+```bash
+# 当前积压
+curl -s 'http://localhost:19900/v1/stuck-claimed' \
+  -H "X-Service-Token: $SVC_TOKEN" | jq '.count, .matched_by_lifecycle, .matched_by_created'
+
+# 只看 subscriber-restart 污染（created 轴）
+curl -s 'http://localhost:19900/v1/stuck-claimed?min_age_sec=99999999&min_created_age_sec=86400' \
+  -H "X-Service-Token: $SVC_TOKEN" | jq '.stuck[] | {message_id, claimed_by_scope, created_age_seconds}'
+
+# 强制立即兜底（把 min_age_sec 调到 0，scanner 会下一 tick 把所有 claimed 冲成 consumed）
+# ——慎用，只在确信 scope 全死时用
+export STUCK_CLAIMED_AGE_SEC=0  # disable
+export STUCK_CLAIMED_AGE_SEC=60 # aggressive cleanup
+systemctl restart novaic-runtime-subscriber  # HealthWorker 一起
+```
+
+### 部署 Checklist (Part 2)
+
+- [ ] 父仓 main 已 push
+- [ ] ``./scripts/deploy-business.sh`` 跑过 incremental（Entangled + business + runtime 三件套）
+- [ ] Prod smoke：
+  ```bash
+  ssh root@api.gradievo.com 'curl -s localhost:19900/v1/stuck-claimed -H "X-Service-Token: $SVC_TOKEN" | jq .count'
+  # 预期: 0 或 3（剩下的那批 04-21 prod-agent 行已过 24h 门槛被即刻扫掉）
+  ```
+- [ ] Prod 跟踪 HealthWorker 日志：
+  ```bash
+  ssh root@api.gradievo.com 'grep stuck_claimed /opt/novaic/data/logs/*.log | tail -20'
+  # 预期：部署后首个 tick 清理完残留（≤ 3 行），之后 stuck_claimed_scan seen=0 稳态
+  ```
+- [ ] 1 周后观察 `stuck_claimed_recovered_total`：
+  - ``== 0``：健康（PR-41 amend + PR-48 Turn Finalizer + PR-46 + 这个兜底组合已经不再产生新泄漏）
+  - ``> 0``：仍有新渠道漏，回溯日志里 `dead_scope` 字段定位漏源
