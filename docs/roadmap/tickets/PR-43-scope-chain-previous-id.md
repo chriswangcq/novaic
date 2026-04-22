@@ -5,7 +5,7 @@
 | **Phase** | R9 加强版（wake continuity 的"完整形态"） |
 | **Milestone** | — |
 | **承诺** | R9（见 PR-42）+ R4（context 可追溯） |
-| **Status** | `[ ]` |
+| **Status** | `[Wave A ✓ (2026-04-24), Wave B/C 待开]` |
 | **Depends on** | PR-20（scope meta inputs）、PR-29（scope 状态机）、PR-39（context assembly DFS） |
 | **Blocks** | — |
 | **估时** | 2–3 d（含 Cortex engine 配合） |
@@ -172,12 +172,16 @@ def assemble_context(scope_id, budget_tokens):
 
 ## 实施 Checklist
 
-### A. 写入侧 —— 记录 last_scope_id
+### A. 写入侧 —— 记录 last_scope_id  *(landed 2026-04-24)*
 
-- [ ] Entangled schema: `subagents` 加 `last_scope_id TEXT NULL`, `last_scope_archived_at TEXT NULL`（schema push 版本 +1）
-- [ ] Business PATCH endpoint 白名单新增字段
-- [ ] `subagent_rest` saga：`cortex_scope_end` task 成功后（在 `set_subagent_sleeping` / `set_subagent_completed` 之前），插入 `update_subagent` 写 last_scope_id
-- [ ] 单测：archive → update_subagent 被调用一次 + 字段正确
+- [x] Entangled schema: `subagents` 加 `last_scope_id TEXT NULL`, `last_scope_archived_at TEXT NULL`（`novaic-business/business/schema_push.py::SUBAGENTS_DEF`；schema_push 自动 migration）
+- [x] Business PATCH endpoint 白名单新增字段 —— **无需改**。确认：`PATCH /internal/entities/{entity}/{id}` 走 `Entangled/packages/server-python/entangled/app/crud.py::update_entity` → `store.update`，字段白名单直接来源于 `SqlEntityDef.fields`，schema 加字段即开放 PATCH。
+- [x] `subagent_rest` saga：**采用"piggyback on terminal step"模式**（与 PR-45 A 同策略 / 一次原子写）：
+  - `_build_set_sleeping_payload` / `_build_set_subagent_completed_payload` 调用新增 helper `_last_scope_fields(ctx)`
+  - helper 的守卫：仅当 `step_results["cortex_scope_end"]` 存在且 `success != False`，且 `ctx.scope_id` 非空，才返回 `{last_scope_id, last_scope_archived_at}`
+  - `handle_subagent_set_sleeping` / `handle_subagent_set_completed` 以 additive 语义 append 两字段到 `entity_update`（非 str / 空值 silent drop，绝不覆写已有值）
+  - 决策 note：ticket 原稿写的是"cortex_scope_end 后独立一步 `update_subagent`"。落地时改为复用 terminal step 的 `entity_update` 同一次调用，避免"两次写可能部分失败"的 skew，同时承接 PR-45 A 的 `historical_summary` piggyback 模式，代码面扩散最小。
+- [x] 单测：`novaic-agent-runtime/tests/test_pr43_last_scope_wiring.py` — 19 个用例覆盖 `_last_scope_fields` 守卫（5）、saga payload builder（4）、handler writeback（10，含 5 组 `pytest.parametrize` malformed-value 防御）
 
 ### B. Assembler resolve previous_scope_id
 
