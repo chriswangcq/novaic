@@ -29,3 +29,5 @@ jobs:
       run: ./scripts/ci/lint_legacy_message_columns.sh
     - name: Run outbox-trigger sync lint (PR-41)
       run: ./scripts/ci/lint_outbox_trigger_sync.sh
+    - name: Run chat_messages.read UI-only lint (P6-12 / R10)
+      run: ./scripts/ci/lint_chat_messages_read.sh
