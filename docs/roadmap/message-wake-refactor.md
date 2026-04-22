@@ -382,6 +382,95 @@
 
 ---
 
+## Phase 6 — Wake continuity（R9，2026-04-21 事件后新增）
+
+> **目标**：`sleeping → awake` 转换点不再有"短时记忆真空"。agent 醒来应能看到（a）自己睡前的交接；（b）上一次 scope 的尾部工具轨迹；（c）最近的 IM 对话。
+>
+> **触发**：2026-04-21 排查两个现象：
+> 1. agent 每 ~5 分钟自动苏醒一次 — HealthWorker 把 `AGENT_REPLY pending` 误当 orphan RECOVERED（单独由 Phase 6 hotfix P6-1 / PR-41 解决）
+> 2. 苏醒后 `context.jsonl` 只有 system prompt + recall summary，handoff_notes / historical_summary / 前序 scope step 全丢
+>
+> **DoD**：
+> - `orphans_total{severity=crit}` 无周期性非零（在无真实卡消息时）
+> - 新 scope `context.jsonl` 在非 spawn wake 路径上必含 `WAKE_CONTINUITY` 或 `PREV_SCOPE_TAIL` 或 `WAKE_IM_REPLAY` 至少一种
+> - `wake_continuity_injected_total` / `prev_scope_tail_injected_total` / `wake_im_replay_total` 可观测
+
+### P6-1  Hotfix：`AGENT_REPLY` 等非 trigger 消息不再进入 orphan 候选（止血）
+
+- Status: `[x]` (PR-41, 2026-04-21 实施完成)
+- Severity: High（自激循环，生产实锤）
+- Scope: `Entangled/.../entity_store.py::append`（写入侧"出生即 consumed"）+ `Entangled/.../app/orphans.py::query_orphans`（读取侧按 type 过滤）+ `scripts/gateway/migrate_pr41_agent_reply_orphans.sh` + `scripts/ci/lint_outbox_trigger_sync.sh`
+- 已完成：
+  - [x] `append` 对 `type NOT IN outbox_trigger_types` 且 caller 未显式传 `lifecycle` 的消息，INSERT 前把 `lifecycle='consumed' + lifecycle_updated_at=now_ms` 写进 row（不走 state machine transition；CHECK 约束允许 consumed 作为初始值）
+  - [x] `query_orphans` SQL 加 `AND m.type IN (?,?,?)`，模块常量 `ORPHAN_ELIGIBLE_TYPES`
+  - [x] 迁移脚本（allowlisted）：备份→计数→breakdown→事务 UPDATE→校验
+  - [x] CI 同步 check：drift 即 fail，接入 `.github/workflows/lint.yml`
+  - [x] 单测 8 cases（Entangled 侧），全量回归 114+74+101 passed
+- 验收（部署后）：`queue-service.log` 无周期性 `caller=runtime-recovery`；`/orphaned?min_age_sec=30` count=0
+- 承诺：R4 + R8（lifecycle × type 语义矩阵闭合）
+
+### P6-2  Wake continuity 文字层 — handoff_notes / historical_summary 注入
+
+- Status: `[x]` (PR-42, 2026-04-21 实施完成)
+- Scope: `task_queue/sagas/subagent_wake.py::_build_session_init_payload` + `task_queue/handlers/runtime_handlers.py::handle_session_init`
+- 已完成：
+  - [x] saga payload 透传 `handoff_notes` / `wake_reason`
+  - [x] `handle_session_init` 新增 `_build_wake_continuity_messages` / `_fetch_historical_summary` / `_build_continuity_block_for_wake` / `_continuity_kind_label` / `_cap_continuity_text`，对非 `spawn_subagent` 的 wake，从 `business_client.entity_get("subagents", ...)` 拉 `historical_summary`，拼 `<HANDOFF_NOTES>` / `<HISTORICAL_SUMMARY>` system message 注入 `initial_context`（顺序：SYSTEM_PROMPT → HANDOFF → HISTORICAL → recall）
+  - [x] 上限保护：`WAKE_CONTINUITY_MAX_BYTES=8KB` + UTF-8 字节前缀裁剪 + `[truncated]` 标记 + `wake_continuity_truncated_total` metric
+  - [x] `WAKE_CONTINUITY_ENABLED_TRIGGERS` positive-list：`spawn_subagent` 永远不注入（防父 agent handoff 泄漏到子）；未知 trigger fail-closed
+  - [x] Business 读失败软降级（仍注入 handoff，不 fail saga）
+  - [x] Metric `wake_continuity_injected_total{kind, trigger_type}` 每次 wake 一次计数（含 `kind=none`）
+  - [x] 单测 29 cases（`tests/test_wake_continuity_injection.py`），全量回归 101 passed
+- 验收（部署后）：`wake_continuity_injected_total{kind=handoff|historical|both|none}` 非空；端到端 `rest(handoff_notes=...)` → wake → 新 scope context 含 HANDOFF_NOTES 段
+- 承诺：**R9（新增）— Wake continuity 文字层**
+
+### P6-3  Wake continuity 状态层 — Scope 续链 previous_scope_id
+
+- Status: `[ ]` (PR-43)
+- Scope: `common/wake/assembler.py`（resolve last_scope_id）+ `queue_service/session_repo.py`（透传）+ `task_queue/sagas/subagent_rest.py`（写 last_scope_id）+ `novaic-cortex/context_stack/engine.py`（assembly 读尾部）+ Entangled schema（`subagents.last_scope_id`）
+- 任务：
+  - [ ] Entangled schema: `subagents.last_scope_id` / `last_scope_archived_at`
+  - [ ] `subagent_rest` saga: `cortex_scope_end` 成功后写 `last_scope_id`
+  - [ ] Assembler: 对 "续接类 trigger" resolve subagent.last_scope_id → metadata
+  - [ ] Cortex `create_scope` 接受 `previous_scope_id`，写入 meta.json
+  - [ ] Cortex assembly: 新增 `read_scope_tail(max_steps, max_tokens)`；当前 scope 组装完后，若 budget 剩余 > 阈值 → 前置注入 PREV_SCOPE_TAIL
+  - [ ] env 可配：`PREV_SCOPE_MAX_STEPS=20`, `PREV_SCOPE_MAX_TOKENS=8000`, `PREV_SCOPE_MIN_BUDGET=4000`, `WAKE_CONTINUITY_PREV_SCOPE=1`
+- 验收：新 scope `meta.previous_scope_id` 链接到上一次 archived root；首轮 think 的 LLM input 含 `<PREV_SCOPE_TAIL scope=X from=TS>` wrapper
+- 承诺：**R9 — 状态层**
+
+### P6-4  Wake continuity IM 流层 — 首轮 chat_messages 回放
+
+- Status: `[x]` (PR-44, 2026-04-21 完成)
+- Scope: `task_queue/handlers/runtime_handlers.py::handle_session_init`（在 step 6 的 `update_session_meta` 里一次性写 `wake_replay_pending=bool(eligible)`）+ `task_queue/handlers/context_handlers.py::handle_context_read`（首次消费 flag 时 ephemeral 前置注入最近 K 条 chat_messages，**不落盘 context.jsonl**）
+- 实施：
+  - [x] session.init 对 `trigger_type ∈ WAKE_IM_REPLAY_ENABLED_TRIGGERS` 且无 caller-provided `initial_context` 的 wake 置 `scope.meta.wake_replay_pending=True`；spawn / bootstrap 一律 `False`（literal bool，不是 None）
+  - [x] `handle_context_read` 在 `read_context()` 后、unread merge 前消费 flag：`isinstance(meta, dict)` + `meta.get("wake_replay_pending") is True` 双保险 → 按 type 分开拉 `USER_MESSAGE` + `AGENT_REPLY` 的 `read=1` 行 → 合并排序 → token 预算从新往旧累加 → 渲染为 `role=system` + `<CHAT_HISTORY>` 包装 + `_message_type="WAKE_IM_REPLAY"` → `context.extend(...)`（in-memory 只返回这一次）→ 清 flag
+  - [x] 去重：严格走"回放只读已读（read=1）、未读只拉未读（read=0）"的 SQL 等值隔离，LLM 不会看到同一条消息的两种表示（比 ticket 里预想的方案 B 更彻底）
+  - [x] 预算 / 时间上限：`WAKE_REPLAY_MESSAGE_COUNT=20`, `WAKE_REPLAY_MAX_AGE_SEC=86400`, `WAKE_REPLAY_MAX_TOKENS=6000`；全部 env 可调、带 `try/except ValueError` 容错
+  - [x] Kill switch：`WAKE_IM_REPLAY_ENABLED=0` 在函数入口短路，不读 meta、不调 Business、不改任何状态
+  - [x] 可观测：`wake_im_replay_total{result=injected|skipped_empty}` counter + `wake_im_replay_messages` / `wake_im_replay_tokens` histogram + `[wake_im_replay] scope=... agent=... messages=N tokens~T` log
+  - [x] 降级：`read_session_meta` 抛异常 / 返回非 dict / Business 500 / flag 清失败 全部软失败，unread 路径不受波及
+  - [x] 38 个新 case 覆盖（`tests/test_wake_im_replay.py`）+ 既有 48 个回归 case 全绿
+- 验收（staging）：sleep 期间 N 条用户消息 → wake 首轮 LLM 看到 N 条 `WAKE_IM_REPLAY` 段；次轮不再重复（`?round=2` 预期 0 条）
+- 承诺：**R9 — IM 流层**
+
+### P6 组合预期
+
+注入顺序（新 scope 首轮 context）：
+
+```
+1. SYSTEM_PROMPT                         (已有)
+2. RECALL_MESSAGES                       (已有 — 跨 session 长期摘要)
+3. WAKE_CONTINUITY                       (PR-42 — 文字)
+4. PREV_SCOPE_TAIL                       (PR-43 — 工具轨迹)
+5. WAKE_IM_REPLAY                        (PR-44 — 对话历史)
+6. unread chat_messages (IM-rendered)    (已有 — PR-38)
+```
+
+三层互补；预算争抢时按优先级 compact（先驱逐 5 > 4 > 3 > 2）。**R9 完整形态写入** `docs/architecture/message-wake-principles.md` §承诺表。
+
+---
+
 ## 观测与验收（全 Phase 贯穿）
 
 这些不是单独 phase，而是每一步都要满足的基线：
