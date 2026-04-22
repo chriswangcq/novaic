@@ -5,7 +5,7 @@
 | **Phase** | hotfix + convention hardening |
 | **Milestone** | R8（状态机化的最后一公里） |
 | **承诺** | R8 + R9（scope 能关才能"醒来拿上下文"） |
-| **Status** | `[~]` — Wave 1 (REPLY_NO_FOLLOWUP in react_actions) 已实现 + 16 个单测 + 全 runtime 套件 192 通过；待 staging 验证 |
+| **Status** | `[✓]` — **已部署 prod 2026-04-22 18:00 UTC**。`WAKE_TURN_FINALIZER_ENABLED=True`、`closer_tools=['chat_reply']` 在线验证加载成功；下一轮真实连聊后观察 `turn_finalizer_total{reason="reply_no_followup"}` 指标 |
 | **Depends on** | PR-28（subagent 状态机）、PR-29（scope 状态机）、PR-45（text 层，依赖 rest 产出 historical_summary） |
 | **Blocks** | PR-42/44/45 真正生效；PR-43（scope chain 必须 scope 能被关才能有"上一次") |
 | **估时** | 1 d |

@@ -5,7 +5,7 @@
 | **Phase** | UX-side optimization（不是正确性 bug，是"观感 + 成本"问题） |
 | **Milestone** | R9 IM stream layer 完形 |
 | **承诺** | R9（IM 语义一致性） |
-| **Status** | `[~]` — Wave 1（B: CHAT_HISTORY 字节 cap + TRUNCATED marker）已实现 + 11 单测全绿；Wave 2（A: business outbox 聚合窗口）延后独立 PR |
+| **Status** | `[✓ Wave 1]` — **已部署 prod 2026-04-22 18:00 UTC**。`WAKE_REPLAY_MAX_BYTES=16384` 在 runtime 内生效；观察 `wake_im_replay_truncated_total{reason=bytes}` 指标在长对话 agent 上是否开始计数。Wave 2（business outbox 聚合）保留在 `[ ]` 状态，后续独立 PR |
 | **Depends on** | PR-38（IM 渲染）、PR-44（wake IM replay）、PR-46（by-ids 装配） |
 | **Blocks** | — |
 | **估时** | 0.5–1 d |

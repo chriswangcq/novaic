@@ -6,7 +6,7 @@
 | **Phase**      | hotfix（R2 / R9 真正落地的先决条件）                                                                     |
 | **Milestone**  | M2+（主路径已切 subscriber，消费端必须对齐 message_ids）                                                     |
 | **承诺**         | R2（dispatch 唯一入口）、R4（lifecycle 唯一事实）、R9（wake 不丢/不错上下文）                                        |
-| **Status**     | `[~]` (2026-04-23 代码 + 单测完成；线上部署验证 pending)                                                   |
+| **Status**     | `[✓]` — **已部署 prod 2026-04-22 18:00 UTC**。`CONTEXT_READ_BY_IDS=True` 已在 runtime 内生效（staging smoke 已验证）；观察指标 `context_read_by_ids_total` 下一周回填 |
 | **Depends on** | PR-20（scope.input_message_ids）、PR-21（lifecycle 枚举）、PR-38（IM 渲染）                               |
 | **Blocks**     | PR-43（scope chain 之前必须先有"新消息真的进当前 scope"的基线）、PR-47（老毒清理依赖精确装配就能自愈）                            |
 | **估时**         | 0.5–1 d                                                                                       |

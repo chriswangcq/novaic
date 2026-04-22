@@ -5,7 +5,7 @@
 | **Phase** | PR-45 Wave 1.5（R9 文字层 producer 端闭环） |
 | **Milestone** | R9 text layer（完整 producer → consumer） |
 | **承诺** | R9 + R8 |
-| **Status** | `[~]` (2026-04-23 代码 + 12 单测完成；线上部署待验证) |
+| **Status** | `[✓]` — **已部署 prod 2026-04-22 18:00 UTC**。`_exec_subagent_rest` 在 runtime 内已挂接；下一次真实 `subagent_rest` 调用会持久化 `handoff_notes` 到 `subagents` 表（观察指标 `subagent_rest_executed_total`） |
 | **Depends on** | PR-45（consumer 端已就绪）、PR-28（subagent 状态机） |
 | **Blocks** | — |
 | **估时** | 0.5 d |
