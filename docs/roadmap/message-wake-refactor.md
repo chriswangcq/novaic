@@ -460,7 +460,7 @@
 
 ### P6-3  Wake continuity 状态层 — Scope 续链 previous_scope_id
 
-- Status: `[Wave A ✓ 2026-04-24 · Wave B ✓ 2026-04-25 · Wave C ✓ 2026-04-25（deploy pending）]` (PR-43)
+- Status: `[Wave A ✓ 2026-04-24 · Wave B/C ✓ 2026-04-25 · prod deploy ✓ 2026-04-22 21:33 CST]` (PR-43)
 - Wave A (2026-04-24) landed — **写入侧**：
   - Entangled `subagents` schema: `last_scope_id`, `last_scope_archived_at`（两字段 nullable，schema_push 自动迁移）
   - `subagent_rest` saga 新增 `_last_scope_fields(ctx)` helper（guards on `step_results.cortex_scope_end.success`），piggyback 到 `set_subagent_sleeping` / `set_subagent_completed` 的 entity_update（与 PR-45 A `historical_summary` 同原子写）
