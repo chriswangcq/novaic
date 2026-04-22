@@ -460,7 +460,12 @@
 
 ### P6-3  Wake continuity 状态层 — Scope 续链 previous_scope_id
 
-- Status: `[ ]` (PR-43)
+- Status: `[Wave A ✓ 2026-04-24, Wave B/C 待开]` (PR-43)
+- Wave A (2026-04-24) landed:
+  - Entangled `subagents` schema: `last_scope_id`, `last_scope_archived_at`（两字段 nullable，schema_push 自动迁移）
+  - `subagent_rest` saga 新增 `_last_scope_fields(ctx)` helper（guards on `step_results.cortex_scope_end.success`），piggyback 到 `set_subagent_sleeping` / `set_subagent_completed` 的 entity_update（与 PR-45 A `historical_summary` 同原子写）
+  - `handle_subagent_set_*` additive 写入（malformed value silent drop，不覆写已有）
+  - 单测 `tests/test_pr43_last_scope_wiring.py` 19 个用例
 - Scope: `common/wake/assembler.py`（resolve last_scope_id）+ `queue_service/session_repo.py`（透传）+ `task_queue/sagas/subagent_rest.py`（写 last_scope_id）+ `novaic-cortex/context_stack/engine.py`（assembly 读尾部）+ Entangled schema（`subagents.last_scope_id`）
 - 任务：
   - Entangled schema: `subagents.last_scope_id` / `last_scope_archived_at`
