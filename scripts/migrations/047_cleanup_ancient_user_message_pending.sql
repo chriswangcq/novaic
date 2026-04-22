@@ -53,6 +53,22 @@
 --   -- Post-run expectation: (USER_MESSAGE, pending) row is 0.
 --   -- (USER_MESSAGE, consumed) count increases by the same delta.
 
+-- Schema note (confirmed against prod 2026-04-23):
+--   chat_messages.created_at  TEXT, default ``datetime('now')``
+--                             → ISO-8601 "YYYY-MM-DD HH:MM:SS" (UTC)
+--   chat_messages.timestamp   TEXT (client-provided ISO-8601 with tz)
+--   chat_messages.lifecycle_updated_at  INTEGER (epoch-millis;
+--                             PR-21 state machine writes this as
+--                             ``strftime('%s','now')*1000``)
+--
+-- An early draft of this migration used ``created_at < strftime('%s',
+-- 'now','-48 hours') * 1000``. That compares ISO-TEXT against an
+-- epoch-millis INTEGER and SQLite silently coerces both to numeric
+-- 0/0 — which means ``WHERE`` returns zero rows and the migration
+-- appears to succeed while doing nothing. Fixed to use ISO-TEXT on
+-- both sides so SQLite's lexicographic comparison works (ISO-8601
+-- is lexicographically sortable by design).
+
 BEGIN;
 
 -- Backup table: snapshots the full row, so restore is trivial. The
@@ -66,18 +82,19 @@ SELECT *
 FROM chat_messages
 WHERE type = 'USER_MESSAGE'
   AND lifecycle = 'pending'
-  AND created_at < (strftime('%s', 'now', '-48 hours') * 1000);
+  AND created_at < datetime('now', '-48 hours');
 
 -- The flip. ``lifecycle_updated_at`` is bumped so any observability
 -- query ordering by recency sees the admin action, not the original
--- pending moment. ``claimed_by_scope`` stays NULL: the row never
--- belonged to any scope, and we don't want to fabricate one.
+-- pending moment. It stays INTEGER epoch-millis to match PR-21's
+-- state machine convention. ``claimed_by_scope`` stays NULL: the
+-- row never belonged to any scope, and we don't want to fabricate one.
 UPDATE chat_messages
 SET lifecycle = 'consumed',
     lifecycle_updated_at = strftime('%s', 'now') * 1000
 WHERE type = 'USER_MESSAGE'
   AND lifecycle = 'pending'
-  AND created_at < (strftime('%s', 'now', '-48 hours') * 1000);
+  AND created_at < datetime('now', '-48 hours');
 
 -- Observability: a single grep-able marker row in the transitions
 -- table so future ops can trace why these rows flipped. The
