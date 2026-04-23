@@ -354,10 +354,23 @@ curl -s http://business:19998/metrics | grep '^internal_requests_total{.*status=
 - **R10 上升为 `[CODE]`**：根因 A 的教训——"消费端扫表自己反推输入"是**反模式**，必须 `[CODE]` 级禁止。PR-46 的 `CONTEXT_READ_BY_IDS` 默认 on 是技术落地，本页承诺是合同兜底。
 - **UI-only 字段**：`chat_messages.read` 被不同代码各自解读成 "这条我处理过没"，是 R8 "多字段拼状态" 的活化石。明确列在 R10 下限定用途。
 
-**Canary / 监控补齐**（待办，落在 P7）
+**Canary / 监控**（[PR-54](../roadmap/tickets/PR-54-canary-metrics-bundle.md) 落地 2026-04-25）
 
-- `ghost_scope_rate` — `scope 被创建 → 1 分钟内被 archive 但 chat_messages 仍在 claimed` 的比例，需要 PR-25 trace 视角 + metric。
-- `wake_continuity_render_total{layer=text|state|im, result=ok|empty|truncated}` — 三层 render 落地率，一个指标看清 R9 是否还在活着。
+- `[CODE]` **`wake_continuity_render_total{layer, result}`** — R9 三层 render 汇总计数。一个 Grafana query 回答 "R9 今天活着吗"。
+  - `layer ∈ {text, state, im}` — 对应 R9 的 text 层 (`<HANDOFF_NOTES>` / `<HISTORICAL_SUMMARY>`)、state 层 (`<PREV_SCOPE_TAIL>`)、im 层 (`WAKE_IM_REPLAY`)。三个桶和本页 R9 锁死；新增层必须同步改文档 + 改 `novaic-agent-runtime/tests/test_pr54_render_metric.py::test_render_metric_layer_taxonomy_is_three_not_four`。
+  - `result ∈ {ok, empty, truncated, error}` —
+    - `ok` 渲染 ≥1 块且无 truncation；
+    - `empty` 该层合法地没数据可渲（冷启动、无 handoff、无 previous_scope_id 等；最常见）；
+    - `truncated` 渲染成功但命中 byte/token/step cap；
+    - `error` 底层 IO/bridge 抛异常被 degrade 成 `[]`（与 `empty` 严格区分，避免 Cortex 抽筋和 "本来就没数据" 在 dashboard 上画成同一条线）。
+  - 与现有 `wake_continuity_injected_total{kind, trigger_type}` / `wake_prev_scope_tail_total{result}` / `wake_im_replay_total{result}` **并存**。前者承担分维度分析，本指标承担汇总 health。
+- `[CODE]` **`ghost_scope_rate`** — `chat_messages.lifecycle='claimed'` 但 `claimed_by_scope` 在 Cortex 已归档/purge 的比例。PR-51 修复存量、PR-52 堵未来，本指标是两者的墙有没有撑住的核心 canary。
+  - 数据源：`GET /internal/probes/ghost-scope-rate?sample=N` — piggyback 已有的 stuck-claimed endpoint，对每条 item 查 Cortex `/v1/meta/read`。
+  - 分类：`live`（phase ∈ {executing, compacting}）/ `ghost`（phase 不在 live 集合 或 meta 空）/ `unknown`（缺 user_id / scope_id / Cortex 抛或非 200）。
+  - `rate = ghost / (ghost + live)` — **`unknown` 排除在分母外**，避免 Cortex 抖动期间假性下降。
+  - 配套 `ghost_scope_probed_total{classification}` counter 用来看分布时间序列。
+
+两个指标都由 Prometheus 定时拉取（`wake_continuity_render_total` 由 runtime 自发；`ghost_scope_rate` 靠外部 cron 每分钟打一次 business endpoint），**不**增后台线程/worker。
 
 ---
 

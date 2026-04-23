@@ -601,6 +601,13 @@
     - `[✓ code]` **PR-45.2** `scripts/ci/lint_wake_continuity_contract.sh` — consumer-layer file 中 `handoff_notes` / `historical_summary` 必须成对出现的 R9 contract lint + single-key tuple loop 防御。首次跑即抓到 `scheduler_worker._wake_metadata` 少了 `historical_summary` 的真实缺口，同 PR 顺手修。Wired into `.github/workflows/lint.yml`。2026-04-24 合入。
     - `[✓ code]` **PR-45.3** `scripts/canary/wake-continuity-smoke.sh` — bootstrap 独立 `canary_b_1` agent + send 1 USER_MESSAGE + tail business.log 45s 等 PR-45.1 的 `event=continuity_resolve agent=canary_b_1` 出现。PASS = resolver 跑过且无 `result=error`；`ok` / `empty` / `not_found` 皆视为正信号（区分"链路跑通"和"notes 已填充"）。支持 `LOG_SOURCE=file|journalctl`，exit 0/1/2/3 对应 PASS/FAIL/prereq-fail/SKIP-no-log。traffic.py 顺手加 `CANARY_AGENT_ID` 等 env override 以支持双 canary 并存。2026-04-24 合入。
 
+### P6-14  Canary metrics bundle（[PR-54](tickets/PR-54-canary-metrics-bundle.md)）
+
+- `[code landed 2026-04-25 — 待部署]` 补完 `docs/architecture/message-wake-principles.md` §七 原本标记为"P7 待办"的两条 canary 监控指标。**不改正确性，只给 R9 + R-STUCK-CLAIMED 各装一个 Grafana 一眼看穿的 health 指标**。
+- `wake_continuity_render_total{layer=text|state|im, result=ok|empty|truncated|error}` — runtime 侧，三层 R9 render 汇总 counter。9 个 `novaic-agent-runtime/tests/test_pr54_render_metric.py` 测试锁 label taxonomy + 每层四分支。
+- `ghost_scope_rate` + `ghost_scope_probed_total{classification}` — business 侧，新 endpoint `GET /internal/probes/ghost-scope-rate` piggyback 现有 stuck-claimed 扫描 + Cortex meta probe 分类。16 个 `novaic-business/tests/test_pr54_ghost_scope_probe.py` 测试锁 classifier + rate-math + 端点行为。
+- 动因：PR-53 那种"三层 R9 静默失败 3 天"的事故，未来靠 `wake_continuity_render_total` 秒级发现。
+
 ---
 
 ## 观测与验收（全 Phase 贯穿）

@@ -146,3 +146,48 @@ Canary runs as part of the **next release's** smoke pack; until then, this revie
 - [x] Ticket flip — [`README.md`](../README.md) / `[message-wake-refactor.md`](../../message-wake-refactor.md) P6-13 line ticked and cross-linked.
 
 **Verdict**: PR-45 closes with an asterisk on direct live observation, mitigated by (a) unit-test coverage of the exact producer/consumer invariants and (b) indirect state-machine evidence that Wave A's preconditions are satisfied. §五 Follow-ups are tracked and sized; none are blocking P6 completion.
+
+---
+
+## 七、Postscript — 2026-04-25: PR-53 invalidates §3.3's "state-machine evidence" confidence
+
+This review signed off on Wave A (producer) using state-machine evidence: "`awake → sleeping` with `reason=rest` fires, therefore `handle_subagent_set_sleeping` ran, therefore `entity_update(historical_summary=...)` succeeded". That chain had a blind spot discovered three days later while validating PR-43 Wave A end-to-end.
+
+**The blind spot**:
+
+```
+handle_subagent_set_sleeping                                           
+  → business_client.entity_update("subagents", id, {status, historical_summary, ...})
+  → PATCH /internal/entities/subagents/{id}
+  → internal_update_entity: sees "status", routes through state machine
+  → business.subagent_state.transition(extra={historical_summary, ...})
+  → EntangledServiceClient.transition_subagent(extra=...)
+  → Entangled sql/subagent_state.transition: clean_extra = extra ∩ EXTRA_ALLOWLIST
+  → EXTRA_ALLOWLIST = {need_rest, progress, error, result}  ← historical_summary dropped HERE
+  → UPDATE subagents SET status='sleeping', need_rest=0, updated_at=...  (no historical_summary)
+  → return 200 OK
+```
+
+Every test in this review's §二 table was green. State-machine transition rows were present. API calls returned 200. And **not a single row of `subagents.historical_summary` was ever populated** between PR-45 deploy (2026-04-22) and PR-53 deploy (2026-04-25). Same for PR-43 Wave A's `last_scope_id` / `last_scope_archived_at`. PR-42's `handoff_notes` dodged the bullet only because it used a different write path (generic `entity_store.update_where`, not the state-machine route).
+
+**Why each test layer missed it**:
+
+| Layer | This review's §二 row | Mock boundary | What it would have needed to catch this |
+|---|---|---|---|
+| Producer unit | `test_pr45_continuity_wiring.py` | mocked `business_client.entity_update` | Assert the *post-conditions* on a real DB, not just the call args |
+| Consumer unit | `test_pr45_dispatch_continuity.py` | mocked `subagents` read | Pull from a real DB populated by the producer path |
+| Entangled unit | (not in this review — `test_subagent_state.py`) | — | A `test_continuity_fields_are_in_allowlist` defensive unit pinning which columns must pass through |
+| Cross-layer | **absent** | — | A TestClient-level PATCH → SELECT round-trip through real Business + real Entangled SQL |
+
+**What §3.3's "indirect state-machine evidence" actually proved**: only that the *wire call* reached Entangled. It could not distinguish "200 OK, column written" from "200 OK, column silently dropped", because the Entangled layer's drop was intentional (allowlist) and returned no signal.
+
+**Follow-up actions (all landed 2026-04-25)**:
+
+1. **PR-53 fix** — `EXTRA_ALLOWLIST` extended to cover `historical_summary`, `last_scope_id`, `last_scope_archived_at`. `handoff_notes` stays out of the allowlist because its write path doesn't go through the state machine. Dropped keys now emit a WARN, so the "silent" failure mode is eliminated for any future ancillary column. See [PR-53 ticket](../PR-53-entangled-continuity-allowlist.md).
+2. **R-ALLOWLIST invariant** — codified into [`docs/architecture/message-wake-principles.md`](../../../architecture/message-wake-principles.md) §二 as a `[CODE] + [CONTRACT]` contract: any new ancillary column piggybacked on a `subagents` status-flip PATCH requires allowlist entry + defensive unit + cross-layer e2e test in the same PR.
+3. **Cross-layer e2e test pattern** — [`novaic-business/tests/test_pr53_continuity_allowlist_e2e.py`](../../../../novaic-business/tests/test_pr53_continuity_allowlist_e2e.py) stands up real Business + real Entangled SQL over TestClient. This is the test shape missing from this review's §二 table; future continuity PRs adding ancillary columns extend *this* file.
+4. **Prod smoke evidence** — PATCH probe + canary natural path both showed post-PR-53 rows populate; zero `extra_dropped` WARNs since deploy.
+
+**Revised verdict on PR-45**: code is correct, deploy was correct, but the continuity producer *did not actually produce data* in prod until PR-53 unblocked the Entangled write. So §六's `[x]` marks on Wave A / B / D evidence need the caveat: **they verified the code path was reachable, not that it had ever persisted state**. The distinction didn't matter for the sign-off decision (PR-45 was gated on code quality, not on whether another service's allowlist was correctly configured), but it mattered a lot for "is continuity actually working on prod?" — the answer was **no** for three days, across three separate production continuity PRs (PR-42/45/43), and no single-service test could have caught it.
+
+**Closing**: the §五 follow-ups (`PR-45.1` / `.2` / `.3`) remain valid and useful — they made PR-53's debugging tractable (`event=continuity_resolve` was the first log line showing `has_summary=0` / `has_prev=0` in prod). Without PR-45.1 we'd still be looking.
