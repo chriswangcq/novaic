@@ -4,7 +4,7 @@
 | --- | --- |
 | **Phase** | R9 IM stream layer — UX / cost optimization |
 | **承诺** | R9（IM 语义一致性）+ 成本预算 |
-| **Status** | `[✓ code landed 2026-04-24 — 未部署]`（kill switch 默认 on，等部署窗口） |
+| **Status** | `[✓]` deployed to prod 2026-04-22 22:55 CST（随 PR-53 submodule bump 一同推送）；smoke PASS — 见下 |
 | **Parent** | [PR-50](PR-50-im-message-aggregation.md)（Wave 1 byte-cap 已部署 2026-04-22） |
 | **Depends on** | PR-14（outbox 表）、PR-20（buffered append_input）、PR-22（subscriber transition claimed）、PR-45（continuity enrichment）、PR-46（by-ids 装配）、PR-52（stale-claim guard） |
 | **Blocks** | — |
@@ -122,13 +122,19 @@ PYTHONPATH=.:../novaic-common:../Entangled/packages/server-python \
 
 ## 部署 Checklist（必走）
 
-1. 代码合入父仓 main（含 business submodule bump）。
-2. `./deploy services` —— 只触发 subscriber 进程重启；无 schema 迁移、无 runtime 变更。
-3. **灰度观察窗（部署后 30 min）**：
-   - `im_aggregated_total{count}` 计数 ≥ 1（需要有用户连发流量；实测一次 2 条以上即可）。
-   - `im_aggregated_fallback_total` 保持 0 或仅在 `reason=retry_row` 偶发（PR-52 场景）。
-   - `outbox_backlog_count` gauge 不应升高——合批不抢占 claim 速率，只减少下游 LLM 侧负担。
-   - 日志抽样：`grep 'event=im_aggregate ' /opt/novaic/data/logs/business-subscriber.log | tail -10` 应见 `count=2` 或 `count=3` 的行。
+1. [x] 代码合入父仓 main（含 business submodule bump — `d265e6d` 随 `d2771fd` 进入 main）。
+2. [x] `./deploy services` —— 实际搭乘 PR-53 hotfix 的 `scripts/deploy-business.sh` 于 2026-04-22 22:55 CST 推送，subscriber 进程 PID 1586762 从 22:56 起运行包含 Wave 2 代码的 `dispatch_subscriber.py`。
+3. [x] **prod smoke（2026-04-23 10:27 CST）**：`traffic.py send --count 3 --tps 10 --concurrency 3` 触发 canary_a_1 连发 3 条，subscriber 日志（`/opt/novaic/data/logs/subscriber-20260422.log`）出现：
+   ```
+   event=im_aggregate agent=canary_a_1 trigger=user_message count=2 window_sec=60
+     ids=['3982b2ae9481','2c002d281c10'] action=saga_started scope=a47714e0-...
+   event=dispatch trigger=user_message agent=canary_a_1 messages=2 result=ok
+   ```
+   即 3 连发 → 1 次 `saga_started`（2 条合并，`messages=2`）+ 1 次 `buffered`（第 3 条加入同一 scope 的 `append_input`）= **1 次 session.init**（pre-Wave-2 会产生 3 次）。
+4. [ ] **灰度观察窗（部署后 30 min — 2026-04-22 22:55 ~ 23:25 CST）**：
+   - `im_aggregated_fallback_total` 保持 0。无告警。
+   - `outbox_backlog_count` gauge 未升高。
+   - 日志无 `event=im_aggregate ... fallback_reason=dispatch_error` 出现。
 4. **负面信号**：
    - 如果出现 `im_aggregated_fallback_total{reason=dispatch_error}` 持续增长 → 先开 `IM_AGGREGATION_WINDOW_SEC=0` 回退 pre-Wave-2，再定位 assemble/dispatch 对 multi-id 的哪个路径出错。
    - 如果 `subscriber_delivered_total{trigger=user_message}` 分布骤降到"只剩少量" → 合批把多条计作一次 delivered，属于预期；与之相对 `im_aggregated_total` 应同比上升。

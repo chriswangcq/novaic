@@ -39,6 +39,7 @@
 | **R8** | 一等实体（message / subagent / scope / saga / task）有**唯一权威状态枚举**与**受控转移**；废除"多字段拼状态" | `[CONTRACT]` 逐步 `[CODE]` |
 | **R9** | **Wake Continuity**：agent 跨 sleep/wake 必须能继承**文字层（handoff notes + historical summary）**、**状态层（scope 链 / previous_scope_id）**、**IM 流层（chat history replay）**三层短期记忆，否则每次醒来都是失忆 | `[CODE]`（producer + consumer 两端） |
 | **R10** | **Consumer SSOT**：runtime/消费端**只信 dispatch 透传的 id 集合**（`scope.meta.input_message_ids` 由 `/v1/scope/append_input` 落地，由 session.init / dispatch metadata 透传）；**禁止**消费端自己扫 `lifecycle='pending'` / `read=0` 反推"这次要处理哪些消息" | `[CODE]`（由 PR-46 强制；fallback 路径加 kill switch 不算违反） |
+| **R-ALLOWLIST** | 在 `subagents` 状态机 PATCH 的 payload 中追加任何 ancillary 列（随 terminal status flip 一同原子写入）时，**必须**同步三件事：(1) 补入 `Entangled.sql.subagent_state.EXTRA_ALLOWLIST`；(2) 在 `test_subagent_state.py` 加 `test_continuity_fields_are_in_allowlist` 风格的 defensive unit（防 allowlist 被未来 refactor 意外删除）；(3) 在 `novaic-business/tests/test_pr53_continuity_allowlist_e2e.py` 加一条 TestClient-level 的 handler→Business→Entangled→SQLite 真写断言。三者缺一：CI 绿、prod 续写**静默失效**——这就是 PR-53（干掉 PR-42/45/43 Wave A 全链路续写）的诞生背景 | `[CODE]` + `[CONTRACT]`（allowlist 是代码；三件套约束是评审硬门） |
 
 符号：
 - `[CODE]`：在代码/中间件/断言层面强制。
@@ -345,6 +346,7 @@ curl -s http://business:19998/metrics | grep '^internal_requests_total{.*status=
 | --- | --- | --- |
 | `chat_messages.lifecycle='claimed'` 永不变 consumed（因原 scope 死亡 + PR-48 之前 scope 永不归档） | 任何 C/D/E 组合失败的历史残留 | **PR-51 Part 1**：一次性 SQL 迁移清 prod 25/28 行；**Part 2**：HealthWorker 双轴（`lifecycle_updated_at` 24h + `created_at` 72h）周期扫描 + Entangled/Business endpoint |
 | Subscriber 重试把一条老 `pending` 派到**新** Queue session → 拉起全新 scope 填满 stuck-claimed | outbox retry（subscriber 曾经 die 在 assemble_sync 与 mark_delivered 之间） | **PR-52**：subscriber 在 `attempts > 0` 上 probe `chat_messages.lifecycle` + Cortex `meta.phase`，死 scope / live scope / consumed 都 `mark_delivered` 不再派发 |
+| **PR-42/45/43-Wave-A 三条续写链路同时静默失效** — runtime 在 `subagents` 状态机 PATCH 中捎带的 `handoff_notes` / `historical_summary` / `last_scope_id` / `last_scope_archived_at`**从未**落 DB | Entangled `sql/subagent_state.EXTRA_ALLOWLIST` 只认老 4 字段，未登记键静默丢弃且零日志；三层测试各自绿灯（handler mock client / business mock EntangledServiceClient / entangled 单测只 cover 已收录字段）但**跨层契约在接缝处被吃** | **PR-53**：allowlist 收录 3 个续写列 + silent drop 变 WARN + 新增 Business→Entangled TestClient e2e 集成测试（pin 住 handler→Business→Entangled→SQLite 真写路径） → 升格为 **R-ALLOWLIST** 不变量 |
 
 **经验沉淀（新增 R-INV 的动因）**
 
