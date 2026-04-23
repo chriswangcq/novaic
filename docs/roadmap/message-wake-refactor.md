@@ -603,7 +603,7 @@
 
 ### P6-14  Canary metrics bundle（[PR-54](tickets/PR-54-canary-metrics-bundle.md)）
 
-- `[code landed 2026-04-25 — 待部署]` 补完 `docs/architecture/message-wake-principles.md` §七 原本标记为"P7 待办"的两条 canary 监控指标。**不改正确性，只给 R9 + R-STUCK-CLAIMED 各装一个 Grafana 一眼看穿的 health 指标**。
+- `[x]` **deployed 2026-04-25 12:13 CST**。补完 `docs/architecture/message-wake-principles.md` §七 原本标记为"P7 待办"的两条 canary 监控指标。**不改正确性，只给 R9 + R-STUCK-CLAIMED 各装一个 Grafana 一眼看穿的 health 指标**。
 - `wake_continuity_render_total{layer=text|state|im, result=ok|empty|truncated|error}` — runtime 侧，三层 R9 render 汇总 counter。9 个 `novaic-agent-runtime/tests/test_pr54_render_metric.py` 测试锁 label taxonomy + 每层四分支。
 - `ghost_scope_rate` + `ghost_scope_probed_total{classification}` — business 侧，新 endpoint `GET /internal/probes/ghost-scope-rate` piggyback 现有 stuck-claimed 扫描 + Cortex meta probe 分类。16 个 `novaic-business/tests/test_pr54_ghost_scope_probe.py` 测试锁 classifier + rate-math + 端点行为。
 - 动因：PR-53 那种"三层 R9 静默失败 3 天"的事故，未来靠 `wake_continuity_render_total` 秒级发现。

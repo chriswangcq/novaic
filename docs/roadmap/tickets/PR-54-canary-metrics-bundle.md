@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | **Ticket**  | PR-54 |
-| **Status**  | `[code landed 2026-04-25 — 待部署 + 线上验证]` |
+| **Status**  | `[✓]` deployed to prod **2026-04-25 12:13 CST** (`./deploy services`); endpoint + log + business `/metrics` all green (see §部署验证) |
 | **Opened**  | 2026-04-25 |
 | **Owner**   | wc |
 | **Severity** | **P7 observability** — no correctness impact. Closes the last two "canary metrics" items from `docs/architecture/message-wake-principles.md` §七. |
@@ -99,16 +99,35 @@ P6/P7 留下的两条小尾巴，都来自 `docs/architecture/message-wake-princ
 
 ## 部署 + 验证 checklist
 
-- [ ] Entangled submodule bump（如涉及，实际无变更 → 跳过）
-- [ ] novaic-business submodule bump
-- [ ] novaic-agent-runtime submodule bump
-- [ ] `./deploy services` → 重启 subscriber / business / runtime
-- [ ] Smoke:
-  - [ ] `curl -H "X-Service-Token: $SVC" https://api.gradievo.com/internal/probes/ghost-scope-rate?sample=5` → 200, body 含 `ghost_scope_rate` 字段
-  - [ ] grep business subscriber 日志 `event=ghost_scope_probe sampled=` 至少一行
-  - [ ] 发一条 USER_MESSAGE 到 canary agent → grep `wake_continuity_render_total` 在 runtime 的 metrics endpoint（或 log-based 计数）出现 `layer=text result=ok` / `layer=state result=empty` / `layer=im result=ok`
-- [ ] 文档：本 ticket 状态翻 `[✓]`，`docs/architecture/message-wake-principles.md` §七 的两条画 `[x]`
-- [ ] `docs/roadmap/message-wake-refactor.md` 的 "Canary 监控指标" 小尾巴画完 —— 至此 P6/P7 全部落单，roadmap 里除未来 P8+ 规划外无 `[ ]`。
+- [x] Entangled submodule bump — 实际无变更 → 跳过
+- [x] novaic-agent-runtime submodule bump — commit `6738a29` (2026-04-25)
+- [x] novaic-business submodule bump — commit `b08931e` (2026-04-25)
+- [x] `./deploy services` — 2026-04-25 12:13 CST，全部 `OK`，subscriber subprocess pid 1612871
+- [x] Smoke endpoint + metrics：
+  - `curl http://127.0.0.1:19998/internal/probes/ghost-scope-rate?sample=20` → 200，body `{"sampled":0,"ghost":0,"live":0,"unknown":0,"ghost_scope_rate":0.0,"total_stuck_claimed":0,"items":[]}`。零 stuck-claimed = PR-51/52 仍在撑墙，**healthy**。
+  - `tail business-20260423.log` → `event=ghost_scope_probe sampled=0 ghost=0 live=0 unknown=0 rate=0.0000 total_stuck=0`（两条，分别 12:12:26 / 12:12:31）。
+  - `curl http://127.0.0.1:19998/metrics | grep ghost_scope` →
+    ```
+    # TYPE ghost_scope_rate summary
+    ghost_scope_rate_sum 0.0
+    ghost_scope_rate_count 2.0
+    # TYPE ghost_scope_total_stuck summary
+    ghost_scope_total_stuck_sum 0.0
+    ghost_scope_total_stuck_count 2.0
+    ```
+    两次探针都被 Prometheus-格式记录，时间序列建立成功。
+- [x] 发一条 USER_MESSAGE 到 `canary_a_1` → saga-worker-20260423.log 观察到 `subagent_wake` saga 启动，session.init 走完；render metric 在 task-worker 进程内计数（process-local counter，见下文"已知观测空白"）。
+- [x] 文档：本 ticket 状态翻 `[✓]`；`docs/architecture/message-wake-principles.md` §七 改成 `[CODE]` 承诺；`docs/roadmap/message-wake-refactor.md` P6-14 行添加。
+
+## 已知观测空白（非本 PR 修复，登记备忘）
+
+`wake_continuity_render_total` 走的是 `common.utils.metrics` 的进程内 registry（`_COUNTERS`）。Business service 在 `:19998/metrics` 暴露这个 registry；**task-worker / saga-worker 进程没有自己的 `/metrics` endpoint**，所以 runtime 侧的 render metric 即便被正确 `metric_inc`，外部 Prometheus 也抓不到。
+
+这不是 PR-54 引入的回归 —— 同样的情况适用于 *所有* runtime-process-local 指标（`wake_continuity_injected_total` / `wake_prev_scope_tail_total` / `wake_im_replay_total` / `wake_prev_scope_tail_total` 等），都是先前 PR-42/43/44/45 留下的既有 gap。
+
+短期验证：render metric 的正确性由 `tests/test_pr54_render_metric.py` 的 9 条单测和代码本身的三个 `emit_wake_continuity_render(...)` 调用位点保证 —— 部署后的"是否活着"由下游指标间接证实（例如 agent 回复正常、`subagents.historical_summary` 非空、Cortex scope 有 `previous_scope_id`）。
+
+长期修复路径（**新 ticket，不归本 PR**）：给 task-worker 和 saga-worker 各装一个最小 `/metrics` HTTP 端口（参考 business 的 `install_service_logging` + FastAPI `@app.get("/metrics")`），统一 scrape 目标到 Prometheus。已登记在 `docs/roadmap/technical-debt.md` 的 `DEBT-OBS-*` 区（TBD 条目）。
 
 ## 关联
 
