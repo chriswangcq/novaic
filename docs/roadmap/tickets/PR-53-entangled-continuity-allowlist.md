@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | **Ticket**  | PR-53 |
-| **Status**  | `[✓]` impl + tests landed 2026-04-25; deploy + prod smoke pending |
+| **Status**  | `[✓]` deployed to prod 2026-04-22 22:55 CST; smoke PASS (see §关单 checklist) |
 | **Opened**  | 2026-04-25 |
 | **Owner**   | wc |
 | **Severity** | **P0 regression** — silently disabled **three** production continuity features (PR-42 `handoff_notes`, PR-45 `historical_summary`, PR-43 Wave A `last_scope_id`) for every wake since each respective deploy. Users observed as "agent forgets previous conversation, context panel empty, wake acts like cold start". |
@@ -161,7 +161,7 @@ if dropped:
 
 ## 工作指南（避免同类 bug）
 
-同时更新 `docs/roadmap/message-wake-principles.md` 补一条不变量：
+同时更新 `docs/architecture/message-wake-principles.md` 补一条不变量：
 
 > **R-ALLOWLIST**：凡在 `subagents` 状态机 PATCH 的 payload 中追加 ancillary 列，必须
 > 1. 补入 `Entangled.sql.subagent_state.EXTRA_ALLOWLIST`
@@ -176,8 +176,9 @@ if dropped:
 - [x] F2 WARN on drop
 - [x] F3 e2e 集成测试 (3 cases)
 - [x] entangled 单测扩展 (7 new cases)
-- [x] 本地全量 pytest 绿
-- [ ] deploy 完成
-- [ ] prod smoke 通过：`subagents.last_scope_id` 写入可见
-- [ ] prod smoke 通过：下一次 wake `<PREV_SCOPE_TAIL>` 被注入（log `event=prev_scope_tail_injected`）
-- [ ] `message-wake-principles.md` R-ALLOWLIST 入库
+- [x] 本地全量 pytest 绿（Entangled 139 + Business 138）
+- [x] deploy 完成（`scripts/deploy-business.sh root@api.gradievo.com` 2026-04-22 22:55 CST）
+- [x] prod smoke — 直接 PATCH 探针写入 3 个续写列后 `SELECT` 全部命中；`extra_dropped` WARN 零条
+- [x] prod smoke — canary 自然 rest 路径：`main-canary_a` / `main-canary_b` 部署后首次 `awake→sleeping` 都写出 `last_scope_id`（pre-fix 全表 NULL）
+- [ ] `<PREV_SCOPE_TAIL>` 真实端到端注入（依赖一次"同一 agent 二次 wake"，线上流量自然产生即命中，无需单独驱动）
+- [x] `docs/architecture/message-wake-principles.md` R-ALLOWLIST 入库

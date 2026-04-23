@@ -531,7 +531,7 @@
 
 ### P6-6  Turn Finalizer：chat_reply 之后强制关门（PR-48）
 
-- Status: `[ ]` (PR-48)
+- Status: `[x]` (PR-48, 已部署 prod 2026-04-22 18:00 UTC — `WAKE_TURN_FINALIZER_ENABLED=True`、`closer_tools=['chat_reply']` 线上加载成功)
 - 触发：同 P6-5。根因 D — agent chat_reply 之后既不 subagent_rest 也不 skill_end，scope 永远 running，新消息走 buffered 分支，session.init 从不重新跑，**R9 全层注入路径集体空跑**。
 - Scope: `task_queue/workers/saga_worker_sync.py`（think-loop 末尾加 `_should_finalize_turn` / `_finalize_turn` 兜底）
 - 任务：
@@ -544,7 +544,7 @@
 
 ### P6-7  context.read 按 message_ids 精确装配（PR-46）
 
-- Status: `[ ]` (PR-46)
+- Status: `[x]` (PR-46, 已部署 prod 2026-04-22 18:00 UTC — `CONTEXT_READ_BY_IDS=True` runtime 已生效)
 - 触发：同 P6-5。根因 A — `handle_context_read` 用 `agent_id + read=0` 扫全部 unread，**不是**按 `payload.message_ids` 装配。结果：历史 11 条老 pending USER_MESSAGE 每轮被重注入；新消息在 race 窗口内反而漏掉。
 - Scope: `task_queue/handlers/context_handlers.py::handle_context_read` + Business `/internal/entities/messages?ids=...` 透参 + 可能的 Entangled CRUD `ids=` 过滤补全 + CI lint（禁止 runtime 读 `read=0/1`）
 - 任务：
@@ -557,7 +557,7 @@
 
 ### P6-8  `subagent_rest` tool executor（PR-49）
 
-- Status: `[ ]` (PR-49，PR-45 Wave 1.5)
+- Status: `[x]` (PR-49, 已部署 prod 2026-04-22 18:00 UTC — `_exec_subagent_rest` 已挂接 `TOOL_EXECUTORS`；PR-53 修完 allowlist 后 `handoff_notes` 真正落 `subagents` 表)
 - 触发：同 P6-5。根因 C — LLM 可以调 `subagent_rest(handoff_notes=...)` 但 `TOOL_EXECUTORS` 里**根本没有**这个 key，LLM 手写便条直接掉地。
 - Scope: `task_queue/handlers/tool_handlers.py`（加 `_exec_subagent_rest` + 注册）
 - 任务：
@@ -570,7 +570,7 @@
 
 ### P6-9  老毒 USER_MESSAGE 清理 + recovery age cap（PR-47）
 
-- Status: `[ ]` (PR-47)
+- Status: `[x]` (PR-47, 已部署 prod 2026-04-22 17:57 UTC — runtime + Entangled 状态机 + 9+5 单测全绿；迁移 SQL 线上 run 为 no-op，因 PR-41 amend 已提前清空 pending 池)
 - 触发：同 P6-5。根因 B — 11 条 04-17~04-21 的 USER_MESSAGE 卡 `lifecycle=pending`，HealthWorker 没年龄上限，每轮 recovery 再喂一次给 agent。
 - Scope: `task_queue/workers/health_worker.py`（age cap 分支）+ `scripts/migrations/047_*.sql`（一次性迁移）+ `orphans_total{reason}` 维度补充
 - 任务：
@@ -582,12 +582,12 @@
 
 ### P6-10  IM 消息聚合 + CHAT_HISTORY 字节 cap（PR-50）
 
-- Status: `[~]` (PR-50 Wave 1 已部署；Wave 2 code 已合入等部署)
+- Status: `[x]` (PR-50 Wave 1 已部署 2026-04-22；Wave 2 已部署 2026-04-22 22:55 CST 随 PR-53 bump；prod smoke PASS 2026-04-23 10:27 CST — 3 连发 → 1 次 saga_started + 1 次 buffered)
 - 触发：同 P6-5。根因 F — 用户连发 2 条消息触发 2 次 session.init；PR-44 CHAT_HISTORY 只有条数 cap 没字节 cap。
 - Scope: `novaic-business/business/subscribers/dispatch_subscriber.py`（claim batch 内合批）+ `novaic-agent-runtime/task_queue/handlers/context_handlers.py`（字节 cap）
 - 任务：
   - [x] **Wave 1 (byte cap)** — `WAKE_REPLAY_MAX_BYTES=16384` 双 cap + `<CHAT_HISTORY_TRUNCATED>` marker + metric `wake_im_replay_truncated_total{reason}`。**已部署 2026-04-22**。
-  - [x] **Wave 2 (burst 聚合)** — DispatchSubscriber 对 `USER_MESSAGE` trigger 做 claim-batch 内分组（`IM_AGGREGATION_WINDOW_SEC=60` / `IM_AGGREGATION_MAX_BATCH=10`，head-anchored 窗口）；幂等 key 切 `agg:{first}:{last}`；回退规则覆盖 PR-52 retry / bad payload / dispatch error；metric `im_aggregated_total{count}` + `im_aggregated_fallback_total{reason}`。**code 2026-04-24 合入 + 22 单测全绿**，等部署窗口。详见独立工单 [PR-50 Wave 2](tickets/PR-50-wave-2-im-aggregation.md)。
+  - [x] **Wave 2 (burst 聚合)** — DispatchSubscriber 对 `USER_MESSAGE` trigger 做 claim-batch 内分组（`IM_AGGREGATION_WINDOW_SEC=60` / `IM_AGGREGATION_MAX_BATCH=10`，head-anchored 窗口）；幂等 key 切 `agg:{first}:{last}`；回退规则覆盖 PR-52 retry / bad payload / dispatch error；metric `im_aggregated_total{count}` + `im_aggregated_fallback_total{reason}`。**code 2026-04-24 合入 + 22 单测全绿 + 2026-04-22 22:55 CST 随 PR-53 bump 部署；2026-04-23 10:27 prod smoke PASS — `event=im_aggregate count=2` + `messages=2` 均在 subscriber 日志命中**。详见独立工单 [PR-50 Wave 2](tickets/PR-50-wave-2-im-aggregation.md)。
 - 验收：3 条连发消息触发 1 次 session.init（`im_aggregated_total{count="3"} ≥ 1`）；CHAT_HISTORY 长对话 agent 有 `reason="bytes"` 截断记录（Wave 1 已验证）
 - 承诺：**R9（IM 语义一致性）+ 成本预算**
 - **设计差异记录**：Wave 2 原计划加 Entangled `peek_same_agent_same_sender` + `claim_many` 新 API；实际因 `/v1/outbox/claim` 的 `batch_size=50` 已天然返回 pending 快照，subscriber 内做 claim-batch 分组就够用。新 API 留作未来可选扩展（跨 tick 合批需要时再加）。
