@@ -5,6 +5,18 @@
 > message_handlers.py、subagent_handlers.py、tool_handlers.py、queue_service/routes.py、
 > novaic-cortex/proxy.py (GatewayProxy)、novaic-cortex/tool_schemas.py 的完整源码审计。
 
+> **2026-04-23 (PR-55) 修订**：本文 §0.4 描述的 "`subagent_rest` 两层
+> 机制" 中的 *第一层（LLM 工具调用）已作废*。
+> `novaic-cortex/.../tool_schemas.py::BUILTIN_TOOL_SCHEMAS` 自始至终
+> 不含 `subagent_rest`，LLM 从未能调用该工具；`_exec_subagent_rest`
+> 执行器在 PR-49 被加入但不可达，PR-55 已删除。rest 现仅由
+> `react_actions.decide_rest`（stack_empty / reply_no_followup /
+> round_cap）**系统触发**。同时 `handoff_notes` / `historical_summary`
+> 两列已退休（见
+> [`docs/roadmap/tickets/PR-55-phantom-summary-pipeline-cleanup.md`](../roadmap/tickets/PR-55-phantom-summary-pipeline-cleanup.md)）。
+> 本文以下示例中对这两个字段的引用保留用以理解 v1 遗留形态，不
+> 作为 v2 目标。
+
 ---
 
 ## 0. 当前真实架构

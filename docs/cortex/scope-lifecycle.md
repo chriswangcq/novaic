@@ -22,7 +22,11 @@
 - `**parent_path is None**`：在 `**/ro/active/{scope_id}/**` 建**根** scope（新会话根或待机根）。
 - `**parent_path` 给定**：在父的 `**steps/`** 下建子目录；父的 `**steps/_index.jsonl**` 追加一行 `**type: "scope"**`，指向子目录。
 
-`**meta.json` 初始字段**（节选）：`name`、`skill`、`start_time`、`phase`（`executing` | `dormant`）、可选 `prev_scope_id`、`wake_triggers`、`handoff_notes`。
+`**meta.json` 初始字段**（节选）：`name`、`skill`、`start_time`、`phase`（`executing` | `dormant`）、可选 `prev_scope_id`、`wake_triggers`。
+
+> 2026-04-23 (PR-55)：`handoff_notes` 字段已从 R9 wake-continuity 链路中移除（见
+> [`docs/roadmap/tickets/PR-55-phantom-summary-pipeline-cleanup.md`](../roadmap/tickets/PR-55-phantom-summary-pipeline-cleanup.md)）。
+> `api.py` 若仍容忍该字段，当前 runtime / business 已不再传递；历史 meta.json 可能含有遗留值，不影响读出。
 
 - `**phase == "dormant"`**：会写一条 `**env` / `scope_dormant**` 到子 scope 的 `_index.jsonl`，表示待机。
 

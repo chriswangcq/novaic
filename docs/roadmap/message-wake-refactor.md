@@ -445,7 +445,7 @@
 
 ### P6-2  Wake continuity 文字层 — handoff_notes / historical_summary 注入
 
-- Status: `[x]` (PR-42, 2026-04-21 实施完成)
+- Status: **`[superseded-by-PR-55]`** (PR-42, 2026-04-21 实施完成；2026-04-23 整体回收 — 见 §P6-15)
 - Scope: `task_queue/sagas/subagent_wake.py::_build_session_init_payload` + `task_queue/handlers/runtime_handlers.py::handle_session_init`
 - 已完成：
   - saga payload 透传 `handoff_notes` / `wake_reason`
@@ -517,7 +517,7 @@
 
 ### P6-5  Wake continuity producer→consumer 接线（PR-45）
 
-- Status: `[~]` (PR-45 Wave 1A–E 已落，Wave 1F 线上验证进行中)
+- Status: **`[superseded-by-PR-55]`** (PR-45 Wave 1A–E 已落；2026-04-23 确认 producer 实际吐空串，整体回收 — 见 §P6-15)
 - 触发：2026-04-22 P6-2/P6-3/P6-4 上线后 user 报 "dfs scope 还是没加载"。静态排查发现 **producer 端从未写 `subagents.handoff_notes` / `historical_summary`** —— PR-42 的消费代码全部空跑。
 - 已完成（Wave 1A–E）：
   - subagent_rest saga 的 `generate_simple_summary` 结果 → `handle_subagent_set_sleeping` → 持久化到 `subagents.historical_summary`（additive，None 不覆写）
@@ -557,7 +557,7 @@
 
 ### P6-8  `subagent_rest` tool executor（PR-49）
 
-- Status: `[x]` (PR-49, 已部署 prod 2026-04-22 18:00 UTC — `_exec_subagent_rest` 已挂接 `TOOL_EXECUTORS`；PR-53 修完 allowlist 后 `handoff_notes` 真正落 `subagents` 表)
+- Status: **`[superseded-by-PR-55]`** (PR-49, 2026-04-22 18:00 UTC 挂接；2026-04-23 发现 `subagent_rest` 从未在 `BUILTIN_TOOL_SCHEMAS`，executor 不可达 — 整体回收，见 §P6-15)
 - 触发：同 P6-5。根因 C — LLM 可以调 `subagent_rest(handoff_notes=...)` 但 `TOOL_EXECUTORS` 里**根本没有**这个 key，LLM 手写便条直接掉地。
 - Scope: `task_queue/handlers/tool_handlers.py`（加 `_exec_subagent_rest` + 注册）
 - 任务：
@@ -607,6 +607,14 @@
 - `wake_continuity_render_total{layer=text|state|im, result=ok|empty|truncated|error}` — runtime 侧，三层 R9 render 汇总 counter。9 个 `novaic-agent-runtime/tests/test_pr54_render_metric.py` 测试锁 label taxonomy + 每层四分支。
 - `ghost_scope_rate` + `ghost_scope_probed_total{classification}` — business 侧，新 endpoint `GET /internal/probes/ghost-scope-rate` piggyback 现有 stuck-claimed 扫描 + Cortex meta probe 分类。16 个 `novaic-business/tests/test_pr54_ghost_scope_probe.py` 测试锁 classifier + rate-math + 端点行为。
 - 动因：PR-53 那种"三层 R9 静默失败 3 天"的事故，未来靠 `wake_continuity_render_total` 秒级发现。
+
+### P6-15  Retire phantom `subagent_rest` / `historical_summary` pipeline（[PR-55](tickets/PR-55-phantom-summary-pipeline-cleanup.md)）
+
+- `[x]` **P6-2 (PR-42) / P6-5 (PR-45) / P6-8 (PR-49) 全部 superseded-by-PR-55**。2026-04-23 发现：`tool_schemas.py` 早已不暴露 `subagent_rest` 工具（rest 由 `react_actions` 系统触发），但 PR-42 / PR-45 / PR-49 / PR-53 一路都基于「LLM 会写 handoff_notes / historical_summary」这个幻觉加码。实况：`subagents.historical_summary` / `handoff_notes` 两列自始至终全表 NULL；rest saga 的 `generate_simple_summary` 步吐空字符串；Business `<HANDOFF_NOTES>` / `<HISTORICAL_SUMMARY>` 注入块永远空。唯一活着的跨 scope 续写是 `<PREV_SCOPE_TAIL>`（读 `last_scope_id` 锚点），以及子 skill 的 `skill_end.report` 折叠。
+- 范围：删 `_exec_subagent_rest` 执行器、`generate_simple_summary` saga step + handler + util（整文件）、两列写入路径、Entangled `EXTRA_ALLOWLIST` 回收 `historical_summary`、Business `_resolve_continuity` / `get_due_for_wake` 不再取/塞两列、runtime `_wake_metadata` / `subagent_wake` / `subagent_set_sleeping` 不再透传两列、runtime prompt 模板里两个 XML 块构造全删、相关测试（`test_pr45_continuity_wiring.py` / `test_pr45_dispatch_continuity.py` / `test_pr53_continuity_allowlist_e2e.py`）整文件删除、其它跨 PR 测试里的相关断言改为 `assert key not in payload` 负断言、docs postscript。**保留** `subagents.last_scope_id` / `<PREV_SCOPE_TAIL>` / `skill_end → summary.md → render_scope_fold` 链；两列 schema 定义保留作宽容迁移。
+- 动因：续写机制越积越复杂（5 条路径，4 条死的），下一步设计（根 scope 是否需要 LLM-authored report）需要先把认知清零。
+- 新不变量 **R-ZOMBIE**（入库 `docs/architecture/message-wake-principles.md §二`）：LLM 工具从 `tool_schemas.py` 移除（或从未登记）时，执行器/saga/列/注入/测试/文档必须同 PR 清理，否则 PR-49 那样的"埋占位符"会持续误导后继开发者。
+- `wake_continuity_render_total{layer}` taxonomy 从 `{text, state, im}` 收窄为 `{state, im}`；旧 `layer=text` 值在 prod 自然趋零，保留只读用于画废弃曲线（见 §P6-14 / PR-54 postscript）。
 
 ---
 

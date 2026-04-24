@@ -229,3 +229,33 @@ grep '<HANDOFF_NOTES>' /opt/novaic/data/logs/runtime-*.log | tail -3
 
 - 强烈建议本 PR 和 PR-48 一起上线；独立上线 PR-49 的话，需要 prompt 端同步提醒 LLM 调用 `subagent_rest`，否则本 executor 形同虚设。
 - tool definitions 里 `rest_duration_minutes` 如果想删，另开 schema 变更 PR；本 PR 保守保留该字段（向后兼容）。
+
+---
+
+## 2026-04-23 postscript (superseded by PR-55)
+
+**Status: dead code, removed**.
+
+PR-49 added `_exec_subagent_rest` in
+`novaic-agent-runtime/task_queue/handlers/tool_handlers.py` on the
+assumption that `subagent_rest` was (or would become) an
+LLM-callable tool. It never did — `novaic-cortex/.../tool_schemas.py::BUILTIN_TOOL_SCHEMAS`
+still only exposes `skill_begin / skill_end / chat_reply /
+subagent_{spawn,send,report,query,cancel} / sleep`. The dispatcher
+therefore never reached the executor; rest is system-triggered by
+`react_actions.decide_rest` (stack-empty / reply_no_followup /
+round-cap), and the LLM has no direct kill switch.
+
+PR-55 removed:
+
+- `_exec_subagent_rest` and its `_EXECUTORS` entry,
+- `novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_subagent_rest.py`
+  (entire file).
+
+Invariant **R-ZOMBIE** (PR-55) formalizes this class of debt: when an
+LLM-facing tool is removed from (or was never added to) `tool_schemas.py`,
+every executor / saga / column / injection / test / doc that
+assumes the tool exists must be removed in the same PR or marked
+`# DEAD` with an expiry date. PR-49 is the motivating case.
+
+See [`PR-55-phantom-summary-pipeline-cleanup.md`](./PR-55-phantom-summary-pipeline-cleanup.md).

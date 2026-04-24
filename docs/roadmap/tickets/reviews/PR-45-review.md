@@ -191,3 +191,24 @@ Every test in this review's §二 table was green. State-machine transition rows
 **Revised verdict on PR-45**: code is correct, deploy was correct, but the continuity producer *did not actually produce data* in prod until PR-53 unblocked the Entangled write. So §六's `[x]` marks on Wave A / B / D evidence need the caveat: **they verified the code path was reachable, not that it had ever persisted state**. The distinction didn't matter for the sign-off decision (PR-45 was gated on code quality, not on whether another service's allowlist was correctly configured), but it mattered a lot for "is continuity actually working on prod?" — the answer was **no** for three days, across three separate production continuity PRs (PR-42/45/43), and no single-service test could have caught it.
 
 **Closing**: the §五 follow-ups (`PR-45.1` / `.2` / `.3`) remain valid and useful — they made PR-53's debugging tractable (`event=continuity_resolve` was the first log line showing `has_summary=0` / `has_prev=0` in prod). Without PR-45.1 we'd still be looking.
+
+---
+
+## 2026-04-23 postscript (PR-55)
+
+The core finding of this review — "continuity producer did not
+actually produce data in prod" — held even after PR-53 unblocked the
+Entangled write. Post-deploy introspection on the `historical_summary`
+branch showed `generate_simple_summary` silently returned the empty
+string in the paths exercised, so the field stayed NULL. The
+`handoff_notes` half was worse: its presumed LLM producer
+(`subagent_rest`) was never in `tool_schemas.py::BUILTIN_TOOL_SCHEMAS`,
+so no agent ever wrote to the column.
+
+PR-55 retired the entire text-layer half of R9 — both fields, both
+injection blocks, the saga summary step, and the
+`subagent_rest` LLM executor stub (PR-49). The R9 state-layer
+(`<PREV_SCOPE_TAIL>` + `subagents.last_scope_id`) is the sole
+surviving cross-scope continuity channel.
+
+See [`PR-55-phantom-summary-pipeline-cleanup.md`](../PR-55-phantom-summary-pipeline-cleanup.md).

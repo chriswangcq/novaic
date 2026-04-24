@@ -16,7 +16,7 @@
 | **`phase`** | **`executing`**（默认）或 **`dormant`**（休眠代理） |
 | **`prev_scope_id`** | 可选，链上前一 scope |
 | **`wake_triggers`** | 可选，唤醒条件列表 |
-| **`handoff_notes`** | 可选，交接说明 |
+| ~~`handoff_notes`~~ | **已废弃 (PR-55, 2026-04-23)** — 原拟承载 LLM 自述交接笔记，但驱动工具 `subagent_rest` 从未在 `BUILTIN_TOOL_SCHEMAS`，字段全生命周期为 NULL。meta.json 新建时不再写入；旧 scope 的遗留值可被忽略。 |
 
 子 scope 创建时，父级 **`steps/_index.jsonl`** 会追加 **`type: scope`** 行（见 [step-index-and-payload-schema.md](step-index-and-payload-schema.md)）。
 

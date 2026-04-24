@@ -37,9 +37,10 @@
 | **R6** | Entangled 对 `messages`（以及任何"触发实体"）的写入 = **服务端可订阅 changefeed**；dispatch 是 subscriber，而不是写入者的责任 | `[CODE]` |
 | **R7** | Internal auth 走**唯一**颁发通道（统一 `internal_client`），加保护必须索引调用方 | `[CODE]` |
 | **R8** | 一等实体（message / subagent / scope / saga / task）有**唯一权威状态枚举**与**受控转移**；废除"多字段拼状态" | `[CONTRACT]` 逐步 `[CODE]` |
-| **R9** | **Wake Continuity**：agent 跨 sleep/wake 必须能继承**文字层（handoff notes + historical summary）**、**状态层（scope 链 / previous_scope_id）**、**IM 流层（chat history replay）**三层短期记忆，否则每次醒来都是失忆 | `[CODE]`（producer + consumer 两端） |
+| **R9** | **Wake Continuity**：agent 跨 sleep/wake 必须能继承**状态层（scope 链 / `previous_scope_id` → `<PREV_SCOPE_TAIL>`）** 与 **IM 流层（chat history replay）** 两层短期记忆，否则每次醒来都是失忆。（2026-04-23 PR-55：原 "文字层 handoff notes + historical summary" 于上线 3 个月后被确认为 phantom pipeline — `subagent_rest` 从未在 `BUILTIN_TOOL_SCHEMAS`、`generate_simple_summary` 始终吐空串 — 已整体删除。`<PREV_SCOPE_TAIL>` 由 `skill_end.report` 驱动的子 scope 折叠机制就近承担文字层职责。） | `[CODE]`（producer + consumer 两端） |
 | **R10** | **Consumer SSOT**：runtime/消费端**只信 dispatch 透传的 id 集合**（`scope.meta.input_message_ids` 由 `/v1/scope/append_input` 落地，由 session.init / dispatch metadata 透传）；**禁止**消费端自己扫 `lifecycle='pending'` / `read=0` 反推"这次要处理哪些消息" | `[CODE]`（由 PR-46 强制；fallback 路径加 kill switch 不算违反） |
-| **R-ALLOWLIST** | 在 `subagents` 状态机 PATCH 的 payload 中追加任何 ancillary 列（随 terminal status flip 一同原子写入）时，**必须**同步三件事：(1) 补入 `Entangled.sql.subagent_state.EXTRA_ALLOWLIST`；(2) 在 `test_subagent_state.py` 加 `test_continuity_fields_are_in_allowlist` 风格的 defensive unit（防 allowlist 被未来 refactor 意外删除）；(3) 在 `novaic-business/tests/test_pr53_continuity_allowlist_e2e.py` 加一条 TestClient-level 的 handler→Business→Entangled→SQLite 真写断言。三者缺一：CI 绿、prod 续写**静默失效**——这就是 PR-53（干掉 PR-42/45/43 Wave A 全链路续写）的诞生背景 | `[CODE]` + `[CONTRACT]`（allowlist 是代码；三件套约束是评审硬门） |
+| **R-ALLOWLIST** | 在 `subagents` 状态机 PATCH 的 payload 中追加任何 ancillary 列（随 terminal status flip 一同原子写入）时，**必须**同步三件事：(1) 补入 `Entangled.sql.subagent_state.EXTRA_ALLOWLIST`；(2) 在 `test_subagent_state.py` 加 `test_continuity_fields_are_in_allowlist` 风格的 defensive unit（防 allowlist 被未来 refactor 意外删除）；(3) 在对应跨层 e2e 集成测试里加一条 TestClient-level 的 handler→Business→Entangled→SQLite 真写断言。三者缺一：CI 绿、prod 续写**静默失效**——这就是 PR-53（干掉 PR-42/45/43 Wave A 全链路续写）的诞生背景。（2026-04-23 (PR-55)：原 e2e 文件 `test_pr53_continuity_allowlist_e2e.py` 随 `historical_summary` 被一并删除；新 ancillary 列若仍需相同形式的证据，复用 `last_scope_id` / `last_scope_archived_at` 的 e2e 测试模式即可。） | `[CODE]` + `[CONTRACT]`（allowlist 是代码；三件套约束是评审硬门） |
+| **R-ZOMBIE** | 任何 LLM-facing 工具从 `novaic-cortex/.../tool_schemas.py::BUILTIN_TOOL_SCHEMAS` 移除 / 被发现从未登记时，所有"假设该工具存在"的 executor / saga step / `subagents` 列 / prompt 注入 / 测试 / 文档**必须同 PR 删除**；若非删不可（迁移窗口），须在入口用 `# DEAD (YYYY-MM-DD)` 注释 + 到期日，并登记 cleanup PR。动机：`subagent_rest` 这条假工具在 schema 从未出现过，却喂养了 PR-42 / PR-45 / PR-49 / PR-53 四个 PR 的续写 / allowlist / 测试 / 文档投资 3 个月，直到 PR-55 连根清掉。CI 绿 + 文档自洽 ≠ 工具真实存在；唯一权威是 `BUILTIN_TOOL_SCHEMAS`。 | `[CODE]` + `[CONTRACT]` |
 
 符号：
 - `[CODE]`：在代码/中间件/断言层面强制。
@@ -213,7 +214,15 @@ Queue Service `/recover/all` 加了 internal key 校验；HealthWorker 裸 `http
 
 ---
 
-### R9. Wake Continuity：跨 sleep/wake 的短期记忆三层
+### R9. Wake Continuity：跨 sleep/wake 的短期记忆两层
+
+> 2026-04-23 (PR-55)：原 R9 "文字层"（`<HANDOFF_NOTES>` +
+> `<HISTORICAL_SUMMARY>`）为 phantom pipeline — 见
+> [`PR-55-phantom-summary-pipeline-cleanup.md`](../roadmap/tickets/PR-55-phantom-summary-pipeline-cleanup.md)。
+> 唯一活的 LLM-authored summary 是 `skill_end(report=...)` → 子 scope
+> `summary.md` → 父 scope context fold（即 `<PREV_SCOPE_TAIL>` 可消费的
+> 上一 scope 尾部）。以下条目的 "文字层" 子节历史语义已作废，保留用于
+> 回读理解上下文；新代码只承认 state 层 + IM 层两桶。
 
 **现状（P6 之前）**
 - Agent 每次醒来 session.init 拉一个纯净 context，只塞 system prompt + 当前 trigger message。
@@ -356,8 +365,8 @@ curl -s http://business:19998/metrics | grep '^internal_requests_total{.*status=
 
 **Canary / 监控**（[PR-54](../roadmap/tickets/PR-54-canary-metrics-bundle.md) 落地 2026-04-25）
 
-- `[CODE]` **`wake_continuity_render_total{layer, result}`** — R9 三层 render 汇总计数。一个 Grafana query 回答 "R9 今天活着吗"。
-  - `layer ∈ {text, state, im}` — 对应 R9 的 text 层 (`<HANDOFF_NOTES>` / `<HISTORICAL_SUMMARY>`)、state 层 (`<PREV_SCOPE_TAIL>`)、im 层 (`WAKE_IM_REPLAY`)。三个桶和本页 R9 锁死；新增层必须同步改文档 + 改 `novaic-agent-runtime/tests/test_pr54_render_metric.py::test_render_metric_layer_taxonomy_is_three_not_four`。
+- `[CODE]` **`wake_continuity_render_total{layer, result}`** — R9 两层 render 汇总计数。一个 Grafana query 回答 "R9 今天活着吗"。
+  - `layer ∈ {state, im}` — 对应 R9 的 state 层 (`<PREV_SCOPE_TAIL>`)、im 层 (`WAKE_IM_REPLAY`)。2026-04-23 (PR-55) 起 `text` 层被从该 taxonomy 中移除（`<HANDOFF_NOTES>` / `<HISTORICAL_SUMMARY>` 是 phantom pipeline，整个删除）；旧 `layer=text` 值在 prod metric 会自然趋零，保留只读用以画出废弃曲线。新增层必须同步改文档 + 改 `novaic-agent-runtime/tests/test_pr54_render_metric.py::test_render_metric_active_layer_taxonomy_is_state_and_im`。
   - `result ∈ {ok, empty, truncated, error}` —
     - `ok` 渲染 ≥1 块且无 truncation；
     - `empty` 该层合法地没数据可渲（冷启动、无 handoff、无 previous_scope_id 等；最常见）；
