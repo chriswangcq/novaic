@@ -105,6 +105,7 @@
 | PR-51  | `[✓]`  | [卡住的 `claimed` 行回收 + HealthWorker 周期扫描 — **Part 1 migration 清 25/28 rows；Part 2 HealthWorker scan + endpoints deployed to prod 2026-04-23**](PR-51-stuck-claimed-cleanup.md) | PR-21, PR-27, PR-41 amend           | R5                      | 1 d                         | __          |
 | PR-52  | `[✓]`  | [subscriber 重试路径 scope-aliveness 护栏 — **deployed to prod 2026-04-23 18:48 CST**；阻止死 scope 被 re-materialized，配合 PR-51 Part 2 scanner 防新洞+清老洞](PR-52-subscriber-scope-aliveness-check.md) | PR-22, PR-51 Part 2                 | R5                      | 0.5 d                       | __          |
 | P6-12  | `[✓]`  | [`chat_messages.read` 降级为 UI-only 字段 — 契约 + CI 强制（`scripts/ci/lint_chat_messages_read.sh`）+ survivor 审计 + 4 个僵尸 Business 路由贴弃用标记；2026-04-24 落地](P6-12-chat-messages-read-ui-only.md) | PR-46, P6-11                        | R10                      | 0.5 d                       | __          |
+| PR-55  | `[ ]`  | [Retire phantom `subagent_rest` / `historical_summary` / `handoff_notes` pipeline — 删 `_exec_subagent_rest` 占位符 + `generate_simple_summary` saga step + 两列读写路径 + `<HANDOFF_NOTES>` / `<HISTORICAL_SUMMARY>` 注入块；保留 `last_scope_id` + `<PREV_SCOPE_TAIL>` + `skill_end.report` 折叠链；新不变量 R-ZOMBIE](PR-55-phantom-summary-pipeline-cleanup.md) | PR-42, PR-45, PR-49, PR-53 (supersedes all) | R9 + R-ZOMBIE            | 1–1.5 d                     | __          |
 
 
 ---

@@ -1,9 +1,18 @@
 # PR-41 / PR-42 Staging Verification
 
+> **2026-04-23 (PR-55)**: the PR-42 half of this runbook is **obsolete**.
+> `<HANDOFF_NOTES>` / `<HISTORICAL_SUMMARY>` were phantom blocks — the
+> driving tool `subagent_rest` was never in `BUILTIN_TOOL_SCHEMAS` and
+> `generate_simple_summary` returned empty. Both blocks are removed.
+> PR-41 sections (lifecycle) remain valid. For current wake-continuity
+> verification use `scripts/canary/wake-continuity-smoke.sh` (state
+> layer: `<PREV_SCOPE_TAIL>` via `previous_scope_id`). See
+> `[docs/roadmap/tickets/PR-55-phantom-summary-pipeline-cleanup.md](../roadmap/tickets/PR-55-phantom-summary-pipeline-cleanup.md)`.
+
 Covers:
 
 - **PR-41** — `AGENT_REPLY` (and all non-trigger types) no longer stuck in `lifecycle='pending'`; HealthWorker no longer re-dispatches them as "orphans".
-- **PR-42** — wake-up scopes receive `<HANDOFF_NOTES>` + `<HISTORICAL_SUMMARY>` system messages (text-layer continuity).
+- ~~**PR-42**~~ — ~~wake-up scopes receive `<HANDOFF_NOTES>` + `<HISTORICAL_SUMMARY>` system messages (text-layer continuity).~~ **Retired by PR-55**; see the notice above.
 
 Tickets: `docs/roadmap/tickets/PR-41-*.md`, `docs/roadmap/tickets/PR-42-*.md`.
 
@@ -143,12 +152,12 @@ Synthesise an over-large `historical_summary` (e.g. write ~16KB into `subagents.
 
 ## 6. Success criteria
 
-- [ ] Orphan sweep returns 0 pending non-trigger rows after 30 min idle
-- [ ] Zero `AGENT_REPLY`-driven wake-ups in a 30 min idle window
-- [ ] Fresh `AGENT_REPLY` rows born `consumed`
-- [ ] Wake after rest carries `<HANDOFF_NOTES>` and `<HISTORICAL_SUMMARY>`
-- [ ] Spawn does **not** carry continuity block
-- [ ] Oversize summary gets `[truncated]` + metric
+- Orphan sweep returns 0 pending non-trigger rows after 30 min idle
+- Zero `AGENT_REPLY`-driven wake-ups in a 30 min idle window
+- Fresh `AGENT_REPLY` rows born `consumed`
+- Wake after rest carries `<HANDOFF_NOTES>` and `<HISTORICAL_SUMMARY>`
+- Spawn does **not** carry continuity block
+- Oversize summary gets `[truncated]` + metric
 
 ## 7. Rollback
 
@@ -188,3 +197,4 @@ Synthetic DB with 3× `AGENT_REPLY pending`, 1× `SYSTEM_NOTE pending`, 1× `USE
 - Migration flipped only the 3 `AGENT_REPLY` + 1 `SYSTEM_NOTE`, left `USER_MESSAGE pending` and `SPAWN_SUBAGENT pending` alone, stamped `lifecycle_updated_at` on touched rows, dropped a `.backup_before_pr41_<ts>` file.
 - CI sync lint passes.
 - 30 PR-41 unit tests + 29 PR-42 unit tests all green.
+

@@ -260,3 +260,29 @@ curl -s .../metrics | rg 'wake_continuity_injected_total'
   - PR-44：IM 流回放 —— 解决"sleep 期间多条用户消息的上下文恢复"。
 - `handoff_notes` 建议加"生成时间戳"注释到 prompt 里（`<HANDOFF_NOTES at=2026-04-21T12:58Z>`），帮 LLM 判断新鲜度。
 
+
+---
+
+## 2026-04-23 postscript (superseded by PR-55)
+
+**Status: dead code, removed**.
+
+PR-42 wired Business `continuity_resolve` → Runtime `session.init` →
+prompt `<HANDOFF_NOTES>` block. The producer side never existed:
+`subagent_rest` is **not** an LLM-callable tool (see
+`novaic-cortex/.../tool_schemas.py::BUILTIN_TOOL_SCHEMAS`), so no
+agent ever wrote to `subagents.handoff_notes`. The consumer side
+therefore always rendered empty. PR-55 removed:
+
+- the `<HANDOFF_NOTES>` block construction in the runtime prompt,
+- the `handoff_notes` fetch in Business `_resolve_continuity`,
+- the `handoff_notes` forwarding in `subagent_wake` / scheduler
+  `_wake_metadata`,
+- all associated tests.
+
+The `subagents.handoff_notes` column is left in place as a tolerant
+legacy column (no live reader/writer); see
+[`PR-55-phantom-summary-pipeline-cleanup.md`](./PR-55-phantom-summary-pipeline-cleanup.md).
+R9's text-layer now collapses to `<PREV_SCOPE_TAIL>` only; the
+state-layer anchor (`subagents.last_scope_id`) remains the live
+cross-scope continuity channel.

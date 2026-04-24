@@ -182,3 +182,33 @@ if dropped:
 - [x] prod smoke — canary 自然 rest 路径：`main-canary_a` / `main-canary_b` 部署后首次 `awake→sleeping` 都写出 `last_scope_id`（pre-fix 全表 NULL）
 - [ ] `<PREV_SCOPE_TAIL>` 真实端到端注入（依赖一次"同一 agent 二次 wake"，线上流量自然产生即命中，无需单独驱动）
 - [x] `docs/architecture/message-wake-principles.md` R-ALLOWLIST 入库
+
+---
+
+## 2026-04-23 postscript (partially reverted by PR-55)
+
+PR-53's F1 expanded `EXTRA_ALLOWLIST` to cover three columns:
+`historical_summary`, `last_scope_id`, `last_scope_archived_at`.
+PR-55 retired the `historical_summary` producer/consumer pipeline
+(see [`PR-55-phantom-summary-pipeline-cleanup.md`](./PR-55-phantom-summary-pipeline-cleanup.md))
+and therefore:
+
+- `historical_summary` was removed from `EXTRA_ALLOWLIST`,
+- the corresponding defensive unit/e2e coverage moved to
+  "retired-key-is-dropped-with-WARN" shape
+  (`test_retired_historical_summary_is_dropped` in
+  `Entangled/.../tests/test_subagent_state.py`),
+- `test_pr53_continuity_allowlist_e2e.py` was deleted,
+- the `subagents.historical_summary` column is kept as tolerant
+  legacy (no live reader/writer).
+
+PR-53's other two invariants stand unchanged:
+
+- **R-ALLOWLIST** — any new ancillary column piggybacked on a
+  `subagents` status-flip PATCH still requires allowlist entry +
+  defensive unit + cross-layer e2e test. The
+  `last_scope_id` / `last_scope_archived_at` pair remains the
+  canonical example.
+- **WARN on drop** — the observability path that surfaces dropped
+  keys is now also what catches stale callers still passing the
+  retired `historical_summary` / `handoff_notes` fields.

@@ -1,168 +1,109 @@
 #!/usr/bin/env bash
 #
-# PR-45.2 / P6-13 FOLLOW-UP — Wake Continuity Contract (R9 text layer).
+# PR-55 REWRITE (2026-04-23) — Wake Continuity Contract (R9 state
+# layer only) + R-ZOMBIE re-introduction guard.
 #
-# R9 (see docs/architecture/message-wake-principles.md §R9) guarantees
-# that short-term memory crosses scope sleep/wake via two paired
-# fields on the ``subagents`` row:
+# History: this lint originally (PR-45.2 / P6-13) enforced that any
+# file touching the R9 *text* layer referenced BOTH ``handoff_notes``
+# and ``historical_summary`` so a partial-forwarding regression
+# couldn't half-break wake continuity. PR-55 retired the text layer:
+# ``subagent_rest`` was never in ``BUILTIN_TOOL_SCHEMAS``,
+# ``generate_simple_summary`` silently returned empty, and both
+# columns were NULL for the field's entire production lifetime. See
+# ``docs/roadmap/tickets/PR-55-phantom-summary-pipeline-cleanup.md``.
 #
-#   * ``handoff_notes``       — LLM-authored resume instructions
-#                               (producer: ``subagent_rest`` tool)
-#   * ``historical_summary``  — auto-rolled conversation digest
-#                               (producer: rest-saga summarizer)
+# This rewrite flips the contract: the text-layer keys are now
+# *retired*, and this script's job is to keep them retired. Any
+# reference outside the retirement-trail allowlist (tolerant-
+# migration shims in source, tests that assert the retired shape,
+# this file) trips R-ZOMBIE. Documentation is excluded entirely —
+# ticket docs and postscripts legitimately name the retired keys.
 #
-# Both flow through the same dispatch path:
+# If a future design brings back an LLM-authored resume-note column:
 #
-#   Producer           →  Business (PATCH subagents)
-#                     →  DispatchSubscriber._resolve_continuity
-#                         (or HealthWorker recovery path)
-#                     →  outbox payload.metadata.{handoff_notes, historical_summary}
-#                     →  Assembler session.init payload
-#                     →  runtime session_init → _build_wake_continuity_messages
-#                     →  <HANDOFF_NOTES> / <HISTORICAL_SUMMARY> system msgs
+#   1. Register the driving tool in ``novaic-cortex/.../tool_schemas.py::BUILTIN_TOOL_SCHEMAS``.
+#   2. Use a new column name (not re-using the retired pair).
+#   3. Update this lint with the new column + ticket reference.
 #
-# The *contract* this lint enforces: consumer-layer code (subscriber,
-# health worker, runtime session-init handler) that names either key
-# MUST also name the other in the same file. A regression where a
-# maintainer adds e.g. ``for key in ("handoff_notes",):`` on the
-# forwarding seam silently drops ``historical_summary`` all the way to
-# the LLM and turns R9 into a half-implemented invariant — the class
-# of bug that motivated the whole P6 phase.
+# The R9 state layer (``<PREV_SCOPE_TAIL>`` via ``last_scope_id`` +
+# ``previous_scope_id`` metadata rename) is not paired — a single key
+# flows end-to-end — so no pairing check applies to it.
 #
-# This lint does NOT enforce pairing on the producer side (where
-# single-key writes are intentional: ``_exec_subagent_rest`` writes
-# only ``handoff_notes``; the rest-saga summarizer writes only
-# ``historical_summary``). Those files are explicitly allowlisted.
-#
-# Why a text-grep lint instead of a type check: the keys are stringly
-# typed across a service boundary (Python → HTTP JSON → runtime
-# payload), so static typing cannot see the drop. A grep on the
-# watched file set is the narrowest thing that would have caught the
-# 2026-04-22 "handoff_notes reached consumer but historical_summary
-# did not" class of regression if it had existed at the time.
-#
-# Allowlist additions require:
-#   1. A comment naming the ticket and reason.
-#   2. An entry in docs/roadmap/tickets/reviews/PR-45-review.md §五
-#      explaining why the file is asymmetric on purpose.
-#
-# References:
-#   - PR-45 review §3.3 ambiguity (resolver silent on outcome)
-#   - PR-45.1 observability log (closes the resolve → log gap)
-#   - docs/architecture/message-wake-principles.md §R9
-#
-set -e
+set -u
 
-KEYS=(handoff_notes historical_summary)
-
-# Consumer-layer files. Any file here that references EITHER key must
-# reference BOTH. A new file in these dirs that introduces one key
-# without the other is a contract violation.
-WATCH_GLOBS=(
-    'novaic-business/business/subscribers/*.py'
-    'novaic-business/business/workers/*.py'
-    'novaic-agent-runtime/task_queue/workers/*.py'
-    'novaic-agent-runtime/task_queue/handlers/runtime_handlers.py'
-    'novaic-agent-runtime/task_queue/handlers/context_handlers.py'
-    'novaic-common/common/wake/*.py'
+# Source trees to check (binary code, not docs).
+SCAN_PATHS=(
+    "novaic-agent-runtime"
+    "novaic-business"
+    "novaic-cortex"
+    "novaic-common"
+    "novaic-device"
+    "Entangled/packages/server-python/entangled"
 )
 
-# Files that are legitimately single-key (producer side or
-# deprecated/scoped narrowly). Each entry must reference a ticket.
-ALLOWLIST_FILES=(
-    # _exec_subagent_rest (PR-49) — LLM tool writes ONLY handoff_notes
-    # via Business PATCH. historical_summary is written by the
-    # rest-saga summarizer path, not by the LLM. Asymmetry intentional.
-    'novaic-agent-runtime/task_queue/handlers/tool_handlers.py'
-)
+# Files allowed to mention the retired keys from within SCAN_PATHS.
+# Each is either a tolerant-migration shim with retirement comments
+# only, or a test that asserts the retired-key-is-dropped shape.
+read -r -d '' ALLOWLIST <<'EOF' || true
+novaic-business/business/schema_push.py
+novaic-business/business/internal/subagent.py
+novaic-business/business/internal/subagent_utils.py
+novaic-business/business/internal/helpers.py
+novaic-business/business/subscribers/dispatch_subscriber.py
+Entangled/packages/server-python/entangled/sql/subagent_state.py
+novaic-agent-runtime/task_queue/client.py
+novaic-agent-runtime/task_queue/sagas/subagent_rest.py
+novaic-agent-runtime/task_queue/sagas/subagent_wake.py
+novaic-agent-runtime/task_queue/workers/scheduler_worker.py
+novaic-agent-runtime/task_queue/workers/health_worker.py
+novaic-agent-runtime/task_queue/handlers/runtime_handlers.py
+novaic-agent-runtime/task_queue/handlers/subagent_handlers.py
+novaic-agent-runtime/task_queue/handlers/tool_handlers.py
+novaic-common/common/tools/definitions.py
+EOF
 
 violations=0
-
-for glob in "${WATCH_GLOBS[@]}"; do
-    for f in $glob; do
-        [[ -f "$f" ]] || continue
-
-        # Skip allowlisted files.
-        skip=0
-        for a in "${ALLOWLIST_FILES[@]}"; do
-            [[ "$f" == *"$a"* ]] && skip=1
-        done
-        [[ $skip -eq 1 ]] && continue
-
-        # Skip test files (they legitimately assert on single-key flows).
-        [[ "$f" == *test_* ]] && continue
-        [[ "$f" == */tests/* ]] && continue
-
-        has_handoff=$(rg -c '\bhandoff_notes\b' "$f" 2>/dev/null || echo 0)
-        has_summary=$(rg -c '\bhistorical_summary\b' "$f" 2>/dev/null || echo 0)
-
-        # Neither key present → file is not in the contract; skip.
-        if [[ "$has_handoff" == "0" && "$has_summary" == "0" ]]; then
-            continue
-        fi
-
-        # Both present → contract honored.
-        if [[ "$has_handoff" != "0" && "$has_summary" != "0" ]]; then
-            continue
-        fi
-
-        # Exactly one → violation.
-        echo "BAN: $f — wake-continuity contract broken (R9)"
-        if [[ "$has_handoff" == "0" ]]; then
-            echo "     references historical_summary but NOT handoff_notes."
-        else
-            echo "     references handoff_notes but NOT historical_summary."
-        fi
-        echo "     Both keys must flow together through the consumer path."
-        echo "     If asymmetry is intentional, add the file to ALLOWLIST_FILES"
-        echo "     in scripts/ci/lint_wake_continuity_contract.sh with a"
-        echo "     ticket reference, and update PR-45-review.md §五."
-        violations=$((violations + 1))
-    done
+raw=""
+for path in "${SCAN_PATHS[@]}"; do
+    [[ -d "$path" ]] || continue
+    out=$(rg -n --no-heading -w \
+        -e 'handoff_notes' -e 'historical_summary' \
+        --glob '!**/tests/**' \
+        --glob '!**/test_*.py' \
+        "$path" 2>/dev/null || true)
+    [[ -n "$out" ]] && raw+="$out"$'\n'
 done
 
-# Additional guard: if ANY consumer-layer file iterates a tuple like
-# ``for key in ("handoff_notes",):`` (one key only), flag it. This
-# catches the specific regression shape — a loop that was supposed to
-# forward BOTH keys but forgot one — even if the file also mentions
-# the other key elsewhere in a docstring or comment.
-for glob in "${WATCH_GLOBS[@]}"; do
-    for f in $glob; do
-        [[ -f "$f" ]] || continue
-        [[ "$f" == *test_* ]] && continue
-        [[ "$f" == */tests/* ]] && continue
-
-        # Allowlist: skip tool_handlers (asymmetric producer).
-        skip=0
-        for a in "${ALLOWLIST_FILES[@]}"; do
-            [[ "$f" == *"$a"* ]] && skip=1
-        done
-        [[ $skip -eq 1 ]] && continue
-
-        # Match:  for <name> in ("handoff_notes",):     (single-key tuple)
-        # Match:  for <name> in ("historical_summary",):
-        # Does NOT match the legitimate pair form.
-        HITS=$(rg -n --pcre2 \
-            'for\s+\w+\s+in\s+\(\s*"(?:handoff_notes|historical_summary)"\s*,?\s*\)\s*:' \
-            "$f" 2>/dev/null || true)
-        if [[ -n "$HITS" ]]; then
-            echo "BAN: $f — single-key continuity loop (R9 drop regression)"
-            echo "$HITS" | sed 's/^/     /'
-            echo "     Loops over continuity keys MUST include both"
-            echo "     handoff_notes and historical_summary together."
-            violations=$((violations + 1))
+filtered=""
+while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    file="${line%%:*}"
+    skip=0
+    while IFS= read -r allow; do
+        [[ -z "$allow" ]] && continue
+        if [[ "$file" == "$allow" || "$file" == *"/$allow" ]]; then
+            skip=1
+            break
         fi
-    done
-done
+    done <<< "$ALLOWLIST"
+    [[ $skip -eq 1 ]] && continue
+    filtered+="$line"$'\n'
+    violations=$((violations + 1))
+done <<< "$raw"
 
 if [[ $violations -gt 0 ]]; then
+    echo "BAN: retired R9 text-layer key(s) re-introduced outside the"
+    echo "     retirement-trail allowlist (see PR-55):"
     echo ""
-    echo "R9 (Wake Continuity): handoff_notes and historical_summary are"
-    echo "paired fields in the consumer path. Dropping one silently"
-    echo "half-breaks wake continuity with no runtime error. See"
-    echo "docs/architecture/message-wake-principles.md §R9 and"
-    echo "docs/roadmap/tickets/reviews/PR-45-review.md §五."
+    echo "$filtered" | sed 's/^/  /'
+    echo ""
+    echo "R-ZOMBIE (docs/architecture/message-wake-principles.md §二):"
+    echo "the keys handoff_notes / historical_summary are retired."
+    echo "PR-55 deleted their producer/consumer pipeline. If re-"
+    echo "introducing a wake-continuity text column, use a NEW name"
+    echo "(not handoff_notes / historical_summary) and register the"
+    echo "driving LLM tool in tool_schemas.py::BUILTIN_TOOL_SCHEMAS."
     exit 1
 fi
 
-echo "wake_continuity_contract lint OK"
+echo "wake_continuity_contract lint OK (retirement-trail guard)"

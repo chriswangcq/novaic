@@ -20,7 +20,7 @@ JWT 路由（`/v1/shell` 等）**不**在本文；见 [http-api.md](http-api.md)
 
 | 方法 | 路径 | 请求体（在租户上追加） | 响应（摘要） |
 |------|------|------------------------|--------------|
-| POST | `/v1/scope/create` | `scope_id`, `name`, `skill?`, `parent_path?`；可选 `phase`, `prev_scope_id`, `wake_triggers`, `handoff_notes`（若 **`api.py`** 中模型含这些字段） | `scope_path` |
+| POST | `/v1/scope/create` | `scope_id`, `name`, `skill?`, `parent_path?`；可选 `phase`, `prev_scope_id`, `wake_triggers`（`handoff_notes` 废弃于 PR-55, 2026-04-23；若 `api.py` 仍接受则被忽略） | `scope_path` |
 | POST | `/v1/scope/end` | `scope_id`, `report?`, `scope_path?`, `is_root` | `ok`, `scope_id`, `archive_path` |
 | POST | `/v1/scope/write_assistant` | `scope_id`, `message` (dict), `round_num?` | `ok`, `seq`, `scope_path`（解析后的 active 路径） |
 
