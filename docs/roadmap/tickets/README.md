@@ -119,7 +119,7 @@
 | PR-66  | `[✓]`  | [Make system-created child scopes render through the DFS step tree](PR-66-step-tree-first-system-scope-rendering.md) **— Cortex deployed + smoke-verified 2026-04-25** | PR-65 | Cortex DFS | 1 d | __ |
 | PR-67  | `[✓]`  | [Rewire wake lifecycle so each wake is a child scope under agent root](PR-67-wake-as-agent-root-child-scope.md) **— Runtime+Cortex deployed + smoke-verified 2026-04-25** | PR-65, PR-66 | R9 + Runtime | 1–2 d | __ |
 | PR-68  | `[✓]`  | [Restore `summary.md` semantics to scope-end report only](PR-68-summary-md-scope-end-report-only.md) **— Runtime+Cortex deployed + smoke-verified 2026-04-25** | PR-67 | Memory correctness | 0.5 d | __ |
-| PR-69  | `[ ]`  | [Retire `<PREV_SCOPE_HISTORY>` / `<PREV_SCOPE_TAIL>` from the main LLM path](PR-69-retire-prev-scope-history-tail-from-main-path.md) | PR-67, PR-68 | R9 cleanup | 0.5–1 d | __ |
+| PR-69  | `[✓]`  | [Retire `<PREV_SCOPE_HISTORY>` / `<PREV_SCOPE_TAIL>` from the main LLM path](PR-69-retire-prev-scope-history-tail-from-main-path.md) **— Runtime deployed + smoke-verified 2026-04-25** | PR-67, PR-68 | R9 cleanup | 0.5–1 d | __ |
 
 
 ---
