@@ -348,10 +348,34 @@ class SkillToolRouter:
         return {
             "name": "skill_begin",
             "description": (
-                "Open a new skill scope. This focuses the agent on a specific task "
-                "with specialized prompts and constraints. Must be closed with skill_end "
-                "before opening parent scopes can be closed (LIFO order). "
-                "Use for distinct sub-tasks like code-review, debugging, testing, etc."
+                "Open a new SUB-skill scope on top of the current stack.\n"
+                "\n"
+                "Each scope gives you an isolated working context: you can think, "
+                "use tools, and gather state without polluting the parent scope. "
+                "When you call skill_end, the entire detailed transcript of this "
+                "scope is replaced by your one-line report — so a sub-skill is the "
+                "primary mechanism for keeping long context windows tidy.\n"
+                "\n"
+                "WHEN TO USE:\n"
+                "- Distinct sub-tasks that benefit from isolation: deep research, "
+                "  long shell sessions, browsing flows, code-review, debugging, "
+                "  multi-step planning.\n"
+                "- Anything where the intermediate steps are noise once you have "
+                "  the answer — they will be folded away by skill_end's report.\n"
+                "\n"
+                "WHEN NOT TO USE:\n"
+                "- Do NOT open a 'meta' scope yourself. The system auto-opens one "
+                "  as the bottom of the stack at every wake; you only ever close "
+                "  it (see skill_end's CONTINUITY PROTOCOL).\n"
+                "- Do NOT open a scope for a one-shot reply — overhead is not "
+                "  worth it.\n"
+                "\n"
+                "STACK CONTRACT (LIFO):\n"
+                "- Scopes are nested. You must close the innermost open scope "
+                "  before any of its ancestors. Trying to close out of order is "
+                "  a hard error.\n"
+                "- The Active skill stack is shown to you at the bottom of every "
+                "  context window — read it before deciding what to do."
             ),
             "parameters": {
                 "type": "object",
@@ -359,17 +383,25 @@ class SkillToolRouter:
                     "skill_name": {
                         "type": "string",
                         "description": (
-                            "Name of the skill to activate. Must be a registered skill "
-                            "or 'meta' for general-purpose work."
+                            "Name of the skill to activate. Must be a registered "
+                            "skill from the catalog. Do not pass 'meta' — that "
+                            "is reserved for the auto-opened root scope."
                         ),
                     },
                     "task": {
                         "type": "string",
-                        "description": "Brief description of what you plan to accomplish in this scope.",
+                        "description": (
+                            "One-sentence description of what this scope will "
+                            "accomplish. Read back to you in the scope's prompt; "
+                            "also helps you stay focused."
+                        ),
                     },
                     "reason": {
                         "type": "string",
-                        "description": "Why this skill is needed (optional, for audit/logging).",
+                        "description": (
+                            "Optional. Why this skill is needed right now "
+                            "(audit/logging only — not shown to the user)."
+                        ),
                     },
                 },
                 "required": ["skill_name"],
@@ -380,10 +412,74 @@ class SkillToolRouter:
         return {
             "name": "skill_end",
             "description": (
-                "Close the current skill scope and provide a completion report. "
-                "This MUST close the innermost (topmost) open skill. "
-                "The report becomes the permanent summary of this scope's work. "
-                "Include: what was accomplished, files changed, key decisions, and any errors."
+                "Close the topmost open skill scope and write its permanent "
+                "summary. There are TWO distinct patterns — pay attention to "
+                "which one you are in.\n"
+                "\n"
+                "═══════════════════════════════════════════════════════════\n"
+                "PATTERN A — closing a sub-skill you opened with skill_begin\n"
+                "═══════════════════════════════════════════════════════════\n"
+                "Pop a sub-scope you previously opened. Your report replaces "
+                "every detailed message of that sub-task in the parent's view, "
+                "so write what an outsider needs to know:\n"
+                "  - What was accomplished (concrete outcomes, not effort).\n"
+                "  - Files / resources touched.\n"
+                "  - Key decisions and the rationale.\n"
+                "  - Errors hit and how you resolved them.\n"
+                "  - Anything left undone or worth following up.\n"
+                "\n"
+                "═══════════════════════════════════════════════════════════\n"
+                "PATTERN B — closing the root 'meta' scope (CONTINUITY PROTOCOL)\n"
+                "═══════════════════════════════════════════════════════════\n"
+                "Before you call subagent_rest at the end of a turn, AND once "
+                "the Active skill stack only has the root meta scope left, you "
+                "MUST call:\n"
+                "    skill_end(scope_id='<root meta scope_id>',\n"
+                "              report='<1-3 sentence recap>')\n"
+                "(The exact scope_id is shown to you in the Active skill stack "
+                "block — copy it verbatim.)\n"
+                "\n"
+                "Why this matters — this is how you remember anything across\n"
+                "wake/rest cycles:\n"
+                "- Your report becomes summary.md for this turn's root scope.\n"
+                "- On your NEXT wake, that summary appears as one entry in\n"
+                "  <PREV_SCOPE_HISTORY> — alongside summaries from earlier\n"
+                "  turns, oldest to newest. That block IS your long-term\n"
+                "  conversational memory; nothing else carries it.\n"
+                "- If you skip this call, the system falls back to using your\n"
+                "  last chat_reply text as the summary. That is just your\n"
+                "  closing words, not what the turn was about — future-you\n"
+                "  will see a noisy, redundant timeline.\n"
+                "\n"
+                "How to write the Pattern B report:\n"
+                "- 1-3 sentences. Tight. Information-dense.\n"
+                "- Cover: (1) what the user wanted or what triggered the wake,\n"
+                "  (2) what you did or decided, (3) any open thread the next\n"
+                "  wake should pick up.\n"
+                "- Write it for your future self, NOT for the user. Skip\n"
+                "  pleasantries. No emoji.\n"
+                "- Do NOT paste your chat_reply.message verbatim — that\n"
+                "  carries zero new signal for the next wake.\n"
+                "\n"
+                "Examples (Pattern B):\n"
+                "  GOOD:\n"
+                "    \"User asked my name; introduced myself as 小牛 and asked\n"
+                "     how they'd like to be called. Awaiting their preferred\n"
+                "     form of address.\"\n"
+                "  GOOD:\n"
+                "    \"User reported missing PREV_SCOPE_HISTORY in context.\n"
+                "     Diagnosed as PR-58 not deployed; ran deploy and backfilled\n"
+                "     181 historical summaries. They will retest next session.\"\n"
+                "  BAD (verbatim chat_reply, no signal):\n"
+                "    \"大哥好！👋 有什么需要小弟帮忙的吗？您尽管吩咐！\"\n"
+                "\n"
+                "═══════════════════════════════════════════════════════════\n"
+                "STACK CONTRACT (both patterns):\n"
+                "- LIFO: only the topmost open scope can be closed. If a sub-\n"
+                "  skill is still open, close it first; the root meta scope is\n"
+                "  always the LAST close before rest.\n"
+                "- The Active skill stack at the bottom of every context window\n"
+                "  shows you the topmost scope_id and the close call to issue."
             ),
             "parameters": {
                 "type": "object",
@@ -391,17 +487,31 @@ class SkillToolRouter:
                     "report": {
                         "type": "string",
                         "description": (
-                            "Completion report for this skill scope. This becomes the "
-                            "permanent summary replacing all detailed messages. "
-                            "Be thorough: include files changed, decisions made, "
-                            "errors encountered and how they were resolved."
+                            "Permanent summary of this scope. Replaces all "
+                            "detailed messages in the parent's view.\n"
+                            "\n"
+                            "Pattern A (sub-skill): be thorough — files "
+                            "changed, decisions made, errors and resolutions, "
+                            "follow-ups.\n"
+                            "\n"
+                            "Pattern B (root meta scope, continuity protocol): "
+                            "1-3 sentences capturing user intent + your "
+                            "action/decision + any open thread. This text "
+                            "becomes one entry of <PREV_SCOPE_HISTORY> on "
+                            "your next wake — write it for your future self, "
+                            "not for the user. Do not paste chat_reply text "
+                            "verbatim."
                         ),
                     },
                     "scope_id": {
                         "type": "string",
                         "description": (
-                            "Optional: scope ID to close (must match the topmost scope). "
-                            "If omitted, closes the topmost scope."
+                            "Scope ID to close. Must match the topmost open "
+                            "scope (LIFO). For Pattern B, copy the root meta "
+                            "scope_id verbatim from the Active skill stack "
+                            "block. If omitted, the system closes the topmost "
+                            "scope automatically — but passing it explicitly "
+                            "is safer and avoids races."
                         ),
                     },
                 },
