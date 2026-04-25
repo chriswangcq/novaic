@@ -56,6 +56,13 @@
 5. 修正索引中的 `**path`** 前缀后，**追加**到 `**/ro/scopes/_index.jsonl`**（与 Recall 读取的文件一致）。
 6. API 层 `/v1/scope/end` 在 `is_root=true` 归档后还会调 `_drop_skill_lock` 回收 `_SKILL_LOCKS` 里对应 `(user_id, agent_id, scope_id)` 的互斥锁条目。
 
+> 2026-04-25 (PR-56 / PR-58)：根 scope 的 `summary` 参数有**两层来源**，按优先级解析（`api.py::_scope_end`）：
+> 1. **Tier 1 — LLM 显式写**：根级 `skill_end(report="...")` 走 `_context_skill_end_locked`，把 report 暂存到 `meta.pending_rest_summary`；归档时该字段 winning。这是"agent 主动写 turn recap"的官方通路（参考 `tool_schemas.py::skill_end` description 中的 Pattern B / continuity protocol）。
+> 2. **Tier 2 — saga 自动派生**：若 LLM 没在 root 层显式调 `skill_end`（实际线上多数情况），`react_actions._extract_rest_summary` 会从最后一条 `chat_reply.message` 抠 1–3 句、套字节 cap，由 `subagent_rest._build_cortex_scope_end_payload` 作为 `report` 传进来。
+> 3. 两者都没有 → 写空字符串（与 PR-55 删 phantom `generate_simple_summary` 之后的语义一致）。
+>
+> 写入的 `summary.md` 既被 `<PREV_SCOPE_TAIL>` 渲染近邻 turn，也被新的 `<PREV_SCOPE_HISTORY>` 块（PR-57）取作 K 个 root 的 rolling history（见 [§10](#10-跨-root-rolling-summary-history)）。
+
 ---
 
 ## 6. 原子「结束当前根 + 建新待机根」：`scope_end_and_spawn`
@@ -144,6 +151,21 @@ Skill scope 是 LLM 通过两个工具 **`skill_begin` / `skill_end`** 管理的
 - 已 `skill_end` 的子 scope 在下一轮 `prepare_for_llm` 会被 **`_merge_context_and_steps`** 折叠成一条  
   `"[Skill '{scope_name}' completed]\n{summary}"` system 消息（`summary = skill_end.report`）。
 - 还处于 `executing` 的 skill 则在 LLM 上下文里按原样保留，对应 `frames` 中那一帧。
+
+---
+
+## 10. 跨 root rolling summary history
+
+> 2026-04-25 (PR-57)：源码 `novaic_cortex/workspace.py::list_archived_root_summaries` + `api.py::POST /v1/scope/list_summaries`；Runtime 注入端 `task_queue/handlers/runtime_handlers.py::_build_prev_scope_summary_messages`。
+
+`<PREV_SCOPE_TAIL>` 只能续到上一 turn 末尾，不够覆盖"前几 turn 在干啥"。Cortex 提供 K 个最近 root summary 的批量读出：
+
+1. `Workspace.list_archived_root_summaries(limit=K, exclude_scope_ids=[...])`：读 `/ro/scopes/_index.jsonl`，过滤 `depth==0` 行 → 按 `scope_id` 去重保留最新 `ts` → 按时间从老到新排序 → 取最后 `limit` 条 → 回填每条的 `summary.md`（空也保留，由调用方决定要不要丢弃）。
+2. API 层 `POST /v1/scope/list_summaries` 是同名 RPC；响应 `{summaries: [{scope_id, summary, archived_at, depth}, ...]}`。
+3. Runtime `handle_session_init` 在 trigger message 之前注入一条 `<PREV_SCOPE_HISTORY>` system 消息：渲染每条 `archived_at`（ISO 时间）+ `summary` 文本，整块带字节 cap（`WAKE_PREV_SCOPE_SUMMARY_MAX_BYTES`，默认 16 KB）；条数由 `WAKE_PREV_SCOPE_HISTORY_COUNT` 控制（默认 5）。
+4. **PR-58 修正**：原版默认 `exclude_scope_ids=[previous_scope_id]`，结果"上一 turn"会被同时存在的 `<PREV_SCOPE_TAIL>` 和 history 之间双扣空，改为 `exclude_scope_ids=[]`，让 history 自然包含最新一条；尾部的近邻细节交给 `<PREV_SCOPE_TAIL>`，两边职责并存不互斥。
+
+观测：`wake_continuity_render_total{layer="state", result=...}`（PR-54）汇总两块 state 层的 render 健康。
 
 ---
 
