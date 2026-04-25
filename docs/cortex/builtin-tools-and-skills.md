@@ -26,6 +26,8 @@
 
 严格 LIFO：仅能关栈顶，不匹配报错（不做级联关闭）。详见 [scope-lifecycle.md §9](scope-lifecycle.md#9-skill-scope-生命周期llm-可见栈式)。
 
+> 2026-04-25 (PR-59)：`skill_begin` / `skill_end` 的 description 已重写以教会 LLM 两种使用模式 —— **Pattern A**（关 sub-skill：把子任务详细 transcript 折叠成一行 report）和 **Pattern B / Continuity Protocol**（关 root meta scope：1–3 句 turn-recap，作为下次醒来时 `<PREV_SCOPE_HISTORY>` 的一条目）。Pattern B 是 R9 文字层的"原作者写"上游 —— LLM 不主动写时，runtime 会用 `react_actions._extract_rest_summary` 从最后一条 `chat_reply.message` 抠 fallback（Tier 2，见 [scope-lifecycle.md §5](scope-lifecycle.md#5-根-scope-归档archive_root_scope)）。改 description 不会改 schema 字段，但会显著影响 root summary 内容质量；如要回滚或微调措辞，编辑 `BUILTIN_TOOL_SCHEMAS` 中的 `skill_begin` / `skill_end` 条目即可（受 `_MAX_DESCRIPTION_LEN=2000` / `_MAX_PROPERTY_DESCRIPTION_LEN=500` 上限约束）。
+
 **并发安全**：`POST /v1/context/skill_begin` 与 `POST /v1/context/skill_end` 在 Cortex API 层以 `(user_id, agent_id, root_scope_id)` 为 key 使用 asyncio 互斥锁（`_SKILL_LOCKS`）串行化，避免同一个 round 里并发 tool_calls 把 stack 状态搞乱。锁条目会在 root scope 归档（`/v1/scope/end` with `is_root=true`）后自动回收。
 
 **结果可见性**：`skill_begin` / `skill_end` 的成功/错误响应均包含 `stack`（LIFO ordered 帧数组，栈顶最先）与 `stack_depth`，工具结果会被 Agent Runtime 当作普通 step 保存到 `steps/`，LLM 在下一轮 prepare_llm_context 可以直接读到。

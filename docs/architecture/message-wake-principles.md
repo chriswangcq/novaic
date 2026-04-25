@@ -223,6 +223,12 @@ Queue Service `/recover/all` 加了 internal key 校验；HealthWorker 裸 `http
 > `summary.md` → 父 scope context fold（即 `<PREV_SCOPE_TAIL>` 可消费的
 > 上一 scope 尾部）。以下条目的 "文字层" 子节历史语义已作废，保留用于
 > 回读理解上下文；新代码只承认 state 层 + IM 层两桶。
+>
+> 2026-04-25 (PR-56..PR-59)：state 层从"只能续到上一 turn 末尾"补成"滚动 K turns 长期记忆"：
+> - **PR-56**：根 scope `skill_end(report=...)` → `meta.pending_rest_summary` → 归档 `summary.md`，给 LLM 显式写 turn-recap 的通路。
+> - **PR-57**：新增 `<PREV_SCOPE_HISTORY>` system block，由 Cortex `Workspace.list_archived_root_summaries` 读 `/ro/scopes/_index.jsonl` 取最近 K 个 root summary（默认 5、字节 cap 16 KB），与 `<PREV_SCOPE_TAIL>` 并存（一个负责 K turns 摘要，一个负责上一 turn 末尾细节）。详见 [`docs/cortex/scope-lifecycle.md §10`](../cortex/scope-lifecycle.md#10-跨-root-rolling-summary-history)。
+> - **PR-58**：`react_actions._extract_rest_summary` 自动从最后一条 `chat_reply.message` 派生 fallback rest_summary（Tier 2），避免 LLM 不主动 `skill_end` 时 `summary.md` 全空；同时修正 `<PREV_SCOPE_HISTORY>` 的 `exclude_scope_ids` 误排除最新 root，以及 `<PREV_SCOPE_TAIL>` 渲染 tool_call 时丢 `chat_reply.message` 内容的 bug。
+> - **PR-59**：`skill_begin` / `skill_end` 工具 description 改写，明确 Pattern A（关 sub-skill）/ Pattern B（关 root meta scope = continuity protocol，1–3 句 turn-recap），把"为什么要主动写 root summary"从隐式 RFC 变成 LLM 直接读到的 schema 文档。
 
 **现状（P6 之前）**
 - Agent 每次醒来 session.init 拉一个纯净 context，只塞 system prompt + 当前 trigger message。

@@ -43,6 +43,9 @@
 | POST | `/v1/scope/create` |
 | POST | `/v1/scope/end` |
 | POST | `/v1/scope/write_assistant` |
+| POST | `/v1/scope/list_summaries` |
+
+> `/v1/scope/list_summaries` (PR-57)：批量读最近 K 个**已归档根 scope** 的 `summary.md`。请求 `{user_id, agent_id, limit?, exclude_scope_ids?}`；响应 `{summaries: [{scope_id, summary, archived_at, depth}, ...]}`，按 `archived_at` 从老到新。Runtime `handle_session_init` 用它构造 `<PREV_SCOPE_HISTORY>` 注入块（见 [scope-lifecycle.md §10](scope-lifecycle.md#10-跨-root-rolling-summary-history)）。
 
 ### Internal — Context
 
