@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | **Ticket** | PR-66 |
-| **Status** | `[ ]` |
+| **Status** | `[✓]` |
 | **Opened** | 2026-04-25 |
 | **Owner** | __ |
 | **Severity** | P0 context correctness — agent-root wake scopes need fold/expand without fake historical prompt blocks. |
@@ -37,26 +37,62 @@ Agent-root wake scopes may be system-created, so the renderer needs a first-clas
 
 ### Unit Tests
 
-- Add Cortex `ContextEngine` tests for system-created child scopes without LLM `skill_begin` anchors.
-- Preserve existing PR-39 tests for LLM-created nested scope fold behavior.
-- Add a regression test proving closed child internals do not leak after fold.
+- `[x]` Add Cortex `ContextEngine` tests for system-created child scopes without LLM `skill_begin` anchors.
+- `[x]` Preserve existing PR-39 tests for LLM-created nested scope fold behavior.
+- `[x]` Add a regression test proving closed child internals do not leak after fold.
 
 ### Smoke Tests
 
-- Create an agent root with one closed wake child and one open wake child in a staging/prod-like workspace.
-- Call `context/prepare_for_llm` and verify folded/expanded output shape.
-- Confirm no `<PREV_SCOPE_HISTORY>` / `<PREV_SCOPE_TAIL>` is needed for that continuity signal.
+- `[x]` Create an agent root with one closed wake child and one open wake child in a staging/prod-like workspace.
+- `[x]` Call `context/prepare_for_llm` and verify folded/expanded output shape.
+- `[x]` Confirm no `<PREV_SCOPE_HISTORY>` / `<PREV_SCOPE_TAIL>` is needed for that continuity signal.
 
 ### Deployment
 
-- Deploy Cortex.
-- Verify `/v1/context/prepare_for_llm` still works for existing normal scopes and new system child scopes.
-- Capture log evidence for fold/expand decisions.
+- `[x]` Deploy Cortex.
+- `[x]` Verify `/v1/context/prepare_for_llm` still works for existing normal scopes and new system child scopes.
+- `[x]` Capture log evidence for fold/expand decisions.
 
 ### GitHub / Commit
 
-- Commit implementation and tests together.
-- PR description must include before/after context-shape examples.
+- `[x]` Commit implementation and tests together.
+- `[x]` PR description must include before/after context-shape examples.
+
+## Completion Notes
+
+Implemented Cortex step-tree-first rendering for system-created child scopes:
+
+- `StepNode` now carries `scope_path` and open-scope `context_messages`.
+- `ContextEngine` still honors existing LLM-created `skill_begin(scope_id=...)` anchors.
+- Any direct child scope in `steps/_index.jsonl` without an anchor now renders from the step tree:
+  - closed child → one `render_scope_fold(...)` summary message;
+  - open child → recursively merges that child scope's own `context.jsonl` and child step tree.
+- Existing drift behavior remains explicit: anchored `skill_begin` without a matching scope node falls through and logs a warning.
+
+Validation:
+
+- Unit tests:
+  - `pytest -q tests/test_pr66_system_scope_rendering.py tests/test_context_engine_dfs.py` → `14 passed`.
+  - `pytest -q` in `novaic-cortex` → `383 passed, 16 skipped`.
+- Deployment:
+  - `./deploy cortex` completed successfully on 2026-04-25; backend restart reported Cortex `:19996` OK.
+- Production smoke evidence:
+  - Evidence log: `/opt/novaic/data/backups/pr66_system_scope_render_smoke_20260425_181721.log`.
+  - Seeded agent root `pr66-root-20260425101721` with:
+    - closed child `wake-closed`, summary `closed wake summary`;
+    - open child `wake-open`, context `system prompt in open wake` + `open child visible request`.
+  - `/v1/context/prepare_for_llm` returned:
+    - `[Skill 'wake closed' completed]\nclosed wake summary`;
+    - `system prompt in open wake`;
+    - `open child visible request`.
+  - Assertion passed that closed child internal text did not leak and no `<PREV_SCOPE_HISTORY>` / `<PREV_SCOPE_TAIL>` block was required.
+  - Cortex log evidence captured:
+    - `folded unanchored closed scope_id=wake-closed name=wake closed`;
+    - `expanding unanchored open scope_id=wake-open name=wake open context=2 children=0`.
+
+Git:
+
+- Cortex submodule commit: `7c073a7 cortex: render system scope nodes from step tree`.
 
 ## Out of Scope
 
