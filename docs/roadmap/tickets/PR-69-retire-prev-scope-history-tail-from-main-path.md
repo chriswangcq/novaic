@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | **Ticket** | PR-69 |
-| **Status** | `[ ]` |
+| **Status** | `[✓]` |
 | **Opened** | 2026-04-25 |
 | **Owner** | __ |
 | **Severity** | P1 cleanup — removes the prompt-layer continuity path that bypasses Cortex DFS semantics. |
@@ -34,26 +34,42 @@ The old endpoints may remain temporarily for diagnostics or rollback, but the de
 
 ### Unit Tests
 
-- Add Runtime prompt assembly tests proving legacy history/tail blocks are absent in the new default path.
-- Add tests proving folded wake child summaries still appear through agent-root DFS assembly.
-- Keep or update legacy-flag tests if a compatibility path remains.
+- [x] Add Runtime prompt assembly tests proving legacy history/tail blocks are absent in the new default path.
+- [x] Add tests proving folded wake child summaries still appear through agent-root DFS assembly.
+- [x] Keep or update legacy-flag tests if a compatibility path remains.
+
+Evidence:
+
+- `cd novaic-agent-runtime && pytest -q` → `242 passed in 0.97s`
+- Targeted PR-69/legacy tests → `50 passed in 0.17s`
 
 ### Smoke Tests
 
-- Run a fresh 小牛 wake after PR-67/68.
-- Inspect the actual LLM request and assert no `<PREV_SCOPE_HISTORY>` / `<PREV_SCOPE_TAIL>`.
-- Verify previous wake information is still present as a folded scope summary.
+- [x] Run a fresh 小牛 wake after PR-67/68.
+- [x] Inspect the actual LLM request and assert no `<PREV_SCOPE_HISTORY>` / `<PREV_SCOPE_TAIL>`.
+- [x] Verify previous wake information is still present as a folded scope summary.
+
+Evidence:
+
+- `/opt/novaic/data/backups/pr69_retire_prev_scope_blocks_smoke_20260425_190318.log`
+- Smoke assertions passed: `legacy_tail_default_enabled=False`, `legacy_history_default_enabled=False`, `session_init_legacy_bridge_calls=0`, `dfs_summary_present=PR69_PRIOR_WAKE_FOLDED_SUMMARY`
 
 ### Deployment
 
-- Deploy Runtime services.
-- Capture online LLM request evidence and metrics/logs showing legacy injection is inactive.
-- Confirm rollback flag behavior if retained.
+- [x] Deploy Runtime services.
+- [x] Capture online LLM request evidence and metrics/logs showing legacy injection is inactive.
+- [x] Confirm rollback flag behavior if retained.
+
+Evidence:
+
+- `./deploy runtime` → all backend services restarted, runtime deployed.
+- `./deploy status` → all ports healthy, `Workers: 8`.
+- Compatibility flags retained as explicit opt-in only: `WAKE_PREV_SCOPE_TAIL_ENABLED=1`, `WAKE_PREV_SCOPE_SUMMARY_ENABLED=1`.
 
 ### GitHub / Commit
 
-- Commit cleanup, tests, and docs together.
-- PR description must include the LLM request excerpt proving the legacy blocks are gone.
+- [x] Commit cleanup, tests, and docs together.
+- [x] PR description must include the LLM request excerpt proving the legacy blocks are gone.
 
 ## Out of Scope
 
