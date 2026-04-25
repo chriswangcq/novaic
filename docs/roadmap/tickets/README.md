@@ -106,6 +106,20 @@
 | PR-52  | `[✓]`  | [subscriber 重试路径 scope-aliveness 护栏 — **deployed to prod 2026-04-23 18:48 CST**；阻止死 scope 被 re-materialized，配合 PR-51 Part 2 scanner 防新洞+清老洞](PR-52-subscriber-scope-aliveness-check.md) | PR-22, PR-51 Part 2                 | R5                      | 0.5 d                       | __          |
 | P6-12  | `[✓]`  | [`chat_messages.read` 降级为 UI-only 字段 — 契约 + CI 强制（`scripts/ci/lint_chat_messages_read.sh`）+ survivor 审计 + 4 个僵尸 Business 路由贴弃用标记；2026-04-24 落地](P6-12-chat-messages-read-ui-only.md) | PR-46, P6-11                        | R10                      | 0.5 d                       | __          |
 | PR-55  | `[ ]`  | [Retire phantom `subagent_rest` / `historical_summary` / `handoff_notes` pipeline — 删 `_exec_subagent_rest` 占位符 + `generate_simple_summary` saga step + 两列读写路径 + `<HANDOFF_NOTES>` / `<HISTORICAL_SUMMARY>` 注入块；保留 `last_scope_id` + `<PREV_SCOPE_TAIL>` + `skill_end.report` 折叠链；新不变量 R-ZOMBIE](PR-55-phantom-summary-pipeline-cleanup.md) | PR-42, PR-45, PR-49, PR-53 (supersedes all) | R9 + R-ZOMBIE            | 1–1.5 d                     | __          |
+| PR-56  | `[✓]`  | [LLM system prompt must not reference tools absent from the call schema](PR-56-llm-prompt-phantom-tools.md) **— deployed 2026-04-25** | — | LLM contract | 0.5 d | __ |
+| PR-57  | `[✓]`  | [LLM memory wording must match the active R9 scope-continuity contract](PR-57-llm-memory-contract-drift.md) **— deployed 2026-04-25** | PR-55 | R9 + LLM contract | 0.5 d | __ |
+| PR-58  | `[✓]`  | [Root scope summaries must be future-self summaries, not pasted user-facing replies](PR-58-root-scope-summary-quality.md) **— deployed 2026-04-25** | — | R9 | 0.5–1 d | __ |
+| PR-59  | `[✓]`  | [`<PREV_SCOPE_HISTORY>` and `<PREV_SCOPE_TAIL>` should not duplicate the same short prior turn](PR-59-prev-scope-history-tail-duplication.md) **— deployed 2026-04-25** | PR-58 | R9 + context budget | 0.5 d | __ |
+| PR-60  | `[✓]`  | [User IM content must render as clean user text, not a Python dict string](PR-60-im-user-content-clean-body.md) **— deployed 2026-04-25** | PR-38 | IM rendering | 0.5 d | __ |
+| PR-61  | `[✓]`  | [`subagent_report` must not be exposed to agents that cannot validly call it](PR-61-contextual-tool-visibility-subagent-report.md) **— deployed 2026-04-25** | — | Tool contract | 0.5 d | __ |
+| PR-62  | `[✓]`  | [LLM request builder should not send null optional generation parameters](PR-62-llm-request-null-parameter-pruning.md) **— deployed 2026-04-25** | — | Provider compatibility | 0.25 d | __ |
+| PR-63  | `[✓]`  | [LLM-visible `shell` capability needs an explicit safety boundary](PR-63-shell-tool-safety-boundary.md) **— deployed 2026-04-25** | — | Safety + ops | 0.5 d | __ |
+| PR-64  | `[✓]`  | [Purge legacy 小牛 scope/runtime data before agent-root rollout](PR-64-purge-legacy-xiaoniu-scope-data.md) **— operational cleanup completed 2026-04-25** | — | R9 reset | 0.25 d | __ |
+| PR-65  | `[ ]`  | [Introduce long-lived agent root scope lifecycle](PR-65-agent-root-scope-lifecycle.md) | PR-64 | R9 + Cortex | 1 d | __ |
+| PR-66  | `[ ]`  | [Make system-created child scopes render through the DFS step tree](PR-66-step-tree-first-system-scope-rendering.md) | PR-65 | Cortex DFS | 1 d | __ |
+| PR-67  | `[ ]`  | [Rewire wake lifecycle so each wake is a child scope under agent root](PR-67-wake-as-agent-root-child-scope.md) | PR-65, PR-66 | R9 + Runtime | 1–2 d | __ |
+| PR-68  | `[ ]`  | [Restore `summary.md` semantics to scope-end report only](PR-68-summary-md-scope-end-report-only.md) | PR-67 | Memory correctness | 0.5 d | __ |
+| PR-69  | `[ ]`  | [Retire `<PREV_SCOPE_HISTORY>` / `<PREV_SCOPE_TAIL>` from the main LLM path](PR-69-retire-prev-scope-history-tail-from-main-path.md) | PR-67, PR-68 | R9 cleanup | 0.5–1 d | __ |
 
 
 ---
@@ -157,4 +171,3 @@ Reviewer 对已交付工单的评审意见，归档在 `reviews/PR-NN-review.md`
 - **fail-fast**：配置错误 / 依赖缺失 → 启动期爆；运行期错误不可被静默吞
 - **Rollback**：每 PR 单独 revert 不破坏上游 PR
 - **测试**：单测覆盖正常路径 + 至少两个失败分支
-
