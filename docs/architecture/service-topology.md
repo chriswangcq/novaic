@@ -1,6 +1,6 @@
 # NovAIC 服务拆分原理与调用拓扑
 
-> 更新：2026-04-16
+> 更新：2026-04-27
 
 ---
 
@@ -38,13 +38,13 @@
 | **Task Worker** | (worker) | 实际任务执行（ReactThink、ToolExec、SummarizeHistory 等）。仅调用 Business |
 | **Health Worker** | (worker) | 超时回收（过期 Task/Saga 清理） |
 | **Scheduler Worker** | (worker) | 唯一的定时唤醒轮询者（`due_wake -> scheduled_wake dispatch`） |
-| **Cortex** | `19996` | 认知引擎（上下文组装 + 记忆 + 压缩 + 沙盒执行 + **BusinessProxy 工具代理**）。通过 BusinessProxy 仅调用 Business |
+| **Cortex** | `19996` | 认知引擎（scope 生命周期 + LLM context 拼装 + 沙盒执行）。仅保留 `chat`、设备/VM、subagent 的遗留 BusinessProxy 入口 |
 | **LLM Factory** | `19990` | LLM 多提供商适配（OpenAI/Anthropic/本地模型路由） |
 | **VMControl** | (Tauri内嵌Rust) | 唯一 runtime owner（QEMU/Scrcpy/adb/WebRTC），通过 typed CloudBridge WS 连 Device Service |
 | **Storage-A** | `19995` | 文件服务（独立 repo） |
 
 > ⚠️ **没有 Runtime Orchestrator（RO）**。原 RO 的职责已由 Saga Worker + Task Worker + Queue Session Coordinator 接管。`--runtime-orchestrator-url` 参数虽存在于 CLI 但已标记 `argparse.SUPPRESS`。
-> ⚠️ **没有独立 Tools Server**。工具分发逻辑内置于 Agent Runtime，Cortex 通过 BusinessProxy 代理工具命令到 Business Service。
+> ⚠️ **没有独立 Tools Server**。工具分发逻辑内置于 Agent Runtime；Cortex 不再作为 memory/notebook/task/search 的工具代理。
 
 ---
 
@@ -164,7 +164,7 @@
 | Business ↔ Workers | Business 是**同步 HTTP**处理（毫秒级），Workers 是**长耗时推理**编排（秒~分钟级）。混在一起会阻塞 entity 推送 |
 | Scheduler/Queue ↔ Workers | Scheduler 负责**发现**到期唤醒，Queue 负责**可靠调度**（Session Coordinator、重试、超时、持久化），Workers 负责**执行**。分开后任何一环崩溃不丢任务 |
 | Saga Worker ↔ Task Worker | Saga 负责**流程编排**（状态机流转），Task 负责**原子执行**（单次 ReactThink/ToolExec）。分开后可独立扩缩：5 个 Task Worker + 1 个 Saga Worker |
-| Workers ↔ Cortex | Workers 是**通用调度器**（不知道什么是上下文），Cortex 是**领域引擎**（上下文 + 记忆 + 工具代理）。Cortex 通过 `BusinessProxy` 把 12 类工具命令（memory/notebook/qemu/shell/subagent 等）代理转发到 Business Service。分开后 Cortex 可独立复用 |
+| Workers ↔ Cortex | Workers 是**通用调度器**（不知道什么是上下文），Cortex 是**领域引擎**（scope 生命周期 + LLM context 拼装 + sandbox）。Cortex 不再代理 `memory`/`notebook`/`task`/`search`；仅保留 `chat`、设备/VM、subagent 的遗留 BusinessProxy 入口 |
 | Business ↔ Device | Business 负责**业务编排**（action hooks / entity / 调度），Device 负责**硬件执行**（CloudBridge / VM / HD）。Business 通过 device_orchestrator 向 Device 下发指令 |
 | Device Service ↔ VMControl | 物理隔离——VMControl 跑在用户本地电脑上，Device Service 跑在云端。通过 typed CloudBridge WS 穿透 NAT。Gateway 只做 App 信令转发，不拥有 CloudBridge |
 | Business ↔ LLM Factory | LLM Factory 是**无状态适配器**，可以独立横向扩展。不同用户用不同的 API Key，路由逻辑不应该污染业务层 |

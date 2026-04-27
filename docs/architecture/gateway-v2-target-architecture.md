@@ -3,7 +3,7 @@
 > 基于对 watchdog_sync.py、message_process saga、react_think/react_actions saga、
 > subagent_rest saga、context_handlers.py、cortex_handlers.py、runtime_handlers.py、
 > message_handlers.py、subagent_handlers.py、tool_handlers.py、queue_service/routes.py、
-> novaic-cortex/proxy.py (GatewayProxy)、novaic-cortex/tool_schemas.py 的完整源码审计。
+> novaic-cortex/proxy.py (BusinessProxy)、novaic-cortex/tool_schemas.py 的完整源码审计。
 
 > **2026-04-23 (PR-55) 修订**：本文 §0.4 描述的 "`subagent_rest` 两层
 > 机制" 中的 *第一层（LLM 工具调用）已作废*。
@@ -80,28 +80,24 @@
 
 ### 0.3 Cortex BusinessProxy -> Business 的工具代理调用链
 
-> **⚠️ 2026-04-16 更新**：Cortex 已从 `GatewayProxy` 重命名为 `BusinessProxy`，直接指向 Business Service (:19998)，不再经 Gateway 中转。
+> **⚠️ 2026-04-27 更新**：Cortex 的 `BusinessProxy` 只保留 `chat`、设备/VM、subagent 的遗留代理面；`memory`、`notebook`、`task`、`search` 已从 Cortex 删除。
 
 除了 Worker 回调外, **Cortex 还有一条独立的 Business 依赖**。
 
-Cortex 内部的 `BusinessProxy` 类在 Agent 执行工具时, 把 12 种命令全部代理转发到 Business 的 `/internal/` 端点:
+Cortex 内部的 `BusinessProxy` 类在遗留 CLI/工具入口中转发以下命令到 Business 的 `/internal/` 端点:
 
 | 命令 | 目标 Business 端点 | 性质 |
 |---|---|---|
-| memory (save/recall/delete) | `/internal/agents/{id}/memory/*` | 有状态工具 |
-| notebook (write/read/update/list) | `/internal/agents/{id}/notebook/*` | 有状态工具 |
 | chat (reply) | `/internal/agents/{id}/chat/event` | **消息写入** |
-| task (CRUD) | `/internal/agents/{id}/quadrant-tasks/*` | 有状态工具 |
 | browser/screenshot/keyboard/mouse | `/internal/agents/{id}/vm/*` | VM 操作代理 |
 | shell_exec | `/internal/agents/{id}/vm/shell` | VM 操作代理 |
 | qemu | `/internal/agents/{id}/qemu/*` | VM 操作代理 |
 | subagent (spawn/status/cancel/report) | `/internal/agents/{id}/subagent/*` | 子 Agent 管理 |
-| search | `/internal/agents/{id}/memory/recall` | 记忆检索 |
 
 **这些端点不在本次改造范围内**, 但需注意:
 - `chat/event` (AGENT_REPLY): Agent 回复消息也是通过 BusinessProxy -> Business 写入 chat_messages。终态应改为 Worker 直接写 Entangled, 但需要先迁移 HEARTBEAT_OK 过滤和附件处理逻辑。
 - VM 相关操作: Business 转发到 Device Service，CloudBridge WS 在 Device Service (:19993) 上，Gateway 不参与此链路。
-- 工具 API (memory/notebook/task): 中期由 Cortex 直连对应后端服务替代。
+- 工具 API (`memory`/`notebook`/`task`/`search`) 不再由 Cortex 代理；后续若需要 CLI/API 入口，应放在 owning service/package。
 
 ### 0.4 `subagent_rest` 的两层机制
 
@@ -514,11 +510,8 @@ GET    /subagents/{a}/{s}/history
 POST   /agents/{agent_id}/interrupt           -> Queue cancel-all
 POST   /subagents/{a}/spawn                   -> Queue dispatch
 
-# Cortex BusinessProxy 工具 API (现经 Business Service, 中期 Cortex 直连后端替代)
-# 这 12 类端点由 Cortex 的 BusinessProxy 在工具执行时调用，目标是 Business Service (:19998)
-POST   /agents/{agent_id}/memory/*             # -> 中期 Cortex 直连 Entangled
-POST   /agents/{agent_id}/notebook/*           # -> 中期 Cortex 直连 Entangled
-POST   /agents/{agent_id}/quadrant-tasks/*     # -> 中期 Cortex 直连 Entangled
+# Cortex BusinessProxy 遗留代理 API (经 Business Service)
+# memory/notebook/task/search 已退出 Cortex 代理面
 POST   /agents/{agent_id}/chat/event           # -> v2 改为 Worker 写 Entangled
 ANY    /agents/{agent_id}/vm/*                 # -> CloudBridge 在 Device Service (:19993) 上, Gateway 不参与
 ANY    /agents/{agent_id}/qemu/*               # -> CloudBridge 在 Device Service (:19993) 上, Gateway 不参与

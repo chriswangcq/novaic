@@ -105,6 +105,6 @@ Agent Runtime 通过 **`POST /v1/context/prepare_for_llm`** 取 **messages + too
 ## 相关
 
 - [internal-api-schemas.md](internal-api-schemas.md) — Internal 路由 body 摘要  
-- [proxy-cli-auth.md](proxy-cli-auth.md) — JWT vs Gateway `X-Internal-Key`  
-- [proxy-gateway-routes.md](proxy-gateway-routes.md) — `/v1/proxy/{command}` → Gateway  
+- [proxy-cli-auth.md](proxy-cli-auth.md) — JWT vs Business `X-Internal-Key`  
+- [proxy-gateway-routes.md](proxy-gateway-routes.md) — `/v1/proxy/{command}` → Business  
 - [runtime-facade.md](runtime-facade.md) — `Cortex` 类  

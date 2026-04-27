@@ -53,7 +53,7 @@
 - **设备服务**：`novaic-device`（`:19993`）。纯硬件基础设施：Device registry、CloudBridge typed WS broker、`/internal/hardware/*` 执行 API、VM/Mobile/HD tool proxy（转发到 VmControl）。不含业务逻辑，不拥有 action hook。所有业务调度由 Business Service 发起。
 - **实体同步**：`Entangled`（`:19900`）。独立的实体存储与实时同步引擎。**仅 Business Service 直接访问 Entangled HTTP**；Gateway、Device、Workers 均通过 Business `/internal/entities/*` 代理完成 entity CRUD。前端可选直连 `ws(s)://…/v1/sync`。
 - **异步执行管线**：`novaic-agent-runtime`。包含 Watchdog 和 Task/Saga Workers。内置工具分发逻辑，不再有独立 Tools Server。
-- **认知基础设施**：`novaic-cortex`。独立的无状态 HTTP 服务。Agent 运行时通过 `CortexBridge` 调用 Workspace/DFS/Recall。Cortex 通过 `BusinessProxy`（`--business-url`）将工具命令转发到 Business Service。
+- **认知基础设施**：`novaic-cortex`。独立的无状态 HTTP 服务。Agent 运行时通过 `CortexBridge` 调用 scope 生命周期、Workspace/DFS 与 LLM context 拼装。Cortex 只保留 `chat`、设备/VM、subagent 的遗留 BusinessProxy 入口；`memory`、`notebook`、`task`、`search` 不再属于 Cortex 代理面。
 - **LLM 隔离层**：`novaic-llm-factory`。隐藏所有 api-keys 和底层厂商差异，只暴露标准 OpenAI HTTP 端点。
 - **边缘 P2P 与存储**：`novaic-quic-service` 负责 WebRTC 打洞和热更新 CDN；`novaic-storage-a` 负责二进制文件上传。
 

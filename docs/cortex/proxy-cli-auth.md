@@ -1,6 +1,6 @@
-# Gateway 代理、CLI 与认证
+# Business 代理、CLI 与认证
 
-> 源码：`novaic_cortex/proxy.py`（**`GatewayProxy`**）、`cli.py`（**`novaic`**）、`auth.py`（**能力 JWT**）。
+> 源码：`novaic_cortex/proxy.py`（**`BusinessProxy`**）、`cli.py`（**`novaic`**）、`auth.py`（**能力 JWT**）。
 
 ## 1. 能力 JWT（Cortex 自签）
 
@@ -14,14 +14,14 @@
 
 ---
 
-## 2. GatewayProxy（服务间信任）
+## 2. BusinessProxy（服务间信任）
 
-- **目的**：Cortex 作为 Agent **唯一入口**；业务/设备/MCP 类请求转到 Gateway **`/internal/...`**。  
-- **环境变量**：**`GATEWAY_INTERNAL_URL`**（默认 `http://localhost:19999`）、**`CORTEX_INTERNAL_KEY`** → 请求头 **`X-Internal-Key`**。  
+- **目的**：Cortex 作为旧 CLI 的入口，仅保留 `chat`、设备/VM 与 subagent 代理面；`memory`、`notebook`、`task`、`search` 已从 Cortex 代理面删除。  
+- **环境变量**：**`BUSINESS_INTERNAL_URL`**（默认 `http://localhost:19998`）、**`CORTEX_INTERNAL_KEY`** → 请求头 **`X-Internal-Key`**。  
 - **额外头**：**`X-User-Id`**、**`X-Agent-Id`**。  
-- **不转发**能力 JWT：Gateway 侧用 internal key 建立信任（见 `proxy.py` 注释）。
+- **不转发**能力 JWT：Business 侧用 internal key 建立信任（见 `proxy.py` 注释）。
 
-HTTP 封装：**`POST /v1/proxy/{command}`**（见 [http-api.md](http-api.md)）→ **`GatewayProxy.proxy_command`**。
+HTTP 封装：**`POST /v1/proxy/{command}`**（见 [http-api.md](http-api.md)）→ **`BusinessProxy.proxy_command`**。
 
 ---
 
@@ -29,7 +29,8 @@ HTTP 封装：**`POST /v1/proxy/{command}`**（见 [http-api.md](http-api.md)）
 
 - **环境变量**：**`NOVAIC_API`**（默认 `http://localhost:19996`）、**`NOVAIC_TOKEN`**（能力 JWT）。  
 - **认知类**（直打 Cortex）：`read`、`write`、`ls`、`recall`、`tools` → 对应 **`/v1/read`** 等。  
-- **业务类**（经 Proxy）：如 `chat`、`search`、`memory ...` → **`POST /v1/proxy/{command}`**（见 `cli.py` 中 `cmd_chat`、`cmd_search` 等）。
+- **代理类**（经 Proxy）：`chat`、`browser`、`screenshot`、`keyboard`、`mouse`、`shell_exec`、`qemu`、`subagent` → **`POST /v1/proxy/{command}`**。
+- Cortex CLI 不再暴露 `memory`、`notebook`、`task`、`search`；需要这些业务能力时应由对应 owning service/package 提供入口。
 
 ---
 
@@ -38,12 +39,12 @@ HTTP 封装：**`POST /v1/proxy/{command}`**（见 [http-api.md](http-api.md)）
 | 执行环境 | 路径 |
 |----------|------|
 | **本地文件 shell** | `Sandbox.exec`（[sandbox-shell.md](sandbox-shell.md)） |
-| **VM / 设备 shell** | Gateway internal VM API，经 **`/v1/proxy/...`**，**不是** `sandbox.py` |
+| **VM / 设备 shell** | Business internal VM API，经 **`/v1/proxy/...`**，**不是** `sandbox.py` |
 
 ---
 
 ## 相关
 
-- [proxy-gateway-routes.md](proxy-gateway-routes.md) — `command` → Gateway 路径表  
+- [proxy-gateway-routes.md](proxy-gateway-routes.md) — `command` → Business 路径表  
 - [http-api.md](http-api.md)  
 - [sandbox-shell.md](sandbox-shell.md)  
