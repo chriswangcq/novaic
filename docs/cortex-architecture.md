@@ -12,7 +12,7 @@
 | `Recall` 与全局记忆索引 | **[cortex/recall.md](cortex/recall.md)** |
 | `CortexStore`、注册表、对象键 | **[cortex/storage-and-keys.md](cortex/storage-and-keys.md)** |
 | `Sandbox.exec`、物化与回写 | **[cortex/sandbox-shell.md](cortex/sandbox-shell.md)** |
-| `Compactor`、归档、gem fusion | **[cortex/compactor-and-gem-fusion.md](cortex/compactor-and-gem-fusion.md)** |
+| 已退役：`Compactor`、自动摘要、gem fusion | **[cortex/compactor-and-gem-fusion.md](cortex/compactor-and-gem-fusion.md)** |
 | `EngineConfig`、`engine.json`、指标 | **[cortex/engine-config-and-metrics.md](cortex/engine-config-and-metrics.md)** |
 | `Cortex` 运行时门面 | **[cortex/runtime-facade.md](cortex/runtime-facade.md)** |
 | HTTP 路由清单 | **[cortex/http-api.md](cortex/http-api.md)** |
@@ -42,8 +42,8 @@
 
 - **Scope / Skill** 生命周期与 **步骤时间线**（`steps/_index.jsonl` + 单步 JSON 文件）；
 - **上下文拼装**：`ContextEngine.prepare_messages_for_llm` 按时间线做 **DFS** 式展开（开放子 scope 递归，已归档 scope 折叠为摘要），再经 `**budget_compact`** 做 token 预算压缩；
-- **Recall**：从已归档 **根 scope** 的 `summary.md` 生成「记忆」型 system 消息（受 token 预算约束）；
-- **Compaction**：scope 结束时摘要、归档、可选 gem fusion（见 `compactor.py`）；
+- **Recall**：历史 root scope 摘要读取能力；主 LLM 路径不再依赖独立 wake summary 通道；
+- **Scope 归档**：生命周期容器归档不生成 summary；只有 LLM 显式 child `skill_end(report=...)` 写该 child 的 `summary.md`；
 - **Sandbox**：每次 `shell` 在临时目录物化 `/ro`+/`rw`，执行子进程，再把 `**/rw` 变更**写回存储；
 - **GatewayProxy**：把 CLI 中的「业务/设备」类命令转到 **Gateway `/internal/...`**（与 Cortex 本地认知 API 分离）。
 
@@ -79,7 +79,6 @@
 | `**context_stack/budget.py**`    | `budget_compact`：紧急/温和压缩、按轮截断 tool 内容                                                                                  |
 | `**context_stack/types.py**`     | 类型与 token 计数相关定义                                                                                                       |
 | `**recall.py**`                  | `Recall`：读 `/ro/scopes/_index.jsonl` + 各 `summary.md`                                                                  |
-| `**compactor.py**`               | scope 结束时摘要与归档逻辑、与 `archive_root_scope` 等配合                                                                            |
 | `**sandbox.py**`                 | `Sandbox.exec`：物化 workspace → shell → 回写 `/rw`                                                                         |
 | `**runtime.py**`                 | `**Cortex**` 门面：`tool_read` / `tool_write` / `tool_shell`、`skill_begin` / `skill_end`、`prepare_system_prompt`（Recall）等 |
 | `**config.py**`                  | `**EngineConfig**`、`load_engine_config`（如 `/ro/config/engine.json`）                                                    |
@@ -138,10 +137,10 @@
 
 ---
 
-## 6. Recall 与 Compactor
+## 6. Recall 与 Summary 边界
 
 - **Recall**：扫描 `**/ro/scopes/_index.jsonl`** 中 **depth==0** 的根；按 **token budget** 优先装入**较新**根 scope 的 `summary.md`，再按时间顺序输出 **system** 消息，带 `_metadata`（`origin: recall` 等）。  
-- **Compactor**：在 scope 结束路径上生成摘要、`**archive_root_scope`** 写入 `summary.md`、更新索引；可与 **gem fusion**（读各 scope 的 `meta.json` 的 `ended_at` 等）协同，细节见 `compactor.py`。
+- **Summary 写入边界**：自动摘要与 Gem Fusion 已退役。结构性 `scope_end` 只归档；唯一 durable summary 写入路径是 LLM 显式开启的 child skill 通过 `skill_end(report=...)` 关闭。
 
 ---
 
@@ -155,9 +154,9 @@
 
 ## 8. `Cortex` 运行时（`runtime.py`）
 
-- 聚合 `**Workspace`、`Sandbox`、`Recall`、`Compactor`**、hooks、metrics、可选 summarizer。  
+- 聚合 `**Workspace`、`Sandbox`、hooks、metrics。  
 - `**prepare_system_prompt`**：调用 `**recall.generate()`**（注意：仓库内 **无** 名为 `prepare_llm_context` 的 Python 方法；该名称出现在 **Agent Runtime 的 topic** 中）。  
-- `**skill_begin(scope_id, child_scope_id, name, ...)` / `skill_end(scope_id, child_scope_id, report)`**：创建/结束 skill scope。`**child_scope_id`** 由 LLM 显式指定，**全局唯一**（跨 active + archived）；`**skill_end`** 严格 LIFO，只能关栈顶。`**skill_end`** 会调用 `**compactor.compact**`。详见 [cortex/scope-lifecycle.md §9](cortex/scope-lifecycle.md#9-skill-scope-生命周期llm-可见栈式)。  
+- `**skill_begin(scope_id, child_scope_id, name, ...)` / `skill_end(scope_id, child_scope_id, report)`**：创建/结束 skill scope。`**child_scope_id`** 由 LLM 显式指定，**全局唯一**（跨 active + archived）；`**skill_end`** 严格 LIFO，只能关栈顶，并将 `report` 原样写成该 child scope 的 `summary.md`。详见 [cortex/scope-lifecycle.md §9](cortex/scope-lifecycle.md#9-skill-scope-生命周期llm-可见栈式)。  
 - 内置工具 schema 与 `load_tool_schemas`、技能安装 `install_skill` 等与 `**tool_schemas.py**`、`**/ro/skills**` 联动。
 
 ---
@@ -212,13 +211,13 @@
 
 - `**log_cortex(event, **kwargs)`**：统一前缀 `[CORTEX]`，值长度截断。  
 - 各模块广泛使用 `**logging.getLogger(__name__)`**。  
-- 测试位于 `**novaic-cortex/tests/`**（扁平目录），如 `test_workspace*.py`、`test_sandbox*.py`、`test_recall*.py`、`test_compactor*.py`、`test_context_budget*.py`、`test_engine_*.py` 等；`**ContextEngine` 多通过 API 与 budget/配置间接覆盖**。
+- 测试位于 `**novaic-cortex/tests/`**（扁平目录），如 `test_workspace*.py`、`test_sandbox*.py`、`test_recall*.py`、`test_context_budget*.py`、`test_engine_*.py` 等；`**ContextEngine` 多通过 API 与 budget/配置间接覆盖**。
 
 ---
 
 ## 13. 配置
 
-- `**EngineConfig`**（`config.py`）：`context_window`、compact 阈值、tool 输出上限、sandbox 超时、fusion 相关参数等，常由 `**/ro/config/engine.json`** 经 `load_engine_config` 加载。  
+- `**EngineConfig`**（`config.py`）：`context_window`、compact 阈值、tool 输出上限、sandbox 超时等，常由 `**/ro/config/engine.json`** 经 `load_engine_config` 加载。  
 - 与父目录文档 `**docs/architecture/cortex.md**` 的部署表一致处：端口 **19996**、OSS 环境变量；**以子模块 `README` 与 `config.py` 为最新准**。
 
 ---
