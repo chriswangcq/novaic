@@ -125,7 +125,7 @@
 | PR-72  | `[✓]`  | [Align prompt and tool contract with agent-root continuity](PR-72-agent-root-prompt-contract-cleanup.md) **— Runtime+Business deployed + smoke-verified 2026-04-27** | PR-70, PR-71 | Prompt contract | 0.5 d | __ |
 | PR-73  | `[✓]`  | [Improve folded-scope rendering and empty-summary policy](PR-73-folded-scope-rendering-and-empty-summary-policy.md) **— Cortex deployed + smoke-verified 2026-04-27** | PR-70 | LLM input quality | 0.5 d | __ |
 | PR-74  | `[✓]`  | [Delete Cortex auto-summary / Compactor path](PR-74-cortex-delete-compactor-auto-summary.md) **— Cortex deployed + smoke-verified 2026-04-27** | PR-70, PR-73 | Cortex boundary + memory correctness | 0.5–1 d | __ |
-| PR-75  | `[ ]`  | [Remove BusinessProxy memory/task surfaces from Cortex](PR-75-remove-cortex-business-proxy-memory-task.md) | PR-74 preferred | Cortex ownership boundary | 0.5–1 d | __ |
+| PR-75  | `[✓]`  | [Remove BusinessProxy memory/task surfaces from Cortex](PR-75-remove-cortex-business-proxy-memory-task.md) **— Cortex deployed + smoke-verified 2026-04-27** | PR-74 preferred | Cortex ownership boundary | 0.5–1 d | __ |
 | PR-76  | `[ ]`  | [Add Cortex boundary guardrails](PR-76-cortex-boundary-ci-guardrails.md) | PR-74, PR-75 | Regression prevention | 0.5 d | __ |
 | PR-77  | `[ ]`  | [Tighten LLM tool descriptions around child-skill summaries](PR-77-llm-tool-description-child-skill-contract.md) | PR-74 preferred | Tool contract + agent behavior | 0.5 d | __ |
 

@@ -31,12 +31,12 @@
 
 ---
 
-## 4. 与 Gateway VM Shell 的区别
+## 4. 与 VM Shell 代理的区别
 
 - **本 Sandbox**：子进程在 **Cortex 机**上跑，看到的是 **物化后的 workspace 文件**。  
-- `**GatewayProxy`** 路由的 `**shell_exec**` 等：请求发到 **Gateway `/internal/.../vm/...`**，在 **远端 VM** 执行，**不是** `sandbox.py` 这条路径。
+- `**BusinessProxy`** 路由的 `**shell_exec**` 等：请求发到 **Business `/internal/.../vm/...`**，再由业务/设备链路在 **远端 VM** 执行，**不是** `sandbox.py` 这条路径。
 
-CLI（`cli.py`）里「设备/业务」命令走 `**/v1/proxy/{command}`** → Gateway。
+CLI（`cli.py`）里保留的 `chat`、设备/VM、subagent 命令走 `**/v1/proxy/{command}`** → Business。`memory`、`notebook`、`task`、`search` 不再由 Cortex 代理。
 
 ---
 

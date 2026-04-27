@@ -16,7 +16,7 @@
 | `EngineConfig`、`engine.json`、指标 | **[cortex/engine-config-and-metrics.md](cortex/engine-config-and-metrics.md)** |
 | `Cortex` 运行时门面 | **[cortex/runtime-facade.md](cortex/runtime-facade.md)** |
 | HTTP 路由清单 | **[cortex/http-api.md](cortex/http-api.md)** |
-| JWT、`GatewayProxy`、`novaic` CLI | **[cortex/proxy-cli-auth.md](cortex/proxy-cli-auth.md)** |
+| JWT、`BusinessProxy`、`novaic` CLI | **[cortex/proxy-cli-auth.md](cortex/proxy-cli-auth.md)** |
 | `log_cortex`、测试目录 | **[cortex/observability-and-tests.md](cortex/observability-and-tests.md)** |
 | 部署启动、OSS 环境变量 | **[cortex/deployment-and-startup.md](cortex/deployment-and-startup.md)** |
 | `/ro`/`/rw` ACL、`_sys_*` | **[cortex/workspace-acl-and-sys-writes.md](cortex/workspace-acl-and-sys-writes.md)** |
@@ -29,7 +29,7 @@
 | `steps/_index.jsonl` 与磁盘载荷 | **[cortex/step-index-and-payload-schema.md](cortex/step-index-and-payload-schema.md)** |
 | 会话 `meta.json` | **[cortex/session-meta-json.md](cortex/session-meta-json.md)** |
 | Internal API 请求/响应摘要 | **[cortex/internal-api-schemas.md](cortex/internal-api-schemas.md)** |
-| `/v1/proxy/{command}` → Gateway | **[cortex/proxy-gateway-routes.md](cortex/proxy-gateway-routes.md)** |
+| `/v1/proxy/{command}` → Business | **[cortex/proxy-gateway-routes.md](cortex/proxy-gateway-routes.md)** |
 | 源码中的设计稿引用 | **[cortex/design-doc-links.md](cortex/design-doc-links.md)** |
 | 索引与学习路径 | **[cortex/README.md](cortex/README.md)** |
 
@@ -45,7 +45,7 @@
 - **Recall**：历史 root scope 摘要读取能力；主 LLM 路径不再依赖独立 wake summary 通道；
 - **Scope 归档**：生命周期容器归档不生成 summary；只有 LLM 显式 child `skill_end(report=...)` 写该 child 的 `summary.md`；
 - **Sandbox**：每次 `shell` 在临时目录物化 `/ro`+/`rw`，执行子进程，再把 `**/rw` 变更**写回存储；
-- **GatewayProxy**：把 CLI 中的「业务/设备」类命令转到 **Gateway `/internal/...`**（与 Cortex 本地认知 API 分离）。
+- **BusinessProxy（遗留代理面）**：仅保留 CLI 的 `chat`、设备/VM、subagent 代理命令；`memory`、`notebook`、`task`、`search` 已退出 Cortex 代理面。
 
 运行时对外是 **单一 FastAPI 应用**（`novaic_cortex.api:app`），默认监听 `**0.0.0.0:19996`**（`CORTEX_HOST` / `CORTEX_PORT`）。
 
@@ -57,9 +57,9 @@
 | 项           | 说明                                                                                                                                                             |
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Uvicorn 入口  | `python -m novaic_cortex.main_cortex` 或 `uvicorn novaic_cortex.main_cortex:app`                                                                                |
-| 启动钩子        | `main_cortex.py`：`startup` 时创建 OSS boto 客户端、`WorkspaceRegistry`、`GatewayProxy` 并注入全局                                                                           |
+| 启动钩子        | `main_cortex.py`：`startup` 时创建 OSS boto 客户端、`WorkspaceRegistry`、`BusinessProxy` 并注入全局                                                                           |
 | 对象存储        | 环境变量 `**ALIBABA_CLOUD_ACCESS_KEY_ID`**、`**ALIBABA_CLOUD_ACCESS_KEY_SECRET`**；`**NOVAIC_OSS_ENDPOINT**`、`**NOVAIC_OSS_REGION**`、`**NOVAIC_OSS_BUCKET**`（默认值见代码） |
-| Gateway 侧信任 | `**GATEWAY_INTERNAL_URL**`（默认如 `http://127.0.0.1:19999`）、`**CORTEX_INTERNAL_KEY**`（`X-Internal-Key`）                                                           |
+| Business 侧信任 | `**BUSINESS_INTERNAL_URL**`（默认如 `http://127.0.0.1:19998`）、`**CORTEX_INTERNAL_KEY**`（`X-Internal-Key`）                                                           |
 
 
 ---
@@ -82,7 +82,7 @@
 | `**sandbox.py**`                 | `Sandbox.exec`：物化 workspace → shell → 回写 `/rw`                                                                         |
 | `**runtime.py**`                 | `**Cortex**` 门面：`tool_read` / `tool_write` / `tool_shell`、`skill_begin` / `skill_end`、`prepare_system_prompt`（Recall）等 |
 | `**config.py**`                  | `**EngineConfig**`、`load_engine_config`（如 `/ro/config/engine.json`）                                                    |
-| `**proxy.py**`                   | `**GatewayProxy**`：转发到 Gateway internal API                                                                            |
+| `**proxy.py**`                   | `**BusinessProxy**`：保留 `chat`、设备/VM、subagent 的遗留代理；不再代理 `memory`/`notebook`/`task`/`search`                                                                            |
 | `**cli.py**`                     | `novaic` CLI：Cortex `/v1/*` + `/v1/proxy/*`                                                                            |
 | `**auth.py**`                    | 能力 JWT 签发/校验（`CORTEX_JWT_SECRET`）                                                                                      |
 | `**observability.py**`           | `log_cortex(event, **kwargs)` 结构化日志                                                                                    |
@@ -148,7 +148,7 @@
 
 - `**Sandbox.exec()`**（`sandbox.py`）：一次调用一次临时目录：`list_recursive` 物化 `ro`/`rw` → `asyncio.create_subprocess_shell` → 仅把 `**/rw`** 上的变更写回 `Workspace`；`**/ro` 在沙箱内只读**。  
 - `**Cortex.tool_shell`**（`runtime.py`）：超时来自 `**EngineConfig`**（`sandbox_timeout_default` / `sandbox_timeout_max`），并更新 metrics。  
-- **与 VM 的区别**：CLI `**/v1/proxy/shell_exec`** 经 `**GatewayProxy`** 转到 Gateway **VM shell**，**不是** `sandbox.py` 这条本地文件系统 shell。
+- **与 VM 的区别**：CLI `**/v1/proxy/shell_exec`** 经 `**BusinessProxy`** 转到 Business/Device 的 **VM shell**，**不是** `sandbox.py` 这条本地文件系统 shell。
 
 ---
 
@@ -186,10 +186,10 @@
 
 ---
 
-## 10. GatewayProxy 与 CLI
+## 10. BusinessProxy 与 CLI
 
-- `**GatewayProxy`**（`proxy.py`）：HTTP 客户端访问 `**GATEWAY_INTERNAL_URL`**，带 `**X-Internal-Key**`、`X-User-Id`、`X-Agent-Id`，**不**转发能力 JWT。  
-- `**cli.py`**：环境变量 `**NOVAIC_API`**（默认 `http://localhost:19996`）、`**NOVAIC_TOKEN**`（能力 JWT）；认知命令直打 Cortex，业务命令走 `**POST /v1/proxy/{command}**`。
+- `**BusinessProxy`**（`proxy.py`）：HTTP 客户端访问 `**BUSINESS_INTERNAL_URL`**，带 `**X-Internal-Key**`、`X-User-Id`、`X-Agent-Id`，**不**转发能力 JWT。  
+- `**cli.py`**：环境变量 `**NOVAIC_API`**（默认 `http://localhost:19996`）、`**NOVAIC_TOKEN**`（能力 JWT）；认知命令直打 Cortex，保留的 `chat`、设备/VM、subagent 命令走 `**POST /v1/proxy/{command}**`。`memory`、`notebook`、`task`、`search` 已删除。
 
 ---
 

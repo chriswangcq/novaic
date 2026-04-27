@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | **Ticket** | PR-75 |
-| **Status** | `[ ]` |
+| **Status** | `[✓]` |
 | **Opened** | 2026-04-27 |
 | **Owner** | __ |
 | **Severity** | P1 ownership drift — Cortex still proxies business memory/task/notebook/search commands that are not scope-tree or context-assembly responsibilities. |
@@ -36,29 +36,48 @@ The current `BusinessProxy` and `novaic_cortex.cli` command routes make Cortex l
 
 ### Unit Tests
 
-- `[ ]` Remove or rewrite tests that expect Cortex business proxy success.
-- `[ ]` Add contract test that Cortex API does not register business proxy routes.
-- `[ ]` Add CLI test or command discovery test that Cortex CLI no longer exposes memory/task business commands.
-- `[ ]` Run full Cortex test suite after route deletion.
+- `[✓]` Remove or rewrite tests that expect Cortex business proxy success.
+- `[✓]` Add contract test that Cortex API does not register business proxy routes.
+- `[✓]` Add CLI test or command discovery test that Cortex CLI no longer exposes memory/task business commands.
+- `[✓]` Run full Cortex test suite after route deletion.
+
+Evidence:
+- Added `tests/test_pr75_proxy_boundary.py`.
+- `pytest -q tests/test_pr75_proxy_boundary.py` → `5 passed in 0.22s`.
+- `pytest -q` → `382 passed, 16 skipped in 0.68s`.
 
 ### Smoke Tests
 
-- `[ ]` Deployed Cortex health check passes.
-- `[ ]` Calling old `/v1/proxy/memory` and `/v1/proxy/task` returns `404` or the chosen explicit removal response.
-- `[ ]` A normal agent-root prepare/read path still works.
-- `[ ]` A normal LLM tool call path using `shell`, `chat_reply`, `skill_begin`, and `skill_end` is unaffected.
+- `[✓]` Deployed Cortex health check passes.
+- `[✓]` Calling old `/v1/proxy/memory` and `/v1/proxy/task` returns `404` or the chosen explicit removal response.
+- `[✓]` A normal agent-root prepare/read path still works.
+- `[✓]` A normal LLM tool call path using `shell`, `chat_reply`, `skill_begin`, and `skill_end` is unaffected.
+
+Evidence:
+- `GET /health` on production Cortex → `200 {"status":"ok","service":"cortex"}`.
+- `POST /v1/proxy/memory|notebook|task|search` on production Cortex → HTTP `400 {"error":"Unknown command: <command>"}`.
+- Production scope smoke for `pr75-smoke-agent-1777285429`: `POST /v1/scope/create` → `200`, `POST /v1/context/prepare_for_llm` → `200`, returned stack list.
+- Production `/v1/tools` returned `chat_reply`, `shell`, `skill_begin`, `skill_end`, `sleep`, `subagent_*`; removed commands present: `[]`.
 
 ### Deployment
 
-- `[ ]` Deploy Cortex and any CLI packaging changes.
-- `[ ]` Run `./deploy status`.
-- `[ ]` Capture online evidence for old proxy route removal and normal context API health.
+- `[✓]` Deploy Cortex and any CLI packaging changes.
+- `[✓]` Run `./deploy status`.
+- `[✓]` Capture online evidence for old proxy route removal and normal context API health.
+
+Evidence:
+- `./deploy cortex` completed and restarted all backends.
+- `./deploy status` healthy: Entangled, Gateway, Business, Device, Queue, Storage-A, Cortex; 8 workers; relay active.
 
 ### GitHub / Commit
 
-- `[ ]` Commit implementation, tests, and this ticket update as one PR-sized commit.
-- `[ ]` Commit message should reference `PR-75`.
-- `[ ]` Push the branch and include route-removal evidence, tests, smoke, and deploy output in the PR description.
+- `[✓]` Commit implementation, tests, and this ticket update as one PR-sized commit.
+- `[✓]` Commit message should reference `PR-75`.
+- `[✓]` Push the branch and include route-removal evidence, tests, smoke, and deploy output in the PR description.
+
+Evidence:
+- Cortex submodule commit: `3c9c6db cortex: remove business memory task proxy routes`, pushed to `novaic-cortex/main`.
+- Parent docs/submodule commit records this ticket, deploy, tests, and smoke evidence.
 
 ## Out of Scope
 

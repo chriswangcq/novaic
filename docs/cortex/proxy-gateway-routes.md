@@ -4,21 +4,19 @@
 
 Cortex 在 **`Authorization: Bearer`**（能力 JWT）下接收 JSON body，按 **`command`** 转到 **Business Service**（`:19998`）**`/internal/...`**，请求头含 **`X-Internal-Key`**、**`X-User-Id`**、**`X-Agent-Id`**（见 [proxy-cli-auth.md](proxy-cli-auth.md)）。
 
+> **边界约束（PR-75）**：Cortex 不再代理 `memory`、`notebook`、`task`、`search`。这些属于业务/记忆/任务域，不属于 Cortex 的 scope 树维护或 LLM context 拼装职责。
+
 ---
 
 ## 1. 命令 → Business 路径（摘要）
 
 | `command` | 路由函数 | Business 路径模式（`*` 为 agent 相关） |
 |-----------|----------|--------------------------------------|
-| **`memory`** | `_route_memory` | `/internal/agents/{agent_id}/memory/...`（`save`/`recall`/`delete`/`GET namespaces`） |
-| **`notebook`** | `_route_notebook` | `/internal/agents/{agent_id}/notebook/...` |
 | **`chat`** | `_route_chat` | `POST /internal/agents/{agent_id}/chat/event` |
-| **`task`** | `_route_task` | `/internal/agents/{agent_id}/quadrant-tasks/...` |
 | **`browser`** | `_route_browser` | `POST /internal/agents/{agent_id}/vm/browser/{action}` |
 | **`screenshot`** | `_route_screenshot` | `POST /internal/agents/{agent_id}/vm/screenshot` |
 | **`keyboard`** | `_route_keyboard` | `POST /internal/agents/{agent_id}/vm/keyboard` |
 | **`mouse`** | `_route_mouse` | `POST /internal/agents/{agent_id}/vm/mouse` |
-| **`search`** | `_route_search` | `POST /internal/agents/{agent_id}/memory/recall`（body 用 `query`） |
 | **`shell_exec`** | `_route_shell_exec` | `POST /internal/agents/{agent_id}/vm/shell` |
 | **`qemu`** | `_route_qemu` | `/internal/agents/{agent_id}/qemu/...` |
 | **`subagent`** | `_route_subagent` | `/internal/agents/{agent_id}/subagent/...` 等 |

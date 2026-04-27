@@ -23,8 +23,8 @@
 | [runtime-facade.md](runtime-facade.md) | `Cortex` 门面、builtin tools、`skill_*` |
 | [http-api.md](http-api.md) | `api.py` 路由分层 |
 | [internal-api-schemas.md](internal-api-schemas.md) | Internal 路由请求/响应摘要 |
-| [proxy-cli-auth.md](proxy-cli-auth.md) | 能力 JWT、`GatewayProxy`、`novaic` CLI |
-| [proxy-gateway-routes.md](proxy-gateway-routes.md) | `/v1/proxy/{command}` → Gateway 路径 |
+| [proxy-cli-auth.md](proxy-cli-auth.md) | 能力 JWT、`BusinessProxy`、`novaic` CLI |
+| [proxy-gateway-routes.md](proxy-gateway-routes.md) | `/v1/proxy/{command}` → Business 路径 |
 | [observability-and-tests.md](observability-and-tests.md) | `log_cortex`、`tests/` |
 | [deployment-and-startup.md](deployment-and-startup.md) | `main_cortex`、OSS、`startup` |
 | [workspace-acl-and-sys-writes.md](workspace-acl-and-sys-writes.md) | `/ro`/`/rw` ACL、`_sys_*` |
@@ -49,7 +49,7 @@
 7. **压缩与配置** → [engine-config-and-metrics.md](engine-config-and-metrics.md) → [budget-compact-algorithm.md](budget-compact-algorithm.md)  
 8. **Runtime 调用链** → [agent-runtime-cortex-call-chain.md](agent-runtime-cortex-call-chain.md) → [agent-runtime-all-topics.md](agent-runtime-all-topics.md)  
 9. **HTTP 与契约** → [http-api.md](http-api.md) → [internal-api-schemas.md](internal-api-schemas.md)  
-10. **Proxy / Gateway** → [proxy-cli-auth.md](proxy-cli-auth.md) → [proxy-gateway-routes.md](proxy-gateway-routes.md)  
+10. **Proxy / Business** → [proxy-cli-auth.md](proxy-cli-auth.md) → [proxy-gateway-routes.md](proxy-gateway-routes.md)  
 11. **其余专题** → [sandbox-shell.md](sandbox-shell.md)、[runtime-facade.md](runtime-facade.md)、[deployment-and-startup.md](deployment-and-startup.md)、[workspace-acl-and-sys-writes.md](workspace-acl-and-sys-writes.md)、[builtin-tools-and-skills.md](builtin-tools-and-skills.md)、[extension-points.md](extension-points.md)、[satellite-modules.md](satellite-modules.md)、[observability-and-tests.md](observability-and-tests.md)、[design-doc-links.md](design-doc-links.md)  
 
 可按需跳读；**契约与排障**优先 **§3–4、§9–10**。
