@@ -8,6 +8,7 @@
 | 主题 | 文档 |
 | --- | --- |
 | Scope 创建、激活、归档、统一时间线 | **[cortex/scope-lifecycle.md](cortex/scope-lifecycle.md)** |
+| Cortex 边界契约与 guardrail | **[cortex/boundary-contract.md](cortex/boundary-contract.md)** |
 | `_index.jsonl`、DFS 展开/折叠、`budget_compact` | **[cortex/context-timeline-and-dfs.md](cortex/context-timeline-and-dfs.md)** |
 | `Recall` 与全局记忆索引 | **[cortex/recall.md](cortex/recall.md)** |
 | `CortexStore`、注册表、对象键 | **[cortex/storage-and-keys.md](cortex/storage-and-keys.md)** |
@@ -38,7 +39,7 @@
 
 ## 1. Cortex 是什么
 
-**Cortex** 是 NovAIC Agent 的**认知与文件工作空间服务**：在对象存储（生产为 **阿里云 OSS**）上维护每个 `(user_id, agent_id)` 的 **Workspace**（逻辑路径 `/ro/*` 与 `/rw/*`），提供：
+**Cortex** 是 NovAIC Agent 的**scope/context 基础设施**：它的核心职责只有两件事，维护 **LIFO scope 树**，并从这棵树拼装 **LLM context**。在对象存储（生产为 **阿里云 OSS**）上维护每个 `(user_id, agent_id)` 的 **Workspace**（逻辑路径 `/ro/*` 与 `/rw/*`），提供：
 
 - **Scope / Skill** 生命周期与 **步骤时间线**（`steps/_index.jsonl` + 单步 JSON 文件）；
 - **上下文拼装**：`ContextEngine.prepare_messages_for_llm` 按时间线做 **DFS** 式展开（开放子 scope 递归，已归档 scope 折叠为摘要），再经 `**budget_compact`** 做 token 预算压缩；
