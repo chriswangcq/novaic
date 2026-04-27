@@ -1,43 +1,38 @@
-# Compactor 与 Gem Fusion
+# Retired: Compactor 与 Gem Fusion
 
-> 源码：`novaic_cortex/compactor.py`（**`Compactor`**）。与 [scope-lifecycle.md](scope-lifecycle.md) 中的 **`archive_root_scope` / `complete_child_scope`** 衔接。
+> PR-74 后，`novaic_cortex/compactor.py`、LLM 自动摘要器接线、Gem Fusion 写入路径均已删除。
 
-## 1. `compact(scope_id, report, scope_path, is_root)`
+本文保留为历史墓碑，避免旧链接断裂。
 
-1. **`read_step_index(scope_path)`**（默认 **`/ro/active/{scope_id}`**）得到时间线。  
-2. **`_build_summary_context(step_index)`**：把索引压成可读文本（tool/子 scope 行摘要），供 LLM 摘要或占位统计。  
-3. **摘要正文 `summary`** 来源优先级：  
-   - 调用方传入的 **`report`**；  
-   - 否则若配置了 **`summarizer`** → 调 **`summarizer.summarize(context, max_tokens=...)`**；  
-   - 否则生成 **无 LLM** 的 Markdown 占位（步数、tool/子 scope 计数）。  
-4. **`is_root=True`**：**`archive_root_scope(scope_id, summary)`** → 树移到 `/ro/scopes/` 并写全局 `_index.jsonl`。  
-5. **`is_root=False`**：**`complete_child_scope(scope_path, summary)`** → 子 scope 原地 **`summary.md` + meta archived**。  
-6. **根归档后**：**`_maybe_fuse_gem()`**（见 §3）。  
-7. 返回 **`CompactResult`**（`scope_id`、`summary`、`archive_path`）。
+## 当前边界
 
----
+Cortex 只负责两件事：
 
-## 2. 与 `skill_end` 的关系
+1. 维护 LIFO scope 树。
+2. 按 scope 树拼装 LLM context。
 
-**`Cortex.skill_end`**（`runtime.py`）会调 **`compactor.compact`**（子 scope / 根 scope 由调用约定决定，见代码中 `is_root` 与 `scope_path`）。
+`summary.md` 只有一个生产路径：
 
----
+```text
+LLM 显式 skill_begin(child_scope_id=...)
+→ LLM 显式 skill_end(child_scope_id=..., report=...)
+→ Cortex 将 report 原样写为该 child scope 的 summary.md
+→ 后续 agent-root DFS 折叠该 child scope
+```
 
-## 3. Gem Fusion（`_maybe_fuse_gem` → `_fuse_at_level`）
+结构性 `scope_end` 只归档生命周期容器，不生成、不推断、不保留传入 report 为 durable summary。
 
-- **开关**：**`gem_fusion_enabled`**、**`fusion_factor`（merge factor）**、**`gem_fusion_max_level`**（对应 **`EngineConfig`** 字段）。  
-- **触发时机**：仅在 **`compact` 且 `is_root=True`** 归档成功之后。  
-- **L1**：在 **`/ro/scopes/`** 下收集**根 scope 目录名**（排除 **`__fused__`**）。当 **根数量 `n` 为 `fusion_factor` 的整数倍** 且批次未跑过时，取 **`ended_at` 排序后最后 `fusion_factor` 个** 根的 **`summary.md`**，拼成一个大 **`summary.md`**，写到  
-  **`/ro/scopes/__fused__/fuse_L1_{seq}/`**，并写 **`meta.json`**（`level: 1`, `children_ids`）。  
-- **L2+**：从 **`__fused__/fuse_L{prev}_*/`** 再按批融合，生成 **`fuse_L{level}_{seq}`**，逻辑类似（读子 fused 的 `summary.md`）。  
-- **指标**：`**_metrics.total_fusions**`、`**max_fusion_level**`；日志 **`log_cortex("fusion.triggered", ...)`**。
+## 已删除内容
 
-> **注意**：Recall（[recall.md](recall.md)）读的是 **`/ro/scopes/_index.jsonl` 里 depth==0 的「真实 scope」**；**`__fused__` 节点是否参与 Recall** 取决于索引是否单独写入——当前实现中 fusion 主要落在 **`__fused__`** 树，与 Recall 根表是**不同路径**，具体产品行为以 **`recall.py`** 是否扩展为准。
-
----
+- `Compactor.compact(...)`
+- `Summarizer` 注入协议
+- `auto_summary_max_tokens`
+- `gem_fusion_*` 配置
+- `/ro/scopes/__fused__/...` 生成逻辑
+- `total_fusions`、`max_fusion_level`、`total_tokens_saved`、`compactions_completed` 指标
 
 ## 相关
 
-- [scope-lifecycle.md](scope-lifecycle.md) — 归档  
-- [engine-config-and-metrics.md](engine-config-and-metrics.md) — `gem_fusion_*` 配置  
-- [recall.md](recall.md) — 记忆索引  
+- [scope-lifecycle.md](scope-lifecycle.md)
+- [context-timeline-and-dfs.md](context-timeline-and-dfs.md)
+- [engine-config-and-metrics.md](engine-config-and-metrics.md)

@@ -1,14 +1,14 @@
 # Cortex 运行时门面（`Cortex`）
 
-> 源码：`novaic_cortex/runtime.py`（**`Cortex`**）。聚合 **`Workspace`、`Sandbox`、`Recall`、`Compactor`**、可选 **`Summarizer` / `TokenCounter` / `CortexHooks`**、**`CortexMetrics`**。
+> 源码：`novaic_cortex/runtime.py`（**`Cortex`**）。聚合 **`Workspace`、`Sandbox`、`CortexHooks`**、**`CortexMetrics`**。
 
 ## 1. 构造与 `initialize()`
 
-- 构造时用 **`EngineConfig()` 默认值**先建好 **`Sandbox` / `Recall` / `Compactor`**（避免在 `initialize()` 前调用时未初始化）。  
+- 构造时用 **`EngineConfig()` 默认值**先建好 **`Sandbox`**（避免在 `initialize()` 前调用时未初始化）。  
 - **`await initialize()`** 会：  
   1. **`workspace.initialize()`**  
   2. **`_seed_builtin_tools()`**：若不存在则把 **`BUILTIN_TOOL_SCHEMAS`** 写入 **`/ro/config/tools/{name}.json`** 与 **`_index.json`**（键空间见 `store` 前缀 `agents/{agent_id}/ro/...`）。  
-  3. **`load_engine_config(workspace)`** 读 **`/ro/config/engine.json`**，并用新配置 **重建** `Sandbox`、`Recall`、`Compactor`。
+  3. **`load_engine_config(workspace)`** 读 **`/ro/config/engine.json`**，并用新配置 **重建** `Sandbox`。
 
 ---
 
@@ -18,7 +18,7 @@
 |------|----------------|
 | **`tool_read` / `tool_write`** | 校验路径在 `/ro/` 或 `/rw/`，经 `Workspace` 读写 |
 | **`tool_shell`** | `Sandbox.exec`，超时取 `min(请求, config.sandbox_timeout_max)`，并更新 metrics |
-| **`skill_begin(scope_id, child_scope_id, name, task?)` / `skill_end(scope_id, child_scope_id, report)`** | 子 scope 生命周期；**`child_scope_id`** 由 LLM 自选、在**整棵 scope 树**（active + archived）中**全局唯一**（`skill_begin` 拒重），且 **`skill_end` 必须匹配栈顶**（LIFO 严校验）。**`skill_end`** 触发 **`compactor.compact`**（见 [compactor-and-gem-fusion.md](compactor-and-gem-fusion.md)）。详见 [scope-lifecycle.md §9](scope-lifecycle.md#9-skill-scope-生命周期llm-可见栈式) |
+| **`skill_begin(scope_id, child_scope_id, name, task?)` / `skill_end(scope_id, child_scope_id, report)`** | 子 scope 生命周期；**`child_scope_id`** 由 LLM 自选、在**整棵 scope 树**（active + archived）中**全局唯一**（`skill_begin` 拒重），且 **`skill_end` 必须匹配栈顶**（LIFO 严校验）。**`skill_end(report=...)`** 将 report 原样写为该 child scope 的 `summary.md`。详见 [scope-lifecycle.md §9](scope-lifecycle.md#9-skill-scope-生命周期llm-可见栈式) |
 | **`load_tool_schemas`** | 合并 builtin + skill 目录下的 schema |
 | **`prepare_system_prompt` / `suggest_compact`** | Recall 与压缩建议（`context_budget`） |
 

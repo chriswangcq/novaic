@@ -15,7 +15,7 @@
 | [recall.md](recall.md) | `Recall`、`/ro/scopes/_index.jsonl`、与 session `meta` 中 recall 的关系 |
 | [storage-and-keys.md](storage-and-keys.md) | `CortexStore`、`WorkspaceRegistry`、对象键 |
 | [sandbox-shell.md](sandbox-shell.md) | `Sandbox.exec`、与 VM/proxy shell 的区别 |
-| [compactor-and-gem-fusion.md](compactor-and-gem-fusion.md) | `Compactor`、归档、gem fusion |
+| [compactor-and-gem-fusion.md](compactor-and-gem-fusion.md) | 已退役：`Compactor`、自动摘要、gem fusion |
 | [engine-config-and-metrics.md](engine-config-and-metrics.md) | `EngineConfig`、`engine.json`、指标 |
 | [budget-compact-algorithm.md](budget-compact-algorithm.md) | `budget_compact` 三档算法 |
 | [agent-runtime-cortex-call-chain.md](agent-runtime-cortex-call-chain.md) | `cortex.prepare_llm_context` 调用链 |

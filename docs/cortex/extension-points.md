@@ -1,6 +1,6 @@
 # 扩展点：Hooks、协议、StepTree、压缩建议
 
-> 源码：`hooks.py`、`protocols.py`、`context_stack/step_tree.py`、`context_stack/engine.py`、`context_stack/summarizer.py`、`context_budget.py`、`runtime.py`（**`suggest_compact`**、**`_fire_hook`**）。
+> 源码：`hooks.py`、`protocols.py`、`context_stack/step_tree.py`、`context_stack/engine.py`、`context_budget.py`、`runtime.py`（**`suggest_compact`**、**`_fire_hook`**）。
 
 ## 1. `CortexHooks`（`hooks.py`）
 
@@ -9,7 +9,6 @@
 | 字段 | 含义 |
 |------|------|
 | `on_scope_created` / `on_scope_archived` | scope 创建 / 归档 |
-| `on_fusion` | gem fusion |
 | `on_skill_loaded` | 技能安装完成 |
 | `on_skill_begin` / `on_skill_end` | 技能 scope 起止 |
 
@@ -21,8 +20,7 @@
 
 | 协议 | 方法 |
 |------|------|
-| **`Summarizer`** | `async summarize(text, max_tokens=...)` — Compactor 等注入 LLM 摘要 |
-| **`TokenCounter`** | `count` / `count_messages` — Recall 与 token 预算 |
+| **`TokenCounter`** | `count` / `count_messages` — token 预算 |
 
 由 **宿主**（测试或上层服务）在构造 **`Cortex`** 时可选传入。
 
@@ -39,14 +37,6 @@
 
 **结论**：最终消息列表以 **`engine`** 为准；**`step_tree`** 是分析与辅助结构。
 
-## 5. `context_stack/summarizer.py`（无 LLM 统计摘要）
-
-**`generate_combined_summary(agent_report, index, scope_name)`**：把 agent 报告与从 **`_index.jsonl` 解析的统计**（`summarizer._analyze_unified_index`）拼成 Markdown。  
-**`workspace.py`** 中 scope 结束路径会用到（与 `scope_end_and_spawn` 等流程配合，见代码引用处）。
-
----
-
 ## 相关
 
-- [compactor-and-gem-fusion.md](compactor-and-gem-fusion.md) — `Summarizer` 与 Compactor  
 - [engine-config-and-metrics.md](engine-config-and-metrics.md) — 阈值与 `budget_compact`  
