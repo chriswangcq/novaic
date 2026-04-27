@@ -120,6 +120,10 @@
 | PR-67  | `[✓]`  | [Rewire wake lifecycle so each wake is a child scope under agent root](PR-67-wake-as-agent-root-child-scope.md) **— Runtime+Cortex deployed + smoke-verified 2026-04-25** | PR-65, PR-66 | R9 + Runtime | 1–2 d | __ |
 | PR-68  | `[✓]`  | [Restore `summary.md` semantics to scope-end report only](PR-68-summary-md-scope-end-report-only.md) **— Runtime+Cortex deployed + smoke-verified 2026-04-25** | PR-67 | Memory correctness | 0.5 d | __ |
 | PR-69  | `[✓]`  | [Retire `<PREV_SCOPE_HISTORY>` / `<PREV_SCOPE_TAIL>` from the main LLM path](PR-69-retire-prev-scope-history-tail-from-main-path.md) **— Runtime deployed + smoke-verified 2026-04-25** | PR-67, PR-68 | R9 cleanup | 0.5–1 d | __ |
+| PR-70  | `[✓]`  | [Add wake-scope summary finalizer before archive](PR-70-wake-summary-finalizer.md) **— Runtime deployed + smoke-verified 2026-04-27** | PR-65..PR-69 | Memory correctness | 0.5–1 d | __ |
+| PR-71  | `[ ]`  | [Keep no-tool retry attempts out of canonical LLM context](PR-71-no-tool-retry-private-context-cleanup.md) | PR-70 preferred | Context correctness | 0.5 d | __ |
+| PR-72  | `[ ]`  | [Align prompt and tool contract with agent-root continuity](PR-72-agent-root-prompt-contract-cleanup.md) | PR-70, PR-71 | Prompt contract | 0.5 d | __ |
+| PR-73  | `[ ]`  | [Improve folded-scope rendering and empty-summary policy](PR-73-folded-scope-rendering-and-empty-summary-policy.md) | PR-70 | LLM input quality | 0.5 d | __ |
 
 
 ---
