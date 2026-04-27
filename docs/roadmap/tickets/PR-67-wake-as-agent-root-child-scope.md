@@ -86,10 +86,10 @@ Validation:
   - Evidence log: `/opt/novaic/data/backups/pr67_wake_child_scope_smoke_20260425_183653.log`.
   - Smoke agent: `agent_id=pr67-smoke-agent-20260425_183653`, `subagent_id=main-pr67-smoke`, root `agent-root-main-pr67-smoke`.
   - Wake children:
-    - `pr67-wake-1-20260425_183653` at `/ro/active/agent-root-main-pr67-smoke/steps/0001_scope_pr67-wake-1-20260425_183653`, closed with summary `FIRST_WAKE_FOLDED_SUMMARY`.
+    - `pr67-wake-1-20260425_183653` at `/ro/active/agent-root-main-pr67-smoke/steps/0001_scope_pr67-wake-1-20260425_183653`, closed as a lifecycle container.
     - `pr67-wake-2-20260425_183653` at `/ro/active/agent-root-main-pr67-smoke/steps/0002_scope_pr67-wake-2-20260425_183653`, expanded during prepare, then closed.
   - Second prepare assertions passed:
-    - first wake summary present;
+    - explicit child skill summary present;
     - first wake raw context absent;
     - current wake input present;
     - no `<PREV_SCOPE_TAIL>` or `<PREV_SCOPE_HISTORY>` in assembled messages.

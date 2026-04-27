@@ -154,18 +154,18 @@ Skill scope 是 LLM 通过两个工具 **`skill_begin` / `skill_end`** 管理的
 
 ---
 
-## 10. 跨 root rolling summary history
+## 10. 已删除的跨 root 摘要拼贴
 
-> 2026-04-25 (PR-57)：源码 `novaic_cortex/workspace.py::list_archived_root_summaries` + `api.py::POST /v1/scope/list_summaries`；Runtime 注入端 `task_queue/handlers/runtime_handlers.py::_build_prev_scope_summary_messages`。
+> 2026-04-27：旧的跨 root 摘要拼贴通道已删除。Cortex 不再暴露批量读取 root 摘要的内部 API，Runtime 也不再构造额外的历史摘要 system block。
 
-`<PREV_SCOPE_TAIL>` 只能续到上一 turn 末尾，不够覆盖"前几 turn 在干啥"。Cortex 提供 K 个最近 root summary 的批量读出：
+现在只有一条 LLM 可见摘要路径：
 
-1. `Workspace.list_archived_root_summaries(limit=K, exclude_scope_ids=[...])`：读 `/ro/scopes/_index.jsonl`，过滤 `depth==0` 行 → 按 `scope_id` 去重保留最新 `ts` → 按时间从老到新排序 → 取最后 `limit` 条 → 回填每条的 `summary.md`（空也保留，由调用方决定要不要丢弃）。
-2. API 层 `POST /v1/scope/list_summaries` 是同名 RPC；响应 `{summaries: [{scope_id, summary, archived_at, depth}, ...]}`。
-3. Runtime `handle_session_init` 在 trigger message 之前注入一条 `<PREV_SCOPE_HISTORY>` system 消息：渲染每条 `archived_at`（ISO 时间）+ `summary` 文本，整块带字节 cap（`WAKE_PREV_SCOPE_SUMMARY_MAX_BYTES`，默认 16 KB）；条数由 `WAKE_PREV_SCOPE_HISTORY_COUNT` 控制（默认 5）。
-4. **PR-58 修正**：原版默认 `exclude_scope_ids=[previous_scope_id]`，结果"上一 turn"会被同时存在的 `<PREV_SCOPE_TAIL>` 和 history 之间双扣空，改为 `exclude_scope_ids=[]`，让 history 自然包含最新一条；尾部的近邻细节交给 `<PREV_SCOPE_TAIL>`，两边职责并存不互斥。
+1. LLM 显式调用 `skill_begin(...)` 打开子 skill。
+2. LLM 调用 `skill_end(report=...)` 关闭该子 skill。
+3. Cortex 将这个 report 原样写入该子 scope 的 `summary.md`。
+4. 后续 `prepare_for_llm` 从 agent root 做 DFS；wake 只是生命周期容器，Cortex 会穿过它，只渲染显式子 skill 的折叠摘要。
 
-观测：`wake_continuity_render_total{layer="state", result=...}`（PR-54）汇总两块 state 层的 render 健康。
+这避免了 Runtime 在 wake 关闭时从聊天内容、工具结果或历史 root scope 中再造一条“摘要”通道。
 
 ---
 
