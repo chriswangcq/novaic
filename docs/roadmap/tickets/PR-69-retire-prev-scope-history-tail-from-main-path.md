@@ -64,7 +64,7 @@ Evidence:
 
 - `./deploy runtime` → all backend services restarted, runtime deployed.
 - `./deploy status` → all ports healthy, `Workers: 8`.
-- Compatibility flags retained as explicit opt-in only: `WAKE_PREV_SCOPE_TAIL_ENABLED=1`, `WAKE_PREV_SCOPE_SUMMARY_ENABLED=1`.
+- Follow-up PR-74 removed the legacy summary splice flags entirely. `WAKE_PREV_SCOPE_TAIL_ENABLED=1` remains diagnostics-only.
 
 ### GitHub / Commit
 

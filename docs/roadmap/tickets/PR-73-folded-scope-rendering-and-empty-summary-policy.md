@@ -61,11 +61,10 @@ Evidence:
   - `has_dage True`
   - `has_pr72 True`
   - `has_pr73 True`
-- Root prepare excerpt now starts with useful folds such as:
-  - `[Wake 'user conversation' completed]`
-  - `Wake summary:`
-  - `Durable fact: User asked to be called 大哥.`
-- Cortex logs for smoke scope `54dd7d87-83b0-463b-a9d6-58437edc1746` showed seven historical empty wake scopes suppressed and useful closed wake scopes folded.
+- Follow-up PR-74 removed the wake-as-summary mental model entirely:
+  wake scopes are lifecycle containers, and only explicit child skill
+  `skill_end(report=...)` output is rendered as a folded summary.
+- Cortex logs for smoke scope `54dd7d87-83b0-463b-a9d6-58437edc1746` showed historical empty wake scopes suppressed; PR-74 tightened this further so non-empty wake close reports are also ignored by LLM context assembly.
 
 ### Deployment
 

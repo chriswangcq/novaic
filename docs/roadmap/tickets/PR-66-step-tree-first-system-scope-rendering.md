@@ -79,10 +79,10 @@ Validation:
 - Production smoke evidence:
   - Evidence log: `/opt/novaic/data/backups/pr66_system_scope_render_smoke_20260425_181721.log`.
   - Seeded agent root `pr66-root-20260425101721` with:
-    - closed child `wake-closed`, summary `closed wake summary`;
+    - closed child `wake-closed`, close report `closed lifecycle report`;
     - open child `wake-open`, context `system prompt in open wake` + `open child visible request`.
   - `/v1/context/prepare_for_llm` returned:
-    - `[Skill 'wake closed' completed]\nclosed wake summary`;
+    - `[Skill 'wake closed' completed]\nclosed lifecycle report`;
     - `system prompt in open wake`;
     - `open child visible request`.
   - Assertion passed that closed child internal text did not leak and no `<PREV_SCOPE_HISTORY>` / `<PREV_SCOPE_TAIL>` block was required.
