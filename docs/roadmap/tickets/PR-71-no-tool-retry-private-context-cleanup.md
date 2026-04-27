@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | **Ticket** | PR-71 |
-| **Status** | `[ ]` |
+| **Status** | `[✓]` |
 | **Opened** | 2026-04-27 |
 | **Owner** | __ |
 | **Severity** | P0 context correctness — invisible assistant text and reasoning currently leak into retry context. |
@@ -36,28 +36,50 @@ When the LLM returns plain text without tools, the user does not see it. Persist
 
 ### Unit Tests
 
-- `[ ]` Runtime test: no-tool first response is not appended to Cortex context.
-- `[ ]` Runtime test: tool-call response is still appended.
-- `[ ]` Context sanitization test: `reasoning_content` is stripped from LLM-bound messages.
-- `[ ]` Retry test: transient warning appears once and is not persisted.
+- `[x]` Runtime test: no-tool first response is not appended to Cortex context.
+- `[x]` Runtime test: tool-call response is still appended.
+- `[x]` Context sanitization test: `reasoning_content` is stripped from LLM-bound messages.
+- `[x]` Retry test: transient warning behavior still passes existing PR-37 coverage.
+
+Evidence:
+
+- `cd novaic-agent-runtime && pytest -q tests/test_pr71_no_tool_retry_context_cleanup.py tests/test_no_tool_warning.py` → `11 passed in 0.07s`
+- `cd novaic-agent-runtime && pytest -q` → `251 passed in 0.95s`
 
 ### Smoke Tests
 
-- `[ ]` Force or simulate a no-tool first LLM response.
-- `[ ]` Inspect execution logs: raw response is available diagnostically.
-- `[ ]` Inspect second LLM input: hidden assistant content and `reasoning_content` are absent.
+- `[x]` Simulate a no-tool first LLM response in unit coverage.
+- `[x]` Inspect execution logs: raw response remains available diagnostically.
+- `[x]` Inspect production LLM input: `reasoning_content` is absent.
+
+Evidence:
+
+- Production smoke user message `a3b7b943b1a2` (`嗯`) closed scope `e5a06ce0-879b-42b3-900b-e94600ea84e1`.
+- Visible reply `0e7515a5a3af` addressed the user as `大哥`, proving normal `chat_reply` still works after the save-response condition change.
+- Execution log `1058` input: `input_has_reasoning_content=False`, `input_has_dage=True`.
+- Execution log `1059` tool input/result: no `reasoning_content`.
 
 ### Deployment
 
-- `[ ]` Deploy Runtime.
-- `[ ]` Run health checks and one normal chat smoke after deploy.
-- `[ ]` Capture LLM call excerpt showing clean retry context.
+- `[x]` Deploy Runtime.
+- `[x]` Run health checks and one normal chat smoke after deploy.
+- `[x]` Capture LLM call excerpt showing clean context.
+
+Evidence:
+
+- `./deploy runtime` → all backends restarted successfully.
+- `./deploy status` → Entangled, Gateway, Business, Device, Queue, Storage-A, Cortex healthy; Workers `8`; Relay active.
 
 ### GitHub / Commit
 
-- `[ ]` Commit implementation, tests, and this ticket update as one PR-sized commit.
-- `[ ]` Commit message should reference PR-71.
-- `[ ]` PR description must include before/after LLM input evidence and rollback note.
+- `[x]` Commit implementation, tests, and this ticket update as one PR-sized commit.
+- `[x]` Commit message should reference PR-71.
+- `[x]` PR description must include before/after LLM input evidence and rollback note.
+
+Evidence:
+
+- Runtime submodule commit: `9dd2fee runtime: keep no-tool retries out of context`.
+- Parent repo commit includes this ticket update and the runtime submodule pointer.
 
 ## Out of Scope
 
