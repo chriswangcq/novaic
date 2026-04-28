@@ -297,15 +297,15 @@ def observe() -> int:
     print(f"  total              = {s['total']}")
     print(f"  pending            = {s['pending']}  (locked={s['locked']})")
     print(f"  delivered          = {s['delivered']}")
-    print(f"  retrying           = {s['retrying']}  (attempts>0, not poisoned)")
-    print(f"  poisoned           = {s['poisoned']}  (permanent failures, need manual attention)")
+    print(f"  retrying           = {s['retrying']}  (attempts>0, not permanent_failed)")
+    print(f"  permanent_failed   = {s['permanent_failed']}  (need manual attention)")
     print(f"  oldest_pending_age = {s['oldest_pending_age_sec']}s")
     print(f"  by_trigger         = {json.dumps(s['by_trigger'], ensure_ascii=False)}")
 
     # Simple health judgement
     status = "OK"
-    if s["poisoned"] > 0:
-        status = "WARN (poisoned rows exist)"
+    if s["permanent_failed"] > 0:
+        status = "WARN (permanent_failed rows exist)"
     if isinstance(s["oldest_pending_age_sec"], (int, float)) and s["oldest_pending_age_sec"] > 30:
         status = f"WARN (backlog: oldest_pending_age={s['oldest_pending_age_sec']}s > 30s)"
     print(f"  verdict            = {status}")
