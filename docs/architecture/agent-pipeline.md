@@ -9,24 +9,23 @@
 | Business | `:19998`，中枢编排：所有 `/internal/*` API、Entangled entity proxy、Device 编排 |
 | Gateway | 薄边缘网关：Auth、App WS、TURN、File Proxy |
 | Device | `:19993`，设备 registry、CloudBridge WS、硬件执行 API |
-| Cortex | `:19996`，Workspace + ContextEngine（DFS）+ Recall + Sandbox |
+| Cortex | `:19996`，Workspace + LIFO Scope Tree + ContextEngine（DFS）+ Sandbox |
 | Queue Service | Task / Saga 队列 |
-| Watchdog | `sending` 消息 → MessageProcess Saga |
+| Watchdog | 兼容/兜底扫表；主路径由 Business outbox → DispatchSubscriber / Scheduler 入队 |
 | Task Worker | LLM、工具、context |
 | Saga Worker | 流程编排 |
 | Health / Scheduler Workers | 回收、定时唤醒 |
-| ~~Tools Server~~ | **已退役**（`tool_handlers` + Cortex / Gateway） |
+| ~~Tools Server~~ | **已退役**（`tool_handlers` + Cortex / Business） |
 
 ## 12.2 消息 → Runtime 完整链路
 
 ```
 用户发消息
-  → Gateway → Business: MessageRepository → Entangled `messages`（status=sending）
-  → Watchdog: find_sending() → MessageProcess Saga
-  → Step 1 claim_message: sending → sent
-  → Step 2 route_message: Runtime 获取/创建
-  → Step 3 decide: start_runtime
-  → Step 4 trigger: RuntimeStart → ReactThink
+  → Gateway → Business: MessageRepository → Entangled `messages` + message_outbox
+  → DispatchSubscriber / Scheduler / HealthWorker
+  → Queue dispatch: subagent_wake
+  → session.init: ensure agent_root scope + create current wake scope
+  → ReactThink
 ```
 
 ## 12.3 Agent Loop
@@ -35,14 +34,15 @@
 ReactThink:
   1. cortex.prepare_llm_context
   2. llm.call → LLM Factory（仅传输）
-  3. context.save
+  3. 保存 assistant message 到当前 active scope
   4. decide → ReactActions 或结束
 
 ReactActions:
   1. execute_tools
-  2. save_results（统一 JSON content）
+  2. save_results（tool step，统一 JSON content）
   3. check_continue
-  4. decide → RuntimeComplete 或下一轮 ReactThink
+  4. 若 scope stack 仍非空，继续下一轮 ReactThink，让 LLM 有机会 `skill_end(report=...)`
+  5. 栈空后触发 wake_finalize 做结构性收尾
 ```
 
 ## 12.4 工具执行（无独立 Tools Server）
@@ -52,7 +52,7 @@ LLM tool_call
   → TOOL_EXECUTE → tool_handlers.handle_tool_execute
   → chat_reply / subagent_* / sleep → Business internal
   → shell / skill_* → CortexBridge → Cortex
-  → JSON content → context.append
+  → JSON content → Cortex step timeline
 ```
 
 | 类别 | 示例 | 路由 |

@@ -50,8 +50,8 @@ cd novaic-gateway && PYTHONPATH=. python -m unittest tests.test_deps_internal_ta
 | **`ALIBABA_CLOUD_ACCESS_KEY_ID`** / **`ALIBABA_CLOUD_ACCESS_KEY_SECRET`** | OSS 必填 |
 | **`NOVAIC_OSS_ENDPOINT`** / **`NOVAIC_OSS_REGION`** / **`NOVAIC_OSS_BUCKET`** | OSS 端点与桶 |
 | **`CORTEX_JWT_SECRET`** | 能力 JWT 签名（`auth.py`） |
-| **`GATEWAY_INTERNAL_URL`** | Gateway 基址（`GatewayProxy`） |
-| **`CORTEX_INTERNAL_KEY`** | `X-Internal-Key`（与 Gateway 互信） |
+| **`BUSINESS_INTERNAL_URL`** | Business Service 基址（`BusinessProxy` 遗留 CLI 入口） |
+| **`CORTEX_INTERNAL_KEY`** | `X-Internal-Key`（与 Business 互信） |
 
 **Agent Runtime**（`CortexBridge`）：
 

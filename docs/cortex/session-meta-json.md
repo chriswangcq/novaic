@@ -1,6 +1,6 @@
 # 会话 `meta.json`
 
-> 源码：`novaic_cortex/workspace.py`（**`read_session_meta`**、**`update_session_meta`**、**`create_scope`**、**`activate_scope`**、**`complete_child_scope`** / 归档路径）；**`ContextEngine.prepare_messages_for_llm`** 开头读取。
+> 源码：`novaic_cortex/workspace.py`（**`read_session_meta`**、**`update_session_meta`**、**`create_scope`**、**`activate_scope`**、**`complete_child_scope`** / 归档路径）。
 
 每个 **scope 目录** 下一份：**`{scope_path}/meta.json`**（逻辑路径），经 **`Workspace._sys_write_json`** 写入。
 
@@ -31,15 +31,17 @@
 
 ---
 
-## 3. 与 LLM 拼装的关系（`ContextEngine`）
+## 3. 与 LLM 拼装的关系
 
-在 **`prepare_messages_for_llm`** 中，**`meta`** 用于：
+当前 `ContextEngine.prepare_messages_for_llm` 的主输入是 `context.jsonl` 与 `steps/`，不会从 `meta.json` 读取一条独立 Recall 或 wake-summary 通道。`meta.json` 主要记录 scope 生命周期属性与少量配置性字段。
+
+历史上部分 scope 可能含有这些字段：
 
 | 字段 | 用途 |
 |------|------|
-| **`system_prompt`** | 若有，作为首条 **`role: system`** |
-| **`recall_messages`** | 每项非空 **`content`** → **`role: system`**，**`_metadata.origin: recall`** |
-| **`initial_context`** | 多条 **`role`/`content`**，按条追加（冷启动上下文） |
+| **`system_prompt`** | 历史/兼容字段；当前系统提示由 Runtime prompt builder 注入 |
+| **`recall_messages`** | 历史字段；当前主路径不注入独立 Recall |
+| **`initial_context`** | 历史/兼容字段；当前上下文以 `context.jsonl` + Step Tree 为准 |
 
 以上字段可由 **`POST /v1/meta/update`** 合并写入（见 [internal-api-schemas.md](internal-api-schemas.md)）。
 
@@ -55,5 +57,5 @@
 ## 相关
 
 - [scope-lifecycle.md](scope-lifecycle.md)  
-- [recall.md](recall.md)  
+- [recall.md](recall.md)（历史/已退役）
 - [runtime-facade.md](runtime-facade.md)  

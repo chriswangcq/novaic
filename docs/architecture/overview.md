@@ -19,7 +19,7 @@
 │ Relay / STUN   │◄───────►│  Agent Runtime  ├─────►│     Cortex     │
 │ (quic-service) │ 信令穿透 │ (Watchdog/Worker)│      │  (:19996 HTTP) │
 └───────┬────────┘         └────────┬────────┘      │ - Scope / DFS  │
-        │                           │ 读写实体/队列  │ - Recall       │
+        │                           │ 读写实体/队列  │ - Sandbox      │
         │                           │                └────────────────┘
  ┌──────▼───────┐          ┌────────▼───────────────────────────────────────┐
  │  novaic-app  │  WS/REST │           Nginx (公网入口 :443)                 │
@@ -53,7 +53,7 @@
 - **设备服务**：`novaic-device`（`:19993`）。纯硬件基础设施：Device registry、CloudBridge typed WS broker、`/internal/hardware/*` 执行 API、VM/Mobile/HD tool proxy（转发到 VmControl）。不含业务逻辑，不拥有 action hook。所有业务调度由 Business Service 发起。
 - **实体同步**：`Entangled`（`:19900`）。独立的实体存储与实时同步引擎。**仅 Business Service 直接访问 Entangled HTTP**；Gateway、Device、Workers 均通过 Business `/internal/entities/*` 代理完成 entity CRUD。前端可选直连 `ws(s)://…/v1/sync`。
 - **异步执行管线**：`novaic-agent-runtime`。包含 Watchdog 和 Task/Saga Workers。内置工具分发逻辑，不再有独立 Tools Server。
-- **认知基础设施**：`novaic-cortex`。独立的无状态 HTTP 服务。Agent 运行时通过 `CortexBridge` 调用 scope 生命周期、Workspace/DFS 与 LLM context 拼装。Cortex 只保留 `chat`、设备/VM、subagent 的遗留 BusinessProxy 入口；`memory`、`notebook`、`task`、`search` 不再属于 Cortex 代理面。
+- **认知基础设施**：`novaic-cortex`。独立 HTTP 服务。Agent 运行时通过 `CortexBridge` 调用 scope 生命周期、Workspace/DFS 与 LLM context 拼装。当前主路径没有独立 Recall 模块或 wake-summary 通道；跨 wake 连续性来自 agent-root scope 树中的折叠 `summary.md`。Cortex 只保留 `chat`、设备/VM、subagent 的遗留 BusinessProxy 入口；`memory`、`notebook`、`task`、`search` 不再属于 Cortex 代理面。
 - **LLM 隔离层**：`novaic-llm-factory`。隐藏所有 api-keys 和底层厂商差异，只暴露标准 OpenAI HTTP 端点。
 - **边缘 P2P 与存储**：`novaic-quic-service` 负责 WebRTC 打洞和热更新 CDN；`novaic-storage-a` 负责二进制文件上传。
 
@@ -69,7 +69,7 @@
 | `business`            | 19998 | Business Service — 中枢编排层（Agent/Skill/Device/Model 业务逻辑 + 所有 action hooks） |
 | `device`              | 19993 | Device Service（设备 registry / CloudBridge typed WS broker / VmControl 命令路由）|
 | `queue_service`       | 19997 | Queue Service（novaic-agent-runtime `queue-service`）                 |
-| `cortex`              | 19996 | Cortex 认知引擎 HTTP (`novaic-cortex`)，提供 Workspace/DFS/Recall        |
+| `cortex`              | 19996 | Cortex 认知引擎 HTTP (`novaic-cortex`)，提供 Workspace / Scope / DFS context / Sandbox |
 | `file_service`        | 19995 | 文件服务（novaic-storage-a）                                          |
 
 **App / Client（客户端端侧逻辑）**：
@@ -90,7 +90,7 @@
 | `novaic-business`      | ✅         | Business Service：中枢编排层 — Agent/Skill/Device/Model/消息等（:19998）   |
 | `novaic-device`        | ✅         | Device Service：设备 registry / CloudBridge typed WS broker（:19993）   |
 | `novaic-agent-runtime` | ✅         | Agent 运行时：Queue Service、Task/Saga Worker、Watchdog、Scheduler    |
-| `novaic-cortex`        | ✅         | Cortex HTTP：Workspace / Scope / Sandbox / Recall               |
+| `novaic-cortex`        | ✅         | Cortex HTTP：Workspace / Scope / DFS context / Sandbox          |
 | `novaic-storage-a`     | ✅         | 文件存储服务                                                         |
 | `novaic-quic-service`  | ✅         | STUN / Relay / 静态资源 CDN                                        |
 | `novaic-common`        | ✅         | 共享配置与工具（含 `config/services.json`）                              |
@@ -113,7 +113,7 @@
 | 后端管线、源码表 | [agent-pipeline.md](agent-pipeline.md) |
 | Cortex（纲要） | [cortex.md](cortex.md) |
 | Cortex（详细，源码级） | [../cortex-architecture.md](../cortex-architecture.md) |
-| Cortex（Scope/DFS/Recall 拆页） | [../cortex/README.md](../cortex/README.md) |
+| Cortex（Scope/DFS 拆页） | [../cortex/README.md](../cortex/README.md) |
 | 前端 Path C | [app-ui.md](app-ui.md) |
 | 子模块 | [../reference/submodules.md](../reference/submodules.md) |
 | 配置与环境 | [../reference/config-and-environment.md](../reference/config-and-environment.md) |

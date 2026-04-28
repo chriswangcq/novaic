@@ -21,8 +21,9 @@ JWT 路由（`/v1/shell` 等）**不**在本文；见 [http-api.md](http-api.md)
 | 方法 | 路径 | 请求体（在租户上追加） | 响应（摘要） |
 |------|------|------------------------|--------------|
 | POST | `/v1/scope/create` | `scope_id`, `name`, `skill?`, `parent_path?`；可选 `phase`, `prev_scope_id`, `wake_triggers`（`handoff_notes` 废弃于 PR-55, 2026-04-23；若 `api.py` 仍接受则被忽略） | `scope_path` |
-| POST | `/v1/scope/end` | `scope_id`, `report?`, `scope_path?`, `is_root` | `ok`, `scope_id`, `archive_path` |
+| POST | `/v1/scope/end` | `scope_id`, `scope_path?`, `is_root`；非空 `report` 会被拒绝 | `ok`, `scope_id`, `archive_path` |
 | POST | `/v1/scope/write_assistant` | `scope_id`, `message` (dict), `round_num?` | `ok`, `seq`, `scope_path`（解析后的 active 路径） |
+| POST | `/v1/scope/append_input` | `scope_id`, `content`, `role?`, `source?`, `at?`, `message_id?`, `from_kind?`, `from_label?`, `scope_path?` | `ok`, `seq`, `scope_path` |
 
 ---
 
@@ -64,13 +65,11 @@ JWT 路由（`/v1/shell` 等）**不**在本文；见 [http-api.md](http-api.md)
 
 ---
 
-## 6. Internal — 工具 / Recall / 重建索引
+## 6. Internal — 工具 / 重建索引
 
 | 方法 | 路径 | 请求体 | 响应 |
 |------|------|--------|------|
 | POST | `/v1/internal/tools` | + `user_id`, `agent_id` | `tools`（builtin 列表） |
-| POST | `/v1/internal/recall` | + `token_budget?`（默认 50000） | `content` |
-| POST | `/v1/internal/recall_messages` | 同上 | `messages`, `count` |
 | POST | `/v1/internal/reindex` | + `force?` | `ok`, `total`, `updated` |
 
 ---

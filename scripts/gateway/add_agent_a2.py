@@ -75,11 +75,11 @@ def main():
             conn.execute(
                 """INSERT INTO subagents (
                     subagent_id, agent_id, type, parent_subagent_id,
-                    status, historical_summary, wake_triggers, handoff_notes, wake_at,
+                    status, wake_triggers, wake_at,
                     task, progress, result, error, timeout_at,
                     hrl, summary_lock, need_rest,
                     created_at, updated_at
-                ) VALUES (?, ?, 'main', NULL, 'sleeping', NULL, '[]', NULL, NULL,
+                ) VALUES (?, ?, 'main', NULL, 'sleeping', '[]', NULL,
                     NULL, NULL, NULL, NULL, NULL, '[]', 0, 0, ?, ?)""",
                 (subagent_id, agent_id, now, now),
             )

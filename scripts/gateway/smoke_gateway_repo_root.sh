@@ -5,14 +5,11 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 # All sibling-repo paths are configurable via env vars for clean-clone workflow.
 # In a clean-clone setup, set these before running:
 #   RUNTIME_REPO_DIR=/path/to/novaic-runtime-orchestrator
-#   TOOLS_REPO_DIR=/path/to/novaic-tools-server
 #   NOVAIC_SHARED_COMMON_PATH=/path/to/novaic-shared-runtime-common
 RUNTIME_REPO_DIR="${RUNTIME_REPO_DIR:-$ROOT_DIR/../novaic-runtime-orchestrator}"
-TOOLS_REPO_DIR="${TOOLS_REPO_DIR:-$ROOT_DIR/../novaic-tools-server}"
 SHARED_COMMON_REPO_DIR="${NOVAIC_SHARED_COMMON_PATH:-$ROOT_DIR/../novaic-shared-runtime-common}"
 # Entry-point scripts are configurable to support repos with different layouts.
 RUNTIME_MAIN_SCRIPT="${RUNTIME_MAIN_SCRIPT:-runtime_orchestrator/main.py}"
-TOOLS_MAIN_SCRIPT="${TOOLS_MAIN_SCRIPT:-tools_server/main.py}"
 # Set GATEWAY_ONLY_SMOKE=1 to skip starting sibling services and test gateway against
 # a pre-running RUNTIME_ORCHESTRATOR_URL. Proves gateway is decoupled from split-service dirs.
 GATEWAY_ONLY_SMOKE="${GATEWAY_ONLY_SMOKE:-0}"
@@ -40,7 +37,6 @@ fi
 
 RO_PID=""
 GW_PID=""
-TS_PID=""
 
 cleanup() {
   set +e
@@ -51,10 +47,6 @@ cleanup() {
   if [ -n "$RO_PID" ]; then
     kill "$RO_PID" >/dev/null 2>&1 || true
     wait "$RO_PID" >/dev/null 2>&1 || true
-  fi
-  if [ -n "$TS_PID" ]; then
-    kill "$TS_PID" >/dev/null 2>&1 || true
-    wait "$TS_PID" >/dev/null 2>&1 || true
   fi
 }
 trap cleanup EXIT
@@ -118,20 +110,8 @@ else
   curl --noproxy '*' -fsS "http://127.0.0.1:19999/api/system/status" >/dev/null
   "$ROOT_DIR/scripts/replay_gateway_runtime_chain.sh"
 
-  NOVAIC_SHARED_COMMON_PATH="$SHARED_COMMON_REPO_DIR" \
-  TOOLS_HOST="127.0.0.1" \
-  TOOLS_PORT="20002" \
-  "$PYTHON_BIN" "$TOOLS_REPO_DIR/$TOOLS_MAIN_SCRIPT" > /tmp/novaic-tools-server-split.log 2>&1 &
-  TS_PID="$!"
-
-  if ! wait_for_http "http://127.0.0.1:20002/api/health"; then
-    echo "ERROR: tools-server health check failed"
-    exit 1
-  fi
-
   echo "SPLIT_RUNTIME_HEALTH=PASS"
   echo "SPLIT_GATEWAY_HEALTH=PASS"
-  echo "SPLIT_TOOLS_HEALTH=PASS"
   echo "SPLIT_GATEWAY_STATUS_ROUTE=PASS"
   echo "SPLIT_E2E_RUNTIME_FORWARD=PASS"
   echo "SPLIT_RUNTIME_ENDPOINT_ENFORCED=PASS"

@@ -8,12 +8,12 @@
 
 | 文档 | 内容 |
 | --- | --- |
-| [scope-lifecycle.md](scope-lifecycle.md) | 根/子 scope、`/ro/active` 与 `/ro/scopes`、归档、`meta.json`、统一时间线写入；**§9 Skill scope 生命周期（scope_id 全局唯一、LIFO 严校验、Meta skill、瞬态栈快照）** |
+| [scope-lifecycle.md](scope-lifecycle.md) | agent-root / wake / 子 skill scope、`/ro/active` 与 `/ro/scopes`、归档、`meta.json`、统一时间线写入；**§9 Skill scope 生命周期（scope_id 全局唯一、LIFO 严校验、瞬态栈快照）** |
 | [boundary-contract.md](boundary-contract.md) | Cortex 只维护 LIFO scope 树并拼装 LLM context；已退役概念与 CI guardrail |
 | [step-index-and-payload-schema.md](step-index-and-payload-schema.md) | `steps/_index.jsonl` 行类型、tool/assistant/env/scope 与磁盘 JSON |
 | [session-meta-json.md](session-meta-json.md) | `meta.json` 字段、`ContextEngine` 前缀、`/v1/meta/*` |
 | [context-timeline-and-dfs.md](context-timeline-and-dfs.md) | `ContextEngine`、DFS 展开与折叠、`budget_compact` |
-| [recall.md](recall.md) | `Recall`、`/ro/scopes/_index.jsonl`、与 session `meta` 中 recall 的关系 |
+| [recall.md](recall.md) | **历史/已退役**：旧 `Recall` 设计说明；当前 LLM 主路径不使用独立 Recall 模块 |
 | [storage-and-keys.md](storage-and-keys.md) | `CortexStore`、`WorkspaceRegistry`、对象键 |
 | [sandbox-shell.md](sandbox-shell.md) | `Sandbox.exec`、与 VM/proxy shell 的区别 |
 | [compactor-and-gem-fusion.md](compactor-and-gem-fusion.md) | 已退役：`Compactor`、自动摘要、gem fusion |
@@ -47,11 +47,10 @@
 4. **时间线索引长什么样** → [step-index-and-payload-schema.md](step-index-and-payload-schema.md)  
 5. **会话 meta** → [session-meta-json.md](session-meta-json.md)  
 6. **拼 LLM 消息** → [context-timeline-and-dfs.md](context-timeline-and-dfs.md)  
-7. **Recall** → [recall.md](recall.md)  
-8. **压缩与配置** → [engine-config-and-metrics.md](engine-config-and-metrics.md) → [budget-compact-algorithm.md](budget-compact-algorithm.md)  
-9. **Runtime 调用链** → [agent-runtime-cortex-call-chain.md](agent-runtime-cortex-call-chain.md) → [agent-runtime-all-topics.md](agent-runtime-all-topics.md)  
-10. **HTTP 与契约** → [http-api.md](http-api.md) → [internal-api-schemas.md](internal-api-schemas.md)  
-11. **Proxy / Business** → [proxy-cli-auth.md](proxy-cli-auth.md) → [proxy-gateway-routes.md](proxy-gateway-routes.md)  
-12. **其余专题** → [sandbox-shell.md](sandbox-shell.md)、[runtime-facade.md](runtime-facade.md)、[deployment-and-startup.md](deployment-and-startup.md)、[workspace-acl-and-sys-writes.md](workspace-acl-and-sys-writes.md)、[builtin-tools-and-skills.md](builtin-tools-and-skills.md)、[extension-points.md](extension-points.md)、[satellite-modules.md](satellite-modules.md)、[observability-and-tests.md](observability-and-tests.md)、[design-doc-links.md](design-doc-links.md)  
+7. **压缩与配置** → [engine-config-and-metrics.md](engine-config-and-metrics.md) → [budget-compact-algorithm.md](budget-compact-algorithm.md)
+8. **Runtime 调用链** → [agent-runtime-cortex-call-chain.md](agent-runtime-cortex-call-chain.md) → [agent-runtime-all-topics.md](agent-runtime-all-topics.md)
+9. **HTTP 与契约** → [http-api.md](http-api.md) → [internal-api-schemas.md](internal-api-schemas.md)
+10. **Proxy / Business** → [proxy-cli-auth.md](proxy-cli-auth.md) → [proxy-gateway-routes.md](proxy-gateway-routes.md)
+11. **其余专题** → [sandbox-shell.md](sandbox-shell.md)、[runtime-facade.md](runtime-facade.md)、[deployment-and-startup.md](deployment-and-startup.md)、[workspace-acl-and-sys-writes.md](workspace-acl-and-sys-writes.md)、[builtin-tools-and-skills.md](builtin-tools-and-skills.md)、[extension-points.md](extension-points.md)、[satellite-modules.md](satellite-modules.md)、[observability-and-tests.md](observability-and-tests.md)、[design-doc-links.md](design-doc-links.md)、[recall.md](recall.md)（历史）
 
 可按需跳读；**契约与排障**优先 **§3–4、§9–10**。

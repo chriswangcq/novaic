@@ -58,12 +58,9 @@ import httpx
 
 BUSINESS_URL = os.environ.get("CANARY_BUSINESS_URL", "http://127.0.0.1:19998")
 ENTANGLED_DB = os.environ.get("CANARY_ENTANGLED_DB", "/opt/novaic/data/entangled.db")
-# PR-45.2 (2026-04-24) — CANARY_AGENT_ID / CANARY_USER_ID / NAME env
-# overrides so wake-continuity-smoke.sh can target a separate
-# `canary_b_1` agent without forking the whole traffic.py script. The
-# defaults preserve backward compatibility with the PR-17 subscriber
-# canary. Both canaries can coexist; they only share the outbox path,
-# and outbox health is asserted per-agent in the observe output.
+# CANARY_AGENT_ID / CANARY_USER_ID / NAME env overrides let smoke
+# scripts target separate canary agents without forking this traffic
+# helper. The defaults preserve the PR-17 subscriber canary behavior.
 CANARY_USER_ID = os.environ.get("CANARY_USER_ID", "canary_u_1")
 CANARY_AGENT_ID = os.environ.get("CANARY_AGENT_ID", "canary_a_1")
 CANARY_AGENT_NAME = os.environ.get("CANARY_AGENT_NAME", "Canary Observation Agent")

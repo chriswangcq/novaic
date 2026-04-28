@@ -21,7 +21,7 @@ The following concepts must not re-enter active Cortex source:
 
 The only durable LLM-authored summary path is:
 
-`skill_begin(...)` opens a child skill scope, then `skill_end(report=...)` writes that child scope's `summary.md` verbatim.
+`skill_end(report=...)` closes the current LIFO stack top (the wake scope or an LLM-opened child skill scope) and writes that scope's `summary.md` verbatim.
 
 ## Guardrail
 

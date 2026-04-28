@@ -1,5 +1,7 @@
 # Architecture Review — 2026-04-17
 
+> **历史评审归档**：本文记录 2026-04-17 当时的代码审查结论。当前主路径已迁移到 agent-root / wake scope / `skill_end(report=...)` / `wake_finalize`；文中的 `subagent_rest`、auto meta skill 等术语保留为当时上下文，不代表最新 Cortex 契约。
+>
 > 8 位架构师 subagent 并行评审 + 8 位 summarizer subagent 并行汇总后的定档卷宗。
 >
 > - 范围：`novaic-cortex`（状态真相）+ `novaic-agent-runtime`（无状态编排）。

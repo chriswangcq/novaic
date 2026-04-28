@@ -18,7 +18,6 @@ ROOT="$(cd "$APP_DIR/.." && pwd)"
 
 # ─── Ports (must match Tauri app constants) ───────────────────────────────────
 PORT_GATEWAY=19999
-PORT_TOOLS_SERVER=19998
 PORT_QUEUE_SERVICE=19997
 PORT_FILE_SERVICE=19995
 PORT_TOOL_RESULT_SERVICE=19994
@@ -97,12 +96,10 @@ stop_backends() {
     echo -e "${YELLOW}Stopping Python backends...${NC}"
     local patterns=(
         "novaic-gateway"
-        "novaic-tools-server"
         "novaic-agent-runtime"
         "novaic-storage-a"
         "novaic-storage-b"
         "main_gateway.py"
-        "main_tools.py"
         "main_novaic.py"
         "main_file_service.py"
         "main_tool_result_service.py"
@@ -111,7 +108,7 @@ stop_backends() {
         pkill -9 -f "$pattern" 2>/dev/null && echo "  Killed: $pattern" || true
     done
     # Kill by port
-    for port in $PORT_GATEWAY $PORT_TOOLS_SERVER $PORT_QUEUE_SERVICE \
+    for port in $PORT_GATEWAY $PORT_QUEUE_SERVICE \
                 $PORT_FILE_SERVICE $PORT_TOOL_RESULT_SERVICE; do
         local pid
         pid=$(lsof -ti :"$port" 2>/dev/null || true)
@@ -128,7 +125,6 @@ show_status() {
     echo "Backend status:"
     local services=(
         "$PORT_GATEWAY:Gateway"
-        "$PORT_TOOLS_SERVER:Tools Server"
         "$PORT_QUEUE_SERVICE:Queue Service"
         "$PORT_FILE_SERVICE:File Service"
         "$PORT_TOOL_RESULT_SERVICE:Tool Result Service"
@@ -164,7 +160,6 @@ echo ""
 
 GW_URL="http://127.0.0.1:$PORT_GATEWAY"
 QS_URL="http://127.0.0.1:$PORT_QUEUE_SERVICE"
-TS_URL="http://127.0.0.1:$PORT_TOOLS_SERVER"
 FS_URL="http://127.0.0.1:$PORT_FILE_SERVICE"
 TRS_URL="http://127.0.0.1:$PORT_TOOL_RESULT_SERVICE"
 
@@ -178,7 +173,6 @@ if [ -d "$GW_DIR" ]; then
         --host 127.0.0.1 --port "$PORT_GATEWAY" \
         --data-dir "$DATA_DIR" \
         --queue-service-url "$QS_URL" \
-        --tools-server-url "$TS_URL" \
         --file-service-url "$FS_URL" \
         --tool-result-service-url "$TRS_URL" \
         >> "$LOG_DIR/gateway.log" 2>&1 &
@@ -187,24 +181,7 @@ else
     echo -e "  ${YELLOW}⚠ novaic-gateway not found at $GW_DIR${NC}"
 fi
 
-# 2. Tools Server
-TS_DIR="$ROOT/novaic-tools-server"
-if [ -d "$TS_DIR" ]; then
-    echo "Starting Tools Server..."
-    ensure_deps_installed "$TS_DIR"
-    PY=$(python_for_repo "$TS_DIR")
-    "$PY" "$TS_DIR/main_tools.py" \
-        --host 127.0.0.1 --port "$PORT_TOOLS_SERVER" \
-        --data-dir "$DATA_DIR" \
-        --gateway-url "$GW_URL" \
-        --tool-result-service-url "$TRS_URL" \
-        >> "$LOG_DIR/tools-server.log" 2>&1 &
-    wait_port "$PORT_TOOLS_SERVER" "Tools Server"
-else
-    echo -e "  ${YELLOW}⚠ novaic-tools-server not found at $TS_DIR${NC}"
-fi
-
-# 3. Queue Service (part of novaic-agent-runtime)
+# 2. Queue Service (part of novaic-agent-runtime)
 AR_DIR="$ROOT/novaic-agent-runtime"
 if [ -d "$AR_DIR" ]; then
     echo "Starting Queue Service..."
@@ -219,7 +196,7 @@ else
     echo -e "  ${YELLOW}⚠ novaic-agent-runtime not found at $AR_DIR${NC}"
 fi
 
-# 4. File Service (novaic-storage-a)
+# 3. File Service (novaic-storage-a)
 SA_DIR="$ROOT/novaic-storage-a"
 if [ -d "$SA_DIR" ]; then
     echo "Starting File Service..."
@@ -234,7 +211,7 @@ else
     echo -e "  ${YELLOW}⚠ novaic-storage-a not found at $SA_DIR${NC}"
 fi
 
-# 5. Tool Result Service (novaic-storage-b)
+# 4. Tool Result Service (novaic-storage-b)
 SB_DIR="$ROOT/novaic-storage-b"
 if [ -d "$SB_DIR" ]; then
     echo "Starting Tool Result Service..."
@@ -251,7 +228,7 @@ else
     echo -e "  ${YELLOW}⚠ novaic-storage-b not found at $SB_DIR${NC}"
 fi
 
-# 6. Workers (task-workers, saga-workers, health, scheduler)
+# 5. Workers (task-workers, saga-workers, health, scheduler)
 if [ -d "$AR_DIR" ]; then
     echo "Starting Workers..."
     PY=$(python_for_repo "$AR_DIR")
@@ -269,7 +246,6 @@ if [ -d "$AR_DIR" ]; then
             "$PY" "$AR_DIR/main_novaic.py" task-worker \
                 --gateway-url "$GW_URL" \
                 --queue-service-url "$QS_URL" \
-                --tools-server-url "$TS_URL" \
                 --tool-result-service-url "$TRS_URL" \
                 --pool "$pool" \
                 --num-workers 1 \

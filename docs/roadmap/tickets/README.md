@@ -132,6 +132,10 @@
 | PR-79  | `[ ]`  | [Rename runtime `subagent_rest` to `wake_finalize`](PR-79-rename-subagent-rest-to-wake-finalize.md) | PR-78 | Conceptual cleanup | 0.5 d | __ |
 | PR-80  | `[ ]`  | [Enforce single summary writer: only `skill_end(report=...)`](PR-80-scope-end-no-report-contract.md) | PR-78, PR-79 | Memory correctness | 0.5 d | __ |
 | PR-81  | `[ ]`  | [Remove old rest/meta wording from active docs and guardrails](PR-81-finalize-docs-and-guardrails.md) | PR-79, PR-80 | Regression prevention | 0.5 d | __ |
+| PR-82  | `[code]`  | [Remove Tools Server / MCP registry from the active Runtime path](PR-82-remove-tools-server-mcp-hot-path.md) | PR-78 preferred | P0 minimal structure cleanup | 0.5-1 d | __ |
+| PR-83  | `[code]`  | [Purge non-minimal continuity residues from active paths](PR-83-purge-non-minimal-continuity-residues.md) | PR-78; may absorb PR-79/81 | P0 continuity cleanup | 0.5-1 d | __ |
+| PR-84  | `[code]`  | [Add Cortex minimal-structure invariant tests](PR-84-cortex-minimal-structure-invariants.md) | PR-82, PR-83 preferred | P0 structure guardrails | 0.5-1 d | __ |
+| PR-85  | `[code]`  | [Add LLM context smoke guardrails for the minimal structure path](PR-85-llm-context-minimal-structure-smoke-guardrails.md) | PR-82, PR-83, PR-84 preferred | P0 smoke guardrails | 0.5-1 d | __ |
 
 
 ---
