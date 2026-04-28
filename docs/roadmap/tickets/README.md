@@ -128,6 +128,7 @@
 | PR-75  | `[✓]`  | [Remove BusinessProxy memory/task surfaces from Cortex](PR-75-remove-cortex-business-proxy-memory-task.md) **— Cortex deployed + smoke-verified 2026-04-27** | PR-74 preferred | Cortex ownership boundary | 0.5–1 d | __ |
 | PR-76  | `[✓]`  | [Add Cortex boundary guardrails](PR-76-cortex-boundary-ci-guardrails.md) **— local guard + Cortex tests verified 2026-04-27** | PR-74, PR-75 | Regression prevention | 0.5 d | __ |
 | PR-77  | `[✓]`  | [Tighten LLM tool descriptions around child-skill summaries](PR-77-llm-tool-description-child-skill-contract.md) **— Business+Runtime+Cortex deployed + smoke-verified 2026-04-27** | PR-74 preferred | Tool contract + agent behavior | 0.5 d | __ |
+| PR-78  | `[✓]`  | [Make wake the LLM-closed turn scope and remove meta skill](PR-78-wake-scope-close-no-meta-skill.md) **— Cortex+Runtime+Business deployed + smoke-verified 2026-04-28** | PR-67, PR-73, PR-77 | Continuity correctness + tool contract | 0.5–1 d | __ |
 
 
 ---
