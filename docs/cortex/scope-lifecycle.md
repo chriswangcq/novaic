@@ -49,31 +49,20 @@
 
 ## 5. 根 scope 归档：`archive_root_scope`
 
-1. **`_auto_close_open_children(active_path)`**：DFS 关闭所有仍 `phase != archived` 的子 scope（写 `summary.md = "[auto-closed on rest: scope left open by agent]"`、`phase = archived`、`ended_at`）。保证归档后整棵树 phase 一致，不会把「还在 open 的 Meta / skill」随 root 一起冻进只读区。
+1. **`_auto_close_open_children(active_path)`**：DFS 关闭所有仍 `phase != archived` 的子 scope（写空 `summary.md`、`phase = archived`、`ended_at`）。保证归档后整棵树 phase 一致，不会把还在 open 的子 scope 随父 scope 一起冻进只读区。
 2. 在 `**/ro/active/{scope_id}/**` 写 `**summary.md**`，更新 `**meta.json**`（`phase=archived`、`ended_at`）。
 3. `**_walk_scope_tree(active_path)**`：收集该根下**所有** scope（含嵌套子 scope）的索引行（`scope_id`、`path`、`name`、`depth`、`ts`、可选 `**parent`**）。
 4. `**move_prefix**`：把 `agents/.../ro/active/{scope_id}/` **整体**移到 `.../ro/scopes/{scope_id}/`。
 5. 修正索引中的 `**path`** 前缀后，**追加**到 `**/ro/scopes/_index.jsonl`**（与 Recall 读取的文件一致）。
 6. API 层 `/v1/scope/end` 在 `is_root=true` 归档后还会调 `_drop_skill_lock` 回收 `_SKILL_LOCKS` 里对应 `(user_id, agent_id, scope_id)` 的互斥锁条目。
 
-> 2026-04-25 (PR-56 / PR-58)：根 scope 的 `summary` 参数有**两层来源**，按优先级解析（`api.py::_scope_end`）：
-> 1. **Tier 1 — LLM 显式写**：根级 `skill_end(report="...")` 走 `_context_skill_end_locked`，把 report 暂存到 `meta.pending_rest_summary`；归档时该字段 winning。这是"agent 主动写 turn recap"的官方通路（参考 `tool_schemas.py::skill_end` description 中的 Pattern B / continuity protocol）。
-> 2. **Tier 2 — saga 自动派生**：若 LLM 没在 root 层显式调 `skill_end`（实际线上多数情况），`react_actions._extract_rest_summary` 会从最后一条 `chat_reply.message` 抠 1–3 句、套字节 cap，由 `subagent_rest._build_cortex_scope_end_payload` 作为 `report` 传进来。
-> 3. 两者都没有 → 写空字符串（与 PR-55 删 phantom `generate_simple_summary` 之后的语义一致）。
->
-> 写入的 `summary.md` 既被 `<PREV_SCOPE_TAIL>` 渲染近邻 turn，也被新的 `<PREV_SCOPE_HISTORY>` 块（PR-57）取作 K 个 root 的 rolling history（见 [§10](#10-跨-root-rolling-summary-history)）。
+`/v1/scope/end` 是结构性归档 API，不是 summary API。非空 `report` 会被拒绝；Runtime 的 `wake_finalize` 只传空 report。可被后续 DFS 折叠渲染的 summary 只来自 `/v1/context/skill_end(report=...)`。
 
 ---
 
-## 6. 原子「结束当前根 + 建新待机根」：`scope_end_and_spawn`
+## 6. 已废弃的 root-summary 拼接路径
 
-用于一轮对话结束、进入待机：
-
-1. 对当前 `**/ro/active/{scope_id}**` 读 `**_index.jsonl**` 与 `**meta**`，用 `**generate_combined_summary**` 生成最终 `**summary**`。
-2. 调用 `**archive_root_scope(scope_id, summary)**`。
-3. `**create_scope**` 新建 `**phase=dormant**` 的根 scope（新 `scope_id`，`prev_scope_id` 指向旧根等）。
-
-返回 `**archived_scope_id`、`archive_path`、`new_scope_id`、`new_scope_path**`。
+旧版 `scope_end_and_spawn` / `generate_combined_summary` 思路会在生命周期收尾时自动拼摘要。该路径不属于当前 Cortex 契约：结构性 scope_end 只归档，summary 只来自 `skill_end(report=...)`。
 
 ---
 
@@ -121,13 +110,12 @@ Skill scope 是 LLM 通过两个工具 **`skill_begin` / `skill_end`** 管理的
 - 匹配则调 **`complete_child_scope(active_path, report)`**（§4）把该子 scope 设为 `archived` 并写 `summary.md`。
 - **返回体包含栈状态**：`skill_begin` / `skill_end` 的 ok 与 error 响应都会带 `stack`（LIFO 帧数组，栈顶最先，元素为 `{depth, scope_id, skill_name}`）和 `stack_depth`，让 LLM 能直接在工具结果里看到最新栈形。
 
-### 9.3 Meta skill 自底托盘
+### 9.3 Wake scope 作为本轮工作容器
 
-- `subagent_wake` saga 在 `session_init` 之后、`set_subagent_awake` 之前，会自动通过 **`TaskTopics.CORTEX_SKILL_BEGIN`** 开一个 **`scope_id = meta-<root_scope_id>`、`name = meta`** 的 skill scope（**`_build_auto_meta_skill_payload`**）。
-- 该步骤**必需**（非 `optional`）：Cortex 返回 `ok: False` 或抛异常都会使 `handle_cortex_skill_begin` raise，wake saga 整体失败而不是静默降级到「栈空 → 立刻 rest」。
-- 对应地，`/api/queue/dispatch` 入口**要求 `user_id` 必填**（Cortex skill_begin 没有 user_id 会校验失败）。
-- 这样 LLM 醒来时栈**永远非空**（至少 1 层 Meta），使得「栈空 ⇔ 真的没事做了 ⇔ 自动休息」这个判据可靠。
-- 若 LLM 主动 `skill_end` Meta，则 **`react_actions`** 下一步的 **`decide_rest`** 会走 rest 路径（见 [agent-runtime-all-topics.md](agent-runtime-all-topics.md) §3）。
+- `subagent_wake` saga 在 `session_init` 时创建长寿命 agent root，并在其下创建本轮 wake scope。
+- Runtime 以 `agent_root_scope_id` 作为 ContextEngine 读取入口，因此历史 wake 与显式子 skill 会通过 agent-root DFS 呈现。
+- Active scope stack 对 LLM 隐藏 agent root，但显示当前 wake scope 和 wake 内的子 scope。
+- LLM 回复用户后应关闭当前栈顶 scope；当 wake 也被关闭、栈深度归零时，`react_actions` 触发 `wake_finalize` 做结构性收尾。
 
 ### 9.4 并发安全
 
@@ -138,10 +126,10 @@ Skill scope 是 LLM 通过两个工具 **`skill_begin` / `skill_end`** 管理的
 
 - 每轮 **`cortex.prepare_llm_context`** 在消息末尾会追加一条**瞬态** system 消息，形如：
   ```text
-  [Active skill stack (LIFO — close innermost first)]
-    depth 0: meta (scope_id=meta-abc123)
+  [Active scope stack (LIFO — close innermost first)]
+    depth 0: user conversation (scope_id=wake-abc123)
     depth 1: debugging (scope_id=debug-1)
-  → Stack top: scope_id=debug-1 (skill=debugging). To pop this skill call: skill_end(scope_id='debug-1', report='...')
+  → Stack top: scope_id=debug-1 (skill=debugging). To close this scope call: skill_end(scope_id='debug-1', report='...')
   ```
 - 数据来自 **`ContextEngine.status(...).frames`** —— 每帧 `{depth, skill_name, scope_id}`，由 `_extract_stack_info` 遍历 Step Tree 所有 `is_scope and not closed` 节点构造。
 - 该提示**不写入 `context.jsonl`**，每轮重新生成（见 [agent-runtime-cortex-call-chain.md](agent-runtime-cortex-call-chain.md) §4）。
@@ -160,10 +148,9 @@ Skill scope 是 LLM 通过两个工具 **`skill_begin` / `skill_end`** 管理的
 
 现在只有一条 LLM 可见摘要路径：
 
-1. LLM 显式调用 `skill_begin(...)` 打开子 skill。
-2. LLM 调用 `skill_end(report=...)` 关闭该子 skill。
-3. Cortex 将这个 report 原样写入该子 scope 的 `summary.md`。
-4. 后续 `prepare_for_llm` 从 agent root 做 DFS；wake 只是生命周期容器，Cortex 会穿过它，只渲染显式子 skill 的折叠摘要。
+1. LLM 按 Active scope stack 调用 `skill_end(report=...)` 关闭当前栈顶 scope。
+2. Cortex 将这个 report 原样写入该 scope 的 `summary.md`。
+3. 后续 `prepare_for_llm` 从 agent root 做 DFS；已关闭且有非空 summary 的 scope 会折叠为一条 system 消息。
 
 这避免了 Runtime 在 wake 关闭时从聊天内容、工具结果或历史 root scope 中再造一条“摘要”通道。
 
@@ -173,5 +160,5 @@ Skill scope 是 LLM 通过两个工具 **`skill_begin` / `skill_end`** 管理的
 
 - [context-timeline-and-dfs.md](context-timeline-and-dfs.md) — 如何遍历 `_index.jsonl` 生成 LLM 消息  
 - [recall.md](recall.md) — 如何用 `/ro/scopes/_index.jsonl` 做记忆注入  
-- [agent-runtime-all-topics.md](agent-runtime-all-topics.md) — `react_actions` 的 `check_skill_stack` / `decide_rest` 与 `subagent_wake` 的 `auto_meta_skill`  
-- [agent-runtime-cortex-call-chain.md](agent-runtime-cortex-call-chain.md) — `[Active skill stack]` 瞬态注入
+- [agent-runtime-all-topics.md](agent-runtime-all-topics.md) — `react_actions` 的 `check_skill_stack` / `decide_finalize` 与 `subagent_wake`  
+- [agent-runtime-cortex-call-chain.md](agent-runtime-cortex-call-chain.md) — `[Active scope stack]` 瞬态注入

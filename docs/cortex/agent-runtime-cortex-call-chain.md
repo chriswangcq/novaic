@@ -50,8 +50,8 @@
 3. **Step 3 `_load_tool_schemas(bridge)`**：`bridge.load_tool_schemas()` → 转成 OpenAI **`tools[]`**（`type: function`），收集 **`tool_names`**。
 4. **Step 4a `_format_skill_stack_system_message(stack)`**：若 `stack` 非空，追加一条瞬态 **system** 消息：
    ```text
-   [Active skill stack (LIFO — close innermost first)]
-     depth 0: meta (scope_id=meta-<root>)
+   [Active scope stack (LIFO — close innermost first)]
+     depth 0: user conversation (scope_id=wake-<id>)
      depth 1: debugging (scope_id=debug-1)
    → Stack top: scope_id=debug-1 ... skill_end(scope_id='debug-1', report='...')
    ```
@@ -72,10 +72,10 @@
 |------|------|---------|
 | **`context_skill_begin`** | `POST /v1/context/skill_begin` | `scope_id`（根）、**`child_scope_id`**（LLM 自选，全局唯一）、`skill_name`、`task?` |
 | **`context_skill_end`** | `POST /v1/context/skill_end` | `scope_id`（根）、**`child_scope_id`**（必须 == 当前栈顶）、`report` |
-| **`context_check_stack`** | （Runtime 内部 handler，未独立 HTTP） | 通过 `context_status` 判断栈是否只剩 Meta/为空 |
+| **`context_check_stack`** | （Runtime 内部 handler，未独立 HTTP） | 通过 `context_status` 判断栈是否为空 |
 | **`context_status`** | `POST /v1/context/status` | 返回 `stack_depth`、`frames[{depth,skill_name,scope_id}]` 等 |
 
-对应 handler：**`handle_cortex_skill_begin` / `handle_cortex_skill_end` / `handle_cortex_check_stack`**（`cortex_handlers.py`）。新的 Runtime topic **`CORTEX_CHECK_STACK = "cortex.check_stack"`** 由 **`react_actions`** saga 的 `check_skill_stack` 步调用，决定下一步是 `trigger_rest` 还是 `trigger_next_think`（见 [agent-runtime-all-topics.md §3](agent-runtime-all-topics.md#3-reactthink-saga与-cortex-的衔接)）。
+对应 handler：**`handle_cortex_skill_begin` / `handle_cortex_skill_end` / `handle_cortex_check_stack`**（`cortex_handlers.py`）。Runtime topic **`CORTEX_CHECK_STACK = "cortex.check_stack"`** 由 **`react_actions`** saga 的 `check_skill_stack` 步调用，决定下一步是 `trigger_finalize` 还是 `trigger_next_think`（见 [agent-runtime-all-topics.md §3](agent-runtime-all-topics.md#3-reactthink-saga与-cortex-的衔接)）。
 
 ---
 
