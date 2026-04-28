@@ -26,22 +26,22 @@
 
 严格 LIFO：仅能关栈顶，不匹配报错（不做级联关闭）。详见 [scope-lifecycle.md §9](scope-lifecycle.md#9-skill-scope-生命周期llm-可见栈式)。
 
-> 2026-04-25 (PR-59)：`skill_begin` / `skill_end` 的 description 已重写以教会 LLM 两种使用模式 —— **Pattern A**（关 sub-skill：把子任务详细 transcript 折叠成一行 report）和 **Pattern B / Continuity Protocol**（关 root meta scope：1–3 句 turn-recap，作为下次醒来时 `<PREV_SCOPE_HISTORY>` 的一条目）。Pattern B 是 R9 文字层的"原作者写"上游 —— LLM 不主动写时，runtime 会用 `react_actions._extract_rest_summary` 从最后一条 `chat_reply.message` 抠 fallback（Tier 2，见 [scope-lifecycle.md §5](scope-lifecycle.md#5-根-scope-归档archive_root_scope)）。改 description 不会改 schema 字段，但会显著影响 root summary 内容质量；如要回滚或微调措辞，编辑 `BUILTIN_TOOL_SCHEMAS` 中的 `skill_begin` / `skill_end` 条目即可（受 `_MAX_DESCRIPTION_LEN=2000` / `_MAX_PROPERTY_DESCRIPTION_LEN=500` 上限约束）。
+当前唯一 summary 写入通路是：LLM 关闭当前栈顶 scope 时调用 `skill_end(report=...)`，`report` 原样成为该 scope 的 `summary.md`。Cortex 不从 `chat_reply`、wake 结束、用户画像或其他运行时信号推断 summary。
 
 **并发安全**：`POST /v1/context/skill_begin` 与 `POST /v1/context/skill_end` 在 Cortex API 层以 `(user_id, agent_id, root_scope_id)` 为 key 使用 asyncio 互斥锁（`_SKILL_LOCKS`）串行化，避免同一个 round 里并发 tool_calls 把 stack 状态搞乱。锁条目会在 root scope 归档（`/v1/scope/end` with `is_root=true`）后自动回收。
 
 **结果可见性**：`skill_begin` / `skill_end` 的成功/错误响应均包含 `stack`（LIFO ordered 帧数组，栈顶最先）与 `stack_depth`，工具结果会被 Agent Runtime 当作普通 step 保存到 `steps/`，LLM 在下一轮 prepare_llm_context 可以直接读到。
 
-### 1.3 已废弃：`subagent_rest`
+### 1.3 Runtime finalize
 
-~~曾存在一个 `subagent_rest(until?, reason?)` 工具~~ 现在**已删除**。休息行为改为被 **`react_actions`** saga 在 `check_skill_stack` 后自动触发：
+没有 LLM 可调用的 rest/finalize 工具。收尾由 Runtime 在 `react_actions` / `react_think` 里根据 Cortex 栈状态触发：
 
-1. `round_num ≥ runtime.max_rounds_before_force_rest`（默认 40）→ 强制 rest（保护性兜底，防止 LLM 不 `skill_end` 的死循环）；
-2. Cortex 查栈异常（`stack_known=False`）→ fail-safe 继续 think，不 rest；
-3. `stack_depth == 0` ⇒ 开 `subagent_rest` saga；
+1. `round_num ≥ runtime.max_rounds_before_force_rest`（默认 40）→ 强制 finalize（保护性兜底，防止 LLM 不 `skill_end` 的死循环）；
+2. Cortex 查栈异常（`stack_known=False`）→ fail-safe 继续 think，不 finalize；
+3. `stack_depth == 0` ⇒ 开 `wake_finalize` saga；
 4. 否则 ⇒ 继续 `react_think` 下一轮。
 
-LLM 要「结束当前工作」只需逐层 **`skill_end`** 直到 Meta 被关闭即可。Meta scope 由 `subagent_wake` saga 的 `auto_meta_skill` 步骤自动打开（**必需步骤**，非 optional），并要求 dispatch 时 `user_id` 必填。
+LLM 要「结束当前工作」只需按 Active scope stack 关闭当前栈顶 scope。`wake_finalize` 只负责生命周期归档、状态切换、MCP 销毁和 session ended 通知；它传给 `/v1/scope/end` 的 `report` 必须为空。
 
 ## 2. `initialize()` 种子：`_seed_builtin_tools`
 

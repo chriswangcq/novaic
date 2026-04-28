@@ -129,6 +129,9 @@
 | PR-76  | `[✓]`  | [Add Cortex boundary guardrails](PR-76-cortex-boundary-ci-guardrails.md) **— local guard + Cortex tests verified 2026-04-27** | PR-74, PR-75 | Regression prevention | 0.5 d | __ |
 | PR-77  | `[✓]`  | [Tighten LLM tool descriptions around child-skill summaries](PR-77-llm-tool-description-child-skill-contract.md) **— Business+Runtime+Cortex deployed + smoke-verified 2026-04-27** | PR-74 preferred | Tool contract + agent behavior | 0.5 d | __ |
 | PR-78  | `[✓]`  | [Make wake the LLM-closed turn scope and remove meta skill](PR-78-wake-scope-close-no-meta-skill.md) **— Cortex+Runtime+Business deployed + smoke-verified 2026-04-28** | PR-67, PR-73, PR-77 | Continuity correctness + tool contract | 0.5–1 d | __ |
+| PR-79  | `[ ]`  | [Rename runtime `subagent_rest` to `wake_finalize`](PR-79-rename-subagent-rest-to-wake-finalize.md) | PR-78 | Conceptual cleanup | 0.5 d | __ |
+| PR-80  | `[ ]`  | [Enforce single summary writer: only `skill_end(report=...)`](PR-80-scope-end-no-report-contract.md) | PR-78, PR-79 | Memory correctness | 0.5 d | __ |
+| PR-81  | `[ ]`  | [Remove old rest/meta wording from active docs and guardrails](PR-81-finalize-docs-and-guardrails.md) | PR-79, PR-80 | Regression prevention | 0.5 d | __ |
 
 
 ---

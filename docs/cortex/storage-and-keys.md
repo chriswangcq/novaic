@@ -47,7 +47,7 @@ S3 没有原生 rename；**`move_prefix`** 是 **逐键 `copy + delete` 循环**
 
 1. **逐键原子（S3 保证）**：每一对 `copy_object` / `delete_object` 要么（a）src 仍在，要么（b）dst 已出现，要么（c）短暂重叠——**不会凭空丢失**；失败重试总能定位到对象。
 2. **归档期禁写 src**：**`archive_root_scope`** / **`complete_child_scope`** **先**把 **`meta.phase = "archived"`**，**再** **`move_prefix`**。所有写入（`skill_begin` / `skill_end` / `context_append` / `write_step`）都会检查 `phase == "archived"` **并拒绝**。配合 **`_SCOPE_LOCKS`**（见 **[concurrency-and-locks.md](concurrency-and-locks.md)**）把 phase flip + 移动串到同一把锁里，`list_recursive` 拿到的快照即权威。
-3. **幂等重试**：若在第 *i / N* 步崩溃，saga 重放时再列 src 只会看到剩余 *N-i* 个键（已移动的键在 src 已无），继续往下即可。**`/v1/scope/end`** 本身在 P2-4 被实现成幂等（见 **[internal-api-schemas.md](internal-api-schemas.md)**），因此整条 `subagent_rest → cortex_scope_end` saga 步骤可安全重跑。
+3. **幂等重试**：若在第 *i / N* 步崩溃，saga 重放时再列 src 只会看到剩余 *N-i* 个键（已移动的键在 src 已无），继续往下即可。**`/v1/scope/end`** 本身在 P2-4 被实现成幂等（见 **[internal-api-schemas.md](internal-api-schemas.md)**），因此 `wake_finalize → cortex_scope_end` saga 步骤可安全重跑。
 
 **任何改动 `move_prefix` 的硬约束**（源码 docstring 同步）：
 

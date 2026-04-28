@@ -16,7 +16,7 @@
 | INV | 类别 | Status | 强制级别 | 主要落点 |
 | --- | --- | --- | --- | --- |
 | INV-1 | 写入并发 | ✅ | `[CODE]` | `api.py::_get_scope_lock` / `/v1/steps/write` |
-| INV-2 | 生命周期 | ✅ | `[CONTRACT]` | `react_actions._decide_rest_or_continue` + `subagent_rest` |
+| INV-2 | 生命周期 | ✅ | `[CONTRACT]` | `react_actions._decide_finalize_or_continue` + `wake_finalize` |
 | INV-3 | 栈并发 | ✅ | `[CODE]` | `api.py::_get_skill_lock`（= `_get_scope_lock` 别名） |
 | INV-4 | 权威读 | ✅ | `[CONTRACT]` | `CORTEX_CHECK_STACK` 走 `/v1/context/status` |
 | INV-5 | 错误分类 | ✅ | `[CONTRACT]` | Cortex 业务失败 = `200 {ok:false}`；5xx = 重试 |
@@ -53,24 +53,24 @@ async def steps_write(req: StepWriteRequest):
 
 ---
 
-## INV-2 · `subagent_rest` 入口前提
+## INV-2 · `wake_finalize` 入口前提
 
-> 进入 `subagent_rest` saga 的任何一次调用，**必须**蕴含以下之一：
+> 进入 `wake_finalize` saga 的任何一次调用，**必须**蕴含以下之一：
 > - `stack_depth == 0`（栈已清空，合法 idle）
-> - `force_rest_reason != none`（被显式强制休眠，已接受栈上挂起作为代价）
+> - `force_finalize_reason != none`（被显式强制收尾，已接受栈上挂起作为代价）
 
-**动机**：Agent 带着未闭合 skill 进入 rest → 下次 wake 看到残留栈 → LIFO 检查报错或产生孤儿子 scope。
+**动机**：Agent 带着未闭合 scope 进入 finalize → 后续 wake 看到残留栈 → LIFO 检查报错或产生孤儿子 scope。
 
 **落地**：
 
 ```x:y:novaic-agent-runtime/task_queue/sagas/react_actions.py
-# _decide_rest_or_continue 在 rest 分支前读取 CORTEX_CHECK_STACK 的 stack_depth + stack_known。
-# stack_known=False 时禁止 rest；stack_depth>0 时只在 force_rest_reason 存在时允许。
+# _decide_finalize_or_continue 在 finalize 分支前读取 CORTEX_CHECK_STACK 的 stack_depth + stack_known。
+# stack_known=False 时禁止 finalize；stack_depth>0 时只在 force_finalize_reason 存在时允许。
 ```
 
-+ P1-5 后 `subagent_rest` 强制携带 `rest_reason` 与 `round_num`，便于事后审计（见 [handlers/cortex_handlers.py](./agent-runtime-all-topics.md) 对应段落）。
++ `wake_finalize` 强制携带 `finalize_reason` 与 `round_num`，便于事后审计（见 [handlers/cortex_handlers.py](./agent-runtime-all-topics.md) 对应段落）。
 
-**破坏后果**：P0-5 所描述 no-tool-after-retry 直通 rest 的 bug。
+**破坏后果**：P0-5 所描述 no-tool-after-retry 直通 finalize 的 bug。
 
 ---
 
@@ -107,7 +107,7 @@ async with _instrumented_scope_lock(lock, op="skill_begin"):
 # 返回 stack_depth + frames（scope_id, skill, depth）供 Runtime 决策。
 ```
 
-Runtime 侧 `handle_cortex_check_stack` 在异常时返 `stack_depth=1, stack_known=False`，`_decide_rest_or_continue` 看到 `stack_known=False` 不得 rest（INV-2 配合）。
+Runtime 侧 `handle_cortex_check_stack` 在异常时返 `stack_depth=1, stack_known=False`，`_decide_finalize_or_continue` 看到 `stack_known=False` 不得 finalize（INV-2 配合）。
 
 **破坏后果**：绕过 status 读业务库快照 → 决策基于陈旧数据 → 假 rest / 假 continue。
 
