@@ -1,95 +1,78 @@
 # 统一时间线与 DFS 上下文拼装
 
-> 源码：`novaic_cortex/context_stack/engine.py`（**`ContextEngine`**）、`context_stack/budget.py`、`context_stack/step_tree.py`。
+> 源码：`novaic_cortex/context_stack/engine.py`、`context_stack/step_tree.py`、`context_stack/budget.py`。
 
-## 1. 单一数据源：`steps/_index.jsonl`
+当前 LLM context 主路径是：
 
-每个 **scope 目录**（逻辑路径如 `/ro/active/xxx` 或归档后的 `/ro/scopes/xxx`）下有：
+1. 读取当前入口 scope 的 `context.jsonl`。
+2. 从 `steps/_index.jsonl` 构建 Step Tree。
+3. 合并普通消息、assistant message、tool result 与 scope fold。
+4. 对整条 messages 调 `budget_compact`。
 
-- **`meta.json`**：会话级配置（见下）
-- **`steps/_index.jsonl`**：按 **seq** 递增的**有序**时间线，每一行一个 JSON 对象，`type` 区分步类型
+入口通常是 **agent-root scope**，因此历史 wake scope 会作为 agent-root 下的 child scope 被 DFS 处理。
 
-**`ContextEngine.prepare_messages_for_llm`** 只认这条时间线（外加 `meta` 前缀），不单独扫磁盘猜文件。
+## 1. 数据源
 
----
-
-## 2. `meta.json` 里参与拼装的字段
-
-在遍历 **`_index.jsonl`** 之前，`read_session_meta(scope_path)` 提供：
-
-| 字段 | 作用 |
+| 数据 | 用途 |
 |------|------|
-| **`system_prompt`** | 若有，先追加一条 **`role: system`** |
-| **`recall_messages`** | 每条有 `content` 则追加为 system（`_metadata.origin: recall`）；与 **`Recall` 类**全局记忆不同，见 [recall.md](recall.md) |
-| **`initial_context`** | 可选多条，按 `role` / `content` 追加（常用于种子 user/system 消息） |
+| `context.jsonl` | 少量非 step 类消息。当前系统提示由 Runtime prompt builder 注入，不靠 `meta.recall_messages`。 |
+| `steps/_index.jsonl` | 按 seq 递增的 step 时间线。 |
+| `steps/*.json` | assistant/tool/env 等 step payload。 |
+| `steps/{NNNN_scope_<id>}/` | 子 scope 目录。 |
+| `summary.md` | scope 被 `skill_end(report=...)` 关闭时写入；闭合后用于 fold。 |
 
----
+`meta.json` 仍记录 scope 生命周期字段，但当前主路径不从 `meta.json` 注入独立 Recall 或 wake-summary 通道。
 
-## 3. `_index.jsonl` 条目类型与渲染
+## 2. Step 类型
 
-| `type` | 含义 | 渲染结果 |
+| `type` | 含义 | LLM 渲染 |
 |--------|------|----------|
-| **`env`** | 环境事件 | 若条目含 **`text`**（如 inline env）→ 一条 **system**；若仅 `subtype` 而无 `text`，由具体子类型决定（`_render_env`） |
-| **`assistant`** | 指向 `steps/ast_*.json` | 读 JSON：`content`、`tool_calls`、`reasoning_content` → **assistant** 消息 |
-| **`tool`** | 指向 tool 的 JSON 文件 | **tool** 消息，`tool_call_id` + `result` 字符串化 |
-| **`scope`** | 子 scope 目录名（`file` 指向 `steps/{dirname}/`） | 见 §4 **DFS** |
+| `env` | 环境/输入事件 | system 或 user 相关上下文，由具体 payload 决定 |
+| `assistant` | LLM assistant message | assistant，保留 `content`、`tool_calls`、`reasoning_content` |
+| `tool` | 工具执行结果 | tool message，`tool_call_id` + 结果内容 |
+| `scope` | 子 scope 目录 | 开放则 DFS 展开，已关闭则按 `summary.md` 折叠 |
 
-文件读取：相对当前 **`self._scope_path`**，路径形如 **`{scope_path}/steps/{filename}`**。
+## 3. Scope DFS 规则
 
----
+```text
+agent-root
+  wake-1 (closed, summary.md)      -> fold
+  wake-2 (closed, summary.md)      -> fold
+  wake-3 (open)
+    child-skill (closed, summary)  -> fold inside wake-3
+    current steps                  -> expand
+```
 
-## 4. 子 scope：折叠 vs DFS 展开（核心）
+折叠输出由 `render_scope_fold` 生成，形如：
 
-对 **`type == "scope"`**，先算子路径：**`child_path = {scope_path}/steps/{scope_dir}`**，再读**子** **`meta.json`**。
+```text
+[Skill '<scope name>' completed]
+<summary.md>
+```
 
-### 4.1 已归档子 scope：`meta.phase == "archived"`
+空 `summary.md` 会被抑制，避免结构性 cleanup 产生假记忆。
 
-- 读 **`summary.md`**（`_read_summary`）。
-- 输出**一条** system：  
-  `"[Skill '{scope_name}' completed]\n{summary}"`  
-- **不递归**进入子树（整段已折叠）。
+## 4. Active Stack
 
-### 4.2 仍活跃子 scope：其它 `phase`
+`ContextEngine.status(messages)` 基于 Step Tree 提取仍开放的 scope frames。Runtime 会把它追加为瞬态 system message：
 
-- 构造**子** **`ContextEngine(scope_path=child_path)`**。
-- 调用 **`_render_all_steps()`**：与主流程相同，但**不再**读子树根的 `meta` 里 `system_prompt/recall/initial`（避免重复），只遍历子 **`_index.jsonl`**。
-- 在主列表前加**头** system：`[Skill '{name}' active]`，再拼接子消息列表。
+```text
+[Active scope stack (LIFO — close innermost first)]
+  depth 0: user conversation (scope_id=<wake>)
+→ Stack top: scope_id=<wake> ...
+```
 
-因此：**开放子 scope = 深度优先展开**（子树内消息全部插入在父时间线中该 scope 条目所在位置之后，因主循环是顺序遍历 `_index.jsonl`）。
+这条提示不写入 `context.jsonl`，每次 LLM 调用前重新生成。LLM 应按栈顶调用 `skill_end(report=...)`。
 
----
+## 5. Budget Compact
 
-## 5. `_render_all_steps` 与 `prepare_messages_for_llm` 的差异
-
-- **`prepare_messages_for_llm`**：包含 **`meta`** 前缀 + 根 scope 的完整 `_index.jsonl` + 最后 **`budget_compact`**。
-- **`_render_all_steps`**：仅遍历**当前** scope 的 `_index.jsonl`（供递归子 scope 使用），**无**根 `meta` 前缀、**无** `budget_compact`（压缩只在最外层做一次）。
-
----
-
-## 6. `budget_compact`（`budget.py`）
-
-在 **`prepare_messages_for_llm`** 末尾对**整条消息列表**调用：
-
-- 根据 **`CompactConfig`**（`context_window`、阈值、`micro_*` 等）与 **`count_all_tokens`** 算 **ratio**，再进入 **micro / warm / emergency** 三路径（见 **`budget.py`**）。
-
-逐步说明、轮边界、`stack_top` 与 HTTP **`prepare_for_llm`** 是否读 **`engine.json`**：**[budget-compact-algorithm.md](budget-compact-algorithm.md)**。
-
-**`ContextEngine.status()`** 可基于已生成消息估算 token 与 `usage_ratio`（供上层 `suggest_compact` 等使用）。
-
----
-
-## 7. `StepTreeBuilder` / `StepNode`（`step_tree.py`）
-
-- 从索引构建 **树形**结构（tool 叶 / scope 节点），**`render_scope_fold`** 等用于与引擎类似的折叠展示。
-- **面向 LLM 的最终消息序列**以 **`engine.py` 时间线遍历为准**；树模块更多用于分析、调试或其它调用路径。
-
----
+`prepare_messages_for_llm` 最后调用 `budget_compact(messages, config, counter=...)`。配置来自 `EngineConfig` → `CompactConfig` 映射；详见 [budget-compact-algorithm.md](budget-compact-algorithm.md)。
 
 ## 相关文档
 
-- [step-index-and-payload-schema.md](step-index-and-payload-schema.md) — `_index.jsonl` 行与磁盘 JSON 形状  
-- [session-meta-json.md](session-meta-json.md) — `meta.json` 与 `prepare_messages_for_llm` 前缀  
-- [budget-compact-algorithm.md](budget-compact-algorithm.md) — `budget_compact` 详解  
-- [agent-runtime-cortex-call-chain.md](agent-runtime-cortex-call-chain.md) — Runtime 如何调 `prepare_for_llm`  
-- [scope-lifecycle.md](scope-lifecycle.md) — scope 何时 `archived`、summary 谁写  
-- [recall.md](recall.md) — 归档**根** scope 如何进入全局记忆索引  
+- [step-index-and-payload-schema.md](step-index-and-payload-schema.md)
+- [session-meta-json.md](session-meta-json.md)
+- [budget-compact-algorithm.md](budget-compact-algorithm.md)
+- [agent-runtime-cortex-call-chain.md](agent-runtime-cortex-call-chain.md)
+- [scope-lifecycle.md](scope-lifecycle.md)
+- [recall.md](recall.md)（历史/已退役）

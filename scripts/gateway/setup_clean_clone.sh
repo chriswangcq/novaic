@@ -14,11 +14,9 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PARENT_DIR="$(cd "$REPO_ROOT/.." && pwd)"
 
 RUNTIME_REPO_URL="${RUNTIME_REPO_URL:-https://github.com/chriswangcq/novaic-runtime-orchestrator}"
-TOOLS_REPO_URL="${TOOLS_REPO_URL:-https://github.com/chriswangcq/novaic-tools-server}"
 SHARED_COMMON_URL="${SHARED_COMMON_URL:-https://github.com/chriswangcq/novaic}"
 
 RUNTIME_DIR="${RUNTIME_REPO_DIR:-$PARENT_DIR/novaic-runtime-orchestrator}"
-TOOLS_DIR="${TOOLS_REPO_DIR:-$PARENT_DIR/novaic-tools-server}"
 SHARED_DIR="${NOVAIC_SHARED_COMMON_PATH:-$PARENT_DIR/novaic-shared-runtime-common}"
 
 clone_if_missing() {
@@ -32,12 +30,10 @@ clone_if_missing() {
 }
 
 clone_if_missing "$RUNTIME_REPO_URL" "$RUNTIME_DIR"
-clone_if_missing "$TOOLS_REPO_URL"   "$TOOLS_DIR"
 clone_if_missing "$SHARED_COMMON_URL" "$SHARED_DIR"
 
 echo "[setup_clean_clone] running smoke test..."
 RUNTIME_REPO_DIR="$RUNTIME_DIR" \
-TOOLS_REPO_DIR="$TOOLS_DIR" \
 NOVAIC_SHARED_COMMON_PATH="$SHARED_DIR" \
 bash "$REPO_ROOT/scripts/smoke_gateway_repo_root.sh"
 

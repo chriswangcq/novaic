@@ -3,11 +3,6 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 # Sibling-repo paths are configurable via env vars for clean-clone workflow.
-# In a clean-clone setup, set this before running:
-#   TOOLS_REPO_DIR=/path/to/novaic-tools-server
-TOOLS_REPO_DIR="${TOOLS_REPO_DIR:-$ROOT_DIR/../novaic-tools-server}"
-# Entry-point scripts are configurable to support repos with different layouts.
-TOOLS_MAIN_SCRIPT="${TOOLS_MAIN_SCRIPT:-tools_server/main.py}"
 # Set GATEWAY_ONLY_SMOKE=1 to skip starting sibling services and test gateway only.
 GATEWAY_ONLY_SMOKE="${GATEWAY_ONLY_SMOKE:-0}"
 VENV_DIR="$ROOT_DIR/.venv"
@@ -28,17 +23,12 @@ resolve_python_bin() {
 PYTHON_BIN="$(resolve_python_bin)"
 
 GW_PID=""
-TS_PID=""
 
 cleanup() {
   set +e
   if [ -n "$GW_PID" ]; then
     kill "$GW_PID" >/dev/null 2>&1 || true
     wait "$GW_PID" >/dev/null 2>&1 || true
-  fi
-  if [ -n "$TS_PID" ]; then
-    kill "$TS_PID" >/dev/null 2>&1 || true
-    wait "$TS_PID" >/dev/null 2>&1 || true
   fi
 }
 trap cleanup EXIT
@@ -83,18 +73,7 @@ else
   curl --noproxy '*' -fsS "http://127.0.0.1:19999/api/system/status" >/dev/null
   "$ROOT_DIR/scripts/replay_gateway_runtime_chain.sh"
 
-  TOOLS_HOST="127.0.0.1" \
-  TOOLS_PORT="20002" \
-  "$PYTHON_BIN" "$TOOLS_REPO_DIR/$TOOLS_MAIN_SCRIPT" > /tmp/novaic-tools-server-split.log 2>&1 &
-  TS_PID="$!"
-
-  if ! wait_for_http "http://127.0.0.1:20002/api/health"; then
-    echo "ERROR: tools-server health check failed"
-    exit 1
-  fi
-
   echo "SPLIT_GATEWAY_HEALTH=PASS"
-  echo "SPLIT_TOOLS_HEALTH=PASS"
   echo "SPLIT_GATEWAY_STATUS_ROUTE=PASS"
   echo "CLEAN_CLONE_WORKFLOW_READY=PASS"
 fi

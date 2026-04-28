@@ -70,7 +70,6 @@ if [ "$MODE" = "binary" ]; then
     
     start_service "gateway" 19999 "$BUILD_DIR/novaic-gateway --port 19999"
     start_service "storage-a" 19995 "$BUILD_DIR/novaic-storage-a --port 19995"
-    start_service "tools-server" 19998 "$BUILD_DIR/novaic-tools-server --port 19998 --gateway-url http://127.0.0.1:19999"
     
     # Workers
     echo -e "${GREEN}[Starting] Workers${NC}"

@@ -13,14 +13,15 @@
 #   - Device         :19993  PC bridge WS, VM lifecycle, SSH key mgmt, WebRTC signaling
 #   - Queue Service  :19997  Task/Saga queue management
 #   - File Service   :19995  File upload/download
-#   - Cortex         :19996  LLM orchestration, Workspace, Recall, Sandbox
+#   - Cortex         :19996  Scope tree, LLM context assembly, Workspace, Sandbox
 #   - Workers        task-worker ×4, saga-worker ×2, health ×1, scheduler ×1
 #
 # Communication:
-#   Workers → Business  (direct /internal/* calls)
+#   Workers → Business  (/internal/* calls, including entity proxy)
 #   Workers → Gateway   (only /api/logs/broadcast for WS push)
-#   Workers → Entangled (direct entity CRUD)
+#   Workers → Cortex    (scope/context/shell APIs)
 #   Entangled → Business (action hook callbacks)
+#   Business → Entangled (sole direct entity HTTP consumer)
 #   Business → Device   (device action hook proxy)
 #   Device → Gateway    (WebRTC signaling via /api/app/push)
 

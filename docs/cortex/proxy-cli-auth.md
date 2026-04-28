@@ -28,7 +28,7 @@ HTTP 封装：**`POST /v1/proxy/{command}`**（见 [http-api.md](http-api.md)）
 ## 3. `novaic` CLI
 
 - **环境变量**：**`NOVAIC_API`**（默认 `http://localhost:19996`）、**`NOVAIC_TOKEN`**（能力 JWT）。  
-- **认知类**（直打 Cortex）：`read`、`write`、`ls`、`recall`、`tools` → 对应 **`/v1/read`** 等。  
+- **认知类**（直打 Cortex）：`read`、`write`、`ls`、`tools` → 对应 **`/v1/read`** 等。
 - **代理类**（经 Proxy）：`chat`、`browser`、`screenshot`、`keyboard`、`mouse`、`shell_exec`、`qemu`、`subagent` → **`POST /v1/proxy/{command}`**。
 - Cortex CLI 不再暴露 `memory`、`notebook`、`task`、`search`；需要这些业务能力时应由对应 owning service/package 提供入口。
 

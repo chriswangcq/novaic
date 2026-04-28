@@ -40,7 +40,7 @@ Gateway 虽然移除了 RO，但仍然存在以下严重的技术债和过度耦
 
 ### 4.1. 工具服务分离边界
 Gateway 目前的 `/internal/tools/...` 接口包揽了 Agent 容器、Shell 命令的下发。实质上，Cortex 才应该直飞 VMControl，当前必须通过 Gateway 转发是一层无意义的 Proxy。
-* **行动**：实现 Cortex $\rightarrow$ Tools Server / VMControl 直连，砍掉 Gateway 中无状态工具服务的透传端点。
+* **行动**：工具执行由 Agent Runtime 内置 dispatcher 接管；Cortex / Runtime 按真实工具边界直连所需服务，砍掉 Gateway 中无状态工具透传端点。
 
 ### 4.2. 云端强耦合剥离 (CloudBridge / `pc_client.py`)
 Gateway 的 WS 层仍咬死绑定了云端桌面投影等双向通信，必须剥离到单独的连接层去释放。

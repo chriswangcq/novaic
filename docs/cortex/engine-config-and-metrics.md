@@ -13,7 +13,7 @@
 | `emergency_threshold` | 紧急压缩阈值（0.95） |
 | `micro_max_tool_output_chars` | 微压缩时 tool 输出截断 |
 | `micro_preserve_recent` | 保留最近若干「轮」 |
-| `fuzzy_memory_token_budget` | **Recall** 默认 token 预算（与 `Recall` 构造一致） |
+| `fuzzy_memory_token_budget` | 历史字段；当前 LLM 主路径不使用独立 Recall |
 | `max_skill_depth` | 技能嵌套深度 |
 | `sandbox_timeout_default` / `sandbox_timeout_max` | Shell 超时 |
 

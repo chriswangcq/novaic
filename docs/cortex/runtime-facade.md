@@ -18,9 +18,9 @@
 |------|----------------|
 | **`tool_read` / `tool_write`** | 校验路径在 `/ro/` 或 `/rw/`，经 `Workspace` 读写 |
 | **`tool_shell`** | `Sandbox.exec`，超时取 `min(请求, config.sandbox_timeout_max)`，并更新 metrics |
-| **`skill_begin(scope_id, child_scope_id, name, task?)` / `skill_end(scope_id, child_scope_id, report)`** | 子 scope 生命周期；**`child_scope_id`** 由 LLM 自选、在**整棵 scope 树**（active + archived）中**全局唯一**（`skill_begin` 拒重），且 **`skill_end` 必须匹配栈顶**（LIFO 严校验）。**`skill_end(report=...)`** 将 report 原样写为该 child scope 的 `summary.md`。详见 [scope-lifecycle.md §9](scope-lifecycle.md#9-skill-scope-生命周期llm-可见栈式) |
+| **`skill_begin(...)` / `skill_end(..., report)`** | 子 scope 生命周期；HTTP 主路径在 `api.py` 的 `/v1/context/skill_begin` 与 `/v1/context/skill_end` 中实现，要求 scope id 全局唯一、LIFO 严校验。**`skill_end(report=...)`** 将 report 原样写为被关闭 scope 的 `summary.md`。详见 [scope-lifecycle.md §9](scope-lifecycle.md#9-skill-scope-生命周期llm-可见栈式) |
 | **`load_tool_schemas`** | 合并 builtin + skill 目录下的 schema |
-| **`prepare_system_prompt` / `suggest_compact`** | Recall 与压缩建议（`context_budget`） |
+| **`suggest_compact`** | 基于 `context_budget` 返回压缩建议 |
 
 路径校验：**`_validate_agent_tool_path`** — 必须以 **`/ro/`** 或 **`/rw/`** 开头。
 
@@ -36,4 +36,4 @@
 
 - [engine-config-and-metrics.md](engine-config-and-metrics.md)  
 - [sandbox-shell.md](sandbox-shell.md)  
-- [recall.md](recall.md)  
+- [recall.md](recall.md)（历史/已退役）

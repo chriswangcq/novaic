@@ -7,7 +7,7 @@
 | 层 | 认证 | 典型调用方 |
 |----|------|------------|
 | **Agent Tool API** | **`Authorization: Bearer`** + `auth.verify_capability_token` | Sandbox 内工具（shell、skill） |
-| **CLI API** | 同上 | `novaic` CLI（read/write/ls/recall/tools/proxy） |
+| **CLI API** | 同上 | `novaic` CLI（read/write/ls/tools/proxy） |
 | **Internal API** | **无** Bearer；body 里带 **`user_id` / `agent_id`**（`_TenantMixin`） | Agent Runtime worker |
 
 另有 **`GET /health`**（无业务认证）、**`POST /v1/token`**（签发能力 JWT，**不要求**已有 Bearer）。
@@ -32,7 +32,6 @@
 | POST | `/v1/write` |
 | GET | `/v1/ls` |
 | GET | `/v1/skill/list` |
-| GET | `/v1/recall` |
 | GET | `/v1/tools` |
 | POST | `/v1/proxy/{command}` |
 
@@ -42,10 +41,9 @@
 |------|------|
 | POST | `/v1/scope/create` |
 | POST | `/v1/scope/end` |
+| GET | `/v1/scope/history` |
 | POST | `/v1/scope/write_assistant` |
-| POST | `/v1/scope/list_summaries` |
-
-> `/v1/scope/list_summaries` (PR-57)：批量读最近 K 个**已归档根 scope** 的 `summary.md`。请求 `{user_id, agent_id, limit?, exclude_scope_ids?}`；响应 `{summaries: [{scope_id, summary, archived_at, depth}, ...]}`，按 `archived_at` 从老到新。Runtime `handle_session_init` 用它构造 `<PREV_SCOPE_HISTORY>` 注入块（见 [scope-lifecycle.md §10](scope-lifecycle.md#10-跨-root-rolling-summary-history)）。
+| POST | `/v1/scope/append_input` |
 
 ### Internal — Context
 
@@ -79,8 +77,6 @@
 | 方法 | 路径 |
 |------|------|
 | POST | `/v1/internal/tools` |
-| POST | `/v1/internal/recall` |
-| POST | `/v1/internal/recall_messages` |
 | POST | `/v1/internal/reindex` |
 | POST | `/v1/internal/shell` |
 
@@ -92,6 +88,8 @@
 |------|------|
 | POST | `/v1/token` |
 | GET | `/health` |
+| GET | `/metrics` |
+| GET | `/ready` |
 
 ---
 

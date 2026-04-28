@@ -268,13 +268,12 @@ check_logs() {
     device)       $API_SSH "tail -50 /opt/novaic/data/logs/device-\$(date +%Y%m%d).log" ;;
     entangled)    $API_SSH "tail -50 /opt/novaic/data/logs/entangled.log" ;;
     cortex)       $API_SSH "tail -50 /opt/novaic/data/logs/cortex.log" ;;
-    tools)        $API_SSH "tail -50 /opt/novaic/data/logs/tools-server.log" ;;
     runtime)      $API_SSH "tail -50 /opt/novaic/data/logs/queue-service.log" ;;
     worker)       $API_SSH "tail -50 /opt/novaic/data/logs/task-worker-control-1.log" ;;
     health)       $API_SSH "tail -50 /opt/novaic/data/logs/health.log" ;;
     scheduler)    $API_SSH "tail -50 /opt/novaic/data/logs/scheduler.log" ;;
     relay)        $RELAY_SSH "journalctl -u novaic-quic-service --no-pager -n 50" ;;
-    *)            fail "未知服务: $svc (可选: gateway, business, device, entangled, cortex, tools, runtime, worker, health, scheduler, relay)" ;;
+    *)            fail "未知服务: $svc (可选: gateway, business, device, entangled, cortex, runtime, worker, health, scheduler, relay)" ;;
   esac
 }
 
@@ -319,7 +318,6 @@ case "${1}" in
   business)       deploy_shared_venv_service "novaic-business" ;;
   device)         deploy_shared_venv_service "novaic-device" ;;
   runtime)        deploy_single_service "novaic-agent-runtime" ;;
-  tools)          deploy_single_service "novaic-tools-server" ;;
   storage-a)      deploy_single_service "novaic-storage-a" ;;
   cortex)         deploy_single_service "novaic-cortex" ;;
   entangled)      rsync_service "novaic-common"; rsync_service "Entangled"; sync_start_sh; restart_all; ok "Entangled 已部署" ;;
@@ -334,4 +332,3 @@ case "${1}" in
   reset-password) reset_user_password "$@" ;;
   *)              show_help ;;
 esac
-

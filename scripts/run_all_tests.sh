@@ -40,10 +40,7 @@ run_tests() {
 # 1. agent-runtime (unit)
 run_tests "novaic-agent-runtime" "agent-runtime" "tests/unit/" || true
 
-# 2. tools-server
-run_tests "novaic-tools-server" "tools-server" "" || true
-
-# 3. storage-a, storage-b
+# 2. storage-a, storage-b
 run_tests "novaic-storage-a" "storage-a" "" || true
 run_tests "novaic-storage-b" "storage-b" "" || true
 

@@ -4,6 +4,8 @@
 >
 > 2026-04-23 update：Phase 6（P6）收尾，将 `R9 Wake Continuity` 与 `R10 Consumer SSOT` 从 roadmap 标签**正式上升为架构承诺**，并补 §七 P6 事故复盘。
 >
+> 2026-04-28 update：Cortex 连续性主路径已收敛为 **agent-root scope → wake scope → `skill_end(report=...)` → DFS fold**。旧文中关于 Meta skill、`subagent_rest`、handoff/historical summary 的事故描述保留为复盘材料，不代表最新实现契约。
+>
 > 本文与 [cortex/invariants.md](../cortex/invariants.md) 平级：后者约束 Cortex 内部的并发/生命周期；本文约束 **跨服务的触发链路**。
 >
 > 起源：2026-04-17 `hihi` 消息 10 分钟无响应事件。表层是 `Queue Service /dispatch` 恒 400 + `/recover/all` 恒 401，根因是架构层 **"消息事件驱动"抽象缺位**（详见 §"诊断"）。

@@ -73,7 +73,7 @@
 ## 6. 与全局 **`/ro/scopes/_index.jsonl`** 的区别
 
 - **`steps/_index.jsonl`**：单个 scope 内**时间线**，供 **`ContextEngine`** 遍历。  
-- **`/ro/scopes/_index.jsonl`**：**根 scope 归档索引**，供 **Recall** 等使用（见 [recall.md](recall.md)）。
+- **`/ro/scopes/_index.jsonl`**：**根 scope 归档索引**，保留作历史兼容/排障索引；当前 LLM 主路径不走独立 Recall。
 
 ---
 

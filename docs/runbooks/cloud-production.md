@@ -15,7 +15,6 @@
 ./deploy runtime           # novaic-agent-runtime
 ./deploy storage-a         # novaic-storage-a（File Service）
 ./deploy cortex            # novaic-cortex（:19996）
-./deploy tools             # novaic-tools-server（若目录不存在则失败；业务侧 Tools Server 已退役，与脚本并存时需自知）
 ./deploy services          # rsync 全部 + start.sh 重启（推荐）
 # 注意：无 ./deploy orchestrator（RO 子模块已删除）
 
@@ -141,4 +140,3 @@ kill -9 $(pgrep -f main_gateway.py) && sleep 2
 rm -f /opt/novaic/data/gateway.db-wal /opt/novaic/data/gateway.db-shm
 bash /opt/novaic/start.sh
 ```
-

@@ -1,110 +1,100 @@
 # Agent Runtime → Cortex 调用链（`cortex.prepare_llm_context`）
 
-> 源码：**`novaic-agent-runtime`**：`task_queue/topics.py`、`task_queue/handlers/cortex_handlers.py`、`task_queue/utils/cortex_bridge.py`、`task_queue/sagas/react_think.py`；**Cortex**：`novaic_cortex/api.py` **`context_prepare_for_llm`**、`context_stack/engine.py`。
+> 源码：`novaic-agent-runtime/task_queue/handlers/cortex_handlers.py`、`task_queue/utils/cortex_bridge.py`、`task_queue/sagas/react_think.py`；Cortex 侧：`novaic_cortex/api.py` 的 `context_prepare_for_llm` 与 `context_stack/engine.py`。
 
-跨服务约定名：**topic `cortex.prepare_llm_context`**（`TaskTopics.CORTEX_PREPARE_LLM_CONTEXT`）。Cortex 仓库内 **没有** 同名 Python 函数；HTTP 实现为 **`POST /v1/context/prepare_for_llm`**。
+跨服务约定名是 topic **`cortex.prepare_llm_context`**。Cortex HTTP 实现是 **`POST /v1/context/prepare_for_llm`**。
 
----
+## 1. Runtime 入口
 
-## 1. 从 Saga 到 Handler
+`react_think.py` 的 `prepare_context` step 发布：
 
-**ReactThink**（`task_queue/sagas/react_think.py`）第一步：
+- `scope_id`：当前 wake scope id。
+- `agent_root_scope_id`：长期 agent-root scope id。
+- `wake_scope_path`：当前 wake scope 的真实路径。
+- `user_id` / `agent_id` / `subagent_id`。
 
-| 字段 | 值 |
-|------|-----|
-| step name | **`prepare_context`** |
-| topic | **`TaskTopics.CORTEX_PREPARE_LLM_CONTEXT`**（字符串 **`cortex.prepare_llm_context`**） |
-| payload | **`scope_id`、`agent_id`、`user_id`**（`_build_prepare_context_payload`） |
+`handle_cortex_prepare_llm_context` 会优先用 `agent_root_scope_id` 作为 Cortex 渲染入口，所以历史 wake 会通过 agent-root DFS 自然出现。
 
-下一步 **`call_llm`** 使用上一步返回的 **`messages` / `tools`**（见 §3）。
+## 2. CortexBridge
 
----
+`CortexBridge.prepare_for_llm(scope_id)` 调：
 
-## 2. `CortexBridge.prepare_for_llm`
+```text
+POST /v1/context/prepare_for_llm
+{ user_id, agent_id, scope_id }
+```
 
-**`cortex_bridge.py`**：
+这里传入的 `scope_id` 是 agent-root id，而不是当前 wake id。
 
-- 若 bridge **未启用**：返回 **`{"messages": [], "stack": []}`**。  
-- 否则 **`POST`** 到 Cortex：**`/v1/context/prepare_for_llm`**，JSON body：**`user_id`、`agent_id`、`scope_id`**（与 internal API 约定一致，**无** Bearer）。
+## 3. Cortex HTTP
 
----
+`api.py::context_prepare_for_llm`：
 
-## 3. Cortex HTTP：`context_prepare_for_llm`
+1. `_get_workspace(user_id, agent_id)`
+2. `scope_path = /ro/active/{agent_root_scope_id}`
+3. `load_engine_config(ws)` → `engine_config_to_compact_config(...)`
+4. `ContextEngine(workspace=ws, scope_path=scope_path, config=...)`
+5. `prepare_messages_for_llm()`
+6. `engine.status(messages)` 提取 active stack frames
 
-**`api.py`**：
+返回：
 
-1. **`ws = _get_workspace(user_id, agent_id)`**  
-2. **`scope_path = /ro/active/{scope_id}`**（根 scope 前缀常量 **`ROOT_SCOPE_PREFIX`**）  
-3. **`load_engine_config(ws)`** → **`engine_config_to_compact_config(...)`** → **`ContextEngine(..., config=compact_cfg)`** → **`await engine.prepare_messages_for_llm()`**（内部 **`budget_compact`** 使用与 **`/ro/config/engine.json`** 对齐的 **`CompactConfig`**，见 [budget-compact-algorithm.md](budget-compact-algorithm.md) §8.1）  
-4. **`engine.status(messages)`** → 返回 **`estimated_tokens`、`usage_ratio`** 等  
-5. 响应 JSON：**`messages`、`stack`（当前 `status` 里 frames 多为占位）、`estimated_tokens`**
+```json
+{
+  "messages": [],
+  "stack": [],
+  "estimated_tokens": 0
+}
+```
 
----
+## 4. Handler 拼最终 LLM 调用
 
-## 4. Handler：合并消息 + 注入栈快照 + 可选 `NO_TOOL_WARNING`
+`handle_cortex_prepare_llm_context`：
 
-**`handle_cortex_prepare_llm_context`**（`cortex_handlers.py`）**五步**：
+1. 将当前 IM 输入写入当前 wake scope。
+2. 调 `bridge.prepare_for_llm(agent_root_scope_id)`。
+3. 加载 builtin tools，并转成 OpenAI `tools[]`。
+4. 根据 `stack` 追加瞬态 `[Active scope stack ...]` system message。
+5. 如上一轮 assistant 没有 tool_calls，追加 `NO_TOOL_WARNING`，提醒 LLM 需要用 `chat_reply` / `skill_end` 这类真实工具推进。
 
-1. **Step 1 `handle_context_read`**：拉 `context.jsonl` + 从 Entangled `messages` 实体把未读消息 `append_context` 进来并标记已读（过滤规则按 `subagent_id` / `msg_type` 路由，详见 `context_handlers.py`）。
-2. **Step 2 `bridge.prepare_for_llm(scope_id)`**：HTTP 调 Cortex（§3），拿回 **`messages`**（已 DFS 合并 + `budget_compact`）与 **`stack`**（frames）。
-3. **Step 3 `_load_tool_schemas(bridge)`**：`bridge.load_tool_schemas()` → 转成 OpenAI **`tools[]`**（`type: function`），收集 **`tool_names`**。
-4. **Step 4a `_format_skill_stack_system_message(stack)`**：若 `stack` 非空，追加一条瞬态 **system** 消息：
-   ```text
-   [Active scope stack (LIFO — close innermost first)]
-     depth 0: user conversation (scope_id=wake-<id>)
-     depth 1: debugging (scope_id=debug-1)
-   → Stack top: scope_id=debug-1 ... skill_end(scope_id='debug-1', report='...')
-   ```
-   LLM 由此知道该给 **`skill_end`** 的 `scope_id` 传什么。**不写 `context.jsonl`**，每轮重新生成。详见 [scope-lifecycle.md §9.4](scope-lifecycle.md#94-llm-上下文中的栈快照瞬态)。
-5. **Step 4b `NO_TOOL_WARNING`**：若最后一条是 **`assistant`** 且 **无 `tool_calls`**，追加一条瞬态 system 提示（`system_prompt.NO_TOOL_WARNING`，内容同步更新为要求 `skill_end(scope_id=..., report=...)`）。
+这两类瞬态 system message 不写入 `context.jsonl`，每次 LLM 调用前重新生成。
 
-返回 **`success`、`messages`、`tools`、`tool_names`、`stack`、`new_messages`**。
+## 5. Scope 生命周期 topic
 
-随后 Saga 的 **`call_llm`** 用 **`_build_llm_call_payload`**：把 **`prepare_context`** 步骤结果里的 **`messages`、`tools`** 传入 **`llm.call`**（**`llm_handlers.handle_llm_call`**）。**LLM handler 不负责决定工具列表**——由 Cortex 侧 schema 决定。
+| topic / handler | Cortex HTTP | 语义 |
+| --- | --- | --- |
+| `handle_cortex_skill_begin` | `/v1/context/skill_begin` | 在当前 active scope 下开子 skill scope |
+| `handle_cortex_skill_end` | `/v1/context/skill_end` | 关闭当前 LIFO 栈顶 scope，`report` 写入该 scope 的 `summary.md` |
+| `handle_cortex_check_stack` | `/v1/context/status` | 查询当前 active stack |
+| `handle_cortex_scope_end` | `/v1/scope/end` | 结构性 cleanup；非空 report 被拒绝 |
 
----
+当前 wake scope 也通过 `skill_end(report=...)` 由 LLM 关闭。栈清空后，`react_actions` 触发 `wake_finalize` 做结构性收尾；`wake_finalize` 不生成 summary。
 
-## 5. 其它 Cortex topic（同桥）
-
-同一 **`CortexBridge`** 上还有（与「拼上下文」并列的技能与时间线操作）：
-
-| 方法 | HTTP | 关键参数 |
-|------|------|---------|
-| **`context_skill_begin`** | `POST /v1/context/skill_begin` | `scope_id`（根）、**`child_scope_id`**（LLM 自选，全局唯一）、`skill_name`、`task?` |
-| **`context_skill_end`** | `POST /v1/context/skill_end` | `scope_id`（根）、**`child_scope_id`**（必须 == 当前栈顶）、`report` |
-| **`context_check_stack`** | （Runtime 内部 handler，未独立 HTTP） | 通过 `context_status` 判断栈是否为空 |
-| **`context_status`** | `POST /v1/context/status` | 返回 `stack_depth`、`frames[{depth,skill_name,scope_id}]` 等 |
-
-对应 handler：**`handle_cortex_skill_begin` / `handle_cortex_skill_end` / `handle_cortex_check_stack`**（`cortex_handlers.py`）。Runtime topic **`CORTEX_CHECK_STACK = "cortex.check_stack"`** 由 **`react_actions`** saga 的 `check_skill_stack` 步调用，决定下一步是 `trigger_finalize` 还是 `trigger_next_think`（见 [agent-runtime-all-topics.md §3](agent-runtime-all-topics.md#3-reactthink-saga与-cortex-的衔接)）。
-
----
-
-## 6. 一览图（Mermaid）
+## 6. 一览图
 
 ```mermaid
 sequenceDiagram
     participant Saga as react_think Saga
     participant H as cortex_handlers
     participant B as CortexBridge
-    participant API as Cortex POST /v1/context/prepare_for_llm
+    participant API as Cortex /v1/context/prepare_for_llm
     participant E as ContextEngine
 
-    Saga->>H: cortex.prepare_llm_context
-    H->>B: prepare_for_llm(scope_id)
-    B->>API: POST user_id, agent_id, scope_id
+    Saga->>H: cortex.prepare_llm_context(agent_root_scope_id, wake_scope_path)
+    H->>H: append current input to wake scope
+    H->>B: prepare_for_llm(agent_root_scope_id)
+    B->>API: POST user_id, agent_id, scope_id=agent_root
     API->>E: prepare_messages_for_llm()
-    E-->>API: messages (after budget_compact)
+    E-->>API: messages after DFS + budget_compact
     API-->>B: messages, stack, estimated_tokens
-    B-->>H: dict
-    H->>H: load_tool_schemas, NO_TOOL_WARNING?
-    H-->>Saga: messages, tools, tool_names, stack
+    B-->>H: response
+    H->>H: load tools + append transient Active stack
+    H-->>Saga: messages, tools, stack
     Saga->>Saga: llm.call(messages, tools)
 ```
 
----
-
 ## 相关
 
-- [http-api.md](http-api.md) — 完整路由表  
-- [budget-compact-algorithm.md](budget-compact-algorithm.md) — Phase B 细节  
-- [context-timeline-and-dfs.md](context-timeline-and-dfs.md) — Phase A 时间线  
+- [http-api.md](http-api.md)
+- [context-timeline-and-dfs.md](context-timeline-and-dfs.md)
+- [scope-lifecycle.md](scope-lifecycle.md)

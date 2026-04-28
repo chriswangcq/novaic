@@ -1,5 +1,7 @@
 # Gateway v2 - 终态架构设计
 
+> **历史设计稿**：本文保留 Gateway v2 拆分阶段的设计上下文，不是当前 Cortex/Runtime 契约的权威文档。当前 Cortex 主路径以 agent-root / wake scope / `skill_end(report=...)` / `wake_finalize` 为准。
+>
 > 基于对 watchdog_sync.py、message_process saga、react_think/react_actions saga、
 > subagent_rest saga、context_handlers.py、cortex_handlers.py、runtime_handlers.py、
 > message_handlers.py、subagent_handlers.py、tool_handlers.py、queue_service/routes.py、
@@ -54,7 +56,7 @@
 
   subagent_rest:
     generate_summary -> cortex_scope_end -> set_sleeping/completed (Gateway)
-    -> notify_parent (Gateway inject_subagent_completed) -> destroy_mcp
+    -> notify_parent (Gateway inject_subagent_completed) -> session_ended
 ```
 
 ### 0.2 Gateway 被 Worker 回调的完整清单
@@ -129,7 +131,6 @@ react_actions 循环的 check_continue 步骤:
 | cortex_scope_end | 归档 context 到 /ro/scopes/ | Cortex | 不变 |
 | set_sleeping/completed | 改 subagent 状态 | Gateway | -> **Entangled** |
 | notify_parent | 注入 sending 消息通知父 Agent | Gateway | -> **Queue dispatch** |
-| destroy_mcp | 销毁 MCP Server | Runtime 资源管理 | 不变 |
 | session_ended (新增) | 通知 Queue 清理 Session | - | **Queue Service** |
 
 Cortex 的 `scope_end` 只覆盖了步骤 1-2。步骤 3-6 仍需 saga 编排保证顺序。
@@ -370,8 +371,7 @@ subagent_rest saga **保留**, 但目标全部迁移:
 +   3. set_sleeping/completed (Entangled)  -- 直接写 Entangled 更新前端
 -   4. notify_parent (Gateway inject -> 写 sending 消息 -> Watchdog 再轮询)
 +   4. notify_parent -> Queue dispatch(trigger_type=subagent_completed)  -- 直调 dispatch
-    5. destroy_mcp                     -- 不变
-+   6. session_ended (新增) -> Queue /api/queue/session-ended
++   5. session_ended (新增) -> Queue /api/queue/session-ended
 ```
 
 ### 4.6 `subagent_rest` 工具的 `need_rest` 标志迁移

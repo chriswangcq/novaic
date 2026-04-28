@@ -6,7 +6,7 @@
 
 - **logger**：**`novaic_cortex`**（INFO）。  
 - 格式：**`[CORTEX] {event}`** 后接 **`k=v`**，每个值 **`repr` 截断 200 字符**。  
-- 典型 **event**（见 `observability.py` 注释）：`scope.created`、`scope.archived`、`sandbox.exec`、`recall.generated` 等。
+- 典型 **event**（见 `observability.py` 注释与调用点）：`scope.archived`、`scope.auto_closed_children`、`skill.begun`、`skill.ended`、`sandbox.exec` 等。
 
 业务逻辑中在关键路径调用 **`log_cortex`**，与普通模块 logger 并存。
 
@@ -20,7 +20,6 @@
 |-------------------|----------|
 | `test_workspace*.py` | Workspace、路径、scope |
 | `test_sandbox*.py` | `Sandbox.exec`、回写 |
-| `test_recall*.py` | `Recall` |
 | `test_context_budget*.py` | `usage_ratio`、`compact_level` 等 |
 | `test_engine*.py` | `ContextEngine` 与预算 |
 

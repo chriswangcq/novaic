@@ -1,5 +1,7 @@
 # NovAIC Agent Runtime + Cortex — Hardening Checklist
 
+> **历史检查单**：本文基于 2026-04-17 的架构评审，保留用于追溯当时 P0-P3 加固项。当前主路径已迁移到 agent-root / wake scope / `skill_end(report=...)` / `wake_finalize`；遇到 `subagent_rest`、auto meta skill 等术语时，按历史上下文理解，不作为当前实现契约。
+>
 > 基于 [architecture-review-2026-04-17.md](./architecture-review-2026-04-17.md) 的 8 位架构师评审 + 8 位 summarizer 汇总，整理成**可执行、可勾选、可追溯**的四阶段清单。
 >
 > 状态标记：`[ ]` 未做、`[x]` 已完成、`[~]` 进行中、`[!]` 已确认为假警报（无需做）。
@@ -212,4 +214,3 @@ CORTEX_REDIS_LOCK_TTL_SECONDS=300     # 可选，默认 300s
 - 每完成一项：勾选 `[x]` + 在同一 commit 的 message 引用 `ID`（如 `fix(runtime): P0-2 write_step None→failure`）。
 - 新发现的问题按 `P{phase}-{seq}` 续编，加入对应 Phase。
 - 重大架构变动要更新同目录下的 `cortex-architecture.md` / `agent-runtime-all-topics.md` / `scope-lifecycle.md`。
-

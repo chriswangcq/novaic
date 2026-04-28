@@ -9,7 +9,7 @@
 | ------------------------- | --------------------------------------------------------------------------- |
 | `/ro/active/{scope_id}/`  | **根 scope** 活跃时驻留于此（`phase` 为 `executing` 或 `dormant`）                      |
 | `/ro/scopes/{scope_id}/`  | **根 scope 归档后**整树移动到此                                                       |
-| `/ro/scopes/_index.jsonl` | **全局**归档 scope 索引（供 **Recall** 使用，见 [recall.md](recall.md)）                 |
+| `/ro/scopes/_index.jsonl` | **全局**归档 scope 索引（历史兼容/排障用；当前 LLM 主路径从 agent-root 做 DFS，不走独立 Recall） |
 | `{任意 scope}/steps/`       | 统一时间线：`_index.jsonl` + `env_*.json` / `ast_*.json` / tool JSON / 子 scope 目录 |
 
 
@@ -53,7 +53,7 @@
 2. 在 `**/ro/active/{scope_id}/**` 写 `**summary.md**`，更新 `**meta.json**`（`phase=archived`、`ended_at`）。
 3. `**_walk_scope_tree(active_path)**`：收集该根下**所有** scope（含嵌套子 scope）的索引行（`scope_id`、`path`、`name`、`depth`、`ts`、可选 `**parent`**）。
 4. `**move_prefix**`：把 `agents/.../ro/active/{scope_id}/` **整体**移到 `.../ro/scopes/{scope_id}/`。
-5. 修正索引中的 `**path`** 前缀后，**追加**到 `**/ro/scopes/_index.jsonl`**（与 Recall 读取的文件一致）。
+5. 修正索引中的 `**path`** 前缀后，**追加**到 `**/ro/scopes/_index.jsonl`**（历史兼容/排障索引；当前 LLM 主路径不依赖独立 Recall）。
 6. API 层 `/v1/scope/end` 在 `is_root=true` 归档后还会调 `_drop_skill_lock` 回收 `_SKILL_LOCKS` 里对应 `(user_id, agent_id, scope_id)` 的互斥锁条目。
 
 `/v1/scope/end` 是结构性归档 API，不是 summary API。非空 `report` 会被拒绝；Runtime 的 `wake_finalize` 只传空 report。可被后续 DFS 折叠渲染的 summary 只来自 `/v1/context/skill_end(report=...)`。
@@ -159,6 +159,6 @@ Skill scope 是 LLM 通过两个工具 **`skill_begin` / `skill_end`** 管理的
 ## 相关文档
 
 - [context-timeline-and-dfs.md](context-timeline-and-dfs.md) — 如何遍历 `_index.jsonl` 生成 LLM 消息  
-- [recall.md](recall.md) — 如何用 `/ro/scopes/_index.jsonl` 做记忆注入  
+- [recall.md](recall.md) — 历史/已退役的独立 Recall 方案说明
 - [agent-runtime-all-topics.md](agent-runtime-all-topics.md) — `react_actions` 的 `check_skill_stack` / `decide_finalize` 与 `subagent_wake`  
 - [agent-runtime-cortex-call-chain.md](agent-runtime-cortex-call-chain.md) — `[Active scope stack]` 瞬态注入
