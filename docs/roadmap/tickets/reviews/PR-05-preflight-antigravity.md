@@ -40,7 +40,6 @@
 | 3 | `novaic-agent-runtime/task_queue/workers/scheduler_worker_sync.py` | 78 | `SagaClient` | `SagaClient(self.queue_service_url, timeout=self.timeout)` | `"runtime-scheduler"` |
 | 4-14 | `novaic-business/business/internal/entity.py` | 68/106/122/149/171/192/210/228/249/268/287 | `EntangledServiceClient` | `EntangledServiceClient(...)` | `"business"` |
 | 15 | `novaic-agent-runtime/task_queue/handlers/llm_handlers.py` | 55 | `internal_client` | `internal_client(timeout=...)` | `"runtime-task"` |
-| 16 | `novaic-agent-runtime/task_queue/handlers/mcp_handlers.py` | 40 | `internal_client` | `internal_client(timeout=...)` | `"runtime-task"` |
 | 17-18 | `novaic-agent-runtime/task_queue/workers/health_worker_sync.py` | 81, 186 | `internal_client` | `internal_client(...)` | `"runtime-health"` |
 | 19 | `novaic-device/device/business_entity_client.py` | 39 | `internal_sync_client` | `internal_sync_client(...)` | `"device"` |
 | 20-22 | `novaic-gateway/main_gateway.py` | 424, 442, 505 | `internal_async_client` | `internal_async_client(...)` | `"gateway"` |

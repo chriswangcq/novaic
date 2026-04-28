@@ -32,7 +32,6 @@ git submodule update --init --recursive
 ## 已删除 / 退役（历史）
 
 - `novaic-runtime-orchestrator` — 职责已拆分。
-- `novaic-tools-server` — 工具执行由 Agent-Runtime + Cortex 接管（若脚本仍出现 `tools` 部署名，需与当前仓库状态一致）。
 
 ## 父仓库顶层
 

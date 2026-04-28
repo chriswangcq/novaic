@@ -1,11 +1,12 @@
-# 工具链解体与新分发路由机制
+# 工具链分发路由机制
 
 > 路径：`novaic-agent-runtime/task_queue/handlers/` 分类分发器
 
-## 1. 过去的遗老：被抛弃的 Tools Server
-曾经，这里专门有着巨大的独立 Flask / FastApi 服务叫做 `novaic-tools-server`，AI 如果想要执行工具代码会发向一个臃肿不堪且充满所有乱七八糟依赖的接口。
-然而这就引起了“神明也要拿筷子”的谬误：
-既然我们可以让更贴近业务的层自己去消化任务，为什么要独立个服务呢？它被正式拆解下放。
+## 1. 当前分发边界
+
+LLM 工具调用进入 `TaskTopics.TOOL_EXECUTE` 后，由 Runtime 内置 dispatcher
+按工具所有权分发。工具元数据来自 Cortex / Business / Device 等 owning
+service；执行也停留在 owning service，不再经过额外的中间注册服务。
 
 ## 2. Cortex 承继与知识动作代理
 凡是带有文件系统增删改查（如 `touch_file`, `exec_node_script`）或涉及工作空间内部沙盒（Sandbox）的指令：

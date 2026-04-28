@@ -15,7 +15,6 @@
 | Task Worker | LLM、工具、context |
 | Saga Worker | 流程编排 |
 | Health / Scheduler Workers | 回收、定时唤醒 |
-| ~~Tools Server~~ | **已退役**（`tool_handlers` + Cortex / Business） |
 
 ## 12.2 消息 → Runtime 完整链路
 
@@ -45,7 +44,7 @@ ReactActions:
   5. 栈空后触发 wake_finalize 做结构性收尾
 ```
 
-## 12.4 工具执行（无独立 Tools Server）
+## 12.4 工具执行
 
 ```
 LLM tool_call

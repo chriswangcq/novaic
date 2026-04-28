@@ -146,29 +146,6 @@ If the LLM replies but does not close the wake, the user may see a correct respo
 - No raw assistant content is treated as user-visible unless sent through `chat_reply`.
 - Forced finalize increments a dedicated metric and records reason, but does not invent a fake user-memory summary.
 
-### P0. Remove Remaining Tools Server / MCP Registry Legacy
-
-**Problem**
-
-Before PR-82, Runtime still exposed old "Tools Server" command/arguments and still had `MCP_CREATE` / `MCP_DESTROY` handler topics. Wake finalize also included a `destroy_mcp` step.
-
-**Business Impact**
-
-This creates the wrong mental model: it suggests tools are still served by a separate Tools Server, while the current direction is embedded Runtime tool dispatch. It also puts legacy cleanup in the wake finalize path, where failure can affect session shutdown.
-
-**Recommended Direction**
-
-- Remove the `tools-server` CLI mode from active Runtime startup.
-- Remove deprecated `--tools-server-url` arguments from active commands.
-- Remove `MCP_CREATE` / `MCP_DESTROY` queue topics from hot paths.
-- If cleanup is still needed for a real registry, rename it to the actual current concept and make it optional.
-
-**Acceptance Signals**
-
-- `rg "Tools Server|TOOLS_SERVER_URL|MCP_CREATE|MCP_DESTROY"` finds only retired docs or explicit migration notes.
-- Wake finalize no longer depends on legacy registry cleanup.
-- Startup scripts and service topology docs have no separate tools-server process.
-
 ### P1. Clarify Structural Finalize vs Summary Closure
 
 **Problem**
@@ -354,18 +331,7 @@ Tasks:
 - Tighten `skill_end` tool description around current wake closure.
 - Ensure folded summaries in next wake are ordered after the system prompt in a consistent, documented context order.
 
-### Phase 2: Legacy Tool Path Removal
-
-Goal: keep the old Tools Server / MCP registry mental model out of live backend paths.
-
-Tasks:
-
-- Keep `tools-server` CLI entry out of active startup.
-- Keep deprecated `--tools-server-url` arguments out of active commands.
-- Keep `MCP_CREATE` out of active handler registration.
-- Keep `MCP_DESTROY` out of wake finalize.
-
-### Phase 3: Finalize Semantics Cleanup
+### Phase 2: Finalize Semantics Cleanup
 
 Goal: separate normal semantic closure from exceptional lifecycle cleanup.
 
@@ -376,7 +342,7 @@ Tasks:
 - Add alerting for force-finalize events.
 - Decide whether forced finalize should write a non-summary failure artifact. Default recommendation: no fake `summary.md`.
 
-### Phase 4: Message Delivery Traceability
+### Phase 3: Message Delivery Traceability
 
 Goal: make message wake behavior debuggable end-to-end.
 
@@ -387,7 +353,7 @@ Tasks:
 - Keep IM replay named as delivery replay.
 - Add regression smoke: "tell name -> later ask name" must pass through folded scope summary.
 
-### Phase 5: Business Internal Modularization
+### Phase 4: Business Internal Modularization
 
 Goal: reduce Business blast radius without splitting deployment.
 
@@ -398,7 +364,7 @@ Tasks:
 - Keep generic Entity proxy separate from agent/message orchestration.
 - Add dependency direction rules: domain modules may call entity proxy, but entity proxy must not know domain semantics.
 
-### Phase 6: Subagent Result Reliability
+### Phase 5: Subagent Result Reliability
 
 Goal: make delegated work outcomes reliable.
 
@@ -408,7 +374,7 @@ Tasks:
 - Add parent-visible `completed_without_report` distinction if useful.
 - Test child completion with and without explicit report.
 
-### Phase 7: Schema Debt Deletion
+### Phase 6: Schema Debt Deletion
 
 Goal: remove old continuity concepts from the database model.
 
@@ -452,7 +418,7 @@ Tasks:
 
 ### Operational Checks
 
-- `rg "Wake summary|historical_summary|handoff_notes|TOOLS_SERVER_URL|MCP_CREATE|MCP_DESTROY"` should only find retired docs or explicitly quarantined code.
+- `rg "Wake summary|historical_summary|handoff_notes"` should only find retired docs or explicitly quarantined code.
 - A single message id should be traceable from Business message row to Runtime scope and LLM request.
 - Dashboards should expose force-finalize count and stack-nonempty retry count.
 

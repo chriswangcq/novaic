@@ -81,6 +81,6 @@ Evidence:
 
 ## Out of Scope
 
-- Deleting Business-owned memory/task implementations.
+- Deleting the Entangled `agent-memory` data entity itself.
 - Redesigning user profile.
 - Changing the `shell` tool itself.
