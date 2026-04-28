@@ -44,7 +44,7 @@
 | **Storage-A** | `19995` | 文件服务（独立 repo） |
 
 > ⚠️ **没有 Runtime Orchestrator（RO）**。原 RO 的职责已由 Saga Worker + Task Worker + Queue Session Coordinator 接管。`--runtime-orchestrator-url` 参数虽存在于 CLI 但已标记 `argparse.SUPPRESS`。
-> ⚠️ **没有独立 Tools Server**。工具分发逻辑内置于 Agent Runtime；Cortex 不再作为 memory/notebook/task/search 的工具代理。
+> ⚠️ 工具分发逻辑内置于 Agent Runtime；Cortex 不再作为 memory/notebook/task/search 的工具代理。
 
 ---
 
@@ -132,7 +132,6 @@
         ▼
 ⑤ Task Worker: 领取 ReactThink 任务
    → Business: GET /internal/agents/{id}/drive  (system prompt)
-   → Business: GET /internal/agents/{id}/memory/all  (记忆)
    → Cortex: GET /context/{agent_id}/assemble  (组装上下文)
    → LLM Factory: POST /llm/chat  (请求模型推理)
         │

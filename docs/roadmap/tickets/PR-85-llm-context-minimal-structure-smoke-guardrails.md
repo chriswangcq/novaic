@@ -67,7 +67,7 @@ tools[] matching tool descriptions
 - [x] Active scope is expanded.
 - [x] Active scope stack appears and references the actual current stack top.
 - [x] `tools[]` contains the tools referenced by quick-reference text.
-- [x] No active request contains `Wake summary`, Recall injection, meta skill close instruction, or Tools Server/MCP wording.
+- [x] No active request contains `Wake summary`, Recall injection, or meta skill close instruction.
 
 ### 4. Tool result id hygiene
 
