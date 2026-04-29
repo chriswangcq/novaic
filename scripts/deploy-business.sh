@@ -52,8 +52,7 @@
 #          {
 #            "subscriber_enabled": true,
 #            "health_check_interval_seconds": 5,
-#            "scheduler_poll_interval_seconds": 1.0,
-#            "fallback_max_per_tick": 50
+#            "scheduler_poll_interval_seconds": 1.0
 #          }
 #        Only keys already defined in services.json's runtime_switches
 #        section are allowed — typos crash loudly at startup.
