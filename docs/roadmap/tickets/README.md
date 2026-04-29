@@ -146,6 +146,7 @@
 | PR-94  | `[✓]`  | [Make execution-log expanded view an Agent Monitor, not a debug panel](PR-94-agent-monitor-expanded-view-no-debug.md) **— App deployed + tests/smoke verified 2026-04-29** | PR-92, PR-93 | Agent Monitor UX | 0.5 d | __ |
 | PR-95  | `[✓]`  | [Physically remove dead execution-log diagnostics UI code](PR-95-remove-dead-execution-log-diagnostics-code.md) **— App deployed + tests/build verified 2026-04-29** | PR-94 | Agent Monitor cleanup | 0.25-0.5 d | __ |
 | PR-96  | `[✓]`  | [Make `chat_reply` output standard Markdown](PR-96-chat-reply-standard-markdown-contract.md) **— Business+Cortex deployed + contract tests verified 2026-04-29** | PR-95 | Chat reply rendering contract | 0.25-0.5 d | __ |
+| PR-97  | `[✓]`  | [Unify LLM tool schema source](PR-97-unify-llm-tool-schema-source.md) **— Cortex deployed + schema smoke verified 2026-04-29** | PR-96 | Tool schema SSOT | 0.5 d | __ |
 
 
 ---
