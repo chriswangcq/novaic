@@ -3,7 +3,7 @@
 | Field | Value |
 | --- | --- |
 | **Ticket** | PR-102 |
-| **Status** | `[ ]` |
+| **Status** | `[✓]` |
 | **Scope** | `novaic-common`, `Entangled`, `novaic-business`, `novaic-app` |
 | **Depends on** | PR-101 |
 | **Invariant** | Message types and lifecycle states must be known consistently across producer, state machine, and UI. |
@@ -26,10 +26,32 @@ Message kinds (`USER_MESSAGE`, `AGENT_REPLY`) and lifecycle states are reference
 
 ## Checklist
 
-- [ ] Add or identify canonical enum contract.
-- [ ] Add backend drift tests.
-- [ ] Add App guard test or generated snapshot comparison.
-- [ ] Run targeted tests.
-- [ ] Deploy only if active code changes require it.
-- [ ] Commit, push, and bump parent repo.
+- [x] Add or identify canonical enum contract.
+- [x] Add backend drift tests.
+- [x] Add App guard test or generated snapshot comparison.
+- [x] Run targeted tests.
+- [x] Deploy only if active code changes require it.
+- [x] Commit, push, and bump parent repo.
 
+## Implementation Notes
+
+- Canonical contract lives in `novaic-common/common/contracts/message_lifecycle.json`.
+- Business `MESSAGES_DEF` now reads lifecycle CHECK values and outbox trigger mappings from the shared contract.
+- Entangled state-machine constants are guarded against the shared contract by test.
+- App message type/lifecycle constants are guarded against the shared contract by test; `INTERRUPT` is now an explicitly hidden App message type because Business writes it on interrupt.
+- `scripts/ci/lint_lifecycle.sh` now narrowly allowlists the two audited one-shot lifecycle migrations instead of failing on historical SQL that snapshots rows and writes audit entries.
+
+## Verification
+
+- `cd novaic-common && python -m pytest tests/test_message_lifecycle_contract.py tests/test_execution_log_display_contract.py`
+- `cd novaic-business && python -m pytest tests/test_pr102_message_lifecycle_contract.py tests/test_pr100_app_entity_schema_contract.py`
+- `cd Entangled/packages/server-python && python -m pytest tests/test_pr102_message_lifecycle_contract.py tests/test_message_state.py`
+- `cd novaic-app && npm run test:unit -- src/types/messageContract.test.ts src/data/entities/entangledEntityContracts.test.ts`
+- `cd novaic-app && npm run build`
+- `scripts/ci/lint_lifecycle.sh`
+
+## Deployment Checklist
+
+- [x] Business deploy required because `business/schema_push.py` now imports the shared contract.
+- [x] Frontend deploy required because App message constants and hidden-message filtering changed.
+- [x] Parent repo bumped after child repo commits.
