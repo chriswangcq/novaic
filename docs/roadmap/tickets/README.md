@@ -144,6 +144,7 @@
 | PR-92  | `[✓]`  | [Add semantic display metadata to execution logs](PR-92-execution-log-semantic-display-contract.md) **— Runtime deployed + production smoke verified 2026-04-29** | PR-86..PR-90 | User-facing log contract | 0.5 d | __ |
 | PR-93  | `[✓]`  | [Render execution logs as user-facing events by default](PR-93-execution-log-user-facing-app-rendering.md) **— App deployed + tests/smoke verified 2026-04-29** | PR-92 preferred | App log UX | 0.5-1 d | __ |
 | PR-94  | `[✓]`  | [Make execution-log expanded view an Agent Monitor, not a debug panel](PR-94-agent-monitor-expanded-view-no-debug.md) **— App deployed + tests/smoke verified 2026-04-29** | PR-92, PR-93 | Agent Monitor UX | 0.5 d | __ |
+| PR-95  | `[✓]`  | [Physically remove dead execution-log diagnostics UI code](PR-95-remove-dead-execution-log-diagnostics-code.md) **— App deployed + tests/build verified 2026-04-29** | PR-94 | Agent Monitor cleanup | 0.25-0.5 d | __ |
 
 
 ---
