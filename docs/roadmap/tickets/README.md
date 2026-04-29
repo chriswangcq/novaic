@@ -135,6 +135,12 @@
 | PR-83  | `[code]`  | [Purge non-minimal continuity residues from active paths](PR-83-purge-non-minimal-continuity-residues.md) | PR-78; may absorb PR-79/81 | P0 continuity cleanup | 0.5-1 d | __ |
 | PR-84  | `[code]`  | [Add Cortex minimal-structure invariant tests](PR-84-cortex-minimal-structure-invariants.md) | PR-82, PR-83 preferred | P0 structure guardrails | 0.5-1 d | __ |
 | PR-85  | `[code]`  | [Add LLM context smoke guardrails for the minimal structure path](PR-85-llm-context-minimal-structure-smoke-guardrails.md) | PR-82, PR-83, PR-84 preferred | P0 smoke guardrails | 0.5-1 d | __ |
+| PR-86  | `[✓]`  | [Define execution-log lightweight metadata contract](PR-86-execution-log-light-metadata-contract.md) **— Runtime+App deployed + production smoke verified 2026-04-29** | PR-78+ | Entangled/App observability | 0.5-1 d | __ |
+| PR-87  | `[✓]`  | [Project tool TRS `result_id` into execution logs](PR-87-tool-trs-result-id-execution-log-projection.md) **— Runtime+App deployed + production smoke verified 2026-04-29** | PR-86 preferred | Tool result drilldown | 0.5-1 d | __ |
+| PR-88  | `[✓]`  | [Complete `log-payloads` lazy fetch and merge into App log view](PR-88-log-payload-lazy-fetch-and-app-cache-merge.md) **— Business+App deployed + production smoke verified 2026-04-29** | PR-86 preferred | Payload drilldown | 0.5-1 d | __ |
+| PR-89  | `[✓]`  | [Expose LLM Factory log join key in think execution logs](PR-89-llm-factory-log-id-entangled-join.md) **— Runtime+App deployed + production smoke verified 2026-04-29** | PR-86 preferred | LLM Factory join | 0.5 d | __ |
+| PR-90  | `[✓]`  | [Correct execution-log status semantics and add minimal lifecycle events](PR-90-execution-log-status-and-lifecycle-events.md) **— Runtime+App deployed + tests/smoke verified 2026-04-29** | PR-86 preferred | Timeline correctness | 0.5-1 d | __ |
+| PR-91  | `[✓]`  | [Align Entangled client cache docs and guardrails with actual App cache](PR-91-entangled-client-cache-docs-and-guardrails.md) **— Docs/guardrail + Entangled client tests verified 2026-04-29** | PR-86 optional | Docs / guardrails | 0.25-0.5 d | __ |
 
 
 ---

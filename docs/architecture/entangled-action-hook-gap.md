@@ -107,7 +107,7 @@ Body: { user_id, params, payload }
 | `api-keys`         | `test`                                                                                                                                                                              | `defs.py`             |
 | `messages`         | `send`, `mark_all_read`, `clear`                                                                                                                                                    | `defs_stream.py`      |
 | `execution-logs`   | `clear`                                                                                                                                                                             | `defs_stream.py`      |
-| `log-payloads`     | `get_input`                                                                                                                                                                         | `defs_stream.py`      |
+| `log-payloads`     | `get_input`, `get_payload`                                                                                                                                                          | `defs_stream.py`      |
 | `user-preferences` | `get_config`, `cleanup`                                                                                                                                                             | `defs_users.py`       |
 | `models`           | `add_custom`                                                                                                                                                                        | `defs_models.py`      |
 | `api-key-models`   | `refresh`, `remove`                                                                                                                                                                 | `defs_models.py`      |
@@ -157,5 +157,4 @@ Body: { user_id, params, payload }
 | 前端 TS (`dispatch.ts` / `client.ts`)    | 调用方式不变                                         |
 | Entangled WS handler (`ws_handler.py`) | `_dispatch_action` 已正确路由到 `store.action()`，无需改 |
 | Entangled CRUD                         | 不受影响                                           |
-
 

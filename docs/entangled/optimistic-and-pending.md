@@ -1,22 +1,47 @@
-# 乐观并发机制与 Pending Ops
+# 历史：乐观并发与 Pending Ops
 
-> 路径参考：`novaic-app/src/data/entangled/dispatch.ts` 与 `Entangled/packages/client-rust/src/cache.rs`
+> 这页是历史说明，避免排障时把旧 Path B / 早期 Path C 机制误认为当前活路径。
 
-## 1. 临时本地并发标识 (`_opt_`)
-如果完全依赖双向推送返回，在弱网环境下用户点击按钮后必然感知到 1~2 秒甚至更高的极不愉快延时。所以，Entangled 在 UI 设计上深度使用了乐观并发（Optimistic Writes）：
-1. 用户提交 Mutation（如发一条 Chat Message）。
-2. 在前端或 Rust 层生成一个临时的、以 `_opt_` 开头的虚假 `id`。
-3. `Cache` 立刻把它 `INSERT` 并告诉终端，这让文字聊天马上滑到最底！
-4. 它被带上请求发送并在后端接受完整的 ID 分配或生成。
+## 当前结论
 
-## 2. Pending Ops 表
-这会带来一个可怕的状况。一旦 Websocket 突然断网、网络失败。临时行 `_opt_` 永远不会通过云端返回真的那个带有正确数据库数字的 `id` 的 Entity Object，也就会永远挂在“Loading…” 的状态。
-- 为此，Rust 设置了一张名为 **`pending_ops`** 的记录表。所有被发出去正在半空中的 `_opt_` 数据均有一条镜像。
-- 如果真的没有发成功，App 重连后它可以作为重发缓冲；
-- 如果你试图彻底格式化用户会话，清理它是一切的关键。
+当前 `novaic-app` 的 Entangled 写入路径是 **pessimistic-first**：
 
-## 3. Ghost "Sending..." 排障
-在过去由于未把表列入联机清扫。导致出现了臭名昭著的幽灵排障现象：
-> "服务器端已明确说 Sent，但你重新安装这台设备，UI 上仍叠加着好几条 Sending"。
-根因在于：使用 `useMessages` 构建界面时，逻辑会自动把被判断为 `_opt_` 开头且存在本地表中的 User_Message 渲染成“正在发送风车”。
-如今 `Cache::clear_all()` 如果执行，必定联合 `pending_ops` 一起铲走，根治这一死结。
+1. React 调用 `dispatch()` / `entangledMethod()`。
+2. Rust 通过 `entangled_method` 发送服务端 action / entity mutation。
+3. 服务端确认写入后，Entangled sync 帧把结果推回本地 SQLite read-model。
+
+客户端 `entangled_cache.db` 当前只维护：
+
+```text
+entity_meta
+entity_items
+idx_entity_items_seq
+```
+
+`pending_ops` 不再是活跃表。Rust cache 初始化时会执行：
+
+```sql
+DROP TABLE IF EXISTS pending_ops;
+```
+
+所以遇到 App 缓存问题时，不要再假设有客户端离线写队列或 pending-op 重放机制。
+
+## 历史机制
+
+早期设计曾考虑或实现过 `_opt_*` 临时行与 `pending_ops` 表，用于弱网下的 optimistic UI。那一路径已经退出活代码：当前 `novaic-app/src/data/entangled/dispatch.ts` 明确是 pessimistic-first，乐观 UI 若需要应在更上层用 TanStack Query `onMutate/onError/onSettled` 这类展示层机制实现，而不是依赖 Rust cache 写队列。
+
+## 当前排障命令
+
+```bash
+sqlite3 "$HOME/Library/Application Support/com.novaic.app/entangled_cache.db" ".tables"
+sqlite3 "$HOME/Library/Application Support/com.novaic.app/entangled_cache.db" \
+  "SELECT entity, params_hash, version, subscribed, has_more FROM entity_meta ORDER BY entity"
+sqlite3 "$HOME/Library/Application Support/com.novaic.app/tool_results.db" ".tables"
+```
+
+执行日志相关约定：
+
+- `messages` / `execution-logs` 是 Entangled stream read-model；
+- `log-payloads` 通过 action lazy fetch，不默认订阅；
+- 工具长结果走 TRS / `tool_results.db`；
+- 原始 LLM 调用走 LLM Factory，Entangled 中只需要 join key。
