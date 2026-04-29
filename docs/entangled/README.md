@@ -23,5 +23,5 @@
 | 专题 | 说明 |
 |------|------|
 | [react-rust-client.md](react-rust-client.md) | Path C Headless 架构：为什么不再基于 IndexedDB、由 Rust 做 SQLite Master。 |
-| [optimistic-and-pending.md](optimistic-and-pending.md) | 悬挂的 `Sending...`：乐观预提行 (`_opt_`)、`pending_ops` 机制以及如何被 `Clear Cache` 整理。 |
+| [optimistic-and-pending.md](optimistic-and-pending.md) | 历史机制说明：旧 optimistic / `pending_ops` 路径已退役，当前 App cache 是 read-model。 |
 | [nav-slots-and-routing.md](nav-slots-and-routing.md) | Rust 侧的新路网：Slot-based `NavState` 路由与 Refcount 如何彻底解决组件乱丢重连问题。 |

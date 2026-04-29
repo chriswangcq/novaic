@@ -18,7 +18,7 @@
 - **`entities_changed` 载荷**：Rust（`Entangled/packages/client-rust/src/push.rs`）在 `EntityChanged` 中带 **`params`**（与订阅 key 一致），供 `syncListener` 按带参 `queryKey` 失效。
 - **订阅 refcount**：`subscriptionSchema.acquireSubscribe` 在首次 `subscribe` 成功后再计数；AppBridge 重连时 **wire-only** `subscribe`（`entangledBootstrap`）避免双计数。
 - **聊天主面板**：`ChatPanel` 唯一调用 `useMessages` / `useLogs`，子组件经 **props** 注入，避免同一 agent **重复订阅** stream。
-- **清空本地缓存**：`clearLocalDb` → `invoke('entity_cache_clear')` → `Cache::clear_all()`，须含 **`pending_ops`**（乐观发送 `_opt_*` 行）；否则可出现「服务端已 sent、界面仍 Sending」。
+- **清空本地缓存**：`clearLocalDb` → `invoke('entity_cache_clear')` → `Cache::clear_all()`。当前 Rust cache 是 read-model：`entity_meta` / `entity_items`；历史 `pending_ops` 表已废弃，初始化时会被 `DROP TABLE IF EXISTS pending_ops` 清掉。
 
 **Business 层**：`messagesStore` / `logsStore`、`syncService`、`agentService`、`modelService`；Zustand `store.ts`。  
 **AgentToolsTab**：`useSettings()` + Entangled 列表与 TanStack Query，不用 IndexedDB 业务表作主存。

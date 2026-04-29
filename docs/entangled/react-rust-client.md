@@ -21,3 +21,20 @@
 - 浏览器提供的 `Clear Cache` 并不能触达 Rust 中的文件持久层；
 - 现在，点击重置会导致发起 Command `entity_cache_clear`。
 - Rust 将从表映射表 `sqlite_master` 之中粗暴地发起对每个有业务含义全量 `user` 的表执行 `DELETE`；随之自动对文件做 `VACUUM` 压缩。这避免了卸载重装 App 以后仍然残存陈旧实体 ID 的历史债务。
+
+当前客户端 cache 是 read-model，不是离线写队列。正常表结构：
+
+```text
+entity_meta
+entity_items
+idx_entity_items_seq
+```
+
+历史 `pending_ops` 已退役；Rust 初始化会清掉遗留表。执行日志的长结果不进入 `entangled_cache.db` 热 row：`execution-logs` 只保留轻量 metadata，`log-payloads` 通过 action lazy fetch，工具长结果在 `tool_results.db` / TRS，原始 LLM 调用在 LLM Factory。
+
+排障：
+
+```bash
+sqlite3 "$HOME/Library/Application Support/com.novaic.app/entangled_cache.db" ".tables"
+sqlite3 "$HOME/Library/Application Support/com.novaic.app/tool_results.db" ".tables"
+```
