@@ -1,6 +1,16 @@
 # 配置与环境变量
 
-> 对应 **`HANDOVER.md` §十四、§8.5**。生产值以服务器实际配置为准。
+## 后端配置 SSOT
+
+后端服务配置的唯一入口是 `novaic-common/config/services.json`，Python 服务通过 `common.strict_config.load_services_config()` 读取。`scripts/start.sh` 也必须通过同一个 loader 读取配置，不允许在 shell 里手写第二份 overlay merge 逻辑。
+
+`runtime_switches` 的 overlay 顺序由 `common.strict_config` 统一管理：
+
+1. `NOVAIC_RUNTIME_SWITCHES_PATH`：测试 / 临时运维钩子，文件不存在会 fail-fast。
+2. `services.json` 同目录的 `runtime_switches.json`：本地开发覆盖。
+3. `/opt/novaic/etc/runtime_switches.json`：生产 canonical overlay，位于 rsync 服务目录之外，部署不会覆盖。
+
+允许使用的环境变量只保留三类：OS 标准变量、服务身份变量、测试/CI 专用变量。生产 secrets 和 runtime switches 不再走旧的 env 文件路径。
 
 ## 本地 App 数据目录（macOS）
 
@@ -34,32 +44,9 @@
 cd novaic-gateway && PYTHONPATH=. python -m unittest tests.test_deps_internal_tasks -v
 ```
 
-## 生产环境变量文件
-
-生产常见： **`/opt/novaic/jwt_secret.env`**（`JWT_SECRET`、`TURN_SECRET`、`FRONTEND_CDN_URL` 等），由 systemd 或部署脚本加载。
-
----
-
 ## Cortex 服务（`:19996`）
 
-与 **`novaic-cortex`** 子模块 **`main_cortex.py`** / **`api.py`** 对齐；详细表见 **[../cortex/deployment-and-startup.md](../cortex/deployment-and-startup.md)**。
-
-| 变量 | 用途 |
-|------|------|
-| **`CORTEX_HOST`** / **`CORTEX_PORT`** | 监听地址（默认 `0.0.0.0:19996`） |
-| **`ALIBABA_CLOUD_ACCESS_KEY_ID`** / **`ALIBABA_CLOUD_ACCESS_KEY_SECRET`** | OSS 必填 |
-| **`NOVAIC_OSS_ENDPOINT`** / **`NOVAIC_OSS_REGION`** / **`NOVAIC_OSS_BUCKET`** | OSS 端点与桶 |
-| **`CORTEX_JWT_SECRET`** | 能力 JWT 签名（`auth.py`） |
-| **`BUSINESS_INTERNAL_URL`** | Business Service 基址（`BusinessProxy` 遗留 CLI 入口） |
-| **`CORTEX_INTERNAL_KEY`** | `X-Internal-Key`（与 Business 互信） |
-
-**Agent Runtime**（`CortexBridge`）：
-
-| 变量 | 默认 | 说明 |
-|------|------|------|
-| **`NOVAIC_CORTEX_URL`** | `http://127.0.0.1:19996` | Cortex HTTP 基址 |
-| **`NOVAIC_CORTEX_ENABLED`** | `true` | `false` 关闭桥接 |
-| **`NOVAIC_CORTEX_TIMEOUT`** | `30` | 秒 |
+Cortex 的 OSS、JWT、Business URL、internal key 等生产值来自 `services.json`，启动时由 `scripts/start.sh` 作为 CLI 参数显式传入 `main_cortex`。Agent Runtime 访问 Cortex 的 URL/timeout 也来自 `ServiceConfig`，由同一份 `services.json` 派生。
 
 ---
 
