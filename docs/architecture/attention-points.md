@@ -93,7 +93,7 @@ start.sh CLI 参数 (生产覆盖，ps aux 可见)
 |--------|---------|---------|
 | `gateway.infra.sse` | `sse/` 包目录（`__init__.py` + `broadcaster.py`） | 按 `sse.py` 搜索未匹配包目录 |
 | `gateway.api.schemas` | 磁盘存在，git 标记 `D`（重构中间态） | git status 与磁盘文件不一致 |
-| `gateway.entity.sync_contract` | 同上 | 同上 |
+| `gateway.entity.sync_contract` | 已删除 | Gateway 不再持有 Entangled schema / sync contract 版本 |
 | `common.http.clients` | `novaic-common/common/http/clients.py` | 搜索工具路径限制 |
 | `entangled.app.factory` | Entangled 子模块中存在 | 子模块未被搜索工具索引 |
 
@@ -223,4 +223,3 @@ Gateway 完成微服务拆分（2026-04-14）：
 
 - `load_services_config()` 与 `ServiceConfig` 的真实读取路径保持自动对齐
 - 新增配置项时不会再出现“严格校验通过，但 import `common.config` 才因缺 key 崩溃”的漂移问题
-

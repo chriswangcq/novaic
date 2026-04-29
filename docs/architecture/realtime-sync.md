@@ -28,7 +28,7 @@
 ## `/api/app/ws` 要点
 
 - **认证**：须 `Authorization: Bearer <access_token>`，`user_id` 仅来自 JWT `sub`。
-- **Schema 首包**：含 `**syncContractVersion`**，与 REST `/api/entangled/schema`、Entangled `ws_handler` 对齐。
+- **Schema 首包**：只来自 direct Entangled WS `event=schema`，含 `syncContractVersion`；Gateway AppWS 只负责下发 `entangledWsUrl`。
 
 ## Entangled 单 Store（摘要）
 
