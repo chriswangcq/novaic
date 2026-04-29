@@ -148,7 +148,7 @@
 | PR-96  | `[✓]`  | [Make `chat_reply` output standard Markdown](PR-96-chat-reply-standard-markdown-contract.md) **— Business+Cortex deployed + contract tests verified 2026-04-29** | PR-95 | Chat reply rendering contract | 0.25-0.5 d | __ |
 | PR-97  | `[✓]`  | [Unify LLM tool schema source](PR-97-unify-llm-tool-schema-source.md) **— Cortex deployed + schema smoke verified 2026-04-29** | PR-96 | Tool schema SSOT | 0.5 d | __ |
 | PR-98  | `[✓]`  | [Execution Log display contract SSOT](PR-98-execution-log-display-contract-ssot.md) **— Runtime+App deployed + production smoke verified 2026-04-29** | PR-97 | Agent Monitor contract | 0.5 d | __ |
-| PR-99  | `[ ]`  | [Prompt contract fragments SSOT](PR-99-prompt-contract-fragments-ssot.md) | PR-98 | Prompt contract guardrails | 0.5 d | __ |
+| PR-99  | `[✓]`  | [Prompt contract fragments SSOT](PR-99-prompt-contract-fragments-ssot.md) **— shared contract guardrails verified 2026-04-29** | PR-98 | Prompt contract guardrails | 0.5 d | __ |
 | PR-100 | `[ ]`  | [Entangled schema and App type guardrails](PR-100-entangled-schema-app-type-guardrails.md) | PR-99 | Entity schema guardrails | 0.5 d | __ |
 | PR-101 | `[ ]`  | [Config reading contract guardrails](PR-101-config-reading-contract-guardrails.md) | PR-100 | Config parity | 0.5 d | __ |
 | PR-102 | `[ ]`  | [Message lifecycle enum SSOT guardrails](PR-102-message-lifecycle-enum-ssot.md) | PR-101 | Message lifecycle contract | 0.5 d | __ |

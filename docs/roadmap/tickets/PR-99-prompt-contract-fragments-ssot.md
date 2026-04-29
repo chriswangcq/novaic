@@ -3,7 +3,7 @@
 | Field | Value |
 | --- | --- |
 | **Ticket** | PR-99 |
-| **Status** | `[ ]` |
+| **Status** | `[✓]` |
 | **Scope** | `novaic-business`, `novaic-agent-runtime` |
 | **Depends on** | PR-98 |
 | **Invariant** | LLM-visible core contract text must not drift between Business defaults and Runtime prompt assembly. |
@@ -26,9 +26,15 @@ Business owns default prompt sections, while Runtime owns prompt shell, IM seman
 
 ## Checklist
 
-- [ ] Add prompt contract fragments or a shared contract test fixture.
-- [ ] Add Business and Runtime tests that assert the same invariants.
-- [ ] Run targeted prompt tests.
-- [ ] Deploy affected backend service if default prompt changes.
-- [ ] Commit, push, and bump parent repo.
+- [x] Add prompt contract fragments or a shared contract test fixture.
+- [x] Add Business and Runtime tests that assert the same invariants.
+- [x] Run targeted prompt tests.
+- [x] Deploy affected backend service if default prompt changes.
+- [x] Commit, push, and bump parent repo.
 
+## Verification
+
+- `cd novaic-common && python -m pytest tests/test_execution_log_display_contract.py`
+- `cd novaic-business && python -m pytest tests/test_pr72_prompt_defaults_contract.py`
+- `cd novaic-agent-runtime && python -m pytest tests/test_llm_prompt_contract.py tests/test_pr69_agent_root_continuity_prompt.py`
+- Deployment not required: no active prompt text changed; this PR adds shared contract guardrails only.
