@@ -141,6 +141,8 @@
 | PR-89  | `[✓]`  | [Expose LLM Factory log join key in think execution logs](PR-89-llm-factory-log-id-entangled-join.md) **— Runtime+App deployed + production smoke verified 2026-04-29** | PR-86 preferred | LLM Factory join | 0.5 d | __ |
 | PR-90  | `[✓]`  | [Correct execution-log status semantics and add minimal lifecycle events](PR-90-execution-log-status-and-lifecycle-events.md) **— Runtime+App deployed + tests/smoke verified 2026-04-29** | PR-86 preferred | Timeline correctness | 0.5-1 d | __ |
 | PR-91  | `[✓]`  | [Align Entangled client cache docs and guardrails with actual App cache](PR-91-entangled-client-cache-docs-and-guardrails.md) **— Docs/guardrail + Entangled client tests verified 2026-04-29** | PR-86 optional | Docs / guardrails | 0.25-0.5 d | __ |
+| PR-92  | `[✓]`  | [Add semantic display metadata to execution logs](PR-92-execution-log-semantic-display-contract.md) **— Runtime deployed + production smoke verified 2026-04-29** | PR-86..PR-90 | User-facing log contract | 0.5 d | __ |
+| PR-93  | `[✓]`  | [Render execution logs as user-facing events by default](PR-93-execution-log-user-facing-app-rendering.md) **— App deployed + tests/smoke verified 2026-04-29** | PR-92 preferred | App log UX | 0.5-1 d | __ |
 
 
 ---
