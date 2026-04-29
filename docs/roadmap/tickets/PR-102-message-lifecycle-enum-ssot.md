@@ -55,3 +55,10 @@ Message kinds (`USER_MESSAGE`, `AGENT_REPLY`) and lifecycle states are reference
 - [x] Business deploy required because `business/schema_push.py` now imports the shared contract.
 - [x] Frontend deploy required because App message constants and hidden-message filtering changed.
 - [x] Parent repo bumped after child repo commits.
+
+## Production Smoke
+
+- `./deploy business` restarted all backends successfully.
+- `./deploy frontend 0.3.0` published `https://relay.gradievo.com/resource/frontend/v0.3.0/`.
+- `./deploy status` showed Entangled, Gateway, Business, Device, Queue, File Service, Cortex, workers, and Relay running.
+- Remote import smoke on `api.gradievo.com` confirmed lifecycle states loaded from Common, Business outbox mapping matches the contract, and `INTERRUPT` is a hidden message type.
