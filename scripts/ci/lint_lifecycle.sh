@@ -26,6 +26,9 @@
 #   5. docs/                                    (example SQL in markdown)
 #   6. docs/roadmap/tickets/PR-21-*            (the ticket itself shows
 #                                               the DDL / migration SQL)
+#   7. Two audited one-shot SQL migrations from PR-47/PR-51 that snapshot
+#      victims and manually append transition audit rows. Do not broaden
+#      this to scripts/migrations/ as a directory allowlist.
 # Anything else hitting the pattern needs justification and an allowlist
 # entry here. If you just need to transition a message, call
 # POST /v1/messages/{id}/transition instead.
@@ -47,6 +50,8 @@ ALLOWLIST=(
   'tests/'
   'docs/'
   'scripts/gateway/'
+  'scripts/migrations/047_cleanup_ancient_user_message_pending.sql'
+  'scripts/migrations/048_cleanup_stuck_claimed.sql'
   'scripts/ci/lint_lifecycle.sh'
 )
 
