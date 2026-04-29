@@ -6,7 +6,7 @@
 
 - Entangled：`store.py` 游标与 `_cf`/`_rid`；`ws_handler` 背压与心跳；`cache.rs` TTL；**EntityStore** 与 Protocol 统一；自动级联已移除（一次写入 = 一次通知）；`entangled_sync_versions` 持久化。
 - 前端：删除旧 `@entangled/react` 大包；`**entangled_method_optimistic`**；Path C `**nav_changed**`；Slot **NavState v2**；**Schema Codegen**；**HTTP→Entangled** 迁移（`api.ts` 减负）。
-- 其它：AppWS **syncContractVersion**；invalidate 自愈进 Rust；Cortex **DFS** 与存储 ACL；等。
+- 其它：Entangled direct WS **syncContractVersion**；invalidate 自愈进 Rust；Cortex **DFS** 与存储 ACL；等。
 
 详述见 `**docs/architecture/`** 各篇（`app-ui.md`、`entangled-store-and-app-ws.md`、`agent-pipeline.md`）。
 

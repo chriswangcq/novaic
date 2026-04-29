@@ -23,7 +23,7 @@
 | A1 | Entangled 在 Gateway 之前启动 | 读 `scripts/start.sh` 顺序 | `[x]` | 先 `entangled.app.main`，`wait_port` 后再起 Gateway（约 L75–94） |
 | A2 | 默认端口 19900 | grep `PORT_ENTANGLED` / `services.json` | `[x]` | `start.sh` L19–25；`novaic-gateway/config/services.json` / `novaic-agent-runtime/config/services.json` |
 | A3 | Gateway 传入 `--entangled-url` | `start.sh` 与 `main_gateway.py` argparse | `[x]` | `start.sh` L92；`main_gateway.py` `--entangled-url`，并写入 `ServiceConfig.ENTANGLED_URL` / `ENTANGLED_SERVICE_URL` |
-| A4 | JWT / 服务 token 注入 Entangled 与 Gateway | 环境变量 | `[x]` | `start.sh` `JWT_SECRET`、`ENTANGLED_SERVICE_TOKEN`；schema push 用 `ENTANGLED_SERVICE_TOKEN` 或 `JWT_SECRET`（`main_gateway.py` lifespan） |
+| A4 | JWT / 服务 token 注入 Entangled 与 Gateway | 环境变量 | `[x]` | `start.sh` `JWT_SECRET`、`ENTANGLED_SERVICE_TOKEN`；Entangled schema registration 用 `ENTANGLED_SERVICE_TOKEN` 或 `JWT_SECRET`（`main_gateway.py` lifespan） |
 | A5 | `stop` 同时结束 Entangled 与 Gateway | `pkill` 模式 | `[x]` | `start.sh` `stop`：`entangled.app.main` 与 `main_gateway.py`（L53–56） |
 
 ---
@@ -60,7 +60,7 @@
 | D1 | HTTP CRUD + schema + count/batch 等 | `entangled/app/crud.py` | `[x]` | 与 `EntangledServiceClient` 对齐；含 `notify` 头、`/list`、`/exists-before`、`/update-where` 等 |
 | D2 | WebSocket `/v1/sync` 调用 `ws_handler` 正确签名 | `entangled/app/ws.py` | `[x]` | `handle_subscribe(sender, store, user_id, client_id, data)` 等 |
 | D3 | Notifier `push_fn(event, payload)` 同步调度发送 | `ws.py` `sync_push` | `[x]` | 与 `create_ws_handler` 一致：入队 **`PUSH_QUEUE_MAX_SIZE`**，consumer `send_json`；背压 drop-oldest |
-| D4 | 独立 WS 首帧 schema 与 Gateway `/app/ws` **完全一致** | 对比 JSON 形状 | `[x]` | `/v1/sync` 与 `ws_handler.create_ws_handler` 一致：`type: "push"`、`event: "schema"`、`data.entities` + `hash` + `syncContractVersion`（无 `entangledWsUrl`，因已直连） |
+| D4 | 独立 WS 首帧是 schema 唯一来源 | 对比 JSON 形状 | `[x]` | `/v1/sync` 与 `ws_handler.create_ws_handler` 一致：`type: "push"`、`event: "schema"`、`data.entities` + `hash` + `syncContractVersion`；Gateway `/app/ws` 只下发 endpoint |
 | D5 | 独立 WS 具备与 `create_ws_handler` 相同的 heartbeat/背压 | 对比 `ws_handler` | `[x]` | `ws.py`：`PUSH_QUEUE_MAX_SIZE` 队列 + drop-oldest、`HEARTBEAT_INTERVAL_S` / `HEARTBEAT_TIMEOUT_S`、入站刷新 `last_activity` |
 
 ---
@@ -81,7 +81,7 @@
 |----|----|----------|------|----------------|
 | F1 | Worker 直写 Entangled 后，桌面/App **仍能**收到与 Gateway 相同的 sync 帧 | 端到端 | `[x]` | **`GatewayBusinessClient`**：`notify=False` + **`POST /internal/entangled/sync-notify`**；其它直连 Entangled 的调用方须自行中继或改用 `/internal/entities/*` |
 | F2 | `POST /internal/entities/*` 与 `RemoteEntityStore` notify 策略一致 | 读 `internal/entity.py` | `[x]` | Remote 模式下 **`notify=False` + `remote_notify_after_entangled_http_write`**；与 `RemoteEntityStore` 对齐 |
-| F3 | `GET /api/entangled/schema` 与 WS schema 含 `entangledWsUrl`（可选直连） | `entangled.py`、`app_client.py` | `[x]` | `gateway/infra/entangled_ws.py`；有独立 URL 时返回 |
+| F3 | Gateway AppWS 下发 `entangledWsUrl` endpoint-only | `app_client.py` | `[x]` | schema 不经过 Gateway；App Rust 连接 `/v1/sync` 后接收 schema 首帧 |
 
 ---
 
@@ -107,7 +107,7 @@
 
 | ID | 项 | 验证方式 | 状态 | 证据 / 备注 |
 |----|----|----------|------|----------------|
-| I1 | Sync Contract / schema 单测 | `tests/unit/gateway/test_sync_contract_schema.py` | `[x]` | CI `tauri-ci.yml` 引用 |
+| I1 | Gateway endpoint-only guardrail | `tests/unit/gateway/test_entangled_endpoint_only.py` | `[x]` | Gateway AppWS 不再推 schema |
 | I2 | `RemoteEntityStore` + mock HTTP 集成测试 | 搜索 `RemoteEntityStore` in tests | `[x]` | `tests/unit/gateway/test_remote_notify.py`（`remote_notify_after_entangled_http_write` + mock） |
 | I3 | CI 冒烟（进程或包级） | workflows | `[x]` | **`tauri-ci.yml`**：`Entangled server-python import smoke`（`entangled.app.ws/crud`）；全进程 **`python -m entangled.app.main`** 留部署/集成环境 |
 

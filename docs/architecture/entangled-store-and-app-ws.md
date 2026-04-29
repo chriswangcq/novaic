@@ -43,7 +43,7 @@ Gateway 现在采用 **`AuthEntityStore`**（本地 SQLite）+ **`GatewayBusines
 
 Workers **不再直连 Entangled HTTP**。所有 entity 写操作通过 **`BusinessClient.entity_*`** → Business `/internal/entities/*` → Entangled HTTP。Business Service 统一负责 `X-Notify: false` 与同步帧推送。直连 **`/v1/sync`** 的客户端仍由 Entangled 进程内 notifier 投递。
 
-## Entangled 单 Store 与 schema push（2026-03）
+## Entangled 单 Store 与 schema 首帧（2026-04）
 
 **后端**：**Business Service** 直连 Entangled HTTP，是唯一与 Entangled 交互的服务；引入 `**EntityStoreProtocol(ABC)**`。Gateway 仅保留 `AuthEntityStore`（本地认证实体），不再注册为 Entangled store。
 
@@ -61,7 +61,7 @@ op_log_size: int     # 每 (entity, params) op-log 条数上限（默认 1000）
 
 **前端**：以 Rust `**entangled_method_optimistic`** 为主闭环；`hooks.tsx` 工厂化；已移除历史 `**@entangled/react**` 大包。
 
-**能力协商**：`EntityStoreProtocol`；`ws_handler` duck-type `exists_before()` / `list_stream()`；WS 打通时下发实体 **capabilities**；精简 `_dispatch_entity_crud` 与冗余 notifier 代理。
+**能力协商**：`EntityStoreProtocol`；`ws_handler` duck-type `exists_before()` / `list_stream()`；direct Entangled WS schema 首帧下发实体 **capabilities**；Gateway AppWS 只下发 `entangledWsUrl`。
 
 ## 相关
 
@@ -69,4 +69,3 @@ op_log_size: int     # 每 (entity, params) op-log 条数上限（默认 1000）
 - [app-ui.md](app-ui.md) — 前端 Path C  
 - 客户端 WS 策略（契约）：[client-ws-strategy.md](../entangled/client-ws-strategy.md)  
 - Sync Contract 长文：[historical-doc-links.md](../historical-doc-links.md)
-

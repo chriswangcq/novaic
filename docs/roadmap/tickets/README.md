@@ -152,6 +152,9 @@
 | PR-100 | `[✓]`  | [Entangled schema and App type guardrails](PR-100-entangled-schema-app-type-guardrails.md) **— App contract guardrails deployed 2026-04-29** | PR-99 | Entity schema guardrails | 0.5 d | __ |
 | PR-101 | `[✓]`  | [Config reading contract guardrails](PR-101-config-reading-contract-guardrails.md) **— start.sh strict_config path deployed 2026-04-29** | PR-100 | Config parity | 0.5 d | __ |
 | PR-102 | `[✓]`  | [Message lifecycle enum SSOT guardrails](PR-102-message-lifecycle-enum-ssot.md) **— Business+App contract guardrails deployed 2026-04-29** | PR-101 | Message lifecycle contract | 0.5 d | __ |
+| PR-103 | `[✓]`  | [Entangled WS schema registered in Rust App cache](PR-103-entangled-ws-schema-rust-cache.md) **— Entangled/App deployed 2026-04-29** | PR-102 | Entangled schema SSOT | 0.5-1 d | __ |
+| PR-104 | `[✓]`  | [Gateway AppWS sends only Entangled endpoint](PR-104-gateway-entangled-endpoint-only.md) **— Gateway/App deployed 2026-04-29** | PR-103 | Gateway boundary | 0.5 d | __ |
+| PR-105 | `[✓]`  | [Remove TS REST schema bootstrap and old guardrails](PR-105-remove-ts-rest-schema-bootstrap.md) **— Frontend/Desktop deployed 2026-04-29** | PR-103, PR-104 | Old path cleanup | 0.5 d | __ |
 
 
 ---
