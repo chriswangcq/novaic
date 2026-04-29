@@ -11,8 +11,7 @@
 > {
 >   "subscriber_enabled": true,
 >   "health_check_interval_seconds": 5,
->   "scheduler_poll_interval_seconds": 1.0,
->   "fallback_max_per_tick": 50
+>   "scheduler_poll_interval_seconds": 1.0
 > }
 > ```
 >
@@ -134,8 +133,7 @@ cat > /opt/novaic/etc/runtime_switches.json <<'JSON'
 {
   "subscriber_enabled": true,
   "health_check_interval_seconds": 5,
-  "scheduler_poll_interval_seconds": 1.0,
-  "fallback_max_per_tick": 50
+  "scheduler_poll_interval_seconds": 1.0
 }
 JSON
 
@@ -153,7 +151,7 @@ tail -200 /opt/novaic/data/logs/business-$(date +%Y%m%d).log | \
 ```
 
 Expected:
-* `ServiceConfig: runtime_switches={"fallback_max_per_tick": 50, "health_check_interval_seconds": 5, "scheduler_poll_interval_seconds": 1.0, "subscriber_enabled": true}`
+* `ServiceConfig: runtime_switches={"health_check_interval_seconds": 5, "scheduler_poll_interval_seconds": 1.0, "subscriber_enabled": true}`
 * `dispatch_subscriber enabled worker_id=<host>:<pid>:<uuid8>`
 
 If the `runtime_switches` line shows `subscriber_enabled: false`, the
@@ -281,8 +279,7 @@ cat > /opt/novaic/etc/runtime_switches.json <<'JSON'
 {
   "subscriber_enabled": false,
   "health_check_interval_seconds": 30,
-  "scheduler_poll_interval_seconds": 1.0,
-  "fallback_max_per_tick": 50
+  "scheduler_poll_interval_seconds": 1.0
 }
 JSON
 

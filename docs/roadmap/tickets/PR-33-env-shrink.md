@@ -62,8 +62,7 @@
   "runtime_switches": {
     "subscriber_enabled": true,
     "health_check_interval_seconds": 30,
-    "scheduler_poll_interval_seconds": 1.0,
-    "fallback_max_per_tick": 50
+    "scheduler_poll_interval_seconds": 1.0
   }
 }
 ```
@@ -106,8 +105,7 @@
 2026-04-19T03:00:00Z [INFO] ServiceConfig: runtime_switches={
   "subscriber_enabled": true,
   "health_check_interval_seconds": 5,
-  "scheduler_poll_interval_seconds": 1.0,
-  "fallback_max_per_tick": 50
+  "scheduler_poll_interval_seconds": 1.0
 }
 ```
 

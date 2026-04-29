@@ -335,8 +335,7 @@ cat > /opt/novaic/etc/runtime_switches.json <<'JSON'
 {
   "subscriber_enabled": true,
   "health_check_interval_seconds": 5,
-  "scheduler_poll_interval_seconds": 1.0,
-  "fallback_max_per_tick": 50
+  "scheduler_poll_interval_seconds": 1.0
 }
 JSON
 bash /opt/novaic/start.sh --stop && bash /opt/novaic/start.sh
