@@ -2,9 +2,10 @@
 # NovAIC Backend Start Script (Linux/Cloud)
 #
 # Configuration:
-#   services.json = defaults + secrets (jwt_secret)
-#   CLI args      = production overrides (visible in ps aux)
-#   Zero exports  — all config passed as CLI args or read from services.json.
+#   services.json = code-shipped defaults + secrets
+#   runtime_switches overlay = /opt/novaic/etc/runtime_switches.json
+#   CLI args = process-local bind/path overrides (visible in ps aux)
+#   Zero exports — all config passed as CLI args or read through strict_config.
 #
 # Services:
 #   - Entangled      :19900  Entity CRUD (single source of truth) + WS Sync
@@ -124,28 +125,17 @@ echo "Starting NovAIC backends..."
 
 # ── Secrets (read from services.json, pass as CLI args) ──────────────────────
 #
-# TD-5 (2026-04-15): ``runtime_switches`` values are overlaid by
-# /opt/novaic/etc/runtime_switches.json (managed by operators, survives
-# rsync — see common/strict_config.py for the loader logic). The helper
-# below mirrors that deep-merge so this script sees exactly the same
-# value Python services do — otherwise start.sh would still launch the
-# subscriber based on the rsync-stomped committed default even though
-# Python saw the overlay's true value.
-_cfg() { python3 - "$1" <<PYEOF
-import json, os, pathlib, sys
+# TD-5/PR-101: use the exact same strict_config loader as Python services.
+# Do not reimplement runtime_switches overlay semantics in shell: the loader
+# owns env/sibling/prod overlay precedence, unknown-key validation, and
+# required-key fail-fast behavior.
+_cfg() { PYTHONPATH="$BASE/novaic-common:${PYTHONPATH:-}" python3 - "$1" <<PYEOF
+import sys
+from common.strict_config import load_services_config
 
 path_expr = sys.argv[1]
-base = json.load(open("$BASE/novaic-common/config/services.json"))
-
-overlay_path = pathlib.Path("/opt/novaic/etc/runtime_switches.json")
-if overlay_path.exists():
-    overlay = json.loads(overlay_path.read_text())
-    if isinstance(overlay, dict) and "runtime_switches" in overlay and len(overlay) == 1:
-        overlay = overlay["runtime_switches"]
-    if isinstance(overlay, dict) and isinstance(base.get("runtime_switches"), dict):
-        base["runtime_switches"].update(overlay)
-
-print(eval("base" + path_expr))
+cfg = load_services_config("$BASE/novaic-common/config/services.json", force_reload=True)
+print(eval("cfg.raw" + path_expr))
 PYEOF
 }
 
