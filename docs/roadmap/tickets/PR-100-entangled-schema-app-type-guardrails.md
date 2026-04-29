@@ -3,7 +3,7 @@
 | Field | Value |
 | --- | --- |
 | **Ticket** | PR-100 |
-| **Status** | `[ ]` |
+| **Status** | `[✓]` |
 | **Scope** | `novaic-business`, `novaic-app` |
 | **Depends on** | PR-99 |
 | **Invariant** | App entity assumptions must match Business-pushed Entangled entity schemas. |
@@ -26,9 +26,16 @@ Business defines Entangled entities in `schema_push.py`; App keeps entity metada
 
 ## Checklist
 
-- [ ] Export or snapshot key Business entity schema metadata.
-- [ ] Add App-side drift tests for entity names/id fields/key fields.
-- [ ] Run Business/App tests.
-- [ ] Deploy if runtime code changes require it.
-- [ ] Commit, push, and bump parent repo.
+- [x] Export or snapshot key Business entity schema metadata.
+- [x] Add App-side drift tests for entity names/id fields/key fields.
+- [x] Run Business/App tests.
+- [x] Deploy if runtime code changes require it.
+- [x] Commit, push, and bump parent repo.
 
+## Verification
+
+- `cd novaic-business && python -m pytest tests/test_pr100_app_entity_schema_contract.py`
+- `cd novaic-app && npm run test:unit -- src/data/entities/entangledEntityContracts.test.ts`
+- `cd novaic-common && python -m pytest tests/test_execution_log_display_contract.py`
+- `./deploy frontend 0.3.0`
+- `curl -I -s https://relay.gradievo.com/resource/frontend/v0.3.0/ | head`
