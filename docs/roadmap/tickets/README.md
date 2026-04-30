@@ -169,6 +169,7 @@
 | PR-117 | `[✓]`  | [Remove Business TaskManager legacy proxy](PR-117-remove-business-taskmanager-legacy-proxy.md) | PR-112 | Business cleanup | 0.25-0.5 d | Implemented, tested, deployed |
 | PR-118 | `[✓]`  | [Remove deprecated Business `subagent_context` path](PR-118-remove-deprecated-subagent-context-path.md) | PR-67, PR-70, PR-113 | Business/Cortex boundary cleanup | 0.5-1 d | Implemented, tested, deployed |
 | PR-119 | `[✓]`  | [Active Code Zombie Path Audit and First Cleanup Batch](PR-119-active-code-zombie-path-audit.md) | PR-114..PR-118 | Old path cleanup | 0.5-1 d | Implemented, tested, deployed |
+| PR-120 | `[✓]`  | [Remove Device Service Retired Entangled CLI](PR-120-remove-device-entangled-cli.md) | PR-119 | Device cleanup | 0.25-0.5 d | Implemented, tested, deployed |
 
 
 ---
