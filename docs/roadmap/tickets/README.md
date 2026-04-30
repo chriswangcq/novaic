@@ -171,6 +171,7 @@
 | PR-119 | `[✓]`  | [Active Code Zombie Path Audit and First Cleanup Batch](PR-119-active-code-zombie-path-audit.md) | PR-114..PR-118 | Old path cleanup | 0.5-1 d | Implemented, tested, deployed |
 | PR-120 | `[✓]`  | [Remove Device Service Retired Entangled CLI](PR-120-remove-device-entangled-cli.md) | PR-119 | Device cleanup | 0.25-0.5 d | Implemented, tested, deployed |
 | PR-121 | `[✓]`  | [Gateway Entangled Sync Endpoint Discovery Boundary](PR-121-gateway-entangled-sync-discovery-boundary.md) **— Gateway deployed + remote old-path deletion verified 2026-04-30** | PR-104, PR-119 | Gateway boundary cleanup | 0.25-0.5 d | Implemented, tested, deployed |
+| PR-122 | `[✓]`  | [Entangled Public WebSocket URL SSOT](PR-122-entangled-public-ws-url-ssot.md) **— Gateway deployed + public WS endpoint verified 2026-04-30** | PR-121 | Gateway boundary cleanup | 0.25 d | Implemented, tested, deployed |
 
 
 ---

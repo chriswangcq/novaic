@@ -7,6 +7,10 @@
 | Goal | Gateway 对 Entangled 的依赖只保留一个明确边界：给客户端发现 direct sync WebSocket endpoint。 |
 | Non-goal | 不改 Business / Subscriber 对 Entangled HTTP 的真实数据消费路径。 |
 
+> 2026-04-30 follow-up: `--entangled-sync-ws-url` CLI 注入会把服务器内部
+> loopback WS 误下发给桌面客户端。PR-122 已接管这条边界：客户端 sync WS 只从
+> `services.entangled_service.public_ws_url` 读取，Gateway 不再接收 CLI 覆盖值。
+
 ## 背景
 
 Gateway 当前仍有两类 Entangled 耦合：
