@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[ ]` |
+| Status | `[✓]` |
 | Owner | Codex |
 | Created | 2026-04-30 |
 | Repos | `novaic-business`, parent docs |
@@ -14,28 +14,30 @@
 
 ## Detailed Plan
 
-1. Trace all HTTP route registrations and call sites for the task proxy.
-2. If no active caller exists, remove router registration and file.
-3. If a caller exists, migrate it to Queue Service directly before deletion.
-4. Add guardrail preventing Business from reintroducing the legacy TaskManager proxy.
+1. [x] Trace all HTTP route registrations and call sites for the task proxy.
+   - No active caller found for Business `/internal/tasks/spawn`, `/internal/tasks/create-completed`, `/internal/tasks/{task_id}`, `/internal/tasks/{task_id}/cancel`, `/internal/tasks/{task_id}/result`.
+   - Queue Service callers already use `/api/queue/tasks/*` directly.
+2. [x] Keep `business/internal/task.py` registered because it still owns separate `agent-tasks` / `growth-logs` business routes.
+3. [x] Delete only the legacy Queue TaskManager proxy routes and `_forward_*` helpers.
+4. [x] Add guardrail preventing Business from reintroducing the legacy TaskManager proxy.
 
 ## Tests
 
-- [ ] Business route/import tests.
-- [ ] Any tests touching task proxy updated or deleted.
-- [ ] `python -m pytest`
-- [ ] `python -m compileall -q business`
+- [x] Business route/import tests.
+- [x] Any tests touching task proxy updated or deleted.
+- [x] `python -m pytest`
+- [x] `python -m compileall -q business`
 
 ## Smoke / Deploy
 
-- [ ] `rg "TaskManager API|tasks/spawn|tasks/create-completed" business tests`.
-- [ ] `./deploy business`
-- [ ] `./deploy status`
+- [x] `rg "TaskManager API|tasks/spawn|tasks/create-completed" business tests` only hits guardrail tests / unrelated Queue URL config tests.
+- [x] `./deploy business`
+- [x] `./deploy status`
+- [x] Remote source confirms legacy proxy markers absent and `quadrant-tasks` / `growth-logs` still present.
 
 ## Git
 
-- [ ] Business commit: `refactor(business): remove task manager legacy proxy (PR-117)`
-- [ ] Business push.
+- [x] Business commit: `refactor(business): remove task manager legacy proxy (PR-117)`
+- [x] Business push.
 - [ ] Parent commit: `docs: close task manager proxy cleanup (PR-117)`
 - [ ] Parent push.
-
