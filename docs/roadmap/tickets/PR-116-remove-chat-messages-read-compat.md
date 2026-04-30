@@ -47,7 +47,7 @@
 ## Git
 
 - [x] Runtime/Business/App/Common commits as affected.
-- [ ] Parent docs/submodule commit.
+- [x] Parent docs/submodule commit.
 - [x] Push all changed repos.
 
 ## Risk Note
