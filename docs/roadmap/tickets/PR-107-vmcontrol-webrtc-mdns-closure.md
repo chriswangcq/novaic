@@ -31,9 +31,9 @@
 
 ## Smoke Test Work
 
-- [ ] Run a real Host Desktop WebRTC smoke and confirm frames connect.
+- [x] Run a real Host Desktop WebRTC smoke and confirm frames connect.
 - [ ] Run VM/Android WebRTC smoke when those sources are available.
-- [ ] Confirm runtime logs no longer contain repeated `webrtc_mdns::conn` send errors during setup.
+- [x] Confirm Host Desktop runtime logs no longer contain repeated `webrtc_mdns::conn` send errors during setup.
 
 ## Deployment Work
 
@@ -47,17 +47,20 @@
 
 ## Closeout
 
-Implementation and local delivery completed on 2026-04-30; runtime stream smoke remains open.
+Implementation and local delivery completed on 2026-04-30; Host Desktop runtime stream smoke passed; Linux VM / Android stream smoke remains open.
 
 Verification:
 
 - `cd novaic-app/src-tauri/vmcontrol && cargo check --offline`
 - `./deploy desktop`
+- Host Desktop manual smoke via the desktop App Devices view.
 
 Notes:
 
 - `cargo check --offline` succeeds with existing warnings.
 - Cargo attempted to refresh the stale lockfile during verification; that generated `Cargo.lock` churn was reverted because lockfile refresh is tracked separately.
 - Desktop deploy installed `/Applications/ByClaw.app`.
-- Remaining runtime smoke: Host Desktop / Linux VM / Android WebRTC sessions should be exercised with logs open.
+- Host Desktop smoke evidence included `[WebRTC:HD] Cursor shape detected`, `Broadcaster host_desktop ... -> 1 receivers`, WebRTC cursor forwarding, and VideoToolbox bitrate updates; no `webrtc_mdns::conn` send errors appeared in the observed setup window.
+- Teardown produced `DataChannel is not opened` after `webrtc_stop`, which is a disconnect tail event and not the mDNS failure mode tracked by this ticket.
+- Remaining runtime smoke: Linux VM / Android WebRTC sessions should be exercised with logs open.
 - App commit: `635ce2d fix(vmcontrol): disable mdns ice lookup (PR-107)`.
