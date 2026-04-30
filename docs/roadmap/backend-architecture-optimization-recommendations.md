@@ -318,6 +318,196 @@ They are not breaking runtime today, but they keep old concepts discoverable and
 - No active code path reads or writes retired continuity fields.
 - New developers do not see old summary channels in primary schema definitions.
 
+## LLM Call Contract Backlog
+
+This section was merged from the older standalone LLM-call backlog note so backend architecture and LLM-call contract work have one roadmap entry point.
+
+These are not immediate bugs. They are contract improvements that make Cortex, Agent Runtime, and model calls easier to reason about, test, and evolve.
+
+### C1. Prompt/Tool Contract Linter
+
+Build a preflight check that compares LLM-visible prompt text against the actual `tools[]` names for the same request.
+
+Desired outcome: generated LLM calls cannot silently contain phantom tool names, stale quick-reference snippets, or role-inappropriate tool instructions.
+
+### C2. Dynamic Tool Quick Reference
+
+Generate the "工具速查" section from the same registry that builds `tools[]`, rather than maintaining a hand-written prompt list.
+
+Desired outcome: adding, removing, or renaming a tool updates the prompt reference automatically.
+
+### C3. Role-Aware Tool Bundles
+
+Split tool exposure by agent role and wake type:
+
+- main user-facing agent
+- child subagent
+- system wake
+- simple chat turn
+- implementation/debug turn
+
+Desired outcome: the model sees only the tools that make sense for its current role and task.
+
+### C4. Context Block Budget Policy
+
+Define a budget and priority order for folded scope summaries, current IM messages, active scope stack, and system instructions.
+
+Desired outcome: context growth is predictable, and short prior turns do not get duplicated across blocks.
+
+### C5. Wake-Scope Closure Summary Quality
+
+Keep the current contract: the model closes the current wake scope with `skill_end(report=...)`, and that exact report becomes the scope's `summary.md`.
+
+Desired outcome: summaries are useful by default without reintroducing automatic memory, chat-reply-derived memory, or a separate root-scope finalizer path.
+
+### C6. Clean IM Body and Attachment Rendering
+
+Standardize how `content.text`, empty attachments, non-empty attachments, and future rich-message fields render after the IM header.
+
+Desired outcome: the model reads the user's actual utterance first, with attachment data represented intentionally.
+
+### C7. Shell Policy Tiers
+
+Give `shell` a small, explicit policy model:
+
+- read-only inspection
+- local edits/tests
+- server mutation
+- destructive data operation
+- external/network side effect
+
+Desired outcome: the model can reason about command risk without needing a giant procedural rulebook.
+
+### C8. Request Parameter Normalizer
+
+Normalize provider payloads before dispatch so unset optional fields are omitted and provider-specific defaults remain centralized.
+
+Desired outcome: cleaner snapshots and fewer provider compatibility surprises.
+
+### C9. LLM Call Snapshot Tests
+
+Add golden snapshots for representative turns:
+
+- first greeting
+- "what can you do?"
+- shell-enabled debugging turn
+- child subagent report
+- system wake with prior folded summaries
+
+Desired outcome: prompt drift becomes visible in review.
+
+### C10. LLM-Call Observability
+
+Log compact metadata for every LLM request:
+
+- tool names
+- context block names and token estimates
+- model id
+- provider
+- optional parameter keys actually sent
+- whether folded scope history was present
+
+Desired outcome: production debugging can answer "what did the model actually see?" without dumping full prompt content into logs.
+
+## Current Known Imperfections (2026-04-30)
+
+These are not new architecture directions. They are the current rough edges observed after the device status and mDNS fixes, recorded here so they do not disappear into chat history.
+
+### I1. VmControl Cargo.lock Is Stale
+
+**Observation**
+
+`cargo check --locked` in `novaic-app/src-tauri/vmcontrol` currently fails because `Cargo.lock` does not match the current dependency graph. `cargo check --offline` passes after Cargo locally resolves the graph, but that also produces unrelated lockfile churn.
+
+**Why It Matters**
+
+Build determinism is weaker than it should be. A later developer may accidentally mix dependency refresh noise into an unrelated bug fix, or CI may fail if it requires locked builds.
+
+**Recommended Direction**
+
+- Refresh `vmcontrol/Cargo.lock` in a dedicated dependency-hygiene change.
+- Do not mix the lock refresh with feature or bug-fix commits.
+- After the refresh, make `cargo check --locked` the normal verification command for VmControl.
+
+**Acceptance Signals**
+
+- `cargo check --locked` passes in `novaic-app/src-tauri/vmcontrol`.
+- The lockfile diff is reviewed as dependency maintenance, not hidden inside product logic changes.
+
+### I2. WebRTC mDNS Policy Needs Runtime Smoke Closure
+
+**Observation**
+
+VmControl now explicitly disables `webrtc-rs` mDNS ICE handling. This removes the macOS `0.0.0.0:5353 -> No route to host` error path and matches the current STUN/TURN-first architecture.
+
+**Why It Matters**
+
+This is the right product behavior today, but it is still a conscious policy tradeoff: pure LAN `.local` host-candidate discovery is not part of the supported connection path. The fix has compile-level verification, but ICE behavior is runtime-sensitive, so it still needs an end-to-end WebRTC smoke across Host Desktop, Linux VM, and Android before the issue is fully closed.
+
+**Recommended Direction**
+
+- Keep mDNS disabled while Gateway-provided STUN/TURN is the authoritative WebRTC path.
+- If LAN-only direct discovery becomes a product requirement later, design it explicitly instead of relying on `webrtc-rs` defaults.
+- Keep logging focused on actual WebRTC connection failure, not multicast resolver noise.
+- Run a small manual or scripted smoke for each WebRTC source type:
+  - Host Desktop stream opens and receives frames.
+  - Linux VM stream opens after VM start.
+  - Android stream opens after emulator/device start.
+- Check logs during the smoke for mDNS noise and ICE failure transitions.
+
+**Acceptance Signals**
+
+- Host Desktop / Linux VM / Android WebRTC sessions connect through the STUN/TURN path.
+- Each stream reaches WebRTC `connected`.
+- No repeated mDNS send errors appear during connection setup.
+- The frontend device monitor reports work in user-facing terms, not low-level debug payloads.
+
+### I3. Device Status Polling Has Multiple Owners
+
+**Observation**
+
+The Host Desktop false `Error` badge was fixed by changing polling failure behavior and by making `PcClientDeviceList` start polling for the devices it renders. This is correct for the bug, but status polling still has more than one UI owner.
+
+**Why It Matters**
+
+Multiple components can refresh the same `DeviceStatusStore`. That is safe enough now because updates are keyed by `(device_id, pc_client_id)`, but it is not the cleanest long-term shape.
+
+**Recommended Direction**
+
+- Keep the current bug fix.
+- Later consolidate device status polling ownership so visible device lists subscribe to one clear polling coordinator.
+- Preserve the invariant that probe failures do not overwrite a known entity state with `error`.
+
+**Acceptance Signals**
+
+- Device status refresh has one obvious owner or coordinator.
+- A transient `get_status` failure does not display a persistent red `Error` for a running Host Desktop.
+- Unit tests keep the failure-normalization invariant locked.
+
+### I4. Current Fixes Need Commit/Deployment Closure
+
+**Observation**
+
+At the time this note was written, the workspace contains local fixes for:
+
+- Host Desktop false `Error` status.
+- VmControl WebRTC mDNS noise.
+
+**Why It Matters**
+
+The code is locally fixed, but an uncommitted local fix is not a stable team artifact.
+
+**Recommended Direction**
+
+- Commit the two fixes as small, reviewable changes.
+- Deploy/restart the app/runtime component that owns VmControl before declaring the mDNS noise gone in the running product.
+
+**Acceptance Signals**
+
+- Git history contains explicit commits for both fixes.
+- The running app no longer shows false Host Desktop `Error`.
+- The running VmControl no longer emits repeated `webrtc_mdns::conn` errors during WebRTC setup.
+
 ## Recommended Roadmap
 
 ### Phase 1: Contract Hardening
