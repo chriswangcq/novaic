@@ -164,7 +164,7 @@
 | PR-112 | `[✓]`  | [Retire Runtime BusinessClient legacy business-data wrappers](PR-112-retire-runtime-business-client-legacy-wrappers.md) **— Runtime tests/deploy + remote old-wrapper deletion verified 2026-04-30** | PR-111 | Runtime boundary cleanup | 0.25-0.5 d | __ |
 | PR-113 | `[✓]`  | [Retire Wake IM Replay context path](PR-113-retire-wake-im-replay-context-path.md) **— Runtime deployed + remote old-path deletion verified 2026-04-30** | PR-67, PR-68, PR-69, PR-70 | Runtime context cleanup | 0.25-0.5 d | __ |
 | PR-114 | `[✓]`  | [Remove Runtime `session.check_new_messages` dead handler](PR-114-remove-runtime-check-new-messages-handler.md) **— Runtime deployed + remote old-handler deletion verified 2026-04-30** | PR-46, P6-12, PR-113 | Runtime cleanup | 0.25 d | __ |
-| PR-115 | `[ ]`  | [Remove Business `messages/unread*` zombie routes](PR-115-remove-business-unread-zombie-routes.md) | P6-12, PR-114 | Business cleanup | 0.25-0.5 d | __ |
+| PR-115 | `[✓]`  | [Remove Business `messages/unread*` zombie routes](PR-115-remove-business-unread-zombie-routes.md) | P6-12, PR-114 | Business cleanup | 0.25-0.5 d | Implemented, tested, deployed |
 | PR-116 | `[ ]`  | [Remove `chat_messages.read` UI compatibility branch](PR-116-remove-chat-messages-read-compat.md) | P6-12, PR-114, PR-115 | Message lifecycle cleanup | 0.5-1 d | __ |
 | PR-117 | `[ ]`  | [Remove Business TaskManager legacy proxy](PR-117-remove-business-taskmanager-legacy-proxy.md) | PR-112 | Business cleanup | 0.25-0.5 d | __ |
 | PR-118 | `[ ]`  | [Remove deprecated Business `subagent_context` path](PR-118-remove-deprecated-subagent-context-path.md) | PR-67, PR-70, PR-113 | Business/Cortex boundary cleanup | 0.5-1 d | __ |
