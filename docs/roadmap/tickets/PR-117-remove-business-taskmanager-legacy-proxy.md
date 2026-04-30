@@ -39,5 +39,5 @@
 
 - [x] Business commit: `refactor(business): remove task manager legacy proxy (PR-117)`
 - [x] Business push.
-- [ ] Parent commit: `docs: close task manager proxy cleanup (PR-117)`
-- [ ] Parent push.
+- [x] Parent commit: `docs: close task manager proxy cleanup (PR-117)`
+- [x] Parent push.
