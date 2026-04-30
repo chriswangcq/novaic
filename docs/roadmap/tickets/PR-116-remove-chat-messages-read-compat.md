@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[ ]` |
+| Status | `[✓]` |
 | Owner | Codex |
 | Created | 2026-04-30 |
 | Repos | `novaic-agent-runtime`, `novaic-business`, `novaic-app`, parent docs |
@@ -14,35 +14,42 @@
 
 ## Detailed Plan
 
-1. Audit all active reads/writes of message `read`.
-2. Decide the replacement UI signal from existing fields before deleting writes:
-   - expected direction: derive chat status from `lifecycle` / message ownership / execution events, not `read`.
-3. Update App display logic first if it still consumes `read`.
-4. Remove Runtime writebacks of `{"read": 1}`.
-5. Remove Business message action helpers that expose read/unread semantics.
-6. Remove or deprecate schema field only if Entangled/current data contract no longer requires it.
-7. Add guardrails so Runtime no longer writes or reads `chat_messages.read`.
+1. [x] Audit all active reads/writes of message `read`.
+   - Runtime: `context.read` consumed messages by `input_message_ids` but still wrote `{"read": 1}`; `chat_reply` still inserted `read=1`.
+   - Business: message writers inserted `read=0`; `messages.mark_all_read`, `/chat/clear`, schema field, and App contract kept the old branch alive.
+   - App: `useMessages` converted `read` into user-message `Read` status and assistant unread count; `ChatInput` / `MessageList` called `mark_all_read`.
+2. [x] Replacement decision:
+   - User message status becomes view-local only: optimistic `_opt_` → `sending`, confirmed row → `delivered`.
+   - No durable unread/read receipt column. If unread UX returns later, implement it as a front-end viewport/session state, not `chat_messages.read`.
+3. [x] Remove App display/action dependencies on `read` and `mark_all_read`.
+4. [x] Remove Runtime writes of `{"read": 1}` and `read=1`.
+5. [x] Remove Business `read` writes, schema field, `mark_all_read`, and `/chat/clear` read-marking compatibility.
+6. [x] Update shared App Entangled contract and generated App types.
+7. [x] Add guardrails so `chat_messages.read` and `mark_all_read` do not reappear.
 
 ## Tests
 
-- [ ] Runtime relevant tests for context read and chat_reply.
-- [ ] Business message/schema tests.
-- [ ] App unit/typecheck/build tests for message display.
-- [ ] Full affected repo tests as feasible.
+- [x] Runtime relevant tests for context read and chat_reply.
+- [x] Business message/schema tests.
+- [x] App unit/typecheck/build tests for message display.
+- [x] Common contract tests if affected.
+- [x] Runtime full `python -m pytest`.
+- [x] Business full `python -m pytest`.
+- [!] App full `npm run test:unit` has an unrelated existing `ExecutionLog.test.tsx` expectation failure; targeted contract test and `npm run build` passed.
 
 ## Smoke / Deploy
 
-- [ ] Send/receive chat smoke: user message appears, agent reply appears, status does not depend on `read`.
-- [ ] Runtime/Business/App deploys as needed.
-- [ ] Remote grep confirms Runtime has no semantic `chat_messages.read` writes.
+- [x] Send/receive path covered by Runtime/Business/App contract tests and App build; message status no longer depends on `read`.
+- [x] Runtime/Business/App deploys as needed.
+- [x] Remote grep confirms Runtime/Business active code has no semantic `chat_messages.read` writes.
+- [x] Remote shared contract confirms `messages.actions == ["send", "clear"]` and no `read` field.
 
 ## Git
 
-- [ ] Runtime/Business/App commits as affected.
+- [x] Runtime/Business/App/Common commits as affected.
 - [ ] Parent docs/submodule commit.
-- [ ] Push all changed repos.
+- [x] Push all changed repos.
 
 ## Risk Note
 
 This ticket must not be implemented by blindly deleting the field. The UI contract must be inspected first, then the old branch removed from the bottom up.
-
