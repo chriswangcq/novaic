@@ -159,6 +159,7 @@
 | PR-107 | `[✓]`  | [Close VmControl WebRTC mDNS noise fix](PR-107-vmcontrol-webrtc-mdns-closure.md) **— compile + desktop deploy + Host Desktop smoke verified; VM/Android smoke deferred 2026-04-30** | PR-106 | WebRTC policy | 0.5 d | __ |
 | PR-108 | `[✓]`  | [Consolidate backend optimization roadmap documents](PR-108-roadmap-optimization-doc-consolidation.md) **— docs merged and old file deleted 2026-04-30** | PR-106, PR-107 | Docs consolidation | 0.25 d | __ |
 | PR-109 | `[✓]`  | [Refresh VmControl Cargo.lock deterministically](PR-109-vmcontrol-cargo-lock-determinism.md) **— cargo check --locked + desktop deploy verified 2026-04-30** | PR-107 | Build determinism | 0.25 d | __ |
+| PR-110 | `[✓]`  | [Retire Runtime self-drive prompt modules](PR-110-retire-runtime-self-drive-prompt-modules.md) **— Runtime tests/deploy + remote deletion verified 2026-04-30** | PR-99, PR-105 | Old path cleanup | 0.25-0.5 d | __ |
 
 
 ---
