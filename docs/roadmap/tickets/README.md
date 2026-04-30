@@ -156,7 +156,7 @@
 | PR-104 | `[✓]`  | [Gateway AppWS sends only Entangled endpoint](PR-104-gateway-entangled-endpoint-only.md) **— Gateway/App deployed 2026-04-29** | PR-103 | Gateway boundary | 0.5 d | __ |
 | PR-105 | `[✓]`  | [Remove TS REST schema bootstrap and old guardrails](PR-105-remove-ts-rest-schema-bootstrap.md) **— Frontend/Desktop deployed 2026-04-29** | PR-103, PR-104 | Old path cleanup | 0.5 d | __ |
 | PR-106 | `[✓]`  | [Close Host Desktop device status false-error fix](PR-106-host-desktop-device-status-closure.md) **— App tests/build + frontend/desktop deploy verified 2026-04-30** | PR-105 | App device status | 0.5 d | __ |
-| PR-107 | `[~]`  | [Close VmControl WebRTC mDNS noise fix](PR-107-vmcontrol-webrtc-mdns-closure.md) **— compile + desktop deploy + Host Desktop smoke verified; VM/Android smoke pending 2026-04-30** | PR-106 | WebRTC policy | 0.5 d | __ |
+| PR-107 | `[✓]`  | [Close VmControl WebRTC mDNS noise fix](PR-107-vmcontrol-webrtc-mdns-closure.md) **— compile + desktop deploy + Host Desktop smoke verified; VM/Android smoke deferred 2026-04-30** | PR-106 | WebRTC policy | 0.5 d | __ |
 | PR-108 | `[✓]`  | [Consolidate backend optimization roadmap documents](PR-108-roadmap-optimization-doc-consolidation.md) **— docs merged and old file deleted 2026-04-30** | PR-106, PR-107 | Docs consolidation | 0.25 d | __ |
 
 
