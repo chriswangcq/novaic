@@ -61,7 +61,6 @@ PORT_DEVICE=19993
 # ── Derived URLs (used only as CLI arg values below) ─────────────────────────
 
 ENTANGLED_URL="http://$HOST:$PORT_ENTANGLED"
-ENTANGLED_SYNC_WS_URL="ws://$HOST:$PORT_ENTANGLED/v1/sync"
 GW_URL="http://$HOST:$PORT_GATEWAY"
 BIZ_URL="http://$HOST:$PORT_BUSINESS"
 QS_URL="http://$HOST:$PORT_QUEUE_SERVICE"
@@ -164,7 +163,6 @@ PYTHONPATH="$BASE/novaic-common:$BASE/novaic-shared-kernel:$BASE/novaic-contract
 $(py novaic-gateway) "$BASE/novaic-gateway/main_gateway.py" \
     --host "$HOST" --port "$PORT_GATEWAY" --data-dir "$DATA_DIR" \
     --queue-service-url "$QS_URL" --file-service-url "$FS_URL" \
-    --entangled-sync-ws-url "$ENTANGLED_SYNC_WS_URL" \
     >> "$LOG_DIR/gateway-$(date +%Y%m%d).log" 2>&1 &
 wait_port "$PORT_GATEWAY" "Gateway" 30
 
