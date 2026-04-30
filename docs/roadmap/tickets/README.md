@@ -161,6 +161,7 @@
 | PR-109 | `[✓]`  | [Refresh VmControl Cargo.lock deterministically](PR-109-vmcontrol-cargo-lock-determinism.md) **— cargo check --locked + desktop deploy verified 2026-04-30** | PR-107 | Build determinism | 0.25 d | __ |
 | PR-110 | `[✓]`  | [Retire Runtime self-drive prompt modules](PR-110-retire-runtime-self-drive-prompt-modules.md) **— Runtime tests/deploy + remote deletion verified 2026-04-30** | PR-99, PR-105 | Old path cleanup | 0.25-0.5 d | __ |
 | PR-111 | `[✓]`  | [Business owns system prompt assembly](PR-111-business-owned-system-prompt.md) **— Business+Runtime deployed + remote old-path deletion verified 2026-04-30** | PR-99, PR-110 | Prompt ownership boundary | 0.5-1 d | __ |
+| PR-112 | `[✓]`  | [Retire Runtime BusinessClient legacy business-data wrappers](PR-112-retire-runtime-business-client-legacy-wrappers.md) **— Runtime tests/deploy + remote old-wrapper deletion verified 2026-04-30** | PR-111 | Runtime boundary cleanup | 0.25-0.5 d | __ |
 
 
 ---
