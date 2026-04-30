@@ -161,7 +161,6 @@ echo ""
 GW_URL="http://127.0.0.1:$PORT_GATEWAY"
 QS_URL="http://127.0.0.1:$PORT_QUEUE_SERVICE"
 FS_URL="http://127.0.0.1:$PORT_FILE_SERVICE"
-TRS_URL="http://127.0.0.1:$PORT_TOOL_RESULT_SERVICE"
 
 # 1. Gateway
 GW_DIR="$ROOT/novaic-gateway"
@@ -174,7 +173,6 @@ if [ -d "$GW_DIR" ]; then
         --data-dir "$DATA_DIR" \
         --queue-service-url "$QS_URL" \
         --file-service-url "$FS_URL" \
-        --tool-result-service-url "$TRS_URL" \
         >> "$LOG_DIR/gateway.log" 2>&1 &
     wait_port "$PORT_GATEWAY" "Gateway" 30
 else
@@ -246,7 +244,6 @@ if [ -d "$AR_DIR" ]; then
             "$PY" "$AR_DIR/main_novaic.py" task-worker \
                 --gateway-url "$GW_URL" \
                 --queue-service-url "$QS_URL" \
-                --tool-result-service-url "$TRS_URL" \
                 --pool "$pool" \
                 --num-workers 1 \
                 --data-dir "$DATA_DIR" \
