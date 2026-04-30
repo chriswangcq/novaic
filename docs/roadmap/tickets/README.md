@@ -162,6 +162,7 @@
 | PR-110 | `[✓]`  | [Retire Runtime self-drive prompt modules](PR-110-retire-runtime-self-drive-prompt-modules.md) **— Runtime tests/deploy + remote deletion verified 2026-04-30** | PR-99, PR-105 | Old path cleanup | 0.25-0.5 d | __ |
 | PR-111 | `[✓]`  | [Business owns system prompt assembly](PR-111-business-owned-system-prompt.md) **— Business+Runtime deployed + remote old-path deletion verified 2026-04-30** | PR-99, PR-110 | Prompt ownership boundary | 0.5-1 d | __ |
 | PR-112 | `[✓]`  | [Retire Runtime BusinessClient legacy business-data wrappers](PR-112-retire-runtime-business-client-legacy-wrappers.md) **— Runtime tests/deploy + remote old-wrapper deletion verified 2026-04-30** | PR-111 | Runtime boundary cleanup | 0.25-0.5 d | __ |
+| PR-113 | `[✓]`  | [Retire Wake IM Replay context path](PR-113-retire-wake-im-replay-context-path.md) **— Runtime deployed + remote old-path deletion verified 2026-04-30** | PR-67, PR-68, PR-69, PR-70 | Runtime context cleanup | 0.25-0.5 d | __ |
 
 
 ---
