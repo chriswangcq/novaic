@@ -22,7 +22,9 @@
 #   Workers → Gateway   (only /api/logs/broadcast for WS push)
 #   Workers → Cortex    (scope/context/shell APIs)
 #   Entangled → Business (action hook callbacks)
-#   Business → Entangled (sole direct entity HTTP consumer)
+#   Business → Entangled (schema push, entity proxy, action hook handling)
+#   Subscriber → Entangled (message_outbox drain)
+#   Gateway → App       (Entangled sync endpoint discovery only)
 #   Business → Device   (device action hook proxy)
 #   Device → Gateway    (WebRTC signaling via /api/app/push)
 
@@ -59,6 +61,7 @@ PORT_DEVICE=19993
 # ── Derived URLs (used only as CLI arg values below) ─────────────────────────
 
 ENTANGLED_URL="http://$HOST:$PORT_ENTANGLED"
+ENTANGLED_SYNC_WS_URL="ws://$HOST:$PORT_ENTANGLED/v1/sync"
 GW_URL="http://$HOST:$PORT_GATEWAY"
 BIZ_URL="http://$HOST:$PORT_BUSINESS"
 QS_URL="http://$HOST:$PORT_QUEUE_SERVICE"
@@ -157,11 +160,11 @@ $(py novaic-gateway) -m entangled.app.main \
     >> "$LOG_DIR/entangled.log" 2>&1 &
 wait_port "$PORT_ENTANGLED" "Entangled Service"
 
-PYTHONPATH="$BASE/Entangled/packages/server-python:$BASE/novaic-common:$BASE/novaic-shared-kernel:$BASE/novaic-contracts:${PYTHONPATH:-}" \
+PYTHONPATH="$BASE/novaic-common:$BASE/novaic-shared-kernel:$BASE/novaic-contracts:${PYTHONPATH:-}" \
 $(py novaic-gateway) "$BASE/novaic-gateway/main_gateway.py" \
     --host "$HOST" --port "$PORT_GATEWAY" --data-dir "$DATA_DIR" \
     --queue-service-url "$QS_URL" --file-service-url "$FS_URL" \
-    --entangled-url "$ENTANGLED_URL" \
+    --entangled-sync-ws-url "$ENTANGLED_SYNC_WS_URL" \
     >> "$LOG_DIR/gateway-$(date +%Y%m%d).log" 2>&1 &
 wait_port "$PORT_GATEWAY" "Gateway" 30
 
