@@ -174,11 +174,11 @@ If developers mix these concepts, they may reintroduce automatic "wake summary" 
 - Operational logs can distinguish `closed_by=llm_skill_end` from `closed_by=runtime_force_finalize`.
 - Folded summaries shown in LLM context originate from `skill_end(report=...)`.
 
-### P1. Separate IM Replay from Cognitive Continuity
+### P1. Retire IM Replay from Cognitive Continuity
 
 **Problem**
 
-Runtime still has IM replay logic through `wake_replay_pending`. This is legitimate message-delivery reliability, but it can be confused with memory.
+Runtime had IM replay logic through `wake_replay_pending`. Even if originally framed as message-delivery reliability, it was a second context path next to Cortex scope summaries.
 
 **Business Impact**
 
@@ -186,16 +186,16 @@ If replay is treated as memory, old messages may be used to patch continuity bug
 
 **Recommended Direction**
 
-- Rename and document this as message delivery / unread-message replay.
-- Keep it outside Cortex's cognitive contract.
-- Ensure replayed messages are deduped by message id and attached to the current wake inputs.
-- Add tests proving a fact survives via folded summary, not merely because an old message was replayed.
+- Retire the Runtime replay path entirely. PR-113 performs this cleanup.
+- Keep current wake delivery on `scope.meta.input_message_ids` by-id assembly.
+- Keep cross-wake continuity on agent-root scope tree only.
+- Add guardrails proving `WAKE_IM_REPLAY`, `<CHAT_HISTORY>`, and `wake_replay_pending` do not exist in Runtime hot code.
 
 **Acceptance Signals**
 
-- Docs call this "IM replay" or "message delivery replay", never "memory".
-- Context snapshots show current wake inputs and folded scope summaries as different blocks.
-- "User told agent a name, then asked later" smoke test passes after message replay is no longer involved.
+- Context snapshots show only current wake inputs plus folded scope summaries.
+- "User told agent a name, then asked later" smoke test passes through folded summaries, not replayed chat history.
+- Runtime hot code has no replay env switch, budget helper, or replay marker.
 
 ### P1. Improve Summary Quality Without Adding Another Memory Layer
 
