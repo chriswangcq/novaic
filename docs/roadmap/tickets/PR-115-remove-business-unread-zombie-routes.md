@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[ ]` |
+| Status | `[✓]` |
 | Owner | Codex |
 | Created | 2026-04-30 |
 | Repos | `novaic-business`, parent docs |
@@ -21,29 +21,28 @@ They are documented as zombie/no internal callers. Keeping them encourages calle
 
 ## Detailed Plan
 
-1. Confirm callers are absent in active repos.
-2. Delete the four routes from `business/internal/message.py`.
-3. Remove now-unused helper code if only used by those routes.
-4. Add/adjust guardrail proving unread zombie routes do not exist.
-5. Keep canonical message creation/listing paths intact.
+1. [x] Confirm callers are absent in active repos.
+2. [x] Delete the four routes from `business/internal/message.py`.
+3. [x] Remove now-unused helper code if only used by those routes.
+4. [x] Add/adjust guardrail proving unread zombie routes do not exist.
+5. [x] Keep canonical message creation/listing paths intact.
 
 ## Tests
 
-- [ ] `python -m pytest tests/test_schema_invariants.py tests/test_message_actions.py`
-- [ ] `python -m pytest`
-- [ ] `python -m compileall -q business`
+- [x] `python -m pytest tests/test_pr115_unread_routes_removed.py tests/test_schema_invariants.py tests/test_message_trace.py tests/test_orphaned_endpoint.py tests/test_bulk_transition.py`
+- [x] `python -m pytest`
+- [x] `python -m compileall -q business`
 
 ## Smoke / Deploy
 
-- [ ] Local `rg "messages/unread|unread-count|unread-sent|unread-grouped" business tests`.
-- [ ] `./deploy business`
-- [ ] `./deploy status`
-- [ ] Remote `rg` confirms zombie routes absent from `/opt/novaic/services/novaic-business/business`.
+- [x] Local `rg "messages/unread|unread-count|unread-sent|unread-grouped" business` has no hits.
+- [x] `./deploy business`
+- [x] `./deploy status`
+- [x] Remote `rg` confirms zombie routes absent from `/opt/novaic/services/novaic-business/business`.
 
 ## Git
 
-- [ ] Business commit: `refactor(business): remove unread zombie routes (PR-115)`
-- [ ] Business push.
+- [x] Business commit: `refactor(business): remove unread zombie routes (PR-115)`
+- [x] Business push.
 - [ ] Parent commit: `docs: close business unread route cleanup (PR-115)`
 - [ ] Parent push.
-
