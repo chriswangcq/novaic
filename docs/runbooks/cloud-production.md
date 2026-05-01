@@ -28,7 +28,7 @@
 
 **原理**：`./deploy` **只负责 rsync 同步代码**，进程管理交给服务器端 `**/opt/novaic/start.sh`**。
 
-> `restart_gw.sh` 已删除。单独重启 Gateway 易导致状态不一致。**所有重启应走 `start.sh`。**
+> 旧的单独 Gateway 重启脚本已删除。单独重启 Gateway 易导致状态不一致。**所有重启应走 `start.sh`。**
 
 更细的子命令说明见 `**[deploy.md](deploy.md)`**。
 
@@ -80,7 +80,7 @@
 ./deploy frontend 0.3.0
 ```
 
-客户端通过 Gateway `/api/config/frontend` 获取 OTA URL；Gateway 的生产值来自 `services.json`，不再走 `jwt_secret.env`。
+客户端通过 Gateway `/api/config/frontend` 获取 OTA URL；Gateway 的生产值来自 `services.json`，不再走 legacy env file。
 
 **OTA 三处同步**（新增 CDN 域名须同时改）：
 

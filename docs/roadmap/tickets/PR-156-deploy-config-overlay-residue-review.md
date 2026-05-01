@@ -37,7 +37,7 @@ For this big ticket:
 
 - [x] [PR-156A — Remove obsolete deploy/start entrypoints](PR-156A-remove-obsolete-deploy-start-entrypoints.md)
 - [x] [PR-156B — Remove wake finalizer env branch switches](PR-156B-remove-wake-finalizer-env-switches.md)
-- [ ] [PR-156C — Add deploy/config overlay guardrail](PR-156C-add-deploy-config-overlay-guardrail.md)
+- [x] [PR-156C — Add deploy/config overlay guardrail](PR-156C-add-deploy-config-overlay-guardrail.md)
 
 ## Current-State Analysis
 
@@ -63,14 +63,14 @@ Residue found during review:
 
 ## Unit / Guardrail Tests
 
-- [ ] Add tests/guards for any deleted config switch.
-- [ ] Confirm strict config rejects unknown overlay keys where appropriate.
-- [ ] Confirm packaged configs do not contain retired switch names.
+- [x] Add tests/guards for any deleted config switch.
+- [x] Confirm strict config rejects unknown overlay keys where appropriate.
+- [x] Confirm packaged configs do not contain retired switch names.
 
 ## Smoke / Deploy
 
 - [ ] Smoke `./deploy status`.
-- [ ] Smoke affected service restart.
+- [x] Smoke affected service restart (`./deploy runtime` for PR-156B).
 - [ ] Verify server overlay no longer contains retired keys.
 
 ## Git / Merge

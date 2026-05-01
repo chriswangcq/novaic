@@ -47,3 +47,5 @@ jobs:
       run: ./scripts/ci/lint_entangled_schema_ssot.sh
     - name: Run current docs residue lint (PR-146)
       run: ./scripts/ci/lint_current_docs_residue.sh
+    - name: Run start/config contract lint (PR-156)
+      run: python3 scripts/ci/check_start_config_contract.py
