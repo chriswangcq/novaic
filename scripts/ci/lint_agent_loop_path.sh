@@ -12,6 +12,7 @@ BAN='subscriber_enabled|SUBSCRIBER_ENABLED|enable-subscriber|NOVAIC_ENABLE_SUBSC
 if rg -n "$BAN" \
   scripts/start.sh \
   scripts/deploy-business.sh \
+  novaic-business/main_subscriber.py \
   novaic-business/main_business.py \
   novaic-common/common/config.py \
   novaic-common/common/strict_config.py \
