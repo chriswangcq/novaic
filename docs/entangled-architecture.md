@@ -92,7 +92,7 @@ sqlite3 "$HOME/Library/Application Support/com.novaic.app/entangled_cache.db" \
   "SELECT entity, version, subscribed FROM entity_meta ORDER BY entity"
 ```
 
-`log-payloads` 是 action / lazy-fetch 表面，不是默认订阅的热 stream。执行日志热路径订阅 `execution-logs`，大 payload 需要按需 action 读取或通过 Cortex step result / LLM Factory join key 下钻。旧 `tool_results.db` / TRS 本地库已退役，不再作为排障对象。
+`log-payloads` 是 action / lazy-fetch 表面，不是默认订阅的热 stream。执行日志热路径订阅 `execution-logs`，大 payload 需要按需 action 读取或通过 Cortex step result / LLM Factory join key 下钻。
 
 ---
 
