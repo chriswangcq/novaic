@@ -30,11 +30,10 @@ entity_items
 idx_entity_items_seq
 ```
 
-历史 `pending_ops` 已退役；Rust 初始化会清掉遗留表。执行日志的长结果不进入 `entangled_cache.db` 热 row：`execution-logs` 只保留轻量 metadata，`log-payloads` 通过 action lazy fetch，工具长结果在 Cortex step，原始 LLM 调用在 LLM Factory。
+历史 `pending_ops` 已退役；Rust 初始化会清掉遗留表。执行日志的长结果不进入 `entangled_cache.db` 热 row：`execution-logs` 只保留轻量 metadata，`log-payloads` 通过 action lazy fetch，工具长结果在 Cortex step，原始 LLM 调用在 LLM Factory。旧 `tool_results.db` / TRS 本地库已退役，不再作为排障对象。
 
 排障：
 
 ```bash
 sqlite3 "$HOME/Library/Application Support/com.novaic.app/entangled_cache.db" ".tables"
-sqlite3 "$HOME/Library/Application Support/com.novaic.app/tool_results.db" ".tables"
 ```

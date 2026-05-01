@@ -14,7 +14,6 @@ novaic/
 ├── novaic-shared-kernel/        # 共享核心库
 ├── novaic-shared-runtime-common/# 共享运行时公共库
 ├── novaic-storage-a/            # 存储服务 A
-├── novaic-storage-b/            # 存储服务 B
 ├── novaic-mcp-vmuse/            # MCP VMuse 集成
 ├── novaic-quic-service/         # QUIC relay 服务
 ├── docs/                        # 父仓文档（HANDOVER 纲要：README.md、architecture/、reference/、runbooks/）

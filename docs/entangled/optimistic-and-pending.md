@@ -36,7 +36,6 @@ DROP TABLE IF EXISTS pending_ops;
 sqlite3 "$HOME/Library/Application Support/com.novaic.app/entangled_cache.db" ".tables"
 sqlite3 "$HOME/Library/Application Support/com.novaic.app/entangled_cache.db" \
   "SELECT entity, params_hash, version, subscribed, has_more FROM entity_meta ORDER BY entity"
-sqlite3 "$HOME/Library/Application Support/com.novaic.app/tool_results.db" ".tables"
 ```
 
 执行日志相关约定：
@@ -45,3 +44,4 @@ sqlite3 "$HOME/Library/Application Support/com.novaic.app/tool_results.db" ".tab
 - `log-payloads` 通过 action lazy fetch，不默认订阅；
 - 工具长结果走 Cortex step；
 - 原始 LLM 调用走 LLM Factory，Entangled 中只需要 join key。
+- 旧 `tool_results.db` / TRS 本地库已退役，不再参与客户端排障。
