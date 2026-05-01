@@ -56,8 +56,8 @@ Add lightweight semantic metadata to Runtime execution-log `data` so the App can
 - Production smoke message: `PR92/93 smoke：请简短回复收到`.
 - Production execution log rows:
   - `1100` think: `display_kind=thinking`, `factory_log_id=9d14f062-d8f9-485b-8171-e96337dce5ca`.
-  - `1101` chat_reply: `display_kind=reply_sent`, `display_summary=收到！✅`, `result_id=trs:...:chat_reply:0`.
-  - `1103` skill_end: `display_kind=context_saved`, `display_summary=用户PR92/93 smoke测试消息...`, `result_id=trs:...:skill_end:1`.
+  - `1101` chat_reply: `display_kind=reply_sent`, `display_summary=收到！✅`, `result_id=step-result:...:chat_reply:0`.
+  - `1103` skill_end: `display_kind=context_saved`, `display_summary=用户PR92/93 smoke测试消息...`, `result_id=step-result:...:skill_end:1`.
 
 ## Rollback
 

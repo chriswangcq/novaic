@@ -21,7 +21,7 @@
    - Delete now: confirmed dead branch, unused wrapper, or compatibility route.
    - Keep with guardrail: explicit regression test or migration note.
    - Follow-up ticket: real behavior but too risky for this batch.
-   - First delete-now batch: retired external result-service CLI flags, parent dev script callers, and Gateway's unused legacy `gateway/api/schemas.py` module.
+   - First delete-now batch: obsolete external result CLI flags, parent dev script callers, and Gateway's unused legacy `gateway/api/schemas.py` module.
    - Kept for later tickets: auth fallbacks, device binding legacy-list normalization, and real database migration guardrails.
 3. [x] Physically delete the first low-risk confirmed old-path batch.
 4. [x] Add or update invariant tests for every deleted path.

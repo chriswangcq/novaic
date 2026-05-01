@@ -10,7 +10,7 @@
 
 ## Problem
 
-The App currently renders raw tool names (`chat_reply`, `skill_end`) and `result_id` in default cards. When a deterministic Runtime `result_id` is not present in Gateway TRS, expanding a card can show `Load failed: Gateway error 404`, which is an implementation artifact rather than useful product feedback.
+The App currently renders raw tool names (`chat_reply`, `skill_end`) and `result_id` in default cards. When a lightweight join key is treated as display payload, expanding a card can show a technical load failure, which is an implementation artifact rather than useful product feedback.
 
 ## Goal
 
@@ -25,7 +25,7 @@ Split execution-log rendering into two layers:
 - [x] Stop treating lightweight `data.result_id` as a renderable result payload by default.
 - [x] Keep lazy payload fetch support for real `log-payloads` details.
 - [x] Move `result_id` and `factory_log_id` into collapsed technical details, not the default card summary.
-- [x] Update the main-agent preview to use the same semantic helper and stop auto-fetching TRS previews from lightweight `result_id`.
+- [x] Update the main-agent preview to use the same semantic helper and stop treating lightweight `result_id` as display payload.
 - [x] Preserve reasoning content display; do not delete `reasoning_content` previews.
 
 ## Unit / Component Tests
@@ -34,14 +34,14 @@ Split execution-log rendering into two layers:
 - [x] Utility test: `chat_reply` displays as a reply event with reply text.
 - [x] Utility test: `skill_end` displays as a context-saved event with report text.
 - [x] Component test: default card does not show raw `result_id`.
-- [x] Component test: `skill_end` with only `data.result_id` does not attempt TRS and does not show a 404 error.
+- [x] Component test: `skill_end` with only `data.result_id` does not show a technical load failure.
 - [x] Component test: technical details can still expose join keys when expanded.
 
 ## Smoke Test
 
 - [x] Open App execution log after a fresh message.
 - [x] Confirm collapsed rows show user-facing labels.
-- [x] Expand `chat_reply` and `skill_end`; confirm no default TRS 404.
+- [x] Expand `chat_reply` and `skill_end`; confirm no default technical load failure.
 - [x] Confirm technical ids are still available inside diagnostic details.
 
 ## Deployment Checklist

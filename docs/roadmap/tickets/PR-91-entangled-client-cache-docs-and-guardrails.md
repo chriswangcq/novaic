@@ -30,7 +30,7 @@ Update docs and add light guardrails so future debugging matches the actual clie
 
 - client cache is `entity_meta` + `entity_items`;
 - `execution-logs` and `messages` are Entangled read-model streams;
-- old `tool_results.db` / TRS local storage is retired and must not be used for active debugging;
+- App-side debugging should use the Entangled cache read model, not stale local sidecar storage;
 - no active client pending-op path should be assumed.
 
 ## Non-Goals
@@ -43,7 +43,7 @@ Update docs and add light guardrails so future debugging matches the actual clie
 
 - [x] Search docs for `pending_ops`, "pending ops", "client write queue", and stale cache-clearing instructions.
 - [x] Update Entangled/App docs to describe the actual cache tables.
-- [x] Add a troubleshooting snippet for inspecting `entangled_cache.db`; explicitly note that old `tool_results.db` / TRS storage is retired.
+- [x] Add a troubleshooting snippet for inspecting `entangled_cache.db`.
 - [x] Add a guardrail test or lint if there is an existing docs/schema invariant test location.
 - [x] Document that `log-payloads` is action/lazy-fetch, not a default subscribed stream.
 
@@ -102,7 +102,7 @@ scripts/ci/lint_entangled_cache_docs.sh
 ## Acceptance Criteria
 
 - Docs no longer imply active client `pending_ops` behavior.
-- Future debugging points to the correct App cache and no longer references TRS DB locations.
+- Future debugging points to the correct App cache.
 - Entangled remains documented as the UI-facing read model, not as a raw LLM/tool payload store.
 
 ## Rollback

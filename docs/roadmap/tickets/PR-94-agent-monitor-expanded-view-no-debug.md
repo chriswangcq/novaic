@@ -29,7 +29,7 @@ The execution-log expanded state should render a deterministic monitor detail bl
 - `skill_end` / `display_kind=context_saved` -> `上下文摘要`;
 - failed rows -> short failure reason.
 
-The monitor uses `display_summary` first, then safe local fallbacks. It must not show join keys, raw JSON, LLM request payloads, tool parameter/result dumps, or TRS/Factory ids in the normal user-facing surface.
+The monitor uses `display_summary` first, then safe local fallbacks. It must not show join keys, raw JSON, LLM request payloads, tool parameter/result dumps, or Factory ids in the normal user-facing surface.
 
 ## Non-Goals
 
@@ -57,7 +57,7 @@ The monitor uses `display_summary` first, then safe local fallbacks. It must not
 
 - [x] Component test: expanded think row with `factory_log_id` does not show Factory ids or technical details.
 - [x] Component test: expanded `chat_reply` shows reply content and does not show `result_id`.
-- [x] Component test: expanded `skill_end` shows context summary and no debug / TRS 404 text.
+- [x] Component test: expanded `skill_end` shows context summary and no debug / technical load-failure text.
 - [x] Component test: failed tool row shows human failure summary and not `Execution Result` / raw JSON labels.
 
 ## Smoke Test
