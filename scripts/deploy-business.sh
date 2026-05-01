@@ -105,10 +105,8 @@ echo "================================================================="
 echo ""
 
 # ── Sanity: source dirs exist ────────────────────────────────────────────────
-# PR-20 (2026-04-15): novaic-cortex added — it now hosts the
-# /v1/scope/append_input endpoint the subscriber posts to on buffered
-# dispatches. Must ship together with novaic-business so the subscriber
-# never points at a Cortex without the new route.
+# novaic-cortex ships with the runtime stack; subscriber may read Cortex
+# scope meta for stale-claim probes, but does not write scope inputs.
 for d in novaic-business Entangled novaic-common novaic-cortex novaic-gateway novaic-device novaic-agent-runtime scripts; do
     if [ ! -d "$REPO_ROOT/$d" ]; then
         echo "ERROR: $REPO_ROOT/$d does not exist" >&2
@@ -214,8 +212,8 @@ rsync_one novaic-common
 rsync_one novaic-gateway
 rsync_one novaic-device
 rsync_one novaic-agent-runtime
-# PR-20: cortex hosts /v1/scope/append_input for the subscriber's
-# buffered-dispatch trace path; must ship with subscriber.
+# Cortex hosts the scope lifecycle APIs used by runtime workers and
+# subscriber stale-claim probes; ship it with the backend stack.
 rsync_one novaic-cortex
 
 # scripts/start.sh deploys to prod's flat /opt/novaic/start.sh (NOT under services/)
