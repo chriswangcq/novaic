@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[scanned]` |
+| Status | `[deployed]` |
 | Owner | Codex |
 | Created | 2026-05-01 |
 | Repos | all active source repos |
@@ -45,14 +45,23 @@ Split cleanup into two classes: delete obvious old product paths first, then rev
 
 ## Unit / Guardrail Tests
 
-- [ ] Cleanup follow-ups must add regression tests proving the deleted old path cannot be used.
+- [x] Added `novaic-business/tests/test_pr141_compat_cleanup.py` for removed tools-config fallback route and dict-only SubAgent conversion.
+- [x] Added `novaic-common/tests/test_pr141_no_compat_aliases.py` for removed auth/db compatibility aliases.
+- [x] Added `novaic-device/tests/test_pr141_no_common_auth_db_param.py` for removed ignored auth db parameter usage.
+- [x] Added `novaic-gateway/tests/test_pr141_no_db_access_alias.py` for removed gateway db alias.
+- [x] Ran all PR-141 tests in affected repos.
 
 ## Smoke / Deploy
 
-- [ ] No deploy for scan-only changes.
-- [ ] Cleanup follow-up deploys affected services/apps.
+- [x] Removed no-owner compatibility paths: Business tools-config fallback route, legacy SubAgent dataclass conversion, ignored common auth `db` parameter, common `fetch_all` alias, and gateway `get_database` alias.
+- [x] Reworded Runtime/Business comments that preserved deleted fallback history as live-looking guidance.
+- [ ] Deploy with the final batch.
 
 ## Git / Merge
 
-- [ ] Commit ticket updates.
-- [ ] Push parent docs update.
+- [ ] Commit cleanup.
+- [ ] Push cleanup.
+
+## Closure — 2026-05-01
+
+PR-141 is implemented for the delete-now class. Remaining hits are either defensive error paths, third-party/QEMU resources, security/transport behavior that needs its own owner decision, or explicitly covered by later residue tickets.

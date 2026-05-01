@@ -28,7 +28,7 @@ available-models（List，user-scoped）
 | ----------------- | --------------------------------------------------------- |
 | Gateway `defs.py` | 新实体定义；`refresh_models` 改为主要维护 `api-key-models`            |
 | Gateway DB        | migration：从 `candidate_models` 拆表                         |
-| 前端 codegen        | `__generated__.ts` 更新                                     |
+| 前端数据契约        | 更新 App 消费实体 contract 与 Entangled WS schema 测试              |
 | UI / stores       | `SettingsModal`、`modelConfigService`、`useAppStore` 等改读新实体 |
 
 
@@ -41,4 +41,3 @@ available-models（List，user-scoped）
 约 1.5 天量级（defs + migration + UI + codegen + 测）— 实施前请重新评估。
 
 > **启动条件（HANDOVER 原意）**：agent-binding 与 device 稳定后再动大迁移。
-

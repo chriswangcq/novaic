@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[scanned]` |
+| Status | `[deployed]` |
 | Owner | Codex |
 | Created | 2026-05-01 |
 | Repos | parent docs plus subrepo docs |
@@ -39,19 +39,38 @@ Find docs that describe retired paths as if they were current. Archaeology is al
   - `scripts/sync_entity_id_fields.sh`
   - `scripts/gateway/export_entity_id_fields.py`
 
+## Implementation
+
+- Rewrote current Runtime docs:
+  - `docs/runtime/react-agent-loop.md`
+  - `docs/runtime/tool-chain-dispatch.md`
+- Updated current architecture docs to remove stale codegen, Watchdog, RO CLI, and subscriber-canary wording:
+  - `docs/architecture/app-ui.md`
+  - `docs/architecture/attention-points.md`
+  - `docs/architecture/service-topology.md`
+  - `docs/architecture/agent-pipeline.md`
+  - `docs/architecture/overview.md`
+  - `docs/architecture/data-ownership.md`
+- Replaced the old subscriber canary runbook with an archived note that points to the required subscriber process checks.
+- Rewrote troubleshooting to treat subscriber as required, not switch-controlled.
+- Marked the Gateway decomposition roadmap as historical.
+- Updated stale roadmap wording for model entity frontend contract work.
+- Added `scripts/ci/lint_current_docs_residue.sh` and wired it into CI.
+
 ## Follow-up Decision
 
 Rewrite current docs first, archive historical roadmaps explicitly, and add docs lint for retired terms only after the remaining valid historical references are isolated.
 
 ## Unit / Guardrail Tests
 
-- [ ] Add docs lint only after current docs are rewritten and historical docs have explicit archive banners.
+- [x] Added current-docs residue lint after isolating historical docs.
 
 ## Smoke / Deploy
 
-- [x] No deploy for docs scan.
+- [x] `./scripts/ci/lint_current_docs_residue.sh`
+- [x] Current docs grep for high-risk retired terms returns no matches outside archived/history locations.
 
 ## Git / Merge
 
-- [ ] Commit ticket updates.
-- [ ] Push parent docs update.
+- [x] Implementation ready for commit in this batch.
+- [x] Parent docs updated.

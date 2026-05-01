@@ -45,3 +45,8 @@
 - 依赖 PR-125。
 - Commit message: `refactor(agent): remove subagent report tool path`
 
+## Closure — 2026-05-01
+
+- Status: verified closed and deployed.
+- Verification: Common, Cortex, Business, and Runtime contract tests passed; active LLM tool schemas do not expose `subagent_report`.
+- Current architecture: `subagent_report` is not an LLM tool path.

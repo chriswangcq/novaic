@@ -42,3 +42,9 @@
 
 - 可单独 merge。
 - Commit message: `feat(tools): add display runtime tool`
+
+## Closure — 2026-05-01
+
+- Status: verified closed and deployed.
+- Verification: Common tool contract, Cortex tool-schema, Runtime tool-path, and execution-log display tests passed.
+- Current architecture: `display` is an active Common schema + Runtime executor tool.

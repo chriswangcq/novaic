@@ -45,3 +45,8 @@
 - 依赖 PR-126 preferred。
 - Commit message: `refactor(agent): remove subagent query and cancel tools`
 
+## Closure — 2026-05-01
+
+- Status: verified closed and deployed.
+- Verification: Common and Cortex tool-schema tests passed; active LLM tool schemas do not expose `subagent_query` or `subagent_cancel`.
+- Current architecture: SubAgent LLM-facing control surface is `subagent_spawn` + `subagent_send`.

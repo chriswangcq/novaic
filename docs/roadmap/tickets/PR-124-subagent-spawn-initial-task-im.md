@@ -43,3 +43,8 @@
 - 依赖 PR-123。
 - Commit message: `refactor(business): deliver spawn task through subagent send im`
 
+## Closure — 2026-05-01
+
+- Status: verified closed and deployed.
+- Verification: `novaic-business/tests/test_pr124_subagent_spawn_im.py` passed and confirms spawn initial task uses the `SUBAGENT_SEND` IM path.
+- Current architecture: spawn creates a child and delivers the initial task through IM; no extra spawn-message path is required.

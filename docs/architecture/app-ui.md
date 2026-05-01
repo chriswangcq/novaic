@@ -72,14 +72,14 @@
 
 **文件**：`nav.rs`、`nav.ts`（`navReleaseSlot`、`useNavChanged`）。
 
-## Schema Codegen
+## Schema Contract
 
-```bash
-python scripts/generate_entity_types.py
-python scripts/generate_entity_types.py --check
-```
+App 端不再维护 Python 生成的实体类型文件。运行时实体 schema 来自 Entangled
+WS 首包；App 只保留自己实际消费的前端 contract 与单测：
 
-输出：`novaic-app/src/data/entities/__generated__.ts`。
+- `src/data/entangled/client.ts`：解析 `{ entities, syncContractVersion }`
+- `src/data/entities/entangledEntityContracts.ts`：App 消费实体的静态前端 contract
+- `src/data/entities/entangledEntityContracts.test.ts`：对齐后端 contract 文件
 
 ## HTTP→Entangled 迁移（对照）
 

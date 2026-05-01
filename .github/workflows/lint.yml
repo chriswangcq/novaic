@@ -37,3 +37,13 @@ jobs:
       run: ./scripts/ci/lint_wake_continuity_contract.sh
     - name: Run Cortex boundary lint (PR-76)
       run: ./scripts/ci/lint_cortex_boundary.sh
+    - name: Run retired-service residue lint (PR-140)
+      run: ./scripts/ci/lint_retired_service_residue.sh
+    - name: Run frontend phantom-tool lint (PR-142)
+      run: ./scripts/ci/lint_frontend_phantom_tools.sh
+    - name: Run agent-loop path lint (PR-143)
+      run: ./scripts/ci/lint_agent_loop_path.sh
+    - name: Run Entangled schema SSOT lint (PR-145)
+      run: ./scripts/ci/lint_entangled_schema_ssot.sh
+    - name: Run current docs residue lint (PR-146)
+      run: ./scripts/ci/lint_current_docs_residue.sh

@@ -2,7 +2,7 @@
 # check-rust-process.sh — Round 016 post-delete desktop decoupling check.
 #
 # Verifies that the desktop Rust source no longer references deleted in-repo
-# backend service directory paths (legacy RO dir, tools_server, file_service).
+# backend service directory paths (legacy in-repo file_service).
 #
 # Does NOT require the desktop app to be running — this is a static source audit.
 #
@@ -23,7 +23,6 @@ echo ""
 
 # Deleted in-repo paths — must NOT appear as literal directory paths in desktop source
 DELETED_PATHS=(
-  "novaic-backend/tools_server"
   "novaic-backend/file_service"
 )
 
@@ -40,7 +39,7 @@ done
 echo ""
 
 # Check split_runtime.rs exports the required URL helpers (decoupling proof)
-for fn in "gateway_url_explicit\|validate_split_config\|tools_server_split_repo"; do
+for fn in "gateway_url_explicit\|validate_split_config"; do
   if grep -qE "$fn" "$SPLIT_RT" 2>/dev/null; then
     echo "  split_runtime: '$fn' present — endpoint decoupling in place"
   fi

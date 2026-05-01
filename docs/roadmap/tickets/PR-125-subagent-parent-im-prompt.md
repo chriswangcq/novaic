@@ -43,3 +43,8 @@
 - 依赖 PR-124 preferred，可在 PR-124 前后独立 merge。
 - Commit message: `fix(prompt): guide child subagents to report via parent im`
 
+## Closure — 2026-05-01
+
+- Status: verified closed and deployed.
+- Verification: `novaic-business/tests/test_pr111_system_prompt_builder.py` passed and confirms child prompt uses parent IM instead of `subagent_report`.
+- Current architecture: child-to-parent substantive reporting is through `subagent_send`.
