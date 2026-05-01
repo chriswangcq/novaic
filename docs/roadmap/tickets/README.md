@@ -187,6 +187,14 @@
 | PR-136 | `[deployed]`  | [Port `audio_qa` to the Runtime native executor](PR-136-audio-qa-runtime-executor.md) | PR-132 | Tool execution restore | 0.5 d | Implemented, tested, deployed 2026-05-01 |
 | PR-137 | `[deployed]`  | [Expose `audio_qa` from the common LLM tool schema](PR-137-audio-qa-common-schema.md) | PR-136 | Tool schema restore | 0.25-0.5 d | Implemented, tested, deployed 2026-05-01 |
 | PR-138 | `[deployed]`  | [Route audio attachments toward `audio_qa`](PR-138-audio-attachment-routing.md) | PR-136, PR-137 | Attachment UX | 0.25 d | Implemented, tested, deployed 2026-05-01 |
+| PR-139 | `[scanned]` | [Branch and Submodule Mainline Residue Scan](PR-139-branch-submodule-mainline-residue-scan.md) | PR-138 | Mainline clarity | 0.25 d | No first-party branch drift found |
+| PR-140 | `[scanned]` | [Retired Service and Packaged Artifact Residue Scan](PR-140-retired-service-artifact-residue-scan.md) | PR-139 | Old service cleanup | 0.25 d | App/Runtime retired-service residue found |
+| PR-141 | `[scanned]` | [Fallback / Compatibility / Deprecated Branch Residue Scan](PR-141-fallback-compat-deprecated-residue-scan.md) | PR-140 | Branch entropy cleanup | 0.5 d | Delete candidates classified |
+| PR-142 | `[scanned]` | [Tool Schema / Executor Source Residue Scan](PR-142-tool-schema-executor-source-residue-scan.md) | PR-141 | Tool ownership clarity | 0.25-0.5 d | Backend tools aligned; App placeholder residue found |
+| PR-143 | `[scanned]` | [Agent Loop / Subscriber / Scheduler Residue Scan](PR-143-agent-loop-subscriber-scheduler-residue-scan.md) | PR-142 | Agent loop clarity | 0.5 d | Subscriber ambiguity found |
+| PR-144 | `[scanned]` | [Prompt / Memory / Summary Residue Scan](PR-144-prompt-memory-summary-residue-scan.md) | PR-143 | Cortex minimality | 0.25-0.5 d | Cortex clean; Business product-memory boundary remains |
+| PR-145 | `[scanned]` | [Entangled Schema and Config SSOT Residue Scan](PR-145-entangled-schema-config-ssot-residue-scan.md) | PR-144 | Entangled/config SSOT | 0.25-0.5 d | Generated entity-id pipeline residue found |
+| PR-146 | `[scanned]` | [Documentation and Runbook Archaeology Residue Scan](PR-146-documentation-runbook-archaeology-residue-scan.md) | PR-145 | Docs cleanup | 0.5 d | Stale current docs identified |
 
 
 ---
