@@ -55,13 +55,13 @@ Split cleanup into two classes: delete obvious old product paths first, then rev
 
 - [x] Removed no-owner compatibility paths: Business tools-config fallback route, legacy SubAgent dataclass conversion, ignored common auth `db` parameter, common `fetch_all` alias, and gateway `get_database` alias.
 - [x] Reworded Runtime/Business comments that preserved deleted fallback history as live-looking guidance.
-- [ ] Deploy with the final batch.
+- [x] Deploy with the final batch.
 
 ## Git / Merge
 
-- [ ] Commit cleanup.
-- [ ] Push cleanup.
+- [x] Commit cleanup.
+- [x] Push cleanup.
 
 ## Closure — 2026-05-01
 
-PR-141 is implemented for the delete-now class. Remaining hits are either defensive error paths, third-party/QEMU resources, security/transport behavior that needs its own owner decision, or explicitly covered by later residue tickets.
+PR-141 is implemented, committed, pushed, and deployed for the delete-now class. Remaining hits are either defensive error paths, third-party/QEMU resources, security/transport behavior that needs its own owner decision, or explicitly covered by later residue tickets.

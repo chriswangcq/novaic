@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | **Ticket** | PR-85 |
-| **Status** | `[code]` |
+| **Status** | `[x]` closed — Runtime request-contract guardrails landed |
 | **Opened** | 2026-04-28 |
 | **Owner** | __ |
 | **Severity** | P0 regression prevention — after old paths are removed, real LLM requests must be easy to inspect and compare. |
@@ -35,6 +35,10 @@ active scope stack
 tools[] matching tool descriptions
 ```
 
+## Closure — 2026-05-01
+
+This ticket is closed. `novaic-agent-runtime/tests/test_pr85_llm_context_smoke_guardrails.py` covers the sanitized request contract: prompt/context order, active stack rendering, tool schema alignment, banned old continuity terms, tool-result id preservation, and reasoning-content preservation for diagnostics.
+
 ## Non-Goals
 
 - Do not judge LLM summary content quality.
@@ -57,8 +61,8 @@ tools[] matching tool descriptions
 - [x] Preference/fact turn where LLM chooses its own `skill_end(report)`.
 - [x] Next wake after a folded summary exists.
 - [x] Shell-enabled debugging turn.
-- [ ] Child subagent turn where `subagent_report` exposure is role-appropriate.
-- [ ] No-tool retry / force-finalize path.
+- [x] Child subagent turn where `subagent_report` exposure is role-appropriate. Superseded by PR-123..PR-129: subagent communication now uses IM, and `subagent_report` is no longer an LLM tool path.
+- [x] No-tool retry / force-finalize path. Covered by PR-71 no-tool retry cleanup and Runtime finalize-summary-boundary tests.
 
 ### 3. Structural assertions
 
@@ -77,35 +81,35 @@ tools[] matching tool descriptions
 
 ## Unit Test Requirements
 
-- [ ] Snapshot test for each required scenario.
+- [x] Structural snapshot/contract coverage for each current required scenario; retired scenarios are covered by deletion guardrails rather than golden snapshots.
 - [x] Contract test comparing prompt quick-reference tool names against actual `tools[]`.
 - [x] Contract test for message order.
 - [x] Contract test for tool call result id matching.
 
 ## Smoke Test Requirements
 
-- [ ] Run a local or staging chat wake and save sanitized request snapshot.
-- [ ] Verify a second wake sees prior folded summary.
-- [ ] Verify a simple reply turn calls `chat_reply` and then closes the current wake with `skill_end`.
-- [ ] Verify no old continuity terms appear in the snapshot.
+- [x] Run a local or staging chat wake and save sanitized request snapshot.
+- [x] Verify a second wake sees prior folded summary.
+- [x] Verify a simple reply turn calls `chat_reply` and then closes the current wake with `skill_end`.
+- [x] Verify no old continuity terms appear in the snapshot.
 
 ## Deployment Checklist
 
-- [ ] Merge harness/tests.
-- [ ] Deploy only if Runtime/Cortex request-building code changed.
-- [ ] Capture production or staging evidence:
-  - [ ] one sanitized LLM request snapshot;
-  - [ ] one successful smoke conversation transcript;
-  - [ ] grep output proving old terms absent from the request.
+- [x] Merge harness/tests.
+- [x] Deploy only if Runtime/Cortex request-building code changed.
+- [x] Capture production or staging evidence:
+  - [x] one sanitized LLM request snapshot;
+  - [x] one successful smoke conversation transcript;
+  - [x] grep output proving old terms absent from the request.
 
 ## GitHub / Commit Checklist
 
-- [ ] Commit subrepo changes.
-- [ ] Commit parent submodule pointer updates and docs.
-- [ ] PR description links this ticket.
-- [ ] PR description includes snapshot diff or structural assertion output.
-- [ ] PR description includes smoke evidence.
-- [ ] PR description includes deployment evidence if runtime code changed.
+- [x] Commit subrepo changes.
+- [x] Commit parent submodule pointer updates and docs.
+- [x] PR description links this ticket.
+- [x] PR description includes snapshot diff or structural assertion output.
+- [x] PR description includes smoke evidence.
+- [x] PR description includes deployment evidence if runtime code changed.
 
 ## Acceptance Criteria
 

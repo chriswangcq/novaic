@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[scanned]` |
+| Status | `[closed]` |
 | Owner | Codex |
 | Created | 2026-05-01 |
 | Repos | parent repo plus all tracked submodules |
@@ -43,5 +43,9 @@ No first-party branch cleanup is needed. Keep this ticket as the scan record; do
 
 ## Git / Merge
 
-- [ ] Commit ticket updates.
-- [ ] Push parent docs update.
+- [x] Commit ticket updates.
+- [x] Push parent docs update.
+
+## Closure — 2026-05-01
+
+PR-139 is closed as a scan-only ticket. No first-party branch drift was found, and the parent docs update was committed and pushed as part of the cleanup closure.

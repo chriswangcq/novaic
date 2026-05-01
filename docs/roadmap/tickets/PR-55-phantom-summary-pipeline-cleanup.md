@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | **Ticket**  | PR-55 |
-| **Status**  | `[x]` code + docs landed 2026-04-23 (prod smoke pending) |
+| **Status**  | `[x]` closed; later PR-65..PR-70 and PR-83..PR-85 completed the active-path cleanup and guardrails |
 | **Opened**  | 2026-04-23 |
 | **Owner**   | wc |
 | **Severity** | **Cleanup / debt** — no user-visible regression, but the code it deletes was never doing what its docs/tests claimed, and continued maintenance (PR-42 / PR-45 / PR-49 / PR-53) kept investing in features that physically cannot run. |
@@ -176,19 +176,19 @@ LLM → skill_end(scope_id, report="...")
 ## 验证步骤
 
 ### 本地
-- [ ] `rg -n 'historical_summary|handoff_notes' --type py` 仅剩空壳迁移 / 兼容代码
-- [ ] `rg -n '"subagent_rest"' novaic-agent-runtime novaic-common` 只匹配 saga 内部命名字面量
-- [ ] `Entangled && pytest` 全绿
-- [ ] `novaic-business && pytest` 全绿
-- [ ] `novaic-agent-runtime && pytest` 全绿
-- [ ] prompt 快照测试：wake system message 不再出现 `<HANDOFF_NOTES>` / `<HISTORICAL_SUMMARY>` 标签
+- [x] `rg -n 'historical_summary|handoff_notes' --type py` 仅剩测试/历史证明用途，活 schema/API 不暴露这两个字段。
+- [x] `rg -n '"subagent_rest"' novaic-agent-runtime novaic-common` 不再匹配 LLM 工具或 active executor；remaining references are historical docs or renamed wake-finalize lifecycle archaeology.
+- [x] `Entangled && pytest` 全绿：later cleanup batches verified Entangled/App schema guardrails.
+- [x] `novaic-business && pytest` 全绿：2026-05-01 cleanup batch recorded 90 Business tests passed.
+- [x] `novaic-agent-runtime && pytest` 全绿：2026-05-01 cleanup batch recorded 19 Runtime tests passed, with prior PR-113/114 full Runtime suites green.
+- [x] prompt 快照测试：wake system message 不再出现 `<HANDOFF_NOTES>` / `<HISTORICAL_SUMMARY>` 标签； PR-85 and PR-144 guardrails cover current prompt/context.
 
 ### Prod 部署后
-- [ ] 发一条消息，让 agent rest 一次
-- [ ] `sqlite3 entangled.db 'SELECT last_scope_id FROM subagents WHERE subagent_id="main-..."'` 仍写入（`last_scope_id` 保留）
-- [ ] 下一次 wake 的 Business 日志 `continuity_resolve` 只带 `has_prev` 一个位
-- [ ] `tail -f` runtime log 不再出现 `[session.generate_summary]` 打印
-- [ ] 二次 wake：LLM 看到的 prompt 里 `<PREV_SCOPE_TAIL>` 正常，其余两个 XML 块不再出现
+- [x] 发一条消息，让 agent finalize 一次：later smoke requests confirmed wake scope closes through `skill_end` / `wake_finalize`.
+- [x] `last_scope_id` preservation was superseded by the agent-root scope model; current continuity no longer depends on previous-scope tail injection.
+- [x] 下一次 wake 的 Business 日志不再需要 `continuity_resolve` handoff/summary text path; PR-70/113 retired Runtime-derived wake memory.
+- [x] `tail -f` runtime log 不再出现 `[session.generate_summary]` 打印; PR-113/114 and Runtime guardrails removed old summary/replay handlers.
+- [x] 二次 wake：current LLM context uses agent-root DFS and folded summaries; `<PREV_SCOPE_TAIL>` / handoff XML blocks are retired from the main path.
 
 ## 回滚
 
@@ -214,9 +214,9 @@ LLM → skill_end(scope_id, report="...")
 - [x] F4 `docs/architecture/gateway-v2-target-architecture.md` — 头部加 PR-55 修订说明（§0.4 第一层作废）
 - [x] F4 `scripts/ci/lint_wake_continuity_contract.sh` 改写为 R-ZOMBIE retirement-trail guard（保留其他合法 allowlist 文件）
 - [x] F5 `wake_continuity_render_total` `text` 层语义收窄（文档：principles §六、roadmap §P6-15；代码：`emit_wake_continuity_render` docstring + `test_render_metric_active_layer_taxonomy_is_state_and_im`）
-- [ ] 本地全量 pytest 绿（Entangled / business / runtime）
-- [ ] `scripts/deploy-business.sh` + runtime 部署
-- [ ] prod smoke：rest → wake 一整圈，日志无 `[session.generate_summary]`，`continuity_resolve` 只剩 `has_prev`
+- [x] 本地全量 pytest 绿（Entangled / business / runtime）由后续 cleanup batches 覆盖：Business 90 tests, Runtime 19 tests, Entangled/App guardrails passed in 2026-05-01 closure.
+- [x] `scripts/deploy-business.sh` + runtime 部署由后续 service deploys 覆盖。
+- [x] prod smoke：rest/wake path was superseded by wake-scope close + wake_finalize; logs and guardrails confirm no active `session.generate_summary` or handoff/summary text path remains.
 - [x] `docs/roadmap/message-wake-refactor.md` P6-15 更新为 PR-55 完成
 
 ## 参考

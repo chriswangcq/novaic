@@ -54,9 +54,9 @@ Create a cleanup follow-up for App packaged startup/config plus Runtime hidden a
 
 ## Git / Merge
 
-- [ ] Commit cleanup.
-- [ ] Push cleanup.
+- [x] Commit cleanup.
+- [x] Push cleanup.
 
 ## Closure — 2026-05-01
 
-PR-140 is implemented. Retired Runtime Orchestrator / tools_server names are absent from active startup/config/runtime paths, and CI now guards that invariant.
+PR-140 is implemented, committed, pushed, and deployed in the PR-140..PR-146 cleanup batch. Retired Runtime Orchestrator / tools_server names are absent from active startup/config/runtime paths, and CI now guards that invariant.

@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| **Status** | Draft |
+| **Status** | Settled baseline; implementation tickets through PR-146 closed as of 2026-05-01 |
 | **Created** | 2026-04-28 |
 | **Scope** | Backend business and architecture logic after the agent-root / wake-scope Cortex path stabilized. |
 | **Primary Goal** | Keep Cortex simple, make Agent Runtime predictable, and remove legacy compatibility paths that distort the mental model. |
@@ -621,16 +621,16 @@ Tasks:
 - Do not split Business into multiple deployable services before internal boundaries are stable.
 - Do not make Cortex responsible for business task management.
 
-## Open Decisions
+## Settled Decisions — 2026-05-01
 
-1. Should forced finalize create a separate failure artifact, such as `finalize.json`, or only logs/metrics?
-   - Recommendation: logs/metrics first. Avoid any artifact that looks like `summary.md`.
-2. Should child subagents be required to send a parent-directed result before completion when spawned with a task?
-   - Recommendation: not hard-required yet, but parent should see `completed_without_result`.
-3. Should retired schema fields be deleted immediately?
-   - Recommendation: yes if current deployment can tolerate data reset; otherwise add a short removal ticket and grep guardrail.
-4. Should Business be physically split?
-   - Recommendation: no. First split internal domain contracts and tests.
+1. Forced finalize should not create a durable memory artifact.
+   - Decision: use logs/metrics and lifecycle status only. Do not create `finalize.json` or any file that can be confused with `summary.md`.
+2. Child subagents should communicate results through IM, not a hidden completion/report channel.
+   - Decision: do not hard-require a parent-directed result at lifecycle completion. If a result matters, the child must send it with the IM path. Missing result is a lifecycle/monitoring signal, not a second message channel.
+3. Retired schema fields should be deleted from active contracts when the current deployment can tolerate it.
+   - Decision: no compatibility branch by default. If a field cannot be physically dropped in the same PR, leave an explicit removal ticket and a grep guardrail.
+4. Business should not be physically split yet.
+   - Decision: keep Business as one deployable service for now; split internal domain contracts and tests before considering service decomposition.
 
 ## Bottom Line
 

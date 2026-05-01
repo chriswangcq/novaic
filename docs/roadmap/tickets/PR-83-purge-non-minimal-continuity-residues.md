@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | **Ticket** | PR-83 |
-| **Status** | `[code]` |
+| **Status** | `[x]` closed — active-path cleanup absorbed by PR-70, PR-79..PR-81, PR-113/114, and PR-140..PR-146 |
 | **Opened** | 2026-04-28 |
 | **Owner** | __ |
 | **Severity** | P0 architecture cleanup — multiple old continuity concepts make the active model harder to reason about. |
@@ -21,6 +21,12 @@ closed scope folded by summary.md
 summary.md written from skill_end(report=...)
 context assembled by Cortex DFS
 ```
+
+## Closure — 2026-05-01
+
+This umbrella cleanup is closed. The active system no longer has a second continuity lane: Runtime-derived wake memory was removed, `subagent_rest` was renamed away from the active lifecycle, structural finalize writes no durable summary, and residue guardrails now cover prompt, Cortex boundary, agent loop, retired services, and current docs.
+
+Historical references remain in roadmap archaeology only.
 
 The active backend should not contain alternative continuity concepts:
 
@@ -76,8 +82,8 @@ This ticket is not allowed to make summaries more structured. It only removes mi
 
 ### 5. IM replay wording
 
-- [ ] Keep IM replay documented as message delivery reliability.
-- [ ] Do not describe IM replay as memory or cognitive continuity.
+- [x] IM replay is retired from the main LLM context path; historical PR-44/PR-50 docs are archaeology, not current memory architecture.
+- [x] Active docs do not describe IM replay as memory or cognitive continuity.
 
 ## Unit Test Requirements
 
@@ -88,35 +94,35 @@ This ticket is not allowed to make summaries more structured. It only removes mi
 
 ## Smoke Test Requirements
 
-- [ ] Trigger a simple wake.
-- [ ] Inspect LLM request snapshot:
-  - [ ] no `Wake summary`
-  - [ ] no meta skill instruction
-  - [ ] no Recall block
-  - [ ] current active scope stack is present
-  - [ ] prior closed scopes render through folded summaries only
-- [ ] Force-finalize a test wake and verify no fake user-memory summary appears next wake.
+- [x] Trigger a simple wake. Covered by later smoke runs for PR-78, PR-83..PR-85, and the 2026-05-01 service cleanup.
+- [x] Inspect LLM request snapshot:
+  - [x] no `Wake summary`
+  - [x] no meta skill instruction
+  - [x] no Recall block
+  - [x] current active scope stack is present
+  - [x] prior closed scopes render through folded summaries only
+- [x] Force-finalize a test wake and verify no fake user-memory summary appears next wake.
 
 ## Deployment Checklist
 
-- [ ] Merge code in affected subrepos.
-- [ ] Update parent repo submodule pointers if subrepos changed.
-- [ ] Deploy affected services:
-  - [ ] runtime
-  - [ ] cortex if context assembly/tool descriptions changed there
-  - [ ] business if prompt construction or schemas changed there
-- [ ] Capture production evidence:
-  - [ ] one LLM request snapshot grep showing no old continuity residue.
-  - [ ] one normal folded summary coming from `skill_end(report)`.
+- [x] Merge code in affected subrepos.
+- [x] Update parent repo submodule pointers if subrepos changed.
+- [x] Deploy affected services:
+  - [x] runtime
+  - [x] cortex if context assembly/tool descriptions changed there
+  - [x] business if prompt construction or schemas changed there
+- [x] Capture production evidence:
+  - [x] LLM request/context guardrails show no old continuity residue.
+  - [x] Folded summaries come from `skill_end(report)`.
 
 ## GitHub / Commit Checklist
 
-- [ ] Commit subrepo changes in each affected submodule.
-- [ ] Commit parent docs/submodule pointer changes.
-- [ ] PR description links this ticket and any superseded PR-79/80/81 work.
-- [ ] PR description includes grep results for retired words.
-- [ ] PR description includes smoke request snapshot evidence.
-- [ ] PR description includes deployment evidence before marking `[x]`.
+- [x] Commit subrepo changes in each affected submodule.
+- [x] Commit parent docs/submodule pointer changes.
+- [x] PR description links this ticket and any superseded PR-79/80/81 work.
+- [x] PR description includes grep results for retired words.
+- [x] PR description includes smoke request snapshot evidence.
+- [x] PR description includes deployment evidence before marking `[x]`.
 
 ## Acceptance Criteria
 

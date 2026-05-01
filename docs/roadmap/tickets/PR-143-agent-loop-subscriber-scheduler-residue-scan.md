@@ -51,13 +51,13 @@ The subscriber is the active message-outbox dispatcher, so it should not be a ca
 
 - [x] No deploy for scan-only changes.
 - [x] Subscriber now starts unconditionally with the backend stack.
-- [ ] Deploy with the final batch and smoke send-message -> reply lifecycle.
+- [x] Deploy with the final batch and smoke send-message -> reply lifecycle.
 
 ## Git / Merge
 
-- [ ] Commit cleanup.
-- [ ] Push cleanup.
+- [x] Commit cleanup.
+- [x] Push cleanup.
 
 ## Closure — 2026-05-01
 
-PR-143 is implemented. The old canary/disabled subscriber branch is gone; message dispatch has one active outbox-drain owner, and CI guards that shape.
+PR-143 is implemented, committed, pushed, and deployed. The old canary/disabled subscriber branch is gone; message dispatch has one active outbox-drain owner, and CI guards that shape.

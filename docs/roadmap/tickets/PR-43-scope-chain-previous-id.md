@@ -5,12 +5,18 @@
 | **Phase** | R9 加强版（wake continuity 的"完整形态"） |
 | **Milestone** | — |
 | **承诺** | R9（见 PR-42）+ R4（context 可追溯） |
-| **Status** | `[Wave A ✓ (2026-04-24) · Wave B/C ✓ (2026-04-25) · prod deploy ✓ 2026-04-22 21:33 CST]` |
+| **Status** | `[closed — implemented, then retired from main path by PR-69]` |
 | **Depends on** | PR-20（scope meta inputs）、PR-29（scope 状态机）、PR-39（context assembly DFS） |
 | **Blocks** | — |
 | **估时** | 2–3 d（含 Cortex engine 配合） |
 | **Owner** | __（需 cortex 线 + runtime 线协同） |
 | **PR 标题** | `feat(cortex+runtime): scope chaining — new scope records previous_scope_id and context assembly back-references last N steps` |
+
+## 2026-05-01 Ledger Closure
+
+This ticket is no longer open. Its Wave A-D implementation landed, but the later agent-root scope design made `previous_scope_id` / `<PREV_SCOPE_TAIL>` a historical transition path rather than the current LLM context mechanism. Current continuity is agent-root DFS plus folded scope summaries; PR-69 retired `<PREV_SCOPE_HISTORY>` / `<PREV_SCOPE_TAIL>` from the main LLM path.
+
+Keep this document as archaeology for why the intermediate previous-scope chain existed. Do not use it as a current implementation plan.
 
 ## 事件摘要 & 前情
 
@@ -164,11 +170,11 @@ def assemble_context(scope_id, budget_tokens):
 
 ## 前置 Checklist
 
-- [ ] PR-20 scope meta.input_message_ids 已生效
-- [ ] PR-29 Scope 状态机已稳定（archive 动作可被 hook）
-- [ ] PR-39 context assembly DFS 已生效（engine.py 已有组装主循环）
-- [ ] PR-42 已先行（confirm R9 承诺文档已落）
-- [ ] 与 cortex 线对齐 assembly 插入点、tail 读取 API 的签名
+- [x] PR-20 scope meta.input_message_ids 已生效
+- [x] PR-29 Scope 状态机已稳定（archive 动作可被 hook）
+- [x] PR-39 context assembly DFS 已生效（engine.py 已有组装主循环）
+- [x] PR-42 已先行（confirm R9 承诺文档已落）
+- [x] 与 cortex 线对齐 assembly 插入点、tail 读取 API 的签名
 
 ## 实施 Checklist
 
@@ -245,12 +251,12 @@ def assemble_context(scope_id, budget_tokens):
 - [x] 单测（cortex）—— `read_scope_tail`（Wave E）：7 用例（`tests/test_pr43_read_scope_tail.py`）覆盖 happy / missing / max_steps / max_tokens / 单条超额 / `archived_at` / 请求模型
 - [x] 单测（cortex）—— `meta.previous_scope_id` 写入（Wave D）：4 用例（`tests/test_pr43_previous_scope_meta.py`）
 - [x] 单测（business）—— continuity resolve 扩展（Wave B）：`tests/test_pr45_dispatch_continuity.py` 17 用例全绿（其中 5 条新增 PR-43 Wave B 断言）
-- [ ] 集成端到端（待部署后执行）：
-  - [ ] agent 在 scope X 调用 `read_file / edit_file` 若干次 → `subagent_rest(rest_duration_minutes=1)`
-  - [ ] 等 SchedulerWorker 唤醒
-  - [ ] 新 scope Y `meta.json` 含 `previous_scope_id=X`
-  - [ ] 首轮 think 的 LLM input 里能看到 X 末尾 K 步的 `<PREV_SCOPE_TAIL>` block
-  - [ ] agent 行为验证：连续对话不复读同样的 grep（人工 sanity check）
+- [x] 集成端到端（closed by later architecture): PR-43's previous-scope tail smoke is archived because PR-69 retired this path from the main LLM context.
+  - [x] agent 在 scope X 调用 `read_file / edit_file` 若干次 → `subagent_rest(rest_duration_minutes=1)` — historical scenario only.
+  - [x] 等 SchedulerWorker 唤醒 — historical scenario only.
+  - [x] 新 scope Y `meta.json` 含 `previous_scope_id=X` — historical scenario only.
+  - [x] 首轮 think 的 LLM input 里能看到 X 末尾 K 步的 `<PREV_SCOPE_TAIL>` block — retired by PR-69.
+  - [x] agent 行为验证：连续对话不复读同样的 grep（人工 sanity check）— superseded by agent-root DFS smoke.
 - [x] 回归：`SPAWN_SUBAGENT` 触发类型在渲染层直接门禁挡掉（test_prev_scope_tail_spawn_subagent_trigger_skips_injection）
 - [x] 回归：Cortex 读不到 prev archive → soft-fail 空 block；runtime 端 bridge 异常也 soft-fail（test_prev_scope_tail_bridge_exception_soft_fails + test_read_scope_tail_missing_archive_soft_fails）
 
@@ -261,16 +267,16 @@ def assemble_context(scope_id, budget_tokens):
 - [x] log (runtime session.init): `event=prev_scope_tail_injected prev=X steps=K/total truncated=0|1`
 - [x] log (runtime session.init soft-fail): `event=prev_scope_tail_read_failed prev=X err=<ExcType>`
 - [x] log (cortex): `[Workspace] read_scope_tail read_context failed prev=X exc=<ExcType>`（miss 时 warn）
-- [ ] histogram `prev_scope_tail_steps` / `prev_scope_tail_tokens` —— 视部署后 log 洗量再决定是否补 histogram，当前 counter + log kv 已足够线上排障
+- [x] histogram `prev_scope_tail_steps` / `prev_scope_tail_tokens` —— no longer needed; PR-69 retired the previous-tail path, current guardrails focus on agent-root DFS and folded summaries.
 
 ## 文档 Checklist
 
-- [ ] [message-wake-refactor.md](../message-wake-refactor.md) 的 R9 小节补完整形态描述
-- [ ] [docs/architecture/message-wake-principles.md](../../architecture/message-wake-principles.md) R9 对照表加"previous_scope_id" / "scope chain" 条目
-- [ ] [docs/cortex/context-timeline-and-dfs.md](../../cortex/context-timeline-and-dfs.md) 加"跨 scope 续链"小节
-- [ ] [docs/cortex/session-meta-json.md](../../cortex/session-meta-json.md) meta 字段表加 `previous_scope_id`
-- [ ] [docs/cortex/budget-compact-algorithm.md](../../cortex/budget-compact-algorithm.md) 加"PREV_SCOPE_TAIL 的预算优先级" discussion
-- [ ] runbook：如何用 `previous_scope_id` 串起一次 debugging session
+- [x] [message-wake-refactor.md](../message-wake-refactor.md) 的 R9 小节补完整形态描述 — superseded by agent-root scope docs and PR-69 retirement.
+- [x] [docs/architecture/message-wake-principles.md](../../architecture/message-wake-principles.md) R9 对照表加"previous_scope_id" / "scope chain" 条目 — not added because the path is retired; this ticket itself remains the archaeology record.
+- [x] [docs/cortex/context-timeline-and-dfs.md](../../cortex/context-timeline-and-dfs.md) 加"跨 scope 续链"小节 — not added to current docs because the path is retired.
+- [x] [docs/cortex/session-meta-json.md](../../cortex/session-meta-json.md) meta 字段表加 `previous_scope_id` — not added to current docs because the field is no longer a current contract.
+- [x] [docs/cortex/budget-compact-algorithm.md](../../cortex/budget-compact-algorithm.md) 加"PREV_SCOPE_TAIL 的预算优先级" discussion — not added because `<PREV_SCOPE_TAIL>` is no longer in the main path.
+- [x] runbook：如何用 `previous_scope_id` 串起一次 debugging session — not created because this is not an operator path now.
 
 ## 验收命令
 
@@ -330,4 +336,3 @@ curl -s .../metrics | rg 'prev_scope_tail'
   - 这样 canary 能分步灰度。
 - `read_scope_tail` 的实现可以参考 `scope.resolve_active_scope_path` 的逆向（它找 deepest open scope；我们要找 last N steps）。
 - 未来可考虑把 `historical_summary` 的生成从 `subagent_rest` saga 移到"scope archive 后异步"，减少 rest 路径的关键路径时间。
-
