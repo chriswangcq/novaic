@@ -43,5 +43,5 @@ sqlite3 "$HOME/Library/Application Support/com.novaic.app/tool_results.db" ".tab
 
 - `messages` / `execution-logs` 是 Entangled stream read-model；
 - `log-payloads` 通过 action lazy fetch，不默认订阅；
-- 工具长结果走 TRS / `tool_results.db`；
+- 工具长结果走 Cortex step；
 - 原始 LLM 调用走 LLM Factory，Entangled 中只需要 join key。

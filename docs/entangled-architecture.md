@@ -93,7 +93,7 @@ sqlite3 "$HOME/Library/Application Support/com.novaic.app/entangled_cache.db" \
 sqlite3 "$HOME/Library/Application Support/com.novaic.app/tool_results.db" ".tables"
 ```
 
-`log-payloads` 是 action / lazy-fetch 表面，不是默认订阅的热 stream。执行日志热路径订阅 `execution-logs`，大 payload 需要按需 action 读取或通过 TRS / LLM Factory join key 下钻。
+`log-payloads` 是 action / lazy-fetch 表面，不是默认订阅的热 stream。执行日志热路径订阅 `execution-logs`，大 payload 需要按需 action 读取或通过 Cortex step result / LLM Factory join key 下钻。
 
 ---
 

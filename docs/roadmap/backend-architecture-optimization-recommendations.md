@@ -255,7 +255,7 @@ Do not split services yet unless deployment pain requires it. First split concep
 
 **Problem**
 
-Sub-subagents that complete without explicit `subagent_report(result=...)` leave the parent with completion state but little substance.
+Sub-subagents that complete without explicitly sending a result back to the parent leave the parent with completion state but little substance.
 
 **Business Impact**
 
@@ -263,15 +263,15 @@ Delegated tasks can appear done while the parent has no actionable result. This 
 
 **Recommended Direction**
 
-- Keep explicit `subagent_report` as the result channel.
-- Strengthen tool descriptions for child agents: if delegated work has an outcome, call `subagent_report`.
-- Consider making missing report visible to the parent as `completed_without_report`.
+- Use the unified IM channel as the result path: child agents send outcomes to the parent with `subagent_send(target_subagent_id="<parent>", message="...")`.
+- Strengthen tool descriptions for child agents: if delegated work has an outcome, send an explicit parent-directed IM.
+- Consider making missing parent-directed IM visible as `completed_without_result`.
 - Do not infer child result from chat text or scope summary unless explicitly designed.
 
 **Acceptance Signals**
 
-- Parent can distinguish "child completed with result" from "child completed without report".
-- Child-agent smoke tests verify the result field is populated only by explicit reporting.
+- Parent can distinguish "child completed with result" from "child completed without result".
+- Child-agent smoke tests verify the parent sees results only through explicit parent-directed IM.
 
 ### P2. Message Recovery Complexity Management
 
@@ -560,9 +560,9 @@ Goal: make delegated work outcomes reliable.
 
 Tasks:
 
-- Improve child-agent prompt/tool descriptions for `subagent_report`.
-- Add parent-visible `completed_without_report` distinction if useful.
-- Test child completion with and without explicit report.
+- Improve child-agent prompt/tool descriptions for parent-directed `subagent_send`.
+- Add parent-visible `completed_without_result` distinction if useful.
+- Test child completion with and without explicit parent-directed IM.
 
 ### Phase 6: Schema Debt Deletion
 
@@ -601,8 +601,8 @@ Tasks:
 ### Smoke Tests
 
 - `叫大哥` -> next wake `我叫啥` should answer from folded summary.
-- `PR smoke: 请简短回复收到` should produce one visible reply and one concise wake summary.
-- Child subagent delegation should produce explicit `subagent_report` when result is expected.
+- `PR smoke: 请简短回复收到` should produce one visible reply and one concise scope summary.
+- Child subagent delegation should produce explicit parent-directed `subagent_send` when result is expected.
 - Simulated LLM no-tool turn should not create fake memory.
 - Simulated force-finalize should not write a normal summary.
 
@@ -625,8 +625,8 @@ Tasks:
 
 1. Should forced finalize create a separate failure artifact, such as `finalize.json`, or only logs/metrics?
    - Recommendation: logs/metrics first. Avoid any artifact that looks like `summary.md`.
-2. Should child subagents be required to call `subagent_report` before completion when spawned with a task?
-   - Recommendation: not hard-required yet, but parent should see `completed_without_report`.
+2. Should child subagents be required to send a parent-directed result before completion when spawned with a task?
+   - Recommendation: not hard-required yet, but parent should see `completed_without_result`.
 3. Should retired schema fields be deleted immediately?
    - Recommendation: yes if current deployment can tolerate data reset; otherwise add a short removal ticket and grep guardrail.
 4. Should Business be physically split?
