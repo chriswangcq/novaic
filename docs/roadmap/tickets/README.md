@@ -184,6 +184,9 @@
 | PR-133 | `[code]`  | [Remove common `notebook_*` and `task_*` tool residues](PR-133-remove-common-notebook-task-tools.md) | PR-132 | Old path cleanup | 0.25-0.5 d | Implemented, tested locally |
 | PR-134 | `[deployed]`  | [Keep Cortex step result projection as the sole result path](PR-134-cortex-step-result-projection-sole-path.md) | PR-86..PR-98, PR-130..PR-133 | Result-path cleanup | 0.5-1 d | Implemented, tested, deployed 2026-05-01 |
 | PR-135 | `[deployed]`  | [Delete obsolete packaged result artifacts](PR-135-delete-obsolete-packaged-result-artifacts.md) | PR-134 | Physical artifact cleanup | 0.25 d | Implemented, tested, deployed 2026-05-01 |
+| PR-136 | `[deployed]`  | [Port `audio_qa` to the Runtime native executor](PR-136-audio-qa-runtime-executor.md) | PR-132 | Tool execution restore | 0.5 d | Implemented, tested, deployed 2026-05-01 |
+| PR-137 | `[deployed]`  | [Expose `audio_qa` from the common LLM tool schema](PR-137-audio-qa-common-schema.md) | PR-136 | Tool schema restore | 0.25-0.5 d | Implemented, tested, deployed 2026-05-01 |
+| PR-138 | `[deployed]`  | [Route audio attachments toward `audio_qa`](PR-138-audio-attachment-routing.md) | PR-136, PR-137 | Attachment UX | 0.25 d | Implemented, tested, deployed 2026-05-01 |
 
 
 ---
