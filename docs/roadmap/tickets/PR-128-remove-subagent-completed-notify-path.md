@@ -44,3 +44,8 @@
 - 依赖 PR-126 preferred。
 - Commit message: `refactor(runtime): remove subagent completed notify parent path`
 
+## Closure — 2026-05-01
+
+- Status: verified closed and deployed.
+- Verification: Runtime tool-path and wake-finalize contract tests passed; child completion is lifecycle state, not a parent notification channel.
+- Current architecture: child result substance must be sent explicitly through `subagent_send`.

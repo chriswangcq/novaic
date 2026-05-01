@@ -23,7 +23,7 @@
 #   Workers → Cortex    (scope/context/shell APIs)
 #   Entangled → Business (action hook callbacks)
 #   Business → Entangled (schema push, entity proxy, action hook handling)
-#   Subscriber → Entangled (message_outbox drain)
+#   Subscriber → Entangled (message_outbox drain, required)
 #   Gateway → App       (Entangled sync endpoint discovery only)
 #   Business → Device   (device action hook proxy)
 #   Device → Gateway    (WebRTC signaling via /api/app/push)
@@ -45,18 +45,6 @@ PORT_QUEUE_SERVICE=19997
 PORT_CORTEX=19996
 PORT_FILE_SERVICE=19995
 PORT_DEVICE=19993
-
-# ── Canary / Subscriber / Health cadence (PR-33 Phase 3, 2026-04-20) ─────────
-# Historical (pre-PR-33): NOVAIC_ENABLE_SUBSCRIBER / NOVAIC_HEALTH_CHECK_INTERVAL
-# env bridges injected --enable-subscriber and --check-interval here. Both are
-# deleted — the three values they controlled now live under
-# services.json → runtime_switches.{subscriber_enabled,
-# health_check_interval_seconds, scheduler_poll_interval_seconds},
-# overlaid on prod by /opt/novaic/etc/runtime_switches.json (TD-5). See
-# docs/roadmap/tickets/PR-33-env-shrink.md §C.2 and
-# docs/runbooks/subscriber-canary.md for the flip procedure (edit + restart).
-# The log_startup_snapshot() INFO line in each service/worker is now the only
-# audit trail for which switches this process believes in.
 
 # ── Derived URLs (used only as CLI arg values below) ─────────────────────────
 
@@ -91,12 +79,7 @@ wait_port_free() {
 }
 
 stop() {
-    # PR-34 34d: subscriber is an independent subprocess. Give it SIGTERM
-    # first so the in-flight claim finishes cleanly (avoids leaving a row
-    # half-claimed, which would block for claim_ttl_ms=30s under the next
-    # subscriber). A short grace window then SIGKILL as usual.
     pkill -TERM -f "main_subscriber.py" 2>/dev/null || true
-    # 15 × 0.2s = 3s graceful window. Matches claim_ttl_ms/10 ≈ 3s budget.
     for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
         pgrep -f "main_subscriber.py" >/dev/null 2>&1 || break
         sleep 0.2
@@ -110,7 +93,6 @@ stop() {
     pkill -9 -f "main_novaic.py" 2>/dev/null || true
     pkill -9 -f "main_file_service.py" 2>/dev/null || true
     pkill -9 -f "main_cortex" 2>/dev/null || true
-    pkill -9 -f "main_runtime_orchestrator.py" 2>/dev/null || true
     sleep 2
     echo "Stopped."
 }
@@ -172,9 +154,6 @@ $(py novaic-gateway) "$BASE/novaic-business/main_business.py" \
     --entangled-url "$ENTANGLED_URL" --gateway-url "$GW_URL" \
     >> "$LOG_DIR/business-$(date +%Y%m%d).log" 2>&1 &
 wait_port "$PORT_BUSINESS" "Business Service"
-# PR-33 Phase 3: canary "NOTE" removed. Check runtime_switches in business.log:
-#   grep "runtime_switches=" "$LOG_DIR/business-$(date +%Y%m%d).log" | head -1
-
 PYTHONPATH="$BASE/Entangled/packages/server-python:$BASE/novaic-common:$BASE/novaic-device:${PYTHONPATH:-}" \
 $(py novaic-gateway) "$BASE/novaic-device/main_device.py" \
     --host "$HOST" --port "$PORT_DEVICE" --data-dir "$DATA_DIR" \
@@ -250,49 +229,18 @@ $PY $MAIN scheduler \
     --data-dir "$DATA_DIR" \
     >> "$LOG_DIR/scheduler.log" 2>&1 &
 
-# ── Dispatch Subscriber (PR-34 34d, 2026-04-20) ──────────────────────────────
-# Standalone subprocess launched ONLY when
-# services.json → runtime_switches.subscriber_enabled is true. Pre-34d the
-# subscriber ran as an asyncio task inside the Business FastAPI lifespan;
-# it died silently on first uncaught exception and the outbox stopped
-# draining without any external signal. Hoisting it out means death is
-# now visible via `ps aux | grep main_subscriber` and a stale subscriber
-# can no longer take Business API traffic down with it.
-#
-# The runtime_switches.subscriber_enabled read uses the overlay-aware
-# _cfg helper above: in prod the value is sourced from
-# /opt/novaic/etc/runtime_switches.json so flipping the canary is a
-# one-file edit that survives rsync. Flip the switch: edit that overlay
-# file + run `bash $0 --stop && bash $0` on the target host. The
-# log_startup_snapshot() line in the new subscriber log file
-# (subscriber-YYYYMMDD.log) is the audit trail.
-SUBSCRIBER_ENABLED=$(_cfg "['runtime_switches']['subscriber_enabled']")
-# PR-20 (2026-04-20): --cortex-url enables the buffered-dispatch
-# trace-append path (scope.meta.input_message_ids). Subscriber
-# soft-fails on Cortex transport errors — never blocks the core
-# outbox drain — so passing this URL is safe even during Cortex
-# restarts.
-#
-# PR-24 hotfix (2026-04-15): the comment block above USED TO live
-# between the ``PYTHONPATH=... \`` assignment and the ``python
-# main_subscriber.py`` invocation. That backslash-newline-comment
-# pattern is a bash silent-failure trap: the comment terminates the
-# line continuation, the assignment becomes a dangling shell variable
-# (NOT exported), and the subprocess launches WITHOUT PYTHONPATH →
-# ``from common.config import ServiceConfig`` raises ModuleNotFoundError
-# the instant the subscriber tries to boot. Keep comments here.
-if [ "$SUBSCRIBER_ENABLED" = "True" ]; then
-    PYTHONPATH="$BASE/Entangled/packages/server-python:$BASE/novaic-common:$BASE/novaic-business:${PYTHONPATH:-}" \
-    $(py novaic-gateway) "$BASE/novaic-business/main_subscriber.py" \
-        --data-dir "$DATA_DIR" \
-        --entangled-url "$ENTANGLED_URL" \
-        --business-url "$BIZ_URL" \
-        --queue-service-url "$QS_URL" \
-        --cortex-url "$CORTEX_URL" \
-        >> "$LOG_DIR/subscriber.log" 2>&1 &
-    echo "  Subscriber: enabled (subprocess pid $!, logs: $LOG_DIR/subscriber-*.log)"
-else
-    echo "  Subscriber: disabled (runtime_switches.subscriber_enabled=False)"
-fi
+# ── Dispatch Subscriber ──────────────────────────────────────────────────────
+# Required message_outbox drain. It is a standalone subprocess so a failed
+# drain loop is visible as a missing process instead of being hidden inside
+# Business's FastAPI lifespan.
+PYTHONPATH="$BASE/Entangled/packages/server-python:$BASE/novaic-common:$BASE/novaic-business:${PYTHONPATH:-}" \
+$(py novaic-gateway) "$BASE/novaic-business/main_subscriber.py" \
+    --data-dir "$DATA_DIR" \
+    --entangled-url "$ENTANGLED_URL" \
+    --business-url "$BIZ_URL" \
+    --queue-service-url "$QS_URL" \
+    --cortex-url "$CORTEX_URL" \
+    >> "$LOG_DIR/subscriber.log" 2>&1 &
+echo "  Subscriber: required (subprocess pid $!, logs: $LOG_DIR/subscriber-*.log)"
 
 echo "All backends started. Logs: $LOG_DIR"

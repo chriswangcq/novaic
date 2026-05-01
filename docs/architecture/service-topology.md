@@ -33,7 +33,7 @@
 | **Business Service** | `19998` | **中枢编排层**：所有 `/internal/*` API、Entangled entity proxy、Device 编排、signaling relay。调用 Entangled / Device / Gateway |
 | **Device Service** | `19993` | 硬件执行层：设备 registry、CloudBridge typed WS broker、VM/HD 控制。仅调用 Business |
 | **Queue Service** | `19997` | Saga 状态机 + 任务队列 + Worker 调度 |
-| **Watchdog** | (worker) | 已弃用的兼容入口；生产不再承担定时唤醒职责 |
+| **Watchdog** | (retired) | 不在生产启动主路径中；保留的源码注释只按历史上下文理解 |
 | **Saga Worker** | (worker) | Saga 流程编排（MessageProcess、RuntimeComplete、SubAgentCreate 等）。仅调用 Business |
 | **Task Worker** | (worker) | 实际任务执行（ReactThink、ToolExec、SummarizeHistory 等）。仅调用 Business |
 | **Health Worker** | (worker) | 超时回收（过期 Task/Saga 清理） |
@@ -43,7 +43,7 @@
 | **VMControl** | (Tauri内嵌Rust) | 唯一 runtime owner（QEMU/Scrcpy/adb/WebRTC），通过 typed CloudBridge WS 连 Device Service |
 | **Storage-A** | `19995` | 文件服务（独立 repo） |
 
-> ⚠️ **没有 Runtime Orchestrator（RO）**。原 RO 的职责已由 Saga Worker + Task Worker + Queue Session Coordinator 接管。`--runtime-orchestrator-url` 参数虽存在于 CLI 但已标记 `argparse.SUPPRESS`。
+> ⚠️ **没有 Runtime Orchestrator（RO）**。原 RO 的职责已由 Saga Worker + Task Worker + Queue Session Coordinator 接管；启动脚本、配置和 Runtime CLI 中不再保留 RO 参数。
 > ⚠️ 工具分发逻辑内置于 Agent Runtime；Cortex 不再作为 memory/notebook/task/search 的工具代理。
 
 ---

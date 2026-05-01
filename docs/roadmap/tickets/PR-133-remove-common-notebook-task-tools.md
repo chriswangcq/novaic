@@ -37,3 +37,8 @@ common 里的 `notebook_*` / `task_*` 是旧业务工具元数据。当前 Corte
 - 可单独 merge。
 - Commit message: `refactor(tools): remove notebook and task residues`
 
+## Closure — 2026-05-01
+
+- Status: verified closed and deployed.
+- Verification: `novaic-common/tests/test_tool_definitions_contract.py` passed and confirms active builtin tools do not include `notebook_*` or `task_*` names.
+- Current architecture: notebook/task concepts are not exposed as Common LLM tools.

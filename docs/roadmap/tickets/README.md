@@ -171,30 +171,30 @@
 | PR-120 | `[✓]`  | [Remove Device Service Retired Entangled CLI](PR-120-remove-device-entangled-cli.md) | PR-119 | Device cleanup | 0.25-0.5 d | Implemented, tested, deployed |
 | PR-121 | `[✓]`  | [Gateway Entangled Sync Endpoint Discovery Boundary](PR-121-gateway-entangled-sync-discovery-boundary.md) **— Gateway deployed + remote old-path deletion verified 2026-04-30** | PR-104, PR-119 | Gateway boundary cleanup | 0.25-0.5 d | Implemented, tested, deployed |
 | PR-122 | `[✓]`  | [Entangled Public WebSocket URL SSOT](PR-122-entangled-public-ws-url-ssot.md) **— Gateway deployed + public WS endpoint verified 2026-04-30** | PR-121 | Gateway boundary cleanup | 0.25 d | Implemented, tested, deployed |
-| PR-123 | `[code]`  | [SubAgent IM target routing](PR-123-subagent-im-target-routing.md) | PR-122 | SubAgent IM correctness | 0.25-0.5 d | Implemented, tested locally |
-| PR-124 | `[code]`  | [Spawn delivers initial task via `SUBAGENT_SEND`](PR-124-subagent-spawn-initial-task-im.md) | PR-123 | SubAgent IM unification | 0.5 d | Implemented, tested locally |
-| PR-125 | `[code]`  | [Child subagent reports through parent IM](PR-125-subagent-parent-im-prompt.md) | PR-124 preferred | Prompt contract | 0.25-0.5 d | Implemented, tested locally |
-| PR-126 | `[code]`  | [Remove `subagent_report` LLM tool path](PR-126-remove-subagent-report-tool.md) | PR-125 | Old path cleanup | 0.5 d | Implemented, tested locally |
-| PR-127 | `[code]`  | [Remove `subagent_query` and `subagent_cancel` LLM tools](PR-127-remove-subagent-query-cancel-tools.md) | PR-126 preferred | Tool contract cleanup | 0.5 d | Implemented, tested locally |
-| PR-128 | `[code]`  | [Remove `subagent_completed` notify-parent path](PR-128-remove-subagent-completed-notify-path.md) | PR-126 preferred | Lifecycle cleanup | 0.25-0.5 d | Implemented, tested locally |
-| PR-129 | `[code]`  | [Remove `SPAWN_SUBAGENT` and `SUBAGENT_COMPLETED` message residues](PR-129-remove-spawn-completed-message-types.md) | PR-124, PR-128 | Message lifecycle cleanup | 0.5 d | Implemented, tested locally |
-| PR-130 | `[code]`  | [Promote `display` to a real LLM + Runtime tool](PR-130-display-runtime-llm-tool.md) | PR-97 | Tool contract correctness | 0.5 d | Implemented, tested locally |
-| PR-131 | `[code]`  | [Promote `chat_history` to a real LLM + Runtime tool](PR-131-chat-history-runtime-llm-tool.md) | PR-97 | Tool contract correctness | 0.5 d | Implemented, tested locally |
-| PR-132 | `[code]`  | [Quarantine `audio_qa` until Runtime executor exists](PR-132-audio-qa-tool-quarantine.md) | PR-130 | Tool exposure cleanup | 0.25 d | Implemented, tested locally |
-| PR-133 | `[code]`  | [Remove common `notebook_*` and `task_*` tool residues](PR-133-remove-common-notebook-task-tools.md) | PR-132 | Old path cleanup | 0.25-0.5 d | Implemented, tested locally |
+| PR-123 | `[deployed]`  | [SubAgent IM target routing](PR-123-subagent-im-target-routing.md) | PR-122 | SubAgent IM correctness | 0.25-0.5 d | Verified closed 2026-05-01 |
+| PR-124 | `[deployed]`  | [Spawn delivers initial task via `SUBAGENT_SEND`](PR-124-subagent-spawn-initial-task-im.md) | PR-123 | SubAgent IM unification | 0.5 d | Verified closed 2026-05-01 |
+| PR-125 | `[deployed]`  | [Child subagent reports through parent IM](PR-125-subagent-parent-im-prompt.md) | PR-124 preferred | Prompt contract | 0.25-0.5 d | Verified closed 2026-05-01 |
+| PR-126 | `[deployed]`  | [Remove `subagent_report` LLM tool path](PR-126-remove-subagent-report-tool.md) | PR-125 | Old path cleanup | 0.5 d | Verified closed 2026-05-01 |
+| PR-127 | `[deployed]`  | [Remove `subagent_query` and `subagent_cancel` LLM tools](PR-127-remove-subagent-query-cancel-tools.md) | PR-126 preferred | Tool contract cleanup | 0.5 d | Verified closed 2026-05-01 |
+| PR-128 | `[deployed]`  | [Remove `subagent_completed` notify-parent path](PR-128-remove-subagent-completed-notify-path.md) | PR-126 preferred | Lifecycle cleanup | 0.25-0.5 d | Verified closed 2026-05-01 |
+| PR-129 | `[deployed]`  | [Remove `SPAWN_SUBAGENT` and `SUBAGENT_COMPLETED` message residues](PR-129-remove-spawn-completed-message-types.md) | PR-124, PR-128 | Message lifecycle cleanup | 0.5 d | Verified closed 2026-05-01 |
+| PR-130 | `[deployed]`  | [Promote `display` to a real LLM + Runtime tool](PR-130-display-runtime-llm-tool.md) | PR-97 | Tool contract correctness | 0.5 d | Verified closed 2026-05-01 |
+| PR-131 | `[deployed]`  | [Promote `chat_history` to a real LLM + Runtime tool](PR-131-chat-history-runtime-llm-tool.md) | PR-97 | Tool contract correctness | 0.5 d | Verified closed 2026-05-01 |
+| PR-132 | `[deployed]`  | [Quarantine `audio_qa` until Runtime executor exists](PR-132-audio-qa-tool-quarantine.md) | PR-130 | Tool exposure cleanup | 0.25 d | Closed by quarantine then PR-136/PR-137 restore |
+| PR-133 | `[deployed]`  | [Remove common `notebook_*` and `task_*` tool residues](PR-133-remove-common-notebook-task-tools.md) | PR-132 | Old path cleanup | 0.25-0.5 d | Verified closed 2026-05-01 |
 | PR-134 | `[deployed]`  | [Keep Cortex step result projection as the sole result path](PR-134-cortex-step-result-projection-sole-path.md) | PR-86..PR-98, PR-130..PR-133 | Result-path cleanup | 0.5-1 d | Implemented, tested, deployed 2026-05-01 |
 | PR-135 | `[deployed]`  | [Delete obsolete packaged result artifacts](PR-135-delete-obsolete-packaged-result-artifacts.md) | PR-134 | Physical artifact cleanup | 0.25 d | Implemented, tested, deployed 2026-05-01 |
 | PR-136 | `[deployed]`  | [Port `audio_qa` to the Runtime native executor](PR-136-audio-qa-runtime-executor.md) | PR-132 | Tool execution restore | 0.5 d | Implemented, tested, deployed 2026-05-01 |
 | PR-137 | `[deployed]`  | [Expose `audio_qa` from the common LLM tool schema](PR-137-audio-qa-common-schema.md) | PR-136 | Tool schema restore | 0.25-0.5 d | Implemented, tested, deployed 2026-05-01 |
 | PR-138 | `[deployed]`  | [Route audio attachments toward `audio_qa`](PR-138-audio-attachment-routing.md) | PR-136, PR-137 | Attachment UX | 0.25 d | Implemented, tested, deployed 2026-05-01 |
 | PR-139 | `[scanned]` | [Branch and Submodule Mainline Residue Scan](PR-139-branch-submodule-mainline-residue-scan.md) | PR-138 | Mainline clarity | 0.25 d | No first-party branch drift found |
-| PR-140 | `[scanned]` | [Retired Service and Packaged Artifact Residue Scan](PR-140-retired-service-artifact-residue-scan.md) | PR-139 | Old service cleanup | 0.25 d | App/Runtime retired-service residue found |
-| PR-141 | `[scanned]` | [Fallback / Compatibility / Deprecated Branch Residue Scan](PR-141-fallback-compat-deprecated-residue-scan.md) | PR-140 | Branch entropy cleanup | 0.5 d | Delete candidates classified |
-| PR-142 | `[scanned]` | [Tool Schema / Executor Source Residue Scan](PR-142-tool-schema-executor-source-residue-scan.md) | PR-141 | Tool ownership clarity | 0.25-0.5 d | Backend tools aligned; App placeholder residue found |
-| PR-143 | `[scanned]` | [Agent Loop / Subscriber / Scheduler Residue Scan](PR-143-agent-loop-subscriber-scheduler-residue-scan.md) | PR-142 | Agent loop clarity | 0.5 d | Subscriber ambiguity found |
-| PR-144 | `[scanned]` | [Prompt / Memory / Summary Residue Scan](PR-144-prompt-memory-summary-residue-scan.md) | PR-143 | Cortex minimality | 0.25-0.5 d | Cortex clean; Business product-memory boundary remains |
-| PR-145 | `[scanned]` | [Entangled Schema and Config SSOT Residue Scan](PR-145-entangled-schema-config-ssot-residue-scan.md) | PR-144 | Entangled/config SSOT | 0.25-0.5 d | Generated entity-id pipeline residue found |
-| PR-146 | `[scanned]` | [Documentation and Runbook Archaeology Residue Scan](PR-146-documentation-runbook-archaeology-residue-scan.md) | PR-145 | Docs cleanup | 0.5 d | Stale current docs identified |
+| PR-140 | `[deployed]` | [Retired Service and Packaged Artifact Residue Scan](PR-140-retired-service-artifact-residue-scan.md) | PR-139 | Old service cleanup | 0.25 d | Retired service residue removed from active paths; CI guard added |
+| PR-141 | `[deployed]` | [Fallback / Compatibility / Deprecated Branch Residue Scan](PR-141-fallback-compat-deprecated-residue-scan.md) | PR-140 | Branch entropy cleanup | 0.5 d | Delete-now compatibility paths removed; tests added |
+| PR-142 | `[deployed]` | [Tool Schema / Executor Source Residue Scan](PR-142-tool-schema-executor-source-residue-scan.md) | PR-141 | Tool ownership clarity | 0.25-0.5 d | App phantom tool placeholders cleaned; CI guard added |
+| PR-143 | `[deployed]` | [Agent Loop / Subscriber / Scheduler Residue Scan](PR-143-agent-loop-subscriber-scheduler-residue-scan.md) | PR-142 | Agent loop clarity | 0.5 d | Subscriber required path; canary switch removed |
+| PR-144 | `[deployed]` | [Prompt / Memory / Summary Residue Scan](PR-144-prompt-memory-summary-residue-scan.md) | PR-143 | Cortex minimality | 0.25-0.5 d | Prompt product-context boundary cleaned; tests added |
+| PR-145 | `[deployed]` | [Entangled Schema and Config SSOT Residue Scan](PR-145-entangled-schema-config-ssot-residue-scan.md) | PR-144 | Entangled/config SSOT | 0.25-0.5 d | Generated entity-id pipeline deleted; SSOT guard added |
+| PR-146 | `[deployed]` | [Documentation and Runbook Archaeology Residue Scan](PR-146-documentation-runbook-archaeology-residue-scan.md) | PR-145 | Docs cleanup | 0.5 d | Current docs rewritten; residue lint added |
 
 
 ---

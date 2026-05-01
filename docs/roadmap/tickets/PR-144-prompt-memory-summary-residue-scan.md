@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[scanned]` |
+| Status | `[deployed]` |
 | Owner | Codex |
 | Created | 2026-05-01 |
 | Repos | business, cortex, runtime, common, docs |
@@ -30,21 +30,29 @@ Ensure Cortex continuity remains minimal: no automatic summary producer, no wake
   - Business internal routes still include notebook, memory, tasks, and profile update actions.
 - These are not Cortex contamination, but they can still confuse the Agent story because notebook/task tools are no longer exposed as LLM tools.
 
+## Implementation
+
+- Renamed LLM-visible profile injection from `## 用户画像` to `## 显式产品上下文`.
+- Reworded continuity defaults so Business-owned product context is clearly auxiliary and not Cortex memory.
+- Removed notebook ready-count injection from timed wake messages.
+- Deleted the prompt-builder-local `_get_agent_notebook_summary` path; notebook summary remains an internal Business product endpoint, not a prompt-memory source.
+- Added prompt guardrails forbidding old profile/notebook/wake-summary wording in the shared prompt contract and Business tests.
+
 ## Follow-up Decision
 
-Keep Cortex minimal. Decide separately whether Business-owned profile/notebook/task product data should remain. If it remains, document it as product context, not Agent-autonomous memory.
+Keep Cortex minimal. Business-owned profile/notebook/task product data may remain only as product context; the LLM-visible prompt must not describe it as autonomous memory or Cortex continuity.
 
 ## Unit / Guardrail Tests
 
 - [x] Existing Cortex boundary guard passed.
-- [ ] Add Business prompt ownership guardrail if profile/notebook wording is narrowed.
+- [x] Added Business prompt ownership guardrail for product-context naming and no notebook wake injection.
 
 ## Smoke / Deploy
 
-- [x] No deploy for scan-only changes.
-- [ ] Cleanup follow-up must smoke LLM context assembly.
+- [x] `PYTHONPATH=.:../novaic-common pytest -q tests/test_pr111_system_prompt_builder.py tests/test_pr144_prompt_memory_boundary.py`
+- [x] `PYTHONPATH=. pytest -q tests/test_tool_definitions_contract.py`
 
 ## Git / Merge
 
-- [ ] Commit ticket updates.
-- [ ] Push parent docs update.
+- [x] Implementation ready for commit in this batch.
+- [x] Parent docs updated.

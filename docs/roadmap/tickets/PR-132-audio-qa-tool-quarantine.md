@@ -36,3 +36,8 @@
 - 可单独 merge。
 - Commit message: `refactor(tools): quarantine audio qa tool`
 
+## Closure — 2026-05-01
+
+- Status: closed by sequence.
+- Verification: the original quarantine was superseded by PR-136/PR-137, which restored `audio_qa` after the Runtime executor and Common schema were implemented and deployed.
+- Current architecture: `audio_qa` is active and backed by a Runtime executor; the original “do not expose without executor” invariant is satisfied.

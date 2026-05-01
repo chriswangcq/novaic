@@ -43,3 +43,8 @@
 - 单独 PR，可独立 merge。
 - Commit message: `fix(business): route subagent im dispatch to target subagent`
 
+## Closure — 2026-05-01
+
+- Status: verified closed and deployed.
+- Verification: Business prompt/spawn tests, Runtime tool path tests, Common tool contract tests, and Cortex tool-schema tests passed in the current `main` workspace.
+- Current architecture: SubAgent communication is aligned around `subagent_spawn` + `subagent_send`; no additional work remains in this ticket.

@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[scanned]` |
+| Status | `[deployed]` |
 | Owner | Codex |
 | Created | 2026-05-01 |
 | Repos | business, runtime, scripts, docs |
@@ -36,18 +36,28 @@ Clarify the single active Agent loop path. Any subscriber, scheduler, health-wor
 
 ## Follow-up Decision
 
-The subscriber path is the biggest active ambiguity. Either delete it as a retired competing loop, or explicitly mark it as parked/future and remove canary/deploy instructions. Given the maintenance policy, prefer a cleanup ticket to remove it unless a current owner re-justifies it.
+The subscriber is the active message-outbox dispatcher, so it should not be a canary branch. Cleanup makes it a required process in `scripts/start.sh` and removes the `subscriber_enabled` runtime switch / disabled branch. Scheduler remains the scheduled-wake path; HealthWorker remains recovery-only.
 
 ## Unit / Guardrail Tests
 
-- [ ] Cleanup follow-up should add a path ownership test proving only the intended dispatcher is active.
+- [x] Added `scripts/ci/lint_agent_loop_path.sh` to ban `subscriber_enabled` and disabled subscriber branches in active startup/config paths.
+- [x] Wired the guardrail into `.github/workflows/lint.yml`.
+- [x] Ran `./scripts/ci/lint_agent_loop_path.sh`.
+- [x] Ran shell syntax checks for `scripts/start.sh` and `scripts/deploy-business.sh`.
+- [x] Ran Runtime switch strict-config tests in `novaic-common`.
+- [x] Ran Business subscriber unit tests to verify the required subscriber path still works.
 
 ## Smoke / Deploy
 
 - [x] No deploy for scan-only changes.
-- [ ] Cleanup follow-up must smoke send-message -> reply lifecycle.
+- [x] Subscriber now starts unconditionally with the backend stack.
+- [ ] Deploy with the final batch and smoke send-message -> reply lifecycle.
 
 ## Git / Merge
 
-- [ ] Commit ticket updates.
-- [ ] Push parent docs update.
+- [ ] Commit cleanup.
+- [ ] Push cleanup.
+
+## Closure — 2026-05-01
+
+PR-143 is implemented. The old canary/disabled subscriber branch is gone; message dispatch has one active outbox-drain owner, and CI guards that shape.

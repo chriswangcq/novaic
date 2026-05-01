@@ -39,3 +39,8 @@
 - 可单独 merge；建议在 PR-130 后 merge。
 - Commit message: `feat(tools): add chat history runtime tool`
 
+## Closure — 2026-05-01
+
+- Status: verified closed and deployed.
+- Verification: Common tool contract, Cortex tool-schema, Runtime tool-path, and Business prompt contract tests passed.
+- Current architecture: `chat_history` is an active read-only context lookup tool, not a memory system.

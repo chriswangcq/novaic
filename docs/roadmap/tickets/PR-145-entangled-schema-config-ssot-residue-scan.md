@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[scanned]` |
+| Status | `[deployed]` |
 | Owner | Codex |
 | Created | 2026-05-01 |
 | Repos | Entangled, common, business, gateway, app, scripts |
@@ -31,20 +31,33 @@ Ensure Entangled schema/config is sourced from one path and clients consume it c
   - `scripts/gateway/export_entity_id_fields.py` still generates the Gateway JSON artifact.
 - `scripts/deploy-business.sh` still includes subscriber canary config overlays, which overlaps PR-143 rather than schema SSOT.
 
+## Implementation
+
+- Deleted the stale entity TS generator and generated `novaic-app/src/data/entities/__generated__.ts` artifact.
+- Replaced the only App dependency on the generated TS file with a local `AgentMemoryEntity` type.
+- Deleted the stale generated id-field pipeline:
+  - `scripts/sync_entity_id_fields.sh`
+  - `scripts/check_entity_store_pk.py`
+  - `scripts/gateway/export_entity_id_fields.py`
+  - `novaic-gateway/gateway/entity/generated_entity_id_fields.json`
+- Removed CI steps that compared/generated stale schema artifacts.
+- Added `scripts/ci/lint_entangled_schema_ssot.sh` and wired it into both lint and Tauri CI.
+
 ## Follow-up Decision
 
-Delete the generated entity-id pipeline and replace any remaining checks with Entangled WS schema contract tests. The current generated artifacts conflict with Entangled schema SSOT.
+Generated artifacts are deleted. App-facing schema contract tests now rely on live/backend Entangled contract files and the runtime WS schema loader; the old Python codegen/id-field JSON path is banned from active paths.
 
 ## Unit / Guardrail Tests
 
-- [ ] Cleanup follow-up should add an Entangled WS schema contract guardrail.
+- [x] Added Entangled schema SSOT guardrail.
+- [x] `npm run test:unit -- --run src/data/entangled/client.test.ts src/data/entities/entangledEntityContracts.test.ts`
 
 ## Smoke / Deploy
 
-- [x] No deploy for scan-only changes.
-- [ ] Cleanup follow-up must smoke App WS/entity sync.
+- [x] `npx tsc --noEmit --pretty false`
+- [x] `./scripts/ci/lint_entangled_schema_ssot.sh`
 
 ## Git / Merge
 
-- [ ] Commit ticket updates.
-- [ ] Push parent docs update.
+- [x] Implementation ready for commit in this batch.
+- [x] Parent docs updated.

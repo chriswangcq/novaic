@@ -1,5 +1,9 @@
 # Gateway 分解与服务拓扑演进路线图
 
+> **历史路线图归档**：本文记录 Gateway 分解过程中的阶段性判断，不作为当前
+> 服务拓扑契约。当前拓扑以 `docs/architecture/service-topology.md`、
+> `docs/architecture/overview.md` 和源码启动脚本为准。
+
 本文档记录了从单体 Gateway 向多模块独立微服务演进的架构决策、历史包袱清理进度以及未来工作指南。
 
 ## 1. 核心困境：单体 Gateway 的职责失控

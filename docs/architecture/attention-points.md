@@ -133,7 +133,7 @@ Gateway 完成微服务拆分（2026-04-14）：
 - `devices` / `vm-users` 的 schema 定义从 `novaic-business/business/schema_push.py` 移出
 - `novaic-device/device/schema_push.py` 成为唯一 owner，并在 `main_device.py` startup 时自行 push
 - `novaic-business` 删除对应 action hook 注册和跨服务 proxy 死代码
-- `scripts/generate_entity_types.py` 改为从 `Business + Device` 双 schema owner 汇总生成 TS 类型
+- 设备实体 schema 由 Device owner 推送；App 不再通过 Python codegen 生成实体类型，运行时以 Entangled WS schema 为准
 
 结果：
 

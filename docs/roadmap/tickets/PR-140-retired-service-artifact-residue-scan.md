@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[scanned]` |
+| Status | `[deployed]` |
 | Owner | Codex |
 | Created | 2026-05-01 |
 | Repos | parent repo, app, runtime, gateway, deploy scripts |
@@ -41,14 +41,22 @@ Create a cleanup follow-up for App packaged startup/config plus Runtime hidden a
 
 ## Unit / Guardrail Tests
 
-- [ ] Add static guardrail in the cleanup follow-up to block retired service names in active startup/config paths.
+- [x] Added `scripts/ci/lint_retired_service_residue.sh` to block retired service names in active startup/config/runtime paths.
+- [x] Wired the guardrail into `.github/workflows/lint.yml`.
+- [x] Ran `./scripts/ci/lint_retired_service_residue.sh`.
+- [x] Ran shell syntax and JSON validation for touched startup/config artifacts.
+- [x] Ran `PYTHONPATH=.:../novaic-common pytest -q tests/test_runtime_tool_path_contract.py tests/test_pr86_execution_log_metadata.py` in `novaic-agent-runtime`.
 
 ## Smoke / Deploy
 
 - [x] No deploy for scan-only changes.
-- [ ] Cleanup follow-up must run `./deploy status` and affected app/backend smoke.
+- [x] Cleanup follow-up removed Runtime Orchestrator / tools_server active-path residue from app startup/config, runtime CLI schema, common wording, and root stop scripts.
 
 ## Git / Merge
 
-- [ ] Commit ticket updates.
-- [ ] Push parent docs update.
+- [ ] Commit cleanup.
+- [ ] Push cleanup.
+
+## Closure — 2026-05-01
+
+PR-140 is implemented. Retired Runtime Orchestrator / tools_server names are absent from active startup/config/runtime paths, and CI now guards that invariant.

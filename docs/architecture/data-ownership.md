@@ -13,7 +13,7 @@
 ```
 用户发消息
   → Gateway MessageRepository → Entangled `messages` 实体（如 table 名在引擎侧体现为 chat_messages 等，**非** gateway.db 影子表）
-  → Watchdog → Saga → Runtime（见 agent-pipeline.md）
+  → Business outbox → DispatchSubscriber → Queue/Saga/Runtime（见 agent-pipeline.md）
 ```
 
 若他处仍写「Gateway 本地 `chat_messages` INSERT」：进程在 Gateway，**持久化在 Entangled**。历史验证笔记：[historical-doc-links.md](../historical-doc-links.md)（`architecture-verification-2026-04`）。

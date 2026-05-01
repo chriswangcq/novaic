@@ -11,7 +11,7 @@
 | Device | `:19993`，设备 registry、CloudBridge WS、硬件执行 API |
 | Cortex | `:19996`，Workspace + LIFO Scope Tree + ContextEngine（DFS）+ Sandbox |
 | Queue Service | Task / Saga 队列 |
-| Watchdog | 兼容/兜底扫表；主路径由 Business outbox → DispatchSubscriber / Scheduler 入队 |
+| Watchdog | 已退出生产主路径；不要把它当作消息唤醒或定时唤醒 owner |
 | Task Worker | LLM、工具、context |
 | Saga Worker | 流程编排 |
 | Health / Scheduler Workers | 回收、定时唤醒 |
@@ -21,7 +21,7 @@
 ```
 用户发消息
   → Gateway → Business: MessageRepository → Entangled `messages` + message_outbox
-  → DispatchSubscriber / Scheduler / HealthWorker
+  → DispatchSubscriber（用户消息）/ Scheduler（定时唤醒）/ HealthWorker（回收）
   → Queue dispatch: subagent_wake
   → session.init: ensure agent_root scope + create current wake scope
   → ReactThink
