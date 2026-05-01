@@ -35,7 +35,16 @@ For this big ticket:
 
 ## Small Tickets
 
-- [ ] To be created after current-state analysis.
+- [ ] [PR-154A — Remove App Log Payload Diagnostic Path](PR-154A-remove-app-log-payload-diagnostic-path.md)
+
+## Current-State Analysis
+
+2026-05-02 scan found:
+
+1. `LogCard` collapsed and expanded states already render semantic monitor language via `getExecutionLogDisplay`.
+2. Existing component tests assert Factory ids, `result_id`, raw "Execution Result", and technical labels do not appear in the normal monitor surface.
+3. Runtime/Common already emit `display_kind` / `display_summary`; Common has a shared `execution_log_display.json` contract and App tests compare against it.
+4. Residue: App still contains an unused on-demand `log-payloads.get_payload` fetch/cache path (`logInputCacheStore`, `useLogs.fetchLogInput`, `entityToLogVM(...payload)`, and `log-payloads` app entity contract). The current UI does not call it, so it is dead diagnostic plumbing that could accidentally reintroduce raw payload display later.
 
 ## Unit / Guardrail Tests
 
