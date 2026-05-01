@@ -30,7 +30,7 @@ entity_items
 idx_entity_items_seq
 ```
 
-历史 `pending_ops` 已退役；Rust 初始化会清掉遗留表。执行日志的长结果不进入 `entangled_cache.db` 热 row：`execution-logs` 只保留轻量 metadata，`log-payloads` 通过 action lazy fetch，工具长结果在 `tool_results.db` / TRS，原始 LLM 调用在 LLM Factory。
+历史 `pending_ops` 已退役；Rust 初始化会清掉遗留表。执行日志的长结果不进入 `entangled_cache.db` 热 row：`execution-logs` 只保留轻量 metadata，`log-payloads` 通过 action lazy fetch，工具长结果在 Cortex step，原始 LLM 调用在 LLM Factory。
 
 排障：
 

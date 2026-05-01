@@ -59,8 +59,8 @@
 ## Overview
 
 **Goal** — Turn on `DispatchSubscriber` in production alongside the legacy
-inline dispatch. Both paths will fire for every `USER_MESSAGE` / `SUBAGENT_SEND`
-/ `SPAWN_SUBAGENT`. Queue Service dedups by `idempotency_key = msg:<id>`.
+inline dispatch. Both paths will fire for every `USER_MESSAGE` / `SUBAGENT_SEND`.
+Queue Service dedups by `idempotency_key = msg:<id>`.
 
 **Success criterion** — During the full observation window:
 

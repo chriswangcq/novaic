@@ -136,7 +136,7 @@
 | PR-84  | `[code]`  | [Add Cortex minimal-structure invariant tests](PR-84-cortex-minimal-structure-invariants.md) | PR-82, PR-83 preferred | P0 structure guardrails | 0.5-1 d | __ |
 | PR-85  | `[code]`  | [Add LLM context smoke guardrails for the minimal structure path](PR-85-llm-context-minimal-structure-smoke-guardrails.md) | PR-82, PR-83, PR-84 preferred | P0 smoke guardrails | 0.5-1 d | __ |
 | PR-86  | `[✓]`  | [Define execution-log lightweight metadata contract](PR-86-execution-log-light-metadata-contract.md) **— Runtime+App deployed + production smoke verified 2026-04-29** | PR-78+ | Entangled/App observability | 0.5-1 d | __ |
-| PR-87  | `[✓]`  | [Project tool TRS `result_id` into execution logs](PR-87-tool-trs-result-id-execution-log-projection.md) **— Runtime+App deployed + production smoke verified 2026-04-29** | PR-86 preferred | Tool result drilldown | 0.5-1 d | __ |
+| PR-87  | `[✓]`  | [Project tool `result_id` into execution logs](PR-87-tool-trs-result-id-execution-log-projection.md) **— Runtime+App deployed + production smoke verified 2026-04-29** | PR-86 preferred | Tool result drilldown | 0.5-1 d | __ |
 | PR-88  | `[✓]`  | [Complete `log-payloads` lazy fetch and merge into App log view](PR-88-log-payload-lazy-fetch-and-app-cache-merge.md) **— Business+App deployed + production smoke verified 2026-04-29** | PR-86 preferred | Payload drilldown | 0.5-1 d | __ |
 | PR-89  | `[✓]`  | [Expose LLM Factory log join key in think execution logs](PR-89-llm-factory-log-id-entangled-join.md) **— Runtime+App deployed + production smoke verified 2026-04-29** | PR-86 preferred | LLM Factory join | 0.5 d | __ |
 | PR-90  | `[✓]`  | [Correct execution-log status semantics and add minimal lifecycle events](PR-90-execution-log-status-and-lifecycle-events.md) **— Runtime+App deployed + tests/smoke verified 2026-04-29** | PR-86 preferred | Timeline correctness | 0.5-1 d | __ |
@@ -172,6 +172,18 @@
 | PR-120 | `[✓]`  | [Remove Device Service Retired Entangled CLI](PR-120-remove-device-entangled-cli.md) | PR-119 | Device cleanup | 0.25-0.5 d | Implemented, tested, deployed |
 | PR-121 | `[✓]`  | [Gateway Entangled Sync Endpoint Discovery Boundary](PR-121-gateway-entangled-sync-discovery-boundary.md) **— Gateway deployed + remote old-path deletion verified 2026-04-30** | PR-104, PR-119 | Gateway boundary cleanup | 0.25-0.5 d | Implemented, tested, deployed |
 | PR-122 | `[✓]`  | [Entangled Public WebSocket URL SSOT](PR-122-entangled-public-ws-url-ssot.md) **— Gateway deployed + public WS endpoint verified 2026-04-30** | PR-121 | Gateway boundary cleanup | 0.25 d | Implemented, tested, deployed |
+| PR-123 | `[code]`  | [SubAgent IM target routing](PR-123-subagent-im-target-routing.md) | PR-122 | SubAgent IM correctness | 0.25-0.5 d | Implemented, tested locally |
+| PR-124 | `[code]`  | [Spawn delivers initial task via `SUBAGENT_SEND`](PR-124-subagent-spawn-initial-task-im.md) | PR-123 | SubAgent IM unification | 0.5 d | Implemented, tested locally |
+| PR-125 | `[code]`  | [Child subagent reports through parent IM](PR-125-subagent-parent-im-prompt.md) | PR-124 preferred | Prompt contract | 0.25-0.5 d | Implemented, tested locally |
+| PR-126 | `[code]`  | [Remove `subagent_report` LLM tool path](PR-126-remove-subagent-report-tool.md) | PR-125 | Old path cleanup | 0.5 d | Implemented, tested locally |
+| PR-127 | `[code]`  | [Remove `subagent_query` and `subagent_cancel` LLM tools](PR-127-remove-subagent-query-cancel-tools.md) | PR-126 preferred | Tool contract cleanup | 0.5 d | Implemented, tested locally |
+| PR-128 | `[code]`  | [Remove `subagent_completed` notify-parent path](PR-128-remove-subagent-completed-notify-path.md) | PR-126 preferred | Lifecycle cleanup | 0.25-0.5 d | Implemented, tested locally |
+| PR-129 | `[code]`  | [Remove `SPAWN_SUBAGENT` and `SUBAGENT_COMPLETED` message residues](PR-129-remove-spawn-completed-message-types.md) | PR-124, PR-128 | Message lifecycle cleanup | 0.5 d | Implemented, tested locally |
+| PR-130 | `[code]`  | [Promote `display` to a real LLM + Runtime tool](PR-130-display-runtime-llm-tool.md) | PR-97 | Tool contract correctness | 0.5 d | Implemented, tested locally |
+| PR-131 | `[code]`  | [Promote `chat_history` to a real LLM + Runtime tool](PR-131-chat-history-runtime-llm-tool.md) | PR-97 | Tool contract correctness | 0.5 d | Implemented, tested locally |
+| PR-132 | `[code]`  | [Quarantine `audio_qa` until Runtime executor exists](PR-132-audio-qa-tool-quarantine.md) | PR-130 | Tool exposure cleanup | 0.25 d | Implemented, tested locally |
+| PR-133 | `[code]`  | [Remove common `notebook_*` and `task_*` tool residues](PR-133-remove-common-notebook-task-tools.md) | PR-132 | Old path cleanup | 0.25-0.5 d | Implemented, tested locally |
+| PR-134 | `[deployed]`  | [Retire TRS and keep Cortex step result projection](PR-134-retire-trs-step-result-projection.md) | PR-86..PR-98, PR-130..PR-133 | Old path cleanup | 0.5-1 d | Implemented, tested, deployed 2026-05-01 |
 
 
 ---

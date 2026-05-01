@@ -1,20 +1,11 @@
-# PR-41 / PR-42 Staging Verification
-
-> **2026-04-23 (PR-55)**: the PR-42 half of this runbook is **obsolete**.
-> `<HANDOFF_NOTES>` / `<HISTORICAL_SUMMARY>` were phantom blocks — the
-> driving tool `subagent_rest` was never in `BUILTIN_TOOL_SCHEMAS` and
-> `generate_simple_summary` returned empty. Both blocks are removed.
-> PR-41 sections (lifecycle) remain valid. For current wake-continuity
-> verification use `scripts/canary/wake-continuity-smoke.sh` (state
-> layer: `<PREV_SCOPE_TAIL>` via `previous_scope_id`). See
-> `[docs/roadmap/tickets/PR-55-phantom-summary-pipeline-cleanup.md](../roadmap/tickets/PR-55-phantom-summary-pipeline-cleanup.md)`.
+# PR-41 Staging Verification
 
 Covers:
 
 - **PR-41** — `AGENT_REPLY` (and all non-trigger types) no longer stuck in `lifecycle='pending'`; HealthWorker no longer re-dispatches them as "orphans".
-- ~~**PR-42**~~ — ~~wake-up scopes receive `<HANDOFF_NOTES>` + `<HISTORICAL_SUMMARY>` system messages (text-layer continuity).~~ **Retired by PR-55**; see the notice above.
+- The retired PR-42 continuity experiment is not part of this runbook.
 
-Tickets: `docs/roadmap/tickets/PR-41-*.md`, `docs/roadmap/tickets/PR-42-*.md`.
+Tickets: `docs/roadmap/tickets/PR-41-*.md`.
 
 ---
 
@@ -88,7 +79,7 @@ After services run idle for ~15 min, the orphan-sweep SQL must return 0 rows for
 SELECT type, COUNT(*)
 FROM chat_messages
 WHERE lifecycle='pending'
-  AND type NOT IN ('USER_MESSAGE','SUBAGENT_SEND','SPAWN_SUBAGENT')
+  AND type NOT IN ('USER_MESSAGE','SUBAGENT_SEND')
 GROUP BY type;
 ```
 
@@ -96,7 +87,7 @@ Expected: empty result set.
 
 ### 4b. HealthWorker metrics
 
-Grep runtime log for the orphan-recovery path; it should only ever carry `USER_MESSAGE` / `SUBAGENT_SEND` / `SPAWN_SUBAGENT`:
+Grep runtime log for the orphan-recovery path; it should only ever carry `USER_MESSAGE` / `SUBAGENT_SEND`:
 
 ```bash
 grep -E "orphan.*recover|TriggerType\.RECOVERED" "$RUNTIME_LOG" | tail -50
@@ -116,50 +107,13 @@ sqlite3 "$ENTANGLED_DB" \
 
 Every `AGENT_REPLY` row must have `lifecycle='consumed'` and a populated `lifecycle_updated_at` (the write-side fix in `entity_store.py::append`).
 
-## 5. PR-42 live verification (wake 带 handoff + summary)
-
-### 5a. Trigger a real wake (non-spawn)
-
-Easiest path: let `subagent_rest` put an agent to sleep with non-empty `handoff_notes`, then fire a new `USER_MESSAGE`. Look at the `session.init` payload being built:
-
-```bash
-grep -E "session\.init.*payload|_build_session_init_payload" "$RUNTIME_LOG" | tail
-```
-
-Payload should include `handoff_notes` and `wake_reason`.
-
-### 5b. Continuity messages injected into scope
-
-In runtime log, after `handle_session_init` runs:
-
-```bash
-grep -E "wake_continuity|HANDOFF_NOTES|HISTORICAL_SUMMARY" "$RUNTIME_LOG" | tail
-```
-
-Expected order inside the Cortex scope initial context:
-
-```
-SYSTEM_PROMPT → <HANDOFF_NOTES> → <HISTORICAL_SUMMARY> → recall_messages…
-```
-
-### 5c. Trigger-type gating (no leak on SPAWN)
-
-Spawn a brand-new subagent. `<HANDOFF_NOTES>` / `<HISTORICAL_SUMMARY>` must **not** appear in its init payload (controlled by `WAKE_CONTINUITY_ENABLED_TRIGGERS`).
-
-### 5d. Size cap
-
-Synthesise an over-large `historical_summary` (e.g. write ~16KB into `subagents.historical_summary`) then wake. The injected block should contain the `[truncated]` marker and runtime log should emit a `wake_continuity.truncated` warning / metric.
-
-## 6. Success criteria
+## 5. Success criteria
 
 - Orphan sweep returns 0 pending non-trigger rows after 30 min idle
 - Zero `AGENT_REPLY`-driven wake-ups in a 30 min idle window
 - Fresh `AGENT_REPLY` rows born `consumed`
-- Wake after rest carries `<HANDOFF_NOTES>` and `<HISTORICAL_SUMMARY>`
-- Spawn does **not** carry continuity block
-- Oversize summary gets `[truncated]` + metric
 
-## 7. Rollback
+## 6. Rollback
 
 If anything goes wrong, the migration made a backup:
 
@@ -190,11 +144,10 @@ systemctl start novaic-gateway novaic-runtime
 
 ## 9. Local dry-run I already did
 
-Synthetic DB with 3× `AGENT_REPLY pending`, 1× `SYSTEM_NOTE pending`, 1× `USER_MESSAGE pending`, 1× `USER_MESSAGE consumed`, 1× `SPAWN_SUBAGENT pending`:
+Synthetic DB with 3× `AGENT_REPLY pending`, 1× `SYSTEM_NOTE pending`, 1× `USER_MESSAGE pending`, 1× `USER_MESSAGE consumed`, 1× `SUBAGENT_SEND pending`:
 
 - Pre-PR41 orphan query surfaced 6 rows (self-loop source).
-- Post-PR41 orphan query surfaces 2 rows (`USER_MESSAGE` + `SPAWN_SUBAGENT`), exactly the ones that should wake an agent.
-- Migration flipped only the 3 `AGENT_REPLY` + 1 `SYSTEM_NOTE`, left `USER_MESSAGE pending` and `SPAWN_SUBAGENT pending` alone, stamped `lifecycle_updated_at` on touched rows, dropped a `.backup_before_pr41_<ts>` file.
+- Post-PR41 orphan query surfaces 2 rows (`USER_MESSAGE` + `SUBAGENT_SEND`), exactly the ones that should wake an agent.
+- Migration flipped only the 3 `AGENT_REPLY` + 1 `SYSTEM_NOTE`, left `USER_MESSAGE pending` and `SUBAGENT_SEND pending` alone, stamped `lifecycle_updated_at` on touched rows, dropped a `.backup_before_pr41_<ts>` file.
 - CI sync lint passes.
 - 30 PR-41 unit tests + 29 PR-42 unit tests all green.
-

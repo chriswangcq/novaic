@@ -13,12 +13,11 @@ done
 
 DATA_DIR="${NOVAIC_DATA_DIR:-$HOME/Library/Application Support/com.novaic.app}"
 KEEP_DAYS_QUEUE=3    # queue 保留最近 3 天（更激进，queue 太大）
-KEEP_DAYS_TRS=7      # tool_results 保留最近 7 天
 KEEP_DAYS_CHAT=30    # chat/execution_logs 保留最近 30 天
 
 echo "=== NovAIC DB 清理脚本 ==="
 echo "数据目录: $DATA_DIR"
-echo "保留策略: queue/trs=$KEEP_DAYS_QUEUE 天, chat/logs=$KEEP_DAYS_CHAT 天"
+echo "保留策略: queue=$KEEP_DAYS_QUEUE 天, chat/logs=$KEEP_DAYS_CHAT 天"
 echo "参数: -y 跳过进程检测, --no-vacuum 跳过 VACUUM(磁盘不足时用)"
 echo ""
 
@@ -30,7 +29,7 @@ if [[ $FORCE -eq 0 ]] && pgrep -f "NovAIC.app" > /dev/null 2>&1; then
 fi
 
 # 使用 SQLite 内置日期函数，跨平台
-echo "保留: queue/trs 最近 ${KEEP_DAYS_QUEUE} 天, chat/logs 最近 ${KEEP_DAYS_CHAT} 天"
+echo "保留: queue 最近 ${KEEP_DAYS_QUEUE} 天, chat/logs 最近 ${KEEP_DAYS_CHAT} 天"
 echo ""
 
 # --- queue.db ---
@@ -64,19 +63,6 @@ if [[ -f "$Q" ]]; then
     fi
 else
     echo "未找到 queue.db"
-fi
-echo ""
-
-# --- tool_results.db (TRS) ---
-echo ">>> 清理 tool_results.db (TRS)"
-TRS="$DATA_DIR/tool_results.db"
-if [[ -f "$TRS" ]]; then
-    N=$(sqlite3 "$TRS" "SELECT count(*) FROM tool_results WHERE datetime(created_at) < datetime('now','-$KEEP_DAYS_QUEUE days');" 2>/dev/null || echo 0)
-    sqlite3 "$TRS" "DELETE FROM tool_results WHERE datetime(created_at) < datetime('now','-$KEEP_DAYS_QUEUE days');" 2>/dev/null || true
-    echo "  tool_results: 删除约 $N 条"
-    [[ $NO_VACUUM -eq 0 ]] && sqlite3 "$TRS" "VACUUM;" 2>/dev/null && echo "  VACUUM 完成" || true
-else
-    echo "未找到 tool_results.db"
 fi
 echo ""
 

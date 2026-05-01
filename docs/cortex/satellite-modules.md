@@ -14,9 +14,9 @@
 - 解析 **`fs://`** URI（**user 相对**，不含 `user_id`）；多种模式：**http_url** / **local** / **inline**（与 LLM 预算相关）。
 - 设计见仓库内 **`docs/oss-storage-unified-plan.md`**（若存在）。
 
-## 3. `trs.py`（Cortex Native TRS）
+## 3. `step_result_projection.py`
 
-- Native **工具结果**格式化、解析、与 LLM 表示转换；**`resolve_for_llm`** 将 **`fs://`** 解析为 **`_mcp_content`** 块注入消息。
+- 读取 Cortex step 中的 **工具结果**，完成格式化、解析、与 LLM 表示转换；**`resolve_for_llm`** 将 **`fs://`** 解析为 **`_mcp_content`** 块注入消息。
 
 ## 4. `tenant.py`
 
@@ -28,4 +28,4 @@
 
 ---
 
-若某条调用链贯穿 Entangled / `fs://` / TRS，可从这里跳到对应 `.py` 再对照 **`docs/oss-storage-unified-plan.md`**。
+若某条调用链贯穿 Entangled / `fs://` / step result projection，可从这里跳到对应 `.py` 再对照 **`docs/oss-storage-unified-plan.md`**。

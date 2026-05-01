@@ -20,7 +20,6 @@ ROOT="$(cd "$APP_DIR/.." && pwd)"
 PORT_GATEWAY=19999
 PORT_QUEUE_SERVICE=19997
 PORT_FILE_SERVICE=19995
-PORT_TOOL_RESULT_SERVICE=19994
 
 DATA_DIR="$HOME/Library/Application Support/com.novaic.app"
 LOG_DIR="$DATA_DIR/logs"
@@ -98,18 +97,16 @@ stop_backends() {
         "novaic-gateway"
         "novaic-agent-runtime"
         "novaic-storage-a"
-        "novaic-storage-b"
         "main_gateway.py"
         "main_novaic.py"
         "main_file_service.py"
-        "main_tool_result_service.py"
     )
     for pattern in "${patterns[@]}"; do
         pkill -9 -f "$pattern" 2>/dev/null && echo "  Killed: $pattern" || true
     done
     # Kill by port
     for port in $PORT_GATEWAY $PORT_QUEUE_SERVICE \
-                $PORT_FILE_SERVICE $PORT_TOOL_RESULT_SERVICE; do
+                $PORT_FILE_SERVICE; do
         local pid
         pid=$(lsof -ti :"$port" 2>/dev/null || true)
         if [ -n "$pid" ]; then
@@ -127,7 +124,6 @@ show_status() {
         "$PORT_GATEWAY:Gateway"
         "$PORT_QUEUE_SERVICE:Queue Service"
         "$PORT_FILE_SERVICE:File Service"
-        "$PORT_TOOL_RESULT_SERVICE:Tool Result Service"
     )
     for entry in "${services[@]}"; do
         local port="${entry%%:*}" name="${entry##*:}"
@@ -209,24 +205,7 @@ else
     echo -e "  ${YELLOW}⚠ novaic-storage-a not found at $SA_DIR${NC}"
 fi
 
-# 4. Tool Result Service (novaic-storage-b)
-SB_DIR="$ROOT/novaic-storage-b"
-if [ -d "$SB_DIR" ]; then
-    echo "Starting Tool Result Service..."
-    ensure_deps_installed "$SB_DIR"
-    PY=$(python_for_repo "$SB_DIR")
-    "$PY" "$SB_DIR/main_tool_result_service.py" \
-        --host 127.0.0.1 --port "$PORT_TOOL_RESULT_SERVICE" \
-        --data-dir "$DATA_DIR" \
-        --file-service-url "$FS_URL" \
-        --gateway-url "$GW_URL" \
-        >> "$LOG_DIR/tool-result-service.log" 2>&1 &
-    wait_port "$PORT_TOOL_RESULT_SERVICE" "Tool Result Service"
-else
-    echo -e "  ${YELLOW}⚠ novaic-storage-b not found at $SB_DIR${NC}"
-fi
-
-# 5. Workers (task-workers, saga-workers, health, scheduler)
+# 4. Workers (task-workers, saga-workers, health, scheduler)
 if [ -d "$AR_DIR" ]; then
     echo "Starting Workers..."
     PY=$(python_for_repo "$AR_DIR")

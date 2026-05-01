@@ -10,7 +10,7 @@
 # ----------
 # Before PR-41 every chat_messages INSERT was born with
 # ``lifecycle='pending'`` regardless of ``type``. But only
-# USER_MESSAGE / SUBAGENT_SEND / SPAWN_SUBAGENT had a registered
+# USER_MESSAGE / SUBAGENT_SEND had a registered
 # outbox consumer. For every other type (AGENT_REPLY dominantly,
 # plus any system notes) no subscriber ever moved the row off
 # pending — so orphan-scan flagged them at the 5-min crit threshold
@@ -21,8 +21,8 @@
 #   1. Entangled/packages/server-python/entangled/sql/entity_store.py
 #      — non-trigger types are now born ``lifecycle='consumed'``.
 #   2. Entangled/packages/server-python/entangled/app/orphans.py
-#      — query filters ``type IN (USER_MESSAGE, SUBAGENT_SEND,
-#        SPAWN_SUBAGENT)`` so any pre-existing dirt can't escape
+#      — query filters ``type IN (USER_MESSAGE, SUBAGENT_SEND)`` so
+#        any pre-existing dirt can't escape
 #        even if (1) hasn't rolled out yet.
 #
 # But rows already written in pending state stay there until
@@ -63,7 +63,7 @@ echo "=== Counting affected rows ==="
 COUNT=$(sqlite3 "$DB_PATH" "
   SELECT COUNT(*) FROM chat_messages
    WHERE lifecycle = 'pending'
-     AND type NOT IN ('USER_MESSAGE','SUBAGENT_SEND','SPAWN_SUBAGENT');
+     AND type NOT IN ('USER_MESSAGE','SUBAGENT_SEND');
 ")
 echo "Pending non-trigger rows to clean up: $COUNT"
 
@@ -76,7 +76,7 @@ echo "=== Breakdown by type ==="
 sqlite3 "$DB_PATH" "
   SELECT type, COUNT(*) FROM chat_messages
    WHERE lifecycle = 'pending'
-     AND type NOT IN ('USER_MESSAGE','SUBAGENT_SEND','SPAWN_SUBAGENT')
+     AND type NOT IN ('USER_MESSAGE','SUBAGENT_SEND')
    GROUP BY type ORDER BY 2 DESC;
 "
 
@@ -89,7 +89,7 @@ UPDATE chat_messages
    SET lifecycle = 'consumed',
        lifecycle_updated_at = ${NOW_MS}
  WHERE lifecycle = 'pending'
-   AND type NOT IN ('USER_MESSAGE','SUBAGENT_SEND','SPAWN_SUBAGENT');
+   AND type NOT IN ('USER_MESSAGE','SUBAGENT_SEND');
 
 COMMIT;
 SQL
@@ -98,7 +98,7 @@ echo "=== Verifying ==="
 REMAINING=$(sqlite3 "$DB_PATH" "
   SELECT COUNT(*) FROM chat_messages
    WHERE lifecycle = 'pending'
-     AND type NOT IN ('USER_MESSAGE','SUBAGENT_SEND','SPAWN_SUBAGENT');
+     AND type NOT IN ('USER_MESSAGE','SUBAGENT_SEND');
 ")
 echo "Remaining pending non-trigger rows: $REMAINING"
 
