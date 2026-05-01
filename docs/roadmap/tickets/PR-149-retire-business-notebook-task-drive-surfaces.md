@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[ ]` |
+| Status | `[deployed]` |
 | Owner | Codex |
 | Created | 2026-05-01 |
 | Repos | novaic-business, novaic-app if surfaced, docs |
@@ -30,30 +30,58 @@ These surfaces came from earlier self-drive / memory / task concepts. They are n
 
 ## Implementation Plan
 
-1. [ ] Inventory live callers from Runtime, App, Business, and docs.
-2. [ ] Decide per surface: keep as explicit product feature or remove.
-3. [ ] For removed surfaces, delete endpoints, schemas, client wrappers, docs, and tests.
-4. [ ] For kept surfaces, rename/describe them as product data, not Agent memory or Cortex continuity.
-5. [ ] Add guardrail preventing notebook/task/drive profile surfaces from being exposed as LLM tools or Cortex context producers.
+1. [x] Inventory live callers from Runtime, App, Business, and docs.
+2. [x] Decide per surface: keep `agent-tools` as explicit product config; remove notebook/task/growth/memory surfaces.
+3. [x] For removed surfaces, delete endpoints, schemas, client wrappers, docs, and tests.
+4. [x] For kept surfaces, rename/describe them as product data, not Agent memory or Cortex continuity.
+5. [x] Add guardrail preventing notebook/task/drive profile surfaces from being exposed as LLM tools or Cortex ownership paths.
 
 ## Unit / Guardrail Tests
 
-- [ ] Business tests updated for kept/removed routes.
-- [ ] Schema push tests updated.
-- [ ] Guardrail confirms `notebook_*`, `task_*`, `drive_update_profile`, and quadrant task concepts do not appear in LLM tools / Cortex ownership paths.
+- [x] Business tests updated for kept/removed routes.
+- [x] Schema push tests updated.
+- [x] Guardrail confirms `notebook_*`, `task_*`, `drive_update_profile`, and quadrant task concepts do not appear in LLM tools / Cortex ownership paths.
 
 ## Smoke / Deploy
 
-- [ ] Business tests pass.
-- [ ] App build/typecheck passes if imports are touched.
-- [ ] Deploy Business.
-- [ ] Production smoke: Agent chat still works and LLM tools list excludes notebook/task/drive tools.
-- [ ] Production evidence: removed endpoints return 404 or are absent from OpenAPI/internal router, depending on API policy.
+- [x] Business tests pass: `python3 -m pytest tests` → 174 passed.
+- [x] App build/typecheck passes: `npm run build`; App unit tests: `npm run test:unit -- --run` → 30 passed.
+- [x] Deploy Business: `./deploy business`.
+- [x] Deploy App frontend OTA: `./deploy frontend`.
+- [x] Production smoke: Business `/health` returns healthy; removed notebook/task/drive endpoints return 404.
+- [x] Production evidence: deployed Business active code grep has no retired markers outside guardrail tests.
 
 ## Git / Merge
 
-- [ ] Commit in each touched repo.
-- [ ] Parent repo submodule bump / docs commit.
-- [ ] Push `main`.
-- [ ] Mark this ticket `[deployed]` only after deploy evidence is collected.
+- [x] Commit in each touched repo:
+  - `novaic-business` `55afda3 business: retire agent self-drive surfaces`
+  - `novaic-app` `468faf7 app: remove agent memory settings surface`
+- [x] Parent repo submodule bump / docs commit.
+- [x] Push `main`.
+- [x] Mark this ticket `[deployed]` only after deploy evidence is collected.
 
+## Closure Evidence
+
+- Removed Business APIs:
+  - `/internal/agents/{agent_id}/notebook/*`
+  - `/internal/agents/{agent_id}/notebook-summary`
+  - `/internal/agents/{agent_id}/drive`
+  - `/internal/agents/{agent_id}/drive/update-profile`
+  - `/internal/agents/{agent_id}/drive/update`
+  - `/internal/agents/{agent_id}/drive/increment-interaction`
+  - `/internal/agents/{agent_id}/quadrant-tasks*`
+  - `/internal/agents/{agent_id}/growth-logs`
+- Removed Business entities from active schema:
+  - `agent-notebook`
+  - `agent-memory`
+  - `agent-tasks`
+  - `agent-tools.growth_log`
+  - `agent-tools.drive_config`
+- Removed App surface:
+  - `AgentMemorySection`
+  - `agentMemoryStore`
+  - `agent-memory` nav subscriptions
+  - `agent_memory_*` locale keys
+- Production smoke after deploy:
+  - `GET http://127.0.0.1:19998/health` on server → `{"status":"healthy","service":"business","version":"0.3.0"}`
+  - retired notebook/task/drive endpoints returned `404`.
