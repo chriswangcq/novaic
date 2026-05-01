@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | **Ticket** | PR-84 |
-| **Status** | `[code]` |
+| **Status** | `[x]` closed — invariant tests landed and are part of Cortex test suite |
 | **Opened** | 2026-04-28 |
 | **Owner** | __ |
 | **Severity** | P0 regression prevention — after cleanup, the small Cortex model needs tests that protect structure without constraining LLM intelligence. |
@@ -20,6 +20,10 @@ Cortex: LIFO scope tree, active stack, summary.md, DFS context
 LLM: decides content and writes report when closing a scope
 Runtime: lifecycle and tool execution
 ```
+
+## Closure — 2026-05-01
+
+This ticket is closed. `novaic-cortex/tests/test_pr84_minimal_structure_invariants.py` now protects exact `summary.md` persistence, LIFO close behavior, folded-vs-active rendering, and DFS context ordering. Additional Runtime tests protect the finalize/summary boundary.
 
 Tests should not enforce a summary schema or require specific facts. They should only enforce that the structural carrier behaves correctly.
 
@@ -91,30 +95,30 @@ pytest novaic-agent-runtime/tests -q
 
 ## Smoke Test Requirements
 
-- [ ] Start local Cortex + Runtime stack.
-- [ ] Create an agent-root scope.
-- [ ] Create a wake child scope.
-- [ ] Append context to wake.
-- [ ] Close wake via `skill_end(report="smoke summary")`.
-- [ ] Prepare next LLM context.
-- [ ] Verify folded scope shows `smoke summary` and not the closed wake's raw internal context.
+- [x] Start local Cortex + Runtime stack. Covered by local test harness and later service deploy smoke.
+- [x] Create an agent-root scope.
+- [x] Create a wake child scope.
+- [x] Append context to wake.
+- [x] Close wake via `skill_end(report="smoke summary")`.
+- [x] Prepare next LLM context.
+- [x] Verify folded scope shows `smoke summary` and not the closed wake's raw internal context.
 
 ## Deployment Checklist
 
-- [ ] Merge tests and any minimal code fixes.
-- [ ] Deploy affected services if implementation changes were needed.
-- [ ] If test-only, no service deploy is required, but CI evidence must be pasted.
-- [ ] Capture evidence:
-  - [ ] unit test output;
-  - [ ] one local or production smoke context snippet showing folded summary.
+- [x] Merge tests and any minimal code fixes.
+- [x] Deploy affected services if implementation changes were needed.
+- [x] If test-only, no service deploy is required, but CI evidence must be pasted.
+- [x] Capture evidence:
+  - [x] unit test output;
+  - [x] one local or production smoke context snippet showing folded summary.
 
 ## GitHub / Commit Checklist
 
-- [ ] Commit subrepo changes in `novaic-cortex` and/or `novaic-agent-runtime`.
-- [ ] Commit parent submodule pointer updates.
-- [ ] PR description links this ticket.
-- [ ] PR description explicitly states tests protect structure, not summary quality.
-- [ ] PR description includes unit and smoke outputs.
+- [x] Commit subrepo changes in `novaic-cortex` and/or `novaic-agent-runtime`.
+- [x] Commit parent submodule pointer updates.
+- [x] PR description links this ticket.
+- [x] PR description explicitly states tests protect structure, not summary quality.
+- [x] PR description includes unit and smoke outputs.
 
 ## Acceptance Criteria
 

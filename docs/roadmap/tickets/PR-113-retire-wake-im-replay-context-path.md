@@ -68,10 +68,10 @@ Runtime 里仍残留一条旧的跨 wake 上下文路径：
 
 ## GitHub / 提交
 
-- [ ] Runtime repo commit: `refactor(runtime): remove wake IM replay context path (PR-113)`
-- [ ] Runtime repo push。
-- [ ] Parent repo commit: `docs: close wake IM replay cleanup (PR-113)`
-- [ ] Parent repo push。
+- [x] Runtime repo commit: `0192c3d refactor(runtime): remove wake IM replay context path (PR-113)`
+- [x] Runtime repo push。
+- [x] Parent repo commit: `9796477 docs: close wake IM replay cleanup (PR-113)`
+- [x] Parent repo push。
 
 ## 验收
 

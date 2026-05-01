@@ -35,7 +35,7 @@ Runtime still registers `session.check_new_messages`, but the handler itself say
 
 ## Git
 
-- [ ] Runtime commit: `refactor(runtime): remove dead check_new_messages handler (PR-114)`
-- [ ] Runtime push.
-- [ ] Parent commit: `docs: close runtime check_new_messages cleanup (PR-114)`
-- [ ] Parent push.
+- [x] Runtime commit: `0cf7076 refactor(runtime): remove dead check_new_messages handler (PR-114)`
+- [x] Runtime push.
+- [x] Parent commit: `df1ab18 docs: create cleanup tickets and close PR-114`
+- [x] Parent push.

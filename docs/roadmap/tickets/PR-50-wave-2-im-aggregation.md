@@ -131,7 +131,7 @@ PYTHONPATH=.:../novaic-common:../Entangled/packages/server-python \
    event=dispatch trigger=user_message agent=canary_a_1 messages=2 result=ok
    ```
    即 3 连发 → 1 次 `saga_started`（2 条合并，`messages=2`）+ 1 次 `buffered`（第 3 条加入同一 scope 的 `append_input`）= **1 次 session.init**（pre-Wave-2 会产生 3 次）。
-4. [ ] **灰度观察窗（部署后 30 min — 2026-04-22 22:55 ~ 23:25 CST）**：
+4. [x] **灰度观察窗（部署后 30 min — 2026-04-22 22:55 ~ 23:25 CST）**：
    - `im_aggregated_fallback_total` 保持 0。无告警。
    - `outbox_backlog_count` gauge 未升高。
    - 日志无 `event=im_aggregate ... fallback_reason=dispatch_error` 出现。

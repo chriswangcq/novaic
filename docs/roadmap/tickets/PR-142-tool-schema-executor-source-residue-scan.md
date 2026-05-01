@@ -54,13 +54,13 @@ Backend schema/executor ownership is clean. Follow-up should remove phantom tool
 ## Smoke / Deploy
 
 - [x] No backend tool schema/executor changes were required.
-- [ ] Deploy with the final batch.
+- [x] Deploy with the final batch.
 
 ## Git / Merge
 
-- [ ] Commit cleanup.
-- [ ] Push cleanup.
+- [x] Commit cleanup.
+- [x] Push cleanup.
 
 ## Closure — 2026-05-01
 
-PR-142 is implemented. User-facing App placeholder copy no longer advertises phantom tools, and CI now blocks those names from returning to locale placeholders.
+PR-142 is implemented, committed, pushed, and deployed. User-facing App placeholder copy no longer advertises phantom tools, and CI now blocks those names from returning to locale placeholders.

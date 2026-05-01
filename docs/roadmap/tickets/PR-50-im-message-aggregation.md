@@ -5,7 +5,7 @@
 | **Phase** | UX-side optimization（不是正确性 bug，是"观感 + 成本"问题） |
 | **Milestone** | R9 IM stream layer 完形 |
 | **承诺** | R9（IM 语义一致性） |
-| **Status** | `[✓ Wave 1 + Wave 2 code landed]` — Wave 1 **已部署 prod 2026-04-22 18:00 UTC**（`WAKE_REPLAY_MAX_BYTES=16384` runtime 生效）；Wave 2 **code 2026-04-24 合入**（`IM_AGGREGATION_WINDOW_SEC=60` default，独立 ticket [PR-50-wave-2](PR-50-wave-2-im-aggregation.md)，等部署窗口） |
+| **Status** | `[✓]` — Wave 1 deployed 2026-04-22; Wave 2 deployed to prod 2026-04-22 22:55 CST via [PR-50-wave-2](PR-50-wave-2-im-aggregation.md). |
 | **Depends on** | PR-38（IM 渲染）、PR-44（wake IM replay）、PR-46（by-ids 装配） |
 | **Blocks** | — |
 | **估时** | 0.5–1 d |
@@ -168,13 +168,13 @@ def _render_chat_history(messages: list[dict]) -> str:
 - [x] metric `wake_im_replay_truncated_total{reason}`
 - [x] log `event=chat_history_truncate agent=<x> reason=<bytes|tokens> n_omitted=N bytes_used=... tokens_used=... kept=...`
 
-### C. 单测（**Wave 2 聚合部分延后**）
-- [ ] 3 条同 sender 30s 内连发 → 一次 dispatch 带 3 个 message_ids（Wave 2）
-- [ ] 3 条同 sender 但跨 > 60s → 分两次 dispatch（Wave 2）
-- [ ] 3 条不同 sender → 各自独立 dispatch（Wave 2）
-- [ ] 窗口内 15 条 → 前 10 合批、剩 5 条下一轮合批（Wave 2）
-- [ ] 聚合幂等（重复 claim_many 不重复 dispatch）（Wave 2）
-- [ ] `IM_AGGREGATION_WINDOW_SEC=0` → 完全关闭，回退老行为（Wave 2）
+### C. 单测（Wave 2 聚合已由独立工单闭环）
+- [x] 3 条同 sender 30s 内连发 → 一次 dispatch 带 3 个 message_ids（Wave 2; covered by `PR-50-wave-2` tests）
+- [x] 3 条同 sender 但跨 > 60s → 分两次 dispatch（Wave 2; covered by `PR-50-wave-2` tests）
+- [x] 3 条不同 sender → 各自独立 dispatch（Wave 2; covered by `PR-50-wave-2` tests）
+- [x] 窗口内 15 条 → 前 10 合批、剩 5 条下一轮合批（Wave 2; covered by `PR-50-wave-2` tests）
+- [x] 聚合幂等（重复 claim_many 不重复 dispatch）（Wave 2; covered by `PR-50-wave-2` tests）
+- [x] `IM_AGGREGATION_WINDOW_SEC=0` → 完全关闭，回退老行为（Wave 2; covered by `PR-50-wave-2` tests）
 - [x] `_budget_trim` 字节 cap 先于 token cap 触发（CJK 30KB）
 - [x] `_budget_trim` token cap 在 max_bytes=0 时仍生效
 - [x] `_budget_trim` 两 cap 都 0 返回空
