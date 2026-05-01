@@ -56,7 +56,7 @@ Device tool exposure is a security and UX boundary. Supporting multiple historic
 
 - [x] Commit in `novaic-device`: `cd508f6 device: remove binding legacy compatibility`.
 - [x] Commit in `novaic-business`: `53c0f20 business: require mounted tools object shape`.
-- [ ] Parent repo submodule bump / docs commit.
+- [x] Parent repo submodule bump / docs commit: `6d60b90 roadmap: close PR-151 binding contract cleanup`.
 - [x] Push `main`.
 - [x] Mark this ticket `[deployed]` only after deploy evidence is collected.
 

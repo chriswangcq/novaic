@@ -58,7 +58,7 @@ The App now mostly uses Entangled stores and Rust cache. Files that say "type-on
 ## Git / Merge
 
 - [x] Commit in `novaic-app`: `91a1c9b app: remove deprecated compatibility shells`.
-- [ ] Parent repo submodule bump / docs commit.
+- [x] Parent repo submodule bump / docs commit: `4dec063 roadmap: close PR-150 app compat cleanup`.
 - [x] Push `main`.
 - [x] Mark this ticket `[deployed]` only after deploy evidence is collected.
 
