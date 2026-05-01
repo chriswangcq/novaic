@@ -31,7 +31,7 @@ retired env switches, or mirrored overlay logic reappear.
 
 ## Smoke / Deploy
 
-- [ ] `./deploy status` after PR-156 batch.
+- [x] `./deploy status` after PR-156 batch.
 
 ## Git
 

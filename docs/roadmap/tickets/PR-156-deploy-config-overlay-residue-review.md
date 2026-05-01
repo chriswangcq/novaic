@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[in-progress]` |
+| Status | `[deployed]` |
 | Owner | Codex |
 | Created | 2026-05-01 |
 | Repos | root deploy scripts, novaic-common, service repos, docs |
@@ -69,13 +69,13 @@ Residue found during review:
 
 ## Smoke / Deploy
 
-- [ ] Smoke `./deploy status`.
+- [x] Smoke `./deploy status`.
 - [x] Smoke affected service restart (`./deploy runtime` for PR-156B).
-- [ ] Verify server overlay no longer contains retired keys.
+- [x] Verify server overlay no longer contains retired keys.
 
 ## Git / Merge
 
-- [ ] Each small ticket can be committed independently where practical.
-- [ ] Parent repo submodule bump / docs commit.
+- [x] Each small ticket can be committed independently where practical.
+- [x] Parent repo submodule bump / docs commit.
 - [ ] Push `main`.
-- [ ] Mark `[deployed]` only after deploy evidence is collected.
+- [x] Mark `[deployed]` only after deploy evidence is collected.

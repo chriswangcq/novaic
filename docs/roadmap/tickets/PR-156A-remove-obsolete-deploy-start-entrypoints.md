@@ -33,7 +33,7 @@ current production path.
 
 ## Smoke / Deploy
 
-- [ ] `./deploy status` after the PR-156 batch.
+- [x] `./deploy status` after the PR-156 batch.
 - [x] No service deploy needed for this script/docs-only ticket.
 
 ## Git
