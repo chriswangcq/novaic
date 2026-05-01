@@ -28,7 +28,7 @@ closes the current wake scope with `skill_end(report=...)`.
 ## Smoke / Deploy
 
 - [x] Deploy runtime after tests.
-- [ ] Verify `./deploy status` after the PR-156 batch.
+- [x] Verify `./deploy status` after the PR-156 batch.
 
 ## Git
 
