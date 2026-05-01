@@ -37,3 +37,6 @@
 [submodule "novaic-device"]
 	path = novaic-device
 	url = git@github.com:chriswangcq/novaic-device.git
+[submodule "novaic-llm-factory"]
+	path = novaic-llm-factory
+	url = https://github.com/chriswangcq/novaic-llm-factory.git
