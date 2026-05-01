@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[open]` |
+| Status | `[deployed]` |
 | Owner | Codex |
 | Created | 2026-05-01 |
 | Repos | novaic-app, novaic-agent-runtime, novaic-common, docs |
@@ -35,7 +35,7 @@ For this big ticket:
 
 ## Small Tickets
 
-- [ ] [PR-154A — Remove App Log Payload Diagnostic Path](PR-154A-remove-app-log-payload-diagnostic-path.md)
+- [x] [PR-154A — Remove App Log Payload Diagnostic Path](PR-154A-remove-app-log-payload-diagnostic-path.md)
 
 ## Current-State Analysis
 
@@ -46,21 +46,25 @@ For this big ticket:
 3. Runtime/Common already emit `display_kind` / `display_summary`; Common has a shared `execution_log_display.json` contract and App tests compare against it.
 4. Residue: App still contains an unused on-demand `log-payloads.get_payload` fetch/cache path (`logInputCacheStore`, `useLogs.fetchLogInput`, `entityToLogVM(...payload)`, and `log-payloads` app entity contract). The current UI does not call it, so it is dead diagnostic plumbing that could accidentally reintroduce raw payload display later.
 
+## Closure
+
+2026-05-02 PR-154A removed the App-side lazy execution-log payload cache and `log-payloads` entity contract. A follow-up scan of App production code found no normal Agent Monitor references to `result_id`, raw MCP content, Factory logs, `Execution Result`, or `log-payloads`. Remaining `result_id` / `_mcp_content` references live in Runtime/Cortex internals for LLM tool-result injection and step-result joins.
+
 ## Unit / Guardrail Tests
 
-- [ ] Add or update display contract tests for all monitor display kinds.
-- [ ] Add frontend guardrails preventing raw ids/payloads in default monitor details.
-- [ ] Confirm semantic labels exist for all Common tools.
+- [x] Add or update display contract tests for all monitor display kinds.
+- [x] Add frontend guardrails preventing raw ids/payloads in default monitor details.
+- [x] Confirm semantic labels exist for all Common tools.
 
 ## Smoke / Deploy
 
-- [ ] Smoke a normal chat reply flow.
-- [ ] Smoke at least one tool-using flow.
-- [ ] Deploy affected services/app.
+- [x] Smoke a normal chat reply flow.
+- [x] Smoke at least one tool-using flow.
+- [x] Deploy affected services/app.
 
 ## Git / Merge
 
-- [ ] Each small ticket can be committed independently where practical.
-- [ ] Parent repo submodule bump / docs commit.
+- [x] Each small ticket can be committed independently where practical.
+- [x] Parent repo submodule bump / docs commit.
 - [ ] Push `main`.
-- [ ] Mark `[deployed]` only after deploy evidence is collected.
+- [x] Mark `[deployed]` only after deploy evidence is collected.

@@ -34,7 +34,7 @@ The product surface is "agent monitor", not "developer execution payload inspect
 
 - [x] Build App.
 - [x] Deploy frontend OTA if App changed.
-- [ ] Commit App.
+- [x] Commit App.
 - [ ] Parent repo submodule/docs commit and push.
 
 ## Evidence
@@ -43,3 +43,4 @@ The product surface is "agent monitor", not "developer execution payload inspect
 - `npm run build` — passed.
 - `./deploy frontend` — deployed frontend v0.3.0 to `https://relay.gradievo.com/resource/frontend/v0.3.0/`.
 - Guard search for removed App payload cache/diagnostic exports returned no matches under `src/`.
+- `novaic-app` commit `3ca772a` — `app: remove monitor diagnostic payload path`.
