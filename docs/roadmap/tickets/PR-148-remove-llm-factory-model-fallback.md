@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[ ]` |
+| Status | `[deployed]` |
 | Owner | Codex |
 | Created | 2026-05-01 |
 | Repos | novaic-llm-factory, docs |
@@ -29,30 +29,40 @@ Fallback models make LLM behavior harder to reason about: the Agent asks for one
 
 ## Implementation Plan
 
-1. [ ] Remove `fallback_models` from request extras.
-2. [ ] Remove fallback provider construction from chat route.
-3. [ ] Simplify `RetryExecutor` to retry only the selected provider/model.
-4. [ ] Remove `is_fallback` response/log metadata or replace with a hard-coded absent field.
-5. [ ] Add guardrail that `fallback_models`, `fallback_providers`, and `is_fallback` cannot reappear in active Factory code.
+1. [x] Remove `fallback_models` from request extras.
+2. [x] Remove fallback provider construction from chat route.
+3. [x] Simplify `RetryExecutor` to retry only the selected provider/model.
+4. [x] Remove `is_fallback` response/log metadata.
+5. [x] Add guardrail that `fallback_models`, `fallback_providers`, and `is_fallback` cannot reappear in active Factory code.
+6. [x] Remove implicit default-model substitution when requested `model` cannot be resolved.
 
 ## Unit / Guardrail Tests
 
-- [ ] Factory retry tests cover retry of the selected provider only.
-- [ ] Factory route tests reject or ignore old `fallback_models` according to the chosen API contract.
-- [ ] Guardrail grep catches fallback/failover reintroduction.
+- [x] Factory retry tests cover retry of the selected provider only.
+- [x] Factory route tests reject old `fallback_models`.
+- [x] Guardrail grep catches fallback/failover reintroduction.
 
 ## Smoke / Deploy
 
-- [ ] Factory tests pass.
-- [ ] Runtime LLM call smoke passes against Factory.
-- [ ] Deploy Factory.
-- [ ] Production smoke: normal chat call logs exactly one selected model path.
-- [ ] Production log evidence: no `is_fallback` / failover event in new calls.
+- [x] Factory tests pass.
+- [x] Runtime-style LLM call smoke passes against Factory.
+- [x] Deploy Factory.
+- [x] Production smoke: normal chat call logs exactly one selected model path.
+- [x] Production log evidence: no `is_fallback` / failover event in recent Factory logs.
 
 ## Git / Merge
 
-- [ ] Commit in `novaic-llm-factory`.
-- [ ] Parent repo submodule bump / docs commit.
-- [ ] Push `main`.
-- [ ] Mark this ticket `[deployed]` only after deploy evidence is collected.
+- [x] Commit in `novaic-llm-factory`.
+- [x] Parent repo submodule bump / docs commit.
+- [x] Push `main`.
+- [x] Mark this ticket `[deployed]` only after deploy evidence is collected.
 
+## Evidence
+
+- Factory tests: `4 passed`.
+- Deployed via `./deploy factory`; health returned `{"status":"ok","service":"llm-factory"}`.
+- Production smoke `log_id=a10a8ef1-a543-4eb3-b477-20a2d68f39f9` returned:
+  - `provider_used=openai`
+  - `model_used=kimi-k2.5`
+  - `retries=0`
+  - `has_is_fallback=false`
