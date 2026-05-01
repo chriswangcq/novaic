@@ -17,21 +17,15 @@ git submodule update --init --recursive
 | `novaic-gateway` | 云端 Gateway |
 | `novaic-business` | Business Service（Agent/Skill/Form/Model） |
 | `novaic-device` | Device Service（设备 / PC-Bridge WS / VM） |
-| `novaic-llm-factory` | LLM Factory |
 | `novaic-quic-service` | STUN + Relay |
 | `novaic-agent-runtime` | Agent 运行时（Task/Saga/Workers） |
 | `novaic-mcp-vmuse` | MCP VMuse |
-| `novaic-contracts` | 协议与类型 |
 | `novaic-common` | 共享库与配置（含 `config/services.json`） |
 | `novaic-storage-a` | File Service |
 | `novaic-cortex` | Cortex HTTP |
-| `novaic-control-plane` | 控制面板 |
 | `Entangled` | 同步引擎（Python/Rust 等） |
+| `byclaw-website` | 官网 |
 | `thirdparty/openclaw` | 上游参考（非线上服务） |
-
-## 已删除 / 退役（历史）
-
-- `novaic-runtime-orchestrator` — 职责已拆分。
 
 ## 父仓库顶层
 

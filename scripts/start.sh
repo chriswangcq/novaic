@@ -159,7 +159,7 @@ $(py novaic-gateway) -m entangled.app.main \
     >> "$LOG_DIR/entangled.log" 2>&1 &
 wait_port "$PORT_ENTANGLED" "Entangled Service"
 
-PYTHONPATH="$BASE/novaic-common:$BASE/novaic-shared-kernel:$BASE/novaic-contracts:${PYTHONPATH:-}" \
+PYTHONPATH="$BASE/novaic-common:${PYTHONPATH:-}" \
 $(py novaic-gateway) "$BASE/novaic-gateway/main_gateway.py" \
     --host "$HOST" --port "$PORT_GATEWAY" --data-dir "$DATA_DIR" \
     --queue-service-url "$QS_URL" --file-service-url "$FS_URL" \
