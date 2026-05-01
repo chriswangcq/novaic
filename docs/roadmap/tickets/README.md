@@ -198,7 +198,7 @@
 | PR-147 | `[deployed]` | [Remove Cortex Disabled / No-op Runtime Path](PR-147-remove-cortex-disabled-noop-path.md) | PR-146 | Cortex required invariant | 0.5-1 d | Runtime/common tests passed; deployed via `./deploy runtime` |
 | PR-148 | `[deployed]` | [Remove LLM Factory Model Fallback / Failover Branch](PR-148-remove-llm-factory-model-fallback.md) | PR-147 | LLM determinism | 0.25-0.5 d | Factory tests passed; deployed; smoke log `a10a8ef1-a543-4eb3-b477-20a2d68f39f9` |
 | PR-149 | `[x]` | [Retire Business Notebook / Quadrant Task / Drive Profile Surfaces](PR-149-retire-business-notebook-task-drive-surfaces.md) | PR-148 | Product-surface cleanup | 0.5-1.5 d | closed |
-| PR-150 | `[ ]` | [Remove App Deprecated Compatibility Shells](PR-150-remove-app-deprecated-compat-shells.md) | PR-149 | App path cleanup | 0.5-1 d | __ |
+| PR-150 | `[x]` | [Remove App Deprecated Compatibility Shells](PR-150-remove-app-deprecated-compat-shells.md) | PR-149 | App path cleanup | 0.5-1 d | 2026-05-01 |
 | PR-151 | `[ ]` | [Remove Device Binding Legacy Compatibility](PR-151-remove-device-binding-legacy-compat.md) | PR-150 | Device contract cleanup | 0.5-1 d | __ |
 
 
