@@ -17,10 +17,12 @@ GATEWAY_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 echo "=== 部署 Gateway 到 $TARGET ==="
 echo "源目录: $GATEWAY_DIR"
 
-# 1. rsync 代码（排除 .git、__pycache__、.venv）
+# 1. rsync 代码（排除 .git、__pycache__、.pytest_cache、.mypy_cache、.venv）
 rsync -avz --delete \
   --exclude '.git' \
   --exclude '__pycache__' \
+  --exclude '.pytest_cache' \
+  --exclude '.mypy_cache' \
   --exclude '*.pyc' \
   --exclude '.venv' \
   --exclude '.env' \
