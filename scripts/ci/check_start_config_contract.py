@@ -1,16 +1,70 @@
 #!/usr/bin/env python3
-"""Guard that start.sh uses common.strict_config instead of mirrored config logic."""
+"""Guard the deploy/start/config boundary.
+
+This script intentionally lives in the root repo because the risky residue is
+cross-cutting: old root deploy scripts, current docs, runtime env switches, and
+the shipped services.json all need to agree on one active path.
+"""
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 START_SH = ROOT / "scripts" / "start.sh"
+SERVICES_JSON = ROOT / "novaic-common" / "config" / "services.json"
+
+ALLOWED_RUNTIME_SWITCHES = {
+    "health_check_interval_seconds",
+    "scheduler_poll_interval_seconds",
+}
+
+RETIRED_FILES = [
+    "scripts/start-all.sh",
+    "scripts/deploy-all.sh",
+    "scripts/deploy-business.sh",
+    "scripts/canary/traffic.py",
+    "scripts/gateway/deploy-gateway.sh",
+    "scripts/gateway/jwt_secret.env.example",
+    "scripts/submodules/novaic-gateway/deploy-gateway.sh",
+    "docs/runbooks/subscriber-canary.md",
+]
+
+RETIRED_TEXT = [
+    "WAKE_TURN_FINALIZER_ENABLED",
+    "WAKE_TURN_CLOSER_TOOLS",
+    "scripts/start-all.sh",
+    "start-all.sh",
+    "scripts/deploy-business.sh",
+    "deploy-business.sh",
+    "scripts/deploy-all.sh",
+    "deploy-all.sh",
+    "scripts/gateway/deploy-gateway.sh",
+    "jwt_secret.env",
+    "restart_gw.sh",
+    "docs/runbooks/subscriber-canary.md",
+]
+
+CURRENT_TEXT_TARGETS = [
+    "deploy",
+    "scripts",
+    "docs/architecture",
+    "docs/reference",
+    "docs/runbooks",
+    "novaic-agent-runtime/task_queue",
+    "novaic-agent-runtime/tests",
+    "novaic-common/common",
+    "novaic-common/config",
+    "novaic-common/tests",
+    "novaic-app/scripts",
+]
 
 
 def main() -> int:
+    errors: list[str] = []
+
     source = START_SH.read_text(encoding="utf-8")
 
     required = [
@@ -28,13 +82,52 @@ def main() -> int:
     present = [needle for needle in banned if needle in source]
     if missing or present:
         if missing:
-            print("start.sh config contract missing required strict_config markers:", file=sys.stderr)
+            errors.append("start.sh config contract missing required strict_config markers:")
             for needle in missing:
-                print(f"  - {needle}", file=sys.stderr)
+                errors.append(f"  - {needle}")
         if present:
-            print("start.sh config contract reintroduced mirrored overlay logic:", file=sys.stderr)
+            errors.append("start.sh config contract reintroduced mirrored overlay logic:")
             for needle in present:
-                print(f"  - {needle}", file=sys.stderr)
+                errors.append(f"  - {needle}")
+
+    retired_present = [path for path in RETIRED_FILES if (ROOT / path).exists()]
+    if retired_present:
+        errors.append("retired deploy/config files still exist:")
+        errors.extend(f"  - {path}" for path in retired_present)
+
+    services = json.loads(SERVICES_JSON.read_text(encoding="utf-8"))
+    runtime_keys = set((services.get("runtime_switches") or {}).keys())
+    if runtime_keys != ALLOWED_RUNTIME_SWITCHES:
+        errors.append(
+            "runtime_switches allowlist mismatch: "
+            f"expected {sorted(ALLOWED_RUNTIME_SWITCHES)}, got {sorted(runtime_keys)}"
+        )
+
+    for rel in CURRENT_TEXT_TARGETS:
+        path = ROOT / rel
+        if not path.exists():
+            continue
+        paths = [path] if path.is_file() else [p for p in path.rglob("*") if p.is_file()]
+        for file_path in paths:
+            if file_path.resolve() == Path(__file__).resolve():
+                continue
+            if ".git" in file_path.parts:
+                continue
+            try:
+                text = file_path.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                continue
+            for needle in RETIRED_TEXT:
+                if needle in text:
+                    errors.append(
+                        f"retired deploy/config residue {needle!r} found in "
+                        f"{file_path.relative_to(ROOT)}"
+                    )
+
+    if errors:
+        print("start_config_contract FAILED", file=sys.stderr)
+        for err in errors:
+            print(err, file=sys.stderr)
         return 1
 
     print("start_config_contract OK")

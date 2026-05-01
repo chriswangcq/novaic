@@ -173,7 +173,7 @@ Gateway 完成微服务拆分（2026-04-14）：
 
 ## 13. ~~两套启动脚本不统一~~ ✅ 已收口
 
-`scripts/start-all.sh` 已删除。当前只保留两类入口：
+旧的根目录开发启动脚本已删除。当前只保留两类入口：
 
 - 生产：仓库根 `./deploy` 同步代码，服务器端 `/opt/novaic/start.sh` 统一启动完整后端。
 - 本地：`novaic-app/scripts/start-backends.sh` 用于桌面开发联调。
