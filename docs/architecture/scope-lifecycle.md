@@ -73,35 +73,33 @@ POST /v1/messages/{message_id}/transition
 
 写入方式：`POST /v1/scope/append_input` （Cortex），幂等去重合并。
 
-### 2.1 三种触发路径下的写入责任
+### 2.1 三种触发路径下的写入责任（当前权威）
 
 | Queue Service action | 谁来写 input_message_ids？                                          |
 |----------------------|---------------------------------------------------------------------|
 | `saga_started`       | Agent Runtime 的 `handle_session_init`（消息 ID 通过 saga context → session_init payload 流入） |
-| `buffered`           | `DispatchSubscriber._try_append_scope_input`（Queue 在 buffered 响应里回带 `scope_id`，Subscriber 拿到后追加） |
-| `deduped`            | 跳过（幂等键的胜者已经登记过了，重复写入是 no-op，但会污染指标）   |
+| `buffered`           | Queue 只把消息 ID 保存在 `tq_pending_triggers.metadata.message_ids`；当前 active scope 不拥有这条输入。等旧 wake `session_ended` 后，重启的新 wake 在 `handle_session_init` 里写入 |
+| `deduped`            | 跳过（幂等键的胜者负责登记）   |
 
-Subscriber 这一段是 **soft-fail**：写 Cortex 失败只 WARN，不阻断 outbox 主循环——因为 Cortex 的 `append_input` 本身幂等，HealthWorker recovery 后续仍能重放。
+Subscriber 不写 Cortex `append_input`。它只负责 outbox → Queue dispatch 和 outbox delivered/failed 标记；输入归属统一在 Runtime `session_init` 完成。
 
 ### 2.2 这条链解决的问题
 
-PR-20 之前，`buffered` 分发只回 `{"action": "buffered"}`，Subscriber 拿不到 scope_id；要追问"这条消息到底进了哪个 scope"，需要二次 `GET /api/queue/sessions` 去推断，且推断结果在并发场景下不可信。PR-20 之后：
+当前链路：
 
 ```
 DispatchRequest.message_ids
     ↓
-Queue Service tq_active_sessions.metadata
-    ↓
-saga_context (**metadata spread)
+Queue Service saga_context 或 tq_pending_triggers.metadata
     ↓
 session_init payload.message_ids
     ↓
-bridge.append_scope_input → Cortex
+Runtime bridge.append_scope_input → Cortex
     ↓
 scope.meta.input_message_ids ← 唯一的反向索引来源
 ```
 
-任何环节断了，PR-26 的孤儿扫描会立刻看到"这条消息 lifecycle=claimed 但找不到对应 scope"，可以单点定位。
+`buffered` 的关键不变量：消息没有进入已运行的旧 wake；它属于旧 wake 关闭后重启的新 wake。否则旧 wake finalize 可能在模型还没看到消息前把它 `consumed` 掉。
 
 ---
 
@@ -109,30 +107,29 @@ scope.meta.input_message_ids ← 唯一的反向索引来源
 
 PR-21 只搭好了状态机的骨架（枚举 + transition 入口 + CI 守门）。**真正让流量里的每条消息走完 `pending → claimed → consumed` 这条主干**的动作分两步：
 
-### 3.1 PR-22 — `dispatch_ok → claimed`
+### 3.1 `session_init → claimed`
 
-**写入者**：`DispatchSubscriber._try_transition_claimed`
-（`novaic-business/business/subscribers/dispatch_subscriber.py`）
+**写入者**：`handle_session_init` → `BusinessClient.bulk_transition_messages`
+（`novaic-agent-runtime/task_queue/handlers/runtime_handlers.py`）
 
-subscriber 成功把一条 outbox 行 dispatch 给 Queue 后，拿着 Queue 返回的 `result.scope_id` 调：
+Runtime 创建 wake scope 并写入 `scope.meta.input_message_ids` 后，立刻把这些消息 claim 到该 wake scope：
 
 ```
-POST /v1/messages/{message_id}/transition
-{"to": "claimed", "scope_id": "<scope>", "reason": "subscriber_dispatch:saga_started"}
+POST /internal/messages/bulk-transition
+{"message_ids": [...], "to": "claimed", "scope_id": "<scope>", "reason": "session_init"}
 ```
 
 三种 Queue action 的处理：
 
 | action         | transition 行为 |
 |----------------|----------------|
-| `saga_started` | claim 到新 saga 的 scope_id |
-| `buffered`     | claim 到已 active 的 scope_id（PR-20 起 buffered 也回带 scope_id） |
-| `deduped`      | 不 transition——幂等键的胜者已经 claim 过 |
+| `saga_started` | `session_init` claim 到新 wake scope |
+| `buffered`     | 本轮只进 pending trigger；旧 wake `session_ended` 后重启的新 `session_init` claim |
+| `deduped`      | 不 transition——幂等键的胜者负责 claim |
 
 **软失败策略**：
-- 409 (InvalidTransition) → INFO 日志，继续走。通常是 HealthWorker recovery 或前一次重试已经 claim 了。
-- 404 (MessageNotFound) → WARN 日志。这条 message 被外部删掉了。
-- 网络 / 5xx → WARN 日志。outbox 已标记 delivered，dispatch 本身是成功的；孤儿扫描（PR-26）会用 `delivered_at IS NOT NULL AND lifecycle='pending'` 的 join 兜底。
+- Runtime 的 bulk-transition soft-fail：wake 已经启动，失败只记录 WARN；健康扫描/恢复路径继续兜底。
+- Subscriber 不再拥有 claimed 写入，因此不会因为 outbox retry 给历史消息拉起错误的新 claimed scope。
 
 ### 3.2 PR-23 — `scope_end → consumed`
 
@@ -265,4 +262,3 @@ PR-26 前，一条 dispatched 但没进 saga 的 message 会永远停在 `pendin
 - 300s 后 PR-27 自动尝试 re-dispatch（最多 3 次）
 - 超过 3 次自动打 `PERMANENT_ORPHAN`，这时日志里一定有 3 条带
   `recovered_dispatched_failed` 的记录 + `outbox.last_error` 的具体原因。
-
