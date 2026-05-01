@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[open]` |
+| Status | `[deployed]` |
 | Owner | Codex |
 | Parent | [PR-156](PR-156-deploy-config-overlay-residue-review.md) |
 | Repos | novaic-agent-runtime |
@@ -15,20 +15,20 @@ closes the current wake scope with `skill_end(report=...)`.
 
 ## Scope
 
-- Remove `WAKE_TURN_FINALIZER_ENABLED`.
-- Remove `WAKE_TURN_CLOSER_TOOLS`.
-- Update unit tests to assert fixed behavior instead of testing fallback knobs.
-- Remove comments/docs that describe the retired rollback lever as active.
+- [x] Remove `WAKE_TURN_FINALIZER_ENABLED`.
+- [x] Remove `WAKE_TURN_CLOSER_TOOLS`.
+- [x] Update unit tests to assert fixed behavior instead of testing fallback knobs.
+- [x] Remove comments/docs that describe the retired rollback lever as active.
 
 ## Tests / Guardrails
 
-- Run `novaic-agent-runtime` turn-finalizer tests.
-- Add/extend lint to fail if retired wake finalizer env names return.
+- [x] `python3 -m pytest tests/test_pr48_turn_finalizer.py tests/test_runtime_tool_path_contract.py -q`
+- [ ] Add/extend lint to fail if retired wake finalizer env names return. Covered in PR-156C.
 
 ## Smoke / Deploy
 
-- Deploy runtime after tests.
-- Verify `./deploy status`.
+- [x] Deploy runtime after tests.
+- [ ] Verify `./deploy status` after the PR-156 batch.
 
 ## Git
 

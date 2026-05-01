@@ -36,7 +36,7 @@ For this big ticket:
 ## Small Tickets
 
 - [x] [PR-156A — Remove obsolete deploy/start entrypoints](PR-156A-remove-obsolete-deploy-start-entrypoints.md)
-- [ ] [PR-156B — Remove wake finalizer env branch switches](PR-156B-remove-wake-finalizer-env-switches.md)
+- [x] [PR-156B — Remove wake finalizer env branch switches](PR-156B-remove-wake-finalizer-env-switches.md)
 - [ ] [PR-156C — Add deploy/config overlay guardrail](PR-156C-add-deploy-config-overlay-guardrail.md)
 
 ## Current-State Analysis
