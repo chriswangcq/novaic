@@ -195,6 +195,11 @@
 | PR-144 | `[deployed]` | [Prompt / Memory / Summary Residue Scan](PR-144-prompt-memory-summary-residue-scan.md) | PR-143 | Cortex minimality | 0.25-0.5 d | Prompt product-context boundary cleaned; tests added |
 | PR-145 | `[deployed]` | [Entangled Schema and Config SSOT Residue Scan](PR-145-entangled-schema-config-ssot-residue-scan.md) | PR-144 | Entangled/config SSOT | 0.25-0.5 d | Generated entity-id pipeline deleted; SSOT guard added |
 | PR-146 | `[deployed]` | [Documentation and Runbook Archaeology Residue Scan](PR-146-documentation-runbook-archaeology-residue-scan.md) | PR-145 | Docs cleanup | 0.5 d | Current docs rewritten; residue lint added |
+| PR-147 | `[ ]` | [Remove Cortex Disabled / No-op Runtime Path](PR-147-remove-cortex-disabled-noop-path.md) | PR-146 | Cortex required invariant | 0.5-1 d | __ |
+| PR-148 | `[ ]` | [Remove LLM Factory Model Fallback / Failover Branch](PR-148-remove-llm-factory-model-fallback.md) | PR-147 | LLM determinism | 0.25-0.5 d | __ |
+| PR-149 | `[ ]` | [Retire Business Notebook / Quadrant Task / Drive Profile Surfaces](PR-149-retire-business-notebook-task-drive-surfaces.md) | PR-148 | Product-surface cleanup | 0.5-1.5 d | __ |
+| PR-150 | `[ ]` | [Remove App Deprecated Compatibility Shells](PR-150-remove-app-deprecated-compat-shells.md) | PR-149 | App path cleanup | 0.5-1 d | __ |
+| PR-151 | `[ ]` | [Remove Device Binding Legacy Compatibility](PR-151-remove-device-binding-legacy-compat.md) | PR-150 | Device contract cleanup | 0.5-1 d | __ |
 
 
 ---
