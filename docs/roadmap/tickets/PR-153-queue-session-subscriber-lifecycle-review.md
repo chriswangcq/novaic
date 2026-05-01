@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[open]` |
+| Status | `[closed]` |
 | Owner | Codex |
 | Created | 2026-05-01 |
 | Repos | novaic-business, novaic-agent-runtime, docs |
@@ -36,9 +36,9 @@ For this big ticket:
 
 ## Small Tickets
 
-- [ ] [PR-153A — Remove Subscriber Switch Residue](PR-153A-remove-subscriber-switch-residue.md)
-- [ ] [PR-153B — Centralize Buffered Input Ownership](PR-153B-centralize-buffered-input-ownership.md)
-- [ ] [PR-153C — Lifecycle Loop Guardrail](PR-153C-lifecycle-loop-guardrail.md)
+- [x] [PR-153A — Remove Subscriber Switch Residue](PR-153A-remove-subscriber-switch-residue.md)
+- [x] [PR-153B — Centralize Buffered Input Ownership](PR-153B-centralize-buffered-input-ownership.md)
+- [x] [PR-153C — Lifecycle Loop Guardrail](PR-153C-lifecycle-loop-guardrail.md)
 
 ## Current-State Analysis
 
@@ -50,21 +50,36 @@ For this big ticket:
 4. Residue: active subscriber comments still mention the old `subscriber_enabled` switch.
 5. Real ownership bug: Subscriber still writes Cortex `/v1/scope/append_input` on buffered dispatches and transitions buffered messages to `claimed` for the active scope. That makes the old scope appear to own messages that should belong to the next wake produced by the pending trigger.
 
+2026-05-02 closure:
+
+1. Subscriber switch/disabled residue is removed from active code and guarded by `scripts/ci/lint_agent_loop_path.sh`.
+2. Subscriber no longer writes Cortex scope input or message lifecycle claimed transitions. It drains outbox rows into Queue and marks outbox delivery/failure only.
+3. Queue pending triggers now merge `message_ids` across overwrites and also buffer concurrent active-session insert losers instead of returning `deduped`.
+4. Runtime `session.init` is the single owner for wake input registration and `claimed` transitions.
+5. `scripts/ci/lint_lifecycle_loop_ownership.sh` guards this ownership split and also runs the existing `chat_messages.read` UI-only lint.
+
 ## Unit / Guardrail Tests
 
-- [ ] Add tests or guardrails for any removed duplicate lifecycle paths.
-- [ ] Confirm subscriber is required path, not optional/canary.
-- [ ] Confirm pending trigger/session serialization invariants.
+- [x] Add tests or guardrails for any removed duplicate lifecycle paths.
+- [x] Confirm subscriber is required path, not optional/canary.
+- [x] Confirm pending trigger/session serialization invariants.
 
 ## Smoke / Deploy
 
-- [ ] Smoke user message -> subscriber -> queue -> agent reply.
-- [ ] Smoke quick consecutive messages do not create competing active sessions.
-- [ ] Deploy affected services.
+- [x] Smoke user message -> subscriber -> queue -> agent reply.
+- [x] Smoke quick consecutive messages do not create competing active sessions.
+- [x] Deploy affected services.
 
 ## Git / Merge
 
-- [ ] Each small ticket can be committed independently where practical.
-- [ ] Parent repo submodule bump / docs commit.
+- [x] Each small ticket can be committed independently where practical.
+- [x] Parent repo submodule bump / docs commit.
 - [ ] Push `main`.
-- [ ] Mark `[deployed]` only after deploy evidence is collected.
+- [x] Mark `[deployed]` only after deploy evidence is collected.
+
+## Evidence
+
+- PR-153A: `scripts/ci/lint_agent_loop_path.sh` passed; subscriber tests passed; deployed with required Subscriber process.
+- PR-153B: Business subscriber/aggregation/stale-claim tests passed; Runtime session/context/scope tests passed; Cortex suite passed; deployed.
+- PR-153C: lifecycle ownership lint passed; Business lifecycle guard tests passed; Runtime concurrent dispatch serialization tests passed; deployed.
+- Final deploy smoke: `./deploy gateway` and `./deploy status` show Entangled, Gateway, Business, Device, Queue, Storage, Cortex, Workers, Subscriber, and relay healthy.
