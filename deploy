@@ -18,7 +18,7 @@ FACTORY_HOST="root@newapi.gradievo.com"
 FACTORY_SSH="ssh $FACTORY_HOST"
 VERSION="${2:-0.3.0}"
 SERVICES_DIR="/opt/novaic/services"
-RSYNC_EXCLUDE="--exclude .git --exclude __pycache__ --exclude .pytest_cache --exclude '*.pyc' --exclude target --exclude .venv --exclude node_modules --exclude '*.db'"
+RSYNC_EXCLUDE="--exclude .git --exclude __pycache__ --exclude .pytest_cache --exclude .mypy_cache --exclude '*.pyc' --exclude target --exclude .venv --exclude node_modules --exclude '*.db'"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -38,7 +38,7 @@ rsync_service() {
   [ -d "$local_dir" ] || fail "本地目录不存在: $local_dir"
   info "同步 $name..."
   # Clean stale Python/test caches first so --delete can remove empty parent dirs.
-  $API_SSH "find $SERVICES_DIR/$name -type d \( -name __pycache__ -o -name .pytest_cache \) -exec rm -rf {} + 2>/dev/null" || true
+  $API_SSH "find $SERVICES_DIR/$name -type d \( -name __pycache__ -o -name .pytest_cache -o -name .mypy_cache \) -exec rm -rf {} + 2>/dev/null" || true
   rsync -avzL --delete $RSYNC_EXCLUDE -e ssh "$local_dir/" "$API_HOST:$SERVICES_DIR/$name/" || fail "rsync $name 失败"
 }
 
