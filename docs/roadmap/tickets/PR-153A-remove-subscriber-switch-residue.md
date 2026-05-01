@@ -29,7 +29,7 @@ The product loop is now subscriber-owned. Any active comment, deployment note, o
 
 ## Smoke / Deploy / Git
 
-- [ ] Smoke subscriber process starts as required under `./deploy gateway`.
-- [ ] Deploy affected services if code changes are made.
+- [x] Smoke subscriber process starts as required under `./deploy gateway`.
+- [x] Deploy affected services if code changes are made.
 - [x] Commit affected repos: `novaic-business` `661945d business: remove subscriber switch residue`.
-- [ ] Parent repo submodule/docs commit and push.
+- [x] Parent repo submodule/docs commit and push.
