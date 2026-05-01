@@ -8,7 +8,7 @@
 | **Owner** | __ |
 | **Severity** | P1 observability / UI correctness — Entangled sync works, but execution-log rows are too thin for the App to render without guessing from `event_key`. |
 | **Depends on** | PR-78+ active wake scope path stable. |
-| **Blocks** | PR-87, PR-88, PR-89, PR-90. |
+| **Blocks** | PR-88, PR-89, PR-90. |
 | **Invariant** | Entangled carries lightweight execution metadata only; heavy payloads remain lazy-fetched or owned by Cortex step result projection / LLM Factory. |
 
 ## Background
@@ -124,7 +124,7 @@ SELECT id,kind,status,event_key,data FROM execution_logs WHERE id IN (1096,1097)
 
 ```json
 {"id":1096,"kind":"think","status":"complete","data":{"type":"think","scope_id":"0f1af928-8f85-4ec4-b6c7-5648fbdf2819","round_id":"round-1","model":"kimi-k2.5","provider":"factory","message_count":11,"tool_count":9,"factory_log_id":"37c85675-36e6-4fbb-b6c4-da68d7b626a0"}}
-{"id":1097,"kind":"tool","status":"complete","data":{"type":"tool","scope_id":"0f1af928-8f85-4ec4-b6c7-5648fbdf2819","round_id":"round-1","tool_call_id":"chat_reply:0","tool":"chat_reply","result_id":"trs:0f1af928-8f85-4ec4-b6c7-5648fbdf2819:round1:chat_reply:0"}}
+{"id":1097,"kind":"tool","status":"complete","data":{"type":"tool","scope_id":"0f1af928-8f85-4ec4-b6c7-5648fbdf2819","round_id":"round-1","tool_call_id":"chat_reply:0","tool":"chat_reply","result_id":"step-result:0f1af928-8f85-4ec4-b6c7-5648fbdf2819:round1:chat_reply:0"}}
 ```
 
 ## Deployment Checklist

@@ -18,7 +18,7 @@ Physically remove the old, unused diagnostics UI path from the App component:
 
 - no hidden LLM input/debug modal path;
 - no hidden raw JSON / `SmartValue` diagnostics blocks;
-- no hidden TRS / Factory drilldown from the Agent Monitor row;
+- no hidden Factory or raw technical drilldown from the Agent Monitor row;
 - no dead imports, helper types, helper components, or local state that only supported the removed diagnostics path.
 
 ## Non-Goals
@@ -31,7 +31,7 @@ Physically remove the old, unused diagnostics UI path from the App component:
 ## Implementation Checklist
 
 - [x] Remove unused LLM debug modal code from `ExecutionLog.tsx`.
-- [x] Remove unused TRS/debug renderer helpers from `ExecutionLog.tsx`.
+- [x] Remove unused debug renderer helpers from `ExecutionLog.tsx`.
 - [x] Remove `showDeveloperDiagnostics` and all hidden diagnostic branches.
 - [x] Remove unused imports and local state from `LogCard`.
 - [x] Keep expanded rows deterministic and monitor-only.
@@ -41,7 +41,7 @@ Physically remove the old, unused diagnostics UI path from the App component:
 
 - [x] Component test: expanded think row still shows `思考摘要` and no Factory/debug labels.
 - [x] Component test: expanded `chat_reply` still shows `回复内容` and no result/debug labels.
-- [x] Component test: expanded `skill_end` still shows `上下文摘要` and no TRS/debug labels.
+- [x] Component test: expanded `skill_end` still shows `上下文摘要` and no debug labels.
 - [x] Component test: failed row still shows human failure summary and no diagnostic labels.
 
 ## Smoke Test

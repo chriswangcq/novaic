@@ -86,7 +86,7 @@ npm --prefix novaic-app run test:unit -- \
 Production success smoke captured 2026-04-29:
 
 ```json
-{"id":1097,"kind":"tool","status":"complete","data":{"tool":"chat_reply","result_id":"trs:0f1af928-8f85-4ec4-b6c7-5648fbdf2819:round1:chat_reply:0"}}
+{"id":1097,"kind":"tool","status":"complete","data":{"tool":"chat_reply","result_id":"step-result:0f1af928-8f85-4ec4-b6c7-5648fbdf2819:round1:chat_reply:0"}}
 {"running_count":0}
 ```
 
