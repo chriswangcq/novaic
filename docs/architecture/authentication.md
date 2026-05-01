@@ -19,7 +19,7 @@
 | Access TTL | 60 分钟 |
 | Refresh TTL | 30 天（轮换） |
 | 前端刷新 | 距过期 &lt; 5 分钟自动 `/auth/refresh`；约每 55 分钟推送 Rust |
-| 密钥 | 生产 `JWT_SECRET` 在 `/opt/novaic/jwt_secret.env` |
+| 密钥 | 生产 `secrets.jwt_secret` 来自 `novaic-common/config/services.json` |
 
 ## 多租户隔离
 

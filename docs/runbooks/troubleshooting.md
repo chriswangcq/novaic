@@ -12,7 +12,7 @@
 | **UI 冻结 / Device tab 卡死** | `getCachedUser()` 每次新对象 → useEffect 死循环 | 依赖改为 **userId 字符串** |
 | **宽屏消息不可见** | opacity-0 + `h-full` 高度为 0 | `flex-1 min-h-0` |
 | Gateway 无响应 | WAL/SHM 损坏 | 停服务后删 `*.db-wal` / `*.db-shm`（谨慎） |
-| Gateway 500 | `JWT_SECRET` 未设置 | 检查 `jwt_secret.env` |
+| Gateway 500 | `secrets.jwt_secret` 未设置或配置加载失败 | 检查 `novaic-common/config/services.json` 与服务启动日志 |
 | Gateway 写锁 | 写未在 transaction | `with db.transaction("global")` |
 | Port **1420** 占用 | 上次 dev 未退出 | `kill $(lsof -ti:1420)` |
 | App 一直 Connecting | pushToken 顺序 | 先 `await pushToken()` 再 initialize |

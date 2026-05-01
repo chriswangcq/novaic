@@ -171,16 +171,14 @@ Gateway 完成微服务拆分（2026-04-14）：
 
 ---
 
-## 13. 两套启动脚本不统一（P2）
+## 13. ~~两套启动脚本不统一~~ ✅ 已收口
 
-| 脚本 | 定位 | 差异 |
-|------|------|------|
-| `scripts/start.sh` | 生产级 | 完整 10 个服务，动态读 `services.json`，CLI 传参 |
-| `scripts/start-all.sh` | 开发级 | 硬编码 URL，只启动部分服务，不走 `services.json` |
+`scripts/start-all.sh` 已删除。当前只保留两类入口：
 
-开发者用 `start-all.sh` 启动后发现端口/配置与 `services.json` 不匹配，调试困难。
+- 生产：仓库根 `./deploy` 同步代码，服务器端 `/opt/novaic/start.sh` 统一启动完整后端。
+- 本地：`novaic-app/scripts/start-backends.sh` 用于桌面开发联调。
 
-**行动项：** 统一为一个脚本 + `--dev` flag（dev 模式省略 OSS/外部依赖），或将 `start-all.sh` 改为调用 `start.sh` 的 wrapper。
+不再维护第二套会绕过 `services.json` 的根目录启动脚本。
 
 ---
 

@@ -8,8 +8,7 @@ matches="$(
   rg -n \
     "generate_entity_types|check_entity_store_pk|sync_entity_id_fields|export_entity_id_fields|generated_entity_id_fields|__generated__|subscriber_enabled|Subscriber: disabled|Runtime Orchestrator.*argparse|--runtime-orchestrator-url" \
     docs/architecture docs/runtime docs/runbooks docs/roadmap/model-entity-refactor.md \
-    --glob '!docs/architecture/gateway-decomposition-roadmap.md' \
-    --glob '!docs/runbooks/subscriber-canary.md' || true
+    --glob '!docs/architecture/gateway-decomposition-roadmap.md' || true
 )"
 
 if [[ -n "$matches" ]]; then

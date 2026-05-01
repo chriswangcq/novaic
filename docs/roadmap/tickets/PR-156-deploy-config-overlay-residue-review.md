@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[open]` |
+| Status | `[in-progress]` |
 | Owner | Codex |
 | Created | 2026-05-01 |
 | Repos | root deploy scripts, novaic-common, service repos, docs |
@@ -35,7 +35,31 @@ For this big ticket:
 
 ## Small Tickets
 
-- [ ] To be created after current-state analysis.
+- [x] [PR-156A — Remove obsolete deploy/start entrypoints](PR-156A-remove-obsolete-deploy-start-entrypoints.md)
+- [ ] [PR-156B — Remove wake finalizer env branch switches](PR-156B-remove-wake-finalizer-env-switches.md)
+- [ ] [PR-156C — Add deploy/config overlay guardrail](PR-156C-add-deploy-config-overlay-guardrail.md)
+
+## Current-State Analysis
+
+Active production deployment is the repo-root `./deploy` script plus the server-side
+`scripts/start.sh`. `scripts/start.sh` already delegates configuration loading to
+`common.strict_config.load_services_config()` and no longer mirrors overlay merge
+logic in shell.
+
+Residue found during review:
+
+- Obsolete entrypoints still exist: `scripts/start-all.sh`,
+  `scripts/deploy-all.sh`, `scripts/deploy-business.sh`,
+  `scripts/gateway/deploy-gateway.sh`, and mirrored copies under
+  `scripts/submodules/`.
+- Current runbooks still mention `scripts/start-all.sh`,
+  `/opt/novaic/jwt_secret.env`, and manual `restart_gw.sh` style flows.
+- Runtime still exposes `WAKE_TURN_FINALIZER_ENABLED` and
+  `WAKE_TURN_CLOSER_TOOLS`, which can silently alter the current wake finalize
+  behavior outside the Cortex scope contract.
+- Existing `check_start_config_contract.py` verifies `scripts/start.sh` uses
+  `strict_config`, but does not yet ban retired deploy files or retired wake
+  switches.
 
 ## Unit / Guardrail Tests
 
