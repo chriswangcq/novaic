@@ -41,7 +41,7 @@
 | 代码路径 | `/opt/novaic/services/novaic-gateway`                                              |
 | 数据目录 | `/opt/novaic/data/`                                                                |
 | 数据库  | `/opt/novaic/data/gateway.db` (SQLite)                                             |
-| 依赖   | `/opt/novaic/jwt_secret.env` 含 `JWT_SECRET`、`TURN_SECRET`、`FRONTEND_CDN_URL`       |
+| 配置   | `/opt/novaic/services/novaic-common/config/services.json`；可选运行时覆盖 `/opt/novaic/etc/runtime_switches.json` |
 | 日志   | `tail -f /opt/novaic/data/logs/gateway-$(date +%Y%m%d).log`；App WS：`grep -E 'AppWS |
 
 
@@ -74,13 +74,13 @@
 
 **部署**：`./deploy relay`（或手动 pull + `cargo build` + `systemctl restart`）
 
-**前端热更新示例**：
+**前端热更新**：
 
 ```bash
-cd novaic-app && VITE_BASE="/resource/frontend/v0.3.0/" npm run build
-rsync -avz --delete -e "ssh -p 52222" dist/ root@47.243.221.45:/opt/novaic/static/v0.3.0/
-# jwt_secret.env: FRONTEND_CDN_URL=https://relay.gradievo.com/resource/frontend/v0.3.0/
+./deploy frontend 0.3.0
 ```
+
+客户端通过 Gateway `/api/config/frontend` 获取 OTA URL；Gateway 的生产值来自 `services.json`，不再走 `jwt_secret.env`。
 
 **OTA 三处同步**（新增 CDN 域名须同时改）：
 
