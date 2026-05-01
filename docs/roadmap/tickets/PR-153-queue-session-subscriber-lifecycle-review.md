@@ -36,7 +36,19 @@ For this big ticket:
 
 ## Small Tickets
 
-- [ ] To be created after current-state analysis.
+- [ ] [PR-153A — Remove Subscriber Switch Residue](PR-153A-remove-subscriber-switch-residue.md)
+- [ ] [PR-153B — Centralize Buffered Input Ownership](PR-153B-centralize-buffered-input-ownership.md)
+- [ ] [PR-153C — Lifecycle Loop Guardrail](PR-153C-lifecycle-loop-guardrail.md)
+
+## Current-State Analysis
+
+2026-05-02 scan found:
+
+1. Business FastAPI no longer owns the dispatch loop; `main_subscriber.py` is started as a required subprocess by `scripts/start.sh`.
+2. Queue Session Coordinator owns active sessions and pending triggers via `tq_active_sessions` and `tq_pending_triggers`.
+3. Runtime `wake_finalize` structurally closes the wake scope and calls Queue `/session-ended`.
+4. Residue: active subscriber comments still mention the old `subscriber_enabled` switch.
+5. Real ownership bug: Subscriber still writes Cortex `/v1/scope/append_input` on buffered dispatches and transitions buffered messages to `claimed` for the active scope. That makes the old scope appear to own messages that should belong to the next wake produced by the pending trigger.
 
 ## Unit / Guardrail Tests
 
