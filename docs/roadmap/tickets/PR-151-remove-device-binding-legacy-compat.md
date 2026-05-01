@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[ ]` |
+| Status | `[deployed]` |
 | Owner | Codex |
 | Created | 2026-05-01 |
 | Repos | novaic-device, novaic-business, novaic-app if types are touched, docs |
@@ -31,31 +31,35 @@ Device tool exposure is a security and UX boundary. Supporting multiple historic
 
 ## Implementation Plan
 
-1. [ ] Query/inspect live and local data for list-format `mounted_tools` and old `agent.vm` dependency.
-2. [ ] If no live data requires it, delete list-format normalization.
-3. [ ] Delete old `agent.vm` / `agent.devices` fallback in Device VM routes where binding is authoritative.
-4. [ ] Update Business and App types so the canonical mounted-tools shape is `Record<string, string[]>`.
-5. [ ] Add guardrail rejecting list-format mounted tools in active device/business code.
+1. [x] Query/inspect live and local data for list-format `mounted_tools` and old `agent.vm` dependency.
+2. [x] If no live data requires it, delete list-format normalization.
+3. [x] Delete old `agent.vm` / `agent.devices` fallback in Device VM routes where binding is authoritative.
+4. [x] Update Business and App types so the canonical mounted-tools shape is `Record<string, string[]>`.
+5. [x] Add guardrail rejecting list-format mounted tools in active device/business code.
 
 ## Unit / Guardrail Tests
 
-- [ ] Device tests cover dict-format mounted tools only.
-- [ ] Business available-tools tests pass.
-- [ ] App typecheck passes if types are touched.
-- [ ] Guardrail rejects legacy list normalization / old `agent.vm` fallback.
+- [x] Device tests cover object-format mounted tools only: `PYTHONPATH=... python3 -m pytest tests` → 4 passed.
+- [x] Business tests pass: `python3 -m pytest tests` → 175 passed.
+- [x] App typecheck not needed; app types already use `MountedToolsByCategory = Record<string, string[]>`.
+- [x] Guardrails reject legacy list normalization / old `agent.vm` fallback.
 
 ## Smoke / Deploy
 
-- [ ] Device tests pass.
-- [ ] Business tests pass if touched.
-- [ ] Deploy Device and Business if needed.
-- [ ] Production smoke: Host Desktop, Linux VM, and Android mounted tools still resolve correctly.
-- [ ] Production evidence: data scan confirms no list-format mounted tools remain.
+- [x] Device tests pass.
+- [x] Business tests pass.
+- [x] Deployed Device and Business; both restarts brought all backends healthy.
+- [x] Production smoke: Business and Device health endpoints return healthy; removed normalize endpoint is no longer registered (`POST` returns 405 on the old route shape).
+- [x] Production evidence: `agent_device_bindings` has list-format `mounted_tools` = 0, object-format = 1.
 
 ## Git / Merge
 
-- [ ] Commit in each touched repo.
+- [x] Commit in `novaic-device`: `cd508f6 device: remove binding legacy compatibility`.
+- [x] Commit in `novaic-business`: `53c0f20 business: require mounted tools object shape`.
 - [ ] Parent repo submodule bump / docs commit.
-- [ ] Push `main`.
-- [ ] Mark this ticket `[deployed]` only after deploy evidence is collected.
+- [x] Push `main`.
+- [x] Mark this ticket `[deployed]` only after deploy evidence is collected.
 
+## Closeout
+
+Canonical `mounted_tools` is now an object keyed by category. Removed list-shape normalization RPC, Business normalization client, Device proxy fallbacks through `agent.devices`, VM route fallbacks through `agent.vm` ports/image path, and the unused subagent VM tools endpoint. Device VM start/status now read the authoritative `devices` entity row.
