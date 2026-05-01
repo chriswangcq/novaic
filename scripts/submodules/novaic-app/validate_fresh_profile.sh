@@ -25,7 +25,7 @@ fi
 
 mkdir -p "$EVIDENCE_DIR"
 
-for port in 19993 19994 19995 19996 19997 19998 19999; do
+for port in 19993 19995 19996 19997 19998 19999; do
   lsof -ti ":${port}" | xargs kill -9 2>/dev/null || true
 done
 
@@ -91,7 +91,7 @@ METADATA_PATH="$EVIDENCE_DIR/fresh-profile-${RUN_LABEL}-metadata.txt"
   echo "timestamp_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 } > "$METADATA_PATH"
 
-for port in 19993 19994 19995 19996 19997 19998 19999; do
+for port in 19993 19995 19996 19997 19998 19999; do
   lsof -ti ":${port}" | xargs kill -9 2>/dev/null || true
 done
 

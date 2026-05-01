@@ -9,7 +9,7 @@
 | **Severity** | P1 observability / UI correctness — Entangled sync works, but execution-log rows are too thin for the App to render without guessing from `event_key`. |
 | **Depends on** | PR-78+ active wake scope path stable. |
 | **Blocks** | PR-87, PR-88, PR-89, PR-90. |
-| **Invariant** | Entangled carries lightweight execution metadata only; heavy payloads remain lazy-fetched or owned by TRS / LLM Factory. |
+| **Invariant** | Entangled carries lightweight execution metadata only; heavy payloads remain lazy-fetched or owned by Cortex step result projection / LLM Factory. |
 
 ## Background
 

@@ -184,6 +184,7 @@
 | PR-132 | `[code]`  | [Quarantine `audio_qa` until Runtime executor exists](PR-132-audio-qa-tool-quarantine.md) | PR-130 | Tool exposure cleanup | 0.25 d | Implemented, tested locally |
 | PR-133 | `[code]`  | [Remove common `notebook_*` and `task_*` tool residues](PR-133-remove-common-notebook-task-tools.md) | PR-132 | Old path cleanup | 0.25-0.5 d | Implemented, tested locally |
 | PR-134 | `[deployed]`  | [Retire TRS and keep Cortex step result projection](PR-134-retire-trs-step-result-projection.md) | PR-86..PR-98, PR-130..PR-133 | Old path cleanup | 0.5-1 d | Implemented, tested, deployed 2026-05-01 |
+| PR-135 | `[deployed]`  | [Delete TRS service residue](PR-135-delete-trs-service-residue.md) | PR-134 | Physical old-service cleanup | 0.25 d | Implemented, tested, deployed 2026-05-01 |
 
 
 ---
