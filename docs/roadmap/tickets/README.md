@@ -200,6 +200,11 @@
 | PR-149 | `[deployed]` | [Retire Business Notebook / Quadrant Task / Drive Profile Surfaces](PR-149-retire-business-notebook-task-drive-surfaces.md) | PR-148 | Product-surface cleanup | 0.5-1.5 d | 2026-05-01 |
 | PR-150 | `[deployed]` | [Remove App Deprecated Compatibility Shells](PR-150-remove-app-deprecated-compat-shells.md) | PR-149 | App path cleanup | 0.5-1 d | 2026-05-01 |
 | PR-151 | `[deployed]` | [Remove Device Binding Legacy Compatibility](PR-151-remove-device-binding-legacy-compat.md) | PR-150 | Device contract cleanup | 0.5-1 d | 2026-05-01 |
+| PR-152 | `[deployed]` | [Gateway / Business / Entangled Boundary Review](PR-152-gateway-business-entangled-boundary-review.md) | PR-151 | Boundary cleanup | multi-step | Closed: Gateway kept to edge boundary, Business file metadata explicit, stale AppBridge request permission removed |
+| PR-153 | `[open]` | [Queue / Session / Subscriber Lifecycle Review](PR-153-queue-session-subscriber-lifecycle-review.md) | PR-152 | Agent loop lifecycle cleanup | multi-step | Big ticket: analyze, create small tickets, implement to closure |
+| PR-154 | `[open]` | [Agent Monitor User-Facing Review](PR-154-agent-monitor-user-facing-review.md) | PR-153 | Agent Monitor product surface | multi-step | Big ticket: analyze, create small tickets, implement to closure |
+| PR-155 | `[open]` | [Runtime Tool Executor Coverage Review](PR-155-runtime-tool-executor-coverage-review.md) | PR-154 | Tool contract cleanup | multi-step | Big ticket: analyze, create small tickets, implement to closure |
+| PR-156 | `[open]` | [Deploy / Config Overlay Residue Review](PR-156-deploy-config-overlay-residue-review.md) | PR-155 | Deploy/config cleanup | multi-step | Big ticket: analyze, create small tickets, implement to closure |
 
 
 ---
