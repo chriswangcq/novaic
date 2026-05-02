@@ -240,6 +240,7 @@
 | PR-167 | `[open]` | [Environment Dedicated Domain Store](PR-167-environment-dedicated-domain-store.md) | PR-166 | Environment domain completion | multi-step | Big ticket: create dedicated Environment entities and move repository/service off message wrappers |
 | PR-167A | `[done]` | [Dedicated Environment Entity Schema and Contract Guardrails](PR-167A-environment-entity-schema-contracts.md) | PR-167 | Environment schema | 0.5 d | Dedicated Environment entities registered, tested, deployed |
 | PR-167B | `[done]` | [Dedicated Environment Repository Read/Write Path](PR-167B-environment-dedicated-repository.md) | PR-167A | Environment repository | 0.5-1 d | Repository moved to dedicated Environment entities; messages remain projection only |
+| PR-167C | `[done]` | [Environment Generic Event API and Lifecycle State Machine](PR-167C-environment-domain-service-state-machine.md) | PR-167B | Environment service | 0.5 d | Generic event + notification APIs added and tested |
 | PR-168 | `[open]` | [Environment Notification Queue Cutover](PR-168-environment-notification-queue-cutover.md) | PR-167 | Agent loop ownership | multi-step | Big ticket |
 | PR-169 | `[open]` | [App Cortex Activity Timeline Cutover](PR-169-app-cortex-activity-timeline-cutover.md) | PR-166, PR-168 preferred | Agent Monitor source of truth | multi-step | Big ticket |
 | PR-170 | `[open]` | [Payload Interpretation Tools](PR-170-payload-interpretation-tools.md) | PR-164 | Explicit observation interpretation | multi-step | Big ticket |
