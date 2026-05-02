@@ -21,14 +21,9 @@
 #   1. entangled/sql/message_state.py          (the helper itself)
 #   2. entangled/app/message_state.py          (HTTP wrapper)
 #   3. tests/                                   (every repo's test dir)
-#   4. scripts/gateway/backfill_*.py           (one-shot migrations
-#                                               that we audit by hand)
-#   5. docs/                                    (example SQL in markdown)
-#   6. docs/roadmap/tickets/PR-21-*            (the ticket itself shows
+#   4. docs/                                    (example SQL in markdown)
+#   5. docs/roadmap/tickets/PR-21-*            (the ticket itself shows
 #                                               the DDL / migration SQL)
-#   7. Two audited one-shot SQL migrations from PR-47/PR-51 that snapshot
-#      victims and manually append transition audit rows. Do not broaden
-#      this to scripts/migrations/ as a directory allowlist.
 # Anything else hitting the pattern needs justification and an allowlist
 # entry here. If you just need to transition a message, call
 # POST /v1/messages/{id}/transition instead.
@@ -49,11 +44,22 @@ ALLOWLIST=(
   'Entangled/packages/server-python/tests/'
   'tests/'
   'docs/'
-  'scripts/gateway/'
-  'scripts/migrations/047_cleanup_ancient_user_message_pending.sql'
-  'scripts/migrations/048_cleanup_stuck_claimed.sql'
   'scripts/ci/lint_lifecycle.sh'
 )
+
+RETIRED_FILES=(
+  'scripts/gateway/migrate_pr41_agent_reply_orphans.sh'
+  'scripts/migrations/047_cleanup_ancient_user_message_pending.sql'
+  'scripts/migrations/048_cleanup_stuck_claimed.sql'
+  'docs/runbooks/pr41-pr42-staging-verification.md'
+)
+
+for retired in "${RETIRED_FILES[@]}"; do
+    if [[ -e "$retired" ]]; then
+        echo "BAN: retired one-shot lifecycle cleanup entry still exists: $retired"
+        exit 1
+    fi
+done
 
 # rg -l: list files only; --pcre2: allow multiline spans if someone splits
 # the statement across two lines via a triple-quoted string. Restrict to
