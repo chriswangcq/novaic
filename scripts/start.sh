@@ -23,7 +23,7 @@
 #   Workers → Cortex    (scope/context/shell APIs)
 #   Entangled → Business (action hook callbacks)
 #   Business → Entangled (schema push, entity proxy, action hook handling)
-#   Subscriber → Entangled (message_outbox drain, required)
+#   Subscriber → Entangled (Environment notification drain, required)
 #   Gateway → App       (Entangled sync endpoint discovery only)
 #   Business → Device   (device action hook proxy)
 #   Device → Gateway    (WebRTC signaling via /api/app/push)
@@ -230,16 +230,15 @@ $PY $MAIN scheduler \
     >> "$LOG_DIR/scheduler.log" 2>&1 &
 
 # ── Dispatch Subscriber ──────────────────────────────────────────────────────
-# Required message_outbox drain. It is a standalone subprocess so a failed
-# drain loop is visible as a missing process instead of being hidden inside
-# Business's FastAPI lifespan.
+# Required Environment notification drain. It is a standalone subprocess so a
+# failed drain loop is visible as a missing process instead of being hidden
+# inside Business's FastAPI lifespan.
 PYTHONPATH="$BASE/Entangled/packages/server-python:$BASE/novaic-common:$BASE/novaic-business:${PYTHONPATH:-}" \
 $(py novaic-gateway) "$BASE/novaic-business/main_subscriber.py" \
     --data-dir "$DATA_DIR" \
     --entangled-url "$ENTANGLED_URL" \
     --business-url "$BIZ_URL" \
     --queue-service-url "$QS_URL" \
-    --cortex-url "$CORTEX_URL" \
     >> "$LOG_DIR/subscriber.log" 2>&1 &
 echo "  Subscriber: required (subprocess pid $!, logs: $LOG_DIR/subscriber-*.log)"
 
