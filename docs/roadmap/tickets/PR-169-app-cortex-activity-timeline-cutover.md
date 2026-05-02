@@ -26,13 +26,13 @@ Cortex `/v1/trace/project` now returns safe user-facing records. App Monitor sti
   - Smoke: local action handler smoke with a mocked Cortex response.
   - Deploy: deploy services after merge.
   - GitHub: committed and pushed in `novaic-business` (`24a2072`); parent pointer updated in the PR-169A parent commit.
-- [ ] PR-169B — App hook and component for Activity Timeline.
+- [x] PR-169B — App hook and component for Activity Timeline.
   - Analyze: current ChatPanel subscribes to Entangled `execution-logs` for the normal monitor.
   - Implement: add a hook that calls `agents.activity_timeline`; add a user-facing Activity Timeline component rendering Observation / Reasoning / Action / Summary records.
   - Test: hook/client mapper tests and component tests prove raw debug fields are not rendered.
   - Smoke: app build/unit tests.
   - Deploy: deploy app/services as needed.
-  - GitHub: commit, push, update parent submodule pointer.
+  - GitHub: committed and pushed in `novaic-app`; parent pointer updated in the PR-169B parent commit.
 - [ ] PR-169C — Default Agent Monitor uses Activity Timeline, not execution logs.
   - Analyze: `ChatPanel`, preview, expanded panel, and labels still say execution log.
   - Implement: switch default monitor and preview to Activity Timeline; keep execution log only behind explicit developer diagnostics if still needed.
