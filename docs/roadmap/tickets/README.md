@@ -214,6 +214,20 @@
 | PR-159 | `[deployed]` | [Business Product Context Boundary Review](PR-159-business-product-context-boundary-review.md) | PR-158 | Business/Cortex context boundary | multi-step | Closed via PR-159A: product-context wording, Runtime client, and Cortex boundary guardrails deployed |
 | PR-160 | `[open]` | [Online Entangled Data Shape Audit](PR-160-online-entangled-data-shape-audit.md) | PR-159 | Data shape cleanup | multi-step | Big ticket: analyze, create small tickets, implement to closure |
 | PR-161 | `[open]` | [No-Value Script and Runbook Cleanup](PR-161-no-value-script-runbook-cleanup.md) | PR-160 | Script/runbook cleanup | multi-step | Big ticket: analyze, create small tickets, implement to closure |
+| PR-162 | `[deployed]` | [Environment Domain and Storage Foundation](PR-162-environment-domain-storage-foundation.md) | PR-161 | Agent subject / environment foundation | multi-step | Closed: Common contract + Business repository/service deployed |
+| PR-162A | `[deployed]` | [Environment Contract and Invariant Test Matrix](PR-162A-environment-contract-invariants.md) | PR-162 | Environment contract | 0.25 d | Common contract deployed; 108 common tests passed |
+| PR-162B | `[deployed]` | [Environment Persistence Repository and Migrations](PR-162B-environment-persistence-repository.md) | PR-162A | Environment storage | 0.5-1 d | Business repository boundary deployed; hot path unchanged |
+| PR-162C | `[deployed]` | [Environment Domain Service and Lifecycle State Machine](PR-162C-environment-domain-service.md) | PR-162B | Environment service | 0.5-1 d | Business service boundary deployed |
+| PR-163 | `[deployed]` | [Runtime Environment Tool Integration](PR-163-runtime-environment-tool-integration.md) | PR-162 | LLM observation/action tools | multi-step | Environment IM tool integration completed and deployed |
+| PR-163A | `[deployed]` | [Environment Tool Schema Candidates](PR-163A-environment-tool-schema-candidates.md) | PR-163 | Environment tool schema | 0.25 d | Candidate schemas deployed; active tools unchanged |
+| PR-163B | `[deployed]` | [Runtime Executors for Environment IM Tools](PR-163B-runtime-environment-im-executors.md) | PR-163A | Environment tool executors | 0.5-1 d | Business internal API + Runtime candidate executors deployed; active tools unchanged |
+| PR-163C | `[deployed]` | [Environment Tool Exposure and Old Communication Tool Cleanup](PR-163C-environment-tool-cutover-cleanup.md) | PR-163B | Tool cutover cleanup | 0.5-1 d | Environment IM exposed; old direct communication tools removed |
+| PR-163C1 | `[deployed]` | [Activate Environment IM Tool Contracts](PR-163C1-activate-environment-im-tool-contracts.md) | PR-163B | Tool contract cutover | 0.25-0.5 d | Environment IM tools active in schema/executor/monitor contracts |
+| PR-163C2 | `[deployed]` | [Cut Prompt and Turn Semantics to Environment IM](PR-163C2-cut-prompt-turn-semantics-to-environment-im.md) | PR-163C1 | Prompt/runtime cutover | 0.5 d | Prompt/no-tool warning/turn closer now use Environment IM |
+| PR-163C3 | `[deployed]` | [Delete Superseded Direct Communication Tools](PR-163C3-delete-superseded-communication-tools.md) | PR-163C2 | Old path cleanup | 0.5-1 d | Old direct communication tool paths removed, deployed, and production-smoke verified |
+| PR-164 | `[open]` | [Cortex Observation and Payload Integration](PR-164-cortex-observation-payload-integration.md) | PR-163 | Work trajectory / perception record | multi-step | Big ticket: analyze, create small tickets, implement to closure |
+| PR-165 | `[open]` | [Notification Wake and Prompt Cutover](PR-165-notification-wake-prompt-cutover.md) | PR-164 | Agent loop / prompt boundary | multi-step | Big ticket: analyze, create small tickets, implement to closure |
+| PR-166 | `[open]` | [Activity Timeline Projection and Old Path Cleanup](PR-166-activity-timeline-old-path-cleanup.md) | PR-165 | User-facing monitor / entropy cleanup | multi-step | Big ticket: analyze, create small tickets, implement to closure |
 
 
 ---

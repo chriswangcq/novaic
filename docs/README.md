@@ -78,6 +78,9 @@
 | [technical-debt.md](roadmap/technical-debt.md)               | 已落地摘要、待办勾选  |
 | **[message-wake-refactor.md](roadmap/message-wake-refactor.md)** | **Message → Wake 重构实施清单（R1–R8 下沉）**，阶段化 checklist |
 | **[message-wake tickets/](roadmap/tickets/README.md)** | **Message → Wake 执行工单（每 PR 一文件）**，PR 粒度 checklist |
+| **[agent-perception-action-architecture.md](roadmap/agent-perception-action-architecture.md)** | **Agent Perception-Action 统一方案**：唯一主方案入口，统一 Environment、Observation/Percept、Cortex、Activity Timeline 和 payload interpretation |
+| **[agent-activity-timeline.md](roadmap/agent-activity-timeline.md)** | **Agent Activity Timeline 专题索引**：不复制方案，只保留 Agent Monitor 用户面关注点 |
+| **[agent-subject-environment-im.md](roadmap/agent-subject-environment-im.md)** | **Agent Subject / Environment IM 专题索引**：不复制方案，只保留 Environment IM 边界关注点 |
 | [model-entity-refactor.md](roadmap/model-entity-refactor.md) | Model 三实体方案 |
 | **[claude-code-comparison.md](roadmap/claude-code-comparison.md)** | **Claude Code 对比与迭代优先级** |
 | **[gateway-decomposition.md](roadmap/gateway-decomposition.md)** | **Gateway 职责膨胀分析与拆分路线** |
