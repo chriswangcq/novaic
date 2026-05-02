@@ -15,6 +15,22 @@ fi
 FAILED=()
 PASSED=()
 
+run_guard() {
+    local name="$1"
+    local cmd="$2"
+    echo ""
+    echo "========== $name =========="
+    if eval "$cmd" 2>&1; then
+        PASSED+=("$name")
+        echo "[PASS] $name"
+        return 0
+    else
+        FAILED+=("$name")
+        echo "[FAIL] $name"
+        return 1
+    fi
+}
+
 run_tests() {
     local dir="$1"
     local name="$2"
@@ -36,6 +52,11 @@ run_tests() {
         return 1
     fi
 }
+
+# 0. root guardrails
+run_guard "agent-main-path-acceptance" "scripts/ci/lint_agent_main_path_acceptance.sh" || true
+run_guard "retired-agent-paths" "scripts/ci/lint_retired_agent_paths.sh" || true
+run_guard "lifecycle-loop-ownership" "scripts/ci/lint_lifecycle_loop_ownership.sh" || true
 
 # 1. agent-runtime (unit)
 run_tests "novaic-agent-runtime" "agent-runtime" "tests/unit/" || true

@@ -280,6 +280,9 @@
 | PR-186C | `[closed]` | [Cortex Trace and Payload Invariant Acceptance](PR-186C-cortex-trace-payload-invariants.md) | PR-186B | Cortex acceptance | 0.25-0.5 d | Added Cortex trace/payload acceptance |
 | PR-186D | `[closed]` | [App Agent Monitor Public-Surface Acceptance](PR-186D-app-agent-monitor-public-surface.md) | PR-186C | App monitor acceptance | 0.25-0.5 d | Added Activity Timeline acceptance |
 | PR-186E | `[closed]` | [Cross-Repo Old-Path Residue Guard and Closure](PR-186E-cross-repo-old-path-residue-guard.md) | PR-186D | Entropy guard | 0.25 d | Added cross-repo main-path guard |
+| PR-187 | `[closed]` | [Main Path Guard CI Enforcement and Stale Ticket Archival](PR-187-main-path-guard-ci-and-stale-ticket-archival.md) | PR-186 | CI/docs entropy guard | multi-step | Main-path guards wired into CI/root tests; stale PR-90/91 checklist residue archived |
+| PR-187A | `[closed]` | [Wire Main-Path Guards Into CI and Root Test Entrypoint](PR-187A-wire-main-path-guards-into-ci.md) | PR-187 | CI guardrail | 0.25 d | Added guard bundle to GitHub lint and run_all_tests; removed missing old lint step |
+| PR-187B | `[closed]` | [Archive Stale Ticket Checklist Residue](PR-187B-archive-stale-ticket-checklist-residue.md) | PR-187A | Docs entropy cleanup | 0.25 d | PR-90/91 no longer expose stale unchecked subtasks |
 
 
 ---
