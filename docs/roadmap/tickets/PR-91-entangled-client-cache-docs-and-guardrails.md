@@ -49,7 +49,7 @@ Update docs and add light guardrails so future debugging matches the actual clie
 
 ## Unit Test Requirements
 
-- [ ] If a schema invariant test exists, assert client cache schema docs match generated/actual Rust cache schema.
+- [x] No separate generated schema invariant location is active; the cache-doc contract is guarded by `scripts/ci/lint_entangled_cache_docs.sh`.
 - [x] If no suitable unit test exists, add a docs grep guard that rejects reintroducing active-path `pending_ops` instructions.
 - [x] Ensure existing Entangled client tests still pass.
 

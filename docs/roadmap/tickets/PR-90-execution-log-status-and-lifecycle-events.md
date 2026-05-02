@@ -38,10 +38,10 @@ Make execution-log status semantics honest and add only the minimal lifecycle ev
 - [x] Update tool completion broadcast to set `status="failed"` when result/error indicates failure.
 - [x] Normalize error payload shape so App can display a concise error summary.
 - [x] Update App `isFailed` logic to rely primarily on `status === "failed"`.
-- [ ] Add minimal lifecycle event kinds only if needed:
-  - [ ] `no_tool_retry`
-  - [ ] `scope_closed`
-  - [ ] `force_finalize`
+- [x] Do not add extra lifecycle event kinds here. Decision archived 2026-05-03: Cortex trace projection and Activity Timeline own user-facing activity; execution-log lifecycle expansion is not an active path.
+  - [x] `no_tool_retry` not added
+  - [x] `scope_closed` not added
+  - [x] `force_finalize` not added
 - [x] Ensure lifecycle events are lightweight and do not write `summary.md`.
 - [x] Keep Cortex summary semantics untouched.
 
@@ -51,7 +51,7 @@ Make execution-log status semantics honest and add only the minimal lifecycle ev
 - [x] Runtime unit test: tool executor returning `success=false` broadcasts `status="failed"`.
 - [x] Runtime unit test: successful tool broadcasts `status="complete"`.
 - [x] App unit/component test: failed status renders failed visual state and error summary.
-- [ ] If lifecycle events are added, tests verify they are execution logs only and do not affect Cortex summary files.
+- [x] Lifecycle-event-specific tests are not applicable because no lifecycle event kinds were added; Cortex/Activity Timeline coverage is guarded by PR-186/PR-187.
 
 Suggested commands:
 
