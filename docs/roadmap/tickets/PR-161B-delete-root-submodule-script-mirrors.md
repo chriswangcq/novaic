@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[open]` |
+| Status | `[done]` |
 | Owner | Codex |
 | Created | 2026-05-02 |
 | Parent | PR-161 |
@@ -21,15 +21,21 @@
 
 ## Implementation Plan
 
-- [ ] 删除 `scripts/submodules/**`。
-- [ ] 更新 runbook，不再推荐镜像入口。
-- [ ] 增加 guard：`scripts/submodules` 目录不得存在。
-- [ ] 运行 deploy/config guard。
-- [ ] Git 提交。
+- [x] 删除 `scripts/submodules/**`。
+- [x] 更新 runbook，不再推荐镜像入口。
+- [x] 增加 guard：`scripts/submodules` 目录不得存在。
+- [x] 运行 deploy/config guard。
+- [x] Git 提交。
 
 ## Done Criteria
 
-- [ ] `scripts/submodules` 不存在。
-- [ ] Active runbook 不再引用 root mirror scripts。
-- [ ] Guard catches reintroduction.
-- [ ] Verification recorded.
+- [x] `scripts/submodules` 不存在。
+- [x] Active runbook 不再引用 root mirror scripts。
+- [x] Guard catches reintroduction.
+- [x] Verification recorded.
+
+## Verification
+
+- `python3 scripts/ci/check_start_config_contract.py` → OK.
+- `test ! -e scripts/submodules` → OK.
+- `rg "scripts/submodules"` shows only guard and historical/ticket references.
