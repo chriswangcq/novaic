@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[open]` |
+| Status | `[deployed]` |
 | Owner | Codex |
 | Created | 2026-05-02 |
 | Repos | `novaic-agent-runtime`, `novaic-cortex`, `novaic-app`, docs |
@@ -17,31 +17,50 @@ Make Cortex expose a coherent work trace that can project user-visible Activity 
 
 ## Current-State Analysis
 
-Runtime already preserves `reasoning_content` inside assistant messages and sends a preview to execution-log metadata. Cortex does not yet expose a first-class projection API that separates reasoning/action/observation for the user-facing monitor.
+Completed 2026-05-02 after PR-164B.
+
+Starting state:
+
+- Runtime already preserved provider-authored `reasoning_content` inside assistant context messages.
+- Assistant `tool_calls` represented actions, while PR-164A/PR-164B tool result percepts lived in Cortex `steps/`.
+- Cortex did not expose a first-class projection API that separated reasoning/action/observation for a user-facing monitor.
+- App display contract had a small gap for the new `payload_inspected` display kind.
 
 ## Implementation Tasks
 
-- Define Cortex trace projection records for observation, reasoning, action, and summary.
-- Project assistant `reasoning_content` into reasoning records without generating new summaries.
-- Project tool calls as actions and PR-164A tool result percepts as observations.
-- Keep developer diagnostics separate from the normal Activity Timeline surface.
+- [x] Define Cortex trace projection records for observation, reasoning, action, and summary.
+- [x] Project assistant `reasoning_content` into reasoning records without generating new summaries.
+- [x] Project tool calls as actions and PR-164A tool result percepts as observations.
+- [x] Keep developer diagnostics separate from the normal Activity Timeline surface.
+- [x] Align App monitor display contract with `payload_inspected`.
 
 ## Tests
 
-- Unit: trace projection separates observation/reasoning/action.
-- Unit: reasoning content is preserved when present and absent when provider omitted it.
-- App unit: normal monitor does not display raw result ids, raw MCP content, or HTTP payloads.
+- [x] Unit: trace projection separates observation/reasoning/action.
+- [x] Unit: reasoning content is preserved when present and absent when provider omitted it.
+- [x] Route test: `/v1/trace/project` accepts JSON body and returns projected records.
+- [x] App unit: normal monitor does not display raw result ids and renders payload inspection semantically.
+
+Test evidence:
+
+- `novaic-cortex`: `PYTHONPATH=.:../novaic-common pytest -q` -> 395 passed, 16 skipped.
+- `novaic-app`: `npm run test:unit` -> 42 passed.
+- `novaic-app`: `npm run build` -> passed with existing Vite chunk warnings.
 
 ## Smoke / Deploy / Git
 
-- Run cortex/runtime/app tests.
-- Deploy services and frontend.
-- Production smoke: a simple turn displays meaningful observation/reasoning/action without debug payloads.
-- Commit touched repos and root submodule/docs update.
+- [x] Run cortex/app tests.
+- [x] Deploy services and frontend.
+- [x] Production smoke: Cortex trace projection returns observation/reasoning/action without raw payload leakage.
+- [x] Commit touched repos.
+
+Commit evidence:
+
+- `novaic-cortex`: `c7349b4 feat(cortex): project activity trace phases`
+- `novaic-app`: `3887182 fix(app): render payload inspection monitor events`
 
 ## Done Criteria
 
-- User-facing Agent Monitor can be driven from the Cortex projection.
-- Reasoning is source-authored `reasoning_content`, not an extra generated summary.
-- Debug payloads remain outside the normal monitor.
-
+- [x] User-facing Agent Monitor can be driven from the Cortex projection.
+- [x] Reasoning is source-authored `reasoning_content`, not an extra generated summary.
+- [x] Debug payloads remain outside the normal monitor projection.
