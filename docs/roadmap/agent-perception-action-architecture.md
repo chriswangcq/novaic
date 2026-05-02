@@ -156,6 +156,8 @@ Reasoning 来自 LLM Factory 的 `reasoning_content`。
 
 不再设计额外 monitor-only reasoning summary。
 
+当前 PR-164C 已提供 Cortex `/v1/trace/project` 投影：reasoning 记录直接来自 provider-authored `reasoning_content`，不会再生成一条 monitor-only reasoning summary。
+
 ## Action
 
 Action 是 Agent 对环境或系统发起的动作，例如：
