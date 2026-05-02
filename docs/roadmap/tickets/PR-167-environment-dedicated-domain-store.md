@@ -24,7 +24,7 @@ Turn Environment from a vocabulary wrapper over `messages` into a real Business-
 
 - [x] [PR-167A — Dedicated Environment entity schema and contract guardrails](PR-167A-environment-entity-schema-contracts.md).
 - [x] [PR-167B — Repository write/read path for dedicated Environment entities](PR-167B-environment-dedicated-repository.md).
-- PR-167C — Environment service generic event API and lifecycle state machine.
+- [x] [PR-167C — Environment service generic event API and lifecycle state machine](PR-167C-environment-domain-service-state-machine.md).
 - PR-167D — Data migration/backfill and old message-backed repository removal.
 
 ## Required Flow
