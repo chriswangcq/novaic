@@ -32,8 +32,8 @@
 
 ## Small Tickets
 
-- [ ] PR-160A — Entangled NOW ALTER Schema Repair
-- [ ] PR-160B — Retired Entangled Tables and Columns Cleanup
+- [x] PR-160A — Entangled NOW ALTER Schema Repair
+- [x] PR-160B — Retired Entangled Tables and Columns Cleanup
 - [ ] PR-160C — Message Content JSON Shape Normalization
 
 ## Done Criteria
