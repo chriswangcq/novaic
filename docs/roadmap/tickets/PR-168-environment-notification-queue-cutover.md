@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[open]` |
+| Status | `[x]` |
 | Owner | Codex |
 | Created | 2026-05-02 |
 | Repos | `novaic-business`, `novaic-agent-runtime`, `novaic-common`, docs |
@@ -23,10 +23,11 @@ The current notification-only prompt works, but `notification_id` is still the m
 - [x] [PR-168B — Environment notification dispatch lease](PR-168B-environment-notification-dispatch-lease.md).
 - [x] [PR-168C — Environment notification subscriber cutover](PR-168C-environment-notification-subscriber-cutover.md).
 - [x] [PR-168D — Runtime Environment notification finalization](PR-168D-runtime-environment-notification-finalization.md).
-- [ ] PR-168E — Remove message-lifecycle/outbox notification compatibility and guard it.
+- [x] [PR-168E — Remove message-lifecycle/outbox notification compatibility](PR-168E-remove-message-lifecycle-outbox-compat.md).
 
 ## Done Criteria
 
 - Agent loop trigger ownership is Environment notification lifecycle.
 - UI read/delivered status and message storage no longer influence agent loop state.
 - Failures preserve retryable notification state; no user message is silently lost.
+- Old `message_outbox` / chat-message lifecycle compatibility has been physically removed from active code and production data.

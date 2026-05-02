@@ -11,11 +11,11 @@ RFC contract (docs/roadmap/tickets/PR-34-worker-sync.md):
 Why the guard exists (do not delete without replacement):
     Before PR-34 the dispatch loop used ``asyncio.create_task(...)`` inside
     the Business FastAPI lifespan. A single unhandled exception silently
-    cancelled the task and the ``message_outbox`` stopped draining until
-    somebody happened to notice stale rows — the original "silent failure"
-    ticket that forced the whole Worker-Sync rewrite. Re-introducing async
-    into any guarded file rewinds PR-34 and re-opens that failure mode,
-    so we fail CI loudly instead of waiting for a stale-outbox incident.
+    cancelled the Agent-loop drain until somebody noticed stale work — the
+    original "silent failure" ticket that forced the Worker-Sync rewrite.
+    Re-introducing async into any guarded file rewinds PR-34 and re-opens
+    that failure mode, so we fail CI loudly instead of waiting for an
+    Environment notification drain incident.
 
 Scope is an explicit allowlist, not a directory glob, because:
     * Business FastAPI handlers ARE async by design (edge, uvicorn loop).
@@ -62,7 +62,7 @@ GUARDED: list[str] = [
     "novaic-business/business/subscribers/dispatch_subscriber.py",
     # why: subprocess entry; must stay a plain script, not an asyncio.run wrapper.
     "novaic-business/main_subscriber.py",
-    # why: HealthWorker recovery loop — the safety net for dropped messages.
+    # why: HealthWorker recovery loop — Queue/Saga timeout safety net.
     "novaic-agent-runtime/task_queue/workers/health_worker.py",
     # why: SchedulerWorker due-scan + dispatch.
     "novaic-agent-runtime/task_queue/workers/scheduler_worker.py",

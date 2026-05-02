@@ -1,16 +1,14 @@
 #!/usr/bin/env bash
-# PR-153C — guard the single lifecycle ownership model.
+# PR-168E — guard the single Environment notification lifecycle model.
 #
-# Subscriber drains message_outbox into Queue and marks outbox delivery.
-# It must not write Cortex scope input or claim chat messages directly.
-# Queue owns active/pending serialization; Runtime session.init owns
-# scope input registration and claimed transitions.
+# Subscriber drains Environment notifications into Queue dispatch. Runtime
+# session.init/finalize owns notification claimed/processed transitions.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
-SUBSCRIBER_BAN='scope/append_input|append_scope_input|bulk_transition_messages|/v1/messages/[^[:space:]"'"'"']+/transition|_try_transition_claimed|_try_append_scope_input|subscriber_append_input|subscriber_transition'
+SUBSCRIBER_BAN='scope/append_input|append_scope_input|bulk_transition_messages|/v1/messages/[^[:space:]"'"'"']+/transition|_try_transition_claimed|_try_append_scope_input|subscriber_append_input|subscriber_transition|/v1/outbox|/internal/messages/(bulk-transition|orphaned|stuck-claimed)'
 
 if rg -n --pcre2 "$SUBSCRIBER_BAN" \
   novaic-business/business/subscribers \
@@ -24,8 +22,16 @@ if ! rg -q '_merge_pending_metadata' novaic-agent-runtime/queue_service/session_
   exit 1
 fi
 
-if ! rg -q 'bulk_transition_messages' novaic-agent-runtime/task_queue/handlers/runtime_handlers.py; then
-  echo "Lifecycle ownership violation: Runtime session.init must own input message claimed transitions." >&2
+if ! rg -q 'transition_environment_notifications' novaic-agent-runtime/task_queue/handlers/runtime_handlers.py; then
+  echo "Lifecycle ownership violation: Runtime session.init must claim Environment notifications." >&2
+  exit 1
+fi
+
+if rg -n 'bulk_transition_messages|/internal/messages/(bulk-transition|orphaned|stuck-claimed)|/v1/outbox|/v1/orphans|/v1/stuck-claimed' \
+  novaic-agent-runtime/task_queue \
+  novaic-business/business \
+  scripts/start.sh; then
+  echo "Lifecycle ownership violation: retired message lifecycle/outbox path found in live code." >&2
   exit 1
 fi
 
