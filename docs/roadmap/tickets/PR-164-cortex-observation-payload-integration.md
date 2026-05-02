@@ -26,7 +26,7 @@ Large or sensitive tool results should not be blindly embedded into Cortex. They
 ## Planned Small Tickets
 
 - [x] [PR-164A — Tool result observation payload write path](PR-164A-tool-result-observation-payload-write-path.md) — deployed in `novaic-common` commit `97f2a94`, `novaic-agent-runtime` commit `05a3149`, and `novaic-cortex` commit `351ee68`.
-- [ ] [PR-164B — Explicit payload inspection tools](PR-164B-explicit-payload-inspection-tools.md)
+- [x] [PR-164B — Explicit payload inspection tools](PR-164B-explicit-payload-inspection-tools.md) — deployed in `novaic-common` commit `2cdffba`, `novaic-agent-runtime` commit `fc18d7c`, and `novaic-cortex` commit `60fe590`.
 - [ ] [PR-164C — Reasoning and action trace projection](PR-164C-reasoning-action-trace-projection.md)
 
 ## Current-State Analysis
@@ -48,6 +48,7 @@ Conclusion: PR-164A should fix the write shape first. Tool result payloads must 
 ## Progress Notes
 
 - PR-164A completed the first write-shape cutover: Runtime no longer writes raw `step.result`; Cortex externalizes payloads and rejects inline result payloads for new tool steps.
+- PR-164B added explicit `payload_read` and `payload_search` tools. Payload inspection is now a visible tool action and its result flows back through the same Cortex observation/payload path; no auto-summary was introduced.
 
 ## Boundary Invariants
 
