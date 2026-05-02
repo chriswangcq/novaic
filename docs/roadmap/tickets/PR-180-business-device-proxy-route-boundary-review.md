@@ -1,6 +1,6 @@
 # PR-180 — Business device proxy route boundary review
 
-Status: `[pending]`
+Status: `[closed]`
 
 ## Goal
 
@@ -23,3 +23,11 @@ Review and clean Business device/VM proxy routes so Business only keeps product-
 
 - Deploy affected Business/Runtime services.
 - Commit/push each independently mergeable change.
+
+## Small Tickets
+
+- PR-180A — Delete Business device proxy routes with no active caller.
+
+## Closure
+
+PR-180 found one live cleanup target: Business-owned forwarding routes to Device `/internal/agents/*`. PR-180A deleted them, added route guard tests, deployed Business, and smoke-verified the removed route returns `404`.
