@@ -49,7 +49,8 @@ Environment 不拥有：
 - `im_read` 结果作为 Observation percept 写入 Cortex。
 - 用户消息、subagent 消息、system event 统一 sender/channel/thread/message_id 模型。
 - subagent report 应退役为普通 IM message。
-- processed lifecycle 建议由 Runtime turn finalize / `skill_end` 成功后处理。
+- processed lifecycle 由 Runtime wake finalize / scope close 成功后处理。
+- 历史翻阅走 `im_history`、`im_search`、`im_context`，不恢复旧 `chat_history` 自动 prompt memory。
 
 ## 施工入口
 

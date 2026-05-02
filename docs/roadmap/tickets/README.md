@@ -248,9 +248,14 @@
 | PR-168C | `[done]` | [Environment Notification Subscriber Cutover](PR-168C-environment-notification-subscriber-cutover.md) | PR-168B | Subscriber trigger source | 0.5 d | Subscriber now dispatch-claims Environment notifications; old outbox polling removed from hot loop |
 | PR-168D | `[done]` | [Runtime Environment Notification Finalization](PR-168D-runtime-environment-notification-finalization.md) | PR-168C | Runtime lifecycle ownership | 0.5 d | Runtime tests/deploy + production smoke verified; hot path transitions Environment notifications claimed/processed |
 | PR-168E | `[done]` | [Remove Message-Lifecycle / Outbox Notification Compatibility](PR-168E-remove-message-lifecycle-outbox-compat.md) | PR-168D | Old path cleanup | 0.5-1 d | Runtime/Business/Common/Entangled old path removed, deployed, and prod old tables dropped |
-| PR-169 | `[open]` | [App Cortex Activity Timeline Cutover](PR-169-app-cortex-activity-timeline-cutover.md) | PR-166, PR-168 preferred | Agent Monitor source of truth | multi-step | Big ticket |
-| PR-170 | `[open]` | [Payload Interpretation Tools](PR-170-payload-interpretation-tools.md) | PR-164 | Explicit observation interpretation | multi-step | Big ticket |
-| PR-171 | `[open]` | [Final Old Path Physical Deletion and Guardrails](PR-171-final-old-path-physical-deletion.md) | PR-167..PR-170 | Entropy cleanup | multi-step | Big ticket |
+| PR-169 | `[closed]` | [App Cortex Activity Timeline Cutover](PR-169-app-cortex-activity-timeline-cutover.md) | PR-166, PR-168 preferred | Agent Monitor source of truth | multi-step | Cortex Activity Timeline is the default user-facing monitor |
+| PR-170 | `[closed]` | [Payload Interpretation Tools](PR-170-payload-interpretation-tools.md) | PR-164 | Explicit observation interpretation | multi-step | `payload_read/search/summarize/qa` are explicit tools |
+| PR-171 | `[closed]` | [Final Old Path Physical Deletion and Guardrails](PR-171-final-old-path-physical-deletion.md) | PR-167..PR-170 | Entropy cleanup | multi-step | Old monitor/tool/summary paths deleted and guarded |
+| PR-172 | `[closed]` | [Roadmap Status Index Reconciliation](PR-172-roadmap-status-index-reconciliation.md) | PR-169..PR-171 | Documentation entropy cleanup | 0.25 d | Index reconciled |
+| PR-173 | `[closed]` | [Environment IM History Observation Tools](PR-173-environment-im-history-observation-tools.md) | PR-167, PR-168 | Explicit Environment observation | 0.5-1 d | `im_history/search/context` implemented without reviving `chat_history` |
+| PR-174 | `[closed]` | [Remove Execution Logs Diagnostic Entity Tail](PR-174-remove-execution-logs-diagnostic-entity-tail.md) | PR-169, PR-171 | Old diagnostic path deletion | 0.5-1 d | Remaining `execution-logs` tail physically removed and guarded |
+| PR-175 | `[closed]` | [Agent Perception Document Decision Cleanup](PR-175-agent-perception-doc-decision-cleanup.md) | PR-169..PR-173 | Architecture documentation correctness | 0.25 d | Stale undecided wording replaced with current decisions |
+| PR-176 | `[closed]` | [Step Ref / Payload Ref Naming Cleanup](PR-176-step-ref-payload-ref-naming-cleanup.md) | PR-171 | Naming entropy cleanup | 0.5-1 d | Active `result_id` join-key wording replaced by `step_ref` |
 
 
 ---
