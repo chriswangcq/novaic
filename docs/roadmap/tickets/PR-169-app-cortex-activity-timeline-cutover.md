@@ -33,13 +33,13 @@ Cortex `/v1/trace/project` now returns safe user-facing records. App Monitor sti
   - Smoke: app build/unit tests.
   - Deploy: deploy app/services as needed.
   - GitHub: committed and pushed in `novaic-app`; parent pointer updated in the PR-169B parent commit.
-- [ ] PR-169C — Default Agent Monitor uses Activity Timeline, not execution logs.
+- [x] PR-169C — Default Agent Monitor uses Activity Timeline, not execution logs.
   - Analyze: `ChatPanel`, preview, expanded panel, and labels still say execution log.
   - Implement: switch default monitor and preview to Activity Timeline; keep execution log only behind explicit developer diagnostics if still needed.
   - Test: ChatPanel tests or static guards verify normal monitor path does not import/render `ExecutionLog`.
   - Smoke: app build/unit tests.
   - Deploy: deploy app.
-  - GitHub: commit, push, update parent submodule pointer.
+  - GitHub: committed and pushed in `novaic-app`; parent pointer updated in the PR-169C parent commit.
 - [ ] PR-169D — Guardrails against debug fallback in user monitor.
   - Analyze: previous monitor leaked `result_id`, raw MCP content, HTTP errors, and execution-log wording.
   - Implement: static tests/guards banning raw diagnostic field rendering in normal Activity Timeline components.
