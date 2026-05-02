@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[in-progress]` |
+| Status | `[deployed]` |
 | Owner | Codex |
 | Created | 2026-05-02 |
 | Repos | `novaic-cortex`, `novaic-agent-runtime`, `novaic-business`, `novaic-common`, docs |
@@ -51,6 +51,10 @@ Conclusion: PR-164A should fix the write shape first. Tool result payloads must 
 - PR-164B added explicit `payload_read` and `payload_search` tools. Payload inspection is now a visible tool action and its result flows back through the same Cortex observation/payload path; no auto-summary was introduced.
 - PR-164C added Cortex `/v1/trace/project`, projecting provider-authored reasoning, assistant tool-call actions, tool observations, and scope summaries without creating monitor-only generated summaries. App monitor display now covers `payload_inspected`.
 
+## Closure
+
+Closed 2026-05-02. PR-164A, PR-164B, and PR-164C are all deployed; later PR-166 tightened the user-facing projection and removed the backend raw diagnostic payload branch.
+
 ## Boundary Invariants
 
 - Cortex owns work trajectory, not external domain truth.
@@ -60,7 +64,7 @@ Conclusion: PR-164A should fix the write shape first. Tool result payloads must 
 
 ## Done Criteria
 
-- Observation writes are covered by tests.
-- Payload refs are resolvable, bounded, and safe to display.
-- Reasoning content is preserved where available and separated from generated summaries.
-- No raw MCP/HTTP/debug blobs leak into normal Agent Monitor.
+- [x] Observation writes are covered by tests.
+- [x] Payload refs are resolvable, bounded, and safe to display.
+- [x] Reasoning content is preserved where available and separated from generated summaries.
+- [x] No raw MCP/HTTP/debug blobs leak into normal Agent Monitor.
