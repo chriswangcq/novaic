@@ -205,6 +205,11 @@
 | PR-154 | `[open]` | [Agent Monitor User-Facing Review](PR-154-agent-monitor-user-facing-review.md) | PR-153 | Agent Monitor product surface | multi-step | Big ticket: analyze, create small tickets, implement to closure |
 | PR-155 | `[open]` | [Runtime Tool Executor Coverage Review](PR-155-runtime-tool-executor-coverage-review.md) | PR-154 | Tool contract cleanup | multi-step | Big ticket: analyze, create small tickets, implement to closure |
 | PR-156 | `[open]` | [Deploy / Config Overlay Residue Review](PR-156-deploy-config-overlay-residue-review.md) | PR-155 | Deploy/config cleanup | multi-step | Big ticket: analyze, create small tickets, implement to closure |
+| PR-157 | `[done]` | [App Gateway `/api/vm/*` Residue Review](PR-157-app-gateway-vm-http-residue-review.md) | PR-152 | App/Gateway boundary cleanup | multi-step | Big ticket: analyze, create small tickets, implement to closure |
+| PR-157A | `[done]` | [Device Entangled VM Prep Actions](PR-157A-device-entangled-vm-prep-actions.md) | PR-157 | Device action cleanup | 0.25-0.5 d | Small ticket |
+| PR-157B | `[done]` | [Remove App Gateway VM Service](PR-157B-remove-app-gateway-vm-service.md) | PR-157A | App old-path cleanup | 0.25-0.5 d | Small ticket |
+| PR-157C | `[done]` | [Remove Agent-Scoped VM Status UI Residue](PR-157C-remove-agent-scoped-vm-status-ui-residue.md) | PR-157B | App old-path cleanup | 0.25-0.5 d | Small ticket |
+| PR-157D | `[done]` | [Guard App Gateway VM HTTP Residue](PR-157D-guard-app-gateway-vm-http-residue.md) | PR-157B, PR-157C | Boundary guardrail | 0.25 d | Small ticket |
 
 
 ---
