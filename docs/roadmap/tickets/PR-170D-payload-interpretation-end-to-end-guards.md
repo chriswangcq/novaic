@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[open]` |
+| Status | `[closed]` |
 | Owner | Codex |
 | Created | 2026-05-02 |
 | Repos | `novaic-common`, `novaic-cortex`, `novaic-agent-runtime`, docs |
@@ -18,13 +18,28 @@ Read/search have existing integration tests. Summarize/QA need comparable cross-
 
 ## Implementation Checklist
 
-- [ ] Add tool-schema/executor/monitor contract guard covering all four payload tools.
-- [ ] Add smoke tests for explicit summarize/QA result shapes.
-- [ ] Confirm trace projection maps interpretation as observation.
-- [ ] Update architecture docs from future-tool wording to active-tool wording.
-- [ ] Run relevant full test suites.
-- [ ] Deploy services.
-- [ ] Commit and push parent docs/submodule pointers.
+- [x] Add tool-schema/executor/monitor contract guard covering all four payload tools.
+- [x] Add smoke tests for explicit summarize/QA result shapes.
+- [x] Confirm trace projection maps interpretation as observation.
+- [x] Update architecture docs from future-tool wording to active-tool wording.
+- [x] Run relevant full test suites.
+- [x] Deploy services.
+- [x] Commit and push parent docs/submodule pointers.
+
+## Closure Notes
+
+- Common schema/product-semantics tests cover all four payload tools.
+- Runtime tool-path contract enforces schema/executor/monitor-name equality.
+- Cortex endpoint tests cover explicit summarize/QA Factory call shapes, redaction, and output bounds.
+- Cortex trace projection now has a guard that projects `payload_summarize` / `payload_qa` as user-facing semantic observations without leaking raw payload or `result_id`.
+- The architecture document now describes `payload_summarize` / `payload_qa` as active explicit interpretation tools, not future placeholders.
+
+## Verification
+
+- `PYTHONPATH=.:../novaic-agent-runtime pytest -q` in `novaic-common`
+- `PYTHONPATH=.:../novaic-common pytest -q` in `novaic-cortex`
+- `PYTHONPATH=.:../novaic-common pytest -q` in `novaic-agent-runtime`
+- `./deploy services`
 
 ## Done Criteria
 
