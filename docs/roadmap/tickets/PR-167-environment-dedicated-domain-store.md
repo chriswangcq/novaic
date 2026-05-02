@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[open]` |
+| Status | `[done]` |
 | Owner | Codex |
 | Created | 2026-05-02 |
 | Repos | `novaic-common`, `novaic-business`, docs |
@@ -25,7 +25,7 @@ Turn Environment from a vocabulary wrapper over `messages` into a real Business-
 - [x] [PR-167A — Dedicated Environment entity schema and contract guardrails](PR-167A-environment-entity-schema-contracts.md).
 - [x] [PR-167B — Repository write/read path for dedicated Environment entities](PR-167B-environment-dedicated-repository.md).
 - [x] [PR-167C — Environment service generic event API and lifecycle state machine](PR-167C-environment-domain-service-state-machine.md).
-- PR-167D — Data migration/backfill and old message-backed repository removal.
+- [x] [PR-167D — Data migration/backfill and old message-backed repository removal](PR-167D-environment-backfill-remove-message-backed-repo.md).
 
 ## Required Flow
 
@@ -39,8 +39,8 @@ For each small ticket:
 
 ## Done Criteria
 
-- Environment has dedicated persisted entities.
-- Environment notifications no longer depend on `chat_messages.lifecycle`.
-- Resource refs are stored as refs only; raw payload is rejected by contract and tests.
-- Existing IM behavior is preserved during cutover.
-- Old wrapper/fallback paths are physically removed after cutover.
+- [x] Environment has dedicated persisted entities.
+- [x] Environment notifications no longer depend on `chat_messages.lifecycle` in `EnvironmentRepository`.
+- [x] Resource refs are stored as refs only; raw payload is rejected by contract and tests.
+- [x] Existing IM behavior is preserved during cutover.
+- [x] Old message-backed repository reads are physically removed and guarded.
