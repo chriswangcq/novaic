@@ -211,7 +211,7 @@
 | PR-157C | `[done]` | [Remove Agent-Scoped VM Status UI Residue](PR-157C-remove-agent-scoped-vm-status-ui-residue.md) | PR-157B | App old-path cleanup | 0.25-0.5 d | Small ticket |
 | PR-157D | `[done]` | [Guard App Gateway VM HTTP Residue](PR-157D-guard-app-gateway-vm-http-residue.md) | PR-157B, PR-157C | Boundary guardrail | 0.25 d | Small ticket |
 | PR-158 | `[deployed]` | [Runtime Tool Product Semantics Matrix](PR-158-runtime-tool-product-semantics-matrix.md) | PR-155, PR-157 | Tool product semantics | multi-step | Closed: product semantics matrix guards Common, Runtime, and App monitor |
-| PR-159 | `[open]` | [Business Product Context Boundary Review](PR-159-business-product-context-boundary-review.md) | PR-158 | Business/Cortex context boundary | multi-step | Big ticket: analyze, create small tickets, implement to closure |
+| PR-159 | `[deployed]` | [Business Product Context Boundary Review](PR-159-business-product-context-boundary-review.md) | PR-158 | Business/Cortex context boundary | multi-step | Closed via PR-159A: product-context wording, Runtime client, and Cortex boundary guardrails deployed |
 | PR-160 | `[open]` | [Online Entangled Data Shape Audit](PR-160-online-entangled-data-shape-audit.md) | PR-159 | Data shape cleanup | multi-step | Big ticket: analyze, create small tickets, implement to closure |
 | PR-161 | `[open]` | [No-Value Script and Runbook Cleanup](PR-161-no-value-script-runbook-cleanup.md) | PR-160 | Script/runbook cleanup | multi-step | Big ticket: analyze, create small tickets, implement to closure |
 

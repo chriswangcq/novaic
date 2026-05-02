@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[open]` |
+| Status | `[deployed]` |
 | Owner | Codex |
 | Created | 2026-05-02 |
 | Repos | novaic-business, novaic-agent-runtime, novaic-common, novaic-cortex, docs |
@@ -34,12 +34,16 @@ Business 可以拥有产品数据和用户上下文，但如果这些路径在 p
 
 ## Small Tickets
 
-- [ ] To be created after current-state analysis.
+- [x] PR-159A — Business Product Context Boundary Guardrail
 
 ## Done Criteria
 
-- [ ] Prompt and tool descriptions do not imply Business product data is Cortex memory.
-- [ ] No active Runtime/Cortex path pulls Business profile/chat_history/subagent/device binding as a hidden continuity substitute.
-- [ ] Business tests or guardrails pin the product-context wording and ownership boundary.
-- [ ] Representative LLM prompt/context smoke confirms the boundary.
-- [ ] Affected services are deployed and git commits are recorded.
+- [x] Prompt and tool descriptions do not imply Business product data is Cortex memory.
+- [x] No active Runtime/Cortex path pulls Business profile/chat_history/subagent/device binding as a hidden continuity substitute.
+- [x] Business tests or guardrails pin the product-context wording and ownership boundary.
+- [x] Representative LLM prompt/context smoke confirms the boundary.
+- [x] Affected services are deployed and git commits are recorded.
+
+## Current-State Closure Notes
+
+PR-159A covered the only active gap found in this review: the boundary existed in code, but was not pinned as one cross-repo product-context invariant. Business prompt wording now has direct tests, Runtime BusinessClient has explicit retired-wrapper guards, and Cortex active code guard now blocks Business product-context/schema ownership markers.
