@@ -263,7 +263,9 @@
 | PR-180A | `[closed]` | [Delete Business device proxy routes with no active caller](PR-180A-delete-business-device-proxy-routes.md) | PR-180 | Business/Device boundary cleanup | 0.25-0.5 d | Removed Business qemu/vm/mobile/hd forwarding routes and proxy helper; Business deployed |
 | PR-181 | `[closed]` | [SubAgent spawn write normalization](PR-181-subagent-spawn-write-normalization.md) | PR-177, PR-178 | Environment/SubAgent single-writer cleanup | 0.5 d | Review closed by PR-181A |
 | PR-181A | `[closed]` | [SubAgent spawn uses Environment as the single IM writer](PR-181A-subagent-spawn-environment-single-writer.md) | PR-181 | Environment/SubAgent single-writer cleanup | 0.25-0.5 d | Removed direct `messages` append from spawn; Environment writes projection; Business deployed |
-| PR-182 | `[pending]` | [Back-compat naming and branch cleanup](PR-182-backcompat-naming-branch-cleanup.md) | PR-179..PR-181 | Maintenance entropy cleanup | 0.5-1 d | Remove confirmed stale compatibility names/comments/helpers |
+| PR-182 | `[closed]` | [Back-compat naming and branch cleanup](PR-182-backcompat-naming-branch-cleanup.md) | PR-179..PR-181 | Maintenance entropy cleanup | 0.5-1 d | Closed by PR-182A and PR-182B |
+| PR-182A | `[closed]` | [Delete legacy Business health stubs](PR-182A-delete-legacy-business-health-stubs.md) | PR-182 | Business/Common config cleanup | 0.25 d | Removed retired app-ws/stuck-sending stubs and config; Business deployed |
+| PR-182B | `[closed]` | [Remove unused Cortex compatibility helpers](PR-182B-remove-cortex-compat-helpers.md) | PR-182 | Cortex naming cleanup | 0.25 d | Removed unused helpers and compatibility wording; Cortex deployed |
 
 
 ---
