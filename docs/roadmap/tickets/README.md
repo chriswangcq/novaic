@@ -266,6 +266,14 @@
 | PR-182 | `[closed]` | [Back-compat naming and branch cleanup](PR-182-backcompat-naming-branch-cleanup.md) | PR-179..PR-181 | Maintenance entropy cleanup | 0.5-1 d | Closed by PR-182A and PR-182B |
 | PR-182A | `[closed]` | [Delete legacy Business health stubs](PR-182A-delete-legacy-business-health-stubs.md) | PR-182 | Business/Common config cleanup | 0.25 d | Removed retired app-ws/stuck-sending stubs and config; Business deployed |
 | PR-182B | `[closed]` | [Remove unused Cortex compatibility helpers](PR-182B-remove-cortex-compat-helpers.md) | PR-182 | Cortex naming cleanup | 0.25 d | Removed unused helpers and compatibility wording; Cortex deployed |
+| PR-183 | `[closed]` | [Gateway Auth / File Proxy boundary cleanup](PR-183-gateway-auth-file-proxy-boundary-cleanup.md) | PR-182 | Gateway boundary cleanup | 0.5 d | Closed by PR-183A and PR-183B; Gateway deployed |
+| PR-183A | `[closed]` | [Gateway auth token transport tightening](PR-183A-gateway-auth-token-transport-tightening.md) | PR-183 | Gateway auth boundary | 0.25 d | Removed direct validate query token fallback |
+| PR-183B | `[closed]` | [Gateway file proxy file-id boundary](PR-183B-gateway-file-proxy-file-id-boundary.md) | PR-183 | Gateway file boundary | 0.25 d | Removed direct raw-path GET proxy |
+| PR-184 | `[closed]` | [Runtime Queue Client compatibility cleanup](PR-184-runtime-queue-client-compat-cleanup.md) | PR-182 | Runtime queue API cleanup | 0.25 d | Closed by PR-184A; Runtime deployed |
+| PR-184A | `[closed]` | [Remove SagaClient.get_saga alias](PR-184A-remove-sagaclient-get-saga-alias.md) | PR-184 | Runtime queue API cleanup | 0.25 d | Removed old SagaClient alias |
+| PR-185 | `[closed]` | [App Device / VM historical naming cleanup](PR-185-app-device-vm-historical-naming-cleanup.md) | PR-182 | App device naming cleanup | 0.5 d | Closed by PR-185A and PR-185B |
+| PR-185A | `[closed]` | [Rename Device VNC target hook](PR-185A-rename-device-vnc-target-hook.md) | PR-185 | App device naming cleanup | 0.25 d | Renamed stale VNC hook |
+| PR-185B | `[closed]` | [Remove useDevices legacy sync helpers](PR-185B-remove-use-devices-legacy-sync-helpers.md) | PR-185 | App device hook cleanup | 0.25 d | Removed unused sync helper aliases |
 
 
 ---
