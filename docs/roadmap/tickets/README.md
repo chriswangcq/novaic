@@ -274,6 +274,12 @@
 | PR-185 | `[closed]` | [App Device / VM historical naming cleanup](PR-185-app-device-vm-historical-naming-cleanup.md) | PR-182 | App device naming cleanup | 0.5 d | Closed by PR-185A and PR-185B |
 | PR-185A | `[closed]` | [Rename Device VNC target hook](PR-185A-rename-device-vnc-target-hook.md) | PR-185 | App device naming cleanup | 0.25 d | Renamed stale VNC hook |
 | PR-185B | `[closed]` | [Remove useDevices legacy sync helpers](PR-185B-remove-use-devices-legacy-sync-helpers.md) | PR-185 | App device hook cleanup | 0.25 d | Removed unused sync helper aliases |
+| PR-186 | `[closed]` | [Agent Main Path End-to-End Invariants](PR-186-agent-main-path-end-to-end-invariants.md) | PR-162..PR-171 | Agent main path acceptance | multi-step | Runtime/Business/Cortex/App acceptance tests and cross-repo guard closed |
+| PR-186A | `[closed]` | [Runtime Wake Observation / Reply Lifecycle Acceptance](PR-186A-runtime-wake-observation-reply-lifecycle.md) | PR-186 | Runtime acceptance | 0.25-0.5 d | Added Runtime main-path acceptance |
+| PR-186B | `[closed]` | [Business Environment Notification Hot-Path Acceptance](PR-186B-business-environment-notification-hot-path.md) | PR-186A | Environment acceptance | 0.25-0.5 d | Added Business Environment hot-path acceptance |
+| PR-186C | `[closed]` | [Cortex Trace and Payload Invariant Acceptance](PR-186C-cortex-trace-payload-invariants.md) | PR-186B | Cortex acceptance | 0.25-0.5 d | Added Cortex trace/payload acceptance |
+| PR-186D | `[closed]` | [App Agent Monitor Public-Surface Acceptance](PR-186D-app-agent-monitor-public-surface.md) | PR-186C | App monitor acceptance | 0.25-0.5 d | Added Activity Timeline acceptance |
+| PR-186E | `[closed]` | [Cross-Repo Old-Path Residue Guard and Closure](PR-186E-cross-repo-old-path-residue-guard.md) | PR-186D | Entropy guard | 0.25 d | Added cross-repo main-path guard |
 
 
 ---
