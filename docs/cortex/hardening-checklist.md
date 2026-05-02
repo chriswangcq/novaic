@@ -59,7 +59,7 @@
 
 ### P0-6 `_SKILL_LOCKS` TTL 清理
 
-- 证据：`novaic-cortex/novaic_cortex/api.py:52-60, 251-256` 只在 `is_root` scope_end 成功时 `_drop_skill_lock`。被遗弃的 root scope（agent 异常退出、saga 失败未走 compensation）永不清理。
+- 证据：`novaic-cortex/novaic_cortex/api.py` 只在 `is_root` scope_end 成功时 `_drop_scope_lock`。被遗弃的 root scope（agent 异常退出、saga 失败未走 compensation）永不清理。
 - 验收：
   - 方案 A：`WeakValueDictionary` + 定期扫 key 对应 root scope meta（`archived` 或超过 TTL）清掉。
   - 方案 B：LRU with size cap（比如 10k），超出时按 LRU 淘汰。

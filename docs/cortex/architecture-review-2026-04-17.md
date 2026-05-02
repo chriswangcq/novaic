@@ -205,7 +205,7 @@ Architect #1 / #6 均指出「`react_think.py` / `subagent_rest.py` / `saga_work
 
 ### [High] `_SKILL_LOCKS` leak on abandoned roots
 
-- Evidence: `cortex/api.py:52-60, 251-256` — `_drop_skill_lock` only on successful `is_root` scope_end.
+- Evidence: `cortex/api.py` — `_drop_scope_lock` only on successful `is_root` scope_end.
 - Fix: TTL/LRU eviction; periodic sweep; weakref.
 
 ### [Medium] `skill_begin` does O(nodes) tree walk per call

@@ -54,7 +54,7 @@
 3. `**_walk_scope_tree(active_path)**`：收集该根下**所有** scope（含嵌套子 scope）的索引行（`scope_id`、`path`、`name`、`depth`、`ts`、可选 `**parent`**）。
 4. `**move_prefix**`：把 `agents/.../ro/active/{scope_id}/` **整体**移到 `.../ro/scopes/{scope_id}/`。
 5. 修正索引中的 `**path`** 前缀后，**追加**到 `**/ro/scopes/_index.jsonl`**（历史兼容/排障索引；当前 LLM 主路径不依赖独立 Recall）。
-6. API 层 `/v1/scope/end` 在 `is_root=true` 归档后还会调 `_drop_skill_lock` 回收 `_SKILL_LOCKS` 里对应 `(user_id, agent_id, scope_id)` 的互斥锁条目。
+6. API 层 `/v1/scope/end` 在 `is_root=true` 归档后还会调 `_drop_scope_lock` 回收 `_SKILL_LOCKS` 里对应 `(user_id, agent_id, scope_id)` 的互斥锁条目。
 
 `/v1/scope/end` 是结构性归档 API，不是 summary API。非空 `report` 会被拒绝；Runtime 的 `wake_finalize` 只传空 report。可被后续 DFS 折叠渲染的 summary 只来自 `/v1/context/skill_end(report=...)`。
 
