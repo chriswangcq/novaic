@@ -256,6 +256,7 @@
 | PR-174 | `[closed]` | [Remove Execution Logs Diagnostic Entity Tail](PR-174-remove-execution-logs-diagnostic-entity-tail.md) | PR-169, PR-171 | Old diagnostic path deletion | 0.5-1 d | Remaining `execution-logs` tail physically removed and guarded |
 | PR-175 | `[closed]` | [Agent Perception Document Decision Cleanup](PR-175-agent-perception-doc-decision-cleanup.md) | PR-169..PR-173 | Architecture documentation correctness | 0.25 d | Stale undecided wording replaced with current decisions |
 | PR-176 | `[closed]` | [Step Ref / Payload Ref Naming Cleanup](PR-176-step-ref-payload-ref-naming-cleanup.md) | PR-171 | Naming entropy cleanup | 0.5-1 d | Active `result_id` join-key wording replaced by `step_ref` |
+| PR-177 | `[closed]` | [Canonical SubAgent Spawn Endpoint](PR-177-canonical-subagent-spawn-endpoint.md) | PR-124, PR-168 | Business endpoint entropy cleanup | 0.25 d | Duplicate agent-scoped spawn endpoint removed; Cortex proxy uses canonical `/internal/subagents/{agent_id}/spawn` |
 
 
 ---
