@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[open]` |
+| Status | `[closed]` |
 | Owner | Codex |
 | Created | 2026-05-02 |
 | Repos | `novaic-app`, `novaic-cortex`, docs |
@@ -40,13 +40,13 @@ Cortex `/v1/trace/project` now returns safe user-facing records. App Monitor sti
   - Smoke: app build/unit tests.
   - Deploy: deploy app.
   - GitHub: committed and pushed in `novaic-app`; parent pointer updated in the PR-169C parent commit.
-- [ ] PR-169D — Guardrails against debug fallback in user monitor.
+- [x] PR-169D — Guardrails against debug fallback in user monitor.
   - Analyze: previous monitor leaked `result_id`, raw MCP content, HTTP errors, and execution-log wording.
   - Implement: static tests/guards banning raw diagnostic field rendering in normal Activity Timeline components.
   - Test: guard tests for `result_id`, `_mcp_content`, raw HTTP body/stack trace, and `execution-logs` fallback.
   - Smoke: full relevant frontend tests.
   - Deploy: deploy app/services.
-  - GitHub: commit, push, update parent submodule pointer.
+  - GitHub: committed and pushed in `novaic-app`; parent pointer updated in the PR-169D parent commit.
 
 ## Done Criteria
 
