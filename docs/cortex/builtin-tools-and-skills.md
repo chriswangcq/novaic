@@ -1,11 +1,12 @@
 # 内置工具 Schema 与技能安装
 
-> 源码：`novaic_cortex/tool_schemas.py`（**`BUILTIN_TOOL_SCHEMAS`**）、`runtime.py`（**`load_tool_schemas`**、**`install_skill`**、**`_seed_builtin_tools`**、**`_rebuild_skill_index`**）。
+> 源码：`novaic-common/common/tools/llm_builtin.py`（LLM-facing builtin schema 权威来源）、`novaic_cortex/api.py`（`/v1/internal/tools` 转发 common schema）、`runtime.py`（技能安装相关 legacy config 读取）。
 
-## 1. 内置 Schema：`BUILTIN_TOOL_SCHEMAS`
+## 1. 内置 Schema：Common Canonical Tool Schemas
 
-- 静态列表：**`skill_begin` / `skill_end`** 等（见 `tool_schemas.py` 全文）。
-- 用途：作为 **LLM 可调工具** 的定义来源之一；与 Agent Runtime、saga 侧约定一致（模块头注释）。
+- 静态列表来自 `novaic-common/common/tools/llm_builtin.py`。
+- Cortex `/v1/internal/tools` 只作为服务端转发入口，不再拥有另一套 schema authority。
+- 用途：作为 **LLM 可调工具** 的唯一服务端合同；Runtime executor、产品语义、Activity Timeline 投影必须与 common schema 对齐。
 
 ### 1.1 `skill_begin` 参数（required：`scope_id`, `name`）
 
@@ -26,7 +27,7 @@
 
 严格 LIFO：仅能关栈顶，不匹配报错（不做级联关闭）。详见 [scope-lifecycle.md §9](scope-lifecycle.md#9-skill-scope-生命周期llm-可见栈式)。
 
-当前唯一 summary 写入通路是：LLM 关闭当前栈顶 scope 时调用 `skill_end(report=...)`，`report` 原样成为该 scope 的 `summary.md`。Cortex 不从 `chat_reply`、wake 结束、用户画像或其他运行时信号推断 summary。
+当前唯一 summary 写入通路是：LLM 关闭当前栈顶 scope 时调用 `skill_end(report=...)`，`report` 原样成为该 scope 的 `summary.md`。Cortex 不从 `im_reply`、wake 结束、用户画像或其他运行时信号推断 summary。
 
 **并发安全**：`POST /v1/context/skill_begin` 与 `POST /v1/context/skill_end` 在 Cortex API 层以 `(user_id, agent_id, root_scope_id)` 为 key 使用 asyncio 互斥锁（`_SKILL_LOCKS`）串行化，避免同一个 round 里并发 tool_calls 把 stack 状态搞乱。锁条目会在 root scope 归档（`/v1/scope/end` with `is_root=true`）后自动回收。
 

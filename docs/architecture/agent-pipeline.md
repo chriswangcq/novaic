@@ -49,15 +49,17 @@ ReactActions:
 ```
 LLM tool_call
   → TOOL_EXECUTE → tool_handlers.handle_tool_execute
-  → chat_reply / subagent_* / sleep → Business internal
-  → shell / skill_* → CortexBridge → Cortex
+  → im_reply / im_send / subagent_spawn → Business Environment/Subagent APIs
+  → shell / skill_* / payload_* → CortexBridge → Cortex
+  → display / audio_qa → Runtime native executor + File/Factory services
   → JSON content → Cortex step timeline
 ```
 
 | 类别 | 示例 | 路由 |
 |------|------|------|
-| 生命周期 | chat_reply, subagent_*, sleep | Business `internal/` |
-| Cortex | shell, skill_begin, skill_end | CortexBridge |
+| 通信 | im_reply, im_send, subagent_spawn | Business `internal/` / Environment IM |
+| Cortex | shell, skill_begin, skill_end, payload_read/search/summarize/qa | CortexBridge |
+| Runtime native | display, audio_qa, sleep | Runtime executor |
 
 ## 12.5 LLM Factory
 
@@ -103,7 +105,7 @@ CI 守门：[`scripts/ci/check_no_internal_async.py`](../../scripts/ci/check_no_
 | Cortex 上下文 | `novaic-agent-runtime/.../cortex_handlers.py`；引擎 `novaic-cortex/novaic_cortex/context_stack/engine.py` |
 | LLM 传输 | `novaic-agent-runtime/task_queue/handlers/llm_handlers.py` |
 | 工具 dispatch | `novaic-agent-runtime/task_queue/handlers/tool_handlers.py` |
-| BUILTIN 工具 schema | `novaic-cortex/novaic_cortex/tool_schemas.py` |
+| BUILTIN 工具 schema | `novaic-common/common/tools/llm_builtin.py`；Cortex `/v1/internal/tools` 只转发 common schema |
 | Factory 客户端 | `novaic-agent-runtime/task_queue/factory_client.py` |
 | LLM Factory 日志页 | `novaic-llm-factory/static/factory-logs.html` |
 | Agent 绑定 / VM 工具 | `novaic-device/device/agent_binding.py` |

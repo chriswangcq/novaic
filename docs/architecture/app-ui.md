@@ -8,7 +8,7 @@
 
 1. **登录**：`auth.ts` → `pushToken()` → `invoke(update_cloud_token)` → `agentService.initialize()`
 2. **恢复 Agent**：`prefsRepo.getSelectedAgent()` 或 localStorage
-3. **选择 Agent**：store + prefs → `switchAgent(agentId)`，并行 load 模型（消息/日志为 Entangled stream 订阅）
+3. **选择 Agent**：store + prefs → `switchAgent(agentId)`，并行 load 模型（消息为 Entangled stream 订阅，Agent Monitor 走 Cortex Activity Timeline）
 4. **登出**：`getSyncService().disconnect()` + `resetServices()` 清空单例
 
 ### DB 层（Entangled 为单一事实来源）
@@ -17,10 +17,10 @@
 - 数据流：Subscribe → Server sync → Rust 缓存 → **`entities_changed`** → React。
 - **`entities_changed` 载荷**：Rust（`Entangled/packages/client-rust/src/push.rs`）在 `EntityChanged` 中带 **`params`**（与订阅 key 一致），供 `syncListener` 按带参 `queryKey` 失效。
 - **订阅 refcount**：`subscriptionSchema.acquireSubscribe` 在首次 `subscribe` 成功后再计数；AppBridge 重连时 **wire-only** `subscribe`（`entangledBootstrap`）避免双计数。
-- **聊天主面板**：`ChatPanel` 唯一调用 `useMessages` / `useLogs`，子组件经 **props** 注入，避免同一 agent **重复订阅** stream。
+- **聊天主面板**：`ChatPanel` 调用 `useMessages` 和 `useActivityTimeline`；不再订阅 execution-log stream 作为用户面 Agent Monitor。
 - **清空本地缓存**：`clearLocalDb` → `invoke('entity_cache_clear')` → `Cache::clear_all()`。当前 Rust cache 是 read-model：`entity_meta` / `entity_items`；历史 `pending_ops` 表已废弃，初始化时会被 `DROP TABLE IF EXISTS pending_ops` 清掉。
 
-**Business 层**：`messagesStore` / `logsStore`、`syncService`、`agentService`、`modelService`；Zustand `store.ts`。  
+**Business 层**：`messagesStore`、`syncService`、`agentService`、`modelService`；Zustand `store.ts`。  
 **AgentToolsTab**：`useSettings()` + Entangled 列表与 TanStack Query，不用 IndexedDB 业务表作主存。
 
 ## 关键设计决策
@@ -38,7 +38,7 @@
 | 浮窗 | `DeviceFloatingPanel.tsx` → `FLOATING_PANEL_LAYOUT` |
 | 模型 | `SettingsModal.tsx` → AgentToolsTab |
 | 发消息 | `ChatInput.tsx`、`messagesStore` / `useMessages` |
-| 执行日志 | `ExecutionLog.tsx`、`LogCapsule.tsx`、`ChatPanel.tsx` |
+| Agent Monitor | `ActivityTimeline.tsx`、`useActivityTimeline.ts`、`ChatPanel.tsx` |
 | Gateway 类型 | `src/services/api.ts`（数据写优先 `entangledMethod`） |
 | 布局 | `LayoutContainer.tsx`、`PrimaryNav.tsx`、`App.tsx` |
 | Gateway 配置 | `novaic-gateway/gateway/api/internal/config.py` |
@@ -59,7 +59,7 @@
 | 路由 | 订阅实体 |
 |------|----------|
 | `home` | agents, models, devices |
-| `conversation` | agents, models, devices, messages(agentId), execution-logs(agentId), agent-tools(agentId), **agent-binding(agentId)** |
+| `conversation` | agents, models, devices, messages(agentId), agent-tools(agentId), **agent-binding(agentId)** |
 | `settings` | agents, models, devices, api-keys, skills, **agent-binding(agentId)**, agent-tools(agentId)（有 agentId 时） |
 | `vm-context` | vm-users(deviceId)（组件级） |
 

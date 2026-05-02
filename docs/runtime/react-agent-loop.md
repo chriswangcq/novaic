@@ -10,8 +10,9 @@ from the assembled Business/Cortex/common contract, and the returned
 `tool_calls` are executed by Runtime.
 
 Reasoning text is preserved separately from user-visible assistant text. The
-chat message shown to users comes from `chat_reply`; reasoning and execution
-logs are stored for the Agent monitor/debug surfaces.
+chat message shown to users comes from `im_reply`; reasoning and tool
+observations are written to Cortex and projected into Activity Timeline.
+Execution logs are diagnostic data, not the normal Agent Monitor source.
 
 ## Loop Shape
 

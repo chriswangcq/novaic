@@ -16,7 +16,7 @@ The following concepts must not re-enter active Cortex source:
 - business memory/notebook/search proxying
 - business task system ownership
 - `wake summary`
-- deriving durable memory from `chat_reply`
+- deriving durable memory from `im_reply` or raw chat text
 - multiple parallel summary producers
 
 The only durable LLM-authored summary path is:

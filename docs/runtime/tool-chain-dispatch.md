@@ -8,8 +8,9 @@ Runtime owns dispatch; individual services own execution:
 
 | Tool family | Examples | Execution owner |
 | --- | --- | --- |
-| User/agent messaging | `chat_reply`, `subagent_spawn`, `subagent_send`, `sleep` | Business internal APIs |
-| Cortex scope/workspace | `shell`, `skill_begin`, `skill_end`, `display`, `chat_history`, `audio_qa` | Cortex / Runtime native executors |
+| User/agent messaging | `im_reply`, `im_send`, `subagent_spawn` | Business Environment/Subagent APIs |
+| Cortex scope/workspace | `shell`, `skill_begin`, `skill_end`, `payload_read`, `payload_search`, `payload_summarize`, `payload_qa` | Cortex / Runtime native executors |
+| Local resource inspection | `display`, `audio_qa`, `sleep` | Runtime native executors |
 | Device actions | VM/desktop/mobile operations | Business → Device → CloudBridge/VmControl |
 
 There is no separate Tools Server, TRS service, or Gateway tool registry in the
@@ -20,4 +21,4 @@ Cortex owns scope/context/sandbox; Runtime performs the dispatch decision.
 
 Tool results are returned to Runtime and written as Cortex step results. The
 LLM sees those structured results in the next context assembly. User-visible
-output still requires `chat_reply`.
+output requires `im_reply`.
