@@ -201,15 +201,19 @@
 | PR-150 | `[deployed]` | [Remove App Deprecated Compatibility Shells](PR-150-remove-app-deprecated-compat-shells.md) | PR-149 | App path cleanup | 0.5-1 d | 2026-05-01 |
 | PR-151 | `[deployed]` | [Remove Device Binding Legacy Compatibility](PR-151-remove-device-binding-legacy-compat.md) | PR-150 | Device contract cleanup | 0.5-1 d | 2026-05-01 |
 | PR-152 | `[deployed]` | [Gateway / Business / Entangled Boundary Review](PR-152-gateway-business-entangled-boundary-review.md) | PR-151 | Boundary cleanup | multi-step | Closed: Gateway kept to edge boundary, Business file metadata explicit, stale AppBridge request permission removed |
-| PR-153 | `[open]` | [Queue / Session / Subscriber Lifecycle Review](PR-153-queue-session-subscriber-lifecycle-review.md) | PR-152 | Agent loop lifecycle cleanup | multi-step | Big ticket: analyze, create small tickets, implement to closure |
-| PR-154 | `[open]` | [Agent Monitor User-Facing Review](PR-154-agent-monitor-user-facing-review.md) | PR-153 | Agent Monitor product surface | multi-step | Big ticket: analyze, create small tickets, implement to closure |
-| PR-155 | `[open]` | [Runtime Tool Executor Coverage Review](PR-155-runtime-tool-executor-coverage-review.md) | PR-154 | Tool contract cleanup | multi-step | Big ticket: analyze, create small tickets, implement to closure |
-| PR-156 | `[open]` | [Deploy / Config Overlay Residue Review](PR-156-deploy-config-overlay-residue-review.md) | PR-155 | Deploy/config cleanup | multi-step | Big ticket: analyze, create small tickets, implement to closure |
+| PR-153 | `[deployed]` | [Queue / Session / Subscriber Lifecycle Review](PR-153-queue-session-subscriber-lifecycle-review.md) | PR-152 | Agent loop lifecycle cleanup | multi-step | Closed: subscriber/session lifecycle ownership guarded and deployed |
+| PR-154 | `[deployed]` | [Agent Monitor User-Facing Review](PR-154-agent-monitor-user-facing-review.md) | PR-153 | Agent Monitor product surface | multi-step | Closed: normal monitor no longer exposes raw diagnostic payload path |
+| PR-155 | `[deployed]` | [Runtime Tool Executor Coverage Review](PR-155-runtime-tool-executor-coverage-review.md) | PR-154 | Tool contract cleanup | multi-step | Closed: Common schema, Runtime executors, and monitor display kinds aligned |
+| PR-156 | `[deployed]` | [Deploy / Config Overlay Residue Review](PR-156-deploy-config-overlay-residue-review.md) | PR-155 | Deploy/config cleanup | multi-step | Closed: old deploy/config switches removed and guarded |
 | PR-157 | `[done]` | [App Gateway `/api/vm/*` Residue Review](PR-157-app-gateway-vm-http-residue-review.md) | PR-152 | App/Gateway boundary cleanup | multi-step | Big ticket: analyze, create small tickets, implement to closure |
 | PR-157A | `[done]` | [Device Entangled VM Prep Actions](PR-157A-device-entangled-vm-prep-actions.md) | PR-157 | Device action cleanup | 0.25-0.5 d | Small ticket |
 | PR-157B | `[done]` | [Remove App Gateway VM Service](PR-157B-remove-app-gateway-vm-service.md) | PR-157A | App old-path cleanup | 0.25-0.5 d | Small ticket |
 | PR-157C | `[done]` | [Remove Agent-Scoped VM Status UI Residue](PR-157C-remove-agent-scoped-vm-status-ui-residue.md) | PR-157B | App old-path cleanup | 0.25-0.5 d | Small ticket |
 | PR-157D | `[done]` | [Guard App Gateway VM HTTP Residue](PR-157D-guard-app-gateway-vm-http-residue.md) | PR-157B, PR-157C | Boundary guardrail | 0.25 d | Small ticket |
+| PR-158 | `[deployed]` | [Runtime Tool Product Semantics Matrix](PR-158-runtime-tool-product-semantics-matrix.md) | PR-155, PR-157 | Tool product semantics | multi-step | Closed: product semantics matrix guards Common, Runtime, and App monitor |
+| PR-159 | `[open]` | [Business Product Context Boundary Review](PR-159-business-product-context-boundary-review.md) | PR-158 | Business/Cortex context boundary | multi-step | Big ticket: analyze, create small tickets, implement to closure |
+| PR-160 | `[open]` | [Online Entangled Data Shape Audit](PR-160-online-entangled-data-shape-audit.md) | PR-159 | Data shape cleanup | multi-step | Big ticket: analyze, create small tickets, implement to closure |
+| PR-161 | `[open]` | [No-Value Script and Runbook Cleanup](PR-161-no-value-script-runbook-cleanup.md) | PR-160 | Script/runbook cleanup | multi-step | Big ticket: analyze, create small tickets, implement to closure |
 
 
 ---
