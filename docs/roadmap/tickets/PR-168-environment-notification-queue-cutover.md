@@ -22,7 +22,7 @@ The current notification-only prompt works, but `notification_id` is still the m
 - [x] [PR-168A — Environment notification internal API](PR-168A-environment-notification-internal-api.md).
 - [x] [PR-168B — Environment notification dispatch lease](PR-168B-environment-notification-dispatch-lease.md).
 - [x] [PR-168C — Environment notification subscriber cutover](PR-168C-environment-notification-subscriber-cutover.md).
-- [ ] PR-168D — Runtime finalization marks Environment notifications processed/failed.
+- [x] [PR-168D — Runtime Environment notification finalization](PR-168D-runtime-environment-notification-finalization.md).
 - [ ] PR-168E — Remove message-lifecycle/outbox notification compatibility and guard it.
 
 ## Done Criteria
