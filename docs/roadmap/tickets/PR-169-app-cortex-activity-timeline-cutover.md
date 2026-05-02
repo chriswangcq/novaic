@@ -19,10 +19,34 @@ Cortex `/v1/trace/project` now returns safe user-facing records. App Monitor sti
 
 ## Small Tickets
 
-- PR-169A — App client and hook for Cortex Activity Timeline projection.
-- PR-169B — Agent Monitor renders Cortex projection by default.
-- PR-169C — Execution log moves to explicit developer diagnostics only.
-- PR-169D — Guard normal user monitor against execution-log/result-id fallback.
+- [x] PR-169A — Business-owned Activity Timeline action.
+  - Analyze: App has `agent_id` but should not derive Cortex root scope or call Cortex internals directly.
+  - Implement: add `agents.activity_timeline` action in Business; it checks agent access, derives the main agent-root scope, calls Cortex `/v1/trace/project`, and returns only public records.
+  - Test: Business unit tests cover scope derivation, Cortex request shape, safe response shape, and access validation.
+  - Smoke: local action handler smoke with a mocked Cortex response.
+  - Deploy: deploy services after merge.
+  - GitHub: committed and pushed in `novaic-business` (`24a2072`); parent pointer updated in the PR-169A parent commit.
+- [ ] PR-169B — App hook and component for Activity Timeline.
+  - Analyze: current ChatPanel subscribes to Entangled `execution-logs` for the normal monitor.
+  - Implement: add a hook that calls `agents.activity_timeline`; add a user-facing Activity Timeline component rendering Observation / Reasoning / Action / Summary records.
+  - Test: hook/client mapper tests and component tests prove raw debug fields are not rendered.
+  - Smoke: app build/unit tests.
+  - Deploy: deploy app/services as needed.
+  - GitHub: commit, push, update parent submodule pointer.
+- [ ] PR-169C — Default Agent Monitor uses Activity Timeline, not execution logs.
+  - Analyze: `ChatPanel`, preview, expanded panel, and labels still say execution log.
+  - Implement: switch default monitor and preview to Activity Timeline; keep execution log only behind explicit developer diagnostics if still needed.
+  - Test: ChatPanel tests or static guards verify normal monitor path does not import/render `ExecutionLog`.
+  - Smoke: app build/unit tests.
+  - Deploy: deploy app.
+  - GitHub: commit, push, update parent submodule pointer.
+- [ ] PR-169D — Guardrails against debug fallback in user monitor.
+  - Analyze: previous monitor leaked `result_id`, raw MCP content, HTTP errors, and execution-log wording.
+  - Implement: static tests/guards banning raw diagnostic field rendering in normal Activity Timeline components.
+  - Test: guard tests for `result_id`, `_mcp_content`, raw HTTP body/stack trace, and `execution-logs` fallback.
+  - Smoke: full relevant frontend tests.
+  - Deploy: deploy app/services.
+  - GitHub: commit, push, update parent submodule pointer.
 
 ## Done Criteria
 
