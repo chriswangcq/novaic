@@ -32,7 +32,9 @@
 
 ## Small Tickets
 
-- [ ] To be created after current-state analysis.
+- [ ] PR-160A — Entangled NOW ALTER Schema Repair
+- [ ] PR-160B — Retired Entangled Tables and Columns Cleanup
+- [ ] PR-160C — Message Content JSON Shape Normalization
 
 ## Done Criteria
 
