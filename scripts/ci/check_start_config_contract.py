@@ -28,7 +28,7 @@ RETIRED_FILES = [
     "scripts/canary/traffic.py",
     "scripts/gateway/deploy-gateway.sh",
     "scripts/gateway/jwt_secret.env.example",
-    "scripts/submodules/novaic-gateway/deploy-gateway.sh",
+    "scripts/submodules",
     "docs/runbooks/subscriber-canary.md",
 ]
 
@@ -42,6 +42,7 @@ RETIRED_TEXT = [
     "scripts/deploy-all.sh",
     "deploy-all.sh",
     "scripts/gateway/deploy-gateway.sh",
+    "scripts/submodules/",
     "jwt_secret.env",
     "restart_gw.sh",
     "docs/runbooks/subscriber-canary.md",
