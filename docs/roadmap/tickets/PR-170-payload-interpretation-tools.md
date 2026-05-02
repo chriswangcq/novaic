@@ -20,7 +20,7 @@ Add explicit `payload_summarize` and `payload_qa` tools so the agent can interpr
 ## Small Tickets
 
 - [x] PR-170A — Common schemas and product semantics for `payload_summarize` / `payload_qa`.
-- PR-170B — Cortex interpretation endpoints and payload resolver budget/redaction.
+- [x] PR-170B — Cortex interpretation endpoints and payload resolver budget/redaction.
 - PR-170C — Runtime executors wired to Cortex interpretation endpoints.
 - PR-170D — LLM Factory-backed implementation and monitor/Cortex observation tests.
 
