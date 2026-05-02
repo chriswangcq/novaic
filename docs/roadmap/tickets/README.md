@@ -261,7 +261,8 @@
 | PR-179 | `[closed]` | [Cortex legacy CLI/proxy surface cleanup](PR-179-cortex-legacy-cli-proxy-surface-cleanup.md) | PR-178 | Cortex boundary cleanup | 0.5 d | BusinessProxy route, CLI commands, startup wiring, and active docs removed; Cortex deployed |
 | PR-180 | `[closed]` | [Business device proxy route boundary review](PR-180-business-device-proxy-route-boundary-review.md) | PR-179 | Business/Device boundary cleanup | 0.5-1 d | Review closed by PR-180A |
 | PR-180A | `[closed]` | [Delete Business device proxy routes with no active caller](PR-180A-delete-business-device-proxy-routes.md) | PR-180 | Business/Device boundary cleanup | 0.25-0.5 d | Removed Business qemu/vm/mobile/hd forwarding routes and proxy helper; Business deployed |
-| PR-181 | `[pending]` | [SubAgent spawn write normalization](PR-181-subagent-spawn-write-normalization.md) | PR-177, PR-178 | Environment/SubAgent single-writer cleanup | 0.5 d | Normalize spawn side effects to one Environment/message writer |
+| PR-181 | `[closed]` | [SubAgent spawn write normalization](PR-181-subagent-spawn-write-normalization.md) | PR-177, PR-178 | Environment/SubAgent single-writer cleanup | 0.5 d | Review closed by PR-181A |
+| PR-181A | `[closed]` | [SubAgent spawn uses Environment as the single IM writer](PR-181A-subagent-spawn-environment-single-writer.md) | PR-181 | Environment/SubAgent single-writer cleanup | 0.25-0.5 d | Removed direct `messages` append from spawn; Environment writes projection; Business deployed |
 | PR-182 | `[pending]` | [Back-compat naming and branch cleanup](PR-182-backcompat-naming-branch-cleanup.md) | PR-179..PR-181 | Maintenance entropy cleanup | 0.5-1 d | Remove confirmed stale compatibility names/comments/helpers |
 
 

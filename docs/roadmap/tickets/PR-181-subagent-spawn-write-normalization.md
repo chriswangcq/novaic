@@ -1,6 +1,6 @@
 # PR-181 — SubAgent spawn write normalization
 
-Status: `[pending]`
+Status: `[closed]`
 
 ## Goal
 
@@ -24,3 +24,11 @@ Normalize SubAgent spawn side effects so Environment IM/message/notification wri
 
 - Deploy affected Business/Runtime services.
 - Commit/push each independently mergeable change.
+
+## Small Tickets
+
+- PR-181A — SubAgent spawn uses Environment as the single IM writer.
+
+## Closure
+
+PR-181 found one duplicate write path in `spawn_subagent`: a direct `messages` append plus an Environment write. PR-181A removed the direct append, left Environment as the single writer for event/message/notification/projection, deployed Business, and verified tests/smoke.
