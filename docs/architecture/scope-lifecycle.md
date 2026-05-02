@@ -61,4 +61,4 @@ sqlite3 /opt/novaic/data/entangled.db \
 - 不允许重新暴露 `/v1/messages/{id}/transition` 或 `/internal/messages/bulk-transition`。
 - 不允许重新引入 `message_outbox` wake queue。
 - 不允许 HealthWorker 扫描 chat-message lifecycle 并 redispatch。
-- 不允许从 `chat_reply` 或历史 transcript 推断长期记忆；连续性只来自 Cortex scope tree 和显式 summary。
+- 不允许从 `im_reply` 或历史 transcript 推断长期记忆；连续性只来自 Cortex scope tree 和显式 summary。

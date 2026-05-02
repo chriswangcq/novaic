@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[open]` |
+| Status | `[closed]` |
 | Owner | Codex |
 | Created | 2026-05-02 |
 | Repos | all first-party repos |
@@ -19,13 +19,19 @@ Most old communication tools and raw log payload paths are gone. Remaining trans
 
 ## Small Tickets
 
-- PR-171A — Remove message-backed Environment notification compatibility.
-- PR-171B — Remove App execution-log user monitor fallback.
-- PR-171C — Remove retired tool-name aliases from Cortex/App projection except archived tests.
-- PR-171D — Repo-wide guardrails for raw unobserved prompt content, raw payload Cortex writes, and old communication tools.
+- [PR-171A](PR-171A-remove-message-backed-environment-compat.md) — Remove message-backed Environment notification compatibility.
+- [PR-171B](PR-171B-remove-app-execution-log-monitor-fallback.md) — Remove App execution-log user monitor fallback.
+- [PR-171C](PR-171C-remove-retired-tool-aliases.md) — Remove retired tool-name aliases from Cortex/App projection except archived tests.
+- [PR-171D](PR-171D-retired-path-guardrails.md) — Repo-wide guardrails for raw unobserved prompt content, raw payload Cortex writes, and old communication tools.
 
 ## Done Criteria
 
-- No active code has “new path or old path” branching.
-- Tests fail if old communication, summary, or raw diagnostic paths return.
-- Historical docs remain clearly archived and cannot be mistaken for current runbooks.
+- [x] No active code has “new path or old path” branching for App user monitor, retired LLM communication tools, or message-backed prompt replay.
+- [x] Tests fail if old communication, summary, or raw diagnostic paths return.
+- [x] Historical docs remain clearly archived and current architecture docs describe the new Environment/Cortex/Activity Timeline path.
+
+## Closure Evidence
+
+- PR-171A, PR-171B, PR-171C, and PR-171D are all closed.
+- Full suites passed: Runtime 173, Common 122, Cortex 401/16 skipped, App build + 37 unit tests.
+- Deployment completed through `./deploy services`, `./deploy frontend`, and `./deploy status`.
