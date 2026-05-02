@@ -244,6 +244,7 @@
 | PR-167D | `[done]` | [Environment Backfill and Message-Backed Repository Removal](PR-167D-environment-backfill-remove-message-backed-repo.md) | PR-167C | Data backfill / guard | 0.25-0.5 d | Production backfilled; repository no-message-read guard added |
 | PR-168 | `[open]` | [Environment Notification Queue Cutover](PR-168-environment-notification-queue-cutover.md) | PR-167 | Agent loop ownership | multi-step | Big ticket |
 | PR-168A | `[done]` | [Environment Notification Internal API](PR-168A-environment-notification-internal-api.md) | PR-167 | Business boundary | 0.25-0.5 d | Internal list/claim/processed/failed APIs added |
+| PR-168B | `[done]` | [Environment Notification Dispatch Lease](PR-168B-environment-notification-dispatch-lease.md) | PR-168A | Queue ownership boundary | 0.25-0.5 d | Dispatch lease added before subscriber cutover |
 | PR-169 | `[open]` | [App Cortex Activity Timeline Cutover](PR-169-app-cortex-activity-timeline-cutover.md) | PR-166, PR-168 preferred | Agent Monitor source of truth | multi-step | Big ticket |
 | PR-170 | `[open]` | [Payload Interpretation Tools](PR-170-payload-interpretation-tools.md) | PR-164 | Explicit observation interpretation | multi-step | Big ticket |
 | PR-171 | `[open]` | [Final Old Path Physical Deletion and Guardrails](PR-171-final-old-path-physical-deletion.md) | PR-167..PR-170 | Entropy cleanup | multi-step | Big ticket |

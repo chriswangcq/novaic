@@ -20,9 +20,10 @@ The current notification-only prompt works, but `notification_id` is still the m
 ## Small Tickets
 
 - [x] [PR-168A — Environment notification internal API](PR-168A-environment-notification-internal-api.md).
-- PR-168B — Queue/subscriber claims Environment notifications, not message rows.
-- PR-168C — Runtime finalization marks Environment notifications processed/failed.
-- PR-168D — Remove message-lifecycle notification compatibility and guard it.
+- [x] [PR-168B — Environment notification dispatch lease](PR-168B-environment-notification-dispatch-lease.md).
+- [ ] PR-168C — Subscriber polls and dispatch-claims Environment notifications, not message outbox rows.
+- [ ] PR-168D — Runtime finalization marks Environment notifications processed/failed.
+- [ ] PR-168E — Remove message-lifecycle/outbox notification compatibility and guard it.
 
 ## Done Criteria
 
