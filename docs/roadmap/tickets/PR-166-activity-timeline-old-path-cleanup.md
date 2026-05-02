@@ -25,7 +25,7 @@ The monitor should show the agent's observation, reasoning, and action at produc
 
 ## Small Tickets
 
-- PR-166A — Activity Timeline projection contract.
+- [PR-166A — Activity Timeline projection contract](PR-166A-activity-timeline-projection-contract.md).
 - PR-166B — App monitor renders product-level observation/reasoning/action.
 - [PR-166C — Remove backend `log-payloads` diagnostic payload path](PR-166C-remove-backend-log-payloads-diagnostic-path.md).
 
@@ -33,7 +33,7 @@ The monitor should show the agent's observation, reasoning, and action at produc
 
 2026-05-02 scan after PR-165 found:
 
-1. Cortex already exposes `POST /v1/trace/project` via `novaic-cortex/novaic_cortex/trace_projection.py`, with observation / reasoning / action / summary phases. It is not yet consumed by the App monitor.
+1. PR-166A tightened Cortex `POST /v1/trace/project` into a user-facing Activity Timeline projection contract. Records expose only `order`, `phase`, `kind`, `title`, `text`, `truncated`, optional `tool`, optional `status`, and optional `has_payload`; debug fields such as `source`, `tool_call_id`, `arguments_preview`, `payload_ref`, and per-record `scope_path` are no longer default output.
 2. The App monitor currently renders the Entangled `execution-logs` stream through `useLogs` and `ExecutionLog`. Existing tests already guard against normal display of Factory ids, `result_id`, raw MCP content, `Input Parameters`, `Execution Result`, and technical labels.
 3. Common owns semantic display contracts for the current monitor path: `execution_log_display.json` and `tool_product_semantics.json`.
 4. PR-166C retired the stale backend diagnostic branch: `log-payloads` is no longer registered in Common/Business schema, Business no longer exposes `log-payloads.get_payload`, `/internal/logs/broadcast` no longer writes raw `input` / `result` / `error`, and Runtime no longer sends `input_data` / `result_data` to the monitor broadcast API.
@@ -41,7 +41,7 @@ The monitor should show the agent's observation, reasoning, and action at produc
 
 ## Current Iteration
 
-PR-166C is deployed and closed. Next PR-166 iteration should decide whether to switch the App monitor from lightweight `execution-logs` projection to Cortex `trace/project`, or keep `execution-logs` as the realtime monitor stream while adding stronger observation/reasoning/action contract tests.
+PR-166A and PR-166C are deployed and closed. Next PR-166 iteration should decide whether to switch the App monitor from lightweight `execution-logs` projection to Cortex `trace/project`, or keep `execution-logs` as the realtime monitor stream while adding stronger observation/reasoning/action contract tests.
 
 ## Boundary Invariants
 
