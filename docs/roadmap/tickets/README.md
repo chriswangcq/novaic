@@ -233,8 +233,9 @@
 | PR-165A | `[deployed]` | [Environment Notification Prompt Source](PR-165A-environment-notification-prompt-source.md) | PR-165 | Prompt boundary / Environment observation | 0.5-1 d | Runtime prompt context now uses notification hints; `im_read({})` resolves wake ids |
 | PR-165B | `[deployed]` | [Prompt and Tool Wording Notification-Only Cutover](PR-165B-prompt-tool-wording-notification-only.md) | PR-165A | Prompt contract | 0.25-0.5 d | Business/Common prompt wording aligned with notification -> `im_read` observation path |
 | PR-165C | `[deployed]` | [Notification Lifecycle Close / Failure Semantics](PR-165C-notification-lifecycle-close-failure.md) | PR-165B | Lifecycle ownership | 0.5 d | Runtime lifecycle guardrails added; old UI receipt/filter switch removed |
-| PR-166 | `[open]` | [Activity Timeline Projection and Old Path Cleanup](PR-166-activity-timeline-old-path-cleanup.md) | PR-165 | User-facing monitor / entropy cleanup | multi-step | Big ticket: analyze, create small tickets, implement to closure |
+| PR-166 | `[deployed]` | [Activity Timeline Projection and Old Path Cleanup](PR-166-activity-timeline-old-path-cleanup.md) | PR-165 | User-facing monitor / entropy cleanup | multi-step | Closed: Cortex projection, App phase rendering, and backend diagnostic payload retirement deployed |
 | PR-166A | `[deployed]` | [Activity Timeline Projection Contract](PR-166A-activity-timeline-projection-contract.md) | PR-166 | Agent monitor projection | 0.5 d | Cortex trace projection now returns user-facing timeline records without debug ids/refs |
+| PR-166B | `[deployed]` | [App Monitor Activity Phase Rendering](PR-166B-app-monitor-activity-phase-rendering.md) | PR-166A, PR-166C | Agent monitor UX | 0.25-0.5 d | App execution-log monitor now labels events as observation/reasoning/action/summary |
 | PR-166C | `[deployed]` | [Remove Backend `log-payloads` Diagnostic Payload Path](PR-166C-remove-backend-log-payloads-diagnostic-path.md) | PR-166, PR-154A | Old path cleanup | 0.5 d | Backend raw payload entity/action/write path removed; services deployed |
 
 

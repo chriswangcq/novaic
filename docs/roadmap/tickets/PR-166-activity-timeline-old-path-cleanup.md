@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[open]` |
+| Status | `[deployed]` |
 | Owner | Codex |
 | Created | 2026-05-02 |
 | Repos | `novaic-app`, `novaic-business`, `novaic-agent-runtime`, `novaic-cortex`, docs |
@@ -26,7 +26,7 @@ The monitor should show the agent's observation, reasoning, and action at produc
 ## Small Tickets
 
 - [PR-166A — Activity Timeline projection contract](PR-166A-activity-timeline-projection-contract.md).
-- PR-166B — App monitor renders product-level observation/reasoning/action.
+- [PR-166B — App monitor renders product-level observation/reasoning/action](PR-166B-app-monitor-activity-phase-rendering.md).
 - [PR-166C — Remove backend `log-payloads` diagnostic payload path](PR-166C-remove-backend-log-payloads-diagnostic-path.md).
 
 ## Current-State Analysis
@@ -41,7 +41,11 @@ The monitor should show the agent's observation, reasoning, and action at produc
 
 ## Current Iteration
 
-PR-166A and PR-166C are deployed and closed. Next PR-166 iteration should decide whether to switch the App monitor from lightweight `execution-logs` projection to Cortex `trace/project`, or keep `execution-logs` as the realtime monitor stream while adding stronger observation/reasoning/action contract tests.
+PR-166A, PR-166B, and PR-166C are deployed and closed. The current implementation keeps `execution-logs` as the realtime App monitor stream, adds explicit observation/reasoning/action/summary phase rendering in the App, and keeps Cortex `trace/project` as the stricter projection contract for trace-backed views.
+
+## Closure
+
+Closed 2026-05-02 after all small tickets were implemented, tested, deployed, and pushed.
 
 ## Boundary Invariants
 
