@@ -74,7 +74,7 @@ skill_end(report=...)
 | Runtime | LLM loop、tool call execution、把 tool action / observation / reasoning / reply 写入 Cortex | 业务事实源、Environment storage、Cortex 折叠规则、用户画像记忆推断 |
 | Cortex | LIFO scope 树、active trace、closed scope `summary.md`、LLM context 拼装 | 自动总结、用户画像、业务任务系统、payload 原文、Activity Timeline source of truth |
 | Activity Timeline | 从 Cortex trace 投影用户可见活动流 | 原始事实源、诊断 payload、长期记忆 |
-| Execution log | 开发诊断、raw payload 链接、排障细节 | 普通用户面 Agent Monitor |
+| Developer diagnostics | 开发排障入口，可追踪 payload/ref、HTTP/MCP 细节、异常栈 | 普通用户面 Agent Monitor、业务事实源、单独的 `execution-logs` 产品实体 |
 
 ## Authority 与 Environment
 
@@ -196,25 +196,27 @@ skill_end(report=...) -> current scope summary.md
 
 ## IM / Environment 工具方向
 
-长期工具族：
+当前 Environment IM 工具族：
 
 | 工具 | 语义 |
 | --- | --- |
-| `im_list` | 查看待处理 notification |
 | `im_read` | 读取用户/subagent/system-event 消息正文 |
 | `im_reply` | 回复用户 |
 | `im_send` | 给 subagent 或其他 Agent 发送 IM |
-| `im_mark_processed` | 标记 notification 已处理 |
-| `im_history` / `im_search` / `im_context` | 待补齐：Agent 主动翻阅已存在 IM 历史 |
+| `im_history` | 主动翻阅 bounded IM 历史 |
+| `im_search` | 显式搜索 bounded IM 历史 |
+| `im_context` | 围绕 anchor message 读取 bounded 上下文 |
 
-当前活工具名已经切到 Environment IM：`im_read`、`im_reply`、`im_send`。
+notification 的 claim / processed / failed 是 Runtime lifecycle 行为，不暴露成 LLM 工具。
+
+当前活工具名已经切到 Environment IM：`im_read`、`im_reply`、`im_send`、`im_history`、`im_search`、`im_context`。
 旧 `chat_reply`、`chat_history`、`subagent_send`、`subagent_report`、`subagent_query`、`subagent_cancel` 不再作为 LLM 工具暴露。
 
 用户消息、subagent 消息、系统事件都走同一 sender/channel/thread/message_id 模型。
 
-### IM history 需求记录
+### IM history
 
-Agent 需要主动翻 IM 历史，但不能恢复旧 `chat_history` 那种绕过 Environment 的第二观察通路。正确方向是以后在 Environment 里提供显式观察工具：
+Agent 可以主动翻 IM 历史，但不能恢复旧 `chat_history` 那种绕过 Environment 的第二观察通路。Environment 提供显式观察工具：
 
 - `im_history(thread_id?, before?, after?, limit?, sender_filter?)`
 - `im_search(query, thread_id?, sender_filter?, limit?)`
@@ -314,7 +316,7 @@ LLM prompt 不直接包含未观察的用户消息正文。消息正文必须通
 | Tool result payload | Domain store / diagnostic payload | 原始输出、二进制、大 JSON、长 stdout/stderr | 默认塞入 Cortex |
 | summary.md | Cortex closed scope | 折叠连续性 | raw trace、自动 wake summary |
 | Activity Event | Cortex trace 的物化投影 | 用户可见工作过程数据 | 独立事实源 |
-| execution log | Diagnostic store | 开发排障 | 用户面产品事实 |
+| Developer diagnostics | diagnostic tooling / payload resolver / logs | 开发排障 | 用户面产品事实、Activity Timeline source of truth |
 
 ## 实施阶段
 
@@ -324,8 +326,8 @@ LLM prompt 不直接包含未观察的用户消息正文。消息正文必须通
 4. **P3 IM read path**：`im_read` 读取结果自动写入 Cortex Observation percept。
 5. **P4 Payload interpretation tools**：为大 payload 建 ref，提供 read/search/summarize/QA 显式解释工具，禁止自动 summary 塞回 Cortex。
 6. **P5 Prompt notification-only**：LLM prompt 只注入 notification，不注入未观察消息正文。
-7. **P6 Activity Timeline 投影**：Timeline 从 Cortex trace 的物化 activity events 投影，execution log 下沉为开发诊断。
-8. **P7 物理删除旧通路**：删除正文直塞 prompt、subagent report 特殊注入、execution log 用户面 fallback、旧 query/cancel/report 工具、tool result 自动 summary 等隐式路径。
+7. **P6 Activity Timeline 投影**：Timeline 从 Cortex trace 的物化 activity events 投影，开发诊断不作为用户面来源。
+8. **P7 物理删除旧通路**：删除正文直塞 prompt、subagent report 特殊注入、旧 execution-log 用户面 fallback、旧 query/cancel/report 工具、tool result 自动 summary 等隐式路径。
 
 ## 一致性检查
 
@@ -341,14 +343,21 @@ LLM prompt 不直接包含未观察的用户消息正文。消息正文必须通
 8. 这条路径是否绕过了 Environment / Cortex？
 9. 这条路径是否把 authority prompt 环境化了？
 
-## 待决策问题
+## 已决策点
 
-1. 第一版是否允许 direct prompt 正文和 `im_read` 共存，还是必须一次切到 notification-only？
-2. processed lifecycle 是否由 Runtime 在 `skill_end` / turn finalize 成功后自动完成？
-3. Activity Timeline 第一版是否直接基于 Cortex trace 的物化 activity events，还是先从现有 execution log 投影过渡？
-4. Reasoning 默认展示多少内容，是否需要用户可配置？
-5. Environment 第一版是独立进程，还是独立子模块但随 Business/Runtime 部署？
-6. payload interpretation tools 第一版集合已定为 `payload_read`、`payload_search`、`payload_summarize`、`payload_qa`；后续讨论只围绕语义与体验，不再新增隐式自动总结通路。
+1. Prompt 主路径是 notification-only；消息正文必须通过 `im_read` 观察。
+2. notification processed lifecycle 由 Runtime 在 wake finalize / scope close 成功后完成，失败则保留 failed/pending 语义，不靠 UI read 状态驱动。
+3. Activity Timeline 直接从 Cortex trace 投影；旧 execution-log 用户面 fallback 物理删除。
+4. Reasoning 直接来自 provider-authored `reasoning_content`，不再生成 monitor-only reasoning summary。
+5. Environment 是独立业务域，当前随 Business/Runtime 部署，不做独立进程前置要求。
+6. Payload interpretation 工具集合是 `payload_read`、`payload_search`、`payload_summarize`、`payload_qa`；后续只优化语义与体验，不新增隐式自动总结通路。
+7. Environment IM history 工具集合是 `im_history`、`im_search`、`im_context`；它们是显式 observation tools，不是自动 prompt memory。
+
+## 后续增强
+
+- Reasoning 默认展示长度和折叠策略可以继续由 App 体验层调优，但不得新增 LLM summary 通路。
+- Developer diagnostics 可以继续改善排障入口，但不得复活 `execution-logs` 作为普通用户 Agent Monitor source。
+- `step_ref` / `payload_ref` 命名需要继续收口，避免把 step join key 误叫成 result。
 
 ## 结论
 
