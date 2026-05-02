@@ -41,7 +41,12 @@ Current live pieces already approximate an Environment, but the ownership is imp
 - `novaic-common/common/contracts/message_lifecycle.json` is the current shared message lifecycle contract. It covers message types, hidden UI message types, lifecycle states, allowed transitions, and outbox trigger mapping.
 - `DispatchSubscriber` owns outbox draining, retry/backoff, stale-claim protection, and same-sender IM aggregation. It does not write Cortex scope input directly; it sends `message_ids` to Queue metadata.
 - Runtime `session.init` receives `message_ids`, creates/uses the wake scope, and writes those ids into Cortex scope meta.
-- Runtime `context.read` reads `scope.meta.input_message_ids`, fetches `chat_messages` rows from Business, renders IM headers into LLM-visible prompt text, and appends the rendered result to Cortex context. This is the current raw-message observation path that later PRs should replace with explicit Environment observation tools.
+- Historical note: before PR-165, Runtime `context.read` read
+  `scope.meta.input_message_ids`, fetched `chat_messages` rows from Business,
+  rendered IM headers into LLM-visible prompt text, and appended the rendered
+  result to Cortex context. PR-165 removed this raw-message prompt path; live
+  prompt assembly now receives Environment notification ids and requires
+  explicit `im_read` observation.
 - Subagent communication is already represented as `SUBAGENT_SEND` message rows with metadata such as sender/target subagent id, plus the same outbox wake path.
 - There is no `environment` module, no Environment contract, no Environment repository, and no explicit Environment service boundary. The closest existing contract is message lifecycle, which mixes IM/message lifecycle with wake dispatch semantics.
 
