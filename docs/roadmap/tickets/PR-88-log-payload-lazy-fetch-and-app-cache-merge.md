@@ -3,17 +3,21 @@
 | Field | Value |
 |---|---|
 | **Ticket** | PR-88 |
-| **Status** | `[✓ deployed]` |
+| **Status** | `[retired by PR-166C]` |
 | **Opened** | 2026-04-29 |
 | **Owner** | __ |
 | **Severity** | P1 details panel correctness — heavy payloads are stored separately, but the App only has a partial input fetch path and does not merge it back into the visible log entry. |
 | **Depends on** | PR-86 preferred. |
 | **Blocks** | Reliable LLM input/details modal and execution-log drilldown. |
-| **Invariant** | Heavy payloads stay out of stream rows and are fetched on demand through explicit payload APIs. |
+| **Invariant** | Historical only. Heavy payload drilldown is no longer an Entangled payload API path; use Cortex payload refs / step results or LLM Factory joins when explicit drilldown is needed. |
 
-## Background
+## Retirement Note
 
-Business already moves heavy fields out of `execution_logs.data` into `log-payloads`:
+PR-88 was a short-lived drilldown design from 2026-04-29. The product direction changed: the Agent Monitor is not a raw payload inspector. PR-154A removed the App-side consumer, and PR-166C retired the backend `log-payloads` entity/action/write path. Do not use this ticket as an active implementation guide.
+
+## Historical Background
+
+Business previously moved heavy fields out of `execution_logs.data` into `log-payloads`:
 
 ```text
 input -> execution_log_payloads.input
@@ -21,9 +25,9 @@ result -> execution_log_payloads.result
 error -> execution_log_payloads.error
 ```
 
-But the active action surface only exposes `log-payloads.get_input`, and App code fetches input into a separate cache without consistently merging it into the `LogEntry` consumed by the details UI.
+At the time, the action surface only exposed `log-payloads.get_input`, and App code fetched input into a separate cache without consistently merging it into the `LogEntry` consumed by the details UI.
 
-## Goal
+## Historical Goal
 
 Make payload lazy fetch symmetric and usable:
 
@@ -117,8 +121,8 @@ POST /internal/entities/log-payloads/action/get_payload
 
 ## Acceptance Criteria
 
-- App can display lazily fetched input/result/error payloads.
-- Payload cache is actually consumed by rendered log entries.
+- Historical acceptance at that time was satisfied.
+- Current active system no longer exposes `log-payloads`; use Cortex payload refs / step results or LLM Factory joins for explicit drilldown.
 - Stream rows remain lightweight.
 
 ## Rollback

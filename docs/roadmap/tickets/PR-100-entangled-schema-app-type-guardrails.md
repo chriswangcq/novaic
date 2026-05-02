@@ -14,7 +14,7 @@ Business defines Entangled entities in `schema_push.py`; App keeps entity metada
 
 ## Goal
 
-- Add a schema snapshot/contract for key entities used by App: `messages`, `execution-logs`, and `log-payloads`.
+- Add a schema snapshot/contract for key entities used by App. Current active App entities are `messages` and `execution-logs`; historical `log-payloads` was removed by PR-166C.
 - Add tests that compare App entity metadata against the backend schema contract.
 - Make future field additions explicit.
 

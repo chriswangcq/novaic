@@ -45,7 +45,7 @@ Update docs and add light guardrails so future debugging matches the actual clie
 - [x] Update Entangled/App docs to describe the actual cache tables.
 - [x] Add a troubleshooting snippet for inspecting `entangled_cache.db`.
 - [x] Add a guardrail test or lint if there is an existing docs/schema invariant test location.
-- [x] Document that `log-payloads` is action/lazy-fetch, not a default subscribed stream.
+- [x] Document that historical `log-payloads` was never a default subscribed stream. PR-166C later retired it completely.
 
 ## Unit Test Requirements
 
