@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[open]` |
+| Status | `[done]` |
 | Owner | Codex |
 | Created | 2026-05-02 |
 | Repos | Entangled, novaic-business, novaic-app, novaic-device, docs |
@@ -34,12 +34,18 @@
 
 - [x] PR-160A — Entangled NOW ALTER Schema Repair
 - [x] PR-160B — Retired Entangled Tables and Columns Cleanup
-- [ ] PR-160C — Message Content JSON Shape Normalization
+- [x] PR-160C — Message Content JSON Shape Normalization
 
 ## Done Criteria
 
-- [ ] Key online entities have shape count evidence.
-- [ ] Any stale shape found is either cleaned or documented as intentionally current.
-- [ ] No active code keeps compatibility only for already-deleted shapes.
-- [ ] Guardrails prevent the same stale shape from returning.
-- [ ] Affected services are deployed and git commits are recorded.
+- [x] Key online entities have shape count evidence.
+- [x] Any stale shape found is either cleaned or documented as intentionally current.
+- [x] No active code keeps compatibility only for already-deleted shapes.
+- [x] Guardrails prevent the same stale shape from returning.
+- [x] Affected services are deployed and git commits are recorded.
+
+## Closure Notes
+
+- PR-160A fixed Entangled `default="NOW"` ALTER migrations and restored `agent_state.sleep_started_at` online.
+- PR-160B removed retired tables and stale columns from online Entangled DB and rejected retired subagent continuity extras in Entangled state transitions.
+- PR-160C normalized `chat_messages.content` to JSON object shape across Runtime, Business, App, and online data.
