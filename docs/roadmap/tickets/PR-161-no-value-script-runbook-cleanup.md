@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[open]` |
+| Status | `[done]` |
 | Owner | Codex |
 | Created | 2026-05-02 |
 | Repos | root, novaic-app, novaic-agent-runtime, novaic-business, novaic-gateway, docs |
@@ -35,12 +35,20 @@ AI 时代写新代码很便宜，维护旧分支很贵。脚本和 runbook 是�
 - [x] PR-161A — Delete One-Shot Lifecycle Cleanup Migrations
 - [x] PR-161B — Delete Root Submodule Script Mirrors
 - [x] PR-161C — Delete Gateway Legacy Data/Replayer Scripts
-- [ ] PR-161D — Delete Obsolete Local DB Recovery Scripts
+- [x] PR-161D — Delete Obsolete Local DB Recovery Scripts
 
 ## Done Criteria
 
-- [ ] Active runbooks do not instruct retired deploy/runtime/subscriber/tool paths.
-- [ ] No-value scripts are physically deleted, not renamed into limbo.
-- [ ] Remaining historical docs are clearly labeled as archive or reviews.
-- [ ] Guardrail catches the highest-risk deleted script/runbook names.
-- [ ] Affected services/docs are tested or linted, deployed if needed, and git commits are recorded.
+- [x] Active runbooks do not instruct retired deploy/runtime/subscriber/tool paths.
+- [x] No-value scripts are physically deleted, not renamed into limbo.
+- [x] Remaining historical docs are clearly labeled as archive or reviews.
+- [x] Guardrail catches the highest-risk deleted script/runbook names.
+- [x] Affected services/docs are tested or linted, deployed if needed, and git commits are recorded.
+
+## Closure Notes
+
+- Deleted retired lifecycle one-shot cleanup scripts and their active runbook.
+- Deleted root `scripts/submodules/**` mirrors.
+- Deleted old Gateway DB data/backfill/replay scripts.
+- Deleted obsolete local DB recovery scripts.
+- Guardrails now block the deleted high-risk script names and root submodule mirror directory.
