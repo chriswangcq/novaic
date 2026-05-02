@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[open]` |
+| Status | `[deployed]` |
 | Owner | Codex |
 | Created | 2026-05-02 |
 | Repos | `novaic-business`, `novaic-agent-runtime`, `novaic-cortex`, docs |
@@ -27,27 +27,26 @@ The agent should explicitly read the environment when it needs message contents.
 
 - [x] [PR-165A — Environment notification prompt source](PR-165A-environment-notification-prompt-source.md)
 - [x] [PR-165B — Prompt and tool wording notification-only cutover](PR-165B-prompt-tool-wording-notification-only.md)
-- [PR-165C — Notification lifecycle close/failure semantics](PR-165C-notification-lifecycle-close-failure.md)
+- [x] [PR-165C — Notification lifecycle close/failure semantics](PR-165C-notification-lifecycle-close-failure.md)
 
 ## Current-State Analysis
 
-PR-164 completed the Cortex observation/payload/reasoning trace pieces, but
-Runtime still has one direct raw-message prompt path:
+PR-164 completed the Cortex observation/payload/reasoning trace pieces. PR-165
+then cut the live wake path to Environment notifications:
 
-- `task_queue/handlers/context_handlers.py::handle_context_read` reads
-  `scope.meta.input_message_ids`, fetches each `messages` row from Business,
-  renders an IM header plus the original body, and appends that as a
-  `role=user` context message before every LLM call.
 - PR-165A fixed the Runtime hot path: `context.read` now appends
   notification-only hints and `im_read({})` resolves current wake
   `input_message_ids` from Cortex meta.
 - PR-165B fixed Business/Common prompt wording: model-visible prompt now
   describes Environment notifications and requires `im_read` observation before
   replying to message-triggered wakes.
-- Session lifecycle already has the right structural ownership:
+- PR-165C removed the leftover `filter_sending` switch from Runtime
+  `context.read` and added guardrails preventing raw message fetches, UI receipt
+  state, or old IM-header rendering from returning to prompt assembly.
+- Session lifecycle has one structural ownership chain:
   Subscriber/Queue pass `message_ids`; Runtime `session_init` stores them in
   wake meta and claims them; `wake_finalize`/`scope_end` consumes them after
-  successful archive. The gap is prompt assembly and default `im_read`.
+  successful archive. Archive failure leaves messages unconsumed for recovery.
 
 ## Boundary Invariants
 
@@ -62,3 +61,10 @@ Runtime still has one direct raw-message prompt path:
 - Agent can answer only after observing via tools.
 - Wake close writes the intended scope summary.
 - Guards prevent reintroducing raw IM replay or wake-summary fallback paths.
+
+## Validation
+
+- Runtime full suite:
+  `PYTHONPATH=.:../novaic-common pytest -q` -> `198 passed`.
+- PR-165A/PR-165B production deploys completed before PR-165C; PR-165C deploy
+  evidence is recorded in the child ticket.

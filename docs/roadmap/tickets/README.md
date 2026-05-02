@@ -229,10 +229,10 @@
 | PR-164A | `[deployed]` | [Tool Result Observation Payload Write Path](PR-164A-tool-result-observation-payload-write-path.md) | PR-164 | Cortex payload ref | 0.5-1 d | Runtime tool results now write observation + payload_ref; Cortex rejects inline raw result |
 | PR-164B | `[deployed]` | [Explicit Payload Inspection Tools](PR-164B-explicit-payload-inspection-tools.md) | PR-164A | Explicit observation tools | 0.5-1 d | `payload_read` and `payload_search` deployed; no hidden auto-summary path |
 | PR-164C | `[deployed]` | [Reasoning and Action Trace Projection](PR-164C-reasoning-action-trace-projection.md) | PR-164A, PR-164B | Activity trace projection | 0.5-1 d | Cortex trace projection API deployed; App payload monitor display aligned |
-| PR-165 | `[in-progress]` | [Notification Wake and Prompt Cutover](PR-165-notification-wake-prompt-cutover.md) | PR-164 | Agent loop / prompt boundary | multi-step | Big ticket: small tickets PR-165A/165B/165C created |
+| PR-165 | `[deployed]` | [Notification Wake and Prompt Cutover](PR-165-notification-wake-prompt-cutover.md) | PR-164 | Agent loop / prompt boundary | multi-step | PR-165A/PR-165B/PR-165C deployed; prompt receives Environment notifications, not hidden raw message bodies |
 | PR-165A | `[deployed]` | [Environment Notification Prompt Source](PR-165A-environment-notification-prompt-source.md) | PR-165 | Prompt boundary / Environment observation | 0.5-1 d | Runtime prompt context now uses notification hints; `im_read({})` resolves wake ids |
 | PR-165B | `[deployed]` | [Prompt and Tool Wording Notification-Only Cutover](PR-165B-prompt-tool-wording-notification-only.md) | PR-165A | Prompt contract | 0.25-0.5 d | Business/Common prompt wording aligned with notification -> `im_read` observation path |
-| PR-165C | `[open]` | [Notification Lifecycle Close / Failure Semantics](PR-165C-notification-lifecycle-close-failure.md) | PR-165B | Lifecycle ownership | 0.5 d | Tighten processed/failure semantics after wake close |
+| PR-165C | `[deployed]` | [Notification Lifecycle Close / Failure Semantics](PR-165C-notification-lifecycle-close-failure.md) | PR-165B | Lifecycle ownership | 0.5 d | Runtime lifecycle guardrails added; old UI receipt/filter switch removed |
 | PR-166 | `[open]` | [Activity Timeline Projection and Old Path Cleanup](PR-166-activity-timeline-old-path-cleanup.md) | PR-165 | User-facing monitor / entropy cleanup | multi-step | Big ticket: analyze, create small tickets, implement to closure |
 
 
