@@ -25,13 +25,29 @@ The agent should explicitly read the environment when it needs message contents.
 
 ## Planned Small Tickets
 
-- PR-165A — Subscriber emits Environment notifications as the wake source.
-- PR-165B — Prompt builder uses notification-only message hints.
-- PR-165C — Wake scope close and notification processed/failure semantics.
+- [x] [PR-165A — Environment notification prompt source](PR-165A-environment-notification-prompt-source.md)
+- [PR-165B — Prompt and tool wording notification-only cutover](PR-165B-prompt-tool-wording-notification-only.md)
+- [PR-165C — Notification lifecycle close/failure semantics](PR-165C-notification-lifecycle-close-failure.md)
 
 ## Current-State Analysis
 
-Pending after PR-164.
+PR-164 completed the Cortex observation/payload/reasoning trace pieces, but
+Runtime still has one direct raw-message prompt path:
+
+- `task_queue/handlers/context_handlers.py::handle_context_read` reads
+  `scope.meta.input_message_ids`, fetches each `messages` row from Business,
+  renders an IM header plus the original body, and appends that as a
+  `role=user` context message before every LLM call.
+- PR-165A fixed the Runtime hot path: `context.read` now appends
+  notification-only hints and `im_read({})` resolves current wake
+  `input_message_ids` from Cortex meta.
+- Business prompt text still documents “用户侧消息 role=user content 以 IM
+  header 开头” and therefore teaches the model to expect already-observed
+  message bodies.
+- Session lifecycle already has the right structural ownership:
+  Subscriber/Queue pass `message_ids`; Runtime `session_init` stores them in
+  wake meta and claims them; `wake_finalize`/`scope_end` consumes them after
+  successful archive. The gap is prompt assembly and default `im_read`.
 
 ## Boundary Invariants
 
@@ -46,4 +62,3 @@ Pending after PR-164.
 - Agent can answer only after observing via tools.
 - Wake close writes the intended scope summary.
 - Guards prevent reintroducing raw IM replay or wake-summary fallback paths.
-
