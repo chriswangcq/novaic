@@ -95,7 +95,7 @@ Body: { user_id, params, payload }
 
 ## 受影响的 Action 清单
 
-共 **10 个实体、38 个自定义 action**，全部注册在 Gateway 侧：
+历史迁移快照：这些 action 曾注册在 Gateway 侧。当前活跃 contract 以 Business `schema_push.py` 和 Common contract 为准；PR-166C 后 `log-payloads` 已退役，不应重新作为活跃 action 表面。
 
 
 | 实体                 | Action 名称                                                                                                                                                                           | 文件                    |
@@ -107,7 +107,6 @@ Body: { user_id, params, payload }
 | `api-keys`         | `test`                                                                                                                                                                              | `defs.py`             |
 | `messages`         | `send`, `mark_all_read`, `clear`                                                                                                                                                    | `defs_stream.py`      |
 | `execution-logs`   | `clear`                                                                                                                                                                             | `defs_stream.py`      |
-| `log-payloads`     | `get_input`, `get_payload`                                                                                                                                                          | `defs_stream.py`      |
 | `user-preferences` | `get_config`, `cleanup`                                                                                                                                                             | `defs_users.py`       |
 | `models`           | `add_custom`                                                                                                                                                                        | `defs_models.py`      |
 | `api-key-models`   | `refresh`, `remove`                                                                                                                                                                 | `defs_models.py`      |
@@ -157,4 +156,3 @@ Body: { user_id, params, payload }
 | 前端 TS (`dispatch.ts` / `client.ts`)    | 调用方式不变                                         |
 | Entangled WS handler (`ws_handler.py`) | `_dispatch_action` 已正确路由到 `store.action()`，无需改 |
 | Entangled CRUD                         | 不受影响                                           |
-

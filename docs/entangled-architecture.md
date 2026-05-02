@@ -92,7 +92,7 @@ sqlite3 "$HOME/Library/Application Support/com.novaic.app/entangled_cache.db" \
   "SELECT entity, version, subscribed FROM entity_meta ORDER BY entity"
 ```
 
-`log-payloads` 是 action / lazy-fetch 表面，不是默认订阅的热 stream。执行日志热路径订阅 `execution-logs`，大 payload 需要按需 action 读取或通过 Cortex step result / LLM Factory join key 下钻。
+执行日志热路径只订阅 `execution-logs`，并且只保留轻量 monitor metadata。历史 `log-payloads` lazy-fetch 表面已退役；大 payload 不进入 Entangled，工具结果通过 Cortex step / payload ref 下钻，原始 LLM 调用通过 LLM Factory join key 下钻。
 
 ---
 

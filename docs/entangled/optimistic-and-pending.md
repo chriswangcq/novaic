@@ -41,6 +41,6 @@ sqlite3 "$HOME/Library/Application Support/com.novaic.app/entangled_cache.db" \
 执行日志相关约定：
 
 - `messages` / `execution-logs` 是 Entangled stream read-model；
-- `log-payloads` 通过 action lazy fetch，不默认订阅；
+- 历史 `log-payloads` lazy-fetch 表面已退役，不再作为 Entangled action 路径；
 - 工具长结果走 Cortex step；
 - 原始 LLM 调用走 LLM Factory，Entangled 中只需要 join key。

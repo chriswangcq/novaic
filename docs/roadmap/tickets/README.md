@@ -136,7 +136,7 @@
 | PR-84  | `[✓]`  | [Add Cortex minimal-structure invariant tests](PR-84-cortex-minimal-structure-invariants.md) | PR-82, PR-83 preferred | P0 structure guardrails | 0.5-1 d | closed |
 | PR-85  | `[✓]`  | [Add LLM context smoke guardrails for the minimal structure path](PR-85-llm-context-minimal-structure-smoke-guardrails.md) | PR-82, PR-83, PR-84 preferred | P0 smoke guardrails | 0.5-1 d | closed |
 | PR-86  | `[✓]`  | [Define execution-log lightweight metadata contract](PR-86-execution-log-light-metadata-contract.md) **— Runtime+App deployed + production smoke verified 2026-04-29** | PR-78+ | Entangled/App observability | 0.5-1 d | __ |
-| PR-88  | `[✓]`  | [Complete `log-payloads` lazy fetch and merge into App log view](PR-88-log-payload-lazy-fetch-and-app-cache-merge.md) **— Business+App deployed + production smoke verified 2026-04-29** | PR-86 preferred | Payload drilldown | 0.5-1 d | __ |
+| PR-88  | `[retired]`  | [Complete `log-payloads` lazy fetch and merge into App log view](PR-88-log-payload-lazy-fetch-and-app-cache-merge.md) **— superseded by PR-154A + PR-166C; do not treat as active path** | PR-86 preferred | Payload drilldown | 0.5-1 d | retired |
 | PR-89  | `[✓]`  | [Expose LLM Factory log join key in think execution logs](PR-89-llm-factory-log-id-entangled-join.md) **— Runtime+App deployed + production smoke verified 2026-04-29** | PR-86 preferred | LLM Factory join | 0.5 d | __ |
 | PR-90  | `[✓]`  | [Correct execution-log status semantics and add minimal lifecycle events](PR-90-execution-log-status-and-lifecycle-events.md) **— Runtime+App deployed + tests/smoke verified 2026-04-29** | PR-86 preferred | Timeline correctness | 0.5-1 d | __ |
 | PR-91  | `[✓]`  | [Align Entangled client cache docs and guardrails with actual App cache](PR-91-entangled-client-cache-docs-and-guardrails.md) **— Docs/guardrail + Entangled client tests verified 2026-04-29** | PR-86 optional | Docs / guardrails | 0.25-0.5 d | __ |
@@ -234,6 +234,7 @@
 | PR-165B | `[deployed]` | [Prompt and Tool Wording Notification-Only Cutover](PR-165B-prompt-tool-wording-notification-only.md) | PR-165A | Prompt contract | 0.25-0.5 d | Business/Common prompt wording aligned with notification -> `im_read` observation path |
 | PR-165C | `[deployed]` | [Notification Lifecycle Close / Failure Semantics](PR-165C-notification-lifecycle-close-failure.md) | PR-165B | Lifecycle ownership | 0.5 d | Runtime lifecycle guardrails added; old UI receipt/filter switch removed |
 | PR-166 | `[open]` | [Activity Timeline Projection and Old Path Cleanup](PR-166-activity-timeline-old-path-cleanup.md) | PR-165 | User-facing monitor / entropy cleanup | multi-step | Big ticket: analyze, create small tickets, implement to closure |
+| PR-166C | `[deployed]` | [Remove Backend `log-payloads` Diagnostic Payload Path](PR-166C-remove-backend-log-payloads-diagnostic-path.md) | PR-166, PR-154A | Old path cleanup | 0.5 d | Backend raw payload entity/action/write path removed; services deployed |
 
 
 ---

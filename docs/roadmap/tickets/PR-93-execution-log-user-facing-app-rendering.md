@@ -23,7 +23,7 @@ Split execution-log rendering into two layers:
 
 - [x] Add an App display helper that derives semantic title/summary from `display_kind`, `display_summary`, payload, or safe old-row fallbacks.
 - [x] Stop treating lightweight `data.result_id` as a renderable result payload by default.
-- [x] Keep lazy payload fetch support for real `log-payloads` details.
+- [x] Historical note: this ticket kept lazy payload support at the time. PR-154A removed the App-side consumer and PR-166C retired the backend `log-payloads` path.
 - [x] Move `result_id` and `factory_log_id` into collapsed technical details, not the default card summary.
 - [x] Update the main-agent preview to use the same semantic helper and stop treating lightweight `result_id` as display payload.
 - [x] Preserve reasoning content display; do not delete `reasoning_content` previews.

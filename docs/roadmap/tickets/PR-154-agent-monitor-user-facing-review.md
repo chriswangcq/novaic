@@ -44,11 +44,11 @@ For this big ticket:
 1. `LogCard` collapsed and expanded states already render semantic monitor language via `getExecutionLogDisplay`.
 2. Existing component tests assert Factory ids, `result_id`, raw "Execution Result", and technical labels do not appear in the normal monitor surface.
 3. Runtime/Common already emit `display_kind` / `display_summary`; Common has a shared `execution_log_display.json` contract and App tests compare against it.
-4. Residue: App still contains an unused on-demand `log-payloads.get_payload` fetch/cache path (`logInputCacheStore`, `useLogs.fetchLogInput`, `entityToLogVM(...payload)`, and `log-payloads` app entity contract). The current UI does not call it, so it is dead diagnostic plumbing that could accidentally reintroduce raw payload display later.
+4. Historical residue found by this ticket: App contained an unused on-demand `log-payloads.get_payload` fetch/cache path (`logInputCacheStore`, `useLogs.fetchLogInput`, `entityToLogVM(...payload)`, and `log-payloads` app entity contract). PR-154A removed the App-side path.
 
 ## Closure
 
-2026-05-02 PR-154A removed the App-side lazy execution-log payload cache and `log-payloads` entity contract. A follow-up scan of App production code found no normal Agent Monitor references to `result_id`, raw MCP content, Factory logs, `Execution Result`, or `log-payloads`. Remaining `result_id` / `_mcp_content` references live in Runtime/Cortex internals for LLM tool-result injection and step-result joins.
+2026-05-02 PR-154A removed the App-side lazy execution-log payload cache and `log-payloads` entity contract. PR-166C later retired the backend `log-payloads` schema/action/write path as well. A follow-up scan of App production code found no normal Agent Monitor references to `result_id`, raw MCP content, Factory logs, `Execution Result`, or `log-payloads`. Remaining `result_id` / `_mcp_content` references live in Runtime/Cortex internals for LLM tool-result injection and step-result joins.
 
 ## Unit / Guardrail Tests
 

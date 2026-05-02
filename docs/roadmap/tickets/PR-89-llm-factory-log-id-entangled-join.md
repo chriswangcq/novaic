@@ -15,7 +15,7 @@
 
 `llm_handlers.py` currently broadcasts think input payload containing full `messages`, `model`, `tools`, and `provider`. The LLM Factory response already carries `x_factory.log_id`, and the user has confirmed that raw LLM calls can be fetched directly from LLM Factory.
 
-Keeping full LLM request bodies in Entangled/log-payloads is therefore unnecessary and risks another duplicated log system.
+Keeping full LLM request bodies in Entangled was therefore unnecessary and risked another duplicated log system. The later PR-166C cleanup retired the remaining `log-payloads` backend path.
 
 ## Goal
 
@@ -43,7 +43,7 @@ The App can use this for drilldown into Factory when needed, while Entangled rem
 - [x] Extract `x_factory.log_id` from successful LLM Factory responses.
 - [x] Include `factory_log_id` in think completion log `data`.
 - [x] Consider including `factory_log_id` in failed think logs if Factory returns one for failures.
-- [x] Stop storing full raw LLM request payload in `log-payloads` when Factory log id is available, or gate it behind a compatibility/debug flag.
+- [x] Stop storing full raw LLM request payload in Entangled; PR-166C later removed the retired `log-payloads` path entirely.
 - [x] App displays a "Factory log" drilldown affordance when `factory_log_id` exists.
 - [x] Keep reasoning preview in execution logs if it remains small and intentionally user-facing.
 
@@ -51,7 +51,7 @@ The App can use this for drilldown into Factory when needed, while Entangled rem
 
 - [x] Runtime unit test: Factory response with `x_factory.log_id` produces think log metadata with `factory_log_id`.
 - [x] Runtime unit test: no `factory_log_id` gracefully falls back without crashing.
-- [x] Runtime regression test: Entangled/log-payloads does not receive full raw LLM body when Factory id is available.
+- [x] Runtime regression test: Entangled does not receive full raw LLM body when Factory id is available.
 - [x] App component test: think log with `factory_log_id` exposes a drilldown affordance.
 
 Suggested commands:
