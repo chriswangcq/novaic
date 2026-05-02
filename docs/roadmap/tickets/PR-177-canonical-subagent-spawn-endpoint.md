@@ -1,6 +1,6 @@
 # PR-177: Canonical SubAgent Spawn Endpoint
 
-Status: `[closed]`
+Status: `[closed]` — superseded by PR-178 for the Cortex proxy mutation path.
 
 ## Problem
 
@@ -15,7 +15,7 @@ Both created a child SubAgent and emitted the initial `SUBAGENT_SEND` Environmen
 
 - Keep `/internal/subagents/{agent_id}/spawn` as the single canonical Business endpoint.
 - Remove the agent-scoped duplicate endpoint from `business/internal/agent.py`.
-- Switch Cortex proxy `subagent action=spawn` to the canonical endpoint.
+- Initially switched Cortex proxy `subagent action=spawn` to the canonical endpoint. PR-178 then removed that proxy mutation entirely so Runtime remains the only Agent write executor.
 - Add/adjust tests so the duplicate route cannot return silently.
 
 ## Non-goals
@@ -33,5 +33,5 @@ Both created a child SubAgent and emitted the initial `SUBAGENT_SEND` Environmen
 ## Closure
 
 - The duplicate `/internal/agents/{agent_id}/subagent/spawn` endpoint was physically removed.
-- Cortex proxy now calls `/internal/subagents/{agent_id}/spawn`.
+- Runtime and Business use `/internal/subagents/{agent_id}/spawn` as the canonical path. The temporary Cortex proxy mutation path was removed by PR-178.
 - The canonical path still emits `SUBAGENT_SEND` and Environment IM rows.
