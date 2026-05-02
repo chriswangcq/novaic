@@ -237,6 +237,12 @@
 | PR-166A | `[deployed]` | [Activity Timeline Projection Contract](PR-166A-activity-timeline-projection-contract.md) | PR-166 | Agent monitor projection | 0.5 d | Cortex trace projection now returns user-facing timeline records without debug ids/refs |
 | PR-166B | `[deployed]` | [App Monitor Activity Phase Rendering](PR-166B-app-monitor-activity-phase-rendering.md) | PR-166A, PR-166C | Agent monitor UX | 0.25-0.5 d | App execution-log monitor now labels events as observation/reasoning/action/summary |
 | PR-166C | `[deployed]` | [Remove Backend `log-payloads` Diagnostic Payload Path](PR-166C-remove-backend-log-payloads-diagnostic-path.md) | PR-166, PR-154A | Old path cleanup | 0.5 d | Backend raw payload entity/action/write path removed; services deployed |
+| PR-167 | `[open]` | [Environment Dedicated Domain Store](PR-167-environment-dedicated-domain-store.md) | PR-166 | Environment domain completion | multi-step | Big ticket: create dedicated Environment entities and move repository/service off message wrappers |
+| PR-167A | `[done]` | [Dedicated Environment Entity Schema and Contract Guardrails](PR-167A-environment-entity-schema-contracts.md) | PR-167 | Environment schema | 0.5 d | Dedicated Environment entities registered, tested, deployed |
+| PR-168 | `[open]` | [Environment Notification Queue Cutover](PR-168-environment-notification-queue-cutover.md) | PR-167 | Agent loop ownership | multi-step | Big ticket |
+| PR-169 | `[open]` | [App Cortex Activity Timeline Cutover](PR-169-app-cortex-activity-timeline-cutover.md) | PR-166, PR-168 preferred | Agent Monitor source of truth | multi-step | Big ticket |
+| PR-170 | `[open]` | [Payload Interpretation Tools](PR-170-payload-interpretation-tools.md) | PR-164 | Explicit observation interpretation | multi-step | Big ticket |
+| PR-171 | `[open]` | [Final Old Path Physical Deletion and Guardrails](PR-171-final-old-path-physical-deletion.md) | PR-167..PR-170 | Entropy cleanup | multi-step | Big ticket |
 
 
 ---
