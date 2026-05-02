@@ -7,7 +7,7 @@
 | 层 | 认证 | 典型调用方 |
 |----|------|------------|
 | **Agent Tool API** | **`Authorization: Bearer`** + `auth.verify_capability_token` | Sandbox 内工具（shell、skill） |
-| **CLI API** | 同上 | `novaic` CLI（read/write/ls/tools/proxy） |
+| **CLI API** | 同上 | `novaic` CLI（read/write/ls/tools） |
 | **Internal API** | **无** Bearer；body 里带 **`user_id` / `agent_id`**（`_TenantMixin`） | Agent Runtime worker |
 
 另有 **`GET /health`**（无业务认证）、**`POST /v1/token`**（签发能力 JWT，**不要求**已有 Bearer）。
@@ -33,7 +33,6 @@
 | GET | `/v1/ls` |
 | GET | `/v1/skill/list` |
 | GET | `/v1/tools` |
-| POST | `/v1/proxy/{command}` |
 
 ### Internal — Scope
 
@@ -103,6 +102,4 @@ Agent Runtime 通过 **`POST /v1/context/prepare_for_llm`** 取 **messages + too
 ## 相关
 
 - [internal-api-schemas.md](internal-api-schemas.md) — Internal 路由 body 摘要  
-- [proxy-cli-auth.md](proxy-cli-auth.md) — JWT vs Business `X-Internal-Key`  
-- [proxy-gateway-routes.md](proxy-gateway-routes.md) — `/v1/proxy/{command}` → Business  
 - [runtime-facade.md](runtime-facade.md) — `Cortex` 类  

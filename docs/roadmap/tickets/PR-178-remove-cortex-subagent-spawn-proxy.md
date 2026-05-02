@@ -24,14 +24,14 @@ However, Cortex still exposed a direct `subagent action=spawn` proxy command. Th
 
 1. Analyze current callers for Cortex `subagent spawn`.
 2. Remove `spawn` support from Cortex CLI and BusinessProxy `_route_subagent`.
-3. Keep `subagent list` if still useful as a read/diagnostic command.
+3. PR-179 later removed the remaining Cortex proxy surface entirely, including `subagent list`.
 4. Update proxy tests to assert `spawn` is unsupported and does not call Business.
 5. Update PR-177 wording so it does not teach the now-removed proxy mutation path.
 6. Run focused Cortex tests, deploy Cortex, commit, and push.
 
 ## Acceptance
 
-- `novaic_cortex.proxy` contains no Business request for `/internal/subagents/{agent_id}/spawn`.
+- Cortex contains no Business request for `/internal/subagents/{agent_id}/spawn`.
 - `novaic_cortex.cli` no longer accepts `subagent spawn`.
 - Runtime `subagent_spawn` executor remains the only active Agent write path and still calls Business canonical endpoint.
 - Business canonical endpoint remains unchanged.
@@ -39,5 +39,5 @@ However, Cortex still exposed a direct `subagent action=spawn` proxy command. Th
 ## Closure
 
 - Cortex CLI/proxy `subagent spawn` was removed.
-- Cortex proxy still allows `subagent list` as a read/diagnostic command.
+- PR-179 removed the remaining Cortex proxy read/diagnostic command surface.
 - Runtime remains the only active Agent write executor for `subagent_spawn`.

@@ -1,0 +1,26 @@
+# PR-181 — SubAgent spawn write normalization
+
+Status: `[pending]`
+
+## Goal
+
+Normalize SubAgent spawn side effects so Environment IM/message/notification writes have one owner and one code path. Business may own the mutation, but it should avoid parallel manual writes that duplicate Environment repository behavior.
+
+## Required Process
+
+1. Analyze current `spawn_subagent` writes and downstream subscribers.
+2. Create small implementation tickets from the findings.
+3. Implement the single-writer path and delete old duplicate writes.
+4. Confirm closure with tests, smoke, deploy, and git commit.
+
+## Tests
+
+- Business SubAgent spawn unit tests.
+- Environment notification lifecycle tests.
+- Runtime `subagent_spawn` tool smoke.
+- Static scan for duplicate message write branches.
+
+## Deployment / Git
+
+- Deploy affected Business/Runtime services.
+- Commit/push each independently mergeable change.

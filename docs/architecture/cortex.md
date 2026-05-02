@@ -7,7 +7,7 @@ Cortex 是独立 HTTP 服务（默认 **19996**），主职责只有两类：
 1. 维护 **LIFO scope 树**。
 2. 从 scope 树按 DFS 拼装 **LLM context**。
 
-它还提供 Workspace、Sandbox、能力 JWT、少量遗留 `BusinessProxy` CLI 入口。当前主路径**没有独立 Recall 模块、wake summary、自动总结或从 `im_reply` / 聊天文本推断记忆**。
+它还提供 Workspace、Sandbox 与能力 JWT。当前主路径**没有独立 Recall 模块、wake summary、自动总结、业务代理或从 `im_reply` / 聊天文本推断记忆**。
 
 ## 存储模型
 

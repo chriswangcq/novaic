@@ -31,16 +31,14 @@
 
 ---
 
-## 4. 与 VM Shell 代理的区别
+## 4. 与设备/VM 工具的区别
 
-- **本 Sandbox**：子进程在 **Cortex 机**上跑，看到的是 **物化后的 workspace 文件**。  
-- `**BusinessProxy`** 路由的 `**shell_exec**` 等：请求发到 **Business `/internal/.../vm/...`**，再由业务/设备链路在 **远端 VM** 执行，**不是** `sandbox.py` 这条路径。
-
-CLI（`cli.py`）里保留的 `chat`、设备/VM、subagent 命令走 `**/v1/proxy/{command}`** → Business。`memory`、`notebook`、`task`、`search` 不再由 Cortex 代理。
+- **本 Sandbox**：子进程在 **Cortex 机**上跑，看到的是 **物化后的 workspace 文件**。
+- **设备/VM 工具**：由 Agent Runtime tool executor 调用 Business/Device 路径执行，**不是** Cortex CLI 或 `sandbox.py` 的职责。
+- Cortex 不再提供 `BusinessProxy` 或 `/v1/proxy/{command}`。
 
 ---
 
 ## 相关
 
 - [storage-and-keys.md](storage-and-keys.md)  
-- [proxy-cli-auth.md](proxy-cli-auth.md)
