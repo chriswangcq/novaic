@@ -47,9 +47,9 @@ Agent wake
   └─ Environment notifications
   ↓
 Agent actions
-  ├─ observe: im_read / chat_history / display / audio_qa / shell / payload_*
+  ├─ observe: im_read / display / audio_qa / shell / payload_*
   ├─ think: LLM reasoning_content
-  └─ act: chat_reply / subagent_send / skill_begin / skill_end / ...
+  └─ act: im_reply / im_send / skill_begin / skill_end / ...
   ↓
 Cortex active scope
   ├─ notification
@@ -160,15 +160,14 @@ Reasoning 来自 LLM Factory 的 `reasoning_content`。
 
 Action 是 Agent 对环境或系统发起的动作，例如：
 
-- `chat_reply` / `im_reply`
+- `im_reply`
 - `shell`
 - `display`
 - `audio_qa`
-- `chat_history`
 - `skill_begin`
 - `skill_end`
 - `subagent_spawn`
-- `subagent_send` / `im_send`
+- `im_send`
 - `payload_read` / `payload_search` / `payload_summarize` / `payload_qa`
 
 Action 的结果不塞回 Action 本身；工具结果默认成为下一条 Observation percept，显式解释工具的结果再成为解释性 Observation。
@@ -185,7 +184,7 @@ skill_end(report=...) -> current scope summary.md
 
 禁止：
 
-- 从 `chat_reply` 猜长期记忆。
+- 从 `im_reply` 猜长期记忆。
 - 从 reasoning 自动总结。
 - 从 tool result 自动总结。
 - 引入 wake summary / fallback summary / 多条并行摘要通路。
@@ -202,16 +201,8 @@ skill_end(report=...) -> current scope summary.md
 | `im_send` | 给 subagent 或其他 Agent 发送 IM |
 | `im_mark_processed` | 标记 notification 已处理 |
 
-迁移期可以先保留现有工具名，但语义要归一：
-
-| 当前工具 | 目标语义 |
-| --- | --- |
-| `chat_reply` | `im_reply` |
-| `subagent_send` | `im_send` |
-| `chat_history` | 历史观察工具 |
-| `subagent_report` | 退役为普通 IM message |
-| `subagent_query` | 默认不作为 LLM 工具暴露 |
-| `subagent_cancel` | 默认删除，除非重新证明产品价值 |
+当前活工具名已经切到 Environment IM：`im_read`、`im_reply`、`im_send`。
+旧 `chat_reply`、`chat_history`、`subagent_send`、`subagent_report`、`subagent_query`、`subagent_cancel` 不再作为 LLM 工具暴露。
 
 用户消息、subagent 消息、系统事件都走同一 sender/channel/thread/message_id 模型。
 
@@ -228,7 +219,7 @@ Activity Timeline 是用户可见的 Agent Monitor，不是诊断面板。
 | tool call | Action | 执行命令 / 查看附件 / 派生子 Agent |
 | tool result percept | Observation | 命令完成，显示状态、preview、head/tail、payload/ref |
 | payload interpretation result | Observation | Agent 已分析 payload，得到失败原因/摘要/答案 |
-| `chat_reply` | Action | 回复用户 |
+| `im_reply` | Action | 回复用户 |
 | `skill_end` | Action / Summary | 保存上下文 |
 
 默认用户面不展示：
@@ -337,12 +328,11 @@ LLM prompt 不直接包含未观察的用户消息正文。消息正文必须通
 ## 待决策问题
 
 1. 第一版是否允许 direct prompt 正文和 `im_read` 共存，还是必须一次切到 notification-only？
-2. `chat_reply` 是否保留名字但改语义，还是重命名为 `im_reply`？
-3. processed lifecycle 是否由 Runtime 在 `skill_end` / turn finalize 成功后自动完成？
-4. Activity Timeline 第一版是否直接基于 Cortex trace 的物化 activity events，还是先从现有 execution log 投影过渡？
-5. Reasoning 默认展示多少内容，是否需要用户可配置？
-6. Environment 第一版是独立进程，还是独立子模块但随 Business/Runtime 部署？
-7. payload interpretation tools 第一版最小集合是否只需要 `payload_read` + `payload_qa`，还是同时提供 search/summarize？
+2. processed lifecycle 是否由 Runtime 在 `skill_end` / turn finalize 成功后自动完成？
+3. Activity Timeline 第一版是否直接基于 Cortex trace 的物化 activity events，还是先从现有 execution log 投影过渡？
+4. Reasoning 默认展示多少内容，是否需要用户可配置？
+5. Environment 第一版是独立进程，还是独立子模块但随 Business/Runtime 部署？
+6. payload interpretation tools 第一版最小集合是否只需要 `payload_read` + `payload_qa`，还是同时提供 search/summarize？
 
 ## 结论
 

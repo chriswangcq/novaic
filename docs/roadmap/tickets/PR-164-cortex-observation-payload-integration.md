@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[open]` |
+| Status | `[in-progress]` |
 | Owner | Codex |
 | Created | 2026-05-02 |
 | Repos | `novaic-cortex`, `novaic-agent-runtime`, `novaic-business`, `novaic-common`, docs |
@@ -25,13 +25,29 @@ Large or sensitive tool results should not be blindly embedded into Cortex. They
 
 ## Planned Small Tickets
 
-- PR-164A — Cortex observation percept contract and write path.
-- PR-164B — Payload ref contract and inspection tool integration.
-- PR-164C — Reasoning/action/reply projection consistency.
+- [x] [PR-164A — Tool result observation payload write path](PR-164A-tool-result-observation-payload-write-path.md) — deployed in `novaic-common` commit `97f2a94`, `novaic-agent-runtime` commit `05a3149`, and `novaic-cortex` commit `351ee68`.
+- [ ] [PR-164B — Explicit payload inspection tools](PR-164B-explicit-payload-inspection-tools.md)
+- [ ] [PR-164C — Reasoning and action trace projection](PR-164C-reasoning-action-trace-projection.md)
 
 ## Current-State Analysis
 
-Pending after PR-163.
+Completed 2026-05-02 before PR-164A implementation.
+
+Current live path after PR-163:
+
+- Runtime executes native tools in `task_queue/handlers/tool_handlers.py` and assigns a stable `result_id` for each tool call.
+- Runtime `react_actions._build_save_results_tasks` writes each tool call as a Cortex step through `context.append(write_as_step=True)`.
+- Cortex `Workspace.write_step` persists the whole step JSON under `steps/` and indexes `result_id`.
+- The stored tool step currently carries raw result text in `step.result`. This makes Cortex usable for `read_formatted`, but violates the new architecture rule that Cortex should store default work trajectory, not raw payload bodies.
+- Cortex `steps/read_formatted` already acts as the LLM-facing resolver. It finds the step by `tool_call_id` / `result_id`, parses the stored result, and returns provider-shaped `_mcp_content`.
+- LLM `reasoning_content` is preserved in assistant messages for replay/debug. It is not yet modeled as a first-class trace projection.
+- Agent Monitor already uses product-level execution metadata for normal display, but Cortex itself does not yet expose a clean observation/action/reasoning projection contract.
+
+Conclusion: PR-164A should fix the write shape first. Tool result payloads must be externalized behind a payload ref; the Cortex step should contain a bounded observation percept plus `payload_ref`. Existing LLM result expansion should keep working by resolving the payload ref instead of reading `step.result`.
+
+## Progress Notes
+
+- PR-164A completed the first write-shape cutover: Runtime no longer writes raw `step.result`; Cortex externalizes payloads and rejects inline result payloads for new tool steps.
 
 ## Boundary Invariants
 
@@ -46,4 +62,3 @@ Pending after PR-163.
 - Payload refs are resolvable, bounded, and safe to display.
 - Reasoning content is preserved where available and separated from generated summaries.
 - No raw MCP/HTTP/debug blobs leak into normal Agent Monitor.
-
