@@ -188,7 +188,7 @@ PYTHONPATH="$BASE/novaic-common:${PYTHONPATH:-}" \
 $(py novaic-cortex) -m novaic_cortex.main_cortex \
     --host "$HOST" --port "$PORT_CORTEX" \
     --jwt-secret "$JWT_SECRET" \
-    --business-url "$BIZ_URL" --internal-key "$CORTEX_INTERNAL_KEY" \
+    --internal-key "$CORTEX_INTERNAL_KEY" \
     --oss-ak "$OSS_AK" --oss-sk "$OSS_SK" \
     --oss-endpoint "$OSS_ENDPOINT" --oss-region "$OSS_REGION" --oss-bucket "$OSS_BUCKET" \
     --redis-url "redis://127.0.0.1:6379/0" \

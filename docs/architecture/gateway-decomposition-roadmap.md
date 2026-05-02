@@ -25,7 +25,7 @@
 |---------|------------------|
 | **Gateway (网关)** | **纯粹的无状态防线与同步路由**。接收来自 Entangled (客户端) / 外部 HTTP，做鉴权后，立即投入 Queue Service。从此切断它对 SubAgent 生命周期逻辑的执念。 |
 | **Worker Trio (打工三人组)** | Saga Worker / Task Worker / Watchdog 构成了真正的异步长时引擎（所谓 RO 的平替）。负责处理长时间生成的 LLM 队列。 |
-| **Cortex (代理大脑)** | **12大工具代理中介与上下文存储**。代理工具调用、隔离执行沙箱，维护基于 `dfs` (Context Engine) 的对话层栈级文件记录 (`/ro/` 与 `/rw/`)。 |
+| **Cortex (认知引擎)** | **scope/context 基础设施**。不代理业务工具；维护基于 `dfs` (Context Engine) 的对话层栈级文件记录 (`/ro/` 与 `/rw/`) 并提供沙箱。 |
 | **Entangled (统一数据桥)** | 提供真正的强一致状态管理，取代所有的长连接拉锯战，统一接管 Client 的 UI Sync（完全架空 Gateway websocket 层）。 |
 
 ## 3. 已完成里程碑 (2026-04)
