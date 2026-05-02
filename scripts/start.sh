@@ -220,7 +220,12 @@ done
 # an incident: edit services.json and restart the worker. The
 # log_startup_snapshot line in each worker's log proves which value
 # actually took effect.
-$PY $MAIN health $WORKER_ARGS --task-timeout 3600 --saga-timeout 3600 >> "$LOG_DIR/health.log" 2>&1 &
+$PY $MAIN health \
+    --queue-service-url "$QS_URL" \
+    --data-dir "$DATA_DIR" \
+    --task-timeout 3600 \
+    --saga-timeout 3600 \
+    >> "$LOG_DIR/health.log" 2>&1 &
 $PY $MAIN scheduler \
     --gateway-url "$GW_URL" \
     --business-url "$BIZ_URL" \

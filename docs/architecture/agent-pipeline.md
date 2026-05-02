@@ -20,8 +20,8 @@
 
 ```
 用户发消息
-  → Gateway → Business: MessageRepository → Entangled `messages` + message_outbox
-  → DispatchSubscriber（用户消息）/ Scheduler（定时唤醒）/ HealthWorker（回收）
+  → Gateway → Business: Environment IM event + chat UI projection
+  → DispatchSubscriber（Environment notification）/ Scheduler（定时唤醒）
   → Queue dispatch: subagent_wake
   → session.init: ensure agent_root scope + create current wake scope
   → ReactThink
@@ -77,11 +77,11 @@ LLM tool_call
 |------|---------|------|
 | DispatchAssembler | `assemble_sync` / `dispatch_sync`（同步） | PR-34 34e 起删除 async 孪生，唯一调用面 |
 | AgentOwnershipResolver | `resolve_sync`（同步，`threading.Lock` + FIFO 缓存） | PR-34 34e 删除 `async resolve` 与 `asyncio.Lock` 字典 |
-| DispatchSubscriber | **独立子进程** (`main_subscriber.py`) | PR-34 34d 从 Business lifespan 的 `asyncio.create_task` 拆出；崩溃以 `ps` 可见、退出码非零的方式"大声死亡"，而不是静默吞掉 `message_outbox` |
+| DispatchSubscriber | **独立子进程** (`main_subscriber.py`) | 从 Business lifespan 的后台 task 拆出；崩溃以 `ps` 可见、退出码非零的方式"大声死亡"，而不是静默停止处理 Environment notifications |
 | HealthWorker / SchedulerWorker | 同步线程 (`health_worker.py` / `scheduler_worker.py`) | `threading.Event` + `time.sleep`，`_sync` 后缀已去除 |
 | SagaWorker / TaskWorker | 同步线程 (`saga_worker_sync.py` / `task_worker_sync.py`) | 文件名保留 `_sync` 仅因未重命名；行为与上两者一致 |
 
-为什么：前版 DispatchSubscriber 作为 FastAPI lifespan 的 `asyncio.create_task` 运行，任意未捕获异常 → task 被悄悄取消 → `message_outbox` 停止排空；没有告警、没有崩溃，只有陈旧行。Worker-Sync 把所有内部路径搬到"一个失败 = 一个进程/线程退出"的模型，故障必然外显。
+为什么：前版 DispatchSubscriber 作为 FastAPI lifespan 的 `asyncio.create_task` 运行，任意未捕获异常会让调度循环静默停止；现在把内部路径搬到"一个失败 = 一个进程/线程退出"的模型，故障必然外显。
 
 CI 守门：[`scripts/ci/check_no_internal_async.py`](../../scripts/ci/check_no_internal_async.py) 对上述核心文件禁用 `async def` / `import asyncio` / `httpx.AsyncClient` / `await`，并在 `.github/workflows/lint.yml` 中强制运行。新增守门文件时按该脚本 `GUARDED` 列表注释说明理由。
 

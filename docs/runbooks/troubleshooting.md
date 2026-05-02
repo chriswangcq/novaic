@@ -175,113 +175,63 @@ rg "scope_state scope=/ro/scopes/<scope_id> archived -> archived" cortex-*.log
 - INV-6（archival 方向性）由 `ARCHIVED` 出度为空集结构性保证，根本不可能写出 `archived -> executing`。
 - `scripts/ci/lint_scope_phase.sh` 禁止任何文件直写 `meta["phase"]` 或 dict 字面量 `"phase": "archived"`，强制走 `transition()`。
 
-## 消息没回复的 SOP（PR-25 trace，2026-04-15）
+## 消息没回复的 SOP（Environment notifications）
 
-"三条查路径" 速查（OBS-4，2026-04-21）：
+先查 Environment notification，而不是旧 `chat_messages.lifecycle` 或 outbox。
 
 | 信号 | 查哪里 | 什么时候走这条 |
 | --- | --- | --- |
-| **个案** — 用户报 "message_id=X 没回复" | `GET /internal/messages/<id>/trace`（见下） | 有具体 message_id 时 |
-| **批量** — 整体感觉慢，不知道哪条卡了 | Business `/metrics` → `outbox_backlog_count` / `outbox_lag_seconds` gauge（PR-32）；阈值 > 10 行或 > 30s → 抓 `top N` 看哪个 agent 堆积 | 用户报 "系统慢"、"消息堆积"，或收到 canary 告警 |
-| **孤儿** — dispatch 成功但 scope 不 end | `orphans_total{severity=warn\|crit\|permanent}` counter（PR-26 扫描 + TD-5 hook 进 PR-32 registry）；grep `ORPHAN\|orphan_warn\|PERMANENT_ORPHAN` 取到 `message_id` / `agent` / `age`，再用 `/internal/messages/<id>/trace` 反查 `scope_id` 后按下一条 SOP 跑 scope_id 聚合查询 | metric 非零、或 user 报 "AI 卡住不回复但界面没报错" |
+| **个案** — 用户报某条消息没回复 | Business Environment notification / `environment_notifications` | 有 message_id / notification_id 时 |
+| **批量** — 整体感觉慢 | `main_subscriber.py` 日志 + Queue `/api/queue/recover/all` 结果 | 用户报 "系统慢"、"消息堆积" |
+| **已进入 scope 但没结束** | `scope_id` 跨日志聚合 | notification 已 claimed，但未 processed |
 
-`scope_id` 聚合（PR-24 LogContext）——从 trace 响应里抠出 `scope_id` 后，四份日志一把抓：
+`scope_id` 聚合（PR-24 LogContext）——拿到 `claim_scope_id` 后，四份日志一把抓：
 
 ```bash
-SID="<scope_id_from_trace>"
+SID="<claim_scope_id>"
 rg "scope_id=$SID" /opt/novaic/data/logs/{business,entangled,cortex,subscriber}-*.log | sort -t: -k3
 ```
 
-第一步不是 grep 日志，是 curl trace。端点把 chat_messages + message_outbox
-+ Cortex scope meta 拉到一个响应里，节省四次 sqlite / 四份日志的翻阅。
+常用数据库查询：
 
 ```bash
-MID="<message_id>"
-SVC="$(awk -F'= ' '/^service_token|^jwt_secret/{print $2; exit}' \
-        /opt/novaic/etc/services.toml 2>/dev/null)"
-
-curl -s -H "X-Service-Token: $SVC" \
-     -H "X-Internal-Service: ops" \
-     http://localhost:19998/internal/messages/$MID/trace | jq .
+sqlite3 /opt/novaic/data/entangled.db \
+  "SELECT id, agent_id, source_id, state, claim_scope_id, dispatch_attempts, dispatch_error, created_at, updated_at
+     FROM environment_notifications
+    ORDER BY created_at DESC LIMIT 20;"
 ```
 
-读返回的优先级：
+读状态的优先级：
 
-1. `lifecycle` —— `pending` 说明 subscriber 还没 claim；`claimed` 说明进了 scope
-   但 scope 尚未 end；`consumed` 正常；`orphaned` 看 `outbox.last_error`。
-2. `outbox.last_error` —— subscriber 最近一次失败原因（非空即需处理）。
-3. `outbox.delivered_at` 非空但 `lifecycle=pending` —— PR-22 wiring bug，
-   subscriber dispatched 成功但忘了 transition。对着 dispatch_subscriber.log
-   grep `message_id`。
-4. `scope.input_message_ids` —— 消息进了哪个 scope、同批还有谁。
-5. `errors[]` —— 如果有 `cortex: ...`，说明 Cortex 那半边读失败（trace 主干
-   仍可信），回去看 cortex.log。
+1. `pending` 且 `dispatch_claim_id` 为空：subscriber 还没拿到。
+2. `pending` 且 `dispatch_claim_id` 非空：subscriber 正在投递或上次投递失败。
+3. `claimed`：Runtime 已把 notification 绑定到 wake scope；查 `claim_scope_id`。
+4. `processed`：正常闭环。
+5. `failed`：查 `dispatch_error` 或 Runtime transition 错误。
 
-404 → 消息 id 根本不存在（typo / entity 未落盘）。
-502 → Entangled 起不来，先处理 Entangled。
+## 按 state-transition history 回放实体生命周期
 
-## 按 state-transition history 回放实体生命周期（PR-31，2026-04-15）
-
-PR-21/28/29 把 message/subagent/scope 的状态都收敛到了 `transition()`
-唯一入口，PR-31 把这些转移事件落到持久表里。要回答 "这个实体为什么还在
-\<某状态\>？" 不再靠翻日志，直接查历史表。
-
-### 三条查询入口
+Subagent 状态机仍有 Entangled transition history。Agent-loop 消息生命周期已由
+Environment notification 替代，不再有 `message_state_transitions`。
 
 ```bash
-# A. 一条消息的生命周期（等价于 grep "message_state <id>" 但更整齐）
-curl -s -H "X-Service-Token: $SVC" \
-  http://biz/internal/messages/<message_id>/trace | jq '.history'
-# 或直接看原始表：
-curl -s -H "X-Service-Token: $SVC" \
-  http://entangled/v1/state_transitions/message/<message_id>
-
-# B. 一个 subagent 的状态机轨迹（和 /history 区分：那个是 chat 上下文）
+# 一个 subagent 的状态机轨迹（和 /history 区分：那个是 chat 上下文）
 curl -s -H "X-Service-Token: $SVC" \
   http://biz/internal/subagents/<agent_id>/<subagent_id>/state-history
 
-# C. 一个 scope 的阶段流转（NDJSON 日志，按 scope_path 过滤）
+# 一个 scope 的阶段流转（NDJSON 日志，按 scope_path 过滤）
 curl -s -H "X-Internal-Key: $CORTEX_KEY" \
   "http://cortex/v1/scope/history?scope_path=/ro/active/<scope_id>"
 ```
 
-### 幂等不写日志的含义
-
-- 订阅者重投、recovery 重跑触发的 A→A 是 **noop**，history 表不记录。
-  所以 "claimed 状态但只看到一条 claimed 转移" 是对的，不是 bug。
-- 反过来，如果看到 history 为空但 `subagents.status` 不是初始值
-  （`sleeping`），说明转移发生在 PR-31 之前 — 查部署时间线，不要当事故。
-
-### 日志 vs 历史表的分工
-
-| 来源 | 用途 | 何时看 |
-| --- | --- | --- |
-| 日志 `rg "message_state <id>"` | 带时间戳、带 pid、跨服务 correlate | 要拼 Cortex/Queue/Worker 一起看时 |
-| `*_state_transitions` 表 | 纯状态机视图，oldest-first | 只关心 "这个 id 走了哪些状态" |
-
 ### 表和文件在哪
 
 ```bash
-sqlite3 ~/.novaic/data/entangled.db ".schema message_state_transitions"
 sqlite3 ~/.novaic/data/entangled.db ".schema subagent_state_transitions"
 # Scope 侧是 NDJSON：
 cat ~/.novaic/cortex/scope_state_transitions.ndjson | jq
 # 或按 CORTEX_SCOPE_STATE_LOG 覆盖过的路径。
 ```
-
-### 出问题怎么恢复
-
-- **Entangled 写 history 行失败（message）**：co-transactional，写失败会让
-  UPDATE 一起回滚 — 日志里会看到 `sqlite3.OperationalError` 堆栈。
-- **Entangled 写 history 行失败（subagent，PR-31b 之后）**：同样 co-transactional
-  —— 2026-04-15 之后 subagent 侧已从 best-effort POST 升级成 server-side
-  `transaction("global")` 原子提交。若 INSERT 失败，整个 transition 会 raise
-  HTTP 500，Business 的 client 会把它翻译成 `EntangledClientError` 冒泡出去，
-  调用方（subscriber / recovery_worker）会走各自的重试路径。换句话说：
-  **PR-31b 之后再也不会出现 "subagent.status 提交成功但 history 少一条" 的场景**。
-- **Cortex NDJSON 盘满**：`append_transition` 抛 `OSError`，WARN 一行
-  `scope_state append_transition FAILED (continuing): ...`，`meta.phase`
-  仍然被更新。清盘后重启 Cortex 即可，不需要补写历史。
 
 ### PR-31b 新增：subagent 状态机独立查询入口
 
@@ -298,29 +248,20 @@ curl -s -H "X-Service-Token: $SVC" http://entangled/v1/subagents/states | jq
 Business 侧 `ALLOWED` 文案飘移（PR-31b 之后 Business 的矩阵只是 informational
 副本，规则以 Entangled 返回的为准）。
 
-### 陷阱：嵌套 `transaction("global")` 必 hang
-
-PR-31b 在 prod smoke 时踩过：`append_subagent_transition` 原来自己开事务，配合
-PR-31b 的外层 `subagent_state.transition` 形成嵌套写锁——SQLite 在同一连接上
-会"看似可重入"但对第二次 global lock 等待索的释放，端到端表现成 curl 15s 超时
-零日志。修复把 helper 改成 transaction-agnostic（参照 `append_message_transition`），
-规则：**任何 `append_*_transition` helper 不自己开事务，遗留的纯 HTTP shim
-自己 wrap**。今后新增同类 helper 务必照此模式，否则 smoke 会挂，单测的
-`FakeDatabase` 又不锁不会暴露。
-
-## Subscriber / message_outbox 不 drain
+## Subscriber / Environment notifications 不 drain
 
 `DispatchSubscriber` 是必需进程，不再有 canary 或 disabled 模式。消息发出但
-Agent 不醒时，先确认 subscriber 进程和 outbox：
+Agent 不醒时，先确认 subscriber 进程和 Environment notification：
 
 ```bash
 ps aux | rg 'main_subscriber.py'
-rg 'DispatchSubscriber|message_outbox|ERROR|Traceback' /opt/novaic/data/logs/business-*.log
+rg 'DispatchSubscriber|environment-notifications|ERROR|Traceback' /opt/novaic/data/logs/{business,subscriber}-*.log
 sqlite3 /opt/novaic/data/entangled.db \
-  "SELECT COUNT(*), MIN(created_at), MAX(created_at) FROM message_outbox WHERE delivered_at IS NULL;"
+  "SELECT state, COUNT(*), MIN(created_at), MAX(created_at)
+     FROM environment_notifications GROUP BY state;"
 ```
 
-如果 pending 行持续增长，重启后端栈并查 `main_subscriber.py` 启动日志。不要
+如果 `pending` 持续增长，重启后端栈并查 `main_subscriber.py` 启动日志。不要
 编辑 `services.json` 或寻找 subscriber 开关；那条 canary 路径已经删除。
 
 ## LLM 调用失败排查

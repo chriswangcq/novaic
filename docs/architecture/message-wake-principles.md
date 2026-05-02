@@ -5,10 +5,10 @@ archaeology belongs in ticket history, not in this architecture contract.
 
 ## Minimal Model
 
-1. Messages that can wake an agent are entities in Entangled.
-2. Entangled emits outbox items for wake-eligible message types.
-3. Business subscribes to those outbox items and delegates request construction
-   to `common.wake.DispatchAssembler`.
+1. Messages that can wake an agent are Environment IM events.
+2. Business creates Environment notifications for wake-eligible IM events.
+3. Business subscribes to those notifications and delegates request
+   construction to `common.wake.DispatchAssembler`.
 4. Runtime Queue Service owns session start/buffer/finish.
 5. Cortex owns the LIFO scope tree and LLM context assembly.
 

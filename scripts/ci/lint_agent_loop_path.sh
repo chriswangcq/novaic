@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Guard the single active Agent loop path: message_outbox is drained by the
-# required standalone subscriber, never by a runtime switch or disabled branch.
+# Guard the single active Agent loop path: Environment notifications are drained
+# by the required standalone subscriber, never by a runtime switch or disabled
+# branch.
 
 set -euo pipefail
 

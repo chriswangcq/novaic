@@ -23,12 +23,8 @@
   * `message_id` (PK)
   * `role`: 标准划分，含 (`user`, `assistant`, 及极其特殊的 `system_log` 代表底层汇报情况不需人能全看懂) 
   * `content`: 文本、亦或者某些极度复杂的 JSON 字符串（前侧包含那些用来给被过滤解析了带有着 UI 面板组件命令的指令载荷）。
-  * `status`（**legacy**, PR-21 之后只读）: 老的控制流旗帜，仍保留是因为还有读路径在依赖。
-      * `sending` / `completed` / `error`：详见 git blame 历史。
-  * `lifecycle` (**PR-21 新增, 单一权威状态**): `pending → claimed → consumed | orphaned | deduped`，详见 [`docs/architecture/scope-lifecycle.md`](./scope-lifecycle.md)。
-      * 所有写入必须走 `Entangled` 的 `POST /v1/messages/{id}/transition` 单一入口，CI (`scripts/ci/lint_lifecycle.sh`) 强制阻挡裸 `UPDATE`。
-  * `claimed_by_scope` (PR-21): 当 `lifecycle='claimed'` 时记录认领它的 scope_id，便于 PR-26 孤儿扫描。
-  * `lifecycle_updated_at` (PR-21): epoch ms，用于诊断和 SLA 追踪。
+  * `status`: App 展示侧投递状态。
+  * `lifecycle` / `claimed_by_scope` / `lifecycle_updated_at`: 旧 chat-message lifecycle 投影字段。当前 Agent-loop 生命周期由 Environment notifications 拥有，见 [`docs/architecture/scope-lifecycle.md`](./scope-lifecycle.md)。这些字段不再作为控制流来源。
 
 ## 3. Context & Memories 单切分快照
 

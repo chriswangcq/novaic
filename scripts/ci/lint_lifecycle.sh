@@ -1,32 +1,17 @@
 #!/usr/bin/env bash
 #
-# PR-21 (2026-04-20) — ban raw UPDATEs to chat_messages.lifecycle.
+# PR-168E — chat_messages.lifecycle is not an Agent-loop state path.
 #
 # Why
 # ---
-# chat_messages.lifecycle is the authoritative state column for the
-# message state machine (see Entangled/packages/server-python/entangled/
-# sql/message_state.py). A raw ``UPDATE chat_messages SET lifecycle = ...``
-# bypasses transition() — meaning:
-#   * the state-diagram rules aren't enforced (consumed → claimed
-#     regressions slip through silently),
-#   * claimed_by_scope / lifecycle_updated_at can drift from lifecycle,
-#   * the PR-26 orphan scanner and PR-25 message trace each rely on the
-#     single-writer log line that transition() emits; a raw UPDATE
-#     produces no such line and silently breaks both downstream PRs.
+# Environment notifications own Agent-loop delivery and lifecycle. Any new
+# writer to chat_messages.lifecycle is therefore either a historical migration
+# or a bug that reintroduces the retired message-lifecycle branch.
 #
 # How
 # ---
-# The only legitimate writers are:
-#   1. entangled/sql/message_state.py          (the helper itself)
-#   2. entangled/app/message_state.py          (HTTP wrapper)
-#   3. tests/                                   (every repo's test dir)
-#   4. docs/                                    (example SQL in markdown)
-#   5. docs/roadmap/tickets/PR-21-*            (the ticket itself shows
-#                                               the DDL / migration SQL)
-# Anything else hitting the pattern needs justification and an allowlist
-# entry here. If you just need to transition a message, call
-# POST /v1/messages/{id}/transition instead.
+# There is no active writer allowlist. Tests and docs may mention old shapes
+# only as guardrails or archaeology.
 #
 # Pattern
 # -------
@@ -39,8 +24,6 @@ set -e
 PATTERN='UPDATE\s+chat_messages\s+SET[^;]*lifecycle'
 
 ALLOWLIST=(
-  'Entangled/packages/server-python/entangled/sql/message_state.py'
-  'Entangled/packages/server-python/entangled/app/message_state.py'
   'Entangled/packages/server-python/tests/'
   'tests/'
   'docs/'
@@ -75,18 +58,15 @@ for f in $HITS; do
         [[ "$f" == *"$a"* ]] && ok=1
     done
     if [[ $ok -eq 0 ]]; then
-        echo "BAN: $f contains raw UPDATE chat_messages SET lifecycle — route via transition()"
+        echo "BAN: $f contains raw UPDATE chat_messages SET lifecycle — Environment notifications own lifecycle"
         violations=$((violations + 1))
     fi
 done
 
 if [[ $violations -gt 0 ]]; then
     echo ""
-    echo "Context: PR-21 mandates POST /v1/messages/{id}/transition as"
-    echo "the only write path to chat_messages.lifecycle. See"
-    echo "Entangled/packages/server-python/entangled/sql/message_state.py"
-    echo "for rationale, or docs/roadmap/tickets/PR-21-message-lifecycle-enum.md"
-    echo "for the RFC."
+    echo "Context: PR-168E retired the chat_messages.lifecycle Agent-loop path."
+    echo "Use Environment notifications for wake delivery and lifecycle."
     exit 1
 fi
 echo "lifecycle lint OK"

@@ -8,8 +8,8 @@ migration notes live in ticket history; they are not the runtime contract.
 | Component | Owns | Must Not Own |
 |---|---|---|
 | Gateway | HTTP edge, auth handoff, sync endpoint discovery | Agent wake orchestration, message lifecycle routing, Cortex scope semantics |
-| Entangled | Entity persistence, outbox/change delivery, schema registration | Business dispatch decisions |
-| Business | Agent/subagent domain APIs, domain validation, DispatchSubscriber | Queue session execution, Cortex context assembly |
+| Entangled | Entity persistence, sync/change delivery, schema registration | Business dispatch decisions, Agent-loop delivery queue |
+| Business | Agent/subagent domain APIs, Environment notifications, domain validation, DispatchSubscriber | Queue session execution, Cortex context assembly |
 | Runtime Queue Service | Dispatch sessions, wake execution, tool execution, session lifecycle | Entity schema ownership |
 | Cortex | LIFO scope tree, context assembly, scope fold via `summary.md` | Business task management, automatic memory inference |
 
@@ -17,8 +17,8 @@ migration notes live in ticket history; they are not the runtime contract.
 
 ```text
 USER_MESSAGE or SUBAGENT_SEND
-  -> Entangled persists entity and emits outbox item
-  -> Business DispatchSubscriber receives item
+  -> Business writes Environment IM event + notification
+  -> Business DispatchSubscriber claims the Environment notification
   -> common DispatchAssembler builds one canonical Queue dispatch request
   -> Runtime Queue Service starts or buffers the wake session
   -> Runtime builds LLM context through Cortex and executes tools
@@ -59,7 +59,7 @@ IM path and made agent behavior branchy.
 
 ## Smoke Checks
 
-- A user message produces one `USER_MESSAGE` outbox item and one Queue dispatch.
+- A user message produces one Environment notification and one Queue dispatch.
 - Spawning a child creates a child subagent and a `SUBAGENT_SEND` initial task.
 - A child result sent to the parent is delivered as `SUBAGENT_SEND`.
 - Cortex context shows the active scope expanded and closed scopes folded by
