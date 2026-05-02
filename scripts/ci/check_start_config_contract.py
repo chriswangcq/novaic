@@ -36,6 +36,10 @@ RETIRED_FILES = [
     "scripts/gateway/replay_gateway_runtime_chain.sh",
     "scripts/submodules",
     "docs/runbooks/subscriber-canary.md",
+    "scripts/cleanup_all_dbs.sh",
+    "scripts/cleanup_queue_db.sh",
+    "scripts/recover_agent_loop.sh",
+    "scripts/reset-agent-data.sh",
 ]
 
 RETIRED_TEXT = [
@@ -55,6 +59,10 @@ RETIRED_TEXT = [
     "scripts/gateway/migrate_user_data.py",
     "scripts/gateway/replay_gateway_runtime_chain.sh",
     "scripts/submodules/",
+    "scripts/cleanup_all_dbs.sh",
+    "scripts/cleanup_queue_db.sh",
+    "scripts/recover_agent_loop.sh",
+    "scripts/reset-agent-data.sh",
     "jwt_secret.env",
     "restart_gw.sh",
     "docs/runbooks/subscriber-canary.md",
