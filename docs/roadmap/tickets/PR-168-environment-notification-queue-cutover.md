@@ -19,7 +19,7 @@ The current notification-only prompt works, but `notification_id` is still the m
 
 ## Small Tickets
 
-- PR-168A — Create notification rows for new Environment IM messages.
+- [x] [PR-168A — Environment notification internal API](PR-168A-environment-notification-internal-api.md).
 - PR-168B — Queue/subscriber claims Environment notifications, not message rows.
 - PR-168C — Runtime finalization marks Environment notifications processed/failed.
 - PR-168D — Remove message-lifecycle notification compatibility and guard it.
