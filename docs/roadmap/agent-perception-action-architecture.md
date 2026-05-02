@@ -205,11 +205,22 @@ skill_end(report=...) -> current scope summary.md
 | `im_reply` | 回复用户 |
 | `im_send` | 给 subagent 或其他 Agent 发送 IM |
 | `im_mark_processed` | 标记 notification 已处理 |
+| `im_history` / `im_search` / `im_context` | 待补齐：Agent 主动翻阅已存在 IM 历史 |
 
 当前活工具名已经切到 Environment IM：`im_read`、`im_reply`、`im_send`。
 旧 `chat_reply`、`chat_history`、`subagent_send`、`subagent_report`、`subagent_query`、`subagent_cancel` 不再作为 LLM 工具暴露。
 
 用户消息、subagent 消息、系统事件都走同一 sender/channel/thread/message_id 模型。
+
+### IM history 需求记录
+
+Agent 需要主动翻 IM 历史，但不能恢复旧 `chat_history` 那种绕过 Environment 的第二观察通路。正确方向是以后在 Environment 里提供显式观察工具：
+
+- `im_history(thread_id?, before?, after?, limit?, sender_filter?)`
+- `im_search(query, thread_id?, sender_filter?, limit?)`
+- `im_context(anchor_message_id, before?, after?)`
+
+这些工具只返回 bounded percept 和 attachment/resource refs；调用结果写入 Cortex Observation。Prompt 仍不能自动注入历史正文，message read/status 也不能重新驱动 Agent loop。
 
 ## Activity Timeline
 
@@ -264,8 +275,8 @@ LLM prompt 不直接包含未观察的用户消息正文。消息正文必须通
 4. LLM sees notification only.
 5. Agent calls im_read.
 6. im_read result becomes Observation percept in Cortex.
-7. LLM reasoning_content is written to Cortex.
-8. Agent acts: tools / reply / skill_end.
+7. Runtime records the read message ids as observed in the current wake checkpoint.
+8. Agent acts: tools / reply / skill_end. `im_reply` is blocked until current wake input notifications have been observed with `im_read`.
 9. Activity Timeline projects Cortex trace.
 10. summary.md becomes future context after scope closes.
 ```
