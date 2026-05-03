@@ -283,6 +283,9 @@
 | PR-187 | `[closed]` | [Main Path Guard CI Enforcement and Stale Ticket Archival](PR-187-main-path-guard-ci-and-stale-ticket-archival.md) | PR-186 | CI/docs entropy guard | multi-step | Main-path guards wired into CI/root tests; stale PR-90/91 checklist residue archived |
 | PR-187A | `[closed]` | [Wire Main-Path Guards Into CI and Root Test Entrypoint](PR-187A-wire-main-path-guards-into-ci.md) | PR-187 | CI guardrail | 0.25 d | Added guard bundle to GitHub lint and run_all_tests; removed missing old lint step |
 | PR-187B | `[closed]` | [Archive Stale Ticket Checklist Residue](PR-187B-archive-stale-ticket-checklist-residue.md) | PR-187A | Docs entropy cleanup | 0.25 d | PR-90/91 no longer expose stale unchecked subtasks |
+| PR-188 | `[closed]` | [Agent Monitor Main Scope Resolution](PR-188-agent-monitor-main-scope-resolution.md) | PR-169, PR-186 | Agent Monitor correctness | multi-step | Business default activity timeline path resolves real main subagent scope |
+| PR-188A | `[closed]` | [Business Activity Timeline Main Subagent Resolution](PR-188A-business-activity-timeline-main-subagent-resolution.md) | PR-188 | Business/Monitor boundary | 0.25 d | Missing subagent_id resolves to real main subagent id |
+| PR-188B | `[closed]` | [Agent Monitor Default Scope Guard](PR-188B-agent-monitor-default-scope-guard.md) | PR-188A | Regression guard | 0.25 d | Default monitor path guarded against literal `main` scope drift |
 
 
 ---
