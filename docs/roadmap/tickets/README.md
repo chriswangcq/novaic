@@ -293,6 +293,7 @@
 | PR-193C | `[closed]` | [App Agent Monitor Entangled Read Path](PR-193C-app-agent-monitor-entangled-read-path.md) | PR-193B | App read path | 0.5 d | Monitor reads Entangled cache, not action polling |
 | PR-193D | `[closed]` | [Delete Activity Timeline Action Hot Path](PR-193D-delete-activity-timeline-action-hot-path.md) | PR-193C | Old path deletion | 0.25 d | Removed agents.activity_timeline action and Cortex trace/project endpoint |
 | PR-193E | `[closed]` | [Agent Monitor Projection Guardrails and Docs](PR-193E-agent-monitor-projection-guardrails-and-docs.md) | PR-193D | Guardrails/docs | 0.25 d | Docs and static guards aligned to one Entangled projection path |
+| PR-195 | `[closed]` | [Remove frontend noVNC client residue](PR-195-remove-frontend-novnc-client.md) | PR-185A | App cleanup | 0.25 d | Browser noVNC assets/dependency/alias removed; Rust VNC/RFB backend preserved |
 
 
 ---
