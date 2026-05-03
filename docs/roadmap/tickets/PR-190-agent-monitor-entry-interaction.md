@@ -2,12 +2,13 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[closed]` |
+| Status | `[superseded]` |
 | Owner | Codex |
 | Created | 2026-05-03 |
 | Repos | `novaic-app`, docs |
 | Depends on | PR-188 |
 | Theme | Agent Monitor product interaction |
+| Superseded by | PR-191 |
 
 ## Goal
 
@@ -61,3 +62,9 @@ cd novaic-app && rg -n "useLogs|ExecutionLog|MainAgentLogPreview|subagentsStore|
 ```
 
 Result: tests and build passed. The grep output contains only guard-test assertions, not live hot-path usage.
+
+## Superseded
+
+Superseded 2026-05-03 by [PR-191 — Agent Monitor Participant Floating Layer](PR-191-agent-monitor-participant-floating-layer.md).
+
+PR-190 made the click visible by expanding Agent Monitor. Product direction was clarified afterward: the bottom participant pill should open a floating layer, matching the historical interaction shape, while still using Activity Timeline product projection instead of old diagnostic execution logs.

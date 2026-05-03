@@ -2,11 +2,12 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[closed]` |
+| Status | `[superseded]` |
 | Owner | Codex |
 | Created | 2026-05-03 |
 | Repos | `novaic-app` |
 | Parent | PR-190 |
+| Superseded by | PR-191 |
 
 ## Goal
 
@@ -44,3 +45,9 @@ Validation:
 ```bash
 cd novaic-app && npm run test:unit -- src/components/Chat/ChatPanel.activityTimelineGuard.test.ts src/components/Visual/SubagentList.test.tsx
 ```
+
+## Superseded
+
+Superseded 2026-05-03 by [PR-191B — Wire Participant Pills to Floating Layer](PR-191B-wire-participant-pills-to-floating-layer.md).
+
+The current target is floating-layer open behavior, not bottom monitor expansion.
