@@ -1,5 +1,7 @@
 # PR-188B — App Consumes Activity Timeline Participants
 
+> Historical note: superseded by PR-193. App monitor participants are now read from Entangled `agent-activity-participants`.
+
 | Field | Value |
 | --- | --- |
 | Status | `[closed]` |

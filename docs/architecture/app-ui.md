@@ -8,7 +8,7 @@
 
 1. **登录**：`auth.ts` → `pushToken()` → `invoke(update_cloud_token)` → `agentService.initialize()`
 2. **恢复 Agent**：`prefsRepo.getSelectedAgent()` 或 localStorage
-3. **选择 Agent**：store + prefs → `switchAgent(agentId)`，并行 load 模型（消息为 Entangled stream 订阅，Agent Monitor 走 Cortex Activity Timeline）
+3. **选择 Agent**：store + prefs → `switchAgent(agentId)`，并行 load 模型（消息和 Agent Monitor 都走 Entangled stream/read-model 订阅）
 4. **登出**：`getSyncService().disconnect()` + `resetServices()` 清空单例
 
 ### DB 层（Entangled 为单一事实来源）
@@ -17,7 +17,7 @@
 - 数据流：Subscribe → Server sync → Rust 缓存 → **`entities_changed`** → React。
 - **`entities_changed` 载荷**：Rust（`Entangled/packages/client-rust/src/push.rs`）在 `EntityChanged` 中带 **`params`**（与订阅 key 一致），供 `syncListener` 按带参 `queryKey` 失效。
 - **订阅 refcount**：`subscriptionSchema.acquireSubscribe` 在首次 `subscribe` 成功后再计数；AppBridge 重连时 **wire-only** `subscribe`（`entangledBootstrap`）避免双计数。
-- **聊天主面板**：`ChatPanel` 调用 `useMessages` 和 `useActivityTimeline`；不再订阅 execution-log stream 作为用户面 Agent Monitor。
+- **聊天主面板**：`ChatPanel` 调用 `useMessages` 和 `useActivityTimeline`；`useActivityTimeline` 读取 `agent-activity-records` / `agent-activity-participants` Entangled cache，不再订阅 execution-log stream，也不再 action/polling 查询 Cortex。
 - **清空本地缓存**：`clearLocalDb` → `invoke('entity_cache_clear')` → `Cache::clear_all()`。当前 Rust cache 是 read-model：`entity_meta` / `entity_items`；历史 `pending_ops` 表已废弃，初始化时会被 `DROP TABLE IF EXISTS pending_ops` 清掉。
 
 **Business 层**：`messagesStore`、`syncService`、`agentService`、`modelService`；Zustand `store.ts`。  

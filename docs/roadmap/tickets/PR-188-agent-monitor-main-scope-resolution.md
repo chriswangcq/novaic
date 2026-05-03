@@ -1,5 +1,7 @@
 # PR-188 — Agent Monitor Main Scope Resolution
 
+> Historical note: superseded by PR-193. The old `agents.activity_timeline` main-scope resolution path has been removed; Runtime now writes Entangled monitor projection rows with participant ids.
+
 Status: `[closed]` — 2026-05-03
 
 ## Goal

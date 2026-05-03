@@ -1,5 +1,7 @@
 # PR-188B — Agent Monitor Default Scope Guard
 
+> Historical note: superseded by PR-193. The old default scope action guard is replaced by Entangled projection and old-path deletion guards.
+
 Status: `[closed]` — 2026-05-03
 
 ## Goal

@@ -1,5 +1,7 @@
 # PR-188A — Business Activity Timeline Participants Projection
 
+> Historical note: superseded by PR-193. Monitor participants are now Entangled `agent-activity-participants`, not `agents.activity_timeline` response data.
+
 | Field | Value |
 | --- | --- |
 | Status | `[closed]` |

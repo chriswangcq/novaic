@@ -30,7 +30,7 @@ entity_items
 idx_entity_items_seq
 ```
 
-历史 `pending_ops` 已退役；Rust 初始化会清掉遗留表。Agent Monitor 的用户面不再依赖 `execution-logs` 订阅；它从 Cortex Activity Timeline 读取。历史 `log-payloads` lazy-fetch 表面已退役。工具长结果在 Cortex step / payload ref，原始 LLM 调用在 LLM Factory。
+历史 `pending_ops` 已退役；Rust 初始化会清掉遗留表。Agent Monitor 的用户面不再依赖 `execution-logs` 订阅，也不通过 action/polling 查询 Cortex；它订阅 `agent-activity-records` / `agent-activity-participants` read-model。历史 `log-payloads` lazy-fetch 表面已退役。工具长结果在 Cortex step / payload ref，原始 LLM 调用在 LLM Factory。
 
 排障：
 

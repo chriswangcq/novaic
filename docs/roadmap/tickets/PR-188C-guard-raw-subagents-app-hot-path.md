@@ -1,5 +1,7 @@
 # PR-188C — Guard Raw Subagents Out of the App Hot Path
 
+> Historical note: updated by PR-193. The guard remains valid, but the product participant source is now Entangled `agent-activity-participants`, not `agents.activity_timeline`.
+
 | Field | Value |
 | --- | --- |
 | Status | `[closed]` |
