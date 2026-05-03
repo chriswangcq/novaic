@@ -14,14 +14,13 @@ Prevent the floating layer from becoming the old diagnostic execution-log modal 
 
 ## Current-State Analysis
 
-The existing guard keeps `ExecutionLog`, `MainAgentLogPreview`, `useLogs`, and raw `subagentsStore` out of `ChatPanel`, but it still reflects PR-190's expand-on-click behavior.
+The existing guard keeps `ExecutionLog`, `MainAgentLogPreview`, `useLogs`, and raw `subagentsStore` out of `ChatPanel`. It also needs to protect the floating-layer interaction directly.
 
 ## Implementation Plan
 
 - Update the guard to require `ActivityTimelineModal`.
 - Guard that `SubagentList` receives `onOpenParticipant`.
-- Guard that direct `onSelect={setSelectedParticipantId}` and expand-on-click semantics are not used.
-- Mark PR-190 as superseded by PR-191 so roadmap docs do not claim the old expand behavior as the current target.
+- Guard that direct `onSelect={setSelectedParticipantId}` and bottom-monitor expansion are not used for participant pills.
 
 ## Tests
 
@@ -31,7 +30,7 @@ The existing guard keeps `ExecutionLog`, `MainAgentLogPreview`, `useLogs`, and r
 
 ## Done Criteria
 
-- Tests fail if the App returns to silent filtering, expand-on-click, or old execution-log modal behavior.
+- Tests fail if the App returns to silent filtering, bottom-monitor expansion, or old execution-log modal behavior.
 
 ## Closure
 
