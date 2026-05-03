@@ -1,5 +1,7 @@
 # PR-166 — Activity Timeline Projection and Old Path Cleanup
 
+> Historical note: superseded by PR-193. The bridge path described below no longer exists as a product path; current Agent Monitor data is `agent-activity-records` / `agent-activity-participants`.
+
 | Field | Value |
 | --- | --- |
 | Status | `[deployed]` |

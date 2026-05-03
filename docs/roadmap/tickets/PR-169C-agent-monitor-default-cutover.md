@@ -1,5 +1,7 @@
 # PR-169C — Agent Monitor Default Cutover
 
+> Historical note: superseded by PR-193. The default monitor source is now Entangled `agent-activity-records` / `agent-activity-participants`, not a Cortex Activity Timeline action.
+
 | Field | Value |
 | --- | --- |
 | Status | `[closed]` |

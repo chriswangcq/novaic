@@ -1,5 +1,7 @@
 # PR-166A — Activity Timeline Projection Contract
 
+> Historical note: superseded by PR-193. The old Cortex `/v1/trace/project` HTTP contract has been removed; current Agent Monitor rows are Entangled projection entities.
+
 | Field | Value |
 | --- | --- |
 | Status | `[deployed]` |

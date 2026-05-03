@@ -1,5 +1,7 @@
 # PR-188A — Business Activity Timeline Main Subagent Resolution
 
+> Historical note: superseded by PR-193. The old `agents.activity_timeline` path has been removed; main participant resolution is now represented by `agent-activity-participants`.
+
 Status: `[closed]` — 2026-05-03
 
 ## Goal

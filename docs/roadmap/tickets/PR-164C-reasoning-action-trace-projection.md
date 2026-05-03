@@ -1,5 +1,7 @@
 # PR-164C — Reasoning and Action Trace Projection
 
+> Historical note: superseded for user-facing Agent Monitor delivery by PR-193. Cortex no longer exposes `/v1/trace/project`; Runtime now materializes Entangled activity projection rows during execution.
+
 | Field | Value |
 | --- | --- |
 | Status | `[deployed]` |

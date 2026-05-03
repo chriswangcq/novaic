@@ -1,5 +1,7 @@
 # PR-169B — App Activity Timeline Hook and Component
 
+> Historical note: superseded by PR-193. The hook/component shape remains, but the data source is Entangled projection entities, not `agents.activity_timeline`.
+
 | Field | Value |
 | --- | --- |
 | Status | `[closed]` |

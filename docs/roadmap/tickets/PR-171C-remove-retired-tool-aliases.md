@@ -1,5 +1,7 @@
 # PR-171C — Remove Retired Tool-name Aliases
 
+> Historical note: updated by PR-193. Current architecture docs now describe `im_reply`, Environment notifications, Cortex working trace, and Entangled Agent Monitor projection.
+
 | Field | Value |
 | --- | --- |
 | Status | `[closed]` |

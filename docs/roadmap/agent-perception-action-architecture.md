@@ -150,13 +150,13 @@ Reasoning 来自 LLM Factory 的 `reasoning_content`。
 规则：
 
 - 写入 Cortex active scope，作为完整工作轨迹。
-- 可投影到 Activity Timeline，默认预览/可展开。
+- 可物化到 Agent Monitor product projection，默认预览/可展开。
 - 不作为系统事实、用户画像、记忆推断、任务状态或业务控制依据。
 - closed scope 后，父层只看到 `summary.md`，不会展开历史 raw reasoning。
 
 不再设计额外 monitor-only reasoning summary。
 
-当前 PR-164C 已提供 Cortex `/v1/trace/project` 投影：reasoning 记录直接来自 provider-authored `reasoning_content`，不会再生成一条 monitor-only reasoning summary。
+当前 PR-193 后，用户面 Agent Monitor 不再直查 Cortex `/v1/trace/project`；Runtime 在执行过程中把 provider-authored `reasoning_content` 物化到 `agent-activity-records`，不会再生成一条 monitor-only reasoning summary。
 
 ## Action
 
@@ -228,7 +228,7 @@ Agent 可以主动翻 IM 历史，但不能恢复旧 `chat_history` 那种绕过
 
 Activity Timeline 是用户可见的 Agent Monitor，不是诊断面板。
 
-| Cortex trace | Timeline phase | 用户看到 |
+| Runtime/Cortex activity event | Timeline phase | 用户看到 |
 | --- | --- | --- |
 | notification | Observation precursor | 收到一条消息通知 |
 | `im_read` action | Action | 读取用户消息 |
@@ -326,7 +326,7 @@ LLM prompt 不直接包含未观察的用户消息正文。消息正文必须通
 4. **P3 IM read path**：`im_read` 读取结果自动写入 Cortex Observation percept。
 5. **P4 Payload interpretation tools**：为大 payload 建 ref，提供 read/search/summarize/QA 显式解释工具，禁止自动 summary 塞回 Cortex。
 6. **P5 Prompt notification-only**：LLM prompt 只注入 notification，不注入未观察消息正文。
-7. **P6 Activity Timeline 投影**：Timeline 从 Cortex trace 的物化 activity events 投影，开发诊断不作为用户面来源。
+7. **P6 Activity Timeline 投影**：Runtime 将 Cortex 工作轨迹物化为 Entangled activity projection；Timeline 从 Entangled cache 读取，开发诊断不作为用户面来源。
 8. **P7 物理删除旧通路**：删除正文直塞 prompt、subagent report 特殊注入、旧 execution-log 用户面 fallback、旧 query/cancel/report 工具、tool result 自动 summary 等隐式路径。
 
 ## 一致性检查
@@ -339,7 +339,7 @@ LLM prompt 不直接包含未观察的用户消息正文。消息正文必须通
 4. raw payload 是否只通过 ref 暴露，而不是默认进入 Cortex？
 5. 它是否写入 Cortex active scope？
 6. 它在 scope close 后是否只通过 `summary.md` 暴露？
-7. Activity Timeline 展示的是投影，还是偷偷成了 source of truth？
+7. Activity Timeline 展示的是 Entangled projection，还是偷偷成了 source of truth？
 8. 这条路径是否绕过了 Environment / Cortex？
 9. 这条路径是否把 authority prompt 环境化了？
 
@@ -347,7 +347,7 @@ LLM prompt 不直接包含未观察的用户消息正文。消息正文必须通
 
 1. Prompt 主路径是 notification-only；消息正文必须通过 `im_read` 观察。
 2. notification processed lifecycle 由 Runtime 在 wake finalize / scope close 成功后完成，失败则保留 failed/pending 语义，不靠 UI read 状态驱动。
-3. Activity Timeline 直接从 Cortex trace 投影；旧 execution-log 用户面 fallback 物理删除。
+3. Activity Timeline 读取 Entangled `agent-activity-records` / `agent-activity-participants` projection；旧 execution-log 用户面 fallback 与旧 Cortex HTTP projection 物理删除。
 4. Reasoning 直接来自 provider-authored `reasoning_content`，不再生成 monitor-only reasoning summary。
 5. Environment 是独立业务域，当前随 Business/Runtime 部署，不做独立进程前置要求。
 6. Payload interpretation 工具集合是 `payload_read`、`payload_search`、`payload_summarize`、`payload_qa`；后续只优化语义与体验，不新增隐式自动总结通路。

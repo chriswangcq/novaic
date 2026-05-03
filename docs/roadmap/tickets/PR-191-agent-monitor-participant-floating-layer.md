@@ -1,5 +1,7 @@
 # PR-191 — Agent Monitor Participant Floating Layer
 
+> Updated by PR-193 (2026-05-03). The floating layer shape remains valid, but its data source is now Entangled `agent-activity-records` / `agent-activity-participants`, not `agents.activity_timeline`.
+
 | Field | Value |
 | --- | --- |
 | Status | `[closed]` |
@@ -39,7 +41,7 @@ For each small ticket:
 
 - Bottom Main Agent/Subagent pill opens a floating layer.
 - The floating layer renders `ActivityTimeline` records, not `ExecutionLog`.
-- The floating layer uses `agents.activity_timeline` product projection through `useActivityTimeline`.
+- The floating layer uses `useActivityTimeline`; after PR-193 that hook reads Entangled `agent-activity-records` / `agent-activity-participants`.
 - `SubagentList` remains presentation-only and does not read raw logs/subagents.
 - Guard tests prevent silent filter wiring and old diagnostic modal resurrection.
 

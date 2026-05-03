@@ -1,5 +1,7 @@
 # PR-164 — Cortex Observation and Payload Integration
 
+> Historical note: updated by PR-193. Cortex remains the working trace and payload/ref home, but the user-facing Agent Monitor is now Entangled activity projection, not a Cortex HTTP projection endpoint.
+
 | Field | Value |
 | --- | --- |
 | Status | `[deployed]` |

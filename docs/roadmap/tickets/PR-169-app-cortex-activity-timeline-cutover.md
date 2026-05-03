@@ -1,5 +1,7 @@
 # PR-169 — App Cortex Activity Timeline Cutover
 
+> Superseded by PR-193 (2026-05-03). The historical `agents.activity_timeline -> Cortex /v1/trace/project` path described below has been physically removed; current Agent Monitor data comes from Entangled `agent-activity-records` / `agent-activity-participants`.
+
 | Field | Value |
 | --- | --- |
 | Status | `[closed]` |

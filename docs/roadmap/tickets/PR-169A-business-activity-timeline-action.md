@@ -1,5 +1,7 @@
 # PR-169A — Business Activity Timeline Action
 
+> Historical note: superseded by PR-193. `agents.activity_timeline` and Cortex `/v1/trace/project` were physically removed.
+
 | Field | Value |
 | --- | --- |
 | Status | `[closed]` |

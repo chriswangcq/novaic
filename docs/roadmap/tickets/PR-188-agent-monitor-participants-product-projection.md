@@ -1,5 +1,7 @@
 # PR-188 — Agent Monitor Participants Product Projection
 
+> Superseded by PR-193 (2026-05-03). Participants are no longer returned by `agents.activity_timeline`; they are Entangled `agent-activity-participants` projection rows.
+
 | Field | Value |
 | --- | --- |
 | Status | `[closed]` |
@@ -39,7 +41,7 @@ For each small ticket:
 
 ## Done Criteria
 
-- [x] `agents.activity_timeline` returns `participants` in addition to records.
+- [x] Historical closure: `agents.activity_timeline` returned `participants` in addition to records. Current path after PR-193: Entangled `agent-activity-participants`.
 - [x] App bottom selector reads participants from the activity timeline response.
 - [x] App does not subscribe to or define an App-facing raw `subagents` Entangled entity.
 - [x] Conversation route has no `execution-logs` or raw `subagents` subscription.

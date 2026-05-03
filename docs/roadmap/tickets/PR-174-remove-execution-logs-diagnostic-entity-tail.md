@@ -1,5 +1,7 @@
 # PR-174 — Remove Execution Logs Diagnostic Entity Tail
 
+> Historical note: updated by PR-193. The user-facing Agent Monitor is now backed by Entangled `agent-activity-records` / `agent-activity-participants`, not direct Cortex Activity Timeline reads.
+
 | Field | Value |
 | --- | --- |
 | Status | `[closed]` |
