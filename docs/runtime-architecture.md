@@ -1,32 +1,94 @@
 # Agent Runtime 运行时架构总览
 
-`novaic-agent-runtime` 是 NovAIC 大脑的核心引擎。如果说 Gateway 是身体的感受器和网柄，Cortex 是记忆海马体，那么 Runtime 就是真正的“前额叶思考皮层与控制干”。
+`novaic-agent-runtime` 是 Agent loop 的执行层。它不拥有产品实体数据库，也不承担 Gateway 的接入职责；它围绕 Queue Service、Saga/Task Workers、Cortex、Business 和 LLM Factory 组合出可恢复的异步执行管线。
 
 ---
 
-## 1. 独立而剥离的生命结构
-Runtime 是一组可以在任意无头服务器成百上千个拉起的**无状态 Python 进程集合**。它本身没有自己的强状态 SQL 数据库。它仅拥有 `Queue Service` (任务队列 DB)。
-所有的输入端来自 Gateway 写入的 Entangled `_chat_messages` 表，输出则写向 Cortex (认知记忆) 或是向下反开给 Gateway 执行。
+## 1. 核心定位
 
-启动体系 (`main_novaic.py`) 里，它通过不同的命令分裂成不同人格的守卫：
-- **`queue-service`**: 监听 19997。内存级别的任务分发器，依托一套自带的 sqlite 作为底舱记录排队工单。
-- **`task-worker`**: 执行短平快 CPU/IO 任务的干活小弟。
-- **`saga-worker`**: 长程剧本杀玩家，一步一步推动着 AI 是该思考、还是该回复的流水线机读引擎。
-- **`health`**: 超时回收与恢复兜底。
-- **`scheduler`**: 唯一的定时唤醒轮询者，扫描 `wake_at` 已过期的 sleeping subagent 并经 Queue Session Coordinator 分发。
+Runtime 是一组可独立启动的 Python 进程：
 
-## 2. 处理循环：从文字到回复的闭环
+- **`queue-service`**：监听 `:19997`，拥有 `queue.db`，负责 Task/Saga/session 串行化、claim、重试、恢复。
+- **`main_subscriber`（Business 侧进程）**：扫描 Environment notifications，把可调度通知投递到 Queue Service。
+- **`saga-worker`**：认领 Saga，推动 MessageProcess / React loop / finalize 等流程。
+- **`task-worker`**：执行原子任务，例如 LLM 调用、工具执行、Cortex 写入。
+- **`health`**：恢复超时 Task/Saga。
+- **`scheduler`**：定时唤醒扫描者，把 due wake 投递到 Queue Service。
+
+Runtime 的强状态只在 Queue Service 自己的 `queue.db`。Agent 的工作轨迹、scope tree、reasoning/action/observation 进入 Cortex；产品实体和消息投影进入 Business/Entangled。
+
+---
+
+## 2. 消息到回复的当前闭环
 
 ```text
- 1. 用户点下发送 ──► Gateway.store / Queue dispatch (写入消息并触发运行时)
-      │
- 2. Queue Session Coordinator 路由 ──► 创建/缓冲 subagent_wake Saga
-      │
- 3. Saga Worker 认领 ──► 启动「MessageProcess Saga」状态机
-      ├─ 节点1: Cortex准备 (组装前序树，拿到 Context)
-      ├─ 节点2: React 思考循环 (把上下文发给 llm-factory 并解析结果)
-      │      └─ 如果 LLM 返回 Tool Call ──► Saga 下发 ToolTask ──► Task Worker 真正干活再返回
-      └─ 节点3: 收尾与答复 ──► 拿着最终答案发起 /internal 找 Gateway，说这消息完事了，改成 "sent"
+1. App 发送消息
+   └─ Entangled action: messages.send
+      └─ Business: 写 Environment IM event + chat UI projection
+
+2. Business Environment
+   └─ 生成 notification
+      └─ DispatchSubscriber claim/dispatch
+         └─ Queue Service /api/queue/dispatch
+
+3. Queue / Saga
+   └─ Session Coordinator 按 agent/thread 串行化
+      └─ Saga Worker 认领 MessageProcess / subagent_wake
+
+4. ReactThink
+   ├─ Runtime → Cortex: prepare_for_llm，读取 agent-root scope 树和当前 active scope
+   ├─ Runtime → LLM Factory: /v1/chat/completions
+   └─ Runtime → Cortex: append assistant reasoning / tool calls / observations
+
+5. ReactActions
+   ├─ im_read / im_reply / im_send / subagent_spawn → Business Environment/Subagent APIs
+   ├─ shell / skill_* / payload_* → CortexBridge → Cortex
+   ├─ display / audio_qa / sleep → Runtime native executor
+   └─ device-facing tools → Business → Device → CloudBridge/VmControl
+
+6. 本轮结束
+   └─ LLM 调用 skill_end(report=...)
+      └─ Cortex 折叠当前 wake scope summary.md
+         └─ Business/Entangled 已有用户可见回复和 Agent Monitor 投影
 ```
 
-这套长程异步管线使得 NovAIC 从来不怕大规模长时间的思考与复杂操作挂机。随时被杀、随时重启、随时从上一个 Saga 的节点进度接着往下推。详细源码级解析请见内部目录 `docs/runtime/` 专题。
+---
+
+## 3. 服务协作边界
+
+| 服务 | Runtime 视角 |
+|---|---|
+| **Business** | 产品 API、Environment IM、SubAgent、设备编排、LLM 配置查询 |
+| **Queue Service** | Task/Saga/session 的唯一调度状态 |
+| **Cortex** | scope tree、LLM context、tool observation、payload ref、summary.md |
+| **LLM Factory** | 模型/provider/API key 隔离层，Runtime 只发标准 chat completion |
+| **Device** | Runtime 不直接拥有硬件；硬件动作经 Business 编排到 Device |
+| **Gateway** | 边缘广播/信令参数仍可能作为配置存在；不拥有 Runtime 输入、Queue DB、产品实体或 LLM 配置 |
+
+---
+
+## 4. 关键不变量
+
+- Runtime 不从 Gateway 读取聊天正文。
+- Queue DB 不属于 Gateway。
+- LLM 上下文来自 Cortex `prepare_for_llm`。
+- LLM 调用只走 LLM Factory。
+- 用户/子 Agent 通信走 Environment IM 工具路径。
+- 跨 wake 连续性来自 Cortex agent-root scope 树和 `skill_end(report=...)` 写入的 `summary.md`。
+- Gateway 不是 Runtime 的业务回调目标；用户可见消息和 activity 投影经 Business/Entangled 落地。
+
+---
+
+## 5. 源码入口
+
+| 需求 | 路径 |
+|---|---|
+| Queue Service | `novaic-agent-runtime/queue_service/main.py` |
+| Queue API | `novaic-agent-runtime/queue_service/routes.py` |
+| Saga Worker | `novaic-agent-runtime/task_queue/workers/saga_worker_sync.py` |
+| Task Worker | `novaic-agent-runtime/task_queue/workers/task_worker_sync.py` |
+| ReactThink / ReactActions | `novaic-agent-runtime/task_queue/sagas/react_think.py`, `react_actions.py` |
+| Cortex bridge | `novaic-agent-runtime/task_queue/utils/cortex_bridge.py` |
+| LLM Factory client | `novaic-agent-runtime/task_queue/factory_client.py` |
+| Environment dispatch subscriber | `novaic-business/main_subscriber.py` |
+

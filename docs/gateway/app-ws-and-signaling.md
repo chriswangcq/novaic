@@ -1,23 +1,57 @@
-# 业务数据生命线与信令混载：AppBridge WS
+# App WS 与 WebRTC 信令
 
 > 路径参考：`novaic-gateway/gateway/api/app_client.py`
 
-## 1. 从 SSE 到纯纯的 Websockets
-前端在早期拥有无数繁杂的分发接口——通过 HTTP 来收信、通过 SSE 去监听消息变化。经过整合后，所有前端的变现数据刷新与推送完全抛弃了被动的 Server-Sent-Events。
-唯一的出口归结于针对 `/api/app/ws` 发起的主 Websockets。
+## 1. 当前定位
 
-## 2. Request / Response 的无痛化封装
-当你以为这是和普通的 SSE 一样只负责后台给你“喂食”状态的话，你就大错特错了。
-AppBridge 是一套自己封装了带业务号回应体系的操作。我们向网关 WebSocket 可以完全发起任何带 `request_id` 的调用甚至直接要求服务器停摆某个 agent (`interrupt` 事件)：
-```json
-// 一条由前打向后的业务停摆要求请求：
-{"type":"request", "request_id":"uuid-A12", "action":"chat_send/interrupt", "data":{...}}
+`/api/app/ws` 是 Gateway 保留的用户边缘长连接。它不是业务实体同步通道，也不是 schema source。
+
+App 的实体数据同步走独立 Entangled sync WebSocket：
+
+```text
+App → Gateway /api/app/ws
+    ← entangledWsUrl endpoint discovery
+
+App ↔ Entangled /entangled/v1/sync
 ```
-网关不需要再去启动臃肿的 HTTP 处理端，直接在内旋路由上寻找匹配并就地进行数据库插入或其他处理，由于 `Entangled` 就运行在它自己的同源代码中：
-返回给前端的时候甚至顺便打包了 Entangled 的 Schema 数据包推送。
 
-## 3. WebRTC 信令混载 (Signaling Mulitplex)
-一个特别逆天的用法发生在 WebRTC 端内视频通讯打洞。
-WebRTC 在找目标 P2P 地址之前要求交换一个叫做 `offer / answer / candidate` ICE 数据的小碎包。如果你通过普通的 POST 方法提交并且拉回，这种延迟常常会产生乱序。
-在这条早已贯穿前后端的 AppBridge 之上。这三类数据被视为**带外的指令操作包**混在大通道一起流过。
-这保证了绝对的发送接收顺序队列，保证了桌面端的连接瞬间打通并且永远跟所有的更新事件属于同一队列，没有了资源抢占问题并获得了完美的端管互联体验。
+Gateway App WS 只做三件事：
+
+- **连接管理**：按 `user_id` 维护 App 在线连接，用于后端定向 push。
+- **Endpoint discovery**：下发客户端应该连接的 Entangled sync WS URL。
+- **WebRTC signaling relay**：转发 offer / answer / ICE。
+
+## 2. WebRTC 信令链路
+
+```text
+App
+  → Gateway /api/app/ws
+  → Business /internal/signaling
+  → Device
+  → CloudBridge
+  → VmControl
+
+VmControl
+  → CloudBridge
+  → Device
+  → Business
+  → Gateway /api/app/push
+  → App WS
+```
+
+Gateway 只承担 App 侧中继和 TURN 凭证注入，不拥有 Device、CloudBridge、VmControl 或业务状态。
+
+## 3. 明确不属于 App WS 的事情
+
+- 不承载 Entangled entity sync 数据。
+- 不下发 Entangled schema。
+- 不处理 `messages.send`、agents、skills、devices 等产品 action。
+- 不写业务实体数据库。
+
+这些能力分别属于：
+
+- Entangled sync WS；
+- Business action hooks；
+- Business/Device 内部 API；
+- Storage-A 文件服务。
+

@@ -8,7 +8,7 @@
 CloudBridge WS 是 **Device Service** (`:19993`) 与用户 PC 上的 **VmControl** (Rust) 之间的长连接通道。
 
 ```
-App → Gateway (AppWS signaling) → Device Service → CloudBridge (typed WS) → VmControl
+App → Gateway (App WS signaling) → Business → Device Service → CloudBridge (typed WS) → VmControl
 ```
 
 关键边界：
@@ -53,7 +53,7 @@ CloudBridge 采用 **typed WebSocket protocol**，每条消息都有明确的 `t
 | CloudBridge WS 客户端 + typed command dispatch | `novaic-app/src-tauri/vmcontrol/src/cloud_bridge.rs` |
 | App 信令 (WebRTC relay) | `novaic-gateway/gateway/api/app_client.py` |
 | Northbound VM API | `novaic-device/device/vm_routes.py`, `vmcontrol_routes.py` |
-| Gateway → Device 内部 API | `novaic-device/device/gateway_facing_api.py` |
+| Business/Gateway-facing Device 内部 API | `novaic-device/device/gateway_facing_api.py` |
 | Agent tool proxy | `novaic-device/device/agent_vm_proxy.py` |
 
 ## 4. 已删除的历史能力

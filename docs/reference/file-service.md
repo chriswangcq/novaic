@@ -7,9 +7,8 @@
 历史 `**/api/images/`** 与 `**/api/files/**` 已统一到 `**/api/files/**`。
 
 ```
-截图 → ImageStorage.save_image() → POST File Service /api/files/from-base64
-聊天附件 → uploadChatFile() → Gateway POST /api/files/upload → files 表
-访问 → GET /api/files/{file_id} → Gateway 校验 user_id → 代理 File Service
+截图/附件 → uploadChatFile() / Gateway POST /api/files/from-base64 → Storage-A /api/files/from-base64
+访问 → GET /api/files/{path} 或 POST /api/files/fetch → Gateway 校验 user_id → 代理 Storage-A
 ```
 
 ## 语音录制（Rust cpal）
