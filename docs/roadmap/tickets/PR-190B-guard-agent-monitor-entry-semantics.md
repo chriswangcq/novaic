@@ -2,11 +2,12 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[closed]` |
+| Status | `[superseded]` |
 | Owner | Codex |
 | Created | 2026-05-03 |
 | Repos | `novaic-app` |
 | Parent | PR-190 |
+| Superseded by | PR-191 |
 
 ## Goal
 
@@ -52,3 +53,9 @@ Validation:
 ```bash
 cd novaic-app && npm run test:unit -- src/components/Chat/ChatPanel.activityTimelineGuard.test.ts src/components/Visual/SubagentList.test.tsx
 ```
+
+## Superseded
+
+Superseded 2026-05-03 by [PR-191C — Guard Floating Layer Product Boundary](PR-191C-guard-floating-layer-product-boundary.md).
+
+The guard should now protect floating-layer semantics rather than expand-on-click semantics.
