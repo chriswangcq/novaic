@@ -286,6 +286,7 @@
 | PR-188 | `[closed]` | [Agent Monitor Main Scope Resolution](PR-188-agent-monitor-main-scope-resolution.md) | PR-169, PR-186 | Agent Monitor correctness | multi-step | Business default activity timeline path resolves real main subagent scope |
 | PR-188A | `[closed]` | [Business Activity Timeline Main Subagent Resolution](PR-188A-business-activity-timeline-main-subagent-resolution.md) | PR-188 | Business/Monitor boundary | 0.25 d | Missing subagent_id resolves to real main subagent id |
 | PR-188B | `[closed]` | [Agent Monitor Default Scope Guard](PR-188B-agent-monitor-default-scope-guard.md) | PR-188A | Regression guard | 0.25 d | Default monitor path guarded against literal `main` scope drift |
+| PR-189 | `[closed]` | [Entangled Schema Registration Broadcast](PR-189-entangled-schema-registration-broadcast.md) | PR-145 | App startup / Entangled schema readiness | 0.25 d | Schema registration now broadcasts updated schema to already-connected WS clients |
 
 
 ---
