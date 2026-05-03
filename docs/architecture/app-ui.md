@@ -39,12 +39,12 @@
 | 模型 | `SettingsModal.tsx` → AgentToolsTab |
 | 发消息 | `ChatInput.tsx`、`messagesStore` / `useMessages` |
 | Agent Monitor | `ActivityTimeline.tsx`、`useActivityTimeline.ts`、`ChatPanel.tsx` |
-| Gateway 类型 | `src/services/api.ts`（数据写优先 `entangledMethod`） |
+| Gateway HTTP 边界 | `src/services/api.ts`（Auth/File/少量 edge HTTP；产品写优先 `entangledMethod`） |
 | 布局 | `LayoutContainer.tsx`、`PrimaryNav.tsx`、`App.tsx` |
 | Gateway 配置 | `novaic-gateway/gateway/api/internal/config.py` |
-| VM 准备 | `gateway/api/vm.py`、`vmcontrol/.../vm_prep.rs` |
+| VM / 设备动作 | Entangled `devices.*` action → Business → Device；端侧实现见 `vmcontrol/...` |
 | Skills UI | `Settings/SkillsPage.tsx`、`useSkills.ts`、`skillsService.ts` |
-| Skills → LLM | `novaic-agent-runtime/.../system_prompt.py`；匹配 `novaic-gateway/.../skill.py` |
+| Skills → LLM | Business skills action/config + Runtime prompt builder / common tool schema |
 
 ## Entangled Headless（Path C）
 
@@ -92,7 +92,7 @@ WS 首包；App 只保留自己实际消费的前端 contract 与单测：
 | loadConfig | HTTP + prefsRepo | Entangled 缓存 `cacheGetList` 等 |
 | sync 重连 invalidate | 手动 12 keys | 删除（Rust `resubscribe_all`） |
 
-**Python**：`gateway/api/skill_actions.py`；`defs.py` 中 SKILLS / AGENT_TOOLS 的 actions。
+**Python**：Skills/Agent tools 的服务端产品 action 在 Business；Runtime 只消费已组装好的 prompt/tool schema。
 
 **仍保留 HTTP 的典型场景**：文件 multipart 上传、健康检查/进程管理、Android 设备枚举、部分复杂日志查询、WebRTC 信令。
 
