@@ -14,7 +14,7 @@ Make bottom participant pills open the Activity Timeline floating layer.
 
 ## Current-State Analysis
 
-`SubagentList` currently exposes `onSelect`, which reads like silent state filtering. `ChatPanel` uses it to set local participant state. PR-190 also expanded the bottom monitor, but the target interaction is a floating layer.
+`SubagentList` should expose an opening intent, not a silent filter intent. The target interaction is a floating layer scoped to the selected participant.
 
 ## Implementation Plan
 

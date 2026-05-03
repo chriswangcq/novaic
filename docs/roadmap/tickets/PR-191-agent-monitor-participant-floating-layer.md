@@ -7,7 +7,6 @@
 | Created | 2026-05-03 |
 | Repos | `novaic-app`, docs |
 | Depends on | PR-188 |
-| Supersedes | PR-190 |
 | Theme | Agent Monitor floating participant surface |
 
 ## Goal
@@ -18,7 +17,7 @@ Restore the historical bottom participant pill interaction as a floating layer, 
 
 Historical `SubagentList` behavior in `novaic-app` commit `01283c4` used `createPortal` and a fixed modal layer. Clicking a participant pill opened a centered overlay. That old overlay rendered `ExecutionLog` from `useLogs`, which is no longer acceptable for the normal user-facing Agent Monitor path.
 
-PR-190 fixed the no-op click by expanding the bottom Agent Monitor. That made the click visible, but it did not match the desired product shape: the participant pill should open a floating layer.
+The desired product shape is clear: participant pills open a floating layer. They should not silently change filter state, and they should not expand the bottom Agent Monitor panel.
 
 ## Big Work Items
 
@@ -53,7 +52,6 @@ Implemented in `novaic-app`:
 - Added `ActivityTimelineModal`, a portal-based floating layer that renders public Activity Timeline records.
 - Changed `SubagentList` callback semantics from `onSelect` to `onOpenParticipant`.
 - `ChatPanel` now tracks `modalParticipantId` and uses a dedicated `useActivityTimeline` call for modal content.
-- PR-190 expand-on-click behavior is superseded; participant pill click now opens the floating layer.
 - Existing guard still keeps `ExecutionLog`, `MainAgentLogPreview`, `useLogs`, and raw `subagentsStore` out of the normal user-facing path.
 
 Validation:
