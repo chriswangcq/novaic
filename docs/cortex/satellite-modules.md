@@ -9,25 +9,19 @@
   > 注：Entangled 独立服务已并入 `Entangled/packages/server-python/entangled/app`，启动方式：`python -m entangled.app.main`。
 - 注释说明：**多数业务应留在 owning service/package**；Cortex 直连仅适用于纯数据读，或 Cortex 组装上下文时的特殊需求。
 
-## 2. Blob payload helpers
+## 2. Blob storage helpers
 
 - Cortex active path stores large tool/runtime payloads behind `blob://...`
   references and keeps prompt-facing observations small.
 - Large bytes belong to Blob Service; Cortex owns only work-trace semantics,
   payload refs, and projection rules.
+- `blob_store.py` implements the production `CortexStore` over Blob Service
+  object APIs. Cortex does not own S3/OSS credentials.
 
 ## 3. `step_result_projection.py`
 
 - 读取 Cortex step 中的 **工具结果**，完成格式化、解析、与 LLM 表示转换；已获取的
   字节内容可转换为 **`_mcp_content`** 块，默认上下文只保留 observation 摘要与 payload ref。
-
-## 4. `tenant.py`
-
-- **`TenantLayout`**：多租户 OSS 前缀 **`users/{user_id}/agents/{agent_id}/`** 等形式化封装（与 `WorkspaceRegistry` + `Workspace._key` 一致；见 [storage-and-keys.md](storage-and-keys.md)）。
-
-## 5. `aliyun_oss_s3.py`
-
-- **`boto3_client_aliyun_oss`**：启动时创建 **S3 兼容 OSS** 客户端（见 [deployment-and-startup.md](deployment-and-startup.md)）。
 
 ---
 

@@ -145,11 +145,11 @@ Gateway 完成微服务拆分（2026-04-14）：
 
 ## 11. `ServiceConfig` God Object（P2）
 
-单个类持有所有服务的 URL、密钥、OSS、VM 超时、截断策略、重试、TURN、Cortex 参数等 ~60 个属性。问题：
+单个类持有所有服务的 URL、密钥、Blob 物理后端配置、VM 超时、截断策略、重试、TURN、Cortex 参数等 ~60 个属性。问题：
 
 - 每个服务只需要其中一小部分，但 import 时加载全部
 - import 时绑定 JSON，测试时不便 mock/override
-- 不相关配置耦合在一起，修改 Cortex OSS 配置可能触发 Gateway 的 config 验证失败
+- 不相关配置耦合在一起，修改 Blob 后端配置可能触发 Gateway 的 config 验证失败
 
 **行动项：** 按服务域拆分为 typed dataclass（`GatewayConfig`、`CortexConfig`、`DeviceConfig` 等），各服务只导入自己需要的。`ServiceConfig` 降级为向后兼容的聚合 facade。
 

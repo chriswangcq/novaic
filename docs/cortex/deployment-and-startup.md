@@ -1,34 +1,45 @@
 # 部署与进程启动
 
-> 源码：`novaic_cortex/main_cortex.py`；应用对象来自 **`api.app`**（`set_registry` / `set_internal_key`）。
+> 源码：`novaic_cortex/main_cortex.py`；应用对象来自 `api.app`（`set_registry` / `set_internal_key`）。
 
 ## 1. 如何启动
 
 ```bash
-python -m novaic_cortex.main_cortex
-# 或
-uvicorn novaic_cortex.main_cortex:app --host 0.0.0.0 --port 19996
+python -m novaic_cortex.main_cortex \
+  --blob-service-url http://127.0.0.1:19995 \
+  --redis-url redis://127.0.0.1:6379/0
 ```
 
-监听地址与端口：
+生产由根目录 `scripts/start.sh` 启动。Cortex 需要：
 
-| 环境变量 | 默认 |
-|----------|------|
-| **`CORTEX_HOST`** | `0.0.0.0` |
-| **`CORTEX_PORT`** | `19996` |
-
-> **P3-5 / INV-7 — 单进程约束**  
-> Cortex **必须**以 **single worker**（**`uvicorn --workers 1`** 或 **`python -m novaic_cortex.main_cortex`**）运行。栈操作、`_index.jsonl` / `context.jsonl` RMW 全部依赖 **in-process `asyncio.Lock`**（参见 **`_SCOPE_LOCKS`** / **`_get_scope_lock`**）。多进程会让每个进程各持一份独立的锁表，P1-1 锁掉的并发竞态会立刻回归。  
-> 启动时会读取 **`UVICORN_WORKERS`** 环境变量，若 `>1` 会 **`RuntimeError`** 拒启（见 **`main_cortex._enforce_single_worker`**）。水平扩容路径见 **P3-6（分布式锁抽象）**。
+- `--blob-service-url`：Blob Service base URL。
+- `--redis-url`：scope lock 后端。
+- `--internal-key`：内部 API 鉴权 key。
+- `--jwt-secret`：Capability token secret。
 
 ## 2. 启动装配做什么
 
-1. 读 **阿里云 OSS** 凭证：**`ALIBABA_CLOUD_ACCESS_KEY_ID`**、**`ALIBABA_CLOUD_ACCESS_KEY_SECRET`**（二者缺一则 **`RuntimeError`**，服务不会正常起来）。
-2. 读 endpoint / region / bucket：**`NOVAIC_OSS_ENDPOINT`**、**`NOVAIC_OSS_REGION`**、**`NOVAIC_OSS_BUCKET`**（默认值见 `main_cortex.py`）。
-3. **`boto3_client_aliyun_oss(...)`** 建客户端 → **`WorkspaceRegistry(client, bucket)`** → **`set_registry(registry)`**。
-4. 安装内部服务鉴权 key：**`set_internal_key(...)`**。
+1. 安装 Redis scope lock backend；失败则拒绝启动。
+2. 创建 `WorkspaceRegistry(blob_service_url)`。
+3. 调用 `set_registry(...)` 和 `set_internal_key(...)`。
 
-## 3. 与专题文档的衔接
+Cortex 不读取 OSS/S3 凭证，不创建 OSS/S3 client，不知道 bucket/endpoint。物理存储后端属于 Blob Service。
 
-- 对象键前缀：**[storage-and-keys.md](storage-and-keys.md)**  
-- HTTP 路由：**[http-api.md](http-api.md)**  
+## 3. Blob Service 物理后端
+
+Blob Service 由 `scripts/start.sh` 设置：
+
+```bash
+NOVAIC_BLOB_BACKEND=oss
+NOVAIC_OSS_ACCESS_KEY=...
+NOVAIC_OSS_SECRET_KEY=...
+NOVAIC_OSS_ENDPOINT=...
+NOVAIC_OSS_BUCKET=...
+```
+
+Blob Service 也可在本地测试中使用 Disk backend，但生产的 object/byte 后端统一在 Blob Service 层配置。
+
+## 4. 与专题文档的衔接
+
+- 对象键前缀：[storage-and-keys.md](storage-and-keys.md)
+- HTTP 路由：[http-api.md](http-api.md)

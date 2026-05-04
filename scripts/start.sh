@@ -78,6 +78,14 @@ wait_port_free() {
     echo "  WARN: port $port still in use after ${secs}s"
 }
 
+kill_port_owner() {
+    local port="$1"
+    local pids
+    pids=$(lsof -ti :"$port" 2>/dev/null || true)
+    [ -z "$pids" ] && return 0
+    kill -9 $pids 2>/dev/null || true
+}
+
 stop() {
     pkill -TERM -f "main_subscriber.py" 2>/dev/null || true
     for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
@@ -93,6 +101,9 @@ stop() {
     pkill -9 -f "main_novaic.py" 2>/dev/null || true
     pkill -9 -f "main_blob_service.py" 2>/dev/null || true
     pkill -9 -f "main_cortex" 2>/dev/null || true
+    for port in $PORT_ENTANGLED $PORT_GATEWAY $PORT_BUSINESS $PORT_DEVICE $PORT_QUEUE_SERVICE $PORT_BLOB_SERVICE $PORT_CORTEX; do
+        kill_port_owner "$port"
+    done
     sleep 2
     echo "Stopped."
 }
@@ -126,9 +137,9 @@ PYEOF
 JWT_SECRET=$(_cfg "['secrets']['jwt_secret']")
 OSS_AK=$(_cfg "['secrets']['alibaba_cloud_access_key_id']")
 OSS_SK=$(_cfg "['secrets']['alibaba_cloud_access_key_secret']")
-OSS_ENDPOINT=$(_cfg "['cortex']['oss_endpoint']")
-OSS_REGION=$(_cfg "['cortex']['oss_region']")
-OSS_BUCKET=$(_cfg "['cortex']['oss_bucket']")
+BLOB_OSS_ENDPOINT=$(_cfg "['blob_storage']['oss_endpoint']")
+BLOB_OSS_REGION=$(_cfg "['blob_storage']['oss_region']")
+BLOB_OSS_BUCKET=$(_cfg "['blob_storage']['oss_bucket']")
 CORTEX_INTERNAL_KEY=$(_cfg "['secrets']['cortex_internal_key']")
 
 # ── Services (all config passed as explicit CLI args — no exports) ───────────
@@ -166,6 +177,13 @@ $(py novaic-agent-runtime) "$BASE/novaic-agent-runtime/main_novaic.py" queue-ser
     >> "$LOG_DIR/queue-service.log" 2>&1 &
 wait_port "$PORT_QUEUE_SERVICE" "Queue Service"
 
+NOVAIC_BLOB_BACKEND=oss \
+NOVAIC_OSS_ACCESS_KEY="$OSS_AK" \
+NOVAIC_OSS_SECRET_KEY="$OSS_SK" \
+NOVAIC_OSS_ENDPOINT="$BLOB_OSS_ENDPOINT" \
+NOVAIC_OSS_REGION="$BLOB_OSS_REGION" \
+NOVAIC_OSS_BUCKET="$BLOB_OSS_BUCKET" \
+AWS_DEFAULT_REGION="$BLOB_OSS_REGION" \
 PYTHONPATH="$BASE/novaic-common:${PYTHONPATH:-}" \
 $(py novaic-storage-a) "$BASE/novaic-storage-a/main_blob_service.py" \
     --host "$HOST" --port "$PORT_BLOB_SERVICE" --data-dir "$DATA_DIR" \
@@ -184,15 +202,13 @@ mkdir -p "$DATA_DIR/cortex"
 # for the caller-logging middleware. Cortex runs out of its own venv
 # (novaic-cortex/.venv) which doesn't ship novaic-common as a pkg;
 # export PYTHONPATH so the import resolves to the sibling submodule.
-CORTEX_STORE_ROOT="$DATA_DIR/cortex" \
 CORTEX_BLOB_SERVICE_URL="$BLOB_URL" \
-PYTHONPATH="$BASE/novaic-common:${PYTHONPATH:-}" \
+PYTHONPATH="$BASE/novaic-cortex:$BASE/novaic-common:${PYTHONPATH:-}" \
 $(py novaic-cortex) -m novaic_cortex.main_cortex \
     --host "$HOST" --port "$PORT_CORTEX" \
     --jwt-secret "$JWT_SECRET" \
     --internal-key "$CORTEX_INTERNAL_KEY" \
-    --oss-ak "$OSS_AK" --oss-sk "$OSS_SK" \
-    --oss-endpoint "$OSS_ENDPOINT" --oss-region "$OSS_REGION" --oss-bucket "$OSS_BUCKET" \
+    --blob-service-url "$BLOB_URL" \
     --redis-url "redis://127.0.0.1:6379/0" \
     --redis-lock-ttl-seconds 300 \
     >> "$LOG_DIR/cortex.log" 2>&1 &

@@ -61,7 +61,7 @@
 > 最后更新：2026-04-06 — **Cortex 存储模型修正 + DFS Step Tree**：明确 `/ro/` (核心配置只读区域) 与 `/rw/` (读写沙箱区) 的隔离边界；引入 `_sys_write`；实现 ContextEngine 基于 Step Tree 深度优先的数据大合叠与 summary 展开技术。
 > 最后更新：2026-04-06 — **桌面「清空本地缓存」幽灵 Bug 修复**：`Cache::clear_all()` 现强制清整包裹 `pending_ops`（乐观锁滞留库）在内的所有的 `sqlite_master` 表并重置原子计数，彻底终结了重连后满屏 Sending 假死消息。
 > 最后更新：2026-04-05 — **Agent Loop 统一无工具直接调用**：不再使用旧版注入合成的 `tool_calls`；Cortex `cortex.prepare_llm_context` 全包揽 messages + tools prompt；由 `llm_handlers` 直接拿回吐字，抹平了传统调用栈。
-> 最后更新：2026-04-03 — **Cortex v3 无状态引擎定稿**：废弃内存旧引擎 Context Stack！新的基于文件的引擎核心代码由 ~5600 行压至 ~700 行。确立基于 S3 的四大组件（CortexStore, Workspace, Sandbox, Compactor）。
+> 最后更新：2026-04-03 — **Cortex v3 无状态引擎定稿**：废弃内存旧引擎 Context Stack！新的基于文件的引擎核心代码由 ~5600 行压至 ~700 行。当前对象存储主路径已收口为 Blob Service backed CortexStore，Cortex 不再持有 S3/OSS 凭证。
 > 最后更新：2026-04-02 — **OpenClaw 子模块考察借签**：引入 `thirdparty/openclaw` 旁支用于架构比对论证；总结了五份关于 Skills、隔离、市场分发的报告但确认不影响当前 NovAIC 端托底拓扑。
 > 最后更新：2026-04-01 — **Sync Contract 与 Slot 订阅隔离机制 (NavState)**：彻底修理了 AppWS 的跨组件踩脚重连 Bug，实现了 `navChanged` 与 Rust 多 `tokio::Mutex` 插槽槽位，保证不同组件独立维持视图生命！
 > 最后更新：2026-03-31 **Agent-Binding 持久化修复**：修正乐观锁引起的绑定丢失，`useAgentBinding.ts` 强迁移表单引擎并与 `nav.rs` 实现深度联动，设备面板挂靠响应全活。

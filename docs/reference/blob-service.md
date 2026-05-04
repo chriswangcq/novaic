@@ -1,7 +1,8 @@
 # Blob Service Boundary
 
-Blob Service is infrastructure for large byte objects. It owns bytes and
-byte-level metadata, but it must not become a new business center.
+Blob Service is infrastructure for byte and object storage. It owns bytes,
+object-tree primitives, and byte-level metadata, but it must not become a new
+business center.
 
 ## Contract
 
@@ -21,6 +22,7 @@ Initial namespaces:
 ## Blob Service Owns
 
 - byte storage
+- object storage primitives: `put`, `get`, `list`, `move_prefix`, `delete`
 - infrastructure metadata
 - tenant isolation
 - presign/proxy access
@@ -58,3 +60,18 @@ not construct object storage URLs directly.
 New hot paths must write `blob://...` references. Historical locator shapes are
 detection-only migration inputs; they are not valid runtime APIs and must not be
 reintroduced as readers or facades.
+
+## Cortex Object Store
+
+Cortex uses Blob Service object APIs for its `CortexStore` production backend:
+
+```text
+tenant_id = {user_id}
+namespace = cortex-store
+key       = agents/{agent_id}/ro/...
+key       = agents/{agent_id}/rw/...
+```
+
+Cortex does not own physical OSS/S3 credentials or bucket configuration. Blob
+Service decides whether these object keys are backed by OSS/S3 or a local test
+backend.
