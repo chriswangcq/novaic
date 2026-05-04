@@ -166,6 +166,7 @@ $(py novaic-agent-runtime) "$BASE/novaic-agent-runtime/main_novaic.py" queue-ser
     >> "$LOG_DIR/queue-service.log" 2>&1 &
 wait_port "$PORT_QUEUE_SERVICE" "Queue Service"
 
+PYTHONPATH="$BASE/novaic-common:${PYTHONPATH:-}" \
 $(py novaic-storage-a) "$BASE/novaic-storage-a/main_file_service.py" \
     --host "$HOST" --port "$PORT_FILE_SERVICE" --data-dir "$DATA_DIR" \
     >> "$LOG_DIR/file-service.log" 2>&1 &
