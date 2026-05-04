@@ -44,8 +44,9 @@ Turn Storage-A from a product "File Service" into a Blob Service infrastructure 
 
 - Added `file_service/blob_storage.py` as the Blob infrastructure facade over the existing byte backend.
 - Added `/v1/blobs` create/info/read/presign/delete routes. They return `blob://...` metadata and never return raw payload in metadata responses.
-- Kept `/api/files/*` mounted only as a temporary legacy facade; new smoke and contract scripts no longer use it as proof of the main path.
-- Health now reports `contract_version=blob/v1` and `legacy_facade=storage-a/v1`.
+- PR-205 later deleted the temporary legacy facade; the active API is now
+  `/v1/blobs/*` only.
+- Health reports `contract_version=blob/v1` without legacy facade markers.
 - Disk backend paths include tenant id under the Blob namespace so local/dev storage also respects tenant isolation.
 
 ## Verification

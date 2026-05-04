@@ -13,7 +13,7 @@
 # ── 后端服务 (api.gradievo.com) ──
 ./deploy gateway           # rsync + start.sh 全部重启
 ./deploy runtime           # novaic-agent-runtime
-./deploy storage-a         # novaic-storage-a（File Service）
+./deploy storage-a         # novaic-storage-a（Blob Service）
 ./deploy cortex            # novaic-cortex（:19996）
 ./deploy services          # rsync 全部 + start.sh 重启（推荐）
 # 注意：无 ./deploy orchestrator（RO 子模块已删除）

@@ -29,7 +29,7 @@
 | [workspace-acl-and-sys-writes.md](workspace-acl-and-sys-writes.md) | `/ro`/`/rw` ACL、`_sys_*` |
 | [builtin-tools-and-skills.md](builtin-tools-and-skills.md) | 工具 schema、`install_skill` |
 | [extension-points.md](extension-points.md) | Hooks、协议、StepTree、压缩建议 |
-| [satellite-modules.md](satellite-modules.md) | Entangled、`fs://`、step result projection 等 |
+| [satellite-modules.md](satellite-modules.md) | Entangled、Blob payload、step result projection 等 |
 | [design-doc-links.md](design-doc-links.md) | 源码注释中的设计稿路径、历史文档 |
 | [invariants.md](invariants.md) | **硬约束 SSOT**：10 条跨服务 invariants、代码锚点、强制级别 |
 | [hardening-checklist.md](hardening-checklist.md) | Phase 0-3 加固清单 + 风险矩阵 |

@@ -15,7 +15,7 @@ Cortex 源码注释会指向一些 **`docs/...md`** 路径（如 **`docs/context
 |------------------|-------------------|
 | Context Stack v2 / budget §4.4 | [budget-compact-algorithm.md](budget-compact-algorithm.md)、[engine-config-and-metrics.md](engine-config-and-metrics.md) |
 | DFS / 时间线 | [context-timeline-and-dfs.md](context-timeline-and-dfs.md)、[step-index-and-payload-schema.md](step-index-and-payload-schema.md) |
-| OSS / `fs://` | [satellite-modules.md](satellite-modules.md)、父仓 `docs/oss-storage-unified-plan.md`（若存在） |
+| Blob payload / OSS backend | [satellite-modules.md](satellite-modules.md)、[../reference/blob-service.md](../reference/blob-service.md) |
 
 ---
 

@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[planned]` |
+| Status | `[code_done_pending_deploy]` |
 | Owner | Codex |
 | Created | 2026-05-04 |
 | Repos | all first-party repos, docs, CI |
@@ -19,10 +19,10 @@ Old path concepts are still present in package names, docs, tests, and examples.
 
 ## Small Tickets
 
-- [ ] PR-205A — Delete active Storage-A/File Service hot-path code.
-- [ ] PR-205B — Rename remaining service/package/docs to Blob Service where still active.
-- [ ] PR-205C — Remove Cortex `HttpFileFetcher("storage-a")` style path or replace with Blob resolver.
-- [ ] PR-205D — Add static guards banning new `storage-a`, `fs://`, and `/api/files` hot-path writes.
+- [x] PR-205A — Delete active Storage-A/File Service hot-path code.
+- [x] PR-205B — Rename remaining service/package/docs to Blob Service where still active.
+- [x] PR-205C — Remove Cortex `HttpFileFetcher("storage-a")` style path or replace with Blob resolver.
+- [x] PR-205D — Add static guards banning new `storage-a`, `fs://`, and `/api/files` hot-path writes.
 
 ## Done Criteria
 
@@ -33,7 +33,30 @@ Old path concepts are still present in package names, docs, tests, and examples.
 
 ## Deployment Checklist
 
-- [ ] All touched repo tests pass.
+- [x] All touched repo tests pass.
 - [ ] Services deployed.
-- [ ] Guardrails wired into CI or equivalent test suite.
+- [x] Guardrails wired into CI or equivalent test suite.
 
+## Implementation Notes
+
+- Storage-A active API now exposes only `/v1/blobs/*`; the old file facade,
+  resolver, client, and storage helpers were physically deleted.
+- Gateway no longer serves the legacy file proxy routes; it only exposes Blob
+  access under `/api/blobs/*`.
+- Runtime `display` and `audio_qa` accept Blob refs and fetch Blob bytes through
+  Blob Service with tenant headers.
+- Cortex file resolver exports/tests were deleted; large payloads remain behind
+  Blob refs and are projected through Cortex observation/payload paths.
+- Active docs now describe Blob Service and Blob proxy semantics; historical
+  migration notes remain only in roadmap tickets.
+- Added parent CI guard `scripts/ci/test_no_legacy_file_hot_paths.py` to prevent
+  legacy hot-path tokens from reappearing in active code.
+
+## Verification
+
+- `novaic-storage-a`: targeted test suite passed.
+- `novaic-gateway`: gateway boundary tests passed.
+- `novaic-agent-runtime`: display/audio/user-content tests passed.
+- `novaic-common`: tool definition and product semantics contract tests passed.
+- `novaic-cortex`: payload/projection/tenant tests passed.
+- Parent guard `scripts/ci/test_no_legacy_file_hot_paths.py` passed.

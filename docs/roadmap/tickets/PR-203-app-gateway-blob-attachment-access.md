@@ -94,6 +94,6 @@ The new target is narrower:
 
 ## Residual Risk
 
-The legacy `/api/files/*` facade remains in Gateway and Storage-A only for the
-separate PR-204/PR-205 migration and physical-deletion stages. New App chat
-attachment and preview/download paths no longer use it.
+Closed by PR-204/PR-205: historical locators were audited and the legacy file
+facade was physically deleted from Gateway and Blob Service. App chat attachment
+and preview/download paths use Blob refs only.

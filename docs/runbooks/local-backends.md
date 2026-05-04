@@ -1,6 +1,6 @@
 # 本地后端联调（Runbook）
 
-桌面 **`novaic-app`** 内嵌 VmControl；**Python 后端**（Gateway、Cortex、Agent Runtime、文件服务等）通常需**单独启动**。端口约定见 **`novaic-common/config/services.json`** 与 [`../architecture/overview.md`](../architecture/overview.md)。
+桌面 **`novaic-app`** 内嵌 VmControl；**Python 后端**（Gateway、Cortex、Agent Runtime、Blob Service 等）通常需**单独启动**。端口约定见 **`novaic-common/config/services.json`** 与 [`../architecture/overview.md`](../architecture/overview.md)。
 
 ## 方式 A：`novaic-app` 配套 `start-backends.sh`
 
@@ -13,7 +13,7 @@ cd novaic-app/scripts
 ./start-backends.sh --status     # 状态
 ```
 
-脚本内端口与 **Tauri 常量**对齐（Gateway 19999、Queue 19997、Business 19998（中枢编排）、Device 19993（设备服务）、File 19995 等）。完整逻辑见该文件注释。
+脚本内端口与 **Tauri 常量**对齐（Gateway 19999、Queue 19997、Business 19998（中枢编排）、Device 19993（设备服务）、Blob 19995 等）。完整逻辑见该文件注释。
 
 ## 方式 B：只跑客户端 UI
 
