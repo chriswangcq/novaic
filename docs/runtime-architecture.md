@@ -85,8 +85,8 @@ Runtime 的强状态只在 Queue Service 自己的 `queue.db`。Agent 的工作�
 |---|---|
 | Queue Service | `novaic-agent-runtime/queue_service/main.py` |
 | Queue API | `novaic-agent-runtime/queue_service/routes.py` |
-| Saga Worker | `novaic-agent-runtime/task_queue/workers/saga_worker_sync.py` |
-| Task Worker | `novaic-agent-runtime/task_queue/workers/task_worker_sync.py` |
+| Saga Worker | `novaic-agent-runtime/task_queue/workers/saga_worker.py` |
+| Task Worker | `novaic-agent-runtime/task_queue/workers/task_worker.py` |
 | ReactThink / ReactActions | `novaic-agent-runtime/task_queue/sagas/react_think.py`, `react_actions.py` |
 | Cortex bridge | `novaic-agent-runtime/task_queue/utils/cortex_bridge.py` |
 | LLM Factory client | `novaic-agent-runtime/task_queue/factory_client.py` |

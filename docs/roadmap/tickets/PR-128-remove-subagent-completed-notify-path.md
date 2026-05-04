@@ -1,5 +1,8 @@
 # PR-128: Remove `subagent_completed` notify-parent path
 
+> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+
+
 ## 背景
 
 `subagent_completed` / `message.notify_parent` 是旧生命周期通知通路。统一 IM 后，结果汇报由 child 显式 `subagent_send(parent, message)` 完成；completed 只应是内部 lifecycle，不应再触发 parent wake 或拼接消息。

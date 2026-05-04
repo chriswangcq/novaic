@@ -1,5 +1,8 @@
 # PR-17 Preflight Review
 
+> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+
+
 **结论**：**条件批准**——discovery 扎实，但小弟低估了一个重大发现。T1 开始前必须把 3 件事定死、1 件事告知老板。
 
 ---

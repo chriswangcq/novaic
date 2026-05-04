@@ -1,5 +1,8 @@
 # PR-124: Spawn delivers initial task via `SUBAGENT_SEND`
 
+> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+
+
 ## 背景
 
 当前 spawn 创建子 Agent 后写 `SPAWN_SUBAGENT` 消息触发 wake。目标架构希望子 Agent 与父 Agent 都走统一 IM 通路：spawn 只创建子 Agent，初始任务也作为一条发给 child 的 `SUBAGENT_SEND`。

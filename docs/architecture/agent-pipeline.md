@@ -81,7 +81,7 @@ LLM tool_call
 | AgentOwnershipResolver | `resolve_sync`（同步，`threading.Lock` + FIFO 缓存） | PR-34 34e 删除 `async resolve` 与 `asyncio.Lock` 字典 |
 | DispatchSubscriber | **独立子进程** (`main_subscriber.py`) | 从 Business lifespan 的后台 task 拆出；崩溃以 `ps` 可见、退出码非零的方式"大声死亡"，而不是静默停止处理 Environment notifications |
 | HealthWorker / SchedulerWorker | 同步线程 (`health_worker.py` / `scheduler_worker.py`) | `threading.Event` + `time.sleep`，`_sync` 后缀已去除 |
-| SagaWorker / TaskWorker | 同步线程 (`saga_worker_sync.py` / `task_worker_sync.py`) | 文件名保留 `_sync` 仅因未重命名；行为与上两者一致 |
+| SagaWorker / TaskWorker | 同步线程 (`saga_worker.py` / `task_worker.py`) | `threading` / process boundary；文件名已与同步主路径一致 |
 
 为什么：前版 DispatchSubscriber 作为 FastAPI lifespan 的 `asyncio.create_task` 运行，任意未捕获异常会让调度循环静默停止；现在把内部路径搬到"一个失败 = 一个进程/线程退出"的模型，故障必然外显。
 

@@ -1,5 +1,8 @@
 # PR-14 Preflight Review — Entangled `message_outbox` + co-transaction insert
 
+> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+
+
 ## §1 核心架构发现：写入路径不在 Entangled 里
 
 Ticket 假设 "消息写入发生在 Entangled 侧"（`entangled/sql/entity_store.py::append`），因此要在 Entangled 的 `append()` 方法里做 co-transaction outbox insert。

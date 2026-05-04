@@ -1,5 +1,8 @@
 # PR-17 Preflight Report (Canary & Deployment)
 
+> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+
+
 ## ⚠️ 重大发现：生产 pre-PR-15 → Canary 是巨型集成上线
 
 本次 Canary 不是简单的打开 subscriber 标志，而是包含了 PR-04 到 PR-16 的大量**首次生产部署**代码：

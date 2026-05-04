@@ -57,6 +57,7 @@ run_tests() {
 run_guard "agent-main-path-acceptance" "scripts/ci/lint_agent_main_path_acceptance.sh" || true
 run_guard "retired-agent-paths" "scripts/ci/lint_retired_agent_paths.sh" || true
 run_guard "lifecycle-loop-ownership" "scripts/ci/lint_lifecycle_loop_ownership.sh" || true
+run_guard "roadmap-ticket-archaeology" "python3 scripts/ci/lint_roadmap_ticket_archaeology.py" || true
 
 # 1. agent-runtime (unit)
 run_tests "novaic-agent-runtime" "agent-runtime" "tests/unit/" || true
