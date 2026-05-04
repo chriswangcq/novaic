@@ -82,6 +82,7 @@
 | **[agent-monitor-final-product-shape.md](roadmap/agent-monitor-final-product-shape.md)** | **Agent Monitor 最终产品形态**：底部胶囊、活动浮层、Observation/Reasoning/Action/Summary 展示合同 |
 | **[agent-activity-timeline.md](roadmap/agent-activity-timeline.md)** | **Agent Activity Timeline 专题索引**：不复制方案，只保留 Agent Monitor 用户面关注点 |
 | **[agent-subject-environment-im.md](roadmap/agent-subject-environment-im.md)** | **Agent Subject / Environment IM 专题索引**：不复制方案，只保留 Environment IM 边界关注点 |
+| **[blob-large-file-multipart-audio.md](roadmap/blob-large-file-multipart-audio.md)** | **Blob 大文件 / multipart / 音频压缩计划**：当前实现边界与后续工单 |
 | [model-entity-refactor.md](roadmap/model-entity-refactor.md) | Model 三实体方案 |
 | **[claude-code-comparison.md](roadmap/claude-code-comparison.md)** | **Claude Code 对比与迭代优先级** |
 | **[gateway-decomposition.md](roadmap/gateway-decomposition.md)** | **Gateway 职责膨胀分析与拆分路线** |

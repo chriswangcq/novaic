@@ -1,21 +1,61 @@
-# Blob Service 存储总枢纽架构概览
+# Blob Service 存储架构概览
 
 > 路径参考：`novaic-blob-service/`。该目录是当前 Blob Service 的实现目录。
 
-不同于有着无尽生命周期的 Entangled 数据（文字/节点状态）以及 Cortex 的工作轨迹。Blob Service 是极度特异化的“巨石与流体大件转存中转机”：只负责字节、Blob 元数据、租户边界和后端对象存储适配。
+Blob Service 是字节与对象存储基础设施。它和 Entangled、Cortex 的边界不同：
 
----
+- Entangled 保存可同步的产品实体和状态。
+- Cortex 保存 Agent 工作轨迹、scope、observation、payload ref。
+- Blob Service 只保存字节、对象树、Blob 元数据、租户边界和后端对象存储适配。
+
+它不解释文件属于什么业务，不生成 prompt，不总结 payload，也不承担 Agent Monitor 文案。
 
 ## 1. 定位脱钩
-如果你在系统里上传了一张 100M 大小的带有各种录音跟高清实录截图日志（比如用户向系统交了一份报错带视频的诊断）；假如你通过原原本本像 `gateway` 或是 `runtime` 的 API 去走 HTTP，这么巨大的体型足以导致在内网占用极其宝贵的信道宽度并且由于这俩机器根本不擅长做这耗时巨长的事，极有可能卡爆进程！
 
-我们将它强行挂上独立的 `:19995` 以隔绝那群吃 CPU 的重业务。
+大对象不应该塞进 Runtime、Cortex、Entangled 或普通业务实体。当前主路径是：
+
+```text
+App / Runtime / Cortex → BlobRef → Blob Service → Disk or S3-compatible backend
+```
+
+新路径统一用：
+
+```text
+blob://{namespace}/{blob_id}
+```
+
+Blob Service 默认监听独立服务端口，避免大字节读写和 Agent/业务控制面混在一起。
 
 ## 2. 核心大件代理权与中转隔离
-其实说白了这个服务是一个极轻量但也极重要的搬运工：
-- 它的主端点是 `/v1/blobs/*`：上传字节、读取字节、检查元数据。
-- 对所有的进项视频和内容：它其实往往不是存在了自己的本地磁盘。而是背后承接连通到了诸如阿里 OSS 前头或诸如 S3 等标准对象挂靠点。它帮你掩护掉了极度复杂恶心的那些临时授权令牌 (`STS Token`) 获取、切片（MultiPart Upload）传输乃至那些如果掉线了该怎么续连（Retry）的具体泥泞细节。让 Agent 或者是 Runtime 大脑只需要呼叫个内网 API 上下文拿到一个干净公网或者内向连接的 URL 即可下班！
 
-## 3. 文件转换中转池 (Transcode Muxer)
-在特定的场景，比如如果你向服务器交了不同设备的离散截点音频（部分甚至是在由于各种原因产生的格式怪异的 Webm 和杂音 Wav 编流）。
-本服务还常会临时担起在流上走切片或引渡到系统底层如借助 `ffmpeg` （在特定功能开启环境等）打薄这些东西将之快速降维拉成模型 API 恰好受得住乃至认识的体量数据发配——真正做到给大脑当清洗胃部。
+当前实现：
+
+- `/v1/blobs`：JSON base64 上传，适合小附件和现有聊天附件路径。
+- `/v1/blobs/{namespace}/{blob_id}`：读取字节。
+- `/v1/blobs/{namespace}/{blob_id}/info`：读取 Blob 元数据。
+- `/v1/blobs/{namespace}/{blob_id}/presign`：GET presign/proxy 访问。
+- `/v1/objects/*`：Cortex object-tree 的 `put/get/list/move/delete` 原语。
+- S3-compatible 后端当前使用 whole-object `put_object` 和 GET presign。
+
+未实现的能力不要当成当前主路径：
+
+- multipart upload session
+- direct browser/App upload to object storage
+- PUT/POST upload presign
+- resumable upload state
+- server-side audio transcode/compression
+
+这些能力的目标方案见 `docs/roadmap/blob-large-file-multipart-audio.md`。
+
+## 3. 音频与转换边界
+
+当前语音录制链路是 Rust `cpal` 采集 PCM、`hound` 写 WAV、base64 上传为 Blob。
+这条路径体积大，但是真实实现。
+
+未来音频压缩应该是显式产品路径：
+
+```text
+Rust recorder → compressed container → Blob upload → audio tool consumes blob://audio-input/...
+```
+
+Blob Service 不应在保存字节时偷偷转码。需要转码时，应由显式 tool 或 pipeline 读取一个 BlobRef，产出另一个 BlobRef，并把处理结果作为 observation/payload ref 写回上层。
