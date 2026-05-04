@@ -44,10 +44,10 @@
 join 四份文件。
 
 ```bash
-# 1. 从 trace 端点（PR-25）或者数据库拿一个 scope_id
+# 1. 从 Environment notification 或 activity timeline 拿一个 scope_id
 SID="$(sqlite3 /opt/novaic/data/entangled.db \
-  "SELECT claimed_by_scope FROM chat_messages
-    WHERE claimed_by_scope IS NOT NULL
+  "SELECT claim_scope_id FROM environment_notifications
+    WHERE claim_scope_id IS NOT NULL
     ORDER BY created_at DESC LIMIT 1;")"
 echo "scope_id=$SID"
 

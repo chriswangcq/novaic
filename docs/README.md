@@ -11,7 +11,7 @@
 | 本地开发         | [runbooks/local-dev.md](runbooks/local-dev.md)、[local-backends.md](runbooks/local-backends.md)                                            |
 | 构建 / 部署 / 生产 | [build-and-release.md](runbooks/build-and-release.md)、[deploy.md](runbooks/deploy.md)、[cloud-production.md](runbooks/cloud-production.md) |
 | 排障           | [troubleshooting.md](runbooks/troubleshooting.md)                                                                                         |
-| 路线图 / 待办     | [roadmap/technical-debt.md](roadmap/technical-debt.md)、[roadmap/model-entity-refactor.md](roadmap/model-entity-refactor.md)               |
+| 路线图 / 工单     | [roadmap/tickets/README.md](roadmap/tickets/README.md)、[roadmap/agent-perception-action-architecture.md](roadmap/agent-perception-action-architecture.md) |
 
 
 ## 架构
@@ -75,7 +75,7 @@
 
 | 文档                                                           | 内容          |
 | ------------------------------------------------------------ | ----------- |
-| [technical-debt.md](roadmap/technical-debt.md)               | 已落地摘要、待办勾选  |
+| [technical-debt.md](roadmap/technical-debt.md)               | 历史技术债账本；不作为当前 backlog SSOT |
 | **[message-wake-refactor.md](roadmap/message-wake-refactor.md)** | **Message → Wake 重构实施清单（R1–R8 下沉）**，阶段化 checklist |
 | **[message-wake tickets/](roadmap/tickets/README.md)** | **Message → Wake 执行工单（每 PR 一文件）**，PR 粒度 checklist |
 | **[agent-perception-action-architecture.md](roadmap/agent-perception-action-architecture.md)** | **Agent Perception-Action 统一方案**：唯一主方案入口，统一 Environment、Observation/Percept、Cortex、Activity Timeline 和 payload interpretation |

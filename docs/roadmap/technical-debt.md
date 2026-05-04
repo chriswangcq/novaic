@@ -1,6 +1,8 @@
-# 技术债与待办
+# 技术债历史账本
 
-> 对应原 `**HANDOVER.md` §十六**。「已落地」为历史审计记录；**未勾选**为仍待规划/验证项（随迭代变化，以代码与 issue 为准）。
+> 对应原 `**HANDOVER.md` §十六**。本文是历史债务账本和考古线索，不是当前 backlog SSOT。
+> 当前可执行工单以 [tickets/README.md](tickets/README.md) 和对应 `PR-*.md`
+> 为准；如果本文旧条目仍有价值，应重新开新工单，而不是按原文直接施工。
 
 ## 近期已落地（摘要，2026-03 前后）
 
@@ -18,7 +20,7 @@
   - **✓ 全量落地（PR-01..PR-35，2026-04-21）**：以 [tickets/README.md](tickets/README.md) 为 SSOT；M0-* / OBS-* 全部 `[x]`。后续新增观测或防回归项（例如 TD-5 的 `orphans_total`）走常规 PR，不再挂在此总入口下。
   - 影响：Entangled / Business / Queue Service / Agent Runtime / Cortex 全链路
 
-## 待办清单（HANDOVER 原文意图）
+## HANDOVER 原文待办（历史线索，需重新开票后才能执行）
 
 - iOS 键盘输入框：`**--keyboard-height**` 真机充分验证  
 - 服务端数据自动清理（runtime context、queue、logrotate）  
