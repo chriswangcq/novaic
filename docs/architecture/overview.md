@@ -88,5 +88,5 @@ Device
 | Cortex | [cortex.md](cortex.md), [../cortex/README.md](../cortex/README.md) |
 | Gateway | [../gateway-architecture.md](../gateway-architecture.md), [../gateway/README.md](../gateway/README.md) |
 | Entangled | [../entangled-architecture.md](../entangled-architecture.md), [../entangled/README.md](../entangled/README.md) |
-| 文件与语音 | [../reference/file-service.md](../reference/file-service.md) |
+| Blob 附件与语音 | [../reference/blob-audio.md](../reference/blob-audio.md) |
 | 配置与环境 | [../reference/config-and-environment.md](../reference/config-and-environment.md) |

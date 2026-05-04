@@ -43,7 +43,7 @@ PORT_GATEWAY=19999
 PORT_BUSINESS=19998
 PORT_QUEUE_SERVICE=19997
 PORT_CORTEX=19996
-PORT_FILE_SERVICE=19995
+PORT_BLOB_SERVICE=19995
 PORT_DEVICE=19993
 
 # ── Derived URLs (used only as CLI arg values below) ─────────────────────────
@@ -52,7 +52,7 @@ ENTANGLED_URL="http://$HOST:$PORT_ENTANGLED"
 GW_URL="http://$HOST:$PORT_GATEWAY"
 BIZ_URL="http://$HOST:$PORT_BUSINESS"
 QS_URL="http://$HOST:$PORT_QUEUE_SERVICE"
-FS_URL="http://$HOST:$PORT_FILE_SERVICE"
+BLOB_URL="http://$HOST:$PORT_BLOB_SERVICE"
 DEV_URL="http://$HOST:$PORT_DEVICE"
 CORTEX_URL="http://$HOST:$PORT_CORTEX"
 
@@ -91,7 +91,7 @@ stop() {
     pkill -9 -f "main_business.py" 2>/dev/null || true
     pkill -9 -f "main_device.py" 2>/dev/null || true
     pkill -9 -f "main_novaic.py" 2>/dev/null || true
-    pkill -9 -f "main_file_service.py" 2>/dev/null || true
+    pkill -9 -f "main_blob_service.py" 2>/dev/null || true
     pkill -9 -f "main_cortex" 2>/dev/null || true
     sleep 2
     echo "Stopped."
@@ -101,7 +101,7 @@ stop() {
 
 stop 2>/dev/null || true
 
-for port in $PORT_ENTANGLED $PORT_GATEWAY $PORT_BUSINESS $PORT_DEVICE $PORT_QUEUE_SERVICE $PORT_FILE_SERVICE $PORT_CORTEX; do
+for port in $PORT_ENTANGLED $PORT_GATEWAY $PORT_BUSINESS $PORT_DEVICE $PORT_QUEUE_SERVICE $PORT_BLOB_SERVICE $PORT_CORTEX; do
     wait_port_free "$port" 8
 done
 
@@ -144,7 +144,7 @@ wait_port "$PORT_ENTANGLED" "Entangled Service"
 PYTHONPATH="$BASE/novaic-common:${PYTHONPATH:-}" \
 $(py novaic-gateway) "$BASE/novaic-gateway/main_gateway.py" \
     --host "$HOST" --port "$PORT_GATEWAY" --data-dir "$DATA_DIR" \
-    --queue-service-url "$QS_URL" --file-service-url "$FS_URL" \
+    --queue-service-url "$QS_URL" --blob-service-url "$BLOB_URL" \
     >> "$LOG_DIR/gateway-$(date +%Y%m%d).log" 2>&1 &
 wait_port "$PORT_GATEWAY" "Gateway" 30
 
@@ -167,10 +167,10 @@ $(py novaic-agent-runtime) "$BASE/novaic-agent-runtime/main_novaic.py" queue-ser
 wait_port "$PORT_QUEUE_SERVICE" "Queue Service"
 
 PYTHONPATH="$BASE/novaic-common:${PYTHONPATH:-}" \
-$(py novaic-storage-a) "$BASE/novaic-storage-a/main_file_service.py" \
-    --host "$HOST" --port "$PORT_FILE_SERVICE" --data-dir "$DATA_DIR" \
+$(py novaic-storage-a) "$BASE/novaic-storage-a/main_blob_service.py" \
+    --host "$HOST" --port "$PORT_BLOB_SERVICE" --data-dir "$DATA_DIR" \
     >> "$LOG_DIR/blob-service.log" 2>&1 &
-wait_port "$PORT_FILE_SERVICE" "Blob Service"
+wait_port "$PORT_BLOB_SERVICE" "Blob Service"
 
 mkdir -p "$DATA_DIR/cortex"
 # P3-6: Redis-backed scope lock (MANDATORY). Loopback-only redis-server
@@ -185,7 +185,7 @@ mkdir -p "$DATA_DIR/cortex"
 # (novaic-cortex/.venv) which doesn't ship novaic-common as a pkg;
 # export PYTHONPATH so the import resolves to the sibling submodule.
 CORTEX_STORE_ROOT="$DATA_DIR/cortex" \
-CORTEX_BLOB_SERVICE_URL="$FS_URL" \
+CORTEX_BLOB_SERVICE_URL="$BLOB_URL" \
 PYTHONPATH="$BASE/novaic-common:${PYTHONPATH:-}" \
 $(py novaic-cortex) -m novaic_cortex.main_cortex \
     --host "$HOST" --port "$PORT_CORTEX" \

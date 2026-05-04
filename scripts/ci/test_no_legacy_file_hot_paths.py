@@ -13,7 +13,7 @@ FORBIDDEN = (
 )
 
 ACTIVE_PATHS = (
-    "novaic-storage-a/file_service",
+    "novaic-storage-a/blob_service",
     "novaic-gateway/main_gateway.py",
     "novaic-gateway/gateway",
     "novaic-gateway/nginx",
@@ -25,6 +25,8 @@ ACTIVE_PATHS = (
     "deploy",
     "scripts/start.sh",
     "novaic-app/scripts/start-backends.sh",
+    "novaic-app/src-tauri/resources/backends/start-backends.sh",
+    "novaic-app/src-tauri/resources/config/services.json",
 )
 
 

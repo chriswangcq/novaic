@@ -15,33 +15,35 @@ Make `blob://{namespace}/{blob_id}` the only new large-object reference shape ac
 
 ## Current-State Analysis
 
-Current paths still include `fs://` for Storage-A files and `payload_ref` values for Cortex payloads. These are separate concepts and should converge through a shared ResourceRef parser and ownership model.
+Current large-object references converge on BlobRef. Cortex payload refs remain
+semantic work-trace refs, while the raw bytes behind large payloads can be
+externalized through Blob Service.
 
 ## Small Tickets
 
 - [x] PR-201A — Add shared ResourceRef helpers for BlobRef adoption.
 - [x] PR-201B — Update Business/Environment ResourceRef validation and schema constraints to accept BlobRef only for new refs.
-- [x] PR-201C — Mark `fs://` as historical/import-only in active docs.
-- [x] PR-201D — Add guard tests preventing new Environment ResourceRefs from using storage-a/`fs://`/`oss://` style locators.
+- [x] PR-201C — Remove retired locator shapes from active docs.
+- [x] PR-201D — Add guard tests preventing new Environment ResourceRefs from using retired locator shapes.
 - [x] PR-201E — Keep App attachment and Gateway proxy migration explicitly deferred to PR-203/PR-205 rather than half-switching the hot path.
 
 ## Done Criteria
 
 - New large-object refs use `blob://`.
-- Existing `fs://` reads are either migrated or explicitly isolated behind one import/compat boundary.
-- Guardrails prevent new code from producing `fs://` on active paths.
+- Historical non-Blob reads are purged or migrated.
+- Guardrails prevent new code from producing retired locator shapes on active paths.
 
 ## Deployment Checklist
 
 - [x] `novaic-common` contract tests pass.
 - [x] `novaic-business` Environment tests pass.
-- [x] Parent docs updated to make File Service historical/import-only.
+- [x] Parent docs updated to make retired file paths non-current.
 
 ## Implementation Notes
 
 - Added `common.contracts.resource_ref` as the shared ResourceRef SSOT.
 - New ResourceRefs must use owner `blob-service` and a `blob://...` locator.
-- Legacy locators such as `fs://`, `/api/files/*`, `oss://`, and raw HTTP URLs are detection-only for migration tooling; they are not valid new ResourceRefs.
+- Retired locators are not valid new ResourceRefs.
 - Environment `validate_environment_resource_ref` now delegates to the shared ResourceRef validator.
 - Business entity schema now includes guard constraints for `environment-resource-refs`: `owner = 'blob-service'` and `locator LIKE 'blob://%'`.
 - App upload/Gateway proxy/runtime display/audio executor migration remains in PR-203/PR-205 because those are live product flows and need separate smoke/deploy closure.

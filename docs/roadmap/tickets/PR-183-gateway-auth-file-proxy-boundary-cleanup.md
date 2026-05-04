@@ -12,13 +12,15 @@ Keep Gateway as a narrow Auth/App WS/file proxy boundary. Remove wording and bra
   - `Authorization: Bearer <jwt>` for REST/WebSocket clients.
   - `X-Original-URI` token extraction for nginx-authenticated browser transports that cannot set custom headers.
 - Direct `?token=` on `/internal/auth/validate` is not part of the nginx auth_request contract.
-- `/api/files/{file_id}` is the canonical GET path because Gateway checks file metadata ownership.
-- `/api/files/{path:path}` direct path proxy is a historical bypass; product clients resolve `fs://...` and `/api/files/...` through POST `/api/files/fetch`.
+- Product file access now goes through Gateway's auth-bound Blob proxy.
+- Direct raw storage-path proxying is a historical bypass and is no longer an
+  active product path.
 
 ## Small Tickets
 
 - [PR-183A](PR-183A-gateway-auth-token-transport-tightening.md) — tighten auth validation transport wording and remove direct validate query token path.
-- [PR-183B](PR-183B-gateway-file-proxy-file-id-boundary.md) — keep GET download file-id only and pass user boundary explicitly to File Service.
+- [PR-183B](PR-183B-gateway-file-proxy-file-id-boundary.md) — remove raw
+  storage-path proxying and pass user boundary explicitly to Blob Service.
 
 ## Tests
 

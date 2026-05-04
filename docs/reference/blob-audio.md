@@ -1,12 +1,11 @@
-# Blob Service 与语音录制
+# Blob 附件与语音录制
 
 > 对应原 `**HANDOVER.md` §十三**。
 
 ## Blob Service
 
 新的大对象引用统一使用 `blob://{namespace}/{blob_id}`，详见
-`docs/reference/blob-service.md`。历史文件接口已经物理删除；本页只保留当前
-附件与语音录制链路。
+`docs/reference/blob-service.md`。历史文件接口已经物理删除；本页只保留当前附件与语音录制链路。
 
 当前路径：
 

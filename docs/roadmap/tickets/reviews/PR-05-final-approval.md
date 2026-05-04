@@ -145,7 +145,7 @@ $ pytest (common + runtime SDK contracts)
 
 ## 需要后续 PR 跟进（不属于本 PR）
 
-以下是 PR-05 期间发现但刻意**延后**的项，已记入 [`technical-debt.md`](../../roadmap/technical-debt.md)：
+以下是 PR-05 期间发现但刻意**延后**的项，已记入 [`technical-debt.md`](../../technical-debt.md)：
 
 1. **内部 Key 统一**：`QUEUE_SERVICE_INTERNAL_KEY` / `CORTEX_INTERNAL_KEY` / 其他 → `NOVAIC_INTERNAL_KEY` + 服务端 auth 兼容灰度
 2. **`common/auth.py` service_name 语义**：目前用 env var 注入，未来若有 contextvar 机制可进一步改进

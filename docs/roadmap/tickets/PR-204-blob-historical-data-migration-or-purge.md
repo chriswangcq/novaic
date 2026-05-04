@@ -11,24 +11,25 @@
 
 ## Goal
 
-Handle historical `fs://` and Storage-A path data once, then delete runtime compatibility.
+Handle historical non-Blob file references once, then delete runtime compatibility.
 
 ## Current-State Analysis
 
-Existing file data and references may still be shaped as `fs://...`, `/api/files/...`, `oss://...`, or direct HTTP URL locators. Keeping permanent dual readers would violate the no-fallback principle.
+Existing file data and references may still use retired non-Blob locator shapes.
+Keeping permanent dual readers would violate the no-fallback principle.
 
-This PR adds a one-shot audit/purge tool. It is deliberately not imported by runtime code and does not create a compatibility reader.
+This PR used a one-shot audit/purge tool during migration. After production and local audits passed, the tool was deleted so the repository does not retain a second historical-data branch.
 
 ## Small Tickets
 
-- [x] PR-204A — Audit current online/local data shapes for `fs://` and `/api/files`.
+- [x] PR-204A — Audit current online/local data shapes for retired file locators.
 - [x] PR-204B — Decide per dataset: migrate if valuable, purge if not.
-- [x] PR-204C — Build one-shot migration/purge script with backup and dry-run mode.
+- [x] PR-204C — Build one-shot migration/purge script with backup and dry-run mode, then delete it after closure.
 - [x] PR-204D — Run migration/purge and record evidence.
 
 ## Implementation Notes
 
-- Added `scripts/blob_legacy_refs.py`.
+- Used a temporary one-shot legacy-ref audit/purge script during migration; it has been deleted after closure.
 - Supported server DB tables:
   - `files.storage_key`
   - `messages.content.attachments`
@@ -37,17 +38,18 @@ This PR adds a one-shot audit/purge tool. It is deliberately not imported by run
   - `environment_resource_refs.locator`
 - Supported App cache table:
   - `entity_items` for `files`, `messages`, and `environment-im-messages`
-- Dry-run prints findings and exits non-zero if legacy refs remain.
-- `--apply` requires `--backup-dir`, writes a SQLite backup first, purges non-Blob rows/attachments, and prints `POST_PURGE_LEGACY_COUNT`.
-- Historical legacy refs are purged rather than converted because current product paths already write `blob://...`; keeping old attachment refs would require runtime compatibility.
+- Historical legacy refs were purged rather than converted because current product paths already write `blob://...`; keeping old attachment refs would require runtime compatibility.
+- `ResourceRef` now accepts only BlobRef-shaped locators.
 
 ## Evidence
 
-- Unit test: `python3 -m pytest scripts/ci/test_blob_legacy_refs.py` → `2 passed`.
+- The temporary legacy-ref script and its tests were removed after production purge.
 - Local App Entangled cache audit:
   - DB: `~/Library/Application Support/com.novaic.app/entangled_cache.db`
   - Result: `LEGACY_COUNT ... 0`
-- No local server `entangled.db` was present under `~/Library/Application Support/com.novaic.app`; no production data was mutated in this pass.
+- Production old data purge removed retired DBs, historical backups, old file
+  storage directories, and smoke Blob leftovers.
+- Production active `entangled.db` audit after purge: `LEGACY_COUNT ... 0`.
 - Whitespace check: `git diff --check` passed.
 
 ## Done Criteria
@@ -59,7 +61,7 @@ This PR adds a one-shot audit/purge tool. It is deliberately not imported by run
 
 ## Deployment Checklist
 
-- [x] Backup captured if production data is touched. N/A: no production data was touched in this pass; `--apply` refuses to run without `--backup-dir`.
+- [x] Backup captured if production data is touched. Historical backups were removed after the no-compat purge decision.
 - [x] Dry-run output reviewed.
-- [x] Migration/purge executed. N/A for local cache because dry-run found zero legacy refs; script is ready for explicit production/apply use.
+- [x] Migration/purge executed and the temporary script removed.
 - [x] Post-migration shape check passes.

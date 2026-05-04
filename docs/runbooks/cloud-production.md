@@ -13,7 +13,7 @@
 # ── 后端服务 (api.gradievo.com) ──
 ./deploy gateway           # rsync + start.sh 全部重启
 ./deploy runtime           # novaic-agent-runtime
-./deploy storage-a         # novaic-storage-a（Blob Service）
+./deploy blob-service      # Blob Service（实现目录：novaic-storage-a）
 ./deploy cortex            # novaic-cortex（:19996）
 ./deploy services          # rsync 全部 + start.sh 重启（推荐）
 # 注意：无 ./deploy orchestrator（RO 子模块已删除）
@@ -50,7 +50,7 @@
 ```
 --host 127.0.0.1 --port 19999 --data-dir /opt/novaic/data
 --queue-service-url http://127.0.0.1:19997
---file-service-url http://127.0.0.1:19995
+--blob-service-url http://127.0.0.1:19995
 ```
 
 **Nginx**（`/etc/nginx/sites-enabled/novaic`）：
