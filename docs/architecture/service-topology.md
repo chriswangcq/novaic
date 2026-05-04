@@ -8,7 +8,7 @@
 
 | 原则 | 当前落点 |
 |---|---|
-| Gateway 薄边缘 | Auth、App WS push/signaling、Entangled endpoint discovery、TURN、Blob Proxy |
+| Gateway 薄边缘 | Auth、App WS push/signaling、Entangled endpoint discovery、TURN、Blob edge |
 | Entangled 是实体同步层 | App 直连 Entangled WS；Business 是服务端 action/HTTP 写入方 |
 | Business 是产品业务层 | action hooks、Environment、SubAgent、Device 编排、配置读取 |
 | Runtime 是执行层 | Queue/Saga/Task Worker，调用 Cortex、Factory、Business/tool executor |
@@ -22,7 +22,7 @@
 | 进程 | 端口 | 职责 |
 |---|---:|---|
 | **Entangled** | `19900` | 实体 HTTP + sync WS，schema/action 注册，服务端 SQLite |
-| **Gateway** | `19999` | Auth、App WS、Blob Proxy、TURN、Entangled sync endpoint discovery |
+| **Gateway** | `19999` | Auth、App WS、Blob edge、TURN、Entangled sync endpoint discovery |
 | **Business** | `19998` | 产品 action hooks、Environment、Subscriber 输入、Device 编排、内部产品 API |
 | **Device** | `19993` | Device registry、CloudBridge typed WS、hardware/VM/WebRTC API |
 | **Queue Service** | `19997` | Task/Saga/session 调度，拥有 `queue.db` |

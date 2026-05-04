@@ -87,7 +87,7 @@ Current implementation:
   `/blob/v1/blobs/uploads/*` raw part upload, then Gateway `/api/blobs/register`
   to create Business file metadata.
 - App attachment downloads use the same authenticated `/blob/` edge:
-  `/blob/v1/blobs/{namespace}/{blob_id}`. Gateway app does not proxy Blob
+  `/blob/v1/blobs/{namespace}/{blob_id}`. Gateway app does not handle Blob
   download bytes.
 - Payload limits are explicit:
   - object PUT: `NOVAIC_BLOB_MAX_OBJECT_PUT_BYTES` (default 64 MiB)

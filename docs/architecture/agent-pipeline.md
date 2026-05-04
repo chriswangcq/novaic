@@ -7,7 +7,7 @@
 | 进程 | 职责 |
 |------|------|
 | Business | `:19998`，中枢编排：所有 `/internal/*` API、Entangled entity proxy、Device 编排 |
-| Gateway | 薄边缘网关：Auth、App WS、TURN、Blob Proxy |
+| Gateway | 薄边缘网关：Auth、App WS、TURN、Blob edge |
 | Device | `:19993`，设备 registry、CloudBridge WS、硬件执行 API |
 | Cortex | `:19996`，Workspace + LIFO Scope Tree + ContextEngine（DFS）+ Sandbox |
 | Queue Service | Task / Saga 队列 |

@@ -8,7 +8,10 @@
 
 `audio_qa` used to be a real capability in the retired `novaic-tools-server`. The restored Runtime executor now works through Blob Service, resolves the agent audio model config, sends an OpenAI-compatible `input_audio` payload through LLM Factory, and returns the answer/transcription.
 
-After Tools Server was deleted, the new Runtime native tool path only ported `display` and `chat_history`. This ticket restores the executable backend capability without reintroducing Tools Server, TRS, or any fallback branch.
+After Tools Server was deleted, the new Runtime native tool path only ported
+`display` and `chat_history`. This ticket restores the executable backend
+capability without reintroducing Tools Server, a retired result-store service,
+or any fallback branch.
 
 ## Scope
 
