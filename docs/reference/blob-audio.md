@@ -11,7 +11,7 @@
 
 ```text
 附件上传 → Gateway upload-config → Blob multipart upload → Gateway register
-附件访问 → Rust cache → Gateway POST /api/blobs/fetch → Blob Service /v1/blobs/{namespace}/{blob_id}
+附件访问 → Rust cache → /blob/v1/blobs/{namespace}/{blob_id} direct Blob edge
 消息附件字段 → blob://user-file/{blob_id}
 ```
 

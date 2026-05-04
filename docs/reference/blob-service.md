@@ -25,7 +25,7 @@ Initial namespaces:
 - object storage primitives: `put`, `get`, `list`, `move_prefix`, `delete`
 - infrastructure metadata
 - tenant isolation
-- presign/proxy access
+- direct Blob edge access
 - blob lifecycle
 - hash-based deduplication
 
@@ -86,6 +86,9 @@ Current implementation:
 - App chat attachments use Gateway `/api/blobs/upload-config` and direct
   `/blob/v1/blobs/uploads/*` raw part upload, then Gateway `/api/blobs/register`
   to create Business file metadata.
+- App attachment downloads use the same authenticated `/blob/` edge:
+  `/blob/v1/blobs/{namespace}/{blob_id}`. Gateway app does not proxy Blob
+  download bytes.
 - Payload limits are explicit:
   - object PUT: `NOVAIC_BLOB_MAX_OBJECT_PUT_BYTES` (default 64 MiB)
   - multipart part: `NOVAIC_BLOB_MAX_MULTIPART_PART_BYTES` (default 16 MiB)
@@ -95,13 +98,13 @@ Current implementation:
   namespace, tenant, size, and outcome, but not raw bytes.
 - `/v1/objects` writes a whole request body. It is for Cortex object-store files,
   not a user-facing resumable upload protocol.
-- The S3-compatible backend currently supports whole-object `put_object` and GET
-  presign. Upload presign/direct-to-object-storage is not exposed yet.
+- The S3-compatible backend currently supports whole-object `put_object` and
+  Blob edge reads. Upload presign/direct-to-object-storage is not exposed yet.
 
 Target direction:
 
-- Add upload presign/direct-to-object-storage if App data-plane needs to bypass
-  Blob Service HTTP entirely.
+- Add upload presign/direct-to-object-storage only if App data-plane needs to
+  bypass Blob Service HTTP entirely.
 - Keep Blob as byte infrastructure; product meaning stays in Business/Cortex/App.
 - Do not reintroduce base64 upload APIs. All chat attachment uploads use raw
   multipart bytes, including small files and audio inputs.
