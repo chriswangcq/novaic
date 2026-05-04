@@ -52,7 +52,7 @@ workspace/scope objects only through Blob Service.
 
 ## Verification
 
-- `novaic-storage-a`: `12 passed, 2 skipped`
+- `novaic-blob-service`: `12 passed, 2 skipped`
 - `novaic-cortex`: `344 passed`
 - `novaic-common` targeted config/blob tests: `16 passed`
 - `bash -n scripts/start.sh`

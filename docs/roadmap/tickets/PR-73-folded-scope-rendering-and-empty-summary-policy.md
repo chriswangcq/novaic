@@ -75,7 +75,7 @@ Evidence:
 Evidence:
 
 - `./deploy cortex` → Cortex synced and all backend services restarted.
-- `./deploy status` → Entangled, Gateway, Business, Device, Queue, Storage-A, Cortex healthy; Workers `8`; Relay active.
+- `./deploy status` → Entangled, Gateway, Business, Device, Queue, Blob Service, Cortex healthy; Workers `8`; Relay active.
 - Cortex log lines included:
   - `suppressed empty unanchored closed scope_id=... name=user conversation`
   - `folded unanchored closed scope_id=... name=user conversation`

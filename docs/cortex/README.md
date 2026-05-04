@@ -14,7 +14,7 @@
 | [session-meta-json.md](session-meta-json.md) | `meta.json` 字段、`ContextEngine` 前缀、`/v1/meta/*` |
 | [context-timeline-and-dfs.md](context-timeline-and-dfs.md) | `ContextEngine`、DFS 展开与折叠、`budget_compact` |
 | [recall.md](recall.md) | **历史/已退役**：旧 `Recall` 设计说明；当前 LLM 主路径不使用独立 Recall 模块 |
-| [storage-and-keys.md](storage-and-keys.md) | `CortexStore`、`WorkspaceRegistry`、对象键 |
+| [object-keys.md](object-keys.md) | `CortexStore`、`WorkspaceRegistry`、对象键 |
 | [sandbox-shell.md](sandbox-shell.md) | `Sandbox.exec`、与 VM/proxy shell 的区别 |
 | [compactor-and-gem-fusion.md](compactor-and-gem-fusion.md) | 已退役：`Compactor`、自动摘要、gem fusion |
 | [engine-config-and-metrics.md](engine-config-and-metrics.md) | `EngineConfig`、`engine.json`、指标 |
@@ -39,12 +39,12 @@
 
 ## 建议阅读顺序（学习路径）
 
-1. **边界是什么** → [boundary-contract.md](boundary-contract.md)  
-2. **数据放哪** → [storage-and-keys.md](storage-and-keys.md)  
-3. **scope 生命周期** → [scope-lifecycle.md](scope-lifecycle.md)  
-4. **时间线索引长什么样** → [step-index-and-payload-schema.md](step-index-and-payload-schema.md)  
-5. **会话 meta** → [session-meta-json.md](session-meta-json.md)  
-6. **拼 LLM 消息** → [context-timeline-and-dfs.md](context-timeline-and-dfs.md)  
+1. **边界是什么** → [boundary-contract.md](boundary-contract.md)
+2. **数据放哪** → [object-keys.md](object-keys.md)
+3. **scope 生命周期** → [scope-lifecycle.md](scope-lifecycle.md)
+4. **时间线索引长什么样** → [step-index-and-payload-schema.md](step-index-and-payload-schema.md)
+5. **会话 meta** → [session-meta-json.md](session-meta-json.md)
+6. **拼 LLM 消息** → [context-timeline-and-dfs.md](context-timeline-and-dfs.md)
 7. **压缩与配置** → [engine-config-and-metrics.md](engine-config-and-metrics.md) → [budget-compact-algorithm.md](budget-compact-algorithm.md)
 8. **Runtime 调用链** → [agent-runtime-cortex-call-chain.md](agent-runtime-cortex-call-chain.md) → [agent-runtime-all-topics.md](agent-runtime-all-topics.md)
 9. **HTTP 与契约** → [http-api.md](http-api.md) → [internal-api-schemas.md](internal-api-schemas.md)

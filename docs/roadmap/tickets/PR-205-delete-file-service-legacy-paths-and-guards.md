@@ -21,7 +21,7 @@ Old path concepts are still present in package names, docs, tests, and examples.
 
 - [x] PR-205A — Delete active retired-file hot-path code.
 - [x] PR-205B — Rename remaining service/package/docs to Blob Service where still active.
-- [x] PR-205C — Remove Cortex `HttpFileFetcher("storage-a")` style path or replace with Blob resolver.
+- [x] PR-205C — Remove Cortex `HttpFileFetcher("blob-service")` style path or replace with Blob resolver.
 - [x] PR-205D — Add static guards banning retired file-route hot-path writes.
 
 ## Done Criteria
@@ -54,7 +54,7 @@ Old path concepts are still present in package names, docs, tests, and examples.
 
 ## Verification
 
-- `novaic-storage-a`: targeted test suite passed.
+- `novaic-blob-service`: targeted test suite passed.
 - `novaic-gateway`: gateway boundary tests passed.
 - `novaic-agent-runtime`: display/audio/user-content tests passed.
 - `novaic-common`: tool definition and product semantics contract tests passed.

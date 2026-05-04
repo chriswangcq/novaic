@@ -73,7 +73,7 @@ Evidence:
 Evidence:
 
 - `./deploy cortex` → `✓ novaic-cortex 已部署（全部服务已重启）`.
-- `./deploy status` → Entangled, Gateway, Business, Device, Queue, Storage-A, Cortex healthy; Workers `8`; Relay active.
+- `./deploy status` → Entangled, Gateway, Business, Device, Queue, Blob Service, Cortex healthy; Workers `8`; Relay active.
 - Online evidence captured from import smoke, context prepare smoke, and `scope.structural_report_ignored` log line above.
 
 ### GitHub / Commit

@@ -40,7 +40,7 @@ Device
 | `novaic-agent-runtime` | Queue Service、Saga/Task Workers、Health、Scheduler、tool executor |
 | `novaic-cortex` | scope tree、LLM context、work trace、payload、sandbox |
 | `novaic-device` | Device registry、CloudBridge、hardware/VM/WebRTC API |
-| `novaic-storage-a` | Blob Service：字节与大对象 |
+| `novaic-blob-service` | Blob Service：字节与大对象 |
 | `novaic-llm-factory` | provider/API key/model routing，标准 chat completions |
 | `novaic-quic-service` | STUN/Relay/静态资源 CDN 等网络边缘能力 |
 
@@ -74,7 +74,7 @@ Device
 | `novaic-agent-runtime` | Agent 执行层 |
 | `novaic-cortex` | Agent 工作轨迹与上下文 |
 | `novaic-device` | 设备/硬件服务 |
-| `novaic-storage-a` | Blob Service |
+| `novaic-blob-service` | Blob Service |
 | `Entangled` | 实体同步引擎 |
 | `novaic-common` | 共享配置、schema、工具合同 |
 

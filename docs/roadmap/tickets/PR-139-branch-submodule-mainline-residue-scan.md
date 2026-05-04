@@ -22,7 +22,7 @@ Eliminate misleading branch/submodule state: every actively maintained repo shou
 ## Findings
 
 - Root repo is on `main`.
-- All tracked first-party submodules are on `main`: `novaic-agent-runtime`, `novaic-app`, `novaic-business`, `novaic-common`, `novaic-cortex`, `novaic-device`, `novaic-gateway`, `novaic-llm-factory`, `novaic-mcp-vmuse`, `novaic-quic-service`, `novaic-storage-a`, plus `Entangled` and website repos.
+- All tracked first-party submodules are on `main`: `novaic-agent-runtime`, `novaic-app`, `novaic-business`, `novaic-common`, `novaic-cortex`, `novaic-device`, `novaic-gateway`, `novaic-llm-factory`, `novaic-mcp-vmuse`, `novaic-quic-service`, `novaic-blob-service`, plus `Entangled` and website repos.
 - Root working tree only contains the newly created scan-ticket docs and roadmap index edits.
 - No first-party repo has local or remote `codex/*` branches left.
 - `thirdparty/openclaw` still has upstream `origin/codex/*` branches. This is an external upstream repo, not a Novaic production branch residue.

@@ -40,7 +40,7 @@
 | **[mcp-vmuse/README.md](mcp-vmuse/README.md)**                              | MCP VMuse 专题                         |
 | **[network-architecture.md](network-architecture.md)**                      | 边缘网络与穿透节点总览                        |
 | **[network/README.md](network/README.md)**                                  | 网络设施流转拆解                          |
-| **[storage-architecture.md](storage-architecture.md)**                      | 独立 Blob Service 大件存储转存架构总览        |
+| **[blob-service-architecture.md](blob-service-architecture.md)**                      | 独立 Blob Service 大件存储转存架构总览        |
 | **[common-architecture.md](common-architecture.md)**                        | 跨端共享与契约 (Common) 架构总览             |
 | **[common/README.md](common/README.md)**                                    | 共享端口/代码生成字典拆解                     |
 | **[entity-data-models.md](architecture/entity-data-models.md)**                 | **大一统核心实体字典全集**（必须掌握的结构基元）   |

@@ -10,7 +10,7 @@
 | Cortex 边界契约与 guardrail | [cortex/boundary-contract.md](cortex/boundary-contract.md) |
 | `_index.jsonl`、DFS 展开/折叠、`budget_compact` | [cortex/context-timeline-and-dfs.md](cortex/context-timeline-and-dfs.md) |
 | 已退役 Recall 方案说明 | [cortex/recall.md](cortex/recall.md) |
-| `CortexStore`、注册表、对象键 | [cortex/storage-and-keys.md](cortex/storage-and-keys.md) |
+| `CortexStore`、注册表、对象键 | [cortex/object-keys.md](cortex/object-keys.md) |
 | `Sandbox.exec`、物化与回写 | [cortex/sandbox-shell.md](cortex/sandbox-shell.md) |
 | 已退役：`Compactor`、自动摘要、gem fusion | [cortex/compactor-and-gem-fusion.md](cortex/compactor-and-gem-fusion.md) |
 | `EngineConfig`、`engine.json`、指标 | [cortex/engine-config-and-metrics.md](cortex/engine-config-and-metrics.md) |

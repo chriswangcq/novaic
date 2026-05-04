@@ -20,7 +20,7 @@
 
 ## 2. 与 `EngineConfig` 的关系
 
-- `**Cortex.tool_shell**`（`runtime.py`）用 `**sandbox_timeout_default**`，且不超过 `**sandbox_timeout_max**`。  
+- `**Cortex.tool_shell**`（`runtime.py`）用 `**sandbox_timeout_default**`，且不超过 `**sandbox_timeout_max**`。
 - `**Sandbox` 构造**：`initialize()` 后用 `**cfg.sandbox_timeout_max`** 作为 `**max_wall_timeout**`，单次 `exec` 内 `**timeout = min(请求, max_wall_timeout)**`。
 
 ---
@@ -41,4 +41,4 @@
 
 ## 相关
 
-- [storage-and-keys.md](storage-and-keys.md)  
+- [object-keys.md](object-keys.md)

@@ -68,7 +68,7 @@ Evidence:
 Evidence:
 
 - `./deploy runtime` → all backends restarted successfully.
-- `./deploy status` → Entangled, Gateway, Business, Device, Queue, Storage-A, Cortex healthy; Workers `8`; Relay active.
+- `./deploy status` → Entangled, Gateway, Business, Device, Queue, Blob Service, Cortex healthy; Workers `8`; Relay active.
 
 ### GitHub / Commit
 

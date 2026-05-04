@@ -41,5 +41,5 @@ Blob Service 也可在本地测试中使用 Disk backend，但生产的 object/b
 
 ## 4. 与专题文档的衔接
 
-- 对象键前缀：[storage-and-keys.md](storage-and-keys.md)
+- 对象键前缀：[object-keys.md](object-keys.md)
 - HTTP 路由：[http-api.md](http-api.md)

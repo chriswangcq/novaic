@@ -47,5 +47,5 @@
 - Common: `python3 -m pytest tests/test_tool_product_semantics_contract.py tests/test_execution_log_display_contract.py tests/test_tool_definitions_contract.py` → 11 passed.
 - Runtime: `python3 -m pytest tests/test_runtime_tool_path_contract.py tests/test_pr86_execution_log_metadata.py tests/unit/task_queue/test_tool_handlers_display_chat_history.py tests/unit/task_queue/test_tool_handlers_failure_event.py` → 23 passed.
 - App: `npm run test:unit -- src/components/Visual/executionLogUtils.test.ts src/components/Visual/ExecutionLog.test.tsx` → 12 passed.
-- Deploy: `./deploy runtime` restarted all backend services; `./deploy status` confirmed Entangled, Gateway, Business, Device, Queue Service, Storage-A, Cortex, workers, and Relay running.
+- Deploy: `./deploy runtime` restarted all backend services; `./deploy status` confirmed Entangled, Gateway, Business, Device, Queue Service, Blob Service, Cortex, workers, and Relay running.
 - Git: `novaic-common` `4256a8c`, `novaic-agent-runtime` `c2efcd8`, `novaic-app` `950f718`, plus root submodule/docs bump.

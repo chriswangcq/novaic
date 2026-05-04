@@ -10,10 +10,17 @@ FORBIDDEN = (
     "/api/files",
     "File Service",
     "legacy_facade",
+    "novaic-" + "storage" + "-a",
+    "Storage" + "-A",
+    "storage" + "_a",
+    "storage" + "-a",
 )
 
 ACTIVE_PATHS = (
-    "novaic-storage-a/blob_service",
+    ".gitmodules",
+    "novaic-blob-service/blob_service",
+    "novaic-blob-service/README.md",
+    "novaic-blob-service/scripts",
     "novaic-gateway/main_gateway.py",
     "novaic-gateway/gateway",
     "novaic-gateway/nginx",
@@ -24,6 +31,8 @@ ACTIVE_PATHS = (
     "novaic-cortex/novaic_cortex",
     "deploy",
     "scripts/start.sh",
+    "scripts/build-all.sh",
+    "scripts/run_all_tests.sh",
     "novaic-app/scripts/start-backends.sh",
     "novaic-app/src-tauri/resources/backends/start-backends.sh",
     "novaic-app/src-tauri/resources/config/services.json",

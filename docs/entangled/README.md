@@ -10,7 +10,7 @@
 | 专题 | 说明 |
 |------|------|
 | [protocol-layer-and-ws.md](protocol-layer-and-ws.md) | `entangled.server`：PubSub、同步协商约束、`syncContractVersion`。 |
-| [sql-storage-and-def.md](sql-storage-and-def.md) | `entangled.sql`：SQLite 持久层、WAL 锁、`EntityDef`/`FieldDef`。 |
+| [sql-persistence-and-def.md](sql-persistence-and-def.md) | `entangled.sql`：SQLite 持久层、WAL 锁、`EntityDef`/`FieldDef`。 |
 | [python-app-shell.md](python-app-shell.md) | `entangled.app`：被替代的独立独立服务壳、集成 JWT 的免代码服务。 |
 
 ### 业务级集成 (Gateway 侧)
