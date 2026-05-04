@@ -18,7 +18,10 @@ Implemented today:
 - `/v1/objects` supports raw body object-tree `put/get/list/move/delete` for
   Cortex store files.
 - S3-compatible backend uses whole-object `put_object` and GET presign.
-- App chat attachments currently go through Gateway `/api/blobs/from-base64`.
+- App chat attachments use Gateway `/api/blobs/from-base64` for small files.
+  Large files use Gateway `/api/blobs/upload-config` for control-plane setup,
+  direct Blob Service `/v1/blobs/uploads/*` raw part upload through the `/blob/`
+  edge, then Gateway `/api/blobs/register` to preserve Business file metadata.
 - Rust audio recording captures PCM, writes WAV with `hound`, returns base64,
   then the App uploads it as a normal Blob attachment.
 
@@ -102,11 +105,12 @@ Blob Service should not decide to transcode by itself.
 
 ### PR-213 App Large Upload Cutover
 
-- Add App upload strategy that chooses direct/multipart path above a configured
-  threshold.
-- Remove the TODO-only future branch in `fileUpload.ts` once the new path is
-  live.
-- Verify large attachments do not pass through base64 or Gateway data-plane.
+- Status: closed.
+- App chooses direct/multipart path above the configured threshold.
+- Gateway only returns upload config and registers completed BlobRefs.
+- Direct multipart bytes pass through the `/blob/` edge to Blob Service, not the
+  Gateway application process.
+- The TODO-only future branch in `fileUpload.ts` is gone.
 
 ### PR-214 Audio Compression Path
 
@@ -125,13 +129,12 @@ Blob Service should not decide to transcode by itself.
 
 ## Acceptance
 
-The current system is acceptable only if docs say the truth: base64 and whole
-object upload are the implemented path; multipart and audio compression are
-future explicit work orders.
+The current system is acceptable only if docs say the truth: small attachments
+still use base64, large attachments use multipart raw bytes, and normal voice
+input is still WAV/base64 until PR-214.
 
 Future implementation closes when:
 
-- Large files no longer base64 through App/Gateway.
 - Multipart has storage-backed resumable lifecycle and tests.
 - Normal voice input is compressed before upload.
 - Blob still stores refs and bytes only, with no hidden business interpretation.

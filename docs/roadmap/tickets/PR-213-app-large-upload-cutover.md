@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[open]` |
+| Status | `[closed]` |
 | Type | App upload data-plane cleanup |
 | Created | 2026-05-04 |
 | Scope | App upload strategy, Gateway control-plane authorization, base64 cutoff |
@@ -15,11 +15,13 @@ preserving the `blob://user-file/...` attachment contract.
 
 ## Scope
 
-- Add App upload strategy that chooses multipart/direct upload above a configured
-  threshold.
-- Keep Gateway as auth/control-plane only where required.
-- Remove TODO-only large-upload comments once the new path is live.
-- Preserve chat attachment product semantics in Business/App, not Blob.
+- Added App upload strategy that chooses multipart/direct upload above the
+  configured threshold.
+- Kept Gateway as auth/control-plane only: it returns upload config and registers
+  completed BlobRefs into the product file registry.
+- Added a direct `/blob/` Nginx edge to Blob Service for multipart raw bytes.
+- Removed TODO-only large-upload behavior from `fileUpload.ts`.
+- Preserved chat attachment product semantics in Business/App, not Blob.
 
 ## Acceptance
 
@@ -31,6 +33,8 @@ preserving the `blob://user-file/...` attachment contract.
 
 ## Verification
 
-- App unit/integration tests for threshold selection.
-- Manual smoke with small file and large file.
-- Static guard against large-upload path using `/api/blobs/from-base64`.
+- `cd novaic-app && npm run test:unit -- src/application/blobAttachmentPath.test.ts`
+- `cd novaic-gateway && PYTHONPATH=.:../novaic-common pytest -q tests/test_pr152_gateway_boundary.py`
+- `cd novaic-blob-service && PYTHONPATH=.:../novaic-common pytest -q tests/test_blob_service.py`
+- Static guards assert the large-upload path uses `/api/blobs/upload-config`,
+  `/api/blobs/register`, `/v1/blobs/uploads`, and `X-Part-Sha256`.

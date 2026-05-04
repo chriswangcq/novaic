@@ -306,7 +306,7 @@
 | PR-210 | `[closed]` | [Maintenance Tail Cleanup](PR-210-maintenance-tail-cleanup.md) | PR-209 | Maintenance entropy cleanup | 0.25-0.5 d | Active `_sync` worker naming tails removed; stale roadmap archaeology fenced and guarded |
 | PR-211 | `[closed]` | [Blob Large File / Multipart / Audio Compression Review](PR-211-blob-large-file-multipart-audio-review.md) | PR-207 | Blob boundary / roadmap cleanup | 0.25 d | Current base64/whole-object paths documented; multipart and audio compression split into future tickets |
 | PR-212 | `[closed]` | [Blob Multipart Contract and Backend Support](PR-212-blob-multipart-contract-backend.md) | PR-211 | Blob large-file upload | 0.5 d | Multipart session API, raw part upload, complete/abort/list/expire, and tests |
-| PR-213 | `[open]` | [App Large Upload Cutover](PR-213-app-large-upload-cutover.md) | PR-212 | App upload data-plane cleanup | TBD | Future implementation ticket |
+| PR-213 | `[closed]` | [App Large Upload Cutover](PR-213-app-large-upload-cutover.md) | PR-212 | App upload data-plane cleanup | 0.5 d | App large attachments use multipart direct Blob upload and Gateway control-plane registration |
 | PR-214 | `[open]` | [Audio Compression Path](PR-214-audio-compression-path.md) | PR-211, PR-212 | Audio upload efficiency | TBD | Future implementation ticket |
 | PR-215 | `[open]` | [Blob Payload Limits and Observability](PR-215-blob-payload-limits-observability.md) | PR-211 | Blob failure semantics / observability | TBD | Future implementation ticket |
 
