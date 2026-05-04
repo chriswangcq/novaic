@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[open]` |
+| Status | `[closed]` |
 | Type | Audio upload efficiency |
 | Created | 2026-05-04 |
 | Scope | Rust recorder output format, audio Blob metadata, audio tool integration |
@@ -15,13 +15,13 @@ while keeping Rust microphone capture as the WKWebView-compatible input path.
 
 ## Scope
 
-- Choose and implement a stable compressed output container for the Rust audio
-  recorder path.
-- Store audio as `blob://audio-input/...` with codec, duration, sample rate,
-  channel count, and size metadata.
-- Keep Blob Service as byte storage only; no implicit save-time transcode.
-- Add explicit transcode/interpretation only if audio QA requires another
-  format.
+- Implemented AAC/M4A (`audio/mp4`) output for the Rust recorder path on macOS.
+- Recorder returns compressed bytes and metadata (`codec`, duration, sample
+  rate, channel count, original size, compressed size), not base64.
+- Audio messages force multipart Blob upload into `audio-input` and register as
+  `voice_messages`.
+- Blob Service remains byte storage only; no implicit save-time transcode.
+- Unsupported encoder platforms fail explicitly instead of falling back to WAV.
 
 ## Acceptance
 
@@ -34,7 +34,8 @@ while keeping Rust microphone capture as the WKWebView-compatible input path.
 
 ## Verification
 
-- Rust recorder tests or focused smoke on macOS.
-- App audio upload smoke.
-- Runtime audio QA smoke if executor support is present.
-- Guard that Blob Service does not implicitly transcode on save.
+- `cd novaic-app/src-tauri && cargo check`
+- `cd novaic-app && npm run test:unit -- src/application/blobAttachmentPath.test.ts`
+- `cd novaic-gateway && PYTHONPATH=.:../novaic-common pytest -q tests/test_pr152_gateway_boundary.py`
+- Static guard asserts no recorder `base64_data`, no ChatInput `atob`, and audio
+  upload uses `audio-input` / `voice_messages`.
