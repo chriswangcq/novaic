@@ -304,11 +304,12 @@
 | PR-208 | `[closed]` | [Current Documentation Drift Cleanup](PR-208-current-doc-drift-cleanup.md) | PR-207 | Docs entropy cleanup | 0.25 d | Current docs no longer present old Gateway/outbox paths as active |
 | PR-209 | `[closed]` | [Agent Monitor Final Product Shape](PR-209-agent-monitor-final-product-shape.md) | PR-193, PR-186D, PR-208 | Agent Monitor product contract | 0.25 d | Bottom capsule, activity layer, taxonomy, detail, and acceptance matrix defined |
 | PR-210 | `[closed]` | [Maintenance Tail Cleanup](PR-210-maintenance-tail-cleanup.md) | PR-209 | Maintenance entropy cleanup | 0.25-0.5 d | Active `_sync` worker naming tails removed; stale roadmap archaeology fenced and guarded |
-| PR-211 | `[closed]` | [Blob Large File / Multipart / Audio Compression Review](PR-211-blob-large-file-multipart-audio-review.md) | PR-207 | Blob boundary / roadmap cleanup | 0.25 d | Current base64/whole-object paths documented; multipart and audio compression split into future tickets |
+| PR-211 | `[closed]` | [Blob Large File / Multipart / Audio Compression Review](PR-211-blob-large-file-multipart-audio-review.md) | PR-207 | Blob boundary / roadmap cleanup | 0.25 d | Historical Blob upload state recorded; PR-212..PR-216 closed the multipart/audio/base64-removal follow-up chain |
 | PR-212 | `[closed]` | [Blob Multipart Contract and Backend Support](PR-212-blob-multipart-contract-backend.md) | PR-211 | Blob large-file upload | 0.5 d | Multipart session API, raw part upload, complete/abort/list/expire, and tests |
 | PR-213 | `[closed]` | [App Large Upload Cutover](PR-213-app-large-upload-cutover.md) | PR-212 | App upload data-plane cleanup | 0.5 d | App large attachments use multipart direct Blob upload and Gateway control-plane registration |
 | PR-214 | `[closed]` | [Audio Compression Path](PR-214-audio-compression-path.md) | PR-211, PR-212 | Audio upload efficiency | 0.5 d | Voice recording now produces compressed AAC/M4A bytes and uploads audio through multipart `audio-input` blobs |
 | PR-215 | `[closed]` | [Blob Payload Limits and Observability](PR-215-blob-payload-limits-observability.md) | PR-211 | Blob failure semantics / observability | 0.25 d | Blob Service now has explicit payload limits, 413 errors, and raw-payload-safe lifecycle logs |
+| PR-216 | `[closed]` | [Remove Base64 Blob Upload Path](PR-216-remove-base64-blob-upload.md) | PR-212, PR-213, PR-214, PR-215 | Blob upload old-path deletion | 0.5 d | App/Gateway/Blob Service base64 upload path removed; all chat attachments upload via multipart raw bytes |
 
 
 ---

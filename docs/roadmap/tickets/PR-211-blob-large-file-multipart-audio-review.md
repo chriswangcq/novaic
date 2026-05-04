@@ -14,15 +14,15 @@ Reconcile Blob Service documentation with the implemented system and record the
 next large-file/multipart/audio-compression work without pretending those paths
 already exist.
 
-## Current-state Analysis
+## State at PR-211 Time
 
 Already true:
 
 - Blob Service is the byte/object-storage boundary.
 - Cortex production store uses Blob Service object APIs instead of direct S3.
 - Blob refs use `blob://{namespace}/{blob_id}`.
-- App attachments currently upload through Gateway `/api/blobs/from-base64`.
-- Audio recording currently uses Rust `cpal` + WAV + base64 upload.
+- App attachments then uploaded through Gateway `/api/blobs/from-base64`.
+- Audio recording then used Rust `cpal` + WAV + base64 upload.
 
 Missing:
 
@@ -110,7 +110,8 @@ To close this ticket:
 
 ## Closure
 
-Closed as a documentation and roadmap reconciliation pass. The current system is
-now documented as base64/whole-object upload plus BlobRefs, while multipart and
-audio compression are explicit future work orders rather than implied live
-features.
+Closed as a documentation and roadmap reconciliation pass for the state at that
+time. PR-212 through PR-216 subsequently implemented multipart, audio
+compression, payload limits, and full base64 upload removal. The current active
+shape is documented in `docs/reference/blob-service.md` and
+`docs/roadmap/blob-large-file-multipart-audio.md`.

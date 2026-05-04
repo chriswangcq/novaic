@@ -30,7 +30,6 @@ Blob Service 默认监听独立服务端口，避免大字节读写和 Agent/业
 
 当前实现：
 
-- `/v1/blobs`：JSON base64 上传，仅适合小附件。
 - `/v1/blobs/{namespace}/{blob_id}`：读取字节。
 - `/v1/blobs/{namespace}/{blob_id}/info`：读取 Blob 元数据。
 - `/v1/blobs/{namespace}/{blob_id}/presign`：GET presign/proxy 访问。
@@ -44,6 +43,11 @@ Blob Service 默认监听独立服务端口，避免大字节读写和 Agent/业
 - direct browser/App upload to object storage
 - PUT/POST upload presign
 - server-side audio transcode/compression
+
+已删除的旧路径也不要作为兼容分支恢复：
+
+- JSON/base64 上传 API
+- Gateway `/api/blobs/from-base64`
 
 这些能力的目标方案见 `docs/roadmap/blob-large-file-multipart-audio.md`。
 
