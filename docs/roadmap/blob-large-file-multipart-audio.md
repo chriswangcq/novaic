@@ -13,6 +13,8 @@ Implemented today:
 - `novaic-blob-service` stores bytes and metadata behind Disk or S3-compatible
   backends.
 - `/v1/blobs` accepts JSON base64 uploads and returns Blob metadata.
+- `/v1/blobs/uploads/*` supports multipart sessions with raw byte parts,
+  tenant-scoped status/list/abort/expire, and complete-time Blob metadata.
 - `/v1/objects` supports raw body object-tree `put/get/list/move/delete` for
   Cortex store files.
 - S3-compatible backend uses whole-object `put_object` and GET presign.
@@ -22,10 +24,8 @@ Implemented today:
 
 Not implemented today:
 
-- Multipart upload sessions.
 - Direct browser/App upload to object storage.
 - PUT/POST presign for uploads.
-- Resumable upload state.
 - Server-side audio transcode or compression.
 - Automatic payload compression by Blob Service.
 
@@ -94,8 +94,9 @@ Blob Service should not decide to transcode by itself.
 
 ### PR-212 Blob Multipart Contract and Backend Support
 
+- Status: closed.
 - Define upload-session schema and lifecycle.
-- Add Disk and S3-compatible multipart backend interfaces.
+- Store raw byte parts through the configured Blob backend.
 - Add unit tests for create/upload/complete/abort/idempotency.
 - Guard that `/v1/blobs` base64 path remains small-file only.
 

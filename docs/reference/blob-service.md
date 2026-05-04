@@ -82,17 +82,19 @@ Current implementation:
 
 - `/v1/blobs` is a base64 JSON upload path. It is not the target path for large
   files.
+- `/v1/blobs/uploads/*` is the Blob Service multipart session API. Parts are raw
+  bytes, sessions are tenant-scoped, and stable Blob metadata appears only after
+  completion.
 - `/v1/objects` writes a whole request body. It is for Cortex object-store files,
   not a user-facing resumable upload protocol.
 - The S3-compatible backend currently supports whole-object `put_object` and GET
-  presign. It does not expose multipart upload, upload presign, or resumable
-  session APIs.
+  presign. Upload presign/direct-to-object-storage is not exposed yet.
 
 Target direction:
 
-- Add explicit upload sessions: create, upload part, complete, abort, status.
 - Make large App uploads avoid base64 and avoid Gateway as data-plane.
-- Publish stable Blob metadata only after upload completion.
+- Add upload presign/direct-to-object-storage if App data-plane needs to bypass
+  Blob Service HTTP entirely.
 - Keep Blob as byte infrastructure; product meaning stays in Business/Cortex/App.
 
 See `docs/roadmap/blob-large-file-multipart-audio.md` for the detailed work
