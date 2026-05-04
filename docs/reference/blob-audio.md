@@ -24,4 +24,21 @@ invoke('start_audio_recording') → cpal 采集 PCM
 invoke('stop_audio_recording') → hound 写 WAV → base64 → 上传
 ```
 
-注意：`cpal::Stream` 使用 `unsafe impl Send/Sync`；WAV 体积大（约 11MB/分钟），后续可换 Opus 等压缩。
+注意：`cpal::Stream` 使用 `unsafe impl Send/Sync`；WAV 体积大（约 11MB/分钟），当前仍会经过 base64 上传。
+
+## 音频压缩目标边界
+
+音频压缩还不是当前实现。目标路径应当是：
+
+```text
+Rust recorder → compressed container → blob://audio-input/{blob_id}
+```
+
+约束：
+
+- 优先在客户端/Rust 录制链路产出压缩容器，减少上传体积。
+- Blob Service 只存储压缩后的字节和元数据，不在保存时隐式转码。
+- 如果某个 audio tool 需要另一种格式，必须显式调用转码/解释工具，产出新的 BlobRef。
+- 音频 Blob 元数据应包含 duration、codec、sample rate、channels、size。
+
+详细实施计划见 `docs/roadmap/blob-large-file-multipart-audio.md`。
