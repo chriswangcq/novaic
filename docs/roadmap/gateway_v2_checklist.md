@@ -7,16 +7,16 @@ This checklist is closed. The current boundary is documented in
 
 - Queue Service owns dispatch sessions and session buffering.
 - Runtime reads and writes entities through the current Business/Entangled path.
-- User and subagent messages wake agents through the outbox subscriber path.
-- Business dispatch goes through `common.wake.DispatchAssembler`.
+- User and subagent messages wake agents through Environment notifications.
+- Business subscriber dispatches Environment notifications into Queue.
 - Gateway no longer owns agent wake routing.
-- Subagent result delivery is unified as `SUBAGENT_SEND`.
+- Subagent result delivery is unified as Environment IM.
 
 ## Current Smoke Checks
 
-- `USER_MESSAGE` creates one outbox item and one dispatch.
-- `SUBAGENT_SEND` creates one outbox item and one dispatch.
-- Child spawn delivers the initial task as `SUBAGENT_SEND`.
-- Parent-directed child result arrives as `SUBAGENT_SEND`.
+- User message creates one Environment notification and one dispatch.
+- Subagent IM creates one Environment notification and one dispatch.
+- Child spawn delivers the initial task as Environment IM.
+- Parent-directed child result arrives through Environment IM.
 - Runtime session completion frees the active session and drains buffered
   triggers.

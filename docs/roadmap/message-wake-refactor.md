@@ -7,14 +7,14 @@ This roadmap is closed. The current architecture contract is:
 
 ## Current State
 
-- Wake-eligible chat messages are `USER_MESSAGE` and `SUBAGENT_SEND`.
-- Entangled emits outbox items for wake-eligible messages.
-- Business `DispatchSubscriber` consumes those items.
-- `common.wake.DispatchAssembler` constructs Queue dispatch requests.
+- Wake is driven by Environment notifications, not by `chat_messages.lifecycle`
+  or `message_outbox`.
+- Business creates Environment IM events and notifications from user/subagent/system inputs.
+- Business `DispatchSubscriber` claims dispatchable Environment notifications and sends Queue dispatches.
 - Runtime Queue Service owns sessions and wake execution.
 - Cortex owns LIFO scope state and context assembly.
-- Subagent spawn sends the initial task through `SUBAGENT_SEND`.
-- Subagent result delivery uses parent-directed `SUBAGENT_SEND`.
+- Subagent spawn sends the initial task through Environment IM.
+- Subagent result delivery uses parent-directed Environment IM.
 
 ## Closed Cleanup
 
@@ -23,10 +23,12 @@ This roadmap is closed. The current architecture contract is:
 - Spawn-specific and completion-specific message wake paths were removed.
 - Parent notification is not a separate lifecycle route; it is IM.
 - Automatic continuity/memory inference is not part of Cortex.
+- Message outbox / chat-message lifecycle wake compatibility was removed by the
+  Environment notification cutover.
 
 ## Current Guardrails
 
 - Tool schema contract tests assert deleted tools are absent.
 - Message lifecycle contract tests assert deleted message types are absent.
 - Prompt contract tests reject deleted continuity concepts.
-- Orphan recovery tests assert only wake-eligible message types surface.
+- Environment hot-path tests assert notifications are the wake source.

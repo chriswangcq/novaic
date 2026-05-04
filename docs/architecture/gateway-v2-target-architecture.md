@@ -16,30 +16,32 @@ migration notes live in ticket history; they are not the runtime contract.
 ## Wake Path
 
 ```text
-USER_MESSAGE or SUBAGENT_SEND
+User/subagent/system event
   -> Business writes Environment IM event + notification
-  -> Business DispatchSubscriber claims the Environment notification
-  -> common DispatchAssembler builds one canonical Queue dispatch request
+  -> Business DispatchSubscriber claims dispatchable Environment notifications
+  -> DispatchSubscriber builds one canonical Queue dispatch request
   -> Runtime Queue Service starts or buffers the wake session
   -> Runtime builds LLM context through Cortex and executes tools
 ```
 
-Only `USER_MESSAGE` and `SUBAGENT_SEND` are message types that directly wake an
-agent. Subagent spawn creates the child subagent and delivers the initial task as
-a `SUBAGENT_SEND`. Child-to-parent results also use `SUBAGENT_SEND`.
+The hot path is Environment notification driven. Chat message type names remain
+only as chat projection / IM domain data; they are not a separate wake queue.
+Subagent spawn creates the child subagent and delivers the initial task through
+Environment IM. Child-to-parent results use the same Environment IM path.
 
 ## Dispatch Boundary
 
-All dispatches pass through `common.wake.DispatchAssembler`.
+Queue dispatch construction is owned by the Business subscriber / Runtime
+boundary. Do not rebuild direct service-to-Queue shortcuts in Gateway or App.
 
 Required invariants:
 
 - `agent_id`, `user_id`, `subagent_id`, `message_ids`, and trigger metadata are
   normalized before Runtime sees the request.
-- Message-triggered dispatches use stable idempotency keys derived from the
-  message id.
+- Notification-triggered dispatches use stable idempotency keys derived from the
+  Environment notification / source id.
 - Direct service-to-Queue dispatch construction is not allowed outside the
-  assembler and its tests.
+  subscriber / queue boundary and its tests.
 - Health/recovery workers may repair missed dispatches, but they are not the
   normal delivery path.
 
@@ -59,8 +61,8 @@ IM path and made agent behavior branchy.
 
 ## Smoke Checks
 
-- A user message produces one Environment notification and one Queue dispatch.
-- Spawning a child creates a child subagent and a `SUBAGENT_SEND` initial task.
-- A child result sent to the parent is delivered as `SUBAGENT_SEND`.
+- A user message produces one Environment IM event, one notification, and one Queue dispatch.
+- Spawning a child creates a child subagent and an Environment IM initial task.
+- A child result sent to the parent is delivered through Environment IM.
 - Cortex context shows the active scope expanded and closed scopes folded by
   their `summary.md`.

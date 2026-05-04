@@ -12,7 +12,7 @@
 
 ```
 用户发消息
-  → Gateway → Business Environment IM event + chat UI projection
+  → Entangled action messages.send → Business Environment IM event + chat UI projection
   → Environment notification → DispatchSubscriber → Queue/Saga/Runtime（见 agent-pipeline.md）
 ```
 

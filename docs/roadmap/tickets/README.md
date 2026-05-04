@@ -295,6 +295,7 @@
 | PR-193E | `[closed]` | [Agent Monitor Projection Guardrails and Docs](PR-193E-agent-monitor-projection-guardrails-and-docs.md) | PR-193D | Guardrails/docs | 0.25 d | Docs and static guards aligned to one Entangled projection path |
 | PR-195 | `[closed]` | [Remove frontend noVNC client residue](PR-195-remove-frontend-novnc-client.md) | PR-185A | App cleanup | 0.25 d | Browser noVNC assets/dependency/alias removed; Rust VNC/RFB backend preserved |
 | PR-207 | `[closed]` | [Cortex Blob-backed Store Cutover](PR-207-cortex-blob-store-cutover.md) | PR-206 | Storage boundary cleanup | multi-step | Cortex direct S3/OSS store removed; Blob Service owns object storage |
+| PR-208 | `[closed]` | [Current Documentation Drift Cleanup](PR-208-current-doc-drift-cleanup.md) | PR-207 | Docs entropy cleanup | 0.25 d | Current docs no longer present old Gateway/outbox paths as active |
 
 
 ---
