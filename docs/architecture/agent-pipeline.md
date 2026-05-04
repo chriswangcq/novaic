@@ -7,7 +7,7 @@
 | 进程 | 职责 |
 |------|------|
 | Business | `:19998`，中枢编排：所有 `/internal/*` API、Entangled entity proxy、Device 编排 |
-| Gateway | 薄边缘网关：Auth、App WS、TURN、File Proxy |
+| Gateway | 薄边缘网关：Auth、App WS、TURN、Blob Proxy |
 | Device | `:19993`，设备 registry、CloudBridge WS、硬件执行 API |
 | Cortex | `:19996`，Workspace + LIFO Scope Tree + ContextEngine（DFS）+ Sandbox |
 | Queue Service | Task / Saga 队列 |
@@ -20,7 +20,7 @@
 
 ```
 用户发消息
-  → Gateway → Business: Environment IM event + chat UI projection
+  → Entangled action hook → Business: Environment IM event + chat UI projection
   → DispatchSubscriber（Environment notification）/ Scheduler（定时唤醒）
   → Queue dispatch: subagent_wake
   → session.init: ensure agent_root scope + create current wake scope

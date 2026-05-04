@@ -20,7 +20,7 @@
 ## 云端（概念）
 
 - **api.gradievo.com**：Nginx 443 → Gateway `127.0.0.1:19999`；`auth_request` → `/internal/auth/validate` 注入 `X-User-ID`。
-- Gateway：REST、App WS Push、TURN 凭证、File Proxy、`gateway.db`（仅 auth 实体：users/refresh-tokens）。CloudBridge 和设备管理由 Device Service (`:19993`) 承担。
+- Gateway：Auth、App WS Push、TURN 凭证、Blob Proxy、`gateway.db`（仅 auth 实体：users/refresh-tokens）。CloudBridge 和设备管理由 Device Service (`:19993`) 承担。
 - **relay + STUN**：`novaic-quic-service`；STUN 3478、Relay QUIC 443、静态前端 CDN（`frontend` OTA 路径）。
 
 ## macOS 键盘与 SIGTRAP（摘要）

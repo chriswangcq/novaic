@@ -1,8 +1,7 @@
 # Blob Service Boundary
 
-Blob Service is infrastructure for large byte objects. It is the successor
-direction for Storage-A/File Service semantics, but it must not become a new
-business center.
+Blob Service is infrastructure for large byte objects. It owns bytes and
+byte-level metadata, but it must not become a new business center.
 
 ## Contract
 
@@ -56,7 +55,6 @@ not construct object storage URLs directly.
 
 ## No Fallback Rule
 
-During migration, legacy `fs://` and `/api/files/*` paths may exist only as
-explicitly named migration or facade boundaries. New hot paths must write
-`blob://...` references. Once a path is migrated, old readers should be
-physically deleted and guarded.
+New hot paths must write `blob://...` references. Historical locator shapes are
+detection-only migration inputs; they are not valid runtime APIs and must not be
+reintroduced as readers or facades.

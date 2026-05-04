@@ -53,5 +53,4 @@ Gateway 只承担 App 侧中继和 TURN 凭证注入，不拥有 Device、CloudB
 - Entangled sync WS；
 - Business action hooks；
 - Business/Device 内部 API；
-- Storage-A 文件服务。
-
+- Blob Service 字节基础设施。

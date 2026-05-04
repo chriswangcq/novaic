@@ -1,22 +1,14 @@
-# 历史文件服务与语音录制
+# Blob Service 与语音录制
 
 > 对应原 `**HANDOVER.md` §十三**。
 
-## 历史文件服务（`/api/files/`）
+## Blob Service
 
-这是迁移期考古页，不是新代码入口。新的大对象引用统一使用
-`blob://{namespace}/{blob_id}`，详见 `docs/reference/blob-service.md`。
-历史 `**/api/images/`** 与 `**/api/files/**` 曾统一到 `**/api/files/**`。
+新的大对象引用统一使用 `blob://{namespace}/{blob_id}`，详见
+`docs/reference/blob-service.md`。历史文件接口已经物理删除；本页只保留当前
+附件与语音录制链路。
 
-```
-旧截图/附件 → uploadChatFile() / Gateway POST /api/files/from-base64 → Storage-A /api/files/from-base64
-旧访问 → GET /api/files/{path} 或 POST /api/files/fetch → Gateway 校验 user_id → 代理 Storage-A
-```
-
-上述路径只能作为历史数据迁移/清理参考；不要在新业务路径继续生成
-`fs://`、`/api/files/*` 或 service-private URL。
-
-当前新路径是：
+当前路径：
 
 ```text
 附件上传 → Gateway POST /api/blobs/from-base64 → Blob Service /v1/blobs

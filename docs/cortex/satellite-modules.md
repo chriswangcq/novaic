@@ -9,14 +9,17 @@
   > 注：Entangled 独立服务已并入 `Entangled/packages/server-python/entangled/app`，启动方式：`python -m entangled.app.main`。
 - 注释说明：**多数业务应留在 owning service/package**；Cortex 直连仅适用于纯数据读，或 Cortex 组装上下文时的特殊需求。
 
-## 2. `file_resolver.py`
+## 2. Blob payload helpers
 
-- 解析 **`fs://`** URI（**user 相对**，不含 `user_id`）；多种模式：**http_url** / **local** / **inline**（与 LLM 预算相关）。
-- 设计见仓库内 **`docs/oss-storage-unified-plan.md`**（若存在）。
+- Cortex active path stores large tool/runtime payloads behind `blob://...`
+  references and keeps prompt-facing observations small.
+- Large bytes belong to Blob Service; Cortex owns only work-trace semantics,
+  payload refs, and projection rules.
 
 ## 3. `step_result_projection.py`
 
-- 读取 Cortex step 中的 **工具结果**，完成格式化、解析、与 LLM 表示转换；**`resolve_for_llm`** 将 **`fs://`** 解析为 **`_mcp_content`** 块注入消息。
+- 读取 Cortex step 中的 **工具结果**，完成格式化、解析、与 LLM 表示转换；已获取的
+  字节内容可转换为 **`_mcp_content`** 块，默认上下文只保留 observation 摘要与 payload ref。
 
 ## 4. `tenant.py`
 
@@ -28,4 +31,4 @@
 
 ---
 
-若某条调用链贯穿 Entangled / `fs://` / step result projection，可从这里跳到对应 `.py` 再对照 **`docs/oss-storage-unified-plan.md`**。
+若某条调用链贯穿 Entangled / Blob payload / step result projection，可从这里跳到对应 `.py` 再对照 Blob Service 边界文档。

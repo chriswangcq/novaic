@@ -43,7 +43,7 @@ The recommended direction is not to add another memory layer. It is to make the 
 | Agent Runtime | Runs wake sagas, calls LLM, dispatches tools, closes wake lifecycle. | Owns lifecycle control and retries, but should not invent cognitive memory. |
 | Business | Owns agent/subagent/message/model/task entities, action hooks, dispatch subscriber, internal APIs. | Central business API is acceptable, but internal modules need sharper boundaries. |
 | Queue Service | Durable saga/task execution and recovery. | Remain infrastructure; no business semantics beyond execution state. |
-| Gateway | Auth, file proxy, app websocket, signaling. | Stay thin. No agent business logic. |
+| Gateway | Auth, Blob proxy, app websocket, signaling. | Stay thin. No agent business logic. |
 | Device | Device registry and hardware/VM command routing. | Stay infrastructure. Business decides when to call it. |
 | Entangled | Entity storage and realtime sync. | Business should remain the only normal direct Entangled HTTP consumer. |
 

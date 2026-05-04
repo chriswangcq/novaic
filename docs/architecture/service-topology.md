@@ -8,7 +8,7 @@
 
 | 原则 | 当前落点 |
 |---|---|
-| Gateway 薄边缘 | Auth、App WS push/signaling、Entangled endpoint discovery、TURN、File Proxy |
+| Gateway 薄边缘 | Auth、App WS push/signaling、Entangled endpoint discovery、TURN、Blob Proxy |
 | Entangled 是实体同步层 | App 直连 Entangled WS；Business 是服务端 action/HTTP 写入方 |
 | Business 是产品业务层 | action hooks、Environment、SubAgent、Device 编排、配置读取 |
 | Runtime 是执行层 | Queue/Saga/Task Worker，调用 Cortex、Factory、Business/tool executor |
@@ -22,12 +22,12 @@
 | 进程 | 端口 | 职责 |
 |---|---:|---|
 | **Entangled** | `19900` | 实体 HTTP + sync WS，schema/action 注册，服务端 SQLite |
-| **Gateway** | `19999` | Auth、App WS、file proxy、TURN、Entangled sync endpoint discovery |
+| **Gateway** | `19999` | Auth、App WS、Blob Proxy、TURN、Entangled sync endpoint discovery |
 | **Business** | `19998` | 产品 action hooks、Environment、Subscriber 输入、Device 编排、内部产品 API |
 | **Device** | `19993` | Device registry、CloudBridge typed WS、hardware/VM/WebRTC API |
 | **Queue Service** | `19997` | Task/Saga/session 调度，拥有 `queue.db` |
 | **Cortex** | `19996` | Agent scope/context/work trace/payload/sandbox |
-| **Storage-A** | `19995` | 文件与大对象 |
+| **Storage-A** | `19995` | Blob Service：字节与大对象 |
 | **LLM Factory** | deployment-specific | provider/API key/model routing，标准 chat completions |
 | **Runtime Workers** | worker | Saga Worker、Task Worker、Health、Scheduler |
 | **Tauri App** | local | React UI、Entangled Rust cache、VmControl 本地端 |
@@ -42,7 +42,7 @@
                   │ React + Rust cache   │
                   └───────┬───────┬─────┘
                           │       │
-     Auth/File/App WS HTTP│       │Entangled sync WS
+     Auth/Blob/App WS HTTP│       │Entangled sync WS
                           ▼       ▼
                     ┌────────┐  ┌────────────┐
                     │Gateway │  │ Entangled  │
@@ -118,4 +118,3 @@
 | Runtime 通过 Gateway 取业务状态 | Runtime 通过 Business/Cortex/Factory/Queue 按职责取数据 |
 | Device action hook 在 Gateway | Business 处理 devices action hook，Device 只执行硬件 |
 | Agent Monitor 查 execution log | Agent Monitor 读 Entangled `agent-activity-*` 投影 |
-
