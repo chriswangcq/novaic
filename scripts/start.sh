@@ -185,6 +185,7 @@ mkdir -p "$DATA_DIR/cortex"
 # (novaic-cortex/.venv) which doesn't ship novaic-common as a pkg;
 # export PYTHONPATH so the import resolves to the sibling submodule.
 CORTEX_STORE_ROOT="$DATA_DIR/cortex" \
+CORTEX_BLOB_SERVICE_URL="$FS_URL" \
 PYTHONPATH="$BASE/novaic-common:${PYTHONPATH:-}" \
 $(py novaic-cortex) -m novaic_cortex.main_cortex \
     --host "$HOST" --port "$PORT_CORTEX" \
