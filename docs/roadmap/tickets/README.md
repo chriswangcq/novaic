@@ -308,7 +308,7 @@
 | PR-212 | `[closed]` | [Blob Multipart Contract and Backend Support](PR-212-blob-multipart-contract-backend.md) | PR-211 | Blob large-file upload | 0.5 d | Multipart session API, raw part upload, complete/abort/list/expire, and tests |
 | PR-213 | `[closed]` | [App Large Upload Cutover](PR-213-app-large-upload-cutover.md) | PR-212 | App upload data-plane cleanup | 0.5 d | App large attachments use multipart direct Blob upload and Gateway control-plane registration |
 | PR-214 | `[closed]` | [Audio Compression Path](PR-214-audio-compression-path.md) | PR-211, PR-212 | Audio upload efficiency | 0.5 d | Voice recording now produces compressed AAC/M4A bytes and uploads audio through multipart `audio-input` blobs |
-| PR-215 | `[open]` | [Blob Payload Limits and Observability](PR-215-blob-payload-limits-observability.md) | PR-211 | Blob failure semantics / observability | TBD | Future implementation ticket |
+| PR-215 | `[closed]` | [Blob Payload Limits and Observability](PR-215-blob-payload-limits-observability.md) | PR-211 | Blob failure semantics / observability | 0.25 d | Blob Service now has explicit payload limits, 413 errors, and raw-payload-safe lifecycle logs |
 
 
 ---
