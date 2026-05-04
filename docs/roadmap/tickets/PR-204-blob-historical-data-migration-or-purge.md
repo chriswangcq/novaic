@@ -5,7 +5,7 @@
 | Status | `[done]` |
 | Owner | Codex |
 | Created | 2026-05-04 |
-| Repos | `novaic-storage-a`, `novaic-business`, `novaic-cortex`, scripts, docs |
+| Repos | `novaic-blob-service`, `novaic-business`, `novaic-cortex`, scripts, docs |
 | Depends on | PR-201, PR-202, PR-203 |
 | Theme | No permanent compatibility |
 

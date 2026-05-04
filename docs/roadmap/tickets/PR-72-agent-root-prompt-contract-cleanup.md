@@ -90,7 +90,7 @@ Evidence:
 Evidence:
 
 - `./deploy services` → all backend services synced and restarted.
-- `./deploy status` → Entangled, Gateway, Business, Device, Queue, Storage-A, Cortex healthy; Workers `8`; Relay active.
+- `./deploy status` → Entangled, Gateway, Business, Device, Queue, Blob Service, Cortex healthy; Workers `8`; Relay active.
 - Log/API evidence captured from `/v1/context/read`, Business drive defaults, and deployed Runtime `NO_TOOL_WARNING`.
 
 ### GitHub / Commit

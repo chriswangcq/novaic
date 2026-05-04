@@ -22,7 +22,7 @@
 | INV-5 | 错误分类 | ✅ | `[CONTRACT]` | Cortex 业务失败 = `200 {ok:false}`；5xx = 重试 |
 | INV-6 | 锁 key | ✅ | `[CODE]` | `_SCOPE_LOCKS` key = `(user_id, agent_id, scope_id)` |
 | INV-7 | 部署拓扑 | ✅ | `[CODE]` + `[PROD-ONLY]` | `main_cortex._enforce_single_worker` |
-| INV-8 | 存储 key | ✅ | `[CONTRACT]` | `storage-and-keys.md` §2 |
+| INV-8 | 存储 key | ✅ | `[CONTRACT]` | `object-keys.md` §2 |
 | INV-9 | Saga 重放 | ✅ | `[CODE]` | `context_handlers.seen_keys` 去重 |
 | INV-10 | 可观测性 | ✅ | `[CODE]` + `[PROD-ONLY]` | `observability.log_cortex` 强制导入 |
 
@@ -192,7 +192,7 @@ def _enforce_single_worker() -> None:
 - Cortex 按 `WorkspaceRegistry.get(user_id, agent_id)` 拿 scoped store；任何绕过 registry 直接拼 `scope_id` 的地方都会有跨租户泄漏或 UUID 碰撞。
 - P0-7 要求 `cortex_bridge` 缓存 key 升级为 `(scope_id, user_id, agent_id)` 来覆盖复合语义。
 
-**落地**：详见 [storage-and-keys.md](./storage-and-keys.md) §2 对象键结构。所有 `workspace.py` 方法都在 `(user_id, agent_id)` 隔离域内操作。
+**落地**：详见 [object-keys.md](./object-keys.md) §2 对象键结构。所有 `workspace.py` 方法都在 `(user_id, agent_id)` 隔离域内操作。
 
 **破坏后果**：A 用户的消息泄漏到 B 用户的 scope、或跨用户 skill_begin 判重失效。
 

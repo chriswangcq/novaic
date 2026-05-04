@@ -5,7 +5,7 @@
 | Status | `[done]` |
 | Owner | Codex |
 | Created | 2026-05-04 |
-| Repos | `novaic-app`, `novaic-gateway`, `novaic-business`, `novaic-storage-a`, docs |
+| Repos | `novaic-app`, `novaic-gateway`, `novaic-business`, `novaic-blob-service`, docs |
 | Depends on | PR-201 |
 | Theme | User attachment path cleanup |
 

@@ -51,7 +51,7 @@ LLM 要「结束当前工作」只需按 Active scope stack 关闭当前栈顶 s
 - **`/ro/config/tools/{name}.json`** — 每个 builtin 一条；
 - **`/ro/config/tools/_index.json`** — 内置工具名列表。
 
-存储键仍为 **`agents/{agent_id}/ro/config/tools/...`**（见 [storage-and-keys.md](storage-and-keys.md)）。
+存储键仍为 **`agents/{agent_id}/ro/config/tools/...`**（见 [object-keys.md](object-keys.md)）。
 
 ## 3. `load_tool_schemas()` 合并顺序
 

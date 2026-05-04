@@ -13,9 +13,9 @@
 [submodule "novaic-mcp-vmuse"]
 	path = novaic-mcp-vmuse
 	url = git@github.com:chriswangcq/novaic-mcp-vmuse.git
-[submodule "novaic-storage-a"]
-	path = novaic-storage-a
-	url = git@github.com:chriswangcq/novaic-storage-a.git
+[submodule "novaic-blob-service"]
+	path = novaic-blob-service
+	url = git@github.com:chriswangcq/novaic-blob-service.git
 [submodule "byclaw-website"]
 	path = byclaw-website
 	url = https://github.com/chriswangcq/byclaw-website.git

@@ -157,7 +157,7 @@ internal method=<GET/POST> path=<str> status=<int> caller=<str> target=<str> dur
 novaic-llm-factory/factory/app.py    ← FastAPI
 novaic-mcp-vmuse                     ← 需核实
 novaic-quic-service                  ← 需核实
-novaic-storage-a                     ← 需核实
+novaic-blob-service                     ← 需核实
 ```
 
 **本 PR 仍按 ticket 做 5 个**（cortex / queue / business / gateway / device），但在 T1 时你要：

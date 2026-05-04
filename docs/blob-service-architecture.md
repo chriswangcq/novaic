@@ -1,6 +1,6 @@
 # Blob Service 存储总枢纽架构概览
 
-> 路径参考：`novaic-storage-a/`。该目录是当前 Blob Service 的实现目录。
+> 路径参考：`novaic-blob-service/`。该目录是当前 Blob Service 的实现目录。
 
 不同于有着无尽生命周期的 Entangled 数据（文字/节点状态）以及 Cortex 的工作轨迹。Blob Service 是极度特异化的“巨石与流体大件转存中转机”：只负责字节、Blob 元数据、租户边界和后端对象存储适配。
 

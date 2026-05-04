@@ -5,7 +5,7 @@
 | Status | `[done]` |
 | Owner | Codex |
 | Created | 2026-05-04 |
-| Repos | `novaic-storage-a`, docs |
+| Repos | `novaic-blob-service`, docs |
 | Depends on | PR-199 |
 | Theme | Blob Service infrastructure boundary |
 
@@ -15,7 +15,7 @@ Turn the byte-storage service into a Blob Service infrastructure boundary while 
 
 ## Current-State Analysis
 
-`novaic-storage-a` is now the Blob Service implementation. It stores bytes on
+`novaic-blob-service` is now the Blob Service implementation. It stores bytes on
 disk or OSS behind a product-agnostic Blob API and returns `blob://...` refs.
 
 ## Small Tickets
@@ -37,7 +37,7 @@ disk or OSS behind a product-agnostic Blob API and returns `blob://...` refs.
 
 ## Deployment Checklist
 
-- [x] `novaic-storage-a` tests pass.
+- [x] `novaic-blob-service` tests pass.
 - [x] Storage service smoke passes locally against `/v1/blobs`.
 - [x] Health check shows Blob Service contract.
 
@@ -52,8 +52,8 @@ disk or OSS behind a product-agnostic Blob API and returns `blob://...` refs.
 
 ## Verification
 
-- `PYTHONPATH=/Users/wangchaoqun/new-build-novaic/novaic-common:/Users/wangchaoqun/new-build-novaic/novaic-storage-a .venv/bin/python -m pytest` → `16 passed, 1 skipped`
+- `PYTHONPATH=/Users/wangchaoqun/new-build-novaic/novaic-common:/Users/wangchaoqun/new-build-novaic/novaic-blob-service .venv/bin/python -m pytest` → `16 passed, 1 skipped`
 - `.venv/bin/python -m compileall -q blob_service tests`
 - `python3 scripts/ci/check_start_config_contract.py` → `start_config_contract OK`
-- `PYTHONPATH=/Users/wangchaoqun/new-build-novaic/novaic-common:/Users/wangchaoqun/new-build-novaic/novaic-storage-a bash scripts/verify_contract_version_a.sh` → `BLOB_SERVICE_CONTRACT_VERSION=PASS`
-- `PYTHONPATH=/Users/wangchaoqun/new-build-novaic/novaic-common:/Users/wangchaoqun/new-build-novaic/novaic-storage-a STORAGE_A_PORT=<random> bash scripts/smoke_storage_a.sh` → `BLOB_SERVICE_SMOKE_OK=true`
+- `PYTHONPATH=/Users/wangchaoqun/new-build-novaic/novaic-common:/Users/wangchaoqun/new-build-novaic/novaic-blob-service bash scripts/verify_contract_version_blob.sh` → `BLOB_SERVICE_CONTRACT_VERSION=PASS`
+- `PYTHONPATH=/Users/wangchaoqun/new-build-novaic/novaic-common:/Users/wangchaoqun/new-build-novaic/novaic-blob-service BLOB_SERVICE_PORT=<random> bash scripts/smoke_blob_service.sh` → `BLOB_SERVICE_SMOKE_OK=true`

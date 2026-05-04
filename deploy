@@ -144,11 +144,11 @@ deploy_services() {
 
   # novaic-common 必须先同步（gateway/business/device/runtime 的 common/ 是 symlink）
   for svc in novaic-common novaic-gateway novaic-business novaic-device \
-             novaic-agent-runtime novaic-storage-a novaic-cortex Entangled; do
+             novaic-agent-runtime novaic-blob-service novaic-cortex Entangled; do
     rsync_service "$svc"
   done
 
-  for svc in novaic-storage-a novaic-cortex novaic-agent-runtime; do
+  for svc in novaic-blob-service novaic-cortex novaic-agent-runtime; do
     install_service_requirements "$svc"
   done
 
@@ -322,7 +322,7 @@ case "${1}" in
   business)       deploy_shared_venv_service "novaic-business" ;;
   device)         deploy_shared_venv_service "novaic-device" ;;
   runtime)        deploy_single_service "novaic-agent-runtime" ;;
-  blob-service)   deploy_single_service "novaic-storage-a" ;;
+  blob-service)   deploy_single_service "novaic-blob-service" ;;
   cortex)         deploy_single_service "novaic-cortex" ;;
   entangled)      rsync_service "novaic-common"; rsync_service "Entangled"; sync_start_sh; restart_all; ok "Entangled 已部署" ;;
   services)       deploy_services ;;

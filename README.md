@@ -13,7 +13,7 @@ novaic/
 ├── novaic-device/               # Device Service
 ├── novaic-common/               # 共享库与配置
 ├── novaic-cortex/               # Cortex scope / step 服务
-├── novaic-storage-a/            # Blob Service
+├── novaic-blob-service/         # Blob Service
 ├── novaic-mcp-vmuse/            # MCP VMuse 集成
 ├── novaic-quic-service/         # QUIC relay 服务
 ├── Entangled/                   # 同步引擎

@@ -88,5 +88,5 @@ async def caller_logging_middleware(request: Request, call_next):
 - novaic-llm-factory/factory/app.py
 - novaic-mcp-vmuse
 - novaic-quic-service
-- novaic-storage-a
+- novaic-blob-service
 经确认，为保持与 PR 目标一致，本 PR 不将其纳入改动范围，建议后续另开 `PR-06.5` 跟进。

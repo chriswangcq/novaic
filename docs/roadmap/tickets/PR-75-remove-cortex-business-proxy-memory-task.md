@@ -67,7 +67,7 @@ Evidence:
 
 Evidence:
 - `./deploy cortex` completed and restarted all backends.
-- `./deploy status` healthy: Entangled, Gateway, Business, Device, Queue, Storage-A, Cortex; 8 workers; relay active.
+- `./deploy status` healthy: Entangled, Gateway, Business, Device, Queue, Blob Service, Cortex; 8 workers; relay active.
 
 ### GitHub / Commit
 

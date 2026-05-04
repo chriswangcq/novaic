@@ -185,7 +185,7 @@ NOVAIC_OSS_REGION="$BLOB_OSS_REGION" \
 NOVAIC_OSS_BUCKET="$BLOB_OSS_BUCKET" \
 AWS_DEFAULT_REGION="$BLOB_OSS_REGION" \
 PYTHONPATH="$BASE/novaic-common:${PYTHONPATH:-}" \
-$(py novaic-storage-a) "$BASE/novaic-storage-a/main_blob_service.py" \
+$(py novaic-blob-service) "$BASE/novaic-blob-service/main_blob_service.py" \
     --host "$HOST" --port "$PORT_BLOB_SERVICE" --data-dir "$DATA_DIR" \
     >> "$LOG_DIR/blob-service.log" 2>&1 &
 wait_port "$PORT_BLOB_SERVICE" "Blob Service"
