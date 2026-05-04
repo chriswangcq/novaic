@@ -10,7 +10,8 @@
 当前路径：
 
 ```text
-附件上传 → Gateway POST /api/blobs/from-base64 → Blob Service /v1/blobs
+小附件上传 → Gateway POST /api/blobs/from-base64 → Blob Service /v1/blobs
+大附件上传 → Gateway upload-config → Blob multipart upload → Gateway register
 附件访问 → Rust cache → Gateway POST /api/blobs/fetch → Blob Service /v1/blobs/{namespace}/{blob_id}
 消息附件字段 → blob://user-file/{blob_id}
 ```
@@ -21,17 +22,21 @@ Tauri WKWebView 中 `navigator.mediaDevices` 常为不可用，**麦克风走 Ru
 
 ```
 invoke('start_audio_recording') → cpal 采集 PCM
-invoke('stop_audio_recording') → hound 写 WAV → base64 → 上传
+invoke('stop_audio_recording') → 临时 WAV → 显式压缩 AAC/M4A → 返回压缩字节
+音频上传 → Blob multipart → blob://audio-input/{blob_id}
 ```
 
-注意：`cpal::Stream` 使用 `unsafe impl Send/Sync`；WAV 体积大（约 11MB/分钟），当前仍会经过 base64 上传。
+注意：`cpal::Stream` 使用 `unsafe impl Send/Sync`。WAV 只作为编码中间
+文件；正常语音消息不再上传 WAV/base64。当前压缩编码主路径使用 macOS
+`afconvert` 产出 `audio/mp4` / AAC；不支持的平台会显式失败，不启用 WAV
+fallback。
 
 ## 音频压缩目标边界
 
-音频压缩还不是当前实现。目标路径应当是：
+当前已实现目标路径：
 
 ```text
-Rust recorder → compressed container → blob://audio-input/{blob_id}
+Rust recorder → compressed AAC/M4A container → blob://audio-input/{blob_id}
 ```
 
 约束：

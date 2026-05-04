@@ -30,7 +30,7 @@ Blob Service 默认监听独立服务端口，避免大字节读写和 Agent/业
 
 当前实现：
 
-- `/v1/blobs`：JSON base64 上传，适合小附件和现有聊天附件路径。
+- `/v1/blobs`：JSON base64 上传，仅适合小附件。
 - `/v1/blobs/{namespace}/{blob_id}`：读取字节。
 - `/v1/blobs/{namespace}/{blob_id}/info`：读取 Blob 元数据。
 - `/v1/blobs/{namespace}/{blob_id}/presign`：GET presign/proxy 访问。
@@ -49,13 +49,14 @@ Blob Service 默认监听独立服务端口，避免大字节读写和 Agent/业
 
 ## 3. 音频与转换边界
 
-当前语音录制链路是 Rust `cpal` 采集 PCM、`hound` 写 WAV、base64 上传为 Blob。
-这条路径体积大，但是真实实现。
+当前语音录制链路是 Rust `cpal` 采集 PCM、`hound` 写临时 WAV、macOS
+`afconvert` 压成 AAC/M4A，然后通过 multipart 上传为
+`blob://audio-input/...`。WAV 只是编码中间文件，不是上传 fallback。
 
-未来音频压缩应该是显式产品路径：
+音频压缩是显式产品路径：
 
 ```text
-Rust recorder → compressed container → Blob upload → audio tool consumes blob://audio-input/...
+Rust recorder → compressed AAC/M4A container → Blob upload → audio tool consumes blob://audio-input/...
 ```
 
 Blob Service 不应在保存字节时偷偷转码。需要转码时，应由显式 tool 或 pipeline 读取一个 BlobRef，产出另一个 BlobRef，并把处理结果作为 observation/payload ref 写回上层。

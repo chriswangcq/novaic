@@ -22,15 +22,18 @@ Implemented today:
   Large files use Gateway `/api/blobs/upload-config` for control-plane setup,
   direct Blob Service `/v1/blobs/uploads/*` raw part upload through the `/blob/`
   edge, then Gateway `/api/blobs/register` to preserve Business file metadata.
-- Rust audio recording captures PCM, writes WAV with `hound`, returns base64,
-  then the App uploads it as a normal Blob attachment.
+- Rust audio recording captures PCM, writes a temporary WAV with `hound`, then
+  explicitly compresses to AAC/M4A (`audio/mp4`) on macOS and returns compressed
+  bytes to the App. Audio messages are uploaded through multipart into
+  `blob://audio-input/...`.
 
 Not implemented today:
 
 - Direct browser/App upload to object storage.
 - PUT/POST presign for uploads.
-- Server-side audio transcode or compression.
 - Automatic payload compression by Blob Service.
+- Non-macOS compressed encoder path.
+- Server-side audio transcode.
 
 ## Boundary
 
@@ -77,10 +80,10 @@ Rules:
 
 ### Audio Compression
 
-The target audio path should avoid WAV/base64 for normal voice messages:
+The audio path avoids WAV/base64 for normal voice messages:
 
 ```text
-Rust recorder → compressed container → Blob upload → audio tool consumes blob://audio-input/...
+Rust recorder → compressed AAC/M4A container → Blob upload → audio tool consumes blob://audio-input/...
 ```
 
 Preferred implementation order:
@@ -114,11 +117,15 @@ Blob Service should not decide to transcode by itself.
 
 ### PR-214 Audio Compression Path
 
-- Replace normal voice-message WAV/base64 upload with a compressed client-side
+- Status: closed.
+- Normal voice-message upload now uses a compressed AAC/M4A client-side
   container.
-- Preserve Rust microphone path for WKWebView compatibility.
-- Record codec/duration/size metadata into Blob.
-- Add explicit transcode tool/pipeline only if needed by audio QA.
+- Rust microphone capture remains the WKWebView-compatible input path.
+- The App no longer decodes recorder base64 for voice messages.
+- Audio files force multipart upload into `audio-input` and use the
+  `voice_messages` product category.
+- Unsupported compressed encoder platforms fail explicitly; WAV upload fallback
+  is disabled.
 
 ### PR-215 Blob Payload Limits and Observability
 
@@ -129,12 +136,11 @@ Blob Service should not decide to transcode by itself.
 
 ## Acceptance
 
-The current system is acceptable only if docs say the truth: small attachments
-still use base64, large attachments use multipart raw bytes, and normal voice
-input is still WAV/base64 until PR-214.
+The current system is acceptable only if docs say the truth: small non-audio
+attachments still use base64, large attachments and audio use multipart raw
+bytes, and voice input is compressed before upload.
 
 Future implementation closes when:
 
 - Multipart has storage-backed resumable lifecycle and tests.
-- Normal voice input is compressed before upload.
 - Blob still stores refs and bytes only, with no hidden business interpretation.
