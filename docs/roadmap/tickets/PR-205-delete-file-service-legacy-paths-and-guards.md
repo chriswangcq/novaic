@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[code_done_pending_deploy]` |
+| Status | `[done]` |
 | Owner | Codex |
 | Created | 2026-05-04 |
 | Repos | all first-party repos, docs, CI |
@@ -34,7 +34,7 @@ Old path concepts are still present in package names, docs, tests, and examples.
 ## Deployment Checklist
 
 - [x] All touched repo tests pass.
-- [ ] Services deployed.
+- [x] Services deployed.
 - [x] Guardrails wired into CI or equivalent test suite.
 
 ## Implementation Notes
