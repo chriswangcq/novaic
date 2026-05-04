@@ -21,7 +21,7 @@ git submodule update --init --recursive
 | `novaic-agent-runtime` | Agent 运行时（Task/Saga/Workers） |
 | `novaic-mcp-vmuse` | MCP VMuse |
 | `novaic-common` | 共享库与配置（含 `config/services.json`） |
-| `novaic-storage-a` | File Service |
+| `novaic-storage-a` | Blob Service（历史目录名，迁移期仍含 `/api/files` facade） |
 | `novaic-cortex` | Cortex HTTP |
 | `Entangled` | 同步引擎（Python/Rust 等） |
 | `byclaw-website` | 官网 |

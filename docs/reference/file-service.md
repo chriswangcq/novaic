@@ -1,15 +1,20 @@
-# 文件服务与语音录制
+# 历史文件服务与语音录制
 
 > 对应原 `**HANDOVER.md` §十三**。
 
-## 文件服务统一（`/api/files/`）
+## 历史文件服务（`/api/files/`）
 
-历史 `**/api/images/`** 与 `**/api/files/**` 已统一到 `**/api/files/**`。
+这是迁移期考古页，不是新代码入口。新的大对象引用统一使用
+`blob://{namespace}/{blob_id}`，详见 `docs/reference/blob-service.md`。
+历史 `**/api/images/`** 与 `**/api/files/**` 曾统一到 `**/api/files/**`。
 
 ```
 截图/附件 → uploadChatFile() / Gateway POST /api/files/from-base64 → Storage-A /api/files/from-base64
 访问 → GET /api/files/{path} 或 POST /api/files/fetch → Gateway 校验 user_id → 代理 Storage-A
 ```
+
+上述路径只能作为历史数据迁移/清理参考；不要在新业务路径继续生成
+`fs://`、`/api/files/*` 或 service-private URL。
 
 ## 语音录制（Rust cpal）
 
