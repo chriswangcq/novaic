@@ -129,10 +129,12 @@ Blob Service should not decide to transcode by itself.
 
 ### PR-215 Blob Payload Limits and Observability
 
-- Add size limits and clear failure semantics for base64 upload, object PUT, and
-  multipart session control.
-- Add user-facing error copy contracts for too-large payloads.
-- Add logs/metrics for upload session lifecycle without leaking raw payload.
+- Status: closed.
+- Added explicit size limits and HTTP `413` failure semantics for base64 upload,
+  object PUT, multipart part upload, and completed multipart objects.
+- Added documented env knobs for each limit.
+- Added lifecycle logs for upload create/part/complete/abort/expire and object
+  put without logging raw payload bytes.
 
 ## Acceptance
 

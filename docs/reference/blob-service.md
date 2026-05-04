@@ -88,6 +88,14 @@ Current implementation:
 - App large chat attachments use Gateway `/api/blobs/upload-config` and direct
   `/blob/v1/blobs/uploads/*` raw part upload, then Gateway `/api/blobs/register`
   to create Business file metadata.
+- Payload limits are explicit:
+  - base64 decoded upload: `NOVAIC_BLOB_MAX_BASE64_BYTES` (default 8 MiB)
+  - object PUT: `NOVAIC_BLOB_MAX_OBJECT_PUT_BYTES` (default 64 MiB)
+  - multipart part: `NOVAIC_BLOB_MAX_MULTIPART_PART_BYTES` (default 16 MiB)
+  - multipart completed object: `NOVAIC_BLOB_MAX_MULTIPART_COMPLETED_BYTES`
+    (default 2 GiB)
+  Exceeding these limits returns HTTP `413`; lifecycle logs include ids,
+  namespace, tenant, size, and outcome, but not raw bytes.
 - `/v1/objects` writes a whole request body. It is for Cortex object-store files,
   not a user-facing resumable upload protocol.
 - The S3-compatible backend currently supports whole-object `put_object` and GET

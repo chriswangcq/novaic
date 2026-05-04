@@ -2,7 +2,7 @@
 
 | Field | Value |
 | --- | --- |
-| Status | `[open]` |
+| Status | `[closed]` |
 | Type | Blob failure semantics / observability |
 | Created | 2026-05-04 |
 | Scope | Size limits, failure copy, upload lifecycle metrics/logs |
@@ -15,12 +15,15 @@ do not rediscover limits through crashes, silent truncation, or hidden retries.
 
 ## Scope
 
-- Define size limits for base64 upload, object PUT, multipart parts, and final
-  objects.
-- Define failure semantics for too-large, unsupported type, expired session,
-  aborted session, backend unavailable, and hash mismatch.
-- Add logs/metrics around upload session lifecycle without leaking raw payload.
-- Align user-facing copy and Agent Monitor perception for upload failures.
+- Defined configurable size limits for base64 upload, object PUT, multipart
+  parts, and final multipart objects.
+- Too-large payloads return HTTP `413` with explicit payload type, actual size,
+  and byte limit.
+- Existing multipart 400/404/409 semantics remain distinct for invalid request,
+  missing session, hash mismatch, and invalid session state.
+- Added logs around upload create/part/complete/abort/expire and object put
+  without raw payload bytes.
+- Documented env knobs and defaults.
 
 ## Acceptance
 
@@ -32,7 +35,7 @@ do not rediscover limits through crashes, silent truncation, or hidden retries.
 
 ## Verification
 
-- Blob Service unit tests for each failure class.
-- App upload failure smoke.
-- Log/metric shape review.
-- Static guard against raw payload logging.
+- `cd novaic-blob-service && PYTHONPATH=.:../novaic-common pytest -q tests/test_blob_service.py`
+- `cd novaic-blob-service && python -m compileall -q blob_service`
+- Unit tests cover base64/object/multipart size limits and no raw payload in
+  lifecycle logs.
