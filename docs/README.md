@@ -11,7 +11,7 @@
 | 本地开发         | [runbooks/local-dev.md](runbooks/local-dev.md)、[local-backends.md](runbooks/local-backends.md)                                            |
 | 构建 / 部署 / 生产 | [build-and-release.md](runbooks/build-and-release.md)、[deploy.md](runbooks/deploy.md)、[cloud-production.md](runbooks/cloud-production.md) |
 | 排障           | [troubleshooting.md](runbooks/troubleshooting.md)                                                                                         |
-| 路线图 / 工单     | [roadmap/tickets/README.md](roadmap/tickets/README.md)、[roadmap/agent-perception-action-architecture.md](roadmap/agent-perception-action-architecture.md) |
+| 路线图 / 工单     | [roadmap/tickets/README.md](roadmap/tickets/README.md)、[roadmap/agent-perception-action-architecture.md](roadmap/agent-perception-action-architecture.md)、[roadmap/agent-monitor-final-product-shape.md](roadmap/agent-monitor-final-product-shape.md) |
 
 
 ## 架构
@@ -79,6 +79,7 @@
 | **[message-wake-refactor.md](roadmap/message-wake-refactor.md)** | **Message → Wake 重构实施清单（R1–R8 下沉）**，阶段化 checklist |
 | **[message-wake tickets/](roadmap/tickets/README.md)** | **Message → Wake 执行工单（每 PR 一文件）**，PR 粒度 checklist |
 | **[agent-perception-action-architecture.md](roadmap/agent-perception-action-architecture.md)** | **Agent Perception-Action 统一方案**：唯一主方案入口，统一 Environment、Observation/Percept、Cortex、Activity Timeline 和 payload interpretation |
+| **[agent-monitor-final-product-shape.md](roadmap/agent-monitor-final-product-shape.md)** | **Agent Monitor 最终产品形态**：底部胶囊、活动浮层、Observation/Reasoning/Action/Summary 展示合同 |
 | **[agent-activity-timeline.md](roadmap/agent-activity-timeline.md)** | **Agent Activity Timeline 专题索引**：不复制方案，只保留 Agent Monitor 用户面关注点 |
 | **[agent-subject-environment-im.md](roadmap/agent-subject-environment-im.md)** | **Agent Subject / Environment IM 专题索引**：不复制方案，只保留 Environment IM 边界关注点 |
 | [model-entity-refactor.md](roadmap/model-entity-refactor.md) | Model 三实体方案 |

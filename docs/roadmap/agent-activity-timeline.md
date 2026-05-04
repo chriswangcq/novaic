@@ -4,12 +4,13 @@
 | --- | --- |
 | 状态 | 已收敛为专题索引 |
 | 主方案 | `agent-perception-action-architecture.md` |
+| 产品形态 | `agent-monitor-final-product-shape.md` |
 
 ## 说明
 
-Agent Activity Timeline 的完整设计已经并入 `agent-perception-action-architecture.md`，本文不再复制一份细碎方案，避免同一概念在多处漂移。
+Agent Activity Timeline 的架构设计已经并入 `agent-perception-action-architecture.md`，最终产品形态固定在 `agent-monitor-final-product-shape.md`。本文不再复制一份细碎方案，避免同一概念在多处漂移。
 
-后续讨论和施工以主方案为准。
+后续架构讨论以主方案为准；用户面验收以最终产品形态文档为准。
 
 ## 本专题只保留关注点
 
@@ -39,8 +40,9 @@ Activity Timeline 是用户可见的 Agent Monitor，不是开发诊断面板，
 
 ## 施工入口
 
-详见主方案：
+详见：
 
 - `agent-perception-action-architecture.md#Activity Timeline`
+- `agent-monitor-final-product-shape.md`
 - `agent-perception-action-architecture.md#实施阶段`
 - `agent-perception-action-architecture.md#一致性检查`
