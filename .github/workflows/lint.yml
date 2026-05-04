@@ -45,6 +45,8 @@ jobs:
       run: ./scripts/ci/lint_entangled_schema_ssot.sh
     - name: Run current docs residue lint (PR-146)
       run: ./scripts/ci/lint_current_docs_residue.sh
+    - name: Run roadmap ticket archaeology lint (PR-210)
+      run: python3 scripts/ci/lint_roadmap_ticket_archaeology.py
     - name: Run start/config contract lint (PR-156)
       run: python3 scripts/ci/check_start_config_contract.py
     - name: Run agent main-path acceptance lint (PR-186 / PR-187)

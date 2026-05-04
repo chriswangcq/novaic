@@ -28,7 +28,7 @@
 
 ### P0-1 ~~Saga 未注册~~（假警报）
 
-- 核查结果：`task_queue/sagas/__init__.py` 自动导入 4 个模块全部存在；`saga_worker_sync.py:300-303` 枚举 4 类 saga_type。关闭。
+- 核查结果：`task_queue/sagas/__init__.py` 自动导入 4 个模块全部存在；`saga_worker.py:300-303` 枚举 4 类 saga_type。关闭。
 
 ### P0-2 `write_step` 返 None 判为失败
 

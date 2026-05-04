@@ -1,5 +1,8 @@
 # PR-16 Preflight 分析：Dispatch Subscriber 全量实现
 
+> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+
+
 本预案主要针对 PR-16 的核心消费逻辑展开架构与实现细节的深度决策分析，尤其聚焦跨进程边界、并发原语、容错重试以及灰度可观测性。
 
 ## 1. 读路径拓扑：坚守跨进程 HTTP 边界 (方案 A)

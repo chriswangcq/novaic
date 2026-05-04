@@ -1,5 +1,8 @@
 # PR-123: SubAgent IM target routing
 
+> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+
+
 ## 背景
 
 `SUBAGENT_SEND` / `SPAWN_SUBAGENT` 的 outbox payload 已经携带目标 `subagent_id`，但 subscriber dispatch 时没有把它传给 Runtime assembler，导致目标子 Agent 可能被发到 main agent session，破坏 IM 通信语义。

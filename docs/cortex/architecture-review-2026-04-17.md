@@ -13,7 +13,7 @@
 
 ## 0. 核实纠偏（bus factor note）
 
-Architect #1 / #6 均指出「`react_think.py` / `subagent_rest.py` / `saga_worker_sync.py` / `health_worker_sync.py` 缺失，saga 会 mark_failed」。**实地核查为假警报** —— 四个文件均存在且正确 `register_saga_definition`，`saga_worker_sync.py:300-303` 显式枚举 4 个 saga_type。原因：两位架构师读取到了不完整的 workspace 快照。
+Architect #1 / #6 均指出「`react_think.py` / `subagent_rest.py` / `saga_worker.py` / `health_worker_sync.py` 缺失，saga 会 mark_failed」。**实地核查为假警报** —— 四个文件均存在且正确 `register_saga_definition`，`saga_worker.py:300-303` 显式枚举 4 个 saga_type。原因：两位架构师读取到了不完整的 workspace 快照。
 
 其余发现已与本地代码一一对照，见下。
 
@@ -25,7 +25,7 @@ Architect #1 / #6 均指出「`react_think.py` / `subagent_rest.py` / `saga_work
 
 ### [P0] ~~`react_think` / `subagent_rest` sagas referenced but NOT registered~~ — FALSE POSITIVE
 
-- 实测 `sagas/__init__.py` 自动导入全部 4 个模块，`saga_worker_sync.py:300-303` 认识全部 4 类。
+- 实测 `sagas/__init__.py` 自动导入全部 4 个模块，`saga_worker.py:300-303` 认识全部 4 类。
 
 ### [P1] Subagent `current_scope_id` is a second "scope pointer" outside Cortex
 

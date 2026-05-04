@@ -67,9 +67,9 @@ GUARDED: list[str] = [
     # why: SchedulerWorker due-scan + dispatch.
     "novaic-agent-runtime/task_queue/workers/scheduler_worker.py",
     # why: SagaWorker (PR-34 34c) — same contract.
-    "novaic-agent-runtime/task_queue/workers/saga_worker_sync.py",
+    "novaic-agent-runtime/task_queue/workers/saga_worker.py",
     # why: TaskWorker (PR-34 34c) — same contract.
-    "novaic-agent-runtime/task_queue/workers/task_worker_sync.py",
+    "novaic-agent-runtime/task_queue/workers/task_worker.py",
 ]
 
 # Each rule is (label, compiled regex, hint). Regexes are applied line by

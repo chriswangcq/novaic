@@ -44,6 +44,12 @@
 
 ## 工单索引
 
+> PR-01..PR-85 and review files are historical archaeology unless a later
+> current ticket explicitly reopens them. Old terms such as `message_outbox`,
+> `SPAWN_SUBAGENT`, and removed subagent tools are not active architecture or
+> backlog items. Historical ticket/review files that mention these terms must
+> carry a `Historical ticket archive:` banner.
+
 
 | ID     | Status | 标题                                                                                                                          | 依赖                                       | 承诺          | 预估                                    | Owner       |
 | ------ | ------ | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | ----------- | ------------------------------------- | ----------- |
@@ -297,6 +303,7 @@
 | PR-207 | `[closed]` | [Cortex Blob-backed Store Cutover](PR-207-cortex-blob-store-cutover.md) | PR-206 | Storage boundary cleanup | multi-step | Cortex direct S3/OSS store removed; Blob Service owns object storage |
 | PR-208 | `[closed]` | [Current Documentation Drift Cleanup](PR-208-current-doc-drift-cleanup.md) | PR-207 | Docs entropy cleanup | 0.25 d | Current docs no longer present old Gateway/outbox paths as active |
 | PR-209 | `[closed]` | [Agent Monitor Final Product Shape](PR-209-agent-monitor-final-product-shape.md) | PR-193, PR-186D, PR-208 | Agent Monitor product contract | 0.25 d | Bottom capsule, activity layer, taxonomy, detail, and acceptance matrix defined |
+| PR-210 | `[closed]` | [Maintenance Tail Cleanup](PR-210-maintenance-tail-cleanup.md) | PR-209 | Maintenance entropy cleanup | 0.25-0.5 d | Active `_sync` worker naming tails removed; stale roadmap archaeology fenced and guarded |
 
 
 ---

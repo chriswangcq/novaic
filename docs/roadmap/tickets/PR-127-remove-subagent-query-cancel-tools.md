@@ -1,5 +1,8 @@
 # PR-127: Remove `subagent_query` and `subagent_cancel` LLM tools
 
+> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+
+
 ## 背景
 
 子 Agent 通信保留 `spawn` + `send` 两个 LLM 能力。`query` / `cancel` 属于旧控制面工具，不应暴露给模型作为聊天主路径能力。

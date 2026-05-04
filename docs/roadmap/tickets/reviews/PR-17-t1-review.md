@@ -1,5 +1,8 @@
 # PR-17 T1 Review — Canary Enable Subscriber
 
+> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+
+
 **日期**：2026-04-18
 **执行人**：Assistant（接管自 junior，见 preflight review guidance）
 **状态**：Code ready。等待生产 Canary 观察。

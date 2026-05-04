@@ -1,5 +1,8 @@
 # PR-26  `recovery_worker` orphan emitter + metrics + `/orphaned` 视图
 
+> Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
+
+
 | 字段 | 值 |
 | --- | --- |
 | **Phase** | 4（pending 告警） |
