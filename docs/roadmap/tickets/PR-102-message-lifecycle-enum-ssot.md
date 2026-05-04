@@ -60,5 +60,5 @@ Message kinds (`USER_MESSAGE`, `AGENT_REPLY`) and lifecycle states are reference
 
 - `./deploy business` restarted all backends successfully.
 - `./deploy frontend 0.3.0` published `https://relay.gradievo.com/resource/frontend/v0.3.0/`.
-- `./deploy status` showed Entangled, Gateway, Business, Device, Queue, File Service, Cortex, workers, and Relay running.
+- `./deploy status` showed Entangled, Gateway, Business, Device, Queue, Blob Service, Cortex, workers, and Relay running.
 - Remote import smoke on `api.gradievo.com` confirmed lifecycle states loaded from Common, Business outbox mapping matches the contract, and `INTERRUPT` is a hidden message type.

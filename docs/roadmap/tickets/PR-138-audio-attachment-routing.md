@@ -43,8 +43,8 @@ After PR-136 and PR-137, the tool exists and is visible, but user-uploaded audio
 - [x] Deploy Runtime.
   - Deployed as part of `./deploy services` on 2026-05-01.
 - [x] Production smoke: audio attachment appears in assembled LLM context with `audio_qa` hint.
-  - Local smoke confirmed audio attachment renders:
-    `请调用 audio_qa(file_url="fs://audio/voice.mp3", prompt="请转写并总结这段音频")`.
+  - Local smoke confirmed audio attachment renders an `audio_qa(...)` hint
+    using the attachment's BlobRef.
   - Production tools smoke confirmed `audio_qa` is available to the LLM after deploy.
 - [x] Update this ticket and parent submodule pointer.
 

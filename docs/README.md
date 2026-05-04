@@ -53,7 +53,7 @@
 | ---------------------------------------------------------------- | --------- |
 | [submodules.md](reference/submodules.md)                         | 子模块表      |
 | [config-and-environment.md](reference/config-and-environment.md) | 路径、env；**Cortex / NOVAIC_CORTEX_*** |
-| [file-service.md](reference/file-service.md)                     | Blob API、语音 |
+| [blob-audio.md](reference/blob-audio.md)                         | Blob 附件、语音 |
 
 
 ## Runbooks

@@ -27,7 +27,7 @@
 | **Device** | `19993` | Device registry、CloudBridge typed WS、hardware/VM/WebRTC API |
 | **Queue Service** | `19997` | Task/Saga/session 调度，拥有 `queue.db` |
 | **Cortex** | `19996` | Agent scope/context/work trace/payload/sandbox |
-| **Storage-A** | `19995` | Blob Service：字节与大对象 |
+| **Blob Service** | `19995` | 字节与大对象 |
 | **LLM Factory** | deployment-specific | provider/API key/model routing，标准 chat completions |
 | **Runtime Workers** | worker | Saga Worker、Task Worker、Health、Scheduler |
 | **Tauri App** | local | React UI、Entangled Rust cache、VmControl 本地端 |

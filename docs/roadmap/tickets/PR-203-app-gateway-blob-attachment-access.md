@@ -15,19 +15,16 @@ Move user attachments and previews onto BlobRef while keeping Gateway as auth/pr
 
 ## Current-State Analysis
 
-App currently uploads chat attachments through `gateway_post` to Gateway
-`/api/files/from-base64`, and Rust preview/download commands fetch through
-Gateway `/api/files/fetch`. Gateway proxies those requests to Storage-A legacy
-`/api/files/*` and registers Business `files` rows with `storage_key` values
-shaped as service-private file URLs. Business message actions preserve
-attachment `url` fields without requiring BlobRef.
+App attachment upload, preview, and download now use BlobRef semantics through
+Gateway's auth-bound Blob proxy. Gateway talks to Blob Service and Business
+persists product attachment metadata separately from raw byte storage.
 
-The new target is narrower:
+The target boundary is:
 
 - App sends upload bytes to Gateway Blob upload and receives `blob://...`.
 - Gateway remains auth/proxy edge and talks to Blob Service `/v1/blobs`.
 - Business `messages` attachments are product metadata carrying BlobRef, not
-  Storage-A private URL.
+  service-private storage URLs.
 - App preview/download resolves BlobRef through Gateway Blob fetch.
 
 ## Small Tickets
@@ -39,7 +36,7 @@ The new target is narrower:
 - [x] PR-203B — Gateway exposes only auth-bound blob proxy/presign helpers.
   - Scope: `main_gateway.py`, Gateway boundary tests.
   - Verification: upload/fetch/presign call Blob Service `/v1/blobs`; no new
-    upload/fetch path constructs `/api/files`.
+    upload/fetch path constructs retired file routes.
 - [x] PR-203C — Business message attachment fields store BlobRef, not
   service-private URL.
   - Scope: `business/message_actions.py`, `business/internal/message.py`,
@@ -50,12 +47,12 @@ The new target is narrower:
   without leaking storage internals.
   - Scope: App Rust cache commands and React rendering helper comments/tests.
   - Verification: preview/download fetches through `/api/blobs/fetch` and no
-    active App rendering path documents `fs://` or `/api/files` as supported.
+    active App rendering path documents retired file locators as supported.
 
 ## Done Criteria
 
 - Chat attachment upload and preview work with BlobRef.
-- App does not construct Storage-A URLs.
+- App does not construct service-private storage URLs.
 - Gateway does not own file business semantics.
 - Business persists product attachment semantics separately from Blob storage.
 

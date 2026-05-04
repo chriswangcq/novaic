@@ -15,7 +15,7 @@ Keep Cortex as the work-trace and scope system, while storing large raw payload 
 
 ## Current-State Analysis
 
-Cortex currently writes payload records into its own scope-local payload store through `Workspace.write_payload`. This is not Storage-A, but it still means Cortex owns large payload storage directly.
+Cortex currently writes payload records into its own scope-local payload store through `Workspace.write_payload`. This means Cortex owns large payload storage directly unless it externalizes large bytes to Blob Service.
 
 ## Small Tickets
 
@@ -46,7 +46,7 @@ Cortex currently writes payload records into its own scope-local payload store t
 - Large payload externalization requires `CORTEX_BLOB_SERVICE_URL`; if a payload crosses the threshold and the Blob URL is missing, Cortex fails fast instead of silently falling back.
 - `Workspace.write_step` updates both `step.payload_ref` and `step.observation.payload_ref` to the returned `blob://cortex-payload/...` ref when externalized.
 - `Workspace.read_payload` resolves external BlobRefs explicitly through Blob Service, so payload read/search/summarize/qa continue to use the same Cortex payload API.
-- `scripts/start.sh` exports `CORTEX_BLOB_SERVICE_URL=$FS_URL` before starting Cortex.
+- `scripts/start.sh` exports `CORTEX_BLOB_SERVICE_URL` from the Blob Service URL before starting Cortex.
 
 ## Verification
 

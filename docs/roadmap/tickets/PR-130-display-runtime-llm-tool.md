@@ -9,8 +9,8 @@
 - 将 `display` 加入 `common.tools.llm_builtin.AGENT_BUILTIN_TOOL_SCHEMAS`。
 - 将 common 产品工具目录里的 `multimodal.display` 改为从 canonical LLM schema 适配。
 - 在 Runtime `tool_handlers` 中实现 `display` executor：
-  - 只解析 File Service `fs://...` / `/api/files/...` 文件引用。
-  - 使用 `X-User-ID` 从 File Service 拉取文件字节。
+  - 只解析 BlobRef 文件引用。
+  - 使用 `X-User-ID` 从 Blob Service 拉取文件字节。
   - 图片按 `_mcp_content` image 返回给 LLM；文本按 `_mcp_content` text 返回；其他二进制返回 metadata 文本。
 - 修正 Cortex step result projection：Runtime 保存 step result 时若是 JSON 字符串，投影层需要解析其中的 `_mcp_content`，否则下一轮 LLM 只能看到 JSON 文本。
 - 给 execution log 增加用户可理解的 display 摘要。

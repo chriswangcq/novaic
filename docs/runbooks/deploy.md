@@ -18,7 +18,7 @@
 | 前端 OTA | `./deploy frontend [version]`（默认版本见脚本内 `VERSION`） |
 | 仅 Gateway + Entangled 等网关侧 | `./deploy gateway` |
 | 全部后端（多 submodule rsync + 远端 `start.sh`） | `./deploy services` |
-| 单个后端（仍会触发**全量**远端重启） | `./deploy runtime` / `./deploy cortex` / `./deploy storage-a` 等 |
+| 单个后端（仍会触发**全量**远端重启） | `./deploy runtime` / `./deploy cortex` / `./deploy blob-service` 等 |
 | Relay（QUIC） | `./deploy relay` |
 | LLM Factory | `./deploy factory` |
 | iOS IPA | `./deploy ios` |
@@ -31,7 +31,7 @@
 ## 行为说明
 
 - **`deploy gateway`**：同步 `novaic-common`、`novaic-gateway`、`Entangled`，再 SSH 执行 `bash /opt/novaic/start.sh --stop && bash /opt/novaic/start.sh`。
-- **`deploy services`**：对上述及 `novaic-agent-runtime`、`novaic-storage-a`、`novaic-cortex` 等批量 rsync，再统一 `start.sh` 重启。
+- **`deploy services`**：对上述及 Runtime、Blob Service、Cortex 等批量 rsync，再统一 `start.sh` 重启。
 - 远端服务目录默认为 **`/opt/novaic/services/<name>/`**。
 
 ## 相关

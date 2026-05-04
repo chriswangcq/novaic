@@ -54,4 +54,4 @@ cd novaic-app/src-tauri && cargo check
 ./deploy status
 ```
 
-Production smoke: `./deploy status` reported Entangled, Gateway, Business, Device, Queue, Storage-A, Cortex, 8 workers, and Relay healthy. Remote Cortex `POST /v1/trace/project` returns `404`; deployed Business schema contains `agent-activity-records` and `agent-activity-participants`, and no longer registers `activity_timeline`.
+Production smoke: `./deploy status` reported Entangled, Gateway, Business, Device, Queue, Blob Service, Cortex, 8 workers, and Relay healthy. Remote Cortex `POST /v1/trace/project` returns `404`; deployed Business schema contains `agent-activity-records` and `agent-activity-participants`, and no longer registers `activity_timeline`.

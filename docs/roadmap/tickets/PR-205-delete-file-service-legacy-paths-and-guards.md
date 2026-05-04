@@ -1,4 +1,4 @@
-# PR-205 — Delete File Service Legacy Paths and Guardrails
+# PR-205 — Delete Retired File Paths and Guardrails
 
 | Field | Value |
 | --- | --- |
@@ -11,7 +11,7 @@
 
 ## Goal
 
-Physically delete old Storage-A/File Service naming and hot paths once BlobRef is the only active path.
+Physically delete old file-service naming and hot paths once BlobRef is the only active path.
 
 ## Current-State Analysis
 
@@ -19,16 +19,16 @@ Old path concepts are still present in package names, docs, tests, and examples.
 
 ## Small Tickets
 
-- [x] PR-205A — Delete active Storage-A/File Service hot-path code.
+- [x] PR-205A — Delete active retired-file hot-path code.
 - [x] PR-205B — Rename remaining service/package/docs to Blob Service where still active.
 - [x] PR-205C — Remove Cortex `HttpFileFetcher("storage-a")` style path or replace with Blob resolver.
-- [x] PR-205D — Add static guards banning new `storage-a`, `fs://`, and `/api/files` hot-path writes.
+- [x] PR-205D — Add static guards banning retired file-route hot-path writes.
 
 ## Done Criteria
 
-- `rg storage-a` only finds migration/archive notes or service deployment name if still unavoidable.
-- `rg fs://` does not find new-write active paths.
-- `rg /api/files` does not find App/Gateway hot-path construction.
+- Static guards do not find retired file-route writes in active code.
+- New large-object references use Blob refs.
+- App/Gateway hot paths do not construct retired file routes.
 - CI guards fail on legacy resurrection.
 
 ## Deployment Checklist
@@ -39,7 +39,7 @@ Old path concepts are still present in package names, docs, tests, and examples.
 
 ## Implementation Notes
 
-- Storage-A active API now exposes only `/v1/blobs/*`; the old file facade,
+- Blob Service active API now exposes only `/v1/blobs/*`; the retired facade,
   resolver, client, and storage helpers were physically deleted.
 - Gateway no longer serves the legacy file proxy routes; it only exposes Blob
   access under `/api/blobs/*`.
@@ -50,7 +50,7 @@ Old path concepts are still present in package names, docs, tests, and examples.
 - Active docs now describe Blob Service and Blob proxy semantics; historical
   migration notes remain only in roadmap tickets.
 - Added parent CI guard `scripts/ci/test_no_legacy_file_hot_paths.py` to prevent
-  legacy hot-path tokens from reappearing in active code.
+  retired hot-path tokens from reappearing in active code.
 
 ## Verification
 

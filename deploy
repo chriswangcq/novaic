@@ -18,7 +18,7 @@ FACTORY_HOST="root@newapi.gradievo.com"
 FACTORY_SSH="ssh $FACTORY_HOST"
 VERSION="${2:-0.3.0}"
 SERVICES_DIR="/opt/novaic/services"
-RSYNC_EXCLUDE="--exclude .git --exclude __pycache__ --exclude .pytest_cache --exclude .mypy_cache --exclude '*.pyc' --exclude target --exclude .venv --exclude node_modules --exclude '*.db'"
+RSYNC_EXCLUDE="--exclude .git --exclude __pycache__ --exclude .pytest_cache --exclude .mypy_cache --exclude '*.pyc' --exclude target --exclude build --exclude dist --exclude artifacts --exclude .venv --exclude node_modules --exclude '*.db'"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -37,8 +37,9 @@ rsync_service() {
   local local_dir="$REPO_ROOT/$name"
   [ -d "$local_dir" ] || fail "本地目录不存在: $local_dir"
   info "同步 $name..."
-  # Clean stale Python/test caches first so --delete can remove empty parent dirs.
-  $API_SSH "find $SERVICES_DIR/$name -type d \( -name __pycache__ -o -name .pytest_cache -o -name .mypy_cache \) -exec rm -rf {} + 2>/dev/null" || true
+  # Clean stale generated artifacts first. These are excluded from rsync, so
+  # --delete cannot remove old build outputs by itself.
+  $API_SSH "find $SERVICES_DIR/$name -type d \( -name __pycache__ -o -name .pytest_cache -o -name .mypy_cache -o -name build -o -name dist -o -name artifacts \) -exec rm -rf {} + 2>/dev/null" || true
   rsync -avzL --delete $RSYNC_EXCLUDE -e ssh "$local_dir/" "$API_HOST:$SERVICES_DIR/$name/" || fail "rsync $name 失败"
 }
 
@@ -206,7 +207,7 @@ check_status() {
         19998) svc="business" ;;
         19993) svc="device" ;;
         19997) svc="queue-svc" ;;
-        19995) svc="storage-a" ;;
+        19995) svc="blob-service" ;;
         19996) svc="cortex" ;;
       esac
       if [ -n "$pid" ]; then
@@ -296,7 +297,7 @@ show_help() {
   echo "  device            部署 Device Service"
   echo "  runtime           部署 Agent Runtime (workers)"
   echo "  cortex            部署 Cortex (LLM 编排)"
-  echo "  storage-a         部署 Blob Service"
+  echo "  blob-service      部署 Blob Service"
   echo "  entangled         部署 Entangled (实体同步)"
   echo "  services          部署全部后端"
   echo ""
@@ -318,7 +319,7 @@ case "${1}" in
   business)       deploy_shared_venv_service "novaic-business" ;;
   device)         deploy_shared_venv_service "novaic-device" ;;
   runtime)        deploy_single_service "novaic-agent-runtime" ;;
-  storage-a)      deploy_single_service "novaic-storage-a" ;;
+  blob-service)   deploy_single_service "novaic-storage-a" ;;
   cortex)         deploy_single_service "novaic-cortex" ;;
   entangled)      rsync_service "novaic-common"; rsync_service "Entangled"; sync_start_sh; restart_all; ok "Entangled 已部署" ;;
   services)       deploy_services ;;

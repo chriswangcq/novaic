@@ -15,7 +15,10 @@ Define the shared Blob Service contract before changing any runtime path. The co
 
 ## Current-State Analysis
 
-`novaic-storage-a` still exposes a `file_service` package and `/api/files/*` API that returns `fs://...` references. Cortex has its own `CortexStore` and only has an unused/test-only `FileResolver` Storage-A fetcher path. There is no shared BlobRef contract in `novaic-common`.
+The old product-file service shape has been removed from active code and
+deployment. The remaining contract is the shared BlobRef boundary in
+`novaic-common`, while Cortex keeps its own work-trace store and externalizes
+large payload bytes only through Blob Service refs.
 
 ## Small Tickets
 

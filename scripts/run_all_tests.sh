@@ -61,8 +61,8 @@ run_guard "lifecycle-loop-ownership" "scripts/ci/lint_lifecycle_loop_ownership.s
 # 1. agent-runtime (unit)
 run_tests "novaic-agent-runtime" "agent-runtime" "tests/unit/" || true
 
-# 2. storage-a
-run_tests "novaic-storage-a" "storage-a" "" || true
+# 2. Blob Service
+run_tests "novaic-storage-a" "blob-service" "" || true
 
 echo ""
 echo "========== SUMMARY =========="

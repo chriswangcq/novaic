@@ -45,14 +45,14 @@ The migration spans App, Gateway, Business, Runtime, Cortex, and Blob Service. U
 - Deployed all backend services via `./deploy services`; second deploy verified
   the production `start.sh` label now reports `Blob Service :19995`.
 - Added deployment/runbook guard coverage for `deploy`, `scripts/start.sh`, and
-  `novaic-app/scripts/start-backends.sh` so old File Service wording cannot
+  `novaic-app/scripts/start-backends.sh` so old file-service wording cannot
   re-enter active operational scripts.
 - Updated the local dev start script to use Blob Service labels and logs.
 
 ## Verification
 
 - `./deploy services` → all backend services restarted successfully.
-- `./deploy status` → Entangled, Gateway, Business, Device, Queue, storage-a,
+- `./deploy status` → Entangled, Gateway, Business, Device, Queue, Blob Service,
   Cortex, workers, and relay active.
 - Production Gateway upload/fetch smoke through loopback:
   - `POST /api/blobs/from-base64` with `X-User-ID` returned
@@ -67,3 +67,8 @@ The migration spans App, Gateway, Business, Runtime, Cortex, and Blob Service. U
   `LEGACY_COUNT /opt/novaic/data/entangled.db 0`.
 - Local App cache audit:
   `LEGACY_COUNT ~/Library/Application Support/com.novaic.app/entangled_cache.db 0`.
+- Post-migration production purge removed retired compatibility DBs/backups and
+  old file storage directories. Remaining active DBs are `entangled.db`,
+  `gateway.db`, `queue.db`, and `device.db`.
+- Active code now uses `blob_service`, `BLOB_SERVICE_URL`, and
+  `main_blob_service.py`; the old package/entrypoint was physically removed.
