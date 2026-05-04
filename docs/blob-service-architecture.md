@@ -34,15 +34,15 @@ Blob Service 默认监听独立服务端口，避免大字节读写和 Agent/业
 - `/v1/blobs/{namespace}/{blob_id}`：读取字节。
 - `/v1/blobs/{namespace}/{blob_id}/info`：读取 Blob 元数据。
 - `/v1/blobs/{namespace}/{blob_id}/presign`：GET presign/proxy 访问。
+- `/v1/blobs/uploads/*`：multipart upload session，part 使用 raw bytes，
+  complete 后才生成稳定 Blob metadata。
 - `/v1/objects/*`：Cortex object-tree 的 `put/get/list/move/delete` 原语。
 - S3-compatible 后端当前使用 whole-object `put_object` 和 GET presign。
 
 未实现的能力不要当成当前主路径：
 
-- multipart upload session
 - direct browser/App upload to object storage
 - PUT/POST upload presign
-- resumable upload state
 - server-side audio transcode/compression
 
 这些能力的目标方案见 `docs/roadmap/blob-large-file-multipart-audio.md`。
