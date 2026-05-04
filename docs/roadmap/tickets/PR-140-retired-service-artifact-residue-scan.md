@@ -10,7 +10,9 @@
 
 ## Goal
 
-Find physically retained references to retired services or packaged artifacts that can mislead future work, especially TRS, tools-server, storage-b, Runtime Orchestrator, and old MCP hot paths.
+Find physically retained references to retired services or packaged artifacts
+that can mislead future work, especially retired result-store artifacts,
+tools-server, storage-b, Runtime Orchestrator, and old MCP hot paths.
 
 ## Scan Plan
 
@@ -33,7 +35,8 @@ Find physically retained references to retired services or packaged artifacts th
 - Common wording residue:
   - `novaic-common/common/tools/__init__.py` still describes shared definitions for `gateway` and `tools_server`.
 - Root `scripts/start.sh` still has a `pkill main_runtime_orchestrator.py` cleanup line.
-- No packaged `tools-server`, `storage-b`, or TRS binaries were found in the scanned packaged artifact paths.
+- No packaged `tools-server`, `storage-b`, or retired result-store binaries were
+  found in the scanned packaged artifact paths.
 
 ## Follow-up Decision
 

@@ -15,7 +15,7 @@ Gateway 已从旧的 "God Module" 收窄为薄边缘：
 | App WS push / signaling | Entangled schema authority |
 | Entangled sync endpoint discovery | 业务 entity proxy |
 | TURN / WebRTC signaling 参数 | Runtime tool registry |
-| Blob proxy | Cortex scope / context / summary |
+| Blob edge | Cortex scope / context / summary |
 
 App 的业务数据主路径是：
 

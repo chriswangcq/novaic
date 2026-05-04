@@ -31,7 +31,7 @@ next optimization. If an item is worth doing, create a concrete PR ticket under
 
 | Service | Owns | Must Not Own |
 |---|---|---|
-| Gateway | Auth, App WS push/signaling, Entangled endpoint discovery, TURN, Blob proxy | Agent wake, entity schema authority, tool registry, business orchestration |
+| Gateway | Auth, App WS push/signaling, Entangled endpoint discovery, TURN, Blob edge | Agent wake, entity schema authority, tool registry, business orchestration |
 | Entangled | Entity persistence, schema/action registration, sync WS | Agent-loop decisions, Cortex summaries, tool execution |
 | Business | Product action hooks, Environment, SubAgent, Device orchestration, model/config product APIs | Queue execution state, Cortex context assembly, hidden memory inference |
 | Queue / Runtime | Saga/task/session execution, LLM loop, Runtime tool executors | Product entity storage, Gateway edge, long-term memory |
@@ -116,7 +116,7 @@ must remain different from automatic memory:
 
 ## Already Closed / Do Not Reopen Without New Evidence
 
-- TRS / tools-server / old MCP hot path.
+- Retired result-store service / tools-server / old MCP hot path.
 - Gateway business entity proxy and Gateway tool registry.
 - `message_outbox` / `chat_messages.lifecycle` as Agent-loop state.
 - `subagent_report`, `subagent_query`, `subagent_cancel` LLM tools.

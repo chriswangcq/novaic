@@ -100,7 +100,7 @@ Good:
 
 Bad:
 
-- `tool result_id: trs:...`
+- raw tool result identifiers or payload locator strings
 - Raw JSON payload.
 - Raw HTTP response.
 - `_mcp_content`.
@@ -244,4 +244,3 @@ The final shape is a contract. Future implementation work should be split into s
 3. Add acceptance coverage for bottom-pinned layer scrolling and user-scroll preservation.
 4. Add acceptance coverage for reasoning/detail expansion.
 5. Add guardrails that public monitor rows never include raw MCP, raw HTTP, result ids, or stack traces.
-

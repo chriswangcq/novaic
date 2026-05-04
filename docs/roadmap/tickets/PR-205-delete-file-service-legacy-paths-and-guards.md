@@ -47,7 +47,7 @@ Old path concepts are still present in package names, docs, tests, and examples.
   Blob Service with tenant headers.
 - Cortex file resolver exports/tests were deleted; large payloads remain behind
   Blob refs and are projected through Cortex observation/payload paths.
-- Active docs now describe Blob Service and Blob proxy semantics; historical
+- Active docs now describe Blob Service and Blob edge semantics; historical
   migration notes remain only in roadmap tickets.
 - Added parent CI guard `scripts/ci/test_no_legacy_file_hot_paths.py` to prevent
   retired hot-path tokens from reappearing in active code.

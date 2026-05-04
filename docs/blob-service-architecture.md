@@ -48,7 +48,7 @@ Blob Service 默认监听独立服务端口，避免大字节读写和 Agent/业
 
 - JSON/base64 上传 API
 - Gateway `/api/blobs/from-base64`
-- Gateway app Blob download/fetch/presign proxy
+- Gateway app Blob download/fetch/presign data-plane routes
 
 这些能力的目标方案见 `docs/roadmap/blob-large-file-multipart-audio.md`。
 

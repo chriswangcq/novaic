@@ -13,7 +13,7 @@ Runtime owns dispatch; individual services own execution:
 | Local resource inspection | `display`, `audio_qa`, `sleep` | Runtime native executors |
 | Device actions | VM/desktop/mobile operations | Business → Device → CloudBridge/VmControl |
 
-There is no separate Tools Server, TRS service, or Gateway tool registry in the
+There is no separate Tools Server, external result-store service, or Gateway tool registry in the
 current path. Gateway remains a thin edge service; Business is the domain hub;
 Cortex owns scope/context/sandbox; Runtime performs the dispatch decision.
 

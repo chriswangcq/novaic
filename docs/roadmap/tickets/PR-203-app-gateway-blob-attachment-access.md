@@ -11,21 +11,23 @@
 
 ## Goal
 
-Move user attachments and previews onto BlobRef while keeping Gateway as auth/proxy edge, not a file business service.
+Move user attachments and previews onto BlobRef while keeping Gateway as auth
+edge, not a file business service.
 
 ## Current-State Analysis
 
-App attachment upload, preview, and download now use BlobRef semantics through
-Gateway's auth-bound Blob proxy. Gateway talks to Blob Service and Business
-persists product attachment metadata separately from raw byte storage.
+App attachment upload, preview, and download now use BlobRef semantics. Upload
+uses Gateway control-plane endpoints plus Blob multipart bytes; download uses
+the authenticated `/blob/` edge. Business persists product attachment metadata
+separately from raw byte storage.
 
 The target boundary is:
 
-- App sends upload bytes to Gateway Blob upload and receives `blob://...`.
-- Gateway remains auth/proxy edge and talks to Blob Service `/v1/blobs`.
+- App sends upload bytes through Blob multipart and receives `blob://...`.
+- Gateway remains auth edge and exposes Blob control-plane registration only.
 - Business `messages` attachments are product metadata carrying BlobRef, not
   service-private storage URLs.
-- App preview/download resolves BlobRef through Gateway Blob fetch.
+- App preview/download resolves BlobRef through the `/blob/` edge.
 
 ## Small Tickets
 
@@ -33,9 +35,9 @@ The target boundary is:
   - Scope: `src/services/fileUpload.ts`, message attachment VM types/tests.
   - Verification: App unit tests assert uploaded metadata uses `blob_ref` /
     `blob://`.
-- [x] PR-203B — Gateway exposes only auth-bound blob proxy/presign helpers.
+- [x] PR-203B — Gateway exposes only Blob control-plane helpers.
   - Scope: `main_gateway.py`, Gateway boundary tests.
-  - Verification: upload/fetch/presign call Blob Service `/v1/blobs`; no new
+  - Verification: upload/register calls Blob Service `/v1/blobs`; no new
     upload/fetch path constructs retired file routes.
 - [x] PR-203C — Business message attachment fields store BlobRef, not
   service-private URL.
@@ -46,7 +48,7 @@ The target boundary is:
 - [x] PR-203D — Agent Monitor and chat rendering resolve BlobRef for display
   without leaking storage internals.
   - Scope: App Rust cache commands and React rendering helper comments/tests.
-  - Verification: preview/download fetches through `/api/blobs/fetch` and no
+  - Verification: preview/download fetches through `/blob/` edge and no
     active App rendering path documents retired file locators as supported.
 
 ## Done Criteria
@@ -72,10 +74,10 @@ The target boundary is:
 - Uploaded attachment metadata carries `blob_ref` and uses the same
   `blob://...` value as the display locator.
 - App Rust cache commands now fetch `blob://...` refs through
-  `/api/blobs/fetch` and reject non-Blob file references.
-- Gateway exposes upload config/register, `/api/blobs/fetch`,
-  `/api/blobs/{namespace}/{blob_id}`, and presign proxy routes. These call Blob
-  Service with `X-Tenant-ID` and keep file product metadata in Business.
+  `/blob/v1/blobs/{namespace}/{blob_id}` and reject non-Blob file references.
+- Gateway exposes upload config/register as control plane. Blob bytes move
+  through the `/blob/` edge with `X-Tenant-ID`; file product metadata stays in
+  Business.
 - Business file metadata registration now validates `storage_key` as
   `blob://...` and defaults `storage_backend` to `blob-service`.
 - Business message attachments now normalize to `blob_ref`/`url =

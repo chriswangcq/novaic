@@ -15,7 +15,9 @@ Replace product-facing and active Runtime/Cortex join-key naming that still says
 
 ## Current-State Analysis
 
-`payload_ref` is the correct raw payload locator. Some active Cortex/Runtime internals still use `result_id` as the step/payload join key, which is easy to confuse with retired TRS/execution-log terminology.
+`payload_ref` is the correct raw payload locator. Some active Cortex/Runtime
+internals still use `result_id` as the step/payload join key, which is easy to
+confuse with retired result-store or execution-log terminology.
 
 ## Implementation
 

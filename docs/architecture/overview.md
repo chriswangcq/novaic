@@ -1,12 +1,12 @@
 # NovAIC 架构概览（L1）
 
-本文档描述父仓库视角的当前系统拓扑。细节以各子模块源码和专题文档为准；历史 Gateway-centric、TRS、Runtime Orchestrator、Gateway entity proxy 叙述不作为当前实现依据。
+本文档描述父仓库视角的当前系统拓扑。细节以各子模块源码和专题文档为准；历史 Gateway-centric、Runtime Orchestrator、Gateway entity proxy 叙述不作为当前实现依据。
 
 ## 1. 当前逻辑拓扑
 
 ```text
 App
- ├─ HTTP/WS → Gateway：Auth、Blob Proxy、App push/signaling、Entangled endpoint discovery
+ ├─ HTTP/WS → Gateway：Auth、Blob edge、App push/signaling、Entangled endpoint discovery
  ├─ WS      → Entangled：实体同步、本地 Rust SQLite cache
  └─ action  → Entangled → Business：messages.send / devices / agents / skills 等产品动作
 
@@ -34,7 +34,7 @@ Device
 | 服务 | 职责 |
 |---|---|
 | `novaic-app` | React/Tauri UI、本地 Entangled Rust cache、本地 VmControl |
-| `novaic-gateway` | 薄边缘：Auth、App WS、TURN、Blob Proxy、Entangled sync endpoint discovery |
+| `novaic-gateway` | 薄边缘：Auth、App WS、TURN、Blob edge、Entangled sync endpoint discovery |
 | `Entangled` | 实体存储、schema/action 注册、HTTP + sync WS |
 | `novaic-business` | 产品业务：action hooks、Environment、SubAgent、Device 编排、配置/API |
 | `novaic-agent-runtime` | Queue Service、Saga/Task Workers、Health、Scheduler、tool executor |
@@ -51,7 +51,7 @@ Device
 | 服务 | 端口 | 说明 |
 |---|---:|---|
 | `entangled` | 19900 | 实体同步引擎 |
-| `gateway` | 19999 | Auth/App WS/Blob Proxy/TURN |
+| `gateway` | 19999 | Auth/App WS/Blob edge/TURN |
 | `business` | 19998 | 产品业务与 action hooks |
 | `device` | 19993 | 设备与硬件执行 |
 | `queue_service` | 19997 | Task/Saga/session 调度 |

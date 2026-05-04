@@ -9,7 +9,7 @@
 #
 # Services:
 #   - Entangled      :19900  Entity CRUD (single source of truth) + WS Sync
-#   - Gateway        :19999  Auth, App WS signaling, log broadcast, Blob proxy
+#   - Gateway        :19999  Auth, App WS signaling, log broadcast, Blob edge
 #   - Business       :19998  All /internal/* APIs, Entangled action hooks, schema push
 #   - Device         :19993  PC bridge WS, VM lifecycle, SSH key mgmt, WebRTC signaling
 #   - Queue Service  :19997  Task/Saga queue management

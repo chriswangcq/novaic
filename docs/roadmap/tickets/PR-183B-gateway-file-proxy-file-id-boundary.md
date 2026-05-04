@@ -4,14 +4,14 @@ Status: `[closed]` — 2026-05-03
 
 ## Finding
 
-Gateway previously exposed product-file proxy routes that mixed ownership
+Gateway previously exposed product-file routes that mixed ownership
 checks, storage resolution, and raw object access. Those routes have since been
-replaced by the Blob proxy boundary.
+replaced by the Blob edge boundary.
 
 ## Scope
 
 - Reject raw storage-path access at Gateway.
-- Preserve only auth-bound Blob proxy behavior.
+- Preserve only auth-bound Blob edge behavior.
 - Pass user identity explicitly when Gateway calls Blob Service so the storage
   owner boundary is not implicit.
 - Add source/route guard.
@@ -30,6 +30,6 @@ replaced by the Blob proxy boundary.
 
 - Raw storage-path bypasses return 404.
 - Gateway passes user identity explicitly to Blob Service.
-- Active product file access now goes through Blob proxy semantics.
+- Active product file access now goes through Blob edge semantics.
 - Added Gateway boundary guard.
 - Tests: `PYTHONPATH=. pytest -q tests/test_pr152_gateway_boundary.py`, `PYTHONPATH=. pytest -q`.

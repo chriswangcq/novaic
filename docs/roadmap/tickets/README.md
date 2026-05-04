@@ -310,7 +310,8 @@
 | PR-214 | `[closed]` | [Audio Compression Path](PR-214-audio-compression-path.md) | PR-211, PR-212 | Audio upload efficiency | 0.5 d | Voice recording now produces compressed AAC/M4A bytes and uploads audio through multipart `audio-input` blobs |
 | PR-215 | `[closed]` | [Blob Payload Limits and Observability](PR-215-blob-payload-limits-observability.md) | PR-211 | Blob failure semantics / observability | 0.25 d | Blob Service now has explicit payload limits, 413 errors, and raw-payload-safe lifecycle logs |
 | PR-216 | `[closed]` | [Remove Base64 Blob Upload Path](PR-216-remove-base64-blob-upload.md) | PR-212, PR-213, PR-214, PR-215 | Blob upload old-path deletion | 0.5 d | App/Gateway/Blob Service base64 upload path removed; all chat attachments upload via multipart raw bytes |
-| PR-217 | `[closed]` | [Direct Blob Download Edge](PR-217-direct-blob-download-edge.md) | PR-216 | Blob download data-plane cleanup | 0.25 d | App attachment downloads use `/blob/` edge; Gateway app Blob fetch/download/presign proxy routes removed |
+| PR-217 | `[closed]` | [Direct Blob Download Edge](PR-217-direct-blob-download-edge.md) | PR-216 | Blob download data-plane cleanup | 0.25 d | App attachment downloads use `/blob/` edge; Gateway app Blob fetch/download/presign data-plane routes removed |
+| PR-218 | `[closed]` | [Retired Tail Residue Cleanup](PR-218-retired-tail-residue-cleanup.md) | PR-216, PR-217 | Old-path residue cleanup | 0.5 d | Removed retained storage artifact, Blob edge doc wording, retired result-store naming fixtures, and Android JSON-base64 file/app endpoints |
 
 
 ---

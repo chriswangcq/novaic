@@ -4,7 +4,7 @@ Status: `[closed]` — 2026-05-03
 
 ## Goal
 
-Keep Gateway as a narrow Auth/App WS/file proxy boundary. Remove wording and branches that present current product transports as fallback paths, and delete file proxy routes that bypass file metadata ownership.
+Keep Gateway as a narrow Auth/App WS/file edge boundary. Remove wording and branches that present current product transports as fallback paths, and delete file routes that bypass file metadata ownership.
 
 ## Current-State Analysis
 
@@ -12,7 +12,7 @@ Keep Gateway as a narrow Auth/App WS/file proxy boundary. Remove wording and bra
   - `Authorization: Bearer <jwt>` for REST/WebSocket clients.
   - `X-Original-URI` token extraction for nginx-authenticated browser transports that cannot set custom headers.
 - Direct `?token=` on `/internal/auth/validate` is not part of the nginx auth_request contract.
-- Product file access now goes through Gateway's auth-bound Blob proxy.
+- Product file access now goes through the authenticated `/blob/` edge.
 - Direct raw storage-path proxying is a historical bypass and is no longer an
   active product path.
 
