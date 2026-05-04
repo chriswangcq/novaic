@@ -31,7 +31,7 @@
 ## 行为说明
 
 - **`deploy gateway`**：同步 `novaic-common`、`novaic-gateway`、`Entangled`，再 SSH 执行 `bash /opt/novaic/start.sh --stop && bash /opt/novaic/start.sh`。
-- **`deploy services`**：对上述及 Runtime、Blob Service、Cortex 等批量 rsync，再统一 `start.sh` 重启。
+- **`deploy services`**：对上述及 Runtime、Blob Service、Cortex 等批量 rsync，安装 Blob/Cortex/Runtime 独立 venv 依赖，再统一 `start.sh` 重启。
 - 远端服务目录默认为 **`/opt/novaic/services/<name>/`**。
 
 ## 相关

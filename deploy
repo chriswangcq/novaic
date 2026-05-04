@@ -43,6 +43,17 @@ rsync_service() {
   rsync -avzL --delete $RSYNC_EXCLUDE -e ssh "$local_dir/" "$API_HOST:$SERVICES_DIR/$name/" || fail "rsync $name 失败"
 }
 
+install_service_requirements() {
+  local name="$1"
+  [ -f "$REPO_ROOT/$name/requirements.txt" ] || return 0
+  info "安装 $name 依赖..."
+  $API_SSH "set -e; cd $SERVICES_DIR/$name; \
+    rm -rf .venv; \
+    python3 -m venv .venv; \
+    .venv/bin/python -m pip install -q -r requirements.txt" \
+    || fail "$name pip install 失败"
+}
+
 # ── 客户端部署 ────────────────────────────────────────────────────────────────
 
 deploy_frontend() {
@@ -111,11 +122,7 @@ deploy_single_service() {
   local name="$1"
   rsync_service "novaic-common"
   rsync_service "$name"
-  # Install pip deps if requirements.txt exists
-  if [ -f "$REPO_ROOT/$name/requirements.txt" ]; then
-    info "安装 $name 依赖..."
-    $API_SSH "cd $SERVICES_DIR/$name && source .venv/bin/activate 2>/dev/null && pip install -q -r requirements.txt" || warn "pip install 失败（可能无 venv）"
-  fi
+  install_service_requirements "$name"
   sync_start_sh
   restart_all
   ok "$name 已部署（全部服务已重启）"
@@ -141,12 +148,8 @@ deploy_services() {
     rsync_service "$svc"
   done
 
-  # Install pip deps for services with their own venv
-  for svc in novaic-cortex novaic-agent-runtime; do
-    if [ -f "$REPO_ROOT/$svc/requirements.txt" ]; then
-      info "安装 $svc 依赖..."
-      $API_SSH "cd $SERVICES_DIR/$svc && source .venv/bin/activate 2>/dev/null && pip install -q -r requirements.txt" || warn "$svc pip install 失败"
-    fi
+  for svc in novaic-storage-a novaic-cortex novaic-agent-runtime; do
+    install_service_requirements "$svc"
   done
 
   sync_start_sh

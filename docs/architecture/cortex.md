@@ -60,7 +60,7 @@ Agent Runtime 在 `session_init` 时确保一个长期存在的 `agent_root` sco
 | 组件 | 文件 | 职责 |
 |------|------|------|
 | `Workspace` | `workspace.py` | `/ro`/`/rw` ACL、scope 创建/结束/归档、step/context CRUD |
-| `WorkspaceRegistry` | `registry.py` | 按 user 缓存 `S3Store`，按 `(user_id, agent_id)` 缓存 `Workspace` |
+| `WorkspaceRegistry` | `registry.py` | 按 user 缓存 `BlobCortexStore`，按 `(user_id, agent_id)` 缓存 `Workspace` |
 | `ContextEngine` | `context_stack/engine.py` | LLM messages 拼装入口 |
 | `StepTreeBuilder` | `context_stack/step_tree.py` | 从 `_index.jsonl` 建树、折叠已关闭 scope |
 | `budget_compact` | `context_stack/budget.py` | token 预算压缩 |
@@ -80,8 +80,8 @@ Agent Runtime 在 `session_init` 时确保一个长期存在的 `agent_root` sco
 | 项 | 值 |
 |----|----|
 | 端口 | 19996 |
-| S3 | `novaic-s3-bucket` / `cortex/` / `oss-cn-hongkong`（以实际配置为准） |
-| 环境变量 | `ALIBABA_CLOUD_ACCESS_KEY_ID`、`ALIBABA_CLOUD_ACCESS_KEY_SECRET` |
+| Blob Service | `http://127.0.0.1:19995`（以实际配置为准） |
+| 物理存储 | 由 Blob Service 配置 OSS/S3 或本地测试后端 |
 | 启动 | `.venv/bin/python -m novaic_cortex.main_cortex` |
 | 健康检查 | `GET http://localhost:19996/health` |
 

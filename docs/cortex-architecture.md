@@ -73,7 +73,7 @@ agent-root      -> traversal entry, not shown in Active stack
 | 模块 | 职责 |
 | --- | --- |
 | `api.py` | FastAPI 路由：scope、context、steps、meta、shell、token、health |
-| `registry.py` | `WorkspaceRegistry`：按 user 缓存 `S3Store`，按 `(user, agent)` 缓存 `Workspace` |
+| `registry.py` | `WorkspaceRegistry`：按 user 缓存 `BlobCortexStore`，按 `(user, agent)` 缓存 `Workspace` |
 | `workspace.py` | `/ro` `/rw` ACL、scope 生命周期、step/context CRUD |
 | `context_stack/engine.py` | `ContextEngine`：合并 `context.jsonl` 与 Step Tree，输出 LLM messages |
 | `context_stack/step_tree.py` | `StepTreeBuilder` 与 scope fold 渲染 |

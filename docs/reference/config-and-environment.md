@@ -46,7 +46,7 @@ cd novaic-gateway && PYTHONPATH=. python -m unittest tests.test_deps_internal_ta
 
 ## Cortex 服务（`:19996`）
 
-Cortex 的 OSS、JWT、internal key 等生产值来自 `services.json`，启动时由 `scripts/start.sh` 作为 CLI 参数显式传入 `main_cortex`。Agent Runtime 访问 Cortex 的 URL/timeout 也来自 `ServiceConfig`，由同一份 `services.json` 派生。Cortex 不再接收 Business URL，也不提供 BusinessProxy。
+Cortex 的 JWT、internal key、Blob Service URL 等生产值来自 `services.json`，启动时由 `scripts/start.sh` 作为 CLI 参数显式传入 `main_cortex`。OSS/S3 物理后端配置属于 Blob Service，不属于 Cortex。Agent Runtime 访问 Cortex 的 URL/timeout 也来自 `ServiceConfig`，由同一份 `services.json` 派生。Cortex 不再接收 Business URL，也不提供 BusinessProxy。
 
 ---
 
