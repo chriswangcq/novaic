@@ -156,6 +156,7 @@ PYTHONPATH="$BASE/novaic-common:${PYTHONPATH:-}" \
 $(py novaic-gateway) "$BASE/novaic-gateway/main_gateway.py" \
     --host "$HOST" --port "$PORT_GATEWAY" --data-dir "$DATA_DIR" \
     --queue-service-url "$QS_URL" --blob-service-url "$BLOB_URL" \
+    --blob-upload-url "$BLOB_URL" \
     >> "$LOG_DIR/gateway-$(date +%Y%m%d).log" 2>&1 &
 wait_port "$PORT_GATEWAY" "Gateway" 30
 

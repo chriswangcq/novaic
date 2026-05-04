@@ -85,6 +85,9 @@ Current implementation:
 - `/v1/blobs/uploads/*` is the Blob Service multipart session API. Parts are raw
   bytes, sessions are tenant-scoped, and stable Blob metadata appears only after
   completion.
+- App large chat attachments use Gateway `/api/blobs/upload-config` and direct
+  `/blob/v1/blobs/uploads/*` raw part upload, then Gateway `/api/blobs/register`
+  to create Business file metadata.
 - `/v1/objects` writes a whole request body. It is for Cortex object-store files,
   not a user-facing resumable upload protocol.
 - The S3-compatible backend currently supports whole-object `put_object` and GET
@@ -92,7 +95,6 @@ Current implementation:
 
 Target direction:
 
-- Make large App uploads avoid base64 and avoid Gateway as data-plane.
 - Add upload presign/direct-to-object-storage if App data-plane needs to bypass
   Blob Service HTTP entirely.
 - Keep Blob as byte infrastructure; product meaning stays in Business/Cortex/App.
