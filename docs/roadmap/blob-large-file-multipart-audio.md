@@ -12,16 +12,15 @@ Implemented today:
 - Blob references use `blob://{namespace}/{blob_id}`.
 - `novaic-blob-service` stores bytes and metadata behind Disk or S3-compatible
   backends.
-- `/v1/blobs` accepts JSON base64 uploads and returns Blob metadata.
 - `/v1/blobs/uploads/*` supports multipart sessions with raw byte parts,
   tenant-scoped status/list/abort/expire, and complete-time Blob metadata.
 - `/v1/objects` supports raw body object-tree `put/get/list/move/delete` for
   Cortex store files.
 - S3-compatible backend uses whole-object `put_object` and GET presign.
-- App chat attachments use Gateway `/api/blobs/from-base64` for small files.
-  Large files use Gateway `/api/blobs/upload-config` for control-plane setup,
-  direct Blob Service `/v1/blobs/uploads/*` raw part upload through the `/blob/`
-  edge, then Gateway `/api/blobs/register` to preserve Business file metadata.
+- App chat attachments use Gateway `/api/blobs/upload-config` for control-plane
+  setup, direct Blob Service `/v1/blobs/uploads/*` raw part upload through the
+  `/blob/` edge, then Gateway `/api/blobs/register` to preserve Business file
+  metadata. This applies to small files, large files, and audio inputs.
 - Rust audio recording captures PCM, writes a temporary WAV with `hound`, then
   explicitly compresses to AAC/M4A (`audio/mp4`) on macOS and returns compressed
   bytes to the App. Audio messages are uploaded through multipart into
@@ -74,13 +73,13 @@ Rules:
 - Metadata is visible as a stable Blob only after `complete_upload`.
 - Incomplete sessions are garbage-collectable.
 - Part upload is idempotent by `(session_id, part_number, part_hash)`.
-- App must stop base64-encoding large files.
+- App must not base64-encode chat attachments.
 - Gateway may authorize and proxy control-plane calls, but must not become the
   data-plane for large bytes.
 
 ### Audio Compression
 
-The audio path avoids WAV/base64 for normal voice messages:
+The audio path avoids WAV upload for normal voice messages:
 
 ```text
 Rust recorder → compressed AAC/M4A container → Blob upload → audio tool consumes blob://audio-input/...
@@ -104,7 +103,8 @@ Blob Service should not decide to transcode by itself.
 - Define upload-session schema and lifecycle.
 - Store raw byte parts through the configured Blob backend.
 - Add unit tests for create/upload/complete/abort/idempotency.
-- Guard that `/v1/blobs` base64 path remains small-file only.
+- Historical note: at this point the small-file base64 path still existed; PR-216
+  later removed it entirely.
 
 ### PR-213 App Large Upload Cutover
 
@@ -130,17 +130,17 @@ Blob Service should not decide to transcode by itself.
 ### PR-215 Blob Payload Limits and Observability
 
 - Status: closed.
-- Added explicit size limits and HTTP `413` failure semantics for base64 upload,
-  object PUT, multipart part upload, and completed multipart objects.
+- Added explicit size limits and HTTP `413` failure semantics for object PUT,
+  multipart part upload, and completed multipart objects.
 - Added documented env knobs for each limit.
 - Added lifecycle logs for upload create/part/complete/abort/expire and object
   put without logging raw payload bytes.
 
 ## Acceptance
 
-The current system is acceptable only if docs say the truth: small non-audio
-attachments still use base64, large attachments and audio use multipart raw
-bytes, and voice input is compressed before upload.
+The current system is acceptable only if docs and tests say the truth: all App
+chat attachments use multipart raw bytes, voice input is compressed before
+upload, and no Gateway/Blob base64 upload API remains in active code.
 
 Future implementation closes when:
 

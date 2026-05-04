@@ -80,16 +80,13 @@ backend.
 
 Current implementation:
 
-- `/v1/blobs` is a base64 JSON upload path. It is not the target path for large
-  files.
 - `/v1/blobs/uploads/*` is the Blob Service multipart session API. Parts are raw
   bytes, sessions are tenant-scoped, and stable Blob metadata appears only after
   completion.
-- App large chat attachments use Gateway `/api/blobs/upload-config` and direct
+- App chat attachments use Gateway `/api/blobs/upload-config` and direct
   `/blob/v1/blobs/uploads/*` raw part upload, then Gateway `/api/blobs/register`
   to create Business file metadata.
 - Payload limits are explicit:
-  - base64 decoded upload: `NOVAIC_BLOB_MAX_BASE64_BYTES` (default 8 MiB)
   - object PUT: `NOVAIC_BLOB_MAX_OBJECT_PUT_BYTES` (default 64 MiB)
   - multipart part: `NOVAIC_BLOB_MAX_MULTIPART_PART_BYTES` (default 16 MiB)
   - multipart completed object: `NOVAIC_BLOB_MAX_MULTIPART_COMPLETED_BYTES`
@@ -106,6 +103,8 @@ Target direction:
 - Add upload presign/direct-to-object-storage if App data-plane needs to bypass
   Blob Service HTTP entirely.
 - Keep Blob as byte infrastructure; product meaning stays in Business/Cortex/App.
+- Do not reintroduce base64 upload APIs. All chat attachment uploads use raw
+  multipart bytes, including small files and audio inputs.
 
 See `docs/roadmap/blob-large-file-multipart-audio.md` for the detailed work
 orders.

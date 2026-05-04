@@ -26,7 +26,7 @@ disk or OSS behind a product-agnostic Blob API and returns `blob://...` refs.
 - [x] PR-200D — Document Blob API as the only active entrypoint.
 - [x] PR-200E — Update contract and smoke scripts so validation exercises `/v1/blobs`.
 - [x] PR-200F — Add disk-backend tenant isolation coverage for Blob API.
-- [x] PR-200G — Reject path-unsafe tenant ids and malformed base64 at the Blob boundary.
+- [x] PR-200G — Reject path-unsafe tenant ids and malformed upload payloads at the Blob boundary.
 
 ## Done Criteria
 
@@ -44,9 +44,11 @@ disk or OSS behind a product-agnostic Blob API and returns `blob://...` refs.
 ## Implementation Notes
 
 - Added the Blob infrastructure facade over the existing byte backend.
-- Added `/v1/blobs` create/info/read/presign/delete routes. They return `blob://...` metadata and never return raw payload in metadata responses.
+- Added Blob create/info/read/presign/delete routes. They return `blob://...`
+  metadata and never return raw payload in metadata responses.
 - PR-205 later deleted the temporary retired facade; the active API is now
-  `/v1/blobs/*` only.
+  `/v1/blobs/*` and `/v1/objects/*` only. PR-216 later removed the temporary
+  JSON/base64 Blob upload route; uploads now use multipart sessions.
 - Health reports `contract_version=blob/v1`.
 - Disk backend paths include tenant id under the Blob namespace so local/dev storage also respects tenant isolation.
 

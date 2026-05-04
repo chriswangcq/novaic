@@ -26,7 +26,6 @@ Gateway, Runtime, Cortex, or App carry large-byte data-plane responsibilities.
 
 - Multipart upload is idempotent by `(session_id, part_number, part_hash)`.
 - Incomplete sessions can be listed/expired/aborted.
-- Whole-object base64 path is guarded as small-file only.
 - Tests cover success, duplicate parts, wrong hash, abort, expiration, and tenant
   isolation.
 
@@ -34,7 +33,7 @@ Gateway, Runtime, Cortex, or App carry large-byte data-plane responsibilities.
 
 - Blob Service unit tests.
 - Backend-backed session lifecycle tests through Blob Service API.
-- Static guard that new large-file paths do not use `/v1/blobs` base64 upload.
+- Static guard that multipart paths use raw request bytes.
 
 ## Implementation
 
@@ -71,3 +70,8 @@ Gateway, Runtime, Cortex, or App carry large-byte data-plane responsibilities.
 
 Closed. Blob Service now has a real multipart session API. Direct App upload and
 upload presign remain separate follow-up work under PR-213.
+
+## Supersession
+
+PR-216 later removed the remaining whole-object base64 upload API. Multipart is
+now the only App attachment upload path.

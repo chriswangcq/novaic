@@ -65,15 +65,17 @@ The target boundary is:
 
 ## Implementation Notes
 
-- App chat uploads now call Gateway `/api/blobs/from-base64`; uploaded
-  attachment metadata carries `blob_ref` and uses the same `blob://...` value
-  as the display locator.
+- Historical note: this ticket first moved chat attachment semantics to
+  BlobRefs. PR-216 later retired the temporary Gateway base64 upload route.
+  The active upload path is Gateway `/api/blobs/upload-config` → Blob multipart
+  upload → Gateway `/api/blobs/register`.
+- Uploaded attachment metadata carries `blob_ref` and uses the same
+  `blob://...` value as the display locator.
 - App Rust cache commands now fetch `blob://...` refs through
   `/api/blobs/fetch` and reject non-Blob file references.
-- Gateway exposes `/api/blobs/from-base64`, `/api/blobs/fetch`,
+- Gateway exposes upload config/register, `/api/blobs/fetch`,
   `/api/blobs/{namespace}/{blob_id}`, and presign proxy routes. These call Blob
-  Service `/v1/blobs/*` with `X-Tenant-ID` and keep file product metadata in
-  Business.
+  Service with `X-Tenant-ID` and keep file product metadata in Business.
 - Business file metadata registration now validates `storage_key` as
   `blob://...` and defaults `storage_backend` to `blob-service`.
 - Business message attachments now normalize to `blob_ref`/`url =

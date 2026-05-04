@@ -54,11 +54,11 @@ The migration spans App, Gateway, Business, Runtime, Cortex, and Blob Service. U
 - `./deploy services` → all backend services restarted successfully.
 - `./deploy status` → Entangled, Gateway, Business, Device, Queue, Blob Service,
   Cortex, workers, and relay active.
-- Production Gateway upload/fetch smoke through loopback:
-  - `POST /api/blobs/from-base64` with `X-User-ID` returned
-    `blob://user-file/1777870667418-ffa72a140a2254f70ec778c1`.
-  - `POST /api/blobs/fetch` returned the original payload bytes.
-  - Old route probe returned `404`.
+- Historical production Gateway upload/fetch smoke through loopback used the
+  then-current temporary upload route and returned
+  `blob://user-file/1777870667418-ffa72a140a2254f70ec778c1`.
+  PR-216 later removed that route; active smokes should use multipart upload
+  plus Gateway register/fetch.
 - Production Blob Service health:
   `{"status":"ok","service":"blob-service","contract_version":"blob/v1"}`.
 - Production active-code scan found no legacy file hot-path tokens in Gateway,

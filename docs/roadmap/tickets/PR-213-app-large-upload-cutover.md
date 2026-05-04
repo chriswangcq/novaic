@@ -5,13 +5,13 @@
 | Status | `[closed]` |
 | Type | App upload data-plane cleanup |
 | Created | 2026-05-04 |
-| Scope | App upload strategy, Gateway control-plane authorization, base64 cutoff |
+| Scope | App upload strategy, Gateway control-plane authorization, multipart cutover |
 | Dependencies | PR-212 |
 
 ## Goal
 
-Move large user attachments away from base64 and Gateway data-plane upload while
-preserving the `blob://user-file/...` attachment contract.
+Move large user attachments away from Gateway data-plane upload while preserving
+the `blob://user-file/...` attachment contract.
 
 ## Scope
 
@@ -38,3 +38,8 @@ preserving the `blob://user-file/...` attachment contract.
 - `cd novaic-blob-service && PYTHONPATH=.:../novaic-common pytest -q tests/test_blob_service.py`
 - Static guards assert the large-upload path uses `/api/blobs/upload-config`,
   `/api/blobs/register`, `/v1/blobs/uploads`, and `X-Part-Sha256`.
+
+## Supersession
+
+PR-216 later removed the remaining small-file base64 upload path too. The active
+App upload path is now multipart for all chat attachments.
