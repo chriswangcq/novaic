@@ -22,6 +22,9 @@ ACTIVE_PATHS = (
     "novaic-common/common/tools",
     "novaic-common/common/utils",
     "novaic-cortex/novaic_cortex",
+    "deploy",
+    "scripts/start.sh",
+    "novaic-app/scripts/start-backends.sh",
 )
 
 

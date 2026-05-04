@@ -9,11 +9,11 @@
 #
 # Services:
 #   - Entangled      :19900  Entity CRUD (single source of truth) + WS Sync
-#   - Gateway        :19999  Auth, App WS signaling, log broadcast, file proxy
+#   - Gateway        :19999  Auth, App WS signaling, log broadcast, Blob proxy
 #   - Business       :19998  All /internal/* APIs, Entangled action hooks, schema push
 #   - Device         :19993  PC bridge WS, VM lifecycle, SSH key mgmt, WebRTC signaling
 #   - Queue Service  :19997  Task/Saga queue management
-#   - File Service   :19995  File upload/download
+#   - Blob Service   :19995  Blob upload/download
 #   - Cortex         :19996  Scope tree, LLM context assembly, Workspace, Sandbox
 #   - Workers        task-worker ×4, saga-worker ×2, health ×1, scheduler ×1
 #
@@ -169,8 +169,8 @@ wait_port "$PORT_QUEUE_SERVICE" "Queue Service"
 PYTHONPATH="$BASE/novaic-common:${PYTHONPATH:-}" \
 $(py novaic-storage-a) "$BASE/novaic-storage-a/main_file_service.py" \
     --host "$HOST" --port "$PORT_FILE_SERVICE" --data-dir "$DATA_DIR" \
-    >> "$LOG_DIR/file-service.log" 2>&1 &
-wait_port "$PORT_FILE_SERVICE" "File Service"
+    >> "$LOG_DIR/blob-service.log" 2>&1 &
+wait_port "$PORT_FILE_SERVICE" "Blob Service"
 
 mkdir -p "$DATA_DIR/cortex"
 # P3-6: Redis-backed scope lock (MANDATORY). Loopback-only redis-server

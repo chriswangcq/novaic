@@ -296,7 +296,7 @@ show_help() {
   echo "  device            部署 Device Service"
   echo "  runtime           部署 Agent Runtime (workers)"
   echo "  cortex            部署 Cortex (LLM 编排)"
-  echo "  storage-a         部署 File Service"
+  echo "  storage-a         部署 Blob Service"
   echo "  entangled         部署 Entangled (实体同步)"
   echo "  services          部署全部后端"
   echo ""
