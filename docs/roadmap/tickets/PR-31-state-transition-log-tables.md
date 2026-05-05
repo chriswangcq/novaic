@@ -118,7 +118,7 @@ sqlite3 ~/.novaic/data/entangled.db \
 | --- | --- | --- | --- |
 | **message** | Entangled SQL `message_state_transitions` 表 | `message_state.transition` 内部，co-transactional（`transaction("global")` 同块内 INSERT，和 `UPDATE chat_messages` 原子提交） | `GET /v1/state_transitions/message/{id}` / `GET /internal/messages/{id}/trace` 里的 `history[]` |
 | **subagent** | Entangled SQL `subagent_state_transitions` 表 | Business `subagent_state.transition` 成功 `store.update` 后，POST `/v1/state_transitions/subagent` （best-effort，失败仅 WARN 不 rollback） | `GET /v1/state_transitions/subagent/{id}` / `GET /internal/subagents/{agent_id}/{subagent_id}/state-history` |
-| **scope** | Cortex 本机 NDJSON 追加文件（默认 `~/.novaic/cortex/scope_state_transitions.ndjson`，`CORTEX_SCOPE_STATE_LOG` 覆盖） | `scope_state.transition` 在 meta.json 更新成功后 append | `GET /v1/scope/history?scope_path=...&limit=...` |
+| **scope** | Cortex 启动参数 `--scope-state-log-path` 指向的本机 NDJSON 追加文件 | `scope_state.transition` 在 meta.json 更新成功后 append | `GET /v1/scope/history?scope_path=...&limit=...` |
 
 Scope 侧选 NDJSON 而非 sqlite：Cortex 不依赖 Entangled，引入 HTTP/SQL 都是新的 coupling；NDJSON POSIX append 已是崩溃安全的写法，量级（每次对话几行）完全够用。跨主机聚合留给 sidecar（tail + 远送），不在本 PR 范围。
 

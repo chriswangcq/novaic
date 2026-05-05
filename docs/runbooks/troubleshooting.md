@@ -228,9 +228,9 @@ curl -s -H "X-Internal-Key: $CORTEX_KEY" \
 
 ```bash
 sqlite3 ~/.novaic/data/entangled.db ".schema subagent_state_transitions"
-# Scope 侧是 NDJSON：
-cat ~/.novaic/cortex/scope_state_transitions.ndjson | jq
-# 或按 CORTEX_SCOPE_STATE_LOG 覆盖过的路径。
+# Scope 侧是 Cortex 启动参数 --scope-state-log-path 指向的 NDJSON：
+ps aux | rg 'novaic_cortex.main_cortex|--scope-state-log-path'
+cat <scope-state-log-path> | jq
 ```
 
 ### PR-31b 新增：subagent 状态机独立查询入口

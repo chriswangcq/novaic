@@ -210,6 +210,7 @@ $(py novaic-cortex) -m novaic_cortex.main_cortex \
     --jwt-secret "$JWT_SECRET" \
     --internal-key "$CORTEX_INTERNAL_KEY" \
     --blob-service-url "$BLOB_URL" \
+    --scope-state-log-path "$DATA_DIR/cortex/scope_state_transitions.ndjson" \
     --redis-url "redis://127.0.0.1:6379/0" \
     --redis-lock-ttl-seconds 300 \
     >> "$LOG_DIR/cortex.log" 2>&1 &

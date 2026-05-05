@@ -7,12 +7,14 @@
 ```bash
 python -m novaic_cortex.main_cortex \
   --blob-service-url http://127.0.0.1:19995 \
+  --scope-state-log-path /path/to/cortex/scope_state_transitions.ndjson \
   --redis-url redis://127.0.0.1:6379/0
 ```
 
 生产由根目录 `scripts/start.sh` 启动。Cortex 需要：
 
 - `--blob-service-url`：Blob Service base URL。
+- `--scope-state-log-path`：scope transition NDJSON 路径，由启动配置显式传入。
 - `--redis-url`：scope lock 后端。
 - `--internal-key`：内部 API 鉴权 key。
 - `--jwt-secret`：Capability token secret。
@@ -20,7 +22,7 @@ python -m novaic_cortex.main_cortex \
 ## 2. 启动装配做什么
 
 1. 安装 Redis scope lock backend；失败则拒绝启动。
-2. 创建 `WorkspaceRegistry(blob_service_url)`。
+2. 创建 `WorkspaceRegistry(blob_service_url, scope_state_log_path=...)`。
 3. 调用 `set_registry(...)` 和 `set_internal_key(...)`。
 
 Cortex 不读取 OSS/S3 凭证，不创建 OSS/S3 client，不知道 bucket/endpoint。物理存储后端属于 Blob Service。
