@@ -4,6 +4,8 @@ aliyunkey.txt
 # Build artifacts
 dist/
 .pytest_cache/
+__pycache__/
+*.py[cod]
 examples/tauri-ios-hello/node_modules/
 rustdesk-ref/
 thirdparty/
