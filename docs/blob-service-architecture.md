@@ -56,7 +56,7 @@ Blob Service 默认监听独立服务端口，避免大字节读写和 Agent/业
 
 当前语音录制链路是 Rust `cpal` 采集 PCM、`hound` 写临时 WAV、macOS
 `afconvert` 压成 AAC/M4A，然后通过 multipart 上传为
-`blob://audio-input/...`。WAV 只是编码中间文件，不是上传 fallback。
+`blob://audio-input/...`。WAV 只是编码中间文件，不是上传格式。
 
 音频压缩是显式产品路径：
 

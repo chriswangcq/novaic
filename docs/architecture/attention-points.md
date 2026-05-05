@@ -193,10 +193,10 @@ Gateway 完成微服务拆分（2026-04-14）：
 已完成：
 
 - 删除 `VmManager`、`recover_processes()`、`stop_all()` 及整个 `device/vm/` 本地 QEMU runtime
-- 删除 VNC 路径（`/vnc` WS proxy、`vnc_url`、`restart_vnc`）
-- CloudBridge 协议从 `proxy_request/proxy_response`（HTTP-over-WS）改为 typed command/event 协议
+- 远程控制面统一到 WebRTC
+- CloudBridge 协议为 typed command/event
 - `pc_client.py` 重写为 `DeviceCommandBroker`，所有 VM/Android/Desktop 操作通过 typed command 执行
-- `cloud_bridge.rs` 删除 `gateway_url` fallback，只连接 Device Service
+- `cloud_bridge.rs` 只连接 Device Service
 - SSH key 管理从 `device/vm/` 解耦至独立的 `device/ssh_keys.py`
 
 结果：

@@ -312,6 +312,11 @@
 | PR-216 | `[closed]` | [Remove Base64 Blob Upload Path](PR-216-remove-base64-blob-upload.md) | PR-212, PR-213, PR-214, PR-215 | Blob upload old-path deletion | 0.5 d | App/Gateway/Blob Service base64 upload path removed; all chat attachments upload via multipart raw bytes |
 | PR-217 | `[closed]` | [Direct Blob Download Edge](PR-217-direct-blob-download-edge.md) | PR-216 | Blob download data-plane cleanup | 0.25 d | App attachment downloads use `/blob/` edge; Gateway app Blob fetch/download/presign data-plane routes removed |
 | PR-218 | `[closed]` | [Retired Tail Residue Cleanup](PR-218-retired-tail-residue-cleanup.md) | PR-216, PR-217 | Old-path residue cleanup | 0.5 d | Removed retained storage artifact, Blob edge doc wording, retired result-store naming fixtures, and Android JSON-base64 file/app endpoints |
+| PR-219 | `[closed]` | [Runtime Queue / Saga Residue Cleanup](PR-219-runtime-queue-saga-residue-cleanup.md) | PR-141 | Runtime queue/saga cleanup | 0.5 d | Removed saga start surface, current-step live state, queue/saga compatibility helpers, and instance-management exports |
+| PR-220 | `[closed]` | [Cortex Payload / Base64 Residue Review](PR-220-cortex-payload-base64-residue-review.md) | PR-207, PR-218 | Cortex payload boundary | 0.5 d | Cortex payload writes now use Blob multipart uploads; direct JSON/base64 blob write path guarded out |
+| PR-221 | `[closed]` | [Legacy / Compatibility Documentation And Script Drift Cleanup](PR-221-doc-script-drift-cleanup.md) | PR-218 | Docs/scripts drift cleanup | 0.25 d | Retired relay migration script deleted and active Gateway/VMControl/WebRTC/Blob docs aligned to current paths |
+| PR-222 | `[closed]` | [Compatibility Alias / Fallback Test Naming Cleanup](PR-222-compat-alias-fallback-test-name-cleanup.md) | PR-141 | Alias/fallback naming cleanup | 0.25 d | Device config aliases removed; Business owner/device lookup fallback paths removed; guard tests renamed to current vocabulary |
+| PR-223 | `[closed]` | [Edge Repo Contract Pass](PR-223-edge-repo-contract-pass.md) | PR-219..PR-222 | Edge repo contract cleanup | 0.25 d | QUIC config made explicit; VMUse stale fallback/legacy wording removed while preserving MCP-local base64 transport |
 
 
 ---

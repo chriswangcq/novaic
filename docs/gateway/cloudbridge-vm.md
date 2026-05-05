@@ -56,13 +56,9 @@ CloudBridge 采用 **typed WebSocket protocol**，每条消息都有明确的 `t
 | Business/Gateway-facing Device 内部 API | `novaic-device/device/gateway_facing_api.py` |
 | Agent tool proxy | `novaic-device/device/agent_vm_proxy.py` |
 
-## 4. 已删除的历史能力
+## 4. 当前不变量
 
-以下内容已在 2026-04-15 硬切中删除：
-
-- `proxy_request` / `proxy_response`（HTTP-over-WS 桥协议）
-- `gateway_url` fallback（VmControl 不再尝试连接 Gateway）
-- `VmManager` / 本地 QEMU 生命周期
-- VNC 路径（`/vnc` WS proxy、`vnc_url`、`restart_vnc`）
-- `legacy-*` device id fallback
-- `user_id="local"` fallback
+- CloudBridge 消息必须是 typed protocol，不承载通用请求隧道。
+- VmControl 只连接 Device Service 的 CloudBridge WS。
+- 远程控制统一走 WebRTC。
+- 设备 ID 和用户 ID 必须来自当前 Device / Business 数据模型。
