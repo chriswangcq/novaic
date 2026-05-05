@@ -38,10 +38,13 @@ Completed 2026-05-02.
 
 Current live pieces already approximate an Environment, but the ownership is implicit and spread across modules:
 
-- `novaic-business/business/schema_push.py` defines `chat_messages` as the user/subagent/system message stream. It already stores `agent_id`, `type`, JSON `content`, `sender`, `attachments`, JSON `metadata`, `timestamp`, `lifecycle`, `claimed_by_scope`, and `lifecycle_updated_at`.
-- `chat_messages` also carries dispatch lifecycle. The comments explicitly say `lifecycle` is the authoritative wake-related state, while `claimed_by_scope` binds a message to the owning Cortex scope.
-- `message_outbox` is not declared as a first-class Environment concept in Business code, but Entangled/entity append produces outbox rows from `outbox_trigger_types`. The subscriber drains `/v1/outbox/claim`, marks rows delivered/failed, and dispatches Queue wake requests.
-- `novaic-common/common/contracts/message_lifecycle.json` is the current shared message lifecycle contract. It covers message types, hidden UI message types, lifecycle states, allowed transitions, and outbox trigger mapping.
+- Historical state at ticket creation: `chat_messages` still carried
+  `lifecycle`, `claimed_by_scope`, and `lifecycle_updated_at`, and Entangled
+  outbox rows were still part of the wake path.
+- Current state after PR-168E and PR-229: `chat_messages` is a chat projection,
+  `message_outbox` is gone from the wake path, message type shape lives in
+  `novaic-common/common/contracts/chat_message.json`, and Environment
+  notifications own Agent-loop lifecycle.
 - `DispatchSubscriber` owns outbox draining, retry/backoff, stale-claim protection, and same-sender IM aggregation. It does not write Cortex scope input directly; it sends `message_ids` to Queue metadata.
 - Runtime `session.init` receives `message_ids`, creates/uses the wake scope, and writes those ids into Cortex scope meta.
 - Historical note: before PR-165, Runtime `context.read` read

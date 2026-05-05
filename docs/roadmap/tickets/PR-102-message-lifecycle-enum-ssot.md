@@ -1,5 +1,11 @@
 # PR-102 — Message lifecycle enum SSOT guardrails
 
+> Historical ticket archive: this ticket predates the Environment notification
+> cutover. `message_lifecycle.json` and `chat_messages.lifecycle` are no longer
+> current architecture; chat message type shape now lives in
+> `novaic-common/common/contracts/chat_message.json`, and Agent-loop lifecycle
+> lives in Environment notifications.
+
 | Field | Value |
 | --- | --- |
 | **Ticket** | PR-102 |
@@ -33,12 +39,13 @@ Message kinds (`USER_MESSAGE`, `AGENT_REPLY`) and lifecycle states are reference
 - [x] Deploy only if active code changes require it.
 - [x] Commit, push, and bump parent repo.
 
-## Implementation Notes
+## Historical Implementation Notes
 
-- Canonical contract lives in `novaic-common/common/contracts/message_lifecycle.json`.
-- Business `MESSAGES_DEF` now reads lifecycle CHECK values and outbox trigger mappings from the shared contract.
-- Entangled state-machine constants are guarded against the shared contract by test.
-- App message type/lifecycle constants are guarded against the shared contract by test; `INTERRUPT` is now an explicitly hidden App message type because Business writes it on interrupt.
+- At the time of this ticket, the canonical contract lived in
+  `novaic-common/common/contracts/message_lifecycle.json`.
+- PR-229 superseded this shape: Business `MESSAGES_DEF` no longer carries
+  chat-message lifecycle columns, and App no longer exports
+  `MESSAGE_LIFECYCLE_STATES`.
 - `scripts/ci/lint_lifecycle.sh` now narrowly allowlists the two audited one-shot lifecycle migrations instead of failing on historical SQL that snapshots rows and writes audit entries.
 
 ## Verification

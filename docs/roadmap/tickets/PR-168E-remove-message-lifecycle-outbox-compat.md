@@ -56,7 +56,8 @@ PR-168C moved subscriber dispatch to Environment notification dispatch leases, a
 - Runtime `HealthWorkerSync` no longer imports Business client code and only calls Queue `/api/queue/recover/all`.
 - Runtime `session.init` / `scope_end` use Environment notification transitions (`claim` / `processed` / `failed`).
 - Business `business/internal/message.py` is now presentation-only for chat projection helpers.
-- Common `message_lifecycle.json` no longer contains `outbox_trigger_types`.
+- Common chat message contract no longer contains Agent-loop lifecycle or
+  `outbox_trigger_types`.
 - Entangled removed:
   - `entangled/app/outbox.py`
   - `entangled/app/orphans.py`

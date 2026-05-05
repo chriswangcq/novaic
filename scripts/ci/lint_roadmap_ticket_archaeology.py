@@ -16,7 +16,8 @@ TICKETS = ROOT / "docs" / "roadmap" / "tickets"
 
 RISKY = re.compile(
     r"message_outbox|SPAWN_SUBAGENT|SUBAGENT_COMPLETED|"
-    r"subagent_completed|subagent_report|subagent_query|subagent_cancel"
+    r"subagent_completed|subagent_report|subagent_query|subagent_cancel|"
+    r"message_lifecycle\.json|message_lifecycle_contract|chat_messages\.lifecycle"
 )
 BANNER = "Historical ticket archive:"
 EXEMPT = {

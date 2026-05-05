@@ -40,10 +40,16 @@ require_hit "business-environment-store" \
 require_hit "business-environment-api" \
   rg -q '/environment/\{agent_id\}/im/read' novaic-business/business/internal/environment.py
 
-require_hit "cortex-trace-projection" \
-  rg -q 'phase.*reasoning|phase.*observation|phase.*action|phase.*summary' novaic-cortex/novaic_cortex/trace_projection.py
+require_hit "runtime-activity-projection" \
+  rg -q 'agent-activity-records' novaic-agent-runtime/task_queue/utils/activity_projection.py
+require_hit "runtime-activity-phases" \
+  rg -q 'phase="reasoning"|phase="observation"|phase="summary"' novaic-agent-runtime/task_queue/utils/activity_projection.py
+require_hit "business-activity-entities" \
+  rg -q 'agent-activity-records' novaic-business/business/schema_push.py
 require_hit "app-activity-timeline" \
   rg -q 'ActivityTimeline' novaic-app/src/components/Chat/ChatPanel.tsx
+require_hit "app-activity-entity-cache" \
+  rg -q 'agentActivityRecordsStore' novaic-app/src/data/entities/agentActivity.ts
 
 forbid_hits "runtime-old-prompt-or-tools" \
   rg -n 'chat_reply|subagent_report|subagent_query|subagent_cancel|wake_summary|Wake summary|PREV_SCOPE_HISTORY|chat_history' \

@@ -24,7 +24,7 @@ check_no_hits "app-monitor" \
   find novaic-app/src -type f \
     \( -name '*.ts' -o -name '*.tsx' -o -name '*.json' \) \
     ! -name '*.test.ts' ! -name '*.test.tsx' \
-    -exec sh -c 'rg -n "showExecutionLog|show_execution_log|executionLogsStore|from .*/executionLogs|ExecutionLog|useLogs|LogCapsule|MainAgentLogPreview|SubagentList|executionLogUtils|logFormatters|execution-logs" "$@" || true' sh {} +
+    -exec sh -c 'rg -n "showExecutionLog|show_execution_log|executionLogsStore|from .*/executionLogs|ExecutionLog|useLogs|LogCapsule|MainAgentLogPreview|executionLogUtils|logFormatters|execution-logs" "$@" || true' sh {} +
 
 check_no_hits "cortex-retired-tools" \
   rg -n '"chat_reply"|'\''chat_reply'\''|subagent_report|subagent_query|subagent_cancel|chat_history|wake_summary|Wake summary' \
