@@ -1,5 +1,8 @@
 # PR-53 — Entangled `EXTRA_ALLOWLIST` silently drops continuity columns
 
+> Historical ticket archive: this file records a closed or retired implementation path. It is not current architecture or active backlog; use the ticket index and current architecture docs as the source of truth.
+
+
 | Field | Value |
 |---|---|
 | **Ticket**  | PR-53 |
@@ -146,10 +149,10 @@ if dropped:
 - [x] `novaic-business && pytest tests/` — 138 passed（原 135 + PR-53 新增 3）
 
 ### Prod 部署后
-- [ ] `bash scripts/deploy-business.sh` 增量部署 Business + Entangled
-- [ ] 发一条触发消息；`sqlite3 entangled.db "SELECT last_scope_id, historical_summary FROM subagents WHERE subagent_id=..."` 返回非空
-- [ ] 下一次 wake 的 `continuity_resolve` 日志里 `has_summary=1 has_prev=1`
-- [ ] `grep "extra_dropped" /opt/novaic/data/logs/business-*.log` 无输出（healthy baseline）
+- [archived] `bash scripts/deploy-business.sh` 增量部署 Business + Entangled
+- [archived] 发一条触发消息；`sqlite3 entangled.db "SELECT last_scope_id, historical_summary FROM subagents WHERE subagent_id=..."` 返回非空
+- [archived] 下一次 wake 的 `continuity_resolve` 日志里 `has_summary=1 has_prev=1`
+- [archived] `grep "extra_dropped" /opt/novaic/data/logs/business-*.log` 无输出（healthy baseline）
 
 ## 回滚
 
@@ -180,7 +183,7 @@ if dropped:
 - [x] deploy 完成（`scripts/deploy-business.sh root@api.gradievo.com` 2026-04-22 22:55 CST）
 - [x] prod smoke — 直接 PATCH 探针写入 3 个续写列后 `SELECT` 全部命中；`extra_dropped` WARN 零条
 - [x] prod smoke — canary 自然 rest 路径：`main-canary_a` / `main-canary_b` 部署后首次 `awake→sleeping` 都写出 `last_scope_id`（pre-fix 全表 NULL）
-- [ ] `<PREV_SCOPE_TAIL>` 真实端到端注入（依赖一次"同一 agent 二次 wake"，线上流量自然产生即命中，无需单独驱动）
+- [archived] `<PREV_SCOPE_TAIL>` 真实端到端注入（依赖一次"同一 agent 二次 wake"，线上流量自然产生即命中，无需单独驱动）
 - [x] `docs/architecture/message-wake-principles.md` R-ALLOWLIST 入库
 
 ---
