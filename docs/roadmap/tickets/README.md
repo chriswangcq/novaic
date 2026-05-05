@@ -317,6 +317,7 @@
 | PR-221 | `[closed]` | [Legacy / Compatibility Documentation And Script Drift Cleanup](PR-221-doc-script-drift-cleanup.md) | PR-218 | Docs/scripts drift cleanup | 0.25 d | Retired relay migration script deleted and active Gateway/VMControl/WebRTC/Blob docs aligned to current paths |
 | PR-222 | `[closed]` | [Compatibility Alias / Fallback Test Naming Cleanup](PR-222-compat-alias-fallback-test-name-cleanup.md) | PR-141 | Alias/fallback naming cleanup | 0.25 d | Device config aliases removed; Business owner/device lookup fallback paths removed; guard tests renamed to current vocabulary |
 | PR-223 | `[closed]` | [Edge Repo Contract Pass](PR-223-edge-repo-contract-pass.md) | PR-219..PR-222 | Edge repo contract cleanup | 0.25 d | QUIC config made explicit; VMUse stale fallback/legacy wording removed while preserving MCP-local base64 transport |
+| PR-224 | `[closed]` | [Root Pytest Boundary Cleanup](PR-224-root-pytest-boundary.md) | PR-219..PR-223 | Root test entrypoint cleanup | 0.25 d | Root `pytest` now runs only root CI guard tests; stale Gateway-dependent `test_skills.py` removed |
 
 
 ---
