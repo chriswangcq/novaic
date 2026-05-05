@@ -1,5 +1,8 @@
 # PR-49  `subagent_rest` tool executor（PR-45 Wave 1.5：把 LLM 的 handoff_notes 接回来）
 
+> Historical ticket archive: this file records a closed or retired implementation path. It is not current architecture or active backlog; use the ticket index and current architecture docs as the source of truth.
+
+
 | 字段 | 值 |
 | --- | --- |
 | **Phase** | PR-45 Wave 1.5（R9 文字层 producer 端闭环） |
@@ -153,26 +156,26 @@ TOOL_EXECUTORS = {
 ## 实施 Checklist
 
 ### A. executor
-- [ ] `_exec_subagent_rest` 按上述规格实现
-- [ ] 注册进 `TOOL_EXECUTORS`
-- [ ] metric `subagent_rest_handoff_persisted_total{result}`
-- [ ] metric `subagent_rest_tool_invoked_total{source}`
-- [ ] handoff_notes 空/None 分支不写 DB 也不 raise
+- [archived] `_exec_subagent_rest` 按上述规格实现
+- [archived] 注册进 `TOOL_EXECUTORS`
+- [archived] metric `subagent_rest_handoff_persisted_total{result}`
+- [archived] metric `subagent_rest_tool_invoked_total{source}`
+- [archived] handoff_notes 空/None 分支不写 DB 也不 raise
 
 ### B. 单测
-- [ ] 带 handoff_notes → 写入 subagents.handoff_notes + 触发 saga
-- [ ] 空 handoff_notes → 不写 subagents，但仍触发 saga
-- [ ] business_client 写入失败 → 仍触发 saga（soft-fail）
-- [ ] 重复调用同 scope → 第二次返回同一 saga_id（idempotent）
-- [ ] 未知参数（e.g., LLM 多传 "foo=bar"）→ 忽略，返回 success
-- [ ] LLM 调用时 scope 已经 sleeping → 返回 `success, already_sleeping=True`
+- [archived] 带 handoff_notes → 写入 subagents.handoff_notes + 触发 saga
+- [archived] 空 handoff_notes → 不写 subagents，但仍触发 saga
+- [archived] business_client 写入失败 → 仍触发 saga（soft-fail）
+- [archived] 重复调用同 scope → 第二次返回同一 saga_id（idempotent）
+- [archived] 未知参数（e.g., LLM 多传 "foo=bar"）→ 忽略，返回 success
+- [archived] LLM 调用时 scope 已经 sleeping → 返回 `success, already_sleeping=True`
 
 ### C. 集成回归
-- [ ] PR-45 `test_pr45_continuity_wiring.py` 绿
-- [ ] PR-48 `test_turn_finalizer.py` 绿
+- [archived] PR-45 `test_pr45_continuity_wiring.py` 绿
+- [archived] PR-48 `test_turn_finalizer.py` 绿
 
 ### D. 线上打标
-- [ ] `actor="llm.tool.subagent_rest"` 在 `subagent_state_transitions` 表可被查询统计（PR-31）
+- [archived] `actor="llm.tool.subagent_rest"` 在 `subagent_state_transitions` 表可被查询统计（PR-31）
 
 ## 验收
 

@@ -1,5 +1,8 @@
 # PR-44  Wake 首轮 IM 流回放（`chat_messages` 已读历史注入）
 
+> Historical ticket archive: this file records a closed or retired implementation path. It is not current architecture or active backlog; use the ticket index and current architecture docs as the source of truth.
+
+
 | 字段 | 值 |
 | --- | --- |
 | **Phase** | R9 增益（非阻塞） |
@@ -169,11 +172,11 @@ def _pick_replay_messages(agent_id, now_ts):
   - `_pick_replay_messages` 路径（空 business、K=0、每类型 fan-out、类型级 500 软失败、age 过滤、type 合并 ASC、K 上限）
   - `handle_context_read` 集成（flag=True 注入 / flag=False 不注入 / kill switch 短路 / 排序 replay→unread / 空回放仍清 flag / Business 500 退化 / replay 不落盘 context.jsonl / 非字典 meta 防御 / meta 抛异常退化 / 清 flag 失败不崩）
 - [x] 既有 48 个 `test_context_read_ordering` / `test_im_rendering` / `test_wake_continuity_injection` / `test_session_init_message_ids` 全部通过，无回归
-- [ ] 集成端到端（staging）：
-  - [ ] 连续对话 5 轮 → agent 回复 "好" → `subagent_rest(rest_duration_minutes=1)`
-  - [ ] 等 70s 唤醒
-  - [ ] 首轮 think 的 LLM input 含 WAKE_IM_REPLAY 段（5 轮历史）
-  - [ ] 第二轮 think 不再重复注入（flag 已清）
+- [archived] 集成端到端（staging）：
+  - [archived] 连续对话 5 轮 → agent 回复 "好" → `subagent_rest(rest_duration_minutes=1)`
+  - [archived] 等 70s 唤醒
+  - [archived] 首轮 think 的 LLM input 含 WAKE_IM_REPLAY 段（5 轮历史）
+  - [archived] 第二轮 think 不再重复注入（flag 已清）
 
 ## 可观测性 Checklist
 
@@ -188,8 +191,8 @@ def _pick_replay_messages(agent_id, now_ts):
 
 - [x] [message-wake-refactor.md](../message-wake-refactor.md) R9 小节追加 P6-3 进度
 - [x] 本工单 Status → `[x]`
-- [ ] 运营 runbook：如何关闭（`WAKE_IM_REPLAY_ENABLED=0`）——与 PR-41/42 staging verification runbook 合并
-- [ ] [docs/cortex/context-timeline-and-dfs.md](../../cortex/context-timeline-and-dfs.md) 描述"wake 首轮"注入顺序（可与 PR-43 一起落）
+- [archived] 运营 runbook：如何关闭（`WAKE_IM_REPLAY_ENABLED=0`）——与 PR-41/42 staging verification runbook 合并
+- [archived] [docs/cortex/context-timeline-and-dfs.md](../../cortex/context-timeline-and-dfs.md) 描述"wake 首轮"注入顺序（可与 PR-43 一起落）
 
 ## 验收命令
 
@@ -211,14 +214,14 @@ curl -s .../cortex/v1/scope/$NEW/context?round=2 \
 
 ## 部署 Checklist（必走，不部署不算完成）
 
-- [ ] **本地代码已合入 main**：`git log --oneline origin/main | rg PR-44`
-- [ ] **runtime 子模块已 bump** 并推到父仓库远端
-- [ ] **已 deploy**：父仓库根 `./deploy runtime`
-- [ ] **线上证据 1 — flag 落盘**：任一新 wake 后 `ssh api.gradievo.com 'grep -E "wake_im_replay" /opt/novaic/logs/runtime*.log | tail -10'` 有 `[wake_im_replay] scope=... messages=N tokens~T` 行
-- [ ] **线上证据 2 — 指标**：`curl -s https://api.gradievo.com/metrics | rg 'wake_im_replay_total'` injected 计数器 > 0
-- [ ] **线上证据 3 — 幂等**：再次 context.read 同一 scope（round 2）时，日志不再出现新 wake_im_replay 行；`_message_type=WAKE_IM_REPLAY` 不该永久写进 context.jsonl（ephemeral）
-- [ ] 把上述三段 paste 进 PR 关单评论
-- [ ] 如需临时禁用：`WAKE_IM_REPLAY_ENABLED=0` 写入 runtime 的 env，重启 runtime 即可（不需要回滚代码）
+- [archived] **本地代码已合入 main**：`git log --oneline origin/main | rg PR-44`
+- [archived] **runtime 子模块已 bump** 并推到父仓库远端
+- [archived] **已 deploy**：父仓库根 `./deploy runtime`
+- [archived] **线上证据 1 — flag 落盘**：任一新 wake 后 `ssh api.gradievo.com 'grep -E "wake_im_replay" /opt/novaic/logs/runtime*.log | tail -10'` 有 `[wake_im_replay] scope=... messages=N tokens~T` 行
+- [archived] **线上证据 2 — 指标**：`curl -s https://api.gradievo.com/metrics | rg 'wake_im_replay_total'` injected 计数器 > 0
+- [archived] **线上证据 3 — 幂等**：再次 context.read 同一 scope（round 2）时，日志不再出现新 wake_im_replay 行；`_message_type=WAKE_IM_REPLAY` 不该永久写进 context.jsonl（ephemeral）
+- [archived] 把上述三段 paste 进 PR 关单评论
+- [archived] 如需临时禁用：`WAKE_IM_REPLAY_ENABLED=0` 写入 runtime 的 env，重启 runtime 即可（不需要回滚代码）
 
 ## 回滚
 

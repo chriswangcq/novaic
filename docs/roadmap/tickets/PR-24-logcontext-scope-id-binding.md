@@ -1,5 +1,8 @@
 # PR-24  `LogContext` contextvar + 全服务 `scope_id` 日志绑定
 
+> Historical ticket archive: this file records a closed or retired implementation path. It is not current architecture or active backlog; use the ticket index and current architecture docs as the source of truth.
+
+
 | 字段 | 值 |
 | --- | --- |
 | **Phase** | 3 |
@@ -30,8 +33,8 @@
 
 ## 前置 Checklist
 
-- [ ] PR-20 scope_id 可以在请求入口读到（payload / metadata）
-- [ ] 确认各服务当前 log 方案（stdlib logging? structlog? 自定义?）→ 统一到 stdlib + filter
+- [archived] PR-20 scope_id 可以在请求入口读到（payload / metadata）
+- [archived] 确认各服务当前 log 方案（stdlib logging? structlog? 自定义?）→ 统一到 stdlib + filter
 
 ## 实施 Checklist
 
@@ -76,46 +79,46 @@ def default_format() -> str:
 
 ### 2. 每个服务的 bootstrap
 
-- [ ] 启动期：`logging.basicConfig(format=default_format(), ...)` + `install(root_logger)`
-- [ ] 为 `%(scope_id)s` 等在记录未绑定时给默认：用 `logging.LoggerAdapter` 或 `Filter` 补 `""` 默认值（避免 KeyError）
-- [ ] Formatter 的缺省 "scope_id=" 输出为空串，不污染
+- [archived] 启动期：`logging.basicConfig(format=default_format(), ...)` + `install(root_logger)`
+- [archived] 为 `%(scope_id)s` 等在记录未绑定时给默认：用 `logging.LoggerAdapter` 或 `Filter` 补 `""` 默认值（避免 KeyError）
+- [archived] Formatter 的缺省 "scope_id=" 输出为空串，不污染
 
 ### 3. Handler 入口 bind
 
 对每个能进入 agent 流的入口点，第一行 bind 语义：
 
-- [ ] Queue Service `dispatch` handler: `bind(agent_id=..., user_id=..., caller=req.headers.get("X-Internal-Service"))`
-- [ ] Queue Service session 相关：若已知 scope_id，`bind(scope_id=...)`
-- [ ] Cortex session.init / skill.* handlers: `bind(scope_id=scope_id, agent_id=agent_id, user_id=user_id)`
-- [ ] Business subagent_send / spawn_subagent / bulk-transition handlers: `bind(agent_id=..., caller=...)`
-- [ ] Task worker / saga worker 消费任务时：`bind(scope_id=task.scope_id, ...)`
-- [ ] Subscriber `_deliver_one`：`bind(agent_id=..., message_ids=...)` 以及成功后 `bind(scope_id=result.scope_id)`
-- [ ] runtime `handle_session_init`: `bind(scope_id=..., agent_id=...)`
+- [archived] Queue Service `dispatch` handler: `bind(agent_id=..., user_id=..., caller=req.headers.get("X-Internal-Service"))`
+- [archived] Queue Service session 相关：若已知 scope_id，`bind(scope_id=...)`
+- [archived] Cortex session.init / skill.* handlers: `bind(scope_id=scope_id, agent_id=agent_id, user_id=user_id)`
+- [archived] Business subagent_send / spawn_subagent / bulk-transition handlers: `bind(agent_id=..., caller=...)`
+- [archived] Task worker / saga worker 消费任务时：`bind(scope_id=task.scope_id, ...)`
+- [archived] Subscriber `_deliver_one`：`bind(agent_id=..., message_ids=...)` 以及成功后 `bind(scope_id=result.scope_id)`
+- [archived] runtime `handle_session_init`: `bind(scope_id=..., agent_id=...)`
 
 每个 handler 返回前 `clear()`（ContextVar 是请求隔离的，但显式 clear 更保险，特别是 worker thread 复用时）
 
 ### 4. 分布式透传（可选）
 
-- [ ] 跨服务 HTTP 调用自动带 `X-Scope-Id` header（`internal_client` 升级：从 contextvar 读 scope_id 自动注入）
-- [ ] 目标服务 middleware 读 `X-Scope-Id` → bind；否则保留已有值
+- [archived] 跨服务 HTTP 调用自动带 `X-Scope-Id` header（`internal_client` 升级：从 contextvar 读 scope_id 自动注入）
+- [archived] 目标服务 middleware 读 `X-Scope-Id` → bind；否则保留已有值
 
 ## 测试 Checklist
 
-- [ ] 单测：bind + log → record 含 scope_id
-- [ ] 单测：多个 Task（contextvar 隔离）互不污染
-- [ ] 集成：发消息 → 取一个 scope_id → `rg "scope_id=<id>" business.log queue-service.log cortex.log runtime.log` 在每份日志都能命中
+- [archived] 单测：bind + log → record 含 scope_id
+- [archived] 单测：多个 Task（contextvar 隔离）互不污染
+- [archived] 集成：发消息 → 取一个 scope_id → `rg "scope_id=<id>" business.log queue-service.log cortex.log runtime.log` 在每份日志都能命中
 
 ## 可观测性 Checklist
 
-- [ ] OBS-2 达成：`rg scope_id=<id>` 跨服务可串
-- [ ] 留 runbook 示例
+- [archived] OBS-2 达成：`rg scope_id=<id>` 跨服务可串
+- [archived] 留 runbook 示例
 
 ## 文档 Checklist
 
-- [ ] [message-wake-refactor.md](../message-wake-refactor.md) P3-5 → `[x]`
-- [ ] OBS-2 → `[x]`
-- [ ] 本工单 Status → `[x]`
-- [ ] 新建 `docs/runbooks/troubleshooting.md` 或扩展已有一节："按 scope_id 查问题的 SOP"
+- [archived] [message-wake-refactor.md](../message-wake-refactor.md) P3-5 → `[x]`
+- [archived] OBS-2 → `[x]`
+- [archived] 本工单 Status → `[x]`
+- [archived] 新建 `docs/runbooks/troubleshooting.md` 或扩展已有一节："按 scope_id 查问题的 SOP"
 
 ## 验收命令
 

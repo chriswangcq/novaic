@@ -142,7 +142,7 @@
 | PR-84  | `[✓]`  | [Add Cortex minimal-structure invariant tests](PR-84-cortex-minimal-structure-invariants.md) | PR-82, PR-83 preferred | P0 structure guardrails | 0.5-1 d | closed |
 | PR-85  | `[✓]`  | [Add LLM context smoke guardrails for the minimal structure path](PR-85-llm-context-minimal-structure-smoke-guardrails.md) | PR-82, PR-83, PR-84 preferred | P0 smoke guardrails | 0.5-1 d | closed |
 | PR-86  | `[✓]`  | [Define execution-log lightweight metadata contract](PR-86-execution-log-light-metadata-contract.md) **— Runtime+App deployed + production smoke verified 2026-04-29** | PR-78+ | Entangled/App observability | 0.5-1 d | __ |
-| PR-88  | `[retired]`  | [Complete `log-payloads` lazy fetch and merge into App log view](PR-88-log-payload-lazy-fetch-and-app-cache-merge.md) **— superseded by PR-154A + PR-166C; do not treat as active path** | PR-86 preferred | Payload drilldown | 0.5-1 d | retired |
+| PR-88  | `[closed-retired]`  | [Complete `log-payloads` lazy fetch and merge into App log view](PR-88-log-payload-lazy-fetch-and-app-cache-merge.md) **— superseded by PR-154A + PR-166C; do not treat as active path** | PR-86 preferred | Payload drilldown | 0.5-1 d | retired |
 | PR-89  | `[✓]`  | [Expose LLM Factory log join key in think execution logs](PR-89-llm-factory-log-id-entangled-join.md) **— Runtime+App deployed + production smoke verified 2026-04-29** | PR-86 preferred | LLM Factory join | 0.5 d | __ |
 | PR-90  | `[✓]`  | [Correct execution-log status semantics and add minimal lifecycle events](PR-90-execution-log-status-and-lifecycle-events.md) **— Runtime+App deployed + tests/smoke verified 2026-04-29** | PR-86 preferred | Timeline correctness | 0.5-1 d | __ |
 | PR-91  | `[✓]`  | [Align Entangled client cache docs and guardrails with actual App cache](PR-91-entangled-client-cache-docs-and-guardrails.md) **— Docs/guardrail + Entangled client tests verified 2026-04-29** | PR-86 optional | Docs / guardrails | 0.25-0.5 d | __ |
@@ -318,6 +318,7 @@
 | PR-222 | `[closed]` | [Compatibility Alias / Fallback Test Naming Cleanup](PR-222-compat-alias-fallback-test-name-cleanup.md) | PR-141 | Alias/fallback naming cleanup | 0.25 d | Device config aliases removed; Business owner/device lookup fallback paths removed; guard tests renamed to current vocabulary |
 | PR-223 | `[closed]` | [Edge Repo Contract Pass](PR-223-edge-repo-contract-pass.md) | PR-219..PR-222 | Edge repo contract cleanup | 0.25 d | QUIC config made explicit; VMUse stale fallback/legacy wording removed while preserving MCP-local base64 transport |
 | PR-224 | `[closed]` | [Root Pytest Boundary Cleanup](PR-224-root-pytest-boundary.md) | PR-219..PR-223 | Root test entrypoint cleanup | 0.25 d | Root `pytest` now runs only root CI guard tests; stale Gateway-dependent `test_skills.py` removed |
+| PR-225 | `[closed]` | [Residual App/Common/Docs Tail Cleanup](PR-225-residual-app-common-docs-tail-cleanup.md) | PR-224 | Maintenance entropy cleanup | 0.25-0.5 d | App VMUse resources synchronized and guarded; live compatibility tails removed; historical docs no longer look active |
 
 
 ---
@@ -332,7 +333,7 @@
 | HealthWorker 对 4 天前的 pending USER_MESSAGE 无限 recovery      | B：recovery 没有绝对年龄上限 + 历史脏数据从未清理                                   | **PR-47**   | hotfix          |
 | `subagents.handoff_notes` / `historical_summary` 一直 NULL    | C：LLM 端无 `_exec_subagent_rest` executor（PR-45 Wave 1.5 缺口）        | **PR-49**   | wave 1.5        |
 | scope 永不进入 sleeping，PR-42/44/45 注入路径从未跑到                  | D：agent chat_reply 之后不 rest 也不 skill_end，runtime 没兜底               | **PR-48**   | hotfix          |
-| PR-44 `<CHAT_HISTORY>` 回放始终为空                              | E：D 的衍生（scope 不关，session.init 从不重新跑，`wake_replay_pending` flag 无处设置）| 由 **PR-48** 治本；顺带由 **PR-50** 做字节 cap | — |
+| Historical PR-44 `<CHAT_HISTORY>` replay symptom                  | E：D 的衍生（scope 不关，session.init 从不重新跑，`wake_replay_pending` flag 无处设置）| 由 **PR-48** 治本；顺带由 **PR-50** 做字节 cap | — |
 | 连发 3 条消息 = 3 次 session.init；LLM 看到连珠炮拆散                   | F：subscriber 未做 IM 语义合批                                             | **PR-50**   | optimization    |
 
 **推荐执行顺序**：PR-46 → PR-48 + PR-49（并行）→ PR-47 → PR-50。PR-46 是主动脉修复；PR-48/49 治本 "agent 不关门"；PR-47 清历史渣；PR-50 做 IM 体感优化。
@@ -359,7 +360,7 @@ Reviewer 对已交付工单的评审意见，归档在 `reviews/PR-NN-review.md`
 
 | 工单    | Review                                             | 结论                       |
 | ----- | -------------------------------------------------- | ------------------------ |
-| PR-01 | [reviews/PR-01-review.md](reviews/PR-01-review.md) | archived historical review; PR-01 later closed |
+| Historical PR-01 review | [reviews/PR-01-review.md](reviews/PR-01-review.md) | archived historical review; PR-01 later closed |
 
 
 ## 跨工单基线（所有 PR 都应满足）

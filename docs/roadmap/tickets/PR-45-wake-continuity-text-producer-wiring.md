@@ -1,5 +1,8 @@
 # PR-45  Wake continuity 文字层"生产者-消费者"闭环（PR-42 amend）
 
+> Historical ticket archive: this file records a closed or retired implementation path. It is not current architecture or active backlog; use the ticket index and current architecture docs as the source of truth.
+
+
 > Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
 
 
@@ -8,7 +11,7 @@
 | **Phase** | hotfix（PR-42 端到端失效补洞） |
 | **Milestone** | R9 文字层真·生效 |
 | **承诺** | R9（wake 不丢上下文） + **R10 新增**（producer/consumer 契约显式登记） |
-| **Status** | `[~]` — A/B/C/D/E landed; F (deploy + live verify) pending |
+| **Status** | `[archived]` — historical producer/consumer path; superseded by Environment notification and Cortex skill continuity work. |
 | **Depends on** | PR-42（消费者已就位） |
 | **Blocks** | PR-43（scope chain 依赖文字层是可信的基线对比） |
 | **估时** | 0.5d（MVP）+ 0.5d（`_exec_subagent_rest` 补全，Wave 1.5） |
@@ -207,7 +210,7 @@ MVP 版就做最后一条（`metadata` 流向 trace），一个 python 脚本 gr
 
 ### C. health_worker（recovered 路径）
 - [x] `_maybe_recover` 在 `assemble_and_dispatch_sync` 前注入 metadata（Business `/internal/entities/subagents/{id}`，走 `_get_business_client()`）
-- [ ] 单测：RECOVERED trigger 注入（低风险——与 1B 结构同构，推迟到 live verify 后根据实际观测补，避免二遍造轮）
+- [archived] 单测：RECOVERED trigger 注入（低风险——与 1B 结构同构，推迟到 live verify 后根据实际观测补，避免二遍造轮）
 
 ### D. 幂等消费
 - [x] `handle_session_init`：PR-42 block 成功产出 handoff_notes 行时，调 entity_update 清空 `subagents.handoff_notes`
@@ -216,18 +219,18 @@ MVP 版就做最后一条（`metadata` 流向 trace），一个 python 脚本 gr
   - `novaic-agent-runtime/tests/test_pr45_continuity_wiring.py::test_handoff_*`
 
 ### E. 契约 lint
-- [ ] `scripts/ci/lint_wake_continuity_contract.sh` 实现 metadata 流向 trace（延后——MVP 以单元测试覆盖同样的"生产者写什么消费者读什么一致"不变量，CI lint 作为 Wave 2 的加固层）
-- [ ] `.github/workflows/lint.yml` 加 step
+- [archived] `scripts/ci/lint_wake_continuity_contract.sh` 实现 metadata 流向 trace（延后——MVP 以单元测试覆盖同样的"生产者写什么消费者读什么一致"不变量，CI lint 作为 Wave 2 的加固层）
+- [archived] `.github/workflows/lint.yml` 加 step
 
 ### F. 环境 flag
 - [x] `WAKE_CONTINUITY_TEXT=0` 整体短路（DispatchSubscriber `_wake_continuity_text_enabled()` + HealthWorker `_maybe_recover` 同一环境变量）
 - [x] `WAKE_CONTINUITY_HANDOFF_CLEAR=0`（D 节）
-- [ ] ops runbook 更新（待部署验证后补）
+- [archived] ops runbook 更新（待部署验证后补）
 
 ### G. Wave 1.5（可并入同 PR）
-- [ ] `_exec_subagent_rest` executor
-- [ ] 单测：tool 调用 → `entity_update(need_rest=1, handoff_notes=...)` 正确
-- [ ] 文档（agent 工具使用指南）提一次
+- [archived] `_exec_subagent_rest` executor
+- [archived] 单测：tool 调用 → `entity_update(need_rest=1, handoff_notes=...)` 正确
+- [archived] 文档（agent 工具使用指南）提一次
 
 ## 验收
 

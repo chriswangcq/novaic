@@ -1,5 +1,8 @@
 # PR-51  卡住的 `claimed` 行回收：补 PR-47 的另一半 + HealthWorker 周期扫描
 
+> Historical ticket archive: this file records a closed or retired implementation path. It is not current architecture or active backlog; use the ticket index and current architecture docs as the source of truth.
+
+
 | 字段 | 值 |
 | --- | --- |
 | **Phase** | Post-deploy 跟单（PR-47 部署过程中从 prod 现场发现） |
@@ -124,34 +127,34 @@ Business 端需要新 endpoint `GET /internal/messages/stuck-claimed?age_seconds
 ## 实施 Checklist
 
 ### A. 一次性迁移（先上，止血）
-- [ ] 写 `scripts/migrations/048_cleanup_stuck_claimed.sql`
-- [ ] 本地 smoke：造一条 `claimed + old`、一条 `claimed + fresh`、一条 `pending`、一条 `consumed`，验证只翻第一条
-- [ ] prod 前 `cp entangled.db entangled.db.pr51.bak.$(date +%s)`
-- [ ] Before/After 快照 paste 进 PR 关单评论
-- [ ] 验证：执行后 `SELECT COUNT(*) FROM chat_messages WHERE lifecycle='claimed' AND lifecycle_updated_at < (strftime('%s','now')-24*3600)*1000 → 0`
+- [archived] 写 `scripts/migrations/048_cleanup_stuck_claimed.sql`
+- [archived] 本地 smoke：造一条 `claimed + old`、一条 `claimed + fresh`、一条 `pending`、一条 `consumed`，验证只翻第一条
+- [archived] prod 前 `cp entangled.db entangled.db.pr51.bak.$(date +%s)`
+- [archived] Before/After 快照 paste 进 PR 关单评论
+- [archived] 验证：执行后 `SELECT COUNT(*) FROM chat_messages WHERE lifecycle='claimed' AND lifecycle_updated_at < (strftime('%s','now')-24*3600)*1000 → 0`
 
 ### B. Business endpoint
-- [ ] `GET /internal/messages/stuck-claimed?age_seconds=N&limit=M`
-- [ ] 单测：age/limit 参数、空结果、分页
-- [ ] 跟 `/internal/messages/orphans` 保持 shape 一致
+- [archived] `GET /internal/messages/stuck-claimed?age_seconds=N&limit=M`
+- [archived] 单测：age/limit 参数、空结果、分页
+- [archived] 跟 `/internal/messages/orphans` 保持 shape 一致
 
 ### C. HealthWorker 扫描
-- [ ] `STUCK_CLAIMED_AGE_SEC` env + 默认 24h
-- [ ] `_scan_and_recover_stuck_claimed` 方法
-- [ ] `_transition_claimed_to_consumed` helper（复用 `_transition_claimed` 模板，只是 `to="consumed"`）
-- [ ] metric `stuck_claimed_recovered_total`
-- [ ] 扫描节奏：和 orphan 扫描同 tick 即可，不需要独立 scheduler
+- [archived] `STUCK_CLAIMED_AGE_SEC` env + 默认 24h
+- [archived] `_scan_and_recover_stuck_claimed` 方法
+- [archived] `_transition_claimed_to_consumed` helper（复用 `_transition_claimed` 模板，只是 `to="consumed"`）
+- [archived] metric `stuck_claimed_recovered_total`
+- [archived] 扫描节奏：和 orphan 扫描同 tick 即可，不需要独立 scheduler
 
 ### D. 单测
-- [ ] `_scan_and_recover_stuck_claimed` mock business 返回 2 行 → 各自 transition 到 consumed、metric +2
-- [ ] Business 返回空 → no-op
-- [ ] `STUCK_CLAIMED_AGE_SEC=0` → 完全跳过
-- [ ] transition HTTP 5xx/异常 → 软失败，不阻塞 tick
+- [archived] `_scan_and_recover_stuck_claimed` mock business 返回 2 行 → 各自 transition 到 consumed、metric +2
+- [archived] Business 返回空 → no-op
+- [archived] `STUCK_CLAIMED_AGE_SEC=0` → 完全跳过
+- [archived] transition HTTP 5xx/异常 → 软失败，不阻塞 tick
 
 ### E. 回归
-- [ ] PR-27 orphan scan 测试绿（不能因为新分支改变了老行为）
-- [ ] PR-47 age cap 测试绿（`_transition_to_consumed` reason 不和本 PR 冲突）
-- [ ] PR-21 状态机 `claimed → consumed` 合法性不变
+- [archived] PR-27 orphan scan 测试绿（不能因为新分支改变了老行为）
+- [archived] PR-47 age cap 测试绿（`_transition_to_consumed` reason 不和本 PR 冲突）
+- [archived] PR-21 状态机 `claimed → consumed` 合法性不变
 
 ## 验收
 
@@ -391,7 +394,7 @@ systemctl restart novaic-runtime-subscriber  # HealthWorker 一起
   grep stuck-claimed /opt/novaic/data/logs/health.log | tail -5
   # → 每 30s 一次 GET /internal/messages/stuck-claimed → 200 OK
   ```
-- [ ] 24h 后观察：3 剩余行应自动归零（``lifecycle_age_seconds`` 跨过 86400s → 下一 tick 扫掉 → ``stuck_claimed_recovered_total`` 计入 3）
-- [ ] 1 周后观察 `stuck_claimed_recovered_total` 稳态：
+- [archived] 24h 后观察：3 剩余行应自动归零（``lifecycle_age_seconds`` 跨过 86400s → 下一 tick 扫掉 → ``stuck_claimed_recovered_total`` 计入 3）
+- [archived] 1 周后观察 `stuck_claimed_recovered_total` 稳态：
   - ``== 3``：健康（PR-41 amend + PR-48 Turn Finalizer + PR-46 + 这个兜底组合已经不再产生新泄漏，只清理了历史残留）
   - ``> 3``：仍有新渠道漏，回溯日志里 `STUCK_CLAIMED message_id=... dead_scope=...` 定位漏源 → 触发 **PR-52** (subscriber scope-aliveness check)

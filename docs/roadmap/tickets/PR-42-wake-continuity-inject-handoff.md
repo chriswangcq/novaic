@@ -1,5 +1,8 @@
 # PR-42  Wake 时把 `handoff_notes` / `historical_summary` 注入新 scope
 
+> Historical ticket archive: this file records a closed or retired implementation path. It is not current architecture or active backlog; use the ticket index and current architecture docs as the source of truth.
+
+
 > Historical ticket archive: this closed ticket/review may mention retired paths such as `message_outbox`, `SPAWN_SUBAGENT`, or removed subagent tools. Do not use it as current architecture or backlog; see `docs/roadmap/message-wake-refactor.md`, `docs/roadmap/agent-perception-action-architecture.md`, and `docs/roadmap/tickets/PR-210-maintenance-tail-cleanup.md`.
 
 
@@ -190,8 +193,8 @@ initial_context.extend(continuity_block)
 - [x] 单测：`_build_wake_continuity_messages` trigger 矩阵 + 截断 + 顺序（15+ cases）
 - [x] 单测：`handle_session_init` 集成（9 cases 覆盖 inject / skip / fallback / truncate / fetch 短路）
 - [x] 全量回归：Entangled 114 passed / novaic-business 74 passed / novaic-agent-runtime 101 passed（含新增 29）
-- [ ] 集成（端到端，staging 部署后）：设 `rest_duration_minutes=1` + `handoff_notes="debugging X"` → 等 ~65s → 新 scope `context.jsonl` 含 `<HANDOFF_NOTES>` 段
-- [ ] 回归（端到端）：`spawn_subagent` 路径下新 SubAgent 的 `context.jsonl` 不含 WAKE_CONTINUITY
+- [archived] 集成（端到端，staging 部署后）：设 `rest_duration_minutes=1` + `handoff_notes="debugging X"` → 等 ~65s → 新 scope `context.jsonl` 含 `<HANDOFF_NOTES>` 段
+- [archived] 回归（端到端）：`spawn_subagent` 路径下新 SubAgent 的 `context.jsonl` 不含 WAKE_CONTINUITY
 
 ## 可观测性 Checklist ✔
 
@@ -205,9 +208,9 @@ initial_context.extend(continuity_block)
 
 - [x] [message-wake-refactor.md](../message-wake-refactor.md) Phase 6 小节已包含 `R9` 承诺 + P6-2 描述
 - [x] 本工单 Status → `[x]`
-- [ ] [docs/architecture/message-wake-principles.md](../../architecture/message-wake-principles.md) §承诺表加 R9（后续批量更新时处理）
-- [ ] `docs/cortex/session-meta-json.md` 如有 wake 章节需补（当前无 wake 章节，免跟）
-- [ ] runbook：`docs/runbooks/troubleshooting.md` 加 "wake 后 agent 看不到上次上下文" 排查路径（部署后补）
+- [archived] [docs/architecture/message-wake-principles.md](../../architecture/message-wake-principles.md) §承诺表加 R9（后续批量更新时处理）
+- [archived] `docs/cortex/session-meta-json.md` 如有 wake 章节需补（当前无 wake 章节，免跟）
+- [archived] runbook：`docs/runbooks/troubleshooting.md` 加 "wake 后 agent 看不到上次上下文" 排查路径（部署后补）
 
 ## 验收命令
 
@@ -230,13 +233,13 @@ curl -s .../metrics | rg 'wake_continuity_injected_total'
 
 ## 部署 Checklist（必走，不部署不算完成）
 
-- [ ] **本地代码已合入 main**：`git log --oneline origin/main | rg PR-42`
-- [ ] **runtime 子模块已 bump** 并推到父仓库远端
-- [ ] **已 deploy**：父仓库根 `./deploy runtime`（rsync runtime + 远端 `start.sh --stop && start.sh`）
-- [ ] **线上证据 1 — saga 透传**：`ssh api.gradievo.com 'grep -E "session\\.init.*handoff_notes" /opt/novaic/logs/runtime*.log | tail -5'` 新 wake 的 payload 含 `handoff_notes`
-- [ ] **线上证据 2 — Cortex 写盘**：任一新 wake 的 scope 里 `context.jsonl` 含 `_message_type=WAKE_CONTINUITY` 记录（curl 验收命令第 4 步）
-- [ ] **线上证据 3 — 指标**：`curl -s https://api.gradievo.com/metrics | rg 'wake_continuity_injected_total'` 计数器 > 0
-- [ ] 把上述三段 paste 进 PR 关单评论
+- [archived] **本地代码已合入 main**：`git log --oneline origin/main | rg PR-42`
+- [archived] **runtime 子模块已 bump** 并推到父仓库远端
+- [archived] **已 deploy**：父仓库根 `./deploy runtime`（rsync runtime + 远端 `start.sh --stop && start.sh`）
+- [archived] **线上证据 1 — saga 透传**：`ssh api.gradievo.com 'grep -E "session\\.init.*handoff_notes" /opt/novaic/logs/runtime*.log | tail -5'` 新 wake 的 payload 含 `handoff_notes`
+- [archived] **线上证据 2 — Cortex 写盘**：任一新 wake 的 scope 里 `context.jsonl` 含 `_message_type=WAKE_CONTINUITY` 记录（curl 验收命令第 4 步）
+- [archived] **线上证据 3 — 指标**：`curl -s https://api.gradievo.com/metrics | rg 'wake_continuity_injected_total'` 计数器 > 0
+- [archived] 把上述三段 paste 进 PR 关单评论
 
 ## 回滚
 
