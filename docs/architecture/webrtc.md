@@ -10,14 +10,14 @@
 useWebRtc → invoke('send_webrtc_offer') / AppBridge WS
   → Gateway 中继（注入 TURN ice_servers）
   → CloudBridge WS → VmControl cloud_bridge.rs
-  → /api/webrtc/start → webrtc_unified.rs
-  → DeviceKind 分发：
-       linux_vm   → webrtc_vm.rs  (VNC → H.264)
-       android    → webrtc_scrcpy.rs
-       host_desktop → webrtc_hd.rs (屏幕采集)
+      → /api/webrtc/start → webrtc_unified.rs
+      → DeviceKind 分发：
+           linux_vm   → webrtc_vm.rs  (frame capture → H.264)
+           android    → webrtc_scrcpy.rs
+           host_desktop → webrtc_hd.rs (屏幕采集)
 ```
 
-**noVNC 已移除**（全栈 WebRTC）。
+前端只面对统一 WebRTC 渲染面。
 
 ## 信令（方案 B）
 
@@ -25,7 +25,8 @@ useWebRtc → invoke('send_webrtc_offer') / AppBridge WS
 
 ## Device Registry
 
-VmControl 连 Gateway `/internal/pc/ws` → 接收 `sync_devices`（全量 + 增量）→ 写入本地 **vmcontrol.db**（sqlx）。
+VmControl 通过 Device Service CloudBridge 接收设备同步消息，并写入本地
+**vmcontrol.db**（sqlx）。
 
 ## 编码（摘要）
 
@@ -65,4 +66,3 @@ VmControl 连 Gateway `/internal/pc/ws` → 接收 `sync_devices`（全量 + 增
 
 - [thin-client-and-topology.md](thin-client-and-topology.md) — TURN  
 - [realtime-sync.md](realtime-sync.md) — AppBridge WS
-
