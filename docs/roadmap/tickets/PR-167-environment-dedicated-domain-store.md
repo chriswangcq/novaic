@@ -1,5 +1,9 @@
 # PR-167 — Environment Dedicated Domain Store
 
+> Historical ticket archive: this closed ticket predates the PR-229 chat
+> projection cleanup. `chat_messages.lifecycle` and `message_lifecycle.json`
+> references here are archaeology, not current architecture.
+
 | Field | Value |
 | --- | --- |
 | Status | `[done]` |

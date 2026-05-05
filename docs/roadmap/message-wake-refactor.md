@@ -29,6 +29,7 @@ This roadmap is closed. The current architecture contract is:
 ## Current Guardrails
 
 - Tool schema contract tests assert deleted tools are absent.
-- Message lifecycle contract tests assert deleted message types are absent.
+- Chat message contract tests assert deleted message types are absent, while
+  Environment notification tests own wake lifecycle invariants.
 - Prompt contract tests reject deleted continuity concepts.
 - Environment hot-path tests assert notifications are the wake source.

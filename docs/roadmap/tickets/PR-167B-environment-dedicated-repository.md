@@ -1,5 +1,9 @@
 # PR-167B — Dedicated Environment Repository Read/Write Path
 
+> Historical ticket archive: this closed ticket predates the PR-229 chat
+> projection cleanup. `chat_messages.lifecycle` references here are archaeology,
+> not current architecture.
+
 | Field | Value |
 | --- | --- |
 | Status | `[done]` |

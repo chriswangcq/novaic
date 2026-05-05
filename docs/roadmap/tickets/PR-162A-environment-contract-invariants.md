@@ -1,5 +1,9 @@
 # PR-162A — Environment Contract and Invariant Test Matrix
 
+> Historical ticket archive: this closed ticket predates the PR-229 chat
+> projection cleanup. `message_lifecycle.json` references here are archaeology,
+> not current architecture.
+
 | Field | Value |
 | --- | --- |
 | Status | `[deployed]` |

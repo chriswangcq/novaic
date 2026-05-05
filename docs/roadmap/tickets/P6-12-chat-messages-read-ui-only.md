@@ -1,5 +1,9 @@
 # P6-12 — `chat_messages.read` 降级为 UI-only 字段
 
+> Historical ticket archive: this closed ticket predates the Environment
+> notification cutover. Any `chat_messages.lifecycle` or message lifecycle
+> wording here is archaeology, not current architecture.
+
 | Field | Value |
 |---|---|
 | **Ticket**  | P6-12 |

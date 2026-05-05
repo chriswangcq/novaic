@@ -1,5 +1,9 @@
 # PR-52 — subscriber scope-aliveness check before retry dispatch
 
+> Historical ticket archive: this closed ticket predates the Environment
+> notification cutover. Message lifecycle probe wording here is archaeology,
+> not current architecture.
+
 | Field | Value |
 |---|---|
 | **Ticket**  | PR-52 |

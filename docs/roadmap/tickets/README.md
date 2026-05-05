@@ -319,6 +319,13 @@
 | PR-223 | `[closed]` | [Edge Repo Contract Pass](PR-223-edge-repo-contract-pass.md) | PR-219..PR-222 | Edge repo contract cleanup | 0.25 d | QUIC config made explicit; VMUse stale fallback/legacy wording removed while preserving MCP-local base64 transport |
 | PR-224 | `[closed]` | [Root Pytest Boundary Cleanup](PR-224-root-pytest-boundary.md) | PR-219..PR-223 | Root test entrypoint cleanup | 0.25 d | Root `pytest` now runs only root CI guard tests; stale Gateway-dependent `test_skills.py` removed |
 | PR-225 | `[closed]` | [Residual App/Common/Docs Tail Cleanup](PR-225-residual-app-common-docs-tail-cleanup.md) | PR-224 | Maintenance entropy cleanup | 0.25-0.5 d | App VMUse resources synchronized and guarded; live compatibility tails removed; historical docs no longer look active |
+| PR-226 | `[closed]` | [Guardrail Drift Cleanup](PR-226-guardrail-drift-cleanup.md) | PR-193, PR-225 | CI guard correctness | 0.25 d | Retired-path/main-path guards now match the current Entangled Activity projection path |
+| PR-227 | `[closed]` | [Ignored Generated Artifact Hygiene](PR-227-ignored-generated-artifact-hygiene.md) | PR-225 | Workspace hygiene | 0.25 d | Ignored generated artifacts cleaned and source/resource hygiene guard added |
+| PR-228 | `[closed]` | [Business Subagent State Matrix Authority Cleanup](PR-228-business-subagent-state-authority-cleanup.md) | PR-168E, PR-225 | Entangled authority boundary | 0.25-0.5 d | Business no longer exports or tests a duplicate subagent transition matrix as a truth source |
+| PR-229 | `[closed]` | [Chat Message Lifecycle Shape Removal](PR-229-chat-message-lifecycle-shape-removal.md) | PR-168E, PR-225 | Message projection cleanup | 0.5 d | `messages` projection no longer keeps retired Agent-loop lifecycle columns/contracts |
+| PR-230 | `[closed]` | [App One-off Patch Script Cleanup](PR-230-app-one-off-patch-script-cleanup.md) | PR-225 | App maintenance cleanup | 0.25 d | Tracked one-off UI patch and old AVD migration scripts removed |
+| PR-231 | `[closed]` | [VNC / noVNC Boundary Cleanup](PR-231-vnc-novnc-boundary-cleanup.md) | PR-195, PR-225 | App VM display boundary | 0.5 d | Browser noVNC/VncProxy route surface removed while preserving required RFB capture paths |
+| PR-232 | `[closed]` | [Roadmap Archaeology Noise Cleanup](PR-232-roadmap-archaeology-noise-cleanup.md) | PR-210, PR-225 | Documentation entropy cleanup | 0.25-0.5 d | Historical retired-path wording is fenced by stronger archaeology guard |
 
 
 ---
