@@ -37,3 +37,15 @@ git submodule update --init --recursive
 ## Submodules
 
 All services are independent Git repos managed as submodules. See `.gitmodules` for details.
+
+## Testing
+
+Run the canonical backend test matrix from the repository root:
+
+```bash
+scripts/run_all_tests.sh
+```
+
+The runner executes each backend submodule with its explicit package path. Avoid
+bare recursive `pytest` across the monorepo root; submodules are independent
+packages and some contract tests intentionally import sibling services.

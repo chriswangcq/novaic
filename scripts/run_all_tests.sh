@@ -1,72 +1,62 @@
 #!/usr/bin/env bash
-# 高强度全面测试 - 遍历各 repo 执行 pytest
-set -e
+# Canonical backend test matrix for the NovAIC monorepo.
+#
+# Do not run bare `pytest` across the repository root: submodules are separate
+# Python packages and several contract tests intentionally import sibling
+# services. This runner makes those dependency edges explicit per module.
+set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$ROOT"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
 
-# 使用 agent-runtime 的 venv（包含完整依赖）
-VENV_PYTHON="${ROOT}/novaic-agent-runtime/.venv/bin/python"
-if [[ ! -x "$VENV_PYTHON" ]]; then
-    echo "Warning: agent-runtime venv not found, using system python"
-    VENV_PYTHON="python"
-fi
-
-FAILED=()
 PASSED=()
+FAILED=()
 
-run_guard() {
+run_check() {
     local name="$1"
-    local cmd="$2"
+    shift
+
     echo ""
-    echo "========== $name =========="
-    if eval "$cmd" 2>&1; then
+    echo "========== ${name} =========="
+    if (cd "$ROOT" && "$@"); then
         PASSED+=("$name")
-        echo "[PASS] $name"
-        return 0
+        echo "[PASS] ${name}"
     else
         FAILED+=("$name")
-        echo "[FAIL] $name"
-        return 1
+        echo "[FAIL] ${name}"
     fi
 }
 
-run_tests() {
-    local dir="$1"
-    local name="$2"
-    local filter="${3:-}"
-    if [[ ! -d "$dir" ]]; then
-        echo "[SKIP] $name - directory not found"
-        return 0
-    fi
+run_pytest() {
+    local name="$1"
+    local dir="$2"
+    local pythonpath="$3"
+    shift 3
+
     echo ""
-    echo "========== $name =========="
-    local cmd="cd $dir && $VENV_PYTHON -m pip install -r requirements.txt -q 2>/dev/null; $VENV_PYTHON -m pytest tests/ $filter -v --tb=short"
-    if eval "$cmd" 2>&1; then
+    echo "========== ${name} =========="
+    if (cd "$ROOT/$dir" && PYTHONPATH="$pythonpath" "$PYTHON_BIN" -m pytest -q "$@"); then
         PASSED+=("$name")
-        echo "[PASS] $name"
-        return 0
+        echo "[PASS] ${name}"
     else
         FAILED+=("$name")
-        echo "[FAIL] $name"
-        return 1
+        echo "[FAIL] ${name}"
     fi
 }
 
-# 0. root guardrails
-run_guard "agent-main-path-acceptance" "scripts/ci/lint_agent_main_path_acceptance.sh" || true
-run_guard "retired-agent-paths" "scripts/ci/lint_retired_agent_paths.sh" || true
-run_guard "lifecycle-loop-ownership" "scripts/ci/lint_lifecycle_loop_ownership.sh" || true
-run_guard "roadmap-ticket-archaeology" "python3 scripts/ci/lint_roadmap_ticket_archaeology.py" || true
-
-# 1. agent-runtime (unit)
-run_tests "novaic-agent-runtime" "agent-runtime" "tests/unit/" || true
-
-# 2. Blob Service
-run_tests "novaic-blob-service" "blob-service" "" || true
+run_check "root-ci-guards" "$PYTHON_BIN" -m pytest -q
+run_pytest "agent-runtime" "novaic-agent-runtime" ".:../novaic-common"
+run_pytest "business" "novaic-business" ".:../novaic-common"
+run_pytest "common" "novaic-common" ".:../novaic-agent-runtime"
+run_pytest "cortex" "novaic-cortex" ".:../novaic-common"
+run_pytest "blob-service" "novaic-blob-service" ".:../novaic-common"
+run_pytest "llm-factory" "novaic-llm-factory" "."
 
 echo ""
 echo "========== SUMMARY =========="
 echo "Passed: ${#PASSED[@]} - ${PASSED[*]:-none}"
 echo "Failed: ${#FAILED[@]} - ${FAILED[*]:-none}"
-[[ ${#FAILED[@]} -eq 0 ]] && exit 0 || exit 1
+
+if [[ ${#FAILED[@]} -gt 0 ]]; then
+    exit 1
+fi
