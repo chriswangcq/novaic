@@ -13,6 +13,7 @@
 | [step-index-and-payload-schema.md](step-index-and-payload-schema.md) | `steps/_index.jsonl` 行类型、tool/assistant/env/scope 与磁盘 JSON |
 | [session-meta-json.md](session-meta-json.md) | `meta.json` 字段、`ContextEngine` 前缀、`/v1/meta/*` |
 | [context-timeline-and-dfs.md](context-timeline-and-dfs.md) | `ContextEngine`、DFS 展开与折叠、`budget_compact` |
+| [../architecture/agent-loop-control-plane-consistency.md](../architecture/agent-loop-control-plane-consistency.md) | Agent Runtime / Cortex / Common assembly 的 Active skill stack、tool result、wake finalize 控制面一致性设计 |
 | [recall.md](recall.md) | **历史/已退役**：旧 `Recall` 设计说明；当前 LLM 主路径不使用独立 Recall 模块 |
 | [object-keys.md](object-keys.md) | `CortexStore`、`WorkspaceRegistry`、对象键 |
 | [sandbox-shell.md](sandbox-shell.md) | `Sandbox.exec`、与 VM/proxy shell 的区别 |

@@ -50,6 +50,16 @@
 > backlog items. Historical ticket/review files that mention these terms must
 > carry a `Historical ticket archive:` banner.
 
+### 当前执行工单
+
+| ID | Status | 标题 | 依赖 | 承诺 | 预估 | Owner |
+| --- | --- | --- | --- | --- | --- | --- |
+| PR-234 | `[x]` | [Agent Loop Control-Plane Consistency](PR-234-agent-loop-control-plane-consistency.md) | PR-233 | 显式控制面 / 可恢复 Agent loop | 1 d | Codex |
+| PR-234A | `[x]` | [Cortex Authoritative Stack Source](PR-234A-cortex-authoritative-stack-source.md) | PR-234 | 单一 stack SSOT | 0.25 d | Codex |
+| PR-234B | `[x]` | [Transient Stack Snapshot Assembly Contract](PR-234B-transient-stack-snapshot-contract.md) | PR-234A | prompt snapshot 不污染 durable context | 0.25 d | Codex |
+| PR-234C | `[x]` | [Runtime Tool Logical Failure Semantics](PR-234C-runtime-tool-logical-failure-semantics.md) | PR-234A | `ok:false` 是失败 | 0.25 d | Codex |
+| PR-234D | `[x]` | [Repeated Mismatch Breaker And Force-Finalize Semantics](PR-234D-repeated-mismatch-breaker.md) | PR-234C | 治本防循环 | 0.25 d | Codex |
+
 
 | ID     | Status | 标题                                                                                                                          | 依赖                                       | 承诺          | 预估                                    | Owner       |
 | ------ | ------ | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | ----------- | ------------------------------------- | ----------- |
@@ -326,6 +336,11 @@
 | PR-230 | `[closed]` | [App One-off Patch Script Cleanup](PR-230-app-one-off-patch-script-cleanup.md) | PR-225 | App maintenance cleanup | 0.25 d | Tracked one-off UI patch and old AVD migration scripts removed |
 | PR-231 | `[closed]` | [VNC / noVNC Boundary Cleanup](PR-231-vnc-novnc-boundary-cleanup.md) | PR-195, PR-225 | App VM display boundary | 0.5 d | Browser noVNC/VncProxy route surface removed while preserving required RFB capture paths |
 | PR-232 | `[closed]` | [Roadmap Archaeology Noise Cleanup](PR-232-roadmap-archaeology-noise-cleanup.md) | PR-210, PR-225 | Documentation entropy cleanup | 0.25-0.5 d | Historical retired-path wording is fenced by stronger archaeology guard |
+| PR-233 | `[deployed]` | [Active IM Delivery vs Wake Creation Hardening](PR-233-active-im-delivery-vs-wake-creation.md) | PR-153, PR-168, PR-186 | Agent loop lifecycle / explicit dependency boundary | multi-step | Active IM attaches to current wake; sleeping/dead sessions create new/recovery wakes |
+| PR-233A | `[x]` | [Queue Active Inbox Dispatch Decision](PR-233A-session-dispatch-active-inbox.md) | PR-233 | Queue lifecycle | 0.5-1 d | Done |
+| PR-233B | `[x]` | [Runtime `session.attach_input` Active Wake Delivery](PR-233B-runtime-session-attach-input.md) | PR-233A | Runtime/Cortex input delivery | 0.5-1 d | Done |
+| PR-233C | `[x]` | [Dead Active Session Recovery and Structural Archive](PR-233C-dead-active-session-recovery.md) | PR-233A, PR-233B | Recovery / Cortex lifecycle | 1 d | Done |
+| PR-233D | `[x]` | [Context Attached Input Observation Guardrails](PR-233D-context-attached-input-observation-guards.md) | PR-233B, PR-233C | Prompt/im_read observability | 0.5 d | Done |
 
 
 ---

@@ -85,6 +85,7 @@ Device
 | 服务拓扑 | [service-topology.md](service-topology.md) |
 | App UI | [app-ui.md](app-ui.md) |
 | Agent 管线 | [agent-pipeline.md](agent-pipeline.md) |
+| Agent loop 控制面一致性 | [agent-loop-control-plane-consistency.md](agent-loop-control-plane-consistency.md) |
 | Cortex | [cortex.md](cortex.md), [../cortex/README.md](../cortex/README.md) |
 | Gateway | [../gateway-architecture.md](../gateway-architecture.md), [../gateway/README.md](../gateway/README.md) |
 | Entangled | [../entangled-architecture.md](../entangled-architecture.md), [../entangled/README.md](../entangled/README.md) |

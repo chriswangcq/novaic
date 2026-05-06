@@ -97,6 +97,8 @@ def main() -> int:
         'base = json.load(open("$BASE/novaic-common/config/services.json"))',
         "base[\"runtime_switches\"].update(overlay)",
         "overlay_path = pathlib.Path(\"/opt/novaic/etc/runtime_switches.json\")",
+        "--task-timeout",
+        "--saga-timeout",
     ]
 
     missing = [needle for needle in required if needle not in source]
@@ -107,7 +109,7 @@ def main() -> int:
             for needle in missing:
                 errors.append(f"  - {needle}")
         if present:
-            errors.append("start.sh config contract reintroduced mirrored overlay logic:")
+            errors.append("start.sh config contract reintroduced mirrored overlay or timeout override logic:")
             for needle in present:
                 errors.append(f"  - {needle}")
 
