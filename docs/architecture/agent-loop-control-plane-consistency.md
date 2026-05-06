@@ -1190,7 +1190,7 @@ Recovery event 必须包含：
 | `tq_pending_triggers` 单 row merge 主路径 | 已由 PR-244 删除；v10 migration drop 旧表 | append-only inbox 切流完成 |
 | `tq_active_sessions` 作为唯一 SSOT | 降级 view/cache 或删除 | `session_state` 切流且 drift 为 0 |
 | `dispatch()` 内直接分支决策 | 迁到 pure FSM，删除旧 if/else | observe-only decision drift 为 0 |
-| transaction 外直接 `publish attach_input` | 删除，统一 outbox | outbox worker 切流完成 |
+| transaction 外直接 `publish attach_input` | 已由 PR-248 删除，统一走 `publish_attach_input` outbox effect | PR-248 attach outbox 测试通过 |
 | transaction 外直接 `publish wake` | 删除，统一 outbox | wake saga creation outbox 切流完成 |
 | recovery archive 直接 `publish cortex.scope_end` | 已由 PR-247 删除，统一走 `recovery_archive_scope` outbox effect | PR-247 recovery outbox 测试通过 |
 | 无 generation 的 attach payload | 删除兼容分支 | producer 全部升级 |
@@ -1255,6 +1255,14 @@ rg "compat|legacy|backward" docs novaic-agent-runtime | require archive banner
 - PR-245 / FSM-06A 已落地：`wake_finalize` 失败时 watchdog 不再直接删除 `tq_active_sessions`，也不再写 `tq_session_recoveries`；它只从 saga context、error 和 injected clock 写入 idempotent `session_suspected_dead` 事件。下一次 `SessionRepository.dispatch()` 在路由事务里观察当前 active scope 的 suspected-dead event，删除 stale active pointer，基于 unconsumed `input_received` projection 创建 recovered wake，并继续通过 direct `cortex.scope_end` task 做结构化归档重试。
 - PR-246 / FSM-06B 已落地：删除 `tq_session_recoveries` marker 表和 dispatch marker consumer，schema v11 对既有 DB 执行 `DROP TABLE IF EXISTS tq_session_recoveries`。Recovery live source 只剩 `session_suspected_dead` event + unconsumed inbox projection；direct recovery archive publish 仍留到 durable outbox cutover。
 - PR-247 / FSM-06C 已落地：recovery archive 不再由 `SessionRepository` 直接调用 `TaskQueue.publish`。Recovery dispatch 在 `dispatch_saga_started` 状态账同事务写入 `recovery_archive_scope` outbox effect，事务后由 `SessionOutboxDispatcher` 投递 `cortex.scope_end` 并 ack；publish 失败时 outbox 保持 `pending`、记录 attempts/error，后续 drain 用同一 idempotency key 重放。`SagaOrchestrator.queue_recovery_scope_end_task` 已删除。
+- PR-248 / FSM-06D 已落地：active `session.attach_input` 不再由
+  `SessionRepository` 直接调用 `TaskQueue.publish`。Active attach 与
+  race-attach 分支先在状态账事务中写入 `publish_attach_input` outbox
+  effect，再由 `SessionOutboxDispatcher` 投递并 ack；正常路径仍向
+  `dispatch()` 调用方返回已发布的 `task_id`。如果即时 publish 失败，
+  outbox 记录 attempts/error 且保持 `pending`，input 已由 durable outbox
+  接管并被 consumed，避免同一输入在 session end 时被误判为 pending
+  restart source。`SessionRepository._publish_attach_input_task` 已删除。
 
 每个工单必须包含：
 
