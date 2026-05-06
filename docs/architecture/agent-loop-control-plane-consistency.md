@@ -1233,6 +1233,8 @@ rg "compat|legacy|backward" docs novaic-agent-runtime | require archive banner
 
 - PR-235 / FSM-01 已落地：新增 shadow `tq_session_events`、`tq_session_state`、`tq_session_outbox`，并在 runtime 主路 observe-only 双写 dispatch/session-end 事件与状态。
 - PR-235 未切流：`tq_active_sessions`、`tq_pending_triggers`、直接 `TaskQueue.publish` 仍是当前 live path，后续删除必须等对应 FSM 阶段和 drift check 通过。
+- PR-236 / FSM-02 已落地：新增 pure `SessionDispatchInput` / `SessionRuntimeState` / `SessionDispatchDecision`，并把 legacy action 与 shadow action 的 drift trace 写入 shadow event payload。
+- PR-236 未切流：旧 `SessionRepository.dispatch()` 分支仍是 live path；pure FSM 只用于对账。
 
 每个工单必须包含：
 

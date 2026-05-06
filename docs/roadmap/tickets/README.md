@@ -60,6 +60,7 @@
 | PR-234C | `[x]` | [Runtime Tool Logical Failure Semantics](PR-234C-runtime-tool-logical-failure-semantics.md) | PR-234A | `ok:false` 是失败 | 0.25 d | Codex |
 | PR-234D | `[x]` | [Repeated Mismatch Breaker And Force-Finalize Semantics](PR-234D-repeated-mismatch-breaker.md) | PR-234C | 治本防循环 | 0.25 d | Codex |
 | PR-235 | `[x]` | [Reliable Evolution FSM-01 Baseline & Shadow Ledger](PR-235-reliable-evolution-fsm-shadow-ledger.md) | PR-234D | shadow 事件账 / 状态账 / outbox 表，不切旧主路 | 0.5 d | Codex |
+| PR-236 | `[x]` | [Reliable Evolution FSM-02 Pure Decision Shadow](PR-236-reliable-evolution-fsm-pure-decision-shadow.md) | PR-235 | pure FSM decision 对账，不切旧主路 | 0.5 d | Codex |
 
 
 | ID     | Status | 标题                                                                                                                          | 依赖                                       | 承诺          | 预估                                    | Owner       |
