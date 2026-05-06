@@ -1191,7 +1191,7 @@ Recovery event 必须包含：
 | `tq_active_sessions` 作为唯一 SSOT | 降级 view/cache 或删除 | `session_state` 切流且 drift 为 0 |
 | `dispatch()` 内直接分支决策 | 迁到 pure FSM，删除旧 if/else | observe-only decision drift 为 0 |
 | transaction 外直接 `publish attach_input` | 已由 PR-248 删除，统一走 `publish_attach_input` outbox effect | PR-248 attach outbox 测试通过 |
-| transaction 外直接 `publish wake` | 删除，统一 outbox | wake saga creation outbox 切流完成 |
+| transaction 外直接 `publish wake` | 仍待后续切流；PR-249 已先把 observe-only `create_wake_saga` 行改为 `observed`，避免污染 retryable pending outbox backlog | wake saga creation outbox 切流完成 |
 | recovery archive 直接 `publish cortex.scope_end` | 已由 PR-247 删除，统一走 `recovery_archive_scope` outbox effect | PR-247 recovery outbox 测试通过 |
 | 无 generation 的 attach payload | 删除兼容分支 | producer 全部升级 |
 | watchdog 直接 mutate state | 删除 | watchdog event 化 |
@@ -1263,6 +1263,12 @@ rg "compat|legacy|backward" docs novaic-agent-runtime | require archive banner
   outbox 记录 attempts/error 且保持 `pending`，input 已由 durable outbox
   接管并被 consumed，避免同一输入在 session end 时被误判为 pending
   restart source。`SessionRepository._publish_attach_input_task` 已删除。
+- PR-249 / FSM-03B 已落地：`create_wake_saga` 仍是 direct
+  `SagaOrchestrator.create()` 活路径，尚未切成 durable outbox；但其
+  shadow outbox 记录已从 `pending` 改为 `observed`，并通过 schema v12
+  迁移修正既有诊断行。这防止 observe-only wake rows 被 pending outbox
+  drain/backlog 误认为可重试 side effect；`recovery_archive_scope` 和
+  `publish_attach_input` 仍保持 retryable `pending`/`published` 语义。
 
 每个工单必须包含：
 
