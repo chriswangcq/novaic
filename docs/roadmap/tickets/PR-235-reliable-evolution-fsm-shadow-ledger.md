@@ -63,7 +63,7 @@ Deletion criteria:
 
 ## Verification
 
-- `pytest tests/test_pr235_session_ledger_shadow.py tests/test_pr233_active_inbox_dispatch.py tests/test_pr153_pending_trigger_metadata.py`
+- `pytest tests/test_pr235_session_ledger_shadow.py tests/test_pr233_active_inbox_dispatch.py tests/test_pr153_pending_inbox_metadata.py`
 - `pytest`
 - `git diff --check`
 

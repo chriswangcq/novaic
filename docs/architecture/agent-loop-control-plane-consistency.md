@@ -1187,7 +1187,7 @@ Recovery event 必须包含：
 
 | 旧路径 / 残留 | 清理动作 | 删除前置条件 |
 |---|---|---|
-| `tq_pending_triggers` 单 row merge 主路径 | 删除或降级 migration archive | append-only inbox 切流完成 |
+| `tq_pending_triggers` 单 row merge 主路径 | 已由 PR-244 删除；v10 migration drop 旧表 | append-only inbox 切流完成 |
 | `tq_active_sessions` 作为唯一 SSOT | 降级 view/cache 或删除 | `session_state` 切流且 drift 为 0 |
 | `dispatch()` 内直接分支决策 | 迁到 pure FSM，删除旧 if/else | observe-only decision drift 为 0 |
 | transaction 外直接 `publish attach_input` | 删除，统一 outbox | outbox worker 切流完成 |
@@ -1224,7 +1224,7 @@ rg "compat|legacy|backward" docs novaic-agent-runtime | require archive banner
 | FSM-02 Pure Decision Shadow | 新 decision 对账 | 不切流 |
 | FSM-03 Durable Outbox | outbox 投递与 ack | 不删旧 publish 直到对账通过 |
 | FSM-04 Generation Attach | attach 二次校验 | 不改 recovery |
-| FSM-05 Append-only Inbox | pending 迁移 | 不删 `pending_triggers` 直到顺序测试通过 |
+| FSM-05 Append-only Inbox | pending 迁移 | PR-244 后不再保留 `pending_triggers` 活路 |
 | FSM-06 Watchdog Recovery | watchdog/recovery 事件化 | 不让 watchdog 直接 mutate |
 | FSM-07 Finalize Ownership | FSM 接管 active cleanup | 不伪装 stack empty |
 | FSM-08 Legacy Removal | 删除旧路和 guard | 不再新增功能 |
@@ -1232,7 +1232,7 @@ rg "compat|legacy|backward" docs novaic-agent-runtime | require archive banner
 实施记录：
 
 - PR-235 / FSM-01 已落地：新增 shadow `tq_session_events`、`tq_session_state`、`tq_session_outbox`，并在 runtime 主路 observe-only 双写 dispatch/session-end 事件与状态。
-- PR-235 未切流：`tq_active_sessions`、`tq_pending_triggers`、直接 `TaskQueue.publish` 仍是当前 live path，后续删除必须等对应 FSM 阶段和 drift check 通过。
+- PR-235 当时未切流：`tq_active_sessions`、旧 pending store、直接 `TaskQueue.publish` 仍是 live path；后续阶段已逐步切走 pending store。
 - PR-236 / FSM-02 已落地：新增 pure `SessionDispatchInput` / `SessionRuntimeState` / `SessionDispatchDecision`，并把 legacy action 与 shadow action 的 drift trace 写入 shadow event payload。
 - PR-236 未切流：旧 `SessionRepository.dispatch()` 分支仍是 live path；pure FSM 只用于对账。
 - PR-237 / FSM-03A 已落地：为 wake saga creation、active attach publish、pending restart 记录 observe-only outbox effect。
@@ -1240,15 +1240,16 @@ rg "compat|legacy|backward" docs novaic-agent-runtime | require archive banner
 - PR-238 / FSM-04 已落地：`session.attach_input` payload 带 expected wake scope 与 expected session generation，handler 先读 agent-root meta 校验再 append input。
 - PR-238 仍未让 `tq_session_state` 成为 live truth：generation 当前由 shadow ledger 辅助生成，后续 FSM cutover 后再统一到 authoritative state。
 - PR-239 / FSM-05A 已落地：每次 `SessionRepository.dispatch()` 都先写 observe-only `input_received` append-only event，payload 保留 `trigger_type`、`message_ids` 和 metadata snapshot，为后续 inbox replay/cutover 建输入账。
-- PR-239 未切流：`tq_pending_triggers` 仍是 live pending store；append-only inbox 只对账，不负责恢复、重放、顺序调度或删除旧 pending 路。
+- PR-239 当时未切流：旧 pending store 仍是 live pending store；append-only inbox 只对账。该限制已由 PR-243/PR-244 推进到 inbox restart 与旧表删除。
 - PR-240 / FSM-05B 已落地：新增 observe-only input consumption 账，start/attach/dedupe/restart 成功后写 `input_consumed` event 并标记 `input_received.consumed_at` projection。
-- PR-240 未切流：`consumed_at` 只是对账 projection，不是 live scheduler；unconsumed inbox 尚未替代 `tq_pending_triggers`。
+- PR-240 当时未切流：`consumed_at` 只是对账 projection，不是 live scheduler；unconsumed inbox 尚未替代旧 pending store。该限制已由 PR-243/PR-244 收口。
 - PR-241 / FSM-05C 已落地：从 unconsumed `input_received` events 派生 pending projection，并在 buffer/restart 后写 `pending_projection_observed` drift payload。
 - PR-241 已被 PR-243 推进切流：pending projection 不再只是新旧对账，`session_ended()` restart source 已切到 unconsumed `input_received` projection。
-- PR-242 / FSM-05D 已落地：`SessionRepository` 显式要求 `SessionLedgerRepository`，初始 `input_received` 写入 fail-fast；写失败时不会创建 active session、pending trigger、saga 或 task。
+- PR-242 / FSM-05D 已落地：`SessionRepository` 显式要求 `SessionLedgerRepository`，初始 `input_received` 写入 fail-fast；写失败时不会创建 active session、pending inbox input、saga 或 task。
 - PR-242 切流前置条件已被 PR-243 使用：因为 `input_received` 写入 fail-fast，`session_ended()` 可以把 inbox projection 当作 restart source，而不是把 best-effort shadow 当 live source。
-- PR-243 / FSM-05E 已落地：`session_ended()` 先从 unconsumed `input_received` events 构造 pending projection，并用 projection 创建 restart wake；`tq_pending_triggers` 只在 cleanup 时删除和 drift 对账，不再决定 restart/close。
-- PR-243 保留旧写路径：dispatch buffer 仍写 `tq_pending_triggers`，`list_pending_triggers()` 仍可诊断；PR-244 才删除 pending 写/读残留和相关 guard。
+- PR-243 / FSM-05E 已落地：`session_ended()` 先从 unconsumed `input_received` events 构造 pending projection，并用 projection 创建 restart wake；旧 pending table 不再决定 restart/close。
+- PR-244 / FSM-05F 已落地：删除旧 pending trigger 活存储，schema v10 不再创建该表并在 migration 中 `DROP TABLE IF EXISTS`；dispatch buffer 只保留 append-only `input_received`，`session_ended()` / `rebuild()` / `/pending` diagnostics 不再读写旧表，`trigger_id_provider` 从 Queue dependencies 和 `SessionRepository` 构造边界删除。
+- PR-244 recovery 补强：当 recovery marker 存在时，新的 recovery wake 从 unconsumed inbox projection 合并 message ids / metadata，并记录 `recovery_pending_input_event_ids`，避免删除旧 orphan pending row 后丢输入。
 - PR-243A / FSM-05E 验证加固已落地：`input_consumed` shadow 写入补回显式 `Database.transaction(lock_type="global")` 边界；公共 DB wrapper 只在初始化连接设置 `journal_mode=WAL`，线程本地连接不再重复执行数据库级 WAL 初始化。
 
 每个工单必须包含：

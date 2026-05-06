@@ -74,7 +74,7 @@ Required shape:
 Keep these deliberately for now:
 
 - Dispatch still writes `tq_pending_triggers` for one more cleanup ticket.
-- `list_pending_triggers()` remains diagnostic.
+- `list_pending_inputs()` is the diagnostic view after PR-244.
 
 Deletion criteria:
 
@@ -83,7 +83,7 @@ Deletion criteria:
 
 ## Verification
 
-- `pytest tests/test_pr243_inbox_restart_cutover.py tests/test_pr242_strict_input_ledger.py tests/test_pr241_pending_inbox_projection.py tests/test_pr153_pending_trigger_metadata.py tests/test_pr233_active_inbox_dispatch.py`
+- `pytest tests/test_pr243_inbox_restart_cutover.py tests/test_pr242_strict_input_ledger.py tests/test_pr241_pending_inbox_projection.py tests/test_pr153_pending_inbox_metadata.py tests/test_pr233_active_inbox_dispatch.py`
 - `pytest`
 - `git diff --check`
 

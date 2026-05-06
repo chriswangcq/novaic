@@ -85,7 +85,7 @@ Deletion criteria:
 
 ## Verification
 
-- `pytest tests/test_pr241_pending_inbox_projection.py tests/test_pr240_input_consumption_observe.py tests/test_pr153_pending_trigger_metadata.py`
+- `pytest tests/test_pr241_pending_inbox_projection.py tests/test_pr240_input_consumption_observe.py tests/test_pr153_pending_inbox_metadata.py`
 - `pytest`
 - `git diff --check`
 

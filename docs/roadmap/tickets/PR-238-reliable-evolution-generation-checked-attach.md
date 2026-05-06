@@ -38,7 +38,7 @@ current Cortex agent-root state before mutating scope inputs.
 - `novaic-agent-runtime/queue_service/session_repo.py`
 - `novaic-agent-runtime/task_queue/sagas/subagent_wake.py`
 - `novaic-agent-runtime/task_queue/handlers/runtime_handlers.py`
-- `novaic-agent-runtime/tests/test_pr153_pending_trigger_metadata.py`
+- `novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py`
 - `novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py`
 - `novaic-agent-runtime/tests/test_pr237_session_outbox_observe.py`
 - `novaic-agent-runtime/tests/test_pr238_generation_checked_attach.py`
@@ -57,7 +57,7 @@ Deletion criteria:
 
 ## Verification
 
-- `pytest tests/test_pr238_generation_checked_attach.py tests/test_pr233_active_inbox_dispatch.py tests/test_pr153_pending_trigger_metadata.py tests/test_pr237_session_outbox_observe.py`
+- `pytest tests/test_pr238_generation_checked_attach.py tests/test_pr233_active_inbox_dispatch.py tests/test_pr153_pending_inbox_metadata.py tests/test_pr237_session_outbox_observe.py`
 - `pytest`
 - `git diff --check`
 

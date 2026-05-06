@@ -66,7 +66,7 @@ Closed.
 
 ## Verification
 
-- `for i in 1 2 3 4 5 6 7 8 9 10; do pytest tests/test_pr153_pending_trigger_metadata.py::test_concurrent_dispatches_create_one_active_session_and_one_attachment -q || exit 1; done`
+- `for i in 1 2 3 4 5 6 7 8 9 10; do pytest tests/test_pr153_pending_inbox_metadata.py::test_concurrent_dispatches_create_one_active_session_and_one_attachment -q || exit 1; done`
 - `pytest`
 - `PYTHONPATH=/Users/wangchaoqun/new-build-novaic/novaic-common:/Users/wangchaoqun/new-build-novaic/novaic-agent-runtime pytest novaic-common/tests`
 

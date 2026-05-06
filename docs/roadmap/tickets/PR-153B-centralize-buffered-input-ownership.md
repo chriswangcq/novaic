@@ -40,7 +40,7 @@ The current buffered path lets Subscriber write `/v1/scope/append_input` and mar
 ## Evidence
 
 - `novaic-business`: `python3 -m pytest tests/test_dispatch_subscriber.py tests/test_im_aggregation.py tests/test_pr52_stale_claim_check.py -q` → 62 passed.
-- `novaic-agent-runtime`: `python3 -m pytest tests/test_session_init_message_ids.py tests/test_pr153_pending_trigger_metadata.py tests/test_scope_end_consumed.py tests/test_context_read_by_ids.py -q` → 22 passed.
+- `novaic-agent-runtime`: `python3 -m pytest tests/test_session_init_message_ids.py tests/test_pr153_pending_inbox_metadata.py tests/test_scope_end_consumed.py tests/test_context_read_by_ids.py -q` → 22 passed.
 - `novaic-cortex`: `python3 -m pytest tests -q` → 385 passed, 16 skipped.
 - Deploy smoke: `./deploy gateway` restarted Entangled, Gateway, Business, Device, Queue, Storage, Cortex and required Subscriber; `./deploy status` shows all backend ports healthy and relay active.
 

@@ -64,5 +64,5 @@ wake.
 
 ## Verification Result
 
-- `tests/test_pr153_pending_trigger_metadata.py`
+- `tests/test_pr153_pending_inbox_metadata.py`
 - `tests/test_pr233_active_inbox_dispatch.py`

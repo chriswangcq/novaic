@@ -61,7 +61,7 @@ Docs/guards to update: ticket index and architecture implementation record
 ## Implementation Files
 
 - `novaic-agent-runtime/queue_service/session_repo.py`
-- `novaic-agent-runtime/tests/test_pr153_pending_trigger_metadata.py`
+- `novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py`
 - `novaic-agent-runtime/tests/test_pr233_active_inbox_dispatch.py`
 - `novaic-agent-runtime/tests/test_pr242_strict_input_ledger.py`
 
@@ -90,7 +90,7 @@ Deletion criteria:
 
 ## Verification
 
-- `pytest tests/test_pr242_strict_input_ledger.py tests/test_pr241_pending_inbox_projection.py tests/test_pr240_input_consumption_observe.py tests/test_pr239_append_only_inbox_observe.py tests/test_pr153_pending_trigger_metadata.py tests/test_pr233_active_inbox_dispatch.py`
+- `pytest tests/test_pr242_strict_input_ledger.py tests/test_pr241_pending_inbox_projection.py tests/test_pr240_input_consumption_observe.py tests/test_pr239_append_only_inbox_observe.py tests/test_pr153_pending_inbox_metadata.py tests/test_pr233_active_inbox_dispatch.py`
 - `pytest`
 - `git diff --check`
 

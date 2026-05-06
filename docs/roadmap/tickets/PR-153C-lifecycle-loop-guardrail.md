@@ -39,10 +39,10 @@ The main risk after PR-153B is regression: a future shortcut could reintroduce r
 
 - Added `scripts/ci/lint_lifecycle_loop_ownership.sh`: bans Subscriber Cortex input writes and Subscriber message transition writes, checks Queue pending metadata merge exists, checks Runtime `session.init` bulk-claims inputs, and runs the existing `chat_messages.read` UI-only guard.
 - Added `novaic-business/tests/test_pr153_lifecycle_guardrails.py`: source-level guard that Subscriber cannot regain append/transition write paths.
-- Expanded `novaic-agent-runtime/tests/test_pr153_pending_trigger_metadata.py`: concurrent dispatches for the same `(agent_id, subagent_id)` now assert one active session and one pending trigger, with the pending message IDs owned by the restarted wake.
+- Expanded `novaic-agent-runtime/tests/test_pr153_pending_inbox_metadata.py`: concurrent dispatches for the same `(agent_id, subagent_id)` now assert one active session and one pending inbox projection, with buffered message IDs owned by the restarted wake.
 - Bug found and fixed while adding the guardrail: a concurrent active-session insert loser used to return `deduped` and drop the trigger; it now cancels its transient saga, buffers the trigger metadata, and returns `buffered`.
 - Tests:
   - `scripts/ci/lint_lifecycle_loop_ownership.sh` → PASS.
   - `novaic-business`: `python3 -m pytest tests/test_dispatch_subscriber.py tests/test_im_aggregation.py tests/test_pr52_stale_claim_check.py tests/test_pr153_lifecycle_guardrails.py -q` → 63 passed.
-  - `novaic-agent-runtime`: `python3 -m pytest tests/test_pr153_pending_trigger_metadata.py tests/test_session_init_message_ids.py tests/test_scope_end_consumed.py tests/test_context_read_by_ids.py -q` → 23 passed.
+  - `novaic-agent-runtime`: `python3 -m pytest tests/test_pr153_pending_inbox_metadata.py tests/test_session_init_message_ids.py tests/test_scope_end_consumed.py tests/test_context_read_by_ids.py -q` → 23 passed.
 - Deploy smoke: `./deploy gateway` restarted all backend services and required Subscriber; `./deploy status` shows backend ports healthy and relay active.

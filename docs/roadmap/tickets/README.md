@@ -69,6 +69,7 @@
 | PR-242 | `[x]` | [Reliable Evolution FSM-05D Strict Input Ledger Boundary](PR-242-reliable-evolution-strict-input-ledger.md) | PR-241 | `input_received` 写入 fail-fast，切流前置条件 | 0.5 d | Codex |
 | PR-243 | `[x]` | [Reliable Evolution FSM-05E Inbox Restart Cutover](PR-243-reliable-evolution-inbox-restart-cutover.md) | PR-242 | `session_ended()` restart source 切到 inbox projection | 0.5 d | Codex |
 | PR-243A | `[x]` | [Reliable Evolution SQLite Transaction Boundary](PR-243A-reliable-evolution-sqlite-transaction-boundary.md) | PR-243 | 修复全量验证暴露的 shadow ledger 绕 transaction 写和 SQLite thread connection 初始化锁洞 | 0.25 d | Codex |
+| PR-244 | `[x]` | [Reliable Evolution FSM-05F Remove Pending Trigger Store](PR-244-reliable-evolution-remove-pending-triggers.md) | PR-243 | 删除 `tq_pending_triggers` 活存储，pending 只来自 append-only inbox | 0.5 d | Codex |
 
 
 | ID     | Status | 标题                                                                                                                          | 依赖                                       | 承诺          | 预估                                    | Owner       |

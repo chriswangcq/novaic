@@ -63,4 +63,4 @@ not an accidental "no active session" state.
 ## Verification Result
 
 - `test_wake_finalize_failure_creates_recovery_marker_and_archive_task`
-- `test_recovery_wake_carries_orphan_pending_inputs`
+- `test_recovery_wake_carries_unconsumed_inbox_inputs`
