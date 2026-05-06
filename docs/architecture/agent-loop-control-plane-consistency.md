@@ -748,7 +748,7 @@ message_1 -> message_2 -> message_3
 | attach 账 | attach 到 active saga/scope | generation checked attach | generation mismatch 回流测试 | 删除无 generation attach payload |
 | watchdog 账 | watchdog 可能直接触发恢复动作 | 只写 suspected_dead event | watchdog 不改 state 的测试 | 删除 watchdog 直接 mutate 路径 |
 | finalize 账 | finalize reason 部分显式 | reason + generation + remaining_stack | 强制 finalize 审计字段测试 | 删除伪 stack-empty/隐式 reason |
-| recovery 账 | recovery marker 局部存在 | recovery event + recovery_id + from_generation | dead active 恢复测试 | 删除 ad hoc recovery marker 旁路 |
+| recovery 账 | recovery marker 已由 PR-246 删除 | recovery event + recovery_id + from_generation | dead active 恢复测试 | durable recovery outbox 切流后删除 direct archive publish |
 
 ### 14.3 阶段账本
 
@@ -1195,7 +1195,7 @@ Recovery event 必须包含：
 | 无 generation 的 attach payload | 删除兼容分支 | producer 全部升级 |
 | watchdog 直接 mutate state | 删除 | watchdog event 化 |
 | finalize 直接清 active | 删除 | finalize event + FSM 清理切流 |
-| ad hoc recovery marker | 删除 | recovery event + recovery_id 切流 |
+| ad hoc recovery marker | 已由 PR-246 删除；v11 migration drop 旧表 | recovery event + recovery_id 切流 |
 | `compat` / `legacy` 文档描述 | 加 archive banner 或删除 | 代码主路删除完成 |
 | 老测试名中的 fallback/compat 语义 | 重命名或删除 | 新测试覆盖完成 |
 | 配置开关保留双路 | 删除开关 | Phase 8 完成 |
@@ -1249,9 +1249,10 @@ rg "compat|legacy|backward" docs novaic-agent-runtime | require archive banner
 - PR-242 切流前置条件已被 PR-243 使用：因为 `input_received` 写入 fail-fast，`session_ended()` 可以把 inbox projection 当作 restart source，而不是把 best-effort shadow 当 live source。
 - PR-243 / FSM-05E 已落地：`session_ended()` 先从 unconsumed `input_received` events 构造 pending projection，并用 projection 创建 restart wake；旧 pending table 不再决定 restart/close。
 - PR-244 / FSM-05F 已落地：删除旧 pending trigger 活存储，schema v10 不再创建该表并在 migration 中 `DROP TABLE IF EXISTS`；dispatch buffer 只保留 append-only `input_received`，`session_ended()` / `rebuild()` / `/pending` diagnostics 不再读写旧表，`trigger_id_provider` 从 Queue dependencies 和 `SessionRepository` 构造边界删除。
-- PR-244 recovery 补强：当 recovery marker 存在时，新的 recovery wake 从 unconsumed inbox projection 合并 message ids / metadata，并记录 `recovery_pending_input_event_ids`，避免删除旧 orphan pending row 后丢输入。
+- PR-244 recovery 补强（历史阶段，marker 路已由 PR-246 删除）：当 recovery marker 存在时，新的 recovery wake 从 unconsumed inbox projection 合并 message ids / metadata，并记录 `recovery_pending_input_event_ids`，避免删除旧 orphan pending row 后丢输入。
 - PR-243A / FSM-05E 验证加固已落地：`input_consumed` shadow 写入补回显式 `Database.transaction(lock_type="global")` 边界；公共 DB wrapper 只在初始化连接设置 `journal_mode=WAL`，线程本地连接不再重复执行数据库级 WAL 初始化。
 - PR-245 / FSM-06A 已落地：`wake_finalize` 失败时 watchdog 不再直接删除 `tq_active_sessions`，也不再写 `tq_session_recoveries`；它只从 saga context、error 和 injected clock 写入 idempotent `session_suspected_dead` 事件。下一次 `SessionRepository.dispatch()` 在路由事务里观察当前 active scope 的 suspected-dead event，删除 stale active pointer，基于 unconsumed `input_received` projection 创建 recovered wake，并继续通过 direct `cortex.scope_end` task 做结构化归档重试。
+- PR-246 / FSM-06B 已落地：删除 `tq_session_recoveries` marker 表和 dispatch marker consumer，schema v11 对既有 DB 执行 `DROP TABLE IF EXISTS tq_session_recoveries`。Recovery live source 只剩 `session_suspected_dead` event + unconsumed inbox projection；direct recovery archive publish 仍留到 durable outbox cutover。
 
 每个工单必须包含：
 

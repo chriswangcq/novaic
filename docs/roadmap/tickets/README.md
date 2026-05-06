@@ -71,6 +71,7 @@
 | PR-243A | `[x]` | [Reliable Evolution SQLite Transaction Boundary](PR-243A-reliable-evolution-sqlite-transaction-boundary.md) | PR-243 | 修复全量验证暴露的 shadow ledger 绕 transaction 写和 SQLite thread connection 初始化锁洞 | 0.25 d | Codex |
 | PR-244 | `[x]` | [Reliable Evolution FSM-05F Remove Pending Trigger Store](PR-244-reliable-evolution-remove-pending-triggers.md) | PR-243 | 删除 `tq_pending_triggers` 活存储，pending 只来自 append-only inbox | 0.5 d | Codex |
 | PR-245 | `[x]` | [Reliable Evolution FSM-06A Suspected-Dead Recovery Event](PR-245-reliable-evolution-suspected-dead-recovery.md) | PR-244 | wake_finalize 失败先写 suspected-dead event，下一次 dispatch 由 session coordinator recovery | 0.5 d | Codex |
+| PR-246 | `[x]` | [Reliable Evolution FSM-06B Remove Recovery Marker Path](PR-246-reliable-evolution-remove-recovery-markers.md) | PR-245 | 删除 `tq_session_recoveries` marker 表/consumer，recovery 只从 suspected-dead event 决策 | 0.5 d | Codex |
 
 
 | ID     | Status | 标题                                                                                                                          | 依赖                                       | 承诺          | 预估                                    | Owner       |
