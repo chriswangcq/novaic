@@ -76,6 +76,11 @@
 | PR-248 | `[x]` | [Reliable Evolution FSM-06D Attach Input Outbox Cutover](PR-248-reliable-evolution-attach-outbox-cutover.md) | PR-247 | active `session.attach_input` 走 durable session outbox，删除 direct publish 旁路 | 0.5 d | Codex |
 | PR-249 | `[x]` | [Reliable Evolution FSM-03B Observed Wake Outbox Cleanup](PR-249-reliable-evolution-observed-wake-outbox-cleanup.md) | PR-248 | observe-only `create_wake_saga` 不再污染 retryable pending outbox backlog | 0.25 d | Codex |
 | PR-250 | `[x]` | [Reliable Evolution FSM-03C Observed Wake Effect Rename](PR-250-reliable-evolution-observed-wake-effect-rename.md) | PR-249 | observe-only wake 诊断行改名，避免误读为真实 `create_wake_saga` worker 合约 | 0.25 d | Codex |
+| PR-251 | `[x]` | [Reliable Evolution FSM-03D Wake Creation Outbox Cutover](PR-251-reliable-evolution-wake-creation-outbox-cutover.md) | PR-250 | start/restart wake saga creation 走 durable session outbox | 0.5 d | Codex |
+| PR-252 | `[x]` | [Reliable Evolution FSM-07A Session State SSOT Cutover](PR-252-reliable-evolution-session-state-ssot.md) | PR-251 | `tq_session_state` 接管 session SSOT，`tq_active_sessions` 降级为 cache/view | 0.5 d | Codex |
+| PR-253 | `[x]` | [Reliable Evolution FSM-02B Dispatch Pure FSM Cutover](PR-253-reliable-evolution-dispatch-pure-fsm-cutover.md) | PR-252 | `dispatch()` live 分支迁到 pure FSM decision + interpreter | 0.5 d | Codex |
+| PR-254 | `[x]` | [Reliable Evolution FSM-07B Finalize Ownership](PR-254-reliable-evolution-finalize-ownership.md) | PR-253 | finalize 变显式事件，带 reason/generation/remaining_stack，由 FSM 清 active | 0.5 d | Codex |
+| PR-255 | `[x]` | [Reliable Evolution FSM-08 Legacy Compat Cleanup](PR-255-reliable-evolution-legacy-compat-cleanup.md) | PR-254 | 清理旧分支/旧命名/旧文档，添加 residue guard | 0.5 d | Codex |
 
 
 | ID     | Status | 标题                                                                                                                          | 依赖                                       | 承诺          | 预估                                    | Owner       |
