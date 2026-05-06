@@ -1243,6 +1243,8 @@ rg "compat|legacy|backward" docs novaic-agent-runtime | require archive banner
 - PR-239 未切流：`tq_pending_triggers` 仍是 live pending store；append-only inbox 只对账，不负责恢复、重放、顺序调度或删除旧 pending 路。
 - PR-240 / FSM-05B 已落地：新增 observe-only input consumption 账，start/attach/dedupe/restart 成功后写 `input_consumed` event 并标记 `input_received.consumed_at` projection。
 - PR-240 未切流：`consumed_at` 只是对账 projection，不是 live scheduler；unconsumed inbox 尚未替代 `tq_pending_triggers`。
+- PR-241 / FSM-05C 已落地：从 unconsumed `input_received` events 派生 pending projection，并在 buffer/restart 后写 `pending_projection_observed` drift payload。
+- PR-241 未切流：pending projection 只用于新旧对账；`session_ended()` 仍从 `tq_pending_triggers` 取 restart source。
 
 每个工单必须包含：
 
