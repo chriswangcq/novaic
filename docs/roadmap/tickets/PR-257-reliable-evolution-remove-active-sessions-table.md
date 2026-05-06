@@ -26,7 +26,8 @@ Tests: schema migration drops table; dispatch/rebuild/session_ended work from se
 ## Scope
 
 - Remove `tq_active_sessions` creation from schema SQL.
-- Add a schema migration that drops existing `tq_active_sessions`.
+- Confirm production ran the schema migration, then remove the drop migration
+  residue from active schema code.
 - Remove all runtime writes/deletes to `tq_active_sessions`.
 - Update readiness checks to validate `tq_session_state` instead.
 - Rewrite tests that still seed/query the old table.
@@ -40,7 +41,8 @@ Tests: schema migration drops table; dispatch/rebuild/session_ended work from se
 
 ## Small Tickets
 
-- [x] **FSM-10-A Schema removal**: bump schema and drop the table in migration.
+- [x] **FSM-10-A Schema removal**: remove schema creation and, after production
+  migration completion, delete the one-shot drop migration code.
 - [x] **FSM-10-B Runtime write removal**: remove cache writes/deletes in
   repository and outbox dispatcher.
 - [x] **FSM-10-C Diagnostics preservation**: keep active session diagnostics
@@ -69,8 +71,10 @@ Required fixes:
 - Add guard tests preventing old-table resurrection.
 
 Residual risks:
-- Existing production DBs need schema v14 migration to run during deployment;
-  the migration is covered by `tests/test_pr257_remove_active_sessions_table.py`.
+- None for production after verification: `/opt/novaic/data/queue.db` is schema
+  version 14 and no longer contains `tq_active_sessions`. Older private DB
+  snapshots that never ran PR-257 will need manual cleanup instead of carrying
+  long-lived runtime migration residue.
 
 ## Verification
 
@@ -80,10 +84,11 @@ Residual risks:
 
 ## Review Result
 
-Pass. Fresh schema no longer creates `tq_active_sessions`, schema v14 drops it
-from existing DBs, readiness checks use `tq_session_state`, runtime writes to
-the old table are gone, and residue guards allow only the drop migration plus
-tests/docs to mention the retired table name.
+Pass. Fresh schema no longer creates `tq_active_sessions`; production DB was
+verified at schema version 14 with the old table absent; the one-shot drop
+migration was then deleted from active schema code. Readiness checks use
+`tq_session_state`, runtime writes to the old table are gone, and residue guards
+assert active runtime source does not mention the retired table name.
 
 ## Rollback
 

@@ -748,7 +748,7 @@ message_1 -> message_2 -> message_3
 | 账户 | 当前状态 | 目标状态 | 迁移证据 | 删旧条件 |
 |---|---|---|---|---|
 | 输入账 `inbox_events` | `[x]` append-only `tq_session_events` | append-only event log | PR-239..244/251..255 tests | old `tq_pending_triggers` 已删除 |
-| 状态账 `session_state` | `[x]` `tq_session_state` live SSOT，`tq_active_sessions` 已由 PR-257 物理删除 | state + generation + heartbeat | PR-252/255/257 tests | 后续只允许 schema drop migration / historical docs 提到旧表 |
+| 状态账 `session_state` | `[x]` `tq_session_state` live SSOT，`tq_active_sessions` 已由 PR-257 物理删除 | state + generation + heartbeat | PR-252/255/257 tests | runtime 活代码不再提旧表；仅历史文档/删除 guard 可提及 |
 | 决策账 `session_decision` | `[x]` `dispatch()` live 调 `decide_session_dispatch()` | pure FSM decision | PR-253/255 tests | old dispatch route module 已删除 |
 | 副作用账 `session_outbox` | `[x]` live retryable durable outbox | durable outbox + ack/retry | PR-247/248/251 tests | direct publish/create 旁路已删除 |
 | attach 账 | `[x]` generation checked attach | generation checked attach | PR-238/248/255 tests | 无 generation payload 被拒绝 |
@@ -917,8 +917,8 @@ effects are durable outbox effects after PR-247, PR-248, and PR-251.
 
 目标：清理所有长期兼容分支。
 
-- `tq_active_sessions` 已由 PR-257 物理删除；仅 schema v14 drop migration
-  与历史文档/测试可提及旧表名。
+- `tq_active_sessions` 已由 PR-257 物理删除；生产 DB 已完成迁移后，
+  schema drop migration 也已删除。runtime 活代码不再提旧表名。
 - `pending_triggers` 已由 PR-244 删除。
 - 旧 dispatch branch、旧 publish branch、旧 recovery branch 已由 PR-247..255 删除。
 - 文档、ticket、测试名同步更新，禁止再出现“legacy/pending merge/backward compatible active attach”误导。
@@ -1228,7 +1228,7 @@ rg "pending_triggers" novaic-agent-runtime
 rg "direct publish" novaic-agent-runtime/queue_service novaic-agent-runtime/task_queue
 rg "attach_input" novaic-agent-runtime | rg -v "generation"
 rg "tq_active_sessions" novaic-agent-runtime/queue_service novaic-agent-runtime/task_queue
-# 仅允许 schema drop migration / tests / docs 提到旧表名；活代码不得读写。
+# runtime 活代码不得提旧表名；测试/历史文档可保留删除 guard 或历史说明。
 rg "compat|legacy|backward" docs novaic-agent-runtime | require archive banner
 ```
 
@@ -1310,7 +1310,8 @@ rg "compat|legacy|backward" docs novaic-agent-runtime | require archive banner
 - PR-256 / FSM-09 校准本文账本，避免旧 observe-only 阶段文字被误认为
   当前主路。
 - PR-257 / FSM-10 已落地：移除 `tq_active_sessions` 活表和所有 runtime
-  引用；此后 `tq_session_state` 是唯一在线 active session authority。
+  引用；生产 DB 确认迁移完成后，schema drop migration 也已删除。此后
+  `tq_session_state` 是唯一在线 active session authority。
 
 每个工单必须包含：
 
