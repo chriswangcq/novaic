@@ -93,6 +93,10 @@ Keep for later:
 
 Closed.
 
+Follow-up: PR-250 later renamed the observe-only effect type from
+`create_wake_saga` to `observe_create_wake_saga` so this ticket's status cleanup
+does not leave a misleading live-effect name behind.
+
 - `SessionLedgerRepository.append_outbox()` now accepts an explicit initial
   status and rejects unsupported values instead of inferring a hidden lifecycle.
 - `create_wake_saga` rows from dispatch start and session restart are recorded

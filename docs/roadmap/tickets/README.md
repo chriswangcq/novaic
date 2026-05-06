@@ -75,6 +75,7 @@
 | PR-247 | `[x]` | [Reliable Evolution FSM-06C Recovery Archive Outbox Cutover](PR-247-reliable-evolution-recovery-outbox-cutover.md) | PR-246 | recovery archive `cortex.scope_end` 走 durable session outbox，删除 direct publish 旁路 | 0.5 d | Codex |
 | PR-248 | `[x]` | [Reliable Evolution FSM-06D Attach Input Outbox Cutover](PR-248-reliable-evolution-attach-outbox-cutover.md) | PR-247 | active `session.attach_input` 走 durable session outbox，删除 direct publish 旁路 | 0.5 d | Codex |
 | PR-249 | `[x]` | [Reliable Evolution FSM-03B Observed Wake Outbox Cleanup](PR-249-reliable-evolution-observed-wake-outbox-cleanup.md) | PR-248 | observe-only `create_wake_saga` 不再污染 retryable pending outbox backlog | 0.25 d | Codex |
+| PR-250 | `[x]` | [Reliable Evolution FSM-03C Observed Wake Effect Rename](PR-250-reliable-evolution-observed-wake-effect-rename.md) | PR-249 | observe-only wake 诊断行改名，避免误读为真实 `create_wake_saga` worker 合约 | 0.25 d | Codex |
 
 
 | ID     | Status | 标题                                                                                                                          | 依赖                                       | 承诺          | 预估                                    | Owner       |
