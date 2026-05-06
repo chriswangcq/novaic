@@ -1241,6 +1241,8 @@ rg "compat|legacy|backward" docs novaic-agent-runtime | require archive banner
 - PR-238 仍未让 `tq_session_state` 成为 live truth：generation 当前由 shadow ledger 辅助生成，后续 FSM cutover 后再统一到 authoritative state。
 - PR-239 / FSM-05A 已落地：每次 `SessionRepository.dispatch()` 都先写 observe-only `input_received` append-only event，payload 保留 `trigger_type`、`message_ids` 和 metadata snapshot，为后续 inbox replay/cutover 建输入账。
 - PR-239 未切流：`tq_pending_triggers` 仍是 live pending store；append-only inbox 只对账，不负责恢复、重放、顺序调度或删除旧 pending 路。
+- PR-240 / FSM-05B 已落地：新增 observe-only input consumption 账，start/attach/dedupe/restart 成功后写 `input_consumed` event 并标记 `input_received.consumed_at` projection。
+- PR-240 未切流：`consumed_at` 只是对账 projection，不是 live scheduler；unconsumed inbox 尚未替代 `tq_pending_triggers`。
 
 每个工单必须包含：
 

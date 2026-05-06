@@ -64,6 +64,7 @@
 | PR-237 | `[x]` | [Reliable Evolution FSM-03A Durable Outbox Observe](PR-237-reliable-evolution-outbox-observe.md) | PR-236 | outbox effect 记账，不切 publish | 0.5 d | Codex |
 | PR-238 | `[x]` | [Reliable Evolution FSM-04 Generation Checked Attach](PR-238-reliable-evolution-generation-checked-attach.md) | PR-237 | attach 显式 expected scope/generation CAS | 0.5 d | Codex |
 | PR-239 | `[x]` | [Reliable Evolution FSM-05A Append-only Inbox Observe](PR-239-reliable-evolution-append-only-inbox-observe.md) | PR-238 | append-only `input_received` 事件账，不切 pending | 0.5 d | Codex |
+| PR-240 | `[x]` | [Reliable Evolution FSM-05B Input Consumption Observe](PR-240-reliable-evolution-input-consumption-observe.md) | PR-239 | observe-only input consumed 账，不切 pending | 0.5 d | Codex |
 
 
 | ID     | Status | 标题                                                                                                                          | 依赖                                       | 承诺          | 预估                                    | Owner       |
