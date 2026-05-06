@@ -1244,9 +1244,12 @@ rg "compat|legacy|backward" docs novaic-agent-runtime | require archive banner
 - PR-240 / FSM-05B 已落地：新增 observe-only input consumption 账，start/attach/dedupe/restart 成功后写 `input_consumed` event 并标记 `input_received.consumed_at` projection。
 - PR-240 未切流：`consumed_at` 只是对账 projection，不是 live scheduler；unconsumed inbox 尚未替代 `tq_pending_triggers`。
 - PR-241 / FSM-05C 已落地：从 unconsumed `input_received` events 派生 pending projection，并在 buffer/restart 后写 `pending_projection_observed` drift payload。
-- PR-241 未切流：pending projection 只用于新旧对账；`session_ended()` 仍从 `tq_pending_triggers` 取 restart source。
+- PR-241 已被 PR-243 推进切流：pending projection 不再只是新旧对账，`session_ended()` restart source 已切到 unconsumed `input_received` projection。
 - PR-242 / FSM-05D 已落地：`SessionRepository` 显式要求 `SessionLedgerRepository`，初始 `input_received` 写入 fail-fast；写失败时不会创建 active session、pending trigger、saga 或 task。
-- PR-242 未切流：pending restart source 尚未切到 inbox projection；本票只补齐切流前的可靠输入边界。
+- PR-242 切流前置条件已被 PR-243 使用：因为 `input_received` 写入 fail-fast，`session_ended()` 可以把 inbox projection 当作 restart source，而不是把 best-effort shadow 当 live source。
+- PR-243 / FSM-05E 已落地：`session_ended()` 先从 unconsumed `input_received` events 构造 pending projection，并用 projection 创建 restart wake；`tq_pending_triggers` 只在 cleanup 时删除和 drift 对账，不再决定 restart/close。
+- PR-243 保留旧写路径：dispatch buffer 仍写 `tq_pending_triggers`，`list_pending_triggers()` 仍可诊断；PR-244 才删除 pending 写/读残留和相关 guard。
+- PR-243A / FSM-05E 验证加固已落地：`input_consumed` shadow 写入补回显式 `Database.transaction(lock_type="global")` 边界；公共 DB wrapper 只在初始化连接设置 `journal_mode=WAL`，线程本地连接不再重复执行数据库级 WAL 初始化。
 
 每个工单必须包含：
 
