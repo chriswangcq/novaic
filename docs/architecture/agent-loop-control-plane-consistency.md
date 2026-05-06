@@ -1229,6 +1229,11 @@ rg "compat|legacy|backward" docs novaic-agent-runtime | require archive banner
 | FSM-07 Finalize Ownership | FSM 接管 active cleanup | 不伪装 stack empty |
 | FSM-08 Legacy Removal | 删除旧路和 guard | 不再新增功能 |
 
+实施记录：
+
+- PR-235 / FSM-01 已落地：新增 shadow `tq_session_events`、`tq_session_state`、`tq_session_outbox`，并在 runtime 主路 observe-only 双写 dispatch/session-end 事件与状态。
+- PR-235 未切流：`tq_active_sessions`、`tq_pending_triggers`、直接 `TaskQueue.publish` 仍是当前 live path，后续删除必须等对应 FSM 阶段和 drift check 通过。
+
 每个工单必须包含：
 
 - 现状分析。
