@@ -1251,6 +1251,7 @@ rg "compat|legacy|backward" docs novaic-agent-runtime | require archive banner
 - PR-244 / FSM-05F 已落地：删除旧 pending trigger 活存储，schema v10 不再创建该表并在 migration 中 `DROP TABLE IF EXISTS`；dispatch buffer 只保留 append-only `input_received`，`session_ended()` / `rebuild()` / `/pending` diagnostics 不再读写旧表，`trigger_id_provider` 从 Queue dependencies 和 `SessionRepository` 构造边界删除。
 - PR-244 recovery 补强：当 recovery marker 存在时，新的 recovery wake 从 unconsumed inbox projection 合并 message ids / metadata，并记录 `recovery_pending_input_event_ids`，避免删除旧 orphan pending row 后丢输入。
 - PR-243A / FSM-05E 验证加固已落地：`input_consumed` shadow 写入补回显式 `Database.transaction(lock_type="global")` 边界；公共 DB wrapper 只在初始化连接设置 `journal_mode=WAL`，线程本地连接不再重复执行数据库级 WAL 初始化。
+- PR-245 / FSM-06A 已落地：`wake_finalize` 失败时 watchdog 不再直接删除 `tq_active_sessions`，也不再写 `tq_session_recoveries`；它只从 saga context、error 和 injected clock 写入 idempotent `session_suspected_dead` 事件。下一次 `SessionRepository.dispatch()` 在路由事务里观察当前 active scope 的 suspected-dead event，删除 stale active pointer，基于 unconsumed `input_received` projection 创建 recovered wake，并继续通过 direct `cortex.scope_end` task 做结构化归档重试。
 
 每个工单必须包含：
 
