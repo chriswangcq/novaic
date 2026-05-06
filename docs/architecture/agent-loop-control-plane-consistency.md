@@ -1245,6 +1245,8 @@ rg "compat|legacy|backward" docs novaic-agent-runtime | require archive banner
 - PR-240 未切流：`consumed_at` 只是对账 projection，不是 live scheduler；unconsumed inbox 尚未替代 `tq_pending_triggers`。
 - PR-241 / FSM-05C 已落地：从 unconsumed `input_received` events 派生 pending projection，并在 buffer/restart 后写 `pending_projection_observed` drift payload。
 - PR-241 未切流：pending projection 只用于新旧对账；`session_ended()` 仍从 `tq_pending_triggers` 取 restart source。
+- PR-242 / FSM-05D 已落地：`SessionRepository` 显式要求 `SessionLedgerRepository`，初始 `input_received` 写入 fail-fast；写失败时不会创建 active session、pending trigger、saga 或 task。
+- PR-242 未切流：pending restart source 尚未切到 inbox projection；本票只补齐切流前的可靠输入边界。
 
 每个工单必须包含：
 

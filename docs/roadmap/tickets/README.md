@@ -66,6 +66,7 @@
 | PR-239 | `[x]` | [Reliable Evolution FSM-05A Append-only Inbox Observe](PR-239-reliable-evolution-append-only-inbox-observe.md) | PR-238 | append-only `input_received` 事件账，不切 pending | 0.5 d | Codex |
 | PR-240 | `[x]` | [Reliable Evolution FSM-05B Input Consumption Observe](PR-240-reliable-evolution-input-consumption-observe.md) | PR-239 | observe-only input consumed 账，不切 pending | 0.5 d | Codex |
 | PR-241 | `[x]` | [Reliable Evolution FSM-05C Pending Inbox Projection Observe](PR-241-reliable-evolution-pending-inbox-projection.md) | PR-240 | unconsumed inbox pending projection 对账，不切 pending | 0.5 d | Codex |
+| PR-242 | `[x]` | [Reliable Evolution FSM-05D Strict Input Ledger Boundary](PR-242-reliable-evolution-strict-input-ledger.md) | PR-241 | `input_received` 写入 fail-fast，切流前置条件 | 0.5 d | Codex |
 
 
 | ID     | Status | 标题                                                                                                                          | 依赖                                       | 承诺          | 预估                                    | Owner       |
