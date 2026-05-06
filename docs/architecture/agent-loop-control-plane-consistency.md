@@ -518,7 +518,7 @@ PR-233 / PR-234 将当前系统从隐式协调推进到显式 session coordinato
 
 - 隐式状态。
 - 非持久 side effect。
-- `active_sessions` 指针漂移。
+- active session authority 漂移。
 - 消息触达与 wake 生命周期混在一起。
 - watchdog / recovery / finalize 多入口各自改状态。
 
@@ -613,7 +613,7 @@ DB 已经改了状态，但 publish 失败，消息逻辑丢失。
 
 #### FSM-INV-C · Active generation 校验
 
-`active_sessions` 不能只是 `(session_key -> saga_id/scope_id)` 指针，必须带 generation：
+active session state 不能只是 `(session_key -> saga_id/scope_id)` 指针，必须带 generation：
 
 ```text
 session_key
@@ -687,16 +687,22 @@ message_1 -> message_2 -> message_3
 | 强制 finalize 混同正常结束 | 排障不可解释 | finalize reason + remaining stack |
 | 多入口改状态 | 状态机不可证明 | 单一 pure decision contract |
 
-### 13.5 推荐实施顺序
+### 13.5 当前实施状态
 
-1. 建立 `session_events` / `session_state` / `session_outbox` schema，先 observe-only 双写。
-2. 将现有 `dispatch()` 的核心分支迁移成 pure FSM decision，不改变外部行为。
-3. `attach_input` 改为 outbox effect，handler 增加 generation 校验。
-4. 将 `pending_triggers` 迁移为 append-only inbox，保留兼容读取一版。
-5. Watchdog 改为只写 `watchdog_suspected_dead` event。
-6. Recovery wake 由 FSM 从事件中创建，并带 `recovery_id` / `from_generation`。
-7. `wake_finalize` 写入 finalize reason、remaining stack、generation，并由 FSM 清 active。
-8. 删除旧 active/pending 旁路，只保留 FSM 派生视图。
+截至 PR-257，下一代 harness 的主路径已经完成切流：
+
+1. `tq_session_events` / `tq_session_state` / `tq_session_outbox` 已建立。
+2. `dispatch()` live decision 已迁到 `decide_session_dispatch()` pure FSM。
+3. `attach_input`、`recovery_archive_scope`、`create_wake_saga` 都已通过
+   durable session outbox 投递。
+4. `pending_triggers` 和 recovery marker 表已删除，pending 由 append-only
+   inbox projection 派生。
+5. Watchdog 只写 `session_suspected_dead` event；recovery 由 session
+   coordinator 从事件与 inbox projection 启动。
+6. Finalize contract 已要求 `finalize_reason`、`generation`、
+   `remaining_stack`，session cleanup 由 session coordinator 解释。
+7. PR-256 校准本文账本；PR-257 已移除最后的 `tq_active_sessions`
+   表残留，`tq_session_state` 成为唯一在线状态表。
 
 ### 13.6 测试要求
 
@@ -741,14 +747,14 @@ message_1 -> message_2 -> message_3
 
 | 账户 | 当前状态 | 目标状态 | 迁移证据 | 删旧条件 |
 |---|---|---|---|---|
-| 输入账 `inbox_events` | `pending_triggers` + active attach metadata | append-only event log | 连续 IM 顺序测试、dispatch 双写对账 | 所有读取迁到 inbox 后删除 pending merge 旁路 |
-| 状态账 `session_state` | `active_sessions` 指针 | state + generation + heartbeat | shadow state 与 active_sessions drift 为 0 | active_sessions 降级为派生 view/cache |
-| 决策账 `session_decision` | `dispatch()` 中显式分支 | pure FSM decision | 同一输入下 old/new decision 对账 | 删除 dispatch 内部旧 if/else 决策 |
-| 副作用账 `session_outbox` | transaction 外直接 publish | durable outbox + ack/retry | publish 失败注入测试不丢消息 | 删除直接 publish 旁路 |
-| attach 账 | attach 到 active saga/scope | generation checked attach | generation mismatch 回流测试 | 删除无 generation attach payload |
-| watchdog 账 | watchdog 可能直接触发恢复动作 | 只写 suspected_dead event | watchdog 不改 state 的测试 | 删除 watchdog 直接 mutate 路径 |
-| finalize 账 | finalize reason 部分显式 | reason + generation + remaining_stack | 强制 finalize 审计字段测试 | 删除伪 stack-empty/隐式 reason |
-| recovery 账 | recovery marker 已由 PR-246 删除 | recovery event + recovery_id + from_generation | dead active 恢复测试 | durable recovery outbox 切流后删除 direct archive publish |
+| 输入账 `inbox_events` | `[x]` append-only `tq_session_events` | append-only event log | PR-239..244/251..255 tests | old `tq_pending_triggers` 已删除 |
+| 状态账 `session_state` | `[x]` `tq_session_state` live SSOT，`tq_active_sessions` 已由 PR-257 物理删除 | state + generation + heartbeat | PR-252/255/257 tests | 后续只允许 schema drop migration / historical docs 提到旧表 |
+| 决策账 `session_decision` | `[x]` `dispatch()` live 调 `decide_session_dispatch()` | pure FSM decision | PR-253/255 tests | old dispatch route module 已删除 |
+| 副作用账 `session_outbox` | `[x]` live retryable durable outbox | durable outbox + ack/retry | PR-247/248/251 tests | direct publish/create 旁路已删除 |
+| attach 账 | `[x]` generation checked attach | generation checked attach | PR-238/248/255 tests | 无 generation payload 被拒绝 |
+| watchdog 账 | `[x]` suspected-dead event | 只写 suspected_dead event | PR-245 tests | watchdog direct mutate 已删除 |
+| finalize 账 | `[x]` explicit finalize event | reason + generation + remaining_stack | PR-254 tests | 隐式 finalize payload 被拒绝 |
+| recovery 账 | `[x]` event + durable archive outbox | recovery event + recovery_id + from_generation | PR-245..247 tests | recovery marker 表已删除 |
 
 ### 14.3 阶段账本
 
@@ -769,13 +775,17 @@ message_1 -> message_2 -> message_3
 
 #### Phase 1 · Shadow event/state/outbox tables
 
+Historical phase note: PR-235 introduced this observe-only phase. It is no
+longer the current runtime authority after PR-251..PR-255.
+
 目标：建立新账，但不改变线上行为。
 
 - 新增 `session_events`。
 - 新增 `session_state`。
 - 新增 `session_outbox`。
 - dispatch/session_end/watchdog/finalize 双写 shadow event。
-- `active_sessions` 仍是线上决策来源。
+- 当时 `active_sessions` 仍是线上决策来源；当前已由 PR-252/257 切到
+  `tq_session_state` 且物理删除旧表。
 
 完成证据：
 
@@ -786,6 +796,9 @@ message_1 -> message_2 -> message_3
 删旧动作：无。此阶段不允许删除旧逻辑。
 
 #### Phase 2 · Pure FSM decision observe-only
+
+Historical phase note: PR-236 introduced observe-only decision checks. The
+live `dispatch()` path was cut over to the pure FSM in PR-253.
 
 目标：把当前 session routing 迁到纯函数，但先只对账不切流。
 
@@ -802,6 +815,10 @@ message_1 -> message_2 -> message_3
 删旧动作：无。若 drift 非 0，修 FSM，不改线上行为。
 
 #### Phase 3 · Durable outbox observe-then-cutover
+
+Historical phase note: PR-237 introduced observe-only outbox rows. Live
+`create_wake_saga`, `publish_attach_input`, and `recovery_archive_scope`
+effects are durable outbox effects after PR-247, PR-248, and PR-251.
 
 目标：把 publish 从临场动作变成 durable effect。
 
@@ -900,9 +917,10 @@ message_1 -> message_2 -> message_3
 
 目标：清理所有长期兼容分支。
 
-- `active_sessions` 仅保留为派生 view/cache，或删除。
-- `pending_triggers` 删除或转为 read-only migration archive。
-- 旧 dispatch branch、旧 publish branch、旧 recovery branch 删除。
+- `tq_active_sessions` 已由 PR-257 物理删除；仅 schema v14 drop migration
+  与历史文档/测试可提及旧表名。
+- `pending_triggers` 已由 PR-244 删除。
+- 旧 dispatch branch、旧 publish branch、旧 recovery branch 已由 PR-247..255 删除。
 - 文档、ticket、测试名同步更新，禁止再出现“legacy/pending merge/backward compatible active attach”误导。
 
 完成证据：
@@ -981,7 +999,7 @@ Docs/guards to update:
 | Area | 新实现 | 主要文件 / 模块 | 必备测试 |
 |---|---|---|---|
 | Schema | `session_events` / `session_state` / `session_outbox` / append-only inbox | `novaic-agent-runtime/queue_service/db/schema.py` | migration idempotency / rebuild |
-| Pure FSM | `SessionFSMInput` / `SessionFSMDecision` / state transition | `novaic-agent-runtime/queue_service/session_decisions.py` 或新 `session_fsm.py` | no DB/no clock pure decision tests |
+| Pure FSM | `SessionFSMInput` / `SessionFSMDecision` / state transition | `novaic-agent-runtime/queue_service/session_fsm.py` | no DB/no clock pure decision tests |
 | Repository | transaction 内写 event/state/outbox | `queue_service/session_repo.py` | atomic write / rollback |
 | Outbox worker | durable effect publish + ack/retry/dead-letter | `queue_service/*outbox*` / task queue worker | publish failure injection |
 | Runtime attach | generation checked `session.attach_input` | `task_queue/handlers/runtime_handlers.py`, `task_queue/topics.py` | generation mismatch 回流 |
@@ -1188,10 +1206,10 @@ Recovery event 必须包含：
 | 旧路径 / 残留 | 清理动作 | 删除前置条件 |
 |---|---|---|
 | `tq_pending_triggers` 单 row merge 主路径 | 已由 PR-244 删除；v10 migration drop 旧表 | append-only inbox 切流完成 |
-| `tq_active_sessions` 作为唯一 SSOT | 降级 view/cache 或删除 | `session_state` 切流且 drift 为 0 |
+| `tq_active_sessions` 作为唯一 SSOT | PR-252 已降级；PR-257 已物理删除 | `session_state` 切流且 drift 为 0 |
 | `dispatch()` 内直接分支决策 | 迁到 pure FSM，删除旧 if/else | observe-only decision drift 为 0 |
 | transaction 外直接 `publish attach_input` | 已由 PR-248 删除，统一走 `publish_attach_input` outbox effect | PR-248 attach outbox 测试通过 |
-| transaction 外直接 `publish wake` | 仍待后续切流；PR-249/250 已先把 observe-only wake 诊断行改为 `observe_create_wake_saga` + `observed`，避免污染 retryable pending outbox backlog | wake saga creation outbox 切流完成 |
+| transaction 外直接 `publish wake` | 已由 PR-251 删除，统一走 live `create_wake_saga` outbox effect | PR-251 wake creation outbox 测试通过 |
 | recovery archive 直接 `publish cortex.scope_end` | 已由 PR-247 删除，统一走 `recovery_archive_scope` outbox effect | PR-247 recovery outbox 测试通过 |
 | 无 generation 的 attach payload | 删除兼容分支 | producer 全部升级 |
 | watchdog 直接 mutate state | 删除 | watchdog event 化 |
@@ -1209,7 +1227,8 @@ Phase 8 后必须增加 guard，禁止旧路复活：
 rg "pending_triggers" novaic-agent-runtime
 rg "direct publish" novaic-agent-runtime/queue_service novaic-agent-runtime/task_queue
 rg "attach_input" novaic-agent-runtime | rg -v "generation"
-rg "watchdog.*DELETE|DELETE.*active_sessions" novaic-agent-runtime
+rg "tq_active_sessions" novaic-agent-runtime/queue_service novaic-agent-runtime/task_queue
+# 仅允许 schema drop migration / tests / docs 提到旧表名；活代码不得读写。
 rg "compat|legacy|backward" docs novaic-agent-runtime | require archive banner
 ```
 
@@ -1252,7 +1271,14 @@ rg "compat|legacy|backward" docs novaic-agent-runtime | require archive banner
 - PR-244 / FSM-05F 已落地：删除旧 pending trigger 活存储，schema v10 不再创建该表并在 migration 中 `DROP TABLE IF EXISTS`；dispatch buffer 只保留 append-only `input_received`，`session_ended()` / `rebuild()` / `/pending` diagnostics 不再读写旧表，`trigger_id_provider` 从 Queue dependencies 和 `SessionRepository` 构造边界删除。
 - PR-244 recovery 补强（历史阶段，marker 路已由 PR-246 删除）：当 recovery marker 存在时，新的 recovery wake 从 unconsumed inbox projection 合并 message ids / metadata，并记录 `recovery_pending_input_event_ids`，避免删除旧 orphan pending row 后丢输入。
 - PR-243A / FSM-05E 验证加固已落地：`input_consumed` shadow 写入补回显式 `Database.transaction(lock_type="global")` 边界；公共 DB wrapper 只在初始化连接设置 `journal_mode=WAL`，线程本地连接不再重复执行数据库级 WAL 初始化。
-- PR-245 / FSM-06A 已落地：`wake_finalize` 失败时 watchdog 不再直接删除 `tq_active_sessions`，也不再写 `tq_session_recoveries`；它只从 saga context、error 和 injected clock 写入 idempotent `session_suspected_dead` 事件。下一次 `SessionRepository.dispatch()` 在路由事务里观察当前 active scope 的 suspected-dead event，删除 stale active pointer，基于 unconsumed `input_received` projection 创建 recovered wake，并继续通过 direct `cortex.scope_end` task 做结构化归档重试。
+- PR-245 / FSM-06A 已落地（历史阶段）：`wake_finalize` 失败时 watchdog
+  不再直接删除当时仍存在的 `tq_active_sessions`，也不再写
+  `tq_session_recoveries`；它只从 saga context、error 和 injected clock
+  写入 idempotent `session_suspected_dead` 事件。下一次
+  `SessionRepository.dispatch()` 在路由事务里观察当前 active scope 的
+  suspected-dead event，基于 unconsumed `input_received` projection 创建
+  recovered wake，并继续通过当时的 direct `cortex.scope_end` task 做结构化
+  归档重试。旧表和 direct archive 已分别由 PR-257 / PR-247 删除。
 - PR-246 / FSM-06B 已落地：删除 `tq_session_recoveries` marker 表和 dispatch marker consumer，schema v11 对既有 DB 执行 `DROP TABLE IF EXISTS tq_session_recoveries`。Recovery live source 只剩 `session_suspected_dead` event + unconsumed inbox projection；direct recovery archive publish 仍留到 durable outbox cutover。
 - PR-247 / FSM-06C 已落地：recovery archive 不再由 `SessionRepository` 直接调用 `TaskQueue.publish`。Recovery dispatch 在 `dispatch_saga_started` 状态账同事务写入 `recovery_archive_scope` outbox effect，事务后由 `SessionOutboxDispatcher` 投递 `cortex.scope_end` 并 ack；publish 失败时 outbox 保持 `pending`、记录 attempts/error，后续 drain 用同一 idempotency key 重放。`SagaOrchestrator.queue_recovery_scope_end_task` 已删除。
 - PR-248 / FSM-06D 已落地：active `session.attach_input` 不再由
@@ -1263,17 +1289,28 @@ rg "compat|legacy|backward" docs novaic-agent-runtime | require archive banner
   outbox 记录 attempts/error 且保持 `pending`，input 已由 durable outbox
   接管并被 consumed，避免同一输入在 session end 时被误判为 pending
   restart source。`SessionRepository._publish_attach_input_task` 已删除。
-- PR-249 / FSM-03B 已落地：`create_wake_saga` 仍是 direct
-  `SagaOrchestrator.create()` 活路径，尚未切成 durable outbox；但其
-  shadow outbox 记录已从 `pending` 改为 `observed`，并通过 schema v12
-  迁移修正既有诊断行。这防止 observe-only wake rows 被 pending outbox
-  drain/backlog 误认为可重试 side effect；`recovery_archive_scope` 和
-  `publish_attach_input` 仍保持 retryable `pending`/`published` 语义。
+- PR-249 / FSM-03B 已落地（历史阶段）：当时 `create_wake_saga` 仍是
+  direct `SagaOrchestrator.create()` 活路径；该限制已由 PR-251 删除。
+  PR-249 的持久成果是把历史 observe-only wake rows 从 `pending` 改为
+  `observed`，避免污染 retryable outbox backlog。
 - PR-250 / FSM-03C 已落地：observe-only wake rows 的 effect type 从
   `create_wake_saga` 改为 `observe_create_wake_saga`，并通过 schema v13
-  迁移修正既有诊断行。当前代码不再把 `create_wake_saga` 用作诊断
-  effect，因此未来真正做 wake saga durable cutover 时可以重新定义一个
-  明确的 live/retryable effect contract，而不会被历史观察账误导。
+  迁移修正既有诊断行。
+- PR-251 / FSM-03D 已落地：start/restart wake saga creation 已切到 live
+  retryable `create_wake_saga` session outbox effect，`SessionRepository`
+  不再直接调用 `SagaOrchestrator.create()`。
+- PR-252 / FSM-07A 已落地：`tq_session_state` 接管 active/no_active
+  routing authority；当时 `tq_active_sessions` 仅剩临时 cache residue。
+- PR-253 / FSM-02B 已落地：`dispatch()` live 分支迁到
+  `decide_session_dispatch()` pure FSM decision。
+- PR-254 / FSM-07B 已落地：finalize 必须带 reason、generation、
+  remaining_stack，session cleanup 由 session coordinator 解释。
+- PR-255 / FSM-08 已落地：删除 legacy dispatch module、旧 drift trace
+  字段、无 generation attach compat 路径，并加 residue guard。
+- PR-256 / FSM-09 校准本文账本，避免旧 observe-only 阶段文字被误认为
+  当前主路。
+- PR-257 / FSM-10 已落地：移除 `tq_active_sessions` 活表和所有 runtime
+  引用；此后 `tq_session_state` 是唯一在线 active session authority。
 
 每个工单必须包含：
 

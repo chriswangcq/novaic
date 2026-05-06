@@ -81,6 +81,8 @@
 | PR-253 | `[x]` | [Reliable Evolution FSM-02B Dispatch Pure FSM Cutover](PR-253-reliable-evolution-dispatch-pure-fsm-cutover.md) | PR-252 | `dispatch()` live 分支迁到 pure FSM decision + interpreter | 0.5 d | Codex |
 | PR-254 | `[x]` | [Reliable Evolution FSM-07B Finalize Ownership](PR-254-reliable-evolution-finalize-ownership.md) | PR-253 | finalize 变显式事件，带 reason/generation/remaining_stack，由 FSM 清 active | 0.5 d | Codex |
 | PR-255 | `[x]` | [Reliable Evolution FSM-08 Legacy Compat Cleanup](PR-255-reliable-evolution-legacy-compat-cleanup.md) | PR-254 | 清理旧分支/旧命名/旧文档，添加 residue guard | 0.5 d | Codex |
+| PR-256 | `[x]` | [Reliable Evolution FSM-09 Architecture Ledger Calibration](PR-256-reliable-evolution-architecture-ledger-calibration.md) | PR-255 | 更新架构账本，移除已过期的 shadow/observe-only/current-state 误导描述 | 0.25 d | Codex |
+| PR-257 | `[x]` | [Reliable Evolution FSM-10 Remove Active Sessions Table](PR-257-reliable-evolution-remove-active-sessions-table.md) | PR-256 | 物理移除 `tq_active_sessions` 活表/写入/测试依赖，`tq_session_state` 成为唯一在线状态表 | 0.5 d | Codex |
 
 
 | ID     | Status | 标题                                                                                                                          | 依赖                                       | 承诺          | 预估                                    | Owner       |
