@@ -1235,6 +1235,8 @@ rg "compat|legacy|backward" docs novaic-agent-runtime | require archive banner
 - PR-235 未切流：`tq_active_sessions`、`tq_pending_triggers`、直接 `TaskQueue.publish` 仍是当前 live path，后续删除必须等对应 FSM 阶段和 drift check 通过。
 - PR-236 / FSM-02 已落地：新增 pure `SessionDispatchInput` / `SessionRuntimeState` / `SessionDispatchDecision`，并把 legacy action 与 shadow action 的 drift trace 写入 shadow event payload。
 - PR-236 未切流：旧 `SessionRepository.dispatch()` 分支仍是 live path；pure FSM 只用于对账。
+- PR-237 / FSM-03A 已落地：为 wake saga creation、active attach publish、pending restart 记录 observe-only outbox effect。
+- PR-237 未切流：direct `SagaOrchestrator.create()` / `TaskQueue.publish()` 仍是 live side-effect path；outbox worker 尚未启用。
 
 每个工单必须包含：
 
