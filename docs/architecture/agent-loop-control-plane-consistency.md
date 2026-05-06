@@ -1239,6 +1239,8 @@ rg "compat|legacy|backward" docs novaic-agent-runtime | require archive banner
 - PR-237 未切流：direct `SagaOrchestrator.create()` / `TaskQueue.publish()` 仍是 live side-effect path；outbox worker 尚未启用。
 - PR-238 / FSM-04 已落地：`session.attach_input` payload 带 expected wake scope 与 expected session generation，handler 先读 agent-root meta 校验再 append input。
 - PR-238 仍未让 `tq_session_state` 成为 live truth：generation 当前由 shadow ledger 辅助生成，后续 FSM cutover 后再统一到 authoritative state。
+- PR-239 / FSM-05A 已落地：每次 `SessionRepository.dispatch()` 都先写 observe-only `input_received` append-only event，payload 保留 `trigger_type`、`message_ids` 和 metadata snapshot，为后续 inbox replay/cutover 建输入账。
+- PR-239 未切流：`tq_pending_triggers` 仍是 live pending store；append-only inbox 只对账，不负责恢复、重放、顺序调度或删除旧 pending 路。
 
 每个工单必须包含：
 
