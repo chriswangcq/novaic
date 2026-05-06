@@ -62,6 +62,7 @@
 | PR-235 | `[x]` | [Reliable Evolution FSM-01 Baseline & Shadow Ledger](PR-235-reliable-evolution-fsm-shadow-ledger.md) | PR-234D | shadow 事件账 / 状态账 / outbox 表，不切旧主路 | 0.5 d | Codex |
 | PR-236 | `[x]` | [Reliable Evolution FSM-02 Pure Decision Shadow](PR-236-reliable-evolution-fsm-pure-decision-shadow.md) | PR-235 | pure FSM decision 对账，不切旧主路 | 0.5 d | Codex |
 | PR-237 | `[x]` | [Reliable Evolution FSM-03A Durable Outbox Observe](PR-237-reliable-evolution-outbox-observe.md) | PR-236 | outbox effect 记账，不切 publish | 0.5 d | Codex |
+| PR-238 | `[x]` | [Reliable Evolution FSM-04 Generation Checked Attach](PR-238-reliable-evolution-generation-checked-attach.md) | PR-237 | attach 显式 expected scope/generation CAS | 0.5 d | Codex |
 
 
 | ID     | Status | 标题                                                                                                                          | 依赖                                       | 承诺          | 预估                                    | Owner       |
