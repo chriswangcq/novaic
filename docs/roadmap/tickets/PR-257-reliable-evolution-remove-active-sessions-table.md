@@ -1,6 +1,6 @@
 # PR-257 Reliable Evolution FSM-10 Remove Active Sessions Table
 
-Status: `[x]` closed
+Status: Closed
 
 ## Goal
 

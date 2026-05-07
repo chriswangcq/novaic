@@ -15,7 +15,8 @@
 #   - Queue Service  :19997  Task/Saga queue management
 #   - Blob Service   :19995  Blob upload/download
 #   - Cortex         :19996  Scope tree, LLM context assembly, Workspace, Sandbox
-#   - Workers        task-worker ×4, saga-worker ×2, health ×1, scheduler ×1
+#   - Workers        task-worker ×4, saga-worker ×2, session/saga-outbox,
+#                    health ×1, scheduler ×1
 #
 # Communication:
 #   Workers → Business  (/internal/* calls, including entity proxy)
@@ -233,6 +234,21 @@ done
 for i in 1 2; do
     $PY $MAIN saga-worker $WORKER_ARGS --max-concurrent 4 >> "$LOG_DIR/saga-worker-${i}.log" 2>&1 &
 done
+
+# Durable session side effects. This must be a visible subprocess, not a hidden
+# in-process background task: dispatch now returns wake_start_queued after the
+# session outbox row is committed, and this worker is what turns that durable
+# intent into the actual wake saga.
+$PY $MAIN session-outbox-worker \
+    --data-dir "$DATA_DIR" \
+    >> "$LOG_DIR/session-outbox-worker.log" 2>&1 &
+
+# Durable saga compensation effects. SagaRepository only commits lifecycle
+# transitions and outbox rows; this visible subprocess publishes committed
+# compensation effects such as wake_finalize creation and suspected-dead events.
+$PY $MAIN saga-outbox-worker \
+    --data-dir "$DATA_DIR" \
+    >> "$LOG_DIR/saga-outbox-worker.log" 2>&1 &
 
 # PR-33 Phase 3: --check-interval removed from both workers. HealthWorker
 # reads ServiceConfig.HEALTH_CHECK_INTERVAL_SECONDS; SchedulerWorker reads

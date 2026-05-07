@@ -1,6 +1,6 @@
 # PR-256 Reliable Evolution FSM-09 Architecture Ledger Calibration
 
-Status: `[x]` closed
+Status: Closed
 
 ## Goal
 
