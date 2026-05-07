@@ -221,18 +221,20 @@ wait_port "$PORT_CORTEX" "Cortex"
 
 PY=$(py novaic-agent-runtime)
 MAIN="$BASE/novaic-agent-runtime/main_novaic.py"
-WORKER_ARGS="--gateway-url $GW_URL --business-url $BIZ_URL --queue-service-url $QS_URL --cortex-url $CORTEX_URL --data-dir $DATA_DIR"
+TASK_WORKER_ARGS="--business-url $BIZ_URL --queue-service-url $QS_URL --cortex-url $CORTEX_URL --data-dir $DATA_DIR"
+SAGA_WORKER_ARGS="--queue-service-url $QS_URL --cortex-url $CORTEX_URL --data-dir $DATA_DIR"
+SCHEDULER_ARGS="--business-url $BIZ_URL --queue-service-url $QS_URL --cortex-url $CORTEX_URL --data-dir $DATA_DIR"
 
 for pool in control execution; do
     for i in 1 2; do
-        $PY $MAIN task-worker $WORKER_ARGS \
+        $PY $MAIN task-worker $TASK_WORKER_ARGS \
             --pool "$pool" --num-workers 1 \
             >> "$LOG_DIR/task-worker-${pool}-${i}.log" 2>&1 &
     done
 done
 
 for i in 1 2; do
-    $PY $MAIN saga-worker $WORKER_ARGS --max-concurrent 4 >> "$LOG_DIR/saga-worker-${i}.log" 2>&1 &
+    $PY $MAIN saga-worker $SAGA_WORKER_ARGS --max-concurrent 4 >> "$LOG_DIR/saga-worker-${i}.log" 2>&1 &
 done
 
 # Durable session side effects. This must be a visible subprocess, not a hidden
@@ -261,11 +263,7 @@ $PY $MAIN health \
     --data-dir "$DATA_DIR" \
     >> "$LOG_DIR/health.log" 2>&1 &
 $PY $MAIN scheduler \
-    --gateway-url "$GW_URL" \
-    --business-url "$BIZ_URL" \
-    --queue-service-url "$QS_URL" \
-    --cortex-url "$CORTEX_URL" \
-    --data-dir "$DATA_DIR" \
+    $SCHEDULER_ARGS \
     >> "$LOG_DIR/scheduler.log" 2>&1 &
 
 # ── Dispatch Subscriber ──────────────────────────────────────────────────────
