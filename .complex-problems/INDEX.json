@@ -1,5 +1,5 @@
 {
-  "active_ledger_id": "L20260508-184401",
+  "active_ledger_id": "L20260508-192710",
   "ledgers": [
     {
       "active_count": 0,
@@ -99,7 +99,18 @@
       "status": "done",
       "title": "Repair Agent Message Dispatch To Runtime",
       "updated_at": "2026-05-08T11:23:56+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260508-192710",
+      "path": "L20260508-192710",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "Smoke Wake Shell Timeout And ImReply Cap Diagnosis",
+      "updated_at": "2026-05-08T11:52:48+00:00"
     }
   ],
-  "updated_at": "2026-05-08T11:23:56+00:00"
+  "updated_at": "2026-05-08T11:52:48+00:00"
 }

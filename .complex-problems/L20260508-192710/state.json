@@ -1,0 +1,164 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-08T11:52:48+00:00",
+      "criteria_map": [
+        "Find the definite cause of the repeated smoke failure -> mapped to two code-level causes: root-scoped reply counter and full RO shell materialization.",
+        "Fix code, deploy, and smoke test -> mapped to runtime and Cortex code changes, `./deploy services`, smoke v5, and smoke v6.",
+        "Ensure Cortex stack/session maintenance is clean -> mapped to `skill_end`, `check_stack stack_depth=0`, `cortex.scope_end finalize_reason=stack_empty`, and `session.ended action=session_closed` in production.",
+        "Avoid behavioral/LLM hand-waving -> mapped to direct queue database task/event evidence and targeted unit tests."
+      ],
+      "evidence": [
+        "Runtime targeted tests passed: 16 passed.",
+        "Cortex targeted tests passed: 10 passed.",
+        "Deployment status after `./deploy services` showed all backend services and all worker roles healthy.",
+        "Smoke v5 proved the shell path no longer times out for a trivial command and the wake finalizes cleanly.",
+        "Smoke v6 proved a fresh wake can send `SMOKE_IM_REPLY_OK_V6` without hitting the previous `12/10` cap and can close the wake skill cleanly.",
+        "Production session state after v6 was `no_active`, with `active_scope_id=null` and `active_saga_id=null`."
+      ],
+      "execution_map": [
+        "T000 -> R000: Diagnosed the failure from production queue tasks/events and logs, implemented scoped counters and faster shell sandbox setup, added tests, deployed, and verified production smoke."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Non-blocking: very large commands that explicitly read `$RO` can still be expensive, but they now request that cost explicitly and get bounded-concurrent materialization.",
+        "Non-blocking: LLM/provider latency can still make a smoke wait, but it is separate from the two harness bugs fixed here."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Failure mode: historical replies from previous wakes poison a new wake's `im_reply` cap. Fixed because `counter_inc` now writes to the concrete wake scope path.",
+        "Failure mode: a command that does not need Cortex RO still times out because RO history is large. Fixed because RO is lazy and only materialized when the command references RO/root paths.",
+        "Failure mode: stack checks stall on full context rendering. Reduced because context status is stack-only by default.",
+        "Failure mode: wake closes but session pointer remains active. Production smoke v5 and v6 both returned `tq_session_state` to `no_active`."
+      ],
+      "summary": "The original failure is solved. The historical `im_reply` cap was caused by counters being written to agent-root metadata instead of wake-scope metadata, and the shell timeout was caused by Cortex sandbox setup materializing the full RO tree on every shell command. Both paths were changed, deployed, and verified with targeted unit tests plus production smoke tests."
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-08T11:27:10+00:00",
+  "ledger_id": "L20260508-192710",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-08T11:27:10+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "Production smoke message `18c14d716c0a` / dispatch repair verification v4 reached Queue and Runtime, but the live agent UI shows the wake repeatedly running shell commands that time out and then hitting `im_reply cap reached (12/10)`. The user suspects Cortex stack maintenance / wake lifecycle logic, not just dispatch.\n\nDiagnose the concrete root cause from production evidence and code: why the wake kept timing out, why `im_reply` cap was already exceeded, whether the Cortex stack/finalize logic failed to close the wake, and what code path needs to change if this is a harness bug.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Trace the production wake scope `2c4fbe39-8ff6-4b8e-b5c8-3bd13e0690d0` and message `18c14d716c0a` through Queue tasks, sagas, Cortex files, and Environment notification state.",
+        "Identify the first deterministic failure mechanism, not only the UI symptom.",
+        "Determine whether the failure is caused by tool execution/shell sandbox, im_reply cap enforcement, Cortex stack/finalize maintenance, LLM behavior, or an interaction between them.",
+        "Provide evidence pointers: DB rows, log snippets, scope files, and source code references.",
+        "If a code fix is required, state the minimal fix direction and whether it should be implemented now."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Smoke Wake Shell Timeout And ImReply Cap Diagnosis",
+      "updated_at": "2026-05-08T11:52:48+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`novaic-agent-runtime/task_queue/handlers/environment_tool_handlers.py`",
+        "`novaic-agent-runtime/task_queue/utils/cortex_bridge.py`",
+        "`novaic-agent-runtime/tests/unit/task_queue/test_environment_tool_handlers.py`",
+        "`novaic-agent-runtime/tests/test_pr186_runtime_main_path_acceptance.py`",
+        "`novaic-cortex/novaic_cortex/api.py`",
+        "`novaic-cortex/novaic_cortex/sandbox.py`",
+        "`novaic-cortex/tests/test_pr67_wake_child_api.py`",
+        "`novaic-cortex/tests/test_sandbox_sync.py`"
+      ],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-08T11:52:40+00:00",
+      "done": [
+        "Runtime now passes `wake_scope_path` into `counter_inc` for `im_reply`, so reply caps are scoped to the current wake instead of agent root.",
+        "Runtime Cortex bridge now budgets shell HTTP timeout as command timeout plus bridge overhead, so storage/setup latency is not misreported as command runtime timeout.",
+        "Cortex `meta_counter_inc` accepts `scope_path` and resolves the actual active/archived wake scope before updating counters.",
+        "Cortex shell sandbox now lazily materializes RO only when the command references RO/root Cortex paths; RW is still materialized normally.",
+        "Cortex shell materialization now fetches store objects with bounded concurrency instead of serial blob reads.",
+        "Cortex context status is stack-only by default; full usage/context rendering is opt-in via `include_usage`.",
+        "Deployed the services with `./deploy services`."
+      ],
+      "id": "R000",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "The repeated smoke failure had two concrete harness-level causes, not an LLM behavior issue:\n\n- `im_reply` counters were stored against the agent-root scope, so historical wake replies accumulated into later wakes and produced false `im_reply cap reached (12/10)`.\n- Shell execution paid the cost of materializing the full Cortex RO tree before every command. Production evidence showed Cortex executed a trivial shell command in about 107 ms, while the runtime HTTP request took about 34 seconds and surfaced as `timed out`.\n- A secondary hot path made this worse: stack checks called context status in a mode that rendered full LLM context even when only stack depth was needed.\n\nThe fix was implemented, deployed, and smoke-tested in production.",
+      "ticket_id": "T000",
+      "verification": [
+        "Local runtime tests passed: `PYTHONPATH=.:../novaic-common pytest tests/unit/task_queue/test_environment_tool_handlers.py tests/test_pr186_runtime_main_path_acceptance.py -q` -> 16 passed.",
+        "Local Cortex tests passed: `PYTHONPATH=.:../novaic-common pytest tests/test_sandbox_sync.py tests/test_pr67_wake_child_api.py -q` -> 10 passed.",
+        "Production `./deploy status` showed all primary services healthy and all worker roles at expected counts.",
+        "Production smoke v5 shell path succeeded: wake `230161e4-0412-47b1-9603-dc23d587c1ff` ran `echo smoke-fast-v5 && date`, produced stdout, finalized with `stack_depth=0`, and session returned to `no_active`.",
+        "Production smoke v6 reply-cap path succeeded: wake `c9d4190a-f8c1-4081-9d81-2895f1a54cb9` sent `SMOKE_IM_REPLY_OK_V6`, then `skill_end` succeeded, `cortex.scope_end` finalized with `finalize_reason=stack_empty`, and session returned to `no_active`."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Concrete cause is identified with production evidence.",
+        "Distinguish shell timeout symptom from im_reply cap and stack/finalize behavior.",
+        "Determine whether code should be changed, and where.",
+        "Record the actual result and evidence in the ledger."
+      ],
+      "assumptions": [
+        "Scope `2c4fbe39-8ff6-4b8e-b5c8-3bd13e0690d0` belongs to the smoke v4 message.",
+        "Read-only production inspection is allowed for diagnosis."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "Focused diagnosis with bounded read-only production queries and source inspection.",
+      "created_at": "2026-05-08T11:27:50+00:00",
+      "id": "T000",
+      "problem_definition": "The dispatch repair v4 smoke wake reached Runtime, but the UI shows repeated shell timeouts and `im_reply cap reached (12/10)`. We need to determine why the already-created wake did not complete cleanly and whether the cause is Cortex stack/finalize logic, tool execution timeout behavior, im_reply cap behavior, or a stuck saga/session state.",
+      "problem_id": "P000",
+      "proposed_solution": "Inspect production durable state and source code in a pointer-oriented way:\n\n- Query Queue tasks, saga state/events/outbox, session events, and session state for scope `2c4fbe39-8ff6-4b8e-b5c8-3bd13e0690d0` and message `18c14d716c0a`.\n- Inspect Cortex scope files for steps, context, meta, stack state, and tool result payloads.\n- Inspect Runtime handlers for shell execution, tool cap enforcement, im_reply cap logic, and finalize/stack decision logic.\n- Correlate evidence into a causal chain and identify the first bad state transition.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Production logs can be large; queries must be bounded.",
+        "Some runtime state may have moved to Cortex archive/active paths; inspect both stable paths and DB references.",
+        "The smoke wake might still be active; avoid mutating production state during diagnosis."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Diagnose smoke wake shell timeout and im_reply cap",
+      "updated_at": "2026-05-08T11:52:40+00:00",
+      "verification_plan": "- Use read-only SSH/SQLite/file reads against production.\n- Use local source inspection for exact code paths.\n- If a fix is obvious and low-risk, implement and test in a follow-up ticket rather than mixing with diagnosis unless the ledger check demands it."
+    }
+  },
+  "updated_at": "2026-05-08T11:52:48+00:00"
+}
