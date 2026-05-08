@@ -1,5 +1,5 @@
 {
-  "active_ledger_id": "L20260508-171557",
+  "active_ledger_id": "L20260508-181307",
   "ledgers": [
     {
       "active_count": 0,
@@ -66,7 +66,18 @@
       "status": "done",
       "title": "Implement Pure DSL Runtime Closure",
       "updated_at": "2026-05-08T10:08:11+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260508-181307",
+      "path": "L20260508-181307",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "Post-Deploy Runtime DSL Audit",
+      "updated_at": "2026-05-08T10:25:28+00:00"
     }
   ],
-  "updated_at": "2026-05-08T10:08:11+00:00"
+  "updated_at": "2026-05-08T10:25:28+00:00"
 }

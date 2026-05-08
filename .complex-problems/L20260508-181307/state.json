@@ -1,0 +1,769 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C000.md",
+      "created_at": "2026-05-08T10:16:24+00:00",
+      "criteria_map": [
+        "`./deploy status` or equivalent remote status confirms expected service and worker processes.",
+        "Met by `./deploy status`.",
+        "Fresh-smoke evidence confirms logs are current after the deployment.",
+        "Met by `./deploy fresh-smoke`.",
+        "The deployed runtime worker roster matches the code-defined roster.",
+        "Met by comparing `./deploy status` worker table with local roster command output.",
+        "Any mismatch is recorded with concrete process/log evidence.",
+        "No mismatch found."
+      ],
+      "evidence": [
+        "`./deploy status` reported all expected service ports bound.",
+        "`./deploy status` reported all runtime worker roles with expected process counts.",
+        "Local `runtime_worker_roster.py process-checks` output matched the same role list and counts.",
+        "`./deploy fresh-smoke` reported all required logs fresh."
+      ],
+      "execution_map": [
+        "T001 executed production status, local roster, and fresh-smoke checks.",
+        "R000 recorded the observed service and worker counts."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P001",
+      "residual_risk": [
+        "Low. This is a runtime/process check, not a semantic workload replay."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "If a runtime worker role were missing, `./deploy status` would show expected/actual mismatch.",
+        "If logs were stale from a previous deploy, `./deploy fresh-smoke` would fail the mtime check."
+      ],
+      "summary": "Success. Result R000 verifies production deployment and runtime topology after restart."
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/checks/C001.md",
+      "created_at": "2026-05-08T10:18:55+00:00",
+      "criteria_map": [
+        "Source scans cover action engines, handlers, worker assemblies, worker entrypoints, and Queue Service session/FSM surfaces.",
+        "Met by R001 scan commands and inspected files.",
+        "Findings distinguish accepted explicit boundaries from active old-path residue.",
+        "Met by R001 classification.",
+        "No direct action-engine `execute_effect(...)`, handler lifecycle ownership, or displaced bespoke loop remains unguarded.",
+        "Met by no-match scans and loop classification.",
+        "Any real residue is fixed or converted into a follow-up problem.",
+        "No real residue found."
+      ],
+      "evidence": [
+        "Direct-effect scan returned no matches in the four runtime action engines.",
+        "Handler lifecycle/queue DB leakage scan returned no matches.",
+        "Worker loop scan matches were classified as generic worker substrate, explicit dependency construction, or non-runtime VMControl path.",
+        "Generation/fallback matches were inspected and classified as fail-fast validation or explicit propagation, not no-generation compatibility."
+      ],
+      "execution_map": [
+        "T002 executed bounded source scans and context inspection.",
+        "R001 recorded findings and classifications."
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P002",
+      "residual_risk": [
+        "Low. This is a source-level audit; semantic runtime behavior is further covered by targeted tests in the hygiene child."
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "If old direct effect execution returned in action engines, the `execute_effect(...)` scan would produce a match.",
+        "If handlers owned worker lifecycle or DB connections, the handler scan would produce a match.",
+        "If generation-less attach/finalize paths accepted missing generation, inspected code would not raise on `None`; current code raises."
+      ],
+      "summary": "Success. Result R001 covers the requested old-path and compatibility residue scan and found no active unguarded old runtime path."
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/checks/C002.md",
+      "created_at": "2026-05-08T10:21:24+00:00",
+      "criteria_map": [
+        "The live code paths named in `runtime-fsm-worker-dsl-status.md` exist and are imported/used consistently.",
+        "Met by path existence and usage scans.",
+        "The audit verifies action engines delegate behavior calculation to policy/spec/plan helpers where claimed.",
+        "Met by inspected action engine slices and tests.",
+        "Accepted Python computation hooks are explicitly named and are not hidden fallback paths.",
+        "Met by `SAGA_CALLBACK_EXTENSION_POINTS` and architecture doc language.",
+        "Any mismatch between documentation and implementation is fixed or converted into a follow-up problem.",
+        "No mismatch found."
+      ],
+      "evidence": [
+        "All status-document live paths exist.",
+        "Usage scans found `EffectPlanRunner`, `WorkerAssemblySpec`, `SAGA_CALLBACK_EXTENSION_POINTS`, handler metadata, and plan/spec helpers in expected code paths.",
+        "Representative action engine inspection confirmed the plan-first structure.",
+        "Targeted documentation/effect-boundary tests passed: 13 tests."
+      ],
+      "execution_map": [
+        "T003 executed path existence checks, usage scans, file inspections, and targeted tests.",
+        "R002 recorded the match between documentation and implementation."
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P003",
+      "residual_risk": [
+        "Low. This confirms the current architecture contract, not future data-only DSL ambitions."
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "If a documented path disappeared, the path existence check and documentation guard test would fail.",
+        "If action engines stopped using plan helpers or `EffectPlanRunner`, usage scans and effect-boundary tests would fail."
+      ],
+      "summary": "Success. Result R002 verifies that the documented FSM/worker/DSL boundary matches live code and that accepted computation hooks are explicit."
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P004/checks/C003.md",
+      "created_at": "2026-05-08T10:24:10+00:00",
+      "criteria_map": [
+        "Relevant runtime targeted tests and lints pass after the post-deploy audit.",
+        "Met by 77-test run and runtime supervision lint.",
+        "Generated Python artifacts and pytest caches are absent or cleaned before final lint.",
+        "Met by cleanup command and generated artifact lint pass.",
+        "The new audit ledger validates, renders, and reaches a closed state.",
+        "Validate/render passed; root closure follows after this child succeeds.",
+        "Git status is understood and no accidental untracked/generated residue remains.",
+        "Met by git status review: only intentional audit ledger files remain in parent; submodule clean."
+      ],
+      "evidence": [
+        "Targeted runtime/FSM/DSL suite passed: 77 tests.",
+        "Runtime supervision lint passed.",
+        "Generated artifact lint passed after cache cleanup.",
+        "Audit ledger rendered and validated.",
+        "Parent git status contains intentional audit ledger changes; submodule is clean."
+      ],
+      "execution_map": [
+        "T004 executed targeted tests, cleanup, lints, ledger render/validate/status, and git status checks.",
+        "R003 recorded outputs and residual state."
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P004",
+      "residual_risk": [
+        "Low. The parent repo remains dirty until the audit ledger itself is committed after root closure."
+      ],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "If pytest generated cache residue remained, generated artifact lint would fail.",
+        "If the ledger state were malformed, `ledger.py validate` would fail.",
+        "If the submodule had accidental edits after tests, submodule `git status --short` would report them."
+      ],
+      "summary": "Success. Result R003 verifies tests, lints, generated artifact cleanup, ledger validity/rendering, and git status expectations for the post-deploy audit."
+    },
+    "C004": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C004.md",
+      "created_at": "2026-05-08T10:25:17+00:00",
+      "criteria_map": [
+        "Production deployment status and runtime subprocess roster are verified after deploy.",
+        "Met by P001.",
+        "Code scans prove no active direct effect execution, handler-owned lifecycle wiring, or bespoke worker loop path remains in the audited runtime surface.",
+        "Met by P002.",
+        "The FSM/worker/DSL boundary is audited against live code and documented accepted Python computation hooks.",
+        "Met by P003.",
+        "CI, generated artifact, ledger, and documentation hygiene checks pass.",
+        "Met by P004.",
+        "Any discovered gap is recorded with evidence and either closed or converted into a follow-up problem.",
+        "No blocking gap discovered; no follow-up needed."
+      ],
+      "evidence": [
+        "P001 / R000 verified production service and runtime worker topology.",
+        "P002 / R001 verified no active old-path residue in the audited runtime surface.",
+        "P003 / R002 verified the FSM/worker/DSL status documentation matches live code and explicit computation hooks.",
+        "P004 / R003 verified tests, lints, generated artifact cleanup, ledger validity/rendering, and git status expectations."
+      ],
+      "execution_map": [
+        "T000 split the audit into four child problems.",
+        "T001 executed production runtime topology verification.",
+        "T002 executed old-path residue scan.",
+        "T003 executed FSM/worker/DSL boundary audit.",
+        "T004 executed hygiene and ledger verification.",
+        "R004 summarized the closed children."
+      ],
+      "followup_problem_id": null,
+      "id": "C004",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Low. This audit verifies the deployed topology, source boundaries, and hygiene. It does not claim future all-data DSL completion beyond the documented current architecture."
+      ],
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Missing production workers would have failed `./deploy status`.",
+        "Stale logs would have failed `./deploy fresh-smoke`.",
+        "Old direct effects or handler lifecycle leakage would have shown up in targeted source scans.",
+        "Documentation drift would have failed the runtime DSL status doc test.",
+        "Generated cache residue would have failed generated artifact lint.",
+        "Malformed ledger state would have failed `ledger.py validate`."
+      ],
+      "summary": "Success. Result R004 solves the post-deploy audit by closing all four audit tracks with evidence and no blocking gaps."
+    }
+  },
+  "counters": {
+    "check": 5,
+    "event": 60,
+    "problem": 5,
+    "result": 5,
+    "ticket": 5
+  },
+  "created_at": "2026-05-08T10:13:07+00:00",
+  "ledger_id": "L20260508-181307",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C004"
+      ],
+      "created_at": "2026-05-08T10:13:07+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "After committing and deploying the runtime FSM/worker DSL optimization, perform a comprehensive post-deploy audit. The audit must verify that production is running the expected runtime worker topology, that old worker/action paths have not returned, that the implemented DSL/FSM boundary matches the design documentation, and that CI/documentation/generated-artifact hygiene remains clean.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P001",
+        "P002",
+        "P003",
+        "P004"
+      ],
+      "success_criteria": [
+        "Production deployment status and runtime subprocess roster are verified after deploy.",
+        "Code scans prove no active direct effect execution, handler-owned lifecycle wiring, or bespoke worker loop path remains in the audited runtime surface.",
+        "The FSM/worker/DSL boundary is audited against live code and documented accepted Python computation hooks.",
+        "CI, generated artifact, ledger, and documentation hygiene checks pass.",
+        "Any discovered gap is recorded with evidence and either closed or converted into a follow-up problem."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Post-Deploy Runtime DSL Audit",
+      "updated_at": "2026-05-08T10:25:17+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-08T10:14:19+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Verify that the just-deployed production backend is running the expected Queue Service and runtime worker topology, including the role-level worker roster and fresh logs.",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`./deploy status` or equivalent remote status confirms expected service and worker processes.",
+        "Fresh-smoke evidence confirms logs are current after the deployment.",
+        "The deployed runtime worker roster matches the code-defined roster.",
+        "Any mismatch is recorded with concrete process/log evidence."
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "Production Runtime Topology Verification",
+      "updated_at": "2026-05-08T10:16:24+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-08T10:14:19+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Audit the runtime worker/action/handler source surface for old paths that could bypass the new FSM/worker/DSL boundaries: direct effect execution in action engines, handler-owned lifecycle wiring, bespoke worker loops, compatibility branches, or stale no-generation/fallback behavior.",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Source scans cover action engines, handlers, worker assemblies, worker entrypoints, and Queue Service session/FSM surfaces.",
+        "Findings distinguish accepted explicit boundaries from active old-path residue.",
+        "No direct action-engine `execute_effect(...)`, handler lifecycle ownership, or displaced bespoke loop remains unguarded.",
+        "Any real residue is fixed or converted into a follow-up problem."
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "Old Path And Compatibility Residue Scan",
+      "updated_at": "2026-05-08T10:18:55+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P003/README.md",
+      "check_ids": [
+        "C002"
+      ],
+      "created_at": "2026-05-08T10:14:19+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Audit whether the implemented runtime shape matches the documented FSM/worker/DSL architecture: generic FSM substrate, generic worker substrate, declarative roster/assembly specs, pure policy/spec/plan helpers, plan-first effects, and explicit accepted Python computation hooks.",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P003",
+      "parent_id": "P000",
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "The live code paths named in `runtime-fsm-worker-dsl-status.md` exist and are imported/used consistently.",
+        "The audit verifies action engines delegate behavior calculation to policy/spec/plan helpers where claimed.",
+        "Accepted Python computation hooks are explicitly named and are not hidden fallback paths.",
+        "Any mismatch between documentation and implementation is fixed or converted into a follow-up problem."
+      ],
+      "ticket_ids": [
+        "T003"
+      ],
+      "title": "FSM Worker DSL Boundary Audit",
+      "updated_at": "2026-05-08T10:21:24+00:00"
+    },
+    "P004": {
+      "body_path": "problems/P000/children/P004/README.md",
+      "check_ids": [
+        "C003"
+      ],
+      "created_at": "2026-05-08T10:14:19+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Verify repository hygiene after commit/deploy and post-deploy audit work: CI/lint guard health, generated artifact cleanup, ledger validity/rendering, git cleanliness expectations, and documentation consistency.",
+      "followup_ids": [],
+      "id": "P004",
+      "package_path": "problems/P000/children/P004",
+      "parent_id": "P000",
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Relevant runtime targeted tests and lints pass after the post-deploy audit.",
+        "Generated Python artifacts and pytest caches are absent or cleaned before final lint.",
+        "The new audit ledger validates, renders, and reaches a closed state.",
+        "Git status is understood and no accidental untracked/generated residue remains."
+      ],
+      "ticket_ids": [
+        "T004"
+      ],
+      "title": "Hygiene And Ledger Verification",
+      "updated_at": "2026-05-08T10:24:10+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`./deploy status` output.",
+        "`./deploy fresh-smoke` output.",
+        "`novaic-agent-runtime/scripts/runtime_worker_roster.py process-checks` output."
+      ],
+      "body_path": "problems/P000/children/P001/results/R000.md",
+      "created_at": "2026-05-08T10:16:01+00:00",
+      "done": [
+        "Ran `./deploy status`.",
+        "Ran local runtime roster command from `novaic-agent-runtime/scripts/runtime_worker_roster.py`.",
+        "Ran `./deploy fresh-smoke`.",
+        "Compared observed worker counts with code-defined role-level roster."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "None."
+      ],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "Verified that the deployed production backend is running the expected services and runtime worker roster after the `./deploy services` restart.",
+      "ticket_id": "T001",
+      "verification": [
+        "`./deploy status` passed:",
+        "Services bound: entangled, gateway, business, device, queue-svc, blob-service, cortex.",
+        "Runtime workers matched expected counts:",
+        "`task-worker control`: 2/2",
+        "`task-worker execution`: 2/2",
+        "`saga-worker`: 2/2",
+        "`session-outbox-worker`: 1/1",
+        "`saga-outbox-worker`: 1/1",
+        "`health`: 1/1",
+        "`scheduler`: 1/1",
+        "`subscriber`: 1/1",
+        "Relay reported active.",
+        "Local roster command output matched the same role-level expectations.",
+        "`./deploy fresh-smoke` passed for all required logs, including every runtime worker log and `subscriber.log`."
+      ]
+    },
+    "R001": {
+      "artifacts": [
+        "Source scan outputs from `rg`.",
+        "Inspected slices from:",
+        "`task_queue/handlers/session_handlers.py`",
+        "`task_queue/handlers/runtime_handlers.py`",
+        "`queue_service/session_outbox.py`",
+        "`queue_service/session_repo.py`",
+        "`main_novaic.py`",
+        "`task_queue/workers/worker_assemblies.py`",
+        "`task_queue/workers/registry.py`"
+      ],
+      "body_path": "problems/P000/children/P002/results/R001.md",
+      "created_at": "2026-05-08T10:18:21+00:00",
+      "done": [
+        "Scanned action engines for direct `execute_effect(...)`, `_effect(...)`, and local `effect_executor` usage.",
+        "Scanned task handlers for `GenericWorker`, worker runtime/config, `WorkerAssemblySpec`, direct queue DB/database imports, and `sqlite3.connect`.",
+        "Scanned runtime startup and worker files for old bespoke `while`/sleep loops.",
+        "Scanned Queue Service and task queue code for compatibility/fallback/no-generation/active-session residue and inspected suspicious matches.",
+        "Inspected `worker_assemblies.py` and `registry.py` to confirm runtime startup remains registry/spec-backed."
+      ],
+      "id": "R001",
+      "known_gaps": [
+        "None for the audited old-path residue surface."
+      ],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "Scanned the deployed runtime source surface for old-path residue. No active direct effect execution, handler-owned worker lifecycle/queue DB ownership, or displaced bespoke runtime worker loop was found.",
+      "ticket_id": "T002",
+      "verification": [
+        "Direct-effect action-engine scan returned no matches in:",
+        "`task_queue/workers/task_execution.py`",
+        "`task_queue/workers/saga_launch.py`",
+        "`task_queue/workers/scheduled_wake.py`",
+        "`task_queue/workers/health_recovery.py`",
+        "Handler lifecycle/queue DB leakage scan returned no matches in `task_queue/handlers`.",
+        "Worker loop scan findings were classified:",
+        "`queue_service/worker/generic_worker.py` and `concurrent_worker.py`: accepted generic worker substrate loops.",
+        "`task_queue/workers/dependencies.py` and `assembly_factories.py`: explicit sleeper dependency injection/construction boundary.",
+        "`main_novaic.py`: VMControl readiness/log streaming path, not runtime worker control path.",
+        "Generation/compatibility scan findings were classified:",
+        "`session_handlers.py`, `runtime_handlers.py`, `session_outbox.py`, and `session_repo.py` require generation and fail fast when missing.",
+        "`subagent_wake.py` conditionally forwards existing `session_generation` when present; it is not a no-generation attach fallback.",
+        "`tq_active_sessions` mentions remain Queue Service/session repository state details, not a parallel worker path."
+      ]
+    },
+    "R002": {
+      "artifacts": [
+        "`docs/architecture/runtime-fsm-worker-dsl-status.md`",
+        "`novaic-agent-runtime/task_queue/workers/task_execution.py`",
+        "`novaic-agent-runtime/task_queue/workers/saga_launch.py`",
+        "`novaic-agent-runtime/task_queue/workers/scheduled_wake.py`",
+        "`novaic-agent-runtime/task_queue/workers/health_recovery.py`",
+        "`novaic-agent-runtime/tests/test_pr340_runtime_dsl_status_doc.py`",
+        "`novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py`"
+      ],
+      "body_path": "problems/P000/children/P003/results/R002.md",
+      "created_at": "2026-05-08T10:20:59+00:00",
+      "done": [
+        "Verified every live path named in `docs/architecture/runtime-fsm-worker-dsl-status.md` exists.",
+        "Scanned for usage of `EffectPlanRunner`, `WorkerAssemblySpec`, `SAGA_CALLBACK_EXTENSION_POINTS`, handler metadata, and policy/spec/plan helper functions.",
+        "Inspected representative action engines:",
+        "`task_execution.py`",
+        "`saga_launch.py`",
+        "`scheduled_wake.py`",
+        "`health_recovery.py`",
+        "Ran targeted documentation and effect-boundary tests."
+      ],
+      "id": "R002",
+      "known_gaps": [
+        "None for the documented current architecture. The architecture remains intentionally spec/plan-driven with explicit Python computation hooks, not a future data-only DSL."
+      ],
+      "problem_id": "P003",
+      "root_id": "P000",
+      "summary": "Audited the runtime FSM/worker/DSL boundary against live code and the status documentation. The documented spec/plan-driven shape matches the implementation, with accepted Python computation hooks named explicitly rather than hidden as fallback paths.",
+      "ticket_id": "T003",
+      "verification": [
+        "Path existence check returned `MISSING=[]`.",
+        "Usage scan confirmed:",
+        "`EffectPlanRunner` is imported/used by task, saga, scheduler, and health engines.",
+        "`WorkerAssemblySpec` is used by `worker_assemblies.py`.",
+        "`SAGA_CALLBACK_EXTENSION_POINTS` is declared in `task_queue/saga.py` and referenced in docs.",
+        "Policy/spec/plan helper functions are used by the expected engines.",
+        "Inspected action engine slices show engines using pure policy/spec/plan helpers and `EffectPlanRunner`.",
+        "`cd novaic-agent-runtime && PYTHONDONTWRITEBYTECODE=1 pytest -q -p no:cacheprovider tests/test_pr340_runtime_dsl_status_doc.py tests/test_pr340_action_engine_effect_boundaries.py`",
+        "Passed: 13 tests."
+      ]
+    },
+    "R003": {
+      "artifacts": [
+        "`.complex-problems/L20260508-181307/views/INDEX.md`",
+        "Runtime targeted test output.",
+        "Lint outputs.",
+        "Git status output."
+      ],
+      "body_path": "problems/P000/children/P004/results/R003.md",
+      "created_at": "2026-05-08T10:23:40+00:00",
+      "done": [
+        "Ran targeted runtime/FSM/DSL test suite.",
+        "Removed generated Python cache artifacts.",
+        "Ran runtime worker supervision lint.",
+        "Ran generated artifact lint.",
+        "Rendered and validated the new audit ledger.",
+        "Checked parent and submodule git status."
+      ],
+      "id": "R003",
+      "known_gaps": [
+        "None for this child. The root ledger still needs parent result/check closure after P004 succeeds."
+      ],
+      "problem_id": "P004",
+      "root_id": "P000",
+      "summary": "Verified targeted runtime tests, runtime supervision lint, generated artifact hygiene, and audit ledger validity/rendering. Git status after the audit contains only intentional new audit ledger files and `.complex-problems/INDEX.json`.",
+      "ticket_id": "T004",
+      "verification": [
+        "`cd novaic-agent-runtime && PYTHONDONTWRITEBYTECODE=1 pytest -q -p no:cacheprovider ...`",
+        "Passed: 77 tests.",
+        "`python3 scripts/ci/lint_runtime_worker_supervision.py`",
+        "Passed: `lint_runtime_worker_supervision OK`.",
+        "`scripts/ci/lint_generated_artifacts.sh`",
+        "Passed: `GENERATED_ARTIFACTS_LINT=PASS`.",
+        "`ledger.py render --ledger .complex-problems/L20260508-181307`",
+        "Rendered `.complex-problems/L20260508-181307/views/INDEX.md`.",
+        "`ledger.py validate --ledger .complex-problems/L20260508-181307`",
+        "Passed: `Ledger is valid!`.",
+        "`ledger.py status --ledger .complex-problems/L20260508-181307`",
+        "Passed with active problems expected at this pre-closure point.",
+        "`git status --short`",
+        "Parent repo contains only intentional audit ledger changes.",
+        "`cd novaic-agent-runtime && git status --short`",
+        "Clean."
+      ]
+    },
+    "R004": {
+      "artifacts": [
+        "`.complex-problems/L20260508-181307/artifacts/P001-result.md`",
+        "`.complex-problems/L20260508-181307/artifacts/P002-result.md`",
+        "`.complex-problems/L20260508-181307/artifacts/P003-result.md`",
+        "`.complex-problems/L20260508-181307/artifacts/P004-result.md`",
+        "`.complex-problems/L20260508-181307/views/INDEX.md`"
+      ],
+      "body_path": "problems/P000/results/R004.md",
+      "created_at": "2026-05-08T10:24:51+00:00",
+      "done": [
+        "R000 / P001: Verified production services and runtime worker roster after deploy.",
+        "R001 / P002: Scanned old-path and compatibility residue; no active unguarded old path found.",
+        "R002 / P003: Audited FSM/worker/DSL boundary against live code and documentation; status matched implementation.",
+        "R003 / P004: Verified targeted tests, lints, generated artifact cleanup, and audit ledger validity."
+      ],
+      "id": "R004",
+      "known_gaps": [
+        "None. The audit confirms the current implemented shape and preserves the previously documented distinction: this is a spec/plan-driven runtime with explicit Python computation hooks, not a future all-data DSL."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Completed the post-deploy audit across production topology, old-path residue, FSM/worker/DSL boundary correctness, and hygiene/ledger verification. No blocking gap was found.",
+      "ticket_id": "T000",
+      "verification": [
+        "Production:",
+        "`./deploy status` passed with all backend services and worker roles healthy.",
+        "`./deploy fresh-smoke` passed for all required logs.",
+        "Source residue:",
+        "Direct-effect action-engine scan returned no matches.",
+        "Handler lifecycle/queue DB ownership scan returned no matches.",
+        "Loop and generation/fallback matches were inspected and classified as accepted or fail-fast paths.",
+        "Architecture boundary:",
+        "Status document live paths all exist.",
+        "Usage scans found expected `EffectPlanRunner`, `WorkerAssemblySpec`, policy/spec/plan helpers, handler metadata, and saga callback extension points.",
+        "Targeted doc/effect tests passed: 13 tests.",
+        "Hygiene:",
+        "Targeted runtime/FSM/DSL suite passed: 77 tests.",
+        "Runtime supervision lint passed.",
+        "Generated artifact lint passed after cleanup.",
+        "Audit ledger rendered and validated."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Child problems cover production state, code residue, architecture boundary, and hygiene checks.",
+        "Each child has concrete evidence and verification commands.",
+        "Any discovered issue becomes a child/follow-up problem rather than being buried in a summary.",
+        "Root success check maps all original criteria to child results."
+      ],
+      "assumptions": [
+        "The deploy command that just completed is the relevant production baseline for this audit.",
+        "The audit should report and close actionable implementation gaps when found, but should not invent new future architecture work beyond the current FSM/worker/DSL closure scope."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "Audit spans independent production, residue, architecture, and hygiene verification tracks.",
+      "created_at": "2026-05-08T10:13:33+00:00",
+      "id": "T000",
+      "problem_definition": "The post-deploy audit spans production state, code residue, architecture boundary correctness, and hygiene checks. Performing it as one undifferentiated pass would risk hiding gaps.",
+      "problem_id": "P000",
+      "proposed_solution": "Split the audit into four child problems:\n\n1. Production deployment and runtime worker topology verification.\n2. Old-path and compatibility residue scan for worker/action/handler surfaces.\n3. FSM/worker/DSL boundary audit against live code and status documentation.\n4. CI, generated artifact, ledger, and documentation hygiene verification.\n\nEach child records evidence, commands, findings, and residual risk. The root closes only after all children pass success checks.",
+      "result_ids": [
+        "R004"
+      ],
+      "risks": [
+        "Remote service checks can be transient; distinguish transient deployment noise from code/design failure.",
+        "Grep-only scans can miss semantic issues, so pair scans with targeted file inspection."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Split Post-Deploy Runtime DSL Audit",
+      "updated_at": "2026-05-08T10:24:51+00:00",
+      "verification_plan": "- Use the ledger split flow.\n- Execute every child problem through `ledger.py next`.\n- Run production deploy/status checks, targeted source scans, tests/lints, and focused diff/status review as appropriate."
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "Production backend status reports all required services and workers.",
+        "Fresh-smoke logs are current after the deploy.",
+        "Runtime roster expected worker roles match observed process counts.",
+        "Evidence is recorded in the ledger result."
+      ],
+      "assumptions": [
+        "`./deploy services` completed immediately before this audit and is the deployment baseline."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded production status and roster verification with direct commands.",
+      "created_at": "2026-05-08T10:14:38+00:00",
+      "id": "T001",
+      "problem_definition": "The deployment completed successfully, but the audit needs durable evidence that production is actually running the expected service and worker topology after restart.",
+      "problem_id": "P001",
+      "proposed_solution": "Run production status and fresh-smoke commands, capture the role-level runtime worker counts, and compare them against the code-defined roster. Record any mismatch as a blocker or follow-up.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Remote checks can be briefly transient immediately after restart; rerun status once if the first check is ambiguous."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Verify Production Runtime Topology",
+      "updated_at": "2026-05-08T10:16:01+00:00",
+      "verification_plan": "- Run `./deploy status`.\n- Run `./deploy fresh-smoke`.\n- Inspect local runtime roster command output.\n- Compare expected worker roles with observed status output."
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "Direct effect execution residue is scanned in action engines.",
+        "Handler lifecycle and queue DB ownership leakage is scanned.",
+        "Bespoke worker loops and startup dispatch residue are scanned.",
+        "Compatibility/fallback/no-generation surfaces are scanned and classified.",
+        "Any active risk is fixed or converted into a follow-up problem."
+      ],
+      "assumptions": [
+        "Accepted generic worker loops and explicit compatibility mentions in tests/docs are not automatically failures."
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T002.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded source audit with direct scans and classification; no known implementation gap yet.",
+      "created_at": "2026-05-08T10:16:48+00:00",
+      "id": "T002",
+      "problem_definition": "The new runtime path is deployed, but old worker/action/handler branches could still exist as hidden active paths. The audit needs concrete source evidence rather than trusting the previous refactor.",
+      "problem_id": "P002",
+      "proposed_solution": "Run targeted source scans and inspect any suspicious matches across runtime workers, action engines, task handlers, startup entrypoints, and Queue Service session/FSM surfaces. Classify matches as accepted infrastructure, test/documentation residue, or active old-path risk.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "Keyword scans can produce false positives; every suspicious match must be classified with file context."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Scan Runtime Old Path Residue",
+      "updated_at": "2026-05-08T10:18:21+00:00",
+      "verification_plan": "- Use `rg` scans over the relevant runtime source paths.\n- Inspect matched files with bounded slices.\n- Run focused tests/lints if any code is changed."
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "Every live path named in the status document exists.",
+        "`EffectPlanRunner`, `WorkerAssemblySpec`, policy/spec/plan helpers, and handler metadata are used by the expected runtime code.",
+        "Accepted Python computation hooks are explicit and documented.",
+        "Any doc/code mismatch is fixed or converted into a follow-up."
+      ],
+      "assumptions": [
+        "The goal is verifying the implemented spec/plan-driven shape, not requiring all domain behavior to become data-only."
+      ],
+      "body_path": "problems/P000/children/P003/tickets/T003.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded documentation-to-code boundary audit with direct path and usage checks.",
+      "created_at": "2026-05-08T10:19:28+00:00",
+      "id": "T003",
+      "problem_definition": "The architecture status document claims a specific runtime shape: generic FSM substrate, generic worker substrate, declarative roster/assembly specs, pure policy/spec/plan helpers, plan-first effects, and explicit Python computation hooks. The audit must verify that this statement matches live code.",
+      "problem_id": "P003",
+      "proposed_solution": "Cross-check the documentation's live code pointers against the filesystem and inspect imports/usages in action engines and registries. Confirm accepted computation hooks are named rather than hidden fallback paths.",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [
+        "Usage checks can be shallow; inspect representative files around imports and calls."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Audit FSM Worker DSL Boundary",
+      "updated_at": "2026-05-08T10:20:59+00:00",
+      "verification_plan": "- Run targeted path existence and `rg` usage checks.\n- Inspect key files with line-numbered slices.\n- Reuse the documentation guard test as supporting evidence."
+    },
+    "T004": {
+      "acceptance_criteria": [
+        "Relevant targeted runtime tests pass.",
+        "Runtime supervision lint passes.",
+        "Generated artifact lint passes after cleanup.",
+        "The new audit ledger validates and renders.",
+        "Git status contains only intentional audit ledger changes after the audit, or is clean after committing them."
+      ],
+      "assumptions": [
+        "The targeted runtime/FSM/DSL suite is the appropriate nearest project-wide check for this touched surface."
+      ],
+      "body_path": "problems/P000/children/P004/tickets/T004.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded final hygiene and ledger verification commands.",
+      "created_at": "2026-05-08T10:22:02+00:00",
+      "id": "T004",
+      "problem_definition": "The post-deploy audit must end with clean repository hygiene evidence: tests/lints pass, generated artifacts are cleaned, the audit ledger validates/renders, and git status is understood.",
+      "problem_id": "P004",
+      "proposed_solution": "Run the targeted runtime test suite, runtime supervision lint, generated-artifact lint, audit ledger render/validate/status, and final git status checks. Clean generated Python artifacts before the final generated-artifact lint.",
+      "result_ids": [
+        "R003"
+      ],
+      "risks": [
+        "Running tests creates cache files; cleanup must happen before final generated-artifact lint."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Verify Hygiene And Ledger Closure",
+      "updated_at": "2026-05-08T10:23:40+00:00",
+      "verification_plan": "- Run the targeted runtime/FSM/DSL suite.\n- Run `lint_runtime_worker_supervision.py`.\n- Remove Python cache artifacts and run `lint_generated_artifacts.sh`.\n- Run `ledger.py render`, `validate`, `status`, and `next` for the audit ledger.\n- Run parent and submodule `git status --short`."
+    }
+  },
+  "updated_at": "2026-05-08T10:25:28+00:00"
+}
