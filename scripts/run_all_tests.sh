@@ -8,9 +8,27 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
+export PYTHONDONTWRITEBYTECODE="${PYTHONDONTWRITEBYTECODE:-1}"
+export PYTEST_ADDOPTS="${PYTEST_ADDOPTS:-} -p no:cacheprovider"
 
 PASSED=()
 FAILED=()
+
+cleanup_generated_python_artifacts() {
+    find "$ROOT" \
+        \( \
+            -path "$ROOT/.git" -o -path "$ROOT/*/.git" -o \
+            -path "$ROOT/node_modules" -o -path "$ROOT/*/node_modules" -o \
+            -path "$ROOT/target" -o -path "$ROOT/*/target" -o \
+            -path "$ROOT/.venv" -o -path "$ROOT/*/.venv" -o \
+            -path "$ROOT/thirdparty" -o -path "$ROOT/*/target" -o \
+            -path "$ROOT/novaic-app/src-tauri/gen/apple/build" \
+        \) -prune -o \
+        \( \
+            -type d \( -name '__pycache__' -o -name '.pytest_cache' -o -name '*.egg-info' \) -o \
+            -type f -name '*.pyc' \
+        \) -print0 | xargs -0 rm -rf
+}
 
 run_check() {
     local name="$1"
@@ -55,6 +73,8 @@ run_pytest "common" "novaic-common" ".:../novaic-agent-runtime"
 run_pytest "cortex" "novaic-cortex" ".:../novaic-common"
 run_pytest "blob-service" "novaic-blob-service" ".:../novaic-common"
 run_pytest "llm-factory" "novaic-llm-factory" "."
+cleanup_generated_python_artifacts
+run_check "generated-artifacts-lint" scripts/ci/lint_generated_artifacts.sh
 
 echo ""
 echo "========== SUMMARY =========="

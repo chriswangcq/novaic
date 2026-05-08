@@ -6,6 +6,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+sys.dont_write_bytecode = True
+
 ROOT = Path(__file__).resolve().parents[2]
 RUNTIME_ROOT = ROOT / "novaic-agent-runtime"
 sys.path.insert(0, str(RUNTIME_ROOT))

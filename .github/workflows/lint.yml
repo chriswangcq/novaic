@@ -9,6 +9,8 @@ on:
 jobs:
   lint-dispatch:
     runs-on: ubuntu-latest
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
     steps:
     - uses: actions/checkout@v4
       with:
@@ -63,3 +65,5 @@ jobs:
       run: ./scripts/ci/lint_retired_agent_paths.sh
     - name: Run lifecycle loop ownership lint (PR-187)
       run: ./scripts/ci/lint_lifecycle_loop_ownership.sh
+    - name: Run generated artifact lint
+      run: ./scripts/ci/lint_generated_artifacts.sh

@@ -1,5 +1,5 @@
 {
-  "active_ledger_id": "L20260508-133614",
+  "active_ledger_id": "L20260508-171557",
   "ledgers": [
     {
       "active_count": 0,
@@ -44,7 +44,29 @@
       "status": "done",
       "title": "补齐 FSM 基建 + 业务 DSL 全部 GAP",
       "updated_at": "2026-05-08T06:16:01+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260508-165336",
+      "path": "L20260508-165336",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "全面排查当前代码与纯粹 DSL 目标的差距",
+      "updated_at": "2026-05-08T09:07:07+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260508-171557",
+      "path": "L20260508-171557",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "Implement Pure DSL Runtime Closure",
+      "updated_at": "2026-05-08T10:08:11+00:00"
     }
   ],
-  "updated_at": "2026-05-08T06:16:19+00:00"
+  "updated_at": "2026-05-08T10:08:11+00:00"
 }

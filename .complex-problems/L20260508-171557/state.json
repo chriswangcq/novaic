@@ -1,0 +1,1310 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C000.md",
+      "created_at": "2026-05-08T09:23:55+00:00",
+      "criteria_map": [
+        "Assembly spec substrate exists: satisfied by `assembly_specs.py`.",
+        "Worker assembly entrypoint is declarative/spec-backed: satisfied by `WORKER_ASSEMBLY_SPECS` and `WORKER_ASSEMBLIES` in `worker_assemblies.py`.",
+        "Concrete handler wiring is not in the registry-facing module: satisfied by moving the construction details to `assembly_factories.py` and adding tests that ban handler constructors from `worker_assemblies.py`.",
+        "Runtime roster remains authoritative for exposed worker modes: satisfied by deriving `WORKER_ASSEMBLIES` from `RUNTIME_WORKER_MODES`."
+      ],
+      "evidence": [
+        "Added `novaic-agent-runtime/task_queue/workers/assembly_specs.py` with `WorkerAssemblySpec` and `WorkerAssemblySpecRegistry`.",
+        "Added `novaic-agent-runtime/task_queue/workers/assembly_factories.py` for concrete process construction.",
+        "Replaced `novaic-agent-runtime/task_queue/workers/worker_assemblies.py` with a small spec-backed registry and compatibility wrapper functions.",
+        "Updated tests to verify the boundary:",
+        "`novaic-agent-runtime/tests/test_pr302_session_outbox_worker_production_wiring.py`",
+        "`novaic-agent-runtime/tests/test_pr338_business_handlers_lifecycle_free.py`",
+        "`novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py`"
+      ],
+      "execution_map": [
+        "Verified with:",
+        "```bash",
+        "pytest -q tests/test_pr340_assembly_helpers.py tests/test_pr337_worker_command_registry.py tests/test_pr302_session_outbox_worker_production_wiring.py tests/test_pr340_action_engine_effect_boundaries.py tests/test_pr338_business_handlers_lifecycle_free.py tests/test_pr339_worker_startup_db_retry.py",
+        "PYTHONDONTWRITEBYTECODE=1 python3 scripts/ci/lint_runtime_worker_supervision.py",
+        "```",
+        "Observed:",
+        "```text",
+        "32 passed in 0.33s",
+        "lint_runtime_worker_supervision OK",
+        "```"
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P001",
+      "residual_risk": [
+        "No blocker for this ticket. Factory internals remain intentionally out of scope for P001 and are covered by later tickets on effect plans, policies, and business DSL boundaries."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The main residual risk is that concrete assembly logic remains large, but this is now isolated behind a stable substrate. Later tickets can reduce concrete factories without reworking mode dispatch."
+      ],
+      "summary": "P001 is successful. Worker mode selection now goes through a business-agnostic `WorkerAssemblySpecRegistry`, while concrete worker construction has been moved out to `assembly_factories.py`. The old registry-facing module no longer owns business handler wiring."
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/checks/C001.md",
+      "created_at": "2026-05-08T09:35:27+00:00",
+      "criteria_map": [
+        "Reusable plan runner API exposed: satisfied by `EffectPlanRunner`.",
+        "Task, saga, scheduler, and health engines no longer import or call `execute_effect(...)`: satisfied by source scan and tests.",
+        "`_effect(...)` helpers removed from action engines: satisfied by source scan and tests.",
+        "Tests prove the boundary: satisfied by `tests/test_pr340_worker_effect_plan.py` and `tests/test_pr340_action_engine_effect_boundaries.py`."
+      ],
+      "evidence": [
+        "`EffectPlanRunner` exists in `novaic-agent-runtime/queue_service/worker/effects.py` and is exported from `queue_service.worker`.",
+        "`TaskExecutionEngine`, `SagaLaunchEngine`, `ScheduledWakeEngine`, and `HealthRecoveryEngine` use `self.effect_runner.run_one(...)`.",
+        "Direct effect execution residue scan returned no matches for `execute_effect`, `def _effect`, `self._effect`, or `self.effect_executor` in the four action engines.",
+        "Boundary tests now assert the plan runner boundary explicitly."
+      ],
+      "execution_map": [
+        "Verified with:",
+        "```bash",
+        "pytest -q tests/test_pr340_worker_effect_plan.py tests/test_pr340_action_engine_effect_boundaries.py tests/unit/task_queue/test_retry_policy_and_idempotency.py tests/unit/task_queue/test_saga_worker_boundary.py tests/test_health_dispatch.py tests/test_scheduler_dispatch.py tests/test_pr328_health_generic_worker.py tests/test_pr329_scheduler_generic_worker.py tests/test_pr333_saga_worker_handler_cutover.py",
+        "PYTHONDONTWRITEBYTECODE=1 python3 scripts/ci/lint_runtime_worker_supervision.py",
+        "```",
+        "Observed:",
+        "```text",
+        "44 passed in 0.18s",
+        "lint_runtime_worker_supervision OK",
+        "```"
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P002",
+      "residual_risk": [
+        "No blocker for P002. Handwritten effect payloads remain and are intentionally carried to P003-P005."
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The runner still runs one effect at a time for existing engines, but ownership has shifted to a common plan boundary. Later tickets can compile richer multi-effect plans without touching protocol adapters."
+      ],
+      "summary": "P002 is successful. Effect execution ownership is now centralized behind `EffectPlanRunner`, and the action engines no longer call `execute_effect(...)` or maintain local `_effect(...)` bridges."
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/checks/C002.md",
+      "created_at": "2026-05-08T09:40:12+00:00",
+      "criteria_map": [
+        "Explicit policy/decision helpers for idempotency and failure handling: satisfied.",
+        "Tests cover duplicate completed, in-progress contention, business error, retryable error, and success: satisfied by the new policy test suite.",
+        "Engine uses P002 plan/effect substrate: satisfied by `EffectPlanRunner`.",
+        "No old direct effect branch remains: satisfied by P002 scan and boundary tests."
+      ],
+      "evidence": [
+        "Added `novaic-agent-runtime/task_queue/workers/task_execution_policies.py`.",
+        "`TaskExecutionEngine` delegates idempotency and failure/success plan construction to the policy module.",
+        "Added `novaic-agent-runtime/tests/test_pr340_task_execution_policies.py` with branch-level snapshots.",
+        "`TaskExecutionEngine` continues to use `EffectPlanRunner` and has no direct effect execution residue."
+      ],
+      "execution_map": [
+        "Verified with:",
+        "```bash",
+        "pytest -q tests/test_pr340_task_execution_policies.py tests/test_pr340_worker_effect_plan.py tests/test_pr340_action_engine_effect_boundaries.py tests/unit/task_queue/test_retry_policy_and_idempotency.py tests/unit/task_queue/test_saga_worker_boundary.py tests/unit/task_queue/test_dedup_guard_failure_path.py tests/unit/task_queue/test_high_concurrency_retry_replay.py",
+        "PYTHONDONTWRITEBYTECODE=1 python3 scripts/ci/lint_runtime_worker_supervision.py",
+        "```",
+        "Observed:",
+        "```text",
+        "34 passed in 0.27s",
+        "lint_runtime_worker_supervision OK",
+        "```"
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P003",
+      "residual_risk": [
+        "Saga adaptation remains a later isolation target and is covered by P004."
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The engine is not yet \"only DSL\"; it still orchestrates handler invocation and saga sub-step adaptation. But the ticket goal was task execution policy tables, and the major branch payloads are now deterministic and independently testable."
+      ],
+      "summary": "P003 is successful. Task idempotency, success, business error, and retry failure effect construction now lives in pure policy helpers with focused tests."
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P004/checks/C003.md",
+      "created_at": "2026-05-08T09:44:50+00:00",
+      "criteria_map": [
+        "Saga launch can produce an explicit plan: satisfied by `compile_saga_launch_plan(...)`.",
+        "Saga launch engine executes through generic plan/effect substrate: satisfied by `EffectPlanRunner.run(...)`.",
+        "Saga definition callback extension points are documented/named: satisfied by `SAGA_CALLBACK_EXTENSION_POINTS`.",
+        "Tests assert saga plan compilation: satisfied by `tests/test_pr340_saga_launch_plans.py`."
+      ],
+      "evidence": [
+        "`saga_launch_plans.py` compiles DAG tasks and mark-launched into `EffectPlan`.",
+        "`SagaLaunchEngine` no longer contains `\"saga.task_publish\"` or `\"saga.mark_launched\"` effect construction.",
+        "`SAGA_CALLBACK_EXTENSION_POINTS` documents the callback hook surface in `saga.py`.",
+        "Tests cover launch plan compilation, failure plan construction, context normalization, and callback extension point naming."
+      ],
+      "execution_map": [
+        "Verified with:",
+        "```bash",
+        "pytest -q tests/test_pr340_saga_launch_plans.py tests/test_pr340_task_execution_policies.py tests/test_pr340_worker_effect_plan.py tests/test_pr340_action_engine_effect_boundaries.py tests/test_pr333_saga_worker_handler_cutover.py tests/unit/task_queue/test_saga_worker_boundary.py tests/unit/task_queue/test_retry_policy_and_idempotency.py tests/test_health_dispatch.py tests/test_scheduler_dispatch.py",
+        "PYTHONDONTWRITEBYTECODE=1 python3 ../scripts/ci/lint_runtime_worker_supervision.py",
+        "```",
+        "Observed:",
+        "```text",
+        "51 passed in 0.18s",
+        "lint_runtime_worker_supervision OK",
+        "```"
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P004",
+      "residual_risk": [
+        "No blocker for P004."
+      ],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The launch path no longer interleaves DAG compilation, effect payload construction, and effect execution. A later full data-only saga DSL could replace callback bodies, but the current hook boundary is explicit and guarded."
+      ],
+      "summary": "P004 is successful. Saga launch now has a deterministic plan compiler, the engine executes through the generic effect runner, and saga callback hooks are named as explicit computation extension points."
+    },
+    "C004": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P005/checks/C004.md",
+      "created_at": "2026-05-08T09:49:45+00:00",
+      "criteria_map": [
+        "Scheduler wake scan/dispatch classification helpers: satisfied by `scheduler_action_specs.py`.",
+        "Health recovery action spec helpers: satisfied by `health_action_specs.py`.",
+        "Engines use generic plan/effect substrate: satisfied by `EffectPlanRunner` usage.",
+        "Tests cover scheduler result classifications and health recovery effects: satisfied by `tests/test_pr340_scheduler_health_action_specs.py`."
+      ],
+      "evidence": [
+        "Added scheduler action specs and health action specs.",
+        "Updated `ScheduledWakeEngine` and `HealthRecoveryEngine` to use those specs.",
+        "Added scheduler/health spec tests.",
+        "Existing scheduler/health behavior tests remain green."
+      ],
+      "execution_map": [
+        "Verified with:",
+        "```bash",
+        "pytest -q tests/test_pr340_scheduler_health_action_specs.py tests/test_pr340_saga_launch_plans.py tests/test_pr340_task_execution_policies.py tests/test_pr340_worker_effect_plan.py tests/test_pr340_action_engine_effect_boundaries.py tests/test_scheduler_dispatch.py tests/test_health_dispatch.py tests/test_pr328_health_generic_worker.py tests/test_pr329_scheduler_generic_worker.py tests/test_pr333_saga_worker_handler_cutover.py tests/unit/task_queue/test_retry_policy_and_idempotency.py tests/unit/task_queue/test_saga_worker_boundary.py",
+        "PYTHONDONTWRITEBYTECODE=1 python3 ../scripts/ci/lint_runtime_worker_supervision.py",
+        "```",
+        "Observed:",
+        "```text",
+        "66 passed in 0.21s",
+        "lint_runtime_worker_supervision OK",
+        "```"
+      ],
+      "followup_problem_id": null,
+      "id": "C004",
+      "problem_id": "P005",
+      "residual_risk": [
+        "No blocker for P005."
+      ],
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Scheduler result handling no longer branches directly on `result.pending_wake`, `result.buffered`, or raw action in the engine. Health no longer hand-builds recover-all payloads or response normalization in the engine."
+      ],
+      "summary": "P005 is successful. Scheduler and health action construction/classification now lives in explicit spec helpers, while engines apply metrics/logs and execute through `EffectPlanRunner`."
+    },
+    "C005": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P006/checks/C005.md",
+      "created_at": "2026-05-08T09:52:48+00:00",
+      "criteria_map": [
+        "Metadata exposure: satisfied.",
+        "Handler modules avoid lifecycle/runtime ownership imports: satisfied by source guard tests.",
+        "Existing handler lookup behavior remains compatible: satisfied by tests.",
+        "Misleading lifecycle wiring guarded: satisfied by forbidden import/token checks."
+      ],
+      "evidence": [
+        "`HandlerSpec` includes topic, pool, module, and handler name.",
+        "Registry exposes `get_handler_spec(...)` and `get_all_handler_specs(...)`.",
+        "Existing lookup behavior remains compatible.",
+        "Handler boundary tests passed."
+      ],
+      "execution_map": [
+        "Verified with:",
+        "```bash",
+        "pytest -q tests/test_pr340_handler_registry_metadata.py tests/test_pr340_scheduler_health_action_specs.py tests/test_pr340_saga_launch_plans.py tests/test_pr340_task_execution_policies.py tests/test_pr340_worker_effect_plan.py tests/test_pr340_action_engine_effect_boundaries.py tests/test_scheduler_dispatch.py tests/test_health_dispatch.py tests/test_pr328_health_generic_worker.py tests/test_pr329_scheduler_generic_worker.py tests/test_pr333_saga_worker_handler_cutover.py tests/unit/task_queue/test_retry_policy_and_idempotency.py tests/unit/task_queue/test_saga_worker_boundary.py",
+        "PYTHONDONTWRITEBYTECODE=1 python3 ../scripts/ci/lint_runtime_worker_supervision.py",
+        "```",
+        "Observed:",
+        "```text",
+        "70 passed in 0.28s",
+        "lint_runtime_worker_supervision OK",
+        "```"
+      ],
+      "followup_problem_id": null,
+      "id": "C005",
+      "problem_id": "P006",
+      "residual_risk": [
+        "No blocker for P006."
+      ],
+      "result_ids": [
+        "R005"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The registry still imports handler modules to populate registration, but this ticket makes the resulting business surface inspectable. Later CI hygiene can enforce these source guards globally."
+      ],
+      "summary": "P006 is successful. Handler registration exposes declarative metadata and the new tests guard handler modules away from worker lifecycle/runtime ownership."
+    },
+    "C006": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P007/checks/C006.md",
+      "created_at": "2026-05-08T09:57:30+00:00",
+      "criteria_map": [
+        "CI guard scripts/wrappers use `PYTHONDONTWRITEBYTECODE=1`: satisfied.",
+        "Generated-artifact lint passes after normal cleanup/check sequence: satisfied.",
+        "Generated cache artifacts from local verification are cleaned: satisfied."
+      ],
+      "evidence": [
+        "Runtime supervision lint sets `sys.dont_write_bytecode = True`.",
+        "Lint workflow sets `PYTHONDONTWRITEBYTECODE=1` and runs generated-artifact lint.",
+        "Canonical test runner sets `PYTHONDONTWRITEBYTECODE=1`, disables pytest cache provider, cleans caches, and runs generated-artifact lint.",
+        "Guard tests cover these entrypoint expectations."
+      ],
+      "execution_map": [
+        "Verified with:",
+        "```bash",
+        "PYTHONDONTWRITEBYTECODE=1 pytest -q -p no:cacheprovider tests/test_pr340_ci_generated_artifact_hygiene.py tests/test_pr343_runtime_worker_roster_ssot.py",
+        "python3 scripts/ci/lint_runtime_worker_supervision.py",
+        "scripts/ci/lint_generated_artifacts.sh",
+        "```",
+        "Observed:",
+        "```text",
+        "5 passed in 0.58s",
+        "lint_runtime_worker_supervision OK",
+        "GENERATED_ARTIFACTS_LINT=PASS",
+        "```"
+      ],
+      "followup_problem_id": null,
+      "id": "C006",
+      "problem_id": "P007",
+      "residual_risk": [
+        "No blocker for P007."
+      ],
+      "result_ids": [
+        "R006"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The previous failure mode was reproduced once with bare pytest, then closed by adding no-cache provider handling to the canonical runner and verifying generated-artifact lint passes after cleanup."
+      ],
+      "summary": "P007 is successful. CI and the canonical test runner now avoid or clean generated Python/test artifacts, and generated-artifact lint is part of the normal hygiene path."
+    },
+    "C007": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P008/checks/C007.md",
+      "created_at": "2026-05-08T10:04:20+00:00",
+      "criteria_map": [
+        "Add or update an architecture/design note describing the implemented FSM/worker/DSL shape.",
+        "Met by `docs/architecture/runtime-fsm-worker-dsl-status.md`.",
+        "The note references the live roster/FSM path, plan-first effect boundary, assembly specs, handler metadata, and accepted non-DSL computation hooks.",
+        "Met through live path table and accepted computation hooks section.",
+        "Stale wording that claims premature pure DSL completion is not present.",
+        "Met by explicit \"not a claim\" language and the guard test's forbidden-claim assertions.",
+        "Documentation is included in final verification and ledger closure.",
+        "Met by targeted documentation test, overview link, and this success check."
+      ],
+      "evidence": [
+        "`docs/architecture/runtime-fsm-worker-dsl-status.md` exists and describes the current FSM/worker/DSL shape.",
+        "`docs/architecture/overview.md` links to `runtime-fsm-worker-dsl-status.md`.",
+        "`novaic-agent-runtime/tests/test_pr340_runtime_dsl_status_doc.py` asserts the document names the live substrate paths, `EffectPlanRunner`, `WorkerAssemblySpec`, and `SAGA_CALLBACK_EXTENSION_POINTS`.",
+        "Verification passed: 6 targeted documentation/generated-artifact tests.",
+        "Verification passed: 70 targeted runtime FSM/worker/DSL tests.",
+        "Verification passed: runtime worker supervision lint and generated artifact lint."
+      ],
+      "execution_map": [
+        "R007 added the architecture status document.",
+        "R007 linked it from the architecture overview.",
+        "R007 added a test that checks required path references and honesty around purity claims.",
+        "R007 ran the targeted and broader runtime verification commands."
+      ],
+      "followup_problem_id": null,
+      "id": "C007",
+      "problem_id": "P008",
+      "residual_risk": [
+        "Low. This ticket intentionally documents the current spec/plan-driven shape rather than claiming a future data-only DSL. Future architectural changes still need their own update and guard tests."
+      ],
+      "result_ids": [
+        "R007"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The guard test would fail if the document dropped key runtime path pointers.",
+        "The guard test would fail if the overview stopped linking to the status document.",
+        "The broader 70-test run exercises the code paths named in the document, reducing the chance that the document is detached from implementation reality.",
+        "Generated-artifact lint was rerun after cleanup, so documentation/test work did not leave bytecode or pytest cache residue."
+      ],
+      "summary": "Success. Result R007 solves P008 by adding an explicit architecture status document, linking it from the architecture overview, and adding a targeted guard test against missing live pointers or premature pure-DSL claims."
+    },
+    "C008": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C008.md",
+      "created_at": "2026-05-08T10:07:58+00:00",
+      "criteria_map": [
+        "Worker process assembly is driven by explicit component specs rather than duplicated per-worker lifecycle construction.",
+        "Met by R000 and guarded by worker assembly tests.",
+        "Action engines no longer call `execute_effect(...)` directly; effect execution is owned by a generic runner/substrate.",
+        "Met by R001 and the direct-effect residue scan.",
+        "Task execution policy behavior has explicit decision/policy units with deterministic tests.",
+        "Met by R002 and `test_pr340_task_execution_policies.py`.",
+        "Saga launch and saga definitions expose deterministic plan/compile boundaries while keeping real computation as named extension points.",
+        "Met by R003, `saga_launch_plans.py`, and `SAGA_CALLBACK_EXTENSION_POINTS`.",
+        "Scheduler and health actions expose plan/spec boundaries and direct effect execution is removed from engines.",
+        "Met by R004 and `test_pr340_scheduler_health_action_specs.py`.",
+        "Handler registry exposes declarative metadata and tests prevent lifecycle/runtime ownership from leaking into handlers.",
+        "Met by R005 and the handler residue scan.",
+        "CI guard hygiene prevents Python bytecode generation from breaking generated-artifact checks.",
+        "Met by R006 and final generated-artifact lint.",
+        "Documentation or durable design notes state the implemented architecture and the remaining accepted boundaries honestly.",
+        "Met by R007 and the focused documentation guard test.",
+        "Old displaced code paths are deleted or guarded; no parallel hidden implementation remains.",
+        "Met for the targeted scope by assembly shrinkage, direct-effect residue scan, handler lifecycle residue scan, and targeted tests.",
+        "Repository checks, targeted tests, architecture guards, generated-artifact guard, ledger validate/render/status, and focused diff review all pass.",
+        "Met by the final verification commands and focused diff/stat review."
+      ],
+      "evidence": [
+        "Child problems P001 through P008 are all `done` with success checks C000 through C007.",
+        "Runtime worker assembly is spec-backed through `WorkerAssemblySpec`, `WorkerAssemblySpecRegistry`, and `worker_assemblies.py` as a thin registry surface.",
+        "`EffectPlanRunner` owns plan execution in `queue_service/worker/effects.py`.",
+        "Direct `execute_effect(...)`, `_effect(...)`, and `self.effect_executor` residue scan returned no matches in the four action engines.",
+        "Handler lifecycle/queue DB ownership residue scan returned no matches in `task_queue/handlers`.",
+        "Documentation stale-claim scan returned no matches in `docs/architecture/runtime-fsm-worker-dsl-status.md` or `docs/architecture/overview.md`.",
+        "Targeted runtime suite passed: 77 tests.",
+        "Ledger render, validate, and status passed.",
+        "Runtime worker supervision lint passed.",
+        "Generated artifact lint passed after cache cleanup."
+      ],
+      "execution_map": [
+        "R000 closed worker assembly spec substrate.",
+        "R001 closed plan-first effect runner contract.",
+        "R002 closed task execution policy tables.",
+        "R003 closed saga launch and saga definition plan boundary.",
+        "R004 closed scheduler and health action specs.",
+        "R005 closed handler registry metadata and boundary guard.",
+        "R006 closed CI bytecode and generated artifact hygiene.",
+        "R007 closed runtime FSM/worker DSL architecture status documentation.",
+        "R008 summarized the completed split ticket and its child results."
+      ],
+      "followup_problem_id": null,
+      "id": "C008",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Low within the requested closure scope. The current architecture is not a future all-data DSL; it is a boundary-clean spec/plan-driven runtime with explicit Python computation hooks. That limitation is intentionally documented and guarded rather than hidden."
+      ],
+      "result_ids": [
+        "R008"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The final 77-test targeted runtime suite re-ran the worker/FSM/DSL boundary tests together rather than relying on isolated child checks.",
+        "Direct-effect and handler-lifecycle residue scans checked the exact old-path failure modes that previously caused new code to exist beside live old branches.",
+        "Documentation guard tests prevent future wording drift where the architecture could claim a fully data-only DSL before that is true.",
+        "Generated-artifact lint ran after deleting `__pycache__` and `.pytest_cache`, proving the guard sequence is stable.",
+        "Ledger render/validate/status proved the durable ticket/result/check state is coherent."
+      ],
+      "summary": "Success. Result R008 solves the root problem through closed child results R000 through R007. The implementation removed or guarded the targeted old worker/action-engine paths, centralized effect execution, added pure policy/spec/plan boundaries, documented the current architecture honestly, and passed targeted runtime, residue, ledger, and generated-artifact checks."
+    }
+  },
+  "counters": {
+    "check": 9,
+    "event": 108,
+    "problem": 9,
+    "result": 9,
+    "ticket": 9
+  },
+  "created_at": "2026-05-08T09:15:57+00:00",
+  "ledger_id": "L20260508-171557",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C008"
+      ],
+      "created_at": "2026-05-08T09:15:57+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "The previous audit proved the runtime is live on the new FSM/worker/roster path and has no active old session/FSM branch, but it is not pure DSL yet. The remaining gaps are hand-written worker assemblies, action engines that execute effects directly, callback-heavy saga/action policy code, handler registry metadata gaps, CI bytecode hygiene, and architecture documentation that must honestly reflect the current state.\n\nImplement the full remediation backlog from `.complex-problems/L20260508-165336/artifacts/P004-result.md`:\n\n- DSL-001 Worker Assembly Spec Substrate\n- DSL-002 Plan-First Action Engine Contract\n- DSL-003 Task Execution Policy Tables\n- DSL-004 Saga Launch and Saga Definition Purity\n- DSL-005 Scheduler and Health Action Specs\n- DSL-006 Business Handler Registry Review\n- DSL-007 CI Guard Hygiene\n- DSL-008 Pure DSL Architecture Status Document\n\nThis implementation must preserve the already-live FSM/worker/roster path and avoid reintroducing old branches.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R008"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P001",
+        "P002",
+        "P003",
+        "P004",
+        "P005",
+        "P006",
+        "P007",
+        "P008"
+      ],
+      "success_criteria": [
+        "Worker process assembly is driven by explicit component specs rather than duplicated per-worker lifecycle construction.",
+        "Action engines no longer call `execute_effect(...)` directly; effect execution is owned by a generic runner/substrate.",
+        "Task execution policy behavior has explicit decision/policy units with deterministic tests.",
+        "Saga launch and saga definitions expose deterministic plan/compile boundaries while keeping real computation as named extension points.",
+        "Scheduler and health actions expose plan/spec boundaries and direct effect execution is removed from engines.",
+        "Handler registry exposes declarative metadata and tests prevent lifecycle/runtime ownership from leaking into handlers.",
+        "CI guard hygiene prevents Python bytecode generation from breaking generated-artifact checks.",
+        "Documentation or durable design notes state the implemented architecture and the remaining accepted boundaries honestly.",
+        "Old displaced code paths are deleted or guarded; no parallel hidden implementation remains.",
+        "Repository checks, targeted tests, architecture guards, generated-artifact guard, ledger validate/render/status, and focused diff review all pass."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Implement Pure DSL Runtime Closure",
+      "updated_at": "2026-05-08T10:07:58+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-08T09:17:22+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "`worker_assemblies.py` still contains per-worker hand-written lifecycle assembly. Build a component-level assembly spec/interpreter so worker construction is data/spec driven where practical, and displaced manual wiring is deleted or guarded.",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "A reusable worker assembly spec substrate exists under `task_queue/workers`.",
+        "Existing workers are migrated to the spec interpreter without changing runtime modes.",
+        "`worker_assemblies.py` shrinks to declarations and generic interpretation rather than duplicated lifecycle construction.",
+        "Tests prove registry still wires all worker modes and old direct lifecycle construction cannot creep back."
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "Worker Assembly Spec Substrate",
+      "updated_at": "2026-05-08T09:23:55+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-08T09:17:23+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Action engines still call `execute_effect(...)` directly. Move effect execution ownership into a generic runner/substrate so engines compute explicit actions/plans and effect execution is centralized.",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`queue_service/worker/effects.py` exposes a reusable plan runner API.",
+        "Task, saga, scheduler, and health engines no longer import or call `execute_effect(...)` directly.",
+        "`_effect(...)` helper methods are removed from action engines.",
+        "Tests prove action engines stay behind explicit effect adapters and direct effect execution is banned."
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "Plan-First Effect Runner Contract",
+      "updated_at": "2026-05-08T09:35:27+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P003/README.md",
+      "check_ids": [
+        "C002"
+      ],
+      "created_at": "2026-05-08T09:17:23+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Task execution still encodes idempotency, retry, completion/failure, and saga adaptation as a large imperative method. Introduce explicit decision/policy units so task behavior can be tested from input snapshots.",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P003",
+      "parent_id": "P000",
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Task execution has explicit policy/decision helpers or tables for idempotency and failure handling.",
+        "Tests cover duplicate completed, in-progress contention, business error, retryable error, and success scenarios at the decision/policy boundary.",
+        "The engine uses the plan/effect substrate from P002.",
+        "No old direct effect branch remains."
+      ],
+      "ticket_ids": [
+        "T003"
+      ],
+      "title": "Task Execution Policy Tables",
+      "updated_at": "2026-05-08T09:40:12+00:00"
+    },
+    "P004": {
+      "body_path": "problems/P000/children/P004/README.md",
+      "check_ids": [
+        "C003"
+      ],
+      "created_at": "2026-05-08T09:17:23+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Saga launch still publishes tasks and marks state in a direct loop, while saga definitions are DSL-like but callback-heavy. Introduce a deterministic saga launch plan boundary and clarify callback extension points.",
+      "followup_ids": [],
+      "id": "P004",
+      "package_path": "problems/P000/children/P004",
+      "parent_id": "P000",
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Saga launch can produce an explicit plan from saga state, definition, and context.",
+        "Saga launch engine executes through the generic plan/effect substrate.",
+        "Saga definition callback extension points are documented/named and guarded as explicit computation hooks.",
+        "Tests assert saga plan compilation for known saga definitions."
+      ],
+      "ticket_ids": [
+        "T004"
+      ],
+      "title": "Saga Launch And Definition Plan Boundary",
+      "updated_at": "2026-05-08T09:44:50+00:00"
+    },
+    "P005": {
+      "body_path": "problems/P000/children/P005/README.md",
+      "check_ids": [
+        "C004"
+      ],
+      "created_at": "2026-05-08T09:17:23+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Scheduler and health workers still contain bespoke action orchestration and direct effect execution. Convert them to explicit action specs/plans with centralized effect execution.",
+      "followup_ids": [],
+      "id": "P005",
+      "package_path": "problems/P000/children/P005",
+      "parent_id": "P000",
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Scheduler wake scan/dispatch classification is represented by explicit plan/result classification helpers.",
+        "Health recovery action is represented by explicit plan/spec helpers.",
+        "Engines use the generic plan/effect substrate and no longer call direct effect helpers.",
+        "Tests cover scheduler result classifications and health recovery effects."
+      ],
+      "ticket_ids": [
+        "T005"
+      ],
+      "title": "Scheduler And Health Action Specs",
+      "updated_at": "2026-05-08T09:49:45+00:00"
+    },
+    "P006": {
+      "body_path": "problems/P000/children/P006/README.md",
+      "check_ids": [
+        "C005"
+      ],
+      "created_at": "2026-05-08T09:17:23+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Task handlers are Python functions registered by topic, but the registry does not expose enough declarative metadata to separate real business computation from lifecycle/runtime ownership.",
+      "followup_ids": [],
+      "id": "P006",
+      "package_path": "problems/P000/children/P006",
+      "parent_id": "P000",
+      "result_ids": [
+        "R005"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Handler registration exposes metadata such as topic, pool, module, and handler name.",
+        "Tests prove handler modules do not import worker lifecycle, queue DB, or concrete process/runtime ownership.",
+        "Existing handler lookup behavior remains compatible.",
+        "Any misleading hidden lifecycle wiring in handler modules is removed or guarded."
+      ],
+      "ticket_ids": [
+        "T006"
+      ],
+      "title": "Handler Registry Metadata And Boundary Guard",
+      "updated_at": "2026-05-08T09:52:48+00:00"
+    },
+    "P007": {
+      "body_path": "problems/P000/children/P007/README.md",
+      "check_ids": [
+        "C006"
+      ],
+      "created_at": "2026-05-08T09:17:23+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Python lints/tests can generate `__pycache__`, causing generated-artifacts lint to fail when commands are chained. Standardize guard invocation or cleanup so generated artifact checks are stable.",
+      "followup_ids": [],
+      "id": "P007",
+      "package_path": "problems/P000/children/P007",
+      "parent_id": "P000",
+      "result_ids": [
+        "R006"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "CI guard scripts or documented command wrappers use `PYTHONDONTWRITEBYTECODE=1` where appropriate.",
+        "Generated-artifact lint passes after the normal guard sequence.",
+        "Any generated cache artifacts from local verification are cleaned."
+      ],
+      "ticket_ids": [
+        "T007"
+      ],
+      "title": "CI Bytecode And Generated Artifact Hygiene",
+      "updated_at": "2026-05-08T09:57:30+00:00"
+    },
+    "P008": {
+      "body_path": "problems/P000/children/P008/README.md",
+      "check_ids": [
+        "C007"
+      ],
+      "created_at": "2026-05-08T09:17:23+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "The codebase needs durable documentation of the actual architecture after optimization: what is pure/spec-driven, what remains as accepted computation hooks, and what guards prevent old paths from returning.",
+      "followup_ids": [],
+      "id": "P008",
+      "package_path": "problems/P000/children/P008",
+      "parent_id": "P000",
+      "result_ids": [
+        "R007"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Add or update an architecture/design note describing the implemented FSM/worker/DSL shape.",
+        "The note references the live roster/FSM path, plan-first effect boundary, assembly specs, handler metadata, and explicit accepted non-DSL computation hooks.",
+        "Stale wording that claims premature pure DSL completion is not present.",
+        "Documentation is included in final verification and ledger closure."
+      ],
+      "ticket_ids": [
+        "T008"
+      ],
+      "title": "Pure DSL Architecture Status Documentation",
+      "updated_at": "2026-05-08T10:04:20+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`novaic-agent-runtime/task_queue/workers/assembly_specs.py`",
+        "`novaic-agent-runtime/task_queue/workers/assembly_factories.py`",
+        "`novaic-agent-runtime/task_queue/workers/worker_assemblies.py`",
+        "Updated worker assembly/registry tests."
+      ],
+      "body_path": "problems/P000/children/P001/results/R000.md",
+      "created_at": "2026-05-08T09:22:31+00:00",
+      "done": [
+        "Added `task_queue/workers/assembly_specs.py` with `WorkerAssemblySpec` and `WorkerAssemblySpecRegistry`.",
+        "Moved concrete worker process construction into `task_queue/workers/assembly_factories.py`.",
+        "Replaced `task_queue/workers/worker_assemblies.py` with `WORKER_ASSEMBLY_SPECS`, `WORKER_ASSEMBLIES`, `assemble_worker_process(...)`, and thin compatibility wrappers for each runtime mode.",
+        "Re-exported `_connect_db_with_schema_retry` through `worker_assemblies.py` for existing startup retry tests.",
+        "Updated tests so the guard now expects `worker_assemblies.py` to be thin and concrete lifecycle construction to live behind factories/specs."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "Concrete factory implementation still exists in `assembly_factories.py`; this ticket intentionally moved the registry-facing assembly surface to specs first. Later tickets reduce action engines and policies behind those factories."
+      ],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "Implemented the first DSL closure slice: registry-facing worker assembly is now spec-backed. `worker_assemblies.py` shrank from the old hand-written assembly body to a thin spec/interpreter surface, while concrete construction was moved into `assembly_factories.py` and preserved behind existing public `assemble_*` functions.",
+      "ticket_id": "T001",
+      "verification": [
+        "`pytest -q tests/test_pr340_assembly_helpers.py tests/test_pr337_worker_command_registry.py tests/test_pr302_session_outbox_worker_production_wiring.py tests/test_pr340_action_engine_effect_boundaries.py tests/test_pr338_business_handlers_lifecycle_free.py tests/test_pr339_worker_startup_db_retry.py`",
+        "Result: `32 passed in 0.33s`.",
+        "`PYTHONDONTWRITEBYTECODE=1 python3 scripts/ci/lint_runtime_worker_supervision.py`",
+        "Result: `lint_runtime_worker_supervision OK`.",
+        "Focused diff in `novaic-agent-runtime`:",
+        "`worker_assemblies.py` changed from old direct assembly to thin specs/wrappers.",
+        "Added `assembly_specs.py`.",
+        "Added `assembly_factories.py`."
+      ]
+    },
+    "R001": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P002/results/R001.md",
+      "created_at": "2026-05-08T09:35:01+00:00",
+      "done": [],
+      "id": "R001",
+      "known_gaps": [],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "Implemented the plan-first effect runner boundary. Action engines now invoke effects through `EffectPlanRunner`, while `execute_effect(...)` remains only as a compatibility substrate helper and is no longer imported or called by task/saga/scheduler/health engines.",
+      "ticket_id": "T002",
+      "verification": [
+        "Executed:",
+        "```bash",
+        "rg -n \"execute_effect|def _effect|self\\._effect|self\\.effect_executor\" \\",
+        "task_queue/workers/task_execution.py \\",
+        "task_queue/workers/saga_launch.py \\",
+        "task_queue/workers/scheduled_wake.py \\",
+        "task_queue/workers/health_recovery.py || true",
+        "pytest -q \\",
+        "tests/test_pr340_worker_effect_plan.py \\",
+        "tests/test_pr340_action_engine_effect_boundaries.py \\",
+        "tests/unit/task_queue/test_retry_policy_and_idempotency.py \\",
+        "tests/unit/task_queue/test_saga_worker_boundary.py \\",
+        "tests/test_health_dispatch.py \\",
+        "tests/test_scheduler_dispatch.py \\",
+        "tests/test_pr328_health_generic_worker.py \\",
+        "tests/test_pr329_scheduler_generic_worker.py \\",
+        "tests/test_pr333_saga_worker_handler_cutover.py",
+        "PYTHONDONTWRITEBYTECODE=1 python3 scripts/ci/lint_runtime_worker_supervision.py",
+        "```",
+        "Observed:",
+        "```text",
+        "44 passed in 0.18s",
+        "lint_runtime_worker_supervision OK",
+        "```",
+        "The direct effect-execution residue scan returned no matches in the four action engines."
+      ]
+    },
+    "R002": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P003/results/R002.md",
+      "created_at": "2026-05-08T09:39:47+00:00",
+      "done": [],
+      "id": "R002",
+      "known_gaps": [],
+      "problem_id": "P003",
+      "root_id": "P000",
+      "summary": "Extracted task execution branch/payload calculation into pure policy helpers. `TaskExecutionEngine` still owns protocol timing, handler invocation, metrics, and effect runner execution, but idempotency and failure/success effect plans now come from `task_execution_policies.py`.",
+      "ticket_id": "T003",
+      "verification": [
+        "Executed:",
+        "```bash",
+        "pytest -q \\",
+        "tests/test_pr340_task_execution_policies.py \\",
+        "tests/test_pr340_worker_effect_plan.py \\",
+        "tests/test_pr340_action_engine_effect_boundaries.py \\",
+        "tests/unit/task_queue/test_retry_policy_and_idempotency.py \\",
+        "tests/unit/task_queue/test_saga_worker_boundary.py \\",
+        "tests/unit/task_queue/test_dedup_guard_failure_path.py \\",
+        "tests/unit/task_queue/test_high_concurrency_retry_replay.py",
+        "PYTHONDONTWRITEBYTECODE=1 python3 scripts/ci/lint_runtime_worker_supervision.py",
+        "```",
+        "Observed:",
+        "```text",
+        "34 passed in 0.27s",
+        "lint_runtime_worker_supervision OK",
+        "```"
+      ]
+    },
+    "R003": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P004/results/R003.md",
+      "created_at": "2026-05-08T09:44:18+00:00",
+      "done": [],
+      "id": "R003",
+      "known_gaps": [],
+      "problem_id": "P004",
+      "root_id": "P000",
+      "summary": "Implemented an explicit saga launch plan boundary. Saga launch now compiles DAG task publish effects plus mark-launched into a pure `SagaLaunchPlan`, and the engine executes that plan through `EffectPlanRunner`.",
+      "ticket_id": "T004",
+      "verification": [
+        "Executed:",
+        "```bash",
+        "pytest -q \\",
+        "tests/test_pr340_saga_launch_plans.py \\",
+        "tests/test_pr340_task_execution_policies.py \\",
+        "tests/test_pr340_worker_effect_plan.py \\",
+        "tests/test_pr340_action_engine_effect_boundaries.py \\",
+        "tests/test_pr333_saga_worker_handler_cutover.py \\",
+        "tests/unit/task_queue/test_saga_worker_boundary.py \\",
+        "tests/unit/task_queue/test_retry_policy_and_idempotency.py \\",
+        "tests/test_health_dispatch.py \\",
+        "tests/test_scheduler_dispatch.py",
+        "PYTHONDONTWRITEBYTECODE=1 python3 ../scripts/ci/lint_runtime_worker_supervision.py",
+        "```",
+        "Observed:",
+        "```text",
+        "51 passed in 0.18s",
+        "lint_runtime_worker_supervision OK",
+        "```"
+      ]
+    },
+    "R004": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P005/results/R004.md",
+      "created_at": "2026-05-08T09:49:18+00:00",
+      "done": [],
+      "id": "R004",
+      "known_gaps": [],
+      "problem_id": "P005",
+      "root_id": "P000",
+      "summary": "Extracted scheduler and health action specs into pure helper modules. Scheduler scan/dispatch payloads and dispatch result/error classifications are now explicit; health recover-all payload and response normalization are also explicit.",
+      "ticket_id": "T005",
+      "verification": [
+        "Executed:",
+        "```bash",
+        "pytest -q \\",
+        "tests/test_pr340_scheduler_health_action_specs.py \\",
+        "tests/test_pr340_saga_launch_plans.py \\",
+        "tests/test_pr340_task_execution_policies.py \\",
+        "tests/test_pr340_worker_effect_plan.py \\",
+        "tests/test_pr340_action_engine_effect_boundaries.py \\",
+        "tests/test_scheduler_dispatch.py \\",
+        "tests/test_health_dispatch.py \\",
+        "tests/test_pr328_health_generic_worker.py \\",
+        "tests/test_pr329_scheduler_generic_worker.py \\",
+        "tests/test_pr333_saga_worker_handler_cutover.py \\",
+        "tests/unit/task_queue/test_retry_policy_and_idempotency.py \\",
+        "tests/unit/task_queue/test_saga_worker_boundary.py",
+        "PYTHONDONTWRITEBYTECODE=1 python3 ../scripts/ci/lint_runtime_worker_supervision.py",
+        "```",
+        "Observed:",
+        "```text",
+        "66 passed in 0.21s",
+        "lint_runtime_worker_supervision OK",
+        "```"
+      ]
+    },
+    "R005": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P006/results/R005.md",
+      "created_at": "2026-05-08T09:52:26+00:00",
+      "done": [],
+      "id": "R005",
+      "known_gaps": [],
+      "problem_id": "P006",
+      "root_id": "P000",
+      "summary": "Added declarative handler registry metadata and boundary tests. Handler registration now records topic, pool, module, and handler name while keeping existing lookup and pool behavior compatible.",
+      "ticket_id": "T006",
+      "verification": [
+        "Executed:",
+        "```bash",
+        "pytest -q \\",
+        "tests/test_pr340_handler_registry_metadata.py \\",
+        "tests/test_pr340_scheduler_health_action_specs.py \\",
+        "tests/test_pr340_saga_launch_plans.py \\",
+        "tests/test_pr340_task_execution_policies.py \\",
+        "tests/test_pr340_worker_effect_plan.py \\",
+        "tests/test_pr340_action_engine_effect_boundaries.py \\",
+        "tests/test_scheduler_dispatch.py \\",
+        "tests/test_health_dispatch.py \\",
+        "tests/test_pr328_health_generic_worker.py \\",
+        "tests/test_pr329_scheduler_generic_worker.py \\",
+        "tests/test_pr333_saga_worker_handler_cutover.py \\",
+        "tests/unit/task_queue/test_retry_policy_and_idempotency.py \\",
+        "tests/unit/task_queue/test_saga_worker_boundary.py",
+        "PYTHONDONTWRITEBYTECODE=1 python3 ../scripts/ci/lint_runtime_worker_supervision.py",
+        "```",
+        "Observed:",
+        "```text",
+        "70 passed in 0.28s",
+        "lint_runtime_worker_supervision OK",
+        "```"
+      ]
+    },
+    "R006": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P007/results/R006.md",
+      "created_at": "2026-05-08T09:57:03+00:00",
+      "done": [],
+      "id": "R006",
+      "known_gaps": [],
+      "problem_id": "P007",
+      "root_id": "P000",
+      "summary": "Hardened CI/generated-artifact hygiene. Runtime supervision lint disables bytecode generation, the lint workflow exports `PYTHONDONTWRITEBYTECODE=1`, and the canonical test runner disables pytest cache, cleans generated Python artifacts, then runs generated-artifact lint.",
+      "ticket_id": "T007",
+      "verification": [
+        "Executed:",
+        "```bash",
+        "find novaic-agent-runtime novaic-common -type d \\( -name __pycache__ -o -name .pytest_cache \\) -prune -exec rm -rf {} +",
+        "cd novaic-agent-runtime",
+        "PYTHONDONTWRITEBYTECODE=1 pytest -q -p no:cacheprovider tests/test_pr340_ci_generated_artifact_hygiene.py tests/test_pr343_runtime_worker_roster_ssot.py",
+        "cd ..",
+        "python3 scripts/ci/lint_runtime_worker_supervision.py",
+        "scripts/ci/lint_generated_artifacts.sh",
+        "```",
+        "Observed:",
+        "```text",
+        "5 passed in 0.58s",
+        "lint_runtime_worker_supervision OK",
+        "GENERATED_ARTIFACTS_LINT=PASS",
+        "```"
+      ]
+    },
+    "R007": {
+      "artifacts": [
+        "`docs/architecture/runtime-fsm-worker-dsl-status.md`",
+        "`docs/architecture/overview.md`",
+        "`novaic-agent-runtime/tests/test_pr340_runtime_dsl_status_doc.py`"
+      ],
+      "body_path": "problems/P000/children/P008/results/R007.md",
+      "created_at": "2026-05-08T10:03:40+00:00",
+      "done": [
+        "Added `docs/architecture/runtime-fsm-worker-dsl-status.md`.",
+        "Linked the new status document from `docs/architecture/overview.md`.",
+        "Added `novaic-agent-runtime/tests/test_pr340_runtime_dsl_status_doc.py`.",
+        "The status document names the live FSM substrate, worker substrate, runtime roster, assembly specs, concrete assembly factories, plan-first effect runner, policy/spec/plan helpers, handler metadata, and accepted Python computation hooks.",
+        "The document explicitly states that the current shape is spec/plan-driven and boundary-explicit, not a claim that every business behavior is already data-only."
+      ],
+      "id": "R007",
+      "known_gaps": [
+        "None for this ticket. The document intentionally records that a future data-only DSL would be a separate design beyond the current accepted Python computation-hook boundary."
+      ],
+      "problem_id": "P008",
+      "root_id": "P000",
+      "summary": "Added durable architecture documentation for the current runtime FSM/worker DSL shape and a focused guard test that prevents the documentation from drifting into stale or overclaimed purity language.",
+      "ticket_id": "T008",
+      "verification": [
+        "`cd novaic-agent-runtime && PYTHONDONTWRITEBYTECODE=1 pytest -q -p no:cacheprovider tests/test_pr340_runtime_dsl_status_doc.py tests/test_pr340_ci_generated_artifact_hygiene.py`",
+        "Passed: 6 tests.",
+        "`python3 scripts/ci/lint_runtime_worker_supervision.py`",
+        "Passed: `lint_runtime_worker_supervision OK`.",
+        "`scripts/ci/lint_generated_artifacts.sh`",
+        "Passed: `GENERATED_ARTIFACTS_LINT=PASS`.",
+        "`cd novaic-agent-runtime && PYTHONDONTWRITEBYTECODE=1 pytest -q -p no:cacheprovider tests/test_pr340_runtime_dsl_status_doc.py tests/test_pr340_ci_generated_artifact_hygiene.py tests/test_pr340_handler_registry_metadata.py tests/test_pr340_scheduler_health_action_specs.py tests/test_pr340_saga_launch_plans.py tests/test_pr340_task_execution_policies.py tests/test_pr340_worker_effect_plan.py tests/test_pr340_action_engine_effect_boundaries.py tests/test_pr302_session_outbox_worker_production_wiring.py tests/test_pr338_business_handlers_lifecycle_free.py tests/test_pr328_health_generic_worker.py tests/test_pr329_scheduler_generic_worker.py tests/test_pr333_saga_worker_handler_cutover.py`",
+        "Passed: 70 tests.",
+        "Cleaned generated Python artifacts and reran `scripts/ci/lint_generated_artifacts.sh`.",
+        "Passed: `GENERATED_ARTIFACTS_LINT=PASS`."
+      ]
+    },
+    "R008": {
+      "artifacts": [
+        "`.complex-problems/L20260508-171557/artifacts/P001-result.md`",
+        "`.complex-problems/L20260508-171557/artifacts/P002-result.md`",
+        "`.complex-problems/L20260508-171557/artifacts/P003-result.md`",
+        "`.complex-problems/L20260508-171557/artifacts/P004-result.md`",
+        "`.complex-problems/L20260508-171557/artifacts/P005-result.md`",
+        "`.complex-problems/L20260508-171557/artifacts/P006-result.md`",
+        "`.complex-problems/L20260508-171557/artifacts/P007-result.md`",
+        "`.complex-problems/L20260508-171557/artifacts/P008-result.md`",
+        "`docs/architecture/runtime-fsm-worker-dsl-status.md`",
+        "Runtime code and test artifacts named in the child result files."
+      ],
+      "body_path": "problems/P000/results/R008.md",
+      "created_at": "2026-05-08T10:06:12+00:00",
+      "done": [
+        "R000 / P001: Added worker assembly specs and moved concrete worker construction behind `assembly_factories.py`; `worker_assemblies.py` is now a thin spec-backed registry surface.",
+        "R001 / P002: Added `EffectPlanRunner` and migrated task, saga, scheduler, and health action engines away from direct `execute_effect(...)` calls.",
+        "R002 / P003: Extracted task execution idempotency, success, business-error, retry, and release decisions into pure policy helpers.",
+        "R003 / P004: Added saga launch plan compilation and documented saga callback extension points as named computation hooks.",
+        "R004 / P005: Extracted scheduler and health action specs and routed engines through the plan/effect substrate.",
+        "R005 / P006: Added handler registry metadata and tests preventing worker lifecycle or queue DB ownership from leaking into business handlers.",
+        "R006 / P007: Hardened bytecode/generated-artifact hygiene across lint scripts, workflow, and the canonical test runner.",
+        "R007 / P008: Added durable architecture status documentation and a guard test that prevents missing live-path pointers or premature pure-DSL claims."
+      ],
+      "id": "R008",
+      "known_gaps": [
+        "None for the implemented closure backlog. The resulting architecture is intentionally described as spec/plan-driven with explicit Python computation hooks, not as a completed future data-only DSL."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "The split root ticket completed all eight child problems from the pure DSL runtime closure backlog. The runtime is now documented and guarded as a generic FSM/worker substrate with declarative roster and assembly specs, plan-first effect execution, pure policy/spec/plan helpers, handler metadata boundaries, CI artifact hygiene, and explicit accepted Python computation hooks.",
+      "ticket_id": "T000",
+      "verification": [
+        "Child checks C000 through C007 all passed.",
+        "Targeted verification during child execution included 32, 44, 34, 51, 66, 70, 5, 6, and 70-test passes across the runtime FSM/worker/DSL slices.",
+        "Runtime worker supervision lint passed in the relevant child checks and after P008 documentation closure.",
+        "Generated artifact lint passed after cleanup in P007 and P008."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Create child implementation problems for all backlog items.",
+        "Each child problem has file-level success criteria and verification expectations.",
+        "Child problems explicitly include deletion/guard requirements.",
+        "Root result is recorded only after all children are done."
+      ],
+      "assumptions": [
+        "The audit ledger `L20260508-165336` is accepted as source evidence.",
+        "Runtime production behavior should remain compatible, but old internal implementation branches should be removed or guarded."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "Full optimization spans independent implementation areas with separate tests, deletion requirements, and guards; split avoids permanent double tracks.",
+      "created_at": "2026-05-08T09:16:27+00:00",
+      "id": "T000",
+      "problem_definition": "The audit backlog contains multiple independent implementation areas. Completing them in one unstructured pass would risk exactly the failure mode the user is avoiding: new code written without deleting or guarding old behavior. The work must be split into child problems with concrete implementation and verification boundaries.",
+      "problem_id": "P000",
+      "proposed_solution": "Split the implementation into focused child problems corresponding to DSL-001 through DSL-008, preserving dependency order:\n\n1. Worker assembly specs.\n2. Plan-first effect runner contract.\n3. Task execution policy tables.\n4. Saga launch and saga definition plan boundaries.\n5. Scheduler and health action specs.\n6. Handler registry metadata and guard.\n7. CI bytecode/generated-artifact hygiene.\n8. Architecture status documentation and final residue guard review.\n\nEach child must implement, test, delete/guard displaced paths, record a result, and pass a success check before the root is closed.",
+      "result_ids": [
+        "R008"
+      ],
+      "risks": [
+        "Some items may reveal deeper work while implementing; if a child cannot close cleanly, create follow-up child/follow-up problems rather than hiding the gap.",
+        "The implementation must avoid introducing a second parallel runtime path."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Ticket: Implement Full Pure DSL Runtime Closure",
+      "updated_at": "2026-05-08T10:06:12+00:00",
+      "verification_plan": "- Use the ledger split flow.\n- Solve child problems one by one using `ledger.py next`.\n- Run relevant targeted tests after each child and broader guards before root closure."
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "`worker_assemblies.py` is spec-backed and no longer contains direct client/engine/handler lifecycle construction.",
+        "`assembly_specs.py` owns the generic assembly spec/interpreter.",
+        "Existing runtime worker modes still resolve through the same public `assemble_*` functions.",
+        "Tests prove specs cover every `RUNTIME_WORKER_MODES` mode and old direct lifecycle construction is absent from `worker_assemblies.py`."
+      ],
+      "assumptions": [
+        "Concrete factory code may remain in `assembly_factories.py` temporarily while later tickets reduce action engines and policies. The key closure for this ticket is that the registry-facing assembly module is data/spec-backed."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded refactor: add spec substrate, move concrete factories, preserve wrappers, and update targeted tests.",
+      "created_at": "2026-05-08T09:18:28+00:00",
+      "id": "T001",
+      "problem_definition": "`worker_assemblies.py` still owns large hand-written worker construction branches. We need a current-path substrate where worker assembly is declared as specs and the module used by registry is thin.",
+      "problem_id": "P001",
+      "proposed_solution": "Introduce `assembly_specs.py` with a `WorkerAssemblySpec` and registry/interpreter. Move the current concrete factory implementations out of `worker_assemblies.py` into `assembly_factories.py`, then make `worker_assemblies.py` expose thin spec-backed wrapper functions for compatibility with the command registry.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Existing tests may assert old source text in `worker_assemblies.py`; update them to match the new intended architecture.",
+        "Moving factories must preserve public wrappers and `_connect_db_with_schema_retry` for existing tests."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Ticket: Implement Worker Assembly Specs",
+      "updated_at": "2026-05-08T09:22:31+00:00",
+      "verification_plan": "- Run targeted worker registry/assembly tests.\n- Run runtime supervision lint.\n- Inspect `worker_assemblies.py` to confirm it is thin and spec-driven."
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "`queue_service.worker` exports the new runner API.",
+        "`task_queue/workers/task_execution.py`, `saga_launch.py`, `scheduled_wake.py`, and `health_recovery.py` do not import or call `execute_effect(...)`.",
+        "Action engines use the generic runner/substrate when invoking effects.",
+        "Tests cover the explicit boundary and ban direct effect execution in action engines.",
+        "Existing targeted worker/FSM tests pass."
+      ],
+      "assumptions": [],
+      "body_path": "problems/P000/children/P002/tickets/T002.md",
+      "classification": "one_go",
+      "classification_reason": "Small bounded substrate migration: add runner API, replace direct effect calls in four engines, and update guard tests in one pass.",
+      "created_at": "2026-05-08T09:25:35+00:00",
+      "id": "T002",
+      "problem_definition": "Runtime action engines still own direct effect execution via `execute_effect(...)` and local `_effect(...)` helper methods. That keeps execution wiring mixed into business flow code instead of making engines emit or run explicit plans through one substrate boundary.",
+      "problem_id": "P002",
+      "proposed_solution": "- Add a reusable plan-first runner API in `novaic-agent-runtime/queue_service/worker/effects.py`.\n- Migrate task, saga launch, scheduled wake, and health recovery engines away from direct `execute_effect(...)`.\n- Remove local `_effect(...)` helper methods from the action engines.\n- Keep existing effect handler implementations and process wiring behavior unchanged.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [],
+      "root_id": "P000",
+      "status": "done",
+      "title": "T002 Plan-First Effect Runner Contract",
+      "updated_at": "2026-05-08T09:35:01+00:00",
+      "verification_plan": "- Add or update tests proving `queue_service.worker` exports the runner API.\n- Add boundary tests that scan action engines and fail if they import or call `execute_effect(...)` or define local `_effect(...)` helpers.\n- Run targeted worker/FSM tests that exercise task execution, saga launch, scheduled wake, health recovery, and effect plans."
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "Task idempotency/failure decisions are covered by pure helper tests.",
+        "`TaskExecutionEngine` delegates decision construction to the policy module.",
+        "`TaskExecutionEngine` still uses `EffectPlanRunner` from P002 and has no `execute_effect` residue.",
+        "Existing task execution tests remain green."
+      ],
+      "assumptions": [],
+      "body_path": "problems/P000/children/P003/tickets/T003.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded refactor: extract task decision payloads into pure policy helpers, wire engine to helpers, and add focused unit tests without schema/runtime changes.",
+      "created_at": "2026-05-08T09:36:05+00:00",
+      "id": "T003",
+      "problem_definition": "`TaskExecutionEngine._execute_task(...)` still embeds idempotency branch handling and failure/retry effect construction inside one imperative method. The behavior is correct but not yet a small deterministic policy surface: duplicate completion, in-progress contention, business error, retryable error, and success all need explicit decision helpers that can be tested from input snapshots.",
+      "problem_id": "P003",
+      "proposed_solution": "- Add a task execution policy module with explicit dataclasses/functions for:\n  - idempotency guard decision classification\n  - successful handler completion effects\n  - business error failure effects\n  - retryable/unretryable exception failure effects\n- Keep protocol effect execution in `TaskExecutionEngine`, but move payload/branch calculation into pure helpers.\n- Update `TaskExecutionEngine` to consume the policy outputs and call the P002 `EffectPlanRunner`.\n- Add focused tests for the pure policy boundary.",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [],
+      "root_id": "P000",
+      "status": "done",
+      "title": "T003 Task Execution Policy Tables",
+      "updated_at": "2026-05-08T09:39:47+00:00",
+      "verification_plan": "- Run new policy tests for duplicate completed, in-progress contention, success, business error, retryable error, and exhausted retry.\n- Run task execution unit tests and effect-boundary tests.\n- Scan `task_execution.py` to ensure direct effect execution remains absent."
+    },
+    "T004": {
+      "acceptance_criteria": [
+        "Saga launch can produce an explicit effect plan from saga state, definition, and context.",
+        "Saga launch engine executes through the generic plan/effect substrate.",
+        "Saga callback extension points are named/documented.",
+        "Tests assert saga plan compilation and existing saga worker behavior remains green."
+      ],
+      "assumptions": [],
+      "body_path": "problems/P000/children/P004/tickets/T004.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded refactor: compile saga launch effects into an explicit plan and wire engine to runner without changing saga schemas or worker lifecycle.",
+      "created_at": "2026-05-08T09:40:52+00:00",
+      "id": "T004",
+      "problem_definition": "`SagaLaunchEngine.launch(...)` still computes DAG tasks and immediately publishes them inside a direct loop, then marks the saga launched or failed inline. Saga definitions are DSL-like, but their callback hooks are not documented as explicit computation extension points.",
+      "problem_id": "P004",
+      "proposed_solution": "- Add a saga launch plan compiler that turns saga id/type/context plus a saga definition into an explicit `EffectPlan`.\n- Move task-publish and mark-launched effect construction into that compiler.\n- Add explicit helpers for unknown/failed saga mark-failed plans.\n- Update `SagaLaunchEngine` to execute compiled plans through `EffectPlanRunner`.\n- Add tests asserting plan compilation for a representative saga definition and explicit mark-failed plans.\n- Add a small documentation marker for saga callback extension points.",
+      "result_ids": [
+        "R003"
+      ],
+      "risks": [],
+      "root_id": "P000",
+      "status": "done",
+      "title": "T004 Saga Launch And Definition Plan Boundary",
+      "updated_at": "2026-05-08T09:44:18+00:00",
+      "verification_plan": "- Run new saga plan compiler tests.\n- Run existing saga worker boundary/cutover tests.\n- Run effect-boundary tests to ensure engine remains behind adapters."
+    },
+    "T005": {
+      "acceptance_criteria": [
+        "Scheduler dispatch outcomes are represented by explicit classifications.",
+        "Health recovery effect/result payloads are represented by explicit helpers.",
+        "Engines continue to use `EffectPlanRunner` and do not contain direct effect helper residue.",
+        "Existing scheduler/health behavior remains green."
+      ],
+      "assumptions": [],
+      "body_path": "problems/P000/children/P005/tickets/T005.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded extraction: scheduler and health action payload/result classifications can be moved to small pure helper modules with local tests.",
+      "created_at": "2026-05-08T09:45:20+00:00",
+      "id": "T005",
+      "problem_definition": "Scheduler and health engines already use `EffectPlanRunner`, but action payload construction and result classification still live directly inside the engines. This keeps business outcome classification mixed with protocol timing and metrics updates.",
+      "problem_id": "P005",
+      "proposed_solution": "- Add scheduler action spec helpers for:\n  - due-agent scan effect\n  - scheduled wake dispatch effect\n  - dispatch result classification\n  - dispatch error classification\n- Add health action spec helpers for:\n  - recover-all effect\n  - recovery response normalization\n- Update scheduler and health engines to consume those helpers while keeping metrics/logging in the engine.\n- Add pure tests for scheduler classifications and health recovery specs.",
+      "result_ids": [
+        "R004"
+      ],
+      "risks": [],
+      "root_id": "P000",
+      "status": "done",
+      "title": "T005 Scheduler And Health Action Specs",
+      "updated_at": "2026-05-08T09:49:18+00:00",
+      "verification_plan": "- Run new scheduler/health action spec tests.\n- Run existing scheduler/health dispatch and generic worker tests.\n- Run effect-boundary and runtime supervision lint checks."
+    },
+    "T006": {
+      "acceptance_criteria": [
+        "Handler registration exposes declarative metadata.",
+        "Existing `get_handler`, `get_all_topics`, and pool lookup behavior remains compatible.",
+        "Handler modules remain free of worker lifecycle/process/runtime ownership imports."
+      ],
+      "assumptions": [],
+      "body_path": "problems/P000/children/P006/tickets/T006.md",
+      "classification": "one_go",
+      "classification_reason": "Small registry metadata extension plus boundary tests; no handler behavior or runtime schema changes needed.",
+      "created_at": "2026-05-08T09:50:44+00:00",
+      "id": "T006",
+      "problem_definition": "Task handler registration only stores topic-to-function mappings. That preserves runtime behavior, but it does not expose declarative metadata such as pool, module, and handler name, so boundary checks cannot distinguish business computation from worker lifecycle/runtime ownership.",
+      "problem_id": "P006",
+      "proposed_solution": "- Add a `HandlerSpec` metadata record in `task_queue.handlers`.\n- Populate handler metadata at registration time without changing existing handler decorators.\n- Add query helpers for handler specs.\n- Add tests proving:\n  - handler metadata includes topic, pool, module, and handler name\n  - existing handler lookup and pool topic behavior remains compatible\n  - handler modules do not import worker lifecycle/runtime ownership or queue DB surfaces",
+      "result_ids": [
+        "R005"
+      ],
+      "risks": [],
+      "root_id": "P000",
+      "status": "done",
+      "title": "T006 Handler Registry Metadata And Boundary Guard",
+      "updated_at": "2026-05-08T09:52:26+00:00",
+      "verification_plan": "- Run new handler metadata/boundary tests.\n- Run existing handler lookup/topic tests if present.\n- Run runtime supervision lint."
+    },
+    "T007": {
+      "acceptance_criteria": [
+        "Normal CI/test entrypoints avoid or clean generated Python/test caches.",
+        "Generated artifact lint passes.",
+        "Existing runtime supervision lint still passes."
+      ],
+      "assumptions": [],
+      "body_path": "problems/P000/children/P007/tickets/T007.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded CI hygiene patch: bytecode env, cleanup wrapper, and generated-artifact lint wiring.",
+      "created_at": "2026-05-08T09:53:55+00:00",
+      "id": "T007",
+      "problem_definition": "Python CI guards can generate `__pycache__` and pytest can generate `.pytest_cache`. Those artifacts are gitignored, but they pollute source scans and can make generated-artifact lint fail after a normal verification sequence.",
+      "problem_id": "P007",
+      "proposed_solution": "- Make the runtime worker supervision lint avoid bytecode generation internally.\n- Set `PYTHONDONTWRITEBYTECODE=1` in the lint workflow.\n- Set `PYTHONDONTWRITEBYTECODE=1` in the canonical test runner.\n- Add generated artifact cleanup plus `lint_generated_artifacts.sh` to the canonical test runner.\n- Add generated artifact lint to the lint workflow so CI catches residue.",
+      "result_ids": [
+        "R006"
+      ],
+      "risks": [],
+      "root_id": "P000",
+      "status": "done",
+      "title": "T007 CI Bytecode And Generated Artifact Hygiene",
+      "updated_at": "2026-05-08T09:57:03+00:00",
+      "verification_plan": "- Run runtime supervision lint.\n- Run generated artifact lint after cleanup.\n- Run targeted tests that inspect CI/runtime supervision contracts."
+    },
+    "T008": {
+      "acceptance_criteria": [
+        "A durable architecture note describes the current runtime FSM/worker/DSL shape.",
+        "The note references the live roster/FSM path, plan-first effect boundary, assembly specs, handler metadata, and accepted non-DSL computation hooks.",
+        "The architecture overview links to the status note.",
+        "A targeted test guards the document against missing key paths and premature pure-DSL completion wording.",
+        "Targeted tests and runtime supervision/generated-artifact lints pass."
+      ],
+      "assumptions": [
+        "The desired final shape is spec/plan-driven worker runtime with explicit accepted hooks, not a claim that all business behavior is already data-only.",
+        "Existing design documents remain useful historical context; this ticket adds an authoritative current-status note rather than rewriting the whole docs tree."
+      ],
+      "body_path": "problems/P000/children/P008/tickets/T008.md",
+      "classification": "one_go",
+      "classification_reason": "Single documentation-and-guard-test change with direct verification.",
+      "created_at": "2026-05-08T10:00:28+00:00",
+      "id": "T008",
+      "problem_definition": "The runtime FSM and worker refactor now has multiple concrete substrate layers, but the durable architecture documentation must accurately describe the implemented shape. Without a precise status note, future work can drift back into either stale imperative paths or misleading \"pure DSL complete\" claims.",
+      "problem_id": "P008",
+      "proposed_solution": "Add a dedicated architecture status document for the runtime FSM/worker DSL model and link it from the architecture overview. The document will name the live code paths for the worker roster, assembly specs, plan-first effect runner, handler metadata, domain FSMs, and accepted Python computation hooks. It will explicitly distinguish the implemented spec/plan-driven runtime from a hypothetical data-only DSL.\n\nAdd a small documentation guard test that checks the status document exists, references the live code paths, and avoids stale completion language.",
+      "result_ids": [
+        "R007"
+      ],
+      "risks": [
+        "Documentation could overstate the architecture and hide remaining Python computation hooks.",
+        "A test that is too broad could become brittle; keep it focused on durable status assertions and live path pointers."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Document Runtime FSM/Worker DSL Status",
+      "updated_at": "2026-05-08T10:03:40+00:00",
+      "verification_plan": "- Run the new documentation guard test.\n- Run the generated artifact hygiene test.\n- Run runtime worker supervision lint.\n- Run generated artifact lint.\n- Inspect the document for explicit status language and residual-risk honesty."
+    }
+  },
+  "updated_at": "2026-05-08T10:08:11+00:00"
+}

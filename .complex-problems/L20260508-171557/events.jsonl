@@ -1,0 +1,108 @@
+{"at": "2026-05-08T09:15:57+00:00", "id": "E000", "payload": {"ledger_id": "L20260508-171557", "root_id": "P000", "title": "Implement Pure DSL Runtime Closure"}, "root_id": "P000", "type": "ledger_initialized"}
+{"at": "2026-05-08T09:16:27+00:00", "id": "E001", "payload": {"problem_id": "P000", "ticket_id": "T000", "title": "Ticket: Implement Full Pure DSL Runtime Closure"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T09:16:27+00:00", "id": "E002", "payload": {"from": "created", "id": "T000", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:16:37+00:00", "id": "E003", "payload": {"from": "defined", "id": "T000", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:16:37+00:00", "id": "E004", "payload": {"classification": "split", "reason": "Full optimization spans independent implementation areas with separate tests, deletion requirements, and guards; split avoids permanent double tracks.", "ticket_id": "T000"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T09:17:22+00:00", "id": "E005", "payload": {"from": "classified", "id": "T000", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:17:22+00:00", "id": "E006", "payload": {"parent_id": "P000", "problem_id": "P001", "title": "Worker Assembly Spec Substrate"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T09:17:23+00:00", "id": "E007", "payload": {"parent_id": "P000", "problem_id": "P002", "title": "Plan-First Effect Runner Contract"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T09:17:23+00:00", "id": "E008", "payload": {"parent_id": "P000", "problem_id": "P003", "title": "Task Execution Policy Tables"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T09:17:23+00:00", "id": "E009", "payload": {"parent_id": "P000", "problem_id": "P004", "title": "Saga Launch And Definition Plan Boundary"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T09:17:23+00:00", "id": "E010", "payload": {"parent_id": "P000", "problem_id": "P005", "title": "Scheduler And Health Action Specs"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T09:17:23+00:00", "id": "E011", "payload": {"parent_id": "P000", "problem_id": "P006", "title": "Handler Registry Metadata And Boundary Guard"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T09:17:23+00:00", "id": "E012", "payload": {"parent_id": "P000", "problem_id": "P007", "title": "CI Bytecode And Generated Artifact Hygiene"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T09:17:23+00:00", "id": "E013", "payload": {"parent_id": "P000", "problem_id": "P008", "title": "Pure DSL Architecture Status Documentation"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T09:18:28+00:00", "id": "E014", "payload": {"problem_id": "P001", "ticket_id": "T001", "title": "Ticket: Implement Worker Assembly Specs"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T09:18:28+00:00", "id": "E015", "payload": {"from": "created", "id": "T001", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:18:38+00:00", "id": "E016", "payload": {"from": "defined", "id": "T001", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:18:38+00:00", "id": "E017", "payload": {"classification": "one_go", "reason": "Bounded refactor: add spec substrate, move concrete factories, preserve wrappers, and update targeted tests.", "ticket_id": "T001"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T09:18:48+00:00", "id": "E018", "payload": {"from": "todo", "id": "P001", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T09:22:31+00:00", "id": "E019", "payload": {"from": "classified", "id": "T001", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:22:31+00:00", "id": "E020", "payload": {"from": "executing", "id": "T001", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:22:31+00:00", "id": "E021", "payload": {"result_id": "R000", "ticket_id": "T001"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T09:23:55+00:00", "id": "E022", "payload": {"from": "doing", "id": "P001", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T09:23:55+00:00", "id": "E023", "payload": {"from": "checking", "id": "P001", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T09:23:55+00:00", "id": "E024", "payload": {"check_id": "C000", "followup_id": null, "problem_id": "P001", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T09:25:35+00:00", "id": "E025", "payload": {"problem_id": "P002", "ticket_id": "T002", "title": "T002 Plan-First Effect Runner Contract"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T09:25:35+00:00", "id": "E026", "payload": {"from": "created", "id": "T002", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:25:50+00:00", "id": "E027", "payload": {"from": "defined", "id": "T002", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:25:50+00:00", "id": "E028", "payload": {"classification": "one_go", "reason": "Small bounded substrate migration: add runner API, replace direct effect calls in four engines, and update guard tests in one pass.", "ticket_id": "T002"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T09:26:42+00:00", "id": "E029", "payload": {"from": "todo", "id": "P002", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T09:35:01+00:00", "id": "E030", "payload": {"from": "classified", "id": "T002", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:35:01+00:00", "id": "E031", "payload": {"from": "executing", "id": "T002", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:35:01+00:00", "id": "E032", "payload": {"result_id": "R001", "ticket_id": "T002"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T09:35:27+00:00", "id": "E033", "payload": {"from": "doing", "id": "P002", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T09:35:27+00:00", "id": "E034", "payload": {"from": "checking", "id": "P002", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T09:35:27+00:00", "id": "E035", "payload": {"check_id": "C001", "followup_id": null, "problem_id": "P002", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T09:36:05+00:00", "id": "E036", "payload": {"problem_id": "P003", "ticket_id": "T003", "title": "T003 Task Execution Policy Tables"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T09:36:05+00:00", "id": "E037", "payload": {"from": "created", "id": "T003", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:36:14+00:00", "id": "E038", "payload": {"from": "defined", "id": "T003", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:36:14+00:00", "id": "E039", "payload": {"classification": "one_go", "reason": "Bounded refactor: extract task decision payloads into pure policy helpers, wire engine to helpers, and add focused unit tests without schema/runtime changes.", "ticket_id": "T003"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T09:36:42+00:00", "id": "E040", "payload": {"from": "todo", "id": "P003", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T09:39:47+00:00", "id": "E041", "payload": {"from": "classified", "id": "T003", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:39:47+00:00", "id": "E042", "payload": {"from": "executing", "id": "T003", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:39:47+00:00", "id": "E043", "payload": {"result_id": "R002", "ticket_id": "T003"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T09:40:12+00:00", "id": "E044", "payload": {"from": "doing", "id": "P003", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T09:40:12+00:00", "id": "E045", "payload": {"from": "checking", "id": "P003", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T09:40:12+00:00", "id": "E046", "payload": {"check_id": "C002", "followup_id": null, "problem_id": "P003", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T09:40:52+00:00", "id": "E047", "payload": {"problem_id": "P004", "ticket_id": "T004", "title": "T004 Saga Launch And Definition Plan Boundary"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T09:40:52+00:00", "id": "E048", "payload": {"from": "created", "id": "T004", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:41:04+00:00", "id": "E049", "payload": {"from": "defined", "id": "T004", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:41:04+00:00", "id": "E050", "payload": {"classification": "one_go", "reason": "Bounded refactor: compile saga launch effects into an explicit plan and wire engine to runner without changing saga schemas or worker lifecycle.", "ticket_id": "T004"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T09:41:18+00:00", "id": "E051", "payload": {"from": "todo", "id": "P004", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T09:44:18+00:00", "id": "E052", "payload": {"from": "classified", "id": "T004", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:44:18+00:00", "id": "E053", "payload": {"from": "executing", "id": "T004", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:44:18+00:00", "id": "E054", "payload": {"result_id": "R003", "ticket_id": "T004"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T09:44:50+00:00", "id": "E055", "payload": {"from": "doing", "id": "P004", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T09:44:50+00:00", "id": "E056", "payload": {"from": "checking", "id": "P004", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T09:44:50+00:00", "id": "E057", "payload": {"check_id": "C003", "followup_id": null, "problem_id": "P004", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T09:45:20+00:00", "id": "E058", "payload": {"problem_id": "P005", "ticket_id": "T005", "title": "T005 Scheduler And Health Action Specs"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T09:45:20+00:00", "id": "E059", "payload": {"from": "created", "id": "T005", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:45:28+00:00", "id": "E060", "payload": {"from": "defined", "id": "T005", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:45:28+00:00", "id": "E061", "payload": {"classification": "one_go", "reason": "Bounded extraction: scheduler and health action payload/result classifications can be moved to small pure helper modules with local tests.", "ticket_id": "T005"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T09:45:37+00:00", "id": "E062", "payload": {"from": "todo", "id": "P005", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T09:49:18+00:00", "id": "E063", "payload": {"from": "classified", "id": "T005", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:49:18+00:00", "id": "E064", "payload": {"from": "executing", "id": "T005", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:49:18+00:00", "id": "E065", "payload": {"result_id": "R004", "ticket_id": "T005"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T09:49:45+00:00", "id": "E066", "payload": {"from": "doing", "id": "P005", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T09:49:45+00:00", "id": "E067", "payload": {"from": "checking", "id": "P005", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T09:49:45+00:00", "id": "E068", "payload": {"check_id": "C004", "followup_id": null, "problem_id": "P005", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T09:50:44+00:00", "id": "E069", "payload": {"problem_id": "P006", "ticket_id": "T006", "title": "T006 Handler Registry Metadata And Boundary Guard"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T09:50:44+00:00", "id": "E070", "payload": {"from": "created", "id": "T006", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:50:52+00:00", "id": "E071", "payload": {"from": "defined", "id": "T006", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:50:52+00:00", "id": "E072", "payload": {"classification": "one_go", "reason": "Small registry metadata extension plus boundary tests; no handler behavior or runtime schema changes needed.", "ticket_id": "T006"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T09:51:01+00:00", "id": "E073", "payload": {"from": "todo", "id": "P006", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T09:52:26+00:00", "id": "E074", "payload": {"from": "classified", "id": "T006", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:52:26+00:00", "id": "E075", "payload": {"from": "executing", "id": "T006", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:52:26+00:00", "id": "E076", "payload": {"result_id": "R005", "ticket_id": "T006"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T09:52:48+00:00", "id": "E077", "payload": {"from": "doing", "id": "P006", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T09:52:48+00:00", "id": "E078", "payload": {"from": "checking", "id": "P006", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T09:52:48+00:00", "id": "E079", "payload": {"check_id": "C005", "followup_id": null, "problem_id": "P006", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T09:53:55+00:00", "id": "E080", "payload": {"problem_id": "P007", "ticket_id": "T007", "title": "T007 CI Bytecode And Generated Artifact Hygiene"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T09:53:55+00:00", "id": "E081", "payload": {"from": "created", "id": "T007", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:54:03+00:00", "id": "E082", "payload": {"from": "defined", "id": "T007", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:54:03+00:00", "id": "E083", "payload": {"classification": "one_go", "reason": "Bounded CI hygiene patch: bytecode env, cleanup wrapper, and generated-artifact lint wiring.", "ticket_id": "T007"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T09:54:11+00:00", "id": "E084", "payload": {"from": "todo", "id": "P007", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T09:57:03+00:00", "id": "E085", "payload": {"from": "classified", "id": "T007", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:57:03+00:00", "id": "E086", "payload": {"from": "executing", "id": "T007", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T09:57:03+00:00", "id": "E087", "payload": {"result_id": "R006", "ticket_id": "T007"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T09:57:30+00:00", "id": "E088", "payload": {"from": "doing", "id": "P007", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T09:57:30+00:00", "id": "E089", "payload": {"from": "checking", "id": "P007", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T09:57:30+00:00", "id": "E090", "payload": {"check_id": "C006", "followup_id": null, "problem_id": "P007", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T10:00:28+00:00", "id": "E091", "payload": {"problem_id": "P008", "ticket_id": "T008", "title": "Document Runtime FSM/Worker DSL Status"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T10:00:28+00:00", "id": "E092", "payload": {"from": "created", "id": "T008", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T10:00:41+00:00", "id": "E093", "payload": {"from": "defined", "id": "T008", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T10:00:41+00:00", "id": "E094", "payload": {"classification": "one_go", "reason": "Single documentation-and-guard-test change with direct verification.", "ticket_id": "T008"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T10:00:52+00:00", "id": "E095", "payload": {"from": "todo", "id": "P008", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T10:03:40+00:00", "id": "E096", "payload": {"from": "classified", "id": "T008", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T10:03:40+00:00", "id": "E097", "payload": {"from": "executing", "id": "T008", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T10:03:40+00:00", "id": "E098", "payload": {"result_id": "R007", "ticket_id": "T008"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T10:04:20+00:00", "id": "E099", "payload": {"from": "doing", "id": "P008", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T10:04:20+00:00", "id": "E100", "payload": {"from": "checking", "id": "P008", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T10:04:20+00:00", "id": "E101", "payload": {"check_id": "C007", "followup_id": null, "problem_id": "P008", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T10:05:42+00:00", "id": "E102", "payload": {"from": "todo", "id": "P000", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T10:06:12+00:00", "id": "E103", "payload": {"from": "splitting", "id": "T000", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T10:06:12+00:00", "id": "E104", "payload": {"result_id": "R008", "ticket_id": "T000"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T10:07:58+00:00", "id": "E105", "payload": {"from": "doing", "id": "P000", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T10:07:58+00:00", "id": "E106", "payload": {"from": "checking", "id": "P000", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T10:07:58+00:00", "id": "E107", "payload": {"check_id": "C008", "followup_id": null, "problem_id": "P000", "status": "success"}, "root_id": "P000", "type": "check_recorded"}

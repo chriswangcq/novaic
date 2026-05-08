@@ -1,0 +1,777 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C000.md",
+      "created_at": "2026-05-08T08:58:55+00:00",
+      "criteria_map": [
+        "Identify process launch entrypoints: satisfied by `scripts/start.sh` evidence.",
+        "Prove roster/registry definitions are consumed: satisfied by `runtime_roster`, `main_novaic.py`, and `registry.py` evidence.",
+        "Prove FSM infrastructure is referenced by live worker/queue code: satisfied by `session_repo.py`, `queue_db.py`, `saga_repo.py`, and `FsmTransitionRunner` evidence.",
+        "Prove targeted CI/tests pass: satisfied by pytest and lint outputs.",
+        "Label live-path gaps explicitly: satisfied by Known Gaps in R000, which defers pure DSL claims to P002."
+      ],
+      "evidence": [
+        "Entrypoint evidence shows `scripts/start.sh` consumes `runtime_roster process-checks` and `runtime_roster launch-commands`.",
+        "CLI evidence shows `main_novaic.py` delegates worker modes through `run_worker_mode_if_registered(...)`.",
+        "Registry evidence shows `build_runtime_worker_registry()` returns `WorkerSpec` entries ordered by `RUNTIME_WORKER_MODES`.",
+        "FSM evidence shows session/task/saga repositories record durable transitions through generic ledger repositories and `FsmTransitionRunner`.",
+        "Verification commands passed:",
+        "`23 passed in 0.69s` for targeted FSM/roster/wiring tests.",
+        "`lint_runtime_worker_supervision OK`.",
+        "`lint_deploy_fresh_smoke OK`."
+      ],
+      "execution_map": [
+        "Inspected launch scripts, worker registry, runtime roster, FSM runner, ledger repositories, and production wiring tests.",
+        "Ran targeted tests and guard scripts without code changes.",
+        "Recorded the result as R000."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P001",
+      "residual_risk": [
+        "This check does not prove the runtime is pure DSL; it proves the new FSM/worker/roster path is live. Remaining purity and residue questions are intentionally represented by sibling problems P002 and P003."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Negative scenario considered: new runtime code could exist but production startup could still use old hard-coded worker commands. Evidence rejects this because `scripts/start.sh` uses `runtime_roster launch-commands` and the lint guard checks the same contract.",
+        "Negative scenario considered: worker CLI could bypass registry. Evidence rejects this because `main_novaic.py` routes unknown worker modes through `run_worker_mode_if_registered`, and targeted registry tests passed.",
+        "Negative scenario considered: FSM code could exist but repositories still write legacy tables directly. Evidence partially rejects this for transition recording because session/task/saga paths call ledger `record_transition`; DSL purity and remaining imperative business code are deferred to P002/P003."
+      ],
+      "summary": "Runtime live path is wired through runtime_roster, worker registry, and generic FSM transition ledgers; pure DSL is deferred to sibling audits."
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/checks/C001.md",
+      "created_at": "2026-05-08T09:01:23+00:00",
+      "criteria_map": [
+        "Identify already declarative DSL-like files: satisfied by `command_specs.py`, `registry.py`, `runtime_roster.py`, `saga.py`, and `effects.py` pointers.",
+        "Identify remaining hand-written business/process orchestration: satisfied by `worker_assemblies.py`, `task_execution.py`, `saga_launch.py`, `scheduled_wake.py`, `health_recovery.py`, and handler registry pointers.",
+        "Identify effect execution state: satisfied by `EffectPlan` versus direct `execute_effect` evidence.",
+        "Provide explicit pure/not-pure judgment: satisfied; R001 states current code is not pure DSL.",
+        "Avoid implementation changes: satisfied; only inspections, tests, and ledger files were produced."
+      ],
+      "evidence": [
+        "R001 includes line-count and pointer evidence for worker assemblies, generic substrate, action engines, effect contracts, saga DSL classes, and handler registry.",
+        "R001 includes direct evidence that `EffectPlan` exists but action engines still call `execute_effect(...)` directly.",
+        "R001 includes targeted tests passing: `34 passed in 0.24s`."
+      ],
+      "execution_map": [
+        "Inspected worker/action/effect modules with `wc`, `rg`, and line-numbered reads.",
+        "Ran targeted effect-boundary and assembly tests.",
+        "Recorded R001 as the audit result."
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P002",
+      "residual_risk": [
+        "This audit does not implement the DSL closure. The implementation backlog belongs to P004 after residue guards are also checked in P003."
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Negative scenario considered: generic worker substrate might mean business is pure DSL. Evidence rejects this because business/process engines still encode branching, loops, retries, metrics, and direct effect execution.",
+        "Negative scenario considered: direct Python handlers could be acceptable DSL because they are registered by topic. Evidence rejects “pure DSL” wording because registration is a Python dispatch table with concrete functions, not a declarative behavior spec.",
+        "Negative scenario considered: existing `EffectPlan` might prove plan-first design. Evidence rejects current completion because engines still mostly execute effects inline."
+      ],
+      "summary": "Current runtime is not pure DSL; it is generic substrate plus declarative specs plus imperative action engines and hand-written assembly."
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/checks/C002.md",
+      "created_at": "2026-05-08T09:04:06+00:00",
+      "criteria_map": [
+        "Run existing CI/lint guards: satisfied by retired vocabulary, runtime supervision, deploy smoke, start config, and generated artifact outputs.",
+        "Search legacy/compat/fallback/shadow/toggle/old table terms: satisfied by production and test/CI scan counts.",
+        "Identify old live branch bypasses: satisfied; production scans returned zero hits for the targeted old paths.",
+        "Distinguish production hits from tests/docs: satisfied; test/CI count is classified as guard-only.",
+        "Record residual risks and guard coverage: satisfied by the bytecode hygiene gap and pure-DSL guard gap in R002."
+      ],
+      "evidence": [
+        "R002 reports production legacy scans with zero hits.",
+        "R002 reports test/CI hits as guard references, not active production branches.",
+        "R002 reports guard commands passing when Python bytecode generation is disabled.",
+        "R002 records generated-artifact hygiene as a tooling gap rather than hiding it."
+      ],
+      "execution_map": [
+        "Ran guard scripts once and discovered generated bytecode noise.",
+        "Removed generated artifacts created by local commands.",
+        "Re-ran guards with `PYTHONDONTWRITEBYTECODE=1`.",
+        "Ran production-only and test/CI-only scans.",
+        "Recorded R002."
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P003",
+      "residual_risk": [
+        "CI should standardize `PYTHONDONTWRITEBYTECODE=1` or equivalent cleanup when chaining Python lints before generated-artifact lint.",
+        "Pure-DSL residue guards are not yet complete; P004 should turn this into backlog."
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Negative scenario considered: broad grep hits might mean active compatibility branches still exist. Evidence rejects this because production-only scans returned zero and hits are isolated to tests/CI scripts.",
+        "Negative scenario considered: lints passing could hide generated artifact pollution. Evidence caught this and confirmed the correct bytecode-free invocation.",
+        "Negative scenario considered: no old path hits means pure DSL is complete. Evidence rejects this; P002 already shows DSL purity gaps unrelated to legacy branch residue."
+      ],
+      "summary": "No active old session/FSM/worker branch was found; only test/CI guard references remain, with a bytecode hygiene gap for generated artifact checks."
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P004/checks/C003.md",
+      "created_at": "2026-05-08T09:06:02+00:00",
+      "criteria_map": [
+        "Ordered future implementation tickets: satisfied by DSL-001 through DSL-008.",
+        "Include implementation and deletion/guard work: satisfied by each backlog item’s cleanup and guard sections.",
+        "Include file-level targets and measurable acceptance: satisfied by target files and end-state criteria.",
+        "State what is already done: satisfied by “Already Done / Do Not Rework”.",
+        "Avoid code changes: satisfied; only ledger/design artifacts were created."
+      ],
+      "evidence": [
+        "R003 synthesizes P001/R000, P002/R001, and P003/R002.",
+        "R003 lists eight ticket-sized backlog items with target files, end state, cleanup expectations, and guards.",
+        "R003 explicitly marks existing live runtime/FSM/roster wiring as done and not to be reworked."
+      ],
+      "execution_map": [
+        "Read P001/P002/P003 result artifacts.",
+        "Created R003 with ordered backlog and sequencing.",
+        "No source implementation was changed."
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P004",
+      "residual_risk": [
+        "The backlog is ready for future execution but has not been implemented in this audit."
+      ],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Negative scenario considered: backlog could say “make pure DSL” too broadly. Evidence rejects this because R003 decomposes into worker assembly specs, plan-first engines, task/saga/scheduler/health specs, handler registry review, CI hygiene, and docs.",
+        "Negative scenario considered: backlog could accidentally rework already-live FSM/roster wiring. R003 explicitly says not to rework those paths.",
+        "Negative scenario considered: backlog could ignore deletion. Each implementation item includes cleanup and guard expectations."
+      ],
+      "summary": "Pure DSL closure backlog created: assembly specs, plan-first engines, task/saga/scheduler/health specs, handler registry review, CI hygiene, and status docs."
+    },
+    "C004": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C004.md",
+      "created_at": "2026-05-08T09:06:54+00:00",
+      "criteria_map": [
+        "Determine whether current code is pure DSL: satisfied; answer is no.",
+        "Prove whether new FSM/worker/roster path is actually live: satisfied by P001/R000.",
+        "Check old-code residue and compatibility branches: satisfied by P003/R002.",
+        "Produce actionable next work: satisfied by P004/R003 with DSL-001 through DSL-008.",
+        "Use ledger/ticket closure rather than a loose answer: satisfied by P000-P004, T000-T004, R000-R004, C000-C003."
+      ],
+      "evidence": [
+        "R004 summarizes all child audit outcomes.",
+        "R000 proves the runtime/FSM/roster path is live.",
+        "R001 proves the current code is not pure DSL and names the remaining process-code islands.",
+        "R002 proves no active old session/FSM branch was found and identifies guard hygiene.",
+        "R003 provides the ordered future backlog."
+      ],
+      "execution_map": [
+        "Split root ticket into four child audit problems.",
+        "Executed and checked each child.",
+        "Recorded root result R004.",
+        "No runtime source refactor was performed during this audit, except removal of generated cache artifacts created by local test/lint commands."
+      ],
+      "followup_problem_id": null,
+      "id": "C004",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Audit is complete, implementation is not. The next implementation phase should start from R003/DSL-001..DSL-008.",
+        "The current working tree includes the new audit ledger files and root problem body."
+      ],
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Negative scenario considered: new code exists but old path still live. Evidence rejects this for runtime launch/FSM paths.",
+        "Negative scenario considered: no old branches means pure DSL is complete. Evidence rejects this because action engines and worker assemblies still own imperative behavior.",
+        "Negative scenario considered: tests pass but guard chain is dirty. Evidence caught bytecode hygiene and recorded the required fix.",
+        "Negative scenario considered: backlog is too vague. Evidence rejects this because each backlog item names target files, end state, cleanup, and guard."
+      ],
+      "summary": "Comprehensive audit complete: live runtime/FSM path confirmed, no active old branch found, not pure DSL yet, and closure backlog DSL-001..DSL-008 recorded."
+    }
+  },
+  "counters": {
+    "check": 5,
+    "event": 60,
+    "problem": 5,
+    "result": 5,
+    "ticket": 5
+  },
+  "created_at": "2026-05-08T08:53:36+00:00",
+  "ledger_id": "L20260508-165336",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C004"
+      ],
+      "created_at": "2026-05-08T08:53:36+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "用户要求继续全面排查当前 Agent Runtime / Queue FSM / Worker DSL 架构是否已经达到“纯粹 DSL”目标。需要基于代码证据审计，而不是凭印象回答。审计范围包括：FSM substrate、worker command registry、runtime roster、worker assemblies、action engines、effect adapters、business handlers、deployment/startup wiring、CI guards、旧路径/兼容/残留分支。\n\n本轮目标是审计与定位 GAP，不直接进行大规模重构。若发现问题，需要形成明确、可执行的后续工单清单，并区分：\n\n- 已经 DSL 化/声明化的部分；\n- 仍然是 Python 过程式逻辑但边界可接受的部分；\n- 与“纯粹 DSL”目标冲突、需要继续改造的部分；\n- 旧代码/兼容分支/未接入新逻辑的风险点。",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P001",
+        "P002",
+        "P003",
+        "P004"
+      ],
+      "success_criteria": [
+        "逐项审计 runtime worker registry、roster、assembly、action engine、effect adapter、FSM runner、session/task/saga 入口是否走新路径。",
+        "给出代码证据指针，不泛泛而谈。",
+        "明确回答“现在是不是纯粹 DSL”，并说明差距等级。",
+        "列出完整 GAP 清单，每项包含影响、证据、建议修复方向、是否需要拆工单。",
+        "运行必要的 residue/guard/test 命令验证旧路径和守卫状态。",
+        "账本 valid/render/status/next 完成，审计问题达到 closed 状态。"
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "全面排查当前代码与纯粹 DSL 目标的差距",
+      "updated_at": "2026-05-08T09:06:54+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-08T08:56:03+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "审计当前代码是否真的走新 FSM substrate、worker registry、runtime roster、generic worker/effect path，而不是只新增了未接入代码。需要从入口、注册、启动、deploy、测试和 CI guard 多个角度证明 live path。",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "找到 main entry / registry / start.sh / deploy 如何接入 runtime roster。",
+        "找到 session/task/saga ledger 如何接入通用 FSM runner。",
+        "找到 worker command registry 如何接入 WorkerSpec 和 process runner。",
+        "证明旧 direct/manual path 未继续作为生产启动路径。",
+        "输出证据清单和 remaining risk。"
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "证明当前 runtime 是否实际走新 FSM/worker/roster 路径",
+      "updated_at": "2026-05-08T08:58:55+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-08T08:56:03+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "审计当前 worker assembly、action engine、effect adapter、business handler 是否达到“业务只剩 DSL”。需要区分基础设施 Python、合理 adapter Python、仍未 DSL 化的业务/协议控制流。",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "审计 `worker_assemblies.py` 的装配逻辑是否仍是手写 Python。",
+        "审计 task/saga/health/scheduler engines 是否仍有过程式控制流。",
+        "审计 EffectPlan 是否全面使用，是否还有边执行边 effect 的模式。",
+        "给出“不纯 DSL”的明确等级、影响和改造方向。",
+        "形成可执行 GAP 清单。"
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "审计业务 DSL 纯度与剩余过程式逻辑 GAP",
+      "updated_at": "2026-05-08T09:01:23+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P003/README.md",
+      "check_ids": [
+        "C002"
+      ],
+      "created_at": "2026-05-08T08:56:03+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "审计 active code 是否存在旧路径、兼容分支、fallback/shadow/legacy residue、未接入新逻辑、或者 guard 未覆盖的风险。需要区分防回归测试中的旧词与活路径中的旧逻辑。",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P003",
+      "parent_id": "P000",
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "运行 targeted residue scans。",
+        "运行 architecture guard/lint/test 命令。",
+        "列出命中项，并分类为活路径问题、防回归测试文本、文档/账本历史。",
+        "判断当前 CI guard 是否足以防止新旧双路回流。",
+        "发现 gap 时给出后续工单。"
+      ],
+      "ticket_ids": [
+        "T003"
+      ],
+      "title": "扫描旧路径、兼容分支、残留词汇与 CI guard 覆盖",
+      "updated_at": "2026-05-08T09:04:06+00:00"
+    },
+    "P004": {
+      "body_path": "problems/P000/children/P004/README.md",
+      "check_ids": [
+        "C003"
+      ],
+      "created_at": "2026-05-08T08:56:03+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "基于前面审计结果，输出可执行的后续工单/路线图。需要避免“全部重写”式空话，按风险和依赖拆成可落地 ticket，并明确哪些是必要、哪些只是审美优化。",
+      "followup_ids": [],
+      "id": "P004",
+      "package_path": "problems/P000/children/P004",
+      "parent_id": "P000",
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "汇总所有未达纯 DSL 的 GAP。",
+        "每个 GAP 有影响、证据、修复方向、优先级、验收标准。",
+        "标注是否需要拆成独立 ledger/ticket。",
+        "明确当前系统是否可以继续运行，哪些问题不阻塞，哪些问题应该下一轮优先处理。"
+      ],
+      "ticket_ids": [
+        "T004"
+      ],
+      "title": "汇总纯 DSL 目标后续工单与实施路线",
+      "updated_at": "2026-05-08T09:06:02+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`.complex-problems/L20260508-165336/artifacts/P001-ticket.md`",
+        "Shell inspections over runtime entrypoints, worker roster, worker registry, FSM runner, and ledger repositories."
+      ],
+      "body_path": "problems/P000/children/P001/results/R000.md",
+      "created_at": "2026-05-08T08:58:23+00:00",
+      "done": [
+        "Traced `scripts/start.sh` to `runtime_roster launch-commands`, proving supervised runtime subprocess launch is sourced from the canonical roster instead of duplicated shell lists.",
+        "Traced `main_novaic.py` to `run_worker_mode_if_registered()` and `build_runtime_worker_registry()`, proving worker CLI modes dispatch through the registry.",
+        "Traced `task_queue/workers/registry.py` to `RUNTIME_WORKER_MODES` and `WorkerSpec` entries, proving the registry is ordered by the roster.",
+        "Traced `queue_service/fsm/runner.py` and ledger repositories, proving session/task/saga durable transitions share `FsmTransitionRunner`.",
+        "Ran targeted FSM/roster/production wiring tests and runtime supervision lints."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "This ticket does not prove “pure DSL”. It proves the current runtime path is live-wired through the new roster/registry/FSM infrastructure.",
+        "`worker_assemblies.py` is still hand-written Python assembly code; that belongs to the DSL purity gap audit.",
+        "Action engines still need separate review to decide whether they are pure enough or should become plan-first DSL/policy tables."
+      ],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "The current runtime launch path is wired through the new worker roster/registry and queue FSM infrastructure. This ticket proves the live path with static entrypoint tracing plus targeted tests and CI guards. This result does not claim the business layer is pure DSL; it only proves the new runtime/FSM path is connected and guarded.",
+      "ticket_id": "T001",
+      "verification": [
+        "Static evidence:",
+        "`scripts/start.sh:60-62` defines `runtime_roster()` via `novaic-agent-runtime/scripts/runtime_worker_roster.py`.",
+        "`scripts/start.sh:109-114` verifies required process counts from `runtime_roster process-checks`.",
+        "`scripts/start.sh:259-260` launches worker processes from `runtime_roster launch-commands`.",
+        "`novaic-agent-runtime/main_novaic.py:126-145` builds the runtime worker registry and dispatches registered modes.",
+        "`novaic-agent-runtime/main_novaic.py:337-342` routes CLI worker modes through `run_worker_mode_if_registered(...)`.",
+        "`novaic-agent-runtime/task_queue/workers/runtime_roster.py:22-29` declares worker modes.",
+        "`novaic-agent-runtime/task_queue/workers/runtime_roster.py:32-133` declares supervised process roles and launch commands.",
+        "`novaic-agent-runtime/task_queue/workers/registry.py:26-110` builds `WorkerSpec` entries and returns them in `RUNTIME_WORKER_MODES` order.",
+        "`novaic-agent-runtime/queue_service/fsm/runner.py:50-93` is the generic durable transition write runner.",
+        "`novaic-agent-runtime/queue_service/session_ledger.py:69-73` constructs `FsmTransitionRunner`.",
+        "`novaic-agent-runtime/queue_service/session_repo.py:329-344` records dispatch transitions through `session_ledger.record_transition(...)`.",
+        "`novaic-agent-runtime/queue_service/queue_db.py:1300-1310` records task FSM transitions through `_task_ledger.record_transition(...)`.",
+        "`novaic-agent-runtime/queue_service/saga_repo.py:971-980` records saga FSM transitions through `_saga_ledger.record_transition(...)`.",
+        "Test evidence:",
+        "`pytest -q tests/test_pr342_generic_fsm_transition_runner.py tests/test_pr343_runtime_worker_roster_ssot.py tests/test_pr260_session_harness_generic_fsm_cutover.py tests/test_pr306_taskqueue_fsm_cutover.py tests/test_pr310_saga_repository_fsm_cutover.py tests/test_pr337_worker_command_registry.py tests/test_pr302_session_outbox_worker_production_wiring.py`",
+        "Result: `23 passed in 0.69s`.",
+        "Guard evidence:",
+        "`python3 scripts/ci/lint_runtime_worker_supervision.py` -> `lint_runtime_worker_supervision OK`.",
+        "`python3 scripts/ci/lint_deploy_fresh_smoke.py` -> `lint_deploy_fresh_smoke OK`."
+      ]
+    },
+    "R001": {
+      "artifacts": [
+        "`.complex-problems/L20260508-165336/artifacts/P002-ticket.md`",
+        "Static inspections over worker assembly, action engines, effect contracts, saga definitions, and handler registry."
+      ],
+      "body_path": "problems/P000/children/P002/results/R001.md",
+      "created_at": "2026-05-08T09:00:59+00:00",
+      "done": [
+        "Audited worker command specs, runtime roster, worker assemblies, generic worker helpers, action engines, effect contracts, saga definitions, and task handlers.",
+        "Classified the current shape into DSL-like areas, acceptable component substrate, and remaining imperative business/process logic.",
+        "Ran targeted tests that enforce effect boundary and assembly helper constraints."
+      ],
+      "id": "R001",
+      "known_gaps": [
+        "Not pure DSL: worker assembly is still hand-written Python.",
+        "Not plan-first: action engines still directly execute effects instead of emitting `EffectPlan`/decision objects for an outer runner.",
+        "Not pure business DSL: saga definitions use DSL classes but rely on Python callback functions for payload building, decisions, conditions, and parallel task construction.",
+        "Task handlers remain Python registry functions, not generated/spec-derived behavior tables.",
+        "Current tests prove explicit dependency boundaries and generic substrate separation; they do not assert “business code only DSL”."
+      ],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "Current code is not “pure DSL”. It is a mixed but much cleaner shape: generic worker substrate + declarative command/roster specs + explicit effect adapters + imperative Python action engines and hand-written worker assemblies. The important boundary improvement is real, but business/process behavior is not reduced to only DSL rows.",
+      "ticket_id": "T002",
+      "verification": [
+        "Size snapshot for the relevant worker/action/effect layer:",
+        "`worker_assemblies.py`: 557 lines.",
+        "`assembly_helpers.py`: 232 lines.",
+        "`task_execution.py`: 432 lines.",
+        "`saga_launch.py`: 121 lines.",
+        "`health_recovery.py`: 103 lines.",
+        "`scheduled_wake.py`: 218 lines.",
+        "Effect adapters: `task_effects.py` 108 lines, `saga_effects.py` 55 lines, `health_effects.py` 66 lines, `scheduler_effects.py` 38 lines.",
+        "Generic effect substrate: `queue_service/worker/effects.py` 122 lines.",
+        "DSL-like/spec evidence:",
+        "`task_queue/workers/command_specs.py:32-63` defines `WorkerOption` and `WorkerSpec`.",
+        "`task_queue/workers/registry.py:34-108` declares worker command specs and maps them to build functions.",
+        "`task_queue/workers/runtime_roster.py:22-29` and `:32-133` declare worker modes and process roster.",
+        "`task_queue/saga.py:45-75` and `:94-173` define `SagaStep` / `SagaDefinition` as a fluent saga DSL, but callbacks are still Python callables.",
+        "`queue_service/worker/effects.py:10-32` defines `WorkerEffect` / `EffectPlan`.",
+        "Component substrate evidence:",
+        "`task_queue/workers/assembly_helpers.py:107-232` owns generic worker construction helpers (`build_generic_worker`, `build_concurrent_worker`, synthetic worker builders).",
+        "`queue_service/worker/effects.py:74-118` owns generic effect execution contracts.",
+        "Imperative/business process evidence:",
+        "`task_queue/workers/worker_assemblies.py:49-557` still manually instantiates clients, adapters, engines, handlers, DBs, and cleanup functions per worker.",
+        "`task_queue/workers/task_execution.py:28-425` still owns heartbeat, idempotency branching, retry/failure/completion sequencing, saga step adaptation, loops, and direct `_effect(...)` calls.",
+        "`task_queue/workers/saga_launch.py:17-121` still owns heartbeat, DAG publish loop, state advancement, and direct `_effect(...)` calls.",
+        "`task_queue/workers/scheduled_wake.py:39-218` still owns due-wake scanning, dispatch classification, metrics mutation, and direct `_effect(...)` calls.",
+        "`task_queue/workers/health_recovery.py:32-72` still owns recovery orchestration and direct effect execution.",
+        "`task_queue/handlers/*.py` still uses Python handler registration and concrete handler functions; it is not a pure declarative behavior table.",
+        "Effect-plan state:",
+        "`EffectPlan` exists and is tested.",
+        "Action engines still call `execute_effect(...)` directly (`task_execution.py:424-425`, `saga_launch.py:120-121`, `scheduled_wake.py:217-218`, `health_recovery.py:72`), so behavior is not uniformly “decision/plan first, execution outside”.",
+        "Test evidence:",
+        "`pytest -q tests/test_pr340_worker_effect_plan.py tests/test_pr340_assembly_helpers.py tests/test_pr340_action_engine_effect_boundaries.py tests/test_pr331_task_worker_handler_cutover.py tests/test_pr333_saga_worker_handler_cutover.py tests/test_pr338_business_handlers_lifecycle_free.py`",
+        "Result: `34 passed in 0.24s`."
+      ]
+    },
+    "R002": {
+      "artifacts": [
+        "`.complex-problems/L20260508-165336/artifacts/P003-ticket.md`",
+        "Residue scans over production runtime/task_queue code.",
+        "Guard command outputs."
+      ],
+      "body_path": "problems/P000/children/P003/results/R002.md",
+      "created_at": "2026-05-08T09:03:43+00:00",
+      "done": [
+        "Ran retired runtime vocabulary, runtime supervision, deploy smoke, start config, and generated artifact guards.",
+        "Searched production runtime code for legacy/compat/fallback/shadow/FSM toggle vocabulary and old session tables.",
+        "Searched for retired entrypoints such as bespoke session/saga outbox worker functions and active-session rebuild APIs.",
+        "Classified hits by production code versus tests/CI guard code.",
+        "Cleaned test-created `__pycache__` / `.pytest_cache` generated artifacts from the working tree."
+      ],
+      "id": "R002",
+      "known_gaps": [
+        "Generated artifact guard is sensitive to Python commands that write bytecode. Running Python guard scripts without `PYTHONDONTWRITEBYTECODE=1` can create `__pycache__` and make a later generated-artifacts check fail. This is hygiene/tooling, not a live legacy branch.",
+        "Existing CI coverage appears strong for retired vocabulary and process wiring, but there is not yet a pure-DSL guard that forbids new direct `execute_effect(...)` calls inside business engines. That belongs to the P004 backlog."
+      ],
+      "problem_id": "P003",
+      "root_id": "P000",
+      "summary": "The active runtime/queue/task production code scan found no live old session table, pending trigger, shadow, legacy, fallback, or retired worker entrypoint branch. The broad hits are in tests/CI guard scripts, where they intentionally assert old paths stay removed. One hygiene issue was found: Python-based lint/test commands can generate `__pycache__`, so generated-artifacts lint must be run with bytecode disabled or after cleanup.",
+      "ticket_id": "T003",
+      "verification": [
+        "Guard evidence:",
+        "`PYTHONDONTWRITEBYTECODE=1 python3 scripts/ci/lint_retired_runtime_vocabulary.py` -> `retired runtime vocabulary lint OK`.",
+        "`PYTHONDONTWRITEBYTECODE=1 python3 scripts/ci/lint_runtime_worker_supervision.py` -> `lint_runtime_worker_supervision OK`.",
+        "`PYTHONDONTWRITEBYTECODE=1 python3 scripts/ci/lint_deploy_fresh_smoke.py` -> `lint_deploy_fresh_smoke OK`.",
+        "`PYTHONDONTWRITEBYTECODE=1 python3 scripts/ci/check_start_config_contract.py` -> `start_config_contract OK`.",
+        "`bash scripts/ci/lint_generated_artifacts.sh` -> `GENERATED_ARTIFACTS_LINT=PASS`.",
+        "Production scan evidence:",
+        "Scan over `novaic-agent-runtime/queue_service` and `novaic-agent-runtime/task_queue` for `legacy|compat|fallback|shadow_|shadow:|use_new|disable_fsm|enable_fsm|tq_active_sessions|pending_triggers` returned `PRODUCTION_LEGACY_SCAN_COUNT=0`.",
+        "Scan over production runtime/business paths for `list_active_sessions|rebuild_active_sessions_from_sagas|prompt-splice|prompt_splice|prompt splice|TRANSITIONAL|def run_session_outbox_worker|def run_saga_outbox_worker|run_task_worker(|run_saga_worker(` returned `RETIRED_ENTRYPOINT_SCAN_COUNT=0`.",
+        "Test/CI scan evidence:",
+        "The same broad vocabulary over `novaic-agent-runtime/tests` and `scripts/ci` returned `TEST_CI_LEGACY_SCAN_COUNT=68`.",
+        "These hits are guard/test references such as `tests/test_pr315_queue_fsm_final_residue_guard.py`, `tests/test_pr257_remove_active_sessions_table.py`, `tests/test_pr255_legacy_compat_cleanup.py`, and CI scripts that intentionally ban old paths."
+      ]
+    },
+    "R003": {
+      "artifacts": [
+        "`.complex-problems/L20260508-165336/artifacts/P004-ticket.md`",
+        "P001/R000, P002/R001, P003/R002 audit results."
+      ],
+      "body_path": "problems/P000/children/P004/results/R003.md",
+      "created_at": "2026-05-08T09:05:33+00:00",
+      "done": [
+        "Synthesized P001/P002/P003 into an implementation backlog.",
+        "Separated already-done infrastructure from remaining pure-DSL gaps.",
+        "Listed each future ticket with target files, end state, deletion/cleanup, and guard requirements."
+      ],
+      "id": "R003",
+      "known_gaps": [
+        "This result is a plan/backlog, not an implementation.",
+        "The highest-impact next ticket is DSL-002, because once engines emit plans, DSL-001/003/004/005 can converge without preserving direct effect branches."
+      ],
+      "problem_id": "P004",
+      "root_id": "P000",
+      "summary": "The current system is live on the new FSM/worker/roster path and has no active old session/FSM branch found, but it is not pure DSL. The next work should not rework the live wiring. It should migrate the remaining Python orchestration islands into explicit specs/planners, then delete or guard against the old hand-coded paths.",
+      "ticket_id": "T004",
+      "verification": [
+        "Source inputs:",
+        "P001 / R000: runtime path is live through `runtime_roster`, worker registry, and generic FSM ledgers.",
+        "P002 / R001: not pure DSL; hand-written worker assemblies and action engines remain.",
+        "P003 / R002: no active old session/FSM branch found; generated artifact guard needs bytecode hygiene."
+      ]
+    },
+    "R004": {
+      "artifacts": [
+        "`.complex-problems/L20260508-165336/artifacts/P001-result.md`",
+        "`.complex-problems/L20260508-165336/artifacts/P002-result.md`",
+        "`.complex-problems/L20260508-165336/artifacts/P003-result.md`",
+        "`.complex-problems/L20260508-165336/artifacts/P004-result.md`",
+        "`.complex-problems/L20260508-165336/artifacts/P004-result.md` contains the ordered future backlog: DSL-001 through DSL-008."
+      ],
+      "body_path": "problems/P000/results/R004.md",
+      "created_at": "2026-05-08T09:06:30+00:00",
+      "done": [
+        "P001 proved current runtime actually uses the new FSM/worker/roster live path.",
+        "P002 audited DSL purity and concluded the current state is mixed, not pure DSL.",
+        "P003 scanned old paths/compat branches/residue vocabulary and found no active production old branch, with CI bytecode hygiene noted.",
+        "P004 recorded a concrete implementation backlog for closing the pure DSL gap."
+      ],
+      "id": "R004",
+      "known_gaps": [
+        "Not pure DSL yet:",
+        "`worker_assemblies.py` remains hand-written assembly code.",
+        "`task_execution.py`, `saga_launch.py`, `scheduled_wake.py`, and `health_recovery.py` still own imperative process logic and direct effect execution.",
+        "Saga definitions are DSL-like but still callback-heavy.",
+        "Task handlers remain Python registry functions.",
+        "No active old session/FSM branch was found in production scans.",
+        "CI/local guard hygiene should standardize `PYTHONDONTWRITEBYTECODE=1` or cleanup when chaining Python lints and generated-artifact lint."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "The comprehensive audit is complete. Current runtime is correctly wired through the new FSM/worker/roster path, and targeted scans found no active old session/FSM/worker branch. However, the system is not pure DSL yet: the business/process layer still contains hand-written worker assemblies and imperative action engines with direct effect execution. A concrete pure-DSL closure backlog has been recorded.",
+      "ticket_id": "T000",
+      "verification": [
+        "Child result IDs:",
+        "R000: runtime live path proof.",
+        "R001: DSL purity gap audit.",
+        "R002: legacy residue/guard audit.",
+        "R003: pure DSL remediation backlog.",
+        "Child success checks:",
+        "C000, C001, C002, C003 all succeeded.",
+        "Test/guard evidence:",
+        "Runtime/FSM/roster targeted tests: `23 passed in 0.69s`.",
+        "Effect boundary/assembly targeted tests: `34 passed in 0.24s`.",
+        "Retired runtime vocabulary / runtime supervision / deploy smoke / start config guards passed.",
+        "Generated artifact guard passed when Python bytecode generation was disabled."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "每个结论都有文件/行号或命令输出证据。",
+        "明确区分“已 DSL 化”、“仍是合理 Python 边界”、“不符合纯 DSL 目标”的代码。",
+        "证明当前 runtime 是否实际走新路径，而不是只新增了未接入代码。",
+        "发现的 GAP 必须形成工单级清单。",
+        "必须运行相关 residue/architecture guard/test 命令。",
+        "最终问题 success check 明确残余风险，不把未完成优化藏起来。"
+      ],
+      "assumptions": [
+        "本轮主要做全面排查与工单化，不直接进行大规模架构重构。",
+        "远程部署状态不是本轮审计核心，除非代码路径证据需要验证部署脚本。"
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "Broad architecture audit spans live-path proof, DSL purity gap analysis, residue/guard verification, and remediation backlog; splitting avoids one-pass handwaving.",
+      "created_at": "2026-05-08T08:54:13+00:00",
+      "id": "T000",
+      "problem_definition": "当前代码已经完成一轮 FSM 基建、worker roster、effect boundary、CI guard 改造，但用户明确追问“现在是否纯粹 DSL”，并要求继续全面排查。需要用代码证据系统审计当前形态与“纯粹 DSL”的差距，避免把“DSL 化了一部分”误报为“纯 DSL 终态”。",
+      "problem_id": "P000",
+      "proposed_solution": "将审计拆成多个子问题：\n\n1. 证明当前 live path 是否已经接入新 FSM/worker/roster 基建；\n2. 审计 worker assembly/action engine/effect adapter 与纯 DSL 目标的差距；\n3. 扫描旧路径、兼容分支、未接入新逻辑、residue 词汇与 CI guard 覆盖；\n4. 输出可执行的后续工单清单，标注优先级、风险和是否需要拆分。",
+      "result_ids": [
+        "R004"
+      ],
+      "risks": [
+        "审计范围较大，若强行 one_go 容易遗漏；应拆分。",
+        "“纯 DSL”是目标形态，不应把合理的基础设施 Python 代码误判为问题。",
+        "部分旧词汇可能只存在于防回归测试中，需要区分活路径与 guard 文本。"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "全面审计纯粹 DSL 目标差距",
+      "updated_at": "2026-05-08T09:06:30+00:00",
+      "verification_plan": "- 使用 `rg`、`nl`、`git diff`、targeted tests/lints 审计代码路径。\n- 运行 architecture guards：runtime worker supervision、retired vocabulary、deploy smoke、start config、generated artifact lint。\n- 运行关键 targeted tests：FSM runner、worker roster、worker effect plan、assembly helper、session/task/saga cutover。\n- 账本最终执行 validate/render/status/next。"
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "Identify the process launch entrypoints that assemble runtime workers.",
+        "Prove `runtime_roster` / registry definitions are consumed by deploy/startup paths.",
+        "Prove session/task/saga FSM infrastructure is referenced by live worker code.",
+        "Prove targeted CI/tests for runtime roster and FSM cutover pass.",
+        "Explicitly label any discovered live-path gap instead of treating new code existence as proof."
+      ],
+      "assumptions": [
+        "The current branch and working tree represent the intended deployed code state to audit.",
+        "This ticket is evidence-gathering only; no refactor should be performed here."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "one_go",
+      "classification_reason": "This is an evidence-only live-path audit with bounded inspections and targeted tests; no implementation split is needed.",
+      "created_at": "2026-05-08T08:56:39+00:00",
+      "id": "T001",
+      "problem_definition": "We need evidence, not memory, that the currently committed runtime actually routes worker startup and queue-service execution through the new FSM/worker/roster path. The audit must distinguish live wired code from dead new code that was written but not connected.",
+      "problem_id": "P001",
+      "proposed_solution": "Inspect the launch path, runtime worker registry, worker roster, FSM runner, ledger repositories, and CI guards with pointer-sized reads. Then run the smallest targeted tests and lint guards that prove the path is wired. Record concrete file/function evidence and verification output.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Some runtime paths may be launched indirectly by supervisor scripts, so the audit must include both Python entrypoints and shell/deploy scripts.",
+        "Passing tests alone is insufficient if production entrypoints still bypass the registry."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Ticket: Prove Runtime Live Path Uses New FSM Worker Roster",
+      "updated_at": "2026-05-08T08:58:23+00:00",
+      "verification_plan": "- Use `rg`, `sed`, and file pointers to trace from deploy/start scripts into runtime worker registry and worker assemblies.\n- Run targeted pytest files for FSM/roster cutover.\n- Run runtime supervision/deploy guard scripts that prevent old process wiring from reappearing.\n- Record the command outputs in a result body."
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "Identify which files are already declarative DSL-like specs.",
+        "Identify which files are still hand-written business/process orchestration code.",
+        "Identify whether effects are plan-first DSL, direct imperative execution, or a mixed state.",
+        "Provide an explicit “pure DSL / not pure DSL” judgment with evidence.",
+        "Avoid implementation changes; this is an audit ticket only."
+      ],
+      "assumptions": [
+        "The target is not zero Python code overall; it is that business behavior should be expressed primarily as specs/DSL and generic component infrastructure should be stable and reusable."
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T002.md",
+      "classification": "one_go",
+      "classification_reason": "This is a bounded audit over known runtime worker/action/effect files with targeted tests; no implementation split is needed.",
+      "created_at": "2026-05-08T08:59:19+00:00",
+      "id": "T002",
+      "problem_definition": "The runtime path is live, but the user asks whether the system is now “pure DSL”. We need to audit where business behavior is declarative/spec-driven versus where hand-written Python still owns branching, retries, effects, and orchestration decisions.",
+      "problem_id": "P002",
+      "proposed_solution": "Inspect the worker assembly layer, action engines, effect adapters, generic worker substrate, and business handler modules. Quantify the shape with file/line pointers and grep counts. Run the targeted effect-boundary and assembly tests. Classify the current architecture against the target “business only DSL, component layer owns generic employee mechanics”.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "Some code is intentionally component infrastructure, not business logic; the audit must separate acceptable substrate code from business-specific orchestration residue.",
+        "A “pure DSL” claim is easy to overstate if generic workers are present but business engines remain imperative."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Ticket: Audit Business DSL Purity Gap",
+      "updated_at": "2026-05-08T09:00:59+00:00",
+      "verification_plan": "- Inspect `worker_assemblies.py`, `assembly_helpers.py`, action engines, effect adapters, and business handlers with `rg`, `nl`, and `wc`.\n- Search for `execute_effect`, `EffectPlan`, `WorkerSpec`, `assemble_`, and engine classes.\n- Run targeted tests covering effect boundaries and assembly helpers.\n- Record a result with a gap classification and concrete file pointers."
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "Run the existing CI/lint guards relevant to retired runtime/FSM vocabulary.",
+        "Search for legacy/compat/fallback/shadow/toggle terms and old session tables.",
+        "Identify whether any old live branch still bypasses the new session/FSM/roster path.",
+        "Distinguish active production hits from test guard/documentation hits.",
+        "Record explicit residual risks and guard coverage."
+      ],
+      "assumptions": [
+        "“No backward compatibility needed” means active code should not preserve old behavior branches unless guarded as migration-only documentation or tests."
+      ],
+      "body_path": "problems/P000/children/P003/tickets/T003.md",
+      "classification": "one_go",
+      "classification_reason": "This is a scan-and-classify audit using existing guards and bounded grep evidence; no child implementation is needed.",
+      "created_at": "2026-05-08T09:01:45+00:00",
+      "id": "T003",
+      "problem_definition": "The user is worried about old branches remaining live after new FSM/DSL work. We need to scan for legacy compatibility paths, retired vocabulary, old active-session tables, shadow toggles, bypass branches, and CI guards that should prevent regression.",
+      "problem_id": "P003",
+      "proposed_solution": "Run existing residue/guard scripts and targeted text searches across runtime, queue service, task queue, tests, and CI scripts. Classify hits into active production residue, test/guard-only references, and harmless historical comments. Record any hard gap that needs a follow-up ticket.",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [
+        "Broad keyword scans can produce false positives in tests that intentionally assert absence of old vocabulary.",
+        "Some comments may contain historical terms without active behavior; the result must not overstate them as live branches."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Ticket: Scan Legacy Paths, Compat Branches, Residue Vocabulary, and Guards",
+      "updated_at": "2026-05-08T09:03:43+00:00",
+      "verification_plan": "- Run existing lint scripts: retired vocabulary, runtime supervision, deploy smoke, start config contract, generated artifact lint.\n- Use `rg` searches for legacy keywords, old table names, compatibility branches, shadow flags, and old active-session APIs.\n- Inspect any non-test production hits with line-numbered reads.\n- Record a result with hit classification."
+    },
+    "T004": {
+      "acceptance_criteria": [
+        "Produce an ordered set of future implementation tickets for closing the pure DSL gap.",
+        "Include both implementation and old-code deletion/guard work.",
+        "Include file-level targets and measurable acceptance criteria for each item.",
+        "Explicitly state what is already done and should not be reworked.",
+        "Avoid making code changes in this audit ticket."
+      ],
+      "assumptions": [
+        "Future implementation should follow the user’s principles: code generation is cheap, branch maintenance is expensive, and misleading residue is harmful."
+      ],
+      "body_path": "problems/P000/children/P004/tickets/T004.md",
+      "classification": "one_go",
+      "classification_reason": "This is a synthesis/backlog ticket based on already completed audit results; no child execution is needed.",
+      "created_at": "2026-05-08T09:04:29+00:00",
+      "id": "T004",
+      "problem_definition": "P001 proved the new runtime/FSM path is live. P002 proved the system is not pure DSL yet. P003 proved old active legacy branches were not found but guard hygiene needs tightening. We need a concrete, ordered implementation backlog that can be turned into future tickets without losing the design intent.",
+      "problem_id": "P004",
+      "proposed_solution": "Synthesize P001-P003 into a remediation roadmap. Each backlog item must name the target files, the intended end state, deletion/cleanup expectations, and the guard/test needed to prevent partial cutover.",
+      "result_ids": [
+        "R003"
+      ],
+      "risks": [
+        "The backlog could become vague architecture prose unless each item has file targets and success checks.",
+        "A single oversized “make pure DSL” item would repeat the earlier problem of writing new code without deleting old paths."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Ticket: Summarize Pure DSL Remediation Backlog",
+      "updated_at": "2026-05-08T09:05:33+00:00",
+      "verification_plan": "- Read P001/P002/P003 results and checks.\n- Cross-reference the current source evidence gathered in those results.\n- Record a backlog result with ticket-sized items and sequencing."
+    }
+  },
+  "updated_at": "2026-05-08T09:07:07+00:00"
+}
