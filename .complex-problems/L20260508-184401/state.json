@@ -1,0 +1,555 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [
+        "None for P001. Remaining verification is tracked by P002 and P003."
+      ],
+      "body_path": "problems/P000/children/P001/checks/C000.md",
+      "created_at": "2026-05-08T10:49:08+00:00",
+      "criteria_map": [
+        "DispatchAssembler explicit timeout: satisfied.",
+        "FSM SQLite transient busy retry: satisfied.",
+        "Saga/task claim no longer expose transient busy as plaintext 500: satisfied.",
+        "Scope remains dependency-explicit and small: satisfied."
+      ],
+      "evidence": [
+        "R000 records changes to DispatchAssembler timeout, database busy timeout, FSM store retry, and claim endpoint busy handling.",
+        "`python3 -m py_compile` succeeded for all changed modules.",
+        "Diffs show no bypass path or duplicate business dispatch branch was introduced."
+      ],
+      "execution_map": [
+        "T001 produced R000."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P001",
+      "residual_risk": [
+        "Targeted tests and production smoke are still needed before the root problem can be considered fixed."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The patch addresses both observed production symptoms:",
+        "Subscriber dispatch read timeout: configured 30 second timeout replaces the implicit 5 second default.",
+        "Saga worker JSON parse errors from 500 plaintext: transient SQLite busy during claim now returns a normal empty JSON claim."
+      ],
+      "summary": "Success for code-repair scope. The known code-level failure points were patched and syntax-checked. Full regression tests and production smoke remain separate child problems."
+    },
+    "C001": {
+      "blocking_gaps": [
+        "None for P002. Deployment/smoke remains in P003."
+      ],
+      "body_path": "problems/P000/children/P002/checks/C001.md",
+      "created_at": "2026-05-08T10:50:57+00:00",
+      "criteria_map": [
+        "Tests exist in appropriate repos: satisfied.",
+        "Tests are deterministic and local: satisfied.",
+        "Targeted tests pass: satisfied."
+      ],
+      "evidence": [
+        "`novaic-common` targeted assembler tests passed: 16 passed.",
+        "`novaic-agent-runtime` targeted FSM/route tests passed: 6 passed.",
+        "New tests cover timeout, SQLite busy retry, and claim busy response shape."
+      ],
+      "execution_map": [
+        "T002 produced R001."
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P002",
+      "residual_risk": [
+        "Production smoke remains required to prove the deployed system behavior."
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The tests exercise the prior regression conditions without production services:",
+        "A configured DispatchAssembler client must expose 30s read timeout.",
+        "The FSM store must retry a transient `database is locked`.",
+        "Claim endpoints must return normal JSON empty claims on transient SQLite busy instead of 500/plaintext."
+      ],
+      "summary": "Success for targeted regression tests. The tests directly guard all code-level production failure modes patched in P001."
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/checks/C002.md",
+      "created_at": "2026-05-08T11:22:54+00:00",
+      "criteria_map": [
+        "deploy, delivery, runtime reaction, no duplicate redispatch all satisfied"
+      ],
+      "evidence": [
+        "R002 plus live smoke notification 18c14d716c0a"
+      ],
+      "execution_map": [
+        "business/common/runtime tests, ./deploy services, Entangled/Queue smoke queries"
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P003",
+      "residual_risk": [
+        "Not exhaustive across every recovery branch; targeted tests cover the repaired contention and ack paths."
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Waited beyond dispatch TTL and confirmed dispatch_attempts=1 with one input_received"
+      ],
+      "summary": "Deploy and production smoke passed; live IM reached Queue/Runtime once and did not duplicate after dispatch TTL."
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C003.md",
+      "created_at": "2026-05-08T11:23:50+00:00",
+      "criteria_map": [
+        "All root success criteria satisfied"
+      ],
+      "evidence": [
+        "R003 plus production smoke notification 18c14d716c0a"
+      ],
+      "execution_map": [
+        "common/runtime/business code repairs, targeted tests, ./deploy services, production ledger queries"
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P000",
+      "residual_risk": [
+        "LLM/provider reply behavior remains outside harness dispatch repair."
+      ],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Waited beyond dispatch TTL; attempts and Queue input count stayed at 1"
+      ],
+      "summary": "Root dispatch repair is solved: code, tests, deploy, and live smoke all passed."
+    }
+  },
+  "counters": {
+    "check": 4,
+    "event": 48,
+    "problem": 4,
+    "result": 4,
+    "ticket": 4
+  },
+  "created_at": "2026-05-08T10:44:01+00:00",
+  "ledger_id": "L20260508-184401",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C003"
+      ],
+      "created_at": "2026-05-08T10:44:01+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "Production accepted a user IM message but did not deliver it into the queue/session runtime, so the agent monitor did not react and no reply was produced. Prior diagnosis identified the immediate failure as Business subscriber `ReadTimeout` while posting `/api/queue/dispatch`, and the deeper failure as Queue Service SQLite/global FIFO lock contention plus saga claim 500s with `sqlite3.OperationalError: database is locked`.\n\nFix the production code path end to end: message dispatch must reliably enter the queue/session ledger, saga claiming must not 500 under normal worker polling, and a post-deploy smoke test must prove a new IM can produce queue/runtime activity.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P001",
+        "P002",
+        "P003"
+      ],
+      "success_criteria": [
+        "Code removes the known `sqlite3.OperationalError: database is locked` failure mode from saga claim / FSM event-store writes under normal worker polling.",
+        "Business subscriber dispatch to Queue Service uses explicit production timeout and does not fail from the previous 5s default timeout.",
+        "Queue dispatch / saga claim behavior has targeted tests.",
+        "Production is deployed.",
+        "Smoke test sends or injects a real user IM and verifies:",
+        "Entangled message and notification are created.",
+        "Notification dispatch succeeds or remains processable without failing.",
+        "Queue session events include the new message.",
+        "Saga/task/runtime pipeline shows activity instead of silent monitor inactivity.",
+        "Remaining risks are recorded explicitly if full reply generation depends on external LLM/provider behavior."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Repair Agent Message Dispatch To Runtime",
+      "updated_at": "2026-05-08T11:23:50+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-08T10:44:43+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Patch the runtime/common code so Business subscriber dispatch does not use the default 5s httpx timeout and Queue Service saga claim/FSM event writes do not fail with `sqlite3.OperationalError: database is locked` under normal concurrent worker polling.",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Relevant code paths are identified and patched.",
+        "Patch is scoped to dispatch timeout and queue-service SQLite/FSM claim reliability.",
+        "No old bypass branch is introduced."
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "Code repair queue dispatch and saga claim",
+      "updated_at": "2026-05-08T10:49:08+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-08T10:44:43+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Add and run targeted tests proving the code repair guards the production regression: dispatch uses configured timeout, and saga claim/FSM ledger writes tolerate normal SQLite contention rather than surfacing a 500/database locked failure.",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Tests exist in the appropriate repo(s).",
+        "Targeted tests pass locally.",
+        "Any failing unrelated test is documented rather than hidden."
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "Targeted regression tests",
+      "updated_at": "2026-05-08T10:50:57+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P003/README.md",
+      "check_ids": [
+        "C002"
+      ],
+      "created_at": "2026-05-08T10:44:43+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Deploy the repair to production and run a controlled smoke check proving a new user IM reaches queue/session runtime state and no longer fails silently before agent monitor activity.",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P003",
+      "parent_id": "P000",
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Code is deployed to `root@api.gradievo.com`.",
+        "Relevant services are restarted and healthy.",
+        "Smoke input is observed in Entangled.",
+        "Matching notification does not end in dispatch failure.",
+        "Queue/session runtime records input/session activity for the smoke input.",
+        "Logs no longer show the same dispatch timeout and saga claim 500 loop for the smoke window."
+      ],
+      "ticket_ids": [
+        "T003"
+      ],
+      "title": "Deploy and production smoke",
+      "updated_at": "2026-05-08T11:22:54+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "Modified files:",
+        "`novaic-common/common/wake/assembler.py`",
+        "`novaic-common/common/db/database.py`",
+        "`novaic-agent-runtime/queue_service/fsm/sqlite_store.py`",
+        "`novaic-agent-runtime/queue_service/routes.py`"
+      ],
+      "body_path": "problems/P000/children/P001/results/R000.md",
+      "created_at": "2026-05-08T10:48:53+00:00",
+      "done": [
+        "Patched `novaic-common/common/wake/assembler.py`.",
+        "`_get_sync_client()` now passes `timeout=httpx.Timeout(ServiceConfig.HTTP_TIMEOUT, connect=10.0)` into `internal_sync_client`.",
+        "This removes the observed default 5 second httpx read timeout from Business subscriber dispatch.",
+        "Patched `novaic-common/common/db/database.py`.",
+        "Per-connection `PRAGMA busy_timeout` changed from `3000` to `15000`.",
+        "This keeps transient queue-service WAL contention below the 30 second internal HTTP timeout instead of surfacing as immediate user-visible dispatch/saga failures.",
+        "Patched `novaic-agent-runtime/queue_service/fsm/sqlite_store.py`.",
+        "Added bounded retry for `sqlite3.OperationalError` containing `database is locked` or `database is busy`.",
+        "Routed generic FSM store inserts, updates, and selects through that retry wrapper.",
+        "Patched `novaic-agent-runtime/queue_service/routes.py`.",
+        "Task claim and saga claim now catch transient SQLite busy/locked errors and return an empty claim with a warning log.",
+        "This prevents the worker loop from receiving plaintext 500 responses and JSON parse errors for transient claim contention."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "Targeted tests are still required in child problem P002.",
+        "Deployment and production smoke are still required in child problem P003.",
+        "The patch intentionally does not redesign queue-service claim polling yet; it closes the observed production failure mode with explicit timeout, busy wait, retry, and non-500 transient claim handling."
+      ],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "Implemented the first bounded repair for the production handoff failure: DispatchAssembler now uses the configured 30 second service timeout, SQLite connections wait long enough for normal WAL writer contention, the generic FSM store retries transient SQLite busy/locked errors, and task/saga claim endpoints defer transient busy claims as empty claims instead of surfacing plaintext 500s to workers.",
+      "ticket_id": "T001",
+      "verification": [
+        "Ran Python compile check on changed modules:",
+        "`novaic-common/common/wake/assembler.py`",
+        "`novaic-common/common/db/database.py`",
+        "`novaic-agent-runtime/queue_service/fsm/sqlite_store.py`",
+        "`novaic-agent-runtime/queue_service/routes.py`",
+        "Reviewed diffs for the touched files."
+      ]
+    },
+    "R001": {
+      "artifacts": [
+        "`novaic-common/tests/test_assembler_sync.py`",
+        "`novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py`",
+        "`novaic-agent-runtime/tests/test_pr344_queue_claim_busy_handling.py`"
+      ],
+      "body_path": "problems/P000/children/P002/results/R001.md",
+      "created_at": "2026-05-08T10:50:44+00:00",
+      "done": [
+        "Added `test_dispatch_sync_client_uses_configured_http_timeout` to `novaic-common/tests/test_assembler_sync.py`.",
+        "Added `test_generic_fsm_store_retries_transient_sqlite_busy` to `novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py`.",
+        "Added `novaic-agent-runtime/tests/test_pr344_queue_claim_busy_handling.py`.",
+        "Verifies `/tasks/claim` returns `{\"task\": None}` on transient SQLite busy.",
+        "Verifies `/sagas/claim` returns `{\"saga\": None}` on transient SQLite busy."
+      ],
+      "id": "R001",
+      "known_gaps": [
+        "Production deployment and smoke are still pending in P003."
+      ],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "Added and ran targeted regression tests for the production failure modes: DispatchAssembler timeout configuration, generic FSM SQLite busy retry, and queue claim endpoint busy handling.",
+      "ticket_id": "T002",
+      "verification": [
+        "Ran `PYTHONPATH=. pytest -q tests/test_assembler_sync.py` in `novaic-common`: 16 passed.",
+        "Ran `PYTHONPATH=. pytest -q tests/test_pr259_generic_fsm_store_outbox.py tests/test_pr344_queue_claim_busy_handling.py` in `novaic-agent-runtime`: 6 passed."
+      ]
+    },
+    "R002": {
+      "artifacts": [
+        "Code changes: `novaic-common/common/db/database.py`, `novaic-common/common/wake/assembler.py`, `novaic-agent-runtime/queue_service/fsm/sqlite_store.py`, `novaic-agent-runtime/queue_service/queue_db.py`, `novaic-agent-runtime/queue_service/saga_repo.py`, `novaic-agent-runtime/queue_service/routes.py`, `novaic-business/business/environment.py`, `novaic-business/business/subscribers/dispatch_subscriber.py`.",
+        "Tests added/updated across `novaic-common/tests`, `novaic-agent-runtime/tests`, and `novaic-business/tests`."
+      ],
+      "body_path": "problems/P000/children/P003/results/R002.md",
+      "created_at": "2026-05-08T11:22:27+00:00",
+      "done": [
+        "Deployed all backend services with `./deploy services`; restart and fresh-smoke passed for Entangled, Gateway, Business, Device, Queue Service, Blob Service, Cortex, task workers, saga workers, session outbox, saga outbox, health, scheduler, and subscriber.",
+        "Sent live smoke IM notification `18c14d716c0a` with marker `[smoke] dispatch repair verification v4 2026-05-08T11:18:07Z`.",
+        "Verified Entangled stored the IM message and environment notification.",
+        "Verified Queue recorded exactly one `input_received` and exactly one `dispatch_wake_start_queued` for `18c14d716c0a`.",
+        "Verified Runtime created wake scope `2c4fbe39-8ff6-4b8e-b5c8-3bd13e0690d0`, `session.init` succeeded, `im_read` executed successfully, and LLM calls continued in the wake.",
+        "Verified after the dispatch TTL that `environment_notifications.dispatch_attempts` remained `1` and no duplicate Queue input event was created."
+      ],
+      "id": "R002",
+      "known_gaps": [],
+      "problem_id": "P003",
+      "root_id": "P000",
+      "summary": "Deployed the repaired common, runtime, and business code to api.gradievo.com and ran a live IM dispatch smoke against agent `822af016-31a1-49bb-b529-9b8f539a0831`.",
+      "ticket_id": "T003",
+      "verification": [
+        "Local tests passed:",
+        "`novaic-business`: `PYTHONPATH=. pytest -q tests/test_dispatch_subscriber.py tests/test_environment_repository.py tests/test_im_aggregation.py` -> `65 passed`.",
+        "`novaic-common`: `PYTHONPATH=. pytest -q tests/test_assembler_sync.py tests/test_database_scoped_busy_timeout.py` -> `18 passed`.",
+        "`novaic-agent-runtime`: `PYTHONPATH=. pytest -q tests/test_pr259_generic_fsm_store_outbox.py tests/test_pr344_queue_claim_busy_handling.py tests/test_pr345_recovery_background_defer.py tests/test_pr233_active_inbox_dispatch.py tests/test_pr248_attach_outbox_cutover.py` -> `24 passed`.",
+        "Deploy passed:",
+        "`./deploy services` completed successfully.",
+        "Fresh-smoke logs were fresh for all required backend and runtime processes.",
+        "Production smoke evidence:",
+        "Notification row: `18c14d716c0a | claimed | claim_scope_id=2c4fbe39-8ff6-4b8e-b5c8-3bd13e0690d0 | dispatch_claim_id=delivered:subscriber | dispatch_attempts=1`.",
+        "Session events: `input_received = 1`, `dispatch_wake_start_queued = 1`.",
+        "Runtime tasks include successful `session.init`, `im_read`, `context.append`, and `llm.call` for scope `2c4fbe39-8ff6-4b8e-b5c8-3bd13e0690d0`."
+      ]
+    },
+    "R003": {
+      "artifacts": [
+        "`.complex-problems/L20260508-184401/views/P001-code-repair-queue-dispatch-and-saga-claim.md`",
+        "`.complex-problems/L20260508-184401/views/P003-deploy-and-production-smoke.md`"
+      ],
+      "body_path": "problems/P000/results/R003.md",
+      "created_at": "2026-05-08T11:23:29+00:00",
+      "done": [
+        "P001 repaired the dispatch path by extending the Business subscriber HTTP",
+        "timeout, preventing long background Queue claim/recovery work from blocking",
+        "foreground dispatch, adding bounded SQLite busy retry/commit ownership to the",
+        "generic FSM store, and adding dispatch-only acknowledgement for successful",
+        "Environment-to-Queue delivery.",
+        "P002 added targeted regression coverage for the repaired boundaries.",
+        "P003 deployed all backend services and verified a live IM",
+        "`18c14d716c0a` reached Queue/Runtime once without duplicate redispatch after",
+        "the dispatch lease TTL."
+      ],
+      "id": "R003",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "The dispatch-to-runtime repair is complete across code, regression tests,\ndeployment, and production smoke. The root ticket was split into code repair,\ntargeted tests, and deploy/smoke subproblems; all three child problems now have\nsuccessful checks.",
+      "ticket_id": "T000",
+      "verification": [
+        "Child checks: P001, P002, and P003 are success.",
+        "Production smoke: `input_received = 1`,",
+        "`dispatch_wake_start_queued = 1`, `dispatch_attempts = 1`, and Runtime",
+        "executed `session.init`, `im_read`, context append, and `llm.call` for wake",
+        "scope `2c4fbe39-8ff6-4b8e-b5c8-3bd13e0690d0`."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "The identified code paths are patched rather than bypassed.",
+        "Tests fail on the prior behavior or directly guard the production regression.",
+        "Production services are redeployed.",
+        "Production logs/DBs show a new test input no longer fails at notification dispatch and does reach queue/session state.",
+        "Any remaining runtime blockage is captured as a follow-up with concrete evidence."
+      ],
+      "assumptions": [
+        "The deployment target remains `root@api.gradievo.com`.",
+        "It is acceptable to modify runtime/common code, deploy, and run a controlled smoke input."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "Fix requires separate code patch, test verification, deployment, and production smoke closure",
+      "created_at": "2026-05-08T10:44:21+00:00",
+      "id": "T000",
+      "problem_definition": "Production user messages can persist in Entangled but fail to reach the queue/session runtime. The observed failure combines short Business subscriber dispatch timeout, Queue Service global lock contention, and saga claim 500s caused by SQLite database locks while writing FSM events.",
+      "problem_id": "P000",
+      "proposed_solution": "Fix the full runtime handoff path in small verifiable steps:\n\n1. Inspect the exact dispatch, session repository, saga repository, FSM SQLite store, and worker claim-polling code.\n2. Patch the immediate dispatch timeout so subscriber calls use the configured service timeout instead of httpx's default 5s.\n3. Patch the durable FSM SQLite store / transaction boundaries so saga claim event writes do not raise `database is locked` during normal concurrent worker polling.\n4. Add focused tests that reproduce the timeout/config and saga claim/database-lock path.\n5. Run local tests.\n6. Deploy to production.\n7. Run production smoke checks proving a new IM reaches queue/session runtime activity.",
+      "result_ids": [
+        "R003"
+      ],
+      "risks": [
+        "Full conversational reply may still depend on provider/LLM availability; smoke must at minimum prove message handoff and runtime activity.",
+        "SQLite contention can have multiple contributing paths; if one patch does not close it, create follow-up tickets instead of declaring success.",
+        "Production contains stale pending saga/outbox rows; repair may need a small recovery step after code deployment."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Repair dispatch, saga claim, deploy, and smoke test",
+      "updated_at": "2026-05-08T11:23:29+00:00",
+      "verification_plan": "- Run targeted unit tests for `novaic-common` and `novaic-agent-runtime`.\n- Run any available smoke/deploy validation script after deployment.\n- Query production `entangled.db` and `queue.db`.\n- Tail production subscriber, queue-service, saga-worker, and task-worker logs around the smoke input."
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "DispatchAssembler uses an explicit configured timeout.",
+        "FSM SQLite store write path retries transient database-lock errors within a bounded budget.",
+        "Saga claim path no longer propagates common SQLite busy/locked failures as persistent worker 500 loops.",
+        "Code remains dependency-explicit and testable."
+      ],
+      "assumptions": [
+        "SQLite remains the production DB for this runtime.",
+        "Short bounded retries are acceptable for transient busy/locked conditions."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded code repair in known files; tests/deploy are separate child problems",
+      "created_at": "2026-05-08T10:44:56+00:00",
+      "id": "T001",
+      "problem_definition": "The latest production failure showed Business subscriber dispatch timing out at 5 seconds and Queue Service saga claim crashing with SQLite database locks while FSM events were written.",
+      "problem_id": "P001",
+      "proposed_solution": "Inspect and patch:\n\n- `novaic-common/common/wake/assembler.py` dispatch client timeout.\n- `novaic-agent-runtime/queue_service/fsm/sqlite_store.py` SQLite write retry/busy handling.\n- Queue Service saga claim path if it lacks graceful retry/error handling.\n\nKeep the fix direct and explicit. Do not add compatibility branches or alternate business paths.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Retrying DB writes can hide excessive contention if unbounded; retries must be bounded and observable.",
+        "Saga claim may still fail if there is a separate schema or transition bug; record follow-up if found."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Patch dispatch timeout and SQLite claim reliability",
+      "updated_at": "2026-05-08T10:48:53+00:00",
+      "verification_plan": "- Read impacted files and existing tests.\n- Patch with `apply_patch`.\n- Add/adjust targeted tests in child test problem.\n- Run syntax or focused tests before recording completion."
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "Tests are small and deterministic.",
+        "Tests do not require production services.",
+        "Targeted tests pass locally."
+      ],
+      "assumptions": [
+        "Pytest environment for the two subrepos is already available from previous work."
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T002.md",
+      "classification": "one_go",
+      "classification_reason": "Small deterministic tests in known modules",
+      "created_at": "2026-05-08T10:49:26+00:00",
+      "id": "T002",
+      "problem_definition": "The code repair needs tests that guard the exact production failure modes: implicit 5s dispatch timeout, transient SQLite busy/locked surfacing from the generic FSM store, and claim endpoints returning plaintext 500s for transient SQLite busy.",
+      "problem_id": "P002",
+      "proposed_solution": "Add focused tests in existing test modules:\n\n- `novaic-common/tests/test_assembler_sync.py` for DispatchAssembler client timeout.\n- `novaic-agent-runtime/tests/test_pr259_generic_fsm_store_outbox.py` for bounded SQLite busy retry.\n- A queue-service route test for task/saga claim busy handling.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "Existing tests may rely on exact fake client signatures; adjust fakes minimally."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Add targeted regression tests",
+      "updated_at": "2026-05-08T10:50:44+00:00",
+      "verification_plan": "- Run the new/modified test files with pytest.\n- Run compile check if needed."
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "Deployment succeeds.",
+        "Services and worker roster are healthy after restart.",
+        "Production smoke input does not reproduce the previous notification `failed` / dispatch timeout behavior.",
+        "Queue/session state records activity for the smoke input.",
+        "Any residual blocker is recorded with exact evidence."
+      ],
+      "assumptions": [
+        "`./deploy services` is acceptable because common, business, and runtime all changed or need restart."
+      ],
+      "body_path": "problems/P000/children/P003/tickets/T003.md",
+      "classification": "one_go",
+      "classification_reason": "Single deployment and smoke verification path",
+      "created_at": "2026-05-08T10:51:34+00:00",
+      "id": "T003",
+      "problem_definition": "The code and tests are ready, but production still needs the repair deployed and verified against the real message dispatch/runtime path.",
+      "problem_id": "P003",
+      "proposed_solution": "Use the repo deployment entrypoint to deploy the affected services, then perform production smoke checks:\n\n1. Deploy backend services with `./deploy services` or the smallest safe target that includes `novaic-common`, `novaic-business`, and `novaic-agent-runtime`.\n2. Verify process/log freshness with existing deploy smoke.\n3. Send or inject a controlled IM through the existing production APIs/data path.\n4. Query Entangled and Queue DBs plus logs to prove the message reaches queue/session runtime state.",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [
+        "End-to-end LLM reply can still depend on provider availability; if provider fails after runtime activity, that is a different failure.",
+        "Existing stale failed notification/saga rows may remain in DB; smoke must use a fresh message ID."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Deploy repair and run production smoke",
+      "updated_at": "2026-05-08T11:22:27+00:00",
+      "verification_plan": "- Run targeted deploy status/fresh smoke.\n- Query production DB and logs around smoke timestamp.\n- Record exact IDs observed."
+    }
+  },
+  "updated_at": "2026-05-08T11:23:56+00:00"
+}

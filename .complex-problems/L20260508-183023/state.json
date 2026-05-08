@@ -1,0 +1,186 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [
+        "None for the diagnostic question. There are implementation gaps for repair, but they are outside this ticket's success criteria."
+      ],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-08T10:42:30+00:00",
+      "criteria_map": [
+        "Find whether the message reached persistence: satisfied.",
+        "Find whether the runtime/monitor saw it: satisfied; it did not reach queue session events.",
+        "Find the immediate cause: satisfied; subscriber dispatch timed out.",
+        "Find the deeper cause: satisfied; queue-service lock contention/database locking plus saga claim failures.",
+        "Avoid guessing: satisfied; all claims are backed by production DB/log inspection."
+      ],
+      "evidence": [
+        "Entangled persisted user message `d0fd5569974f` and its notification.",
+        "The notification is `failed` with `dispatch_attempts=5`.",
+        "Subscriber logs show `ReadTimeout` posting to `http://127.0.0.1:19997/api/queue/dispatch` for the same notification.",
+        "Queue DB has no session event for `d0fd5569974f`, proving the message never entered the queue/session ledger.",
+        "Queue Service logs show global FIFO lock waits around the same time and repeated SQLite `database is locked` errors.",
+        "Saga workers repeatedly get 500 from `/api/queue/sagas/claim`; the existing wake saga is still pending."
+      ],
+      "execution_map": [
+        "T000 produced R000.",
+        "R000 contains the root-cause diagnosis and evidence chain."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "The exact production fix is not included in this diagnosis. The next step should be a separate repair ticket focused on dispatch fast-path isolation, DB lock reduction, saga claim 500s, and a production E2E smoke test."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Alternative explanations were checked:",
+        "\"Frontend lost the message\" is false because the message exists in `environment_im_messages`.",
+        "\"Agent/LLM was slow\" is false for this message because it never entered queue/session events.",
+        "\"Everything was down\" is false because processes were up; the failure is an internal queue-service contention/error path.",
+        "\"Monitor bug only\" is insufficient because there is no queue session event for the message."
+      ],
+      "summary": "Success for diagnosis scope. The task was to find the clear reason why a user message got no reply and no agent-monitor reaction. The result identifies the exact failed handoff and the deeper runtime condition, with DB and log evidence."
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-08T10:30:23+00:00",
+  "ledger_id": "L20260508-183023",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-08T10:30:23+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "The user sent an IM message to the agent, but received no reply and saw no reaction in the agent monitor. Diagnose the concrete cause with production evidence rather than speculation.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Identify the latest relevant user message or notification in production data/logs.",
+        "Trace whether it reached Environment/Entangled, Business subscriber, Queue session dispatch, runtime worker, LLM, and reply publishing.",
+        "Determine the first broken or missing handoff in that chain.",
+        "Provide concrete evidence: timestamps, log lines, database rows, process state, or source behavior.",
+        "If the cause is code/config related, state the minimal fix direction; do not hide uncertainty."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Agent Message No Reply Diagnosis",
+      "updated_at": "2026-05-08T10:42:30+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "Ledger: `.complex-problems/L20260508-183023`",
+        "Ticket: `T000-diagnose-message-no-reply`",
+        "Production DBs inspected: `/opt/novaic/data/entangled.db`, `/opt/novaic/data/queue.db`",
+        "Production logs inspected: `/opt/novaic/data/logs/subscriber-20260508.log`, `/opt/novaic/data/logs/queue-service.log`, saga worker logs"
+      ],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-08T10:42:11+00:00",
+      "done": [
+        "Checked production process health on `root@api.gradievo.com`: gateway, business, device, queue-service, blob, cortex, task workers, saga workers, outbox workers, health, scheduler, and subscriber were running. This rules out a simple \"service is completely down\" cause.",
+        "Queried `/opt/novaic/data/entangled.db`.",
+        "Latest user message `d0fd5569974f` (`hello`) exists in `environment_im_messages`.",
+        "Its matching `environment_notifications` row is `state=failed`, `dispatch_attempts=5`.",
+        "A previous user message `24d90512564a` also ended as `failed`, while an older 2026-05-06 message had processed.",
+        "Queried `/opt/novaic/data/queue.db`.",
+        "No `tq_session_events` rows exist for `d0fd5569974f`.",
+        "Recent session events only reference the older `24d90512564a`.",
+        "`tq_session_state` is still `active`, generation `1`, pointing at stale saga `saga-459abe82fdbf` and scope `067fcefa-3a09-495b-b049-8e1e34b17ed9`.",
+        "`tq_session_outbox` has stale pending `create_wake_saga` effect `seff-6d770f4b4793`, generation `1`, attempts `0`.",
+        "`tq_sagas` contains `saga-459abe82fdbf` for message `24d90512564a`; `tq_saga_state` says it is still `pending`; `tq_saga_events` only has `saga_created`.",
+        "Read subscriber logs around the exact latest message time.",
+        "At `2026-05-08 18:28:10`, subscriber claimed notification `d0fd5569974f` and loaded the IM message.",
+        "At `18:28:15`, `common.wake.assembler` logged `result=network target=http://127.0.0.1:19997 exc_type=ReadTimeout`.",
+        "`business.subscribers.dispatch_subscriber` then logged transient failure for the same notification, `attempts=1`, `retry_in=2000ms`, `error=timed out`.",
+        "Retried attempts at `18:28:45` and `18:29:16` also hit `ReadTimeout`; DB shows this reached 5 attempts and then failed.",
+        "Read Queue Service logs around the same period and current period.",
+        "Queue Service showed repeated `[FIFO Lock] Long wait` entries with callers `runtime-task`, `runtime-saga`, and `business`.",
+        "Around the message failure window, `business` waited around 5.5-5.9 seconds for the FIFO DB lock, which aligns with the subscriber client's 5 second read timeout.",
+        "Saga workers repeatedly got `POST /api/queue/sagas/claim` -> `500 Internal Server Error`.",
+        "Queue Service tracebacks show `sqlite3.OperationalError: database is locked` inside `queue_service/fsm/sqlite_store.py` while recording FSM events."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "This diagnosis did not patch production. It identifies the failure precisely enough for a follow-up fix ticket.",
+        "I did not manually replay the message because the user asked for cause analysis, not mutation/recovery.",
+        "The exact code path likely combines short dispatch client timeout, global DB/FIFO locking, worker polling pressure, and saga FSM event-store writes. Fixing only one symptom, such as increasing timeout, would not be a complete cure."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "The user message was accepted by Entangled, but it was not handed off into the queue/session runtime. The immediate failure was Business subscriber dispatch timing out when calling Queue Service `/api/queue/dispatch`. The deeper runtime condition was Queue Service SQLite/global FIFO lock congestion plus broken saga claiming: saga workers repeatedly received 500 from `/api/queue/sagas/claim` with `sqlite3.OperationalError: database is locked`.",
+      "ticket_id": "T000",
+      "verification": [
+        "The evidence chain is consistent:",
+        "1. Message is present in Entangled: the user input was not lost at the API/business persistence boundary.",
+        "2. Notification is failed after 5 dispatch attempts: the subscriber did try to dispatch it and gave up.",
+        "3. Subscriber log says the exact failure was `httpx.ReadTimeout` while posting `/api/queue/dispatch`.",
+        "4. Queue DB has no session event for the new message: dispatch did not commit the user input into the queue/session ledger.",
+        "5. Queue Service logs at the same time show FIFO lock waits and DB lock pressure: queue-service was alive but starved/blocked internally.",
+        "6. Saga workers are separately failing on `/api/queue/sagas/claim` with SQLite database locks: even the existing stale wake saga cannot progress."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Latest relevant user message/event is identified or proven absent from the inspected production data.",
+        "Each stage in the expected path is checked with concrete evidence.",
+        "First broken handoff is stated with timestamps/log lines/DB rows/process state.",
+        "Diagnosis distinguishes deployment/process failure from application logic failure.",
+        "Minimal fix direction is recorded if the cause is actionable."
+      ],
+      "assumptions": [
+        "Production host is still `root@api.gradievo.com` as used by the deploy/runbook.",
+        "The relevant runtime data lives under `/opt/novaic/data` on the production host.",
+        "Read-only diagnostics are permitted for this incident."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded read-only production trace with immediate evidence checks; follow-up can be opened if a gap remains.",
+      "created_at": "2026-05-08T10:30:50+00:00",
+      "id": "T000",
+      "problem_definition": "The user sent an IM message to the agent but received no reply and saw no monitor reaction. We need a concrete production diagnosis, not a design-level hypothesis.",
+      "problem_id": "P000",
+      "proposed_solution": "Perform a read-only production trace across the message delivery chain:\n\n- identify the latest relevant user IM/event in production storage or logs;\n- verify whether it was persisted by Environment/Entangled;\n- verify whether subscriber observed or published it;\n- verify whether queue/session/FSM received it and decided to attach, start, or recover;\n- verify whether runtime workers consumed any resulting work;\n- verify whether LLM/reply/outbox produced or failed to produce a response.\n\nThe result should name the first broken or missing handoff and the minimal fix direction if the cause is code or config.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Production schemas may differ from expectation; use schema introspection before queries.",
+        "Message text may contain private data; summarize rather than paste full content.",
+        "The reported message may be outside available retention or in a different environment."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Trace latest user message no-reply failure",
+      "updated_at": "2026-05-08T10:42:11+00:00",
+      "verification_plan": "- Inspect production process roster and recent log freshness.\n- Inspect production DB schemas and recent rows without mutating data.\n- Search logs for user id, agent id, message ids, notification ids, subscriber/session/runtime errors.\n- Cross-check DB row timestamps against service logs to avoid false positives from stale logs."
+    }
+  },
+  "updated_at": "2026-05-08T10:42:30+00:00"
+}
