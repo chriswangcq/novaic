@@ -1,6 +1,6 @@
 # PR-338: Business-Only DSL Worker Phase Bill
 
-Status: Doing
+Status: Closed
 Owner: Codex
 Problem: P002
 
@@ -27,4 +27,4 @@ and a check file before the parent can close.
   infrastructure engines.
 - P006/P011/P012/P013 closed: worker registry is declarative `WorkerSpec` data,
   with concrete process assembly in component factories.
-- P007 in progress: final residue audit and parent closure.
+- P007 closed: final residue audit and parent closure.

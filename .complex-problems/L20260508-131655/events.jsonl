@@ -1,0 +1,72 @@
+{"at": "2026-05-08T05:16:55+00:00", "id": "E000", "payload": {"ledger_id": "L20260508-131655", "root_id": "P000", "title": "全面审核当前代码与 FSM 基建 + 业务 DSL 的 gap"}, "root_id": "P000", "type": "ledger_initialized"}
+{"at": "2026-05-08T05:17:29+00:00", "id": "E001", "payload": {"problem_id": "P000", "ticket_id": "T000", "title": "全面审核当前代码与 FSM 基建 + 业务 DSL 的 gap"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T05:17:29+00:00", "id": "E002", "payload": {"from": "created", "id": "T000", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:17:35+00:00", "id": "E003", "payload": {"from": "defined", "id": "T000", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:17:35+00:00", "id": "E004", "payload": {"classification": "split", "reason": "Comprehensive audit spans multiple independent evidence surfaces and needs separate checks", "ticket_id": "T000"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T05:17:51+00:00", "id": "E005", "payload": {"from": "classified", "id": "T000", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:17:51+00:00", "id": "E006", "payload": {"parent_id": "P000", "problem_id": "P001", "title": "审计 FSM substrate 与状态机接入"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T05:17:51+00:00", "id": "E007", "payload": {"parent_id": "P000", "problem_id": "P002", "title": "审计业务 DSL 与 worker assembly 厚度"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T05:17:51+00:00", "id": "E008", "payload": {"parent_id": "P000", "problem_id": "P003", "title": "审计显式依赖边界与 side-effect adapter"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T05:17:51+00:00", "id": "E009", "payload": {"parent_id": "P000", "problem_id": "P004", "title": "审计旧路径残留与兼容分支"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T05:17:51+00:00", "id": "E010", "payload": {"parent_id": "P000", "problem_id": "P005", "title": "审计测试 CI 部署守卫覆盖"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T05:18:10+00:00", "id": "E011", "payload": {"problem_id": "P001", "ticket_id": "T001", "title": "审计 FSM substrate 与状态机接入"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T05:18:10+00:00", "id": "E012", "payload": {"from": "created", "id": "T001", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:18:16+00:00", "id": "E013", "payload": {"from": "defined", "id": "T001", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:18:16+00:00", "id": "E014", "payload": {"classification": "one_go", "reason": "Focused read-only audit with direct test evidence", "ticket_id": "T001"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T05:20:30+00:00", "id": "E015", "payload": {"from": "todo", "id": "P001", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T05:21:40+00:00", "id": "E016", "payload": {"from": "classified", "id": "T001", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:21:40+00:00", "id": "E017", "payload": {"from": "executing", "id": "T001", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:21:40+00:00", "id": "E018", "payload": {"result_id": "R000", "ticket_id": "T001"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T05:22:21+00:00", "id": "E019", "payload": {"from": "doing", "id": "P001", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T05:22:21+00:00", "id": "E020", "payload": {"from": "checking", "id": "P001", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T05:22:21+00:00", "id": "E021", "payload": {"check_id": "C000", "followup_id": null, "problem_id": "P001", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T05:22:53+00:00", "id": "E022", "payload": {"problem_id": "P002", "ticket_id": "T002", "title": "P002 Ticket - 审计业务 DSL 与 worker assembly 厚度"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T05:22:53+00:00", "id": "E023", "payload": {"from": "created", "id": "T002", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:23:04+00:00", "id": "E024", "payload": {"from": "defined", "id": "T002", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:23:04+00:00", "id": "E025", "payload": {"classification": "one_go", "reason": "单一审计主题，可通过只读代码检查和 targeted tests 一次完成", "ticket_id": "T002"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T05:23:21+00:00", "id": "E026", "payload": {"from": "todo", "id": "P002", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T05:25:42+00:00", "id": "E027", "payload": {"from": "classified", "id": "T002", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:25:42+00:00", "id": "E028", "payload": {"from": "executing", "id": "T002", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:25:42+00:00", "id": "E029", "payload": {"result_id": "R001", "ticket_id": "T002"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T05:26:05+00:00", "id": "E030", "payload": {"from": "doing", "id": "P002", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T05:26:05+00:00", "id": "E031", "payload": {"from": "checking", "id": "P002", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T05:26:05+00:00", "id": "E032", "payload": {"check_id": "C001", "followup_id": null, "problem_id": "P002", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T05:26:26+00:00", "id": "E033", "payload": {"problem_id": "P003", "ticket_id": "T003", "title": "P003 Ticket - 审计显式依赖边界与 side-effect adapter"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T05:26:26+00:00", "id": "E034", "payload": {"from": "created", "id": "T003", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:26:33+00:00", "id": "E035", "payload": {"from": "defined", "id": "T003", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:26:33+00:00", "id": "E036", "payload": {"classification": "one_go", "reason": "单一依赖边界审计，可用搜索、读文件和 targeted tests 一次完成", "ticket_id": "T003"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T05:26:42+00:00", "id": "E037", "payload": {"from": "todo", "id": "P003", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T05:28:34+00:00", "id": "E038", "payload": {"from": "classified", "id": "T003", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:28:34+00:00", "id": "E039", "payload": {"from": "executing", "id": "T003", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:28:34+00:00", "id": "E040", "payload": {"result_id": "R002", "ticket_id": "T003"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T05:28:59+00:00", "id": "E041", "payload": {"from": "doing", "id": "P003", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T05:28:59+00:00", "id": "E042", "payload": {"from": "checking", "id": "P003", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T05:28:59+00:00", "id": "E043", "payload": {"check_id": "C002", "followup_id": null, "problem_id": "P003", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T05:29:19+00:00", "id": "E044", "payload": {"problem_id": "P004", "ticket_id": "T004", "title": "P004 Ticket - 审计旧路径残留与兼容分支"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T05:29:19+00:00", "id": "E045", "payload": {"from": "created", "id": "T004", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:29:25+00:00", "id": "E046", "payload": {"from": "defined", "id": "T004", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:29:25+00:00", "id": "E047", "payload": {"classification": "one_go", "reason": "旧路径残留审计可通过搜索、guard 读取和 targeted lint/tests 一次完成", "ticket_id": "T004"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T05:29:33+00:00", "id": "E048", "payload": {"from": "todo", "id": "P004", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T05:30:44+00:00", "id": "E049", "payload": {"from": "classified", "id": "T004", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:30:44+00:00", "id": "E050", "payload": {"from": "executing", "id": "T004", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:30:44+00:00", "id": "E051", "payload": {"result_id": "R003", "ticket_id": "T004"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T05:31:06+00:00", "id": "E052", "payload": {"from": "doing", "id": "P004", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T05:31:06+00:00", "id": "E053", "payload": {"from": "checking", "id": "P004", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T05:31:06+00:00", "id": "E054", "payload": {"check_id": "C003", "followup_id": null, "problem_id": "P004", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T05:31:27+00:00", "id": "E055", "payload": {"problem_id": "P005", "ticket_id": "T005", "title": "P005 Ticket - 审计测试 CI 部署守卫覆盖"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T05:31:27+00:00", "id": "E056", "payload": {"from": "created", "id": "T005", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:31:35+00:00", "id": "E057", "payload": {"from": "defined", "id": "T005", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:31:35+00:00", "id": "E058", "payload": {"classification": "one_go", "reason": "测试/CI/部署守卫审计可通过只读脚本检查和 targeted lint 一次完成", "ticket_id": "T005"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T05:31:42+00:00", "id": "E059", "payload": {"from": "todo", "id": "P005", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T05:33:09+00:00", "id": "E060", "payload": {"from": "classified", "id": "T005", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:33:09+00:00", "id": "E061", "payload": {"from": "executing", "id": "T005", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:33:09+00:00", "id": "E062", "payload": {"result_id": "R004", "ticket_id": "T005"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T05:33:41+00:00", "id": "E063", "payload": {"from": "doing", "id": "P005", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T05:33:41+00:00", "id": "E064", "payload": {"from": "checking", "id": "P005", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T05:33:41+00:00", "id": "E065", "payload": {"check_id": "C004", "followup_id": null, "problem_id": "P005", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T05:34:43+00:00", "id": "E066", "payload": {"from": "todo", "id": "P000", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T05:34:43+00:00", "id": "E067", "payload": {"from": "splitting", "id": "T000", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:34:43+00:00", "id": "E068", "payload": {"result_id": "R005", "ticket_id": "T000"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T05:35:09+00:00", "id": "E069", "payload": {"from": "doing", "id": "P000", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T05:35:09+00:00", "id": "E070", "payload": {"from": "checking", "id": "P000", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T05:35:09+00:00", "id": "E071", "payload": {"check_id": "C005", "followup_id": null, "problem_id": "P000", "status": "success"}, "root_id": "P000", "type": "check_recorded"}

@@ -15,8 +15,7 @@
 #   - Queue Service  :19997  Task/Saga queue management
 #   - Blob Service   :19995  Blob upload/download
 #   - Cortex         :19996  Scope tree, LLM context assembly, Workspace, Sandbox
-#   - Workers        task-worker ×4, saga-worker ×2, session/saga-outbox,
-#                    health ×1, scheduler ×1
+#   - Workers        see novaic-agent-runtime/task_queue/workers/runtime_roster.py
 #
 # Communication:
 #   Workers → Business  (/internal/* calls, including entity proxy)
@@ -58,6 +57,9 @@ DEV_URL="http://$HOST:$PORT_DEVICE"
 CORTEX_URL="http://$HOST:$PORT_CORTEX"
 
 py() { echo "$BASE/$1/.venv/bin/python"; }
+runtime_roster() {
+    $(py novaic-agent-runtime) "$BASE/novaic-agent-runtime/scripts/runtime_worker_roster.py" "$@"
+}
 
 port_in_use() { lsof -ti :"$1" >/dev/null 2>&1; }
 
@@ -85,6 +87,35 @@ kill_port_owner() {
     pids=$(lsof -ti :"$port" 2>/dev/null || true)
     [ -z "$pids" ] && return 0
     kill -9 $pids 2>/dev/null || true
+}
+
+process_count() {
+    local pattern="$1"
+    pgrep -fc "$pattern" 2>/dev/null || true
+}
+
+require_process_count() {
+    local label="$1" pattern="$2" expected="$3"
+    local actual
+    actual="$(process_count "$pattern")"
+    actual="${actual:-0}"
+    if [ "$actual" -ne "$expected" ]; then
+        echo "  ERROR: $label expected $expected process(es), got $actual"
+        return 1
+    fi
+    echo "  OK: $label $actual/$expected"
+}
+
+verify_runtime_processes() {
+    local failed=0
+    echo "Verifying required runtime subprocesses..."
+    while IFS=$'\t' read -r label pattern expected; do
+        require_process_count "$label" "$pattern" "$expected" || failed=1
+    done < <(runtime_roster process-checks)
+    if [ "$failed" -ne 0 ]; then
+        echo "Required runtime subprocess supervision failed."
+        exit 1
+    fi
 }
 
 stop() {
@@ -225,58 +256,10 @@ TASK_WORKER_ARGS="--business-url $BIZ_URL --queue-service-url $QS_URL --cortex-u
 SAGA_WORKER_ARGS="--queue-service-url $QS_URL --cortex-url $CORTEX_URL --data-dir $DATA_DIR"
 SCHEDULER_ARGS="--business-url $BIZ_URL --queue-service-url $QS_URL --cortex-url $CORTEX_URL --data-dir $DATA_DIR"
 
-for pool in control execution; do
-    for i in 1 2; do
-        $PY $MAIN task-worker $TASK_WORKER_ARGS \
-            --pool "$pool" --num-workers 1 \
-            >> "$LOG_DIR/task-worker-${pool}-${i}.log" 2>&1 &
-    done
+runtime_roster launch-commands | while IFS= read -r launch_command; do
+    eval "$launch_command"
 done
 
-for i in 1 2; do
-    $PY $MAIN saga-worker $SAGA_WORKER_ARGS --max-concurrent 4 >> "$LOG_DIR/saga-worker-${i}.log" 2>&1 &
-done
-
-# Durable session side effects. This must be a visible subprocess, not a hidden
-# in-process background task: dispatch now returns wake_start_queued after the
-# session outbox row is committed, and this worker is what turns that durable
-# intent into the actual wake saga.
-$PY $MAIN session-outbox-worker \
-    --data-dir "$DATA_DIR" \
-    >> "$LOG_DIR/session-outbox-worker.log" 2>&1 &
-
-# Durable saga compensation effects. SagaRepository only commits lifecycle
-# transitions and outbox rows; this visible subprocess publishes committed
-# compensation effects such as wake_finalize creation and suspected-dead events.
-$PY $MAIN saga-outbox-worker \
-    --data-dir "$DATA_DIR" \
-    >> "$LOG_DIR/saga-outbox-worker.log" 2>&1 &
-
-# PR-33 Phase 3: --check-interval removed from both workers. HealthWorker
-# reads ServiceConfig.HEALTH_CHECK_INTERVAL_SECONDS; SchedulerWorker reads
-# ServiceConfig.SCHEDULER_POLL_INTERVAL_SECONDS. To change cadence during
-# an incident: edit services.json and restart the worker. The
-# log_startup_snapshot line in each worker's log proves which value
-# actually took effect.
-$PY $MAIN health \
-    --queue-service-url "$QS_URL" \
-    --data-dir "$DATA_DIR" \
-    >> "$LOG_DIR/health.log" 2>&1 &
-$PY $MAIN scheduler \
-    $SCHEDULER_ARGS \
-    >> "$LOG_DIR/scheduler.log" 2>&1 &
-
-# ── Dispatch Subscriber ──────────────────────────────────────────────────────
-# Required Environment notification drain. It is a standalone subprocess so a
-# failed drain loop is visible as a missing process instead of being hidden
-# inside Business's FastAPI lifespan.
-PYTHONPATH="$BASE/Entangled/packages/server-python:$BASE/novaic-common:$BASE/novaic-business:${PYTHONPATH:-}" \
-$(py novaic-gateway) "$BASE/novaic-business/main_subscriber.py" \
-    --data-dir "$DATA_DIR" \
-    --entangled-url "$ENTANGLED_URL" \
-    --business-url "$BIZ_URL" \
-    --queue-service-url "$QS_URL" \
-    >> "$LOG_DIR/subscriber.log" 2>&1 &
-echo "  Subscriber: required (subprocess pid $!, logs: $LOG_DIR/subscriber-*.log)"
-
+sleep 1
+verify_runtime_processes
 echo "All backends started. Logs: $LOG_DIR"

@@ -1,0 +1,1013 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C000.md",
+      "created_at": "2026-05-08T05:45:05+00:00",
+      "criteria_map": [
+        "Runner used by active paths: met for Session/Task/Saga transition paths.",
+        "Repeated mechanics centralized: met for event + materialized state + outbox effects.",
+        "Explicit dependency boundary: met; runner takes IDs/timestamps/payloads as arguments and imports no clock/env/random/uuid modules.",
+        "Tests: met by `test_pr342_generic_fsm_transition_runner.py` and existing FSM regression group."
+      ],
+      "evidence": [
+        "`queue_service/fsm/runner.py` provides the generic transition write substrate.",
+        "`SessionLedgerRepository.record_transition()` calls `FsmTransitionRunner.record()`.",
+        "`TaskQueue._record_task_transition()` calls `TaskLedgerRepository.record_transition()`.",
+        "`SagaRepository._record_saga_transition()` calls `SagaLedgerRepository.record_transition()`.",
+        "Source guard confirms no active direct `_task_ledger.append_event/upsert_state` and no active direct `_saga_ledger.append_event/upsert_state/append_outbox`."
+      ],
+      "execution_map": [
+        "Added runner.",
+        "Wired ledger adapters.",
+        "Replaced direct active-path persistence calls.",
+        "Added tests.",
+        "Ran targeted regression suite."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P001",
+      "residual_risk": [
+        "Lease lifecycle still uses its separate existing ledger mechanics. That is outside this ticket's Session/Task/Saga scope and can be handled by a later runner-expansion ticket if desired."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The targeted suite exercises generic core purity, SQLite store contract, session generic store cutover, task FSM cutover, saga FSM cutover, final residue guards, and the new transition runner guard. All passed."
+      ],
+      "summary": "P001 is successful. Active Session/Task/Saga transition write paths now route through the generic `FsmTransitionRunner`, keeping business reducers/handlers away from repeated event/state/outbox persistence mechanics."
+    },
+    "C001": {
+      "blocking_gaps": [
+        "scripts/start.sh launch commands still manually duplicate runtime worker roles instead of consuming the canonical roster"
+      ],
+      "body_path": "problems/P000/children/P002/checks/C001.md",
+      "created_at": "2026-05-08T05:52:03+00:00",
+      "criteria_map": [
+        "One canonical roster owns worker list: partially met.",
+        "Runtime registry imports canonical roster: met.",
+        "Start/deploy/lint consume canonical roster: partially met; verification/status/log checks do, launch does not.",
+        "No stale hard-coded worker roster remains in operational paths: not met for launch."
+      ],
+      "evidence": [
+        "SSOT exists: `novaic-agent-runtime/task_queue/workers/runtime_roster.py`.",
+        "Shell view exists: `novaic-agent-runtime/scripts/runtime_worker_roster.py`.",
+        "Supervision now consumes `process-checks`.",
+        "Fresh-smoke now consumes `log-files`.",
+        "But launch blocks in `scripts/start.sh` are still handwritten by worker type."
+      ],
+      "execution_map": [],
+      "followup_problem_id": "P007",
+      "id": "C001",
+      "problem_id": "P002",
+      "residual_risk": [],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "not_success",
+      "stress_test": [],
+      "summary": "P002 is improved but not complete. The canonical roster now drives supervision checks, deploy status, fresh-smoke runtime logs, CI guards, and registry mode order. However, `scripts/start.sh` still manually launches task/saga/outbox/health/scheduler processes with hand-coded loops and command blocks."
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/children/P007/checks/C002.md",
+      "created_at": "2026-05-08T05:55:21+00:00",
+      "criteria_map": [
+        "Roster owns launch generation: met.",
+        "`start.sh` consumes launch commands: met.",
+        "Manual launch loops removed: met.",
+        "Tests/lints catch drift: met."
+      ],
+      "evidence": [
+        "`RuntimeProcessRole.launch_commands` owns launch commands.",
+        "`runtime_worker_roster.py launch-commands` exports the shell view.",
+        "`scripts/start.sh` consumes `runtime_roster launch-commands`.",
+        "Tests guard process checks, logs, worker modes, and launch commands.",
+        "Lint rejects old manual launch loops."
+      ],
+      "execution_map": [
+        "Extended roster dataclass.",
+        "Added CLI command.",
+        "Replaced launch blocks.",
+        "Added and ran tests/lints."
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P007",
+      "residual_risk": [
+        "Generated launch commands are shell snippets executed by `eval` from trusted repository code. This is acceptable for this controlled deployment script, but the roster module now owns shell quoting discipline."
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Worker registry, process runner, generic worker, outbox workers, health, scheduler, task, saga, and roster tests passed together."
+      ],
+      "summary": "P007 is successful. Runtime launch commands are now generated from the canonical roster and `scripts/start.sh` no longer owns a second worker launch list."
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/checks/C003.md",
+      "created_at": "2026-05-08T05:55:42+00:00",
+      "criteria_map": [
+        "One canonical roster owns worker list: met.",
+        "Runtime assembly imports canonical roster: met.",
+        "Start/deploy/lint checks consume canonical roster: met.",
+        "No stale separate hard-coded worker roster in operational paths: met after P007.",
+        "Tests/lints verify operational references: met."
+      ],
+      "evidence": [
+        "Canonical source: `novaic-agent-runtime/task_queue/workers/runtime_roster.py`.",
+        "Shell bridge: `novaic-agent-runtime/scripts/runtime_worker_roster.py`.",
+        "Runtime registry consumes `RUNTIME_WORKER_MODES`.",
+        "`scripts/start.sh` consumes `process-checks` and `launch-commands`.",
+        "`deploy status` consumes `process-checks`.",
+        "Fresh-smoke consumes `log-files`.",
+        "CI guards verify roster consumption and reject manual start launch loops."
+      ],
+      "execution_map": [
+        "P002 created roster and wired supervision/status/log checks.",
+        "P007 completed launch command cutover.",
+        "Tests and lints were added/updated."
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P002",
+      "residual_risk": [
+        "The roster owns shell snippets for launch generation, so future launch changes must update `runtime_roster.py` and should be covered by roster tests."
+      ],
+      "result_ids": [
+        "R001",
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Worker registry, process runner, generic worker, session/saga outbox, health, scheduler, task/saga handler, business lifecycle-free guard, roster SSOT tests, shell syntax, and deploy lints passed."
+      ],
+      "summary": "P002 is now successful after follow-up P007. Worker command modes, supervised process roles, log expectations, deploy status checks, fresh-smoke runtime logs, and launch commands now flow from one canonical roster."
+    },
+    "C004": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/checks/C004.md",
+      "created_at": "2026-05-08T05:58:29+00:00",
+      "criteria_map": [
+        "No `BlobPayloadPolicy.from_env()` in constructor: met.",
+        "No `time.time` default in constructor: met.",
+        "Production wiring still clear: met via `build_workspace_registry()`.",
+        "Tests verify explicit deterministic constructor: met."
+      ],
+      "evidence": [
+        "Constructor signature requires `payload_blob_policy` and `clock`.",
+        "Constructor test fails if `BlobPayloadPolicy.from_env()` or `time.time()` is called.",
+        "`build_workspace_registry()` is the only registry production helper that resolves env/time defaults.",
+        "`main_cortex.py` uses the helper."
+      ],
+      "execution_map": [
+        "Refactored registry constructor.",
+        "Added boundary factory.",
+        "Updated main wiring.",
+        "Added tests."
+      ],
+      "followup_problem_id": null,
+      "id": "C004",
+      "problem_id": "P003",
+      "residual_risk": [
+        "`Workspace` still allows default `clock or time.time`; this ticket scoped the registry boundary. A global Cortex hidden-input cleanup can address workspace defaults if required."
+      ],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Registry dependency tests plus existing workspace tests passed together."
+      ],
+      "summary": "P003 is successful. The Cortex registry no longer hides environment or clock reads in its constructor; production defaults are resolved in a named boundary factory."
+    },
+    "C005": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P004/checks/C005.md",
+      "created_at": "2026-05-08T06:04:44+00:00",
+      "criteria_map": [
+        "Old active-session helper names renamed; prompt-splice vocabulary removed from active code/tests; TRANSITIONAL allowlist marker removed; residue lint added."
+      ],
+      "evidence": [
+        "lint_retired_runtime_vocabulary passed; targeted rg returned no hits outside the guard; lint_httpx passed; runtime and business targeted tests passed."
+      ],
+      "execution_map": [
+        "T005 -> R004 covers all P004 acceptance criteria with no follow-up ticket required."
+      ],
+      "followup_problem_id": null,
+      "id": "C005",
+      "problem_id": "P004",
+      "residual_risk": [
+        "Low; P005 still needs to wire the new residue guard into the broad CI matrix."
+      ],
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Residue lint scans runtime queue/task paths, runtime tests, business dispatch paths/tests, and CI scripts."
+      ],
+      "summary": "P004 complete: retired runtime vocabulary physically cleaned and guarded."
+    },
+    "C006": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P005/checks/C006.md",
+      "created_at": "2026-05-08T06:08:26+00:00",
+      "criteria_map": [
+        "GitHub lint guard wired; canonical local matrix guard wired; no soft-fail path added; residue failure is enforced by direct commands under set -e."
+      ],
+      "evidence": [
+        "lint.yml contains lint_retired_runtime_vocabulary; run_all_tests includes runtime-worker, deploy-smoke, retired-vocabulary, and start-config guards; all direct guard runs and root pytest passed."
+      ],
+      "execution_map": [
+        "T006 -> R005 covers P005; complete package matrix is reserved for P006 global verification."
+      ],
+      "followup_problem_id": null,
+      "id": "C006",
+      "problem_id": "P005",
+      "residual_risk": [
+        "Low; P006 will run broader global verification."
+      ],
+      "result_ids": [
+        "R005"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Checked wiring by rg and executed every newly required guard command directly."
+      ],
+      "summary": "P005 complete: CI and local full-matrix entries now run the runtime architecture guards."
+    },
+    "C007": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P006/checks/C007.md",
+      "created_at": "2026-05-08T06:14:57+00:00",
+      "criteria_map": [
+        "Global scans clean; architecture guards pass; FSM/DSL package tests pass; only failure was fixed directly; root is ready for final check."
+      ],
+      "evidence": [
+        "scripts/run_all_tests.sh passed across root and package suites; all workflow guard commands passed; retired vocabulary scan clean; generated artifacts lint passed."
+      ],
+      "execution_map": [
+        "T007 -> R006 covers global verification with no follow-up required."
+      ],
+      "followup_problem_id": null,
+      "id": "C007",
+      "problem_id": "P006",
+      "residual_risk": [
+        "Low; remote deployment was out of P006 scope."
+      ],
+      "result_ids": [
+        "R006"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Full matrix plus manual workflow lints cover pytest, shell guards, Python guards, residue scans, and artifact hygiene."
+      ],
+      "summary": "P006 complete: full matrix and GitHub lint guard surface passed, with one stale roster test corrected."
+    },
+    "C008": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C008.md",
+      "created_at": "2026-05-08T06:16:01+00:00",
+      "criteria_map": [
+        "FSM runner, worker roster/DSL, Cortex explicit boundary, cleanup, CI wiring, and final verification criteria are satisfied by child problems."
+      ],
+      "evidence": [
+        "Child checks P001-P007 are successful; scripts/run_all_tests.sh passed; workflow lint commands passed; residue scans and artifact lint passed."
+      ],
+      "execution_map": [
+        "T000 split into P001-P006 plus P007 follow-up; all children reached success; R007 records root closure."
+      ],
+      "followup_problem_id": null,
+      "id": "C008",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Low for repo state; remote deployment remains a separate deploy ticket."
+      ],
+      "result_ids": [
+        "R007"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Full package matrix, root guards, workflow lints, residue scans, and generated artifact hygiene were executed."
+      ],
+      "summary": "P000 complete: all identified FSM substrate + business DSL gaps are closed in the repository verification scope."
+    }
+  },
+  "counters": {
+    "check": 9,
+    "event": 98,
+    "problem": 8,
+    "result": 8,
+    "ticket": 8
+  },
+  "created_at": "2026-05-08T05:36:14+00:00",
+  "ledger_id": "L20260508-133614",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C008"
+      ],
+      "created_at": "2026-05-08T05:36:14+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "补齐 FSM 基建 + 业务 DSL 全部 GAP",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R007"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P001",
+        "P002",
+        "P003",
+        "P004",
+        "P005",
+        "P006"
+      ],
+      "success_criteria": [
+        "Generic FSM Runner 承接 Session/Task/Saga 共同 transition/outbox/projection 流程",
+        "业务 worker role/effect/action 进一步 DSL 化，旧 Python wiring/厚 engine 收薄或纳入清晰基建边界",
+        "Cortex registry 不再从构造器隐式读取 env/time，依赖由 startup boundary 显式注入",
+        "旧命名/退休注释/transitional allowlist 清理到不会误导未来 agent",
+        "测试矩阵进入 CI 或等价强门禁，worker roster 具备单一 SSOT",
+        "全程删除旧路径，不保留向后兼容分支；所有新逻辑必须接入活路径并有守卫"
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "补齐 FSM 基建 + 业务 DSL 全部 GAP",
+      "updated_at": "2026-05-08T06:16:01+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-08T05:37:14+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Generic FSM Runner 接入 Session/Task/Saga",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Generic runner/substrate 承接重复 transition/state/outbox mechanics；至少一个活路径接入，且 Session/Task/Saga 重复代码减少或被统一 helper 管控",
+        "不得保留未使用 runner；必须有 tests/lints 证明活路径使用"
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "Generic FSM Runner 接入 Session/Task/Saga",
+      "updated_at": "2026-05-08T05:45:05+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [
+        "C001",
+        "C003"
+      ],
+      "created_at": "2026-05-08T05:37:14+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Worker DSL 与 roster SSOT 收口",
+      "followup_ids": [
+        "P007"
+      ],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P007"
+      ],
+      "success_criteria": [
+        "worker roster 有单一 machine-readable SSOT，start/deploy/lint/docs 至少由该 SSOT 校验或消费",
+        "business handler/assembly 进一步收薄并有 guard"
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "Worker DSL 与 roster SSOT 收口",
+      "updated_at": "2026-05-08T05:55:42+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P003/README.md",
+      "check_ids": [
+        "C004"
+      ],
+      "created_at": "2026-05-08T05:37:14+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Cortex registry 显式依赖边界收口",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P003",
+      "parent_id": "P000",
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "WorkspaceRegistry 构造器不再隐式 from_env/time.time；startup boundary 显式注入 policy/clock",
+        "新增/更新测试证明缺失依赖 fail-fast 或显式传入"
+      ],
+      "ticket_ids": [
+        "T004"
+      ],
+      "title": "Cortex registry 显式依赖边界收口",
+      "updated_at": "2026-05-08T05:58:29+00:00"
+    },
+    "P004": {
+      "body_path": "problems/P000/children/P004/README.md",
+      "check_ids": [
+        "C005"
+      ],
+      "created_at": "2026-05-08T05:37:14+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "旧词汇、退休注释、transitional allowlist 清理",
+      "followup_ids": [],
+      "id": "P004",
+      "package_path": "problems/P000/children/P004",
+      "parent_id": "P000",
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "active-session 旧命名和 retired 热路径注释清理或隔离",
+        "lint_httpx transitional allowlist 删除或拆成非 transitional 明确边界"
+      ],
+      "ticket_ids": [
+        "T005"
+      ],
+      "title": "旧词汇、退休注释、transitional allowlist 清理",
+      "updated_at": "2026-05-08T06:04:44+00:00"
+    },
+    "P005": {
+      "body_path": "problems/P000/children/P005/README.md",
+      "check_ids": [
+        "C006"
+      ],
+      "created_at": "2026-05-08T05:37:14+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "CI full matrix 与架构守卫门禁接入",
+      "followup_ids": [],
+      "id": "P005",
+      "package_path": "problems/P000/children/P005",
+      "parent_id": "P000",
+      "result_ids": [
+        "R005"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "GitHub workflow 或等价 CI 配置运行 backend/full matrix 或关键 Runtime FSM/worker tests",
+        "本地 lint/test 验证通过"
+      ],
+      "ticket_ids": [
+        "T006"
+      ],
+      "title": "CI full matrix 与架构守卫门禁接入",
+      "updated_at": "2026-05-08T06:08:26+00:00"
+    },
+    "P006": {
+      "body_path": "problems/P000/children/P006/README.md",
+      "check_ids": [
+        "C007"
+      ],
+      "created_at": "2026-05-08T05:37:14+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "全局残留扫描与最终验证",
+      "followup_ids": [],
+      "id": "P006",
+      "package_path": "problems/P000/children/P006",
+      "parent_id": "P000",
+      "result_ids": [
+        "R006"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "所有子问题完成后运行 full test/lint/diff checks",
+        "账本闭合并输出剩余风险；不得隐藏未完成 gap"
+      ],
+      "ticket_ids": [
+        "T007"
+      ],
+      "title": "全局残留扫描与最终验证",
+      "updated_at": "2026-05-08T06:14:57+00:00"
+    },
+    "P007": {
+      "body_path": "problems/P000/children/P002/children/P007/README.md",
+      "check_ids": [
+        "C002"
+      ],
+      "created_at": "2026-05-08T05:52:03+00:00",
+      "created_from_check_id": "C001",
+      "created_from_ticket_id": null,
+      "description": "Make runtime worker launch commands generated from or explicitly bound to runtime_roster.py so start.sh no longer owns a second process-role list.",
+      "followup_ids": [],
+      "id": "P007",
+      "package_path": "problems/P000/children/P002/children/P007",
+      "parent_id": "P002",
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "start.sh launch path consumes canonical runtime roster",
+        "tests fail if launch roles drift from roster"
+      ],
+      "ticket_ids": [
+        "T003"
+      ],
+      "title": "Roster-driven runtime launch generation",
+      "updated_at": "2026-05-08T05:55:21+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`novaic-agent-runtime/queue_service/fsm/runner.py`",
+        "`novaic-agent-runtime/queue_service/fsm/__init__.py`",
+        "`novaic-agent-runtime/queue_service/session_ledger.py`",
+        "`novaic-agent-runtime/queue_service/task_ledger.py`",
+        "`novaic-agent-runtime/queue_service/saga_ledger.py`",
+        "`novaic-agent-runtime/queue_service/queue_db.py`",
+        "`novaic-agent-runtime/queue_service/saga_repo.py`",
+        "`novaic-agent-runtime/tests/test_pr342_generic_fsm_transition_runner.py`"
+      ],
+      "body_path": "problems/P000/children/P001/results/R000.md",
+      "created_at": "2026-05-08T05:44:41+00:00",
+      "done": [
+        "Added `queue_service.fsm.runner.FsmTransitionRunner` as a business-agnostic transition write runner.",
+        "The runner writes event, materialized state, and outbox effects in one explicit-input flow.",
+        "The runner does not read clocks, IDs, environment, random values, or global state.",
+        "Wired `SessionLedgerRepository.record_transition()` through `FsmTransitionRunner`.",
+        "Added `TaskLedgerRepository.record_transition()` and cut `TaskQueue._record_task_transition()` over to it.",
+        "Added `SagaLedgerRepository.record_transition()` and cut `SagaRepository._record_saga_transition()` over to it.",
+        "Removed active-path direct calls to `_task_ledger.append_event/upsert_state` and `_saga_ledger.append_event/upsert_state/append_outbox`.",
+        "Added regression test `tests/test_pr342_generic_fsm_transition_runner.py`."
+      ],
+      "id": "R000",
+      "known_gaps": [],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "P001 Result - Generic FSM Runner 接入 Session/Task/Saga",
+      "ticket_id": "T001",
+      "verification": [
+        "`python3 -m compileall -q queue_service/fsm/runner.py queue_service/fsm/__init__.py queue_service/task_ledger.py queue_service/saga_ledger.py queue_service/session_ledger.py queue_service/queue_db.py queue_service/saga_repo.py tests/test_pr342_generic_fsm_transition_runner.py`",
+        "`pytest -q tests/test_pr342_generic_fsm_transition_runner.py`",
+        "`pytest -q tests/test_pr258_generic_fsm_substrate.py tests/test_pr259_generic_fsm_store_outbox.py tests/test_pr260_session_harness_generic_fsm_cutover.py tests/test_pr306_taskqueue_fsm_cutover.py tests/test_pr310_saga_repository_fsm_cutover.py tests/test_pr315_queue_fsm_final_residue_guard.py tests/test_pr342_generic_fsm_transition_runner.py`",
+        "All targeted checks passed: 23 tests."
+      ]
+    },
+    "R001": {
+      "artifacts": [
+        "`novaic-agent-runtime/task_queue/workers/runtime_roster.py`",
+        "`novaic-agent-runtime/scripts/runtime_worker_roster.py`",
+        "`novaic-agent-runtime/task_queue/workers/registry.py`",
+        "`novaic-agent-runtime/task_queue/workers/command_specs.py`",
+        "`scripts/start.sh`",
+        "`deploy`",
+        "`scripts/ci/lint_runtime_worker_supervision.py`",
+        "`scripts/ci/lint_deploy_fresh_smoke.py`",
+        "`docs/runbooks/deploy.md`",
+        "`novaic-agent-runtime/tests/test_pr343_runtime_worker_roster_ssot.py`",
+        "`novaic-agent-runtime/tests/test_pr337_worker_command_registry.py`"
+      ],
+      "body_path": "problems/P000/children/P002/results/R001.md",
+      "created_at": "2026-05-08T05:51:19+00:00",
+      "done": [
+        "Added canonical runtime roster module `task_queue.workers.runtime_roster`.",
+        "Added shell-facing CLI `novaic-agent-runtime/scripts/runtime_worker_roster.py`.",
+        "`WorkerRegistry` now preserves canonical worker mode order from `RUNTIME_WORKER_MODES`.",
+        "`scripts/start.sh` verifies required runtime subprocesses by consuming `runtime_worker_roster.py process-checks`.",
+        "`deploy status` consumes the same process roster instead of hard-coded `check_role` calls.",
+        "Deploy fresh-smoke consumes `runtime_worker_roster.py log-files` for runtime/subscriber logs.",
+        "Updated CI guards to verify roster consumption and reject duplicated hard-coded role checks.",
+        "Updated deploy runbook to point to the runtime roster SSOT.",
+        "Added `tests/test_pr343_runtime_worker_roster_ssot.py`."
+      ],
+      "id": "R001",
+      "known_gaps": [],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "P002 Result - Worker DSL 与 roster SSOT 收口",
+      "ticket_id": "T002",
+      "verification": [
+        "`python3 scripts/ci/lint_runtime_worker_supervision.py`",
+        "`python3 scripts/ci/lint_deploy_fresh_smoke.py`",
+        "`bash -n scripts/start.sh`",
+        "`bash -n deploy`",
+        "`python3 -m py_compile novaic-agent-runtime/task_queue/workers/command_specs.py novaic-agent-runtime/task_queue/workers/runtime_roster.py novaic-agent-runtime/task_queue/workers/registry.py novaic-agent-runtime/scripts/runtime_worker_roster.py scripts/ci/lint_runtime_worker_supervision.py scripts/ci/lint_deploy_fresh_smoke.py`",
+        "`pytest -q tests/test_pr337_worker_command_registry.py tests/test_pr335_worker_residue_guards.py tests/test_pr343_runtime_worker_roster_ssot.py`",
+        "`pytest -q tests/test_pr323_generic_worker_contracts.py tests/test_pr324_generic_worker_loop.py tests/test_pr326_session_outbox_generic_worker.py tests/test_pr327_saga_outbox_generic_worker.py tests/test_pr328_health_generic_worker.py tests/test_pr329_scheduler_generic_worker.py tests/test_pr331_task_worker_handler_cutover.py tests/test_pr333_saga_worker_handler_cutover.py tests/test_pr334_worker_process_runner.py tests/test_pr335_worker_residue_guards.py tests/test_pr337_worker_command_registry.py tests/test_pr338_business_handlers_lifecycle_free.py tests/test_pr343_runtime_worker_roster_ssot.py`",
+        "All targeted checks passed: 54 tests in the worker regression group."
+      ]
+    },
+    "R002": {
+      "artifacts": [
+        "`novaic-agent-runtime/task_queue/workers/runtime_roster.py`",
+        "`novaic-agent-runtime/scripts/runtime_worker_roster.py`",
+        "`scripts/start.sh`",
+        "`scripts/ci/lint_runtime_worker_supervision.py`",
+        "`novaic-agent-runtime/tests/test_pr343_runtime_worker_roster_ssot.py`"
+      ],
+      "body_path": "problems/P000/children/P002/children/P007/results/R002.md",
+      "created_at": "2026-05-08T05:55:02+00:00",
+      "done": [
+        "Extended `RuntimeProcessRole` with canonical `launch_commands`.",
+        "Added `runtime_launch_commands()` and CLI command `runtime_worker_roster.py launch-commands`.",
+        "Replaced manual worker launch loops/blocks in `scripts/start.sh` with `runtime_roster launch-commands`.",
+        "Added tests that CLI launch output matches canonical roster.",
+        "Added lint checks that reject reintroduced manual launch loops in `scripts/start.sh`."
+      ],
+      "id": "R002",
+      "known_gaps": [],
+      "problem_id": "P007",
+      "root_id": "P000",
+      "summary": "P007 Result - Roster-driven runtime launch generation",
+      "ticket_id": "T003",
+      "verification": [
+        "`python3 scripts/ci/lint_runtime_worker_supervision.py`",
+        "`python3 scripts/ci/lint_deploy_fresh_smoke.py`",
+        "`bash -n scripts/start.sh`",
+        "`bash -n deploy`",
+        "`pytest -q tests/test_pr337_worker_command_registry.py tests/test_pr335_worker_residue_guards.py tests/test_pr343_runtime_worker_roster_ssot.py`",
+        "`pytest -q tests/test_pr323_generic_worker_contracts.py tests/test_pr324_generic_worker_loop.py tests/test_pr326_session_outbox_generic_worker.py tests/test_pr327_saga_outbox_generic_worker.py tests/test_pr328_health_generic_worker.py tests/test_pr329_scheduler_generic_worker.py tests/test_pr331_task_worker_handler_cutover.py tests/test_pr333_saga_worker_handler_cutover.py tests/test_pr334_worker_process_runner.py tests/test_pr335_worker_residue_guards.py tests/test_pr337_worker_command_registry.py tests/test_pr338_business_handlers_lifecycle_free.py tests/test_pr343_runtime_worker_roster_ssot.py`",
+        "All targeted checks passed: 54 tests in the worker regression group."
+      ]
+    },
+    "R003": {
+      "artifacts": [
+        "`novaic-cortex/novaic_cortex/registry.py`",
+        "`novaic-cortex/novaic_cortex/main_cortex.py`",
+        "`novaic-cortex/tests/test_workspace_registry_dependencies.py`"
+      ],
+      "body_path": "problems/P000/children/P003/results/R003.md",
+      "created_at": "2026-05-08T05:58:08+00:00",
+      "done": [
+        "`WorkspaceRegistry.__init__()` now requires explicit `payload_blob_policy` and `clock`.",
+        "Moved environment/time defaults into `build_workspace_registry()`, the production construction boundary.",
+        "Updated `main_cortex.py` to use `build_workspace_registry()`.",
+        "Added `tests/test_workspace_registry_dependencies.py` to guard constructor explicitness."
+      ],
+      "id": "R003",
+      "known_gaps": [],
+      "problem_id": "P003",
+      "root_id": "P000",
+      "summary": "P003 Result - Cortex registry 显式依赖边界收口",
+      "ticket_id": "T004",
+      "verification": [
+        "`python3 -m py_compile novaic_cortex/registry.py novaic_cortex/main_cortex.py tests/test_workspace_registry_dependencies.py`",
+        "`pytest -q tests/test_workspace_registry_dependencies.py tests/test_workspace.py tests/test_workspace_limits.py tests/test_workspace_materialize.py tests/test_workspace_paths.py`",
+        "All targeted checks passed: 24 tests."
+      ]
+    },
+    "R004": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P004/results/R004.md",
+      "created_at": "2026-05-08T06:03:19+00:00",
+      "done": [],
+      "id": "R004",
+      "known_gaps": [],
+      "problem_id": "P004",
+      "root_id": "P000",
+      "summary": "## T005 Result: 旧词汇、退休注释、transitional allowlist 清理",
+      "ticket_id": "T005",
+      "verification": []
+    },
+    "R005": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P005/results/R005.md",
+      "created_at": "2026-05-08T06:07:56+00:00",
+      "done": [],
+      "id": "R005",
+      "known_gaps": [],
+      "problem_id": "P005",
+      "root_id": "P000",
+      "summary": "## T006 Result: CI full matrix 与架构守卫门禁接入",
+      "ticket_id": "T006",
+      "verification": []
+    },
+    "R006": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P006/results/R006.md",
+      "created_at": "2026-05-08T06:14:22+00:00",
+      "done": [],
+      "id": "R006",
+      "known_gaps": [],
+      "problem_id": "P006",
+      "root_id": "P000",
+      "summary": "## T007 Result: 全局残留扫描与最终验证",
+      "ticket_id": "T007",
+      "verification": []
+    },
+    "R007": {
+      "artifacts": [],
+      "body_path": "problems/P000/results/R007.md",
+      "created_at": "2026-05-08T06:15:29+00:00",
+      "done": [],
+      "id": "R007",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "## T000 Result: 补齐 FSM 基建 + 业务 DSL 全部 GAP",
+      "ticket_id": "T000",
+      "verification": []
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "status": "doing",
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "每个 gap 都有对应实现或被证据证明不需要实现。",
+        "新 substrate/DSL 必须被活路径调用，不允许只添加未接入代码。",
+        "旧路径/旧名字/兼容分支尽量物理删除；无法删除必须有明确理由和 guard。",
+        "所有新增/修改的架构边界有测试或 lint 守卫。",
+        "全仓测试矩阵和关键 lint 通过。"
+      ],
+      "assumptions": [
+        "当前分支允许继续修改未提交代码。",
+        "不需要向后兼容旧 DB/旧 worker entrypoint/旧 HTTP allowlist。",
+        "本轮目标是代码和守卫落地，不只是设计文档。"
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "覆盖多个高影响架构 gap：FSM runner、worker DSL/roster、Cortex 边界、旧残留、CI 门禁，必须拆票逐个验收",
+      "created_at": "2026-05-08T05:36:46+00:00",
+      "id": "T000",
+      "problem_definition": "基于审计账本 `L20260508-131655` 的 7 个 gap，把当前代码从“已经有 ledger-backed FSM coordinator + generic worker substrate”继续推进到更接近完美形态：\n\n- Generic FSM Runner 承接 Session/Task/Saga 共同 transition/outbox/projection 流程。\n- 业务 worker role/effect/action 进一步 DSL 化，避免业务层继续承担大量 assembly plumbing。\n- Cortex registry 的 env/time 默认值移到 startup/composition boundary 显式注入。\n- 清理旧命名、退休注释、transitional allowlist，避免未来 agent 误读。\n- 测试矩阵进入 CI 或等价强门禁。\n- worker roster 建立单一 SSOT，由部署/启动/守卫共享。\n- 全程不保留向后兼容分支；新逻辑必须接入活路径，有测试和 lint 守卫。",
+      "problem_id": "P000",
+      "proposed_solution": "拆成子问题逐项收口：\n\n1. Generic FSM Runner substrate 与 Session/Task/Saga repo 接入。\n2. Worker role/effect/action DSL 与 roster SSOT。\n3. Cortex registry explicit dependency boundary。\n4. 旧词汇/注释/transitional allowlist 清理。\n5. CI/full test matrix 与 deploy/start guard 收口。\n6. 全局验证、残留扫描、账本关闭。\n\n每个子问题必须执行：实现、删除/迁移旧路径、补测试或 lint、运行局部验证。",
+      "result_ids": [
+        "R007"
+      ],
+      "risks": [
+        "Generic FSM Runner 抽象过度会增加复杂度；必须保持小而薄，只承接重复模式。",
+        "Worker DSL 如果一次做太大容易破坏部署脚本；需要先建立 roster SSOT，再逐步让脚本/guard 消费。",
+        "CI workflow 加 full matrix 可能增加耗时；若太重，需要拆成并行 job 而不是不接入。"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "补齐 FSM 基建 + 业务 DSL 全部 GAP",
+      "updated_at": "2026-05-08T06:15:29+00:00",
+      "verification_plan": "- 针对每个子问题运行 targeted tests/lints。\n- 最后运行 `./scripts/run_all_tests.sh`。\n- 运行 root CI lint chain 中与本改动相关的脚本。\n- `git diff --check`。"
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "新 runner 被 Session/Task/Saga 活路径至少两条使用，最好三条都使用。",
+        "Task/Saga `_record_*_transition` 不再直接调用 append_event + upsert_state + append_outbox 三件套。",
+        "Runner 单元测试证明 event/state/outbox 统一持久化和无 hidden input。",
+        "现有 FSM cutover tests 通过。"
+      ],
+      "assumptions": [
+        "不改数据库 schema。",
+        "不做历史数据兼容分支。"
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "one_go",
+      "classification_reason": "薄 runner 不改 schema，能一次实现并用 targeted FSM tests 验证",
+      "created_at": "2026-05-08T05:37:56+00:00",
+      "id": "T001",
+      "problem_definition": "当前已有 `FsmSqliteStore`，但各 domain ledger/repo 仍手写重复的 append event、upsert state、append outbox 组合流程。需要引入更上层但仍很薄的 Generic FSM Runner，让状态转移的持久化机制统一，并把它接入活路径，避免只添加未使用基础设施。",
+      "problem_id": "P001",
+      "proposed_solution": "实现一个小型 `queue_service.fsm.runner`：\n\n- `FsmTransitionRecord` 描述 machine_id、event、state、outbox effects。\n- `FsmTransitionRunner.record(...)` 统一完成 event append、state upsert、outbox append。\n- runner 不读取 clock/id/env/db 外部状态；所有 id/time/payload 由调用方显式传入。\n- 将 `TaskLedgerRepository` 和 `SagaLedgerRepository` 接入 runner，用于通用 event/state/outbox mechanics。\n- Session 的 `record_transition` 仍保留 session-specific input consumption，但内部可复用 runner 做 event/state/outbox 主体。",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "抽象过度会掩盖 domain projection 差异；runner 只承接通用持久化，不承接业务 projection merge。",
+        "Session input-consumed 逻辑是 session-specific，不能硬塞进 generic runner。"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Generic FSM Runner 接入 Session/Task/Saga",
+      "updated_at": "2026-05-08T05:44:41+00:00",
+      "verification_plan": "- 新增/更新 runner tests。\n- 运行 FSM targeted tests。\n- 搜索 runner 使用点，确认不是 dead code。"
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "One canonical roster module/file owns the queue runtime worker list.",
+        "Runtime assembly imports the canonical roster instead of hard-coded duplicate lists.",
+        "Start/deploy/lint checks consume the canonical roster or an exported generated view.",
+        "No stale separate hard-coded worker roster remains in core operational paths.",
+        "Tests/lints verify that startup/deploy/supervision references match the canonical roster."
+      ],
+      "assumptions": [
+        "We do not need backward compatibility with old worker names unless they are still active in current deployment.",
+        "The business worker implementation can remain in business modules; this ticket only makes roster/assembly SSOT."
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T002.md",
+      "classification": "one_go",
+      "classification_reason": "single coherent roster/assembly cutover with targeted guards",
+      "created_at": "2026-05-08T05:46:13+00:00",
+      "id": "T002",
+      "problem_definition": "Worker assembly has a generic substrate, but worker roster and boot commands are still repeated across runtime code, `scripts/start.sh`, `deploy`, lint scripts, and documentation. This makes old worker paths easy to leave behind and makes runtime topology drift from code.",
+      "problem_id": "P002",
+      "proposed_solution": "Create one runtime-owned worker roster source of truth and generate/consume all operational worker lists from it. Keep worker computation in business modules, but make process names, commands, service names, and supervision expectations derive from a small infrastructure registry.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "Deployment scripts may have shell constraints that make direct Python imports awkward. If so, generate a plain text or JSON roster artifact from the canonical module and make scripts consume that.",
+        "Some documentation may intentionally describe old topology. Mark it retired or update it, rather than carrying compatibility text."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "P002 Ticket - Worker DSL 与 roster SSOT 收口",
+      "updated_at": "2026-05-08T05:51:19+00:00",
+      "verification_plan": "- Inspect current worker definitions in runtime code, scripts, deploy, CI lint scripts, and docs.\n- Add or update a focused test/lint that compares operational references with the canonical roster.\n- Run targeted worker assembly / supervision tests.\n- Run relevant shell syntax/lint checks for touched scripts."
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "`runtime_roster.py` owns launch command generation for all runtime/subscriber roles.",
+        "`scripts/start.sh` launches runtime workers by consuming `runtime_worker_roster.py launch-commands`.",
+        "No manual task/saga/outbox/health/scheduler/subscriber launch loops or duplicate process role lists remain in `scripts/start.sh`.",
+        "Tests/lints fail if launch commands drift from the roster."
+      ],
+      "assumptions": [
+        "Backward compatibility with old launch block structure is not needed."
+      ],
+      "body_path": "problems/P000/children/P002/children/P007/tickets/T003.md",
+      "classification": "one_go",
+      "classification_reason": "single launch view cutover over existing roster",
+      "created_at": "2026-05-08T05:52:49+00:00",
+      "id": "T003",
+      "problem_definition": "`scripts/start.sh` now consumes the canonical runtime roster for verification, but it still manually launches each runtime worker role with duplicated loops and command blocks. This leaves a second operational worker list in the launch path.",
+      "problem_id": "P007",
+      "proposed_solution": "Move runtime worker launch commands into the canonical roster view and make `scripts/start.sh` execute the generated launch commands. Keep URL/config argument variables in `start.sh`, but remove worker role/count/log duplication from the script.",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [
+        "Generated shell commands rely on trusted repository code and shell variables defined by `start.sh`; quote carefully and verify syntax."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "P007 Ticket - Roster-driven runtime launch generation",
+      "updated_at": "2026-05-08T05:55:02+00:00",
+      "verification_plan": "- Add/update tests for `launch-commands`.\n- Run worker roster SSOT tests.\n- Run runtime worker supervision lint and deploy fresh-smoke lint.\n- Run `bash -n scripts/start.sh` and `bash -n deploy`."
+    },
+    "T004": {
+      "acceptance_criteria": [
+        "`WorkspaceRegistry.__init__()` does not call `BlobPayloadPolicy.from_env()`.",
+        "`WorkspaceRegistry.__init__()` does not use `time.time` or any clock default internally.",
+        "Production wiring still has a clear factory/boundary where env/time are read once.",
+        "Tests verify the constructor is explicit and deterministic."
+      ],
+      "assumptions": [
+        "Backward compatibility for implicit constructor behavior is not required."
+      ],
+      "body_path": "problems/P000/children/P003/tickets/T004.md",
+      "classification": "one_go",
+      "classification_reason": "single explicit dependency boundary refactor",
+      "created_at": "2026-05-08T05:56:07+00:00",
+      "id": "T004",
+      "problem_definition": "`WorkspaceRegistry` still creates default collaborators internally, including payload policy from environment and wall-clock time. That makes registry behavior depend on hidden process state instead of explicit constructor inputs.",
+      "problem_id": "P003",
+      "proposed_solution": "Move payload policy and clock construction to explicit boundary helpers. Keep a convenience factory for production wiring if needed, but make the registry constructor require explicit dependencies and keep domain behavior deterministic.",
+      "result_ids": [
+        "R003"
+      ],
+      "risks": [
+        "Callers that relied on zero-argument defaults must be updated to pass explicit dependencies or call the production factory."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "P003 Ticket - Cortex registry 显式依赖边界收口",
+      "updated_at": "2026-05-08T05:58:08+00:00",
+      "verification_plan": "- Inspect `novaic-cortex` registry and callers.\n- Refactor constructor/factory.\n- Add/update focused tests.\n- Run Cortex tests around workspace registry/shell if present."
+    },
+    "T005": {
+      "acceptance_criteria": [
+        "Known old active-session names are renamed or clearly isolated as compatibility-free current state APIs.",
+        "Retired prompt-splice comments are removed or rewritten to current behavior.",
+        "`TRANSITIONAL` allowlist residue is removed from current CI guard scripts.",
+        "Tests/lints verify no targeted stale terms remain in active code paths."
+      ],
+      "assumptions": [
+        "No backward compatibility is required for legacy helper names."
+      ],
+      "body_path": "problems/P000/children/P004/tickets/T005.md",
+      "classification": "one_go",
+      "classification_reason": "bounded residue cleanup and guard tightening",
+      "created_at": "2026-05-08T05:58:52+00:00",
+      "id": "T005",
+      "problem_definition": "The repo still contains legacy wording and transitional guard allowlists that imply retired paths are active. This residue is dangerous in AI-assisted maintenance because future edits may preserve or revive old concepts by mistake.",
+      "problem_id": "P004",
+      "proposed_solution": "Search for known stale terms and transitional markers, remove or rename active code/docs/tests where the old wording is no longer accurate, and tighten CI guards so transitional allowlists are not silently accepted.",
+      "result_ids": [
+        "R004"
+      ],
+      "risks": [
+        "Some historical roadmap docs may intentionally mention retired names. Do not churn archival docs unless they affect active guidance."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "P004 Ticket - 旧词汇、退休注释、transitional allowlist 清理",
+      "updated_at": "2026-05-08T06:03:19+00:00",
+      "verification_plan": "- Run `rg` for stale terms and transitional markers.\n- Patch current code/tests/docs/lints.\n- Run affected tests/lints.\n- Add focused residue guard if existing guard does not cover the terms."
+    },
+    "T006": {
+      "acceptance_criteria": [
+        "lint.yml runs lint_retired_runtime_vocabulary; run_all_tests runs root architecture guards before package pytest suites; no soft-fail or compatibility bypass is introduced."
+      ],
+      "assumptions": [
+        "Existing lint workflow provides Python and ripgrep through its current setup."
+      ],
+      "body_path": "problems/P000/children/P005/tickets/T006.md",
+      "classification": "one_go",
+      "classification_reason": "Scope is a bounded CI wiring pass: update workflow/matrix guard calls, run syntax and guard verification, then record result.",
+      "created_at": "2026-05-08T06:06:10+00:00",
+      "id": "T006",
+      "problem_definition": "Standalone FSM/worker/cleanup guards must be part of canonical CI/full-matrix execution so architecture drift cannot pass when only standard checks run.",
+      "problem_id": "P005",
+      "proposed_solution": "Wire the retired runtime vocabulary guard into GitHub lint and the canonical local test matrix; keep architecture guard commands explicit and deterministic.",
+      "result_ids": [
+        "R005"
+      ],
+      "risks": [
+        "Full package matrix can be expensive; reserve complete package verification for P006 if needed."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "CI full matrix 与架构守卫门禁接入",
+      "updated_at": "2026-05-08T06:07:56+00:00",
+      "verification_plan": "Run syntax checks for changed CI files, direct guard commands, and the canonical root guard subset."
+    },
+    "T007": {
+      "acceptance_criteria": [
+        "No untriaged active-code residue; architecture guards pass; targeted FSM/DSL tests pass; failures become follow-up tickets; root can be checked after all children pass."
+      ],
+      "assumptions": [
+        "P006 validates repository state and wiring, not remote deployment."
+      ],
+      "body_path": "problems/P000/children/P006/tickets/T007.md",
+      "classification": "one_go",
+      "classification_reason": "Final verification is an executable check pass; split only if it finds a concrete failure.",
+      "created_at": "2026-05-08T06:09:06+00:00",
+      "id": "T007",
+      "problem_definition": "Final global closure pass must prove the new FSM substrate, business DSL, worker roster, and explicit-boundary direction is the live path with no untriaged active-code residue.",
+      "problem_id": "P006",
+      "proposed_solution": "Run global scans, architecture guards, targeted affected package tests, the canonical full matrix if feasible, and diff hygiene checks; split any concrete failure into follow-up tickets.",
+      "result_ids": [
+        "R006"
+      ],
+      "risks": [
+        "Full matrix may reveal unrelated existing failures; triage precisely instead of hiding them."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "全局残留扫描与最终验证",
+      "updated_at": "2026-05-08T06:14:22+00:00",
+      "verification_plan": "Run CI guards, residue rg scans, targeted pytest groups, scripts/run_all_tests.sh when feasible, and git status/diff-stat artifact hygiene."
+    }
+  },
+  "updated_at": "2026-05-08T06:16:01+00:00"
+}

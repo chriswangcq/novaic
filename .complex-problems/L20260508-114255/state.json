@@ -1,0 +1,547 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C000.md",
+      "created_at": "2026-05-08T03:48:01+00:00",
+      "criteria_map": [
+        "Substrate boundary satisfied; evidence-based audit satisfied; next gaps identified in assembly declarativity and DB startup policy extraction."
+      ],
+      "evidence": [
+        "Inspected queue_service/worker contracts/generic/concurrent/policies/reporters/sources, queue_service/fsm core/sqlite_store, and task_queue/workers worker assembly modules with find/wc/rg/nl."
+      ],
+      "execution_map": [
+        "T001 inspected files and recorded R000; this check closes P001."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P001",
+      "residual_risk": [
+        "Assembly layer remains thick and may reintroduce business policy unless future tickets make it declarative."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "A new worker can reuse GenericWorker/ConcurrentGenericWorker without substrate edits, but would still likely add imperative assembly code to worker_assemblies.py."
+      ],
+      "summary": "Core FSM/worker substrate is business-agnostic; remaining gap is thick imperative assembly rather than declarative worker DSL."
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/checks/C001.md",
+      "created_at": "2026-05-08T03:50:38+00:00",
+      "criteria_map": [
+        "Small DSL handlers identified; imperative engines identified; lifecycle residue checked; file-level evidence recorded."
+      ],
+      "evidence": [
+        "Inspected handler/action engine files with wc/rg/nl and ran 22 targeted worker-boundary tests."
+      ],
+      "execution_map": [
+        "T002 inspected worker modules, ran tests, recorded R001, and this check closes P002."
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P002",
+      "residual_risk": [
+        "Strict business-only DSL is not achieved until action engines emit explicit decisions/effects and adapters execute them."
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Handler changes are guarded; engine changes can still grow imperative side effects without a declarative effect-plan guard."
+      ],
+      "summary": "Handler layer is a thin typed DSL boundary; action engines remain imperative effect/protocol adapters."
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/checks/C002.md",
+      "created_at": "2026-05-08T03:52:56+00:00",
+      "criteria_map": [
+        "Retired entrypoints absent; unified modes registered; deployment process layout confirmed; residue/supervision gaps identified."
+      ],
+      "evidence": [
+        "Checked retired file absence, main_novaic registry delegation, registry modes, start scripts, deploy status, remote ps, and worker logs."
+      ],
+      "execution_map": [
+        "T003 inspected local and remote wiring, recorded R002, and this check closes P003."
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P003",
+      "residual_risk": [
+        "Append-only logs and shell-script supervision can still confuse or weaken operations."
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "No live old worker path found; if a worker dies later, shell backgrounding may not restart it automatically."
+      ],
+      "summary": "Runtime and deployment use unified main_novaic.py worker modes; retired worker files are absent; remaining gaps are ops hardening and stale comments/logs."
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P004/checks/C003.md",
+      "created_at": "2026-05-08T03:55:06+00:00",
+      "criteria_map": [
+        "Protected invariants confirmed; docs mostly aligned; missing guardrails identified; recommendations recorded."
+      ],
+      "evidence": [
+        "Inspected tests/docs and ran 35-test and 14-test targeted batches; found PR-338 stale status mismatch."
+      ],
+      "execution_map": [
+        "T004 inspected docs/tests, ran tests, recorded R003, and this check closes P004."
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P004",
+      "residual_risk": [
+        "Verification is strong for current target but not yet for the stricter business-only DSL ideal."
+      ],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Old worker entrypoints/handler lifecycle regressions are caught; imperative action-engine growth and stale docs likely are not."
+      ],
+      "summary": "Tests protect current FSM/worker substrate and thin handlers; missing guardrails remain for pure effect-plan engines, assembly thinness, deploy-log freshness, and docs status consistency."
+    },
+    "C004": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C004.md",
+      "created_at": "2026-05-08T03:56:19+00:00",
+      "criteria_map": [
+        "Current substrate/business DSL gap audited; evidence came from local code/tests/deploy/docs; achieved/gaps/risks/next tickets recorded."
+      ],
+      "evidence": [
+        "P001-P004 inspected code/docs/tests/deploy; targeted tests passed; remote process state verified unified worker modes."
+      ],
+      "execution_map": [
+        "T000 split into P001-P004, all child checks succeeded, R004 consolidated parent findings."
+      ],
+      "followup_problem_id": null,
+      "id": "C004",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Risk is overclaiming completion; next hardening should target effect-plan DSL, assembly shrink, docs lint, deploy smoke freshness."
+      ],
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Old worker path is not live; strict few-line business DSL is not complete because engines/assembly remain imperative."
+      ],
+      "summary": "Full audit complete: real FSM/worker substrate and thin handler migration achieved; strict business-only DSL still has action-engine and assembly gaps."
+    }
+  },
+  "counters": {
+    "check": 5,
+    "event": 60,
+    "problem": 5,
+    "result": 5,
+    "ticket": 5
+  },
+  "created_at": "2026-05-08T03:42:55+00:00",
+  "ledger_id": "L20260508-114255",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C004"
+      ],
+      "created_at": "2026-05-08T03:42:55+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "全面审核当前 FSM 基建与业务 DSL 设计 gap",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P001",
+        "P002",
+        "P003",
+        "P004"
+      ],
+      "success_criteria": [
+        "审计当前 runtime worker/FSM substrate/业务 DSL 代码与设计目标的差距",
+        "证据必须来自本地代码、测试、部署脚本或文档，不凭记忆",
+        "输出必须列明已达成、未达成、风险、下一步优化工单"
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "全面审核当前 FSM 基建与业务 DSL 设计 gap",
+      "updated_at": "2026-05-08T03:56:19+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-08T03:43:57+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Audit generic FSM worker substrate boundaries",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Identify reusable infra contracts, lifecycle ownership, explicit dependencies, and substrate/business leakage"
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "Audit generic FSM worker substrate boundaries",
+      "updated_at": "2026-05-08T03:48:01+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-08T03:43:57+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Audit business DSL worker layer",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Verify task/saga/health/scheduler business modules are DSL plus small handlers and list residue"
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "Audit business DSL worker layer",
+      "updated_at": "2026-05-08T03:50:38+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P003/README.md",
+      "check_ids": [
+        "C002"
+      ],
+      "created_at": "2026-05-08T03:43:57+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Audit runtime wiring deployment and old-path residue",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P003",
+      "parent_id": "P000",
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Confirm new registry/substrate paths are actually connected, deployed scripts use them, and retired paths are removed"
+      ],
+      "ticket_ids": [
+        "T003"
+      ],
+      "title": "Audit runtime wiring deployment and old-path residue",
+      "updated_at": "2026-05-08T03:52:56+00:00"
+    },
+    "P004": {
+      "body_path": "problems/P000/children/P004/README.md",
+      "check_ids": [
+        "C003"
+      ],
+      "created_at": "2026-05-08T03:43:57+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Audit verification guardrails and docs alignment",
+      "followup_ids": [],
+      "id": "P004",
+      "package_path": "problems/P000/children/P004",
+      "parent_id": "P000",
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Check tests, CI guardrails, docs, and missing coverage for the intended perfect shape"
+      ],
+      "ticket_ids": [
+        "T004"
+      ],
+      "title": "Audit verification guardrails and docs alignment",
+      "updated_at": "2026-05-08T03:55:06+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`find queue_service/worker queue_service/fsm task_queue/workers -maxdepth 2 -type f`",
+        "`wc -l queue_service/worker/*.py queue_service/fsm/*.py task_queue/workers/command_specs.py task_queue/workers/process_runner.py task_queue/workers/registry.py task_queue/workers/worker_assemblies.py`",
+        "`rg -n \"Task|Saga|Session|Business|Cortex|Queue|agent|wake|saga|task|session|business|cortex|http|sqlite|Database|ServiceConfig\" ...`"
+      ],
+      "body_path": "problems/P000/children/P001/results/R000.md",
+      "created_at": "2026-05-08T03:45:45+00:00",
+      "done": [
+        "Inspected generic worker contracts and lifecycle loops.",
+        "Inspected generic FSM primitives and SQLite store.",
+        "Inspected worker command registry and assembly layer.",
+        "Searched substrate files for task/saga/session/business/cortex/http/sqlite leakage."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "`worker_assemblies.py` is still a thick imperative composition root. It is much better than business handlers owning lifecycle, but it is not yet a fully declarative component assembly DSL.",
+        "Startup DB retry policy lives in `worker_assemblies.py` (`_connect_db_with_schema_retry`) rather than a shared app-infra DB connector policy module.",
+        "The generic `FsmSqliteStore` is generic, but still low-level SQL oriented; it is a store substrate, not a full event-sourced application runtime that owns migrations, replay, and invariant checking end-to-end."
+      ],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "The reusable substrate is substantially clean. `queue_service/worker` and `queue_service/fsm/core.py` are business-agnostic and use explicit ports/state/event inputs. The main remaining gap is not inside the generic substrate but in the application assembly layer: `task_queue/workers/worker_assemblies.py` is large and directly constructs service clients, DB repositories, metrics servers, and business engines. This is acceptable as an application composition root, but it is not yet the \"tiny declarative assembly DSL\" ideal.",
+      "ticket_id": "T001",
+      "verification": [
+        "`queue_service/worker/contracts.py:1-5` explicitly states the module must not import task/saga/session business modules; the file defines generic `WorkerJob`, `WorkerResult`, `WorkerJobSpec`, `JobSource`, `JobHandler`, and `JobReporter`.",
+        "`queue_service/worker/generic_worker.py:31-144` owns poll/handle/report mechanics without domain branching.",
+        "`queue_service/worker/concurrent_worker.py:20-170` owns bounded concurrency without task/saga-specific branching.",
+        "`queue_service/fsm/core.py:1-65` is IO-free and takes explicit state/event/reducer/context.",
+        "`queue_service/fsm/sqlite_store.py:42-48` is table/column configured and states that values flow through explicit constructor configuration rather than clocks/env/external state.",
+        "`wc -l` shows generic substrate size is modest: `queue_service/worker/*.py` totals 697 lines; `queue_service/fsm/core.py` is 65 lines.",
+        "Gap evidence: `task_queue/workers/worker_assemblies.py` is 652 lines and contains application-specific imports/construction such as `BusinessClient`, `TaskQueueClient`, `SagaOrchestrator`, `Database`, `start_metrics_http_server`, and `get_assembler`."
+      ]
+    },
+    "R001": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P002/results/R001.md",
+      "created_at": "2026-05-08T03:50:12+00:00",
+      "done": [],
+      "id": "R001",
+      "known_gaps": [],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "## Result: P002 Business DSL Worker Layer Audit",
+      "ticket_id": "T002",
+      "verification": []
+    },
+    "R002": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P003/results/R002.md",
+      "created_at": "2026-05-08T03:52:32+00:00",
+      "done": [],
+      "id": "R002",
+      "known_gaps": [],
+      "problem_id": "P003",
+      "root_id": "P000",
+      "summary": "## Result: P003 Runtime Wiring Deployment And Old-Path Residue Audit",
+      "ticket_id": "T003",
+      "verification": []
+    },
+    "R003": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P004/results/R003.md",
+      "created_at": "2026-05-08T03:54:42+00:00",
+      "done": [],
+      "id": "R003",
+      "known_gaps": [],
+      "problem_id": "P004",
+      "root_id": "P000",
+      "summary": "## Result: P004 Verification Guardrails And Docs Alignment Audit",
+      "ticket_id": "T004",
+      "verification": []
+    },
+    "R004": {
+      "artifacts": [],
+      "body_path": "problems/P000/results/R004.md",
+      "created_at": "2026-05-08T03:55:53+00:00",
+      "done": [],
+      "id": "R004",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "## Result: P000 Full Audit Of Current FSM Substrate And Business DSL Gap",
+      "ticket_id": "T000",
+      "verification": []
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "status": "doing",
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "The audit names concrete code files and evidence commands.",
+        "The audit distinguishes achieved state from remaining gap.",
+        "The audit includes at least one stress test/failure mode per major area.",
+        "The audit lists next optimization tickets, not vague future work.",
+        "The final check maps all root criteria to evidence."
+      ],
+      "assumptions": [
+        "Current working tree represents the latest intended implementation.",
+        "The desired ideal is: generic infrastructure owns lifecycle/source/reporting/process concerns; business layer owns only declarative specs and pure-ish computation handlers with explicit dependencies."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "Audit is broad and needs separate evidence paths for substrate, business DSL, runtime wiring, and verification coverage",
+      "created_at": "2026-05-08T03:43:37+00:00",
+      "id": "T000",
+      "problem_definition": "The user wants a comprehensive audit of the current code against the intended design: a generic FSM/worker substrate with business logic reduced to declarative DSL and small computation handlers. The audit must identify what is already achieved, what still leaks infrastructure into business code, where wiring/deployment/testing gaps remain, and what optimization tickets should exist next.",
+      "problem_id": "P000",
+      "proposed_solution": "Split the audit into focused child problems:\n\n- Inspect the generic worker/FSM substrate boundaries and whether they are reusable infrastructure rather than business-specific code.\n- Inspect business worker modules for DSL-only shape and residue such as lifecycle loops, clients, hidden dependencies, or direct infrastructure calls.\n- Inspect runtime wiring, deployment scripts, and process topology to confirm new code is actually connected and old paths are physically retired.\n- Inspect verification coverage, guardrails, and documentation alignment with the desired design.\n\nThen summarize the child results into a root gap report with concrete evidence pointers and next optimization tickets.",
+      "result_ids": [
+        "R004"
+      ],
+      "risks": [
+        "Broad audit scope may miss subtle runtime behavior without a live scenario replay.",
+        "Some gaps may be design tradeoffs rather than bugs; classify them explicitly.",
+        "The new ledger itself is temporary audit state and should not be confused with product code."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Full FSM And Business DSL Gap Audit",
+      "updated_at": "2026-05-08T03:55:53+00:00",
+      "verification_plan": "- Use `rg`, `find`, `git status`, line-count scans, and targeted file reads.\n- Run existing guard/test commands if needed and affordable.\n- Compare business handler files against banned infrastructure/lifecycle tokens.\n- Compare deployed/entrypoint scripts against old-path residue.\n- Record child problem results and a final success check in the schema-v6 ledger."
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "List substrate files and their responsibilities.",
+        "Identify whether the substrate itself is generic or business-coupled.",
+        "Identify remaining boundary gaps, especially in assembly code.",
+        "Provide concrete evidence pointers."
+      ],
+      "assumptions": [
+        "`queue_service/worker` is intended to be the reusable component substrate.",
+        "`task_queue/workers/worker_assemblies.py` is allowed to know application services, but should ideally become thinner over time."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "one_go",
+      "classification_reason": "Focused read-only audit of a bounded set of substrate files with direct evidence",
+      "created_at": "2026-05-08T03:44:21+00:00",
+      "id": "T001",
+      "problem_definition": "Audit whether the generic worker/FSM substrate is a clean infrastructure layer: it should own process lifecycle, polling, concurrent execution, reporting, sources, retry/policy concerns, and command assembly without embedding domain-specific business decisions.",
+      "problem_id": "P001",
+      "proposed_solution": "Inspect the substrate and assembly code:\n\n- `queue_service/worker/*`\n- `task_queue/workers/command_specs.py`\n- `task_queue/workers/process_runner.py`\n- `task_queue/workers/registry.py`\n- `task_queue/workers/worker_assemblies.py`\n- related FSM store/state code under `queue_service/fsm`\n\nLook for explicit dependency boundaries, generic contracts, lifecycle ownership, and leakage of task/saga/session-specific details into the reusable substrate.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Assembly code may be intentionally application-specific; do not misclassify it as substrate unless it lives in the reusable layer."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Audit Generic FSM Worker Substrate Boundaries",
+      "updated_at": "2026-05-08T03:45:45+00:00",
+      "verification_plan": "- Use `find`, `rg`, `sed`, and line-count scans.\n- Search for business/domain tokens inside `queue_service/worker`.\n- Inspect assembly layer separately from substrate."
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "File-level achieved/gap/risk findings for business DSL layer; identify lifecycle residue and direct side-effect orchestration; no code changes."
+      ],
+      "assumptions": [
+        "Repository state at audit time is the evidence source."
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T002.md",
+      "classification": "one_go",
+      "classification_reason": "This is an audit-only ticket over a bounded set of worker handler and action engine files; it can be solved in one evidence pass.",
+      "created_at": "2026-05-08T03:48:37+00:00",
+      "id": "T002",
+      "problem_definition": "Audit whether business worker modules are truly small explicit DSL/spec layers over the generic worker/FSM substrate.",
+      "problem_id": "P002",
+      "proposed_solution": "Inspect worker entry modules, handlers, action engines, source modules, and tests; compare against lifecycle-free explicit-dependency target.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "Some side effects are legitimate business action execution rather than generic lifecycle residue."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Audit business DSL worker layer",
+      "updated_at": "2026-05-08T03:50:12+00:00",
+      "verification_plan": "Use wc, rg, nl over task_queue/workers modules and relevant tests."
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "Confirm retired entrypoints/flags absent, registered modes present, deployment process layout matches intended worker set, and stale residue/supervision gaps are identified."
+      ],
+      "assumptions": [
+        "Read-only runtime inspection is allowed; no code changes required."
+      ],
+      "body_path": "problems/P000/children/P003/tickets/T003.md",
+      "classification": "one_go",
+      "classification_reason": "This is a bounded audit over runtime wiring, scripts, package spec, and process state; it can be solved in one evidence pass.",
+      "created_at": "2026-05-08T03:50:59+00:00",
+      "id": "T003",
+      "problem_definition": "Audit runtime entrypoints, scripts, packaging, deployment, and residue to verify new unified worker/FSM wiring is actually live.",
+      "problem_id": "P003",
+      "proposed_solution": "Inspect local entrypoints/scripts/specs/registry/process runner and reachable deployment process state.",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [
+        "Logs may include stale historical errors; deployment status may not list every role."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Audit runtime wiring deployment and old-path residue",
+      "updated_at": "2026-05-08T03:52:32+00:00",
+      "verification_plan": "Use git/test/rg/nl locally and deploy status/remote process inspection when reachable."
+    },
+    "T004": {
+      "acceptance_criteria": [
+        "Confirm protected invariants, docs/current-shape alignment, missing guardrails, and recommendations."
+      ],
+      "assumptions": [
+        "No code changes required; aspirational docs are allowed if current-state claims are clear."
+      ],
+      "body_path": "problems/P000/children/P004/tickets/T004.md",
+      "classification": "one_go",
+      "classification_reason": "This is a bounded audit over tests and docs plus a targeted test run; it can be solved in one evidence pass.",
+      "created_at": "2026-05-08T03:53:19+00:00",
+      "id": "T004",
+      "problem_definition": "Audit whether tests, residue guards, and architecture docs protect the intended FSM substrate plus business DSL architecture from regression.",
+      "problem_id": "P004",
+      "proposed_solution": "Inspect relevant tests/docs and run targeted tests for FSM/worker substrate, registry, residue, and business handler boundaries.",
+      "result_ids": [
+        "R003"
+      ],
+      "risks": [
+        "Targeted passing suite is not full CI; docs may be design ledgers rather than current reference docs."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Audit verification guardrails and docs alignment",
+      "updated_at": "2026-05-08T03:54:42+00:00",
+      "verification_plan": "Use find/rg/nl over tests/docs and run representative pytest set."
+    }
+  },
+  "updated_at": "2026-05-08T03:56:19+00:00"
+}

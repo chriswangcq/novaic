@@ -1,0 +1,694 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C000.md",
+      "created_at": "2026-05-08T05:22:21+00:00",
+      "criteria_map": [
+        "覆盖 substrate、session、task、saga、wake outbox cutover、旧 active table 搜索"
+      ],
+      "evidence": [
+        "读取 fsm/core.py, fsm/sqlite_store.py, session/task/saga fsm+ledger+repo+schema；运行 57 个相关测试通过"
+      ],
+      "execution_map": [
+        "代码读取 + rg 搜索 + pytest 13 个测试文件"
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P001",
+      "residual_risk": [
+        "不是业务只剩 DSL；repo/coordinator 仍厚；legacy vocabulary 仍在函数/接口名"
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "确认数据表权威、outbox side-effect、guard tests，不只看命名"
+      ],
+      "summary": "FSM substrate 与 Session/Task/Saga 状态机接入审计完成"
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/checks/C001.md",
+      "created_at": "2026-05-08T05:26:05+00:00",
+      "criteria_map": [
+        "覆盖统一装配、handler 厚度、DSL gap、测试验证"
+      ],
+      "evidence": [
+        "读取 assembly_helpers/worker_assemblies/handlers/engines/effects/guards；66 个相关测试通过"
+      ],
+      "execution_map": [
+        "wc/rg/sed + pytest targeted worker tests"
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P002",
+      "residual_risk": [
+        "还不是几行 DSL，assembly 和 protocol engines 仍较厚"
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "确认 raw worker constructor 只在 assembly helper；handler 不拥有 lifecycle/protocol/client"
+      ],
+      "summary": "worker assembly/业务 DSL 厚度审计完成"
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/checks/C002.md",
+      "created_at": "2026-05-08T05:28:59+00:00",
+      "criteria_map": [
+        "覆盖隐藏输入、边界 factory、side-effect adapter、残余 gap"
+      ],
+      "evidence": [
+        "搜索 env/time/uuid/httpx；读取 dependency/effect/Cortex registry；lint_httpx 和 check_no_internal_async 通过；18 个测试通过"
+      ],
+      "execution_map": [
+        "rg + sed + lint scripts + pytest targeted"
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P003",
+      "residual_risk": [
+        "Cortex registry 仍有 from_env/default time gap"
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "区分业务 decision 隐式输入、composition factory 和 adapter 内部 token/cache"
+      ],
+      "summary": "显式依赖边界/side-effect adapter 审计完成"
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P004/checks/C003.md",
+      "created_at": "2026-05-08T05:31:06+00:00",
+      "criteria_map": [
+        "区分活旧路径、测试守卫、命名残留、历史文档、全仓 allowlist"
+      ],
+      "evidence": [
+        "active source 搜索、residue tests 31 passed、retired path/docs lints passed"
+      ],
+      "execution_map": [
+        "rg 搜索 + guard tests/lints"
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P004",
+      "residual_risk": [
+        "命名/注释残留和 scripts/ci/lint_httpx.sh TRANSITIONAL allowlist"
+      ],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "全仓大 grep 后收窄 active Runtime source，避免误判历史文档"
+      ],
+      "summary": "旧路径残留/兼容分支审计完成"
+    },
+    "C004": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P005/checks/C004.md",
+      "created_at": "2026-05-08T05:33:41+00:00",
+      "criteria_map": [
+        "覆盖 CI 架构守卫、start/deploy roster、SSOT gap、真实部署边界"
+      ],
+      "evidence": [
+        "runtime worker/deploy/start lints 通过；bash -n/compileall 通过；scripts/run_all_tests.sh 全绿"
+      ],
+      "execution_map": [
+        "读 workflow/scripts + lint/syntax/compileall + full test runner"
+      ],
+      "followup_problem_id": null,
+      "id": "C004",
+      "problem_id": "P005",
+      "residual_risk": [
+        "CI 未强制运行 full test matrix；worker roster 不是单一 SSOT；未实际远端部署"
+      ],
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "不只读 workflow，实际跑完整本地测试矩阵"
+      ],
+      "summary": "测试/CI/部署守卫审计完成"
+    },
+    "C005": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C005.md",
+      "created_at": "2026-05-08T05:35:09+00:00",
+      "criteria_map": [
+        "覆盖 FSM substrate、业务 DSL/worker assembly、显式依赖边界、旧路径残留、测试 CI 部署守卫"
+      ],
+      "evidence": [
+        "P001-P005 子审计全部 success；targeted tests/lints 通过；scripts/run_all_tests.sh 全绿"
+      ],
+      "execution_map": [
+        "按 solve-complex-problems 拆票、执行、记录 result、success check"
+      ],
+      "followup_problem_id": null,
+      "id": "C005",
+      "problem_id": "P000",
+      "residual_risk": [
+        "本次只审计未修复；剩余 7 个 gap 需下一轮实现账本"
+      ],
+      "result_ids": [
+        "R005"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "追踪活路径而非只看文件存在；区分活旧路径和历史/测试 grep 命中"
+      ],
+      "summary": "全面审核完成：当前是 ledger-backed FSM coordinator + generic worker substrate，仍有 7 个 gap"
+    }
+  },
+  "counters": {
+    "check": 6,
+    "event": 72,
+    "problem": 6,
+    "result": 6,
+    "ticket": 6
+  },
+  "created_at": "2026-05-08T05:16:55+00:00",
+  "ledger_id": "L20260508-131655",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C005"
+      ],
+      "created_at": "2026-05-08T05:16:55+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "全面审核当前代码与 FSM 基建 + 业务 DSL 的 gap",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R005"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P001",
+        "P002",
+        "P003",
+        "P004",
+        "P005"
+      ],
+      "success_criteria": [
+        "覆盖 FSM substrate、业务 DSL/worker assembly、状态机接入、显式依赖边界、旧路径残留、测试与 CI 守卫",
+        "每个 gap 必须有文件/测试/命令证据，不能只凭印象",
+        "输出当前形态、已达成项、未达成 gap、风险和下一步建议"
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "全面审核当前代码与 FSM 基建 + 业务 DSL 的 gap",
+      "updated_at": "2026-05-08T05:35:09+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-08T05:17:51+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "审计 FSM substrate 与状态机接入",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "确认 generic FSM、session/task/saga 状态机、outbox/ledger 是否为实际活路径，并列出未接入 gap"
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "审计 FSM substrate 与状态机接入",
+      "updated_at": "2026-05-08T05:22:21+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-08T05:17:51+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "审计业务 DSL 与 worker assembly 厚度",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "确认业务 worker/handler 是否足够薄，是否仍有 raw infra 构造或业务侧流程编排残留"
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "审计业务 DSL 与 worker assembly 厚度",
+      "updated_at": "2026-05-08T05:26:05+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P003/README.md",
+      "check_ids": [
+        "C002"
+      ],
+      "created_at": "2026-05-08T05:17:51+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "审计显式依赖边界与 side-effect adapter",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P003",
+      "parent_id": "P000",
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "确认 time/id/env/http/global state 是否只在边界层出现，effect adapter 是否是唯一副作用出口"
+      ],
+      "ticket_ids": [
+        "T003"
+      ],
+      "title": "审计显式依赖边界与 side-effect adapter",
+      "updated_at": "2026-05-08T05:28:59+00:00"
+    },
+    "P004": {
+      "body_path": "problems/P000/children/P004/README.md",
+      "check_ids": [
+        "C003"
+      ],
+      "created_at": "2026-05-08T05:17:51+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "审计旧路径残留与兼容分支",
+      "followup_ids": [],
+      "id": "P004",
+      "package_path": "problems/P000/children/P004",
+      "parent_id": "P000",
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "搜索并判断 direct saga creation、active_sessions、coarse worker status、compat 分支、allowlist 残留是否仍是风险"
+      ],
+      "ticket_ids": [
+        "T004"
+      ],
+      "title": "审计旧路径残留与兼容分支",
+      "updated_at": "2026-05-08T05:31:06+00:00"
+    },
+    "P005": {
+      "body_path": "problems/P000/children/P005/README.md",
+      "check_ids": [
+        "C004"
+      ],
+      "created_at": "2026-05-08T05:17:51+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "审计测试 CI 部署守卫覆盖",
+      "followup_ids": [],
+      "id": "P005",
+      "package_path": "problems/P000/children/P005",
+      "parent_id": "P000",
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "运行/阅读关键测试和 lint，判断守卫是否覆盖核心 gap，列出缺口"
+      ],
+      "ticket_ids": [
+        "T005"
+      ],
+      "title": "审计测试 CI 部署守卫覆盖",
+      "updated_at": "2026-05-08T05:33:41+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P001/results/R000.md",
+      "created_at": "2026-05-08T05:21:40+00:00",
+      "done": [],
+      "id": "R000",
+      "known_gaps": [],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "P001 Result - 审计 FSM substrate 与状态机接入",
+      "ticket_id": "T001",
+      "verification": [
+        "在 `novaic-agent-runtime` 执行：",
+        "```bash",
+        "pytest -q \\",
+        "tests/test_pr251_wake_creation_outbox_cutover.py \\",
+        "tests/test_pr252_session_state_ssot.py \\",
+        "tests/test_pr253_dispatch_pure_fsm_cutover.py \\",
+        "tests/test_pr257_remove_active_sessions_table.py \\",
+        "tests/test_pr258_generic_fsm_substrate.py \\",
+        "tests/test_pr259_generic_fsm_store_outbox.py \\",
+        "tests/test_pr260_session_harness_generic_fsm_cutover.py \\",
+        "tests/test_pr261_generic_fsm_residue_cleanup.py \\",
+        "tests/test_pr304_task_lifecycle_fsm.py \\",
+        "tests/test_pr306_taskqueue_fsm_cutover.py \\",
+        "tests/test_pr308_saga_lifecycle_fsm.py \\",
+        "tests/test_pr310_saga_repository_fsm_cutover.py \\",
+        "tests/test_pr315_queue_fsm_final_residue_guard.py",
+        "```",
+        "结果：`57 passed in 0.38s`。"
+      ]
+    },
+    "R001": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P002/results/R001.md",
+      "created_at": "2026-05-08T05:25:42+00:00",
+      "done": [],
+      "id": "R001",
+      "known_gaps": [],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "P002 Result - 审计业务 DSL 与 worker assembly 厚度",
+      "ticket_id": "T002",
+      "verification": [
+        "在 `novaic-agent-runtime` 执行：",
+        "```bash",
+        "pytest -q \\",
+        "tests/test_pr340_action_engine_effect_boundaries.py \\",
+        "tests/test_pr340_assembly_helpers.py \\",
+        "tests/test_pr331_task_worker_handler_cutover.py \\",
+        "tests/test_pr333_saga_worker_handler_cutover.py \\",
+        "tests/test_pr328_health_generic_worker.py \\",
+        "tests/test_pr329_scheduler_generic_worker.py \\",
+        "tests/test_pr340_worker_effect_plan.py \\",
+        "tests/test_pr337_worker_command_registry.py \\",
+        "tests/test_pr335_worker_residue_guards.py \\",
+        "tests/test_pr338_business_handlers_lifecycle_free.py \\",
+        "tests/test_pr323_generic_worker_contracts.py \\",
+        "tests/test_pr324_generic_worker_loop.py \\",
+        "tests/test_pr326_session_outbox_generic_worker.py \\",
+        "tests/test_pr327_saga_outbox_generic_worker.py",
+        "```",
+        "结果：`66 passed in 0.26s`。"
+      ]
+    },
+    "R002": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P003/results/R002.md",
+      "created_at": "2026-05-08T05:28:34+00:00",
+      "done": [],
+      "id": "R002",
+      "known_gaps": [],
+      "problem_id": "P003",
+      "root_id": "P000",
+      "summary": "P003 Result - 审计显式依赖边界与 side-effect adapter",
+      "ticket_id": "T003",
+      "verification": [
+        "执行：",
+        "```bash",
+        "rg -n \"httpx\\\\.(Client|AsyncClient)\\\\(\" novaic-agent-runtime novaic-cortex -g '*.py' || true",
+        "bash scripts/ci/lint_httpx.sh",
+        "python3 scripts/ci/check_no_internal_async.py",
+        "```",
+        "结果：",
+        "direct `httpx.Client(...)` / `httpx.AsyncClient(...)` 构造搜索无命中。",
+        "`httpx lint OK`",
+        "`check_no_internal_async: 8 files clean`",
+        "在 `novaic-agent-runtime` 执行：",
+        "```bash",
+        "pytest -q \\",
+        "tests/test_pr340_action_engine_effect_boundaries.py \\",
+        "tests/test_pr340_worker_effect_plan.py \\",
+        "tests/test_pr193_activity_projection.py",
+        "```",
+        "结果：`18 passed in 0.13s`。"
+      ]
+    },
+    "R003": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P004/results/R003.md",
+      "created_at": "2026-05-08T05:30:44+00:00",
+      "done": [],
+      "id": "R003",
+      "known_gaps": [],
+      "problem_id": "P004",
+      "root_id": "P000",
+      "summary": "P004 Result - 审计旧路径残留与兼容分支",
+      "ticket_id": "T004",
+      "verification": []
+    },
+    "R004": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P005/results/R004.md",
+      "created_at": "2026-05-08T05:33:09+00:00",
+      "done": [],
+      "id": "R004",
+      "known_gaps": [],
+      "problem_id": "P005",
+      "root_id": "P000",
+      "summary": "P005 Result - 审计测试 CI 部署守卫覆盖",
+      "ticket_id": "T005",
+      "verification": []
+    },
+    "R005": {
+      "artifacts": [],
+      "body_path": "problems/P000/results/R005.md",
+      "created_at": "2026-05-08T05:34:43+00:00",
+      "done": [],
+      "id": "R005",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "P000 Result - 全面审核当前代码与 FSM 基建 + 业务 DSL 的 gap",
+      "ticket_id": "T000",
+      "verification": []
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "status": "doing",
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "审计覆盖 Runtime FSM substrate、Session/Task/Saga 状态机、worker assembly DSL、action effect boundaries。",
+        "审计覆盖旧路径残留：direct SagaOrchestrator/create、active session SSOT、raw worker constructors、direct HTTP clients、coarse deploy status、compat branches。",
+        "审计覆盖显式依赖边界：time/id/env/http/global state 是否只在边界处出现。",
+        "审计覆盖测试与 CI 守卫：证明 gap 不会轻易回流。",
+        "输出明确区分：已达成、部分达成、仍有 gap、风险等级、建议下一步。"
+      ],
+      "assumptions": [
+        "用户当前需要的是审计报告，不是立即继续改代码。",
+        "如果发现小型 guard/lint 明显错误，可记录为 gap；不主动大改。"
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "Comprehensive audit spans multiple independent evidence surfaces and needs separate checks",
+      "created_at": "2026-05-08T05:17:29+00:00",
+      "id": "T000",
+      "problem_definition": "需要对当前仓库进行全面审计，判断最新代码是否真正达到“FSM 基建层 + 业务 DSL 层”的目标形态，还是仍存在新基建未接入、业务代码偏厚、隐式依赖、旧路径残留、测试/CI 守卫不足等 gap。",
+      "problem_id": "P000",
+      "proposed_solution": "将审计拆成多个独立审计面：FSM substrate、业务 DSL/worker assembly、状态机接入与旧路径、显式依赖边界、测试/CI/部署守卫。每个审计面必须基于文件、测试、grep、diff 或命令证据，最后汇总成当前形态与 gap 列表。",
+      "result_ids": [
+        "R005"
+      ],
+      "risks": [
+        "广泛审计可能发现已存在但不属于本次 FSM/DSL 主题的旧债；需要明确标注是否阻塞。",
+        "当前工作树包含未提交修改，审计必须基于当前文件状态，不假设 main 分支状态。"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "全面审核当前代码与 FSM 基建 + 业务 DSL 的 gap",
+      "updated_at": "2026-05-08T05:34:43+00:00",
+      "verification_plan": "- 使用 `rg`、`git diff`、`pytest`、lint 脚本和源码阅读。\n- 对关键文件给出路径证据。\n- 最终账本 success check 映射每个验收项到证据。"
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "确认 generic FSM substrate 是否存在并被 Task/Saga/Session/worker lease 使用。",
+        "确认 session dispatch/finalize/recovery 是否走 session ledger/outbox/FSM。",
+        "确认 task/saga repository 是否走 FSM store/ledger/outbox。",
+        "列出仍未达到“完美 FSM”的代码结构 gap。"
+      ],
+      "assumptions": [
+        "审计基于当前工作树。"
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "one_go",
+      "classification_reason": "Focused read-only audit with direct test evidence",
+      "created_at": "2026-05-08T05:18:10+00:00",
+      "id": "T001",
+      "problem_definition": "需要确认当前 Runtime 是否已经把 generic FSM substrate、Session/Task/Saga 状态机、ledger/outbox 接到真实活路径，而不是保留新旧双路或 shadow-only 状态。",
+      "problem_id": "P001",
+      "proposed_solution": "阅读 Queue/FSM 相关源码、测试和 guard，搜索旧 SSOT 与直接分支残留，运行关键 FSM/session/task/saga 测试，并输出达成项与 gap。",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "命名中的 `active_sessions` 可能是投影接口而非旧表，需要区分语义。"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "审计 FSM substrate 与状态机接入",
+      "updated_at": "2026-05-08T05:21:40+00:00",
+      "verification_plan": "- `rg` 搜索 FSM/store/outbox 入口与旧路径。\n- 阅读关键文件。\n- 跑 session/task/saga FSM 关键测试。"
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "说明 worker assembly 是否已统一到 helper/DSL 风格。",
+        "说明业务 handler 当前剩余厚度，给出代表性文件/行数/结构证据。",
+        "标出距离“业务只剩几行 DSL”的 gap。",
+        "验证 worker assembly / action engine 相关测试是否通过。"
+      ],
+      "assumptions": [
+        "本票只审计，不做代码修改。"
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T002.md",
+      "classification": "one_go",
+      "classification_reason": "单一审计主题，可通过只读代码检查和 targeted tests 一次完成",
+      "created_at": "2026-05-08T05:22:53+00:00",
+      "id": "T002",
+      "problem_definition": "审计当前 worker/handler 是否真正达到“组件层是通用员工，业务层只写状态机和具体计算逻辑”的目标。重点确认业务 DSL 厚度、worker assembly 是否统一、是否还有 raw constructor/plumbing 泄漏到业务层。",
+      "problem_id": "P002",
+      "proposed_solution": "只读检查以下内容：\n\n- `task_queue/workers/assembly_helpers.py`\n- `task_queue/workers/worker_assemblies.py`\n- `task_queue/workers/*_effects.py`\n- `task_queue/workers/task_execution.py`\n- `task_queue/workers/saga_launch.py`\n- `task_queue/workers/health_recovery.py`\n- `task_queue/workers/scheduled_wake.py`\n- worker registry 与相关测试。\n\n通过 `rg`、`wc -l`、`sed` 和 targeted pytest 给出证据。",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "代码中存在合理的 adapter glue，不能把所有 glue 都误判成业务泄漏。",
+        "“几行 DSL”是理想目标，审计要区分已达成、合理未达成、残留问题。"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "P002 Ticket - 审计业务 DSL 与 worker assembly 厚度",
+      "updated_at": "2026-05-08T05:25:42+00:00",
+      "verification_plan": "- 搜索 raw worker constructor 和 runtime plumbing。\n- 读取 assembly helper、worker assembly、业务 handler/effects。\n- 运行 worker assembly/action engine/handler cutover 测试。"
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "列出显式边界已达成项。",
+        "列出仍可接受的边界 factory 与不可接受的业务隐藏输入。",
+        "判断 side effect adapter 是否集中。",
+        "运行依赖边界和 effect plan 相关测试/脚本。"
+      ],
+      "assumptions": [
+        "本票只审计，不改代码。"
+      ],
+      "body_path": "problems/P000/children/P003/tickets/T003.md",
+      "classification": "one_go",
+      "classification_reason": "单一依赖边界审计，可用搜索、读文件和 targeted tests 一次完成",
+      "created_at": "2026-05-08T05:26:26+00:00",
+      "id": "T003",
+      "problem_definition": "审计当前 FSM/worker/session/cortex 相关代码是否还存在隐藏输入或 side effect 泄漏：直接读取 env/time/uuid/global config、直接创建 HTTP client、业务层直接执行外部 IO 等。",
+      "problem_id": "P003",
+      "proposed_solution": "只读检查：\n\n- `queue_service/dependencies.py`\n- `task_queue/workers/dependencies.py`\n- `queue_service/session_repo.py`\n- `queue_service/queue_db.py`\n- `queue_service/saga_repo.py`\n- `task_queue/workers/*_effects.py`\n- `task_queue/workers/*_execution.py` / action engines\n- `novaic-cortex/novaic_cortex/blob_payload.py`\n- `novaic-cortex/novaic_cortex/blob_store.py`\n\n搜索 `os.environ/os.getenv/datetime.now/utc_now_iso/uuid.uuid4/time.time/httpx.Client/httpx.AsyncClient` 等隐藏输入。",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [
+        "某些 `from_env()` 或 `.system()` 是边界 factory，不应误判为业务隐式输入。",
+        "某些时间解析不是时间生成，需要区分。"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "P003 Ticket - 审计显式依赖边界与 side-effect adapter",
+      "updated_at": "2026-05-08T05:28:34+00:00",
+      "verification_plan": "- `rg` 搜索隐藏输入。\n- 读取 dependency provider 和 effect adapters。\n- 运行 action engine/effect boundary tests。\n- 运行或引用 HTTP client lint/guard。"
+    },
+    "T004": {
+      "acceptance_criteria": [
+        "分清“活旧路径”、“守卫测试命中”、“命名残留”、“文档历史残留”。",
+        "说明是否有旧代码还在执行。",
+        "说明是否仍有兼容分支需要物理删除。",
+        "验证 residue guard 是否通过。"
+      ],
+      "assumptions": [
+        "本票只审计，不改代码。"
+      ],
+      "body_path": "problems/P000/children/P004/tickets/T004.md",
+      "classification": "one_go",
+      "classification_reason": "旧路径残留审计可通过搜索、guard 读取和 targeted lint/tests 一次完成",
+      "created_at": "2026-05-08T05:29:19+00:00",
+      "id": "T004",
+      "problem_definition": "审计当前代码是否仍存在旧 FSM/session/worker 路径残留、兼容分支、shadow 双写、旧 entrypoint、旧表、旧脚本、旧文档状态误导。",
+      "problem_id": "P004",
+      "proposed_solution": "只读搜索并分类：\n\n- `legacy|compat|deprecated|fallback|shadow|retired`\n- `tq_active_sessions`\n- retired worker names / watchdog / old main scripts\n- direct old active session vocabulary\n- feature flag / allowlist / transitional wording\n\n运行已有 residue guard lint/tests。",
+      "result_ids": [
+        "R003"
+      ],
+      "risks": [
+        "搜索词会命中测试和文档，必须分类，不可直接当作活代码问题。"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "P004 Ticket - 审计旧路径残留与兼容分支",
+      "updated_at": "2026-05-08T05:30:44+00:00",
+      "verification_plan": "- `rg` 搜索。\n- 读取 residue guard tests/lint scripts。\n- 运行相关 tests/lints。"
+    },
+    "T005": {
+      "acceptance_criteria": [
+        "说明 CI 是否覆盖 Runtime FSM/worker residue。",
+        "说明 start/deploy 是否启动新 worker roster。",
+        "说明是否有 roster/config SSOT gap。",
+        "给出已运行验证命令与结果。"
+      ],
+      "assumptions": [
+        "本票只审计，不实际部署。"
+      ],
+      "body_path": "problems/P000/children/P005/tickets/T005.md",
+      "classification": "one_go",
+      "classification_reason": "测试/CI/部署守卫审计可通过只读脚本检查和 targeted lint 一次完成",
+      "created_at": "2026-05-08T05:31:27+00:00",
+      "id": "T005",
+      "problem_definition": "审计当前测试、CI、部署脚本是否足以守住 FSM substrate + business DSL 的架构边界，尤其防止新代码未接入、旧逻辑回流、worker roster 漂移、部署脚本不启动新 worker。",
+      "problem_id": "P005",
+      "proposed_solution": "只读检查：\n\n- `.github/workflows/lint.yml`\n- `scripts/ci/*fsm*` / runtime worker supervision / deploy smoke / start config checks\n- `scripts/start.sh`\n- `deploy`\n- `novaic-app/scripts/start-backends.sh`\n- targeted tests 和必要 lint。",
+      "result_ids": [
+        "R004"
+      ],
+      "risks": [
+        "本地 lint 通过不等于真实远端部署成功；必须明确部署 smoke 的边界。"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "P005 Ticket - 审计测试 CI 部署守卫覆盖",
+      "updated_at": "2026-05-08T05:33:09+00:00",
+      "verification_plan": "- 读取 workflow 和 scripts。\n- 运行 deploy/start/worker supervision lint。\n- 运行 compile/bash syntax checks。\n- 总结未覆盖风险。"
+    }
+  },
+  "updated_at": "2026-05-08T05:35:09+00:00"
+}

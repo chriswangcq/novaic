@@ -1,0 +1,252 @@
+{"at": "2026-05-08T03:58:06+00:00", "id": "E000", "payload": {"ledger_id": "L20260508-115806", "root_id": "P000", "title": "补齐 FSM 基建与业务 DSL 全部 gap"}, "root_id": "P000", "type": "ledger_initialized"}
+{"at": "2026-05-08T03:58:34+00:00", "id": "E001", "payload": {"problem_id": "P000", "ticket_id": "T000", "title": "Close all FSM substrate and business DSL gaps"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T03:58:34+00:00", "id": "E002", "payload": {"from": "created", "id": "T000", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T03:58:42+00:00", "id": "E003", "payload": {"from": "defined", "id": "T000", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T03:58:42+00:00", "id": "E004", "payload": {"classification": "split", "reason": "The request closes multiple high-impact architecture gaps across runtime behavior, action engines, assembly, tests, docs, deploy smoke, and supervision; it must be split into explicit phase problems.", "ticket_id": "T000"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T03:58:57+00:00", "id": "E005", "payload": {"from": "classified", "id": "T000", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T03:58:57+00:00", "id": "E006", "payload": {"parent_id": "P000", "problem_id": "P001", "title": "Action engine effect-plan DSL"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T03:58:57+00:00", "id": "E007", "payload": {"parent_id": "P000", "problem_id": "P002", "title": "Declarative worker assembly DSL shrink"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T03:58:57+00:00", "id": "E008", "payload": {"parent_id": "P000", "problem_id": "P003", "title": "Effect adapter and assembly guardrails"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T03:58:57+00:00", "id": "E009", "payload": {"parent_id": "P000", "problem_id": "P004", "title": "Docs status consistency lint"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T03:58:57+00:00", "id": "E010", "payload": {"parent_id": "P000", "problem_id": "P005", "title": "Timestamp-aware deploy smoke"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T03:58:57+00:00", "id": "E011", "payload": {"parent_id": "P000", "problem_id": "P006", "title": "Runtime worker supervision"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T03:58:57+00:00", "id": "E012", "payload": {"parent_id": "P000", "problem_id": "P007", "title": "Final residue closure and verification"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T03:59:36+00:00", "id": "E013", "payload": {"problem_id": "P001", "ticket_id": "T001", "title": "Action engine effect-plan DSL"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T03:59:36+00:00", "id": "E014", "payload": {"from": "created", "id": "T001", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T03:59:45+00:00", "id": "E015", "payload": {"from": "defined", "id": "T001", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T03:59:45+00:00", "id": "E016", "payload": {"classification": "split", "reason": "Effect-plan migration crosses shared contracts, four engines, assembly, and tests; split to avoid a broad unsafe patch.", "ticket_id": "T001"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T03:59:55+00:00", "id": "E017", "payload": {"from": "classified", "id": "T001", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T03:59:55+00:00", "id": "E018", "payload": {"parent_id": "P001", "problem_id": "P008", "title": "Effect plan substrate contracts"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T03:59:55+00:00", "id": "E019", "payload": {"parent_id": "P001", "problem_id": "P009", "title": "Task and saga engines use effect adapters"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T03:59:56+00:00", "id": "E020", "payload": {"parent_id": "P001", "problem_id": "P010", "title": "Health and scheduler engines use effect adapters"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T03:59:56+00:00", "id": "E021", "payload": {"parent_id": "P001", "problem_id": "P011", "title": "Effect-plan boundary tests"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T04:00:25+00:00", "id": "E022", "payload": {"problem_id": "P008", "ticket_id": "T002", "title": "Effect plan substrate contracts"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T04:00:25+00:00", "id": "E023", "payload": {"from": "created", "id": "T002", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:00:32+00:00", "id": "E024", "payload": {"from": "defined", "id": "T002", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:00:32+00:00", "id": "E025", "payload": {"classification": "one_go", "reason": "A bounded substrate addition with direct unit tests and no engine migration.", "ticket_id": "T002"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T04:00:37+00:00", "id": "E026", "payload": {"from": "todo", "id": "P008", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:03:38+00:00", "id": "E027", "payload": {"from": "classified", "id": "T002", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:03:38+00:00", "id": "E028", "payload": {"from": "executing", "id": "T002", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:03:38+00:00", "id": "E029", "payload": {"result_id": "R000", "ticket_id": "T002"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T04:04:04+00:00", "id": "E030", "payload": {"from": "doing", "id": "P008", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:04:04+00:00", "id": "E031", "payload": {"from": "checking", "id": "P008", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:04:04+00:00", "id": "E032", "payload": {"check_id": "C000", "followup_id": null, "problem_id": "P008", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T04:04:57+00:00", "id": "E033", "payload": {"problem_id": "P009", "ticket_id": "T003", "title": "Task and Saga Engines Use Effect Adapters"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T04:04:57+00:00", "id": "E034", "payload": {"from": "created", "id": "T003", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:05:06+00:00", "id": "E035", "payload": {"from": "defined", "id": "T003", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:05:06+00:00", "id": "E036", "payload": {"classification": "split", "reason": "Task and saga migrations have independent effect surfaces and verification paths; splitting keeps each engine migration auditable.", "ticket_id": "T003"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T04:05:18+00:00", "id": "E037", "payload": {"from": "classified", "id": "T003", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:05:18+00:00", "id": "E038", "payload": {"parent_id": "P009", "problem_id": "P012", "title": "Task engine effect adapter migration"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T04:05:18+00:00", "id": "E039", "payload": {"parent_id": "P009", "problem_id": "P013", "title": "Saga engine effect adapter migration"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T04:05:18+00:00", "id": "E040", "payload": {"parent_id": "P009", "problem_id": "P014", "title": "Task/saga engine boundary guards"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T04:05:40+00:00", "id": "E041", "payload": {"problem_id": "P012", "ticket_id": "T004", "title": "Task Engine Effect Adapter Migration"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T04:05:40+00:00", "id": "E042", "payload": {"from": "created", "id": "T004", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:05:46+00:00", "id": "E043", "payload": {"from": "defined", "id": "T004", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:05:46+00:00", "id": "E044", "payload": {"classification": "one_go", "reason": "Focused migration of one action engine with concrete tests and local assembly wiring.", "ticket_id": "T004"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T04:05:52+00:00", "id": "E045", "payload": {"from": "todo", "id": "P012", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:08:10+00:00", "id": "E046", "payload": {"from": "classified", "id": "T004", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:08:10+00:00", "id": "E047", "payload": {"from": "executing", "id": "T004", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:08:10+00:00", "id": "E048", "payload": {"result_id": "R001", "ticket_id": "T004"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T04:08:33+00:00", "id": "E049", "payload": {"from": "doing", "id": "P012", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:08:33+00:00", "id": "E050", "payload": {"from": "checking", "id": "P012", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:08:33+00:00", "id": "E051", "payload": {"check_id": "C001", "followup_id": null, "problem_id": "P012", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T04:08:57+00:00", "id": "E052", "payload": {"problem_id": "P013", "ticket_id": "T005", "title": "Saga Engine Effect Adapter Migration"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T04:08:57+00:00", "id": "E053", "payload": {"from": "created", "id": "T005", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:09:04+00:00", "id": "E054", "payload": {"from": "defined", "id": "T005", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:09:04+00:00", "id": "E055", "payload": {"classification": "one_go", "reason": "Focused migration of one saga launch engine with local tests and explicit assembly wiring.", "ticket_id": "T005"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T04:09:10+00:00", "id": "E056", "payload": {"from": "todo", "id": "P013", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:11:24+00:00", "id": "E057", "payload": {"from": "classified", "id": "T005", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:11:24+00:00", "id": "E058", "payload": {"from": "executing", "id": "T005", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:11:24+00:00", "id": "E059", "payload": {"result_id": "R002", "ticket_id": "T005"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T04:11:44+00:00", "id": "E060", "payload": {"from": "doing", "id": "P013", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:11:44+00:00", "id": "E061", "payload": {"from": "checking", "id": "P013", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:11:44+00:00", "id": "E062", "payload": {"check_id": "C002", "followup_id": null, "problem_id": "P013", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T04:12:22+00:00", "id": "E063", "payload": {"problem_id": "P014", "ticket_id": "T006", "title": "Task/Saga Engine Boundary Guards"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T04:12:22+00:00", "id": "E064", "payload": {"from": "created", "id": "T006", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:12:36+00:00", "id": "E065", "payload": {"from": "defined", "id": "T006", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:12:36+00:00", "id": "E066", "payload": {"classification": "one_go", "reason": "Specific guardrail test package with direct verification.", "ticket_id": "T006"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T04:12:43+00:00", "id": "E067", "payload": {"from": "todo", "id": "P014", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:13:57+00:00", "id": "E068", "payload": {"from": "classified", "id": "T006", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:13:57+00:00", "id": "E069", "payload": {"from": "executing", "id": "T006", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:13:57+00:00", "id": "E070", "payload": {"result_id": "R003", "ticket_id": "T006"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T04:14:19+00:00", "id": "E071", "payload": {"from": "doing", "id": "P014", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:14:19+00:00", "id": "E072", "payload": {"from": "checking", "id": "P014", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:14:19+00:00", "id": "E073", "payload": {"check_id": "C003", "followup_id": null, "problem_id": "P014", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T04:14:41+00:00", "id": "E074", "payload": {"from": "todo", "id": "P009", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:14:41+00:00", "id": "E075", "payload": {"from": "splitting", "id": "T003", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:14:41+00:00", "id": "E076", "payload": {"result_id": "R004", "ticket_id": "T003"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T04:15:01+00:00", "id": "E077", "payload": {"from": "doing", "id": "P009", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:15:01+00:00", "id": "E078", "payload": {"from": "checking", "id": "P009", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:15:01+00:00", "id": "E079", "payload": {"check_id": "C004", "followup_id": null, "problem_id": "P009", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T04:15:51+00:00", "id": "E080", "payload": {"problem_id": "P010", "ticket_id": "T007", "title": "Health and Scheduler Engines Use Effect Adapters"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T04:15:51+00:00", "id": "E081", "payload": {"from": "created", "id": "T007", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:16:00+00:00", "id": "E082", "payload": {"from": "defined", "id": "T007", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:16:00+00:00", "id": "E083", "payload": {"classification": "split", "reason": "Health HTTP recovery and scheduler wake dispatch have separate collaborators, metrics, and regression tests; splitting avoids a broad mixed migration.", "ticket_id": "T007"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T04:16:15+00:00", "id": "E084", "payload": {"from": "classified", "id": "T007", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:16:15+00:00", "id": "E085", "payload": {"parent_id": "P010", "problem_id": "P015", "title": "Health engine effect adapter migration"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T04:16:15+00:00", "id": "E086", "payload": {"parent_id": "P010", "problem_id": "P016", "title": "Scheduler engine effect adapter migration"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T04:16:15+00:00", "id": "E087", "payload": {"parent_id": "P010", "problem_id": "P017", "title": "Health/scheduler boundary guards"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T04:16:34+00:00", "id": "E088", "payload": {"problem_id": "P015", "ticket_id": "T008", "title": "Health Engine Effect Adapter Migration"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T04:16:34+00:00", "id": "E089", "payload": {"from": "created", "id": "T008", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:16:41+00:00", "id": "E090", "payload": {"from": "defined", "id": "T008", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:16:41+00:00", "id": "E091", "payload": {"classification": "one_go", "reason": "Focused migration of one health action engine with direct tests and simple adapter surface.", "ticket_id": "T008"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T04:16:47+00:00", "id": "E092", "payload": {"from": "todo", "id": "P015", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:18:46+00:00", "id": "E093", "payload": {"from": "classified", "id": "T008", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:18:46+00:00", "id": "E094", "payload": {"from": "executing", "id": "T008", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:18:46+00:00", "id": "E095", "payload": {"result_id": "R005", "ticket_id": "T008"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T04:19:13+00:00", "id": "E096", "payload": {"from": "doing", "id": "P015", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:19:13+00:00", "id": "E097", "payload": {"from": "checking", "id": "P015", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:19:13+00:00", "id": "E098", "payload": {"check_id": "C005", "followup_id": null, "problem_id": "P015", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T04:19:38+00:00", "id": "E099", "payload": {"problem_id": "P016", "ticket_id": "T009", "title": "Scheduler Engine Effect Adapter Migration"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T04:19:38+00:00", "id": "E100", "payload": {"from": "created", "id": "T009", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:19:54+00:00", "id": "E101", "payload": {"from": "defined", "id": "T009", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:19:54+00:00", "id": "E102", "payload": {"classification": "one_go", "reason": "Focused migration of scheduler scan/dispatch collaborators to one explicit adapter.", "ticket_id": "T009"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T04:20:00+00:00", "id": "E103", "payload": {"from": "todo", "id": "P016", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:21:29+00:00", "id": "E104", "payload": {"from": "classified", "id": "T009", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:21:29+00:00", "id": "E105", "payload": {"from": "executing", "id": "T009", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:21:29+00:00", "id": "E106", "payload": {"result_id": "R006", "ticket_id": "T009"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T04:22:30+00:00", "id": "E107", "payload": {"from": "doing", "id": "P016", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:22:30+00:00", "id": "E108", "payload": {"from": "checking", "id": "P016", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:22:30+00:00", "id": "E109", "payload": {"check_id": "C006", "followup_id": null, "problem_id": "P016", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T04:22:53+00:00", "id": "E110", "payload": {"problem_id": "P017", "ticket_id": "T010", "title": "Health/Scheduler Boundary Guards"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T04:22:53+00:00", "id": "E111", "payload": {"from": "created", "id": "T010", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:23:02+00:00", "id": "E112", "payload": {"from": "defined", "id": "T010", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:23:02+00:00", "id": "E113", "payload": {"classification": "one_go", "reason": "Specific guardrail test extension with direct verification.", "ticket_id": "T010"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T04:23:08+00:00", "id": "E114", "payload": {"from": "todo", "id": "P017", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:23:51+00:00", "id": "E115", "payload": {"from": "classified", "id": "T010", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:23:51+00:00", "id": "E116", "payload": {"from": "executing", "id": "T010", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:23:51+00:00", "id": "E117", "payload": {"result_id": "R007", "ticket_id": "T010"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T04:24:09+00:00", "id": "E118", "payload": {"from": "doing", "id": "P017", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:24:09+00:00", "id": "E119", "payload": {"from": "checking", "id": "P017", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:24:09+00:00", "id": "E120", "payload": {"check_id": "C007", "followup_id": null, "problem_id": "P017", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T04:24:30+00:00", "id": "E121", "payload": {"from": "todo", "id": "P010", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:24:30+00:00", "id": "E122", "payload": {"from": "splitting", "id": "T007", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:24:30+00:00", "id": "E123", "payload": {"result_id": "R008", "ticket_id": "T007"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T04:24:51+00:00", "id": "E124", "payload": {"from": "doing", "id": "P010", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:24:51+00:00", "id": "E125", "payload": {"from": "checking", "id": "P010", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:24:51+00:00", "id": "E126", "payload": {"check_id": "C008", "followup_id": null, "problem_id": "P010", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T04:25:18+00:00", "id": "E127", "payload": {"problem_id": "P011", "ticket_id": "T011", "title": "Effect-Plan Boundary Tests"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T04:25:18+00:00", "id": "E128", "payload": {"from": "created", "id": "T011", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:25:27+00:00", "id": "E129", "payload": {"from": "defined", "id": "T011", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:25:27+00:00", "id": "E130", "payload": {"classification": "one_go", "reason": "Aggregate verification can be completed with the existing cross-engine boundary and focused behavior suites.", "ticket_id": "T011"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T04:25:36+00:00", "id": "E131", "payload": {"from": "todo", "id": "P011", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:26:17+00:00", "id": "E132", "payload": {"from": "classified", "id": "T011", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:26:17+00:00", "id": "E133", "payload": {"from": "executing", "id": "T011", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:26:17+00:00", "id": "E134", "payload": {"result_id": "R009", "ticket_id": "T011"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T04:26:40+00:00", "id": "E135", "payload": {"from": "doing", "id": "P011", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:26:40+00:00", "id": "E136", "payload": {"from": "checking", "id": "P011", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:26:40+00:00", "id": "E137", "payload": {"check_id": "C009", "followup_id": null, "problem_id": "P011", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T04:27:02+00:00", "id": "E138", "payload": {"from": "todo", "id": "P001", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:27:02+00:00", "id": "E139", "payload": {"from": "splitting", "id": "T001", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:27:02+00:00", "id": "E140", "payload": {"result_id": "R010", "ticket_id": "T001"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T04:27:25+00:00", "id": "E141", "payload": {"from": "doing", "id": "P001", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:27:25+00:00", "id": "E142", "payload": {"from": "checking", "id": "P001", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:27:25+00:00", "id": "E143", "payload": {"check_id": "C010", "followup_id": null, "problem_id": "P001", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T04:28:11+00:00", "id": "E144", "payload": {"problem_id": "P002", "ticket_id": "T012", "title": "Declarative Worker Assembly DSL Shrink"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T04:28:11+00:00", "id": "E145", "payload": {"from": "created", "id": "T012", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:28:19+00:00", "id": "E146", "payload": {"from": "defined", "id": "T012", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:28:19+00:00", "id": "E147", "payload": {"classification": "split", "reason": "Assembly shrink touches shared lifecycle helpers, six worker assemblies, and verification/guardrails; splitting avoids a hidden broad refactor.", "ticket_id": "T012"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T04:28:31+00:00", "id": "E148", "payload": {"from": "classified", "id": "T012", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:28:31+00:00", "id": "E149", "payload": {"parent_id": "P002", "problem_id": "P018", "title": "Generic worker assembly helper substrate"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T04:28:32+00:00", "id": "E150", "payload": {"parent_id": "P002", "problem_id": "P019", "title": "Migrate worker assemblies to helper substrate"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T04:28:32+00:00", "id": "E151", "payload": {"parent_id": "P002", "problem_id": "P020", "title": "Assembly DSL shrink verification"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-08T04:29:22+00:00", "id": "E152", "payload": {"problem_id": "P018", "ticket_id": "T013", "title": "Generic Worker Assembly Helper Substrate"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T04:29:22+00:00", "id": "E153", "payload": {"from": "created", "id": "T013", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:29:32+00:00", "id": "E154", "payload": {"from": "defined", "id": "T013", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:29:32+00:00", "id": "E155", "payload": {"classification": "one_go", "reason": "Focused infrastructure helper substrate with local tests and no business migration yet.", "ticket_id": "T013"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T04:29:40+00:00", "id": "E156", "payload": {"from": "todo", "id": "P018", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:31:05+00:00", "id": "E157", "payload": {"from": "classified", "id": "T013", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:31:05+00:00", "id": "E158", "payload": {"from": "executing", "id": "T013", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:31:05+00:00", "id": "E159", "payload": {"result_id": "R011", "ticket_id": "T013"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T04:33:21+00:00", "id": "E160", "payload": {"from": "doing", "id": "P018", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:33:21+00:00", "id": "E161", "payload": {"from": "checking", "id": "P018", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:33:21+00:00", "id": "E162", "payload": {"check_id": "C011", "followup_id": null, "problem_id": "P018", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T04:33:47+00:00", "id": "E163", "payload": {"problem_id": "P019", "ticket_id": "T014", "title": "P019 Ticket - Migrate Worker Assemblies To Helper Substrate"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T04:33:47+00:00", "id": "E164", "payload": {"from": "created", "id": "T014", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:33:55+00:00", "id": "E165", "payload": {"from": "defined", "id": "T014", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:33:55+00:00", "id": "E166", "payload": {"classification": "one_go", "reason": "A bounded mechanical migration inside worker_assemblies plus focused tests can be completed directly.", "ticket_id": "T014"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T04:40:10+00:00", "id": "E167", "payload": {"from": "todo", "id": "P019", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:40:10+00:00", "id": "E168", "payload": {"from": "classified", "id": "T014", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:40:10+00:00", "id": "E169", "payload": {"from": "executing", "id": "T014", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:40:10+00:00", "id": "E170", "payload": {"result_id": "R012", "ticket_id": "T014"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T04:40:41+00:00", "id": "E171", "payload": {"from": "doing", "id": "P019", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:40:41+00:00", "id": "E172", "payload": {"from": "checking", "id": "P019", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:40:41+00:00", "id": "E173", "payload": {"check_id": "C012", "followup_id": null, "problem_id": "P019", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T04:41:08+00:00", "id": "E174", "payload": {"problem_id": "P020", "ticket_id": "T015", "title": "P020 Ticket - Assembly DSL Shrink Verification"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T04:41:08+00:00", "id": "E175", "payload": {"from": "created", "id": "T015", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:41:17+00:00", "id": "E176", "payload": {"from": "defined", "id": "T015", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:41:17+00:00", "id": "E177", "payload": {"classification": "one_go", "reason": "Verification-only closure over already implemented assembly migration.", "ticket_id": "T015"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T04:42:05+00:00", "id": "E178", "payload": {"from": "todo", "id": "P020", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:42:05+00:00", "id": "E179", "payload": {"from": "classified", "id": "T015", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:42:05+00:00", "id": "E180", "payload": {"from": "executing", "id": "T015", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:42:05+00:00", "id": "E181", "payload": {"result_id": "R013", "ticket_id": "T015"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T04:42:37+00:00", "id": "E182", "payload": {"from": "doing", "id": "P020", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:42:37+00:00", "id": "E183", "payload": {"from": "checking", "id": "P020", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:42:37+00:00", "id": "E184", "payload": {"check_id": "C013", "followup_id": null, "problem_id": "P020", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T04:43:08+00:00", "id": "E185", "payload": {"from": "todo", "id": "P002", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:43:08+00:00", "id": "E186", "payload": {"from": "splitting", "id": "T012", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:43:08+00:00", "id": "E187", "payload": {"result_id": "R014", "ticket_id": "T012"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T04:43:35+00:00", "id": "E188", "payload": {"from": "doing", "id": "P002", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:43:35+00:00", "id": "E189", "payload": {"from": "checking", "id": "P002", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:43:35+00:00", "id": "E190", "payload": {"check_id": "C014", "followup_id": null, "problem_id": "P002", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T04:44:13+00:00", "id": "E191", "payload": {"problem_id": "P003", "ticket_id": "T016", "title": "P003 Ticket - Effect Adapter And Assembly Guardrails"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T04:44:13+00:00", "id": "E192", "payload": {"from": "created", "id": "T016", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:44:25+00:00", "id": "E193", "payload": {"from": "defined", "id": "T016", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:44:25+00:00", "id": "E194", "payload": {"classification": "one_go", "reason": "Guardrails can be strengthened directly with focused tests and residue checks.", "ticket_id": "T016"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T04:46:22+00:00", "id": "E195", "payload": {"from": "todo", "id": "P003", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:46:22+00:00", "id": "E196", "payload": {"from": "classified", "id": "T016", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:46:22+00:00", "id": "E197", "payload": {"from": "executing", "id": "T016", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:46:22+00:00", "id": "E198", "payload": {"result_id": "R015", "ticket_id": "T016"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T04:46:45+00:00", "id": "E199", "payload": {"from": "doing", "id": "P003", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:46:45+00:00", "id": "E200", "payload": {"from": "checking", "id": "P003", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:46:45+00:00", "id": "E201", "payload": {"check_id": "C015", "followup_id": null, "problem_id": "P003", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T04:48:52+00:00", "id": "E202", "payload": {"problem_id": "P004", "ticket_id": "T017", "title": "P004 Ticket - Docs Status Consistency Lint"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T04:48:52+00:00", "id": "E203", "payload": {"from": "created", "id": "T017", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:49:08+00:00", "id": "E204", "payload": {"from": "defined", "id": "T017", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:49:08+00:00", "id": "E205", "payload": {"classification": "one_go", "reason": "Known docs drift plus narrow CI lint can be fixed directly.", "ticket_id": "T017"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T04:50:33+00:00", "id": "E206", "payload": {"from": "todo", "id": "P004", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:50:33+00:00", "id": "E207", "payload": {"from": "classified", "id": "T017", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:50:33+00:00", "id": "E208", "payload": {"from": "executing", "id": "T017", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:50:33+00:00", "id": "E209", "payload": {"result_id": "R016", "ticket_id": "T017"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T04:50:58+00:00", "id": "E210", "payload": {"from": "doing", "id": "P004", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:50:58+00:00", "id": "E211", "payload": {"from": "checking", "id": "P004", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:50:58+00:00", "id": "E212", "payload": {"check_id": "C016", "followup_id": null, "problem_id": "P004", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T04:53:21+00:00", "id": "E213", "payload": {"problem_id": "P005", "ticket_id": "T018", "title": "Timestamp-aware deploy smoke"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T04:53:21+00:00", "id": "E214", "payload": {"from": "created", "id": "T018", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:53:31+00:00", "id": "E215", "payload": {"from": "defined", "id": "T018", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:53:31+00:00", "id": "E216", "payload": {"classification": "one_go", "reason": "Scoped deploy-script and lint hardening with direct local verification", "ticket_id": "T018"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T04:57:10+00:00", "id": "E217", "payload": {"from": "todo", "id": "P005", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:57:10+00:00", "id": "E218", "payload": {"from": "classified", "id": "T018", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:57:10+00:00", "id": "E219", "payload": {"from": "executing", "id": "T018", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:57:10+00:00", "id": "E220", "payload": {"result_id": "R017", "ticket_id": "T018"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T04:57:37+00:00", "id": "E221", "payload": {"from": "doing", "id": "P005", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:57:37+00:00", "id": "E222", "payload": {"from": "checking", "id": "P005", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T04:57:37+00:00", "id": "E223", "payload": {"check_id": "C017", "followup_id": null, "problem_id": "P005", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T04:58:27+00:00", "id": "E224", "payload": {"problem_id": "P006", "ticket_id": "T019", "title": "Runtime worker supervision"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T04:58:27+00:00", "id": "E225", "payload": {"from": "created", "id": "T019", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:58:35+00:00", "id": "E226", "payload": {"from": "defined", "id": "T019", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T04:58:35+00:00", "id": "E227", "payload": {"classification": "one_go", "reason": "Explicit start/status supervision can be implemented and verified in one bounded pass", "ticket_id": "T019"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T05:01:25+00:00", "id": "E228", "payload": {"from": "todo", "id": "P006", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T05:01:25+00:00", "id": "E229", "payload": {"from": "classified", "id": "T019", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:01:25+00:00", "id": "E230", "payload": {"from": "executing", "id": "T019", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:01:25+00:00", "id": "E231", "payload": {"result_id": "R018", "ticket_id": "T019"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T05:01:54+00:00", "id": "E232", "payload": {"from": "doing", "id": "P006", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T05:01:54+00:00", "id": "E233", "payload": {"from": "checking", "id": "P006", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T05:01:54+00:00", "id": "E234", "payload": {"check_id": "C018", "followup_id": null, "problem_id": "P006", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T05:02:37+00:00", "id": "E235", "payload": {"problem_id": "P007", "ticket_id": "T020", "title": "Final residue closure and verification"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-08T05:02:37+00:00", "id": "E236", "payload": {"from": "created", "id": "T020", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:02:50+00:00", "id": "E237", "payload": {"from": "defined", "id": "T020", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:02:50+00:00", "id": "E238", "payload": {"classification": "one_go", "reason": "Audit and closure can be executed directly; any discovered large gap will become a follow-up", "ticket_id": "T020"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-08T05:13:35+00:00", "id": "E239", "payload": {"from": "todo", "id": "P007", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T05:13:35+00:00", "id": "E240", "payload": {"from": "classified", "id": "T020", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:13:35+00:00", "id": "E241", "payload": {"from": "executing", "id": "T020", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:13:35+00:00", "id": "E242", "payload": {"result_id": "R019", "ticket_id": "T020"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T05:14:03+00:00", "id": "E243", "payload": {"from": "doing", "id": "P007", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T05:14:03+00:00", "id": "E244", "payload": {"from": "checking", "id": "P007", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T05:14:03+00:00", "id": "E245", "payload": {"check_id": "C019", "followup_id": null, "problem_id": "P007", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-08T05:14:44+00:00", "id": "E246", "payload": {"from": "todo", "id": "P000", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T05:14:44+00:00", "id": "E247", "payload": {"from": "splitting", "id": "T000", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-08T05:14:44+00:00", "id": "E248", "payload": {"result_id": "R020", "ticket_id": "T000"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-08T05:15:17+00:00", "id": "E249", "payload": {"from": "doing", "id": "P000", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T05:15:17+00:00", "id": "E250", "payload": {"from": "checking", "id": "P000", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-08T05:15:17+00:00", "id": "E251", "payload": {"check_id": "C020", "followup_id": null, "problem_id": "P000", "status": "success"}, "root_id": "P000", "type": "check_recorded"}

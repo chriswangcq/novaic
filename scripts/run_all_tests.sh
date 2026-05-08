@@ -45,6 +45,10 @@ run_pytest() {
 }
 
 run_check "root-ci-guards" "$PYTHON_BIN" -m pytest -q
+run_check "runtime-worker-supervision-lint" "$PYTHON_BIN" scripts/ci/lint_runtime_worker_supervision.py
+run_check "deploy-fresh-smoke-lint" "$PYTHON_BIN" scripts/ci/lint_deploy_fresh_smoke.py
+run_check "retired-runtime-vocabulary-lint" "$PYTHON_BIN" scripts/ci/lint_retired_runtime_vocabulary.py
+run_check "start-config-contract-lint" "$PYTHON_BIN" scripts/ci/check_start_config_contract.py
 run_pytest "agent-runtime" "novaic-agent-runtime" ".:../novaic-common"
 run_pytest "business" "novaic-business" ".:../novaic-common"
 run_pytest "common" "novaic-common" ".:../novaic-agent-runtime"

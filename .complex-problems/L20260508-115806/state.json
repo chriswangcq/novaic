@@ -1,0 +1,2959 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/children/P008/checks/C000.md",
+      "created_at": "2026-05-08T04:04:04+00:00",
+      "criteria_map": [
+        "Generic effect contracts exist -> satisfied by `WorkerEffect`, `EffectPlan`, and `EffectOutcome`.",
+        "Effects are executed through explicit adapters/handlers -> satisfied by `EffectExecutor`.",
+        "Failure is explicit and testable -> satisfied by `EffectExecutionError`, `EffectOutcome.failed`, and tests.",
+        "Substrate stays business-agnostic -> satisfied by import/source guard test."
+      ],
+      "evidence": [
+        "`novaic-agent-runtime/queue_service/worker/effects.py` defines the reusable effect/action boundary contracts.",
+        "`novaic-agent-runtime/queue_service/worker/__init__.py` exports the new contracts for worker engines and assemblies.",
+        "`novaic-agent-runtime/tests/test_pr340_worker_effect_plan.py` verifies ordered execution, missing handler errors, failure propagation, and business-agnostic imports.",
+        "`pytest -q tests/test_pr340_worker_effect_plan.py` passed.",
+        "`python -m compileall -q queue_service/worker` passed."
+      ],
+      "execution_map": [
+        "T002 -> R000: added the substrate, exports, tests, and verification."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P008",
+      "residual_risk": [
+        "none for P008. Engine migration is intentionally covered by P009/P010/P011."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Missing handler -> `EffectExecutionError` is raised instead of silently skipping a side effect.",
+        "Adapter returns failure -> `execute_effect` rejects the outcome instead of leaking a partial success.",
+        "Future accidental business import -> test fails on forbidden imports/text in `effects.py`."
+      ],
+      "summary": "P008 is solved. The infrastructure-level effect-plan contract exists, is exported as reusable worker substrate, and is tested without importing task, saga, session, or business modules."
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/children/P009/children/P012/checks/C001.md",
+      "created_at": "2026-05-08T04:08:33+00:00",
+      "criteria_map": [
+        "`TaskExecutionEngine` owns no concrete Queue/Saga/Business clients -> satisfied by constructor refactor and residue scan.",
+        "Task side effects run through `EffectExecutor` -> satisfied by explicit effect calls in heartbeat, idempotency, completion/failure, publish/get, saga lookup, and handler context.",
+        "Existing idempotency/retry/saga-parallel behavior is preserved -> satisfied by focused task tests.",
+        "Assembly wires adapter explicitly -> satisfied by `assemble_task_worker` changes."
+      ],
+      "evidence": [
+        "`TaskExecutionEngine.__init__` now accepts `effect_executor` and no concrete client or URL parameters.",
+        "`task_queue/workers/task_effects.py` owns the concrete task, saga, and business clients and registers effect handlers.",
+        "`assemble_task_worker` constructs `TaskExecutionEffectAdapter` and injects its executor.",
+        "Focused task tests passed.",
+        "Manual residue scan found no direct client or URL ownership tokens in `task_execution.py`."
+      ],
+      "execution_map": [
+        "T004 -> R001: migrated task engine and test setup to explicit effects."
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P012",
+      "residual_risk": [
+        "Automated boundary checks are not in P012; they are explicitly assigned to P014 and are non-blocking for this problem because manual evidence already confirms the migration."
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Duplicate idempotency path -> existing test still passes and completes duplicate via effect-backed complete path.",
+        "Broken dedup guard simulation -> failure marker test still detects multiple handler calls.",
+        "High-concurrency dedup/retry -> existing high-concurrency test still passes.",
+        "Residue risk -> manual search for old direct client ownership returned no matches."
+      ],
+      "summary": "P012 is solved. The task action engine no longer owns concrete Queue/Saga/Business clients or URL strings; all external effects flow through an explicit `EffectExecutor` backed by `TaskExecutionEffectAdapter`."
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/children/P009/children/P013/checks/C002.md",
+      "created_at": "2026-05-08T04:11:44+00:00",
+      "criteria_map": [
+        "`SagaLaunchEngine` owns no concrete clients -> satisfied by constructor refactor and residue scan.",
+        "Saga launch side effects run through `EffectExecutor` -> satisfied by named effects for heartbeat, publish, mark launched, and mark failed.",
+        "Existing saga launch behavior preserved -> satisfied by focused saga tests, including a launch-path adapter test.",
+        "Assembly wires adapter explicitly -> satisfied by `assemble_saga_worker` changes."
+      ],
+      "evidence": [
+        "`SagaLaunchEngine.__init__` now accepts `effect_executor` and no concrete saga/task client parameters.",
+        "`task_queue/workers/saga_effects.py` owns concrete saga/task clients and maps explicit effect names to protocol calls.",
+        "`assemble_saga_worker` injects the adapter executor.",
+        "Saga launch test verifies adapter-backed publish and mark-launched calls.",
+        "Residue scan found no concrete client or direct publish/state tokens in `saga_launch.py`."
+      ],
+      "execution_map": [
+        "T005 -> R002: migrated saga engine and tests to explicit effects."
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P013",
+      "residual_risk": [
+        "Automated boundary checks are assigned to P014 and non-blocking here."
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Normal launch -> publishes exactly one DAG task through the adapter and marks the saga launched.",
+        "Unknown saga type -> still marks saga failed through the effect path.",
+        "Residue risk -> manual scan confirms old direct-client ownership is gone from engine source."
+      ],
+      "summary": "P013 is solved. Saga launch computation remains in `SagaLaunchEngine`, while concrete task/saga clients and external publish/state effects live in `SagaLaunchEffectAdapter`."
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/children/P009/children/P014/checks/C003.md",
+      "created_at": "2026-05-08T04:14:19+00:00",
+      "criteria_map": [
+        "Reject concrete client imports -> satisfied by `_imported_modules` assertions.",
+        "Reject old constructor parameters -> satisfied by `__init__` AST arg checks.",
+        "Reject self-owned protocol clients -> satisfied by self attribute assignment checks.",
+        "Reject direct self-client protocol calls -> satisfied by AST call checks.",
+        "Assert assembly adapter wiring -> satisfied by explicit wiring assertions in `worker_assemblies.py`."
+      ],
+      "evidence": [
+        "`tests/test_pr340_action_engine_effect_boundaries.py` enforces AST/source guardrails for both action engines and worker assembly.",
+        "Focused task/saga regression suite passed with 21 tests.",
+        "Compile check passed for worker modules and the new guardrail test."
+      ],
+      "execution_map": [
+        "T006 -> R003: added boundary guard tests and verified focused worker suite."
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P014",
+      "residual_risk": [
+        "none for task/saga engine guardrails."
+      ],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Regression attempt: adding `client`, `saga_client`, `business_client`, or URL args back to engine constructors will fail tests.",
+        "Regression attempt: importing `task_queue.client` in action engines will fail tests.",
+        "Regression attempt: wiring engines without the adapter executor will fail tests."
+      ],
+      "summary": "P014 is solved. Automated tests now lock the P012/P013 effect-adapter boundary so old direct-client ownership cannot quietly return to task/saga action engines."
+    },
+    "C004": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/children/P009/checks/C004.md",
+      "created_at": "2026-05-08T04:15:01+00:00",
+      "criteria_map": [
+        "Task engine no longer imports/stores concrete clients -> satisfied by P012/P014.",
+        "Saga engine no longer imports/stores concrete clients -> satisfied by P013/P014.",
+        "Task effects cover heartbeat, idempotency, complete/fail, publish/get, saga get, and handler context -> satisfied by `TaskExecutionEffectAdapter`.",
+        "Saga effects cover heartbeat, publish, mark launched, and mark failed -> satisfied by `SagaLaunchEffectAdapter`.",
+        "Assembly wires adapters explicitly -> satisfied by P012/P013 code and P014 tests.",
+        "Boundary tests reject old ownership -> satisfied by P014."
+      ],
+      "evidence": [
+        "P012 result/check: task engine migrated and verified.",
+        "P013 result/check: saga engine migrated and verified.",
+        "P014 result/check: automated action-engine boundary guardrails added and verified.",
+        "Focused tests passed: 10 task tests, 8 saga tests, and 21 combined boundary/regression tests."
+      ],
+      "execution_map": [
+        "T003 -> R004: parent result summarized P012/P013/P014.",
+        "P012 -> R001/C001: task engine migration.",
+        "P013 -> R002/C002: saga engine migration.",
+        "P014 -> R003/C003: boundary guards."
+      ],
+      "followup_problem_id": null,
+      "id": "C004",
+      "problem_id": "P009",
+      "residual_risk": [
+        "none for task/saga action engines. Health/scheduler engine migration is tracked separately by P010."
+      ],
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Old direct-client constructor arguments return -> P014 fails.",
+        "Old direct `self.client`/`self.saga_client` ownership returns -> P014 fails.",
+        "Adapter publish/state paths break -> P013 launch-path test fails.",
+        "Task idempotency/retry semantics regress -> P012 focused tests fail."
+      ],
+      "summary": "P009 is solved. Task and saga action engines no longer own concrete protocol clients or direct side effects; both emit explicit named effects through reusable adapters, and guardrail tests lock that boundary."
+    },
+    "C005": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/children/P010/children/P015/checks/C005.md",
+      "created_at": "2026-05-08T04:19:13+00:00",
+      "criteria_map": [
+        "Engine owns no HTTP client construction -> satisfied by code refactor and residue scan.",
+        "Recover-all side effect runs through `EffectExecutor` -> satisfied by `execute_effect(..., \"health.recover_all\", ...)`.",
+        "Health tests pass -> satisfied by focused test run.",
+        "Assembly wires adapter explicitly -> satisfied by `assemble_health_worker`."
+      ],
+      "evidence": [
+        "`health_recovery.py` accepts `effect_executor` and calls `health.recover_all`.",
+        "`health_effects.py` owns `httpx`, `internal_sync_client`, cached client, headers, and recover-all POST.",
+        "Worker assembly wires and cleans up `HealthRecoveryEffectAdapter`.",
+        "Focused health tests passed with 10 tests.",
+        "Residue scan found no old HTTP ownership tokens in `health_recovery.py`."
+      ],
+      "execution_map": [
+        "T008 -> R005: migrated health action engine and tests."
+      ],
+      "followup_problem_id": null,
+      "id": "C005",
+      "problem_id": "P015",
+      "residual_risk": [
+        "none for health engine migration."
+      ],
+      "result_ids": [
+        "R005"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Missing adapter handler -> generic `EffectExecutor` failure path would surface as `recover_all_failed`.",
+        "Header injection regression -> existing health test now checks `HealthRecoveryEffectAdapter`.",
+        "Engine HTTP residue regression -> P017 will automate the guard; manual scan is already clean."
+      ],
+      "summary": "P015 is solved. Health recovery HTTP effects are now isolated in `HealthRecoveryEffectAdapter`; `HealthRecoveryEngine` no longer owns protocol clients or Queue URL/internal key state."
+    },
+    "C006": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/children/P010/children/P016/checks/C006.md",
+      "created_at": "2026-05-08T04:22:30+00:00",
+      "criteria_map": [
+        "Engine owns no business client or assembler -> satisfied by constructor refactor and residue scan.",
+        "Due-agent scan and dispatch use `EffectExecutor` -> satisfied by explicit effects.",
+        "Scheduler tests pass -> satisfied by focused test run.",
+        "Assembly wires adapter explicitly -> satisfied by `assemble_scheduler_worker`."
+      ],
+      "evidence": [
+        "`scheduled_wake.py` accepts `effect_executor` and calls `scheduler.get_due_for_wake` / `scheduler.dispatch_wake`.",
+        "`scheduler_effects.py` owns the concrete business client and assembler.",
+        "`assemble_scheduler_worker` wires `ScheduledWakeEffectAdapter`.",
+        "Focused scheduler tests passed with 7 tests.",
+        "Residue scan found no direct collaborator ownership or direct collaborator calls in `scheduled_wake.py`."
+      ],
+      "execution_map": [
+        "T009 -> R006: migrated scheduler action engine and tests."
+      ],
+      "followup_problem_id": null,
+      "id": "C006",
+      "problem_id": "P016",
+      "residual_risk": [
+        "none for scheduler engine migration."
+      ],
+      "result_ids": [
+        "R006"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Queued dispatch path -> existing test still asserts the assembler receives the same SCHEDULED_WAKE/idempotency payload via adapter.",
+        "Metrics path -> queued result still increments `dispatch_queued`.",
+        "Direct collaborator regression -> P017 will automate boundary rejection; manual scan is clean."
+      ],
+      "summary": "P016 is solved. `ScheduledWakeEngine` no longer owns `business_client` or `assembler`; due-agent scans and dispatch are explicit effect-adapter calls."
+    },
+    "C007": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/children/P010/children/P017/checks/C007.md",
+      "created_at": "2026-05-08T04:24:09+00:00",
+      "criteria_map": [
+        "Reject HTTP imports and `_client` ownership in health engine -> satisfied.",
+        "Reject business client / assembler ownership in scheduler engine -> satisfied.",
+        "Assert health/scheduler assembly adapter wiring -> satisfied.",
+        "Focused suite passes -> satisfied."
+      ],
+      "evidence": [
+        "Boundary test covers health imports, constructor params, self-owned attributes, and assembly adapter wiring.",
+        "Boundary test covers scheduler constructor params, self-owned attributes, direct collaborator calls, and assembly adapter wiring.",
+        "Focused health/scheduler suite passed with 22 tests.",
+        "Compile check passed for worker modules and boundary tests."
+      ],
+      "execution_map": [
+        "T010 -> R007: extended boundary guards and verified them."
+      ],
+      "followup_problem_id": null,
+      "id": "C007",
+      "problem_id": "P017",
+      "residual_risk": [
+        "none for health/scheduler boundary guards."
+      ],
+      "result_ids": [
+        "R007"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Reintroducing `httpx`, `internal_sync_client`, `queue_service_url`, `queue_internal_key`, `_client`, `business_client`, or `assembler` ownership in engines will fail tests.",
+        "Removing adapter wiring in assembly will fail tests."
+      ],
+      "summary": "P017 is solved. Health and scheduler action-engine boundaries are now covered by automated tests that reject old direct-collaborator ownership and enforce adapter wiring."
+    },
+    "C008": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/children/P010/checks/C008.md",
+      "created_at": "2026-05-08T04:24:51+00:00",
+      "criteria_map": [
+        "Health engine no longer owns HTTP client construction -> satisfied by P015/P017.",
+        "Scheduler engine no longer owns business client or assembler -> satisfied by P016/P017.",
+        "Worker assembly wires adapters explicitly -> satisfied by code and P017 guard.",
+        "Existing health/scheduler behavior preserved -> satisfied by focused test suites.",
+        "Boundary tests prevent direct collaborator ownership from returning -> satisfied by P017."
+      ],
+      "evidence": [
+        "P015 result/check: health engine migrated and verified.",
+        "P016 result/check: scheduler engine migrated and verified.",
+        "P017 result/check: health/scheduler boundary guards added and verified.",
+        "Focused tests passed: 10 health tests, 7 scheduler tests, and 22 combined boundary/regression tests."
+      ],
+      "execution_map": [
+        "T007 -> R008: parent result summarized P015/P016/P017.",
+        "P015 -> R005/C005: health engine migration.",
+        "P016 -> R006/C006: scheduler engine migration.",
+        "P017 -> R007/C007: boundary guards."
+      ],
+      "followup_problem_id": null,
+      "id": "C008",
+      "problem_id": "P010",
+      "residual_risk": [
+        "none for health/scheduler action engines."
+      ],
+      "result_ids": [
+        "R008"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Reintroducing hidden HTTP/business/assembler collaborators into engines -> P017 fails.",
+        "Breaking recover-all or scheduled dispatch behavior -> focused health/scheduler tests fail.",
+        "Removing adapter wiring from assembly -> P017 fails."
+      ],
+      "summary": "P010 is solved. Health and scheduler action engines have the same explicit effect-adapter boundary as task/saga engines, and tests enforce that boundary."
+    },
+    "C009": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/children/P011/checks/C009.md",
+      "created_at": "2026-05-08T04:26:40+00:00",
+      "criteria_map": [
+        "Boundary test covers all four engines -> satisfied by token inspection and test file contents.",
+        "Boundary test asserts adapter wiring for all four assemblies -> satisfied by source assertions in test file.",
+        "Focused task/saga/health/scheduler tests pass together -> satisfied by 44-test aggregate run.",
+        "Worker modules compile -> satisfied."
+      ],
+      "evidence": [
+        "Boundary suite covers task, saga, health, and scheduler engines.",
+        "Boundary suite asserts assembly wiring for all four adapters.",
+        "Aggregate focused suite passed with 44 tests.",
+        "Worker compile check passed."
+      ],
+      "execution_map": [
+        "T011 -> R009: aggregate verification and result."
+      ],
+      "followup_problem_id": null,
+      "id": "C009",
+      "problem_id": "P011",
+      "residual_risk": [
+        "none for effect-plan boundary tests."
+      ],
+      "result_ids": [
+        "R009"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Structural regression -> boundary suite fails.",
+        "Behavioral regression -> focused suites fail.",
+        "Missing assembly adapter wiring -> boundary suite fails."
+      ],
+      "summary": "P011 is solved. The effect-plan boundary is guarded across all four action engines and verified together with focused behavior tests."
+    },
+    "C010": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C010.md",
+      "created_at": "2026-05-08T04:27:25+00:00",
+      "criteria_map": [
+        "Action engines use explicit effect plans/adapters -> satisfied by P009 and P010.",
+        "Infrastructure adapters own concrete side effects -> satisfied by task/saga/health/scheduler adapter modules.",
+        "Hidden business-side side effects removed from action engines -> satisfied by boundary tests.",
+        "Tests prove no discounted gap remains -> satisfied by P011 aggregate verification."
+      ],
+      "evidence": [
+        "P008: generic effect-plan substrate exists and is business-agnostic.",
+        "P009: task/saga engines migrated and guarded.",
+        "P010: health/scheduler engines migrated and guarded.",
+        "P011: aggregate effect-plan boundary suite passed with 44 tests."
+      ],
+      "execution_map": [
+        "T001 -> R010: parent result.",
+        "P008 -> R000/C000: substrate.",
+        "P009 -> R004/C004: task/saga migration.",
+        "P010 -> R008/C008: health/scheduler migration.",
+        "P011 -> R009/C009: aggregate boundary verification."
+      ],
+      "followup_problem_id": null,
+      "id": "C010",
+      "problem_id": "P001",
+      "residual_risk": [
+        "none for action-engine effect-plan DSL."
+      ],
+      "result_ids": [
+        "R010"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Reintroducing concrete clients, HTTP client construction, business client, assembler, or direct self-client calls inside engines -> boundary tests fail.",
+        "Behavior break in idempotency, saga launch, health recovery, or scheduled wake -> focused tests fail.",
+        "Missing adapter wiring -> assembly guard tests fail."
+      ],
+      "summary": "P001 is solved. The action-engine side-effect boundary is now explicit and guarded: engines calculate and request named effects, adapters own concrete side-effect collaborators, and tests enforce the separation."
+    },
+    "C011": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/children/P018/checks/C011.md",
+      "created_at": "2026-05-08T04:33:21+00:00",
+      "criteria_map": [
+        "Reusable helper builds generic/concurrent/synthetic workers -> satisfied by tests.",
+        "Helpers are business-agnostic -> satisfied by import guard test.",
+        "Dependencies stay explicit -> helpers require explicit source, handler, reporter/runtime bundle inputs.",
+        "Helper tests/compile pass -> satisfied."
+      ],
+      "evidence": [
+        "`task_queue/workers/assembly_helpers.py` defines reusable lifecycle helpers.",
+        "Helper tests verify generic, concurrent, and synthetic worker construction.",
+        "Helper business-agnostic import guard passes.",
+        "Compile check passes."
+      ],
+      "execution_map": [
+        "T013 -> R011: helper substrate and tests."
+      ],
+      "followup_problem_id": null,
+      "id": "C011",
+      "problem_id": "P018",
+      "residual_risk": [
+        "none for helper substrate."
+      ],
+      "result_ids": [
+        "R011"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Adding business worker imports to helper substrate -> test fails.",
+        "Breaking worker config/source wiring -> helper tests fail."
+      ],
+      "summary": "P018 is solved. The generic helper substrate exists, is business-agnostic, and is verified for generic, concurrent, and synthetic worker assembly shapes."
+    },
+    "C012": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/children/P019/checks/C012.md",
+      "created_at": "2026-05-08T04:40:41+00:00",
+      "criteria_map": [
+        "Task, saga, health, scheduler, session-outbox, saga-outbox assemblies use helper builders -> satisfied.",
+        "Direct worker construction removed from `worker_assemblies.py` -> satisfied by residue `rg`.",
+        "Runtime/config/reporter boilerplate reduced -> satisfied by helper calls and line-count reduction.",
+        "Tests prove helper-backed assembly behavior -> satisfied by focused assembly tests.",
+        "Effect adapter boundary tests still pass -> satisfied.",
+        "Compile checks pass -> satisfied."
+      ],
+      "evidence": [
+        "`worker_assemblies.py` uses `build_generic_worker`, `build_concurrent_worker`, `build_synthetic_worker`, and `build_synthetic_worker_with_runtime`.",
+        "`worker_assemblies.py` has no direct `GenericWorker`, `ConcurrentGenericWorker`, `SyntheticJobSource`, `WorkerRuntimeConfig`, `ShutdownController`, `WorkerRuntime`, `NoopReporter`, or `ResultLoggingReporter` construction.",
+        "Focused assembly/helper tests pass.",
+        "Outbox assembly tests pass after moving to helper-backed construction.",
+        "Compile check passes.",
+        "Line count evidence shows `worker_assemblies.py` reduced to 557 lines."
+      ],
+      "execution_map": [
+        "T014 -> R012: assembly migration and tests."
+      ],
+      "followup_problem_id": null,
+      "id": "C012",
+      "problem_id": "P019",
+      "residual_risk": [
+        "none for P019."
+      ],
+      "result_ids": [
+        "R012"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Reintroducing `GenericWorker(` or `SyntheticJobSource(` into `worker_assemblies.py` would fail residue checks and updated tests.",
+        "Breaking helper-backed assembly would fail focused worker assembly tests."
+      ],
+      "summary": "P019 is solved. Concrete worker assemblies no longer own worker lifecycle construction. They use the generic helper substrate and keep only explicit business wiring, adapters, handlers, and startup metadata."
+    },
+    "C013": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/children/P020/checks/C013.md",
+      "created_at": "2026-05-08T04:42:37+00:00",
+      "criteria_map": [
+        "`worker_assemblies.py` has no direct worker lifecycle primitive construction -> satisfied.",
+        "Helper-backed assembly tests pass -> satisfied.",
+        "Outbox assembly tests pass -> satisfied.",
+        "Effect boundary tests pass -> satisfied.",
+        "Compile checks pass -> satisfied.",
+        "Evidence recorded in ledger -> satisfied."
+      ],
+      "evidence": [
+        "Residue search over `worker_assemblies.py` has no matches for direct worker lifecycle construction primitives.",
+        "Focused test suite passes with 51 tests.",
+        "Compile checks pass.",
+        "Line count evidence is recorded."
+      ],
+      "execution_map": [
+        "T015 -> R013: verification-only closure."
+      ],
+      "followup_problem_id": null,
+      "id": "C013",
+      "problem_id": "P020",
+      "residual_risk": [
+        "none for P020."
+      ],
+      "result_ids": [
+        "R013"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Reintroducing raw constructors into `worker_assemblies.py` would fail the residue command and updated tests.",
+        "Breaking helper-backed construction would fail focused worker tests."
+      ],
+      "summary": "P020 is solved. The assembly shrink is not only implemented but verified: old lifecycle constructor residue is absent from `worker_assemblies.py`, tests now guard the helper-backed shape, and focused behavior/boundary checks pass."
+    },
+    "C014": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/checks/C014.md",
+      "created_at": "2026-05-08T04:43:35+00:00",
+      "criteria_map": [
+        "Declarative helper substrate exists -> satisfied by P018.",
+        "Worker assemblies migrated -> satisfied by P019.",
+        "Shrink/residue verification complete -> satisfied by P020.",
+        "Tests and compile checks prove behavior -> satisfied.",
+        "No discounted gap remains for this parent problem -> satisfied."
+      ],
+      "evidence": [
+        "P018/P019/P020 all closed successfully.",
+        "`worker_assemblies.py` uses helper calls instead of constructing worker primitives directly.",
+        "Focused helper, assembly, outbox, dispatch, and boundary tests pass.",
+        "Compile checks pass.",
+        "Residue search for direct lifecycle primitives in `worker_assemblies.py` has no matches."
+      ],
+      "execution_map": [
+        "T012 -> R014: parent summary over children.",
+        "Child result coverage:",
+        "P018 -> C011",
+        "P019 -> C012",
+        "P020 -> C013"
+      ],
+      "followup_problem_id": null,
+      "id": "C014",
+      "problem_id": "P002",
+      "residual_risk": [
+        "none for P002."
+      ],
+      "result_ids": [
+        "R014"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Reintroducing direct worker construction into business assembly would fail P020 residue checks and updated tests.",
+        "Breaking helper wiring would fail helper-backed assembly tests."
+      ],
+      "summary": "P002 is solved. Worker assembly has a reusable helper substrate, all target worker assemblies use it, and residue checks prove the old direct lifecycle-construction path is gone from `worker_assemblies.py`."
+    },
+    "C015": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/checks/C015.md",
+      "created_at": "2026-05-08T04:46:45+00:00",
+      "criteria_map": [
+        "Guardrails cover task, saga, health, scheduler action engines -> satisfied.",
+        "Guardrails cover assembly helper usage and absence of direct lifecycle constructors -> satisfied.",
+        "Guardrails distinguish allowed infra modules from forbidden business modules -> satisfied.",
+        "Existing focused tests pass -> satisfied.",
+        "Compile checks pass -> satisfied."
+      ],
+      "evidence": [
+        "Boundary test file now checks engines, adapters, assembly, and helper substrate.",
+        "Guardrail and focused suites pass.",
+        "Compile checks pass.",
+        "Residue search confirms no direct lifecycle construction in `worker_assemblies.py`."
+      ],
+      "execution_map": [
+        "T016 -> R015: guardrail implementation and verification."
+      ],
+      "followup_problem_id": null,
+      "id": "C015",
+      "problem_id": "P003",
+      "residual_risk": [
+        "none for P003."
+      ],
+      "result_ids": [
+        "R015"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Moving `TaskQueueClient` or `httpx` back into engines would fail boundary tests.",
+        "Reintroducing raw `GenericWorker` or `SyntheticJobSource` construction in `worker_assemblies.py` would fail guardrails.",
+        "Importing business modules into `assembly_helpers.py` would fail guardrails."
+      ],
+      "summary": "P003 is solved. Guardrail tests now protect both action-engine effect boundaries and worker assembly helper boundaries."
+    },
+    "C016": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P004/checks/C016.md",
+      "created_at": "2026-05-08T04:50:58+00:00",
+      "criteria_map": [
+        "Architecture/roadmap status mismatches are detected by tooling -> satisfied.",
+        "Known PR-338 stale status is fixed -> satisfied.",
+        "Lint passes locally -> satisfied.",
+        "Existing docs lints still pass -> satisfied."
+      ],
+      "evidence": [
+        "PR-338 ticket now says `Status: Closed`.",
+        "PR-338 ticket now says `P007 closed`.",
+        "`scripts/ci/lint_docs_status_consistency.py` checks the PR-338 ticket and architecture plan markers.",
+        "`.github/workflows/lint.yml` runs the new lint.",
+        "Local docs lints pass."
+      ],
+      "execution_map": [
+        "T017 -> R016: docs fix, CI lint, verification."
+      ],
+      "followup_problem_id": null,
+      "id": "C016",
+      "problem_id": "P004",
+      "residual_risk": [
+        "The first lint version is intentionally narrow. Future status-contracts should be added as explicit expectations when new architecture docs become SSOT."
+      ],
+      "result_ids": [
+        "R016"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Reintroducing `Status: Doing` or `P007 in progress` to PR-338 would fail the new lint.",
+        "Removing the closed phase 13 marker from the architecture plan would fail the new lint."
+      ],
+      "summary": "P004 is solved. The known stale PR-338 docs status is corrected, and CI now has a narrow status-consistency lint to prevent that drift from returning."
+    },
+    "C017": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P005/checks/C017.md",
+      "created_at": "2026-05-08T04:57:37+00:00",
+      "criteria_map": [
+        "Restart captures timestamp and verifies fresh logs: satisfied by `remote_epoch`, `restart_all`, and `verify_fresh_backend_logs \"$smoke_since\"`.",
+        "Manual fresh smoke: satisfied by `fresh-smoke) verify_fresh_backend_logs \"${2:-}\"`.",
+        "Stable server paths and timestamp evidence: satisfied by remote `/opt/novaic/data/logs` plus `stat -c %Y` mtime checks.",
+        "CI/lint guard: satisfied by `scripts/ci/lint_deploy_fresh_smoke.py` and workflow wiring.",
+        "Documentation: satisfied by `docs/runbooks/deploy.md` fresh-smoke section."
+      ],
+      "evidence": [
+        "Result: `R017`",
+        "Syntax:",
+        "`bash -n deploy`",
+        "`bash -n scripts/start.sh`",
+        "Guardrails:",
+        "`python3 scripts/ci/lint_deploy_fresh_smoke.py`",
+        "`python3 scripts/ci/check_start_config_contract.py`",
+        "`python3 scripts/ci/lint_docs_status_consistency.py`",
+        "`./scripts/ci/lint_current_docs_residue.sh`",
+        "`python3 scripts/ci/lint_roadmap_ticket_archaeology.py`",
+        "`git diff --check -- deploy docs/runbooks/deploy.md scripts/ci/lint_deploy_fresh_smoke.py .github/workflows/lint.yml`",
+        "`python3 -m py_compile scripts/ci/lint_deploy_fresh_smoke.py`",
+        "UX smoke:",
+        "`./deploy __help_smoke__ | sed -n '1,80p'`"
+      ],
+      "execution_map": [
+        "Ticket `T018` was classified `one_go`.",
+        "Execution result `R017` records deploy, docs, and CI changes plus local verification.",
+        "This check accepts `R017` as complete for P005."
+      ],
+      "followup_problem_id": null,
+      "id": "C017",
+      "problem_id": "P005",
+      "residual_risk": [
+        "The smoke verifies timestamp freshness of critical logs, not full semantic worker health. That is intentionally covered by the separate runtime worker supervision problem."
+      ],
+      "result_ids": [
+        "R017"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "If `restart_all` loses the timestamp capture, lint fails.",
+        "If the post-restart smoke call is removed, lint fails.",
+        "If a critical log is removed from the smoke list, lint fails.",
+        "If docs stop mentioning timestamp-aware fresh smoke, lint fails.",
+        "If someone tries to reuse old `/tmp/novaic-cortex-sandbox-*` style stale path thinking, this change is unaffected because it verifies fixed remote production log paths."
+      ],
+      "summary": "P005 is solved. Deploy restart is no longer verified only by stale tail/process evidence: restart captures a remote epoch, runs fresh-log smoke after startup, and exposes the same timestamp-aware check as `./deploy fresh-smoke [epoch]`. CI now guards the deploy hook, command, critical logs, docs, and workflow wiring."
+    },
+    "C018": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P006/checks/C018.md",
+      "created_at": "2026-05-08T05:01:54+00:00",
+      "criteria_map": [
+        "`start.sh` verifies exact worker/subscriber counts: satisfied by `verify_runtime_processes`.",
+        "Startup exits non-zero on wrong role count: satisfied by `Required runtime subprocess supervision failed.` path.",
+        "`deploy status` role-level table: satisfied by `check_role` table.",
+        "CI/lint coverage: satisfied by `scripts/ci/lint_runtime_worker_supervision.py` and workflow wiring.",
+        "Documentation: satisfied by `docs/runbooks/deploy.md`."
+      ],
+      "evidence": [
+        "Result: `R018`",
+        "Syntax:",
+        "`bash -n scripts/start.sh`",
+        "`bash -n deploy`",
+        "Guardrails:",
+        "`python3 scripts/ci/lint_runtime_worker_supervision.py`",
+        "`python3 scripts/ci/lint_deploy_fresh_smoke.py`",
+        "`python3 scripts/ci/check_start_config_contract.py`",
+        "`python3 scripts/ci/lint_docs_status_consistency.py`",
+        "`./scripts/ci/lint_current_docs_residue.sh`",
+        "`git diff --check -- deploy scripts/start.sh docs/runbooks/deploy.md scripts/ci/lint_runtime_worker_supervision.py scripts/ci/lint_deploy_fresh_smoke.py .github/workflows/lint.yml`",
+        "`python3 -m py_compile scripts/ci/lint_runtime_worker_supervision.py scripts/ci/lint_deploy_fresh_smoke.py`",
+        "Residue scan:",
+        "`rg -n \"worker_count|Workers:|subscriber-\\\\*\\\\.log\" deploy scripts/start.sh docs/runbooks/deploy.md scripts/ci/lint_runtime_worker_supervision.py`",
+        "Only intentional guard references remain inside the lint script."
+      ],
+      "execution_map": [
+        "Ticket `T019` was classified `one_go`.",
+        "Execution result `R018` records start/status supervision, docs, CI guard, and local verification.",
+        "This check accepts `R018` as complete for P006."
+      ],
+      "followup_problem_id": null,
+      "id": "C018",
+      "problem_id": "P006",
+      "residual_risk": [
+        "Shell supervision proves required subprocess shape. It does not replace semantic queue/FSM correctness tests; those remain in the runtime code and final residue verification problem."
+      ],
+      "result_ids": [
+        "R018"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Removing `verify_runtime_processes` fails lint.",
+        "Removing any required role from `start.sh` or `deploy status` fails lint.",
+        "Reintroducing the old coarse `worker_count` status fails lint.",
+        "Leaving the wrong `subscriber-*.log` operator hint would be caught by the residue scan evidence."
+      ],
+      "summary": "P006 is solved. Required runtime worker roles are now explicit in production startup and deploy status. The system no longer accepts a vague worker aggregate as sufficient evidence for role-level worker health."
+    },
+    "C019": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P007/checks/C019.md",
+      "created_at": "2026-05-08T05:14:03+00:00",
+      "criteria_map": [
+        "Newly added guardrails pass: satisfied.",
+        "Focused runtime/FSM/worker tests pass: satisfied.",
+        "Residue scans show no active old worker constructors/coarse deploy status: satisfied.",
+        "Docs and roadmap lints pass: satisfied.",
+        "Git diff reviewed and understandable: satisfied by status/diff-stat review.",
+        "Ledger can close P007 with explicit evidence: satisfied by `R019` and this check."
+      ],
+      "evidence": [
+        "Result: `R019`",
+        "Runtime tests:",
+        "`pytest -q` in `novaic-agent-runtime`: `530 passed`.",
+        "Focused suites: `38 passed`, `103 passed`, `136 passed`, `14 passed`, `13 passed`.",
+        "Root lint chain completed successfully after fixes, including `lint_httpx`, deploy fresh-smoke, runtime worker supervision, start/config, docs status, and lifecycle loop ownership.",
+        "Compile checks completed successfully for Cortex, Runtime, and CI scripts.",
+        "Diff hygiene completed successfully for root, Runtime, and Cortex.",
+        "Residue scans:",
+        "No old worker constructors in `worker_assemblies.py`.",
+        "No direct `httpx.Client` or `httpx.AsyncClient` in Runtime/Cortex."
+      ],
+      "execution_map": [
+        "Ticket `T020` was classified `one_go`.",
+        "Execution result `R019` records audit, discovered residues, fixes, and verification.",
+        "This check accepts `R019` as complete for P007."
+      ],
+      "followup_problem_id": null,
+      "id": "C019",
+      "problem_id": "P007",
+      "residual_risk": [
+        "No production deploy was performed in this closure pass.",
+        "Remaining LLM Factory/Business provider HTTP allowlist entries are outside the Runtime FSM/business DSL closure scope and remain explicitly visible in `lint_httpx.sh`."
+      ],
+      "result_ids": [
+        "R019"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "If business assembly reintroduces raw worker constructors, action boundary tests/guard fail.",
+        "If Runtime/Cortex directly instantiate `httpx.Client` again, `lint_httpx` fails.",
+        "If pending projection message-id ownership drifts again, lifecycle ownership lint fails.",
+        "If deploy restart loses fresh-smoke or worker supervision, new deployment lints fail.",
+        "If docs status drifts from roadmap status, docs status lint fails."
+      ],
+      "summary": "P007 is solved. Final audit did not merely rubber-stamp the previous changes: it found and closed direct HTTP-client residue plus a stale lifecycle lint contract. Full runtime tests and the root lint chain now pass after those fixes."
+    },
+    "C020": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C020.md",
+      "created_at": "2026-05-08T05:15:17+00:00",
+      "criteria_map": [
+        "Action engines use explicit decision/effect plans with infrastructure adapters: satisfied by P001 and P003.",
+        "Worker assembly shrunk into declarative DSL/specs with reusable infra policies: satisfied by P002 and P003.",
+        "Guardrails cover effect adapters, assembly thickness, docs status consistency, timestamp-aware deploy smoke, process supervision: satisfied by P003, P004, P005, P006, and P007.",
+        "Old paths/residue removed/guarded; tests/docs prove no discounted gap remains: satisfied by P007 full audit and fixes."
+      ],
+      "evidence": [
+        "Root result: `R020`",
+        "Child success checks:",
+        "P001 / C010: action engine effect-plan DSL",
+        "P002 / C014: declarative worker assembly DSL shrink",
+        "P003 / C015: effect adapter and assembly guardrails",
+        "P004 / C016: docs status consistency lint",
+        "P005 / C017: timestamp-aware deploy smoke",
+        "P006 / C018: runtime worker supervision",
+        "P007 / C019: final residue closure and verification",
+        "Final verification:",
+        "`pytest -q` in `novaic-agent-runtime`: `530 passed`.",
+        "Root lint chain passed after P007 fixes.",
+        "Compile checks passed for Cortex, Runtime, and CI scripts.",
+        "Root/Runtime/Cortex diff checks passed.",
+        "Residue scans show no raw worker constructors in business assembly and no direct Runtime/Cortex `httpx.Client` construction."
+      ],
+      "execution_map": [
+        "Root ticket `T000` was split into P001-P007.",
+        "All child problems were solved and success-checked.",
+        "Root result `R020` summarizes implementation, verification, artifacts, and scoped residual risks.",
+        "This check accepts `R020` as complete for root P000."
+      ],
+      "followup_problem_id": null,
+      "id": "C020",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Production deployment was not run in this pass.",
+        "The remaining explicit HTTP allowlist entries for LLM Factory and Business provider are visible and outside this Runtime FSM/business DSL scope; they are not hidden residue in the closed gap set."
+      ],
+      "result_ids": [
+        "R020"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "If direct worker constructors return to `worker_assemblies.py`, action boundary tests fail.",
+        "If action engines bypass effect adapters, P003 guard tests fail.",
+        "If deploy restart no longer runs fresh-smoke, `lint_deploy_fresh_smoke.py` fails.",
+        "If runtime worker role supervision disappears, `lint_runtime_worker_supervision.py` fails.",
+        "If docs/roadmap drift returns, docs status lint fails.",
+        "If Runtime/Cortex direct HTTP clients return, `lint_httpx.sh` fails.",
+        "If pending message-id projection ownership drifts, lifecycle loop ownership lint fails."
+      ],
+      "summary": "The root problem is solved for the stated FSM substrate + business DSL closure scope. All seven child problems are success-checked, the root result is recorded, full Runtime tests pass, root lints pass, and final audit found and fixed additional residue instead of hiding it."
+    }
+  },
+  "counters": {
+    "check": 21,
+    "event": 252,
+    "problem": 21,
+    "result": 21,
+    "ticket": 21
+  },
+  "created_at": "2026-05-08T03:58:06+00:00",
+  "ledger_id": "L20260508-115806",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C020"
+      ],
+      "created_at": "2026-05-08T03:58:06+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "补齐 FSM 基建与业务 DSL 全部 gap",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R020"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P001",
+        "P002",
+        "P003",
+        "P004",
+        "P005",
+        "P006",
+        "P007"
+      ],
+      "success_criteria": [
+        "Action engines use explicit decision/effect plans with infrastructure adapters, not direct hidden business-side effects",
+        "Worker assembly is shrunk into declarative DSL/specs with reusable infra policies",
+        "Guardrails cover effect adapters, assembly thickness, docs status consistency, timestamp-aware deploy smoke, and process supervision",
+        "Old paths/residue are removed or guarded; tests and docs prove no discounted gap remains"
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "补齐 FSM 基建与业务 DSL 全部 gap",
+      "updated_at": "2026-05-08T05:15:17+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C010"
+      ],
+      "created_at": "2026-05-08T03:58:57+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Action engine effect-plan DSL",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R010"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P008",
+        "P009",
+        "P010",
+        "P011"
+      ],
+      "success_criteria": [
+        "Task/saga/health/scheduler action engines use explicit effect plan objects and approved adapters for side effects",
+        "Behavior remains covered by targeted tests"
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "Action engine effect-plan DSL",
+      "updated_at": "2026-05-08T04:27:25+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [
+        "C014"
+      ],
+      "created_at": "2026-05-08T03:58:57+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Declarative worker assembly DSL shrink",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [
+        "R014"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P018",
+        "P019",
+        "P020"
+      ],
+      "success_criteria": [
+        "Worker assembly is data/spec driven and reusable policies are extracted from worker_assemblies.py",
+        "Tests guard the new assembly shape"
+      ],
+      "ticket_ids": [
+        "T012"
+      ],
+      "title": "Declarative worker assembly DSL shrink",
+      "updated_at": "2026-05-08T04:43:35+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P003/README.md",
+      "check_ids": [
+        "C015"
+      ],
+      "created_at": "2026-05-08T03:58:57+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Effect adapter and assembly guardrails",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P003",
+      "parent_id": "P000",
+      "result_ids": [
+        "R015"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Tests fail when action engines bypass approved adapters or assembly reintroduces thick imperative residue"
+      ],
+      "ticket_ids": [
+        "T016"
+      ],
+      "title": "Effect adapter and assembly guardrails",
+      "updated_at": "2026-05-08T04:46:45+00:00"
+    },
+    "P004": {
+      "body_path": "problems/P000/children/P004/README.md",
+      "check_ids": [
+        "C016"
+      ],
+      "created_at": "2026-05-08T03:58:57+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Docs status consistency lint",
+      "followup_ids": [],
+      "id": "P004",
+      "package_path": "problems/P000/children/P004",
+      "parent_id": "P000",
+      "result_ids": [
+        "R016"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Architecture and roadmap status mismatches are detected by CI/test tooling",
+        "Known PR-338 stale status is fixed"
+      ],
+      "ticket_ids": [
+        "T017"
+      ],
+      "title": "Docs status consistency lint",
+      "updated_at": "2026-05-08T04:50:58+00:00"
+    },
+    "P005": {
+      "body_path": "problems/P000/children/P005/README.md",
+      "check_ids": [
+        "C017"
+      ],
+      "created_at": "2026-05-08T03:58:57+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Timestamp-aware deploy smoke",
+      "followup_ids": [],
+      "id": "P005",
+      "package_path": "problems/P000/children/P005",
+      "parent_id": "P000",
+      "result_ids": [
+        "R017"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Deploy smoke tooling distinguishes fresh worker health/log evidence from stale append-only logs"
+      ],
+      "ticket_ids": [
+        "T018"
+      ],
+      "title": "Timestamp-aware deploy smoke",
+      "updated_at": "2026-05-08T04:57:37+00:00"
+    },
+    "P006": {
+      "body_path": "problems/P000/children/P006/README.md",
+      "check_ids": [
+        "C018"
+      ],
+      "created_at": "2026-05-08T03:58:57+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Runtime worker supervision",
+      "followup_ids": [],
+      "id": "P006",
+      "package_path": "problems/P000/children/P006",
+      "parent_id": "P000",
+      "result_ids": [
+        "R018"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Worker subprocess death is detected and addressed by a minimal supervisor/status mechanism rather than invisible shell backgrounding only"
+      ],
+      "ticket_ids": [
+        "T019"
+      ],
+      "title": "Runtime worker supervision",
+      "updated_at": "2026-05-08T05:01:54+00:00"
+    },
+    "P007": {
+      "body_path": "problems/P000/children/P007/README.md",
+      "check_ids": [
+        "C019"
+      ],
+      "created_at": "2026-05-08T03:58:57+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Final residue closure and verification",
+      "followup_ids": [],
+      "id": "P007",
+      "package_path": "problems/P000/children/P007",
+      "parent_id": "P000",
+      "result_ids": [
+        "R019"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "All previous children are verified together with compile, targeted tests, residue scans, and parent result"
+      ],
+      "ticket_ids": [
+        "T020"
+      ],
+      "title": "Final residue closure and verification",
+      "updated_at": "2026-05-08T05:14:03+00:00"
+    },
+    "P008": {
+      "body_path": "problems/P000/children/P001/children/P008/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-08T03:59:55+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T001",
+      "description": "Effect plan substrate contracts",
+      "followup_ids": [],
+      "id": "P008",
+      "package_path": "problems/P000/children/P001/children/P008",
+      "parent_id": "P001",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "WorkerEffect/EffectPlan/EffectExecutor contracts exist with tests and no business client imports"
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "Effect plan substrate contracts",
+      "updated_at": "2026-05-08T04:04:04+00:00"
+    },
+    "P009": {
+      "body_path": "problems/P000/children/P001/children/P009/README.md",
+      "check_ids": [
+        "C004"
+      ],
+      "created_at": "2026-05-08T03:59:55+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T001",
+      "description": "Task and saga engines use effect adapters",
+      "followup_ids": [],
+      "id": "P009",
+      "package_path": "problems/P000/children/P001/children/P009",
+      "parent_id": "P001",
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P012",
+        "P013",
+        "P014"
+      ],
+      "success_criteria": [
+        "TaskExecutionEngine and SagaLaunchEngine no longer hold direct queue/saga/business clients; adapters execute explicit effects"
+      ],
+      "ticket_ids": [
+        "T003"
+      ],
+      "title": "Task and saga engines use effect adapters",
+      "updated_at": "2026-05-08T04:15:01+00:00"
+    },
+    "P010": {
+      "body_path": "problems/P000/children/P001/children/P010/README.md",
+      "check_ids": [
+        "C008"
+      ],
+      "created_at": "2026-05-08T03:59:56+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T001",
+      "description": "Health and scheduler engines use effect adapters",
+      "followup_ids": [],
+      "id": "P010",
+      "package_path": "problems/P000/children/P001/children/P010",
+      "parent_id": "P001",
+      "result_ids": [
+        "R008"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P015",
+        "P016",
+        "P017"
+      ],
+      "success_criteria": [
+        "HealthRecoveryEngine and ScheduledWakeEngine no longer hold direct HTTP/Business/assembler clients; adapters execute explicit effects"
+      ],
+      "ticket_ids": [
+        "T007"
+      ],
+      "title": "Health and scheduler engines use effect adapters",
+      "updated_at": "2026-05-08T04:24:51+00:00"
+    },
+    "P011": {
+      "body_path": "problems/P000/children/P001/children/P011/README.md",
+      "check_ids": [
+        "C009"
+      ],
+      "created_at": "2026-05-08T03:59:56+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T001",
+      "description": "Effect-plan boundary tests",
+      "followup_ids": [],
+      "id": "P011",
+      "package_path": "problems/P000/children/P001/children/P011",
+      "parent_id": "P001",
+      "result_ids": [
+        "R009"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Source and behavior tests fail if engines bypass approved effect adapters"
+      ],
+      "ticket_ids": [
+        "T011"
+      ],
+      "title": "Effect-plan boundary tests",
+      "updated_at": "2026-05-08T04:26:40+00:00"
+    },
+    "P012": {
+      "body_path": "problems/P000/children/P001/children/P009/children/P012/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-08T04:05:18+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T003",
+      "description": "Task engine effect adapter migration",
+      "followup_ids": [],
+      "id": "P012",
+      "package_path": "problems/P000/children/P001/children/P009/children/P012",
+      "parent_id": "P009",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "TaskExecutionEngine owns no concrete Queue/Saga/Business clients",
+        "Task execution side effects run through EffectExecutor handlers",
+        "Task worker idempotency/retry/saga-parallel tests pass"
+      ],
+      "ticket_ids": [
+        "T004"
+      ],
+      "title": "Task engine effect adapter migration",
+      "updated_at": "2026-05-08T04:08:33+00:00"
+    },
+    "P013": {
+      "body_path": "problems/P000/children/P001/children/P009/children/P013/README.md",
+      "check_ids": [
+        "C002"
+      ],
+      "created_at": "2026-05-08T04:05:18+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T003",
+      "description": "Saga engine effect adapter migration",
+      "followup_ids": [],
+      "id": "P013",
+      "package_path": "problems/P000/children/P001/children/P009/children/P013",
+      "parent_id": "P009",
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "SagaLaunchEngine owns no concrete Saga/Task clients",
+        "Saga launch side effects run through EffectExecutor handlers",
+        "Saga worker launch and boundary tests pass"
+      ],
+      "ticket_ids": [
+        "T005"
+      ],
+      "title": "Saga engine effect adapter migration",
+      "updated_at": "2026-05-08T04:11:44+00:00"
+    },
+    "P014": {
+      "body_path": "problems/P000/children/P001/children/P009/children/P014/README.md",
+      "check_ids": [
+        "C003"
+      ],
+      "created_at": "2026-05-08T04:05:18+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T003",
+      "description": "Task/saga engine boundary guards",
+      "followup_ids": [],
+      "id": "P014",
+      "package_path": "problems/P000/children/P001/children/P009/children/P014",
+      "parent_id": "P009",
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Boundary tests reject concrete-client imports and constructor params in task/saga engines",
+        "Worker assembly wires adapters explicitly",
+        "Focused task/saga test suite passes"
+      ],
+      "ticket_ids": [
+        "T006"
+      ],
+      "title": "Task/saga engine boundary guards",
+      "updated_at": "2026-05-08T04:14:19+00:00"
+    },
+    "P015": {
+      "body_path": "problems/P000/children/P001/children/P010/children/P015/README.md",
+      "check_ids": [
+        "C005"
+      ],
+      "created_at": "2026-05-08T04:16:15+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T007",
+      "description": "Health engine effect adapter migration",
+      "followup_ids": [],
+      "id": "P015",
+      "package_path": "problems/P000/children/P001/children/P010/children/P015",
+      "parent_id": "P010",
+      "result_ids": [
+        "R005"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "HealthRecoveryEngine owns no HTTP client construction",
+        "Recover-all side effect runs through EffectExecutor",
+        "Health dispatch/generic worker tests pass"
+      ],
+      "ticket_ids": [
+        "T008"
+      ],
+      "title": "Health engine effect adapter migration",
+      "updated_at": "2026-05-08T04:19:13+00:00"
+    },
+    "P016": {
+      "body_path": "problems/P000/children/P001/children/P010/children/P016/README.md",
+      "check_ids": [
+        "C006"
+      ],
+      "created_at": "2026-05-08T04:16:15+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T007",
+      "description": "Scheduler engine effect adapter migration",
+      "followup_ids": [],
+      "id": "P016",
+      "package_path": "problems/P000/children/P001/children/P010/children/P016",
+      "parent_id": "P010",
+      "result_ids": [
+        "R006"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "ScheduledWakeEngine owns no business client or assembler",
+        "Due-agent scan and dispatch run through EffectExecutor",
+        "Scheduler dispatch/generic worker tests pass"
+      ],
+      "ticket_ids": [
+        "T009"
+      ],
+      "title": "Scheduler engine effect adapter migration",
+      "updated_at": "2026-05-08T04:22:30+00:00"
+    },
+    "P017": {
+      "body_path": "problems/P000/children/P001/children/P010/children/P017/README.md",
+      "check_ids": [
+        "C007"
+      ],
+      "created_at": "2026-05-08T04:16:15+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T007",
+      "description": "Health/scheduler boundary guards",
+      "followup_ids": [],
+      "id": "P017",
+      "package_path": "problems/P000/children/P001/children/P010/children/P017",
+      "parent_id": "P010",
+      "result_ids": [
+        "R007"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Boundary tests reject direct health/scheduler collaborator ownership",
+        "Worker assembly wires health/scheduler adapters explicitly",
+        "Focused health/scheduler suite passes"
+      ],
+      "ticket_ids": [
+        "T010"
+      ],
+      "title": "Health/scheduler boundary guards",
+      "updated_at": "2026-05-08T04:24:09+00:00"
+    },
+    "P018": {
+      "body_path": "problems/P000/children/P002/children/P018/README.md",
+      "check_ids": [
+        "C011"
+      ],
+      "created_at": "2026-05-08T04:28:31+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T012",
+      "description": "Generic worker assembly helper substrate",
+      "followup_ids": [],
+      "id": "P018",
+      "package_path": "problems/P000/children/P002/children/P018",
+      "parent_id": "P002",
+      "result_ids": [
+        "R011"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Reusable helper builds generic/concurrent/synthetic workers",
+        "Helpers are business-agnostic and keep dependencies explicit",
+        "Helper tests or compile checks pass"
+      ],
+      "ticket_ids": [
+        "T013"
+      ],
+      "title": "Generic worker assembly helper substrate",
+      "updated_at": "2026-05-08T04:33:21+00:00"
+    },
+    "P019": {
+      "body_path": "problems/P000/children/P002/children/P019/README.md",
+      "check_ids": [
+        "C012"
+      ],
+      "created_at": "2026-05-08T04:28:32+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T012",
+      "description": "Migrate worker assemblies to helper substrate",
+      "followup_ids": [],
+      "id": "P019",
+      "package_path": "problems/P000/children/P002/children/P019",
+      "parent_id": "P002",
+      "result_ids": [
+        "R012"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "All six assembly functions use helper substrate for lifecycle wiring",
+        "worker_assemblies.py line count is meaningfully reduced",
+        "Focused worker behavior tests pass"
+      ],
+      "ticket_ids": [
+        "T014"
+      ],
+      "title": "Migrate worker assemblies to helper substrate",
+      "updated_at": "2026-05-08T04:40:41+00:00"
+    },
+    "P020": {
+      "body_path": "problems/P000/children/P002/children/P020/README.md",
+      "check_ids": [
+        "C013"
+      ],
+      "created_at": "2026-05-08T04:28:32+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T012",
+      "description": "Assembly DSL shrink verification",
+      "followup_ids": [],
+      "id": "P020",
+      "package_path": "problems/P000/children/P002/children/P020",
+      "parent_id": "P002",
+      "result_ids": [
+        "R013"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Assembly source has no repeated inline worker lifecycle construction",
+        "Focused suite and compile checks pass",
+        "Line-count evidence is recorded"
+      ],
+      "ticket_ids": [
+        "T015"
+      ],
+      "title": "Assembly DSL shrink verification",
+      "updated_at": "2026-05-08T04:42:37+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`novaic-agent-runtime/queue_service/worker/effects.py`",
+        "`novaic-agent-runtime/queue_service/worker/__init__.py`",
+        "`novaic-agent-runtime/tests/test_pr340_worker_effect_plan.py`"
+      ],
+      "body_path": "problems/P000/children/P001/children/P008/results/R000.md",
+      "created_at": "2026-05-08T04:03:38+00:00",
+      "done": [
+        "Added `queue_service/worker/effects.py` with `WorkerEffect`, `EffectPlan`, `EffectOutcome`, `EffectExecutor`, `EffectExecutionError`, and small helper functions.",
+        "Exported the effect-plan contracts from `queue_service/worker/__init__.py`.",
+        "Added `tests/test_pr340_worker_effect_plan.py` to verify ordered execution, missing handler failure, failure propagation, and business-agnostic imports."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "none for the substrate contract itself.",
+        "Engine migration to the new substrate is intentionally left to child tickets P009/P010/P011."
+      ],
+      "problem_id": "P008",
+      "root_id": "P000",
+      "summary": "Implemented the generic worker effect-plan substrate as business-agnostic infrastructure under `queue_service.worker`. The substrate gives action engines an explicit plan/effect/outcome boundary so later tickets can move side effects into adapters without inventing per-worker plumbing.",
+      "ticket_id": "T002",
+      "verification": [
+        "`pytest -q tests/test_pr340_worker_effect_plan.py` passed with 4 tests.",
+        "`python -m compileall -q queue_service/worker` passed."
+      ]
+    },
+    "R001": {
+      "artifacts": [
+        "`novaic-agent-runtime/task_queue/workers/task_effects.py`",
+        "`novaic-agent-runtime/task_queue/workers/task_execution.py`",
+        "`novaic-agent-runtime/task_queue/workers/worker_assemblies.py`",
+        "`novaic-agent-runtime/tests/unit/task_queue/test_retry_policy_and_idempotency.py`",
+        "`novaic-agent-runtime/tests/unit/task_queue/test_dedup_guard_failure_path.py`",
+        "`novaic-agent-runtime/tests/unit/task_queue/test_high_concurrency_retry_replay.py`"
+      ],
+      "body_path": "problems/P000/children/P001/children/P009/children/P012/results/R001.md",
+      "created_at": "2026-05-08T04:08:10+00:00",
+      "done": [
+        "Added `task_queue/workers/task_effects.py` with `TaskExecutionEffectAdapter`.",
+        "Refactored `TaskExecutionEngine` constructor to accept `effect_executor` instead of `TaskQueueClient`, `SagaClient`, `BusinessClient`, `business_url`, and `queue_service_url`.",
+        "Replaced direct task side effects with explicit effects:",
+        "`task.heartbeat`",
+        "`task.acquire_idempotency_execution`",
+        "`task.complete_idempotency_execution`",
+        "`task.release_idempotency_execution`",
+        "`task.complete`",
+        "`task.fail`",
+        "`task.publish`",
+        "`task.get`",
+        "`task.handler_context`",
+        "`saga.get`",
+        "Updated `assemble_task_worker` to construct `TaskExecutionEffectAdapter` and inject its executor.",
+        "Updated focused task worker unit tests to use explicit adapters."
+      ],
+      "id": "R001",
+      "known_gaps": [
+        "none for the task action engine migration.",
+        "Automated boundary guard tests are left to P014 so the task and saga engine checks land together."
+      ],
+      "problem_id": "P012",
+      "root_id": "P000",
+      "summary": "Migrated `TaskExecutionEngine` to use the generic `EffectExecutor` boundary. Concrete task/saga/business clients and URL-backed handler context are now owned by `TaskExecutionEffectAdapter`, which is wired in worker assembly and test setup.",
+      "ticket_id": "T004",
+      "verification": [
+        "`pytest -q tests/unit/task_queue/test_retry_policy_and_idempotency.py tests/unit/task_queue/test_dedup_guard_failure_path.py tests/unit/task_queue/test_high_concurrency_retry_replay.py tests/test_pr331_task_worker_handler_cutover.py` passed with 10 tests.",
+        "`python -m compileall -q task_queue/workers/task_execution.py task_queue/workers/task_effects.py task_queue/workers/worker_assemblies.py` passed.",
+        "`rg -n \"TaskQueueClient|SagaClient|BusinessClient|self\\\\.client|self\\\\.saga_client|self\\\\.business_client|business_url|queue_service_url\" task_queue/workers/task_execution.py` returned no matches."
+      ]
+    },
+    "R002": {
+      "artifacts": [
+        "`novaic-agent-runtime/task_queue/workers/saga_effects.py`",
+        "`novaic-agent-runtime/task_queue/workers/saga_launch.py`",
+        "`novaic-agent-runtime/task_queue/workers/worker_assemblies.py`",
+        "`novaic-agent-runtime/tests/test_pr333_saga_worker_handler_cutover.py`",
+        "`novaic-agent-runtime/tests/unit/task_queue/test_saga_worker_boundary.py`"
+      ],
+      "body_path": "problems/P000/children/P001/children/P009/children/P013/results/R002.md",
+      "created_at": "2026-05-08T04:11:24+00:00",
+      "done": [
+        "Added `task_queue/workers/saga_effects.py` with `SagaLaunchEffectAdapter`.",
+        "Refactored `SagaLaunchEngine` constructor to accept `effect_executor` instead of `saga_client` and `task_client`.",
+        "Replaced direct saga side effects with explicit effects:",
+        "`saga.heartbeat`",
+        "`saga.task_publish`",
+        "`saga.mark_launched`",
+        "`saga.mark_failed`",
+        "Updated `assemble_saga_worker` to construct the adapter and inject its executor.",
+        "Updated saga worker tests and added a launch-path test proving publish/state updates go through the adapter."
+      ],
+      "id": "R002",
+      "known_gaps": [
+        "none for saga launch engine migration.",
+        "Automated task/saga boundary guard tests are left to P014."
+      ],
+      "problem_id": "P013",
+      "root_id": "P000",
+      "summary": "Migrated `SagaLaunchEngine` to explicit effect execution. Concrete saga/task clients are now owned by `SagaLaunchEffectAdapter`; the engine keeps DAG construction and launch decisions but performs heartbeat, publish, and saga state updates through named effects.",
+      "ticket_id": "T005",
+      "verification": [
+        "`pytest -q tests/test_pr333_saga_worker_handler_cutover.py tests/unit/task_queue/test_saga_worker_boundary.py` passed with 8 tests.",
+        "`python -m compileall -q task_queue/workers/saga_launch.py task_queue/workers/saga_effects.py task_queue/workers/worker_assemblies.py` passed.",
+        "`rg -n \"SagaClient|TaskQueueClient|self\\\\.saga_client|self\\\\.task_client|mark_launched\\\\(|mark_failed\\\\(|publish\\\\(\" task_queue/workers/saga_launch.py` returned no matches."
+      ]
+    },
+    "R003": {
+      "artifacts": [
+        "`novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py`"
+      ],
+      "body_path": "problems/P000/children/P001/children/P009/children/P014/results/R003.md",
+      "created_at": "2026-05-08T04:13:57+00:00",
+      "done": [
+        "Added `tests/test_pr340_action_engine_effect_boundaries.py`.",
+        "Guarded `TaskExecutionEngine` against concrete client imports, old constructor args, self-owned client attrs, and direct protocol calls.",
+        "Guarded `SagaLaunchEngine` against concrete client imports, old constructor args, self-owned client attrs, and direct protocol calls.",
+        "Guarded worker assembly wiring for `TaskExecutionEffectAdapter` and `SagaLaunchEffectAdapter`."
+      ],
+      "id": "R003",
+      "known_gaps": [
+        "none for task/saga engine boundary guards."
+      ],
+      "problem_id": "P014",
+      "root_id": "P000",
+      "summary": "Added automated guardrails that enforce the task/saga action engine effect-adapter boundary. The tests reject concrete client imports, old constructor parameters, self-owned protocol clients, direct self-client protocol calls, and missing assembly adapter wiring.",
+      "ticket_id": "T006",
+      "verification": [
+        "`pytest -q tests/test_pr340_action_engine_effect_boundaries.py tests/test_pr333_saga_worker_handler_cutover.py tests/unit/task_queue/test_saga_worker_boundary.py tests/unit/task_queue/test_retry_policy_and_idempotency.py tests/unit/task_queue/test_dedup_guard_failure_path.py tests/unit/task_queue/test_high_concurrency_retry_replay.py tests/test_pr331_task_worker_handler_cutover.py` passed with 21 tests.",
+        "`python -m compileall -q task_queue/workers tests/test_pr340_action_engine_effect_boundaries.py` passed."
+      ]
+    },
+    "R004": {
+      "artifacts": [
+        "`novaic-agent-runtime/task_queue/workers/task_effects.py`",
+        "`novaic-agent-runtime/task_queue/workers/saga_effects.py`",
+        "`novaic-agent-runtime/task_queue/workers/task_execution.py`",
+        "`novaic-agent-runtime/task_queue/workers/saga_launch.py`",
+        "`novaic-agent-runtime/task_queue/workers/worker_assemblies.py`",
+        "`novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py`"
+      ],
+      "body_path": "problems/P000/children/P001/children/P009/results/R004.md",
+      "created_at": "2026-05-08T04:14:41+00:00",
+      "done": [
+        "P012 migrated `TaskExecutionEngine` to `TaskExecutionEffectAdapter`.",
+        "P013 migrated `SagaLaunchEngine` to `SagaLaunchEffectAdapter`.",
+        "P014 added automated task/saga action-engine boundary guards."
+      ],
+      "id": "R004",
+      "known_gaps": [
+        "none for task/saga action engines.",
+        "Health/scheduler action engines remain under P010."
+      ],
+      "problem_id": "P009",
+      "root_id": "P000",
+      "summary": "Closed the task/saga action-engine effect-adapter migration through three child problems. Both action engines now depend on the generic `EffectExecutor`, adapters own concrete clients, worker assembly wires adapters explicitly, and boundary tests prevent old direct-client patterns from returning.",
+      "ticket_id": "T003",
+      "verification": [
+        "P012 focused task worker tests passed with 10 tests.",
+        "P013 focused saga worker tests passed with 8 tests.",
+        "P014 combined boundary/task/saga suite passed with 21 tests.",
+        "Worker module compile checks passed during child verification."
+      ]
+    },
+    "R005": {
+      "artifacts": [
+        "`novaic-agent-runtime/task_queue/workers/health_effects.py`",
+        "`novaic-agent-runtime/task_queue/workers/health_recovery.py`",
+        "`novaic-agent-runtime/task_queue/workers/worker_assemblies.py`",
+        "`novaic-agent-runtime/tests/test_health_dispatch.py`",
+        "`novaic-agent-runtime/tests/test_pr328_health_generic_worker.py`"
+      ],
+      "body_path": "problems/P000/children/P001/children/P010/children/P015/results/R005.md",
+      "created_at": "2026-05-08T04:18:46+00:00",
+      "done": [
+        "Added `task_queue/workers/health_effects.py` with `HealthRecoveryEffectAdapter`.",
+        "Refactored `HealthRecoveryEngine` to accept `effect_executor` and call `health.recover_all`.",
+        "Removed direct `httpx`, `internal_sync_client`, `_client`, `_get_client`, URL, and internal-key ownership from `health_recovery.py`.",
+        "Updated `assemble_health_worker` to wire the adapter and close it during cleanup.",
+        "Updated health dispatch/generic worker tests to use explicit adapter/effect setup."
+      ],
+      "id": "R005",
+      "known_gaps": [
+        "none for health action engine migration.",
+        "Automated health/scheduler boundary guard tests are covered by P017."
+      ],
+      "problem_id": "P015",
+      "root_id": "P000",
+      "summary": "Migrated `HealthRecoveryEngine` to explicit effects. HTTP client creation and Queue recover-all protocol calls now live in `HealthRecoveryEffectAdapter`; the engine only coordinates metrics, logging, and recovery result interpretation.",
+      "ticket_id": "T008",
+      "verification": [
+        "`pytest -q tests/test_health_dispatch.py tests/test_pr328_health_generic_worker.py` passed with 10 tests.",
+        "`python -m compileall -q task_queue/workers/health_recovery.py task_queue/workers/health_effects.py task_queue/workers/worker_assemblies.py` passed.",
+        "`rg -n \"httpx|internal_sync_client|_client|_get_client|queue_service_url|queue_internal_key\" task_queue/workers/health_recovery.py` returned no matches."
+      ]
+    },
+    "R006": {
+      "artifacts": [
+        "`novaic-agent-runtime/task_queue/workers/scheduler_effects.py`",
+        "`novaic-agent-runtime/task_queue/workers/scheduled_wake.py`",
+        "`novaic-agent-runtime/task_queue/workers/worker_assemblies.py`",
+        "`novaic-agent-runtime/tests/test_scheduler_dispatch.py`",
+        "`novaic-agent-runtime/tests/test_pr329_scheduler_generic_worker.py`"
+      ],
+      "body_path": "problems/P000/children/P001/children/P010/children/P016/results/R006.md",
+      "created_at": "2026-05-08T04:21:29+00:00",
+      "done": [
+        "Added `task_queue/workers/scheduler_effects.py` with `ScheduledWakeEffectAdapter`.",
+        "Refactored `ScheduledWakeEngine` to accept `effect_executor`.",
+        "Replaced direct collaborator calls with:",
+        "`scheduler.get_due_for_wake`",
+        "`scheduler.dispatch_wake`",
+        "Updated `assemble_scheduler_worker` to wire the scheduler adapter.",
+        "Updated scheduler dispatch/generic worker tests to use adapter-based setup."
+      ],
+      "id": "R006",
+      "known_gaps": [
+        "none for scheduler action engine migration.",
+        "Automated health/scheduler boundary guards are covered by P017."
+      ],
+      "problem_id": "P016",
+      "root_id": "P000",
+      "summary": "Migrated `ScheduledWakeEngine` to explicit effects. Business due-agent scans and dispatch assembler calls now live in `ScheduledWakeEffectAdapter`; the engine keeps wake metadata/idempotency calculation, metrics, and dispatch-result interpretation.",
+      "ticket_id": "T009",
+      "verification": [
+        "`pytest -q tests/test_scheduler_dispatch.py tests/test_pr329_scheduler_generic_worker.py` passed with 7 tests.",
+        "`python -m compileall -q task_queue/workers/scheduled_wake.py task_queue/workers/scheduler_effects.py task_queue/workers/worker_assemblies.py` passed.",
+        "`rg -n \"self\\\\.business_client|self\\\\.assembler|business_client:|assembler:|assemble_and_dispatch_sync\\\\(|\\\\.get_due_for_wake\\\\(\" task_queue/workers/scheduled_wake.py` returned no matches."
+      ]
+    },
+    "R007": {
+      "artifacts": [
+        "`novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py`"
+      ],
+      "body_path": "problems/P000/children/P001/children/P010/children/P017/results/R007.md",
+      "created_at": "2026-05-08T04:23:51+00:00",
+      "done": [
+        "Updated `tests/test_pr340_action_engine_effect_boundaries.py`.",
+        "Added health checks for forbidden `httpx` / `internal_sync_client` imports, queue URL/internal-key constructor params, and `_client` ownership.",
+        "Added scheduler checks for forbidden `business_client` / `assembler` constructor params, self-owned collaborators, and direct collaborator calls.",
+        "Extended assembly checks for `HealthRecoveryEffectAdapter` and `ScheduledWakeEffectAdapter`."
+      ],
+      "id": "R007",
+      "known_gaps": [
+        "none for health/scheduler boundary guards."
+      ],
+      "problem_id": "P017",
+      "root_id": "P000",
+      "summary": "Extended the PR-340 action-engine boundary guard suite to cover health and scheduler engines. Tests now reject direct HTTP/client/assembler ownership and assert health/scheduler adapter wiring in worker assembly.",
+      "ticket_id": "T010",
+      "verification": [
+        "`pytest -q tests/test_pr340_action_engine_effect_boundaries.py tests/test_health_dispatch.py tests/test_pr328_health_generic_worker.py tests/test_scheduler_dispatch.py tests/test_pr329_scheduler_generic_worker.py` passed with 22 tests.",
+        "`python -m compileall -q task_queue/workers tests/test_pr340_action_engine_effect_boundaries.py` passed."
+      ]
+    },
+    "R008": {
+      "artifacts": [
+        "`novaic-agent-runtime/task_queue/workers/health_effects.py`",
+        "`novaic-agent-runtime/task_queue/workers/scheduler_effects.py`",
+        "`novaic-agent-runtime/task_queue/workers/health_recovery.py`",
+        "`novaic-agent-runtime/task_queue/workers/scheduled_wake.py`",
+        "`novaic-agent-runtime/task_queue/workers/worker_assemblies.py`",
+        "`novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py`"
+      ],
+      "body_path": "problems/P000/children/P001/children/P010/results/R008.md",
+      "created_at": "2026-05-08T04:24:30+00:00",
+      "done": [
+        "P015 migrated `HealthRecoveryEngine` to `HealthRecoveryEffectAdapter`.",
+        "P016 migrated `ScheduledWakeEngine` to `ScheduledWakeEffectAdapter`.",
+        "P017 added health/scheduler boundary guards."
+      ],
+      "id": "R008",
+      "known_gaps": [
+        "none for health/scheduler action engines."
+      ],
+      "problem_id": "P010",
+      "root_id": "P000",
+      "summary": "Closed the health/scheduler effect-adapter migration through three child problems. Both engines now use `EffectExecutor`; adapters own concrete HTTP, business-client, and assembler collaborators; guardrail tests prevent regression.",
+      "ticket_id": "T007",
+      "verification": [
+        "P015 health suite passed with 10 tests.",
+        "P016 scheduler suite passed with 7 tests.",
+        "P017 combined boundary/health/scheduler suite passed with 22 tests.",
+        "Worker module compile checks passed during child verification."
+      ]
+    },
+    "R009": {
+      "artifacts": [
+        "`novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py`",
+        "`novaic-agent-runtime/tests/test_pr340_worker_effect_plan.py`"
+      ],
+      "body_path": "problems/P000/children/P001/children/P011/results/R009.md",
+      "created_at": "2026-05-08T04:26:17+00:00",
+      "done": [
+        "Verified `tests/test_pr340_action_engine_effect_boundaries.py` covers all four action engines:",
+        "task",
+        "saga",
+        "health",
+        "scheduler",
+        "Verified assembly wiring checks cover all four effect adapters:",
+        "`TaskExecutionEffectAdapter`",
+        "`SagaLaunchEffectAdapter`",
+        "`HealthRecoveryEffectAdapter`",
+        "`ScheduledWakeEffectAdapter`",
+        "Ran focused behavior/regression suite across task, saga, health, and scheduler workers."
+      ],
+      "id": "R009",
+      "known_gaps": [
+        "none for effect-plan boundary tests."
+      ],
+      "problem_id": "P011",
+      "root_id": "P000",
+      "summary": "Completed aggregate effect-plan boundary verification. The boundary suite covers task, saga, health, and scheduler action engines plus assembly adapter wiring, and the full focused behavior suite passes together.",
+      "ticket_id": "T011",
+      "verification": [
+        "`pytest -q tests/test_pr340_worker_effect_plan.py tests/test_pr340_action_engine_effect_boundaries.py tests/test_pr333_saga_worker_handler_cutover.py tests/unit/task_queue/test_saga_worker_boundary.py tests/unit/task_queue/test_retry_policy_and_idempotency.py tests/unit/task_queue/test_dedup_guard_failure_path.py tests/unit/task_queue/test_high_concurrency_retry_replay.py tests/test_pr331_task_worker_handler_cutover.py tests/test_health_dispatch.py tests/test_pr328_health_generic_worker.py tests/test_scheduler_dispatch.py tests/test_pr329_scheduler_generic_worker.py` passed with 44 tests.",
+        "`python -m compileall -q queue_service/worker task_queue/workers` passed.",
+        "Boundary source token check confirmed all four engines and four adapters are covered by the guardrail file."
+      ]
+    },
+    "R010": {
+      "artifacts": [
+        "`novaic-agent-runtime/queue_service/worker/effects.py`",
+        "`novaic-agent-runtime/task_queue/workers/task_effects.py`",
+        "`novaic-agent-runtime/task_queue/workers/saga_effects.py`",
+        "`novaic-agent-runtime/task_queue/workers/health_effects.py`",
+        "`novaic-agent-runtime/task_queue/workers/scheduler_effects.py`",
+        "`novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py`",
+        "`novaic-agent-runtime/tests/test_pr340_worker_effect_plan.py`"
+      ],
+      "body_path": "problems/P000/children/P001/results/R010.md",
+      "created_at": "2026-05-08T04:27:02+00:00",
+      "done": [
+        "P008 implemented generic effect-plan substrate contracts.",
+        "P009 migrated task/saga action engines to effect adapters and added guards.",
+        "P010 migrated health/scheduler action engines to effect adapters and added guards.",
+        "P011 verified the full cross-engine boundary and behavior suite."
+      ],
+      "id": "R010",
+      "known_gaps": [
+        "none for action-engine effect-plan DSL.",
+        "Worker assembly remains intentionally larger until P002."
+      ],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "Closed the complete action-engine effect-plan migration. A generic substrate now exists; task, saga, health, and scheduler engines all use explicit effect executors; concrete side effects live in adapters; and boundary tests enforce the separation.",
+      "ticket_id": "T001",
+      "verification": [
+        "P008 substrate tests passed.",
+        "P009 task/saga focused and boundary tests passed.",
+        "P010 health/scheduler focused and boundary tests passed.",
+        "P011 aggregate suite passed with 44 tests and worker compile checks."
+      ]
+    },
+    "R011": {
+      "artifacts": [
+        "`novaic-agent-runtime/task_queue/workers/assembly_helpers.py`",
+        "`novaic-agent-runtime/tests/test_pr340_assembly_helpers.py`"
+      ],
+      "body_path": "problems/P000/children/P002/children/P018/results/R011.md",
+      "created_at": "2026-05-08T04:31:05+00:00",
+      "done": [
+        "Added `task_queue/workers/assembly_helpers.py`.",
+        "Added helper functions:",
+        "`worker_log`",
+        "`WorkerRuntimeBundle`",
+        "`make_worker_runtime`",
+        "`make_worker_config`",
+        "`build_generic_worker`",
+        "`build_concurrent_worker`",
+        "`build_synthetic_worker`",
+        "Added `tests/test_pr340_assembly_helpers.py`."
+      ],
+      "id": "R011",
+      "known_gaps": [
+        "none for helper substrate.",
+        "Migration of existing assembly functions is handled by P019."
+      ],
+      "problem_id": "P018",
+      "root_id": "P000",
+      "summary": "Added a business-agnostic worker assembly helper substrate. It can build standard generic workers, concurrent workers, synthetic tick/drain workers, runtime bundles, and worker runtime configs without importing business-specific modules.",
+      "ticket_id": "T013",
+      "verification": [
+        "`pytest -q tests/test_pr340_assembly_helpers.py` passed with 4 tests.",
+        "`python -m compileall -q task_queue/workers/assembly_helpers.py tests/test_pr340_assembly_helpers.py` passed."
+      ]
+    },
+    "R012": {
+      "artifacts": [
+        "`novaic-agent-runtime/task_queue/workers/assembly_helpers.py`",
+        "`novaic-agent-runtime/task_queue/workers/worker_assemblies.py`",
+        "Updated focused worker assembly tests."
+      ],
+      "body_path": "problems/P000/children/P002/children/P019/results/R012.md",
+      "created_at": "2026-05-08T04:40:10+00:00",
+      "done": [
+        "Extended `task_queue/workers/assembly_helpers.py` with explicit-runtime synthetic worker support for outbox workers.",
+        "Migrated task worker assembly to `build_generic_worker`.",
+        "Migrated saga worker assembly to `build_concurrent_worker`.",
+        "Migrated health and scheduler assemblies to `build_synthetic_worker`.",
+        "Migrated session-outbox and saga-outbox assemblies to `build_synthetic_worker_with_runtime`.",
+        "Removed direct `GenericWorker`, `ConcurrentGenericWorker`, `SyntheticJobSource`, `WorkerRuntimeConfig`, `ShutdownController`, `WorkerRuntime`, `NoopReporter`, and `ResultLoggingReporter` construction from `worker_assemblies.py`.",
+        "Updated old text-assertion tests so they guard helper-backed assembly rather than protecting old constructor placement."
+      ],
+      "id": "R012",
+      "known_gaps": [
+        "none for P019."
+      ],
+      "problem_id": "P019",
+      "root_id": "P000",
+      "summary": "Concrete worker assembly functions now use the generic helper substrate for worker construction. `worker_assemblies.py` keeps business wiring and explicit adapters, while worker lifecycle construction lives in `assembly_helpers.py`.",
+      "ticket_id": "T014",
+      "verification": [
+        "`pytest -q tests/test_pr340_assembly_helpers.py tests/test_pr331_task_worker_handler_cutover.py tests/test_pr333_saga_worker_handler_cutover.py tests/test_pr328_health_generic_worker.py tests/test_pr329_scheduler_generic_worker.py tests/test_pr302_session_outbox_worker_production_wiring.py tests/test_pr326_session_outbox_generic_worker.py tests/test_pr327_saga_outbox_generic_worker.py tests/test_pr340_action_engine_effect_boundaries.py` -> 35 passed.",
+        "`pytest -q tests/test_health_dispatch.py tests/test_scheduler_dispatch.py tests/test_pr286a_session_outbox_worker.py tests/test_pr327_saga_outbox_generic_worker.py` -> 21 passed.",
+        "`python -m compileall -q task_queue/workers` -> passed.",
+        "`rg -n \"GenericWorker\\\\(|ConcurrentGenericWorker\\\\(|SyntheticJobSource\\\\(|WorkerRuntimeConfig\\\\(|ShutdownController\\\\(|WorkerRuntime\\\\(|NoopReporter\\\\(|ResultLoggingReporter\\\\(\" task_queue/workers/worker_assemblies.py` -> no matches.",
+        "`wc -l task_queue/workers/worker_assemblies.py task_queue/workers/assembly_helpers.py` -> `worker_assemblies.py` 557 lines, `assembly_helpers.py` 232 lines."
+      ]
+    },
+    "R013": {
+      "artifacts": [
+        "`novaic-agent-runtime/task_queue/workers/worker_assemblies.py`",
+        "`novaic-agent-runtime/task_queue/workers/assembly_helpers.py`",
+        "Focused worker assembly and boundary tests."
+      ],
+      "body_path": "problems/P000/children/P002/children/P020/results/R013.md",
+      "created_at": "2026-05-08T04:42:05+00:00",
+      "done": [
+        "Verified `worker_assemblies.py` has no direct lifecycle primitive construction.",
+        "Verified old text assertions now reject raw constructors in assembly instead of requiring them.",
+        "Re-ran focused task/saga/health/scheduler/outbox/helper/boundary tests.",
+        "Re-ran compile checks for worker substrate and worker modules.",
+        "Recorded line-count evidence."
+      ],
+      "id": "R013",
+      "known_gaps": [
+        "none for P020."
+      ],
+      "problem_id": "P020",
+      "root_id": "P000",
+      "summary": "Assembly shrink was verified. The business assembly file no longer directly constructs worker lifecycle primitives, tests now protect helper-backed assembly, and the focused behavior/boundary suite passes.",
+      "ticket_id": "T015",
+      "verification": [
+        "`rg -n \"GenericWorker\\\\(|ConcurrentGenericWorker\\\\(|SyntheticJobSource\\\\(|WorkerRuntimeConfig\\\\(|ShutdownController\\\\(|WorkerRuntime\\\\(|NoopReporter\\\\(|ResultLoggingReporter\\\\(\" task_queue/workers/worker_assemblies.py` -> no matches.",
+        "`pytest -q tests/test_pr340_assembly_helpers.py tests/test_pr331_task_worker_handler_cutover.py tests/test_pr333_saga_worker_handler_cutover.py tests/test_pr328_health_generic_worker.py tests/test_pr329_scheduler_generic_worker.py tests/test_pr302_session_outbox_worker_production_wiring.py tests/test_pr326_session_outbox_generic_worker.py tests/test_pr327_saga_outbox_generic_worker.py tests/test_pr340_action_engine_effect_boundaries.py tests/test_health_dispatch.py tests/test_scheduler_dispatch.py tests/test_pr286a_session_outbox_worker.py` -> 51 passed.",
+        "`python -m compileall -q task_queue/workers queue_service/worker` -> passed.",
+        "`wc -l task_queue/workers/worker_assemblies.py task_queue/workers/assembly_helpers.py` -> `worker_assemblies.py` 557 lines, `assembly_helpers.py` 232 lines."
+      ]
+    },
+    "R014": {
+      "artifacts": [
+        "`novaic-agent-runtime/task_queue/workers/assembly_helpers.py`",
+        "`novaic-agent-runtime/task_queue/workers/worker_assemblies.py`",
+        "`novaic-agent-runtime/tests/test_pr340_assembly_helpers.py`",
+        "Updated worker assembly cutover tests."
+      ],
+      "body_path": "problems/P000/children/P002/results/R014.md",
+      "created_at": "2026-05-08T04:43:08+00:00",
+      "done": [
+        "P018 created the generic worker assembly helper substrate.",
+        "P019 migrated task, saga, health, scheduler, session-outbox, and saga-outbox assemblies to helper builders.",
+        "P020 verified the shrink with residue checks, focused tests, compile checks, and line-count evidence."
+      ],
+      "id": "R014",
+      "known_gaps": [
+        "none for P002."
+      ],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "Worker assembly has been shrunk around a generic helper substrate. Business-facing assembly functions now describe explicit clients, effect adapters, handlers, sources, and startup metadata while delegating worker lifecycle construction to reusable infrastructure helpers.",
+      "ticket_id": "T012",
+      "verification": [
+        "P018 check `C011` succeeded.",
+        "P019 check `C012` succeeded.",
+        "P020 check `C013` succeeded.",
+        "Focused test coverage includes helper construction, task/saga cutover, health/scheduler generic workers, outbox generic workers, and action-engine boundary guards.",
+        "`worker_assemblies.py` has no raw worker lifecycle primitive constructors."
+      ]
+    },
+    "R015": {
+      "artifacts": [
+        "`novaic-agent-runtime/tests/test_pr340_action_engine_effect_boundaries.py`"
+      ],
+      "body_path": "problems/P000/children/P003/results/R015.md",
+      "created_at": "2026-05-08T04:46:22+00:00",
+      "done": [
+        "Extended `tests/test_pr340_action_engine_effect_boundaries.py`.",
+        "Added guard that `worker_assemblies.py` delegates lifecycle construction to helper builders.",
+        "Added guard that direct worker lifecycle primitives are allowed in `assembly_helpers.py` but forbidden in `worker_assemblies.py`.",
+        "Added guard that `assembly_helpers.py` remains business-agnostic.",
+        "Added guard that concrete protocol clients live in effect adapter modules, not action engines."
+      ],
+      "id": "R015",
+      "known_gaps": [
+        "none for P003."
+      ],
+      "problem_id": "P003",
+      "root_id": "P000",
+      "summary": "Guardrails were strengthened so future edits cannot silently move concrete side effects or worker lifecycle construction back into business engines or business assembly.",
+      "ticket_id": "T016",
+      "verification": [
+        "`pytest -q tests/test_pr340_action_engine_effect_boundaries.py tests/test_pr340_assembly_helpers.py` -> 13 passed.",
+        "`pytest -q tests/test_pr340_worker_effect_plan.py tests/test_pr340_action_engine_effect_boundaries.py tests/test_pr340_assembly_helpers.py tests/test_pr331_task_worker_handler_cutover.py tests/test_pr333_saga_worker_handler_cutover.py tests/test_pr328_health_generic_worker.py tests/test_pr329_scheduler_generic_worker.py tests/test_pr302_session_outbox_worker_production_wiring.py tests/test_pr326_session_outbox_generic_worker.py tests/test_pr327_saga_outbox_generic_worker.py tests/test_health_dispatch.py tests/test_scheduler_dispatch.py tests/test_pr286a_session_outbox_worker.py` -> 58 passed.",
+        "`python -m compileall -q tests/test_pr340_action_engine_effect_boundaries.py task_queue/workers` -> passed.",
+        "`rg -n \"GenericWorker\\\\(|ConcurrentGenericWorker\\\\(|SyntheticJobSource\\\\(|WorkerRuntimeConfig\\\\(|ShutdownController\\\\(|WorkerRuntime\\\\(|NoopReporter\\\\(|ResultLoggingReporter\\\\(\" task_queue/workers/worker_assemblies.py` -> no matches."
+      ]
+    },
+    "R016": {
+      "artifacts": [
+        "`docs/roadmap/tickets/PR-338-business-only-dsl-phase-bill.md`",
+        "`scripts/ci/lint_docs_status_consistency.py`",
+        "`.github/workflows/lint.yml`"
+      ],
+      "body_path": "problems/P000/children/P004/results/R016.md",
+      "created_at": "2026-05-08T04:50:33+00:00",
+      "done": [
+        "Updated `docs/roadmap/tickets/PR-338-business-only-dsl-phase-bill.md` from `Status: Doing` to `Status: Closed`.",
+        "Updated PR-338 current closure state from `P007 in progress` to `P007 closed`.",
+        "Added `scripts/ci/lint_docs_status_consistency.py`.",
+        "Wired the new lint into `.github/workflows/lint.yml`."
+      ],
+      "id": "R016",
+      "known_gaps": [
+        "none for P004."
+      ],
+      "problem_id": "P004",
+      "root_id": "P000",
+      "summary": "Docs status drift is fixed and guarded. The known PR-338 stale `Status: Doing` / `P007 in progress` wording was corrected, and a CI lint now checks roadmap ticket status against the architecture plan markers.",
+      "ticket_id": "T017",
+      "verification": [
+        "`python3 scripts/ci/lint_docs_status_consistency.py` -> pass.",
+        "`./scripts/ci/lint_current_docs_residue.sh` -> pass.",
+        "`python3 scripts/ci/lint_roadmap_ticket_archaeology.py` -> pass.",
+        "`rg -n \"Status: Doing|P007 in progress\" docs/roadmap/tickets/PR-338-business-only-dsl-phase-bill.md docs/architecture/generic-worker-substrate-plan.md` -> no matches."
+      ]
+    },
+    "R017": {
+      "artifacts": [
+        "`deploy`",
+        "`scripts/ci/lint_deploy_fresh_smoke.py`",
+        "`.github/workflows/lint.yml`",
+        "`docs/runbooks/deploy.md`"
+      ],
+      "body_path": "problems/P000/children/P005/results/R017.md",
+      "created_at": "2026-05-08T04:57:10+00:00",
+      "done": [
+        "Added `remote_epoch`, `fresh_smoke_default_epoch`, and `verify_fresh_backend_logs` to `deploy`.",
+        "Updated `restart_all` to capture the remote restart boundary and run `verify_fresh_backend_logs \"$smoke_since\"` after `start.sh`.",
+        "Added manual `./deploy fresh-smoke [epoch]`; without an epoch it checks remote logs updated in the last 15 minutes.",
+        "Fresh smoke checks critical logs under `/opt/novaic/data/logs`: HTTP services, queue-service, task/saga worker representatives, outbox workers, health, scheduler, and subscriber.",
+        "Added `scripts/ci/lint_deploy_fresh_smoke.py` to lock the deploy hook, command, critical logs, docs, and workflow wiring.",
+        "Wired the lint into `.github/workflows/lint.yml`.",
+        "Documented timestamp-aware fresh smoke in `docs/runbooks/deploy.md`."
+      ],
+      "id": "R017",
+      "known_gaps": [
+        "This is a deploy-script and CI guard change; no remote production deploy was run in this ticket.",
+        "Fresh log mtime proves logs were updated after the restart boundary. Full worker liveness supervision is handled by the separate runtime supervision gap."
+      ],
+      "problem_id": "P005",
+      "root_id": "P000",
+      "summary": "Implemented timestamp-aware deploy smoke for backend restarts. The deploy path now captures a remote epoch before `start.sh` restart, then verifies critical backend logs were modified after that timestamp. A manual `fresh-smoke` command and CI guard were added so stale-log-only deploy verification cannot silently return.",
+      "ticket_id": "T018",
+      "verification": [
+        "`bash -n deploy`",
+        "`bash -n scripts/start.sh`",
+        "`python3 scripts/ci/lint_deploy_fresh_smoke.py`",
+        "`python3 scripts/ci/check_start_config_contract.py`",
+        "`python3 scripts/ci/lint_docs_status_consistency.py`",
+        "`./scripts/ci/lint_current_docs_residue.sh`",
+        "`python3 scripts/ci/lint_roadmap_ticket_archaeology.py`",
+        "`git diff --check -- deploy docs/runbooks/deploy.md scripts/ci/lint_deploy_fresh_smoke.py .github/workflows/lint.yml`",
+        "`python3 -m py_compile scripts/ci/lint_deploy_fresh_smoke.py`",
+        "`./deploy __help_smoke__ | sed -n '1,80p'`"
+      ]
+    },
+    "R018": {
+      "artifacts": [
+        "`scripts/start.sh`",
+        "`deploy`",
+        "`scripts/ci/lint_runtime_worker_supervision.py`",
+        "`.github/workflows/lint.yml`",
+        "`docs/runbooks/deploy.md`"
+      ],
+      "body_path": "problems/P000/children/P006/results/R018.md",
+      "created_at": "2026-05-08T05:01:25+00:00",
+      "done": [
+        "Added `process_count`, `require_process_count`, and `verify_runtime_processes` to `scripts/start.sh`.",
+        "`scripts/start.sh` now verifies exact counts for:",
+        "`task-worker control`: 2",
+        "`task-worker execution`: 2",
+        "`saga-worker`: 2",
+        "`session-outbox-worker`: 1",
+        "`saga-outbox-worker`: 1",
+        "`health`: 1",
+        "`scheduler`: 1",
+        "`subscriber`: 1",
+        "Startup exits non-zero with `Required runtime subprocess supervision failed.` if the roster is wrong.",
+        "Fixed the subscriber startup log message to point to `subscriber.log`.",
+        "Replaced the coarse worker total in `deploy status` with a role-level expected/actual table.",
+        "Added `scripts/ci/lint_runtime_worker_supervision.py` to guard start/status roster supervision.",
+        "Wired the new lint into `.github/workflows/lint.yml`.",
+        "Documented required runtime subprocesses in `docs/runbooks/deploy.md`."
+      ],
+      "id": "R018",
+      "known_gaps": [
+        "This verifies process role roster at startup/status. Deeper semantic worker health remains owned by worker code and queue/FSM tests, not shell supervision."
+      ],
+      "problem_id": "P006",
+      "root_id": "P000",
+      "summary": "Implemented explicit runtime worker supervision in the production start/status path. The backend start script now verifies the exact required worker/subscriber role roster after launch and fails startup on missing or duplicate required subprocesses. Deploy status now reports role-level expected/actual counts.",
+      "ticket_id": "T019",
+      "verification": [
+        "`bash -n scripts/start.sh`",
+        "`bash -n deploy`",
+        "`python3 scripts/ci/lint_runtime_worker_supervision.py`",
+        "`python3 scripts/ci/lint_deploy_fresh_smoke.py`",
+        "`python3 scripts/ci/check_start_config_contract.py`",
+        "`python3 scripts/ci/lint_docs_status_consistency.py`",
+        "`./scripts/ci/lint_current_docs_residue.sh`",
+        "`git diff --check -- deploy scripts/start.sh docs/runbooks/deploy.md scripts/ci/lint_runtime_worker_supervision.py scripts/ci/lint_deploy_fresh_smoke.py .github/workflows/lint.yml`",
+        "`python3 -m py_compile scripts/ci/lint_runtime_worker_supervision.py scripts/ci/lint_deploy_fresh_smoke.py`",
+        "`rg -n \"worker_count|Workers:|subscriber-\\\\*\\\\.log\" deploy scripts/start.sh docs/runbooks/deploy.md scripts/ci/lint_runtime_worker_supervision.py`"
+      ]
+    },
+    "R019": {
+      "artifacts": [
+        "`novaic-agent-runtime/task_queue/handlers/tool_handlers.py`",
+        "`novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_display_chat_history.py`",
+        "`novaic-cortex/novaic_cortex/blob_payload.py`",
+        "`novaic-cortex/novaic_cortex/blob_store.py`",
+        "`scripts/ci/lint_httpx.sh`",
+        "`scripts/ci/lint_lifecycle_loop_ownership.sh`"
+      ],
+      "body_path": "problems/P000/children/P007/results/R019.md",
+      "created_at": "2026-05-08T05:13:35+00:00",
+      "done": [
+        "Ran focused runtime/FSM/worker test suites:",
+        "Worker assembly/effect boundaries.",
+        "Session harness/generic FSM/session outbox boundaries.",
+        "Task/saga FSM and generic worker substrate tests.",
+        "Ran full `novaic-agent-runtime` pytest suite.",
+        "Fixed direct HTTP client residue:",
+        "`novaic-cortex/novaic_cortex/blob_payload.py` now uses `common.http.clients.internal_async_client`.",
+        "`novaic-cortex/novaic_cortex/blob_store.py` now uses `common.http.clients.internal_async_client`.",
+        "`novaic-agent-runtime/task_queue/handlers/tool_handlers.py` now uses `internal_sync_client` for Blob file fetches.",
+        "Removed stale `novaic-cortex/novaic_cortex/file_resolver.py` httpx allowlist entry.",
+        "Updated tool handler tests to patch the explicit `internal_sync_client` boundary instead of `httpx.Client`.",
+        "Fixed lifecycle ownership lint drift:",
+        "`scripts/ci/lint_lifecycle_loop_ownership.sh` now guards `session_projection.merge_pending_metadata` and `SessionRepository` usage of `build_pending_input_projection`.",
+        "Re-ran root lint chain after fixes.",
+        "Ran final compile and diff checks."
+      ],
+      "id": "R019",
+      "known_gaps": [
+        "No remote deployment was run during this ticket.",
+        "LLM Factory and Business provider direct HTTP clients remain on the pre-existing lint allowlist because they are outside the Runtime FSM/business-DSL gap being closed here."
+      ],
+      "problem_id": "P007",
+      "root_id": "P000",
+      "summary": "Completed the final residue audit. The audit found two real closure gaps and fixed both: direct HTTP client construction remained in Cortex/Runtime paths, and a lifecycle ownership lint still checked an obsolete private helper name. After fixes, the runtime test suite and root lint suite pass.",
+      "ticket_id": "T020",
+      "verification": [
+        "`pytest -q` in `novaic-agent-runtime`: `530 passed`.",
+        "Focused test sweeps before full run:",
+        "`38 passed`",
+        "`103 passed`",
+        "`136 passed`",
+        "`14 passed`",
+        "`13 passed`",
+        "Root lint chain:",
+        "`./scripts/ci/lint_dispatch.sh`",
+        "`./scripts/ci/lint_httpx.sh`",
+        "`python3 scripts/ci/check_no_internal_async.py`",
+        "`./scripts/ci/lint_lifecycle.sh`",
+        "`./scripts/ci/lint_subagent_status.sh`",
+        "`./scripts/ci/lint_scope_phase.sh`",
+        "`./scripts/ci/lint_legacy_message_columns.sh`",
+        "`./scripts/ci/lint_chat_messages_read.sh`",
+        "`./scripts/ci/lint_wake_continuity_contract.sh`",
+        "`./scripts/ci/lint_cortex_boundary.sh`",
+        "`./scripts/ci/lint_retired_service_residue.sh`",
+        "`./scripts/ci/lint_frontend_phantom_tools.sh`",
+        "`./scripts/ci/lint_agent_loop_path.sh`",
+        "`./scripts/ci/lint_entangled_schema_ssot.sh`",
+        "`./scripts/ci/lint_current_docs_residue.sh`",
+        "`python3 scripts/ci/lint_roadmap_ticket_archaeology.py`",
+        "`python3 scripts/ci/lint_docs_status_consistency.py`",
+        "`python3 scripts/ci/lint_deploy_fresh_smoke.py`",
+        "`python3 scripts/ci/lint_runtime_worker_supervision.py`",
+        "`python3 scripts/ci/check_start_config_contract.py`",
+        "`./scripts/ci/lint_agent_main_path_acceptance.sh`",
+        "`./scripts/ci/lint_retired_agent_paths.sh`",
+        "`./scripts/ci/lint_lifecycle_loop_ownership.sh`",
+        "Compile:",
+        "`python3 -m compileall -q novaic-cortex/novaic_cortex`",
+        "`python3 -m compileall -q scripts/ci`",
+        "`python3 -m compileall -q queue_service task_queue tests` in `novaic-agent-runtime`",
+        "Diff hygiene:",
+        "`git diff --check`",
+        "`git -C novaic-agent-runtime diff --check`",
+        "`git -C novaic-cortex diff --check`",
+        "Residue scans:",
+        "`rg -n \"GenericWorker\\\\(|ConcurrentGenericWorker\\\\(|SyntheticJobSource\\\\(|WorkerRuntimeConfig\\\\(|ShutdownController\\\\(|WorkerRuntime\\\\(|NoopReporter\\\\(|ResultLoggingReporter\\\\(\" novaic-agent-runtime/task_queue/workers/worker_assemblies.py` returned no matches.",
+        "`rg -n \"httpx\\\\.(Async)?Client\\\\(\" novaic-agent-runtime novaic-cortex -g '*.py'` returned no matches."
+      ]
+    },
+    "R020": {
+      "artifacts": [
+        "`.complex-problems/L20260508-115806`",
+        "`novaic-agent-runtime/queue_service/worker/effects.py`",
+        "`novaic-agent-runtime/task_queue/workers/*_effects.py`",
+        "`novaic-agent-runtime/task_queue/workers/assembly_helpers.py`",
+        "`novaic-agent-runtime/task_queue/workers/worker_assemblies.py`",
+        "`novaic-agent-runtime/task_queue/handlers/tool_handlers.py`",
+        "`novaic-cortex/novaic_cortex/blob_payload.py`",
+        "`novaic-cortex/novaic_cortex/blob_store.py`",
+        "`deploy`",
+        "`scripts/start.sh`",
+        "`scripts/ci/lint_deploy_fresh_smoke.py`",
+        "`scripts/ci/lint_runtime_worker_supervision.py`",
+        "`scripts/ci/lint_docs_status_consistency.py`",
+        "`scripts/ci/lint_httpx.sh`",
+        "`scripts/ci/lint_lifecycle_loop_ownership.sh`",
+        "`docs/runbooks/deploy.md`",
+        "`docs/roadmap/tickets/PR-338-business-only-dsl-phase-bill.md`"
+      ],
+      "body_path": "problems/P000/results/R020.md",
+      "created_at": "2026-05-08T05:14:44+00:00",
+      "done": [
+        "P001: Action engines now use explicit decision/effect plan boundaries and concrete effect adapters.",
+        "P002: Worker assembly was shrunk through `assembly_helpers.py` and declarative worker runtime builders.",
+        "P003: Guardrails now enforce action engine boundaries, effect adapters, and worker assembly delegation.",
+        "P004: Docs/roadmap status drift is guarded by `lint_docs_status_consistency.py`.",
+        "P005: Deploy restart now captures a remote timestamp and runs timestamp-aware fresh-log smoke.",
+        "P006: Production start/status now supervise exact runtime worker role counts.",
+        "P007: Final audit found and fixed direct HTTP client residue and stale lifecycle lint drift; full Runtime tests and root lint chain pass."
+      ],
+      "id": "R020",
+      "known_gaps": [
+        "No remote production deploy was run in this closure pass.",
+        "LLM Factory and Business provider HTTP allowlist entries remain visible in `lint_httpx.sh`; they are outside this Runtime FSM/business DSL closure scope."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Closed the planned FSM substrate + business DSL gap set through seven tickets. The implementation now has explicit action effect plans, a reusable worker assembly substrate, guardrails for effect boundaries and assembly thickness, docs/deploy/status supervision lints, and final residue cleanup.",
+      "ticket_id": "T000",
+      "verification": [
+        "Runtime full test suite: `pytest -q` in `novaic-agent-runtime` -> `530 passed`.",
+        "Focused runtime/FSM/worker sweeps:",
+        "`38 passed`",
+        "`103 passed`",
+        "`136 passed`",
+        "`14 passed`",
+        "`13 passed`",
+        "Root lint chain passed:",
+        "dispatch/httpx/internal-async/lifecycle/subagent/scope/message/chat/wake/cortex/retired/frontend/agent-loop/entangled/docs/deploy/start/agent-main/retired-agent/lifecycle-owner lints.",
+        "Compile:",
+        "Cortex, Runtime, and CI scripts compile successfully.",
+        "Diff hygiene:",
+        "Root, Runtime, and Cortex `git diff --check` pass.",
+        "Residue scans:",
+        "No raw worker constructors remain in `worker_assemblies.py`.",
+        "No direct `httpx.Client`/`httpx.AsyncClient` remains in Runtime/Cortex.",
+        "Coarse deploy worker count and stale subscriber log hint were removed from live deploy/start paths."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "status": "doing",
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Effect-plan engines, declarative assembly, guardrails, docs status lint, fresh deploy smoke, supervision/worker status, and final tests/residue scans all completed."
+      ],
+      "assumptions": [
+        "No backward compatibility for removed old paths; no production deployment unless explicitly requested."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "The request closes multiple high-impact architecture gaps across runtime behavior, action engines, assembly, tests, docs, deploy smoke, and supervision; it must be split into explicit phase problems.",
+      "created_at": "2026-05-08T03:58:34+00:00",
+      "id": "T000",
+      "problem_definition": "Close all previously audited FSM substrate and business DSL gaps without discounting action-engine, assembly, guardrail, docs, deploy-smoke, or process-supervision work.",
+      "problem_id": "P000",
+      "proposed_solution": "Split into implementation phases for effect plans, assembly DSL, guardrails, docs lint, timestamp-aware deploy smoke, process supervision, and final closure.",
+      "result_ids": [
+        "R020"
+      ],
+      "risks": [
+        "Action-engine migration and supervision are invasive; preserve behavior while changing shape."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Close all FSM substrate and business DSL gaps",
+      "updated_at": "2026-05-08T05:14:44+00:00",
+      "verification_plan": "Use ledger per phase, run targeted tests, compile/lint/residue scans, deploy-smoke tooling, and final validation."
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "Engines construct explicit effects, adapters own clients/HTTP/assemblers, behavior remains tested, and source guards prevent direct side-effect regression."
+      ],
+      "assumptions": [
+        "No old constructor compatibility required; synchronous adapters are acceptable initially."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "split",
+      "classification_reason": "Effect-plan migration crosses shared contracts, four engines, assembly, and tests; split to avoid a broad unsafe patch.",
+      "created_at": "2026-05-08T03:59:36+00:00",
+      "id": "T001",
+      "problem_definition": "Move task/saga/health/scheduler action engines from direct side-effect orchestration to explicit effect-plan objects executed by approved adapters.",
+      "problem_id": "P001",
+      "proposed_solution": "Split into effect-plan contracts, task/saga migration, health/scheduler migration, and tests/guards.",
+      "result_ids": [
+        "R010"
+      ],
+      "risks": [
+        "Task execution migration is intertwined and may require smaller follow-up splits."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Action engine effect-plan DSL",
+      "updated_at": "2026-05-08T04:27:02+00:00",
+      "verification_plan": "Update constructors/assembly/tests, run targeted worker tests and compile checks."
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "Contracts are generic, business-agnostic, exported, and tested for ordered execution and failure semantics."
+      ],
+      "assumptions": [
+        "Synchronous effect execution is sufficient initially."
+      ],
+      "body_path": "problems/P000/children/P001/children/P008/tickets/T002.md",
+      "classification": "one_go",
+      "classification_reason": "A bounded substrate addition with direct unit tests and no engine migration.",
+      "created_at": "2026-05-08T04:00:25+00:00",
+      "id": "T002",
+      "problem_definition": "Add a shared business-agnostic effect-plan vocabulary for worker action engines.",
+      "problem_id": "P008",
+      "proposed_solution": "Implement WorkerEffect, EffectPlan, EffectOutcome, EffectExecutor, and errors in queue_service.worker with tests.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Keep minimal to avoid over-designing before migrations."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Effect plan substrate contracts",
+      "updated_at": "2026-05-08T04:03:38+00:00",
+      "verification_plan": "Run new tests and compile queue_service/worker."
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "`TaskExecutionEngine` no longer imports or stores `TaskQueueClient`, `SagaClient`, or `BusinessClient`.",
+        "`SagaLaunchEngine` no longer imports or stores `SagaClient` or `TaskQueueClient`.",
+        "Task execution effects cover heartbeat, idempotency acquire/complete/release, complete/fail, task publish/get, saga get, and handler context provisioning.",
+        "Saga launch effects cover heartbeat, task publish, saga mark launched, and saga mark failed.",
+        "Worker assemblies wire concrete clients through effect adapters, not engine constructor parameters.",
+        "Existing task/saga worker tests pass after migration.",
+        "Boundary tests reject direct concrete-client ownership inside task/saga action engines."
+      ],
+      "assumptions": [
+        "Business handlers may still receive explicit context dictionaries; the gap here is moving context construction and concrete clients out of action engines.",
+        "Source and claim objects may still own polling clients until a later assembly/source cleanup ticket; this ticket targets action engines only."
+      ],
+      "body_path": "problems/P000/children/P001/children/P009/tickets/T003.md",
+      "classification": "split",
+      "classification_reason": "Task and saga migrations have independent effect surfaces and verification paths; splitting keeps each engine migration auditable.",
+      "created_at": "2026-05-08T04:04:57+00:00",
+      "id": "T003",
+      "problem_definition": "`TaskExecutionEngine` and `SagaLaunchEngine` still own concrete protocol clients and invoke Queue/Saga/Business side effects directly. That keeps action engines in a mixed state: they compute protocol decisions and perform external effects in the same class. The target architecture requires engines to emit explicit effect calls through the generic substrate, while adapter classes own concrete clients, URLs, and protocol calls.",
+      "problem_id": "P009",
+      "proposed_solution": "Introduce task and saga effect adapters that register handlers with `EffectExecutor`. Refactor `TaskExecutionEngine` and `SagaLaunchEngine` so external operations go through `execute_effect(...)` or explicit `WorkerEffect` plans. Assemblies instantiate adapters and inject executors into engines. Tests should prove behavior is unchanged while engine modules no longer import or hold concrete client classes.",
+      "result_ids": [
+        "R004"
+      ],
+      "risks": [
+        "Saga parallel steps are subtle because they publish tasks and poll task status; effect names and payloads must preserve existing retry/timeout behavior.",
+        "Existing tests construct engines directly and need explicit test adapters to keep setup deterministic.",
+        "Moving handler context behind an effect must not hide client dependencies; the adapter boundary should make them explicit at assembly/test construction."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Task and Saga Engines Use Effect Adapters",
+      "updated_at": "2026-05-08T04:14:41+00:00",
+      "verification_plan": "- Run focused task/saga worker tests.\n- Run high-concurrency idempotency/retry tests.\n- Run new boundary tests for engine imports/constructor parameters.\n- Compile worker modules."
+    },
+    "T004": {
+      "acceptance_criteria": [
+        "`TaskExecutionEngine.__init__` accepts `effect_executor` instead of concrete client objects and URL strings.",
+        "`task_execution.py` no longer imports `TaskQueueClient`, `SagaClient`, or `BusinessClient`.",
+        "Existing task idempotency, retry, and saga-parallel behavior is preserved.",
+        "`assemble_task_worker` wires a `TaskExecutionEffectAdapter` from concrete clients and passes its executor to the engine.",
+        "Tests use explicit fake effect adapters instead of relying on hidden clients inside the engine."
+      ],
+      "assumptions": [
+        "Handler context remains a dictionary because handlers currently depend on that explicit contract.",
+        "Concrete clients are still created in worker assembly for now; later assembly DSL tickets will shrink that code."
+      ],
+      "body_path": "problems/P000/children/P001/children/P009/children/P012/tickets/T004.md",
+      "classification": "one_go",
+      "classification_reason": "Focused migration of one action engine with concrete tests and local assembly wiring.",
+      "created_at": "2026-05-08T04:05:40+00:00",
+      "id": "T004",
+      "problem_definition": "`TaskExecutionEngine` still imports and stores concrete `TaskQueueClient`, `SagaClient`, and `BusinessClient`, then directly calls heartbeat, idempotency, complete/fail, publish, task polling, and saga lookup methods. This violates the intended boundary where action engines compute behavior and explicit effect adapters own concrete protocols.",
+      "problem_id": "P012",
+      "proposed_solution": "Add a task execution effect adapter that owns concrete task/saga/business clients and exposes an `EffectExecutor`. Refactor `TaskExecutionEngine` to use effect names for all external side effects and handler context provisioning. Keep handler invocation and deterministic protocol control in the engine, but move all client calls and URL/client context construction into the adapter.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "Saga parallel publishing and polling has nested side effects; missing one effect migration would leave old code active.",
+        "Handler context must still include the same keys expected by business handlers."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Task Engine Effect Adapter Migration",
+      "updated_at": "2026-05-08T04:08:10+00:00",
+      "verification_plan": "- Run unit tests for retry/idempotency and dedup guard behavior.\n- Run task worker cutover tests.\n- Compile task worker modules."
+    },
+    "T005": {
+      "acceptance_criteria": [
+        "`SagaLaunchEngine.__init__` accepts `effect_executor` instead of concrete clients.",
+        "`saga_launch.py` no longer imports or stores `SagaClient` or `TaskQueueClient`.",
+        "Saga launch publishes DAG tasks through `saga.task_publish` effects.",
+        "Saga state transitions go through `saga.mark_launched` and `saga.mark_failed` effects.",
+        "`assemble_saga_worker` wires a `SagaLaunchEffectAdapter`.",
+        "Existing saga launch tests pass."
+      ],
+      "assumptions": [
+        "Saga claim source may still own a saga client until the source/assembly DSL cleanup phase; this ticket targets `SagaLaunchEngine` only."
+      ],
+      "body_path": "problems/P000/children/P001/children/P009/children/P013/tickets/T005.md",
+      "classification": "one_go",
+      "classification_reason": "Focused migration of one saga launch engine with local tests and explicit assembly wiring.",
+      "created_at": "2026-05-08T04:08:57+00:00",
+      "id": "T005",
+      "problem_definition": "`SagaLaunchEngine` still imports and stores concrete `SagaClient` and `TaskQueueClient`, then directly heartbeats, publishes DAG tasks, and marks saga state. This leaves saga launch as a mixed compute/effect class instead of a pure action engine backed by explicit effect adapters.",
+      "problem_id": "P013",
+      "proposed_solution": "Add `SagaLaunchEffectAdapter` to own concrete saga/task clients and expose an `EffectExecutor`. Refactor `SagaLaunchEngine` so heartbeat, task publish, mark launched, and mark failed are all named effects. Keep DAG construction and saga launch decision flow in the engine, because that is its business/protocol computation.",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [
+        "Existing tests assert that `mark_launched(` appears in engine source; those tests must be updated to the new architecture rather than preserving the old source-level assumption.",
+        "Publish effect payloads must preserve DAG fields exactly."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Saga Engine Effect Adapter Migration",
+      "updated_at": "2026-05-08T04:11:24+00:00",
+      "verification_plan": "- Run saga worker cutover and saga worker boundary tests.\n- Compile saga worker modules.\n- Scan `saga_launch.py` for old concrete client ownership residue."
+    },
+    "T006": {
+      "acceptance_criteria": [
+        "Boundary test rejects concrete client imports in `task_execution.py` and `saga_launch.py`.",
+        "Boundary test rejects old concrete-client constructor parameters.",
+        "Boundary test rejects old `self.client`, `self.saga_client`, `self.business_client`, and `self.task_client` ownership attributes.",
+        "Boundary test rejects direct self-owned protocol calls in task/saga engines.",
+        "Boundary test asserts worker assembly wires effect adapters into both engines.",
+        "Focused boundary and task/saga tests pass."
+      ],
+      "assumptions": [
+        "It is acceptable for adapter modules to import concrete clients; the forbidden boundary is action engine ownership."
+      ],
+      "body_path": "problems/P000/children/P001/children/P009/children/P014/tickets/T006.md",
+      "classification": "one_go",
+      "classification_reason": "Specific guardrail test package with direct verification.",
+      "created_at": "2026-05-08T04:12:22+00:00",
+      "id": "T006",
+      "problem_definition": "Task and saga engines have been migrated to effect adapters, but without automated guardrails the old direct-client pattern could be reintroduced later. We need tests that enforce the new boundary instead of relying on code review memory.",
+      "problem_id": "P014",
+      "proposed_solution": "Add source/AST-based boundary tests that assert task/saga action engines do not import concrete clients, do not expose old constructor parameters, do not store client attributes, and do not call old protocol methods directly. Also assert worker assembly wires `TaskExecutionEffectAdapter` and `SagaLaunchEffectAdapter` into engine constructors.",
+      "result_ids": [
+        "R003"
+      ],
+      "risks": [
+        "Source tests can be brittle if too broad; use AST checks where possible and keep string checks specific to constructor/wiring residue."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Task/Saga Engine Boundary Guards",
+      "updated_at": "2026-05-08T04:13:57+00:00",
+      "verification_plan": "- Run the new boundary test.\n- Run focused task/saga worker tests already affected by P012/P013.\n- Compile worker modules."
+    },
+    "T007": {
+      "acceptance_criteria": [
+        "`HealthRecoveryEngine` no longer imports `httpx` or `internal_sync_client`, no longer owns `_client`, and no longer constructs HTTP clients.",
+        "`ScheduledWakeEngine` no longer stores `business_client` or `assembler`.",
+        "Worker assemblies wire health/scheduler effect adapters explicitly.",
+        "Existing health and scheduler tests pass after migration.",
+        "Boundary tests prevent direct collaborator ownership from returning."
+      ],
+      "assumptions": [
+        "Handler classes remain lifecycle-free and keep delegating to action engines.",
+        "Assembly may still create concrete clients/assemblers until the assembly DSL shrink ticket."
+      ],
+      "body_path": "problems/P000/children/P001/children/P010/tickets/T007.md",
+      "classification": "split",
+      "classification_reason": "Health HTTP recovery and scheduler wake dispatch have separate collaborators, metrics, and regression tests; splitting avoids a broad mixed migration.",
+      "created_at": "2026-05-08T04:15:51+00:00",
+      "id": "T007",
+      "problem_definition": "`HealthRecoveryEngine` and `ScheduledWakeEngine` still own concrete side-effect collaborators. Health owns `httpx` client creation and Queue recover-all calls. Scheduler owns `business_client` and `assembler` and invokes due-agent scans and dispatch directly. These engines should match the task/saga architecture: compute action flow, while concrete side effects live in explicit adapters.",
+      "problem_id": "P010",
+      "proposed_solution": "Add health and scheduler effect adapters. Refactor engines to use `EffectExecutor` for external calls:\n\n- health: `health.recover_all`\n- scheduler: `scheduler.get_due_for_wake`, `scheduler.dispatch_wake`\n\nUpdate assemblies and tests, then add boundary guards that reject direct client/assembler ownership in health/scheduler engines.",
+      "result_ids": [
+        "R008"
+      ],
+      "risks": [
+        "Health tests currently patch `_get_client`; they need to patch the adapter instead of engine internals.",
+        "Scheduler dispatch error handling depends on `DispatchError` and must preserve metrics/logging behavior."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Health and Scheduler Engines Use Effect Adapters",
+      "updated_at": "2026-05-08T04:24:30+00:00",
+      "verification_plan": "- Run focused health dispatch/generic worker tests.\n- Run focused scheduler dispatch/generic worker tests.\n- Run new/updated boundary tests.\n- Compile worker modules."
+    },
+    "T008": {
+      "acceptance_criteria": [
+        "`HealthRecoveryEngine` accepts `effect_executor` instead of queue URL/internal key.",
+        "`health_recovery.py` no longer imports `httpx` or `internal_sync_client`.",
+        "`HealthRecoveryEngine` no longer owns `_client` or `_get_client`.",
+        "`assemble_health_worker` wires `HealthRecoveryEffectAdapter` and cleans it up.",
+        "Existing health worker tests pass with adapter-based test setup."
+      ],
+      "assumptions": [
+        "Non-200 Queue recover-all responses remain non-exception success payloads with status code."
+      ],
+      "body_path": "problems/P000/children/P001/children/P010/children/P015/tickets/T008.md",
+      "classification": "one_go",
+      "classification_reason": "Focused migration of one health action engine with direct tests and simple adapter surface.",
+      "created_at": "2026-05-08T04:16:34+00:00",
+      "id": "T008",
+      "problem_definition": "`HealthRecoveryEngine` still imports `httpx` and `internal_sync_client`, owns an HTTP client cache, and directly calls Queue Service recover-all. This makes the action engine both compute health recovery flow and own external protocol details.",
+      "problem_id": "P015",
+      "proposed_solution": "Move HTTP client construction and recover-all POST into `HealthRecoveryEffectAdapter`. Refactor `HealthRecoveryEngine` to accept an `EffectExecutor` and call `health.recover_all`. Keep metrics, logging, and recovery result interpretation in the engine.",
+      "result_ids": [
+        "R005"
+      ],
+      "risks": [
+        "Tests currently monkeypatch engine `_get_client`; they must instead use an explicit fake adapter/executor."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Health Engine Effect Adapter Migration",
+      "updated_at": "2026-05-08T04:18:46+00:00",
+      "verification_plan": "- Run `tests/test_health_dispatch.py` and `tests/test_pr328_health_generic_worker.py`.\n- Compile health worker modules.\n- Scan `health_recovery.py` for old HTTP ownership residue."
+    },
+    "T009": {
+      "acceptance_criteria": [
+        "`ScheduledWakeEngine` accepts `effect_executor` instead of `business_client` and `assembler`.",
+        "`scheduled_wake.py` no longer stores `business_client` or `assembler`.",
+        "Due-agent scan and dispatch are explicit named effects.",
+        "`assemble_scheduler_worker` wires `ScheduledWakeEffectAdapter`.",
+        "Existing scheduler tests pass with adapter-based setup."
+      ],
+      "assumptions": [
+        "The dispatch assembler is still constructed in assembly until the assembly DSL shrink ticket."
+      ],
+      "body_path": "problems/P000/children/P001/children/P010/children/P016/tickets/T009.md",
+      "classification": "one_go",
+      "classification_reason": "Focused migration of scheduler scan/dispatch collaborators to one explicit adapter.",
+      "created_at": "2026-05-08T04:19:38+00:00",
+      "id": "T009",
+      "problem_definition": "`ScheduledWakeEngine` still stores `business_client` and `assembler`, then directly performs due-agent scans and wake dispatch. This violates the action-engine/effect-adapter boundary and keeps concrete side-effect collaborators in the business action engine.",
+      "problem_id": "P016",
+      "proposed_solution": "Add `ScheduledWakeEffectAdapter` to own `business_client` and dispatch assembler. Refactor `ScheduledWakeEngine` to accept `EffectExecutor`, use `scheduler.get_due_for_wake` to scan due agents, and use `scheduler.dispatch_wake` to perform wake dispatch.",
+      "result_ids": [
+        "R006"
+      ],
+      "risks": [
+        "Dispatch result/error behavior must preserve existing metrics and log semantics."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Scheduler Engine Effect Adapter Migration",
+      "updated_at": "2026-05-08T04:21:29+00:00",
+      "verification_plan": "- Run `tests/test_scheduler_dispatch.py` and `tests/test_pr329_scheduler_generic_worker.py`.\n- Compile scheduler worker modules.\n- Scan `scheduled_wake.py` for old collaborator ownership residue."
+    },
+    "T010": {
+      "acceptance_criteria": [
+        "Boundary tests reject `httpx`/`internal_sync_client` imports in `health_recovery.py`.",
+        "Boundary tests reject queue URL/internal-key constructor params and `_client` ownership in `HealthRecoveryEngine`.",
+        "Boundary tests reject `business_client`/`assembler` constructor params and ownership in `ScheduledWakeEngine`.",
+        "Boundary tests assert health/scheduler adapter wiring in worker assembly.",
+        "Focused health/scheduler boundary suite passes."
+      ],
+      "assumptions": [
+        "Adapter modules are allowed to import concrete clients/collaborators."
+      ],
+      "body_path": "problems/P000/children/P001/children/P010/children/P017/tickets/T010.md",
+      "classification": "one_go",
+      "classification_reason": "Specific guardrail test extension with direct verification.",
+      "created_at": "2026-05-08T04:22:53+00:00",
+      "id": "T010",
+      "problem_definition": "Health and scheduler engines have been migrated to effect adapters, but the boundary needs automated tests. Without guardrails, future edits can reintroduce direct HTTP/client/assembler ownership inside action engines.",
+      "problem_id": "P017",
+      "proposed_solution": "Extend the PR-340 action-engine boundary test suite to cover `HealthRecoveryEngine` and `ScheduledWakeEngine`. Assert no concrete protocol imports, old constructor parameters, self-owned collaborator attributes, or direct collaborator calls. Also assert worker assembly wires health and scheduler effect adapters.",
+      "result_ids": [
+        "R007"
+      ],
+      "risks": [
+        "Keep string checks specific so effect-name strings do not count as residue."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Health/Scheduler Boundary Guards",
+      "updated_at": "2026-05-08T04:23:51+00:00",
+      "verification_plan": "- Run PR-340 boundary tests plus health/scheduler dispatch/generic worker tests.\n- Compile worker modules."
+    },
+    "T011": {
+      "acceptance_criteria": [
+        "Boundary test covers task, saga, health, and scheduler engines.",
+        "Boundary test asserts adapter wiring for all four worker assemblies.",
+        "Focused task/saga/health/scheduler tests pass together.",
+        "Worker modules compile."
+      ],
+      "assumptions": [
+        "Detailed engine migrations are already handled by P009 and P010; this ticket is cross-engine verification and guardrail closure."
+      ],
+      "body_path": "problems/P000/children/P001/children/P011/tickets/T011.md",
+      "classification": "one_go",
+      "classification_reason": "Aggregate verification can be completed with the existing cross-engine boundary and focused behavior suites.",
+      "created_at": "2026-05-08T04:25:18+00:00",
+      "id": "T011",
+      "problem_definition": "The effect-plan migration must be guarded across all action engines, not just individual migrations. We need an aggregate verification ticket proving task, saga, health, and scheduler engines are all protected by source/AST boundary tests and behavior regressions.",
+      "problem_id": "P011",
+      "proposed_solution": "Use the PR-340 boundary suite as the cross-engine guardrail and run it together with focused task/saga/health/scheduler behavior suites. Confirm the tests cover all four migrated engines and assembly wiring.",
+      "result_ids": [
+        "R009"
+      ],
+      "risks": [
+        "If boundary tests cover only source residue but not behavior, a migration could be structurally clean but behaviorally broken; the aggregate suite must include both."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Effect-Plan Boundary Tests",
+      "updated_at": "2026-05-08T04:26:17+00:00",
+      "verification_plan": "- Run PR-340 boundary tests.\n- Run focused behavior tests touched by P009/P010.\n- Compile worker modules."
+    },
+    "T012": {
+      "acceptance_criteria": [
+        "`worker_assemblies.py` has meaningfully fewer lifecycle-construction lines.",
+        "Generic lifecycle objects are constructed through component helpers instead of repeated inline blocks.",
+        "Task, saga, session-outbox, saga-outbox, health, and scheduler assemblies still build equivalent `WorkerProcessSpec`s.",
+        "Focused worker assembly/handler tests pass.",
+        "Worker modules compile."
+      ],
+      "assumptions": [
+        "Concrete client creation can remain in assembly functions for now; this ticket shrinks lifecycle construction, not client factory DSL."
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T012.md",
+      "classification": "split",
+      "classification_reason": "Assembly shrink touches shared lifecycle helpers, six worker assemblies, and verification/guardrails; splitting avoids a hidden broad refactor.",
+      "created_at": "2026-05-08T04:28:11+00:00",
+      "id": "T012",
+      "problem_definition": "`task_queue/workers/worker_assemblies.py` is still thick component code. It now wires correct effect adapters, but each business assembly repeats generic worker lifecycle construction (`GenericWorker`, `ConcurrentGenericWorker`, `SyntheticJobSource`, `WorkerRuntime`, `WorkerRuntimeConfig`, `ShutdownController`) inline. That makes business assembly look like infrastructure and weakens the goal of small declarative business worker specs.",
+      "problem_id": "P002",
+      "proposed_solution": "Introduce component-level assembly helpers for common worker runtime shapes:\n\n- runtime bundle and worker log construction\n- standard generic worker construction\n- concurrent generic worker construction\n- synthetic tick/drain worker construction\n- process spec construction remains explicit but small\n\nThen migrate worker assembly functions to those helpers so each function mostly describes its clients, engine, handler, source, startup lines, and cleanup.",
+      "result_ids": [
+        "R014"
+      ],
+      "risks": [
+        "Over-abstracting assembly can hide important explicit dependencies; helpers should stay generic and business-agnostic.",
+        "Cleanup ownership must remain explicit and not be swallowed by generic helpers."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Declarative Worker Assembly DSL Shrink",
+      "updated_at": "2026-05-08T04:43:08+00:00",
+      "verification_plan": "- Compare `worker_assemblies.py` line count before/after.\n- Run focused worker tests for task, saga, health, scheduler, and outbox workers where available.\n- Run compile checks."
+    },
+    "T013": {
+      "acceptance_criteria": [
+        "Helper module builds generic workers, concurrent workers, and synthetic workers.",
+        "Helper module does not import task/saga/session business modules.",
+        "Helpers keep source, handler, reporter, runtime deps, and cleanup explicit.",
+        "Tests or compile checks verify the helper substrate."
+      ],
+      "assumptions": [
+        "`queue_service.worker` is the generic worker substrate and is allowed here."
+      ],
+      "body_path": "problems/P000/children/P002/children/P018/tickets/T013.md",
+      "classification": "one_go",
+      "classification_reason": "Focused infrastructure helper substrate with local tests and no business migration yet.",
+      "created_at": "2026-05-08T04:29:22+00:00",
+      "id": "T013",
+      "problem_definition": "Worker assembly code repeats the same component-level lifecycle wiring in every worker function. Before shrinking business assemblies, we need a small generic helper substrate that can build standard worker lifecycle shapes without importing business-specific modules.",
+      "problem_id": "P018",
+      "proposed_solution": "Add `task_queue/workers/assembly_helpers.py` with helpers for:\n\n- standard worker log formatting\n- creating runtime bundles with explicit worker dependencies and worker id\n- creating `WorkerRuntime`\n- building generic, concurrent, and synthetic generic workers\n- building synthetic drain/tick workers with custom runtime/reporters\n\nKeep the helper module business-agnostic and focused on component lifecycle only.",
+      "result_ids": [
+        "R011"
+      ],
+      "risks": [
+        "Helpers that know business worker names or clients would recreate the same coupling; tests should guard against business imports."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Generic Worker Assembly Helper Substrate",
+      "updated_at": "2026-05-08T04:31:05+00:00",
+      "verification_plan": "- Add focused helper tests.\n- Compile helper module."
+    },
+    "T014": {
+      "acceptance_criteria": [
+        "Task, saga, health, scheduler, session-outbox, and saga-outbox assemblies use helper builders for worker construction.",
+        "`worker_assemblies.py` no longer directly constructs `GenericWorker`, `ConcurrentGenericWorker`, or `SyntheticJobSource`.",
+        "Repeated runtime/config/reporter boilerplate in `worker_assemblies.py` is reduced.",
+        "Tests prove helper-backed assembly behavior for the migrated workers.",
+        "Existing effect adapter boundary tests still pass.",
+        "Compile checks pass."
+      ],
+      "assumptions": [
+        "The helper substrate from P018 is accepted as the generic infra boundary.",
+        "Business assembly may still instantiate explicit effect adapters; the goal is to remove worker lifecycle construction mechanics, not hide business adapters."
+      ],
+      "body_path": "problems/P000/children/P002/children/P019/tickets/T014.md",
+      "classification": "one_go",
+      "classification_reason": "A bounded mechanical migration inside worker_assemblies plus focused tests can be completed directly.",
+      "created_at": "2026-05-08T04:33:47+00:00",
+      "id": "T014",
+      "problem_definition": "`task_queue/workers/worker_assemblies.py` still owns repeated worker assembly mechanics even after the generic helper substrate exists. Business assembly functions continue to hand-roll runtime bundles, `GenericWorker`/`ConcurrentGenericWorker`/`SyntheticJobSource` construction, reporter defaults, and error logging. That keeps business-facing assembly thicker than the target DSL shape and leaves old construction paths easy to preserve by accident.",
+      "problem_id": "P019",
+      "proposed_solution": "Migrate concrete worker assembly functions onto `task_queue.workers.assembly_helpers`.\n\nThe migration should:\n\n- Use helper builders for generic, concurrent, and synthetic workers.\n- Extend helpers only with business-agnostic primitives if outbox assemblies need explicit runtimes.\n- Keep effect adapters explicit at assembly boundaries.\n- Remove direct worker-construction mechanics from `worker_assemblies.py`.\n- Update tests that asserted old constructor text so they assert helper-backed behavior and boundary cleanliness instead.",
+      "result_ids": [
+        "R012"
+      ],
+      "risks": [
+        "Outbox workers use custom runtime dependencies and may need helper extension.",
+        "Tests may currently assert implementation text rather than behavior and need cleanup.",
+        "A shallow migration could leave new helper code unused, so residue checks must be explicit."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "P019 Ticket - Migrate Worker Assemblies To Helper Substrate",
+      "updated_at": "2026-05-08T04:40:10+00:00",
+      "verification_plan": "- Run focused assembly/helper tests.\n- Run task/saga/health/scheduler cutover and dispatch tests.\n- Run effect boundary guard tests.\n- Run outbox-related tests found by repository search.\n- Run compile checks for `task_queue/workers`.\n- Use `rg` to confirm old worker-construction residue is gone from `worker_assemblies.py`.\n- Record final line-count and residue evidence."
+    },
+    "T015": {
+      "acceptance_criteria": [
+        "`worker_assemblies.py` has no direct worker lifecycle primitive construction.",
+        "Helper-backed assembly tests pass.",
+        "Outbox assembly tests pass.",
+        "Effect boundary tests pass.",
+        "Compile checks pass.",
+        "Evidence is recorded in the ledger."
+      ],
+      "assumptions": [
+        "P018 and P019 code is already present in the working tree."
+      ],
+      "body_path": "problems/P000/children/P002/children/P020/tickets/T015.md",
+      "classification": "one_go",
+      "classification_reason": "Verification-only closure over already implemented assembly migration.",
+      "created_at": "2026-05-08T04:41:08+00:00",
+      "id": "T015",
+      "problem_definition": "P018/P019 introduced and used helper-backed worker assembly, but the parent assembly gap is only closed if the repository proves the business assembly surface is actually thinner and old worker lifecycle construction does not remain protected by tests or alternate paths.",
+      "problem_id": "P020",
+      "proposed_solution": "Perform an explicit shrink verification pass for worker assembly.\n\nThe verification should:\n\n- Search for direct lifecycle-construction residue in `worker_assemblies.py`.\n- Confirm helper substrate is the only place where generic worker construction primitives are used.\n- Run the full focused assembly/effect/outbox test slice.\n- Compile worker modules.\n- Record line-count and residue evidence.\n- If a gap remains, create a follow-up instead of marking success.",
+      "result_ids": [
+        "R013"
+      ],
+      "risks": [
+        "A text-only residue check can miss dynamic indirection; focused behavior tests must run as well.",
+        "Some remaining code may be valid business wiring rather than lifecycle residue; classify based on explicit dependency boundary."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "P020 Ticket - Assembly DSL Shrink Verification",
+      "updated_at": "2026-05-08T04:42:05+00:00",
+      "verification_plan": "- Run `rg` residue checks for worker lifecycle primitives.\n- Run focused pytest suite across task/saga/health/scheduler/outbox/helper/boundary tests.\n- Run compileall on worker modules.\n- Run `wc -l` to capture current assembly/helper size."
+    },
+    "T016": {
+      "acceptance_criteria": [
+        "Guardrail tests cover task, saga, health, and scheduler action engines.",
+        "Guardrail tests cover assembly helper usage and absence of direct lifecycle constructors in business assembly.",
+        "Guardrail tests distinguish allowed infra modules from forbidden business modules.",
+        "Existing focused tests still pass.",
+        "Compile checks pass."
+      ],
+      "assumptions": [
+        "The P001/P002 implementation is present.",
+        "Concrete effect adapters are allowed to own clients because they are explicit dependency boundaries."
+      ],
+      "body_path": "problems/P000/children/P003/tickets/T016.md",
+      "classification": "one_go",
+      "classification_reason": "Guardrails can be strengthened directly with focused tests and residue checks.",
+      "created_at": "2026-05-08T04:44:13+00:00",
+      "id": "T016",
+      "problem_definition": "The new effect-plan engines and helper-backed assemblies are valuable only if future edits cannot silently move concrete clients, worker lifecycle constructors, or hidden side effects back into business engines or business assembly. Existing tests cover part of the boundary, but P003 must make the guardrails explicit and harder to regress.",
+      "problem_id": "P003",
+      "proposed_solution": "Add or strengthen guardrail tests that verify:\n\n- Business engines only depend on `EffectExecutor` plans and do not own concrete protocol clients.\n- Effect adapter modules are the approved place for concrete external clients.\n- `worker_assemblies.py` wires explicit adapters and helper builders, but does not construct worker lifecycle primitives.\n- `assembly_helpers.py` is the approved infrastructure location for generic worker construction primitives and remains business-agnostic.\n- Tests fail on old direct construction and direct protocol-call residue.",
+      "result_ids": [
+        "R015"
+      ],
+      "risks": [
+        "Overly broad text guards can block valid infra code; tests must distinguish `assembly_helpers.py` from `worker_assemblies.py`.",
+        "Under-broad guards could miss old paths; include both AST/source guards and focused behavior tests."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "P003 Ticket - Effect Adapter And Assembly Guardrails",
+      "updated_at": "2026-05-08T04:46:22+00:00",
+      "verification_plan": "- Run guardrail tests.\n- Run focused action-engine and assembly tests.\n- Run compile checks for worker modules.\n- Use residue searches to prove forbidden construction/call patterns are absent."
+    },
+    "T017": {
+      "acceptance_criteria": [
+        "PR-338 roadmap ticket status is corrected to closed/current wording.",
+        "A docs status consistency lint exists and fails on the stale PR-338 wording.",
+        "The lint is wired into `.github/workflows/lint.yml`.",
+        "The lint passes locally.",
+        "Existing roadmap archaeology/current docs residue lints still pass."
+      ],
+      "assumptions": [
+        "`docs/architecture/generic-worker-substrate-plan.md` is the source of truth for PR-338 closure state."
+      ],
+      "body_path": "problems/P000/children/P004/tickets/T017.md",
+      "classification": "one_go",
+      "classification_reason": "Known docs drift plus narrow CI lint can be fixed directly.",
+      "created_at": "2026-05-08T04:48:52+00:00",
+      "id": "T017",
+      "problem_definition": "Architecture docs and roadmap tickets can mislead future work if a closed architecture ledger says one thing while a roadmap ticket still says `Status: Doing` or `in progress`. The known stale case is `docs/roadmap/tickets/PR-338-business-only-dsl-phase-bill.md`, which still claims PR-338 is doing and P007 is in progress even though the architecture plan marks phase 13 closed.",
+      "problem_id": "P004",
+      "proposed_solution": "Fix the known PR-338 stale status and add CI tooling that catches this class of docs status drift.\n\nThe lint should:\n\n- Check selected roadmap tickets against architecture-plan status markers.\n- Fail if PR-338 returns to `Status: Doing` or `P007 in progress`.\n- Verify the architecture plan still records phase 13 as closed.\n- Be wired into the existing lint workflow.",
+      "result_ids": [
+        "R016"
+      ],
+      "risks": [
+        "A too-generic docs linter could become noisy; keep this first version narrow and explicit.",
+        "Future docs status expectations should be added deliberately as new entries."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "P004 Ticket - Docs Status Consistency Lint",
+      "updated_at": "2026-05-08T04:50:33+00:00",
+      "verification_plan": "- Run the new docs status consistency lint.\n- Run existing docs residue and roadmap archaeology lints.\n- Inspect affected docs for stale `Doing` / `in progress` wording."
+    },
+    "T018": {
+      "acceptance_criteria": [
+        "Deploy restart captures a remote timestamp before restarting services and runs a fresh-log smoke check after startup.",
+        "Manual deploy status/smoke operation can verify critical logs relative to an explicit timestamp or a recent default window.",
+        "The check uses stable server paths and log mtimes or equivalent timestamp evidence, not stale tail output.",
+        "CI/lint coverage fails if the timestamp-aware smoke hook is removed from deploy flow.",
+        "Documentation explains how to run the fresh deploy smoke and why it exists."
+      ],
+      "assumptions": [
+        "Runtime logs live under `/opt/novaic/data/logs`.",
+        "The restart path starts queue-service, health, scheduler, session-outbox, saga-outbox, task, saga, subscriber, cortex, gateway, and business logs through existing scripts."
+      ],
+      "body_path": "problems/P000/children/P005/tickets/T018.md",
+      "classification": "one_go",
+      "classification_reason": "Scoped deploy-script and lint hardening with direct local verification",
+      "created_at": "2026-05-08T04:53:21+00:00",
+      "id": "T018",
+      "problem_definition": "Deploy verification can be fooled by stale process state or historical logs. A restart/status path that only tails logs or checks process counts can report success even when the fresh deploy did not emit expected runtime evidence after the restart boundary.",
+      "problem_id": "P005",
+      "proposed_solution": "Add a timestamp-aware deploy smoke path that captures a remote epoch before restart and verifies the critical runtime logs were updated after that boundary. Expose the same check as an explicit deploy subcommand for manual recovery, and add a local CI guard so this behavior cannot silently disappear.",
+      "result_ids": [
+        "R017"
+      ],
+      "risks": [
+        "Some quiet workers may not emit logs immediately. The check should verify critical startup logs that are expected to update during restart rather than every possible worker shard.",
+        "Remote shell compatibility should stay POSIX-ish and avoid dependencies beyond standard Linux utilities and Python when possible."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Timestamp-aware deploy smoke",
+      "updated_at": "2026-05-08T04:57:10+00:00",
+      "verification_plan": "- Static syntax check for deploy scripts.\n- Run the new deploy-smoke lint locally.\n- Run existing deploy/start contract lint if present.\n- Confirm no stale-log-only deploy status text remains as the only verification story."
+    },
+    "T019": {
+      "acceptance_criteria": [
+        "`scripts/start.sh` verifies exact expected counts for task-control, task-execution, saga, session-outbox, saga-outbox, health, scheduler, and subscriber after startup.",
+        "Startup exits non-zero if any required worker role count is wrong.",
+        "`./deploy status` reports role-level runtime worker counts instead of only a coarse worker total.",
+        "CI/lint coverage guards the supervision functions, expected roles, and workflow wiring.",
+        "Documentation explains that worker roles are explicit required subprocesses."
+      ],
+      "assumptions": [
+        "Production worker command lines include `main_novaic.py` plus the role names used by `start.sh`.",
+        "There should be exactly 2 control task workers, 2 execution task workers, 2 saga workers, and exactly 1 each of session-outbox, saga-outbox, health, scheduler, and subscriber."
+      ],
+      "body_path": "problems/P000/children/P006/tickets/T019.md",
+      "classification": "one_go",
+      "classification_reason": "Explicit start/status supervision can be implemented and verified in one bounded pass",
+      "created_at": "2026-05-08T04:58:27+00:00",
+      "id": "T019",
+      "problem_definition": "Runtime workers are launched as background subprocesses, but startup success can still be inferred from a coarse process count. That hides missing roles, duplicate roles, or fast-crashing workers behind a vague \"workers N\" status.",
+      "problem_id": "P006",
+      "proposed_solution": "Make the runtime worker roster explicit in the production start/status path. `scripts/start.sh` should verify the exact required worker/subscriber roles after launch and fail startup if any required role is missing or duplicated. `deploy status` should show the same role-level supervision table. Add a CI guard so the role roster and verification hook cannot be removed silently.",
+      "result_ids": [
+        "R018"
+      ],
+      "risks": [
+        "Exact role counts may expose duplicate/stale worker processes that previously went unnoticed. That is desirable for correctness, but deploy failures may become more explicit.",
+        "Process matching must be precise enough not to count unrelated helper commands."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Runtime worker supervision",
+      "updated_at": "2026-05-08T05:01:25+00:00",
+      "verification_plan": "- `bash -n scripts/start.sh`\n- `bash -n deploy`\n- Run a new runtime-supervision lint script.\n- Run existing start/config and current docs lints.\n- Inspect the diff for stale coarse-only worker status."
+    },
+    "T020": {
+      "acceptance_criteria": [
+        "All newly added guardrails pass locally.",
+        "Focused runtime/FSM/worker/assembly tests pass.",
+        "Residue scans show no active old imperative worker constructors in business assembly and no stale coarse deploy/worker status path.",
+        "Docs and roadmap status lints pass.",
+        "Git diff is reviewed and final scope is understandable.",
+        "Ledger can close P007 with explicit evidence and residual risks."
+      ],
+      "assumptions": [
+        "The previous tickets already implemented the intended core design; P007 is a closure/audit ticket, not a new architecture rewrite."
+      ],
+      "body_path": "problems/P000/children/P007/tickets/T020.md",
+      "classification": "one_go",
+      "classification_reason": "Audit and closure can be executed directly; any discovered large gap will become a follow-up",
+      "created_at": "2026-05-08T05:02:37+00:00",
+      "id": "T020",
+      "problem_definition": "The FSM substrate and business DSL migration can still fail if new infrastructure exists but old business paths remain active, docs drift, deploy/start scripts regress, or tests only cover narrow happy paths. This final ticket must prove the whole gap ledger is closed rather than merely implemented.",
+      "problem_id": "P007",
+      "proposed_solution": "Run a final residue audit and verification sweep across runtime worker assembly, action effect boundaries, docs, deploy/start supervision, and ledger state. Fix any small residue directly. If a discovered gap is too large to close directly, create a follow-up problem through the ledger instead of hiding it.",
+      "result_ids": [
+        "R019"
+      ],
+      "risks": [
+        "Broad tests may expose unrelated existing failures. If unrelated, record them precisely; if related, fix before closing.",
+        "Residue scans may need targeted allowlists for guard scripts that intentionally mention banned strings."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Final residue closure and verification",
+      "updated_at": "2026-05-08T05:13:35+00:00",
+      "verification_plan": "- Run focused pytest suites for worker assembly/effect boundaries and queue/session runtime behavior.\n- Run compile checks over touched runtime modules.\n- Run deploy/start/documentation CI lints.\n- Run residue scans for old constructors, coarse worker status, stale deploy docs, and compatibility markers.\n- Inspect `git diff --stat` and key diffs."
+    }
+  },
+  "updated_at": "2026-05-08T05:15:17+00:00"
+}

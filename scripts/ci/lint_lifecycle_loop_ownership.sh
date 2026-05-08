@@ -17,8 +17,9 @@ if rg -n --pcre2 "$SUBSCRIBER_BAN" \
   exit 1
 fi
 
-if ! rg -q '_merge_pending_metadata' novaic-agent-runtime/queue_service/session_repo.py; then
-  echo "Lifecycle ownership violation: Queue SessionRepository must preserve pending trigger message_ids." >&2
+if ! rg -q 'merge_pending_metadata' novaic-agent-runtime/queue_service/session_projection.py ||
+   ! rg -q 'build_pending_input_projection' novaic-agent-runtime/queue_service/session_repo.py; then
+  echo "Lifecycle ownership violation: Queue pending projection must preserve trigger message_ids." >&2
   exit 1
 fi
 

@@ -5,11 +5,9 @@ ALLOWLIST=(
   'novaic-common/common/http/clients.py'
   'novaic-business/main_subscriber.py'  # PR-34 34d: sync subscriber subprocess entry
   'tests/'
-  # TRANSITIONAL — remove line-by-line as PRs migrate:
-  'novaic-business/business/provider_client.py'
-  'novaic-cortex/novaic_cortex/file_resolver.py'
-  'novaic-llm-factory/factory/routes/config_routes.py'
-  'novaic-llm-factory/factory/providers.py'
+  'novaic-business/business/provider_client.py'  # provider integration boundary
+  'novaic-llm-factory/factory/routes/config_routes.py'  # factory config API boundary
+  'novaic-llm-factory/factory/providers.py'  # provider integration boundary
 )
 HITS=$(rg -l "$PATTERN" novaic-*/ || true)
 if [ -z "$HITS" ]; then

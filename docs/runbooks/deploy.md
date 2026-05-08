@@ -25,6 +25,7 @@
 | macOS 桌面包 | `./deploy desktop` |
 | 一键：前端 + 全后端 + relay + iOS + 桌面 | `./deploy all [version]` |
 | 状态 | `./deploy status` |
+| 新鲜部署烟测 | `./deploy fresh-smoke [epoch]` |
 | 日志 | `./deploy logs [gateway\|cortex\|tools\|runtime\|worker\|relay]` |
 | 重置某用户登录密码（api 机 `gateway.db`） | `./deploy reset-password <email>`（可选环境变量 `NOVAIC_DEPLOY_NEW_PASSWORD`） |
 
@@ -33,6 +34,10 @@
 - **`deploy gateway`**：同步 `novaic-common`、`novaic-gateway`、`Entangled`，再 SSH 执行 `bash /opt/novaic/start.sh --stop && bash /opt/novaic/start.sh`。
 - **`deploy services`**：对上述及 Runtime、Blob Service、Cortex 等批量 rsync，安装 Blob/Cortex/Runtime 独立 venv 依赖，再统一 `start.sh` 重启。
 - 远端服务目录默认为 **`/opt/novaic/services/<name>/`**。
+- 后端重启会先在远端记录一个 epoch 秒时间戳，再执行 `start.sh`，最后用 timestamp-aware fresh-smoke 检查关键日志文件的 mtime 是否都在重启前的时间戳之后。这个检查用于避免把旧日志 tail 当成新部署证据。
+- 如需人工复核，运行 `./deploy fresh-smoke [epoch]`；省略 `epoch` 时默认检查远端最近 15 分钟内的关键后端日志是否更新。
+- `start.sh` 会在启动完成后验证 required runtime subprocesses。role-level roster 的 SSOT 是 `novaic-agent-runtime/task_queue/workers/runtime_roster.py`，远端 shell 通过 `novaic-agent-runtime/scripts/runtime_worker_roster.py` 读取；当前包括 `task-worker control`、`task-worker execution`、`saga-worker`、`session-outbox-worker`、`saga-outbox-worker`、`health`、`scheduler`、`subscriber`。数量不匹配会让启动失败。`subscriber` 日志是 `subscriber.log`。
+- `./deploy status` 同样按 role-level worker roster 输出 expected/actual 计数，不再只输出一个粗粒度 worker 总数。
 
 ## 相关
 
