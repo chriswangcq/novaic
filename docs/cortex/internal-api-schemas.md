@@ -60,7 +60,7 @@ JWT 路由（`/v1/shell` 等）**不**在本文；见 [http-api.md](http-api.md)
 | POST | `/v1/steps/list` | + `scope_id` | `steps`（文件名列表） |
 | POST | `/v1/steps/read` | + `scope_id`, `filename` | `step`（dict 或 null） |
 | POST | `/v1/steps/index` | + `scope_id` | `entries`（`_index.jsonl` 解析后的列表） |
-| POST | `/v1/steps/read_formatted` | + `scope_id`, `tool_call_id`, `provider?`, `include_display?` | `content` |
+| POST | `/v1/steps/read_formatted` | + `scope_id`, `tool_call_id`, `provider?`, `projection?` (`history` / `current_tool_result` / `display_perception`) | `content` |
 | POST | `/v1/steps/read_preview` | + `scope_id`, `tool_call_id`, `max_text_len?` | `preview` |
 
 ---
@@ -108,8 +108,8 @@ JWT 路由（`/v1/shell` 等）**不**在本文；见 [http-api.md](http-api.md)
 
 - `scope_id` 是**当前会话根 scope id**（不变，调用方总是传同一个）。
 - `child_scope_id` 是**要开/要关的子 scope id**：
-  - `skill_begin`：LLM 自选；Cortex 用 **`_walk_scope_tree(root_scope_path)`** 扫描该会话下全部（active + archived）scope，发现重复即拒绝。
-  - `skill_end`：Cortex 调 **`resolve_active_scope_path(root)`** 取栈顶路径，提取末段 `scope_id`，与 `child_scope_id` 严格比较，不等则拒绝并回传 `stack_top` 给 LLM。
+  - `skill_begin`：LLM 自选；Cortex 读取 operational SQLite `scope_projection`，发现该 root 下重复 `scope_id` 即拒绝。
+  - `skill_end`：Cortex 读取 SQLite active stack projection 的栈顶帧，与 `child_scope_id` 严格比较，不等则拒绝并回传 `stack_top` 给 LLM。
 - 详细策略见 [scope-lifecycle.md §9](scope-lifecycle.md#9-skill-scope-生命周期llm-可见栈式)。
 
 ---

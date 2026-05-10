@@ -29,7 +29,7 @@
 
 当前唯一 summary 写入通路是：LLM 关闭当前栈顶 scope 时调用 `skill_end(report=...)`，`report` 原样成为该 scope 的 `summary.md`。Cortex 不从 `im_reply`、wake 结束、用户画像或其他运行时信号推断 summary。
 
-**并发安全**：`POST /v1/context/skill_begin` 与 `POST /v1/context/skill_end` 在 Cortex API 层以 `(user_id, agent_id, root_scope_id)` 为 key 使用 asyncio 互斥锁（`_SKILL_LOCKS`）串行化，避免同一个 round 里并发 tool_calls 把 stack 状态搞乱。锁条目会在 root scope 归档（`/v1/scope/end` with `is_root=true`）后自动回收。
+**并发安全**：`POST /v1/context/skill_begin` 与 `POST /v1/context/skill_end` 在 Cortex API 层以 `(user_id, agent_id, root_scope_id)` 为 key 通过 scope lock manager 串行化，避免同一个 round 里并发 tool_calls 把 stack 状态搞乱。生产 backend 是 Redis lock manager；测试可安装 in-memory manager。锁 key 会在 root scope 归档（`/v1/scope/end` with `is_root=true`）后 best-effort 释放。
 
 **结果可见性**：`skill_begin` / `skill_end` 的成功/错误响应均包含 `stack`（LIFO ordered 帧数组，栈顶最先）与 `stack_depth`，工具结果会被 Agent Runtime 当作普通 step 保存到 `steps/`，LLM 在下一轮 prepare_llm_context 可以直接读到。
 

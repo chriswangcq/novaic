@@ -1,0 +1,129 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-10T11:23:02+00:00",
+      "criteria_map": [
+        "Answers whether Cortex durable state authority is Workspace/LogicalFS and lists imperfections."
+      ],
+      "evidence": [
+        "Targeted source inspection of context_event_store.py, registry.py, workspace_authority.py, logical_fs.py, api.py, scope_locks.py, scope_state_log.py, blob_payload.py, and main_cortex.py."
+      ],
+      "execution_map": [
+        "One bounded audit ticket T000 produced result R000."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Source audit only; not a runtime health proof."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Contradictory evidence was checked: Redis locks, local NDJSON, Blob payloads, active-stack projection, and snapshot/patch LogicalFS were explicitly classified instead of ignored."
+      ],
+      "summary": "Audited Cortex state authority and identified remaining non-perfect state planes."
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-10T11:18:42+00:00",
+  "ledger_id": "L20260510-191842",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-10T11:18:42+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "Audit whether the current Cortex service matches the intended shape: Cortex is a state semantics service, while authoritative long-lived state lives in Workspace/LogicalFS-backed files rather than Cortex process memory. Identify what is already true and what remains imperfect, including caches, logs, locks, payloads, context events, scope files, and shell/materialization state.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Map each Cortex state category to its authority: LogicalFS/Workspace, Blob/Object store, process memory cache, external lock, or observability log.",
+        "Confirm whether LLM context state is event-sourced from Workspace/LogicalFS.",
+        "Identify any Cortex process-memory state that could affect correctness after restart.",
+        "Identify any non-LogicalFS persistent state and whether it is authoritative or observational.",
+        "Distinguish real imperfections from acceptable caches/adapters.",
+        "Provide evidence pointers from code and tests."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Cortex state authority audit",
+      "updated_at": "2026-05-10T11:23:02+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-10T11:22:28+00:00",
+      "done": [],
+      "id": "R000",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Current Cortex is mostly aligned with the target model:\n\n> Cortex is a state-semantic service; durable semantic authority should live in LogicalFS/Workspace files, and the Cortex process should not become a long-term state store.\n\nThe core durable paths are now Workspace/LogicalFS backed:\n\n- LLM context is prepared from the ContextEvent source stream at `<root_scope_path>/context_events/events.jsonl`.\n- Workspace file authority is built from LogicalFS object-store adapters under per-agent owner prefixes.\n- Shell `/cortex/ro` and `/cortex/rw` are materialized views of Workspace files; RW changes are observed as patches and written back to Workspace.\n- Cortex process memory mainly holds service wiring and caches, not canonical long-lived conversation state.\n\nThis is not yet the mathematically perfect form where every observable stateful concern is one unified event-sourced Workspace model. There are still intentional operational planes outside Workspace authority.",
+      "ticket_id": "T000",
+      "verification": []
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Produce a state-category table with authority and restart behavior.",
+        "Identify which state is authoritative vs cache vs observability.",
+        "Identify gaps where process state or external state could still affect correctness.",
+        "Cite concrete files/lines or command evidence."
+      ],
+      "assumptions": [
+        "Current branch contains the deployed Cortex event-source cutover.",
+        "The question is architectural/audit oriented; no code changes are requested in this turn."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded architecture audit over Cortex source files with concrete evidence; no implementation change needed unless check finds a blocker.",
+      "created_at": "2026-05-10T11:18:59+00:00",
+      "id": "T000",
+      "problem_definition": "The user wants to know whether Cortex already matches the desired architecture: Cortex as a state semantics service, with authoritative durable state in Workspace/LogicalFS, and Cortex process memory only used for caches/adapters. The audit must identify real imperfections instead of giving a broad yes.",
+      "problem_id": "P000",
+      "proposed_solution": "Perform a bounded source audit of Cortex state-bearing code paths:\n\n- Workspace/LogicalFS file authority and registry wiring.\n- Context event store/read model/projection.\n- Scope lifecycle, steps, summaries, payloads, and `/ro`/`/rw` files.\n- Process memory caches in registry, locks, hook/log paths, and capability/materialized shell views.\n- Any persistent state outside Workspace/LogicalFS, including Blob payload storage and scope transition logs.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Some authoritative behavior may be in adjacent services such as Blob Service or LogicalFS, so this audit should classify those boundaries rather than re-audit every external service.",
+        "The answer could overstate “stateless” if lock/cache behavior is ignored."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Audit Cortex state authority boundaries",
+      "updated_at": "2026-05-10T11:22:28+00:00",
+      "verification_plan": "- Use `rg`, `sed`, and source inspection over `novaic-cortex/novaic_cortex`.\n- Search for file writes, append operations, global caches, registry maps, locks, log paths, and event store usage.\n- Run no mutation other than ledger files."
+    }
+  },
+  "updated_at": "2026-05-10T11:23:03+00:00"
+}

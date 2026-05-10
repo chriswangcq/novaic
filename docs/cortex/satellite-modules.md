@@ -11,10 +11,10 @@
 
 ## 2. Blob storage helpers
 
-- Cortex active path stores large tool/runtime payloads behind `blob://...`
+- Cortex active path stores large tool/runtime payload bytes behind `blob://...`
   references and keeps prompt-facing observations small.
-- Large bytes belong to Blob Service; Cortex owns only work-trace semantics,
-  payload refs, and projection rules.
+- Large bytes belong to Blob Service; Cortex owns work-trace semantics,
+  payload manifests/status, payload refs, and projection rules.
 - Live `/ro` and `/rw` files go through LogicalFS. The Blob object adapter lives
   in `novaic-logicalfs`, below that file authority. Cortex does not own S3/OSS
   credentials or Blob object API details.

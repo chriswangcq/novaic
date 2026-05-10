@@ -1,0 +1,233 @@
+# Complex Problem Ledger
+
+Ledger: L20260510-193614
+Schema: v6
+Root: P000 - Cortex State Authority Remediation Implementation
+Status: done
+Updated: 2026-05-10T16:07:20+00:00
+
+## Problem Tree
+- [done] P000: Cortex State Authority Remediation Implementation
+  - [done] P001: Phase 0 Construction Plan And Boundary Map
+  - [done] P002: Phase 1 Cortex Operational SQLite Store Substrate
+    - [done] P007: Phase 1A Operational Store Module And Unit Tests
+    - [done] P008: Phase 1B Cortex Service Boundary Wiring
+    - [done] P009: Phase 1C Phase 1 Verification And Residue Audit
+  - [done] P003: Phase 2 Scope Transition Events To SQLite
+    - [done] P010: Phase 2A Scope Transition Callsite And Semantics Audit
+    - [done] P011: Phase 2B Scope Transition Write Cutover To SQLite
+      - [done] P013: Require Operational Store For Scope Transition Writes
+    - [done] P012: Phase 2C Scope History Read Cutover And NDJSON Cleanup
+      - [done] P014: Phase 2C1 Scope History API Reads From SQLite
+      - [done] P015: Phase 2C2 Remove NDJSON Transition Log Surface
+      - [done] P016: Phase 2C3 Transition Cleanup Verification
+  - [done] P004: Phase 3 Active Stack And Status SQLite Cutover
+    - [done] P017: Phase 3A Active Stack Authority Audit
+    - [done] P018: Phase 3B SQLite Active Stack Write Projection
+      - [done] P022: Phase 3B1 Active Stack Projection Helper
+      - [done] P023: Phase 3B2 Skill Begin End Stack Writes
+        - [done] P026: Phase 3B2 Follow-up Nested And Restart Projection Verification
+      - [done] P024: Phase 3B3 Finalize Remaining Stack Event
+        - [done] P027: Phase 3B3A Active Stack Finalize Helper
+        - [done] P028: Phase 3B3B Scope Archive Finalize Wiring
+        - [done] P029: Phase 3B3C Finalize Verification And Residue Check
+      - [done] P025: Phase 3B4 Stack Write Projection Verification
+    - [done] P019: Phase 3C Runtime Stack Read And LIFO Cutover
+      - [done] P030: Phase 3C1 SQLite Active Stack Read Adapter
+      - [done] P031: Phase 3C2 Context Status SQLite Stack Read Cutover
+      - [done] P032: Phase 3C3 Skill Begin Parent Selection SQLite Cutover
+      - [done] P033: Phase 3C4 Skill End LIFO SQLite Cutover
+      - [done] P034: Phase 3C5 Runtime Read Cutover Verification Gate
+    - [done] P020: Phase 3D Quarantine File-Walk Stack Authority
+      - [done] P035: Archive Finalize Stack Snapshot Cutover
+      - [done] P036: Skill Begin Error And Projection Cleanup
+      - [done] P037: Skill End Exception Diagnostic Cleanup
+      - [done] P038: Active Path Routing Endpoint Cutover
+      - [done] P039: File-Walk Helper Deletion And Guard Rails
+    - [done] P021: Phase 3E Active Stack Cutover Verification
+      - [done] P040: Delete Or Isolate Workspace Active Path File-Walk Helper
+  - [done] P005: Phase 4 Blob Payload Manifest
+    - [done] P041: Phase 4A Payload Manifest Boundary Audit
+    - [done] P042: Phase 4B Payload Manifest Write Wiring
+    - [done] P043: Phase 4C Payload Read And Failure Semantics
+    - [done] P044: Phase 4D Payload Manifest Verification And Cleanup
+  - [done] P006: Phase 5 Cleanup And Residue Removal
+    - [done] P045: Phase 5A Residue Audit And Classification
+    - [done] P046: Phase 5B Remove Dead Local Authority Code
+      - [done] P049: Phase 5B1 Scope Lookup And Uniqueness SQLite Cutover
+      - [done] P050: Phase 5B2 Archive Tree Projection Quarantine
+      - [done] P051: Phase 5B3 Compatibility Wrapper Review And Removal
+        - [done] P052: Phase 5B3.1 Compatibility Residue Audit Map
+        - [done] P053: Phase 5B3.2 Step Projection Explicit API Cutover
+        - [done] P054: Phase 5B3.3 Legacy Test And Comment Wording Cleanup
+        - [done] P055: Phase 5B3.4 Compatibility Residue Verification Gate
+          - [done] P056: Remove include_display From Step Formatting Projection API
+    - [done] P047: Phase 5C Current Docs And Comments Cleanup
+      - [done] P057: Phase 5C.1 Current Documentation And Comment Residue Audit
+      - [done] P058: Phase 5C.2 Current Cortex Docs Update
+      - [done] P059: Phase 5C.3 Live Source Comments And Docstrings Cleanup
+      - [done] P060: Phase 5C.4 Documentation Residue Final Static Gate
+    - [done] P048: Phase 5D Static Guards And Broad Verification
+      - [done] P061: Phase 5D.1 Static Residue Audit And Classification
+      - [done] P062: Phase 5D.2 Guard Coverage Review And Tightening
+        - [done] P065: Phase 5D.2a Scope And Active Stack Guard Coverage
+        - [done] P066: Phase 5D.2b Step Formatting And Sandbox Contract Guard Coverage
+        - [done] P067: Phase 5D.2c Lock And Fallback Boundary Guard Coverage
+      - [done] P063: Phase 5D.3 Targeted Cortex State Authority Test Gate
+      - [done] P064: Phase 5D.4 Full Cortex Test And PyCompile Gate
+
+## Active
+
+## Blocked
+
+## Done
+- [x] P000: Cortex State Authority Remediation Implementation
+- [x] P001: Phase 0 Construction Plan And Boundary Map
+- [x] P002: Phase 1 Cortex Operational SQLite Store Substrate
+- [x] P003: Phase 2 Scope Transition Events To SQLite
+- [x] P004: Phase 3 Active Stack And Status SQLite Cutover
+- [x] P005: Phase 4 Blob Payload Manifest
+- [x] P006: Phase 5 Cleanup And Residue Removal
+- [x] P007: Phase 1A Operational Store Module And Unit Tests
+- [x] P008: Phase 1B Cortex Service Boundary Wiring
+- [x] P009: Phase 1C Phase 1 Verification And Residue Audit
+- [x] P010: Phase 2A Scope Transition Callsite And Semantics Audit
+- [x] P011: Phase 2B Scope Transition Write Cutover To SQLite
+- [x] P012: Phase 2C Scope History Read Cutover And NDJSON Cleanup
+- [x] P013: Require Operational Store For Scope Transition Writes
+- [x] P014: Phase 2C1 Scope History API Reads From SQLite
+- [x] P015: Phase 2C2 Remove NDJSON Transition Log Surface
+- [x] P016: Phase 2C3 Transition Cleanup Verification
+- [x] P017: Phase 3A Active Stack Authority Audit
+- [x] P018: Phase 3B SQLite Active Stack Write Projection
+- [x] P019: Phase 3C Runtime Stack Read And LIFO Cutover
+- [x] P020: Phase 3D Quarantine File-Walk Stack Authority
+- [x] P021: Phase 3E Active Stack Cutover Verification
+- [x] P022: Phase 3B1 Active Stack Projection Helper
+- [x] P023: Phase 3B2 Skill Begin End Stack Writes
+- [x] P024: Phase 3B3 Finalize Remaining Stack Event
+- [x] P025: Phase 3B4 Stack Write Projection Verification
+- [x] P026: Phase 3B2 Follow-up Nested And Restart Projection Verification
+- [x] P027: Phase 3B3A Active Stack Finalize Helper
+- [x] P028: Phase 3B3B Scope Archive Finalize Wiring
+- [x] P029: Phase 3B3C Finalize Verification And Residue Check
+- [x] P030: Phase 3C1 SQLite Active Stack Read Adapter
+- [x] P031: Phase 3C2 Context Status SQLite Stack Read Cutover
+- [x] P032: Phase 3C3 Skill Begin Parent Selection SQLite Cutover
+- [x] P033: Phase 3C4 Skill End LIFO SQLite Cutover
+- [x] P034: Phase 3C5 Runtime Read Cutover Verification Gate
+- [x] P035: Archive Finalize Stack Snapshot Cutover
+- [x] P036: Skill Begin Error And Projection Cleanup
+- [x] P037: Skill End Exception Diagnostic Cleanup
+- [x] P038: Active Path Routing Endpoint Cutover
+- [x] P039: File-Walk Helper Deletion And Guard Rails
+- [x] P040: Delete Or Isolate Workspace Active Path File-Walk Helper
+- [x] P041: Phase 4A Payload Manifest Boundary Audit
+- [x] P042: Phase 4B Payload Manifest Write Wiring
+- [x] P043: Phase 4C Payload Read And Failure Semantics
+- [x] P044: Phase 4D Payload Manifest Verification And Cleanup
+- [x] P045: Phase 5A Residue Audit And Classification
+- [x] P046: Phase 5B Remove Dead Local Authority Code
+- [x] P047: Phase 5C Current Docs And Comments Cleanup
+- [x] P048: Phase 5D Static Guards And Broad Verification
+- [x] P049: Phase 5B1 Scope Lookup And Uniqueness SQLite Cutover
+- [x] P050: Phase 5B2 Archive Tree Projection Quarantine
+- [x] P051: Phase 5B3 Compatibility Wrapper Review And Removal
+- [x] P052: Phase 5B3.1 Compatibility Residue Audit Map
+- [x] P053: Phase 5B3.2 Step Projection Explicit API Cutover
+- [x] P054: Phase 5B3.3 Legacy Test And Comment Wording Cleanup
+- [x] P055: Phase 5B3.4 Compatibility Residue Verification Gate
+- [x] P056: Remove include_display From Step Formatting Projection API
+- [x] P057: Phase 5C.1 Current Documentation And Comment Residue Audit
+- [x] P058: Phase 5C.2 Current Cortex Docs Update
+- [x] P059: Phase 5C.3 Live Source Comments And Docstrings Cleanup
+- [x] P060: Phase 5C.4 Documentation Residue Final Static Gate
+- [x] P061: Phase 5D.1 Static Residue Audit And Classification
+- [x] P062: Phase 5D.2 Guard Coverage Review And Tightening
+- [x] P063: Phase 5D.3 Targeted Cortex State Authority Test Gate
+- [x] P064: Phase 5D.4 Full Cortex Test And PyCompile Gate
+- [x] P065: Phase 5D.2a Scope And Active Stack Guard Coverage
+- [x] P066: Phase 5D.2b Step Formatting And Sandbox Contract Guard Coverage
+- [x] P067: Phase 5D.2c Lock And Fallback Boundary Guard Coverage
+
+## Tickets
+- [done] T000: Phase Cortex State Authority Implementation -> P000 (split)
+- [done] T001: Produce Construction Plan And Boundary Map -> P001 (one_go)
+- [done] T002: Phase 1 Cortex Operational SQLite Store Substrate -> P002 (split)
+- [done] T003: Implement Operational SQLite Store Module -> P007 (one_go)
+- [done] T004: Wire Operational Store Through Cortex Service Boundary -> P008 (one_go)
+- [done] T005: Verify Phase 1 Operational Store Substrate -> P009 (one_go)
+- [done] T006: Migrate Scope Transition Events To SQLite -> P003 (split)
+- [done] T007: Audit Scope Transition Call Sites -> P010 (one_go)
+- [done] T008: Cut Scope Transition Writes To SQLite -> P011 (one_go)
+- [done] T009: Remove Missing Operational Store Fallback -> P013 (one_go)
+- [done] T010: Cut Scope History Reads To SQLite And Remove NDJSON -> P012 (split)
+- [done] T011: Cut Scope History API To SQLite -> P014 (one_go)
+- [done] T012: Remove NDJSON Scope Transition Log Surface -> P015 (one_go)
+- [done] T013: Verify Phase 2 Scope Transition SQLite Cutover -> P016 (one_go)
+- [done] T014: Cut Active Stack And Status Authority To SQLite -> P004 (split)
+- [done] T015: Audit Active Stack Authority Boundaries -> P017 (one_go)
+- [done] T016: Add SQLite Active Stack Write Projection -> P018 (split)
+- [done] T017: Implement Active Stack Projection Helper -> P022 (one_go)
+- [done] T018: Wire Skill Begin End Active Stack Writes -> P023 (one_go)
+- [done] T019: Add Nested Lifecycle And Restart Projection Tests -> P026 (one_go)
+- [done] T020: Add Explicit Finalize Remaining Stack Event -> P024 (split)
+- [done] T021: Implement Active Stack Finalize Helper -> P027 (one_go)
+- [done] T022: Wire Scope Archive Through Active Stack Finalize -> P028 (one_go)
+- [done] T023: Verify Finalize Wiring And Remove Residue -> P029 (one_go)
+- [done] T024: Verify Stack Write Projection Completeness -> P025 (one_go)
+- [done] T025: Cut Runtime Stack Reads To SQLite Active Stack -> P019 (split)
+- [done] T026: Implement SQLite Active Stack Read Adapter -> P030 (one_go)
+- [done] T027: Cut Context Status Default Stack To SQLite -> P031 (one_go)
+- [done] T028: Cut Skill Begin Parent Selection To SQLite -> P032 (one_go)
+- [done] T029: Cut Skill End LIFO Validation To SQLite -> P033 (one_go)
+- [done] T030: Verify Runtime Stack Read Cutover -> P034 (one_go)
+- [done] T031: Phase 3D File-Walk Stack Quarantine And Deletion -> P020 (split)
+- [done] T032: Cut Archive Finalize Stack Snapshots To SQLite Projection -> P035 (one_go)
+- [done] T033: Cut Skill Begin Residual File-Walk Stack Reads -> P036 (one_go)
+- [done] T034: Cut Skill End Exception Diagnostics To Projection Snapshot -> P037 (one_go)
+- [done] T035: Cut Active Write Routing To SQLite Projection -> P038 (one_go)
+- [done] T036: Delete File-Walk Active Stack Helper And Add Final Guards -> P039 (one_go)
+- [done] T037: Verify Active Stack SQLite Authority Cutover -> P021 (one_go)
+- [done] T038: Delete Workspace Resolve Active Scope Path -> P040 (one_go)
+- [done] T039: Cut Blob Payload Manifests Into Cortex Authority -> P005 (split)
+- [done] T040: Audit Payload Manifest Authority Boundaries -> P041 (one_go)
+- [done] T041: Wire Payload Manifest Creation On Write Path -> P042 (one_go)
+- [done] T042: Make Payload Reads Manifest-Aware With Explicit Failure Semantics -> P043 (one_go)
+- [done] T043: Verify And Clean Payload Manifest Cutover -> P044 (one_go)
+- [done] T044: Remove Residual Local State Authority And Compatibility Paths -> P006 (split)
+- [done] T045: Audit And Classify Cleanup Residue -> P045 (one_go)
+- [done] T046: Physically Remove Live Local Authority Residue -> P046 (split)
+- [done] T047: Cut Scope Lookup And Uniqueness To SQLite -> P049 (one_go)
+- [done] T048: Quarantine Archive Scope Tree Projection Helper -> P050 (one_go)
+- [done] T049: Phase 5B3 Compatibility Wrapper Review And Removal -> P051 (split)
+- [done] T050: Phase 5B3.1 Compatibility Residue Audit Map -> P052 (one_go)
+- [done] T051: Phase 5B3.2 Step Projection Explicit API Cutover -> P053 (one_go)
+- [done] T052: Phase 5B3.3 Legacy Test And Comment Wording Cleanup -> P054 (one_go)
+- [done] T053: Phase 5B3.4 Compatibility Residue Verification Gate -> P055 (one_go)
+- [done] T054: Remove include_display From Step Formatting Projection API -> P056 (one_go)
+- [done] T055: Phase 5C Current Docs And Comments Cleanup -> P047 (split)
+- [done] T056: Phase 5C.1 Current Documentation And Comment Residue Audit -> P057 (one_go)
+- [done] T057: Phase 5C.2 Current Cortex Docs Update -> P058 (one_go)
+- [done] T058: Phase 5C.3 Live Source Comments And Docstrings Cleanup -> P059 (one_go)
+- [done] T059: Phase 5C.4 Documentation Residue Final Static Gate -> P060 (one_go)
+- [done] T060: Phase 5D Static Guards And Broad Verification -> P048 (split)
+- [done] T061: Phase 5D.1 Static Residue Audit And Classification -> P061 (one_go)
+- [done] T062: Phase 5D.2 Guard Coverage Review And Tightening -> P062 (split)
+- [done] T063: Phase 5D.2a Scope And Active Stack Guard Coverage -> P065 (one_go)
+- [done] T064: Phase 5D.2b Step Formatting And Sandbox Contract Guard Coverage -> P066 (one_go)
+- [done] T065: Phase 5D.2c lock and fallback guard audit -> P067 (one_go)
+- [done] T066: Phase 5D.3 targeted Cortex state authority test gate -> P063 (one_go)
+- [done] T067: Phase 5D.4 full Cortex test and pycompile gate -> P064 (one_go)
+
+## Latest Checks
+- [success] C062: P061 Success. Result R058 satisfies P061: it ran the broad audit, fixed a current agent-runtime comment residue, reran focused searches, and classified the only remaining broad hits.
+- [success] C063: P065 Success. Result R059 satisfies P065: each high-risk scope/stack removed path is covered by either a behavioral test or a static guard, and the targeted suite passed after using the correct sibling-package `PYTHONPATH`.
+- [success] C064: P066 Success. Result `R060` closes the bounded step-formatting and sandbox-contract guard problem with explicit evidence for public `projection` validation, internal-only `include_display` classification, sandbox backing-path rejection, and passing targeted tests.
+- [success] C065: P067 Success. Result `R061` closes the lock/fallback boundary guard problem: Redis scope-lock startup/fail-closed behavior is tested, process-local locks are classified as test-only, removed compatibility authority paths are statically guarded, and relevant targeted tests passed.
+- [success] C066: P062 Success. Result `R062` closes `P062`: every high-risk removed path named by the guard-coverage problem is mapped to a child result and child success check, with targeted tests passing and residual full-suite coverage explicitly deferred to downstream verification gates.
+- [success] C067: P063 Success. Result `R063` satisfies the targeted Cortex state-authority test gate: the focused remediation-chain suite ran with explicit sibling-package boundaries and passed with `93 passed`.
+- [success] C068: P064 Success. Result `R064` satisfies the full Cortex verification gate: package pycompile passed and the full `novaic-cortex/tests` suite passed with `480 passed`.
+- [success] C069: P048 Success. Result `R065` satisfies Phase 5D: static audits were recorded and classified, missing guard coverage was tightened, targeted Cortex tests passed, full Cortex tests passed, and Cortex package pycompile passed.
+- [success] C070: P006 Success. Result `R066` closes Phase 5 cleanup and residue removal: local authority and compatibility paths were removed or classified, current docs/comments were cleaned, guards were added/tightened, and targeted plus full Cortex verification passed.
+- [success] C071: P000 Success. Result `R067` closes the root remediation implementation problem. The work was phased, each phase had explicit authority boundaries and verification, old active authority paths were removed or guarded after cutover, and the final Phase 5 gate passed targeted and full Cortex verification.

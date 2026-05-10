@@ -1,0 +1,974 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C000.md",
+      "created_at": "2026-05-10T11:30:42+00:00",
+      "criteria_map": [
+        "All P001 success criteria map to explicit state classes, storage assignments, and invariants."
+      ],
+      "evidence": [
+        "R000 classifies each state plane and recovery invariant."
+      ],
+      "execution_map": [
+        "T001 produced R000; check validates it directly."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P001",
+      "residual_risk": [
+        "Implementation still required in separate tickets."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Redis/process/blob failure modes are named and assigned non-authoritative or recoverable roles."
+      ],
+      "summary": "State taxonomy defines allowed authorities for LogicalFS, SQLite, Redis, Blob, and memory."
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/checks/C001.md",
+      "created_at": "2026-05-10T11:31:18+00:00",
+      "criteria_map": [
+        "P002 criteria map to event/projection model, migration, compatibility removal, and skill lifecycle tests."
+      ],
+      "evidence": [
+        "R001 defines schema, write/read path, migration, cleanup, and tests."
+      ],
+      "execution_map": [
+        "T002 produced R001; check validates it directly."
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P002",
+      "residual_risk": [
+        "Needs careful implementation to avoid lingering dual-authority."
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Workspace trace failure and old/new divergence are handled through SQLite authority plus shadow comparison."
+      ],
+      "summary": "Active stack/status plan moves runtime authority to SQLite events/projections and demotes Workspace files to traces."
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/checks/C002.md",
+      "created_at": "2026-05-10T11:31:58+00:00",
+      "criteria_map": [
+        "P003 criteria map to SQLite storage, replay/debug preservation, local path cleanup, and failure behavior."
+      ],
+      "evidence": [
+        "R002 defines schema reuse, API behavior, config cleanup, and tests."
+      ],
+      "execution_map": [
+        "T003 produced R002; check validates it directly."
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P003",
+      "residual_risk": [
+        "Requires sequencing after operational ledger implementation."
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Exporter failure and old local log absence are non-blocking."
+      ],
+      "summary": "Scope transition local NDJSON is replaced by SQLite lifecycle events with optional exporter."
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P004/checks/C003.md",
+      "created_at": "2026-05-10T11:32:30+00:00",
+      "criteria_map": [
+        "P004 criteria map to raw byte contract, semantic metadata location, missing/corrupt handling, and retention."
+      ],
+      "evidence": [
+        "R003 defines Blob ownership, manifest fields, lifecycle, and failure behavior."
+      ],
+      "execution_map": [
+        "T004 produced R003; check validates it directly."
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P004",
+      "residual_risk": [
+        "Needs implementation to prevent direct blob_ref bypassing manifest."
+      ],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Orphan blob and missing blob cases are classified and handled."
+      ],
+      "summary": "Blob remains raw byte authority while semantic manifests live in SQLite/Workspace."
+    },
+    "C004": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P005/checks/C004.md",
+      "created_at": "2026-05-10T11:33:06+00:00",
+      "criteria_map": [
+        "P005 criteria map to live semantics, crash recovery, subagent layout, and old compatibility deletion."
+      ],
+      "evidence": [
+        "R004 defines live service model, no-commit behavior, concurrency, migration, and tests."
+      ],
+      "execution_map": [
+        "T005 produced R004; check validates it directly."
+      ],
+      "followup_problem_id": null,
+      "id": "C004",
+      "problem_id": "P005",
+      "residual_risk": [
+        "Largest implementation effort; must be split when executed."
+      ],
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Shell crash and concurrent public writes are explicitly handled."
+      ],
+      "summary": "LogicalFS target is live per-operation durability; snapshot/patch is transitional."
+    },
+    "C005": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P006/checks/C005.md",
+      "created_at": "2026-05-10T11:33:43+00:00",
+      "criteria_map": [
+        "P006 criteria map to cache classification, explicit dependency boundaries, residue list, and tests/lints."
+      ],
+      "evidence": [
+        "R005 lists allowed/forbidden process-local state, cleanup targets, and guardrails."
+      ],
+      "execution_map": [
+        "T006 produced R005; check validates it directly."
+      ],
+      "followup_problem_id": null,
+      "id": "C005",
+      "problem_id": "P006",
+      "residual_risk": [
+        "Implementation cleanup still required."
+      ],
+      "result_ids": [
+        "R005"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Cortex restart and Redis unavailable cases are handled without hidden process authority."
+      ],
+      "summary": "Process memory is allowed only for rebuildable cache/config/client wiring; docs and stale lock prose should be cleaned."
+    },
+    "C006": {
+      "blocking_gaps": [
+        "none for planning"
+      ],
+      "body_path": "problems/P000/checks/C006.md",
+      "created_at": "2026-05-10T11:34:37+00:00",
+      "criteria_map": [
+        "All root success criteria map to R006 and child checks C000-C005."
+      ],
+      "evidence": [
+        "R006 summarizes child results R000-R005 for taxonomy, active stack, scope log, Blob payload, LogicalFS live direction, and process cache cleanup."
+      ],
+      "execution_map": [
+        "T000 split into P001-P006; each child produced a checked result; R006 summarized parent."
+      ],
+      "followup_problem_id": null,
+      "id": "C006",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Planning only; implementation should be a separate phased ledger."
+      ],
+      "result_ids": [
+        "R006"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Redis authority, opaque DB replacement, Blob semantic drift, process restart, and shell crash write loss are explicitly handled."
+      ],
+      "summary": "Each audited state-authority gap has a concrete remediation plan and storage role."
+    }
+  },
+  "counters": {
+    "check": 7,
+    "event": 84,
+    "problem": 7,
+    "result": 7,
+    "ticket": 7
+  },
+  "created_at": "2026-05-10T11:26:37+00:00",
+  "ledger_id": "L20260510-192637",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C006"
+      ],
+      "created_at": "2026-05-10T11:26:37+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "The previous audit concluded that Cortex mostly behaves as a state-semantic service with durable semantic authority in LogicalFS/Workspace, but several state planes remain outside the clean model:\n\n- Redis scope locks.\n- Local NDJSON scope transition log.\n- Blob-backed raw payload bytes.\n- Active stack/status still derived from projection files.\n- LogicalFS shell view is snapshot + patch rather than live state.\n- Process-level caches/config/docs residue.\n\nThe user clarified that state is allowed to exist in SQLite and maybe Redis. The goal is not \"all bytes must be files\"; the goal is a clean state model with explicit authority, dependency boundaries, recoverability, and no hidden in-process durable state.\n\nThis task is planning only: produce a detailed remediation design for each issue. Do not implement code changes in this pass.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R006"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P001",
+        "P002",
+        "P003",
+        "P004",
+        "P005",
+        "P006"
+      ],
+      "success_criteria": [
+        "Define a clear state authority model that allows LogicalFS/Workspace, SQLite, Redis, and Blob only with explicit roles.",
+        "For every imperfect area found in the audit, propose a concrete solution path.",
+        "Explain which state should be authoritative, cache/projection, coordination, artifact, or observability.",
+        "Include phased implementation strategy and verification plan.",
+        "Avoid one-go treatment unless a subproblem is genuinely small and independently verifiable.",
+        "Record all plan work in the solve-complex-problems ledger."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Cortex State Authority Remediation Plan",
+      "updated_at": "2026-05-10T11:34:37+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-10T11:27:39+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Cortex needs a clear rule for what state may live in LogicalFS/Workspace, SQLite, Redis, Blob, or process memory. Without this taxonomy, future work can accidentally move semantic authority into caches, locks, or artifact stores.",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Define state classes: semantic authority, event ledger, projection, coordination lease, artifact bytes, observability, process cache/config.",
+        "Decide allowed storage engines for each class: LogicalFS/Workspace, SQLite, Redis, Blob, memory.",
+        "Define invariants for recovery, replay, migration, and tests."
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "State Authority Taxonomy And Storage Rules",
+      "updated_at": "2026-05-10T11:30:42+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-10T11:27:39+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "LLM context now reads ContextEvents, but active stack/status still walks materialized projection files such as `steps/_index.jsonl` and scope `meta.json`. This is acceptable as a projection, but not perfect if the target is a unified state model.",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Decide whether active stack/status should be an event-derived projection, SQLite projection, or Workspace projection.",
+        "Define migration path from projection walking to the chosen model.",
+        "Include compatibility removal and tests proving skill_begin/skill_end/finalize status derives from the new model."
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "Active Stack And Status Projection Remediation",
+      "updated_at": "2026-05-10T11:31:18+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P003/README.md",
+      "check_ids": [
+        "C002"
+      ],
+      "created_at": "2026-05-10T11:27:39+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "`scope_state_log_path` writes a local best-effort NDJSON file outside LogicalFS. It is observability, not canonical authority, but it is still persistent state outside the clean model.",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P003",
+      "parent_id": "P000",
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Decide whether to move transition history to SQLite, LogicalFS, or an observability sink.",
+        "Preserve replay/debug value without creating a second semantic authority.",
+        "Define cleanup for local NDJSON path and tests around transition recording failure behavior."
+      ],
+      "ticket_ids": [
+        "T003"
+      ],
+      "title": "Scope Transition Log Remediation",
+      "updated_at": "2026-05-10T11:31:58+00:00"
+    },
+    "P004": {
+      "body_path": "problems/P000/children/P004/README.md",
+      "check_ids": [
+        "C003"
+      ],
+      "created_at": "2026-05-10T11:27:39+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Large tool payload bytes are stored in Blob Service while Workspace holds semantic refs. This is probably correct, but the authority contract must be explicit so Blob does not become a hidden semantic store.",
+      "followup_ids": [],
+      "id": "P004",
+      "package_path": "problems/P000/children/P004",
+      "parent_id": "P000",
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Define Blob as raw byte/artifact authority only.",
+        "Define where semantic metadata and lifecycle refs live.",
+        "Specify verification for payload fetch, missing blob behavior, retention, and cleanup."
+      ],
+      "ticket_ids": [
+        "T004"
+      ],
+      "title": "Blob Payload Authority Contract",
+      "updated_at": "2026-05-10T11:32:30+00:00"
+    },
+    "P005": {
+      "body_path": "problems/P000/children/P005/README.md",
+      "check_ids": [
+        "C004"
+      ],
+      "created_at": "2026-05-10T11:27:39+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Shell uses a materialized LogicalFS snapshot and writes RW changes back on release. This is clean enough for current shell execution, but not a fully live realtime LogicalFS service.",
+      "followup_ids": [],
+      "id": "P005",
+      "package_path": "problems/P000/children/P005",
+      "parent_id": "P000",
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Decide whether snapshot/patch is the final model or a phase before live LogicalFS.",
+        "If live LogicalFS is desired, define how SQLite/LogicalFS metadata and Blob bytes participate.",
+        "Include correctness rules for crash recovery, concurrent subagents, and no explicit commit."
+      ],
+      "ticket_ids": [
+        "T005"
+      ],
+      "title": "LogicalFS Snapshot Patch Versus Live Filesystem",
+      "updated_at": "2026-05-10T11:33:06+00:00"
+    },
+    "P006": {
+      "body_path": "problems/P000/children/P006/README.md",
+      "check_ids": [
+        "C005"
+      ],
+      "created_at": "2026-05-10T11:27:39+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Cortex still has process-local registry caches, startup config, lock backend globals, and some stale comments. These are mostly not durable authority, but they can confuse future maintainers and tests.",
+      "followup_ids": [],
+      "id": "P006",
+      "package_path": "problems/P000/children/P006",
+      "parent_id": "P000",
+      "result_ids": [
+        "R005"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Classify which process-local state is allowed cache/config.",
+        "Define explicit dependency boundaries for caches, clocks, ids, env, and service clients.",
+        "Identify documentation/code residue to clean so future agents do not infer wrong architecture."
+      ],
+      "ticket_ids": [
+        "T006"
+      ],
+      "title": "Process Cache Config And Documentation Residue Cleanup",
+      "updated_at": "2026-05-10T11:33:43+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`.complex-problems/tmp/p001-state-taxonomy-result.md`"
+      ],
+      "body_path": "problems/P000/children/P001/results/R000.md",
+      "created_at": "2026-05-10T11:30:34+00:00",
+      "done": [
+        "Defined state classes:",
+        "Semantic event ledger: append-only facts that explain what happened.",
+        "Operational projection: queryable current state derived from the ledger.",
+        "File/document authority: RO/RW workspace tree, summaries, reports, artifacts manifests.",
+        "Coordination lease: locks, heartbeats, fencing ownership.",
+        "Raw bytes/artifacts: large payload bytes, screenshots, binary attachments.",
+        "Observability log: debugging/replay history that must never be needed for correctness.",
+        "Process cache/config: rebuildable adapters and startup dependency wiring.",
+        "Assigned storage:",
+        "SQLite for semantic operational events, active stack projection, scope lifecycle, inbox/outbox, transition history if queryable.",
+        "LogicalFS/Workspace for file tree authority and optionally exported/mirrored human-readable traces.",
+        "Redis for locks/leases/heartbeats with fencing generation checked against SQLite.",
+        "Blob for immutable-ish raw bytes with hash/size metadata recorded in SQLite or Workspace.",
+        "Memory for cache only; restart must not lose correctness.",
+        "Recovery invariant:",
+        "Restart from SQLite + LogicalFS + Blob is enough.",
+        "Redis loss may delay or force lock reacquisition but must not erase semantic facts.",
+        "Process restart must not require hidden in-memory state.",
+        "Testing invariant:",
+        "Core decisions receive explicit storage snapshots/transactions.",
+        "Unit tests inject clock/id/config.",
+        "Integration tests kill/restart Cortex and confirm state recovers."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "This is a design result only; implementation tickets must apply it to concrete modules."
+      ],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "The remediation plan should not require every state byte to live in LogicalFS. The cleaner model is a typed authority model:\n\n- LogicalFS/Workspace: long-lived workspace file authority and user-visible trace/documents.\n- SQLite: durable operational state ledger and transactional projections.\n- Redis: ephemeral coordination/lease plane, optionally fast pending/heartbeat plane, but not sole semantic authority.\n- Blob: raw byte/artifact authority.\n- Process memory: cache/config/client wiring only.",
+      "ticket_id": "T001",
+      "verification": [
+        "Covers every audited state plane: Redis locks, scope log, Blob payloads, active stack projection, LogicalFS shell view, process caches.",
+        "Explicitly allows SQLite/Redis without blurring their authority roles."
+      ]
+    },
+    "R001": {
+      "artifacts": [
+        "`.complex-problems/tmp/p002-active-stack-result.md`"
+      ],
+      "body_path": "problems/P000/children/P002/results/R001.md",
+      "created_at": "2026-05-10T11:31:08+00:00",
+      "done": [
+        "Proposed SQLite schema:",
+        "`scope_events(id, root_scope_id, scope_id, parent_scope_id, event_type, generation, reason, payload_json, occurred_at, idempotency_key)`.",
+        "`scope_projection(root_scope_id, scope_id, parent_scope_id, phase, stack_depth, generation, skill_name, task, opened_at, closed_at, close_reason)`.",
+        "`active_stack_projection(root_scope_id, top_scope_id, remaining_stack_json, generation, updated_at)`.",
+        "Write path:",
+        "`skill_begin` appends `ScopeOpened` and updates projections in one SQLite transaction.",
+        "`skill_end` appends `ScopeClosed` with reason/report/generation and updates top.",
+        "`finalize` appends `WakeFinalized` with `remaining_stack`, then archives/marks scopes explicitly.",
+        "Workspace files are written after SQLite commit as materialized trace. If trace write fails, retry from outbox.",
+        "Read path:",
+        "`context/status`, active skill stack injection, and close validation read SQLite projection.",
+        "Context assembly can still read ContextEvent stream, but control stack comes from the operational projection.",
+        "Migration:",
+        "Phase A: implement projection side-by-side and shadow-compare with `_collect_active_stack`.",
+        "Phase B: switch reads to SQLite projection.",
+        "Phase C: remove `_collect_active_stack` projection walking from runtime; keep only a repair/import CLI if needed.",
+        "Cleanup:",
+        "Remove or demote active stack traversal over `steps/_index.jsonl`.",
+        "Keep Workspace `meta.json` and `steps/_index.jsonl` as trace artifacts, not active runtime truth.",
+        "Tests:",
+        "Skill begin/end nesting.",
+        "Closing wrong scope rejected.",
+        "Finalize with open child scopes records `remaining_stack`.",
+        "Restart recovers top stack from SQLite.",
+        "Workspace trace write failure does not corrupt active projection.",
+        "Shadow mode catches old/new divergence before cutover."
+      ],
+      "id": "R001",
+      "known_gaps": [
+        "Needs implementation and migration tickets."
+      ],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "Replace runtime active-stack walking over `steps/_index.jsonl` and `meta.json` with a SQLite operational state model. Workspace files remain a trace/export layer.",
+      "ticket_id": "T002",
+      "verification": [
+        "Covers every `_collect_active_stack` responsibility: top scope, nesting, archived stop condition, skill names, close validation.",
+        "Gives an explicit old-code deletion point."
+      ]
+    },
+    "R002": {
+      "artifacts": [
+        "`.complex-problems/tmp/p003-scope-log-result.md`"
+      ],
+      "body_path": "problems/P000/children/P003/results/R002.md",
+      "created_at": "2026-05-10T11:31:47+00:00",
+      "done": [
+        "Proposed schema:",
+        "Reuse `scope_events` for `ScopeOpened`, `ScopeClosed`, `ScopeArchived`, `WakeFinalized`, `RecoveryStarted`, `RecoveryCompleted`.",
+        "Add indexes on `(scope_id, occurred_at)` and `(root_scope_id, seq)`.",
+        "Optional `scope_transition_export_offsets` table if exporting to logs/metrics.",
+        "API behavior:",
+        "`list_transitions(scope_path)` becomes `list_scope_events(scope_id)` backed by SQLite.",
+        "`append_transition(...)` disappears as a separate best-effort local file write.",
+        "If external logs are needed, a background exporter tails SQLite and writes to logs; exporter failure never changes canonical state.",
+        "Configuration cleanup:",
+        "Remove required `--scope-state-log-path` from Cortex startup after migration.",
+        "Delete code paths that normalize local log paths.",
+        "Keep a one-time import tool only if old deployments need migration; user has said old data can be deleted in previous context, so default plan is no backward migration.",
+        "Tests:",
+        "Transition history query returns lifecycle events.",
+        "Exporter failure does not fail skill_end.",
+        "Restart preserves history.",
+        "Startup no longer requires local log path."
+      ],
+      "id": "R002",
+      "known_gaps": [
+        "Needs implementation after the SQLite operational ledger exists."
+      ],
+      "problem_id": "P003",
+      "root_id": "P000",
+      "summary": "Replace `scope_state_log_path` local NDJSON with SQLite-backed transition events. Treat logs as queryable observability derived from the same operational state ledger, not as separate files.",
+      "ticket_id": "T003",
+      "verification": [
+        "Removes persistent local file as a state plane.",
+        "Preserves replay/debug through SQLite events."
+      ]
+    },
+    "R003": {
+      "artifacts": [
+        "`.complex-problems/tmp/p004-blob-payload-result.md`"
+      ],
+      "body_path": "problems/P000/children/P004/results/R003.md",
+      "created_at": "2026-05-10T11:32:19+00:00",
+      "done": [
+        "Blob owns:",
+        "Raw payload bytes.",
+        "Binary artifacts.",
+        "Upload/download serving.",
+        "Blob does not own:",
+        "Which tool step produced the payload.",
+        "Whether a payload is part of canonical context.",
+        "Retention/lifecycle semantics.",
+        "User/agent/workflow meaning beyond object metadata.",
+        "Proposed manifest:",
+        "`payload_manifest(payload_ref, root_scope_id, scope_id, step_ref, blob_ref, mime_type, size_bytes, sha256, status, created_at, retention_class, semantic_owner, error_json)`.",
+        "Stored in SQLite for query/recovery; optionally mirrored in Workspace for human trace.",
+        "Lifecycle:",
+        "Upload bytes to Blob.",
+        "Record manifest transactionally with tool step/context event.",
+        "Fetch verifies size/hash when practical.",
+        "Missing blob produces explicit `payload_missing` observation, not silent empty content.",
+        "Retention sweeper reads manifest, then deletes Blob bytes.",
+        "Tests:",
+        "Externalization threshold stores manifest.",
+        "Missing Blob returns structured error.",
+        "Hash mismatch detected.",
+        "Deleting a scope removes or expires related payload manifests.",
+        "Display/download paths go through Blob, not LogicalFS shortcuts."
+      ],
+      "id": "R003",
+      "known_gaps": [
+        "Needs implementation and possible schema migration."
+      ],
+      "problem_id": "P004",
+      "root_id": "P000",
+      "summary": "Keep Blob as the raw-byte authority, but make semantic ownership explicit through a payload manifest stored in SQLite and/or Workspace.",
+      "ticket_id": "T004",
+      "verification": [
+        "Preserves Blob's role as cheap byte service while preventing semantic drift into Blob."
+      ]
+    },
+    "R004": {
+      "artifacts": [
+        "`.complex-problems/tmp/p005-logicalfs-result.md`"
+      ],
+      "body_path": "problems/P000/children/P005/results/R004.md",
+      "created_at": "2026-05-10T11:32:56+00:00",
+      "done": [
+        "Target service model:",
+        "LogicalFS service owns `/ro` and `/rw` logical namespace semantics.",
+        "SQLite stores inode/path metadata, versions, small file bytes, delta journal, leases, and view generations.",
+        "Blob stores large file bytes and immutable artifact bodies.",
+        "Sandbox mounts or proxies a live view; writes become immediate LogicalFS operations.",
+        "No commit:",
+        "Every write/rename/delete is durable when operation returns.",
+        "Shell process crash leaves the last successful operation visible.",
+        "No release-time patch is needed for correctness.",
+        "Concurrency:",
+        "RW layout remains `public`, `subagents/{id}`, `tmp`, `artifacts`, `scratch`.",
+        "Per-path/version conflict detection.",
+        "Public RW writes require compare-and-swap or serialized operation queue.",
+        "Subagent-private dirs avoid most conflicts.",
+        "Cortex relation:",
+        "Cortex asks LogicalFS for workspace views; it does not implement FS storage.",
+        "Cortex writes semantic events/state to SQLite operational ledger; LogicalFS stores files.",
+        "Display/download use Blob for artifact bytes, referenced through manifests.",
+        "Migration phases:",
+        "Phase 1: add LogicalFS live metadata API behind service.",
+        "Phase 2: shell writes use live operations while old snapshot/patch still shadows.",
+        "Phase 3: compare live state with patch output in tests.",
+        "Phase 4: remove release patch as authority; keep read-only export for debug if needed.",
+        "Phase 5: delete temp backing path assumptions and fallback code.",
+        "Tests:",
+        "Write appears during running shell before process exits.",
+        "Kill shell after write: file persists.",
+        "Concurrent subagents write private dirs without conflict.",
+        "Concurrent public writes require CAS/serialization.",
+        "Large file path stores bytes in Blob and metadata in SQLite."
+      ],
+      "id": "R004",
+      "known_gaps": [
+        "This is a substantial implementation program and must be ticketed separately."
+      ],
+      "problem_id": "P005",
+      "root_id": "P000",
+      "summary": "Treat current snapshot/patch as a transitional adapter, not the perfect final form. The target is a live LogicalFS service with immediate durable file operations, no explicit commit, SQLite metadata/journal, and Blob-backed large bytes.",
+      "ticket_id": "T005",
+      "verification": [
+        "Satisfies no explicit commit requirement.",
+        "Avoids pretending snapshot/patch is the perfect final model."
+      ]
+    },
+    "R005": {
+      "artifacts": [
+        "`.complex-problems/tmp/p006-cache-docs-result.md`"
+      ],
+      "body_path": "problems/P000/children/P006/results/R005.md",
+      "created_at": "2026-05-10T11:33:33+00:00",
+      "done": [
+        "Allowed process-local state:",
+        "`WorkspaceRegistry` cache of adapters/workspace objects.",
+        "Service clients/factories such as sandboxd client factory.",
+        "Startup config values already supplied through CLI/env boundary.",
+        "Redis lock manager object as a client to the coordination service.",
+        "Not allowed:",
+        "Current active stack only in memory.",
+        "Pending inbox only in memory.",
+        "Unflushed semantic events only in memory.",
+        "Process-local fallback storage if SQLite/LogicalFS/Blob is unavailable.",
+        "Cleanup targets:",
+        "Update `scope_locks.py` top comment that still says \"Today the implementation is asyncio.Lock\".",
+        "Add architecture docs naming Redis as lease plane, SQLite as operational state plane, LogicalFS as file authority, Blob as byte authority.",
+        "Remove any fallback language implying local `/tmp/novaic-cortex-sandbox-*` is stable.",
+        "Review registry docs to state caches are not authority and restart is safe.",
+        "Guardrails:",
+        "Unit tests instantiate repositories with explicit clock/id/config.",
+        "Architecture grep/lint for `os.getenv` below boundary modules where practical.",
+        "Runtime readiness endpoint reports storage backends and whether authority stores are reachable.",
+        "Crash/restart integration test verifies no process cache is needed for recovery."
+      ],
+      "id": "R005",
+      "known_gaps": [
+        "Needs implementation cleanup ticket."
+      ],
+      "problem_id": "P006",
+      "root_id": "P000",
+      "summary": "Keep process-local state only when it is a rebuildable cache, config value, or client wiring. Clean comments and tests so no future change treats it as authority.",
+      "ticket_id": "T006",
+      "verification": [
+        "Separates allowed process state from forbidden hidden authority.",
+        "Gives concrete residue cleanup list."
+      ]
+    },
+    "R006": {
+      "artifacts": [
+        "`.complex-problems/L20260510-192637`",
+        "`.complex-problems/tmp/p001-state-taxonomy-result.md`",
+        "`.complex-problems/tmp/p002-active-stack-result.md`",
+        "`.complex-problems/tmp/p003-scope-log-result.md`",
+        "`.complex-problems/tmp/p004-blob-payload-result.md`",
+        "`.complex-problems/tmp/p005-logicalfs-result.md`",
+        "`.complex-problems/tmp/p006-cache-docs-result.md`"
+      ],
+      "body_path": "problems/P000/results/R006.md",
+      "created_at": "2026-05-10T11:34:17+00:00",
+      "done": [
+        "P001/R000 defined state authority taxonomy.",
+        "P002/R001 designed SQLite-backed active stack/status projection.",
+        "P003/R002 replaced local NDJSON transition log with SQLite lifecycle events plus optional exporter.",
+        "P004/R003 defined Blob payload manifest authority contract.",
+        "P005/R004 defined live LogicalFS direction with no explicit commit and per-operation durability.",
+        "P006/R005 defined allowed process cache/config and residue cleanup."
+      ],
+      "id": "R006",
+      "known_gaps": [
+        "Implementation is intentionally not performed in this pass.",
+        "Follow-up implementation should be split into phases:",
+        "1. Add SQLite operational ledger substrate.",
+        "2. Move active stack/status and scope transitions to SQLite.",
+        "3. Add payload manifest and Blob lifecycle enforcement.",
+        "4. Introduce live LogicalFS service semantics.",
+        "5. Remove old projection walking, local NDJSON, stale docs, and compatibility fallback."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "The complete remediation direction is:\n\nUse a typed state model rather than a single-storage dogma.\n\n- SQLite becomes the durable operational state ledger/projection store for Cortex control state.\n- LogicalFS/Workspace remains file/document/workspace authority.\n- Redis remains lease/coordination only, guarded by SQLite fencing/generation.\n- Blob remains raw-byte/artifact authority with semantic manifests outside Blob.\n- Process memory is cache/config/client wiring only.",
+      "ticket_id": "T000",
+      "verification": [
+        "Every audited imperfect area has a matching child result.",
+        "Every child result has a success check.",
+        "The plan respects the user's allowance for SQLite and Redis while preventing hidden in-process authority."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Root ticket is split instead of one-go.",
+        "Child problems cover all audited gaps.",
+        "Every child plan names owner storage, allowed persistence, invariants, and tests.",
+        "Parent summary composes child plans into one staged implementation strategy."
+      ],
+      "assumptions": [
+        "This pass is design-only.",
+        "SQLite is allowed as a durable state store where it improves correctness or queryability.",
+        "Redis is allowed for coordination/lease state, not as the only durable semantic authority unless explicitly justified.",
+        "Blob is allowed for raw bytes/artifacts, not semantic truth unless paired with a semantic reference in the authoritative state model."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "Architecture plan spans multiple independent state planes; splitting avoids one-go ambiguity and allows strict per-gap checks.",
+      "created_at": "2026-05-10T11:26:55+00:00",
+      "id": "T000",
+      "problem_definition": "The root problem has multiple independent architecture concerns. Treating it as a single one-go plan would hide important state-authority distinctions and likely produce a vague answer. The plan must explicitly cover every remaining state plane and decide whether it belongs in LogicalFS/Workspace, SQLite, Redis, Blob, or process memory.",
+      "problem_id": "P000",
+      "proposed_solution": "Split the root problem into child problems, one for each state plane:\n\n- Authoritative state taxonomy and storage rule.\n- Active stack/status projection.\n- Scope transition observability log.\n- Blob payload byte ownership.\n- LogicalFS live view semantics.\n- Process-local caches/config/docs residue.\n\nEach child produces a concrete remediation plan with authority classification, implementation direction, migration/cleanup, and verification. The parent result summarizes the complete plan.",
+      "result_ids": [
+        "R006"
+      ],
+      "risks": [
+        "Over-fragmenting could make the answer too mechanical; mitigate by keeping each child problem focused on a real state plane.",
+        "Under-fragmenting could hide hard edges; mitigate by requiring explicit storage authority and verification per child."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Split Cortex State Authority Remediation Into Per-Plane Designs",
+      "updated_at": "2026-05-10T11:34:17+00:00",
+      "verification_plan": "Run ledger validation and success check. The success check must map each original audit gap to a child result and verify no gap is skipped."
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "Classify all relevant state into explicit classes.",
+        "Assign allowed storage engines to each class.",
+        "Define invariants for recovery, replay, and testing.",
+        "Include the user's allowance that state may live in SQLite and maybe Redis, while still avoiding hidden process state."
+      ],
+      "assumptions": [
+        "SQLite is acceptable for durable operational state.",
+        "Redis is acceptable for coordination and maybe short-lived state, but should not be the only durable semantic truth.",
+        "Blob is acceptable for raw bytes and artifacts."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "one_go",
+      "classification_reason": "Focused design taxonomy with immediate evidence-based check; no implementation side effects.",
+      "created_at": "2026-05-10T11:30:18+00:00",
+      "id": "T001",
+      "problem_definition": "The architecture needs a rule that says which state is allowed to live in LogicalFS/Workspace, SQLite, Redis, Blob, and process memory. Without this, future changes can accidentally turn Redis, Blob, or in-process caches into hidden semantic authorities.",
+      "problem_id": "P001",
+      "proposed_solution": "Create a storage taxonomy and use it as the design basis for the remaining child plans.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Over-correcting into \"everything must be files\" would ignore the user's SQLite/Redis allowance.",
+        "Over-correcting into \"anything durable is fine\" would recreate hidden authority."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Design Explicit State Authority Taxonomy",
+      "updated_at": "2026-05-10T11:30:34+00:00",
+      "verification_plan": "Check the result against every audited state plane and confirm each has exactly one authority role or one explicitly non-authoritative role."
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "Define new authoritative tables/events.",
+        "Define read/write path changes for skill_begin, skill_end, finalize, status.",
+        "Define migration and deletion of old projection-walk active path.",
+        "Include tests for unclosed child skill, close-one-skill, close-all/finalize, recovery, and generation mismatch."
+      ],
+      "assumptions": [
+        "SQLite can be the operational authority for active stack state.",
+        "Workspace projection can remain as human-readable trace, not as runtime authority."
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T002.md",
+      "classification": "one_go",
+      "classification_reason": "Single bounded design for one state plane; no code changes and directly checkable against old projection responsibilities.",
+      "created_at": "2026-05-10T11:30:50+00:00",
+      "id": "T002",
+      "problem_definition": "Active stack/status still walks projection files. This is a control-plane projection, but the target model should avoid split-brain between event state and file projection state.",
+      "problem_id": "P002",
+      "proposed_solution": "Move active stack/status authority to a SQLite-backed operational ledger and projection, while keeping Workspace files as trace/export materialized views.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "Dual-write between SQLite and Workspace can create divergence if not transactionally ordered.",
+        "Cutting too aggressively without replay/export can break debugging."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Design Event Backed Active Stack Status",
+      "updated_at": "2026-05-10T11:31:08+00:00",
+      "verification_plan": "Check that every previous `_collect_active_stack` responsibility is covered by the new model and that old projection walking becomes non-authoritative or is removed."
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "Define replacement for `scope_state_log_path`.",
+        "Preserve debug/replay value.",
+        "Ensure transition log failure cannot affect canonical state.",
+        "Include deletion/compat cleanup for local NDJSON."
+      ],
+      "assumptions": [
+        "SQLite operational ledger exists or will be introduced with active stack work."
+      ],
+      "body_path": "problems/P000/children/P003/tickets/T003.md",
+      "classification": "one_go",
+      "classification_reason": "Single observability/log state plane with direct design output and no code changes.",
+      "created_at": "2026-05-10T11:31:30+00:00",
+      "id": "T003",
+      "problem_definition": "The local NDJSON transition log is persistent state outside the clean model. It is best-effort observability, but future maintainers may mistake it for authority or depend on local files.",
+      "problem_id": "P003",
+      "proposed_solution": "Move scope transition history into the same SQLite operational ledger as scope events, and optionally export observability logs from that ledger.",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [
+        "Removing local log too early can hurt diagnostics.",
+        "Logging in the hot path can slow scope close if not transactional with existing state changes."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Design Scope Transition Log Replacement",
+      "updated_at": "2026-05-10T11:31:47+00:00",
+      "verification_plan": "Check that all transition queries can be answered from SQLite or exported observability, and that local NDJSON no longer participates in runtime correctness."
+    },
+    "T004": {
+      "acceptance_criteria": [
+        "Define what Blob owns and what it does not own.",
+        "Define payload manifest fields and lifecycle.",
+        "Define missing/corrupt blob behavior.",
+        "Include cleanup/retention verification."
+      ],
+      "assumptions": [
+        "Blob remains the cheap file server for raw bytes."
+      ],
+      "body_path": "problems/P000/children/P004/tickets/T004.md",
+      "classification": "one_go",
+      "classification_reason": "Focused authority-contract design for Blob payloads; bounded and directly checkable.",
+      "created_at": "2026-05-10T11:32:06+00:00",
+      "id": "T004",
+      "problem_definition": "Blob stores large raw payload bytes. This is acceptable only if Blob is never treated as semantic truth. The system needs an explicit manifest and lifecycle rule.",
+      "problem_id": "P004",
+      "proposed_solution": "Keep Blob for raw bytes, but store semantic manifests and lifecycle references in SQLite/Workspace.",
+      "result_ids": [
+        "R003"
+      ],
+      "risks": [
+        "Overloading SQLite with raw bytes would make it slow.",
+        "Keeping only Blob refs without manifest would leave lifecycle ambiguous."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Design Blob Payload Authority Contract",
+      "updated_at": "2026-05-10T11:32:19+00:00",
+      "verification_plan": "Check the contract against payload upload, fetch, missing blob, hash mismatch, retention, and display/download workflows."
+    },
+    "T005": {
+      "acceptance_criteria": [
+        "State whether snapshot/patch is final or transitional.",
+        "Define live LogicalFS write/read semantics without commit.",
+        "Include crash recovery, concurrency, and subagent RW layout.",
+        "Define deletion of compatibility logic once live path is active."
+      ],
+      "assumptions": [
+        "LogicalFS can use SQLite for metadata/journal and Blob for larger bytes."
+      ],
+      "body_path": "problems/P000/children/P005/tickets/T005.md",
+      "classification": "one_go",
+      "classification_reason": "Design-only plan for one subsystem direction; implementation is explicitly deferred to later split tickets.",
+      "created_at": "2026-05-10T11:32:41+00:00",
+      "id": "T005",
+      "problem_definition": "LogicalFS currently materializes a snapshot for shell and applies patches on release. The user prefers realtime LogicalFS semantics and dislikes explicit commit. Need a plan that avoids half-implemented live FS and clarifies whether snapshot/patch is acceptable.",
+      "problem_id": "P005",
+      "proposed_solution": "Define a staged live LogicalFS model with SQLite metadata/delta journal and Blob byte storage, while keeping snapshot/patch only as a compatibility execution adapter until live mounting is ready.",
+      "result_ids": [
+        "R004"
+      ],
+      "risks": [
+        "Live FS is a bigger subsystem; doing it halfway creates worse bugs than snapshot/patch.",
+        "Per-op writes can be slow without batching/caching."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Design LogicalFS Live State Direction",
+      "updated_at": "2026-05-10T11:32:56+00:00",
+      "verification_plan": "Check shell write immediacy, crash during execution, concurrent subagent isolation, and no fallback to temp backing paths."
+    },
+    "T006": {
+      "acceptance_criteria": [
+        "Classify allowed caches/config/globals.",
+        "Define explicit dependency boundary requirements.",
+        "List cleanup targets.",
+        "Define tests/lints that prevent new hidden state."
+      ],
+      "assumptions": [
+        "Process memory is allowed for cache/config/client objects only."
+      ],
+      "body_path": "problems/P000/children/P006/tickets/T006.md",
+      "classification": "one_go",
+      "classification_reason": "Focused cleanup design for process cache and docs; directly checkable, implementation deferred.",
+      "created_at": "2026-05-10T11:33:14+00:00",
+      "id": "T006",
+      "problem_definition": "Process-local caches and stale comments are not necessarily wrong, but they can mislead future agents into thinking Cortex owns durable state or still uses old in-process lock assumptions.",
+      "problem_id": "P006",
+      "proposed_solution": "Define allowed process-local state and cleanup residues that confuse the authority model.",
+      "result_ids": [
+        "R005"
+      ],
+      "risks": [
+        "Removing harmless caches can hurt performance with no correctness gain.",
+        "Leaving stale comments can waste future engineering time."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Design Process Cache Config And Documentation Cleanup",
+      "updated_at": "2026-05-10T11:33:33+00:00",
+      "verification_plan": "Check that every process-local object is restart-rebuildable and every hidden input is either injected or documented at service boundary."
+    }
+  },
+  "updated_at": "2026-05-10T11:34:45+00:00"
+}

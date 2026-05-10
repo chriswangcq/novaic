@@ -1,0 +1,29 @@
+# Phase 0 Construction Plan Result
+
+## Summary
+
+Created the construction plan for Cortex state authority remediation.
+
+## Done
+
+- Added `docs/cortex/state-authority-implementation-plan.md`.
+- The document defines:
+  - typed state authority model;
+  - non-goals;
+  - authority map;
+  - Phase 0 through Phase 5;
+  - module touch points;
+  - cleanup and guard expectations.
+
+## Verification
+
+- The document contains explicit sections for Goal, Non-Goals, Authority Map, Phase 0, Phase 1, Phase 2, Phase 3, Phase 4, and Phase 5.
+
+## Known Gaps
+
+- Phase 0 is planning only. Phase 1 must add the SQLite substrate.
+
+## Artifacts
+
+- `docs/cortex/state-authority-implementation-plan.md`
+

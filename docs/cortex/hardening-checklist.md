@@ -121,7 +121,7 @@
 | ----- | ------ | --------------------------------------------------------------------- | ---------- |
 | P2-1  | `[x]`  | Cortex `advance_round` 改为服务端原子增                                       | Arch#1     |
 | P2-2  | `[x]`  | 停用或合并 `/v1/internal/skill/`*，只保留有锁那一套                                 | Arch#1, #2 |
-| P2-3  | `[x]`  | `_collect_active_stack` vs `ContextEngine.status` 定单一权威来源             | Arch#5     |
+| P2-3  | `[x]`  | SQLite active stack projection 定单一权威来源，删除运行期文件遍历栈推断             | Arch#5     |
 | P2-4  | `[x]`  | `/v1/scope/create` / `/v1/scope/end` 支持 idempotency key               | Arch#5     |
 | P2-5  | `[x]`  | `skill_begin` 全局唯一索引（Bloom/hash-set in root meta）                     | Arch#7     |
 | P2-6  | `[x]`  | `subagents.current_scope_id` 明确为非权威 UX 指针 or 删除                       | Arch#1     |
@@ -178,7 +178,7 @@
 
 | Rank | 风险                                    | 若不修会发生                                                          | 对应 ID       |
 | ---- | ------------------------------------- | --------------------------------------------------------------- | ----------- |
-| 1    | 并发 write_step 导致 `_index.jsonl` 丢失    | `resolve_active_scope_path` 读到陈旧 scope → LIFO 错乱 → skill_end 误判 | P1-1, INV-1 |
+| 1    | 并发 write_step 导致 `_index.jsonl` 丢失    | 历史文件遍历栈推断会读到陈旧 scope；现由 SQLite active stack projection 承担 LIFO 权威 | P1-1, INV-1 |
 | 2    | write_step 静默失败                       | step 丢失但 saga 继续，历史残缺                                           | P0-2        |
 | 3    | dispatch 竞态孤儿 saga                    | 监控上看到「saga started」但没有 active session                           | P0-3        |
 | 4    | `_SKILL_LOCKS` 泄漏                     | 长时间运行后进程内存膨胀                                                    | P0-6        |

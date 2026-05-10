@@ -1,4 +1,4 @@
-# `steps/_index.jsonl` 与磁盘载荷
+# `steps/_index.jsonl` 与 Payload Manifest
 
 > 源码：`novaic_cortex/workspace.py`（**`write_step`**、**`write_assistant`**、**`write_env`**、**`write_inline_env`**、**`read_step_index`**）；渲染：**`context_stack/engine.py`**。
 
@@ -30,9 +30,23 @@
 | **`tool`** | 可选，记入索引 |
 | **`status`**、**`started_at`**、**`duration_ms`**、**`result_id`**、**`artifacts`** | 可选，影响索引行 |
 
-**索引行**（`write_step` 追加）包含：`seq`、`type`、`id`、`status`、`ts`、`file`；可选 `tool`、`duration_ms`、`result_id`、`has_artifacts`。
+**索引行**（`write_step` 追加）包含：`seq`、`type`、`id`、`status`、`ts`、`file`；可选 `tool`、`duration_ms`、`result_id`、`has_artifacts`、`step_ref`、`payload_ref`。
 
 **渲染为 LLM**（**`_render_tool`**）：读 JSON 文件，**`role: tool`**，**`tool_call_id`** = 文件内 **`call_id`** 或索引 **`id`**，**`content`** = **`result`**（dict 则 `json.dumps`）。
+
+### 2.1 Payload Manifest 语义权威
+
+工具输出的完整 payload 不由 Blob Service 承担语义。当前主路径是：
+
+1. `Workspace.write_step` 规范化 step，并把完整 payload 交给 `Workspace.write_payload`。
+2. `Workspace.write_payload` 写 scope-local `payloads/*.json` 记录，并同步写 SQLite `payload_manifest`。
+3. 小 payload 的 manifest 使用 `retention_class="scope_local"`，`blob_ref=NULL`。
+4. 大 payload 外置到 Blob Service，manifest 使用 `retention_class="external_blob"`，`blob_ref=blob://...`。
+5. `payload_manifest` 记录 `payload_ref`、`source_payload_ref`、`root_scope_id`、`scope_id`、`step_ref`、`size_bytes`、`sha256`、`status`、`retention_class`、`error` 等语义字段。
+
+Blob Service 只保存外置 payload 的原始字节；payload 的可用性、错误状态、生命周期和归属语义由 Cortex operational SQLite 的 `payload_manifest` 负责。
+
+读取 payload 时，`Workspace.read_payload` 会先读 scope-local payload record，再按 manifest/record 中的 `blob_ref` 获取外置字节。失败不会再表现为裸 `KeyError` / `ValueError`：Cortex 会抛出结构化 `PayloadReadError`，并把 manifest 更新为 `missing`、`corrupt` 或 `unavailable`。
 
 ---
 

@@ -1,0 +1,50 @@
+# Explicit State Authority Taxonomy
+
+## Summary
+
+The remediation plan should not require every state byte to live in LogicalFS. The cleaner model is a typed authority model:
+
+- LogicalFS/Workspace: long-lived workspace file authority and user-visible trace/documents.
+- SQLite: durable operational state ledger and transactional projections.
+- Redis: ephemeral coordination/lease plane, optionally fast pending/heartbeat plane, but not sole semantic authority.
+- Blob: raw byte/artifact authority.
+- Process memory: cache/config/client wiring only.
+
+## Done
+
+- Defined state classes:
+  - Semantic event ledger: append-only facts that explain what happened.
+  - Operational projection: queryable current state derived from the ledger.
+  - File/document authority: RO/RW workspace tree, summaries, reports, artifacts manifests.
+  - Coordination lease: locks, heartbeats, fencing ownership.
+  - Raw bytes/artifacts: large payload bytes, screenshots, binary attachments.
+  - Observability log: debugging/replay history that must never be needed for correctness.
+  - Process cache/config: rebuildable adapters and startup dependency wiring.
+- Assigned storage:
+  - SQLite for semantic operational events, active stack projection, scope lifecycle, inbox/outbox, transition history if queryable.
+  - LogicalFS/Workspace for file tree authority and optionally exported/mirrored human-readable traces.
+  - Redis for locks/leases/heartbeats with fencing generation checked against SQLite.
+  - Blob for immutable-ish raw bytes with hash/size metadata recorded in SQLite or Workspace.
+  - Memory for cache only; restart must not lose correctness.
+- Recovery invariant:
+  - Restart from SQLite + LogicalFS + Blob is enough.
+  - Redis loss may delay or force lock reacquisition but must not erase semantic facts.
+  - Process restart must not require hidden in-memory state.
+- Testing invariant:
+  - Core decisions receive explicit storage snapshots/transactions.
+  - Unit tests inject clock/id/config.
+  - Integration tests kill/restart Cortex and confirm state recovers.
+
+## Verification
+
+- Covers every audited state plane: Redis locks, scope log, Blob payloads, active stack projection, LogicalFS shell view, process caches.
+- Explicitly allows SQLite/Redis without blurring their authority roles.
+
+## Known Gaps
+
+- This is a design result only; implementation tickets must apply it to concrete modules.
+
+## Artifacts
+
+- `.complex-problems/tmp/p001-state-taxonomy-result.md`
+

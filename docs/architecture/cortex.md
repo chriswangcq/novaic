@@ -73,7 +73,7 @@ Agent Runtime 在 `session_init` 时确保一个长期存在的 `agent_root` sco
 - `skill_begin` / `skill_end` 管 LLM 可见 scope 生命周期。
 - `/v1/scope/end` 是结构性 API：非空 `report` 会被拒绝。
 - 其它工具结果通过 `/v1/steps/write` 写入当前 active scope。
-- `resolve_active_scope_path` 路由到最深活跃 scope，保证工具写在当前 wake/skill 内。
+- 当前 active scope 由 SQLite active stack projection 路由；文件系统 `_index.jsonl` 不再作为运行期栈路由来源。
 
 ## 部署（生产示例）
 

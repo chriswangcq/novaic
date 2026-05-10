@@ -12,7 +12,7 @@
 | Entangled 是实体同步层 | App 直连 Entangled WS；Business 是服务端 action/HTTP 写入方 |
 | Business 是产品业务层 | action hooks、Environment、SubAgent、Device 编排、配置读取 |
 | Runtime 是执行层 | Queue/Saga/Task Worker，调用 Cortex、Factory、Business/tool executor |
-| Cortex 是工作轨迹层 | scope tree、reasoning/action/observation、payload ref、summary.md |
+| Cortex 是工作轨迹层 | scope tree、reasoning/action/observation、payload manifest/ref、summary.md |
 | Device 是硬件层 | CloudBridge、VmControl、WebRTC/VM/HD 控制 |
 
 ---
@@ -26,10 +26,10 @@
 | **Business** | `19998` | 产品 action hooks、Environment、Subscriber 输入、Device 编排、内部产品 API |
 | **Device** | `19993` | Device registry、CloudBridge typed WS、hardware/VM/WebRTC API |
 | **Queue Service** | `19997` | Task/Saga/session 调度，拥有 `queue.db` |
-| **Cortex** | `19996` | Agent scope/context/work trace/payload/sandbox |
+| **Cortex** | `19996` | Agent scope/context/work trace/payload manifest/sandbox |
 | **Sandboxd** | `19994` | 通用进程执行与稳定路径挂载；不拥有工作区文件语义 |
 | **LogicalFS** | library/service boundary | Cortex/shell 实时 RO/RW 文件视图权威层 |
-| **Blob Service** | `19995` | 便宜文件服务器：字节、大对象、BlobRef |
+| **Blob Service** | `19995` | 便宜文件服务器：原始字节、大对象、BlobRef |
 | **LLM Factory** | deployment-specific | provider/API key/model routing，标准 chat completions |
 | **Runtime Workers** | worker | Saga Worker、Task Worker、Health、Scheduler |
 | **Tauri App** | local | React UI、Entangled Rust cache、VmControl 本地端 |

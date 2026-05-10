@@ -5,7 +5,7 @@
 > 约束来源：[architecture-review-2026-04-17.md](./architecture-review-2026-04-17.md) 的 8 位架构师评审；落地追踪见 [hardening-checklist.md](./hardening-checklist.md)。
 >
 > 符号：
-> - `[CODE]` 已在代码中强制（startup 断言、HTTP 中间件、或 async lock 结构化保证）。
+> - `[CODE]` 已在代码中强制（startup 断言、HTTP 中间件、或 scope lock manager 结构化保证）。
 > - `[CONTRACT]` 靠调用方遵守 + 代码注释 + 评审拦截，未强制检查。
 > - `[PROD-ONLY]` 仅生产环境必须，开发态允许降级。
 
@@ -17,11 +17,11 @@
 | --- | --- | --- | --- | --- |
 | INV-1 | 写入并发 | ✅ | `[CODE]` | `api.py::_get_scope_lock` / `/v1/steps/write` |
 | INV-2 | 生命周期 | ✅ | `[CONTRACT]` | `react_actions._decide_finalize_or_continue` + `wake_finalize` |
-| INV-3 | 栈并发 | ✅ | `[CODE]` | `api.py::_get_skill_lock`（= `_get_scope_lock` 别名） |
+| INV-3 | 栈并发 | ✅ | `[CODE]` | `api.py::_get_skill_lock`（= `_get_scope_lock` 别名，走 scope lock manager） |
 | INV-4 | 权威读 | ✅ | `[CONTRACT]` | `CORTEX_CHECK_STACK` 走 `/v1/context/status` |
 | INV-5 | 错误分类 | ✅ | `[CONTRACT]` | Cortex 业务失败 = `200 {ok:false}`；5xx = 重试 |
-| INV-6 | 锁 key | ✅ | `[CODE]` | `_SCOPE_LOCKS` key = `(user_id, agent_id, scope_id)` |
-| INV-7 | 部署拓扑 | ✅ | `[CODE]` + `[PROD-ONLY]` | `main_cortex._enforce_single_worker` |
+| INV-6 | 锁 key | ✅ | `[CODE]` | scope lock key = `(user_id, agent_id, scope_id)` |
+| INV-7 | 部署拓扑 | ✅ | `[CODE]` + `[PROD-ONLY]` | `main_cortex.install_redis_backend` / `scope_locks.get_lock_manager` |
 | INV-8 | 存储 key | ✅ | `[CONTRACT]` | `object-keys.md` §2 |
 | INV-9 | Saga 重放 | ✅ | `[CODE]` | `context_handlers.seen_keys` 去重 |
 | INV-10 | 可观测性 | ✅ | `[CODE]` + `[PROD-ONLY]` | `observability.log_cortex` 强制导入 |
@@ -34,7 +34,7 @@
 
 **动机**：
 - `write_step` = `_count_step_dirs` + `_sys_append_line` 是 Read-Modify-Write。
-- 并发执行会导致 `seq` 重复 / `_index.jsonl` 行丢失 / `resolve_active_scope_path` 读到陈旧 scope → LIFO 错乱。
+- 并发执行会导致 `seq` 重复 / `_index.jsonl` 行丢失；运行期 LIFO 由 SQLite active stack projection 保护，不能回退到文件遍历推断。
 
 **落地**：
 
@@ -78,7 +78,7 @@ async def steps_write(req: StepWriteRequest):
 
 > `skill_begin` / `skill_end` / `scope_end` / `advance_round` / `counter_inc` / `context_append` / `steps_write` **不得**在同一 root scope 内并发执行。
 
-**落地**：全部走同一把 `_get_scope_lock` / `_get_skill_lock`（二者是别名，共享 `_SCOPE_LOCKS` 池）：
+**落地**：全部走同一把 `_get_scope_lock` / `_get_skill_lock`（二者是别名，最终进入 scope lock manager）：
 
 ```562:566:novaic-cortex/novaic_cortex/api.py
 lock = await _get_skill_lock(req.user_id, req.agent_id, req.scope_id)
@@ -87,7 +87,7 @@ async with _instrumented_scope_lock(lock, op="skill_begin"):
 
 **破坏后果**：栈 LIFO 顺序错乱、scope_ids 索引冲突、round_num 丢失更新。
 
-**配套**：INV-6（锁 key 语义）、INV-7（单进程约束）。
+**配套**：INV-6（锁 key 语义）、INV-7（生产分布式锁约束）。
 
 ---
 
@@ -98,12 +98,12 @@ async with _instrumented_scope_lock(lock, op="skill_begin"):
 **动机**：
 - `subagents.current_scope_id`（业务库字段）是 **UX 指针**，允许滞后 / 为 None（见 P2-6）。
 - `ContextEngine` 内部的瞬态栈快照在多次请求间不保证一致。
-- 只有 `/v1/context/status` 会走 `_collect_active_stack`，从文件系统 `/ro/active/` 重建权威结果（P2-3）。
+- `/v1/context/status`、`prepare_for_llm`、`skill_begin`、`skill_end` 和 active write routing 的控制栈均来自 SQLite active stack projection。
 
 **落地**：
 
 ```:novaic-cortex/novaic_cortex/api.py
-# /v1/context/status 调用 _collect_active_stack；
+# /v1/context/status 调用 read_active_stack_projection；
 # 返回 stack_depth + frames（scope_id, skill, depth）供 Runtime 决策。
 ```
 
@@ -128,59 +128,54 @@ Runtime 侧 `handle_cortex_check_stack` 在异常时返 `stack_depth=1, stack_kn
 
 ---
 
-## INV-6 · `_SCOPE_LOCKS` key 语义
+## INV-6 · Scope lock key 语义
 
-> 锁 key = `(user_id, agent_id, scope_id)`，**必须**三元组齐全；scope_id 是 root scope（子 scope 的操作通过 `resolve_active_scope_path` 归一到 root 后再取锁）。
+> 锁 key = `(user_id, agent_id, scope_id)`，**必须**三元组齐全；scope_id 是 root scope（子 scope 的操作先归一到 root，再在锁内读取 SQLite active stack projection）。
 
 **落地**：
 
-```51:55:novaic-cortex/novaic_cortex/api.py
-_SCOPE_LOCKS: dict[tuple[str, str, str], asyncio.Lock] = {}
-_SCOPE_LOCKS_GUARD = asyncio.Lock()
+```:novaic-cortex/novaic_cortex/scope_locks.py
+ScopeKey = Tuple[str, str, str]  # (user_id, agent_id, scope_id)
 
-_SKILL_LOCKS = _SCOPE_LOCKS
+class ScopeLockManager(Protocol):
+    def lock(self, key: ScopeKey) -> "asyncio.AbstractContextManager": ...
 ```
 
-```96:101:novaic-cortex/novaic_cortex/api.py
+```:novaic-cortex/novaic_cortex/api.py
 async def _drop_scope_lock(user_id: str, agent_id: str, scope_id: str) -> None:
     key = (user_id, agent_id, scope_id)
-    async with _SCOPE_LOCKS_GUARD:
-        _SCOPE_LOCKS.pop(key, None)
+    await get_lock_manager().release_key(key)
 ```
 
-**清理时机**：仅当 `scope_end` 成功归档 root scope 时 drop（P0-4 + P2-4 保证归档幂等）。
+**清理时机**：仅当 `scope_end` 成功归档 root scope 时 best-effort `release_key`（P0-4 + P2-4 保证归档幂等）。生产后端为 Redis lock manager；in-memory manager 仅用于测试。
 
 **破坏后果**：
 - 只用 `scope_id` 做 key → 跨用户 UUID 碰撞时锁混淆（P0-7）。
-- 不 drop → 长运行泄漏（P0-6，尚未完全修复）。
+- 不释放 key → 长运行残留锁 key，依赖 Redis TTL 兜底但不应作为常态。
 
 ---
 
-## INV-7 · Cortex 单进程运行
+## INV-7 · Cortex 生产必须安装分布式 scope lock
 
-> Cortex HTTP 服务**必须**以 `uvicorn --workers 1` 运行，除非部署方提供了分布式锁替代 `_SCOPE_LOCKS`（见 [scope_locks.py](../../novaic-cortex/novaic_cortex/scope_locks.py) 的 `ScopeLockManager` 协议，P3-6）。
+> Cortex HTTP 服务启动前必须安装生产 scope lock backend。当前生产 backend 是 Redis `SET NX PX` + Lua release + heartbeat；未安装或不可达时进程 fail-closed，不提供服务。
 
 **动机**：
-- `_SCOPE_LOCKS` 是 `asyncio.Lock`，**进程内**语义。多 worker 时每个 worker 有独立锁池，INV-1/3 全部失效。
-- 水平扩容必须先切到分布式后端（Redis `SET NX PX` / DB row lock），才能 `workers > 1` 或跨机部署。
+- 多 worker / 多副本部署下，请求可能落在不同进程；锁语义必须由共享后端承担。
+- 测试用 in-memory manager 不能进入生产启动路径。
 
-**落地**（startup 断言）：
+**落地**（startup fail-closed）：
 
-```25:43:novaic-cortex/novaic_cortex/main_cortex.py
-def _enforce_single_worker() -> None:
-    raw_workers = (os.environ.get("UVICORN_WORKERS") or "").strip()
-    if raw_workers:
-        try:
-            n = int(raw_workers)
-        except ValueError:
-            n = 1
-        if n > 1:
-            raise RuntimeError(...)
+```:novaic-cortex/novaic_cortex/main_cortex.py
+install_redis_backend(
+    redis_url=cli_args.redis_url,
+    ttl_seconds=cli_args.redis_lock_ttl_seconds,
+    validate_at_startup=(cli_args.redis_validate_at_startup != "0"),
+)
 ```
 
-配套文档：[deployment-and-startup.md](./deployment-and-startup.md) §单进程约束。
+配套文档：[deployment-and-startup.md](./deployment-and-startup.md) §Redis scope lock。
 
-**破坏后果**：silent data corruption（不同 worker 同时 append `_index.jsonl`）。
+**破坏后果**：silent data corruption（不同 worker 同时 append `_index.jsonl` 或并发修改同一 root scope）。
 
 ---
 

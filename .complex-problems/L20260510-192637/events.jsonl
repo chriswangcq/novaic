@@ -1,0 +1,84 @@
+{"at": "2026-05-10T11:26:37+00:00", "id": "E000", "payload": {"ledger_id": "L20260510-192637", "root_id": "P000", "title": "Cortex State Authority Remediation Plan"}, "root_id": "P000", "type": "ledger_initialized"}
+{"at": "2026-05-10T11:26:55+00:00", "id": "E001", "payload": {"problem_id": "P000", "ticket_id": "T000", "title": "Split Cortex State Authority Remediation Into Per-Plane Designs"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T11:26:55+00:00", "id": "E002", "payload": {"from": "created", "id": "T000", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:27:01+00:00", "id": "E003", "payload": {"from": "defined", "id": "T000", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:27:01+00:00", "id": "E004", "payload": {"classification": "split", "reason": "Architecture plan spans multiple independent state planes; splitting avoids one-go ambiguity and allows strict per-gap checks.", "ticket_id": "T000"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T11:27:39+00:00", "id": "E005", "payload": {"from": "classified", "id": "T000", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:27:39+00:00", "id": "E006", "payload": {"parent_id": "P000", "problem_id": "P001", "title": "State Authority Taxonomy And Storage Rules"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T11:27:39+00:00", "id": "E007", "payload": {"parent_id": "P000", "problem_id": "P002", "title": "Active Stack And Status Projection Remediation"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T11:27:39+00:00", "id": "E008", "payload": {"parent_id": "P000", "problem_id": "P003", "title": "Scope Transition Log Remediation"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T11:27:39+00:00", "id": "E009", "payload": {"parent_id": "P000", "problem_id": "P004", "title": "Blob Payload Authority Contract"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T11:27:39+00:00", "id": "E010", "payload": {"parent_id": "P000", "problem_id": "P005", "title": "LogicalFS Snapshot Patch Versus Live Filesystem"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T11:27:39+00:00", "id": "E011", "payload": {"parent_id": "P000", "problem_id": "P006", "title": "Process Cache Config And Documentation Residue Cleanup"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T11:30:18+00:00", "id": "E012", "payload": {"problem_id": "P001", "ticket_id": "T001", "title": "Design Explicit State Authority Taxonomy"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T11:30:18+00:00", "id": "E013", "payload": {"from": "created", "id": "T001", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:30:27+00:00", "id": "E014", "payload": {"from": "defined", "id": "T001", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:30:27+00:00", "id": "E015", "payload": {"classification": "one_go", "reason": "Focused design taxonomy with immediate evidence-based check; no implementation side effects.", "ticket_id": "T001"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T11:30:34+00:00", "id": "E016", "payload": {"from": "todo", "id": "P001", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:30:34+00:00", "id": "E017", "payload": {"from": "classified", "id": "T001", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:30:34+00:00", "id": "E018", "payload": {"from": "executing", "id": "T001", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:30:34+00:00", "id": "E019", "payload": {"result_id": "R000", "ticket_id": "T001"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T11:30:42+00:00", "id": "E020", "payload": {"from": "doing", "id": "P001", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:30:42+00:00", "id": "E021", "payload": {"from": "checking", "id": "P001", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:30:42+00:00", "id": "E022", "payload": {"check_id": "C000", "followup_id": null, "problem_id": "P001", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T11:30:50+00:00", "id": "E023", "payload": {"problem_id": "P002", "ticket_id": "T002", "title": "Design Event Backed Active Stack Status"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T11:30:50+00:00", "id": "E024", "payload": {"from": "created", "id": "T002", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:31:01+00:00", "id": "E025", "payload": {"from": "defined", "id": "T002", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:31:01+00:00", "id": "E026", "payload": {"classification": "one_go", "reason": "Single bounded design for one state plane; no code changes and directly checkable against old projection responsibilities.", "ticket_id": "T002"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T11:31:08+00:00", "id": "E027", "payload": {"from": "todo", "id": "P002", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:31:08+00:00", "id": "E028", "payload": {"from": "classified", "id": "T002", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:31:08+00:00", "id": "E029", "payload": {"from": "executing", "id": "T002", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:31:08+00:00", "id": "E030", "payload": {"result_id": "R001", "ticket_id": "T002"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T11:31:18+00:00", "id": "E031", "payload": {"from": "doing", "id": "P002", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:31:18+00:00", "id": "E032", "payload": {"from": "checking", "id": "P002", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:31:18+00:00", "id": "E033", "payload": {"check_id": "C001", "followup_id": null, "problem_id": "P002", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T11:31:30+00:00", "id": "E034", "payload": {"problem_id": "P003", "ticket_id": "T003", "title": "Design Scope Transition Log Replacement"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T11:31:30+00:00", "id": "E035", "payload": {"from": "created", "id": "T003", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:31:39+00:00", "id": "E036", "payload": {"from": "defined", "id": "T003", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:31:39+00:00", "id": "E037", "payload": {"classification": "one_go", "reason": "Single observability/log state plane with direct design output and no code changes.", "ticket_id": "T003"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T11:31:47+00:00", "id": "E038", "payload": {"from": "todo", "id": "P003", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:31:47+00:00", "id": "E039", "payload": {"from": "classified", "id": "T003", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:31:47+00:00", "id": "E040", "payload": {"from": "executing", "id": "T003", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:31:47+00:00", "id": "E041", "payload": {"result_id": "R002", "ticket_id": "T003"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T11:31:58+00:00", "id": "E042", "payload": {"from": "doing", "id": "P003", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:31:58+00:00", "id": "E043", "payload": {"from": "checking", "id": "P003", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:31:58+00:00", "id": "E044", "payload": {"check_id": "C002", "followup_id": null, "problem_id": "P003", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T11:32:06+00:00", "id": "E045", "payload": {"problem_id": "P004", "ticket_id": "T004", "title": "Design Blob Payload Authority Contract"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T11:32:06+00:00", "id": "E046", "payload": {"from": "created", "id": "T004", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:32:12+00:00", "id": "E047", "payload": {"from": "defined", "id": "T004", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:32:12+00:00", "id": "E048", "payload": {"classification": "one_go", "reason": "Focused authority-contract design for Blob payloads; bounded and directly checkable.", "ticket_id": "T004"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T11:32:19+00:00", "id": "E049", "payload": {"from": "todo", "id": "P004", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:32:19+00:00", "id": "E050", "payload": {"from": "classified", "id": "T004", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:32:19+00:00", "id": "E051", "payload": {"from": "executing", "id": "T004", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:32:19+00:00", "id": "E052", "payload": {"result_id": "R003", "ticket_id": "T004"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T11:32:30+00:00", "id": "E053", "payload": {"from": "doing", "id": "P004", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:32:30+00:00", "id": "E054", "payload": {"from": "checking", "id": "P004", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:32:30+00:00", "id": "E055", "payload": {"check_id": "C003", "followup_id": null, "problem_id": "P004", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T11:32:41+00:00", "id": "E056", "payload": {"problem_id": "P005", "ticket_id": "T005", "title": "Design LogicalFS Live State Direction"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T11:32:41+00:00", "id": "E057", "payload": {"from": "created", "id": "T005", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:32:48+00:00", "id": "E058", "payload": {"from": "defined", "id": "T005", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:32:48+00:00", "id": "E059", "payload": {"classification": "one_go", "reason": "Design-only plan for one subsystem direction; implementation is explicitly deferred to later split tickets.", "ticket_id": "T005"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T11:32:56+00:00", "id": "E060", "payload": {"from": "todo", "id": "P005", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:32:56+00:00", "id": "E061", "payload": {"from": "classified", "id": "T005", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:32:56+00:00", "id": "E062", "payload": {"from": "executing", "id": "T005", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:32:56+00:00", "id": "E063", "payload": {"result_id": "R004", "ticket_id": "T005"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T11:33:06+00:00", "id": "E064", "payload": {"from": "doing", "id": "P005", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:33:06+00:00", "id": "E065", "payload": {"from": "checking", "id": "P005", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:33:06+00:00", "id": "E066", "payload": {"check_id": "C004", "followup_id": null, "problem_id": "P005", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T11:33:14+00:00", "id": "E067", "payload": {"problem_id": "P006", "ticket_id": "T006", "title": "Design Process Cache Config And Documentation Cleanup"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T11:33:14+00:00", "id": "E068", "payload": {"from": "created", "id": "T006", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:33:24+00:00", "id": "E069", "payload": {"from": "defined", "id": "T006", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:33:24+00:00", "id": "E070", "payload": {"classification": "one_go", "reason": "Focused cleanup design for process cache and docs; directly checkable, implementation deferred.", "ticket_id": "T006"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T11:33:33+00:00", "id": "E071", "payload": {"from": "todo", "id": "P006", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:33:33+00:00", "id": "E072", "payload": {"from": "classified", "id": "T006", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:33:33+00:00", "id": "E073", "payload": {"from": "executing", "id": "T006", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:33:33+00:00", "id": "E074", "payload": {"result_id": "R005", "ticket_id": "T006"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T11:33:43+00:00", "id": "E075", "payload": {"from": "doing", "id": "P006", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:33:43+00:00", "id": "E076", "payload": {"from": "checking", "id": "P006", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:33:43+00:00", "id": "E077", "payload": {"check_id": "C005", "followup_id": null, "problem_id": "P006", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T11:34:16+00:00", "id": "E078", "payload": {"from": "todo", "id": "P000", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:34:17+00:00", "id": "E079", "payload": {"from": "splitting", "id": "T000", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:34:17+00:00", "id": "E080", "payload": {"result_id": "R006", "ticket_id": "T000"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T11:34:37+00:00", "id": "E081", "payload": {"from": "doing", "id": "P000", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:34:37+00:00", "id": "E082", "payload": {"from": "checking", "id": "P000", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:34:37+00:00", "id": "E083", "payload": {"check_id": "C006", "followup_id": null, "problem_id": "P000", "status": "success"}, "root_id": "P000", "type": "check_recorded"}

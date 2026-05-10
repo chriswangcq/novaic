@@ -1,0 +1,32 @@
+# Design Explicit State Authority Taxonomy
+
+## Problem Definition
+
+The architecture needs a rule that says which state is allowed to live in LogicalFS/Workspace, SQLite, Redis, Blob, and process memory. Without this, future changes can accidentally turn Redis, Blob, or in-process caches into hidden semantic authorities.
+
+## Proposed Solution
+
+Create a storage taxonomy and use it as the design basis for the remaining child plans.
+
+## Acceptance Criteria
+
+- Classify all relevant state into explicit classes.
+- Assign allowed storage engines to each class.
+- Define invariants for recovery, replay, and testing.
+- Include the user's allowance that state may live in SQLite and maybe Redis, while still avoiding hidden process state.
+
+## Verification Plan
+
+Check the result against every audited state plane and confirm each has exactly one authority role or one explicitly non-authoritative role.
+
+## Risks
+
+- Over-correcting into "everything must be files" would ignore the user's SQLite/Redis allowance.
+- Over-correcting into "anything durable is fine" would recreate hidden authority.
+
+## Assumptions
+
+- SQLite is acceptable for durable operational state.
+- Redis is acceptable for coordination and maybe short-lived state, but should not be the only durable semantic truth.
+- Blob is acceptable for raw bytes and artifacts.
+

@@ -1,5 +1,5 @@
 {
-  "active_ledger_id": "L20260510-154902",
+  "active_ledger_id": "L20260510-193614",
   "ledgers": [
     {
       "active_count": 0,
@@ -572,7 +572,40 @@
       "status": "done",
       "title": "Cortex full event-sourced context source cutover",
       "updated_at": "2026-05-10T11:03:25+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260510-191842",
+      "path": "L20260510-191842",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "Cortex state authority audit",
+      "updated_at": "2026-05-10T11:23:03+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260510-192637",
+      "path": "L20260510-192637",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "Cortex State Authority Remediation Plan",
+      "updated_at": "2026-05-10T11:34:45+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260510-193614",
+      "path": "L20260510-193614",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "Cortex State Authority Remediation Implementation",
+      "updated_at": "2026-05-10T16:07:20+00:00"
     }
   ],
-  "updated_at": "2026-05-10T11:03:25+00:00"
+  "updated_at": "2026-05-10T16:07:20+00:00"
 }

@@ -1,0 +1,30 @@
+# Design Scope Transition Log Replacement
+
+## Problem Definition
+
+The local NDJSON transition log is persistent state outside the clean model. It is best-effort observability, but future maintainers may mistake it for authority or depend on local files.
+
+## Proposed Solution
+
+Move scope transition history into the same SQLite operational ledger as scope events, and optionally export observability logs from that ledger.
+
+## Acceptance Criteria
+
+- Define replacement for `scope_state_log_path`.
+- Preserve debug/replay value.
+- Ensure transition log failure cannot affect canonical state.
+- Include deletion/compat cleanup for local NDJSON.
+
+## Verification Plan
+
+Check that all transition queries can be answered from SQLite or exported observability, and that local NDJSON no longer participates in runtime correctness.
+
+## Risks
+
+- Removing local log too early can hurt diagnostics.
+- Logging in the hot path can slow scope close if not transactional with existing state changes.
+
+## Assumptions
+
+- SQLite operational ledger exists or will be introduced with active stack work.
+

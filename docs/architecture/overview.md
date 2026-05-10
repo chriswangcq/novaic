@@ -23,13 +23,13 @@ Runtime
  └─ Workers → Business/Device/Cortex/native executor：工具执行
 
 Cortex
- ├─ Agent 工作轨迹与上下文：agent-root scope tree、payload refs、summary.md
+ ├─ Agent 工作轨迹与上下文：agent-root scope tree、payload manifests/refs、summary.md
  └─ 文件语义 → LogicalFS：实时 `/ro` / `/rw` 文件视图
 
 LogicalFS / Sandboxd / Blob
  ├─ LogicalFS：Cortex/shell 实时 RO/RW 权威层
  ├─ Sandboxd：进程执行与挂载，不拥有文件语义
- └─ Blob Service：便宜文件服务器、BlobRef、对象存储和物理后端
+ └─ Blob Service：便宜原始字节服务器、BlobRef、对象存储和物理后端
 
 Device
  └─ CloudBridge/VmControl/WebRTC/VM/HD 硬件执行

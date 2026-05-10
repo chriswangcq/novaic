@@ -1,0 +1,824 @@
+{"at": "2026-05-10T11:36:14+00:00", "id": "E000", "payload": {"ledger_id": "L20260510-193614", "root_id": "P000", "title": "Cortex State Authority Remediation Implementation"}, "root_id": "P000", "type": "ledger_initialized"}
+{"at": "2026-05-10T11:36:32+00:00", "id": "E001", "payload": {"problem_id": "P000", "ticket_id": "T000", "title": "Phase Cortex State Authority Implementation"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T11:36:32+00:00", "id": "E002", "payload": {"from": "created", "id": "T000", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:36:38+00:00", "id": "E003", "payload": {"from": "defined", "id": "T000", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:36:38+00:00", "id": "E004", "payload": {"classification": "split", "reason": "Implementation spans multiple state planes and cutover phases; root one-go would hide risk and dual-authority residue.", "ticket_id": "T000"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T11:37:05+00:00", "id": "E005", "payload": {"from": "classified", "id": "T000", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:37:05+00:00", "id": "E006", "payload": {"parent_id": "P000", "problem_id": "P001", "title": "Phase 0 Construction Plan And Boundary Map"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T11:37:06+00:00", "id": "E007", "payload": {"parent_id": "P000", "problem_id": "P002", "title": "Phase 1 Cortex Operational SQLite Store Substrate"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T11:37:06+00:00", "id": "E008", "payload": {"parent_id": "P000", "problem_id": "P003", "title": "Phase 2 Scope Transition Events To SQLite"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T11:37:06+00:00", "id": "E009", "payload": {"parent_id": "P000", "problem_id": "P004", "title": "Phase 3 Active Stack And Status SQLite Cutover"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T11:37:06+00:00", "id": "E010", "payload": {"parent_id": "P000", "problem_id": "P005", "title": "Phase 4 Blob Payload Manifest"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T11:37:06+00:00", "id": "E011", "payload": {"parent_id": "P000", "problem_id": "P006", "title": "Phase 5 Cleanup And Residue Removal"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T11:38:17+00:00", "id": "E012", "payload": {"problem_id": "P001", "ticket_id": "T001", "title": "Produce Construction Plan And Boundary Map"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T11:38:17+00:00", "id": "E013", "payload": {"from": "created", "id": "T001", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:38:23+00:00", "id": "E014", "payload": {"from": "defined", "id": "T001", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:38:23+00:00", "id": "E015", "payload": {"classification": "one_go", "reason": "Phase 0 is a bounded document artifact with immediate content verification and no runtime side effects.", "ticket_id": "T001"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T11:38:34+00:00", "id": "E016", "payload": {"from": "todo", "id": "P001", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:38:34+00:00", "id": "E017", "payload": {"from": "classified", "id": "T001", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:38:34+00:00", "id": "E018", "payload": {"from": "executing", "id": "T001", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:38:34+00:00", "id": "E019", "payload": {"result_id": "R000", "ticket_id": "T001"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T11:38:43+00:00", "id": "E020", "payload": {"from": "doing", "id": "P001", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:38:43+00:00", "id": "E021", "payload": {"from": "checking", "id": "P001", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:38:43+00:00", "id": "E022", "payload": {"check_id": "C000", "followup_id": null, "problem_id": "P001", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T11:43:50+00:00", "id": "E023", "payload": {"problem_id": "P002", "ticket_id": "T002", "title": "Phase 1 Cortex Operational SQLite Store Substrate"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T11:43:50+00:00", "id": "E024", "payload": {"from": "created", "id": "T002", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:44:00+00:00", "id": "E025", "payload": {"from": "defined", "id": "T002", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:44:00+00:00", "id": "E026", "payload": {"classification": "split", "reason": "Phase 1 spans substrate implementation, service-boundary wiring, and verification; split to avoid a half-wired substrate.", "ticket_id": "T002"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T11:44:30+00:00", "id": "E027", "payload": {"from": "classified", "id": "T002", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:44:30+00:00", "id": "E028", "payload": {"parent_id": "P002", "problem_id": "P007", "title": "Phase 1A Operational Store Module And Unit Tests"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T11:44:30+00:00", "id": "E029", "payload": {"parent_id": "P002", "problem_id": "P008", "title": "Phase 1B Cortex Service Boundary Wiring"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T11:44:30+00:00", "id": "E030", "payload": {"parent_id": "P002", "problem_id": "P009", "title": "Phase 1C Phase 1 Verification And Residue Audit"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T11:44:47+00:00", "id": "E031", "payload": {"problem_id": "P007", "ticket_id": "T003", "title": "Implement Operational SQLite Store Module"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T11:44:47+00:00", "id": "E032", "payload": {"from": "created", "id": "T003", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:44:53+00:00", "id": "E033", "payload": {"from": "defined", "id": "T003", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:44:53+00:00", "id": "E034", "payload": {"classification": "one_go", "reason": "Bounded module and direct tests only; no service cutover in this child.", "ticket_id": "T003"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T11:45:01+00:00", "id": "E035", "payload": {"from": "todo", "id": "P007", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:47:07+00:00", "id": "E036", "payload": {"from": "classified", "id": "T003", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:47:30+00:00", "id": "E036", "payload": {"from": "classified", "id": "T003", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:47:30+00:00", "id": "E037", "payload": {"from": "executing", "id": "T003", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:47:30+00:00", "id": "E038", "payload": {"result_id": "R001", "ticket_id": "T003"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T11:48:00+00:00", "id": "E039", "payload": {"from": "doing", "id": "P007", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:48:00+00:00", "id": "E040", "payload": {"from": "checking", "id": "P007", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:48:00+00:00", "id": "E041", "payload": {"check_id": "C001", "followup_id": null, "problem_id": "P007", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T11:48:24+00:00", "id": "E042", "payload": {"problem_id": "P008", "ticket_id": "T004", "title": "Wire Operational Store Through Cortex Service Boundary"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T11:48:24+00:00", "id": "E043", "payload": {"from": "created", "id": "T004", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:48:24+00:00", "id": "E044", "payload": {"from": "defined", "id": "T004", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:48:24+00:00", "id": "E045", "payload": {"classification": "one_go", "reason": "Bounded service-boundary wiring and tests; no behavior migration.", "ticket_id": "T004"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T11:48:36+00:00", "id": "E046", "payload": {"from": "todo", "id": "P008", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:51:23+00:00", "id": "E047", "payload": {"from": "classified", "id": "T004", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:51:23+00:00", "id": "E048", "payload": {"from": "executing", "id": "T004", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:51:23+00:00", "id": "E049", "payload": {"result_id": "R002", "ticket_id": "T004"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T11:51:51+00:00", "id": "E050", "payload": {"from": "doing", "id": "P008", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:51:51+00:00", "id": "E051", "payload": {"from": "checking", "id": "P008", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:51:51+00:00", "id": "E052", "payload": {"check_id": "C002", "followup_id": null, "problem_id": "P008", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T11:52:18+00:00", "id": "E053", "payload": {"problem_id": "P009", "ticket_id": "T005", "title": "Verify Phase 1 Operational Store Substrate"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T11:52:18+00:00", "id": "E054", "payload": {"from": "created", "id": "T005", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:52:18+00:00", "id": "E055", "payload": {"from": "defined", "id": "T005", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:52:18+00:00", "id": "E056", "payload": {"classification": "one_go", "reason": "Verification and residue audit only; no new implementation planned unless check fails.", "ticket_id": "T005"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T11:52:34+00:00", "id": "E057", "payload": {"from": "todo", "id": "P009", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:53:01+00:00", "id": "E058", "payload": {"from": "classified", "id": "T005", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:53:01+00:00", "id": "E059", "payload": {"from": "executing", "id": "T005", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:53:01+00:00", "id": "E060", "payload": {"result_id": "R003", "ticket_id": "T005"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T11:53:21+00:00", "id": "E061", "payload": {"from": "doing", "id": "P009", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:53:21+00:00", "id": "E062", "payload": {"from": "checking", "id": "P009", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:53:21+00:00", "id": "E063", "payload": {"check_id": "C003", "followup_id": null, "problem_id": "P009", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T11:53:47+00:00", "id": "E064", "payload": {"from": "todo", "id": "P002", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:53:47+00:00", "id": "E065", "payload": {"from": "splitting", "id": "T002", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:53:47+00:00", "id": "E066", "payload": {"result_id": "R004", "ticket_id": "T002"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T11:54:06+00:00", "id": "E067", "payload": {"from": "doing", "id": "P002", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:54:06+00:00", "id": "E068", "payload": {"from": "checking", "id": "P002", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:54:06+00:00", "id": "E069", "payload": {"check_id": "C004", "followup_id": null, "problem_id": "P002", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T11:54:32+00:00", "id": "E070", "payload": {"problem_id": "P003", "ticket_id": "T006", "title": "Migrate Scope Transition Events To SQLite"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T11:54:32+00:00", "id": "E071", "payload": {"from": "created", "id": "T006", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:54:32+00:00", "id": "E072", "payload": {"from": "defined", "id": "T006", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:54:32+00:00", "id": "E073", "payload": {"classification": "split", "reason": "Scope lifecycle migration touches hot write/read paths and must be split into audit, writer cutover, read/test cutover, and residue verification.", "ticket_id": "T006"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T11:55:24+00:00", "id": "E074", "payload": {"from": "classified", "id": "T006", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:55:24+00:00", "id": "E075", "payload": {"parent_id": "P003", "problem_id": "P010", "title": "Phase 2A Scope Transition Callsite And Semantics Audit"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T11:55:24+00:00", "id": "E076", "payload": {"parent_id": "P003", "problem_id": "P011", "title": "Phase 2B Scope Transition Write Cutover To SQLite"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T11:55:24+00:00", "id": "E077", "payload": {"parent_id": "P003", "problem_id": "P012", "title": "Phase 2C Scope History Read Cutover And NDJSON Cleanup"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T11:55:42+00:00", "id": "E078", "payload": {"problem_id": "P010", "ticket_id": "T007", "title": "Audit Scope Transition Call Sites"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T11:55:42+00:00", "id": "E079", "payload": {"from": "created", "id": "T007", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:55:42+00:00", "id": "E080", "payload": {"from": "defined", "id": "T007", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:55:42+00:00", "id": "E081", "payload": {"classification": "one_go", "reason": "Read-only callsite audit with bounded files.", "ticket_id": "T007"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T11:55:52+00:00", "id": "E082", "payload": {"from": "todo", "id": "P010", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:56:33+00:00", "id": "E083", "payload": {"from": "classified", "id": "T007", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:56:33+00:00", "id": "E084", "payload": {"from": "executing", "id": "T007", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:56:33+00:00", "id": "E085", "payload": {"result_id": "R005", "ticket_id": "T007"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T11:56:54+00:00", "id": "E086", "payload": {"from": "doing", "id": "P010", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:56:54+00:00", "id": "E087", "payload": {"from": "checking", "id": "P010", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:56:54+00:00", "id": "E088", "payload": {"check_id": "C005", "followup_id": null, "problem_id": "P010", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T11:57:42+00:00", "id": "E089", "payload": {"problem_id": "P011", "ticket_id": "T008", "title": "Cut Scope Transition Writes To SQLite"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T11:57:42+00:00", "id": "E090", "payload": {"from": "created", "id": "T008", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:57:42+00:00", "id": "E091", "payload": {"from": "defined", "id": "T008", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:57:42+00:00", "id": "E092", "payload": {"classification": "one_go", "reason": "Bounded write-path cutover with targeted tests; read cleanup remains split into P012.", "ticket_id": "T008"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T11:57:42+00:00", "id": "E093", "payload": {"from": "todo", "id": "P011", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T11:59:58+00:00", "id": "E094", "payload": {"from": "classified", "id": "T008", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:59:58+00:00", "id": "E095", "payload": {"from": "executing", "id": "T008", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T11:59:58+00:00", "id": "E096", "payload": {"result_id": "R006", "ticket_id": "T008"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T12:00:34+00:00", "id": "E097", "payload": {"from": "doing", "id": "P011", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:00:34+00:00", "id": "E098", "payload": {"from": "checking", "id": "P011", "to": "followup"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:00:34+00:00", "id": "E099", "payload": {"check_id": "C006", "followup_id": "P013", "problem_id": "P011", "status": "not_success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T12:00:53+00:00", "id": "E100", "payload": {"problem_id": "P013", "ticket_id": "T009", "title": "Remove Missing Operational Store Fallback"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T12:00:53+00:00", "id": "E101", "payload": {"from": "created", "id": "T009", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:00:53+00:00", "id": "E102", "payload": {"from": "defined", "id": "T009", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:00:53+00:00", "id": "E103", "payload": {"classification": "one_go", "reason": "Small fallback removal with direct tests.", "ticket_id": "T009"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T12:00:53+00:00", "id": "E104", "payload": {"from": "followup", "id": "P013", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:02:00+00:00", "id": "E105", "payload": {"from": "classified", "id": "T009", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:02:00+00:00", "id": "E106", "payload": {"from": "executing", "id": "T009", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:02:00+00:00", "id": "E107", "payload": {"result_id": "R007", "ticket_id": "T009"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T12:02:20+00:00", "id": "E108", "payload": {"from": "doing", "id": "P013", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:02:20+00:00", "id": "E109", "payload": {"from": "checking", "id": "P013", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:02:20+00:00", "id": "E110", "payload": {"check_id": "C007", "followup_id": null, "problem_id": "P013", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T12:02:39+00:00", "id": "E111", "payload": {"from": "followup", "id": "P011", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:02:39+00:00", "id": "E112", "payload": {"from": "checking", "id": "P011", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:02:39+00:00", "id": "E113", "payload": {"check_id": "C008", "followup_id": null, "problem_id": "P011", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T12:03:22+00:00", "id": "E114", "payload": {"problem_id": "P012", "ticket_id": "T010", "title": "Cut Scope History Reads To SQLite And Remove NDJSON"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T12:03:22+00:00", "id": "E115", "payload": {"from": "created", "id": "T010", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:03:22+00:00", "id": "E116", "payload": {"from": "defined", "id": "T010", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:03:22+00:00", "id": "E117", "payload": {"classification": "split", "reason": "Read cutover plus physical deletion spans API, startup, constructors, tests, and docs; split to avoid compatibility residue.", "ticket_id": "T010"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T12:04:03+00:00", "id": "E118", "payload": {"from": "classified", "id": "T010", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:04:03+00:00", "id": "E119", "payload": {"parent_id": "P012", "problem_id": "P014", "title": "Phase 2C1 Scope History API Reads From SQLite"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T12:04:03+00:00", "id": "E120", "payload": {"parent_id": "P012", "problem_id": "P015", "title": "Phase 2C2 Remove NDJSON Transition Log Surface"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T12:04:03+00:00", "id": "E121", "payload": {"parent_id": "P012", "problem_id": "P016", "title": "Phase 2C3 Transition Cleanup Verification"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T12:04:32+00:00", "id": "E122", "payload": {"problem_id": "P014", "ticket_id": "T011", "title": "Cut Scope History API To SQLite"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T12:04:32+00:00", "id": "E123", "payload": {"from": "created", "id": "T011", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:04:32+00:00", "id": "E124", "payload": {"from": "defined", "id": "T011", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:04:32+00:00", "id": "E125", "payload": {"classification": "one_go", "reason": "Bounded API read cutover and direct test.", "ticket_id": "T011"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T12:04:32+00:00", "id": "E126", "payload": {"from": "todo", "id": "P014", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:05:51+00:00", "id": "E127", "payload": {"from": "classified", "id": "T011", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:05:51+00:00", "id": "E128", "payload": {"from": "executing", "id": "T011", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:05:51+00:00", "id": "E129", "payload": {"result_id": "R008", "ticket_id": "T011"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T12:06:11+00:00", "id": "E130", "payload": {"from": "doing", "id": "P014", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:06:11+00:00", "id": "E131", "payload": {"from": "checking", "id": "P014", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:06:11+00:00", "id": "E132", "payload": {"check_id": "C009", "followup_id": null, "problem_id": "P014", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T12:06:38+00:00", "id": "E133", "payload": {"problem_id": "P015", "ticket_id": "T012", "title": "Remove NDJSON Scope Transition Log Surface"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T12:06:38+00:00", "id": "E134", "payload": {"from": "created", "id": "T012", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:06:38+00:00", "id": "E135", "payload": {"from": "defined", "id": "T012", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:06:38+00:00", "id": "E136", "payload": {"classification": "one_go", "reason": "Physical cleanup is broad but bounded to the old NDJSON surface with explicit residue searches.", "ticket_id": "T012"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T12:06:38+00:00", "id": "E137", "payload": {"from": "todo", "id": "P015", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:15:08+00:00", "id": "E138", "payload": {"from": "classified", "id": "T012", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:15:08+00:00", "id": "E139", "payload": {"from": "executing", "id": "T012", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:15:08+00:00", "id": "E140", "payload": {"result_id": "R009", "ticket_id": "T012"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T12:16:00+00:00", "id": "E141", "payload": {"from": "doing", "id": "P015", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:16:00+00:00", "id": "E142", "payload": {"from": "checking", "id": "P015", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:16:00+00:00", "id": "E143", "payload": {"check_id": "C010", "followup_id": null, "problem_id": "P015", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T12:16:31+00:00", "id": "E144", "payload": {"problem_id": "P016", "ticket_id": "T013", "title": "Verify Phase 2 Scope Transition SQLite Cutover"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T12:16:31+00:00", "id": "E145", "payload": {"from": "created", "id": "T013", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:16:40+00:00", "id": "E146", "payload": {"from": "defined", "id": "T013", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:16:40+00:00", "id": "E147", "payload": {"classification": "one_go", "reason": "Verification-only pass with bounded tests and static residue searches; any discovered gap will become a follow-up.", "ticket_id": "T013"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T12:16:48+00:00", "id": "E148", "payload": {"from": "todo", "id": "P016", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:17:28+00:00", "id": "E149", "payload": {"from": "classified", "id": "T013", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:17:28+00:00", "id": "E150", "payload": {"from": "executing", "id": "T013", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:17:28+00:00", "id": "E151", "payload": {"result_id": "R010", "ticket_id": "T013"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T12:17:49+00:00", "id": "E152", "payload": {"from": "doing", "id": "P016", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:17:49+00:00", "id": "E153", "payload": {"from": "checking", "id": "P016", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:17:49+00:00", "id": "E154", "payload": {"check_id": "C011", "followup_id": null, "problem_id": "P016", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T12:18:23+00:00", "id": "E155", "payload": {"from": "todo", "id": "P012", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:18:23+00:00", "id": "E156", "payload": {"from": "splitting", "id": "T010", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:18:23+00:00", "id": "E157", "payload": {"result_id": "R011", "ticket_id": "T010"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T12:18:44+00:00", "id": "E158", "payload": {"from": "doing", "id": "P012", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:18:44+00:00", "id": "E159", "payload": {"from": "checking", "id": "P012", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:18:44+00:00", "id": "E160", "payload": {"check_id": "C012", "followup_id": null, "problem_id": "P012", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T12:19:19+00:00", "id": "E161", "payload": {"from": "todo", "id": "P003", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:19:19+00:00", "id": "E162", "payload": {"from": "splitting", "id": "T006", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:19:19+00:00", "id": "E163", "payload": {"result_id": "R012", "ticket_id": "T006"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T12:19:40+00:00", "id": "E164", "payload": {"from": "doing", "id": "P003", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:19:40+00:00", "id": "E165", "payload": {"from": "checking", "id": "P003", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:19:40+00:00", "id": "E166", "payload": {"check_id": "C013", "followup_id": null, "problem_id": "P003", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T12:20:16+00:00", "id": "E167", "payload": {"problem_id": "P004", "ticket_id": "T014", "title": "Cut Active Stack And Status Authority To SQLite"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T12:20:16+00:00", "id": "E168", "payload": {"from": "created", "id": "T014", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:20:25+00:00", "id": "E169", "payload": {"from": "defined", "id": "T014", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:20:25+00:00", "id": "E170", "payload": {"classification": "split", "reason": "Control-stack authority cutover touches audit, projection writes, runtime read/LIFO, finalize, cleanup, and restart tests; splitting prevents half-cutover.", "ticket_id": "T014"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T12:21:10+00:00", "id": "E171", "payload": {"from": "classified", "id": "T014", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:21:10+00:00", "id": "E172", "payload": {"parent_id": "P004", "problem_id": "P017", "title": "Phase 3A Active Stack Authority Audit"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T12:21:11+00:00", "id": "E173", "payload": {"parent_id": "P004", "problem_id": "P018", "title": "Phase 3B SQLite Active Stack Write Projection"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T12:21:11+00:00", "id": "E174", "payload": {"parent_id": "P004", "problem_id": "P019", "title": "Phase 3C Runtime Stack Read And LIFO Cutover"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T12:21:11+00:00", "id": "E175", "payload": {"parent_id": "P004", "problem_id": "P020", "title": "Phase 3D Quarantine File-Walk Stack Authority"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T12:21:11+00:00", "id": "E176", "payload": {"parent_id": "P004", "problem_id": "P021", "title": "Phase 3E Active Stack Cutover Verification"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T12:21:32+00:00", "id": "E177", "payload": {"problem_id": "P017", "ticket_id": "T015", "title": "Audit Active Stack Authority Boundaries"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T12:21:32+00:00", "id": "E178", "payload": {"from": "created", "id": "T015", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:21:40+00:00", "id": "E179", "payload": {"from": "defined", "id": "T015", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:21:40+00:00", "id": "E180", "payload": {"classification": "one_go", "reason": "Read-only authority audit with bounded source searches and no production edits.", "ticket_id": "T015"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T12:21:49+00:00", "id": "E181", "payload": {"from": "todo", "id": "P017", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:23:43+00:00", "id": "E182", "payload": {"from": "classified", "id": "T015", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:23:43+00:00", "id": "E183", "payload": {"from": "executing", "id": "T015", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:23:43+00:00", "id": "E184", "payload": {"result_id": "R013", "ticket_id": "T015"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T12:24:07+00:00", "id": "E185", "payload": {"from": "doing", "id": "P017", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:24:07+00:00", "id": "E186", "payload": {"from": "checking", "id": "P017", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:24:07+00:00", "id": "E187", "payload": {"check_id": "C014", "followup_id": null, "problem_id": "P017", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T12:24:39+00:00", "id": "E188", "payload": {"problem_id": "P018", "ticket_id": "T016", "title": "Add SQLite Active Stack Write Projection"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T12:24:39+00:00", "id": "E189", "payload": {"from": "created", "id": "T016", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:24:50+00:00", "id": "E190", "payload": {"from": "defined", "id": "T016", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:24:50+00:00", "id": "E191", "payload": {"classification": "split", "reason": "Write projection needs helper, begin/end wiring, finalize semantics, and verification; split to avoid partial runtime cutover.", "ticket_id": "T016"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T12:25:21+00:00", "id": "E192", "payload": {"from": "classified", "id": "T016", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:25:21+00:00", "id": "E193", "payload": {"parent_id": "P018", "problem_id": "P022", "title": "Phase 3B1 Active Stack Projection Helper"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T12:25:21+00:00", "id": "E194", "payload": {"parent_id": "P018", "problem_id": "P023", "title": "Phase 3B2 Skill Begin End Stack Writes"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T12:25:21+00:00", "id": "E195", "payload": {"parent_id": "P018", "problem_id": "P024", "title": "Phase 3B3 Finalize Remaining Stack Event"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T12:25:21+00:00", "id": "E196", "payload": {"parent_id": "P018", "problem_id": "P025", "title": "Phase 3B4 Stack Write Projection Verification"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T12:25:53+00:00", "id": "E197", "payload": {"problem_id": "P022", "ticket_id": "T017", "title": "Implement Active Stack Projection Helper"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T12:25:53+00:00", "id": "E198", "payload": {"from": "created", "id": "T017", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:26:01+00:00", "id": "E199", "payload": {"from": "defined", "id": "T017", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:26:01+00:00", "id": "E200", "payload": {"classification": "one_go", "reason": "Bounded helper module plus unit tests; no runtime hot-path wiring in this ticket.", "ticket_id": "T017"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T12:26:10+00:00", "id": "E201", "payload": {"from": "todo", "id": "P022", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:28:08+00:00", "id": "E202", "payload": {"from": "classified", "id": "T017", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:28:08+00:00", "id": "E203", "payload": {"from": "executing", "id": "T017", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:28:08+00:00", "id": "E204", "payload": {"result_id": "R014", "ticket_id": "T017"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T12:28:38+00:00", "id": "E205", "payload": {"from": "doing", "id": "P022", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:28:38+00:00", "id": "E206", "payload": {"from": "checking", "id": "P022", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:28:38+00:00", "id": "E207", "payload": {"check_id": "C015", "followup_id": null, "problem_id": "P022", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T12:29:13+00:00", "id": "E208", "payload": {"problem_id": "P023", "ticket_id": "T018", "title": "Wire Skill Begin End Active Stack Writes"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T12:29:13+00:00", "id": "E209", "payload": {"from": "created", "id": "T018", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:29:25+00:00", "id": "E210", "payload": {"from": "defined", "id": "T018", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:29:25+00:00", "id": "E211", "payload": {"classification": "one_go", "reason": "Bounded write-only begin/end projection wiring with targeted tests; no runtime read cutover.", "ticket_id": "T018"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T12:29:32+00:00", "id": "E212", "payload": {"from": "todo", "id": "P023", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:36:39+00:00", "id": "E213", "payload": {"from": "classified", "id": "T018", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:36:39+00:00", "id": "E214", "payload": {"from": "executing", "id": "T018", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:36:39+00:00", "id": "E215", "payload": {"result_id": "R015", "ticket_id": "T018"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T12:37:35+00:00", "id": "E216", "payload": {"from": "doing", "id": "P023", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:37:35+00:00", "id": "E217", "payload": {"from": "checking", "id": "P023", "to": "followup"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:37:35+00:00", "id": "E218", "payload": {"check_id": "C016", "followup_id": "P026", "problem_id": "P023", "status": "not_success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T12:38:04+00:00", "id": "E219", "payload": {"problem_id": "P026", "ticket_id": "T019", "title": "Add Nested Lifecycle And Restart Projection Tests"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T12:38:04+00:00", "id": "E220", "payload": {"from": "created", "id": "T019", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:38:12+00:00", "id": "E221", "payload": {"from": "defined", "id": "T019", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:38:12+00:00", "id": "E222", "payload": {"classification": "one_go", "reason": "Focused verification-only follow-up: add nested lifecycle and reopened-store tests, then run targeted and full Cortex tests.", "ticket_id": "T019"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T12:40:08+00:00", "id": "E223", "payload": {"from": "classified", "id": "T019", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:40:08+00:00", "id": "E224", "payload": {"from": "executing", "id": "T019", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:40:08+00:00", "id": "E225", "payload": {"result_id": "R016", "ticket_id": "T019"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T12:40:29+00:00", "id": "E226", "payload": {"from": "followup", "id": "P026", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:40:29+00:00", "id": "E227", "payload": {"from": "checking", "id": "P026", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:40:29+00:00", "id": "E228", "payload": {"check_id": "C017", "followup_id": null, "problem_id": "P026", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T12:40:53+00:00", "id": "E229", "payload": {"from": "followup", "id": "P023", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:40:53+00:00", "id": "E230", "payload": {"from": "checking", "id": "P023", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:40:53+00:00", "id": "E231", "payload": {"check_id": "C018", "followup_id": null, "problem_id": "P023", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T12:41:23+00:00", "id": "E232", "payload": {"problem_id": "P024", "ticket_id": "T020", "title": "Add Explicit Finalize Remaining Stack Event"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T12:41:23+00:00", "id": "E233", "payload": {"from": "created", "id": "T020", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:41:32+00:00", "id": "E234", "payload": {"from": "defined", "id": "T020", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:41:32+00:00", "id": "E235", "payload": {"classification": "split", "reason": "Finalize semantics touches operational event helper, scope_end wiring, idempotent retry behavior, and API/helper verification; split prevents partial wire-up.", "ticket_id": "T020"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T12:42:24+00:00", "id": "E236", "payload": {"from": "classified", "id": "T020", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:42:24+00:00", "id": "E237", "payload": {"parent_id": "P024", "problem_id": "P027", "title": "Phase 3B3A Active Stack Finalize Helper"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T12:42:24+00:00", "id": "E238", "payload": {"parent_id": "P024", "problem_id": "P028", "title": "Phase 3B3B Scope Archive Finalize Wiring"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T12:42:24+00:00", "id": "E239", "payload": {"parent_id": "P024", "problem_id": "P029", "title": "Phase 3B3C Finalize Verification And Residue Check"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T12:42:45+00:00", "id": "E240", "payload": {"problem_id": "P027", "ticket_id": "T021", "title": "Implement Active Stack Finalize Helper"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T12:42:45+00:00", "id": "E241", "payload": {"from": "created", "id": "T021", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:42:52+00:00", "id": "E242", "payload": {"from": "defined", "id": "T021", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:42:52+00:00", "id": "E243", "payload": {"classification": "one_go", "reason": "Small helper with focused unit tests and no live archive wiring; bounded and directly verifiable.", "ticket_id": "T021"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T12:43:01+00:00", "id": "E244", "payload": {"from": "todo", "id": "P027", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:45:19+00:00", "id": "E245", "payload": {"from": "classified", "id": "T021", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:45:19+00:00", "id": "E246", "payload": {"from": "executing", "id": "T021", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:45:19+00:00", "id": "E247", "payload": {"result_id": "R017", "ticket_id": "T021"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T12:45:44+00:00", "id": "E248", "payload": {"from": "doing", "id": "P027", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:45:44+00:00", "id": "E249", "payload": {"from": "checking", "id": "P027", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:45:44+00:00", "id": "E250", "payload": {"check_id": "C019", "followup_id": null, "problem_id": "P027", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T12:46:32+00:00", "id": "E251", "payload": {"problem_id": "P028", "ticket_id": "T022", "title": "Wire Scope Archive Through Active Stack Finalize"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T12:46:32+00:00", "id": "E252", "payload": {"from": "created", "id": "T022", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:46:41+00:00", "id": "E253", "payload": {"from": "defined", "id": "T022", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:46:41+00:00", "id": "E254", "payload": {"classification": "one_go", "reason": "Single live-path wiring problem after helper split; bounded to scope_end archive integration and direct tests.", "ticket_id": "T022"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T12:46:48+00:00", "id": "E255", "payload": {"from": "todo", "id": "P028", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:51:53+00:00", "id": "E256", "payload": {"from": "classified", "id": "T022", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:51:53+00:00", "id": "E257", "payload": {"from": "executing", "id": "T022", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:51:53+00:00", "id": "E258", "payload": {"result_id": "R018", "ticket_id": "T022"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T12:52:20+00:00", "id": "E259", "payload": {"from": "doing", "id": "P028", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:52:20+00:00", "id": "E260", "payload": {"from": "checking", "id": "P028", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:52:20+00:00", "id": "E261", "payload": {"check_id": "C020", "followup_id": null, "problem_id": "P028", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T12:52:49+00:00", "id": "E262", "payload": {"problem_id": "P029", "ticket_id": "T023", "title": "Verify Finalize Wiring And Remove Residue"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T12:52:49+00:00", "id": "E263", "payload": {"from": "created", "id": "T023", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:52:58+00:00", "id": "E264", "payload": {"from": "defined", "id": "T023", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:52:58+00:00", "id": "E265", "payload": {"classification": "one_go", "reason": "Verification and residue pass over already split helper/wiring work; bounded and directly checkable.", "ticket_id": "T023"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T12:53:06+00:00", "id": "E266", "payload": {"from": "todo", "id": "P029", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:54:25+00:00", "id": "E267", "payload": {"from": "classified", "id": "T023", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:54:25+00:00", "id": "E268", "payload": {"from": "executing", "id": "T023", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:54:25+00:00", "id": "E269", "payload": {"result_id": "R019", "ticket_id": "T023"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T12:54:49+00:00", "id": "E270", "payload": {"from": "doing", "id": "P029", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:54:49+00:00", "id": "E271", "payload": {"from": "checking", "id": "P029", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:54:49+00:00", "id": "E272", "payload": {"check_id": "C021", "followup_id": null, "problem_id": "P029", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T12:55:22+00:00", "id": "E273", "payload": {"from": "todo", "id": "P024", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:55:23+00:00", "id": "E274", "payload": {"from": "splitting", "id": "T020", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:55:23+00:00", "id": "E275", "payload": {"result_id": "R020", "ticket_id": "T020"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T12:55:56+00:00", "id": "E276", "payload": {"from": "doing", "id": "P024", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:55:56+00:00", "id": "E277", "payload": {"from": "checking", "id": "P024", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:55:56+00:00", "id": "E278", "payload": {"check_id": "C022", "followup_id": null, "problem_id": "P024", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T12:56:33+00:00", "id": "E279", "payload": {"problem_id": "P025", "ticket_id": "T024", "title": "Verify Stack Write Projection Completeness"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T12:56:33+00:00", "id": "E280", "payload": {"from": "created", "id": "T024", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:56:45+00:00", "id": "E281", "payload": {"from": "defined", "id": "T024", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:56:45+00:00", "id": "E282", "payload": {"classification": "one_go", "reason": "Verification-only phase gate over already closed helper/begin-end/finalize tickets; bounded to tests and static audit.", "ticket_id": "T024"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T12:56:52+00:00", "id": "E283", "payload": {"from": "todo", "id": "P025", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:58:05+00:00", "id": "E284", "payload": {"from": "classified", "id": "T024", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:58:05+00:00", "id": "E285", "payload": {"from": "executing", "id": "T024", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:58:05+00:00", "id": "E286", "payload": {"result_id": "R021", "ticket_id": "T024"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T12:58:26+00:00", "id": "E287", "payload": {"from": "doing", "id": "P025", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:58:26+00:00", "id": "E288", "payload": {"from": "checking", "id": "P025", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:58:26+00:00", "id": "E289", "payload": {"check_id": "C023", "followup_id": null, "problem_id": "P025", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T12:58:50+00:00", "id": "E290", "payload": {"from": "todo", "id": "P018", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:58:50+00:00", "id": "E291", "payload": {"from": "splitting", "id": "T016", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T12:58:50+00:00", "id": "E292", "payload": {"result_id": "R022", "ticket_id": "T016"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T12:59:43+00:00", "id": "E293", "payload": {"from": "doing", "id": "P018", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:59:43+00:00", "id": "E294", "payload": {"from": "checking", "id": "P018", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T12:59:43+00:00", "id": "E295", "payload": {"check_id": "C024", "followup_id": null, "problem_id": "P018", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T13:00:20+00:00", "id": "E296", "payload": {"problem_id": "P019", "ticket_id": "T025", "title": "Cut Runtime Stack Reads To SQLite Active Stack"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T13:00:20+00:00", "id": "E297", "payload": {"from": "created", "id": "T025", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:00:29+00:00", "id": "E298", "payload": {"from": "defined", "id": "T025", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:00:29+00:00", "id": "E299", "payload": {"classification": "split", "reason": "Runtime read cutover touches status, skill_begin parent selection, skill_end LIFO validation, fresh-workspace persistence, and static quarantine boundaries; split prevents half-cutover.", "ticket_id": "T025"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T13:01:50+00:00", "id": "E300", "payload": {"from": "classified", "id": "T025", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:01:50+00:00", "id": "E301", "payload": {"parent_id": "P019", "problem_id": "P030", "title": "Phase 3C1 SQLite Active Stack Read Adapter"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T13:01:50+00:00", "id": "E302", "payload": {"parent_id": "P019", "problem_id": "P031", "title": "Phase 3C2 Context Status SQLite Stack Read Cutover"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T13:01:50+00:00", "id": "E303", "payload": {"parent_id": "P019", "problem_id": "P032", "title": "Phase 3C3 Skill Begin Parent Selection SQLite Cutover"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T13:01:50+00:00", "id": "E304", "payload": {"parent_id": "P019", "problem_id": "P033", "title": "Phase 3C4 Skill End LIFO SQLite Cutover"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T13:01:50+00:00", "id": "E305", "payload": {"parent_id": "P019", "problem_id": "P034", "title": "Phase 3C5 Runtime Read Cutover Verification Gate"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T13:02:20+00:00", "id": "E306", "payload": {"problem_id": "P030", "ticket_id": "T026", "title": "Implement SQLite Active Stack Read Adapter"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T13:02:20+00:00", "id": "E307", "payload": {"from": "created", "id": "T026", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:02:28+00:00", "id": "E308", "payload": {"from": "defined", "id": "T026", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:02:28+00:00", "id": "E309", "payload": {"classification": "one_go", "reason": "Small read-side adapter with focused unit tests; no live endpoint cutover in this ticket.", "ticket_id": "T026"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T13:02:35+00:00", "id": "E310", "payload": {"from": "todo", "id": "P030", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:04:13+00:00", "id": "E311", "payload": {"from": "classified", "id": "T026", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:04:13+00:00", "id": "E312", "payload": {"from": "executing", "id": "T026", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:04:13+00:00", "id": "E313", "payload": {"result_id": "R023", "ticket_id": "T026"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T13:04:32+00:00", "id": "E314", "payload": {"from": "doing", "id": "P030", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:04:32+00:00", "id": "E315", "payload": {"from": "checking", "id": "P030", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:04:32+00:00", "id": "E316", "payload": {"check_id": "C025", "followup_id": null, "problem_id": "P030", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T13:05:06+00:00", "id": "E317", "payload": {"problem_id": "P031", "ticket_id": "T027", "title": "Cut Context Status Default Stack To SQLite"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T13:05:06+00:00", "id": "E318", "payload": {"from": "created", "id": "T027", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:05:13+00:00", "id": "E319", "payload": {"from": "defined", "id": "T027", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:05:13+00:00", "id": "E320", "payload": {"classification": "one_go", "reason": "Single endpoint read cutover with focused tests; no begin/end LIFO changes in this ticket.", "ticket_id": "T027"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T13:05:21+00:00", "id": "E321", "payload": {"from": "todo", "id": "P031", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:07:51+00:00", "id": "E322", "payload": {"from": "classified", "id": "T027", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:07:51+00:00", "id": "E323", "payload": {"from": "executing", "id": "T027", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:07:51+00:00", "id": "E324", "payload": {"result_id": "R024", "ticket_id": "T027"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T13:08:15+00:00", "id": "E325", "payload": {"from": "doing", "id": "P031", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:08:15+00:00", "id": "E326", "payload": {"from": "checking", "id": "P031", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:08:15+00:00", "id": "E327", "payload": {"check_id": "C026", "followup_id": null, "problem_id": "P031", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T13:09:00+00:00", "id": "E328", "payload": {"problem_id": "P032", "ticket_id": "T028", "title": "Cut Skill Begin Parent Selection To SQLite"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T13:09:00+00:00", "id": "E329", "payload": {"from": "created", "id": "T028", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:09:13+00:00", "id": "E330", "payload": {"from": "defined", "id": "T028", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:09:13+00:00", "id": "E331", "payload": {"classification": "one_go", "reason": "Single skill_begin parent/depth read cutover with focused lifecycle tests; skill_end handled separately.", "ticket_id": "T028"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T13:09:26+00:00", "id": "E332", "payload": {"from": "todo", "id": "P032", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:12:15+00:00", "id": "E333", "payload": {"from": "classified", "id": "T028", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:12:15+00:00", "id": "E334", "payload": {"from": "executing", "id": "T028", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:12:15+00:00", "id": "E335", "payload": {"result_id": "R025", "ticket_id": "T028"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T13:12:36+00:00", "id": "E336", "payload": {"from": "doing", "id": "P032", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:12:36+00:00", "id": "E337", "payload": {"from": "checking", "id": "P032", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:12:36+00:00", "id": "E338", "payload": {"check_id": "C027", "followup_id": null, "problem_id": "P032", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T13:13:11+00:00", "id": "E339", "payload": {"problem_id": "P033", "ticket_id": "T029", "title": "Cut Skill End LIFO Validation To SQLite"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T13:13:11+00:00", "id": "E340", "payload": {"from": "created", "id": "T029", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:13:21+00:00", "id": "E341", "payload": {"from": "defined", "id": "T029", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:13:21+00:00", "id": "E342", "payload": {"classification": "one_go", "reason": "Single skill_end LIFO read cutover with focused lifecycle tests; verification gate remains P034.", "ticket_id": "T029"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T13:13:36+00:00", "id": "E343", "payload": {"from": "todo", "id": "P033", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:16:25+00:00", "id": "E344", "payload": {"from": "classified", "id": "T029", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:16:25+00:00", "id": "E345", "payload": {"from": "executing", "id": "T029", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:16:25+00:00", "id": "E346", "payload": {"result_id": "R026", "ticket_id": "T029"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T13:16:50+00:00", "id": "E347", "payload": {"from": "doing", "id": "P033", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:16:50+00:00", "id": "E348", "payload": {"from": "checking", "id": "P033", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:16:50+00:00", "id": "E349", "payload": {"check_id": "C028", "followup_id": null, "problem_id": "P033", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T13:17:22+00:00", "id": "E350", "payload": {"problem_id": "P034", "ticket_id": "T030", "title": "Verify Runtime Stack Read Cutover"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T13:17:22+00:00", "id": "E351", "payload": {"from": "created", "id": "T030", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:17:31+00:00", "id": "E352", "payload": {"from": "defined", "id": "T030", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:17:31+00:00", "id": "E353", "payload": {"classification": "one_go", "reason": "Verification gate only: tests, static audit, and explicit remaining-use inventory.", "ticket_id": "T030"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T13:17:40+00:00", "id": "E354", "payload": {"from": "todo", "id": "P034", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:18:59+00:00", "id": "E355", "payload": {"from": "classified", "id": "T030", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:18:59+00:00", "id": "E356", "payload": {"from": "executing", "id": "T030", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:18:59+00:00", "id": "E357", "payload": {"result_id": "R027", "ticket_id": "T030"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T13:19:42+00:00", "id": "E358", "payload": {"from": "doing", "id": "P034", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:19:42+00:00", "id": "E359", "payload": {"from": "checking", "id": "P034", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:19:42+00:00", "id": "E360", "payload": {"check_id": "C029", "followup_id": null, "problem_id": "P034", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T13:20:20+00:00", "id": "E361", "payload": {"from": "todo", "id": "P019", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:20:20+00:00", "id": "E362", "payload": {"from": "splitting", "id": "T025", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:20:20+00:00", "id": "E363", "payload": {"result_id": "R028", "ticket_id": "T025"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T13:22:48+00:00", "id": "E364", "payload": {"from": "doing", "id": "P019", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:22:48+00:00", "id": "E365", "payload": {"from": "checking", "id": "P019", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:22:48+00:00", "id": "E366", "payload": {"check_id": "C030", "followup_id": null, "problem_id": "P019", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T13:24:28+00:00", "id": "E367", "payload": {"problem_id": "P020", "ticket_id": "T031", "title": "Phase 3D File-Walk Stack Quarantine And Deletion"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T13:24:28+00:00", "id": "E368", "payload": {"from": "created", "id": "T031", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:24:59+00:00", "id": "E369", "payload": {"from": "defined", "id": "T031", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:24:59+00:00", "id": "E370", "payload": {"classification": "split", "reason": "Multiple independent residue clusters remain: archive/finalize stack snapshots, begin/end error diagnostics, post-begin projection seeding, non-stack active-path routing, and final static/test guards. Splitting prevents broad cleanup from hiding old authority paths.", "ticket_id": "T031"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T13:26:45+00:00", "id": "E371", "payload": {"from": "classified", "id": "T031", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:26:45+00:00", "id": "E372", "payload": {"parent_id": "P020", "problem_id": "P035", "title": "Archive Finalize Stack Snapshot Cutover"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T13:26:45+00:00", "id": "E373", "payload": {"parent_id": "P020", "problem_id": "P036", "title": "Skill Begin Error And Projection Cleanup"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T13:26:45+00:00", "id": "E374", "payload": {"parent_id": "P020", "problem_id": "P037", "title": "Skill End Exception Diagnostic Cleanup"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T13:26:45+00:00", "id": "E375", "payload": {"parent_id": "P020", "problem_id": "P038", "title": "Active Path Routing Endpoint Cutover"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T13:26:45+00:00", "id": "E376", "payload": {"parent_id": "P020", "problem_id": "P039", "title": "File-Walk Helper Deletion And Guard Rails"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T13:27:21+00:00", "id": "E377", "payload": {"problem_id": "P035", "ticket_id": "T032", "title": "Cut Archive Finalize Stack Snapshots To SQLite Projection"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T13:27:21+00:00", "id": "E378", "payload": {"from": "created", "id": "T032", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:27:41+00:00", "id": "E379", "payload": {"from": "defined", "id": "T032", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:27:41+00:00", "id": "E380", "payload": {"classification": "one_go", "reason": "Single bounded lifecycle slice: replace scope_end archive/finalize stack snapshots with SQLite projection and verify with targeted tests plus static section audit.", "ticket_id": "T032"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T13:28:00+00:00", "id": "E381", "payload": {"from": "todo", "id": "P035", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:30:44+00:00", "id": "E382", "payload": {"from": "classified", "id": "T032", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:30:44+00:00", "id": "E383", "payload": {"from": "executing", "id": "T032", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:30:44+00:00", "id": "E384", "payload": {"result_id": "R029", "ticket_id": "T032"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T13:31:21+00:00", "id": "E385", "payload": {"from": "doing", "id": "P035", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:31:21+00:00", "id": "E386", "payload": {"from": "checking", "id": "P035", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:31:21+00:00", "id": "E387", "payload": {"check_id": "C031", "followup_id": null, "problem_id": "P035", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T13:31:58+00:00", "id": "E388", "payload": {"problem_id": "P036", "ticket_id": "T033", "title": "Cut Skill Begin Residual File-Walk Stack Reads"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T13:31:58+00:00", "id": "E389", "payload": {"from": "created", "id": "T033", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:32:14+00:00", "id": "E390", "payload": {"from": "defined", "id": "T033", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:32:14+00:00", "id": "E391", "payload": {"classification": "one_go", "reason": "Bounded to one endpoint helper: replace skill_begin residual stack reads with a single SQLite projection snapshot and verify branch behavior with targeted tests.", "ticket_id": "T033"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T13:32:31+00:00", "id": "E392", "payload": {"from": "todo", "id": "P036", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:35:34+00:00", "id": "E393", "payload": {"from": "classified", "id": "T033", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:35:34+00:00", "id": "E394", "payload": {"from": "executing", "id": "T033", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:35:34+00:00", "id": "E395", "payload": {"result_id": "R030", "ticket_id": "T033"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T13:36:23+00:00", "id": "E396", "payload": {"from": "doing", "id": "P036", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:36:23+00:00", "id": "E397", "payload": {"from": "checking", "id": "P036", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:36:23+00:00", "id": "E398", "payload": {"check_id": "C032", "followup_id": null, "problem_id": "P036", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T13:37:03+00:00", "id": "E399", "payload": {"problem_id": "P037", "ticket_id": "T034", "title": "Cut Skill End Exception Diagnostics To Projection Snapshot"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T13:37:03+00:00", "id": "E400", "payload": {"from": "created", "id": "T034", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:37:25+00:00", "id": "E401", "payload": {"from": "defined", "id": "T034", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:37:25+00:00", "id": "E402", "payload": {"classification": "one_go", "reason": "Single diagnostic residue inside skill_end: remove the exception fallback file-walk read and verify with targeted monkeypatch/static guard tests.", "ticket_id": "T034"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T13:37:43+00:00", "id": "E403", "payload": {"from": "todo", "id": "P037", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:39:40+00:00", "id": "E404", "payload": {"from": "classified", "id": "T034", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:39:40+00:00", "id": "E405", "payload": {"from": "executing", "id": "T034", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:39:40+00:00", "id": "E406", "payload": {"result_id": "R031", "ticket_id": "T034"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T13:40:24+00:00", "id": "E407", "payload": {"from": "doing", "id": "P037", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:40:24+00:00", "id": "E408", "payload": {"from": "checking", "id": "P037", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:40:24+00:00", "id": "E409", "payload": {"check_id": "C033", "followup_id": null, "problem_id": "P037", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T13:41:49+00:00", "id": "E410", "payload": {"problem_id": "P038", "ticket_id": "T035", "title": "Cut Active Write Routing To SQLite Projection"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T13:41:49+00:00", "id": "E411", "payload": {"from": "created", "id": "T035", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:42:07+00:00", "id": "E412", "payload": {"from": "defined", "id": "T035", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:42:07+00:00", "id": "E413", "payload": {"classification": "one_go", "reason": "Two endpoints share the same active-path routing dependency and can be cut over together with targeted tests and static guards.", "ticket_id": "T035"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T13:42:24+00:00", "id": "E414", "payload": {"from": "todo", "id": "P038", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:47:51+00:00", "id": "E415", "payload": {"from": "classified", "id": "T035", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:47:51+00:00", "id": "E416", "payload": {"from": "executing", "id": "T035", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:47:51+00:00", "id": "E417", "payload": {"result_id": "R032", "ticket_id": "T035"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T13:48:23+00:00", "id": "E418", "payload": {"from": "doing", "id": "P038", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:48:23+00:00", "id": "E419", "payload": {"from": "checking", "id": "P038", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:48:23+00:00", "id": "E420", "payload": {"check_id": "C034", "followup_id": null, "problem_id": "P038", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T13:49:01+00:00", "id": "E421", "payload": {"problem_id": "P039", "ticket_id": "T036", "title": "Delete File-Walk Active Stack Helper And Add Final Guards"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T13:49:01+00:00", "id": "E422", "payload": {"from": "created", "id": "T036", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:49:19+00:00", "id": "E423", "payload": {"from": "defined", "id": "T036", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:49:19+00:00", "id": "E424", "payload": {"classification": "one_go", "reason": "Remaining residue is a single final deletion/guard slice: replace wake create seeding with deterministic projection frames, delete helper, and verify no references remain.", "ticket_id": "T036"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T13:49:37+00:00", "id": "E425", "payload": {"from": "todo", "id": "P039", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:53:41+00:00", "id": "E426", "payload": {"from": "classified", "id": "T036", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:53:41+00:00", "id": "E427", "payload": {"from": "executing", "id": "T036", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:53:41+00:00", "id": "E428", "payload": {"result_id": "R033", "ticket_id": "T036"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T13:54:13+00:00", "id": "E429", "payload": {"from": "doing", "id": "P039", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:54:13+00:00", "id": "E430", "payload": {"from": "checking", "id": "P039", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:54:13+00:00", "id": "E431", "payload": {"check_id": "C035", "followup_id": null, "problem_id": "P039", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T13:54:34+00:00", "id": "E432", "payload": {"from": "todo", "id": "P020", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:55:08+00:00", "id": "E433", "payload": {"from": "splitting", "id": "T031", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:55:08+00:00", "id": "E434", "payload": {"result_id": "R034", "ticket_id": "T031"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T13:55:48+00:00", "id": "E435", "payload": {"from": "doing", "id": "P020", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:55:48+00:00", "id": "E436", "payload": {"from": "checking", "id": "P020", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:55:48+00:00", "id": "E437", "payload": {"check_id": "C036", "followup_id": null, "problem_id": "P020", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T13:56:32+00:00", "id": "E438", "payload": {"problem_id": "P021", "ticket_id": "T037", "title": "Verify Active Stack SQLite Authority Cutover"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T13:56:32+00:00", "id": "E439", "payload": {"from": "created", "id": "T037", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:56:47+00:00", "id": "E440", "payload": {"from": "defined", "id": "T037", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:56:47+00:00", "id": "E441", "payload": {"classification": "one_go", "reason": "Verification-only gate with clear commands and no independent implementation clusters unless a gap is found by the check.", "ticket_id": "T037"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T13:57:02+00:00", "id": "E442", "payload": {"from": "todo", "id": "P021", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:58:19+00:00", "id": "E443", "payload": {"from": "classified", "id": "T037", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:58:19+00:00", "id": "E444", "payload": {"from": "executing", "id": "T037", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T13:58:19+00:00", "id": "E445", "payload": {"result_id": "R035", "ticket_id": "T037"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T13:59:15+00:00", "id": "E446", "payload": {"from": "doing", "id": "P021", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:59:15+00:00", "id": "E447", "payload": {"from": "checking", "id": "P021", "to": "followup"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T13:59:15+00:00", "id": "E448", "payload": {"check_id": "C037", "followup_id": "P040", "problem_id": "P021", "status": "not_success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T14:00:27+00:00", "id": "E449", "payload": {"problem_id": "P040", "ticket_id": "T038", "title": "Delete Workspace Resolve Active Scope Path"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T14:00:27+00:00", "id": "E450", "payload": {"from": "created", "id": "T038", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:01:58+00:00", "id": "E451", "payload": {"from": "defined", "id": "T038", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:01:58+00:00", "id": "E452", "payload": {"classification": "one_go", "reason": "Single cleanup slice: production audit shows only the Workspace file-walk helper definition remains; tests can be updated away from monkeypatching it, then static search plus targeted/full tests verify physical deletion.", "ticket_id": "T038"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T14:02:32+00:00", "id": "E453", "payload": {"from": "followup", "id": "P040", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:06:42+00:00", "id": "E454", "payload": {"from": "classified", "id": "T038", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:06:42+00:00", "id": "E455", "payload": {"from": "executing", "id": "T038", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:06:42+00:00", "id": "E456", "payload": {"result_id": "R036", "ticket_id": "T038"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T14:07:23+00:00", "id": "E457", "payload": {"from": "doing", "id": "P040", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:07:23+00:00", "id": "E458", "payload": {"from": "checking", "id": "P040", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:07:23+00:00", "id": "E459", "payload": {"check_id": "C038", "followup_id": null, "problem_id": "P040", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T14:08:05+00:00", "id": "E460", "payload": {"from": "followup", "id": "P021", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:08:05+00:00", "id": "E461", "payload": {"from": "checking", "id": "P021", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:08:05+00:00", "id": "E462", "payload": {"check_id": "C039", "followup_id": null, "problem_id": "P021", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T14:09:01+00:00", "id": "E463", "payload": {"from": "todo", "id": "P004", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:09:01+00:00", "id": "E464", "payload": {"from": "splitting", "id": "T014", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:09:01+00:00", "id": "E465", "payload": {"result_id": "R037", "ticket_id": "T014"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T14:09:29+00:00", "id": "E466", "payload": {"from": "doing", "id": "P004", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:09:29+00:00", "id": "E467", "payload": {"from": "checking", "id": "P004", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:09:29+00:00", "id": "E468", "payload": {"check_id": "C040", "followup_id": null, "problem_id": "P004", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T14:10:21+00:00", "id": "E469", "payload": {"problem_id": "P005", "ticket_id": "T039", "title": "Cut Blob Payload Manifests Into Cortex Authority"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T14:10:21+00:00", "id": "E470", "payload": {"from": "created", "id": "T039", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:10:30+00:00", "id": "E471", "payload": {"from": "defined", "id": "T039", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:10:30+00:00", "id": "E472", "payload": {"classification": "split", "reason": "Payload manifest cutover crosses audit, write wiring, read/failure semantics, retention/status tests, and cleanup; splitting prevents another half-cutover where BlobRef remains hidden semantic authority.", "ticket_id": "T039"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T14:11:17+00:00", "id": "E473", "payload": {"from": "classified", "id": "T039", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:11:17+00:00", "id": "E474", "payload": {"parent_id": "P005", "problem_id": "P041", "title": "Phase 4A Payload Manifest Boundary Audit"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T14:11:17+00:00", "id": "E475", "payload": {"parent_id": "P005", "problem_id": "P042", "title": "Phase 4B Payload Manifest Write Wiring"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T14:11:17+00:00", "id": "E476", "payload": {"parent_id": "P005", "problem_id": "P043", "title": "Phase 4C Payload Read And Failure Semantics"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T14:11:17+00:00", "id": "E477", "payload": {"parent_id": "P005", "problem_id": "P044", "title": "Phase 4D Payload Manifest Verification And Cleanup"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T14:11:43+00:00", "id": "E478", "payload": {"problem_id": "P041", "ticket_id": "T040", "title": "Audit Payload Manifest Authority Boundaries"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T14:11:43+00:00", "id": "E479", "payload": {"from": "created", "id": "T040", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:11:54+00:00", "id": "E480", "payload": {"from": "defined", "id": "T040", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:11:54+00:00", "id": "E481", "payload": {"classification": "one_go", "reason": "Bounded read-only audit with no production edits; concrete call-site and behavior map can be completed in one execution result.", "ticket_id": "T040"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T14:12:03+00:00", "id": "E482", "payload": {"from": "todo", "id": "P041", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:13:43+00:00", "id": "E483", "payload": {"from": "classified", "id": "T040", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:13:43+00:00", "id": "E484", "payload": {"from": "executing", "id": "T040", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:13:43+00:00", "id": "E485", "payload": {"result_id": "R038", "ticket_id": "T040"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T14:14:13+00:00", "id": "E486", "payload": {"from": "doing", "id": "P041", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:14:13+00:00", "id": "E487", "payload": {"from": "checking", "id": "P041", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:14:13+00:00", "id": "E488", "payload": {"check_id": "C041", "followup_id": null, "problem_id": "P041", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T14:14:43+00:00", "id": "E489", "payload": {"problem_id": "P042", "ticket_id": "T041", "title": "Wire Payload Manifest Creation On Write Path"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T14:14:43+00:00", "id": "E490", "payload": {"from": "created", "id": "T041", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:14:54+00:00", "id": "E491", "payload": {"from": "defined", "id": "T041", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:14:54+00:00", "id": "E492", "payload": {"classification": "one_go", "reason": "Bounded write-path slice only: schema nullable blob_ref, Workspace manifest write helper, and targeted write tests; read/failure semantics remain separate P043.", "ticket_id": "T041"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T14:15:04+00:00", "id": "E493", "payload": {"from": "todo", "id": "P042", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:19:45+00:00", "id": "E494", "payload": {"from": "classified", "id": "T041", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:19:45+00:00", "id": "E495", "payload": {"from": "executing", "id": "T041", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:19:45+00:00", "id": "E496", "payload": {"result_id": "R039", "ticket_id": "T041"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T14:20:14+00:00", "id": "E497", "payload": {"from": "doing", "id": "P042", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:20:14+00:00", "id": "E498", "payload": {"from": "checking", "id": "P042", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:20:14+00:00", "id": "E499", "payload": {"check_id": "C042", "followup_id": null, "problem_id": "P042", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T14:20:43+00:00", "id": "E500", "payload": {"problem_id": "P043", "ticket_id": "T042", "title": "Make Payload Reads Manifest-Aware With Explicit Failure Semantics"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T14:20:43+00:00", "id": "E501", "payload": {"from": "created", "id": "T042", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:20:57+00:00", "id": "E502", "payload": {"from": "defined", "id": "T042", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:20:57+00:00", "id": "E503", "payload": {"classification": "one_go", "reason": "Bounded read/failure slice after P042 write manifests: add domain error classification, manifest status updates, and targeted tests; final full verification remains P044.", "ticket_id": "T042"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T14:21:08+00:00", "id": "E504", "payload": {"from": "todo", "id": "P043", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:26:04+00:00", "id": "E505", "payload": {"from": "classified", "id": "T042", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:26:04+00:00", "id": "E506", "payload": {"from": "executing", "id": "T042", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:26:04+00:00", "id": "E507", "payload": {"result_id": "R040", "ticket_id": "T042"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T14:26:35+00:00", "id": "E508", "payload": {"from": "doing", "id": "P043", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:26:35+00:00", "id": "E509", "payload": {"from": "checking", "id": "P043", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:26:35+00:00", "id": "E510", "payload": {"check_id": "C043", "followup_id": null, "problem_id": "P043", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T14:27:00+00:00", "id": "E511", "payload": {"problem_id": "P044", "ticket_id": "T043", "title": "Verify And Clean Payload Manifest Cutover"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T14:27:00+00:00", "id": "E512", "payload": {"from": "created", "id": "T043", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:27:10+00:00", "id": "E513", "payload": {"from": "defined", "id": "T043", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:27:10+00:00", "id": "E514", "payload": {"classification": "one_go", "reason": "Final verification/cleanup gate only: static audits, current-doc updates, targeted/full tests, and py_compile can be completed as one bounded pass.", "ticket_id": "T043"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T14:27:22+00:00", "id": "E515", "payload": {"from": "todo", "id": "P044", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:31:53+00:00", "id": "E516", "payload": {"from": "classified", "id": "T043", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:31:53+00:00", "id": "E517", "payload": {"from": "executing", "id": "T043", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:31:53+00:00", "id": "E518", "payload": {"result_id": "R041", "ticket_id": "T043"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T14:32:36+00:00", "id": "E519", "payload": {"from": "doing", "id": "P044", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:32:36+00:00", "id": "E520", "payload": {"from": "checking", "id": "P044", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:32:36+00:00", "id": "E521", "payload": {"check_id": "C044", "followup_id": null, "problem_id": "P044", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T14:33:19+00:00", "id": "E522", "payload": {"from": "todo", "id": "P005", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:33:19+00:00", "id": "E523", "payload": {"from": "splitting", "id": "T039", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:33:19+00:00", "id": "E524", "payload": {"result_id": "R042", "ticket_id": "T039"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T14:33:45+00:00", "id": "E525", "payload": {"from": "doing", "id": "P005", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:33:45+00:00", "id": "E526", "payload": {"from": "checking", "id": "P005", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:33:45+00:00", "id": "E527", "payload": {"check_id": "C045", "followup_id": null, "problem_id": "P005", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T14:34:26+00:00", "id": "E528", "payload": {"problem_id": "P006", "ticket_id": "T044", "title": "Remove Residual Local State Authority And Compatibility Paths"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T14:34:26+00:00", "id": "E529", "payload": {"from": "created", "id": "T044", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:34:36+00:00", "id": "E530", "payload": {"from": "defined", "id": "T044", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:34:36+00:00", "id": "E531", "payload": {"classification": "split", "reason": "Phase 5 spans audit, physical cleanup, guard updates, and broad verification; splitting prevents a fake one-go cleanup and lets each residue class be closed independently.", "ticket_id": "T044"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T14:35:21+00:00", "id": "E532", "payload": {"from": "classified", "id": "T044", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:35:21+00:00", "id": "E533", "payload": {"parent_id": "P006", "problem_id": "P045", "title": "Phase 5A Residue Audit And Classification"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T14:35:21+00:00", "id": "E534", "payload": {"parent_id": "P006", "problem_id": "P046", "title": "Phase 5B Remove Dead Local Authority Code"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T14:35:21+00:00", "id": "E535", "payload": {"parent_id": "P006", "problem_id": "P047", "title": "Phase 5C Current Docs And Comments Cleanup"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T14:35:21+00:00", "id": "E536", "payload": {"parent_id": "P006", "problem_id": "P048", "title": "Phase 5D Static Guards And Broad Verification"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T14:35:48+00:00", "id": "E537", "payload": {"problem_id": "P045", "ticket_id": "T045", "title": "Audit And Classify Cleanup Residue"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T14:35:48+00:00", "id": "E538", "payload": {"from": "created", "id": "T045", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:35:57+00:00", "id": "E539", "payload": {"from": "defined", "id": "T045", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:35:57+00:00", "id": "E540", "payload": {"classification": "one_go", "reason": "Audit-only work with no code mutation; one bounded static-inspection pass can produce the classification target list for child cleanup tickets.", "ticket_id": "T045"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T14:38:39+00:00", "id": "E541", "payload": {"from": "todo", "id": "P045", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:38:39+00:00", "id": "E542", "payload": {"from": "classified", "id": "T045", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:38:39+00:00", "id": "E543", "payload": {"from": "executing", "id": "T045", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:38:39+00:00", "id": "E544", "payload": {"result_id": "R043", "ticket_id": "T045"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T14:39:08+00:00", "id": "E545", "payload": {"from": "doing", "id": "P045", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:39:08+00:00", "id": "E546", "payload": {"from": "checking", "id": "P045", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:39:08+00:00", "id": "E547", "payload": {"check_id": "C046", "followup_id": null, "problem_id": "P045", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T14:40:06+00:00", "id": "E548", "payload": {"problem_id": "P046", "ticket_id": "T046", "title": "Physically Remove Live Local Authority Residue"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T14:40:06+00:00", "id": "E549", "payload": {"from": "created", "id": "T046", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:40:17+00:00", "id": "E550", "payload": {"from": "defined", "id": "T046", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:40:17+00:00", "id": "E551", "payload": {"classification": "split", "reason": "P046 touches lifecycle uniqueness, archive projection, and compatibility wrappers; splitting prevents a risky broad patch and lets each authority residue be checked independently.", "ticket_id": "T046"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T14:41:07+00:00", "id": "E552", "payload": {"from": "classified", "id": "T046", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:41:07+00:00", "id": "E553", "payload": {"parent_id": "P046", "problem_id": "P049", "title": "Phase 5B1 Scope Lookup And Uniqueness SQLite Cutover"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T14:41:08+00:00", "id": "E554", "payload": {"parent_id": "P046", "problem_id": "P050", "title": "Phase 5B2 Archive Tree Projection Quarantine"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T14:41:08+00:00", "id": "E555", "payload": {"parent_id": "P046", "problem_id": "P051", "title": "Phase 5B3 Compatibility Wrapper Review And Removal"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T14:41:53+00:00", "id": "E556", "payload": {"problem_id": "P049", "ticket_id": "T047", "title": "Cut Scope Lookup And Uniqueness To SQLite"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T14:41:53+00:00", "id": "E557", "payload": {"from": "created", "id": "T047", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:42:06+00:00", "id": "E558", "payload": {"from": "defined", "id": "T047", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:42:06+00:00", "id": "E559", "payload": {"classification": "one_go", "reason": "Single authority slice with clear code/test boundaries: add SQLite scope lookup helpers, wire projection writes, replace two file-walk call sites, and run targeted tests.", "ticket_id": "T047"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T14:51:28+00:00", "id": "E560", "payload": {"from": "todo", "id": "P049", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:51:28+00:00", "id": "E561", "payload": {"from": "classified", "id": "T047", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:51:28+00:00", "id": "E562", "payload": {"from": "executing", "id": "T047", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:51:28+00:00", "id": "E563", "payload": {"result_id": "R044", "ticket_id": "T047"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T14:51:58+00:00", "id": "E564", "payload": {"from": "doing", "id": "P049", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:51:58+00:00", "id": "E565", "payload": {"from": "checking", "id": "P049", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:51:58+00:00", "id": "E566", "payload": {"check_id": "C047", "followup_id": null, "problem_id": "P049", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T14:52:29+00:00", "id": "E567", "payload": {"problem_id": "P050", "ticket_id": "T048", "title": "Quarantine Archive Scope Tree Projection Helper"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T14:52:29+00:00", "id": "E568", "payload": {"from": "created", "id": "T048", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:52:39+00:00", "id": "E569", "payload": {"from": "defined", "id": "T048", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:52:39+00:00", "id": "E570", "payload": {"classification": "one_go", "reason": "Small bounded rename/quarantine of one helper with targeted archive and static guard tests.", "ticket_id": "T048"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T14:55:38+00:00", "id": "E571", "payload": {"from": "todo", "id": "P050", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:55:38+00:00", "id": "E572", "payload": {"from": "classified", "id": "T048", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:55:38+00:00", "id": "E573", "payload": {"from": "executing", "id": "T048", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:55:38+00:00", "id": "E574", "payload": {"result_id": "R045", "ticket_id": "T048"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T14:56:58+00:00", "id": "E575", "payload": {"from": "doing", "id": "P050", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:56:58+00:00", "id": "E576", "payload": {"from": "checking", "id": "P050", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T14:56:58+00:00", "id": "E577", "payload": {"check_id": "C048", "followup_id": null, "problem_id": "P050", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T14:57:53+00:00", "id": "E578", "payload": {"problem_id": "P051", "ticket_id": "T049", "title": "Phase 5B3 Compatibility Wrapper Review And Removal"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T14:57:53+00:00", "id": "E579", "payload": {"from": "created", "id": "T049", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:58:14+00:00", "id": "E580", "payload": {"from": "defined", "id": "T049", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:58:14+00:00", "id": "E581", "payload": {"classification": "split", "reason": "The ticket combines audit, source API cleanup, test renaming, external import risk review, and targeted verification; split prevents vague cleanup and lets each compatibility surface close with explicit evidence.", "ticket_id": "T049"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T14:59:02+00:00", "id": "E582", "payload": {"from": "classified", "id": "T049", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:59:02+00:00", "id": "E583", "payload": {"parent_id": "P051", "problem_id": "P052", "title": "Phase 5B3.1 Compatibility Residue Audit Map"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T14:59:02+00:00", "id": "E584", "payload": {"parent_id": "P051", "problem_id": "P053", "title": "Phase 5B3.2 Step Projection Explicit API Cutover"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T14:59:02+00:00", "id": "E585", "payload": {"parent_id": "P051", "problem_id": "P054", "title": "Phase 5B3.3 Legacy Test And Comment Wording Cleanup"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T14:59:02+00:00", "id": "E586", "payload": {"parent_id": "P051", "problem_id": "P055", "title": "Phase 5B3.4 Compatibility Residue Verification Gate"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T14:59:39+00:00", "id": "E587", "payload": {"problem_id": "P052", "ticket_id": "T050", "title": "Phase 5B3.1 Compatibility Residue Audit Map"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T14:59:39+00:00", "id": "E588", "payload": {"from": "created", "id": "T050", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:59:50+00:00", "id": "E589", "payload": {"from": "defined", "id": "T050", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T14:59:50+00:00", "id": "E590", "payload": {"classification": "one_go", "reason": "Read-only bounded audit over specific search terms/files; it produces a classification map and does not combine implementation slices.", "ticket_id": "T050"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T15:01:13+00:00", "id": "E591", "payload": {"from": "todo", "id": "P052", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:01:13+00:00", "id": "E592", "payload": {"from": "classified", "id": "T050", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:01:13+00:00", "id": "E593", "payload": {"from": "executing", "id": "T050", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:01:13+00:00", "id": "E594", "payload": {"result_id": "R046", "ticket_id": "T050"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T15:02:00+00:00", "id": "E595", "payload": {"from": "doing", "id": "P052", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:02:00+00:00", "id": "E596", "payload": {"from": "checking", "id": "P052", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:02:00+00:00", "id": "E597", "payload": {"check_id": "C049", "followup_id": null, "problem_id": "P052", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T15:02:32+00:00", "id": "E598", "payload": {"problem_id": "P053", "ticket_id": "T051", "title": "Phase 5B3.2 Step Projection Explicit API Cutover"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T15:02:32+00:00", "id": "E599", "payload": {"from": "created", "id": "T051", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:02:42+00:00", "id": "E600", "payload": {"from": "defined", "id": "T051", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:02:42+00:00", "id": "E601", "payload": {"classification": "one_go", "reason": "Small bounded source/test API cutover: delete one wrapper, remove one export, update direct Cortex test imports, then verify with targeted tests/static search.", "ticket_id": "T051"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T15:04:03+00:00", "id": "E602", "payload": {"from": "todo", "id": "P053", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:04:03+00:00", "id": "E603", "payload": {"from": "classified", "id": "T051", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:04:03+00:00", "id": "E604", "payload": {"from": "executing", "id": "T051", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:04:03+00:00", "id": "E605", "payload": {"result_id": "R047", "ticket_id": "T051"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T15:04:30+00:00", "id": "E606", "payload": {"from": "doing", "id": "P053", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:04:30+00:00", "id": "E607", "payload": {"from": "checking", "id": "P053", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:04:30+00:00", "id": "E608", "payload": {"check_id": "C050", "followup_id": null, "problem_id": "P053", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T15:05:02+00:00", "id": "E609", "payload": {"problem_id": "P054", "ticket_id": "T052", "title": "Phase 5B3.3 Legacy Test And Comment Wording Cleanup"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T15:05:02+00:00", "id": "E610", "payload": {"from": "created", "id": "T052", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:05:12+00:00", "id": "E611", "payload": {"from": "defined", "id": "T052", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:05:12+00:00", "id": "E612", "payload": {"classification": "one_go", "reason": "Small bounded wording cleanup over known files from audit; no behavior change and easy to verify with static search plus targeted tests.", "ticket_id": "T052"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T15:06:43+00:00", "id": "E613", "payload": {"from": "todo", "id": "P054", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:06:43+00:00", "id": "E614", "payload": {"from": "classified", "id": "T052", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:06:43+00:00", "id": "E615", "payload": {"from": "executing", "id": "T052", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:06:43+00:00", "id": "E616", "payload": {"result_id": "R048", "ticket_id": "T052"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T15:07:11+00:00", "id": "E617", "payload": {"from": "doing", "id": "P054", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:07:11+00:00", "id": "E618", "payload": {"from": "checking", "id": "P054", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:07:11+00:00", "id": "E619", "payload": {"check_id": "C051", "followup_id": null, "problem_id": "P054", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T15:07:43+00:00", "id": "E620", "payload": {"problem_id": "P055", "ticket_id": "T053", "title": "Phase 5B3.4 Compatibility Residue Verification Gate"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T15:07:43+00:00", "id": "E621", "payload": {"from": "created", "id": "T053", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:07:53+00:00", "id": "E622", "payload": {"from": "defined", "id": "T053", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:07:53+00:00", "id": "E623", "payload": {"classification": "one_go", "reason": "Bounded verification gate: static searches, explicit classification, targeted tests, and optional follow-up if include_display is stale.", "ticket_id": "T053"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T15:09:26+00:00", "id": "E624", "payload": {"from": "todo", "id": "P055", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:09:26+00:00", "id": "E625", "payload": {"from": "classified", "id": "T053", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:09:26+00:00", "id": "E626", "payload": {"from": "executing", "id": "T053", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:09:26+00:00", "id": "E627", "payload": {"result_id": "R049", "ticket_id": "T053"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T15:09:52+00:00", "id": "E628", "payload": {"from": "doing", "id": "P055", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:09:52+00:00", "id": "E629", "payload": {"from": "checking", "id": "P055", "to": "followup"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:09:52+00:00", "id": "E630", "payload": {"check_id": "C052", "followup_id": "P056", "problem_id": "P055", "status": "not_success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T15:10:24+00:00", "id": "E631", "payload": {"problem_id": "P056", "ticket_id": "T054", "title": "Remove include_display From Step Formatting Projection API"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T15:10:24+00:00", "id": "E632", "payload": {"from": "created", "id": "T054", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:10:34+00:00", "id": "E633", "payload": {"from": "defined", "id": "T054", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:10:34+00:00", "id": "E634", "payload": {"classification": "one_go", "reason": "Concrete bounded cutover across known Cortex/runtime files: remove one boolean argument/payload path and update direct tests; verification is explicit.", "ticket_id": "T054"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T15:13:50+00:00", "id": "E635", "payload": {"from": "followup", "id": "P056", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:13:51+00:00", "id": "E636", "payload": {"from": "classified", "id": "T054", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:13:51+00:00", "id": "E637", "payload": {"from": "executing", "id": "T054", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:13:51+00:00", "id": "E638", "payload": {"result_id": "R050", "ticket_id": "T054"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T15:14:18+00:00", "id": "E639", "payload": {"from": "doing", "id": "P056", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:14:18+00:00", "id": "E640", "payload": {"from": "checking", "id": "P056", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:14:18+00:00", "id": "E641", "payload": {"check_id": "C053", "followup_id": null, "problem_id": "P056", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T15:15:09+00:00", "id": "E642", "payload": {"from": "followup", "id": "P055", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:15:09+00:00", "id": "E643", "payload": {"from": "checking", "id": "P055", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:15:09+00:00", "id": "E644", "payload": {"check_id": "C054", "followup_id": null, "problem_id": "P055", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T15:15:51+00:00", "id": "E645", "payload": {"from": "todo", "id": "P051", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:15:51+00:00", "id": "E646", "payload": {"from": "splitting", "id": "T049", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:15:51+00:00", "id": "E647", "payload": {"result_id": "R051", "ticket_id": "T049"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T15:16:18+00:00", "id": "E648", "payload": {"from": "doing", "id": "P051", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:16:18+00:00", "id": "E649", "payload": {"from": "checking", "id": "P051", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:16:18+00:00", "id": "E650", "payload": {"check_id": "C055", "followup_id": null, "problem_id": "P051", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T15:17:03+00:00", "id": "E651", "payload": {"from": "todo", "id": "P046", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:17:03+00:00", "id": "E652", "payload": {"from": "splitting", "id": "T046", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:17:03+00:00", "id": "E653", "payload": {"result_id": "R052", "ticket_id": "T046"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T15:17:50+00:00", "id": "E654", "payload": {"from": "doing", "id": "P046", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:17:50+00:00", "id": "E655", "payload": {"from": "checking", "id": "P046", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:17:50+00:00", "id": "E656", "payload": {"check_id": "C056", "followup_id": null, "problem_id": "P046", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T15:18:37+00:00", "id": "E657", "payload": {"problem_id": "P047", "ticket_id": "T055", "title": "Phase 5C Current Docs And Comments Cleanup"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T15:18:37+00:00", "id": "E658", "payload": {"from": "created", "id": "T055", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:18:46+00:00", "id": "E659", "payload": {"from": "defined", "id": "T055", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:18:46+00:00", "id": "E660", "payload": {"classification": "split", "reason": "Docs/comments cleanup spans audit classification, current Cortex docs, live comments, and final static guard; split prevents editing historical docs blindly.", "ticket_id": "T055"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T15:19:25+00:00", "id": "E661", "payload": {"from": "classified", "id": "T055", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:19:25+00:00", "id": "E662", "payload": {"parent_id": "P047", "problem_id": "P057", "title": "Phase 5C.1 Current Documentation And Comment Residue Audit"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T15:19:25+00:00", "id": "E663", "payload": {"parent_id": "P047", "problem_id": "P058", "title": "Phase 5C.2 Current Cortex Docs Update"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T15:19:25+00:00", "id": "E664", "payload": {"parent_id": "P047", "problem_id": "P059", "title": "Phase 5C.3 Live Source Comments And Docstrings Cleanup"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T15:19:25+00:00", "id": "E665", "payload": {"parent_id": "P047", "problem_id": "P060", "title": "Phase 5C.4 Documentation Residue Final Static Gate"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T15:19:54+00:00", "id": "E666", "payload": {"problem_id": "P057", "ticket_id": "T056", "title": "Phase 5C.1 Current Documentation And Comment Residue Audit"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T15:19:54+00:00", "id": "E667", "payload": {"from": "created", "id": "T056", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:20:07+00:00", "id": "E668", "payload": {"from": "defined", "id": "T056", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:20:07+00:00", "id": "E669", "payload": {"classification": "one_go", "reason": "Read-only bounded audit over specific static searches and current/historical classification; no implementation slices are mixed in.", "ticket_id": "T056"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T15:20:57+00:00", "id": "E670", "payload": {"from": "todo", "id": "P057", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:20:57+00:00", "id": "E671", "payload": {"from": "classified", "id": "T056", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:20:57+00:00", "id": "E672", "payload": {"from": "executing", "id": "T056", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:20:57+00:00", "id": "E673", "payload": {"result_id": "R053", "ticket_id": "T056"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T15:21:23+00:00", "id": "E674", "payload": {"from": "doing", "id": "P057", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:21:23+00:00", "id": "E675", "payload": {"from": "checking", "id": "P057", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:21:23+00:00", "id": "E676", "payload": {"check_id": "C057", "followup_id": null, "problem_id": "P057", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T15:21:54+00:00", "id": "E677", "payload": {"problem_id": "P058", "ticket_id": "T057", "title": "Phase 5C.2 Current Cortex Docs Update"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T15:21:54+00:00", "id": "E678", "payload": {"from": "created", "id": "T057", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:22:04+00:00", "id": "E679", "payload": {"from": "defined", "id": "T057", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:22:04+00:00", "id": "E680", "payload": {"classification": "one_go", "reason": "Small bounded docs update over two current Cortex docs with explicit stale tokens and static verification.", "ticket_id": "T057"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T15:25:14+00:00", "id": "E681", "payload": {"from": "todo", "id": "P058", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:25:14+00:00", "id": "E682", "payload": {"from": "classified", "id": "T057", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:25:14+00:00", "id": "E683", "payload": {"from": "executing", "id": "T057", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:25:14+00:00", "id": "E684", "payload": {"result_id": "R054", "ticket_id": "T057"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T15:26:30+00:00", "id": "E685", "payload": {"from": "doing", "id": "P058", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:26:30+00:00", "id": "E686", "payload": {"from": "checking", "id": "P058", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:26:30+00:00", "id": "E687", "payload": {"check_id": "C058", "followup_id": null, "problem_id": "P058", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T15:27:04+00:00", "id": "E688", "payload": {"problem_id": "P059", "ticket_id": "T058", "title": "Phase 5C.3 Live Source Comments And Docstrings Cleanup"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T15:27:04+00:00", "id": "E689", "payload": {"from": "created", "id": "T058", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:27:27+00:00", "id": "E690", "payload": {"from": "defined", "id": "T058", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:27:27+00:00", "id": "E691", "payload": {"classification": "one_go", "reason": "Narrow live-source docstring/comment cleanup with known audit hit, no behavior change, and immediate static plus py_compile verification.", "ticket_id": "T058"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T15:29:32+00:00", "id": "E692", "payload": {"from": "todo", "id": "P059", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:29:32+00:00", "id": "E693", "payload": {"from": "classified", "id": "T058", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:29:32+00:00", "id": "E694", "payload": {"from": "executing", "id": "T058", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:29:32+00:00", "id": "E695", "payload": {"result_id": "R055", "ticket_id": "T058"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T15:30:15+00:00", "id": "E696", "payload": {"from": "doing", "id": "P059", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:30:15+00:00", "id": "E697", "payload": {"from": "checking", "id": "P059", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:30:15+00:00", "id": "E698", "payload": {"check_id": "C059", "followup_id": null, "problem_id": "P059", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T15:30:56+00:00", "id": "E699", "payload": {"problem_id": "P060", "ticket_id": "T059", "title": "Phase 5C.4 Documentation Residue Final Static Gate"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T15:30:56+00:00", "id": "E700", "payload": {"from": "created", "id": "T059", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:31:07+00:00", "id": "E701", "payload": {"from": "defined", "id": "T059", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:31:07+00:00", "id": "E702", "payload": {"classification": "one_go", "reason": "Bounded final static audit/classification gate with direct search evidence; any defect found can be recorded as a gap or follow-up during check.", "ticket_id": "T059"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T15:34:06+00:00", "id": "E703", "payload": {"from": "todo", "id": "P060", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:34:06+00:00", "id": "E704", "payload": {"from": "classified", "id": "T059", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:34:06+00:00", "id": "E705", "payload": {"from": "executing", "id": "T059", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:34:06+00:00", "id": "E706", "payload": {"result_id": "R056", "ticket_id": "T059"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T15:35:02+00:00", "id": "E707", "payload": {"from": "doing", "id": "P060", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:35:02+00:00", "id": "E708", "payload": {"from": "checking", "id": "P060", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:35:02+00:00", "id": "E709", "payload": {"check_id": "C060", "followup_id": null, "problem_id": "P060", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T15:36:01+00:00", "id": "E710", "payload": {"from": "todo", "id": "P047", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:36:01+00:00", "id": "E711", "payload": {"from": "splitting", "id": "T055", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:36:01+00:00", "id": "E712", "payload": {"result_id": "R057", "ticket_id": "T055"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T15:36:43+00:00", "id": "E713", "payload": {"from": "doing", "id": "P047", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:36:43+00:00", "id": "E714", "payload": {"from": "checking", "id": "P047", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:36:43+00:00", "id": "E715", "payload": {"check_id": "C061", "followup_id": null, "problem_id": "P047", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T15:37:25+00:00", "id": "E716", "payload": {"problem_id": "P048", "ticket_id": "T060", "title": "Phase 5D Static Guards And Broad Verification"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T15:37:25+00:00", "id": "E717", "payload": {"from": "created", "id": "T060", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:37:36+00:00", "id": "E718", "payload": {"from": "defined", "id": "T060", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:37:36+00:00", "id": "E719", "payload": {"classification": "split", "reason": "Broad verification has independent static-audit, targeted-test, full-test, and guard-hardening outcomes; splitting prevents a vague one-go check.", "ticket_id": "T060"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T15:38:30+00:00", "id": "E720", "payload": {"from": "classified", "id": "T060", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:38:30+00:00", "id": "E721", "payload": {"parent_id": "P048", "problem_id": "P061", "title": "Phase 5D.1 Static Residue Audit And Classification"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T15:38:30+00:00", "id": "E722", "payload": {"parent_id": "P048", "problem_id": "P062", "title": "Phase 5D.2 Guard Coverage Review And Tightening"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T15:38:30+00:00", "id": "E723", "payload": {"parent_id": "P048", "problem_id": "P063", "title": "Phase 5D.3 Targeted Cortex State Authority Test Gate"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T15:38:30+00:00", "id": "E724", "payload": {"parent_id": "P048", "problem_id": "P064", "title": "Phase 5D.4 Full Cortex Test And PyCompile Gate"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T15:39:03+00:00", "id": "E725", "payload": {"problem_id": "P061", "ticket_id": "T061", "title": "Phase 5D.1 Static Residue Audit And Classification"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T15:39:03+00:00", "id": "E726", "payload": {"from": "created", "id": "T061", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:39:12+00:00", "id": "E727", "payload": {"from": "defined", "id": "T061", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:39:12+00:00", "id": "E728", "payload": {"classification": "one_go", "reason": "Bounded static audit/classification with direct rg evidence; any discovered current defect can be recorded for the check loop.", "ticket_id": "T061"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T15:40:54+00:00", "id": "E729", "payload": {"from": "todo", "id": "P061", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:40:54+00:00", "id": "E730", "payload": {"from": "classified", "id": "T061", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:40:54+00:00", "id": "E731", "payload": {"from": "executing", "id": "T061", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:40:54+00:00", "id": "E732", "payload": {"result_id": "R058", "ticket_id": "T061"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T15:41:33+00:00", "id": "E733", "payload": {"from": "doing", "id": "P061", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:41:33+00:00", "id": "E734", "payload": {"from": "checking", "id": "P061", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:41:33+00:00", "id": "E735", "payload": {"check_id": "C062", "followup_id": null, "problem_id": "P061", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T15:42:02+00:00", "id": "E736", "payload": {"problem_id": "P062", "ticket_id": "T062", "title": "Phase 5D.2 Guard Coverage Review And Tightening"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T15:42:02+00:00", "id": "E737", "payload": {"from": "created", "id": "T062", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:42:14+00:00", "id": "E738", "payload": {"from": "defined", "id": "T062", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:42:14+00:00", "id": "E739", "payload": {"classification": "split", "reason": "Guard coverage spans independent risk areas: scope/stack authority, step formatting/sandbox contracts, and lock/fallback boundaries.", "ticket_id": "T062"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T15:42:49+00:00", "id": "E740", "payload": {"from": "classified", "id": "T062", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:42:49+00:00", "id": "E741", "payload": {"parent_id": "P062", "problem_id": "P065", "title": "Phase 5D.2a Scope And Active Stack Guard Coverage"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T15:42:49+00:00", "id": "E742", "payload": {"parent_id": "P062", "problem_id": "P066", "title": "Phase 5D.2b Step Formatting And Sandbox Contract Guard Coverage"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T15:42:49+00:00", "id": "E743", "payload": {"parent_id": "P062", "problem_id": "P067", "title": "Phase 5D.2c Lock And Fallback Boundary Guard Coverage"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T15:43:16+00:00", "id": "E744", "payload": {"problem_id": "P065", "ticket_id": "T063", "title": "Phase 5D.2a Scope And Active Stack Guard Coverage"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T15:43:16+00:00", "id": "E745", "payload": {"from": "created", "id": "T063", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:43:26+00:00", "id": "E746", "payload": {"from": "defined", "id": "T063", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:43:26+00:00", "id": "E747", "payload": {"classification": "one_go", "reason": "Narrow guard coverage review for scope/active-stack authority with direct test search and targeted test execution.", "ticket_id": "T063"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T15:45:14+00:00", "id": "E748", "payload": {"from": "todo", "id": "P065", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:45:14+00:00", "id": "E749", "payload": {"from": "classified", "id": "T063", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:45:14+00:00", "id": "E750", "payload": {"from": "executing", "id": "T063", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:45:14+00:00", "id": "E751", "payload": {"result_id": "R059", "ticket_id": "T063"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T15:45:52+00:00", "id": "E752", "payload": {"from": "doing", "id": "P065", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:45:52+00:00", "id": "E753", "payload": {"from": "checking", "id": "P065", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:45:52+00:00", "id": "E754", "payload": {"check_id": "C063", "followup_id": null, "problem_id": "P065", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T15:46:20+00:00", "id": "E755", "payload": {"problem_id": "P066", "ticket_id": "T064", "title": "Phase 5D.2b Step Formatting And Sandbox Contract Guard Coverage"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T15:46:20+00:00", "id": "E756", "payload": {"from": "created", "id": "T064", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:46:30+00:00", "id": "E757", "payload": {"from": "defined", "id": "T064", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:46:30+00:00", "id": "E758", "payload": {"classification": "one_go", "reason": "Narrow public step-formatting and sandbox-path guard review with direct test search and targeted tests.", "ticket_id": "T064"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T15:50:38+00:00", "id": "E759", "payload": {"from": "todo", "id": "P066", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:50:38+00:00", "id": "E760", "payload": {"from": "classified", "id": "T064", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:50:38+00:00", "id": "E761", "payload": {"from": "executing", "id": "T064", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:50:38+00:00", "id": "E762", "payload": {"result_id": "R060", "ticket_id": "T064"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T15:51:35+00:00", "id": "E763", "payload": {"from": "doing", "id": "P066", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:51:35+00:00", "id": "E764", "payload": {"from": "checking", "id": "P066", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:51:35+00:00", "id": "E765", "payload": {"check_id": "C064", "followup_id": null, "problem_id": "P066", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T15:52:34+00:00", "id": "E766", "payload": {"problem_id": "P067", "ticket_id": "T065", "title": "Phase 5D.2c lock and fallback guard audit"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T15:52:34+00:00", "id": "E767", "payload": {"from": "created", "id": "T065", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:52:52+00:00", "id": "E768", "payload": {"from": "defined", "id": "T065", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:52:52+00:00", "id": "E769", "payload": {"classification": "one_go", "reason": "Focused guard-audit ticket with bounded source/test surface; execution can inspect coverage, add minimal guards if needed, and verify with targeted static searches plus tests.", "ticket_id": "T065"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T15:55:54+00:00", "id": "E770", "payload": {"from": "todo", "id": "P067", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:55:55+00:00", "id": "E771", "payload": {"from": "classified", "id": "T065", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:55:55+00:00", "id": "E772", "payload": {"from": "executing", "id": "T065", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:55:55+00:00", "id": "E773", "payload": {"result_id": "R061", "ticket_id": "T065"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T15:56:38+00:00", "id": "E774", "payload": {"from": "doing", "id": "P067", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:56:38+00:00", "id": "E775", "payload": {"from": "checking", "id": "P067", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:56:38+00:00", "id": "E776", "payload": {"check_id": "C065", "followup_id": null, "problem_id": "P067", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T15:57:18+00:00", "id": "E777", "payload": {"from": "todo", "id": "P062", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:57:18+00:00", "id": "E778", "payload": {"from": "splitting", "id": "T062", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:57:18+00:00", "id": "E779", "payload": {"result_id": "R062", "ticket_id": "T062"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T15:58:05+00:00", "id": "E780", "payload": {"from": "doing", "id": "P062", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:58:05+00:00", "id": "E781", "payload": {"from": "checking", "id": "P062", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:58:05+00:00", "id": "E782", "payload": {"check_id": "C066", "followup_id": null, "problem_id": "P062", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T15:58:48+00:00", "id": "E783", "payload": {"problem_id": "P063", "ticket_id": "T066", "title": "Phase 5D.3 targeted Cortex state authority test gate"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T15:58:48+00:00", "id": "E784", "payload": {"from": "created", "id": "T066", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:58:58+00:00", "id": "E785", "payload": {"from": "defined", "id": "T066", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:58:58+00:00", "id": "E786", "payload": {"classification": "one_go", "reason": "Pure targeted verification gate with explicit command and no implementation slice; failures can be recorded and triaged in one bounded result.", "ticket_id": "T066"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T15:59:57+00:00", "id": "E787", "payload": {"from": "todo", "id": "P063", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T15:59:57+00:00", "id": "E788", "payload": {"from": "classified", "id": "T066", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:59:57+00:00", "id": "E789", "payload": {"from": "executing", "id": "T066", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T15:59:57+00:00", "id": "E790", "payload": {"result_id": "R063", "ticket_id": "T066"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T16:00:27+00:00", "id": "E791", "payload": {"from": "doing", "id": "P063", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T16:00:27+00:00", "id": "E792", "payload": {"from": "checking", "id": "P063", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T16:00:27+00:00", "id": "E793", "payload": {"check_id": "C067", "followup_id": null, "problem_id": "P063", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T16:01:08+00:00", "id": "E794", "payload": {"problem_id": "P064", "ticket_id": "T067", "title": "Phase 5D.4 full Cortex test and pycompile gate"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T16:01:08+00:00", "id": "E795", "payload": {"from": "created", "id": "T067", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T16:01:17+00:00", "id": "E796", "payload": {"from": "defined", "id": "T067", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T16:01:17+00:00", "id": "E797", "payload": {"classification": "one_go", "reason": "Pure broad verification gate with two explicit commands and no implementation slices; failures can be recorded and triaged in one bounded result.", "ticket_id": "T067"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T16:02:25+00:00", "id": "E798", "payload": {"from": "todo", "id": "P064", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T16:02:25+00:00", "id": "E799", "payload": {"from": "classified", "id": "T067", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T16:02:25+00:00", "id": "E800", "payload": {"from": "executing", "id": "T067", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T16:02:25+00:00", "id": "E801", "payload": {"result_id": "R064", "ticket_id": "T067"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T16:02:52+00:00", "id": "E802", "payload": {"from": "doing", "id": "P064", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T16:02:52+00:00", "id": "E803", "payload": {"from": "checking", "id": "P064", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T16:02:52+00:00", "id": "E804", "payload": {"check_id": "C068", "followup_id": null, "problem_id": "P064", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T16:03:39+00:00", "id": "E805", "payload": {"from": "todo", "id": "P048", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T16:03:39+00:00", "id": "E806", "payload": {"from": "splitting", "id": "T060", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T16:03:39+00:00", "id": "E807", "payload": {"result_id": "R065", "ticket_id": "T060"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T16:04:09+00:00", "id": "E808", "payload": {"from": "doing", "id": "P048", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T16:04:09+00:00", "id": "E809", "payload": {"from": "checking", "id": "P048", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T16:04:09+00:00", "id": "E810", "payload": {"check_id": "C069", "followup_id": null, "problem_id": "P048", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T16:05:06+00:00", "id": "E811", "payload": {"from": "todo", "id": "P006", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T16:05:06+00:00", "id": "E812", "payload": {"from": "splitting", "id": "T044", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T16:05:06+00:00", "id": "E813", "payload": {"result_id": "R066", "ticket_id": "T044"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T16:05:36+00:00", "id": "E814", "payload": {"from": "doing", "id": "P006", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T16:05:36+00:00", "id": "E815", "payload": {"from": "checking", "id": "P006", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T16:05:36+00:00", "id": "E816", "payload": {"check_id": "C070", "followup_id": null, "problem_id": "P006", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T16:06:45+00:00", "id": "E817", "payload": {"from": "todo", "id": "P000", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T16:06:45+00:00", "id": "E818", "payload": {"from": "splitting", "id": "T000", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T16:06:45+00:00", "id": "E819", "payload": {"result_id": "R067", "ticket_id": "T000"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T16:07:20+00:00", "id": "E820", "payload": {"from": "doing", "id": "P000", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T16:07:20+00:00", "id": "E821", "payload": {"from": "checking", "id": "P000", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T16:07:20+00:00", "id": "E822", "payload": {"check_id": "C071", "followup_id": null, "problem_id": "P000", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
