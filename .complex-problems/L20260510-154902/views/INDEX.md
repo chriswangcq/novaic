@@ -1,0 +1,218 @@
+# Complex Problem Ledger
+
+Ledger: L20260510-154902
+Schema: v6
+Root: P000 - Cortex full event-sourced context source cutover
+Status: done
+Updated: 2026-05-10T11:03:25+00:00
+
+## Problem Tree
+- [done] P000: Cortex full event-sourced context source cutover
+  - [done] P001: Phase 0: Event-sourced context design and construction plan
+  - [done] P002: Phase 1: Context event store substrate
+    - [done] P007: Phase 1.1: Define ContextEvent schema and validation
+      - [done] P011: Strengthen ContextEvent stream identity validation
+    - [done] P008: Phase 1.2: Implement append-only ContextEvent store
+      - [done] P012: Phase 1.2.1: ContextEvent store path and read replay
+      - [done] P013: Phase 1.2.2: ContextEvent append and root initialization
+    - [done] P009: Phase 1.3: Enforce ContextEvent idempotency and reset semantics
+    - [done] P010: Phase 1.4: Verify substrate boundaries and non-integration
+  - [done] P003: Phase 2: Context projections and replay
+    - [done] P014: Phase 2.1: Projection snapshot and message events
+    - [done] P015: Phase 2.2: Projection scope stack and fold semantics
+      - [done] P018: Phase 2.2.1: Projection scope stack and LIFO validation
+      - [done] P019: Phase 2.2.2: Projection fold rendering and stale sibling suppression
+        - [done] P020: Phase 2.2.2.1: Projection closed-scope fold rendering
+        - [done] P021: Phase 2.2.2.2: Projection stale open sibling suppression
+    - [done] P016: Phase 2.3: Projection tool call/result placement
+    - [done] P017: Phase 2.4: Projection verification and non-cutover audit
+    - [done] P022: Add projection replay watermark and sequence validation
+  - [done] P004: Phase 3: Write-path cutover to context events
+    - [done] P023: Phase 3.1: Map write paths and introduce explicit ContextEvent writer
+    - [done] P024: Phase 3.2: Cut root/wake initialization and notifications to events
+      - [done] P029: Phase 3.2.1: Emit root and wake lifecycle events
+      - [done] P030: Phase 3.2.2: Emit notification attachment events
+      - [done] P031: Phase 3.2.3: Verify root/wake/notification cutover boundaries
+    - [done] P025: Phase 3.3: Cut context append and batch writes to events
+      - [done] P032: Phase 3.3.1: Define context message event idempotency contract
+      - [done] P033: Phase 3.3.2: Wire context append and batch endpoints to events
+      - [done] P034: Phase 3.3.3: Verify context append/batch cutover boundaries
+    - [done] P026: Phase 3.4: Cut tool step recording to events
+      - [done] P035: Phase 3.4.1: Normalize tool step payloads before event emission
+      - [done] P036: Phase 3.4.2: Wire steps/write to ToolStepRecorded events
+      - [done] P037: Phase 3.4.3: Verify tool step cutover boundaries
+    - [done] P027: Phase 3.5: Cut skill begin/end lifecycle to events
+      - [done] P038: Phase 3.5.1: Emit SkillScopeOpened on skill_begin success
+      - [done] P039: Phase 3.5.2: Emit SkillScopeClosed on skill_end success
+      - [done] P040: Phase 3.5.3: Verify skill lifecycle cutover boundaries
+        - [done] P041: Remove or redirect legacy runtime skill lifecycle bypass
+    - [done] P028: Phase 3.6: Demote or delete legacy source writes and verify write cutover
+      - [done] P042: Phase 3.6.1: Mark legacy context/step/lifecycle file writes as projections
+      - [done] P043: Phase 3.6.2: Remove runtime direct structural scope lifecycle bypass
+        - [done] P046: Remove runtime lifecycle methods
+        - [done] P047: Migrate runtime lifecycle helper tests
+          - [done] P049: Migrate archive and summary lifecycle tests
+          - [done] P050: Migrate hooks and metrics lifecycle tests
+            - [done] P052: Rewrite hook tests to Workspace projection emitter
+            - [done] P053: Remove dead runtime scope lifecycle metrics coverage
+          - [done] P051: Migrate miscellaneous runtime lifecycle tests
+        - [done] P048: Verify runtime lifecycle bypass removal
+      - [done] P044: Phase 3.6.3: Add write-path event authority tests
+      - [done] P045: Phase 3.6.4: Static audit remaining legacy writes
+  - [done] P005: Phase 4: Prepare/read-path cutover from events
+    - [done] P054: Build event projection read adapter
+    - [done] P055: Cut prepare_for_llm API to event projection
+    - [done] P056: Cut status usage and stack reads to event semantics
+    - [done] P057: Audit DFS read fallback removal
+  - [done] P006: Phase 5: Legacy cleanup, reset behavior, and full verification
+    - [done] P058: Legacy DFS deletion inventory
+    - [done] P059: Old data reset and no-compat behavior
+    - [done] P060: Source-of-truth language and artifact cleanup
+    - [done] P061: Phase 5 final verification and diff review
+      - [done] P062: Physically delete legacy DFS renderer and direct tests
+
+## Active
+
+## Blocked
+
+## Done
+- [x] P000: Cortex full event-sourced context source cutover
+- [x] P001: Phase 0: Event-sourced context design and construction plan
+- [x] P002: Phase 1: Context event store substrate
+- [x] P003: Phase 2: Context projections and replay
+- [x] P004: Phase 3: Write-path cutover to context events
+- [x] P005: Phase 4: Prepare/read-path cutover from events
+- [x] P006: Phase 5: Legacy cleanup, reset behavior, and full verification
+- [x] P007: Phase 1.1: Define ContextEvent schema and validation
+- [x] P008: Phase 1.2: Implement append-only ContextEvent store
+- [x] P009: Phase 1.3: Enforce ContextEvent idempotency and reset semantics
+- [x] P010: Phase 1.4: Verify substrate boundaries and non-integration
+- [x] P011: Strengthen ContextEvent stream identity validation
+- [x] P012: Phase 1.2.1: ContextEvent store path and read replay
+- [x] P013: Phase 1.2.2: ContextEvent append and root initialization
+- [x] P014: Phase 2.1: Projection snapshot and message events
+- [x] P015: Phase 2.2: Projection scope stack and fold semantics
+- [x] P016: Phase 2.3: Projection tool call/result placement
+- [x] P017: Phase 2.4: Projection verification and non-cutover audit
+- [x] P018: Phase 2.2.1: Projection scope stack and LIFO validation
+- [x] P019: Phase 2.2.2: Projection fold rendering and stale sibling suppression
+- [x] P020: Phase 2.2.2.1: Projection closed-scope fold rendering
+- [x] P021: Phase 2.2.2.2: Projection stale open sibling suppression
+- [x] P022: Add projection replay watermark and sequence validation
+- [x] P023: Phase 3.1: Map write paths and introduce explicit ContextEvent writer
+- [x] P024: Phase 3.2: Cut root/wake initialization and notifications to events
+- [x] P025: Phase 3.3: Cut context append and batch writes to events
+- [x] P026: Phase 3.4: Cut tool step recording to events
+- [x] P027: Phase 3.5: Cut skill begin/end lifecycle to events
+- [x] P028: Phase 3.6: Demote or delete legacy source writes and verify write cutover
+- [x] P029: Phase 3.2.1: Emit root and wake lifecycle events
+- [x] P030: Phase 3.2.2: Emit notification attachment events
+- [x] P031: Phase 3.2.3: Verify root/wake/notification cutover boundaries
+- [x] P032: Phase 3.3.1: Define context message event idempotency contract
+- [x] P033: Phase 3.3.2: Wire context append and batch endpoints to events
+- [x] P034: Phase 3.3.3: Verify context append/batch cutover boundaries
+- [x] P035: Phase 3.4.1: Normalize tool step payloads before event emission
+- [x] P036: Phase 3.4.2: Wire steps/write to ToolStepRecorded events
+- [x] P037: Phase 3.4.3: Verify tool step cutover boundaries
+- [x] P038: Phase 3.5.1: Emit SkillScopeOpened on skill_begin success
+- [x] P039: Phase 3.5.2: Emit SkillScopeClosed on skill_end success
+- [x] P040: Phase 3.5.3: Verify skill lifecycle cutover boundaries
+- [x] P041: Remove or redirect legacy runtime skill lifecycle bypass
+- [x] P042: Phase 3.6.1: Mark legacy context/step/lifecycle file writes as projections
+- [x] P043: Phase 3.6.2: Remove runtime direct structural scope lifecycle bypass
+- [x] P044: Phase 3.6.3: Add write-path event authority tests
+- [x] P045: Phase 3.6.4: Static audit remaining legacy writes
+- [x] P046: Remove runtime lifecycle methods
+- [x] P047: Migrate runtime lifecycle helper tests
+- [x] P048: Verify runtime lifecycle bypass removal
+- [x] P049: Migrate archive and summary lifecycle tests
+- [x] P050: Migrate hooks and metrics lifecycle tests
+- [x] P051: Migrate miscellaneous runtime lifecycle tests
+- [x] P052: Rewrite hook tests to Workspace projection emitter
+- [x] P053: Remove dead runtime scope lifecycle metrics coverage
+- [x] P054: Build event projection read adapter
+- [x] P055: Cut prepare_for_llm API to event projection
+- [x] P056: Cut status usage and stack reads to event semantics
+- [x] P057: Audit DFS read fallback removal
+- [x] P058: Legacy DFS deletion inventory
+- [x] P059: Old data reset and no-compat behavior
+- [x] P060: Source-of-truth language and artifact cleanup
+- [x] P061: Phase 5 final verification and diff review
+- [x] P062: Physically delete legacy DFS renderer and direct tests
+
+## Tickets
+- [done] T000: Split full event-source cutover into design and implementation phases -> P000 (split)
+- [done] T001: Write event-source context design and construction plan -> P001 (one_go)
+- [done] T002: Implement ContextEvent store substrate -> P002 (split)
+- [done] T003: Define ContextEvent schema module -> P007 (one_go)
+- [done] T004: Enforce slash-free three-segment stream ids -> P011 (one_go)
+- [done] T005: Implement ContextEvent append/read store -> P008 (split)
+- [done] T006: Implement ContextEvent store read side -> P012 (one_go)
+- [done] T007: Implement ContextEvent append and root initialization -> P013 (one_go)
+- [done] T008: Implement ContextEvent idempotency and reset semantics -> P009 (one_go)
+- [done] T009: Verify ContextEvent substrate boundaries and non-integration -> P010 (one_go)
+- [done] T010: Implement ContextEvent projections and replay -> P003 (split)
+- [done] T011: Implement projection snapshot and message events -> P014 (one_go)
+- [done] T012: Implement projection scope stack and fold semantics -> P015 (split)
+- [done] T013: Add projector scope stack and LIFO validation -> P018 (one_go)
+- [done] T014: Implement fold rendering and stale sibling suppression -> P019 (split)
+- [done] T015: Implement closed-scope fold rendering -> P020 (one_go)
+- [done] T016: Implement projection stale open sibling suppression -> P021 (one_go)
+- [done] T017: Implement projection tool call/result placement -> P016 (one_go)
+- [done] T018: Verify projection boundaries and non-cutover -> P017 (one_go)
+- [done] T019: Implement projection replay watermark -> P022 (one_go)
+- [done] T020: Cut write paths over to ContextEvents -> P004 (split)
+- [done] T021: Map write paths and add ContextEvent writer boundary -> P023 (one_go)
+- [done] T022: Cut root/wake initialization and notification attachment to events -> P024 (split)
+- [done] T023: Emit root and wake lifecycle events -> P029 (one_go)
+- [done] T024: Emit notification attachment events -> P030 (one_go)
+- [done] T025: Verify root/wake/notification cutover -> P031 (one_go)
+- [done] T026: Cut context append and batch writes to events -> P025 (split)
+- [done] T027: Add explicit context message idempotency contract -> P032 (one_go)
+- [done] T028: Wire context append and batch endpoints to events -> P033 (one_go)
+- [done] T029: Verify context append and batch cutover -> P034 (one_go)
+- [done] T030: Cut tool step recording to events -> P026 (split)
+- [done] T031: Extract reusable tool step normalization -> P035 (one_go)
+- [done] T032: Wire steps/write to ToolStepRecorded events -> P036 (one_go)
+- [done] T033: Verify tool step cutover boundaries -> P037 (one_go)
+- [done] T034: Cut skill begin/end lifecycle to events -> P027 (split)
+- [done] T035: Emit SkillScopeOpened on skill_begin success -> P038 (one_go)
+- [done] T036: Emit SkillScopeClosed on skill_end success -> P039 (one_go)
+- [done] T037: Verify skill lifecycle cutover boundaries -> P040 (one_go)
+- [done] T038: Remove legacy runtime skill lifecycle bypass -> P041 (one_go)
+- [done] T039: Demote/delete legacy source writes and verify write cutover -> P028 (split)
+- [done] T040: Mark legacy filesystem writes as projections -> P042 (one_go)
+- [done] T041: Remove runtime structural scope bypass -> P043 (split)
+- [done] T042: Physically remove Cortex runtime lifecycle methods -> P046 (one_go)
+- [done] T043: Migrate tests off Cortex runtime lifecycle helpers -> P047 (split)
+- [done] T044: Rewrite archive and summary tests to API lifecycle path -> P049 (one_go)
+- [done] T045: Migrate hooks and metrics tests off runtime lifecycle helpers -> P050 (split)
+- [done] T046: Use Workspace lifecycle projections for hook tests -> P052 (one_go)
+- [done] T047: Remove dead runtime scope lifecycle metrics -> P053 (one_go)
+- [done] T048: Migrate miscellaneous runtime lifecycle tests -> P051 (one_go)
+- [done] T049: Verify runtime lifecycle bypass removal -> P048 (one_go)
+- [done] T050: Add consolidated write-path event authority test -> P044 (one_go)
+- [done] T051: Static audit remaining legacy filesystem writes -> P045 (one_go)
+- [done] T052: Cut read paths from DFS source to ContextEvent projection -> P005 (split)
+- [done] T053: Build event projection read adapter -> P054 (one_go)
+- [done] T054: Cut prepare_for_llm API to event projection -> P055 (one_go)
+- [done] T055: Cut status usage and stack reads to event semantics -> P056 (one_go)
+- [done] T056: Audit DFS read fallback removal -> P057 (one_go)
+- [done] T057: Phase 5 legacy cleanup, reset behavior, and full verification -> P006 (split)
+- [done] T058: Legacy DFS deletion inventory -> P058 (one_go)
+- [done] T059: Old data reset and no-compat behavior -> P059 (one_go)
+- [done] T060: Source-of-truth language and artifact cleanup -> P060 (one_go)
+- [done] T061: Phase 5 final verification and diff review -> P061 (one_go)
+- [done] T062: Remove legacy DFS renderer residue -> P062 (one_go)
+
+## Latest Checks
+- [success] C057: P057 Active API read paths are guarded against DFS fallback; remaining DFS is explicitly legacy/debug or operational control.
+- [success] C058: P005 Phase 4 active read paths are event-projection backed and guarded against DFS fallback.
+- [success] C059: P058 DFS deletion inventory is complete with exact files classified and deletion plan recorded.
+- [success] C060: P059 Legacy-only roots now fail fast with context_event_reset_required instead of empty or DFS fallback context.
+- [success] C061: P060 Misleading source-of-truth wording around materialized artifacts is cleaned or classified.
+- [not_success] C062: P061 Active event projection cutover is clean, but physical legacy DFS renderer residue remains.
+- [success] C063: P062 Legacy DFS renderer code and direct tests were physically removed; production scan is clean and full Cortex tests pass.
+- [success] C064: P061 Phase 5 final verification now passes after the physical DFS deletion follow-up; active event projection is clean and old renderer residue is gone.
+- [success] C065: P006 Phase 5 completed strict legacy cleanup, reset/no-compat behavior, source-of-truth cleanup, physical DFS deletion, and full test verification.
+- [success] C066: P000 Cortex LLM context source fully cut over to event-sourced projection; old DFS renderer/fallback physically removed; full tests pass.

@@ -1,5 +1,5 @@
 {
-  "active_ledger_id": "L20260510-130236",
+  "active_ledger_id": "L20260510-154902",
   "ledgers": [
     {
       "active_count": 0,
@@ -539,7 +539,40 @@
       "status": "done",
       "title": "Implement LogicalFS RO/RW authority boundary end to end",
       "updated_at": "2026-05-10T06:47:50+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260510-152822",
+      "path": "L20260510-152822",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "Cortex LLM DFS context assembly audit",
+      "updated_at": "2026-05-10T07:34:38+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260510-153817",
+      "path": "L20260510-153817",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "Cortex incremental LLM context assembly research",
+      "updated_at": "2026-05-10T07:41:03+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260510-154902",
+      "path": "L20260510-154902",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "Cortex full event-sourced context source cutover",
+      "updated_at": "2026-05-10T11:03:25+00:00"
     }
   ],
-  "updated_at": "2026-05-10T06:47:50+00:00"
+  "updated_at": "2026-05-10T11:03:25+00:00"
 }

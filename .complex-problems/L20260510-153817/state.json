@@ -1,0 +1,138 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-10T07:40:57+00:00",
+      "criteria_map": [
+        "Identify current call-time assembly path -> covered under \"Current Implementation\" in R000.",
+        "Explain current cost/latency source -> covered by on-demand DFS rebuild and mutation/read path analysis.",
+        "Provide multiple design options -> six options listed.",
+        "Compare correctness/latency/complexity/recovery/fit -> each option includes pros, cons, and best use.",
+        "Recommend direction -> phased recommendation selects folded-prefix projection plus active-path on-demand, with DFS fallback."
+      ],
+      "evidence": [
+        "Source pointers inspected: Runtime prepare handler, context read/append handlers, CortexBridge prepare path, Cortex API prepare/append/step/scope endpoints, Workspace mutation methods, ContextEngine and StepTreeBuilder.",
+        "Result R000 documents current call-time assembly, mutation points, six options, pros/cons, and recommended phased direction."
+      ],
+      "execution_map": [
+        "T000 -> completed via source inspection and design analysis, recorded as R000."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "This is design research only; implementation tickets would still need detailed schemas for generation metadata, projection files, repair paths, and tests."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Stale projection failure mode -> recommendation requires generation checks and DFS fallback.",
+        "Notification boundary failure mode -> recommendation preserves notification-as-hint semantics; no raw IM bodies are introduced into projections.",
+        "Projection worker lag failure mode -> async option requires wait/fallback/repair handling rather than silent stale reads.",
+        "Over-eager write-through failure mode -> synchronous write-through is explicitly not recommended as primary path."
+      ],
+      "summary": "The research problem is satisfied: current implementation was inspected from source, mutation points were mapped, six design options were compared, and a phased recommendation was recorded."
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-10T07:38:17+00:00",
+  "ledger_id": "L20260510-153817",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-10T07:38:17+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "Research the current novaic-cortex LLM context assembly implementation and evaluate whether context can be assembled before the LLM call or maintained incrementally instead of rebuilding from DFS state only during `prepare_for_llm`.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Identify the current call-time assembly path and the write events that mutate context state.",
+        "Explain why the current implementation assembles on demand and where the cost/latency comes from.",
+        "Provide multiple design options for non-call-time or incremental assembly.",
+        "Compare each option by correctness, latency, complexity, recovery behavior, and fit with the Cortex/agent subject model.",
+        "Recommend a direction and name residual risks without starting implementation."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Cortex incremental LLM context assembly research",
+      "updated_at": "2026-05-10T07:40:57+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "Source inspection only; no implementation changes were made for this ticket."
+      ],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-10T07:40:42+00:00",
+      "done": [],
+      "id": "R000",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Researched the current novaic-cortex LLM context assembly implementation and compared several ways to move work off the LLM call path or make assembly incremental. Recommendation: do not jump directly to full synchronous write-through context; use a durable projection model, with a practical first phase of historical folded-prefix projection plus active-path on-demand expansion.",
+      "ticket_id": "T000",
+      "verification": []
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "The current implementation is described with exact code pointers.",
+        "At least four viable options are compared with pros and cons.",
+        "The recommendation distinguishes near-term safe improvement from long-term “perfect” architecture.",
+        "No code implementation is performed in this ticket."
+      ],
+      "assumptions": [
+        "Agent-root DFS remains the semantic source of truth unless deliberately replaced by an event/projection model.",
+        "The user is asking for design research, not immediate implementation."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "bounded design research with source inspection and no implementation",
+      "created_at": "2026-05-10T07:38:34+00:00",
+      "id": "T000",
+      "problem_definition": "The user wants a grounded analysis of whether Cortex LLM context assembly can move from full call-time DFS assembly to a non-call-time or incremental model, based on the current code rather than speculation.",
+      "problem_id": "P000",
+      "proposed_solution": "- Inspect the active prepare chain in Cortex and Runtime.\n- Inspect workspace mutation points: append context, write steps, create/complete scopes, notification merge.\n- Build a current-state model of when data changes and when prepared context is consumed.\n- Design multiple alternatives: keep on-demand, memoized snapshot, synchronous incremental materialization, async outbox projection, and hybrid active-path cache.\n- Compare options by correctness, latency, complexity, recovery, and boundary clarity.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Incremental context can create stale snapshots unless invalidation/generation rules are explicit.",
+        "Moving work off the LLM call path can hide failures unless projection state is observable."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Research incremental Cortex context assembly options",
+      "updated_at": "2026-05-10T07:40:42+00:00",
+      "verification_plan": "- Use source inspection with `rg`, `sed`, and line-numbered snippets.\n- Confirm no code files are changed by the research ticket.\n- Record the final recommendation in the ledger result and summarize to the user."
+    }
+  },
+  "updated_at": "2026-05-10T07:41:03+00:00"
+}

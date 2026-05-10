@@ -1,0 +1,130 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-10T07:34:38+00:00",
+      "criteria_map": [
+        "Located active path; verified DFS/fold/order behavior; mapped tests; ran focused and full tests; listed residual risks."
+      ],
+      "evidence": [
+        "Active DFS assembly path was identified from API entrypoint through `ContextEngine`, `StepTreeBuilder`, merge, fold rendering, and budget pass.",
+        "The audit found and fixed a confirmed stale open sibling rendering bug.",
+        "A regression assertion now verifies stale sibling context is excluded from prepared LLM messages.",
+        "Focused context stack tests passed: 32 tests.",
+        "Full novaic-cortex test suite passed: 355 tests."
+      ],
+      "execution_map": [
+        "T000 executed with implementation read, minimal reproduction, patch, regression test, focused tests, and full cortex tests."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Only nonblocking documentation residue and malformed anchored history hardening remain."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Focused tests: 32 passed. Full novaic-cortex: 355 passed. Minimal stale sibling reproduction now returns only current input."
+      ],
+      "summary": "DFS context assembly audited and one confirmed stale open sibling leak fixed."
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-10T07:28:22+00:00",
+  "ledger_id": "L20260510-152822",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-10T07:28:22+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "Audit novaic-cortex LLM context DFS assembly logic and determine whether it correctly assembles open scopes, folded completed scopes, tool projections, summaries, and ordering without hidden stale paths.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Locate the active code path used to assemble LLM context from Cortex workspace state.",
+        "Verify DFS traversal, fold/expand semantics, child summary behavior, and chronological ordering.",
+        "Verify current tests cover the important invariants and run focused tests.",
+        "Identify concrete bugs or residual design risks with file pointers.",
+        "Avoid speculative changes; only recommend or patch if evidence is clear."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Cortex LLM DFS context assembly audit",
+      "updated_at": "2026-05-10T07:34:38+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-10T07:34:06+00:00",
+      "done": [],
+      "id": "R000",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Audited the active novaic-cortex LLM context assembly path and fixed one confirmed structural bug.",
+      "ticket_id": "T000",
+      "verification": [
+        "Reproduced old open-sibling leak with a minimal script: before patch messages were `[\"stale input\", \"current input\"]`; after patch messages are `[\"current input\"]`.",
+        "Focused tests: `32 passed`.",
+        "Full `novaic-cortex` tests: `355 passed`."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Active code path is identified with file/function pointers.",
+        "DFS/fold/ordering behavior is explained from implementation evidence.",
+        "Test coverage is mapped to the invariants and focused tests are executed.",
+        "Any confirmed issue is listed with severity and pointer; if none, residual risks are explicitly named."
+      ],
+      "assumptions": [],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "bounded audit over context_stack/workspace code and focused tests",
+      "created_at": "2026-05-10T07:28:53+00:00",
+      "id": "T000",
+      "problem_definition": "Inspect novaic-cortex LLM context assembly from workspace scopes/steps to final messages, with special focus on DFS traversal correctness, scope folding, child ordering, and whether current behavior matches the intended Cortex skill tree model.",
+      "problem_id": "P000",
+      "proposed_solution": "- Read `context_stack` implementation and related `workspace` context APIs.\n- Map the active traversal path: entrypoint, tree build, merge, render, budget.\n- Check key invariants: open path expansion, archived scope folding, blank structural scope behavior, child ordering, unconsumed child handling, and tool output projection.\n- Read focused tests covering these invariants.\n- Run focused test set and report failures if any.\n- Produce audit findings and recommendations, separated into confirmed bugs and residual risks.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Audit active Cortex DFS context assembly path",
+      "updated_at": "2026-05-10T07:34:06+00:00",
+      "verification_plan": "- Run focused novaic-cortex context stack tests.\n- Optionally run full novaic-cortex tests if focused tests expose no failure and runtime is acceptable.\n- Use `git diff --stat` to ensure only ledger/audit files changed unless a confirmed bug is patched."
+    }
+  },
+  "updated_at": "2026-05-10T07:34:38+00:00"
+}
