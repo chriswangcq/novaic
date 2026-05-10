@@ -1,0 +1,327 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [
+        "_err() still stores raw legacy error JSON instead of ToolOutputV1"
+      ],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-09T08:25:46+00:00",
+      "criteria_map": [
+        "`_ok()` returns `content` containing JSON with `version == \"tool-output.v1\"`: satisfied.",
+        "Successful dict output is readable via the `text` field: satisfied.",
+        "Logical failure output keeps `tool_success=false` and preserves the failure message inside `ToolOutputV1.text`: satisfied.",
+        "Mounted device handler tests validate the new envelope: satisfied.",
+        "Existing Runtime tool handler failure and contract tests pass: satisfied.",
+        "Every durable tool result path is uniformly normalized: not fully satisfied because `_err()` is still legacy."
+      ],
+      "evidence": [
+        "`_ok()` now stores durable `content` as `ToolOutputV1`.",
+        "Logical failure and mounted-device paths are covered by tests.",
+        "Runtime and Cortex focused tests pass.",
+        "`_err()` still stores raw `{\"error\": ...}` JSON, so handler exceptions and unknown tools do not yet use the same durable envelope."
+      ],
+      "execution_map": [
+        "Implemented success-path normalization.",
+        "Preserved repeated scope-mismatch recovery by unwrapping `ToolOutputV1.text` in `logical_tool_error_fingerprint`.",
+        "Verified focused Runtime and Cortex tests."
+      ],
+      "followup_problem_id": "P001",
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "The failure envelope gap should be closed with a child/follow-up ticket before declaring this normalization phase complete."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "not_success",
+      "stress_test": [
+        "If a handler raises or the LLM calls an unknown tool, the saved `content` still bypasses `ToolOutputV1`; this keeps one legacy island alive."
+      ],
+      "summary": "Success path emits ToolOutputV1 but failure path _err still uses a legacy raw error envelope"
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C001.md",
+      "created_at": "2026-05-09T08:27:42+00:00",
+      "criteria_map": [
+        "`_err()` stores `content` as `ToolOutputV1` JSON with `ok=false`: satisfied.",
+        "Unknown-tool and exception paths preserve current task status/error semantics: satisfied by tests and unchanged top-level fields.",
+        "Tests assert the failure-path envelope has `version == \"tool-output.v1\"` and includes the error text: satisfied.",
+        "Focused Runtime tool handler failure tests pass: satisfied."
+      ],
+      "evidence": [
+        "`_err()` now writes `tool-output.v1` content with `ok=false`.",
+        "Unknown-tool and executor-exception tests assert the new envelope shape.",
+        "Focused Runtime and Cortex tests pass."
+      ],
+      "execution_map": [
+        "Failure envelope normalized.",
+        "Unknown-tool and exception coverage added.",
+        "Regression tests run across Runtime and Cortex projection boundaries."
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P001",
+      "residual_risk": [
+        "No residual risk for this follow-up. Later phases still need shell capability cutover and direct tool surface deletion."
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "A raised executor exception still emits exactly one structured `event=tool_call_failed` log line and returns an error envelope instead of raising.",
+        "An unknown tool still returns `success=false` and a user-debuggable top-level error."
+      ],
+      "summary": "Runtime _err failure paths now emit ToolOutputV1 content and focused tests pass"
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C002.md",
+      "created_at": "2026-05-09T08:28:16+00:00",
+      "criteria_map": [
+        "`task_queue.handlers.tool_handlers._ok()` stores successful executor output as `ToolOutputV1` JSON: satisfied by R000.",
+        "Logical tool failure semantics are preserved: satisfied by `test_pr234_tool_logical_failure.py` and `test_pr234_repeated_scope_mismatch.py`.",
+        "Existing small text/dict tools remain readable through `ToolOutputV1.text`: satisfied by mounted-device tests parsing `content[\"text\"]`.",
+        "Tests cover success, logical failure, and one mounted-device execution path under the new content envelope: satisfied by R000 tests.",
+        "Focused Runtime tool handler tests pass: satisfied by R000/R001 verification.",
+        "Handler exception and unknown-tool paths are also normalized: satisfied by R001 follow-up."
+      ],
+      "evidence": [
+        "R000 normalized `_ok()` success and logical-failure executor returns to `ToolOutputV1`.",
+        "R001 normalized `_err()` unknown-tool and exception returns to `ToolOutputV1`.",
+        "Focused Runtime tool handler, tool output contract, tool surface, repeated error, and mounted device tests pass.",
+        "Cortex projection tests for `ToolOutputV1` pass."
+      ],
+      "execution_map": [
+        "Initial ticket normalized `_ok()`.",
+        "Check found `_err()` legacy residue.",
+        "Follow-up ticket normalized `_err()` and added tests.",
+        "Final check combines R000 and R001."
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P000",
+      "residual_risk": [
+        "No residual risk for Runtime durable tool output normalization. Remaining work belongs to later shell capability cutover and direct-tool deletion phases."
+      ],
+      "result_ids": [
+        "R000",
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Logical skill_end scope mismatch still produces stable repeated-error fingerprints after `ToolOutputV1` wrapping.",
+        "Unknown tool and raised executor failure both return task-layer error envelopes and durable `ToolOutputV1` content.",
+        "Cortex can project `ToolOutputV1` content without inlining old display/image payloads."
+      ],
+      "summary": "Runtime tool success and failure paths now store ToolOutputV1 content; focused Runtime and Cortex tests pass"
+    }
+  },
+  "counters": {
+    "check": 3,
+    "event": 26,
+    "problem": 2,
+    "result": 2,
+    "ticket": 2
+  },
+  "created_at": "2026-05-09T08:22:01+00:00",
+  "ledger_id": "L20260509-162201",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000",
+        "C002"
+      ],
+      "created_at": "2026-05-09T08:22:01+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "Runtime tool execution still stores executor results as raw strings or JSON dictionaries in `content`. The shell/display architecture needs every durable tool result to converge on `ToolOutputV1` so Cortex can project bounded text plus artifact manifests instead of treating raw `_mcp_content` or multimodal fields as history truth.",
+      "followup_ids": [
+        "P001"
+      ],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P001"
+      ],
+      "success_criteria": [
+        "`task_queue.handlers.tool_handlers._ok()` stores successful executor output as `ToolOutputV1` JSON.",
+        "Logical tool failure semantics are preserved: executor results with `success=false` or `ok=false` still produce `tool_success=false` and `tool_status=error`.",
+        "Existing small text/dict tools remain readable through the `ToolOutputV1.text` field.",
+        "Tests cover success, logical failure, and one mounted-device execution path under the new content envelope.",
+        "Focused Runtime tool handler tests pass."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Runtime ToolOutputV1 normalization",
+      "updated_at": "2026-05-09T08:28:16+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-09T08:25:46+00:00",
+      "created_from_check_id": "C000",
+      "created_from_ticket_id": null,
+      "description": "Runtime `_ok()` now normalizes successful executor returns to `ToolOutputV1`, but `_err()` still stores raw legacy JSON for unknown tool names and handler exceptions. This leaves one durable tool-result path outside the new contract.",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`_err()` stores `content` as `ToolOutputV1` JSON with `ok=false`.",
+        "Unknown-tool and exception paths preserve current task status/error semantics.",
+        "Tests assert the failure-path envelope has `version == \"tool-output.v1\"` and includes the error text.",
+        "Focused Runtime tool handler failure tests pass."
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "Normalize Runtime tool error paths to ToolOutputV1",
+      "updated_at": "2026-05-09T08:27:42+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-09T08:25:03+00:00",
+      "done": [
+        "Updated `novaic-agent-runtime/task_queue/handlers/tool_handlers.py`:",
+        "added legacy-result text normalization;",
+        "preserved already-normalized `tool-output.v1` payloads;",
+        "wrapped `_ok()` durable content in `ToolOutputV1`;",
+        "preserved logical failure status when executor returns `success=false` or `ok=false`.",
+        "Updated `novaic-agent-runtime/task_queue/contracts/react_actions.py` so repeated logical error detection can read legacy error fields from `ToolOutputV1.text`.",
+        "Updated focused tests for logical failures, repeated scope mismatch, and mounted device tool execution."
+      ],
+      "id": "R000",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Runtime successful tool execution now stores durable `content` as `ToolOutputV1` JSON. Legacy executor dictionaries are converted into bounded readable `text`, while `tool_success` / `tool_status` semantics continue to come from the original executor result.",
+      "ticket_id": "T000",
+      "verification": [
+        "`python -m pytest tests/test_pr234_tool_logical_failure.py tests/test_pr234_repeated_scope_mismatch.py tests/unit/task_queue/test_device_tool_handlers.py tests/unit/task_queue/test_tool_handlers_failure_event.py tests/unit/task_queue/test_tool_output_contract.py tests/test_tool_surface_boundary.py -q`",
+        "Result: `21 passed in 0.07s`.",
+        "`python -m pytest tests/test_runtime_explicit_contracts.py tests/test_pr85_llm_context_smoke_guardrails.py tests/test_pr71_no_tool_retry_context_cleanup.py tests/test_runtime_tool_path_contract.py -q`",
+        "Result: `32 passed in 0.11s`.",
+        "`cd novaic-cortex && python -m pytest tests/test_tool_output_projection.py tests/test_resolve_for_llm.py tests/test_payload_inspection_api.py -q`",
+        "Result: `18 passed in 0.18s`."
+      ]
+    },
+    "R001": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P001/results/R001.md",
+      "created_at": "2026-05-09T08:27:21+00:00",
+      "done": [
+        "Updated `novaic-agent-runtime/task_queue/handlers/tool_handlers.py`:",
+        "`_err()` now serializes `tool_error(str(error)).to_dict()` into `content`;",
+        "top-level `error`, `success=false`, and `status=error` semantics remain unchanged.",
+        "Updated `novaic-agent-runtime/tests/unit/task_queue/test_tool_handlers_failure_event.py`:",
+        "executor exception path asserts `tool-output.v1`, `ok=false`, and preserved error text;",
+        "unknown tool path asserts the same envelope shape."
+      ],
+      "id": "R001",
+      "known_gaps": [],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "Normalized Runtime `_err()` durable `content` to `ToolOutputV1` so unknown-tool and handler-exception paths no longer write raw legacy error JSON.",
+      "ticket_id": "T001",
+      "verification": [
+        "`python -m pytest tests/unit/task_queue/test_tool_handlers_failure_event.py tests/test_pr234_tool_logical_failure.py tests/test_pr234_repeated_scope_mismatch.py tests/unit/task_queue/test_device_tool_handlers.py tests/unit/task_queue/test_tool_output_contract.py tests/test_tool_surface_boundary.py -q`",
+        "Result: `22 passed in 0.07s`.",
+        "`python -m pytest tests/test_runtime_explicit_contracts.py tests/test_pr85_llm_context_smoke_guardrails.py tests/test_pr71_no_tool_retry_context_cleanup.py tests/test_runtime_tool_path_contract.py -q`",
+        "Result: `32 passed in 0.11s`.",
+        "`cd novaic-cortex && python -m pytest tests/test_tool_output_projection.py tests/test_resolve_for_llm.py tests/test_payload_inspection_api.py -q`",
+        "Result: `18 passed in 0.21s`."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "`_ok()` returns `content` containing JSON with `version == \"tool-output.v1\"`.",
+        "Successful dict output is readable via the `text` field.",
+        "Logical failure output keeps `tool_success=false` and preserves the failure message inside `ToolOutputV1.text`.",
+        "Mounted device handler tests validate the new envelope.",
+        "Existing Runtime tool handler failure and contract tests pass."
+      ],
+      "assumptions": [
+        "`content` is durable tool history and may safely become `ToolOutputV1` because Cortex projection now understands `tool-output.v1`."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "Small bounded runtime normalization with focused tests; no cross-service deployment required for the slice",
+      "created_at": "2026-05-09T08:22:19+00:00",
+      "id": "T000",
+      "problem_definition": "`handle_tool_execute()` currently calls `_ok()` and stores executor results as raw JSON/text in `content`. That leaves durable history dependent on each executor's ad hoc shape, including legacy fields like `_mcp_content`. The new shell/display model needs `content` to become a stable `ToolOutputV1` envelope.",
+      "problem_id": "P000",
+      "proposed_solution": "Add a small normalization helper in `task_queue.handlers.tool_handlers` that converts legacy executor results into `ToolOutputV1`:\n\n- if the result is already `tool-output.v1`, preserve it;\n- otherwise store bounded readable text in `text`;\n- carry legacy dict data as a diagnostic/source field only where safe;\n- keep `tool_success` and `tool_status` derived from the original executor result.\n\nUpdate focused tests so they assert the new durable content envelope instead of raw executor dictionaries.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Some tests or downstream readers may assume `content` is the raw executor dict. Update only tests in this migration slice; do not add compatibility branches unless a live caller requires them."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Normalize Runtime tool success content to ToolOutputV1",
+      "updated_at": "2026-05-09T08:25:03+00:00",
+      "verification_plan": "- Run `python -m pytest tests/test_pr234_tool_logical_failure.py tests/unit/task_queue/test_device_tool_handlers.py tests/unit/task_queue/test_tool_handlers_failure_event.py -q`.\n- Run `python -m pytest tests/unit/task_queue/test_tool_output_contract.py tests/test_tool_surface_boundary.py -q`."
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "`_err()` content has `version == \"tool-output.v1\"`.",
+        "`_err()` content has `ok=false` and carries the error text.",
+        "Unknown-tool path still returns `success=false`, `status=error`, and a useful top-level `error`.",
+        "Executor exception path still logs the structured failure event and returns a useful top-level `error`."
+      ],
+      "assumptions": [
+        "Top-level `error` remains available for task-layer handling; only durable `content` changes."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "one_go",
+      "classification_reason": "Small failure-path normalization with focused tests",
+      "created_at": "2026-05-09T08:26:07+00:00",
+      "id": "T001",
+      "problem_definition": "Runtime `_err()` is the remaining tool-result path that writes raw JSON into `content`. This covers unknown tools and handler exceptions, so leaving it unchanged keeps legacy durable shape alive.",
+      "problem_id": "P001",
+      "proposed_solution": "Change `_err()` to serialize `tool_error(error).to_dict()` into `content`. Add focused assertions for unknown tool and exception paths so both continue to report status/error correctly while using `ToolOutputV1`.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "Tests that assumed raw `{\"error\": ...}` content must be updated to the new durable envelope."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Normalize `_err()` content to ToolOutputV1",
+      "updated_at": "2026-05-09T08:27:21+00:00",
+      "verification_plan": "- Run `python -m pytest tests/unit/task_queue/test_tool_handlers_failure_event.py -q`.\n- Run `python -m pytest tests/test_pr234_tool_logical_failure.py tests/test_pr234_repeated_scope_mismatch.py tests/unit/task_queue/test_device_tool_handlers.py -q`."
+    }
+  },
+  "updated_at": "2026-05-09T08:28:16+00:00"
+}

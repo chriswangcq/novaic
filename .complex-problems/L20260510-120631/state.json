@@ -1,0 +1,623 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C000.md",
+      "created_at": "2026-05-10T04:11:24+00:00",
+      "criteria_map": [
+        "All four P001 criteria marked success in check body."
+      ],
+      "evidence": [
+        "4 logicalfs tests passed; forbidden import scan clean for code modules."
+      ],
+      "execution_map": [
+        "Package owns snapshot/view/patch and local materialization/diff only; no Cortex/sandboxd execution ownership."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P001",
+      "residual_risk": [
+        "Cortex integration remains in P002/P003."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Tests cover materialization, env layout, diff upserts/deletes, cwd escape, and sanitization."
+      ],
+      "summary": "LogicalFS substrate package exists, is tested, and has no forbidden product/service imports."
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/checks/C001.md",
+      "created_at": "2026-05-10T04:17:08+00:00",
+      "criteria_map": [
+        "All P002 acceptance criteria are satisfied in the check body."
+      ],
+      "evidence": [
+        "logicalfs tests passed; Cortex sandbox tests passed; full Cortex non-real-shell suite passed; residue scan clean for active generic helper definitions."
+      ],
+      "execution_map": [
+        "LocalLogicalFSProvider handles materialize/observe/sanitize; MountNamespaceLogicalFS handles Workspace snapshot and patch translation."
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P002",
+      "residual_risk": [
+        "P003/P004 still handle final execution-path validation, script/deploy wiring, and broad cleanup."
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Generic LogicalFS and Cortex sandbox wiring tests cover cwd/env/diff/capability-bin and no-local-fallback behavior."
+      ],
+      "summary": "Cortex LogicalFS adapter now delegates generic snapshot/view/patch mechanics to novaic-logicalfs while keeping only Cortex Workspace/env/capability semantics."
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/checks/C002.md",
+      "created_at": "2026-05-10T04:19:01+00:00",
+      "criteria_map": [
+        "All P003 criteria satisfied in check body."
+      ],
+      "evidence": [
+        "Focused sandboxd wiring tests passed; full Cortex non-real-shell suite passed; fallback scan clean."
+      ],
+      "execution_map": [
+        "Sandbox.exec uses LogicalFS view and SandboxExecSpec.mount, then releases view and applies Workspace patch."
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P003",
+      "residual_risk": [
+        "Live sandboxd deploy/smoke remains P004."
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Fake runner inspected mounted source, mutated RW, and Workspace persisted mutation."
+      ],
+      "summary": "Active shell path is verified as Cortex adapter -> LogicalFS view -> sandboxd SDK spec -> runner -> LogicalFS patch -> Workspace."
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P004/checks/C003.md",
+      "created_at": "2026-05-10T04:25:29+00:00",
+      "criteria_map": [
+        "All P004 criteria satisfied in check body."
+      ],
+      "evidence": [
+        "run_all_tests passed; deploy services passed; deploy status healthy; residue scans clean for old fallback/helper tokens."
+      ],
+      "execution_map": [
+        "Cortex starts with novaic-logicalfs on PYTHONPATH and deploy syncs the package before restart."
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P004",
+      "residual_risk": [
+        "No blocking residual risk; future LogicalFS daemon would be a new phase."
+      ],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Full test matrix plus backend fresh-smoke and status checks passed."
+      ],
+      "summary": "Scripts, deploy, tests, and residue cleanup are complete for the package-based LogicalFS extraction."
+    },
+    "C004": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C004.md",
+      "created_at": "2026-05-10T04:26:11+00:00",
+      "criteria_map": [
+        "Root criteria satisfied by P001-P004 as mapped in check body."
+      ],
+      "evidence": [
+        "P001-P004 checks all success; run_all_tests passed; deploy services/status passed; residue scans clean for old fallback/helper tokens."
+      ],
+      "execution_map": [
+        "Cortex Workspace -> Cortex adapter -> logicalfs -> sandbox_sdk -> sandboxd -> sandbox_core -> logicalfs patch -> Workspace."
+      ],
+      "followup_problem_id": null,
+      "id": "C004",
+      "problem_id": "P000",
+      "residual_risk": [
+        "No blocking risk for package-based state; future LogicalFS daemon would be separate."
+      ],
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Unit, focused boundary, full test matrix, deploy fresh-smoke, and runtime status checks all passed."
+      ],
+      "summary": "LogicalFS package extraction, Cortex adapter migration, execution-path verification, cleanup, tests, and deployment are complete."
+    }
+  },
+  "counters": {
+    "check": 5,
+    "event": 60,
+    "problem": 5,
+    "result": 5,
+    "ticket": 5
+  },
+  "created_at": "2026-05-10T04:06:31+00:00",
+  "ledger_id": "L20260510-120631",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C004"
+      ],
+      "created_at": "2026-05-10T04:06:31+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "Cortex currently owns `logical_fs.py`, which mixes Cortex workspace semantics, agent capability env, subagent RW layout, local materialization, mount planning, and RW diff flushing. The desired final shape is a LogicalFS substrate/service that serves sandboxd with mountable filesystem views while treating Cortex as a state source through explicit snapshot and patch contracts.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P001",
+        "P002",
+        "P003",
+        "P004"
+      ],
+      "success_criteria": [
+        "LogicalFS core/service contracts are snapshot/view/patch based and do not import Cortex, agent runtime, agentctl, subagent, or sandbox core execution substrate.",
+        "Cortex produces `WorkspaceSnapshot` and applies `WorkspacePatch`; it does not materialize process filesystems itself.",
+        "Sandbox execution path uses LogicalFS as the view provider and sandboxd as the process executor.",
+        "Agent/capability env and RW layout are explicit inputs from Cortex/runtime, not generated by LogicalFS from hidden state.",
+        "Old Cortex-owned LogicalFS implementation is removed or reduced to a thin adapter with no materialization/diff logic.",
+        "Tests, residue scans, and deployment wiring prove the active path is the new LogicalFS boundary."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Extract LogicalFS into snapshot/view/patch service boundary",
+      "updated_at": "2026-05-10T04:26:11+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-10T04:07:38+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "LogicalFS needs a business-agnostic substrate that understands only snapshot/view/patch contracts, materialization, diffing, path sanitization, and view handles. This package must not know Cortex, agentctl, subagents, or process execution.",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`novaic-logicalfs` package exists with explicit DTOs for snapshot, file entries, writable layout, env overlay, view handle, and patch.",
+        "Package can materialize a snapshot to local RO/RW roots and produce a patch from RW changes.",
+        "Package has unit tests for materialization, deletion/change diffing, layout env, cwd validation, and path sanitization.",
+        "Package imports no Cortex, sandbox core, sandbox sdk, agent runtime, agentctl, or product business modules."
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "Create LogicalFS substrate package",
+      "updated_at": "2026-05-10T04:11:24+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-10T04:07:38+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Cortex should own workspace state but should not own filesystem materialization/diff implementation. It must export a snapshot and apply a returned patch through explicit adapter code.",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Cortex has a thin adapter that converts Workspace `/ro` and `/rw` data to LogicalFS snapshot DTOs.",
+        "Cortex passes explicit env overlays, token, API URL, and RW layout values into LogicalFS instead of LogicalFS generating agent semantics.",
+        "Cortex applies `WorkspacePatch` returned by LogicalFS.",
+        "Old materialization/diff helpers are removed from Cortex or delegated to `novaic-logicalfs`.",
+        "Cortex imports `logicalfs`, `sandbox_sdk`, and no `sandbox_core`."
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "Migrate Cortex to explicit LogicalFS snapshot and patch adapter",
+      "updated_at": "2026-05-10T04:17:08+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P003/README.md",
+      "check_ids": [
+        "C002"
+      ],
+      "created_at": "2026-05-10T04:07:38+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Shell execution must become a clear sequence: Cortex state adapter creates snapshot, LogicalFS creates a view, sandboxd executes against that view, LogicalFS observes patch, Cortex applies patch.",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P003",
+      "parent_id": "P000",
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`Sandbox.exec` or equivalent orchestrator follows the explicit sequence without hidden Cortex reads inside LogicalFS.",
+        "Sandboxd still receives a SDK `SandboxExecSpec` and core substrate stays behind sandboxd.",
+        "Tests prove the request sent to sandboxd contains a LogicalFS view handle/mount input from the LogicalFS package.",
+        "Local fallback remains absent."
+      ],
+      "ticket_ids": [
+        "T003"
+      ],
+      "title": "Wire shell execution path through LogicalFS view then sandboxd",
+      "updated_at": "2026-05-10T04:19:01+00:00"
+    },
+    "P004": {
+      "body_path": "problems/P000/children/P004/README.md",
+      "check_ids": [
+        "C003"
+      ],
+      "created_at": "2026-05-10T04:07:38+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "After the new LogicalFS boundary works, old Cortex-owned helpers, stale imports, misleading docs, and missing deployment/test wiring would make the codebase ambiguous.",
+      "followup_ids": [],
+      "id": "P004",
+      "package_path": "problems/P000/children/P004",
+      "parent_id": "P000",
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`scripts/start.sh`, `deploy`, and `scripts/run_all_tests.sh` include `novaic-logicalfs` explicitly where needed.",
+        "Old Cortex materialization/diff/layout helper residue is removed.",
+        "Residue scans enforce that `novaic-logicalfs` imports no forbidden product/service modules and Cortex imports no sandbox core.",
+        "Full tests pass.",
+        "If LogicalFS is implemented as a daemon, deployment starts and fresh-smokes it; if package-only, docs/checks explain why no daemon exists yet."
+      ],
+      "ticket_ids": [
+        "T004"
+      ],
+      "title": "Clean old LogicalFS residue and wire scripts/deploy/tests",
+      "updated_at": "2026-05-10T04:25:29+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P001/results/R000.md",
+      "created_at": "2026-05-10T04:09:51+00:00",
+      "done": [
+        "Added `LogicalFSSnapshot`, `LogicalFSFile`, `LogicalFSLayout`, `LogicalFSEnv`, `LogicalFSView`, and `LogicalFSPatch` DTOs.",
+        "Added `LocalLogicalFSProvider` for materializing snapshots into RO/RW roots, building explicit env/layout values, observing RW patches, and sanitizing backing paths.",
+        "Added tests for materialization/env layout, upsert/delete patching, cwd escape rejection, and output path sanitization."
+      ],
+      "id": "R000",
+      "known_gaps": [],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "Created novaic-logicalfs package with snapshot/view/patch DTOs, local materialization/diff provider, tests, and forbidden import scan.",
+      "ticket_id": "T001",
+      "verification": [
+        "`PYTHONPATH=novaic-logicalfs pytest -q novaic-logicalfs/tests`: 4 passed.",
+        "Forbidden import scan found no code imports from Cortex, sandbox core, sandbox sdk, agent runtime, business, or common product modules."
+      ]
+    },
+    "R001": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P002/results/R001.md",
+      "created_at": "2026-05-10T04:16:24+00:00",
+      "done": [
+        "Replaced duplicated Cortex-local materialization/diff/sanitize/cwd helpers with calls to `LocalLogicalFSProvider`.",
+        "Kept Cortex ownership of Workspace snapshot creation, generated `.novaic_env.json`, subagent RW layout env, shell capability CLI injection, and applying RW patches back to Workspace.",
+        "Added `LogicalFSLayout.writable_dirs` so generic LogicalFS can create explicit writable directories without turning every directory into an env variable.",
+        "Removed `_logical_rw_changes` from the Cortex public import path and moved deletion/diff coverage to the generic LogicalFS tests.",
+        "Added Cortex sandbox wiring assertions that the process runner sees mounted capability scripts (`agentctl`, `cortex`, `devicectl`) and stable `/cortex` env."
+      ],
+      "id": "R001",
+      "known_gaps": [],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "Migrated `novaic_cortex.logical_fs` from an in-module generic filesystem implementation to a Cortex adapter over `novaic-logicalfs`.",
+      "ticket_id": "T002",
+      "verification": [
+        "`PYTHONPATH=novaic-logicalfs pytest -q novaic-logicalfs/tests` passed: 4 tests.",
+        "`PYTHONPATH=novaic-logicalfs:novaic-sandbox-sdk:novaic-common:novaic-cortex pytest -q novaic-cortex/tests/test_sandboxd_wiring.py novaic-cortex/tests/test_sandbox_requires_mount_namespace.py` passed: 3 tests.",
+        "`PYTHONPATH=novaic-logicalfs:novaic-sandbox-sdk:novaic-common:novaic-cortex pytest -q novaic-cortex/tests` passed: 344 passed, 40 skipped.",
+        "Cortex scan for displaced generic helper names found no active helper definitions under `novaic-cortex/novaic_cortex`; the names only remain in the generic `novaic-logicalfs` substrate and one old real-shell test function name.",
+        "LogicalFS package forbidden import scan found no product/service imports in code modules; README/tests only mention subagents as example path strings."
+      ]
+    },
+    "R002": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P003/results/R002.md",
+      "created_at": "2026-05-10T04:18:43+00:00",
+      "done": [
+        "Added a sandboxd wiring test where the fake runner inspects the mounted source root while the LogicalFS view is alive.",
+        "The test verifies materialized RO content, RW content, and injected capability scripts exist under the mount source.",
+        "The fake runner mutates RW files and `Sandbox.exec` persists those changes back to Workspace through the LogicalFS patch path.",
+        "Verified no local subprocess fallback calls remain in `novaic_cortex.sandbox`."
+      ],
+      "id": "R002",
+      "known_gaps": [],
+      "problem_id": "P003",
+      "root_id": "P000",
+      "summary": "Strengthened the active shell execution tests so they prove the current path is Cortex adapter -> LogicalFS view -> sandboxd SDK spec -> runner -> LogicalFS patch -> Workspace.",
+      "ticket_id": "T003",
+      "verification": [
+        "`PYTHONPATH=novaic-logicalfs:novaic-sandbox-sdk:novaic-common:novaic-cortex pytest -q novaic-cortex/tests/test_sandboxd_wiring.py novaic-cortex/tests/test_sandbox_requires_mount_namespace.py` passed: 4 tests.",
+        "Full Cortex non-real-shell suite passed: 345 passed, 40 skipped.",
+        "Fallback scan found no `create_subprocess`, `subprocess`, `Popen`, `os.system`, `wait_for`, command rewriting, or unshare execution path in active sandbox/logical_fs code."
+      ]
+    },
+    "R003": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P004/results/R003.md",
+      "created_at": "2026-05-10T04:25:10+00:00",
+      "done": [
+        "Added `novaic-logicalfs` to `scripts/run_all_tests.sh` as its own package test lane.",
+        "Added `novaic-logicalfs` to Cortex `PYTHONPATH` in `scripts/run_all_tests.sh`.",
+        "Added `novaic-logicalfs` to Cortex `PYTHONPATH` in `scripts/start.sh`.",
+        "Updated `deploy` so backend restart paths sync `novaic-logicalfs` before Cortex starts.",
+        "Renamed the deploy bootstrap helper from sandboxd-only wording to `sync_backend_infra_bootstrap`.",
+        "Added deploy lint coverage requiring `novaic-logicalfs` and `sync_backend_infra_bootstrap`.",
+        "Removed stale skipped local-shell fallback test files and the `NOVAIC_CORTEX_REAL_SANDBOXD_TESTS` skip gate."
+      ],
+      "id": "R003",
+      "known_gaps": [],
+      "problem_id": "P004",
+      "root_id": "P000",
+      "summary": "Closed the operational surface for the LogicalFS extraction: scripts now wire `novaic-logicalfs`, stale skipped local-shell tests were removed, full tests pass, and backend deployment succeeded with fresh-smoke.",
+      "ticket_id": "T004",
+      "verification": [
+        "`./scripts/run_all_tests.sh` passed all 16 lanes:",
+        "root CI guards, runtime lint, deploy lint, start config lint.",
+        "sandbox-sdk, sandbox-core, logicalfs, agent-runtime, business, common, sandbox-service, cortex, blob-service, llm-factory.",
+        "generated artifacts lint.",
+        "Cortex test suite now reports `345 passed` with no default skipped shell-fallback suite.",
+        "Residue scan found no stale local shell fallback/helper tokens in active Cortex/scripts/deploy paths.",
+        "Forbidden dependency scan confirms Cortex does not import `sandbox_core`; only `sandbox_service` imports core behind the sandboxd boundary.",
+        "`./deploy services` succeeded:",
+        "`novaic-logicalfs` was synced to `/opt/novaic/services/novaic-logicalfs`.",
+        "all backend ports came up.",
+        "required worker roster matched expected counts.",
+        "fresh-smoke logs were all fresh after restart.",
+        "`./deploy status` confirmed all backend services, workers, subscriber, and relay are running."
+      ]
+    },
+    "R004": {
+      "artifacts": [],
+      "body_path": "problems/P000/results/R004.md",
+      "created_at": "2026-05-10T04:25:46+00:00",
+      "done": [
+        "P001 created `novaic-logicalfs` as a business-agnostic snapshot/view/patch package.",
+        "P002 migrated the Cortex LogicalFS adapter to delegate generic materialization, sanitization, cwd resolution, and RW diff detection to `novaic-logicalfs`.",
+        "P003 verified the active shell path: Cortex adapter -> LogicalFS view -> sandboxd SDK spec -> runner -> LogicalFS patch -> Workspace.",
+        "P004 wired scripts/deploy/tests, removed stale skipped local-shell fallback tests, ran full tests, deployed, and verified service freshness/status."
+      ],
+      "id": "R004",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Completed the package-based LogicalFS extraction and wired it into the Cortex shell execution path, tests, deploy scripts, and running backend deployment.",
+      "ticket_id": "T000",
+      "verification": [
+        "P001 check: success.",
+        "P002 check: success.",
+        "P003 check: success.",
+        "P004 check: success.",
+        "Full standard suite: `./scripts/run_all_tests.sh` passed all 16 lanes.",
+        "Deployment: `./deploy services` passed and fresh-smoke verified all backend logs.",
+        "Runtime status: `./deploy status` showed all backend services/workers/subscriber/relay healthy."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "`novaic-logicalfs` contains snapshot/view/patch contracts and materialization/diff logic.",
+        "`novaic-logicalfs` imports no Cortex, agent runtime, agentctl, subagent, sandbox core process runner, or product business modules.",
+        "Cortex constructs explicit snapshot/env/layout inputs and applies returned patches.",
+        "Cortex does not directly implement filesystem materialization/diff logic.",
+        "Sandbox execution path remains `Cortex -> logicalfs view -> sandbox_sdk -> sandboxd -> sandbox_core`.",
+        "Deployment/start/test scripts include LogicalFS explicitly if it is a package/service dependency.",
+        "Source scans show old Cortex LogicalFS substrate residue is gone."
+      ],
+      "assumptions": [
+        "The first durable final form can be a standalone package boundary; if the code shape shows a daemon is required for correctness, split into child tickets and implement the daemon wiring explicitly."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "LogicalFS extraction crosses contracts, Cortex adapter, execution path, script/deploy wiring, and cleanup; split to avoid another half-migration.",
+      "created_at": "2026-05-10T04:06:53+00:00",
+      "id": "T000",
+      "problem_definition": "`novaic_cortex/logical_fs.py` currently owns too many responsibilities: it reads Cortex workspace data, decides agent/subagent env layout, materializes files, creates mount plans, sanitizes paths, detects changes, and writes patches back into Workspace. This violates the desired substrate boundary where LogicalFS should serve sandboxd as a filesystem view provider while treating Cortex as an explicit snapshot/patch state source.",
+      "problem_id": "P000",
+      "proposed_solution": "Implement a phased extraction:\n\n1. Create a business-agnostic `novaic-logicalfs` package with snapshot/view/patch DTOs and local materialization/diff core.\n2. Update Cortex to build explicit workspace snapshots, env overlays, and writable layout inputs.\n3. Update Cortex shell orchestration to call the LogicalFS provider for `ViewHandle` creation and patch observation, then call sandboxd through `sandbox_sdk`.\n4. Remove materialization/diff/layout logic from `novaic_cortex/logical_fs.py`, leaving at most a thin Cortex adapter.\n5. Update tests, scripts, deployment, and residue scans so the active path cannot silently use the old Cortex-owned implementation.",
+      "result_ids": [
+        "R004"
+      ],
+      "risks": [
+        "This is larger than the SDK split; old tests may depend on direct `Sandbox(ws)` local execution behavior.",
+        "If implemented as a full daemon immediately, deployment/process supervision must be updated carefully."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Build LogicalFS snapshot/view/patch boundary and migrate Cortex shell path",
+      "updated_at": "2026-05-10T04:25:46+00:00",
+      "verification_plan": "- Run logicalfs package tests.\n- Run Cortex shell/LogicalFS boundary tests.\n- Run sandbox SDK/core/service tests.\n- Run full `scripts/run_all_tests.sh`.\n- Run residue scans for Cortex-owned materialization/diff helpers and forbidden imports.\n- Run local sandboxd/logicalfs smoke if the service boundary is implemented in this ticket."
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "`novaic-logicalfs` package exists with contracts and local provider code.",
+        "Materialization and patch observation are tested.",
+        "Env/layout generation takes explicit inputs only.",
+        "Package imports no Cortex, sandbox core, sandbox sdk, agent runtime, agentctl, business, or common product modules."
+      ],
+      "assumptions": [
+        "Initial implementation is package substrate, not daemon; service-ization can be a later physical deployment choice once the contract is clean."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "one_go",
+      "classification_reason": "A bounded new substrate package with tests and import guard scans.",
+      "created_at": "2026-05-10T04:07:58+00:00",
+      "id": "T001",
+      "problem_definition": "LogicalFS needs a reusable substrate package that owns snapshot/view/patch types and materialization/diff logic without depending on Cortex or sandbox execution services.",
+      "problem_id": "P001",
+      "proposed_solution": "Create `novaic-logicalfs/logicalfs` with DTOs and a local view provider. The provider materializes explicit snapshots into temporary view roots, prepares stable `/cortex`-style env values from explicit layout inputs, validates cwd, observes RW changes, and returns a patch object. Add tests and forbidden-import scans.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "DTO shape might need adjustment when Cortex adapter migration starts."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Implement business-agnostic LogicalFS package",
+      "updated_at": "2026-05-10T04:09:51+00:00",
+      "verification_plan": "- Run `PYTHONPATH=novaic-logicalfs pytest -q novaic-logicalfs/tests`.\n- Run forbidden import scan against `novaic-logicalfs`."
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "`novaic_cortex.logical_fs` delegates materialization, cwd resolution, path sanitization, and RW diff detection to `logicalfs`.",
+        "`novaic-logicalfs` has no dependency on Cortex, sandboxd, agent runtime, business code, or agent identity.",
+        "Cortex still provides stable `/cortex/ro`, `/cortex/rw`, `/cortex/bin` shell view and explicit env.",
+        "Shell capability scripts still work through the adapter boundary.",
+        "Existing Cortex sandbox tests pass with `novaic-logicalfs` on `PYTHONPATH`.",
+        "No old generic duplicate implementation remains in Cortex."
+      ],
+      "assumptions": [
+        "LogicalFS is a substrate package, not a server yet.",
+        "Service/server extraction, deploy wiring, and full residue cleanup are covered by later tickets P003/P004."
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T002.md",
+      "classification": "one_go",
+      "classification_reason": "Cortex adapter migration is a single coherent boundary refactor with focused tests and residue scans; later deploy/script cleanup stays in P004.",
+      "created_at": "2026-05-10T04:11:54+00:00",
+      "id": "T002",
+      "problem_definition": "`novaic-cortex/novaic_cortex/logical_fs.py` still contains generic filesystem substrate logic: materializing `/ro` and `/rw`, tracking file stats, calculating RW diffs, resolving stable cwd, and sanitizing backing paths. This keeps Cortex partially responsible for LogicalFS mechanics and makes the boundary look like a half-extraction.\n\nThe intended final shape is:\n\n- `novaic-logicalfs` owns generic snapshot -> view materialization and view -> patch observation.\n- Cortex owns semantic projection from Cortex Workspace to `LogicalFSSnapshot`, explicit shell/env/subagent layout, capability-bin generation, and applying `LogicalFSPatch` back to Workspace.\n- sandboxd/sandbox_core remain process-execution infrastructure and do not own Cortex semantics.",
+      "problem_id": "P002",
+      "proposed_solution": "Refactor the Cortex LogicalFS adapter so it imports and delegates generic file-view behavior to `logicalfs`.\n\nKeep Cortex-local code only for:\n\n- Reading Cortex Workspace `/ro` and `/rw` entries into `LogicalFSSnapshot`.\n- Building explicit `LogicalFSLayout`/`LogicalFSEnv` from request inputs and Cortex runtime state.\n- Installing shell capability scripts into the materialized view.\n- Translating `LogicalFSPatch` back into Workspace writes/deletes.\n- Returning Cortex-facing changed paths and sandbox bind/cwd information.\n\nRemove duplicate generic helpers from Cortex once their behavior is provided by `novaic-logicalfs`.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "Capability-bin generation is Cortex-specific and must stay outside the generic LogicalFS package.",
+        "Existing tests may assert `/rw/...` changed-path output while generic patch paths use `/cortex/rw/...`; Cortex adapter must translate explicitly.",
+        "Workspace deletion semantics need to stay identical for RW files removed during shell execution."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Ticket: Migrate Cortex LogicalFS Adapter",
+      "updated_at": "2026-05-10T04:16:24+00:00",
+      "verification_plan": "- Run focused `logicalfs` tests.\n- Run focused Cortex sandbox tests that exercise mount namespace wiring and RW changed-path reporting.\n- Scan for forbidden imports from `novaic-logicalfs` into product/service modules.\n- Scan `novaic-cortex/novaic_cortex/logical_fs.py` for displaced generic helper names."
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "Focused tests prove materialized RO/RW content is visible to the runner through the mount source.",
+        "Focused tests prove RW mutations made by the runner are observed and written back to Workspace.",
+        "No local subprocess fallback is used in `Sandbox.exec`.",
+        "`sandboxd` remains the only process execution boundary."
+      ],
+      "assumptions": [
+        "Real sandboxd live smoke belongs to the deploy/verification ticket.",
+        "This ticket verifies the active Python boundary and Workspace patch behavior, not OS-level bind mount correctness."
+      ],
+      "body_path": "problems/P000/children/P003/tickets/T003.md",
+      "classification": "one_go",
+      "classification_reason": "This is a focused boundary-test and cleanup verification over the already-migrated active shell path.",
+      "created_at": "2026-05-10T04:17:41+00:00",
+      "id": "T003",
+      "problem_definition": "After migrating the Cortex adapter, the active shell path must be proven as one explicit sequence:\n\n1. Cortex projects Workspace state into a `LogicalFSSnapshot`.\n2. `novaic-logicalfs` materializes a stable `/cortex` view.\n3. Cortex passes the view root to sandboxd using `SandboxExecSpec.mount`.\n4. sandboxd/core owns process execution.\n5. `novaic-logicalfs` observes RW patch.\n6. Cortex applies the patch back to Workspace.\n\nThe risk is a half-migration where tests pass but `Sandbox.exec` still has direct filesystem fallback or stale helper branches.",
+      "problem_id": "P003",
+      "proposed_solution": "Add or strengthen focused tests around the active `Sandbox.exec` path using a fake `SandboxExecutor` that inspects the mounted view while it is still alive.\n\nVerify:\n\n- The runner receives the raw command and a `SandboxExecSpec` with `/cortex` mount.\n- The mounted source contains materialized RO/RW files from Workspace.\n- Capability scripts are present in `/bin`.\n- The fake runner can mutate the RW backing view and `Sandbox.exec` persists that mutation back through Workspace.\n- Without a configured sandboxd executor, shell execution fails explicitly rather than falling back locally.",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [
+        "Tests must inspect the mount while the temporary view is alive, inside the fake runner.",
+        "The fake runner should not depend on host mount namespaces; it should inspect the source root that Cortex passes to sandboxd."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Ticket: Verify Shell Execution Runs Through LogicalFS And Sandboxd",
+      "updated_at": "2026-05-10T04:18:43+00:00",
+      "verification_plan": "- Run focused Cortex sandbox tests.\n- Run full Cortex non-real-shell suite.\n- Scan `novaic_cortex.sandbox` for local subprocess/process fallback imports or calls."
+    },
+    "T004": {
+      "acceptance_criteria": [
+        "Repo scripts wire `novaic-logicalfs` explicitly.",
+        "Full test suite passes.",
+        "Deploy succeeds and fresh smoke passes.",
+        "No stale local fallback, Cortex generic filesystem helper, or sandbox core import remains in active Cortex code.",
+        "If LogicalFS remains package-only, the result records that no LogicalFS daemon is intentionally deployed yet."
+      ],
+      "assumptions": [
+        "LogicalFS is a package/substrate in this phase, not a standalone daemon.",
+        "sandboxd remains the deployed process-execution service."
+      ],
+      "body_path": "problems/P000/children/P004/tickets/T004.md",
+      "classification": "one_go",
+      "classification_reason": "Cleanup/deploy verification is broad but bounded to script wiring, residue scans, full tests, and deploy.",
+      "created_at": "2026-05-10T04:19:26+00:00",
+      "id": "T004",
+      "problem_definition": "The LogicalFS package and Cortex adapter are implemented, but final closure requires proving the repo's operational surfaces know about `novaic-logicalfs` and that old/ambiguous paths are physically cleaned.",
+      "problem_id": "P004",
+      "proposed_solution": "Update and verify:\n\n- `scripts/run_all_tests.sh` includes `novaic-logicalfs` and puts it on Cortex `PYTHONPATH`.\n- `scripts/start.sh` includes `novaic-logicalfs` for Cortex runtime imports.\n- `deploy` syncs/includes `novaic-logicalfs` where package source is deployed.\n- Fresh-smoke/lint deploy checks know the new package when applicable.\n- Residue scans prove:\n  - `novaic-logicalfs` has no forbidden product/service imports.\n  - `novaic-cortex` imports `logicalfs` and `sandbox_sdk`, not `sandbox_core`.\n  - Old Cortex materialization/diff/fallback helper names are gone from active code.\n\nRun the normal test suite and deploy.",
+      "result_ids": [
+        "R003"
+      ],
+      "risks": [
+        "Existing repo contains many prior uncommitted changes; avoid reverting unrelated files.",
+        "Deploy may depend on local service availability and should be reported precisely if blocked."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Ticket: Clean LogicalFS Residue And Wire Scripts",
+      "updated_at": "2026-05-10T04:25:10+00:00",
+      "verification_plan": "- Inspect and patch `deploy`, `scripts/start.sh`, `scripts/run_all_tests.sh`, and related lint/smoke scripts.\n- Run targeted scans.\n- Run `./scripts/run_all_tests.sh`.\n- Run deploy command used by this repo."
+    }
+  },
+  "updated_at": "2026-05-10T04:26:20+00:00"
+}

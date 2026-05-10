@@ -1,0 +1,177 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-09T06:37:43+00:00",
+      "criteria_map": [
+        "Identify whether backend slowness is queue/service/device/LLM related: satisfied.",
+        "Use backend evidence rather than guessing from UI symptoms: satisfied.",
+        "Preserve findings in the complex problem ledger: satisfied."
+      ],
+      "evidence": [
+        "Queue DB task timings show latest wake ran six rounds and processed in about 6m11s.",
+        "Direct health checks show queue/cortex services are responsive.",
+        "Direct Device endpoint probe shows `hd_shell` is fast, so device proxy itself is not the primary bottleneck.",
+        "Task results show prompt token growth from about 15k to about 99k and then about 189k.",
+        "Code inspection identifies the context-expansion boundary:",
+        "`novaic-agent-runtime/task_queue/contracts/llm_call.py`",
+        "`novaic-agent-runtime/task_queue/utils/step_result_client.py`",
+        "`novaic-cortex/novaic_cortex/context_stack/engine.py`",
+        "`novaic-cortex/novaic_cortex/step_result_projection.py`"
+      ],
+      "execution_map": [
+        "Created problem ledger `.complex-problems/L20260509-142226`.",
+        "Recorded diagnostic result `R000`.",
+        "Checked the result against the user request with this success body."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Log/disk pressure and stale failed finalize tasks remain secondary cleanup work.",
+        "The direct screenshot 500 probe may represent a separate reliability issue."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The conclusion survives comparison against direct Device endpoint latency, queue/cortex health latency, and worker task execution timing.",
+        "The conclusion also explains why later rounds are slower than earlier rounds: token count grows as previous screenshots are re-expanded."
+      ],
+      "summary": "The diagnosis is complete enough for the requested backend analysis: the observed slowness comes from prompt/context bloat caused by repeated screenshot/base64 expansion across rounds."
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-09T06:22:26+00:00",
+  "ledger_id": "L20260509-142226",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-09T06:22:26+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "User reports execution is slow after deploying and testing Host Desktop device tools. Need inspect backend evidence instead of guessing, determine where latency is introduced, and explain root cause or likely bottleneck with concrete pointers.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Identify whether recent slowness is in queue scheduling, Runtime worker execution, LLM/Cortex context preparation, Device proxy/PC client, or logging/IO.",
+        "Use backend evidence from production status, task DB/logs, or remote smoke timing.",
+        "Avoid scanning huge logs naively; use bounded queries and narrow time windows.",
+        "Record evidence and residual uncertainty in a solve-complex-problems ledger."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Slow execution backend analysis",
+      "updated_at": "2026-05-09T06:37:43+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "Backend slow execution diagnosis in `.complex-problems/L20260509-142226/work/R000.md`.",
+        "Success check in `.complex-problems/L20260509-142226/work/C000.md`."
+      ],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-09T06:37:43+00:00",
+      "done": [
+        "1. The latest real Xiaoma runtime message in backend DB is `bf1f4970d473` (`host desktop的`) at `2026-05-09T02:23:44.508Z`. No later IM messages for agent `822af016-31a1-49bb-b529-9b8f539a0831` exist in `environment_im_messages`.",
+        "2. That wake took about 6m11s from notification creation to processed:",
+        "created: `2026-05-09T02:23:44.508Z`",
+        "processed: `2026-05-09T02:29:55.564Z`",
+        "3. It ran six React rounds. Direct tool execution was not the bottleneck:",
+        "`hd_screenshot` tool tasks were around 0.8s-1.36s.",
+        "`hd_shell_exec open /Applications/Codex.app` was around 0.45s.",
+        "direct Device `hd_shell` probe was around 0.18s-0.23s.",
+        "queue and cortex health endpoints were around 1ms-35ms.",
+        "4. The slow components were context preparation and LLM calls:",
+        "`cortex.prepare_llm_context` repeatedly took about 19s-22s.",
+        "`llm.call` prompt tokens grew from ~15k to ~99k, then ~189k.",
+        "final `llm.call` took about 75s wall time with `189742` prompt tokens.",
+        "5. The deep cause is image/base64 context reinjection:",
+        "`hd_screenshot` tool results store large base64 payloads (`result_len` about 127k and 138k).",
+        "Runtime expands Cortex `step_ref` tool messages through `expand_messages_for_llm`.",
+        "`prepare_llm_call()` currently does not pass `current_round_id=source.round_id`.",
+        "Cortex-rendered tool messages also do not carry `_round_id`.",
+        "Therefore `include_display` defaults true for all tool results, so old screenshots are repeatedly expanded into LLM-visible image/base64 content across later rounds.",
+        "6. There are operational risks but they are secondary to this slowness:",
+        "`/opt/novaic/data/logs` is 72G and root disk is 92% used.",
+        "`queue-service.log` is 29G and still growing, though current growth sampled at about 16KB/s.",
+        "There are stale failed/pending finalize tasks from `2026-05-08T11:16Z`, caused by a failed `cortex.scope_end` after `skill_end:stack_empty`; these are not the active slow path but indicate cleanup debt."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "No code fix was applied in this ticket; this ticket was diagnostic only.",
+        "Direct `hd_screenshot` endpoint showed a separate 500 in one probe and should be investigated if screenshot reliability is in scope."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Investigated why Xiaoma backend execution feels slow using production read-only checks:\n\n- queue DB task/session/saga timings\n- Entangled IM/notification state\n- process/load/disk/log pressure\n- direct health and device endpoint latency\n- relevant Runtime/Cortex context expansion code\n\nThe main cause is repeated historical screenshot/base64 expansion into LLM context, not CPU, DB, queue health, or device tool execution.",
+      "ticket_id": "T000",
+      "verification": [
+        "Checked queue DB task/session/saga timings.",
+        "Checked Entangled IM/notification state.",
+        "Checked process/load/disk/log pressure.",
+        "Checked direct queue, cortex, and device endpoint latency.",
+        "Inspected Runtime/Cortex code paths responsible for LLM context expansion."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Report current service/worker health.",
+        "Report recent queue task backlog and slow tasks by topic.",
+        "Report direct HD tool timing for shell/screenshot/mouse if relevant.",
+        "Report whether giant logs or noisy logging are likely contributing.",
+        "Provide a concrete conclusion and next fix recommendation."
+      ],
+      "assumptions": [
+        "The slow execution refers to the recent agent/tool execution path after the mounted Host Desktop tool deployment."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "Diagnosis is bounded to production DB/log timing and direct smoke measurements.",
+      "created_at": "2026-05-09T06:22:34+00:00",
+      "id": "T000",
+      "problem_definition": "Execution feels slow. The backend has multiple possible contributors: queue backlog, Runtime worker role split, LLM latency, Cortex prepare/append, Device proxy/PC client, or huge log files causing IO pressure. Need collect enough production evidence to localize the bottleneck.",
+      "problem_id": "P000",
+      "proposed_solution": "Create bounded backend probes: status, DB task timing summaries, recent slow tasks by topic, current queue backlog, targeted log snippets around current time, and direct device proxy timing. Then classify where the delay occurs.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Production DB schema may differ; adapt by introspection.",
+        "Some user-visible slowness may be in app/frontend polling rather than backend execution."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Diagnose slow execution from backend evidence",
+      "updated_at": "2026-05-09T06:37:43+00:00",
+      "verification_plan": "- Use remote SQL against queue DB if available.\n- Use bounded `tail`, `grep`, and Python parsing; avoid full-file scans.\n- Compare direct Device proxy timing with queue/runtime task timing."
+    }
+  },
+  "updated_at": "2026-05-09T06:37:44+00:00"
+}

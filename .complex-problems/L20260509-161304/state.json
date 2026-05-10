@@ -1,0 +1,182 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-09T08:15:19+00:00",
+      "criteria_map": [
+        "Add ToolOutputV1/module -> `tool_output.py`.",
+        "Constructors pure/no hidden dependencies -> tests assert no invented identity/time; implementation has no time/env/io imports.",
+        "Deterministic truncation -> `test_tool_text_truncates_deterministically`.",
+        "Artifact manifests carry URI/modality/metadata -> `test_tool_text_serializes_to_json_contract`.",
+        "Invalid artifacts fail fast -> `test_artifact_manifest_rejects_invalid_values`.",
+        "Error output bounded and machine-readable -> `test_tool_error_is_machine_readable_and_bounded`.",
+        "No behavior cutover -> `_ok()` and existing executors untouched in this phase."
+      ],
+      "evidence": [
+        "Result `R000` added `novaic-agent-runtime/task_queue/tool_output.py`.",
+        "Result `R000` added `novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py`.",
+        "Contract tests passed: `7 passed in 0.04s`.",
+        "Phase 0 surface guard still passed: `4 passed in 0.05s`.",
+        "Neighbor runtime tests passed: `18 passed in 0.11s`."
+      ],
+      "execution_map": [
+        "Ticket `T000` was classified `one_go`.",
+        "Result `R000` records the substrate implementation and verification."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Non-blocking: Runtime executors do not yet emit this contract.",
+        "Non-blocking: Cortex projection does not yet consume this contract.",
+        "Non-blocking: later phases must update or delete compatibility paths."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Failure mode: constructors secretly generate timestamps/IDs. The module does not import time/uuid and the test checks no invented `created_at`/`id`.",
+        "Failure mode: large text leaks unbounded. `tool_text` requires a positive limit and records truncation.",
+        "Failure mode: artifacts are malformed. `ArtifactManifest.to_dict()` rejects empty URI, unknown modality, and negative size.",
+        "Failure mode: behavior changes too early. This phase added only new substrate files/tests."
+      ],
+      "summary": "Phase 1 succeeds. The output-contract substrate exists, is covered by unit tests, and does not alter current Runtime tool execution behavior."
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-09T08:13:04+00:00",
+  "ledger_id": "L20260509-161304",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-09T08:13:04+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "Implement the Phase 1 substrate from the shell-boundary construction plan: a pure, deterministic `ToolOutputV1` / artifact manifest contract in Runtime. This should not yet change tool execution behavior; it should provide the stable output envelope that later phases will wire into Runtime executors, Cortex projection, display, device tools, and shell capabilities.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Add a small Runtime module defining `ToolOutputV1`, `ArtifactManifest`, event manifest, diagnostics, and helper constructors.",
+        "Constructors are pure: no hidden time, UUID, env, filesystem, DB, or network reads.",
+        "Text output is bounded deterministically and records truncation.",
+        "Artifact manifests carry URI, modality, optional mime/size/hash/source/access/projection/retention metadata.",
+        "Invalid artifacts fail fast for empty URI, invalid modality, or negative size.",
+        "Unit tests cover serialization, truncation, artifact validation, error output, and explicit dependency boundaries.",
+        "No existing Runtime tool behavior is changed in this phase."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "ToolOutputV1 Phase 1 substrate implementation",
+      "updated_at": "2026-05-09T08:15:19+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`novaic-agent-runtime/task_queue/tool_output.py`",
+        "`novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py`"
+      ],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-09T08:14:58+00:00",
+      "done": [
+        "Added `novaic-agent-runtime/task_queue/tool_output.py`.",
+        "Added `novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py`.",
+        "Implemented:",
+        "`ToolOutputV1`",
+        "`ArtifactManifest`",
+        "`ToolEventManifest`",
+        "`ToolDiagnostics`",
+        "`artifact_manifest`",
+        "`event_manifest`",
+        "`tool_text`",
+        "`tool_error`",
+        "Kept constructors pure:",
+        "no clock reads;",
+        "no UUID generation;",
+        "no env/filesystem/db/network access;",
+        "caller supplies all identity/time/source metadata explicitly.",
+        "Kept current Runtime `_ok()` / executor behavior untouched."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "`_ok()` does not yet normalize executor outputs to `ToolOutputV1`; planned for a later phase.",
+        "Cortex does not yet parse `ToolOutputV1`; planned for Phase 2.",
+        "Display/device/shell producers do not yet emit `ToolOutputV1`; planned for later phases."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Implemented the Phase 1 pure output-contract substrate without changing existing Runtime tool execution behavior. The new module defines `ToolOutputV1`, artifact/event manifests, diagnostics, and pure helper constructors with deterministic truncation and validation.",
+      "ticket_id": "T000",
+      "verification": [
+        "`cd novaic-agent-runtime && python -m pytest tests/unit/task_queue/test_tool_output_contract.py -q`",
+        "Passed: `7 passed in 0.04s`",
+        "`cd novaic-agent-runtime && python -m pytest tests/test_tool_surface_boundary.py -q`",
+        "Passed: `4 passed in 0.05s`",
+        "`cd novaic-agent-runtime && python -m pytest tests/test_runtime_tool_path_contract.py tests/test_llm_prompt_contract.py tests/test_runtime_explicit_contracts.py -q`",
+        "Passed: `18 passed in 0.11s`",
+        "Existing dirty Runtime files from earlier work remain present and were not modified by this phase. This phase added:",
+        "`task_queue/tool_output.py`",
+        "`tests/unit/task_queue/test_tool_output_contract.py`"
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "The module is deterministic and has no hidden time/id/env/io dependencies.",
+        "`ToolOutputV1.to_dict()` is JSON-serializable.",
+        "Text truncation is deterministic and records diagnostics.",
+        "Artifact validation rejects bad data.",
+        "Error outputs preserve machine-readable error string and bounded text.",
+        "Existing tool execution behavior is untouched."
+      ],
+      "assumptions": [
+        "This phase adds substrate only; Runtime `_ok()` normalization happens in a later phase."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded substrate addition with local unit tests and no runtime behavior cutover.",
+      "created_at": "2026-05-09T08:13:20+00:00",
+      "id": "T000",
+      "problem_definition": "Later migration phases need a stable output envelope, but current Runtime tool execution still treats arbitrary dicts as JSON content. Phase 1 should introduce the pure contract and tests without changing existing behavior.",
+      "problem_id": "P000",
+      "proposed_solution": "Add `task_queue/tool_output.py` with frozen dataclasses and pure helper constructors:\n\n- `ArtifactManifest`\n- `ToolEventManifest`\n- `ToolDiagnostics`\n- `ToolOutputV1`\n- `tool_text`\n- `tool_error`\n- `artifact_manifest`\n- `event_manifest`\n\nAdd unit tests under `tests/unit/task_queue/test_tool_output_contract.py`.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Over-designing the schema could slow implementation; keep fields minimal but extensible.",
+        "Using mutable defaults could create cross-test leakage; use frozen dataclasses and tuples."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Implement pure ToolOutputV1 contract module",
+      "updated_at": "2026-05-09T08:14:58+00:00",
+      "verification_plan": "- Run `python -m pytest tests/unit/task_queue/test_tool_output_contract.py -q`.\n- Re-run Phase 0 guard test.\n- Review diff for scope."
+    }
+  },
+  "updated_at": "2026-05-09T08:15:19+00:00"
+}

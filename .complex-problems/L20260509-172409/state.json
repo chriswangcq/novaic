@@ -1,0 +1,135 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-09T09:30:04+00:00",
+      "criteria_map": [
+        "No dynamic device schema merge in cortex.prepare_llm_context; devicectl shell round-trip works; explicit NOVAIC_DEVICE_URL boundary exists."
+      ],
+      "evidence": [
+        "Focused runtime/cortex/common tests pass and schema source lists only shell, skill_begin, skill_end, display, sleep."
+      ],
+      "execution_map": [
+        "Patched sandbox devicectl, runtime capability env, tool-surface policy, context prepare, schema descriptions, and guardrail tests."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Direct device compatibility executors remain physically present for later cleanup but are not LLM-visible."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Context-prepare test fails if mounted device schemas are fetched; devicectl test verifies Device HTTP path and body."
+      ],
+      "summary": "Device tools are cut over from dynamic LLM schemas to shell devicectl capability."
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-09T09:24:09+00:00",
+  "ledger_id": "L20260509-172409",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-09T09:24:09+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "Static builtin schemas are now reduced to the core surface, but mounted HD/device tools can still be dynamically merged into LLM-visible tools during context preparation. This leaves an old direct-tool path active at runtime even though the static schema looks clean.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Runtime no longer merges mounted device schemas into the LLM request.",
+        "Shell exposes a generic `devicectl hd ...` capability for mounted device operations.",
+        "The shell command can call the existing Device Service proxy using explicit env.",
+        "Direct device executors remain internal compatibility only.",
+        "Tests prove mounted device tools are not LLM-visible and shell device command works."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Dynamic device tool schema cutover to shell",
+      "updated_at": "2026-05-09T09:30:04+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-09T09:29:17+00:00",
+      "done": [
+        "Added `devicectl` as a Cortex sandbox capability command and wired the capability dispatcher.",
+        "Implemented the `devicectl hd` command surface for screenshot, shell-exec, mouse, keyboard, clipboard, and file proxy operations.",
+        "Passed `NOVAIC_DEVICE_URL` through the Runtime shell capability environment boundary.",
+        "Removed mounted device schema fetching/merging from LLM context preparation.",
+        "Marked all `hd_*` device tools as schema-cutover shell capability tools in the runtime tool surface policy.",
+        "Updated shell schema descriptions and guardrail tests to include `devicectl`.",
+        "Added a shell round-trip test proving `devicectl hd shell-exec` posts to Device service with explicit JSON payload.",
+        "Updated context-prepare smoke tests so Business mounted-device schema fetches now fail the test if accidentally reintroduced."
+      ],
+      "id": "R000",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Completed the dynamic device tool schema cutover for the current bounded ticket. Device interaction remains available from the shell through `devicectl`, while LLM-facing tool schemas no longer fetch or merge mounted device tools during `cortex.prepare_llm_context`.",
+      "ticket_id": "T000",
+      "verification": []
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "`handle_cortex_prepare_llm_context` returns static tools only and does not include `hd_screenshot` from Business mounted tools.",
+        "`devicectl hd screenshot` and `devicectl hd shell-exec --command ...` style commands are documented.",
+        "A shell capability test verifies Device proxy request path/payload.",
+        "Runtime direct device executor tests still pass."
+      ],
+      "assumptions": [
+        "Physical deletion of direct device executors remains a final cleanup step."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "Dynamic device schema cutover is a bounded runtime merge removal plus shell capability and tests.",
+      "created_at": "2026-05-09T09:24:28+00:00",
+      "id": "T000",
+      "problem_definition": "Mounted HD device tools are dynamically merged into the LLM tool list at context-prepare time. This bypasses the static schema cleanup and leaves direct device tools as active LLM-visible tools.",
+      "problem_id": "P000",
+      "proposed_solution": "- Add `devicectl hd <command>` shell capability with generic JSON/JSON-file arguments.\n- Route commands to existing Device Service `/internal/agents/{agent_id}/hd/...` endpoints.\n- Stop merging mounted device schemas into the LLM request.\n- Keep direct device executors as compatibility until final deletion.\n- Update tests to assert mounted device tools are not LLM-visible and `devicectl` works.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Device command ergonomics are generic in this ticket; richer subcommands can be layered later without changing LLM tool schema."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Move mounted HD device tools behind devicectl shell capability",
+      "updated_at": "2026-05-09T09:29:17+00:00",
+      "verification_plan": "- Run Runtime prepare-context/device tests.\n- Run Cortex shell capability tests.\n- Run tool surface contract tests."
+    }
+  },
+  "updated_at": "2026-05-09T09:30:10+00:00"
+}

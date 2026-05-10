@@ -1,0 +1,148 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-09T08:53:53+00:00",
+      "criteria_map": [
+        "Runtime sends explicit env: satisfied by `_exec_shell()` and `CortexBridge.shell_exec(..., capability_env=...)`.",
+        "Cortex forwards only allowlisted env: satisfied by `Sandbox._capability_env()`.",
+        "Commands can inspect context: satisfied by sandbox test reading `NOVAIC_BUSINESS_URL` and `NOVAIC_SCOPE_ID`.",
+        "Existing shell behavior remains compatible: satisfied by adjacent sandbox sync tests.",
+        "Tests prove transport: satisfied by focused Runtime and Cortex tests."
+      ],
+      "evidence": [
+        "Runtime now sends explicit `capability_env` through `CortexBridge.shell_exec()`.",
+        "Cortex API accepts the env mapping on `/v1/internal/shell`.",
+        "Sandbox exposes only allowlisted keys to shell commands.",
+        "Tests passed in both Runtime and Cortex."
+      ],
+      "execution_map": [
+        "Added env field to internal shell request path.",
+        "Threaded env through Cortex runtime and sandbox execution.",
+        "Verified bridge payload and sandbox filtering."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Next tickets must implement actual commands (`agentctl im ...`) using this transported context."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Sandbox test passes a disallowed `NOT_ALLOWED` variable and verifies it is not visible in the shell process."
+      ],
+      "summary": "Runtime-to-Cortex shell requests now carry allowlisted capability env into sandbox commands."
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-09T08:50:37+00:00",
+  "ledger_id": "L20260509-165037",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-09T08:50:37+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "Sandbox-generated commands such as `agentctl` need explicit runtime/business context in order to execute interface operations from shell. Today the Cortex shell receives Cortex auth and stable file paths, but it does not receive agent/session/business routing context such as Business URL, user id, agent id, subagent id, current scope id, or wake scope path.\n\nWithout this transport, moving `im_read`, `im_reply`, and `subagent_spawn` behind shell would be a fake cutover: commands could exist but could not perform the original behavior.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Runtime sends an explicit allowlisted capability environment with shell requests.",
+        "Cortex accepts and forwards only allowlisted capability environment keys into the disposable sandbox.",
+        "Sandbox-generated commands can inspect that context without leaking ephemeral paths.",
+        "Existing shell execution behavior remains compatible.",
+        "Tests prove the transport is explicit and allowlisted."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Shell capability environment transport",
+      "updated_at": "2026-05-09T08:53:53+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-09T08:53:36+00:00",
+      "done": [
+        "`CortexBridge.shell_exec()` now accepts `capability_env` and sends it in `/v1/internal/shell`.",
+        "`_exec_shell()` builds explicit env values from handler dependencies and `ServiceConfig`.",
+        "Cortex `InternalShellRequest` accepts `env`.",
+        "`Cortex.tool_shell()` and `Sandbox.exec()` accept the env mapping.",
+        "Sandbox filters env keys through a local allowlist before exposing them to the process.",
+        "Added/updated tests for bridge payload and sandbox allowlist behavior."
+      ],
+      "id": "R000",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Added an explicit Runtime-to-Cortex capability environment transport for shell commands. This gives sandbox commands the minimum context needed to call Runtime/Business-adjacent capabilities without relying on hidden globals.",
+      "ticket_id": "T000",
+      "verification": [
+        "Ran `python -m pytest tests/test_shell_capability_runtime.py tests/test_sandbox_sync.py -q` in `novaic-cortex`.",
+        "Result: `5 passed, 1 skipped`.",
+        "Ran `python -m pytest tests/unit/task_queue/test_shell_output_contract.py tests/test_runtime_explicit_contracts.py -q` in `novaic-agent-runtime`.",
+        "Result: `12 passed`."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Capability env includes Business URL, Queue URL, user id, agent id, subagent id, current scope id, wake scope path, and reply cap where available.",
+        "Unknown env keys are dropped at the sandbox boundary.",
+        "Existing shell calls without env still work.",
+        "Tests cover bridge payload and sandbox allowlist behavior."
+      ],
+      "assumptions": [
+        "Business internal endpoints are reachable by URL from the Cortex shell environment in deployed topology."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "Explicit env transport is a bounded cross-module plumbing change with focused tests",
+      "created_at": "2026-05-09T08:50:57+00:00",
+      "id": "T000",
+      "problem_definition": "Shell commands need scoped runtime/business context, but the shell request currently only carries command and timeout. Passing hidden globals or reading process environment inside Cortex would violate the explicit dependency boundary.",
+      "problem_id": "P000",
+      "proposed_solution": "Add an explicit `env`/capability environment field to the Runtime → Cortex shell request path:\n\n- Runtime constructs a small allowlisted context from known payload/dependency fields.\n- `CortexBridge.shell_exec()` sends it in the internal shell request.\n- Cortex API accepts the env mapping and forwards it to `Cortex.tool_shell()`.\n- `Cortex.tool_shell()` passes it to `Sandbox.exec()`.\n- `Sandbox.exec()` filters it through a local allowlist before adding it to process environment.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Passing too much env would create hidden inputs. Mitigation: allowlist only.",
+        "Passing secrets into shell would widen blast radius. Mitigation: do not pass internal service keys in this ticket."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Add explicit capability environment transport",
+      "updated_at": "2026-05-09T08:53:36+00:00",
+      "verification_plan": "- Add Runtime unit tests for `CortexBridge.shell_exec(..., capability_env=...)`.\n- Add Cortex sandbox tests for allowed/dropped env keys.\n- Run focused Runtime/Cortex tests."
+    }
+  },
+  "updated_at": "2026-05-09T08:53:53+00:00"
+}

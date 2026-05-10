@@ -1,0 +1,188 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-09T08:12:31+00:00",
+      "criteria_map": [
+        "Add code-level inventory/classification -> `tool_surface_policy.py`.",
+        "Tests prove every `_EXECUTORS` key is classified -> `test_every_direct_executor_has_migration_target`.",
+        "Tests document final harness primitives -> `test_final_harness_tool_set_is_minimal_and_explicit`.",
+        "Tests document shell-migration candidates -> `test_current_non_final_direct_tools_are_all_shell_migration_candidates`.",
+        "Guard accidental new direct tools -> unclassified executor test fails on new names.",
+        "Do not remove existing functionality -> no executor removal was done.",
+        "Keep changes scoped with dirty worktree -> only two Runtime files were added by this phase."
+      ],
+      "evidence": [
+        "Result `R000` added `novaic-agent-runtime/task_queue/tool_surface_policy.py`.",
+        "Result `R000` added `novaic-agent-runtime/tests/test_tool_surface_boundary.py`.",
+        "New tests passed: `4 passed in 0.09s`.",
+        "Nearby runtime tool path and prompt contract tests passed: `10 passed in 0.12s`.",
+        "The result explicitly identifies pre-existing dirty Runtime files and the two files added by this Phase 0 step."
+      ],
+      "execution_map": [
+        "Ticket `T000` was classified `one_go`.",
+        "Result `R000` recorded the additive guardrail implementation and verification."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Phase 0 intentionally does not migrate or delete old direct tools.",
+        "The policy module will need updates in later phases as tools are migrated and physically removed.",
+        "Existing dirty Runtime changes from prior work remain outside this phase's ownership."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Failure mode: future direct tool added quietly. The unclassified executor test fails.",
+        "Failure mode: final harness set expands casually. The final harness set test fails.",
+        "Failure mode: current non-final tools are forgotten. The shell migration candidate test names representative direct tools and constrains all non-final tools to migration classification.",
+        "Failure mode: Phase 0 accidentally cuts behavior. No `_EXECUTORS` entry was removed in this phase."
+      ],
+      "summary": "Phase 0 succeeds. The implementation adds a current tool surface inventory and guard tests without removing behavior. It creates the required baseline so later phases can migrate/delete direct tools with explicit accounting instead of relying on memory."
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-09T08:10:21+00:00",
+  "ledger_id": "L20260509-161021",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-09T08:10:21+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "Start construction of the unified tool shell boundary migration with Phase 0: baseline freeze, tool surface inventory, and guardrails. The goal is to prevent future phases from adding new shell-capability code while leaving old harness-level tools invisible or unclassified.\n\nCurrent target from the construction plan:\n\n- Final harness tools: `shell`, `display`, `skill_begin`, `skill_end`, `sleep`.\n- Existing direct environment/interface tools must be explicitly classified for migration/removal, not left as ambiguous runtime executors.\n- Phase 0 should not delete runtime functionality yet; it should create executable inventory/guard tests and clear target classifications.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Add a code-level inventory/classification of current Runtime tool executors.",
+        "Add tests proving every current `_EXECUTORS` key is classified.",
+        "Add tests documenting final harness primitives and tools that must migrate behind shell.",
+        "Add a guard that catches accidental new direct harness tools without classification.",
+        "Do not remove existing tool functionality in Phase 0.",
+        "Keep changes scoped and compatible with existing dirty worktree changes."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Tool shell boundary Phase 0 implementation",
+      "updated_at": "2026-05-09T08:12:31+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`novaic-agent-runtime/task_queue/tool_surface_policy.py`",
+        "`novaic-agent-runtime/tests/test_tool_surface_boundary.py`"
+      ],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-09T08:12:10+00:00",
+      "done": [
+        "Added `novaic-agent-runtime/task_queue/tool_surface_policy.py`.",
+        "Added `novaic-agent-runtime/tests/test_tool_surface_boundary.py`.",
+        "Classified final harness primitives as exactly:",
+        "`shell`",
+        "`display`",
+        "`skill_begin`",
+        "`skill_end`",
+        "`sleep`",
+        "Classified current non-final direct tools as shell-capability migration candidates:",
+        "`im_*`",
+        "`subagent_spawn`",
+        "`payload_*`",
+        "`audio_qa`",
+        "`hd_*`",
+        "Added tests for:",
+        "every direct `_EXECUTORS` key has a migration target;",
+        "final harness set is minimal and explicit;",
+        "current non-final direct tools are shell migration candidates;",
+        "policy target classes are constrained."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "Phase 0 does not yet migrate tools behind shell.",
+        "Phase 0 does not yet introduce `ToolOutputV1`.",
+        "Phase 0 does not remove old direct harness tools; it creates the inventory/guard needed before removal."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Implemented Phase 0 additive guardrails for the shell-boundary migration. No existing Runtime tool behavior was removed. The new policy module classifies the current direct Runtime tool executor surface into final harness primitives and shell-capability migration candidates, and the new tests fail if a future direct executor is added without an explicit target.",
+      "ticket_id": "T000",
+      "verification": [
+        "`cd novaic-agent-runtime && python -m pytest tests/test_tool_surface_boundary.py -q`",
+        "Passed: `4 passed in 0.09s`",
+        "`cd novaic-agent-runtime && python -m pytest tests/test_runtime_tool_path_contract.py tests/test_llm_prompt_contract.py -q`",
+        "Passed: `10 passed in 0.12s`",
+        "Reviewed git status. The worktree already had unrelated/previous Runtime modifications before this Phase 0 step:",
+        "`task_queue/handlers/cortex_handlers.py`",
+        "`task_queue/handlers/tool_handlers.py`",
+        "`tests/test_pr85_llm_context_smoke_guardrails.py`",
+        "`tests/test_runtime_tool_path_contract.py`",
+        "`task_queue/device_tools.py`",
+        "`tests/unit/task_queue/test_device_tool_handlers.py`",
+        "This Phase 0 step only added:",
+        "`task_queue/tool_surface_policy.py`",
+        "`tests/test_tool_surface_boundary.py`"
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "A code-level inventory exists in `novaic-agent-runtime`.",
+        "Tests fail if `_EXECUTORS` gains an unclassified tool.",
+        "Tests document that final harness primitives are exactly `shell`, `display`, `skill_begin`, `skill_end`, `sleep`.",
+        "Tests document that direct `im_*`, `subagent_spawn`, `payload_*`, `audio_qa`, and `hd_*` are migration candidates.",
+        "Existing runtime behavior is not removed in this phase."
+      ],
+      "assumptions": [
+        "Phase 0 is additive guardrail work, not behavioral cutover.",
+        "Future phases will turn these guardrails from inventory checks into deletion/cutover hard gates."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded Phase 0 additive guardrail work: one policy module plus tests, no runtime behavior cutover.",
+      "created_at": "2026-05-09T08:10:38+00:00",
+      "id": "T000",
+      "problem_definition": "The Runtime currently exposes many direct harness tools through `_EXECUTORS`. Before migrating them into shell capabilities, every tool must have an explicit target classification so future phases cannot accidentally add or keep direct tools without review.",
+      "problem_id": "P000",
+      "proposed_solution": "Add a small runtime policy module that classifies the current tool surface into:\n\n- final harness primitives;\n- shell-migration candidates;\n- structural lifecycle tools;\n- optional notes for high-risk output producers.\n\nAdd tests that import `_EXECUTORS` and verify every executor is classified, final harness primitives are exactly the intended set, and all non-final direct tools are explicitly marked for shell migration.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Importing `_EXECUTORS` in tests may trigger dependencies; keep tests lightweight and import-only.",
+        "Current dirty worktree already has modified Runtime files; avoid editing those unless necessary."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Add runtime tool surface inventory and guard tests",
+      "updated_at": "2026-05-09T08:12:10+00:00",
+      "verification_plan": "- Run the new test file.\n- Run nearby runtime tool path / prompt contract tests.\n- Review git diff for scope."
+    }
+  },
+  "updated_at": "2026-05-09T08:12:31+00:00"
+}

@@ -4,6 +4,10 @@ Blob Service is infrastructure for byte and object storage. It owns bytes,
 object-tree primitives, and byte-level metadata, but it must not become a new
 business center.
 
+LogicalFS is the Cortex/shell realtime `RO` / `RW` authority above Blob. Blob
+remains the cheap byte/object file server and direct Blob edge for base
+attachments, display bytes, and artifact bytes.
+
 ## Contract
 
 New large-object references use:
@@ -37,6 +41,14 @@ Initial namespaces:
 - prompt assembly
 - memory/profile inference
 - Agent Monitor copy
+- realtime Cortex/shell file-view semantics such as `/ro`, `/rw`, subagent RW
+  layout, shell cwd/env rules, or RO/RW diff streams
+
+Blob may store display/artifact bytes directly. It does not decide what a live
+RO/RW file means, who can see it as part of a Cortex workspace, or how it
+appears in `/ro` / `/rw`; those decisions belong to LogicalFS and Cortex.
+If an RO/RW file needs display or download, it must be exported/copied into Blob
+first; LogicalFS does not expose display/download handles directly.
 
 ## Service Boundary
 
@@ -61,9 +73,10 @@ New hot paths must write `blob://...` references. Historical locator shapes are
 detection-only migration inputs; they are not valid runtime APIs and must not be
 reintroduced as readers or facades.
 
-## Cortex Object Store
+## Transitional Cortex Object Store Adapter
 
-Cortex uses Blob Service object APIs for its `CortexStore` production backend:
+The legacy/transitional Cortex object-store adapter can persist logical file
+bytes through Blob Service object APIs:
 
 ```text
 tenant_id = {user_id}
@@ -74,7 +87,9 @@ key       = agents/{agent_id}/rw/...
 
 Cortex does not own physical OSS/S3 credentials or bucket configuration. Blob
 Service decides whether these object keys are backed by OSS/S3 or a local test
-backend.
+backend. This adapter is not the live `RO` / `RW` authority; live Cortex/shell
+file semantics go through the LogicalFS/Cortex file authority boundary described
+in `docs/architecture/logicalfs-realtime-file-authority.md`.
 
 ## Large Files and Multipart Status
 
@@ -96,8 +111,9 @@ Current implementation:
     (default 2 GiB)
   Exceeding these limits returns HTTP `413`; lifecycle logs include ids,
   namespace, tenant, size, and outcome, but not raw bytes.
-- `/v1/objects` writes a whole request body. It is for Cortex object-store files,
-  not a user-facing resumable upload protocol.
+- `/v1/objects` writes a whole request body. It is for transitional/internal
+  object-store adapters, not a user-facing resumable upload protocol and not a
+  live `RO` / `RW` filesystem API.
 - The S3-compatible backend currently supports whole-object `put_object` and
   Blob edge reads. Upload presign/direct-to-object-storage is not exposed yet.
 

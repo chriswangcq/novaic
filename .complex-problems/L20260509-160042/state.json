@@ -1,0 +1,178 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-09T08:03:34+00:00",
+      "criteria_map": [
+        "Detailed shell-inside/shell-outside boundary -> covered by sections 2, 3, and 4 of `R000`.",
+        "Concrete output envelope -> covered by section 5 of `R000`.",
+        "Display role -> covered by section 3 and projection rules in section 6 of `R000`.",
+        "Skill/sleep role -> covered by section 4 of `R000`.",
+        "Cortex/LLM/monitor/files/blob interactions -> covered by sections 6, 7, and 8 of `R000`.",
+        "Invariants, failure modes, migration phases, non-goals -> covered by sections 10, 11, 12, and 13 of `R000`.",
+        "Design-only/no code changes -> verified by the result's scope and current ledger actions."
+      ],
+      "evidence": [
+        "Result `R000` defines the outside-shell primitive set and explains why each item belongs there.",
+        "Result `R000` lists shell-inside capability families: IM, subagent, device, blob/file, payload/Cortex data, runtime inspection, and business/environment APIs.",
+        "Result `R000` defines `ToolOutputV1` with bounded text, artifacts, URIs, source metadata, access hints, projection policy, retention, and diagnostics.",
+        "Result `R000` defines Cortex, current-turn LLM, monitor UI, display, and storage projections.",
+        "Result `R000` includes flows for IM read/reply, device screenshot, subagent coordination, and payload/large log handling.",
+        "Result `R000` includes invariants, failure modes, safety/audit controls, migration phases, and non-goals.",
+        "Runtime code was not changed."
+      ],
+      "execution_map": [
+        "Ticket `T000` was classified `one_go` because the deliverable was one bounded design artifact.",
+        "Result `R000` recorded the system design and design verification.",
+        "No child problems or implementation tickets were needed for this design-only request."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Non-blocking: exact CLI names and concrete schema files remain implementation-phase work.",
+        "Non-blocking: security policy details need later code-level tickets.",
+        "Non-blocking: implementation may discover compatibility cleanup complexity, but the requested design is complete."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Failure mode: design accidentally keeps IM/subagent as harness tools. The result explicitly moves them inside shell capabilities.",
+        "Failure mode: design collapses display into shell and loses explicit perception. The result keeps `display` outside shell and defines it as perception.",
+        "Failure mode: tool output still allows prompt bloat. The result requires manifest-only history and no durable raw sensory bytes.",
+        "Failure mode: shell becomes unsafe escape hatch. The result requires scoped tokens, audit, idempotency, command schemas, bounded output, and permission classes."
+      ],
+      "summary": "The result solves the requested design-only problem. It provides a detailed unified model for keeping only `shell`, `display`, `skill_begin`, `skill_end`, and `sleep` outside shell; moving environment interface tools inside shell capabilities; and using bounded text plus artifact/resource URIs as the durable tool output contract."
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-09T08:00:42+00:00",
+  "ledger_id": "L20260509-160042",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-09T08:00:42+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "Design a unified Agent Runtime tool boundary and tool output contract based on the latest direction:\n\n- Keep only the minimum harness primitives outside shell: `shell`, `display`, `skill_begin`, `skill_end`, and `sleep`.\n- Move environment interface tools into shell-facing capabilities: IM read/reply/history/search/context, subagent coordination, runtime/device/blob/payload/file APIs, and other environment operations.\n- Treat the agent as the subject; the user, shell sandbox, device, blob/filesystem, queue/runtime, and subagents are environment resources that the agent can intentionally operate on.\n- Keep `display` outside shell as the explicit perception surface for visual/file resources.\n- Define tool outputs as bounded text plus artifact/resource URIs, with stable manifests suitable for Cortex history, monitor UI, and future shell APIs.\n\nThis turn is design-only. Do not implement code changes.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Produce a detailed system design that explains the shell-inside/shell-outside boundary and why it is the right abstraction.",
+        "Define a concrete tool output contract using default bounded text plus attachment/artifact/resource URIs.",
+        "Define how Cortex history, current-turn LLM context, monitor UI, filesystem/blob storage, and `display` interact.",
+        "Define how IM/subagent/device/blob/payload tools should become shell capabilities without losing safety, auditability, or explicit dependency boundaries.",
+        "Identify invariants, failure modes, migration phases, and design risks.",
+        "Record the design as ledger-backed files without changing runtime code."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Tool shell boundary system design",
+      "updated_at": "2026-05-09T08:03:34+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "Root problem: `.complex-problems/tool-shell-boundary-system-design-root.md`",
+        "Ticket: `.complex-problems/tool-shell-boundary-system-design-ticket.md`",
+        "Result/design: `.complex-problems/tool-shell-boundary-system-design-result.md`"
+      ],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-09T08:03:06+00:00",
+      "done": [
+        "Created a ledger-backed design problem and ticket.",
+        "Incorporated the prior file/display architecture and tool optimization audit conclusions.",
+        "Defined the shell-inside/shell-outside boundary.",
+        "Defined a concrete `ToolOutputV1` envelope.",
+        "Defined storage/context/display/monitor projection rules.",
+        "Defined operational flows for IM, screenshots/device, subagents, payloads, and shell large output.",
+        "Defined invariants, failure modes, safety model, migration phases, and non-goals.",
+        "Did not change runtime code."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "This is not yet an implementation plan with code-level tickets.",
+        "Some exact command names under shell, such as `agentctl im read`, are design examples rather than final CLI names.",
+        "Security policy details such as exact token scopes, audit schema, and permission prompts need implementation-phase design."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "The proposed target shape is a **minimal harness + shell capability plane + explicit display perception plane**.\n\nOutside shell, the Agent Runtime should expose only primitives that are truly about the agent loop itself:\n\n1. `shell`: the agent's general environment operation surface.\n2. `display`: explicit model-visible perception for visual/file resources.\n3. `skill_begin` / `skill_end`: Cortex context-stack structure.\n4. `sleep`: scheduler/yield semantics.\n\nEverything else that is an environment operation should move behind shell-facing capabilities: IM read/reply/search/history/context, subagent coordination, device APIs, blob/payload/file APIs, queue/runtime inspection APIs, and future interface tools.\n\nThe durable tool output contract should be **bounded text by default plus artifact/resource URIs**. Raw images, audio, large logs, screenshots, and bulky JSON should live in file/blob/payload storage and enter LLM context only as compact manifests. `display` remains outside shell because it is not an interface API; it is intentional perception.",
+      "ticket_id": "T000",
+      "verification": [
+        "The design explicitly lists the shell-outside primitives and shell-inside capability families.",
+        "The design preserves the user's core principle: the agent is the subject; user/device/files/blob/subagents are environment resources.",
+        "The design keeps `display` outside shell as the perception primitive, without adding the previously discussed current-turn perception authorization mechanism.",
+        "The design makes `ToolOutputV1` the durable contract and treats `_mcp_content` as a provider/model projection, not the source of truth.",
+        "The design is compatible with the existing file/display direction: history gets manifests, not raw base64.",
+        "Verification is design-level only; no production test suite was run because no runtime code was changed."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "The design explicitly lists what remains outside shell and what moves inside shell.",
+        "The design gives a concrete output envelope with bounded text and artifact/resource URIs.",
+        "The design explains how `display` differs from shell and why it remains outside.",
+        "The design explains how `skill_begin`, `skill_end`, and `sleep` differ from shell capabilities.",
+        "The design covers Cortex history, LLM context, monitor UI, filesystem/blob storage, and current-turn display.",
+        "The design includes invariants, failure modes, migration phases, and non-goals.",
+        "The design is recorded in the ledger as Markdown files and runtime code is untouched."
+      ],
+      "assumptions": [
+        "The user wants a design-level answer first, not implementation.",
+        "`shell` can evolve from a narrow POSIX command runner into a broader environment operation substrate or CLI surface.",
+        "`display` remains a model-visible perception primitive, not a generic API operation.",
+        "`skill_begin` and `skill_end` are context-stack structure operations, and `sleep` is scheduler/yield semantics."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "Design-only work with a bounded artifact: produce one detailed system design and verify against success criteria without code changes.",
+      "created_at": "2026-05-09T08:01:09+00:00",
+      "id": "T000",
+      "problem_definition": "The current tool model has too many harness-level callable tools and too little semantic separation between environment IO, agent context control, visual perception, and resource storage. The user wants a more radical boundary:\n\n- everything that is an environment interface should move inside shell-facing capabilities;\n- only the smallest true harness primitives remain outside shell;\n- tool outputs should default to bounded text plus resource/artifact URIs;\n- display remains outside shell as explicit perception.\n\nThis ticket is design-only and must not change runtime code.",
+      "problem_id": "P000",
+      "proposed_solution": "Produce a detailed system design that defines:\n\n- the shell-outside primitive set and the shell-inside capability set;\n- the philosophy and invariants behind that boundary;\n- a normalized `ToolOutput` / artifact manifest contract;\n- the projections for current-turn LLM, historical Cortex context, monitor UI, and filesystem/blob resources;\n- how IM/subagent/device/blob/payload operations become shell capabilities;\n- safety, auditing, permission, and failure-mode handling;\n- migration phases and residual risks.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "The design may become too abstract unless it includes concrete schemas and operational flows.",
+        "Moving IM/subagent operations into shell could blur safety boundaries unless capabilities are explicit, audited, and permissioned.",
+        "Keeping `display` outside shell could be misunderstood as a second environment API unless its role as perception is tightly defined."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Design unified shell boundary and tool output contract",
+      "updated_at": "2026-05-09T08:03:06+00:00",
+      "verification_plan": "- Compare the design against the root success criteria.\n- Check that it incorporates the prior file/display and tool optimization ledger conclusions.\n- Verify no production code changes were made by this ticket.\n- Validate and render the ledger."
+    }
+  },
+  "updated_at": "2026-05-09T08:03:34+00:00"
+}

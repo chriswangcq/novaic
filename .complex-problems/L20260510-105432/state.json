@@ -1,0 +1,605 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C000.md",
+      "created_at": "2026-05-10T02:56:23+00:00",
+      "criteria_map": [
+        "Extraction candidates listed with reasons: satisfied.",
+        "Non-candidates protected from extraction: satisfied.",
+        "Target common module/API names listed: satisfied."
+      ],
+      "evidence": [
+        "The result distinguishes stable OS/process/filesystem primitives from Cortex-specific Workspace, `/ro`/`/rw`, agent, and shell capability semantics."
+      ],
+      "execution_map": [
+        "Read-only audit over current Cortex sandbox/logicalfs files and tests."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P001",
+      "residual_risk": [
+        "Implementation and migration remain in P002/P003."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The audit rejects extracting `MountNamespaceLogicalFS` wholesale, preventing Cortex semantics from leaking into common."
+      ],
+      "summary": "Generic sandbox primitives classified; Cortex-specific LogicalFS semantics protected from over-extraction."
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/checks/C001.md",
+      "created_at": "2026-05-10T02:58:06+00:00",
+      "criteria_map": [
+        "Common package exports stable APIs: satisfied.",
+        "Process runner module exists: satisfied.",
+        "Mount namespace module exists: satisfied.",
+        "Filesystem helper module exists: satisfied.",
+        "Common tests cover APIs: satisfied.",
+        "No Cortex imports in common modules: satisfied by inspection."
+      ],
+      "evidence": [
+        "The `common.sandbox` package now exists with process, mount namespace, and filesystem modules. Targeted tests passed."
+      ],
+      "execution_map": [
+        "Created modules and tests, then ran `PYTHONPATH=. pytest -q tests/test_sandbox_infra.py` and compile checks."
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P002",
+      "residual_risk": [
+        "Cortex has not yet migrated to use these modules; tracked in P003."
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Timeout behavior and path escape rejection are covered in common tests."
+      ],
+      "summary": "common.sandbox base modules implemented and covered by targeted tests."
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/checks/C002.md",
+      "created_at": "2026-05-10T03:00:15+00:00",
+      "criteria_map": [
+        "`sandbox.py` imports process primitives from common: satisfied.",
+        "`logical_fs.py` imports mount/filesystem primitives from common: satisfied.",
+        "`novaic_cortex/sandbox_exec.py` deleted: satisfied.",
+        "Cortex full tests pass: satisfied."
+      ],
+      "evidence": [
+        "Cortex imports common process/mount/filesystem primitives and the old local `sandbox_exec.py` file is deleted."
+      ],
+      "execution_map": [
+        "Migrated imports and helper calls, updated a test monkeypatch target, ran targeted and full Cortex tests."
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P003",
+      "residual_risk": [
+        "Full cross-repo residue verification remains P004."
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Residue scan searched for the old local class/function names and module imports."
+      ],
+      "summary": "Cortex migrated to common sandbox process, mount namespace, and filesystem primitives; local process runner removed."
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P004/checks/C003.md",
+      "created_at": "2026-05-10T03:01:31+00:00",
+      "criteria_map": [
+        "`novaic-common` full tests pass: satisfied.",
+        "`novaic-cortex` full tests pass: satisfied.",
+        "Residue scans show no duplicate generic process runner or filesystem helpers in Cortex: satisfied.",
+        "Ledger records remaining risk: satisfied."
+      ],
+      "evidence": [
+        "Full tests pass in both affected repos and residue scans confirm Cortex consumes the common primitives."
+      ],
+      "execution_map": [
+        "Executed full test suites, compile checks, and residue scan."
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P004",
+      "residual_risk": [
+        "Local mount namespace tests still skip where the host lacks root/unshare/mount. This is expected and separate from source-level integration."
+      ],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The scan included old helper names and old module paths, not only new common imports."
+      ],
+      "summary": "Common and Cortex tests pass; residue scan confirms Cortex uses common sandbox primitives without local duplicates."
+    },
+    "C004": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C004.md",
+      "created_at": "2026-05-10T03:02:05+00:00",
+      "criteria_map": [
+        "Identify generic versus Cortex-specific pieces: satisfied by P001.",
+        "Create base modules under `novaic-common`: satisfied by P002.",
+        "Migrate Cortex to consume base modules: satisfied by P003.",
+        "Keep one active implementation and remove duplicate local process runner: satisfied.",
+        "Add tests and run verification: satisfied by P002/P004.",
+        "No local fallback/old command rewrite reintroduced: satisfied by residue scan."
+      ],
+      "evidence": [
+        "All child problems are complete. Common base modules were implemented, Cortex was migrated, local duplicates were removed, and full test suites pass."
+      ],
+      "execution_map": [
+        "Solved P001-P004 through the ledger loop, wrote code, ran common and Cortex tests, and recorded residue findings."
+      ],
+      "followup_problem_id": null,
+      "id": "C004",
+      "problem_id": "P000",
+      "residual_risk": [
+        "No deployment smoke was run. Run production shell smoke before treating deployed runtime as updated."
+      ],
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The extraction deliberately did not move `MountNamespaceLogicalFS` itself into common, preventing `/ro`/`/rw`, Workspace, agent, and shell capability semantics from leaking into base infrastructure."
+      ],
+      "summary": "Stable sandbox process, mount namespace, and filesystem primitives extracted into common and Cortex migrated to use them."
+    }
+  },
+  "counters": {
+    "check": 5,
+    "event": 60,
+    "problem": 5,
+    "result": 5,
+    "ticket": 5
+  },
+  "created_at": "2026-05-10T02:54:32+00:00",
+  "ledger_id": "L20260510-105432",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C004"
+      ],
+      "created_at": "2026-05-10T02:54:32+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "The user wants business-agnostic, long-lived modules with stable inputs and outputs to become base infrastructure instead of staying inside Cortex business code. After the LogicalFS layering cleanup, the obvious candidates are generic process execution, mount namespace command construction/capability detection, and filesystem snapshot/diff helpers.\n\nWe must avoid over-extracting Cortex semantics. `/ro`, `/rw`, Workspace, Blob, agent identity, and shell capability commands remain Cortex/product concepts. Stable OS/process/filesystem primitives should move to common infrastructure.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P001",
+        "P002",
+        "P003",
+        "P004"
+      ],
+      "success_criteria": [
+        "Identify which sandbox/logicalfs pieces are business-agnostic versus Cortex-specific.",
+        "Create base modules under `novaic-common` for stable generic pieces.",
+        "Migrate Cortex to consume those base modules.",
+        "Keep one active implementation path; remove or avoid duplicate local copies.",
+        "Add tests at the base module boundary and run common + Cortex verification.",
+        "Do not reintroduce local fallback or old command rewrite behavior."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Extract stable sandbox infrastructure into base modules",
+      "updated_at": "2026-05-10T03:02:05+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-10T02:55:07+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Before extracting, identify which parts of `novaic-cortex` shell execution are truly business-agnostic and stable enough for common infrastructure.",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Each candidate is classified as common infrastructure or Cortex-specific.",
+        "The target common module names and public APIs are listed.",
+        "Non-candidates are explicitly protected from extraction."
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "Audit generic versus Cortex-specific sandbox pieces",
+      "updated_at": "2026-05-10T02:56:23+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-10T02:55:07+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Create stable, business-agnostic infrastructure modules under `novaic-common/common/sandbox`.",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Common process runner module exists with stable spec/result dataclasses.",
+        "Common mount namespace module exists with capability detection and bind command construction.",
+        "Common filesystem utility module exists for path-safe component, root-relative cwd resolution, file snapshots, changed paths, and output path sanitization.",
+        "Common tests cover these APIs."
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "Implement common sandbox infrastructure modules",
+      "updated_at": "2026-05-10T02:58:06+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P003/README.md",
+      "check_ids": [
+        "C002"
+      ],
+      "created_at": "2026-05-10T02:55:07+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Cortex should consume the common primitives and keep only Cortex-specific LogicalFS/Workspace/shell capability semantics.",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P003",
+      "parent_id": "P000",
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`novaic-cortex` imports process/mount/filesystem primitives from `common.sandbox`.",
+        "Duplicate generic implementations are removed from Cortex.",
+        "Cortex full tests pass."
+      ],
+      "ticket_ids": [
+        "T003"
+      ],
+      "title": "Migrate Cortex to common sandbox infrastructure",
+      "updated_at": "2026-05-10T03:00:15+00:00"
+    },
+    "P004": {
+      "body_path": "problems/P000/children/P004/README.md",
+      "check_ids": [
+        "C003"
+      ],
+      "created_at": "2026-05-10T02:55:07+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "After extraction and migration, prove that the new base modules are active and no duplicate old paths remain.",
+      "followup_ids": [],
+      "id": "P004",
+      "package_path": "problems/P000/children/P004",
+      "parent_id": "P000",
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`novaic-common` and `novaic-cortex` targeted/full tests pass.",
+        "Residue scans show no duplicate generic process runner, mount namespace helper, or filesystem snapshot implementation in Cortex.",
+        "Ledger records exact remaining risks."
+      ],
+      "ticket_ids": [
+        "T004"
+      ],
+      "title": "Verify base extraction and residue cleanup",
+      "updated_at": "2026-05-10T03:01:31+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P001/results/R000.md",
+      "created_at": "2026-05-10T02:56:10+00:00",
+      "done": [],
+      "id": "R000",
+      "known_gaps": [],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "The stable business-agnostic pieces are generic process execution, OS mount namespace command construction/capability detection, and low-level filesystem helpers. Cortex-specific pieces must stay in Cortex.",
+      "ticket_id": "T001",
+      "verification": []
+    },
+    "R001": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P002/results/R001.md",
+      "created_at": "2026-05-10T02:57:52+00:00",
+      "done": [
+        "Added `novaic-common/common/sandbox/process.py`",
+        "`ProcessSpec`",
+        "`ProcessRunResult`",
+        "`AsyncProcessRunner`",
+        "Added `novaic-common/common/sandbox/mount_namespace.py`",
+        "`mount_namespace_available`",
+        "`build_bind_mount_command`",
+        "Added `novaic-common/common/sandbox/filesystem.py`",
+        "`file_stats`",
+        "`changed_relative_paths`",
+        "`safe_path_component`",
+        "`resolve_cwd_under_root`",
+        "`is_keep_placeholder`",
+        "`sanitize_paths`",
+        "Added package exports in `common/sandbox/__init__.py`.",
+        "Added `novaic-common/tests/test_sandbox_infra.py`."
+      ],
+      "id": "R001",
+      "known_gaps": [],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "Created `common.sandbox` base infrastructure modules for generic process execution, mount namespace command construction/capability detection, and filesystem helpers.",
+      "ticket_id": "T002",
+      "verification": []
+    },
+    "R002": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P003/results/R002.md",
+      "created_at": "2026-05-10T02:59:59+00:00",
+      "done": [
+        "Updated `novaic_cortex/sandbox.py` to use `common.sandbox.process.AsyncProcessRunner` and `ProcessSpec`.",
+        "Updated `novaic_cortex/logical_fs.py` to use:",
+        "`common.sandbox.filesystem.file_stats`",
+        "`changed_relative_paths`",
+        "`safe_path_component`",
+        "`resolve_cwd_under_root`",
+        "`is_keep_placeholder`",
+        "`sanitize_paths`",
+        "`common.sandbox.mount_namespace.mount_namespace_available`",
+        "`build_bind_mount_command`",
+        "Deleted `novaic_cortex/sandbox_exec.py`.",
+        "Updated the mount-unavailable test to monkeypatch the canonical LogicalFS module."
+      ],
+      "id": "R002",
+      "known_gaps": [],
+      "problem_id": "P003",
+      "root_id": "P000",
+      "summary": "Cortex now consumes the common sandbox infrastructure modules. The local Cortex process runner was deleted, and generic mount/filesystem helpers were replaced with imports from `common.sandbox`.",
+      "ticket_id": "T003",
+      "verification": []
+    },
+    "R003": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P004/results/R003.md",
+      "created_at": "2026-05-10T03:01:15+00:00",
+      "done": [
+        "Ran full `novaic-common` tests.",
+        "Ran full `novaic-cortex` tests.",
+        "Ran compile checks over common sandbox modules and migrated Cortex modules.",
+        "Ran residue scan for old local process runner, old local generic filesystem helpers, old command rewrite/lazy RO helpers, and old `novaic_cortex.sandbox_exec` imports."
+      ],
+      "id": "R003",
+      "known_gaps": [],
+      "problem_id": "P004",
+      "root_id": "P000",
+      "summary": "Verified the common base extraction across `novaic-common` and `novaic-cortex`. The common sandbox modules are active in Cortex and full tests pass in both repos.",
+      "ticket_id": "T004",
+      "verification": []
+    },
+    "R004": {
+      "artifacts": [],
+      "body_path": "problems/P000/results/R004.md",
+      "created_at": "2026-05-10T03:01:48+00:00",
+      "done": [
+        "Audited extraction boundary and protected Cortex-specific concepts from over-extraction.",
+        "Added common base modules:",
+        "`common.sandbox.process`",
+        "`common.sandbox.mount_namespace`",
+        "`common.sandbox.filesystem`",
+        "Added common tests in `novaic-common/tests/test_sandbox_infra.py`.",
+        "Migrated Cortex:",
+        "`sandbox.py` uses `common.sandbox.process.AsyncProcessRunner`.",
+        "`logical_fs.py` uses common mount namespace and filesystem helpers.",
+        "Deleted `novaic_cortex/sandbox_exec.py`.",
+        "Verified both repos and residue."
+      ],
+      "id": "R004",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Stable business-agnostic sandbox primitives were extracted into `novaic-common/common/sandbox`, and Cortex was migrated to consume them. Cortex now keeps only product semantics: Workspace/LogicalFS, `/cortex` stable paths, `/ro`/`/rw`, shell capabilities, and policy/orchestration.",
+      "ticket_id": "T000",
+      "verification": []
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Base infrastructure modules live under `novaic-common/common/sandbox`.",
+        "Cortex-specific semantics remain in `novaic-cortex`.",
+        "No duplicate implementations remain in Cortex for the extracted primitives.",
+        "Tests cover base modules and Cortex integration."
+      ],
+      "assumptions": [
+        "This is a shared library/base module extraction, not a new network service."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "Needs audit, common module creation, Cortex migration, and verification as separate closure steps.",
+      "created_at": "2026-05-10T02:54:46+00:00",
+      "id": "T000",
+      "problem_definition": "Some shell execution pieces are generic infrastructure but currently live under `novaic-cortex`. That blurs business boundaries and makes reusable, stable logic look Cortex-specific.",
+      "problem_id": "P000",
+      "proposed_solution": "Audit and split the work into:\n\n- Generic process execution substrate.\n- Generic mount namespace/bind mount substrate.\n- Generic filesystem snapshot/diff/path helpers.\n- Cortex migration to consume these base modules while retaining Cortex-specific LogicalFS/Workspace/shell capability semantics in Cortex.",
+      "result_ids": [
+        "R004"
+      ],
+      "risks": [
+        "Over-extraction could leak Cortex concepts into common or create abstractions too early.",
+        "Under-extraction would leave the codebase still ambiguous."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Promote stable sandbox primitives into common base modules",
+      "updated_at": "2026-05-10T03:01:48+00:00",
+      "verification_plan": "- Run `novaic-common` tests for new base modules.\n- Run `novaic-cortex` full tests.\n- Run residue scans for duplicate old implementation names."
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "Extraction candidates are listed with reasons.",
+        "Non-candidates are listed with reasons.",
+        "Target module/API names are stable."
+      ],
+      "assumptions": [
+        "Common module location is `novaic-common/common/sandbox`."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "one_go",
+      "classification_reason": "Classification is a bounded read-only audit.",
+      "created_at": "2026-05-10T02:55:23+00:00",
+      "id": "T001",
+      "problem_definition": "We need a precise extraction boundary so base modules stay business-agnostic and Cortex keeps product semantics.",
+      "problem_id": "P001",
+      "proposed_solution": "Inspect current `sandbox_exec.py`, `logical_fs.py`, `sandbox.py`, and tests. Classify each helper/dataclass/class as common or Cortex-specific. Define target common APIs.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Moving too much into common could pollute base infrastructure with Cortex concepts."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Classify stable sandbox primitives",
+      "updated_at": "2026-05-10T02:56:10+00:00",
+      "verification_plan": "- Read-only code inspection.\n- Record result before implementation."
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "Common package exports stable APIs.",
+        "Tests cover process success/timeout, bind mount command construction, availability detection shape, file stats/diff, cwd resolution, path sanitization, and safe component normalization.",
+        "No Cortex imports appear in common modules."
+      ],
+      "assumptions": [
+        "Execution integration remains tested in Cortex."
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T002.md",
+      "classification": "one_go",
+      "classification_reason": "Common module implementation is bounded and directly testable.",
+      "created_at": "2026-05-10T02:56:39+00:00",
+      "id": "T002",
+      "problem_definition": "Common base infrastructure modules for process execution, mount namespace, and filesystem helpers do not exist yet.",
+      "problem_id": "P002",
+      "proposed_solution": "Create `common/sandbox` package with `process.py`, `mount_namespace.py`, and `filesystem.py`, plus tests in `novaic-common/tests`.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "Tests for actual `unshare` should not require root; command construction and availability detection are enough at the common layer."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Build common sandbox modules",
+      "updated_at": "2026-05-10T02:57:52+00:00",
+      "verification_plan": "- Run targeted `novaic-common` tests.\n- Compile common modules."
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "`sandbox.py` imports process primitives from `common.sandbox.process`.",
+        "`logical_fs.py` imports mount/filesystem primitives from `common.sandbox`.",
+        "`novaic_cortex/sandbox_exec.py` is deleted.",
+        "Cortex tests pass."
+      ],
+      "assumptions": [
+        "`novaic-common` is available on Cortex PYTHONPATH in dev/runtime, as existing Cortex imports already use `common.*`."
+      ],
+      "body_path": "problems/P000/children/P003/tickets/T003.md",
+      "classification": "one_go",
+      "classification_reason": "Cortex migration is bounded to imports, helper calls, and deleting the local process runner.",
+      "created_at": "2026-05-10T02:58:24+00:00",
+      "id": "T003",
+      "problem_definition": "Cortex still owns local copies of generic process, mount namespace, and filesystem helpers.",
+      "problem_id": "P003",
+      "proposed_solution": "Update `novaic-cortex` to import common sandbox primitives, remove the local `sandbox_exec.py` implementation, and keep only Cortex-specific LogicalFS and facade logic.",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [
+        "Tests that patch private helper locations may need to target the new canonical module."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Migrate Cortex sandbox code to common primitives",
+      "updated_at": "2026-05-10T02:59:59+00:00",
+      "verification_plan": "- Compile Cortex modules with `PYTHONPATH=../novaic-common:.`.\n- Run full `novaic-cortex` tests.\n- Scan for local duplicate implementations."
+    },
+    "T004": {
+      "acceptance_criteria": [
+        "`novaic-common` full tests pass.",
+        "`novaic-cortex` full tests pass.",
+        "Residue scans show no old local generic implementations in Cortex.",
+        "Ledger is valid and complete."
+      ],
+      "assumptions": [
+        "Local mount namespace tests may skip when host lacks root/unshare/mount."
+      ],
+      "body_path": "problems/P000/children/P004/tickets/T004.md",
+      "classification": "one_go",
+      "classification_reason": "Verification and residue scans are bounded after migration.",
+      "created_at": "2026-05-10T03:00:31+00:00",
+      "id": "T004",
+      "problem_definition": "After moving stable primitives into common, we need to prove no local duplicate implementation or stale path remains.",
+      "problem_id": "P004",
+      "proposed_solution": "Run common and Cortex tests, compile checks, and residue scans over both repos. Record exact remaining risks.",
+      "result_ids": [
+        "R003"
+      ],
+      "risks": [
+        "Existing unrelated dirty files may remain; report without reverting."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Verify common extraction and residue cleanup",
+      "updated_at": "2026-05-10T03:01:15+00:00",
+      "verification_plan": "- `PYTHONPATH=. pytest -q` in `novaic-common`.\n- `pytest -q` in `novaic-cortex`.\n- `rg` scans for old modules/classes/helpers."
+    }
+  },
+  "updated_at": "2026-05-10T03:02:05+00:00"
+}

@@ -1,0 +1,200 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-09T11:39:01+00:00",
+      "criteria_map": [
+        "Active LLM schemas remain only final outside-shell tools: satisfied by inventory and Runtime/Cortex/Common tests.",
+        "Runtime direct executors remain only final outside-shell tools: satisfied by inventory and Runtime tests.",
+        "`BUILTIN_TOOLS` no longer contains `subagent_list` or `subagent_history`: satisfied by Common inventory and guard test.",
+        "HD direct metadata is no longer exported or mounted: satisfied by removal of `HD_TOOLS` export and Business host-desktop mount branch.",
+        "`runtimectl` is removed: satisfied by sandbox command set and updated Cortex tests.",
+        "`devicectl hd` tests round-trip every HD proxy command: satisfied by expanded Cortex shell capability test.",
+        "Prompt/schema/help text accurately advertises shell CLI surface: satisfied by updated shell schema/prompt strings and tests.",
+        "Targeted tests pass: satisfied."
+      ],
+      "evidence": [
+        "Inventory shows LLM schemas are `display`, `shell`, `skill_begin`, `skill_end`, and `sleep`.",
+        "Inventory shows Runtime executors are `display`, `shell`, `skill_begin`, `skill_end`, and `sleep`.",
+        "Inventory shows `BUILTIN_TOOLS` active names are now only `display` and `sleep`.",
+        "Inventory shows `RUNTIME_TOOLS` metadata is now only `sleep`.",
+        "Import check confirms `common.tools.HD_TOOLS` is removed.",
+        "Residue search no longer finds `runtimectl`, `HD_TOOLS`, or direct HD metadata definitions in active source.",
+        "Targeted tests passed in Common, Business, Cortex, and Runtime."
+      ],
+      "execution_map": [
+        "T000 -> R000: one focused cleanup pass removed stale metadata/placeholders, strengthened tests, and verified the resulting boundary."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "The repo still has many pre-existing uncommitted changes from the broader shell/FSM migration. This cleanup did not attempt to revert or normalize unrelated work.",
+        "VM/mobile direct metadata remains by design outside this ticket; this ticket specifically closed the audited residuals for subagent metadata, HD host desktop metadata, and `runtimectl`."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "If a future code path tries to import `HD_TOOLS` from `common.tools`, it now fails rather than silently reviving direct HD metadata.",
+        "If a future LLM prompt tries to advertise old direct subagent metadata, Common guard tests catch `subagent_list` and `subagent_history`.",
+        "If `devicectl hd` proxy mappings drift, the all-subcommand round-trip test checks concrete endpoint paths and request bodies.",
+        "If `runtimectl` is reintroduced as a placeholder, the command path/help tests would need explicit updates, making the decision visible."
+      ],
+      "summary": "残留清理完成：旧 subagent/HD metadata 和空壳 runtimectl 已移除，HD devicectl 全子命令测试已补齐。"
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-09T11:33:43+00:00",
+  "ledger_id": "L20260509-193343",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-09T11:33:43+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "The previous shell CLI tool surface audit proved the active LLM/Runtime path is clean, but it also found residue that can confuse future maintenance:\n\n- `common.tools.definitions.BUILTIN_TOOLS` still exposes product metadata names `subagent_list` and `subagent_history`.\n- `common.tools.definitions.HD_TOOLS` still carries direct `hd_*` metadata even though HD operations should be shell CLI capabilities via `devicectl hd ...`.\n- `runtimectl` is installed as a shell command but only exposes help, making it a placeholder rather than a real capability.\n- HD shell CLI coverage has implementation support for every proxy command but tests only round-trip `shell-exec`.\n\nClean these up physically instead of leaving compatibility residue. Do not preserve old direct tool metadata for backward compatibility.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Active LLM schemas remain only `shell`, `display`, `skill_begin`, `skill_end`, and `sleep`.",
+        "Runtime direct executors remain only `shell`, `display`, `skill_begin`, `skill_end`, and `sleep`.",
+        "`BUILTIN_TOOLS` no longer contains `subagent_list` or `subagent_history`.",
+        "HD direct metadata is no longer exported or mounted as active agent builtin tools.",
+        "`runtimectl` is removed unless it has a real implemented subcommand surface.",
+        "`devicectl hd` tests round-trip every HD proxy command: screenshot, mouse, keyboard, shell-exec, clipboard-get, clipboard-set, file-pull, and file-push.",
+        "Prompt/schema/help text accurately advertises the shell CLI surface without vague ellipses.",
+        "Targeted tests pass across Common, Business, Cortex, and Runtime."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Shell CLI Residue Cleanup",
+      "updated_at": "2026-05-09T11:39:01+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`novaic-common/common/tools/definitions.py`",
+        "`novaic-common/common/tools/__init__.py`",
+        "`novaic-common/tests/test_tool_definitions_contract.py`",
+        "`novaic-business/business/internal/agent.py`",
+        "`novaic-business/business/internal/subagent.py`",
+        "`novaic-business/business/prompt_defaults.py`",
+        "`novaic-cortex/novaic_cortex/sandbox.py`",
+        "`novaic-cortex/tests/test_shell_capability_runtime.py`",
+        "`novaic-cortex/tests/test_tool_schemas_limits.py`"
+      ],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-09T11:38:40+00:00",
+      "done": [
+        "Removed `subagent_list` and `subagent_history` from `RUNTIME_TOOLS` / `BUILTIN_TOOLS`.",
+        "Removed `HD_TOOLS` from `common.tools.definitions` and stopped exporting it from `common.tools`.",
+        "Removed Business host-desktop direct metadata mounting; host desktop capabilities stay behind `devicectl hd`.",
+        "Updated Business subagent list API comment so it no longer claims to back a direct LLM tool.",
+        "Removed `runtimectl` from Cortex sandbox capability command installation and help tests.",
+        "Expanded Cortex shell capability tests to round-trip every HD proxy command:",
+        "`devicectl hd screenshot`",
+        "`devicectl hd mouse`",
+        "`devicectl hd keyboard`",
+        "`devicectl hd shell-exec`",
+        "`devicectl hd clipboard-get`",
+        "`devicectl hd clipboard-set`",
+        "`devicectl hd file-pull`",
+        "`devicectl hd file-push`",
+        "Tightened shell schema / prompt text to enumerate the complete HD CLI surface instead of using an ellipsis.",
+        "Added a Common guard test proving `HD_TOOLS` is no longer exported."
+      ],
+      "id": "R000",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Removed the previously audited residue from the active/product metadata surface and tightened test coverage around the shell CLI path. The live LLM/Runtime boundary stays small, while stale metadata and the help-only `runtimectl` placeholder are gone.",
+      "ticket_id": "T000",
+      "verification": [
+        "Inventory after cleanup:",
+        "```text",
+        "llm ['display', 'shell', 'skill_begin', 'skill_end', 'sleep']",
+        "builtin_active ['display', 'sleep']",
+        "runtime_metadata ['sleep']",
+        "HD_TOOLS removed: ImportError",
+        "executors ['display', 'shell', 'skill_begin', 'skill_end', 'sleep']",
+        "```",
+        "Targeted tests:",
+        "```text",
+        "novaic-common:",
+        "16 passed in 0.06s",
+        "10 passed in 0.02s",
+        "novaic-business:",
+        "14 passed in 0.54s",
+        "novaic-cortex:",
+        "21 passed in 8.26s",
+        "novaic-agent-runtime:",
+        "20 passed in 0.15s",
+        "```",
+        "Residue search after cleanup only finds intentional policy names, prompt text, and negative assertions; no `HD_TOOLS`, `runtimectl`, direct `subagent_list/subagent_history` metadata definition, or HD direct metadata definition remains in active source."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "`BUILTIN_TOOLS` active names are only current supported metadata tools, with no `subagent_list`, `subagent_history`, or direct `hd_*`.",
+        "`common.tools` no longer exports stale `HD_TOOLS`.",
+        "Business builtin-tool filtering no longer imports or mounts `HD_TOOLS`.",
+        "Cortex sandbox no longer installs `runtimectl`.",
+        "`devicectl hd` round-trip test covers all HD proxy commands.",
+        "Runtime/Common/Cortex/Business targeted tests pass."
+      ],
+      "assumptions": [
+        "Backward compatibility for direct metadata names is not required.",
+        "Host desktop device operations should be exposed to agents only through shell CLI commands."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "Focused physical cleanup across known residue points with concrete tests and no unresolved dependencies.",
+      "created_at": "2026-05-09T11:34:00+00:00",
+      "id": "T000",
+      "problem_definition": "The shell CLI migration is correct on the active path, but stale product metadata and a help-only shell command still create ambiguity. This violates the \"code generation is cheap, residue is expensive\" principle: future agents or maintainers can misread old metadata as supported direct tools.",
+      "problem_id": "P000",
+      "proposed_solution": "Make a focused physical cleanup:\n\n- Remove `subagent_list` and `subagent_history` from Common builtin tool metadata.\n- Remove HD direct tool metadata export/mount path from Common and Business.\n- Remove the `runtimectl` placeholder from Cortex sandbox capability commands and tests.\n- Expand HD shell CLI tests so every `devicectl hd` proxy path is exercised.\n- Tighten shell schema and prompt text to enumerate all HD CLI commands explicitly.\n- Update guard tests to assert the old metadata does not reappear.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Removing product metadata may require updating tests that assumed the old UI tool catalog.",
+        "Removing `runtimectl` requires updating help/PATH tests.",
+        "HD metadata removal should not remove the shell CLI `devicectl hd` implementation."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Remove Legacy Tool Surface Residue",
+      "updated_at": "2026-05-09T11:38:40+00:00",
+      "verification_plan": "- Inspect active schema/executor inventories after changes.\n- Run Common tool definition tests.\n- Run Business prompt/tool metadata tests.\n- Run Cortex shell capability tests and schema tests.\n- Run Runtime tool boundary tests.\n- Search for stale direct metadata strings after cleanup."
+    }
+  },
+  "updated_at": "2026-05-09T11:39:09+00:00"
+}

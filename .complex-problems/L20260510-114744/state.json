@@ -1,0 +1,153 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-10T03:58:53+00:00",
+      "criteria_map": [
+        "All six success criteria in the check body are marked success with evidence."
+      ],
+      "evidence": [
+        "No sandbox_core imports under novaic-cortex; old core client/contracts removed; run_all_tests 15/15 passed."
+      ],
+      "execution_map": [
+        "Cortex -> sandbox_sdk -> sandboxd service -> sandbox_core; sandboxd alone bridges SDK DTOs into core ProcessSpec."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Real shell integration tests require explicit sandboxd integration; this is intentional and matches the no-local-fallback architecture."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Full run_all_tests, Cortex full lane without core on PYTHONPATH, SDK/core/service targeted tests, and local sandboxd live smoke passed."
+      ],
+      "summary": "Cortex now depends only on sandbox_sdk; sandbox_core is daemon-internal; tests, live smoke, and residue scans passed."
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-10T03:47:44+00:00",
+  "ledger_id": "L20260510-114744",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-10T03:47:44+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "The current sandbox extraction still lets Cortex import `sandbox_core`, which mixes service client contracts with daemon-internal execution substrate. That violates the desired final architecture: Cortex should call sandboxd through a thin service boundary, while `sandbox_core` remains daemon/internal infrastructure for process execution and mount namespace handling.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "A new independent `novaic-sandbox-sdk` package owns sandboxd wire DTOs and HTTP client only.",
+        "Cortex imports `sandbox_sdk`, not `sandbox_core`.",
+        "Sandbox service imports `sandbox_sdk` for HTTP contracts and `sandbox_core` for internal execution substrate.",
+        "`sandbox_core` no longer contains service client or wire-contract modules.",
+        "Startup, deploy, and test scripts explicitly sync/include/test `novaic-sandbox-sdk`.",
+        "Source scans show no `sandbox_core` import under `novaic-cortex`."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Make Cortex depend only on sandbox service SDK",
+      "updated_at": "2026-05-10T03:58:53+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-10T03:58:40+00:00",
+      "done": [
+        "Created `novaic-sandbox-sdk/sandbox_sdk` with:",
+        "`SandboxExecSpec`, `SandboxExecResult`, `SandboxBindMount`",
+        "`SandboxdExecuteRequest`, `SandboxdExecuteResponse`",
+        "`SandboxdClient`",
+        "Removed `sandbox_core/client.py` and `sandbox_core/contracts.py`.",
+        "Updated `sandbox_core` exports and tests so core contains only process/mount/filesystem substrate.",
+        "Updated sandboxd service to translate SDK request DTOs into core `ProcessSpec` at the HTTP boundary.",
+        "Updated Cortex to import `sandbox_sdk` only, not `sandbox_core`.",
+        "Removed Cortex local process fallback; unconfigured shell execution now fails explicitly with a sandboxd-required error.",
+        "Changed Cortex LogicalFS capability semantics so execution capability belongs to sandboxd, not local Cortex host inspection.",
+        "Updated `deploy`, `scripts/start.sh`, and `scripts/run_all_tests.sh` to sync/include/test `novaic-sandbox-sdk`."
+      ],
+      "id": "R000",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Split sandboxd service SDK from sandbox core substrate, removed Cortex sandbox_core dependency, updated service/start/deploy/tests, and verified with full run_all_tests plus residue scans.",
+      "ticket_id": "T000",
+      "verification": [
+        "`PYTHONPATH=novaic-sandbox-sdk pytest -q novaic-sandbox-sdk/tests`: 3 passed.",
+        "`PYTHONPATH=novaic-sandbox-core pytest -q novaic-sandbox-core/tests`: 6 passed.",
+        "`PYTHONPATH=novaic-sandbox-sdk:novaic-sandbox-core:novaic-common:novaic-sandbox-service pytest -q novaic-sandbox-service/tests`: 5 passed.",
+        "`PYTHONPATH=novaic-sandbox-sdk:novaic-common:novaic-cortex pytest -q novaic-cortex/tests/test_sandboxd_wiring.py novaic-cortex/tests/test_sandbox_requires_mount_namespace.py`: 3 passed.",
+        "`PYTHONPATH=novaic-sandbox-sdk:novaic-common:novaic-cortex pytest -q novaic-cortex/tests`: 344 passed, 41 skipped.",
+        "`PYTHONPATH=novaic-common:novaic-sandbox-sdk pytest -q novaic-common/tests`: 139 passed.",
+        "Local sandboxd live smoke passed through SDK-shaped `/v1/execute` request.",
+        "`./scripts/run_all_tests.sh`: 15/15 checks passed, 0 failed.",
+        "Residue scans showed no `sandbox_core` imports under `novaic-cortex` and no old `SandboxdProcessRunner` / core client-contract conversion APIs."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "`novaic-sandbox-sdk` contains the sandboxd client and request/response/spec DTOs.",
+        "`novaic-cortex` has zero imports from `sandbox_core`.",
+        "`novaic-sandbox-service` imports both `sandbox_sdk` and `sandbox_core` with a clear translation boundary.",
+        "`sandbox_core/client.py` and `sandbox_core/contracts.py` are removed.",
+        "Deployment/start/test scripts include `novaic-sandbox-sdk` explicitly.",
+        "Tests and residue scans prove the active path is the SDK/service path, not the old core path."
+      ],
+      "assumptions": [
+        "Cortex may depend on a thin sandbox service SDK because that is a service contract, not process execution substrate.",
+        "Sandbox service may depend on both SDK and core because it is the boundary adapter from HTTP contract to local execution substrate."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded package split and import cleanup with explicit tests and residue scans.",
+      "created_at": "2026-05-10T03:48:01+00:00",
+      "id": "T000",
+      "problem_definition": "Cortex currently imports `sandbox_core` for the sandboxd client, process DTOs, filesystem helpers, and mount namespace checks. This leaves the architecture ambiguous: `sandbox_core` is both the daemon-internal execution substrate and the cross-service API contract.",
+      "problem_id": "P000",
+      "proposed_solution": "Create `novaic-sandbox-sdk/sandbox_sdk` for wire-level sandboxd DTOs and HTTP client. Move the current client/contract responsibilities out of `sandbox_core`, keep only process/mount/filesystem substrate in `sandbox_core`, update sandboxd service to translate SDK requests into core process specs, and update Cortex so it imports only `sandbox_sdk` plus its own LogicalFS helpers.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Cortex unit tests may have relied on the old local `AsyncProcessRunner` fallback.",
+        "Splitting DTO types can create accidental duplicate conversion logic unless the service boundary is explicit."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Split sandbox SDK boundary from sandbox core substrate",
+      "updated_at": "2026-05-10T03:58:40+00:00",
+      "verification_plan": "- Run sandbox-sdk tests.\n- Run sandbox-core tests.\n- Run sandbox-service tests with sdk+core.\n- Run Cortex sandboxd wiring and mount namespace tests with sdk and without core dependency.\n- Run common tests touched by deployment/config.\n- Run shell syntax checks and deploy fresh-smoke lint.\n- Scan `novaic-cortex` for `sandbox_core` imports and the full repo for old core client/contracts residue."
+    }
+  },
+  "updated_at": "2026-05-10T03:59:01+00:00"
+}

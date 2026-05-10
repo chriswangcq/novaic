@@ -1,0 +1,84 @@
+{"at": "2026-05-10T03:03:52+00:00", "id": "E000", "payload": {"ledger_id": "L20260510-110352", "root_id": "P000", "title": "Extract sandbox execution into an independent base service"}, "root_id": "P000", "type": "ledger_initialized"}
+{"at": "2026-05-10T03:06:19+00:00", "id": "E001", "payload": {"problem_id": "P000", "ticket_id": "T000", "title": "Build sandboxd service and migrate Cortex execution to it"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T03:06:19+00:00", "id": "E002", "payload": {"from": "created", "id": "T000", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T03:06:30+00:00", "id": "E003", "payload": {"from": "defined", "id": "T000", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T03:06:30+00:00", "id": "E004", "payload": {"classification": "split", "reason": "Extracting sandbox execution into a real independent server spans shared contract, service implementation, Cortex integration, deployment wiring, old-path cleanup, and verification; split is required to avoid half-migration.", "ticket_id": "T000"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T03:07:02+00:00", "id": "E005", "payload": {"from": "classified", "id": "T000", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T03:07:02+00:00", "id": "E006", "payload": {"parent_id": "P000", "problem_id": "P001", "title": "Sandboxd common contract and client"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T03:07:02+00:00", "id": "E007", "payload": {"parent_id": "P000", "problem_id": "P002", "title": "Sandboxd independent service"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T03:07:02+00:00", "id": "E008", "payload": {"parent_id": "P000", "problem_id": "P003", "title": "Cortex uses sandboxd on the active server path"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T03:07:02+00:00", "id": "E009", "payload": {"parent_id": "P000", "problem_id": "P004", "title": "Deployment and service registry include sandboxd"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T03:07:02+00:00", "id": "E010", "payload": {"parent_id": "P000", "problem_id": "P005", "title": "Remove stale in-process sandbox execution residue"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T03:07:02+00:00", "id": "E011", "payload": {"parent_id": "P000", "problem_id": "P006", "title": "End-to-end verification of sandboxd extraction"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T03:07:17+00:00", "id": "E012", "payload": {"problem_id": "P001", "ticket_id": "T001", "title": "Implement sandboxd common contract and runner client"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T03:07:17+00:00", "id": "E013", "payload": {"from": "created", "id": "T001", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T03:07:23+00:00", "id": "E014", "payload": {"from": "defined", "id": "T001", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T03:07:23+00:00", "id": "E015", "payload": {"classification": "one_go", "reason": "Self-contained shared contract/client change with focused unit tests.", "ticket_id": "T001"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T03:09:33+00:00", "id": "E016", "payload": {"from": "todo", "id": "P001", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T03:09:33+00:00", "id": "E017", "payload": {"from": "classified", "id": "T001", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T03:09:33+00:00", "id": "E018", "payload": {"from": "executing", "id": "T001", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T03:09:33+00:00", "id": "E019", "payload": {"result_id": "R000", "ticket_id": "T001"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T03:09:59+00:00", "id": "E020", "payload": {"from": "doing", "id": "P001", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T03:09:59+00:00", "id": "E021", "payload": {"from": "checking", "id": "P001", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T03:09:59+00:00", "id": "E022", "payload": {"check_id": "C000", "followup_id": null, "problem_id": "P001", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T03:10:43+00:00", "id": "E023", "payload": {"problem_id": "P002", "ticket_id": "T002", "title": "Build novaic-sandbox-service"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T03:10:43+00:00", "id": "E024", "payload": {"from": "created", "id": "T002", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T03:10:58+00:00", "id": "E025", "payload": {"from": "defined", "id": "T002", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T03:10:58+00:00", "id": "E026", "payload": {"classification": "one_go", "reason": "Small standalone FastAPI service using the already-created common contract, with focused tests.", "ticket_id": "T002"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T03:13:12+00:00", "id": "E027", "payload": {"from": "todo", "id": "P002", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T03:13:12+00:00", "id": "E028", "payload": {"from": "classified", "id": "T002", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T03:13:12+00:00", "id": "E029", "payload": {"from": "executing", "id": "T002", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T03:13:12+00:00", "id": "E030", "payload": {"result_id": "R001", "ticket_id": "T002"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T03:13:31+00:00", "id": "E031", "payload": {"from": "doing", "id": "P002", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T03:13:31+00:00", "id": "E032", "payload": {"from": "checking", "id": "P002", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T03:13:31+00:00", "id": "E033", "payload": {"check_id": "C001", "followup_id": null, "problem_id": "P002", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T03:14:48+00:00", "id": "E034", "payload": {"problem_id": "P003", "ticket_id": "T003", "title": "Wire Cortex active server path to sandboxd"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T03:14:48+00:00", "id": "E035", "payload": {"from": "created", "id": "T003", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T03:14:55+00:00", "id": "E036", "payload": {"from": "defined", "id": "T003", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T03:14:55+00:00", "id": "E037", "payload": {"classification": "one_go", "reason": "Bounded Cortex wiring/refactor with explicit tests; deployment remains a separate child problem.", "ticket_id": "T003"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T03:16:54+00:00", "id": "E038", "payload": {"from": "todo", "id": "P003", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T03:16:54+00:00", "id": "E039", "payload": {"from": "classified", "id": "T003", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T03:16:54+00:00", "id": "E040", "payload": {"from": "executing", "id": "T003", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T03:16:54+00:00", "id": "E041", "payload": {"result_id": "R002", "ticket_id": "T003"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T03:17:15+00:00", "id": "E042", "payload": {"from": "doing", "id": "P003", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T03:17:15+00:00", "id": "E043", "payload": {"from": "checking", "id": "P003", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T03:17:15+00:00", "id": "E044", "payload": {"check_id": "C002", "followup_id": null, "problem_id": "P003", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T03:17:51+00:00", "id": "E045", "payload": {"problem_id": "P004", "ticket_id": "T004", "title": "Register and deploy sandboxd as a first-class backend service"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T03:17:51+00:00", "id": "E046", "payload": {"from": "created", "id": "T004", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T03:17:57+00:00", "id": "E047", "payload": {"from": "defined", "id": "T004", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T03:17:57+00:00", "id": "E048", "payload": {"classification": "one_go", "reason": "Deployment wiring is broad but mechanical and directly verifiable with shell syntax/source scans.", "ticket_id": "T004"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T03:20:08+00:00", "id": "E049", "payload": {"from": "todo", "id": "P004", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T03:20:08+00:00", "id": "E050", "payload": {"from": "classified", "id": "T004", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T03:20:08+00:00", "id": "E051", "payload": {"from": "executing", "id": "T004", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T03:20:08+00:00", "id": "E052", "payload": {"result_id": "R003", "ticket_id": "T004"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T03:20:33+00:00", "id": "E053", "payload": {"from": "doing", "id": "P004", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T03:20:33+00:00", "id": "E054", "payload": {"from": "checking", "id": "P004", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T03:20:33+00:00", "id": "E055", "payload": {"check_id": "C003", "followup_id": null, "problem_id": "P004", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T03:20:58+00:00", "id": "E056", "payload": {"problem_id": "P005", "ticket_id": "T005", "title": "Clean stale in-process sandbox residue"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T03:20:58+00:00", "id": "E057", "payload": {"from": "created", "id": "T005", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T03:21:04+00:00", "id": "E058", "payload": {"from": "defined", "id": "T005", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T03:21:04+00:00", "id": "E059", "payload": {"classification": "one_go", "reason": "Cleanup is bounded to unused helpers, comments, and source scans.", "ticket_id": "T005"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T03:21:47+00:00", "id": "E060", "payload": {"from": "todo", "id": "P005", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T03:21:47+00:00", "id": "E061", "payload": {"from": "classified", "id": "T005", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T03:21:47+00:00", "id": "E062", "payload": {"from": "executing", "id": "T005", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T03:21:47+00:00", "id": "E063", "payload": {"result_id": "R004", "ticket_id": "T005"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T03:22:04+00:00", "id": "E064", "payload": {"from": "doing", "id": "P005", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T03:22:04+00:00", "id": "E065", "payload": {"from": "checking", "id": "P005", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T03:22:04+00:00", "id": "E066", "payload": {"check_id": "C004", "followup_id": null, "problem_id": "P005", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T03:22:38+00:00", "id": "E067", "payload": {"problem_id": "P006", "ticket_id": "T006", "title": "Verify sandboxd extraction end to end"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T03:22:38+00:00", "id": "E068", "payload": {"from": "created", "id": "T006", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T03:22:44+00:00", "id": "E069", "payload": {"from": "defined", "id": "T006", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T03:22:44+00:00", "id": "E070", "payload": {"classification": "one_go", "reason": "Verification is a bounded command set with explicit residual-risk reporting.", "ticket_id": "T006"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T03:24:13+00:00", "id": "E071", "payload": {"from": "todo", "id": "P006", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T03:24:13+00:00", "id": "E072", "payload": {"from": "classified", "id": "T006", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T03:24:13+00:00", "id": "E073", "payload": {"from": "executing", "id": "T006", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T03:24:13+00:00", "id": "E074", "payload": {"result_id": "R005", "ticket_id": "T006"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T03:24:31+00:00", "id": "E075", "payload": {"from": "doing", "id": "P006", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T03:24:31+00:00", "id": "E076", "payload": {"from": "checking", "id": "P006", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T03:24:31+00:00", "id": "E077", "payload": {"check_id": "C005", "followup_id": null, "problem_id": "P006", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T03:24:51+00:00", "id": "E078", "payload": {"from": "todo", "id": "P000", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T03:24:51+00:00", "id": "E079", "payload": {"from": "splitting", "id": "T000", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T03:24:51+00:00", "id": "E080", "payload": {"result_id": "R006", "ticket_id": "T000"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T03:25:15+00:00", "id": "E081", "payload": {"from": "doing", "id": "P000", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T03:25:15+00:00", "id": "E082", "payload": {"from": "checking", "id": "P000", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T03:25:15+00:00", "id": "E083", "payload": {"check_id": "C006", "followup_id": null, "problem_id": "P000", "status": "success"}, "root_id": "P000", "type": "check_recorded"}

@@ -1,0 +1,166 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-09T11:50:39+00:00",
+      "criteria_map": [
+        "明确设计 -> same-agent subagents share a team workspace; identity is injected per shell exec through `NOVAIC_SUBAGENT_ID`.",
+        "No silent fallback in `agentctl im reply` / `agentctl im send` / `agentctl subagent spawn` -> `_current_subagent_id()` is required and all three outbound paths use it.",
+        "Business internal IM API requires non-empty sender -> `ImReplyRequest` no longer defaults `sender_subagent_id`; reply/send routes strip and validate it.",
+        "Different subagents in same workspace produce different sender/parent identities -> covered by Cortex per-exec identity test.",
+        "Missing subagent id fails outbound operations -> covered by Cortex parameterized failure test.",
+        "Related Cortex / Business / Runtime tests pass -> all targeted suites passed."
+      ],
+      "evidence": [
+        "Runtime evidence: `novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py` verifies shell capability env carries the current `subagent_id` as `NOVAIC_SUBAGENT_ID`.",
+        "Cortex evidence: `novaic-cortex/tests/test_shell_capability_runtime.py` verifies the same agent/workspace can execute as `sub-alpha` and `sub-beta`, and outbound `agentctl im reply`, `agentctl im send`, and `agentctl subagent spawn` post different `sender_subagent_id` / `parent_subagent_id` values.",
+        "Cortex failure evidence: `novaic-cortex/tests/test_shell_capability_runtime.py` verifies those outbound commands fail with `NOVAIC_SUBAGENT_ID is required` when the env var is absent and do not post HTTP side effects.",
+        "Business API evidence: `novaic-business/tests/test_environment_internal_api.py` verifies missing sender ids produce 422, blank sender ids produce 400, and no messages are appended.",
+        "Residue evidence: `rg` scan found no active-code fallback to `\"agent\"` or `\"main\"`; only explicit test fixtures still use `\"main\"`.",
+        "Test evidence:",
+        "`novaic-cortex`: 25 passed.",
+        "`novaic-business`: 30 passed.",
+        "`novaic-agent-runtime`: 18 passed."
+      ],
+      "execution_map": [
+        "T000 / R000 -> implemented the explicit identity contract in Cortex shell CLI, Business internal IM API validation, and Runtime shell env contract tests.",
+        "Verification covered the three dependency boundaries: Runtime injection, Cortex CLI side-effect body, and Business API rejection of implicit identity."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Non-blocking: direct database mutation or unrelated legacy test fixtures can still mention `\"main\"` as sample data, but active outbound code paths are hardened by CLI and Business validation.",
+        "Non-blocking: this ticket does not add per-subagent sandbox isolation by design; same-agent subagents are treated as one team boundary."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Failure mode: a shared sandbox command accidentally sends an IM as `\"agent\"` or `\"main\"` because env is missing. Result: fixed by fail-closed `_current_subagent_id()` and Business API requiring explicit sender ids.",
+        "Failure mode: two subagents reuse one agent workspace and produce ambiguous audit logs. Result: fixed by per-exec `NOVAIC_SUBAGENT_ID`, tested with `sub-alpha` and `sub-beta` in the same workspace.",
+        "Failure mode: a caller bypasses the CLI and posts directly to Business without sender. Result: Business API rejects missing/blank sender ids.",
+        "Failure mode: Runtime forgets to pass current subagent id to shell. Result: covered by shell-output contract test."
+      ],
+      "summary": "Explicit subagent identity binding verified across Runtime, Cortex CLI, and Business IM API."
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-09T11:44:12+00:00",
+  "ledger_id": "L20260509-194412",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-09T11:44:12+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "同一 agent 下多个 subagent 共享 Cortex shell/workspace 是协作团队模型，不需要互相防贼式隔离。但 IM 的 outbound 行为必须有清晰署名：`reply`、`send`、`subagent spawn` 不能因为缺少 subagent 身份而落成默认 `\"agent\"` 或 `\"main\"`，否则审计和消息路由会变脏。\n\n当前代码通过 Runtime 注入 `NOVAIC_SUBAGENT_ID`，`agentctl` 再把它作为 `sender_subagent_id` / `parent_subagent_id` 传给 Business。这个方向是对的，但需要把它设计成明确契约并用代码/测试锁住。",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "明确设计：同 agent 内部是团队共享边界，不做强隔离；subagent 身份通过每次 shell exec 的 `NOVAIC_SUBAGENT_ID` 注入。",
+        "`agentctl im reply`、`agentctl im send`、`agentctl subagent spawn` 必须要求当前 subagent id，不能静默 fallback。",
+        "Business internal IM reply/send API 必须要求 non-empty `sender_subagent_id`。",
+        "测试证明同一 agent/workspace 中不同 `NOVAIC_SUBAGENT_ID` 会产生不同 sender/parent 身份。",
+        "测试证明缺少 subagent id 的 outbound 操作会失败。",
+        "相关 Cortex / Business / Runtime 测试通过。"
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "SubAgent IM Identity Binding",
+      "updated_at": "2026-05-09T11:50:39+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`novaic-cortex/novaic_cortex/sandbox.py`",
+        "`novaic-cortex/tests/test_shell_capability_runtime.py`",
+        "`novaic-business/business/internal/environment.py`",
+        "`novaic-business/tests/test_environment_internal_api.py`",
+        "`novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py`"
+      ],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-09T11:50:00+00:00",
+      "done": [
+        "Added a Cortex shell capability helper that reads the current subagent id from `NOVAIC_SUBAGENT_ID` and fails closed when it is absent or blank.",
+        "Wired `agentctl im reply` and `agentctl im send` to post `sender_subagent_id` from the current shell execution.",
+        "Wired `agentctl subagent spawn` to post `parent_subagent_id` from the current shell execution.",
+        "Hardened the Business internal environment API so IM reply/send requests require an explicit non-blank `sender_subagent_id`.",
+        "Added Runtime shell-output contract coverage proving the bridge injects the current task/subagent id into shell capability env.",
+        "Added Cortex shell tests proving two subagents can reuse the same agent sandbox and still produce distinct outbound identities per exec.",
+        "Added Cortex shell tests proving outbound actions fail without `NOVAIC_SUBAGENT_ID`.",
+        "Added Business API tests proving missing/blank `sender_subagent_id` is rejected and no message is appended."
+      ],
+      "id": "R000",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Implemented explicit subagent identity binding for outbound shell CLI actions in shared same-agent sandboxes. `agentctl im reply`, `agentctl im send`, and `agentctl subagent spawn` now require `NOVAIC_SUBAGENT_ID` from the current shell execution environment instead of silently falling back to `\"agent\"` or `\"main\"`.",
+      "ticket_id": "T000",
+      "verification": [
+        "`PYTHONPATH=.:../novaic-common pytest -q tests/test_shell_capability_runtime.py tests/test_tool_schemas_limits.py` in `novaic-cortex`: 25 passed.",
+        "`PYTHONPATH=.:../novaic-common pytest -q tests/test_environment_internal_api.py tests/test_pr124_subagent_spawn_im.py tests/test_dispatch_subscriber.py` in `novaic-business`: 30 passed.",
+        "`PYTHONPATH=.:../novaic-common pytest -q tests/test_tool_surface_boundary.py tests/test_runtime_tool_path_contract.py tests/unit/task_queue/test_shell_output_contract.py` in `novaic-agent-runtime`: 18 passed.",
+        "Residue scan found no active-code fallback for `NOVAIC_SUBAGENT_ID` to `\"agent\"` or `\"main\"`; the only matches are explicit test fixtures using `\"main\"`."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "No outbound CLI path silently uses `\"agent\"` or `\"main\"` as a fallback sender.",
+        "Business internal IM APIs reject empty sender ids.",
+        "Existing shell capability behavior remains intact.",
+        "Targeted tests pass."
+      ],
+      "assumptions": [
+        "Runtime always has the current subagent id in `deps[\"subagent_id\"]` for real shell tool calls.",
+        "Same-agent subagents are allowed to read team context; this ticket only hardens outbound identity/署名."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "Focused identity-contract hardening with clear code changes and direct tests.",
+      "created_at": "2026-05-09T11:44:30+00:00",
+      "id": "T000",
+      "problem_definition": "The intended model is that subagents inside one agent share the agent workspace like a team. They do not need internal isolation, but every outbound IM side effect must carry the current subagent identity so replies, subagent-to-subagent messages, and child spawns remain auditable and routable.",
+      "problem_id": "P000",
+      "proposed_solution": "- Add a small `agentctl` helper that requires `NOVAIC_SUBAGENT_ID` for outbound IM and subagent spawn operations.\n- Use that helper for `agentctl im reply`, `agentctl im send`, and `agentctl subagent spawn`.\n- Remove Business API fallback defaults for `sender_subagent_id`; validate non-empty sender ids in reply/send routes.\n- Add tests that use one agent/workspace with different `NOVAIC_SUBAGENT_ID` values and verify the posted sender/parent ids differ.\n- Add tests proving missing `NOVAIC_SUBAGENT_ID` fails before posting outbound side effects.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Tests or internal callers that relied on implicit defaults must be updated to pass sender ids explicitly."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Enforce Explicit SubAgent Sender Identity",
+      "updated_at": "2026-05-09T11:50:00+00:00",
+      "verification_plan": "- Run Cortex shell capability tests.\n- Run Business environment internal API tests.\n- Run Runtime shell-output/tool boundary tests if affected.\n- Search for stale default sender fallbacks."
+    }
+  },
+  "updated_at": "2026-05-09T11:51:03+00:00"
+}

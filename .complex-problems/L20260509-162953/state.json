@@ -1,0 +1,161 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-09T08:35:49+00:00",
+      "criteria_map": [
+        "Cortex exposes explicit projection functions: satisfied.",
+        "Runtime chooses projection mode from message round/tool identity: satisfied.",
+        "Historical and current non-display tool outputs do not inline legacy image data: satisfied by Cortex projection-mode tests.",
+        "Current explicit `display` can still produce provider-visible image content: satisfied by display perception test and Runtime display projection selection test.",
+        "Focused tests pass: satisfied."
+      ],
+      "evidence": [
+        "Cortex has explicit history/current/display/monitor projection functions.",
+        "Runtime sends `projection` through step-ref expansion.",
+        "Runtime projection selection is based on round and explicit display tool identity.",
+        "Focused Cortex and Runtime tests pass."
+      ],
+      "execution_map": [
+        "Added projection functions in Cortex.",
+        "Added API/bridge/client projection propagation.",
+        "Added Runtime selector for history/current/display modes.",
+        "Verified with focused test suites and residue search."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "`format_for_llm(include_display=...)` remains as a compatibility wrapper for legacy tests/callers, but new Runtime path uses explicit projection."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "A current non-display tool with legacy `display_files` maps to `current_tool_result` and remains text-only.",
+        "A previous-round `display` tool maps to `history` and remains text-only.",
+        "A current `display` tool maps to `display_perception` and may inline visual content."
+      ],
+      "summary": "Cortex and Runtime now use explicit projection modes; focused tests pass"
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-09T08:29:53+00:00",
+  "ledger_id": "L20260509-162953",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-09T08:29:53+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "Cortex and Runtime still pass a generic `include_display` boolean through step result expansion. That boolean blurs distinct projection intents: history replay, current tool result, explicit display perception, and monitor preview. The shell/display architecture needs these modes explicit so historical or non-display tool outputs cannot accidentally re-inject image/base64 content into LLM context.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Cortex exposes explicit projection functions for history, current tool result, display perception, and monitor/text preview.",
+        "Runtime step-ref expansion chooses projection mode from message round/tool identity instead of relying on a generic current-round `include_display` boolean.",
+        "Historical and current non-display tool outputs do not inline legacy image data.",
+        "Current explicit `display` can still produce provider-visible image content.",
+        "Focused Cortex and Runtime projection tests pass."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Cortex explicit projection modes",
+      "updated_at": "2026-05-09T08:35:49+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-09T08:35:30+00:00",
+      "done": [
+        "Updated `novaic-cortex/novaic_cortex/step_result_projection.py`:",
+        "added `format_for_history_llm()`;",
+        "added `format_for_current_tool_result_llm()`;",
+        "added `format_for_display_perception_llm()`;",
+        "added `format_for_monitor()`;",
+        "kept `format_for_llm()` as a compatibility wrapper only.",
+        "Updated `novaic-cortex/novaic_cortex/api.py` to accept `projection` and dispatch to the explicit projection function.",
+        "Updated `novaic-agent-runtime/task_queue/utils/cortex_bridge.py` to pass `projection`.",
+        "Updated `novaic-agent-runtime/task_queue/utils/step_result_client.py`:",
+        "`history` for old-round tool messages;",
+        "`current_tool_result` for current non-display tools;",
+        "`display_perception` only for current explicit `display`.",
+        "Added/updated tests for Cortex projection modes and Runtime projection selection."
+      ],
+      "id": "R000",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Implemented explicit projection modes across Cortex and Runtime step-ref expansion. Runtime now sends a semantic `projection` value instead of using current-round `include_display` as the business decision.",
+      "ticket_id": "T000",
+      "verification": [
+        "`cd novaic-cortex && python -m pytest tests/test_tool_output_projection.py tests/test_step_result_projection.py -q`",
+        "Result: `11 passed in 0.04s`.",
+        "`cd novaic-agent-runtime && python -m pytest tests/test_pr71_no_tool_retry_context_cleanup.py tests/test_runtime_explicit_contracts.py tests/test_pr85_llm_context_smoke_guardrails.py -q`",
+        "Result: `26 passed in 0.12s`.",
+        "Residue search:",
+        "`rg \"include_display = \\\\(current_round_id\"` found no matches.",
+        "Explicit projection names are present in Cortex API/projection and Runtime client tests."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Legacy image `display_files` are text-only for `history`.",
+        "Legacy image `display_files` are text-only for `current_tool_result`.",
+        "Legacy image `display_files` can inline only for `display_perception`.",
+        "Runtime passes `projection` to Cortex and no longer bases the expansion call solely on `include_display`.",
+        "Current `display` messages select `display_perception`."
+      ],
+      "assumptions": [
+        "Tool message identity can be read from `tool_name` or `name` when selecting explicit display perception."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded projection API/client change with focused tests",
+      "created_at": "2026-05-09T08:30:34+00:00",
+      "id": "T000",
+      "problem_definition": "The current step result path uses `include_display=True/False` as a generic switch. Runtime sets it based on whether the tool message belongs to the current round. That still conflates current non-display tool output with explicit display perception, and makes the projection boundary hard to audit.",
+      "problem_id": "P000",
+      "proposed_solution": "Introduce explicit projection mode functions in Cortex:\n\n- `format_for_history_llm()`\n- `format_for_current_tool_result_llm()`\n- `format_for_display_perception_llm()`\n- `format_for_monitor()`\n\nUpdate the Cortex API/bridge/client path to pass a `projection` string. Runtime should pick:\n\n- `history` for non-current tool messages;\n- `current_tool_result` for current non-display tool messages;\n- `display_perception` only for current explicit `display` tool messages.\n\nKeep the old `include_display` parameter only as a temporary compatibility input at the outer bridge/API edge.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Existing tests may still inspect `include_display`; update them to assert `projection` while keeping compatibility fields if the bridge still sends them."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Add explicit Cortex step projection modes",
+      "updated_at": "2026-05-09T08:35:30+00:00",
+      "verification_plan": "- Run `python -m pytest tests/test_tool_output_projection.py tests/test_step_result_projection.py -q` in `novaic-cortex`.\n- Run `python -m pytest tests/test_pr71_no_tool_retry_context_cleanup.py tests/test_runtime_explicit_contracts.py tests/test_pr85_llm_context_smoke_guardrails.py -q` in `novaic-agent-runtime`."
+    }
+  },
+  "updated_at": "2026-05-09T08:35:49+00:00"
+}

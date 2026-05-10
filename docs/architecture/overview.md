@@ -23,7 +23,13 @@ Runtime
  └─ Workers → Business/Device/Cortex/native executor：工具执行
 
 Cortex
- └─ Agent 工作轨迹与上下文：agent-root scope tree、payload refs、summary.md
+ ├─ Agent 工作轨迹与上下文：agent-root scope tree、payload refs、summary.md
+ └─ 文件语义 → LogicalFS：实时 `/ro` / `/rw` 文件视图
+
+LogicalFS / Sandboxd / Blob
+ ├─ LogicalFS：Cortex/shell 实时 RO/RW 权威层
+ ├─ Sandboxd：进程执行与挂载，不拥有文件语义
+ └─ Blob Service：便宜文件服务器、BlobRef、对象存储和物理后端
 
 Device
  └─ CloudBridge/VmControl/WebRTC/VM/HD 硬件执行
@@ -39,6 +45,8 @@ Device
 | `novaic-business` | 产品业务：action hooks、Environment、SubAgent、Device 编排、配置/API |
 | `novaic-agent-runtime` | Queue Service、Saga/Task Workers、Health、Scheduler、tool executor |
 | `novaic-cortex` | scope tree、LLM context、work trace、payload、sandbox |
+| `novaic-logicalfs` | Cortex/shell 实时 RO/RW 文件视图底座 |
+| `novaic-sandbox-service` | sandboxd：通用进程执行与稳定路径挂载 |
 | `novaic-device` | Device registry、CloudBridge、hardware/VM/WebRTC API |
 | `novaic-blob-service` | Blob Service：字节与大对象 |
 | `novaic-llm-factory` | provider/API key/model routing，标准 chat completions |
@@ -57,6 +65,7 @@ Device
 | `queue_service` | 19997 | Task/Saga/session 调度 |
 | `cortex` | 19996 | Agent 工作轨迹与上下文 |
 | `blob_service` | 19995 | Blob Service |
+| `sandboxd` | 19994 | 通用 sandbox 进程执行 |
 
 **Client（用户本地）**
 
@@ -73,6 +82,8 @@ Device
 | `novaic-business` | 产品业务服务 |
 | `novaic-agent-runtime` | Agent 执行层 |
 | `novaic-cortex` | Agent 工作轨迹与上下文 |
+| `novaic-logicalfs` | Cortex/shell 实时 RO/RW 文件视图底座 |
+| `novaic-sandbox-service` | sandboxd 进程执行服务 |
 | `novaic-device` | 设备/硬件服务 |
 | `novaic-blob-service` | Blob Service |
 | `Entangled` | 实体同步引擎 |
@@ -87,6 +98,7 @@ Device
 | Agent 管线 | [agent-pipeline.md](agent-pipeline.md) |
 | Agent loop 控制面一致性 | [agent-loop-control-plane-consistency.md](agent-loop-control-plane-consistency.md) |
 | Runtime FSM / Worker DSL 当前状态 | [runtime-fsm-worker-dsl-status.md](runtime-fsm-worker-dsl-status.md) |
+| LogicalFS RO/RW 实时边界 | [logicalfs-realtime-file-authority.md](logicalfs-realtime-file-authority.md) |
 | Cortex | [cortex.md](cortex.md), [../cortex/README.md](../cortex/README.md) |
 | Gateway | [../gateway-architecture.md](../gateway-architecture.md), [../gateway/README.md](../gateway/README.md) |
 | Entangled | [../entangled-architecture.md](../entangled-architecture.md), [../entangled/README.md](../entangled/README.md) |

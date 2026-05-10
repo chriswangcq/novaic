@@ -27,7 +27,9 @@
 | **Device** | `19993` | Device registry、CloudBridge typed WS、hardware/VM/WebRTC API |
 | **Queue Service** | `19997` | Task/Saga/session 调度，拥有 `queue.db` |
 | **Cortex** | `19996` | Agent scope/context/work trace/payload/sandbox |
-| **Blob Service** | `19995` | 字节与大对象 |
+| **Sandboxd** | `19994` | 通用进程执行与稳定路径挂载；不拥有工作区文件语义 |
+| **LogicalFS** | library/service boundary | Cortex/shell 实时 RO/RW 文件视图权威层 |
+| **Blob Service** | `19995` | 便宜文件服务器：字节、大对象、BlobRef |
 | **LLM Factory** | deployment-specific | provider/API key/model routing，标准 chat completions |
 | **Runtime Workers** | worker | Saga Worker、Task Worker、Health、Scheduler |
 | **Tauri App** | local | React UI、Entangled Rust cache、VmControl 本地端 |
@@ -71,6 +73,14 @@
                │    │    └────► Business / Device tools
                │    └─────────► LLM Factory
                └──────────────► Cortex
+                                │
+                                ▼
+                           LogicalFS
+                                │
+                 ┌──────────────┴──────────────┐
+                 ▼                             ▼
+              Sandboxd                    Blob Service
+           process exec                bytes / objects
 ```
 
 ---
@@ -118,3 +128,5 @@
 | Runtime 通过 Gateway 取业务状态 | Runtime 通过 Business/Cortex/Factory/Queue 按职责取数据 |
 | Device action hook 在 Gateway | Business 处理 devices action hook，Device 只执行硬件 |
 | Agent Monitor 查 execution log | Agent Monitor 读 Entangled `agent-activity-*` 投影 |
+| Cortex/Sandbox/Runtime 各自提供实时 RO/RW 文件服务 | LogicalFS 是 Cortex/shell 实时 RO/RW 权威层 |
+| Sandboxd 拥有 `/ro` / `/rw` 语义 | Sandboxd 只执行进程；文件视图由 LogicalFS 提供 |

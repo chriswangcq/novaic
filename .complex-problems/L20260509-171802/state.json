@@ -1,0 +1,151 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-09T09:23:26+00:00",
+      "criteria_map": [
+        "LLM schemas exclude `audio_qa`: satisfied by Cortex schema guard tests and Common product semantics tests.",
+        "Shell help advertises replacement command: satisfied by shell schema/help tests.",
+        "Shell command fetches Blob, resolves audio model config, calls Factory, and returns JSON: satisfied by `test_agentctl_media_audio_qa_round_trip_through_shell`.",
+        "Runtime guards classify direct executor as schema-cutover compatibility: satisfied by Runtime tool-surface policy tests."
+      ],
+      "evidence": [
+        "Runtime targeted tests: `19 passed`.",
+        "Cortex targeted tests: `20 passed`.",
+        "Common targeted tests: `11 passed`."
+      ],
+      "execution_map": [
+        "`novaic-cortex/novaic_cortex/sandbox.py`: implemented `agentctl media audio-qa`.",
+        "`novaic-agent-runtime/task_queue/handlers/tool_handlers.py`: exposes `NOVAIC_BLOB_SERVICE_URL` to shell capabilities.",
+        "`novaic-common/common/tools/llm_builtin.py`: removed direct `audio_qa` schema and advertised shell command.",
+        "`novaic-common/common/tools/definitions.py`: removed active multimodal metadata for `audio_qa`.",
+        "`novaic-agent-runtime/task_queue/tool_surface_policy.py`: classifies `audio_qa` as completed schema cutover."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "The direct Runtime `audio_qa` executor still exists for compatibility and final deletion. This check validates schema cutover, not physical old-code deletion."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The shell test uses a fake Blob endpoint, fake Business audio model config, and fake Factory chat completions endpoint. It validates all external hops and the produced Factory payload, including audio base64 format, tenant header, x_factory metadata, and final JSON response."
+      ],
+      "summary": "audio_qa is no longer LLM-visible; agentctl media audio-qa is implemented and tested through Blob, Business config, and Factory fake endpoints."
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-09T09:18:02+00:00",
+  "ledger_id": "L20260509-171802",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-09T09:18:02+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "`audio_qa` remains a direct LLM-facing tool. The target surface should keep display as the special visual/file perception tool, while other interface actions move behind shell capabilities. Audio transcription/QA can be represented as an explicit shell media command with file URLs and prompts.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "LLM-visible builtin schemas no longer include `audio_qa`.",
+        "Shell schema advertises `agentctl media audio-qa`.",
+        "The shell command fetches a Blob audio object, resolves the configured audio model, calls Factory, and returns JSON text output.",
+        "Runtime guard tests classify direct `audio_qa` as schema-cutover compatibility only.",
+        "Targeted tests cover schema cutover and the shell audio command path."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Audio QA tool schema cutover to shell",
+      "updated_at": "2026-05-09T09:23:26+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-09T09:23:05+00:00",
+      "done": [
+        "Added `agentctl media audio-qa --file-url blob://namespace/id`.",
+        "Added prompt support through `--prompt` and `--prompt-file`.",
+        "Implemented Blob fetch with explicit `NOVAIC_BLOB_SERVICE_URL` and `NOVAIC_USER_ID`.",
+        "Implemented audio model config lookup through Business `/internal/config/llm/agent/{agent_id}/audio`.",
+        "Implemented Factory `/v1/chat/completions` call with `input_audio` payload.",
+        "Removed `audio_qa` from canonical LLM-facing builtin schemas and Common active multimodal metadata.",
+        "Added `audio_qa` to completed schema-cutover compatibility policy.",
+        "Updated shell help/schema tests and product semantics tests."
+      ],
+      "id": "R000",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Completed the audio QA schema cutover: `audio_qa` is no longer an LLM-visible builtin schema, and audio transcription/QA is available through `agentctl media audio-qa` in the shell capability surface.",
+      "ticket_id": "T000",
+      "verification": [
+        "`cd novaic-agent-runtime && python -m pytest tests/test_runtime_tool_path_contract.py tests/test_tool_surface_boundary.py tests/unit/task_queue/test_shell_output_contract.py tests/unit/task_queue/test_device_tool_handlers.py -q`",
+        "Passed: `19 passed`",
+        "`cd novaic-cortex && python -m pytest tests/test_tool_schemas_limits.py tests/test_shell_capability_runtime.py -q`",
+        "Passed: `20 passed`",
+        "`cd novaic-common && python -m pytest tests/test_tool_definitions_contract.py tests/test_tool_product_semantics_contract.py tests/test_payload_tool_schemas.py -q`",
+        "Passed: `11 passed`"
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Canonical LLM schemas exclude `audio_qa`.",
+        "Shell help advertises `agentctl media audio-qa`.",
+        "Shell capability test proves the command calls Blob, Business config, and Factory endpoints.",
+        "Runtime/Common/Cortex schema tests pass."
+      ],
+      "assumptions": [
+        "`display` remains an LLM-visible perception tool outside shell."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "Single media tool cutover with bounded shell command, schema, and tests.",
+      "created_at": "2026-05-09T09:18:21+00:00",
+      "id": "T000",
+      "problem_definition": "`audio_qa` is still a direct LLM tool. It performs interface work: fetch a user Blob audio file, ask the configured audio model, and return text. This can be expressed as a shell media command with explicit file URL and prompt inputs.",
+      "problem_id": "P000",
+      "proposed_solution": "- Add `agentctl media audio-qa --file-url URL [--prompt TEXT|--prompt-file PATH]`.\n- Implement Blob fetch, audio model config lookup, Factory call, and JSON output in the generated capability script.\n- Inject only explicit service env needed by the shell script.\n- Remove `audio_qa` from canonical LLM-facing schemas and active Common multimodal metadata.\n- Keep direct Runtime executor as compatibility until final deletion.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "This duplicates a small amount of audio execution logic in shell capability code until direct executor deletion can remove the old branch."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Move audio QA behind agentctl media shell capability",
+      "updated_at": "2026-05-09T09:23:05+00:00",
+      "verification_plan": "- Run Cortex shell capability/schema tests.\n- Run Runtime tool-surface tests.\n- Run Common schema/product-semantics tests."
+    }
+  },
+  "updated_at": "2026-05-09T09:23:26+00:00"
+}

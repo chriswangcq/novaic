@@ -67,10 +67,13 @@ run_check "runtime-worker-supervision-lint" "$PYTHON_BIN" scripts/ci/lint_runtim
 run_check "deploy-fresh-smoke-lint" "$PYTHON_BIN" scripts/ci/lint_deploy_fresh_smoke.py
 run_check "retired-runtime-vocabulary-lint" "$PYTHON_BIN" scripts/ci/lint_retired_runtime_vocabulary.py
 run_check "start-config-contract-lint" "$PYTHON_BIN" scripts/ci/check_start_config_contract.py
+run_pytest "sandbox-sdk" "novaic-sandbox-sdk" "."
+run_pytest "logicalfs" "novaic-logicalfs" ".:../novaic-common:../novaic-blob-service"
 run_pytest "agent-runtime" "novaic-agent-runtime" ".:../novaic-common"
 run_pytest "business" "novaic-business" ".:../novaic-common"
 run_pytest "common" "novaic-common" ".:../novaic-agent-runtime"
-run_pytest "cortex" "novaic-cortex" ".:../novaic-common"
+run_pytest "sandbox-service" "novaic-sandbox-service" ".:../novaic-sandbox-sdk:../novaic-common"
+run_pytest "cortex" "novaic-cortex" ".:../novaic-logicalfs:../novaic-sandbox-sdk:../novaic-common"
 run_pytest "blob-service" "novaic-blob-service" ".:../novaic-common"
 run_pytest "llm-factory" "novaic-llm-factory" "."
 cleanup_generated_python_artifacts

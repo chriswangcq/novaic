@@ -40,3 +40,9 @@
 [submodule "novaic-llm-factory"]
 	path = novaic-llm-factory
 	url = https://github.com/chriswangcq/novaic-llm-factory.git
+[submodule "novaic-logicalfs"]
+	path = novaic-logicalfs
+	url = git@github.com:chriswangcq/novaic-logicalfs.git
+[submodule "novaic-sandbox-service"]
+	path = novaic-sandbox-service
+	url = git@github.com:chriswangcq/novaic-sandbox-service.git

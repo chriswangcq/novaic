@@ -1,0 +1,710 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C000.md",
+      "created_at": "2026-05-09T12:03:07+00:00",
+      "criteria_map": [
+        "Exact code path from Runtime shell tool to Cortex shell execution -> covered by Runtime handler, CortexBridge, Cortex API, and Runtime references in R000.",
+        "RO/RW materialization and RW persistence mechanics -> covered by sandbox materialization, env injection, path rewrite, before/after RW scan, and persistence references in R000.",
+        "Confirmed bottlenecks and current mitigations -> covered by R000 sections \"current mitigations\" and \"confirmed bottlenecks\"."
+      ],
+      "evidence": [
+        "Result R000 traces Runtime handler, Cortex bridge, Cortex API, runtime shell, sandbox exec, materialization, RW persistence, and Blob Service store behavior.",
+        "Result R000 cites existing tests locking disposable sandbox behavior, RW persistence, and timeout clamping."
+      ],
+      "execution_map": [
+        "T001 -> R000: read-only code audit, no implementation changes."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P001",
+      "residual_risk": [
+        "Non-blocking: the audit is static; it does not include runtime timing measurements. This is sufficient for design research but later implementation should add metrics."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Failure mode: audit confuses old design with current code. Mitigation: result uses concrete file/function references and current tests.",
+        "Failure mode: optimization discussion starts before facts are known. Mitigation: this child problem only audits current behavior."
+      ],
+      "summary": "Success. The audit identifies the runtime-to-Cortex shell path, disposable RO/RW materialization mechanics, RW persistence flow, current mitigations, and confirmed bottlenecks with concrete code references."
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/checks/C001.md",
+      "created_at": "2026-05-09T12:04:54+00:00",
+      "criteria_map": [
+        "Compare each candidate on performance, correctness, complexity, and fit -> satisfied by the matrix in R001.",
+        "Preserve stable shell contract -> R001 recommends keeping `/cortex/ro`, `/cortex/rw`, `$RO`, and `$RW`.",
+        "Explicitly reject/defer poor fits -> R001 defers FUSE and direct OverlayFS as first substrates."
+      ],
+      "evidence": [
+        "Result R001 includes a candidate comparison matrix covering current disposable sync, lazy RO, explicit mount profiles, manifest/delta sync, persistent cache, OverlayFS-style design, FUSE, CLI-native object access, and hybrid managed cache.",
+        "Result R001 cites primary Linux kernel documentation for FUSE and OverlayFS.",
+        "Result R001 separates useful concepts from unsuitable first implementation substrates."
+      ],
+      "execution_map": [
+        "T002 -> R001: comparative research and architecture option matrix."
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P002",
+      "residual_risk": [
+        "Non-blocking: no runtime benchmarks yet. This is intentionally handled in the recommended design phase."
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Failure mode: pick a clever filesystem primitive that increases operational risk. Result: R001 defers FUSE/OverlayFS as substrates and recommends a product-native hybrid first.",
+        "Failure mode: optimize only RO while RW remains slow. Result: R001 calls out RW full materialization and recommends mount profiles plus cache/delta sync."
+      ],
+      "summary": "Success. The comparison covers the required models, calls out poor fits, preserves shell path ergonomics, and identifies a strong hybrid direction."
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/checks/C002.md",
+      "created_at": "2026-05-09T12:07:02+00:00",
+      "criteria_map": [
+        "Concrete target architecture -> `MountPlanner`, manifest, cache, temp exec tree, write journal.",
+        "Phases ordered by safety/payoff -> metrics, profiles, manifest, cache, selective hydration, optional virtual filesystem.",
+        "Invariants/tests/observability/rollback -> explicit sections in R002.",
+        "Follow-up tickets -> seven implementation tickets listed in R002.",
+        "No code changes -> R002 is design-only."
+      ],
+      "evidence": [
+        "Result R002 defines the target `MountPlan` substrate and its major components.",
+        "Result R002 provides phases 0-5 and follow-up tickets.",
+        "Result R002 maps the design back to P001 bottlenecks and P002 option comparison.",
+        "Result R002 lists correctness invariants and tests."
+      ],
+      "execution_map": [
+        "T003 -> R002: synthesized final design from audit and option comparison."
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P003",
+      "residual_risk": [
+        "Non-blocking: performance gains still need implementation and benchmarking. This problem only asked for research/design."
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Failure mode: change defaults too early and break shell semantics. Result: R002 keeps compatibility-first default and phases in metrics/profile before cutover.",
+        "Failure mode: stale cache serves wrong files. Result: R002 makes cache content-addressed and manifest-validated, never source of truth.",
+        "Failure mode: virtual filesystem creates operational deadlocks. Result: R002 defers FUSE/OverlayFS until data proves need."
+      ],
+      "summary": "Success. The result provides a concrete staged architecture, phases, invariants, tests, observability, rollback posture, and follow-up implementation tickets without performing code changes."
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C003.md",
+      "created_at": "2026-05-09T12:07:41+00:00",
+      "criteria_map": [
+        "Audit current materialization code paths -> R000.",
+        "Explain why automatic mounting can become slow -> R000 bottlenecks.",
+        "Compare credible optimization models -> R001 matrix.",
+        "Recommend staged architecture -> R002 target architecture and phased plan.",
+        "Define correctness constraints -> R002 correctness invariants.",
+        "Produce follow-up tickets/phases without implementation -> R002 follow-up implementation tickets and R003 known gaps."
+      ],
+      "evidence": [
+        "R000 audits the current code path and confirms repeated per-exec materialization costs.",
+        "R001 compares lazy RO, profiles, manifest/delta sync, persistent cache, OverlayFS, FUSE, CLI-native access, and hybrid designs.",
+        "R002 recommends a staged target architecture with phases, invariants, tests, metrics, and implementation tickets.",
+        "R003 summarizes the completed split-ticket research."
+      ],
+      "execution_map": [
+        "Parent T000 split into P001, P002, P003.",
+        "P001 / T001 / R000 / C000 closed current-path audit.",
+        "P002 / T002 / R001 / C001 closed option comparison.",
+        "P003 / T003 / R002 / C002 closed recommended design.",
+        "Parent T000 / R003 recorded the integrated research result."
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Non-blocking: this is research/design only. The implementation remains future work and should begin with metrics before behavioral change."
+      ],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Failure mode: optimize based on vibes rather than code. Result: R000 grounds the design in current code paths.",
+        "Failure mode: choose FUSE/OverlayFS because it sounds elegant. Result: R001/R002 defer them because daemon/mount semantics are too heavy for first pass.",
+        "Failure mode: break shell compatibility for speed. Result: R002 keeps compatibility-first defaults and adds phases before cutover.",
+        "Failure mode: introduce hidden stale cache. Result: R002 requires content-addressed cache, manifest validation, and store as source of truth."
+      ],
+      "summary": "Success. The research pass fully answers the RO/RW auto-mount optimization question: current repeated work is audited, credible optimization models are compared, and a staged implementation architecture is recommended without making premature runtime changes."
+    }
+  },
+  "counters": {
+    "check": 4,
+    "event": 48,
+    "problem": 4,
+    "result": 4,
+    "ticket": 4
+  },
+  "created_at": "2026-05-09T12:00:27+00:00",
+  "ledger_id": "L20260509-200027",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C003"
+      ],
+      "created_at": "2026-05-09T12:00:27+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "Current Cortex shell execution materializes `/cortex/ro` and `/cortex/rw` into a temporary filesystem for each shell command. This keeps the shell contract simple and disposable, but it can become slow as agent history, payloads, scope trees, and workspace files grow. The goal is to deeply research the current implementation and design better optimization options without prematurely changing code.\n\nThe research must respect the product principles already established:\n\n- Agent identity is the primary boundary; same-agent subagents may share a team workspace.\n- Shell should expose stable filesystem paths (`/cortex/ro`, `/cortex/rw`, `$RO`, `$RW`) rather than temp backing paths.\n- Agent harness tools are being moved behind shell CLI surfaces where practical.\n- AI-era engineering: code is cheap, confusing residue is expensive; prefer explicit contracts, small stable substrates, and clean boundaries.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P001",
+        "P002",
+        "P003"
+      ],
+      "success_criteria": [
+        "Audit current RO/RW materialization code paths and explain exactly where repeated work happens.",
+        "Identify why automatic RO/RW mounting can become slow, with evidence from code.",
+        "Compare credible optimization models for this system, including lazy RO, manifest/delta sync, persistent per-agent workspace cache, FUSE/virtual filesystem, CLI-native object reads, and hybrid designs.",
+        "Recommend a staged architecture that preserves shell ergonomics while reducing per-command sync cost.",
+        "Define correctness constraints: freshness, RW persistence, concurrent exec behavior, security/tenant boundaries, subagent sharing, and failure recovery.",
+        "Produce implementable follow-up tickets or phases, but do not implement them in this research pass."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "RO/RW Auto Mount Optimization Research",
+      "updated_at": "2026-05-09T12:07:41+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-09T12:01:15+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Establish the current facts: how shell execution creates temporary RO/RW directories, how it decides whether RO is needed, how it copies data, how it persists RW, and where repeated per-command work lives.",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Identify the exact code path from Runtime shell tool to Cortex shell execution.",
+        "Explain RO/RW materialization and RW persistence mechanics.",
+        "List confirmed bottlenecks and current mitigations with code references."
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "Audit Current RO/RW Mount Path",
+      "updated_at": "2026-05-09T12:03:07+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-09T12:01:15+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Compare realistic optimization models for `/cortex/ro` and `/cortex/rw` mounting in this system. Include lazy RO, manifest/delta sync, persistent cache, FUSE/virtual filesystem, CLI-native object access, and hybrids.",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Compare each candidate on performance, correctness, operational complexity, and fit with the current architecture.",
+        "Explicitly call out which options are poor fits or too heavy.",
+        "Preserve the stable shell contract as a first-class constraint."
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "Compare RO/RW Optimization Models",
+      "updated_at": "2026-05-09T12:04:54+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P003/README.md",
+      "check_ids": [
+        "C002"
+      ],
+      "created_at": "2026-05-09T12:01:15+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Produce a staged, implementable design for optimizing RO/RW automatic mounting while preserving shell semantics, correctness, tenant boundaries, subagent sharing, and failure recovery.",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P003",
+      "parent_id": "P000",
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Recommend a concrete target architecture.",
+        "Provide phases and follow-up implementation tickets.",
+        "Define invariants, tests, observability, and rollback strategy."
+      ],
+      "ticket_ids": [
+        "T003"
+      ],
+      "title": "Recommend RO/RW Mount Optimization Plan",
+      "updated_at": "2026-05-09T12:07:02+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`novaic-agent-runtime/task_queue/handlers/tool_handlers.py`",
+        "`novaic-agent-runtime/task_queue/utils/cortex_bridge.py`",
+        "`novaic-cortex/novaic_cortex/api.py`",
+        "`novaic-cortex/novaic_cortex/runtime.py`",
+        "`novaic-cortex/novaic_cortex/sandbox.py`",
+        "`novaic-cortex/novaic_cortex/blob_store.py`",
+        "`novaic-cortex/tests/test_incremental_sync.py`",
+        "`novaic-cortex/tests/test_sandbox_stress.py`"
+      ],
+      "body_path": "problems/P000/children/P001/results/R000.md",
+      "created_at": "2026-05-09T12:02:50+00:00",
+      "done": [
+        "Traced Runtime shell tool path:",
+        "`novaic-agent-runtime/task_queue/handlers/tool_handlers.py:174-205` builds capability env and calls `bridge.shell_exec`.",
+        "`novaic-agent-runtime/task_queue/utils/cortex_bridge.py:318-339` posts `/v1/internal/shell`.",
+        "`novaic-cortex/novaic_cortex/api.py:1870-1882` receives the request and calls `Cortex.tool_shell`.",
+        "`novaic-cortex/novaic_cortex/runtime.py:199-214` delegates to `sandbox.exec`.",
+        "Traced sandbox mount path:",
+        "`novaic-cortex/novaic_cortex/sandbox.py:978-986` uses a regex heuristic to decide if RO is needed.",
+        "`novaic-cortex/novaic_cortex/sandbox.py:1015-1017` documents the sandbox as disposable.",
+        "`novaic-cortex/novaic_cortex/sandbox.py:1033-1039` maps store prefixes to full agent-level `/ro/` and `/rw/`.",
+        "`novaic-cortex/novaic_cortex/sandbox.py:1057-1093` lists each requested prefix and downloads every object under that prefix into temp directories.",
+        "`novaic-cortex/novaic_cortex/sandbox.py:1135-1144` creates new temp dirs and materializes workspace on every exec.",
+        "`novaic-cortex/novaic_cortex/sandbox.py:1164-1181` injects stable env and `.novaic_env.json`.",
+        "`novaic-cortex/novaic_cortex/sandbox.py:1183-1189` snapshots RW and rewrites stable paths.",
+        "`novaic-cortex/novaic_cortex/sandbox.py:1231-1233` scans RW after exec and persists changed files.",
+        "Traced persistence and store cost:",
+        "`novaic-cortex/novaic_cortex/sandbox.py:916-939` recursively scans RW for before/after stats.",
+        "`novaic-cortex/novaic_cortex/sandbox.py:1095-1111` deletes removed files and writes changed files.",
+        "`novaic-cortex/novaic_cortex/blob_store.py:91-109` implements recursive list as one Blob Service list call, then each object download is a separate GET.",
+        "Identified current mitigations:",
+        "RO is lazy unless command text references `$RO`, `$CORTEX_RO`, `$CORTEX_ROOT`, `/cortex`, or `/cortex/ro`.",
+        "Materialization is concurrent with `_MATERIALIZE_CONCURRENCY = 16`.",
+        "`max_sync_bytes` can stop oversized syncs before execution.",
+        "Temp backing paths are sanitized from output.",
+        "Identified confirmed bottlenecks:",
+        "Every command creates a fresh temp filesystem and capability script directory.",
+        "Every command always materializes full RW, even for `echo`, `agentctl`, or commands that do not read/write workspace files.",
+        "Any command touching RO materializes the entire agent-level RO prefix, not only the referenced files or current subagent root.",
+        "RO/RW materialization cost grows with historical scopes, payloads, config, skills, and user scratch files.",
+        "RW persistence requires full recursive stat before and after execution.",
+        "Blob-backed production pays list plus N object GETs per mounted prefix per command."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "none for this audit subproblem."
+      ],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "Current shell execution uses a disposable temp sandbox per command. Runtime sends shell commands to Cortex with capability env; Cortex creates a new temp `ro`, `rw`, and `bin`; optionally materializes RO; always materializes RW; rewrites stable `/cortex/*` paths to temp paths; runs the process; scans RW before/after; persists changed RW files back to CortexStore. The design is clean and reliable, but repeated list/get/copy work is the core latency source.",
+      "ticket_id": "T001",
+      "verification": [
+        "Used focused code inspection with `rg` and `nl`.",
+        "Cross-checked behavior against tests:",
+        "`novaic-cortex/tests/test_incremental_sync.py:12-32` locks disposable no-cross-exec state.",
+        "`novaic-cortex/tests/test_incremental_sync.py:45-59` locks RW persistence across execs through store, not cache.",
+        "`novaic-cortex/tests/test_sandbox_stress.py:20-64` locks timeout clamping behavior."
+      ]
+    },
+    "R001": {
+      "artifacts": [
+        "`novaic-cortex/novaic_cortex/sandbox.py`",
+        "`novaic-cortex/novaic_cortex/blob_store.py`",
+        "FUSE docs: https://www.kernel.org/doc/html/latest/filesystems/fuse/fuse.html",
+        "OverlayFS docs: https://www.kernel.org/doc/html/latest/filesystems/overlayfs.html"
+      ],
+      "body_path": "problems/P000/children/P002/results/R001.md",
+      "created_at": "2026-05-09T12:04:38+00:00",
+      "done": [
+        "Compared the candidate models:",
+        "| Option | Performance Upside | Correctness Risk | Complexity | Fit |",
+        "| --- | --- | --- | --- | --- |",
+        "| Current disposable full materialization | Simple, reliable, clear cleanup | Cost grows with RO/RW size | Low | Baseline only |",
+        "| Lazy RO heuristic only | Already avoids RO for simple commands | Heuristic misses path intent; RW still full | Low | Keep but not enough |",
+        "| Explicit mount profiles | Avoids accidental full RO/RW for CLI-only commands | Needs command contract and tests | Low-medium | Strong Phase 1 |",
+        "| Manifest/delta sync | Avoids re-copying unchanged files | Requires content version/etag manifest and delete handling | Medium | Strong Phase 2 |",
+        "| Persistent per-agent cache | Turns repeated commands into local copy/link operations | Cache invalidation and concurrent exec isolation | Medium-high | Strong Phase 3 |",
+        "| OverlayFS-style lower/upper | Great conceptual model for RO lower + RW upper copy-up | Privileged/host-specific mount behavior, whiteout/copy-up semantics | High | Learn from it, do not start here |",
+        "| FUSE virtual filesystem | True lazy file reads and directory listings | Daemon lifecycle, deadlock/hang behavior, security and ops burden | High | Defer; maybe future substrate |",
+        "| CLI-native object reads | Fast for payload/search/display workflows | Does not satisfy arbitrary POSIX shell tools | Low-medium | Excellent complement |",
+        "| Hybrid managed cache + explicit CLI | Combines ergonomics with bounded sync | Needs clear cache lifecycle | Medium | Recommended |",
+        "Key external filesystem references:",
+        "Linux FUSE docs describe FUSE as a userspace filesystem with a kernel/userspace daemon connection, non-privileged mount concerns, waiting/abort controls, and possible deadlock/hang scenarios. That is a warning sign for this product path: it is powerful, but adds daemon lifecycle and failure semantics that are heavier than the current shell substrate.",
+        "Linux OverlayFS docs describe the lower/upper model, merged directories, whiteouts, copy-up, and delayed data copy-up. That model is conceptually useful for RO/RW semantics, but direct OverlayFS use would introduce privileged mount and host filesystem assumptions."
+      ],
+      "id": "R001",
+      "known_gaps": [
+        "This comparison does not benchmark real object counts or byte volumes. The implementation plan should add metrics before changing behavior."
+      ],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "The best fit is not a pure FUSE or privileged mount solution. The strongest direction is a staged hybrid: keep the stable shell paths and disposable process semantics, but replace full per-exec tree materialization with explicit mount profiles, manifest/delta sync, and a managed per-agent cache. FUSE/OverlayFS can inform the model, but they should not be the first implementation substrate.",
+      "ticket_id": "T002",
+      "verification": [
+        "Used P001 current-path audit as local source of truth.",
+        "Checked primary Linux kernel documentation:",
+        "FUSE overview: https://www.kernel.org/doc/html/latest/filesystems/fuse/fuse.html",
+        "OverlayFS documentation: https://www.kernel.org/doc/html/latest/filesystems/overlayfs.html",
+        "Compared against product constraints:",
+        "stable `/cortex/ro` and `/cortex/rw` paths;",
+        "same-agent subagents sharing team workspace;",
+        "shell CLI as the interface surface;",
+        "explicit identity and tenant boundaries;",
+        "no unnecessary hidden state."
+      ]
+    },
+    "R002": {
+      "artifacts": [
+        "`novaic-cortex/novaic_cortex/sandbox.py`",
+        "`novaic-cortex/novaic_cortex/blob_store.py`",
+        "`.complex-problems/rorw-audit-current-path-result.md`",
+        "`.complex-problems/rorw-optimization-options-result.md`"
+      ],
+      "body_path": "problems/P000/children/P003/results/R002.md",
+      "created_at": "2026-05-09T12:06:46+00:00",
+      "done": [
+        "### Target Architecture",
+        "1. `MountPlanner`",
+        "Inputs: command, cwd, timeout, explicit shell args, capability env, current agent/subagent/scope.",
+        "Output: a `MountPlan` with `ro_mode`, `rw_mode`, `paths`, and `reason`.",
+        "Modes:",
+        "`control`: no historical RO/RW hydration; create empty temp RW with capability env only.",
+        "`rw_empty`: empty writable RW, persist created/modified files.",
+        "`rw_full`: hydrate full RW before exec, persist delta after exec.",
+        "`ro_none`: no RO hydration.",
+        "`ro_scope`: hydrate current subagent/root/wake scope plus config/tool metadata.",
+        "`ro_full`: hydrate full agent RO.",
+        "Default starts conservative; faster modes are enabled only when tests and metrics prove safe.",
+        "2. `MountManifestSnapshot`",
+        "Store manifest entries for `/ro` and `/rw`: logical path, size, hash or etag, content type, modified generation, zone.",
+        "Avoid recursive listing and per-object metadata discovery on every exec.",
+        "Enables cheap \"what changed?\" planning and cache validation.",
+        "3. `LocalObjectCache`",
+        "Per tenant/agent cache under the Cortex service runtime directory.",
+        "Keyed by content hash/etag, not by mutable logical path.",
+        "RO files can be linked from cache into temp exec trees.",
+        "RW files should be copied or reflinked into temp exec trees; do not hardlink mutable RW files into shared cache.",
+        "Cache entries are validated by manifest generation before use.",
+        "4. `TempExecTree`",
+        "Still creates a temp process tree per shell command, preserving disposable process semantics.",
+        "Populates the tree from cache/manifest according to `MountPlan` instead of blindly downloading all objects.",
+        "Keeps stable env and path rewrite behavior.",
+        "5. `WriteJournal`",
+        "Replaces full before/after recursive RW stat scans over time.",
+        "Phase 1 can keep stat scanning for compatibility.",
+        "Later phases record known writes/deletes from the temp tree and commit changed files only.",
+        "Commit is still through CortexStore, preserving durability and audit.",
+        "### Phased Plan",
+        "Phase 0: Measurement and Guardrails",
+        "Add per-command metrics:",
+        "`mount_plan`",
+        "`include_ro/include_rw`",
+        "object count listed",
+        "bytes downloaded",
+        "materialize duration",
+        "process duration",
+        "RW scan duration",
+        "bytes uploaded",
+        "cache hit/miss once cache exists",
+        "Add structured logs around `_materialize_workspace`, `_persist_rw_changes`, and `/v1/internal/shell`.",
+        "No behavior change.",
+        "Phase 1: Explicit Mount Profiles",
+        "Extend shell request/tool contract with optional mount hints, for example:",
+        "`mount_profile=auto|control|rw_empty|rw_full|ro_scope|ro_full`",
+        "or explicit `ro_mode` / `rw_mode`.",
+        "Keep current behavior as default initially.",
+        "Route clear CLI-only commands (`agentctl im read`, `agentctl im reply`, `cortex payload read`, `devicectl hd screenshot`) through `control` unless they reference `/cortex/rw` files.",
+        "Add monitor display of chosen mount profile in shell step diagnostics.",
+        "Phase 2: Manifest Snapshot",
+        "Maintain `/ro/.cortex_manifest.json` and `/rw/.cortex_manifest.json` or an internal manifest table/object.",
+        "Update manifest on `Workspace` writes, deletes, scope creates, step writes, payload writes, and archive moves.",
+        "Sandbox uses manifest for planning, sync estimates, and path selection instead of recursive list as the first operation.",
+        "Keep fallback recursive scan behind a repair command.",
+        "Phase 3: Local Object Cache",
+        "Add cache directory keyed by tenant/agent/content hash.",
+        "On materialization, use manifest to ensure cached objects are present; fetch only misses.",
+        "Populate temp exec tree from cache:",
+        "RO: symlink or hardlink immutable cache objects.",
+        "RW: copy/reflink selected files to avoid mutating shared cache.",
+        "Add cache GC by total bytes, last access, and agent deletion.",
+        "Phase 4: Selective RO/RW Hydration",
+        "Use `MountPlan.paths` to hydrate:",
+        "current subagent root;",
+        "current wake path;",
+        "config/tools;",
+        "explicit paths found in command;",
+        "full RO only for broad commands such as `find $RO`, `rg ... $RO`, or user-selected `ro_full`.",
+        "Add \"names-only\" or \"metadata-only\" projection only if needed, and only for commands proven to need listings but not content.",
+        "Phase 5: Optional Virtual Filesystem Evaluation",
+        "Re-evaluate FUSE/OverlayFS only after phases 0-4 produce data.",
+        "Criteria for moving forward:",
+        "object counts make temp-tree projection a persistent bottleneck;",
+        "deployment environment supports safe mounts;",
+        "daemon lifecycle, abort, and tenant isolation are designed.",
+        "Otherwise avoid it.",
+        "### Correctness Invariants",
+        "Stable visible paths remain `/cortex/ro`, `/cortex/rw`, `$RO`, `$RW`.",
+        "Backing temp paths never leak to the LLM.",
+        "Default mode remains compatibility-first until explicitly cut over.",
+        "RO is never writable from shell.",
+        "RW changes are durable after successful shell completion.",
+        "A timed-out command still persists or discards RW changes according to an explicit policy; current behavior persists after timeout if files changed before process kill, so any change must be intentional.",
+        "Cache is an optimization, never the source of truth.",
+        "Tenant and agent id are part of every cache namespace.",
+        "Same-agent subagents may share RO/RW cache, but outbound identity still comes from `NOVAIC_SUBAGENT_ID`.",
+        "Manifest mismatch falls back to safe fetch or fails closed; it must not serve stale data silently.",
+        "### Tests to Add",
+        "Mount planner unit tests for command/profile classification.",
+        "Compatibility tests proving default mode still matches current full RW behavior.",
+        "Control-profile tests proving simple `agentctl` commands do not hydrate RO/RW history.",
+        "RW durability tests for created, modified, deleted files under `rw_empty` and `rw_full`.",
+        "Cache tests proving object GET count drops on repeated shell commands.",
+        "Manifest repair/fallback tests.",
+        "Timeout policy tests.",
+        "Tenant/agent cache namespace tests.",
+        "Subagent shared-cache tests proving shared data with distinct outbound identity.",
+        "### Follow-up Implementation Tickets",
+        "1. `T-rorw-0-metrics`: Add shell mount/materialization metrics and structured diagnostics.",
+        "2. `T-rorw-1-mount-plan`: Introduce `MountPlan` and explicit mount profiles with default-compatible behavior.",
+        "3. `T-rorw-2-control-fastpath`: Route safe CLI-only commands to `control` mode.",
+        "4. `T-rorw-3-manifest`: Add RO/RW manifest maintenance and sync estimation from manifest.",
+        "5. `T-rorw-4-cache`: Add tenant/agent local object cache and cache-backed materialization.",
+        "6. `T-rorw-5-selective-hydration`: Add explicit path and scope-based hydration.",
+        "7. `T-rorw-6-cleanup`: Remove obsolete full-sync-only assumptions and update docs/tests."
+      ],
+      "id": "R002",
+      "known_gaps": [
+        "Real production timing numbers are not yet captured; Phase 0 exists specifically to collect them before risky defaults change."
+      ],
+      "problem_id": "P003",
+      "root_id": "P000",
+      "summary": "Recommended target: keep the user-facing `/cortex/ro` and `/cortex/rw` shell contract, but replace \"always rebuild full temporary trees from BlobStore\" with a staged `MountPlan` substrate:\n\n```text\nShellCommand + cwd + explicit mount profile\n  -> MountPlanner\n  -> MountManifestSnapshot\n  -> LocalObjectCache\n  -> TempExecTree\n  -> WriteJournal\n  -> CortexStore commit\n```\n\nThe design should be implemented in phases so correctness stays ahead of speed. FUSE/OverlayFS are useful mental models but should not be the first substrate.",
+      "ticket_id": "T003",
+      "verification": [
+        "Checked against P001 bottlenecks:",
+        "full RO hydration -> addressed by mount profiles, manifest, cache, selective hydration.",
+        "full RW hydration -> addressed by `rw_empty`, `rw_full`, and cache-backed selected copy.",
+        "recursive list/get storm -> addressed by manifest and local object cache.",
+        "full RW stat scan -> addressed by write journal as later phase.",
+        "Checked against P002 comparison:",
+        "FUSE/OverlayFS deferred as heavy substrates.",
+        "Hybrid cache/profile approach selected as best product fit.",
+        "No code implementation was performed."
+      ]
+    },
+    "R003": {
+      "artifacts": [
+        "`.complex-problems/rorw-audit-current-path-result.md`",
+        "`.complex-problems/rorw-optimization-options-result.md`",
+        "`.complex-problems/rorw-recommended-design-result.md`",
+        "FUSE documentation: https://www.kernel.org/doc/html/latest/filesystems/fuse/fuse.html",
+        "OverlayFS documentation: https://www.kernel.org/doc/html/latest/filesystems/overlayfs.html"
+      ],
+      "body_path": "problems/P000/results/R003.md",
+      "created_at": "2026-05-09T12:07:23+00:00",
+      "done": [
+        "P001 / R000 audited the current Runtime -> Cortex -> Sandbox shell path.",
+        "P002 / R001 compared optimization models and identified the hybrid cache/profile approach as the best fit.",
+        "P003 / R002 produced the detailed staged architecture and follow-up implementation tickets."
+      ],
+      "id": "R003",
+      "known_gaps": [
+        "none for the research/design pass.",
+        "Implementation and benchmarking are intentionally deferred to follow-up tickets."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Completed the design research. Current shell execution is correct but expensive because it repeatedly builds disposable RO/RW temp trees. The recommended optimization is a staged hybrid: metrics first, then explicit mount profiles, then manifest/delta sync, then a per-agent local object cache, then selective hydration. FUSE/OverlayFS are deferred as future options, not first implementation substrates.",
+      "ticket_id": "T000",
+      "verification": [
+        "Each child problem passed its own success check:",
+        "P001 / C000: current path audit complete.",
+        "P002 / C001: optimization model comparison complete.",
+        "P003 / C002: recommended design complete.",
+        "The final design maps directly to root success criteria:",
+        "repeated work identified;",
+        "slowdown causes explained;",
+        "optimization models compared;",
+        "staged architecture recommended;",
+        "correctness constraints listed;",
+        "follow-up tickets defined."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Current code path is described with file/function evidence.",
+        "Bottlenecks and hidden costs are separated from confirmed facts.",
+        "Candidate optimizations are compared with pros, cons, and fit.",
+        "Final recommendation is staged and implementable.",
+        "No code implementation is performed in this research pass."
+      ],
+      "assumptions": [
+        "This pass is research/design only.",
+        "The current user priority is shell reliability and ergonomic `/cortex/ro` / `/cortex/rw`, not maximal filesystem performance at the cost of complexity."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "Broad optimization research with distinct audit, option-comparison, and phased-design outcomes.",
+      "created_at": "2026-05-09T12:00:50+00:00",
+      "id": "T000",
+      "problem_definition": "RO/RW filesystem ergonomics are central to the agent shell contract, but the current disposable sandbox may repeat too much work per command. We need a deep research pass that audits the current code, compares architectural options, and recommends a staged optimization plan without making runtime changes yet.",
+      "problem_id": "P000",
+      "proposed_solution": "Split the work into focused research subproblems:\n\n- Audit the current mount/materialization path and identify repeated work and correctness assumptions.\n- Compare optimization architectures against this system's constraints.\n- Produce a recommended phased design and follow-up implementation tickets.",
+      "result_ids": [
+        "R003"
+      ],
+      "risks": [
+        "A too-aggressive optimization could break shell freshness or RW durability if implemented later.",
+        "A FUSE-like direction may be operationally heavier than the current architecture can justify.",
+        "Persistent cache can introduce invalidation complexity if not designed around manifests/generations."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Research RO/RW Mount Optimization Architecture",
+      "updated_at": "2026-05-09T12:07:23+00:00",
+      "verification_plan": "- Use local code inspection with focused `rg`, `nl`, and test references.\n- Cross-check recommendations against existing tests and constraints.\n- Record a problem-level success check mapping results to all success criteria."
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "Runtime to Cortex shell call path is identified.",
+        "Sandbox materialization and persistence logic is identified.",
+        "Current optimizations and bottlenecks are listed.",
+        "No implementation changes are made."
+      ],
+      "assumptions": [
+        "Local repository is the source of truth for this research pass."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "one_go",
+      "classification_reason": "Focused read-only code audit with concrete evidence.",
+      "created_at": "2026-05-09T12:01:43+00:00",
+      "id": "T001",
+      "problem_definition": "We need a precise audit of the current shell execution path before proposing optimizations. The audit should trace Runtime shell tool execution into Cortex, describe temporary RO/RW materialization, and identify repeated costs.",
+      "problem_id": "P001",
+      "proposed_solution": "Read the focused code paths in `novaic-agent-runtime` and `novaic-cortex`, then summarize confirmed behavior with file/function evidence.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Confusing current dirty code with intended design; use concrete file references only."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Audit Existing Shell RO/RW Mount Flow",
+      "updated_at": "2026-05-09T12:02:50+00:00",
+      "verification_plan": "- Use `rg`/`nl` to inspect relevant functions.\n- Cross-check against existing tests for sandbox persistence and limits."
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "Each option has performance upside, correctness risks, and implementation complexity.",
+        "The comparison preserves stable `/cortex/ro` and `/cortex/rw` ergonomics.",
+        "Poor-fit options are explicitly rejected or deferred.",
+        "No code implementation is performed."
+      ],
+      "assumptions": [
+        "The target environment can run normal shell commands but should not depend on privileged mounts unless the benefit is overwhelming."
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T002.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded comparative research using P001 audit and primary filesystem documentation.",
+      "created_at": "2026-05-09T12:03:48+00:00",
+      "id": "T002",
+      "problem_definition": "We need to compare credible RO/RW mount optimization models before recommending a target design. The comparison must fit this product's shell contract and not blindly import heavy filesystem infrastructure.",
+      "problem_id": "P002",
+      "proposed_solution": "Evaluate the candidate models against current code constraints: lazy RO, manifest/delta sync, persistent per-agent cache, OverlayFS-style lower/upper, FUSE/virtual filesystem, CLI-native object access, and hybrid staging.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "Overvaluing elegant filesystem machinery over product fit.",
+        "Underestimating invalidation and concurrent write semantics."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Compare RO/RW Optimization Architecture Options",
+      "updated_at": "2026-05-09T12:04:38+00:00",
+      "verification_plan": "- Use local code audit from P001.\n- Use primary documentation for filesystem primitives where relevant.\n- Produce a comparative matrix and recommendation signal."
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "Target architecture is concrete.",
+        "Phases are ordered by safety and payoff.",
+        "Invariants, tests, observability, and rollback are defined.",
+        "Follow-up implementation tickets are listed.",
+        "No implementation changes are performed in this research pass."
+      ],
+      "assumptions": [
+        "Default user-facing shell behavior should remain compatible until metrics prove a faster default is safe."
+      ],
+      "body_path": "problems/P000/children/P003/tickets/T003.md",
+      "classification": "one_go",
+      "classification_reason": "Design-only synthesis from completed audit and options comparison.",
+      "created_at": "2026-05-09T12:05:51+00:00",
+      "id": "T003",
+      "problem_definition": "We need an implementable plan that improves shell mount speed without sacrificing the stable `/cortex/ro` and `/cortex/rw` contract or introducing hard-to-debug filesystem substrate risk.",
+      "problem_id": "P003",
+      "proposed_solution": "Design a staged target architecture: add metrics first, then explicit mount profiles, then manifest/delta sync, then a managed local cache, and only later consider deeper virtual filesystem work if needed.",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [
+        "Over-optimization may accidentally change shell semantics.",
+        "Cache invalidation bugs can be worse than slow sync."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Recommend Staged RO/RW Mount Optimization Design",
+      "updated_at": "2026-05-09T12:06:46+00:00",
+      "verification_plan": "- Check design against P001 bottlenecks and P002 option comparison.\n- Ensure all root success criteria are covered."
+    }
+  },
+  "updated_at": "2026-05-09T12:07:47+00:00"
+}

@@ -14,6 +14,7 @@
 #   - Device         :19993  PC bridge WS, VM lifecycle, SSH key mgmt, WebRTC signaling
 #   - Queue Service  :19997  Task/Saga queue management
 #   - Blob Service   :19995  Blob upload/download
+#   - Sandboxd       :19994  Generic sandbox process execution
 #   - Cortex         :19996  Scope tree, LLM context assembly, Workspace, Sandbox
 #   - Workers        see novaic-agent-runtime/task_queue/workers/runtime_roster.py
 #
@@ -44,6 +45,7 @@ PORT_BUSINESS=19998
 PORT_QUEUE_SERVICE=19997
 PORT_CORTEX=19996
 PORT_BLOB_SERVICE=19995
+PORT_SANDBOXD=19994
 PORT_DEVICE=19993
 
 # ── Derived URLs (used only as CLI arg values below) ─────────────────────────
@@ -53,6 +55,7 @@ GW_URL="http://$HOST:$PORT_GATEWAY"
 BIZ_URL="http://$HOST:$PORT_BUSINESS"
 QS_URL="http://$HOST:$PORT_QUEUE_SERVICE"
 BLOB_URL="http://$HOST:$PORT_BLOB_SERVICE"
+SANDBOXD_URL="http://$HOST:$PORT_SANDBOXD"
 DEV_URL="http://$HOST:$PORT_DEVICE"
 CORTEX_URL="http://$HOST:$PORT_CORTEX"
 
@@ -132,8 +135,9 @@ stop() {
     pkill -9 -f "main_device.py" 2>/dev/null || true
     pkill -9 -f "main_novaic.py" 2>/dev/null || true
     pkill -9 -f "main_blob_service.py" 2>/dev/null || true
+    pkill -9 -f "main_sandbox_service.py" 2>/dev/null || true
     pkill -9 -f "main_cortex" 2>/dev/null || true
-    for port in $PORT_ENTANGLED $PORT_GATEWAY $PORT_BUSINESS $PORT_DEVICE $PORT_QUEUE_SERVICE $PORT_BLOB_SERVICE $PORT_CORTEX; do
+    for port in $PORT_ENTANGLED $PORT_GATEWAY $PORT_BUSINESS $PORT_DEVICE $PORT_QUEUE_SERVICE $PORT_BLOB_SERVICE $PORT_SANDBOXD $PORT_CORTEX; do
         kill_port_owner "$port"
     done
     sleep 2
@@ -144,7 +148,7 @@ stop() {
 
 stop 2>/dev/null || true
 
-for port in $PORT_ENTANGLED $PORT_GATEWAY $PORT_BUSINESS $PORT_DEVICE $PORT_QUEUE_SERVICE $PORT_BLOB_SERVICE $PORT_CORTEX; do
+for port in $PORT_ENTANGLED $PORT_GATEWAY $PORT_BUSINESS $PORT_DEVICE $PORT_QUEUE_SERVICE $PORT_BLOB_SERVICE $PORT_SANDBOXD $PORT_CORTEX; do
     wait_port_free "$port" 8
 done
 
@@ -223,6 +227,12 @@ $(py novaic-blob-service) "$BASE/novaic-blob-service/main_blob_service.py" \
     >> "$LOG_DIR/blob-service.log" 2>&1 &
 wait_port "$PORT_BLOB_SERVICE" "Blob Service"
 
+PYTHONPATH="$BASE/novaic-sandbox-sdk:$BASE/novaic-common:$BASE/novaic-sandbox-service:${PYTHONPATH:-}" \
+$(py novaic-sandbox-service) "$BASE/novaic-sandbox-service/main_sandbox_service.py" \
+    --host "$HOST" --port "$PORT_SANDBOXD" \
+    >> "$LOG_DIR/sandboxd.log" 2>&1 &
+wait_port "$PORT_SANDBOXD" "Sandboxd"
+
 mkdir -p "$DATA_DIR/cortex"
 # P3-6: Redis-backed scope lock (MANDATORY). Loopback-only redis-server
 # runs on the same host (systemd unit `redis-server.service`, bound to
@@ -231,17 +241,16 @@ mkdir -p "$DATA_DIR/cortex"
 # `SET NX PX` + Lua release + heartbeat (see
 # ``novaic_cortex/scope_locks.py::RedisScopeLockManager``). Multi-worker /
 # multi-replica Cortex is therefore always safe.
-# PR-06 (2026-04-15): cortex/api.py imports common.middlewares.caller_logging
-# for the caller-logging middleware. Cortex runs out of its own venv
-# (novaic-cortex/.venv) which doesn't ship novaic-common as a pkg;
-# export PYTHONPATH so the import resolves to the sibling submodule.
+# Cortex runs out of its own venv; export PYTHONPATH so sibling infrastructure
+# packages resolve explicitly instead of relying on bundled fallbacks.
 CORTEX_BLOB_SERVICE_URL="$BLOB_URL" \
-PYTHONPATH="$BASE/novaic-cortex:$BASE/novaic-common:${PYTHONPATH:-}" \
+PYTHONPATH="$BASE/novaic-cortex:$BASE/novaic-logicalfs:$BASE/novaic-sandbox-sdk:$BASE/novaic-common:${PYTHONPATH:-}" \
 $(py novaic-cortex) -m novaic_cortex.main_cortex \
     --host "$HOST" --port "$PORT_CORTEX" \
     --jwt-secret "$JWT_SECRET" \
     --internal-key "$CORTEX_INTERNAL_KEY" \
     --blob-service-url "$BLOB_URL" \
+    --sandboxd-url "$SANDBOXD_URL" \
     --scope-state-log-path "$DATA_DIR/cortex/scope_state_transitions.ndjson" \
     --redis-url "redis://127.0.0.1:6379/0" \
     --redis-lock-ttl-seconds 300 \

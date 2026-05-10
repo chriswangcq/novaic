@@ -1,0 +1,208 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-09T09:49:28+00:00",
+      "criteria_map": [
+        "Runtime `_EXECUTORS` contains only final harness tools: satisfied by executor inventory.",
+        "IM, payload, subagent, audio, and device tools are not accepted as direct Runtime executions: satisfied by policy tests, executor inventory, and direct `im_read` unknown-tool probe.",
+        "LLM-facing schemas remain exactly five final harness tools: satisfied by common schema inventory and contract tests.",
+        "Tests assert migrated tool names are shell capabilities only: satisfied by runtime tool surface tests and Cortex shell capability tests.",
+        "Legacy helper code that became unreachable is physically removed where safe: satisfied by deleted runtime/common direct modules and grep evidence.",
+        "Focused Runtime, Cortex, and Common tests pass: exceeded; Runtime/Cortex/Common/Business full or focused suites pass as listed."
+      ],
+      "evidence": [
+        "Runtime `_EXECUTORS` inventory is exactly `['display', 'shell', 'skill_begin', 'skill_end', 'sleep']`.",
+        "Direct execution of migrated tool name `im_read` returns the unknown-tool path:",
+        "`False error Unknown tool: im_read. Available: display, shell, skill_begin, skill_end, sleep`",
+        "LLM builtin schema inventory is exactly `['shell', 'skill_begin', 'skill_end', 'display', 'sleep']`.",
+        "File search found no old executor/schema modules:",
+        "no `task_queue/handlers/environment_tool_handlers.py`",
+        "no `task_queue/device_tools.py`",
+        "no `common/tools/environment.py`",
+        "no `common/tools/payload.py`",
+        "Residue grep found no active imports of removed direct surfaces:",
+        "`ENVIRONMENT_EXECUTORS`",
+        "`DYNAMIC_DEVICE_TOOL_NAMES`",
+        "`common.tools.environment`",
+        "`common.tools.payload`"
+      ],
+      "execution_map": [
+        "R000 removed active direct executors and obsolete direct modules.",
+        "R000 moved remaining functionality behind shell capability commands:",
+        "`agentctl im`",
+        "`agentctl subagent`",
+        "`agentctl media audio-qa`",
+        "`cortex payload`",
+        "`devicectl hd`",
+        "R000 updated prompt and test contracts so new agent instructions cannot drift back to direct LLM tools.",
+        "R000 fixed test collection hygiene in Common/Business so full package test runs are reproducible from their package roots."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Internal Business `environment_im_*` endpoints and Cortex `payload_*` APIs remain intentionally because shell capability commands require backend APIs. They are not active LLM direct tools and are not Runtime direct executors."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "`cd novaic-agent-runtime && python -m pytest -q`",
+        "`588 passed`",
+        "`cd novaic-cortex && python -m pytest -q`",
+        "`375 passed`",
+        "`cd novaic-common && python -m pytest -q`",
+        "`136 passed`",
+        "`cd novaic-business && python -m pytest -q`",
+        "`178 passed`",
+        "Direct migrated-tool probe:",
+        "`handle_tool_execute(... tool_name=\"im_read\" ...)` returns unknown-tool error."
+      ],
+      "summary": "Success. R000 solves P000: the active Runtime direct executor surface is physically reduced to the final harness set, migrated interface tools are shell capabilities only, and the affected repositories pass full or targeted verification."
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-09T09:31:01+00:00",
+  "ledger_id": "L20260509-173101",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-09T09:31:01+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "The shell boundary cutover removed IM, payload, subagent, audio, and device tools from the LLM-facing schema, but Runtime still keeps their old direct executors in `_EXECUTORS`. This creates misleading residue: new code paths work, yet old paths can still be called internally and tested as active behavior. The user's principle is no compatibility residue after migration unless explicitly justified.\n\nThis problem covers physically removing migrated interface-tool direct execution paths from the active Runtime executor registry, updating tests to assert the final harness shape, and keeping only genuinely needed non-LLM command/schema contracts.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Runtime `_EXECUTORS` contains only final harness tools: `shell`, `display`, `skill_begin`, `skill_end`, `sleep`.",
+        "IM, payload, subagent, audio, and device tools are not accepted as direct Runtime tool executions.",
+        "LLM-facing schemas remain exactly the five final harness tools.",
+        "Tests assert migrated tool names are shell capabilities only, not active executors.",
+        "Legacy helper code that becomes unreachable after registry cleanup is physically removed where safe; any retained contract modules are explicitly documented as non-LLM/non-runtime command-contract references.",
+        "Focused Runtime, Cortex, and Common tests pass."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Tool direct executor physical cleanup",
+      "updated_at": "2026-05-09T09:49:28+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`.complex-problems/tool-direct-executor-physical-cleanup-root.md`",
+        "`.complex-problems/tool-direct-executor-physical-cleanup-ticket.md`",
+        "`.complex-problems/tool-direct-executor-physical-cleanup-result.md`"
+      ],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-09T09:48:27+00:00",
+      "done": [
+        "Runtime `_EXECUTORS` is now limited to final harness tools only:",
+        "`display`",
+        "`shell`",
+        "`skill_begin`",
+        "`skill_end`",
+        "`sleep`",
+        "Removed migrated direct executor implementation from `task_queue/handlers/tool_handlers.py`:",
+        "IM direct executors",
+        "payload direct executors",
+        "subagent direct executor",
+        "audio direct executor",
+        "dynamic HD/device direct executor",
+        "Deleted obsolete direct executor modules and unit tests:",
+        "`task_queue/handlers/environment_tool_handlers.py`",
+        "`task_queue/device_tools.py`",
+        "runtime environment/payload/device direct-handler tests",
+        "common environment/payload tool schema modules and tests",
+        "Moved LLM-facing IM, payload, subagent, audio, and device operations behind shell capability commands:",
+        "`agentctl im ...`",
+        "`agentctl subagent ...`",
+        "`agentctl media audio-qa ...`",
+        "`cortex payload ...`",
+        "`devicectl hd ...`",
+        "Removed runtime prepare-time dynamic device tool schema merge.",
+        "Updated prompt contracts and tests so user-visible instructions point to shell commands rather than direct tools.",
+        "Updated worker generic substrate tests to assert the current wrapper/factory split instead of stale wrapper implementation details."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "No migrated tool remains as an active LLM direct schema or Runtime direct executor. Internal service endpoints remain because shell capabilities need backend APIs to perform IM, payload, audio, and device operations."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "T000 physically removed migrated direct tool executor residue from the active Runtime/LLM surfaces. IM, payload, subagent, audio, and device operations now route through shell capability commands; Runtime direct executors and canonical LLM builtin schemas are reduced to the final harness set.",
+      "ticket_id": "T000",
+      "verification": [
+        "Runtime executor inventory:",
+        "`['display', 'shell', 'skill_begin', 'skill_end', 'sleep']`",
+        "LLM builtin schema inventory:",
+        "`['shell', 'skill_begin', 'skill_end', 'display', 'sleep']`",
+        "Residue grep:",
+        "no old direct executor modules found by file search",
+        "no active imports of `ENVIRONMENT_EXECUTORS`, `DYNAMIC_DEVICE_TOOL_NAMES`, `common.tools.environment`, or `common.tools.payload`",
+        "remaining `environment_im_*` functions are Business internal HTTP endpoints used by `agentctl`",
+        "remaining `payload_*` functions are Cortex internal API/bridge methods used by `cortex payload`"
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "`sorted(_EXECUTORS)` equals `['display', 'shell', 'skill_begin', 'skill_end', 'sleep']`.",
+        "Direct execution of a migrated tool name returns the normal unknown-tool failure path.",
+        "No Runtime test imports removed direct executor functions.",
+        "The shell capability tests still prove the migrated behaviors exist via shell commands.",
+        "Tool-surface tests no longer expect non-final direct tools."
+      ],
+      "assumptions": [
+        "The migration target is final harness plus shell capabilities, not backward-compatible direct execution.",
+        "The current system does not need to complete stale queued `tool.execute` messages for removed direct tool names."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "Removing migrated direct executors is a bounded registry/code cleanup with focused tests.",
+      "created_at": "2026-05-09T09:31:02+00:00",
+      "id": "T000",
+      "problem_definition": "The active Runtime executor registry still exposes migrated interface tools directly even though the intended architecture is shell capability based. This keeps stale branches callable and makes tests prove compatibility instead of proving the new boundary.",
+      "problem_id": "P000",
+      "proposed_solution": "1. Remove migrated tool names from `_EXECUTORS`.\n2. Remove now-unused imports/functions for direct IM, payload, subagent, audio, and device execution where they are not needed by final code.\n3. Keep `shell`, `display`, `skill_begin`, `skill_end`, and `sleep` as the only Runtime tool executors.\n4. Update tool-surface policy and tests so the invariant is final, not transitional.\n5. Update or remove direct-executor unit tests that only validate old compatibility behavior.\n6. Run focused tests that cover final tool schema, shell capabilities, unknown tool handling, and lifecycle behavior.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Some tests may still model old direct tool calls as historical examples; these should be updated only if they are asserting active execution, not if they are testing historical observation rendering.",
+        "Physical deletion may reveal imports that were accidentally serving as undocumented dependencies."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Remove migrated direct executors from active Runtime",
+      "updated_at": "2026-05-09T09:48:27+00:00",
+      "verification_plan": "- Run a Python executor inventory check.\n- Run focused Runtime tests for tool handler behavior, prompt/finalizer behavior, and tool surface contracts.\n- Run Cortex shell capability tests to verify shell replacements still work.\n- Run Common schema/contract tests to verify LLM surface remains five tools."
+    }
+  },
+  "updated_at": "2026-05-09T09:49:36+00:00"
+}

@@ -1,0 +1,741 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C000.md",
+      "created_at": "2026-05-10T01:52:42+00:00",
+      "criteria_map": [
+        "Active entry points listed: satisfied by R000.",
+        "Old temp-projection/gating logic listed: satisfied by R000.",
+        "Host mount/FUSE/proot/unshare support checked: satisfied by R000.",
+        "Implementation constraints recorded: satisfied by R000 known gap."
+      ],
+      "evidence": [
+        "rg audit and Python host capability checks recorded in R000"
+      ],
+      "execution_map": [
+        "Result IDs checked: R000.",
+        "Evidence came from `rg`, code slices, and Python host capability checks."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P001",
+      "residual_risk": [
+        "The worktree is dirty, so later implementation must avoid reverting unrelated changes.",
+        "Host capability could differ in deployment; tests should therefore encode provider capabilities rather than hard-code local host assumptions as product truth."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The audit explicitly handles the hard case where the desired final architecture depends on host mount capabilities that are absent. It does not silently claim true `/cortex` hidden-literal semantics are available."
+      ],
+      "summary": "The audit solves P001: it identifies the current active shell path, old temp-projection logic, tests that encode old behavior, and host substrate constraints for true `/cortex` mount semantics."
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/checks/C001.md",
+      "created_at": "2026-05-10T01:56:00+00:00",
+      "criteria_map": [
+        "New components present and active: satisfied by R001.",
+        "Process runner has no store/RO/RW authority: satisfied by `SandboxExec` role in R001.",
+        "LogicalFS owns RW persistence and full view materialization: satisfied by `LocalMirrorLogicalFS` role in R001.",
+        "Public `Sandbox.exec` delegates to orchestrator: satisfied by R001.",
+        "Provider limitation explicit: satisfied by `LogicalFSCapabilities`.",
+        "RW convention env vars exist: satisfied by R001."
+      ],
+      "evidence": [
+        "sandbox.py py_compile and focused test run with only old lazy-RO test failure reserved for P003"
+      ],
+      "execution_map": [
+        "Result IDs checked: R001.",
+        "Evidence: py_compile passed; focused tests ran with only one known stale test failure assigned to P003."
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P002",
+      "residual_risk": [
+        "The local mirror provider still uses an outer-command path adapter because the host lacks true mount support.",
+        "Cleanup and verification tickets must still remove old behavior tests and prove no old active path remains."
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The check distinguishes component-boundary success from full migration success. It does not hide the old test failure; it explicitly assigns that cleanup to P003."
+      ],
+      "summary": "P002 is successful: the public `Sandbox.exec` path now routes through named LogicalFS, process-runner, and orchestrator components, while preserving the public API for later cleanup and tests."
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/checks/C002.md",
+      "created_at": "2026-05-10T02:00:41+00:00",
+      "criteria_map": [
+        "Old lazy-RO test replaced: satisfied by R002.",
+        "Provider capability and RW env vars tested: satisfied by R002.",
+        "Old command-gating function names absent: satisfied by residue audit in R002.",
+        "No `include_ro = command` semantic branch: satisfied by residue audit in R002.",
+        "Focused sandbox tests pass: satisfied by R002 verification."
+      ],
+      "evidence": [
+        "focused pytest passed and rg residue audit found no old command-gating symbols"
+      ],
+      "execution_map": [
+        "Result IDs checked: R002.",
+        "Evidence: pytest pass and rg residue audit."
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P003",
+      "residual_risk": [
+        "Full package tests and schema doc wording still need P004 verification.",
+        "True mounted `/cortex` remains a provider capability gap, not a local-mirror feature."
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The check explicitly preserves only the old ephemeral-path rejection path, because users may still paste leaked historical `/tmp/novaic-cortex-sandbox-*` paths. That is a safety guard, not a current execution branch."
+      ],
+      "summary": "P003 is successful: the old lazy-RO command-string behavior is no longer encoded in tests or active code symbols, and the focused sandbox tests pass."
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P004/checks/C003.md",
+      "created_at": "2026-05-10T02:02:55+00:00",
+      "criteria_map": [
+        "Relevant pytest subset passes: satisfied by R003.",
+        "`sandbox.py` compiles: satisfied by R003.",
+        "Old command-gating symbols absent: satisfied by R003 residue audit.",
+        "Tool schema tests pass: satisfied by full package test run in R003.",
+        "Final residue audit identifies only intentional historical-path rejection references: satisfied by R003 known gaps."
+      ],
+      "evidence": [
+        "focused subset 58 passed, full novaic-cortex test suite 381 passed, residue audit no old command-gating symbols"
+      ],
+      "execution_map": [
+        "Result IDs checked: R003.",
+        "Evidence: focused subset 58 passed, full package 381 passed, py_compile passed, residue audit no old symbols."
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P004",
+      "residual_risk": [
+        "The current local provider is not the final FUSE/kernel mount substrate. A separate future problem is needed to implement true stable path mount semantics on infrastructure that supports it.",
+        "Worktree contains unrelated dirty changes from earlier work; this check only verifies the `novaic-cortex` LogicalFS cutover scope."
+      ],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The check treats true `/cortex` hidden-literal semantics as a provider capability, not as a claim. This prevents the half-migration failure mode where local mirror behavior is mistaken for a full FUSE mount."
+      ],
+      "summary": "P004 is successful: focused and full `novaic-cortex` tests pass, the old command-gated active-path symbols are absent, and the remaining platform limitation is explicitly represented rather than hidden."
+    },
+    "C004": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C004.md",
+      "created_at": "2026-05-10T02:03:59+00:00",
+      "criteria_map": [
+        "Active shell execution routes through LogicalFS, SandboxExec, and ShellExecutionOrchestrator: satisfied by R004.",
+        "Command-string RO gating deleted from active path: satisfied by R004 residue audit.",
+        "Sandbox-owned materialization/persistence authority moved behind LogicalFS: satisfied by R004.",
+        "Stable path behavior and current provider limitation tested/documented: satisfied by R004 and child checks.",
+        "RW layout env vars exposed: satisfied by R004.",
+        "Existing behavior passes tests: satisfied by R004 full test run.",
+        "New tests fail if old lazy-RO behavior returns: satisfied by P003/P004.",
+        "Legacy misleading current-path wording removed from touched code/tests: satisfied by R004 residue audit."
+      ],
+      "evidence": [
+        "active path cutover, full novaic-cortex test suite 381 passed, focused subset 58 passed, residue audit clean"
+      ],
+      "execution_map": [
+        "Result IDs checked: R004.",
+        "Child results included: R000, R001, R002, R003.",
+        "Evidence: full `novaic-cortex` suite 381 passed; focused subset 58 passed; py_compile passed; old-symbol residue audit clean."
+      ],
+      "followup_problem_id": null,
+      "id": "C004",
+      "problem_id": "P000",
+      "residual_risk": [
+        "A future infrastructure ticket is needed for a true FUSE/kernel mount provider on a host image that supports it.",
+        "The root worktree has unrelated dirty changes from earlier work; this closure verifies the `novaic-cortex` shell/LogicalFS scope only."
+      ],
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The check explicitly separates two claims:",
+        "Achieved now: current active path no longer uses old command-gated temp-projection logic and has a clean LogicalFS boundary.",
+        "Not claimed: true kernel/FUSE-mounted `/cortex` hidden-literal semantics. This host lacks `/cortex`, FUSE Python bindings, `proot`, `unshare`, and root mount capability, so pretending that part is complete would recreate the “half implemented but not actually connected” failure mode."
+      ],
+      "summary": "The implementation solves the current-host closure problem: the active Cortex shell path is cut over to explicit LogicalFS/process/orchestrator boundaries, old command-gated RO logic is gone, tests pass, and the remaining true-mount limitation is explicit provider capability rather than hidden behavior."
+    }
+  },
+  "counters": {
+    "check": 5,
+    "event": 60,
+    "problem": 5,
+    "result": 5,
+    "ticket": 5
+  },
+  "created_at": "2026-05-10T01:50:35+00:00",
+  "ledger_id": "L20260510-095035",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C004"
+      ],
+      "created_at": "2026-05-10T01:50:35+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "Implement the completed Live LogicalFS design in the active Cortex shell path, not as a side implementation. The current shell execution path still contains temp-projection concepts: command-string RO decisions, sandbox-owned workspace materialization, sandbox-owned RW diff/persist, and misleading docs that describe disposable temp projection as the architecture.\n\nThe target is a clean production boundary:\n\n- LogicalFS owns `/cortex/ro` and `/cortex/rw` logical filesystem semantics, cache/mirror state, dirty tracking, and store synchronization.\n- SandboxExec owns only generic process execution: command, cwd, env, timeout, stdout/stderr, exit code.\n- ShellExecutionOrchestrator owns acquisition/release choreography and result assembly.\n- Active `Cortex.tool_shell` execution must route through that boundary.\n- Old temp-projection semantic branches must be removed from the active path and tests must prove they stay removed.\n\nIf the local host cannot support true `/cortex` kernel/FUSE mount semantics, that limitation must be represented explicitly in the provider capability model and tests. It must not be hidden behind command-string heuristics.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P001",
+        "P002",
+        "P003",
+        "P004"
+      ],
+      "success_criteria": [
+        "Active shell execution is routed through `LogicalFS -> SandboxExec -> ShellExecutionOrchestrator`, not directly through temp projection logic.",
+        "Command-string RO gating is deleted from the active path; RO/RW logical view behavior is not decided by inspecting shell text.",
+        "Sandbox-owned workspace materialization and RW commit/diff authority are deleted or moved behind LogicalFS ownership.",
+        "Stable path support is explicit: current provider behavior and true mount limitations are tested and documented in code.",
+        "RW layout exposes explicit subagent/public/tmp conventions through environment variables.",
+        "Existing shell behavior, CLI capability scripts, token/API injection, timeout handling, and RW persistence still pass tests.",
+        "New tests fail if old lazy-RO/command-gating behavior is reintroduced.",
+        "Legacy comments/tests/docs that teach the old disposable projection architecture are updated or removed."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Live LogicalFS Implementation Closure",
+      "updated_at": "2026-05-10T02:03:59+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-10T01:51:34+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Before editing, map the current active Cortex shell path, hidden temp-projection dependencies, and local host filesystem capabilities. The implementation must not be based on wishful assumptions about `/cortex`, FUSE, or mount namespace support.",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Identify the current entry points and active functions for shell execution.",
+        "Identify all old temp-projection and command-string gating logic to delete or move.",
+        "Identify local host support for true `/cortex` mount semantics.",
+        "Record the exact implementation constraints that child tickets must obey."
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "Active Shell Path And Host Capability Audit",
+      "updated_at": "2026-05-10T01:52:42+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-10T01:51:34+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Create the production code boundary that separates filesystem semantics from process execution. The active code should have named components for LogicalFS view acquisition/release, generic process running, and shell orchestration.",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Introduce a LogicalFS provider abstraction for the current local mirror substrate.",
+        "Introduce a SandboxExec/process runner that does not know Cortex store, RO/RW sync, or changed files.",
+        "Introduce a ShellExecutionOrchestrator that composes LogicalFS and SandboxExec.",
+        "Preserve capability scripts, token/API injection, timeout handling, path sanitization, and `ShellResult` shape.",
+        "Add explicit RW convention environment variables for public/self/tmp/artifacts/scratch."
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "Implement LogicalFS And SandboxExec Boundary",
+      "updated_at": "2026-05-10T01:56:00+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P003/README.md",
+      "check_ids": [
+        "C002"
+      ],
+      "created_at": "2026-05-10T01:51:34+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Route the active shell execution path through the new boundary and physically remove or quarantine the old command-gated temp-projection logic. This closes the common failure mode where new code exists but old logic still runs.",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P003",
+      "parent_id": "P000",
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`Sandbox.exec` routes through ShellExecutionOrchestrator.",
+        "Command-string RO gating is removed from active code.",
+        "Old `_materialize_workspace` and `_persist_rw_changes` authority is removed from `Sandbox`.",
+        "Tests no longer encode lazy-RO behavior as desired.",
+        "`rg` audit proves old command-gating symbols are absent or unreachable."
+      ],
+      "ticket_ids": [
+        "T003"
+      ],
+      "title": "Cut Over Active Shell Path And Remove Old Branches",
+      "updated_at": "2026-05-10T02:00:41+00:00"
+    },
+    "P004": {
+      "body_path": "problems/P000/children/P004/README.md",
+      "check_ids": [
+        "C003"
+      ],
+      "created_at": "2026-05-10T01:51:34+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Prove the implementation is connected, not partial. Run focused tests, broad relevant tests, and residue audits. Any discovered gap must become a follow-up or be fixed before closure.",
+      "followup_ids": [],
+      "id": "P004",
+      "package_path": "problems/P000/children/P004",
+      "parent_id": "P000",
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Focused sandbox/logical-fs tests pass.",
+        "Existing capability/runtime/projection tests touched by this change pass.",
+        "Residue audit checks old symbols, docs, and tests.",
+        "The final result lists remaining platform limitations honestly.",
+        "No old shell execution path remains as a plausible current path."
+      ],
+      "ticket_ids": [
+        "T004"
+      ],
+      "title": "Verify LogicalFS Cutover And Residue Cleanup",
+      "updated_at": "2026-05-10T02:02:55+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "Code pointers:",
+        "`novaic-cortex/novaic_cortex/runtime.py`",
+        "`novaic-cortex/novaic_cortex/api.py`",
+        "`novaic-cortex/novaic_cortex/sandbox.py`",
+        "`novaic-cortex/tests/test_sandbox_sync.py`"
+      ],
+      "body_path": "problems/P000/children/P001/results/R000.md",
+      "created_at": "2026-05-10T01:52:24+00:00",
+      "done": [
+        "Active runtime entry:",
+        "`novaic-cortex/novaic_cortex/runtime.py` constructs `Sandbox(...)`.",
+        "`Cortex.tool_shell(...)` calls `self.sandbox.exec(command, timeout, extra_env=env)`.",
+        "`novaic-cortex/novaic_cortex/api.py` shell endpoint calls `cortex.tool_shell(...)`.",
+        "Active old sandbox logic:",
+        "`novaic-cortex/novaic_cortex/sandbox.py` defines `_command_needs_ro`.",
+        "`Sandbox.exec` calls `_command_needs_ro(command)`.",
+        "`Sandbox._materialize_workspace` owns RO/RW store materialization.",
+        "`Sandbox._persist_rw_changes` owns RW persistence.",
+        "`Sandbox.exec` rewrites stable `/cortex` paths in the outer command string.",
+        "Tests currently encode old behavior:",
+        "`tests/test_sandbox_sync.py` has lazy-RO tests.",
+        "Stable path tests assert output sanitization and outer command reuse.",
+        "Host capability check:",
+        "uid is `501`.",
+        "`/cortex` does not exist.",
+        "`fuse`, `fusepy`, `llfuse`, and `pyfuse3` are not importable.",
+        "`proot` and `unshare` are not available.",
+        "`/sbin/mount` exists, but current process does not have root/mount setup for a private `/cortex`."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "True hidden-literal `/cortex` semantics cannot be honestly claimed on this host with the currently available substrate. The implementation must model this as a provider capability limitation while still removing old command-string RO gating and moving filesystem ownership to LogicalFS."
+      ],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "Audited the current Cortex shell execution path and host substrate. The active path is still `Cortex.tool_shell -> Sandbox.exec -> temp workspace projection -> process -> RW diff/persist`, with command-string RO gating still present before implementation.",
+      "ticket_id": "T001",
+      "verification": [
+        "Used `rg` to locate active code and old symbols.",
+        "Used Python import checks for FUSE-related modules and shell capability checks for mount namespace substitutes."
+      ]
+    },
+    "R001": {
+      "artifacts": [
+        "`novaic-cortex/novaic_cortex/sandbox.py`"
+      ],
+      "body_path": "problems/P000/children/P002/results/R001.md",
+      "created_at": "2026-05-10T01:55:46+00:00",
+      "done": [
+        "Rewrote the module header to describe the current boundary instead of disposable temp projection as the architecture.",
+        "Added `LogicalFSCapabilities` with explicit `provider=\"local-mirror\"` and `true_stable_path_mount=False`.",
+        "Added `LogicalFSView`, `ProcessSpec`, and `ProcessRunResult` data boundaries.",
+        "Added `LocalMirrorLogicalFS`:",
+        "owns full RO/RW logical view materialization;",
+        "owns RW flush to `Workspace`;",
+        "owns stable output sanitization;",
+        "owns token/API shell env and `.novaic_env.json`;",
+        "exposes RW convention env vars: `RW_PUBLIC`, `RW_SELF`, `RW_TMP`, `RW_ARTIFACTS`, `RW_SCRATCH`.",
+        "Added `SandboxExec`:",
+        "runs subprocesses only;",
+        "handles timeout/kill and raw stdout/stderr/exit code;",
+        "has no store/RO/RW persistence authority.",
+        "Added `ShellExecutionOrchestrator`:",
+        "acquire LogicalFS view;",
+        "adapt outer stable paths for local mirror provider;",
+        "run process;",
+        "release LogicalFS view;",
+        "assemble `ShellResult`.",
+        "`Sandbox.exec` now delegates to the orchestrator."
+      ],
+      "id": "R001",
+      "known_gaps": [
+        "P003 must remove the old lazy-RO test and add tests for no command-string gating and explicit provider capabilities.",
+        "Current provider still uses an outer-command path adapter because true `/cortex` mount support is unavailable on this host."
+      ],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "Implemented the first active boundary in `novaic-cortex/novaic_cortex/sandbox.py`: `LocalMirrorLogicalFS`, `SandboxExec`, and `ShellExecutionOrchestrator`. Public `Sandbox.exec` now delegates through those components rather than owning the entire process directly.",
+      "ticket_id": "T002",
+      "verification": [
+        "`python -m py_compile novaic_cortex/sandbox.py` passed.",
+        "`pytest -q tests/test_incremental_sync.py tests/test_sandbox_sync.py` ran:",
+        "11 passed;",
+        "1 expected old-test failure remains: `test_shell_skips_ro_materialization_when_command_only_needs_rw` still asserts the old lazy-RO behavior. This is intentionally handled in P003 cleanup."
+      ]
+    },
+    "R002": {
+      "artifacts": [
+        "`novaic-cortex/tests/test_sandbox_sync.py`",
+        "`novaic-cortex/tests/test_incremental_sync.py`",
+        "`novaic-cortex/novaic_cortex/sandbox.py`"
+      ],
+      "body_path": "problems/P000/children/P003/results/R002.md",
+      "created_at": "2026-05-10T01:57:29+00:00",
+      "done": [
+        "Replaced `test_shell_skips_ro_materialization_when_command_only_needs_rw` with `test_shell_materializes_full_logical_view_without_command_gating`.",
+        "Added explicit provider capability test for `local-mirror`, `true_stable_path_mount=False`, and outer-command adapter behavior.",
+        "Added RW layout environment test for `RW_PUBLIC`, `RW_SELF`, `RW_TMP`, `RW_ARTIFACTS`, and `RW_SCRATCH`.",
+        "Renamed old lazy-RO test names and agent IDs.",
+        "Removed stale “Disposable sandbox” wording from a test docstring.",
+        "Confirmed old command-gating symbols are absent from `novaic_cortex` and tests."
+      ],
+      "id": "R002",
+      "known_gaps": [
+        "References to `novaic-cortex-sandbox-*` intentionally remain only for rejecting leaked old ephemeral paths and tests that prove sanitized output. P004 must decide whether schema docs should keep or reword that user guidance."
+      ],
+      "problem_id": "P003",
+      "root_id": "P000",
+      "summary": "Cut over tests and residue for the shell path. The old command-gated RO materialization behavior is no longer encoded as a desired behavior, and focused sandbox tests pass against the LogicalFS boundary.",
+      "ticket_id": "T003",
+      "verification": [
+        "`pytest -q tests/test_incremental_sync.py tests/test_sandbox_sync.py` passed: 14 passed.",
+        "Residue audit passed with no matches for:",
+        "`_command_needs_ro`",
+        "`_materialize_workspace`",
+        "`_persist_rw_changes`",
+        "`_rewrite_stable_cortex_paths`",
+        "`_RO_ENV_RE`",
+        "`_STABLE_RO_PATH_RE`",
+        "lazy-RO / command-needs-RO phrases"
+      ]
+    },
+    "R003": {
+      "artifacts": [
+        "`novaic-cortex/novaic_cortex/sandbox.py`",
+        "`novaic-cortex/tests/test_sandbox_sync.py`",
+        "`novaic-cortex/tests/test_shell_capability_runtime.py`",
+        "`novaic-cortex/tests/test_incremental_sync.py`"
+      ],
+      "body_path": "problems/P000/children/P004/results/R003.md",
+      "created_at": "2026-05-10T02:02:39+00:00",
+      "done": [
+        "Ran focused broad test subset:",
+        "`tests/test_incremental_sync.py`",
+        "`tests/test_sandbox_sync.py`",
+        "`tests/test_sandbox_limits.py`",
+        "`tests/test_sandbox_stress.py`",
+        "`tests/test_shell_capability_runtime.py`",
+        "`tests/test_tool_schemas_limits.py`",
+        "`tests/test_tool_output_projection.py`",
+        "Updated two shell capability tests that still expected old “do not materialize RO for help/path commands” behavior.",
+        "Ran full `novaic-cortex` package tests.",
+        "Ran residue audit for old command-gated symbols and stale lazy-RO wording."
+      ],
+      "id": "R003",
+      "known_gaps": [
+        "True kernel/FUSE-backed `/cortex` hidden-literal semantics are not implemented because this host lacks the required substrate (`/cortex`, FUSE bindings, `proot`, `unshare`, root mount capability). The current provider explicitly reports `true_stable_path_mount=False`.",
+        "Historical `novaic-cortex-sandbox-*` references intentionally remain only as safety rejection guidance/tests for leaked old ephemeral paths and should not be confused with the current temp prefix."
+      ],
+      "problem_id": "P004",
+      "root_id": "P000",
+      "summary": "Verified the LogicalFS cutover in `novaic-cortex`. The full package test suite passes, and residue audit shows the old command-gated RO branch names are gone from active code/tests.",
+      "ticket_id": "T004",
+      "verification": [
+        "Focused subset: 58 passed.",
+        "Full package: 381 passed.",
+        "`python -m py_compile novaic_cortex/sandbox.py` passed.",
+        "Residue audit returned no matches for old active-path symbols:",
+        "`_command_needs_ro`",
+        "`_materialize_workspace`",
+        "`_persist_rw_changes`",
+        "`_rewrite_stable_cortex_paths`",
+        "`_RO_ENV_RE`",
+        "`_STABLE_RO_PATH_RE`",
+        "old lazy-RO / command-needs-RO wording."
+      ]
+    },
+    "R004": {
+      "artifacts": [
+        "Ledger: `.complex-problems/L20260510-095035`",
+        "Root body: `.complex-problems/live-logical-fs-implementation-root.md`"
+      ],
+      "body_path": "problems/P000/results/R004.md",
+      "created_at": "2026-05-10T02:03:32+00:00",
+      "done": [
+        "Closed child tickets:",
+        "P001 audited active path and host substrate.",
+        "P002 implemented the component boundary.",
+        "P003 removed old lazy-RO behavior from tests and residue.",
+        "P004 verified the cutover.",
+        "Code changed:",
+        "`novaic-cortex/novaic_cortex/sandbox.py`",
+        "`novaic-cortex/tests/test_sandbox_sync.py`",
+        "`novaic-cortex/tests/test_shell_capability_runtime.py`",
+        "`novaic-cortex/tests/test_incremental_sync.py`",
+        "Behavior changed:",
+        "shell no longer decides RO availability by inspecting command text;",
+        "full logical RO/RW view is materialized by LogicalFS provider;",
+        "process execution is separated from filesystem sync/persistence;",
+        "RW convention env vars are available;",
+        "provider capabilities explicitly state current local mirror lacks true mounted `/cortex`."
+      ],
+      "id": "R004",
+      "known_gaps": [
+        "True FUSE/kernel-backed `/cortex` hidden-literal support is not implemented because the host substrate is unavailable. The current provider explicitly reports that limitation instead of pretending the local mirror is a true mount.",
+        "`novaic-cortex-sandbox-*` references intentionally remain only as historical leaked-path rejection guidance/tests."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Implemented and verified the current achievable LogicalFS cutover for `novaic-cortex`. The active shell path now uses explicit components: `LocalMirrorLogicalFS -> SandboxExec -> ShellExecutionOrchestrator`, with `Sandbox.exec` as a facade. Old command-string RO gating and old sandbox-owned materialization/persistence authority were removed from the active path.",
+      "ticket_id": "T000",
+      "verification": [
+        "Full `novaic-cortex` test suite: 381 passed.",
+        "Focused shell/sandbox subset: 58 passed.",
+        "`python -m py_compile novaic_cortex/sandbox.py` passed.",
+        "Residue audit found no old active-path symbols or old lazy-RO wording."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Active shell path no longer calls command-string RO decision code.",
+        "Logical filesystem ownership is named and represented in code.",
+        "Process execution no longer owns workspace materialization or RW persistence semantics.",
+        "Old lazy-RO tests are replaced by tests proving full logical view behavior.",
+        "The local provider’s stable path limitation is explicit rather than pretending hidden literal `/cortex` works without a mount substrate.",
+        "Focused tests and broad relevant tests pass.",
+        "Residue audit shows no misleading current-path docs/comments left in touched code."
+      ],
+      "assumptions": [
+        "The current repo state contains previous user-approved work and must be preserved.",
+        "It is acceptable to represent unavailable true mount semantics as an explicit provider capability and blocker, rather than silently claiming it is solved."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "Implementation spans active-path mapping, boundary construction, routing, cleanup, and verification; child tickets make half-migration gaps visible.",
+      "created_at": "2026-05-10T01:50:55+00:00",
+      "id": "T000",
+      "problem_definition": "The Cortex shell active path still teaches and uses a disposable temp-projection model. That creates two risks the user explicitly called out: new code can exist without being fully connected, and old logic can remain available for future agents to accidentally reuse.\n\nThe implementation must replace the active path with a clear LogicalFS execution boundary while preserving user-visible shell behavior and explicitly surfacing any host-level mount limitation.",
+      "problem_id": "P000",
+      "proposed_solution": "Split the work into closure tickets and execute them in order:\n\n1. Map the current active path and physical constraints so implementation does not rely on assumptions.\n2. Build the LogicalFS/SandboxExec/ShellExecutionOrchestrator boundary in `novaic-cortex`.\n3. Route `Sandbox.exec`/`Cortex.tool_shell` through the new boundary.\n4. Remove the old command-gated RO materialization path and old tests that encode it.\n5. Add tests for active routing, no command-string RO gating, RW conventions, stable path behavior, and provider capability limitations.\n6. Run focused and package-level tests, then record residual risk honestly.",
+      "result_ids": [
+        "R004"
+      ],
+      "risks": [
+        "True kernel/FUSE `/cortex` mount may not be implementable on this host because there is no `/cortex`, FUSE library, proot, unshare, or root privilege.",
+        "Large existing dirty worktree means changes must be scoped carefully and must not revert unrelated work.",
+        "Moving ownership while preserving current behavior can reveal old tests that intentionally codified the performance shortcut."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Ticket: Replace Temp Projection With LogicalFS Execution Boundary",
+      "updated_at": "2026-05-10T02:03:32+00:00",
+      "verification_plan": "- `rg` audit for old names and semantic branches.\n- Focused `pytest` on sandbox/logical-fs tests.\n- Existing shell capability/runtime tests.\n- Package test subset covering sandbox, runtime API, tool schema, and output projection."
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "Active code entry points are listed.",
+        "Old temp projection symbols are listed.",
+        "Host mount/FUSE/proot/unshare support is checked.",
+        "Implementation constraints are recorded."
+      ],
+      "assumptions": [
+        "No writes outside ledger result file are needed for this audit."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "one_go",
+      "classification_reason": "Read-only audit with bounded evidence.",
+      "created_at": "2026-05-10T01:51:45+00:00",
+      "id": "T001",
+      "problem_definition": "Map current shell execution and host capabilities before implementation.",
+      "problem_id": "P001",
+      "proposed_solution": "Use read-only code search and host checks to document the current path, old logic, and impossible/available mount substrates.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Dirty worktree may include already-modified code; audit must describe current state only."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Ticket: Audit Active Shell Path And Host Substrate",
+      "updated_at": "2026-05-10T01:52:24+00:00",
+      "verification_plan": "- `rg` evidence for code paths.\n- Python import/host checks.\n- File pointers to relevant implementation and tests."
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "New components are present and active.",
+        "Process runner has no store or RO/RW sync authority.",
+        "LogicalFS provider owns RW persistence and full logical view materialization.",
+        "`Sandbox.exec` delegates to orchestrator.",
+        "Explicit capability model represents the current local mirror provider and lack of true mounted `/cortex`.",
+        "RW layout env vars exist."
+      ],
+      "assumptions": [
+        "Public `Sandbox.exec` signature remains stable for current callers."
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T002.md",
+      "classification": "one_go",
+      "classification_reason": "Single coherent refactor in novaic-cortex sandbox boundary with existing public API preserved.",
+      "created_at": "2026-05-10T01:53:25+00:00",
+      "id": "T002",
+      "problem_definition": "The current `Sandbox` class owns too many concerns: it decides whether RO is needed, copies workspace files, runs the process, diffs RW, persists changes, sanitizes paths, and logs. This makes it easy to add a new implementation without actually removing the old execution path.",
+      "problem_id": "P002",
+      "proposed_solution": "Refactor `novaic-cortex/novaic_cortex/sandbox.py` into explicit components while preserving the public `Sandbox.exec` API:\n\n- `LocalMirrorLogicalFS`: owns current local mirror substrate, logical RO/RW sync, RW layout, env construction, changed-file flush, and stable path capabilities.\n- `SandboxExec`: owns only subprocess execution and timeout/kill behavior.\n- `ShellExecutionOrchestrator`: owns acquisition/run/release choreography and result assembly.\n- `Sandbox`: becomes the public compatibility facade that delegates to the orchestrator.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "Refactor could break shell capability scripts or token/API injection.",
+        "Stable `/cortex` path output must remain sanitized even though the provider uses a local backing path."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Ticket: Build LogicalFS / SandboxExec / Orchestrator Boundary",
+      "updated_at": "2026-05-10T01:55:46+00:00",
+      "verification_plan": "- Code inspection after patch.\n- Existing sandbox tests plus new tests in the cleanup/verification tickets."
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "Old lazy-RO test is replaced with no-command-gating tests.",
+        "Provider capability and RW convention env vars are tested.",
+        "Old command-gating function names are absent.",
+        "Active path has no `include_ro = ... command ...` style semantic branch.",
+        "Focused sandbox tests pass."
+      ],
+      "assumptions": [
+        "`Sandbox.exec` public API remains stable."
+      ],
+      "body_path": "problems/P000/children/P003/tickets/T003.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded cleanup in sandbox tests and symbol residue audit.",
+      "created_at": "2026-05-10T01:56:17+00:00",
+      "id": "T003",
+      "problem_definition": "After the boundary refactor, the code must stop teaching old lazy-RO command-gating behavior. Tests and residue audits should make the new active path unambiguous.",
+      "problem_id": "P003",
+      "proposed_solution": "Update tests to assert full logical view behavior and provider capabilities, then audit code for old symbols and misleading docs. Remove or replace any stale references that would lead a future agent back to command-string RO gating.",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [
+        "Stable path tests still rely on outer-command adapter because true mount is unavailable; tests must identify that as provider behavior, not final FUSE semantics."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Ticket: Cut Over Tests And Remove Old Shell Branches",
+      "updated_at": "2026-05-10T01:57:29+00:00",
+      "verification_plan": "- `pytest -q tests/test_incremental_sync.py tests/test_sandbox_sync.py`.\n- `rg` for old command-gating symbols.\n- Compile `sandbox.py`."
+    },
+    "T004": {
+      "acceptance_criteria": [
+        "Relevant pytest subset passes.",
+        "`sandbox.py` compiles.",
+        "Old command-gating symbols remain absent.",
+        "Tool schema tests either pass or are updated to current wording.",
+        "Final residue audit identifies only intentional historical-path rejection references."
+      ],
+      "assumptions": [
+        "Deployment is not requested in this turn; user asked to implement and verify the architecture state."
+      ],
+      "body_path": "problems/P000/children/P004/tickets/T004.md",
+      "classification": "one_go",
+      "classification_reason": "Verification and minor residue patching are bounded after P002/P003.",
+      "created_at": "2026-05-10T02:00:54+00:00",
+      "id": "T004",
+      "problem_definition": "The implementation must prove it is connected and not half-migrated. This ticket runs broader tests and residue audits, then fixes any immediate gaps found.",
+      "problem_id": "P004",
+      "proposed_solution": "Run focused and relevant broad test subsets in `novaic-cortex`, audit old terms, inspect schema/doc wording, and patch any stale current-path references that would confuse future agents.",
+      "result_ids": [
+        "R003"
+      ],
+      "risks": [
+        "There may be unrelated pre-existing dirty tests or changes outside this scope; do not revert them."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Ticket: Verify Cutover And Close Residue",
+      "updated_at": "2026-05-10T02:02:39+00:00",
+      "verification_plan": "- `pytest -q` for sandbox/incremental/stress/limits/schemas/capability/projection tests.\n- `rg` residue audit.\n- `git diff --stat` scoped review."
+    }
+  },
+  "updated_at": "2026-05-10T02:04:05+00:00"
+}

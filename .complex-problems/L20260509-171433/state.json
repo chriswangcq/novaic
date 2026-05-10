@@ -1,0 +1,150 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-09T09:17:14+00:00",
+      "criteria_map": [
+        "LLM schemas exclude `subagent_spawn`: satisfied by Cortex schema guard tests and Common product semantics tests.",
+        "Shell schema advertises replacement command: satisfied by shell schema tests and shell help tests.",
+        "`agentctl subagent spawn` executes through sandbox capability script: satisfied by `test_agentctl_subagent_spawn_round_trip_through_shell`.",
+        "Runtime guards classify direct executor as compatibility: satisfied by `SHELL_CAPABILITY_SCHEMA_CUTOVER_TOOLS` and Runtime tool-surface tests."
+      ],
+      "evidence": [
+        "Runtime targeted tests: `31 passed`.",
+        "Cortex targeted tests: `18 passed`.",
+        "Common targeted tests: `11 passed`."
+      ],
+      "execution_map": [
+        "`novaic-cortex/novaic_cortex/sandbox.py`: added `agentctl subagent spawn`.",
+        "`novaic-common/common/tools/llm_builtin.py`: removed `subagent_spawn` from active LLM schema and advertised shell command.",
+        "`novaic-common/common/tools/definitions.py`: removed active runtime metadata entry.",
+        "`novaic-agent-runtime/task_queue/tool_surface_policy.py`: classified `subagent_spawn` as completed schema cutover."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "The direct executor remains for compatibility and final deletion, but it is no longer part of the canonical LLM-visible schema."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The shell capability test writes a task file in the disposable sandbox and invokes `agentctl subagent spawn --task-file ... --share-context --timeout-minutes ...`, validating file-oriented ergonomics and the exact Business spawn payload."
+      ],
+      "summary": "subagent_spawn is no longer LLM-visible; agentctl subagent spawn is implemented and tested; direct executor remains only as compatibility."
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-09T09:14:33+00:00",
+  "ledger_id": "L20260509-171433",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-09T09:14:33+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "`subagent_spawn` is still exposed as a direct LLM-facing tool. The target shell-boundary design keeps only final harness tools outside shell; SubAgent coordination is an interface action and should be accessed through a shell capability command instead of a standalone tool schema.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "LLM-visible builtin schemas no longer include `subagent_spawn`.",
+        "Shell schema advertises the replacement `agentctl subagent spawn` command.",
+        "`agentctl subagent spawn` executes through the sandbox capability script and calls the existing Business spawn endpoint.",
+        "Runtime schema/executor guard tests classify direct `subagent_spawn` as schema-cutover compatibility only.",
+        "Targeted Runtime/Cortex/Common tests cover the new command path and schema cutover."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "SubAgent tool schema cutover to shell",
+      "updated_at": "2026-05-09T09:17:14+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-09T09:16:52+00:00",
+      "done": [
+        "Added `agentctl subagent spawn --task TEXT`.",
+        "Added `agentctl subagent spawn --task-file PATH`.",
+        "Added `--share-context` and `--timeout-minutes` options.",
+        "Routed shell command to existing Business `/internal/subagents/{agent_id}/spawn` endpoint.",
+        "Removed `subagent_spawn` from canonical LLM-facing builtin schemas and Common active runtime metadata.",
+        "Updated shell description and help text to advertise `agentctl subagent spawn`.",
+        "Added `subagent_spawn` to `SHELL_CAPABILITY_SCHEMA_CUTOVER_TOOLS`.",
+        "Updated Cortex/Common/Runtime guard tests."
+      ],
+      "id": "R000",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Completed the SubAgent schema cutover: `subagent_spawn` is no longer an LLM-visible builtin schema, and SubAgent creation is available through the `agentctl subagent spawn` shell capability.",
+      "ticket_id": "T000",
+      "verification": [
+        "`cd novaic-agent-runtime && python -m pytest tests/test_runtime_tool_path_contract.py tests/test_tool_surface_boundary.py tests/unit/task_queue/test_shell_output_contract.py tests/unit/task_queue/test_environment_tool_handlers.py -q`",
+        "Passed: `31 passed`",
+        "`cd novaic-cortex && python -m pytest tests/test_tool_schemas_limits.py tests/test_shell_capability_runtime.py -q`",
+        "Passed: `18 passed`",
+        "`cd novaic-common && python -m pytest tests/test_tool_definitions_contract.py tests/test_tool_product_semantics_contract.py tests/test_payload_tool_schemas.py -q`",
+        "Passed: `11 passed`"
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Canonical LLM schemas exclude `subagent_spawn`.",
+        "`agentctl subagent spawn` supports `--task`, `--task-file`, `--share-context`, and `--timeout-minutes`.",
+        "Shell capability test proves the command calls Business with the expected payload.",
+        "Runtime tool-path tests exclude `subagent_spawn` through schema-cutover compatibility."
+      ],
+      "assumptions": [
+        "This ticket covers `subagent_spawn` only; dynamic device tools and `audio_qa` are separate slices."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "Single interface-tool cutover with bounded shell command, schema, and tests.",
+      "created_at": "2026-05-09T09:14:51+00:00",
+      "id": "T000",
+      "problem_definition": "`subagent_spawn` remains a standalone LLM tool even though SubAgent creation is an interface action. Keeping it direct preserves an old business branch outside the shell-boundary design.",
+      "problem_id": "P000",
+      "proposed_solution": "- Add `agentctl subagent spawn --task TEXT` and `--task-file PATH` to the shell capability script.\n- Route that command to the existing Business `/internal/subagents/{agent_id}/spawn` endpoint.\n- Remove `subagent_spawn` from the canonical LLM schema and active Common metadata.\n- Update shell schema/help, product semantics, and guard tests.\n- Keep the direct executor as internal compatibility until final physical deletion.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Existing direct `subagent_spawn` unit behavior must not be broken until the final deletion ticket."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Move SubAgent spawn behind agentctl shell capability",
+      "updated_at": "2026-05-09T09:16:52+00:00",
+      "verification_plan": "- Run Cortex shell capability and schema tests.\n- Run Runtime tool-path/tool-surface tests.\n- Run Common tool-definition/product-semantics tests."
+    }
+  },
+  "updated_at": "2026-05-09T09:17:14+00:00"
+}

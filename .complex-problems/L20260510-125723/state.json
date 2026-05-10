@@ -1,0 +1,221 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-10T05:00:28+00:00",
+      "criteria_map": [
+        "Docs consistently describe Blob as cheap byte/file server -> satisfied by",
+        "`blob-service.md`, `overview.md`, `service-topology.md`, and",
+        "`logicalfs-realtime-file-authority.md`.",
+        "Docs consistently describe LogicalFS as only Cortex/shell live RO/RW authority",
+        "-> satisfied by the LogicalFS design doc title/body and topology/overview",
+        "wording.",
+        "No audited doc claims LogicalFS owns display/download handles or all file",
+        "services -> satisfied by focused residue scan; remaining handle mentions are",
+        "explicit negative statements.",
+        "RO/RW display/download requires export/copy to Blob -> satisfied by",
+        "LogicalFS design doc and Blob reference doc.",
+        "Transitional Cortex direct Blob object-store usage labeled transitional ->",
+        "satisfied by `## Transitional Cortex Object Store` in `blob-service.md` and",
+        "the current-gap section in the LogicalFS design doc."
+      ],
+      "evidence": [
+        "`docs/architecture/logicalfs-realtime-file-authority.md` says LogicalFS is",
+        "the semantic authority for Cortex/shell realtime `RO` / `RW` views.",
+        "`docs/architecture/logicalfs-realtime-file-authority.md` says App, CLI,",
+        "display, and artifact byte delivery can use Blob directly when they do not",
+        "need live Cortex/shell RO/RW semantics.",
+        "`docs/architecture/logicalfs-realtime-file-authority.md` says RO/RW files",
+        "needing display/download are first exported or copied to Blob and LogicalFS",
+        "does not become a display/download handle service.",
+        "`docs/reference/blob-service.md` says Blob remains the cheap byte/object file",
+        "server for base attachments, display bytes, and artifact bytes.",
+        "`docs/reference/blob-service.md` says LogicalFS does not expose",
+        "display/download handles directly.",
+        "Focused scans found no remaining affirmative claims that LogicalFS owns all",
+        "file services, display/download handles, or direct BlobRef-backed handles."
+      ],
+      "execution_map": [
+        "T000 / R000 -> executed a one-go documentation audit, patched over-broad",
+        "wording, reviewed focused diffs, and ran residue scans."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Non-blocking: implementation is not yet cut over; docs intentionally describe",
+        "the target and current transitional gap.",
+        "Non-blocking: no CI guard was added in this ticket; this was requested as a",
+        "design-document audit."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Failure mode: future reader believes App/display/artifacts must go through",
+        "LogicalFS. Mitigation: the LogicalFS target model explicitly says App, CLI,",
+        "display, and artifact byte delivery can use Blob directly when live RO/RW",
+        "semantics are not needed.",
+        "Failure mode: future implementer exposes display/download handles from",
+        "LogicalFS. Mitigation: both the design doc and Blob reference explicitly say",
+        "RO/RW display/download is export/copy to Blob first and LogicalFS does not",
+        "provide display/download handles.",
+        "Failure mode: future implementer treats current CortexStore direct Blob path",
+        "as final architecture. Mitigation: docs label it transitional and identify",
+        "LogicalFS-backed workspace adapter as the target."
+      ],
+      "summary": "Success. The audited design documents now consistently express the narrowed\nboundary: Blob is the cheap byte/file server; LogicalFS is only the\nCortex/shell live `RO` / `RW` authority; display/download goes through Blob,\nnot LogicalFS handles."
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-10T04:57:23+00:00",
+  "ledger_id": "L20260510-125723",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-10T04:57:23+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "Audit the current LogicalFS / Blob / Cortex / Sandbox design documents against\nthe clarified architecture principle:\n\n- Blob is a cheap file server for durable bytes, attachments, display bytes,\n  artifact bytes, and object/blob references.\n- LogicalFS is not a universal file service. It is the Cortex/shell live\n  `RO` / `RW` semantic authority.\n- Cortex/shell live `RO` / `RW` paths must go through LogicalFS.\n- Display/download must go through Blob. If a live `RO` / `RW` file must be\n  displayed or downloaded, it is exported/copied to Blob first; LogicalFS must\n  not expose display/download handles.\n\nCheck the design docs for over-broad statements, contradictory ownership, stale\nphrasing, and missing boundary language. Fix documentation gaps found during\nthe audit.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "The relevant docs consistently describe Blob as the cheap byte/file server.",
+        "The relevant docs consistently describe LogicalFS as only the Cortex/shell",
+        "live `RO` / `RW` authority.",
+        "No audited doc claims LogicalFS owns display/download handles or all file",
+        "services.",
+        "Any remaining transitional code path is explicitly labeled transitional.",
+        "The audit has a recorded result and success check with concrete evidence."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Audit LogicalFS RO/RW design documents",
+      "updated_at": "2026-05-10T05:00:28+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`docs/architecture/logicalfs-realtime-file-authority.md`",
+        "`docs/architecture/overview.md`",
+        "`docs/architecture/service-topology.md`",
+        "`docs/reference/blob-service.md`"
+      ],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-10T04:59:05+00:00",
+      "done": [
+        "Reviewed `docs/architecture/logicalfs-realtime-file-authority.md`.",
+        "Reviewed `docs/architecture/overview.md`.",
+        "Reviewed `docs/architecture/service-topology.md`.",
+        "Reviewed `docs/reference/blob-service.md`.",
+        "Tightened the LogicalFS target diagram so only the Cortex / Runtime shell",
+        "pipeline feeds LogicalFS; App/CLI/display/artifacts can use Blob directly when",
+        "they do not need live RO/RW semantics.",
+        "Renamed the overview link label from broad \"实时文件权威边界\" language to",
+        "\"LogicalFS RO/RW 实时边界\".",
+        "Removed the idea that LogicalFS exposes display/download handles.",
+        "Added explicit wording that RO/RW files must be exported/copied to Blob before",
+        "display/download."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "No code behavior was changed in this ticket; this is a design-document audit.",
+        "The docs intentionally keep the current `CortexStore -> Blob object API` path",
+        "labeled as transitional until implementation cutover happens."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Audited the LogicalFS / Blob / Cortex / Sandbox design docs against the narrowed\nboundary. Fixed over-broad documentation language so the docs now describe\nLogicalFS as only the Cortex/shell live `RO` / `RW` authority, while Blob remains\nthe cheap byte/file server for attachments, display bytes, artifact bytes, and\ndownloads.",
+      "ticket_id": "T000",
+      "verification": [
+        "Ran focused scans for over-broad or conflicting wording:",
+        "`all realtime`",
+        "`所有实时`",
+        "`除基础 Blob`",
+        "`所有文件服务`",
+        "`LogicalFS.*display`",
+        "`display.*LogicalFS`",
+        "`LogicalFS.*download`",
+        "`download.*LogicalFS`",
+        "`open_handle`",
+        "`BlobRef-backed`",
+        "`workspace/artifact`",
+        "`artifact file semantics`",
+        "`Business, App`",
+        "`Product / Agent semantics`",
+        "`实时文件权威边界`",
+        "`universal file`",
+        "The remaining `display/download handles` matches are explicit negative",
+        "statements saying LogicalFS does not provide those handles.",
+        "Reviewed the focused git diff for the four audited docs."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "The docs say LogicalFS is the Cortex/shell live `RO` / `RW` authority, not a",
+        "universal file service.",
+        "The docs say Blob is the cheap byte/file server for display/download/artifact",
+        "bytes.",
+        "The docs explicitly say LogicalFS does not expose display/download handles.",
+        "The docs explicitly say RO/RW display/download requires export/copy to Blob.",
+        "Transitional Cortex direct Blob object-store usage is labeled transitional.",
+        "Residue scans do not find conflicting phrases in the audited docs."
+      ],
+      "assumptions": [
+        "This ticket is documentation-only unless the audit finds a doc/code guard gap",
+        "that must be closed immediately.",
+        "The user's latest clarified boundary is authoritative."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded documentation audit with focused scans and immediate patch verification",
+      "created_at": "2026-05-10T04:57:59+00:00",
+      "id": "T000",
+      "problem_definition": "The current LogicalFS / Blob / Cortex / Sandbox design documents were edited\nwhile the architecture boundary was still being refined. They need to be\naudited against the final narrowed principle: LogicalFS owns only Cortex/shell\nlive `RO` / `RW` semantics; Blob remains the cheap byte/file server for\nattachments, display bytes, artifact bytes, and downloads.",
+      "problem_id": "P000",
+      "proposed_solution": "Inspect the relevant design/reference documents, scan for over-broad or\ncontradictory language, patch the docs where needed, and record concrete\nevidence that the remaining wording matches the narrowed boundary.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Documentation may still describe desired future behavior rather than current",
+        "code; the audit must distinguish current transitional state from target",
+        "architecture.",
+        "Existing dirty repo state is large; this ticket must not accidentally claim",
+        "unrelated changes."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Audit and tighten LogicalFS RO/RW documentation",
+      "updated_at": "2026-05-10T04:59:05+00:00",
+      "verification_plan": "- Read the relevant docs directly.\n- Run focused `rg` scans for broad or conflicting phrases.\n- Review the focused diff for the docs touched by this audit.\n- Run ledger validation/render/status before final response."
+    }
+  },
+  "updated_at": "2026-05-10T05:00:28+00:00"
+}

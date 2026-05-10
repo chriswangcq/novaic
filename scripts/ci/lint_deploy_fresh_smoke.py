@@ -38,11 +38,25 @@ def main() -> int:
         'fresh-smoke)    verify_fresh_backend_logs "${2:-}" ;;',
         "stat -c %Y",
         "queue-service.log",
+        "sandboxd.log",
+        "novaic-logicalfs",
+        'remove_retired_backend_package "novaic-sandbox-core"',
+        "sync_backend_infra_bootstrap",
         "runtime_logs",
         "runtime_worker_roster.py",
     ]
     for needle in deploy_required:
         require(deploy, needle, "deploy", errors)
+
+    services_start = deploy.find("deploy_services() {")
+    services_end = deploy.find("\ndeploy_relay()", services_start)
+    services_body = deploy[services_start:services_end] if services_start != -1 and services_end != -1 else ""
+    require(
+        services_body,
+        'remove_retired_backend_package "novaic-sandbox-core"',
+        "deploy_services",
+        errors,
+    )
 
     doc_required = [
         "./deploy fresh-smoke [epoch]",

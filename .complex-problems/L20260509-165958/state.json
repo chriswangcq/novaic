@@ -1,0 +1,161 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-09T09:08:27+00:00",
+      "criteria_map": [
+        "LLM-visible builtin schemas no longer include direct IM tools: satisfied by `novaic-cortex/tests/test_tool_schemas_limits.py::test_im_tools_are_shell_capabilities_not_llm_schemas`, the Common schema import smoke, and the runtime static schema/executor test excluding `SHELL_CAPABILITY_SCHEMA_CUTOVER_TOOLS`.",
+        "Shell schema/no-tool guidance tells agents to use `agentctl im ...`: satisfied by `novaic-cortex/tests/test_tool_schemas_limits.py::test_shell_schema_names_safety_boundary` and `novaic-agent-runtime/tests/test_llm_prompt_contract.py`.",
+        "Turn-finalizer treats shell `agentctl im reply` as a reply closer: satisfied by new `novaic-agent-runtime/tests/test_pr48_turn_finalizer.py` cases for direct reply, read-then-reply, and finalization with an empty stack.",
+        "Direct IM executors may remain internal but not LLM-visible: satisfied by `SHELL_CAPABILITY_SCHEMA_CUTOVER_TOOLS` policy plus runtime schema/executor guard tests.",
+        "Tests cover schema set, no-tool warning, and shell IM reply finalization: satisfied by the targeted Runtime, Cortex, and Common test batches recorded in R000."
+      ],
+      "evidence": [
+        "Runtime targeted tests: `59 passed`.",
+        "Cortex targeted tests: `14 passed`.",
+        "Common targeted tests: `24 passed`.",
+        "Residual scan found direct IM names only in environment command-contract modules and synthetic legacy/path tests, not as active LLM schema exposure."
+      ],
+      "execution_map": [
+        "Schema source changed in `novaic-common/common/tools/llm_builtin.py`.",
+        "Metadata residue cleaned in `novaic-common/common/tools/definitions.py`.",
+        "Prompt/no-tool guidance updated in `novaic-agent-runtime/task_queue/utils/no_tool_warning.py` and `novaic-common/common/contracts/prompt_fragments.py`.",
+        "Turn-finalizer pure decision changed in `novaic-agent-runtime/task_queue/contracts/react_actions.py` and wrapper comments updated in `novaic-agent-runtime/task_queue/sagas/react_actions.py`.",
+        "Test contracts updated across Runtime, Cortex, and Common."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "This solves the IM schema cutover ticket, not the entire tool-boundary migration. Remaining direct payload/subagent/audio/device schema work needs separate tickets. Synthetic tests still mention direct `im_reply` / `im_read` where they test historical context rendering or pure assembly behavior; those are acceptable until the final physical old-code deletion phase."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The check intentionally keeps direct environment handler tests in the Runtime batch. That proves the old direct executor implementation still works as internal compatibility, while schema tests prove it is no longer offered to the LLM. The ReAct finalizer test covers the critical behavioral stress case: an LLM sends the actual user reply through `shell`, and the harness still detects the round as reply-only."
+      ],
+      "summary": "IM direct tools no longer LLM-visible; agents are guided to agentctl im via shell; shell reply is recognized as reply-only finalizer path; targeted Runtime/Cortex/Common tests passed."
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-09T08:59:58+00:00",
+  "ledger_id": "L20260509-165958",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-09T08:59:58+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "`agentctl im` shell commands now implement the IM behavior, but the LLM-facing tool schema still exposes direct `im_read`, `im_reply`, `im_send`, `im_history`, `im_search`, and `im_context`. This keeps the old path active and violates the shell-boundary migration plan.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "LLM-visible builtin schemas no longer include direct IM tools.",
+        "Shell schema/no-tool guidance tells agents to use `agentctl im ...` for IM operations.",
+        "Turn-finalizer logic treats `shell` calls containing `agentctl im reply` as reply turn-closers.",
+        "Direct IM executors may remain as internal compatibility for this phase, but guard tests must make them not LLM-visible.",
+        "Tests cover schema set, no-tool warning, and shell IM reply finalization."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "IM tool schema cutover to shell",
+      "updated_at": "2026-05-09T09:08:27+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-09T09:07:49+00:00",
+      "done": [
+        "Removed IM tools from canonical LLM schema expectations and Common active metadata surfaces:",
+        "`im_read`",
+        "`im_reply`",
+        "`im_send`",
+        "`im_history`",
+        "`im_search`",
+        "`im_context`",
+        "Kept the Environment IM schema module as a non-LLM command contract source for shell capability implementation.",
+        "Updated `shell` guidance to advertise `agentctl im read`, `agentctl im reply --message-file`, `agentctl im history`, and `agentctl im search`.",
+        "Updated `skill_begin` / `skill_end` wording so routine user replies point through shell IM capabilities instead of direct `im_reply`.",
+        "Removed `im_send` from legacy runtime metadata derivation and made `CHAT_TOOLS` empty.",
+        "Updated product semantics so it tracks active LLM-visible tools, not shell-completed IM commands.",
+        "Added `SHELL_CAPABILITY_SCHEMA_CUTOVER_TOOLS` so tests can distinguish completed schema cutover tools from still-direct executors.",
+        "Updated ReAct reply-no-followup detection to treat `shell` calls containing `agentctl im reply` as turn closers.",
+        "Updated no-tool warning contract and tests to steer replies through `agentctl im reply`."
+      ],
+      "id": "R000",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Completed the IM schema cutover for the bounded ticket: direct IM tools are no longer present in the canonical LLM-facing builtin schema, Common metadata no longer tries to derive chat IM tools from that schema, and the ReAct turn finalizer recognizes the new `shell` capability path (`agentctl im reply`) as a reply-only turn closer.",
+      "ticket_id": "T000",
+      "verification": [
+        "`cd novaic-agent-runtime && python -m pytest tests/test_runtime_tool_path_contract.py tests/test_tool_surface_boundary.py tests/test_pr85_llm_context_smoke_guardrails.py tests/test_pr48_turn_finalizer.py tests/test_llm_prompt_contract.py tests/unit/task_queue/test_environment_tool_handlers.py tests/unit/task_queue/test_shell_output_contract.py -q`",
+        "Passed: `59 passed`",
+        "`cd novaic-cortex && python -m pytest tests/test_tool_schemas_limits.py tests/test_shell_capability_runtime.py -q`",
+        "Passed: `14 passed`",
+        "`cd novaic-common && python -m pytest tests/test_tool_definitions_contract.py tests/test_environment_tool_schemas.py tests/test_tool_product_semantics_contract.py tests/test_payload_tool_schemas.py tests/test_llm_assembly_contract.py -q`",
+        "Passed: `24 passed`"
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Static tool schemas exclude all direct IM tool names.",
+        "Final visible schemas still include `shell`, `display`, `skill_begin`, `skill_end`, and `sleep`.",
+        "`is_reply_no_followup()` returns true for a single `shell` tool call whose command invokes `agentctl im reply`.",
+        "Existing direct environment handler tests still pass, proving compatibility behavior is not accidentally broken."
+      ],
+      "assumptions": [
+        "The current cutover scope is IM only; payload/subagent/audio/device remain visible until their shell equivalents are implemented."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "IM shell replacement exists; schema cutover plus finalizer/tests is bounded",
+      "created_at": "2026-05-09T09:00:18+00:00",
+      "id": "T000",
+      "problem_definition": "The old direct IM tools remain visible to the LLM even though `agentctl im` now provides shell equivalents. This creates two active ways to do the same thing and increases the chance that new code exists while the old branch still runs.",
+      "problem_id": "P000",
+      "proposed_solution": "Cut the LLM-facing schema over for IM tools:\n\n- Remove environment IM schemas from `AGENT_BUILTIN_TOOL_SCHEMAS`.\n- Update no-tool warning and shell description to direct agents to `agentctl im reply/read`.\n- Update turn-finalizer pure logic to recognize `shell` commands that invoke `agentctl im reply`.\n- Update guard tests so direct IM executors can exist only as internal compatibility, not as visible schemas.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Prompt text may still mention old direct tools in Business defaults. If tests expose active prompt residue, fix it in this ticket.",
+        "Direct executor deletion should wait until payload/subagent/audio/device cutovers are also ready or have their own deletion gates."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Remove IM tools from LLM-visible schema",
+      "updated_at": "2026-05-09T09:07:49+00:00",
+      "verification_plan": "- Run schema guard tests.\n- Run turn finalizer tests.\n- Run environment handler tests.\n- Run Runtime/Cortex shell capability tests."
+    }
+  },
+  "updated_at": "2026-05-09T09:08:27+00:00"
+}

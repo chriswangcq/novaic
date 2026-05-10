@@ -1,0 +1,140 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-09T08:21:13+00:00",
+      "criteria_map": [
+        "`prepare_llm_call()` passes `current_round_id=source.round_id` to `expand_messages_for_llm`: satisfied by code change.",
+        "Unit tests assert the injected dependency receives the current round ID: satisfied by explicit test assertion.",
+        "Nearby Runtime contract tests still pass: satisfied by 24 passing tests.",
+        "The change is small and deterministic, with no hidden dependencies: satisfied because the value comes from `LLMCallInput.source.round_id` and is injected as a kwarg."
+      ],
+      "evidence": [
+        "`novaic-agent-runtime/task_queue/contracts/llm_call.py` passes `current_round_id=source.round_id` to `expand_messages_for_llm`.",
+        "`novaic-agent-runtime/tests/test_runtime_explicit_contracts.py` asserts the injected expand dependency receives `current_round_id == \"round-1\"`.",
+        "Test command: `python -m pytest tests/test_runtime_explicit_contracts.py tests/test_pr85_llm_context_smoke_guardrails.py tests/test_pr71_no_tool_retry_context_cleanup.py -q`",
+        "Test result: `24 passed in 0.11s`."
+      ],
+      "execution_map": [
+        "Problem analyzed: missing current-round argument at the Runtime LLM preprocessing boundary.",
+        "Ticket executed: added one kwarg to the dependency call and one contract assertion.",
+        "Verification executed: targeted Runtime contract and context guard tests."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Broader shell/display migration still has remaining tickets. This check only certifies the current-round projection boundary ticket."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "If a future refactor removes the kwarg, `test_prepare_llm_call_has_injected_preprocessing_dependencies` fails.",
+        "If historical display/tool content attempts to re-enter through step-ref expansion, Cortex now has the explicit current round input needed by the projection boundary."
+      ],
+      "summary": "prepare_llm_call now injects current_round_id into Cortex expansion and targeted Runtime tests pass"
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-09T08:18:18+00:00",
+  "ledger_id": "L20260509-161818",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-09T08:18:18+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "The Runtime `prepare_llm_call()` contract should pass the current round ID into Cortex step-ref expansion. Without this explicit input, expansion can treat historical tool results as current and allow display/image content from old rounds to re-enter the prompt. This is a core context-bloat guardrail for the shell/display migration.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`prepare_llm_call()` passes `current_round_id=source.round_id` to `expand_messages_for_llm`.",
+        "Unit tests assert the injected dependency receives the current round ID.",
+        "Nearby Runtime contract tests still pass.",
+        "The change is small and deterministic, with no hidden dependencies."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Runtime current-round projection boundary",
+      "updated_at": "2026-05-09T08:21:13+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-09T08:20:32+00:00",
+      "done": [
+        "Updated `novaic-agent-runtime/task_queue/contracts/llm_call.py` to pass `current_round_id=source.round_id` at the LLM preprocessing boundary.",
+        "Updated `novaic-agent-runtime/tests/test_runtime_explicit_contracts.py` to assert the injected expand dependency receives `current_round_id`.",
+        "Kept the change at the explicit dependency boundary instead of adding hidden global state."
+      ],
+      "id": "R000",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Implemented the bounded runtime-to-Cortex current-round projection boundary. `prepare_llm_call()` now passes `source.round_id` as `current_round_id` into the injected `expand_messages_for_llm` dependency, so Cortex projection can distinguish current-round tool outputs from historical attachments/resources.",
+      "ticket_id": "T000",
+      "verification": [
+        "Ran `python -m pytest tests/test_runtime_explicit_contracts.py tests/test_pr85_llm_context_smoke_guardrails.py tests/test_pr71_no_tool_retry_context_cleanup.py -q` in `novaic-agent-runtime`.",
+        "Result: `24 passed in 0.11s`."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Current round ID is passed as an explicit input.",
+        "Test covers the dependency call arguments.",
+        "Existing Runtime LLM contract tests pass."
+      ],
+      "assumptions": [
+        "`source.round_id` is the canonical round ID for the LLM call being prepared."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "Single explicit-argument contract fix with focused tests.",
+      "created_at": "2026-05-09T08:18:33+00:00",
+      "id": "T000",
+      "problem_definition": "`expand_messages_for_llm()` already accepts `current_round_id`, but `prepare_llm_call()` does not pass it. That leaves the expansion dependency without the explicit round boundary needed to decide whether display content is current-turn or historical.",
+      "problem_id": "P000",
+      "proposed_solution": "Update `prepare_llm_call()` to pass `current_round_id=source.round_id` into `expand_messages_for_llm`. Extend the explicit contract test to assert this argument is supplied.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Some tests may assume the old missing kwarg; update them to the intended contract."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Pass current round ID into step-ref expansion",
+      "updated_at": "2026-05-09T08:20:32+00:00",
+      "verification_plan": "- Run `python -m pytest tests/test_runtime_explicit_contracts.py -q`.\n- Run Runtime context smoke guard tests."
+    }
+  },
+  "updated_at": "2026-05-09T08:21:13+00:00"
+}

@@ -1,0 +1,176 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-09T07:25:29+00:00",
+      "criteria_map": [
+        "Use ledger and record audit as files -> satisfied by ledger `L20260509-152236`, result `R000`, check `C000`.",
+        "Inspect Runtime/Cortex/Business tool paths -> satisfied by evidence list.",
+        "Classify tool families by priority -> satisfied in `R000` Priority List.",
+        "Identify aligned vs risky tools -> satisfied in `R000` Audit Findings.",
+        "Produce follow-up implementation candidates -> satisfied by tickets A-G in `R000`."
+      ],
+      "evidence": [
+        "Runtime tool executor table inspected in `novaic-agent-runtime/task_queue/handlers/tool_handlers.py`.",
+        "Device dynamic tool routing inspected in `novaic-agent-runtime/task_queue/device_tools.py`.",
+        "Environment IM tools inspected in `novaic-agent-runtime/task_queue/handlers/environment_tool_handlers.py`.",
+        "User attachment reference-first handling inspected in `novaic-agent-runtime/task_queue/utils/user_content.py`.",
+        "Legacy multimodal conversion inspected in `novaic-agent-runtime/task_queue/utils/multimodal.py` and `novaic-agent-runtime/task_queue/utils/context.py`.",
+        "Cortex payload storage and formatting inspected in `novaic-cortex/novaic_cortex/workspace.py`, `novaic-cortex/novaic_cortex/api.py`, `novaic-cortex/novaic_cortex/step_result_projection.py`, and `novaic-cortex/novaic_cortex/blob_payload.py`.",
+        "Result `R000` ranks P0/P1/P2/P3 optimization targets and creates suggested implementation tickets A-G."
+      ],
+      "execution_map": [
+        "`T000` classified as `one_go` because the audit was bounded and analysis-only.",
+        "`R000` recorded the code audit and recommendations.",
+        "`C000` validates the result against the original success criteria."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Dynamic Device Service-specific response schemas still need a deeper follow-up during implementation.",
+        "No code fix was applied in this turn."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Failure mode: audit only finds screenshot. Rejected; `R000` covers shell, display, audio, payload tools, device tools, user attachments, environment IM tools, monitor projection, and shared projection infrastructure.",
+        "Failure mode: recommendations are too vague. Mitigated by P0/P1/P2/P3 ranking and implementation tickets A-G.",
+        "Failure mode: implementation risk hidden. Mitigated by marking this turn as audit-only and listing known gaps."
+      ],
+      "summary": "The audit satisfies the requested scope. It identifies additional tool and shared infrastructure optimization targets beyond screenshots, ranks them by priority, and records concrete follow-up implementation tickets."
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-09T07:22:36+00:00",
+  "ledger_id": "L20260509-152236",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-09T07:22:36+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "Audit whether tools beyond screenshot/display need optimization under the new file/display/resource-oriented context model. The goal is to identify tool families or infrastructure paths that still risk prompt bloat, hidden context coupling, duplicated display semantics, stale compatibility, or poor explicit resource boundaries.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Use the solve-complex-problems ledger and record the audit as files.",
+        "Inspect current Runtime/Cortex/Business code paths for tool execution, tool result persistence, display projection, payload inspection, user attachment handling, and device tools.",
+        "Classify tool families by optimization priority.",
+        "Identify which tools are already aligned with the desired file/display model and which still need work.",
+        "Produce concrete follow-up implementation ticket candidates without changing production code in this turn."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Tool optimization audit",
+      "updated_at": "2026-05-09T07:25:29+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "Ledger result: `.complex-problems/L20260509-152236/work/R000.md`"
+      ],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-09T07:25:07+00:00",
+      "done": [
+        "Inspected Runtime tool dispatch and executors:",
+        "`novaic-agent-runtime/task_queue/handlers/tool_handlers.py`",
+        "`novaic-agent-runtime/task_queue/device_tools.py`",
+        "`novaic-agent-runtime/task_queue/handlers/environment_tool_handlers.py`",
+        "Inspected Cortex payload/result projection:",
+        "`novaic-cortex/novaic_cortex/workspace.py`",
+        "`novaic-cortex/novaic_cortex/api.py`",
+        "`novaic-cortex/novaic_cortex/step_result_projection.py`",
+        "`novaic-cortex/novaic_cortex/context_stack/budget.py`",
+        "`novaic-cortex/novaic_cortex/blob_payload.py`",
+        "Inspected multimodal and attachment handling:",
+        "`novaic-agent-runtime/task_queue/utils/context.py`",
+        "`novaic-agent-runtime/task_queue/utils/multimodal.py`",
+        "`novaic-agent-runtime/task_queue/utils/user_content.py`",
+        "`novaic-agent-runtime/task_queue/utils/result.py`",
+        "Inspected dynamic tool mounting and product-tool contract tests:",
+        "`novaic-business/business/internal/agent.py`",
+        "`novaic-agent-runtime/tests/test_runtime_tool_path_contract.py`",
+        "`novaic-agent-runtime/task_queue/utils/activity_projection.py`"
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "This is an audit only; no code was changed.",
+        "Dynamic Device Service response schemas were not fully inspected here, so device-specific output normalization should be a follow-up implementation ticket."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "The audit found several tool optimization candidates. The key issue is not limited to `hd_screenshot`: the current tool execution contract is too generic (`dict -> JSON content -> Cortex payload -> formatted _mcp_content`) and does not distinguish text, large text, binary, image, audio, files, artifacts, UI-only display, and model-visible perception.\n\nThe best next direction is to introduce a first-class `ArtifactResult` / `ToolResultProjection` contract and migrate high-risk tools to resource-first outputs. `payload_*` tools and user attachment handling are already close to the desired shape. `hd_screenshot`, dynamic device tools, shell large output, `display`, and legacy multimodal projection are the main areas needing optimization.",
+      "ticket_id": "T000",
+      "verification": [
+        "Runtime `_EXECUTORS` includes `shell`, `display`, `audio_qa`, `payload_*`, `skill_*`, environment tools, and dynamic HD device tools.",
+        "Business exposes mounted dynamic tools via `/agents/{agent_id}/builtin-tools`, while Runtime only provides executor routing for dynamic device tools.",
+        "Cortex already externalizes large raw payload JSON above a threshold, but `read_formatted` can still reconstruct model-visible `_mcp_content` from stored payloads.",
+        "User attachments already use the right reference-first strategy: image/audio attachments become textual hints to call `display` or `audio_qa`, not inline base64.",
+        "Payload inspection tools are bounded and redacted enough to be a good model for other tools."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Cover Runtime executors, device tools, payload tools, display/audio tools, user attachment handling, Cortex step result projection, and context assembly.",
+        "Rank optimization opportunities by priority.",
+        "Distinguish immediate bloat risks from architectural cleanup.",
+        "Preserve evidence pointers to files/lines.",
+        "Record final audit result and success check in the ledger."
+      ],
+      "assumptions": [
+        "User wants an audit and optimization map, not immediate code changes.",
+        "Existing uncommitted work in the repo should not be reverted or mixed with this audit beyond ledger artifacts."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded analysis-only audit with direct code evidence",
+      "created_at": "2026-05-09T07:22:52+00:00",
+      "id": "T000",
+      "problem_definition": "The previous backend analysis identified screenshot/base64 prompt bloat. The broader question is whether other tools or shared tool infrastructure need optimization under the same file/display/resource-oriented model.",
+      "problem_id": "P000",
+      "proposed_solution": "Perform a design-and-code audit of tool execution and result projection paths across Runtime/Cortex/Business. Identify tool families, risk classes, existing good patterns, and concrete follow-up implementation candidates. This ticket is analysis-only.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "The audit may over-index on screenshot symptoms and miss text/log or audio pathways.",
+        "Some dynamic tools are mounted through Business/Device and may not have direct Runtime implementation in this repo.",
+        "This is not a production fix; implementation must be tracked separately."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Audit tools for resource-oriented context optimization",
+      "updated_at": "2026-05-09T07:25:07+00:00",
+      "verification_plan": "- Use `rg`, `nl`, and focused file slices to inspect the relevant code paths.\n- Cross-check results against prior observed slow execution evidence.\n- Validate/render ledger before final response."
+    }
+  },
+  "updated_at": "2026-05-09T07:25:29+00:00"
+}

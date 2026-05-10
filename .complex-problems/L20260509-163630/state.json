@@ -1,0 +1,150 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-09T08:38:35+00:00",
+      "criteria_map": [
+        "Generic tool/tool_result messages no longer trigger image extraction: satisfied.",
+        "Only messages marked as `display_perception` may be converted into provider-visible image user messages: satisfied.",
+        "Runtime step-ref expansion marks projection mode and removes that internal marker before provider delivery: satisfied.",
+        "Tests prove historical/generic tool image content is not injected and explicit display perception still works: satisfied."
+      ],
+      "evidence": [
+        "Runtime expanded tool messages now carry an internal `_projection`.",
+        "`process_multimodal_messages()` only extracts images for `_projection == \"display_perception\"`.",
+        "Tests prove generic and historical tool images do not create user image messages.",
+        "Tests prove explicit display perception still creates a user image message and strips `_projection`."
+      ],
+      "execution_map": [
+        "Added transient projection marker in step-ref expansion.",
+        "Gated multimodal extraction in context processing.",
+        "Added focused tests and ran adjacent Runtime/Cortex tests."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "No residual risk for generic image injection. Helper deletion/resource-first display cleanup remains in later phases."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "A tool message with `_mcp_content` image but no projection stays a tool message only.",
+        "A historical `display` tool message with image content stays a tool message only.",
+        "A current explicit `display_perception` message produces a user image message and keeps tool content text-only."
+      ],
+      "summary": "Generic tool images no longer inject into provider context; only display_perception is allowed"
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-09T08:36:30+00:00",
+  "ledger_id": "L20260509-163630",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-09T08:36:30+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "`process_multimodal_messages()` still scans every tool/tool_result message for `_mcp_content` images and turns those images into user messages. That means a historical or non-display tool result can still synthesize provider-visible image content after Cortex projection, even though the new model requires only explicit `display` perception to do that.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Generic tool/tool_result messages no longer trigger image extraction.",
+        "Only messages marked as `display_perception` may be converted into provider-visible image user messages.",
+        "Runtime step-ref expansion marks the projection mode for the multimodal processor and removes that internal marker before provider delivery.",
+        "Tests prove historical/generic tool image content is not injected and explicit display perception still works."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "No generic tool image injection",
+      "updated_at": "2026-05-09T08:38:35+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-09T08:38:13+00:00",
+      "done": [
+        "Updated `novaic-agent-runtime/task_queue/utils/step_result_client.py` to attach transient `_projection` to expanded tool messages.",
+        "Updated `novaic-agent-runtime/task_queue/utils/context.py`:",
+        "non-`display_perception` tool messages bypass image extraction;",
+        "`_projection` is stripped before provider delivery;",
+        "explicit `display_perception` retains the existing text-only tool result plus user image conversion.",
+        "Added `novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py`.",
+        "Updated existing step-ref expansion tests for the transient projection marker."
+      ],
+      "id": "R000",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Runtime multimodal processing is now gated by explicit projection mode. Generic/historical tool results no longer synthesize provider-visible image user messages; only `display_perception` may do so.",
+      "ticket_id": "T000",
+      "verification": [
+        "`python -m pytest tests/unit/task_queue/test_no_historical_tool_image_injection.py tests/test_pr71_no_tool_retry_context_cleanup.py tests/test_runtime_explicit_contracts.py tests/test_pr85_llm_context_smoke_guardrails.py -q`",
+        "Result: `29 passed in 0.12s`.",
+        "`python -m pytest tests/unit/task_queue/test_user_content.py tests/unit/task_queue/test_tool_handlers_display_chat_history.py tests/test_runtime_tool_path_contract.py -q`",
+        "Result: `18 passed in 0.06s`.",
+        "`cd novaic-cortex && python -m pytest tests/test_tool_output_projection.py tests/test_step_result_projection.py tests/test_resolve_for_llm.py -q`",
+        "Result: `20 passed in 0.03s`."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Generic tool image `_mcp_content` does not create a user image message.",
+        "Historical display output without `display_perception` does not create a user image message.",
+        "Explicit display perception does create a user image message and keeps the tool result text-only.",
+        "Internal `_projection` is not present in final provider messages."
+      ],
+      "assumptions": [
+        "`_projection` is an internal transient field between step-ref expansion and multimodal processing."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded Runtime multimodal gate with focused tests",
+      "created_at": "2026-05-09T08:36:47+00:00",
+      "id": "T000",
+      "problem_definition": "The Runtime multimodal processor still treats any tool result containing `_mcp_content` image data as provider-visible image input. This conflicts with the new projection model where only explicit display perception may send visual content to the model.",
+      "problem_id": "P000",
+      "proposed_solution": "Have step-ref expansion tag tool messages with an internal `_projection` marker. Then update `process_multimodal_messages()` so:\n\n- `display_perception` tool messages may be converted to provider image user messages;\n- all other tool messages are passed through as text/tool content only;\n- the internal `_projection` marker is stripped before provider delivery.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "If a provider requires image content in a different role shape, the explicit display perception test should catch the intended conversion contract."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Gate multimodal extraction to display perception",
+      "updated_at": "2026-05-09T08:38:13+00:00",
+      "verification_plan": "- Run `python -m pytest tests/unit/task_queue/test_no_historical_tool_image_injection.py -q`.\n- Run `python -m pytest tests/test_pr71_no_tool_retry_context_cleanup.py tests/test_runtime_explicit_contracts.py tests/test_pr85_llm_context_smoke_guardrails.py -q`."
+    }
+  },
+  "updated_at": "2026-05-09T08:38:35+00:00"
+}

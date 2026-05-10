@@ -1,0 +1,874 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C000.md",
+      "created_at": "2026-05-10T03:09:59+00:00",
+      "criteria_map": [
+        "Common contract supports command/cwd/env/timeout/mount/result bytes: satisfied by `contracts.py` and roundtrip tests.",
+        "`ProcessSpec` runner port supports explicit mount plans: satisfied by `BindMountPlan` and `AsyncProcessRunner` mount handling.",
+        "Reusable client implements same runner port: satisfied by `SandboxdProcessRunner.run(ProcessSpec)`.",
+        "Tests cover byte-safe transport and client mapping: satisfied by `test_sandboxd_response_roundtrips_bytes` and `test_sandboxd_client_maps_spec_and_response`."
+      ],
+      "evidence": [
+        "Focused test command passed: `PYTHONPATH=novaic-common pytest -q novaic-common/tests/test_sandbox_infra.py` -> `9 passed in 1.08s`.",
+        "Dependency boundary scan found no Cortex/business imports under `novaic-common/common/sandbox`."
+      ],
+      "execution_map": [
+        "Implemented shared contract and client in common.",
+        "Verified common-only dependency boundary."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P001",
+      "residual_risk": [
+        "This problem intentionally does not prove Cortex uses sandboxd; that is tracked in P003."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Binary stdout containing `\\x00` and UTF-8 stderr bytes roundtrip through JSON via base64.",
+        "Client test verifies URL, timeout, payload mapping, and response mapping without a live server."
+      ],
+      "summary": "Common sandboxd contract/client completed and verified."
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/checks/C001.md",
+      "created_at": "2026-05-10T03:13:31+00:00",
+      "criteria_map": [
+        "New package and entrypoint exist: satisfied by `novaic-sandbox-service/main_sandbox_service.py` and `sandbox_service/main.py`.",
+        "Health endpoints identify `sandboxd`: satisfied by tests for `/health` and `/api/health`.",
+        "Execute endpoint uses common contract/process runner: satisfied by implementation and execute tests.",
+        "Service remains business-agnostic: satisfied by import scan."
+      ],
+      "evidence": [
+        "Service tests passed: `PYTHONPATH=novaic-common:novaic-sandbox-service pytest -q novaic-sandbox-service/tests` -> `5 passed in 1.27s`.",
+        "Forbidden import scan found no Cortex/blob/agent/workspace imports in the service."
+      ],
+      "execution_map": [
+        "Built independent service.",
+        "Verified route behavior and service dependency boundary."
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P002",
+      "residual_risk": [
+        "Production scripts and Cortex wiring are intentionally out of scope for this child and covered by P003/P004."
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Timeout path returns a normal sandbox process result with `exit_code=-1`.",
+        "Invalid mount source is rejected before process execution.",
+        "Custom runner test proves the service forwards mount plans instead of interpreting Cortex-specific state."
+      ],
+      "summary": "Independent sandboxd service implemented and verified."
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/checks/C002.md",
+      "created_at": "2026-05-10T03:17:15+00:00",
+      "criteria_map": [
+        "Explicit runner dependency: satisfied by `Sandbox(... process_runner=...)` and `Cortex(... sandbox_process_runner=...)`.",
+        "Active server path uses sandboxd client: satisfied by `main_cortex` installing `SandboxdProcessRunner` via API runner factory.",
+        "API-created Cortex uses configured runner: satisfied by `test_internal_shell_endpoint_uses_configured_process_runner`.",
+        "Raw command/mount separation: satisfied by `test_sandbox_passes_raw_command_and_mount_plan_to_runner`."
+      ],
+      "evidence": [
+        "Focused Cortex wiring tests passed.",
+        "Cortex server help exposes required `--sandboxd-url`.",
+        "Source scan confirms `sandbox.py`, `api.py`, and `main_cortex.py` do not build bind-mount shell wrappers directly."
+      ],
+      "execution_map": [
+        "Refactored Cortex shell boundary.",
+        "Added focused tests and source scans."
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P003",
+      "residual_risk": [
+        "Deployment scripts still need to start sandboxd and pass `--sandboxd-url`; covered by P004.",
+        "Unused LogicalFS wrapper residue remains until P005."
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Tests force mount capability true but use a fake runner; this isolates the orchestration contract from local machine mount privileges.",
+        "API internal shell endpoint test creates a Cortex through the same API helper used by server routes."
+      ],
+      "summary": "Cortex server path now wires shell execution through sandboxd runner port."
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P004/checks/C003.md",
+      "created_at": "2026-05-10T03:20:33+00:00",
+      "criteria_map": [
+        "Stable URL/port in config: satisfied by `services.json` and `ServiceConfig`.",
+        "Start/stop/wait/log in local backend script: satisfied by `scripts/start.sh`.",
+        "Cortex receives `--sandboxd-url`: satisfied by `scripts/start.sh`.",
+        "Deploy/status/log commands include sandboxd: satisfied by `deploy`.",
+        "No fallback added: no fallback code was introduced; Cortex `main_cortex` still requires `--sandboxd-url`."
+      ],
+      "evidence": [
+        "`scripts/start.sh` and `deploy` pass shell syntax checks.",
+        "`ServiceConfig` resolves sandboxd URL and port from strict config.",
+        "Deploy fresh-smoke lint now requires `sandboxd.log`.",
+        "Source scans show sandboxd in start/deploy active wiring."
+      ],
+      "execution_map": [
+        "Updated config and shell/deploy scripts.",
+        "Ran syntax and config smoke checks."
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P004",
+      "residual_risk": [
+        "Remote deployment execution remains for P006."
+      ],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Lint guards fresh log smoke to prevent future deploy drift.",
+        "`bash -n` catches shell syntax regressions before deployment."
+      ],
+      "summary": "Sandboxd is registered in config/start/deploy/status/log smoke paths."
+    },
+    "C004": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P005/checks/C004.md",
+      "created_at": "2026-05-10T03:22:04+00:00",
+      "criteria_map": [
+        "Remove unused `process_command`/`_mount_namespace_command`: satisfied.",
+        "`sandbox.py` uses mount plan only: satisfied by source scan and tests.",
+        "Direct runner default is documented as test/library adapter: satisfied in `sandbox.py` and `api.py`.",
+        "No active old path in Cortex orchestration: satisfied by `rg` no matches."
+      ],
+      "evidence": [
+        "Residue scan for old Cortex command-wrapping identifiers found no matches.",
+        "Focused wiring tests still pass after cleanup."
+      ],
+      "execution_map": [
+        "Deleted stale helpers.",
+        "Re-ran focused tests."
+      ],
+      "followup_problem_id": null,
+      "id": "C004",
+      "problem_id": "P005",
+      "residual_risk": [
+        "Full end-to-end deploy smoke remains for P006."
+      ],
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The fake-runner wiring test proves commands are not pre-wrapped after cleanup."
+      ],
+      "summary": "Stale Cortex command-wrapping path removed; direct runner is explicit test/library adapter."
+    },
+    "C005": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P006/checks/C005.md",
+      "created_at": "2026-05-10T03:24:31+00:00",
+      "criteria_map": [
+        "Common sandbox tests pass: satisfied.",
+        "Sandboxd service tests pass: satisfied.",
+        "Cortex wiring tests pass: satisfied.",
+        "Deployment script syntax/lint passes: satisfied.",
+        "Live sandboxd smoke passes: satisfied.",
+        "Residue scans clean: satisfied.",
+        "Remote deployment status is explicit: satisfied as residual risk, not hidden."
+      ],
+      "evidence": [
+        "Common focused and broad tests passed.",
+        "Sandboxd service tests passed.",
+        "Cortex sandboxd wiring tests passed.",
+        "Deploy/start syntax and deploy fresh-smoke lint passed.",
+        "Local live sandboxd health/execute smoke passed.",
+        "Residue scans found no old Cortex command-wrapping identifiers."
+      ],
+      "execution_map": [
+        "Verified code-level contracts.",
+        "Verified service-level HTTP behavior.",
+        "Verified Cortex runner injection.",
+        "Verified deployment wiring statically."
+      ],
+      "followup_problem_id": null,
+      "id": "C005",
+      "problem_id": "P006",
+      "residual_risk": [
+        "Production deploy smoke still needs to be run as an operational action to prove Linux mount namespace execution in the deployed environment."
+      ],
+      "result_ids": [
+        "R005"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Full common test suite passed, not only new tests.",
+        "Live sandboxd executed through the actual HTTP server, not TestClient.",
+        "Local service was stopped after smoke and port confirmed free."
+      ],
+      "summary": "Sandboxd extraction verified locally across contract, service, Cortex wiring, deployment scripts, and residue scans; remote deploy smoke remains operational."
+    },
+    "C006": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C006.md",
+      "created_at": "2026-05-10T03:25:15+00:00",
+      "criteria_map": [
+        "Common defines sandboxd contract/client: satisfied by P001.",
+        "Independent sandboxd server exists: satisfied by P002.",
+        "Cortex active server path uses sandboxd: satisfied by P003.",
+        "Production config/start/deploy include sandboxd: satisfied by P004.",
+        "Old Cortex wrapping residue removed: satisfied by P005.",
+        "Verification completed and gaps explicit: satisfied by P006."
+      ],
+      "evidence": [
+        "All six child problems P001-P006 have success checks.",
+        "The shared contract, independent service, Cortex active server wiring, deployment wiring, cleanup, and verification work are all complete in the codebase.",
+        "Local live sandboxd HTTP smoke passed.",
+        "Broad common tests and focused Cortex/service tests passed."
+      ],
+      "execution_map": [
+        "Implemented shared infrastructure first.",
+        "Added the standalone service.",
+        "Migrated Cortex active path.",
+        "Wired deployment.",
+        "Cleaned old code.",
+        "Verified and recorded residual risk."
+      ],
+      "followup_problem_id": null,
+      "id": "C006",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Remote production deploy/fresh-smoke was not run because that is an operational side effect. The deploy path is ready; the actual cutover should run `./deploy services` or `./deploy sandboxd && ./deploy cortex` when intended."
+      ],
+      "result_ids": [
+        "R006"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Tests verify both fake-runner active-path wiring and live HTTP sandboxd service execution.",
+        "Static checks prevent silent drift in deployment log smoke.",
+        "Residue scans verify old command-wrapping identifiers are physically gone from Cortex."
+      ],
+      "summary": "Sandbox execution extracted into independent sandboxd service in code/start/deploy wiring; local verification passed; remote deploy smoke remains operational."
+    }
+  },
+  "counters": {
+    "check": 7,
+    "event": 84,
+    "problem": 7,
+    "result": 7,
+    "ticket": 7
+  },
+  "created_at": "2026-05-10T03:03:52+00:00",
+  "ledger_id": "L20260510-110352",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C006"
+      ],
+      "created_at": "2026-05-10T03:03:52+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "The user wants business-agnostic infrastructure capabilities to become independent servers, not only shared modules. The current shell execution still runs inside Cortex: Cortex materializes LogicalFS and directly executes commands through common sandbox primitives in-process.\n\nWe need to design and implement a real `sandboxd` service boundary without creating a fake half-migration. The service should own generic execution environment mechanics while Cortex keeps business semantics: Workspace, `/ro`/`/rw`, agent identity, shell capabilities, and Blob mapping.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R006"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P001",
+        "P002",
+        "P003",
+        "P004",
+        "P005",
+        "P006"
+      ],
+      "success_criteria": [
+        "A service boundary is defined for generic sandbox execution with stable request/response contracts.",
+        "The service does not know Cortex Workspace, Blob, agent, skill, or `/ro`/`/rw` semantics beyond caller-provided mount/env/cwd data.",
+        "Cortex uses a client path to call the service rather than directly running subprocesses when configured.",
+        "Tests cover the service contract, client, and Cortex integration path.",
+        "Local direct runner remains only as an explicitly named test/dev adapter if needed, not as an ambiguous current production path.",
+        "Residue scans make it clear which path is active."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Extract sandbox execution into an independent base service",
+      "updated_at": "2026-05-10T03:25:15+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-10T03:07:02+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "The sandbox execution boundary needs a stable, business-agnostic contract so Cortex can call an independent sandboxd server without importing server internals or passing ad hoc dictionaries. The contract must preserve byte output losslessly and must make mount execution explicit.",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`novaic-common` exposes reusable sandboxd request/response types and encode/decode helpers.",
+        "`ProcessSpec` can carry an explicit mount plan without Cortex pre-wrapping shell commands.",
+        "A reusable sandboxd client implements the same process-runner port used by Cortex.",
+        "Unit tests cover byte-safe stdout/stderr transport, mount-plan serialization, timeout/result mapping, and no hidden Cortex/business dependencies."
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "Sandboxd common contract and client",
+      "updated_at": "2026-05-10T03:09:59+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-10T03:07:02+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Sandbox process execution currently lives in the Cortex process. It should become an independent base service that owns process spawning and mount namespace command wrapping while remaining business-agnostic.",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "A new `novaic-sandbox-service` package exposes health and execute endpoints.",
+        "The execute endpoint accepts the common sandboxd contract and runs through common sandbox process primitives.",
+        "The service has no Cortex workspace/blob/agent imports.",
+        "Service tests verify successful execution, mount-plan execution path shape, timeout behavior, and error handling."
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "Sandboxd independent service",
+      "updated_at": "2026-05-10T03:13:31+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P003/README.md",
+      "check_ids": [
+        "C002"
+      ],
+      "created_at": "2026-05-10T03:07:02+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Writing sandboxd is not enough; the running Cortex API path must use the sandboxd client for shell execution. Direct in-process execution may remain as an explicit unit-test adapter, but production server startup must wire sandboxd.",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P003",
+      "parent_id": "P000",
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Cortex `Sandbox` accepts an explicit process-runner dependency.",
+        "Runtime/API construction uses an injected sandboxd client on the server path.",
+        "`main_cortex` or equivalent startup requires/configures the sandboxd URL.",
+        "Tests prove the API/runtime active path can use an injected runner and that shell commands are no longer pre-wrapped in Cortex when a mount plan is available."
+      ],
+      "ticket_ids": [
+        "T003"
+      ],
+      "title": "Cortex uses sandboxd on the active server path",
+      "updated_at": "2026-05-10T03:17:15+00:00"
+    },
+    "P004": {
+      "body_path": "problems/P000/children/P004/README.md",
+      "check_ids": [
+        "C003"
+      ],
+      "created_at": "2026-05-10T03:07:02+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "The new independent server must be first-class infrastructure in local/deploy scripts and service registry; otherwise the code can exist but production still runs the old path.",
+      "followup_ids": [],
+      "id": "P004",
+      "package_path": "problems/P000/children/P004",
+      "parent_id": "P000",
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`services.json` declares sandboxd on a stable port.",
+        "Local startup starts/stops sandboxd and passes its URL into Cortex.",
+        "Deployment rsync/install/start/status/log verification includes `novaic-sandbox-service`.",
+        "No deployment script keeps a hidden fallback to in-process sandbox execution."
+      ],
+      "ticket_ids": [
+        "T004"
+      ],
+      "title": "Deployment and service registry include sandboxd",
+      "updated_at": "2026-05-10T03:20:33+00:00"
+    },
+    "P005": {
+      "body_path": "problems/P000/children/P005/README.md",
+      "check_ids": [
+        "C004"
+      ],
+      "created_at": "2026-05-10T03:07:02+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "After sandboxd is the active server path, stale old-path helpers and compatibility branches must be removed or explicitly scoped as test adapters. This prevents future agents from accidentally reconnecting the old logic.",
+      "followup_ids": [],
+      "id": "P005",
+      "package_path": "problems/P000/children/P005",
+      "parent_id": "P000",
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Searches for old sandbox execution modules/classes and Cortex command wrapping residue find no active production path.",
+        "Any remaining direct runner is named/documented as a test/local adapter, not a fallback.",
+        "Historical imports and deleted modules are cleaned from tests and docs touched by this change.",
+        "Code size/residue changes are reviewed against the AI-era programming principle: no misleading half-deleted paths."
+      ],
+      "ticket_ids": [
+        "T005"
+      ],
+      "title": "Remove stale in-process sandbox execution residue",
+      "updated_at": "2026-05-10T03:22:04+00:00"
+    },
+    "P006": {
+      "body_path": "problems/P000/children/P006/README.md",
+      "check_ids": [
+        "C005"
+      ],
+      "created_at": "2026-05-10T03:07:02+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "The extraction is only complete if unit, integration, and active-path smoke checks prove sandboxd is actually used and the old path is not silently serving requests.",
+      "followup_ids": [],
+      "id": "P006",
+      "package_path": "problems/P000/children/P006",
+      "parent_id": "P000",
+      "result_ids": [
+        "R005"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`novaic-common`, `novaic-sandbox-service`, and `novaic-cortex` tests pass for the changed surfaces.",
+        "A smoke check demonstrates Cortex shell execution routes through sandboxd.",
+        "Service health checks cover sandboxd.",
+        "The final ledger check records remaining risk explicitly; if any active-path gap remains, a follow-up problem is created."
+      ],
+      "ticket_ids": [
+        "T006"
+      ],
+      "title": "End-to-end verification of sandboxd extraction",
+      "updated_at": "2026-05-10T03:24:31+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P001/results/R000.md",
+      "created_at": "2026-05-10T03:09:33+00:00",
+      "done": [
+        "Added `common.sandbox.contracts` with `SandboxdExecuteRequest` and `SandboxdExecuteResponse`.",
+        "Added byte-safe base64 response serialization for stdout/stderr.",
+        "Added `common.sandbox.client.SandboxdProcessRunner` using the same `ProcessSpec` runner port.",
+        "Exported the new contract/client types from `common.sandbox`.",
+        "Added focused tests for process execution, timeout, bind mount command shape, request/response roundtrip, byte roundtrip, and client response mapping."
+      ],
+      "id": "R000",
+      "known_gaps": [],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "Implemented the shared sandboxd execution contract and client runner in `novaic-common`. `ProcessSpec` now carries an optional `BindMountPlan`, and `AsyncProcessRunner` applies that plan through the common mount namespace helper instead of requiring upstream command pre-wrapping.",
+      "ticket_id": "T001",
+      "verification": []
+    },
+    "R001": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P002/results/R001.md",
+      "created_at": "2026-05-10T03:13:12+00:00",
+      "done": [
+        "Added `main_sandbox_service.py` entrypoint.",
+        "Added `sandbox_service.main.create_app` with `/health`, `/api/health`, and `/v1/execute`.",
+        "Added service validation for explicit timeout, cwd, mount source, mount point, and stable cwd.",
+        "Added service requirements.",
+        "Added tests for health, successful execution, timeout result, invalid mount source, and mount plan propagation to the runner."
+      ],
+      "id": "R001",
+      "known_gaps": [],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "Created `novaic-sandbox-service` as a standalone FastAPI server with health and execute endpoints. The service uses only `novaic-common` sandbox contracts and process primitives, and owns process execution behind `/v1/execute`.",
+      "ticket_id": "T002",
+      "verification": []
+    },
+    "R002": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P003/results/R002.md",
+      "created_at": "2026-05-10T03:16:54+00:00",
+      "done": [
+        "Added `MountNamespaceLogicalFS.process_mount_plan`.",
+        "Updated `ShellExecutionOrchestrator` to pass raw command + `BindMountPlan` instead of a pre-wrapped command.",
+        "Updated `Sandbox` and `Cortex` to accept explicit process-runner dependencies.",
+        "Added an API-level sandbox runner factory and used it in API-created Cortex instances.",
+        "Updated `main_cortex` to require `--sandboxd-url` and install a `SandboxdProcessRunner`.",
+        "Added tests proving raw-command/mount-plan separation and API internal shell runner injection."
+      ],
+      "id": "R002",
+      "known_gaps": [],
+      "problem_id": "P003",
+      "root_id": "P000",
+      "summary": "Refactored Cortex shell execution to use an explicit process-runner dependency and pass a declarative mount plan through `ProcessSpec`. The Cortex server entrypoint now requires `--sandboxd-url` and installs `SandboxdProcessRunner` for API-created Cortex instances.",
+      "ticket_id": "T003",
+      "verification": []
+    },
+    "R003": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P004/results/R003.md",
+      "created_at": "2026-05-10T03:20:08+00:00",
+      "done": [
+        "Added `services.sandboxd.url` to `novaic-common/config/services.json`.",
+        "Added `ServiceConfig.SANDBOXD_URL/HOST/PORT`.",
+        "Updated `scripts/start.sh` to stop, wait-free, start, wait, and log sandboxd.",
+        "Updated Cortex startup in `start.sh` to pass `--sandboxd-url`.",
+        "Updated `deploy services`, single-service deployment, fresh-log smoke, status, logs, help, and command dispatch to include sandboxd.",
+        "Updated deploy fresh-smoke lint to require `sandboxd.log`."
+      ],
+      "id": "R003",
+      "known_gaps": [],
+      "problem_id": "P004",
+      "root_id": "P000",
+      "summary": "Registered sandboxd as a first-class backend service on port `19994`, wired local startup to start it before Cortex, and updated deploy/status/log smoke paths so production restarts include sandboxd.",
+      "ticket_id": "T004",
+      "verification": []
+    },
+    "R004": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P005/results/R004.md",
+      "created_at": "2026-05-10T03:21:47+00:00",
+      "done": [
+        "Removed `process_command` and `_mount_namespace_command` from `logical_fs.py`.",
+        "Removed Cortex LogicalFS import of `build_bind_mount_command`.",
+        "Added comments in `sandbox.py` and `api.py` naming the direct runner as library/test adapter only.",
+        "Verified no command-wrapping residue remains in Cortex active source."
+      ],
+      "id": "R004",
+      "known_gaps": [],
+      "problem_id": "P005",
+      "root_id": "P000",
+      "summary": "Removed the unused Cortex LogicalFS command-wrapping helpers and made the remaining direct runner default explicit as a library/test adapter. The active Cortex server path remains sandboxd-only through `main_cortex --sandboxd-url`.",
+      "ticket_id": "T005",
+      "verification": []
+    },
+    "R005": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P006/results/R005.md",
+      "created_at": "2026-05-10T03:24:13+00:00",
+      "done": [
+        "Ran focused and broader common sandbox tests.",
+        "Ran sandboxd service tests.",
+        "Ran Cortex sandboxd wiring and sandbox-focused tests.",
+        "Ran shell/deploy syntax checks and deploy fresh-smoke lint.",
+        "Started `sandboxd` locally on `127.0.0.1:19994`, checked `/health`, called `/v1/execute`, then stopped it.",
+        "Re-ran residue scans for old Cortex command wrapping."
+      ],
+      "id": "R005",
+      "known_gaps": [],
+      "problem_id": "P006",
+      "root_id": "P000",
+      "summary": "Verified the sandboxd extraction across common contracts, service behavior, Cortex wiring, deployment scripts, live local HTTP service smoke, and residue scans. Remote production deployment was not executed in this ticket.",
+      "ticket_id": "T006",
+      "verification": []
+    },
+    "R006": {
+      "artifacts": [],
+      "body_path": "problems/P000/results/R006.md",
+      "created_at": "2026-05-10T03:24:51+00:00",
+      "done": [
+        "P001: Common sandboxd contract/client completed.",
+        "P002: Independent sandboxd FastAPI service completed.",
+        "P003: Cortex active server path wired to sandboxd runner port.",
+        "P004: Service registry/start/deploy/log/status paths include sandboxd.",
+        "P005: Stale Cortex command-wrapping residue removed.",
+        "P006: Verification completed locally with tests, live service smoke, syntax checks, lint, and scans."
+      ],
+      "id": "R006",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Completed the split implementation for extracting sandbox execution into an independent `sandboxd` server. Common now owns the service contract/client, `novaic-sandbox-service` owns process execution, Cortex server startup wires shell execution through sandboxd, deployment scripts start and monitor sandboxd, old Cortex command-wrapping residue is removed, and local verification passed.",
+      "ticket_id": "T000",
+      "verification": []
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Common defines sandboxd request/response/client types.",
+        "`novaic-sandbox-service` exposes health and execute endpoints.",
+        "`sandboxd` owns process execution and mount namespace command wrapping from caller-provided mount spec.",
+        "Cortex can call sandboxd through a client runner.",
+        "Production config/start scripts include sandboxd as an independent backend service.",
+        "Tests cover common contract/client, service behavior, and Cortex integration.",
+        "Active path is explicit; no hidden fallback."
+      ],
+      "assumptions": [
+        "First implementation is same-host HTTP service; distributed remote sandbox can be a later transport layer."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "Extracting sandbox execution into a real independent server spans shared contract, service implementation, Cortex integration, deployment wiring, old-path cleanup, and verification; split is required to avoid half-migration.",
+      "created_at": "2026-05-10T03:06:19+00:00",
+      "id": "T000",
+      "problem_definition": "Shell process execution is still in-process inside Cortex. We need to extract the generic execution environment into an independent service without moving Cortex business semantics into that service.",
+      "problem_id": "P000",
+      "proposed_solution": "Create a `sandboxd` service with a stable HTTP contract. Move execution RPC contracts/client into common, implement the service in a new `novaic-sandbox-service`, wire deployment/start configuration, and migrate Cortex `Sandbox` to use the service runner in production while preserving explicit test injection for local unit tests.",
+      "result_ids": [
+        "R006"
+      ],
+      "risks": [
+        "A real network service adds latency and failure modes; the contract must preserve byte output and timeouts.",
+        "Fully removing direct in-process runner from tests would make local test suite require a running service; keep direct runner only as explicit dependency injection/test adapter."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Build sandboxd service and migrate Cortex execution to it",
+      "updated_at": "2026-05-10T03:24:51+00:00",
+      "verification_plan": "- Run common tests.\n- Run sandbox service tests.\n- Run Cortex tests.\n- Run residue scans for direct in-process production assumptions."
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "Common contract supports command, cwd, env, timeout, optional mount plan, exit code, duration, and byte-safe stdout/stderr.",
+        "`AsyncProcessRunner` and the HTTP client share the same `ProcessSpec` port.",
+        "No Cortex/business imports are introduced into `novaic-common`.",
+        "Unit tests cover contract serialization, byte roundtrip, mount wrapping, and client response mapping."
+      ],
+      "assumptions": [
+        "The service transport can use JSON with base64-encoded byte streams.",
+        "HTTP client can depend on `urllib` from the standard library to avoid adding a new common dependency."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "one_go",
+      "classification_reason": "Self-contained shared contract/client change with focused unit tests.",
+      "created_at": "2026-05-10T03:07:17+00:00",
+      "id": "T001",
+      "problem_definition": "`novaic-common` has process and filesystem primitives, but there is no explicit service contract for moving sandbox execution out of Cortex. Cortex also still relies on command pre-wrapping instead of passing a declarative mount plan to a runner port.",
+      "problem_id": "P001",
+      "proposed_solution": "Add business-agnostic sandboxd models to `common.sandbox`, extend `ProcessSpec` with an optional mount plan, teach `AsyncProcessRunner` to apply the mount plan, and add an HTTP client runner that converts `ProcessSpec` to the service contract.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "If mount wrapping moves into `AsyncProcessRunner`, existing Cortex tests may need adjustment because commands should no longer be pre-wrapped upstream."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Implement sandboxd common contract and runner client",
+      "updated_at": "2026-05-10T03:09:33+00:00",
+      "verification_plan": "- Run focused `novaic-common` sandbox tests.\n- Run import/residue checks for Cortex/business imports under `common/sandbox`."
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "New service package and entrypoint exist.",
+        "Health endpoints identify the service as `sandboxd`.",
+        "Execute endpoint uses common contract and common process runner.",
+        "No Cortex/workspace/blob/agent imports appear in the service.",
+        "Tests cover health, successful execution, timeout, invalid mount source, and route contract."
+      ],
+      "assumptions": [
+        "`sandboxd` should not own logical workspace hydration or blob sync; it only executes an explicit process spec."
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T002.md",
+      "classification": "one_go",
+      "classification_reason": "Small standalone FastAPI service using the already-created common contract, with focused tests.",
+      "created_at": "2026-05-10T03:10:43+00:00",
+      "id": "T002",
+      "problem_definition": "Sandbox execution must move out of Cortex into an independent base service. The service should be small, generic, and depend only on `novaic-common` sandbox primitives.",
+      "problem_id": "P002",
+      "proposed_solution": "Create `novaic-sandbox-service` with a FastAPI app, `/health`, `/api/health`, and `/v1/execute`. The execute route parses the common contract, validates explicit cwd/mount inputs, runs through `AsyncProcessRunner`, and returns the common byte-safe response contract.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "FastAPI/TestClient dependency availability may vary, but existing services already rely on them."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Build novaic-sandbox-service",
+      "updated_at": "2026-05-10T03:13:12+00:00",
+      "verification_plan": "- Run `PYTHONPATH=novaic-common:novaic-sandbox-service pytest -q novaic-sandbox-service/tests`.\n- Run residue import scan for forbidden business/runtime imports."
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "`Sandbox` and `Cortex` accept explicit process-runner dependencies.",
+        "`main_cortex` requires/configures `--sandboxd-url` and installs a `SandboxdProcessRunner` factory.",
+        "API-created Cortex instances use the configured runner.",
+        "LogicalFS exposes a mount plan; Cortex no longer calls `build_bind_mount_command` directly in the orchestrator path.",
+        "Tests verify injected runner usage and command/mount separation."
+      ],
+      "assumptions": [
+        "Production entrypoint wiring, not raw library construction, defines the active server path."
+      ],
+      "body_path": "problems/P000/children/P003/tickets/T003.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded Cortex wiring/refactor with explicit tests; deployment remains a separate child problem.",
+      "created_at": "2026-05-10T03:14:48+00:00",
+      "id": "T003",
+      "problem_definition": "Cortex still constructs `Sandbox` with an in-process runner and pre-wraps commands through LogicalFS. The production HTTP server path must explicitly use the sandboxd client and pass declarative mount plans, while unit tests may inject a direct runner.",
+      "problem_id": "P003",
+      "proposed_solution": "Make the sandbox process runner an explicit dependency. Add a Cortex API runner factory configured by `main_cortex --sandboxd-url`, update `Sandbox`/`ShellExecutionOrchestrator` to pass `ProcessSpec.mount`, and add tests proving the server helper injects the runner and Cortex no longer pre-wraps commands before calling the runner.",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [
+        "Existing unit tests instantiate `Cortex` directly and should continue to use the explicit local test adapter by default."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Wire Cortex active server path to sandboxd",
+      "updated_at": "2026-05-10T03:16:54+00:00",
+      "verification_plan": "- Run focused Cortex sandbox/API tests.\n- Run source scans for active command pre-wrapping in `sandbox.py`."
+    },
+    "T004": {
+      "acceptance_criteria": [
+        "Sandboxd has a stable service URL/port in configuration.",
+        "`start.sh` starts, stops, waits for, and logs sandboxd.",
+        "Cortex startup receives `--sandboxd-url`.",
+        "`deploy services`, `deploy sandboxd`, fresh log smoke, status, and logs include sandboxd.",
+        "No hidden fallback is introduced."
+      ],
+      "assumptions": [
+        "Sandboxd should run on localhost port `19994`, between blob `19995` and device `19993`."
+      ],
+      "body_path": "problems/P000/children/P004/tickets/T004.md",
+      "classification": "one_go",
+      "classification_reason": "Deployment wiring is broad but mechanical and directly verifiable with shell syntax/source scans.",
+      "created_at": "2026-05-10T03:17:51+00:00",
+      "id": "T004",
+      "problem_definition": "The new sandboxd service must be part of service configuration, startup, stop, status, logs, requirements install, and deploy sync. Otherwise the production Cortex server cannot satisfy its new required `--sandboxd-url`.",
+      "problem_id": "P004",
+      "proposed_solution": "Add sandboxd to `services.json`, `scripts/start.sh`, deployment sync/install/log/status/help commands, and build/service lists where relevant. Start sandboxd before Cortex and pass `--sandboxd-url` into Cortex.",
+      "result_ids": [
+        "R003"
+      ],
+      "risks": [
+        "Remote deployment has not happened until explicitly run; this ticket prepares the deployment path."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Register and deploy sandboxd as a first-class backend service",
+      "updated_at": "2026-05-10T03:20:08+00:00",
+      "verification_plan": "- Run syntax checks for changed shell scripts.\n- Run source scans for sandboxd URL wiring and Cortex command arg."
+    },
+    "T005": {
+      "acceptance_criteria": [
+        "`logical_fs.py` no longer exposes unused `process_command` or `_mount_namespace_command`.",
+        "`sandbox.py` active path only requests `process_mount_plan`.",
+        "Any direct runner default is documented as a library/test adapter; production server startup remains sandboxd-only.",
+        "Source scans find no old command-wrapping path in Cortex orchestration."
+      ],
+      "assumptions": [
+        "Full deletion of `AsyncProcessRunner` is not correct because sandboxd itself uses it as the generic process substrate."
+      ],
+      "body_path": "problems/P000/children/P005/tickets/T005.md",
+      "classification": "one_go",
+      "classification_reason": "Cleanup is bounded to unused helpers, comments, and source scans.",
+      "created_at": "2026-05-10T03:20:58+00:00",
+      "id": "T005",
+      "problem_definition": "After moving the active server path to sandboxd, leftover Cortex command-wrapping helpers and ambiguous in-process runner defaults can mislead future work. The code should make the active path and test adapter boundary obvious.",
+      "problem_id": "P005",
+      "proposed_solution": "Remove unused LogicalFS command wrapping methods, remove direct `build_bind_mount_command` imports from Cortex LogicalFS, add comments naming the direct runner as a library/test adapter, and run residue scans over active source.",
+      "result_ids": [
+        "R004"
+      ],
+      "risks": [
+        "Some tests may still instantiate `Sandbox` directly; those remain explicit library-level tests, not production wiring."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Clean stale in-process sandbox residue",
+      "updated_at": "2026-05-10T03:21:47+00:00",
+      "verification_plan": "- Run focused Cortex wiring tests.\n- Run source scans for `process_command`, `_mount_namespace_command`, and `build_bind_mount_command` in Cortex active modules."
+    },
+    "T006": {
+      "acceptance_criteria": [
+        "Common sandbox tests pass.",
+        "Sandboxd service tests pass.",
+        "Cortex sandboxd wiring tests pass.",
+        "Shell/deploy syntax and fresh-smoke lint pass.",
+        "Live sandboxd health/execute smoke passes locally.",
+        "Residue scans show no old active Cortex command-wrapping path.",
+        "Any unexecuted remote deployment/smoke is called out as residual risk, not hidden."
+      ],
+      "assumptions": [
+        "Deploying to production is a separate operational action unless explicitly requested in this run."
+      ],
+      "body_path": "problems/P000/children/P006/tickets/T006.md",
+      "classification": "one_go",
+      "classification_reason": "Verification is a bounded command set with explicit residual-risk reporting.",
+      "created_at": "2026-05-10T03:22:38+00:00",
+      "id": "T006",
+      "problem_definition": "The extraction is only reliable if common contracts, sandboxd service behavior, Cortex active-path wiring, deployment wiring, and residue cleanup all pass verification together.",
+      "problem_id": "P006",
+      "proposed_solution": "Run the focused test suites and syntax/source checks from child tickets, run a live local sandboxd HTTP smoke for non-mounted execution, and record any environment-limited gaps explicitly. If remote deployment is executed, include fresh-smoke evidence.",
+      "result_ids": [
+        "R005"
+      ],
+      "risks": [
+        "Local macOS cannot prove the Linux mount namespace execution path through live Cortex; unit/integration tests isolate that contract, and remote deployment smoke is the stronger proof when run."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Verify sandboxd extraction end to end",
+      "updated_at": "2026-05-10T03:24:13+00:00",
+      "verification_plan": "- Run focused pytest commands.\n- Start sandboxd locally, call health and execute, then stop it.\n- Run source scans and script syntax checks."
+    }
+  },
+  "updated_at": "2026-05-10T03:25:21+00:00"
+}

@@ -1,0 +1,166 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-09T08:17:52+00:00",
+      "criteria_map": [
+        "Detect ToolOutputV1 first -> `parse_tool_result()` checks `raw.get(\"version\") == \"tool-output.v1\"` before legacy parsing.",
+        "Render artifacts as manifest text -> `_tool_output_artifact_line()`.",
+        "Do not create display_files from artifacts -> `_parse_tool_output_v1()` returns `display_files: []`.",
+        "`include_display=True` does not inline artifact image -> `test_tool_output_v1_format_for_llm_never_inlines_artifact_image`.",
+        "Legacy parsing remains -> `test_legacy_mcp_image_still_uses_display_files_during_migration`."
+      ],
+      "evidence": [
+        "Result `R000` updated `novaic-cortex/novaic_cortex/step_result_projection.py`.",
+        "Result `R000` added `novaic-cortex/tests/test_tool_output_projection.py`.",
+        "New projection tests passed: `4 passed in 0.04s`.",
+        "Nearby Cortex tests passed: `14 passed in 0.24s`.",
+        "Runtime context smoke/contract tests passed: `15 passed in 0.10s`."
+      ],
+      "execution_map": [
+        "Ticket `T000` was classified `one_go`.",
+        "Result `R000` records the focused Cortex projection implementation."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Legacy image/data-url paths still exist and must be deleted in later phases.",
+        "Runtime producers still need to emit `ToolOutputV1`.",
+        "Projection split between history/current/display is not fully complete."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Failure mode: image artifact sneaks into `display_files`. The new test asserts `display_files == []`.",
+        "Failure mode: `format_for_llm(include_display=True)` reintroduces image content. The new test asserts every `_mcp_content` item is text.",
+        "Failure mode: legacy compatibility breaks too early. The new legacy test preserves the old MCP image behavior during migration."
+      ],
+      "summary": "This Phase 2 step succeeds. Cortex now recognizes `tool-output.v1` durable payloads and projects artifacts/events as manifest text instead of legacy display/image content."
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-09T08:15:40+00:00",
+  "ledger_id": "L20260509-161540",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-09T08:15:40+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "Implement the first Phase 2 step: make Cortex `step_result_projection` understand `ToolOutputV1` durable payloads. Historical LLM projection should render bounded text and artifact manifests, not image/base64/display payloads.\n\nThis should be a behavior-preserving extension for legacy payloads while adding first-class support for the new contract.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`parse_tool_result()` detects `{\"version\": \"tool-output.v1\", ...}` before legacy `_mcp_content` / `display_files` parsing.",
+        "`ToolOutputV1.artifacts[]` are rendered as compact manifest text/access hints.",
+        "`ToolOutputV1` image artifacts do not become `display_files` and do not create inline image content through `format_for_llm(... include_display=True)`.",
+        "Existing legacy parsing behavior remains covered.",
+        "Add Cortex unit tests for ToolOutputV1 projection."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Cortex ToolOutputV1 projection implementation",
+      "updated_at": "2026-05-09T08:17:52+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`novaic-cortex/novaic_cortex/step_result_projection.py`",
+        "`novaic-cortex/tests/test_tool_output_projection.py`"
+      ],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-09T08:17:30+00:00",
+      "done": [
+        "Updated `novaic-cortex/novaic_cortex/step_result_projection.py`.",
+        "Added `novaic-cortex/tests/test_tool_output_projection.py`.",
+        "Added structural parsing for `version == \"tool-output.v1\"`.",
+        "Added compact artifact manifest text:",
+        "artifact label/name/URI;",
+        "modality/mime/size;",
+        "summary;",
+        "`display(file_url=\"...\")` access hint.",
+        "Added compact event manifest text.",
+        "Added preview artifact count support.",
+        "Preserved legacy `_mcp_content` image parsing during migration."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "Generic legacy `_mcp_content` / `display_files` paths still exist and are intentionally preserved for now.",
+        "Current-turn/history projection is not fully split yet.",
+        "Runtime producers do not yet emit `ToolOutputV1` by default."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Implemented the first Phase 2 Cortex projection step. `step_result_projection.parse_tool_result()` now detects `tool-output.v1` before legacy parsing and renders artifacts/events as compact manifest text while keeping `display_files` empty. This means a `ToolOutputV1` image artifact will not become inline image content even when `format_for_llm(... include_display=True)` is called.",
+      "ticket_id": "T000",
+      "verification": [
+        "`cd novaic-cortex && python -m pytest tests/test_tool_output_projection.py -q`",
+        "Passed: `4 passed in 0.04s`",
+        "`cd novaic-cortex && python -m pytest tests/test_resolve_for_llm.py tests/test_payload_inspection_api.py -q`",
+        "Passed: `14 passed in 0.24s`",
+        "`cd novaic-agent-runtime && python -m pytest tests/test_pr85_llm_context_smoke_guardrails.py tests/test_runtime_explicit_contracts.py -q`",
+        "Passed: `15 passed in 0.10s`"
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "ToolOutputV1 image artifacts do not create `display_files`.",
+        "`format_for_llm(... include_display=True)` does not create image content from ToolOutputV1 artifacts.",
+        "Text and events remain visible in compact form.",
+        "Legacy tests still pass."
+      ],
+      "assumptions": [
+        "Cortex should not import Runtime's Python module; it parses the JSON shape structurally."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded Cortex projection extension with focused tests, no broad cutover.",
+      "created_at": "2026-05-09T08:15:55+00:00",
+      "id": "T000",
+      "problem_definition": "Runtime can now construct `ToolOutputV1`, but Cortex still primarily parses legacy `_mcp_content`, `files_created`, and `display_files`. If Cortex does not recognize the new contract, later producer migration will either serialize poorly or re-enter legacy display paths.",
+      "problem_id": "P000",
+      "proposed_solution": "Update `novaic-cortex/novaic_cortex/step_result_projection.py` so `parse_tool_result()` detects `version == \"tool-output.v1\"` first and returns:\n\n- bounded text;\n- artifact manifest lines in text;\n- an `artifacts` list for non-LLM consumers;\n- empty `display_files` for artifacts by default.\n\nAdd `novaic-cortex/tests/test_tool_output_projection.py`.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Existing callers expect exactly three keys from `parse_tool_result`; adding an `artifacts` key should be compatible but should be tested.",
+        "Artifact manifest text must stay compact."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Add Cortex parser/projection support for ToolOutputV1",
+      "updated_at": "2026-05-09T08:17:30+00:00",
+      "verification_plan": "- Run the new Cortex test.\n- Run nearby Cortex projection tests."
+    }
+  },
+  "updated_at": "2026-05-09T08:17:52+00:00"
+}

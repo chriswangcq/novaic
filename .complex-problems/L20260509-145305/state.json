@@ -1,0 +1,173 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-09T06:55:46+00:00",
+      "criteria_map": [
+        "Explain why the previous current-round fix is necessary but insufficient -> `R000` explains it is a guardrail, not the target abstraction.",
+        "Define elegant resource model -> `R000` defines storage plane, artifact manifest plane, LLM context plane, perception/tool plane, and monitor/UI plane.",
+        "Define tool/Cortex/LLM/display interaction -> `R000` defines artifact manifests, current-turn display grants, historical placeholder projection, and explicit `display` dereference.",
+        "Identify invariants, risks, migration phases -> `R000` lists required invariants, known risks, and phases 0-5.",
+        "Avoid immediate code changes -> no implementation files were changed beyond ledger/design artifacts."
+      ],
+      "evidence": [
+        "Code inspection confirmed current user attachments already use a reference-first model and instruct the agent to call `display(file_url=...)` when needed.",
+        "Code inspection confirmed `display` can serve as a budgeted dereference/perception tool for Blob refs.",
+        "Code inspection confirmed current step-result projection can still turn stored `display_files`/data URLs into model-visible image/base64 content.",
+        "Previous backend evidence showed real slowness came from prompt growth to about 189k tokens after screenshot-heavy multi-round execution.",
+        "Result `R000` defines planes, contracts, invariants, migration phases, and risks."
+      ],
+      "execution_map": [
+        "`T000` classified as `one_go` because the task was a bounded architecture analysis.",
+        "`R000` records the actual design and verification evidence."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "This is a design result, not an implementation.",
+        "Implementation should be tracked as separate tickets before modifying Runtime/Cortex behavior."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Failure mode: model never sees screenshots if everything becomes a file ref. Mitigation: current-turn display grants and explicit `display(file_url=...)`.",
+        "Failure mode: monitor UI loses rich visuals. Mitigation: UI projection consumes artifact manifests independently of LLM prompt projection.",
+        "Failure mode: old history still bloats context. Mitigation: historical artifacts render as bounded manifests, never raw base64.",
+        "Failure mode: compatibility paths keep leaking `display_files`. Mitigation: phase 5 removes raw compatibility after migration."
+      ],
+      "summary": "The requested systemic thinking is satisfied. The result moves beyond the narrow current-round bug fix and defines a cleaner architecture where large artifacts live in file/blob/Cortex storage, LLM context receives bounded manifests, and `display` is the explicit perception tool for intentional visual dereference."
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-09T06:53:05+00:00",
+  "ledger_id": "L20260509-145305",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-09T06:53:05+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "Systematically think through whether Xiaoma/Agent Runtime should use the filesystem, Blob/Cortex payload storage, and the `display` tool as the primary path for large visual/tool artifacts instead of repeatedly injecting large base64/display payloads into LLM context. The design should respect the product philosophy that the agent is the subject, the environment is secondary, the user is part of the environment, and shell/files/display are tools/resources the agent can intentionally access.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Explain why the previous \"just pass current_round_id\" fix is necessary but not architecturally sufficient.",
+        "Define an elegant resource model for large artifacts using files/blob/payload refs and explicit display access.",
+        "Define how tool results, Cortex history, LLM context preparation, and user-facing monitor display should interact.",
+        "Identify concrete design principles, invariants, risks, and migration phases.",
+        "Produce a clear recommendation without requiring immediate code changes in this turn."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "File/display context architecture",
+      "updated_at": "2026-05-09T06:55:46+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "Design result: `.complex-problems/L20260509-145305/work/R000.md`"
+      ],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-09T06:55:24+00:00",
+      "done": [
+        "Inspected current Runtime/Cortex paths:",
+        "`novaic-agent-runtime/task_queue/contracts/llm_call.py`",
+        "`novaic-agent-runtime/task_queue/utils/step_result_client.py`",
+        "`novaic-cortex/novaic_cortex/step_result_projection.py`",
+        "`novaic-cortex/novaic_cortex/context_stack/engine.py`",
+        "`novaic-cortex/novaic_cortex/context_stack/step_tree.py`",
+        "`novaic-agent-runtime/task_queue/handlers/tool_handlers.py`",
+        "`novaic-agent-runtime/task_queue/utils/user_content.py`",
+        "`novaic-agent-runtime/task_queue/device_tools.py`",
+        "Compared the design against the observed backend slow-path evidence:",
+        "screenshots were persisted/expanded as large display/base64-bearing tool results;",
+        "prompt tokens grew from about 15k to about 99k and then about 189k;",
+        "tool execution itself was comparatively fast.",
+        "Produced a layered resource/display architecture:",
+        "1. Storage plane: Blob/Cortex/filesystem stores bytes and durable payloads.",
+        "2. Artifact manifest plane: Cortex stores compact metadata and refs.",
+        "3. LLM context plane: prompt assembly includes bounded previews and handles.",
+        "4. Perception/tool plane: `display`, `payload_read`, `payload_search`, shell reads dereference handles on demand.",
+        "5. Monitor/UI plane: user-visible rendering can show thumbnails or images without injecting them into model context."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "This result is a design analysis only; no code was changed.",
+        "A full implementation should create concrete tickets for artifact manifest schema, tool output migration, context assembler changes, monitor rendering, and compatibility cleanup."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "The deeper design should treat screenshots, uploaded files, shell artifacts, and large payloads as first-class resources in a filesystem/blob/Cortex artifact layer, not as ordinary chat message content. The LLM prompt should carry small manifests, previews, and access hints; the agent should intentionally dereference resources through tools such as `display`, `payload_read`, and shell/file reads. This matches the agent-subject model: the environment offers resources, but the agent chooses what to attend to.\n\nThe earlier current-round gating fix is necessary as a guardrail, but not sufficient as architecture. It prevents old display payloads from exploding the prompt, but it still leaves large artifacts conceptually inside the message/history pipeline. The better model is reference-oriented context plus explicit perception tools.",
+      "ticket_id": "T000",
+      "verification": [
+        "Current user attachments already follow the right instinct in `user_content.py`: attachments are described and the agent is told to call `display(file_url=...)` when needed, instead of injecting base64 into user messages.",
+        "Current `display` tool fetches Blob refs and converts bytes into model-visible content under a budget, which is the right perception-tool shape.",
+        "Current `step_result_projection.py` and `expand_messages_for_llm()` still allow stored tool results to become model-visible image/base64 content during context assembly, which is the flawed boundary.",
+        "Current Cortex step tree only carries `content` and `step_ref` for tool results; it lacks a rich artifact manifest and round/visibility policy at the merge boundary."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Explain the ideal dataflow for large artifacts from tool output to Cortex persistence to LLM context to explicit `display` inspection.",
+        "Explain what should be stored inline, what should be stored by reference, and what should be display-expanded.",
+        "Explain how this relates to agent autonomy and the environment/tool boundary without relying on subjective LLM behavior claims.",
+        "Identify invariants that would prevent base64/history bloat.",
+        "List concrete migration phases and tests."
+      ],
+      "assumptions": [
+        "This turn is for architecture thinking and recommendation, not code implementation.",
+        "Large visual artifacts should remain accessible to the agent, but access should be explicit and bounded."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "Design-only bounded analysis with immediate verification against current code paths and backend evidence",
+      "created_at": "2026-05-09T06:53:21+00:00",
+      "id": "T000",
+      "problem_definition": "The current slow execution symptom exposes a deeper architecture question: large visual and tool artifacts should not behave like ordinary chat text. We need to decide how files, Blob refs, Cortex payloads, `display`, monitor UI, and LLM prompt assembly should fit together so the agent can intentionally inspect resources without accidental prompt bloat.",
+      "problem_id": "P000",
+      "proposed_solution": "Perform a focused architecture analysis against the current code and observed backend behavior. Produce a design that separates artifact storage, artifact presentation, LLM context references, and explicit agent inspection tools. Treat this ticket as a design-only ticket: no implementation or deployment in this turn.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "The design may overcorrect by hiding too much visual context from the model.",
+        "The design may conflate user-visible monitor display with model-visible LLM context.",
+        "Existing Blob/Cortex abstractions may need compatibility bridges during migration."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Design file/display artifact context architecture",
+      "updated_at": "2026-05-09T06:55:24+00:00",
+      "verification_plan": "- Inspect current Runtime/Cortex code paths around `display_files`, `payload_ref`, `format_for_llm`, and `expand_messages_for_llm`.\n- Compare the proposed model against the observed backend slow-path evidence.\n- Record a result and success check in the ledger."
+    }
+  },
+  "updated_at": "2026-05-09T06:55:46+00:00"
+}

@@ -10,7 +10,7 @@
 | Cortex 边界契约与 guardrail | [cortex/boundary-contract.md](cortex/boundary-contract.md) |
 | `_index.jsonl`、DFS 展开/折叠、`budget_compact` | [cortex/context-timeline-and-dfs.md](cortex/context-timeline-and-dfs.md) |
 | 已退役 Recall 方案说明 | [cortex/recall.md](cortex/recall.md) |
-| `CortexStore`、注册表、对象键 | [cortex/object-keys.md](cortex/object-keys.md) |
+| LogicalFS、注册表、对象键 | [cortex/object-keys.md](cortex/object-keys.md) |
 | `Sandbox.exec`、物化与回写 | [cortex/sandbox-shell.md](cortex/sandbox-shell.md) |
 | 已退役：`Compactor`、自动摘要、gem fusion | [cortex/compactor-and-gem-fusion.md](cortex/compactor-and-gem-fusion.md) |
 | `EngineConfig`、`engine.json`、指标 | [cortex/engine-config-and-metrics.md](cortex/engine-config-and-metrics.md) |
@@ -73,7 +73,7 @@ agent-root      -> traversal entry, not shown in Active stack
 | 模块 | 职责 |
 | --- | --- |
 | `api.py` | FastAPI 路由：scope、context、steps、meta、shell、token、health |
-| `registry.py` | `WorkspaceRegistry`：按 user 缓存 `BlobCortexStore`，按 `(user, agent)` 缓存 `Workspace` |
+| `registry.py` | `WorkspaceRegistry`：按 user 缓存 LogicalFS Blob object adapter，按 `(user, agent)` 缓存 `Workspace(LogicalFS authority)` |
 | `workspace.py` | `/ro` `/rw` ACL、scope 生命周期、step/context CRUD |
 | `context_stack/engine.py` | `ContextEngine`：合并 `context.jsonl` 与 Step Tree，输出 LLM messages |
 | `context_stack/step_tree.py` | `StepTreeBuilder` 与 scope fold 渲染 |

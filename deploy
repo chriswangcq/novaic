@@ -54,6 +54,22 @@ install_service_requirements() {
     || fail "$name pip install 失败"
 }
 
+remove_retired_backend_package() {
+  local name="$1"
+  info "清理退役后端包 $name..."
+  $API_SSH "rm -rf '$SERVICES_DIR/$name'" || fail "清理 $name 失败"
+}
+
+sync_backend_infra_bootstrap() {
+  # start.sh always restarts sandboxd and Cortex, so every backend restart path
+  # must deploy their explicit substrate packages before process launch.
+  remove_retired_backend_package "novaic-sandbox-core"
+  rsync_service "novaic-sandbox-sdk"
+  rsync_service "novaic-logicalfs"
+  rsync_service "novaic-sandbox-service"
+  install_service_requirements "novaic-sandbox-service"
+}
+
 # ── 客户端部署 ────────────────────────────────────────────────────────────────
 
 deploy_frontend() {
@@ -135,6 +151,7 @@ required_logs=(
   "device-${today}.log"
   "queue-service.log"
   "blob-service.log"
+  "sandboxd.log"
   "cortex.log"
   "${runtime_logs[@]}"
 )
@@ -175,6 +192,7 @@ restart_all() {
 deploy_gateway() {
   info "部署 Gateway + Business + Device + Entangled"
   rsync_service "novaic-common"
+  sync_backend_infra_bootstrap
   rsync_service "novaic-gateway"
   rsync_service "novaic-business"
   rsync_service "novaic-device"
@@ -187,8 +205,11 @@ deploy_gateway() {
 deploy_single_service() {
   local name="$1"
   rsync_service "novaic-common"
-  rsync_service "$name"
-  install_service_requirements "$name"
+  sync_backend_infra_bootstrap
+  if [ "$name" != "novaic-sandbox-service" ]; then
+    rsync_service "$name"
+    install_service_requirements "$name"
+  fi
   sync_start_sh
   restart_all
   ok "$name 已部署（全部服务已重启）"
@@ -198,6 +219,7 @@ deploy_single_service() {
 deploy_shared_venv_service() {
   local name="$1"
   rsync_service "novaic-common"
+  sync_backend_infra_bootstrap
   rsync_service "$name"
   sync_start_sh
   restart_all
@@ -208,13 +230,15 @@ deploy_services() {
   info "部署全部后端服务到 api.gradievo.com"
   echo ""
 
-  # novaic-common 必须先同步（gateway/business/device/runtime 的 common/ 是 symlink）
-  for svc in novaic-common novaic-gateway novaic-business novaic-device \
-             novaic-agent-runtime novaic-blob-service novaic-cortex Entangled; do
+  # novaic-common / novaic-sandbox-sdk / novaic-logicalfs
+  # 必须先同步（后端服务通过 PYTHONPATH 显式依赖）
+  remove_retired_backend_package "novaic-sandbox-core"
+  for svc in novaic-common novaic-sandbox-sdk novaic-logicalfs novaic-gateway novaic-business novaic-device \
+             novaic-agent-runtime novaic-blob-service novaic-sandbox-service novaic-cortex Entangled; do
     rsync_service "$svc"
   done
 
-  for svc in novaic-blob-service novaic-cortex novaic-agent-runtime; do
+  for svc in novaic-blob-service novaic-sandbox-service novaic-cortex novaic-agent-runtime; do
     install_service_requirements "$svc"
   done
 
@@ -268,7 +292,7 @@ check_status() {
   $API_SSH '
     echo "  PORT  | PID    | SERVICE"
     echo "  ------|--------|--------"
-    for port in 19900 19999 19998 19993 19997 19995 19996; do
+    for port in 19900 19999 19998 19993 19997 19995 19994 19996; do
       pid=$(ss -tlnp 2>/dev/null | grep ":$port " | grep -oP "pid=\K\d+" | head -1)
       case $port in
         19900) svc="entangled" ;;
@@ -277,6 +301,7 @@ check_status() {
         19993) svc="device" ;;
         19997) svc="queue-svc" ;;
         19995) svc="blob-service" ;;
+        19994) svc="sandboxd" ;;
         19996) svc="cortex" ;;
       esac
       if [ -n "$pid" ]; then
@@ -354,13 +379,14 @@ check_logs() {
     business)     $API_SSH "tail -50 /opt/novaic/data/logs/business-\$(date +%Y%m%d).log" ;;
     device)       $API_SSH "tail -50 /opt/novaic/data/logs/device-\$(date +%Y%m%d).log" ;;
     entangled)    $API_SSH "tail -50 /opt/novaic/data/logs/entangled.log" ;;
+    sandboxd)     $API_SSH "tail -50 /opt/novaic/data/logs/sandboxd.log" ;;
     cortex)       $API_SSH "tail -50 /opt/novaic/data/logs/cortex.log" ;;
     runtime)      $API_SSH "tail -50 /opt/novaic/data/logs/queue-service.log" ;;
     worker)       $API_SSH "tail -50 /opt/novaic/data/logs/task-worker-control-1.log" ;;
     health)       $API_SSH "tail -50 /opt/novaic/data/logs/health.log" ;;
     scheduler)    $API_SSH "tail -50 /opt/novaic/data/logs/scheduler.log" ;;
     relay)        $RELAY_SSH "journalctl -u novaic-quic-service --no-pager -n 50" ;;
-    *)            fail "未知服务: $svc (可选: gateway, business, device, entangled, cortex, runtime, worker, health, scheduler, relay)" ;;
+    *)            fail "未知服务: $svc (可选: gateway, business, device, entangled, sandboxd, cortex, runtime, worker, health, scheduler, relay)" ;;
   esac
 }
 
@@ -384,6 +410,7 @@ show_help() {
   echo "  runtime           部署 Agent Runtime (workers)"
   echo "  cortex            部署 Cortex (LLM 编排)"
   echo "  blob-service      部署 Blob Service"
+  echo "  sandboxd          部署 Sandboxd Service"
   echo "  entangled         部署 Entangled (实体同步)"
   echo "  services          部署全部后端"
   echo ""
@@ -395,7 +422,7 @@ show_help() {
   echo "  all [ver]         部署全部"
   echo "  status            检查所有服务状态"
   echo "  fresh-smoke [epoch] 检查关键后端日志是否在 epoch 后更新（默认最近 15 分钟）"
-  echo "  logs [svc]        查看日志 (gateway|business|device|entangled|cortex|runtime|worker|health|scheduler|relay)"
+  echo "  logs [svc]        查看日志 (gateway|business|device|entangled|sandboxd|cortex|runtime|worker|health|scheduler|relay)"
   echo "  reset-password <email>  在 api 机上重置该用户登录密码（交互输入；可选 NOVAIC_DEPLOY_NEW_PASSWORD）"
   echo ""
 }
@@ -407,8 +434,9 @@ case "${1}" in
   device)         deploy_shared_venv_service "novaic-device" ;;
   runtime)        deploy_single_service "novaic-agent-runtime" ;;
   blob-service)   deploy_single_service "novaic-blob-service" ;;
+  sandboxd)       deploy_single_service "novaic-sandbox-service" ;;
   cortex)         deploy_single_service "novaic-cortex" ;;
-  entangled)      rsync_service "novaic-common"; rsync_service "Entangled"; sync_start_sh; restart_all; ok "Entangled 已部署" ;;
+  entangled)      rsync_service "novaic-common"; sync_backend_infra_bootstrap; rsync_service "Entangled"; sync_start_sh; restart_all; ok "Entangled 已部署" ;;
   services)       deploy_services ;;
   relay)          deploy_relay ;;
   factory)        deploy_factory ;;

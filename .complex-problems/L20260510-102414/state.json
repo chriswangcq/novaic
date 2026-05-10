@@ -1,0 +1,603 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C000.md",
+      "created_at": "2026-05-10T02:26:33+00:00",
+      "criteria_map": [
+        "Active runtime entry points identified: satisfied.",
+        "Canonical layering stated plainly: satisfied.",
+        "Misleading module placement listed: satisfied."
+      ],
+      "evidence": [
+        "The audit result maps active API/runtime entry points, `Sandbox` composition, LogicalFS responsibilities, Workspace/store methods, and BlobCortexStore substrate files with concrete pointers."
+      ],
+      "execution_map": [
+        "Read-only inspection used `rg` and `sed` over `novaic-cortex` source and tests. No runtime behavior was changed in this ticket."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P001",
+      "residual_risk": [
+        "The audit alone does not fix physical module boundaries or Workspace private dependency usage. Those are intentionally tracked as child problems P002 and P003."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The audit distinguishes call flow from dependency flow, which resolves the apparent contradiction in whether LogicalFS or Blob should be \"last.\""
+      ],
+      "summary": "Layering audit completed with canonical call/dependency model and concrete cleanup targets."
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/checks/C001.md",
+      "created_at": "2026-05-10T02:28:52+00:00",
+      "criteria_map": [
+        "Capability CLI moved: satisfied.",
+        "LogicalFS moved: satisfied.",
+        "Process execution moved: satisfied.",
+        "Public `Sandbox` retained: satisfied.",
+        "No fallback reintroduced: satisfied by module inspection; broader residue scan remains P004."
+      ],
+      "evidence": [
+        "`sandbox.py` no longer contains the capability script, `MountNamespaceLogicalFS`, or `SandboxExec` implementations. Those live in `shell_capabilities.py`, `logical_fs.py`, and `sandbox_exec.py`. Import checks passed with the repo PYTHONPATH. Targeted local sandbox tests ran and skipped mount-dependent cases on this host."
+      ],
+      "execution_map": [
+        "Performed mechanical extraction and compile/import verification. Existing dirty work outside this refactor was not reverted."
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P002",
+      "residual_risk": [
+        "Workspace private dependency cleanup remains unsolved and is tracked as P003. Full test/residue verification remains P004."
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Checked for duplicate class ownership with `rg`: only the new canonical modules contain the moved implementation classes."
+      ],
+      "summary": "Shell capability, LogicalFS, and process execution modules extracted; sandbox.py is now the facade/orchestrator."
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/checks/C002.md",
+      "created_at": "2026-05-10T02:30:56+00:00",
+      "criteria_map": [
+        "`_key` removed from LogicalFS imports: satisfied.",
+        "`workspace._store` removed from LogicalFS: satisfied.",
+        "Public Workspace storage port added: satisfied.",
+        "Behavior preserved by targeted tests: satisfied within local mount limitations."
+      ],
+      "evidence": [
+        "`logical_fs.py` depends on a public Workspace logical-path method, not Workspace private object-store details. The new Workspace method keeps object keys and Blob-backed storage below Workspace."
+      ],
+      "execution_map": [
+        "Implemented `Workspace.read_tree_bytes` and updated LogicalFS materialization/size-estimation call sites."
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P003",
+      "residual_risk": [
+        "Full production smoke still belongs to P004 because local tests skip mount namespace execution on this host."
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "A small in-memory smoke verified `/rw/a/b.txt` is returned as relative `a/b.txt`, which is exactly the abstraction LogicalFS needs."
+      ],
+      "summary": "LogicalFS now consumes an explicit Workspace logical tree-byte port instead of private store internals."
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P004/checks/C003.md",
+      "created_at": "2026-05-10T02:32:45+00:00",
+      "criteria_map": [
+        "New modules compile/import: satisfied.",
+        "Targeted tests pass or skip for host substrate: satisfied.",
+        "Full Cortex tests pass: satisfied.",
+        "`sandbox.py` is facade/orchestrator: satisfied.",
+        "No local fallback/rewrite active implementation: satisfied."
+      ],
+      "evidence": [
+        "The full local Cortex test suite passed after module extraction and Workspace boundary cleanup. Residue scans show no active old local fallback/path rewrite implementation."
+      ],
+      "execution_map": [
+        "Ran compile checks, targeted tests, full tests, and residue scans after the source changes."
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P004",
+      "residual_risk": [
+        "Production mount smoke is outside this local verification and can be run when deploying this refactor."
+      ],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The residue scan specifically searched for prior helper names and fallback provider patterns, not just the new module names."
+      ],
+      "summary": "Compile, targeted tests, full Cortex tests, and residue scans passed after the layering refactor."
+    },
+    "C004": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C004.md",
+      "created_at": "2026-05-10T02:33:17+00:00",
+      "criteria_map": [
+        "Current active path audited: satisfied by P001.",
+        "Final layering documented: satisfied by P001/R004.",
+        "Module extraction performed where necessary: satisfied by P002.",
+        "No local fallback reintroduced: satisfied by P004 scans.",
+        "Active imports/tests updated and verified: satisfied by P002/P004.",
+        "Workspace/Blob/LogicalFS dependency boundary clarified: satisfied by P003."
+      ],
+      "evidence": [
+        "All four child problems are complete and the parent result records both the architecture decision and the concrete code cleanup."
+      ],
+      "execution_map": [
+        "Solved P001-P004 through the ledger closure loop, implemented code changes, and verified with full local `novaic-cortex` tests."
+      ],
+      "followup_problem_id": null,
+      "id": "C004",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Deployment smoke was not performed in this pass. If this refactor is deployed, run the existing production shell smoke to confirm root/unshare/mount behavior on the server."
+      ],
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The result specifically distinguishes the two common mental models:",
+        "Call flow from Cortex down into shell execution.",
+        "Storage dependency flow from Blob/store up into LogicalFS.",
+        "This prevents the previous wording confusion from reappearing as code structure confusion."
+      ],
+      "summary": "LogicalFS layering clarified and physically refactored; tests and residue scans passed."
+    }
+  },
+  "counters": {
+    "check": 5,
+    "event": 60,
+    "problem": 5,
+    "result": 5,
+    "ticket": 5
+  },
+  "created_at": "2026-05-10T02:24:14+00:00",
+  "ledger_id": "L20260510-102414",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C004"
+      ],
+      "created_at": "2026-05-10T02:24:14+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "The current Cortex shell path works, but the physical code layout is confusing: `novaic_cortex/sandbox.py` contains capability CLI generation, stable `/cortex` path handling, LogicalFS materialization/flushing, mount namespace command wrapping, process execution, and the public `Sandbox` facade in one large file.\n\nThe user suspects the intended layering should read as Cortex at the top, Sandbox below it, Blob near the bottom, and LogicalFS as the final filesystem layer. We need to systemically audit that mental model, settle the canonical dependency direction, and refactor modules if the current physical layout would mislead future work.\n\nThis must follow AI-era cleanup principles: avoid half-migrations, avoid stale alternate paths, avoid local fallback, make boundaries explicit, and leave one clear current path.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P001",
+        "P002",
+        "P003",
+        "P004"
+      ],
+      "success_criteria": [
+        "Current active shell/logical filesystem path is audited against the intended Cortex/Sandbox/LogicalFS/Blob responsibilities.",
+        "The final layering is documented in plain terms, including call flow and dependency flow.",
+        "If module extraction is necessary, the code is physically split so the module names match the architectural layers.",
+        "No local fallback or compatibility branch is reintroduced.",
+        "Active imports/tests are updated to use the new boundaries, with any necessary re-exports kept only when they do not create misleading current paths.",
+        "Verification covers unit tests for sandbox/logicalfs/tool output behavior and a residue scan for old fallback or confusing path rewrite logic."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "LogicalFS layering and module boundary cleanup",
+      "updated_at": "2026-05-10T02:33:17+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-10T02:25:04+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Before moving code, map the current active path and name the actual dependency/call flow. The audit must clarify whether the user's proposed ordering is semantically correct or whether the wording mixes call-flow and storage-substrate views.",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Active runtime entry points and module dependencies are identified with file/function pointers.",
+        "The canonical layering is stated plainly.",
+        "Any misleading current module placement is listed as concrete cleanup work."
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "Audit current Cortex/Sandbox/LogicalFS/Blob layering",
+      "updated_at": "2026-05-10T02:26:33+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-10T02:25:04+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "`novaic_cortex/sandbox.py` currently owns unrelated concerns. This makes the layering hard to reason about and increases the risk of future changes landing in the wrong layer.",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Capability CLI generation is moved to a shell-facing module.",
+        "LogicalFS materialization, mount namespace wrapping, and stable path sanitization are moved to a LogicalFS module.",
+        "Process execution dataclasses/runner are moved to an execution module.",
+        "`sandbox.py` remains the thin public facade/orchestrator.",
+        "Public behavior stays unchanged."
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "Extract module boundaries for shell capabilities, LogicalFS, and process execution",
+      "updated_at": "2026-05-10T02:28:52+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P003/README.md",
+      "check_ids": [
+        "C002"
+      ],
+      "created_at": "2026-05-10T02:25:04+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "LogicalFS currently reaches into `Workspace._store` and `_key`, which works but hides the intended boundary: LogicalFS should depend on a workspace/storage port, while Blob/store remains the lower byte-object substrate.",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P003",
+      "parent_id": "P000",
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "LogicalFS uses a public workspace-facing method or small explicit port for listing materialized paths.",
+        "Private workspace internals are not the normal LogicalFS dependency.",
+        "Tests still prove `/ro` materialization and `/rw` flush semantics."
+      ],
+      "ticket_ids": [
+        "T003"
+      ],
+      "title": "Make LogicalFS storage dependency explicit",
+      "updated_at": "2026-05-10T02:30:56+00:00"
+    },
+    "P004": {
+      "body_path": "problems/P000/children/P004/README.md",
+      "check_ids": [
+        "C003"
+      ],
+      "created_at": "2026-05-10T02:25:04+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "After extraction and boundary cleanup, verify that active code still works and that no old fallback/duplicate path remains to mislead future maintenance.",
+      "followup_ids": [],
+      "id": "P004",
+      "package_path": "problems/P000/children/P004",
+      "parent_id": "P000",
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Targeted tests pass or any environment skip is explicitly explained.",
+        "Import/compile checks pass.",
+        "Residue scans show no local fallback, command rewrite fallback, or stale duplicate shell path implementations.",
+        "Ledger check records remaining risk honestly."
+      ],
+      "ticket_ids": [
+        "T004"
+      ],
+      "title": "Verify layering refactor and remove misleading residue",
+      "updated_at": "2026-05-10T02:32:45+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P001/results/R000.md",
+      "created_at": "2026-05-10T02:26:11+00:00",
+      "done": [
+        "Audited `novaic_cortex/api.py` `/v1/shell` and `/v1/internal/shell`, which construct `Cortex` and call `tool_shell`.",
+        "Audited `novaic_cortex/runtime.py`, where `Cortex` owns `Workspace` and constructs `Sandbox(self.workspace, ...)`.",
+        "Audited `novaic_cortex/sandbox.py`, where the file already has conceptual comments but physically mixes capability CLI, LogicalFS, process execution, and facade/orchestrator.",
+        "Audited `novaic_cortex/workspace.py`, which owns path/scope semantics and currently exposes `read_bytes`/`write_bytes` but not a public recursive byte listing port.",
+        "Audited `novaic_cortex/store.py` and `novaic_cortex/blob_store.py`; BlobCortexStore is clearly the production object-storage substrate under CortexStore."
+      ],
+      "id": "R000",
+      "known_gaps": [],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "The current runtime path is conceptually close but physically muddled. The active call path is:\n\n```text\nCortex API/runtime\n  -> Cortex.tool_shell / Sandbox facade\n  -> ShellExecutionOrchestrator\n  -> MountNamespaceLogicalFS acquire/process/release\n  -> Workspace logical paths\n  -> CortexStore\n  -> BlobCortexStore in production\n```\n\nThe storage dependency path is:\n\n```text\nBlob/Object storage bytes\n  -> CortexStore object API\n  -> Workspace path/scope semantics\n  -> LogicalFS stable /cortex/{ro,rw} filesystem view\n  -> Sandbox process execution\n  -> Cortex shell tool surface\n```\n\nSo the user's intuition is right about Cortex being the top policy layer and Sandbox being below Cortex. The only wording trap is Blob versus LogicalFS: Blob is lower-level byte storage; LogicalFS is the filesystem view built over Workspace/store/blob. If \"最后\" means \"closest to shell/user experience\", LogicalFS is last. If \"最后\" means \"lowest primitive dependency\", Blob is last.",
+      "ticket_id": "T001",
+      "verification": []
+    },
+    "R001": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P002/results/R001.md",
+      "created_at": "2026-05-10T02:28:35+00:00",
+      "done": [
+        "Added `novaic_cortex/shell_capabilities.py` for injected shell commands (`agentctl`, `cortex`, `devicectl`) and explicit capability env filtering.",
+        "Added `novaic_cortex/logical_fs.py` for stable `/cortex/{ro,rw}` constants, LogicalFS view/capabilities, mount namespace provider, materialization, flush, RW layout, and path sanitization.",
+        "Added `novaic_cortex/sandbox_exec.py` for generic process execution dataclasses and runner.",
+        "Reduced `novaic_cortex/sandbox.py` to policy rejection, `ShellExecutionOrchestrator`, and public `Sandbox` facade.",
+        "Kept selected compatibility imports/re-exports from `sandbox.py` so current tests that import `_logical_rw_changes` or `_mount_namespace_available` still point to canonical implementations."
+      ],
+      "id": "R001",
+      "known_gaps": [],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "Extracted the monolithic shell implementation into explicit modules without changing the public `Sandbox` facade.",
+      "ticket_id": "T002",
+      "verification": []
+    },
+    "R002": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P003/results/R002.md",
+      "created_at": "2026-05-10T02:30:41+00:00",
+      "done": [
+        "Added `Workspace.read_tree_bytes(path, *, concurrency=16)`.",
+        "The new Workspace method returns `(relative_posix_path, bytes)` for files under a logical `/ro/` or `/rw/` prefix.",
+        "Updated `MountNamespaceLogicalFS._estimate_sync_bytes` and `_materialize_logical_view` to use `Workspace.read_tree_bytes`.",
+        "Removed `_key` import and direct `workspace._store` usage from `logical_fs.py`."
+      ],
+      "id": "R002",
+      "known_gaps": [],
+      "problem_id": "P003",
+      "root_id": "P000",
+      "summary": "LogicalFS no longer reaches into Workspace private store/key internals. Workspace now exposes a public recursive logical tree-byte port, and LogicalFS consumes that port.",
+      "ticket_id": "T003",
+      "verification": []
+    },
+    "R003": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P004/results/R003.md",
+      "created_at": "2026-05-10T02:32:30+00:00",
+      "done": [
+        "Ran compile checks for `sandbox.py`, `logical_fs.py`, `sandbox_exec.py`, `shell_capabilities.py`, `workspace.py`, `runtime.py`, and `api.py`.",
+        "Ran targeted sandbox/workspace/capability tests.",
+        "Ran full `novaic-cortex` test suite.",
+        "Added `test_read_tree_bytes_returns_relative_logical_file_entries` to pin the new Workspace port.",
+        "Scanned for old fallback/lazy-rewrite helpers."
+      ],
+      "id": "R003",
+      "known_gaps": [],
+      "problem_id": "P004",
+      "root_id": "P000",
+      "summary": "The layering refactor verifies cleanly. New modules compile, full local Cortex tests pass, and residue scans show no active local fallback or command-rewrite fallback implementation.",
+      "ticket_id": "T004",
+      "verification": []
+    },
+    "R004": {
+      "artifacts": [],
+      "body_path": "problems/P000/results/R004.md",
+      "created_at": "2026-05-10T02:33:02+00:00",
+      "done": [
+        "P001 audited the active path and clarified call-flow versus dependency-flow terminology.",
+        "P002 extracted the monolithic `sandbox.py` implementation into:",
+        "`novaic_cortex/shell_capabilities.py`",
+        "`novaic_cortex/logical_fs.py`",
+        "`novaic_cortex/sandbox_exec.py`",
+        "thin `novaic_cortex/sandbox.py` facade/orchestrator",
+        "P003 added `Workspace.read_tree_bytes` so LogicalFS no longer touches `Workspace._store` or `_key`.",
+        "P004 verified the refactor with compile checks, targeted tests, full tests, and residue scans."
+      ],
+      "id": "R004",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Completed the system layering audit and refactor. The final model is:\n\n```text\nCall flow: Cortex runtime/API -> Sandbox facade -> LogicalFS + process runner\nStorage dependency: LogicalFS -> Workspace logical port -> CortexStore -> BlobCortexStore\nShell UX: process sees stable /cortex/{ro,rw}\n```\n\nBlob remains the byte-object substrate. LogicalFS is the filesystem view over Workspace/store/blob and the layer closest to shell execution.",
+      "ticket_id": "T000",
+      "verification": []
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "A concise architecture decision is recorded in the ledger result.",
+        "Code is split into module boundaries that match responsibilities.",
+        "`sandbox.py` becomes a thin facade/orchestrator rather than a monolithic implementation bucket.",
+        "LogicalFS dependencies on Workspace/store are explicit enough to show that Blob/store is a lower substrate, not a caller of LogicalFS.",
+        "Tests/imports pass after the move.",
+        "Residue scan does not find local fallback, command rewrite fallback, or stale duplicate implementations."
+      ],
+      "assumptions": [
+        "Existing dirty changes are intentional prior work and must not be reverted.",
+        "The active mounted LogicalFS path is the current desired runtime path; local fallback remains forbidden."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "Architecture audit, module extraction, dependency cleanup, and verification are separable and should be closed as child problems.",
+      "created_at": "2026-05-10T02:24:34+00:00",
+      "id": "T000",
+      "problem_definition": "`novaic_cortex/sandbox.py` is doing too many jobs at once, making it unclear whether LogicalFS, Blob/store, Sandbox execution, and Cortex workspace ownership are properly layered. The runtime may be functionally correct but physically ambiguous, which is dangerous for future AI-assisted maintenance.",
+      "problem_id": "P000",
+      "proposed_solution": "Audit current active code and tests, decide the canonical dependency model, then refactor the code into explicit modules if the audit confirms physical boundary drift. The likely target shape is:\n\n- Cortex workspace owns durable scope/RW data and delegates storage to Blob/store substrate.\n- LogicalFS presents a live stable `/cortex/{ro,rw}` filesystem view over the workspace/store port.\n- Sandbox composes LogicalFS with process execution and policy checks.\n- Shell capability CLI is a separate shell-facing interface bundle, not part of LogicalFS or process execution.\n- Public `Sandbox` remains the top-level facade used by runtime/API code.\n\nNo fallback path should be added. Displaced code should be deleted or moved, not duplicated.",
+      "result_ids": [
+        "R004"
+      ],
+      "risks": [
+        "Large file extraction can accidentally change behavior if imports or helper visibility are mishandled.",
+        "Tests may depend on private helpers from `sandbox.py`; compatibility re-exports may be needed temporarily, but must not obscure the new canonical modules.",
+        "Workspace/store port cleanup could grow beyond a single coherent refactor; if it does, split a follow-up rather than mixing unrelated changes."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Audit and refactor Cortex shell layering boundaries",
+      "updated_at": "2026-05-10T02:33:02+00:00",
+      "verification_plan": "- Run targeted `novaic-cortex` tests covering sandbox sync, mount namespace requirements, shell capability runtime, output projection, and incremental sync.\n- Run import/compile checks for `novaic_cortex.sandbox`, new extracted modules, and public tests.\n- Run residue scans for fallback/rewrite names and for old direct imports that bypass the intended facade."
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "File/function evidence is cited.",
+        "The user-facing mental model is reconciled with implementation terminology.",
+        "Cleanup items are concrete enough for the extraction and dependency-boundary tickets."
+      ],
+      "assumptions": [
+        "The no-local-fallback mount namespace path is the intended current runtime path."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "one_go",
+      "classification_reason": "Read-only architecture audit can be completed directly.",
+      "created_at": "2026-05-10T02:25:19+00:00",
+      "id": "T001",
+      "problem_definition": "The current code layout obscures whether Cortex, Sandbox, LogicalFS, Workspace/store, and Blob are layered correctly.",
+      "problem_id": "P001",
+      "proposed_solution": "Inspect active runtime imports, `Sandbox` composition, LogicalFS materialization/flushing, Workspace/store APIs, and tests. Record the canonical call flow and dependency flow, then identify cleanup targets.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Confusing call flow with dependency flow could produce the wrong module boundary."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Audit active shell layering and decide canonical model",
+      "updated_at": "2026-05-10T02:26:11+00:00",
+      "verification_plan": "- Use `rg`, `sed`, and import inspection only.\n- Record result in the ledger before marking success."
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "`sandbox.py` no longer contains the large capability script.",
+        "`sandbox.py` no longer contains `MountNamespaceLogicalFS` implementation.",
+        "`sandbox.py` no longer contains `SandboxExec` implementation.",
+        "Existing public import `Sandbox` remains unchanged.",
+        "Behavior stays unchanged, including no local fallback."
+      ],
+      "assumptions": [
+        "Re-exporting selected helpers from `sandbox.py` is acceptable only as a compatibility surface, not as a second implementation."
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T002.md",
+      "classification": "one_go",
+      "classification_reason": "Mechanical module extraction is bounded and directly verifiable by imports/tests.",
+      "created_at": "2026-05-10T02:26:49+00:00",
+      "id": "T002",
+      "problem_definition": "The public shell path is physically concentrated in `novaic_cortex/sandbox.py`, making unrelated responsibilities look coupled.",
+      "problem_id": "P002",
+      "proposed_solution": "Move shell capability CLI generation to `shell_capabilities.py`, LogicalFS/view/mount/path helpers to `logical_fs.py`, and generic process execution to `sandbox_exec.py`. Keep `sandbox.py` as a small facade/orchestrator importing those components. Keep compatibility re-exports only for existing tests and only when they point at the canonical module implementation.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "Mechanical extraction may miss imports or test monkeypatch targets.",
+        "Private helper tests may need to import from the new canonical module."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Extract shell capability, LogicalFS, and process execution modules",
+      "updated_at": "2026-05-10T02:28:35+00:00",
+      "verification_plan": "- Run compile/import checks.\n- Run targeted sandbox/logicalfs/capability tests after extraction.\n- Run residue scan for duplicated class/function definitions."
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "`logical_fs.py` no longer imports `_key`.",
+        "`logical_fs.py` no longer references `workspace._store`.",
+        "Workspace exposes a public method with logical-path semantics, not blob/store-key semantics.",
+        "Existing LogicalFS behavior is preserved."
+      ],
+      "assumptions": [
+        "The method can use Workspace internals because Workspace is the owner of logical path-to-store mapping."
+      ],
+      "body_path": "problems/P000/children/P003/tickets/T003.md",
+      "classification": "one_go",
+      "classification_reason": "The boundary cleanup is a small explicit Workspace API plus LogicalFS call-site update.",
+      "created_at": "2026-05-10T02:29:29+00:00",
+      "id": "T003",
+      "problem_definition": "After module extraction, LogicalFS still depends on `Workspace._store` and `_key`, which are private implementation details. That obscures the intended layering.",
+      "problem_id": "P003",
+      "proposed_solution": "Add a small public Workspace method that returns recursive `(relative_path, bytes)` entries for a logical `/ro/` or `/rw/` subtree. Update LogicalFS to consume this Workspace port instead of store keys.",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [
+        "A naive sequential implementation could worsen RO materialization latency."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Add explicit Workspace tree-byte port for LogicalFS",
+      "updated_at": "2026-05-10T02:30:41+00:00",
+      "verification_plan": "- Compile/import checks.\n- Run targeted workspace/logicalfs/sandbox tests.\n- Residue scan for `_store` usage inside `logical_fs.py`."
+    },
+    "T004": {
+      "acceptance_criteria": [
+        "New modules compile/import.",
+        "Targeted tests pass or environment skips are explicitly explained.",
+        "`sandbox.py` is only facade/orchestrator plus policy rejection.",
+        "No local fallback/path adapter logic remains in the active shell path.",
+        "Ledger result/check accurately report remaining risk."
+      ],
+      "assumptions": [
+        "Do not deploy unless verification reveals a runtime need or the user asks; this task is architectural cleanup."
+      ],
+      "body_path": "problems/P000/children/P004/tickets/T004.md",
+      "classification": "one_go",
+      "classification_reason": "Verification and residue cleanup are bounded now that implementation tickets are complete.",
+      "created_at": "2026-05-10T02:31:12+00:00",
+      "id": "T004",
+      "problem_definition": "After module extraction and dependency cleanup, we need evidence that the new layering is active and old fallback/duplicate logic did not survive.",
+      "problem_id": "P004",
+      "proposed_solution": "Run compile/import checks, targeted tests, and grep-style residue scans. If gaps appear, fix them or record a follow-up.",
+      "result_ids": [
+        "R003"
+      ],
+      "risks": [
+        "Local environment cannot execute mount namespace shell tests; remote smoke may be needed separately if deployment verification is requested."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Verify refactor and scan for misleading residue",
+      "updated_at": "2026-05-10T02:32:30+00:00",
+      "verification_plan": "- `python -m py_compile` on changed Cortex modules.\n- `pytest` targeted sandbox/workspace/capability/projection tests.\n- `rg` scan for old fallback/rewrite helpers and duplicate class definitions."
+    }
+  },
+  "updated_at": "2026-05-10T02:33:24+00:00"
+}

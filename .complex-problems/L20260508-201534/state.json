@@ -1,0 +1,168 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-08T12:20:23+00:00",
+      "criteria_map": [
+        "Identify whether the binding path exists -> Evidence from Business `_filter_builtin_tools_for_agent()` and Device `hd_*` mount mapping.",
+        "Identify why 小马 does not see mounted device tools -> Evidence from Runtime/Cortex static schema chain.",
+        "Identify whether execution would work if tools were exposed -> Evidence from Runtime `_EXECUTORS` missing `hd_*`.",
+        "Avoid unverified live-state claims -> Current environment unavailability is explicitly recorded."
+      ],
+      "evidence": [
+        "`novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:331` loads `raw_tool_schemas` only through `bridge.load_tool_schemas(...)`.",
+        "`novaic-agent-runtime/task_queue/utils/cortex_bridge.py:630` sends that request only to Cortex `/v1/internal/tools`.",
+        "`novaic-cortex/novaic_cortex/api.py:1737` returns `tool_schemas_for_subagent(...)`.",
+        "`novaic-cortex/novaic_cortex/tool_schemas.py:22` returns static schemas from `common.tools.llm_builtin`.",
+        "`novaic-business/business/internal/agent.py:232` has the dynamic mounted-tool calculation, including `HD_TOOLS` at lines 311-318, but this endpoint is not in the Runtime LLM assembly path.",
+        "`novaic-agent-runtime/task_queue/handlers/tool_handlers.py:525` does not register any `hd_*` executors.",
+        "`novaic-common/common/contracts/llm_assembly.py:142` expects `parameters`, while the Business endpoint returns `inputSchema`, so dynamic tools require normalization before merge."
+      ],
+      "execution_map": [
+        "T000 -> R000: Performed source-level and environment-level diagnosis, recorded the broken assembly/executor boundary, and documented the current verification limits."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Live production DB/service state was not re-verified in the current workspace because `/opt/novaic` and local services are absent. This does not weaken the code-path diagnosis, but it means the exact current deployed binding row should be rechecked in the deployment environment before patch rollout.",
+        "The fix should be done as a separate implementation ticket: Runtime should fetch and normalize Business dynamic device tools, merge only device tool schemas, and route device tool execution through the Device proxy."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Failure mode: Device binding exists but LLM still sees no tools. Explanation holds because Runtime does not consume Business dynamic tools.",
+        "Failure mode: Business correctly returns `hd_*`, but execution fails. Explanation holds because `_EXECUTORS` has no `hd_*` route.",
+        "Failure mode: A quick fix adds `hd_*` to Cortex static schemas. This would violate the current static 17-tool contract and still lack execution routing; it is not the right fix.",
+        "Failure mode: Dynamic tools are blindly merged. This would drop parameters because Business uses `inputSchema`; the integration must normalize `inputSchema -> parameters`."
+      ],
+      "summary": "The diagnostic problem is solved. The root cause is not that 小马 lacks a device binding; it is that the actual Runtime/Cortex LLM tool assembly path ignores the Business dynamic mounted-device tool endpoint, and Runtime lacks executors for `hd_*` tools."
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-08T12:15:34+00:00",
+  "ledger_id": "L20260508-201534",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-08T12:15:34+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "Investigate why 小马 does not see device tools in the LLM `tools` array even though the agent is expected to have a device binding.\n\nThe investigation must distinguish:\n\n- whether 小马 has a device binding and mounted tools in persisted state;\n- whether Business can compute the correct filtered device tools;\n- whether Runtime/Cortex actually include those tools in `cortex.prepare_llm_context`;\n- whether Runtime has executors for those tools if they were exposed.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Identify the exact broken boundary with code and production evidence.",
+        "Explain whether the failure is data/configuration, schema assembly, executor routing, or all of them.",
+        "Record evidence in the ledger and state whether a code fix is needed."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Device tools not mounted for 小马",
+      "updated_at": "2026-05-08T12:20:23+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`.complex-problems/L20260508-201534/problems/P000/README.md`",
+        "`.complex-problems/L20260508-201534/problems/P000/tickets/T000.md`",
+        "Source pointers listed in this result."
+      ],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-08T12:20:14+00:00",
+      "done": [
+        "Confirmed the intended dynamic source exists in `novaic-business/business/internal/agent.py`: `_filter_builtin_tools_for_agent()` fetches device binding/mounted tools and adds `HD_TOOLS` when `device_type == \"host_desktop\"`.",
+        "Confirmed the host desktop mount map exists in `novaic-device/device/agent_binding.py`: `hd_screenshot`, `hd_mouse`, `hd_keyboard`, `hd_shell_exec`, `hd_clipboard_get`, `hd_clipboard_set`, `hd_file_pull`, and `hd_file_push`.",
+        "Confirmed the actual LLM context assembly path does not call the Business dynamic tool endpoint:",
+        "`novaic-agent-runtime/task_queue/handlers/cortex_handlers.py:331` calls `bridge.load_tool_schemas(...)`.",
+        "`novaic-agent-runtime/task_queue/utils/cortex_bridge.py:630` posts only to Cortex `/v1/internal/tools`.",
+        "`novaic-cortex/novaic_cortex/api.py:1737` returns `tool_schemas_for_subagent(...)`.",
+        "`novaic-cortex/novaic_cortex/tool_schemas.py:22` delegates to `agent_tool_schemas_for_subagent(...)` from `common.tools.llm_builtin`.",
+        "Confirmed Runtime execution is also not wired for device tools: `novaic-agent-runtime/task_queue/handlers/tool_handlers.py:525` `_EXECUTORS` contains runtime/Cortex/environment/payload tools but no `hd_*`.",
+        "Confirmed current tests encode the old static assumption:",
+        "`novaic-agent-runtime/tests/test_runtime_tool_path_contract.py:78` asserts static schema names exactly equal executor names.",
+        "`novaic-cortex/tests/test_tool_schemas_limits.py:14` hard-codes the static 17 Cortex tools.",
+        "Identified a schema-shape mismatch for future integration: Business returns device tools as `{name, description, inputSchema}`, while `common/contracts/llm_assembly.py:142` expects raw schemas with `parameters`.",
+        "Attempted to re-check local production DB/service state, but this environment has no `/opt/novaic` and local Business port `19998` refused connections. Current result therefore uses source-code evidence plus prior production observations, not a live local DB replay."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "This ticket is diagnostic only; it does not implement the fix.",
+        "Live production DB/service verification could not be repeated in the current Codex environment because `/opt/novaic` and local services are absent."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Diagnosed why 小马 does not currently see mounted device tools in the LLM tool surface. The binding/design path exists, but the actual Runtime LLM assembly path is still static: Runtime loads tool schemas only from Cortex, Cortex returns `common.tools.llm_builtin.AGENT_BUILTIN_TOOL_SCHEMAS`, and Runtime executors do not include `hd_*` device tool handlers.",
+      "ticket_id": "T000",
+      "verification": [
+        "Ran targeted source inspections with `rg` and `nl -ba` across `novaic-agent-runtime`, `novaic-cortex`, `novaic-business`, `novaic-common`, and `novaic-device`.",
+        "Attempted local runtime evidence collection:",
+        "`/opt/novaic/data/entangled.db` was unavailable in this workspace.",
+        "`/opt/novaic/data/queue.db` was unavailable in this workspace.",
+        "`http://127.0.0.1:19998/internal/agents/.../builtin-tools` refused connection.",
+        "Verified that the observed source path alone is sufficient to explain the missing mounted tools: no code path merges Business dynamic device tools into `raw_tool_schemas`, and no executor exists for device tool names."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Confirm whether 小马 has a persisted device binding.",
+        "Confirm whether Business can compute device tools from that binding.",
+        "Confirm whether the production LLM context includes those tools.",
+        "Confirm whether Runtime can execute those tools if exposed.",
+        "Identify the exact architectural/code boundary causing the gap."
+      ],
+      "assumptions": [
+        "小马 agent id is `822af016-31a1-49bb-b529-9b8f539a0831`.",
+        "The desired device binding is host desktop unless production data shows otherwise."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "Diagnosis is bounded by source pointers and production evidence; no code changes yet.",
+      "created_at": "2026-05-08T12:15:55+00:00",
+      "id": "T000",
+      "problem_definition": "小马 is expected to receive device tools, but recent LLM tool arrays do not include `hd_*`, `mobile_*`, or VM device tools.",
+      "problem_id": "P000",
+      "proposed_solution": "Trace the full device-tool path from persisted binding to Business filtering, Runtime/Cortex schema assembly, production prepared-context task outputs, and Runtime executor routing.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Production internal endpoints may require internal auth; if so, use DB and queue task evidence.",
+        "Tool count can coincidentally match while the tool names differ, so compare names rather than totals."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Diagnose device tool mount gap",
+      "updated_at": "2026-05-08T12:20:14+00:00",
+      "verification_plan": "- Read the relevant source files with stable file pointers.\n- Query production persisted binding and recent queue prepared-context outputs.\n- Compare Business `/builtin-tools` output with Cortex/Runtime prepared tools.\n- Check Runtime executor table for matching device tool handlers."
+    }
+  },
+  "updated_at": "2026-05-08T12:20:34+00:00"
+}

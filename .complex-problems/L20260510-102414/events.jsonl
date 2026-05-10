@@ -1,0 +1,60 @@
+{"at": "2026-05-10T02:24:14+00:00", "id": "E000", "payload": {"ledger_id": "L20260510-102414", "root_id": "P000", "title": "LogicalFS layering and module boundary cleanup"}, "root_id": "P000", "type": "ledger_initialized"}
+{"at": "2026-05-10T02:24:34+00:00", "id": "E001", "payload": {"problem_id": "P000", "ticket_id": "T000", "title": "Audit and refactor Cortex shell layering boundaries"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T02:24:34+00:00", "id": "E002", "payload": {"from": "created", "id": "T000", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T02:24:41+00:00", "id": "E003", "payload": {"from": "defined", "id": "T000", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T02:24:41+00:00", "id": "E004", "payload": {"classification": "split", "reason": "Architecture audit, module extraction, dependency cleanup, and verification are separable and should be closed as child problems.", "ticket_id": "T000"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T02:25:04+00:00", "id": "E005", "payload": {"from": "classified", "id": "T000", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T02:25:04+00:00", "id": "E006", "payload": {"parent_id": "P000", "problem_id": "P001", "title": "Audit current Cortex/Sandbox/LogicalFS/Blob layering"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T02:25:04+00:00", "id": "E007", "payload": {"parent_id": "P000", "problem_id": "P002", "title": "Extract module boundaries for shell capabilities, LogicalFS, and process execution"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T02:25:04+00:00", "id": "E008", "payload": {"parent_id": "P000", "problem_id": "P003", "title": "Make LogicalFS storage dependency explicit"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T02:25:04+00:00", "id": "E009", "payload": {"parent_id": "P000", "problem_id": "P004", "title": "Verify layering refactor and remove misleading residue"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T02:25:19+00:00", "id": "E010", "payload": {"problem_id": "P001", "ticket_id": "T001", "title": "Audit active shell layering and decide canonical model"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T02:25:19+00:00", "id": "E011", "payload": {"from": "created", "id": "T001", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T02:25:19+00:00", "id": "E012", "payload": {"from": "defined", "id": "T001", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T02:25:19+00:00", "id": "E013", "payload": {"classification": "one_go", "reason": "Read-only architecture audit can be completed directly.", "ticket_id": "T001"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T02:25:24+00:00", "id": "E014", "payload": {"from": "todo", "id": "P001", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T02:26:11+00:00", "id": "E015", "payload": {"from": "classified", "id": "T001", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T02:26:11+00:00", "id": "E016", "payload": {"from": "executing", "id": "T001", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T02:26:11+00:00", "id": "E017", "payload": {"result_id": "R000", "ticket_id": "T001"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T02:26:33+00:00", "id": "E018", "payload": {"from": "doing", "id": "P001", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T02:26:33+00:00", "id": "E019", "payload": {"from": "checking", "id": "P001", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T02:26:33+00:00", "id": "E020", "payload": {"check_id": "C000", "followup_id": null, "problem_id": "P001", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T02:26:49+00:00", "id": "E021", "payload": {"problem_id": "P002", "ticket_id": "T002", "title": "Extract shell capability, LogicalFS, and process execution modules"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T02:26:49+00:00", "id": "E022", "payload": {"from": "created", "id": "T002", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T02:26:49+00:00", "id": "E023", "payload": {"from": "defined", "id": "T002", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T02:26:49+00:00", "id": "E024", "payload": {"classification": "one_go", "reason": "Mechanical module extraction is bounded and directly verifiable by imports/tests.", "ticket_id": "T002"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T02:27:03+00:00", "id": "E025", "payload": {"from": "todo", "id": "P002", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T02:28:35+00:00", "id": "E026", "payload": {"from": "classified", "id": "T002", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T02:28:35+00:00", "id": "E027", "payload": {"from": "executing", "id": "T002", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T02:28:35+00:00", "id": "E028", "payload": {"result_id": "R001", "ticket_id": "T002"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T02:28:52+00:00", "id": "E029", "payload": {"from": "doing", "id": "P002", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T02:28:52+00:00", "id": "E030", "payload": {"from": "checking", "id": "P002", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T02:28:52+00:00", "id": "E031", "payload": {"check_id": "C001", "followup_id": null, "problem_id": "P002", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T02:29:29+00:00", "id": "E032", "payload": {"problem_id": "P003", "ticket_id": "T003", "title": "Add explicit Workspace tree-byte port for LogicalFS"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T02:29:29+00:00", "id": "E033", "payload": {"from": "created", "id": "T003", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T02:29:29+00:00", "id": "E034", "payload": {"from": "defined", "id": "T003", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T02:29:29+00:00", "id": "E035", "payload": {"classification": "one_go", "reason": "The boundary cleanup is a small explicit Workspace API plus LogicalFS call-site update.", "ticket_id": "T003"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T02:29:35+00:00", "id": "E036", "payload": {"from": "todo", "id": "P003", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T02:30:41+00:00", "id": "E037", "payload": {"from": "classified", "id": "T003", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T02:30:41+00:00", "id": "E038", "payload": {"from": "executing", "id": "T003", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T02:30:41+00:00", "id": "E039", "payload": {"result_id": "R002", "ticket_id": "T003"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T02:30:56+00:00", "id": "E040", "payload": {"from": "doing", "id": "P003", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T02:30:56+00:00", "id": "E041", "payload": {"from": "checking", "id": "P003", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T02:30:56+00:00", "id": "E042", "payload": {"check_id": "C002", "followup_id": null, "problem_id": "P003", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T02:31:12+00:00", "id": "E043", "payload": {"problem_id": "P004", "ticket_id": "T004", "title": "Verify refactor and scan for misleading residue"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T02:31:12+00:00", "id": "E044", "payload": {"from": "created", "id": "T004", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T02:31:13+00:00", "id": "E045", "payload": {"from": "defined", "id": "T004", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T02:31:13+00:00", "id": "E046", "payload": {"classification": "one_go", "reason": "Verification and residue cleanup are bounded now that implementation tickets are complete.", "ticket_id": "T004"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T02:31:17+00:00", "id": "E047", "payload": {"from": "todo", "id": "P004", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T02:32:30+00:00", "id": "E048", "payload": {"from": "classified", "id": "T004", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T02:32:30+00:00", "id": "E049", "payload": {"from": "executing", "id": "T004", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T02:32:30+00:00", "id": "E050", "payload": {"result_id": "R003", "ticket_id": "T004"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T02:32:45+00:00", "id": "E051", "payload": {"from": "doing", "id": "P004", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T02:32:45+00:00", "id": "E052", "payload": {"from": "checking", "id": "P004", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T02:32:45+00:00", "id": "E053", "payload": {"check_id": "C003", "followup_id": null, "problem_id": "P004", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T02:33:02+00:00", "id": "E054", "payload": {"from": "todo", "id": "P000", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T02:33:02+00:00", "id": "E055", "payload": {"from": "splitting", "id": "T000", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T02:33:02+00:00", "id": "E056", "payload": {"result_id": "R004", "ticket_id": "T000"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T02:33:17+00:00", "id": "E057", "payload": {"from": "doing", "id": "P000", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T02:33:17+00:00", "id": "E058", "payload": {"from": "checking", "id": "P000", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T02:33:17+00:00", "id": "E059", "payload": {"check_id": "C004", "followup_id": null, "problem_id": "P000", "status": "success"}, "root_id": "P000", "type": "check_recorded"}

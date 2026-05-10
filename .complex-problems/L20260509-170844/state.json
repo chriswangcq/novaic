@@ -1,0 +1,159 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-09T09:14:14+00:00",
+      "criteria_map": [
+        "LLM-visible builtin schemas exclude direct payload tools: satisfied by canonical schema import smoke and `novaic-cortex/tests/test_tool_schemas_limits.py::test_payload_tools_are_shell_capabilities_not_llm_schemas`.",
+        "Shell help advertises replacement payload commands: satisfied by `novaic-cortex/tests/test_shell_capability_runtime.py` help and round-trip tests.",
+        "Shell capability can read/search payloads through stable command surface: satisfied by `test_cortex_payload_read_and_search_round_trip_through_shell`.",
+        "Runtime guard tests treat payload executors as schema-cutover compatibility: satisfied by `SHELL_CAPABILITY_SCHEMA_CUTOVER_TOOLS` and runtime tool-path tests.",
+        "Existing compatibility behavior remains tested: satisfied by targeted Runtime handler and shell-output tests."
+      ],
+      "evidence": [
+        "Runtime targeted tests: `51 passed`.",
+        "Cortex targeted tests: `16 passed`.",
+        "Common targeted tests: `24 passed`.",
+        "Residual scan shows payload direct names only in the non-LLM payload command-contract module/tests, not in canonical active schema exposure."
+      ],
+      "execution_map": [
+        "`novaic-cortex/novaic_cortex/sandbox.py`: added `cortex payload` shell command implementation and explicit payload env allowlist.",
+        "`novaic-agent-runtime/task_queue/handlers/tool_handlers.py`: injects payload interpretation model config only for shell commands that ask for `cortex payload summarize` or `cortex payload qa`.",
+        "`novaic-common/common/tools/llm_builtin.py`: removed direct payload tools from LLM schema and updated shell description.",
+        "`novaic-agent-runtime/task_queue/tool_surface_policy.py`: marks payload direct executors as completed schema cutover tools.",
+        "Common, Cortex, and Runtime tests updated to lock the new boundary."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "This closes the payload schema cutover, not physical deletion. Direct payload executor code remains intentionally as compatibility until the final cleanup ticket deletes all migrated direct executor branches together."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The shell capability test exercises `cortex payload read` and `cortex payload search` through a disposable sandbox and fake Cortex HTTP endpoint. This validates the actual command path, not only the schema list. Runtime shell-output tests also validate payload interpretation env injection without exposing hidden global reads inside the command script."
+      ],
+      "summary": "Payload direct tools are no longer LLM-visible; cortex payload shell commands cover read/search/summarize/qa; targeted Runtime/Cortex/Common tests passed."
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-09T09:08:44+00:00",
+  "ledger_id": "L20260509-170844",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-09T09:08:44+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "Direct payload tools (`payload_read`, `payload_search`, `payload_summarize`, `payload_qa`) are still exposed as LLM-facing tools even though the migration direction is to use filesystem/shell-oriented capabilities for interface tools. This keeps another old direct tool family active and prevents the final tool surface from shrinking toward `shell`, `display`, `skill_begin`, `skill_end`, and `sleep`.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "LLM-visible builtin schemas no longer include direct payload tools.",
+        "Shell schema advertises the replacement payload capability command.",
+        "A shell capability command can read/search Cortex payload files through stable `/cortex/ro` paths without exposing ephemeral sandbox paths.",
+        "Runtime schema/executor guard tests treat payload direct executors as schema-cutover compatibility, not LLM-visible tools.",
+        "Targeted Runtime/Cortex/Common tests cover the cutover and compatibility behavior."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Payload tool schema cutover to shell",
+      "updated_at": "2026-05-09T09:14:14+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-09T09:13:51+00:00",
+      "done": [
+        "Added shell capability commands:",
+        "`cortex payload read --payload-ref REF`",
+        "`cortex payload search --payload-ref REF --query TEXT`",
+        "`cortex payload summarize --payload-ref REF`",
+        "`cortex payload qa --payload-ref REF --question TEXT`",
+        "Wired payload read/search shell commands to existing Cortex `/v1/payload/read` and `/v1/payload/search` endpoints.",
+        "Wired payload summarize/qa shell commands to existing Cortex interpretation endpoints, with explicit model/factory config supplied by flags or `NOVAIC_PAYLOAD_*` environment.",
+        "Added Runtime shell env injection for payload summarize/qa commands using explicit Business LLM config lookup at the shell boundary.",
+        "Removed `payload_read`, `payload_search`, `payload_summarize`, and `payload_qa` from canonical LLM-facing builtin schemas.",
+        "Updated shell schema guidance to advertise `cortex payload read/search/summarize/qa`.",
+        "Extended `SHELL_CAPABILITY_SCHEMA_CUTOVER_TOOLS` to include the payload tool family.",
+        "Updated Common/Cortex/Runtime tests so payload command contracts remain available but are not LLM-visible tools."
+      ],
+      "id": "R000",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Completed the payload schema cutover ticket: payload inspection is now advertised through the `cortex payload ...` shell capability instead of direct LLM-visible payload tools, while direct payload executors remain internally available for compatibility and existing handler coverage.",
+      "ticket_id": "T000",
+      "verification": [
+        "`cd novaic-agent-runtime && python -m pytest tests/test_runtime_tool_path_contract.py tests/test_tool_surface_boundary.py tests/unit/task_queue/test_shell_output_contract.py tests/unit/task_queue/test_environment_tool_handlers.py tests/test_pr48_turn_finalizer.py -q`",
+        "Passed: `51 passed`",
+        "`cd novaic-cortex && python -m pytest tests/test_tool_schemas_limits.py tests/test_shell_capability_runtime.py -q`",
+        "Passed: `16 passed`",
+        "`cd novaic-common && python -m pytest tests/test_tool_definitions_contract.py tests/test_environment_tool_schemas.py tests/test_tool_product_semantics_contract.py tests/test_payload_tool_schemas.py tests/test_llm_assembly_contract.py -q`",
+        "Passed: `24 passed`"
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Canonical LLM schemas exclude `payload_read`, `payload_search`, `payload_summarize`, and `payload_qa`.",
+        "Shell help includes `cortex payload read/search/summarize/qa`.",
+        "Shell capability tests prove `cortex payload read` and `cortex payload search` can inspect a stored payload through stable shell commands.",
+        "Runtime tests prove direct payload executors are not LLM-visible but still internally executable.",
+        "Existing payload endpoint and handler tests continue passing."
+      ],
+      "assumptions": [
+        "This ticket covers payload schema cutover, not subagent/audio/device cutover."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "Payload shell capability and schema cutover are a bounded family slice with direct tests.",
+      "created_at": "2026-05-09T09:09:26+00:00",
+      "id": "T000",
+      "problem_definition": "Payload inspection tools are still direct LLM tools. That keeps a second interface family alive beside `shell`, even though payload inspection is naturally file/pointer-oriented and should be accessed through stable Cortex shell commands.",
+      "problem_id": "P000",
+      "proposed_solution": "- Implement `cortex payload read` and `cortex payload search` in the generated shell capability script, backed by existing Cortex `/v1/payload/read` and `/v1/payload/search` endpoints.\n- Implement `cortex payload summarize` and `cortex payload qa` through the same capability script, using explicit model/factory env injected at the shell boundary.\n- Remove direct payload schemas from `AGENT_BUILTIN_TOOL_SCHEMAS`.\n- Update shell schema and tests to advertise the `cortex payload ...` capability path.\n- Mark payload direct executors as completed schema-cutover compatibility in Runtime policy/tests.\n- Keep direct payload executor implementation temporarily for compatibility tests and to avoid mixing schema cutover with physical deletion.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Summarize/QA require model config. The shell boundary must inject explicit payload interpretation env rather than reading hidden global config inside the script.",
+        "Direct payload executor physical deletion is a later cleanup step after the shell path is proven and remaining tool families are migrated."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Move payload tools behind cortex payload shell capability",
+      "updated_at": "2026-05-09T09:13:51+00:00",
+      "verification_plan": "- Run Cortex shell capability tests.\n- Run Cortex schema guard tests.\n- Run Common payload/schema/product-semantics tests.\n- Run Runtime tool-path and shell-output contract tests."
+    }
+  },
+  "updated_at": "2026-05-09T09:14:15+00:00"
+}

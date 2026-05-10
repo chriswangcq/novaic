@@ -1,5 +1,11 @@
 # PR-207 — Cortex Blob-backed Store Cutover
 
+> Historical ticket. This records the pre-LogicalFS transition that moved
+> Cortex off direct S3/OSS paths. The current architecture uses LogicalFS as the
+> live `/ro` / `/rw` authority and a LogicalFS Blob object adapter below that
+> boundary; do not treat the module names below as current implementation
+> guidance.
+
 | Field | Value |
 | --- | --- |
 | Status | `[closed]` |

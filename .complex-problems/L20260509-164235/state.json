@@ -1,0 +1,147 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-09T08:45:27+00:00",
+      "criteria_map": [
+        "Fresh sandbox executions have stable commands on `PATH`: satisfied by `command -v agentctl runtimectl cortex`.",
+        "Help commands work: satisfied by `agentctl --help`, `runtimectl --help`, and `cortex payload --help`.",
+        "Commands are generated inside each disposable sandbox and read config from stable env/config: satisfied by generated wrapper scripts and `.novaic_env.json`/environment loader.",
+        "Tests prove presence and lazy RO behavior: satisfied by the new test file."
+      ],
+      "evidence": [
+        "`novaic-cortex/novaic_cortex/sandbox.py` generates `agentctl`, `runtimectl`, and `cortex` command wrappers inside each disposable sandbox and prepends the generated bin directory to `PATH`.",
+        "`novaic-cortex/tests/test_shell_capability_runtime.py` verifies command presence, help output, stable path sanitization, and no RO materialization for help/presence checks.",
+        "`python -m pytest tests/test_shell_capability_runtime.py tests/test_sandbox_sync.py -q` passed with `5 passed, 1 skipped`."
+      ],
+      "execution_map": [
+        "Implemented the substrate directly in Cortex sandbox creation.",
+        "Verified with focused tests and adjacent stable-path/lazy-RO tests."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Rich runtime/cortex operations still need to be added as separate tickets behind the now-stable command substrate."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The tests seed RO data and then assert no `/ro/` prefixes or keys are listed/read for command presence/help commands, proving help usage does not pull historical Cortex state."
+      ],
+      "summary": "Sandbox now exposes agentctl/runtimectl/cortex capability commands with lazy-RO-safe help tests passing."
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-09T08:42:35+00:00",
+  "ledger_id": "L20260509-164235",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-09T08:42:35+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "The tool-shell boundary design requires interface/runtime style capabilities to move into shell-accessible commands while keeping only minimal harness primitives outside shell. The current sandbox exposes stable `/cortex/ro` and `/cortex/rw`, but it does not provide a reliable generic command substrate such as `agentctl`, `runtimectl`, or `cortex`.\n\nThis leaves the architecture only partially implemented: the agent can run shell, but shell is not yet a first-class capability surface for runtime/cortex operations.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Fresh sandbox executions have stable commands on `PATH`: `agentctl`, `runtimectl`, and `cortex`.",
+        "`agentctl --help`, `runtimectl --help`, and `cortex payload --help` work without materializing the full RO tree.",
+        "Commands are generated inside each disposable sandbox and read auth/config from the stable shell environment rather than leaked ephemeral paths.",
+        "Tests prove the commands are present, stable-path-safe, and do not require RO for help/smoke usage."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Shell capability runtime substrate",
+      "updated_at": "2026-05-09T08:45:27+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-09T08:45:03+00:00",
+      "done": [
+        "Added sandbox-generated command wrappers in `novaic-cortex/novaic_cortex/sandbox.py`.",
+        "Added stable command help behavior for:",
+        "`agentctl --help`",
+        "`runtimectl --help`",
+        "`cortex payload --help`",
+        "Kept the implementation self-contained inside generated scripts, so commands do not import from the repo while running from sandbox RW.",
+        "Ensured shell output sanitization maps wrapper paths to stable `/cortex/bin/...`.",
+        "Added `novaic-cortex/tests/test_shell_capability_runtime.py`."
+      ],
+      "id": "R000",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Implemented a minimal generic shell capability substrate in Cortex sandbox. Every disposable sandbox execution now creates a private command directory and prepends it to `PATH`, exposing `agentctl`, `runtimectl`, and `cortex` without relying on host-installed entry points.",
+      "ticket_id": "T000",
+      "verification": [
+        "Ran `python -m pytest tests/test_shell_capability_runtime.py tests/test_sandbox_sync.py -q` in `novaic-cortex`.",
+        "Result: `5 passed, 1 skipped`."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "`command -v agentctl runtimectl cortex` succeeds in a fresh Cortex shell.",
+        "`agentctl --help`, `runtimectl --help`, and `cortex payload --help` exit successfully.",
+        "Help commands do not reference or leak `/tmp/novaic-cortex-sandbox-*` paths in stdout/stderr.",
+        "Help commands do not force RO materialization just because they are used.",
+        "Unit tests cover command presence and help behavior."
+      ],
+      "assumptions": [
+        "The first implementation can expose help and substrate wiring before richer `agentctl`/`runtimectl` subcommands are added.",
+        "Rich behavior should be implemented incrementally behind the same command substrate rather than as direct non-shell tools."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "Small substrate slice: generate three sandbox command wrappers and verify with focused Cortex tests",
+      "created_at": "2026-05-09T08:42:56+00:00",
+      "id": "T000",
+      "problem_definition": "The Cortex sandbox currently gives agents a shell, stable `/cortex/*` paths, and environment variables, but lacks a small durable command surface for runtime/cortex operations. This blocks the intended boundary where interface tools can live inside shell while the external harness stays minimal.",
+      "problem_id": "P000",
+      "proposed_solution": "Add a tiny command substrate generated into each disposable sandbox:\n\n- `agentctl`\n- `runtimectl`\n- `cortex`\n\nThe substrate should be created in a sandbox-private bin directory prepended to `PATH`. It should avoid imports from the source tree at runtime, read config from `.novaic_env.json`/environment, and support reliable help commands immediately.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "If wrappers depend on installed package entry points, source-tree tests can fail because sandbox `cwd` is RW, not the repo root.",
+        "If wrapper output includes ephemeral paths, it violates the stable-path contract.",
+        "If command detection accidentally references `/cortex/ro`, help smoke tests could reintroduce slow RO loading."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Implement sandbox capability command substrate",
+      "updated_at": "2026-05-09T08:45:03+00:00",
+      "verification_plan": "- Add focused Cortex tests around sandbox shell execution.\n- Run the new test file.\n- Run a nearby sandbox/path safety test set if available."
+    }
+  },
+  "updated_at": "2026-05-09T08:45:27+00:00"
+}

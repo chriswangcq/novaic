@@ -1,0 +1,156 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-09T11:25:50+00:00",
+      "criteria_map": [
+        "Enumerate expected shell CLI groups and commands: satisfied in `R000`.",
+        "Verify LLM-facing schemas only outside-shell tools: satisfied by schema inventory and tests.",
+        "Verify Runtime direct executors only outside-shell tools: satisfied by executor inventory and tests.",
+        "Verify each expected inside-shell capability has CLI path: satisfied by implementation inspection and test evidence.",
+        "Verify prompts/instructions point to shell CLI: satisfied by Business prompt tests and prompt defaults inspection.",
+        "Verify tests guard boundary: satisfied for main boundary, with residual noted for full HD subcommand round-trip coverage.",
+        "Record gaps as explicit follow-up work rather than hiding them: satisfied in `R000` residuals/gaps."
+      ],
+      "evidence": [
+        "`R000` records active LLM schema inventory: `['shell', 'skill_begin', 'skill_end', 'display', 'sleep']`.",
+        "`R000` records active Runtime executor inventory: `['display', 'shell', 'skill_begin', 'skill_end', 'sleep']`.",
+        "`R000` maps the shell policy set to concrete CLI paths: `agentctl im`, `agentctl subagent`, `agentctl media`, `cortex payload`, and `devicectl hd`.",
+        "`R000` records prompt and test evidence that old direct forms are not advertised to the model.",
+        "Targeted guardrail tests passed in Runtime, Cortex, Common, and Business."
+      ],
+      "execution_map": [
+        "The ticket executed one bounded read-only audit and did not modify product code. The only new files are ledger/result/check artifacts under `.complex-problems`."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Product metadata still includes `subagent_list` and `subagent_history`.",
+        "`runtimectl` is help-only.",
+        "HD subcommand tests do not round-trip every device proxy command.",
+        "These are cleanup/coverage risks, not evidence that the current active path still uses old direct tools."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "If an agent tries old direct names such as `im_reply`, `payload_read`, `audio_qa`, `subagent_spawn`, or `hd_screenshot`, the current Runtime executor registry has no active executor for them. If the agent follows current prompt instructions, the operations route through `shell` and the CLI substrate.",
+        "The only stress concern is conceptual residue: product metadata and partial test coverage can confuse future maintainers, but this does not break the current active LLM/Runtime path."
+      ],
+      "summary": "审计完成：活跃 LLM/Runtime 工具边界已切干净，shell CLI 覆盖策略内接口工具，残留清单已记录。"
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-09T11:20:28+00:00",
+  "ledger_id": "L20260509-192028",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-09T11:20:28+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "Audit whether every tool capability that should live inside shell is actually exposed as a shell CLI command, and whether any migrated capability still remains as an LLM-facing tool schema or Runtime direct executor.\n\nThe intended boundary is:\n\n- Outside shell: `shell`, `display`, `skill_begin`, `skill_end`, `sleep`.\n- Inside shell as CLI capabilities: IM operations, subagent spawn/communication, audio QA, payload inspection/interpretation, device operations, and runtime/cortex diagnostics that are interface-like rather than harness lifecycle primitives.\n\nThe audit must inspect code, schemas, Runtime executors, Cortex shell capability installation, prompt instructions, and tests. It should distinguish intentional internal backend APIs from old LLM/Runtime direct tool residue.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Enumerate the expected shell CLI capability groups and concrete commands.",
+        "Verify LLM-facing schemas expose only the intended outside-shell harness tools.",
+        "Verify Runtime direct executors expose only the intended outside-shell harness tools.",
+        "Verify each expected inside-shell capability has a CLI path in Cortex sandbox/runtime code.",
+        "Verify prompts/instructions point agents toward shell CLI commands rather than old direct tools.",
+        "Verify tests guard the boundary, or identify precise missing test coverage.",
+        "Record any gaps as explicit follow-up work rather than hiding them."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Shell CLI Tool Surface Audit",
+      "updated_at": "2026-05-09T11:25:50+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-09T11:25:25+00:00",
+      "done": [
+        "Enumerated active LLM-facing schemas from `common.tools.llm_builtin.AGENT_BUILTIN_TOOL_SCHEMAS`.",
+        "Enumerated Runtime direct executors from `task_queue.handlers.tool_handlers._EXECUTORS`.",
+        "Enumerated Runtime policy shell migration sets from `task_queue.tool_surface_policy`.",
+        "Inspected shell CLI implementation in `novaic_cortex/sandbox.py`.",
+        "Searched for direct-tool residue across `novaic-business`, `novaic-agent-runtime`, `novaic-common`, and `novaic-cortex`.",
+        "Inspected prompt defaults and prompt tests for CLI-oriented guidance.",
+        "Ran targeted guardrail tests across Runtime, Cortex, Common, and Business."
+      ],
+      "id": "R000",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Completed a read-only audit of the current tool surface against the intended boundary: LLM-facing direct tools should be limited to `shell`, `display`, `skill_begin`, `skill_end`, and `sleep`; interface-like tools should be reachable through shell CLI commands.\n\nThe active LLM/runtime path is clean: `AGENT_BUILTIN_TOOL_SCHEMAS` and Runtime `_EXECUTORS` both contain only `display`, `shell`, `skill_begin`, `skill_end`, and `sleep`. The `shell` schema includes the new `desc` field for Agent Monitor display.\n\nThe shell CLI substrate covers the policy-listed shell capabilities: IM operations, subagent spawn, audio QA, payload inspection/interpretation, and host desktop device commands. There are still explicit residual items to track: product metadata still includes `subagent_list` and `subagent_history`; `runtimectl` is installed but currently help-only; HD device tests prove `shell-exec` but do not round-trip every HD proxy subcommand.",
+      "ticket_id": "T000",
+      "verification": []
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "The audit states the expected shell CLI groups and concrete commands.",
+        "The audit states the exact LLM-facing tool set.",
+        "The audit states the exact Runtime executor set.",
+        "The audit maps expected shell capabilities to implementation evidence.",
+        "The audit identifies whether prompts point to CLI commands or old direct tools.",
+        "The audit identifies whether tests guard the boundary.",
+        "Any gap is specific enough to become a follow-up problem."
+      ],
+      "assumptions": [
+        "`display`, `skill_begin`, `skill_end`, and `sleep` intentionally remain outside shell.",
+        "`shell` is the only general-purpose entry point for migrated interface capabilities.",
+        "Internal HTTP endpoints may remain if they are only used by shell CLI adapters."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "Read-only audit with concrete inventories and targeted verification; low risk and directly checkable.",
+      "created_at": "2026-05-09T11:20:46+00:00",
+      "id": "T000",
+      "problem_definition": "The architecture now intends most interface tools to live inside shell as CLI commands. The risk is that some old tool surfaces may still exist as LLM schemas, Runtime direct executors, prompt instructions, or unguarded compatibility branches, while some intended shell capabilities may be missing from the actual sandbox CLI implementation.",
+      "problem_id": "P000",
+      "proposed_solution": "Perform a bounded read-only audit across the relevant repositories:\n\n1. Enumerate canonical outside-shell harness tools from common/cortex schemas.\n2. Enumerate Runtime direct executors.\n3. Enumerate Cortex sandbox CLI command families and subcommands.\n4. Enumerate prompt/instruction references that teach agents how to use tools.\n5. Search for migrated direct tool residue.\n6. Review tests that enforce the boundary.\n7. Produce an evidence-mapped result and call out precise gaps if any.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Some internal backend APIs share names with old tools; the audit must not misclassify backend APIs used by shell CLIs as LLM/Runtime direct residue.",
+        "The repository is already dirty with prior work; do not revert unrelated changes."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Audit shell CLI capability cutover",
+      "updated_at": "2026-05-09T11:25:25+00:00",
+      "verification_plan": "Use repository-local shell commands only:\n\n- Python inventory checks for schema and executor sets.\n- `rg` searches for old direct tool symbols.\n- Source reads of `novaic_cortex/sandbox.py`, common schema files, Runtime tool handlers, prompt defaults, and tests.\n- Targeted test runs where useful and cheap."
+    }
+  },
+  "updated_at": "2026-05-09T11:25:55+00:00"
+}

@@ -1,0 +1,186 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-09T08:09:24+00:00",
+      "criteria_map": [
+        "Detailed phased construction plan -> covered by `R000` sections 3, 4, 8, and 9.",
+        "Concrete tickets with file/module targets -> covered by each phase ticket in section 3.",
+        "Cross-repo boundaries -> covered by Runtime, Cortex, Device, Business, Monitor/UI file targets.",
+        "Explicit dependency boundaries and context-bloat guardrails -> covered by sections 5, 6, and 7.",
+        "Strategy for moving IM/subagent/device/payload into shell -> covered by Phase 5.",
+        "Final cutover criteria and physical deletion -> covered by Phase 7 and section 7."
+      ],
+      "evidence": [
+        "Result `R000` defines eight phases from baseline guardrails through deploy/smoke.",
+        "Result `R000` maps current-state evidence to real files: Runtime tool dispatch, environment tools, device tools, Cortex projection, LLM preparation, multimodal handling, user attachment handling, and activity projection.",
+        "Result `R000` lists concrete tickets per phase with files, work, acceptance, verification, and deletion gates.",
+        "Result `R000` explicitly states the final LLM-visible tool set and forbidden direct tools.",
+        "Result `R000` includes old-code cleanup checklist and cutover definition of done.",
+        "Runtime code was not changed."
+      ],
+      "execution_map": [
+        "Ticket `T000` was classified `one_go` because the requested output was one detailed construction plan, not implementation.",
+        "Result `R000` records the plan.",
+        "No child problems were needed for the design-only task."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Non-blocking: exact CLI names and shell mounting mechanism remain implementation choices.",
+        "Non-blocking: security/audit schemas need code-level tickets.",
+        "Non-blocking: full test matrix was not run because this was design-only and no runtime code changed."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Failure mode: plan adds new shell capabilities but leaves old direct tools active. Result `R000` includes Phase 7 shrink/delete gates and final forbidden-tool checks.",
+        "Failure mode: plan is too abstract to execute. Result `R000` names concrete modules and pytest commands.",
+        "Failure mode: display gets collapsed into shell. Result `R000` keeps display outside shell and treats it as explicit perception.",
+        "Failure mode: context bloat remains. Result `R000` requires ToolOutputV1, manifest-only history, deletion of generic multimodal extraction, and large-output preview/ref policy."
+      ],
+      "summary": "The construction plan result solves the requested planning problem. It converts the prior system design into dependency-ordered phases and concrete implementation tickets, with file targets, acceptance criteria, verification commands, deletion gates, and final cutover criteria. It does not implement runtime code changes."
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-09T08:05:21+00:00",
+  "ledger_id": "L20260509-160521",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-09T08:05:21+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "Create a detailed construction plan for implementing the previously designed unified tool shell boundary:\n\n- Harness primitives outside shell: `shell`, `display`, `skill_begin`, `skill_end`, `sleep`.\n- Environment interface capabilities inside shell: IM, subagent, device, blob/file, payload/Cortex reads, runtime inspection, business/environment APIs.\n- Tool outputs as bounded text plus artifact/resource URI manifests.\n- Cortex history stores manifests and refs, not raw sensory bytes.\n- Display remains explicit perception.\n\nThis turn is plan/design only. Do not implement runtime code changes.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Produce a detailed phased construction plan with dependency order, milestones, and rollback/cleanup gates.",
+        "Break the work into concrete implementation tickets with file/module targets, acceptance criteria, verification commands, and deletion/compat cleanup expectations.",
+        "Identify cross-repo boundaries between Runtime, Cortex, Device, Blob, Business, UI/Monitor, and tests.",
+        "Include explicit dependency boundaries, hidden input risks, durable output/manifest contract, and context-bloat guardrails.",
+        "Include a strategy for moving IM/subagent/device/payload capabilities into shell without breaking observability or safety.",
+        "Include final cutover criteria proving old harness-level tools are removed or quarantined, not merely unused."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Tool shell boundary construction plan",
+      "updated_at": "2026-05-09T08:09:24+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "Root problem: `.complex-problems/tool-shell-boundary-construction-plan-root.md`",
+        "Ticket: `.complex-problems/tool-shell-boundary-construction-plan-ticket.md`",
+        "Result/plan: `.complex-problems/tool-shell-boundary-construction-plan-result.md`"
+      ],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-09T08:09:01+00:00",
+      "done": [
+        "Created a schema-v6 solve-complex-problems ledger for the construction plan.",
+        "Reviewed the prior system design ledger `L20260509-160042`.",
+        "Inspected representative current code paths:",
+        "`novaic-agent-runtime/task_queue/handlers/tool_handlers.py`",
+        "`novaic-agent-runtime/task_queue/handlers/environment_tool_handlers.py`",
+        "`novaic-agent-runtime/task_queue/device_tools.py`",
+        "`novaic-agent-runtime/task_queue/contracts/llm_call.py`",
+        "`novaic-agent-runtime/task_queue/utils/step_result_client.py`",
+        "`novaic-agent-runtime/task_queue/utils/context.py`",
+        "`novaic-agent-runtime/task_queue/utils/multimodal.py`",
+        "`novaic-agent-runtime/task_queue/utils/user_content.py`",
+        "`novaic-agent-runtime/task_queue/utils/activity_projection.py`",
+        "`novaic-cortex/novaic_cortex/workspace.py`",
+        "`novaic-cortex/novaic_cortex/step_result_projection.py`",
+        "Mapped the current direct-tool surface to concrete cleanup gates.",
+        "Produced phased implementation tickets with file targets and verification."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "Exact CLI command names are proposed, not finalized.",
+        "The plan assumes the shell runtime can mount internal CLIs/filesystem views with scoped credentials.",
+        "Security policy and audit schema are specified at construction level, but exact table/entity schemas need implementation tickets.",
+        "This plan does not deploy or test code because it intentionally does not implement code changes."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "This is a construction plan, not an implementation patch. The plan turns the prior system design into dependency-ordered implementation phases with concrete tickets, module targets, verification commands, and deletion gates.\n\nThe migration should be treated as a **kernel shrink + capability-plane buildout + old-path deletion** project:\n\n```text\nPhase 0: baseline freeze and guardrails\nPhase 1: ToolOutputV1 + ArtifactManifest substrate\nPhase 2: Cortex manifest-aware storage/projection\nPhase 3: shell capability substrate\nPhase 4: resource-first producers: shell/display/device/audio/payload\nPhase 5: move IM/subagent/payload/device/audio APIs behind shell\nPhase 6: monitor/UI artifact projection\nPhase 7: physical deletion of legacy harness tools and multimodal compat\nPhase 8: deploy, smoke, rollback, and production observability\n```\n\nThe non-negotiable cutover test is:\n\n```text\nThe LLM-visible tool list contains only:\nshell, display, skill_begin, skill_end, sleep\n\nAll former interface tools are reachable through shell capabilities,\nand old direct harness paths are either deleted or hard-failed by guard tests.\n```",
+      "ticket_id": "T000",
+      "verification": [
+        "The plan maps to real code evidence:",
+        "direct Runtime executors are centralized in `_EXECUTORS` in `tool_handlers.py`;",
+        "direct IM executors live in `environment_tool_handlers.py`;",
+        "dynamic device tool execution currently returns Device responses as-is in `device_tools.py`;",
+        "Cortex projection currently parses `_mcp_content`, `display_files`, and `data:` URLs in `step_result_projection.py`;",
+        "LLM preparation still runs `expand_messages_for_llm`, `sanitize_context`, and `process_multimodal_messages` in `llm_call.py`;",
+        "legacy multimodal extraction can still synthesize user image messages from tool results in `context.py` / `multimodal.py`.",
+        "The plan includes deletion gates, not just additive new code.",
+        "Runtime code was not changed in this ticket."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "The plan is concrete enough to execute as future tickets.",
+        "The plan maps each phase to likely source modules and test surfaces.",
+        "The plan explicitly prevents the anti-pattern \"new path exists but old path still runs\".",
+        "The plan includes compatibility windows and mandatory physical deletion gates.",
+        "The plan covers ToolOutputV1, artifact manifests, Cortex projection, shell capability substrate, display hardening, IM/subagent/device migration, monitor projection, and architecture guards.",
+        "The plan records verification and residual risks."
+      ],
+      "assumptions": [
+        "This is a design/plan turn only.",
+        "Existing worktree may already contain unrelated modifications; do not revert or rely on them.",
+        "Future implementation should follow the user's AI-era principle: code is cheap, branch residue and stale paths are expensive."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "Plan/design-only deliverable: one detailed phased construction plan, with future tickets embedded, no runtime code changes.",
+      "created_at": "2026-05-09T08:05:38+00:00",
+      "id": "T000",
+      "problem_definition": "The previous design established the target tool boundary, but not the actual construction plan. The missing piece is a detailed, dependency-ordered plan that engineers/agents can execute later without accidentally adding new code while leaving old harness paths alive.",
+      "problem_id": "P000",
+      "proposed_solution": "Inspect the current Runtime/Cortex/Device/Business shape enough to map the migration to real modules. Then produce a phased construction plan with:\n\n- phase goals and sequencing;\n- concrete implementation tickets;\n- touched modules/files;\n- acceptance criteria;\n- verification commands;\n- cleanup/deletion gates;\n- risk controls and rollback boundaries;\n- final cutover criteria.\n\nNo production code changes should be made in this ticket.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "The plan could become too broad; mitigate by breaking phases into crisp tickets.",
+        "Real code may differ during later implementation; mitigate by including discovery gates at the start of each phase.",
+        "Compatibility cleanup is easy to postpone; mitigate by making deletion gates phase acceptance criteria."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Design phased construction plan for shell boundary migration",
+      "updated_at": "2026-05-09T08:09:01+00:00",
+      "verification_plan": "- Compare the result against root success criteria.\n- Verify the plan cites real existing source locations.\n- Verify no runtime code changes were made.\n- Validate/render the ledger."
+    }
+  },
+  "updated_at": "2026-05-09T08:09:24+00:00"
+}

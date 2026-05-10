@@ -1,0 +1,448 @@
+{"at": "2026-05-10T05:02:36+00:00", "id": "E000", "payload": {"ledger_id": "L20260510-130236", "root_id": "P000", "title": "Implement LogicalFS RO/RW authority boundary end to end"}, "root_id": "P000", "type": "ledger_initialized"}
+{"at": "2026-05-10T05:02:58+00:00", "id": "E001", "payload": {"problem_id": "P000", "ticket_id": "T000", "title": "Split implementation into boundary-enforced phases"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T05:02:58+00:00", "id": "E002", "payload": {"from": "created", "id": "T000", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:03:04+00:00", "id": "E003", "payload": {"from": "defined", "id": "T000", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:03:04+00:00", "id": "E004", "payload": {"classification": "split", "reason": "Cross-cutting architecture migration needs inventory, active-path cutover, Blob boundary cleanup, legacy cleanup, guardrails, and verification as separately closed child problems", "ticket_id": "T000"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T05:03:38+00:00", "id": "E005", "payload": {"from": "classified", "id": "T000", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:03:38+00:00", "id": "E006", "payload": {"parent_id": "P000", "problem_id": "P001", "title": "Audit current live RO/RW active paths"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T05:03:38+00:00", "id": "E007", "payload": {"parent_id": "P000", "problem_id": "P002", "title": "Cut Cortex live RO/RW operations behind LogicalFS"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T05:03:38+00:00", "id": "E008", "payload": {"parent_id": "P000", "problem_id": "P003", "title": "Enforce sandboxd as process-only execution boundary"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T05:03:38+00:00", "id": "E009", "payload": {"parent_id": "P000", "problem_id": "P004", "title": "Clean Blob boundary and live RO/RW bypasses"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T05:03:38+00:00", "id": "E010", "payload": {"parent_id": "P000", "problem_id": "P005", "title": "Final verification, cleanup, and deployment readiness"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T05:03:56+00:00", "id": "E011", "payload": {"problem_id": "P001", "ticket_id": "T001", "title": "Audit active LogicalFS and legacy RO/RW paths"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T05:03:56+00:00", "id": "E012", "payload": {"from": "created", "id": "T001", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:03:56+00:00", "id": "E013", "payload": {"from": "defined", "id": "T001", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:03:56+00:00", "id": "E014", "payload": {"classification": "one_go", "reason": "Bounded read-only source audit with immediate evidence collection", "ticket_id": "T001"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T05:05:10+00:00", "id": "E015", "payload": {"from": "todo", "id": "P001", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:05:10+00:00", "id": "E016", "payload": {"from": "classified", "id": "T001", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:05:10+00:00", "id": "E017", "payload": {"from": "executing", "id": "T001", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:05:10+00:00", "id": "E018", "payload": {"result_id": "R000", "ticket_id": "T001"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T05:05:27+00:00", "id": "E019", "payload": {"from": "doing", "id": "P001", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:05:27+00:00", "id": "E020", "payload": {"from": "checking", "id": "P001", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:05:27+00:00", "id": "E021", "payload": {"check_id": "C000", "followup_id": null, "problem_id": "P001", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T05:10:35+00:00", "id": "E022", "payload": {"problem_id": "P002", "ticket_id": "T002", "title": "Move Workspace live file operations behind a LogicalFS authority port"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T05:10:35+00:00", "id": "E023", "payload": {"from": "created", "id": "T002", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:10:35+00:00", "id": "E024", "payload": {"from": "defined", "id": "T002", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:10:35+00:00", "id": "E025", "payload": {"classification": "one_go", "reason": "Focused in-process boundary cutover with immediate residue scan and targeted tests", "ticket_id": "T002"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T05:11:11+00:00", "id": "E026", "payload": {"from": "todo", "id": "P002", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:11:11+00:00", "id": "E027", "payload": {"from": "classified", "id": "T002", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:11:11+00:00", "id": "E028", "payload": {"from": "executing", "id": "T002", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:11:11+00:00", "id": "E029", "payload": {"result_id": "R001", "ticket_id": "T002"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T05:11:35+00:00", "id": "E030", "payload": {"from": "doing", "id": "P002", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:11:35+00:00", "id": "E031", "payload": {"from": "checking", "id": "P002", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:11:35+00:00", "id": "E032", "payload": {"check_id": "C001", "followup_id": null, "problem_id": "P002", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T05:11:57+00:00", "id": "E033", "payload": {"problem_id": "P003", "ticket_id": "T003", "title": "Add sandboxd process-boundary guardrails"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T05:11:57+00:00", "id": "E034", "payload": {"from": "created", "id": "T003", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:11:57+00:00", "id": "E035", "payload": {"from": "defined", "id": "T003", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:11:57+00:00", "id": "E036", "payload": {"classification": "one_go", "reason": "Small boundary guardrail addition with direct sandbox-service tests", "ticket_id": "T003"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T05:13:08+00:00", "id": "E037", "payload": {"from": "todo", "id": "P003", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:13:08+00:00", "id": "E038", "payload": {"from": "classified", "id": "T003", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:13:08+00:00", "id": "E039", "payload": {"from": "executing", "id": "T003", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:13:08+00:00", "id": "E040", "payload": {"result_id": "R002", "ticket_id": "T003"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T05:13:26+00:00", "id": "E041", "payload": {"from": "doing", "id": "P003", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:13:26+00:00", "id": "E042", "payload": {"from": "checking", "id": "P003", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:13:26+00:00", "id": "E043", "payload": {"check_id": "C002", "followup_id": null, "problem_id": "P003", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T05:13:47+00:00", "id": "E044", "payload": {"problem_id": "P004", "ticket_id": "T004", "title": "Split Blob boundary cleanup into auditable subproblems"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T05:13:47+00:00", "id": "E045", "payload": {"from": "created", "id": "T004", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:13:47+00:00", "id": "E046", "payload": {"from": "defined", "id": "T004", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:13:47+00:00", "id": "E047", "payload": {"classification": "split", "reason": "Direct Blob boundary cleanup spans audit, guardrails, stale documentation cleanup, and targeted verification; one_go would risk hiding bypasses", "ticket_id": "T004"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T05:14:11+00:00", "id": "E048", "payload": {"from": "classified", "id": "T004", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:14:11+00:00", "id": "E049", "payload": {"parent_id": "P004", "problem_id": "P006", "title": "Audit direct Blob and object API usage"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T05:14:11+00:00", "id": "E050", "payload": {"parent_id": "P004", "problem_id": "P007", "title": "Add Blob live RO/RW bypass guardrails"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T05:14:11+00:00", "id": "E051", "payload": {"parent_id": "P004", "problem_id": "P008", "title": "Clean stale Blob workspace ownership language"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T05:14:11+00:00", "id": "E052", "payload": {"parent_id": "P004", "problem_id": "P009", "title": "Verify Blob boundary cleanup"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T05:14:32+00:00", "id": "E053", "payload": {"problem_id": "P006", "ticket_id": "T005", "title": "Classify direct Blob and object API usage"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T05:14:32+00:00", "id": "E054", "payload": {"from": "created", "id": "T005", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:14:32+00:00", "id": "E055", "payload": {"from": "defined", "id": "T005", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:14:32+00:00", "id": "E056", "payload": {"classification": "one_go", "reason": "Read-only focused audit with bounded scans and no implementation changes", "ticket_id": "T005"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T05:17:49+00:00", "id": "E057", "payload": {"from": "todo", "id": "P006", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:17:49+00:00", "id": "E058", "payload": {"from": "classified", "id": "T005", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:17:49+00:00", "id": "E059", "payload": {"from": "executing", "id": "T005", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:17:49+00:00", "id": "E060", "payload": {"result_id": "R003", "ticket_id": "T005"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T05:18:20+00:00", "id": "E061", "payload": {"from": "doing", "id": "P006", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:18:20+00:00", "id": "E062", "payload": {"from": "checking", "id": "P006", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:18:20+00:00", "id": "E063", "payload": {"check_id": "C003", "followup_id": null, "problem_id": "P006", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T05:18:54+00:00", "id": "E064", "payload": {"problem_id": "P007", "ticket_id": "T006", "title": "Add LogicalFS Blob Boundary Guardrails"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T05:18:54+00:00", "id": "E065", "payload": {"from": "created", "id": "T006", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:19:10+00:00", "id": "E066", "payload": {"from": "defined", "id": "T006", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:19:10+00:00", "id": "E067", "payload": {"classification": "split", "reason": "Guardrail work has separable closure concerns: define the allowlist, implement the scanner/test, and prove positive plus negative behavior. Splitting prevents a vague one-pass guardrail that might miss bypasses.", "ticket_id": "T006"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T05:19:41+00:00", "id": "E068", "payload": {"from": "classified", "id": "T006", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:19:41+00:00", "id": "E069", "payload": {"parent_id": "P007", "problem_id": "P010", "title": "Define Blob Boundary Guardrail Allowlist"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T05:19:41+00:00", "id": "E070", "payload": {"parent_id": "P007", "problem_id": "P011", "title": "Implement Blob Boundary Guardrail Test"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T05:19:41+00:00", "id": "E071", "payload": {"parent_id": "P007", "problem_id": "P012", "title": "Prove Blob Boundary Guardrail Behavior"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T05:20:11+00:00", "id": "E072", "payload": {"problem_id": "P010", "ticket_id": "T007", "title": "Encode Blob Boundary Guardrail Policy"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T05:20:11+00:00", "id": "E073", "payload": {"from": "created", "id": "T007", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:20:18+00:00", "id": "E074", "payload": {"from": "defined", "id": "T007", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:20:18+00:00", "id": "E075", "payload": {"classification": "one_go", "reason": "Focused, bounded policy definition: one support module plus import/syntax verification, with no runtime behavior change.", "ticket_id": "T007"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T05:21:34+00:00", "id": "E076", "payload": {"from": "todo", "id": "P010", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:21:34+00:00", "id": "E077", "payload": {"from": "classified", "id": "T007", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:21:34+00:00", "id": "E078", "payload": {"from": "executing", "id": "T007", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:21:34+00:00", "id": "E079", "payload": {"result_id": "R004", "ticket_id": "T007"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T05:22:02+00:00", "id": "E080", "payload": {"from": "doing", "id": "P010", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:22:02+00:00", "id": "E081", "payload": {"from": "checking", "id": "P010", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:22:02+00:00", "id": "E082", "payload": {"check_id": "C004", "followup_id": null, "problem_id": "P010", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T05:22:45+00:00", "id": "E083", "payload": {"problem_id": "P011", "ticket_id": "T008", "title": "Add Blob Boundary Source Scanner Test"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T05:22:45+00:00", "id": "E084", "payload": {"from": "created", "id": "T008", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:22:55+00:00", "id": "E085", "payload": {"from": "defined", "id": "T008", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:22:55+00:00", "id": "E086", "payload": {"classification": "one_go", "reason": "Focused scanner implementation: one test file consuming the already-defined policy, plus targeted pytest verification.", "ticket_id": "T008"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T05:24:30+00:00", "id": "E087", "payload": {"from": "todo", "id": "P011", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:24:30+00:00", "id": "E088", "payload": {"from": "classified", "id": "T008", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:24:30+00:00", "id": "E089", "payload": {"from": "executing", "id": "T008", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:24:30+00:00", "id": "E090", "payload": {"result_id": "R005", "ticket_id": "T008"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T05:24:51+00:00", "id": "E091", "payload": {"from": "doing", "id": "P011", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:24:51+00:00", "id": "E092", "payload": {"from": "checking", "id": "P011", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:24:51+00:00", "id": "E093", "payload": {"check_id": "C005", "followup_id": null, "problem_id": "P011", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T05:25:22+00:00", "id": "E094", "payload": {"problem_id": "P012", "ticket_id": "T009", "title": "Prove Blob Boundary Scanner Positive And Negative Behavior"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T05:25:22+00:00", "id": "E095", "payload": {"from": "created", "id": "T009", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:25:28+00:00", "id": "E096", "payload": {"from": "defined", "id": "T009", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:25:28+00:00", "id": "E097", "payload": {"classification": "one_go", "reason": "Focused proof step: add positive/negative snippet assertions to the existing guardrail test and run the targeted file.", "ticket_id": "T009"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T05:26:00+00:00", "id": "E098", "payload": {"from": "todo", "id": "P012", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:26:00+00:00", "id": "E099", "payload": {"from": "classified", "id": "T009", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:26:00+00:00", "id": "E100", "payload": {"from": "executing", "id": "T009", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:26:00+00:00", "id": "E101", "payload": {"result_id": "R006", "ticket_id": "T009"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T05:26:16+00:00", "id": "E102", "payload": {"from": "doing", "id": "P012", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:26:16+00:00", "id": "E103", "payload": {"from": "checking", "id": "P012", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:26:16+00:00", "id": "E104", "payload": {"check_id": "C006", "followup_id": null, "problem_id": "P012", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T05:26:38+00:00", "id": "E105", "payload": {"from": "todo", "id": "P007", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:26:38+00:00", "id": "E106", "payload": {"from": "splitting", "id": "T006", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:26:38+00:00", "id": "E107", "payload": {"result_id": "R007", "ticket_id": "T006"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T05:26:55+00:00", "id": "E108", "payload": {"from": "doing", "id": "P007", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:26:55+00:00", "id": "E109", "payload": {"from": "checking", "id": "P007", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:26:55+00:00", "id": "E110", "payload": {"check_id": "C007", "followup_id": null, "problem_id": "P007", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T05:27:24+00:00", "id": "E111", "payload": {"problem_id": "P008", "ticket_id": "T010", "title": "Clean Stale Blob Workspace Ownership Language"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T05:27:24+00:00", "id": "E112", "payload": {"from": "created", "id": "T010", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:27:30+00:00", "id": "E113", "payload": {"from": "defined", "id": "T010", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:27:30+00:00", "id": "E114", "payload": {"classification": "split", "reason": "The cleanup spans code comments, architecture/reference docs, and residual verification. Splitting keeps semantic edits and verification distinct instead of hiding stale wording in a broad pass.", "ticket_id": "T010"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T05:27:52+00:00", "id": "E115", "payload": {"from": "classified", "id": "T010", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:27:52+00:00", "id": "E116", "payload": {"parent_id": "P008", "problem_id": "P013", "title": "Clean Stale Blob Language In Code Comments"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T05:27:52+00:00", "id": "E117", "payload": {"parent_id": "P008", "problem_id": "P014", "title": "Clean Stale Blob Language In Architecture Docs"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T05:27:52+00:00", "id": "E118", "payload": {"parent_id": "P008", "problem_id": "P015", "title": "Verify Stale Blob Language Cleanup"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T05:28:11+00:00", "id": "E119", "payload": {"problem_id": "P013", "ticket_id": "T011", "title": "Update Code-Adjacent Blob Boundary Language"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T05:28:11+00:00", "id": "E120", "payload": {"from": "created", "id": "T011", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:28:16+00:00", "id": "E121", "payload": {"from": "defined", "id": "T011", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:28:16+00:00", "id": "E122", "payload": {"classification": "one_go", "reason": "Bounded text cleanup in a known set of code comments/docstrings, with guardrail test verification.", "ticket_id": "T011"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T05:29:14+00:00", "id": "E123", "payload": {"from": "todo", "id": "P013", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:29:14+00:00", "id": "E124", "payload": {"from": "classified", "id": "T011", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:29:14+00:00", "id": "E125", "payload": {"from": "executing", "id": "T011", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:29:14+00:00", "id": "E126", "payload": {"result_id": "R008", "ticket_id": "T011"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T05:29:30+00:00", "id": "E127", "payload": {"from": "doing", "id": "P013", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:29:30+00:00", "id": "E128", "payload": {"from": "checking", "id": "P013", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:29:30+00:00", "id": "E129", "payload": {"check_id": "C008", "followup_id": null, "problem_id": "P013", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T05:29:48+00:00", "id": "E130", "payload": {"problem_id": "P014", "ticket_id": "T012", "title": "Update Architecture Docs For LogicalFS Authority Boundary"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T05:29:48+00:00", "id": "E131", "payload": {"from": "created", "id": "T012", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:29:53+00:00", "id": "E132", "payload": {"from": "defined", "id": "T012", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:29:53+00:00", "id": "E133", "payload": {"classification": "one_go", "reason": "Known finite documentation cleanup from prior scans; no runtime behavior change, followed by residual verification child P015.", "ticket_id": "T012"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T05:32:16+00:00", "id": "E134", "payload": {"from": "todo", "id": "P014", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:32:16+00:00", "id": "E135", "payload": {"from": "classified", "id": "T012", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:32:16+00:00", "id": "E136", "payload": {"from": "executing", "id": "T012", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:32:16+00:00", "id": "E137", "payload": {"result_id": "R009", "ticket_id": "T012"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T05:32:32+00:00", "id": "E138", "payload": {"from": "doing", "id": "P014", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:32:32+00:00", "id": "E139", "payload": {"from": "checking", "id": "P014", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:32:32+00:00", "id": "E140", "payload": {"check_id": "C009", "followup_id": null, "problem_id": "P014", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T05:32:51+00:00", "id": "E141", "payload": {"problem_id": "P015", "ticket_id": "T013", "title": "Verify Blob Language Residue"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T05:32:51+00:00", "id": "E142", "payload": {"from": "created", "id": "T013", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:32:57+00:00", "id": "E143", "payload": {"from": "defined", "id": "T013", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:32:57+00:00", "id": "E144", "payload": {"classification": "one_go", "reason": "Verification-only pass: scans plus targeted guardrail test, with no new design surface.", "ticket_id": "T013"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T05:33:45+00:00", "id": "E145", "payload": {"from": "todo", "id": "P015", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:33:46+00:00", "id": "E146", "payload": {"from": "classified", "id": "T013", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:33:46+00:00", "id": "E147", "payload": {"from": "executing", "id": "T013", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:33:46+00:00", "id": "E148", "payload": {"result_id": "R010", "ticket_id": "T013"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T05:34:02+00:00", "id": "E149", "payload": {"from": "doing", "id": "P015", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:34:02+00:00", "id": "E150", "payload": {"from": "checking", "id": "P015", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:34:02+00:00", "id": "E151", "payload": {"check_id": "C010", "followup_id": null, "problem_id": "P015", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T05:34:20+00:00", "id": "E152", "payload": {"from": "todo", "id": "P008", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:34:20+00:00", "id": "E153", "payload": {"from": "splitting", "id": "T010", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:34:20+00:00", "id": "E154", "payload": {"result_id": "R011", "ticket_id": "T010"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T05:34:35+00:00", "id": "E155", "payload": {"from": "doing", "id": "P008", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:34:35+00:00", "id": "E156", "payload": {"from": "checking", "id": "P008", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:34:35+00:00", "id": "E157", "payload": {"check_id": "C011", "followup_id": null, "problem_id": "P008", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T05:35:06+00:00", "id": "E158", "payload": {"problem_id": "P009", "ticket_id": "T014", "title": "Verify Blob Boundary Cleanup End To End"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T05:35:06+00:00", "id": "E159", "payload": {"from": "created", "id": "T014", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:35:12+00:00", "id": "E160", "payload": {"from": "defined", "id": "T014", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:35:12+00:00", "id": "E161", "payload": {"classification": "one_go", "reason": "Verification-only pass over defined targeted tests and scans; no broad implementation work remains in this child.", "ticket_id": "T014"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T05:35:49+00:00", "id": "E162", "payload": {"from": "todo", "id": "P009", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:35:49+00:00", "id": "E163", "payload": {"from": "classified", "id": "T014", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:35:49+00:00", "id": "E164", "payload": {"from": "executing", "id": "T014", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:35:49+00:00", "id": "E165", "payload": {"result_id": "R012", "ticket_id": "T014"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T05:36:08+00:00", "id": "E166", "payload": {"from": "doing", "id": "P009", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:36:08+00:00", "id": "E167", "payload": {"from": "checking", "id": "P009", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:36:08+00:00", "id": "E168", "payload": {"check_id": "C012", "followup_id": null, "problem_id": "P009", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T05:36:25+00:00", "id": "E169", "payload": {"from": "todo", "id": "P004", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:36:25+00:00", "id": "E170", "payload": {"from": "splitting", "id": "T004", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:36:25+00:00", "id": "E171", "payload": {"result_id": "R013", "ticket_id": "T004"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T05:36:41+00:00", "id": "E172", "payload": {"from": "doing", "id": "P004", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:36:41+00:00", "id": "E173", "payload": {"from": "checking", "id": "P004", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:36:41+00:00", "id": "E174", "payload": {"check_id": "C013", "followup_id": null, "problem_id": "P004", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T05:37:10+00:00", "id": "E175", "payload": {"problem_id": "P005", "ticket_id": "T015", "title": "Final Verification Cleanup And Deployment Readiness"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T05:37:10+00:00", "id": "E176", "payload": {"from": "created", "id": "T015", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:37:17+00:00", "id": "E177", "payload": {"from": "defined", "id": "T015", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:37:17+00:00", "id": "E178", "payload": {"classification": "split", "reason": "Final closure has independent concerns: tests/scans, diff cleanup review, and deployment readiness. Splitting prevents a vague all-green claim.", "ticket_id": "T015"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T05:38:02+00:00", "id": "E179", "payload": {"from": "classified", "id": "T015", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:38:02+00:00", "id": "E180", "payload": {"parent_id": "P005", "problem_id": "P016", "title": "Final Tests And Residue Scans"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T05:38:02+00:00", "id": "E181", "payload": {"parent_id": "P005", "problem_id": "P017", "title": "Final Diff Review And Cleanup"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T05:38:02+00:00", "id": "E182", "payload": {"parent_id": "P005", "problem_id": "P018", "title": "Deployment Readiness Report"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T05:38:37+00:00", "id": "E183", "payload": {"problem_id": "P016", "ticket_id": "T016", "title": "Run Final Tests And Residue Scans"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T05:38:37+00:00", "id": "E184", "payload": {"from": "created", "id": "T016", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:38:49+00:00", "id": "E185", "payload": {"from": "defined", "id": "T016", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:38:49+00:00", "id": "E186", "payload": {"classification": "one_go", "reason": "Verification-only command batch with explicit outcomes; failures can be recorded as result/check follow-ups.", "ticket_id": "T016"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T05:40:02+00:00", "id": "E187", "payload": {"from": "todo", "id": "P016", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:40:02+00:00", "id": "E188", "payload": {"from": "classified", "id": "T016", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:40:02+00:00", "id": "E189", "payload": {"from": "executing", "id": "T016", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:40:02+00:00", "id": "E190", "payload": {"result_id": "R014", "ticket_id": "T016"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T05:40:23+00:00", "id": "E191", "payload": {"from": "doing", "id": "P016", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:40:23+00:00", "id": "E192", "payload": {"from": "checking", "id": "P016", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:40:23+00:00", "id": "E193", "payload": {"check_id": "C014", "followup_id": null, "problem_id": "P016", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T05:40:43+00:00", "id": "E194", "payload": {"problem_id": "P017", "ticket_id": "T017", "title": "Review Final Diff And Cleanup State"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T05:40:43+00:00", "id": "E195", "payload": {"from": "created", "id": "T017", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:40:49+00:00", "id": "E196", "payload": {"from": "defined", "id": "T017", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:40:49+00:00", "id": "E197", "payload": {"classification": "one_go", "reason": "Review-only pass with focused diff/stat inspection and no broad implementation changes.", "ticket_id": "T017"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T05:41:39+00:00", "id": "E198", "payload": {"from": "todo", "id": "P017", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:41:39+00:00", "id": "E199", "payload": {"from": "classified", "id": "T017", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:41:39+00:00", "id": "E200", "payload": {"from": "executing", "id": "T017", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:41:39+00:00", "id": "E201", "payload": {"result_id": "R015", "ticket_id": "T017"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T05:41:58+00:00", "id": "E202", "payload": {"from": "doing", "id": "P017", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:41:58+00:00", "id": "E203", "payload": {"from": "checking", "id": "P017", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:41:58+00:00", "id": "E204", "payload": {"check_id": "C015", "followup_id": null, "problem_id": "P017", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T05:42:31+00:00", "id": "E205", "payload": {"problem_id": "P018", "ticket_id": "T018", "title": "Record Deployment Readiness"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T05:42:31+00:00", "id": "E206", "payload": {"from": "created", "id": "T018", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:42:39+00:00", "id": "E207", "payload": {"from": "defined", "id": "T018", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:42:39+00:00", "id": "E208", "payload": {"classification": "one_go", "reason": "Readiness/report-only ticket: inspect deployment scripts and record whether deployment was run.", "ticket_id": "T018"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T05:43:14+00:00", "id": "E209", "payload": {"from": "todo", "id": "P018", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:43:14+00:00", "id": "E210", "payload": {"from": "classified", "id": "T018", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:43:14+00:00", "id": "E211", "payload": {"from": "executing", "id": "T018", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:43:14+00:00", "id": "E212", "payload": {"result_id": "R016", "ticket_id": "T018"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T05:43:35+00:00", "id": "E213", "payload": {"from": "doing", "id": "P018", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:43:35+00:00", "id": "E214", "payload": {"from": "checking", "id": "P018", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:43:35+00:00", "id": "E215", "payload": {"check_id": "C016", "followup_id": null, "problem_id": "P018", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T05:43:56+00:00", "id": "E216", "payload": {"from": "todo", "id": "P005", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:43:56+00:00", "id": "E217", "payload": {"from": "splitting", "id": "T015", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:43:56+00:00", "id": "E218", "payload": {"result_id": "R017", "ticket_id": "T015"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T05:44:20+00:00", "id": "E219", "payload": {"from": "doing", "id": "P005", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:44:20+00:00", "id": "E220", "payload": {"from": "checking", "id": "P005", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:44:20+00:00", "id": "E221", "payload": {"check_id": "C017", "followup_id": null, "problem_id": "P005", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T05:44:57+00:00", "id": "E222", "payload": {"from": "todo", "id": "P000", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:44:57+00:00", "id": "E223", "payload": {"from": "splitting", "id": "T000", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:44:57+00:00", "id": "E224", "payload": {"result_id": "R018", "ticket_id": "T000"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T05:45:36+00:00", "id": "E225", "payload": {"from": "doing", "id": "P000", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:45:36+00:00", "id": "E226", "payload": {"from": "checking", "id": "P000", "to": "followup"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:45:36+00:00", "id": "E227", "payload": {"check_id": "C018", "followup_id": "P019", "problem_id": "P000", "status": "not_success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T05:48:46+00:00", "id": "E228", "payload": {"problem_id": "P019", "ticket_id": "T019", "title": "Move Live RO/RW Authority Into LogicalFS Boundary"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T05:48:46+00:00", "id": "E229", "payload": {"from": "created", "id": "T019", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:48:54+00:00", "id": "E230", "payload": {"from": "defined", "id": "T019", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:48:54+00:00", "id": "E231", "payload": {"classification": "split", "reason": "Cross-package boundary migration across logicalfs, cortex, blob adapter, guardrails, and tests; one-go would hide bypasses and follow-up gaps.", "ticket_id": "T019"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T05:49:42+00:00", "id": "E232", "payload": {"from": "classified", "id": "T019", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:49:42+00:00", "id": "E233", "payload": {"parent_id": "P019", "problem_id": "P020", "title": "Audit Active RO/RW Authority And Construction Paths"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T05:49:42+00:00", "id": "E234", "payload": {"parent_id": "P019", "problem_id": "P021", "title": "Add Generic LogicalFS Live File Authority"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T05:49:42+00:00", "id": "E235", "payload": {"parent_id": "P019", "problem_id": "P022", "title": "Move Blob Object Persistence Below LogicalFS"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T05:49:43+00:00", "id": "E236", "payload": {"parent_id": "P019", "problem_id": "P023", "title": "Cut Cortex Workspace Runtime To LogicalFS Authority"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T05:49:43+00:00", "id": "E237", "payload": {"parent_id": "P019", "problem_id": "P024", "title": "Delete Old Authority Paths And Strengthen Guardrails"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T05:51:34+00:00", "id": "E238", "payload": {"from": "todo", "id": "P020", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:52:00+00:00", "id": "E239", "payload": {"problem_id": "P020", "ticket_id": "T020", "title": "Audit Live File Authority Paths Before Cutover"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T05:52:00+00:00", "id": "E240", "payload": {"from": "created", "id": "T020", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:52:06+00:00", "id": "E241", "payload": {"from": "defined", "id": "T020", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:52:06+00:00", "id": "E242", "payload": {"classification": "one_go", "reason": "Bounded read-only source audit with concrete symbol scans and result recording; implementation is deferred to later child problems.", "ticket_id": "T020"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T05:53:29+00:00", "id": "E243", "payload": {"from": "classified", "id": "T020", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:53:29+00:00", "id": "E244", "payload": {"from": "executing", "id": "T020", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:53:29+00:00", "id": "E245", "payload": {"result_id": "R019", "ticket_id": "T020"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T05:54:21+00:00", "id": "E246", "payload": {"from": "doing", "id": "P020", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:54:21+00:00", "id": "E247", "payload": {"from": "checking", "id": "P020", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:54:21+00:00", "id": "E248", "payload": {"check_id": "C019", "followup_id": null, "problem_id": "P020", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T05:54:28+00:00", "id": "E249", "payload": {"from": "todo", "id": "P021", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:55:02+00:00", "id": "E250", "payload": {"problem_id": "P021", "ticket_id": "T021", "title": "Implement Generic LogicalFS Live Authority"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T05:55:02+00:00", "id": "E251", "payload": {"from": "created", "id": "T021", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:55:08+00:00", "id": "E252", "payload": {"from": "defined", "id": "T021", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:55:08+00:00", "id": "E253", "payload": {"classification": "one_go", "reason": "Single-package LogicalFS substrate addition with focused tests; integration and cleanup are separate child problems.", "ticket_id": "T021"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T05:57:04+00:00", "id": "E254", "payload": {"from": "classified", "id": "T021", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:57:04+00:00", "id": "E255", "payload": {"from": "executing", "id": "T021", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:57:04+00:00", "id": "E256", "payload": {"result_id": "R020", "ticket_id": "T021"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T05:57:30+00:00", "id": "E257", "payload": {"from": "doing", "id": "P021", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:57:30+00:00", "id": "E258", "payload": {"from": "checking", "id": "P021", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:57:30+00:00", "id": "E259", "payload": {"check_id": "C020", "followup_id": null, "problem_id": "P021", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T05:57:38+00:00", "id": "E260", "payload": {"from": "todo", "id": "P022", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T05:58:07+00:00", "id": "E261", "payload": {"problem_id": "P022", "ticket_id": "T022", "title": "Move Blob Object Store Adapter Into LogicalFS"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T05:58:07+00:00", "id": "E262", "payload": {"from": "created", "id": "T022", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:58:14+00:00", "id": "E263", "payload": {"from": "defined", "id": "T022", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T05:58:14+00:00", "id": "E264", "payload": {"classification": "one_go", "reason": "Bounded adapter ownership move plus targeted registry/test updates; deeper Workspace authority cutover remains P023.", "ticket_id": "T022"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T06:00:29+00:00", "id": "E265", "payload": {"from": "classified", "id": "T022", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:00:29+00:00", "id": "E266", "payload": {"from": "executing", "id": "T022", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:00:29+00:00", "id": "E267", "payload": {"result_id": "R021", "ticket_id": "T022"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T06:00:55+00:00", "id": "E268", "payload": {"from": "doing", "id": "P022", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:00:55+00:00", "id": "E269", "payload": {"from": "checking", "id": "P022", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:00:55+00:00", "id": "E270", "payload": {"check_id": "C021", "followup_id": null, "problem_id": "P022", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T06:01:10+00:00", "id": "E271", "payload": {"from": "todo", "id": "P023", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:01:32+00:00", "id": "E272", "payload": {"problem_id": "P023", "ticket_id": "T023", "title": "Cut Cortex Active Runtime To LogicalFS Authority"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T06:01:32+00:00", "id": "E273", "payload": {"from": "created", "id": "T023", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:01:38+00:00", "id": "E274", "payload": {"from": "defined", "id": "T023", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:01:38+00:00", "id": "E275", "payload": {"classification": "split", "reason": "Workspace/runtime/registry/test migration is broad and has high hidden-compatibility risk; needs smaller child problems before implementation.", "ticket_id": "T023"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T06:02:11+00:00", "id": "E276", "payload": {"from": "classified", "id": "T023", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:02:11+00:00", "id": "E277", "payload": {"parent_id": "P023", "problem_id": "P025", "title": "Add Cortex Workspace LogicalFS Factory And Test Authority Helper"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T06:02:11+00:00", "id": "E278", "payload": {"parent_id": "P023", "problem_id": "P026", "title": "Refactor Workspace To Depend On LogicalFS Authority"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T06:02:11+00:00", "id": "E279", "payload": {"parent_id": "P023", "problem_id": "P027", "title": "Refactor Runtime And Registry Wiring To LogicalFS Authority"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T06:02:11+00:00", "id": "E280", "payload": {"parent_id": "P023", "problem_id": "P028", "title": "Migrate Cortex Tests And Prove Shell Cutover"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T06:02:18+00:00", "id": "E281", "payload": {"from": "todo", "id": "P025", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:02:48+00:00", "id": "E282", "payload": {"problem_id": "P025", "ticket_id": "T024", "title": "Add Cortex LogicalFS Authority Factory"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T06:02:48+00:00", "id": "E283", "payload": {"from": "created", "id": "T024", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:02:48+00:00", "id": "E284", "payload": {"from": "defined", "id": "T024", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:02:48+00:00", "id": "E285", "payload": {"classification": "one_go", "reason": "Small Cortex-side factory and focused tests only; constructor migration is split into later child problems.", "ticket_id": "T024"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T06:04:02+00:00", "id": "E286", "payload": {"from": "classified", "id": "T024", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:04:02+00:00", "id": "E287", "payload": {"from": "executing", "id": "T024", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:04:02+00:00", "id": "E288", "payload": {"result_id": "R022", "ticket_id": "T024"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T06:04:29+00:00", "id": "E289", "payload": {"from": "doing", "id": "P025", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:04:29+00:00", "id": "E290", "payload": {"from": "checking", "id": "P025", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:04:29+00:00", "id": "E291", "payload": {"check_id": "C022", "followup_id": null, "problem_id": "P025", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T06:04:40+00:00", "id": "E292", "payload": {"from": "todo", "id": "P026", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:05:05+00:00", "id": "E293", "payload": {"problem_id": "P026", "ticket_id": "T025", "title": "Refactor Workspace Constructor To LogicalFS Authority"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T06:05:05+00:00", "id": "E294", "payload": {"from": "created", "id": "T025", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:05:05+00:00", "id": "E295", "payload": {"from": "defined", "id": "T025", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:05:05+00:00", "id": "E296", "payload": {"classification": "one_go", "reason": "Focused Workspace constructor boundary refactor; runtime/registry and full test migration are separate child problems.", "ticket_id": "T025"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T06:07:09+00:00", "id": "E297", "payload": {"from": "classified", "id": "T025", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:07:09+00:00", "id": "E298", "payload": {"from": "executing", "id": "T025", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:07:09+00:00", "id": "E299", "payload": {"result_id": "R023", "ticket_id": "T025"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T06:07:33+00:00", "id": "E300", "payload": {"from": "doing", "id": "P026", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:07:33+00:00", "id": "E301", "payload": {"from": "checking", "id": "P026", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:07:33+00:00", "id": "E302", "payload": {"check_id": "C023", "followup_id": null, "problem_id": "P026", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T06:07:47+00:00", "id": "E303", "payload": {"from": "todo", "id": "P027", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:08:09+00:00", "id": "E304", "payload": {"problem_id": "P027", "ticket_id": "T026", "title": "Refactor Runtime And Registry Wiring"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T06:08:09+00:00", "id": "E305", "payload": {"from": "created", "id": "T026", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:08:09+00:00", "id": "E306", "payload": {"from": "defined", "id": "T026", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:08:09+00:00", "id": "E307", "payload": {"classification": "one_go", "reason": "Focused runtime/registry wiring change; broad test migration is already split into P028.", "ticket_id": "T026"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T06:09:48+00:00", "id": "E308", "payload": {"from": "classified", "id": "T026", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:09:48+00:00", "id": "E309", "payload": {"from": "executing", "id": "T026", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:09:48+00:00", "id": "E310", "payload": {"result_id": "R024", "ticket_id": "T026"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T06:10:07+00:00", "id": "E311", "payload": {"from": "doing", "id": "P027", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:10:07+00:00", "id": "E312", "payload": {"from": "checking", "id": "P027", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:10:07+00:00", "id": "E313", "payload": {"check_id": "C024", "followup_id": null, "problem_id": "P027", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T06:10:19+00:00", "id": "E314", "payload": {"from": "todo", "id": "P028", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:10:42+00:00", "id": "E315", "payload": {"problem_id": "P028", "ticket_id": "T027", "title": "Migrate Tests And Prove Cortex Cutover"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T06:10:42+00:00", "id": "E316", "payload": {"from": "created", "id": "T027", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:10:42+00:00", "id": "E317", "payload": {"from": "defined", "id": "T027", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:10:42+00:00", "id": "E318", "payload": {"classification": "split", "reason": "Broad test migration and final verification should be split to avoid preserving compatibility branches or missing live behavior.", "ticket_id": "T027"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T06:11:06+00:00", "id": "E319", "payload": {"from": "classified", "id": "T027", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:11:06+00:00", "id": "E320", "payload": {"parent_id": "P028", "problem_id": "P029", "title": "Migrate Remaining Workspace Constructor Tests"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T06:11:06+00:00", "id": "E321", "payload": {"parent_id": "P028", "problem_id": "P030", "title": "Migrate Direct Cortex Constructor Tests"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T06:11:06+00:00", "id": "E322", "payload": {"parent_id": "P028", "problem_id": "P031", "title": "Full Cutover Verification And Residue Scan"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T06:11:14+00:00", "id": "E323", "payload": {"from": "todo", "id": "P029", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:11:33+00:00", "id": "E324", "payload": {"problem_id": "P029", "ticket_id": "T028", "title": "Migrate Remaining Workspace Tests"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T06:11:33+00:00", "id": "E325", "payload": {"from": "created", "id": "T028", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:11:34+00:00", "id": "E326", "payload": {"from": "defined", "id": "T028", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:11:34+00:00", "id": "E327", "payload": {"classification": "one_go", "reason": "Bounded test migration slice with search/patch/targeted verification.", "ticket_id": "T028"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T06:16:36+00:00", "id": "E328", "payload": {"from": "classified", "id": "T028", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:16:36+00:00", "id": "E329", "payload": {"from": "executing", "id": "T028", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:16:36+00:00", "id": "E330", "payload": {"result_id": "R025", "ticket_id": "T028"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T06:17:20+00:00", "id": "E331", "payload": {"from": "doing", "id": "P029", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:17:20+00:00", "id": "E332", "payload": {"from": "checking", "id": "P029", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:17:20+00:00", "id": "E333", "payload": {"check_id": "C025", "followup_id": null, "problem_id": "P029", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T06:17:29+00:00", "id": "E334", "payload": {"from": "todo", "id": "P030", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:17:57+00:00", "id": "E335", "payload": {"problem_id": "P030", "ticket_id": "T029", "title": "Ticket: Migrate Direct Cortex Constructor Tests"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T06:17:57+00:00", "id": "E336", "payload": {"from": "created", "id": "T029", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:18:05+00:00", "id": "E337", "payload": {"from": "defined", "id": "T029", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:18:05+00:00", "id": "E338", "payload": {"classification": "one_go", "reason": "Mechanical test-constructor migration with bounded residue scan and targeted pytest verification", "ticket_id": "T029"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T06:21:18+00:00", "id": "E339", "payload": {"from": "classified", "id": "T029", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:21:18+00:00", "id": "E340", "payload": {"from": "executing", "id": "T029", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:21:18+00:00", "id": "E341", "payload": {"result_id": "R026", "ticket_id": "T029"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T06:21:52+00:00", "id": "E342", "payload": {"from": "doing", "id": "P030", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:21:52+00:00", "id": "E343", "payload": {"from": "checking", "id": "P030", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:21:52+00:00", "id": "E344", "payload": {"check_id": "C026", "followup_id": null, "problem_id": "P030", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T06:22:05+00:00", "id": "E345", "payload": {"from": "todo", "id": "P031", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:22:46+00:00", "id": "E346", "payload": {"problem_id": "P031", "ticket_id": "T030", "title": "Ticket: Full Cutover Verification And Residue Scan"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T06:22:46+00:00", "id": "E347", "payload": {"from": "created", "id": "T030", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:23:01+00:00", "id": "E348", "payload": {"from": "defined", "id": "T030", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:23:01+00:00", "id": "E349", "payload": {"classification": "one_go", "reason": "Verification and residue scan are bounded, and implementation follow-ups will be created from check if any gap appears", "ticket_id": "T030"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T06:24:51+00:00", "id": "E350", "payload": {"from": "classified", "id": "T030", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:24:51+00:00", "id": "E351", "payload": {"from": "executing", "id": "T030", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:24:51+00:00", "id": "E352", "payload": {"result_id": "R027", "ticket_id": "T030"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T06:25:16+00:00", "id": "E353", "payload": {"from": "doing", "id": "P031", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:25:16+00:00", "id": "E354", "payload": {"from": "checking", "id": "P031", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:25:16+00:00", "id": "E355", "payload": {"check_id": "C027", "followup_id": null, "problem_id": "P031", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T06:25:46+00:00", "id": "E356", "payload": {"from": "splitting", "id": "T027", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:25:46+00:00", "id": "E357", "payload": {"result_id": "R028", "ticket_id": "T027"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T06:26:06+00:00", "id": "E358", "payload": {"from": "doing", "id": "P028", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:26:06+00:00", "id": "E359", "payload": {"from": "checking", "id": "P028", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:26:06+00:00", "id": "E360", "payload": {"check_id": "C028", "followup_id": null, "problem_id": "P028", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T06:27:20+00:00", "id": "E361", "payload": {"from": "splitting", "id": "T023", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:27:20+00:00", "id": "E362", "payload": {"result_id": "R029", "ticket_id": "T023"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T06:27:51+00:00", "id": "E363", "payload": {"from": "doing", "id": "P023", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:27:51+00:00", "id": "E364", "payload": {"from": "checking", "id": "P023", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:27:51+00:00", "id": "E365", "payload": {"check_id": "C029", "followup_id": null, "problem_id": "P023", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T06:28:10+00:00", "id": "E366", "payload": {"from": "todo", "id": "P024", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:28:51+00:00", "id": "E367", "payload": {"problem_id": "P024", "ticket_id": "T031", "title": "Ticket: Delete Old Authority Paths And Strengthen Guardrails"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T06:28:51+00:00", "id": "E368", "payload": {"from": "created", "id": "T031", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:29:02+00:00", "id": "E369", "payload": {"from": "defined", "id": "T031", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:29:02+00:00", "id": "E370", "payload": {"classification": "split", "reason": "Cleanup spans source deletion, guardrail policy, docs, and final verification; split to avoid half-cleaned residue", "ticket_id": "T031"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T06:29:51+00:00", "id": "E371", "payload": {"from": "classified", "id": "T031", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:29:51+00:00", "id": "E372", "payload": {"parent_id": "P024", "problem_id": "P032", "title": "Delete Old Cortex Authority Source"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T06:29:52+00:00", "id": "E373", "payload": {"parent_id": "P024", "problem_id": "P033", "title": "Tighten LogicalFS Boundary Guardrails"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T06:29:52+00:00", "id": "E374", "payload": {"parent_id": "P024", "problem_id": "P034", "title": "Rewrite Final LogicalFS Architecture Docs"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T06:29:52+00:00", "id": "E375", "payload": {"parent_id": "P024", "problem_id": "P035", "title": "Final Old Authority Cleanup Verification"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-10T06:29:59+00:00", "id": "E376", "payload": {"from": "todo", "id": "P032", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:30:20+00:00", "id": "E377", "payload": {"problem_id": "P032", "ticket_id": "T032", "title": "Ticket: Delete Old Cortex Authority Source"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T06:30:20+00:00", "id": "E378", "payload": {"from": "created", "id": "T032", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:30:20+00:00", "id": "E379", "payload": {"from": "defined", "id": "T032", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:30:20+00:00", "id": "E380", "payload": {"classification": "one_go", "reason": "Bounded source deletion and wording cleanup with direct scans/tests", "ticket_id": "T032"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T06:31:32+00:00", "id": "E381", "payload": {"from": "classified", "id": "T032", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:31:32+00:00", "id": "E382", "payload": {"from": "executing", "id": "T032", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:31:32+00:00", "id": "E383", "payload": {"result_id": "R030", "ticket_id": "T032"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T06:31:53+00:00", "id": "E384", "payload": {"from": "doing", "id": "P032", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:31:53+00:00", "id": "E385", "payload": {"from": "checking", "id": "P032", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:31:53+00:00", "id": "E386", "payload": {"check_id": "C030", "followup_id": null, "problem_id": "P032", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T06:32:03+00:00", "id": "E387", "payload": {"from": "todo", "id": "P033", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:32:24+00:00", "id": "E388", "payload": {"problem_id": "P033", "ticket_id": "T033", "title": "Ticket: Tighten LogicalFS Boundary Guardrails"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T06:32:24+00:00", "id": "E389", "payload": {"from": "created", "id": "T033", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:32:24+00:00", "id": "E390", "payload": {"from": "defined", "id": "T033", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:32:24+00:00", "id": "E391", "payload": {"classification": "one_go", "reason": "Single guardrail policy cleanup with targeted test and scan verification", "ticket_id": "T033"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T06:34:27+00:00", "id": "E392", "payload": {"from": "classified", "id": "T033", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:34:27+00:00", "id": "E393", "payload": {"from": "executing", "id": "T033", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:34:27+00:00", "id": "E394", "payload": {"result_id": "R031", "ticket_id": "T033"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T06:34:47+00:00", "id": "E395", "payload": {"from": "doing", "id": "P033", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:34:47+00:00", "id": "E396", "payload": {"from": "checking", "id": "P033", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:34:47+00:00", "id": "E397", "payload": {"check_id": "C031", "followup_id": null, "problem_id": "P033", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T06:34:56+00:00", "id": "E398", "payload": {"from": "todo", "id": "P034", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:35:18+00:00", "id": "E399", "payload": {"problem_id": "P034", "ticket_id": "T034", "title": "Ticket: Rewrite Final LogicalFS Architecture Docs"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T06:35:18+00:00", "id": "E400", "payload": {"from": "created", "id": "T034", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:35:18+00:00", "id": "E401", "payload": {"from": "defined", "id": "T034", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:35:18+00:00", "id": "E402", "payload": {"classification": "one_go", "reason": "Documentation rewrite is bounded by residue scans over canonical docs and historical roadmap notes", "ticket_id": "T034"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T06:38:00+00:00", "id": "E403", "payload": {"from": "classified", "id": "T034", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:38:00+00:00", "id": "E404", "payload": {"from": "executing", "id": "T034", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:38:00+00:00", "id": "E405", "payload": {"result_id": "R032", "ticket_id": "T034"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T06:38:20+00:00", "id": "E406", "payload": {"from": "doing", "id": "P034", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:38:20+00:00", "id": "E407", "payload": {"from": "checking", "id": "P034", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:38:20+00:00", "id": "E408", "payload": {"check_id": "C032", "followup_id": null, "problem_id": "P034", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T06:38:28+00:00", "id": "E409", "payload": {"from": "todo", "id": "P035", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:38:54+00:00", "id": "E410", "payload": {"problem_id": "P035", "ticket_id": "T035", "title": "Ticket: Final Old Authority Cleanup Verification"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T06:38:54+00:00", "id": "E411", "payload": {"from": "created", "id": "T035", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:38:54+00:00", "id": "E412", "payload": {"from": "defined", "id": "T035", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:38:54+00:00", "id": "E413", "payload": {"classification": "one_go", "reason": "Final verification is bounded to tests plus residue scans; any issue becomes follow-up", "ticket_id": "T035"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T06:40:11+00:00", "id": "E414", "payload": {"from": "classified", "id": "T035", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:40:11+00:00", "id": "E415", "payload": {"from": "executing", "id": "T035", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:40:11+00:00", "id": "E416", "payload": {"result_id": "R033", "ticket_id": "T035"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T06:40:34+00:00", "id": "E417", "payload": {"from": "doing", "id": "P035", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:40:34+00:00", "id": "E418", "payload": {"from": "checking", "id": "P035", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:40:34+00:00", "id": "E419", "payload": {"check_id": "C033", "followup_id": null, "problem_id": "P035", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T06:41:01+00:00", "id": "E420", "payload": {"from": "splitting", "id": "T031", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:41:01+00:00", "id": "E421", "payload": {"result_id": "R034", "ticket_id": "T031"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T06:41:23+00:00", "id": "E422", "payload": {"from": "doing", "id": "P024", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:41:23+00:00", "id": "E423", "payload": {"from": "checking", "id": "P024", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:41:23+00:00", "id": "E424", "payload": {"check_id": "C034", "followup_id": null, "problem_id": "P024", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T06:41:54+00:00", "id": "E425", "payload": {"from": "followup", "id": "P019", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:41:54+00:00", "id": "E426", "payload": {"from": "splitting", "id": "T019", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:41:54+00:00", "id": "E427", "payload": {"result_id": "R035", "ticket_id": "T019"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T06:42:33+00:00", "id": "E428", "payload": {"from": "doing", "id": "P019", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:42:33+00:00", "id": "E429", "payload": {"from": "checking", "id": "P019", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:42:33+00:00", "id": "E430", "payload": {"check_id": "C035", "followup_id": null, "problem_id": "P019", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T06:45:41+00:00", "id": "E431", "payload": {"from": "followup", "id": "P000", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:45:41+00:00", "id": "E432", "payload": {"from": "checking", "id": "P000", "to": "followup"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:45:41+00:00", "id": "E433", "payload": {"check_id": "C036", "followup_id": "P036", "problem_id": "P000", "status": "not_success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T06:46:05+00:00", "id": "E434", "payload": {"problem_id": "P036", "ticket_id": "T036", "title": "Ticket: Fix Canonical Test Matrix LogicalFS Dependency Boundary"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-10T06:46:05+00:00", "id": "E435", "payload": {"from": "created", "id": "T036", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:46:05+00:00", "id": "E436", "payload": {"from": "defined", "id": "T036", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:46:05+00:00", "id": "E437", "payload": {"classification": "one_go", "reason": "Single test-matrix dependency boundary fix already verified by canonical matrix", "ticket_id": "T036"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-10T06:46:32+00:00", "id": "E438", "payload": {"from": "followup", "id": "P036", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:46:33+00:00", "id": "E439", "payload": {"from": "classified", "id": "T036", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:46:33+00:00", "id": "E440", "payload": {"from": "executing", "id": "T036", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-10T06:46:33+00:00", "id": "E441", "payload": {"result_id": "R036", "ticket_id": "T036"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-10T06:46:54+00:00", "id": "E442", "payload": {"from": "doing", "id": "P036", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:46:54+00:00", "id": "E443", "payload": {"from": "checking", "id": "P036", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:46:54+00:00", "id": "E444", "payload": {"check_id": "C037", "followup_id": null, "problem_id": "P036", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-10T06:47:31+00:00", "id": "E445", "payload": {"from": "followup", "id": "P000", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:47:31+00:00", "id": "E446", "payload": {"from": "checking", "id": "P000", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-10T06:47:31+00:00", "id": "E447", "payload": {"check_id": "C038", "followup_id": null, "problem_id": "P000", "status": "success"}, "root_id": "P000", "type": "check_recorded"}

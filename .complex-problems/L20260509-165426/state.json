@@ -1,0 +1,158 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C000.md",
+      "created_at": "2026-05-09T08:58:40+00:00",
+      "criteria_map": [
+        "Read command calls Environment read and checkpoints observed ids: satisfied by integration test state checks.",
+        "Reply command enforces read-before-reply and reply cap: implemented through Cortex meta read/counter; cap counter verified by integration test.",
+        "Send/history/search/context call matching Environment endpoints: implemented in generated script.",
+        "File-friendly message option: `--message-file` verified by integration test.",
+        "Commands print JSON and fail closed: implemented via JSON print and nonzero exits on validation/blocking errors."
+      ],
+      "evidence": [
+        "`novaic-cortex/novaic_cortex/sandbox.py` generated `agentctl` script now implements `im` subcommands.",
+        "`novaic-cortex/tests/test_shell_capability_runtime.py` verifies read/reply behavior from a real shell subprocess against local fake HTTP endpoints.",
+        "Runtime and Cortex focused tests passed."
+      ],
+      "execution_map": [
+        "Built command parser into generated `agentctl`.",
+        "Reused explicit capability env from the previous ticket.",
+        "Added local fake HTTP server test to exercise subprocess behavior rather than only source-level behavior."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Direct external IM tools remain visible until the separate schema cutover and deletion tickets are completed."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The test executes two command calls in one shell command, proving the generated script can read files from RW, make HTTP calls, update Cortex meta, and call Business endpoints from inside the disposable sandbox."
+      ],
+      "summary": "agentctl im commands now perform Environment read/reply/send/history/search/context from shell with Cortex meta checkpoint/counter support."
+    }
+  },
+  "counters": {
+    "check": 1,
+    "event": 12,
+    "problem": 1,
+    "result": 1,
+    "ticket": 1
+  },
+  "created_at": "2026-05-09T08:54:26+00:00",
+  "ledger_id": "L20260509-165426",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-09T08:54:26+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "The final tool boundary requires IM interface tools to move behind shell, but `agentctl` currently exposes only help text. Without real `agentctl im ...` behavior, removing direct `im_read`/`im_reply` would break agent communication.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`agentctl im read` can call the Environment IM read endpoint and checkpoint observed message ids into Cortex meta.",
+        "`agentctl im reply` can enforce read-before-reply and reply cap using Cortex meta, then call the Environment reply endpoint.",
+        "`agentctl im send/history/search/context` can call the matching Environment endpoints.",
+        "Commands support file-friendly options where relevant, such as `--message-file`.",
+        "Tests prove at least read/reply round trips through local HTTP fake endpoints from inside the shell sandbox."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "agentctl IM shell command implementation",
+      "updated_at": "2026-05-09T08:58:40+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [],
+      "body_path": "problems/P000/results/R000.md",
+      "created_at": "2026-05-09T08:58:18+00:00",
+      "done": [
+        "Extended `agentctl --help` with IM command usage.",
+        "Implemented:",
+        "`agentctl im read`",
+        "`agentctl im reply`",
+        "`agentctl im send`",
+        "`agentctl im history`",
+        "`agentctl im search`",
+        "`agentctl im context`",
+        "`agentctl im read` marks observed message ids in Cortex meta.",
+        "`agentctl im reply` enforces read-before-reply from Cortex meta.",
+        "`agentctl im reply` increments the `im_reply` Cortex counter and enforces `NOVAIC_MAX_USER_REPLIES_PER_SESSION`.",
+        "`agentctl im reply/send` support `--message-file`.",
+        "Added a sandbox subprocess integration test using a local fake HTTP server for Business/Cortex endpoints."
+      ],
+      "id": "R000",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Implemented real `agentctl im` shell commands in the sandbox-generated command substrate. The commands can now call Environment IM endpoints and Cortex meta endpoints from inside shell.",
+      "ticket_id": "T000",
+      "verification": [
+        "Ran `python -m pytest tests/test_shell_capability_runtime.py -q` in `novaic-cortex`.",
+        "Result: `4 passed`.",
+        "Ran `python -m pytest tests/test_shell_capability_runtime.py tests/test_sandbox_sync.py tests/test_sandbox_limits.py -q`.",
+        "Result: `15 passed`.",
+        "Ran `python -m pytest tests/unit/task_queue/test_shell_output_contract.py tests/test_runtime_explicit_contracts.py tests/test_pr71_no_tool_retry_context_cleanup.py -q` in `novaic-agent-runtime`.",
+        "Result: `23 passed`."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Read command returns Environment read JSON and records observed message ids in Cortex meta.",
+        "Reply command blocks when current input ids are unobserved.",
+        "Reply command increments the Cortex `im_reply` counter and blocks when over cap.",
+        "Reply command supports `--message-file`.",
+        "Commands print bounded JSON responses to stdout and return nonzero on command/validation failures.",
+        "Tests use a local fake HTTP server from within the sandbox to verify read and reply behavior."
+      ],
+      "assumptions": [
+        "Business internal Environment endpoints are reachable from the shell process using `NOVAIC_BUSINESS_URL`."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "one_go",
+      "classification_reason": "Implementing first real shell IM capability slice is bounded within generated command script plus tests",
+      "created_at": "2026-05-09T08:54:46+00:00",
+      "id": "T000",
+      "problem_definition": "`agentctl` is now installed in shell and receives runtime context, but it cannot execute IM operations. Direct LLM-facing IM tools therefore cannot be removed yet.",
+      "problem_id": "P000",
+      "proposed_solution": "Implement `agentctl im` subcommands inside the generated sandbox command script:\n\n- `agentctl im read [--notification-id ID ...] [--limit N]`\n- `agentctl im reply --message TEXT | --message-file PATH`\n- `agentctl im send --target ID --message TEXT | --message-file PATH`\n- `agentctl im history/search/context`\n\nThe command should use:\n\n- `NOVAIC_BUSINESS_URL` for Environment API calls;\n- `NOVAIC_API` plus `NOVAIC_USER_ID`/`NOVAIC_AGENT_ID`/`NOVAIC_SCOPE_ID` for Cortex meta reads/updates/counters;\n- `NOVAIC_SUBAGENT_ID` for sender identity;\n- `NOVAIC_WAKE_SCOPE_PATH` for exact Cortex meta targeting.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Generated script complexity can grow. Mitigation: keep command parser small and add tests.",
+        "This only makes shell commands capable; a later schema cutover is still required to remove direct tools."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Implement agentctl IM commands",
+      "updated_at": "2026-05-09T08:58:18+00:00",
+      "verification_plan": "- Add focused Cortex sandbox tests for `agentctl im read` and `agentctl im reply`.\n- Run shell capability tests and sandbox sync tests."
+    }
+  },
+  "updated_at": "2026-05-09T08:58:40+00:00"
+}

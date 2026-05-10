@@ -15,8 +15,9 @@
   references and keeps prompt-facing observations small.
 - Large bytes belong to Blob Service; Cortex owns only work-trace semantics,
   payload refs, and projection rules.
-- `blob_store.py` implements the production `CortexStore` over Blob Service
-  object APIs. Cortex does not own S3/OSS credentials.
+- Live `/ro` and `/rw` files go through LogicalFS. The Blob object adapter lives
+  in `novaic-logicalfs`, below that file authority. Cortex does not own S3/OSS
+  credentials or Blob object API details.
 
 ## 3. `step_result_projection.py`
 

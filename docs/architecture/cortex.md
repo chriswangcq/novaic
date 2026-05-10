@@ -60,7 +60,7 @@ Agent Runtime 在 `session_init` 时确保一个长期存在的 `agent_root` sco
 | 组件 | 文件 | 职责 |
 |------|------|------|
 | `Workspace` | `workspace.py` | `/ro`/`/rw` ACL、scope 创建/结束/归档、step/context CRUD |
-| `WorkspaceRegistry` | `registry.py` | 按 user 缓存 `BlobCortexStore`，按 `(user_id, agent_id)` 缓存 `Workspace` |
+| `WorkspaceRegistry` | `registry.py` | 按 `(user_id, agent_id)` 缓存 `Workspace`，并装配位于 LogicalFS 边界下方的 store adapter |
 | `ContextEngine` | `context_stack/engine.py` | LLM messages 拼装入口 |
 | `StepTreeBuilder` | `context_stack/step_tree.py` | 从 `_index.jsonl` 建树、折叠已关闭 scope |
 | `budget_compact` | `context_stack/budget.py` | token 预算压缩 |
