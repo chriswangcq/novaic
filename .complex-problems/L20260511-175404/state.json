@@ -1,0 +1,525 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C000.md",
+      "created_at": "2026-05-11T10:02:12+00:00",
+      "criteria_map": [
+        "All P001 criteria satisfied."
+      ],
+      "evidence": [
+        "Deploy status, queue session events/state, queue saga/task failure, Cortex scope projection, and Cortex payload_manifest."
+      ],
+      "execution_map": [
+        "Read-only production inspection only."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P001",
+      "residual_risk": [
+        "Root cause and code repair remain in P002."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Cross-checked against stale UI possibility and persisted queue/Cortex state."
+      ],
+      "summary": "Production state is fully identified: backend is no_active/finalized; exact failure is react_think llm.call unable to resolve a Cortex payload BlobRef."
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/checks/C001.md",
+      "created_at": "2026-05-11T10:29:54+00:00",
+      "criteria_map": [
+        "Explain why the UI looked stuck: mapped to wake finalization through `react_think_failed` after tool completion, while the UI card was stale/completed rather than an active deploy stall.",
+        "Identify the exact technical break: mapped to blob payload URI being used where stable formatted step lookup expected a stable `step_ref`.",
+        "Fix the break: mapped to `workspace.py`, `context_event_writer.py`, `context_event_projection.py`, and `api.py` changes.",
+        "Check related risks: mapped to discovery and fix of the `skill_end` idempotency conflict.",
+        "Verify end to end: mapped to full tests, deploy, and final smoke with clean queue state."
+      ],
+      "evidence": [
+        "The original wake finalized through `compensation:react_think_failed`, proving it was not a still-running wake.",
+        "The failing LLM context expansion reported `Tool result not found` for a `blob://cortex-payload/...` URI.",
+        "The payload manifest showed the blob existed and mapped back to stable source step `step-ref:f1c26fff-6141-4dc1-9702-69f4200fc2e8:round2:shell:1`.",
+        "Code now persists stable `step_ref` separately from blob `payload_ref`, projects stable step refs into tool messages, and keeps formatted lookup compatible with both refs.",
+        "Code now includes stable step identity in tool-step idempotency keys, preventing cross-wake `skill_end:3` conflicts.",
+        "Full Cortex suite passed with `487 passed`.",
+        "Runtime cleanup regression passed with `11 passed`.",
+        "Services were deployed successfully and worker roster was healthy.",
+        "Final smoke message `08ae61f4e3db` reached `session_closed`/`stack_empty`, with all related sagas completed and no non-done queue tasks after the smoke window."
+      ],
+      "execution_map": [
+        "`R001` executed investigation, code changes, tests, deploy, and smoke verification.",
+        "The implementation did not rely on deploy restart alone; it changed the state/reference contract that caused the failure."
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P002",
+      "residual_risk": [
+        "Non-blocking: historical failed task rows from before the fix may remain in the database as audit history, but the final smoke after deploy produced no new non-done tasks.",
+        "Non-blocking: the UI may still show older completed cards until refreshed; backend session state and queue events show clean closure."
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Externalized payload path was tested: a tool result with blob payload still resolves through stable step ref.",
+        "Compatibility path was tested: formatted step lookup can resolve both stable step refs and payload refs.",
+        "Repeated finalization path was tested: `skill_end` idempotency now includes stable step identity, covering repeated `skill_end:3` call ids across wakes.",
+        "Live smoke covered the complete queue/saga/session path through final `stack_empty`."
+      ],
+      "summary": "Success. Result `R001` identifies a concrete non-deploy root cause and records a deployed fix that addresses both the original tool-result lookup failure and the verification-discovered `skill_end` idempotency conflict."
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/checks/C002.md",
+      "created_at": "2026-05-11T10:31:42+00:00",
+      "criteria_map": [
+        "Relevant local tests pass if code changed: satisfied by full Cortex and runtime cleanup tests.",
+        "Deployment or operational recovery complete if needed: satisfied by successful `./deploy services` and healthy workers.",
+        "Production smoke or durable state proves the stuck pattern no longer reproduces: satisfied by final smoke closure with `stack_empty` and no failed/pending tasks after the smoke window."
+      ],
+      "evidence": [
+        "Local verification exists and is relevant: full Cortex tests passed (`487 passed`) and runtime cleanup regression passed (`11 passed`).",
+        "Deployment was completed after the code changes and worker roster was healthy.",
+        "Final smoke message `08ae61f4e3db` was processed after the fix.",
+        "Durable queue/session evidence showed `session_closed` with `finalize_reason=stack_empty`.",
+        "Querying post-fix queue tasks after the smoke window returned no non-done rows."
+      ],
+      "execution_map": [
+        "`R002` executed a bounded production-state verification using durable queue/session evidence.",
+        "The check uses backend durable state rather than the potentially stale UI monitor card."
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P003",
+      "residual_risk": [
+        "Non-blocking: old UI cards and old failed task rows may remain as historical artifacts, but the post-fix smoke window is clean.",
+        "Non-blocking: this check proves the screenshot/tool-completion stall class that reproduced in production; it is not a general proof that every future tool payload shape is correct, which is why regression tests were added."
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The smoke traversed the same high-risk area: tool execution, context expansion, react think/actions, and finalization.",
+        "The exact second bug found during verification, repeated `skill_end:3` idempotency, is covered by the clean post-fix queue task query."
+      ],
+      "summary": "Success. Result `R002` satisfies P003: the repaired production system progressed past the previous tool-completion stall pattern and reached clean wake closure."
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C003.md",
+      "created_at": "2026-05-11T10:32:59+00:00",
+      "criteria_map": [
+        "Production evidence identifies stuck wake/session/saga/task IDs: satisfied by `P001`.",
+        "Root cause tied to a specific transition or service boundary: satisfied by `P002`; the boundary was Cortex context projection/step formatted read for externalized payloads.",
+        "Fix applied to active path, not side branch: satisfied by code changes in active Cortex API/workspace/event writer/projection.",
+        "Tests or production smoke prove wake can progress past failing point: satisfied by `P003`.",
+        "Remaining risks explicit: historical stale UI cards or failed rows may remain as artifacts, but post-fix durable session/task state is clean."
+      ],
+      "evidence": [
+        "`P001 / C000` proved the wake was finalized and failed in `react_think` because context expansion could not resolve a Cortex blob payload as a tool result.",
+        "`P002 / C001` proved the concrete root cause and active-path fix:",
+        "stable `step_ref` is preserved.",
+        "blob `payload_ref` remains payload metadata.",
+        "projection emits stable step refs.",
+        "formatted-step read can resolve both stable refs and payload refs.",
+        "`skill_end` idempotency conflicts are prevented.",
+        "`P003 / C002` proved production recovery after deploy:",
+        "full Cortex suite passed.",
+        "runtime cleanup regression passed.",
+        "deployment completed.",
+        "final smoke reached `stack_empty`.",
+        "no post-fix non-done queue tasks remained."
+      ],
+      "execution_map": [
+        "`R003` summarizes child results `R000`, `R001`, and `R002`.",
+        "The ledger has closed the state-identification, root-cause/fix, and recovery-verification subproblems."
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Non-blocking: UI monitor cards can lag durable backend state; backend queue/session state is authoritative for this incident.",
+        "Non-blocking: broader future tool payload shapes may need their own tests, but regression coverage now protects the known stable-step-ref/blob-payload boundary."
+      ],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The verification covered the exact previously failing class: tool result with externalized blob payload followed by LLM context expansion.",
+        "The verification also covered a second related finalization class: repeated `skill_end:3` call ids across wakes."
+      ],
+      "summary": "Success. The problem is solved: production evidence identified the exact failure, the active code path was fixed, deployment succeeded, and post-fix smoke proved the agent loop can progress past the former screenshot/tool-completion failure point."
+    }
+  },
+  "counters": {
+    "check": 4,
+    "event": 48,
+    "problem": 4,
+    "result": 4,
+    "ticket": 4
+  },
+  "created_at": "2026-05-11T09:54:04+00:00",
+  "ledger_id": "L20260511-175404",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C003"
+      ],
+      "created_at": "2026-05-11T09:54:04+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "Production Agent UI shows the latest user message “再试一下” delivered, and the monitor popup shows the agent reached “尝试 HD 截图 完成”, but the conversation appears stuck without a final user-visible answer. This should not be treated as a deploy availability issue because `./deploy status` reports all backend services and workers healthy. We need determine the concrete state-machine/log/queue cause and fix it if code/config is responsible.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P001",
+        "P002",
+        "P003"
+      ],
+      "success_criteria": [
+        "Identify the exact production wake/session/saga/task state corresponding to the stuck UI.",
+        "Determine whether the stall is in Runtime control flow, Queue/Saga state, Cortex tool result persistence, shell/device capability behavior, or frontend projection.",
+        "Provide evidence from logs or durable state, not guesses.",
+        "If a code/config bug is found, implement and test the fix.",
+        "If no code change is needed, explain the operational cause and recovery action."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Live HD screenshot wake stalls after tool completion",
+      "updated_at": "2026-05-11T10:32:59+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-11T09:55:11+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Find the production rows/log entries for the latest 小马 wake that displayed “尝试 HD 截图 完成” but did not produce a final response. Establish the concrete stuck point before proposing a fix.",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Identify relevant message, session, saga, task, scope, and/or outbox IDs.",
+        "Determine current durable state for each row.",
+        "Cite production logs or DB snapshots as evidence."
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "Identify exact stuck production state",
+      "updated_at": "2026-05-11T10:02:12+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-11T09:55:11+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Using the stuck production state, determine whether the failure is code, configuration, operational row state, or frontend projection. If code/config is responsible, identify the active path to patch.",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Root cause is mapped to a specific state transition, handler, or service boundary.",
+        "Any code/config change needed is identified with file paths.",
+        "If recovery is sufficient, the operational recovery action is explicit and safe."
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "Determine root cause and required fix",
+      "updated_at": "2026-05-11T10:29:54+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P003/README.md",
+      "check_ids": [
+        "C002"
+      ],
+      "created_at": "2026-05-11T09:55:11+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "After the root cause is addressed, prove production can progress past the HD screenshot tool completion point and produce the expected final state or response.",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P003",
+      "parent_id": "P000",
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Relevant local tests pass if code was changed.",
+        "Deployment or operational recovery is complete if needed.",
+        "Production smoke or durable state proves the stuck pattern no longer reproduces."
+      ],
+      "ticket_ids": [
+        "T003"
+      ],
+      "title": "Verify HD screenshot wake recovery",
+      "updated_at": "2026-05-11T10:31:42+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P001/results/R000.md",
+      "created_at": "2026-05-11T10:01:31+00:00",
+      "done": [
+        "Inspected deploy health, queue session state/events, saga/task states, Cortex scope projection, and payload_manifest."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "Root cause/code path still needs repair."
+      ],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "Production state found: services healthy, session no_active, wake finalized via compensation:react_think_failed; llm.call failed resolving blob payload ref.",
+      "ticket_id": "T001",
+      "verification": [
+        "Cross-plane evidence shows not deploy and not active-session stall; exact failure is Tool result not found for available Cortex Blob payload."
+      ]
+    },
+    "R001": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P002/results/R001.md",
+      "created_at": "2026-05-11T10:29:18+00:00",
+      "done": [
+        "The original stall and the verification-discovered idempotency conflict were both fixed, deployed, and smoke tested. The remaining work is problem-level closure verification, not more implementation for this root-cause ticket."
+      ],
+      "id": "R001",
+      "known_gaps": [],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "The screenshot wake was not stuck because deployment or workers were down. It failed after a shell/tool step completed, while preparing the next LLM context. The context projection emitted a blob payload URI as the tool result step reference, but the formatted-step reader only resolved stable `step_ref` values. The LLM provider then rejected context expansion with `Tool result not found: blob://cortex-payload/...`.\n\nDuring verification, a second real bug surfaced: `skill_end` step events could reuse the same idempotency key across wakes because the old key was based on the active root scope plus `call_id` like `skill_end:3`. That caused `/v1/steps/write` conflicts after finalization paths.",
+      "ticket_id": "T002",
+      "verification": [
+        "Targeted Cortex tests passed:",
+        "`tests/test_context_event_writer.py`",
+        "`tests/test_context_event_api_steps_write.py`",
+        "`tests/test_context_event_projection.py`",
+        "`tests/test_step_index_outcome.py`",
+        "Full Cortex suite passed: `487 passed`.",
+        "Agent runtime cleanup regression passed: `tests/test_pr71_no_tool_retry_context_cleanup.py`, `11 passed`.",
+        "`./deploy services` completed successfully.",
+        "Deployed worker roster was healthy:",
+        "task-worker control/execution",
+        "saga-worker",
+        "session-outbox-worker",
+        "saga-outbox-worker",
+        "health",
+        "scheduler",
+        "subscriber",
+        "Final smoke message `08ae61f4e3db` completed:",
+        "session transitioned to `no_active`, generation `5`.",
+        "latest close reason was `stack_empty`.",
+        "all related sagas completed.",
+        "no non-done queue tasks existed after the final smoke window."
+      ]
+    },
+    "R002": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P003/results/R002.md",
+      "created_at": "2026-05-11T10:31:15+00:00",
+      "done": [
+        "The post-fix production path progressed past the previously failing tool completion/context expansion point and reached normal wake closure."
+      ],
+      "id": "R002",
+      "known_gaps": [],
+      "problem_id": "P003",
+      "root_id": "P000",
+      "summary": "Production was verified after the fix and deploy. The final smoke message progressed through the queue/saga/session path and closed normally with `stack_empty`; no post-fix non-done queue tasks were found after the final smoke window.",
+      "ticket_id": "T003",
+      "verification": []
+    },
+    "R003": {
+      "artifacts": [],
+      "body_path": "problems/P000/results/R003.md",
+      "created_at": "2026-05-11T10:32:21+00:00",
+      "done": [
+        "The live stall was diagnosed, fixed, deployed, and verified with durable production state."
+      ],
+      "id": "R003",
+      "known_gaps": [],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "The production issue was traced to a Cortex context/tool-result reference contract bug, not deployment health. The wake had already finalized through a `react_think_failed` compensation path after the screenshot/tool step. The LLM context assembler could not resolve a tool result because a blob payload URI was projected as the step reference.",
+      "ticket_id": "T000",
+      "verification": []
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Production evidence identifies the stuck wake/session/saga/task IDs.",
+        "The root cause is tied to a specific state transition or service boundary.",
+        "Any fix is applied to the active path, not a side branch.",
+        "Tests or production smoke prove the wake can progress past the failing point.",
+        "Remaining risks are explicit."
+      ],
+      "assumptions": [
+        "User’s screenshot corresponds to the currently selected 小马 agent.",
+        "SSH/deploy credentials from the repo are valid for read-only production inspection."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "Production stall diagnosis spans logs, durable state, possible code fix, and smoke verification.",
+      "created_at": "2026-05-11T09:54:30+00:00",
+      "id": "T000",
+      "problem_definition": "The latest production agent wake appears to stop after a tool step labeled “尝试 HD 截图 完成”. Backend processes are healthy, so the likely issue is a workflow state transition, tool result interpretation, queue/saga task state, Cortex stack/finalize state, or frontend projection.",
+      "problem_id": "P000",
+      "proposed_solution": "Inspect production logs and durable state for the affected user/agent around the screenshot timestamp. Trace from Environment message dispatch to session state, saga DAG tasks, tool result save, react_actions decision, Cortex stack status, and final user reply projection. If the trace reveals a code/config bug, patch the active code path and verify with tests and production smoke. If the trace reveals an operational stuck row, recover it and document the exact reason.",
+      "result_ids": [
+        "R003"
+      ],
+      "risks": [
+        "Production DB schema names may differ; inspect schema before querying.",
+        "The UI card may be stale while backend is complete; verify both backend state and frontend-visible messages.",
+        "Avoid destructive recovery unless the exact stuck state is known."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Diagnose production HD screenshot wake stall",
+      "updated_at": "2026-05-11T10:32:21+00:00",
+      "verification_plan": "- Run remote state/log queries against Queue, Runtime, Cortex, Business, and relevant worker logs.\n- Query session/saga/task rows for the affected agent/user and newest wake.\n- If code changes are made, run targeted and full tests for affected repos.\n- Deploy and run a smoke message/tool path if required."
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "Identify newest relevant scope/session/saga/task/outbox IDs.",
+        "Summarize current state and last transition.",
+        "Capture exact evidence pointers from remote logs or DB query output."
+      ],
+      "assumptions": [
+        "Production logs live under `/opt/novaic/data/logs`.",
+        "Production DBs live under `/opt/novaic/data` or service-local configured paths."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "one_go",
+      "classification_reason": "Read-only production state query is bounded and directly verifiable.",
+      "created_at": "2026-05-11T09:55:41+00:00",
+      "id": "T001",
+      "problem_definition": "We need exact production state for the latest 小马 wake that shows HD screenshot tool completion but no final answer.",
+      "problem_id": "P001",
+      "proposed_solution": "Use remote logs and SQLite schemas to locate recent messages containing “再试一下”, “HD 截图”, and the corresponding queue/session/saga/task rows. Inspect logs from runtime workers, queue service, Cortex, sandboxd, Business subscriber, and database tables as needed.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Logs may be large; use bounded grep/tail.",
+        "Message text may be truncated; use timestamps and IDs."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Query production state for stuck HD screenshot wake",
+      "updated_at": "2026-05-11T10:01:31+00:00",
+      "verification_plan": "- Run read-only remote log searches.\n- Inspect DB schema before querying tables.\n- Cross-check IDs across at least two sources."
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "Externalized tool payload events include both stable `step_ref` and concrete `payload_ref`.",
+        "Context projection emits stable `step_ref`, not a BlobRef, for LLM tool-result resolution.",
+        "`steps_read_formatted` can resolve an externalized payload by stable step ref.",
+        "Existing payload inspection by `payload_ref` remains valid.",
+        "Tests fail before the fix and pass after the fix for the production failure mode."
+      ],
+      "assumptions": [
+        "Blob payload externalization is intended and should remain.",
+        "The stable source step ref is the correct identifier for LLM step-result lookup."
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T002.md",
+      "classification": "one_go",
+      "classification_reason": "Root cause is already isolated to one reference-contract mismatch across Cortex event writer/projection/read path; fix is small and directly covered by targeted regression tests.",
+      "created_at": "2026-05-11T10:02:49+00:00",
+      "id": "T002",
+      "problem_definition": "The production wake failed after the HD screenshot tool step completed because the next `llm.call` could not resolve a tool result:\n\n`Tool result not found: blob://cortex-payload/cpx-2d901bb3b40a91c28f3663ec70184dcf167e0017`\n\nThe Blob payload exists and is available in Cortex `payload_manifest`, with a stable source step ref:\n\n`step-ref:f1c26fff-6141-4dc1-9702-69f4200fc2e8:round2:shell:1`\n\nThe suspected root cause is an implicit reference contract mismatch: event/projection code uses `payload_ref` as the LLM message `step_ref`, but formatted step lookup expects the durable step's `step_ref`.",
+      "problem_id": "P002",
+      "proposed_solution": "Make Cortex tool result references explicit and stable:\n\n- Preserve both references when writing `ToolStepRecorded`:\n  - `step_ref`: stable logical tool-step identifier used for step lookup.\n  - `payload_ref`: concrete payload storage identifier, which may be a local step ref or a `blob://cortex-payload/...` ref.\n- Project LLM tool messages with `message.step_ref = step_ref` when available.\n- Preserve `payload_ref` in metadata for payload inspection and audit.\n- Make formatted step lookup robust enough to locate a step by either `step_ref` or `payload_ref`, because both are durable identifiers for the same step.\n- Add regression tests covering externalized Blob payloads flowing through event write, context projection, and formatted step read.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "Existing historical events may only have `payload_ref`; the projection must keep a safe fallback without making new events ambiguous.",
+        "Overloading `step_ref` and `payload_ref` again would reintroduce this bug, so tests must assert both fields explicitly."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Fix Cortex tool-result reference contract",
+      "updated_at": "2026-05-11T10:29:18+00:00",
+      "verification_plan": "- Run targeted Cortex tests for event write/projection/formatted step read.\n- Run relevant runtime step-result-client tests if affected.\n- Re-run a production or local smoke that exercises a shell/tool result followed by another LLM round."
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "Local tests relevant to context step refs, externalized payloads, projection, and runtime cleanup are recorded as passing.",
+        "Deployment is recorded as successful with worker roster healthy.",
+        "Production smoke shows a clean terminal session state after the fix.",
+        "No post-fix non-done queue tasks remain for the smoke window."
+      ],
+      "assumptions": [
+        "The final smoke message `08ae61f4e3db` is the relevant post-fix production verification event.",
+        "Durable queue/session state is sufficient to prove the harness progressed past the previously failing point."
+      ],
+      "body_path": "problems/P000/children/P003/tickets/T003.md",
+      "classification": "one_go",
+      "classification_reason": "Verification is bounded to already-run tests, deploy evidence, and one read-only production smoke audit.",
+      "created_at": "2026-05-11T10:30:37+00:00",
+      "id": "T003",
+      "problem_definition": "P003 needs to prove that production no longer reproduces the HD screenshot/tool-completion stall after the code fix and deploy. The verification must cover local tests, deployment state, and durable queue/session evidence from a live smoke message.",
+      "problem_id": "P003",
+      "proposed_solution": "Use the already executed post-fix verification evidence and, if needed, run a small additional read-only production audit. Confirm that the final smoke progressed to normal session closure, related sagas completed, and no queue tasks remained failed or pending after the smoke window.",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [
+        "UI may show stale monitor cards even after backend session closure; durable queue state is the authority for this check.",
+        "Historical failed task rows from before the fix may remain; the check must filter by post-fix smoke time."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Verify production recovery after HD screenshot stall fix",
+      "updated_at": "2026-05-11T10:31:15+00:00",
+      "verification_plan": "- Inspect recorded test and deploy evidence from `R001`.\n- Query durable queue/session state for the final smoke window if necessary.\n- Record a result mapping verification evidence to the P003 success criteria."
+    }
+  },
+  "updated_at": "2026-05-11T10:33:12+00:00"
+}

@@ -1,0 +1,912 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C000.md",
+      "created_at": "2026-05-11T08:54:05+00:00",
+      "criteria_map": [
+        "Broad `/ro` shell materialization absent from live path: satisfied.",
+        "Local fallback identified: satisfied; no live fallback found.",
+        "Recursive reads remaining in shell path: satisfied; `/rw/` full tree identified.",
+        "Evidence pointers recorded: satisfied."
+      ],
+      "evidence": [
+        "`R000` inspected `sandbox.py`, `logical_fs.py`, `workspace.py`, and relevant tests.",
+        "`sandbox.py` fails explicitly without sandboxd rather than falling back to local execution.",
+        "`logical_fs.py` scopes RO materialization to current root/wake metadata and event files.",
+        "`logical_fs.py` still recursively materializes `/rw/` through `_add_tree(files, \"/rw/\")`."
+      ],
+      "execution_map": [
+        "`T001` executed source searches and code inspection.",
+        "`R000` recorded confirmed clean paths and the remaining RW gap."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P001",
+      "residual_risk": [
+        "Medium. The risk is not currently causing the observed production stall after the RO fix, but it is a similar unintegrated adapter shape and should be fixed in the next implementation pass."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "If an agent accumulates many RW artifacts, shell startup can still grow with RW size because the current implementation copies the whole `/rw/` tree into each sandbox view. This reproduces the shape of the original RO issue on a smaller but real surface."
+      ],
+      "summary": "Audit succeeded for this boundary: the full `/ro` shell miss is no longer present, no local sandbox fallback is live, and the remaining analogous risk is clearly identified as full `/rw/` materialization."
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/checks/C001.md",
+      "created_at": "2026-05-11T08:57:32+00:00",
+      "criteria_map": [
+        "`tq_session_state` authority checked: satisfied.",
+        "Direct saga creation paths checked: satisfied; unrestricted generic creation remains.",
+        "Finalize ownership checked: satisfied; required reason/generation/remaining_stack path exists.",
+        "Hidden dependency boundary checked: partially satisfied; no urgent env/time/id issue found in session repo, but coordinator remains thick."
+      ],
+      "evidence": [
+        "`R001` inspected session repository, session outbox, observed event handler, saga repo, saga trigger handler, and saga definitions.",
+        "`SessionRepository` injects clock and scope-id providers and records wake intent through session outbox.",
+        "`SessionOutboxDispatcher` is the intended wake saga creation boundary.",
+        "`SagaTopics.SAGA_TRIGGER` and `/api/queue/sagas/create` can still create arbitrary saga types."
+      ],
+      "execution_map": [
+        "`T002` ran targeted source searches and code inspection.",
+        "`R001` recorded clean boundaries and remaining bypass risk."
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P002",
+      "residual_risk": [
+        "High for architecture hygiene, medium for immediate production probability. This should become an implementation ticket: restrict direct saga creation of session-owned sagas."
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "If a stale component or operator publishes a `saga.trigger` task with `saga_type=subagent_wake`, the system can create a wake saga without session inbox/outbox coordination. The current app may not do that, but the live API/handler still permits it."
+      ],
+      "summary": "Audit succeeded for this boundary: the primary session path is on the session-ledger/outbox route, and the remaining live bypass surface is explicitly identified as unrestricted generic saga creation."
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/checks/C002.md",
+      "created_at": "2026-05-11T09:03:20+00:00",
+      "criteria_map": [
+        "Find live direct tools that should have moved to shell: none found.",
+        "Confirm shell capability commands exist for migrated surfaces: satisfied.",
+        "Distinguish historical projection/test residue from active execution paths: satisfied.",
+        "Identify residual risk: historical labels and fixture-style tests remain, but are not live exposure paths."
+      ],
+      "evidence": [
+        "`R002` inspected the canonical LLM schema source and found only `shell`, `skill_begin`, `skill_end`, `display`, and `sleep`.",
+        "`R002` inspected the Runtime executor registry and found the same final five-tool set.",
+        "`R002` inspected the shell capability implementation and confirmed the migrated command surfaces exist under `agentctl`, `cortex`, and `devicectl`.",
+        "Runtime tests explicitly guard that migrated tools are disjoint from schemas and direct executors."
+      ],
+      "execution_map": [
+        "`R002` is the sole execution result for `T003`.",
+        "No implementation was performed in this child problem because no live unintegrated tool path was found."
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P003",
+      "residual_risk": [
+        "Low: historical activity labels and tests still mention direct tool names. They can mislead future readers, but current boundary tests prevent them from becoming live schema/executor paths."
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The audit checked both sides of the boundary: visible LLM schemas and backend `_EXECUTORS`.",
+        "The audit also checked the product prompt defaults and the `ReactActions` reply closer, which are likely places for stale direct-tool assumptions to survive even after executor cleanup."
+      ],
+      "summary": "Success. The audit proved the live tool boundary is connected to the intended final shape: final harness tools remain direct, while IM/subagent/audio/payload/device have moved behind shell capability commands."
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P004/checks/C003.md",
+      "created_at": "2026-05-11T09:07:55+00:00",
+      "criteria_map": [
+        "Confirm active prepare path requires context events: satisfied.",
+        "Identify live fallback from old DFS/projection source: none found.",
+        "Identify remaining compatibility residue: satisfied; stale comments/docstrings and projection/debug reads are recorded.",
+        "Record concrete file evidence: satisfied in `R003`."
+      ],
+      "evidence": [
+        "`R003` inspected `/v1/context/prepare_for_llm` and found direct use of `ContextEventReadModel(...).prepare()`.",
+        "`R003` inspected `ContextEventReadModel.prepare()` and found event-store read, missing-stream reset, pure projection, and budget compaction.",
+        "`R003` inspected status/read paths and separated operational projection reads from LLM assembly source.",
+        "Targeted tests passed: `13 passed in 0.34s`."
+      ],
+      "execution_map": [
+        "`R003` is the sole result for `T004`."
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P004",
+      "residual_risk": [
+        "Medium-low: stale `ContextEngine`/`DFS` comments can mislead future implementation work. They should be physically cleaned in a cleanup pass, but they do not prove a live unintegrated path today."
+      ],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The audit checked both code and guard tests that explicitly fail if `prepare_for_llm` grows a DFS/read-context fallback.",
+        "The audit also checked related status, runtime handler, and archived index paths to avoid overclaiming based on one function."
+      ],
+      "summary": "Success. The live LLM preparation path is ContextEvent-backed and the audit found no active legacy DFS fallback. The remaining issues are stale comments/docstrings and projection/debug endpoints, not unintegrated active context assembly."
+    },
+    "C004": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P005/checks/C004.md",
+      "created_at": "2026-05-11T09:10:41+00:00",
+      "criteria_map": [
+        "Current deploy/start scripts use intended services: satisfied.",
+        "Old deployable service/fallback path identified if present: none found.",
+        "Compatibility cleanup exists for retired components: satisfied via `remove_retired_backend_package \"novaic-sandbox-core\"`.",
+        "Concrete command/file evidence recorded: satisfied."
+      ],
+      "evidence": [
+        "`R004` inspected deployment and startup files.",
+        "`R004` verified retired `novaic-sandbox-core` is explicitly removed during deployment.",
+        "`R004` verified `scripts/start.sh` starts `novaic-sandbox-service`, Cortex with LogicalFS/Sandbox SDK dependencies, Queue Service, and roster-driven workers.",
+        "`R004` ran `./deploy status`, which reported all expected services and worker roles healthy."
+      ],
+      "execution_map": [
+        "`R004` is the sole result for `T005`."
+      ],
+      "followup_problem_id": null,
+      "id": "C004",
+      "problem_id": "P005",
+      "residual_risk": [
+        "Low: historical docs/tests/lints mention retired paths. They do not start old services."
+      ],
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The check used both static wiring inspection and live remote status, so it did not rely only on code search.",
+        "The check searched for `legacy`, `fallback`, and retired service names to catch documentation/code residue separately from process wiring."
+      ],
+      "summary": "Success. The deployment/process wiring audit found no active old sandbox-core or retired worker path. The current remote deployment is healthy and matches the intended service/process roster."
+    },
+    "C005": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C005.md",
+      "created_at": "2026-05-11T09:12:32+00:00",
+      "criteria_map": [
+        "Identify high-risk patterns similar to the shell LogicalFS miss: satisfied; generic `subagent_wake` saga creation bypass and full `/rw/` materialization are identified.",
+        "Cover Cortex/LogicalFS/Sandbox, Queue/FSM/Saga, shell capability tools, and deployment/worker wiring: satisfied by P001 through P005.",
+        "Distinguish live-path gaps from tests/docs-only residue: satisfied in each result and in `R005`.",
+        "Produce prioritized issues with evidence pointers: satisfied in `R005`.",
+        "Validate ledger and render dashboard: pending operational validation after this check; no content blocker."
+      ],
+      "evidence": [
+        "`R005` summarizes all child audit results.",
+        "`R000`/`C000` covered Cortex LogicalFS and Sandbox adapter wiring.",
+        "`R001`/`C001` covered Queue FSM, Saga, and session adapter wiring.",
+        "`R002`/`C002` covered shell capability and tool CLI migration.",
+        "`R003`/`C003` covered Cortex context event source cutover.",
+        "`R004`/`C004` covered deployment/process compatibility residue."
+      ],
+      "execution_map": [
+        "Root split ticket `T000` produced child problems P001-P005.",
+        "All child problems have success checks.",
+        "Root result `R005` consolidates the child results."
+      ],
+      "followup_problem_id": null,
+      "id": "C005",
+      "problem_id": "P000",
+      "residual_risk": [
+        "The audit itself is complete. Follow-up implementation is required for the two live gaps and optional cleanup for stale comments/test labels."
+      ],
+      "result_ids": [
+        "R005"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The audit did not stop at the original `/ro` class. It checked the mirrored writable side (`/rw`), the session-owned wake creation boundary, the LLM schema/executor boundary, the ContextEvent source boundary, and deployment process wiring.",
+        "The audit used both static inspection and live deployment status, reducing the risk of mistaking dead source text for active runtime wiring."
+      ],
+      "summary": "Success. The audit covered the requested infrastructure boundaries, separated live gaps from residue, and produced a prioritized fix list with evidence. The problem was an audit problem, so discovered gaps do not make the audit unsuccessful; they are the audit output."
+    }
+  },
+  "counters": {
+    "check": 6,
+    "event": 72,
+    "problem": 6,
+    "result": 6,
+    "ticket": 6
+  },
+  "created_at": "2026-05-11T08:50:32+00:00",
+  "ledger_id": "L20260511-165032",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C005"
+      ],
+      "created_at": "2026-05-11T08:50:32+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "Recent production debugging showed that the LogicalFS substrate had been improved, but the Cortex shell adapter still materialized old broad `/ro` paths. We need comprehensively audit the repository for similar gaps where a new infrastructure layer exists but an entrypoint, adapter, worker, or compatibility branch still uses an old direct path, broad scan, fallback, or hidden integration.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R005"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P001",
+        "P002",
+        "P003",
+        "P004",
+        "P005"
+      ],
+      "success_criteria": [
+        "Identify high-risk patterns similar to the shell LogicalFS miss: full recursive scans, old direct write/read paths, bypassed FSM/outbox decisions, broad fallback paths, and unused compatibility branches.",
+        "Cover Cortex/LogicalFS/Sandbox, Agent Runtime Queue/FSM/Saga, shell capability tools, and deployment/worker wiring.",
+        "Distinguish confirmed live-path gaps from tests/docs-only residue.",
+        "Produce a concrete prioritized list of issues to fix or confidently report no issue, with evidence pointers.",
+        "Validate the ledger and render the dashboard when the audit closes."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Audit unintegrated adapter paths after infrastructure cutovers",
+      "updated_at": "2026-05-11T09:12:32+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-11T08:51:53+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Find any remaining live code paths where Cortex/Sandbox/LogicalFS still bypass the intended lightweight LogicalFS adapter model, especially broad `/ro` materialization, direct Blob/Workspace filesystem reads inside shell paths, old fallback mounts, or local execution fallback.",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Search and inspect LogicalFS, Sandbox, sandboxd, Workspace, and shell execution paths.",
+        "Confirm whether any broad recursive materialization remains on shell/live execution paths.",
+        "Separate runtime code findings from docs/tests.",
+        "Record exact file/function evidence and any needed follow-up."
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "Audit Cortex LogicalFS and Sandbox adapter cutover",
+      "updated_at": "2026-05-11T08:54:05+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-11T08:51:53+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Find any remaining live code paths in agent runtime where queue dispatch/session/saga/outbox still bypass the intended FSM/outbox/generation-checked model, use old active-session pointers as authority, or contain fallback/direct imperative branches that can keep old behavior live.",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Search and inspect queue service, session state/repo, dispatch subscriber/client, saga orchestrator/repo, outbox workers, and worker assembly.",
+        "Identify confirmed live bypasses vs transitional views/caches.",
+        "Check for hidden env/time/id dependencies in core decision paths where relevant.",
+        "Record evidence and prioritized findings."
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "Audit Queue FSM Saga and session adapter cutover",
+      "updated_at": "2026-05-11T08:57:32+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P003/README.md",
+      "check_ids": [
+        "C002"
+      ],
+      "created_at": "2026-05-11T08:51:53+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Find any remaining tool/harness surfaces that should now be shell CLI based but are still exposed or wired through old direct tools, missing agent identity binding, missing subagent binding, missing internal auth, or non-CLI paths.",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P003",
+      "parent_id": "P000",
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Inspect tool schema generation, shell capability scripts, runtime tool handlers, and monitor/desc wiring.",
+        "Verify shell execution has explicit capability env and generated CLIs.",
+        "Identify direct legacy harness tools that remain live without clear reason.",
+        "Record evidence and any follow-up fixes."
+      ],
+      "ticket_ids": [
+        "T003"
+      ],
+      "title": "Audit shell capability and tool CLI migration",
+      "updated_at": "2026-05-11T09:03:20+00:00"
+    },
+    "P004": {
+      "body_path": "problems/P000/children/P004/README.md",
+      "check_ids": [
+        "C003"
+      ],
+      "created_at": "2026-05-11T08:51:53+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Find any remaining live code paths where Cortex context preparation, stack lifecycle, step recording, or payload reading still use old DFS/source files as authority instead of the event source/projection model, or keep compatibility branches that can silently reintroduce old behavior.",
+      "followup_ids": [],
+      "id": "P004",
+      "package_path": "problems/P000/children/P004",
+      "parent_id": "P000",
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Inspect context event store/projection/read model, API write endpoints, prepare flow, runtime bridge, and old context_stack modules.",
+        "Classify direct DFS file use as authoritative, projection/debug, test-only, or dead residue.",
+        "Record evidence for any live old source-of-truth path."
+      ],
+      "ticket_ids": [
+        "T004"
+      ],
+      "title": "Audit Cortex context event source cutover",
+      "updated_at": "2026-05-11T09:07:55+00:00"
+    },
+    "P005": {
+      "body_path": "problems/P000/children/P005/README.md",
+      "check_ids": [
+        "C004"
+      ],
+      "created_at": "2026-05-11T08:51:53+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Find any deployment/startup/process wiring that can still run old services, old workers, fallback packages, or stale branch implementations despite the new architecture being present.",
+      "followup_ids": [],
+      "id": "P005",
+      "package_path": "problems/P000/children/P005",
+      "parent_id": "P000",
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Inspect deploy script, start script, package sync/exclude rules, service startup commands, worker process modes, and retired package cleanup.",
+        "Compare with current service status where useful.",
+        "Identify stale or ambiguous compatibility residue that could make production run old logic."
+      ],
+      "ticket_ids": [
+        "T005"
+      ],
+      "title": "Audit deployment process and compatibility residue",
+      "updated_at": "2026-05-11T09:10:41+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`novaic-cortex/novaic_cortex/logical_fs.py:164`",
+        "`novaic-cortex/novaic_cortex/logical_fs.py:189`",
+        "`novaic-cortex/novaic_cortex/logical_fs.py:204`",
+        "`novaic-cortex/novaic_cortex/sandbox.py:7`",
+        "`novaic-cortex/novaic_cortex/sandbox.py:80`",
+        "`novaic-cortex/tests/test_sandboxd_wiring.py:96`"
+      ],
+      "body_path": "problems/P000/children/P001/results/R000.md",
+      "created_at": "2026-05-11T08:53:40+00:00",
+      "done": [
+        "Inspected the Cortex shell boundary and LogicalFS adapter:",
+        "`novaic-cortex/novaic_cortex/sandbox.py` states and implements an explicit sandboxd boundary. If no `SandboxExecutor` is configured, shell execution returns `exit_code=-2` instead of falling back to local execution.",
+        "`ShellExecutionOrchestrator.exec()` acquires a `MountNamespaceLogicalFS` view, sends a `SandboxExecSpec` with a mount plan to sandboxd, releases the view, then applies RW patch changes back through LogicalFS.",
+        "`novaic-cortex/novaic_cortex/logical_fs.py` now limits shell RO snapshot contents to `/ro/config/engine.json`, `/ro/config/tools/_index.json`, current root metadata/index/context event log, and the current wake scope subtree only when `NOVAIC_WAKE_SCOPE_PATH` is explicitly under the root.",
+        "`tests/test_sandbox_requires_mount_namespace.py` covers “no local fallback” and rejects leaked `novaic-cortex-sandbox-*` backing paths.",
+        "`tests/test_sandboxd_wiring.py::test_sandbox_materializes_scoped_ro_working_set_only` verifies current wake files are visible while old sibling wake and unrelated roots are not.",
+        "Confirmed remaining risk:",
+        "`MountNamespaceLogicalFS._workspace_snapshot()` still calls `_add_tree(files, \"/rw/\")`.",
+        "`_add_tree()` delegates to `Workspace.read_tree_bytes()`, which recursively lists and reads every file under that prefix.",
+        "Therefore shell startup is still proportional to total `/rw/` size. This is less dangerous than full `/ro` history because RW is user/sandbox-owned, but it is the same adapter shape and can become a production latency issue if RW grows.",
+        "Non-issues / valid broad reads:",
+        "`novaic-cortex/novaic_cortex/runtime.py` loads `/ro/config/tools/` and `/ro/skills/` for runtime tool schema assembly. That is not the shell mount path; it is LLM/tool definition assembly and remains a valid explicit Cortex runtime read.",
+        "Workspace archive functions moving `/ro/active` to `/ro/scopes` are state projection/archival behavior, not shell materialization."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "Follow-up recommended: make RW materialization scoped or lazy. Candidate policy: mount `/rw/public`, `/rw/system`, current `RW_SELF`, and generated `.novaic_env.json` by default; require explicit CLI/API reads for broad RW scans.",
+        "The current LogicalFS substrate is still materialize-copy-patch, not a true realtime/lazy filesystem. That is acceptable for now after RO scoping, but it is not the final “LogicalFS proxy all realtime file service” ideal."
+      ],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "The original broad `/ro` shell miss is fixed on the live shell path, and there is no local process fallback bypassing sandboxd. One similar live-path risk remains: the shell adapter still materializes the entire `/rw/` tree for every shell command, so a large RW workspace can recreate the same “substrate optimized, adapter still broad-syncs” failure pattern on the writable side.",
+      "ticket_id": "T001",
+      "verification": [
+        "Source search: `rg -n \"read_tree_bytes|/ro/|/rw/|materialize|Sandbox|LocalProcessRunner|fallback|legacy|compat\" novaic_cortex tests -S`.",
+        "Code inspection:",
+        "`novaic-cortex/novaic_cortex/sandbox.py`",
+        "`novaic-cortex/novaic_cortex/logical_fs.py`",
+        "`novaic-cortex/novaic_cortex/workspace.py`",
+        "Existing tests from the previous fix:",
+        "`tests/test_sandboxd_wiring.py`",
+        "`tests/test_sandbox_requires_mount_namespace.py`"
+      ]
+    },
+    "R001": {
+      "artifacts": [
+        "`novaic-agent-runtime/queue_service/routes.py:361`",
+        "`novaic-agent-runtime/task_queue/handlers/saga_handlers.py:34`",
+        "`novaic-agent-runtime/task_queue/sagas/subagent_wake.py:109`",
+        "`novaic-agent-runtime/queue_service/session_outbox.py:188`",
+        "`novaic-agent-runtime/queue_service/session_repo.py:69`",
+        "`novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py:50`"
+      ],
+      "body_path": "problems/P000/children/P002/results/R001.md",
+      "created_at": "2026-05-11T08:57:07+00:00",
+      "done": [
+        "Inspected session and saga coordination:",
+        "`queue_service/session_repo.py` requires explicit `clock`, `scope_id_provider`, `SessionLedgerRepository`, and `SessionOutboxDispatcher`.",
+        "`dispatch()` appends input events, consults `decide_session_dispatch`, records transitions in `tq_session_state`/session ledger, and stores `create_wake_saga` as durable session outbox effect.",
+        "`SessionOutboxDispatcher._publish_create_wake_saga()` is the expected imperative boundary that calls `saga_orchestrator.create()` after reading a durable outbox row.",
+        "`SessionObservedEventHandler.apply_wake_created()` generation-checks the observation before recording active state.",
+        "`session_ended()` requires `finalize_reason`, `generation`, and `remaining_stack`, then uses `decide_session_finalize`.",
+        "`SagaOrchestrator.mark_failed()` now persists compensation intent as saga outbox effects, and the compensation payload preserves root/path/generation/stack metadata.",
+        "Confirmed remaining gap:",
+        "`queue_service/routes.py` still exposes `POST /api/queue/sagas/create`, which directly calls `orchestrator.create()`.",
+        "`task_queue/handlers/saga_handlers.py` registers `SagaTopics.SAGA_TRIGGER` and calls `saga_client.create(...)` for whatever `saga_type` is in the task payload.",
+        "`task_queue/topics.py` keeps `SagaTopics.SAGA_TRIGGER` in the control pool.",
+        "Current saga definitions legitimately use `SAGA_TRIGGER` for child `react_think`, `react_actions`, and `wake_finalize` creation, but the handler does not restrict `subagent_wake`.",
+        "Therefore an old or accidental publisher could still create `subagent_wake` without going through `SessionRepository.dispatch()` and session outbox, bypassing inbox buffering, generation state, and observed wake-created handling.",
+        "Non-issues / already clean:",
+        "`tq_active_sessions` did not appear in current production queue/session source; residue guards already assert it is absent from session harness files.",
+        "`SessionRepository` no longer calls `.orchestrator.create()` directly.",
+        "`SessionRepository` no longer owns low-level outbox append/publish helper wrappers; session outbox is a separate boundary.",
+        "The environment aggregation config in `novaic-business/business/subscribers/dispatch_subscriber.py` has already been moved behind `load_im_aggregation_config_from_env()` and constructor config, so the earlier implicit-env finding appears fixed."
+      ],
+      "id": "R001",
+      "known_gaps": [
+        "High-priority follow-up: restrict `SagaTopics.SAGA_TRIGGER` and `/sagas/create` so `subagent_wake` cannot be created except through `SessionOutboxDispatcher.CREATE_WAKE_SAGA`. A narrower option is to add an explicit allowlist for saga-trigger-created child saga types (`react_think`, `react_actions`, `wake_finalize`) and require session outbox provenance for `subagent_wake`.",
+        "Medium-priority hardening: `SessionRepository` remains a thick coordinator with imperative branches around pure FSM decisions. It appears functionally clean, but the “all dispatch branches are pure FSM decision + effect plan” ideal is not fully physical yet."
+      ],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "The session coordinator is substantially on the new FSM/session-ledger/outbox path: `SessionRepository` injects clock/scope-id dependencies, uses `tq_session_state` through `SessionLedgerRepository`, and records wake creation through session outbox before `SessionOutboxDispatcher` creates the saga. The main remaining similar integration gap is a live generic saga-creation surface: `saga.trigger` and `/api/queue/sagas/create` can still create arbitrary saga types, so the codebase has not physically prevented old-style direct `subagent_wake` creation outside the session outbox.",
+      "ticket_id": "T002",
+      "verification": [
+        "Source search:",
+        "`rg -n \"tq_active_sessions|tq_session_state|SessionRepository|SagaOrchestrator|saga_orchestrator.create|SAGA_TRIGGER|/sagas/create|generation|outbox\" ...`",
+        "Code inspection:",
+        "`novaic-agent-runtime/queue_service/session_repo.py`",
+        "`novaic-agent-runtime/queue_service/session_outbox.py`",
+        "`novaic-agent-runtime/queue_service/session_observed_events.py`",
+        "`novaic-agent-runtime/queue_service/saga_repo.py`",
+        "`novaic-agent-runtime/task_queue/handlers/saga_handlers.py`",
+        "`novaic-agent-runtime/task_queue/sagas/react_think.py`",
+        "`novaic-agent-runtime/task_queue/sagas/react_actions.py`",
+        "`novaic-agent-runtime/task_queue/sagas/subagent_wake.py`",
+        "Existing guard evidence:",
+        "`novaic-agent-runtime/tests/test_pr273_session_harness_final_residue_guard.py`"
+      ]
+    },
+    "R002": {
+      "artifacts": [
+        "This result file.",
+        "No code changes were made for this ticket. The audit found no unintegrated live path in the tool CLI migration boundary."
+      ],
+      "body_path": "problems/P000/children/P003/results/R002.md",
+      "created_at": "2026-05-11T09:02:43+00:00",
+      "done": [
+        "`common.tools.llm_builtin.AGENT_BUILTIN_TOOL_SCHEMAS` has only the final five tools and documents shell capability commands.",
+        "`task_queue.handlers.tool_handlers._EXECUTORS` has only the final five tools.",
+        "`task_queue.tool_surface_policy.FINAL_HARNESS_TOOLS` is the same final five-tool set.",
+        "`SHELL_CAPABILITY_SCHEMA_CUTOVER_TOOLS` includes the migrated IM/subagent/audio/payload/device tools and is asserted disjoint from schemas and executors.",
+        "`business/prompt_defaults.py` tells agents to reply through `shell` with `agentctl im reply --message-file`, to read messages with `agentctl im read`, and to use `devicectl`/`cortex payload` inside shell.",
+        "`ReactActions` now treats a shell command containing `agentctl im reply` as the reply/no-follow-up closer."
+      ],
+      "id": "R002",
+      "known_gaps": [
+        "`activity_projection.py` still contains display labels for historical direct tool names such as `im_reply`, `payload_read`, `audio_qa`, and `subagent_spawn`. This is projection/compat display logic for old step records, not a live executor or schema path.",
+        "Some old tests still construct historical direct tool calls, especially activity projection and finalizer tests. These are fixture coverage for historical records or guard behavior, not active tool exposure."
+      ],
+      "problem_id": "P003",
+      "root_id": "P000",
+      "summary": "The shell capability migration is connected on the live Runtime path.\n\nThe active LLM-facing builtin schema source is `novaic-common/common/tools/llm_builtin.py`, and it exposes only:\n\n- `shell`\n- `skill_begin`\n- `skill_end`\n- `display`\n- `sleep`\n\nThe active Runtime executor registry in `novaic-agent-runtime/task_queue/handlers/tool_handlers.py` matches that same five-tool set. This is guarded by `novaic-agent-runtime/tests/test_runtime_tool_path_contract.py` and `novaic-agent-runtime/tests/test_tool_surface_boundary.py`.\n\nThe migrated interface tools are not direct executors and not LLM schemas:\n\n- IM: `im_read`, `im_reply`, `im_send`, `im_history`, `im_search`, `im_context`\n- Subagent: `subagent_spawn`\n- Audio: `audio_qa`\n- Payload inspection: `payload_read`, `payload_search`, `payload_summarize`, `payload_qa`\n- Device: `hd_screenshot`, `hd_shell_exec`, `hd_mouse`, `hd_keyboard`, `hd_clipboard_get`, `hd_clipboard_set`, `hd_file_pull`, `hd_file_push`\n\nThey are routed through shell capability commands in `novaic-cortex/novaic_cortex/shell_capabilities.py`:\n\n- `agentctl im read/reply/send/history/search/context`\n- `agentctl subagent spawn`\n- `agentctl media audio-qa`\n- `cortex payload read/search/summarize/qa`\n- `devicectl hd screenshot/shell-exec/mouse/keyboard/clipboard-get/clipboard-set/file-pull/file-push`",
+      "ticket_id": "T003",
+      "verification": [
+        "Inspected `novaic-common/common/tools/llm_builtin.py`.",
+        "Inspected `novaic-agent-runtime/task_queue/handlers/tool_handlers.py`.",
+        "Inspected `novaic-agent-runtime/task_queue/tool_surface_policy.py`.",
+        "Inspected `novaic-cortex/novaic_cortex/shell_capabilities.py`.",
+        "Inspected `novaic-business/business/prompt_defaults.py`.",
+        "Inspected runtime boundary tests that assert migrated tools are disjoint from LLM schemas and direct executors."
+      ]
+    },
+    "R003": {
+      "artifacts": [
+        "This result file."
+      ],
+      "body_path": "problems/P000/children/P004/results/R003.md",
+      "created_at": "2026-05-11T09:07:26+00:00",
+      "done": [
+        "Inspected `novaic-cortex/novaic_cortex/api.py` around `/v1/context/prepare_for_llm` and `/v1/context/status`.",
+        "Inspected `novaic-cortex/novaic_cortex/context_event_read_model.py`.",
+        "Inspected materialized context helpers in `novaic-cortex/novaic_cortex/workspace.py`.",
+        "Inspected runtime handlers that call Cortex prepare/status/read endpoints.",
+        "Searched for old DFS/read fallback markers: `ContextEngine`, `StepTree`, `prepare_messages_for_llm`, `_collect_active_stack`, `resolve_active_scope_path`, `read_context`.",
+        "Ran targeted context cutover tests."
+      ],
+      "id": "R003",
+      "known_gaps": [
+        "`novaic-agent-runtime/task_queue/handlers/cortex_handlers.py` and `novaic-agent-runtime/task_queue/utils/cortex_bridge.py` still contain stale comments/docstrings saying `ContextEngine`, `DFS push`, `DFS pop`, or \"may compact\". These are comment/docstring residue, not live old execution.",
+        "`Workspace.read_context()` and `/v1/context/read` still expose materialized `context.jsonl` projection for inspection/debug. `handle_context_read()` also reads this projection to de-duplicate environment notification hints before appending new notification events. This is live projection maintenance, but not the active LLM source.",
+        "`/v1/internal/reindex` still uses archived `context.jsonl` and `summary.md` to extract human labels for archived scopes. This is history/index maintenance, not active LLM assembly."
+      ],
+      "problem_id": "P004",
+      "root_id": "P000",
+      "summary": "The active LLM context assembly path is connected to the ContextEvent read model and does not use the old DFS/materialized-context fallback. I found no live `prepare_for_llm` fallback to `context.jsonl`, `summary.md`, `StepTree`, or `ContextEngine`.\n\nThere is still misleading naming/comment residue around ContextEngine/DFS, and the materialized `context.jsonl` projection remains for inspection/debug and notification de-duplication. Those are not active LLM assembly sources.",
+      "ticket_id": "T004",
+      "verification": [
+        "`context_prepare_for_llm()` constructs `ContextEventReadModel(...).prepare()` and returns its messages/stack/token estimate.",
+        "`ContextEventReadModel.prepare()` reads `ContextEventStore.read_events()`, raises `ContextEventReadModelResetRequired` when no event stream exists, projects with `project_context_events()`, then applies budget compaction.",
+        "`context_status(include_usage=True)` also uses `ContextEventReadModel`; default `include_usage=False` uses SQLite active-stack projection for cheap operational stack checks, not DFS rendering.",
+        "Guard tests pass:",
+        "```text",
+        "PYTHONPATH=... pytest -q \\",
+        "novaic-cortex/tests/test_context_event_no_compat.py \\",
+        "novaic-cortex/tests/test_context_event_read_source_guards.py \\",
+        "novaic-cortex/tests/test_pr234_control_stack.py",
+        "13 passed in 0.34s",
+        "```"
+      ]
+    },
+    "R004": {
+      "artifacts": [
+        "This result file.",
+        "Command evidence from `./deploy status`."
+      ],
+      "body_path": "problems/P000/children/P005/results/R004.md",
+      "created_at": "2026-05-11T09:10:16+00:00",
+      "done": [
+        "Inspected root `deploy`.",
+        "Inspected `scripts/start.sh`.",
+        "Inspected `novaic-agent-runtime/main_novaic.py`.",
+        "Inspected `novaic-agent-runtime/task_queue/workers/runtime_roster.py`.",
+        "Searched for retired/fallback/compatibility strings in deploy/runtime/cortex/sandbox/logicalfs paths.",
+        "Ran `./deploy status`."
+      ],
+      "id": "R004",
+      "known_gaps": [
+        "No deployable old `novaic-sandbox-core` path was found.",
+        "The search found historical test/docs/lint mentions of `legacy`, `fallback`, and retired paths. Those are not current deployment wiring.",
+        "The deploy/status command still has a generic log alias named `worker` for `task-worker-control-1.log`; this is an operator convenience label, not an old service."
+      ],
+      "problem_id": "P005",
+      "root_id": "P000",
+      "summary": "Deployment wiring is connected to the new service layout. Current deploy/start scripts deploy `novaic-logicalfs`, `novaic-sandbox-sdk`, `novaic-sandbox-service`, and Cortex with explicit `PYTHONPATH`/URLs. They remove retired `novaic-sandbox-core` before backend deployment.\n\nThe currently deployed backend status is healthy: all core service ports are up, and all runtime roles match expected process counts.",
+      "ticket_id": "T005",
+      "verification": [
+        "`deploy` calls `remove_retired_backend_package \"novaic-sandbox-core\"` both in backend infra bootstrap and full services deployment.",
+        "`deploy` syncs `novaic-sandbox-sdk`, `novaic-logicalfs`, and `novaic-sandbox-service` before restart.",
+        "`scripts/start.sh` starts:",
+        "Sandboxd from `novaic-sandbox-service/main_sandbox_service.py` on port `19994`",
+        "Cortex with `PYTHONPATH=\"$BASE/novaic-cortex:$BASE/novaic-logicalfs:$BASE/novaic-sandbox-sdk:$BASE/novaic-common\"`",
+        "Cortex with explicit `--sandboxd-url`, `--blob-service-url`, `--operational-sqlite-path`, and Redis lock args",
+        "Runtime workers via `runtime_roster launch-commands`",
+        "`runtime_roster.py` is the launch/process/log single source for task/saga/outbox/health/scheduler/subscriber roles.",
+        "`./deploy status` reported all ports healthy:",
+        "entangled, gateway, business, device, queue-svc, blob-service, sandboxd, cortex",
+        "`./deploy status` reported expected runtime role counts:",
+        "task-worker control `2/2`",
+        "task-worker execution `2/2`",
+        "saga-worker `2/2`",
+        "session-outbox-worker `1/1`",
+        "saga-outbox-worker `1/1`",
+        "health `1/1`",
+        "scheduler `1/1`",
+        "subscriber `1/1`"
+      ]
+    },
+    "R005": {
+      "artifacts": [
+        "`.complex-problems/unintegrated-adapter-result-logicalfs.md`",
+        "`.complex-problems/unintegrated-adapter-result-runtime.md`",
+        "`.complex-problems/unintegrated-adapter-result-tools.md`",
+        "`.complex-problems/unintegrated-adapter-result-context.md`",
+        "`.complex-problems/unintegrated-adapter-result-deploy.md`"
+      ],
+      "body_path": "problems/P000/results/R005.md",
+      "created_at": "2026-05-11T09:11:57+00:00",
+      "done": [
+        "Closed `P001` LogicalFS/Sandbox audit with result `R000` and check `C000`.",
+        "Closed `P002` Queue FSM/Saga/session audit with result `R001` and check `C001`.",
+        "Closed `P003` shell capability/tool CLI migration audit with result `R002` and check `C002`.",
+        "Closed `P004` Cortex context event source audit with result `R003` and check `C003`.",
+        "Closed `P005` deployment/compatibility residue audit with result `R004` and check `C004`."
+      ],
+      "id": "R005",
+      "known_gaps": [
+        "### Gap A: Generic saga creation can bypass session outbox",
+        "`queue_service/routes.py` exposes `POST /api/queue/sagas/create`, and `task_queue/handlers/saga_handlers.py` handles `SagaTopics.SAGA_TRIGGER` by calling saga creation for arbitrary saga types. Current app code uses this for legitimate child sagas (`react_think`, `react_actions`, `wake_finalize`), but the surface does not forbid `subagent_wake`. That leaves an old-style wake creation path physically possible outside `SessionRepository.dispatch()` and `SessionOutboxDispatcher`.",
+        "Recommended fix:",
+        "Add an explicit saga creation policy.",
+        "Allow `SAGA_TRIGGER` only for child/internal saga types that are not session-owned.",
+        "Require `subagent_wake` creation to enter only through the durable session outbox dispatcher.",
+        "Add tests that direct `/sagas/create` or `saga.trigger` cannot create `subagent_wake`.",
+        "### Gap B: Shell still broad-syncs `/rw/`",
+        "`MountNamespaceLogicalFS._workspace_snapshot()` still calls `_add_tree(files, \"/rw/\")`, which reads the full writable tree through `Workspace.read_tree_bytes()`. The `/ro` broad-sync issue is fixed, but this is the same adapter shape on the writable side.",
+        "Recommended fix:",
+        "Scope RW materialization to the current subagent work directory plus explicit shared/public directories.",
+        "Keep `.novaic_env.json` injected.",
+        "Avoid full recursive `/rw/` copy on every command.",
+        "Add a regression test proving unrelated/big RW trees are not materialized for simple shell commands.",
+        "### Gap C: Comment/docstring residue around old ContextEngine/DFS",
+        "Active LLM preparation is ContextEvent-backed, but `cortex_handlers.py` and `cortex_bridge.py` still contain stale `ContextEngine`/`DFS` wording. This is not a live path, but it violates the \"residue misleads future work\" principle.",
+        "Recommended fix:",
+        "Rewrite stale comments/docstrings to say ContextEvent read model, active-stack projection, and materialized debug projection accurately.",
+        "### Gap D: Historical direct-tool names remain in projection/test fixtures",
+        "Current LLM schemas and `_EXECUTORS` expose only `shell`, `display`, `skill_begin`, `skill_end`, `sleep`. Old direct names remain in activity projection labels and old-record tests. This is not live tool exposure, but future cleanup could rename them as historical labels.",
+        "Recommended fix:",
+        "Keep runtime boundary tests as hard guards.",
+        "Optionally rename projection labels/comments to `historical_direct_tool_labels` to avoid confusing them with active tools."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "The audit found two live integration gaps and several cleanup-only residues.\n\nLive gaps:\n\n1. `subagent_wake` can still be created through generic saga creation surfaces, bypassing the session outbox boundary.\n2. Shell still materializes the full `/rw/` tree for every command, so large RW workspaces can recreate the same broad-sync class of latency issue that was just fixed for `/ro`.\n\nCleanup-only residues:\n\n- Cortex Runtime comments/docstrings still say `ContextEngine` / `DFS` even though active context preparation is ContextEvent-backed.\n- Historical activity labels/tests still mention old direct tool names, but current schemas and executors no longer expose them.\n- Materialized `context.jsonl`/`summary.md` remains for debug/history/projection and archive labels; it is not active LLM context source.",
+      "ticket_id": "T000",
+      "verification": [
+        "Static code inspection covered:",
+        "`novaic-cortex/novaic_cortex/logical_fs.py`",
+        "`novaic-cortex/novaic_cortex/sandbox.py`",
+        "`novaic-cortex/novaic_cortex/api.py`",
+        "`novaic-cortex/novaic_cortex/context_event_read_model.py`",
+        "`novaic-agent-runtime/queue_service/session_repo.py`",
+        "`novaic-agent-runtime/queue_service/session_outbox.py`",
+        "`novaic-agent-runtime/task_queue/handlers/saga_handlers.py`",
+        "`novaic-agent-runtime/task_queue/handlers/tool_handlers.py`",
+        "`novaic-agent-runtime/task_queue/tool_surface_policy.py`",
+        "`novaic-agent-runtime/task_queue/workers/runtime_roster.py`",
+        "`novaic-common/common/tools/llm_builtin.py`",
+        "`novaic-business/business/prompt_defaults.py`",
+        "root `deploy`",
+        "`scripts/start.sh`",
+        "Targeted tests run for context cutover:",
+        "```text",
+        "PYTHONPATH=... pytest -q \\",
+        "novaic-cortex/tests/test_context_event_no_compat.py \\",
+        "novaic-cortex/tests/test_context_event_read_source_guards.py \\",
+        "novaic-cortex/tests/test_pr234_control_stack.py",
+        "13 passed in 0.34s",
+        "```",
+        "Live deployment status checked with `./deploy status`; all core services and runtime roles are healthy."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Child problems exist for each major integration boundary.",
+        "Each child result names confirmed gaps, non-issues, and uncertain follow-ups with file/function evidence.",
+        "The final parent result consolidates findings by priority and names which issues should be fixed first.",
+        "The audit does not treat design intent as implementation proof; every “clean” claim must point to code or test evidence."
+      ],
+      "assumptions": [
+        "Current branch `codex/reliable-evolution-fsm` reflects the latest intended architecture.",
+        "The desired standard is no misleading half-migration: old code may exist only when clearly projection/debug/test-only or physically unreachable."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "Comprehensive audit spans several integration boundaries; split avoids one-go overclaiming and records evidence per boundary.",
+      "created_at": "2026-05-11T08:50:59+00:00",
+      "id": "T000",
+      "problem_definition": "The repository has gone through multiple infrastructure cutovers: FSM/session/outbox, shell capability migration, LogicalFS/Sandbox service split, and event-sourced Cortex context. A previous production stall showed a subtle adapter miss: the new LogicalFS substrate existed, but a Cortex shell entrypoint still used broad legacy materialization. We need find similar misses across integration boundaries.",
+      "problem_id": "P000",
+      "proposed_solution": "Split the audit into focused child problems by boundary:\n\n- Cortex/LogicalFS/Sandbox materialization and filesystem semantics.\n- Agent Runtime Queue/FSM/Saga/session/outbox dispatch and worker wiring.\n- Shell capability/tool CLI exposure and harness boundary migration.\n- Cortex context event source/read-path/write-path and remaining DFS/legacy projection usage.\n- Deployment/process wiring and compatibility residue that could keep old logic live.\n\nEach child problem should run targeted source searches, inspect relevant code slices, classify findings as live-path gap vs residue, and record evidence.",
+      "result_ids": [
+        "R005"
+      ],
+      "risks": [
+        "Some broad reads are valid explicit debug or runtime schema-loading paths; do not misclassify them as bugs without live-path context.",
+        "Full repository search can produce noisy docs/tests; separate production code from tests/docs.",
+        "If a confirmed gap is too large to fix inside the audit, create an explicit follow-up problem rather than hiding it."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Split audit by integration boundary",
+      "updated_at": "2026-05-11T09:11:57+00:00",
+      "verification_plan": "- Use `rg`, `git diff`, `find`, `sed/nl`, and targeted tests where useful.\n- Search for broad recursive scans (`read_tree_bytes`, `list_dir`, `find \"$RO\"`, wildcard materialization), legacy direct state paths, bypasses around FSM/outbox decisions, old compatibility flags/fallbacks, and direct service calls where a CLI/service adapter should be used.\n- Validate and render the problem ledger after closure."
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "Broad `/ro` materialization is either absent from live shell path or explicitly named as a remaining gap.",
+        "Any local fallback or direct process execution bypassing sandboxd/logicalfs is identified.",
+        "Workspace/Blob recursive reads that remain in live shell path are identified.",
+        "Evidence points to exact files/functions."
+      ],
+      "assumptions": [
+        "Shell execution should be lightweight by default and broad historical reads should use explicit Cortex APIs rather than implicit mounts."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded source audit over Cortex LogicalFS/Sandbox shell adapter files; no code change expected.",
+      "created_at": "2026-05-11T08:52:24+00:00",
+      "id": "T001",
+      "problem_definition": "The latest production issue came from a LogicalFS adapter that still broad-mounted `/ro`. This ticket audits the Cortex/Sandbox/LogicalFS shell execution path for any similar unintegrated residue.",
+      "problem_id": "P001",
+      "proposed_solution": "Search and inspect the concrete code paths that acquire LogicalFS views, materialize snapshots, execute sandbox commands, interact with sandboxd, and read Workspace/Blob trees. Classify each broad read or fallback as live-path gap, valid explicit API, tests/docs-only, or dead residue.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Some broad reads are valid for runtime tool loading or tests; do not mark them as shell adapter misses."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Audit LogicalFS shell integration residue",
+      "updated_at": "2026-05-11T08:53:40+00:00",
+      "verification_plan": "- Use `rg` for `read_tree_bytes`, `/ro/`, `materialize`, `sandboxd`, `LocalProcessRunner`, fallback terms, and shell internal endpoint code.\n- Inspect relevant slices with `sed`/`nl`.\n- Re-run or cite existing targeted LogicalFS tests if needed."
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "Identify whether `tq_session_state` or `tq_active_sessions` is the real live authority.",
+        "Identify direct `SagaOrchestrator.create()` paths, direct publish paths, and finalize ownership paths.",
+        "Identify hidden dependency boundary issues in session/FSM decision code if still present.",
+        "Record file/function evidence and priority."
+      ],
+      "assumptions": [
+        "The desired direction is session-state/FSM as authority, active session as view/cache, durable outbox for side effects, and finalize as an explicit event with reason/generation/remaining stack."
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T002.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded audit over runtime/session/saga source files and DB table ownership; no implementation in this step.",
+      "created_at": "2026-05-11T08:54:33+00:00",
+      "id": "T002",
+      "problem_definition": "The queue/session harness was migrated toward FSM, durable outbox, and generation-checked session coordination. We need audit whether any live runtime paths still bypass those substrates with old active-session authority, direct saga creation, direct finalize cleanup, or imperative dispatch branches.",
+      "problem_id": "P002",
+      "proposed_solution": "Search and inspect queue service/session repository, dispatch subscriber/client, saga repository/orchestrator, outbox workers, worker assemblies, and wake action engines. Classify residue as live gap, intentional cache/view, compatibility, or tests/docs-only.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "Some active-session tables may intentionally be compatibility views; verify by code ownership rather than table name alone."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Audit Queue FSM Saga session cutover residue",
+      "updated_at": "2026-05-11T08:57:07+00:00",
+      "verification_plan": "- Use `rg` for `tq_active_sessions`, `tq_session_state`, `SagaOrchestrator`, `create(`, `wake_finalize`, `session_ended`, `generation`, `outbox`, `dispatch`, `os.environ`, `uuid`, and clocks.\n- Inspect line slices around matches.\n- Distinguish production code from docs/tests."
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "List shell CLI capabilities and direct tool schema surfaces.",
+        "Identify missing CLI coverage, missing identity/env binding, or stale direct tool exposure.",
+        "Separate intended out-of-shell tools from old direct tools.",
+        "Record evidence pointers."
+      ],
+      "assumptions": [
+        "`skill_begin`, `skill_end`, and `sleep` may remain harness-level; most IM/subagent/device/media commands should be shell CLI accessible."
+      ],
+      "body_path": "problems/P000/children/P003/tickets/T003.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded tool-surface audit over schema, handler, and shell capability files.",
+      "created_at": "2026-05-11T08:58:09+00:00",
+      "id": "T003",
+      "problem_definition": "Several harness/interface tools were moved into shell CLIs (`agentctl`, `devicectl`, media commands) while only a minimal set should remain outside shell. We need audit whether old direct tool schemas, handlers, or capability env gaps remain live.",
+      "problem_id": "P003",
+      "proposed_solution": "Inspect Cortex builtin tool schemas, runtime tool handlers, shell capability scripts, queue runtime tool execution, and device/media command surfaces. Identify which tools are exposed as shell CLI, which still exist as direct LLM/harness tools, and whether any direct surface violates the intended boundary.",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [
+        "The user’s desired boundary evolved: display may intentionally remain outside shell, while most interface tools move inside shell. Use current code and recent design as evidence, not old assumptions."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Audit shell capability and tool CLI migration residue",
+      "updated_at": "2026-05-11T09:02:43+00:00",
+      "verification_plan": "- Search for `im_read`, `im_reply`, `im_send`, `subagent_spawn`, `display`, `audio_qa`, `device`, `devicectl`, `agentctl`, and builtin schema definitions.\n- Inspect `shell_capabilities.py`, `builtin_tools.py`, runtime tool handlers, and queue shell env injection."
+    },
+    "T004": {
+      "acceptance_criteria": [
+        "Confirm whether `prepare_for_llm` and active context assembly require context events rather than old DFS projections.",
+        "Identify any remaining active fallback from `/ro/scopes`, `context.jsonl`, `summary.md`, or old stack types.",
+        "Identify dead or misleading compatibility residue that should be cleaned later.",
+        "Record concrete file evidence."
+      ],
+      "assumptions": [
+        "Active LLM assembly path means the code path that builds messages for current model calls, not read-only history inspection endpoints."
+      ],
+      "body_path": "problems/P000/children/P004/tickets/T004.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded audit of a specific context assembly boundary with targeted grep, code slices, and existing guard tests.",
+      "created_at": "2026-05-11T09:04:04+00:00",
+      "id": "T004",
+      "problem_definition": "Audit whether Cortex LLM context assembly has fully cut over to the context event source model, and identify any remaining live DFS/projection fallback or misleading old context-stack code.",
+      "problem_id": "P004",
+      "proposed_solution": "Inspect the Cortex context preparation APIs, event store/read model code, context-stack modules, and guard tests. Separate active LLM assembly paths from historical/debug projection reads.",
+      "result_ids": [
+        "R003"
+      ],
+      "risks": [
+        "History/debug endpoints may legitimately read archived projections; incorrectly classifying them as active assembly bugs would create false positives."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Audit Context Event Source Cutover",
+      "updated_at": "2026-05-11T09:07:26+00:00",
+      "verification_plan": "- Use `rg` to find context event store/read-model/prepare paths and legacy DFS references.\n- Inspect targeted code slices rather than loading large files.\n- Inspect tests that guard no-compat/no-DFS behavior."
+    },
+    "T005": {
+      "acceptance_criteria": [
+        "Confirm current deploy/start scripts use the intended services.",
+        "Identify old services or fallback components that are still deployable or started.",
+        "Check whether compatibility cleanup steps exist for retired components.",
+        "Record concrete file and command evidence."
+      ],
+      "assumptions": [
+        "A deploy residue is critical only if it can be started by current scripts or reached by current service configuration."
+      ],
+      "body_path": "problems/P000/children/P005/tickets/T005.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded deploy wiring audit over scripts, mode registry, service status, and retired component references.",
+      "created_at": "2026-05-11T09:08:21+00:00",
+      "id": "T005",
+      "problem_definition": "Audit whether deployment and process wiring still expose old services, old fallback flags, or compatibility paths that bypass the new LogicalFS/Sandbox/FSM architecture.",
+      "problem_id": "P005",
+      "proposed_solution": "Inspect deployment scripts, startup scripts, process mode declarations, service status, and repository residue. Separate harmless historical docs/tests from deployable old runtime components.",
+      "result_ids": [
+        "R004"
+      ],
+      "risks": [
+        "Some historical documentation and tests may mention retired components; those should not be confused with active deployment wiring."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Audit Deployment and Compatibility Residue",
+      "updated_at": "2026-05-11T09:10:16+00:00",
+      "verification_plan": "- Inspect deployment/start scripts and backend mode declarations.\n- Search for retired component names and fallback flags.\n- Query current deployment status if available locally."
+    }
+  },
+  "updated_at": "2026-05-11T09:12:32+00:00"
+}

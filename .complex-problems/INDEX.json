@@ -1,5 +1,5 @@
 {
-  "active_ledger_id": "L20260511-152523",
+  "active_ledger_id": "L20260511-185002",
   "ledgers": [
     {
       "active_count": 0,
@@ -616,7 +616,40 @@
       "status": "done",
       "title": "Agent loop stalls after one round",
       "updated_at": "2026-05-11T08:13:36+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260511-165032",
+      "path": "L20260511-165032",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "Audit unintegrated adapter paths after infrastructure cutovers",
+      "updated_at": "2026-05-11T09:12:32+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260511-175404",
+      "path": "L20260511-175404",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "Live HD screenshot wake stalls after tool completion",
+      "updated_at": "2026-05-11T10:33:12+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260511-185002",
+      "path": "L20260511-185002",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "Audit and fix shell CLIs to obey blob artifact contract",
+      "updated_at": "2026-05-11T11:19:35+00:00"
     }
   ],
-  "updated_at": "2026-05-11T08:13:36+00:00"
+  "updated_at": "2026-05-11T11:19:35+00:00"
 }

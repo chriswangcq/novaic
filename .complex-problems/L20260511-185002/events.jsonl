@@ -1,0 +1,108 @@
+{"at": "2026-05-11T10:50:02+00:00", "id": "E000", "payload": {"ledger_id": "L20260511-185002", "root_id": "P000", "title": "Audit and fix shell CLIs to obey blob artifact contract"}, "root_id": "P000", "type": "ledger_initialized"}
+{"at": "2026-05-11T10:50:34+00:00", "id": "E001", "payload": {"problem_id": "P000", "ticket_id": "T000", "title": "Split CLI blob contract remediation by command surface"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-11T10:50:34+00:00", "id": "E002", "payload": {"from": "created", "id": "T000", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T10:50:45+00:00", "id": "E003", "payload": {"from": "defined", "id": "T000", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T10:50:45+00:00", "id": "E004", "payload": {"classification": "split", "reason": "Broad multi-CLI audit/fix with multiple command surfaces and verification paths; split avoids hidden half-migration.", "ticket_id": "T000"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-11T10:51:19+00:00", "id": "E005", "payload": {"from": "classified", "id": "T000", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T10:51:19+00:00", "id": "E006", "payload": {"parent_id": "P000", "problem_id": "P001", "title": "Inventory shell CLI surfaces and blob-contract risks"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-11T10:51:19+00:00", "id": "E007", "payload": {"parent_id": "P000", "problem_id": "P002", "title": "Fix devicectl artifact-producing commands to use blob contract"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-11T10:51:19+00:00", "id": "E008", "payload": {"parent_id": "P000", "problem_id": "P003", "title": "Audit and fix agentctl and cortex CLI outputs"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-11T10:51:19+00:00", "id": "E009", "payload": {"parent_id": "P000", "problem_id": "P004", "title": "Verify CLI blob contract and clean residual old behavior"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-11T10:51:41+00:00", "id": "E010", "payload": {"problem_id": "P001", "ticket_id": "T001", "title": "Inventory shell capability CLIs"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-11T10:51:41+00:00", "id": "E011", "payload": {"from": "created", "id": "T001", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T10:51:49+00:00", "id": "E012", "payload": {"from": "defined", "id": "T001", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T10:51:49+00:00", "id": "E013", "payload": {"classification": "one_go", "reason": "Inventory is read-only, bounded to shell_capabilities and related tests, and directly verifiable by code pointers.", "ticket_id": "T001"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-11T10:53:29+00:00", "id": "E014", "payload": {"from": "todo", "id": "P001", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-11T10:53:29+00:00", "id": "E015", "payload": {"from": "classified", "id": "T001", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T10:53:29+00:00", "id": "E016", "payload": {"from": "executing", "id": "T001", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T10:53:29+00:00", "id": "E017", "payload": {"result_id": "R000", "ticket_id": "T001"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-11T10:53:56+00:00", "id": "E018", "payload": {"from": "doing", "id": "P001", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-11T10:53:56+00:00", "id": "E019", "payload": {"from": "checking", "id": "P001", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-11T10:53:56+00:00", "id": "E020", "payload": {"check_id": "C000", "followup_id": null, "problem_id": "P001", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-11T11:00:24+00:00", "id": "E021", "payload": {"problem_id": "P002", "ticket_id": "T002", "title": "Wrap devicectl artifact outputs with Blob-backed tool-output.v1"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-11T11:00:24+00:00", "id": "E022", "payload": {"from": "created", "id": "T002", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T11:00:47+00:00", "id": "E023", "payload": {"from": "defined", "id": "T002", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T11:00:47+00:00", "id": "E024", "payload": {"classification": "one_go", "reason": "Bounded to two artifact-producing devicectl commands with direct fake-service tests and no cross-service state migration.", "ticket_id": "T002"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-11T11:01:03+00:00", "id": "E025", "payload": {"from": "todo", "id": "P002", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-11T11:02:31+00:00", "id": "E026", "payload": {"from": "classified", "id": "T002", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T11:02:31+00:00", "id": "E027", "payload": {"from": "executing", "id": "T002", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T11:02:31+00:00", "id": "E028", "payload": {"result_id": "R001", "ticket_id": "T002"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-11T11:03:09+00:00", "id": "E029", "payload": {"from": "doing", "id": "P002", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-11T11:03:09+00:00", "id": "E030", "payload": {"from": "checking", "id": "P002", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-11T11:03:09+00:00", "id": "E031", "payload": {"check_id": "C001", "followup_id": null, "problem_id": "P002", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-11T11:03:39+00:00", "id": "E032", "payload": {"problem_id": "P003", "ticket_id": "T003", "title": "Audit agentctl and cortex CLI output contracts"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-11T11:03:39+00:00", "id": "E033", "payload": {"from": "created", "id": "T003", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T11:03:50+00:00", "id": "E034", "payload": {"from": "defined", "id": "T003", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T11:03:50+00:00", "id": "E035", "payload": {"classification": "split", "reason": "agentctl and cortex have different output contracts and should be audited independently to avoid hiding residual violations.", "ticket_id": "T003"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-11T11:04:32+00:00", "id": "E036", "payload": {"from": "classified", "id": "T003", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T11:04:32+00:00", "id": "E037", "payload": {"parent_id": "P003", "problem_id": "P005", "title": "Audit and fix agentctl CLI Blob contract"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-11T11:04:33+00:00", "id": "E038", "payload": {"parent_id": "P003", "problem_id": "P006", "title": "Audit and fix cortex CLI Blob contract"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-11T11:05:03+00:00", "id": "E039", "payload": {"problem_id": "P005", "ticket_id": "T004", "title": "Audit agentctl shell CLI output contract"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-11T11:05:03+00:00", "id": "E040", "payload": {"from": "created", "id": "T004", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T11:05:15+00:00", "id": "E041", "payload": {"from": "defined", "id": "T004", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T11:05:15+00:00", "id": "E042", "payload": {"classification": "one_go", "reason": "Bounded audit of one generated CLI family with direct code inspection and existing targeted tests.", "ticket_id": "T004"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-11T11:05:22+00:00", "id": "E043", "payload": {"from": "todo", "id": "P005", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-11T11:06:34+00:00", "id": "E044", "payload": {"from": "classified", "id": "T004", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T11:06:34+00:00", "id": "E045", "payload": {"from": "executing", "id": "T004", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T11:06:34+00:00", "id": "E046", "payload": {"result_id": "R002", "ticket_id": "T004"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-11T11:07:09+00:00", "id": "E047", "payload": {"from": "doing", "id": "P005", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-11T11:07:09+00:00", "id": "E048", "payload": {"from": "checking", "id": "P005", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-11T11:07:09+00:00", "id": "E049", "payload": {"check_id": "C002", "followup_id": null, "problem_id": "P005", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-11T11:07:34+00:00", "id": "E050", "payload": {"problem_id": "P006", "ticket_id": "T005", "title": "Audit cortex payload CLI output contract"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-11T11:07:34+00:00", "id": "E051", "payload": {"from": "created", "id": "T005", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T11:07:47+00:00", "id": "E052", "payload": {"from": "defined", "id": "T005", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T11:07:47+00:00", "id": "E053", "payload": {"classification": "one_go", "reason": "Bounded audit of one generated cortex payload command family with explicit limit code paths and targeted tests.", "ticket_id": "T005"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-11T11:08:01+00:00", "id": "E054", "payload": {"from": "todo", "id": "P006", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-11T11:08:55+00:00", "id": "E055", "payload": {"from": "classified", "id": "T005", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T11:08:55+00:00", "id": "E056", "payload": {"from": "executing", "id": "T005", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T11:08:55+00:00", "id": "E057", "payload": {"result_id": "R003", "ticket_id": "T005"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-11T11:09:26+00:00", "id": "E058", "payload": {"from": "doing", "id": "P006", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-11T11:09:26+00:00", "id": "E059", "payload": {"from": "checking", "id": "P006", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-11T11:09:26+00:00", "id": "E060", "payload": {"check_id": "C003", "followup_id": null, "problem_id": "P006", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-11T11:09:58+00:00", "id": "E061", "payload": {"from": "todo", "id": "P003", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-11T11:09:58+00:00", "id": "E062", "payload": {"from": "splitting", "id": "T003", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T11:09:58+00:00", "id": "E063", "payload": {"result_id": "R004", "ticket_id": "T003"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-11T11:10:33+00:00", "id": "E064", "payload": {"from": "doing", "id": "P003", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-11T11:10:33+00:00", "id": "E065", "payload": {"from": "checking", "id": "P003", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-11T11:10:33+00:00", "id": "E066", "payload": {"check_id": "C004", "followup_id": null, "problem_id": "P003", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-11T11:11:02+00:00", "id": "E067", "payload": {"problem_id": "P004", "ticket_id": "T006", "title": "Verify CLI Blob contract and remove residual old behavior"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-11T11:11:02+00:00", "id": "E068", "payload": {"from": "created", "id": "T006", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T11:11:15+00:00", "id": "E069", "payload": {"from": "defined", "id": "T006", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T11:11:15+00:00", "id": "E070", "payload": {"classification": "split", "reason": "Residual cleanup and final verification are distinct; split prevents treating scans as enough without correcting stale fixtures.", "ticket_id": "T006"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-11T11:11:47+00:00", "id": "E071", "payload": {"from": "classified", "id": "T006", "to": "splitting"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T11:11:47+00:00", "id": "E072", "payload": {"parent_id": "P004", "problem_id": "P007", "title": "Clean stale CLI artifact Blob namespace fixtures"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-11T11:11:47+00:00", "id": "E073", "payload": {"parent_id": "P004", "problem_id": "P008", "title": "Final CLI Blob contract verification"}, "root_id": "P000", "type": "problem_created"}
+{"at": "2026-05-11T11:12:13+00:00", "id": "E074", "payload": {"problem_id": "P007", "ticket_id": "T007", "title": "Replace stale device-screenshot artifact namespace fixtures"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-11T11:12:13+00:00", "id": "E075", "payload": {"from": "created", "id": "T007", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T11:12:22+00:00", "id": "E076", "payload": {"from": "defined", "id": "T007", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T11:12:22+00:00", "id": "E077", "payload": {"classification": "one_go", "reason": "Mechanical fixture cleanup with exact rg verification and focused tests.", "ticket_id": "T007"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-11T11:12:31+00:00", "id": "E078", "payload": {"from": "todo", "id": "P007", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-11T11:13:36+00:00", "id": "E079", "payload": {"from": "classified", "id": "T007", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T11:13:36+00:00", "id": "E080", "payload": {"from": "executing", "id": "T007", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T11:13:36+00:00", "id": "E081", "payload": {"result_id": "R005", "ticket_id": "T007"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-11T11:14:00+00:00", "id": "E082", "payload": {"from": "doing", "id": "P007", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-11T11:14:00+00:00", "id": "E083", "payload": {"from": "checking", "id": "P007", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-11T11:14:00+00:00", "id": "E084", "payload": {"check_id": "C005", "followup_id": null, "problem_id": "P007", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-11T11:14:28+00:00", "id": "E085", "payload": {"problem_id": "P008", "ticket_id": "T008", "title": "Final CLI Blob contract verification pass"}, "root_id": "P000", "type": "ticket_created"}
+{"at": "2026-05-11T11:14:28+00:00", "id": "E086", "payload": {"from": "created", "id": "T008", "to": "defined"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T11:14:38+00:00", "id": "E087", "payload": {"from": "defined", "id": "T008", "to": "classified"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T11:14:38+00:00", "id": "E088", "payload": {"classification": "one_go", "reason": "Verification-only pass with explicit compile, focused tests, scans, and ledger validation.", "ticket_id": "T008"}, "root_id": "P000", "type": "ticket_classified"}
+{"at": "2026-05-11T11:14:50+00:00", "id": "E089", "payload": {"from": "todo", "id": "P008", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-11T11:16:55+00:00", "id": "E090", "payload": {"from": "classified", "id": "T008", "to": "executing"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T11:16:55+00:00", "id": "E091", "payload": {"from": "executing", "id": "T008", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T11:16:55+00:00", "id": "E092", "payload": {"result_id": "R006", "ticket_id": "T008"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-11T11:17:18+00:00", "id": "E093", "payload": {"from": "doing", "id": "P008", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-11T11:17:18+00:00", "id": "E094", "payload": {"from": "checking", "id": "P008", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-11T11:17:18+00:00", "id": "E095", "payload": {"check_id": "C006", "followup_id": null, "problem_id": "P008", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-11T11:17:39+00:00", "id": "E096", "payload": {"from": "todo", "id": "P004", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-11T11:17:39+00:00", "id": "E097", "payload": {"from": "splitting", "id": "T006", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T11:17:39+00:00", "id": "E098", "payload": {"result_id": "R007", "ticket_id": "T006"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-11T11:18:02+00:00", "id": "E099", "payload": {"from": "doing", "id": "P004", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-11T11:18:02+00:00", "id": "E100", "payload": {"from": "checking", "id": "P004", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-11T11:18:02+00:00", "id": "E101", "payload": {"check_id": "C007", "followup_id": null, "problem_id": "P004", "status": "success"}, "root_id": "P000", "type": "check_recorded"}
+{"at": "2026-05-11T11:18:46+00:00", "id": "E102", "payload": {"from": "todo", "id": "P000", "to": "doing"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-11T11:18:46+00:00", "id": "E103", "payload": {"from": "splitting", "id": "T000", "to": "done"}, "root_id": "P000", "type": "ticket_status_changed"}
+{"at": "2026-05-11T11:18:46+00:00", "id": "E104", "payload": {"result_id": "R008", "ticket_id": "T000"}, "root_id": "P000", "type": "result_recorded"}
+{"at": "2026-05-11T11:19:19+00:00", "id": "E105", "payload": {"from": "doing", "id": "P000", "to": "checking"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-11T11:19:19+00:00", "id": "E106", "payload": {"from": "checking", "id": "P000", "to": "done"}, "root_id": "P000", "type": "problem_status_changed"}
+{"at": "2026-05-11T11:19:19+00:00", "id": "E107", "payload": {"check_id": "C008", "followup_id": null, "problem_id": "P000", "status": "success"}, "root_id": "P000", "type": "check_recorded"}

@@ -1,0 +1,1226 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C000.md",
+      "created_at": "2026-05-11T10:53:56+00:00",
+      "criteria_map": [
+        "Command surfaces inventoried: satisfied for `agentctl`, `cortex`, and `devicectl`.",
+        "Output classes identified: satisfied by text/control, bounded payload inspection, and artifact-producing/risky classifications.",
+        "Confirmed risks listed with pointers: satisfied for `devicectl hd screenshot` and `file-pull`.",
+        "Repair targets clear: satisfied by P002/P003/P004 child problems."
+      ],
+      "evidence": [
+        "`shell_capabilities.py` defines the generated shell entrypoints: `agentctl`, `cortex`, and `devicectl`.",
+        "`devicectl hd screenshot` maps to `desktop/screenshot` and upstream `hd_tools.rs` returns base64 under `screenshot`.",
+        "`devicectl hd file-pull` maps to `file/pull` and upstream `hd_tools.rs` returns base64 under `data`.",
+        "`agentctl media audio-qa` requires `blob://` input and returns text answer, not an artifact payload.",
+        "`cortex payload` commands are bounded read/search/summarize/qa utilities."
+      ],
+      "execution_map": [
+        "`T001` executed a bounded read-only code inspection and recorded `R000`."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P001",
+      "residual_risk": [
+        "Non-blocking: remote service behavior can still differ at runtime, but the active code path clearly identifies the artifact-producing contracts that need repair."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Considered both image-producing and file-producing HD commands, not just the visible screenshot failure.",
+        "Checked whether `agentctl media` creates a hidden violation; it only sends base64 internally to Factory after reading a blob input and returns text."
+      ],
+      "summary": "Success. The shell CLI surfaces are inventoried and the live blob-contract risks are identified with code evidence."
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/checks/C001.md",
+      "created_at": "2026-05-11T11:03:09+00:00",
+      "criteria_map": [
+        "Screenshot stdout contains manifest and Blob URI: covered by `test_devicectl_hd_screenshot_uploads_image_and_prints_tool_output_artifact`.",
+        "File-pull stdout contains manifest and Blob URI: covered by `test_devicectl_hd_file_pull_uploads_file_and_prints_tool_output_artifact`.",
+        "Namespace is contract-valid `runtime-artifact`: both tests assert recorded upload namespace.",
+        "Non-artifact HD commands preserved: wrapper dispatch only intercepts `screenshot` and `file-pull`; all other subcommands return original result.",
+        "Raw artifact fields absent: tests assert stdout lacks `\"screenshot\":` and `\"data\":`."
+      ],
+      "evidence": [
+        "Generated capability scripts compiled successfully, proving the format-string-generated CLI remains syntactically valid.",
+        "`tests/test_shell_capabilities_blob_contract.py` exercises `devicectl hd screenshot` and `devicectl hd file-pull` against fake device and Blob services.",
+        "The test run completed with `21 passed`, including adjacent tool-output projection, tool schema, and Blob payload client tests."
+      ],
+      "execution_map": [
+        "R001 changed `novaic-cortex/novaic_cortex/shell_capabilities.py`.",
+        "R001 added `novaic-cortex/tests/test_shell_capabilities_blob_contract.py`.",
+        "Verification command: `PYTHONPATH=../novaic-common:../novaic-logicalfs:../novaic-sandbox-sdk:. pytest -q tests/test_shell_capabilities_blob_contract.py tests/test_tool_output_projection.py tests/test_tool_schemas_limits.py tests/test_blob_payload_client.py`."
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P002",
+      "residual_risk": [
+        "Existing callers that depended on raw JSON screenshot/file-pull fields will need to consume the manifest shape. This is intentional contract enforcement, not a blocker.",
+        "Full CLI residual cleanup is handled by P003/P004 and does not block P002."
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Fake service tests verify actual uploaded bytes match decoded upstream base64 bytes, not just the presence of a URI.",
+        "Tests reject the concrete previously observed failure mode: a huge base64 `screenshot` field appearing in shell tool stdout."
+      ],
+      "summary": "P002 is solved by R001. The two artifact-producing `devicectl` commands have direct code coverage and now produce Blob-backed `tool-output.v1` manifests instead of raw base64 stdout."
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/children/P005/checks/C002.md",
+      "created_at": "2026-05-11T11:07:09+00:00",
+      "criteria_map": [
+        "`agentctl media audio-qa` consumes Blob input and does not print raw audio bytes: satisfied by code inspection and user content tests.",
+        "IM commands do not inline attachment bytes: satisfied by code inspection of IM paths and tests rendering attachment handling through Blob references.",
+        "Subagent spawn output is metadata only: satisfied by code inspection.",
+        "Violations fixed or recorded: no active violations found."
+      ],
+      "evidence": [
+        "`_get_blob` rejects non-Blob URLs and reads audio bytes from Blob Service.",
+        "`_agentctl_media` base64-encodes audio only for the Factory request body and prints a text answer plus metadata, not audio bytes.",
+        "`_agentctl_im` and `_agentctl_subagent` only post/read JSON metadata and do not download attachment bytes.",
+        "Runtime and Cortex tests covering user content, shell output contract, tool output contract, internal auth, schemas, and Blob payload client passed."
+      ],
+      "execution_map": [
+        "R002 performed code audit and ran targeted tests.",
+        "Verification commands produced `16 passed` in `novaic-agent-runtime` and `16 passed` in `novaic-cortex`."
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P005",
+      "residual_risk": [
+        "IM APIs can return user text that happens to look like base64. That is content text, not binary artifact transport, and is outside the Blob contract violation class."
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The main plausible artifact risk, audio data, was traced end to end: Blob URI input -> Blob Service GET -> Factory request -> text-only CLI stdout.",
+        "The IM attachment path was checked for download behavior; no file-byte retrieval exists in `agentctl im`."
+      ],
+      "summary": "P005 is solved by R002. The active `agentctl` CLI paths were inspected and verified with targeted tests; no raw binary or base64 artifact stdout path was found."
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/children/P006/checks/C003.md",
+      "created_at": "2026-05-11T11:09:26+00:00",
+      "criteria_map": [
+        "`payload read` bounded output: code caps `limit` at 8000.",
+        "`payload search` bounded output: code caps matches and context chars.",
+        "`payload summarize`/`qa` bounded model IO: code caps input and output chars.",
+        "No raw artifact stdout behavior: confirmed by code inspection and no base64 decode/print path under cortex payload."
+      ],
+      "evidence": [
+        "`_cortex_payload` enforces explicit limits for read/search/summarize/qa.",
+        "No cortex payload path decodes upstream base64 artifact fields or prints binary bytes.",
+        "Payload client, tool schema, context event API, and step index tests passed."
+      ],
+      "execution_map": [
+        "R003 performed code audit and ran targeted tests.",
+        "Verification command produced `38 passed` in `novaic-cortex`."
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P006",
+      "residual_risk": [
+        "A bounded text payload slice may still contain user-provided base64-looking text. That is allowed text inspection, not artifact transport."
+      ],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The plausible failure mode is a user asking for full payload content; `payload read --limit` cannot exceed 8000 chars, and summarize/qa cannot exceed configured max input/output limits."
+      ],
+      "summary": "P006 is solved by R003. The active `cortex payload` CLI paths are bounded text-inspection/interpretation APIs and do not emit raw binary artifacts inline."
+    },
+    "C004": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/checks/C004.md",
+      "created_at": "2026-05-11T11:10:33+00:00",
+      "criteria_map": [
+        "`agentctl media audio-qa` consumes Blob input and avoids raw audio stdout: satisfied by P005.",
+        "`agentctl im` and subagent outputs remain metadata/text: satisfied by P005.",
+        "`cortex payload` commands are bounded text-inspection tools: satisfied by P006.",
+        "Raw artifact paths fixed or recorded: no violations found."
+      ],
+      "evidence": [
+        "P005/C002: `agentctl` paths audited and verified.",
+        "P006/C003: `cortex payload` paths audited and verified.",
+        "Tests across runtime and cortex covered user content rendering, shell output contract, tool output contract, shell capability auth, tool schemas, Blob payload client, context event payload writes, and step index payload reads."
+      ],
+      "execution_map": [
+        "R004 summarizes child results R002 and R003.",
+        "C002 and C003 provide child success checks."
+      ],
+      "followup_problem_id": null,
+      "id": "C004",
+      "problem_id": "P003",
+      "residual_risk": [
+        "Global residual cleanup is intentionally handled by P004 and does not block the scoped P003 result."
+      ],
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The two plausible artifact vectors were independently traced: audio input is Blob-read then text-output, while payload read/search have explicit bounds."
+      ],
+      "summary": "P003 is solved by R004. The split child audits verified `agentctl` and `cortex` CLI output contracts separately, and neither family has an active raw artifact stdout path."
+    },
+    "C005": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P004/children/P007/checks/C005.md",
+      "created_at": "2026-05-11T11:14:00+00:00",
+      "criteria_map": [
+        "Runtime-generated artifact fixtures use `runtime-artifact`: satisfied by patch.",
+        "No `device-screenshot` remains in contract tests: satisfied by rg scan.",
+        "Changes scoped to contract tests: only the two projection/tool-output fixture files changed.",
+        "Relevant tests pass: satisfied."
+      ],
+      "evidence": [
+        "`rg -n \"device-screenshot\" novaic-cortex/tests novaic-agent-runtime/tests/unit/task_queue` produced no matches.",
+        "Affected Cortex tests passed.",
+        "Affected runtime tests passed."
+      ],
+      "execution_map": [
+        "R005 performed fixture cleanup and verification."
+      ],
+      "followup_problem_id": null,
+      "id": "C005",
+      "problem_id": "P007",
+      "residual_risk": [
+        "Other non-CLI storage tests may still contain synthetic Blob refs such as `blob://payload/1`; those are not runtime artifact contract examples and are evaluated in final verification."
+      ],
+      "result_ids": [
+        "R005"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The exact stale string was searched across both affected test trees after patching, so hidden local occurrences in those contract tests are unlikely."
+      ],
+      "summary": "P007 is solved by R005. The stale `device-screenshot` namespace was removed from CLI/tool-output contract tests and replaced with `runtime-artifact`."
+    },
+    "C006": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P004/children/P008/checks/C006.md",
+      "created_at": "2026-05-11T11:17:18+00:00",
+      "criteria_map": [
+        "Generated CLI scripts compile: satisfied.",
+        "Focused Cortex tests pass: satisfied.",
+        "Focused runtime tests pass: satisfied.",
+        "Residual scans show no active raw artifact stdout path: satisfied by tests plus wrapper scan.",
+        "Ledger validation succeeds: satisfied."
+      ],
+      "evidence": [
+        "Generated `agentctl`, `cortex`, and `devicectl` compiled.",
+        "Cortex focused tests passed: `47 passed` plus an additional `30 passed` after operational-store fixture cleanup.",
+        "Runtime focused tests passed: `19 passed`.",
+        "No `device-screenshot` matches remain.",
+        "Remaining placeholder/negative Blob namespace examples are non-contract runtime artifact paths.",
+        "Ledger validation succeeded."
+      ],
+      "execution_map": [
+        "R006 captured final verification commands and outcomes."
+      ],
+      "followup_problem_id": null,
+      "id": "C006",
+      "problem_id": "P008",
+      "residual_risk": [
+        "This was a focused contract suite, not a full monorepo test run. Given existing dirty worktree breadth, this is appropriate for the CLI Blob contract scope."
+      ],
+      "result_ids": [
+        "R006"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The previously observed HD screenshot failure mode is covered by a fake device service that returns base64 screenshot bytes; stdout is asserted to contain a Blob manifest and not raw base64.",
+        "The file-pull artifact path is covered similarly.",
+        "Residual stale namespace scans catch misleading fixture drift."
+      ],
+      "summary": "P008 is solved by R006. The verification evidence is strong enough: generated CLIs compile, focused tests pass on both repos, residual scans classify remaining Blob URI examples, and ledger validation succeeds."
+    },
+    "C007": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P004/checks/C007.md",
+      "created_at": "2026-05-11T11:18:02+00:00",
+      "criteria_map": [
+        "No active CLI command emits screenshot/file bytes inline: satisfied by devicectl tests and final scan.",
+        "Runtime artifacts use `runtime-artifact`: satisfied by fixture cleanup and new tests.",
+        "Residual invalid namespace usage cleaned or classified: satisfied.",
+        "Final contract test suite passes: satisfied.",
+        "Remaining risk recorded: satisfied."
+      ],
+      "evidence": [
+        "P007/C005 cleaned stale `device-screenshot` fixtures and verified affected tests.",
+        "P008/C006 compiled generated CLIs, ran focused tests, performed residual namespace scans, and validated the ledger."
+      ],
+      "execution_map": [
+        "R007 summarizes child results R005 and R006."
+      ],
+      "followup_problem_id": null,
+      "id": "C007",
+      "problem_id": "P004",
+      "residual_risk": [
+        "Full monorepo test suite was not run; focused contract tests were run across the affected repos."
+      ],
+      "result_ids": [
+        "R007"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Both HD screenshot and file-pull fake-service tests reject the exact raw base64 stdout failure mode.",
+        "Namespace scan catches contract fixture drift."
+      ],
+      "summary": "P004 is solved by R007. Residual old behavior was cleaned and final verification passed with evidence from P007/P008."
+    },
+    "C008": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C008.md",
+      "created_at": "2026-05-11T11:19:19+00:00",
+      "criteria_map": [
+        "All shell CLI artifact-producing outputs obey Blob contract: satisfied; devicectl artifact commands now return Blob manifests, and no other audited CLI emits raw artifact bytes.",
+        "CLI stdout is small manifest/text instead of raw base64 for screenshot/file-pull: satisfied by fake-service tests.",
+        "Blob namespace is contract-valid: satisfied by `runtime-artifact` upload tests and fixture cleanup.",
+        "Residual old behavior cleaned: satisfied by no `device-screenshot` matches and payload fixture cleanup.",
+        "Work tracked through tickets and checks: satisfied by ledger IDs R001-R008 and C001-C007."
+      ],
+      "evidence": [
+        "P001 inventoried the relevant shell CLI surfaces.",
+        "P002/C001 fixed and verified `devicectl hd screenshot` and `devicectl hd file-pull`.",
+        "P003/C004 audited `agentctl` and `cortex` through child checks C002/C003.",
+        "P004/C007 cleaned residual old behavior and verified final contract through child checks C005/C006.",
+        "Final focused tests passed across Cortex and agent-runtime.",
+        "Ledger validation succeeded."
+      ],
+      "execution_map": [
+        "R008 summarizes all child outcomes.",
+        "Direct code changes are in shell capability generation and contract tests."
+      ],
+      "followup_problem_id": null,
+      "id": "C008",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Full monorepo test suite was not run. Focused verification is strong for this specific CLI Blob contract work.",
+        "Deployment was not done in this package."
+      ],
+      "result_ids": [
+        "R008"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The original observed failure class, huge base64 screenshot in shell output, is explicitly tested against.",
+        "File-pull has the same fake-service binary path coverage.",
+        "Agentctl/cortex were separately audited so their lack of wrapping is justified by bounded text/metadata behavior, not assumed."
+      ],
+      "summary": "P000 is solved by R008. The CLI surfaces were inventoried, active artifact-producing violations were fixed, non-artifact CLI families were audited, stale contract residue was cleaned, and focused verification passed."
+    }
+  },
+  "counters": {
+    "check": 9,
+    "event": 108,
+    "problem": 9,
+    "result": 9,
+    "ticket": 9
+  },
+  "created_at": "2026-05-11T10:50:02+00:00",
+  "ledger_id": "L20260511-185002",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C008"
+      ],
+      "created_at": "2026-05-11T10:50:02+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "Shell-exposed CLIs such as `devicectl`, `agentctl`, and `cortex` can return large or binary-like payloads through stdout. The concrete failure surfaced through `devicectl hd screenshot`, which printed a large base64 JPEG into stdout instead of returning a `tool-output.v1` artifact with a `blob://...` URI. This violates the blob/tool-output contract and forces downstream shell preview truncation, Cortex payload externalization, and context assembly to carry data that should have been an artifact.\n\nWe need comprehensively audit all shell CLIs and fix live CLI paths so binary, media, file, and large structured outputs use blob-backed artifact manifests, while stdout stays bounded and semantically useful.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R008"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P001",
+        "P002",
+        "P003",
+        "P004"
+      ],
+      "success_criteria": [
+        "All shell-exposed CLI commands are inventoried by command surface and output type.",
+        "Any CLI that can emit screenshots, files, media, or large binary/base64 content returns `tool-output.v1` with `artifacts[].uri` using `blob://...` instead of embedding the content in stdout text.",
+        "CLI text output remains small and useful; raw base64 screenshots are not printed as the primary shell stdout contract.",
+        "Tests prove the screenshot path and any other touched artifact-producing paths obey the blob contract.",
+        "Residual old/direct/base64 CLI output paths are either removed or explicitly justified as non-live/test-only."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Audit and fix shell CLIs to obey blob artifact contract",
+      "updated_at": "2026-05-11T11:19:19+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-11T10:51:19+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Before changing behavior, inventory every shell-exposed CLI command surface and classify which commands produce plain text, structured JSON, files, media, screenshots, or potentially large payloads. Identify live paths that can violate the blob artifact contract.",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`agentctl`, `cortex`, and `devicectl` shell capability command surfaces are inventoried.",
+        "Each command is classified as text-only, structured-small, payload-inspection, file/media-producing, or proxy/raw.",
+        "Confirmed blob-contract risks are listed with exact code pointers.",
+        "The next repair targets are clear and bounded."
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "Inventory shell CLI surfaces and blob-contract risks",
+      "updated_at": "2026-05-11T10:53:56+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-11T10:51:19+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "`devicectl hd screenshot` currently returns a raw proxy result that can contain inline base64 image data in shell stdout. This violates the `tool-output.v1` artifact contract and causes huge stdout previews/context payloads. Other `devicectl hd` file/media-producing commands must also be checked and fixed if they emit raw file data.",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`devicectl hd screenshot` returns bounded `tool-output.v1` JSON with image artifact metadata and a `blob://...` URI.",
+        "Raw screenshot base64 is not printed as primary stdout text.",
+        "Any touched device/file commands follow the same artifact convention or are documented as non-artifact commands.",
+        "Tests cover the transformed screenshot output."
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "Fix devicectl artifact-producing commands to use blob contract",
+      "updated_at": "2026-05-11T11:03:09+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P003/README.md",
+      "check_ids": [
+        "C004"
+      ],
+      "created_at": "2026-05-11T10:51:19+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "`agentctl` and `cortex` are shell-exposed CLIs. They need to be checked for commands that return large payloads, file contents, binary data, or embedded blob contents through stdout instead of returning references or bounded text.",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P003",
+      "parent_id": "P000",
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P005",
+        "P006"
+      ],
+      "success_criteria": [
+        "`agentctl` command surface is inspected for blob-contract violations.",
+        "`cortex` command surface is inspected for blob-contract violations.",
+        "Any confirmed live violation is fixed or split into a follow-up if it is a distinct large repair.",
+        "Text/payload-inspection commands remain bounded and explicit."
+      ],
+      "ticket_ids": [
+        "T003"
+      ],
+      "title": "Audit and fix agentctl and cortex CLI outputs",
+      "updated_at": "2026-05-11T11:10:33+00:00"
+    },
+    "P004": {
+      "body_path": "problems/P000/children/P004/README.md",
+      "check_ids": [
+        "C007"
+      ],
+      "created_at": "2026-05-11T10:51:19+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "After CLI repairs, tests and residue scans must prove the active shell CLI paths follow the blob artifact contract and do not silently keep raw base64/media stdout branches alive.",
+      "followup_ids": [],
+      "id": "P004",
+      "package_path": "problems/P000/children/P004",
+      "parent_id": "P000",
+      "result_ids": [
+        "R007"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P007",
+        "P008"
+      ],
+      "success_criteria": [
+        "Focused tests cover repaired CLI output contract.",
+        "Existing projection/runtime tests still pass.",
+        "Repository scans find no live raw screenshot/base64 stdout contract in shell CLI paths.",
+        "Any residual compatibility branch is either removed or explicitly justified as test-only/non-live."
+      ],
+      "ticket_ids": [
+        "T006"
+      ],
+      "title": "Verify CLI blob contract and clean residual old behavior",
+      "updated_at": "2026-05-11T11:18:02+00:00"
+    },
+    "P005": {
+      "body_path": "problems/P000/children/P003/children/P005/README.md",
+      "check_ids": [
+        "C002"
+      ],
+      "created_at": "2026-05-11T11:04:32+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T003",
+      "description": "`agentctl` shell capability commands must not emit raw binary artifact content inline. This child problem audits IM, subagent, and media commands, and fixes any output path that violates the Blob contract.",
+      "followup_ids": [],
+      "id": "P005",
+      "package_path": "problems/P000/children/P003/children/P005",
+      "parent_id": "P003",
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`agentctl media audio-qa` requires `blob://` input and does not print raw audio bytes.",
+        "`agentctl im` command output is text/metadata only and does not inline attachment bytes.",
+        "`agentctl subagent spawn` output is ordinary text/metadata only.",
+        "Any violation discovered in active code is fixed and verified.",
+        "Evidence references concrete code paths and test results."
+      ],
+      "ticket_ids": [
+        "T004"
+      ],
+      "title": "Audit and fix agentctl CLI Blob contract",
+      "updated_at": "2026-05-11T11:07:09+00:00"
+    },
+    "P006": {
+      "body_path": "problems/P000/children/P003/children/P006/README.md",
+      "check_ids": [
+        "C003"
+      ],
+      "created_at": "2026-05-11T11:04:33+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T003",
+      "description": "`cortex payload` shell capability commands inspect Cortex payload refs. They must remain bounded text-inspection tools and must not become unbounded binary or Blob-sized stdout channels.",
+      "followup_ids": [],
+      "id": "P006",
+      "package_path": "problems/P000/children/P003/children/P006",
+      "parent_id": "P003",
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`cortex payload read` has explicit bounded read modes and size limits.",
+        "`cortex payload search` returns bounded match contexts.",
+        "`cortex payload summarize` and `cortex payload qa` return model-produced text summaries/answers, not raw payload bytes.",
+        "Any unbounded or artifact-like stdout behavior is fixed and verified.",
+        "Evidence references concrete code paths and test results."
+      ],
+      "ticket_ids": [
+        "T005"
+      ],
+      "title": "Audit and fix cortex CLI Blob contract",
+      "updated_at": "2026-05-11T11:09:26+00:00"
+    },
+    "P007": {
+      "body_path": "problems/P000/children/P004/children/P007/README.md",
+      "check_ids": [
+        "C005"
+      ],
+      "created_at": "2026-05-11T11:11:47+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T006",
+      "description": "Some tests/examples still use pre-contract artifact namespaces such as `device-screenshot`. These residues can mislead future CLI implementations even if live code is fixed.",
+      "followup_ids": [],
+      "id": "P007",
+      "package_path": "problems/P000/children/P004/children/P007",
+      "parent_id": "P004",
+      "result_ids": [
+        "R005"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Runtime-generated artifact fixtures use `blob://runtime-artifact/...`.",
+        "No `device-screenshot` namespace remains in CLI/tool-output contract tests.",
+        "Changes are limited to contract-relevant fixtures and do not rewrite unrelated storage tests.",
+        "Relevant projection and tool-output tests pass."
+      ],
+      "ticket_ids": [
+        "T007"
+      ],
+      "title": "Clean stale CLI artifact Blob namespace fixtures",
+      "updated_at": "2026-05-11T11:14:00+00:00"
+    },
+    "P008": {
+      "body_path": "problems/P000/children/P004/children/P008/README.md",
+      "check_ids": [
+        "C006"
+      ],
+      "created_at": "2026-05-11T11:11:47+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T006",
+      "description": "After implementation and fixture cleanup, the CLI Blob contract needs a final evidence pass across shell capabilities, runtime output handling, and residual scans.",
+      "followup_ids": [],
+      "id": "P008",
+      "package_path": "problems/P000/children/P004/children/P008",
+      "parent_id": "P004",
+      "result_ids": [
+        "R006"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Generated CLI scripts compile.",
+        "Focused Cortex and runtime contract tests pass.",
+        "Repository scan shows no active CLI raw artifact stdout path.",
+        "Remaining Blob URI examples are classified as valid namespace usage or non-CLI storage test data.",
+        "Ledger validation succeeds."
+      ],
+      "ticket_ids": [
+        "T008"
+      ],
+      "title": "Final CLI Blob contract verification",
+      "updated_at": "2026-05-11T11:17:18+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`novaic-cortex/novaic_cortex/shell_capabilities.py`",
+        "`novaic-app/src-tauri/vmcontrol/src/api/routes/hd_tools.rs`",
+        "`novaic-cortex/tests/test_tool_output_projection.py`",
+        "`novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py`"
+      ],
+      "body_path": "problems/P000/children/P001/results/R000.md",
+      "created_at": "2026-05-11T10:53:29+00:00",
+      "done": [
+        "Inspected capability script generation in `novaic-cortex/novaic_cortex/shell_capabilities.py`.",
+        "Inventoried command surfaces:",
+        "`agentctl im read/reply/send/history/search/context`",
+        "`agentctl subagent spawn`",
+        "`agentctl media audio-qa`",
+        "`devicectl hd screenshot/mouse/keyboard/shell-exec/clipboard-get/clipboard-set/file-pull/file-push`",
+        "`cortex payload read/search/summarize/qa`",
+        "Inspected upstream HD proxy implementation in `novaic-app/src-tauri/vmcontrol/src/api/routes/hd_tools.rs`.",
+        "Identified confirmed/likely risk surfaces:",
+        "`devicectl hd screenshot`: upstream returns `{success, screenshot: base64, width, height, format}`.",
+        "`devicectl hd file-pull`: upstream returns `{success, data: base64, is_base64: true, size}`.",
+        "`devicectl hd shell-exec`: returns text stdout/stderr and already truncates long stdout at the HD service boundary; it is a text command, not an artifact command.",
+        "`agentctl media audio-qa`: consumes `blob://` audio and sends base64 only inside the Factory request, then returns text answer; no user-visible artifact violation.",
+        "`cortex payload read/search/summarize/qa`: bounded payload inspection; does not itself unwrap arbitrary blobs into shell stdout beyond explicit limits."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "`devicectl hd screenshot` still needs repair to upload decoded screenshot bytes to Blob Service and print a bounded `tool-output.v1` artifact manifest.",
+        "`devicectl hd file-pull` should be repaired similarly for pulled file bytes.",
+        "Tests need to cover the shell CLI wrapper behavior, not only downstream projection helpers."
+      ],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "The active shell CLI surface is generated by `novaic-cortex/novaic_cortex/shell_capabilities.py` and consists of `agentctl`, `cortex`, and `devicectl`. The confirmed live blob-contract violation is `devicectl hd screenshot`, with `devicectl hd file-pull` also risky because the upstream HD tool proxy returns base64 file data. `agentctl` and `cortex payload` mostly operate on text/control-plane or bounded payload inspection and do not directly emit binary artifacts.",
+      "ticket_id": "T001",
+      "verification": [
+        "`rg` and `sed` inspection of `shell_capabilities.py`, related tests, and `hd_tools.rs`.",
+        "Existing tests already assert `tool-output.v1` artifact projection expectations in `novaic-cortex/tests/test_tool_output_projection.py` and `novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py`, but the live `devicectl` CLI does not yet produce that contract."
+      ]
+    },
+    "R001": {
+      "artifacts": [
+        "`novaic-cortex/novaic_cortex/shell_capabilities.py`",
+        "`novaic-cortex/tests/test_shell_capabilities_blob_contract.py`"
+      ],
+      "body_path": "problems/P000/children/P002/results/R001.md",
+      "created_at": "2026-05-11T11:02:31+00:00",
+      "done": [
+        "Added Blob multipart upload helper logic to the generated CLI script in `novaic-cortex/novaic_cortex/shell_capabilities.py`.",
+        "Wrapped `devicectl hd screenshot` output into an image artifact manifest with display access metadata.",
+        "Wrapped `devicectl hd file-pull` output into a binary artifact manifest with file metadata.",
+        "Kept non-artifact `devicectl hd` subcommands on the ordinary JSON diagnostics path.",
+        "Added fake device and Blob service tests in `novaic-cortex/tests/test_shell_capabilities_blob_contract.py`."
+      ],
+      "id": "R001",
+      "known_gaps": [
+        "This ticket only covers `devicectl` artifact-producing commands. Agentctl/cortex CLI audit and global residual cleanup are tracked in sibling problems P003/P004.",
+        "Deployment was not performed in this ticket."
+      ],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "Implemented Blob-backed artifact output for `devicectl hd screenshot` and `devicectl hd file-pull` in the generated shell capability CLI. Both commands now decode upstream base64 data, upload bytes to Blob Service using the `runtime-artifact` namespace, and print a compact `tool-output.v1` manifest instead of raw base64 JSON.",
+      "ticket_id": "T002",
+      "verification": [
+        "Generated `agentctl`, `cortex`, and `devicectl` scripts compiled successfully with `py_compile`.",
+        "Ran `PYTHONPATH=../novaic-common:../novaic-logicalfs:../novaic-sandbox-sdk:. pytest -q tests/test_shell_capabilities_blob_contract.py tests/test_tool_output_projection.py tests/test_tool_schemas_limits.py tests/test_blob_payload_client.py`.",
+        "Result: `21 passed in 1.27s`.",
+        "Tests assert stdout does not contain raw `\"screenshot\":` or `\"data\":` fields for the artifact commands."
+      ]
+    },
+    "R002": {
+      "artifacts": [
+        "Audit evidence: `novaic-cortex/novaic_cortex/shell_capabilities.py` lines covering `_agentctl_im`, `_agentctl_subagent`, `_agentctl_media`, and `_get_blob`."
+      ],
+      "body_path": "problems/P000/children/P003/children/P005/results/R002.md",
+      "created_at": "2026-05-11T11:06:34+00:00",
+      "done": [
+        "Inspected `novaic-cortex/novaic_cortex/shell_capabilities.py` `agentctl im` implementation.",
+        "Inspected `agentctl subagent spawn` implementation.",
+        "Inspected `agentctl media audio-qa` implementation.",
+        "Verified `audio-qa` requires `blob://` input via `_get_blob`, reads bytes from Blob Service, sends audio bytes only to Factory, and prints the text answer plus metadata.",
+        "Verified IM reply currently sends `attachments: []`; IM read/history/search/context delegate bounded API responses and do not fetch attachment bytes."
+      ],
+      "id": "R002",
+      "known_gaps": [
+        "No P005-blocking gaps found.",
+        "This audit does not cover `devicectl` or `cortex payload`; those are tracked separately."
+      ],
+      "problem_id": "P005",
+      "root_id": "P000",
+      "summary": "Audited generated `agentctl` CLI output paths. No active raw artifact stdout violation was found. The media path consumes Blob input and returns text; IM and subagent paths print JSON metadata/text only.",
+      "ticket_id": "T004",
+      "verification": [
+        "Ran `PYTHONPATH=../novaic-common:../novaic-cortex:../novaic-logicalfs:../novaic-sandbox-sdk:. pytest -q tests/unit/task_queue/test_user_content.py tests/unit/task_queue/test_shell_output_contract.py tests/unit/task_queue/test_tool_output_contract.py` in `novaic-agent-runtime`.",
+        "Result: `16 passed in 0.10s`.",
+        "Ran `PYTHONPATH=../novaic-common:../novaic-logicalfs:../novaic-sandbox-sdk:. pytest -q tests/test_shell_capabilities_internal_auth.py tests/test_tool_schemas_limits.py tests/test_blob_payload_client.py` in `novaic-cortex`.",
+        "Result: `16 passed in 0.68s`."
+      ]
+    },
+    "R003": {
+      "artifacts": [
+        "Audit evidence: `novaic-cortex/novaic_cortex/shell_capabilities.py` `_cortex_payload` implementation."
+      ],
+      "body_path": "problems/P000/children/P003/children/P006/results/R003.md",
+      "created_at": "2026-05-11T11:08:55+00:00",
+      "done": [
+        "Inspected `novaic-cortex/novaic_cortex/shell_capabilities.py` `_cortex_payload`.",
+        "Confirmed `payload read` sends `limit` through `_flag_int(..., 2000, 1, 8000)`.",
+        "Confirmed `payload search` caps `max_matches` at 20 and `context_chars` at 500.",
+        "Confirmed `payload summarize` and `payload qa` cap model input/output sizes (`max_input_chars` 1000..20000, `max_output_chars` 200..4000).",
+        "Confirmed no `cortex payload` path decodes or prints base64 artifact bytes."
+      ],
+      "id": "R003",
+      "known_gaps": [
+        "No P006-blocking gaps found.",
+        "This audit intentionally treats bounded payload text slices as allowed CLI output."
+      ],
+      "problem_id": "P006",
+      "root_id": "P000",
+      "summary": "Audited generated `cortex payload` CLI output paths. No raw artifact stdout violation was found. The commands are bounded text inspection or bounded interpretation calls.",
+      "ticket_id": "T005",
+      "verification": [
+        "Ran `PYTHONPATH=../novaic-common:../novaic-logicalfs:../novaic-sandbox-sdk:. pytest -q tests/test_blob_payload_client.py tests/test_tool_schemas_limits.py tests/test_context_event_api_steps_write.py tests/test_step_index_outcome.py` in `novaic-cortex`.",
+        "Result: `38 passed in 0.45s`."
+      ]
+    },
+    "R004": {
+      "artifacts": [
+        "R002",
+        "C002",
+        "R003",
+        "C003"
+      ],
+      "body_path": "problems/P000/children/P003/results/R004.md",
+      "created_at": "2026-05-11T11:09:58+00:00",
+      "done": [
+        "P005 audited `agentctl im`, `agentctl subagent`, and `agentctl media audio-qa`.",
+        "P006 audited `cortex payload read/search/summarize/qa`.",
+        "Confirmed `agentctl media audio-qa` consumes Blob URI audio input and prints text answer metadata.",
+        "Confirmed `cortex payload` commands are bounded text-inspection/interpretation commands, not artifact transport."
+      ],
+      "id": "R004",
+      "known_gaps": [
+        "None for `agentctl`/`cortex` CLI output contracts.",
+        "Global residual scan remains tracked by P004."
+      ],
+      "problem_id": "P003",
+      "root_id": "P000",
+      "summary": "Closed the split audit for `agentctl` and `cortex` CLI outputs. Child audits P005 and P006 both succeeded without finding active raw artifact stdout violations.",
+      "ticket_id": "T003",
+      "verification": [
+        "P005 verification: `16 passed` in `novaic-agent-runtime` and `16 passed` in `novaic-cortex`.",
+        "P006 verification: `38 passed` in `novaic-cortex`.",
+        "Evidence captured in R002/R003 and C002/C003."
+      ]
+    },
+    "R005": {
+      "artifacts": [
+        "`novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py`",
+        "`novaic-cortex/tests/test_tool_output_projection.py`"
+      ],
+      "body_path": "problems/P000/children/P004/children/P007/results/R005.md",
+      "created_at": "2026-05-11T11:13:36+00:00",
+      "done": [
+        "Updated `novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py`.",
+        "Updated `novaic-cortex/tests/test_tool_output_projection.py`.",
+        "Verified `rg -n \"device-screenshot\" novaic-cortex/tests novaic-agent-runtime/tests/unit/task_queue` returns no matches."
+      ],
+      "id": "R005",
+      "known_gaps": [
+        "None for stale `device-screenshot` fixtures."
+      ],
+      "problem_id": "P007",
+      "root_id": "P000",
+      "summary": "Replaced stale `blob://device-screenshot/...` test fixtures with `blob://runtime-artifact/...` in CLI/tool-output contract tests.",
+      "ticket_id": "T007",
+      "verification": [
+        "Ran `PYTHONPATH=../novaic-common:../novaic-logicalfs:../novaic-sandbox-sdk:. pytest -q tests/test_tool_output_projection.py tests/test_shell_capabilities_blob_contract.py` in `novaic-cortex`.",
+        "Result: `7 passed in 1.22s`.",
+        "Ran `PYTHONPATH=../novaic-common:../novaic-cortex:../novaic-logicalfs:../novaic-sandbox-sdk:. pytest -q tests/unit/task_queue/test_tool_output_contract.py tests/unit/task_queue/test_shell_output_contract.py` in `novaic-agent-runtime`.",
+        "Result: `12 passed in 0.09s`."
+      ]
+    },
+    "R006": {
+      "artifacts": [
+        "`novaic-cortex/novaic_cortex/shell_capabilities.py`",
+        "`novaic-cortex/tests/test_shell_capabilities_blob_contract.py`",
+        "`novaic-cortex/tests/test_tool_output_projection.py`",
+        "`novaic-cortex/tests/test_operational_store.py`",
+        "`novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py`"
+      ],
+      "body_path": "problems/P000/children/P004/children/P008/results/R006.md",
+      "created_at": "2026-05-11T11:16:55+00:00",
+      "done": [
+        "Compiled generated `agentctl`, `cortex`, and `devicectl` scripts with `py_compile`.",
+        "Ran final focused Cortex tests covering shell Blob output, tool-output projection, schemas, Blob payloads, context event payload writes, step index payload reads, internal auth, and operational store payload refs.",
+        "Ran final focused runtime tests covering user content, shell output contract, tool-output contract, and failure event output.",
+        "Scanned for stale `device-screenshot` namespace: no matches.",
+        "Scanned Blob URI namespaces in relevant tests and shell capability code; remaining namespaces are `audio-input`, `cortex-payload`, `runtime-artifact`, `user-file`, plus placeholder/negative-test values `namespace` and `x`.",
+        "Validated the solve-complex-problems ledger."
+      ],
+      "id": "R006",
+      "known_gaps": [
+        "No active CLI Blob contract gaps found.",
+        "`blob://namespace/id` remains only in help text as a placeholder.",
+        "`blob://x/y` remains only in a negative validation test."
+      ],
+      "problem_id": "P008",
+      "root_id": "P000",
+      "summary": "Completed the final CLI Blob contract verification pass. Generated shell capability CLIs compile, focused Cortex/runtime tests pass, stale artifact namespace usage was removed, and ledger validation succeeds.",
+      "ticket_id": "T008",
+      "verification": [
+        "Cortex final focused pass: generated scripts compile and `47 passed in 2.34s`.",
+        "Agent runtime final focused pass: `19 passed in 0.10s`.",
+        "Additional Cortex pass after cleaning `blob://payload/1`: `30 passed in 1.34s`.",
+        "`ledger.py validate`: `Ledger is valid!`."
+      ]
+    },
+    "R007": {
+      "artifacts": [
+        "R005",
+        "C005",
+        "R006",
+        "C006"
+      ],
+      "body_path": "problems/P000/children/P004/results/R007.md",
+      "created_at": "2026-05-11T11:17:39+00:00",
+      "done": [
+        "P007 cleaned `device-screenshot` fixture residue.",
+        "P008 ran final compile, test, scan, and ledger validation.",
+        "Additional stale `blob://payload/1` operational-store fixture was updated to `blob://cortex-payload/1`."
+      ],
+      "id": "R007",
+      "known_gaps": [
+        "None for residual CLI Blob contract cleanup."
+      ],
+      "problem_id": "P004",
+      "root_id": "P000",
+      "summary": "Closed residual cleanup and final verification for the CLI Blob contract. Stale artifact namespace fixtures were cleaned, final focused tests passed, and the ledger validated.",
+      "ticket_id": "T006",
+      "verification": [
+        "P007: no `device-screenshot` matches remain; affected tests passed.",
+        "P008: generated CLIs compile; Cortex tests passed (`47` and `30` focused tests); runtime tests passed (`19` focused tests); ledger validation succeeded."
+      ]
+    },
+    "R008": {
+      "artifacts": [
+        "`novaic-cortex/novaic_cortex/shell_capabilities.py`",
+        "`novaic-cortex/tests/test_shell_capabilities_blob_contract.py`",
+        "`novaic-cortex/tests/test_tool_output_projection.py`",
+        "`novaic-cortex/tests/test_operational_store.py`",
+        "`novaic-agent-runtime/tests/unit/task_queue/test_tool_output_contract.py`",
+        "Ledger: `.complex-problems/L20260511-185002`"
+      ],
+      "body_path": "problems/P000/results/R008.md",
+      "created_at": "2026-05-11T11:18:46+00:00",
+      "done": [
+        "P001 inventoried shell CLI surfaces and risk areas.",
+        "P002 fixed `devicectl` artifact-producing commands.",
+        "P003 audited `agentctl` and `cortex` command families through P005/P006.",
+        "P004 cleaned residual old behavior and ran final verification through P007/P008.",
+        "Updated runtime artifact examples to `blob://runtime-artifact/...`.",
+        "Updated old payload fixture from `blob://payload/1` to `blob://cortex-payload/1`."
+      ],
+      "id": "R008",
+      "known_gaps": [
+        "No known CLI Blob contract gaps remain in the audited command surfaces.",
+        "Full monorepo test suite was not run; this was intentionally focused on CLI Blob contract paths.",
+        "Deployment has not been performed in this work package."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Completed the full CLI Blob contract audit and repair. The only active artifact-producing CLI violations were `devicectl hd screenshot` and `devicectl hd file-pull`; both now upload bytes to Blob Service and print `tool-output.v1` manifests. Agentctl and cortex CLI families were audited and verified. Residual stale fixture namespaces were cleaned.",
+      "ticket_id": "T000",
+      "verification": [
+        "Generated `agentctl`, `cortex`, and `devicectl` scripts compile.",
+        "Cortex focused tests passed:",
+        "`21 passed` for initial devicectl/tool-output/blob suite.",
+        "`47 passed` for final shell/blob/context suite.",
+        "`30 passed` after residual payload fixture cleanup.",
+        "Agent-runtime focused tests passed:",
+        "`16 passed` for initial agentctl/runtime contract suite.",
+        "`19 passed` for final runtime contract suite.",
+        "`device-screenshot` scan returned no matches in affected trees.",
+        "Ledger validation succeeded."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Child problems cover every live shell CLI command surface.",
+        "Artifact-producing commands are repaired on active paths.",
+        "Tests cover the repaired contract.",
+        "Final check maps each root criterion to evidence."
+      ],
+      "assumptions": [
+        "`tool-output.v1` is the canonical shell output contract for structured CLI results.",
+        "Blob service is the correct storage boundary for media/file artifacts."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "Broad multi-CLI audit/fix with multiple command surfaces and verification paths; split avoids hidden half-migration.",
+      "created_at": "2026-05-11T10:50:34+00:00",
+      "id": "T000",
+      "problem_definition": "The root problem spans multiple shell-exposed CLIs and output classes. A safe fix needs to inventory all CLI surfaces, repair artifact-producing commands, and verify that old base64/stdout contracts are gone from live paths.",
+      "problem_id": "P000",
+      "proposed_solution": "Split the work into focused child problems:\n\n- Inventory all shell capability CLIs and classify their outputs.\n- Fix `devicectl hd` artifact-producing commands, especially screenshot and file transfer paths.\n- Audit/fix `agentctl` and `cortex` CLI outputs so they do not emit large binary/base64 payloads as primary stdout.\n- Add/adjust tests for blob artifact contract and remove or mark old incompatible expectations.\n- Run focused and broader verification, then record residual risks.",
+      "result_ids": [
+        "R008"
+      ],
+      "risks": [
+        "Some CLIs may be proxy surfaces over external services; changing output shape may require compatibility handling.",
+        "Existing tests may encode old stdout/base64 behavior.",
+        "Device-backed paths may be hard to fully end-to-end test locally; unit/contract tests must cover the transformation boundary."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Split CLI blob contract remediation by command surface",
+      "updated_at": "2026-05-11T11:18:46+00:00",
+      "verification_plan": "- Use `rg`, code inspection, and tests to inventory command surfaces.\n- Run targeted tests for shell capabilities, tool output projection, runtime shell wrapper, and Cortex payload handling.\n- Run broader project tests where feasible for touched repos."
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "Command inventory includes `agentctl`, `cortex`, and `devicectl`.",
+        "Risks are tied to file/function evidence.",
+        "Confirmed repair targets are listed for the next child problems."
+      ],
+      "assumptions": [
+        "`shell_capabilities.py` is the active source for shell-exposed CLI commands."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "one_go",
+      "classification_reason": "Inventory is read-only, bounded to shell_capabilities and related tests, and directly verifiable by code pointers.",
+      "created_at": "2026-05-11T10:51:41+00:00",
+      "id": "T001",
+      "problem_definition": "The command surfaces for `agentctl`, `cortex`, and `devicectl` are generated from `novaic-cortex/novaic_cortex/shell_capabilities.py`. We need an evidence-backed inventory before changing behavior.",
+      "problem_id": "P001",
+      "proposed_solution": "Inspect the shell capability implementation, help text, command dispatchers, and tests. Classify each command by output type and identify commands that can emit screenshots, files, base64, or other large payloads through stdout.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Some command behavior may depend on remote services; classify based on code paths and proxy contracts where local execution is not possible."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Inventory shell capability CLIs",
+      "updated_at": "2026-05-11T10:53:29+00:00",
+      "verification_plan": "- Use `rg`, `sed`, and focused code review over shell capabilities and related tests.\n- Record inventory in the result body."
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "`devicectl hd screenshot` stdout contains `tool-output.v1` and a Blob URI, not raw screenshot base64.",
+        "`devicectl hd file-pull` stdout contains `tool-output.v1` and a Blob URI, not raw file base64.",
+        "Uploaded Blob namespace is `runtime-artifact`, matching the shared Blob contract.",
+        "Non-artifact `devicectl hd` commands keep returning ordinary diagnostics.",
+        "Tests verify uploaded bytes and absence of raw artifact fields in stdout."
+      ],
+      "assumptions": [
+        "`runtime-artifact` is the correct contract namespace for runtime-generated CLI artifacts.",
+        "Device service still returns screenshot/file-pull data as base64 JSON.",
+        "Local fallback storage is intentionally not allowed."
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T002.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded to two artifact-producing devicectl commands with direct fake-service tests and no cross-service state migration.",
+      "created_at": "2026-05-11T11:00:24+00:00",
+      "id": "T002",
+      "problem_definition": "`devicectl hd screenshot` and `devicectl hd file-pull` can receive large base64 payloads from the device service and print them through shell stdout. That violates the CLI Blob contract: binary artifacts must be uploaded to Blob Service and represented in stdout as a small manifest.",
+      "problem_id": "P002",
+      "proposed_solution": "Update the generated `devicectl` CLI script in `novaic-cortex/novaic_cortex/shell_capabilities.py` so artifact-producing HD commands decode base64 payloads, upload bytes to Blob Service under the valid `runtime-artifact` namespace, and print a `tool-output.v1` artifact manifest. Keep non-artifact HD commands on their existing JSON/text path. Add focused tests with fake device and Blob services.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "Blob Service API assumptions may be slightly wrong; tests should model the current multipart contract.",
+        "Existing callers may expect the old raw base64 JSON shape.",
+        "Missing Blob environment configuration should fail clearly instead of silently falling back."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Wrap devicectl artifact outputs with Blob-backed tool-output.v1",
+      "updated_at": "2026-05-11T11:02:31+00:00",
+      "verification_plan": "- Compile generated `agentctl`, `cortex`, and `devicectl` scripts.\n- Run the new `novaic-cortex` Blob contract tests.\n- Run nearby tool-output and Blob contract tests to catch schema drift.\n- Scan shell capability code for remaining raw artifact stdout paths."
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "`agentctl media audio-qa` consumes `blob://` inputs and does not print raw audio bytes.",
+        "`agentctl im` commands do not emit binary attachment bytes inline.",
+        "`cortex payload` commands remain bounded text inspection tools and do not dump unbounded payload content by default.",
+        "Any discovered raw binary/base64 stdout path is fixed or recorded as a follow-up gap.",
+        "Evidence is backed by code pointers and/or tests."
+      ],
+      "assumptions": [
+        "Artifact-producing CLI commands should return Blob manifests, but bounded text-inspection commands can continue returning text.",
+        "Attachment transfer should happen through Blob URIs rather than inline bytes."
+      ],
+      "body_path": "problems/P000/children/P003/tickets/T003.md",
+      "classification": "split",
+      "classification_reason": "agentctl and cortex have different output contracts and should be audited independently to avoid hiding residual violations.",
+      "created_at": "2026-05-11T11:03:39+00:00",
+      "id": "T003",
+      "problem_definition": "`agentctl` and `cortex` are also exposed through the shell capability layer. They need to be audited for Blob contract compliance so binary or large payload content is not emitted inline through shell stdout.",
+      "problem_id": "P003",
+      "proposed_solution": "Inspect generated `agentctl` and `cortex` command implementations, classify their outputs by modality, and fix any command that emits binary/blob-sized content inline. Verify that text-only commands are bounded and artifact-consuming commands require Blob URIs where appropriate.",
+      "result_ids": [
+        "R004"
+      ],
+      "risks": [
+        "Some IM messages can contain user-provided text that looks like base64; the audit should distinguish arbitrary text from binary artifact contract violations.",
+        "`cortex payload read` intentionally returns bounded text slices; it must not be incorrectly classified as an artifact path."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Audit agentctl and cortex CLI output contracts",
+      "updated_at": "2026-05-11T11:09:58+00:00",
+      "verification_plan": "- Search generated shell capability code for base64/raw payload handling in `agentctl` and `cortex`.\n- Inspect command implementations and output shaping.\n- Run relevant existing tests for user content, payload client, tool schemas, and shell output contract.\n- Add or adjust tests if a violation is found."
+    },
+    "T004": {
+      "acceptance_criteria": [
+        "Media audio QA accepts only Blob URI input and does not print raw audio bytes.",
+        "IM commands do not download or inline attachment bytes.",
+        "Subagent spawn output is ordinary metadata and does not carry artifact payloads.",
+        "The audit is backed by code pointers and a targeted test run.",
+        "Violations are fixed or recorded as follow-up gaps."
+      ],
+      "assumptions": [
+        "`agentctl` may print text summaries and JSON metadata.",
+        "Raw artifact bytes must be transferred through Blob, not stdout."
+      ],
+      "body_path": "problems/P000/children/P003/children/P005/tickets/T004.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded audit of one generated CLI family with direct code inspection and existing targeted tests.",
+      "created_at": "2026-05-11T11:05:03+00:00",
+      "id": "T004",
+      "problem_definition": "`agentctl` exposes IM, subagent, and media commands inside the shell sandbox. These commands need an explicit Blob-contract audit because they can reference attachments and media.",
+      "problem_id": "P005",
+      "proposed_solution": "Inspect generated `agentctl` code paths and relevant tests. Confirm artifact bytes are not emitted inline, media input is pulled from Blob by URI, and IM/subagent commands remain text or metadata oriented. Fix any violation found.",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [
+        "User messages can contain arbitrary text that resembles base64; that is not itself a Blob contract violation.",
+        "Attachment metadata may include Blob URIs and filenames; that is allowed."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Audit agentctl shell CLI output contract",
+      "updated_at": "2026-05-11T11:06:34+00:00",
+      "verification_plan": "- Inspect `shell_capabilities.py` `agentctl` code paths.\n- Search tests and code for raw base64/binary output paths under `agentctl`.\n- Run relevant `novaic-agent-runtime` user content and shell output contract tests.\n- Run relevant `novaic-cortex` shell schema tests."
+    },
+    "T005": {
+      "acceptance_criteria": [
+        "`payload read` enforces maximum bounded output.",
+        "`payload search` enforces bounded match count and context size.",
+        "`payload summarize` and `payload qa` use bounded model input/output limits.",
+        "No `cortex` CLI path emits raw binary/base64 artifacts inline.",
+        "Evidence is backed by code pointers and tests."
+      ],
+      "assumptions": [
+        "Bounded text output is allowed for inspection commands.",
+        "Binary artifact transport should use Blob manifests, not `cortex payload` stdout."
+      ],
+      "body_path": "problems/P000/children/P003/children/P006/tickets/T005.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded audit of one generated cortex payload command family with explicit limit code paths and targeted tests.",
+      "created_at": "2026-05-11T11:07:34+00:00",
+      "id": "T005",
+      "problem_definition": "`cortex payload` commands read and interpret Cortex payload references. They must remain bounded text-inspection tools and avoid unbounded payload stdout or binary artifact transport.",
+      "problem_id": "P006",
+      "proposed_solution": "Inspect generated `cortex payload` code paths for read/search/summarize/qa. Verify explicit limits, bounded defaults, and absence of artifact-byte emission. Fix any unbounded or artifact-like stdout behavior discovered.",
+      "result_ids": [
+        "R003"
+      ],
+      "risks": [
+        "Payload read intentionally returns text slices; the audit must separate bounded text inspection from artifact output.",
+        "Very large textual payloads are still possible if limits drift; tests or code inspection must confirm enforced caps."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Audit cortex payload CLI output contract",
+      "updated_at": "2026-05-11T11:08:55+00:00",
+      "verification_plan": "- Inspect `shell_capabilities.py` cortex payload command handling.\n- Search for raw base64/binary output paths in cortex command implementation.\n- Run relevant payload client, tool schema, and projection tests.\n- Add or adjust tests if a violation is discovered."
+    },
+    "T006": {
+      "acceptance_criteria": [
+        "No active CLI command emits screenshot/file bytes inline.",
+        "Tests and examples for runtime-generated artifacts use the contract-valid `runtime-artifact` namespace.",
+        "Residual invalid Blob namespace usage is either cleaned or explicitly classified as non-CLI/non-contract test data.",
+        "Final test suite covers shell capability generation, Blob artifact output, tool-output projection, and runtime shell output contract.",
+        "Any remaining risk is recorded clearly."
+      ],
+      "assumptions": [
+        "`runtime-artifact` is the canonical namespace for runtime-created CLI artifacts.",
+        "`cortex-payload`, `user-file`, and `audio-input` remain valid for their own domains."
+      ],
+      "body_path": "problems/P000/children/P004/tickets/T006.md",
+      "classification": "split",
+      "classification_reason": "Residual cleanup and final verification are distinct; split prevents treating scans as enough without correcting stale fixtures.",
+      "created_at": "2026-05-11T11:11:02+00:00",
+      "id": "T006",
+      "problem_definition": "After fixing and auditing CLI command families, the repo still needs a residual pass to catch old contract examples, invalid Blob namespaces, or untested raw artifact stdout behavior.",
+      "problem_id": "P004",
+      "proposed_solution": "Run a global CLI/blob-contract scan, clean stale test fixtures or examples that encode invalid artifact namespaces, and run a final focused test suite across Cortex and runtime contract boundaries.",
+      "result_ids": [
+        "R007"
+      ],
+      "risks": [
+        "Some old Blob URI strings may be intentional synthetic identifiers in lower-level storage tests; avoid changing unrelated semantics blindly.",
+        "The final suite may expose unrelated dirty-worktree failures; record them separately if they are not caused by this change."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Verify CLI Blob contract and remove residual old behavior",
+      "updated_at": "2026-05-11T11:17:39+00:00",
+      "verification_plan": "- Search for `device-screenshot`, raw `screenshot` payload output, raw `data` file-pull output, and old artifact namespace examples.\n- Patch residual tests/examples that contradict the new Blob contract.\n- Run relevant Cortex and agent-runtime tests.\n- Validate the solve-complex-problems ledger before final report."
+    },
+    "T007": {
+      "acceptance_criteria": [
+        "No `device-screenshot` namespace remains in tool-output/CLI contract tests.",
+        "Screenshot artifact examples use `blob://runtime-artifact/...`.",
+        "Projection/runtime tests still pass."
+      ],
+      "assumptions": [
+        "`runtime-artifact` is the intended namespace for device screenshot artifacts emitted by CLI tools."
+      ],
+      "body_path": "problems/P000/children/P004/children/P007/tickets/T007.md",
+      "classification": "one_go",
+      "classification_reason": "Mechanical fixture cleanup with exact rg verification and focused tests.",
+      "created_at": "2026-05-11T11:12:13+00:00",
+      "id": "T007",
+      "problem_definition": "Some tool-output tests still use `blob://device-screenshot/...`, but the shared Blob contract does not define `device-screenshot` as a namespace. Runtime-generated CLI artifacts should use `blob://runtime-artifact/...`.",
+      "problem_id": "P007",
+      "proposed_solution": "Patch contract-relevant tests to use `runtime-artifact` for screenshot artifacts. Leave unrelated low-level storage tests alone unless they represent CLI/tool-output contract examples.",
+      "result_ids": [
+        "R005"
+      ],
+      "risks": [
+        "Over-broad replacement could alter unrelated behavior; keep patch scoped to contract tests."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Replace stale device-screenshot artifact namespace fixtures",
+      "updated_at": "2026-05-11T11:13:36+00:00",
+      "verification_plan": "- Run `rg device-screenshot` after patching.\n- Run affected Cortex and agent-runtime tests."
+    },
+    "T008": {
+      "acceptance_criteria": [
+        "Generated `agentctl`, `cortex`, and `devicectl` scripts compile.",
+        "Focused Cortex tests for shell capabilities, Blob payloads, tool-output projection, schemas, and payload events pass.",
+        "Focused runtime tests for shell output and tool-output contracts pass.",
+        "Residual scans show no active CLI raw artifact stdout path.",
+        "Ledger validation succeeds."
+      ],
+      "assumptions": [
+        "This ticket is verification-only unless a directly related residual problem is discovered."
+      ],
+      "body_path": "problems/P000/children/P004/children/P008/tickets/T008.md",
+      "classification": "one_go",
+      "classification_reason": "Verification-only pass with explicit compile, focused tests, scans, and ledger validation.",
+      "created_at": "2026-05-11T11:14:28+00:00",
+      "id": "T008",
+      "problem_definition": "The CLI Blob contract work needs a final pass that compiles generated commands, runs focused tests, scans for remaining raw artifact stdout risks, and validates the ledger.",
+      "problem_id": "P008",
+      "proposed_solution": "Run a final verification suite across `novaic-cortex` and `novaic-agent-runtime`, inspect residual Blob URI namespace usage, and validate the solve-complex-problems ledger. Record any remaining gaps explicitly.",
+      "result_ids": [
+        "R006"
+      ],
+      "risks": [
+        "Full repo test suite may include unrelated failures from other dirty worktree changes; focused contract tests are the primary acceptance gate."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Final CLI Blob contract verification pass",
+      "updated_at": "2026-05-11T11:16:55+00:00",
+      "verification_plan": "- Compile generated capability scripts with `py_compile`.\n- Run Cortex focused test suite.\n- Run agent-runtime focused test suite.\n- Run `rg` scans for stale namespace and raw artifact fields in shell capability paths.\n- Run `ledger.py validate` and render/status if available."
+    }
+  },
+  "updated_at": "2026-05-11T11:19:35+00:00"
+}
