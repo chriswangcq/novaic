@@ -1,0 +1,1243 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [
+        "none for diagnosis. Implementation and production recovery remain open under sibling problems."
+      ],
+      "body_path": "problems/P000/children/P001/checks/C000.md",
+      "created_at": "2026-05-11T07:42:50+00:00",
+      "criteria_map": [
+        "Identify why the loop stalls -> satisfied by the chained cause: internal-auth shell failure, missing projected `step_ref`, failed compensation finalize, session stuck active.",
+        "Identify where it fails in code -> satisfied by the four named modules and functions.",
+        "Avoid surface-only diagnosis -> satisfied because the result explains both the trigger and the failed recovery path."
+      ],
+      "evidence": [
+        "Queue DB showed a stale active session for the main agent after the loop failed.",
+        "Saga/task rows showed `react_think` failed on `Tool message missing step_ref`, followed by a failed compensation `wake_finalize`.",
+        "Runtime logs showed the initiating shell tool error: `agentctl` received `HTTP 401` from Cortex `/v1/meta/read` because `X-Internal-Key` was missing.",
+        "Cortex logs showed `/v1/scope/end` treating the wake scope as a root scope and raising `FileNotFoundError`.",
+        "Local code inspection found matching defects in shell capability auth, context projection, and saga compensation context propagation."
+      ],
+      "execution_map": [
+        "`T001` / `R000` -> inspected live process status, queue DB, worker logs, Cortex logs, and local source paths; recorded the concrete failure chain and repair targets."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P001",
+      "residual_risk": [
+        "The diagnosis relies on previously captured production evidence and local source inspection. It is sufficient for repair design, but the production row remains stuck until the code fix is deployed and recovery/smoke tests prove the session can end or recover."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Could it be only a slow worker? No: services were alive, workers were polling, and DB contained failed sagas plus stale active session state.",
+        "Could it be only shell timeout? No: the first observed shell failure was a deterministic 401 from Cortex internal auth, and the later stall required the separate `step_ref` and finalize-context bugs.",
+        "Could code repair alone clear the existing stuck row? Not guaranteed; the result records that live recovery/cleanup must be handled in the deploy/verify phase."
+      ],
+      "summary": "The diagnosis ticket successfully identified a concrete, code-backed failure chain for the production stall. It does not claim the system is fixed; it proves why the current agent loop got stuck and defines the repair targets for subsequent tickets."
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/children/P004/checks/C001.md",
+      "created_at": "2026-05-11T07:48:25+00:00",
+      "criteria_map": [
+        "Runtime passes key -> proven by `test_shell_success_uses_explicit_tool_output_contract`.",
+        "Cortex allowlist preserves key -> proven by `test_capability_env_allows_cortex_internal_key`.",
+        "Header attached only to Cortex internal request -> proven by `test_agentctl_cortex_internal_calls_attach_internal_key`."
+      ],
+      "evidence": [
+        "Runtime unit test confirms `NOVAIC_CORTEX_INTERNAL_KEY` is present in `capability_env`.",
+        "Cortex test confirms `_capability_env` allowlists only the Cortex key from the tested inputs.",
+        "End-to-end generated `agentctl im read` test confirms `/v1/meta/read` receives `X-Internal-Key: secret`, while `/internal/environment/.../im/read` receives no `X-Internal-Key`."
+      ],
+      "execution_map": [
+        "`T003` / shell-auth repair -> code and tests completed."
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P004",
+      "residual_risk": [
+        "A user can still manually print environment variables from shell; this is inherent to placing a trusted capability secret in the shell process. The contract is explicit and limited to the sandbox capability env."
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "If business calls accidentally received the key, the generated-script test would show the header on the business path; it asserts the business path header is empty.",
+        "If the allowlist dropped the key, the explicit allowlist test would fail."
+      ],
+      "summary": "The shell internal-auth repair satisfies P004: runtime now passes an explicit Cortex internal key to the capability env, and the generated capability script uses it only for Cortex internal POSTs."
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/children/P005/checks/C002.md",
+      "created_at": "2026-05-11T07:51:16+00:00",
+      "criteria_map": [
+        "Every projected tool message with payload ref has `step_ref` -> covered by ordinary, multiple, and orphan tests.",
+        "Metadata payload ref remains available -> existing metadata assertions still pass.",
+        "Runtime contract no longer fails before LLM call due missing projected ref -> satisfied by producing the required top-level field."
+      ],
+      "evidence": [
+        "`test_project_context_events_tool_call_and_result` now expects top-level `step_ref`.",
+        "`test_project_context_events_multiple_tool_results_preserve_order_and_payload_refs` verifies both projected tool results preserve ordered top-level refs.",
+        "`test_project_context_events_orphan_tool_result_is_marked` verifies orphan tool results also receive `step_ref`."
+      ],
+      "execution_map": [
+        "`T004` / `R002` -> pure projection patch plus focused Cortex projection test suite."
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P005",
+      "residual_risk": [
+        "Events without a string payload ref still cannot be expanded by runtime; that remains intentional because inline tool results are rejected elsewhere by the step storage contract."
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "If a future projection path creates a tool message without `step_ref`, the updated exact-dict and list assertions would catch the primary paths represented in the event stream."
+      ],
+      "summary": "The step-ref projection repair satisfies P005: projected tool-result messages now expose the durable tool-step join key exactly where runtime expects it."
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/children/P006/checks/C003.md",
+      "created_at": "2026-05-11T07:53:54+00:00",
+      "criteria_map": [
+        "Preserve root/path/session generation -> proven in `test_wake_saga_failure_commits_finalize_creation_effect_before_publish`.",
+        "Do not invent fallback guesses -> implementation copies only keys present in failed saga context.",
+        "Keep recovery behavior intact -> proven by suspected-dead and active-inbox tests."
+      ],
+      "evidence": [
+        "Durable outbox test confirms compensation effect context preserves `agent_root_scope_id`, `wake_scope_path`, `session_generation`, `round_num`, and `remaining_stack`.",
+        "Published saga assertion confirms the created `wake_finalize` saga keeps the same fields.",
+        "Payload-builder assertions confirm preserved context produces correct `cortex_scope_end` and `session_ended` payloads.",
+        "Existing recovery tests still pass."
+      ],
+      "execution_map": [
+        "`T005` / `R003` -> compensation context patch plus focused saga/recovery tests."
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P006",
+      "residual_risk": [
+        "If an upstream saga is created without root/path/session metadata, compensation will not fabricate it. That is deliberate; a separate upstream-contract test should catch such missing input if it appears."
+      ],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "If compensation again drops root/path, the `cortex_scope_end` payload assertions fail.",
+        "If compensation again drops session generation, the `session_ended` payload assertion fails.",
+        "If the saga outbox publishes a narrowed context, the post-drain finalize saga assertions fail."
+      ],
+      "summary": "The compensation-context repair satisfies P006: failure compensation now keeps the explicit data needed for Cortex archive and session finalization instead of narrowing the context to scope/user ids."
+    },
+    "C004": {
+      "blocking_gaps": [
+        "none for code repair. Deployment and live recovery remain in P003."
+      ],
+      "body_path": "problems/P000/children/P002/checks/C004.md",
+      "created_at": "2026-05-11T07:56:02+00:00",
+      "criteria_map": [
+        "`agentctl` Cortex internal calls no longer fail for missing `X-Internal-Key` -> satisfied by runtime env propagation and generated script header test.",
+        "Projected tool messages carry top-level `step_ref` -> satisfied by context projection regression tests.",
+        "Compensation finalize preserves root/path/session metadata -> satisfied by saga outbox and wake-finalize payload-builder tests.",
+        "No fallback hides the bug -> satisfied because compensation only copies present keys and tests assert explicit preservation."
+      ],
+      "evidence": [
+        "Runtime shell capability tests passed: `28 passed` for the selected runtime suite.",
+        "Cortex shell/projection tests passed: `37 passed` for the selected Cortex suite.",
+        "Child problem checks completed:",
+        "`P004` shell capability Cortex internal auth repair.",
+        "`P005` tool-result `step_ref` projection repair.",
+        "`P006` wake-finalize compensation context repair."
+      ],
+      "execution_map": [
+        "`T002` / `R004` -> parent repair result aggregating `R001`, `R002`, and `R003`."
+      ],
+      "followup_problem_id": null,
+      "id": "C004",
+      "problem_id": "P002",
+      "residual_risk": [
+        "Production still needs deployment and smoke/recovery verification because the existing DB row is already stale active state."
+      ],
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The same live failure chain now breaks at all three prior failure points:",
+        "shell `agentctl im read` can authenticate to Cortex;",
+        "the next `react_think` sees `step_ref`;",
+        "if a saga still fails, compensation has the context needed to finalize correctly."
+      ],
+      "summary": "The code repair problem is solved at the implementation level: all three diagnosed code defects were patched and covered by focused regression tests."
+    },
+    "C005": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/children/P007/checks/C005.md",
+      "created_at": "2026-05-11T08:01:24+00:00",
+      "criteria_map": [
+        "Deployment succeeds -> satisfied by `./deploy services` exit `0`.",
+        "Fresh logs show restart activity -> satisfied by fresh-smoke output.",
+        "Services/workers running -> satisfied by `./deploy status`."
+      ],
+      "evidence": [
+        "`./deploy services` exited with code `0`.",
+        "Fresh-smoke checked all required logs after restart and all were fresh.",
+        "`./deploy status` reported all service ports up and worker counts matching expectations."
+      ],
+      "execution_map": [
+        "`T007` / `R005` -> backend deployment and status verification."
+      ],
+      "followup_problem_id": null,
+      "id": "C005",
+      "problem_id": "P007",
+      "residual_risk": [
+        "Deployment health does not itself prove the old stuck session recovered; that is covered by P008."
+      ],
+      "result_ids": [
+        "R005"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "If a required runtime worker failed to start, `start.sh` verification or `./deploy status` would show count mismatch.",
+        "If a service log did not update after restart, fresh-smoke would fail."
+      ],
+      "summary": "P007 is successful: production has the repaired code synced and all backend services/workers restarted and healthy."
+    },
+    "C006": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/children/P008/checks/C006.md",
+      "created_at": "2026-05-11T08:12:19+00:00",
+      "criteria_map": [
+        "No new recurrence signatures -> satisfied by recent log scan.",
+        "Shell capability no longer 401s -> satisfied by direct `agentctl im read --limit 1` smoke and Cortex `/v1/meta/read status=200`.",
+        "Stale active session cleared -> satisfied by session state `no_active`."
+      ],
+      "evidence": [
+        "`tq_session_state` shows the main agent session is `no_active`.",
+        "Recent log scan returned `clean` for all checked runtime/Cortex/queue logs.",
+        "Direct Cortex shell smoke returned `exit_code=0`.",
+        "Cortex log confirms `/v1/meta/read` returned status `200` during the smoke."
+      ],
+      "execution_map": [
+        "`T008` / `R006` -> production DB/log inspection plus direct shell capability smoke."
+      ],
+      "followup_problem_id": null,
+      "id": "C006",
+      "problem_id": "P008",
+      "residual_risk": [
+        "A complete user-visible reply smoke depends on the external LLM path and was not forced here. The failure being repaired was earlier than model generation, and that earlier path is now verified."
+      ],
+      "result_ids": [
+        "R006"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "If internal auth were still broken, the direct smoke would return stderr with `missing or invalid X-Internal-Key`.",
+        "If step-ref projection or finalize compensation were actively failing after deploy, recent worker/Cortex logs would show the old signatures.",
+        "If the old session were still wedged, `tq_session_state` would still show `active` with the old scope."
+      ],
+      "summary": "P008 is successful. Production is no longer wedged in active state, the repaired `agentctl` meta-read path works, and no recent post-deploy logs show the old failure signatures."
+    },
+    "C007": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/checks/C007.md",
+      "created_at": "2026-05-11T08:12:56+00:00",
+      "criteria_map": [
+        "Backend deployment complete -> satisfied by `R005`.",
+        "Fresh services/workers healthy -> satisfied by `R005`.",
+        "Stale active session cleared -> satisfied by `R006`.",
+        "Repaired shell/context/finalize signatures absent -> satisfied by `R006`."
+      ],
+      "evidence": [
+        "`./deploy services` and fresh-smoke completed successfully.",
+        "`./deploy status` reported all backend services/workers healthy.",
+        "`tq_session_state` shows `no_active` for the affected main agent session.",
+        "Direct production shell smoke returned `exit_code=0` and Cortex logged `/v1/meta/read status=200`.",
+        "Recent log scan returned `clean` for the known old signatures."
+      ],
+      "execution_map": [
+        "`T006` / `R007` -> aggregate result from deploy (`R005`) and live verification (`R006`)."
+      ],
+      "followup_problem_id": null,
+      "id": "C007",
+      "problem_id": "P003",
+      "residual_risk": [
+        "Historical failed saga rows remain in DB as audit history; they are pre-deploy and no longer active."
+      ],
+      "result_ids": [
+        "R007"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "If deployment missed runtime/Cortex changes, direct shell smoke or logs would still show the internal-key failure.",
+        "If finalize/recovery remained broken, session state would still be active or recent logs would show the root-scope error."
+      ],
+      "summary": "P003 is successful: the repaired code is deployed, services are healthy, the old active-session wedge is cleared, and the exact broken shell/meta path now succeeds."
+    },
+    "C008": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C008.md",
+      "created_at": "2026-05-11T08:13:36+00:00",
+      "criteria_map": [
+        "Find clear cause of the long hang -> satisfied by `R000`.",
+        "Fix code, not only symptoms -> satisfied by `R004`.",
+        "Deploy and verify production -> satisfied by `R007`.",
+        "Avoid half-connected new logic -> satisfied by direct production smoke through deployed shell/Cortex path."
+      ],
+      "evidence": [
+        "Diagnosis found exact production failures in queue DB, worker logs, and Cortex logs.",
+        "Code changes repaired:",
+        "shell capability Cortex internal auth;",
+        "top-level `step_ref` projection;",
+        "wake-finalize compensation context preservation.",
+        "Tests passed:",
+        "runtime focused suite: `28 passed`;",
+        "Cortex focused suite: `37 passed`.",
+        "Production deploy passed:",
+        "all backend services and workers healthy.",
+        "Production verification passed:",
+        "main agent session state is `no_active`;",
+        "direct shell smoke succeeded with `exit_code=0`;",
+        "recent logs are clean for the old signatures."
+      ],
+      "execution_map": [
+        "`P001` / `R000`: live production diagnosis.",
+        "`P002` / `R004`: implementation repair across runtime and Cortex.",
+        "`P003` / `R007`: deployment and live verification."
+      ],
+      "followup_problem_id": null,
+      "id": "C008",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Full LLM-provider reply path was not forced. This is acceptable for this incident because the observed stall occurred before provider execution and the repaired pre-provider path is now directly verified."
+      ],
+      "result_ids": [
+        "R008"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "If internal auth were still broken, smoke would fail with 401.",
+        "If context projection were still broken, the old `Tool message missing step_ref` signature would recur on recent logs.",
+        "If compensation finalize were still narrowing context, recent logs/session state would show root-scope finalize failure or stale active session."
+      ],
+      "summary": "The root problem is solved. The production stall was traced to a concrete three-part failure chain, all three code defects were fixed, and production is deployed with the affected session no longer active."
+    }
+  },
+  "counters": {
+    "check": 9,
+    "event": 108,
+    "problem": 9,
+    "result": 9,
+    "ticket": 9
+  },
+  "created_at": "2026-05-11T07:25:23+00:00",
+  "ledger_id": "L20260511-152523",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C008"
+      ],
+      "created_at": "2026-05-11T07:25:23+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "The deployed backend appears to get stuck after running one agent loop: user-visible Agent Monitor shows a loop executed, then no timely progress or reply. We need determine the concrete runtime cause from live service state, logs, queue database, and relevant code, then fix and deploy it without guessing.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R008"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P001",
+        "P002",
+        "P003"
+      ],
+      "success_criteria": [
+        "Identify the exact stuck state and root cause with evidence from live backend state/logs and code.",
+        "Implement a focused fix that prevents the agent loop from stalling after one round.",
+        "Remove or avoid any misleading fallback/compat path that would hide the issue.",
+        "Verify locally with targeted tests and remotely with a real deployed smoke/e2e path.",
+        "Commit, deploy, and report residual risk clearly."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Agent loop stalls after one round",
+      "updated_at": "2026-05-11T08:13:36+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-11T07:26:59+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Determine the exact production stuck state after one agent loop. Inspect live process status, runtime/Cortex logs, queue database rows, and worker health without modifying production data. Produce a concrete root-cause hypothesis tied to evidence.",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Remote process and worker status are checked.",
+        "Recent logs are inspected with timestamps, distinguishing stale errors from current failures.",
+        "Queue database state is inspected for active sessions, pending inbox/outbox, saga rows, session states, and retry/dead rows.",
+        "The failing or waiting state is identified precisely enough to guide a code fix."
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "Live production stall diagnosis",
+      "updated_at": "2026-05-11T07:42:50+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [
+        "C004"
+      ],
+      "created_at": "2026-05-11T07:26:59+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Implement the smallest deterministic code change that fixes the root cause discovered in live diagnosis. Avoid compatibility fallbacks or masking behavior; the repaired harness should progress or fail explicitly.",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P004",
+        "P005",
+        "P006"
+      ],
+      "success_criteria": [
+        "The responsible module is patched.",
+        "Regression tests cover the failing transition or state.",
+        "Local targeted tests pass.",
+        "The diff is reviewed for hidden fallback, stale branch, or unclear dependency boundary."
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "Code repair for identified stall cause",
+      "updated_at": "2026-05-11T07:56:02+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P003/README.md",
+      "check_ids": [
+        "C007"
+      ],
+      "created_at": "2026-05-11T07:26:59+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Deploy the repaired backend and prove the agent loop can progress past the previous stuck point in production-like conditions.",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P003",
+      "parent_id": "P000",
+      "result_ids": [
+        "R007"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P007",
+        "P008"
+      ],
+      "success_criteria": [
+        "Backend services deploy and restart cleanly.",
+        "Fresh-smoke and service health checks pass.",
+        "A remote e2e/smoke path covers the repaired transition.",
+        "Logs after deploy show no new current fatal errors for the touched path."
+      ],
+      "ticket_ids": [
+        "T006"
+      ],
+      "title": "Deploy and verify stall repair",
+      "updated_at": "2026-05-11T08:12:56+00:00"
+    },
+    "P004": {
+      "body_path": "problems/P000/children/P002/children/P004/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-11T07:44:10+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T002",
+      "description": "Runtime-injected shell capability commands such as `agentctl im read` call Cortex internal endpoints, but the capability script does not attach `X-Internal-Key`, and runtime does not pass the Cortex internal key into the shell capability environment. This causes deterministic 401 failures from Cortex `/v1/meta/read`.",
+      "followup_ids": [],
+      "id": "P004",
+      "package_path": "problems/P000/children/P002/children/P004",
+      "parent_id": "P002",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Runtime shell execution passes `NOVAIC_CORTEX_INTERNAL_KEY` through the explicit capability env when configured.",
+        "Cortex shell capability scripts allow that env key and use it only for Cortex internal requests.",
+        "Regression tests prove `agentctl`/Cortex capability requests carry `X-Internal-Key` without leaking into unrelated business/device calls."
+      ],
+      "ticket_ids": [
+        "T003"
+      ],
+      "title": "Shell capability Cortex internal auth repair",
+      "updated_at": "2026-05-11T07:48:25+00:00"
+    },
+    "P005": {
+      "body_path": "problems/P000/children/P002/children/P005/README.md",
+      "check_ids": [
+        "C002"
+      ],
+      "created_at": "2026-05-11T07:44:11+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T002",
+      "description": "Cortex event projection stores `ToolStepRecorded.payload_ref` only inside `_metadata.payload_ref`, but runtime LLM expansion requires a top-level `step_ref` on every tool message. This makes the next `react_think` fail before the LLM call.",
+      "followup_ids": [],
+      "id": "P005",
+      "package_path": "problems/P000/children/P002/children/P005",
+      "parent_id": "P002",
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Projected tool messages include top-level `step_ref` equal to the event `payload_ref` when present.",
+        "Existing metadata payload refs remain available for diagnostics.",
+        "Regression tests prove normal, multiple, and orphan tool-result projections satisfy the runtime step-ref contract."
+      ],
+      "ticket_ids": [
+        "T004"
+      ],
+      "title": "Tool result step_ref projection repair",
+      "updated_at": "2026-05-11T07:51:16+00:00"
+    },
+    "P006": {
+      "body_path": "problems/P000/children/P002/children/P006/README.md",
+      "check_ids": [
+        "C003"
+      ],
+      "created_at": "2026-05-11T07:44:11+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T002",
+      "description": "When `subagent_wake`, `react_think`, or `react_actions` fails, `SagaOrchestrator._build_wake_finalize_compensation_effect` creates a narrow `wake_finalize` context and drops `agent_root_scope_id`, `wake_scope_path`, `session_generation`, `remaining_stack`, and finalize audit metadata. The compensation finalize then treats the wake scope as a root scope and fails before `session_ended`.",
+      "followup_ids": [],
+      "id": "P006",
+      "package_path": "problems/P000/children/P002/children/P006",
+      "parent_id": "P002",
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Wake-finalize compensation preserves root/path/session generation/remaining stack/round metadata from the failed saga context.",
+        "Regression tests prove the compensation saga context can drive `cortex_scope_end` and `session_ended` payload builders with the correct generation and scope path.",
+        "The implementation does not introduce fallback guesses that hide missing upstream context."
+      ],
+      "ticket_ids": [
+        "T005"
+      ],
+      "title": "Wake finalize compensation context repair",
+      "updated_at": "2026-05-11T07:53:54+00:00"
+    },
+    "P007": {
+      "body_path": "problems/P000/children/P003/children/P007/README.md",
+      "check_ids": [
+        "C005"
+      ],
+      "created_at": "2026-05-11T07:57:23+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T006",
+      "description": "The repaired local code must be synchronized to production and backend services restarted so the runtime/Cortex fixes are active.",
+      "followup_ids": [],
+      "id": "P007",
+      "package_path": "problems/P000/children/P003/children/P007",
+      "parent_id": "P003",
+      "result_ids": [
+        "R005"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Deployment command completes successfully.",
+        "Backend fresh-smoke and status checks pass after restart.",
+        "Runtime and Cortex services are using the repaired code."
+      ],
+      "ticket_ids": [
+        "T007"
+      ],
+      "title": "Deploy repaired backend code",
+      "updated_at": "2026-05-11T08:01:24+00:00"
+    },
+    "P008": {
+      "body_path": "problems/P000/children/P003/children/P008/README.md",
+      "check_ids": [
+        "C006"
+      ],
+      "created_at": "2026-05-11T07:57:23+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T006",
+      "description": "Production had an already-stale active session. After deployment, verify that the old stuck condition is gone or recovered and that the same agent-loop path does not fail with internal-key, missing-step-ref, or bad-finalize errors.",
+      "followup_ids": [],
+      "id": "P008",
+      "package_path": "problems/P000/children/P003/children/P008",
+      "parent_id": "P003",
+      "result_ids": [
+        "R006"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Recent logs do not show the previous recurrence signatures after deploy.",
+        "Queue DB/session state is not left in a stale active failed state for the tested path.",
+        "A smoke action proves the repaired shell/context/finalize chain can progress."
+      ],
+      "ticket_ids": [
+        "T008"
+      ],
+      "title": "Verify live agent loop recovery",
+      "updated_at": "2026-05-11T08:12:19+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`.complex-problems/_drafts/L-agent-loop-stall/p001-result.md`"
+      ],
+      "body_path": "problems/P000/children/P001/results/R000.md",
+      "created_at": "2026-05-11T07:42:03+00:00",
+      "done": [
+        "Observed production state:",
+        "`tq_session_state` has one active session for `822af016-31a1-49bb-b529-9b8f539a0831:main-822af016`, generation `9`, scope `226b3a1f-535b-4f0b-bd63-a10cdad62380`, updated at `2026-05-11T07:18:53.747Z`, but no healthy follow-up progress.",
+        "Recent sagas show `subagent_wake`, `react_think`, and `react_actions` completed, then `react_think` failed with `Tool message missing step_ref`.",
+        "The following `wake_finalize` compensation saga failed with Cortex `/v1/scope/end` 500.",
+        "Cortex log shows `/v1/scope/end` raised `FileNotFoundError: no active root scope '226b3a1f-535b-4f0b-bd63-a10cdad62380'`.",
+        "Root cause chain:",
+        "1. The agent loop invoked shell capability `agentctl im read`.",
+        "2. `agentctl` called Cortex `/v1/meta/read` without `X-Internal-Key`; Cortex rejected it with `HTTP 401 missing or invalid X-Internal-Key`.",
+        "3. Runtime recorded the shell tool error, but Cortex context event projection emitted the tool message without a top-level `step_ref`; the `payload_ref` existed only inside `_metadata`.",
+        "4. The next `react_think` failed before calling the LLM because `expand_messages_for_llm` requires top-level `step_ref` for tool messages.",
+        "5. Saga failure compensation created a `wake_finalize` saga, but the compensation context only preserved `scope_id`, `agent_id`, `subagent_id`, `user_id`, and `finalize_reason`.",
+        "6. Because `agent_root_scope_id`, `wake_scope_path`, `session_generation`, and stack/finalize metadata were dropped, `cortex_scope_end` treated the wake scope as a root scope and failed.",
+        "7. Because `wake_finalize` failed before `session_ended`, the session stayed `active`, so new messages attached to a stale session instead of cleanly starting/recovering a wake.",
+        "Important code locations:",
+        "`novaic-cortex/novaic_cortex/shell_capabilities.py`: shell capability CLI does not forward `X-Internal-Key` to Cortex internal APIs.",
+        "`novaic-agent-runtime/task_queue/handlers/tool_handlers.py`: shell capability environment does not provide the Cortex internal key.",
+        "`novaic-cortex/novaic_cortex/context_event_projection.py`: `_tool_result_message` does not set top-level `step_ref`.",
+        "`novaic-agent-runtime/queue_service/saga_repo.py`: `_build_wake_finalize_compensation_effect` drops finalize/session/root context."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "The live stuck session will likely need either successful watchdog recovery or an explicit repair after code deployment, because the current DB row is already stale active state. Code repair alone prevents the next recurrence but may not automatically clear this already-failed session unless the recovery path is triggered and works."
+      ],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "The live stall after one agent loop is caused by a chained failure across shell capability auth, context event projection, and wake finalization compensation.",
+      "ticket_id": "T001",
+      "verification": [
+        "Queue DB sagas:",
+        "`saga-5aa744936407` failed `react_think` with `Tool message missing step_ref`.",
+        "`saga-90dbc6ef770a` failed `wake_finalize` with Cortex `/v1/scope/end` 500.",
+        "Task failures:",
+        "`llm.call` failed before model execution due missing `step_ref`.",
+        "`cortex.scope_end` failed because the wake scope was passed as if it were an active root scope.",
+        "Logs:",
+        "`task-worker-control-2.log` recorded `shell:agentctl: HTTP 401 from /v1/meta/read: {\"error\":\"missing or invalid X-Internal-Key\"}`.",
+        "`cortex.log` recorded `FileNotFoundError: no active root scope '226b3a1f-535b-4f0b-bd63-a10cdad62380'`."
+      ]
+    },
+    "R001": {
+      "artifacts": [
+        "`novaic-agent-runtime/task_queue/handlers/tool_handlers.py`",
+        "`novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py`",
+        "`novaic-cortex/novaic_cortex/shell_capabilities.py`",
+        "`novaic-cortex/tests/test_shell_capabilities_internal_auth.py`"
+      ],
+      "body_path": "problems/P000/children/P002/children/P004/results/R001.md",
+      "created_at": "2026-05-11T07:48:25+00:00",
+      "done": [
+        "Added `NOVAIC_CORTEX_INTERNAL_KEY` to runtime shell `capability_env`.",
+        "Added `NOVAIC_CORTEX_INTERNAL_KEY` to Cortex shell capability env allowlist.",
+        "Changed shell capability `_cortex_post` to attach `X-Internal-Key` when the key is present.",
+        "Kept business/device calls on the existing no-internal-key path.",
+        "Added regression coverage for env propagation and generated `agentctl` request headers."
+      ],
+      "id": "R001",
+      "known_gaps": [
+        "None for this boundary. The full production stall still requires the step-ref and compensation-context repairs."
+      ],
+      "problem_id": "P004",
+      "root_id": "P000",
+      "summary": "Repaired the shell capability Cortex internal-auth boundary so runtime-injected shell commands can call Cortex internal APIs with `X-Internal-Key`.",
+      "ticket_id": "T003",
+      "verification": [
+        "`pytest -q tests/unit/task_queue/test_shell_output_contract.py tests/test_runtime_explicit_contracts.py::test_cortex_bridge_shell_exec_sends_explicit_capability_env` in `novaic-agent-runtime`: `6 passed`.",
+        "`PYTHONPATH=/Users/wangchaoqun/new-build-novaic/novaic-logicalfs:/Users/wangchaoqun/new-build-novaic/novaic-sandbox-sdk:/Users/wangchaoqun/new-build-novaic/novaic-sandbox-service:/Users/wangchaoqun/new-build-novaic/novaic-common pytest -q tests/test_shell_capabilities_internal_auth.py` in `novaic-cortex`: `2 passed`."
+      ]
+    },
+    "R002": {
+      "artifacts": [
+        "`novaic-cortex/novaic_cortex/context_event_projection.py`",
+        "`novaic-cortex/tests/test_context_event_projection.py`"
+      ],
+      "body_path": "problems/P000/children/P002/children/P005/results/R002.md",
+      "created_at": "2026-05-11T07:51:16+00:00",
+      "done": [
+        "Updated `_tool_result_message` to copy non-empty string `payload_ref` to top-level `step_ref`.",
+        "Preserved `_metadata.payload_ref` for diagnostics and existing observability.",
+        "Updated regression tests for ordinary, multiple, and orphan tool results."
+      ],
+      "id": "R002",
+      "known_gaps": [
+        "None for this projection boundary. The compensation finalize path still needs repair."
+      ],
+      "problem_id": "P005",
+      "root_id": "P000",
+      "summary": "Repaired Cortex event projection so tool-result messages carry the top-level `step_ref` required by runtime LLM expansion.",
+      "ticket_id": "T004",
+      "verification": [
+        "`PYTHONPATH=/Users/wangchaoqun/new-build-novaic/novaic-logicalfs:/Users/wangchaoqun/new-build-novaic/novaic-sandbox-sdk:/Users/wangchaoqun/new-build-novaic/novaic-sandbox-service:/Users/wangchaoqun/new-build-novaic/novaic-common pytest -q tests/test_context_event_projection.py` in `novaic-cortex`: `28 passed`.",
+        "`PYTHONPATH=/Users/wangchaoqun/new-build-novaic/novaic-logicalfs:/Users/wangchaoqun/new-build-novaic/novaic-sandbox-sdk:/Users/wangchaoqun/new-build-novaic/novaic-sandbox-service:/Users/wangchaoqun/new-build-novaic/novaic-common pytest -q tests/test_context_event_read_model.py tests/test_context_event_api_steps_write.py` in `novaic-cortex`: `7 passed`."
+      ]
+    },
+    "R003": {
+      "artifacts": [
+        "`novaic-agent-runtime/queue_service/saga_repo.py`",
+        "`novaic-agent-runtime/tests/test_pr311_saga_compensation_outbox_cutover.py`"
+      ],
+      "body_path": "problems/P000/children/P002/children/P006/results/R003.md",
+      "created_at": "2026-05-11T07:53:54+00:00",
+      "done": [
+        "Updated `_build_wake_finalize_compensation_effect` to preserve explicit context keys:",
+        "`agent_root_scope_id`",
+        "`wake_scope_path`",
+        "`session_generation`",
+        "`remaining_stack`",
+        "`stack_known_at_finalize`",
+        "`stack_depth_at_finalize`",
+        "`round_num`",
+        "Extended durable saga outbox regression tests to verify both pending compensation effect and published `wake_finalize` saga keep those fields.",
+        "Added assertions that preserved compensation context drives `_build_cortex_scope_end_payload` and `_build_session_ended_payload` correctly."
+      ],
+      "id": "R003",
+      "known_gaps": [
+        "None for compensation-context preservation. The full repair still needs parent aggregation, broader tests, deployment, and live stuck-session recovery verification."
+      ],
+      "problem_id": "P006",
+      "root_id": "P000",
+      "summary": "Repaired wake-finalize compensation so failed wake/think/actions sagas preserve the root/path/session context required for cleanup and `session_ended`.",
+      "ticket_id": "T005",
+      "verification": [
+        "`pytest -q tests/test_pr311_saga_compensation_outbox_cutover.py tests/test_pr254_finalize_ownership.py` in `novaic-agent-runtime`: `10 passed`.",
+        "`pytest -q tests/test_pr245_suspected_dead_recovery.py tests/test_pr233_active_inbox_dispatch.py` in `novaic-agent-runtime`: `12 passed`."
+      ]
+    },
+    "R004": {
+      "artifacts": [
+        "`R001` shell internal auth result.",
+        "`R002` step-ref projection result.",
+        "`R003` compensation context result."
+      ],
+      "body_path": "problems/P000/children/P002/results/R004.md",
+      "created_at": "2026-05-11T07:54:29+00:00",
+      "done": [
+        "`P004` repaired shell capability internal auth:",
+        "runtime passes `NOVAIC_CORTEX_INTERNAL_KEY`;",
+        "shell capability allowlist accepts it;",
+        "generated `agentctl` attaches `X-Internal-Key` to Cortex internal calls only.",
+        "`P005` repaired context event projection:",
+        "projected tool messages now include top-level `step_ref`;",
+        "diagnostic `_metadata.payload_ref` remains intact.",
+        "`P006` repaired compensation finalize context:",
+        "failed wake/think/actions sagas now create wake-finalize compensation with preserved root/path/session/stack metadata."
+      ],
+      "id": "R004",
+      "known_gaps": [
+        "Need a final integrated test/deploy/recovery verification phase to prove the live stuck session is cleared and new agent-loop messages progress normally."
+      ],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "Completed the code repairs for the identified three-link stall chain: shell capability internal auth, top-level tool `step_ref` projection, and wake-finalize compensation context preservation.",
+      "ticket_id": "T002",
+      "verification": [
+        "`novaic-agent-runtime` shell capability tests: `6 passed`.",
+        "`novaic-cortex` shell internal auth tests: `2 passed`.",
+        "`novaic-cortex` context projection/read/write tests: `35 passed`.",
+        "`novaic-agent-runtime` compensation/finalize/recovery tests: `22 passed`."
+      ]
+    },
+    "R005": {
+      "artifacts": [
+        "Deployment output from `./deploy services`.",
+        "Status output from `./deploy status`."
+      ],
+      "body_path": "problems/P000/children/P003/children/P007/results/R005.md",
+      "created_at": "2026-05-11T08:01:24+00:00",
+      "done": [
+        "Ran `./deploy services`.",
+        "Synced updated `novaic-agent-runtime` files including `queue_service/saga_repo.py` and `task_queue/handlers/tool_handlers.py`.",
+        "Synced updated `novaic-cortex` files including `context_event_projection.py` and `shell_capabilities.py`.",
+        "Reinstalled relevant service dependencies and restarted all backend services through remote `start.sh`.",
+        "Ran `./deploy status`."
+      ],
+      "id": "R005",
+      "known_gaps": [
+        "Need live session/recovery smoke verification after deployment."
+      ],
+      "problem_id": "P007",
+      "root_id": "P000",
+      "summary": "Deployed the repaired backend code to production using the supported `./deploy services` path and verified service status afterward.",
+      "ticket_id": "T007",
+      "verification": [
+        "`./deploy services` completed successfully.",
+        "Fresh-smoke log check passed for all required backend logs.",
+        "`./deploy status` showed all backend ports up and all runtime worker roles at expected counts:",
+        "task-worker control `2/2`",
+        "task-worker execution `2/2`",
+        "saga-worker `2/2`",
+        "session-outbox-worker `1/1`",
+        "saga-outbox-worker `1/1`",
+        "health `1/1`",
+        "scheduler `1/1`",
+        "subscriber `1/1`"
+      ]
+    },
+    "R006": {
+      "artifacts": [
+        "Production queue DB query output.",
+        "Production log signature scan output.",
+        "Production direct shell smoke output."
+      ],
+      "body_path": "problems/P000/children/P003/children/P008/results/R006.md",
+      "created_at": "2026-05-11T08:12:19+00:00",
+      "done": [
+        "Queried production `tq_session_state`.",
+        "Scanned recent post-deploy worker/Cortex/queue logs for old recurrence signatures.",
+        "Ran direct production `/v1/internal/shell` smoke with `agentctl im read --limit 1`, explicitly exercising `agentctl` plus Cortex `/v1/meta/read`."
+      ],
+      "id": "R006",
+      "known_gaps": [
+        "The latest saga table still contains the historical failed sagas from before deploy; they are not active and match the pre-fix timestamps.",
+        "This smoke validates the repaired shell/meta path and stale-session cleanup state, but it is not a full UI-to-LLM provider reply test."
+      ],
+      "problem_id": "P008",
+      "root_id": "P000",
+      "summary": "Verified production after deployment. The previously stuck session is no longer active, post-deploy recent logs are clean for the three old signatures, and direct Cortex shell capability smoke succeeds.",
+      "ticket_id": "T008",
+      "verification": [
+        "Session state:",
+        "`822af016-31a1-49bb-b529-9b8f539a0831:main-822af016|no_active|9|||2026-05-11T08:00:10.877Z|`",
+        "This means the old active wedge has been cleared to `no_active`.",
+        "Recent signature scan over worker/Cortex/queue logs:",
+        "`task-worker-control-1.log`: clean",
+        "`task-worker-control-2.log`: clean",
+        "`task-worker-execution-1.log`: clean",
+        "`task-worker-execution-2.log`: clean",
+        "`cortex.log`: clean",
+        "`queue-service.log`: clean",
+        "Direct shell capability smoke:",
+        "`/v1/internal/shell` returned `exit_code=0`.",
+        "`stdout` was `{\"success\": true, \"messages\": [], \"count\": 0}`.",
+        "Cortex log showed `/v1/meta/read status=200` and `sandbox.exec cmd='agentctl im read --limit 1' exit_code=0`."
+      ]
+    },
+    "R007": {
+      "artifacts": [
+        "`R005` backend deploy result.",
+        "`R006` live recovery verification result."
+      ],
+      "body_path": "problems/P000/children/P003/results/R007.md",
+      "created_at": "2026-05-11T08:12:56+00:00",
+      "done": [
+        "`P007`: deployed all backend services with `./deploy services`; service status passed.",
+        "`P008`: verified live session state and direct shell capability smoke."
+      ],
+      "id": "R007",
+      "known_gaps": [
+        "No full user-visible LLM reply smoke was forced; the specific repaired chain was before LLM provider generation and was verified directly."
+      ],
+      "problem_id": "P003",
+      "root_id": "P000",
+      "summary": "Deployed the repaired backend and verified production is no longer wedged. The repaired shell capability path succeeds and recent logs do not show the old failure signatures.",
+      "ticket_id": "T006",
+      "verification": [
+        "Deployment fresh-smoke passed for all required backend logs.",
+        "`./deploy status` showed all ports and runtime worker counts healthy.",
+        "Production `tq_session_state` for the main agent is `no_active`.",
+        "Direct `/v1/internal/shell` smoke with `agentctl im read --limit 1` returned `exit_code=0`.",
+        "Recent post-deploy logs are clean for:",
+        "`missing or invalid X-Internal-Key`",
+        "`Tool message missing step_ref`",
+        "`no active root scope`",
+        "`FileNotFoundError`"
+      ]
+    },
+    "R008": {
+      "artifacts": [
+        "`R000` diagnosis result.",
+        "`R004` code repair result.",
+        "`R007` deploy and live verification result."
+      ],
+      "body_path": "problems/P000/results/R008.md",
+      "created_at": "2026-05-11T08:13:35+00:00",
+      "done": [
+        "`P001` diagnosed the deep failure chain:",
+        "shell `agentctl` lacked Cortex internal auth;",
+        "projected tool messages lacked top-level `step_ref`;",
+        "saga failure compensation dropped finalize/root/session context;",
+        "wake finalize failed and left the session stale active.",
+        "`P002` fixed all three code defects with regression tests.",
+        "`P003` deployed the repaired backend and verified production state."
+      ],
+      "id": "R008",
+      "known_gaps": [
+        "Historical failed saga rows remain as audit history, but they are pre-deploy and not active.",
+        "I did not force a full LLM reply round; the repaired failure chain is before the provider call and was verified directly."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Diagnosed, repaired, deployed, and verified the production agent-loop stall after one round.",
+      "ticket_id": "T000",
+      "verification": [
+        "Local focused tests:",
+        "runtime selected suite: `28 passed`;",
+        "Cortex selected suite: `37 passed`;",
+        "compensation/finalize/recovery suites included in runtime selected suite.",
+        "Deployment:",
+        "`./deploy services` passed;",
+        "fresh-smoke passed;",
+        "`./deploy status` passed.",
+        "Production:",
+        "affected session is `no_active`;",
+        "direct `agentctl im read --limit 1` shell smoke returned `exit_code=0`;",
+        "Cortex logged `/v1/meta/read status=200`;",
+        "recent logs are clean for old signatures."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Live backend evidence shows where the stuck loop is waiting or failing.",
+        "Code-level root cause is identified and linked to the evidence.",
+        "Fix is implemented in the responsible module with no hidden fallback that masks the issue.",
+        "Regression coverage exercises the failing transition.",
+        "Deployment and smoke/e2e prove the agent loop progresses beyond the former stall."
+      ],
+      "assumptions": [
+        "SSH access to `api.gradievo.com` and local repository tests are available.",
+        "It is acceptable to inspect production logs/database read-only during diagnosis.",
+        "The desired fix should prioritize deterministic harness progress over backward compatibility."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "Live diagnosis, code repair, and deployed verification are separate high-impact paths; split prevents guessing and lets each evidence boundary close independently.",
+      "created_at": "2026-05-11T07:26:05+00:00",
+      "id": "T000",
+      "problem_definition": "The production agent runtime appears to stop making progress after one loop. The failure may be in dispatch, queue session FSM, saga/outbox workers, Cortex context/stack behavior, shell/Cortex bridge calls, or stale deployed process state. We need prove the exact failure mode before changing code.",
+      "problem_id": "P000",
+      "proposed_solution": "Follow a live-first diagnostic path: inspect deployed process status, fresh logs, queue database state, active sessions, inbox/outbox/saga rows, and recent Cortex/runtime calls; map the stuck state back to code; patch the smallest deterministic bug; add regression tests around the state transition; deploy and run end-to-end smoke.",
+      "result_ids": [
+        "R008"
+      ],
+      "risks": [
+        "Production contains old stuck rows unrelated to the current bug; diagnostics must distinguish stale history from current failure.",
+        "A loop stall can be caused by multiple coupled issues; if the first fix is insufficient, create follow-up problems instead of declaring success.",
+        "Smoke tests can prove infrastructure health but not every LLM behavior; verification must focus on harness state transitions."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Diagnose and repair deployed agent loop stall",
+      "updated_at": "2026-05-11T08:13:35+00:00",
+      "verification_plan": "- Query remote process state and fresh logs for runtime workers and Cortex.\n- Inspect `/opt/novaic/data/queue.db` for active sessions, pending inputs, outbox/saga rows, wake/session state, and failed attempts.\n- Run local targeted tests for the touched runtime/Cortex modules.\n- Deploy backend services and run remote smoke/e2e against real services."
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "A current live stuck state or absence of one is shown from production data.",
+        "Any failing table/worker/session state is named precisely.",
+        "Evidence includes commands/queries and key observations, not vague log claims.",
+        "The diagnosis identifies the code path likely needing repair."
+      ],
+      "assumptions": [
+        "Production queue state in `/opt/novaic/data/queue.db` is the current authority for session and worker progress."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "one_go",
+      "classification_reason": "Read-only live diagnosis is bounded, reversible, and directly verifiable with service/log/SQLite evidence.",
+      "created_at": "2026-05-11T07:27:25+00:00",
+      "id": "T001",
+      "problem_definition": "We need identify the current production stuck state after an agent loop ran once. The work is read-only diagnosis across deployed processes, logs, and queue database state.",
+      "problem_id": "P001",
+      "proposed_solution": "Run bounded remote read-only inspections: service status, fresh logs, active queue/session/saga/outbox tables, recent rows ordered by updated timestamps, and code pointers for the observed state. Summarize the concrete root cause and evidence.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Querying large logs can be slow; restrict to recent tails and selected table columns.",
+        "Stale history can look like current failure; compare timestamps to current service start."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Inspect live queue/runtime stall evidence",
+      "updated_at": "2026-05-11T07:42:03+00:00",
+      "verification_plan": "- Use `./deploy status` plus SSH read-only log and SQLite queries.\n- Avoid modifying production rows.\n- Cross-check with local source search for the responsible state transition."
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "`agentctl im read` and other Cortex-backed shell capabilities can call Cortex internal endpoints without 401 when runtime has the internal key.",
+        "LLM context snapshots created from `ToolStepRecorded` include top-level `step_ref` for every tool message with a payload ref.",
+        "Failed wake/think/actions sagas create `wake_finalize` compensation with enough context to archive the wake scope and call `session_ended` against the correct session generation.",
+        "Existing tests plus targeted new regressions pass.",
+        "No fallback path hides the bug by silently swallowing auth or finalize failures."
+      ],
+      "assumptions": [
+        "Cortex internal endpoints intentionally require `X-Internal-Key`; shell capability commands are trusted runtime-injected CLI tools and may receive that key through explicit capability env.",
+        "The current `step_ref` expansion contract is correct; the projection is the broken layer.",
+        "The saga context already contains root/path/session metadata on normal paths; compensation must copy it instead of narrowing the context."
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T002.md",
+      "classification": "split",
+      "classification_reason": "Repair spans three runtime boundaries and needs separate regression tests",
+      "created_at": "2026-05-11T07:43:24+00:00",
+      "id": "T002",
+      "problem_definition": "The production agent loop stalls because a shell capability internal-auth failure cascades into missing tool `step_ref` projection and then failed `wake_finalize` compensation. The code must be repaired at the real runtime boundaries so the same chain cannot recur.",
+      "problem_id": "P002",
+      "proposed_solution": "Split the repair into targeted child problems:\n\n1. Shell capability Cortex internal-auth boundary: pass the Cortex internal key from runtime to sandbox capability env and make `agentctl` include `X-Internal-Key` for Cortex internal APIs.\n2. Context event projection step-ref contract: ensure `ToolStepRecorded` projects a top-level `step_ref` for LLM expansion.\n3. Saga compensation finalize context: preserve root/path/session generation/stack metadata when creating `wake_finalize` compensation.\n\nEach child problem must include regression tests proving the repaired contract.",
+      "result_ids": [
+        "R004"
+      ],
+      "risks": [
+        "Passing internal keys into shell capability env increases sensitivity of the shell environment; only the explicit sandbox capability allowlist should carry it, and it must not be printed by default.",
+        "Compensation context must preserve enough metadata without inventing fallback values that hide upstream context loss.",
+        "Existing production stuck state may still need deployment/recovery verification after code repair."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Repair chained agent-loop stall defects",
+      "updated_at": "2026-05-11T07:54:29+00:00",
+      "verification_plan": "- Add focused unit tests for shell capability env/header behavior.\n- Add context projection regression tests for top-level `step_ref`.\n- Add saga compensation regression tests verifying context preservation.\n- Run targeted test suites for `novaic-cortex` and `novaic-agent-runtime`."
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "Runtime shell executor includes `NOVAIC_CORTEX_INTERNAL_KEY` in `capability_env`.",
+        "Cortex shell capability allowlist preserves `NOVAIC_CORTEX_INTERNAL_KEY`.",
+        "`_cortex_post` sends `X-Internal-Key` only for Cortex internal requests.",
+        "Tests cover env propagation and request-header behavior."
+      ],
+      "assumptions": [
+        "The shell sandbox is the trusted boundary for runtime-injected capability commands."
+      ],
+      "body_path": "problems/P000/children/P002/children/P004/tickets/T003.md",
+      "classification": "one_go",
+      "classification_reason": "Small explicit boundary patch with focused tests",
+      "created_at": "2026-05-11T07:44:40+00:00",
+      "id": "T003",
+      "problem_definition": "Shell capability commands are trusted runtime-injected tools, but they cannot call Cortex internal APIs because neither runtime nor the capability script forwards the Cortex internal key.",
+      "problem_id": "P004",
+      "proposed_solution": "Add `NOVAIC_CORTEX_INTERNAL_KEY` to the explicit shell capability env, allowlist it in Cortex shell capability materialization, and have `_cortex_post` attach `X-Internal-Key` when the key is present.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "Internal key should not be sent to business/device/blob services.",
+        "Internal key should not be included in user-visible shell output unless a user explicitly prints their environment."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Pass Cortex internal key to shell capabilities",
+      "updated_at": "2026-05-11T07:48:25+00:00",
+      "verification_plan": "- Add or update unit tests in runtime shell output contract tests.\n- Add Cortex shell capability tests for allowlist/header behavior.\n- Run targeted tests for these files."
+    },
+    "T004": {
+      "acceptance_criteria": [
+        "Every projected tool message with a payload ref has `step_ref`.",
+        "Existing metadata payload ref remains intact.",
+        "Tests cover ordinary, multiple, and orphan tool-result projection paths."
+      ],
+      "assumptions": [
+        "`payload_ref` is the durable join key that should become `step_ref`."
+      ],
+      "body_path": "problems/P000/children/P002/children/P005/tickets/T004.md",
+      "classification": "one_go",
+      "classification_reason": "Single pure projection contract patch with focused tests",
+      "created_at": "2026-05-11T07:48:56+00:00",
+      "id": "T004",
+      "problem_definition": "Runtime LLM expansion requires top-level `step_ref` on tool messages, but Cortex context event projection only stores tool payload refs inside `_metadata.payload_ref`.",
+      "problem_id": "P005",
+      "proposed_solution": "Update `ToolStepRecorded` projection to copy a string `payload_ref` to top-level `step_ref` while preserving `_metadata.payload_ref`.",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [
+        "Tests that compare exact message dicts need deliberate updates."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Project top-level step_ref for tool results",
+      "updated_at": "2026-05-11T07:51:16+00:00",
+      "verification_plan": "- Update Cortex context projection tests.\n- Run focused Cortex projection tests."
+    },
+    "T005": {
+      "acceptance_criteria": [
+        "Compensation `wake_finalize` context includes `agent_root_scope_id`, `wake_scope_path`, `session_generation`, `round_num`, and remaining-stack metadata when present on the failed saga context.",
+        "Regression tests prove the durable outbox effect and published finalize saga preserve those fields.",
+        "Regression tests prove wake-finalize payload builders can use the preserved context for `cortex_scope_end` and `session_ended`."
+      ],
+      "assumptions": [
+        "Normal wake/think/actions saga contexts already contain the needed root/path/session metadata; the compensation builder is the narrowing point that caused the observed failure."
+      ],
+      "body_path": "problems/P000/children/P002/children/P006/tickets/T005.md",
+      "classification": "one_go",
+      "classification_reason": "Single compensation context-preservation patch with targeted regression tests",
+      "created_at": "2026-05-11T07:52:34+00:00",
+      "id": "T005",
+      "problem_definition": "When wake/think/actions sagas fail, compensation creates a `wake_finalize` saga with too little context. It drops the root scope id, wake scope path, session generation, stack snapshot, and round metadata needed for `cortex_scope_end` and `session_ended`.",
+      "problem_id": "P006",
+      "proposed_solution": "Update saga compensation context construction to preserve explicit finalize/session/root metadata from the failed saga context. Do not invent fallback values for missing upstream fields; copy the values that are present.",
+      "result_ids": [
+        "R003"
+      ],
+      "risks": [
+        "Adding fallback guesses would hide upstream contract bugs; avoid them.",
+        "Existing production stuck session still needs deploy/recovery verification."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Preserve wake finalize compensation context",
+      "updated_at": "2026-05-11T07:53:54+00:00",
+      "verification_plan": "- Extend saga compensation outbox tests.\n- Run focused saga compensation/finalize ownership tests."
+    },
+    "T006": {
+      "acceptance_criteria": [
+        "Backend deployment completes and all services/workers are running.",
+        "Fresh logs confirm restarted services are active.",
+        "Queue/session state is no longer wedged by the old failed wake, or an explicit recovery path is triggered and verified.",
+        "A smoke path confirms shell capability `agentctl` can read IM/meta without 401 and does not reproduce missing `step_ref` or wake-finalize root-scope errors."
+      ],
+      "assumptions": [
+        "Deployment via repository `./deploy` is the supported backend deployment path."
+      ],
+      "body_path": "problems/P000/children/P003/tickets/T006.md",
+      "classification": "split",
+      "classification_reason": "Production deployment and live recovery verification are separate risk surfaces",
+      "created_at": "2026-05-11T07:57:10+00:00",
+      "id": "T006",
+      "problem_definition": "The code repair prevents the identified failure chain locally, but production currently has a stale active session and must be deployed and verified end to end.",
+      "problem_id": "P003",
+      "proposed_solution": "Split deployment verification into:\n\n1. Deploy repaired runtime/Cortex code to the backend and restart services cleanly.\n2. Verify backend health, inspect stale session recovery state, and smoke-test that a new agent-loop message can progress without the previous auth/step-ref/finalize failures.",
+      "result_ids": [
+        "R007"
+      ],
+      "risks": [
+        "Existing stale active session may need recovery after deployment; code fix alone may not clear historical failed saga state.",
+        "Production smoke may depend on external model/provider availability."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Deploy and verify repaired agent loop",
+      "updated_at": "2026-05-11T08:12:56+00:00",
+      "verification_plan": "- Run `./deploy services` or the minimal safe backend deployment path that syncs both `novaic-agent-runtime` and `novaic-cortex`.\n- Run `./deploy status` and fresh-smoke checks.\n- Inspect queue DB and recent logs for recurrence signatures.\n- Run a targeted smoke command/API path if available."
+    },
+    "T007": {
+      "acceptance_criteria": [
+        "Deployment command succeeds.",
+        "Fresh-smoke log check succeeds.",
+        "`./deploy status` shows required services and workers up."
+      ],
+      "assumptions": [
+        "`./deploy services` is the supported backend deployment path for changes touching both runtime and Cortex."
+      ],
+      "body_path": "problems/P000/children/P003/children/P007/tickets/T007.md",
+      "classification": "one_go",
+      "classification_reason": "Single supported deploy command plus status verification",
+      "created_at": "2026-05-11T07:57:52+00:00",
+      "id": "T007",
+      "problem_definition": "The repaired runtime/Cortex code must be deployed to production.",
+      "problem_id": "P007",
+      "proposed_solution": "Use the repository deployment script to sync backend services and restart via the managed `start.sh` path.",
+      "result_ids": [
+        "R005"
+      ],
+      "risks": [
+        "Deployment restarts all backend services."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Deploy repaired backend services",
+      "updated_at": "2026-05-11T08:01:24+00:00",
+      "verification_plan": "- Run `./deploy services`.\n- Run `./deploy status`.\n- Record command outcomes."
+    },
+    "T008": {
+      "acceptance_criteria": [
+        "No new post-deploy `missing or invalid X-Internal-Key`, `Tool message missing step_ref`, or `no active root scope` recurrence appears in runtime/Cortex logs.",
+        "Direct shell capability smoke returns successfully and does not produce the old 401.",
+        "Queue/session state is understood after restart; if a stale active state remains, record it as a follow-up instead of pretending recovery is complete."
+      ],
+      "assumptions": [
+        "Production internal key can be read on the server from deployed `services.json` for local-only smoke."
+      ],
+      "body_path": "problems/P000/children/P003/children/P008/tickets/T008.md",
+      "classification": "one_go",
+      "classification_reason": "Bounded production inspection and direct smoke with clear residual-risk criteria",
+      "created_at": "2026-05-11T08:02:15+00:00",
+      "id": "T008",
+      "problem_definition": "After deployment, production must be checked for the exact old stall signatures and for basic repaired shell/context behavior.",
+      "problem_id": "P008",
+      "proposed_solution": "Inspect production queue/session state and logs after deployment, then run a direct Cortex shell capability smoke that exercises `agentctl im read` through the deployed shell capability script with internal auth.",
+      "result_ids": [
+        "R006"
+      ],
+      "risks": [
+        "A direct smoke may not fully simulate UI dispatch/LLM provider behavior.",
+        "Existing stale session may require a recovery event if no new user message has arrived."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Verify live repaired agent loop path",
+      "updated_at": "2026-05-11T08:12:19+00:00",
+      "verification_plan": "- Query production queue DB for session/saga state.\n- Grep post-deploy logs for old signatures.\n- Call Cortex `/v1/internal/shell` on production with `agentctl im read --limit 1` and explicit capability env."
+    }
+  },
+  "updated_at": "2026-05-11T08:13:36+00:00"
+}
