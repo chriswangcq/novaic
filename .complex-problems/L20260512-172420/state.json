@@ -1,0 +1,493 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C000.md",
+      "created_at": "2026-05-12T09:38:58+00:00",
+      "criteria_map": [
+        "All P001 criteria mapped in check body"
+      ],
+      "evidence": [
+        "test_shell_output_contract.py passed",
+        "raw_shell_result not present in public diagnostics"
+      ],
+      "execution_map": [
+        "T001 -> R000 implemented and tested"
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P001",
+      "residual_risk": [
+        "Durable payload shape changed but Cortex parser updated"
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Large stdout and nonzero exit paths covered"
+      ],
+      "summary": "Shell terminal preview contract verified"
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/checks/C001.md",
+      "created_at": "2026-05-12T09:44:22+00:00",
+      "criteria_map": [
+        "All P002 criteria mapped in check body"
+      ],
+      "evidence": [
+        "wrapped display regression test passed",
+        "Cortex projection tests passed"
+      ],
+      "execution_map": [
+        "T002 -> R001 implemented and tested"
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P002",
+      "residual_risk": [
+        "Display payload still stores current image bytes for explicit perception; final tool text sanitizes them"
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Non-display _mcp_content remains text-wrapped"
+      ],
+      "summary": "Display media wrapping verified"
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/checks/C002.md",
+      "created_at": "2026-05-12T09:49:47+00:00",
+      "criteria_map": [
+        "All P003 criteria mapped in check body"
+      ],
+      "evidence": [
+        "25 runtime tests passed",
+        "11 Cortex tests passed",
+        "raw_shell_result audit clean"
+      ],
+      "execution_map": [
+        "T003 -> R002 tests and audit completed"
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P003",
+      "residual_risk": [
+        "Broader/deployed checks remain P004"
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Residual search and separate runtime/cortex suites"
+      ],
+      "summary": "Full path regression coverage verified"
+    }
+  },
+  "counters": {
+    "check": 3,
+    "event": 48,
+    "problem": 5,
+    "result": 3,
+    "ticket": 5
+  },
+  "created_at": "2026-05-12T09:24:20+00:00",
+  "ledger_id": "L20260512-172420",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [],
+      "created_at": "2026-05-12T09:24:20+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "Implement the tightened tool-output contract requested by the user: `shell` should behave like a human terminal and expose only bounded terminal text plus truncation metadata to the LLM-facing tool result. Full stdout/stderr remains recoverable from Cortex RO step/payload storage, not duplicated inside LLM-facing diagnostics. At the same time, repair the current `display` media boundary so explicit display perception is not converted into ordinary text/base64 when passed through the runtime tool wrapper.\n\nThe work must include design, implementation, tests, commit, and deployment. Use the ledger closure loop rather than assuming one large change is safe.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [],
+      "root_id": "P000",
+      "status": "todo",
+      "subproblem_ids": [
+        "P001",
+        "P002",
+        "P003",
+        "P004"
+      ],
+      "success_criteria": [
+        "`shell` LLM-facing output contains terminal text preview and small metadata only; no full raw stdout/stderr in diagnostics.",
+        "Large shell stdout/stderr is truncated in the displayed text and exposes enough length/truncation metadata to know where to inspect further.",
+        "Complete raw command output remains stored in Cortex step/payload records through the existing step persistence path.",
+        "`display` results survive runtime wrapping as structured display media instead of becoming `tool-output.v1.text` containing base64.",
+        "Current explicit `display` perception becomes provider-facing structured image content; historical/non-display paths do not inject images.",
+        "Regression tests cover the real executor-to-wrapper-to-Cortex-to-runtime path, not only idealized direct inputs.",
+        "Code is committed and deployed; smoke checks verify the deployed services are healthy."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Shell Terminal Contract and Display Media Boundary",
+      "updated_at": "2026-05-12T09:24:20+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-12T09:26:53+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Tighten the runtime shell output contract so the LLM-facing `tool-output.v1` text behaves like a terminal preview: exit code, bounded stdout/stderr, truncation markers, and small metadata. It must not duplicate full raw stdout/stderr in diagnostics. Full replay remains available from Cortex step/payload storage.",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`raw_shell_result` is removed from shell `tool-output.v1.diagnostics`.",
+        "Shell diagnostics keep only small, explicit fields such as exit code, stdout/stderr char counts, truncation flags, and changed file count.",
+        "Shell text remains useful and bounded for success and nonzero exit cases.",
+        "Unit tests cover large stdout/stderr and assert full raw output is not embedded in the LLM-facing envelope."
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "Shell LLM Output Is Terminal Preview Only",
+      "updated_at": "2026-05-12T09:38:58+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-12T09:26:53+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "The explicit `display` tool currently returns `_mcp_content` with image data, but the generic runtime `_ok()` wrapper demotes it into `tool-output.v1.text` because it is not already `tool-output.v1`. Preserve display media through runtime wrapping so current explicit display perception can become provider-facing structured image content.",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Runtime wrapping preserves direct `_mcp_content` display output without serializing image base64 into `tool-output.v1.text`.",
+        "Cortex display-perception projection can parse the wrapped display result into `display_files`.",
+        "Runtime multimodal conversion produces a separate structured `image_url` user content part for current display perception.",
+        "The tool text message contains placeholders/metadata and no raw base64 image data.",
+        "Historical/non-display projections still do not inject images."
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "Display Media Survives Runtime Wrapping",
+      "updated_at": "2026-05-12T09:44:22+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P003/README.md",
+      "check_ids": [
+        "C002"
+      ],
+      "created_at": "2026-05-12T09:26:53+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Existing tests cover idealized direct inputs but missed the actual executor-wrapper-Cortex-runtime path. Add or update tests so the real path catches both shell contract regressions and display base64 leakage.",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P003",
+      "parent_id": "P000",
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "A regression test exercises display executor output through `_ok()`, Cortex `parse_tool_result` / `format_for_display_perception_llm`, and runtime `process_multimodal_messages`.",
+        "Tests prove shell large output is bounded and does not include full raw stdout/stderr in diagnostics.",
+        "Tests prove current display creates structured image content and history/current non-display projections do not inject images.",
+        "Relevant focused tests pass."
+      ],
+      "ticket_ids": [
+        "T003"
+      ],
+      "title": "Full Path Regression Tests And Audit",
+      "updated_at": "2026-05-12T09:49:47+00:00"
+    },
+    "P004": {
+      "body_path": "problems/P000/children/P004/README.md",
+      "check_ids": [],
+      "created_at": "2026-05-12T09:26:53+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "After implementation and tests, commit the contract changes and deploy them to the production server. Verify deployed services are healthy and the new behavior is smoke-tested enough to catch the previous base64-as-text failure mode.",
+      "followup_ids": [],
+      "id": "P004",
+      "package_path": "problems/P000/children/P004",
+      "parent_id": "P000",
+      "result_ids": [],
+      "root_id": "P000",
+      "status": "doing",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Git diff is reviewed and committed.",
+        "Deployment completes successfully.",
+        "Service health/status checks pass after deployment.",
+        "A smoke or contract verification confirms the new display path no longer sends raw base64 as tool text."
+      ],
+      "ticket_ids": [
+        "T004"
+      ],
+      "title": "Commit Deploy And Smoke Verify",
+      "updated_at": "2026-05-12T09:58:44+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`novaic-agent-runtime/task_queue/handlers/tool_handlers.py`",
+        "`novaic-agent-runtime/task_queue/contracts/react_actions.py`",
+        "`novaic-cortex/novaic_cortex/step_result_projection.py`",
+        "`novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py`"
+      ],
+      "body_path": "problems/P000/children/P001/results/R000.md",
+      "created_at": "2026-05-12T09:38:32+00:00",
+      "done": [
+        "Removed raw_shell_result from diagnostics",
+        "Added durable payload envelope and Cortex llm_content parser"
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "`display` media preservation is handled by the next child problem."
+      ],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "Shell public output is now terminal preview only; raw result moved to durable step payload",
+      "ticket_id": "T001",
+      "verification": [
+        "Focused shell contract tests passed"
+      ]
+    },
+    "R001": {
+      "artifacts": [
+        "`novaic-agent-runtime/task_queue/handlers/tool_handlers.py`",
+        "`novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py`"
+      ],
+      "body_path": "problems/P000/children/P002/results/R001.md",
+      "created_at": "2026-05-12T09:43:54+00:00",
+      "done": [
+        "Preserved display _mcp_content in _ok public output",
+        "Added full wrapped display regression"
+      ],
+      "id": "R001",
+      "known_gaps": [
+        "Full path and broader audit remain in P003."
+      ],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "Explicit display media now survives runtime wrapping and converts to image_url",
+      "ticket_id": "T002",
+      "verification": [
+        "Focused runtime and Cortex tests passed"
+      ]
+    },
+    "R002": {
+      "artifacts": [
+        "`novaic-agent-runtime/tests/test_runtime_explicit_contracts.py`",
+        "`novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py`"
+      ],
+      "body_path": "problems/P000/children/P003/results/R002.md",
+      "created_at": "2026-05-12T09:49:21+00:00",
+      "done": [
+        "Added durable payload persistence test",
+        "Added wrapped display to image_url regression"
+      ],
+      "id": "R002",
+      "known_gaps": [
+        "Final repository-wide checks and deployment remain in P004."
+      ],
+      "problem_id": "P003",
+      "root_id": "P000",
+      "summary": "Full-path shell/display regression coverage added and passed",
+      "ticket_id": "T003",
+      "verification": [
+        "Focused runtime and Cortex tests passed"
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "`shell` no longer puts full raw stdout/stderr into `tool-output.v1.diagnostics`.",
+        "`shell` still reports exit code, truncation flags, output lengths, and changed-file summary in terminal text/metadata.",
+        "`display` no longer becomes `tool-output.v1.text` containing JSON/base64 after `_ok()`.",
+        "The full current-display path produces structured `image_url` content while the tool text has placeholders/no base64.",
+        "Tests fail on the previous bug shape and pass after the implementation.",
+        "Commit and deploy are completed with documented verification."
+      ],
+      "assumptions": [
+        "Cortex step/payload storage already retains the complete raw shell execution observation outside the LLM-facing preview.",
+        "The only direct visual perception path that should become multimodal input is explicit current `display`."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "Cross-service runtime/cortex/tool-output contract change with deployment and full-path regressions",
+      "created_at": "2026-05-12T09:25:10+00:00",
+      "id": "T000",
+      "problem_definition": "The current runtime tool-output contract still mixes terminal text, raw shell payloads, artifact/media manifests, and direct display perception. This caused base64 image data to appear as ordinary tool text in LLM requests and also leaves full shell stdout/stderr duplicated in diagnostics. The user wants a tighter final shape: `shell` is a human-terminal preview only, while full replay belongs in Cortex RO steps/payloads and `display` is the explicit visual perception tool.",
+      "problem_id": "P000",
+      "proposed_solution": "Split the implementation into child problems:\n\n- Redesign and implement the `shell` output projection as terminal text preview plus bounded diagnostics only.\n- Redesign and implement `display` wrapping so structured image content survives runtime wrapping and reaches the existing display-perception multimodal converter.\n- Add regression tests for the full real path and update/remove tests that assert the old raw diagnostics behavior.\n- Run focused and repository-level checks, then commit and deploy.",
+      "result_ids": [],
+      "risks": [
+        "Tightening shell diagnostics could break tests or callers that read `raw_shell_result` from the LLM-facing envelope.",
+        "Display media preservation must not reintroduce historical image injection.",
+        "Deployment may need careful smoke checks because runtime/cortex contracts cross service boundaries."
+      ],
+      "root_id": "P000",
+      "status": "splitting",
+      "title": "Split Shell Text and Display Media Contracts",
+      "updated_at": "2026-05-12T09:26:53+00:00",
+      "verification_plan": "- Run unit tests for shell output contract, display tool handling, step result projection, and multimodal context processing.\n- Add a full-path regression test using `_exec_display`/`_ok` or equivalent wrapper + Cortex parser + runtime multimodal conversion.\n- Run the nearest project-wide test matrix or canonical subset if full matrix is too expensive.\n- Deploy with the repo deploy script and run smoke/status checks against production services."
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "`raw_shell_result` no longer appears in shell tool output diagnostics.",
+        "Large stdout/stderr remains truncated in `content[\"text\"]`.",
+        "Diagnostics still expose `stdout_chars`, `stderr_chars`, `stdout_truncated`, `stderr_truncated`, `files_changed_count`, and `exit_code`.",
+        "Existing shell tests are updated to assert the new contract."
+      ],
+      "assumptions": [
+        "Cortex step payload storage remains the authority for complete raw output."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "one_go",
+      "classification_reason": "Focused runtime shell diagnostics contract change with direct unit test coverage",
+      "created_at": "2026-05-12T09:27:46+00:00",
+      "id": "T001",
+      "problem_definition": "The current shell tool result includes `diagnostics.raw_shell_result`, which duplicates full stdout/stderr inside the LLM-facing `tool-output.v1` envelope. This violates the tightened terminal contract: shell should expose bounded terminal text and small metadata only, while complete output stays in Cortex step/payload storage.",
+      "problem_id": "P001",
+      "proposed_solution": "Update `_shell_result_text()` / `_shell_result_output()` so diagnostics retain only explicit bounded metadata: exit code, stdout/stderr char counts, truncation flags, and files changed count. Keep terminal text preview behavior and nonzero-exit error behavior.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Internal callers/tests that relied on diagnostics raw output may need updates."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Remove Raw Shell Payload From LLM-Facing Envelope",
+      "updated_at": "2026-05-12T09:38:32+00:00",
+      "verification_plan": "- Run `pytest novaic-agent-runtime/tests/unit/task_queue/test_shell_output_contract.py`.\n- Inspect focused diff to confirm only shell diagnostics contract changed."
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "`_ok(..., tool_name=\\\"display\\\", result={\\\"_mcp_content\\\": [...]})` returns public `content` with `_mcp_content`, not `tool-output.v1.text`.",
+        "Non-display unstructured dict results remain `tool-output.v1` text.",
+        "The full display path through Cortex projection and runtime multimodal processing emits structured `image_url`.",
+        "The final tool message has placeholder image metadata and no raw base64."
+      ],
+      "assumptions": [
+        "Current explicit `display` is the only direct LLM-facing visual perception tool."
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T002.md",
+      "classification": "one_go",
+      "classification_reason": "Narrow display-only wrapper change with direct full-path regression test",
+      "created_at": "2026-05-12T09:40:04+00:00",
+      "id": "T002",
+      "problem_definition": "The `display` executor returns `_mcp_content` image objects, but the generic runtime wrapper currently treats that dict as an unstructured result and serializes it into `tool-output.v1.text`. This puts image base64 into ordinary tool text and prevents the display-perception path from creating structured multimodal input.",
+      "problem_id": "P002",
+      "proposed_solution": "Teach the runtime wrapper to preserve structured `_mcp_content` only for the explicit `display` tool. Keep generic dict results text-based. Then verify that Cortex projection parses display media and runtime multimodal conversion creates `image_url` while sanitizing the tool text.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "Preserving `_mcp_content` too broadly could re-open arbitrary image injection; constrain the preservation to `tool_name == \\\"display\\\"`."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Preserve Explicit Display Media Through Runtime Wrapper",
+      "updated_at": "2026-05-12T09:43:54+00:00",
+      "verification_plan": "- Add a regression test for `_ok` display preservation and the full projection/conversion path.\n- Run display tool and multimodal context tests."
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "Full path regression fails on the old wrapper behavior and passes now.",
+        "Shell durable payload is stored as step payload while observation uses bounded public content.",
+        "Current display produces `image_url`; tool text has no raw base64.",
+        "Non-display and historical cases remain safe."
+      ],
+      "assumptions": [
+        "Focused test suites are sufficient for this child before the broader final check."
+      ],
+      "body_path": "problems/P000/children/P003/tickets/T003.md",
+      "classification": "one_go",
+      "classification_reason": "Focused regression and audit tests already implemented with direct verification commands",
+      "created_at": "2026-05-12T09:47:26+00:00",
+      "id": "T003",
+      "problem_definition": "The previous bug survived because tests covered idealized direct `_mcp_content` inputs but not the real runtime wrapper, step projection, and multimodal conversion path. The implementation needs regression coverage for both shell durable payload separation and display media preservation.",
+      "problem_id": "P003",
+      "proposed_solution": "Add focused tests for:\n\n- Shell durable payload separation in `build_save_results_tasks`.\n- Runtime display `_ok()` preservation through Cortex projection and multimodal conversion.\n- Non-display `_mcp_content` remaining text-wrapped.\n\nThen run all focused tests that cover shell, display, projection, and context processing.",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [
+        "Test import paths across local packages can be brittle; use explicit `PYTHONPATH`."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Add Full Path Contract Regression Coverage",
+      "updated_at": "2026-05-12T09:49:21+00:00",
+      "verification_plan": "- Run runtime explicit contract tests.\n- Run shell output contract tests.\n- Run multimodal display/history tests.\n- Run Cortex step projection tests."
+    },
+    "T004": {
+      "acceptance_criteria": [
+        "Relevant changed repos have clean committed states after commit.",
+        "Superproject records updated submodule refs and ledger docs.",
+        "Deployment to production completes without fresh-smoke failures.",
+        "Post-deploy status/smoke confirms runtime/cortex/backend services are alive.",
+        "Any skipped checks are explicitly documented with reason."
+      ],
+      "assumptions": [
+        "SSH access and deploy scripts are configured on this machine."
+      ],
+      "body_path": "problems/P000/children/P004/tickets/T004.md",
+      "classification": "one_go",
+      "classification_reason": "Deployment/commit verification is a bounded operational sequence after implementation",
+      "created_at": "2026-05-12T09:51:15+00:00",
+      "id": "T004",
+      "problem_definition": "The implementation spans parent ledger files plus changes in runtime and Cortex submodules. It must be tested, committed in the relevant repos, deployed to production via the repository deploy entrypoint, and smoke-verified.",
+      "problem_id": "P004",
+      "proposed_solution": "Run the canonical backend test matrix or the strongest feasible subset, review diffs, commit changed submodules and superproject state, deploy backend services, and run post-deploy smoke/status checks.",
+      "result_ids": [],
+      "risks": [
+        "Full test matrix may expose unrelated pre-existing failures.",
+        "Deployment restarts all backend services and must be checked with fresh log boundaries."
+      ],
+      "root_id": "P000",
+      "status": "classified",
+      "title": "Final Checks Commit Deploy Smoke",
+      "updated_at": "2026-05-12T09:51:46+00:00",
+      "verification_plan": "- Run `scripts/run_all_tests.sh`.\n- Run `git diff --stat` and inspect submodule diffs/status.\n- Commit changed submodules and the superproject.\n- Run `./deploy services` or the appropriate backend target.\n- Run `./deploy status` and/or `./deploy fresh-smoke`."
+    }
+  },
+  "updated_at": "2026-05-12T09:58:44+00:00"
+}
