@@ -266,6 +266,9 @@ deploy_factory() {
   [ -d "$local_dir" ] || fail "本地目录不存在: $local_dir"
   info "同步代码..."
   rsync -avz $RSYNC_EXCLUDE -e ssh "$local_dir/" "$FACTORY_HOST:/opt/novaic/llm-factory/" || fail "rsync 失败"
+  info "同步公网 Factory Logs 页面..."
+  $API_SSH "mkdir -p /opt/novaic/static" || fail "创建公网静态目录失败"
+  rsync -avz -e ssh "$local_dir/static/factory-logs.html" "$API_HOST:/opt/novaic/static/factory-logs.html" || fail "同步 Factory Logs 页面失败"
   info "安装依赖 + 重启..."
   $FACTORY_SSH 'cd /opt/novaic/llm-factory && source .venv/bin/activate && pip install -q -r requirements.txt && systemctl restart llm-factory' || fail "重启失败"
   sleep 2
