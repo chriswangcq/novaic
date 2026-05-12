@@ -662,16 +662,16 @@
       "updated_at": "2026-05-12T06:19:52+00:00"
     },
     {
-      "active_count": 2,
+      "active_count": 0,
       "blocked_count": 0,
       "ledger_id": "L20260512-172420",
       "path": "L20260512-172420",
       "root_id": "P000",
       "schema_version": 6,
-      "status": "doing",
+      "status": "done",
       "title": "Shell Terminal Contract and Display Media Boundary",
-      "updated_at": "2026-05-12T09:58:44+00:00"
+      "updated_at": "2026-05-12T10:16:55+00:00"
     }
   ],
-  "updated_at": "2026-05-12T09:58:44+00:00"
+  "updated_at": "2026-05-12T10:16:55+00:00"
 }

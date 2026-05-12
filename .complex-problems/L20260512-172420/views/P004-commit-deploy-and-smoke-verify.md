@@ -1,6 +1,6 @@
 # P004: Commit Deploy And Smoke Verify
 
-Status: doing
+Status: done
 Parent: P000
 Root: P000
 Package: problems/P000/children/P004
@@ -20,14 +20,16 @@ After implementation and tests, commit the contract changes and deploy them to t
 - none
 
 ## Results
-- none
+- R003
 
 ## Latest Check
-none
+C003
 
 ## Bodies
 - Problem: problems/P000/children/P004/README.md
 - Ticket T004: problems/P000/children/P004/tickets/T004.md
+- Result R003: problems/P000/children/P004/results/R003.md
+- Check C003: problems/P000/children/P004/checks/C003.md
 
 ## Follow-ups
 - none

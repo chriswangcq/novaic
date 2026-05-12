@@ -1,6 +1,6 @@
 # P000: Shell Terminal Contract and Display Media Boundary
 
-Status: todo
+Status: done
 Parent: none
 Root: P000
 Package: problems/P000
@@ -28,14 +28,16 @@ The work must include design, implementation, tests, commit, and deployment. Use
 - P004: Commit Deploy And Smoke Verify
 
 ## Results
-- none
+- R004
 
 ## Latest Check
-none
+C004
 
 ## Bodies
 - Problem: problems/P000/README.md
 - Ticket T000: problems/P000/tickets/T000.md
+- Result R004: problems/P000/results/R004.md
+- Check C004: problems/P000/checks/C004.md
 
 ## Follow-ups
 - none

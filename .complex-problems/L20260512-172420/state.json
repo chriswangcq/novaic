@@ -90,13 +90,75 @@
         "Residual search and separate runtime/cortex suites"
       ],
       "summary": "Full path regression coverage verified"
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P004/checks/C003.md",
+      "created_at": "2026-05-12T10:13:51+00:00",
+      "criteria_map": [
+        "Relevant changed repos have clean committed states: satisfied. Runtime and cortex submodules have clean working trees after their commits; superproject records the updated submodule refs.",
+        "Superproject records updated submodule refs and ledger docs: satisfied by `453e547`.",
+        "Deployment completes without fresh-smoke failures: satisfied by `./deploy services` ending with \"全部后端服务已部署\" and fresh-smoke pass.",
+        "Post-deploy status/smoke confirms services alive: satisfied by `./deploy status` and `./deploy fresh-smoke`.",
+        "Skipped checks documented: none skipped. Full local test matrix was run before commit and deployment."
+      ],
+      "evidence": [
+        "runtime b193359, cortex 9cbc2cb, superproject 453e547; ./deploy services/status/fresh-smoke passed."
+      ],
+      "execution_map": [
+        "Executed tests before commit, committed submodules and superproject, deployed services, then checked status and fresh-smoke."
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P004",
+      "residual_risk": [
+        "No known deploy gap; live conversation smoke not run, but contract covered by unit/integration tests."
+      ],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Rejected initial bloated commit shape, removed scratch work files and unrelated investigation ledger before deployment."
+      ],
+      "summary": "Commit and deployment criteria are satisfied after cleanup, full tests, service deploy, status, and fresh-smoke."
+    },
+    "C004": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C004.md",
+      "created_at": "2026-05-12T10:15:50+00:00",
+      "criteria_map": [
+        "Shell LLM receipt bounded; raw payload inspectable via Cortex payload; display media preserved only for display; non-display media blocked; deployment verified."
+      ],
+      "evidence": [
+        "P001-P004 success checks; runtime/cortex tests; scripts/run_all_tests.sh; deploy services/status/fresh-smoke."
+      ],
+      "execution_map": [
+        "Implemented boundary changes, added tests, ran full matrix, committed submodules/superproject, deployed backend, ran post-deploy status/fresh-smoke."
+      ],
+      "followup_problem_id": null,
+      "id": "C004",
+      "problem_id": "P000",
+      "residual_risk": [
+        "No known open gap; live chat display replay not manually rerun after deployment."
+      ],
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Commit residue audit caught and removed scratch ledger files before deployment."
+      ],
+      "summary": "Root problem solved: shell/display context boundary is implemented, tested, cleaned, committed, deployed, and smoke-verified."
     }
   },
   "counters": {
-    "check": 3,
-    "event": 48,
+    "check": 5,
+    "event": 60,
     "problem": 5,
-    "result": 3,
+    "result": 5,
     "ticket": 5
   },
   "created_at": "2026-05-12T09:24:20+00:00",
@@ -104,7 +166,9 @@
   "problems": {
     "P000": {
       "body_path": "problems/P000/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C004"
+      ],
       "created_at": "2026-05-12T09:24:20+00:00",
       "created_from_check_id": null,
       "created_from_ticket_id": null,
@@ -113,9 +177,11 @@
       "id": "P000",
       "package_path": "problems/P000",
       "parent_id": null,
-      "result_ids": [],
+      "result_ids": [
+        "R004"
+      ],
       "root_id": "P000",
-      "status": "todo",
+      "status": "done",
       "subproblem_ids": [
         "P001",
         "P002",
@@ -135,7 +201,7 @@
         "T000"
       ],
       "title": "Shell Terminal Contract and Display Media Boundary",
-      "updated_at": "2026-05-12T09:24:20+00:00"
+      "updated_at": "2026-05-12T10:15:50+00:00"
     },
     "P001": {
       "body_path": "problems/P000/children/P001/README.md",
@@ -233,7 +299,9 @@
     },
     "P004": {
       "body_path": "problems/P000/children/P004/README.md",
-      "check_ids": [],
+      "check_ids": [
+        "C003"
+      ],
       "created_at": "2026-05-12T09:26:53+00:00",
       "created_from_check_id": null,
       "created_from_ticket_id": "T000",
@@ -242,9 +310,11 @@
       "id": "P004",
       "package_path": "problems/P000/children/P004",
       "parent_id": "P000",
-      "result_ids": [],
+      "result_ids": [
+        "R003"
+      ],
       "root_id": "P000",
-      "status": "doing",
+      "status": "done",
       "subproblem_ids": [],
       "success_criteria": [
         "Git diff is reviewed and committed.",
@@ -256,7 +326,7 @@
         "T004"
       ],
       "title": "Commit Deploy And Smoke Verify",
-      "updated_at": "2026-05-12T09:58:44+00:00"
+      "updated_at": "2026-05-12T10:13:51+00:00"
     }
   },
   "results": {
@@ -330,6 +400,44 @@
       "verification": [
         "Focused runtime and Cortex tests passed"
       ]
+    },
+    "R003": {
+      "artifacts": [],
+      "body_path": "problems/P000/children/P004/results/R003.md",
+      "created_at": "2026-05-12T10:12:45+00:00",
+      "done": [
+        "Submodule commits b193359 and 9cbc2cb plus superproject 453e547 are committed."
+      ],
+      "id": "R003",
+      "known_gaps": [
+        "No deployment gap observed."
+      ],
+      "problem_id": "P004",
+      "root_id": "P000",
+      "summary": "Committed runtime/cortex/superproject, deployed all backend services, and verified status plus fresh-smoke.",
+      "ticket_id": "T004",
+      "verification": [
+        "scripts/run_all_tests.sh passed before commit; ./deploy services, ./deploy status, and ./deploy fresh-smoke passed."
+      ]
+    },
+    "R004": {
+      "artifacts": [],
+      "body_path": "problems/P000/results/R004.md",
+      "created_at": "2026-05-12T10:14:36+00:00",
+      "done": [
+        "P001-P004 completed successfully."
+      ],
+      "id": "R004",
+      "known_gaps": [
+        "No known open implementation gap remains."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Shell terminal receipt and display media boundaries implemented, tested, committed, deployed, and smoke-verified.",
+      "ticket_id": "T000",
+      "verification": [
+        "Full test matrix passed; deploy services/status/fresh-smoke passed."
+      ]
     }
   },
   "root_id": "P000",
@@ -356,16 +464,18 @@
       "problem_definition": "The current runtime tool-output contract still mixes terminal text, raw shell payloads, artifact/media manifests, and direct display perception. This caused base64 image data to appear as ordinary tool text in LLM requests and also leaves full shell stdout/stderr duplicated in diagnostics. The user wants a tighter final shape: `shell` is a human-terminal preview only, while full replay belongs in Cortex RO steps/payloads and `display` is the explicit visual perception tool.",
       "problem_id": "P000",
       "proposed_solution": "Split the implementation into child problems:\n\n- Redesign and implement the `shell` output projection as terminal text preview plus bounded diagnostics only.\n- Redesign and implement `display` wrapping so structured image content survives runtime wrapping and reaches the existing display-perception multimodal converter.\n- Add regression tests for the full real path and update/remove tests that assert the old raw diagnostics behavior.\n- Run focused and repository-level checks, then commit and deploy.",
-      "result_ids": [],
+      "result_ids": [
+        "R004"
+      ],
       "risks": [
         "Tightening shell diagnostics could break tests or callers that read `raw_shell_result` from the LLM-facing envelope.",
         "Display media preservation must not reintroduce historical image injection.",
         "Deployment may need careful smoke checks because runtime/cortex contracts cross service boundaries."
       ],
       "root_id": "P000",
-      "status": "splitting",
+      "status": "done",
       "title": "Split Shell Text and Display Media Contracts",
-      "updated_at": "2026-05-12T09:26:53+00:00",
+      "updated_at": "2026-05-12T10:14:36+00:00",
       "verification_plan": "- Run unit tests for shell output contract, display tool handling, step result projection, and multimodal context processing.\n- Add a full-path regression test using `_exec_display`/`_ok` or equivalent wrapper + Cortex parser + runtime multimodal conversion.\n- Run the nearest project-wide test matrix or canonical subset if full matrix is too expensive.\n- Deploy with the repo deploy script and run smoke/status checks against production services."
     },
     "T001": {
@@ -477,17 +587,19 @@
       "problem_definition": "The implementation spans parent ledger files plus changes in runtime and Cortex submodules. It must be tested, committed in the relevant repos, deployed to production via the repository deploy entrypoint, and smoke-verified.",
       "problem_id": "P004",
       "proposed_solution": "Run the canonical backend test matrix or the strongest feasible subset, review diffs, commit changed submodules and superproject state, deploy backend services, and run post-deploy smoke/status checks.",
-      "result_ids": [],
+      "result_ids": [
+        "R003"
+      ],
       "risks": [
         "Full test matrix may expose unrelated pre-existing failures.",
         "Deployment restarts all backend services and must be checked with fresh log boundaries."
       ],
       "root_id": "P000",
-      "status": "classified",
+      "status": "done",
       "title": "Final Checks Commit Deploy Smoke",
-      "updated_at": "2026-05-12T09:51:46+00:00",
+      "updated_at": "2026-05-12T10:12:45+00:00",
       "verification_plan": "- Run `scripts/run_all_tests.sh`.\n- Run `git diff --stat` and inspect submodule diffs/status.\n- Commit changed submodules and the superproject.\n- Run `./deploy services` or the appropriate backend target.\n- Run `./deploy status` and/or `./deploy fresh-smoke`."
     }
   },
-  "updated_at": "2026-05-12T09:58:44+00:00"
+  "updated_at": "2026-05-12T10:16:55+00:00"
 }
