@@ -1,0 +1,518 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C000.md",
+      "created_at": "2026-05-12T11:23:03+00:00",
+      "criteria_map": [
+        "Full path starts from display `step_ref` -> evidenced by fake bridge plus `prepare_llm_call` test.",
+        "Real expansion/sanitize/multimodal helpers used -> evidenced by test wiring actual helper functions.",
+        "Final messages contain image input before following system -> evidenced by role order assertion `assistant`, `tool`, `user`, `system`.",
+        "Tool receipt has no raw base64 -> evidenced by placeholder assertions and absence of `data`."
+      ],
+      "evidence": [
+        "Result `R000` added `test_prepare_llm_call_injects_display_step_image_before_following_system`.",
+        "Focused test command passed: `9 passed in 0.10s`."
+      ],
+      "execution_map": [
+        "`T001` -> `R000`: added and verified the Runtime full-path regression."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P001",
+      "residual_risk": [
+        "Non-blocking: this child does not prove Factory logging or Cortex empty projection behavior; those are separate child problems still open."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Failure mode: helper-level tests pass but `prepare_llm_call` drops `_projection` during sanitize. The new test would fail because no inserted `user(image_url)` would appear.",
+        "Failure mode: following `system` message absorbs or precedes pending image. The new test would fail because it asserts exact ordering."
+      ],
+      "summary": "P001 is solved. The new test covers the full Runtime preparation path and proves a following `system` message does not suppress current-round display image injection."
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/checks/C001.md",
+      "created_at": "2026-05-12T11:28:07+00:00",
+      "criteria_map": [
+        "OpenAI data URL redacted -> covered by `test_chat_log_snapshot_redacts_openai_image_url_data`.",
+        "Anthropic source data redacted -> covered by `test_chat_log_snapshot_redacts_anthropic_image_source_data`.",
+        "Provider transport untouched -> redaction is only called inside `build_chat_log_snapshot`, which is used for `request_body` logging.",
+        "Image markers remain visible -> tests assert redacted MIME/length placeholders remain."
+      ],
+      "evidence": [
+        "Result `R001` implemented `_redact_message_media_for_log`.",
+        "Tests passed: `10 passed in 0.23s`."
+      ],
+      "execution_map": [
+        "`T002` -> `R001`: implemented log-only image redaction and tests."
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P002",
+      "residual_risk": [
+        "Non-blocking: this does not itself create image injection; Runtime and Cortex checks cover that."
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Failure mode: raw `/9j/` or other base64 leaks into Factory request log. The new tests fail if raw sentinel strings remain.",
+        "Failure mode: redaction deletes image structure entirely. The tests fail because redacted placeholders and fields must remain."
+      ],
+      "summary": "P002 is solved. Factory log snapshots now preserve image delivery markers while redacting raw base64 image bytes for both OpenAI and Anthropic provider message shapes."
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/checks/C002.md",
+      "created_at": "2026-05-12T11:33:01+00:00",
+      "criteria_map": [
+        "Empty display output is not `OK` -> new test asserts diagnostic string.",
+        "Existing image projection unchanged -> `test_display_perception_projection_data_url` still passes.",
+        "History/current projections not unnecessarily changed -> only display function passes a custom `empty_text`."
+      ],
+      "evidence": [
+        "Result `R002` changed `format_for_display_perception_llm` empty fallback.",
+        "Focused Cortex projection tests passed: `13 passed in 0.08s`."
+      ],
+      "execution_map": [
+        "`T003` -> `R002`: implemented display-specific empty projection diagnostic and tests."
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P003",
+      "residual_risk": [
+        "Non-blocking: diagnostic cannot recover a missing image by itself; Runtime full-path test and live smoke cover image delivery."
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Failure mode: display media lookup fails and silently looks successful. The diagnostic marker makes this visible instead of emitting `OK`.",
+        "Failure mode: image projections break while changing fallback. Existing image projection tests would fail."
+      ],
+      "summary": "P003 is solved. Empty display perception projection now produces an explicit diagnostic marker instead of `OK`, and existing image projection tests still pass."
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C003.md",
+      "created_at": "2026-05-12T11:35:58+00:00",
+      "criteria_map": [
+        "Current-round `display` image becomes provider-native image message -> P001/C000 verifies `prepare_llm_call` output includes `user(image_url)`.",
+        "Following `system` message does not prevent image injection -> P001/C000 verifies exact message order `assistant`, `tool`, `user`, `system`.",
+        "`display_perception` must not silently return `OK` for empty media -> P003/C002 verifies diagnostic fallback.",
+        "Factory logs inspect image delivery without raw base64 -> P002/C001 verifies redacted OpenAI and Anthropic image shapes.",
+        "Tests cover full Runtime preparation path -> P001/R000 uses `prepare_llm_call` with real helper functions.",
+        "Old/misleading fallback behavior guarded -> P003/R002 replaces display-specific `OK` fallback; P002/R001 prevents giant raw image logs."
+      ],
+      "evidence": [
+        "Runtime full-path guard: `20 passed in 0.12s` for image/step-ref tests.",
+        "Factory log redaction guard: `13 passed in 0.25s` for chat/log route tests.",
+        "Cortex projection guard: `22 passed in 0.10s` for projection and resolve tests.",
+        "Diff review confirmed changes are limited to Runtime tests, Factory log snapshot redaction, and Cortex display projection fallback."
+      ],
+      "execution_map": [
+        "`T000` -> `R003`: split parent ticket completed by child problems.",
+        "`P001/T001` -> `R000` -> `C000`: Runtime full-path image injection guard.",
+        "`P002/T002` -> `R001` -> `C001`: Factory log redaction.",
+        "`P003/T003` -> `R002` -> `C002`: Cortex display projection diagnostic."
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Non-blocking: a live production smoke after deployment is still recommended because the current turn only changed and verified local code. The code-level recurrence paths are now guarded."
+      ],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Failure mode: image exists in Cortex step but Runtime sanitize drops `_projection`; Runtime full-path test fails.",
+        "Failure mode: `system` follows display tool and pending image is never injected; Runtime full-path test fails.",
+        "Failure mode: display projection returns empty and appears successful as `OK`; Cortex diagnostic test fails.",
+        "Failure mode: images are sent but Factory logs become unreadable due to raw base64; Factory redaction tests fail."
+      ],
+      "summary": "The root problem is solved. The fix does not rely on the previous \"old log\" explanation alone: it adds executable guardrails at all three boundaries where the issue could recur."
+    }
+  },
+  "counters": {
+    "check": 4,
+    "event": 48,
+    "problem": 4,
+    "result": 4,
+    "ticket": 4
+  },
+  "created_at": "2026-05-12T11:16:23+00:00",
+  "ledger_id": "L20260512-191623",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C003"
+      ],
+      "created_at": "2026-05-12T11:16:23+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "The current production investigation showed an old LLM request where a successful `display` tool result appeared in the Factory request body as `{\"_mcp_content\":[{\"type\":\"text\",\"text\":\"OK\"}]}` and no provider-native image message was sent. Even if the currently deployed Cortex endpoint can now format that same step as image content, the system still lacks a hard end-to-end guard that prevents current-round `display` output from silently degrading into `OK` or text-only content.\n\nFix the runtime/Cortex/Factory boundary so current-round `display` image output either becomes provider-native visual input in the LLM request or fails loudly with diagnosable evidence. The fix must also prove that a following `system` message does not suppress image injection.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P001",
+        "P002",
+        "P003"
+      ],
+      "success_criteria": [
+        "Current-round `display` step content containing image `_mcp_content` is converted into a provider-native image message before Factory transport.",
+        "A following `system` message after the display tool result does not prevent image injection.",
+        "`display_perception` projection must not silently return text-only `OK` for display steps that have media payloads.",
+        "Factory log/request snapshot should make image delivery inspectable without dumping raw base64 into the UI.",
+        "Tests cover the full Runtime preparation path, not only isolated helper functions.",
+        "Old or misleading fallback behavior is removed or guarded where it could hide this bug."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Display image must reach LLM as visual input",
+      "updated_at": "2026-05-12T11:35:58+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-12T11:19:02+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "The Runtime helper tests prove isolated `process_multimodal_messages` behavior, but the bug class occurs across the full LLM preparation path: step-ref expansion, sanitization, multimodal conversion, and message ordering. Add a full-path guard so current-round `display` images become provider-native image messages even when a `system` message follows.",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "A test starts from messages containing a display `step_ref` and fake Cortex bridge output with image `_mcp_content`.",
+        "The test runs `prepare_llm_call`, not only `process_multimodal_messages`.",
+        "The final messages contain `assistant`, text-only `tool`, inserted `user(image_url)`, then following `system`.",
+        "The text-only tool receipt has a placeholder and no raw image base64."
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "Runtime must inject display images through full LLM preparation",
+      "updated_at": "2026-05-12T11:23:03+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-12T11:19:02+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Factory request logs currently store whatever request body is sent. If provider-native image data is present, logs/UI can become huge and misleading, while if image data is missing the UI does not make that absence explicit enough. Add log-only redaction so image delivery remains inspectable without dumping raw base64.",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Factory log snapshot keeps provider transport untouched.",
+        "Logged messages replace `image_url.url` data URLs with metadata placeholders.",
+        "Logged messages replace Anthropic-style image source data with metadata placeholders.",
+        "Tests prove raw base64 is absent from the logged request body while image markers remain visible."
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "Factory logs must show image delivery without raw base64",
+      "updated_at": "2026-05-12T11:28:07+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P003/README.md",
+      "check_ids": [
+        "C002"
+      ],
+      "created_at": "2026-05-12T11:19:02+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Cortex `display_perception` projection currently uses a generic fallback that can produce `{\"type\":\"text\",\"text\":\"OK\"}` when no text or display media is found. For display perception this is too ambiguous: it can hide a broken media projection and make Factory logs look successful while no image was delivered.",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P003",
+      "parent_id": "P000",
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "`display_perception` projection for empty parsed content returns a diagnostic text marker instead of plain `OK`.",
+        "Normal history/current tool projections can keep their existing text behavior if needed.",
+        "Tests prove empty display projection is distinguishable from a successful image projection."
+      ],
+      "ticket_ids": [
+        "T003"
+      ],
+      "title": "Cortex display projection must not hide missing media as OK",
+      "updated_at": "2026-05-12T11:33:01+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "`novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py`"
+      ],
+      "body_path": "problems/P000/children/P001/results/R000.md",
+      "created_at": "2026-05-12T11:21:54+00:00",
+      "done": [
+        "Added `test_prepare_llm_call_injects_display_step_image_before_following_system`.",
+        "Covered real `expand_messages_for_llm`, `sanitize_context`, and `process_multimodal_messages` through `prepare_llm_call`.",
+        "Verified the tool receipt is text-only with an image placeholder and no raw base64."
+      ],
+      "id": "R000",
+      "known_gaps": [],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "Added a Runtime full-path regression test that starts from a display `step_ref`, expands it through a fake Cortex bridge, runs `prepare_llm_call`, and proves current-round display image data becomes a provider-native `user(image_url)` message even when a `system` message follows the tool result.",
+      "ticket_id": "T001",
+      "verification": [
+        "`PYTHONPATH=. pytest -q tests/unit/task_queue/test_no_historical_tool_image_injection.py`",
+        "Result: `9 passed in 0.10s`."
+      ]
+    },
+    "R001": {
+      "artifacts": [
+        "`novaic-llm-factory/factory/contracts.py`",
+        "`novaic-llm-factory/tests/test_chat_routes.py`"
+      ],
+      "body_path": "problems/P000/children/P002/results/R001.md",
+      "created_at": "2026-05-12T11:27:16+00:00",
+      "done": [
+        "Added structured redaction for OpenAI `image_url` data URLs.",
+        "Added structured redaction for Anthropic `image.source.data` base64.",
+        "Preserved image metadata such as MIME type, base64 length, and non-secret image fields.",
+        "Added tests for both provider shapes."
+      ],
+      "id": "R001",
+      "known_gaps": [],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "Implemented Factory log-only media redaction in `build_chat_log_snapshot` so provider-native image payloads remain inspectable without storing raw base64 in request logs.",
+      "ticket_id": "T002",
+      "verification": [
+        "`pytest -q tests/test_chat_routes.py`",
+        "Result: `10 passed in 0.23s`."
+      ]
+    },
+    "R002": {
+      "artifacts": [
+        "`novaic-cortex/novaic_cortex/step_result_projection.py`",
+        "`novaic-cortex/tests/test_step_result_projection.py`"
+      ],
+      "body_path": "problems/P000/children/P003/results/R002.md",
+      "created_at": "2026-05-12T11:32:23+00:00",
+      "done": [
+        "Added `empty_text` parameter to `_format_mcp_content`.",
+        "`format_for_display_perception_llm` now uses `[Display produced no text or media for LLM perception]` when no text/media is available.",
+        "Added a unit test for empty display projection."
+      ],
+      "id": "R002",
+      "known_gaps": [],
+      "problem_id": "P003",
+      "root_id": "P000",
+      "summary": "Changed Cortex display perception formatting so an empty display projection emits a diagnostic text marker instead of ambiguous `OK`, while preserving image projection behavior.",
+      "ticket_id": "T003",
+      "verification": [
+        "Initial run without dependency PYTHONPATH failed on missing `logicalfs`/`sandbox_sdk`; reran with required local package paths.",
+        "`PYTHONPATH=.:../novaic-logicalfs:../novaic-common:../novaic-sandbox-sdk pytest -q tests/test_step_result_projection.py tests/test_tool_output_projection.py`",
+        "Result: `13 passed in 0.08s`."
+      ]
+    },
+    "R003": {
+      "artifacts": [
+        "`novaic-agent-runtime/tests/unit/task_queue/test_no_historical_tool_image_injection.py`",
+        "`novaic-llm-factory/factory/contracts.py`",
+        "`novaic-llm-factory/tests/test_chat_routes.py`",
+        "`novaic-cortex/novaic_cortex/step_result_projection.py`",
+        "`novaic-cortex/tests/test_step_result_projection.py`"
+      ],
+      "body_path": "problems/P000/results/R003.md",
+      "created_at": "2026-05-12T11:33:52+00:00",
+      "done": [
+        "Runtime now has a full `prepare_llm_call` regression ensuring `display` step-ref image output becomes provider-native `user(image_url)` even before a following `system` message.",
+        "Factory log snapshots now redact OpenAI and Anthropic provider-native image base64 while preserving visible image metadata.",
+        "Cortex display perception empty fallback now emits a diagnostic marker instead of ambiguous `OK`."
+      ],
+      "id": "R003",
+      "known_gaps": [
+        "Final cross-repo focused test rerun and diff review still need to be performed before root success check."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Completed the split ticket by closing all three child problems: Runtime full-path image injection, Factory log image redaction, and Cortex display projection diagnostics.",
+      "ticket_id": "T000",
+      "verification": [
+        "P001 / R000: `PYTHONPATH=. pytest -q tests/unit/task_queue/test_no_historical_tool_image_injection.py` -> `9 passed`.",
+        "P002 / R001: `pytest -q tests/test_chat_routes.py` -> `10 passed`.",
+        "P003 / R002: `PYTHONPATH=.:../novaic-logicalfs:../novaic-common:../novaic-sandbox-sdk pytest -q tests/test_step_result_projection.py tests/test_tool_output_projection.py` -> `13 passed`."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Runtime `prepare_llm_call` converts a current-round `display` step-ref image into a `user` message with `image_url`.",
+        "Runtime preserves the image injection when a `system` message follows the display tool result.",
+        "Factory request logging redacts image data into metadata rather than storing raw base64.",
+        "Cortex display projection no longer hides empty display projection as a plain `OK` without diagnostics.",
+        "Focused tests pass in the touched repos."
+      ],
+      "assumptions": [
+        "`display` is the only direct tool that should produce current-turn visual input.",
+        "Shell remains terminal-text only and should not directly inject images.",
+        "It is acceptable for Factory logs to show placeholders for image data instead of raw base64."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "Touches Runtime preparation, Cortex projection, and Factory logging; each has a separate failure mode and verification path.",
+      "created_at": "2026-05-12T11:17:11+00:00",
+      "id": "T000",
+      "problem_definition": "Current-round `display` tool output can be visually valid in Cortex but still fail to reach the model as provider-native image input if any boundary formats, sanitizes, or logs it incorrectly. The observed failure mode was a `display` tool result becoming text-only `OK` in the Factory request body, with no extra `user(image_url)` message.",
+      "problem_id": "P000",
+      "proposed_solution": "Add an explicit end-to-end contract across the Runtime preparation path:\n\n- Keep the Cortex projection contract strict for `display_perception`: image payloads must remain image blocks, while missing image data should be visible as a diagnostic text receipt instead of an ambiguous `OK`.\n- Add Runtime tests that start from LLM input messages with a display `step_ref`, run `prepare_llm_call`, and assert the final messages include a provider-native image message even when a `system` message follows the tool result.\n- Add Factory log snapshot redaction so raw base64 is not dumped into logs/UI, while preserving a clear inspectable marker that an image was sent.\n- Run focused Runtime/Cortex/Factory tests and inspect diffs for legacy or misleading fallbacks.",
+      "result_ids": [
+        "R003"
+      ],
+      "risks": [
+        "Provider request format must still receive real image data; redaction must apply only to logs, not transport.",
+        "Over-tightening the display projection fallback could break text-only `display` outputs, so the test should distinguish image-capable display from normal text."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Harden display image LLM injection",
+      "updated_at": "2026-05-12T11:33:52+00:00",
+      "verification_plan": "- Add/adjust unit tests for Runtime full preparation path.\n- Add/adjust unit tests for Factory log snapshot redaction.\n- Add/adjust Cortex projection tests for display projection fallback clarity.\n- Run the focused test files.\n- Run `git diff --stat` and review the touched diffs."
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "The test uses `prepare_llm_call`.",
+        "The test uses real `expand_messages_for_llm`, `sanitize_context`, and `process_multimodal_messages`.",
+        "The test proves raw image base64 is removed from the tool text receipt.",
+        "The test proves the inserted user image message is present even with a following system message."
+      ],
+      "assumptions": [
+        "A fake bridge is sufficient to represent Cortex `read_step_formatted`."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "one_go",
+      "classification_reason": "Focused regression test only, small and directly verifiable.",
+      "created_at": "2026-05-12T11:19:42+00:00",
+      "id": "T001",
+      "problem_definition": "Runtime has helper-level image conversion tests, but not a full `prepare_llm_call` test covering Cortex step-ref expansion plus `system` ordering.",
+      "problem_id": "P001",
+      "proposed_solution": "Add a focused unit test that monkeypatches the Cortex bridge to return image `_mcp_content`, calls `prepare_llm_call` with a current-round display tool step, and asserts the provider-ready messages include an inserted `user(image_url)` before the following `system` message.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Minimal production risk because this is a regression test first."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Add full Runtime display image preparation regression",
+      "updated_at": "2026-05-12T11:21:54+00:00",
+      "verification_plan": "- Run the touched Runtime test file.\n- Run the broader Runtime image/step-ref test set."
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "OpenAI `image_url` data URLs are redacted in logs.",
+        "Anthropic `image.source.data` base64 is redacted in logs.",
+        "Redaction does not alter the provider transport request, only the logged snapshot.",
+        "Tests prove raw payload strings are absent and image metadata/markers remain."
+      ],
+      "assumptions": [
+        "Factory request logging is built exclusively through `build_chat_log_snapshot`."
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T002.md",
+      "classification": "one_go",
+      "classification_reason": "Small log-only contract change with direct unit tests.",
+      "created_at": "2026-05-12T11:24:37+00:00",
+      "id": "T002",
+      "problem_definition": "Factory stores request bodies for debugging. Once Runtime correctly injects provider-native image messages, those logs can contain raw base64 image data, making the UI noisy and hiding whether image delivery actually occurred.",
+      "problem_id": "P002",
+      "proposed_solution": "Add a log-only redaction step inside `build_chat_log_snapshot` that preserves message structure and image metadata while replacing base64 payloads with explicit placeholders.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "Redaction should not remove ordinary text or tool schema data."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Redact provider-native image data in Factory log snapshots",
+      "updated_at": "2026-05-12T11:27:16+00:00",
+      "verification_plan": "- Run Factory chat route/unit tests."
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "Empty display perception output is not `OK`.",
+        "Existing image display projection remains unchanged.",
+        "History/current generic projections are not unnecessarily changed.",
+        "Tests cover empty display projection."
+      ],
+      "assumptions": [
+        "`OK` can remain for non-display empty projections."
+      ],
+      "body_path": "problems/P000/children/P003/tickets/T003.md",
+      "classification": "one_go",
+      "classification_reason": "Small projection fallback change with direct unit tests.",
+      "created_at": "2026-05-12T11:29:12+00:00",
+      "id": "T003",
+      "problem_definition": "`format_for_display_perception_llm` uses a generic empty fallback that emits `OK`. For a display projection, this can hide that no media was actually available for injection.",
+      "problem_id": "P003",
+      "proposed_solution": "Parameterize the MCP content formatter's empty fallback and make `format_for_display_perception_llm` emit a diagnostic display-specific text marker when parsed content has no text and no display media.",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [
+        "Diagnostic text appears to the model when display had no readable content, but that is preferable to silent success."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Make empty display perception diagnostic",
+      "updated_at": "2026-05-12T11:32:23+00:00",
+      "verification_plan": "- Run Cortex projection tests."
+    }
+  },
+  "updated_at": "2026-05-12T11:36:34+00:00"
+}
