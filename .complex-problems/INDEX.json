@@ -1,5 +1,5 @@
 {
-  "active_ledger_id": "L20260511-185002",
+  "active_ledger_id": "L20260512-135709",
   "ledgers": [
     {
       "active_count": 0,
@@ -649,7 +649,18 @@
       "status": "done",
       "title": "Audit and fix shell CLIs to obey blob artifact contract",
       "updated_at": "2026-05-11T11:19:35+00:00"
+    },
+    {
+      "active_count": 0,
+      "blocked_count": 0,
+      "ledger_id": "L20260512-135709",
+      "path": "L20260512-135709",
+      "root_id": "P000",
+      "schema_version": 6,
+      "status": "done",
+      "title": "Fix production IM no-response after wake failure",
+      "updated_at": "2026-05-12T06:19:52+00:00"
     }
   ],
-  "updated_at": "2026-05-11T11:19:35+00:00"
+  "updated_at": "2026-05-12T06:19:52+00:00"
 }

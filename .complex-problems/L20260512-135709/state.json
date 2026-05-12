@@ -1,0 +1,676 @@
+{
+  "checks": {
+    "C000": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P001/checks/C000.md",
+      "created_at": "2026-05-12T06:01:44+00:00",
+      "criteria_map": [
+        "Notification processed: met by `environment_notifications.c93f028e2918 state=processed`.",
+        "Agent reply exists: met by `environment_im_messages.7d282cd2f500`.",
+        "Queue session clean: met by session state `no_active`.",
+        "Redis/disk healthy: met by `df` and Redis persistence checks."
+      ],
+      "evidence": [
+        "Result `R000` records disk, Redis, session, notification, saga, task, and IM evidence.",
+        "The replayed wake completed downstream tasks and finalization.",
+        "The affected notification is processed and no longer pending."
+      ],
+      "execution_map": [
+        "Production state was repaired through operational commands and verified with read-only DB/Redis/disk queries afterward."
+      ],
+      "followup_problem_id": null,
+      "id": "C000",
+      "problem_id": "P001",
+      "residual_risk": [
+        "Code-level prevention remains open in sibling problems. This check only closes operational recovery.",
+        "Frontend display/cache was not independently verified here, but backend delivery is accounted for."
+      ],
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The replay used a fresh idempotency key after closing stale and half-written sessions, exercising the exact failed path from the incident."
+      ],
+      "summary": "The operational recovery part of the incident is solved. The backend processed the affected notification, wrote an agent reply, and returned the session to `no_active`."
+    },
+    "C001": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P002/checks/C001.md",
+      "created_at": "2026-05-12T06:05:39+00:00",
+      "criteria_map": [
+        "Existing `append_event()` return contract preserved: met by wrapper returning `.id` and existing generic store tests passing.",
+        "Duplicate replay detected: met by `FsmAppendResult.inserted`.",
+        "State unchanged: met by regression assertion `active_scope_id == \"scope-1\"`.",
+        "No replay outbox: met by regression assertion only `outbox-1` exists and replay result has empty `outbox_ids`."
+      ],
+      "evidence": [
+        "`FsmSqliteStore.append_event_result()` exposes `inserted=True/False`.",
+        "`FsmTransitionRunner.record()` skips materialized state and outbox writes on `inserted=False`.",
+        "Regression test exercises a session-style transition replay with a different scope/saga and verifies state remains on the first scope and only one outbox row exists.",
+        "Targeted tests passed."
+      ],
+      "execution_map": [
+        "Code changed in generic store/runner, not session-specific business branches.",
+        "Test added to the generic transition runner test file."
+      ],
+      "followup_problem_id": null,
+      "id": "C001",
+      "problem_id": "P002",
+      "residual_risk": [
+        "Concurrent racing duplicates rely on the store insert result, so the race path is covered by the unique violation branch."
+      ],
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The regression attempts exactly the production failure shape: same event idempotency key, new event ID, new scope, new saga, and a new outbox effect."
+      ],
+      "summary": "The duplicate transition replay bug is fixed at the generic FSM substrate layer."
+    },
+    "C002": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P003/checks/C002.md",
+      "created_at": "2026-05-12T06:08:53+00:00",
+      "criteria_map": [
+        "Dependency loggers warning-level: met by test assertions for `httpx`, `httpcore`, and `uvicorn.access`.",
+        "Successful claim logs suppressed: met by test assertions for task/saga claim status 200/204.",
+        "Failed claim logs preserved: met by test assertions for status 500/429.",
+        "Tests cover behavior: met by `21 passed`."
+      ],
+      "evidence": [
+        "`install_service_logging()` now calls `quiet_noisy_dependency_loggers()`.",
+        "Hot claim success paths are suppressed by `should_log_internal_access()`.",
+        "Failed claim statuses still return true for logging.",
+        "Targeted common tests passed."
+      ],
+      "execution_map": [
+        "Changes are in shared logging infrastructure and middleware, not worker business logic."
+      ],
+      "followup_problem_id": null,
+      "id": "C002",
+      "problem_id": "P003",
+      "residual_risk": [
+        "Other high-frequency Cortex object reads may still be verbose in service-specific logs if they are not dependency access logs; production log inspection after deploy will catch this."
+      ],
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The exact hot paths seen in production logs are covered: `/api/queue/tasks/claim` and `/api/queue/sagas/claim`."
+      ],
+      "summary": "The code-level log storm suppression problem is solved locally. Deployment verification remains in the deploy child problem."
+    },
+    "C003": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/children/P004/checks/C003.md",
+      "created_at": "2026-05-12T06:18:34+00:00",
+      "criteria_map": [
+        "Tests pass: met by runtime `12 passed` and common `21 passed`.",
+        "Deployment completes: met by deploy output.",
+        "Session clean: met by `no_active` state.",
+        "Disk/Redis healthy: met by `df` and Redis checks.",
+        "Logs quiet: met by unchanged line and claim counts over the verification window."
+      ],
+      "evidence": [
+        "Targeted tests passed locally after the final code changes.",
+        "`./deploy runtime` completed with all backend services restarted and fresh-smoke logs passing.",
+        "Production queue session state is clean.",
+        "Production Redis and disk are healthy.",
+        "Post-second-deploy 15-second log differential showed no new claim spam lines in worker logs or queue-service log."
+      ],
+      "execution_map": [
+        "First deploy exposed the actual queue-service uvicorn entrypoint gap.",
+        "The gap was fixed, tested, redeployed, and verified."
+      ],
+      "followup_problem_id": null,
+      "id": "C003",
+      "problem_id": "P004",
+      "residual_risk": [
+        "Historical logs still contain old noisy lines, but the active deployed processes stopped adding them."
+      ],
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "The verification measured counters before and after a 15-second idle worker polling interval, the precise condition that produced the log storm."
+      ],
+      "summary": "Deployment and production verification succeeded. The initial post-deploy gap was caught and closed before this check."
+    },
+    "C004": {
+      "blocking_gaps": [],
+      "body_path": "problems/P000/checks/C004.md",
+      "created_at": "2026-05-12T06:19:52+00:00",
+      "criteria_map": [
+        "Production session recoverable and `no_active`: met by P001/P004 evidence.",
+        "Affected message answered/accounted: met by P001 evidence (`7d282cd2f500` reply).",
+        "FSM replay side-effect free: met by P002 regression test.",
+        "Poll logging suppressed: met by P003 tests and P004 production differential.",
+        "Tests cover behavior: met by runtime/common targeted tests.",
+        "Deployed and verified: met by P004."
+      ],
+      "evidence": [
+        "`R004` summarizes successful child results.",
+        "`C000` proves operational recovery.",
+        "`C001` proves the generic FSM replay corruption path is fixed.",
+        "`C002` proves local log storm suppression behavior.",
+        "`C003` proves deployment and production verification."
+      ],
+      "execution_map": [
+        "The work was split into operational recovery, substrate repair, log suppression, and deploy verification; each child was checked before parent closure."
+      ],
+      "followup_problem_id": null,
+      "id": "C004",
+      "problem_id": "P000",
+      "residual_risk": [
+        "Frontend display/cache was not independently audited in this ticket. Backend state shows the reply exists and the wake finished; a separate frontend ticket should be created only if the UI still fails to render the persisted reply."
+      ],
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "success",
+      "stress_test": [
+        "Production log differential tested an idle 15-second polling interval after deployment, the exact workload that had been writing thousands of lines.",
+        "FSM regression replayed the same event idempotency key with a different scope/saga to simulate the observed corrupt half-state."
+      ],
+      "summary": "The original production no-response problem is solved at the backend/runtime layer. The affected message was recovered and answered, the half-state replay bug was fixed in the generic FSM substrate, the log storm cause was suppressed, and the deployed production system was verified."
+    }
+  },
+  "counters": {
+    "check": 5,
+    "event": 60,
+    "problem": 5,
+    "result": 5,
+    "ticket": 5
+  },
+  "created_at": "2026-05-12T05:57:09+00:00",
+  "ledger_id": "L20260512-135709",
+  "problems": {
+    "P000": {
+      "body_path": "problems/P000/README.md",
+      "check_ids": [
+        "C004"
+      ],
+      "created_at": "2026-05-12T05:57:09+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": null,
+      "description": "Production agent messages can appear to be delivered while the runtime does not respond. The observed incident combined disk-full log growth, Redis persistence MISCONF, Cortex append/end failures, a subscriber delivery marker that prevented retry, and a session FSM idempotency replay bug that could materialize a fresh active scope without a matching outbox event.\n\nThe work must repair the immediate production state, remove code paths that can recreate the half-state, and reduce noisy poll logging so the same failure mode does not refill disk.",
+      "followup_ids": [],
+      "id": "P000",
+      "package_path": "problems/P000",
+      "parent_id": null,
+      "result_ids": [
+        "R004"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [
+        "P001",
+        "P002",
+        "P003",
+        "P004"
+      ],
+      "success_criteria": [
+        "Production queue session for the affected agent is recoverable and returns to `no_active` after the replayed message.",
+        "The affected message is either answered or explicitly accounted for in `environment_im_messages` and `environment_notifications`.",
+        "Generic FSM transition recording does not update materialized state or outbox effects when an event idempotency key is replayed.",
+        "High-frequency internal polling logs no longer write INFO lines for successful task/saga claims or httpx/httpcore request noise.",
+        "Tests cover both the FSM replay behavior and logging suppression.",
+        "Deployed runtime/common code is verified on production with disk, Redis, session, and queue checks."
+      ],
+      "ticket_ids": [
+        "T000"
+      ],
+      "title": "Fix production IM no-response after wake failure",
+      "updated_at": "2026-05-12T06:19:52+00:00"
+    },
+    "P001": {
+      "body_path": "problems/P000/children/P001/README.md",
+      "check_ids": [
+        "C000"
+      ],
+      "created_at": "2026-05-12T05:58:25+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "The affected production message must be accounted for after the Redis/disk incident and manual replay. We need evidence that the notification was processed, an agent reply was written, the session returned to `no_active`, and Redis/disk are healthy.",
+      "followup_ids": [],
+      "id": "P001",
+      "package_path": "problems/P000/children/P001",
+      "parent_id": "P000",
+      "result_ids": [
+        "R000"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "The affected notification is `processed`.",
+        "A corresponding agent reply exists in `environment_im_messages`.",
+        "The queue session state for the affected agent/subagent is `no_active`.",
+        "Redis persistence and disk usage are healthy."
+      ],
+      "ticket_ids": [
+        "T001"
+      ],
+      "title": "Verify and recover production IM session state",
+      "updated_at": "2026-05-12T06:01:44+00:00"
+    },
+    "P002": {
+      "body_path": "problems/P000/children/P002/README.md",
+      "check_ids": [
+        "C001"
+      ],
+      "created_at": "2026-05-12T05:58:25+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "The generic FSM transition runner currently treats an idempotent duplicate event as if it were a fresh transition, which can overwrite materialized state and attempt outbox effects. This can create a half-state such as a fresh active scope with no matching wake outbox.",
+      "followup_ids": [],
+      "id": "P002",
+      "package_path": "problems/P000/children/P002",
+      "parent_id": "P000",
+      "result_ids": [
+        "R001"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "The generic store exposes whether an event insert was fresh or an idempotent replay.",
+        "The generic transition runner skips state and outbox writes on duplicate event replay.",
+        "Existing `append_event()` callers keep their original string return contract.",
+        "A regression test proves duplicate transition replay does not mutate state or create outbox effects."
+      ],
+      "ticket_ids": [
+        "T002"
+      ],
+      "title": "Make duplicate FSM transition events side-effect free",
+      "updated_at": "2026-05-12T06:05:39+00:00"
+    },
+    "P003": {
+      "body_path": "problems/P000/children/P003/README.md",
+      "check_ids": [
+        "C002"
+      ],
+      "created_at": "2026-05-12T05:58:25+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "Successful worker claim polling emits INFO lines through dependency HTTP logs and internal access logs. This can grow logs fast enough to fill disk, which then breaks Redis persistence and downstream Cortex writes.",
+      "followup_ids": [],
+      "id": "P003",
+      "package_path": "problems/P000/children/P003",
+      "parent_id": "P000",
+      "result_ids": [
+        "R002"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Service logging bootstrap quiets `httpx`, `httpcore`, and `uvicorn.access` to warning level.",
+        "Successful `/api/queue/tasks/claim` and `/api/queue/sagas/claim` internal access logs are suppressed.",
+        "Failed claim requests still log.",
+        "Tests cover the hot-path suppression logic."
+      ],
+      "ticket_ids": [
+        "T003"
+      ],
+      "title": "Suppress high-frequency successful polling logs",
+      "updated_at": "2026-05-12T06:08:53+00:00"
+    },
+    "P004": {
+      "body_path": "problems/P000/children/P004/README.md",
+      "check_ids": [
+        "C003"
+      ],
+      "created_at": "2026-05-12T05:58:25+00:00",
+      "created_from_check_id": null,
+      "created_from_ticket_id": "T000",
+      "description": "After code fixes, production must be deployed and checked. The verification must prove the queue is not stuck, logs are no longer growing noisily, Redis is healthy, and the affected agent can finish wake cycles.",
+      "followup_ids": [],
+      "id": "P004",
+      "package_path": "problems/P000/children/P004",
+      "parent_id": "P000",
+      "result_ids": [
+        "R003"
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "subproblem_ids": [],
+      "success_criteria": [
+        "Runtime/common code is deployed.",
+        "Targeted tests pass before deploy.",
+        "Production disk and Redis checks are healthy after deploy.",
+        "Queue session state remains clean after recent wake execution.",
+        "Recent logs no longer show successful claim poll spam."
+      ],
+      "ticket_ids": [
+        "T004"
+      ],
+      "title": "Deploy and verify no-response repair",
+      "updated_at": "2026-05-12T06:18:34+00:00"
+    }
+  },
+  "results": {
+    "R000": {
+      "artifacts": [
+        "Production SQLite/Redis/disk query outputs observed in this session."
+      ],
+      "body_path": "problems/P000/children/P001/results/R000.md",
+      "created_at": "2026-05-12T06:01:03+00:00",
+      "done": [
+        "Freed production disk after log files filled the volume.",
+        "Recovered Redis persistence from MISCONF and confirmed `rdb_last_bgsave_status:ok`.",
+        "Closed the stale active session through the queue API.",
+        "Replayed the affected message with a fresh idempotency key.",
+        "Confirmed the replayed wake completed and session state returned to `no_active`.",
+        "Confirmed notification `c93f028e2918` is `processed`.",
+        "Confirmed agent reply `7d282cd2f500` exists after the affected message."
+      ],
+      "id": "R000",
+      "known_gaps": [
+        "Frontend display/cache was not yet independently verified.",
+        "Code fixes are still required so the same Redis/Cortex failure cannot recreate half-state or refill logs."
+      ],
+      "problem_id": "P001",
+      "root_id": "P000",
+      "summary": "Production was repaired operationally and the affected message was accounted for.",
+      "ticket_id": "T001",
+      "verification": [
+        "Evidence collected from production:",
+        "Disk recovered from full to healthy: `/dev/nvme0n1p2` at `16G used / 79G free / 17%`.",
+        "Redis recovered from MISCONF to healthy: `PONG`, `rdb_last_bgsave_status:ok`, `rdb_bgsave_in_progress:0`.",
+        "The stuck session was closed through the queue API, then the affected message was replayed with a fresh idempotency key.",
+        "The replayed wake created scope `73894cfe-f669-4b1f-ab22-33780385f8d5`, ran wake saga `saga-d21cf536c899`, completed downstream think/action/finalize sagas, and returned the session to `no_active`.",
+        "`environment_notifications.c93f028e2918` is `processed` with `dispatch_attempts=2`.",
+        "`environment_im_messages` contains the original user message `c93f028e2918` and a later agent reply `7d282cd2f500` at `2026-05-12T04:29:05.192Z`."
+      ]
+    },
+    "R001": {
+      "artifacts": [
+        "`novaic-agent-runtime/queue_service/fsm/sqlite_store.py`",
+        "`novaic-agent-runtime/queue_service/fsm/runner.py`",
+        "`novaic-agent-runtime/tests/test_pr342_generic_fsm_transition_runner.py`"
+      ],
+      "body_path": "problems/P000/children/P002/results/R001.md",
+      "created_at": "2026-05-12T06:05:00+00:00",
+      "done": [
+        "Added `FsmAppendResult` and `FsmSqliteStore.append_event_result()` to report whether an event append inserted a new row or reused an existing idempotent row.",
+        "Preserved the existing `FsmSqliteStore.append_event()` string return contract.",
+        "Updated `FsmTransitionRunner.record()` to return immediately on duplicate event replay before state or outbox writes.",
+        "Added a regression test proving duplicate transition replay does not rematerialize state or append outbox effects."
+      ],
+      "id": "R001",
+      "known_gaps": [
+        "None for the duplicate transition state/outbox corruption path."
+      ],
+      "problem_id": "P002",
+      "root_id": "P000",
+      "summary": "Implemented the generic FSM substrate fix so duplicate transition event idempotency is side-effect free.",
+      "ticket_id": "T002",
+      "verification": [
+        "Ran `PYTHONPATH=. pytest -q tests/test_pr342_generic_fsm_transition_runner.py tests/test_pr259_generic_fsm_store_outbox.py`.",
+        "Result: `10 passed in 0.08s`."
+      ]
+    },
+    "R002": {
+      "artifacts": [
+        "`novaic-common/common/log_context.py`",
+        "`novaic-common/common/middlewares/caller_logging.py`",
+        "`novaic-common/tests/test_log_context.py`",
+        "`novaic-common/tests/test_caller_middleware.py`"
+      ],
+      "body_path": "problems/P000/children/P003/results/R002.md",
+      "created_at": "2026-05-12T06:08:16+00:00",
+      "done": [
+        "Added `quiet_noisy_dependency_loggers()` in service logging bootstrap.",
+        "Set `httpx`, `httpcore`, and `uvicorn.access` to warning level during `install_service_logging()`.",
+        "Added `should_log_internal_access()` to suppress successful `/api/queue/tasks/claim` and `/api/queue/sagas/claim` access logs.",
+        "Kept failed claim requests visible.",
+        "Added regression tests for dependency logger levels and hot-path access suppression."
+      ],
+      "id": "R002",
+      "known_gaps": [
+        "Production verification still needs to happen after deployment."
+      ],
+      "problem_id": "P003",
+      "root_id": "P000",
+      "summary": "Implemented path-specific and dependency-level logging suppression for high-frequency successful worker polling.",
+      "ticket_id": "T003",
+      "verification": [
+        "Ran `PYTHONPATH=. pytest -q tests/test_log_context.py tests/test_caller_middleware.py`.",
+        "Result: `21 passed in 0.27s`."
+      ]
+    },
+    "R003": {
+      "artifacts": [
+        "`novaic-agent-runtime/main_novaic.py`",
+        "`novaic-agent-runtime/tests/test_pr346_uvicorn_access_log_disabled.py`",
+        "Production verification command output in this session."
+      ],
+      "body_path": "problems/P000/children/P004/results/R003.md",
+      "created_at": "2026-05-12T06:17:49+00:00",
+      "done": [
+        "Ran combined targeted tests before deployment.",
+        "Deployed with `./deploy runtime` twice: once for the FSM/common fixes, then again after closing the uvicorn entrypoint gap.",
+        "Added and tested a guard that `main_novaic.py` service entrypoints disable uvicorn access logs.",
+        "Verified production disk, Redis, queue session state, and notification status after deployment.",
+        "Verified worker `httpx` claim spam and queue-service uvicorn claim spam no longer increase after deployment."
+      ],
+      "id": "R003",
+      "known_gaps": [
+        "Old historical log files still contain previous noisy lines, but post-deploy counts stopped growing."
+      ],
+      "problem_id": "P004",
+      "root_id": "P000",
+      "summary": "Deployed the runtime/common fixes and verified production stayed healthy. A first deploy revealed uvicorn access logs were still emitted by the actual `main_novaic.py queue-service` entrypoint; that gap was fixed with `access_log=False`, tested, redeployed, and verified by log count differential.",
+      "ticket_id": "T004",
+      "verification": [
+        "Runtime tests: `12 passed in 0.09s`.",
+        "Common tests: `21 passed in 0.25s`.",
+        "Deploy: `novaic-agent-runtime 已部署（全部服务已重启）`.",
+        "Disk: `/dev/nvme0n1p2` at `16G used / 79G free / 17%`.",
+        "Redis: `PONG`, `rdb_last_bgsave_status:ok`, `rdb_bgsave_in_progress:0`.",
+        "Session state: affected agent/subagent is `no_active`.",
+        "Log differential over 15 seconds after second deploy:",
+        "`task-worker-control-1.log` line count unchanged, claim `httpx` count unchanged.",
+        "`task-worker-execution-1.log` line count unchanged, claim `httpx` count unchanged.",
+        "`queue-service.log` line count unchanged, uvicorn claim count unchanged."
+      ]
+    },
+    "R004": {
+      "artifacts": [
+        "Child result IDs: `R000`, `R001`, `R002`, `R003`.",
+        "Child check IDs: `C000`, `C001`, `C002`, `C003`."
+      ],
+      "body_path": "problems/P000/results/R004.md",
+      "created_at": "2026-05-12T06:19:04+00:00",
+      "done": [
+        "P001 verified and recovered the affected production message/session.",
+        "P002 fixed duplicate FSM transition replay so it cannot rematerialize state or outbox effects.",
+        "P003 suppressed successful hot polling logs at dependency and middleware layers.",
+        "P004 deployed the fixes and verified production health and log quietness."
+      ],
+      "id": "R004",
+      "known_gaps": [
+        "Historical logs still contain old noise; active processes no longer append it.",
+        "Frontend rendering/cache was not separately debugged because backend state and reply persistence are now accounted for."
+      ],
+      "problem_id": "P000",
+      "root_id": "P000",
+      "summary": "Completed all child work for the production IM no-response incident: operational recovery, generic FSM idempotency repair, log storm suppression, deployment, and production verification.",
+      "ticket_id": "T000",
+      "verification": [
+        "Child checks `C000`, `C001`, `C002`, and `C003` are successful.",
+        "Production backend is deployed and verified."
+      ]
+    }
+  },
+  "root_id": "P000",
+  "schema_version": 6,
+  "tickets": {
+    "T000": {
+      "acceptance_criteria": [
+        "Duplicate FSM transition event idempotency does not mutate state to a new scope.",
+        "Duplicate FSM transition event idempotency does not append or reuse a new outbox effect as if it were a fresh transition.",
+        "Successful `/api/queue/tasks/claim` and `/api/queue/sagas/claim` internal access logs are suppressed, while failures remain visible.",
+        "`httpx`, `httpcore`, and `uvicorn.access` are quieted to warning level by service logging bootstrap.",
+        "Production is deployed and checked after the patch."
+      ],
+      "assumptions": [
+        "Production code is deployed from the current repository checkout through `./deploy runtime`.",
+        "The correct user-facing agent ID for the incident is `340ea813-2398-4b50-b2b8-16a6975af1f9`."
+      ],
+      "body_path": "problems/P000/tickets/T000.md",
+      "classification": "split",
+      "classification_reason": "Production repair plus generic FSM substrate plus logging/deploy verification are separable risks.",
+      "created_at": "2026-05-12T05:57:41+00:00",
+      "id": "T000",
+      "problem_definition": "The production no-response incident is not a single UI symptom. It has three coupled backend failure modes:\n\n- Log storm filled disk, Redis entered MISCONF, and Cortex scope writes failed.\n- The subscriber marked the IM notification as delivered even though session initialization failed before the wake could consume it normally.\n- Replaying the same input idempotency key could update `tq_session_state` to a fresh active/starting scope without creating a corresponding event/outbox, because the generic FSM runner did not distinguish inserted events from idempotent duplicates.",
+      "problem_id": "P000",
+      "proposed_solution": "Repair production state, then patch the durable FSM substrate and logging layer:\n\n- Confirm the message, notification, session, saga, and task state in production.\n- Keep the operational recovery evidence in the result.\n- Change the generic FSM SQLite store/runner so an idempotent duplicate event returns the existing event and skips materialized state and outbox writes.\n- Suppress successful high-frequency internal polling access logs and noisy HTTP client dependency logs.\n- Add regression tests for the FSM replay contract and logging suppression.\n- Deploy and verify production disk, Redis, session state, notification state, and recent logs.",
+      "result_ids": [
+        "R004"
+      ],
+      "risks": [
+        "Logging suppression must not hide error logs for failed claims.",
+        "FSM idempotency change is generic infrastructure; tests must prove duplicate event replay is a no-op for state/outbox.",
+        "Existing ledgers using `append_event()` directly should preserve the original return contract."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Repair production IM delivery and session replay failure",
+      "updated_at": "2026-05-12T06:19:04+00:00",
+      "verification_plan": "- Add a unit test around `FsmTransitionRunner` and `FsmSqliteStore` replay behavior.\n- Add or extend common logging tests for hot claim path suppression and dependency logger levels.\n- Run targeted runtime/common pytest.\n- Deploy runtime/common services.\n- Query production SQLite state and inspect logs after deployment."
+    },
+    "T001": {
+      "acceptance_criteria": [
+        "Notification `c93f028e2918` is processed.",
+        "At least one agent reply after the affected message exists.",
+        "Queue session for `340ea813...:main-340ea813` is `no_active`.",
+        "Redis and disk are healthy."
+      ],
+      "assumptions": [
+        "The affected production message is `c93f028e2918`."
+      ],
+      "body_path": "problems/P000/children/P001/tickets/T001.md",
+      "classification": "one_go",
+      "classification_reason": "Production recovery evidence has already been collected and is bounded to read-only DB/Redis/disk checks.",
+      "created_at": "2026-05-12T05:59:09+00:00",
+      "id": "T001",
+      "problem_definition": "We need prove the no-response incident was recovered operationally before changing code.",
+      "problem_id": "P001",
+      "proposed_solution": "Query production queue/entangled databases, Redis persistence, disk usage, and recent worker state for the affected message and agent.",
+      "result_ids": [
+        "R000"
+      ],
+      "risks": [
+        "Frontend may still have a separate display/cache issue even if backend is recovered."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Check production recovery evidence",
+      "updated_at": "2026-05-12T06:01:03+00:00",
+      "verification_plan": "- SSH to production and query SQLite/Redis/disk.\n- Record exact evidence in the result."
+    },
+    "T002": {
+      "acceptance_criteria": [
+        "Existing callers of `append_event()` still receive a string event ID.",
+        "New runner path can detect duplicate event replay.",
+        "Duplicate transition replay leaves materialized state unchanged.",
+        "Duplicate transition replay emits no outbox effects."
+      ],
+      "assumptions": [
+        "Duplicate event idempotency key means the entire transition was already processed or is in progress and must not rematerialize fresh state."
+      ],
+      "body_path": "problems/P000/children/P002/tickets/T002.md",
+      "classification": "one_go",
+      "classification_reason": "A small generic FSM substrate change with direct regression coverage.",
+      "created_at": "2026-05-12T06:02:18+00:00",
+      "id": "T002",
+      "problem_definition": "The generic FSM runner records event, state, and outbox in order. When the event insert is an idempotent duplicate, the store currently returns the existing event ID but the runner still upserts materialized state and attempts outbox writes. That can corrupt session state during message redelivery.",
+      "problem_id": "P002",
+      "proposed_solution": "Extend the generic SQLite store with a result that reports whether event append inserted a new row or reused an existing idempotent row. Keep the existing `append_event()` API returning `str`. Update `FsmTransitionRunner.record()` to return immediately on duplicate event replay before state/outbox writes.",
+      "result_ids": [
+        "R001"
+      ],
+      "risks": [
+        "Generic infrastructure change affects task, saga, session, and lease ledgers; compatibility of `append_event()` must be preserved."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Make FSM event replay a no-op for state and outbox",
+      "updated_at": "2026-05-12T06:05:00+00:00",
+      "verification_plan": "- Add a regression test using session FSM store config and generic runner.\n- Run the generic FSM runner tests."
+    },
+    "T003": {
+      "acceptance_criteria": [
+        "`httpx`, `httpcore`, and `uvicorn.access` are warning-level after `install_service_logging()`.",
+        "Successful task/saga claim requests are not logged by `novaic.access.internal`.",
+        "Failed task/saga claim requests remain logged.",
+        "Tests cover the behavior."
+      ],
+      "assumptions": [
+        "Successful high-frequency polling is operational noise; failures are signal."
+      ],
+      "body_path": "problems/P000/children/P003/tickets/T003.md",
+      "classification": "one_go",
+      "classification_reason": "Small logging policy change with targeted tests.",
+      "created_at": "2026-05-12T06:06:08+00:00",
+      "id": "T003",
+      "problem_definition": "Worker claim loops emit frequent successful `/api/queue/tasks/claim` and `/api/queue/sagas/claim` logs through both internal access middleware and dependency HTTP client loggers. This contributed to disk exhaustion and Redis persistence failure.",
+      "problem_id": "P003",
+      "proposed_solution": "Quiet noisy dependency loggers during service logging bootstrap and add explicit internal access log suppression for successful hot claim paths while preserving failure logs.",
+      "result_ids": [
+        "R002"
+      ],
+      "risks": [
+        "Suppression should be path-specific and status-sensitive so real errors remain visible."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Suppress successful poll log storm",
+      "updated_at": "2026-05-12T06:08:16+00:00",
+      "verification_plan": "- Extend common logging/middleware tests.\n- Run targeted `novaic-common` pytest."
+    },
+    "T004": {
+      "acceptance_criteria": [
+        "Targeted tests pass before deployment.",
+        "Deployment completes.",
+        "Production session state is clean after deployment.",
+        "Disk and Redis remain healthy.",
+        "Recent logs no longer show successful claim poll spam at INFO."
+      ],
+      "assumptions": [
+        "`./deploy runtime` deploys both runtime and shared common package changes used by services."
+      ],
+      "body_path": "problems/P000/children/P004/tickets/T004.md",
+      "classification": "one_go",
+      "classification_reason": "Deployment and production verification are bounded after local tests.",
+      "created_at": "2026-05-12T06:09:38+00:00",
+      "id": "T004",
+      "problem_definition": "Code fixes for FSM replay and log storm suppression must be tested, deployed, and verified in production.",
+      "problem_id": "P004",
+      "proposed_solution": "Run targeted tests, deploy runtime/common services, then inspect production disk, Redis, queue session state, recent tasks, and logs.",
+      "result_ids": [
+        "R003"
+      ],
+      "risks": [
+        "Deployment may restart services while a wake is running; verification should check final queue state."
+      ],
+      "root_id": "P000",
+      "status": "done",
+      "title": "Deploy and verify production repair",
+      "updated_at": "2026-05-12T06:17:49+00:00",
+      "verification_plan": "- Run runtime and common targeted tests.\n- Run `./deploy runtime`.\n- Query production DB/Redis/disk and tail relevant logs."
+    }
+  },
+  "updated_at": "2026-05-12T06:19:52+00:00"
+}
